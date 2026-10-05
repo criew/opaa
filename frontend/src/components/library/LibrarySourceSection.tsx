@@ -3,6 +3,7 @@ import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
 import Alert from '@mui/material/Alert'
+import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Chip from '@mui/material/Chip'
@@ -18,6 +19,7 @@ import type {
 } from '../../types/api'
 import { useIndexingStore } from '../../stores/indexingStore'
 import {
+  formatCalendarDay,
   formatFileSize,
   indexingRunEventCategoryLabel,
   indexingRunModeLabel,
@@ -29,8 +31,6 @@ import EditLibraryScheduleDialog from '../EditLibraryScheduleDialog'
 import PageSection from '../PageSection'
 import LibraryConnectionPanel from './LibraryConnectionPanel'
 import { Link as RouterLink } from 'react-router'
-import { liftedByConnecting, liftedByOwnAccount } from './connectionChoice'
-import { useRunsOnOwnAccount } from '../../hooks/useRunsOnOwnAccount'
 import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 import { sourceRegistration } from './sources/registry'
 
@@ -78,15 +78,34 @@ export default function LibrarySourceSection({
     </Button>
   )
   const block = library.sourceBlock ?? null
-  const liftedByOwner = canEditSource && block !== null && liftedByOwnAccount(block.reason)
-  const runsOnOwnAccount = useRunsOnOwnAccount(libraryId, liftedByOwner && !library.privateLibrary)
-  const ownAccount = liftedByOwner && (Boolean(library.privateLibrary) || runsOnOwnAccount)
   const accountAction = (
     <Button color="inherit" size="small" component={RouterLink} to={CONNECTED_ACCOUNTS_ROUTE}>
-      {block?.reason === 'EXPIRED' ? 'Konto neu verbinden' : 'Konto verbinden'}
+      {block?.reason === 'NOT_CONNECTED' ? 'Konto verbinden' : 'Konto neu verbinden'}
     </Button>
   )
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null
+  const editAction = (
+    <Button color="inherit" size="small" onClick={() => setEditSourceOpen(true)}>
+      Quelle bearbeiten
+    </Button>
+  )
+  // The action that lifts the block comes with it; only those who manage the source act on it.
+  const blockAction = (() => {
+    if (!canEditSource || !block?.action) return undefined
+    const action = block.action
+    switch (action) {
+      case 'ASSIGN_PROFILE':
+        return connectAction
+      case 'CONNECT_OWN_ACCOUNT':
+        return accountAction
+      case 'EDIT_SOURCE':
+        return configuration ? editAction : undefined
+      default: {
+        const unknown: never = action
+        throw new Error(`Unknown source block action ${String(unknown)}`)
+      }
+    }
+  })()
   const Scope = configuration?.Scope
   const StoredView = configuration?.StoredView
   const fullSyncIntervalDays = configuration?.fullSyncRhythm
@@ -100,14 +119,13 @@ export default function LibrarySourceSection({
           severity="warning"
           sx={{ mb: 2 }}
           data-testid="source-lock-notice"
-          action={
-            canEditSource && liftedByConnecting(library.sourceBlock.reason)
-              ? connectAction
-              : ownAccount
-                ? accountAction
-                : undefined
-          }
+          action={blockAction}
         >
+          {library.sourceBlock.contentDeletedOn && (
+            <AlertTitle>
+              Löschung ab dem {formatCalendarDay(library.sourceBlock.contentDeletedOn)}
+            </AlertTitle>
+          )}
           {library.sourceBlock.notice}
         </Alert>
       )}

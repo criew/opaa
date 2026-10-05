@@ -91,7 +91,11 @@ class KnowledgeLibraryCatalogFactSource implements AssetCatalogFactSource {
       facts.put(
           id,
           new KnowledgeLibraryCatalogFacts(
-              library.getSourceType().key(), lastIndexedAt.get(id), status, locks.get(id)));
+              library.getSourceType().key(),
+              lastIndexedAt.get(id),
+              status,
+              locks.get(id),
+              library.isOwnerOnly()));
     }
     return facts;
   }

@@ -36,6 +36,7 @@ public final class ChatSource {
   private String freezeReason;
   private String freezeResponsible;
   private Instant freezeAsOf;
+  private boolean privateSource;
 
   public ChatSource() {}
 
@@ -108,6 +109,28 @@ public final class ChatSource {
     this.freezeResponsible = responsible;
     this.freezeAsOf = asOf;
     return this;
+  }
+
+  /**
+   * Marks the source as one of the asker's private libraries when the answer was given; stored with
+   * the answer, absent (false) on answers stored before.
+   */
+  public ChatSource privateSource(boolean privateSource) {
+    this.privateSource = privateSource;
+    return this;
+  }
+
+  public boolean getPrivateSource() {
+    return privateSource;
+  }
+
+  public void setPrivateSource(boolean privateSource) {
+    this.privateSource = privateSource;
+  }
+
+  /** Whether any of {@code sources}, cited or not, is a private source. */
+  public static boolean anyPrivate(List<ChatSource> sources) {
+    return sources != null && sources.stream().anyMatch(ChatSource::getPrivateSource);
   }
 
   public String getFreezeReason() {

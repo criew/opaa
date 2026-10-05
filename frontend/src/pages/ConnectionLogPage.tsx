@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -16,8 +16,12 @@ import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import AreaPageHeader from '../components/AreaPageHeader'
 import BusyButton from '../components/a11y/BusyButton'
 import { useAuthStore } from '../stores/authStore'
-import { listConnectionLog } from '../services/connectionLogApi'
-import type { ConnectionLogEventType, ConnectionLogPage as LogPage } from '../types/api'
+import { listConnectionLog, listConnectionLogProfiles } from '../services/connectionLogApi'
+import type {
+  ConnectionLogEventType,
+  ConnectionLogPage as LogPage,
+  ConnectionLogProfile,
+} from '../types/api'
 import {
   CONNECTION_LOG_EVENT_TYPES,
   actorLabel,
@@ -55,14 +59,30 @@ export default function ConnectionLogPage() {
   const [reason, setReason] = useState('')
   const [eventType, setEventType] = useState<ConnectionLogEventType | typeof ALL>(ALL)
   const [profileId, setProfileId] = useState(ALL)
-  // The profiles seen in earlier answers - the audit has no list of profiles of its own.
-  const [knownProfiles, setKnownProfiles] = useState<Map<string, string>>(new Map())
+  // Read from the log itself, so a deleted profile stays choosable and the audit needs no read
+  // access to the administration; without the list the filter offers „Alle Zugänge“ only.
+  const [loggedProfiles, setLoggedProfiles] = useState<ConnectionLogProfile[]>([])
   const [result, setResult] = useState<LogPage | null>(null)
   const [applied, setApplied] = useState<AppliedQuery | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
   const canSubmit = from !== '' && to !== '' && reason.trim() !== ''
+
+  useEffect(() => {
+    if (!isAuditor) return
+    let cancelled = false
+    listConnectionLogProfiles()
+      .then((profiles) => {
+        if (!cancelled) setLoggedProfiles(profiles)
+      })
+      .catch(() => {
+        if (!cancelled) setLoggedProfiles([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuditor])
 
   async function load(query: AppliedQuery, page: number): Promise<void> {
     setIsLoading(true)
@@ -71,11 +91,6 @@ export default function ConnectionLogPage() {
       setResult(loaded)
       setApplied(query)
       setError(null)
-      setKnownProfiles((previous) => {
-        const next = new Map(previous)
-        for (const entry of loaded.entries) next.set(entry.profileId, entry.profileName)
-        return next
-      })
     } catch (err: unknown) {
       setResult(null)
       setError(
@@ -152,12 +167,12 @@ export default function ConnectionLogPage() {
             label="Zugang (optional)"
             value={profileId}
             onChange={(event) => setProfileId(event.target.value)}
-            helperText="Zur Auswahl stehen die Zugänge, die in bisherigen Abfragen vorkamen."
+            helperText="Zur Auswahl stehen alle Zugänge mit Einträgen im Protokoll, auch gelöschte."
           >
             <MenuItem value={ALL}>Alle Zugänge</MenuItem>
-            {[...knownProfiles.entries()].map(([id, name]) => (
-              <MenuItem key={id} value={id}>
-                {name}
+            {loggedProfiles.map((profile) => (
+              <MenuItem key={profile.profileId} value={profile.profileId}>
+                {profile.deleted ? `${profile.name} (gelöscht)` : profile.name}
               </MenuItem>
             ))}
           </TextField>

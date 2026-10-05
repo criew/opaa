@@ -632,7 +632,12 @@ bleiben mit ihrem Hinweis sichtbar. Das gilt auch für Verwaltende einer Bibliot
 Anlegerecht „Konnektorbibliotheken anlegen“: Sie sehen die Zugänge der Quellart, die nicht für sie
 freigegebenen mit dem Hinweis, wer sie freischaltet. Die Hinweise „Zugang entfernt“ und die Sperre
 wegen der Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verwaltenden bieten
-sie „Zugang zuordnen“ direkt an.
+sie „Zugang zuordnen“ direkt an. Allgemein trägt ein Sperrhinweis für die Verwaltenden die Aktion,
+die ihn aufhebt: „Zugang zuordnen“, „Quelle bearbeiten“ (Geheimnis neu eintragen oder Adresse
+korrigieren) oder bei einer privaten Bibliothek „Konto verbinden“ bzw. „Konto neu verbinden“, das
+zur Seite „Verbundene Konten“ führt. Wo nur die Systemverwaltung die Sperre aufheben kann, fehlt
+eine Aktion. Steht für eine private Bibliothek der Tag fest, ab dem ihr Inhalt gelöscht wird, nennt
+der Hinweis ihn als Überschrift „Löschung ab dem …“, die Kachel im Katalog ebenso.
 
 Beim Bearbeiten der Quelle einer Bibliothek auf einem Zugang gelten dieselben Regeln wie im
 Assistenten. Die Angaben des Zugangs (Server-Adresse, Anmeldeart, Vorgaben, Proxy und

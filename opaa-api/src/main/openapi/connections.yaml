@@ -677,7 +677,10 @@ paths:
         Every profile whose ownership admits libraries, by name, without anything of the app
         registration - each with whether the caller may create a library through it and, where
         not, a notice naming who can change that, so a profile the caller may not use is shown
-        rather than hidden. Without libraryId it needs the capability CREATE_CONNECTOR_LIBRARY in
+        rather than hidden. A profile with the ownership PERSON is listed only where the caller
+        has a connected account of her own on it - for her private library; without libraryId,
+        and with the libraryId of her private library. Each names its ownership and whether the
+        caller has an account on it. Without libraryId it needs the capability CREATE_CONNECTOR_LIBRARY in
         at least one scope. With libraryId it needs AssetRole.MANAGER on that library instead
         (403 without it, 404 for a library the caller cannot see), and sourceType must be the
         library's (400): its managers choose the profile to connect it through, and the profiles
@@ -1528,7 +1531,7 @@ components:
 
     ConnectedAccount:
       type: object
-      required: [profileId, profileName, authMethod, state, released, reconnectable, connectedAt, usedBy]
+      required: [profileId, profileName, sourceType, authMethod, state, released, reconnectable, connectedAt, usedBy]
       properties:
         profileId:
           type: string
@@ -1536,6 +1539,8 @@ components:
         profileName:
           type: string
           example: Zugang Nextcloud intern
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
         authMethod:
           $ref: "#/components/schemas/ConnectionAuthMethod"
         secretForm:
@@ -1592,7 +1597,7 @@ components:
 
     ConnectableProfile:
       type: object
-      required: [profileId, name, authMethod]
+      required: [profileId, name, sourceType, authMethod]
       description: A profile the caller may connect an account on now.
       properties:
         profileId:
@@ -1600,6 +1605,8 @@ components:
           format: uuid
         name:
           type: string
+        sourceType:
+          $ref: "#/components/schemas/SourceTypeKey"
         authMethod:
           $ref: "#/components/schemas/ConnectionAuthMethod"
         secretForm:
@@ -1679,13 +1686,21 @@ components:
 
     ConnectionProfileOption:
       type: object
-      required: [id, name, sourceType, serverUrl, authMethod, sourceInsecureSsl, creatable]
+      required: [id, name, sourceType, serverUrl, authMethod, ownership, ownAccount, sourceInsecureSsl, creatable]
       properties:
         creatable:
           type: boolean
           description: >
             Whether the caller may create a library through this profile now - released to them
-            and neither the profile nor its connector locked.
+            and neither the profile nor its connector locked. On a profile with the ownership
+            PERSON only a private library.
+        ownership:
+          $ref: "#/components/schemas/ConnectionOwnership"
+        ownAccount:
+          type: boolean
+          description: >
+            Whether the caller has a connected account of her own on the profile, so a private
+            library can run on it. Never anything about another person.
         creationNotice:
           type: string
           nullable: true

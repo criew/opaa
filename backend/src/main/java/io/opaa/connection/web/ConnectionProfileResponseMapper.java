@@ -131,6 +131,8 @@ public final class ConnectionProfileResponseMapper {
         .sourceType(profile.getSourceType().key())
         .serverUrl(profile.getServerUrl())
         .authMethod(profile.getAuthMethod())
+        .ownership(profile.getOwnership())
+        .ownAccount(option.ownAccount())
         .sourceProxy(profile.getSourceProxy())
         .sourceInsecureSsl(profile.isSourceInsecureSsl());
   }

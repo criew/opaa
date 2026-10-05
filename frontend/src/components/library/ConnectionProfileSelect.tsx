@@ -18,7 +18,13 @@ import {
 } from '../../hooks/useConnectionProfileOptions'
 import ChoiceTileGroup, { type ChoiceTile } from '../choice/ChoiceTileGroup'
 import { AUTH_METHOD_LABELS } from '../admin/connections/connectionProfileLabels'
-import { OWN_ADDRESS, privateConnection, selectableConnections } from './connectionChoice'
+import {
+  OWN_ADDRESS,
+  admitsLibraries,
+  onOwnAccount,
+  privateConnection,
+  profileChoices,
+} from './connectionChoice'
 import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 import { ownAddressAllowed } from './sources/sourceConnection'
 import ConnectionProfileRequestAction from './ConnectionProfileRequestAction'
@@ -73,12 +79,14 @@ interface ConnectionProfileSelectProps {
   /** Whether „Zugang vorschlagen“ takes the place of the hint who sets up profiles. */
   offerRequest?: boolean
   /**
-   * The profiles the caller has a connected account on: each is offered a second time, as a
-   * private library, in a group of its own. Without one that group does not exist.
+   * The options are those of the caller's own connected accounts, for her private library: each
+   * is offered once, and an empty choice leads to „Verbundene Konten“. Otherwise a profile she has
+   * an account of her own on is offered a second time, as a private library, in a group of its
+   * own; a profile only for persons only there.
    */
-  ownAccountProfileIds?: readonly string[]
-  /** The options are those of the caller's own connected accounts: an empty choice leads there. */
   onlyOwnAccounts?: boolean
+  /** Whether the private library is a choice here at all - in the creation wizard. */
+  offerPrivate?: boolean
   idPrefix: string
 }
 
@@ -96,17 +104,21 @@ export default function ConnectionProfileSelect({
   offerOwnAddress,
   excludeProfileId,
   offerRequest = false,
-  ownAccountProfileIds = [],
   onlyOwnAccounts = false,
+  offerPrivate = false,
   idPrefix,
 }: ConnectionProfileSelectProps) {
   const options = state.options.filter((option) => option.id !== excludeProfileId)
   const ownOffered = offerOwnAddress && ownAddressAllowed(descriptor)
-  const selectable = selectableConnections(descriptor, options, offerOwnAddress)
   const headingId = `${idPrefix}-connection-heading`
   const privateHeadingId = `${idPrefix}-private-heading`
-  const onOwnAccount = (option: ConnectionProfileOption) => ownAccountProfileIds.includes(option.id)
-  const privateOptions = options.filter(onOwnAccount)
+  const sharedOptions = onlyOwnAccounts ? options : options.filter(admitsLibraries)
+  const privateOptions = offerPrivate && !onlyOwnAccounts ? options.filter(onOwnAccount) : []
+  const selectable = [
+    ...(ownOffered ? [OWN_ADDRESS] : []),
+    ...profileChoices(sharedOptions),
+    ...profileChoices(privateOptions).map(privateConnection),
+  ]
 
   const tiles: ChoiceTile<string>[] = [
     ...(ownOffered
@@ -119,13 +131,13 @@ export default function ConnectionProfileSelect({
           },
         ]
       : []),
-    ...options.map((option) => ({
+    ...sharedOptions.map((option) => ({
       value: option.id,
       label: option.name,
       description: (
         <>
           {profileDescription(option, descriptor)}
-          {onOwnAccount(option) && (
+          {privateOptions.includes(option) && (
             <Box component="span" sx={{ display: 'block' }}>
               Teilbar – meldet sich nicht über Ihr verbundenes Konto an.
             </Box>

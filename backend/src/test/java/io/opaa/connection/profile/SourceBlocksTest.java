@@ -302,7 +302,8 @@ class SourceBlocksTest {
                 "Gesperrt – Inhalt wird nicht mehr aktualisiert. Die Quellart „Testquelle mit"
                     + " Zugang“ ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine"
                     + " eigene Adresse; der vorhandene Inhalt bleibt durchsuchbar. Die Verwaltenden"
-                    + " der Bibliothek ordnen sie einem Zugang zu.")),
+                    + " der Bibliothek ordnen sie einem Zugang zu.",
+                SourceBlock.Action.ASSIGN_PROFILE)),
         Arguments.of(
             EnumSet.of(Fact.TYPE_LOCK),
             ConnectionAuthMethod.PERSONAL_SECRET,
@@ -329,7 +330,8 @@ class SourceBlocksTest {
                 "Verwaltende der Bibliothek",
                 "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht. Die Verwaltenden"
                     + " der Bibliothek ordnen sie einem anderen Zugang zu. Der Inhalt bleibt"
-                    + " durchsuchbar, wird aber nicht mehr aktualisiert.")),
+                    + " durchsuchbar, wird aber nicht mehr aktualisiert.",
+                SourceBlock.Action.ASSIGN_PROFILE)),
         Arguments.of(
             EnumSet.of(Fact.CONNECTED, Fact.OUTSIDE),
             ConnectionAuthMethod.PERSONAL_SECRET,
@@ -338,7 +340,8 @@ class SourceBlocksTest {
                 "Verwaltende der Bibliothek",
                 "Die Adresse der Bibliothek liegt nicht unter der Server-Adresse des Zugangs"
                     + " \"Feeds\". Die Verwaltenden der Bibliothek passen die Adresse an. Der"
-                    + " Inhalt bleibt durchsuchbar, wird aber nicht mehr aktualisiert.")),
+                    + " Inhalt bleibt durchsuchbar, wird aber nicht mehr aktualisiert.",
+                SourceBlock.Action.EDIT_SOURCE)),
         Arguments.of(
             EnumSet.of(Fact.CONNECTED, Fact.NO_SECRET),
             ConnectionAuthMethod.PERSONAL_SECRET,
@@ -347,7 +350,8 @@ class SourceBlocksTest {
                 "Verwaltende der Bibliothek",
                 "Verbindung getrennt: Für den Zugang \"Feeds\" sind keine Zugangsdaten"
                     + " hinterlegt. Die Verwaltenden der Bibliothek tragen sie neu ein. Der"
-                    + " Inhalt bleibt durchsuchbar, wird aber nicht mehr aktualisiert.")),
+                    + " Inhalt bleibt durchsuchbar, wird aber nicht mehr aktualisiert.",
+                SourceBlock.Action.EDIT_SOURCE)),
         Arguments.of(
             EnumSet.of(Fact.CONNECTED),
             ConnectionAuthMethod.OAUTH,
@@ -498,20 +502,29 @@ class SourceBlocksTest {
 
   static Stream<Arguments> noticesOfAPrivateLibrary() {
     return Stream.of(
-        Arguments.of(Reason.OWNER_DEACTIVATED, "Systemverwaltung", "nach Ablauf der Löschfrist"),
+        Arguments.of(
+            Reason.OWNER_DEACTIVATED, "Systemverwaltung", "nach Ablauf der Löschfrist", null),
         Arguments.of(
             Reason.DORMANT,
             "Besitzerin der Bibliothek bzw. Systemverwaltung",
-            "ohne Neuverbinden weiter"),
+            "ohne Neuverbinden weiter",
+            null),
         Arguments.of(
-            Reason.NOT_CONNECTED, "Besitzerin der Bibliothek", "auf der Seite „Verbundene Konten“"),
-        Arguments.of(Reason.EXPIRED, "Besitzerin der Bibliothek", "„Verbundene Konten“ neu"));
+            Reason.NOT_CONNECTED,
+            "Besitzerin der Bibliothek",
+            "auf der Seite „Verbundene Konten“",
+            SourceBlock.Action.CONNECT_OWN_ACCOUNT),
+        Arguments.of(
+            Reason.EXPIRED,
+            "Besitzerin der Bibliothek",
+            "„Verbundene Konten“ neu",
+            SourceBlock.Action.CONNECT_OWN_ACCOUNT));
   }
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("noticesOfAPrivateLibrary")
   void aPrivateLibrarysBlockNamesItsOwnerOrTheAdministration(
-      Reason reason, String responsible, String noticePart) {
+      Reason reason, String responsible, String noticePart, SourceBlock.Action action) {
     ConnectionSecrets store = mock(ConnectionSecrets.class);
     when(store.statesAmong(any()))
         .thenAnswer(
@@ -531,6 +544,49 @@ class SourceBlocksTest {
     assertThat(block.reason()).isEqualTo(reason);
     assertThat(block.responsible()).isEqualTo(responsible);
     assertThat(block.notice()).contains("„Personen“", noticePart);
+    assertThat(block.action()).isEqualTo(action);
+  }
+
+  static Stream<Arguments> actionsOfTheStoresAnswers() {
+    UUID profileId = UUID.randomUUID();
+    SecretOwner person = new SecretOwner.PersonOwned(profileId, UUID.randomUUID());
+    SecretOwner library = new SecretOwner.LibraryOwned(UUID.randomUUID());
+    SecretOwner profile = new SecretOwner.ProfileOwned(profileId);
+    return Stream.of(
+        Arguments.of(Reason.OWNER_DEACTIVATED, person, null),
+        Arguments.of(Reason.DORMANT, person, null),
+        Arguments.of(Reason.TARGET_OUTSIDE_PROFILE, person, SourceBlock.Action.CONNECT_OWN_ACCOUNT),
+        Arguments.of(Reason.NOT_CONNECTED, person, SourceBlock.Action.CONNECT_OWN_ACCOUNT),
+        Arguments.of(Reason.EXPIRED, person, SourceBlock.Action.CONNECT_OWN_ACCOUNT),
+        Arguments.of(Reason.TARGET_OUTSIDE_PROFILE, library, SourceBlock.Action.EDIT_SOURCE),
+        Arguments.of(Reason.NOT_CONNECTED, library, SourceBlock.Action.EDIT_SOURCE),
+        Arguments.of(Reason.EXPIRED, library, SourceBlock.Action.EDIT_SOURCE),
+        Arguments.of(Reason.NOT_CONNECTED, profile, null),
+        Arguments.of(Reason.EXPIRED, profile, null));
+  }
+
+  /** The action lifts the block for whoever it names: the owner, the managers, else none. */
+  @ParameterizedTest(name = "{0} of {1} -> {2}")
+  @MethodSource("actionsOfTheStoresAnswers")
+  void eachAnswerOfTheStoreNamesTheActionThatLiftsIt(
+      Reason reason, SecretOwner owner, SourceBlock.Action action) {
+    ConnectionProfile profile = new ConnectionProfile(SourceTypes.RSS_FEED, NOW);
+
+    assertThat(SourceBlocks.secretBlock(reason, profile, owner).action()).isEqualTo(action);
+  }
+
+  @Test
+  void aPrivateLibraryWithoutItsProfileIsAssignedAnotherByItsOwner() {
+    ConnectionSecrets store = mock(ConnectionSecrets.class);
+    when(store.statesAmong(any())).thenReturn(Map.of());
+
+    SourceBlock block =
+        blocksOver(store)
+            .blockOf(arrangePrivate(EnumSet.of(Fact.PROFILE_REMOVED)), SourceBlocks.ALL)
+            .orElseThrow();
+
+    assertThat(block.reason()).isEqualTo(Reason.ACCESS_REMOVED);
+    assertThat(block.action()).isEqualTo(SourceBlock.Action.ASSIGN_PROFILE);
   }
 
   /**

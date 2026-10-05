@@ -26,6 +26,7 @@ class KnowledgeLibraryCatalogFactsMapper implements CatalogFactsResponseMapper {
     response.knowledgeLibrary(
         new CatalogKnowledgeLibraryFacts()
             .sourceType(knowledge.sourceType())
+            .privateLibrary(knowledge.privateLibrary())
             .indexingStatus(knowledge.status())
             .lastIndexedAt(knowledge.lastIndexedAt())
             .sourceBlock(SourceBlockResponseMapper.toResponse(knowledge.sourceBlock())));

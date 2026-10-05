@@ -13,6 +13,7 @@ import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceStateLookup;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.metadata.CitationFieldValue;
 import io.opaa.metadata.CitationMetadataReader;
@@ -106,8 +107,50 @@ public class ChatSourceAssembler {
             coreMetadataByDocId,
             citationFieldsByDocId,
             metadataFilter);
-    markFrozen(sources, sourceDocumentsByDocId);
+    Map<UUID, UUID> libraryByDocument = libraryByDocument(sourceDocumentsByDocId);
+    List<KnowledgeLibrary> libraries =
+        libraryByDocument.isEmpty()
+            ? List.of()
+            : knowledgeLibraryRepository.findAllById(Set.copyOf(libraryByDocument.values()));
+    markPrivate(sources, libraryByDocument, libraries);
+    markFrozen(sources, libraryByDocument, libraries);
     return sources;
+  }
+
+  private static Map<UUID, UUID> libraryByDocument(
+      Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId) {
+    Map<UUID, UUID> libraryByDocument = new HashMap<>();
+    sourceDocumentsByDocId.forEach(
+        (documentId, document) -> {
+          if (document.getLibraryId() != null) {
+            libraryByDocument.put(UUID.fromString(documentId), document.getLibraryId());
+          }
+        });
+    return libraryByDocument;
+  }
+
+  /**
+   * Marks the sources from a private library. Only its owner reads one, so only her own answers
+   * carry the mark.
+   */
+  private static void markPrivate(
+      List<ChatSource> sources,
+      Map<UUID, UUID> libraryByDocument,
+      List<KnowledgeLibrary> libraries) {
+    Set<UUID> privateLibraries =
+        libraries.stream()
+            .filter(KnowledgeLibrary::isOwnerOnly)
+            .map(KnowledgeLibrary::getId)
+            .collect(Collectors.toSet());
+    if (privateLibraries.isEmpty()) {
+      return;
+    }
+    for (ChatSource source : sources) {
+      UUID library = libraryByDocument.get(source.getDocumentId());
+      if (library != null && privateLibraries.contains(library)) {
+        source.privateSource(true);
+      }
+    }
   }
 
   /**
@@ -117,20 +160,13 @@ public class ChatSourceAssembler {
    * {@code indexedAt}: an unchanged document was still checked by every later run.
    */
   private void markFrozen(
-      List<ChatSource> sources, Map<String, io.opaa.knowledge.Document> sourceDocumentsByDocId) {
-    Map<UUID, UUID> libraryByDocument = new HashMap<>();
-    sourceDocumentsByDocId.forEach(
-        (documentId, document) -> {
-          if (document.getLibraryId() != null) {
-            libraryByDocument.put(UUID.fromString(documentId), document.getLibraryId());
-          }
-        });
+      List<ChatSource> sources,
+      Map<UUID, UUID> libraryByDocument,
+      List<KnowledgeLibrary> libraries) {
     if (libraryByDocument.isEmpty()) {
       return;
     }
-    Set<UUID> libraryIds = Set.copyOf(libraryByDocument.values());
-    Map<UUID, SourceBlock> frozen =
-        sourceStates.frozenAmong(knowledgeLibraryRepository.findAllById(libraryIds));
+    Map<UUID, SourceBlock> frozen = sourceStates.frozenAmong(libraries);
     if (frozen.isEmpty()) {
       return;
     }

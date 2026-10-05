@@ -16,6 +16,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
         citationValid: true,
+        privateSource: false,
         documentId: 'doc-arch',
         // #667: the Fundort per chunk the markers above name (#0, #3).
         chunkLocations: [
@@ -34,6 +35,7 @@ export const mockQueryResponses: QueryResponse[] = [
         // #697 review, Nit 6: one mock source with an invalid citation, so the mocked frontend
         // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state (#386).
         citationValid: false,
+        privateSource: false,
       },
       {
         fileName: 'adr-0002-technology-stack.md',
@@ -42,6 +44,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-14T08:00:00Z',
         cited: false,
         citationValid: true,
+        privateSource: false,
       },
       {
         // #1242: an uncited mail source (VITE_ENABLE_MOCKS=true) whose Kopfdaten arrive as
@@ -52,6 +55,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-16T09:15:00Z',
         cited: false,
         citationValid: true,
+        privateSource: false,
         metadata: [
           {
             fieldKey: 'title',
@@ -88,6 +92,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2026-03-13T08:00:00Z',
         cited: false,
         citationValid: true,
+        privateSource: false,
         metadata: [
           {
             fieldKey: 'title',
@@ -117,6 +122,7 @@ export const mockQueryResponses: QueryResponse[] = [
         ],
       },
     ],
+    privateSourcesInContext: false,
     metadata: {
       model: 'gpt-4o',
       tokenCount: 847,
@@ -147,8 +153,10 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
         citationValid: true,
+        privateSource: false,
       },
     ],
+    privateSourcesInContext: false,
     metadata: {
       model: 'gpt-4o',
       tokenCount: 312,
@@ -181,6 +189,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'deployment-guide.pdf',
@@ -189,6 +198,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-15T10:30:00Z',
         cited: true,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'adr-0002-technology-stack.md',
@@ -197,6 +207,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-14T08:00:00Z',
         cited: true,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'ci-pipeline.md',
@@ -205,6 +216,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-13T15:00:00Z',
         cited: true,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'liquibase-changelog.xml',
@@ -213,6 +225,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-12T09:00:00Z',
         cited: true,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'postgres-setup.md',
@@ -221,6 +234,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-11T14:00:00Z',
         cited: false,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'environment-config.md',
@@ -229,6 +243,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-10T11:00:00Z',
         cited: false,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'monitoring-guide.md',
@@ -237,6 +252,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: '2025-01-09T16:00:00Z',
         cited: false,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'backup-strategy.pdf',
@@ -245,6 +261,7 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: null,
         cited: false,
         citationValid: true,
+        privateSource: false,
       },
       {
         fileName: 'security-checklist.md',
@@ -253,8 +270,10 @@ export const mockQueryResponses: QueryResponse[] = [
         indexedAt: null,
         cited: false,
         citationValid: true,
+        privateSource: false,
       },
     ],
+    privateSourcesInContext: false,
     metadata: {
       model: 'gpt-4o',
       tokenCount: 1584,

@@ -131,6 +131,7 @@ describe('MarkdownRenderer', () => {
             cited: true,
             indexedAt: null,
             citationValid: true,
+            privateSource: false,
             chunkLocations: [{ chunkIndex: 2, location: 'Abschn. 4.2' }],
           },
         ])}

@@ -484,3 +484,12 @@ export function catalogStatusLabel(status: CatalogEntryStatus | string | undefin
   if (!status || status === 'READY') return ''
   return catalogStatusLabels[status as Exclude<CatalogEntryStatus, 'READY'>] ?? status
 }
+
+/**
+ * A calendar day the API sends as `YYYY-MM-DD` in German notation (`03.11.2026`), without a
+ * detour through a time zone that could shift it by a day.
+ */
+export function formatCalendarDay(isoDay: string): string {
+  const [year, month, day] = isoDay.split('-')
+  return `${day}.${month}.${year}`
+}

@@ -3,6 +3,7 @@ import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import type { ChatMessage } from '../../types/chat'
 import { blue, motion } from '../../theme/tokens'
@@ -175,6 +176,26 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 Durchsucht wurden: {message.searchedLibraries!.map((l) => l.name).join(', ')}
               </Typography>
             )}
+
+          {/* Every source in the answer's context counts, an uncited one included: the answer may
+              draw on what it does not cite. Only the owner of a private library ever sees it. */}
+          {!isUser && message.privateSourcesInContext && (
+            <Typography
+              variant="body2"
+              data-testid="private-sources-in-context"
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.75,
+                color: 'text.secondary',
+                mt: 1,
+              }}
+            >
+              <LockOutlinedIcon aria-hidden sx={{ fontSize: 16 }} />
+              Private Quellen im Kontext: Diese Antwort wurde auch mit Ihren privaten Bibliotheken
+              erstellt.
+            </Typography>
+          )}
 
           {isUser && (
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 0.25, mr: -0.5 }}>

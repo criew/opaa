@@ -13,6 +13,7 @@ const citedSource = {
   indexedAt: '2025-01-15T10:30:00Z',
   cited: true,
   citationValid: true,
+  privateSource: false,
 }
 
 const uncitedSource = {
@@ -22,6 +23,7 @@ const uncitedSource = {
   indexedAt: null,
   cited: false,
   citationValid: true,
+  privateSource: false,
 }
 
 describe('MessageBubble', () => {
@@ -40,6 +42,38 @@ describe('MessageBubble', () => {
 
     expect(screen.getByTestId('used-prompt')).toHaveTextContent('Prompt: Zusammenfassung')
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  it('says under an answer that private sources were in its context, and only then', () => {
+    const { rerender } = render(
+      <MessageBubble
+        message={{
+          id: '1',
+          role: 'assistant',
+          content: 'Antwort ohne Fußnote.',
+          sources: [{ ...uncitedSource, privateSource: true }],
+          privateSourcesInContext: true,
+          timestamp: new Date(),
+        }}
+      />,
+    )
+
+    expect(screen.getByTestId('private-sources-in-context')).toHaveTextContent(
+      'Private Quellen im Kontext',
+    )
+
+    rerender(
+      <MessageBubble
+        message={{
+          id: '1',
+          role: 'assistant',
+          content: 'Antwort ohne Fußnote.',
+          sources: [uncitedSource],
+          timestamp: new Date(),
+        }}
+      />,
+    )
+    expect(screen.queryByTestId('private-sources-in-context')).not.toBeInTheDocument()
   })
 
   it('shows no prompt hint at a question without one', () => {
@@ -115,6 +149,7 @@ describe('MessageBubble', () => {
           cited: true,
           indexedAt: null,
           citationValid: true,
+          privateSource: false,
         },
         {
           fileName: 'zweite.md',
@@ -123,6 +158,7 @@ describe('MessageBubble', () => {
           cited: true,
           indexedAt: null,
           citationValid: true,
+          privateSource: false,
         },
         { ...uncitedSource, fileName: 'dritte.md' },
       ],

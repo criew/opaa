@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
@@ -440,6 +440,7 @@ describe('CatalogPage (ADR-0039)', () => {
           myRole: 'MANAGER',
           knowledgeLibrary: {
             sourceType: 'FILESYSTEM',
+            privateLibrary: false,
             indexingStatus: 'READY',
             lastIndexedAt: '2026-08-18T06:00:00Z',
           },
@@ -468,7 +469,7 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(updated.parentElement).toBe(prompts)
     })
 
-    it('marks a private library with the word „Privat“ beside its type badge (#2164)', async () => {
+    it('marks a private library with the word „Privat“ beside its type badge, from the entry alone', async () => {
       const knowledge = {
         sourceType: 'NEXTCLOUD' as const,
         indexingStatus: 'READY' as const,
@@ -478,52 +479,30 @@ describe('CatalogPage (ADR-0039)', () => {
         entry('Meine Ablage', {
           assetType: 'KNOWLEDGE_LIBRARY',
           assetId: 'library-private',
-          knowledgeLibrary: knowledge,
+          knowledgeLibrary: { ...knowledge, privateLibrary: true },
         }),
         entry('Bauordnung', {
           assetType: 'KNOWLEDGE_LIBRARY',
           assetId: 'library-shared',
-          knowledgeLibrary: knowledge,
+          knowledgeLibrary: { ...knowledge, privateLibrary: false },
         }),
       ])
+      const libraryList = vi.fn()
       server.use(
-        http.get('/api/v1/libraries', () =>
-          HttpResponse.json([
-            {
-              id: 'library-private',
-              name: 'Meine Ablage',
-              ownerType: 'USER',
-              reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-              myRole: 'OWNER',
-              sourceType: 'NEXTCLOUD',
-              documentCount: 3,
-              privateLibrary: true,
-              createdAt: '2026-03-01T10:00:00Z',
-              updatedAt: '2026-03-01T10:00:00Z',
-            },
-            {
-              id: 'library-shared',
-              name: 'Bauordnung',
-              ownerType: 'USER',
-              reach: { allAccounts: false, groupCount: 0, userCount: 1 },
-              myRole: 'OWNER',
-              sourceType: 'NEXTCLOUD',
-              documentCount: 3,
-              privateLibrary: false,
-              createdAt: '2026-03-01T10:00:00Z',
-              updatedAt: '2026-03-01T10:00:00Z',
-            },
-          ]),
-        ),
+        http.get('/api/v1/libraries', () => {
+          libraryList()
+          return HttpResponse.json([])
+        }),
       )
       renderCatalog()
 
       const own = cardOf(await screen.findByRole('link', { name: /Meine Ablage/ }))
-      const mark = await within(own).findByText('Privat')
+      const mark = within(own).getByText('Privat')
       const badge = within(own).getByText('Wissen')
       expect(badge.compareDocumentPosition(mark) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       const shared = cardOf(screen.getByRole('link', { name: /Bauordnung/ }))
       expect(within(shared).queryByText('Privat')).not.toBeInTheDocument()
+      expect(libraryList).not.toHaveBeenCalled()
     })
 
     // An upload library has no runs and so no lastIndexedAt; its date is its last change.
@@ -532,7 +511,11 @@ describe('CatalogPage (ADR-0039)', () => {
         entry('Hochgeladenes', {
           assetType: 'KNOWLEDGE_LIBRARY',
           updatedAt: '2026-09-12T08:00:00Z',
-          knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'READY' },
+          knowledgeLibrary: {
+            sourceType: 'UPLOAD',
+            privateLibrary: false,
+            indexingStatus: 'READY',
+          },
         }),
       ])
       renderCatalog()
@@ -556,7 +539,11 @@ describe('CatalogPage (ADR-0039)', () => {
         entry('Fehlgeschlagen', {
           assetType: 'KNOWLEDGE_LIBRARY',
           status: 'UPDATE_FAILED',
-          knowledgeLibrary: { sourceType: 'WEB', indexingStatus: 'UPDATE_FAILED' },
+          knowledgeLibrary: {
+            sourceType: 'WEB',
+            privateLibrary: false,
+            indexingStatus: 'UPDATE_FAILED',
+          },
         }),
         entry('Verwaist', {
           assetType: 'KNOWLEDGE_LIBRARY',
@@ -565,12 +552,20 @@ describe('CatalogPage (ADR-0039)', () => {
             addressee: 'SYSTEM_ADMINISTRATION',
             addresseeLabel: 'die Systemverwaltung',
           },
-          knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'UPDATING' },
+          knowledgeLibrary: {
+            sourceType: 'UPLOAD',
+            privateLibrary: false,
+            indexingStatus: 'UPDATING',
+          },
         }),
         entry('Leer', {
           assetType: 'KNOWLEDGE_LIBRARY',
           status: 'NOT_YET_AVAILABLE',
-          knowledgeLibrary: { sourceType: 'UPLOAD', indexingStatus: 'NOT_YET_AVAILABLE' },
+          knowledgeLibrary: {
+            sourceType: 'UPLOAD',
+            privateLibrary: false,
+            indexingStatus: 'NOT_YET_AVAILABLE',
+          },
         }),
       ])
       renderCatalog()

@@ -5,6 +5,7 @@ import type {
   SourceBlock,
 } from '../../types/api'
 import { assetTypeDefinition } from './assetTypeRegistry'
+import { formatCalendarDay } from '../../utils/labels'
 
 /** A state that needs attention; READY carries none. */
 export type AssetTileStatus = Exclude<CatalogEntryStatus, 'READY'>
@@ -86,7 +87,9 @@ export function sourceBlockNote(block: SourceBlock): string {
       case 'DORMANT':
         return 'Ruhend – Inhalt wird nicht aktualisiert'
       case 'OWNER_DEACTIVATED':
-        return 'Konto deaktiviert – Inhalt wird nach Ablauf der Löschfrist gelöscht'
+        return block.contentDeletedOn
+          ? `Konto deaktiviert – Inhalt wird ab dem ${formatCalendarDay(block.contentDeletedOn)} gelöscht`
+          : 'Konto deaktiviert – Inhalt wird nach Ablauf der Löschfrist gelöscht'
       default: {
         const unknown: never = block.reason
         throw new Error(`Unknown source block reason ${String(unknown)}`)
@@ -96,14 +99,8 @@ export function sourceBlockNote(block: SourceBlock): string {
   return `${short} (zuständig: ${block.responsible})`
 }
 
-/**
- * The tile of a catalog entry - the fullest a tile gets. The catalog does not say which library
- * is private; `privateLibraryIds` names them from the caller's library list.
- */
-export function tileFromCatalogEntry(
-  entry: CatalogEntryResponse,
-  privateLibraryIds: ReadonlySet<string> = new Set(),
-): AssetTileData {
+/** The tile of a catalog entry - the fullest a tile gets. */
+export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData {
   const status = ownStatus(entry)
   const definition = assetTypeDefinition(entry.assetType)
   return {
@@ -112,9 +109,7 @@ export function tileFromCatalogEntry(
     name: entry.name,
     description: entry.description ?? null,
     isPublic: entry.visibility === 'PUBLIC',
-    ...(entry.assetType === 'KNOWLEDGE_LIBRARY' && privateLibraryIds.has(entry.assetId)
-      ? { privateLibrary: true }
-      : {}),
+    ...(entry.knowledgeLibrary?.privateLibrary ? { privateLibrary: true } : {}),
     favorite: entry.favorite,
     figures: definition
       ? `${definition.extentLabel(entry.itemCount)} · ${spreadLabel(entry.spaceCount)}`

@@ -40,6 +40,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -134,6 +135,17 @@ public class ConnectionProfileService {
     return profiles.findBySourceTypeOrderByNameAsc(sourceType).stream()
         .filter(profile -> profile.getOwnership().admitsLibraries())
         .toList();
+  }
+
+  /** The ones of {@code ids} that name an existing profile. */
+  @Transactional(readOnly = true)
+  public Set<UUID> existingAmong(Collection<UUID> ids) {
+    if (ids.isEmpty()) {
+      return Set.of();
+    }
+    return profiles.findAllById(ids).stream()
+        .map(ConnectionProfile::getId)
+        .collect(Collectors.toSet());
   }
 
   public ConnectionProfile get(UUID id) {

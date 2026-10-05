@@ -7,6 +7,7 @@ import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
 import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.source.SourceBlock.Action;
 import io.opaa.indexing.source.SourceBlock.Reason;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.indexing.source.SourceConnectorRegistry;
@@ -164,6 +165,7 @@ public class SourceBlocks {
                       : "ab dem " + DELETION_DAY.format(deletedOn))
                   + " gelöscht, wenn das Konto bis dahin deaktiviert bleibt. Zuständig ist die"
                   + " Systemverwaltung.",
+              null,
               deletedOn);
       case DORMANT ->
           new SourceBlock(
@@ -186,7 +188,8 @@ public class SourceBlocks {
                       + " verbindet ihr Konto "
                       + ACCOUNTS_PAGE
                       + " neu."
-                      + CONTENT_STAYS)
+                      + CONTENT_STAYS,
+                  Action.CONNECT_OWN_ACCOUNT)
               : new SourceBlock(
                   reason,
                   LIBRARY_MANAGERS,
@@ -194,7 +197,8 @@ public class SourceBlocks {
                       + access
                       + " sind abgelaufen oder wurden vom Anbieter abgelehnt. Die Verwaltenden der"
                       + " Bibliothek tragen sie neu ein."
-                      + CONTENT_STAYS);
+                      + CONTENT_STAYS,
+                  Action.EDIT_SOURCE);
       case NOT_CONNECTED ->
           person
               ? new SourceBlock(
@@ -206,7 +210,8 @@ public class SourceBlocks {
                       + " Konto "
                       + ACCOUNTS_PAGE
                       + "."
-                      + CONTENT_STAYS)
+                      + CONTENT_STAYS,
+                  Action.CONNECT_OWN_ACCOUNT)
               : new SourceBlock(
                   reason,
                   LIBRARY_MANAGERS,
@@ -214,7 +219,8 @@ public class SourceBlocks {
                       + profile.getName()
                       + "\" sind keine Zugangsdaten hinterlegt. Die Verwaltenden der"
                       + " Bibliothek tragen sie neu ein."
-                      + CONTENT_STAYS);
+                      + CONTENT_STAYS,
+                  Action.EDIT_SOURCE);
       case TARGET_OUTSIDE_PROFILE ->
           new SourceBlock(
               reason,
@@ -229,7 +235,8 @@ public class SourceBlocks {
                           + " neu; bleibt der Hinweis, legt sie die Bibliothek mit dem Ziel des"
                           + " Zugangs neu an."
                       : "Die Verwaltenden der Bibliothek tragen die Zugangsdaten neu ein.")
-                  + CONTENT_STAYS);
+                  + CONTENT_STAYS,
+              person ? Action.CONNECT_OWN_ACCOUNT : Action.EDIT_SOURCE);
       case TYPE_LOCKED, PROFILE_LOCKED, PROFILE_REQUIRED, ACCESS_REMOVED ->
           throw new IllegalArgumentException(reason + " is no answer of the secret store");
     };
@@ -480,7 +487,8 @@ public class SourceBlocks {
             + displayName(type)
             + "“ ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene"
             + " Adresse; der vorhandene Inhalt bleibt durchsuchbar. Die Verwaltenden der"
-            + " Bibliothek ordnen sie einem Zugang zu.");
+            + " Bibliothek ordnen sie einem Zugang zu.",
+        Action.ASSIGN_PROFILE);
   }
 
   private String displayName(SourceType type) {
@@ -547,7 +555,8 @@ public class SourceBlocks {
                             + " Zugangs \""
                             + profile.getName()
                             + "\". Die Verwaltenden der Bibliothek passen die Adresse an."
-                            + CONTENT_STAYS))
+                            + CONTENT_STAYS,
+                        Action.EDIT_SOURCE))
                 : Optional.empty();
         case OWNER_DEACTIVATED, DORMANT, EXPIRED -> fromTheStore(reason);
         case NOT_CONNECTED -> profile == null ? Optional.empty() : notConnected();
@@ -567,14 +576,16 @@ public class SourceBlocks {
                 + " trägt sie nicht mehr. Die Besitzerin ordnet sie einem anderen Zugang zu, auf"
                 + " dem sie ein verbundenes Konto hat; gibt es keinen, ist die Systemverwaltung"
                 + " zuständig."
-                + CONTENT_STAYS);
+                + CONTENT_STAYS,
+            Action.ASSIGN_PROFILE);
       }
       return new SourceBlock(
           Reason.ACCESS_REMOVED,
           LIBRARY_MANAGERS,
           "Zugang entfernt: Der Zugang dieser Bibliothek wurde gelöscht. Die"
               + " Verwaltenden der Bibliothek ordnen sie einem anderen Zugang zu."
-              + CONTENT_STAYS);
+              + CONTENT_STAYS,
+          Action.ASSIGN_PROFILE);
     }
 
     private Optional<SourceBlock> fromTheStore(Reason reason) {

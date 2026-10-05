@@ -421,8 +421,8 @@ erklärt nur, wozu es dient.
 ### Was die Seite zeigt
 
 **Ihre verbundenen Konten** — jede bestehende Verbindung der Person, auch zu einem Zugang, der für
-sie nicht mehr freigegeben ist. Je Verbindung: der Zugang, der eigene Kontoname beim Anbieter (wie
-eingegeben, nur für die Person selbst sichtbar), die Anmeldeart, seit wann verbunden, die eigenen
+sie nicht mehr freigegeben ist. Je Verbindung: der Zugang und seine Quellart, der eigene Kontoname
+beim Anbieter (wie eingegeben, nur für die Person selbst sichtbar), die Anmeldeart, seit wann verbunden, die eigenen
 Bibliotheken, die die Verbindung nutzen, und der Zustand:
 
 | Anzeige | Bedeutung | Was die Person tun kann |
@@ -440,7 +440,7 @@ abgeschalteter Anmeldeweg) zeigt sich nicht hier, sondern an den Bibliotheken: M
 Anmeldung geht es ohne Neuverbinden weiter.
 
 **Weitere Zugänge** — die Zugänge, auf denen die Person jetzt ein Konto verbinden kann: Besitzart
-„Person“, für sie freigegeben und nicht gesperrt. Bietet in der Installation noch keine Quellart
+„Person“, für sie freigegeben und nicht gesperrt, je mit Quellart und Anmeldeart. Bietet in der Installation noch keine Quellart
 verbundene Konten an, sagt der Abschnitt genau das, statt auf eine fehlende Freigabe zu verweisen.
 
 **Warum fehlt mein Zugang?** — sagt, wer Zugänge anlegt und freigibt, und nennt die zuständige

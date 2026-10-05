@@ -41,6 +41,7 @@ function toChatMessage(message: ChatMessageResponse): ChatMessage {
       indexedAt: source.indexedAt ?? null,
     })),
     ...(message.usedPromptTitle ? { usedPromptTitle: message.usedPromptTitle } : {}),
+    ...(message.privateSourcesInContext ? { privateSourcesInContext: true } : {}),
     timestamp: new Date(message.createdAt),
   }
 }
@@ -802,6 +803,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         noKnowledgeAssignedToSpace: response.metadata.noKnowledgeAssignedToSpace ?? false,
         noKnowledgeAvailableInSpace: response.metadata.noKnowledgeAvailableInSpace ?? false,
         searchedLibraries: response.metadata.searchedLibraries ?? [],
+        privateSourcesInContext: response.privateSourcesInContext,
         timestamp: new Date(),
       }
       set((state) => ({

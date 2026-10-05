@@ -11,6 +11,7 @@ import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.ConnectorScope;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
+import io.opaa.connection.token.PersonAccounts;
 import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.SourceType;
@@ -20,7 +21,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,6 +46,7 @@ public class ConnectorReleaseService {
   private final ConnectorLockService locks;
   private final ProfileRequirements requirements;
   private final ProfileRequirementService requirementService;
+  private final PersonAccounts personAccounts;
 
   public ConnectorReleaseService(
       CapabilityService capabilities,
@@ -51,7 +55,8 @@ public class ConnectorReleaseService {
       SourceConnectorRegistry connectors,
       ConnectorLockService locks,
       ProfileRequirements requirements,
-      ProfileRequirementService requirementService) {
+      ProfileRequirementService requirementService,
+      PersonAccounts personAccounts) {
     this.capabilities = capabilities;
     this.profiles = profiles;
     this.profileService = profileService;
@@ -59,6 +64,7 @@ public class ConnectorReleaseService {
     this.locks = locks;
     this.requirements = requirements;
     this.requirementService = requirementService;
+    this.personAccounts = personAccounts;
   }
 
   /**
@@ -127,7 +133,7 @@ public class ConnectorReleaseService {
       boolean ownAddress = !profileRequired && held.covers(ConnectorScope.ofType(type));
       boolean viaProfile =
           descriptor.admitsProfiles()
-              && profileService.selectableFor(type).stream()
+              && usableProfiles(caller, type, true).stream()
                   .anyMatch(
                       profile ->
                           !profile.isLocked()
@@ -146,16 +152,27 @@ public class ConnectorReleaseService {
   }
 
   /**
-   * The profiles a library of {@code type} may be connected through, each with the caller's say.
+   * The profiles a library of {@code type} may be connected through, each with the caller's say and
+   * whether she has a connected account on it. A profile for persons only is listed where she has
+   * one and {@code withPersonProfiles} holds - for her private library; never anything about
+   * another person's account.
    */
-  public List<ProfileOption> profileOptions(CurrentUser caller, SourceType type) {
+  public List<ProfileOption> profileOptions(
+      CurrentUser caller, SourceType type, boolean withPersonProfiles) {
     HeldScopes held = capabilities.scopesOf(caller, RELEASE);
-    return profileService.selectableFor(type).stream()
+    List<ConnectionProfile> candidates = profiles.findBySourceTypeOrderByNameAsc(type);
+    Set<UUID> ownAccounts = ownAccountsAmong(caller, candidates);
+    return candidates.stream()
+        .filter(
+            profile ->
+                profile.getOwnership().admitsLibraries()
+                    || (withPersonProfiles && ownAccounts.contains(profile.getId())))
         .map(
             profile -> {
+              boolean ownAccount = ownAccounts.contains(profile.getId());
               Optional<String> lock = locks.creationLock(type, profile);
               if (lock.isPresent()) {
-                return new ProfileOption(profile, false, lock.get());
+                return new ProfileOption(profile, false, lock.get(), ownAccount);
               }
               boolean released = held.covers(ConnectorScope.ofProfile(profile.getId()));
               return new ProfileOption(
@@ -163,9 +180,35 @@ public class ConnectorReleaseService {
                   released,
                   released
                       ? null
-                      : CapabilityService.missingInScope(RELEASE, profileLabel(profile)));
+                      : CapabilityService.missingInScope(RELEASE, profileLabel(profile)),
+                  ownAccount);
             })
         .toList();
+  }
+
+  /** The profiles of {@code type} {@link #profileOptions} lists, without the caller's say. */
+  private List<ConnectionProfile> usableProfiles(
+      CurrentUser caller, SourceType type, boolean withPersonProfiles) {
+    List<ConnectionProfile> candidates = profiles.findBySourceTypeOrderByNameAsc(type);
+    Set<UUID> ownAccounts = withPersonProfiles ? ownAccountsAmong(caller, candidates) : Set.of();
+    return candidates.stream()
+        .filter(
+            profile ->
+                profile.getOwnership().admitsLibraries() || ownAccounts.contains(profile.getId()))
+        .toList();
+  }
+
+  /** The ones of {@code candidates} the caller has a connected account on, in one query. */
+  private Set<UUID> ownAccountsAmong(CurrentUser caller, List<ConnectionProfile> candidates) {
+    if (candidates.isEmpty()) {
+      return Set.of();
+    }
+    return personAccounts
+        .accountsAmong(
+            Set.of(caller.id()), candidates.stream().map(ConnectionProfile::getId).toList())
+        .stream()
+        .map(PersonAccounts.AccountKey::getProfileId)
+        .collect(Collectors.toSet());
   }
 
   /** Why nothing of {@code descriptor} can be created, naming who can change that. */
@@ -212,6 +255,10 @@ public class ConnectorReleaseService {
       boolean profileRequired,
       String notice) {}
 
-  /** One selectable profile and whether the caller may create a library through it now. */
-  public record ProfileOption(ConnectionProfile profile, boolean creatable, String notice) {}
+  /**
+   * One selectable profile, whether the caller may create a library through it now, and whether she
+   * has a connected account of her own on it.
+   */
+  public record ProfileOption(
+      ConnectionProfile profile, boolean creatable, String notice, boolean ownAccount) {}
 }

@@ -461,7 +461,7 @@ components:
 
     QueryResponse:
       type: object
-      required: [answer, sources, metadata, chatId]
+      required: [answer, sources, privateSourcesInContext, metadata, chatId]
       properties:
         answer:
           type: string
@@ -470,6 +470,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SourceReference"
+        privateSourcesInContext:
+          type: boolean
+          description: >
+            Whether any source the answer was given with - cited or not - is a private source
+            (SourceReference.privateSource).
         metadata:
           $ref: "#/components/schemas/QueryMetadata"
         chatId:
@@ -522,7 +527,7 @@ components:
 
     SourceReference:
       type: object
-      required: [fileName, relevanceScore, matchCount, cited]
+      required: [fileName, relevanceScore, matchCount, cited, privateSource]
       properties:
         freeze:
           nullable: true
@@ -598,6 +603,12 @@ components:
         cited:
           type: boolean
           example: true
+        privateSource:
+          type: boolean
+          description: >
+            Whether the document came from a private library of the asker when the answer was
+            given - stored with the answer. A private library is read by its owner only, so it
+            appears only in her own answers.
         citationValid:
           type: boolean
           nullable: true

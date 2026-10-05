@@ -27,16 +27,19 @@ class ConnectionProfileResponseMapperTest {
     ConnectionProfile profile = profile("{\"edition\": \"DC\", \"pathStyle\": true}");
     ReflectionTestUtils.setField(profile, "sourceProxy", "proxy.example.org:8080");
     ReflectionTestUtils.setField(profile, "sourceInsecureSsl", true);
+    ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.PERSON);
 
     ConnectionProfileOption option =
         ConnectionProfileResponseMapper.toOption(
-            new ProfileOption(profile, false, "Der Zugang ist gesperrt."));
+            new ProfileOption(profile, false, "Der Zugang ist gesperrt.", true));
 
     assertThat(option.getId()).isEqualTo(profile.getId());
     assertThat(option.getName()).isEqualTo("Zugang Wiki");
     assertThat(option.getSourceType()).isEqualTo("PROFILE_PROBE");
     assertThat(option.getServerUrl()).isEqualTo("https://wiki.example.org");
     assertThat(option.getAuthMethod()).isEqualTo(ConnectionAuthMethod.PERSONAL_SECRET);
+    assertThat(option.getOwnership()).isEqualTo(ConnectionOwnership.PERSON);
+    assertThat(option.getOwnAccount()).isTrue();
     assertThat(option.getCreatable()).isFalse();
     assertThat(option.getCreationNotice()).isEqualTo("Der Zugang ist gesperrt.");
     assertThat(option.getConnectorDefaults()).isEqualTo(Map.of("edition", "DC", "pathStyle", true));
@@ -136,10 +139,12 @@ class ConnectionProfileResponseMapperTest {
   @Test
   void anOptionWithoutDefaultsCarriesNone() {
     ConnectionProfileOption option =
-        ConnectionProfileResponseMapper.toOption(new ProfileOption(profile(null), true, null));
+        ConnectionProfileResponseMapper.toOption(
+            new ProfileOption(profile(null), true, null, false));
 
     assertThat(option.getConnectorDefaults()).isNull();
     assertThat(option.getCreatable()).isTrue();
+    assertThat(option.getOwnAccount()).isFalse();
   }
 
   private static ConnectionProfile profile(String connectorSettings) {
