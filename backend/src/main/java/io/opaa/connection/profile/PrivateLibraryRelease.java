@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
@@ -87,6 +88,27 @@ class PrivateLibraryRelease {
               + " auf dem Sie ein verbundenes Konto haben; gibt es keinen, ist die"
               + " Systemverwaltung zuständig.");
     }
+  }
+
+  /**
+   * How many private libraries {@code released} are, masked by their owners as a part of the
+   * private libraries of each of their organizations - a profile has none of its own.
+   */
+  PersonCount count(Collection<KnowledgeLibrary> released, PersonNumbers numbers) {
+    Set<UUID> ids = released.stream().map(KnowledgeLibrary::getId).collect(Collectors.toSet());
+    List<PersonNumbers.OwnerSplit> organizations = new ArrayList<>();
+    released.stream()
+        .collect(
+            Collectors.groupingBy(
+                KnowledgeLibrary::getOrganizationId,
+                Collectors.mapping(KnowledgeLibrary::getOwnerUserId, Collectors.toSet())))
+        .forEach(
+            (organization, owners) ->
+                organizations.add(
+                    new PersonNumbers.OwnerSplit(
+                        owners.size(),
+                        libraries.countPrivateLibraryOwnersOutside(organization, ids))));
+    return numbers.privateLibraries(ids.size(), organizations);
   }
 
   /**

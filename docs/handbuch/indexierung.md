@@ -469,7 +469,7 @@ Spalten zählen die **verbundenen Konten** von Personen auf dem Zugang
 | Spalte | Zählt | Darstellung |
 |---|---|---|
 | **Verbundene Konten** | die Konten von Personen auf dem Zugang, verbundene und abgelaufene | genau ab der Mindestgruppengröße, darunter — auch bei null — nur „weniger als N“ |
-| **Davon abgelaufen** | die abgelaufenen unter ihnen | wie oben; „nicht ausgewiesen“, wo die Zahl zusammen mit der Gesamtzahl auf weniger Personen als die Mindestgruppengröße schließen ließe. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen Zahlen mindestens den Schwellenwert abgelaufener Konten belegen |
+| **Davon abgelaufen** | die abgelaufenen unter ihnen | genau nur, wenn abgelaufene und aktive Konten je mindestens N sind — „niemand aktiv“ gilt wie „wenige aktiv“ —; sonst unter N „weniger als N“, ab N „nicht ausgewiesen“; bei einer Gesamtzahl unter 2N−1 immer „nicht ausgewiesen“. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen Zahlen mindestens den Schwellenwert abgelaufener Konten belegen |
 
 Der Schwellenwert wird nur gegen das geprüft, was die Liste ohnehin zeigt: gegen die genaue Zahl
 oder, wo sie nicht ausgewiesen ist, gegen die kleinste Zahl, die Gesamtzahl und Rundungsregel noch

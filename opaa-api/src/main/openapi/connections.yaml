@@ -1319,8 +1319,11 @@ components:
             - $ref: "#/components/schemas/PersonCount"
         expiredConnectionCount:
           description: >
-            The expired among them; absent where telling it would, together with the total, point
-            at fewer persons than the minimum group size.
+            The expired among them; exact only where they and the connected each reach the minimum
+            group size, none counting as few. Otherwise "fewer than" below that size and absent
+            from it on - and absent for every split on a total below twice the size minus one -
+            so on one total no connected and a few connected answer alike, and so do no expired
+            and a few expired.
           nullable: true
           allOf:
             - $ref: "#/components/schemas/PersonCount"
@@ -1441,9 +1444,10 @@ components:
             connector refuses it for, or every one where the new ownership admits no persons -
             masked by
             their owners like every number about persons: below the minimum group size of owners
-            - zero included - only "fewer than". As a part of the organization's private libraries
-            it is exact only where the owners of the organization's other private libraries reach
-            that size as well, none counting as few; otherwise, from that size on, it is absent. A refusal of a
+            - zero included - only "fewer than". As a part of the private libraries of each
+            organization it touches (a profile has none of its own) it is exact only where, in
+            every one of them, its owners and the owners of the other private libraries each reach
+            that size, none counting as few; otherwise, from that size on, it is absent. A refusal of a
             private library is no veto - the change goes through, and the library rests with the
             reason ACCESS_REMOVED until its owner moves it to another profile. Absent as well
             without a proposal and on a profile not admitting persons.
