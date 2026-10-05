@@ -162,6 +162,14 @@ public final class ConnectionProfileResponseMapper {
         .connectedAccounts(toCount(impact.connectedAccounts()))
         .lastForProfileRequirement(lastForProfileRequirement)
         .fullSyncLibraries(impact.fullSyncLibraries())
+        .connectionsDiscarded(impact.discards().connections())
+        .secretsDiscarded(impact.discards().secrets())
+        .configurationsChanged(impact.discards().configurations())
+        .connectedAccountsEnded(
+            impact.discards().connectedAccounts() == null
+                ? null
+                : toCount(impact.discards().connectedAccounts()))
+        .confirmation(impact.discards().confirmation())
         .rejectedLibraries((long) impact.rejections().size())
         .rejectedPrivateLibraries(
             impact.rejectedPrivateLibraries() == null
