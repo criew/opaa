@@ -34,7 +34,7 @@ import {
   forgetConsentIntent,
   readConsentIntent,
   rememberConsentIntent,
-  withoutSecrets,
+  draftValues,
   type SourceConsentIntent,
 } from '../components/library/sourceConsent'
 import { startSourceAuthorization } from '../services/connectedAccountApi'
@@ -431,7 +431,7 @@ export default function LibraryCreatePage() {
       draft: {
         sourceType,
         chosenConnections,
-        sourceValues: withoutSecrets(sourceValues[valuesKey] ?? configuration?.empty),
+        sourceValues: draftValues(sourceValues[valuesKey], configuration?.draftFields ?? []),
         schedule,
         startFirstRun,
         name,

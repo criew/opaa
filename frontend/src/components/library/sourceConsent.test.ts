@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ConnectionProfileOption } from '../../types/api'
 import { scheduleValuesFrom } from '../../utils/librarySchedule'
+import { registeredSourceTypes, sourceRegistration } from './sources/registry'
 import {
   CONSENT_INTENT_STORAGE_KEY,
   attachPendingConnection,
@@ -8,7 +9,7 @@ import {
   forgetConsentIntent,
   readConsentIntent,
   rememberConsentIntent,
-  withoutSecrets,
+  draftValues,
   type WizardDraft,
 } from './sourceConsent'
 
@@ -60,23 +61,32 @@ describe('sourceConsent', () => {
     expect(connectsSource(undefined, false)).toBe(false)
   })
 
-  it('keeps no secret of a form in the draft', () => {
+  it('keeps only the fields a form lists for the draft', () => {
     expect(
-      withoutSecrets({
-        sourceUrl: 'https://cloud.example',
-        folders: '/',
-        username: 'svc',
-        appPassword: 'geheim',
-        password: 'geheim',
-        token: 'geheim',
-        sourceCredentials: 'geheim',
-        secretKey: 'geheim',
-        sessionToken: 'geheim',
-        accessKey: 'geheim',
-        keyFile: '{"private_key":"geheim"}',
-      }),
+      draftValues(
+        {
+          sourceUrl: 'https://cloud.example',
+          folders: '/',
+          username: 'svc',
+          appPassword: 'geheim',
+          passphrase: 'geheim',
+        },
+        ['sourceUrl', 'folders', 'username'],
+      ),
     ).toEqual({ sourceUrl: 'https://cloud.example', folders: '/', username: 'svc' })
   })
+
+  it.each(registeredSourceTypes.filter((type) => sourceRegistration(type)?.configuration))(
+    'lists for %s only fields of its form, none of them a secret',
+    (type) => {
+      const configuration = sourceRegistration(type)!.configuration!
+      const fields = Object.keys(configuration.empty as object)
+      for (const field of configuration.draftFields) {
+        expect(fields).toContain(field)
+        expect(field).not.toMatch(/password|secret|token|credential|key|pin|passphrase/i)
+      }
+    },
+  )
 
   it('remembers an intent in this tab only until it is forgotten', () => {
     rememberConsentIntent({ purpose: 'LIBRARY_NEW', profileId: option.id, draft })
@@ -85,16 +95,6 @@ describe('sourceConsent', () => {
     forgetConsentIntent()
     expect(readConsentIntent()).toBeNull()
     expect(sessionStorage.getItem(CONSENT_INTENT_STORAGE_KEY)).toBeNull()
-  })
-
-  it('stores the draft without the secrets of its form', () => {
-    rememberConsentIntent({
-      purpose: 'LIBRARY_NEW',
-      profileId: option.id,
-      draft: { ...draft, sourceValues: { ...draft.sourceValues, appPassword: 'geheim' } },
-    })
-
-    expect(sessionStorage.getItem(CONSENT_INTENT_STORAGE_KEY)).not.toContain('geheim')
   })
 
   it('reads a damaged entry as none', () => {

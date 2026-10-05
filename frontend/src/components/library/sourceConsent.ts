@@ -57,24 +57,18 @@ export type SourceConsentIntent =
     }
   | { purpose: 'LIBRARY_RECONNECT'; profileId: string; libraryId: string }
 
-const SECRET_FIELD = /password|secret|token|credential|key/i
-
-/** `values` without any field that may hold a secret of a source form. */
-export function withoutSecrets(values: unknown): Record<string, unknown> {
+/**
+ * The entered `values` a draft may keep: only the `fields` the source form lists as such
+ * (SourceConfiguration.draftFields), so a field added later stays out until it is listed.
+ */
+export function draftValues(values: unknown, fields: readonly string[]): Record<string, unknown> {
   if (values === null || typeof values !== 'object') return {}
-  return Object.fromEntries(Object.entries(values).filter(([key]) => !SECRET_FIELD.test(key)))
+  return Object.fromEntries(Object.entries(values).filter(([key]) => fields.includes(key)))
 }
 
 export function rememberConsentIntent(intent: SourceConsentIntent): void {
-  const stored =
-    intent.purpose === 'LIBRARY_NEW'
-      ? {
-          ...intent,
-          draft: { ...intent.draft, sourceValues: withoutSecrets(intent.draft.sourceValues) },
-        }
-      : intent
   try {
-    sessionStorage.setItem(CONSENT_INTENT_STORAGE_KEY, JSON.stringify(stored))
+    sessionStorage.setItem(CONSENT_INTENT_STORAGE_KEY, JSON.stringify(intent))
   } catch {
     // without storage the wizard starts afresh after the return
   }
