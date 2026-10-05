@@ -19,6 +19,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.ConnectionAuthorizationPurpose;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetShellService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.common.PublicBaseUrl;
@@ -38,6 +39,9 @@ import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.consentprobe.ConsentProbeIndexingExecutor;
 import io.opaa.indexing.source.consentprobe.ConsentProbeSourceConnector;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.SourceType;
 import io.opaa.organization.Organization;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.TargetAddressValidator;
@@ -107,6 +111,8 @@ class SourceConsentIntegrationTest {
   @Autowired private ConnectionLifecycleReconciler reconciler;
   @Autowired private ConnectionExpiryWatch expiryWatch;
   @Autowired private PendingConsentSweep sweep;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetShellService shellService;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<String> answers = new ArrayList<>();
@@ -468,6 +474,13 @@ class SourceConsentIntegrationTest {
 
     mockMvc
         .perform(
+            as("dev-admin", post(ADMIN + "/" + profile + "/impact"))
+                .content(change.formatted(UUID.randomUUID(), SERVER, "")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.connectionsDiscarded").value(1))
+        .andExpect(jsonPath("$.confirmation").value(containsString("1 Verbindung")));
+    mockMvc
+        .perform(
             as("dev-admin", put(ADMIN + "/" + profile))
                 .content(change.formatted(UUID.randomUUID(), SERVER, "")))
         .andExpect(status().isConflict())
@@ -544,6 +557,87 @@ class SourceConsentIntegrationTest {
         .perform(as("dev-user", post("/api/v1/libraries")).content(libraryJson(pending)))
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.code").value(SourceConsentService.PENDING_CONNECTION_UNUSABLE));
+  }
+
+  /** Acceptance criterion of #2169: the list of resting source connections names no private one. */
+  @Test
+  void theListOfRestingSourceConnectionsNamesNoPrivateLibrary() throws Exception {
+    UUID shared = connectedLibrary();
+    mockMvc
+        .perform(as("dev-user", delete("/api/v1/libraries/" + shared + "/source-connection")))
+        .andExpect(status().isNoContent());
+    UUID personProfile =
+        UUID.fromString(
+            JsonPath.read(
+                call(
+                    "dev-admin",
+                    post(ADMIN),
+                    """
+                    {"name": "Zugang Personen %s", "sourceType": "OAUTH_PROBE",
+                     "serverUrl": "https://oauth-probe.example.org", "authMethod": "OAUTH",
+                     "ownership": "PERSON", "clientId": "%s", "clientSecret": "%s"}
+                    """
+                        .formatted(UUID.randomUUID(), CLIENT_ID, CLIENT_SECRET)),
+                "$.id"));
+    UUID privateLibrary = privateLibraryWithoutSecret(personProfile);
+    try {
+      String dormant = call("dev-admin", get("/api/v1/admin/source-connections/dormant"), null);
+
+      List<String> listed = JsonPath.read(dormant, "$[*].libraryId");
+      assertThat(listed).contains(shared.toString()).doesNotContain(privateLibrary.toString());
+      mockMvc
+          .perform(as("dev-user", get("/api/v1/libraries/" + privateLibrary)))
+          .andExpect(jsonPath("$.sourceBlock.reason").value("NOT_CONNECTED"));
+    } finally {
+      jdbc.update("DELETE FROM connected_accounts WHERE profile_id = ?", personProfile);
+      jdbc.update("DELETE FROM audit_log WHERE object_id = ?", personProfile.toString());
+      libraryFixtures.removeLibraries(privateLibrary);
+      libraries.remove(privateLibrary);
+      jdbc.update("DELETE FROM connection_profiles WHERE id = ?", personProfile);
+    }
+  }
+
+  /**
+   * A private library of the person on {@code personProfile}, connected and once consented like a
+   * shared one, whose account holds no secret: its source is not reached.
+   */
+  private UUID privateLibraryWithoutSecret(UUID personProfile) {
+    jdbc.update(
+        "INSERT INTO connected_accounts (id, organization_id, user_id, profile_id, state,"
+            + " connected_at, version) VALUES (?, ?, ?, ?, 'CONNECTED', now(), 0)",
+        UUID.randomUUID(),
+        Organization.DEFAULT_ID,
+        person,
+        personProfile);
+    UUID id =
+        new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+            .execute(
+                status -> {
+                  KnowledgeLibrary saved =
+                      libraryRepository.save(
+                          KnowledgeLibrary.ownerOnly(
+                              Organization.DEFAULT_ID,
+                              "Meine Ablage " + UUID.randomUUID(),
+                              null,
+                              person,
+                              SourceType.of("OAUTH_PROBE"),
+                              null,
+                              "https://oauth-probe.example.org/ablage",
+                              null,
+                              null,
+                              false));
+                  shellService.registerCreated(
+                      saved, person, Map.of("name", saved.getName(), "sourceType", "OAUTH_PROBE"));
+                  return saved.getId();
+                });
+    libraries.add(id);
+    jdbc.update(
+        "INSERT INTO library_connections (library_id, profile_id, created_at, updated_at,"
+            + " version, connected_at, account_label) VALUES (?, ?, now(), now(), 0, now(),"
+            + " 'privat@example.org')",
+        id,
+        personProfile);
+    return id;
   }
 
   /** A shared library on the profile, its source connected in the wizard by the person. */
