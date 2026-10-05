@@ -463,7 +463,7 @@ Systemverwaltung.
 **Was die Verwaltung sieht:** je Profil die Anzahl verbundener Konten und privater Bibliotheken,
 unterhalb der Mindestgruppengröße N nur als „weniger als N“ – auch bei null, sodass keine Antwort
 verrät, ob überhaupt jemand verbunden ist. Eine Teilzahl (abgelaufene Konten) erscheint nur, wenn
-weder sie noch ihr Rest unter N liegt; eine Änderung, die Geheimnisse verwirft, verlangt auf einem
+sie und ihr Rest je mindestens N sind; ein Rest von null gilt dabei als wenige; eine Änderung, die Geheimnisse verwirft, verlangt auf einem
 Zugang für Personen immer eine Bestätigung mit neutralem Text. Grenzen der Regel: Wer die Zahl über
 die Zeit beobachtet, sieht, wann sie N erreicht; und wer selbst eine Freigabe hat und sich verbindet,
 weiß, dass höchstens N−1 weitere Personen verbunden sind. Vor dem Deaktivieren oder Löschen eines

@@ -417,7 +417,8 @@ Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet 
 ihrer Besitzerinnen und steht unterhalb der Mindestgruppengröße nur als „weniger als N“, ohne
 Summen. Eine Teilzahl, etwa die abgelehnten privaten Bibliotheken eines Zugangs, nennt OPAA nur
 exakt, wenn sowohl ihre Besitzerinnen als auch die Besitzerinnen aller übrigen privaten Bibliotheken
-mindestens N sind; sonst entfällt sie. Die Speicherbereiche der Bereinigung, die Prüfung
+mindestens N sind — je Organisation, falls ein Zugang Bibliotheken mehrerer trägt; ein leerer Rest
+gilt als wenige —; sonst entfällt sie. Die Speicherbereiche der Bereinigung, die Prüfung
 chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
 Bibliotheken zählen sie nicht mit. Der Neuaufbau nach einem Pipeline-Wechsel bezieht sie ein, nennt
 sie aber in keiner Zahl seiner Antwort: Jeder Aufruf merkt alle ihre veralteten Dokumente auf einmal
