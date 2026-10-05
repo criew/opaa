@@ -36,6 +36,8 @@ export interface SourceFormContext {
   connection?: SourceConnection
   /** The library runs on the caller's own connected account on `connection`: no secret of its own. */
   privateLibrary?: boolean
+  /** Create mode: the consent given at the provider for the new library's source. */
+  pendingConnectionId?: string
 }
 
 export interface SourceFormProps<V> {

@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
+import FormControl from '@mui/material/FormControl'
 import FormControlLabel from '@mui/material/FormControlLabel'
+import FormHelperText from '@mui/material/FormHelperText'
+import FormLabel from '@mui/material/FormLabel'
+import Radio from '@mui/material/Radio'
+import RadioGroup from '@mui/material/RadioGroup'
 import Switch from '@mui/material/Switch'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
@@ -23,6 +28,18 @@ import {
   selectableConnections,
 } from '../components/library/connectionChoice'
 import { PRIVATE_LIBRARY_NOTE } from '../components/library/privateLibrary'
+import SourceConsentPanel from '../components/library/SourceConsentPanel'
+import {
+  connectsSource,
+  forgetConsentIntent,
+  readConsentIntent,
+  rememberConsentIntent,
+  withoutSecrets,
+  type SourceConsentIntent,
+} from '../components/library/sourceConsent'
+import { startSourceAuthorization } from '../services/connectedAccountApi'
+import { leaveFor } from '../services/leaveApp'
+import { apiErrorCode } from '../services/apiErrorDetails'
 import {
   connectionFields,
   ownAddressAllowed,
@@ -64,6 +81,7 @@ import type {
   SourceTypeKey,
   GroupListResponse,
   AssetOwnerType,
+  PendingSourceConnection,
   SourceTypeDescriptor,
 } from '../types/api'
 
@@ -98,6 +116,29 @@ const stepHeadings: Record<string, string> = {
  */
 const NEW_CONFLUENCE_RHYTHM: ConfluenceFullSyncRhythm = { intervalDays: null, defaultDays: null }
 
+const CONSENT_REQUIRED = 'Bitte verbinden Sie zuerst die Quelle.'
+const PENDING_CONNECTION_UNUSABLE =
+  'Die Zustimmung beim Anbieter ist abgelaufen oder schon verwendet. Bitte verbinden Sie die Quelle erneut.'
+
+type DraftIntent = Extract<SourceConsentIntent, { purpose: 'LIBRARY_NEW' }>
+
+/** The draft the provider returned to; the wizard forgets it as soon as it has mounted. */
+function restoredDraft(): DraftIntent | null {
+  const intent = readConsentIntent()
+  return intent?.purpose === 'LIBRARY_NEW' ? intent : null
+}
+
+/** The entered values of a restored draft under the key its form keeps them. */
+function restoredSourceValues(intent: DraftIntent | null): Record<SourceTypeKey, unknown> {
+  if (!intent) return {}
+  const type = intent.draft.sourceType
+  const configuration = sourceRegistration(type)?.configuration
+  if (!configuration) return {}
+  return {
+    [configuration.valuesKey ?? type]: { ...configuration.empty, ...intent.draft.sourceValues },
+  }
+}
+
 /**
  * Der Anlage-Assistent für Wissensbibliotheken (#1942, Zielentwurf aus #1927). Jeder Schritt
  * entspricht einem Reiter der Detailseite und verwendet dessen Formulare - Quellformulare,
@@ -109,7 +150,10 @@ export default function LibraryCreatePage() {
   const createNewLibrary = useLibraryStore((s) => s.createNewLibrary)
   const triggerIndexing = useIndexingStore((s) => s.triggerIndexing)
 
-  const [activeStep, setActiveStep] = useState(0)
+  // A consent for the source leaves for the provider; the wizard comes back on „Quelle“.
+  const [restored] = useState(restoredDraft)
+  const draft = restored?.draft
+  const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
@@ -117,25 +161,44 @@ export default function LibraryCreatePage() {
   // rather than hidden; the backend refuses the same call regardless.
   const { isMissing } = useMyCapabilities()
 
-  const [name, setName] = useState('')
-  const [nameTouched, setNameTouched] = useState(false)
-  const [description, setDescription] = useState('')
-  const [ownerType, setOwnerType] = useState<AssetOwnerType>('USER')
-  const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(null)
+  const [name, setName] = useState(draft?.name ?? '')
+  const [nameTouched, setNameTouched] = useState(draft?.nameTouched ?? false)
+  const [description, setDescription] = useState(draft?.description ?? '')
+  const [ownerType, setOwnerType] = useState<AssetOwnerType>(draft?.ownerType ?? 'USER')
+  const [selectedGroup, setSelectedGroup] = useState<GroupListResponse | null>(
+    draft?.selectedGroup ?? null,
+  )
   const myGroups = useMyGroups()
 
-  const [chosenType, setSourceType] = useState<SourceTypeKey>('UPLOAD')
+  const [chosenType, setSourceType] = useState<SourceTypeKey>(draft?.sourceType ?? 'UPLOAD')
   // The entered values of every source form, by type key - a form keeps its values when another
   // tile is chosen and chosen back.
-  const [sourceValues, setSourceValues] = useState<Record<SourceTypeKey, unknown>>({})
+  const [sourceValues, setSourceValues] = useState<Record<SourceTypeKey, unknown>>(() =>
+    restoredSourceValues(restored),
+  )
   // The chosen profile (or OWN_ADDRESS) by type key; what stands in effect derives from it.
-  const [chosenConnections, setChosenConnections] = useState<Record<SourceTypeKey, string>>({})
-  const [schedule, setSchedule] = useState<LibraryScheduleValues>(() => scheduleValuesFrom(null))
+  const [chosenConnections, setChosenConnections] = useState<Record<SourceTypeKey, string>>(
+    draft?.chosenConnections ?? {},
+  )
+  const [schedule, setSchedule] = useState<LibraryScheduleValues>(
+    () => draft?.schedule ?? scheduleValuesFrom(null),
+  )
   // Opt-out, not opt-in: whoever just configured a source expects content - the first run starts
   // right after creation unless switched off. Since #1942 for every connector type, not only
   // Confluence and S3.
-  const [startFirstRun, setStartFirstRun] = useState(true)
-  const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>([])
+  const [startFirstRun, setStartFirstRun] = useState(draft?.startFirstRun ?? true)
+  const [pendingGrants, setPendingGrants] = useState<PendingGrant[]>(draft?.pendingGrants ?? [])
+  // The consent given at the provider, by the profile it was given on; it waits for the creation.
+  const [pending, setPending] = useState<{
+    profileId: string
+    connection: PendingSourceConnection
+  } | null>(() =>
+    restored?.pending ? { profileId: restored.profileId, connection: restored.pending } : null,
+  )
+  const [serviceAccountConfirmed, setServiceAccountConfirmed] = useState(false)
+  const [confirmationMissing, setConfirmationMissing] = useState(false)
+  const [connectingSource, setConnectingSource] = useState(false)
+  const [responsibleIsGroup, setResponsibleIsGroup] = useState(draft?.responsibleIsGroup ?? false)
 
   // Die Kacheln sind die Quellarten, für die das Backend einen Konnektor hat (ADR-0038), in der
   // Reihenfolge der Eingabemasken; eine Art ohne Maske steht am Ende und ist nicht wählbar.
@@ -243,6 +306,12 @@ export default function LibraryCreatePage() {
     (option) => option.id === profileOfChoice(connectionChoice),
   )
   const connection = chosenProfile ? sourceConnectionOf(chosenProfile) : undefined
+  const consentProfile = connectsSource(chosenProfile, privateLibrary) ? chosenProfile : undefined
+  const pendingConnection =
+    consentProfile && pending?.profileId === consentProfile.id ? pending.connection : null
+  const awaitsConsent = consentProfile !== undefined && pendingConnection === null
+  const groupResponsible =
+    consentProfile !== undefined && ownerType === 'GROUP' && selectedGroup !== null
   const steps = stepsFor(uploadLibrary, privateLibrary)
   const currentStep = steps[Math.min(activeStep, steps.length - 1)]
   const showConnectionSelect =
@@ -266,6 +335,7 @@ export default function LibraryCreatePage() {
     credentialsStored: false,
     connection,
     privateLibrary,
+    pendingConnectionId: pendingConnection?.id,
   }
 
   /** A new choice of way; address and fixed fields of the previous one do not carry over. */
@@ -310,6 +380,13 @@ export default function LibraryCreatePage() {
     stepHeadingRef.current?.focus()
   }, [activeStep])
 
+  // Back from the provider: the draft is consumed, and the focus lands on the step it left.
+  useEffect(() => {
+    if (!restored) return
+    forgetConsentIntent()
+    stepHeadingRef.current?.focus()
+  }, [restored])
+
   /** The configuration whose form keeps its values under `key`. */
   const configurationForValues = (key: string) =>
     registeredSourceTypes
@@ -323,7 +400,8 @@ export default function LibraryCreatePage() {
     Object.entries(sourceValues).some(([key, entered]) =>
       Boolean(configurationForValues(key)?.isDirty(entered)),
     ) ||
-    (!privateLibrary && pendingGrants.length > 0)
+    (!privateLibrary && pendingGrants.length > 0) ||
+    pending !== null
 
   const handleCancel = async () => {
     if (isDirty) {
@@ -334,7 +412,53 @@ export default function LibraryCreatePage() {
       })
       if (!confirmed) return
     }
+    forgetConsentIntent()
     navigate(CATALOG_ROUTE)
+  }
+
+  /** Keeps the draft for the return and leaves for the provider's consent in this tab. */
+  async function handleConnectSource() {
+    if (!consentProfile || connectingSource) return
+    if (!serviceAccountConfirmed) {
+      setConfirmationMissing(true)
+      return
+    }
+    setConnectingSource(true)
+    setError(null)
+    rememberConsentIntent({
+      purpose: 'LIBRARY_NEW',
+      profileId: consentProfile.id,
+      draft: {
+        sourceType,
+        chosenConnections,
+        sourceValues: withoutSecrets(sourceValues[valuesKey] ?? configuration?.empty),
+        schedule,
+        startFirstRun,
+        name,
+        nameTouched,
+        description,
+        ownerType,
+        selectedGroup,
+        pendingGrants,
+        responsibleIsGroup,
+      },
+    })
+    try {
+      const started = await startSourceAuthorization({
+        profileId: consentProfile.id,
+        purpose: 'LIBRARY_NEW',
+        serviceAccountConfirmed: true,
+      })
+      leaveFor(started.authorizationUrl)
+    } catch (err) {
+      forgetConsentIntent()
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'Die Anmeldung beim Anbieter ließ sich nicht starten.',
+      )
+      setConnectingSource(false)
+    }
   }
 
   const handleNext = () => {
@@ -351,6 +475,10 @@ export default function LibraryCreatePage() {
               ? 'Bitte wählen Sie einen Zugang.'
               : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
         )
+        return
+      }
+      if (awaitsConsent) {
+        setError(CONSENT_REQUIRED)
         return
       }
       const validationError = configuration.validate(values, formContext)
@@ -415,6 +543,10 @@ export default function LibraryCreatePage() {
         sourceType,
         ...(connection ? { connectionProfileId: connection.profileId } : {}),
         ...(privateLibrary ? { privateLibrary: true } : {}),
+        ...(pendingConnection ? { pendingConnectionId: pendingConnection.id } : {}),
+        ...(pendingConnection && groupResponsible && responsibleIsGroup && selectedGroup
+          ? { sourceConnectionResponsible: { type: 'GROUP' as const, id: selectedGroup.id } }
+          : {}),
         ...source,
         sourceSettings,
         ...(scheduled ? { schedule: scheduled.schedule } : {}),
@@ -428,9 +560,18 @@ export default function LibraryCreatePage() {
         // the global indexing snackbar, and the detail page still offers "Jetzt indizieren".
         await triggerIndexing(libraryId, sourceType)
       }
+      forgetConsentIntent()
       navigate(`/libraries/${libraryId}`)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Bibliothek konnte nicht erstellt werden')
+      if (apiErrorCode(err) === 'PENDING_CONNECTION_UNUSABLE') {
+        // expired or used up: back to „Quelle“, where the source is connected again
+        setPending(null)
+        setServiceAccountConfirmed(false)
+        setActiveStep(steps.indexOf(STEP_SOURCE))
+        setError(PENDING_CONNECTION_UNUSABLE)
+      } else {
+        setError(err instanceof Error ? err.message : 'Bibliothek konnte nicht erstellt werden')
+      }
       setSubmitting(false)
     }
   }
@@ -535,7 +676,21 @@ export default function LibraryCreatePage() {
               !isMissing('CREATE_CONNECTOR_LIBRARY') && (
                 <ConnectionProfileRequestAction descriptor={descriptor} idPrefix="library-create" />
               )}
-            {SourceForm && connectionChoice !== null && (
+            {consentProfile && (
+              <SourceConsentPanel
+                profileName={consentProfile.name}
+                pending={pendingConnection}
+                confirmed={serviceAccountConfirmed}
+                onConfirmedChange={(checked) => {
+                  setServiceAccountConfirmed(checked)
+                  if (checked) setConfirmationMissing(false)
+                }}
+                confirmationMissing={confirmationMissing}
+                busy={connectingSource}
+                onConnect={() => void handleConnectSource()}
+              />
+            )}
+            {SourceForm && connectionChoice !== null && !awaitsConsent && (
               <SourceForm
                 // a new profile starts the form afresh, so no probe result outlives its profile
                 key={connectionChoice}
@@ -628,6 +783,37 @@ export default function LibraryCreatePage() {
               selectedGroup={selectedGroup}
               onSelectedGroupChange={setSelectedGroup}
             />
+            {consentProfile &&
+              (groupResponsible ? (
+                <FormControl>
+                  <FormLabel id="library-create-responsible-label">
+                    Verantwortlich für die Verbindung der Quelle
+                  </FormLabel>
+                  <RadioGroup
+                    aria-labelledby="library-create-responsible-label"
+                    aria-describedby="library-create-responsible-hint"
+                    value={responsibleIsGroup ? 'GROUP' : 'USER'}
+                    onChange={(event) => setResponsibleIsGroup(event.target.value === 'GROUP')}
+                  >
+                    <FormControlLabel value="USER" control={<Radio />} label="Ich" />
+                    <FormControlLabel
+                      value="GROUP"
+                      control={<Radio />}
+                      label={`Gruppe „${selectedGroup?.name}“`}
+                    />
+                  </RadioGroup>
+                  <FormHelperText id="library-create-responsible-hint">
+                    Erhält die Warnung, bevor die Zustimmung beim Anbieter endet, und die Nachricht,
+                    wenn sie endet, und kann die Quelle neu verbinden.
+                  </FormHelperText>
+                </FormControl>
+              ) : (
+                <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
+                  Für die Verbindung der Quelle sind Sie verantwortlich: Sie erhalten die Warnung,
+                  bevor die Zustimmung beim Anbieter endet, und die Nachricht, wenn sie endet, und
+                  können die Quelle neu verbinden.
+                </Typography>
+              ))}
             <AssetRightsFields
               pendingGrants={pendingGrants}
               onPendingGrantsChange={setPendingGrants}
