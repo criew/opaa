@@ -324,13 +324,17 @@ public class ConnectionAuthorizationService {
 
   /**
    * The account the provider names for {@code grant}, asked through the connector with its access
-   * token outside any transaction; {@code null} where it names none or cannot be asked.
+   * token outside any transaction; {@code null} where it names none or cannot be asked, and for an
+   * MCP server, which has no connector to ask.
    *
    * @throws ValidationException (German 400) for any other failure of the lookup; the caller
    *     revokes the grant
    */
   private String connectedAccount(
       ConnectionProfile profile, KnowledgeLibrary library, OAuthClient.Grant grant) {
+    if (profile.isMcpServer()) {
+      return null;
+    }
     try {
       return connectors
           .getObject()

@@ -460,9 +460,13 @@ public class EffectiveSourceSettings {
   /**
    * The key of the target a person's secret on {@code profile} is issued for: the profile's server
    * address under its frame, as {@link SecretTarget} reads it - the same key a private library on
-   * the profile asks with while its address keeps the origin and its connector the binding.
+   * the profile asks with while its address keeps the origin and its connector the binding. For an
+   * MCP server it is its resource indicator ({@link McpServerResource}), path included.
    */
   public String personTarget(ConnectionProfile profile) {
+    if (profile.isMcpServer()) {
+      return McpServerResource.of(profile);
+    }
     return SecretTarget.of(
             registry.getObject().connector(profile.getSourceType()),
             compose(

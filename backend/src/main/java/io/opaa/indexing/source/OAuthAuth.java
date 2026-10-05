@@ -30,7 +30,8 @@ public record OAuthAuth(
           "scope",
           "state",
           "code_challenge",
-          "code_challenge_method");
+          "code_challenge_method",
+          "resource");
 
   public OAuthAuth {
     Objects.requireNonNull(authorization, "authorization");

@@ -2,7 +2,11 @@ package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.NotFoundException;
+import io.opaa.indexing.source.ClientAuthentication;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Endpoint;
+import io.opaa.indexing.source.OAuthAuth;
+import io.opaa.indexing.source.Revocation;
 import io.opaa.indexing.source.ServiceAccountTokens;
 import io.opaa.indexing.source.SignIn;
 import io.opaa.indexing.source.SignInDetails;
@@ -12,6 +16,7 @@ import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import io.opaa.security.CredentialsEncryptor;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +69,9 @@ public class ProfileRegistrations {
         profiles
             .findById(profileId)
             .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden"));
+    if (profile.isMcpServer()) {
+      return mcpServerRegistration(profile);
+    }
     SourceConnector connector = connectors.getObject().connector(profile.getSourceType());
     ConnectionAuthMethod method = profile.getAuthMethod();
     SignInDetails signIn =
@@ -91,6 +99,39 @@ public class ProfileRegistrations {
         profile.isSignInRejected(),
         profile.getEndpoints(),
         profile.getVersion());
+  }
+
+  /**
+   * The registration of an MCP server: OAuth with the endpoints discovered when it was saved,
+   * revoked by RFC 7009 where its authorization server names an endpoint, every request naming the
+   * server as resource.
+   */
+  private ClientRegistration mcpServerRegistration(ConnectionProfile profile) {
+    ProfileEndpoints endpoints = profile.getEndpoints();
+    OAuthAuth signIn =
+        new OAuthAuth(
+            new Endpoint.FromProfile(),
+            new Endpoint.FromProfile(),
+            endpoints.revocation() == null
+                ? new Revocation.None()
+                : new Revocation.Rfc7009(new Endpoint.FromProfile()),
+            null,
+            Map.of(),
+            ClientAuthentication.CLIENT_SECRET_BASIC);
+    return new ClientRegistration(
+        profile.getId(),
+        ConnectionAuthMethod.OAUTH,
+        profile.getClientId(),
+        secretOf(profile),
+        null,
+        profile.getScopes(),
+        signIn,
+        null,
+        profile.getSourceProxy(),
+        profile.isSignInRejected(),
+        endpoints,
+        profile.getVersion(),
+        McpServerResource.of(profile));
   }
 
   /** The provider rejected the registration of {@code profileId}: marked until lifted. */
