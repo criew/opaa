@@ -13,19 +13,21 @@ import java.time.Instant;
  * @param status the library's own state, see {@link KnowledgeLibraryCatalogFactSource}.
  * @param sourceBlock the lock of the source, {@code null} while it is not locked
  * @param privateLibrary whether only its owner reads it
+ * @param erasureRequestedAt since when the library is being erased, {@code null} for none
  */
 public record KnowledgeLibraryCatalogFacts(
     String sourceType,
     Instant lastIndexedAt,
     CatalogEntryStatus status,
     SourceBlock sourceBlock,
-    boolean privateLibrary)
+    boolean privateLibrary,
+    Instant erasureRequestedAt)
     implements AssetCatalogFacts {
 
   /** The facts of a shared library that is not locked. */
   public KnowledgeLibraryCatalogFacts(
       String sourceType, Instant lastIndexedAt, CatalogEntryStatus status) {
-    this(sourceType, lastIndexedAt, status, null, false);
+    this(sourceType, lastIndexedAt, status, null, false, null);
   }
 
   /** The facts of a shared library. */
@@ -34,6 +36,16 @@ public record KnowledgeLibraryCatalogFacts(
       Instant lastIndexedAt,
       CatalogEntryStatus status,
       SourceBlock sourceBlock) {
-    this(sourceType, lastIndexedAt, status, sourceBlock, false);
+    this(sourceType, lastIndexedAt, status, sourceBlock, false, null);
+  }
+
+  /** The facts of a library that is not being erased. */
+  public KnowledgeLibraryCatalogFacts(
+      String sourceType,
+      Instant lastIndexedAt,
+      CatalogEntryStatus status,
+      SourceBlock sourceBlock,
+      boolean privateLibrary) {
+    this(sourceType, lastIndexedAt, status, sourceBlock, privateLibrary, null);
   }
 }

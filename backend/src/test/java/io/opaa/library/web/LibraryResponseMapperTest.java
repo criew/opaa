@@ -54,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Pure JUnit tests (no Spring context) against directly constructed entities/records - the mapper
@@ -265,6 +266,34 @@ class LibraryResponseMapperTest {
     assertThat(response.getLastScheduledRunsFailed()).isNull();
     // #797: UPLOAD never carries a cap
     assertThat(response.getAllAccountsGrantAllowed()).isNull();
+  }
+
+  @Test
+  void toListResponseCarriesTheErasureMarker() {
+    KnowledgeLibrary library =
+        KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Ablage", null, UUID.randomUUID());
+    Instant since = Instant.parse("2026-10-04T08:00:00Z");
+    ReflectionTestUtils.setField(library, "erasureRequestedAt", since);
+    LibrarySummary summary =
+        new LibrarySummary(
+            library, AssetRole.OWNER, 0L, null, null, null, null, new AssetReach(false, 1, 1));
+
+    assertThat(LibraryResponseMapper.toListResponse(summary).getErasureRequestedAt())
+        .isEqualTo(since);
+    assertThat(
+            LibraryResponseMapper.toListResponse(
+                    new LibrarySummary(
+                        KnowledgeLibrary.ownedByUser(
+                            UUID.randomUUID(), "Andere", null, UUID.randomUUID()),
+                        AssetRole.OWNER,
+                        0L,
+                        null,
+                        null,
+                        null,
+                        null,
+                        new AssetReach(false, 1, 1)))
+                .getErasureRequestedAt())
+        .isNull();
   }
 
   @Test

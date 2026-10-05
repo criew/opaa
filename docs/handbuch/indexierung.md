@@ -491,21 +491,31 @@ Systemverwaltung im Abschnitt **„Verbindungsprotokoll“** dessen Aufbewahrung
 werden, sagt das Formular das und lässt noch nicht speichern.
 
 **Vorschau beim Bearbeiten.** Ändert eine Bearbeitung, was für die Bibliotheken auf dem Zugang gilt
-(Server-Adresse, Anmeldeart, Registrierung, Proxy, Zertifikatsprüfung oder Vorgaben), und hat der
-Zugang Verbindungen, heißt der Knopf zuerst „Weiter“. Er zeigt, ohne etwas zu speichern, die
+(Server-Adresse, Anmeldeart, Registrierung, Besitzart, Proxy, Zertifikatsprüfung oder Vorgaben), und
+hat der Zugang Verbindungen, heißt der Knopf zuerst „Weiter“. Er zeigt, ohne etwas zu speichern, die
 Auswirkungen:
 
 - die Zahl der betroffenen Bibliotheken, bei einem Zugang, der Personen zulässt, auch die
   verbundenen Konten von Personen (in derselben gerundeten Form wie sonst, etwa „weniger als 5“),
 - jede Bibliothek, deren Konnektor die Änderung ablehnt, mit der Art der Ablehnung (Verbindung oder
   Einstellungen), dem Grund und einem Verweis auf die Bibliothek,
-- den Hinweis, dass Zugangsdaten und Abgleichstand der verbundenen Bibliotheken verworfen werden
-  können. Ob und für wen, entscheidet OPAA erst beim Speichern; verwirft die Änderung Zugangsdaten,
-  fragt es vorher mit der Zahl der Betroffenen nach.
+- was das Speichern verwirft, so wie OPAA es beim Speichern ausführt: ob alle Zugangsdaten und Token
+  des Zugangs verworfen werden und wie viele Verbindungen danach neu angemeldet werden müssen, von
+  wie vielen Bibliotheken die gespeicherten Zugangsdaten neu einzutragen sind, ob die verbundenen
+  Konten von Personen enden (gerundet wie oben), für wie viele Bibliotheken sich die Konfiguration
+  ändert und für wie viele der Abgleichstand ganz verworfen wird; verwirft sie nichts davon, sagt
+  die Vorschau das,
+- bei einer Besitzart ohne Personen, dass alle privaten Bibliotheken vom Zugang gelöst werden,
+- die Rückfrage, die OPAA vor dem Speichern stellt, im Wortlaut.
 
 Lehnt der Konnektor die Änderung für eine Bibliothek ab, lässt sie sich so nicht speichern. Sonst
-speichert ein zweiter Klick auf „Speichern“; eine Änderung, die Geheimnisse verwirft, fragt dann wie
-bisher noch einmal nach. Ändert sich ein Feld, gilt die Vorschau nicht mehr, und der Knopf heißt
+speichert ein zweiter Klick auf „Speichern“; eine Änderung, die etwas davon verwirft, fragt dann mit
+genau dem Text aus der Vorschau noch einmal nach. Die Rückfrage nennt Personen ohne Zahl. Eine
+Änderung, die keine gespeicherten Zugangsdaten und kein Konto verwirft und den Abgleichstand nicht
+ganz verwirft (etwa nur Proxy oder Zertifikatsprüfung), speichert ohne Rückfrage; den Teil des
+Abgleichstands, den die neue Konfiguration ungültig macht, verwirft der Konnektor dabei trotzdem.
+Ändert sich ein Feld, gilt die
+Vorschau nicht mehr, und der Knopf heißt
 wieder „Weiter“. Lehnt der Konnektor die Änderung erst beim Speichern ab (etwa weil sich eine
 Bibliothek inzwischen geändert hat), sagt die Meldung, dass nichts gespeichert wurde, und die
 Vorschau nennt die Gründe. Ein reines Umbenennen speichert ohne Vorschau.
@@ -705,7 +715,7 @@ steht in ihren Kapiteln.
 
 | Handlung | Folge |
 |---|---|
-| Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und Bibliotheken |
+| Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und der Bibliotheken, deren gespeicherte Zugangsdaten neu einzutragen sind |
 | Client-ID, Mandant, Scopes, einen Endpunkt oder die Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
 | Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter. Das gilt nicht für eine Vorgabe nur des Zugangs (bei Google Drive das imitierte Konto): Entfällt sie, imitiert keine Bibliothek mehr ein Konto |
 | Dienstkonto-Schlüssel eines anderen Dienstkontos hochladen | wie eine neue Client-ID |

@@ -190,6 +190,30 @@ describe('api service', () => {
       )
     })
 
+    it('says that a library being erased opens no document any more (#2165)', async () => {
+      const err = axiosErrorWithResponse(
+        404,
+        new Blob([
+          JSON.stringify({ error: 'Die Bibliothek wird gelöscht', code: 'LIBRARY_BEING_ERASED' }),
+        ]),
+      )
+
+      await expect(mapDocumentContentError(err)).rejects.toThrow(
+        'Die Bibliothek wird gelöscht – ihre Dokumente lassen sich nicht mehr öffnen.',
+      )
+    })
+
+    it('goes by the code, not by the wording of the message', async () => {
+      const err = axiosErrorWithResponse(
+        404,
+        new Blob([JSON.stringify({ error: 'Die Bibliothek wird gelöscht' })]),
+      )
+
+      await expect(mapDocumentContentError(err)).rejects.toThrow(
+        'Das Originaldokument wurde nicht gefunden.',
+      )
+    })
+
     // #743 (review, nit 1): a non-404 failure arrives with responseType 'blob' applied to its body
     // too, so the ErrorResponse JSON must be read out of the Blob rather than off err.response.data
     // directly - the previous behaviour fell through to normalizeError's generic English

@@ -19,7 +19,7 @@ import type {
   SourceTypeKey,
   BulkDocumentDeleteResponse,
 } from '../types/api'
-import { isErrorResponse } from '../types/api'
+import { isErrorResponse, type ErrorResponse } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
 
 export async function getLibraries(): Promise<LibraryListResponse[]> {
@@ -159,9 +159,16 @@ export async function disconnectLibraryProfile(libraryId: string): Promise<Libra
   }
 }
 
-export async function deleteLibrary(libraryId: string): Promise<void> {
+/**
+ * `ERASURE_PENDING` (202): a private library is marked for erasure and completes once its running
+ * run has ended; every other success (204) is `DELETED`.
+ */
+export type LibraryDeletionOutcome = 'DELETED' | 'ERASURE_PENDING'
+
+export async function deleteLibrary(libraryId: string): Promise<LibraryDeletionOutcome> {
   try {
-    await client.delete(`/v1/libraries/${libraryId}`)
+    const response = await client.delete(`/v1/libraries/${libraryId}`)
+    return response.status === 202 ? 'ERASURE_PENDING' : 'DELETED'
   } catch (err) {
     normalizeError(err)
   }
@@ -340,24 +347,50 @@ export interface DocumentContent {
 // free from axios.
 export async function mapDocumentContentError(err: unknown): Promise<never> {
   if (err instanceof AxiosError && err.response?.status === 404) {
+    if ((await blobErrorCode(err.response.data)) === LIBRARY_BEING_ERASED) {
+      throw new Error(
+        'Die Bibliothek wird gelöscht – ihre Dokumente lassen sich nicht mehr öffnen.',
+        {
+          cause: err,
+        },
+      )
+    }
     throw new Error(
       'Das Originaldokument wurde nicht gefunden. Es wurde möglicherweise verschoben oder gelöscht.',
       { cause: err },
     )
   }
   if (err instanceof AxiosError && err.response?.data instanceof Blob) {
-    let parsedBody: unknown
-    try {
-      parsedBody = JSON.parse(await err.response.data.text())
-    } catch {
-      parsedBody = undefined
-    }
-    if (isErrorResponse(parsedBody)) {
-      throw new Error(parsedBody.error, { cause: err })
+    const message = await blobErrorMessage(err.response.data)
+    if (message !== null) {
+      throw new Error(message, { cause: err })
     }
     throw new Error('Das Originaldokument konnte nicht geladen werden.', { cause: err })
   }
   normalizeError(err)
+}
+
+/** The `code` of the 404 for a document whose private library is marked for erasure. */
+const LIBRARY_BEING_ERASED = 'LIBRARY_BEING_ERASED'
+
+/** The ErrorResponse inside a blob body, `null` for anything else. */
+async function blobErrorBody(body: unknown): Promise<ErrorResponse | null> {
+  if (!(body instanceof Blob)) return null
+  try {
+    const parsed: unknown = JSON.parse(await body.text())
+    return isErrorResponse(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+async function blobErrorMessage(body: unknown): Promise<string | null> {
+  return (await blobErrorBody(body))?.error ?? null
+}
+
+/** The `code` of an ErrorResponse inside a blob body, like `apiErrorCode` for a parsed one. */
+async function blobErrorCode(body: unknown): Promise<string | null> {
+  return (await blobErrorBody(body))?.code ?? null
 }
 
 // streams the original file behind an indexed document. Bearer-authenticated like every

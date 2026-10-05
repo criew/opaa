@@ -929,7 +929,15 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
-          $ref: "#/components/responses/NotFound"
+          description: >
+            Not found, for every case the description above names. One carries a code: the
+            library is a private one being erased (code LIBRARY_BEING_ERASED, "Die Bibliothek wird
+            gelöscht") - given only after the read check, so a caller who may not read the library
+            gets the plain 404 of an unknown document.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: >
             The library's connector type or connection profile is locked (code SOURCE_LOCKED); the
@@ -1844,6 +1852,11 @@ components:
         privateLibrary:
           type: boolean
           description: As LibraryResponse.privateLibrary.
+        erasureRequestedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: As LibraryResponse.erasureRequestedAt.
         id:
           type: string
           format: uuid

@@ -9,6 +9,7 @@ import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.connection.ConnectorReleaseService.ProfileOption;
 import io.opaa.connection.profile.ConnectionProfile;
+import io.opaa.connection.profile.ConnectionProfileService.Discards;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
 import io.opaa.connection.profile.TestPersonCounts;
 import io.opaa.knowledge.SourceType;
@@ -71,7 +72,9 @@ class ConnectionProfileResponseMapperTest {
         ConnectionProfileResponseMapper.toResponse(profile, false, 2, TestPersonCounts.of(3, 0));
     ConnectionProfileImpactResponse impact =
         ConnectionProfileResponseMapper.toResponse(
-            new ProfileImpact(2, 2, TestPersonCounts.of(0, 0).total(), List.of(), null, 0), false);
+            new ProfileImpact(
+                2, 2, TestPersonCounts.of(0, 0).total(), List.of(), null, Discards.NONE),
+            false);
 
     assertThat(response.getConnectionCount()).isEqualTo(2);
     assertThat(response.getConnectedAccountCount().getCount()).isEqualTo(6);
@@ -89,6 +92,48 @@ class ConnectionProfileResponseMapperTest {
                     profile, false, 2, TestPersonCounts.of(6, 12))
                 .getExpiredConnectionWarning())
         .isTrue();
+  }
+
+  @Test
+  void theImpactCarriesWhatSavingDiscardsAndItsConfirmation() {
+    Discards rebound =
+        new Discards(0, 2, 3, TestPersonCounts.of(1, 0).total(), List.of("Imitiertes Konto"), 3);
+    Discards moved = new Discards(3, 2, 3, TestPersonCounts.of(1, 0).total(), List.of(), 0);
+
+    ConnectionProfileImpactResponse impact = impactWith(rebound);
+    ConnectionProfileImpactResponse address = impactWith(moved);
+    ConnectionProfileImpactResponse none = impactWith(Discards.NONE);
+
+    assertThat(impact.getConnectionsDiscarded()).isZero();
+    assertThat(impact.getSecretsDiscarded()).isEqualTo(2);
+    assertThat(impact.getConfigurationsChanged()).isEqualTo(3);
+    assertThat(impact.getConnectedAccountsEnded().getFewerThan()).isEqualTo(5);
+    assertThat(impact.getConnectedAccountsEnded().getCount()).isNull();
+    assertThat(impact.getFullSyncLibraries()).isEqualTo(3);
+    assertThat(impact.getConfirmation())
+        .isEqualTo(
+            "Die Änderung verwirft die Zugangsdaten von 2 Bibliotheken sowie etwaiger verbundener"
+                + " Konten von Personen dieses Zugangs. Die Vorgabe „Imitiertes Konto“ ändert"
+                + " sich: Der Abgleichsstand von 3 Bibliotheken wird verworfen, der nächste Lauf"
+                + " liest die Quelle vollständig neu. Bitte bestätigen.");
+    assertThat(address.getConnectionsDiscarded()).isEqualTo(3);
+    assertThat(address.getConfirmation())
+        .isEqualTo(
+            "Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; 3 Verbindungen"
+                + " müssen neu angemeldet werden, die gespeicherten Zugangsdaten von 2 Bibliotheken sind"
+                + " neu einzutragen, etwaige verbundene Konten von Personen enden. Bitte"
+                + " bestätigen.");
+    assertThat(none.getConnectionsDiscarded()).isZero();
+    assertThat(none.getSecretsDiscarded()).isZero();
+    assertThat(none.getConfigurationsChanged()).isZero();
+    assertThat(none.getConnectedAccountsEnded()).isNull();
+    assertThat(none.getConfirmation()).isNull();
+  }
+
+  private static ConnectionProfileImpactResponse impactWith(Discards discards) {
+    return ConnectionProfileResponseMapper.toResponse(
+        new ProfileImpact(3, 3, TestPersonCounts.of(1, 0).total(), List.of(), null, discards),
+        false);
   }
 
   @Test

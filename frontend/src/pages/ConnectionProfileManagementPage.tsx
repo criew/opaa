@@ -36,6 +36,7 @@ import ConnectionProfileFormDialog from '../components/admin/connections/Connect
 import ConnectorTypeLockSection from '../components/admin/connections/ConnectorTypeLockSection'
 import ConnectionProfileRequestSection from '../components/admin/connections/ConnectionProfileRequestSection'
 import ConnectionLogRetentionSection from '../components/admin/connections/ConnectionLogRetentionSection'
+import PrivateStorageSection from '../components/admin/connections/PrivateStorageSection'
 import { confirmLock } from '../components/admin/connections/connectorLock'
 import {
   AUTH_METHOD_LABELS,
@@ -431,6 +432,10 @@ export default function ConnectionProfileManagementPage() {
             }
             onChanged={reload}
           />
+        </Box>
+
+        <Box sx={{ mt: 4 }}>
+          <PrivateStorageSection />
         </Box>
 
         <Box sx={{ mt: 4 }}>

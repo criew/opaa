@@ -119,7 +119,7 @@ class ProfileChangeUnreadableSecretTest {
 
     assertThatThrownBy(() -> service.update(admin, profile.getId(), rebound, null, false))
         .isInstanceOf(ConflictException.class)
-        .hasMessageContaining("1 Verbindung");
+        .hasMessageContaining("1 Bibliothek");
     service.update(admin, profile.getId(), rebound, null, true);
 
     verify(libraries).eraseSourceCredentials(library.getId());

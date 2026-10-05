@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
+import AlertTitle from '@mui/material/AlertTitle'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Checkbox from '@mui/material/Checkbox'
@@ -31,8 +32,16 @@ import AssetDetailHeader, { HeaderFigure } from '../components/assets/AssetDetai
 import AssetOwnerSection from '../components/assets/AssetOwnerSection'
 import AssetSpacesSection from '../components/assets/AssetSpacesSection'
 import { responsibleParty } from '../components/assets/assetTileData'
-import { PrivateMark } from '../components/assets/assetMarks'
-import { PRIVATE_LIBRARY_NOTE } from '../components/library/privateLibrary'
+import { ErasingMark, PrivateMark } from '../components/assets/assetMarks'
+import {
+  PRIVATE_LIBRARY_ERASING_NOTE,
+  PRIVATE_LIBRARY_ERASURE_CONSEQUENCE,
+  PRIVATE_LIBRARY_NOTE,
+  QUOTA_EXHAUSTED_LABEL,
+  QUOTA_EXHAUSTED_REMEDY,
+} from '../components/library/privateLibrary'
+import { useMyPrivateStorage } from '../components/library/useMyPrivateStorage'
+import { notify } from '../stores/notificationStore'
 import { useAssetCatalogEntry } from '../components/assets/useAssetCatalogEntry'
 import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
@@ -252,6 +261,9 @@ export default function LibraryDetailPage() {
   const library = details ?? listEntry
   // Only its owner ever reads a private library: no rights, transfer, external access or cap.
   const privateLibrary = Boolean(library?.privateLibrary)
+  // A private library marked for erasure runs no more and takes in nothing; nothing is changed.
+  const erasureRequestedAt = details?.erasureRequestedAt ?? null
+  const erasing = erasureRequestedAt != null
   const roleGrantsEdit = canEditLibrary(library?.myRole)
   const roleGrantsDelete = canDeleteLibrary(library?.myRole)
   const canEdit = roleGrantsEdit || isSystemAdmin
@@ -259,8 +271,28 @@ export default function LibraryDetailPage() {
   const isAdministrativeOverride = isSystemAdmin && !roleGrantsEdit
   // The list holds only what the caller may read, without the administrative bypass: a system
   // administrator without a grant may open the page, but cannot associate the library anywhere.
-  const mayUseInSpace = !isSystemAdmin || listEntry !== undefined
+  const mayUseInSpace = (!isSystemAdmin || listEntry !== undefined) && !erasing
   const canTrigger = canManageDocuments(library?.myRole) || isSystemAdmin
+  const mayChange = canEdit && !erasing
+  const mayManageDocuments = canTrigger && !erasing
+  const erasureNoticeRef = useRef<HTMLDivElement>(null)
+  // Set by a 202: the menu that held „Sofort löschen" is gone, so the focus moves to the notice.
+  const focusErasureNoticeRef = useRef(false)
+  const [eraseBusy, setEraseBusy] = useState(false)
+  const newestRunCategory = useIndexingStore((s) =>
+    libraryId ? s.runsByLibrary[libraryId]?.failureCategory : undefined,
+  )
+  const quotaExhausted = privateLibrary && !erasing && newestRunCategory === 'QUOTA_EXHAUSTED'
+  const ownsPrivateLibrary = privateLibrary && library?.myRole === 'OWNER'
+  const [storageRefreshToken, setStorageRefreshToken] = useState(0)
+  const privateStorage = useMyPrivateStorage(ownsPrivateLibrary, storageRefreshToken)
+
+  useEffect(() => {
+    if (focusErasureNoticeRef.current && erasing) {
+      focusErasureNoticeRef.current = false
+      erasureNoticeRef.current?.focus()
+    }
+  }, [erasing])
 
   // The connector-only concerns (status polling, trigger actions, the "Indizierung" area) hang
   // off the details' sourceType; a plain UPLOAD library has none of them.
@@ -310,6 +342,7 @@ export default function LibraryDetailPage() {
     if (wasRunningRef.current && !isRunning && libraryId) {
       void loadLibraryDetails(libraryId)
       setDocumentsRefreshToken((token) => token + 1)
+      setStorageRefreshToken((token) => token + 1)
     }
     wasRunningRef.current = isRunning
   }, [isRunning, libraryId, loadLibraryDetails])
@@ -357,6 +390,44 @@ export default function LibraryDetailPage() {
       await saveLibrary({ name: nextName, description: nextDescription })
     } catch (err) {
       throw new Error(successionAwareMessage(err, 'Aktualisierung fehlgeschlagen'), { cause: err })
+    }
+  }
+
+  /**
+   * „Sofort löschen" of a private library: 204 erased it, 202 marked it while a run still ends -
+   * the page then stays and shows the state, without promising when the erasure completes.
+   */
+  async function handleErase() {
+    if (!libraryId || !library || eraseBusy) return
+    const confirmed = await confirmAction({
+      question: `„${library.name}“ sofort löschen?`,
+      consequence: PRIVATE_LIBRARY_ERASURE_CONSEQUENCE,
+      confirmLabel: 'Endgültig löschen',
+      tone: 'danger',
+    })
+    if (!confirmed) return
+    setLocalError(null)
+    setEraseBusy(true)
+    // armed before the request: the store reloads the marked library before it answers
+    focusErasureNoticeRef.current = true
+    try {
+      const outcome = await deleteExistingLibrary(libraryId)
+      if (outcome === 'ERASURE_PENDING') {
+        // also when reloading the marked library failed and the page cannot show its state
+        notify(
+          `„${library.name}“ ist zur Löschung vorgemerkt. Die Löschung schließt ab, sobald die laufende Indexierung beendet ist.`,
+          'info',
+        )
+        return
+      }
+      focusErasureNoticeRef.current = false
+      notify(`„${library.name}“ ist gelöscht.`, 'success')
+      navigate(CATALOG_ROUTE)
+    } catch (err) {
+      focusErasureNoticeRef.current = false
+      setLocalError(err instanceof Error ? err.message : 'Löschen fehlgeschlagen')
+    } finally {
+      setEraseBusy(false)
     }
   }
 
@@ -456,6 +527,7 @@ export default function LibraryDetailPage() {
         badges={
           <>
             {privateLibrary && <PrivateMark />}
+            {erasing && <ErasingMark />}
             {details && <MetaBadge>{documentSourceTypeLabel(details.sourceType)}</MetaBadge>}
             <MetaBadge accent>{assetRoleLabel(library.myRole)}</MetaBadge>
           </>
@@ -465,7 +537,7 @@ export default function LibraryDetailPage() {
           idPrefix: 'library-detail',
           nameLabel: 'Name der Bibliothek',
           editLabel: 'Name und Beschreibung bearbeiten',
-          canEdit,
+          canEdit: mayChange,
           onSave: saveHeadline,
         }}
         extent={`${(library.documentCount ?? 0).toLocaleString('de-DE')} ${
@@ -478,6 +550,15 @@ export default function LibraryDetailPage() {
               <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
                 {formatFileSize(details.storageUsedBytes)} von{' '}
                 {formatFileSize(details.storageQuotaBytes)} Speicherkontingent belegt
+              </HeaderFigure>
+            )}
+            {privateStorage && (
+              <HeaderFigure icon={<DataUsageIcon sx={{ fontSize: 16 }} />}>
+                <span data-testid="private-storage-figure">
+                  {privateStorage.quotaBytes > 0
+                    ? `${formatFileSize(privateStorage.usedBytes)} von ${formatFileSize(privateStorage.quotaBytes)} in Ihren privaten Bibliotheken belegt`
+                    : `${formatFileSize(privateStorage.usedBytes)} in Ihren privaten Bibliotheken belegt (unbegrenzt)`}
+                </span>
               </HeaderFigure>
             )}
             {connectorSourceType && canTrigger && !isRunning && run.status !== 'IDLE' && (
@@ -513,10 +594,18 @@ export default function LibraryDetailPage() {
         onFavoriteChange={catalog.setFavorite}
         mayUseInSpace={mayUseInSpace}
         onAssociated={associationsChanged}
-        onDelete={canDelete ? () => void handleDelete() : undefined}
+        onDelete={
+          !canDelete || erasing
+            ? undefined
+            : privateLibrary
+              ? () => void handleErase()
+              : () => void handleDelete()
+        }
+        deleteLabel={privateLibrary ? 'Sofort löschen' : undefined}
+        deleteDisabled={eraseBusy}
         actions={
           connectorSourceType &&
-          canTrigger && (
+          mayManageDocuments && (
             <>
               <Button
                 variant="contained"
@@ -544,7 +633,37 @@ export default function LibraryDetailPage() {
         }
         // ADR-0036, Entscheidung 6: state and addressee for every reader - no date, no former
         // owner, no reason.
-        note={<SuccessionStateNote succession={details?.succession} />}
+        note={
+          <>
+            <SuccessionStateNote succession={details?.succession} />
+            {erasureRequestedAt && (
+              <Alert
+                ref={erasureNoticeRef}
+                tabIndex={-1}
+                role="status"
+                severity="error"
+                icon={false}
+                sx={{ mt: 1.5 }}
+                data-testid="library-erasure-notice"
+              >
+                <AlertTitle>
+                  Wird gelöscht – vorgemerkt am {formatIndexedAt(erasureRequestedAt)}
+                </AlertTitle>
+                {PRIVATE_LIBRARY_ERASING_NOTE}
+              </Alert>
+            )}
+            {quotaExhausted && (
+              <Alert
+                severity="warning"
+                sx={{ mt: 1.5 }}
+                data-testid="private-quota-exhausted-notice"
+              >
+                <AlertTitle>Letzter Lauf {QUOTA_EXHAUSTED_LABEL}</AlertTitle>
+                {QUOTA_EXHAUSTED_REMEDY}
+              </Alert>
+            )}
+          </>
+        }
       >
         {/* #1939: Der Umfang steht im Kopf nur noch als Kurzzeile mit Sprung in den Reiter
             „Quelle"; dort steht er vollständig, für jede Rolle. Die Warnung über einen
@@ -737,7 +856,7 @@ export default function LibraryDetailPage() {
             key={`documents-${libraryId}`}
             libraryId={libraryId}
             sourceType={details.sourceType}
-            canManage={canTrigger}
+            canManage={mayManageDocuments}
             refreshToken={documentsRefreshToken}
             confluenceSpaces={confluenceSettingsOf(details).spaces}
             // #506 review, finding 7: the document count in the header comes from the library
@@ -757,7 +876,12 @@ export default function LibraryDetailPage() {
         >
           {/* #604 review, finding 1: source paths and the run protocol stay behind the MANAGER
               bar (canEditSource); the Umfang above them is visible to every reader. */}
-          <LibrarySourceSection libraryId={libraryId} library={details} canEditSource={canEdit} />
+          <LibrarySourceSection
+            libraryId={libraryId}
+            library={details}
+            canEditSource={canEdit}
+            erasing={erasing}
+          />
         </Box>
       )}
 
@@ -772,7 +896,7 @@ export default function LibraryDetailPage() {
             title="Metadatenfelder"
             description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
           >
-            <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={canEdit} />
+            <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
           </PageSection>
           {/* Die Extraktionseinstellungen liest erst MANAGER (GET .../metadata/extraction-settings)
               - für eine lesende Rolle bliebe hier nur eine Fehlermeldung stehen. */}
@@ -781,7 +905,7 @@ export default function LibraryDetailPage() {
               title="Modellgestützte Extraktion"
               description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
             >
-              <MetadataExtractionSettingsSection libraryId={libraryId} canManage={canEdit} />
+              <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />
             </PageSection>
           )}
         </Stack>
@@ -879,7 +1003,7 @@ export default function LibraryDetailPage() {
             assetType="KNOWLEDGE_LIBRARY"
             assetId={libraryId}
             name={library.name}
-            canManage={canEdit}
+            canManage={mayChange}
             mayUseInSpace={mayUseInSpace}
             refreshToken={associationsVersion}
             onChanged={() => catalog.reload()}

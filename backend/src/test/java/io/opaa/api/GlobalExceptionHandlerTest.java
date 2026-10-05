@@ -3,6 +3,7 @@ package io.opaa.api;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import com.openai.core.http.Headers;
 import com.openai.errors.InternalServerException;
@@ -284,6 +285,22 @@ class GlobalExceptionHandlerTest {
    * {@link #handleResponseStatusExceptionKeepsStatusAndReason} pins for {@link
    * ResponseStatusException} - status and the exception's own message as the reason.
    */
+  @Test
+  void handleNotFoundExceptionCarriesItsCodeWhenGiven() {
+    var response =
+        handler.handleNotFoundException(
+            new io.opaa.common.NotFoundException("Die Bibliothek wird gelöscht", "SOME_CODE"));
+    assertEquals(404, response.getStatusCode().value());
+    assertEquals("SOME_CODE", response.getBody().getCode());
+  }
+
+  @Test
+  void handleNotFoundExceptionWithoutCodeCarriesNone() {
+    var response =
+        handler.handleNotFoundException(new io.opaa.common.NotFoundException("Nicht da"));
+    assertNull(response.getBody().getCode());
+  }
+
   @Test
   void handleNotFoundExceptionReturnsSameBodyShapeAsResponseStatusException() {
     var response =

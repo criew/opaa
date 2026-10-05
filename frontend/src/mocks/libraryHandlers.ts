@@ -6,6 +6,7 @@ import {
   mockSourceTypes,
 } from './libraryFixtures'
 import { mockMyGroups } from './groupFixtures'
+import { isMockIndexingActive } from './indexingHandlers'
 import { mockConnectionProfiles, mockProfileRef } from './connectionProfileFixtures'
 import type {
   SourceTypeKey,
@@ -635,6 +636,13 @@ export const libraryHandlers = [
     const library = mockLibraryDetails[libraryId]
     if (!library) {
       return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    // a private library is only marked while a run is in progress; it completes afterwards
+    if (library.privateLibrary && isMockIndexingActive()) {
+      library.erasureRequestedAt ??= new Date().toISOString()
+      const listed = mockLibraries.find((item) => item.id === libraryId)
+      if (listed) listed.erasureRequestedAt = library.erasureRequestedAt
+      return new HttpResponse(null, { status: 202 })
     }
     delete mockLibraryDetails[libraryId]
     const idx = mockLibraries.findIndex((item) => item.id === libraryId)

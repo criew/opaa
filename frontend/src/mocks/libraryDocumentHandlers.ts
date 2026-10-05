@@ -461,6 +461,15 @@ export const libraryDocumentHandlers = [
     if (!document || (document.sourceType !== 'UPLOAD' && document.sourceType !== 'FILESYSTEM')) {
       return HttpResponse.json({ error: 'Dokument nicht gefunden' }, { status: 404 })
     }
+    const libraryId = Object.entries(mockLibraryDocuments).find(([, documents]) =>
+      documents.includes(document),
+    )?.[0]
+    if (libraryId && mockLibraryDetails[libraryId]?.erasureRequestedAt) {
+      return HttpResponse.json(
+        { error: 'Die Bibliothek wird gelöscht', code: 'LIBRARY_BEING_ERASED' },
+        { status: 404 },
+      )
+    }
     const contentType = document.contentType ?? 'application/octet-stream'
     return new HttpResponse(new Blob(['mock file content'], { type: contentType }), {
       status: 200,
