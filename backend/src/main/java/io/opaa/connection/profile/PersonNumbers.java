@@ -57,14 +57,19 @@ public class PersonNumbers {
   }
 
   /**
-   * A number of private libraries as the administration may see it, a part of the organization's:
-   * it rests on their {@code owners}, the rest of the organization's on {@code otherOwners}, the
-   * owners of every other private library. Exact only where {@link PersonThreshold#disclosesPart}
-   * allows; else "fewer than N" below N owners - zero included - and not told ({@code null}) from N
-   * on.
+   * A number of private libraries as the administration may see it, a part of the private libraries
+   * of each organization it touches: exact only where {@link PersonThreshold#disclosesPart} allows
+   * in every one of them; else "fewer than N" below N owners in all - zero included - and not told
+   * ({@code null}) from N on.
    */
-  public PersonCount privateLibraries(long libraries, long owners, long otherOwners) {
-    if (threshold.disclosesPart(owners, otherOwners)) {
+  public PersonCount privateLibraries(long libraries, Collection<OwnerSplit> organizations) {
+    boolean exact = true;
+    long owners = 0;
+    for (OwnerSplit organization : organizations) {
+      exact &= threshold.disclosesPart(organization.owners(), organization.otherOwners());
+      owners += organization.owners();
+    }
+    if (exact && !organizations.isEmpty()) {
       return PersonCount.exact(libraries);
     }
     return owners < minimum ? PersonCount.fewerThan(minimum) : null;
@@ -99,4 +104,10 @@ public class PersonNumbers {
    * the warning threshold of expired.
    */
   public record ProfileCounts(PersonCount total, PersonCount expired, boolean expiredWarning) {}
+
+  /**
+   * One organization's share of a number of private libraries: the persons owning the counted ones,
+   * and the persons owning every other private library of the organization.
+   */
+  public record OwnerSplit(long owners, long otherOwners) {}
 }

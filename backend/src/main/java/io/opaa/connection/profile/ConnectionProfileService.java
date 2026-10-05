@@ -372,8 +372,8 @@ public class ConnectionProfileService {
   }
 
   /**
-   * How many private libraries the change releases from the profile, masked by their owners as a
-   * part of the private libraries of their organization.
+   * How many private libraries the change releases from the profile, masked by their owners in each
+   * of their organizations.
    */
   private PersonCount privateReleases(ProfileChange change, Set<UUID> released) {
     List<KnowledgeLibrary> leaving =
@@ -381,13 +381,7 @@ public class ConnectionProfileService {
             .map(Move::library)
             .filter(library -> released.contains(library.getId()))
             .toList();
-    long owners = leaving.stream().map(KnowledgeLibrary::getOwnerUserId).distinct().count();
-    long otherOwners =
-        leaving.isEmpty()
-            ? 0
-            : libraries.countPrivateLibraryOwnersOutside(
-                leaving.getFirst().getOrganizationId(), released);
-    return personNumbers.privateLibraries(released.size(), owners, otherOwners);
+    return privateRelease.count(leaving, personNumbers);
   }
 
   /**

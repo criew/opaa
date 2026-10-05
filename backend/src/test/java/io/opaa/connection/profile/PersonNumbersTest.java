@@ -2,6 +2,7 @@ package io.opaa.connection.profile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.connection.profile.PersonNumbers.OwnerSplit;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.permission.GroupSizeProperties;
 import java.util.HashMap;
@@ -149,7 +150,9 @@ class PersonNumbersTest {
   @MethodSource("privateLibraries")
   void aNumberOfPrivateLibrariesIsMaskedByItsOwners(
       long libraries, long owners, long otherOwners, String shown) {
-    PersonCount count = TestPersonCounts.numbers().privateLibraries(libraries, owners, otherOwners);
+    PersonCount count =
+        TestPersonCounts.numbers()
+            .privateLibraries(libraries, List.of(new OwnerSplit(owners, otherOwners)));
 
     assertThat(count == null ? "-" : count.toString()).isEqualTo(shown);
   }
