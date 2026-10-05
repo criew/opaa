@@ -705,6 +705,81 @@ Begründung:
   Bibliothekszeile und kollidiert mit keiner dieser Sperren. Verbinden eines Kontos mit
   persönlichem Geheimnis nimmt die Profilzeile bisher nicht und ist nicht Teil dieses Nachtrags.
 
+## Nachtrag vom 05.10.2026: Quelle verbinden (#2169, Schnitt Q1)
+
+- **Paketreihenfolge, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
+  `connection.request`, `connection.consent`, `connection.account`, `connection.oauth`. Das neue
+  Paket `connection.consent` trägt die eigene OAuth-Zustimmung einer Bibliothek
+  (`SourceConsentService`), die Verantwortlichen (`ConsentResponsibles`), die Liste ruhender
+  Quellverbindungen und das Abräumen nicht übernommener Zustimmungen. Nach unten erreichen es zwei
+  neue Ports: `connection.token.SourceConsentRejections` (Erneuerung mit `invalid_grant`) und
+  `connection.profile.SourceConsentEnds` (Adress-, Registrierungswechsel, Notabschaltung, Löschen
+  des Zugangs).
+- **Zwei Besitzarten mehr, ohne T1:** `SecretOwner.of` wählt für `OAUTH` an einer geteilten
+  Bibliothek `SourceConsent(profileId, libraryId)`, eine Zeile in `connection_tokens` mit
+  `library_id`. Persönliche Geheimnisse einer Bibliothek (`LibraryOwned`, `source_credentials`)
+  bleiben, wo sie sind; ihr Umzug in den Speicher ist T1 (#2273) und nicht Teil dieses Nachtrags.
+  `PendingConsent(tokenId, userId)` ist die Zustimmung, die eine Person im Assistenten vor dem
+  Anlegen gibt: `pending_user_id` und `pending_expires_at` (60 Minuten), Besitzer-`CHECK` jetzt über
+  drei Spalten. Nur diese Person nutzt sie, für Test und Ordnerauswahl (`SourceDraft#pending`) und
+  beim Anlegen (`LibraryRequest.pendingConnectionId`); übernommen wird sie nur auf demselben Zugang
+  und für dasselbe Ziel, sonst `409 PENDING_CONNECTION_UNUSABLE`. `PendingConsentSweep` löscht
+  abgelaufene alle 15 Minuten und widerruft sie nach dem Commit (Eintrag in ADR-0021).
+- **Keine Person entscheidet über die Herausgabe:** Anders als bei `PersonOwned` prüft
+  `ConnectionSecrets` für `SourceConsent` keine Kontonutzbarkeit. Die Deaktivierung der
+  zustimmenden Person lässt die Verbindung bestehen; `library_connections.connected_by` ist
+  `ON DELETE SET NULL`.
+- **Zustimmung:** Die Zwecke `LIBRARY_NEW` und `LIBRARY_RECONNECT` sind gebaut. Beide verlangen
+  einen Zugang mit OAuth, der Bibliotheken zulässt, dessen Konnektor die Besitzart Bibliothek für
+  OAuth deklariert, und `serviceAccountConfirmed`; ohne Bestätigung entsteht keine URL
+  (`400 SERVICE_ACCOUNT_CONFIRMATION_REQUIRED`), der Zeitpunkt steht an der Autorisierung.
+  `LIBRARY_NEW` prüft die Freigabe des Zugangs und Sperren wie das Anlegen, `LIBRARY_RECONNECT`
+  `MANAGER` an der Bibliothek, dass sie auf dem Zugang liegt, und die Sperre, keine Freigabe. Beides
+  prüft der Abschluss erneut. Eine private Bibliothek nimmt nie eine Zustimmung mit Dienstkonto
+  (`400`, für alle anderen unsichtbar `404`). Der `state` bleibt an Person, Zugangsversion und
+  Bibliothek gebunden; das Rücksprungziel folgt aus dem Zweck (`/libraries/new` bzw.
+  `/libraries/{id}`).
+- **Kontoadresse:** `SourceConnector#connectedAccount(SourceSettings)` mit dem frischen
+  Zugriffstoken, Vorgabe leer, nach dem Code-Tausch und außerhalb jeder Transaktion. Auch verbundene
+  Konten von Personen tragen sie jetzt. Weicht sie beim Neuverbinden von der gespeicherten ab, ist
+  das ohne `confirmAccountChange` beim Start ein `409 ACCOUNT_CHANGED`; der frische Grant wird mit
+  der Registrierung widerrufen, die ihn getauscht hat. Mit Bestätigung verwirft
+  `SourceChangeGate#accountChanged` den Laufzustand.
+- **An der Verbindung** (`library_connections`, additiv): `account_label`, `connected_by`,
+  `connected_at`, `responsible_type`/`responsible_id` (Person oder Gruppe mit `MANAGER`, sonst
+  `400`), `ended_cause`/`ended_at`. Verantwortlich ist ohne Angabe die verbindende Person.
+  Benachrichtigungen gehen an die Verantwortlichen, solange sie `MANAGER` halten, sonst an alle
+  Verwaltenden: `SOURCE_CONNECTION_EXPIRING` (14 Tage vorher, einmal, über `ConnectionExpiryWatch`),
+  `SOURCE_CONNECTION_EXPIRED` (`invalid_grant`), `SOURCE_CONNECTION_ENDED` (Änderung durch die
+  Systemverwaltung).
+- **Ein Endweg:** Trennen (`DELETE /api/v1/libraries/{id}/source-connection`, `SELF`), Zuordnen zu
+  einem anderen Zugang und Lösen (`SELF`), Löschen der Bibliothek (`LIBRARY_DELETED`), Adress- und
+  Registrierungswechsel, Notabschaltung und Löschen des Zugangs verwerfen den Grant und widerrufen
+  ihn nach dem Commit; das Verbindungsprotokoll nennt die Bibliothek mit Kontoadresse
+  (`ConnectionLogOwner.Library`). Ein beendeter Grant (`invalid_grant`) bleibt als abgelaufen
+  stehen, bis neu verbunden wird.
+- **Sperrgrund und Anzeige:** Für `SourceConsent` antwortet der Speicher mit `NOT_CONNECTED`,
+  `EXPIRED` oder `TARGET_OUTSIDE_PROFILE`; der Hinweis nennt die Verwaltenden, die Aktion ist
+  `CONNECT_SOURCE`. Eine geteilte Bibliothek zeigt außer den Sperren auch diese Gründe, weil ihre
+  Verwaltenden darauf handeln. Der frühere Hinweis „wird für Bibliotheken noch nicht unterstützt“
+  entfällt.
+- **Ruhende Quellverbindungen:** `GET /api/v1/admin/source-connections/dormant`
+  (`SYSTEM_ADMIN`) nennt jede geteilte Bibliothek mit eigener Zustimmung, deren Quelle nicht
+  erreicht wird; der Finder schließt private Bibliotheken in der Abfrage aus.
+- **Sperrreihenfolge** wie im Nachtrag #2246: Der Abschluss hält die Profilzeile `FOR SHARE` mit
+  Versionsvergleich, schreibt dann Token, dann `library_connections`; Trennen und Löschen
+  schreiben Token vor Bibliothek. Kein Netzzugriff unter einer Sperre: Code-Tausch und
+  Kontoadresse laufen vor, Widerrufe nach der Transaktion.
+- **Vorschau:** Eine Bibliothek mit eigener Zustimmung zählt bei Adress- und
+  Registrierungswechsel unter den Verbindungen, die neu angemeldet werden müssen.
+- **Produktion:** Kein mitgelieferter Konnektor deklariert OAuth mit Besitzart Bibliothek; erster
+  Nutzer ist Dropbox (#2154). Belegt in `SourceConsentIntegrationTest` mit dem Testkonnektor
+  `CONSENT_PROBE` nur in `src/test`.
+- **Abweichung vom Phase-3-Plan:** Die verantwortliche Person oder Gruppe einer neuen Bibliothek
+  kommt mit dem Anlegen (`LibraryRequest.sourceConnectionResponsible`), nicht mit dem Start der
+  Zustimmung, weil sie `MANAGER` an der erst entstehenden Bibliothek halten muss. Beim Neuverbinden
+  kommt sie mit dem Start.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

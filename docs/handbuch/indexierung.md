@@ -750,7 +750,7 @@ die die zuständige Stelle nennt; der Bestand bleibt durchsuchbar und wird nicht
 | „Zugang entfernt“ | Der Zugang der Bibliothek wurde gelöscht | Verwaltende der Bibliothek: anderen Zugang zuordnen oder löschen |
 | „Verbindung getrennt“ | Das Geheimnis fehlt, etwa nach Adressänderung oder Notabschaltung | Verwaltende der Bibliothek: Geheimnis neu eintragen; bei einem Zugang, der sich selbst anmeldet, die Systemverwaltung: Client-Secret bzw. Schlüssel eintragen |
 | „Abgelaufen: Der Anbieter hat die Anmeldung des Zugangs … abgelehnt“ | Der Anbieter hat Client-Secret bzw. Schlüssel des Zugangs abgewiesen | Systemverwaltung: neu eintragen oder „Anmeldung testen“ |
-| „Nicht verbunden“ | Die Anmeldeart des Zugangs (OAuth) kann eine Bibliothek noch nicht verbinden | Systemverwaltung |
+| „Nicht verbunden: Die Quelle ist über den Zugang … nicht verbunden“ bzw. „Abgelaufen: Die Verbindung der Quelle …“ | Ein Zugang mit Anmeldung beim Anbieter (OAuth) für Bibliotheken: Die Quelle wurde noch nicht verbunden, getrennt, oder der Anbieter nimmt die Zustimmung nicht mehr an | Verwaltende der Bibliothek: Quelle neu verbinden |
 | „Die Adresse der Bibliothek liegt nicht unter …“ | Die Adresse verließ den Zugang | Verwaltende der Bibliothek |
 | „Gesperrt – Inhalt wird nicht mehr aktualisiert“ | Die Quellart oder der Zugang ist gesperrt; gilt auch für Bibliotheken ohne Zugang | Systemverwaltung |
 | „Die Bibliothek wird gelöscht.“ | Eine private Bibliothek ist zur Löschung vorgemerkt; ein laufender Lauf endet damit beim nächsten Zugriff auf die Quelle ([Benutzerverwaltung](benutzerverwaltung.md), „Private Bibliotheken löschen“) | niemand: Die Löschung schließt von selbst ab |
@@ -790,8 +790,7 @@ andere Sperre bestehen bleibt. Die Folgen:
 - Ein Beleg einer Antwort, der aus einer gesperrten Bibliothek stammt, trägt in den Belegen „Stand
   vom …“ mit dem letzten erfolgreichen Lauf der Bibliothek und der Systemverwaltung als zuständiger
   Stelle. Dasselbe gilt für eine Bibliothek, deren Verbindung getrennt oder deren Zugang entfernt
-  ist; zuständig sind dort die Verwaltenden der Bibliothek (bei einer Anmeldeart, die eine
-  Bibliothek noch nicht verbinden kann, die Systemverwaltung). Maßgeblich ist der Zustand zum
+  ist; zuständig sind dort die Verwaltenden der Bibliothek. Maßgeblich ist der Zustand zum
   Zeitpunkt der Antwort.
 - Wird die Sperre aufgehoben, laufen die Bibliotheken ohne Neueinrichtung weiter.
 
