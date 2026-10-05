@@ -637,6 +637,11 @@ kein zweiter Verbindungsweg entsteht:
 
 Werkzeugaufrufe, Freigabe schreibender Aufrufe und Ausgangstor gehören zu #1747 und einem Folge-Epic.
 
+Stand der Umsetzung ([#2173](https://github.com/criew/opaa/issues/2173)): Profilart, Erkennung
+und Token-Bindung sind gebaut und nur über die Verwaltungs-API erreichbar. Bis zur
+Nutzungsfreigabe verbindet nur die Systemverwaltung. Einzelheiten stehen im Nachtrag zu
+[ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) vom 05.10.2026.
+
 ---
 
 ## Reihenfolge
