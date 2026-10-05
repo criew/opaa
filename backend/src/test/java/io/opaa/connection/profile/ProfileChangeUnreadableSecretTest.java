@@ -59,6 +59,7 @@ class ProfileChangeUnreadableSecretTest {
           registry,
           wiring.secrets,
           TestPersonCounts.NO_PERSONS,
+          TestPersonCounts.NO_CONSENTS,
           TestPersonCounts.numbers(),
           wiring.transitions,
           mock(CredentialsEncryptor.class),

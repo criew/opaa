@@ -15,6 +15,7 @@ import java.util.UUID;
  * @param connectionProfileId the profile the probe runs through; {@code null} for the library's
  *     current one, or without {@code libraryId} for its own address
  * @param privateLibrary as {@link SourceConnectionTest#privateLibrary}
+ * @param pendingConnectionId as {@link SourceConnectionTest#pendingConnectionId}
  */
 public record SourceBrowseRequest(
     SourceType sourceType,
@@ -25,7 +26,32 @@ public record SourceBrowseRequest(
     ConnectorData query,
     UUID libraryId,
     UUID connectionProfileId,
-    boolean privateLibrary) {
+    boolean privateLibrary,
+    UUID pendingConnectionId) {
+
+  /** A listing without a pending source consent. */
+  public SourceBrowseRequest(
+      SourceType sourceType,
+      URI sourceUrl,
+      String sourceCredentials,
+      String sourceProxy,
+      Boolean sourceInsecureSsl,
+      ConnectorData query,
+      UUID libraryId,
+      UUID connectionProfileId,
+      boolean privateLibrary) {
+    this(
+        sourceType,
+        sourceUrl,
+        sourceCredentials,
+        sourceProxy,
+        sourceInsecureSsl,
+        query,
+        libraryId,
+        connectionProfileId,
+        privateLibrary,
+        null);
+  }
 
   /** A listing towards a shared library. */
   public SourceBrowseRequest(

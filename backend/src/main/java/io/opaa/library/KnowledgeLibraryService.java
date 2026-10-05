@@ -279,7 +279,8 @@ public class KnowledgeLibraryService {
     boolean previousInsecureSsl = library.isSourceInsecureSsl();
     String previousSettings = library.getSourceSettings();
     boolean hadCredentials = connectionResolver.holdsCredentials(library);
-    Set<String> effectiveChanges = libraryConnections.connect(library, profileId, sourceUrl);
+    Set<String> effectiveChanges =
+        libraryConnections.connect(library, profileId, sourceUrl, caller.id());
     KnowledgeLibrary updated = libraryRepository.findById(libraryId).orElseThrow();
     if (updated.isOwnerOnly()) {
       privateConnections.requireOwnTargetOf(updated);
@@ -325,7 +326,7 @@ public class KnowledgeLibraryService {
       boolean previousInsecureSsl = library.isSourceInsecureSsl();
       String previousSettings = library.getSourceSettings();
       Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
-      changed.addAll(libraryConnections.disconnect(library));
+      changed.addAll(libraryConnections.disconnect(library, caller.id()));
       if (!Objects.equals(previousProxy, library.getSourceProxy())) {
         changed.add("sourceProxy");
       }
@@ -446,7 +447,28 @@ public class KnowledgeLibraryService {
     // The creator holds OWNER, an owning group MANAGER - never OWNER, see AssetShellService. The
     // shell also opens the ownership and reach intervals and writes LIBRARY_CREATED.
     shellService.registerCreated(saved, currentUserId, libraryAuditPayload(saved));
+    if (request.sourceConsent() != null) {
+      if (request.connectionProfileId() == null) {
+        throw new ValidationException("pendingConnectionId gilt nur mit connectionProfileId");
+      }
+      // after the grants: who answers for the consent must manage the new library
+      libraryConnections.takeOverConsent(
+          saved,
+          request.connectionProfileId(),
+          request.sourceConsent().pendingConnectionId(),
+          request.sourceConsent().responsible(),
+          caller);
+    }
     return toLibraryDetail(saved, AssetRole.OWNER, currentUserId);
+  }
+
+  /**
+   * Disconnects the library's own source connection ("Quelle trennen") - {@code MANAGER} on the
+   * library; its grant is deleted and revoked, its content stays.
+   */
+  @Transactional
+  public void disconnectSource(UUID libraryId, CurrentUser caller) {
+    libraryConnections.disconnectConsent(libraryId, caller);
   }
 
   private Map<String, Object> libraryAuditPayload(KnowledgeLibrary library) {
@@ -914,6 +936,7 @@ public class KnowledgeLibraryService {
             .before(library.auditPayload(deletionPayload))
             .outcome(AuditOutcome.SUCCESS)
             .build());
+    libraryConnections.libraryDeleted(library, caller);
     libraryRepository.delete(library);
   }
 
@@ -1554,7 +1577,8 @@ public class KnowledgeLibraryService {
                         : LibraryProfileState.of(
                             connection.profile(), myRole.atLeast(AssetRole.MANAGER)))
             .orElse(null),
-        libraryConnections.shownBlockOf(library).orElse(null));
+        libraryConnections.shownBlockOf(library).orElse(null),
+        libraryConnections.consentOf(library).orElse(null));
   }
 
   private LibraryManagementDetail toManagementDetail(

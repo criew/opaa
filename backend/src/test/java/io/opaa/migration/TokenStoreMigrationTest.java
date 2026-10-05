@@ -23,6 +23,9 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
   private static final String WARNED_EXPIRY =
       "db/changelog/connections/2026-10-04-warned-expiry.yaml";
 
+  private static final String SOURCE_CONSENT =
+      "db/changelog/connections/2026-10-05-source-consent.yaml";
+
   private UUID owner;
   private UUID forPersons;
   private UUID forLibraries;
@@ -31,7 +34,7 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
 
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE, USAGE, WARNED_EXPIRY);
+    return MasterChangelog.filesExcept(FILE, USAGE, WARNED_EXPIRY, SOURCE_CONSENT);
   }
 
   @BeforeEach

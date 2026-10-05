@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
+import io.opaa.connection.consent.SourceConsentService.ConsentView;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -31,6 +32,8 @@ import io.opaa.permission.SuccessionFinding;
  *     its own address
  * @param sourceBlock the lock the library carries - its connector type or profile locked, or an own
  *     address where only a profile is admitted - {@code null} while it is not locked
+ * @param sourceConnection the library's own source consent ("Quelle verbinden"), {@code null} for
+ *     none
  */
 public record LibraryDetail(
     KnowledgeLibrary library,
@@ -43,7 +46,36 @@ public record LibraryDetail(
     ConnectorData connectorSettings,
     SuccessionFinding succession,
     LibraryProfileState connectionProfile,
-    SourceBlock sourceBlock) {
+    SourceBlock sourceBlock,
+    ConsentView sourceConnection) {
+
+  /** A detail of a library without a source consent of its own. */
+  public LibraryDetail(
+      KnowledgeLibrary library,
+      AssetRole myRole,
+      long documentCount,
+      LibraryManagementDetail managementDetail,
+      boolean diagnosticsLockToggleable,
+      AssetReach reach,
+      String ownerName,
+      ConnectorData connectorSettings,
+      SuccessionFinding succession,
+      LibraryProfileState connectionProfile,
+      SourceBlock sourceBlock) {
+    this(
+        library,
+        myRole,
+        documentCount,
+        managementDetail,
+        diagnosticsLockToggleable,
+        reach,
+        ownerName,
+        connectorSettings,
+        succession,
+        connectionProfile,
+        sourceBlock,
+        null);
+  }
 
   /** A detail of a library that is not locked. */
   public LibraryDetail(
@@ -130,6 +162,7 @@ public record LibraryDetail(
         connectorSettings,
         succession,
         connectionProfile,
-        sourceBlock);
+        sourceBlock,
+        sourceConnection);
   }
 }

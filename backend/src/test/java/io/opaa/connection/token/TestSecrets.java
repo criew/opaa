@@ -51,6 +51,7 @@ public final class TestSecrets {
         mock(CredentialsEncryptor.class),
         issuers,
         mock(ObjectProvider.class),
+        mock(ObjectProvider.class),
         ConnectionLifecycleProperties.defaults(),
         mock(PlatformTransactionManager.class),
         Clock.systemUTC());

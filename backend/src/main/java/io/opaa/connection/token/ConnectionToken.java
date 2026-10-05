@@ -41,6 +41,15 @@ class ConnectionToken {
   @Column(name = "library_id")
   private UUID libraryId;
 
+  @Column(name = "pending_user_id")
+  private UUID pendingUserId;
+
+  @Column(name = "pending_expires_at")
+  private Instant pendingExpiresAt;
+
+  @Column(name = "pending_account_label", length = 500)
+  private String pendingAccountLabel;
+
   @Enumerated(EnumType.STRING)
   @Column(name = "kind", nullable = false, length = 16)
   private Kind kind;
@@ -103,6 +112,52 @@ class ConnectionToken {
         ofAccount(profileId, connectedAccountId, grant.refresh(), null, issuedFor, now);
     token.replaceGrant(grant, issuedFor, now);
     return token;
+  }
+
+  /** A library's own OAuth grant ("Quelle verbinden"). */
+  static ConnectionToken ofLibraryGrant(
+      UUID profileId, UUID libraryId, Ciphered grant, String issuedFor, Instant now) {
+    ConnectionToken token = new ConnectionToken();
+    token.id = UUID.randomUUID();
+    token.profileId = profileId;
+    token.libraryId = libraryId;
+    token.createdAt = now;
+    token.replaceGrant(grant, issuedFor, now);
+    return token;
+  }
+
+  /**
+   * An OAuth grant {@code userId} obtained as {@code accountLabel} for a library not created yet,
+   * held until {@code until}.
+   */
+  static ConnectionToken pendingGrant(
+      UUID profileId,
+      UUID userId,
+      String accountLabel,
+      Ciphered grant,
+      String issuedFor,
+      Instant now,
+      Instant until) {
+    ConnectionToken token = new ConnectionToken();
+    token.id = UUID.randomUUID();
+    token.profileId = profileId;
+    token.pendingUserId = userId;
+    token.pendingExpiresAt = until;
+    token.pendingAccountLabel = accountLabel;
+    token.createdAt = now;
+    token.replaceGrant(grant, issuedFor, now);
+    return token;
+  }
+
+  /**
+   * The library {@code libraryId} takes the pending grant over; it is the library's from now on.
+   */
+  void takenOverBy(UUID libraryId, Instant now) {
+    this.libraryId = libraryId;
+    this.pendingUserId = null;
+    this.pendingExpiresAt = null;
+    this.pendingAccountLabel = null;
+    this.updatedAt = now;
   }
 
   /** Replaces the secret with an OAuth grant and its binding, as a reconnection does. */
@@ -197,6 +252,29 @@ class ConnectionToken {
 
   UUID getConnectedAccountId() {
     return connectedAccountId;
+  }
+
+  UUID getLibraryId() {
+    return libraryId;
+  }
+
+  UUID getPendingUserId() {
+    return pendingUserId;
+  }
+
+  String getPendingAccountLabel() {
+    return pendingAccountLabel;
+  }
+
+  Instant getPendingExpiresAt() {
+    return pendingExpiresAt;
+  }
+
+  /** Whether the row is a pending grant of {@code userId} that has not expired at {@code now}. */
+  boolean pendingFor(UUID userId, Instant now) {
+    return userId.equals(pendingUserId)
+        && pendingExpiresAt != null
+        && pendingExpiresAt.isAfter(now);
   }
 
   Kind getKind() {

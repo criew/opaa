@@ -1,6 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetOwnerType;
+import io.opaa.connection.profile.LibraryConnection.Responsible;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.knowledge.SourceType;
 import java.net.URI;
@@ -34,7 +35,46 @@ public record LibraryCreation(
     Boolean sourceInsecureSsl,
     ConnectorData sourceSettings,
     LibraryScheduleUpdate schedule,
-    UUID connectionProfileId) {
+    UUID connectionProfileId,
+    NewSourceConsent sourceConsent) {
+
+  /**
+   * The source consent a library on an OAuth profile takes over: the caller's pending connection
+   * and who answers for it, {@code null} for the creator.
+   */
+  public record NewSourceConsent(UUID pendingConnectionId, Responsible responsible) {}
+
+  /** A library without a source consent of its own. */
+  public LibraryCreation(
+      String name,
+      String description,
+      AssetOwnerType ownerType,
+      UUID ownerId,
+      SourceType sourceType,
+      String sourcePath,
+      URI sourceUrl,
+      String sourceProxy,
+      String sourceCredentials,
+      Boolean sourceInsecureSsl,
+      ConnectorData sourceSettings,
+      LibraryScheduleUpdate schedule,
+      UUID connectionProfileId) {
+    this(
+        name,
+        description,
+        ownerType,
+        ownerId,
+        sourceType,
+        sourcePath,
+        sourceUrl,
+        sourceProxy,
+        sourceCredentials,
+        sourceInsecureSsl,
+        sourceSettings,
+        schedule,
+        connectionProfileId,
+        null);
+  }
 
   /** A library with its own address. */
   public LibraryCreation(
@@ -81,6 +121,7 @@ public record LibraryCreation(
         sourceInsecureSsl,
         sourceSettings,
         schedule,
-        connectionProfileId);
+        connectionProfileId,
+        sourceConsent);
   }
 }

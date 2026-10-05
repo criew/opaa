@@ -13,6 +13,7 @@ import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.SourceDraft;
 import io.opaa.connection.profile.SourceDraft.DraftOwner;
+import io.opaa.connection.token.SecretOwner.PendingConsent;
 import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.SourceBrowser;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
@@ -105,7 +106,11 @@ public class SourceConnectionTestService {
             request.connectorSettings() == null
                 ? null
                 : connector.readSettings(request.connectorSettings()));
-    SourceDraft draft = target.draftOf(sourceType, request.libraryId(), requested);
+    SourceDraft draft =
+        withPending(
+            target.draftOf(sourceType, request.libraryId(), requested),
+            request.pendingConnectionId(),
+            caller);
     SourceSettings settings;
     try {
       settings = settingsOf(target, draft);
@@ -180,16 +185,19 @@ public class SourceConnectionTestService {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
     SourceDraft draft =
-        target.draftOf(
-            request.sourceType(),
-            request.libraryId(),
-            new SourceSettings(
-                null,
-                sourceUrl,
-                request.sourceProxy(),
-                request.sourceCredentials(),
-                Boolean.TRUE.equals(request.sourceInsecureSsl()),
-                request.query()));
+        withPending(
+            target.draftOf(
+                request.sourceType(),
+                request.libraryId(),
+                new SourceSettings(
+                    null,
+                    sourceUrl,
+                    request.sourceProxy(),
+                    request.sourceCredentials(),
+                    Boolean.TRUE.equals(request.sourceInsecureSsl()),
+                    request.query())),
+            request.pendingConnectionId(),
+            caller);
     SourceSettings settings;
     try {
       settings = settingsOf(target, draft);
@@ -197,6 +205,22 @@ public class SourceConnectionTestService {
       return new SourceListing(false, List.of(), e.getMessage());
     }
     return browser.browse(new SourceBrowser.Query(settings, drafts.storedOf(draft)));
+  }
+
+  /**
+   * {@code draft} signing in with the caller's pending source consent {@code pendingConnectionId} -
+   * only towards a new library; the store hands it to that caller alone.
+   */
+  private static SourceDraft withPending(
+      SourceDraft draft, UUID pendingConnectionId, CurrentUser caller) {
+    if (pendingConnectionId == null) {
+      return draft;
+    }
+    if (draft.libraryId() != null) {
+      throw new ValidationException(
+          "pendingConnectionId gilt nur für eine Bibliothek, die noch angelegt wird");
+    }
+    return draft.withPending(new PendingConsent(pendingConnectionId, caller.id()));
   }
 
   /**

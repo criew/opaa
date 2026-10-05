@@ -38,7 +38,9 @@ public record SourceBlock(
     /** The library's managers enter its secret anew or correct its address. */
     EDIT_SOURCE,
     /** The library's managers - or the owner of a private library - assign it to a profile. */
-    ASSIGN_PROFILE
+    ASSIGN_PROFILE,
+    /** The library's managers connect its source anew at the provider ("Quelle verbinden"). */
+    CONNECT_SOURCE
   }
 
   /**

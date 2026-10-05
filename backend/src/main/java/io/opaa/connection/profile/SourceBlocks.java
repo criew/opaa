@@ -6,6 +6,7 @@ import io.opaa.connection.token.PrivateLibraryDeletionPeriod;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
+import io.opaa.connection.token.SecretOwner.SourceConsent;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceBlock.Action;
 import io.opaa.indexing.source.SourceBlock.Reason;
@@ -136,7 +137,8 @@ public class SourceBlocks {
   /**
    * The block for {@code reason}, one the secret store answers for {@code owner} on {@code
    * profile}: its notice names who acts - the owner of a private library, the system administration
-   * for the profile's own sign-in, else the library's managers.
+   * for the profile's own sign-in, else the library's managers, who connect a library's own consent
+   * anew.
    */
   public static SourceBlock secretBlock(
       Reason reason, ConnectionProfile profile, SecretOwner owner) {
@@ -150,6 +152,9 @@ public class SourceBlocks {
     String access = "„" + profile.getName() + "“";
     if (owner instanceof ProfileOwned) {
       return profileSignInBlock(reason, access);
+    }
+    if (owner instanceof SourceConsent) {
+      return consentBlock(reason, access);
     }
     return switch (reason) {
       case OWNER_DEACTIVATED ->
@@ -240,6 +245,38 @@ public class SourceBlocks {
       case TYPE_LOCKED, PROFILE_LOCKED, PROFILE_REQUIRED, ACCESS_REMOVED ->
           throw new IllegalArgumentException(reason + " is no answer of the secret store");
     };
+  }
+
+  /**
+   * The block of a library's own consent ("Quelle verbinden"): its managers connect the source
+   * anew; the person who gave it plays no part.
+   */
+  private static SourceBlock consentBlock(Reason reason, String access) {
+    String notice =
+        switch (reason) {
+          case EXPIRED ->
+              "Abgelaufen: Die Verbindung der Quelle über den Zugang "
+                  + access
+                  + " ist abgelaufen oder wurde vom Anbieter abgelehnt. Die Verwaltenden der"
+                  + " Bibliothek verbinden die Quelle neu.";
+          case NOT_CONNECTED ->
+              "Nicht verbunden: Die Quelle ist über den Zugang "
+                  + access
+                  + " nicht verbunden. Die Verwaltenden der Bibliothek verbinden sie.";
+          case TARGET_OUTSIDE_PROFILE ->
+              "Ziel weicht ab: Die Bibliothek erreicht ein anderes Ziel als das, für das die"
+                  + " Verbindung über den Zugang "
+                  + access
+                  + " gilt. Die Verwaltenden der Bibliothek verbinden die Quelle neu.";
+          case OWNER_DEACTIVATED,
+              DORMANT,
+              TYPE_LOCKED,
+              PROFILE_LOCKED,
+              PROFILE_REQUIRED,
+              ACCESS_REMOVED ->
+              throw new IllegalArgumentException(reason + " is no state of a library's consent");
+        };
+    return new SourceBlock(reason, LIBRARY_MANAGERS, notice + CONTENT_STAYS, Action.CONNECT_SOURCE);
   }
 
   /** The block of a profile's own sign-in: only the system administration can lift it. */
@@ -458,13 +495,15 @@ public class SourceBlocks {
 
   /**
    * Whether the store holds the secret of {@code owner} on {@code profile}: a personal secret of a
-   * library, and any secret of a person; the profile's own sign-in is read from its row, OAuth for
-   * a library is not supported yet.
+   * library, a library's own consent, and any secret of a person; the profile's own sign-in is read
+   * from its row.
    */
   private static boolean asksTheStore(ConnectionProfile profile, SecretOwner owner) {
     ConnectionAuthMethod method = profile.getAuthMethod();
     return method != ConnectionAuthMethod.NONE
-        && (method == ConnectionAuthMethod.PERSONAL_SECRET || owner instanceof PersonOwned);
+        && (method == ConnectionAuthMethod.PERSONAL_SECRET
+            || owner instanceof PersonOwned
+            || owner instanceof SourceConsent);
   }
 
   private SourceBlock typeLock(SourceType type) {
@@ -595,23 +634,10 @@ public class SourceBlocks {
     }
 
     private Optional<SourceBlock> notConnected() {
-      ConnectionAuthMethod method = profile.getAuthMethod();
-      if (method == ConnectionAuthMethod.NONE) {
+      if (profile.getAuthMethod() == ConnectionAuthMethod.NONE || secretOwner == null) {
         return Optional.empty();
       }
-      if (secretOwner != null) {
-        return fromTheStore(Reason.NOT_CONNECTED);
-      }
-      // OAUTH for a library: no library can be connected with it yet
-      return Optional.of(
-          new SourceBlock(
-              Reason.NOT_CONNECTED,
-              ADMINISTRATION,
-              "Nicht verbunden: Die Anmeldeart des Zugangs \""
-                  + profile.getName()
-                  + "\" wird für Bibliotheken noch nicht unterstützt. Zuständig ist die"
-                  + " Systemverwaltung."
-                  + CONTENT_STAYS));
+      return fromTheStore(Reason.NOT_CONNECTED);
     }
   }
 }

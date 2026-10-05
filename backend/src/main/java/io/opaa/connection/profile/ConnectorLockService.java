@@ -178,8 +178,9 @@ public class ConnectorLockService {
   }
 
   /**
-   * What each of {@code libraries} shows: its lock, and for a private library every reason its
-   * source is not reached - only its owner reads it, and she acts on each. A free one is absent.
+   * What each of {@code libraries} shows: its lock, for a shared library also a lapsed own consent
+   * its managers connect anew, and for a private library every reason its source is not reached -
+   * only its owner reads it, and she acts on each. A free one is absent.
    */
   public Map<UUID, SourceBlock> shownAmong(Collection<KnowledgeLibrary> libraries) {
     List<KnowledgeLibrary> shared = new ArrayList<>();
@@ -187,7 +188,16 @@ public class ConnectorLockService {
     for (KnowledgeLibrary library : libraries) {
       (library.isOwnerOnly() ? owned : shared).add(library);
     }
-    Map<UUID, SourceBlock> shown = new HashMap<>(locksOf(shared));
+    Map<UUID, SourceBlock> shown = new HashMap<>();
+    // the locks precede every other reason, so the first block is the lock wherever one holds
+    blocks
+        .blocksAmong(shared, SourceBlocks.ALL)
+        .forEach(
+            (libraryId, block) -> {
+              if (block.reason().lock() || block.action() == SourceBlock.Action.CONNECT_SOURCE) {
+                shown.put(libraryId, block);
+              }
+            });
     shown.putAll(blocks.blocksAmong(owned, SourceBlocks.ALL));
     return shown;
   }

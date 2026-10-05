@@ -113,6 +113,14 @@ public class SourceChangeGate {
     connector(library).onSourceChanged(library, true, Set.of());
   }
 
+  /**
+   * Discards the run state of {@code library} whose source is now reached as another account at the
+   * provider: what it listed before need not be what the new account sees, as with a new address.
+   */
+  public void accountChanged(KnowledgeLibrary library) {
+    connector(library).onSourceChanged(library, true, Set.of());
+  }
+
   private SourceConnector connector(KnowledgeLibrary library) {
     return connectors.connector(library.getSourceType());
   }

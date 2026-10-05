@@ -1082,7 +1082,9 @@ class PermissionHistoryServiceIntegrationTest {
    * and its write paths are covered above. {@code AssetFavoriteService} (#2095) reads the formula
    * only to refuse a favorite on an asset the caller cannot read; it writes favorites only. {@code
    * ProfileFullSync} (#2220) only reads the grants of a library to tell its managers that a changed
-   * profile forces a full sync; it writes notifications only.
+   * profile forces a full sync; it writes notifications only. {@code ConsentResponsibles} (#2169)
+   * only reads the grants and groups of a library to check who may answer for its source consent
+   * and to tell them; it writes nothing.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1114,6 +1116,7 @@ class PermissionHistoryServiceIntegrationTest {
           "LibraryAccessService",
           "AssetShellOwnershipDirectory",
           "AssetSuccessionSource",
+          "ConsentResponsibles",
           "LocalAccountGroupDirectoryAdapter",
           "PermissionTransferService",
           "PointInTimeAccessService",
@@ -1168,6 +1171,8 @@ class PermissionHistoryServiceIntegrationTest {
           // #2160: the profile a library is connected through changes no grant
           "KnowledgeLibraryService#connectProfile",
           "KnowledgeLibraryService#disconnectProfile",
+          // #2169: disconnecting a library's source consent changes no grant
+          "KnowledgeLibraryService#disconnectSource",
           "KnowledgeLibraryService#profileOptions",
           "KnowledgeLibraryService#getLibrary",
           "KnowledgeLibraryService#listLibraries",

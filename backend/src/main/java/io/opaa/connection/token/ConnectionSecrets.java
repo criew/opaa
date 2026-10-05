@@ -6,8 +6,10 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.connection.token.PersonAccounts.AccountKey;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
+import io.opaa.connection.token.SecretOwner.PendingConsent;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
+import io.opaa.connection.token.SecretOwner.SourceConsent;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.SignInRejectedException;
@@ -50,7 +52,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * records the account's use at most once per {@link #USE_RESOLUTION}. An OAuth grant is renewed
  * here under its row lock and revoked after a discard commits. A profile's own sign-in holds no
  * row: its token comes from {@link SecretIssuer#mint}, and whether it is refused the profile row
- * says.
+ * says. A library's own consent is handed out whoever gave it; a pending consent only to the person
+ * who gave it, until its library takes it over or it expires.
  */
 @Component
 public class ConnectionSecrets {
@@ -76,6 +79,7 @@ public class ConnectionSecrets {
   private final CredentialsEncryptor encryptor;
   private final ObjectProvider<SecretIssuer> issuers;
   private final ObjectProvider<GrantRejections> grantRejections;
+  private final ObjectProvider<SourceConsentRejections> consentRejections;
   private final Duration inactivityThreshold;
   private final TransactionTemplate usage;
   private final TransactionTemplate renewal;
@@ -91,6 +95,7 @@ public class ConnectionSecrets {
       CredentialsEncryptor encryptor,
       ObjectProvider<SecretIssuer> issuers,
       ObjectProvider<GrantRejections> grantRejections,
+      ObjectProvider<SourceConsentRejections> consentRejections,
       ConnectionLifecycleProperties lifecycle,
       PlatformTransactionManager transactionManager,
       Clock clock) {
@@ -103,6 +108,7 @@ public class ConnectionSecrets {
     this.encryptor = encryptor;
     this.issuers = issuers;
     this.grantRejections = grantRejections;
+    this.consentRejections = consentRejections;
     this.inactivityThreshold = lifecycle.inactivityThreshold();
     this.usage = new TransactionTemplate(transactionManager);
     this.usage.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -128,6 +134,8 @@ public class ConnectionSecrets {
       }
       case PersonOwned person -> personSecret(person, target, null);
       case ProfileOwned(UUID profileId) -> issuer().mint(profileId);
+      case SourceConsent consent -> consentSecret(consent, consentOf(consent), target, null);
+      case PendingConsent pending -> consentSecret(pending, pendingOf(pending), target, null);
     };
   }
 
@@ -146,6 +154,8 @@ public class ConnectionSecrets {
       }
       case PersonOwned person -> personSecret(person, target, rejected);
       case LibraryOwned ignored -> current(owner, target);
+      case SourceConsent consent -> consentSecret(consent, consentOf(consent), target, rejected);
+      case PendingConsent pending -> consentSecret(pending, pendingOf(pending), target, rejected);
     };
   }
 
@@ -165,16 +175,26 @@ public class ConnectionSecrets {
   public Map<SecretOwner, Reason> statesAmong(Collection<SecretOwner> owners) {
     List<UUID> libraryIds = new ArrayList<>();
     List<PersonOwned> persons = new ArrayList<>();
+    List<UUID> consenting = new ArrayList<>();
     for (SecretOwner owner : owners) {
       switch (owner) {
         case LibraryOwned(UUID libraryId) -> libraryIds.add(libraryId);
         case PersonOwned person -> persons.add(person);
+        case SourceConsent consent -> consenting.add(consent.libraryId());
         case ProfileOwned ignored -> {}
+        case PendingConsent ignored -> {}
       }
     }
     Set<UUID> holding =
         libraryIds.isEmpty() ? Set.of() : libraries.findIdsHoldingSourceCredentials(libraryIds);
     Map<PersonOwned, Reason> personStates = personStates(persons);
+    Map<UUID, ConnectionToken> consentOfLibrary = new HashMap<>();
+    if (!consenting.isEmpty()) {
+      for (ConnectionToken token : tokens.findByLibraryIdIn(consenting)) {
+        consentOfLibrary.put(token.getLibraryId(), token);
+      }
+    }
+    Instant now = clock.instant();
     Map<SecretOwner, Reason> states = new HashMap<>();
     for (SecretOwner owner : owners) {
       switch (owner) {
@@ -189,7 +209,16 @@ public class ConnectionSecrets {
             states.put(owner, reason);
           }
         }
+        case SourceConsent consent -> {
+          ConnectionToken token = consentOfLibrary.get(consent.libraryId());
+          if (token == null || !token.getProfileId().equals(consent.profileId())) {
+            states.put(owner, Reason.NOT_CONNECTED);
+          } else if (token.expiredAt(now)) {
+            states.put(owner, Reason.EXPIRED);
+          }
+        }
         case ProfileOwned ignored -> {}
+        case PendingConsent ignored -> {}
       }
     }
     return states;
@@ -205,6 +234,8 @@ public class ConnectionSecrets {
       case LibraryOwned(UUID libraryId) -> columnOf(libraryId);
       case PersonOwned ignored -> null;
       case ProfileOwned ignored -> null;
+      case SourceConsent ignored -> null;
+      case PendingConsent ignored -> null;
     };
   }
 
@@ -217,6 +248,8 @@ public class ConnectionSecrets {
       case LibraryOwned ignored -> stored(owner) != null;
       case PersonOwned person -> tokenOf(person).isPresent();
       case ProfileOwned ignored -> false;
+      case SourceConsent consent -> consentOf(consent).isPresent();
+      case PendingConsent pending -> pendingOf(pending).isPresent();
     };
   }
 
@@ -224,8 +257,9 @@ public class ConnectionSecrets {
    * Stores {@code secret} for {@code owner}, issued for {@code target}; it replaces a held one.
    *
    * @throws IllegalStateException for a library, whose own secret the library administration
-   *     writes, for a profile, whose registration the profile administration writes, and for a
-   *     person without a connected account on the profile
+   *     writes, for a profile, whose registration the profile administration writes, for a person
+   *     without a connected account on the profile, for anything but an OAuth grant as a library's
+   *     consent, and for a pending consent, which {@link #storePending} creates
    */
   public void store(SecretOwner owner, NewSecret secret, String target) {
     switch (owner) {
@@ -245,7 +279,84 @@ public class ConnectionSecrets {
       case ProfileOwned ignored ->
           throw new IllegalStateException(
               "a profile's registration is written by the profile administration");
+      case SourceConsent consent -> {
+        if (!(secret instanceof NewSecret.OAuthGrant grant)) {
+          throw new IllegalStateException("a library's consent is an OAuth grant");
+        }
+        storeConsent(consent, grant, target);
+      }
+      case PendingConsent ignored ->
+          throw new IllegalStateException("a pending consent is created by storePending");
     }
+  }
+
+  /**
+   * Holds {@code grant}, obtained by {@code userId} as {@code accountLabel} ({@code null} for
+   * unknown) on profile {@code profileId} for a library not created yet and issued for {@code
+   * target}, until {@code lifetime} has passed.
+   *
+   * @return the pending consent, which only {@code userId} can use and hand to a new library
+   */
+  public PendingConsent storePending(
+      UUID profileId,
+      UUID userId,
+      String accountLabel,
+      NewSecret.OAuthGrant grant,
+      String target,
+      Duration lifetime) {
+    Instant now = clock.instant();
+    ConnectionToken token =
+        ConnectionToken.pendingGrant(
+            profileId, userId, accountLabel, ciphered(grant), target, now, now.plus(lifetime));
+    tokens.save(token);
+    return new PendingConsent(token.getId(), userId);
+  }
+
+  /**
+   * Hands {@code pending} to the new library of {@code owner}: only where it is the same person's,
+   * not expired, on the same profile and issued for {@code target}. Needs a transaction.
+   *
+   * @return whether the library took it over; nothing changes otherwise
+   */
+  public boolean takeOver(PendingConsent pending, SourceConsent owner, String target) {
+    ConnectionToken token = tokens.findLockedById(pending.tokenId()).orElse(null);
+    if (token == null
+        || !token.pendingFor(pending.userId(), clock.instant())
+        || !token.getProfileId().equals(owner.profileId())
+        || !token.getIssuedFor().equals(target)
+        || consentOf(owner).isPresent()) {
+      return false;
+    }
+    token.takenOverBy(owner.libraryId(), clock.instant());
+    tokens.save(token);
+    return true;
+  }
+
+  /**
+   * What {@code pending} is while its person can use it, empty for one unknown, another person's or
+   * expired; read without decrypting.
+   */
+  public Optional<PendingView> pendingView(PendingConsent pending) {
+    return pendingOf(pending)
+        .map(
+            token ->
+                new PendingView(
+                    token.getProfileId(),
+                    token.getPendingAccountLabel(),
+                    token.getPendingExpiresAt()));
+  }
+
+  /**
+   * Discards every pending consent past its end, revoked after the caller's transaction commits.
+   * Needs a transaction.
+   *
+   * @return how many went
+   */
+  public int discardExpiredPending() {
+    List<ConnectionToken> expired = tokens.findPendingExpiredBy(clock.instant());
+    revokeAfterCommit(expired);
+    tokens.deleteAll(expired);
+    return expired.size();
   }
 
   /**
@@ -274,7 +385,19 @@ public class ConnectionSecrets {
         forgetMinted(profileId);
         yield 0;
       }
+      case SourceConsent consent -> discardRow(consentOf(consent));
+      case PendingConsent pending -> discardRow(pendingOf(pending));
     };
+  }
+
+  /** Deletes {@code held}, revoked once the caller's transaction committed; 0 for none. */
+  private int discardRow(Optional<ConnectionToken> held) {
+    held.ifPresent(
+        token -> {
+          revokeAfterCommit(List.of(token));
+          tokens.delete(token);
+        });
+    return 0;
   }
 
   /**
@@ -306,15 +429,43 @@ public class ConnectionSecrets {
     return ending;
   }
 
+  /**
+   * When the OAuth grant of a library's own consent ends as its provider named it; as {@link
+   * #grantEnd(PersonOwned)}.
+   */
+  public Optional<Instant> grantEnd(SourceConsent owner) {
+    Instant now = clock.instant();
+    return consentOf(owner)
+        .map(ConnectionToken::getExpiresAt)
+        .filter(end -> end != null && end.isAfter(now));
+  }
+
+  /**
+   * Claims the libraries' own consents whose named end lies within {@link #EXPIRY_WARNING} and was
+   * not warned of, as {@link #claimEndingGrants}. Needs a transaction.
+   */
+  public List<EndingConsent> claimEndingConsents() {
+    Instant now = clock.instant();
+    List<EndingConsent> ending = new ArrayList<>();
+    for (ConnectionToken token :
+        tokens.findLibraryGrantsEndingUnwarned(now, now.plus(EXPIRY_WARNING))) {
+      token.expiryWarned(now);
+      ending.add(
+          new EndingConsent(token.getLibraryId(), token.getProfileId(), token.getExpiresAt()));
+    }
+    return ending;
+  }
+
   /** How many stored secrets of persons are past their end now, counted without decrypting. */
   public long countExpiredPersonSecrets() {
     return tokens.countPersonsEndedBy(clock.instant());
   }
 
   /**
-   * Discards every secret held under {@code profileId} - of its libraries, of persons and the token
-   * of its own sign-in - for {@code cause}. Ending the persons' connections is left to their
-   * accounts, the profile's registration to the profile administration.
+   * Discards every secret held under {@code profileId} - of its libraries, their own and pending
+   * consents, of persons and the token of its own sign-in - for {@code cause}. Ending the persons'
+   * connections is left to their accounts, the libraries' consents to their connections, the
+   * profile's registration to the profile administration.
    */
   public Discarded discardAllUnder(UUID profileId, ConnectionEndCause cause) {
     List<UUID> under = librariesOnProfile.libraryIdsOnProfile(profileId);
@@ -323,6 +474,8 @@ public class ConnectionSecrets {
     }
     forgetMinted(profileId);
     revokeAfterCommit(tokens.findPersonGrantsUnder(profileId));
+    revokeAfterCommit(tokens.findConsentsUnder(profileId));
+    tokens.deleteConsentsUnder(profileId);
     int persons = tokens.deletePersonsUnder(profileId);
     log.info(
         "Discarded the secrets of {} libraries and {} persons under profile {} ({})",
@@ -341,15 +494,33 @@ public class ConnectionSecrets {
   public void rejected(SecretOwner owner) {
     switch (owner) {
       case LibraryOwned ignored -> {}
+      case PendingConsent ignored -> {}
       case ProfileOwned(UUID profileId) -> forgetMinted(profileId);
-      case PersonOwned person ->
-          tokenOf(person)
-              .ifPresent(
-                  token -> {
-                    token.endedAt(clock.instant());
-                    tokens.save(token);
-                  });
+      case PersonOwned person -> tokenOf(person).ifPresent(this::endNow);
+      case SourceConsent consent -> consentOf(consent).ifPresent(this::endNow);
     }
+  }
+
+  private void endNow(ConnectionToken token) {
+    token.endedAt(clock.instant());
+    tokens.save(token);
+  }
+
+  /**
+   * The access token of a library's own or a pending consent, renewed as a person's; no account
+   * decides whether it is handed out.
+   */
+  private Secret consentSecret(
+      SecretOwner owner, Optional<ConnectionToken> held, String target, Secret rejected) {
+    ConnectionToken token =
+        held.orElseThrow(() -> new SecretRefusedException(Reason.NOT_CONNECTED));
+    if (!token.getIssuedFor().equals(target)) {
+      throw new SecretRefusedException(Reason.TARGET_OUTSIDE_PROFILE);
+    }
+    if (token.expiredAt(clock.instant())) {
+      throw new SecretRefusedException(Reason.EXPIRED);
+    }
+    return accessToken(owner, token, rejected == null ? null : rejected.value());
   }
 
   private Secret personSecret(PersonOwned person, String target, Secret rejected) {
@@ -385,11 +556,11 @@ public class ConnectionSecrets {
    * provider refusing the grant ends the connection; a provider out of reach leaves the stored
    * token in use until it really ends.
    */
-  private Secret accessToken(PersonOwned person, ConnectionToken token, String rejected) {
+  private Secret accessToken(SecretOwner owner, ConnectionToken token, String rejected) {
     if (rejected == null && lasts(token, clock.instant())) {
       return storedAccess(token);
     }
-    Renewal renewed = renewal.execute(status -> renewLocked(person, token.getId(), rejected));
+    Renewal renewed = renewal.execute(status -> renewLocked(owner, token.getId(), rejected));
     if (renewed.secret() != null) {
       return renewed.secret();
     }
@@ -399,7 +570,7 @@ public class ConnectionSecrets {
     throw new SecretRefusedException(renewed.refused());
   }
 
-  private Renewal renewLocked(PersonOwned person, UUID tokenId, String rejected) {
+  private Renewal renewLocked(SecretOwner owner, UUID tokenId, String rejected) {
     Instant now = clock.instant();
     ConnectionToken token = tokens.findLockedById(tokenId).orElse(null);
     if (token == null) {
@@ -415,11 +586,11 @@ public class ConnectionSecrets {
     }
     SecretIssuer.Issued issued;
     try {
-      issued = issuer().renew(person.profileId(), decrypt(token), token.getIssuedFor());
+      issued = issuer().renew(token.getProfileId(), decrypt(token), token.getIssuedFor());
     } catch (SignInRejectedException e) {
       log.info(
           "The provider no longer takes an OAuth grant under profile {}", token.getProfileId());
-      grantRejections.getObject().grantRejected(person);
+      grantRejected(owner, token);
       return Renewal.refused(Reason.EXPIRED);
     } catch (SourceCredentialsException e) {
       boolean usable =
@@ -438,6 +609,17 @@ public class ConnectionSecrets {
     tokens.save(token);
     return Renewal.of(
         new Secret(SecretKind.ACCESS_TOKEN, issued.accessToken(), issued.accessTokenExpiresAt()));
+  }
+
+  /** Ends a grant the provider refused: a person's or a library's connection, a pending row. */
+  private void grantRejected(SecretOwner owner, ConnectionToken token) {
+    switch (owner) {
+      case PersonOwned person -> grantRejections.getObject().grantRejected(person);
+      case SourceConsent consent -> consentRejections.getObject().consentRejected(consent);
+      case PendingConsent ignored -> endNow(token);
+      case LibraryOwned ignored -> {}
+      case ProfileOwned ignored -> {}
+    }
   }
 
   /**
@@ -585,14 +767,43 @@ public class ConnectionSecrets {
     tokens.save(token);
   }
 
+  private ConnectionToken.Ciphered ciphered(NewSecret.OAuthGrant grant) {
+    return new ConnectionToken.Ciphered(
+        encryptor.encrypt(grant.refreshToken()),
+        encryptor.encrypt(grant.accessToken()),
+        grant.accessTokenExpiresAt(),
+        grant.expiresAt());
+  }
+
+  /**
+   * Stores a library's own consent on its profile; one it replaces is revoked once the caller
+   * committed, one under another profile also goes.
+   */
+  private void storeConsent(SourceConsent owner, NewSecret.OAuthGrant grant, String target) {
+    ConnectionToken.Ciphered ciphered = ciphered(grant);
+    Instant now = clock.instant();
+    Optional<ConnectionToken> held = tokens.findByLibraryId(owner.libraryId());
+    held.ifPresent(replaced -> revokeAfterCommit(List.of(replaced)));
+    ConnectionToken token;
+    if (held.isPresent() && held.get().getProfileId().equals(owner.profileId())) {
+      token = held.get();
+      token.replaceGrant(ciphered, target, now);
+    } else {
+      held.ifPresent(
+          other -> {
+            tokens.delete(other);
+            tokens.flush();
+          });
+      token =
+          ConnectionToken.ofLibraryGrant(
+              owner.profileId(), owner.libraryId(), ciphered, target, now);
+    }
+    tokens.save(token);
+  }
+
   private void storeGrant(
       PersonOwned person, UUID accountId, NewSecret.OAuthGrant grant, String target) {
-    ConnectionToken.Ciphered ciphered =
-        new ConnectionToken.Ciphered(
-            encryptor.encrypt(grant.refreshToken()),
-            encryptor.encrypt(grant.accessToken()),
-            grant.accessTokenExpiresAt(),
-            grant.expiresAt());
+    ConnectionToken.Ciphered ciphered = ciphered(grant);
     Instant now = clock.instant();
     Optional<ConnectionToken> held = tokens.findByConnectedAccountId(accountId);
     held.ifPresent(replaced -> revokeAfterCommit(List.of(replaced)));
@@ -697,6 +908,20 @@ public class ConnectionSecrets {
     return accountIdOf(person).flatMap(tokens::findByConnectedAccountId);
   }
 
+  /** The library's own consent, only on the profile {@code owner} names. */
+  private Optional<ConnectionToken> consentOf(SourceConsent owner) {
+    return tokens
+        .findByLibraryId(owner.libraryId())
+        .filter(token -> token.getProfileId().equals(owner.profileId()));
+  }
+
+  /** The pending consent, only for its person and before it expires. */
+  private Optional<ConnectionToken> pendingOf(PendingConsent pending) {
+    return tokens
+        .findById(pending.tokenId())
+        .filter(token -> token.pendingFor(pending.userId(), clock.instant()));
+  }
+
   /** The library's secret as stored now; inside a transaction its managed entity. */
   private String columnOf(UUID libraryId) {
     return libraries.findById(libraryId).map(KnowledgeLibrary::getSourceCredentials).orElse(null);
@@ -723,4 +948,13 @@ public class ConnectionSecrets {
 
   /** A person's OAuth grant on a connected account, ending at {@code endsAt}. */
   public record EndingGrant(UUID connectedAccountId, UUID profileId, Instant endsAt) {}
+
+  /** A library's own consent on a profile, ending at {@code endsAt}. */
+  public record EndingConsent(UUID libraryId, UUID profileId, Instant endsAt) {}
+
+  /**
+   * A pending consent: its profile, the account it was given as ({@code null} for unknown) and
+   * until when a new library can take it over.
+   */
+  public record PendingView(UUID profileId, String accountLabel, Instant expiresAt) {}
 }

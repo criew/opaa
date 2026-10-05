@@ -357,10 +357,11 @@ class SourceBlocksTest {
             ConnectionAuthMethod.OAUTH,
             new SourceBlock(
                 Reason.NOT_CONNECTED,
-                "Systemverwaltung",
-                "Nicht verbunden: Die Anmeldeart des Zugangs \"Feeds\" wird für Bibliotheken"
-                    + " noch nicht unterstützt. Zuständig ist die Systemverwaltung. Der Inhalt"
-                    + " bleibt durchsuchbar, wird aber nicht mehr aktualisiert.")));
+                "Verwaltende der Bibliothek",
+                "Nicht verbunden: Die Quelle ist über den Zugang „Feeds“ nicht verbunden. Die"
+                    + " Verwaltenden der Bibliothek verbinden sie. Der Inhalt bleibt"
+                    + " durchsuchbar, wird aber nicht mehr aktualisiert.",
+                SourceBlock.Action.CONNECT_SOURCE)));
   }
 
   @ParameterizedTest(name = "{2}")

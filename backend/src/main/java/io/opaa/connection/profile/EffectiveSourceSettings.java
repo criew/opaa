@@ -5,8 +5,10 @@ import io.opaa.common.ValidationException;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
+import io.opaa.connection.token.SecretOwner.PendingConsent;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretOwner.ProfileOwned;
+import io.opaa.connection.token.SecretOwner.SourceConsent;
 import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
@@ -147,7 +149,14 @@ public class EffectiveSourceSettings {
     }
     Secret secret;
     if (frame.isPresent()) {
-      secret = draftSecretUnder(frame.get(), requested, keepsStored ? library : null, signIn);
+      secret =
+          draftSecretUnder(
+              frame.get(),
+              requested,
+              keepsStored ? library : null,
+              signIn,
+              draft.pending(),
+              SecretTarget.of(connector, compose(own, frame, null)).key());
     } else if (keepsStored) {
       secret = ownFields.currentSecret(library);
     } else {
@@ -251,6 +260,7 @@ public class EffectiveSourceSettings {
     if (profile.isPresent()) {
       SecretOwner owner = ownerOn(profile.get(), library);
       if (owner instanceof ProfileOwned
+          || owner instanceof SourceConsent
           || owner instanceof PersonOwned
               && profile.get().getAuthMethod() == ConnectionAuthMethod.OAUTH) {
         return secretOf(owner, profile.get(), library, true, rejected);
@@ -297,7 +307,7 @@ public class EffectiveSourceSettings {
       case PERSONAL_SECRET, CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY ->
           secretOf(owner, found, library, false, null);
       case OAUTH -> {
-        if (owner instanceof PersonOwned) {
+        if (owner instanceof PersonOwned || owner instanceof SourceConsent) {
           yield secretOf(owner, found, library, false, null);
         }
         throw new IllegalStateException(
@@ -337,13 +347,25 @@ public class EffectiveSourceSettings {
   /**
    * A draft's secret under a profile, with its kind: for a personal secret the sent one, else the
    * stored one of {@code keeping}; for the profile's own sign-in its access token where {@code
-   * signIn}; none for OAuth, which takes no secret of the library yet.
+   * signIn}; for OAuth the access token of the draft's {@code pending} consent issued for {@code
+   * target}, else of the consent {@code keeping} holds.
    */
   private Secret draftSecretUnder(
-      ProfileFrame frame, SourceSettings requested, KnowledgeLibrary keeping, boolean signIn) {
+      ProfileFrame frame,
+      SourceSettings requested,
+      KnowledgeLibrary keeping,
+      boolean signIn,
+      PendingConsent pending,
+      String target) {
     ConnectionProfile profile = frame.profile();
     return switch (profile.getAuthMethod()) {
-      case NONE, OAUTH -> null;
+      case NONE -> null;
+      case OAUTH -> {
+        if (pending != null && signIn) {
+          yield pendingToken(profile, pending, target);
+        }
+        yield keeping == null || !signIn ? null : storedSecretFor(profile, keeping);
+      }
       case PERSONAL_SECRET -> {
         if (requested.sourceCredentials() != null) {
           yield requested.credentials();
@@ -352,6 +374,23 @@ public class EffectiveSourceSettings {
       }
       case CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> signIn ? profileToken(profile) : null;
     };
+  }
+
+  /**
+   * The access token of the {@code pending} consent for a probe of a library not created yet.
+   *
+   * @throws SourceCredentialsException with the notice why none is handed out
+   */
+  private Secret pendingToken(ConnectionProfile profile, PendingConsent pending, String target) {
+    try {
+      return secrets.current(pending, target);
+    } catch (SecretRefusedException e) {
+      throw new SourceCredentialsException(
+          "Die Verbindung der Quelle über den Zugang „"
+              + profile.getName()
+              + "“ ist abgelaufen oder gilt für ein anderes Ziel. Bitte verbinden Sie die Quelle"
+              + " erneut.");
+    }
   }
 
   /**
@@ -421,6 +460,28 @@ public class EffectiveSourceSettings {
                 Optional.of(frame(profile)),
                 null))
         .key();
+  }
+
+  /**
+   * The key of the target the own consent of {@code library} - {@code null} for one not created yet
+   * - is issued for under {@code profile}: as a run asks, the profile's server address before.
+   */
+  public String consentTarget(ConnectionProfile profile, KnowledgeLibrary library) {
+    return library == null ? personTarget(profile) : targetOf(library, profile).key();
+  }
+
+  /**
+   * The configuration a connector names the account of {@code access} with - {@code library}'s
+   * under {@code profile}, or the profile's server address for one not created yet. No block
+   * refuses it.
+   */
+  public SourceSettings withAccessToken(
+      ConnectionProfile profile, KnowledgeLibrary library, Secret access) {
+    Own own =
+        library == null
+            ? new Own(null, profile.getServerUrl(), new TransportRules(null, false), null)
+            : Own.of(library);
+    return compose(own, Optional.of(frame(profile)), access);
   }
 
   /** The target of the secret {@code library} holds under {@code profile}. */

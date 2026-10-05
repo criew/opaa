@@ -1,0 +1,48 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-05-source-consent
+      author: opaa
+      comment: "Quelle verbinden (#2169): a library's own OAuth consent with a service account. The consent a person started records the confirmed kind of account and, for a reconnection, who is responsible and whether a changed account was confirmed; a grant obtained before its library exists is held for its person until the library is created; the connection of a library names the account, who connected it, who is responsible and why it ended."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_authorizations ADD COLUMN service_account_confirmed_at timestamp with time zone;
+              ALTER TABLE connection_authorizations ADD COLUMN responsible_type character varying(10);
+              ALTER TABLE connection_authorizations ADD COLUMN responsible_id uuid;
+              ALTER TABLE connection_authorizations ADD COLUMN account_change_confirmed_at timestamp with time zone;
+
+              ALTER TABLE connection_tokens ADD COLUMN pending_user_id uuid;
+              ALTER TABLE connection_tokens ADD COLUMN pending_expires_at timestamp with time zone;
+              -- the account the pending grant was given as, carried over to the library's connection
+              ALTER TABLE connection_tokens ADD COLUMN pending_account_label character varying(500);
+              ALTER TABLE connection_tokens ADD CONSTRAINT fk_connection_tokens_pending_user
+                  FOREIGN KEY (pending_user_id) REFERENCES users(id) ON DELETE CASCADE;
+              -- a pending grant belongs to a person until its library is created, and only for a while
+              ALTER TABLE connection_tokens ADD CONSTRAINT chk_connection_tokens_pending
+                  CHECK ((pending_user_id IS NULL) = (pending_expires_at IS NULL));
+              ALTER TABLE connection_tokens DROP CONSTRAINT chk_connection_tokens_owner;
+              ALTER TABLE connection_tokens ADD CONSTRAINT chk_connection_tokens_owner
+                  CHECK (num_nonnulls(connected_account_id, library_id, pending_user_id) = 1);
+              CREATE INDEX ix_connection_tokens_pending_user ON connection_tokens (pending_user_id);
+              CREATE INDEX ix_connection_tokens_pending_expiry ON connection_tokens (pending_expires_at);
+
+              ALTER TABLE library_connections ADD COLUMN account_label character varying(500);
+              ALTER TABLE library_connections ADD COLUMN connected_by uuid;
+              ALTER TABLE library_connections ADD COLUMN connected_at timestamp with time zone;
+              ALTER TABLE library_connections ADD COLUMN responsible_type character varying(10);
+              ALTER TABLE library_connections ADD COLUMN responsible_id uuid;
+              ALTER TABLE library_connections ADD COLUMN ended_cause character varying(30);
+              ALTER TABLE library_connections ADD COLUMN ended_at timestamp with time zone;
+              -- the consenting person may leave; the connection stays the library's
+              ALTER TABLE library_connections ADD CONSTRAINT fk_library_connections_connected_by
+                  FOREIGN KEY (connected_by) REFERENCES users(id) ON DELETE SET NULL;
+              ALTER TABLE library_connections ADD CONSTRAINT chk_library_connections_responsible
+                  CHECK ((responsible_type IS NULL) = (responsible_id IS NULL)
+                      AND (responsible_type IS NULL OR responsible_type IN ('USER', 'GROUP')));
+              ALTER TABLE library_connections ADD CONSTRAINT chk_library_connections_ended
+                  CHECK ((ended_cause IS NULL) = (ended_at IS NULL)
+                      AND (ended_cause IS NULL OR ended_cause IN
+                          ('SELF', 'EMERGENCY', 'ADDRESS_CHANGED', 'REGISTRATION_CHANGED',
+                           'PROFILE_DELETED', 'PROVIDER_REJECTED', 'SECRET_EXPIRED',
+                           'PROFILE_CHANGED')));
+              CREATE INDEX ix_library_connections_connected_by ON library_connections (connected_by);

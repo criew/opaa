@@ -13,9 +13,10 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 ## Invarianten und Stolpersteine
 
 - **Unterpakete, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
-  `connection.request` (Zugangswünsche, Lock je Person), `connection.account`, `connection.oauth`;
-  das Wurzelpaket verdrahtet den Port, `connection.web` darüber; keines nennt es. Nach oben nur über
-  Ports: `LibrariesOnProfile`, `PersonAccounts`, `SecretIssuer` (token), `PersonConnections`.
+  `connection.request` (Zugangswünsche), `connection.consent` (Quelle verbinden),
+  `connection.account`, `connection.oauth`; das Wurzelpaket verdrahtet den Port, `connection.web`
+  darüber; keines nennt es. Nach oben nur über Ports: `LibrariesOnProfile`, `PersonAccounts`,
+  `SecretIssuer`, `SourceConsentRejections` (token), `PersonConnections`, `SourceConsentEnds`.
 - **Verbindungsprotokoll** wie `audit_log`: schreibt nur `ConnectionLog` (in der Transaktion des
   Aufrufers), liest nur `ConnectionLogQueryService` (`AUDITOR`), löscht nur die Datenbankfunktion.
   Die Verbindung einer privaten Bibliothek ist immer die der Person (`ConnectionLogOwner.Person`).
@@ -23,11 +24,11 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   `SecretOwner.of`; library nur über den Port. Das Geheimnis einer Person geht nur heraus, solange
   ihr Konto nutzbar ist (`AccountUsability` mit Schwelle), und nur an das Ziel, für das es ausgestellt
   ist: `SecretTarget#key` (`sameOrigin` plus `credentialBinding`) ist die eine Zielfunktion.
-  Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`LibraryOwned`), nie das geteilte
-  einer Person; das endet nur mit dem Konto (`ConnectedAccountService#end`).
-- **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` hält nur den Beginn
-  fest und beendet nur bei `DEACTIVATED`, je Person in eigener Transaktion (auch nach Commit). Eine
-  getrennte Zeile bleibt, solange eine private Bibliothek daran hängt (Trigger).
+  Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`ownedByOneLibrary`), nie das geteilte
+  einer Person; das endet nur mit dem Konto. Die OAuth-Zustimmung einer Bibliothek
+  (`SourceConsent`) prüft keine Person; vor Anlage wartet sie als `PendingConsent` ihrer Person.
+- **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` beendet nur bei
+  `DEACTIVATED`, je Person in eigener Transaktion; die getrennte Zeile bleibt für private Bibliotheken.
 - **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0,
   für Teilzahlen und Schwellenwarnung; je Anbieter keine Zahl), private Bibliotheken nach
   Besitzerinnen (`PersonThreshold`); Kontoname verschlüsselt. Eine private vetiert, zählt, blockiert
@@ -42,8 +43,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   auch `DraftOwner.PERSON`) zusammen; der Rahmen des Zugangs (`ProfileFrame`) überschreibt die
   Bibliothek, abweichend ist `400`; Lösen schreibt den Rahmen ein, eine entfallende Vorgabe geht in den eigenen Teil (`Move#keptDefaults`).
 - **Freigabe nur hier:** `ConnectorReleaseService` (Bibliothek) und `requireConnectable` (neues Konto) aus `CREATE_CONNECTOR_LIBRARY` und Sperren; ein Entzug stoppt nichts.
-- **Sperrgründe nur in `SourceBlocks`** (Vorrang: Enum-Reihenfolge), Profilangabe nur über
-  `ProfileRequirements`. Eine Sperre blockiert `resolve`, nicht `currentCredentials`.
+- **Sperrgründe nur in `SourceBlocks`** (Vorrang: Enum-Reihenfolge), Profilangabe nur über `ProfileRequirements`. Eine Sperre blockiert `resolve`, nicht `currentCredentials`.
 
 ## Verweise
 

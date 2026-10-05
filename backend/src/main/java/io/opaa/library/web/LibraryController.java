@@ -64,6 +64,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -189,6 +190,13 @@ public class LibraryController {
   public LibraryResponse disconnectLibraryProfile(
       @PathVariable UUID libraryId, @Caller CurrentUser caller) {
     return LibraryResponseMapper.toResponse(libraryService.disconnectProfile(libraryId, caller));
+  }
+
+  /** Disconnects the library's own source connection ("Quelle trennen"). */
+  @DeleteMapping("/{libraryId}/source-connection")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void disconnectLibrarySource(@PathVariable UUID libraryId, @Caller CurrentUser caller) {
+    libraryService.disconnectSource(libraryId, caller);
   }
 
   /**

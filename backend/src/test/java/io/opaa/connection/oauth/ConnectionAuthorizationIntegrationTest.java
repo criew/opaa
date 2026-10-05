@@ -26,6 +26,7 @@ import io.opaa.common.PublicBaseUrl;
 import io.opaa.common.PublicBaseUrlProperties;
 import io.opaa.common.TooManyRequestsException;
 import io.opaa.connection.account.ConnectedAccountService;
+import io.opaa.connection.consent.SourceConsentService;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.ProfileRegistrations;
@@ -35,6 +36,7 @@ import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.SourceBlock.Reason;
+import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.indexing.source.oauthprobe.OAuthProbeIndexingExecutor;
 import io.opaa.indexing.source.oauthprobe.OAuthProbeSourceConnector;
@@ -69,6 +71,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -112,6 +115,8 @@ class ConnectionAuthorizationIntegrationTest {
   @Autowired private AssetShellService shellService;
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private OAuthProbeIndexingExecutor probe;
+  @Autowired private SourceConsentService consents;
+  @Autowired private ObjectProvider<SourceConnectorRegistry> connectors;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<String> answers = new ArrayList<>();
@@ -344,7 +349,8 @@ class ConnectionAuthorizationIntegrationTest {
   }
 
   @Test
-  void withoutAPublicAddressNoConsentStartsAndLibrariesAreNotServedYet() throws Exception {
+  void withoutAPublicAddressNoConsentStartsAndAProfileForPersonsConnectsNoLibrary()
+      throws Exception {
     mockMvc
         .perform(
             as("dev-user", post(AUTHORIZATIONS))
@@ -356,12 +362,13 @@ class ConnectionAuthorizationIntegrationTest {
         .perform(
             as("dev-user", post(AUTHORIZATIONS))
                 .content(
-                    "{\"profileId\": \"%s\", \"purpose\": \"LIBRARY_NEW\"}".formatted(profile)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.code").value(ConnectionAuthorizationService.PURPOSE_UNAVAILABLE));
+                    ("{\"profileId\": \"%s\", \"purpose\": \"LIBRARY_NEW\","
+                            + " \"serviceAccountConfirmed\": true}")
+                        .formatted(profile)))
+        .andExpect(status().isBadRequest());
     assertThatThrownBy(
             () -> service.start(caller, profile, ConnectionAuthorizationPurpose.LIBRARY_NEW))
-        .hasMessageContaining("noch nicht");
+        .hasMessageContaining("nur für verbundene Konten");
 
     assertThat(
             jdbc.queryForObject(
@@ -713,6 +720,9 @@ class ConnectionAuthorizationIntegrationTest {
         profileRepository,
         registrations,
         accounts,
+        consents,
+        effective,
+        connectors,
         new PublicBaseUrl(new PublicBaseUrlProperties(BASE)),
         encryptor,
         targetAddressValidator,
