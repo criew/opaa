@@ -561,7 +561,10 @@ in ein **eigenes Verbindungsprotokoll**:
   (außer bei Quellverbindungen, wo sie ohnehin in den Bibliotheksdetails steht).
 - **Eigene Leserolle:** `AUDITOR` (Beschluss 13), mit Anlass und begrenztem Zeitraum wie beim Revisionsprotokoll
   ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
-  03.10.2026). Die Systemverwaltung liest es nicht mit.
+  03.10.2026). Die Systemverwaltung liest es nicht mit. Ausnahme: Die Liste der Zugänge mit
+  Einträgen (Auswahl des Zugangsfilters, auch gelöschte, je zuletzt protokollierter Name) liest die
+  Revision ohne Anlass und Zeitraum, und der Abruf wird nicht protokolliert, weil er keine Person
+  nennt (#2255).
 - **Aufbewahrungsfrist,** danach wird gelöscht: Vorgabe 12 Monate, einstellbar von 6 bis 24 Monaten
   ([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md)).
 

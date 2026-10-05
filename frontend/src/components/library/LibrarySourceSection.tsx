@@ -80,7 +80,7 @@ export default function LibrarySourceSection({
   const block = library.sourceBlock ?? null
   const accountAction = (
     <Button color="inherit" size="small" component={RouterLink} to={CONNECTED_ACCOUNTS_ROUTE}>
-      {block?.reason === 'EXPIRED' ? 'Konto neu verbinden' : 'Konto verbinden'}
+      {block?.reason === 'NOT_CONNECTED' ? 'Konto verbinden' : 'Konto neu verbinden'}
     </Button>
   )
   const configuration = sourceRegistration(library.sourceType)?.configuration ?? null

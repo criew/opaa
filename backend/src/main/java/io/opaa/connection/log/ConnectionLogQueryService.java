@@ -14,10 +14,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 /**
- * The only read path into the connection log, behind {@link AuditAccessGate}: role {@code AUDITOR},
- * mandatory reason, bounded time range and paging. Every call of {@link #find} writes {@code
- * CONNECTION_LOG_ACCESSED} into the audit log, the rejected attempt included. No filter by person.
- * {@link #loggedProfiles} names profiles only; its caller checks the role.
+ * The only read path into the connection log. Every read of entries ({@link #find}) passes {@link
+ * AuditAccessGate}: role {@code AUDITOR}, mandatory reason, bounded time range and paging, and
+ * writes {@code CONNECTION_LOG_ACCESSED} into the audit log, the rejected attempt included. No
+ * filter by person. {@link #loggedProfiles} names profiles only, without reason, bound or record;
+ * its caller checks the role.
  */
 @Service
 public class ConnectionLogQueryService {

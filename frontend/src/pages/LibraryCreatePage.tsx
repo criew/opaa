@@ -230,12 +230,13 @@ export default function LibraryCreatePage() {
   const profileOptions = useConnectionProfileOptions(admitsProfiles ? sourceType : null)
   // Freiwilligkeit: the private way exists only on a profile the person already connected an
   // account on (ConnectionProfileOption.ownAccount); without one nothing hints at it.
+  const selectable =
+    admitsProfiles && descriptor
+      ? selectableConnections(descriptor, profileOptions.options, true)
+      : []
   const connectionChoice =
     admitsProfiles && descriptor
-      ? effectiveConnection(
-          chosenConnections[sourceType] ?? null,
-          selectableConnections(descriptor, profileOptions.options, true),
-        )
+      ? effectiveConnection(chosenConnections[sourceType] ?? null, selectable)
       : OWN_ADDRESS
   const privateLibrary = privateProfileOf(connectionChoice) !== null
   const chosenProfile = profileOptions.options.find(
@@ -344,9 +345,11 @@ export default function LibraryCreatePage() {
     if (currentStep === STEP_SOURCE && configuration) {
       if (connectionChoice === null) {
         setError(
-          profileOptions.loaded
-            ? 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'
-            : 'Die Zugänge werden noch geladen',
+          !profileOptions.loaded
+            ? 'Die Zugänge werden noch geladen'
+            : selectable.length > 0
+              ? 'Bitte wählen Sie einen Zugang.'
+              : 'Für diese Quellart steht Ihnen kein Zugang zur Verfügung.',
         )
         return
       }

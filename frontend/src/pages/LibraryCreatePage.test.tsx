@@ -1436,6 +1436,29 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       ).not.toBeInTheDocument()
     }, 20000)
 
+    it('never chooses the private way by itself, even where it is the only one', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        mockSourceTypes.map((descriptor) =>
+          descriptor.type === 'NEXTCLOUD'
+            ? { ...descriptor, creatable: true, creatableWithOwnAddress: false }
+            : descriptor,
+        ),
+      )
+      mockListConnectionProfileOptions.mockResolvedValue([
+        { ...ownProfile, id: 'profile-personen', name: 'Nextcloud Personen', ownership: 'PERSON' },
+      ])
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Nextcloud/)
+
+      const only = await screen.findByRole('radio', { name: /Nextcloud Personen · privat/ })
+      expect(only).not.toBeChecked()
+      await next(user)
+      expect(await screen.findByText('Bitte wählen Sie einen Zugang.')).toBeVisible()
+      await user.click(only)
+      expect(only).toBeChecked()
+    }, 20000)
+
     it('offers no private way, and no hint to connect an account, without a connected account', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()

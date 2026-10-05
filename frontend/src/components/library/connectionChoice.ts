@@ -58,10 +58,11 @@ export function selectableConnections(
 }
 
 /**
- * The choice in effect: `chosen` while it may be chosen, otherwise the first that may - so a
- * choice the answer turned unusable never stays selected. `null` when there is none at all.
+ * The choice in effect: `chosen` while it may be chosen, otherwise the first shared way that may -
+ * so a choice the answer turned unusable never stays selected, and a private library is only ever
+ * chosen explicitly. `null` when no shared way is left.
  */
 export function effectiveConnection(chosen: string | null, selectable: string[]): string | null {
   if (chosen !== null && selectable.includes(chosen)) return chosen
-  return selectable[0] ?? null
+  return selectable.find((key) => privateProfileOf(key) === null) ?? null
 }

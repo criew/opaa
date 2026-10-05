@@ -616,6 +616,29 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
     expect(asked).toBe(false)
   })
 
+  it('asks the owner to connect anew where her account reaches another target', () => {
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{
+          ...nextcloud,
+          privateLibrary: true,
+          sourceBlock: {
+            reason: 'TARGET_OUTSIDE_PROFILE',
+            responsible: 'Besitzerin der Bibliothek',
+            notice: 'Ziel weicht ab: … Die Besitzerin verbindet ihr Konto neu.',
+            action: 'CONNECT_OWN_ACCOUNT',
+          },
+        }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const notice = screen.getByTestId('source-lock-notice')
+    expect(within(notice).getByRole('link', { name: 'Konto neu verbinden' })).toBeVisible()
+  })
+
   it('opens the source configuration where the managers enter the secret anew', async () => {
     const user = userEvent.setup()
     renderWithProviders(
