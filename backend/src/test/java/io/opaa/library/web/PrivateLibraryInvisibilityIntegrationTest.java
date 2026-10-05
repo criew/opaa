@@ -592,6 +592,11 @@ class PrivateLibraryInvisibilityIntegrationTest {
           findings.add(label + " carries " + mark + ": " + abbreviated(after.raw()));
         }
       }
+      for (String mark : LIFECYCLE_MARKS) {
+        if (after.raw().replace(" ", "").contains(mark)) {
+          findings.add(label + " carries " + mark + ": " + abbreviated(after.raw()));
+        }
+      }
       if (probe.kind() == Kind.VOLATILE || protocolReader) {
         if (after.status() >= 500) {
           findings.add(label + " fails with " + after.status());
@@ -629,13 +634,22 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private static final List<String> PRIVATE_SOURCE_MARKS =
       List.of("\"privateSource\":true", "\"privateSourcesInContext\":true");
 
+  /** The marks of a private library being erased and of a run ended by the quota. */
+  private static final List<String> LIFECYCLE_MARKS =
+      List.of(
+          "\"erasureRequestedAt\":\"",
+          "\"failureCategory\":\"QUOTA_EXHAUSTED\"",
+          "LIBRARY_BEING_ERASED");
+
   /**
    * The marks the owner finds on her own ways, by operation: her library in the catalog, her
    * private source in her chat, her own account on the profile.
    */
   private static final Map<String, List<String>> OWNER_MARKS =
       Map.of(
-          "listCatalog", List.of("\"privateLibrary\":true"),
+          "listCatalog", List.of("\"privateLibrary\":true", "\"erasureRequestedAt\":\""),
+          "listLibraries", List.of("\"erasureRequestedAt\":\""),
+          "getLibraryIndexingStatus", List.of("\"failureCategory\":\"QUOTA_EXHAUSTED\""),
           "getChat", PRIVATE_SOURCE_MARKS,
           "listConnectionProfileOptions", List.of("\"ownAccount\":true"));
 
@@ -1125,6 +1139,10 @@ class PrivateLibraryInvisibilityIntegrationTest {
     UUID library = createPrivate("Geheimablage " + suffix, ownerCaller);
     UUID detached = createPrivate("Zweitablage " + suffix, ownerCaller);
     jdbc.update("UPDATE library_connections SET profile_id = NULL WHERE library_id = ?", detached);
+    jdbc.update(
+        "UPDATE knowledge_libraries SET erasure_requested_at = now(), erasure_cause ="
+            + " 'OWNER_REQUEST' WHERE id = ?",
+        detached);
     String name = "Personalakte " + suffix;
     libraryService.updateLibrary(
         library,
@@ -1212,6 +1230,13 @@ class PrivateLibraryInvisibilityIntegrationTest {
     jdbc.update(
         "INSERT INTO indexing_jobs (id, status, last_progress_at, organization_id, library_id)"
             + " VALUES (?, 'RUNNING', now(), ?, ?)",
+        UUID.randomUUID(),
+        Organization.DEFAULT_ID,
+        library);
+    jdbc.update(
+        "INSERT INTO indexing_jobs (id, status, last_progress_at, organization_id, library_id,"
+            + " failure_category, incomplete, started_at, completed_at) VALUES (?, 'COMPLETED',"
+            + " now(), ?, ?, 'QUOTA_EXHAUSTED', true, now() + interval '1 minute', now())",
         UUID.randomUUID(),
         Organization.DEFAULT_ID,
         library);

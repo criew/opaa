@@ -193,11 +193,24 @@ describe('api service', () => {
     it('says that a library being erased opens no document any more (#2165)', async () => {
       const err = axiosErrorWithResponse(
         404,
-        new Blob([JSON.stringify({ error: 'Die Bibliothek wird gelöscht' })]),
+        new Blob([
+          JSON.stringify({ error: 'Die Bibliothek wird gelöscht', code: 'LIBRARY_BEING_ERASED' }),
+        ]),
       )
 
       await expect(mapDocumentContentError(err)).rejects.toThrow(
         'Die Bibliothek wird gelöscht – ihre Dokumente lassen sich nicht mehr öffnen.',
+      )
+    })
+
+    it('goes by the code, not by the wording of the message', async () => {
+      const err = axiosErrorWithResponse(
+        404,
+        new Blob([JSON.stringify({ error: 'Die Bibliothek wird gelöscht' })]),
+      )
+
+      await expect(mapDocumentContentError(err)).rejects.toThrow(
+        'Das Originaldokument wurde nicht gefunden.',
       )
     })
 

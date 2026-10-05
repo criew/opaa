@@ -279,11 +279,10 @@ export default function LibraryDetailPage() {
   // Set by a 202: the menu that held „Sofort löschen" is gone, so the focus moves to the notice.
   const focusErasureNoticeRef = useRef(false)
   const [eraseBusy, setEraseBusy] = useState(false)
-  const runHistory = useIndexingStore((s) =>
-    libraryId ? s.runHistoryByLibrary[libraryId] : undefined,
+  const newestRunCategory = useIndexingStore((s) =>
+    libraryId ? s.runsByLibrary[libraryId]?.failureCategory : undefined,
   )
-  const quotaExhausted =
-    privateLibrary && !erasing && runHistory?.[0]?.failureCategory === 'QUOTA_EXHAUSTED'
+  const quotaExhausted = privateLibrary && !erasing && newestRunCategory === 'QUOTA_EXHAUSTED'
   const ownsPrivateLibrary = privateLibrary && library?.myRole === 'OWNER'
   const [storageRefreshToken, setStorageRefreshToken] = useState(0)
   const privateStorage = useMyPrivateStorage(ownsPrivateLibrary, storageRefreshToken)

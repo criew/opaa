@@ -671,6 +671,13 @@ Touch-Geräten immer. Ein erfolgreiches Kopieren bestätigt der Knopf selbst (�
 Screenreader sagt es an; verweigert der Browser die Zwischenablage, meldet ein Hinweis, dass von Hand
 markiert werden muss.
 
+**Private Quellen.** Stammt ein Beleg aus einer privaten Bibliothek, trägt er im Belegfenster den Zusatz
+„Private Quelle“, auch wenn die Antwort ihn nicht zitiert; stand eine solche Quelle im Kontext, steht
+unter der Antwort die Zeile „Private Quellen im Kontext“. Beides sieht nur die Besitzerin, denn nur
+sie liest ihre privaten Bibliotheken. Die Kennzeichnung wird mit der Antwort gespeichert; wird die
+Bibliothek später gelöscht, heißt der Beleg „Quelle entfernt“. Siehe Kapitel
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt „Private Bibliotheken“.
+
 ### 7.1 Suchen ohne Antwort
 
 Neben der Abfrage gibt es einen Weg, der **bei Stufe 9 aufhört**: `POST /api/v1/search` liefert die

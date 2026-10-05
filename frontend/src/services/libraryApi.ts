@@ -19,7 +19,7 @@ import type {
   SourceTypeKey,
   BulkDocumentDeleteResponse,
 } from '../types/api'
-import { isErrorResponse } from '../types/api'
+import { isErrorResponse, type ErrorResponse } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
 
 export async function getLibraries(): Promise<LibraryListResponse[]> {
@@ -347,7 +347,7 @@ export interface DocumentContent {
 // free from axios.
 export async function mapDocumentContentError(err: unknown): Promise<never> {
   if (err instanceof AxiosError && err.response?.status === 404) {
-    if ((await blobErrorMessage(err.response.data)) === LIBRARY_BEING_ERASED) {
+    if ((await blobErrorCode(err.response.data)) === LIBRARY_BEING_ERASED) {
       throw new Error(
         'Die Bibliothek wird gelöscht – ihre Dokumente lassen sich nicht mehr öffnen.',
         {
@@ -370,18 +370,27 @@ export async function mapDocumentContentError(err: unknown): Promise<never> {
   normalizeError(err)
 }
 
-/** The 404 message of a document whose private library is marked for erasure. */
-const LIBRARY_BEING_ERASED = 'Die Bibliothek wird gelöscht'
+/** The `code` of the 404 for a document whose private library is marked for erasure. */
+const LIBRARY_BEING_ERASED = 'LIBRARY_BEING_ERASED'
 
-/** The `error` of an ErrorResponse inside a blob body, `null` for anything else. */
-async function blobErrorMessage(body: unknown): Promise<string | null> {
+/** The ErrorResponse inside a blob body, `null` for anything else. */
+async function blobErrorBody(body: unknown): Promise<ErrorResponse | null> {
   if (!(body instanceof Blob)) return null
   try {
     const parsed: unknown = JSON.parse(await body.text())
-    return isErrorResponse(parsed) ? parsed.error : null
+    return isErrorResponse(parsed) ? parsed : null
   } catch {
     return null
   }
+}
+
+async function blobErrorMessage(body: unknown): Promise<string | null> {
+  return (await blobErrorBody(body))?.error ?? null
+}
+
+/** The `code` of an ErrorResponse inside a blob body, like `apiErrorCode` for a parsed one. */
+async function blobErrorCode(body: unknown): Promise<string | null> {
+  return (await blobErrorBody(body))?.code ?? null
 }
 
 // streams the original file behind an indexed document. Bearer-authenticated like every

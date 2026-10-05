@@ -358,6 +358,52 @@ class LibraryIndexingControllerTest {
   }
 
   @Test
+  void getStatusCarriesTheFailureCategoryOfTheNewestRun() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    ReflectionTestUtils.setField(job, "failureCategory", "QUOTA_EXHAUSTED");
+    job.setStatus(JobStatus.COMPLETED);
+    job.setLibraryId(libraryId);
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
+        .thenReturn(new IndexingStatusView(Optional.of(job), true, List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.failureCategory").value("QUOTA_EXHAUSTED"));
+  }
+
+  @Test
+  void getStatusHidesTheFailureCategoryFromAReader() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    ReflectionTestUtils.setField(job, "failureCategory", "QUOTA_EXHAUSTED");
+    job.setStatus(JobStatus.COMPLETED);
+    job.setLibraryId(libraryId);
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
+        .thenReturn(new IndexingStatusView(Optional.of(job), false, List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.failureCategory").doesNotExist());
+  }
+
+  @Test
+  void getStatusOmitsTheFailureCategoryOfARunWithout() throws Exception {
+    UUID libraryId = UUID.randomUUID();
+    var job = new IndexingJob(JobStatus.RUNNING);
+    job.setLibraryId(libraryId);
+    when(indexingService.getStatus(eq(libraryId), eq(caller)))
+        .thenReturn(new IndexingStatusView(Optional.of(job), false, List.of()));
+
+    mockMvc
+        .perform(get("/api/v1/libraries/" + libraryId + "/indexing/status").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.failureCategory").doesNotExist());
+  }
+
+  @Test
   void getStatusOmitsTheUnreadableSpacesWhileTheListingIsComplete() throws Exception {
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);

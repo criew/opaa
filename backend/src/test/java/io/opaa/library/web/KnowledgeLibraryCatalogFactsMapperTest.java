@@ -45,6 +45,29 @@ class KnowledgeLibraryCatalogFactsMapperTest {
   }
 
   @Test
+  void aLibraryBeingErasedCarriesTheMarker() {
+    CatalogEntryResponse response = new CatalogEntryResponse();
+    Instant since = Instant.parse("2026-10-04T08:00:00Z");
+
+    mapper.apply(
+        new KnowledgeLibraryCatalogFacts(
+            "PERSON_PROBE", null, CatalogEntryStatus.READY, null, true, since),
+        response);
+
+    assertThat(response.getKnowledgeLibrary().getErasureRequestedAt()).isEqualTo(since);
+  }
+
+  @Test
+  void aLibraryNotBeingErasedCarriesNoMarker() {
+    CatalogEntryResponse response = new CatalogEntryResponse();
+
+    mapper.apply(
+        new KnowledgeLibraryCatalogFacts("UPLOAD", null, CatalogEntryStatus.READY), response);
+
+    assertThat(response.getKnowledgeLibrary().getErasureRequestedAt()).isNull();
+  }
+
+  @Test
   void aLibraryNeverIndexedHasNoStand() {
     CatalogEntryResponse response = new CatalogEntryResponse();
 

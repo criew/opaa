@@ -131,6 +131,9 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
 
   private static final Logger log = LoggerFactory.getLogger(LibraryDocumentService.class);
 
+  /** The {@code code} of the 404 for a library being erased; only a reader of it sees it. */
+  public static final String LIBRARY_BEING_ERASED = "LIBRARY_BEING_ERASED";
+
   /** The 503 a reader sees when the core cannot sign in; account and endpoint stay in the log. */
   static final String ORIGINAL_SIGN_IN_FAILED =
       "Das Original ist derzeit nicht abrufbar. Bitte später erneut versuchen.";
@@ -536,7 +539,7 @@ public class LibraryDocumentService implements FolderDocumentDeleter {
     accessService.requireContentRead(library, caller.id(), caller.isSystemAdmin());
     if (library.isErasureRequested()) {
       // its originals may already be gone while the erasure waits or resumes
-      throw new NotFoundException("Die Bibliothek wird gelöscht");
+      throw new NotFoundException("Die Bibliothek wird gelöscht", LIBRARY_BEING_ERASED);
     }
 
     if (isReExtractableAttachment(document)) {

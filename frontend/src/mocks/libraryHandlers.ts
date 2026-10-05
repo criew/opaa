@@ -640,6 +640,8 @@ export const libraryHandlers = [
     // a private library is only marked while a run is in progress; it completes afterwards
     if (library.privateLibrary && isMockIndexingActive()) {
       library.erasureRequestedAt ??= new Date().toISOString()
+      const listed = mockLibraries.find((item) => item.id === libraryId)
+      if (listed) listed.erasureRequestedAt = library.erasureRequestedAt
       return new HttpResponse(null, { status: 202 })
     }
     delete mockLibraryDetails[libraryId]

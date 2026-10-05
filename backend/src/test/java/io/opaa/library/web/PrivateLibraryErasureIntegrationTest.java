@@ -316,7 +316,13 @@ class PrivateLibraryErasureIntegrationTest {
     mockMvc
         .perform(as("dev-user", get("/api/v1/documents/" + fixture.ids().getFirst() + "/content")))
         .andExpect(status().isNotFound())
-        .andExpect(jsonPath("$.error").value("Die Bibliothek wird gelöscht"));
+        .andExpect(jsonPath("$.error").value("Die Bibliothek wird gelöscht"))
+        .andExpect(jsonPath("$.code").value("LIBRARY_BEING_ERASED"));
+    mockMvc
+        .perform(as("dev-admin", get("/api/v1/documents/" + fixture.ids().getFirst() + "/content")))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.error").value("Dokument nicht gefunden"))
+        .andExpect(jsonPath("$.code").doesNotExist());
     mockMvc
         .perform(as("dev-user", post(LIBRARIES + "/" + fixture.library() + "/indexing")))
         .andExpect(status().isConflict());

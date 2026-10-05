@@ -23,6 +23,8 @@ export interface AssetTileData {
   isPublic?: boolean
   /** A private library: the tile carries „Privat“ beside its type badge. */
   privateLibrary?: boolean
+  /** A private library marked for erasure: the tile carries „Wird gelöscht“. */
+  erasing?: boolean
   /** The caller's own favorite mark; absent where the source does not know it. */
   favorite?: boolean
   /** The figures line, e.g. "12 Dokumente · in 2 Spaces". */
@@ -110,6 +112,7 @@ export function tileFromCatalogEntry(entry: CatalogEntryResponse): AssetTileData
     description: entry.description ?? null,
     isPublic: entry.visibility === 'PUBLIC',
     ...(entry.knowledgeLibrary?.privateLibrary ? { privateLibrary: true } : {}),
+    ...(entry.knowledgeLibrary?.erasureRequestedAt ? { erasing: true } : {}),
     favorite: entry.favorite,
     figures: definition
       ? `${definition.extentLabel(entry.itemCount)} · ${spreadLabel(entry.spaceCount)}`
