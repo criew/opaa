@@ -86,7 +86,8 @@ public class McpServerProfileService {
   /** The MCP server profile {@code id}; a connector profile is not found here. */
   public ConnectionProfile get(UUID id) {
     return profiles
-        .findByIdAndKind(id, ProfileKind.MCP_SERVER)
+        .findById(id)
+        .filter(ConnectionProfile::isMcpServer)
         .orElseThrow(() -> new NotFoundException("MCP-Server nicht gefunden"));
   }
 

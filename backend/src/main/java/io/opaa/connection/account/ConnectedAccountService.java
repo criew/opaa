@@ -23,7 +23,6 @@ import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.PersonConnections;
 import io.opaa.connection.profile.PersonConnections.StateCounts;
 import io.opaa.connection.profile.ProfileAdmission;
-import io.opaa.connection.profile.ProfileKind;
 import io.opaa.connection.profile.SourceDraft;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.GrantRejections;
@@ -332,7 +331,8 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     for (ConnectedAccount account : accounts.findByUserIdOrderByConnectedAtAsc(caller.id())) {
       connected.add(account.getProfileId());
       profiles
-          .findByIdAndKind(account.getProfileId(), ProfileKind.CONNECTOR)
+          .findById(account.getProfileId())
+          .filter(found -> !found.isMcpServer())
           .ifPresent(profile -> views.add(viewOf(account, profile, held)));
     }
     List<AccountOverview.Connectable> connectable = new ArrayList<>();

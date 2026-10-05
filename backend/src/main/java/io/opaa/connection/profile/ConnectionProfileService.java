@@ -155,7 +155,8 @@ public class ConnectionProfileService {
   /** The connector profile {@code id}; an MCP server is not found here. */
   public ConnectionProfile get(UUID id) {
     return profiles
-        .findByIdAndKind(id, ProfileKind.CONNECTOR)
+        .findById(id)
+        .filter(found -> !found.isMcpServer())
         .orElseThrow(ConnectionProfileService::notFound);
   }
 

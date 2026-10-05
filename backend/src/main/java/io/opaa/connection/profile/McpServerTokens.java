@@ -48,7 +48,8 @@ public class McpServerTokens {
   public Access accessFor(UUID userId, UUID profileId) {
     ConnectionProfile profile =
         profiles
-            .findByIdAndKind(profileId, ProfileKind.MCP_SERVER)
+            .findById(profileId)
+            .filter(ConnectionProfile::isMcpServer)
             .orElseThrow(() -> new SecretRefusedException(Reason.ACCESS_REMOVED));
     if (profile.isLocked()) {
       throw new SecretRefusedException(Reason.PROFILE_LOCKED);

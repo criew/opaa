@@ -124,7 +124,8 @@ public class ConnectorLockService {
     return lockProfile(
         caller,
         profiles
-            .findByIdAndKind(profileId, ProfileKind.CONNECTOR)
+            .findById(profileId)
+            .filter(found -> !found.isMcpServer())
             .orElseThrow(() -> new NotFoundException("Zugang nicht gefunden")),
         locked);
   }
