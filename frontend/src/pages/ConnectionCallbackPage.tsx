@@ -13,13 +13,11 @@ import type {
 import {
   completeConnectionAuthorization,
   ConnectAccountError,
-  startSourceAuthorization,
 } from '../services/connectedAccountApi'
-import { leaveFor } from '../services/leaveApp'
 import { useAuthStore } from '../stores/authStore'
-import { confirmAction } from '../stores/confirmStore'
 import { notify } from '../stores/notificationStore'
 import PageHeading from '../components/a11y/PageHeading'
+import ReconnectSourceDialog from '../components/library/ReconnectSourceDialog'
 import {
   attachPendingConnection,
   forgetConsentIntent,
@@ -85,14 +83,24 @@ function libraryRoute(libraryId: string): string {
 function afterCompletion(completed: ConnectionAuthorizationCompleteResponse): {
   target: string
   message: string
+  severity: 'success' | 'info'
 } {
   switch (completed.purpose) {
     case 'LIBRARY_NEW': {
       const pending = completed.pendingConnection
-      if (pending) attachPendingConnection(completed.profileId, pending)
+      const target = safeRedirectPath(completed.returnTo, NEW_LIBRARY_ROUTE)
+      if (!pending || !attachPendingConnection(completed.profileId, pending)) {
+        return {
+          target,
+          severity: 'info',
+          message:
+            'Die Zustimmung beim Anbieter ist erteilt, der begonnene Assistent wurde in diesem Fenster aber nicht gefunden. Bitte verbinden Sie die Quelle im Assistenten erneut; die nicht verwendete Zustimmung verfällt von selbst.',
+        }
+      }
       return {
-        target: safeRedirectPath(completed.returnTo, NEW_LIBRARY_ROUTE),
-        message: pending?.accountLabel
+        target,
+        severity: 'success',
+        message: pending.accountLabel
           ? `Die Quelle ist verbunden als „${pending.accountLabel}“.`
           : 'Die Quelle ist verbunden.',
       }
@@ -106,6 +114,7 @@ function afterCompletion(completed: ConnectionAuthorizationCompleteResponse): {
       return {
         target: target.includes('?') ? target : `${target}?tab=quelle`,
         message: 'Die Quelle der Bibliothek ist neu verbunden.',
+        severity: 'success',
       }
     }
     case 'ACCOUNT':
@@ -115,6 +124,7 @@ function afterCompletion(completed: ConnectionAuthorizationCompleteResponse): {
         message: completed.account
           ? `Ihr Konto ist mit „${completed.account.profileName}“ verbunden.`
           : 'Die Verbindung ist hergestellt.',
+        severity: 'success',
       }
   }
 }
@@ -150,7 +160,7 @@ export default function ConnectionCallbackPage() {
   const [request] = useState(() => readCallback(location.search))
   const [intent] = useState(readConsentIntent)
   const [result, setResult] = useState<Outcome>({ kind: 'pending' })
-  const [restarting, setRestarting] = useState(false)
+  const [accountChangeOpen, setAccountChangeOpen] = useState(false)
 
   // what fails before anything is sent follows from the page itself, not from an answer
   const outcome: Outcome = isLoading
@@ -182,8 +192,8 @@ export default function ConnectionCallbackPage() {
     completeOnce(request)
       .then((completed) => {
         if (!active) return
-        const { target, message } = afterCompletion(completed)
-        notify(message, 'success')
+        const { target, message, severity } = afterCompletion(completed)
+        notify(message, severity)
         navigate(target, { replace: true })
       })
       .catch((err: unknown) => {
@@ -198,38 +208,6 @@ export default function ConnectionCallbackPage() {
       active = false
     }
   }, [isLoading, isAuthenticated, request, navigate])
-
-  /** Starts the consent again, now accepting the other account and the loss of the sync state. */
-  async function handleAccountChange() {
-    if (intent?.purpose !== 'LIBRARY_RECONNECT' || restarting) return
-    const confirmed = await confirmAction({
-      question: 'Quelle mit dem anderen Konto verbinden?',
-      consequence:
-        'Der Abgleichstand der Bibliothek wird verworfen; der nächste Lauf liest die Quelle vollständig neu ein. Sie werden dafür noch einmal zum Anbieter weitergeleitet.',
-      confirmLabel: 'Mit diesem Konto verbinden',
-      tone: 'caution',
-    })
-    if (!confirmed) return
-    setRestarting(true)
-    try {
-      const started = await startSourceAuthorization({
-        profileId: intent.profileId,
-        purpose: 'LIBRARY_RECONNECT',
-        libraryId: intent.libraryId,
-        serviceAccountConfirmed: true,
-        confirmAccountChange: true,
-      })
-      leaveFor(started.authorizationUrl)
-    } catch (err) {
-      notify(
-        err instanceof Error && err.message
-          ? err.message
-          : 'Die Anmeldung beim Anbieter ließ sich nicht starten.',
-        'error',
-      )
-      setRestarting(false)
-    }
-  }
 
   const back = wayBack(intent)
   const offersAccountChange =
@@ -273,11 +251,7 @@ export default function ConnectionCallbackPage() {
           </Alert>
           <Stack direction="row" spacing={1}>
             {offersAccountChange && (
-              <Button
-                variant="contained"
-                disabled={restarting}
-                onClick={() => void handleAccountChange()}
-              >
+              <Button variant="contained" onClick={() => setAccountChangeOpen(true)}>
                 Mit diesem Konto verbinden
               </Button>
             )}
@@ -285,6 +259,18 @@ export default function ConnectionCallbackPage() {
               {outcome.signIn ? 'Zur Anmeldung' : back.label}
             </Button>
           </Stack>
+          {offersAccountChange && intent?.purpose === 'LIBRARY_RECONNECT' && (
+            <ReconnectSourceDialog
+              // a fresh instance on every opening asks for the confirmation anew
+              key={accountChangeOpen ? 'account-change-open' : 'account-change-closed'}
+              open={accountChangeOpen}
+              onClose={() => setAccountChangeOpen(false)}
+              title="Quelle mit dem anderen Konto verbinden?"
+              libraryId={intent.libraryId}
+              profileId={intent.profileId}
+              accountChange
+            />
+          )}
         </>
       )}
     </Box>

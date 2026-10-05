@@ -19,7 +19,12 @@ interface ReconnectSourceDialogProps {
   title: string
   libraryId: string
   profileId: string
-  profileName: string
+  profileName?: string
+  /**
+   * The provider named another account than before: connecting again accepts it and discards the
+   * library's sync state - after the service account is confirmed anew.
+   */
+  accountChange?: boolean
 }
 
 /**
@@ -33,6 +38,7 @@ export default function ReconnectSourceDialog({
   libraryId,
   profileId,
   profileName,
+  accountChange = false,
 }: ReconnectSourceDialogProps) {
   const [confirmed, setConfirmed] = useState(false)
   const [missing, setMissing] = useState(false)
@@ -53,6 +59,7 @@ export default function ReconnectSourceDialog({
         purpose: 'LIBRARY_RECONNECT',
         libraryId,
         serviceAccountConfirmed: true,
+        ...(accountChange ? { confirmAccountChange: true } : {}),
       })
       leaveFor(started.authorizationUrl)
     } catch (err) {
@@ -72,9 +79,9 @@ export default function ReconnectSourceDialog({
       <DialogTitle id={titleId}>{title}</DialogTitle>
       <DialogContent>
         <Typography variant="body2" sx={{ mb: 2 }}>
-          Sie werden zum Anbieter des Zugangs „{profileName}“ weitergeleitet, melden sich dort mit
-          dem Dienstkonto an und stimmen zu. Danach kehren Sie hierher zurück. Meldet der Anbieter
-          ein anderes Konto als bisher, fragt OPAA vor dem Wechsel nach.
+          {accountChange
+            ? 'Der Anbieter hat ein anderes Konto gemeldet als bisher. Verbinden Sie mit diesem Konto, wird der Abgleichstand der Bibliothek verworfen; der nächste Lauf liest die Quelle vollständig neu ein. Sie werden dafür noch einmal zum Anbieter weitergeleitet.'
+            : `Sie werden zum Anbieter${profileName ? ` des Zugangs „${profileName}“` : ''} weitergeleitet, melden sich dort mit dem Dienstkonto an und stimmen zu. Danach kehren Sie hierher zurück. Meldet der Anbieter ein anderes Konto als bisher, fragt OPAA vor dem Wechsel nach.`}
         </Typography>
         <ServiceAccountConfirmation
           idPrefix="reconnect-source"
@@ -101,7 +108,7 @@ export default function ReconnectSourceDialog({
           busyAnnouncement="Die Weiterleitung zum Anbieter wird vorbereitet."
           onClick={() => void handleStart()}
         >
-          Weiter zum Anbieter
+          {accountChange ? 'Mit diesem Konto verbinden' : 'Weiter zum Anbieter'}
         </BusyButton>
       </DialogActions>
     </Dialog>

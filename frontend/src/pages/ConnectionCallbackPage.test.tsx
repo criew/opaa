@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { Route, Routes, useLocation } from 'react-router'
@@ -14,6 +14,7 @@ import type {
 import { scheduleValuesFrom } from '../utils/librarySchedule'
 import {
   CONSENT_INTENT_STORAGE_KEY,
+  SERVICE_ACCOUNT_CONFIRMATION,
   readConsentIntent,
   rememberConsentIntent,
   type WizardDraft,
@@ -249,6 +250,28 @@ describe('ConnectionCallbackPage', () => {
       expect(stored).not.toContain('s-5')
     })
 
+    it('says honestly that no wizard in this tab waits for the consent', async () => {
+      serveComplete(() =>
+        HttpResponse.json({
+          purpose: 'LIBRARY_NEW',
+          profileId: 'profile-dropbox',
+          returnTo: '/libraries/new',
+          account: null,
+          pendingConnection: pending,
+        }),
+      )
+      renderAt('/connections/callback?code=c-11&state=s-11')
+
+      expect(await screen.findByText('Assistent', { selector: 'div' })).toBeInTheDocument()
+      expect(
+        await screen.findByText(
+          /der begonnene Assistent wurde in diesem Fenster aber nicht gefunden/,
+        ),
+      ).toBeVisible()
+      expect(screen.queryByText(/Die Quelle ist verbunden/)).not.toBeInTheDocument()
+      expect(readConsentIntent()).toBeNull()
+    })
+
     it('returns to the source of the library connected anew and forgets the intent', async () => {
       rememberConsentIntent({
         purpose: 'LIBRARY_RECONNECT',
@@ -272,7 +295,7 @@ describe('ConnectionCallbackPage', () => {
       expect(readConsentIntent()).toBeNull()
     })
 
-    it('connects with the other account only once the loss of the sync state is confirmed', async () => {
+    it('connects with the other account only once the service account is confirmed anew', async () => {
       rememberConsentIntent({
         purpose: 'LIBRARY_RECONNECT',
         profileId: 'profile-dropbox',
@@ -291,11 +314,22 @@ describe('ConnectionCallbackPage', () => {
       expect(leaveFor).not.toHaveBeenCalled()
 
       await user.click(screen.getByRole('button', { name: 'Mit diesem Konto verbinden' }))
-      await answerConfirm(
-        user,
-        'Quelle mit dem anderen Konto verbinden?',
-        'Mit diesem Konto verbinden',
-      )
+      const dialog = await screen.findByRole('dialog', {
+        name: 'Quelle mit dem anderen Konto verbinden?',
+      })
+      expect(dialog).toHaveTextContent('der Abgleichstand der Bibliothek verworfen')
+      const confirm = within(dialog).getByRole('button', { name: 'Mit diesem Konto verbinden' })
+      await user.click(confirm)
+      expect(
+        await within(dialog).findByText(
+          'Bitte bestätigen Sie, dass Sie ein Dienstkonto verbinden.',
+        ),
+      ).toBeVisible()
+      expect(started).toEqual([])
+      expect(leaveFor).not.toHaveBeenCalled()
+
+      await user.click(within(dialog).getByRole('checkbox', { name: SERVICE_ACCOUNT_CONFIRMATION }))
+      await user.click(confirm)
       await waitFor(() =>
         expect(leaveFor).toHaveBeenCalledWith('https://provider.example/authorize?state=neu'),
       )
