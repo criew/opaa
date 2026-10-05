@@ -1,5 +1,6 @@
 package io.opaa.connection;
 
+import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
@@ -23,11 +24,14 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import java.time.Clock;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,10 +40,18 @@ import org.springframework.transaction.annotation.Transactional;
  * caller are checked there; here only what the profile admits: the same connector, libraries as
  * owners, and an address under its server address. Connecting and releasing a saved library pass
  * its connector ({@link SourceTransitions}).
+ *
+ * <p>Every write of a library through a profile holds the profile row as it read it (shared, after
+ * the connector's check, before its first write); a change of the profile holds the row exclusively
+ * from its first statement. So the change either sees the library, or the write is refused with 409
+ * {@value #PROFILE_CHANGED}.
  */
 @Service
 @Transactional(readOnly = true)
 public class LibraryConnectionService {
+
+  /** Refusal of a write through a profile that changed since the write read it. */
+  public static final String PROFILE_CHANGED = "LIBRARY_CONNECTION_PROFILE_CHANGED";
 
   private final LibraryConnectionRepository connections;
   private final ConnectionProfileRepository profiles;
@@ -144,7 +156,7 @@ public class LibraryConnectionService {
    */
   @Transactional
   public void attachNew(KnowledgeLibrary library, UUID profileId) {
-    requireAdmitting(profileId, library);
+    holdUnchanged(requireAdmitting(profileId, library));
     connections.save(new LibraryConnection(library.getId(), profileId, clock.instant()));
   }
 
@@ -188,6 +200,7 @@ public class LibraryConnectionService {
             false,
             transitions.holdingSecrets(List.of(library), previousId).contains(library.getId()));
     transitions.require(move);
+    holdUnchanged(profile, previous);
     if (!address.equals(library.getSourceUrl())) {
       library.moveSourceUrl(address);
     }
@@ -230,10 +243,48 @@ public class LibraryConnectionService {
             : Optional.empty();
     Move move = transitions.release(library, profile);
     transitions.require(move);
+    holdUnchanged(profile.orElse(null));
     profile.ifPresent(found -> effective.releaseFrame(library, found));
     libraries.save(library);
     connections.delete(connection);
     return transitions.applied(move);
+  }
+
+  /**
+   * Holds the profile {@code library} is connected through, for a change of its own configuration
+   * validated against the profile's frame: called after the connector's check and before the first
+   * write, refused like {@link #connect} when the profile changed meanwhile.
+   */
+  @Transactional
+  public void holdProfileOf(KnowledgeLibrary library) {
+    LibraryConnection connection = connections.findById(library.getId()).orElse(null);
+    if (LibraryConnection.throughProfile(connection)) {
+      holdUnchanged(profiles.findById(connection.getProfileId()).orElse(null));
+    }
+  }
+
+  /**
+   * Holds each of {@code read} - in the version this transaction read - against a change until the
+   * transaction ends, in the order of their ids; 409 {@value #PROFILE_CHANGED} when one changed or
+   * went since.
+   */
+  private void holdUnchanged(ConnectionProfile... read) {
+    List<ConnectionProfile> held =
+        Stream.of(read)
+            .filter(Objects::nonNull)
+            .distinct()
+            .sorted(Comparator.comparing(ConnectionProfile::getId))
+            .toList();
+    for (ConnectionProfile profile : held) {
+      Long version = profiles.lockedVersion(profile.getId());
+      if (version == null || version != profile.getVersion()) {
+        throw new ConflictException(
+            "Der Zugang „"
+                + profile.getName()
+                + "“ wurde soeben geändert. Bitte versuchen Sie es erneut.",
+            PROFILE_CHANGED);
+      }
+    }
   }
 
   /**

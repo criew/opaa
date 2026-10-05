@@ -27,16 +27,27 @@ public interface ConnectionProfileRepository extends JpaRepository<ConnectionPro
       @Param("name") String name, @Param("excludedId") UUID excludedId);
 
   /**
-   * Locks the row of {@code id} against every change and against a consent being stored on it until
-   * the transaction ends; a change takes it before it discards the profile's secrets. Returns
-   * {@code null} for no such profile.
+   * Holds the row of {@code id} until the transaction ends against every other change and every
+   * {@link #lockedVersion} - a library connected, created, released or changed through it, a
+   * consent stored; a row inserted with a reference to it still passes. A change takes it as its
+   * first statement, before any row it writes. Returns {@code null} for no such profile.
    */
-  @Query(value = "SELECT 1 FROM connection_profiles WHERE id = :id FOR UPDATE", nativeQuery = true)
+  @Query(
+      value = "SELECT 1 FROM connection_profiles WHERE id = :id FOR NO KEY UPDATE",
+      nativeQuery = true)
   Integer lockForChange(@Param("id") UUID id);
 
   /**
-   * The row version of {@code id}, the row held against a change until the transaction ends, so a
-   * consent stored now stands for this version; {@code null} for no such profile.
+   * {@link #lockForChange} for deleting the row, which also holds off every row inserted with a
+   * reference to it.
+   */
+  @Query(value = "SELECT 1 FROM connection_profiles WHERE id = :id FOR UPDATE", nativeQuery = true)
+  Integer lockForDeletion(@Param("id") UUID id);
+
+  /**
+   * The row version of {@code id}, the row held against a change until the transaction ends, so
+   * what is written now stands for this version; {@code null} for no such profile. Holders do not
+   * wait for one another.
    */
   @Query(
       value = "SELECT version FROM connection_profiles WHERE id = :id FOR SHARE",

@@ -565,7 +565,7 @@ public class ConnectionProfileService {
    */
   @Transactional
   public void delete(CurrentUser caller, UUID id) {
-    profiles.lockForChange(id);
+    profiles.lockForDeletion(id);
     ConnectionProfile profile = get(id);
     List<LibraryConnection> affected = connections.findByProfileId(id);
     long shared = connections.countSharedByProfileId(id);
