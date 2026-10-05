@@ -4,6 +4,7 @@ import IconButton from '@mui/material/IconButton'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { alpha, type SxProps, type Theme } from '@mui/material/styles'
+import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined'
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import PersonOutlinedIcon from '@mui/icons-material/PersonOutlined'
@@ -75,6 +76,34 @@ export function PrivateMark() {
     >
       <LockOutlinedIcon aria-hidden sx={{ fontSize: 13 }} />
       Privat
+    </Typography>
+  )
+}
+
+/** A private library marked for erasure: icon and word, framed in the error colour. */
+export function ErasingMark() {
+  return (
+    <Typography
+      component="span"
+      role="img"
+      aria-label="Wird gelöscht"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.5,
+        alignSelf: 'flex-start',
+        fontSize: 10.5,
+        color: 'text.primary',
+        border: 1,
+        borderColor: 'error.main',
+        borderRadius: '4px',
+        px: 0.75,
+        py: 0.25,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <DeleteOutlinedIcon aria-hidden sx={{ fontSize: 13, color: 'error.main' }} />
+      Wird gelöscht
     </Typography>
   )
 }

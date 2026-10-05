@@ -48,6 +48,8 @@ export interface AssetDetailHeaderProps {
   onAssociated?: () => void
   /** Offers „Löschen" in „⋯"; absent without the right to delete. */
   onDelete?: () => void
+  /** The menu entry's wording where deleting means more, e.g. „Sofort löschen"; default „Löschen". */
+  deleteLabel?: string
   /** Further controls left of the star, e.g. starting an indexing run. */
   actions?: ReactNode
   /** Right under name and description, e.g. the succession state. */
@@ -102,9 +104,10 @@ function MoreActions({
   mayUseInSpace,
   onAssociated,
   onDelete,
+  deleteLabel = 'Löschen',
 }: Pick<
   AssetDetailHeaderProps,
-  'assetType' | 'assetId' | 'name' | 'mayUseInSpace' | 'onAssociated' | 'onDelete'
+  'assetType' | 'assetId' | 'name' | 'mayUseInSpace' | 'onAssociated' | 'onDelete' | 'deleteLabel'
 >) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const [useInSpace, setUseInSpace] = useState(false)
@@ -155,7 +158,7 @@ function MoreActions({
             sx={{ color: 'error.main' }}
           >
             <DeleteOutlinedIcon aria-hidden sx={{ fontSize: 18, mr: 1.5 }} />
-            Löschen
+            {deleteLabel}
           </MenuItem>
         )}
       </Menu>
@@ -198,6 +201,7 @@ export default function AssetDetailHeader({
   mayUseInSpace,
   onAssociated,
   onDelete,
+  deleteLabel,
   actions,
   note,
   children,
@@ -271,6 +275,7 @@ export default function AssetDetailHeader({
             mayUseInSpace={mayUseInSpace}
             onAssociated={onAssociated}
             onDelete={onDelete}
+            deleteLabel={deleteLabel}
           />
         </Stack>
       </Stack>
