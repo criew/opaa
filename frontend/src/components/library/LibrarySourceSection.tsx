@@ -33,6 +33,7 @@ import LibraryConnectionPanel from './LibraryConnectionPanel'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 import { sourceRegistration } from './sources/registry'
+import { QUOTA_EXHAUSTED_LABEL, QUOTA_EXHAUSTED_REMEDY } from './privateLibrary'
 
 export interface LibrarySourceSectionProps {
   libraryId: string
@@ -56,6 +57,8 @@ export interface LibrarySourceSectionProps {
     privateLibrary?: boolean
   }
   canEditSource: boolean
+  /** A private library marked for erasure: no source, profile or schedule change any more. */
+  erasing?: boolean
 }
 
 /**
@@ -68,6 +71,7 @@ export default function LibrarySourceSection({
   libraryId,
   library,
   canEditSource,
+  erasing = false,
 }: LibrarySourceSectionProps) {
   const [editSourceOpen, setEditSourceOpen] = useState(false)
   const [editScheduleOpen, setEditScheduleOpen] = useState(false)
@@ -91,7 +95,7 @@ export default function LibrarySourceSection({
   )
   // The action that lifts the block comes with it; only those who manage the source act on it.
   const blockAction = (() => {
-    if (!canEditSource || !block?.action) return undefined
+    if (!canEditSource || erasing || !block?.action) return undefined
     const action = block.action
     switch (action) {
       case 'ASSIGN_PROFILE':
@@ -160,7 +164,7 @@ export default function LibrarySourceSection({
         </Typography>
       )}
 
-      {canEditSource && (
+      {canEditSource && !erasing && (
         <>
           <PageSection
             title="Anbindung"
@@ -280,19 +284,21 @@ export default function LibrarySourceSection({
               library={library}
             />
           </PageSection>
-
-          <PageSection
-            title="Läufe"
-            description="Jeder Lauf mit seinen Kennzahlen und seinem Protokoll — aufklappen für die Einzelheiten."
-          >
-            {configuration?.runsHint && (
-              <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
-                {configuration.runsHint}
-              </Typography>
-            )}
-            <LibraryIndexingHistorySection libraryId={libraryId} sourceType={library.sourceType} />
-          </PageSection>
         </>
+      )}
+
+      {canEditSource && (
+        <PageSection
+          title="Läufe"
+          description="Jeder Lauf mit seinen Kennzahlen und seinem Protokoll — aufklappen für die Einzelheiten."
+        >
+          {configuration?.runsHint && (
+            <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mb: 2 }}>
+              {configuration.runsHint}
+            </Typography>
+          )}
+          <LibraryIndexingHistorySection libraryId={libraryId} sourceType={library.sourceType} />
+        </PageSection>
       )}
     </Stack>
   )
@@ -372,6 +378,11 @@ function RunMetricsLine({ run }: { run: IndexingRunResponse }) {
   )
 }
 
+/** The run ended at the storage quota across all private libraries of the owner. */
+function quotaExhausted(run: IndexingRunResponse): boolean {
+  return run.failureCategory === 'QUOTA_EXHAUSTED'
+}
+
 function runStatusLabel(status: IndexingRunResponse['status']): string {
   if (status === 'COMPLETED') return 'Abgeschlossen'
   if (status === 'FAILED') return 'Fehlgeschlagen'
@@ -448,7 +459,11 @@ function LibraryIndexingHistorySection({
                   )}
                   {run.incomplete && (
                     <Chip
-                      label="unvollständig, wird fortgesetzt"
+                      label={
+                        quotaExhausted(run)
+                          ? QUOTA_EXHAUSTED_LABEL
+                          : 'unvollständig, wird fortgesetzt'
+                      }
                       size="small"
                       color="warning"
                       data-testid={`run-incomplete-${run.id}`}
@@ -472,6 +487,15 @@ function LibraryIndexingHistorySection({
                 </Stack>
               </AccordionSummary>
               <AccordionDetails>
+                {quotaExhausted(run) && (
+                  <Alert
+                    severity="warning"
+                    sx={{ mb: 1.5 }}
+                    data-testid={`run-quota-remedy-${run.id}`}
+                  >
+                    {QUOTA_EXHAUSTED_REMEDY}
+                  </Alert>
+                )}
                 {run.message && (
                   <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5 }}>
                     {run.message}

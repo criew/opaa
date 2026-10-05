@@ -33,6 +33,7 @@ import { groupAdminHandlers } from './groupAdminHandlers'
 import { successionHandlers } from './successionHandlers'
 import { promptLibraryHandlers } from './promptLibraryHandlers'
 import { catalogHandlers } from './catalogHandlers'
+import { privateStorageHandlers } from './privateStorageHandlers'
 
 /**
  * All MSW handlers, one module per topic of the OpenAPI spec, for the browser worker and the test
@@ -77,4 +78,5 @@ export const handlers = [
   ...successionHandlers,
   ...promptLibraryHandlers,
   ...catalogHandlers,
+  ...privateStorageHandlers,
 ]
