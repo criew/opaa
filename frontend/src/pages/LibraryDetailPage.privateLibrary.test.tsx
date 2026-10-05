@@ -173,7 +173,10 @@ describe('LibraryDetailPage – private Bibliothek: Sofort löschen (#2165)', ()
   })
 
   it('locks run, deletion and editing while the library is being erased', async () => {
-    showLibrary(privateEntry, detailsOf(privateEntry, { erasureRequestedAt: '2026-10-05T09:00:00Z' }))
+    showLibrary(
+      privateEntry,
+      detailsOf(privateEntry, { erasureRequestedAt: '2026-10-05T09:00:00Z' }),
+    )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     expect(await screen.findByTestId('library-erasure-notice')).toBeInTheDocument()

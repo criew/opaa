@@ -167,7 +167,11 @@ describe('PrivateStorageSection – Übersicht (#2276)', () => {
 
   it('shows a number resting on few persons only as „weniger als N“', async () => {
     quota()
-    summary({ ...exactSummary, owners: { fewerThanPersons: 5 }, usedBytes: { fewerThanPersons: 5 } })
+    summary({
+      ...exactSummary,
+      owners: { fewerThanPersons: 5 },
+      usedBytes: { fewerThanPersons: 5 },
+    })
     renderWithProviders(<PrivateStorageSection />)
 
     expect(await screen.findByTestId('private-storage-owners')).toHaveTextContent('weniger als 5')

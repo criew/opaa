@@ -16,6 +16,7 @@ import {
   updateLibrary,
   updateLibraryShareCap,
 } from '../services/libraryApi'
+import type { LibraryDeletionOutcome } from '../services/libraryApi'
 import { updateLibraryDiagnosticsLock } from '../services/diagnosticAccessApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
@@ -29,7 +30,7 @@ interface LibraryState {
   loadLibraryDetails: (libraryId: string) => Promise<void>
   createNewLibrary: (request: LibraryRequest) => Promise<string>
   updateExistingLibrary: (libraryId: string, request: LibraryUpdateRequest) => Promise<void>
-  deleteExistingLibrary: (libraryId: string) => Promise<void>
+  deleteExistingLibrary: (libraryId: string) => Promise<LibraryDeletionOutcome>
   setLibraryDiagnosticsLock: (libraryId: string, locked: boolean) => Promise<void>
   setLibraryShareCap: (libraryId: string, request: LibraryShareCapRequest) => Promise<void>
   /** Answers the connected library, `null` after a logout in between. */
@@ -105,15 +106,21 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   deleteExistingLibrary: async (libraryId) => {
     const sessionEpoch = currentSessionEpoch()
-    await deleteLibrary(libraryId)
+    const outcome = await deleteLibrary(libraryId)
     // #575: loadLibraries() below already guards its own write-back - this direct set() needs the
     // same guard, otherwise a logout in between still resurrects a (stale) libraryDetails map into
     // the store reset() just cleared.
-    if (isStaleSessionEpoch(sessionEpoch)) return
+    if (isStaleSessionEpoch(sessionEpoch)) return outcome
+    if (outcome === 'ERASURE_PENDING') {
+      // the library stays until its erasure completes; its detail now carries erasureRequestedAt
+      await get().loadLibraryDetails(libraryId)
+      return outcome
+    }
     const rest = { ...get().libraryDetails }
     delete rest[libraryId]
     set({ libraryDetails: rest })
     await get().loadLibraries()
+    return outcome
   },
 
   // #1257: the endpoint's response only carries {libraryId, locked} (LibraryDiagnosticsLockResponse),
