@@ -112,7 +112,9 @@ public final class ConnectionProfileResponseMapper {
         .connectionCount(connectionCount)
         .connectedAccountCount(toCount(accounts.total()))
         .expiredConnectionCount(accounts.expired() == null ? null : toCount(accounts.expired()))
-        .expiredConnectionWarning(accounts.expiredWarning())
+        // a profile for libraries only has no persons to warn about; its ownership is public
+        .expiredConnectionWarning(
+            profile.getOwnership().admitsPersons() && accounts.expiredWarning())
         .locked(profile.isLocked())
         .lockedAt(profile.getLockedAt())
         .createdAt(profile.getCreatedAt())

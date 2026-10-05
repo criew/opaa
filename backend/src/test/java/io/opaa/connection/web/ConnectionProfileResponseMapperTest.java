@@ -11,6 +11,7 @@ import io.opaa.connection.ConnectorReleaseService.ProfileOption;
 import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileService.Discards;
 import io.opaa.connection.profile.ConnectionProfileService.ProfileImpact;
+import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.TestPersonCounts;
 import io.opaa.knowledge.SourceType;
 import java.time.Instant;
@@ -58,6 +59,26 @@ class ConnectionProfileResponseMapperTest {
 
     assertThat(response.getSourceProxy()).isEqualTo("proxy.example.org:8080");
     assertThat(response.getSourceInsecureSsl()).isFalse();
+  }
+
+  /**
+   * A profile that admits no persons never warns about expired ones - its ownership is public, and
+   * its masked numbers mean nothing; an empty profile for persons warns like any other.
+   */
+  @Test
+  void aProfileWithoutPersonsNeverWarnsAboutExpiredConnections() {
+    ConnectionProfile profile = profile(null);
+    ProfileCounts admittingTheThreshold = TestPersonCounts.of(0, 12);
+    assertThat(admittingTheThreshold.expiredWarning()).isTrue();
+
+    for (ConnectionOwnership ownership : ConnectionOwnership.values()) {
+      ReflectionTestUtils.setField(profile, "ownership", ownership);
+      ConnectionProfileResponse response =
+          ConnectionProfileResponseMapper.toResponse(profile, false, 0, admittingTheThreshold);
+      assertThat(response.getExpiredConnectionWarning())
+          .as("ownership %s", ownership)
+          .isEqualTo(ownership.admitsPersons());
+    }
   }
 
   /** The mapper copies the masked numbers as they are, and leaves an untold part absent. */
