@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -65,6 +66,7 @@ import io.opaa.metadata.EmbeddingRateEstimator;
 import io.opaa.s3.S3AccessException;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.LoggedName;
 import io.opaa.test.ProductionDocumentFormats;
 import io.opaa.test.SourceTypes;
 import java.io.ByteArrayInputStream;
@@ -221,6 +223,7 @@ class LibraryDocumentServiceTest {
     service = serviceWith(new AttachmentExtractionProperties(0, null));
 
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    lenient().when(library.loggedNames()).thenReturn(LoggedName.OPEN);
     when(library.getId()).thenReturn(libraryId);
     when(library.getOrganizationId()).thenReturn(organizationId);
     // Every existing test here exercises an UPLOAD library - #479's requireUploadLibrary check
@@ -1177,6 +1180,7 @@ class LibraryDocumentServiceTest {
     when(filesystemAllowlist.isAllowed("/data/documents")).thenReturn(false);
 
     KnowledgeLibrary filesystemLibrary = mock(KnowledgeLibrary.class);
+    lenient().when(filesystemLibrary.loggedNames()).thenReturn(LoggedName.OPEN);
     when(filesystemLibrary.getId()).thenReturn(libraryId);
     when(filesystemLibrary.getOrganizationId()).thenReturn(organizationId);
     when(filesystemLibrary.getSourcePath()).thenReturn("/data/documents");
@@ -1340,7 +1344,7 @@ class LibraryDocumentServiceTest {
 
     Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
     Files.writeString(extracted, "Anhangsinhalt");
-    when(attachmentExtractor.extract(any(), eq("posteingang.eml"), eq(0)))
+    when(attachmentExtractor.extract(any(), eq("posteingang.eml"), eq(0), any()))
         .thenReturn(new AttachmentExtractor.Extracted(extracted, "anlage.txt"));
 
     DocumentContent content = service.loadContent(documentId, caller);
@@ -1484,7 +1488,7 @@ class LibraryDocumentServiceTest {
 
     Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
     Files.writeString(extracted, "Anhang der heruntergeladenen Mail");
-    when(attachmentExtractor.extract(any(), eq("post.eml"), eq(0)))
+    when(attachmentExtractor.extract(any(), eq("post.eml"), eq(0), any()))
         .thenReturn(new AttachmentExtractor.Extracted(extracted, "anlage.txt"));
 
     DocumentContent content = service.loadContent(attachment.getId(), caller);
@@ -1569,6 +1573,7 @@ class LibraryDocumentServiceTest {
 
   private KnowledgeLibrary remoteLibrary(String sourceCredentials) {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    lenient().when(library.loggedNames()).thenReturn(LoggedName.OPEN);
     when(library.getId()).thenReturn(libraryId);
     when(library.getOrganizationId()).thenReturn(organizationId);
     when(library.getSourceCredentials()).thenReturn(sourceCredentials);
@@ -1762,7 +1767,7 @@ class LibraryDocumentServiceTest {
     AtomicInteger maxInFlight = new AtomicInteger();
     CountDownLatch firstExtractionStarted = new CountDownLatch(1);
     CountDownLatch secondRequestIsWaiting = new CountDownLatch(1);
-    when(attachmentExtractor.extract(any(), eq("gleichzeitig.eml"), anyInt()))
+    when(attachmentExtractor.extract(any(), eq("gleichzeitig.eml"), anyInt(), any()))
         .thenAnswer(
             invocation -> {
               int concurrent = inFlight.incrementAndGet();
@@ -1849,7 +1854,7 @@ class LibraryDocumentServiceTest {
 
     CountDownLatch firstExtractionStarted = new CountDownLatch(1);
     CountDownLatch releaseFirstExtraction = new CountDownLatch(1);
-    when(attachmentExtractor.extract(any(), eq("erste.eml"), anyInt()))
+    when(attachmentExtractor.extract(any(), eq("erste.eml"), anyInt(), any()))
         .thenAnswer(
             invocation -> {
               firstExtractionStarted.countDown();
@@ -1871,7 +1876,7 @@ class LibraryDocumentServiceTest {
               "Es werden gerade zu viele Anhänge geöffnet."
                   + " Bitte versuchen Sie es in einem Moment erneut.");
       // The refused request never reached the extraction itself.
-      verify(attachmentExtractor, never()).extract(any(), eq("zweite.eml"), anyInt());
+      verify(attachmentExtractor, never()).extract(any(), eq("zweite.eml"), anyInt(), any());
 
       releaseFirstExtraction.countDown();
       DocumentContent content = holder.get(10, TimeUnit.SECONDS);
@@ -2165,7 +2170,7 @@ class LibraryDocumentServiceTest {
     AtomicReference<String> parentBytes = new AtomicReference<>();
     Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
     Files.writeString(extracted, "Anhang");
-    when(attachmentExtractor.extract(any(), eq("nachricht.eml"), eq(0)))
+    when(attachmentExtractor.extract(any(), eq("nachricht.eml"), eq(0), any()))
         .thenAnswer(
             invocation -> {
               parentBytes.set(Files.readString(invocation.getArgument(0, Path.class)));
@@ -2207,7 +2212,7 @@ class LibraryDocumentServiceTest {
     when(s3OriginalAccess.maxObjectSizeBytes()).thenReturn(1024L * 1024);
     Path extracted = Files.createTempFile("opaa-attachment-test-", ".txt");
     Files.writeString(extracted, "Anhang");
-    when(attachmentExtractor.extract(any(), eq("gross.eml"), eq(0)))
+    when(attachmentExtractor.extract(any(), eq("gross.eml"), eq(0), any()))
         .thenReturn(new AttachmentExtractor.Extracted(extracted, "anlage.txt"));
 
     DocumentContent content = service.loadContent(attachment.getId(), caller);
