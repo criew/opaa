@@ -3,6 +3,8 @@ package io.opaa.indexing.document;
 import io.opaa.format.DocumentService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingEventSink;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.LibraryStorageQuotaService;
 import java.util.function.Supplier;
 
 /**
@@ -17,20 +19,35 @@ public final class DocumentIngestOutcomes {
   private DocumentIngestOutcomes() {}
 
   /**
-   * Records the entry {@code result} calls for: {@code QUOTA_EXCEEDED} and {@code
-   * NO_EXTRACTABLE_TEXT} are rejections, {@code FAILED} an error carrying {@code failedMessage};
-   * {@code PROCESSED} and {@code SKIPPED} record nothing. {@code quotaMessage} is resolved only
-   * when needed.
+   * The texts of a quota rejection, each resolved only when needed: {@code library} for {@code
+   * QUOTA_EXCEEDED}, {@code person} for {@code PERSONAL_QUOTA_EXCEEDED}.
+   */
+  public record QuotaMessages(Supplier<String> library, Supplier<String> person) {
+
+    /** The messages of {@code library}'s own quota and of its owner's private storage. */
+    public static QuotaMessages of(LibraryStorageQuotaService quota, KnowledgeLibrary library) {
+      return new QuotaMessages(
+          () -> quota.quotaExceededMessage(library.getId()),
+          () -> quota.personalQuotaExceededMessage(library));
+    }
+  }
+
+  /**
+   * Records the entry {@code result} calls for: {@code QUOTA_EXCEEDED}, {@code
+   * PERSONAL_QUOTA_EXCEEDED} and {@code NO_EXTRACTABLE_TEXT} are rejections, {@code FAILED} an
+   * error carrying {@code failedMessage}; {@code PROCESSED} and {@code SKIPPED} record nothing.
    */
   public static void record(
       IndexingEventSink events,
       DocumentIngestResult result,
       String reference,
-      Supplier<String> quotaMessage,
+      QuotaMessages quotaMessages,
       String failedMessage) {
     switch (result) {
       case QUOTA_EXCEEDED ->
-          events.record(IndexingEventCategory.REJECTED, quotaMessage.get(), reference);
+          events.record(IndexingEventCategory.REJECTED, quotaMessages.library().get(), reference);
+      case PERSONAL_QUOTA_EXCEEDED ->
+          events.record(IndexingEventCategory.REJECTED, quotaMessages.person().get(), reference);
       case NO_EXTRACTABLE_TEXT ->
           events.record(
               IndexingEventCategory.REJECTED,

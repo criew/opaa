@@ -19,8 +19,8 @@ public enum RunFailureCategory {
   /** The source rejected the secret, also once the core was asked again ("Anmeldung abgelehnt"). */
   CREDENTIALS_REJECTED,
   /**
-   * The storage quota across all private libraries of the owner is reached; the run is completed as
-   * incomplete, not failed.
+   * The run rejected an item at the storage quota across all private libraries of the owner; it
+   * went on to its end and is completed as incomplete, not failed.
    */
   QUOTA_EXHAUSTED;
 

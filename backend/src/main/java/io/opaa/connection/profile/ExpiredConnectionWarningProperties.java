@@ -4,8 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * From how many expired connected accounts on one profile the administration's overview warns. The
- * warning follows the masked numbers only ({@link PersonNumbers}), so below the minimum group size
- * it never shows.
+ * warning follows the masked numbers only ({@link PersonNumbers}): it shows as soon as they admit
+ * the threshold, so it may be a false alarm where the expired are not told exactly.
  *
  * @param warningThreshold expired connections per profile (default 10, at least 1)
  */

@@ -481,10 +481,13 @@ public class AttachmentIndexer {
           access.events(),
           result,
           filePathIdentity,
-          () -> storageQuotaService.quotaExceededMessage(access.targetLibrary().getId()),
+          DocumentIngestOutcomes.QuotaMessages.of(storageQuotaService, access.targetLibrary()),
           DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE);
+      if (result == DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED) {
+        access.progress().recordPersonalQuotaReached();
+      }
       switch (result) {
-        case QUOTA_EXCEEDED, FAILED -> {
+        case QUOTA_EXCEEDED, PERSONAL_QUOTA_EXCEEDED, FAILED -> {
           // Retried on a future run: deferred, so a conditional GET cannot suppress it.
           access.markDeferred();
           access.recordIndexedAttachment(filePathIdentity, false);

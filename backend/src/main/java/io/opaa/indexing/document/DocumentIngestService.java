@@ -14,7 +14,6 @@ import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
-import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -151,14 +150,14 @@ public class DocumentIngestService {
    * path and to a concurrent delete while chunks are embedded. A non-{@code null} {@code
    * attachmentAccess} turns every discovered attachment into a child {@code Document} (ADR-0022).
    * The quota check and the save of the row it admits run under the library's {@link
-   * LibraryStorageQuotaService#holdIntake}.
+   * LibraryStorageQuotaService#holdIntake}. A source document one of whose attachments its owner's
+   * quota rejected is stored without checksum and change marker, so the next run reads it again.
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
    *     failure {@link DocumentIngestResult} names
    * @throws IOException when the content cannot be read; an exception out of parsing, embedding or
    *     the final update is rethrown after the row was marked {@code FAILED}
-   * @throws PersonalQuotaExhaustedException when the owner of a private library has no room left
    */
   public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
       throws IOException {
@@ -242,6 +241,7 @@ public class DocumentIngestService {
     UUID documentId = doc.getId();
     DocumentFormat pipeline = selection.pipeline();
     boolean preservingPreviousChunks = replacingExistingChunks;
+    boolean[] attachmentAtQuota = {false};
     try {
       DocumentFormatResult parsed =
           DocumentFormatRunner.run(
@@ -256,12 +256,15 @@ public class DocumentIngestService {
                 // Before the attachments: their own quota checks must already see the parent's
                 // corrected (attachment-free) fileSize, or the attachment bytes count twice.
                 applyContentByteSizeOverride(savedDoc, result);
+                int rejectedBefore = attachmentAccess.progress().personalQuotaRejections();
                 processDiscoveredAttachments(
                     result.discoveredAttachments(),
                     documentId,
                     savedDoc.getFilePath(),
                     savedDoc.getSourceType(),
                     attachmentAccess);
+                attachmentAtQuota[0] =
+                    attachmentAccess.progress().personalQuotaRejections() > rejectedBefore;
               });
       if (ingest.reindex() && parsed.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
         log.warn(
@@ -324,8 +327,13 @@ public class DocumentIngestService {
           coreMetadata,
           ingest.context());
 
+      boolean unsettled = attachmentAtQuota[0] && !ingest.existingRow();
       DocumentIngestResult result =
-          markConnectorIndexed(documentId, chunks.size(), checksum, ingest.changeMarker());
+          markConnectorIndexed(
+              documentId,
+              chunks.size(),
+              unsettled ? null : checksum,
+              unsettled ? null : ingest.changeMarker());
       if (result == DocumentIngestResult.SKIPPED) {
         return result;
       }
@@ -454,8 +462,8 @@ public class DocumentIngestService {
   }
 
   /**
-   * {@code null} when {@code library} may take in {@code delta} more bytes; the rejection of the
-   * item when its library is full; an end of the run when its owner's private storage is.
+   * {@code null} when {@code library} may take in {@code delta} more bytes; otherwise the rejection
+   * of the item for the quota that is full - its library's or its owner's private storage.
    */
   private DocumentIngestResult admit(KnowledgeLibrary library, long delta, String filePath) {
     QuotaVerdict verdict = storageQuotaService.verdictFor(library, delta);
@@ -464,10 +472,11 @@ public class DocumentIngestService {
     }
     if (verdict == QuotaVerdict.PERSON_EXHAUSTED) {
       log.warn(
-          "Ending intake into private library {}: its owner's storage quota would be exceeded",
+          "Skipping {}: the owner's storage quota of private library {} would be exceeded",
+          filePath,
           library.getId());
-      throw new PersonalQuotaExhaustedException(
-          storageQuotaService.personalQuotaExceededMessage(library));
+      metrics.recordSkipped();
+      return DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED;
     }
     return null;
   }

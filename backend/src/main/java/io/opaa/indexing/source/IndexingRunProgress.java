@@ -8,7 +8,6 @@ import io.opaa.indexing.job.IndexingEventSink;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunCost;
 import java.util.UUID;
-import java.util.function.Supplier;
 
 /**
  * Tracks the processed/failed/skipped counters of a single indexing run and reports them through
@@ -35,6 +34,7 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
 
   private int attachmentsSkipped;
   private int attachmentsFailed;
+  private int personalQuotaRejections;
 
   public IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
     this.indexingJobService = indexingJobService;
@@ -65,9 +65,9 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
 
   /**
    * Maps one item's {@link DocumentIngestResult} onto the counters and the protocol: a rejection
-   * ({@code QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}) and {@code SKIPPED} count as skipped,
-   * {@code FAILED} as failed, {@code PROCESSED} as processed; the protocol entry, if any, is the
-   * one {@link DocumentIngestOutcomes#record} writes.
+   * ({@code QUOTA_EXCEEDED}, {@code PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}) and
+   * {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code PROCESSED} as processed; the
+   * protocol entry, if any, is the one {@link DocumentIngestOutcomes#record} writes.
    *
    * @return whether the item was processed
    */
@@ -75,18 +75,37 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
       DocumentIngestResult result,
       String reference,
       IndexingEventSink events,
-      Supplier<String> quotaMessage) {
+      DocumentIngestOutcomes.QuotaMessages quotaMessages) {
     DocumentIngestOutcomes.record(
-        events, result, reference, quotaMessage, DocumentIngestOutcomes.FAILED_MESSAGE);
+        events, result, reference, quotaMessages, DocumentIngestOutcomes.FAILED_MESSAGE);
     switch (result) {
       case PROCESSED -> {
         recordProcessed();
         return true;
       }
       case FAILED -> recordFailed();
+      case PERSONAL_QUOTA_EXCEEDED -> {
+        recordPersonalQuotaReached();
+        recordSkipped();
+      }
       case SKIPPED, QUOTA_EXCEEDED, NO_EXTRACTABLE_TEXT -> recordSkipped();
     }
     return false;
+  }
+
+  @Override
+  public void recordPersonalQuotaReached() {
+    personalQuotaRejections++;
+  }
+
+  @Override
+  public int personalQuotaRejections() {
+    return personalQuotaRejections;
+  }
+
+  /** Whether an item or attachment of this run was rejected at the owner's private quota. */
+  public boolean personalQuotaReached() {
+    return personalQuotaRejections > 0;
   }
 
   /** Documents recorded as failed so far. */

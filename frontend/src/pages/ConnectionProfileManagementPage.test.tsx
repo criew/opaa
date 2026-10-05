@@ -208,6 +208,30 @@ describe('ConnectionProfileManagementPage', () => {
     expect(cells('Zugang Partner').slice(5, 7)).toEqual(['9', 'nicht ausgewiesen'])
   })
 
+  it('says a warning is only possible where the expired are not told exactly', async () => {
+    mockConnectionProfiles[0] = {
+      ...mockConnectionProfiles[0],
+      connectedAccountCount: { count: 23, fewerThan: null },
+      expiredConnectionCount: { count: 12, fewerThan: null },
+      expiredConnectionWarning: true,
+    }
+    mockConnectionProfiles.push({
+      ...mockConnectionProfiles[0],
+      id: 'profile-withheld',
+      name: 'Zugang Partner',
+      connectedAccountCount: { count: 12, fewerThan: null },
+      expiredConnectionCount: null,
+      expiredConnectionWarning: true,
+    })
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    const exact = await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(within(exact).getByText('Viele abgelaufen')).toBeVisible()
+    const withheld = screen.getByRole('row', { name: /Zugang Partner/ })
+    expect(within(withheld).getByText('Möglicherweise viele abgelaufen')).toBeVisible()
+    expect(within(withheld).queryByText('Viele abgelaufen')).not.toBeInTheDocument()
+  })
+
   it('shows the expiry of the secret as a German date and tells expired from expiring', async () => {
     mockConnectionProfiles[0] = {
       ...mockConnectionProfiles[0],

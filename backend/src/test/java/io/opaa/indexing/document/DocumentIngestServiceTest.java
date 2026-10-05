@@ -35,12 +35,13 @@ import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
+import io.opaa.indexing.attachment.AttachmentOutcome;
+import io.opaa.indexing.attachment.AttachmentProgressSink;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
-import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -1089,11 +1090,11 @@ class DocumentIngestServiceTest {
   class Quota {
 
     /**
-     * The owner's quota across her private libraries ends the run instead of skipping the item:
-     * nothing of the document is stored, and the message names her quota.
+     * The owner's quota across her private libraries rejects the item like the library's quota:
+     * nothing of the document is stored, and the run goes on.
      */
     @Test
-    void aDocumentPastTheOwnersPersonalQuotaEndsTheIntakeWithoutPersistingAnything()
+    void aDocumentPastTheOwnersPersonalQuotaIsRejectedWithoutPersistingAnything()
         throws IOException {
       Path file = fileNamed("over-personal-quota.txt", "some content");
       when(checksumService.computeSha256(file)).thenReturn("abc123");
@@ -1102,16 +1103,14 @@ class DocumentIngestServiceTest {
           .thenReturn(Optional.empty());
       when(storageQuotaService.verdictFor(eq(targetLibrary), anyLong()))
           .thenReturn(QuotaVerdict.PERSON_EXHAUSTED);
-      when(storageQuotaService.personalQuotaExceededMessage(targetLibrary))
-          .thenReturn(
-              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (1 KB von 1 KB belegt)");
 
-      assertThatThrownBy(() -> service.ingest(localFile(file), null))
-          .isInstanceOf(PersonalQuotaExhaustedException.class)
-          .hasMessage(
-              "Speicherkontingent Ihrer privaten Bibliotheken erschöpft (1 KB von 1 KB belegt)");
+      DocumentIngestResult result = service.ingest(localFile(file), null);
+
+      assertThat(result).isEqualTo(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentService, never()).parseDocument(any());
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      assertThat(counter("skipped")).isEqualTo(1.0);
     }
 
     /** The check and the save of the row it admits happen under one hold, released after it. */
@@ -1584,6 +1583,67 @@ class DocumentIngestServiceTest {
       assertThat(Files.exists(attachmentTempFile)).isFalse();
     }
 
+    /**
+     * An attachment rejected at the owner's quota leaves its parent without checksum and change
+     * marker, so the next run reads the parent - and the attachment - again.
+     */
+    @Test
+    void aParentWhoseAttachmentHitTheOwnersQuotaKeepsNoChangeMarker()
+        throws IOException, InterruptedException {
+      Path attachmentTempFile = fileNamed("over-quota-attachment.tmp", "attachment bytes");
+      var attachment =
+          new DiscoveredAttachment("anlage.pdf", attachmentTempFile, "application/pdf");
+      var fakePipeline =
+          new FakeDiscoveringPipeline(chunks("chunk1"), List.of(attachment), Optional.empty());
+      AttachmentIndexer attachmentIndexer = Mockito.mock(AttachmentIndexer.class);
+      @SuppressWarnings("unchecked")
+      ObjectProvider<AttachmentIndexer> provider = Mockito.mock(ObjectProvider.class);
+      when(provider.getObject()).thenReturn(attachmentIndexer);
+      DocumentIngestService serviceWithFakePipeline =
+          serviceWith(
+              new DocumentFormatRegistry(List.of(fakePipeline), fakePipeline),
+              storageQuotaService,
+              provider);
+      when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-archive");
+      when(documentRepository.findByLibraryIdAndFilePath(eq(targetLibrary.getId()), anyString()))
+          .thenReturn(Optional.empty());
+      when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
+      CountingSink sink = new CountingSink();
+      AttachmentAccess access = Mockito.mock(AttachmentAccess.class);
+      when(access.progress()).thenReturn(sink);
+      when(attachmentIndexer.indexAll(eq(access), any(), any(), any(), any(), any()))
+          .thenAnswer(
+              invocation -> {
+                sink.recordPersonalQuotaReached();
+                return List.of();
+              });
+
+      serviceWithFakePipeline.ingest(
+          DocumentIngests.extractedText(
+              targetLibrary, "archive text", "Archiv", ENTRY_URL, PUBLISHED_AT),
+          access);
+
+      verify(documentRepository).markIndexedFromSource(any(), eq(1), any(), eq(null), eq(null));
+    }
+
+    /** Counts the attachments rejected at the owner's quota, as a run's progress does. */
+    private static final class CountingSink implements AttachmentProgressSink {
+      private int rejections;
+
+      @Override
+      public void recordAttachment(AttachmentOutcome outcome) {}
+
+      @Override
+      public void recordPersonalQuotaReached() {
+        rejections++;
+      }
+
+      @Override
+      public int personalQuotaRejections() {
+        return rejections;
+      }
+    }
+
     @Test
     void withAnAttachmentAccessTheParentSizeIsCorrectedBeforeTheAttachmentsAreIndexed()
         throws IOException, InterruptedException {
@@ -1606,6 +1666,7 @@ class DocumentIngestServiceTest {
           .thenReturn(Optional.empty());
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
       AttachmentAccess access = Mockito.mock(AttachmentAccess.class);
+      when(access.progress()).thenReturn(new CountingSink());
 
       serviceWithFakePipeline.ingest(
           DocumentIngests.extractedText(

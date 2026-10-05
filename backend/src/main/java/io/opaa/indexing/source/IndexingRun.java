@@ -186,7 +186,10 @@ public final class IndexingRun {
    */
   public boolean recordOutcome(DocumentIngestResult result, String reference) {
     return progress.recordOutcome(
-        result, reference, events, () -> storageQuotaService.quotaExceededMessage(library.getId()));
+        result,
+        reference,
+        events,
+        DocumentIngestOutcomes.QuotaMessages.of(storageQuotaService, library));
   }
 
   /** An item whose processing threw: logged, an {@code ERROR} entry, counted as failed. */
