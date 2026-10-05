@@ -129,7 +129,8 @@ neu verbinden.
 **Was die Verwaltung sieht:** keine Namen, keine Bibliotheken, keine Inhalte. Am Zugang steht nur
 die Zahl der verbundenen und der abgelaufenen Konten, kleine Zahlen nur als „weniger als N“. Dass
 eine Person verbunden, neu verbunden oder getrennt hat, steht pseudonym im Verbindungsprotokoll, das
-die Revision liest.
+die Revision liest. Auch die Betriebslogs nennen von einer privaten Bibliothek keine Ordner, Dateien,
+Anhänge oder Titel, nur ihre Kennung.
 
 ## 3. Betriebsart
 

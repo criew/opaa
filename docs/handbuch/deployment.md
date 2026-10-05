@@ -773,6 +773,12 @@ eine Shell benutzt wurde. Für alles Weitere lässt sich ein Werkzeug-Container 
 oder PID-Namensraum hängen (`--network container:…`, `--pid container:…`), ohne dass das
 Laufzeitimage selbst Werkzeuge mitbringen muss.
 
+**Private Bibliotheken im Log:** Das Anwendungslog nennt Ordner, Dateien, Anhänge und Titel einer
+privaten Bibliothek nicht, auch nicht auf `DEBUG`; an ihrer Stelle steht `<private library …>` mit
+der Kennung der Bibliothek, wo nötig mit der Kennung des Dokuments. Fehlermeldungen solcher Läufe
+erscheinen dort nur mit Typ und Stack, ohne Meldungstext. Was die Besitzerin wissen muss, steht im
+Laufprotokoll ihrer Bibliothek ([Benutzerverwaltung](benutzerverwaltung.md), „Verbundene Konten“).
+
 ## Bereitschaft und Lebendigkeit
 
 Für einen Container-Healthcheck oder die Probe eines Lastverteilers ist nicht der Gesamtstatus der
