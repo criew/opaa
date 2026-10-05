@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.format.DocumentService;
 import io.opaa.indexing.attachment.AttachmentOutcome;
 import io.opaa.indexing.document.DocumentIngestOutcomes;
+import io.opaa.indexing.document.DocumentIngestOutcomes.QuotaMessages;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingEventSink;
@@ -23,6 +24,10 @@ import org.junit.jupiter.api.Test;
 class IndexingRunProgressTest {
 
   private static final String QUOTA_MESSAGE = "Speicherkontingent der Bibliothek erschöpft";
+  private static final String PERSONAL_QUOTA_MESSAGE =
+      "Speicherkontingent Ihrer privaten Bibliotheken erschöpft";
+  private static final QuotaMessages QUOTA =
+      new QuotaMessages(() -> QUOTA_MESSAGE, () -> PERSONAL_QUOTA_MESSAGE);
 
   private final IndexingJobService jobService = mock(IndexingJobService.class);
   private final IndexingEventSink events = mock(IndexingEventSink.class);
@@ -49,7 +54,7 @@ class IndexingRunProgressTest {
   @Test
   void aProcessedResultCountsAsProcessedAndRecordsNoEvent() {
     boolean processed =
-        progress.recordOutcome(DocumentIngestResult.PROCESSED, "datei.txt", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.PROCESSED, "datei.txt", events, QUOTA);
 
     assertThat(processed).isTrue();
     assertThat(progress.processedCount()).isEqualTo(1);
@@ -61,7 +66,7 @@ class IndexingRunProgressTest {
   @Test
   void aSkippedResultCountsAsSkippedAndRecordsNoEvent() {
     boolean processed =
-        progress.recordOutcome(DocumentIngestResult.SKIPPED, "datei.txt", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.SKIPPED, "datei.txt", events, QUOTA);
 
     assertThat(processed).isFalse();
     assertThat(progress.skippedCount()).isEqualTo(1);
@@ -71,19 +76,39 @@ class IndexingRunProgressTest {
   @Test
   void anExceededQuotaCountsAsSkippedAndIsRejectedWithTheQuotaMessage() {
     boolean processed =
-        progress.recordOutcome(
-            DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt", events, QUOTA);
 
     assertThat(processed).isFalse();
     assertThat(progress.skippedCount()).isEqualTo(1);
     verify(events).record(IndexingEventCategory.REJECTED, QUOTA_MESSAGE, "datei.txt");
   }
 
+  /** Like the library's quota, plus the mark the frame completes the run under. */
+  @Test
+  void anExceededPersonalQuotaCountsAsSkippedAndIsRejectedWithTheOwnersMessage() {
+    assertThat(progress.personalQuotaReached()).isFalse();
+
+    boolean processed =
+        progress.recordOutcome(
+            DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED, "datei.txt", events, QUOTA);
+
+    assertThat(processed).isFalse();
+    assertThat(progress.skippedCount()).isEqualTo(1);
+    assertThat(progress.personalQuotaReached()).isTrue();
+    verify(events).record(IndexingEventCategory.REJECTED, PERSONAL_QUOTA_MESSAGE, "datei.txt");
+  }
+
+  @Test
+  void anAttachmentAtThePersonalQuotaMarksTheRunToo() {
+    progress.recordPersonalQuotaReached();
+
+    assertThat(progress.personalQuotaReached()).isTrue();
+  }
+
   @Test
   void missingExtractableTextCountsAsSkippedAndIsRejectedWithItsOwnMessage() {
     boolean processed =
-        progress.recordOutcome(
-            DocumentIngestResult.NO_EXTRACTABLE_TEXT, "scan.pdf", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.NO_EXTRACTABLE_TEXT, "scan.pdf", events, QUOTA);
 
     assertThat(processed).isFalse();
     assertThat(progress.skippedCount()).isEqualTo(1);
@@ -97,7 +122,7 @@ class IndexingRunProgressTest {
   @Test
   void aFailedResultCountsAsFailedAndIsRecordedAsAnError() {
     boolean processed =
-        progress.recordOutcome(DocumentIngestResult.FAILED, "kaputt.pdf", events, this::quota);
+        progress.recordOutcome(DocumentIngestResult.FAILED, "kaputt.pdf", events, QUOTA);
 
     assertThat(processed).isFalse();
     assertThat(progress.failedCount()).isEqualTo(1);
@@ -109,26 +134,15 @@ class IndexingRunProgressTest {
 
   @Test
   void theQuotaMessageIsOnlyResolvedWhenTheQuotaWasExceeded() {
-    progress.recordOutcome(
-        DocumentIngestResult.PROCESSED,
-        "datei.txt",
-        events,
-        () -> {
-          throw new AssertionError("must not be resolved");
-        });
-    progress.recordOutcome(
-        DocumentIngestResult.FAILED,
-        "datei.txt",
-        events,
-        () -> {
-          throw new AssertionError("must not be resolved");
-        });
+    QuotaMessages unresolvable = new QuotaMessages(this::unresolvable, this::unresolvable);
+    progress.recordOutcome(DocumentIngestResult.PROCESSED, "datei.txt", events, unresolvable);
+    progress.recordOutcome(DocumentIngestResult.FAILED, "datei.txt", events, unresolvable);
 
     verify(events).record(any(), any(), any());
   }
 
-  private String quota() {
-    return QUOTA_MESSAGE;
+  private String unresolvable() {
+    throw new AssertionError("must not be resolved");
   }
 
   @Test

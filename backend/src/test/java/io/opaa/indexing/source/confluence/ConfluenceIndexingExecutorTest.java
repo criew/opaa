@@ -1001,6 +1001,24 @@ class ConfluenceIndexingExecutorTest {
 
   @ParameterizedTest
   @MethodSource("editions")
+  void aPageRejectedAtTheOwnersQuotaKeepsTheAnchorSoTheWindowIsSearchedAgain(
+      ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    Instant anchor = NOW.minus(Duration.ofHours(2));
+    SourceSyncState state = completedFullSync(anchor);
+    server.updatePage("101", "<p>geändert</p>", NOW.minus(Duration.ofMinutes(20)));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().text().titled("Kapitel 1").match(), any()))
+        .thenReturn(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(state.getIncrementalAnchor()).as("unchanged at the quota").isEqualTo(anchor);
+    verify(syncStateRepository, never()).save(state);
+  }
+
+  @ParameterizedTest
+  @MethodSource("editions")
   void anIncrementalRunWithoutACompletedFullSyncFailsWithAClearMessage(ConfluenceEdition edition)
       throws Exception {
     start(edition, null, "ENG");

@@ -668,7 +668,8 @@ Begründung:
 - **Lauf:** `PERSON_EXHAUSTED` wirft in `DocumentIngestService` die `PersonalQuotaExhaustedException`
   (`EndsRun`). `IndexingRunTemplate` beendet den Lauf wie bei einem erschöpften Anfragebudget
   geordnet als unvollständig, ohne Abgleich, mit der Meldung der Besitzerin im Protokoll und der
-  Kategorie `QUOTA_EXHAUSTED` an einem abgeschlossenen Lauf.
+  Kategorie `QUOTA_EXHAUSTED` an einem abgeschlossenen Lauf. Abgelöst durch den folgenden Nachtrag
+  (#2276).
 - **Wettlauf:** Prüfung und Speichern der Dokumentzeile laufen unter
   `LibraryStorageQuotaService#holdIntake`, einer Sperre je Besitzerin in diesem Prozess
   (ADR-0021). Gezählt wird, was gespeichert ist; gleichzeitige Läufe mehrerer privater
@@ -680,6 +681,39 @@ Begründung:
   der Verwaltung rechnet je Zugang in SQL über Personen und maskiert nach
   `PersonThreshold#disclosesPart`; mehrere exakte Teilsummen erscheinen nur, solange ihr
   gemeinsamer Rest auf mindestens N Personen ruht; ein leerer Rest gilt als wenige.
+
+## Nachtrag vom 05.10.2026: Element überspringen am Kontingent je Person (#2276)
+
+Entscheidung des Maintainers vom 05.10.2026 zu M1 aus #2277: Am erschöpften Kontingent je Person
+wird das Element übersprungen, der Lauf läuft weiter – wie beim Kontingent je Bibliothek.
+
+- **Lauf:** `PERSON_EXHAUSTED` liefert in `DocumentIngestService` das Ergebnis
+  `PERSONAL_QUOTA_EXCEEDED`; nichts wird gespeichert, eine gespeicherte Fassung bleibt. Der
+  Konnektor zählt das Element als übersprungen, es bleibt präsent, und der Lauf erreicht den
+  Abgleich. `PersonalQuotaExhaustedException` entfällt.
+- **Kennzeichnung:** `IndexingRunProgress` merkt sich die Ablehnung, auch die eines Anhangs. Ein
+  nicht fehlgeschlagener Lauf endet dann als abgeschlossen und unvollständig mit der Kategorie
+  `QUOTA_EXHAUSTED`; Spezifikation und Oberfläche behalten Kategorie und Marke.
+- **Erholung:** Löschungen in der Quelle und eine eingegrenzte Quelle werden abgeglichen und
+  schaffen Platz – frei erst, wenn der Abgleich sie übernimmt: am Ende eines Vollabgleichs, bei
+  einer Runde über mehrere Läufe (#2256) erst am Ende des Laufs, der die Runde abschließt.
+- **Marken halten:** Eine Ablehnung am Kontingent je Person hält jede Fortschrittsmarke wie ein
+  vorübergehender Fehler, damit sich das System selbst erholt. `FileSync` zählt sie als
+  vorübergehenden Fehler (Änderungscursor bleibt, Ordnergedächtnis wird aufgehoben; die Runde über
+  mehrere Läufe verhält sich wie beim vorübergehenden Dateifehler), Confluence INCREMENTAL hält den
+  Anker, RSS speichert den Feed-Zustand nicht. Ein Dokument, dessen Anhang abgelehnt wurde, wird
+  ohne Prüfsumme und Änderungsmerkmal gespeichert und im nächsten Lauf erneut gelesen. Erkannt wird
+  das am Zähler `AttachmentProgressSink#personalQuotaRejections`. Folge: Solange etwas fehlt,
+  liest jeder Lauf dasselbe Fenster bzw. Dokument erneut (unveränderte Dateien ohne Download) und
+  endet mit `QUOTA_EXHAUSTED`; der Hinweis bleibt so lange stehen. Für das Kontingent je
+  Bibliothek gilt das noch nicht (#2295).
+- **Meldung:** Den Text an die Besitzerin erzeugt nur `DocumentIngestOutcomes` (Protokolleintrag am
+  Element, wie beim Kontingent je Bibliothek); `personalUsageIsReadOnlyByItsOwner` lässt
+  `personalQuotaExceededMessage` nur dort zu und die Fabrik `QuotaMessages#of` nur in `IndexingRun`
+  und `AttachmentIndexer`.
+- **Kosten:** Wie beim Kontingent je Bibliothek wird eine abgelehnte Datei erst heruntergeladen;
+  keiner der Konnektorpfade prüft das Kontingent vor dem Download. Eine beratende Vorprüfung über
+  die Größe aus dem Listing ist Folge-Issue #2294.
 
 ## Nachtrag vom 05.10.2026: Schreibende Wege je Zugang serialisiert (#2246)
 
