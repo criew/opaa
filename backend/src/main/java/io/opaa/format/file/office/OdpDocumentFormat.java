@@ -94,17 +94,17 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
             odfProperties.maxSpaceRepeat(),
             odfProperties.maxTextCharacters());
     try (OdfPackage odf = opener.open(source.file())) {
-      DocumentProperties meta = readMeta(odf, source.fileName());
+      DocumentProperties meta = readMeta(odf, source.logName());
       if (!odf.parse("content.xml", odfProperties.maxContentXmlBytes(), handler)) {
         // Not a genuine ODF ZIP (no content.xml entry at all) - the same "could not be parsed"
         // case a corrupt .odp reaches, distinct from a well-formed but empty presentation.
-        throw new IOException("No content.xml entry in ODP file " + source.fileName());
+        throw new IOException("No content.xml entry in ODP file " + source.logName());
       }
       return new OdpContent(
           handler.chunks(),
           handler.anySlideHasText(),
           meta,
-          readMasterSlideText(odf, source.fileName()));
+          readMasterSlideText(odf, source.logName()));
     }
   }
 
@@ -169,7 +169,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
   @Override
   protected DocumentProperties declaredProperties(DocumentFormatSource source) throws IOException {
     try (OdfPackage odf = opener.open(source.file())) {
-      DocumentProperties meta = readMeta(odf, source.fileName());
+      DocumentProperties meta = readMeta(odf, source.logName());
       OdpContentHandler handler =
           new OdpContentHandler(
               odfProperties.maxOdpSlides(),
@@ -180,7 +180,10 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
           return meta;
         }
       } catch (IOException | RuntimeException e) {
-        log.warn("Could not read slides of ODP document {}", source.fileName(), e);
+        log.warn(
+            "Could not read slides of ODP document {}",
+            source.logName(),
+            source.loggedName().of(e));
         return meta;
       }
       return meta.withFirstHeading(

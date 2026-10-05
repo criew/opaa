@@ -233,7 +233,9 @@ final class NextcloudFileStore implements FileStore {
       if (resource.collection() && !dav.connection().isOwnFilePath(resource.href(), filesRoot)) {
         // credentials only ever go to this instance; a folder behind such an address keeps its
         // bestand, a file is skipped like an unavailable one
-        log.warn("Nextcloud answered a foreign address for an entry of {}", container.key());
+        log.warn(
+            "Nextcloud answered a foreign address for an entry of {}",
+            dav.names().of(container.key()));
         throw new FileAccessException.ContainerUnlistable(
             "Nextcloud nannte für einen Ordner in „"
                 + display(root, folder)

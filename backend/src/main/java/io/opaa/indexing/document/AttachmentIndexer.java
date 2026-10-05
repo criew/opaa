@@ -13,6 +13,7 @@ import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
+import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.RequestPoliteness;
 import java.io.IOException;
@@ -120,7 +121,7 @@ public class AttachmentIndexer {
       log.warn(
           "Maximum attachment depth ({}) reached for {}, skipping {} nested attachment(s)",
           attachmentProperties.maxDepth(),
-          parentPath,
+          names(access).of(parentPath),
           sources.size());
       access.markDeferred();
       countSkipped(access, sources.size());
@@ -135,7 +136,7 @@ public class AttachmentIndexer {
         log.info(
             "Parent document {} carries {} attachments, processing only the first {} (attachment"
                 + " limit)",
-            parentPath,
+            names(access).of(parentPath),
             sources.size(),
             limit);
         access.markDeferred();
@@ -160,6 +161,11 @@ public class AttachmentIndexer {
         RECURSION_DEPTH.remove();
       }
     }
+  }
+
+  /** How log lines name the attachments of the library {@code access} stores into. */
+  private static LoggedName names(AttachmentAccess access) {
+    return access.targetLibrary().loggedNames();
   }
 
   private static void countSkipped(AttachmentAccess access, int count) {
@@ -212,8 +218,8 @@ public class AttachmentIndexer {
         log.info(
             "Skipping attachment that answered with HTML instead of a document (likely a"
                 + " bot-protection or error page): {} (from {})",
-            download.url(),
-            parentPath);
+            names(access).of(download.url()),
+            names(access).of(parentPath));
         access
             .events()
             .record(
@@ -239,9 +245,9 @@ public class AttachmentIndexer {
       } catch (IOException e) {
         log.warn(
             "Could not read downloaded attachment to detect its format, skipping: {} (from {})",
-            download.url(),
-            parentPath,
-            e);
+            names(access).of(download.url()),
+            names(access).of(parentPath),
+            names(access).of(e));
         access
             .events()
             .record(
@@ -257,8 +263,8 @@ public class AttachmentIndexer {
       if (!decision.supported()) {
         log.info(
             "Skipping attachment with an unsupported format: {} (from {}, Content-Type {})",
-            download.url(),
-            parentPath,
+            names(access).of(download.url()),
+            names(access).of(parentPath),
             contentType);
         access
             .events()
@@ -297,8 +303,8 @@ public class AttachmentIndexer {
       log.warn(
           "Skipping attachment exceeding the size limit of {} bytes: {} (from {})",
           limits.maxSizeBytes(),
-          download.url(),
-          parentPath);
+          names(access).of(download.url()),
+          names(access).of(parentPath));
       access
           .events()
           .record(
@@ -310,9 +316,9 @@ public class AttachmentIndexer {
     } catch (RedirectFollowingFetcher.RedirectRejectedException e) {
       log.warn(
           "Attachment redirected to a foreign host, skipping: {} (from {}, {})",
-          download.url(),
-          parentPath,
-          e.getMessage());
+          names(access).of(download.url()),
+          names(access).of(parentPath),
+          names(access).of(e.getMessage()));
       access
           .events()
           .record(IndexingEventCategory.REJECTED, e.userMessage() + " (Anlage)", download.url());
@@ -321,9 +327,9 @@ public class AttachmentIndexer {
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       log.warn(
           "Attachment target rejected, skipping: {} (from {}, {})",
-          download.url(),
-          parentPath,
-          e.getMessage());
+          names(access).of(download.url()),
+          names(access).of(parentPath),
+          names(access).of(e.getMessage()));
       access
           .events()
           .record(IndexingEventCategory.REJECTED, e.getMessage() + " (Anlage)", download.url());
@@ -333,9 +339,9 @@ public class AttachmentIndexer {
       RunEndingFailures.rethrow(e);
       log.warn(
           "Attachment unreachable, skipping: {} (from {}, {})",
-          download.url(),
-          parentPath,
-          e.getMessage());
+          names(access).of(download.url()),
+          names(access).of(parentPath),
+          names(access).of(e.getMessage()));
       access
           .events()
           .record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", download.url());
@@ -343,7 +349,11 @@ public class AttachmentIndexer {
       access.progress().recordAttachment(AttachmentOutcome.FAILED);
     } catch (Exception e) {
       RunEndingFailures.rethrow(e);
-      log.error("Failed to process attachment: {} (from {})", download.url(), parentPath, e);
+      log.error(
+          "Failed to process attachment: {} (from {})",
+          names(access).of(download.url()),
+          names(access).of(parentPath),
+          names(access).of(e));
       access
           .events()
           .record(
@@ -357,7 +367,7 @@ public class AttachmentIndexer {
         try {
           Files.deleteIfExists(downloaded.path());
         } catch (IOException e) {
-          log.warn("Failed to delete temp file: {}", downloaded.path(), e);
+          log.warn("Failed to delete temp file: {}", downloaded.path(), names(access).of(e));
         }
       }
     }
@@ -382,8 +392,8 @@ public class AttachmentIndexer {
       if (!decision.supported()) {
         log.info(
             "Skipping local attachment with an unsupported format: {} (from {})",
-            localFile.fileName(),
-            parentPath);
+            names(access).of(localFile.fileName()),
+            names(access).of(parentPath));
         access
             .events()
             .record(
@@ -417,9 +427,9 @@ public class AttachmentIndexer {
     } catch (IOException e) {
       log.warn(
           "Failed to read local attachment, skipping: {} (from {})",
-          localFile.fileName(),
-          parentPath,
-          e);
+          names(access).of(localFile.fileName()),
+          names(access).of(parentPath),
+          names(access).of(e));
       access
           .events()
           .record(
@@ -498,10 +508,17 @@ public class AttachmentIndexer {
           access.progress().recordAttachment(AttachmentOutcome.PROCESSED);
         }
       }
-      log.info("Indexed attachment: {} (from {})", filePathIdentity, parentPath);
+      log.info(
+          "Indexed attachment: {} (from {})",
+          names(access).of(filePathIdentity),
+          names(access).of(parentPath));
       return Optional.of(filePathIdentity);
     } catch (IOException e) {
-      log.error("Failed to process attachment: {} (from {})", filePathIdentity, parentPath, e);
+      log.error(
+          "Failed to process attachment: {} (from {})",
+          names(access).of(filePathIdentity),
+          names(access).of(parentPath),
+          names(access).of(e));
       access
           .events()
           .record(

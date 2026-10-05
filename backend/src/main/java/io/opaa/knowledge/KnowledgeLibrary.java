@@ -4,6 +4,7 @@ import io.opaa.api.types.AssetOwnerType;
 import io.opaa.api.types.ExternalAccessState;
 import io.opaa.asset.Asset;
 import io.opaa.permission.AssetType;
+import io.opaa.sourceaccess.LoggedName;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
@@ -408,6 +409,16 @@ public class KnowledgeLibrary extends Asset {
     this.sourceCredentials = sourceCredentials;
     this.sourceInsecureSsl = sourceInsecureSsl;
     touch();
+  }
+
+  /**
+   * The one decision how operational logs name this library's items: by name, or - for a private
+   * library, whose content only its owner may know - by its id alone.
+   */
+  public LoggedName loggedNames() {
+    return isOwnerOnly()
+        ? LoggedName.withheld("<private library " + getId() + ">")
+        : LoggedName.OPEN;
   }
 
   /** Moves the source to {@code sourceUrl}; every other field, the secret included, stays. */

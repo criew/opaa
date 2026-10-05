@@ -9,6 +9,7 @@ import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.shared.TableText;
+import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.ByteBuffer;
@@ -305,13 +306,13 @@ public class TabularDocumentFormat implements DocumentFormat {
     // - source.file() is never re-written while this runs.
     try (Workbook workbook = WorkbookFactory.create(source.file().toFile(), null, true)) {
       for (Sheet sheet : workbook) {
-        chunks.addAll(readSheet(sheet, cellFormatter));
+        chunks.addAll(readSheet(sheet, cellFormatter, source.loggedName()));
       }
     }
     return chunks;
   }
 
-  private List<Document> readSheet(Sheet sheet, DataFormatter cellFormatter) {
+  private List<Document> readSheet(Sheet sheet, DataFormatter cellFormatter, LoggedName names) {
     List<RawRow> rows = new ArrayList<>();
     List<String> header = null;
     boolean anyRowTruncated = false;
@@ -331,7 +332,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       log.warn(
           "Sheet '{}' has one or more rows wider than the configured limit of {} columns;"
               + " truncating",
-          sheet.getSheetName(),
+          names.of(sheet.getSheetName()),
           maxRowColumns);
     }
     return chunksFromRawRows(sheet.getSheetName(), sheet.getSheetName(), rows);

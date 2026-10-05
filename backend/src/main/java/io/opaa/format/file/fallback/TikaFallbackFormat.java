@@ -102,7 +102,7 @@ public class TikaFallbackFormat implements DocumentFormat {
       parsed = List.of(new Document(source.extractedText()));
     }
 
-    List<Document> chunks = chunkingService.chunkDocuments(source.fileName(), parsed);
+    List<Document> chunks = chunkingService.chunkDocuments(source.logName(), parsed);
     if (chunks.isEmpty()) {
       // Non-blank parsed text can still chunk down to nothing (OCR noise or page footers below
       // ChunkingService's own minChunkLengthToEmbed/minChunkSizeChars) - reported as a rejection,
@@ -125,7 +125,8 @@ public class TikaFallbackFormat implements DocumentFormat {
     try {
       return properties(source, documentService.parseDocument(source.file()));
     } catch (RuntimeException e) {
-      log.warn("Could not read properties of {} via Tika", source.fileName(), e);
+      log.warn(
+          "Could not read properties of {} via Tika", source.logName(), source.loggedName().of(e));
       return DocumentProperties.EMPTY;
     }
   }

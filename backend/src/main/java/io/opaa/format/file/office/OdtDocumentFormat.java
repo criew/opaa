@@ -88,9 +88,9 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
   @Override
   protected OdtContent read(DocumentFormatSource source) throws IOException {
     try (OdfPackage odf = opener.open(source.file())) {
-      DocumentProperties meta = readMeta(odf, source.fileName());
-      List<HeadingSectionSplitter.Event> events = readEvents(odf, source.fileName());
-      return new OdtContent(events, meta, readHeaderFooterText(odf, source.fileName()));
+      DocumentProperties meta = readMeta(odf, source.logName());
+      List<HeadingSectionSplitter.Event> events = readEvents(odf, source.logName());
+      return new OdtContent(events, meta, readHeaderFooterText(odf, source.logName()));
     }
   }
 
@@ -121,11 +121,14 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
   @Override
   protected DocumentProperties declaredProperties(DocumentFormatSource source) throws IOException {
     try (OdfPackage odf = opener.open(source.file())) {
-      DocumentProperties meta = readMeta(odf, source.fileName());
+      DocumentProperties meta = readMeta(odf, source.logName());
       try {
-        return properties(new OdtContent(readEvents(odf, source.fileName()), meta, ""));
+        return properties(new OdtContent(readEvents(odf, source.logName()), meta, ""));
       } catch (IOException | RuntimeException e) {
-        log.warn("Could not read headings of ODT document {}", source.fileName(), e);
+        log.warn(
+            "Could not read headings of ODT document {}",
+            source.logName(),
+            source.loggedName().of(e));
         return meta;
       }
     }

@@ -5,6 +5,7 @@ import io.opaa.indexing.source.RequestBudget;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.BoundedStreams;
+import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestMeter;
@@ -46,6 +47,7 @@ final class NextcloudDav implements AutoCloseable {
   private final long maxResponseBytes;
   private final BoundedDownloader downloader;
   private String filesRoot;
+  private LoggedName names = LoggedName.OPEN;
 
   NextcloudDav(
       NextcloudConnection connection,
@@ -87,6 +89,16 @@ final class NextcloudDav implements AutoCloseable {
 
   NextcloudConnection connection() {
     return connection;
+  }
+
+  LoggedName names() {
+    return names;
+  }
+
+  /** This client, its log lines naming paths and files as {@code names} decides. */
+  NextcloudDav loggingNamesAs(LoggedName names) {
+    this.names = names;
+    return this;
   }
 
   SourceRequestMeter meter() {
@@ -194,7 +206,8 @@ final class NextcloudDav implements AutoCloseable {
         maxBytes,
         sent,
         RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN,
-        budget);
+        budget,
+        names);
   }
 
   /** Whether a {@code 401} to {@code sent} is worth one retry with the header held now. */

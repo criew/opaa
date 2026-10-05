@@ -293,7 +293,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
       log.warn(
           "Library {} has an unusable Nextcloud configuration: {}",
           library.getId(),
-          e.getMessage());
+          library.loggedNames().of(e.getMessage()));
       return Optional.empty();
     }
     String prefix = connection.baseUrl() + "/index.php/f/";
@@ -302,7 +302,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
       return Optional.empty();
     }
     String fileId = document.getFilePath().substring(prefix.length());
-    try (NextcloudDav dav = probe(connection)) {
+    try (NextcloudDav dav = probe(connection).loggingNamesAs(library.loggedNames())) {
       String path = originalPath(dav.filesRoot(), folder, document);
       List<DavResource> found = dav.propfind(path, 0, "die Datei „" + document.getFileName() + "“");
       if (found.isEmpty() || !fileId.equals(found.getFirst().fileId())) {
@@ -420,7 +420,7 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
       log.warn(
           "Library {} carries Nextcloud settings the record rejects; left out: {}",
           library.getId(),
-          e.getMessage());
+          library.loggedNames().of(e.getMessage()));
       return null;
     }
   }

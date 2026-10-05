@@ -71,7 +71,11 @@ public final class DocumentFormatRunner {
     try {
       return pipeline.run(source);
     } catch (RuntimeException e) {
-      log.warn("Could not parse {} with pipeline {}", source.fileName(), pipeline.id(), e);
+      log.warn(
+          "Could not parse {} with pipeline {}",
+          source.logName(),
+          pipeline.id(),
+          source.loggedName().of(e));
       return DocumentFormatResult.parseFailed();
     }
   }

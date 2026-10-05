@@ -80,7 +80,11 @@ public abstract class FileDocumentFormat<T> implements DocumentFormat {
     try {
       return declaredProperties(source);
     } catch (IOException | RuntimeException e) {
-      log.warn("Could not read properties of {} via pipeline {}", source.fileName(), id(), e);
+      log.warn(
+          "Could not read properties of {} via pipeline {}",
+          source.logName(),
+          id(),
+          source.loggedName().of(e));
       return DocumentProperties.EMPTY;
     }
   }

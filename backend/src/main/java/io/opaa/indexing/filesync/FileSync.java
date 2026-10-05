@@ -22,6 +22,7 @@ import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.LibraryFolderService;
+import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -227,7 +228,7 @@ public final class FileSync implements AutoCloseable {
           "File sync for library {} listed incompletely ({}) - keeping the bestand, no"
               + " reconciliation",
           frame.library().getId(),
-          unlistedContainerKeys);
+          names().of(unlistedContainerKeys));
       if (round.resumes()) {
         // every other container is done: a round kept open would never list them again
         round.abandon();
@@ -394,7 +395,10 @@ public final class FileSync implements AutoCloseable {
         newStart = page.newStart();
       }
     } catch (FileAccessException.CursorExpired e) {
-      log.info("Change cursor of stream {} expired: {}", feedKey, e.getMessage());
+      log.info(
+          "Change cursor of stream {} expired: {}",
+          names().of(feedKey),
+          names().of(e.getMessage()));
       state.discardChangeCursor(feedKey);
       state.requireFullSync();
       frame
@@ -609,9 +613,9 @@ public final class FileSync implements AutoCloseable {
         // no deletion finding: the run says so, the rest is still processed, nothing reconciled
         log.warn(
             "Container {} not listable for library {}: {}",
-            container.key(),
+            names().of(container.key()),
             frame.library().getId(),
-            e.getMessage());
+            names().of(e.getMessage()));
         notListed(container, e.getMessage() + UNLISTABLE_CONTAINER_SUFFIX);
         return Listing.UNLISTED;
       } catch (FileAccessException e) {
@@ -661,8 +665,8 @@ public final class FileSync implements AutoCloseable {
           // a folder whose marker was never handed over cannot be known unchanged: keep the bestand
           log.warn(
               "Store reported folder \"{}\" of {} unchanged without a recalled marker",
-              unknown,
-              container.key());
+              names().of(unknown),
+              names().of(container.key()));
           notListed(
               container,
               "Der Ordner „"
@@ -806,7 +810,7 @@ public final class FileSync implements AutoCloseable {
                         || (document.holdsSourceContext(entry.context())
                             && entry.fileName().equals(document.getFileName())))
             .isPresent()) {
-      log.debug("Skipping unchanged file: {}", filePath);
+      log.debug("Skipping unchanged file: {}", names().of(filePath));
       frame.progress().recordSkipped();
       return;
     }
@@ -940,19 +944,21 @@ public final class FileSync implements AutoCloseable {
       log.warn(
           "Cannot map segment \"{}\" of {} to a folder name - leaving the document at the"
               + " library root",
-          path.rejectedSegment(),
-          entry.filePath());
+          names().of(path.rejectedSegment()),
+          names().of(entry.filePath()));
     } else if (path.truncated()) {
       log.warn(
           "{} nests deeper than {} folders - placing the document in the deepest allowed one",
-          entry.filePath(),
+          names().of(entry.filePath()),
           SourceFolderPath.MAX_DEPTH);
     }
     try {
       return folderMirror.folderFor(path.segments());
     } catch (Exception e) {
       log.warn(
-          "Failed to mirror the source folder of {} - leaving it at the root", entry.filePath(), e);
+          "Failed to mirror the source folder of {} - leaving it at the root",
+          names().of(entry.filePath()),
+          names().of(e));
       return null;
     }
   }
@@ -994,7 +1000,10 @@ public final class FileSync implements AutoCloseable {
         applyFolder(document, folderId);
       }
     } catch (Exception e) {
-      log.warn("Failed to mirror the source folder of {}", document.getFilePath(), e);
+      log.warn(
+          "Failed to mirror the source folder of {}",
+          names().of(document.getFilePath()),
+          names().of(e));
     }
   }
 
@@ -1080,7 +1089,7 @@ public final class FileSync implements AutoCloseable {
         if (fetched.note() != null) {
           frame.events().record(IndexingEventCategory.FORMAT_MISMATCH, fetched.note(), filePath);
         }
-        log.info("Indexed {} file: {}", frame.sourceType(), filePath);
+        log.info("Indexed {} file: {}", frame.sourceType(), names().of(filePath));
         // the row pins its folder now; attachments a re-parse enumerated are new rows without one
         folderMirror.markSeen(folderId);
         documentRepository
@@ -1088,7 +1097,9 @@ public final class FileSync implements AutoCloseable {
             .ifPresent(document -> applyFolder(document, folderId));
       } else if (result == DocumentIngestResult.SKIPPED) {
         // a new feature over the same bytes: the row keeps its id and chunks
-        log.info("{} changed its feature but not its checksum, provenance refreshed", filePath);
+        log.info(
+            "{} changed its feature but not its checksum, provenance refreshed",
+            names().of(filePath));
       }
     } catch (Exception e) {
       unsettle(entry);
@@ -1219,5 +1230,10 @@ public final class FileSync implements AutoCloseable {
   private static boolean hasExtension(String fileName) {
     int dot = fileName.lastIndexOf('.');
     return dot > 0 && dot < fileName.length() - 1;
+  }
+
+  /** How log lines name this run's items: by name, a private library's by reference. */
+  private LoggedName names() {
+    return frame.library().loggedNames();
   }
 }

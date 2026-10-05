@@ -31,6 +31,7 @@ import io.opaa.metadata.ModelExtractionOutcome;
 import io.opaa.metadata.ModelExtractionPrompt;
 import io.opaa.metadata.ModelMetadataExtractor;
 import io.opaa.observability.IndexingMetrics;
+import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -162,6 +163,7 @@ public class DocumentIngestService {
   public DocumentIngestResult ingest(DocumentIngest ingest, AttachmentAccess attachmentAccess)
       throws IOException {
     KnowledgeLibrary library = ingest.library();
+    LoggedName names = library.loggedNames();
     String filePath = ingest.filePath();
     String fileName = ingest.fileName();
     String checksum;
@@ -188,7 +190,7 @@ public class DocumentIngestService {
     try (LibraryStorageQuotaService.IntakeHold hold = storageQuotaService.holdIntake(library)) {
       if (ingest.existingRow()) {
         if (existing.isEmpty()) {
-          log.warn("Document {} no longer exists, skipping", filePath);
+          log.warn("Document {} no longer exists, skipping", names.of(filePath));
           metrics.recordSkipped();
           return DocumentIngestResult.SKIPPED;
         }
@@ -200,7 +202,9 @@ public class DocumentIngestService {
         if (checksum.equals(existingDoc.getChecksum())
             && existingDoc.getStatus() == DocumentStatus.INDEXED) {
           refreshProvenance(existingDoc, ingest, checksum);
-          log.info("Skipping unchanged document (same checksum): {}", filePath);
+          log.info(
+              "Skipping unchanged document (same checksum): {}",
+              names.of(filePath, existingDoc.getId()));
           metrics.recordSkipped();
           return DocumentIngestResult.SKIPPED;
         }
@@ -260,32 +264,46 @@ public class DocumentIngestService {
                     attachmentAccess);
               });
       if (ingest.reindex() && parsed.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
-        log.warn("Re-index of {} ended {}, keeping it as it is", filePath, parsed.outcome());
+        log.warn(
+            "Re-index of {} ended {}, keeping it as it is",
+            names.of(filePath, documentId),
+            parsed.outcome());
         return parsed.outcome() == DocumentFormatResult.Outcome.NO_EXTRACTABLE_TEXT
             ? DocumentIngestResult.NO_EXTRACTABLE_TEXT
             : DocumentIngestResult.FAILED;
       }
       switch (parsed.outcome()) {
         case NO_EXTRACTABLE_TEXT -> {
-          log.warn("No usable text extracted from {} by pipeline {}", filePath, pipeline.id());
+          log.warn(
+              "No usable text extracted from {} by pipeline {}",
+              names.of(filePath, documentId),
+              pipeline.id());
           deletePreviousChunks(replacingExistingChunks, documentId);
           return markConnectorRejected(documentId);
         }
         case NO_CONTENT -> {
-          log.warn("No content extracted from {} by pipeline {}", filePath, pipeline.id());
+          log.warn(
+              "No content extracted from {} by pipeline {}",
+              names.of(filePath, documentId),
+              pipeline.id());
           deletePreviousChunks(replacingExistingChunks, documentId);
           return markConnectorFailed(documentId, true, NO_CONTENT_MESSAGE);
         }
         case PARSE_FAILED -> {
-          log.warn("Could not parse {} with pipeline {}", filePath, pipeline.id());
+          log.warn(
+              "Could not parse {} with pipeline {}", names.of(filePath, documentId), pipeline.id());
           return markConnectorFailed(documentId, false, PROCESSING_FAILED_MESSAGE);
         }
-        case CHUNKED -> log.debug("{} chunked via pipeline {}", filePath, pipeline.id());
+        case CHUNKED ->
+            log.debug("{} chunked via pipeline {}", names.of(filePath, documentId), pipeline.id());
       }
       List<org.springframework.ai.document.Document> chunks = parsed.chunks();
       DocumentChunkMetadata coreMetadata =
           extractCoreMetadata(
-              doc, fileName, parsed.withProperties(ingest.declaredOver(parsed.properties())));
+              doc,
+              fileName,
+              parsed.withProperties(ingest.declaredOver(parsed.properties())),
+              names);
       String contextTitle = contextTitleFor(ingest);
       ModelExtractionOutcome modelOutcome = extractWithModel(doc, library, contextTitle, chunks);
       if (modelOutcome.chunkMetadata() != null) {
@@ -339,7 +357,8 @@ public class DocumentIngestService {
     try {
       ingest(ingest, attachmentAccess);
     } catch (Exception e) {
-      log.error("Failed to process uploaded document {}", ingest.fileName(), e);
+      LoggedName names = ingest.library().loggedNames();
+      log.error("Failed to process uploaded document {}", names.of(ingest.fileName()), names.of(e));
     } finally {
       releaseQuietly(workingFile, ingest);
     }
@@ -352,7 +371,10 @@ public class DocumentIngestService {
     try {
       workingFile.close();
     } catch (Exception e) {
-      log.warn("Could not release the working file of uploaded document {}", ingest.fileName(), e);
+      log.warn(
+          "Could not release the working file of uploaded document {}",
+          ingest.library().loggedNames().of(ingest.fileName()),
+          e);
     }
   }
 
@@ -380,7 +402,8 @@ public class DocumentIngestService {
                   .contentTypeForExtension(routed.detectedExtension());
           yield new Selection(
               pipeline,
-              DocumentFormatSource.ofFile(file.path(), fileName, routed.detectedExtension()),
+              DocumentFormatSource.ofFile(file.path(), fileName, routed.detectedExtension())
+                  .withLoggedName(ingest.library().loggedNames()),
               routingExtensionFor(routed),
               canonicalType != null ? canonicalType : routed.detectedMediaType());
         }
@@ -391,7 +414,8 @@ public class DocumentIngestService {
                   : pipelineById(ingest.pipelineId());
           yield new Selection(
               pipeline,
-              DocumentFormatSource.ofExtractedText(text.text(), fileName),
+              DocumentFormatSource.ofExtractedText(text.text(), fileName)
+                  .withLoggedName(ingest.library().loggedNames()),
               Optional.empty(),
               TEXT_CONTENT_TYPE);
         }
@@ -449,7 +473,10 @@ public class DocumentIngestService {
   }
 
   private DocumentIngestResult quotaExceeded(String filePath, KnowledgeLibrary library) {
-    log.warn("Skipping {}: library {} storage quota would be exceeded", filePath, library.getId());
+    log.warn(
+        "Skipping {}: library {} storage quota would be exceeded",
+        library.loggedNames().of(filePath),
+        library.getId());
     metrics.recordSkipped();
     return DocumentIngestResult.QUOTA_EXCEEDED;
   }
@@ -856,8 +883,8 @@ public class DocumentIngestService {
     } catch (RuntimeException e) {
       log.warn(
           "Model metadata extraction failed for {}; indexing without it",
-          document.getFileName(),
-          e);
+          library.loggedNames().of(document.getFileName(), document.getId()),
+          library.loggedNames().of(e));
       return ModelExtractionOutcome.UNCHANGED;
     }
   }
@@ -880,12 +907,15 @@ public class DocumentIngestService {
    * fails the ingest - a failure is logged and the chunks are written without core fields.
    */
   private DocumentChunkMetadata extractCoreMetadata(
-      Document document, String fileName, DocumentFormatResult parsed) {
+      Document document, String fileName, DocumentFormatResult parsed, LoggedName names) {
     try {
       return documentMetadataService.applyDeterministicExtraction(
           document, fileName, parsed.properties());
     } catch (RuntimeException e) {
-      log.warn("Core metadata extraction failed for {}; indexing without it", fileName, e);
+      log.warn(
+          "Core metadata extraction failed for {}; indexing without it",
+          names.of(fileName, document.getId()),
+          names.of(e));
       return DocumentChunkMetadata.EMPTY;
     }
   }
