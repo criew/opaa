@@ -4,6 +4,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import CircularProgress from '@mui/material/CircularProgress'
+import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type {
   ConnectionAuthorizationCompleteRequest,
@@ -16,8 +17,18 @@ import {
 import { useAuthStore } from '../stores/authStore'
 import { notify } from '../stores/notificationStore'
 import PageHeading from '../components/a11y/PageHeading'
+import ReconnectSourceDialog from '../components/library/ReconnectSourceDialog'
+import {
+  attachPendingConnection,
+  forgetConsentIntent,
+  readConsentIntent,
+  type SourceConsentIntent,
+} from '../components/library/sourceConsent'
 import { safeRedirectPath } from '../utils/safeRedirectPath'
 import { CONNECTED_ACCOUNTS_ROUTE, CONNECTION_CALLBACK_ROUTE, LOGIN_ROUTE } from '../routes'
+
+const NEW_LIBRARY_ROUTE = '/libraries/new'
+const ACCOUNT_CHANGED = 'ACCOUNT_CHANGED'
 
 /**
  * Completions under way, by state: a state is redeemed once per page load, also when React runs
@@ -64,14 +75,82 @@ function failureMessage(err: unknown): string {
   }
 }
 
-type Outcome = { kind: 'pending' } | { kind: 'failed'; message: string; signIn?: boolean }
+function libraryRoute(libraryId: string): string {
+  return `/libraries/${libraryId}?tab=quelle`
+}
+
+/** Where the person goes on after the consent, and the message saying so. */
+function afterCompletion(completed: ConnectionAuthorizationCompleteResponse): {
+  target: string
+  message: string
+  severity: 'success' | 'info'
+} {
+  switch (completed.purpose) {
+    case 'LIBRARY_NEW': {
+      const pending = completed.pendingConnection
+      const target = safeRedirectPath(completed.returnTo, NEW_LIBRARY_ROUTE)
+      if (!pending || !attachPendingConnection(completed.profileId, pending)) {
+        return {
+          target,
+          severity: 'info',
+          message:
+            'Die Zustimmung beim Anbieter ist erteilt, der begonnene Assistent wurde in diesem Fenster aber nicht gefunden. Bitte verbinden Sie die Quelle im Assistenten erneut; die nicht verwendete Zustimmung verfällt von selbst.',
+        }
+      }
+      return {
+        target,
+        severity: 'success',
+        message: pending.accountLabel
+          ? `Die Quelle ist verbunden als „${pending.accountLabel}“.`
+          : 'Die Quelle ist verbunden.',
+      }
+    }
+    case 'LIBRARY_RECONNECT': {
+      forgetConsentIntent()
+      const fallback = completed.libraryId
+        ? libraryRoute(completed.libraryId)
+        : CONNECTED_ACCOUNTS_ROUTE
+      const target = safeRedirectPath(completed.returnTo, fallback)
+      return {
+        target: target.includes('?') ? target : `${target}?tab=quelle`,
+        message: 'Die Quelle der Bibliothek ist neu verbunden.',
+        severity: 'success',
+      }
+    }
+    case 'ACCOUNT':
+    default:
+      return {
+        target: safeRedirectPath(completed.returnTo, CONNECTED_ACCOUNTS_ROUTE),
+        message: completed.account
+          ? `Ihr Konto ist mit „${completed.account.profileName}“ verbunden.`
+          : 'Die Verbindung ist hergestellt.',
+        severity: 'success',
+      }
+  }
+}
+
+/** The way back from a failure: to the wizard or library that started the consent, if any. */
+function wayBack(intent: SourceConsentIntent | null): { label: string; target: string } {
+  if (intent?.purpose === 'LIBRARY_NEW') {
+    return { label: 'Zurück zum Assistenten', target: NEW_LIBRARY_ROUTE }
+  }
+  if (intent?.purpose === 'LIBRARY_RECONNECT') {
+    return { label: 'Zurück zur Bibliothek', target: libraryRoute(intent.libraryId) }
+  }
+  return { label: 'Zu den verbundenen Konten', target: CONNECTED_ACCOUNTS_ROUTE }
+}
+
+type Outcome =
+  | { kind: 'pending' }
+  | { kind: 'failed'; message: string; signIn?: boolean; accountChanged?: boolean }
 
 /**
  * Where the provider returns after an OAuth consent (ADR-0025): the page hands state and code, or
  * the provider's error, once to the server with the session of this tab and goes on to the page
  * the server names. The address is cleaned at once, so neither code nor state stays in the
  * history. It sits outside the protected routes, so a missing session never carries them into a
- * sign-in redirect.
+ * sign-in redirect. A consent for a library's source returns to the wizard or library that
+ * started it, as remembered in this tab before leaving.
  */
 export default function ConnectionCallbackPage() {
   const navigate = useNavigate()
@@ -79,7 +158,9 @@ export default function ConnectionCallbackPage() {
   const isLoading = useAuthStore((s) => s.isLoading)
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
   const [request] = useState(() => readCallback(location.search))
+  const [intent] = useState(readConsentIntent)
   const [result, setResult] = useState<Outcome>({ kind: 'pending' })
+  const [accountChangeOpen, setAccountChangeOpen] = useState(false)
 
   // what fails before anything is sent follows from the page itself, not from an answer
   const outcome: Outcome = isLoading
@@ -111,21 +192,38 @@ export default function ConnectionCallbackPage() {
     completeOnce(request)
       .then((completed) => {
         if (!active) return
-        notify(
-          completed.account
-            ? `Ihr Konto ist mit „${completed.account.profileName}“ verbunden.`
-            : 'Die Verbindung ist hergestellt.',
-          'success',
-        )
-        navigate(safeRedirectPath(completed.returnTo, CONNECTED_ACCOUNTS_ROUTE), { replace: true })
+        const { target, message, severity } = afterCompletion(completed)
+        notify(message, severity)
+        navigate(target, { replace: true })
       })
       .catch((err: unknown) => {
-        if (active) setResult({ kind: 'failed', message: failureMessage(err) })
+        if (!active) return
+        setResult({
+          kind: 'failed',
+          message: failureMessage(err),
+          accountChanged: err instanceof ConnectAccountError && err.code === ACCOUNT_CHANGED,
+        })
       })
     return () => {
       active = false
     }
   }, [isLoading, isAuthenticated, request, navigate])
+
+  const back = wayBack(intent)
+  const offersAccountChange =
+    outcome.kind === 'failed' &&
+    Boolean(outcome.accountChanged) &&
+    intent?.purpose === 'LIBRARY_RECONNECT'
+
+  function handleBack() {
+    if (outcome.kind === 'failed' && outcome.signIn) {
+      navigate(LOGIN_ROUTE, { replace: true, state: { from: CONNECTED_ACCOUNTS_ROUTE } })
+      return
+    }
+    // the wizard reads its draft back; a library has nothing left to return to
+    if (intent?.purpose === 'LIBRARY_RECONNECT') forgetConsentIntent()
+    navigate(back.target, { replace: true })
+  }
 
   return (
     <Box
@@ -140,7 +238,7 @@ export default function ConnectionCallbackPage() {
         p: 3,
       }}
     >
-      <PageHeading title="Konto verbinden" />
+      <PageHeading title={intent ? 'Quelle verbinden' : 'Konto verbinden'} />
       {outcome.kind === 'pending' ? (
         <>
           <CircularProgress aria-hidden size={28} />
@@ -148,20 +246,31 @@ export default function ConnectionCallbackPage() {
         </>
       ) : (
         <>
-          <Alert severity="error" sx={{ maxWidth: 560 }}>
+          <Alert severity={offersAccountChange ? 'warning' : 'error'} sx={{ maxWidth: 560 }}>
             {outcome.message}
           </Alert>
-          <Button
-            variant="outlined"
-            onClick={() =>
-              navigate(outcome.signIn ? LOGIN_ROUTE : CONNECTED_ACCOUNTS_ROUTE, {
-                replace: true,
-                state: outcome.signIn ? { from: CONNECTED_ACCOUNTS_ROUTE } : undefined,
-              })
-            }
-          >
-            {outcome.signIn ? 'Zur Anmeldung' : 'Zu den verbundenen Konten'}
-          </Button>
+          <Stack direction="row" spacing={1}>
+            {offersAccountChange && (
+              <Button variant="contained" onClick={() => setAccountChangeOpen(true)}>
+                Mit diesem Konto verbinden
+              </Button>
+            )}
+            <Button variant="outlined" onClick={handleBack}>
+              {outcome.signIn ? 'Zur Anmeldung' : back.label}
+            </Button>
+          </Stack>
+          {offersAccountChange && intent?.purpose === 'LIBRARY_RECONNECT' && (
+            <ReconnectSourceDialog
+              // a fresh instance on every opening asks for the confirmation anew
+              key={accountChangeOpen ? 'account-change-open' : 'account-change-closed'}
+              open={accountChangeOpen}
+              onClose={() => setAccountChangeOpen(false)}
+              title="Quelle mit dem anderen Konto verbinden?"
+              libraryId={intent.libraryId}
+              profileId={intent.profileId}
+              accountChange
+            />
+          )}
         </>
       )}
     </Box>

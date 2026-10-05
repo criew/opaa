@@ -49,6 +49,15 @@ export async function createLibrary(request: LibraryRequest): Promise<LibraryRes
   }
 }
 
+/** Ends a library's own source connection; it keeps its content and rests until connected anew. */
+export async function disconnectLibrarySource(libraryId: string): Promise<void> {
+  try {
+    await client.delete(`/v1/libraries/${libraryId}/source-connection`)
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
 export async function testLibrarySource(
   request: SourceConnectionTestRequest,
 ): Promise<SourceConnectionTestResponse> {

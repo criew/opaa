@@ -36,6 +36,8 @@ export interface SourceFormContext {
   connection?: SourceConnection
   /** The library runs on the caller's own connected account on `connection`: no secret of its own. */
   privateLibrary?: boolean
+  /** Create mode: the consent given at the provider for the new library's source. */
+  pendingConnectionId?: string
 }
 
 export interface SourceFormProps<V> {
@@ -69,6 +71,11 @@ export interface SourceConfiguration<V> {
    * fall back to `empty` whenever the wizard clears the address.
    */
   addressDerived?: readonly string[]
+  /**
+   * The fields a wizard may keep in the tab while the person consents at the provider - never a
+   * secret. Any field not listed here starts empty after the return.
+   */
+  draftFields: readonly (keyof V & string)[]
   /** The values of a stored library; credentials stay blank, they are never returned. */
   fromLibrary: (library: StoredLibrarySource) => V
   /** Whether a wizard holding these values has something to lose. */

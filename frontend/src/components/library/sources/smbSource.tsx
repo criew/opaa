@@ -21,6 +21,7 @@ export const smbSource: SourceRegistration = {
   containerLabel: 'Ordner',
   configuration: {
     empty: EMPTY_SMB_VALUES,
+    draftFields: ['sourceUrl', 'account', 'folders'],
     // the stored credentials stand until new ones are typed; they are never returned
     fromLibrary: (library): SmbSourceValues => ({
       ...EMPTY_SMB_VALUES,

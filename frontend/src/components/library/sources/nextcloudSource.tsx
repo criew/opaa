@@ -22,6 +22,7 @@ export const nextcloudSource: SourceRegistration = {
   containerLabel: 'Ordner',
   configuration: {
     empty: EMPTY_NEXTCLOUD_VALUES,
+    draftFields: ['sourceUrl', 'sourceProxy', 'sourceInsecureSsl', 'username', 'folders'],
     // the stored credentials stand until new ones are typed; they are never returned
     fromLibrary: (library): NextcloudSourceValues => ({
       ...EMPTY_NEXTCLOUD_VALUES,
