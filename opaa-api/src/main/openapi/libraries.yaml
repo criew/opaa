@@ -287,8 +287,9 @@ paths:
         a library that does not exist. The erasure removes its documents, chunks, full-text
         entries, originals, folders, metadata values, runs with their protocol, sync state and
         space associations, and replaces file name and link of every chat source citing it with
-        "Quelle entfernt"; the revision log records PRIVATE_LIBRARY_ERASED with time, cause and
-        counts, without names or paths. A running indexing run does not refuse it: the library
+        "Quelle entfernt"; the revision log records PRIVATE_LIBRARY_ERASED with time, cause, the
+        acting person and a complete erasure, each kind of content only as none or present -
+        no exact counts, names or paths. A running indexing run does not refuse it: the library
         is marked at once (erasureRequestedAt), the run ends at its next access to the source,
         and the erasure completes afterwards (202). Until then the library runs no more and takes
         in nothing.

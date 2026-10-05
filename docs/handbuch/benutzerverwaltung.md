@@ -563,8 +563,10 @@ entfernt: Bis zum Abschluss lässt sich kein Dokument der vorgemerkten Bibliothe
 („Die Bibliothek wird gelöscht“).
 
 **Nachweis:** Jede Löschung steht im Revisionsprotokoll als „Private Bibliothek gelöscht“
-(`PRIVATE_LIBRARY_ERASED`) mit Zeitpunkt, Anlass (Besitzerin oder Löschfrist) und der Zahl der
-entfernten Dokumente, Abschnitte, Läufe und weiteren Einträge — ohne Namen, Pfade oder Inhalte.
+(`PRIVATE_LIBRARY_ERASED`) mit Zeitpunkt, Anlass (Besitzerin oder Löschfrist), der Handelnden
+(Besitzerin oder Löschlauf) und dem Vermerk „vollständig gelöscht“. Für Dokumente, Abschnitte,
+Läufe und die weiteren Einträge nennt er nur „keine“ oder „vorhanden“, keine genauen Zahlen, und
+keine Namen, Pfade oder Inhalte.
 Die Verwaltung sieht in der Indexübersicht nur, wie viele private Bibliotheken zur Löschung
 anstehen, und kleine Zahlen nur als „weniger als N“. Sicherungen der Datenbank erfasst die Löschung
 nicht; eine vorher gezogene Sicherung enthält die Bibliothek weiterhin.

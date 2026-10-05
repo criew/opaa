@@ -632,7 +632,8 @@ Begründung:
   ihre Dokumente lassen sich nicht mehr öffnen, und die Fortsetzung vollendet die Löschung. Am Ende zählt sie jede Ablage nach. Bleibt etwas übrig, rollt
   sie zurück; der Marker bleibt, und die nächste Fortsetzung beginnt von vorn.
 - **Nachweis** `PRIVATE_LIBRARY_ERASED` im Revisionsprotokoll mit Zeitpunkt der Vormerkung, Anlass
-  (`OWNER_REQUEST`, `DELETION_PERIOD_EXPIRED`) und Zählern, nur über `Asset#auditPayload`. Die
+  (`OWNER_REQUEST`, `DELETION_PERIOD_EXPIRED`) und Zählern, nur über `Asset#auditPayload` (Zähler
+  vergröbert, siehe Nachtrag „Löschnachweis vergröbert und Schwellenwarnung“). Die
   Historientabellen der Rechte, das Verbindungs- und das Diagnoseprotokoll behalten die Kennung der
   Bibliothek, nie einen Namen; sie haben ihre eigenen Fristen.
 - **Löschlauf** `library.PrivateLibraryDeletionRun`: täglich um 04:45 nach dem Abgleich der
@@ -679,6 +680,23 @@ Begründung:
   der Verwaltung rechnet je Zugang in SQL über Personen und maskiert nach
   `PersonThreshold#disclosesPart`; mehrere exakte Teilsummen erscheinen nur, solange ihr
   gemeinsamer Rest auf mindestens N Personen ruht; ein leerer Rest gilt als wenige.
+
+## Nachtrag vom 05.10.2026: Löschnachweis vergröbert und Schwellenwarnung (#2270, #2165)
+
+Entscheidungen des Maintainers vom 05.10.2026 zu M2 aus #2275 und zur Schwellenwarnung aus #2270.
+
+- **Löschnachweis:** `PRIVATE_LIBRARY_ERASED` nennt weiter Anlass, Zeitpunkt der Vormerkung und
+  die Handelnde (Besitzerin oder Löschlauf), dazu `erasedCompletely`. Exakte Zähler entfallen: Je
+  Art des Inhalts (Dokumente, Abschnitte, Ordner, Läufe, Originale, Raumzuordnungen, geschwärzte
+  Chat-Belege) steht nur `NONE` oder `PRESENT`. Wie oft die Besitzerin aus der Bibliothek zitiert
+  bekam, steht damit nicht mehr im Nachweis. Die Nachzählung der Löschung bleibt intern exakt;
+  bleibt etwas übrig, rollt sie zurück, und es entsteht kein Nachweis.
+- **Schwellenwarnung abgelaufener Konten:** `PersonNumbers` warnt, sobald die maskierte Antwort den
+  Schwellenwert zulässt, also nach der größten zulässigen Zahl Abgelaufener: der genauen Zahl, N−1
+  bei „weniger als N“, der Gesamtzahl bei nicht ausgewiesenem Teil. Gleiche Antwort heißt weiter
+  gleiche Warnung, und die Warnung verrät nichts über die Antwort hinaus. Dafür gibt es mehr
+  Fehlalarme; ein Schwellenwert unter N warnt schon bei „weniger als N“. Die Oberfläche nennt die
+  Warnung „Möglicherweise viele abgelaufen“, wo der Teil nicht genau ausgewiesen ist.
 
 ## Nachtrag vom 05.10.2026: Schreibende Wege je Zugang serialisiert (#2246)
 
