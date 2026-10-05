@@ -274,6 +274,11 @@ public class SearchStatusService {
     return List.of(probed.chat(), probed.embedding(), rerankRole());
   }
 
+  /** Drops the shared probe pair; the next status probes again. */
+  void forgetProbes() {
+    probedRoles = null;
+  }
+
   /**
    * One probe pair per {@link #PROBE_CACHE_TTL}, however many administrators look at the page at
    * once: the refresh runs under a lock, so concurrent callers wait for the running probe instead

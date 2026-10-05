@@ -473,7 +473,7 @@ public class DocumentIngestService {
     if (verdict == QuotaVerdict.PERSON_EXHAUSTED) {
       log.warn(
           "Skipping {}: the owner's storage quota of private library {} would be exceeded",
-          filePath,
+          library.loggedNames().of(filePath),
           library.getId());
       metrics.recordSkipped();
       return DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED;
