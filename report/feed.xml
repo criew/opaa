@@ -5,8 +5,26 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-04T06:10:22Z</updated>
+  <updated>2026-10-05T06:01:51Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 4. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-04.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-04.html</id>
+    <updated>2026-10-05T06:01:51Z</updated>
+    <summary type="text">feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung:
+— OAuth-Kern mit PKCE, Token-Speicher und Widerruf umgesetzt
+— Verbundene Konten, Lebenszyklus und Verbindungsprotokoll implementiert
+— Konnektor-Naht für Zugänge, Profilangabe und Sperrgrund-Modell eingeführt
+— Mitgelieferte Konnektoren melden Zugänge; Google Drive über Zugang nutzbar
+feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox):
+— SMB-Konnektor für Windows-Dateifreigaben fertiggestellt
+— Vollabgleich über mehrere Läufe mit Fortsetzungsmarke umgesetzt
+— Dateipfade über 2000 Zeichen und Indexgrenze behoben
+Sonstiges:
+— Graph-Client mit Seitentoken und Download-Weiterleitung implementiert
+— E2E-Tests für Zugänge, Freigabe und Profilpflicht hinzugefügt</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 3. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-03.html"/>
@@ -862,18 +880,5 @@ Sonstiges:
     <updated>2026-08-17T02:02:04Z</updated>
     <summary type="text">Sonstiges:
 — Retrieval-Regressionslauf fehlgeschlagen, Baseline-Prüfung unterbrochen</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Samstag, 15. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-15.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-15.html</id>
-    <updated>2026-08-16T02:05:37Z</updated>
-    <summary type="text">Epic: Produktvision auf die öffentliche Verwaltung ausrichten:
-— Feature-Spezifikationen entlang der elf Themenbereiche neu geschnitten
-Sonstiges:
-— Zweite Review-Runde zu PR #301 nachgereicht und gemergt
-— Retrieval-Regressions-Workflow repariert, evaluateRetrieval läuft zuverlässig
-— Backlog-Sichtung abgeschlossen, sieben Vorgänge neu formuliert
-— Bibliothekszuordnung in Chunk-Metadaten und Rechteprüfung vereinheitlicht</summary>
   </entry>
 </feed>
