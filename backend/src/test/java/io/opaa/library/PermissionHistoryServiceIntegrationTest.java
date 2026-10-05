@@ -1084,7 +1084,9 @@ class PermissionHistoryServiceIntegrationTest {
    * ProfileFullSync} (#2220) only reads the grants of a library to tell its managers that a changed
    * profile forces a full sync; it writes notifications only. {@code ConsentResponsibles} (#2169)
    * only reads the grants and groups of a library to check who may answer for its source consent
-   * and to tell them; it writes nothing.
+   * and to tell them; it writes nothing. {@code McpServerProfileService} (#2173) only reads a group
+   * to check that the group answering for an MCP server exists in the caller's organization; it
+   * writes no grant or membership.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1118,6 +1120,7 @@ class PermissionHistoryServiceIntegrationTest {
           "AssetSuccessionSource",
           "ConsentResponsibles",
           "LocalAccountGroupDirectoryAdapter",
+          "McpServerProfileService",
           "PermissionTransferService",
           "PointInTimeAccessService",
           "ProfileFullSync",
