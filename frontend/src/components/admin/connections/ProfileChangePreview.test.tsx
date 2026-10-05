@@ -99,6 +99,36 @@ describe('ProfileChangePreview - was beim Speichern verworfen wird (#2249)', () 
     )
   })
 
+  it('says that every private library is released where persons are no longer admitted', () => {
+    renderWithProviders(
+      <ProfileChangePreview
+        impact={{
+          ...impact,
+          rejectedPrivateLibraries: null,
+          connectedAccountsEnded: { count: null, fewerThan: 5 },
+          confirmation:
+            'Die Änderung verwirft die Zugangsdaten etwaiger verbundener Konten von Personen dieses Zugangs. Bitte bestätigen.',
+        }}
+        ownership="BOTH"
+        ownershipAfter="LIBRARY"
+      />,
+      { withRouter: true },
+    )
+
+    expect(screen.getByTestId('profile-change-private-rejections')).toHaveTextContent(
+      'Alle privaten Bibliotheken werden vom Zugang gelöst und ruhen',
+    )
+    expect(screen.getByTestId('profile-change-private-rejections')).not.toHaveTextContent(
+      /ablehnt|nicht ausgewiesen/,
+    )
+    expect(screen.getByTestId('profile-change-discards')).toHaveTextContent(
+      'Die verbundenen Konten von Personen enden (weniger als 5); der Zugang nimmt danach keine Konten mehr an.',
+    )
+    expect(screen.getByTestId('profile-change-discards')).not.toHaveTextContent(
+      /verbindet sein Konto neu/,
+    )
+  })
+
   it('says that nothing is discarded where the server plans no discard', () => {
     renderWithProviders(
       <ProfileChangePreview

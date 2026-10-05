@@ -16,6 +16,8 @@ interface ProfileChangePreviewProps {
   impact: ConnectionProfileImpactResponse
   /** The ownership of the profile - connected accounts of persons are named only where admitted. */
   ownership: ConnectionOwnership
+  /** The ownership the change sets; without persons it releases every private library. */
+  ownershipAfter?: ConnectionOwnership
 }
 
 /**
@@ -23,10 +25,15 @@ interface ProfileChangePreviewProps {
  * whose connector refuses it with kind and reason, and what saving discards as the server plans it
  * - with the question it asks before, word for word.
  */
-export default function ProfileChangePreview({ impact, ownership }: ProfileChangePreviewProps) {
+export default function ProfileChangePreview({
+  impact,
+  ownership,
+  ownershipAfter = ownership,
+}: ProfileChangePreviewProps) {
   const unnamed = impact.rejectedLibraries - impact.rejections.length
   // Private libraries may exist only where persons are admitted; their refusals are a masked count.
   const persons = admitsPersons(ownership)
+  const personsAfter = admitsPersons(ownershipAfter)
   return (
     <Stack spacing={1.5} data-testid="profile-change-preview">
       <Typography variant="subtitle2" component="h3">
@@ -75,12 +82,18 @@ export default function ProfileChangePreview({ impact, ownership }: ProfileChang
             : 'Der Konnektor nimmt die Änderung für alle Bibliotheken an.'}
         </Alert>
       )}
-      {persons && (
+      {persons && personsAfter && (
         <Typography variant="body2" data-testid="profile-change-private-rejections">
           Private Bibliotheken, für die der Konnektor ablehnt:{' '}
           {personCountLabel(impact.rejectedPrivateLibraries)}. Sie verhindern die Änderung nicht;
           eine abgelehnte private Bibliothek wird vom Zugang gelöst und ruht, bis ihre Besitzerin
           sie einem anderen Zugang zuordnet.
+        </Typography>
+      )}
+      {persons && !personsAfter && (
+        <Typography variant="body2" data-testid="profile-change-private-rejections">
+          Der Zugang lässt danach keine Personen mehr zu: Alle privaten Bibliotheken werden vom
+          Zugang gelöst und ruhen, bis ihre Besitzerin sie einem anderen Zugang zuordnet.
         </Typography>
       )}
       {(impact.fullSyncLibraries ?? 0) > 0 && (
@@ -90,7 +103,7 @@ export default function ProfileChangePreview({ impact, ownership }: ProfileChang
           nächster Lauf liest die Quelle vollständig neu. Ihre Verwaltenden werden benachrichtigt.
         </Alert>
       )}
-      <ProfileChangeDiscards impact={impact} persons={persons} />
+      <ProfileChangeDiscards impact={impact} persons={persons} personsAfter={personsAfter} />
     </Stack>
   )
 }
@@ -99,9 +112,11 @@ export default function ProfileChangePreview({ impact, ownership }: ProfileChang
 function ProfileChangeDiscards({
   impact,
   persons,
+  personsAfter,
 }: {
   impact: ConnectionProfileImpactResponse
   persons: boolean
+  personsAfter: boolean
 }) {
   const connections = impact.connectionsDiscarded ?? 0
   const secrets = impact.secretsDiscarded ?? 0
@@ -110,7 +125,7 @@ function ProfileChangeDiscards({
   const items: string[] = []
   if (connections > 0) {
     items.push(
-      `Alle Zugangsdaten und Token des Zugangs werden verworfen; ${count(connections, 'Verbindung meldet', 'Verbindungen melden')} sich neu an.`,
+      `Alle Zugangsdaten und Token des Zugangs werden verworfen; ${count(connections, 'Verbindung muss', 'Verbindungen müssen')} neu angemeldet werden.`,
     )
   }
   if (secrets > 0) {
@@ -120,7 +135,9 @@ function ProfileChangeDiscards({
   }
   if (accounts) {
     items.push(
-      `Die verbundenen Konten von Personen enden (${personCountLabel(accounts)}); wer weiter darüber arbeitet, verbindet sein Konto neu.`,
+      personsAfter
+        ? `Die verbundenen Konten von Personen enden (${personCountLabel(accounts)}); wer weiter darüber arbeitet, verbindet sein Konto neu.`
+        : `Die verbundenen Konten von Personen enden (${personCountLabel(accounts)}); der Zugang nimmt danach keine Konten mehr an.`,
     )
   }
   if (configurations > 0) {

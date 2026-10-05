@@ -159,7 +159,7 @@ function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileU
   let confirmation: string | null = null
   if (connectionsDiscarded > 0) {
     confirmation =
-      `Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; ${count(connectionsDiscarded, 'Verbindung meldet', 'Verbindungen melden')} sich neu an` +
+      `Die Änderung verwirft alle Zugangsdaten und Token dieses Zugangs; ${count(connectionsDiscarded, 'Verbindung muss', 'Verbindungen müssen')} neu angemeldet werden` +
       (secretsDiscarded > 0
         ? `, die gespeicherten Zugangsdaten von ${count(secretsDiscarded, 'Bibliothek', 'Bibliotheken')} sind neu einzutragen`
         : '') +

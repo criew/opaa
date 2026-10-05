@@ -615,7 +615,11 @@ export default function ConnectionProfileFormDialog({
             </>
           )}
           {shownPreview && profile && (
-            <ProfileChangePreview impact={shownPreview} ownership={profile.ownership} />
+            <ProfileChangePreview
+              impact={shownPreview}
+              ownership={profile.ownership}
+              ownershipAfter={draft.ownership}
+            />
           )}
         </Stack>
       </DialogContent>
