@@ -1166,6 +1166,19 @@ class RssFeedIndexingExecutorTest {
   }
 
   @Test
+  void feedStateIsNotPersistedWhenAnEntryWasRejectedAtTheOwnersQuota() throws Exception {
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-over-quota\"");
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(feedStateRepository, never()).save(any());
+  }
+
+  @Test
   void feedStateIsPersistedWhenEveryEntrySucceeded() throws Exception {
     serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-success\"");
     serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");

@@ -113,6 +113,26 @@ class FileSyncChangeRunTest {
         .isNotEqualTo(before.get("stream:A"));
   }
 
+  /** A file rejected at the owner's quota holds the cursor like a failure, until there is room. */
+  @Test
+  void aFileRejectedAtTheOwnersQuotaKeepsTheCursorAndTheRunAfterTheRoomFreesTakesItIn() {
+    Map<String, String> before = harness.state().changeCursors();
+    String path = InMemoryFileStore.filePath("A", "neu/d.txt");
+    store.put("A", "neu/d.txt", "Neu.").changed("A", "neu/d.txt");
+    harness.rejectAtQuotaOf(path);
+
+    harness.changeRun(store.reset());
+
+    assertThat(harness.state().changeCursors().get("stream:A")).isEqualTo(before.get("stream:A"));
+
+    harness.freeQuota();
+    FileSyncHarness.Run next = harness.changeRun(store.reset());
+
+    assertThat(next.ingested()).containsExactly(path);
+    assertThat(harness.state().changeCursors().get("stream:A"))
+        .isNotEqualTo(before.get("stream:A"));
+  }
+
   @Test
   void aDurableFailureOfTheContentDoesNotHoldTheCursor() {
     Map<String, String> before = harness.state().changeCursors();

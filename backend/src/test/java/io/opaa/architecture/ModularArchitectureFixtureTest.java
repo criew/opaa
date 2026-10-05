@@ -289,7 +289,11 @@ class ModularArchitectureFixtureTest {
     Scenario scenario = new Scenario("personalusage");
 
     assertThat(scenario.violations(ModularArchitecture::personalUsageIsReadOnlyByItsOwner))
-        .hasSize(3)
+        .hasSize(4)
+        .anySatisfy(
+            violation ->
+                assertThat(violation)
+                    .contains("library.StorageOverview.messageThroughTheFactory", "of"))
         .anySatisfy(
             violation ->
                 assertThat(violation).contains("library.StorageOverview.usageOfOwner", "usageOf"))
@@ -305,6 +309,13 @@ class ModularArchitectureFixtureTest {
                         "searchadmin.StorageReport.sumOf", "sumFileSizeOfPrivateLibrariesOwnedBy"))
         .noneSatisfy(violation -> assertThat(violation).contains("MyPrivateStorageController"))
         .noneSatisfy(violation -> assertThat(violation).contains("DocumentIngestService"))
+        .noneSatisfy(
+            violation ->
+                assertThat(violation)
+                    .startsWith(
+                        "Method <"
+                            + FIXTURES
+                            + ".personalusage.indexing.document.DocumentIngestOutcomes"))
         .noneSatisfy(
             violation ->
                 assertThat(violation)

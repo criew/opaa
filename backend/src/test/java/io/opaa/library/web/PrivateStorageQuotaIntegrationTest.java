@@ -1,7 +1,6 @@
 package io.opaa.library.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -12,7 +11,6 @@ import io.opaa.auth.DevAuthFilter;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.job.PersonalQuotaExhaustedException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
@@ -89,9 +87,8 @@ class PrivateStorageQuotaIntegrationTest {
     KnowledgeLibrary shared = sharedLibraryOf(ownerId);
 
     assertThat(ingest(first, "erste", 600)).isEqualTo(DocumentIngestResult.PROCESSED);
-    assertThatThrownBy(() -> ingest(second, "zweite", 600))
-        .isInstanceOf(PersonalQuotaExhaustedException.class)
-        .hasMessageStartingWith("Speicherkontingent Ihrer privaten Bibliotheken erschöpft");
+    assertThat(ingest(second, "zweite", 600))
+        .isEqualTo(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
     assertThat(documentsOf(second)).isZero();
     assertThat(ingest(shared, "geteilt", 600)).isEqualTo(DocumentIngestResult.PROCESSED);
     assertThat(ingest(second, "passt", 400)).isEqualTo(DocumentIngestResult.PROCESSED);
@@ -121,8 +118,8 @@ class PrivateStorageQuotaIntegrationTest {
             + " erasure_cause = 'OWNER_REQUEST' WHERE id = ?",
         erased.getId());
 
-    assertThatThrownBy(() -> ingest(other, "zu-gross", 600))
-        .isInstanceOf(PersonalQuotaExhaustedException.class);
+    assertThat(ingest(other, "zu-gross", 600))
+        .isEqualTo(DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED);
     mockMvc
         .perform(get("/api/v1/me/private-storage").with(devUser()))
         .andExpect(jsonPath("$.usedBytes").value(600));
@@ -231,11 +228,8 @@ class PrivateStorageQuotaIntegrationTest {
     return () -> {
       int stored = 0;
       for (int i = 0; i < attempts; i++) {
-        try {
-          ingest(library, library.getId() + "-" + i, 100);
+        if (ingest(library, library.getId() + "-" + i, 100) == DocumentIngestResult.PROCESSED) {
           stored++;
-        } catch (PersonalQuotaExhaustedException ended) {
-          return stored;
         }
       }
       return stored;

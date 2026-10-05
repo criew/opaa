@@ -400,6 +400,9 @@ describe('UserManagementPage', () => {
 
     await user.click(screen.getByRole('button', { name: /Konto anlegen/ }))
     const dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).getByText(/Mit dem Ablaufdatum enden etwaige verbundene Konten/),
+    ).toBeInTheDocument()
     await user.type(within(dialog).getByLabelText(/E-Mail-Adresse/), 'p.neu@stadt.example')
     await user.type(within(dialog).getByLabelText('Anzeigename'), 'P. Neu')
     await user.type(within(dialog).getByLabelText('Anlagegrund'), 'Neueinstellung im Bauamt')
@@ -486,6 +489,9 @@ describe('UserManagementPage', () => {
     // Die Folge steht im Overlay, bevor gesperrt wird - sie ist die Entscheidungsgrundlage.
     const sperrfrage = await screen.findByRole('dialog', { name: /„T\. Klein“ sperren\?/ })
     expect(sperrfrage).toHaveTextContent('Sitzungen enden sofort')
+    // neutral: no number, no hint whether this person connected anything (#2260)
+    expect(sperrfrage).toHaveTextContent(/etwaige verbundene Konten enden/i)
+    expect(sperrfrage).toHaveTextContent(/Löschfrist/)
     await user.click(within(sperrfrage).getByRole('button', { name: 'Sperren' }))
 
     await waitFor(() =>

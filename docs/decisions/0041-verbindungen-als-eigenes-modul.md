@@ -111,13 +111,14 @@ Verzeichnis-Konnektor erfährt OPAA gar nicht.
 
   | Zustand | Ergebnis |
   |---|---|
-  | lokal gesperrt (`LocalCredentials`), außer der vorübergehenden Sperre nach Fehlversuchen (`FAILED_LOGINS`) | deaktiviert |
+  | lokal gesperrt (`LocalCredentials`), außer der vorübergehenden Sperre nach Fehlversuchen (`FAILED_LOGINS`) und der Sperre wegen Inaktivität (`INACTIVITY`) | deaktiviert |
   | befristetes lokales Konto abgelaufen (`LocalAccountState.EXPIRED`) | deaktiviert |
   | Verzeichnissperre (`User#isDirectoryLocked`) | deaktiviert |
   | kein Anbieter mehr zum normalisierten Issuer (gelöscht), außer dem Dev-Issuer | deaktiviert |
   | Anbieter des Issuers deaktiviert | ruht |
   | reguläres lokales Konto (nicht `SYSTEM_ADMIN`) bei abgeschalteter lokaler Kontenverwaltung | ruht |
   | ohne Aktivität seit der Inaktivitätsschwelle (`users.last_login_at`) | ruht |
+  | lokal gesperrt wegen Inaktivität (`INACTIVITY`, Nachtrag #2260) | ruht |
   | sonst | nutzbar |
 
   `AccountState` (rights) ist keine Quelle, weil dort nur der Verzeichnisabgleich schreibt.
@@ -667,7 +668,8 @@ Begründung:
 - **Lauf:** `PERSON_EXHAUSTED` wirft in `DocumentIngestService` die `PersonalQuotaExhaustedException`
   (`EndsRun`). `IndexingRunTemplate` beendet den Lauf wie bei einem erschöpften Anfragebudget
   geordnet als unvollständig, ohne Abgleich, mit der Meldung der Besitzerin im Protokoll und der
-  Kategorie `QUOTA_EXHAUSTED` an einem abgeschlossenen Lauf.
+  Kategorie `QUOTA_EXHAUSTED` an einem abgeschlossenen Lauf. Abgelöst durch den folgenden Nachtrag
+  (#2276).
 - **Wettlauf:** Prüfung und Speichern der Dokumentzeile laufen unter
   `LibraryStorageQuotaService#holdIntake`, einer Sperre je Besitzerin in diesem Prozess
   (ADR-0021). Gezählt wird, was gespeichert ist; gleichzeitige Läufe mehrerer privater
@@ -679,6 +681,39 @@ Begründung:
   der Verwaltung rechnet je Zugang in SQL über Personen und maskiert nach
   `PersonThreshold#disclosesPart`; mehrere exakte Teilsummen erscheinen nur, solange ihr
   gemeinsamer Rest auf mindestens N Personen ruht; ein leerer Rest gilt als wenige.
+
+## Nachtrag vom 05.10.2026: Element überspringen am Kontingent je Person (#2276)
+
+Entscheidung des Maintainers vom 05.10.2026 zu M1 aus #2277: Am erschöpften Kontingent je Person
+wird das Element übersprungen, der Lauf läuft weiter – wie beim Kontingent je Bibliothek.
+
+- **Lauf:** `PERSON_EXHAUSTED` liefert in `DocumentIngestService` das Ergebnis
+  `PERSONAL_QUOTA_EXCEEDED`; nichts wird gespeichert, eine gespeicherte Fassung bleibt. Der
+  Konnektor zählt das Element als übersprungen, es bleibt präsent, und der Lauf erreicht den
+  Abgleich. `PersonalQuotaExhaustedException` entfällt.
+- **Kennzeichnung:** `IndexingRunProgress` merkt sich die Ablehnung, auch die eines Anhangs. Ein
+  nicht fehlgeschlagener Lauf endet dann als abgeschlossen und unvollständig mit der Kategorie
+  `QUOTA_EXHAUSTED`; Spezifikation und Oberfläche behalten Kategorie und Marke.
+- **Erholung:** Löschungen in der Quelle und eine eingegrenzte Quelle werden abgeglichen und
+  schaffen Platz – frei erst, wenn der Abgleich sie übernimmt: am Ende eines Vollabgleichs, bei
+  einer Runde über mehrere Läufe (#2256) erst am Ende des Laufs, der die Runde abschließt.
+- **Marken halten:** Eine Ablehnung am Kontingent je Person hält jede Fortschrittsmarke wie ein
+  vorübergehender Fehler, damit sich das System selbst erholt. `FileSync` zählt sie als
+  vorübergehenden Fehler (Änderungscursor bleibt, Ordnergedächtnis wird aufgehoben; die Runde über
+  mehrere Läufe verhält sich wie beim vorübergehenden Dateifehler), Confluence INCREMENTAL hält den
+  Anker, RSS speichert den Feed-Zustand nicht. Ein Dokument, dessen Anhang abgelehnt wurde, wird
+  ohne Prüfsumme und Änderungsmerkmal gespeichert und im nächsten Lauf erneut gelesen. Erkannt wird
+  das am Zähler `AttachmentProgressSink#personalQuotaRejections`. Folge: Solange etwas fehlt,
+  liest jeder Lauf dasselbe Fenster bzw. Dokument erneut (unveränderte Dateien ohne Download) und
+  endet mit `QUOTA_EXHAUSTED`; der Hinweis bleibt so lange stehen. Für das Kontingent je
+  Bibliothek gilt das noch nicht (#2295).
+- **Meldung:** Den Text an die Besitzerin erzeugt nur `DocumentIngestOutcomes` (Protokolleintrag am
+  Element, wie beim Kontingent je Bibliothek); `personalUsageIsReadOnlyByItsOwner` lässt
+  `personalQuotaExceededMessage` nur dort zu und die Fabrik `QuotaMessages#of` nur in `IndexingRun`
+  und `AttachmentIndexer`.
+- **Kosten:** Wie beim Kontingent je Bibliothek wird eine abgelehnte Datei erst heruntergeladen;
+  keiner der Konnektorpfade prüft das Kontingent vor dem Download. Eine beratende Vorprüfung über
+  die Größe aus dem Listing ist Folge-Issue #2294.
 
 ## Nachtrag vom 05.10.2026: Schreibende Wege je Zugang serialisiert (#2246)
 
@@ -857,6 +892,40 @@ Begründung:
     mit #2266. Der gespeicherte `issuer` ist dafür die Vergleichsgröße.
   - Ein Proxy für MCP-Zugänge.
   - Die Modulkante von assistant bzw. external zu connections kommt mit dem MCP-Client.
+
+## Nachtrag vom 05.10.2026: Inaktivitätssperre lokaler Konten ruht (#2260)
+
+- **Entscheidung (Maintainer):** Die Sperre eines lokalen Kontos wegen Inaktivität
+  (`LockReason.INACTIVITY`) ist eine Abwesenheit, keine Deaktivierung. `LocalAccountAccess#usability`
+  meldet für sie `DORMANT_INACTIVE`, auch ohne angefragte Schwelle. Der Abgleich hält nur den Beginn
+  des Ruhens fest, löscht keine Geheimnisse und beendet keine verbundenen Konten. Private
+  Bibliotheken ruhen mit `DORMANT`, ohne Löschtag. Nach dem Entsperren geht es mit der nächsten
+  Anmeldung ohne Neuverbinden weiter.
+- **Eine Stelle:** Die Ausnahme in `AccountUsability.Snapshot#deactivationsOf` aus #2165 entfällt.
+  Löschfrist, Löschtag und `scheduledErasureCount` folgen allein `State#DEACTIVATED`.
+- **Deaktivierung bleibt** die Sperre durch die Verwaltung, der Ablauf eines befristeten Kontos,
+  die Verzeichnissperre und der gelöschte Anbieter. Sperrdialog und Ablaufdatum der
+  Benutzerverwaltung nennen die Folge neutral, ohne Zahl und ohne Aussage, ob die Person ein Konto
+  verbunden hat.
+- **Offen (Nachtrag H6 aus #2275, #2289):** Für einen gelöschten Anbieter trägt das Konto keinen
+  Zeitstempel; die Frist läuft ab dem festgehaltenen Beginn. Die Neuanlage des Anbieters löst nach
+  dem Commit einen Abgleich aus, der diesen Beginn verwirft. Nur wenn dieser Abgleich scheitert und
+  der Anbieter vor dem täglichen Abgleich erneut gelöscht wird, zählt der alte Beginn.
+
+### Akzeptierte Restrisiken der Personenzahlen
+
+Beide nach Maintainer-Entscheidung vom 05.10.2026 ohne Gegenmaßnahme:
+
+- **Sybil-Risiko der Mindestgruppengröße:** Die Schwelle N (`PersonThreshold`, `PersonNumbers`)
+  schützt nur, solange die gezählten Personen echt sind. Die Systemverwaltung kann selbst Konten
+  anlegen, mit ihnen Konten verbinden oder private Bibliotheken anlegen, damit die Schwelle
+  überschreiten und die eigenen Beiträge aus der dann genannten Zahl herausrechnen. Das Anlegen von
+  Konten steht im Revisionsprotokoll, das Verbinden im Verbindungsprotokoll; beides liest die
+  Revision.
+- **Differenz-Orakel über die Zeit:** Die Laufabbrüche je Kategorie der Kontingentübersicht und
+  `scheduledErasureCount` sind je Abfrage maskiert, nicht über Abfragen hinweg. Wer die Zahlen vor
+  und nach einer eigenen Handlung vergleicht, etwa der Sperre einer Person, kann aus einer
+  Änderung um eins auf diese Person schließen, sobald beide Zahlen genannt werden.
 
 ## Referenzen
 

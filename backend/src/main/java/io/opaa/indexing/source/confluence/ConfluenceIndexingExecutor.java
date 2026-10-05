@@ -300,8 +300,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * The incremental run: asks CQL for the pages in the selected spaces modified since the anchor
-   * minus the overlap and visits what it names. The anchor moves only when the run failed nothing,
-   * so no window is lost.
+   * minus the overlap and visits what it names. The anchor moves only when the run failed nothing
+   * and its owner's quota rejected nothing, so no window is lost.
    */
   private ListingOutcome incrementalSync(ConfluenceRun run, Instant startedAt)
       throws ConfluenceAccessException, InterruptedException {
@@ -327,13 +327,13 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       visitPage(run, summary, PageVisitPolicy.INCREMENTAL);
       run.progress.report();
     }
-    if (run.progress.failedCount() == 0) {
+    if (run.progress.failedCount() == 0 && !run.progress.personalQuotaReached()) {
       state.advanceIncrementalAnchor(startedAt);
       syncStateRepository.save(state);
     } else {
       log.info(
-          "Not advancing the Confluence anchor for library {} - this run failed at least one"
-              + " page, the next run searches the same window again",
+          "Not advancing the Confluence anchor for library {} - this run failed or rejected at"
+              + " least one page, the next run searches the same window again",
           libraryId);
     }
     return ListingOutcome.partial();
@@ -582,7 +582,9 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       // A page whose row exists - stored now, unchanged, or rejected as text-free - carries its
       // attachments; one the quota or the pipeline refused has no row to hang them on.
       pageStored =
-          result != DocumentIngestResult.QUOTA_EXCEEDED && result != DocumentIngestResult.FAILED;
+          result != DocumentIngestResult.QUOTA_EXCEEDED
+              && result != DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED
+              && result != DocumentIngestResult.FAILED;
     } catch (Exception e) {
       IndexingRun.rethrowRunEnding(e);
       run.frame.recordFailure(pagePath, e);
