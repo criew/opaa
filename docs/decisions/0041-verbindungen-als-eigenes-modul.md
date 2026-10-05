@@ -864,6 +864,11 @@ wird das Element übersprungen, der Lauf läuft weiter – wie beim Kontingent j
   - Jedes Speichern erkennt neu. Weichen Adresse, Client-ID, Scopes, Issuer oder ein Endpunkt
     ab, ist das ein Adress- bzw. Registrierungswechsel: Er wird bestätigt, verwirft vorher alle
     Token mit Widerruf und beendet die Konten.
+  - Ein gespeichertes Client-Secret folgt keinem neuen Server: Ändern sich Adresse, Issuer oder
+    Token-Endpunkt, verlangt die Änderung ein neues Secret, oder ein leeres für einen
+    öffentlichen Client (`400 MCP_SERVER_CLIENT_SECRET_REQUIRED`). Die Rückfrage nennt alten und
+    neuen Autorisierungsserver. Die Endpunkte kommen hier vom Server selbst, nicht aus einer
+    Deklaration; sonst ginge das Secret an einen Token-Endpunkt, den der Server benennt.
   - Nicht gebaut ist die Erkennung über `WWW-Authenticate` einer `401`. Dafür müsste OPAA den
     MCP-Endpunkt selbst ansprechen, und das ist Transport des Clients.
 - **Bindung an den Server (RFC 8707):** `ClientRegistration#resource` ist für einen MCP-Server
