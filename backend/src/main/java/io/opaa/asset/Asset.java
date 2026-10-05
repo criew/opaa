@@ -63,6 +63,7 @@ public class Asset implements OwnedAsset {
           "diagnosticsLocked",
           "documentId",
           "documentsRemoved",
+          "erasedCompletely",
           "expiresAt",
           "externalAccess",
           "extractionVersion",

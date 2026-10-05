@@ -17,7 +17,8 @@ import org.springframework.stereotype.Component;
  * {@link PersonThreshold#disclosesPart} allows against the connected, else "fewer than N" if it is
  * below N and not told from N on - and not told at all on a total below 2N-1 - so on one total none
  * answers like a few on either side. The warning on the expired follows only from what is told: the
- * least number of expired the masked answer admits reaches the threshold.
+ * greatest number of expired the masked answer admits reaches the threshold - possibly many, never
+ * more than the answer says.
  */
 @Component
 public class PersonNumbers {
@@ -81,27 +82,32 @@ public class PersonNumbers {
     long total = connected + expired;
     if (!threshold.discloses(total)) {
       return new ProfileCounts(
-          PersonCount.fewerThan(minimum), PersonCount.fewerThan(minimum), false);
+          PersonCount.fewerThan(minimum), PersonCount.fewerThan(minimum), admits(minimum - 1));
     }
     PersonCount told = PersonCount.exact(total);
     if (threshold.disclosesPart(expired, connected)) {
-      return new ProfileCounts(told, PersonCount.exact(expired), expired >= warningThreshold);
+      return new ProfileCounts(told, PersonCount.exact(expired), admits(expired));
     }
     if (total < 2L * minimum - 1) {
       // a few expired and a few connected overlap on this total, so any answer would split them
-      return new ProfileCounts(told, null, false);
+      return new ProfileCounts(told, null, admits(total));
     }
     if (expired < minimum) {
-      return new ProfileCounts(told, PersonCount.fewerThan(minimum), false);
+      return new ProfileCounts(told, PersonCount.fewerThan(minimum), admits(minimum - 1));
     }
-    // untold: the connected are 0 to N-1, so the expired are at least total - (N-1)
-    return new ProfileCounts(told, null, total - (minimum - 1) >= warningThreshold);
+    // untold: the connected are 0 to N-1, so the answer admits all of the total expired
+    return new ProfileCounts(told, null, admits(total));
+  }
+
+  /** Whether an answer admitting up to {@code mostExpired} expired warns. */
+  private boolean admits(long mostExpired) {
+    return mostExpired >= warningThreshold;
   }
 
   /**
    * The persons' connections on one profile and the expired among them; {@code expired} is {@code
-   * null} where it may not be told at all. {@code expiredWarning}: the told numbers show at least
-   * the warning threshold of expired.
+   * null} where it may not be told at all. {@code expiredWarning}: the told numbers admit at least
+   * the warning threshold of expired - certainly so only where {@code expired} is exact.
    */
   public record ProfileCounts(PersonCount total, PersonCount expired, boolean expiredWarning) {}
 

@@ -49,12 +49,20 @@ import org.springframework.transaction.support.TransactionTemplate;
  * continues. Then, in one transaction, it deletes content, runs, references and the library, checks
  * that nothing of it is left and records the proof {@code PRIVATE_LIBRARY_ERASED} - or rolls back,
  * the marker staying for the next call. Repeatable: a library already gone is {@link
- * Outcome#ERASED}. Logs and proof name ids and counts only, never a name or path.
+ * Outcome#ERASED}. Logs and proof name ids only, never a name or path; the proof tells of each kind
+ * of content only whether there was any ({@link #NONE}/{@link #PRESENT}), the checks of what is
+ * left stay exact.
  */
 @Service
 public class PrivateLibraryErasure {
 
   static final String DELETION_RUN_ACTOR = "private-library-deletion";
+
+  /** The proof's level of a kind of content the erasure found none of. */
+  static final String NONE = "NONE";
+
+  /** The proof's level of a kind of content the erasure found and removed. */
+  static final String PRESENT = "PRESENT";
 
   private static final Logger log = LoggerFactory.getLogger(PrivateLibraryErasure.class);
 
@@ -251,7 +259,8 @@ public class PrivateLibraryErasure {
     proof.put("cause", library.getErasureCause().name());
     proof.put("requestedAt", library.getErasureRequestedAt().toString());
     proof.put("sourceType", library.getSourceType().key());
-    proof.putAll(counts);
+    proof.put("erasedCompletely", true);
+    counts.forEach((key, count) -> proof.put(key, level(count)));
     AuditEvent.Builder entry =
         AuditEvent.builder()
             .organizationId(library.getOrganizationId())
@@ -264,6 +273,11 @@ public class PrivateLibraryErasure {
     } else {
       audit.recordUserAction(entry.actor(actorUserId).build());
     }
+  }
+
+  /** A count as the proof keeps it: whether there was any, never how many. */
+  private static String level(Object count) {
+    return count instanceof Number number && number.longValue() > 0 ? PRESENT : NONE;
   }
 
   /** The checks of every place the library had; one that is not empty rolls the erasure back. */
