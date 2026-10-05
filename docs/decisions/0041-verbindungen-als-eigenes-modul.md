@@ -694,14 +694,25 @@ wird das Element übersprungen, der Lauf läuft weiter – wie beim Kontingent j
   nicht fehlgeschlagener Lauf endet dann als abgeschlossen und unvollständig mit der Kategorie
   `QUOTA_EXHAUSTED`; Spezifikation und Oberfläche behalten Kategorie und Marke.
 - **Erholung:** Löschungen in der Quelle und eine eingegrenzte Quelle werden abgeglichen und
-  schaffen Platz. Der Lauf, der sie bemerkt, gibt ihn erst an seinem Ende frei; die abgelehnte
-  Datei nimmt der folgende Lauf auf.
+  schaffen Platz – frei erst, wenn der Abgleich sie übernimmt: am Ende eines Vollabgleichs, bei
+  einer Runde über mehrere Läufe (#2256) erst am Ende des Laufs, der die Runde abschließt.
+- **Marken halten:** Eine Ablehnung am Kontingent je Person hält jede Fortschrittsmarke wie ein
+  vorübergehender Fehler, damit sich das System selbst erholt. `FileSync` zählt sie als
+  vorübergehenden Fehler (Änderungscursor bleibt, Ordnergedächtnis wird aufgehoben; die Runde über
+  mehrere Läufe verhält sich wie beim vorübergehenden Dateifehler), Confluence INCREMENTAL hält den
+  Anker, RSS speichert den Feed-Zustand nicht. Ein Dokument, dessen Anhang abgelehnt wurde, wird
+  ohne Prüfsumme und Änderungsmerkmal gespeichert und im nächsten Lauf erneut gelesen. Erkannt wird
+  das am Zähler `AttachmentProgressSink#personalQuotaRejections`. Folge: Solange etwas fehlt,
+  liest jeder Lauf dasselbe Fenster bzw. Dokument erneut (unveränderte Dateien ohne Download) und
+  endet mit `QUOTA_EXHAUSTED`; der Hinweis bleibt so lange stehen. Für das Kontingent je
+  Bibliothek gilt das noch nicht (#2295).
 - **Meldung:** Den Text an die Besitzerin erzeugt nur `DocumentIngestOutcomes` (Protokolleintrag am
   Element, wie beim Kontingent je Bibliothek); `personalUsageIsReadOnlyByItsOwner` lässt
-  `personalQuotaExceededMessage` nur dort zu.
+  `personalQuotaExceededMessage` nur dort zu und die Fabrik `QuotaMessages#of` nur in `IndexingRun`
+  und `AttachmentIndexer`.
 - **Kosten:** Wie beim Kontingent je Bibliothek wird eine abgelehnte Datei erst heruntergeladen;
-  keiner der Konnektorpfade prüft das Kontingent vor dem Download, und ein solcher Mechanismus
-  wurde nicht eingeführt.
+  keiner der Konnektorpfade prüft das Kontingent vor dem Download. Eine beratende Vorprüfung über
+  die Größe aus dem Listing ist Folge-Issue #2294.
 
 ## Nachtrag vom 05.10.2026: Schreibende Wege je Zugang serialisiert (#2246)
 

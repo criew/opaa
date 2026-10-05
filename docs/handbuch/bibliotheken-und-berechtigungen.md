@@ -383,9 +383,14 @@ Speicherkontingent Ihrer privaten Bibliotheken erschöpft, Dateien übersprungen
 schafft; das Laufprotokoll nennt an jeder übersprungenen Datei ihren Verbrauch und die Grenze. Endete
 der letzte Lauf so, steht derselbe Hinweis auch im Kopf der Detailseite. Platz schaffen Dateien, die
 in der Quelle gelöscht werden oder durch eine eingegrenzte Quelle herausfallen, das Löschen einer
-ganzen privaten Bibliothek oder eine höhere Grenze der Systemverwaltung. Der Lauf, der eine Löschung
-bemerkt, gibt den Platz an seinem Ende frei; die übersprungenen Dateien nimmt der folgende Lauf auf.
-So sagt es auch der Hinweis.
+ganzen privaten Bibliothek oder eine höhere Grenze der Systemverwaltung. Frei wird der Platz erst,
+wenn der Abgleich die Löschung übernimmt: bei einem Vollabgleich am Ende des Laufs, bei einer Runde
+über mehrere Läufe am Ende des Laufs, der die Runde abschließt, bei einem Änderungslauf am Ende dieses
+Laufs. Eine übersprungene Datei – auch ein Anhang – versucht jeder weitere Lauf erneut: Änderungsstand,
+Confluence-Anker und Feed-Zustand rücken nicht über sie hinweg, und ein Dokument mit übersprungenem
+Anhang wird ohne Änderungsmerkmal gespeichert und im nächsten Lauf erneut gelesen. Sobald Platz ist,
+nimmt der nächste Lauf, der sie erreicht, sie auf; bis dahin endet jeder solche Lauf unvollständig,
+und der Hinweis bleibt stehen.
 
 Ihren **eigenen Verbrauch** sieht die Besitzerin im Kopf der Detailseite jeder ihrer privaten
 Bibliotheken: „… von … in Ihren privaten Bibliotheken belegt“, bei unbegrenzter Grenze „… in Ihren

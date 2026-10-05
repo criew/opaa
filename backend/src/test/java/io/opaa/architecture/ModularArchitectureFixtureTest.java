@@ -295,7 +295,9 @@ class ModularArchitectureFixtureTest {
             violation ->
                 assertThat(violation)
                     .startsWith(
-                        "Method <" + FIXTURES + ".personalusage.indexing.document.DocumentIngestOutcomes"))
+                        "Method <"
+                            + FIXTURES
+                            + ".personalusage.indexing.document.DocumentIngestOutcomes"))
         .noneSatisfy(
             violation ->
                 assertThat(violation)

@@ -34,7 +34,7 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
 
   private int attachmentsSkipped;
   private int attachmentsFailed;
-  private boolean personalQuotaReached;
+  private int personalQuotaRejections;
 
   public IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
     this.indexingJobService = indexingJobService;
@@ -95,12 +95,17 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
 
   @Override
   public void recordPersonalQuotaReached() {
-    personalQuotaReached = true;
+    personalQuotaRejections++;
+  }
+
+  @Override
+  public int personalQuotaRejections() {
+    return personalQuotaRejections;
   }
 
   /** Whether an item or attachment of this run was rejected at the owner's private quota. */
   public boolean personalQuotaReached() {
-    return personalQuotaReached;
+    return personalQuotaRejections > 0;
   }
 
   /** Documents recorded as failed so far. */

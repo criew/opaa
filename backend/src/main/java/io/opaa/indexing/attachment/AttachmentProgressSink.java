@@ -13,4 +13,9 @@ public interface AttachmentProgressSink {
 
   /** Notes that an attachment was rejected at the owner's private storage quota. */
   default void recordPersonalQuotaReached() {}
+
+  /** How many items and attachments were rejected at the owner's private storage quota so far. */
+  default int personalQuotaRejections() {
+    return 0;
+  }
 }

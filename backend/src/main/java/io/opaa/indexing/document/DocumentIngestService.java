@@ -149,7 +149,8 @@ public class DocumentIngestService {
    * path and to a concurrent delete while chunks are embedded. A non-{@code null} {@code
    * attachmentAccess} turns every discovered attachment into a child {@code Document} (ADR-0022).
    * The quota check and the save of the row it admits run under the library's {@link
-   * LibraryStorageQuotaService#holdIntake}.
+   * LibraryStorageQuotaService#holdIntake}. A source document one of whose attachments its owner's
+   * quota rejected is stored without checksum and change marker, so the next run reads it again.
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
@@ -236,6 +237,7 @@ public class DocumentIngestService {
     UUID documentId = doc.getId();
     DocumentFormat pipeline = selection.pipeline();
     boolean preservingPreviousChunks = replacingExistingChunks;
+    boolean[] attachmentAtQuota = {false};
     try {
       DocumentFormatResult parsed =
           DocumentFormatRunner.run(
@@ -250,12 +252,15 @@ public class DocumentIngestService {
                 // Before the attachments: their own quota checks must already see the parent's
                 // corrected (attachment-free) fileSize, or the attachment bytes count twice.
                 applyContentByteSizeOverride(savedDoc, result);
+                int rejectedBefore = attachmentAccess.progress().personalQuotaRejections();
                 processDiscoveredAttachments(
                     result.discoveredAttachments(),
                     documentId,
                     savedDoc.getFilePath(),
                     savedDoc.getSourceType(),
                     attachmentAccess);
+                attachmentAtQuota[0] =
+                    attachmentAccess.progress().personalQuotaRejections() > rejectedBefore;
               });
       if (ingest.reindex() && parsed.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
         log.warn("Re-index of {} ended {}, keeping it as it is", filePath, parsed.outcome());
@@ -304,8 +309,13 @@ public class DocumentIngestService {
           coreMetadata,
           ingest.context());
 
+      boolean unsettled = attachmentAtQuota[0] && !ingest.existingRow();
       DocumentIngestResult result =
-          markConnectorIndexed(documentId, chunks.size(), checksum, ingest.changeMarker());
+          markConnectorIndexed(
+              documentId,
+              chunks.size(),
+              unsettled ? null : checksum,
+              unsettled ? null : ingest.changeMarker());
       if (result == DocumentIngestResult.SKIPPED) {
         return result;
       }

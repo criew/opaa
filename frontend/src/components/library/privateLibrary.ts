@@ -25,5 +25,6 @@ export const QUOTA_EXHAUSTED_LABEL =
 export const QUOTA_EXHAUSTED_REMEDY =
   'Dateien, die nicht mehr passten, hat der Lauf übersprungen. ' +
   'Platz schaffen Sie, indem Sie Dateien beim Anbieter löschen, die Quelle eingrenzen oder eine ' +
-  'ganze private Bibliothek löschen („Sofort löschen“). Die übersprungenen Dateien nimmt einer der ' +
-  'nächsten Läufe auf. Sonst hilft eine höhere Grenze – darum bitten Sie die Systemverwaltung.'
+  'ganze private Bibliothek löschen („Sofort löschen“). Jeder weitere Lauf versucht die ' +
+  'übersprungenen Dateien erneut und nimmt sie auf, sobald Platz ist. Sonst hilft eine höhere ' +
+  'Grenze – darum bitten Sie die Systemverwaltung.'

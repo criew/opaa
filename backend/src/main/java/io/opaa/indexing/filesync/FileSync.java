@@ -1058,6 +1058,7 @@ public final class FileSync implements AutoCloseable {
       String changeMarker =
           entry.changeMarker() != null ? entry.changeMarker() : fetched.changeMarker();
       ReconcilingAttachmentAccess attachmentAccess = frame.attachmentAccess(entry.context());
+      int rejectedBefore = frame.progress().personalQuotaRejections();
       DocumentIngestResult result =
           documentIngestService.ingest(
               DocumentIngest.builder(frame.library())
@@ -1075,7 +1076,13 @@ public final class FileSync implements AutoCloseable {
           && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
         unsettle(entry);
       }
-      if (frame.recordOutcome(result, filePath)) {
+      boolean processed = frame.recordOutcome(result, filePath);
+      if (frame.progress().personalQuotaRejections() > rejectedBefore) {
+        // like a transient failure: the cursor and the folder memory stay for the next run
+        unsettle(entry);
+        transientFailures++;
+      }
+      if (processed) {
         frame.markReprocessed(filePath);
         if (fetched.note() != null) {
           frame.events().record(IndexingEventCategory.FORMAT_MISMATCH, fetched.note(), filePath);

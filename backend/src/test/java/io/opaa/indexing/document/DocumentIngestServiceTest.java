@@ -1666,6 +1666,7 @@ class DocumentIngestServiceTest {
           .thenReturn(Optional.empty());
       when(documentRepository.save(any(Document.class))).thenAnswer(inv -> inv.getArgument(0));
       AttachmentAccess access = Mockito.mock(AttachmentAccess.class);
+      when(access.progress()).thenReturn(new CountingSink());
 
       serviceWithFakePipeline.ingest(
           DocumentIngests.extractedText(
