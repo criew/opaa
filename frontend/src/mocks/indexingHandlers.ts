@@ -16,6 +16,11 @@ export function resetIndexingState() {
   indexingActive = false
 }
 
+/** Whether a mock run is in progress - a private library is then only marked for erasure. */
+export function isMockIndexingActive(): boolean {
+  return indexingActive
+}
+
 const INDEXING_POLL_STEPS = 5
 const TOTAL_DOCUMENTS = 42
 
@@ -65,6 +70,13 @@ export const indexingHandlers = [
           status: 409,
           timestamp: new Date().toISOString(),
         },
+        { status: 409 },
+      )
+    }
+
+    if (library.erasureRequestedAt) {
+      return HttpResponse.json(
+        { error: 'Die Bibliothek wird gelöscht und wird nicht mehr indiziert', status: 409 },
         { status: 409 },
       )
     }

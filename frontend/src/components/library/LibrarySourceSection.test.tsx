@@ -732,3 +732,107 @@ describe('LibrarySourceSection - Aktion am Sperrhinweis', () => {
     expect(screen.getByTestId('source-lock-notice')).toHaveTextContent('Löschung ab dem 03.11.2026')
   })
 })
+
+describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#2276, #2165)', () => {
+  const nextcloud = {
+    name: 'Meine Ablage',
+    sourceType: 'NEXTCLOUD',
+    sourceUrl: 'https://cloud.intern.example/remote.php/dav/files/avogt',
+    privateLibrary: true,
+  }
+
+  function quotaRun(id: string) {
+    return {
+      id,
+      status: 'COMPLETED' as const,
+      triggeredBy: 'MANUAL' as const,
+      runMode: 'FULL' as const,
+      documentCount: 12,
+      totalDocuments: 40,
+      documentsSkipped: 0,
+      documentsFailed: 0,
+      documentsIndexedTotal: 12,
+      message:
+        'Indizierung abgeschlossen: 12 verarbeitet, 0 übersprungen, 0 fehlgeschlagen — unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft',
+      failureCategory: 'QUOTA_EXHAUSTED',
+      incomplete: true,
+      startedAt: '2026-10-04T10:00:00Z',
+      completedAt: '2026-10-04T10:05:00Z',
+      events: [],
+      eventsTruncatedCount: 0,
+    }
+  }
+
+  it('marks a run ended at the personal quota and says what frees space', async () => {
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({ runs: [quotaRun('run-quota')] }),
+      ),
+    )
+    renderWithProviders(
+      <LibrarySourceSection libraryId="library-quota" library={nextcloud} canEditSource />,
+      { withRouter: true },
+    )
+
+    const chip = await screen.findByTestId('run-incomplete-run-quota')
+    expect(chip).toHaveTextContent(
+      'unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft',
+    )
+    expect(chip).not.toHaveTextContent('wird fortgesetzt')
+    const remedy = screen.getByTestId('run-quota-remedy-run-quota')
+    expect(remedy).toHaveTextContent(/eine ganze private Bibliothek löschen/)
+    expect(remedy).toHaveTextContent(/höhere Grenze/)
+    expect(remedy).toHaveTextContent(/Systemverwaltung/)
+  })
+
+  it('keeps the budget wording for any other incomplete run', async () => {
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({
+          runs: [{ ...quotaRun('run-budget'), failureCategory: null }],
+        }),
+      ),
+    )
+    renderWithProviders(
+      <LibrarySourceSection libraryId="library-budget" library={nextcloud} canEditSource />,
+      { withRouter: true },
+    )
+
+    expect(await screen.findByTestId('run-incomplete-run-budget')).toHaveTextContent(
+      'unvollständig, wird fortgesetzt',
+    )
+    expect(screen.queryByTestId('run-quota-remedy-run-budget')).not.toBeInTheDocument()
+  })
+
+  it('offers no change of source, profile or schedule while the library is being erased', async () => {
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-erasing"
+        library={{
+          ...nextcloud,
+          sourceBlock: {
+            reason: 'NOT_CONNECTED',
+            responsible: 'Besitzerin',
+            notice: 'Verbindung getrennt.',
+            action: 'CONNECT_OWN_ACCOUNT',
+          },
+        }}
+        canEditSource
+        erasing
+      />,
+      { withRouter: true },
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Läufe' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Anbindung' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Zeitplan' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Quellkonfiguration bearbeiten' }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Zeitplan bearbeiten' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Zugang wechseln')).not.toBeInTheDocument()
+    const notice = screen.getByTestId('source-lock-notice')
+    expect(within(notice).queryByRole('link')).not.toBeInTheDocument()
+    expect(screen.queryByText(/sehen nur Verwaltende/)).not.toBeInTheDocument()
+  })
+})

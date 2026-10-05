@@ -375,34 +375,42 @@ Grund als Kategorie ohne Inhaltsbezug.
 Kontingent; eine weitere private Bibliothek schafft keinen zusätzlichen Platz. Das Kontingent je
 Bibliothek gilt daneben unverändert. Gezählt wird, was tatsächlich gespeichert ist. Ist das
 Kontingent erschöpft, endet der laufende Lauf geordnet als unvollständig mit der Kategorie
-`QUOTA_EXHAUSTED`. Die Besitzerin sieht an der Bibliothek „unvollständig: Speicherkontingent Ihrer
-privaten Bibliotheken erschöpft“ und im Laufprotokoll ihren Verbrauch und die Grenze. Bereits
-Aufgenommenes bleibt durchsuchbar. Weil der Lauf vor dem Abgleich endet, übernimmt er auch
-Löschungen in der Quelle nicht mehr: Dateien beim Anbieter zu löschen oder die Quelle einzugrenzen
-schafft deshalb keinen Platz, solange noch ein nicht aufgenommenes Element vor dem Ende steht.
-Platz schafft das Löschen einer ganzen privaten Bibliothek; sonst hilft nur eine höhere Grenze der
-Systemverwaltung. Ihren Verbrauch und
-die Grenze fragt sie unter `GET /api/v1/me/private-storage` ab; im Einzelnen sieht ihn niemand
-sonst.
+`QUOTA_EXHAUSTED`. Im Reiter „Quelle“ trägt dieser Lauf unter „Läufe“ die Marke „unvollständig:
+Speicherkontingent Ihrer privaten Bibliotheken erschöpft“ und aufgeklappt den Hinweis, was Platz
+schafft; das Laufprotokoll nennt ihren Verbrauch und die Grenze. Endete der letzte Lauf so, steht
+derselbe Hinweis auch im Kopf der Detailseite. Bereits Aufgenommenes bleibt durchsuchbar. Weil der
+Lauf vor dem Abgleich endet, übernimmt er auch Löschungen in der Quelle nicht mehr: Dateien beim
+Anbieter zu löschen oder die Quelle einzugrenzen schafft deshalb keinen Platz, solange noch ein nicht
+aufgenommenes Element vor dem Ende steht. Platz schafft das Löschen einer ganzen privaten
+Bibliothek; sonst hilft nur eine höhere Grenze der Systemverwaltung. So sagt es auch der Hinweis.
 
-Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt
-(`PUT /api/v1/admin/private-libraries/quota`). Ohne eigenen Wert gilt die Vorgabe
-`OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` (Variablentabelle im Kapitel
-[Deployment](deployment.md)); `0` bedeutet unbegrenzt, ein leerer Wert führt zur Vorgabe zurück.
-Eine Änderung wirkt ab dem nächsten aufgenommenen Dokument und löscht nichts. Jede Änderung steht
-im Revisionsprotokoll (`PRIVATE_STORAGE_QUOTA_CHANGED`).
+Ihren **eigenen Verbrauch** sieht die Besitzerin im Kopf der Detailseite jeder ihrer privaten
+Bibliotheken: „… von … in Ihren privaten Bibliotheken belegt“, bei unbegrenzter Grenze „… in Ihren
+privaten Bibliotheken belegt (unbegrenzt)“. Die Zahl gilt für alle ihre privaten Bibliotheken
+zusammen (`GET /api/v1/me/private-storage`); im Einzelnen sieht sie niemand sonst.
 
-Die **Übersicht der Verwaltung** (`GET /api/v1/admin/private-libraries/summary`) zeigt für die
-eigene Organisation nur Summen: die Zahl der Besitzerinnen, den belegten Speicher insgesamt, den
-belegten Speicher je Zugang für Personen und je Laufkategorie, wie viele Läufe privater
-Bibliotheken im Zeitfenster damit endeten. Jede dieser Zahlen ruht auf Personen und folgt der
+Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt: unter **Administration →
+Zugänge**, Abschnitt „Private Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
+und „Grenze speichern“ (`PUT /api/v1/admin/private-libraries/quota`). Der Abschnitt nennt, ob die
+Vorgabe der Installation oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
+Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“; „Vorgabe wiederherstellen“ führt zur Vorgabe
+`OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` zurück (Variablentabelle im Kapitel
+[Deployment](deployment.md)). `0` bedeutet unbegrenzt. Vor dem Speichern fragt OPAA nach. Eine
+Änderung wirkt ab dem nächsten aufgenommenen Dokument und löscht nichts. Jede Änderung steht im
+Revisionsprotokoll (`PRIVATE_STORAGE_QUOTA_CHANGED`).
+
+Darunter steht die **Übersicht der Verwaltung** (`GET /api/v1/admin/private-libraries/summary`). Sie
+zeigt für die eigene Organisation nur Summen: die Zahl der Besitzerinnen, den belegten Speicher
+insgesamt, eine Tabelle „Belegter Speicher je Zugang“ für Zugänge für Personen und eine Tabelle
+der Laufabbrüche je Ursache im Zeitfenster. Jede dieser Zahlen ruht auf Personen und folgt der
 Mindestgruppengröße: Die Gesamtzahlen erscheinen erst ab N Besitzerinnen, sonst als „weniger als
 N“. Eine Zahl je Zugang oder je Kategorie ist exakt nur, wenn ihre Besitzerinnen und die aller
 übrigen privaten Bibliotheken je mindestens N sind, und nur, solange das, was die exakten Zahlen je
-Zugang zusammen übrig lassen, auf mindestens N Personen ruht — ein leerer Rest gilt als wenige —; sonst entfällt sie.
-Einen Weg zum Verbrauch einer einzelnen Person gibt es für die Verwaltung nicht. Grenze,
-Übersicht und eigener Verbrauch sind bisher nur über die API erreichbar; die Oberfläche dafür
-folgt (#2276).
+Zugang zusammen übrig lassen, auf mindestens N Personen ruht — ein leerer Rest gilt als wenige —;
+sonst steht dort „nicht ausgewiesen“. Ein Speicherwert unter der Mindestgruppengröße erscheint als
+„nicht ausgewiesen (weniger als N Personen)“. Die Oberfläche zeigt jede Zahl so, wie der Server sie
+liefert, und rechnet nichts zusammen. Einen Weg zum Verbrauch einer einzelnen Person gibt es für die
+Verwaltung nicht.
 
 **Was die Verwaltung sieht:** nur Zusammenfassungen. Indexstatus und Pipeline-Stand zeigen private
 Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
@@ -431,6 +439,21 @@ Löschlauf, wenn ihr Konto länger als die Löschfrist ausdrücklich deaktiviert
 „Private Bibliotheken löschen“). Eine laufende Indexierung hält das Löschen nicht auf. Die
 Indexübersicht nennt die Zahl der zur Löschung anstehenden privaten Bibliotheken nach denselben
 Regeln wie jede Teilzahl.
+
+In der Oberfläche heißt die Aktion **„Sofort löschen“** und steht im Menü „⋯“ im Kopf der
+Detailseite. Die Rückfrage nennt, was gelöscht wird (Dokumente, Index, Originale, Ordner, Metadaten,
+Läufe und die Zuordnungen zu Spaces), dass Belege in ihren Chats danach „Quelle entfernt“ heißen, der Text der Antworten aber
+stehen bleibt, dass die Dateien beim Anbieter unverändert bleiben und dass sich das nicht rückgängig
+machen lässt; der Fokus liegt zunächst auf „Abbrechen“. Ist die Bibliothek gelöscht, führt die Seite
+zurück in den Katalog und bestätigt es. Solange die Anfrage läuft, ist „Sofort löschen“ gesperrt.
+Läuft gerade eine Indexierung, meldet OPAA, dass die Bibliothek zur Löschung vorgemerkt ist, und die
+Seite bleibt stehen: Die
+Bibliothek trägt im Kopf die Marke **„Wird gelöscht“** und den Hinweis „Wird gelöscht – vorgemerkt
+am …“, ohne einen Zeitpunkt für den Abschluss zu versprechen. Bis dahin bietet die Seite weder
+„Jetzt indizieren“ noch ein erneutes Löschen, kein Bearbeiten von Name, Quelle, Zugang, Zeitplan,
+Metadatenfeldern oder Zuordnungen und kein Hochladen oder Löschen von Dokumenten. Ein Dokument
+lässt sich nicht mehr öffnen; der Versuch meldet „Die Bibliothek wird gelöscht – ihre Dokumente
+lassen sich nicht mehr öffnen.“ Die Katalogkachel trägt die Marke nicht.
 
 ### Ordner, Speicherkontingent, Löschen
 
