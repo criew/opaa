@@ -51,7 +51,7 @@ export default function NotificationBell() {
   }
 
   async function handleItemClick(notification: NotificationResponse) {
-    const target = notificationTarget(notification.type)
+    const target = notificationTarget(notification)
     if (target) {
       setAnchorEl(null)
       void navigate(target)

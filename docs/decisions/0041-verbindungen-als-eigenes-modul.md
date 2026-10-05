@@ -111,13 +111,14 @@ Verzeichnis-Konnektor erfährt OPAA gar nicht.
 
   | Zustand | Ergebnis |
   |---|---|
-  | lokal gesperrt (`LocalCredentials`), außer der vorübergehenden Sperre nach Fehlversuchen (`FAILED_LOGINS`) | deaktiviert |
+  | lokal gesperrt (`LocalCredentials`), außer der vorübergehenden Sperre nach Fehlversuchen (`FAILED_LOGINS`) und der Sperre wegen Inaktivität (`INACTIVITY`) | deaktiviert |
   | befristetes lokales Konto abgelaufen (`LocalAccountState.EXPIRED`) | deaktiviert |
   | Verzeichnissperre (`User#isDirectoryLocked`) | deaktiviert |
   | kein Anbieter mehr zum normalisierten Issuer (gelöscht), außer dem Dev-Issuer | deaktiviert |
   | Anbieter des Issuers deaktiviert | ruht |
   | reguläres lokales Konto (nicht `SYSTEM_ADMIN`) bei abgeschalteter lokaler Kontenverwaltung | ruht |
   | ohne Aktivität seit der Inaktivitätsschwelle (`users.last_login_at`) | ruht |
+  | lokal gesperrt wegen Inaktivität (`INACTIVITY`, Nachtrag #2260) | ruht |
   | sonst | nutzbar |
 
   `AccountState` (rights) ist keine Quelle, weil dort nur der Verzeichnisabgleich schreibt.
@@ -796,6 +797,40 @@ Begründung:
   kommt mit dem Anlegen (`LibraryRequest.sourceConnectionResponsible`), nicht mit dem Start der
   Zustimmung, weil sie `MANAGER` an der erst entstehenden Bibliothek halten muss. Beim Neuverbinden
   kommt sie mit dem Start.
+
+## Nachtrag vom 05.10.2026: Inaktivitätssperre lokaler Konten ruht (#2260)
+
+- **Entscheidung (Maintainer):** Die Sperre eines lokalen Kontos wegen Inaktivität
+  (`LockReason.INACTIVITY`) ist eine Abwesenheit, keine Deaktivierung. `LocalAccountAccess#usability`
+  meldet für sie `DORMANT_INACTIVE`, auch ohne angefragte Schwelle. Der Abgleich hält nur den Beginn
+  des Ruhens fest, löscht keine Geheimnisse und beendet keine verbundenen Konten. Private
+  Bibliotheken ruhen mit `DORMANT`, ohne Löschtag. Nach dem Entsperren geht es mit der nächsten
+  Anmeldung ohne Neuverbinden weiter.
+- **Eine Stelle:** Die Ausnahme in `AccountUsability.Snapshot#deactivationsOf` aus #2165 entfällt.
+  Löschfrist, Löschtag und `scheduledErasureCount` folgen allein `State#DEACTIVATED`.
+- **Deaktivierung bleibt** die Sperre durch die Verwaltung, der Ablauf eines befristeten Kontos,
+  die Verzeichnissperre und der gelöschte Anbieter. Sperrdialog und Ablaufdatum der
+  Benutzerverwaltung nennen die Folge neutral, ohne Zahl und ohne Aussage, ob die Person ein Konto
+  verbunden hat.
+- **Offen (Nachtrag H6 aus #2275, #2289):** Für einen gelöschten Anbieter trägt das Konto keinen
+  Zeitstempel; die Frist läuft ab dem festgehaltenen Beginn. Die Neuanlage des Anbieters löst nach
+  dem Commit einen Abgleich aus, der diesen Beginn verwirft. Nur wenn dieser Abgleich scheitert und
+  der Anbieter vor dem täglichen Abgleich erneut gelöscht wird, zählt der alte Beginn.
+
+### Akzeptierte Restrisiken der Personenzahlen
+
+Beide nach Maintainer-Entscheidung vom 05.10.2026 ohne Gegenmaßnahme:
+
+- **Sybil-Risiko der Mindestgruppengröße:** Die Schwelle N (`PersonThreshold`, `PersonNumbers`)
+  schützt nur, solange die gezählten Personen echt sind. Die Systemverwaltung kann selbst Konten
+  anlegen, mit ihnen Konten verbinden oder private Bibliotheken anlegen, damit die Schwelle
+  überschreiten und die eigenen Beiträge aus der dann genannten Zahl herausrechnen. Das Anlegen von
+  Konten steht im Revisionsprotokoll, das Verbinden im Verbindungsprotokoll; beides liest die
+  Revision.
+- **Differenz-Orakel über die Zeit:** Die Laufabbrüche je Kategorie der Kontingentübersicht und
+  `scheduledErasureCount` sind je Abfrage maskiert, nicht über Abfragen hinweg. Wer die Zahlen vor
+  und nach einer eigenen Handlung vergleicht, etwa der Sperre einer Person, kann aus einer
+  Änderung um eins auf diese Person schließen, sobald beide Zahlen genannt werden.
 
 ## Referenzen
 

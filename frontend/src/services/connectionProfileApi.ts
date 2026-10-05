@@ -14,6 +14,7 @@ import type {
   ConnectorProfileRequirementRequest,
   ConnectorProfileRequirementResponse,
   ConnectorTypeStateResponse,
+  DormantSourceConnection,
 } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
 import { apiErrorCode } from './apiErrorDetails'
@@ -132,6 +133,18 @@ export async function getConnectionRedirectUri(): Promise<string | null> {
   try {
     const { data } = await client.get<ConnectionRedirectResponse>(`${ADMIN}/oauth-redirect`)
     return data.redirectUri ?? null
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** The shared libraries whose own source connection rests; never a private one. */
+export async function listDormantSourceConnections(): Promise<DormantSourceConnection[]> {
+  try {
+    const { data } = await client.get<DormantSourceConnection[]>(
+      '/v1/admin/source-connections/dormant',
+    )
+    return data
   } catch (err) {
     normalizeError(err)
   }

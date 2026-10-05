@@ -74,8 +74,8 @@ function initialOverview(): ConnectedAccountsOverview {
 }
 
 let overview: ConnectedAccountsOverview = initialOverview()
-/** The states the mock provider handed out and not yet redeemed, with their profile. */
-let pendingStates = new Map<string, string>()
+/** The states the mock provider handed out and not yet redeemed, with what they were for. */
+let pendingStates = new Map<string, ConnectionAuthorizationStartRequest>()
 
 /** The profiles the mock caller holds an account on, whatever its state. */
 export function mockOwnAccountProfileIds(): string[] {
@@ -161,8 +161,18 @@ export const connectedAccountHandlers = [
   // The mock provider consents at once: it sends the browser straight back to the callback page.
   http.post(AUTHORIZATIONS, async ({ request }) => {
     const body = (await request.json()) as ConnectionAuthorizationStartRequest
+    if (body.purpose !== 'ACCOUNT' && body.serviceAccountConfirmed !== true) {
+      return error(
+        400,
+        'Bitte bestätigen Sie, dass Sie ein Dienstkonto verbinden.',
+        'SERVICE_ACCOUNT_CONFIRMATION_REQUIRED',
+      )
+    }
+    if (body.purpose === 'LIBRARY_RECONNECT' && !body.libraryId) {
+      return error(400, 'libraryId ist erforderlich, um eine Quelle neu zu verbinden')
+    }
     const state = crypto.randomUUID()
-    pendingStates.set(state, body.profileId)
+    pendingStates.set(state, body)
     return HttpResponse.json({
       authorizationUrl: `/connections/callback?code=mock-code&state=${state}`,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
@@ -171,9 +181,9 @@ export const connectedAccountHandlers = [
 
   http.post(`${AUTHORIZATIONS}/complete`, async ({ request }) => {
     const body = (await request.json()) as ConnectionAuthorizationCompleteRequest
-    const profileId = pendingStates.get(body.state)
+    const started = pendingStates.get(body.state)
     pendingStates.delete(body.state)
-    if (!profileId) {
+    if (!started) {
       return error(
         404,
         'Diese Anmeldung beim Anbieter ist unbekannt, abgelaufen oder schon abgeschlossen. Bitte verbinden Sie erneut.',
@@ -184,6 +194,29 @@ export const connectedAccountHandlers = [
         400,
         'Die Zustimmung beim Anbieter wurde abgelehnt oder abgebrochen. Es wurde nichts verbunden.',
       )
+    }
+    const profileId = started.profileId
+    if (started.purpose === 'LIBRARY_NEW') {
+      return HttpResponse.json({
+        purpose: 'LIBRARY_NEW',
+        profileId,
+        returnTo: '/libraries/new',
+        account: null,
+        pendingConnection: {
+          id: crypto.randomUUID(),
+          accountLabel: 'dienstkonto@example.org',
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+        },
+      })
+    }
+    if (started.purpose === 'LIBRARY_RECONNECT') {
+      return HttpResponse.json({
+        purpose: 'LIBRARY_RECONNECT',
+        profileId,
+        returnTo: `/libraries/${started.libraryId}`,
+        account: null,
+        libraryId: started.libraryId,
+      })
     }
     const result = connected(profileId, null)
     if ('status' in result) return error(result.status, result.message)

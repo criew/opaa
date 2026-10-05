@@ -50,6 +50,7 @@ export const libraryHandlers = [
       sourceSettings?: Record<string, unknown> | null
       connectionProfileId?: string | null
       privateLibrary?: boolean | null
+      pendingConnectionId?: string | null
     }
     const profile = body.connectionProfileId
       ? mockConnectionProfiles.find((p) => p.id === body.connectionProfileId)
@@ -276,6 +277,17 @@ export const libraryHandlers = [
         body.sourceType === 'NEXTCLOUD'
           ? Boolean(body.sourceInsecureSsl)
           : null,
+      // the pending consent becomes the library's own, its creator answering for it
+      sourceConnection: body.pendingConnectionId
+        ? {
+            accountLabel: 'dienstkonto@example.org',
+            connectedAt: new Date().toISOString(),
+            responsible: { type: 'USER' as const, id: 'mock-user-id', name: 'Mock User' },
+            endedCause: null,
+            endedAt: null,
+            expiresAt: null,
+          }
+        : null,
     }
     mockLibraryDetails[id] = detail
     return HttpResponse.json(detail, { status: 201 })
@@ -687,6 +699,36 @@ export const libraryHandlers = [
     }
     mockLibraryDetails[libraryId] = connected
     return HttpResponse.json(connected)
+  }),
+
+  // „Trennen“ of a library's own source connection: the library rests until connected anew.
+  http.delete('/api/v1/libraries/:libraryId/source-connection', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!library.sourceConnection || library.privateLibrary) {
+      return HttpResponse.json(
+        { error: 'Diese Bibliothek hat keine eigene Quellverbindung.', status: 400 },
+        { status: 400 },
+      )
+    }
+    mockLibraryDetails[libraryId] = {
+      ...library,
+      sourceConnection: {
+        ...library.sourceConnection,
+        endedCause: 'SELF',
+        endedAt: new Date().toISOString(),
+      },
+      sourceBlock: {
+        reason: 'NOT_CONNECTED',
+        responsible: 'Verwaltende der Bibliothek',
+        notice: `Nicht verbunden: Die Quelle ist über den Zugang „${library.connectionProfile?.name ?? ''}“ nicht verbunden. Der Inhalt bleibt durchsuchbar, wird aber nicht aktualisiert.`,
+        action: 'CONNECT_SOURCE',
+      },
+    }
+    return new HttpResponse(null, { status: 204 })
   }),
 
   http.delete('/api/v1/libraries/:libraryId/connection-profile', ({ params }) => {
