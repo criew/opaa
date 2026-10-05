@@ -453,7 +453,7 @@ am …“, ohne einen Zeitpunkt für den Abschluss zu versprechen. Bis dahin bie
 „Jetzt indizieren“ noch ein erneutes Löschen, kein Bearbeiten von Name, Quelle, Zugang, Zeitplan,
 Metadatenfeldern oder Zuordnungen und kein Hochladen oder Löschen von Dokumenten. Ein Dokument
 lässt sich nicht mehr öffnen; der Versuch meldet „Die Bibliothek wird gelöscht – ihre Dokumente
-lassen sich nicht mehr öffnen.“ Die Katalogkachel trägt die Marke nicht.
+lassen sich nicht mehr öffnen.“ Die Katalogkachel trägt jetzt ebenfalls „Wird gelöscht“.
 
 ### Ordner, Speicherkontingent, Löschen
 

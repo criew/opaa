@@ -501,7 +501,10 @@ components:
         failureCategory:
           type: string
           nullable: true
-          description: As IndexingRunResponse.failureCategory, of the newest run.
+          description: >
+            As IndexingRunResponse.failureCategory, of the newest run. Only for a caller with at
+            least MANAGER on the library, like message in a failed state (the run list asks MANAGER
+            as well); empty for a reader.
           example: QUOTA_EXHAUSTED
         libraryId:
           type: string
