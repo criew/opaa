@@ -277,13 +277,18 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   @Override
   @Transactional
   public void grantRejected(PersonOwned owner) {
+    boolean mcpServer =
+        profiles.findById(owner.profileId()).map(ConnectionProfile::isMcpServer).orElse(false);
     expire(
         owner,
         AuditObjectType.SYSTEM_SETTING,
         owner.profileId(),
-        "Der Anbieter nimmt die Zustimmung Ihres verbundenen Kontos nicht mehr an. Verbinden Sie"
-            + " es auf der Seite „Verbundene Konten“ neu; bis dahin wird nichts aus diesem Zugang"
-            + " aktualisiert.");
+        mcpServer
+            ? "Der Anbieter nimmt die Zustimmung zum MCP-Server nicht mehr an; die Verbindung muss"
+                + " neu hergestellt werden."
+            : "Der Anbieter nimmt die Zustimmung Ihres verbundenen Kontos nicht mehr an. Verbinden"
+                + " Sie es auf der Seite „Verbundene Konten“ neu; bis dahin wird nichts aus diesem"
+                + " Zugang aktualisiert.");
   }
 
   /**
@@ -488,10 +493,12 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   private static Optional<String> endNotice(
       ConnectionEndCause cause, ConnectionProfile profile, boolean feedsPrivateLibrary) {
     String reconnect =
-        feedsPrivateLibrary
-            ? " Verbinden Sie Ihr Konto auf der Seite „Verbundene Konten“ neu; bis dahin wird Ihre"
-                + " private Bibliothek nicht aktualisiert."
-            : " Sie können Ihr Konto auf der Seite „Verbundene Konten“ neu verbinden.";
+        profile.isMcpServer()
+            ? " Die Verbindung zum MCP-Server muss neu hergestellt werden."
+            : feedsPrivateLibrary
+                ? " Verbinden Sie Ihr Konto auf der Seite „Verbundene Konten“ neu; bis dahin wird Ihre"
+                    + " private Bibliothek nicht aktualisiert."
+                : " Sie können Ihr Konto auf der Seite „Verbundene Konten“ neu verbinden.";
     String gone =
         feedsPrivateLibrary ? " Ihre private Bibliothek wird nicht mehr aktualisiert." : "";
     return switch (cause) {

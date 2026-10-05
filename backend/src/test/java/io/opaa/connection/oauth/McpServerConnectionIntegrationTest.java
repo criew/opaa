@@ -373,6 +373,12 @@ class McpServerConnectionIntegrationTest {
                 Integer.class,
                 profile))
         .isOne();
+    // the accounts page does not show an MCP connection, so no notice sends anyone there
+    assertThat(
+            jdbc.queryForList(
+                "SELECT body FROM notifications WHERE object_id = ?", String.class, profile))
+        .isNotEmpty()
+        .noneSatisfy(body -> assertThat(body).contains("Verbundene Konten"));
 
     connect(serverA, profile);
     call("dev-admin", put(ADMIN + "/" + profile + "/lock"), "{\"locked\": true}");

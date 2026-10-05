@@ -29,9 +29,10 @@ import tools.jackson.databind.json.JsonMapper;
  * Protected Resource Metadata (RFC 9728) at the server's well-known address, then the authorization
  * server's metadata (RFC 8414, else OpenID discovery). No answer is taken on trust: the resource
  * must name the server, the issuer the address its metadata was read from, PKCE must offer {@code
- * S256}, and every endpoint must be {@code https} - {@code http} only on a loopback host, which the
- * target check refuses in production. Every address passes the target check; a redirect leaves no
- * origin.
+ * S256}, and every endpoint must be {@code https} - {@code http} only on a loopback host. The
+ * target check refuses loopback in production for every address the server itself calls; the
+ * authorization endpoint is opened by the browser, which no target check covers. A redirect leaves
+ * no origin.
  */
 @Component
 public class McpServerDiscovery {
