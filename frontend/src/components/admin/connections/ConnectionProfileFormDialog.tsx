@@ -29,7 +29,6 @@ import SourceTypeIcon from '../../library/sourceTypeIcon'
 import {
   changeRejected,
   createConnectionProfile,
-  getConnectionProfileImpact,
   getConnectionRedirectUri,
   needsConfirmation,
   previewConnectionProfileChange,
@@ -143,10 +142,6 @@ const ENDPOINT_FIELDS = [
   },
 ] as const
 
-function count(n: number, one: string, many: string) {
-  return `${n} ${n === 1 ? one : many}`
-}
-
 interface ConnectionProfileFormDialogProps {
   open: boolean
   /** The profile being edited; `null` creates a new one. */
@@ -167,8 +162,9 @@ interface ConnectionProfileFormDialogProps {
  * edit sends every field back, so it waits for that description - without it the defaults would be
  * lost. Created for a request, type and address start from it and saving resolves the request; a
  * new profile is created without a preview. An edit that may reach the libraries on the profile
- * shows its preview first - how many, which ones their connector refuses - and saves only on a
- * second click; a change that discards secrets asks once more, as the server decides.
+ * shows its preview first - how many, which ones their connector refuses, what saving discards -
+ * and saves only on a second click; a change that discards anything asks once more with the
+ * server's own question.
  */
 export default function ConnectionProfileFormDialog({
   open,
@@ -323,24 +319,16 @@ export default function ConnectionProfileFormDialog({
         saved = await save(false)
       } catch (err) {
         if (!profile || !needsConfirmation(err)) throw err
-        const impact = await getConnectionProfileImpact(profile.id)
-        // a default only the profile sets: the server's question names what is discarded
-        const fullSync = (shownPreview?.fullSyncLibraries ?? 0) > 0
-        const confirmed = await confirmAction(
-          fullSync && err instanceof Error
-            ? {
-                question: `Änderung an „${profile.name}“ bestätigen?`,
-                consequence: err.message,
-                confirmLabel: 'Bestätigen und speichern',
-                tone: 'danger',
-              }
-            : {
-                question: `Zugangsdaten von „${profile.name}“ verwerfen?`,
-                consequence: `Die Änderung betrifft ${count(impact.connections, 'Verbindung', 'Verbindungen')} und ${count(impact.libraries, 'Bibliothek', 'Bibliotheken')}. Alle hinterlegten Geheimnisse werden verworfen und müssen neu eingetragen werden.`,
-                confirmLabel: 'Verwerfen und speichern',
-                tone: 'danger',
-              },
-        )
+        // the server's question names what is discarded - the same text the preview quotes
+        const confirmed = await confirmAction({
+          question: `Änderung an „${profile.name}“ bestätigen?`,
+          consequence:
+            err instanceof Error
+              ? err.message
+              : 'Die Änderung verwirft Zugangsdaten oder Abgleichstände.',
+          confirmLabel: 'Bestätigen und speichern',
+          tone: 'danger',
+        })
         if (!confirmed) return
         saved = await save(true)
       }

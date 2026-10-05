@@ -20,8 +20,8 @@ interface ProfileChangePreviewProps {
 
 /**
  * The preview of an edit of a profile before it is saved: how many libraries it reaches, every one
- * whose connector refuses it with kind and reason, and that saving may discard secrets and sync
- * state - whether it does, the server decides and confirms with its own question.
+ * whose connector refuses it with kind and reason, and what saving discards as the server plans it
+ * - with the question it asks before, word for word.
  */
 export default function ProfileChangePreview({ impact, ownership }: ProfileChangePreviewProps) {
   const unnamed = impact.rejectedLibraries - impact.rejections.length
@@ -90,10 +90,68 @@ export default function ProfileChangePreview({ impact, ownership }: ProfileChang
           nächster Lauf liest die Quelle vollständig neu. Ihre Verwaltenden werden benachrichtigt.
         </Alert>
       )}
-      <Alert severity="warning">
-        Zugangsdaten und Abgleichstand der verbundenen Bibliotheken können beim Speichern verworfen
-        werden. Verwirft die Änderung Zugangsdaten, fragt OPAA vor dem Speichern noch einmal nach.
-      </Alert>
+      <ProfileChangeDiscards impact={impact} persons={persons} />
     </Stack>
+  )
+}
+
+/** What saving discards, each number as the server counts it; persons only as it rounds them. */
+function ProfileChangeDiscards({
+  impact,
+  persons,
+}: {
+  impact: ConnectionProfileImpactResponse
+  persons: boolean
+}) {
+  const connections = impact.connectionsDiscarded ?? 0
+  const secrets = impact.secretsDiscarded ?? 0
+  const configurations = impact.configurationsChanged ?? 0
+  const accounts = persons ? (impact.connectedAccountsEnded ?? null) : null
+  const items: string[] = []
+  if (connections > 0) {
+    items.push(
+      `Alle Zugangsdaten und Token des Zugangs werden verworfen; ${count(connections, 'Verbindung meldet', 'Verbindungen melden')} sich neu an.`,
+    )
+  }
+  if (secrets > 0) {
+    items.push(
+      `Die gespeicherten Zugangsdaten von ${count(secrets, 'Bibliothek', 'Bibliotheken')} werden verworfen und sind neu einzutragen.`,
+    )
+  }
+  if (accounts) {
+    items.push(
+      `Die verbundenen Konten von Personen enden (${personCountLabel(accounts)}); wer weiter darüber arbeitet, verbindet sein Konto neu.`,
+    )
+  }
+  if (configurations > 0) {
+    items.push(
+      `Für ${count(configurations, 'Bibliothek', 'Bibliotheken')} ändert sich die Konfiguration; ihr Konnektor verwirft den Abgleichstand, den die alte Konfiguration ungültig macht.`,
+    )
+  }
+  return (
+    <Alert
+      severity={impact.confirmation ? 'warning' : 'info'}
+      data-testid="profile-change-discards"
+    >
+      <Typography variant="body2" sx={{ mb: items.length > 0 ? 1 : 0 }}>
+        {items.length > 0
+          ? 'Beim Speichern:'
+          : 'Die Änderung verwirft keine Zugangsdaten, kein verbundenes Konto und keinen Abgleichstand.'}
+      </Typography>
+      {items.length > 0 && (
+        <List dense disablePadding>
+          {items.map((item) => (
+            <ListItem key={item} disableGutters sx={{ py: 0.25 }}>
+              <Typography variant="body2">{item}</Typography>
+            </ListItem>
+          ))}
+        </List>
+      )}
+      {impact.confirmation && (
+        <Typography variant="body2" sx={{ mt: 1 }} data-testid="profile-change-confirmation">
+          Vor dem Speichern fragt OPAA noch einmal nach: „{impact.confirmation}“
+        </Typography>
+      )}
+    </Alert>
   )
 }

@@ -11,8 +11,9 @@ function blank(value: string | null | undefined): string {
 }
 
 /**
- * Whether an edit may reach the libraries on the profile - anything but a rename or a new client
- * secret - and is therefore previewed first. What it discards decides the server alone.
+ * Whether an edit may reach the libraries on the profile or the connected accounts of persons -
+ * anything but a rename or a new client secret - and is therefore previewed first. What it
+ * discards names the server's preview alone.
  */
 export function reachesLibraries(
   profile: ConnectionProfileResponse,
@@ -21,6 +22,7 @@ export function reachesLibraries(
   return (
     blank(profile.serverUrl) !== blank(update.serverUrl).replace(/\/+$/, '') ||
     profile.authMethod !== update.authMethod ||
+    profile.ownership !== update.ownership ||
     blank(profile.clientId) !== blank(update.clientId) ||
     blank(profile.tenant) !== blank(update.tenant) ||
     blank(profile.scopes) !== blank(update.scopes) ||
