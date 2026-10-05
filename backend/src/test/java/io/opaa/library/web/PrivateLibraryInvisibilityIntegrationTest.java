@@ -32,6 +32,7 @@ import io.opaa.library.PrivateLibraryCreation;
 import io.opaa.organization.Organization;
 import io.opaa.permission.GroupMembershipResolver;
 import io.opaa.permission.GroupSizeProperties;
+import io.opaa.searchadmin.SearchStatusService;
 import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
@@ -62,6 +63,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder;
@@ -82,6 +85,9 @@ import org.yaml.snakeyaml.Yaml;
  */
 @OpaaIntegrationTest
 class PrivateLibraryInvisibilityIntegrationTest {
+
+  /** Port 9 (discard) on loopback: refused at once, never a model. */
+  private static final String UNREACHABLE_MODEL = "http://127.0.0.1:9/v1";
 
   private static final Pattern ID_NAME =
       Pattern.compile("(?i).*(libraryid|assetid|documentid|chunkid)s?$");
@@ -468,6 +474,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
   @Autowired private ExternalAccessSettingsService externalSettings;
   @Autowired private LibraryExternalAccessService externalRelease;
   @Autowired private ExternalAccessTokenService tokens;
+  @Autowired private SearchStatusService searchStatus;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final List<UUID> spaces = new ArrayList<>();
@@ -487,10 +494,12 @@ class PrivateLibraryInvisibilityIntegrationTest {
   private CurrentUser ownerCaller;
   private CurrentUser devCaller;
   private CurrentUser adminCaller;
+  private String activeModelBaseUrl;
 
   @BeforeEach
   void provisionTheDevUsers() throws Exception {
     startedAt = Instant.now();
+    unreachableChatModel();
     mockMvc.perform(as("dev-user", get("/api/v1/spaces"))).andExpect(status().isOk());
     mockMvc.perform(as("dev-admin", get("/api/v1/spaces"))).andExpect(status().isOk());
     devUser = userIdOf("dev-user@opaa.local");
@@ -500,8 +509,33 @@ class PrivateLibraryInvisibilityIntegrationTest {
         CurrentUser.of(admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Dev Admin");
   }
 
+  /**
+   * The search status probes the active chat model: a fixed, unreachable address answers the same
+   * every time, whatever model server runs on this machine, and no earlier probe stays cached.
+   */
+  private void unreachableChatModel() {
+    activeModelBaseUrl =
+        jdbc
+            .query("SELECT base_url FROM llm_models WHERE active", (row, i) -> row.getString(1))
+            .stream()
+            .findFirst()
+            .orElse(null);
+    jdbc.update("UPDATE llm_models SET base_url = ? WHERE active", UNREACHABLE_MODEL);
+    ReflectionTestUtils.setField(
+        (Object) AopTestUtils.getUltimateTargetObject(searchStatus), "probedRoles", null);
+  }
+
+  private void restoreChatModel() {
+    if (activeModelBaseUrl != null) {
+      jdbc.update("UPDATE llm_models SET base_url = ? WHERE active", activeModelBaseUrl);
+    }
+    ReflectionTestUtils.setField(
+        (Object) AopTestUtils.getUltimateTargetObject(searchStatus), "probedRoles", null);
+  }
+
   @AfterEach
   void removeOwnRows() throws Exception {
+    restoreChatModel();
     jdbc.update("UPDATE users SET system_role = 'USER' WHERE id = ?", devUser);
     jdbc.update("DELETE FROM external_access_tokens WHERE user_id = ?", devUser);
     jdbc.update("DELETE FROM diagnostic_impersonation_grants WHERE holder_user_id = ?", admin);
