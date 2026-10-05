@@ -21,6 +21,7 @@ export const googleDriveSource: SourceRegistration = {
   containerLabel: 'Bereich',
   configuration: {
     empty: EMPTY_GOOGLE_DRIVE_VALUES,
+    draftFields: ['subject', 'storedSubject', 'scopes', 'sourceProxy', 'fullSyncIntervalDays'],
     // ADR-0040: the stored key stands while the imitated account stays the same.
     fromLibrary: (library): GoogleDriveSourceValues => {
       const settings = googleDriveSettingsFromLibrary(library)

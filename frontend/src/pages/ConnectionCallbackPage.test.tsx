@@ -1,12 +1,27 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { Route, Routes, useLocation } from 'react-router'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../mocks/server'
+import { leaveFor } from '../services/leaveApp'
 import { useAuthStore } from '../stores/authStore'
-import { renderWithProviders, setMockAuthState } from '../test/test-utils'
-import type { ConnectionAuthorizationCompleteRequest } from '../types/api'
+import { answerConfirm, renderWithProviders, setMockAuthState } from '../test/test-utils'
+import type {
+  ConnectionAuthorizationCompleteRequest,
+  ConnectionAuthorizationStartRequest,
+} from '../types/api'
+import { scheduleValuesFrom } from '../utils/librarySchedule'
+import {
+  CONSENT_INTENT_STORAGE_KEY,
+  SERVICE_ACCOUNT_CONFIRMATION,
+  readConsentIntent,
+  rememberConsentIntent,
+  type WizardDraft,
+} from '../components/library/sourceConsent'
 import ConnectionCallbackPage from './ConnectionCallbackPage'
+
+vi.mock('../services/leaveApp', () => ({ leaveFor: vi.fn() }))
 
 const COMPLETE = '/api/v1/connections/authorizations/complete'
 
@@ -26,6 +41,8 @@ function renderAt(route: string) {
         <Route path="/connections/callback" element={<ConnectionCallbackPage />} />
         <Route path="/settings/accounts" element={<div>Verbundene Konten</div>} />
         <Route path="/login" element={<div>Anmeldeseite</div>} />
+        <Route path="/libraries/new" element={<div>Assistent</div>} />
+        <Route path="/libraries/:libraryId" element={<div>Bibliothek</div>} />
       </Routes>
       <Address />
     </>
@@ -71,7 +88,11 @@ const DONE = () =>
   })
 
 describe('ConnectionCallbackPage', () => {
-  beforeEach(() => setMockAuthState())
+  beforeEach(() => {
+    setMockAuthState()
+    sessionStorage.clear()
+    vi.mocked(leaveFor).mockReset()
+  })
 
   it('completes the consent once, cleans the address and goes on to the page the server names', async () => {
     const sent = serveComplete(DONE)
@@ -160,5 +181,217 @@ describe('ConnectionCallbackPage', () => {
     expect(sent).toEqual([])
     screen.getByRole('button', { name: 'Zur Anmeldung' }).click()
     await waitFor(() => expect(screen.getByTestId('address')).toHaveTextContent(/^\/login$/))
+  })
+
+  describe('Quelle verbinden (#2169)', () => {
+    const draft: WizardDraft = {
+      sourceType: 'NEXTCLOUD',
+      chosenConnections: { NEXTCLOUD: 'profile-dropbox' },
+      sourceValues: { sourceUrl: 'https://cloud.example', folders: '/' },
+      schedule: scheduleValuesFrom(null),
+      startFirstRun: true,
+      name: '',
+      nameTouched: false,
+      description: '',
+      ownerType: 'USER',
+      selectedGroup: null,
+      pendingGrants: [],
+      responsibleIsGroup: false,
+    }
+    const pending = {
+      id: 'pending-1',
+      accountLabel: 'svc@bauamt.example',
+      expiresAt: '2026-10-05T10:00:00Z',
+    }
+    const ACCOUNT_CHANGED_MESSAGE =
+      'Sie haben sich beim Anbieter als „privat@example.org“ angemeldet; die Quelle war als „svc@bauamt.example“ verbunden. Bestätigen Sie den Wechsel des Kontos und verbinden Sie erneut – der Abgleichstand der Bibliothek wird dann verworfen. Es wurde nichts verbunden.'
+
+    function serveStart() {
+      const started: ConnectionAuthorizationStartRequest[] = []
+      server.use(
+        http.post('/api/v1/connections/authorizations', async ({ request }) => {
+          started.push((await request.json()) as ConnectionAuthorizationStartRequest)
+          return HttpResponse.json({
+            authorizationUrl: 'https://provider.example/authorize?state=neu',
+            expiresAt: '2026-10-05T09:10:00Z',
+          })
+        }),
+      )
+      return started
+    }
+
+    it('hands the pending connection to the waiting wizard and returns there', async () => {
+      rememberConsentIntent({ purpose: 'LIBRARY_NEW', profileId: 'profile-dropbox', draft })
+      serveComplete(() =>
+        HttpResponse.json({
+          purpose: 'LIBRARY_NEW',
+          profileId: 'profile-dropbox',
+          returnTo: '/libraries/new',
+          account: null,
+          pendingConnection: pending,
+        }),
+      )
+      renderAt('/connections/callback?code=c-5&state=s-5')
+
+      expect(await screen.findByText('Assistent', { selector: 'div' })).toBeInTheDocument()
+      expect(screen.getByTestId('address')).toHaveTextContent(/^\/libraries\/new$/)
+      expect(
+        await screen.findByText('Die Quelle ist verbunden als „svc@bauamt.example“.'),
+      ).toBeVisible()
+      expect(readConsentIntent()).toEqual({
+        purpose: 'LIBRARY_NEW',
+        profileId: 'profile-dropbox',
+        draft,
+        pending,
+      })
+      // neither the code nor the state is kept anywhere in the tab
+      const stored = sessionStorage.getItem(CONSENT_INTENT_STORAGE_KEY) ?? ''
+      expect(stored).not.toContain('c-5')
+      expect(stored).not.toContain('s-5')
+    })
+
+    it('says honestly that no wizard in this tab waits for the consent', async () => {
+      serveComplete(() =>
+        HttpResponse.json({
+          purpose: 'LIBRARY_NEW',
+          profileId: 'profile-dropbox',
+          returnTo: '/libraries/new',
+          account: null,
+          pendingConnection: pending,
+        }),
+      )
+      renderAt('/connections/callback?code=c-11&state=s-11')
+
+      expect(await screen.findByText('Assistent', { selector: 'div' })).toBeInTheDocument()
+      expect(
+        await screen.findByText(
+          /der begonnene Assistent wurde in diesem Fenster aber nicht gefunden/,
+        ),
+      ).toBeVisible()
+      expect(screen.queryByText(/Die Quelle ist verbunden/)).not.toBeInTheDocument()
+      expect(readConsentIntent()).toBeNull()
+    })
+
+    it('returns to the source of the library connected anew and forgets the intent', async () => {
+      rememberConsentIntent({
+        purpose: 'LIBRARY_RECONNECT',
+        profileId: 'profile-dropbox',
+        libraryId: 'lib-1',
+      })
+      serveComplete(() =>
+        HttpResponse.json({
+          purpose: 'LIBRARY_RECONNECT',
+          profileId: 'profile-dropbox',
+          returnTo: '/libraries/lib-1',
+          account: null,
+          libraryId: 'lib-1',
+        }),
+      )
+      renderAt('/connections/callback?code=c-6&state=s-6')
+
+      expect(await screen.findByText('Bibliothek', { selector: 'div' })).toBeInTheDocument()
+      expect(screen.getByTestId('address')).toHaveTextContent(/^\/libraries\/lib-1\?tab=quelle$/)
+      expect(await screen.findByText('Die Quelle der Bibliothek ist neu verbunden.')).toBeVisible()
+      expect(readConsentIntent()).toBeNull()
+    })
+
+    it('connects with the other account only once the service account is confirmed anew', async () => {
+      rememberConsentIntent({
+        purpose: 'LIBRARY_RECONNECT',
+        profileId: 'profile-dropbox',
+        libraryId: 'lib-1',
+      })
+      serveComplete(() => errorBody(409, ACCOUNT_CHANGED_MESSAGE, 'ACCOUNT_CHANGED'))
+      const started = serveStart()
+      const user = userEvent.setup()
+      renderAt('/connections/callback?code=c-7&state=s-7')
+
+      expect(await screen.findByRole('heading', { name: 'Quelle verbinden' })).toBeInTheDocument()
+      expect(await screen.findByText(ACCOUNT_CHANGED_MESSAGE)).toBeVisible()
+      await user.click(screen.getByRole('button', { name: 'Mit diesem Konto verbinden' }))
+      await answerConfirm(user, 'Quelle mit dem anderen Konto verbinden?', 'Abbrechen')
+      expect(started).toEqual([])
+      expect(leaveFor).not.toHaveBeenCalled()
+
+      await user.click(screen.getByRole('button', { name: 'Mit diesem Konto verbinden' }))
+      const dialog = await screen.findByRole('dialog', {
+        name: 'Quelle mit dem anderen Konto verbinden?',
+      })
+      expect(dialog).toHaveTextContent('der Abgleichstand der Bibliothek verworfen')
+      const confirm = within(dialog).getByRole('button', { name: 'Mit diesem Konto verbinden' })
+      await user.click(confirm)
+      expect(
+        await within(dialog).findByText(
+          'Bitte bestätigen Sie, dass Sie ein Dienstkonto verbinden.',
+        ),
+      ).toBeVisible()
+      expect(started).toEqual([])
+      expect(leaveFor).not.toHaveBeenCalled()
+
+      await user.click(within(dialog).getByRole('checkbox', { name: SERVICE_ACCOUNT_CONFIRMATION }))
+      await user.click(confirm)
+      await waitFor(() =>
+        expect(leaveFor).toHaveBeenCalledWith('https://provider.example/authorize?state=neu'),
+      )
+      expect(started).toEqual([
+        {
+          profileId: 'profile-dropbox',
+          purpose: 'LIBRARY_RECONNECT',
+          libraryId: 'lib-1',
+          serviceAccountConfirmed: true,
+          confirmAccountChange: true,
+        },
+      ])
+    })
+
+    it('offers no change of account without the library it was for', async () => {
+      serveComplete(() => errorBody(409, ACCOUNT_CHANGED_MESSAGE, 'ACCOUNT_CHANGED'))
+      renderAt('/connections/callback?code=c-8&state=s-8')
+
+      expect(await screen.findByText(ACCOUNT_CHANGED_MESSAGE)).toBeVisible()
+      expect(
+        screen.queryByRole('button', { name: 'Mit diesem Konto verbinden' }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('leads back to the wizard after a failed consent, with its draft kept', async () => {
+      rememberConsentIntent({ purpose: 'LIBRARY_NEW', profileId: 'profile-dropbox', draft })
+      serveComplete(() =>
+        errorBody(
+          400,
+          'Die Zustimmung beim Anbieter wurde abgelehnt oder abgebrochen. Es wurde nichts verbunden.',
+        ),
+      )
+      const user = userEvent.setup()
+      renderAt('/connections/callback?error=access_denied&state=s-9')
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('abgelehnt oder abgebrochen')
+      await user.click(screen.getByRole('button', { name: 'Zurück zum Assistenten' }))
+      await waitFor(() =>
+        expect(screen.getByTestId('address')).toHaveTextContent(/^\/libraries\/new$/),
+      )
+      expect(readConsentIntent()).toEqual({
+        purpose: 'LIBRARY_NEW',
+        profileId: 'profile-dropbox',
+        draft,
+      })
+    })
+
+    it('leads back to the library after a failed reconnection', async () => {
+      rememberConsentIntent({
+        purpose: 'LIBRARY_RECONNECT',
+        profileId: 'profile-dropbox',
+        libraryId: 'lib-1',
+      })
+      serveComplete(() => errorBody(404, 'Diese Anmeldung beim Anbieter ist unbekannt.'))
+      const user = userEvent.setup()
+      renderAt('/connections/callback?code=c-10&state=s-10')
+
+      await user.click(await screen.findByRole('button', { name: 'Zurück zur Bibliothek' }))
+      await waitFor(() =>
+        expect(screen.getByTestId('address')).toHaveTextContent(/^\/libraries\/lib-1\?tab=quelle$/),
+      )
+      expect(readConsentIntent()).toBeNull()
+    })
   })
 })

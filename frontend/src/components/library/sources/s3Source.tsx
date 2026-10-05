@@ -22,6 +22,17 @@ export const s3Source: SourceRegistration = {
   containerLabel: 'Bucket',
   configuration: {
     empty: EMPTY_S3_VALUES,
+    draftFields: [
+      'provider',
+      'sourceUrl',
+      'region',
+      'pathStyle',
+      'sourceProxy',
+      'sourceInsecureSsl',
+      'scopes',
+      'includePatterns',
+      'excludePatterns',
+    ],
     // ADR-0027: endpoint, region, addressing style and scopes come back from the stored settings;
     // the stored key stands until a new one is typed.
     fromLibrary: (library): S3SourceValues =>

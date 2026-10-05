@@ -1,8 +1,11 @@
-import type { NotificationType } from '../../types/api'
+import type { NotificationResponse } from '../../types/api'
 import { CONNECTED_ACCOUNTS_ROUTE, CONNECTION_PROFILES_ROUTE } from '../../routes'
 
-/** Where a notification of this type leads when clicked; `null` keeps it a plain entry. */
-export function notificationTarget(type: NotificationType): string | null {
+/** Where a notification leads when clicked; `null` keeps it a plain entry. */
+export function notificationTarget({
+  type,
+  objectId,
+}: Pick<NotificationResponse, 'type' | 'objectId'>): string | null {
   switch (type) {
     case 'CONNECTION_EXPIRED':
     case 'CONNECTION_ENDED':
@@ -10,6 +13,11 @@ export function notificationTarget(type: NotificationType): string | null {
       return CONNECTED_ACCOUNTS_ROUTE
     case 'CONNECTION_PROFILE_SECRET_EXPIRING':
       return CONNECTION_PROFILES_ROUTE
+    // the object is the library whose own source connection is meant
+    case 'SOURCE_CONNECTION_EXPIRING':
+    case 'SOURCE_CONNECTION_EXPIRED':
+    case 'SOURCE_CONNECTION_ENDED':
+      return objectId ? `/libraries/${objectId}?tab=quelle` : null
     case 'ASSET_ASSOCIATED_TO_MIXED_SPACE':
     case 'EXTERNAL_ACCESS_MASS_RETRIEVAL':
     case 'GROUP_MEMBER_ADDED':
@@ -18,9 +26,6 @@ export function notificationTarget(type: NotificationType): string | null {
     case 'CONNECTION_PROFILE_REQUEST_RESOLVED':
     case 'PRIVATE_LIBRARY_RELEASED':
     case 'SOURCE_FULL_SYNC_FORCED':
-    case 'SOURCE_CONNECTION_EXPIRING':
-    case 'SOURCE_CONNECTION_EXPIRED':
-    case 'SOURCE_CONNECTION_ENDED':
       return null
     default: {
       const unknown: never = type
