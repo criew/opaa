@@ -20,6 +20,7 @@ import {
   CLAIMED_MARKER_RE,
   escapeMarkerPipes,
   readMarker,
+  remarkUnescapeMarkerPipesInCode,
   unwrapBracketedMarkers,
 } from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
@@ -274,6 +275,8 @@ function makeComponents(
         {processChildren(children)}
       </Typography>
     ),
+    strong: ({ children }) => <strong>{processChildren(children)}</strong>,
+    em: ({ children }) => <em>{processChildren(children)}</em>,
     a: ({ href, children }) => (
       <Link href={href} target="_blank" rel="noopener noreferrer">
         {children}
@@ -362,7 +365,9 @@ export default function MarkdownRenderer({
   )
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={
+        preserveCitationMarkers ? [remarkGfm] : [remarkGfm, remarkUnescapeMarkerPipesInCode]
+      }
       rehypePlugins={[rehypeHighlight, rehypeNormalizeHeadings]}
       components={components}
     >
