@@ -29,7 +29,7 @@ final class NextcloudFixture {
 
   /** The regex manager in {@code renovate.json5} reads the tag from the comment below. */
   // renovate: datasource=docker depName=nextcloud
-  static final String IMAGE = "nextcloud:34.0.4-apache";
+  static final String IMAGE = "nextcloud:35.0.1-apache";
 
   static final String TECH_USER = "opaa";
   static final String OWNER = "alice";
