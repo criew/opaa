@@ -110,7 +110,7 @@ describe('OwnExternalAccessTokensSection', () => {
 
     const tiles = await within(group).findAllByRole('checkbox')
     expect(tiles.map((tile) => tile.textContent)).toEqual([
-      expect.stringContaining('Meine Dokumente'),
+      expect.stringContaining('Eigene Unterlagen'),
       expect.stringContaining('Rechtsquellen Soziales'),
       expect.stringContaining('Dienstanweisungen'),
     ])
@@ -135,7 +135,7 @@ describe('OwnExternalAccessTokensSection', () => {
     render()
 
     const dialog = await openCreateDialog(user)
-    await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Eigene Unterlagen/ }))
     expect(within(dialog).getByText('1 ausgewählt')).toBeInTheDocument()
 
     await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'recht')
@@ -149,15 +149,15 @@ describe('OwnExternalAccessTokensSection', () => {
     expect(within(dialog).getByText(/Keine Bibliothek passt zur Suche/)).toBeInTheDocument()
 
     await user.clear(within(dialog).getByRole('searchbox', { name: 'Suchen' }))
-    expect(within(dialog).getByRole('checkbox', { name: /Meine Dokumente/ })).toHaveAttribute(
+    expect(within(dialog).getByRole('checkbox', { name: /Eigene Unterlagen/ })).toHaveAttribute(
       'aria-checked',
       'true',
     )
 
-    // Submitted while the search hides the chosen "Meine Dokumente": it is still sent.
+    // Submitted while the search hides the chosen "Eigene Unterlagen": it is still sent.
     await user.type(within(dialog).getByRole('searchbox', { name: 'Suchen' }), 'recht')
     expect(
-      within(dialog).queryByRole('checkbox', { name: /Meine Dokumente/ }),
+      within(dialog).queryByRole('checkbox', { name: /Eigene Unterlagen/ }),
     ).not.toBeInTheDocument()
     await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
@@ -326,7 +326,7 @@ describe('OwnExternalAccessTokensSection', () => {
     render()
 
     const dialog = await openCreateDialog(user)
-    await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ })
+    await within(dialog).findByRole('checkbox', { name: /Eigene Unterlagen/ })
 
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
 
@@ -344,7 +344,7 @@ describe('OwnExternalAccessTokensSection', () => {
 
     const dialog = await openCreateDialog(user)
     await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
-    await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Eigene Unterlagen/ }))
     await user.clear(within(dialog).getByLabelText('Läuft ab'))
 
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
@@ -376,7 +376,7 @@ describe('OwnExternalAccessTokensSection', () => {
 
     const dialog = await openCreateDialog(user)
     await user.type(within(dialog).getByLabelText('Name / Zweck'), 'Claude Code (Notebook)')
-    await user.click(await within(dialog).findByRole('checkbox', { name: /Meine Dokumente/ }))
+    await user.click(await within(dialog).findByRole('checkbox', { name: /Eigene Unterlagen/ }))
     await user.click(within(dialog).getByRole('button', { name: 'Erzeugen' }))
 
     const valueDialog = await screen.findByRole('dialog', { name: 'Token erzeugt' })

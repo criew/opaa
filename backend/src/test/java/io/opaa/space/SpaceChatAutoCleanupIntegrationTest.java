@@ -155,7 +155,7 @@ class SpaceChatAutoCleanupIntegrationTest {
   void inThePersonalSpaceOnlyItsOwnerSwitchesTheCleanupNotEvenTheSystemAdministration() {
     UUID owner = createUser();
     UUID systemAdmin = createUser();
-    Space personal = new Space("Meine Dokumente", null, true, owner, organizationId);
+    Space personal = new Space("Privater Bereich", null, true, owner, organizationId);
     personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     Space space = spaceRepository.save(personal);
 
@@ -175,7 +175,7 @@ class SpaceChatAutoCleanupIntegrationTest {
     UUID owner = createUser();
     UUID colleague = createUser();
     UUID systemAdmin = createUser();
-    Space personal = new Space("Meine Dokumente", null, true, owner, organizationId);
+    Space personal = new Space("Privater Bereich", null, true, owner, organizationId);
     personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     personal.addMembership(SpaceMembership.ofUser(colleague, SpaceRole.ADMIN, organizationId));
     Space space = spaceRepository.save(personal);
@@ -196,7 +196,7 @@ class SpaceChatAutoCleanupIntegrationTest {
   void theSystemAdministrationStillRenamesAPersonalSpaceWithoutTouchingTheSwitch() {
     UUID owner = createUser();
     UUID systemAdmin = createUser();
-    Space personal = new Space("Meine Dokumente", null, true, owner, organizationId);
+    Space personal = new Space("Privater Bereich", null, true, owner, organizationId);
     personal.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationId));
     Space space = spaceRepository.save(personal);
 

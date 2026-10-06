@@ -165,10 +165,21 @@ class SpaceServiceTest {
 
     verify(spaceRepository)
         .insertDefaultSpaceIfAbsent(
+            any(UUID.class), any(UUID.class), any(String.class), eq(userId), eq(organizationId));
+  }
+
+  @Test
+  void theDefaultSpaceIsNamedPrivaterBereichWithoutDescription() {
+    UUID userId = UUID.randomUUID();
+    UUID organizationId = UUID.randomUUID();
+
+    spaceService.ensureDefaultSpaceForNewUser(userId, organizationId);
+
+    verify(spaceRepository)
+        .insertDefaultSpaceIfAbsent(
             any(UUID.class),
             any(UUID.class),
-            any(String.class),
-            any(String.class),
+            eq("Privater Bereich"),
             eq(userId),
             eq(organizationId));
   }
@@ -183,12 +194,7 @@ class SpaceServiceTest {
 
     verify(spaceRepository, never())
         .insertDefaultSpaceIfAbsent(
-            any(UUID.class),
-            any(UUID.class),
-            any(String.class),
-            any(String.class),
-            any(UUID.class),
-            any(UUID.class));
+            any(UUID.class), any(UUID.class), any(String.class), any(UUID.class), any(UUID.class));
   }
 
   @Test
@@ -206,12 +212,7 @@ class SpaceServiceTest {
     doThrow(violation)
         .when(spaceRepository)
         .insertDefaultSpaceIfAbsent(
-            any(UUID.class),
-            any(UUID.class),
-            any(String.class),
-            any(String.class),
-            eq(userId),
-            eq(organizationId));
+            any(UUID.class), any(UUID.class), any(String.class), eq(userId), eq(organizationId));
 
     assertThatThrownBy(() -> spaceService.ensureDefaultSpace(userId, organizationId))
         .isSameAs(violation);
@@ -240,12 +241,7 @@ class SpaceServiceTest {
     verify(spaceRepository, never()).existsByOwnerIdAndIsDefaultTrue(any(UUID.class));
     verify(spaceRepository)
         .insertDefaultSpaceIfAbsent(
-            any(UUID.class),
-            any(UUID.class),
-            any(String.class),
-            any(String.class),
-            eq(userId),
-            eq(organizationId));
+            any(UUID.class), any(UUID.class), any(String.class), eq(userId), eq(organizationId));
   }
 
   @Test

@@ -74,7 +74,7 @@ test.describe("Passwort vergessen, Rücksetzen, alte Sitzung endet", () => {
     const running = await sessionContext.newPage();
     await signInSuccessfully(running, address, oldPassword);
     await running.goto("/spaces");
-    await expect(running.getByText("Meine Dokumente").first()).toBeVisible();
+    await expect(running.getByText("Privater Bereich").first()).toBeVisible();
 
     await clearMailbox();
     const resetContext = await browser.newContext();

@@ -103,8 +103,8 @@ describe('Sidebar', () => {
       spaces: [
         {
           id: 'space-personal',
-          name: 'Meine Dokumente',
-          description: 'Private',
+          name: 'Privater Bereich',
+          description: null,
           isDefault: true,
           archived: false,
           memberCount: 1,
@@ -133,7 +133,7 @@ describe('Sidebar', () => {
   it('renders the target-design structure: space switcher and chats, nothing global (#786)', () => {
     renderSidebarAtRoute('/chat')
     // The switcher carries the active (here: default) space's name.
-    expect(screen.getByRole('button', { name: /Meine Dokumente/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Privater Bereich/ })).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
     // Since #786 (mockup 2a) the column is purely space-scoped: brand mark, catalog,
     // admin destinations and the user badge all live on the global rail instead.
@@ -213,7 +213,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
-    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('button', { name: /Privater Bereich/ }))
 
     expect(screen.getByText('Zuletzt genutzt')).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: /Engineering/ })).toBeInTheDocument()
@@ -282,7 +282,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
-    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('button', { name: /Privater Bereich/ }))
     await user.click(screen.getByRole('menuitem', { name: /Engineering/ }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-engineering/chats/new')
@@ -296,8 +296,8 @@ describe('Sidebar', () => {
       spaces: [
         {
           id: 'space-personal',
-          name: 'Meine Dokumente',
-          description: 'Private',
+          name: 'Privater Bereich',
+          description: null,
           isDefault: true,
           archived: false,
           memberCount: 1,
@@ -324,7 +324,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
-    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('button', { name: /Privater Bereich/ }))
     await user.click(screen.getByRole('menuitem', { name: /Stillgelegt/ }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/space-archived')
@@ -334,7 +334,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
-    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('button', { name: /Privater Bereich/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Alle Spaces anzeigen' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces')
@@ -344,7 +344,7 @@ describe('Sidebar', () => {
     const user = userEvent.setup()
     renderSidebarAtRoute('/chat')
 
-    await user.click(screen.getByRole('button', { name: /Meine Dokumente/ }))
+    await user.click(screen.getByRole('button', { name: /Privater Bereich/ }))
     await user.click(screen.getByRole('menuitem', { name: 'Neuen Space anlegen' }))
 
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')

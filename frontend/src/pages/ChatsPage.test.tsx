@@ -146,7 +146,7 @@ describe('ChatsPage', () => {
     renderWithProviders(<ChatsPage />)
 
     expect(
-      await screen.findByRole('heading', { level: 1, name: 'Chats in „Meine Dokumente“' }),
+      await screen.findByRole('heading', { level: 1, name: 'Chats in „Privater Bereich“' }),
     ).toBeInTheDocument()
     expect(await screen.findByRole('tab', { name: 'Aktiv (1)' })).toHaveAttribute(
       'aria-selected',

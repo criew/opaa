@@ -393,7 +393,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
       await toContentStep(user)
-      expect(await screen.findByRole('checkbox', { name: /^Meine Dokumente/ })).toBeVisible()
+      expect(await screen.findByRole('checkbox', { name: /^Eigene Unterlagen/ })).toBeVisible()
       const search = screen.getByRole('searchbox', { name: 'Suchen' })
       const type = screen.getByRole('group', { name: 'Typ' })
       const filters = screen.getByRole('group', { name: 'Filter' })
@@ -412,7 +412,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       renderWithProviders(<SpaceCreatePage />, { withRouter: true })
 
       await toContentStep(user)
-      expect(await screen.findByRole('checkbox', { name: /^Meine Dokumente/ })).toBeVisible()
+      expect(await screen.findByRole('checkbox', { name: /^Eigene Unterlagen/ })).toBeVisible()
       await user.click(
         within(screen.getByRole('group', { name: 'Filter' })).getByRole('button', {
           name: 'Favoriten',
@@ -420,7 +420,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
       )
 
       expect(await screen.findByRole('checkbox', { name: /^Dienstanweisungen/ })).toBeVisible()
-      expect(screen.queryByRole('checkbox', { name: /^Meine Dokumente/ })).not.toBeInTheDocument()
+      expect(screen.queryByRole('checkbox', { name: /^Eigene Unterlagen/ })).not.toBeInTheDocument()
       expect(screen.getAllByRole('checkbox')).toHaveLength(1)
     })
 

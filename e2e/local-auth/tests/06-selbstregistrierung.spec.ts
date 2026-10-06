@@ -129,7 +129,7 @@ test.describe("Selbstregistrierung: Domänenliste, Bestätigung, Anmeldung", () 
 
     await signInSuccessfully(user, address, password);
     await user.goto("/spaces");
-    await expect(user.getByText("Meine Dokumente").first()).toBeVisible();
+    await expect(user.getByText("Privater Bereich").first()).toBeVisible();
 
     // A self-registered account carries the fixed reason and a mandatory expiry date - the two
     // properties that keep self-registration from hollowing out the limit (Entscheidung 11).

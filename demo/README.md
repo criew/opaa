@@ -344,7 +344,7 @@ Spaces und sieben Wissensbibliotheken an — jede über die Sitzung ihrer Eigent
 Eigentümers —, vergibt die Freigaben an „Alle Konten" und die Leserechte, richtet drei interne
 Gruppen mit benannter Verantwortung ein, vergibt den drei Keycloak-Gruppen ihre Rechte, ordnet jedem Space
 seine Bibliotheken als Datenquellen zu — den sechs angelegten Spaces ebenso wie dem persönlichen
-Space „Meine Dokumente" jedes Kontos, denn ein Space durchsucht nur, was ihm zugeordnet ist —, lädt die 27 Dokumente der internen Upload-Bibliothek hoch und stößt die
+Space „Privater Bereich" jedes Kontos, denn ein Space durchsucht nur, was ihm zugeordnet ist —, lädt die 27 Dokumente der internen Upload-Bibliothek hoch und stößt die
 Indizierung der sechs konnektorgespeisten Bibliotheken an — darunter die beiden `S3`-Bibliotheken,
 deren Läufe die Buckets `rheinfurt-archiv` und `formattest` des `objectstore`-Containers lesen (der
 Einmal-Schritt `objectstore-seed` muss dafür durchgelaufen sein, siehe Schritt 2). Vollständiger Ablauf,
@@ -406,7 +406,7 @@ und „Eigentum, Sichtbarkeit, Favoriten und Zuordnung" unten). Satzungen und Ra
 für „Alle Konten" freigegeben. Die Leistungen Meldewesen & Ausweise gehören der Keycloak-Gruppe
 „Meldewesen", die Leistungen Kfz-Zulassung liest Thomas allein über „Kfz-Zulassung" — Andrea behält
 ihre eigenen Grants auf beide Leistungsbibliotheken. Jeder Nutzer bekommt
-beim ersten Login zusätzlich automatisch seinen eigenen Default-Space „Meine Dokumente", der oben
+beim ersten Login zusätzlich automatisch seinen eigenen Default-Space „Privater Bereich", der oben
 nicht eigens aufgeführt ist. **Ein Space durchsucht nur, was ihm zugeordnet ist** —
 `@Space-Wissen` sucht in den zugeordneten Bibliotheken, geschnitten mit den Leserechten der
 fragenden Person, und die `/`-Auswahl bietet nur zugeordnete Prompts an. Der Seed ordnet deshalb
@@ -817,8 +817,8 @@ Der Lauf richtet über die API ein:
    die Zuordnung Leserecht des Space-Eigentümers verlangt. Das `e2e`-Profil hat keine
    Prompt-Bibliotheken.
 
-   **7c. Persönliche Spaces** (`profiles.py`s `PersonalSpaceDef`) — den Default-Space „Meine
-   Dokumente", den das Backend bei der ersten Anmeldung anlegt, findet der Seed über die Sitzung
+   **7c. Persönliche Spaces** (`profiles.py`s `PersonalSpaceDef`) — den Default-Space „Privater
+   Bereich", den das Backend bei der ersten Anmeldung anlegt, findet der Seed über die Sitzung
    seines Kontos (`GET /api/v1/spaces`, `isDefault`) und ordnet ihm Wissen und Prompts zu:
    Maria und Selin die fünf Meldewesen-Bibliotheken, Thomas die vier der Kfz-Zulassung und als
    Vertretung die internen Dienstanweisungen Meldewesen samt seinen „Arbeitshilfen Kfz-Zulassung",

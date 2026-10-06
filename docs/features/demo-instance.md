@@ -288,7 +288,7 @@ angelegte Space (Drehbuch, Schritt G).
 | Dienstbesprechung Bürgerbüro | Andrea | Andrea; Maria, Selin, Thomas über G „Sachbearbeitung Bürgerbüro" | Leistungen Meldewesen & Ausweise, Leistungen Kfz-Zulassung, Satzungen, Pressemitteilungen, Ratsinformationen | Textbausteine | nicht für alle Mitglieder lesbar: Maria und Selin lesen die Kfz-Leistungen nicht, Thomas die Leistungen Meldewesen nicht |
 | Infotheke Bürgerbüro | Selin | alle fünf Konten über K „Bürgerbüro Rheinfurt" | Satzungen, Ratsinformationen | Textbausteine | nur öffentliches Wissen |
 
-Die Default-Spaces „Meine Dokumente" tragen das Wissen des eigenen Sachgebiets und die Textbausteine,
+Die Default-Spaces „Privater Bereich" tragen das Wissen des eigenen Sachgebiets und die Textbausteine,
 Andreas zusätzlich die „Vorlagen Amtsleitung", Thomas' die „Arbeitshilfen Kfz-Zulassung" (siehe
 oben).
 

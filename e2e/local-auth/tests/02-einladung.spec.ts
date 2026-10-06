@@ -104,7 +104,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await user.goto("/spaces");
     // UserProvisionedEvent gives every provisioned account its personal space - for a local account
     // exactly as for one of an identity provider (ADR-0033, Entscheidung 8).
-    await expect(user.getByText("Meine Dokumente").first()).toBeVisible();
+    await expect(user.getByText("Privater Bereich").first()).toBeVisible();
 
     // The reason of the account is part of the person's own view of it (Entscheidung 11).
     await user.goto("/settings");
@@ -173,7 +173,7 @@ test.describe("Einladung, Passwort setzen, erste Anmeldung", () => {
     await expect(user.getByText("Ihr Passwort wurde geändert.")).toBeVisible();
     await expect(user).not.toHaveURL(/\/account\/password/);
     await user.goto("/spaces");
-    await expect(user.getByText("Meine Dokumente").first()).toBeVisible();
+    await expect(user.getByText("Privater Bereich").first()).toBeVisible();
 
     await userContext.close();
     await adminContext.close();

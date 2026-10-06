@@ -15,8 +15,8 @@ export const defaultChatAutoCleanup: ChatAutoCleanupResponse = {
 export const mockSpaces: SpaceListResponse[] = [
   {
     id: 'space-personal',
-    name: 'Meine Dokumente',
-    description: 'Private Dokumente',
+    name: 'Privater Bereich',
+    description: null,
     isDefault: true,
     archived: false,
     memberCount: 1,
@@ -60,8 +60,8 @@ export const mockSpaces: SpaceListResponse[] = [
 export const mockSpaceDetails: Record<string, SpaceResponse> = {
   'space-personal': {
     id: 'space-personal',
-    name: 'Meine Dokumente',
-    description: 'Private Dokumente',
+    name: 'Privater Bereich',
+    description: null,
     isDefault: true,
     archived: false,
     ownerId: 'mock-user-id',

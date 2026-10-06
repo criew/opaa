@@ -25,7 +25,7 @@ export interface MockLibraryFolder {
 export const mockLibraries: LibraryListResponse[] = [
   {
     id: 'library-mine',
-    name: 'Meine Dokumente',
+    name: 'Eigene Unterlagen',
     description: 'Private Dokumente',
     ownerType: 'USER',
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
@@ -137,7 +137,7 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
   },
   'library-mine': {
     id: 'library-mine',
-    name: 'Meine Dokumente',
+    name: 'Eigene Unterlagen',
     description: 'Private Dokumente',
     ownerType: 'USER',
     ownerId: 'mock-user-id',
