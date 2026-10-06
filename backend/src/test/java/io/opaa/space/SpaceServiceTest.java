@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -166,16 +165,11 @@ class SpaceServiceTest {
 
     verify(spaceRepository)
         .insertDefaultSpaceIfAbsent(
-            any(UUID.class),
-            any(UUID.class),
-            any(String.class),
-            any(String.class),
-            eq(userId),
-            eq(organizationId));
+            any(UUID.class), any(UUID.class), any(String.class), eq(userId), eq(organizationId));
   }
 
   @Test
-  void theDefaultSpaceIsNamedPrivaterBereichWithADescriptionThatDoesNotRepeatTheName() {
+  void theDefaultSpaceIsNamedPrivaterBereichWithoutDescription() {
     UUID userId = UUID.randomUUID();
     UUID organizationId = UUID.randomUUID();
 
@@ -186,7 +180,6 @@ class SpaceServiceTest {
             any(UUID.class),
             any(UUID.class),
             eq("Privater Bereich"),
-            argThat(description -> !description.contains("Privat")),
             eq(userId),
             eq(organizationId));
   }
@@ -201,12 +194,7 @@ class SpaceServiceTest {
 
     verify(spaceRepository, never())
         .insertDefaultSpaceIfAbsent(
-            any(UUID.class),
-            any(UUID.class),
-            any(String.class),
-            any(String.class),
-            any(UUID.class),
-            any(UUID.class));
+            any(UUID.class), any(UUID.class), any(String.class), any(UUID.class), any(UUID.class));
   }
 
   @Test
@@ -224,12 +212,7 @@ class SpaceServiceTest {
     doThrow(violation)
         .when(spaceRepository)
         .insertDefaultSpaceIfAbsent(
-            any(UUID.class),
-            any(UUID.class),
-            any(String.class),
-            any(String.class),
-            eq(userId),
-            eq(organizationId));
+            any(UUID.class), any(UUID.class), any(String.class), eq(userId), eq(organizationId));
 
     assertThatThrownBy(() -> spaceService.ensureDefaultSpace(userId, organizationId))
         .isSameAs(violation);
@@ -258,12 +241,7 @@ class SpaceServiceTest {
     verify(spaceRepository, never()).existsByOwnerIdAndIsDefaultTrue(any(UUID.class));
     verify(spaceRepository)
         .insertDefaultSpaceIfAbsent(
-            any(UUID.class),
-            any(UUID.class),
-            any(String.class),
-            any(String.class),
-            eq(userId),
-            eq(organizationId));
+            any(UUID.class), any(UUID.class), any(String.class), eq(userId), eq(organizationId));
   }
 
   @Test

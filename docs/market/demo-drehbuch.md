@@ -222,8 +222,8 @@ Wissen aussieht, zeigt Schritt G.
   internen Terminvergabe keine Quelle — die interne Bibliothek ist diesem Space nicht zugeordnet.
 - **Als Andrea:** beide Teile belegt. Nur ihrem Space „Amtsleitung Bürgerbüro" sind beide
   Bibliotheken zugeordnet.
-- **Hinweis:** Thomas liest als Vertretung beide Bibliotheken. In seinem persönlichen Space „Meine
-  Dokumente" durchsucht er deshalb ebenfalls beide. Für den Kontrast diesen Space nicht benutzen.
+- **Hinweis:** Thomas liest als Vertretung beide Bibliotheken. In seinem persönlichen Space „Privater
+  Bereich" durchsucht er deshalb ebenfalls beide. Für den Kontrast diesen Space nicht benutzen.
 - **Zeigt:** dass die Amtsleitung die über beide Sachgebiete verteilte Antwort in ihrem Arbeitsraum
   vollständig zusammensetzt. Anders als bei Frage 6 unterscheidet sich nicht nur die Vollständigkeit
   einer einzelnen Quelle, sondern es fehlt je nach Konto eine ganze Antworthälfte aus einer anderen

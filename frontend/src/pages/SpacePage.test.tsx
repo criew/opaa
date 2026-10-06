@@ -84,7 +84,7 @@ describe('SpacePage', () => {
         {
           id: 'space-personal',
           name: 'Privater Bereich',
-          description: 'Private Dokumente',
+          description: null,
           isDefault: true,
           archived: false,
           memberCount: 1,
@@ -98,7 +98,7 @@ describe('SpacePage', () => {
       selectedSpace: {
         id: 'space-personal',
         name: 'Privater Bereich',
-        description: 'Private Dokumente',
+        description: null,
         isDefault: true,
         archived: false,
         ownerId: 'mock-user-id',
@@ -234,7 +234,7 @@ describe('SpacePage', () => {
       selectedSpace: {
         id: 'space-personal',
         name: 'Privater Bereich',
-        description: 'Private Dokumente',
+        description: null,
         isDefault: true,
         archived: false,
         ownerId: 'owner-1',
@@ -292,7 +292,7 @@ describe('SpacePage', () => {
       selectedSpace: {
         id: 'space-personal',
         name: 'Privater Bereich',
-        description: 'Private Dokumente',
+        description: null,
         isDefault: true,
         archived: false,
         ownerId: 'owner-1',

@@ -52,7 +52,8 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
   /**
    * Inserts the user's default space and its owner {@code ADMIN} membership in a single round trip,
    * silently doing nothing if a default space for {@code ownerId} already exists - see {@link
-   * SpaceService#ensureDefaultSpace} for the full reasoning (#201/#305 code review).
+   * SpaceService#ensureDefaultSpace} for the full reasoning (#201/#305 code review). The space
+   * carries no description.
    *
    * <p>The single native statement below is a CTE chain, not two independent inserts: {@code
    * new_space} attempts the {@code spaces} insert with {@code ON CONFLICT (owner_id) WHERE
@@ -79,9 +80,9 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
       value =
           "WITH new_space AS ("
               + "  INSERT INTO spaces"
-              + "    (id, name, description, is_default, owner_id, organization_id, created_at, updated_at)"
+              + "    (id, name, is_default, owner_id, organization_id, created_at, updated_at)"
               + "  VALUES"
-              + "    (:spaceId, :name, :description, true, :ownerId, :organizationId, now(), now())"
+              + "    (:spaceId, :name, true, :ownerId, :organizationId, now(), now())"
               + "  ON CONFLICT (owner_id) WHERE is_default DO NOTHING"
               + "  RETURNING id"
               + ") "
@@ -93,7 +94,6 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
       @Param("spaceId") UUID spaceId,
       @Param("membershipId") UUID membershipId,
       @Param("name") String name,
-      @Param("description") String description,
       @Param("ownerId") UUID ownerId,
       @Param("organizationId") UUID organizationId);
 }

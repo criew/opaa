@@ -30,7 +30,7 @@ const initialSpaces = [
   {
     id: 'space-personal',
     name: 'Privater Bereich',
-    description: 'Private',
+    description: null,
     isDefault: true,
     archived: false,
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
@@ -76,7 +76,7 @@ vi.mock('../services/spaceApi', () => ({
   getSpace: vi.fn(async (spaceId: string) => ({
     id: spaceId,
     name: 'Privater Bereich',
-    description: 'Private',
+    description: null,
     isDefault: true,
     archived: false,
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },

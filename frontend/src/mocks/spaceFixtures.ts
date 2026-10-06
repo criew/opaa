@@ -16,7 +16,7 @@ export const mockSpaces: SpaceListResponse[] = [
   {
     id: 'space-personal',
     name: 'Privater Bereich',
-    description: 'Eigene Dokumente, Chats, Assistenten und Prompts',
+    description: null,
     isDefault: true,
     archived: false,
     memberCount: 1,
@@ -61,7 +61,7 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
   'space-personal': {
     id: 'space-personal',
     name: 'Privater Bereich',
-    description: 'Eigene Dokumente, Chats, Assistenten und Prompts',
+    description: null,
     isDefault: true,
     archived: false,
     ownerId: 'mock-user-id',

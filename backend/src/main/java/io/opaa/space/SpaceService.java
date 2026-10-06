@@ -933,12 +933,7 @@ public class SpaceService {
     requiresNewTransactionTemplate.executeWithoutResult(
         status ->
             spaceRepository.insertDefaultSpaceIfAbsent(
-                UUID.randomUUID(),
-                UUID.randomUUID(),
-                "Privater Bereich",
-                "Eigene Dokumente, Chats, Assistenten und Prompts",
-                userId,
-                organizationId));
+                UUID.randomUUID(), UUID.randomUUID(), "Privater Bereich", userId, organizationId));
     personalSpaceProvisioned.put(userId, Boolean.TRUE);
   }
 

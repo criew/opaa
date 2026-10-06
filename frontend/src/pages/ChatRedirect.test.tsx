@@ -23,7 +23,7 @@ describe('ChatRedirect', () => {
     {
       id: 'space-personal',
       name: 'Privater Bereich',
-      description: 'Privat',
+      description: null,
       isDefault: true,
       archived: false,
       memberCount: 1,

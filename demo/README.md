@@ -817,8 +817,8 @@ Der Lauf richtet über die API ein:
    die Zuordnung Leserecht des Space-Eigentümers verlangt. Das `e2e`-Profil hat keine
    Prompt-Bibliotheken.
 
-   **7c. Persönliche Spaces** (`profiles.py`s `PersonalSpaceDef`) — den Default-Space „Meine
-   Dokumente", den das Backend bei der ersten Anmeldung anlegt, findet der Seed über die Sitzung
+   **7c. Persönliche Spaces** (`profiles.py`s `PersonalSpaceDef`) — den Default-Space „Privater
+   Bereich", den das Backend bei der ersten Anmeldung anlegt, findet der Seed über die Sitzung
    seines Kontos (`GET /api/v1/spaces`, `isDefault`) und ordnet ihm Wissen und Prompts zu:
    Maria und Selin die fünf Meldewesen-Bibliotheken, Thomas die vier der Kfz-Zulassung und als
    Vertretung die internen Dienstanweisungen Meldewesen samt seinen „Arbeitshilfen Kfz-Zulassung",

@@ -104,7 +104,7 @@ describe('Sidebar', () => {
         {
           id: 'space-personal',
           name: 'Privater Bereich',
-          description: 'Private',
+          description: null,
           isDefault: true,
           archived: false,
           memberCount: 1,
@@ -297,7 +297,7 @@ describe('Sidebar', () => {
         {
           id: 'space-personal',
           name: 'Privater Bereich',
-          description: 'Private',
+          description: null,
           isDefault: true,
           archived: false,
           memberCount: 1,

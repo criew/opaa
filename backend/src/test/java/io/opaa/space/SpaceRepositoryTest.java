@@ -204,7 +204,6 @@ class SpaceRepositoryTest {
                             UUID.randomUUID(),
                             UUID.randomUUID(),
                             "Privater Bereich",
-                            "Privater persoenlicher Space",
                             nonExistentOwner,
                             org)))
         .isInstanceOf(DataIntegrityViolationException.class)

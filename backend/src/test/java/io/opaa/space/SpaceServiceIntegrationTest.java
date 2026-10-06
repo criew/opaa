@@ -585,6 +585,8 @@ class SpaceServiceIntegrationTest {
     assertThat(defaultSpace.isDefault()).isTrue();
     assertThat(defaultSpace.getOrganizationId()).isEqualTo(organizationA);
     assertThat(defaultSpace.getOwnerId()).isEqualTo(userId);
+    assertThat(defaultSpace.getName()).isEqualTo("Privater Bereich");
+    assertThat(defaultSpace.getDescription()).isNull();
   }
 
   @Test
