@@ -42,7 +42,7 @@ public final class CitationMarkers {
   private static final String MARKER = CitationMarker.CLAIMED_PATTERN.pattern();
 
   private static final String MARKER_LIST =
-      "[ \\t]*" + MARKER + "(?:[ \\t]*[,;]?[ \\t]*" + MARKER + ")*[ \\t]*";
+      "[ \\t]*" + MARKER + "(?:[ \\t]*(?:[,;][ \\t]*)?" + MARKER + ")*[ \\t]*";
 
   /**
    * Round or square brackets that hold nothing but markers, separated at most by whitespace, a
@@ -63,6 +63,17 @@ public final class CitationMarkers {
     if (text == null || text.isEmpty()) {
       return text;
     }
+    String result = text;
+    String previous;
+    // Each pass drops one bracket level, so "((【…】))" needs two; every pass shortens the text.
+    do {
+      previous = result;
+      result = unwrapOnce(previous);
+    } while (!result.equals(previous));
+    return result.equals(text) ? text : result;
+  }
+
+  private static String unwrapOnce(String text) {
     Matcher matcher = BRACKETED_MARKERS.matcher(text);
     StringBuilder result = new StringBuilder(text.length());
     boolean changed = false;

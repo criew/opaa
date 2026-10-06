@@ -92,6 +92,25 @@ describe('bracketed markers', () => {
     expect(answerAsMarkdown(content)).toBe('Ein Personalausweis kostet 42,60 Euro. Siehe (S. 4).')
   })
 
+  test('leave a Markdown link around a marker alone', () => {
+    const link = 'Siehe [【source: doc-a#0 | 001_personalausweis.md】](https://example.test/a).'
+    expect(answerAsMarkdown(link)).toBe('Siehe [](https://example.test/a).')
+  })
+
+  test('drop square brackets and doubled parentheses as well', () => {
+    expect(
+      answerAsMarkdown('A [【source: doc-a#0 | a.md】]. B ((【source: doc-b#2 | b.md】)).'),
+    ).toBe('A. B.')
+  })
+
+  test('take linear time on a long marker list that never closes', () => {
+    const markers = Array.from({ length: 12 }, (_, i) => `【source: doc-${i}#0 | f${i}.md】`)
+    const content = `Text (${markers.join('    ')} und weitere`
+    const started = performance.now()
+    answerAsMarkdown(content)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+
   test('become a bare footnote in the copy with sources', () => {
     expect(answerWithSources(content, buildCitationIndex(content, SOURCES))).toBe(
       'Ein Personalausweis kostet 42,60 Euro[^1]. Siehe (S. 4[^2]).\n\n' +

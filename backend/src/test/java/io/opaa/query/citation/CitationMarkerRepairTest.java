@@ -171,6 +171,19 @@ class CitationMarkerRepairTest {
   }
 
   @Test
+  void aMarkdownLinkAroundAMarkerIsLeftAlone() {
+    String answer = "Siehe [【source: doc-1#2 | a.pptx】](https://example.test/a).";
+
+    assertThat(CitationMarkerRepair.repair(answer, CHUNKS)).isEqualTo(answer);
+  }
+
+  @Test
+  void doubledParenthesesAroundAMarkerAreRemovedCompletely() {
+    assertThat(CitationMarkerRepair.repair("Text ((【source: doc-1#2 | a.pptx】)).", CHUNKS))
+        .isEqualTo("Text 【source: doc-1#2 | a.pptx】.");
+  }
+
+  @Test
   void parenthesesWithFurtherTextAreLeftAlone() {
     String answer =
         "Text (siehe 【source: doc-1#2 | a.pptx】) und (S. 4 【source: doc-2#1 | b.html】).";

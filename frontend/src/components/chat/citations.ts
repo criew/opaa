@@ -15,7 +15,7 @@ export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|\s*(.+?)
  */
 export const CLAIMED_MARKER_RE = /【source:[^】【\r\n]*】/g
 
-const MARKER_LIST = `[ \\t]*${CLAIMED_MARKER_RE.source}(?:[ \\t]*[,;]?[ \\t]*${CLAIMED_MARKER_RE.source})*[ \\t]*`
+const MARKER_LIST = `[ \\t]*${CLAIMED_MARKER_RE.source}(?:[ \\t]*(?:[,;][ \\t]*)?${CLAIMED_MARKER_RE.source})*[ \\t]*`
 
 /** Round or square brackets holding nothing but markers; `[…](` is a Markdown link and stays. */
 const BRACKETED_MARKERS_RE = new RegExp(`\\(${MARKER_LIST}\\)|\\[${MARKER_LIST}\\](?!\\()`, 'g')
@@ -26,9 +26,15 @@ const BRACKETED_MARKERS_RE = new RegExp(`\\(${MARKER_LIST}\\)|\\[${MARKER_LIST}\
  * hold other text stay.
  */
 export function unwrapBracketedMarkers(content: string): string {
-  return content.replace(BRACKETED_MARKERS_RE, (group) =>
-    (group.match(CLAIMED_MARKER_RE) ?? []).join(''),
-  )
+  // Each pass drops one bracket level, so "((【…】))" needs two; every pass shortens the text.
+  let result = content
+  for (;;) {
+    const next = result.replace(BRACKETED_MARKERS_RE, (group) =>
+      (group.match(CLAIMED_MARKER_RE) ?? []).join(''),
+    )
+    if (next === result) return result
+    result = next
+  }
 }
 
 const WELL_FORMED_MARKER_RE = new RegExp(`^\\s*${CITATION_MARKER_RE.source}$`)
