@@ -10,9 +10,10 @@ export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|\s*(.+?)
 /**
  * Everything that presents itself as a marker, well-formed or not - a superset of
  * {@link CITATION_MARKER_RE}. A malformed marker resolves to no footnote and is dropped like one
- * with an unknown key, never shown raw (#2298).
+ * with an unknown key, never shown raw. The body stops at a line end and at another opening
+ * bracket, so an opener without its closing bracket never reaches into the next marker.
  */
-export const CLAIMED_MARKER_RE = /【source:[^】]*】/g
+export const CLAIMED_MARKER_RE = /【source:[^】【\r\n]*】/g
 
 const WELL_FORMED_MARKER_RE = new RegExp(`^\\s*${CITATION_MARKER_RE.source}$`)
 

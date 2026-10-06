@@ -19,9 +19,11 @@ public record CitationMarker(String documentId, int chunkIndex, String fileName)
 
   /**
    * Everything that presents itself as a marker, well-formed or not - a superset of {@link
-   * #PATTERN}. A model can get the syntax wrong; what matches here but not there is malformed.
+   * #PATTERN}. A model can get the syntax wrong; what matches here but not there is malformed. The
+   * body stops at a line end and at another opening bracket, so an opener without its closing
+   * bracket never reaches into the text up to the next marker.
    */
-  public static final Pattern CLAIMED_PATTERN = Pattern.compile("【source:[^】]*】");
+  public static final Pattern CLAIMED_PATTERN = Pattern.compile("【source:[^】【\\r\\n]*】");
 
   /** The marker text in the syntax {@link #PATTERN} reads. */
   public static String render(String documentId, Object chunkIndex, String fileName) {

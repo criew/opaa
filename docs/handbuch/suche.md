@@ -72,7 +72,7 @@ Zwei Eigenschaften des Fensters sind betrieblich wichtig:
 
 - **Zitiermarken früherer Antworten stehen nicht im Fenster.** Sie werden auf dem Weg hinein
   entfernt — sowohl direkt nach einer Antwort als auch beim Nachladen aus der Datenbank, und
-  zwar alles, was mit `【source:` beginnt, auch eine fehlerhafte Marke. Der gespeicherte Antworttext
+  zwar jede Marke `【source: …】` innerhalb einer Zeile, auch eine fehlerhafte. Der gespeicherte Antworttext
   behält die gültigen Marken; er ist die Grundlage für Fußnoten, Textanker und Belegfenster
   (Abschnitt 7). Ohne Marke im Verlauf kann das Modell keine Marke für ein Dokument wiederholen, das
   in dieser Runde gar nicht im Kontext ist.
@@ -624,10 +624,13 @@ Bevor die Antwort geprüft, gespeichert oder angezeigt wird, werden **fehlerhaft
 repariert**. Kleinere Modelle schreiben gelegentlich den Dateinamen an die Stelle der Dokument-ID,
 etwa `【source: 05_schulung.pptx#2 | 05_schulung.pptx】`. Eine solche Marke wird in die gültige Form
 umgeschrieben, wenn genau ein Dokument der Endauswahl diesen Dateinamen trägt und dessen Chunk mit
-dieser Nummer ebenfalls in der Endauswahl steht. Jede andere Marke, die nicht der Form entspricht,
-wird entfernt: Sie lässt sich keinem Beleg zuordnen und würde sonst als Rohtext angezeigt. Eine
-formal gültige Marke bleibt unangetastet, auch wenn sie auf nichts Abgerufenes zeigt; über sie
-entscheiden die Prüfungen unten. Ältere gespeicherte Antworten mit solchen Marken zeigen sie
+dieser Nummer ebenfalls in der Endauswahl steht. Das gilt auch für einen Dateinamen ohne Endung,
+der formal wie eine Dokument-ID aussieht, solange er nicht die ID eines Dokuments der Endauswahl
+ist. Jede andere Marke, die nicht der Form entspricht, wird entfernt: Sie lässt sich keinem Beleg
+zuordnen und würde sonst als Rohtext angezeigt. Als Marke gilt dabei nur, was mit `【source:`
+beginnt und in derselben Zeile mit `】` schließt; ein Anfang ohne Abschluss bleibt als Text stehen.
+Eine formal gültige Marke, die sich keinem Dateinamen zuordnen lässt, bleibt unangetastet, auch
+wenn sie auf nichts Abgerufenes zeigt; über sie entscheiden die Prüfungen unten. Ältere gespeicherte Antworten mit solchen Marken zeigen sie
 ebenfalls nicht mehr an.
 
 Die Zitiermarken werden nicht dem Modell geglaubt. Zwei deterministische Prüfungen laufen ohne

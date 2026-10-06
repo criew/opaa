@@ -110,9 +110,11 @@ Drei Bedingungen, alle deterministisch, alle nach der Erzeugung und vor der Ausl
 **Fehlerhafte Belege** (#2298): Ein Beleg, der das Muster `【source: id#n | name】` nicht erfüllt, wird vor
 der Prüfung repariert oder entfernt. Steht der Dateiname an der Stelle der Kennung
 (`【source: name#n | name】`) und trägt genau ein Dokument der abgerufenen Menge diesen Namen samt Abschnitt
-`n`, wird er in die gültige Form umgeschrieben und danach wie jeder andere geprüft. Alles andere, was mit
-`【source:` beginnt, wird entfernt — es lässt sich keinem Beleg zuordnen, würde sonst als Rohtext
-erscheinen und im Gesprächsverlauf vom Modell nachgeahmt.
+`n`, wird er in die gültige Form umgeschrieben und danach wie jeder andere geprüft; ebenso ein Dateiname
+ohne Endung, der wie eine Kennung aussieht, aber keine Kennung der abgerufenen Menge ist. Jede andere
+fehlerhafte Marke — `【source:` bis `】` in derselben Zeile — wird entfernt: Sie lässt sich keinem Beleg
+zuordnen, würde sonst als Rohtext erscheinen und im Gesprächsverlauf vom Modell nachgeahmt. Ein Anfang ohne
+Abschluss bleibt als Text stehen, damit beim Entfernen nie Text bis zur nächsten Marke verloren geht.
 
 **Ergänzt um eine deterministische Faktenprüfung** (#937, geschärft im #939-Review): Ein formal gültiger
 Beleg wird zusätzlich gegen den Text aller abgerufenen Chunks des zitierten **Dokuments** geprüft — nicht

@@ -133,6 +133,16 @@ class CitationMarkersTest {
     assertThat(CitationMarkers.strip(answer)).isEqualTo("Siehe 【Quelle: a.md】 und sowie .");
   }
 
+  /** An opener without its closing bracket never reaches across lines into the next marker. */
+  @Test
+  void anUnclosedOpenerLeavesTheFollowingParagraphsAlone() {
+    String answer =
+        "Erster 【source: doc-1#2 | a.md\n\nZweiter Absatz.\n\nDritter 【source: doc-2#1 | b.md】 Ende.";
+
+    assertThat(CitationMarkers.strip(answer))
+        .isEqualTo("Erster 【source: doc-1#2 | a.md\n\nZweiter Absatz.\n\nDritter Ende.");
+  }
+
   @Test
   void nullAndEmptyPassThrough() {
     assertThat(CitationMarkers.strip(null)).isNull();

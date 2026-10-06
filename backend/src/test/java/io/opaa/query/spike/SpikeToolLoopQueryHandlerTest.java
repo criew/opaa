@@ -183,6 +183,51 @@ class SpikeToolLoopQueryHandlerTest {
   }
 
   /**
+   * Regression guard for #2298: a marker naming the file instead of the document id is repaired
+   * against the chunks the tool loop collected before anything evaluates it.
+   */
+  @Test
+  void handleRepairsAMarkerThatNamesTheFileInsteadOfTheDocumentId() {
+    Set<UUID> searchScope = Set.of(UUID.randomUUID());
+    Document chunk =
+        Document.builder()
+            .text("Anmeldungen laufen über das Bürgerportal.")
+            .metadata(Map.of("file_name", "handbuch.md", "document_id", "doc-1", "chunk_index", 0))
+            .build();
+    when(knowledgeRetrieval.retrieve(any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RetrievalPipelineResult(
+                List.of(chunk), List.of(), new RetrievalExplanation(List.of()), true));
+    when(chatSourceAssembler.assemble(any(), any(), any())).thenReturn(List.of());
+    when(chatSourceAssembler.searchedLibraries(searchScope)).thenReturn(List.of());
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(
+            toolCallResponse("call-1", "{\"frage\":\"Wie melde ich mich an?\"}"),
+            new ChatResponse(
+                List.of(
+                    new Generation(
+                        new AssistantMessage(
+                            "Über das Bürgerportal 【source: handbuch.md#0 | handbuch.md】")))));
+
+    Optional<QueryResult> result =
+        handler.handle(
+            "@test Wie melde ich mich an?",
+            Optional.empty(),
+            UUID.randomUUID(),
+            "conv-key",
+            null,
+            searchScope,
+            MetadataFilter.NONE,
+            System.currentTimeMillis(),
+            null);
+
+    assertThat(result).isPresent();
+    assertThat(result.get().answer())
+        .contains("Über das Bürgerportal 【source: doc-1#0 | handbuch.md】")
+        .doesNotContain("source: handbuch.md");
+  }
+
+  /**
    * #1789 review, finding 1: {@code appendTurn} - and therefore {@code ChatMemory}, the chat title
    * and the chat's full-text index - must never see the {@code "@test "} prefix or the
    * "Suchschritte" line; both are display-only for the one response that carries them. Otherwise a

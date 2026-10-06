@@ -7,7 +7,7 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
-/** Repair of malformed citation markers before the answer is evaluated and stored (#2298). */
+/** Repair of malformed citation markers before the answer is evaluated and stored. */
 class CitationMarkerRepairTest {
 
   private static Document chunk(String documentId, String fileName, int chunkIndex) {
@@ -95,6 +95,54 @@ class CitationMarkerRepairTest {
 
     assertThat(CitationMarkerRepair.repair(answer, CHUNKS))
         .isEqualTo("Text 【source: doc-1#2 | a.pptx】.");
+  }
+
+  @Test
+  void aFileNameContainingAHashIsStillResolved() {
+    List<Document> chunks = List.of(chunk("doc-7", "C#-Leitfaden.pdf", 1));
+
+    assertThat(
+            CitationMarkerRepair.repair(
+                "Text 【source: C#-Leitfaden.pdf#1 | C#-Leitfaden.pdf】", chunks))
+        .isEqualTo("Text 【source: doc-7#1 | C#-Leitfaden.pdf】");
+  }
+
+  /** A file name without extension looks like a document id; it is resolved like any file name. */
+  @Test
+  void aWellFormedMarkerWhoseIdIsARetrievedFileNameIsRewritten() {
+    List<Document> chunks = List.of(chunk("doc-8", "Handbuch", 1));
+
+    assertThat(CitationMarkerRepair.repair("Text 【source: Handbuch#1 | Handbuch】", chunks))
+        .isEqualTo("Text 【source: doc-8#1 | Handbuch】");
+  }
+
+  @Test
+  void aWellFormedMarkerOfARetrievedDocumentIsNotResolvedByFileName() {
+    List<Document> chunks = List.of(chunk("doc-1", "a.md", 0), chunk("a", "b.md", 0));
+
+    assertThat(CitationMarkerRepair.repair("Text 【source: a#0 | b.md】", chunks))
+        .isEqualTo("Text 【source: a#0 | b.md】");
+  }
+
+  /**
+   * An opener without its closing bracket is no marker: removing it must never reach across lines
+   * into the next marker and take the text in between with it.
+   */
+  @Test
+  void anUnclosedOpenerNeverSwallowsTheTextUpToTheNextMarker() {
+    String answer =
+        "Erster Absatz 【source: doc-1#2 | 05_schulung.pptx\n\n"
+            + "Zweiter Absatz.\n\n"
+            + "Dritter 【source: doc-2#1 | 06_intranet-formathinweise.html】 Ende.";
+
+    assertThat(CitationMarkerRepair.repair(answer, CHUNKS)).isEqualTo(answer);
+  }
+
+  @Test
+  void anUnclosedOpenerOnTheSameLineKeepsTheFollowingMarker() {
+    String answer = "Erst 【source: kaputt und dann 【source: doc-1#2 | x.pptx】 Ende.";
+
+    assertThat(CitationMarkerRepair.repair(answer, CHUNKS)).isEqualTo(answer);
   }
 
   @Test

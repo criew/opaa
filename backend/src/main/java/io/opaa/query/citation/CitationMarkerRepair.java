@@ -13,12 +13,13 @@ import org.springframework.ai.document.Document;
  *
  * <p>A marker that names a file instead of a document id ({@code 【source: a.pdf#2 | a.pdf】}) is
  * rewritten when exactly one document among {@code chunks} carries that file name and that
- * document's chunk with that index is among them too. Every other malformed marker is removed: it
- * resolves to nothing, would be shown raw and, left in the conversation window, imitated by the
- * next turn.
+ * document's chunk with that index is among them too. A file name without extension looks like a
+ * document id; it is resolved the same way unless it is the id of a document among {@code chunks}.
+ * Every other malformed marker is removed: it resolves to nothing, would be shown raw and, left in
+ * the conversation window, imitated by the next turn.
  *
- * <p>A well-formed marker stays untouched whatever it points at - judging it is {@link
- * CitationValidator}'s job.
+ * <p>A well-formed marker that resolves to no file name stays untouched whatever it points at -
+ * judging it is {@link CitationValidator}'s job.
  */
 public final class CitationMarkerRepair {
 
@@ -27,7 +28,7 @@ public final class CitationMarkerRepair {
    */
   private static final Pattern FILE_REFERENCE =
       Pattern.compile(
-          "【source:\\s*(?<file>[^#|】]+?)\\s*#\\s*(?<chunk>\\d+)\\s*(?:\\|\\s*(?<label>[^】]+?)\\s*)?】");
+          "【source:\\s*(?<file>[^|】]+?)\\s*#\\s*(?<chunk>\\d+)\\s*(?:\\|\\s*(?<label>[^】]+?)\\s*)?】");
 
   private CitationMarkerRepair() {}
 
@@ -45,12 +46,20 @@ public final class CitationMarkerRepair {
     while (matcher.find()) {
       String marker = matcher.group();
       Optional<String> canonical =
-          CitationMarker.isWellFormed(marker) ? Optional.empty() : resolve(marker, chunks);
+          namesARetrievedDocument(marker, chunks) ? Optional.empty() : resolve(marker, chunks);
       matcher.appendReplacement(result, Matcher.quoteReplacement(canonical.orElse(marker)));
       rewritten |= canonical.isPresent();
     }
     String text = rewritten ? matcher.appendTail(result).toString() : answer;
     return CitationMarkers.stripMalformed(text);
+  }
+
+  private static boolean namesARetrievedDocument(String marker, List<Document> chunks) {
+    if (!CitationMarker.isWellFormed(marker)) {
+      return false;
+    }
+    String documentId = CitationMarker.parse(marker).getFirst().documentId();
+    return chunks.stream().anyMatch(chunk -> documentIdOf(chunk).equals(documentId));
   }
 
   private static Optional<String> resolve(String marker, List<Document> chunks) {
