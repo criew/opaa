@@ -122,12 +122,15 @@ class CitationMarkersTest {
         .isEqualTo("Die Werte lauten:\n  top-k: 8\n    fetch-k: 25");
   }
 
-  /** Something that only looks like a marker is not one - nothing is guessed away. */
+  /**
+   * Regression guard for #2298: a malformed marker kept in the window is imitated by the next turn,
+   * so everything that presents itself as a marker goes - a bracket without the prefix stays.
+   */
   @Test
-  void aMalformedMarkerIsLeftAlone() {
-    String answer = "Siehe 【Quelle: a.md】 und 【source: a.md】.";
+  void aMalformedMarkerIsRemovedButABracketWithoutThePrefixStays() {
+    String answer = "Siehe 【Quelle: a.md】 und 【source: a.md#1 | a.md】 sowie 【source: a.md#a.md】.";
 
-    assertThat(CitationMarkers.strip(answer)).isEqualTo(answer);
+    assertThat(CitationMarkers.strip(answer)).isEqualTo("Siehe 【Quelle: a.md】 und sowie .");
   }
 
   @Test

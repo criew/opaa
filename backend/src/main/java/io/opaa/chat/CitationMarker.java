@@ -17,6 +17,22 @@ public record CitationMarker(String documentId, int chunkIndex, String fileName)
   public static final Pattern PATTERN =
       Pattern.compile("【source:\\s*([a-zA-Z0-9\\-]+)#(\\d+)\\s*\\|\\s*(.+?)】");
 
+  /**
+   * Everything that presents itself as a marker, well-formed or not - a superset of {@link
+   * #PATTERN}. A model can get the syntax wrong; what matches here but not there is malformed.
+   */
+  public static final Pattern CLAIMED_PATTERN = Pattern.compile("【source:[^】]*】");
+
+  /** The marker text in the syntax {@link #PATTERN} reads. */
+  public static String render(String documentId, Object chunkIndex, String fileName) {
+    return "【source: " + documentId + "#" + chunkIndex + " | " + fileName + "】";
+  }
+
+  /** Whether {@code marker}, one whole {@link #CLAIMED_PATTERN} match, is well-formed. */
+  public static boolean isWellFormed(String marker) {
+    return PATTERN.matcher(marker).matches();
+  }
+
   /** Every marker of {@code text} in appearance order, duplicates included. */
   public static List<CitationMarker> parse(String text) {
     List<CitationMarker> markers = new ArrayList<>();

@@ -53,7 +53,7 @@ public class CitationValidator {
       int chunkIndex = parseChunkIndex(chunk.getMetadata().getOrDefault("chunk_index", "0"));
       sectionsByDocument
           .computeIfAbsent(documentId, id -> new HashMap<>())
-          .put(chunkIndex, normalize(fileName));
+          .put(chunkIndex, normalizeFileName(fileName));
       chunksByDocument.computeIfAbsent(documentId, id -> new HashMap<>()).put(chunkIndex, chunk);
     }
 
@@ -64,7 +64,7 @@ public class CitationValidator {
       Map<Integer, String> sections = sectionsByDocument.get(citation.documentId());
       boolean retrievalValid =
           sections != null
-              && normalize(citation.fileName()).equals(sections.get(citation.chunkIndex()));
+              && normalizeFileName(citation.fileName()).equals(sections.get(citation.chunkIndex()));
       boolean valid =
           retrievalValid && contentPlausible(citation, chunksByDocument, answer, markerStarts, i);
       result.add(
@@ -162,11 +162,11 @@ public class CitationValidator {
    * so a differing normal form or capitalisation cannot turn a genuine citation into a
    * false-invalid verdict.
    */
-  private String normalize(String fileName) {
+  static String normalizeFileName(String fileName) {
     return Normalizer.normalize(fileName, Normalizer.Form.NFC).toLowerCase(Locale.ROOT);
   }
 
-  private int parseChunkIndex(Object rawChunkIndex) {
+  static int parseChunkIndex(Object rawChunkIndex) {
     try {
       return Integer.parseInt(rawChunkIndex.toString());
     } catch (NumberFormatException e) {

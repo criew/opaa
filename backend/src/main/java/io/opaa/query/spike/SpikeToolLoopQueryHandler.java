@@ -14,6 +14,7 @@ import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
+import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
 import io.opaa.retrieval.ChunkGroupingKey;
@@ -190,9 +191,11 @@ public class SpikeToolLoopQueryHandler {
     // see ToolCallLimitExceededException#buildGeneration) is never fit for a persisted or
     // displayed answer - replaced with a plain German one; the chunks already gathered still back
     // the source list below regardless.
-    String rawAnswer =
-        toolCallLimitReached(response) ? TOOL_CALL_LIMIT_MESSAGE : ChatResponses.text(response);
     List<Document> chunks = deduplicated(runState.collectedChunks());
+    String rawAnswer =
+        toolCallLimitReached(response)
+            ? TOOL_CALL_LIMIT_MESSAGE
+            : CitationMarkerRepair.repair(ChatResponses.text(response), chunks);
     List<CitationValidator.ValidatedCitation> validatedCitations =
         citationValidator.validate(citationParser.extractCitations(rawAnswer), chunks, rawAnswer);
     List<ChatSource> sources =

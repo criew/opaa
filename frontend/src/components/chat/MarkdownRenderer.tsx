@@ -16,7 +16,7 @@ import TableRow from '@mui/material/TableRow'
 import type { Components } from 'react-markdown'
 import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
-import { CITATION_MARKER_RE } from './citations'
+import { CLAIMED_MARKER_RE, readMarker } from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
 import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
 import 'highlight.js/styles/github-dark.css'
@@ -38,7 +38,7 @@ interface MarkdownRendererProps {
   preserveCitationMarkers?: boolean
 }
 
-const CITATION_RE = new RegExp(CITATION_MARKER_RE.source)
+const CITATION_RE = new RegExp(CLAIMED_MARKER_RE.source)
 
 /**
  * Every citation marker becomes a footnote mark - the same tinted circle EvidenceFooter shows.
@@ -173,7 +173,7 @@ function renderWithCitations(
     }
   }
 
-  const regex = new RegExp(CITATION_MARKER_RE.source, 'g')
+  const regex = new RegExp(CLAIMED_MARKER_RE.source, 'g')
   while ((match = regex.exec(text)) !== null) {
     // A mark attaches to the word before it, like a footnote digit: the model's space in
     // "Euro 【…】" would otherwise add to the mark's own margin.
@@ -182,11 +182,12 @@ function renderWithCitations(
       flushGroup(`citation-${match.index}`)
       parts.push(between)
     }
-    const number = citations?.numberByKey.get(match[1])
-    if (number !== undefined) {
+    const marker = readMarker(match[0])
+    const number = marker && citations?.numberByKey.get(marker.key)
+    if (marker && number !== undefined) {
       group.push({
         number,
-        fileName: match[2].trim(),
+        fileName: marker.fileName.trim(),
         location: citations?.locationByNumber.get(number),
       })
     }

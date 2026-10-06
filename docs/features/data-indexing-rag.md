@@ -107,9 +107,12 @@ Drei Bedingungen, alle deterministisch, alle nach der Erzeugung und vor der Ausl
    abweichendem Dokumentnamen ist ungültig — er ist irreführender als gar keiner, weil er auf ein
    existierendes, aber falsches Dokument verweist.
 
-**Grenze der Erkennung:** Ein Beleg, der das Muster `【source: id#n | name】` nicht erfüllt — etwa ohne
-`#n` oder mit einem Zeichen in der Kennung, das der Parser nicht zulässt —, wird gar nicht erst als Beleg
-erkannt und damit weder geprüft noch gekennzeichnet.
+**Fehlerhafte Belege** (#2298): Ein Beleg, der das Muster `【source: id#n | name】` nicht erfüllt, wird vor
+der Prüfung repariert oder entfernt. Steht der Dateiname an der Stelle der Kennung
+(`【source: name#n | name】`) und trägt genau ein Dokument der abgerufenen Menge diesen Namen samt Abschnitt
+`n`, wird er in die gültige Form umgeschrieben und danach wie jeder andere geprüft. Alles andere, was mit
+`【source:` beginnt, wird entfernt — es lässt sich keinem Beleg zuordnen, würde sonst als Rohtext
+erscheinen und im Gesprächsverlauf vom Modell nachgeahmt.
 
 **Ergänzt um eine deterministische Faktenprüfung** (#937, geschärft im #939-Review): Ein formal gültiger
 Beleg wird zusätzlich gegen den Text aller abgerufenen Chunks des zitierten **Dokuments** geprüft — nicht

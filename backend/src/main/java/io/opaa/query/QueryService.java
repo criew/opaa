@@ -20,6 +20,7 @@ import io.opaa.prompt.PromptService;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.query.answer.ConversationWindowMessages;
 import io.opaa.query.citation.ChatSourceAssembler;
+import io.opaa.query.citation.CitationMarkerRepair;
 import io.opaa.query.citation.CitationParser;
 import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.spike.SpikeToolLoopQueryHandler;
@@ -305,7 +306,8 @@ public class QueryService {
                         noteTexts(notePoints, null),
                         searchNeeded);
 
-                String answer = ChatResponses.text(chatResponse);
+                String answer =
+                    CitationMarkerRepair.repair(ChatResponses.text(chatResponse), relevantChunks);
                 List<CitationValidator.ValidatedCitation> validatedCitations =
                     citationValidator.validate(
                         citationParser.extractCitations(answer), relevantChunks, answer);

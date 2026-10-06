@@ -71,9 +71,10 @@ und Antwort), wörtlich. Suche und Antwort bekommen ihn **unterschiedlich dosier
 Zwei Eigenschaften des Fensters sind betrieblich wichtig:
 
 - **Zitiermarken früherer Antworten stehen nicht im Fenster.** Sie werden auf dem Weg hinein
-  entfernt — sowohl direkt nach einer Antwort als auch beim Nachladen aus der Datenbank. Der
-  gespeicherte Antworttext behält sie unverändert; er ist die Grundlage für Fußnoten, Textanker und
-  Belegfenster. Ohne Marke im Verlauf kann das Modell keine Marke für ein Dokument wiederholen, das
+  entfernt — sowohl direkt nach einer Antwort als auch beim Nachladen aus der Datenbank, und
+  zwar alles, was mit `【source:` beginnt, auch eine fehlerhafte Marke. Der gespeicherte Antworttext
+  behält die gültigen Marken; er ist die Grundlage für Fußnoten, Textanker und Belegfenster
+  (Abschnitt 7). Ohne Marke im Verlauf kann das Modell keine Marke für ein Dokument wiederholen, das
   in dieser Runde gar nicht im Kontext ist.
 - **Ein Neustart ändert nichts an der Aufbereitung.** Nach einem Neustart oder wenn der
   prozessinterne Zwischenspeicher abgelaufen ist, wird das Fenster aus den letzten 20 gespeicherten
@@ -618,6 +619,16 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 (Abschnitt 10.2).
 
 ## 7. Belege prüfen und Fundstellen bilden
+
+Bevor die Antwort geprüft, gespeichert oder angezeigt wird, werden **fehlerhafte Marken
+repariert**. Kleinere Modelle schreiben gelegentlich den Dateinamen an die Stelle der Dokument-ID,
+etwa `【source: 05_schulung.pptx#2 | 05_schulung.pptx】`. Eine solche Marke wird in die gültige Form
+umgeschrieben, wenn genau ein Dokument der Endauswahl diesen Dateinamen trägt und dessen Chunk mit
+dieser Nummer ebenfalls in der Endauswahl steht. Jede andere Marke, die nicht der Form entspricht,
+wird entfernt: Sie lässt sich keinem Beleg zuordnen und würde sonst als Rohtext angezeigt. Eine
+formal gültige Marke bleibt unangetastet, auch wenn sie auf nichts Abgerufenes zeigt; über sie
+entscheiden die Prüfungen unten. Ältere gespeicherte Antworten mit solchen Marken zeigen sie
+ebenfalls nicht mehr an.
 
 Die Zitiermarken werden nicht dem Modell geglaubt. Zwei deterministische Prüfungen laufen ohne
 weiteren Modellaufruf:
