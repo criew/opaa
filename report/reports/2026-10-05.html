@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-05</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Montag, 5. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-04.html" rel="prev" title="Sonntag, 4. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/37293981585" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">66</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+8</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">16</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">17</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2147">#2147</a> feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung</span>
+<span class="epic-progress">28 / 41 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 68%"></div></div>
+<ul><li>OAuth-Verbindungen und mehrstufige Konnektoren implementiert</li><li>Private Bibliotheken mit Lebenszyklus und Löschung umgesetzt</li><li>Speicherkontingent über private Bibliotheken einer Person eingeführt</li><li>Nextcloud mit verbundenem Konto per App-Passwort für private Bibliotheken</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2296">#2296</a></span>feat(connections): MCP-Grundlage – Profilart „MCP-Server“, Erkennung und Token-Bindung an den Server (+3036/−50, 48 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2293">#2293</a></span>feat(nextcloud): verbundenes Konto per App-Passwort für private Bibliotheken (+1530/−210, 44 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2291">#2291</a></span>feat(library): Oberfläche „Quelle verbinden“ – Assistent, Rücksprung, Detailseite, Verwaltung, Handbuch (Q2) (+2360/−56, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2290">#2290</a></span>fix(auth): Inaktivitätssperre lokaler Konten lässt verbundene Konten ruhen (+355/−41, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2285">#2285</a></span>feat(library): Löschmarke, Laufkategorie und Fehlercode für private Bibliotheken in API und Oberfläche (#2284) (+325/−48, 31 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2283">#2283</a></span>feat(library): Oberfläche für Sofortlöschung und Speicherkontingent privater Bibliotheken (+1621/−69, 24 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2282">#2282</a></span>feat(connections): Vorschau einer Zugangsänderung nennt, was verworfen wird (+1146/−132, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2280">#2280</a></span>fix(connections): Profiländerung, Zuordnen, Anlegen und Lösen je Zugang serialisieren (+531/−13, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2278">#2278</a></span>feat(connections): API-Ergänzungen für verbundene Konten – Quellart, Zugangsliste der Revision, Aktion am Sperrgrund, private Quellen im Chat (+1615/−469, 81 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2277">#2277</a></span>feat(library): Speicherkontingent über alle privaten Bibliotheken einer Person (+2102/−70, 53 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2275">#2275</a></span>feat(library): Private Bibliotheken nachweisbar löschen – Sofortlöschung, Löschlauf mit Frist (+3002/−33, 71 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2281">#2281</a></span>E2E-Suite auf main repariert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2292">#2292</a></span>fix(connections): Löschnachweis ohne exakte Zähler, Schwellenwarnung sobald die Anzeige sie zulässt (+263/−42, 18 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2288">#2288</a></span>fix(library): Erschöpftes Kontingent je Person überspringt das Element statt den Lauf zu beenden (+748/−155, 37 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2287">#2287</a></span>fix(connections): Teilzahlen am Zugang je Organisation und mit Rest 0 als „wenige“ maskieren (+238/−66, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2286">#2286</a></span>feat(connections): Quelle verbinden – OAuth-Zustimmung einer Bibliothek mit Dienstkonto (Backend, Q1) (+4377/−178, 66 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2274">#2274</a></span>feat(library): Oberfläche der privaten Bibliothek – Assistent, Detailseite, Katalogmarke, Verwaltungssummen (+974/−49, 34 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2272">#2272</a></span>feat(connections): OAuth in der Oberfläche – Rücksprungseite, Verbinden, Endpunkte am Zugang, Ablaufwarnungen (+2124/−91, 61 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-06 um 08:40 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-05T00:00:00 bis 2026-10-05T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
