@@ -1,5 +1,5 @@
 import type { CitationIndex } from './citations'
-import { CLAIMED_MARKER_RE, readMarker } from './citations'
+import { CLAIMED_MARKER_RE, readMarker, unwrapBracketedMarkers } from './citations'
 
 /**
  * The formats a chat answer is copied in. The stored answer carries the backend's citation markers
@@ -13,7 +13,7 @@ function markerWithLeadingSpace(): RegExp {
 
 /** The answer as Markdown, without footnote markers and without a source list - the default. */
 export function answerAsMarkdown(content: string): string {
-  return content.replace(markerWithLeadingSpace(), '').trim()
+  return unwrapBracketedMarkers(content).replace(markerWithLeadingSpace(), '').trim()
 }
 
 /**
@@ -21,7 +21,8 @@ export function answerAsMarkdown(content: string): string {
  * same number the chat shows), repeated neighbours collapse, and the cited documents follow as a
  * footnote list with their Fundort where the pipeline knew one.
  */
-export function answerWithSources(content: string, citations: CitationIndex): string {
+export function answerWithSources(answer: string, citations: CitationIndex): string {
+  const content = unwrapBracketedMarkers(answer)
   const fileNameByNumber = new Map<number, string>()
   const pattern = markerWithLeadingSpace()
   let body = ''

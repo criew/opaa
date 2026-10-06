@@ -6,6 +6,7 @@ import java.util.function.Predicate;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Removes citation markers from a text: all of them on the way into the conversation window
@@ -38,17 +39,66 @@ public final class CitationMarkers {
               + CitationMarker.CLAIMED_PATTERN.pattern()
               + "[ \\t]*)+)(?<lineEnd>\\R|$)?");
 
+  private static final String MARKER = CitationMarker.CLAIMED_PATTERN.pattern();
+
+  private static final String MARKER_LIST =
+      "[ \\t]*" + MARKER + "(?:[ \\t]*(?:[,;][ \\t]*)?" + MARKER + ")*[ \\t]*";
+
+  /**
+   * Round or square brackets that hold nothing but markers, separated at most by whitespace, a
+   * comma or a semicolon. Square brackets directly followed by {@code (} are a Markdown link and
+   * stay.
+   */
+  private static final Pattern BRACKETED_MARKERS =
+      Pattern.compile("\\(" + MARKER_LIST + "\\)|\\[" + MARKER_LIST + "\\](?!\\()");
+
   private CitationMarkers() {}
+
+  /**
+   * {@code text} without the brackets the model put around its markers: {@code (【…】)} becomes
+   * {@code 【…】}, several markers in one bracket follow each other without separator. Brackets that
+   * also hold other text are left alone. A text without such brackets is returned unchanged.
+   */
+  static String unwrapBracketed(String text) {
+    if (text == null || text.isEmpty()) {
+      return text;
+    }
+    String result = text;
+    String previous;
+    // Each pass drops one bracket level, so "((【…】))" needs two; every pass shortens the text.
+    do {
+      previous = result;
+      result = unwrapOnce(previous);
+    } while (!result.equals(previous));
+    return result.equals(text) ? text : result;
+  }
+
+  private static String unwrapOnce(String text) {
+    Matcher matcher = BRACKETED_MARKERS.matcher(text);
+    StringBuilder result = new StringBuilder(text.length());
+    boolean changed = false;
+    while (matcher.find()) {
+      String markers =
+          CitationMarker.CLAIMED_PATTERN
+              .matcher(matcher.group())
+              .results()
+              .map(MatchResult::group)
+              .collect(Collectors.joining());
+      matcher.appendReplacement(result, Matcher.quoteReplacement(markers));
+      changed = true;
+    }
+    return changed ? matcher.appendTail(result).toString() : text;
+  }
 
   /**
    * {@code text} without anything that presents itself as a citation marker. A marker at the end of
    * a line takes the whitespace before it with it; a marker between two words leaves the single
    * space they were separated by; a marker glued between two characters leaves nothing. A text
-   * without a marker is returned unchanged. {@code null} in, {@code null} out - the caller decides
-   * what an answer without text means.
+   * without a marker is returned unchanged. Brackets that held nothing but markers go with them.
+   * {@code null} in, {@code null} out - the caller decides what an answer without text means.
    */
   public static String strip(String text) {
-    return strip(text, marker -> true);
+    return strip(unwrapBracketed(text), marker -> true);
   }
 
   /** {@code text} without its malformed markers; well-formed ones stay where they are. */

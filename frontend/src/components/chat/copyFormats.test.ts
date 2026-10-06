@@ -82,6 +82,44 @@ describe('malformed markers', () => {
   })
 })
 
+// regression guard for #2300: no copy keeps the parentheses a marker stood in
+describe('bracketed markers', () => {
+  const content =
+    'Ein Personalausweis kostet 42,60 Euro (【source: doc-a#0 | 001_personalausweis.md】). ' +
+    'Siehe (S. 4 【source: doc-b#2 | 016_familie.md】).'
+
+  test('leave no empty parentheses in the Markdown copy', () => {
+    expect(answerAsMarkdown(content)).toBe('Ein Personalausweis kostet 42,60 Euro. Siehe (S. 4).')
+  })
+
+  test('leave a Markdown link around a marker alone', () => {
+    const link = 'Siehe [【source: doc-a#0 | 001_personalausweis.md】](https://example.test/a).'
+    expect(answerAsMarkdown(link)).toBe('Siehe [](https://example.test/a).')
+  })
+
+  test('drop square brackets and doubled parentheses as well', () => {
+    expect(
+      answerAsMarkdown('A [【source: doc-a#0 | a.md】]. B ((【source: doc-b#2 | b.md】)).'),
+    ).toBe('A. B.')
+  })
+
+  test('take linear time on a long marker list that never closes', () => {
+    const markers = Array.from({ length: 12 }, (_, i) => `【source: doc-${i}#0 | f${i}.md】`)
+    const content = `Text (${markers.join('    ')} und weitere`
+    const started = performance.now()
+    answerAsMarkdown(content)
+    expect(performance.now() - started).toBeLessThan(200)
+  })
+
+  test('become a bare footnote in the copy with sources', () => {
+    expect(answerWithSources(content, buildCitationIndex(content, SOURCES))).toBe(
+      'Ein Personalausweis kostet 42,60 Euro[^1]. Siehe (S. 4[^2]).\n\n' +
+        '[^1]: 001_personalausweis.md\n' +
+        '[^2]: 016_familie.md, Abschn. Unterlagen',
+    )
+  })
+})
+
 describe('answerAsPlainText', () => {
   test('removes the Markdown syntax but keeps structure readable', () => {
     expect(answerAsPlainText(ANSWER)).toBe(

@@ -215,6 +215,16 @@ describe('MarkdownRenderer', () => {
     expect(screen.queryByText(/source:/)).not.toBeInTheDocument()
   })
 
+  // regression guard for #2300: parentheses holding nothing but a marker are not shown
+  it('drops parentheses that hold nothing but a citation marker', () => {
+    const content = 'Nicht zulässig (【source: doc-1#0 | a.md】).'
+    const { container } = renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, [])} />,
+    )
+    expect(container.textContent).not.toMatch(/[()]/)
+    expect(screen.getByRole('button', { name: 'Fundstelle 1: a.md' })).toBeInTheDocument()
+  })
+
   it('does not render citation chips when no citations present', () => {
     renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
     expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()
