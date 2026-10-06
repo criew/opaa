@@ -222,19 +222,24 @@ export async function createActiveAccount(
  *
  * Deliberately an in-app navigation, not `page.goto`: a full reload re-initialises the app, its own
  * "no identity provider" error then stands where the reason would be, and the marker never reaches
- * the interceptor at all.
+ * the interceptor at all. The target is the catalog because its page loads from the API on every
+ * mount; the link is looked up in the global navigation so a missing entry fails fast by name.
  */
 export async function expectSessionEndedWith(
   page: Page,
   marker: string,
   { sentence }: { sentence?: string } = {},
 ): Promise<void> {
+  const catalogLink = page
+    .getByRole("navigation", { name: "Globale Navigation" })
+    .getByRole("link", { name: "Katalog" });
+  await expect(catalogLink).toBeVisible();
   const [refused] = await Promise.all([
     page.waitForResponse(
       (response) => response.status() === 401 && response.url().includes("/api/v1/"),
       { timeout: 20_000 },
     ),
-    page.getByRole("link", { name: "Wissen" }).click(),
+    catalogLink.click(),
   ]);
   expect(refused.headers()["www-authenticate"] ?? "").toContain(marker);
   await expect(page).toHaveURL(/\/login(?:$|[?#])/, { timeout: 20_000 });
