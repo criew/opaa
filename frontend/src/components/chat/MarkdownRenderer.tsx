@@ -16,7 +16,7 @@ import TableRow from '@mui/material/TableRow'
 import type { Components } from 'react-markdown'
 import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
-import { CLAIMED_MARKER_RE, readMarker } from './citations'
+import { CLAIMED_MARKER_RE, readMarker, unwrapBracketedMarkers } from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
 import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
 import 'highlight.js/styles/github-dark.css'
@@ -359,7 +359,7 @@ export default function MarkdownRenderer({
       rehypePlugins={[rehypeHighlight, rehypeNormalizeHeadings]}
       components={components}
     >
-      {content}
+      {preserveCitationMarkers ? content : unwrapBracketedMarkers(content)}
     </ReactMarkdown>
   )
 }

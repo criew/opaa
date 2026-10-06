@@ -82,6 +82,25 @@ describe('malformed markers', () => {
   })
 })
 
+// regression guard for #2300: no copy keeps the parentheses a marker stood in
+describe('bracketed markers', () => {
+  const content =
+    'Ein Personalausweis kostet 42,60 Euro (【source: doc-a#0 | 001_personalausweis.md】). ' +
+    'Siehe (S. 4 【source: doc-b#2 | 016_familie.md】).'
+
+  test('leave no empty parentheses in the Markdown copy', () => {
+    expect(answerAsMarkdown(content)).toBe('Ein Personalausweis kostet 42,60 Euro. Siehe (S. 4).')
+  })
+
+  test('become a bare footnote in the copy with sources', () => {
+    expect(answerWithSources(content, buildCitationIndex(content, SOURCES))).toBe(
+      'Ein Personalausweis kostet 42,60 Euro[^1]. Siehe (S. 4[^2]).\n\n' +
+        '[^1]: 001_personalausweis.md\n' +
+        '[^2]: 016_familie.md, Abschn. Unterlagen',
+    )
+  })
+})
+
 describe('answerAsPlainText', () => {
   test('removes the Markdown syntax but keeps structure readable', () => {
     expect(answerAsPlainText(ANSWER)).toBe(

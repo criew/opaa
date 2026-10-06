@@ -15,6 +15,22 @@ export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|\s*(.+?)
  */
 export const CLAIMED_MARKER_RE = /【source:[^】【\r\n]*】/g
 
+const MARKER_LIST = `[ \\t]*${CLAIMED_MARKER_RE.source}(?:[ \\t]*[,;]?[ \\t]*${CLAIMED_MARKER_RE.source})*[ \\t]*`
+
+/** Round or square brackets holding nothing but markers; `[…](` is a Markdown link and stays. */
+const BRACKETED_MARKERS_RE = new RegExp(`\\(${MARKER_LIST}\\)|\\[${MARKER_LIST}\\](?!\\()`, 'g')
+
+/**
+ * `content` without the brackets the model put around its markers: `(【…】)` becomes `【…】`, so
+ * neither the footnote nor a copy without markers shows a bracket of its own. Brackets that also
+ * hold other text stay.
+ */
+export function unwrapBracketedMarkers(content: string): string {
+  return content.replace(BRACKETED_MARKERS_RE, (group) =>
+    (group.match(CLAIMED_MARKER_RE) ?? []).join(''),
+  )
+}
+
 const WELL_FORMED_MARKER_RE = new RegExp(`^\\s*${CITATION_MARKER_RE.source}$`)
 
 /** Key (`documentId#chunk`) and file name of a well-formed marker; undefined for a malformed one.

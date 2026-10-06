@@ -145,6 +145,53 @@ class CitationMarkerRepairTest {
     assertThat(CitationMarkerRepair.repair(answer, CHUNKS)).isEqualTo(answer);
   }
 
+  // regression guard for #2300: parentheses holding nothing but markers are dropped
+  @Test
+  void parenthesesAroundASingleMarkerAreRemoved() {
+    String answer = "Nicht zulässig (【source: doc-1#2 | a.pptx】).";
+
+    assertThat(CitationMarkerRepair.repair(answer, CHUNKS))
+        .isEqualTo("Nicht zulässig 【source: doc-1#2 | a.pptx】.");
+  }
+
+  @Test
+  void parenthesesAroundSeveralMarkersAreRemovedTogetherWithTheirSeparators() {
+    String answer =
+        "Text (【source: doc-1#2 | a.pptx】, 【source: doc-2#1 | b.html】; 【source: doc-3#0 | c.md】).";
+
+    assertThat(CitationMarkerRepair.repair(answer, CHUNKS))
+        .isEqualTo(
+            "Text 【source: doc-1#2 | a.pptx】【source: doc-2#1 | b.html】【source: doc-3#0 | c.md】.");
+  }
+
+  @Test
+  void squareBracketsAroundAMarkerAreRemoved() {
+    assertThat(CitationMarkerRepair.repair("Text [ 【source: doc-1#2 | a.pptx】 ].", CHUNKS))
+        .isEqualTo("Text 【source: doc-1#2 | a.pptx】.");
+  }
+
+  @Test
+  void parenthesesWithFurtherTextAreLeftAlone() {
+    String answer =
+        "Text (siehe 【source: doc-1#2 | a.pptx】) und (S. 4 【source: doc-2#1 | b.html】).";
+
+    assertThat(CitationMarkerRepair.repair(answer, CHUNKS)).isEqualTo(answer);
+  }
+
+  @Test
+  void aBracketedMarkerThatIsRepairedLosesItsParenthesesToo() {
+    String answer =
+        "Text (【source: 05_schulung-dateiformate.pptx#2 | 05_schulung-dateiformate.pptx】).";
+
+    assertThat(CitationMarkerRepair.repair(answer, CHUNKS))
+        .isEqualTo("Text 【source: doc-1#2 | 05_schulung-dateiformate.pptx】.");
+  }
+
+  @Test
+  void aBracketedMarkerThatIsRemovedLeavesNoEmptyParentheses() {
+    assertThat(CitationMarkerRepair.repair("Text (【source: kaputt】).", CHUNKS)).isEqualTo("Text .");
+  }
+
   @Test
   void aTextWithoutMarkersIsReturnedUnchanged() {
     String answer = "Kein Beleg nötig.\n\n- Punkt  \n- Punkt";

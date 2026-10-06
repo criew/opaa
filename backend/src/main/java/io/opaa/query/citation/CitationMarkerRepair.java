@@ -11,6 +11,9 @@ import org.springframework.ai.document.Document;
  * Brings the citation markers of a generated answer into the syntax of {@link
  * CitationMarker#PATTERN} before anything evaluates, stores or shows the answer.
  *
+ * <p>Brackets the model put around nothing but markers are dropped first ({@link
+ * CitationMarkers#unwrapBracketed}); the markers stay.
+ *
  * <p>A marker that names a file instead of a document id ({@code 【source: a.pdf#2 | a.pdf】}) is
  * rewritten when exactly one document among {@code chunks} carries that file name and that
  * document's chunk with that index is among them too. A file name without extension looks like a
@@ -40,8 +43,9 @@ public final class CitationMarkerRepair {
     if (answer == null || answer.isEmpty()) {
       return answer;
     }
-    Matcher matcher = CitationMarker.CLAIMED_PATTERN.matcher(answer);
-    StringBuilder result = new StringBuilder(answer.length());
+    String unwrapped = CitationMarkers.unwrapBracketed(answer);
+    Matcher matcher = CitationMarker.CLAIMED_PATTERN.matcher(unwrapped);
+    StringBuilder result = new StringBuilder(unwrapped.length());
     boolean rewritten = false;
     while (matcher.find()) {
       String marker = matcher.group();
@@ -50,7 +54,7 @@ public final class CitationMarkerRepair {
       matcher.appendReplacement(result, Matcher.quoteReplacement(canonical.orElse(marker)));
       rewritten |= canonical.isPresent();
     }
-    String text = rewritten ? matcher.appendTail(result).toString() : answer;
+    String text = rewritten ? matcher.appendTail(result).toString() : unwrapped;
     return CitationMarkers.stripMalformed(text);
   }
 

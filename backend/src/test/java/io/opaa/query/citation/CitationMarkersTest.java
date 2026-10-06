@@ -143,6 +143,15 @@ class CitationMarkersTest {
         .isEqualTo("Erster 【source: doc-1#2 | a.md\n\nZweiter Absatz.\n\nDritter Ende.");
   }
 
+  // regression guard for #2300: a stored answer with bracketed markers leaves no "()" in the window
+  @Test
+  void bracketedMarkersLeaveNoEmptyParenthesesBehind() {
+    String answer =
+        "Nicht zulässig (【source: doc-1#0 | a.md】). Siehe (S. 4 【source: doc-2#1 | b.md】).";
+
+    assertThat(CitationMarkers.strip(answer)).isEqualTo("Nicht zulässig . Siehe (S. 4 ).");
+  }
+
   @Test
   void nullAndEmptyPassThrough() {
     assertThat(CitationMarkers.strip(null)).isNull();

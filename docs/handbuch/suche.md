@@ -630,7 +630,13 @@ ist. Jede andere Marke, die nicht der Form entspricht, wird entfernt: Sie lässt
 zuordnen und würde sonst als Rohtext angezeigt. Als Marke gilt dabei nur, was mit `【source:`
 beginnt und in derselben Zeile mit `】` schließt; ein Anfang ohne Abschluss bleibt als Text stehen.
 Eine formal gültige Marke, die sich keinem Dateinamen zuordnen lässt, bleibt unangetastet, auch
-wenn sie auf nichts Abgerufenes zeigt; über sie entscheiden die Prüfungen unten. Ältere gespeicherte Antworten mit solchen Marken zeigen sie
+wenn sie auf nichts Abgerufenes zeigt; über sie entscheiden die Prüfungen unten.
+
+Setzt das Modell Marken in runde oder eckige Klammern, die sonst nichts enthalten
+(`… zulässig (【source: …】).`), entfallen die Klammern; die Marken bleiben stehen. Sonst zeigte die
+Anzeige die Fußnote in Klammern und eine Kopie ohne Belege leere Klammern `()`. Klammern mit
+weiterem Text, etwa `(siehe 【source: …】)`, bleiben unverändert. Für bereits gespeicherte Antworten
+gilt dieselbe Regel in Anzeige, Kopierformaten und Gesprächsfenster. Ältere gespeicherte Antworten mit solchen Marken zeigen sie
 ebenfalls nicht mehr an.
 
 Die Zitiermarken werden nicht dem Modell geglaubt. Zwei deterministische Prüfungen laufen ohne
