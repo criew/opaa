@@ -208,7 +208,7 @@ services:
   # reports. The two source buckets are unaffected by it - "aws s3 sync --delete" forces them back
   # to the committed corpus on every start, whatever the volume held before.
   objectstore:
-    image: rustfs/rustfs:1.0.0
+    image: rustfs/rustfs:1.0.1
     environment:
       RUSTFS_ACCESS_KEY: rheinfurt-archiv
       RUSTFS_SECRET_KEY: RheinfurtDemo!2026
@@ -296,7 +296,7 @@ services:
   # "Originalablage" block - whoever changes them changes them on both sides, here (process
   # environment or .env) and for the backend (.env.docker).
   upload-store:
-    image: rustfs/rustfs:1.0.0
+    image: rustfs/rustfs:1.0.1
     environment:
       RUSTFS_ACCESS_KEY: ${OPAA_UPLOAD_STORE_ROOT_USER:-opaa-uploads}
       RUSTFS_SECRET_KEY: ${OPAA_UPLOAD_STORE_ROOT_PASSWORD:-OpaaUploads!2026}
