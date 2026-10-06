@@ -16,7 +16,13 @@ import TableRow from '@mui/material/TableRow'
 import type { Components } from 'react-markdown'
 import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
-import { CLAIMED_MARKER_RE, readMarker, unwrapBracketedMarkers } from './citations'
+import {
+  CLAIMED_MARKER_RE,
+  escapeMarkerPipes,
+  readMarker,
+  remarkUnescapeMarkerPipesInCode,
+  unwrapBracketedMarkers,
+} from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
 import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
 import 'highlight.js/styles/github-dark.css'
@@ -269,6 +275,8 @@ function makeComponents(
         {processChildren(children)}
       </Typography>
     ),
+    strong: ({ children }) => <strong>{processChildren(children)}</strong>,
+    em: ({ children }) => <em>{processChildren(children)}</em>,
     a: ({ href, children }) => (
       <Link href={href} target="_blank" rel="noopener noreferrer">
         {children}
@@ -338,7 +346,9 @@ function makeComponents(
     thead: ({ children }) => <TableHead>{children}</TableHead>,
     tbody: ({ children }) => <TableBody>{children}</TableBody>,
     tr: ({ children }) => <TableRow>{children}</TableRow>,
-    th: ({ children }) => <TableCell sx={{ fontWeight: 'bold' }}>{children}</TableCell>,
+    th: ({ children }) => (
+      <TableCell sx={{ fontWeight: 'bold' }}>{processChildren(children)}</TableCell>
+    ),
     td: ({ children }) => <TableCell>{processChildren(children)}</TableCell>,
   }
 }
@@ -355,11 +365,13 @@ export default function MarkdownRenderer({
   )
   return (
     <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
+      remarkPlugins={
+        preserveCitationMarkers ? [remarkGfm] : [remarkGfm, remarkUnescapeMarkerPipesInCode]
+      }
       rehypePlugins={[rehypeHighlight, rehypeNormalizeHeadings]}
       components={components}
     >
-      {preserveCitationMarkers ? content : unwrapBracketedMarkers(content)}
+      {preserveCitationMarkers ? content : escapeMarkerPipes(unwrapBracketedMarkers(content))}
     </ReactMarkdown>
   )
 }

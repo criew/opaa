@@ -225,6 +225,80 @@ describe('MarkdownRenderer', () => {
     expect(screen.getByRole('button', { name: 'Fundstelle 1: a.md' })).toBeInTheDocument()
   })
 
+  // regression guard for #2303: the marker's "|" must not split a GFM table cell
+  describe('citation markers in tables', () => {
+    it('renders a marker in a table cell as a footnote instead of raw text', async () => {
+      const content =
+        '| Frist | Wert |\n| --- | --- |\n| Widerspruch | 4 Wochen【source: doc-1#3 | fristen.pdf】 |'
+      const onCitationClick = vi.fn()
+      renderWithProviders(
+        <MarkdownRenderer
+          content={content}
+          citations={buildCitationIndex(content, undefined)}
+          onCitationClick={onCitationClick}
+        />,
+      )
+      const bodyCells = document.querySelectorAll('tbody tr td')
+      expect(bodyCells).toHaveLength(2)
+      expect(bodyCells[1].textContent).toBe('4 Wochen1')
+      expect(document.body.textContent).not.toMatch(/source:|】/)
+
+      await userEvent
+        .setup()
+        .click(screen.getByRole('button', { name: 'Fundstelle 1: fristen.pdf' }))
+      expect(onCitationClick).toHaveBeenCalledWith([1])
+    })
+
+    it('resolves several markers in one cell and markers in the header', () => {
+      const content =
+        '| Frist【source: h#0 | kopf.md】 | Wert |\n| --- | --- |\n' +
+        '| A【source: a#0 | a.md】 und B【source: b#1 | b.md】 | x |'
+      renderWithProviders(
+        <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+      )
+      expect(document.querySelectorAll('thead th')).toHaveLength(2)
+      expect(document.querySelectorAll('tbody td')).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'Fundstelle 1: kopf.md' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Fundstelle 2: a.md' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Fundstelle 3: b.md' })).toBeInTheDocument()
+      expect(document.body.textContent).not.toMatch(/source:|】/)
+    })
+
+    it('shows a marker in a code block and in inline code with its plain "|"', () => {
+      const content =
+        'Siehe `【source: a#0 | a.md】`.\n\n```\n【source: b#1 | b.md】\n```\n\n' +
+        '| Code |\n| --- |\n| `【source: c#2 | c.md】` |'
+      renderWithProviders(
+        <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+      )
+      expect(
+        Array.from(document.querySelectorAll('code')).map((code) => code.textContent?.trim()),
+      ).toEqual(['【source: a#0 | a.md】', '【source: b#1 | b.md】', '【source: c#2 | c.md】'])
+    })
+  })
+
+  // regression guard: a marker inside emphasis was shown raw, in running text as in a table
+  it('resolves markers inside bold and italic text, in paragraphs and table cells', () => {
+    const content =
+      '**Frist【source: a#0 | a.md】** und _Wert【source: b#0 | b.md】_\n\n' +
+      '| Spalte |\n| --- |\n| **fett【source: c#0 | c.md】** |'
+    renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, undefined)} />,
+    )
+    expect(screen.getByRole('button', { name: 'Fundstelle 1: a.md' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fundstelle 2: b.md' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Fundstelle 3: c.md' })).toBeInTheDocument()
+    expect(document.body.textContent).not.toMatch(/source:|】/)
+  })
+
+  it('leaves markers in a table untouched when preserving them', () => {
+    const content = '| Text | Datei |\n| --- | --- |\n| roh 【source: d#0 | x.md】 |'
+    renderWithProviders(<MarkdownRenderer content={content} preserveCitationMarkers />)
+    const cells = Array.from(document.querySelectorAll('tbody td')).map((td) => td.textContent)
+    expect(cells).toEqual(['roh 【source: d#0', 'x.md】'])
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+
   it('does not render citation chips when no citations present', () => {
     renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
     expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()

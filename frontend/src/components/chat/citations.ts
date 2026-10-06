@@ -37,6 +37,36 @@ export function unwrapBracketedMarkers(content: string): string {
   }
 }
 
+/**
+ * `content` with every `|` inside a marker escaped as `\|`, so a GFM table never reads it as a
+ * cell divider. Markdown resolves the escape back to `|`, in a table cell as in running text, so
+ * the rendered text nodes carry the marker unchanged.
+ */
+export function escapeMarkerPipes(content: string): string {
+  return content.replace(CLAIMED_MARKER_RE, (marker) => marker.replace(/\\?\|/g, '\\|'))
+}
+
+/** The mdast fields {@link remarkUnescapeMarkerPipesInCode} touches. */
+interface MdastNode {
+  type: string
+  value?: string
+  children?: MdastNode[]
+}
+
+/**
+ * Remark plugin undoing {@link escapeMarkerPipes} in code, where Markdown keeps a backslash
+ * literally: a marker inside a code block or inline code shows `|` as written, not `\|`.
+ */
+export function remarkUnescapeMarkerPipesInCode() {
+  const walk = (node: MdastNode): void => {
+    if ((node.type === 'code' || node.type === 'inlineCode') && node.value !== undefined) {
+      node.value = node.value.replace(CLAIMED_MARKER_RE, (marker) => marker.replace(/\\\|/g, '|'))
+    }
+    node.children?.forEach(walk)
+  }
+  return walk
+}
+
 const WELL_FORMED_MARKER_RE = new RegExp(`^\\s*${CITATION_MARKER_RE.source}$`)
 
 /** Key (`documentId#chunk`) and file name of a well-formed marker; undefined for a malformed one.
