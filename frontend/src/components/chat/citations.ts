@@ -7,6 +7,23 @@ import type { SourceReference } from '../../types/api'
  */
 export const CITATION_MARKER_RE = /【source:\s*([a-zA-Z0-9-]+#\d+)\s*\|\s*(.+?)\s*】/g
 
+/**
+ * Everything that presents itself as a marker, well-formed or not - a superset of
+ * {@link CITATION_MARKER_RE}. A malformed marker resolves to no footnote and is dropped like one
+ * with an unknown key, never shown raw. The body stops at a line end and at another opening
+ * bracket, so an opener without its closing bracket never reaches into the next marker.
+ */
+export const CLAIMED_MARKER_RE = /【source:[^】【\r\n]*】/g
+
+const WELL_FORMED_MARKER_RE = new RegExp(`^\\s*${CITATION_MARKER_RE.source}$`)
+
+/** Key (`documentId#chunk`) and file name of a well-formed marker; undefined for a malformed one.
+ *  `marker` is one whole match, optionally with the whitespace before it. */
+export function readMarker(marker: string): { key: string; fileName: string } | undefined {
+  const match = WELL_FORMED_MARKER_RE.exec(marker)
+  return match ? { key: match[1], fileName: match[2] } : undefined
+}
+
 export interface CitationDoc {
   fileName: string
   /** Footnote numbers pointing at this document, in ascending order; empty when the source was

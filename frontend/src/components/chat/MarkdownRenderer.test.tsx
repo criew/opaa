@@ -204,6 +204,17 @@ describe('MarkdownRenderer', () => {
     expect(screen.queryByText(/source:/)).not.toBeInTheDocument()
   })
 
+  // regression guard for #2298: a marker the backend could not read is never shown raw
+  it('strips a malformed marker instead of showing it as text', () => {
+    const content =
+      'Nur aufgeführte Formate. 【source: 05_schulung-dateiformate.pptx#2 | 05_schulung-dateiformate.pptx】'
+    renderWithProviders(
+      <MarkdownRenderer content={content} citations={buildCitationIndex(content, [])} />,
+    )
+    expect(screen.getByText('Nur aufgeführte Formate.')).toBeInTheDocument()
+    expect(screen.queryByText(/source:/)).not.toBeInTheDocument()
+  })
+
   it('does not render citation chips when no citations present', () => {
     renderWithProviders(<MarkdownRenderer content="Just a normal (parenthetical) remark" />)
     expect(screen.getByText('Just a normal (parenthetical) remark')).toBeInTheDocument()

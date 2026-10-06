@@ -1410,6 +1410,42 @@ class QueryServiceTest {
   }
 
   /**
+   * Regression guard for #2298: a model that puts the file name where the document id belongs still
+   * cites the document, and the answer carries the marker in the canonical syntax.
+   */
+  @Test
+  void queryCitesTheDocumentWhenTheModelWritesTheFileNameInsteadOfTheDocumentId() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var chunk =
+        Document.builder()
+            .text("Die Poststelle nimmt nur aufgeführte Formate an.")
+            .metadata(
+                Map.of(
+                    "file_name", "05_schulung-dateiformate.pptx",
+                    "document_id", "doc-1",
+                    "chunk_index", 2))
+            .score(0.9)
+            .build();
+    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+
+    var answer =
+        "Die Poststelle nimmt nur aufgeführte Formate an. "
+            + "【source: 05_schulung-dateiformate.pptx#2 | 05_schulung-dateiformate.pptx】";
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(chatResponse);
+
+    QueryResult response =
+        queryService.query("Was nimmt die Poststelle an?", null, caller, true, List.of());
+
+    assertThat(response.answer())
+        .isEqualTo(
+            "Die Poststelle nimmt nur aufgeführte Formate an. "
+                + "【source: doc-1#2 | 05_schulung-dateiformate.pptx】");
+    assertThat(response.sources().getFirst().getCited()).isTrue();
+  }
+
+  /**
    * #386 acceptance criterion: a citation with a valid document id and section but a file name that
    * does not match that document is invalid - it is more misleading than no citation at all.
    */

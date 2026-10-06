@@ -61,6 +61,27 @@ describe('answerWithSources', () => {
   })
 })
 
+// regression guard for #2298: a marker the backend could not read never reaches a copy
+describe('malformed markers', () => {
+  const content =
+    'Nur Formate der Liste. 【source: 05_schulung.pptx#2 | 05_schulung.pptx】【source: a#a】'
+
+  test('are dropped from the Markdown copy', () => {
+    expect(answerAsMarkdown(content)).toBe('Nur Formate der Liste.')
+  })
+
+  test('never take the text up to the next marker when one is not closed', () => {
+    const unclosed = 'Erster 【source: doc-a#0 | a.md\n\nZweiter Absatz. 【source: doc-b#2 | b.md】'
+    expect(answerAsMarkdown(unclosed)).toBe('Erster 【source: doc-a#0 | a.md\n\nZweiter Absatz.')
+  })
+
+  test('are dropped from the copy with sources and get no footnote', () => {
+    expect(answerWithSources(content, buildCitationIndex(content, SOURCES))).toBe(
+      'Nur Formate der Liste.',
+    )
+  })
+})
+
 describe('answerAsPlainText', () => {
   test('removes the Markdown syntax but keeps structure readable', () => {
     expect(answerAsPlainText(ANSWER)).toBe(

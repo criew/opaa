@@ -1,20 +1,25 @@
 package io.opaa.query.citation;
 
+import io.opaa.chat.CitationMarker;
+import java.util.List;
+import java.util.function.Predicate;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Removes citation markers from a text on its way into the conversation window
- * (docs/features/conversation-memory.md, "Bauteil 1").
+ * Removes citation markers from a text: all of them on the way into the conversation window
+ * (docs/features/conversation-memory.md, "Bauteil 1"), only the malformed ones before an answer is
+ * evaluated and stored ({@link CitationMarkerRepair}).
  *
  * <p><b>Only the marker and the whitespace it sat in.</b> The rest of the text comes back character
  * for character: the indentation of a YAML block, the nesting of a list, the two trailing spaces of
  * a hard Markdown line break. The window has to hold what the person read - the next turn is
  * answered against this text.
  *
- * <p><b>Never applied before persistence.</b> The persisted answer text is the truth for footnotes,
- * text anchors and the evidence drawer; only the copy that becomes conversation history loses its
- * markers, so a later turn cannot repeat a marker for a document that is no longer in context.
+ * <p><b>Well-formed markers survive persistence.</b> The persisted answer text is the truth for
+ * footnotes, text anchors and the evidence drawer; only the copy that becomes conversation history
+ * loses them, so a later turn cannot repeat a marker for a document that is no longer in context.
  *
  * <p>Removed, not replaced by a short form: a short form would be imitated by the model as the
  * citation format, and {@link CitationValidator} would then find no marker at all.
@@ -23,41 +28,65 @@ public final class CitationMarkers {
 
   /**
    * A run of one or more markers together with the horizontal whitespace it sits in, and the line
-   * end when nothing follows it on that line. Composed from {@link
-   * CitationParser#CITATION_PATTERN}'s source so there stays exactly one definition of what a
-   * marker <em>looks like</em> - only its syntax travels, not its compile flags, so a flag added
-   * there (say {@code CASE_INSENSITIVE}) would have to be repeated here. Matching the surroundings
-   * as part of the marker is what keeps the removal local: no pass ever runs over the rest of the
-   * text.
+   * end when nothing follows it on that line. Built on {@link CitationMarker#CLAIMED_PATTERN}, so a
+   * malformed marker is part of a run like a well-formed one. Matching the surroundings as part of
+   * the marker is what keeps the removal local: no pass ever runs over the rest of the text.
    */
   private static final Pattern MARKER_RUN =
       Pattern.compile(
           "(?<run>[ \\t]*(?:"
-              + CitationParser.CITATION_PATTERN.pattern()
+              + CitationMarker.CLAIMED_PATTERN.pattern()
               + "[ \\t]*)+)(?<lineEnd>\\R|$)?");
 
   private CitationMarkers() {}
 
   /**
-   * {@code text} without its citation markers. A marker at the end of a line takes the whitespace
-   * before it with it; a marker between two words leaves the single space they were separated by; a
-   * marker glued between two characters leaves nothing. A text without a marker is returned
-   * unchanged. {@code null} in, {@code null} out - the caller decides what an answer without text
-   * means.
+   * {@code text} without anything that presents itself as a citation marker. A marker at the end of
+   * a line takes the whitespace before it with it; a marker between two words leaves the single
+   * space they were separated by; a marker glued between two characters leaves nothing. A text
+   * without a marker is returned unchanged. {@code null} in, {@code null} out - the caller decides
+   * what an answer without text means.
    */
   public static String strip(String text) {
+    return strip(text, marker -> true);
+  }
+
+  /** {@code text} without its malformed markers; well-formed ones stay where they are. */
+  static String stripMalformed(String text) {
+    return strip(text, marker -> !CitationMarker.isWellFormed(marker));
+  }
+
+  private static String strip(String text, Predicate<String> removed) {
     if (text == null || text.isEmpty()) {
       return text;
     }
     Matcher matcher = MARKER_RUN.matcher(text);
     StringBuilder result = new StringBuilder(text.length());
     int cursor = 0;
+    boolean changed = false;
     while (matcher.find()) {
+      String run = matcher.group("run");
+      List<String> markers =
+          CitationMarker.CLAIMED_PATTERN.matcher(run).results().map(MatchResult::group).toList();
+      List<String> kept = markers.stream().filter(Predicate.not(removed)).toList();
+      if (kept.size() == markers.size()) {
+        continue;
+      }
       result.append(text, cursor, matcher.start());
-      result.append(replacementFor(text, matcher));
+      result.append(kept.isEmpty() ? replacementFor(text, matcher) : rebuilt(run, kept, matcher));
       cursor = matcher.end();
+      changed = true;
     }
-    return cursor == 0 ? text : result.append(text, cursor, text.length()).toString();
+    return changed ? result.append(text, cursor, text.length()).toString() : text;
+  }
+
+  /** A run that keeps some of its markers: its own surrounding whitespace, the kept markers. */
+  private static String rebuilt(String run, List<String> kept, Matcher matcher) {
+    String lineEnd = matcher.group("lineEnd");
+    return leadingWhitespaceOf(run)
+        + String.join("", kept)
+        + trailingWhitespaceOf(run)
+        + (lineEnd == null ? "" : lineEnd);
   }
 
   /**
@@ -83,6 +112,14 @@ public final class CitationMarkers {
       end++;
     }
     return run.substring(0, end);
+  }
+
+  private static String trailingWhitespaceOf(String run) {
+    int start = run.length();
+    while (start > 0 && isSpace(run.charAt(start - 1))) {
+      start--;
+    }
+    return run.substring(start);
   }
 
   private static boolean isSpace(char c) {

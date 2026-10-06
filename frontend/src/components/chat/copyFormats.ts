@@ -1,5 +1,5 @@
 import type { CitationIndex } from './citations'
-import { CITATION_MARKER_RE } from './citations'
+import { CLAIMED_MARKER_RE, readMarker } from './citations'
 
 /**
  * The formats a chat answer is copied in. The stored answer carries the backend's citation markers
@@ -8,7 +8,7 @@ import { CITATION_MARKER_RE } from './citations'
 
 /** A marker together with the whitespace before it - the mark attaches to the word it follows. */
 function markerWithLeadingSpace(): RegExp {
-  return new RegExp(`[ \\t]*${CITATION_MARKER_RE.source}`, 'g')
+  return new RegExp(`[ \\t]*${CLAIMED_MARKER_RE.source}`, 'g')
 }
 
 /** The answer as Markdown, without footnote markers and without a source list - the default. */
@@ -34,9 +34,10 @@ export function answerWithSources(content: string, citations: CitationIndex): st
     if (between.length > 0) adjacent = new Set()
     body += between
     lastEnd = pattern.lastIndex
-    const number = citations.numberByKey.get(match[1])
-    if (number === undefined || adjacent.has(number)) continue
-    if (!fileNameByNumber.has(number)) fileNameByNumber.set(number, match[2].trim())
+    const marker = readMarker(match[0])
+    const number = marker && citations.numberByKey.get(marker.key)
+    if (marker === undefined || number === undefined || adjacent.has(number)) continue
+    if (!fileNameByNumber.has(number)) fileNameByNumber.set(number, marker.fileName.trim())
     adjacent.add(number)
     body += `[^${number}]`
   }
