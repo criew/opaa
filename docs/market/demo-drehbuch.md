@@ -85,7 +85,7 @@ Die Klickwege unten benutzen diese Begriffe:
   Einträgen „Einstellungen“ und „Abmelden“.
 - **Space wählen:** über „Spaces“ in der Leiste oder oben in der Space-Spalte (Feld „Space“). Ein
   gewählter Space öffnet einen neuen Chat. Einen weiteren beginnt „Neu“ neben „Chats“.
-- **Persönlicher Space:** Jedes Konto hat seinen persönlichen Space „Meine Dokumente“. Der Seed hat
+- **Persönlicher Space:** Jedes Konto hat seinen persönlichen Space „Privater Bereich“. Der Seed hat
   ihm das Wissen des eigenen Sachgebiets und die Textbausteine zugeordnet.
 - **Quellen einer Antwort:** „Belege anzeigen“ unter der Antwort öffnet das Belegfenster rechts;
   ein Klick auf eine Fußnotenziffer im Text öffnet es direkt an dieser Fundstelle. Jede Fundstelle
@@ -166,7 +166,7 @@ Wissen aussieht, zeigt Schritt G.
   interne Gruppe „Vertretung Meldewesen". Er findet die Dienstanweisung deshalb überall dort, wo sie
   zur Auswahl steht:
   - im Space „Meldewesen & Ausweise", in dem er über dieselbe Gruppe Mitglied ist
-  - in seinem persönlichen Space „Meine Dokumente"
+  - in seinem persönlichen Space „Privater Bereich"
 
   Im Space „Dienstbesprechung Bürgerbüro" findet er sie nicht, auch diesem Space ist sie nicht
   zugeordnet. Die Frage deshalb unbedingt im Space „Kfz-Zulassung" stellen. Wer den Unterschied
@@ -284,7 +284,7 @@ vorführen; alle anderen nutzen dafür den lokalen Stack.
 - **Erwartetes Ergebnis:**
   - Im „Katalog" fehlt „Interne Dienstanweisungen Meldewesen".
   - In der Space-Auswahl fehlt „Meldewesen & Ausweise".
-  - Frage 5 liefert jetzt auch in „Meine Dokumente" keine Quelle aus der internen Bibliothek.
+  - Frage 5 liefert jetzt auch in „Privater Bereich" keine Quelle aus der internen Bibliothek.
   - Kein Recht an der Bibliothek und keine Space-Mitgliedschaft wurde angefasst; weggefallen ist nur
     die Mitgliedschaft in der Gruppe.
 - **Gegenprobe in der Verwaltung** (`demo-admin`, „Admin" → „Gruppen"): „Vertretung Meldewesen" hat

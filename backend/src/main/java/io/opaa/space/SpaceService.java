@@ -935,8 +935,8 @@ public class SpaceService {
             spaceRepository.insertDefaultSpaceIfAbsent(
                 UUID.randomUUID(),
                 UUID.randomUUID(),
-                "Meine Dokumente",
-                "Privater persönlicher Space",
+                "Privater Bereich",
+                "Eigene Dokumente, Chats, Assistenten und Prompts",
                 userId,
                 organizationId));
     personalSpaceProvisioned.put(userId, Boolean.TRUE);

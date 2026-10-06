@@ -29,7 +29,7 @@ const initialSpaces = [
   },
   {
     id: 'space-personal',
-    name: 'Meine Dokumente',
+    name: 'Privater Bereich',
     description: 'Private',
     isDefault: true,
     archived: false,
@@ -75,7 +75,7 @@ vi.mock('../services/spaceApi', () => ({
   getSpaces: vi.fn(async () => mutableSpaces.map((space) => ({ ...space }))),
   getSpace: vi.fn(async (spaceId: string) => ({
     id: spaceId,
-    name: 'Meine Dokumente',
+    name: 'Privater Bereich',
     description: 'Private',
     isDefault: true,
     archived: false,
@@ -153,7 +153,7 @@ describe('spaceStore', () => {
   it('sorts the default space first', async () => {
     await useSpaceStore.getState().loadSpaces()
     const names = useSpaceStore.getState().spaces.map((space) => space.name)
-    expect(names[0]).toBe('Meine Dokumente')
+    expect(names[0]).toBe('Privater Bereich')
   })
 
   it('creates a new space and selects it', async () => {

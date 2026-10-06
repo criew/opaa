@@ -22,7 +22,7 @@ describe('ChatRedirect', () => {
   const spaces = [
     {
       id: 'space-personal',
-      name: 'Meine Dokumente',
+      name: 'Privater Bereich',
       description: 'Privat',
       isDefault: true,
       archived: false,

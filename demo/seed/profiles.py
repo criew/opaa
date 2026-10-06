@@ -70,7 +70,7 @@ class SpaceDef:
 
 @dataclass(frozen=True)
 class PersonalSpaceDef:
-    """The associations of an account's automatic personal space ("Meine Dokumente"), which the
+    """The associations of an account's automatic personal space ("Privater Bereich"), which the
     backend creates on the first login and the seed therefore finds instead of creating. Like any
     space it searches only what is associated; the owner is its ADMIN and must read every entry."""
 

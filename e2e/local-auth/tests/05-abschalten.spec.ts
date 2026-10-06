@@ -51,7 +51,7 @@ test.describe("Verwaltung abschalten: Nutzer-Sitzung endet, Verwalter bleibt", (
     const user = await userContext.newPage();
     await signInSuccessfully(user, address, password);
     await user.goto("/spaces");
-    await expect(user.getByText("Meine Dokumente").first()).toBeVisible();
+    await expect(user.getByText("Privater Bereich").first()).toBeVisible();
 
     const adminContext = await browser.newContext();
     const admin = await adminContext.newPage();
@@ -70,7 +70,7 @@ test.describe("Verwaltung abschalten: Nutzer-Sitzung endet, Verwalter bleibt", (
     // The administrator's own session survives: a local SYSTEM_ADMIN passes the validator even with
     // the switch off (ADR-0033, Entscheidung 4).
     await admin.goto("/spaces");
-    await expect(admin.getByText("Meine Dokumente").first()).toBeVisible();
+    await expect(admin.getByText("Privater Bereich").first()).toBeVisible();
 
     // The regular account's next call is refused and the person is sent back to the sign-in page,
     // with the marker ADR-0033 Entscheidung 4 names: the switch outranks the revocation the

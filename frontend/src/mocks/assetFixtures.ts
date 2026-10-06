@@ -38,7 +38,7 @@ function association(
 // by the mock user. A space id without an entry answers "nothing associated" (assetHandlers.ts).
 const INITIAL_SPACE_ASSET_ASSOCIATIONS: Record<string, SpaceAssetAssociationListResponse> = {
   'space-personal': associationListOf([
-    association('KNOWLEDGE_LIBRARY', 'library-mine', 'Meine Dokumente'),
+    association('KNOWLEDGE_LIBRARY', 'library-mine', 'Eigene Unterlagen'),
   ]),
   'space-engineering': associationListOf([
     association('KNOWLEDGE_LIBRARY', 'library-dienstanweisungen', 'Dienstanweisungen'),

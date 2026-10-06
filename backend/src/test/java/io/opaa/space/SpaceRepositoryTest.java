@@ -203,7 +203,7 @@ class SpaceRepositoryTest {
                         spaceRepository.insertDefaultSpaceIfAbsent(
                             UUID.randomUUID(),
                             UUID.randomUUID(),
-                            "Meine Dokumente",
+                            "Privater Bereich",
                             "Privater persoenlicher Space",
                             nonExistentOwner,
                             org)))

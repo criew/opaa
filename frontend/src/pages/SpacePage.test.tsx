@@ -83,7 +83,7 @@ describe('SpacePage', () => {
       spaces: [
         {
           id: 'space-personal',
-          name: 'Meine Dokumente',
+          name: 'Privater Bereich',
           description: 'Private Dokumente',
           isDefault: true,
           archived: false,
@@ -97,7 +97,7 @@ describe('SpacePage', () => {
       selectedSpaceId: 'space-personal',
       selectedSpace: {
         id: 'space-personal',
-        name: 'Meine Dokumente',
+        name: 'Privater Bereich',
         description: 'Private Dokumente',
         isDefault: true,
         archived: false,
@@ -233,7 +233,7 @@ describe('SpacePage', () => {
     useSpaceStore.setState({
       selectedSpace: {
         id: 'space-personal',
-        name: 'Meine Dokumente',
+        name: 'Privater Bereich',
         description: 'Private Dokumente',
         isDefault: true,
         archived: false,
@@ -291,7 +291,7 @@ describe('SpacePage', () => {
     useSpaceStore.setState({
       selectedSpace: {
         id: 'space-personal',
-        name: 'Meine Dokumente',
+        name: 'Privater Bereich',
         description: 'Private Dokumente',
         isDefault: true,
         archived: false,

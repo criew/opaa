@@ -46,7 +46,7 @@ function initialOwnTokens(): OwnExternalAccessTokenResponse[] {
       lastUsedOn: '2026-09-17',
       status: 'ACTIVE',
       libraries: [
-        { id: 'library-mine', name: 'Meine Dokumente', suspended: false },
+        { id: 'library-mine', name: 'Eigene Unterlagen', suspended: false },
         { id: 'library-referat-50', name: 'Rechtsquellen Soziales', suspended: false },
       ],
     },
@@ -73,7 +73,7 @@ function initialAdminTokens(): AdminExternalAccessTokenResponse[] {
       expiresAt: inDays(60),
       status: 'ACTIVE',
       libraries: [
-        { id: 'library-mine', name: 'Meine Dokumente', suspended: false },
+        { id: 'library-mine', name: 'Eigene Unterlagen', suspended: false },
         { id: 'library-referat-50', name: 'Rechtsquellen Soziales', suspended: false },
       ],
     },
@@ -95,7 +95,7 @@ function initialAdminTokens(): AdminExternalAccessTokenResponse[] {
       createdAt: '2026-04-02T08:00:00Z',
       expiresAt: '2026-07-02T08:00:00Z',
       status: 'EXPIRED',
-      libraries: [{ id: 'library-mine', name: 'Meine Dokumente', suspended: false }],
+      libraries: [{ id: 'library-mine', name: 'Eigene Unterlagen', suspended: false }],
     },
   ]
 }

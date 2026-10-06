@@ -277,7 +277,7 @@ const viewerLibrary: LibraryListResponse = {
 
 const personalLibrary: LibraryListResponse = {
   id: 'library-mine',
-  name: 'Meine Dokumente',
+  name: 'Eigene Unterlagen',
   description: 'Private Dokumente',
   ownerType: 'USER',
   reach: { allAccounts: false, groupCount: 0, userCount: 1 },

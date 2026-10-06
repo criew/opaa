@@ -251,7 +251,7 @@ vi.mock('../services/assetApi', async () => {
 
 const personalSpace: SpaceResponse = {
   id: 'space-personal',
-  name: 'Meine Dokumente',
+  name: 'Privater Bereich',
   description: 'Private docs',
   isDefault: true,
   archived: false,
