@@ -16,7 +16,12 @@ import TableRow from '@mui/material/TableRow'
 import type { Components } from 'react-markdown'
 import rehypeNormalizeHeadings, { MD_LEVEL_PROPERTY } from './markdownHeadings'
 import type { CitationIndex } from './citations'
-import { CLAIMED_MARKER_RE, readMarker, unwrapBracketedMarkers } from './citations'
+import {
+  CLAIMED_MARKER_RE,
+  escapeMarkerPipes,
+  readMarker,
+  unwrapBracketedMarkers,
+} from './citations'
 import { citationMarkColors, citationMarkSx } from './citationMark'
 import { focusRingAlpha, fontFamily, motion } from '../../theme/tokens'
 import 'highlight.js/styles/github-dark.css'
@@ -338,7 +343,9 @@ function makeComponents(
     thead: ({ children }) => <TableHead>{children}</TableHead>,
     tbody: ({ children }) => <TableBody>{children}</TableBody>,
     tr: ({ children }) => <TableRow>{children}</TableRow>,
-    th: ({ children }) => <TableCell sx={{ fontWeight: 'bold' }}>{children}</TableCell>,
+    th: ({ children }) => (
+      <TableCell sx={{ fontWeight: 'bold' }}>{processChildren(children)}</TableCell>
+    ),
     td: ({ children }) => <TableCell>{processChildren(children)}</TableCell>,
   }
 }
@@ -359,7 +366,7 @@ export default function MarkdownRenderer({
       rehypePlugins={[rehypeHighlight, rehypeNormalizeHeadings]}
       components={components}
     >
-      {preserveCitationMarkers ? content : unwrapBracketedMarkers(content)}
+      {preserveCitationMarkers ? content : escapeMarkerPipes(unwrapBracketedMarkers(content))}
     </ReactMarkdown>
   )
 }
