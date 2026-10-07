@@ -92,6 +92,23 @@ describe('planAccessChange', () => {
     ])
   })
 
+  test('under all accounts, a named subject removed from the list is withdrawn on its own', () => {
+    const plan = planAccessChange(
+      entry([grant('all', 'ALL_ACCOUNTS'), grant('g', 'GROUP', 'g-32', 'Referat 32 Ordnung')]),
+      { level: 'ALL', subjects: [] },
+    )
+    expect(plan.steps).toEqual([
+      { kind: 'REVOKE', grantId: 'g', subjectType: 'GROUP', name: 'Referat 32 Ordnung' },
+    ])
+    expect(plan.withdrawsAllAccounts).toBe(false)
+  })
+
+  test('names a subject without a resolvable name neutrally by its kind', () => {
+    expect(currentAccess(entry([grant('u', 'USER', 'u-1', null)])).subjects).toEqual([
+      { type: 'USER', id: 'u-1', name: 'Konto ohne Namen' },
+    ])
+  })
+
   test('system administration only withdraws every grant, all accounts last', () => {
     const plan = planAccessChange(
       entry([grant('all', 'ALL_ACCOUNTS'), grant('g', 'GROUP', 'g-32', 'Referat 32 Ordnung')]),
@@ -146,7 +163,7 @@ describe('sentences', () => {
       scopeLabel: 'Zugang Nextcloud intern',
     })
     expect(scopeShortLabel(type)).toBe('Confluence')
-    expect(objectPhrase(type)).toBe('Bibliotheken mit Inhalten aus Confluence anlegen')
+    expect(objectPhrase(type)).toBe('Bibliotheken für die Quelle „Confluence“ anlegen')
     expect(objectPhrase(profile)).toBe('Bibliotheken über den Zugang „Nextcloud intern“ anlegen')
   })
 })
@@ -164,5 +181,18 @@ describe('bucketByAccess', () => {
       ['Alle Konten', ['A', 'C']],
       ['Nur Systemverwaltung', ['B']],
     ])
+  })
+
+  test('keeps scopes with the same subjects together whatever order they were granted in', () => {
+    const scoped = (scope: string, grants: CapabilityGrantResponse[]) =>
+      entry(grants, { capability: 'CREATE_CONNECTOR_LIBRARY', scope, scopeLabel: scope })
+    const a = (id: string) => grant(id, 'GROUP', 'g-a', 'A')
+    const b = (id: string) => grant(id, 'GROUP', 'g-b', 'B')
+    const buckets = bucketByAccess([
+      scoped('TYPE:X', [a('1'), b('2')]),
+      scoped('TYPE:Y', [b('3'), a('4')]),
+    ])
+    expect(buckets).toHaveLength(1)
+    expect(buckets[0].label).toBe('A, B')
   })
 })

@@ -20,11 +20,10 @@ import { presentationOf } from './capabilityPresentation'
 
 const NAMES_SHOWN = 3
 
-/** "Referat 32 Ordnung, Ines Vogel und 2 weitere" - the named subjects under a restricted right. */
+/** "Referat 32 Ordnung, Ines Vogel und 2 weitere" - the named subjects of a right. */
 function namesLine(entry: CapabilityOverviewResponse): string | null {
-  const access = currentAccess(entry)
-  if (access.level !== 'SELECTED') return null
-  const names = access.subjects.map((subject) => subject.name)
+  const names = currentAccess(entry).subjects.map((subject) => subject.name)
+  if (names.length === 0) return null
   if (names.length <= NAMES_SHOWN) return names.join(', ')
   return `${names.slice(0, NAMES_SHOWN).join(', ')} und ${names.length - NAMES_SHOWN} weitere`
 }
@@ -150,7 +149,15 @@ export default function CapabilityRow({ entries, onEdit }: CapabilityRowProps) {
             sx={{ mt: 1.25, display: 'flex', gap: 1.25, alignItems: 'baseline', flexWrap: 'wrap' }}
           >
             <AccessBadge tone={access.level} label={accessBadgeLabel(access)} />
-            {names && <Typography sx={{ fontSize: 13.5 }}>{names}</Typography>}
+            {names && access.level === 'SELECTED' && (
+              <Typography sx={{ fontSize: 13.5 }}>{names}</Typography>
+            )}
+            {names && access.level === 'ALL' && (
+              // Named grants next to all accounts take no effect until the right is restricted.
+              <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                Zusätzlich eingetragen: {names}
+              </Typography>
+            )}
             <Box component="span" sx={visuallyHidden}>
               {first.statement}
             </Box>

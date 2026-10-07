@@ -46,6 +46,11 @@ function subjectKey(subject: { type: string; id: string }): string {
   return `${subject.type}:${subject.id}`
 }
 
+/** The placeholder for a person or group whose name the backend could not resolve. */
+function unnamed(type: 'USER' | 'GROUP'): string {
+  return type === 'GROUP' ? 'Gruppe ohne Namen' : 'Konto ohne Namen'
+}
+
 export function namedSubjectsOf(entry: CapabilityOverviewResponse): NamedSubject[] {
   return entry.grants.flatMap((grant) =>
     grant.subjectType === 'ALL_ACCOUNTS' || !grant.subjectId
@@ -54,7 +59,7 @@ export function namedSubjectsOf(entry: CapabilityOverviewResponse): NamedSubject
           {
             type: grant.subjectType,
             id: grant.subjectId,
-            name: grant.subjectName ?? 'Nicht mehr auffindbar',
+            name: grant.subjectName ?? unnamed(grant.subjectType),
           },
         ],
   )
@@ -69,12 +74,16 @@ export function currentAccess(entry: CapabilityOverviewResponse): Access {
 }
 
 /**
- * The calls that turn the current state of `entry` into `target`. Opening to all accounts keeps
- * the named grants; "only the system administration" withdraws every grant.
+ * The calls that turn the current state of `entry` into `target`. Under all accounts the named
+ * grants in `target.subjects` stay and only the removed ones are withdrawn; "only the system
+ * administration" withdraws every grant.
  */
 export function planAccessChange(entry: CapabilityOverviewResponse, target: Access): AccessPlan {
   const allGrant = entry.grants.find((grant) => grant.subjectType === 'ALL_ACCOUNTS')
   const named = entry.grants.filter((grant) => grant.subjectType !== 'ALL_ACCOUNTS')
+  const wanted = new Set(
+    target.level === 'ADMIN_ONLY' ? [] : target.subjects.map((subject) => subjectKey(subject)),
+  )
   const grants: AccessStep[] = []
   const revokes: AccessStep[] = []
 
@@ -99,28 +108,26 @@ export function planAccessChange(entry: CapabilityOverviewResponse, target: Acce
       }
     }
   }
-  if (target.level !== 'ALL') {
-    const wanted = new Set(
-      target.level === 'SELECTED' ? target.subjects.map((subject) => subjectKey(subject)) : [],
-    )
-    for (const grant of named) {
-      if (!wanted.has(`${grant.subjectType}:${grant.subjectId}`)) {
-        revokes.push({
-          kind: 'REVOKE',
-          grantId: grant.id,
-          subjectType: grant.subjectType,
-          name: grant.subjectName ?? 'Nicht mehr auffindbar',
-        })
-      }
-    }
-    if (allGrant) {
+  for (const grant of named) {
+    if (
+      grant.subjectType !== 'ALL_ACCOUNTS' &&
+      !wanted.has(`${grant.subjectType}:${grant.subjectId}`)
+    ) {
       revokes.push({
         kind: 'REVOKE',
-        grantId: allGrant.id,
-        subjectType: 'ALL_ACCOUNTS',
-        name: allAccountsLabel,
+        grantId: grant.id,
+        subjectType: grant.subjectType,
+        name: grant.subjectName ?? unnamed(grant.subjectType),
       })
     }
+  }
+  if (allGrant && target.level !== 'ALL') {
+    revokes.push({
+      kind: 'REVOKE',
+      grantId: allGrant.id,
+      subjectType: 'ALL_ACCOUNTS',
+      name: allAccountsLabel,
+    })
   }
   return {
     steps: [...grants, ...revokes],
@@ -194,7 +201,7 @@ const OBJECT_PHRASES: Partial<Record<CapabilityOverviewResponse['capability'], s
 /** What the right allows, as the end of a sentence: "… dürfen Spaces anlegen". */
 export function objectPhrase(entry: CapabilityOverviewResponse): string {
   const kind = scopeKind(entry)
-  if (kind === 'TYPE') return `Bibliotheken mit Inhalten aus ${scopeShortLabel(entry)} anlegen`
+  if (kind === 'TYPE') return `Bibliotheken für die Quelle „${scopeShortLabel(entry)}“ anlegen`
   if (kind === 'PROFILE') {
     return `Bibliotheken über den Zugang „${scopeShortLabel(entry)}“ anlegen`
   }
@@ -212,15 +219,18 @@ export function bucketByAccess(entries: CapabilityOverviewResponse[]): AccessBuc
   const buckets = new Map<string, AccessBucket>()
   for (const entry of entries) {
     const access = currentAccess(entry)
+    // Sorted, so the same subjects granted in another order still share one bucket.
+    const subjects = distinctSubjects(access.subjects).sort((a, b) =>
+      a.name.localeCompare(b.name, 'de'),
+    )
     const label =
       access.level === 'SELECTED'
-        ? distinctSubjects(access.subjects)
-            .map((subject) => subject.name)
-            .join(', ')
+        ? subjects.map((subject) => subject.name).join(', ')
         : accessBadgeLabel(access)
-    const bucket = buckets.get(`${access.level}:${label}`)
+    const key = `${access.level}:${subjects.map((subject) => subjectKey(subject)).join(',')}`
+    const bucket = buckets.get(key)
     if (bucket) bucket.entries.push(entry)
-    else buckets.set(`${access.level}:${label}`, { level: access.level, label, entries: [entry] })
+    else buckets.set(key, { level: access.level, label, entries: [entry] })
   }
   return [...buckets.values()]
 }

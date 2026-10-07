@@ -173,9 +173,61 @@ describe('CapabilityManagementPage', () => {
     const panel = await restrictSpacesTo(user, 'Referat 5 Projektteam', /Referat 5 Projektteam/)
     await answerConfirm(user, 'Nicht mehr für alle Konten?', 'Einschränken')
 
-    expect(await within(panel).findByRole('alert')).toHaveTextContent(
-      'Ausgeführt wurden 1 von 2 Schritten',
+    const alert = await within(panel).findByRole('alert')
+    expect(alert).toHaveTextContent('Ausgeführt wurden 1 von 2 Schritten')
+    // the message gets the focus, and the choice survives the reload for a second attempt
+    await waitFor(() => expect(alert).toHaveFocus())
+    expect(within(panel).getByLabelText('Nur bestimmte Gruppen und Personen')).toBeChecked()
+  })
+
+  it('withdraws a resting named grant next to all accounts on its own, without asking', async () => {
+    const calls = recordCalls()
+    server.use(
+      http.get('/api/v1/admin/capabilities', () =>
+        HttpResponse.json([
+          {
+            capability: 'CREATE_SPACE',
+            label: 'Spaces anlegen',
+            statement: 'Alle Konten dürfen Spaces anlegen.',
+            grants: [
+              {
+                id: 'grant-all',
+                capability: 'CREATE_SPACE',
+                subjectType: 'ALL_ACCOUNTS',
+                subjectId: null,
+                subjectName: null,
+                grantedByUserId: null,
+                createdAt: '2026-09-01T08:00:00Z',
+              },
+              {
+                id: 'grant-ines',
+                capability: 'CREATE_SPACE',
+                subjectType: 'USER',
+                subjectId: 'user-ines',
+                subjectName: 'Ines Vogel',
+                grantedByUserId: 'user-1',
+                createdAt: '2026-10-01T08:00:00Z',
+              },
+            ],
+          },
+        ]),
+      ),
     )
+    renderWithProviders(<CapabilityManagementPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('Zusätzlich eingetragen: Ines Vogel')).toBeInTheDocument()
+    const panel = await openPanel(user, 'Spaces')
+    await user.click(within(panel).getByRole('button', { name: 'Ines Vogel entfernen' }))
+    // the last entry gone, the focus returns to the chosen answer instead of the panel's top
+    await waitFor(() => expect(within(panel).getByLabelText('Alle Konten')).toHaveFocus())
+    expect(within(panel).getByRole('status')).toHaveTextContent(
+      'Entfernt wird der Eintrag Ines Vogel.',
+    )
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(calls).toEqual(['REVOKE CREATE_SPACE grant-ines']))
+    expect(screen.queryByRole('dialog', { name: /alle Konten/ })).not.toBeInTheDocument()
   })
 
   it('previews the result and keeps "Speichern" off until something changes', async () => {

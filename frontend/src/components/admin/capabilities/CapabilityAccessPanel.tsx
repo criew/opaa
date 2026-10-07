@@ -176,6 +176,7 @@ export default function CapabilityAccessPanel({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
+  const errorRef = useRef<HTMLDivElement>(null)
 
   const first = entries?.[0]
   const scoped = Boolean(first?.scope)
@@ -183,9 +184,15 @@ export default function CapabilityAccessPanel({
   const presentation = first ? presentationOf(first.capability, first.label) : null
 
   // A view change inside the open panel moves the focus to its new heading.
+  const open = Boolean(entries)
   useEffect(() => {
-    if (entries) headingRef.current?.focus()
-  }, [scope, entries])
+    if (open) headingRef.current?.focus()
+  }, [scope, open])
+
+  // After a failed save the focus goes to the message (docs/design/accessibility.md, 2.7).
+  useEffect(() => {
+    if (error) errorRef.current?.focus()
+  }, [error])
 
   function choose(next: string | null) {
     setError(null)
@@ -274,13 +281,21 @@ export default function CapabilityAccessPanel({
 
       <Box sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2.5 }}>
         {error && (
-          <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          <Alert
+            ref={errorRef}
+            tabIndex={-1}
+            severity="error"
+            sx={{ mb: 2 }}
+            onClose={() => setError(null)}
+          >
             {error}
           </Alert>
         )}
         {entry && (
           <AccessEditor
-            key={`${entry.scope ?? entry.capability}:${entry.grants.map((g) => g.id).join(',')}`}
+            // Keyed by the right and scope only: after a failed save the choice stays and is
+            // planned against the reloaded state when saved again.
+            key={entry.scope ?? entry.capability}
             entry={entry}
             phrase={objectPhrase(entry)}
             busy={busy}

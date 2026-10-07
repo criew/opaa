@@ -1,4 +1,4 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
@@ -33,17 +33,34 @@ const CHOICES: Array<{ level: AccessLevel; title: string; hint: string }> = [
   { level: 'ADMIN_ONLY', title: 'Nur die Systemverwaltung', hint: 'Niemand sonst.' },
 ]
 
+/**
+ * The named persons and groups with their remove buttons. Removing one moves the focus to the next
+ * remove button, or to `onEmptied` when the list runs empty - never to the top of the panel.
+ */
 function SelectedSubjects({
   subjects,
   onRemove,
+  onEmptied,
 }: {
   subjects: NamedSubject[]
   onRemove: (subject: NamedSubject) => void
+  onEmptied: () => void
 }) {
+  const listRef = useRef<HTMLUListElement>(null)
   if (subjects.length === 0) return null
+
+  function remove(subject: NamedSubject, index: number) {
+    onRemove(subject)
+    requestAnimationFrame(() => {
+      const buttons = listRef.current?.querySelectorAll<HTMLButtonElement>('button[data-remove]')
+      if (buttons && buttons.length > 0) buttons[Math.min(index, buttons.length - 1)].focus()
+      else onEmptied()
+    })
+  }
+
   return (
-    <Stack component="ul" spacing={0.5} sx={{ listStyle: 'none', p: 0, m: 0 }}>
-      {subjects.map((subject) => {
+    <Stack ref={listRef} component="ul" spacing={0.5} sx={{ listStyle: 'none', p: 0, m: 0 }}>
+      {subjects.map((subject, index) => {
         const Icon = subject.type === 'GROUP' ? GroupsOutlinedIcon : PersonOutlineIcon
         return (
           <Box
@@ -69,8 +86,9 @@ function SelectedSubjects({
             </Typography>
             <IconButton
               size="small"
+              data-remove=""
               aria-label={`${subject.name} entfernen`}
-              onClick={() => onRemove(subject)}
+              onClick={() => remove(subject, index)}
             >
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
@@ -100,10 +118,28 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
   const [level, setLevel] = useState<AccessLevel>(initial.level)
   const [subjects, setSubjects] = useState<NamedSubject[]>(initial.subjects)
   const [pickerKey, setPickerKey] = useState(0)
+  const rootRef = useRef<HTMLDivElement>(null)
 
   const target: Access = { level, subjects }
-  const unchanged = planAccessChange(entry, target).steps.length === 0
+  const plan = planAccessChange(entry, target)
+  const unchanged = plan.steps.length === 0
+  // Under all accounts the only possible change besides opening is removing resting entries.
+  const removedUnderAll =
+    level === 'ALL'
+      ? plan.steps.filter((step) => step.kind === 'REVOKE').map((step) => step.name)
+      : []
   const missingSubject = level === 'SELECTED' && subjects.length === 0
+
+  function removeSubject(subject: NamedSubject) {
+    setSubjects((current) =>
+      current.filter((known) => known.type !== subject.type || known.id !== subject.id),
+    )
+  }
+
+  /** Where the focus goes when the last named subject is removed. */
+  function focusAfterEmptied(selector: string) {
+    rootRef.current?.querySelector<HTMLElement>(selector)?.focus()
+  }
 
   function add(subject: NamedSubject) {
     setSubjects((current) =>
@@ -115,12 +151,13 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
   }
 
   return (
-    <Stack spacing={2.5}>
+    <Stack ref={rootRef} spacing={2.5}>
       <Box>
         <Typography sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary' }}>
           Stand jetzt
         </Typography>
-        <Typography sx={{ fontSize: 14, mt: 0.25 }}>{resultSentence(initial, phrase)}</Typography>
+        {/* The backend's plain-text line of the state (ADR-0036, Entscheidung 5). */}
+        <Typography sx={{ fontSize: 14, mt: 0.25 }}>{entry.statement}</Typography>
       </Box>
 
       <Box>
@@ -210,13 +247,24 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
                     />
                     <SelectedSubjects
                       subjects={subjects}
-                      onRemove={(subject) =>
-                        setSubjects((current) =>
-                          current.filter(
-                            (known) => known.type !== subject.type || known.id !== subject.id,
-                          ),
-                        )
+                      onRemove={removeSubject}
+                      onEmptied={() =>
+                        focusAfterEmptied('input[aria-label="Gruppe oder Person hinzufügen"]')
                       }
+                    />
+                  </Stack>
+                )}
+                {choice.level === 'ALL' && selected && subjects.length > 0 && (
+                  <Stack spacing={1} sx={{ px: 1.5, pb: 1.5 }}>
+                    <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                      Zusätzlich eingetragen. Solange alle Konten dürfen, wirken diese Einträge
+                      nicht; sie gelten wieder, wenn Sie das Recht einschränken. Nicht mehr
+                      benötigte Einträge können Sie hier entfernen.
+                    </Typography>
+                    <SelectedSubjects
+                      subjects={subjects}
+                      onRemove={removeSubject}
+                      onEmptied={() => focusAfterEmptied('input[type="radio"][value="ALL"]')}
                     />
                   </Stack>
                 )}
@@ -246,6 +294,12 @@ export default function AccessEditor({ entry, phrase, busy, onCancel, onSave }: 
               ? 'Keine Änderung.'
               : resultSentence(target, phrase)}
         </Typography>
+        {removedUnderAll.length > 0 && (
+          <Typography sx={{ fontSize: 13.5, mt: 0.25 }}>
+            Entfernt {removedUnderAll.length === 1 ? 'wird der Eintrag' : 'werden die Einträge'}{' '}
+            {removedUnderAll.join(', ')}.
+          </Typography>
+        )}
         {!unchanged && !missingSubject && (
           <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.5 }}>
             Die Änderung wirkt sofort, ohne neue Anmeldung, und wird protokolliert.
