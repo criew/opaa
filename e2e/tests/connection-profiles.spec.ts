@@ -150,19 +150,23 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     // Freigabe = Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang (Handbuch: „Wer einen
     // Zugang nutzen darf“). Ein neuer Zugang ist für niemanden außer der Systemverwaltung frei.
     await page.goto('/admin/capabilities')
-    const card = page.getByRole('region', {
-      name: 'Konnektorbibliotheken anlegen',
-    })
-    const scope = card.getByRole('region', { name: `Zugang ${PROFILE_NAME}` })
-    await expect(scope).toContainText('Niemand hält dieses Anlegerecht.')
-    await card.getByRole('combobox', { name: 'Geltungsbereich' }).click()
-    await page.getByRole('option', { name: `Zugang ${PROFILE_NAME}` }).click()
-    const groupInput = card.getByRole('combobox', { name: 'Gruppe' })
-    await groupInput.click()
-    await groupInput.fill(GROUP_NAME)
+    const right = page.getByRole('listitem', { name: 'Bibliotheken mit Anbindung' })
+    await expect(right).toContainText(`Zugang ${PROFILE_NAME}: aus, nur die Systemverwaltung.`)
+    await right.getByRole('button', { name: 'Ändern: Bibliotheken mit Anbindung' }).click()
+    const panel = page.getByRole('dialog')
+    await panel.getByRole('button', { name: new RegExp(PROFILE_NAME) }).click()
+    await panel.getByLabel('Nur bestimmte Gruppen und Personen').click()
+    await panel.getByLabel('Gruppe oder Person hinzufügen').fill(GROUP_NAME)
     await page.getByRole('option', { name: new RegExp(GROUP_NAME) }).click()
-    await card.getByRole('button', { name: 'Erteilen' }).click()
-    await expect(scope).toContainText(GROUP_NAME)
+    await panel.getByRole('button', { name: 'Speichern' }).click()
+    // Saving returns to the list of sources and accesses; the overview behind the open panel is
+    // hidden from the accessibility tree until the panel is closed.
+    await expect(panel.getByRole('button', { name: new RegExp(PROFILE_NAME) })).toContainText(
+      '1 Gruppe',
+    )
+    await panel.getByRole('button', { name: 'Schließen' }).click()
+    await expect(panel).toHaveCount(0)
+    await expect(right).toContainText(`Freigegeben für ${GROUP_NAME}`)
   })
 
   test('1b. Gruppenmitglied legt eine Bibliothek über den Zugang an, sie läuft und wird gefunden', async ({

@@ -949,15 +949,39 @@ Quellart öffnet keinen ihrer Zugänge.
   für mindestens eine Quellart oder einen Zugang hat.
 - **Ein gelöschter Zugang nimmt seine Freigaben mit**; ihr Entzug steht in der Rechtehistorie.
 
-Vergeben und entzogen werden Anlegerechte unter **Administration → Anlegerechte**. Dort steht je
-Anlegerecht eine Zeile in Klartext („Alle Konten dürfen Spaces anlegen."), bei „Konnektorbibliotheken
-anlegen" je Quellart und je Zugang eine („Zugang Nextcloud intern: frei für Alle Konten."), darunter
-die berechtigten Personen, Gruppen und „Alle Konten" — jede mit der Handlung „Entziehen" — und ein
-Feld, um es einer Person, einer Gruppe oder allen Konten zu erteilen; bei „Konnektorbibliotheken
-anlegen" wählt es zuerst den Geltungsbereich, eine Quellart oder einen Zugang. Der Entzug von „Alle Konten"
-verlangt eine Rückfrage: Er ändert die Arbeitsbedingungen aller Beschäftigten. **Vergabe und Entzug
-sind Governance-Ereignisse** im Nachweisprotokoll und werden mit ihrem Zeitraum in der
-Rechtehistorie festgehalten.
+Vergeben und entzogen werden Anlegerechte unter **Administration → Anlegerechte**. Die Seite
+beantwortet eine Frage: **„Wer darf was anlegen?"**
+
+- **Übersicht.** Je Anlegerecht steht eine Zeile mit kurzer Erklärung und dem Stand als Kennzeichen:
+  **„Alle Konten"**, die Zahl der berechtigten Gruppen und Personen samt Namen (etwa „1 Gruppe,
+  1 Person") oder **„Nur Systemverwaltung"**. Bei „Bibliotheken mit Anbindung"
+  (Konnektorbibliotheken) stehen Quellen und Zugänge mit gleichem Stand zusammen, getrennt nach
+  „Quellen" und „Zugänge"; eine abweichende Quelle fällt so sofort auf. Die Klartextzeile des
+  Stands („Alle Konten dürfen Spaces anlegen.", „Zugang Nextcloud intern: frei für Alle Konten.")
+  gehört zu jeder Zeile, wird von Screenreadern vorgelesen und steht sichtbar im Panel unter
+  „Stand jetzt". Eingabefelder hat die Übersicht nicht.
+- **Ändern.** „Ändern" öffnet ein Seitenpanel mit genau einer Frage, etwa „Wer darf Spaces
+  anlegen?", und drei Antworten: **Alle Konten**, **Nur bestimmte Gruppen und Personen** (mit einer
+  gemeinsamen Suche für Gruppen und Personen) oder **Nur die Systemverwaltung**. Bei
+  Konnektorbibliotheken wählt man im Panel zuerst die Quelle oder den Zugang. Unter der Auswahl
+  steht vor dem Speichern, was danach gilt („Referat 32 Ordnung und die Systemverwaltung dürfen
+  Spaces anlegen."). Erst „Speichern" sendet etwas.
+- **Reihenfolge beim Einschränken.** OPAA erteilt zuerst den neu gewählten Gruppen und Personen und
+  entzieht danach, „Alle Konten" zuletzt. Zu keinem Zeitpunkt dürfen damit weniger Konten anlegen
+  als vorher und nachher. Schlägt ein Schritt fehl, nennt das Panel, wie viele Schritte ausgeführt
+  wurden, und die Übersicht zeigt den Stand danach. Die getroffene Auswahl bleibt im Panel stehen
+  und lässt sich erneut speichern.
+- **Benannte Vergaben neben „Alle Konten".** Wer ein eingeschränktes Recht wieder für alle öffnet,
+  behält die benannten Gruppen und Personen; die Übersicht nennt sie als „Zusätzlich eingetragen".
+  Solange alle Konten dürfen, wirken sie nicht, eine spätere Einschränkung beginnt mit ihnen. Im
+  Panel lassen sie sich unter „Alle Konten" einzeln entfernen, ohne „Alle Konten" anzutasten.
+  „Nur die Systemverwaltung" entzieht dagegen jede Vergabe.
+- **Rückfragen.** Der Entzug von „Alle Konten" verlangt eine Bestätigung, weil er die
+  Arbeitsbedingungen aller Beschäftigten ändert. Eine Gruppe eines externen Anbieters verlangt die
+  übliche Zwischenfrage (Abschnitt 6).
+
+**Vergabe und Entzug sind Governance-Ereignisse** im Nachweisprotokoll und werden mit ihrem Zeitraum
+in der Rechtehistorie festgehalten.
 
 ## 10. Systemrollen und Vollmachten
 
@@ -1362,7 +1386,8 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
   organisatorische Weg — die Änderung wird wie ein Governance-Ereignis behandelt und dokumentiert,
   nachweisbar ist sie nur über die Konfiguration der Installation.
 - **Der ausgelieferte Zustand der Anlegerechte wird bewusst bestätigt oder geändert** (Abschnitt 9).
-  Die Klartextzeile unter Administration → Anlegerechte ist dafür gedacht.
+  Die Übersicht unter Administration → Anlegerechte zeigt dafür je Recht den Stand; im Panel
+  „Ändern" steht er als Klartextzeile unter „Stand jetzt".
 
 ## 17. Was es hier nicht gibt
 
