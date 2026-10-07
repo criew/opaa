@@ -5,8 +5,24 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-06T06:40:45Z</updated>
+  <updated>2026-10-07T06:17:04Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 6. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-06.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-06.html</id>
+    <updated>2026-10-07T06:17:04Z</updated>
+    <summary type="text">feat: Nutzerwünsche Prozesse &amp; Kommunikation aus Feedbackrunde (zur Bewertung):
+— Kurznachrichten an andere Nutzer zur Bewertung angelegt
+— Außenfrontend nach OZG-Art zur Bewertung angelegt
+— Elektronische Signatur von Dokumenten zur Bewertung angelegt
+— Automatisierung interner Verwaltungsprozesse zur Bewertung angelegt
+Sonstiges:
+— E2E-Tests für lokale Anmeldung repariert und gemergt
+— Quellenverweise in Markdown-Tabellen als Fußnoten dargestellt
+— Zitiermarken mit Dateinamen und in Klammern repariert
+— Quick-Tour für neue Nutzer bei erster Anmeldung angelegt</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 5. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-05.html"/>
@@ -868,22 +884,5 @@ Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen:
 — Anlagen an Detailseiten mit Profilen indizieren
 Sonstiges:
 — Roadmap-Meilenstein 1 zum 31.08.2026 dokumentiert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Montag, 17. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-17.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-17.html</id>
-    <updated>2026-08-18T01:57:35Z</updated>
-    <summary type="text">Epic: Space and asset model — replace the workspace model:
-— Wissensbibliotheken mit Upload, Freigabe und rechtebewusster Suche umgesetzt
-— Historisierung von Rechten und Gruppenmitgliedschaften implementiert
-— E2E-Tests für Bibliotheken-Workflows geschrieben und gemergt
-Epic: Nacharbeiten Wissensbibliotheken und Upload:
-— Elf Nacharbeiten zu Wissensbibliotheken und Upload identifiziert
-Epic: Audit-Betriebshärtung — Nacharbeiten aus Stage A:
-— Sieben Audit-Härtungs- und Nacharbeits-Tickets angelegt
-Sonstiges:
-— UX-Designer-Rolle in Agenten-Organisation eingeführt
-— Audit-Serie abgeschlossen: Protokollablage, Zugriffswege, Selbstprotokolle, Aufbewahrung</summary>
   </entry>
 </feed>
