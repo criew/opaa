@@ -172,6 +172,111 @@ class FullTextChunkSearchIntegrationTest {
     assertThat(hits).extracting(Document::getId).contains(repetitive.toString());
   }
 
+  /**
+   * Regression guard for #2334: a question naming a technical field name must reach the one section
+   * that carries it, ahead of sections repeating the question's common words, and within a list
+   * budget smaller than the number of those sections. Ranked by term frequency alone the field name
+   * is one more body-text word and the field table falls off the list.
+   */
+  @Test
+  void anUppercaseFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
+    seedHandbookSections(10);
+    UUID fieldTable =
+        seed(readableLibrary, "Feldtabelle Satzart 20: VORORT, Länge 1, Kennzeichen Ortslage.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Was bedeutet das Feld VORORT im Schnittstellenhandbuch?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            8);
+
+    assertFirstHit(hits, fieldTable);
+  }
+
+  /** The underscore form takes the same route as the all-uppercase word. */
+  @Test
+  void anUpperSnakeCaseFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
+    seedHandbookSections(10);
+    UUID fieldTable = seed(readableLibrary, "Satzart 10: BELEG_NR, numerisch, achtstellig.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Wie ist das Feld BELEG_NR im Schnittstellenhandbuch aufgebaut?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            8);
+
+    assertFirstHit(hits, fieldTable);
+  }
+
+  /** The camel-case form takes the same route as the all-uppercase word. */
+  @Test
+  void aCamelCaseFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
+    seedHandbookSections(10);
+    UUID fieldTable = seed(readableLibrary, "Satzart 30: ZahlungsDatenKV, Gruppe, wiederholbar.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Was bedeutet das Feld ZahlungsDatenKV im Schnittstellenhandbuch?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            8);
+
+    assertFirstHit(hits, fieldTable);
+  }
+
+  /**
+   * Regression guard for #2334: a law abbreviation read as part of a paragraph reference yields no
+   * field-name lexeme of its own. Otherwise every section naming the same law shares a weight-A
+   * match with the question, and a § 34 section overtakes the § 35 one the question asks for.
+   */
+  @Test
+  void aLawAbbreviationInsideAParagraphReferenceDoesNotLiftOtherParagraphsOfThatLaw() {
+    UUID wanted = seed(readableLibrary, "§ 35 regelt Vorhaben im Außenbereich.");
+    seed(
+        readableLibrary,
+        "Nach § 34 BauGB ist ein Vorhaben im Innenbereich zulässig, wenn es sich einfügt; das"
+            + " BauGB nennt dafür die Eigenart der näheren Umgebung.");
+    seed(readableLibrary, "Das BauGB ist das zentrale Gesetz des Bauplanungsrechts.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Ist ein Vorhaben im Außenbereich nach § 35 BauGB zulässig?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
+
+    assertFirstHit(hits, wanted);
+  }
+
+  /**
+   * The same with Absatz, Nummer and Satz between paragraph and law, the common form in
+   * administrative texts: the law abbreviation still belongs to the reference.
+   */
+  @Test
+  void aLawAbbreviationBehindAbsatzAndNummerDoesNotLiftOtherParagraphsOfThatLaw() {
+    UUID wanted = seed(readableLibrary, "§ 35 regelt Vorhaben im Außenbereich.");
+    seed(
+        readableLibrary,
+        "Nach § 34 Abs. 1 Satz 1 BauGB ist ein Vorhaben im Innenbereich zulässig, wenn es sich"
+            + " einfügt.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Ist mein Vorhaben nach § 35 Abs. 1 Nr. 4 BauGB privilegiert?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
+
+    assertFirstHit(hits, wanted);
+  }
+
   /** The path answers the #938 case it exists for: a literal term the vector path ranks away. */
   @Test
   void aLiteralTermIsFoundWhereverItStands() {
@@ -353,6 +458,28 @@ class FullTextChunkSearchIntegrationTest {
             "Satzung Gebühr", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25);
 
     assertThat(hits).extracting(hit -> hit.getMetadata().get("chunk_index")).containsExactly(2, 10);
+  }
+
+  /** Compares ids, but reports the hit texts, which say more than two UUIDs. */
+  private static void assertFirstHit(List<Document> hits, UUID expected) {
+    assertThat(hits)
+        .as("hits in rank order: %s", hits.stream().map(Document::getText).toList())
+        .extracting(Document::getId)
+        .first()
+        .isEqualTo(expected.toString());
+  }
+
+  /** Sections of a fictitious interface manual that repeat the common words of a field question. */
+  private void seedHandbookSections(int count) {
+    for (int section = 1; section <= count; section++) {
+      seed(
+          readableLibrary,
+          "Schnittstellenhandbuch Abschnitt "
+              + section
+              + ": Jedes Feld im Schnittstellenhandbuch hat eine Bedeutung und ist fest aufgebaut."
+              + " Das Feld ist Pflicht, das Feld wird geprüft, die Bedeutung jedes Feldes steht im"
+              + " Schnittstellenhandbuch.");
+    }
   }
 
   private UUID seed(UUID libraryId, String text) {

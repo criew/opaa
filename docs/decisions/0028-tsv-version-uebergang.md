@@ -8,13 +8,14 @@ Akzeptiert (Maintainer-Entscheidung vom 08.09.2026, Issue #1346)
 
 Jede Zeile in `chunk_full_text` trägt in `content_tsv_version` die Fassung der Lexembildung, unter der
 ihr `tsvector` geschrieben wurde. `FullTextChunkStore.CURRENT_TSV_VERSION` wird angehoben, sobald
-sich die gespeicherten Lexeme ändern — bisher dreimal, jedes Mal **additiv**:
+sich die gespeicherten Lexeme ändern — bisher viermal, jedes Mal **additiv**:
 
 | Anhebung | Änderung | Issue |
 |---|---|---|
 | 1 → 3 | unzerlegte Kennungslexeme (§-Angaben, Aktenzeichen) mit Gewicht `A` | #1097 |
 | 3 → 4 | E-Mail-Adressen als Kennungslexem | #1166 |
 | 4 → 5 | Kontextpräfix (Titel, Kernfelder) fließt in die `EMBED`-Form und damit in den Index | #1341 |
+| 5 → 6 | technische Feld- und Elementnamen (`BELEG_NR`, `ZahlungsDatenKV`, `VORORT`) als Kennungslexem | #2334 |
 
 Die Konstante hat drei Verbraucher:
 
