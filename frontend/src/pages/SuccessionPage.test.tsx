@@ -50,7 +50,7 @@ describe('SuccessionPage', () => {
       '/libraries/lib-1',
     )
     const row = rowOf('Bauakten Referat 50')
-    expect(row).toHaveTextContent('Das Konto, dem die Bibliothek gehört, ist nicht mehr aktiv.')
+    expect(row).toHaveTextContent('Wem die Bibliothek gehört, kann nicht mehr handeln.')
     expect(row).toHaveTextContent('Zuständig: die Systemverwaltung')
     expect(row).toHaveTextContent(/offen seit \d+ Tagen/)
     expect(row).toHaveTextContent('lange offen')
@@ -100,7 +100,7 @@ describe('SuccessionPage', () => {
       '/prompts/prompt-library-1',
     )
     expect(rowOf('Formulierungshilfen')).toHaveTextContent(
-      'Das Konto, dem die Prompt-Bibliothek gehört, ist nicht mehr aktiv.',
+      'Wem die Prompt-Bibliothek gehört, kann nicht mehr handeln.',
     )
   })
 
@@ -238,10 +238,18 @@ describe('SuccessionPage', () => {
     ).toBeInTheDocument()
   })
 
-  it('explains the page to an account without the system role', async () => {
+  it('explains the page to an account without the system role and asks the server nothing', async () => {
+    const requests: string[] = []
+    server.use(
+      http.get('/api/v1/admin/succession', ({ request }) => {
+        requests.push(request.url)
+        return HttpResponse.json({ entries: [], page: 0, size: 1, totalElements: 0, totalPages: 0 })
+      }),
+    )
     signInAs('USER')
     renderPage()
 
     expect(await screen.findByText(/nicht freigegeben/i)).toBeInTheDocument()
+    expect(requests).toEqual([])
   })
 })

@@ -258,7 +258,7 @@ export default function SuccessionRow({
           source={{ type: 'GROUP', id: entry.objectId, name: entry.objectName }}
           targetKinds={['GROUP']}
           scopes={['OWNERSHIP', 'ASSET_GRANTS', 'SPACE_MEMBERSHIPS', 'CAPABILITIES']}
-          intro={`Eigentum und Rechte von „${entry.objectName}“ gehen an die gewählte Gruppe. Der Eintrag verschwindet aus der Liste, sobald wieder jemand Aktives zuständig ist.`}
+          intro={`Eigentum und Rechte von „${entry.objectName}“ gehen an die gewählte Gruppe. Diese Gruppe sollte aktive Mitglieder haben, damit die Rechte wieder jemanden erreichen.`}
           onTransferred={onChanged}
           labels={{ title: 'Rechte übergeben', targetGroup: 'Neue Gruppe' }}
         />

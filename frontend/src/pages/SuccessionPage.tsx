@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -23,23 +23,50 @@ function isSuccessionTab(value: string | undefined): value is SuccessionTab {
 
 /**
  * How many entries each tab holds - per kind of entry only, never per person (ADR-0036,
- * Entscheidung 6). Undefined while loading or when a count could not be read.
+ * Entscheidung 6). Undefined while loading or when a count could not be read. Reloaded on every
+ * tab change; an answer that arrives after a newer request is dropped.
  */
-function useTabCounts(): [Partial<Record<SuccessionTab, number>>, () => void] {
+function useTabCounts(
+  activeTab: SuccessionTab,
+): [Partial<Record<SuccessionTab, number>>, () => void] {
   const [counts, setCounts] = useState<Partial<Record<SuccessionTab, number>>>({})
+  const latest = useRef(0)
   const load = useCallback(() => {
+    const request = ++latest.current
     void Promise.all(
       TAB_ORDER.map((tab) =>
         getSuccessionEntries(SUCCESSION_TABS[tab].kind, 0, 1)
           .then((listing) => [tab, listing.totalElements] as const)
           .catch(() => [tab, undefined] as const),
       ),
-    ).then((entries) => setCounts(Object.fromEntries(entries)))
+    ).then((entries) => {
+      if (request === latest.current) setCounts(Object.fromEntries(entries))
+    })
   }, [])
   useEffect(() => {
     load()
-  }, [load])
+  }, [load, activeTab])
   return [counts, load]
+}
+
+/** The page body for the system administration - the counts are only asked for here. */
+function SuccessionContent({ activeTab }: { activeTab: SuccessionTab }) {
+  const [counts, reloadCounts] = useTabCounts(activeTab)
+  return (
+    <AreaTabs
+      tabs={TAB_ORDER.map((value) => ({
+        value,
+        label: SUCCESSION_TABS[value].title,
+        count: counts[value],
+      }))}
+      value={activeTab}
+      href={(value) => `/admin/succession/${value}`}
+      label="Bereiche der Liste"
+      idPrefix="succession"
+    >
+      {(value) => <SuccessionList text={SUCCESSION_TABS[value]} onChanged={reloadCounts} />}
+    </AreaTabs>
+  )
 }
 
 /**
@@ -50,7 +77,6 @@ function useTabCounts(): [Partial<Record<SuccessionTab, number>>, () => void] {
 export default function SuccessionPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
   const { tab } = useParams()
-  const [counts, reloadCounts] = useTabCounts()
 
   if (tab !== undefined && !isSuccessionTab(tab)) {
     return <Navigate to="/admin/succession/open" replace />
@@ -77,19 +103,7 @@ export default function SuccessionPage() {
           description="Hier steht, um was sich niemand mehr kümmern kann – etwa weil die verantwortliche Person ausgeschieden ist oder eine Gruppe keine Mitglieder mehr hat. Die Inhalte bleiben nutzbar, und nichts wird gelöscht; neue Freigaben sind aber gesperrt, bis wieder jemand zuständig ist. Die Liste erinnert nicht und verschickt nichts."
         />
 
-        <AreaTabs
-          tabs={TAB_ORDER.map((value) => ({
-            value,
-            label: SUCCESSION_TABS[value].title,
-            count: counts[value],
-          }))}
-          value={activeTab}
-          href={(value) => `/admin/succession/${value}`}
-          label="Bereiche der Liste"
-          idPrefix="succession"
-        >
-          {(value) => <SuccessionList text={SUCCESSION_TABS[value]} onChanged={reloadCounts} />}
-        </AreaTabs>
+        <SuccessionContent activeTab={activeTab} />
       </Box>
     </Box>
   )

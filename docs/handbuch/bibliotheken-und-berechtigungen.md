@@ -1295,7 +1295,7 @@ zeigt, wie viele Einträge er enthält; gezählt wird nur nach Art des Eintrags,
 
 | Reiter | Was darin steht | Nächster Schritt |
 |---|---|---|
-| Inhalte ohne Verantwortliche | Bibliotheken, Räume und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr aktiv ist | „Nachfolge bestimmen“ bzw. bei einer Gruppe „Rechte übergeben“ |
+| Inhalte ohne Verantwortliche | Bibliotheken, Räume und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr handeln kann | „Nachfolge bestimmen“; bei einer internen Gruppe ohne Verantwortliche und bei einem Objekt einer internen Gruppe „Zur Gruppenverwaltung“ |
 | Gruppen ohne aktive Mitglieder | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Rechte erreichen niemanden | „Rechte übergeben“ an eine andere Gruppe |
 | Leere Gruppen | interne Gruppen, die weder aktive Mitglieder noch Rechte haben | in der Gruppenverwaltung auflösen |
 
@@ -1320,7 +1320,7 @@ vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt 
 sonst begänne sein Alter von vorn.
 
 **Was eine Zeile zeigt und anbietet.** Das Objekt mit seiner Art, darunter in einem Satz das
-Problem („Das Konto, dem die Bibliothek gehört, ist nicht mehr aktiv.“), seit wann der Eintrag
+Problem („Wem die Bibliothek gehört, kann nicht mehr handeln.“), seit wann der Eintrag
 offen ist („offen seit 12 Tagen“, vor dem ersten Feststellungslauf „gerade erkannt“) und wer
 zuständig ist. Die bisherige Eigentümerin und Hinweise, wo eine Nachfolge zu suchen ist, stehen als
 Text daneben. Der Name des Objekts führt in die Bibliothek beziehungsweise in den Raum. Jede Zeile
@@ -1329,9 +1329,11 @@ hat **genau einen** hervorgehobenen nächsten Schritt:
 - **„Nachfolge bestimmen“** bei einem Objekt einer Person: Übergabe von Person zu Person, Umfang
   Eigentum und Verantwortung. Wessen Bestand übergeben wird, wählt die Systemverwaltung dabei
   selbst („Bisheriges Konto“); die Liste nennt die Person nur als Text.
-- **„Rechte übergeben“** bei einer Gruppe: Übernahme durch eine andere Gruppe.
-- **„Zur Gruppenverwaltung“** bei einem Objekt einer Gruppe und bei einer leeren Gruppe; eine
-  Gruppe, die nichts hält, hat nichts zu übergeben, sie wird aufgelöst.
+- **„Rechte übergeben“** bei einer Gruppe ohne aktive Mitglieder: Übernahme durch eine andere Gruppe.
+- **„Zur Gruppenverwaltung“** bei einer internen Gruppe ohne Verantwortliche (dort werden neue
+  Verantwortliche ernannt; die Gruppe arbeitet mit ihren Mitgliedern weiter und gibt ihre Rechte
+  nicht ab), bei einem Objekt einer internen Gruppe und bei einer leeren Gruppe (eine Gruppe, die
+  nichts hält, hat nichts zu übergeben, sie wird aufgelöst).
 
 Übergeben wird in jedem Fall über denselben Übertragungsdialog wie in Abschnitt 13.2, mit Vorschau
 und ausdrücklicher Bestätigung. Eine Zeile, die der Feststellungslauf noch nicht gesehen hat

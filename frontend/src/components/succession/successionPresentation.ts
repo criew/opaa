@@ -61,7 +61,9 @@ export function problemOf(kind: SuccessionKind, entry: SuccessionEntryResponse):
   if (entry.addressee === 'GROUP_STEWARDS') {
     return `Die Gruppe, der ${noun} gehört, hat keine aktiven Mitglieder mehr.`
   }
-  return `Das Konto, dem ${noun} gehört, ist nicht mehr aktiv.`
+  if (entry.objectType === 'SPACE') return 'Das Konto, dem der Space gehört, ist nicht mehr aktiv.'
+  // An asset's owner may be a person or a directory group; the entry does not say which.
+  return `Wem ${noun} gehört, kann nicht mehr handeln.`
 }
 
 const ADDRESSEES: Record<SuccessionAddressee, string> = {
@@ -78,16 +80,16 @@ export function addresseeOf(entry: SuccessionEntryResponse): string {
 export type SuccessionNextStep = 'HANDOVER' | 'GROUP_TRANSFER' | 'GROUP_ADMIN'
 
 /**
- * The one recommended way out of an entry: an object of a person goes to a successor, a group's
- * rights go to another group, and what belongs to a group's own administration - or a group that
- * holds nothing - is settled in the group management.
+ * The one recommended way out of an entry: an object goes to a successor, the rights of a group
+ * without members go to another group, and a group without stewards, an object of an internal
+ * group and a group that holds nothing are settled in the group management.
  */
 export function nextStepOf(
   kind: SuccessionKind,
   entry: SuccessionEntryResponse,
 ): SuccessionNextStep {
-  if (kind === 'GROUP_WITHOUT_EFFECT') return 'GROUP_ADMIN'
-  if (entry.objectType === 'GROUP') return 'GROUP_TRANSFER'
+  if (kind === 'GRANTS_WITHOUT_RECIPIENT') return 'GROUP_TRANSFER'
+  if (entry.objectType === 'GROUP') return 'GROUP_ADMIN'
   if (entry.addressee === 'GROUP_STEWARDS') return 'GROUP_ADMIN'
   return 'HANDOVER'
 }

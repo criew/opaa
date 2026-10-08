@@ -24,8 +24,9 @@ function entry(overrides: Partial<SuccessionEntryResponse>): SuccessionEntryResp
 
 describe('problemOf', () => {
   test('names the problem of each kind of entry in one plain sentence', () => {
+    // the owner may be a person or a group from a directory - the API does not say which
     expect(problemOf('OPEN_SUCCESSION', entry({}))).toBe(
-      'Das Konto, dem die Bibliothek gehört, ist nicht mehr aktiv.',
+      'Wem die Bibliothek gehört, kann nicht mehr handeln.',
     )
     expect(
       problemOf('OPEN_SUCCESSION', entry({ objectType: 'SPACE', addressee: 'SPACE_ADMINS' })),
@@ -64,7 +65,8 @@ describe('nextStepOf', () => {
     expect(nextStepOf('OPEN_SUCCESSION', entry({ addressee: 'GROUP_STEWARDS' }))).toBe(
       'GROUP_ADMIN',
     )
-    expect(nextStepOf('OPEN_SUCCESSION', entry({ objectType: 'GROUP' }))).toBe('GROUP_TRANSFER')
+    // a group without stewards keeps working; it needs new stewards, not a transfer of its rights
+    expect(nextStepOf('OPEN_SUCCESSION', entry({ objectType: 'GROUP' }))).toBe('GROUP_ADMIN')
     expect(nextStepOf('GRANTS_WITHOUT_RECIPIENT', entry({ objectType: 'GROUP' }))).toBe(
       'GROUP_TRANSFER',
     )
