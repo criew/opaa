@@ -73,6 +73,73 @@ class PdfPageTextTest {
     assertThat(PdfPageText.placeTables(marker + "\n" + marker + "\n", List.of("a | b"))).isNull();
   }
 
+  @Test
+  void aRaisedSmallerDigitIsSeparatedFromTheDigitOrLetterAfterIt() throws IOException {
+    try (PDDocument doc = superscriptPage()) {
+      String text = PdfPageText.extract(doc, 0);
+
+      assertThat(text)
+          .startsWith("1 10 Jahre nach Ablauf des Kalenderjahres.\n2 Mit Ausnahme der Akten.\n");
+    }
+  }
+
+  @Test
+  void textWithoutARaisedDigitBeforeADigitOrLetterIsUnchanged() throws IOException {
+    try (PDDocument doc = superscriptPage()) {
+      String text = PdfPageText.extract(doc, 0);
+
+      assertThat(text)
+          .endsWith(
+              "Die Frist beträgt 10 Jahre und 2 Monate.\n"
+                  + "Fläche 25 m² zu 3 €.\n"
+                  + "Gemäß Satzung3 gilt dies.\n"
+                  + "Fließtext ohne Hochstellung.\n");
+    }
+  }
+
+  /**
+   * Two lines opening with a sentence number set raised in a smaller size, then plain digits, the
+   * Unicode superscript in "m²", a raised footnote mark before a space and plain flow text.
+   */
+  private static PDDocument superscriptPage() throws IOException {
+    PDDocument doc = new PDDocument();
+    PDPage page = new PDPage(PDRectangle.A4);
+    doc.addPage(page);
+    try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+      superscriptFirst(stream, 50, 770, "1", "10 Jahre nach Ablauf des Kalenderjahres.");
+      superscriptFirst(stream, 50, 750, "2", "Mit Ausnahme der Akten.");
+      text(stream, 50, 730, "Die Frist beträgt 10 Jahre und 2 Monate.");
+      text(stream, 50, 710, "Fläche 25 m² zu 3 €.");
+      stream.beginText();
+      stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+      stream.newLineAtOffset(50, 690);
+      stream.showText("Gemäß Satzung");
+      stream.setTextRise(4);
+      stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 6);
+      stream.showText("3");
+      stream.setTextRise(0);
+      stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+      stream.showText(" gilt dies.");
+      stream.endText();
+      text(stream, 50, 670, "Fließtext ohne Hochstellung.");
+    }
+    return doc;
+  }
+
+  /** {@code mark} at 6 pt, raised by 4 pt, directly followed by {@code rest} at 10 pt. */
+  private static void superscriptFirst(
+      PDPageContentStream stream, float x, float y, String mark, String rest) throws IOException {
+    stream.beginText();
+    stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 6);
+    stream.setTextRise(4);
+    stream.newLineAtOffset(x, y);
+    stream.showText(mark);
+    stream.setTextRise(0);
+    stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 10);
+    stream.showText(rest);
+    stream.endText();
+  }
+
   /** "Vorbemerkung.", a ruled 2x2 table, "Schluss." - top to bottom. */
   private static PDDocument tablePage() throws IOException {
     PDDocument doc = new PDDocument();
