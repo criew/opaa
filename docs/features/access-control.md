@@ -1531,17 +1531,18 @@ der Lauf und nennt niemanden. Der Lauf selbst fährt **eine Transaktion je Organ
 den Fehler einer Organisation ab: Ihre Teilarbeit wird ganz zurückgerollt, die übrigen
 Organisationen laufen weiter.
 
-Nachfolgevorgänge und Sichtungsvermerke unterliegen der **Protokollfrist**, nicht der
+Nachfolgevorgänge unterliegen der **Protokollfrist**, nicht der
 Rechtehistorie: Sie sagen nichts über Leserechte aus — und die Frist wird auch vollzogen. Ein
-monatlicher Löschlauf entfernt **abgeschlossene** Vorgänge samt ihren Sichtungsvermerken, sobald ihr
+monatlicher Löschlauf entfernt **abgeschlossene** Vorgänge, sobald ihr
 Ende länger zurückliegt als die Protokollfrist aus `audit_retention_settings` (Vorgabe 36 Monate,
 `AuditRetentionSettingsService.DEFAULT_RETENTION_MONTHS`) — eine Verwaltungseinstellung, keine
 Umgebungsvariable; ein offener Vorgang wird nie gelöscht,
-gleich wie alt er ist. Mit dem Vorgang verschwinden der Freitext des Vermerks und die beiden
-Personenspalten, die ohnehin `ON DELETE SET NULL` tragen.
+gleich wie alt er ist. Mit dem Vorgang verschwindet seine Personenspalte, die ohnehin
+`ON DELETE SET NULL` trägt.
 
 **Die Betriebsliste hat drei Reiter**, alle mit derselben Mechanik (Feststellungslauf, Alter,
-objektbezogener Einstieg, Sichtungsvermerk):
+objektbezogener Einstieg). In der Oberfläche heißt sie „Ohne Zuständigkeit“, die Reiter „Inhalte ohne
+Verantwortliche“, „Gruppen ohne aktive Mitglieder“ und „Leere Gruppen“:
 
 | Reiter | Inhalt |
 |---|---|
@@ -1559,15 +1560,16 @@ Systemverwaltung. Ohne die vollständige Liste erreichte ein Fall der zweiten St
 
 **Objektbezogen in beide Richtungen.** Einstieg über das Objekt; der Eigentümer wird je Zeile
 genannt, aber es gibt **keine** Abfrage, keine Sortierung und keinen Parameter nach ihm — und ebenso
-wenig nach der handelnden Person. Wer einen Vorgang beendet oder einen Sichtungsvermerk gesetzt hat,
-steht am Vorgang und ist dort lesbar, ist aber keine Auswertungsachse. Ein
+wenig nach der handelnden Person. Wer einen Vorgang beendet hat, steht am Vorgang und ist dort
+lesbar, ist aber keine Auswertungsachse. Ein
 Spezifikationstest hält das fest: Die Liste nimmt genau `kind`, `page` und `size` entgegen und keinen
 Sortierparameter.
 
-**Alterungsschwelle mit Sichtungsvermerk, ohne Zwang.** Einträge älter als
+**Alterungsschwelle ohne Zwang.** Einträge älter als
 `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` (Vorgabe 12 Monate, orientiert an der Höchstfrist der
-Vollmacht) werden hervorgehoben; ein Sichtungsvermerk („geprüft am …, weiterhin offen, Grund") hebt
-die Hervorhebung für eine weitere Periode auf. Keine Frist, keine Eskalation, keine Mail.
+Vollmacht) werden als „lange offen“ hervorgehoben. Keine Frist, keine Eskalation, keine Mail. Einen
+Vermerk, mit dem sich ein Eintrag als „geprüft, weiterhin offen“ zurückstellen ließe, gibt es nicht
+(ADR-0036, Nachtrag vom 08.10.2026).
 
 **Die Kennzeichnung am Objekt nennt Zustand und Adressat — sonst nichts.** Kein Datum, kein
 bisheriger Eigentümer, kein Grund: Der Zustand tritt bei einem personengehörenden Objekt mit der

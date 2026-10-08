@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Autocomplete from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import Stack from '@mui/material/Stack'
@@ -36,6 +37,9 @@ export default function GroupPicker({
   inputId,
 }: GroupPickerProps) {
   const { query, setQuery, groups, isLoading, error } = useGroupSearch()
+  // What the field shows is not always what is searched for: after a choice it shows the chosen
+  // group's label, which must not become a new request.
+  const [inputText, setInputText] = useState('')
   const options = groups.filter((group) => !excludedGroupIds.includes(group.id))
 
   return (
@@ -51,12 +55,11 @@ export default function GroupPicker({
       }
       value={value}
       onChange={(_event, next) => onChange(next)}
-      inputValue={query}
+      inputValue={inputText}
       onInputChange={(_event, next, reason) => {
-        // Nur was getippt wurde, ist eine neue Anfrage (#778): Beim Auswählen setzt MUI den
-        // Eingabetext auf das Label der Option ('selectOption'), beim Verlassen springt er zurück
-        // ('reset') - beides als Eingabe weiterzugeben suchte nach nie getipptem Text. 'clear'
-        // leert das Feld, was unterhalb der Mindestlänge ohne Anfrage zurücksetzt.
+        // Only typed text is a new request (#778): 'selectOption' and 'reset' set the text to the
+        // chosen label, 'clear' empties both.
+        setInputText(next)
         if (reason === 'input') setQuery(next)
         else if (reason === 'clear') setQuery('')
       }}

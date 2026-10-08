@@ -2,9 +2,7 @@ package io.opaa.succession;
 
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SuccessionObjectType;
-import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
-import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetType;
 import io.opaa.permission.SuccessionCaseCloser;
@@ -15,7 +13,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -30,9 +27,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p><b>Derived on every read.</b> The entries come from the {@link SuccessionFindingSource}s, not
  * from the table: an object that has a capable responsible party again disappears from the list at
- * once, without anybody clearing a flag. Only the age and the Sichtungsvermerk come from {@code
- * succession_cases} - and an entry the detection run has not seen yet is listed nonetheless, with
- * no age: the list is complete from day one (Betrieb 6.1).
+ * once, without anybody clearing a flag. Only the age comes from {@code succession_cases} - and an
+ * entry the detection run has not seen yet is listed nonetheless, with no age: the list is complete
+ * from day one (Betrieb 6.1).
  *
  * <p><b>Object-bound in both directions</b> (Personalrat E1, Z7): the entry point is the object,
  * the owner is named per line, and there is no query, no sort and no parameter by previous owner or
@@ -53,19 +50,16 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
 
   private final List<SuccessionFindingSource> sources;
   private final SuccessionCaseRepository cases;
-  private final SuccessionReviewRepository reviews;
   private final SuccessionProperties properties;
   private final Clock clock;
 
   SuccessionService(
       List<SuccessionFindingSource> sources,
       SuccessionCaseRepository cases,
-      SuccessionReviewRepository reviews,
       SuccessionProperties properties,
       Clock clock) {
     this.sources = sources;
     this.cases = cases;
-    this.reviews = reviews;
     this.properties = properties;
     this.clock = clock;
   }
@@ -95,27 +89,17 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
         cases.findByOrganizationIdAndKindAndClosedAtIsNull(organizationId, kind)) {
       openCases.put(new CaseKey(open.getObjectType(), open.getObjectId()), open);
     }
-    Map<UUID, SuccessionReview> newestReview = newestReviews(openCases.values());
 
     Instant now = clock.instant();
     Instant agingCutoff = now.minus(properties.agingThresholdMonths() * 30L, ChronoUnit.DAYS);
     List<SuccessionEntry> entries = new ArrayList<>();
     for (SuccessionFinding finding : findings) {
       SuccessionCase open = openCases.get(new CaseKey(finding.objectType(), finding.objectId()));
-      SuccessionReview review = open == null ? null : newestReview.get(open.getId());
       Instant firstSeenAt = open == null ? null : open.getFirstSeenAt();
-      boolean highlighted =
-          firstSeenAt != null
-              && firstSeenAt.isBefore(agingCutoff)
-              && (review == null || review.getReviewedAt().isBefore(agingCutoff));
+      boolean highlighted = firstSeenAt != null && firstSeenAt.isBefore(agingCutoff);
       entries.add(
           new SuccessionEntry(
-              open == null ? null : open.getId(),
-              finding,
-              firstSeenAt,
-              highlighted,
-              review == null ? null : review.getReviewedAt(),
-              review == null ? null : review.getReason()));
+              open == null ? null : open.getId(), finding, firstSeenAt, highlighted));
     }
     // Oldest first, and an entry the run has not seen yet at the end: it is the youngest there is.
     entries.sort(
@@ -206,31 +190,6 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
   }
 
   /**
-   * Writes a Sichtungsvermerk: "geprüft am …, weiterhin offen, Grund". It lifts the highlight for
-   * one more period and triggers nothing else - no deadline, no escalation, no mail.
-   */
-  @Transactional
-  public SuccessionReview review(UUID caseId, String reason, CurrentUser caller) {
-    if (reason == null || reason.isBlank()) {
-      throw new ValidationException("Ein Sichtungsvermerk braucht einen Grund");
-    }
-    if (reason.length() > 1000) {
-      throw new ValidationException("Der Grund darf höchstens 1000 Zeichen umfassen");
-    }
-    SuccessionCase open =
-        cases
-            .findByIdAndOrganizationId(caseId, caller.organizationId())
-            .orElseThrow(() -> new NotFoundException("Vorgang nicht gefunden"));
-    if (open.getClosedAt() != null) {
-      throw new ValidationException(
-          "Dieser Vorgang ist beendet; ein Sichtungsvermerk ist nicht mehr nötig");
-    }
-    return reviews.save(
-        new SuccessionReview(
-            open.getId(), open.getOrganizationId(), clock.instant(), caller.id(), reason.trim()));
-  }
-
-  /**
    * Ends the open succession of one asset and names who ended it - called by an operation that
    * knows its actor, today the transfer of ownership and responsibility (#1834). The transfer also
    * names a space by its asset type, so the record is found by the object alone - its id is unique
@@ -262,18 +221,6 @@ public class SuccessionService implements SuccessionReachGuard, SuccessionCaseCl
         cases.save(open);
       }
     }
-  }
-
-  private Map<UUID, SuccessionReview> newestReviews(Collection<SuccessionCase> openCases) {
-    if (openCases.isEmpty()) {
-      return Map.of();
-    }
-    List<UUID> caseIds = openCases.stream().map(SuccessionCase::getId).toList();
-    Map<UUID, SuccessionReview> newest = new HashMap<>();
-    for (SuccessionReview review : reviews.findByCaseIdInOrderByReviewedAtDesc(caseIds)) {
-      newest.putIfAbsent(review.getCaseId(), review);
-    }
-    return newest;
   }
 
   private record CaseKey(SuccessionObjectType objectType, UUID objectId) {}

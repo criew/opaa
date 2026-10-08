@@ -16,8 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
  * follow the protocol's own window, the one {@code audit_retention_settings} carries.
  *
  * <p>Only a <b>closed</b> record is ever deleted, whatever its age: an open one still describes a
- * state that holds, and the list derives it anyway. The Sichtungsvermerke of a deleted record go
- * with it through the foreign key's cascade - with them the free text and the person who wrote it.
+ * state that holds, and the list derives it anyway.
  */
 @Service
 public class SuccessionRetentionService {

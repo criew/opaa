@@ -20,8 +20,6 @@ export const mockSuccessionEntries: Record<SuccessionKind, SuccessionEntryRespon
       affectedObjects: 0,
       firstSeenAt: '2025-06-01T08:00:00Z',
       highlighted: true,
-      lastReviewedAt: null,
-      lastReviewReason: null,
     },
     {
       caseId: null,
@@ -35,8 +33,6 @@ export const mockSuccessionEntries: Record<SuccessionKind, SuccessionEntryRespon
       affectedObjects: 0,
       firstSeenAt: null,
       highlighted: false,
-      lastReviewedAt: null,
-      lastReviewReason: null,
     },
   ],
   GRANTS_WITHOUT_RECIPIENT: [
@@ -52,8 +48,6 @@ export const mockSuccessionEntries: Record<SuccessionKind, SuccessionEntryRespon
       affectedObjects: 7,
       firstSeenAt: '2026-08-01T08:00:00Z',
       highlighted: false,
-      lastReviewedAt: '2026-09-01T08:00:00Z',
-      lastReviewReason: 'Reorganisation läuft, Ziel steht noch nicht fest',
     },
   ],
   GROUP_WITHOUT_EFFECT: [
@@ -69,8 +63,6 @@ export const mockSuccessionEntries: Record<SuccessionKind, SuccessionEntryRespon
       affectedObjects: 0,
       firstSeenAt: '2026-07-01T08:00:00Z',
       highlighted: false,
-      lastReviewedAt: null,
-      lastReviewReason: null,
     },
   ],
 }

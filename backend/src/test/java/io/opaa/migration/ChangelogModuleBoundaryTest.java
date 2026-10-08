@@ -93,8 +93,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "permission_transfers",
                   "permission_transfer_objects",
                   "account_state_history",
-                  "succession_cases",
-                  "succession_reviews")),
+                  "succession_cases")),
           Map.entry(
               KNOWLEDGE,
               List.of(

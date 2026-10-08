@@ -62,6 +62,8 @@ interface PermissionTransferDialogProps {
   scopes: PermissionTransferScope[]
   intro: string
   onTransferred?: () => void
+  /** Wording for a caller that names the task more plainly, e.g. „Nachfolge bestimmen“. */
+  labels?: { title?: string; source?: string; targetUser?: string; targetGroup?: string }
 }
 
 /**
@@ -79,7 +81,12 @@ export default function PermissionTransferDialog({
   scopes,
   intro,
   onTransferred,
+  labels = {},
 }: PermissionTransferDialogProps) {
+  const title = labels.title ?? 'Rechte übertragen'
+  const sourceLabel = labels.source ?? 'Quelle'
+  const targetUserLabel = labels.targetUser ?? 'Zielperson'
+  const targetGroupLabel = labels.targetGroup ?? 'Zielgruppe'
   const [targetType, setTargetType] = useState<PermissionSubjectType>(targetKinds[0])
   const [targetGroup, setTargetGroup] = useState<SelectableGroupResponse | null>(null)
   const [targetUser, setTargetUser] = useState<UserSummary | null>(null)
@@ -162,7 +169,7 @@ export default function PermissionTransferDialog({
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
-      <DialogTitle>Rechte übertragen</DialogTitle>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2 }}>{intro}</Typography>
 
@@ -174,11 +181,11 @@ export default function PermissionTransferDialog({
 
         <Stack spacing={2}>
           <Box>
-            <FieldLabel htmlFor="transfer-source">Quelle</FieldLabel>
+            <FieldLabel htmlFor="transfer-source">{sourceLabel}</FieldLabel>
             {choosesSource ? (
               <UserPicker
                 inputId="transfer-source"
-                ariaLabel="Quelle"
+                ariaLabel={sourceLabel}
                 placeholder="Person suchen …"
                 value={sourceUser}
                 onChange={(next) => {
@@ -217,13 +224,13 @@ export default function PermissionTransferDialog({
 
           {targetType === 'GROUP' ? (
             <Box>
-              <FieldLabel htmlFor="transfer-target-group">Zielgruppe</FieldLabel>
+              <FieldLabel htmlFor="transfer-target-group">{targetGroupLabel}</FieldLabel>
               {/* Die gemeinsame Gruppensuche (#1820): serverseitige Auswahl mit Herkunft,
                   Kennzeichen „extern" und den Wählbarkeitsregeln - statt der vollen
                   Verwaltungsliste in einem Auswahlfeld. */}
               <GroupPicker
                 inputId="transfer-target-group"
-                ariaLabel="Zielgruppe"
+                ariaLabel={targetGroupLabel}
                 placeholder="Zielgruppe suchen …"
                 value={targetGroup}
                 onChange={(group) => {
@@ -238,10 +245,10 @@ export default function PermissionTransferDialog({
             </Box>
           ) : (
             <Box>
-              <FieldLabel htmlFor="transfer-target-user">Zielperson</FieldLabel>
+              <FieldLabel htmlFor="transfer-target-user">{targetUserLabel}</FieldLabel>
               <UserPicker
                 inputId="transfer-target-user"
-                ariaLabel="Zielperson"
+                ariaLabel={targetUserLabel}
                 placeholder="Person suchen …"
                 value={targetUser}
                 onChange={(next) => {
