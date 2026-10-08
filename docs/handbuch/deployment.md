@@ -125,7 +125,8 @@ das `docker compose up -d`:
    `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Ein eigenes
    `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder `OPAA_INDEXING_S3_TEMP_DIRECTORY` muss zudem auf einem
    eingehängten Volume oder unter `/tmp` liegen: Das übrige Dateisystem des Containers ist nur lesbar.
-   Ein Verstoß zeigt sich erst beim ersten Upload, nicht beim Start. Einzelheiten, der Weg ohne `sudo`,
+   Ein Verstoß zeigt sich erst beim ersten Upload bzw. beim ersten Lauf einer S3-Bibliothek, nicht
+   beim Start. Einzelheiten, der Weg ohne `sudo`,
    die Lage auf einem Netzlaufwerk und die Fehlermeldungen, an denen man es erkennt, stehen unter
    [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
@@ -666,7 +667,8 @@ Indexierung, deshalb wird sie nur gesetzt, wenn der Cluster sie verlangt.
 Große Bestände, sehr große PDF-Dateien oder viele gleichzeitige Indexierungen brauchen mehr. Ein
 Abbruch wegen der Grenze zeigt sich unter Kubernetes als `OOMKilled` im Status des Pods, unter
 Compose als `true` in `docker inspect --format '{{.State.OOMKilled}}' <container>`. Der Exit-Code
-`137` allein ist nicht eindeutig, er entsteht auch nach Ablauf von `stop_grace_period`. Dann die Grenze anheben, nicht den Heap-Anteil.
+`137` allein ist nicht eindeutig, er entsteht auch nach Ablauf von `stop_grace_period`. Steht dort
+`true`, die Grenze anheben, nicht den Heap-Anteil.
 
 ### Nicht-root-Betrieb des Backend-Containers
 
