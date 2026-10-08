@@ -516,7 +516,7 @@ wird nur der **Vorgang**: wann der Zustand erstmals festgestellt wurde, wer ihn 
 eine Ableitung keinen schreibenden Auslöser hat, legt ein **benannter, regelmäßiger
 Feststellungslauf** (Vorgabe stündlich) die Vorgänge an und schließt sie — sonst hieße „Alter" in
 Wahrheit „seit dem letzten Hinsehen". Nachfolgevorgänge und Sichtungsvermerke unterliegen der
-Aufbewahrungsfrist des **Protokolls**, nicht der Rechtehistorie: Sie sagen nichts über Leserechte aus.
+Aufbewahrungsfrist des **Protokolls**, nicht der Rechtehistorie: Sie sagen nichts über Leserechte aus. *(Sichtungsvermerk mit dem Nachtrag vom 08.10.2026 entfallen.)*
 
 **Was der Zustand bewirkt:** Das Objekt bleibt nutzbar, bestehende Rechte bleiben, aber die
 **Reichweite ist eingefroren** — keine neuen Grants, keine höhere Freigabestufe, keine neue
@@ -555,7 +555,7 @@ Dazu:
   Person**: Wer einen Vorgang beendet oder einen Sichtungsvermerk gesetzt hat, steht am Vorgang und
   ist dort lesbar, ist aber keine Auswertungsachse und kein API-Parameter. Sonst ergäben
   Feststellungslauf, Sichtungsvermerk und vollständige Liste eine Bearbeitungsspur über die
-  Systemverwaltung.
+  Systemverwaltung. *(Sichtungsvermerk mit dem Nachtrag vom 08.10.2026 entfallen.)*
 - **Hinweis statt Auswertung:** Die Liste darf als Vorschlag die Verzeichnisgruppen des
   Ausgeschiedenen nennen („war Mitglied von Referat 50") — Bestandsinformation, keine
   Aktivitätsauswertung.
@@ -587,7 +587,7 @@ Dazu:
    ersten Anmeldung, `TokenGroupSynchronizer#findOrCreate`) wäre nie erreichbar.
 
 **Die Betriebsliste hat drei Reiter mit derselben Mechanik** (Feststellungslauf, Alter,
-objektbezogener Einstieg, Sichtungsvermerk): **Offene Nachfolgen**; **Freigaben ohne Empfänger**
+objektbezogener Einstieg, Sichtungsvermerk — letzterer mit dem Nachtrag vom 08.10.2026 entfallen): **Offene Nachfolgen**; **Freigaben ohne Empfänger**
 (wirksame, nicht handlungsfähige Gruppen, die Grants tragen oder Space-Mitglied sind, mit Zahl der
 betroffenen Objekte und Alter); **Gruppen ohne Wirkung** (interne Gruppen ohne Grant, ohne
 Space-Mitgliedschaft, ohne Eigentum, ohne aktives Mitglied).
@@ -652,7 +652,7 @@ Historienzeile sagt, *in welchem Zeitraum* ein Recht galt, und trägt die Sticht
 | **Kontozustand** (aktiv/gesperrt) | **neu**, #1818 — Beleg der Kontenmenge zum Stichtag, zusammen mit `users` (siehe Nachtrag unten) | `RESTRICT` | ja |
 | Verantwortliche interner Gruppen | **keine** — Betriebsrecht der Gegenwart | — | ja |
 | Vollmachten | keine (ADR-0016, Nachtrag) | — | ja |
-| Nachfolgevorgänge, Sichtungsvermerke | keine | — | ja |
+| Nachfolgevorgänge, Sichtungsvermerke (letztere mit dem Nachtrag vom 08.10.2026 entfallen) | keine | — | ja |
 
 Alle Historientabellen tragen `valid_from`/`valid_to` und folgen ADR-0016: Subjektspalten `RESTRICT`,
 Objektspalten ohne Fremdschlüssel. **Die Personenspalten der fünf neuen Tabellen werden `RESTRICT`

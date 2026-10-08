@@ -2,8 +2,7 @@ package io.opaa.api.types;
 
 /**
  * The three findings of the operational list (ADR-0036, Entscheidung 6) - one mechanic, three tabs:
- * the same detection run, the same age, the same object-bound entry point and the same
- * Sichtungsvermerk.
+ * the same detection run, the same age and the same object-bound entry point.
  */
 public enum SuccessionKind {
 
