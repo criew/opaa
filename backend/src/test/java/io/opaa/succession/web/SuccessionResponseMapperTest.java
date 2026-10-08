@@ -26,7 +26,6 @@ class SuccessionResponseMapperTest {
     UUID caseId = UUID.randomUUID();
     UUID objectId = UUID.randomUUID();
     Instant firstSeenAt = Instant.parse("2026-01-02T03:04:05Z");
-    Instant reviewedAt = Instant.parse("2026-06-07T08:09:10Z");
     SuccessionFinding finding =
         SuccessionFinding.ofAsset(
                 AssetType.of("KNOWLEDGE_LIBRARY"),
@@ -39,8 +38,7 @@ class SuccessionResponseMapperTest {
 
     SuccessionEntryResponse response =
         SuccessionResponseMapper.toResponse(
-            new SuccessionEntry(
-                caseId, finding, firstSeenAt, true, reviewedAt, "geprüft, Nachfolge läuft"));
+            new SuccessionEntry(caseId, finding, firstSeenAt, true));
 
     assertThat(response.getObjectType()).isEqualTo(SuccessionObjectType.ASSET);
     assertThat(response.getAssetType()).isEqualTo(io.opaa.api.dto.AssetType.KNOWLEDGE_LIBRARY);
@@ -56,13 +54,11 @@ class SuccessionResponseMapperTest {
     assertThat(response.getMembershipHints())
         .containsExactly("Referat 50", "Projektgruppe Digitalisierung");
     assertThat(response.getFirstSeenAt()).isEqualTo(firstSeenAt);
-    assertThat(response.getLastReviewedAt()).isEqualTo(reviewedAt);
-    assertThat(response.getLastReviewReason()).isEqualTo("geprüft, Nachfolge läuft");
   }
 
   /** A finding the detection run has not seen yet is a line like any other, without a record. */
   @Test
-  void aLineWithoutARecordCarriesNeitherCaseNorSighting() {
+  void aLineWithoutARecordCarriesNoCase() {
     SuccessionEntryResponse response =
         SuccessionResponseMapper.toResponse(
             new SuccessionEntry(
@@ -73,15 +69,11 @@ class SuccessionResponseMapperTest {
                     "Bauamt",
                     SuccessionAddressee.SPACE_ADMINS),
                 null,
-                false,
-                null,
-                null));
+                false));
 
     assertThat(response.getCaseId()).isNull();
     assertThat(response.getAssetType()).as("a space is no asset").isNull();
     assertThat(response.getFirstSeenAt()).isNull();
-    assertThat(response.getLastReviewedAt()).isNull();
-    assertThat(response.getLastReviewReason()).isNull();
     assertThat(response.getAddresseeLabel())
         .isEqualTo("die übrigen handlungsfähigen ADMIN-Mitglieder des Space");
   }
@@ -100,9 +92,7 @@ class SuccessionResponseMapperTest {
                             "Referat 50",
                             SuccessionAddressee.SYSTEM_ADMINISTRATION),
                         null,
-                        false,
-                        null,
-                        null)),
+                        false)),
                 2,
                 50,
                 101,

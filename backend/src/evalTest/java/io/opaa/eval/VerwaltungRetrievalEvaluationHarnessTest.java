@@ -538,6 +538,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         .isZero();
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
+    VectorStoreStatistics.refresh(jdbcTemplate, log);
     // Every runner started so far must have computed with the pinned CPU backend: the embedding
     // runner always, the chat runner only when it lives in this container (see the count below).
     String ollamaCpuBackend =
@@ -609,6 +610,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     List<RetrievalMetrics.QueryResult> results = new ArrayList<>(goldenCases.size());
     List<ChunkAnswerSpanMetrics.ChunkQueryResult> answerSpanResults = new ArrayList<>();
     List<DocumentRanking.DocumentWindowResult> windowResults = new ArrayList<>(goldenCases.size());
+    int minUnfilteredHits = Integer.MAX_VALUE;
     // Issue #1070: the Dokumentart vocabulary both filter forms say "no value" over, read once
     // for the run exactly as the production METADATA_FILTER stage reads it.
     List<String> vocabularyCodes =
@@ -654,6 +656,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
       // whole store; the window-coverage check below is therefore over unfiltered cases only.
       if (!goldenCase.isFiltered()) {
         windowResults.add(windowResult);
+        minUnfilteredHits = Math.min(minUnfilteredHits, hits.size());
       }
       results.add(RetrievalMetrics.evaluate(goldenCase, windowResult.rankedFileNames()));
 
@@ -670,6 +673,13 @@ class VerwaltungRetrievalEvaluationHarnessTest {
     // 4a. Issue #721 code review, Wichtig 1: ADR-0012 §8 and the issue's acceptance criteria
     //     promise an explicit report of whether the document-bound window was actually reached —
     //     compute it from the per-query DocumentWindowResult instead of discarding those values.
+    // The documentTopK check below only holds if each search returned its full chunk window.
+    VectorStoreStatistics.requireFullWindow(
+        minUnfilteredHits,
+        DOMAIN.chunkTopK(),
+        documentChunkCounts.stream()
+            .mapToInt(ChunkCountExpectation.DocumentChunkCount::chunkCount)
+            .sum());
     int queriesBelowDocumentTopK =
         (int) windowResults.stream().filter(w -> !w.reachedDocumentTopK()).count();
     int minDistinctDocumentsReached =

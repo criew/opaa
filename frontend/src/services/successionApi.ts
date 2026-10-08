@@ -1,4 +1,4 @@
-import type { SuccessionKind, SuccessionListResponse, SuccessionReviewResponse } from '../types/api'
+import type { SuccessionKind, SuccessionListResponse } from '../types/api'
 import { apiClient, normalizeError } from './api'
 
 /**
@@ -15,22 +15,6 @@ export async function getSuccessionEntries(
     const { data } = await apiClient.get<SuccessionListResponse>('/v1/admin/succession', {
       params: { kind, page, size },
     })
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/** Der Sichtungsvermerk „geprüft am …, weiterhin offen, Grund" — er löst sonst nichts aus. */
-export async function reviewSuccessionCase(
-  caseId: string,
-  reason: string,
-): Promise<SuccessionReviewResponse> {
-  try {
-    const { data } = await apiClient.post<SuccessionReviewResponse>(
-      `/v1/admin/succession/${caseId}/reviews`,
-      { reason },
-    )
     return data
   } catch (err) {
     normalizeError(err)

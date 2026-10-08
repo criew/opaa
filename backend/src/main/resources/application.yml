@@ -611,9 +611,8 @@ opaa:
     read-timeout: ${OPAA_MAIL_READ_TIMEOUT:15s}
     write-timeout: ${OPAA_MAIL_WRITE_TIMEOUT:15s}
   succession:
-    # Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird und wie lange ein
-    # Sichtungsvermerk die Hervorhebung aufhebt (ADR-0036, Entscheidung 6). Hebt hervor, loest nie
-    # etwas aus.
+    # Ab welchem Alter ein Eintrag der Betriebsliste hervorgehoben wird (ADR-0036, Entscheidung 6).
+    # Hebt hervor, loest nie etwas aus.
     aging-threshold-months: ${OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS:12}
     # Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende; der Zustand
     # selbst ist abgeleitet und gilt auch ohne ihn.

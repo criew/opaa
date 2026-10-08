@@ -71,7 +71,7 @@ const ADMIN_SECTIONS = [
   { label: 'Benutzer', to: '/admin/users' },
   { label: 'Gruppen', to: '/admin/groups' },
   { label: 'Anlegerechte', to: '/admin/capabilities' },
-  { label: 'Lebenszyklus', to: '/admin/succession' },
+  { label: 'Ohne Zuständigkeit', to: '/admin/succession' },
   { label: 'Modelle', to: '/admin/models' },
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },

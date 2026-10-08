@@ -29,11 +29,8 @@ public interface SuccessionCaseRepository extends JpaRepository<SuccessionCase, 
    */
   List<SuccessionCase> findByKindAndObjectIdAndClosedAtIsNull(SuccessionKind kind, UUID objectId);
 
-  Optional<SuccessionCase> findByIdAndOrganizationId(UUID id, UUID organizationId);
-
   /**
-   * Deletes the records whose state ended before {@code cutoff}; their Sichtungsvermerke go with
-   * them through the foreign key's {@code ON DELETE CASCADE}. An open record is never touched,
+   * Deletes the records whose state ended before {@code cutoff}. An open record is never touched,
    * whatever its age - it still describes something that holds.
    */
   @Modifying

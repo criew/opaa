@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: rights-2026-10-08-drop-succession-reviews
+      author: opaa
+      comment: "The Sichtungsvermerk is withdrawn: an entry of the operational list stays until somebody can act again, and its highlight depends on its age alone. The table goes with its notes and its index; the cases it pointed to stay."
+      changes:
+        - sql:
+            sql: |
+              DROP TABLE succession_reviews;

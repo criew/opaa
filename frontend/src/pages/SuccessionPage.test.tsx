@@ -32,20 +32,45 @@ function renderPage(route = '/admin/succession/open') {
   )
 }
 
+function rowOf(name: string) {
+  return screen.getByRole('listitem', { name })
+}
+
 describe('SuccessionPage', () => {
   beforeEach(() => {
     signInAs('SYSTEM_ADMIN')
   })
 
-  // ADR-0036, Entscheidung 6: Objekt, Adressat und Alter je Zeile - der Einstieg ist das Objekt.
-  it('lists object, addressee and age, and links to the object itself', async () => {
+  // ADR-0036, Entscheidung 6: the entry point is the object; problem, responsibility and age per row.
+  it('names each entry by its object, its problem in one sentence, who is responsible and since when', async () => {
     renderPage()
 
-    const entry = await screen.findByText('Bauakten Referat 50')
-    expect(entry).toHaveAttribute('href', '/libraries/lib-1')
-    expect(screen.getByText(/Zuständig: die Systemverwaltung/)).toBeInTheDocument()
-    expect(screen.getAllByText(/Alter:/)).toHaveLength(2)
-    expect(screen.getByText(/war Mitglied von Referat 50/)).toBeInTheDocument()
+    expect(await screen.findByText('Bauakten Referat 50')).toHaveAttribute(
+      'href',
+      '/libraries/lib-1',
+    )
+    const row = rowOf('Bauakten Referat 50')
+    expect(row).toHaveTextContent('Wem die Bibliothek gehört, kann nicht mehr handeln.')
+    expect(row).toHaveTextContent('Zuständig: die Systemverwaltung')
+    expect(row).toHaveTextContent(/offen seit \d+ Tagen/)
+    expect(row).toHaveTextContent('lange offen')
+    expect(row).toHaveTextContent('Anhaltspunkt für die Nachfolge: war Mitglied von Referat 50')
+    expect(within(row).getByRole('button', { name: 'Nachfolge bestimmen' })).toBeInTheDocument()
+  })
+
+  it('shows how many entries each tab holds', async () => {
+    renderPage()
+
+    const tabs = await screen.findByRole('tablist', { name: 'Bereiche der Liste' })
+    await waitFor(() =>
+      expect(
+        within(tabs).getByRole('tab', { name: 'Inhalte ohne Verantwortliche 2' }),
+      ).toBeInTheDocument(),
+    )
+    expect(
+      within(tabs).getByRole('tab', { name: 'Gruppen ohne aktive Mitglieder 1' }),
+    ).toBeInTheDocument()
+    expect(within(tabs).getByRole('tab', { name: 'Leere Gruppen 1' })).toBeInTheDocument()
   })
 
   it('links a prompt library to its own page', async () => {
@@ -74,10 +99,12 @@ describe('SuccessionPage', () => {
       'href',
       '/prompts/prompt-library-1',
     )
-    expect(screen.getByText('Prompt-Bibliothek')).toBeInTheDocument()
+    expect(rowOf('Formulierungshilfen')).toHaveTextContent(
+      'Wem die Prompt-Bibliothek gehört, kann nicht mehr handeln.',
+    )
   })
 
-  // Personalrat E1/Z7: keine Auswertungsachse Person - weder als Filterfeld noch als Sortierung.
+  // Personalrat E1/Z7: no evaluation axis "person" - neither as a filter field nor as a sort order.
   it('offers no filter or sort by previous owner or acting person', async () => {
     renderPage()
     await screen.findByText('Bauakten Referat 50')
@@ -85,70 +112,74 @@ describe('SuccessionPage', () => {
     expect(screen.queryByRole('textbox', { name: /eigentümer|person|inhaber/i })).toBeNull()
     expect(screen.queryByRole('combobox', { name: /eigentümer|person|sortier/i })).toBeNull()
     expect(screen.queryByRole('columnheader')).toBeNull()
-    // Der frühere Eigentümer steht als Text in der Zeile - lesbar, aber kein Schlüssel.
-    expect(screen.getByText(/Andrea Vogt/)).toBeInTheDocument()
+    // The former owner stands as text in the row - readable, but no key.
+    expect(screen.getByText(/bisher: Andrea Vogt/)).toBeInTheDocument()
   })
 
-  it('writes a Sichtungsvermerk with its reason and reloads the entry', async () => {
-    const reviews: Array<{ caseId: string; reason: string }> = []
-    server.use(
-      http.post('/api/v1/admin/succession/:caseId/reviews', async ({ params, request }) => {
-        const body = (await request.json()) as { reason: string }
-        reviews.push({ caseId: String(params.caseId), reason: body.reason })
-        return HttpResponse.json(
-          {
-            id: 'review-1',
-            caseId: String(params.caseId),
-            reviewedAt: '2026-09-22T08:00:00Z',
-            reason: body.reason,
-          },
-          { status: 201 },
-        )
-      }),
-    )
-    renderPage()
-    const user = userEvent.setup()
-
-    await screen.findByText('Bauakten Referat 50')
-    await user.click(screen.getAllByRole('button', { name: 'Sichtungsvermerk setzen' })[0])
-    await user.type(screen.getByLabelText(/Grund/), 'Nachfolge in Klärung')
-    await user.click(screen.getByRole('button', { name: 'Vermerk setzen' }))
-
-    await waitFor(() =>
-      expect(reviews).toEqual([{ caseId: 'case-1', reason: 'Nachfolge in Klärung' }]),
-    )
-  })
-
-  // Ohne Vorgang des Feststellungslaufs gibt es nichts, wogegen ein Vermerk geschrieben würde.
-  it('offers no Sichtungsvermerk for an entry the detection run has not seen yet', async () => {
+  it('says that an entry was just found before the detection run has seen it', async () => {
     renderPage()
 
     await screen.findByText('Projekt Phoenix')
-    expect(screen.getAllByRole('button', { name: 'Sichtungsvermerk setzen' })).toHaveLength(1)
-    expect(screen.getByText(/noch nicht vom Feststellungslauf erfasst/)).toBeInTheDocument()
+    const row = rowOf('Projekt Phoenix')
+    expect(row).toHaveTextContent('gerade erkannt')
+    expect(within(row).getByRole('button', { name: 'Nachfolge bestimmen' })).toBeInTheDocument()
   })
 
-  it('shows the other two tabs with their own entries', async () => {
+  it('offers only the one next step - there is no way to keep an entry open on purpose', async () => {
     renderPage('/admin/succession/grants')
 
-    expect(await screen.findByText('Referat 49')).toBeInTheDocument()
-    expect(screen.getByText(/betroffene Objekte: 7/)).toBeInTheDocument()
-    expect(screen.getByText(/Reorganisation läuft/)).toBeInTheDocument()
+    await screen.findByText('Referat 49')
+    const row = rowOf('Referat 49')
+    expect(within(row).getAllByRole('button')).toHaveLength(1)
   })
 
-  it('opens the takeover for a group entry', async () => {
-    renderPage('/admin/succession/groups')
+  it('hands the rights of a group without members over to another group', async () => {
+    renderPage('/admin/succession/grants')
     const user = userEvent.setup()
 
-    await screen.findByText('Arbeitskreis Digitalisierung')
-    await user.click(screen.getByRole('button', { name: /übernahme vorbereiten/i }))
+    await screen.findByText('Referat 49')
+    const row = rowOf('Referat 49')
+    expect(row).toHaveTextContent(
+      'Die Gruppe hat Rechte an 7 Objekten, aber kein aktives Mitglied mehr.',
+    )
+    await user.click(within(row).getByRole('button', { name: 'Rechte übergeben' }))
 
     const dialog = await screen.findByRole('dialog')
     expect(within(dialog).getByRole('button', { name: /vorschau erstellen/i })).toBeInTheDocument()
   })
 
-  // Zwischen zwei Läufen kann eine Folgeseite leer werden - das ist kein „alles in Ordnung",
-  // und der Weg zurück auf Seite 1 muss bleiben.
+  // A group that holds nothing has nothing to hand over: the way out is the group management.
+  it('sends an empty group to the group management instead of offering a transfer', async () => {
+    renderPage('/admin/succession/groups')
+
+    await screen.findByText('Arbeitskreis Digitalisierung')
+    const row = rowOf('Arbeitskreis Digitalisierung')
+    expect(row).toHaveTextContent('Die Gruppe hat weder aktive Mitglieder noch Rechte.')
+    expect(within(row).getByRole('link', { name: 'Zur Gruppenverwaltung' })).toHaveAttribute(
+      'href',
+      '/admin/groups',
+    )
+    expect(within(row).queryByRole('button', { name: 'Rechte übergeben' })).toBeNull()
+  })
+
+  it('explains when something will show up in an empty tab', async () => {
+    server.use(
+      http.get('/api/v1/admin/succession', () =>
+        HttpResponse.json({ entries: [], page: 0, size: 50, totalElements: 0, totalPages: 0 }),
+      ),
+    )
+    renderPage()
+
+    expect(await screen.findByText('Zurzeit ist hier nichts offen.')).toBeInTheDocument()
+    expect(
+      screen.getByText(
+        /Wird das Konto einer Person gesperrt, der eine Bibliothek oder ein Space gehört/,
+      ),
+    ).toBeInTheDocument()
+  })
+
+  // Between two runs a follow-up page can empty - that is no "all in order", and the way back to
+  // page 1 must stay.
   it('does not claim everything is in order on an empty follow-up page', async () => {
     server.use(
       http.get('/api/v1/admin/succession', ({ request }) => {
@@ -166,26 +197,30 @@ describe('SuccessionPage', () => {
     const user = userEvent.setup()
 
     await screen.findByText('Bauakten Referat 50')
-    const pagination = screen.getByRole('navigation', { name: 'Seiten der Betriebsliste' })
+    const pagination = screen.getByRole('navigation', { name: 'Seiten der Liste' })
     await user.click(within(pagination).getByRole('button', { name: /2/ }))
 
     expect(await screen.findByText(/Diese Seite ist inzwischen leer/)).toBeInTheDocument()
+    expect(screen.queryByText('Zurzeit ist hier nichts offen.')).toBeNull()
     expect(
-      screen.queryByText('Für jedes Objekt gibt es eine handlungsfähige zuständige Stelle.'),
-    ).toBeNull()
-    // Die Blätterung bleibt der Weg zurück.
-    expect(
-      within(screen.getByRole('navigation', { name: 'Seiten der Betriebsliste' })).getByRole(
-        'button',
-        { name: /1/ },
-      ),
+      within(screen.getByRole('navigation', { name: 'Seiten der Liste' })).getByRole('button', {
+        name: /1/,
+      }),
     ).toBeInTheDocument()
   })
 
-  it('explains the page to an account without the system role', async () => {
+  it('explains the page to an account without the system role and asks the server nothing', async () => {
+    const requests: string[] = []
+    server.use(
+      http.get('/api/v1/admin/succession', ({ request }) => {
+        requests.push(request.url)
+        return HttpResponse.json({ entries: [], page: 0, size: 1, totalElements: 0, totalPages: 0 })
+      }),
+    )
     signInAs('USER')
     renderPage()
 
     expect(await screen.findByText(/nicht freigegeben/i)).toBeInTheDocument()
+    expect(requests).toEqual([])
   })
 })
