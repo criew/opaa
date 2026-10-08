@@ -82,6 +82,12 @@ Die Ausbaustufen der Anwendung sind dieselben. Was sich unterscheidet, ist der B
 außerhalb der Prozesse, jeder Dienst ist neustartbar, und keine Instanz hält Wissen, das nicht auch
 woanders steht.
 
+Das Projekt liefert dafür einen Helm-Chart als Bestandteil jedes Releases, veröffentlicht neben den
+Images in GHCR ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md)). Er bildet zunächst
+die Single-Instance-Stufe nach [ADR-0021](../decisions/0021-single-instance-betrieb.md) ab: eine
+Backend-Instanz, Aktualisierung mit kurzer Unterbrechung, Datenbank und Identitätsanbieter extern.
+Mehrere Instanzen und rollierende Aktualisierung kommen erst mit dem Multiinstanzbetrieb.
+
 ### Bare-Metal
 
 Betrieb ohne Containerlaufzeit ist möglich, wo Vorgaben eines Hauses es erfordern, aber der
@@ -661,8 +667,6 @@ hinterlassen kein Ereignis.
   Beschreibung veraltet an einer der beiden Stellen.
 - Werden Wiederherstellungszeit- und Wiederherstellungspunktziele als Voreinstellung mitgeliefert
   oder ausschließlich je Installation vereinbart?
-- Werden Bereitstellungsbeschreibungen für Kubernetes mitgeliefert und gepflegt, oder bleibt das
-  Sache des Betreibers?
 - Wie wird eine Lieferung in ein abgeschottetes Netz praktisch gebündelt — Abbilder, Modellgewichte
   und Stückliste als ein Paket oder als getrennte Lieferwege?
 - Wie werden Modelle in einer mandantenfähigen Installation zugeteilt: gemeinsamer Modellbetrieb für
