@@ -24,6 +24,7 @@ import io.opaa.retrieval.RetrievalPipelineTestSupport;
 import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageStatus;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import io.opaa.test.JavaSources;
 import java.io.IOException;
 import java.util.List;
@@ -34,7 +35,6 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * The administration's diagnosis must run the retrieval a chat query runs, reranking included
@@ -55,7 +55,7 @@ class SearchDiagnosisRerankParityTest {
   private static final QueryProperties PROPERTIES =
       new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, CANDIDATE_WINDOW, 20, 2);
 
-  private final VectorStore vectorStore = mock(VectorStore.class);
+  private final VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
   private final RerankModelRole rerankModelRole = mock(RerankModelRole.class);
   private final LibraryAccessService libraryAccessService = mock(LibraryAccessService.class);
 
@@ -64,7 +64,7 @@ class SearchDiagnosisRerankParityTest {
         CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Admin");
     when(libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()))
         .thenReturn(Set.of(LIBRARY_ID));
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(
             IntStream.range(0, 25).mapToObj(SearchDiagnosisRerankParityTest::chunk).toList());
     when(rerankModelRole.currentStatus()).thenReturn(roleStatus);
@@ -97,7 +97,7 @@ class SearchDiagnosisRerankParityTest {
   }
 
   private RetrievalPipeline pipeline() {
-    return RetrievalPipelineTestSupport.vectorSearchPipeline(vectorStore, rerankModelRole);
+    return RetrievalPipelineTestSupport.vectorSearchPipeline(vectorChunkSearch, rerankModelRole);
   }
 
   private static Document chunk(int i) {

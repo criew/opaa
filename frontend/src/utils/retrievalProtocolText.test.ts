@@ -29,6 +29,7 @@ const BACKEND_NOTES = [
   'vector search, 3 list(s)',
   'fetch-k 25 per list',
   'similarity threshold 0.5, applied in-query',
+  'vector search · sub-query 2 returned 7 of fetch-k 25 candidate(s): fewer qualify within filter and similarity threshold, or the index scan stopped at its tuple or memory limit',
   'lexical search path switched off (opaa.query.full-text-search-enabled)',
   'full-text search, 3 list(s)',
   'per-list budget 8',

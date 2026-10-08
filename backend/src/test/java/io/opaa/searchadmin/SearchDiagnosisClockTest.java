@@ -19,6 +19,7 @@ import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineTestSupport;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -27,7 +28,6 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * {@link SearchDiagnosisService#diagnose} takes its timestamp from the injected {@link Clock}
@@ -42,17 +42,17 @@ class SearchDiagnosisClockTest {
 
   @Test
   void diagnoseTakesItsTimestampFromTheInjectedClock() {
-    VectorStore vectorStore = mock(VectorStore.class);
+    VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
     RerankModelRole rerankModelRole = mock(RerankModelRole.class);
     LibraryAccessService libraryAccessService = mock(LibraryAccessService.class);
     CurrentUser caller =
         CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Admin");
     when(libraryAccessService.readableLibraryIds(caller.id(), caller.organizationId()))
         .thenReturn(Set.of(LIBRARY_ID));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     when(rerankModelRole.currentStatus()).thenReturn(RerankRoleStatus.disabled());
     RetrievalPipeline pipeline =
-        RetrievalPipelineTestSupport.vectorSearchPipeline(vectorStore, rerankModelRole);
+        RetrievalPipelineTestSupport.vectorSearchPipeline(vectorChunkSearch, rerankModelRole);
     QueryProperties properties =
         new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 20, 20, 2);
     Clock fixedClock = Clock.fixed(FIXED_INSTANT, ZoneOffset.UTC);

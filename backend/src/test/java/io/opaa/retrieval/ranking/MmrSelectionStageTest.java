@@ -19,6 +19,7 @@ import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.VerdictReason;
 import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.QueryDecompositionService;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -26,7 +27,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * The per-list budget stage inside the pipeline it belongs to (docs/handbuch/suche.md, Stufe 6):
@@ -38,11 +38,11 @@ class MmrSelectionStageTest {
   private static final QueryProperties PROPERTIES =
       new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
 
-  private final VectorStore vectorStore = mock(VectorStore.class);
+  private final VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
 
   private RetrievalPipeline pipeline(RetrievalPipelineProperties pipelineProperties) {
     return RetrievalPipelineTestSupport.pipeline(
-        vectorStore,
+        vectorChunkSearch,
         mock(FullTextChunkSearch.class),
         mock(ChunkEmbeddingLookup.class),
         mock(QueryDecompositionService.class),
@@ -51,7 +51,7 @@ class MmrSelectionStageTest {
   }
 
   private void stubSearch(List<Document> results) {
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(results);
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(results);
   }
 
   /**

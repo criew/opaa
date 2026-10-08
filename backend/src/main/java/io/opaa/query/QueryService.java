@@ -39,7 +39,6 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
@@ -51,11 +50,11 @@ import org.springframework.stereotype.Service;
  * <p>A query always reads with the calling user's own rights - no system-admin bypass, no second
  * rights context
  * (docs/features/spaces-and-assets.md#ein-agent-liest-immer-mit-den-rechten-des-nutzers) - and the
- * permission filter is part of every search query itself, the {@link VectorStore#similaritySearch}
- * call and the full-text query alike, never a post-filter, so an unauthorized chunk is never loaded
- * or ranked. An empty search scope short-circuits to answer generation with zero chunks, the same
- * path a genuinely empty result takes, so the answer cannot distinguish "no permission on anything"
- * from "nothing matched".
+ * permission filter is part of every search query itself, the {@code
+ * VectorChunkSearch#similaritySearch} call and the full-text query alike, never a post-filter, so
+ * an unauthorized chunk is never loaded or ranked. An empty search scope short-circuits to answer
+ * generation with zero chunks, the same path a genuinely empty result takes, so the answer cannot
+ * distinguish "no permission on anything" from "nothing matched".
  *
  * <p>A message the decomposition found nothing to search for is searched like any other; only the
  * answer is told, so that it does not claim to have found nothing. That signal depends on the

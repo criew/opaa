@@ -76,6 +76,7 @@ import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.FullTextSearchStage;
 import io.opaa.retrieval.search.QueryDecompositionService;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import io.opaa.retrieval.search.VectorSearchStage;
 import io.opaa.test.SourceTypes;
 import java.lang.reflect.Method;
@@ -106,14 +107,13 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.transaction.annotation.Transactional;
 
 @ExtendWith(MockitoExtension.class)
 class QueryServiceTest {
 
-  @Mock private VectorStore vectorStore;
+  @Mock private VectorChunkSearch vectorChunkSearch;
   @Mock private AnswerGenerationService answerGenerationService;
   @Mock private ChatMemory chatMemory;
   @Mock private DocumentRepository documentRepository;
@@ -172,7 +172,7 @@ class QueryServiceTest {
                 new SearchScopeStage(),
                 new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
                 new SubQueryDecompositionStage(queryDecompositionService),
-                new VectorSearchStage(vectorStore),
+                new VectorSearchStage(vectorChunkSearch),
                 // The lexical path is switched off in every QueryProperties this class builds
                 // (fullTextSearchEnabled = false): this class is about what QueryService does with
                 // the selection, not about how the selection is retrieved (see
@@ -280,7 +280,7 @@ class QueryServiceTest {
   @Test
   void queryRunsAnOrdinaryTestPrefixedQuestionUnchangedWhenTheSpikeSwitchIsOff() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(
             eq("@test Frage"), any(), any(), any(), anyBoolean()))
@@ -309,7 +309,7 @@ class QueryServiceTest {
             chatMemory,
             spikeProvider(spikeHandler));
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -349,7 +349,7 @@ class QueryServiceTest {
         serviceWithSpikeEnabled.query("@test Frage", null, caller, true, List.of());
 
     assertThat(response).isSameAs(spikeResult);
-    verifyNoInteractions(vectorStore, answerGenerationService);
+    verifyNoInteractions(vectorChunkSearch, answerGenerationService);
   }
 
   /**
@@ -362,7 +362,7 @@ class QueryServiceTest {
   @Test
   void queryNeverCallsChunkEmbeddingLookupWhenMmrLambdaIsOne() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -385,7 +385,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
             .score(0.85)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
     when(chunkEmbeddingLookup.findByIds(any())).thenReturn(Map.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -411,7 +411,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "entry.html", "document_id", documentId.toString()))
             .score(0.8)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
         new io.opaa.knowledge.Document(
@@ -463,7 +463,7 @@ class QueryServiceTest {
                     "chunk_index", "0"))
             .score(0.5)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(located, unlocated));
     when(documentRepository.findById(documentId)).thenReturn(Optional.empty());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -516,7 +516,7 @@ class QueryServiceTest {
                     0))
             .score(0.5)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk, plainChunk));
     io.opaa.knowledge.Document document =
         new io.opaa.knowledge.Document(
@@ -593,7 +593,7 @@ class QueryServiceTest {
   @Test
   void queryNamesTheLibrariesActuallySearched() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Nichts"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -638,7 +638,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "upload.pdf", "document_id", documentId.toString()))
             .score(0.8)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
         new io.opaa.knowledge.Document(
@@ -669,7 +669,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "upload.pdf", "document_id", documentId.toString()))
             .score(0.8)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
         new io.opaa.knowledge.Document(
@@ -708,7 +708,7 @@ class QueryServiceTest {
                 Map.of("file_name", "dienstanweisung.pdf", "document_id", documentId.toString()))
             .score(0.8)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var indexedDocument =
         new io.opaa.knowledge.Document(
@@ -759,7 +759,7 @@ class QueryServiceTest {
                 Map.of("file_name", "attachment.pdf", "document_id", secondDocumentId.toString()))
             .score(0.7)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(firstChunk, secondChunk));
 
     var firstDocument =
@@ -817,7 +817,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "legacy-b.pdf"))
             .score(0.7)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(firstChunkOfA, secondChunkOfA, chunkOfB));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -842,7 +842,7 @@ class QueryServiceTest {
             .score(0.85)
             .build();
 
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var usage = createUsage(100, 200);
     var metadata = ChatResponseMetadata.builder().model("gpt-4o").usage(usage).build();
@@ -869,7 +869,7 @@ class QueryServiceTest {
   @Test
   void queryGeneratesChatIdWhenNoneGiven() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -890,7 +890,7 @@ class QueryServiceTest {
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(
@@ -919,7 +919,7 @@ class QueryServiceTest {
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(
             any(), any(), eq(conversationKey), any(), anyBoolean()))
@@ -935,7 +935,7 @@ class QueryServiceTest {
   @Test
   void queryLeavesChatTitleNullForAnEphemeralQuery() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -968,7 +968,7 @@ class QueryServiceTest {
     // request-level useKnowledge/libraryIds passed below.
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId, otherReadableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -976,7 +976,7 @@ class QueryServiceTest {
     queryService.query("Question", chatId, caller, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     String filter = captor.getValue().getFilterExpression().toString();
     assertThat(filter).contains(readableLibraryId.toString());
     assertThat(filter).doesNotContain(otherReadableLibraryId.toString());
@@ -1003,7 +1003,7 @@ class QueryServiceTest {
     assertThat(response.metadata().noKnowledgeAvailableInSpace()).isTrue();
     assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
     assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
-    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+    org.mockito.Mockito.verifyNoInteractions(vectorChunkSearch);
   }
 
   /**
@@ -1034,7 +1034,7 @@ class QueryServiceTest {
       assertThat(response.sources()).isEmpty();
       assertThat(response.metadata().searchedLibraries()).isEmpty();
     }
-    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+    org.mockito.Mockito.verifyNoInteractions(vectorChunkSearch);
   }
 
   /**
@@ -1060,7 +1060,7 @@ class QueryServiceTest {
       assertThat(response.sources()).isEmpty();
       assertThat(response.metadata().searchedLibraries()).isEmpty();
     }
-    org.mockito.Mockito.verifyNoInteractions(vectorStore, queryDecompositionService);
+    org.mockito.Mockito.verifyNoInteractions(vectorChunkSearch, queryDecompositionService);
   }
 
   /** A chat whose chip bar was emptied on purpose answers without knowledge and says so. */
@@ -1082,7 +1082,7 @@ class QueryServiceTest {
     assertThat(response.metadata().answeredWithoutKnowledge()).isTrue();
     assertThat(response.metadata().noSpaceContext()).isFalse();
     assertThat(response.sources()).isEmpty();
-    org.mockito.Mockito.verifyNoInteractions(vectorStore, queryDecompositionService);
+    org.mockito.Mockito.verifyNoInteractions(vectorChunkSearch, queryDecompositionService);
   }
 
   @Test
@@ -1094,7 +1094,7 @@ class QueryServiceTest {
     UUID foreignChatId = UUID.randomUUID();
     when(chatService.findOwnedChat(foreignChatId, currentUserId)).thenReturn(Optional.empty());
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -1130,7 +1130,8 @@ class QueryServiceTest {
     // Not just "before the model": nothing past the early check runs at all, including the
     // readable-scope computation and the conversation-memory cache - proving the check's early
     // placement, not merely that it precedes the LLM call specifically.
-    verifyNoInteractions(vectorStore, answerGenerationService, libraryAccessService, chatMemory);
+    verifyNoInteractions(
+        vectorChunkSearch, answerGenerationService, libraryAccessService, chatMemory);
     verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
   }
 
@@ -1153,7 +1154,8 @@ class QueryServiceTest {
                     "Fasse zusammen", chatId, caller, true, List.of(), null, promptId))
         .isInstanceOf(AccessDeniedException.class);
 
-    verifyNoInteractions(vectorStore, answerGenerationService, libraryAccessService, chatMemory);
+    verifyNoInteractions(
+        vectorChunkSearch, answerGenerationService, libraryAccessService, chatMemory);
     verify(chatService, never()).appendTurn(any(), any(), any(), any(), any());
   }
 
@@ -1176,7 +1178,7 @@ class QueryServiceTest {
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     when(answerGenerationService.generateAnswer(
             eq("Fasse den Stand zum 24.09.2026 zusammen."),
             any(),
@@ -1301,7 +1303,7 @@ class QueryServiceTest {
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(persistedHistory);
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -1311,7 +1313,7 @@ class QueryServiceTest {
 
     verify(chatMemory).add(conversationKey, persistedHistory);
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())
         .isEqualTo("Was sind meine Ausgaben bei Apple? Mach daraus eine tabellarische Auflistung");
   }
@@ -1330,7 +1332,7 @@ class QueryServiceTest {
     when(chatService.historyAsSpringAiMessages(chatId, 6)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -1363,7 +1365,7 @@ class QueryServiceTest {
                     "Er kostet 30,70 Euro pro Jahr. 【source: doc-1#0 | anwohnerparken.md】")));
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -1394,7 +1396,7 @@ class QueryServiceTest {
             .score(0.7)
             .build();
 
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(citedChunk, uncitedChunk));
 
     var answer = "Info from readme 【source: doc-1#0 | readme.md】.";
@@ -1426,7 +1428,7 @@ class QueryServiceTest {
                     "chunk_index", 2))
             .score(0.9)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var answer =
         "Die Poststelle nimmt nur aufgeführte Formate an. "
@@ -1458,7 +1460,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
             .score(0.85)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var answer = "The answer is 42 【source: doc-123#0 | wrong-name.pdf】";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
@@ -1484,7 +1486,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
             .score(0.85)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var answer = "The answer is 42 【source: doc-123#9 | readme.md】";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
@@ -1507,7 +1509,7 @@ class QueryServiceTest {
             .metadata(Map.of("file_name", "readme.md", "document_id", "doc-123"))
             .score(0.85)
             .build();
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var answer = "The answer is 42 【source: doc-123#0 | readme.md】";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
@@ -1541,7 +1543,7 @@ class QueryServiceTest {
             .score(0.8)
             .build();
 
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk1, chunk2, chunk3));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -1567,7 +1569,7 @@ class QueryServiceTest {
             .score(0.9)
             .build();
 
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
 
     var answer = "The answer 【source: doc-1#0 | readme.md】 is here.";
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(answer))));
@@ -1595,7 +1597,7 @@ class QueryServiceTest {
             .score(0.7)
             .build();
 
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk1, chunk2));
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
@@ -1616,7 +1618,7 @@ class QueryServiceTest {
   @Test
   void queryPassesSearchRequestWithCorrectParameters() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse =
         new ChatResponse(List.of(new Generation(new AssistantMessage("No results"))));
@@ -1626,7 +1628,7 @@ class QueryServiceTest {
     queryService.query("Test query", null, caller, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     SearchRequest request = captor.getValue();
     assertThat(request.getQuery()).isEqualTo("Test query");
     assertThat(request.getTopK()).isEqualTo(25);
@@ -1641,7 +1643,7 @@ class QueryServiceTest {
   @Test
   void queryFiltersOnReadableLibraryIds() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
@@ -1649,7 +1651,7 @@ class QueryServiceTest {
     queryService.query("Test query", null, caller, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getFilterExpression()).isNotNull();
     assertThat(captor.getValue().getFilterExpression().toString())
         .contains(readableLibraryId.toString());
@@ -1666,7 +1668,7 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
     assertThat(response.sources()).isEmpty();
-    org.mockito.Mockito.verifyNoInteractions(vectorStore);
+    org.mockito.Mockito.verifyNoInteractions(vectorChunkSearch);
   }
 
   /** A chat with @Space-Wissen over a space with readable knowledge searches and sets no flag. */
@@ -1680,14 +1682,14 @@ class QueryServiceTest {
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId)))
         .thenReturn(Set.of(readableLibraryId));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
         .thenReturn(chatResponse);
 
     QueryResult response = queryService.query("Question", chatId, caller, true, List.of());
 
-    verify(vectorStore).similaritySearch(any(SearchRequest.class));
+    verify(vectorChunkSearch).similaritySearch(any(SearchRequest.class));
     assertThat(response.metadata().answeredWithoutKnowledge()).isFalse();
     assertThat(response.metadata().noKnowledgeAssignedToSpace()).isFalse();
     assertThat(response.metadata().noKnowledgeAvailableInSpace()).isFalse();
@@ -1712,7 +1714,7 @@ class QueryServiceTest {
             .score(0.95)
             .build();
 
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(citedChunk, higherScoreUncitedChunk));
 
     var answer = "Info 【source: doc-1#0 | report.pdf】.";
@@ -1749,7 +1751,7 @@ class QueryServiceTest {
             .score(0.95)
             .build();
 
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(citedChunk, higherScoreUncitedChunk));
 
     var answer = "Info 【source: doc-1#0 | report.pdf】.";
@@ -1773,7 +1775,7 @@ class QueryServiceTest {
             List.of(
                 new UserMessage("Was sind meine Ausgaben bei Apple?"),
                 new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR.")));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Tabelle"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -1783,7 +1785,7 @@ class QueryServiceTest {
         "Mach daraus eine tabellarische Auflistung", chatId, caller, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())
         .isEqualTo("Was sind meine Ausgaben bei Apple? Mach daraus eine tabellarische Auflistung");
   }
@@ -1803,7 +1805,7 @@ class QueryServiceTest {
                 new AssistantMessage("Ihre Apple-Ausgaben betragen 500 EUR."),
                 new UserMessage("Mach daraus eine Tabelle"),
                 new AssistantMessage("Hier ist die Tabelle...")));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -1812,7 +1814,7 @@ class QueryServiceTest {
     queryService.query("Sortiere nach Datum", chatId, caller, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())
         .isEqualTo("Mach daraus eine Tabelle Sortiere nach Datum");
   }
@@ -1834,7 +1836,7 @@ class QueryServiceTest {
                 new AssistantMessage("Hier ist die Tabelle..."),
                 new UserMessage("Und wie sieht das bei Reisekosten aus?"),
                 new AssistantMessage("Die Reisekosten betragen 200 EUR.")));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Sortiert"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -1843,7 +1845,7 @@ class QueryServiceTest {
     queryService.query("Sortiere nach Datum", chatId, caller, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery())
         .isEqualTo("Und wie sieht das bei Reisekosten aus? Sortiere nach Datum")
         .doesNotContain("Apple");
@@ -1852,7 +1854,7 @@ class QueryServiceTest {
   @Test
   void queryUsesPlainQuestionWhenNoHistory() {
     when(chatMemory.get(any())).thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
 
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -1861,7 +1863,7 @@ class QueryServiceTest {
     queryService.query("First question", null, caller, true, List.of());
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery()).isEqualTo("First question");
   }
 
@@ -1904,7 +1906,7 @@ class QueryServiceTest {
               .metadata(Map.of("file_name", "readme.md", "document_id", "doc-1"))
               .score(0.9)
               .build();
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -1912,7 +1914,7 @@ class QueryServiceTest {
       queryService.query("Question", null, caller, true, List.of());
 
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-      verify(vectorStore, times(1)).similaritySearch(captor.capture());
+      verify(vectorChunkSearch, times(1)).similaritySearch(captor.capture());
       assertThat(captor.getValue().getQuery()).isEqualTo("Umformulierte Frage");
       // The single-search path uses fetchK (25), not the per-sub-query budget - unchanged from the
       // pre-#923 behaviour MmrSelectorTest/this class's other tests already cover.
@@ -1948,12 +1950,12 @@ class QueryServiceTest {
               .build();
       // Null-safe: registering the second argThat below re-evaluates the first stub's matcher
       // against Mockito's internal null-argument probe call, which would otherwise NPE.
-      when(vectorStore.similaritySearch(
+      when(vectorChunkSearch.similaritySearch(
               argThat(
                   (SearchRequest request) ->
                       request != null && "Teilfrage A".equals(request.getQuery()))))
           .thenReturn(List.of(chunkA));
-      when(vectorStore.similaritySearch(
+      when(vectorChunkSearch.similaritySearch(
               argThat(
                   (SearchRequest request) ->
                       request != null && "Teilfrage B".equals(request.getQuery()))))
@@ -1964,7 +1966,7 @@ class QueryServiceTest {
 
       QueryResult response = queryService.query("Kombifrage", null, caller, true, List.of());
 
-      verify(vectorStore, times(2)).similaritySearch(any(SearchRequest.class));
+      verify(vectorChunkSearch, times(2)).similaritySearch(any(SearchRequest.class));
       assertThat(response.sources())
           .extracting(ChatSource::getFileName)
           .containsExactlyInAnyOrder("a.md", "b.md");
@@ -1978,7 +1980,7 @@ class QueryServiceTest {
               argThat(context -> context != null && "Kombifrage".equals(context.question())),
               eq(3)))
           .thenReturn(Optional.of(List.of("Teilfrage A", "Teilfrage B")));
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -1986,7 +1988,7 @@ class QueryServiceTest {
       queryService.query("Kombifrage", null, caller, true, List.of());
 
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-      verify(vectorStore, times(2)).similaritySearch(captor.capture());
+      verify(vectorChunkSearch, times(2)).similaritySearch(captor.capture());
       List<SearchRequest> requests = captor.getAllValues();
       assertThat(requests.get(0).getFilterExpression())
           .isEqualTo(requests.get(1).getFilterExpression());
@@ -2003,7 +2005,7 @@ class QueryServiceTest {
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Question".equals(context.question())), eq(3)))
           .thenReturn(Optional.empty());
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -2011,7 +2013,7 @@ class QueryServiceTest {
       queryService.query("Question", null, caller, true, List.of());
 
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-      verify(vectorStore, times(1)).similaritySearch(captor.capture());
+      verify(vectorChunkSearch, times(1)).similaritySearch(captor.capture());
       assertThat(captor.getValue().getQuery()).isEqualTo("Question");
     }
 
@@ -2040,7 +2042,7 @@ class QueryServiceTest {
               .metadata(Map.of("file_name", "ausweis.md", "document_id", "doc-ausweis"))
               .score(0.9)
               .build();
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(chunk));
       var chatResponse =
           new ChatResponse(List.of(new Generation(new AssistantMessage("37,00 Euro."))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -2055,7 +2057,7 @@ class QueryServiceTest {
           queryService.query("wenn ich über 24 bin", chatId, caller, true, List.of());
 
       ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-      verify(vectorStore).similaritySearch(captor.capture());
+      verify(vectorChunkSearch).similaritySearch(captor.capture());
       assertThat(captor.getValue().getQuery())
           .isEqualTo("Was kostet ein Personalausweis? wenn ich über 24 bin");
       verify(answerGenerationService)
@@ -2078,7 +2080,7 @@ class QueryServiceTest {
       when(queryDecompositionService.decompose(
               argThat(context -> context != null && "Question".equals(context.question())), eq(3)))
           .thenReturn(Optional.of(List.of("Umformulierte Frage")));
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -2096,7 +2098,7 @@ class QueryServiceTest {
           newQueryService(
               new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2), chatMemory);
       when(chatMemory.get(any())).thenReturn(List.of());
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -2131,7 +2133,7 @@ class QueryServiceTest {
                           .build())
               .toList();
       // Both sub-queries return the identical, fully overlapping candidate set.
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(eightChunks);
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(eightChunks);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -2186,7 +2188,7 @@ class QueryServiceTest {
       // Ranked 9th - below the topK=8 window MMR alone would keep, and thus excluded before
       // completion recovers it.
       candidates.add(chunk("a-fee", "doc-a", "a.md", 0.55));
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -2229,7 +2231,7 @@ class QueryServiceTest {
                   chunk("f-4", "doc-f4", "f4.md", 0.65),
                   chunk("f-5", "doc-f5", "f5.md", 0.60)));
       candidates.add(chunk("a-fee", "doc-a", "a.md", 0.55));
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);
@@ -2293,12 +2295,12 @@ class QueryServiceTest {
               chunk("g-7", "doc-g7", "g7.md", 0.10),
               chunk("g-8", "doc-g8", "g8.md", 0.05));
       // Null-safe registration order, same reasoning as the #923 decomposition tests above.
-      when(vectorStore.similaritySearch(
+      when(vectorChunkSearch.similaritySearch(
               argThat(
                   (SearchRequest request) ->
                       request != null && "Teilfrage A".equals(request.getQuery()))))
           .thenReturn(candidatesA);
-      when(vectorStore.similaritySearch(
+      when(vectorChunkSearch.similaritySearch(
               argThat(
                   (SearchRequest request) ->
                       request != null && "Teilfrage B".equals(request.getQuery()))))
@@ -2351,7 +2353,7 @@ class QueryServiceTest {
       // Ranked 9th - below the topK=8 window, exactly like the fee chunk in the tests above, but
       // here every one of the eight window slots is held by a single-chunk document.
       candidates.add(chunk("d3-1", "doc-3", "d3.md", 0.10));
-      when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
+      when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
           .thenReturn(chatResponse);

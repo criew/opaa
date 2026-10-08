@@ -25,7 +25,7 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
 - **Startwächter in `config`:** `DatabaseSchemaGuard` verlangt für `opaa.database.schema` einen
   schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Liquibase.
   `PgVectorDimensionsGuard` verweigert den Start, wenn die Spalte `embedding` eine andere Dimension
-  hat als konfiguriert. `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit
+  hat als konfiguriert, `PgVectorVersionGuard` bei pgvector älter als 0.8.0. `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit
   Zugangsdaten.
 - **Reihenfolge für einen neuen Endpunkt:** OpenAPI-Fragment, generierte DTOs, Enum-Mappings,
   Frontend-Typen, API-Funktion, MSW-Handler (`agents/roles/developer.md`, „Repository-Praxis").

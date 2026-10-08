@@ -17,14 +17,14 @@ import java.util.ArrayList;
 import java.util.List;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.stereotype.Component;
 
 /**
- * The {@link RetrievalStageName#VECTOR_SEARCH} stage: one {@code similaritySearch} per search
+ * The {@link RetrievalStageName#VECTOR_SEARCH} stage: one {@link VectorChunkSearch} per search
  * query, each with the identical permission filter from {@link SearchScopeStage} and the identical
- * {@link QueryProperties#similarityThreshold}, yielding one candidate list per query.
+ * {@link QueryProperties#similarityThreshold}, yielding one candidate list per query. A list
+ * shorter than fetch-k is named in the explanation protocol.
  *
  * <p>One of the two stages that add candidates the run did not already hold ({@link
  * FullTextSearchStage} is the other) - together they call {@link RetrievalState#withSearchResults}
@@ -37,10 +37,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class VectorSearchStage implements RetrievalStage {
 
-  private final VectorStore vectorStore;
+  private final VectorChunkSearch vectorChunkSearch;
 
-  public VectorSearchStage(VectorStore vectorStore) {
-    this.vectorStore = vectorStore;
+  public VectorSearchStage(VectorChunkSearch vectorChunkSearch) {
+    this.vectorChunkSearch = vectorChunkSearch;
   }
 
   @Override
@@ -60,10 +60,11 @@ public class VectorSearchStage implements RetrievalStage {
 
     List<CandidateList> lists = new ArrayList<>(searchQueries.size());
     List<CandidateVerdict> verdicts = new ArrayList<>();
+    List<String> shortListNotes = new ArrayList<>();
     for (int i = 0; i < searchQueries.size(); i++) {
       String label = listLabel(i);
       List<Document> candidates =
-          vectorStore.similaritySearch(
+          vectorChunkSearch.similaritySearch(
               SearchRequest.builder()
                   .query(searchQueries.get(i))
                   .topK(properties.fetchK())
@@ -72,6 +73,11 @@ public class VectorSearchStage implements RetrievalStage {
                   .build());
       lists.add(new CandidateList(label, candidates));
       verdicts.addAll(SearchStageSupport.retrievalVerdicts(label, candidates));
+      if (candidates.size() < properties.fetchK()) {
+        shortListNotes.add(
+            RetrievalNote.VECTOR_SEARCH_SHORT_LIST.format(
+                label, candidates.size(), properties.fetchK()));
+      }
     }
 
     RetrievalState searched = SearchStageSupport.withRecordedSearchQueries(state, searchQueries);
@@ -80,6 +86,7 @@ public class VectorSearchStage implements RetrievalStage {
     notes.add(RetrievalNote.VECTOR_SEARCH_LISTS.format(searchQueries.size()));
     notes.add(RetrievalNote.FETCH_K.format(properties.fetchK()));
     notes.add(RetrievalNote.SIMILARITY_THRESHOLD.format(properties.similarityThreshold()));
+    notes.addAll(shortListNotes);
     if (!state.metadataFilter().isEmpty()) {
       List<Document> all = lists.stream().flatMap(list -> list.documents().stream()).toList();
       notes.add(

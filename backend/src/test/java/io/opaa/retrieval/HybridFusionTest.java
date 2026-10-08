@@ -23,6 +23,7 @@ import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.FullTextSearchStage;
 import io.opaa.retrieval.search.QueryDecompositionService;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import io.opaa.retrieval.search.VectorSearchStage;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * The behaviour change of #1049 at the level it is claimed on (docs/features/hybrid-retrieval.md,
@@ -49,7 +49,7 @@ class HybridFusionTest {
   private static final QueryProperties VECTOR_ONLY =
       new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 50, 20, 2);
 
-  private final VectorStore vectorStore = mock(VectorStore.class);
+  private final VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
   private final QueryDecompositionService queryDecompositionService =
       mock(QueryDecompositionService.class);
@@ -61,7 +61,7 @@ class HybridFusionTest {
             new SearchScopeStage(),
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
-            new VectorSearchStage(vectorStore),
+            new VectorSearchStage(vectorChunkSearch),
             new FullTextSearchStage(fullTextChunkSearch),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
@@ -99,7 +99,7 @@ class HybridFusionTest {
    */
   @Test
   void aChunkOnlyTheLexicalPathFoundReachesTheSelection() {
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("literal-term", 0.09)));
@@ -115,7 +115,7 @@ class HybridFusionTest {
    */
   @Test
   void aChunkBothPathsFoundIsOneCandidateWithTwoContributions() {
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-top", 0.8), chunk("both", 0.6)));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(List.of(chunk("lexical-top", 0.09), chunk("both", 0.05)));
@@ -136,7 +136,7 @@ class HybridFusionTest {
    */
   @Test
   void aFailingLexicalQueryFailsTheRunInsteadOfYieldingTheVectorOnlySelection() {
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenThrow(new IllegalStateException("column content_tsv does not exist"));
@@ -154,7 +154,7 @@ class HybridFusionTest {
   void aLibraryWithoutLexicalHitsStillContributesItsVectorCandidates() {
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
         .thenReturn(List.of());
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8)));
 
     assertThat(run(HYBRID)).extracting(Document::getId).containsExactly("vector-a");
