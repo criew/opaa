@@ -20,8 +20,19 @@ Wie bei `main` tragen die Images eine SBOM- und eine Provenance-Attestierung
 
 Ein Tag `latest` gibt es bewusst nicht. Wer keine Version pinnt, folgt `main`.
 
-Ein Vorab-Stand (`vX.Y.Z-rc.1`, `vX.Y.Z-beta.2`) bekommt nur seine volle Version als Image-Tag,
-kein `X.Y`, und wird als Vorab-Release markiert.
+Ein Vorab-Stand behält seinen Suffix vollständig im Image-Tag, damit am Tag erkennbar bleibt, ob es
+ein Alpha-, Beta- oder Release-Kandidat ist. Er bekommt kein `X.Y` und wird als Vorab-Release
+markiert. Nur das führende `v` des Git-Tags entfällt:
+
+| Git-Tag | Image-Tags | GitHub-Release |
+|---|---|---|
+| `v1.2.3-alpha.1` | `1.2.3-alpha.1` | Vorab-Release |
+| `v1.2.3-beta.2` | `1.2.3-beta.2` | Vorab-Release |
+| `v1.2.3-rc.1` | `1.2.3-rc.1` | Vorab-Release |
+| `v1.2.3` | `1.2.3`, `1.2` | Release |
+
+Der Workflow bricht ab, wenn aus dem Git-Tag nicht genau dieses Image-Tag entsteht. Ein
+abgeschnittener Suffix würde also nie veröffentlicht.
 
 ## Schutzregeln im Workflow
 
