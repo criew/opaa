@@ -125,8 +125,11 @@ die Netzbeschränkung lokaler Systemverwalter (`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`)
 Client-Adresse aus der Kette, die diese Liste freigibt.
 
 Im Compose-Betrieb steht dort nur die feste Adresse des Frontend-Containers. Pods haben keine feste
-Adresse, die Liste muss also das Pod-Netz nennen. Das ist nur vertretbar, wenn außer dem Frontend
-kein Pod das Backend erreicht. Daraus folgt:
+Adresse, die Liste muss also das Pod-Netz nennen. Damit gilt jede Adresse im Pod-Netz als Proxy,
+auch die eines fremden Pods, der den Frontend-nginx direkt anspricht und `X-Forwarded-For`
+mitbringt. Vertretbar ist das nur, wenn **beide** Eingänge geschlossen sind: Außer dem Eingang des
+Clusters (Ingress- oder Gateway-Controller) erreicht kein Pod das Frontend, und außer dem Frontend
+erreicht kein Pod das Backend. Daraus folgt:
 
 - **Eingangs-Policy des Backends standardmäßig an.** Eine NetworkPolicy lässt Verbindungen zum
   Backend nur von den Frontend-Pods zu, dazu auf Wunsch von der Betriebsüberwachung. Sie sperrt
@@ -134,9 +137,12 @@ kein Pod das Backend erreicht. Daraus folgt:
 - **Liste ohne Vorgabe.** Der Chart kennt das Pod-Netz nicht; die Liste bleibt leer, bis der
   Betreiber sie setzt. Leer heißt: Das Backend sieht die Adresse des Frontend-Pods, die Grenzen
   wirken zu streng, aber nicht umgehbar.
-- **Pod-Netz nur mit wirksamer Policy.** Ist die Eingangs-Policy abgeschaltet oder setzt die
-  Netzwerkschicht des Clusters keine NetworkPolicies durch, darf das Pod-Netz nicht eingetragen
-  werden. Werte und Handbuch sagen das an der Stelle, an der die Liste gesetzt wird (#2353).
+- **Eingangs-Policy des Frontends auf Wunsch.** Sie lässt nur den Controller zu. Dafür braucht der
+  Chart dessen Namespace und Labels, sie kann also nicht ohne Werte an sein.
+- **Pod-Netz nur mit beiden Policies.** Ist die Liste gesetzt, aber eine der beiden Policies aus,
+  bricht das Rendern ab. Ob die Netzwerkschicht des Clusters NetworkPolicies tatsächlich durchsetzt,
+  kann der Chart nicht prüfen; Werte und Handbuch nennen diese Voraussetzung an der Stelle, an der
+  die Liste gesetzt wird (#2353).
 
 ### 5. Geheimnisse nur aus Secrets, nie vom Chart erzeugt
 
@@ -200,7 +206,9 @@ PVC hält, setzt `fsGroup` über einen Wert (#2352).
 
 NetworkPolicies liefert der Chart in zwei Teilen:
 
-- **Eingang zum Backend:** standardmäßig an (siehe Proxy-Kette in Entscheidung 4).
+- **Eingang zum Backend:** standardmäßig an (siehe Proxy-Kette in Entscheidung 4). Ein Test-Pod
+  von `helm test` fragt deshalb über das Frontend ab.
+- **Eingang zum Frontend:** an, sobald Namespace und Labels des Controllers gesetzt sind.
 - **Übrige Policies:** standardmäßig aus, vor allem die Begrenzung des Ausgangs. Ein gesperrter
   Ausgang bräche eine frische Installation, solange die Ziele für Identitätsanbieter, Modelle und
   Quellen nicht eingetragen sind. Das Handbuch empfiehlt, sie nach der Einrichtung einzuschalten
