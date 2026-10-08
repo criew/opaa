@@ -45,7 +45,7 @@ class TabularDocumentFormatTest {
   void claimsExactlyXlsxCsvAndOds() {
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv", ".ods");
     assertThat(pipeline.id()).isEqualTo("tabular");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   // --- XLSX ------------------------------------------------------------------------------------
@@ -451,19 +451,31 @@ class TabularDocumentFormatTest {
   }
 
   @Test
-  void aRowExceedingTheHardCharacterCeilingIsTruncatedWithAVisibleMarker() throws IOException {
-    // MAX_CHUNK_CHARS alone does not bound a single, giant row - without
-    // a hard ceiling it would be handed to the embedding model unbounded and fail there instead.
+  void aRowExceedingTheHardCharacterCeilingIsSplitIntoSeveralChunksWithoutLoss()
+      throws IOException {
+    // MAX_CHUNK_CHARS alone does not bound a single, giant row - the hard ceiling splits it, so
+    // the embedding model never receives it whole and its end still reaches the index.
     String hugeValue = "x".repeat(30_000);
     Path file = tempDir.resolve("riesig.csv");
-    Files.writeString(file, "Spalte1,Spalte2\n" + hugeValue + ",normal\n", StandardCharsets.UTF_8);
+    Files.writeString(
+        file, "Spalte1,Spalte2\n" + hugeValue + ",Zeilenende\n", StandardCharsets.UTF_8);
 
     DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "riesig.csv"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
-    String text = result.chunks().getFirst().getText();
-    assertThat(text.length()).isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
-    assertThat(text).endsWith("[…gekürzt]");
+    assertThat(result.chunks())
+        .hasSizeGreaterThan(1)
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
+              assertThat(chunk.getText()).doesNotContain("gekürzt");
+              assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
+                  .isEqualTo("Zeile 2");
+            });
+    String joined = String.join("", result.chunks().stream().map(c -> c.getText()).toList());
+    assertThat(joined.chars().filter(c -> c == 'x').count()).isEqualTo(30_000);
+    assertThat(result.chunks().getLast().getText()).endsWith("Zeilenende");
   }
 
   @Test
