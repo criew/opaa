@@ -1,6 +1,6 @@
 # Format: OpenDocument Präsentation (ODP)
 
-> **Entwurf.** Pipeline `odp`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `odp`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
 > [PowerPoint](format-pptx.md); hier stehen die Unterschiede.
 

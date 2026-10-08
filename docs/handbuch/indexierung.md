@@ -1068,9 +1068,10 @@ Was alle Pipelines gemeinsam haben:
   Eingabegrenze, die OPAA beim Embedden prüft (Schritt 6).
 - **Kleinstabschnitte werden zusammengefasst.** Bei den überschriftengetriebenen Pipelines gilt ein
   Abschnitt, der samt eigener Überschrift kürzer als **200 Zeichen** ist, als Kleinstabschnitt —
-  etwa ein Haushaltstitel mit einer einzigen Zeile. Aufeinanderfolgende Kleinstabschnitte unter
-  derselben übergeordneten Überschrift werden zu einem Chunk von höchstens rund 4.000 Zeichen
-  zusammengelegt. Der Chunk beginnt mit dem gemeinsamen Überschriftenpfad, der auch seine
+  etwa ein Haushaltstitel mit einer einzigen Zeile. Aufeinanderfolgende Kleinstabschnitte direkt
+  unter derselben übergeordneten Überschrift werden zu einem Chunk von höchstens rund 4.000 Zeichen
+  zusammengelegt; eine kurze Einleitung dieser Überschrift selbst kommt mit. Text unter einer
+  Überschrift ohne Titel wird nicht zusammengelegt. Der Chunk beginnt mit dem gemeinsamen Überschriftenpfad, der auch seine
   Ortsangabe ist; vor dem Text jedes zusammengelegten Abschnitts steht dessen eigene Überschrift.
   Über die Grenze der übergeordneten Überschrift hinweg wird nie zusammengelegt, Abschnitte ganz
   ohne gemeinsame Überschrift bleiben getrennt. Ein Abschnitt ab 200 Zeichen bleibt immer ein

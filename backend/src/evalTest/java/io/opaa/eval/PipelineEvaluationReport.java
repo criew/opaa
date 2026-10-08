@@ -128,8 +128,8 @@ public record PipelineEvaluationReport(
    * chunk changes.
    *
    * <p>Version 19 (issue #2331): runs of sections below 200 characters are combined under their
-   * common heading, row groups of very wide tables keep half the target size - seven format
-   * versions moved; fingerprint-only, every corpus chunk stays byte-identical.
+   * common heading, row groups of very wide tables keep half the target size - nine format versions
+   * moved; fingerprint-only, every corpus chunk stays byte-identical.
    */
   public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 19;
 

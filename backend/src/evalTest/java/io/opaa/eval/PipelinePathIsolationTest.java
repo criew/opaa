@@ -76,7 +76,7 @@ class PipelinePathIsolationTest {
     // from issue #2033 (PdfDocumentFormat#version() moved 1 -> 2, ruled tables one line per row),
     // plus 1 from issue #2330 (PdfDocumentFormat#version() moved 2 -> 3, raised sentence numbers),
     // plus 1 from issues #2327/#2328 (nine format versions moved, oversized sections split),
-    // plus 1 from issue #2331 (seven format versions moved, tiny sections combined)
+    // plus 1 from issue #2331 (nine format versions moved, tiny sections combined)
     // — counted independently of the raw-vector path above, whose own count (2 plus the same
     // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331 bumps)
     // moves

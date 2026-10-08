@@ -143,9 +143,9 @@ class DocumentFormatRegistryRoutingIntegrationTest {
         Map.ofEntries(
             Map.entry("pdf", (short) 5),
             Map.entry("docx", (short) 5),
-            Map.entry("pptx", (short) 2),
+            Map.entry("pptx", (short) 3),
             Map.entry("odt", (short) 4),
-            Map.entry("odp", (short) 3),
+            Map.entry("odp", (short) 4),
             Map.entry("tabular", (short) 3),
             Map.entry("markdown", (short) 3),
             Map.entry("html", (short) 5),

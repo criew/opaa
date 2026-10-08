@@ -112,8 +112,8 @@ public record EvaluationReport(
    *
    * <p><b>Bumped to 16 by issue #2331:</b> runs of sections below 200 characters are combined under
    * their common heading and the row groups of very wide tables keep half the target size -
-   * markdown 2 -> 3, docx, odt, html, confluence, pdf and tabular moved. Fingerprint-only: no
-   * corpus section is combined, every corpus chunk stays byte-identical.
+   * markdown 2 -> 3, docx, odt, html, confluence, pdf, tabular, pptx and odp moved.
+   * Fingerprint-only: no corpus section is combined, every corpus chunk stays byte-identical.
    */
   public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 16;
 

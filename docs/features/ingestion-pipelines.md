@@ -463,7 +463,7 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 #### Umgesetzt (#1061)
 
 `PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, seit #2330 Version 3, seit #2327 Version 4, seit #2331 Version 5, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
-#1187, seit #2327 Version 4, seit #2331 Version 5) und `PptxDocumentFormat` (`id` `pptx`, Version 1, seit #2327 Version 2) sind registriert und beanspruchen `.pdf`,
+#1187, seit #2327 Version 4, seit #2331 Version 5) und `PptxDocumentFormat` (`id` `pptx`, Version 1, seit #2327 Version 2, seit #2331 Version 3) sind registriert und beanspruchen `.pdf`,
 `.docx` bzw. `.pptx` in der `DocumentFormatRegistry`. `.doc` bleibt unverändert bei
 `TikaFallbackFormat` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
 
@@ -571,10 +571,11 @@ deren eigener Titel und Text zusammen unter `SMALL_SECTION_CHAR_LIMIT` (200 Zeic
 - Zusammengelegt wird bis zur Zielgröße `SOFT_CHUNK_CHAR_LIMIT` (4.000 Zeichen, dieselbe Konstante
   wie für das Teilen); eine eigene Konfiguration gibt es nicht. Ein Abschnitt ab 200 Zeichen bleibt
   immer ein eigener Chunk, ebenso ein für seine Länge geteilter Abschnitt.
-- Eine Gruppe verlässt nie die übergeordnete Überschrift ihres ersten Abschnitts; die ersten beiden
-  Mitglieder legen die gemeinsame Überschrift fest, jedes weitere muss darunter liegen. Abschnitte
-  ohne gemeinsame Überschrift (zwei Kapitel der obersten Ebene, Text vor der ersten Überschrift)
-  werden nie zusammengelegt.
+- Zusammengelegt werden nur Geschwister: Abschnitte mit genau derselben übergeordneten
+  Überschrift. Eine kurze Einleitung dieser Überschrift darf die Gruppe anführen. Eine Einleitung
+  oder eine leere Überschrift eine Ebene höher zieht deshalb nie die Titel mehrerer Titelgruppen in
+  einen Chunk. Abschnitte der obersten Ebene, Text vor der ersten Überschrift und Text unter einer
+  Überschrift ohne Titel (DOCX/ODT) werden nie zusammengelegt.
 - Überschriftenzeile und Fundort („Abschn. …") des Chunks sind der gemeinsame Überschriftenpfad;
   vor dem Text jedes Mitglieds steht dessen eigener Pfad unterhalb davon. Gleichnamige Geschwister
   werden über ihre Position unterschieden.
@@ -583,7 +584,8 @@ deren eigener Titel und Text zusammen unter `SMALL_SECTION_CHAR_LIMIT` (200 Zeic
   entsteht deshalb auch beim Zusammenlegen nicht.
 
 Betroffen sind alle Pipelines auf `HeadingSectionSplitter#chunk`: `markdown` 3, `docx` 5, `odt` 4,
-`html` 5, `confluence` 4, `pdf` 5. Die Messverträge steigen als reine Fixpunkt-Ergänzung
+`html` 5, `confluence` 4, `pdf` 5; dazu `tabular` 3, `pptx` 3 und `odp` 4 (Budget neben Kontext,
+siehe unten). Die Messverträge steigen als reine Fixpunkt-Ergänzung
 (Rohvektor 15 → 16, Pipeline 18 → 19, Mehrrunden-Pfad 8 → 9): Kein Korpusdokument hat zwei
 aufeinanderfolgende Kleinstabschnitte, alle Chunks der drei Domänen sind byte-gleich.
 
@@ -617,7 +619,12 @@ enthält solche Dokumente nicht.
 Zielgröße, bleiben den Datenzeilen trotzdem 2.000 Zeichen je Chunk — derselbe Anteil, den
 `HeadingSectionSplitter#boundedChunks` dem Rumpf einer Einheit lässt. Vorher schloss jede
 Datenzeile ihre Gruppe sofort, und jede Zeile wurde ein eigener Chunk mit der vollen Kopfzeile
-(`tabular` 3).
+(`tabular` 3). Das Budget ist zugleich an der harten Grenze gedeckelt
+(`HeadingSectionSplitter#bodyBudget`): Kontext plus Rumpf überschreiten nie 8.000 Zeichen, sonst
+schnitte die harte Teilung ein Teilstück ohne Kontext- und Kopfzeile ab. Dasselbe Budget gilt für
+jedes Teilstück einer Einheit mit wiederholtem Kontext, also auch für Folien mit sehr langem Titel
+(`pptx` 3, `odp` 4). Erst ein Kontext, der allein bis auf 200 Zeichen an die harte Grenze
+heranreicht, bleibt der harten Teilung überlassen.
 
 ### Baseline-Aktualisierung als Schritt jedes Format-Issues
 
@@ -774,7 +781,7 @@ Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 
 #### Umgesetzt (#1110, styles.xml seit #1145)
 
-`OdtDocumentFormat` (`id` `odt`, Version 2, seit #2327 Version 3, seit #2331 Version 4) und `OdpDocumentFormat` (`id` `odp`, Version 2, seit #2327 Version 3)
+`OdtDocumentFormat` (`id` `odt`, Version 2, seit #2327 Version 3, seit #2331 Version 4) und `OdpDocumentFormat` (`id` `odp`, Version 2, seit #2327 Version 3, seit #2331 Version 4)
 beanspruchen `.odt` bzw. `.odp` in der `DocumentFormatRegistry` und lösen damit die
 `TikaFallbackFormat` für beide Formate ab. Beide lesen `content.xml` (eine ODT-/ODP-Datei ist wie
 ODS ein ZIP-Archiv) direkt über einen gehärteten SAX-Parser, geteilt über `OdfPackage` (bis #1338

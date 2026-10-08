@@ -53,6 +53,9 @@ public final class HeadingSectionSplitter {
    */
   public static final int SMALL_SECTION_CHAR_LIMIT = 200;
 
+  /** The smallest body {@link #bodyBudget} cuts a unit into rather than leaving the hard cut. */
+  private static final int MIN_BODY_CHARS = 200;
+
   public sealed interface Event {}
 
   /** Opens a new section at {@code level}, closing every open heading of level {@code >= level}. */
@@ -85,16 +88,17 @@ public final class HeadingSectionSplitter {
 
   /**
    * A section after the budgeted split: {@code bodies} holds one entry per part, none for a section
-   * that is nothing but its own heading.
+   * that is nothing but its own heading. {@code titled} is false for text under a heading without a
+   * title, whose {@code path} is therefore its ancestors' path.
    */
-  private record Section(List<PathEntry> path, List<String> bodies) {
+  private record Section(List<PathEntry> path, List<String> bodies, boolean titled) {
 
     /**
      * Below {@link #SMALL_SECTION_CHAR_LIMIT} with its own title and body - the ancestors' titles
-     * repeat in every section below them - and under at least one heading.
+     * repeat in every section below them - and under a heading of its own.
      */
     boolean tiny() {
-      if (path.isEmpty() || bodies.size() > 1) {
+      if (!titled || path.isEmpty() || bodies.size() > 1) {
         return false;
       }
       int body = bodies.isEmpty() ? 0 : bodies.getFirst().length();
@@ -103,12 +107,12 @@ public final class HeadingSectionSplitter {
   }
 
   /**
-   * Cuts {@code events} into one section per cutting heading, then combines each run of
-   * neighbouring tiny sections ({@link Section#tiny}) into chunks of at most {@link
-   * #SOFT_CHUNK_CHAR_LIMIT}. A combined chunk never leaves the parent of its first section: its
-   * heading line and Fundort are the members' common heading path, and each member keeps its
-   * remaining headings inline in front of its text. A section of regular size is never combined,
-   * nor are sections without a common heading.
+   * Cuts {@code events} into one section per cutting heading, then combines each run of tiny
+   * sibling sections ({@link Section#tiny}) into chunks of at most {@link #SOFT_CHUNK_CHAR_LIMIT}:
+   * all members share one parent heading, optionally led by that parent's own tiny introduction.
+   * Heading line and Fundort of such a chunk are the parent's path, and each member keeps its own
+   * title inline in front of its text. A section of regular size is never combined, nor are
+   * top-level sections.
    *
    * @param maxCuttingLevel the deepest heading level that still opens a new chunk; a {@link
    *     Heading} deeper than this folds into the current section's text instead.
@@ -117,15 +121,17 @@ public final class HeadingSectionSplitter {
     List<Section> sections = new ArrayList<>();
     NavigableMap<Integer, PathEntry> headingPath = new TreeMap<>();
     List<String> blocks = new ArrayList<>();
+    boolean titled = true;
     for (int position = 0; position < events.size(); position++) {
       Event event = events.get(position);
       if (event instanceof Heading heading && heading.level() <= maxCuttingLevel) {
-        closeSection(sections, blocks, headingPath, heading.level());
+        closeSection(sections, blocks, headingPath, titled, heading.level());
         blocks = new ArrayList<>();
+        titled = !heading.title().isBlank();
         // A heading of level n closes every open heading of level >= n, exactly as an outline
         // reads.
         headingPath.tailMap(heading.level(), true).clear();
-        if (!heading.title().isBlank()) {
+        if (titled) {
           headingPath.put(heading.level(), new PathEntry(heading.title().strip(), position));
         }
         continue;
@@ -135,7 +141,7 @@ public final class HeadingSectionSplitter {
         blocks.add(text.strip());
       }
     }
-    closeSection(sections, blocks, headingPath, null);
+    closeSection(sections, blocks, headingPath, titled, null);
     return combined(sections);
   }
 
@@ -153,6 +159,7 @@ public final class HeadingSectionSplitter {
       List<Section> sections,
       List<String> blocks,
       NavigableMap<Integer, PathEntry> headingPath,
+      boolean titled,
       Integer closingLevel) {
     if (blocks.isEmpty() && headingPath.isEmpty()) {
       return;
@@ -162,7 +169,8 @@ public final class HeadingSectionSplitter {
     if (blocks.isEmpty() && closedByADeeperHeading) {
       return;
     }
-    sections.add(new Section(List.copyOf(headingPath.values()), splitIntoBudgetedChunks(blocks)));
+    sections.add(
+        new Section(List.copyOf(headingPath.values()), splitIntoBudgetedChunks(blocks), titled));
   }
 
   private static List<Document> combined(List<Section> sections) {
@@ -173,22 +181,29 @@ public final class HeadingSectionSplitter {
       List<PathEntry> common = first.path();
       int end = start + 1;
       if (first.tiny()) {
-        int floor = Math.max(1, first.path().size() - 1);
+        List<PathEntry> parent = null;
         while (end < sections.size()) {
           Section next = sections.get(end);
           if (!next.tiny()) {
             break;
           }
-          List<PathEntry> shared = commonPrefix(common, next.path());
-          // The first two members fix the common heading; every further one must lie below it.
-          boolean leavesTheGroup =
-              shared.size() < floor || (end > start + 1 && shared.size() < common.size());
-          if (leavesTheGroup
-              || combinedText(shared, sections.subList(start, end + 1)).length()
+          List<PathEntry> nextParent = parentOf(next.path());
+          // The second member fixes the parent: the first is that parent's introduction or a
+          // sibling under it. Every further member must be a child of the same parent.
+          List<PathEntry> candidate = parent;
+          if (candidate == null) {
+            boolean introduction = nextParent.equals(first.path());
+            boolean sibling = !nextParent.isEmpty() && nextParent.equals(parentOf(first.path()));
+            candidate = introduction || sibling ? nextParent : null;
+          }
+          if (candidate == null
+              || !nextParent.equals(candidate)
+              || combinedText(candidate, sections.subList(start, end + 1)).length()
                   > SOFT_CHUNK_CHAR_LIMIT) {
             break;
           }
-          common = shared;
+          parent = candidate;
+          common = parent;
           end++;
         }
       }
@@ -236,12 +251,8 @@ public final class HeadingSectionSplitter {
     return text.toString();
   }
 
-  private static List<PathEntry> commonPrefix(List<PathEntry> a, List<PathEntry> b) {
-    int length = 0;
-    while (length < a.size() && length < b.size() && a.get(length).equals(b.get(length))) {
-      length++;
-    }
-    return a.subList(0, length);
+  private static List<PathEntry> parentOf(List<PathEntry> path) {
+    return path.isEmpty() ? path : path.subList(0, path.size() - 1);
   }
 
   private static String headingLine(List<PathEntry> path) {
@@ -313,16 +324,25 @@ public final class HeadingSectionSplitter {
       return withinCeiling(whole, metadata);
     }
     int bodyLimit =
-        hasContext
-            ? Math.max(
-                SOFT_CHUNK_CHAR_LIMIT - context.length() - separator.length(),
-                SOFT_CHUNK_CHAR_LIMIT / 2)
-            : SOFT_CHUNK_CHAR_LIMIT;
+        hasContext ? bodyBudget(context.length() + separator.length()) : SOFT_CHUNK_CHAR_LIMIT;
     List<Document> chunks = new ArrayList<>();
     for (String part : BoundarySplitter.split(body, bodyLimit)) {
       chunks.addAll(withinCeiling(hasContext ? context + separator + part : part, metadata));
     }
     return chunks;
+  }
+
+  /**
+   * Characters left for the body of a chunk that repeats {@code contextLength} characters of
+   * context: the rest of {@link #SOFT_CHUNK_CHAR_LIMIT}, at least half of it, and never so much
+   * that context and body pass {@link #HARD_CHUNK_CHAR_LIMIT} - where the hard cut would separate a
+   * part from its context. Only a context that alone nearly fills the hard limit leaves that cut to
+   * {@link #withinCeiling}.
+   */
+  public static int bodyBudget(int contextLength) {
+    int target = Math.max(SOFT_CHUNK_CHAR_LIMIT - contextLength, SOFT_CHUNK_CHAR_LIMIT / 2);
+    int room = HARD_CHUNK_CHAR_LIMIT - contextLength;
+    return target <= room || room < MIN_BODY_CHARS ? target : room;
   }
 
   /**

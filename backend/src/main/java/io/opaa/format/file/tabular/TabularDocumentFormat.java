@@ -69,9 +69,9 @@ public class TabularDocumentFormat implements DocumentFormat {
   static final int MAX_ROWS_PER_CHUNK = 50;
 
   /**
-   * Cap on a chunk's rendered character length - the shared target size - checked before a further
-   * row is added; a context and header line beyond half of it still leave the rows half of it. A
-   * single row that alone exceeds it becomes its own chunk, split by {@link
+   * The shared target size a row group aims at, checked before a further row is added; the rows get
+   * what {@link HeadingSectionSplitter#bodyBudget} leaves next to context and header line. A single
+   * row that alone exceeds it becomes its own chunk, split by {@link
    * HeadingSectionSplitter#boundedChunks} with context and header line repeated in every part.
    */
   static final int MAX_CHUNK_CHARS = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
@@ -604,9 +604,9 @@ public class TabularDocumentFormat implements DocumentFormat {
     String headerLine = TableText.row(header);
     // Counted as rendered: the blank line after the context line, one line break per row.
     int baseChars = prefix.length() + 2 + headerLine.length();
-    // The rows keep at least half the target size even when context and header line alone exceed
-    // it, the same share HeadingSectionSplitter#boundedChunks leaves the body of a unit.
-    int rowChars = Math.max(MAX_CHUNK_CHARS - baseChars, MAX_CHUNK_CHARS / 2);
+    // The same body budget HeadingSectionSplitter#boundedChunks leaves a unit next to its context,
+    // so every row group keeps context and header line within the hard limit.
+    int rowChars = HeadingSectionSplitter.bodyBudget(baseChars + 1);
 
     List<Document> chunks = new ArrayList<>();
     List<List<String>> currentRows = new ArrayList<>();
