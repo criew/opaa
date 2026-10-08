@@ -1051,6 +1051,19 @@ Was alle Pipelines gemeinsam haben:
   Marker in den Text geschrieben und vor dem Embedden wieder entfernt werden.
 - Jede Pipeline hat eine **Kennung und eine Versionsnummer**, die an jedem erzeugten Chunk
   gespeichert wird (Abschnitt 9).
+- **Kein Text geht wegen seiner Länge verloren.** Ein Abschnitt ohne Zwischenüberschrift, der über
+  die Zielgröße hinausgeht, wird in mehrere Chunks geteilt, nicht gekürzt. Geteilt wird an der
+  gröbsten Grenze, die sich anbietet: zuerst an Leerzeilen, dann an Zeilenumbrüchen, dann an
+  Satzenden, zuletzt an Leerzeichen. Nur eine Zeichenfolge ganz ohne solche Grenze wird hart
+  geschnitten. Jedes Teilstück beginnt mit der Überschriftenzeile seines Abschnitts und trägt
+  dessen Ortsangabe.
+- Die überschriftengetriebenen Pipelines (PDF mit Gliederung, Word, OpenDocument Text, HTML,
+  Markdown, Confluence) zielen auf rund **4.000 Zeichen** je Chunk. Pipelines, deren Einheit eine
+  Seite, eine Folie oder eine Zeilengruppe ist, teilen diese Einheit erst ab **8.000 Zeichen**;
+  jedes Teilstück behält deren Ortsangabe („S. 4", „Folie 3", „Zeile 12"). Länger wird kein Chunk
+  einer Format-Pipeline. Ein Abschnitts-Chunk liegt damit bei grob 1.000 Tokens und passt auch in
+  kleine Kontextfenster wie das von `nomic-embed-text`; die 8.000 Zeichen bleiben selbst bei
+  zahlenlastigem Text deutlich unter der Eingabegrenze, die OPAA beim Embedden prüft (Schritt 6).
 - Die Chunk-Größen sind je Pipeline **projektseitig festgelegt**, nicht über einen
   Admin-Regler. Die konfigurierbaren Werte für Chunk-Größe und Überlappung gelten nur noch für
   die Auffang-Pipeline und strukturlose Texte. Dort wird nach Tokens geschnitten, standardmäßig
@@ -1090,6 +1103,14 @@ Dokumenten laufen mehrere Pakete parallel (Standard drei). Dieser Schritt ist de
 Netzaufruf der Strecke außerhalb der Quelle und bewusst **außerhalb jeder
 Datenbanktransaktion**, damit keine Datenbankverbindung während eines Modell-Roundtrips
 blockiert bleibt.
+
+Vor dem Aufruf zählt OPAA die Tokens jedes Chunks. Die Eingabegrenze liegt bei 8.191 Tokens
+abzüglich 10 % Reserve, also rund 7.400 Tokens. Überschreitet ein einzelner Chunk sie trotz der
+Größengrenzen aus Schritt 4, praktisch nur bei Text mit sehr vielen Tokens je Zeichen wie
+nicht-lateinischen Schriften, wird von dem Dokument nichts eingebettet. Es endet als
+**fehlgeschlagen**, und seine Fehlermeldung nennt die Ortsangabe des Chunks, etwa „Die Datei
+konnte nicht verarbeitet werden: Ein Textabschnitt ist zu lang für das Embedding-Modell (S. 4)".
+Hat der Chunk keine Ortsangabe, steht dort seine laufende Nummer im Dokument („Teil 5").
 
 ### Schritt 7: Vektor und Volltext schreiben
 

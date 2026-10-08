@@ -1,6 +1,6 @@
 # Format: PowerPoint (PPTX)
 
-> **Entwurf.** Pipeline `pptx`, Version 1. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `pptx`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -27,8 +27,9 @@ Aufbau eines Chunks:
 2. Text aller übrigen Formen; Tabellenzeilen mit ` | ` zwischen den Zellen
 3. Sprechernotizen als abschließender Absatz „Notizen: …"
 
-Ausgefiltert werden Foliennummer, Datum, Kopf- und Fußzeilenplatzhalter. Ein Chunk ist auf
-20.000 Zeichen begrenzt; eine Zielgröße gibt es bei Folien nicht.
+Ausgefiltert werden Foliennummer, Datum, Kopf- und Fußzeilenplatzhalter. Eine Folie mit mehr als
+8.000 Zeichen wird in mehrere Chunks geteilt, jeder mit der Ortsangabe der Folie
+(Kapitel [Indexierung](indexierung.md), Schritt 4); eine Zielgröße gibt es bei Folien nicht.
 
 ## 4. Metadaten am Chunk
 

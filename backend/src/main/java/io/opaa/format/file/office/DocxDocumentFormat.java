@@ -56,7 +56,7 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
   private static final Logger log = LoggerFactory.getLogger(DocxDocumentFormat.class);
 
   static final String ID = "docx";
-  static final short VERSION = 3;
+  static final short VERSION = 4;
 
   private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
@@ -122,11 +122,7 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();
     }
-    Document headerFooterChunk =
-        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, content.headerFooterText());
-    if (headerFooterChunk != null) {
-      chunks.add(0, headerFooterChunk);
-    }
+    chunks.addAll(0, RepeatingHeaderChunk.of(HEADER_FOOTER_LOCATION, content.headerFooterText()));
     return DocumentFormatResult.chunked(chunks);
   }
 

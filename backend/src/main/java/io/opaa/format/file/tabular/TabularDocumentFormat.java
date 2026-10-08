@@ -58,7 +58,7 @@ public class TabularDocumentFormat implements DocumentFormat {
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentFormat.class);
 
   static final String ID = "tabular";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
@@ -71,8 +71,8 @@ public class TabularDocumentFormat implements DocumentFormat {
   /**
    * Soft cap on a chunk's rendered character length, checked before a further row is added, against
    * a pathologically wide sheet producing an unboundedly large chunk. A single row that alone
-   * exceeds it still becomes its own one-row chunk rather than being split mid-row - see {@link
-   * HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT} for the absolute ceiling it is still subject to.
+   * exceeds it still becomes its own one-row chunk rather than being split mid-row - unless it
+   * passes {@link HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT}, which splits it into parts.
    */
   static final int MAX_CHUNK_CHARS = 6_000;
 
@@ -552,7 +552,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       return List.of();
     }
     if (nonBlank.size() == 1) {
-      return List.of(renderSingleRowChunk(sheetName, tableName, nonBlank.getFirst()));
+      return renderSingleRowChunk(sheetName, tableName, nonBlank.getFirst());
     }
 
     List<String> header = nonBlank.getFirst().values();
@@ -565,20 +565,20 @@ public class TabularDocumentFormat implements DocumentFormat {
     return buildChunks(sheetName, tableName, header, dataRows, dataRowNumbers);
   }
 
-  private static Document renderSingleRowChunk(String sheetName, String tableName, RawRow row) {
+  private static List<Document> renderSingleRowChunk(
+      String sheetName, String tableName, RawRow row) {
     String prefix =
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
-    String text =
-        HeadingSectionSplitter.capChunkLength(prefix + "\n\n" + TableText.row(row.values()));
+    String text = prefix + "\n\n" + TableText.row(row.values());
 
     String rowRange = "Zeile " + row.number();
     String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new Document(text, metadata);
+    return HeadingSectionSplitter.boundedChunks(text, metadata);
   }
 
   /**
@@ -620,7 +620,8 @@ public class TabularDocumentFormat implements DocumentFormat {
       boolean exceedsCharBudget =
           !currentRows.isEmpty() && currentChars + rowLineLength > MAX_CHUNK_CHARS;
       if (!currentRows.isEmpty() && (exceedsRowCount || exceedsCharBudget)) {
-        chunks.add(renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
+        chunks.addAll(
+            renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
         currentRows = new ArrayList<>();
         currentChars = baseChars;
       }
@@ -633,12 +634,13 @@ public class TabularDocumentFormat implements DocumentFormat {
       lastRow = rowNumber;
     }
     if (!currentRows.isEmpty()) {
-      chunks.add(renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
+      chunks.addAll(
+          renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
     }
     return chunks;
   }
 
-  private static Document renderChunk(
+  private static List<Document> renderChunk(
       String prefix,
       String headerLine,
       List<List<String>> rows,
@@ -656,7 +658,6 @@ public class TabularDocumentFormat implements DocumentFormat {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new Document(
-        HeadingSectionSplitter.capChunkLength(text.toString().stripTrailing()), metadata);
+    return HeadingSectionSplitter.boundedChunks(text.toString().stripTrailing(), metadata);
   }
 }

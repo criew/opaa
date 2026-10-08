@@ -853,10 +853,10 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
   jede Datenzeile ist von einer einzeiligen Ergebnistabelle strukturell nicht unterscheidbar, sobald
   Leerzeilen herausgefiltert sind — die Pipeline nimmt bewusst das Risiko in Kauf, gelegentlich eine
   reine Feldnamen-Zeile zu indizieren, statt gelegentlich echte Daten zu verwerfen.
-- Eine einzelne Zeile, die für sich schon die 6.000-Zeichen-Grenze überschreitet, wird zusätzlich
-  auf eine harte Obergrenze von 20.000 Zeichen gekürzt (mit Protokolleintrag und sichtbarem
-  „[…gekürzt]"-Vermerk) — ohne diese zweite Grenze würde eine echte Riesenzeile unbegrenzt an das
-  Einbettungsmodell gehen und dort am Token-Limit scheitern, statt beim Zerlegen selbst zu enden.
+- Eine einzelne Zeile, die für sich schon die 6.000-Zeichen-Grenze überschreitet, wird ab der
+  harten Obergrenze von 8.000 Zeichen in mehrere Chunks geteilt, nicht gekürzt (#2327) — ohne
+  diese zweite Grenze würde eine echte Riesenzeile unbegrenzt an das Einbettungsmodell gehen und
+  dort am Token-Limit scheitern (#2328), statt beim Zerlegen selbst zu enden.
 - Die Spaltenzahl je Zeile ist für XLSX und ODS gleichermaßen gedeckelt
   (`opaa.indexing.tabular.max-row-columns`, gesetzt 200) — eine überbreite Zeile wird abgeschnitten
   statt verworfen, mit Protokolleintrag je betroffenem Blatt.
@@ -938,13 +938,16 @@ als `<p><strong>…</strong></p>` ausgezeichnet sind — wird an Blockgrenzen (A
 Tabellenzeilen) in mehrere, je höchstens 4.000 Zeichen große Chunks weitergeschnitten, statt einen
 einzigen, mit der Seite mitwachsenden Chunk zu bilden. **Gesetzt, nicht gemessen** — der
 Evaluierungskorpus enthält bislang keine HTML-Dokumente (siehe unten); 4.000 Zeichen liegen in der
-Größenordnung des bestehenden Bestands (`opaa.indexing.chunk-size` = 1000 Token). Eine harte
-Obergrenze von 20.000 Zeichen bleibt als **letzter Rückfall** bestehen, wenn ein einzelner Block
-(z. B. ein Absatz ohne jede innere Gliederung) für sich allein schon diese Grenze sprengt; betroffener
-Text wird dann mit sichtbarem „[…gekürzt]"-Vermerk gekappt, über dieselbe geteilte
-`HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT`/`#capChunkLength`-Logik wie die
-überschriftenbasierten Pipelines (#1108) — die Mail- und die Tika-Fallback-Pipeline nutzen
-`HeadingSectionSplitter` nicht.
+Größenordnung des bestehenden Bestands (`opaa.indexing.chunk-size` = 1000 Token). Ein einzelner
+Block, der für sich allein schon über 4.000 Zeichen liegt (z. B. ein Absatz ohne jede innere
+Gliederung oder ein mehrseitiger PDF-Abschnitt ohne Lesezeichen), wird in sich weitergeschnitten:
+an Leerzeilen, Zeilenumbrüchen, Satzenden, Leerzeichen, nur ohne jede solche Grenze hart
+(`BoundarySplitter`, #2327). Bis dahin wurde ein solcher Block bei 20.000 Zeichen mit
+„[…gekürzt]"-Vermerk gekappt; der Rest fehlte im Index, und der gekappte Chunk konnte das
+Token-Budget der Einbettung sprengen und das ganze Dokument scheitern lassen (#2328). Für die
+Pipelines ohne Abschnitts-Budget (Seite, Folie, Zeilengruppe) bleibt eine harte Obergrenze von
+8.000 Zeichen, die ebenfalls teilt statt kürzt (`HeadingSectionSplitter#boundedChunks`) — die
+Mail- und die Tika-Fallback-Pipeline nutzen `HeadingSectionSplitter` nicht.
 
 **Wortgrenzen an der rohen Textquelle, nicht pauschal** (#1059 Review, Befund 7): Inline-Auszeichnung
 wie `<b>Personal</b>ausweis` darf keinen künstlichen Leerraum einfügen („Personal ausweis"). Ob

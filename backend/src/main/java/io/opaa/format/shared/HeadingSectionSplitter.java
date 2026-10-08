@@ -14,9 +14,13 @@ import org.springframework.ai.document.Document;
 /**
  * Cuts a flat sequence of heading/paragraph events into chunks along the heading path in effect at
  * each cut (docs/features/ingestion-pipelines.md, Teil 2: "Markdown, DOCX ... |
- * Überschriftenabschnitt"). {@link #chunk} is the event-list entry point; {@link #flushSection} and
- * {@link #capChunkLength} are exposed separately for a caller (e.g. a DOM-driven pipeline) that
- * accumulates its own {@code blocks}/{@code headingPath} state instead of an event list.
+ * Überschriftenabschnitt"). {@link #chunk} is the event-list entry point; {@link #flushSection} is
+ * exposed separately for a caller (e.g. a DOM-driven pipeline) that accumulates its own {@code
+ * blocks}/{@code headingPath} state instead of an event list.
+ *
+ * <p>No text is ever dropped for size: a block beyond {@link #SOFT_CHUNK_CHAR_LIMIT} is cut into
+ * parts by {@link BoundarySplitter}, each part a chunk of its own under the same heading line and
+ * Fundort.
  *
  * <p>The maximum heading level that actually cuts a new chunk is a caller-supplied parameter, not a
  * constant - callers cap it differently depending on how deep their format's own outline goes. A
@@ -34,10 +38,13 @@ public final class HeadingSectionSplitter {
    */
   public static final int SOFT_CHUNK_CHAR_LIMIT = 4_000;
 
-  /** Last-resort backstop for a single block that alone already exceeds the soft budget. */
-  public static final int HARD_CHUNK_CHAR_LIMIT = 20_000;
-
-  private static final String TRUNCATION_MARKER = " […gekürzt]";
+  /**
+   * Ceiling of every chunk text, for the formats whose natural unit (page, slide, row group) has no
+   * soft budget; {@link #boundedChunks} splits anything longer. Even at two characters per token -
+   * dense numbers and file references - 8,000 characters stay well inside the embedding step's
+   * token budget (7,372 tokens of Spring AI's default {@code TokenCountBatchingStrategy}).
+   */
+  public static final int HARD_CHUNK_CHAR_LIMIT = 8_000;
 
   public sealed interface Event {}
 
@@ -124,21 +131,21 @@ public final class HeadingSectionSplitter {
       // real, searchable content.
       bodies = List.of("");
     }
+    Map<String, Object> metadata = new HashMap<>();
+    if (location != null) {
+      metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
+    }
     for (String body : bodies) {
       String text =
           headingLine == null ? body : body.isEmpty() ? headingLine : headingLine + "\n\n" + body;
-      Map<String, Object> metadata = new HashMap<>();
-      if (location != null) {
-        metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-      }
-      chunks.add(new Document(capChunkLength(text), metadata));
+      chunks.addAll(boundedChunks(text, metadata));
     }
   }
 
   private static List<String> splitIntoBudgetedChunks(List<String> blocks) {
     List<String> result = new ArrayList<>();
     StringBuilder current = new StringBuilder();
-    for (String block : blocks) {
+    for (String block : withinSoftBudget(blocks)) {
       boolean wouldExceed =
           current.length() > 0 && current.length() + 2 + block.length() > SOFT_CHUNK_CHAR_LIMIT;
       if (wouldExceed) {
@@ -156,16 +163,34 @@ public final class HeadingSectionSplitter {
     return result;
   }
 
-  /** Applies the last-resort {@link #HARD_CHUNK_CHAR_LIMIT} backstop to a single chunk's text. */
-  public static String capChunkLength(String text) {
-    if (text.length() <= HARD_CHUNK_CHAR_LIMIT) {
-      return text;
+  /** {@code blocks} with every block beyond the soft budget replaced by its parts. */
+  private static List<String> withinSoftBudget(List<String> blocks) {
+    List<String> result = new ArrayList<>(blocks.size());
+    for (String block : blocks) {
+      if (block.length() <= SOFT_CHUNK_CHAR_LIMIT) {
+        result.add(block);
+      } else {
+        result.addAll(BoundarySplitter.split(block, SOFT_CHUNK_CHAR_LIMIT));
+      }
     }
-    log.warn(
-        "A chunk exceeds the hard limit of {} characters ({} actual); truncating",
-        HARD_CHUNK_CHAR_LIMIT,
-        text.length());
-    return text.substring(0, HARD_CHUNK_CHAR_LIMIT - TRUNCATION_MARKER.length())
-        + TRUNCATION_MARKER;
+    return result;
+  }
+
+  /**
+   * One chunk for {@code text}, or - beyond {@link #HARD_CHUNK_CHAR_LIMIT} - one per part cut by
+   * {@link BoundarySplitter}, in order. Every chunk gets its own copy of {@code metadata}, so each
+   * part keeps the Fundort of the unit it came from.
+   */
+  public static List<Document> boundedChunks(String text, Map<String, Object> metadata) {
+    if (text.length() <= HARD_CHUNK_CHAR_LIMIT) {
+      return List.of(new Document(text, new HashMap<>(metadata)));
+    }
+    List<String> parts = BoundarySplitter.split(text, HARD_CHUNK_CHAR_LIMIT);
+    log.debug(
+        "Split a chunk of {} characters into {} parts at the hard limit of {}",
+        text.length(),
+        parts.size(),
+        HARD_CHUNK_CHAR_LIMIT);
+    return parts.stream().map(part -> new Document(part, new HashMap<>(metadata))).toList();
   }
 }

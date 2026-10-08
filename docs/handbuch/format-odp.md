@@ -1,6 +1,6 @@
 # Format: OpenDocument Präsentation (ODP)
 
-> **Entwurf.** Pipeline `odp`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `odp`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
 > [PowerPoint](format-pptx.md); hier stehen die Unterschiede.
 
@@ -32,7 +32,8 @@ Absätze aller Masterseiten, dedupliziert, als **ein** führender Chunk mit der 
 „Masterfolie". Ein Vortragstitel oder eine Organisationsangabe, die auf jeder Folie im Master
 steht, wird so einmal gefunden.
 
-Ein Chunk ist auf 20.000 Zeichen begrenzt; keine Zielgröße, keine Zusammenlegung, keine
+Eine Folie mit mehr als 8.000 Zeichen wird in mehrere Chunks geteilt, jeder mit der Ortsangabe
+der Folie (Kapitel [Indexierung](indexierung.md), Schritt 4); keine Zielgröße, keine Zusammenlegung, keine
 Überlappung.
 
 ## 4. Metadaten am Chunk

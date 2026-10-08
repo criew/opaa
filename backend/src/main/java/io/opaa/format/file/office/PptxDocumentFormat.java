@@ -43,7 +43,7 @@ import org.springframework.ai.document.Document;
 public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.PptxContent> {
 
   static final String ID = "pptx";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
 
   @Override
   public String id() {
@@ -115,7 +115,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
       return DocumentFormatResult.noExtractableText();
     }
     return DocumentFormatResult.chunked(
-        content.slides().stream().map(SlideChunk::document).toList());
+        content.slides().stream().flatMap(slide -> slide.documents().stream()).toList());
   }
 
   @Override
@@ -126,7 +126,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
   /**
    * @param hasText whether the slide carried any real text - see this class's own Javadoc.
    */
-  public record SlideChunk(Document document, boolean hasText) {}
+  public record SlideChunk(List<Document> documents, boolean hasText) {}
 
   private static SlideChunk buildChunk(XSLFSlide slide, int slideNumber) {
     XSLFShape titleShape = titleShape(slide);
@@ -147,8 +147,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
     }
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new SlideChunk(
-        new Document(HeadingSectionSplitter.capChunkLength(text), metadata), hasText);
+    return new SlideChunk(HeadingSectionSplitter.boundedChunks(text, metadata), hasText);
   }
 
   /**

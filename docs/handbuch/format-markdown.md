@@ -1,6 +1,6 @@
 # Format: Markdown
 
-> **Entwurf.** Pipeline `markdown`, Version 1. Der gemeinsame Rahmen aller Format-Pipelines
+> **Entwurf.** Pipeline `markdown`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines
 > steht im Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -30,8 +30,8 @@ einer eigenen, kleinen Zustandsmaschine.
   verschachtelte Strukturen werden übersprungen. Ein nicht geschlossener Block bleibt Inhalt,
   damit nicht der Rest des Dokuments verloren geht.
 
-Zielgröße rund 4.000 Zeichen, Obergrenze 20.000, keine Überlappung, Überschriftenzeile am
-Anfang jedes Chunks.
+Zielgröße rund 4.000 Zeichen, größere Abschnitte werden ohne Textverlust geteilt
+(Kapitel [Indexierung](indexierung.md), Schritt 4), keine Überlappung, Überschriftenzeile am Anfang jedes Chunks.
 
 ## 4. Metadaten am Chunk
 

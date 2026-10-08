@@ -41,7 +41,7 @@ import org.springframework.ai.document.Document;
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
   static final String ID = "pdf";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   @Override
   public String id() {
@@ -277,7 +277,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. " + (i + 1));
-      chunks.add(new Document(HeadingSectionSplitter.capChunkLength(text.strip()), metadata));
+      chunks.addAll(HeadingSectionSplitter.boundedChunks(text.strip(), metadata));
     }
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();

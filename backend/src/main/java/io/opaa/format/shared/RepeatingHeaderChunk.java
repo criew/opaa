@@ -2,6 +2,7 @@ package io.opaa.format.shared;
 
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.springframework.ai.document.Document;
 
@@ -18,21 +19,22 @@ public final class RepeatingHeaderChunk {
   /**
    * @param location the {@code location} metadata value this leading chunk carries (e.g. "Kopf-/
    *     Fußzeile", "Masterfolie")
-   * @return {@code null} when {@code text} is blank, or when it contains no letter at all after
-   *     stripping - a document field's cached value (e.g. a page number) can still slip past a
-   *     caller's own field filtering, and a chunk of nothing but digits ("1") is noise, not content
-   *     worth its own embedding
+   * @return the leading chunk - several only beyond {@link
+   *     HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT} - or none when {@code text} is blank, or when
+   *     it contains no letter at all after stripping: a document field's cached value (e.g. a page
+   *     number) can still slip past a caller's own field filtering, and a chunk of nothing but
+   *     digits ("1") is noise, not content worth its own embedding
    */
-  public static Document ofOrNull(String location, String text) {
+  public static List<Document> of(String location, String text) {
     if (text == null || text.isBlank()) {
-      return null;
+      return List.of();
     }
     String stripped = text.strip();
     if (stripped.codePoints().noneMatch(Character::isLetter)) {
-      return null;
+      return List.of();
     }
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new Document(HeadingSectionSplitter.capChunkLength(stripped), metadata);
+    return HeadingSectionSplitter.boundedChunks(stripped, metadata);
   }
 }

@@ -1,5 +1,6 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.Collection;
@@ -32,6 +33,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
 
   public static final String DOCUMENT_ID_METADATA_KEY = "document_id";
   public static final String LIBRARY_ID_METADATA_KEY = "library_id";
+  public static final String CHUNK_INDEX_METADATA_KEY = "chunk_index";
 
   private final VectorStore vectorStore;
   private final EmbeddingModel embeddingModel;
@@ -61,6 +63,9 @@ public class VectorChunkStore implements ChunkMetadataStore {
    * VectorStoreWriter#writeEmbeddedChunks}, which writes both stores in one transaction. Two steps
    * rather than one {@code VectorStore#add} inside a transaction: embedding is an HTTP round trip,
    * and holding a pooled connection for its duration risks exhausting the pool.
+   *
+   * @throws ChunkNotEmbeddableException when one chunk alone exceeds the batching strategy's token
+   *     budget; nothing is embedded or written then
    */
   public void addChunks(List<Document> chunks) {
     if (chunks.isEmpty()) {
@@ -74,10 +79,34 @@ public class VectorChunkStore implements ChunkMetadataStore {
     try {
       embeddings =
           embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+    } catch (IllegalArgumentException e) {
+      throw oversizedChunkOr(chunks, e);
     } finally {
       embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt, measurementToken);
     }
     vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
+  }
+
+  /**
+   * The first chunk {@link #batchingStrategy} rejects on its own, as a {@link
+   * ChunkNotEmbeddableException}; {@code failure} itself when every chunk passes alone, so an
+   * unrelated argument error keeps its own cause. Only runs after a failed call.
+   */
+  private RuntimeException oversizedChunkOr(
+      List<Document> chunks, IllegalArgumentException failure) {
+    for (Document chunk : chunks) {
+      try {
+        batchingStrategy.batch(List.of(chunk));
+      } catch (IllegalArgumentException rejected) {
+        Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+        Object index = chunk.getMetadata().get(CHUNK_INDEX_METADATA_KEY);
+        return new ChunkNotEmbeddableException(
+            location == null ? null : location.toString(),
+            index instanceof Integer position ? position : null,
+            failure);
+      }
+    }
+    return failure;
   }
 
   /**
