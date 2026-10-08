@@ -1,0 +1,67 @@
+{{- include "opaa.validate" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opaa.frontend.fullname" . }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "frontend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "frontend") | nindent 8 }}
+        {{- with .Values.frontend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.frontend.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "opaa.podSpecCommon" (dict "root" . "component" .Values.frontend) | nindent 6 }}
+      containers:
+        - name: frontend
+          image: {{ include "opaa.image" (dict "root" . "image" .Values.frontend.image) | quote }}
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: OPAA_BACKEND_UPSTREAM
+              value: {{ include "opaa.backendUpstream" . | quote }}
+            {{- with .Values.frontend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /index.html
+              port: http
+            {{- toYaml .Values.frontend.livenessProbe | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: http
+            {{- toYaml .Values.frontend.readinessProbe | nindent 12 }}
+          {{- with .Values.frontend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- with .Values.frontend.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          {{- include "opaa.emptyDir" .Values.frontend.tmp | nindent 10 }}
+        {{- with .Values.frontend.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
