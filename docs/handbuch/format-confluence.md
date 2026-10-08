@@ -1,6 +1,6 @@
 # Format: Confluence-Seite
 
-> **Entwurf.** Pipeline `confluence`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines
+> **Entwurf.** Pipeline `confluence`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines
 > steht im Kapitel [Indexierung](indexierung.md), Abschnitt 5; wie die Seiten in die Bibliothek
 > gelangen, im Kapitel [Confluence](konnektor-confluence.md).
 
@@ -69,7 +69,8 @@ flowchart TB
 - Leerzeilen des Editors (`<p>&nbsp;</p>`) werden entfernt.
 
 Die Chunk-Größen sind fest: rund 4.000 Zeichen je Chunk, größere Abschnitte werden ohne
-Textverlust geteilt, dieselben Regeln wie bei den anderen überschriftengetriebenen Pipelines
+Textverlust geteilt, Abschnitte unter 200 Zeichen unter derselben übergeordneten Überschrift
+zusammengelegt, dieselben Regeln wie bei den anderen überschriftengetriebenen Pipelines
 (Kapitel [Indexierung](indexierung.md), Schritt 4).
 
 ## 4. Metadaten am Chunk

@@ -14,13 +14,12 @@ import org.springframework.ai.document.Document;
 /**
  * Cuts a flat sequence of heading/paragraph events into chunks along the heading path in effect at
  * each cut (docs/features/ingestion-pipelines.md, Teil 2: "Markdown, DOCX ... |
- * Überschriftenabschnitt"). {@link #chunk} is the event-list entry point; {@link #flushSection} is
- * exposed separately for a caller (e.g. a DOM-driven pipeline) that accumulates its own {@code
- * blocks}/{@code headingPath} state instead of an event list.
+ * Überschriftenabschnitt").
  *
  * <p>No text is ever dropped for size: a block beyond {@link #SOFT_CHUNK_CHAR_LIMIT} is cut into
  * parts by {@link BoundarySplitter}, each part a chunk of its own under the same heading line and
- * Fundort.
+ * Fundort. Conversely, neighbouring sections below {@link #SMALL_SECTION_CHAR_LIMIT} under a common
+ * heading are combined up to {@link #SOFT_CHUNK_CHAR_LIMIT}, see {@link #chunk}.
  *
  * <p>The maximum heading level that actually cuts a new chunk is a caller-supplied parameter, not a
  * constant - callers cap it differently depending on how deep their format's own outline goes. A
@@ -45,6 +44,17 @@ public final class HeadingSectionSplitter {
    * budget (7,372 tokens of Spring AI's default {@code TokenCountBatchingStrategy}).
    */
   public static final int HARD_CHUNK_CHAR_LIMIT = 8_000;
+
+  /**
+   * A section whose own title and body together stay below this many characters is a tiny chunk and
+   * combined with its tiny neighbours. <b>Gemessen</b> against the verwaltung domain
+   * (ingestion-pipelines.md, "Kleinstchunks"): at 500 a single § was no longer retrievable on its
+   * own.
+   */
+  public static final int SMALL_SECTION_CHAR_LIMIT = 200;
+
+  /** The smallest body {@link #bodyBudget} cuts a unit into rather than leaving the hard cut. */
+  private static final int MIN_BODY_CHARS = 200;
 
   public sealed interface Event {}
 
@@ -71,22 +81,58 @@ public final class HeadingSectionSplitter {
   }
 
   /**
+   * One heading of the path in effect, told apart from an equally named sibling by the position of
+   * its event.
+   */
+  private record PathEntry(String title, int position) {}
+
+  /**
+   * A section after the budgeted split: {@code bodies} holds one entry per part, none for a section
+   * that is nothing but its own heading. {@code titled} is false for text under a heading without a
+   * title, whose {@code path} is therefore its ancestors' path.
+   */
+  private record Section(List<PathEntry> path, List<String> bodies, boolean titled) {
+
+    /**
+     * Below {@link #SMALL_SECTION_CHAR_LIMIT} with its own title and body - the ancestors' titles
+     * repeat in every section below them - and under a heading of its own.
+     */
+    boolean tiny() {
+      if (!titled || path.isEmpty() || bodies.size() > 1) {
+        return false;
+      }
+      int body = bodies.isEmpty() ? 0 : bodies.getFirst().length();
+      return path.getLast().title().length() + body < SMALL_SECTION_CHAR_LIMIT;
+    }
+  }
+
+  /**
+   * Cuts {@code events} into one section per cutting heading, then combines each run of tiny
+   * sibling sections ({@link Section#tiny}) into chunks of at most {@link #SOFT_CHUNK_CHAR_LIMIT}:
+   * all members share one parent heading, optionally led by that parent's own tiny introduction.
+   * Heading line and Fundort of such a chunk are the parent's path, and each member keeps its own
+   * title inline in front of its text. A section of regular size is never combined, nor are
+   * top-level sections.
+   *
    * @param maxCuttingLevel the deepest heading level that still opens a new chunk; a {@link
    *     Heading} deeper than this folds into the current section's text instead.
    */
   public static List<Document> chunk(List<Event> events, int maxCuttingLevel) {
-    List<Document> chunks = new ArrayList<>();
-    NavigableMap<Integer, String> headingPath = new TreeMap<>();
+    List<Section> sections = new ArrayList<>();
+    NavigableMap<Integer, PathEntry> headingPath = new TreeMap<>();
     List<String> blocks = new ArrayList<>();
-    for (Event event : events) {
+    boolean titled = true;
+    for (int position = 0; position < events.size(); position++) {
+      Event event = events.get(position);
       if (event instanceof Heading heading && heading.level() <= maxCuttingLevel) {
-        flushSection(chunks, blocks, headingPath, heading.level());
+        closeSection(sections, blocks, headingPath, titled, heading.level());
         blocks = new ArrayList<>();
+        titled = !heading.title().isBlank();
         // A heading of level n closes every open heading of level >= n, exactly as an outline
         // reads.
         headingPath.tailMap(heading.level(), true).clear();
-        if (!heading.title().isBlank()) {
-          headingPath.put(heading.level(), heading.title().strip());
+        if (titled) {
+          headingPath.put(heading.level(), new PathEntry(heading.title().strip(), position));
         }
         continue;
       }
@@ -95,12 +141,12 @@ public final class HeadingSectionSplitter {
         blocks.add(text.strip());
       }
     }
-    flushSection(chunks, blocks, headingPath, null);
-    return chunks;
+    closeSection(sections, blocks, headingPath, titled, null);
+    return combined(sections);
   }
 
   /**
-   * Turns one section's collected blocks into one or more chunks.
+   * Adds the section {@code blocks} form under {@code headingPath}, if any.
    *
    * @param closingLevel the level of the heading that is closing this section, or {@code null} when
    *     it closes because the input itself ended. A body-less section closed by a <em>deeper</em>
@@ -109,10 +155,11 @@ public final class HeadingSectionSplitter {
    *     sibling/ancestor-level heading or by the end of the input is genuinely empty and still gets
    *     a one-line, heading-only chunk.
    */
-  public static void flushSection(
-      List<Document> chunks,
+  private static void closeSection(
+      List<Section> sections,
       List<String> blocks,
-      NavigableMap<Integer, String> headingPath,
+      NavigableMap<Integer, PathEntry> headingPath,
+      boolean titled,
       Integer closingLevel) {
     if (blocks.isEmpty() && headingPath.isEmpty()) {
       return;
@@ -122,24 +169,102 @@ public final class HeadingSectionSplitter {
     if (blocks.isEmpty() && closedByADeeperHeading) {
       return;
     }
-    String headingLine = headingPath.isEmpty() ? null : String.join(" › ", headingPath.values());
-    String location = headingLine == null ? null : "Abschn. " + headingLine;
-    List<String> bodies = splitIntoBudgetedChunks(blocks);
-    if (bodies.isEmpty()) {
-      // A section that is nothing but its own heading still becomes a one-line chunk - otherwise
-      // a heading-only section would look like NO_EXTRACTABLE_TEXT even though its heading is
-      // real, searchable content.
-      bodies = List.of("");
+    sections.add(
+        new Section(List.copyOf(headingPath.values()), splitIntoBudgetedChunks(blocks), titled));
+  }
+
+  private static List<Document> combined(List<Section> sections) {
+    List<Document> chunks = new ArrayList<>();
+    int start = 0;
+    while (start < sections.size()) {
+      Section first = sections.get(start);
+      List<PathEntry> common = first.path();
+      int end = start + 1;
+      if (first.tiny()) {
+        List<PathEntry> parent = null;
+        while (end < sections.size()) {
+          Section next = sections.get(end);
+          if (!next.tiny()) {
+            break;
+          }
+          List<PathEntry> nextParent = parentOf(next.path());
+          // The second member fixes the parent: the first is that parent's introduction or a
+          // sibling under it. Every further member must be a child of the same parent.
+          List<PathEntry> candidate = parent;
+          if (candidate == null) {
+            boolean introduction = nextParent.equals(first.path());
+            boolean sibling = !nextParent.isEmpty() && nextParent.equals(parentOf(first.path()));
+            candidate = introduction || sibling ? nextParent : null;
+          }
+          if (candidate == null
+              || !nextParent.equals(candidate)
+              || combinedText(candidate, sections.subList(start, end + 1)).length()
+                  > SOFT_CHUNK_CHAR_LIMIT) {
+            break;
+          }
+          parent = candidate;
+          common = parent;
+          end++;
+        }
+      }
+      if (end == start + 1) {
+        chunks.addAll(sectionChunks(first));
+      } else {
+        String headingLine = headingLine(common);
+        chunks.add(
+            new Document(
+                combinedText(common, sections.subList(start, end)), locationMetadata(headingLine)));
+      }
+      start = end;
     }
-    Map<String, Object> metadata = new HashMap<>();
-    if (location != null) {
-      metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    }
+    return chunks;
+  }
+
+  private static List<Document> sectionChunks(Section section) {
+    String headingLine = section.path().isEmpty() ? null : headingLine(section.path());
+    // A section that is nothing but its own heading still becomes a one-line chunk - otherwise
+    // a heading-only section would look like NO_EXTRACTABLE_TEXT even though its heading is
+    // real, searchable content.
+    List<String> bodies = section.bodies().isEmpty() ? List.of("") : section.bodies();
+    Map<String, Object> metadata = locationMetadata(headingLine);
+    List<Document> chunks = new ArrayList<>();
     for (String body : bodies) {
       String text =
           headingLine == null ? body : body.isEmpty() ? headingLine : headingLine + "\n\n" + body;
       chunks.addAll(withinCeiling(text, metadata));
     }
+    return chunks;
+  }
+
+  /** The common heading line, then each member's own headings below it and its text. */
+  private static String combinedText(List<PathEntry> common, List<Section> members) {
+    StringBuilder text = new StringBuilder(headingLine(common));
+    for (Section member : members) {
+      String ownHeadings = headingLine(member.path().subList(common.size(), member.path().size()));
+      String body = member.bodies().isEmpty() ? "" : member.bodies().getFirst();
+      for (String part : List.of(ownHeadings, body)) {
+        if (!part.isEmpty()) {
+          text.append("\n\n").append(part);
+        }
+      }
+    }
+    return text.toString();
+  }
+
+  private static List<PathEntry> parentOf(List<PathEntry> path) {
+    return path.isEmpty() ? path : path.subList(0, path.size() - 1);
+  }
+
+  private static String headingLine(List<PathEntry> path) {
+    return String.join(" › ", path.stream().map(PathEntry::title).toList());
+  }
+
+  private static Map<String, Object> locationMetadata(String headingLine) {
+    Map<String, Object> metadata = new HashMap<>();
+    if (headingLine != null) {
+      metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Abschn. " + headingLine);
+    }
+    return metadata;
   }
 
   private static List<String> splitIntoBudgetedChunks(List<String> blocks) {
@@ -199,16 +324,25 @@ public final class HeadingSectionSplitter {
       return withinCeiling(whole, metadata);
     }
     int bodyLimit =
-        hasContext
-            ? Math.max(
-                SOFT_CHUNK_CHAR_LIMIT - context.length() - separator.length(),
-                SOFT_CHUNK_CHAR_LIMIT / 2)
-            : SOFT_CHUNK_CHAR_LIMIT;
+        hasContext ? bodyBudget(context.length() + separator.length()) : SOFT_CHUNK_CHAR_LIMIT;
     List<Document> chunks = new ArrayList<>();
     for (String part : BoundarySplitter.split(body, bodyLimit)) {
       chunks.addAll(withinCeiling(hasContext ? context + separator + part : part, metadata));
     }
     return chunks;
+  }
+
+  /**
+   * Characters left for the body of a chunk that repeats {@code contextLength} characters of
+   * context: the rest of {@link #SOFT_CHUNK_CHAR_LIMIT}, at least half of it, and never so much
+   * that context and body pass {@link #HARD_CHUNK_CHAR_LIMIT} - where the hard cut would separate a
+   * part from its context. Only a context that alone nearly fills the hard limit leaves that cut to
+   * {@link #withinCeiling}.
+   */
+  public static int bodyBudget(int contextLength) {
+    int target = Math.max(SOFT_CHUNK_CHAR_LIMIT - contextLength, SOFT_CHUNK_CHAR_LIMIT / 2);
+    int room = HARD_CHUNK_CHAR_LIMIT - contextLength;
+    return target <= room || room < MIN_BODY_CHARS ? target : room;
   }
 
   /**

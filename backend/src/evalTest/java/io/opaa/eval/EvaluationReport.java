@@ -109,8 +109,13 @@ public record EvaluationReport(
    * target) moved pdf 3 -> 4, docx, pptx, odt, odp, tabular, markdown, html and confluence -
    * fingerprint-only, no block of any corpus document reaches 4,000 characters, so no measured
    * chunk changes.
+   *
+   * <p><b>Bumped to 16 by issue #2331:</b> runs of sections below 200 characters are combined under
+   * their common heading and the row groups of very wide tables keep half the target size -
+   * markdown 2 -> 3, docx, odt, html, confluence, pdf, tabular, pptx and odp moved.
+   * Fingerprint-only: no corpus section is combined, every corpus chunk stays byte-identical.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 15;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 16;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

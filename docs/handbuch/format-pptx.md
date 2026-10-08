@@ -1,6 +1,6 @@
 # Format: PowerPoint (PPTX)
 
-> **Entwurf.** Pipeline `pptx`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `pptx`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung

@@ -43,7 +43,7 @@ import org.springframework.ai.document.Document;
 public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.PptxContent> {
 
   static final String ID = "pptx";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   @Override
   public String id() {

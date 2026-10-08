@@ -43,7 +43,7 @@ class PptxDocumentFormatTest {
   void claimsExactlyPptx() {
     assertThat(pipeline.handledFormats()).containsExactly(".pptx");
     assertThat(pipeline.id()).isEqualTo("pptx");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   @Test

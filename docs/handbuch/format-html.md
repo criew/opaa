@@ -1,6 +1,6 @@
 # Format: HTML
 
-> **Entwurf.** Pipeline `html`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `html`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
@@ -41,7 +41,8 @@ Treffer, wird der ganze `body` genommen.
 Abschnitte korrekt erkannt werden. h4 bis h6 bleiben im Abschnitt. Absätze, Zitate und ähnliche
 Blöcke sind die Trennstellen für das Zusammenlegen und Teilen; ein einzelner zu langer Block wird
 in sich an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](indexierung.md), Schritt 4). Zielgröße rund 4.000
-Zeichen, keine Überlappung. Text vor der ersten Überschrift wird ein eigener Chunk
+Zeichen, keine Überlappung. Aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
+derselben übergeordneten Überschrift zusammengelegt. Text vor der ersten Überschrift wird ein eigener Chunk
 ohne Pfad.
 
 - **Tabellen** werden eine Zeile je Tabellenzeile, Zellen mit „ | " getrennt; eine Tabelle in

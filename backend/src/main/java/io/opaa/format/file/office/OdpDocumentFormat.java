@@ -39,7 +39,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
   private static final Logger log = LoggerFactory.getLogger(OdpDocumentFormat.class);
 
   static final String ID = "odp";
-  static final short VERSION = 3;
+  static final short VERSION = 4;
 
   private static final String MASTER_SLIDE_LOCATION = "Masterfolie";
 

@@ -19,12 +19,19 @@ class ConfluenceStorageFormatTest {
 
   private final ConfluenceStorageFormat pipeline = new ConfluenceStorageFormat();
 
+  /** Lifts a section above the size below which neighbouring sections are combined. */
+  private static final String NAEHERE =
+      "Das Nähere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht"
+          + " wird und für alle Dienststellen verbindlich ist; Ausnahmen bedürfen der schriftlichen"
+          + " Zustimmung der Amtsleitung.";
+
   static final String REPRESENTATIVE_PAGE =
       """
       <ac:structured-macro ac:name="toc"><ac:parameter ac:name="maxLevel">3</ac:parameter></ac:structured-macro>
       <p>Diese Seite beschreibt das <strong>Bauantragsverfahren</strong> der Stadt.</p>
       <h1>Zuständigkeiten</h1>
       <p>Das Bauamt bearbeitet Anträge innerhalb von 14 Tagen.</p>
+      <p>Das Nähere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird und für alle Dienststellen verbindlich ist; Ausnahmen bedürfen der schriftlichen Zustimmung der Amtsleitung.</p>
       <table><tbody>
         <tr><th>Vorgang</th><th>Frist</th></tr>
         <tr><td>Bauantrag</td><td>14 Tage</td></tr>
@@ -45,6 +52,7 @@ class ConfluenceStorageFormatTest {
       <p><ac:image><ri:attachment ri:filename="plan.png"/></ac:image><ac:emoticon ac:name="smile"/></p>
       <h3>Kontakt</h3>
       <p>Telefon 0123 456</p>
+      <p>Das Nähere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird und für alle Dienststellen verbindlich ist; Ausnahmen bedürfen der schriftlichen Zustimmung der Amtsleitung.</p>
       <ac:structured-macro ac:name="children"><ac:parameter ac:name="all">true</ac:parameter></ac:structured-macro>
       <ac:structured-macro ac:name="jira"><ac:parameter ac:name="jqlQuery">project = BAU</ac:parameter></ac:structured-macro>
       <ac:structured-macro ac:name="excerpt-include"><ac:parameter ac:name="">Andere Seite</ac:parameter></ac:structured-macro>
@@ -63,7 +71,7 @@ class ConfluenceStorageFormatTest {
     // DocumentIngestService for every document with a source context - not declared here.
     assertThat(pipeline.handledFormats()).isEmpty();
     assertThat(pipeline.id()).isEqualTo("confluence");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
     assertThat(pipeline.passthroughMetadataKeys())
         .containsExactlyInAnyOrder(ChunkMetadataKeys.LOCATION_METADATA_KEY);
   }
@@ -87,7 +95,7 @@ class ConfluenceStorageFormatTest {
             ChunkMetadataKeys.LOCATION_METADATA_KEY,
             "Abschn. Zuständigkeiten › Unterlagen › Kontakt");
     assertThat(chunks.get(3).getText())
-        .isEqualTo("Zuständigkeiten › Unterlagen › Kontakt\n\nTelefon 0123 456");
+        .isEqualTo("Zuständigkeiten › Unterlagen › Kontakt\n\nTelefon 0123 456\n\n" + NAEHERE);
   }
 
   @Test
@@ -185,9 +193,13 @@ class ConfluenceStorageFormatTest {
         chunk(
             "<h1>Antrag <ac:structured-macro ac:name=\"status\"><ac:parameter ac:name=\"colour\">"
                 + "Green</ac:parameter><ac:parameter ac:name=\"title\">Entwurf</ac:parameter>"
-                + "</ac:structured-macro></h1><p>Text.</p>"
+                + "</ac:structured-macro></h1><p>Text. "
+                + NAEHERE
+                + "</p>"
                 + "<h2>Kapitel <ac:structured-macro ac:name=\"jira\"><ac:parameter ac:name=\"key\">"
-                + "BAU-1</ac:parameter></ac:structured-macro></h2><p>Mehr.</p>");
+                + "BAU-1</ac:parameter></ac:structured-macro></h2><p>Mehr. "
+                + NAEHERE
+                + "</p>");
 
     assertThat(chunks).hasSize(2);
     assertThat(chunks.get(0).getMetadata())

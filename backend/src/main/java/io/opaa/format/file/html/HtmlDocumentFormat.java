@@ -33,7 +33,7 @@ import org.springframework.ai.document.Document;
 public class HtmlDocumentFormat implements DocumentFormat {
 
   public static final String ID = "html";
-  static final short VERSION = 4;
+  static final short VERSION = 5;
 
   /** h1-h3 open a new chunk, h4-h6 fold into the text - like the Confluence pipeline. */
   static final int MAX_CUTTING_LEVEL = 3;

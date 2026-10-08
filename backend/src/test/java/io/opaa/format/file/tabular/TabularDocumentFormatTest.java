@@ -45,7 +45,7 @@ class TabularDocumentFormatTest {
   void claimsExactlyXlsxCsvAndOds() {
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv", ".ods");
     assertThat(pipeline.id()).isEqualTo("tabular");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   // --- XLSX ------------------------------------------------------------------------------------
@@ -497,6 +497,83 @@ class TabularDocumentFormatTest {
               assertThat(chunk.getText().length())
                   .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
             });
+  }
+
+  @Test
+  void rowsOfATableWhoseHeaderAloneExceedsTheTargetSizeAreStillGrouped() throws IOException {
+    // regression guard for #2331: with context and header line beyond the target size, every
+    // data row became a chunk of its own that repeated the whole header line.
+    StringBuilder csv = new StringBuilder();
+    for (int c = 1; c <= 140; c++) {
+      csv.append(c == 1 ? "" : ",").append(String.format("Erhebungsmerkmal Nummer %03d", c));
+    }
+    csv.append('\n');
+    for (int r = 1; r <= 20; r++) {
+      csv.append("Amt ").append(r).append(",").append(r * 12).append(",".repeat(138)).append('\n');
+    }
+    Path file = tempDir.resolve("breit.csv");
+    Files.writeString(file, csv.toString(), StandardCharsets.UTF_8);
+    String headerLine = csv.substring(0, csv.indexOf("\n")).replace(",", " | ");
+    assertThat(headerLine.length()).isGreaterThan(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "breit.csv"));
+
+    assertThat(result.chunks())
+        .hasSizeLessThanOrEqualTo(5)
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).startsWith("Tabelle: breit\n\n" + headerLine + "\n");
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
+            });
+    for (int r = 1; r <= 20; r++) {
+      String row = "Amt " + r + " | " + (r * 12) + " |";
+      assertThat(result.chunks().stream().filter(c -> c.getText().contains(row)).count())
+          .as(row)
+          .isEqualTo(1);
+    }
+    assertThat(result.chunks().getFirst().getMetadata())
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Zeilen 2–5");
+  }
+
+  @Test
+  void everyChunkOfATableWhoseHeaderNearlyFillsTheHardLimitStillOpensWithContextAndHeader()
+      throws IOException {
+    // review finding on #2331: with context and header line beyond 6,000 characters, a row group
+    // ran past the hard limit and its second part lost both lines.
+    StringBuilder csv = new StringBuilder();
+    for (int c = 1; c <= 155; c++) {
+      csv.append(c == 1 ? "" : ",")
+          .append(String.format("Erhebungsmerkmal der Statistik Nummer %03d", c));
+    }
+    csv.append('\n');
+    for (int r = 1; r <= 20; r++) {
+      csv.append("Amt ").append(r).append(",").append(r * 12).append(",".repeat(153)).append('\n');
+    }
+    csv.append("Amt 21,").append("Wert ".repeat(600)).append("Zeilenende").append(",".repeat(153));
+    csv.append('\n');
+    Path file = tempDir.resolve("sehrbreit.csv");
+    Files.writeString(file, csv.toString(), StandardCharsets.UTF_8);
+    String opening =
+        "Tabelle: sehrbreit\n\n" + csv.substring(0, csv.indexOf("\n")).replace(",", " | ");
+    assertThat(opening.length()).isBetween(6_500, 7_500);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "sehrbreit.csv"));
+
+    assertThat(result.chunks())
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).startsWith(opening + "\n");
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
+            });
+    for (int r = 1; r <= 20; r++) {
+      String row = "Amt " + r + " | " + (r * 12) + " |";
+      assertThat(result.chunks().stream().filter(c -> c.getText().contains(row)).count())
+          .as(row)
+          .isEqualTo(1);
+    }
+    assertThat(result.chunks()).anySatisfy(c -> assertThat(c.getText()).contains("Zeilenende"));
   }
 
   @Test

@@ -462,8 +462,8 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 
 #### Umgesetzt (#1061)
 
-`PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, seit #2330 Version 3, seit #2327 Version 4, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
-#1187, seit #2327 Version 4) und `PptxDocumentFormat` (`id` `pptx`, Version 1, seit #2327 Version 2) sind registriert und beanspruchen `.pdf`,
+`PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, seit #2330 Version 3, seit #2327 Version 4, seit #2331 Version 5, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
+#1187, seit #2327 Version 4, seit #2331 Version 5) und `PptxDocumentFormat` (`id` `pptx`, Version 1, seit #2327 Version 2, seit #2331 Version 3) sind registriert und beanspruchen `.pdf`,
 `.docx` bzw. `.pptx` in der `DocumentFormatRegistry`. `.doc` bleibt unverändert bei
 `TikaFallbackFormat` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
 
@@ -471,7 +471,7 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 - **DOCX** liest direkt über Apache POI (`XWPFDocument`) statt über Tika, weil die Absatzformat-Überschriftenebene — genau das, worauf diese Pipeline schneidet — bei Tikas Extraktion verloren geht. Die Ebene kommt aus der eingebauten Word-Formatvorlage (Style-ID `Heading1`…`Heading9` im üblichen englischsprachig-templateten Fall, aber die Style-ID ist **nicht** verlässlich englisch — LibreOffice und manche deutschen Word-Vorlagen exportieren `berschrift1`/`Ueberschrift1`, das führende „Ü" fällt der OOXML-Bereinigung zum Opfer, siehe #1104 Review, Nit 5) oder ersatzweise aus dem direkten Gliederungsattribut (`w:outlineLvl`); ein Absatz ohne beides bleibt Fließtext im laufenden Abschnitt. **Tabellen werden zellenweise gelesen**, nicht übersprungen (#1104 Review, wichtig 2): Ein Gebührenverzeichnis oder Formular ist praktisch immer eine Tabelle, und Tikas Extraktion (das Vor-#1061-Verhalten) trug diesen Inhalt bereits — die Pipeline durchläuft dafür `getBodyElements()` statt nur `getParagraphs()` und wandelt jede `XWPFTable` in einen Absatz-Textblock um (eine Zeile je Tabellenzeile, Zellen mit „ | " verbunden). **Kopf-/Fußzeilentext wird seit #1145 mitgelesen**, obwohl er nicht zu `getBodyElements()` gehört: Jeder Header-/Footer-Teil aus `XWPFDocument#getHeaderList()`/`#getFooterList()` — die Vereinigung über alle Abschnitte und alle Standard-/Erste-Seite-/Gerade-Varianten eines mehrabschnittigen Dokuments, nicht nur der zuletzt im Dokument stehende `sectPr`-Header/-Footer — wird über POI ausgelesen und — genau wie bei `OdtDocumentFormat`/`OdpDocumentFormat` — als ein einziger, deduplizierter führender Chunk aufgenommen (`location` „Kopf-/Fußzeile“, `RepeatingHeaderChunk`, geteilt mit den beiden ODF-Pipelines), statt pro Seite dupliziert oder verworfen zu werden. Ein Absatz wird über `XWPFRun#text()` gelesen, nicht `getText(0)` — Letzteres liefert nur den ersten `w:t`-Knoten eines Runs, während Word eine tabgetrennte mehrspaltige Kopfzeile („Stadt Musterstadt&lt;TAB&gt;Az. 12-34/2026“) routinemäßig als **einen** Run mit mehreren `w:t`/`w:tab`-Kindern schreibt; ein Aktenzeichen in der zweiten Spalte wäre mit `getText(0)` sonst still verloren gegangen. Ein Run mit nachverfolgt gelöschtem Text (`w:delText`) wird ausgeschlossen, dieselbe Ausnahme, die `XWPFParagraph#getText()` für den Körpertext bereits macht. Der zuletzt berechnete Wert eines Word-Feldes wird beim Auslesen ausgeschlossen — sowohl die komplexe Form (`w:fldChar`-Runs zwischen `separate` und `end`, mit einem Tiefenzähler statt eines Flags gegen verschachtelte Felder) als auch `w:fldSimple` (LibreOffices Exportform, ein eigener POI-Run-Typ `XWPFFieldRun` ohne eigenes `w:fldChar`/`w:instrText`, den die Zustandsmaschine allein nicht sieht). Zwei Absätze mit gleichem, auf Leerraum normalisiertem Text tragen nur einmal bei — der übliche Fall, wenn derselbe Header für mehrere Abschnitte oder Varianten gilt; die Normalisierung schließt geschützte Leerzeichen (U+00A0, U+202F) ein, da diese in Behördenkopfzeilen als Spaltentrenner üblich sind und ein bloßes `\s` sie nicht erfasst. `RepeatingHeaderChunk` verwirft als Netz darunter zusätzlich jeden Kandidaten ohne einen einzigen Buchstaben.
 - **PPTX** liest über Apache POI (`XMLSlideShow`): eine Folie mit Text = ein Chunk, mit Folientitel und -nummer als Fundort und Sprechernotizen als eigenem, klar benannten Absatz (Platzhalter für Foliennummer/Datum in den Notizen werden dabei ausgefiltert, #1104 Review, Nit 7). Eine `XSLFGroupShape` wird rekursiv abgestiegen und eine `XSLFTable` zeilenweise gelesen (#1104 Review, wichtig 3) — beide sind keine `XSLFTextShape` und wären sonst unsichtbar; der Titel-Shape wird über Objektidentität ausgeschlossen, nicht über Textgleichheit, damit ein Textfeld mit zufällig demselben Wortlaut wie der Titel nicht mit verschwindet. Eine leere Folie neben anderen Folien mit Text erzeugt weiterhin einen (fast leeren) Chunk, damit die Foliennummerierung als Fundstelle lückenlos bleibt — **trägt aber keine einzige Folie der Präsentation Text**, meldet die Pipeline `NO_EXTRACTABLE_TEXT` statt `CHUNKED` mit lauter inhaltsleeren „Folie n"-Chunks (#1104 Review, wichtig 4): Ohne diese Schranke kehrt die in Teil 3, Punkt 1 behobene stille Leer-Index-Fehlfunktion für rein bildbasierte Präsentationen zurück.
 
-Alle drei — sowie `HtmlDocumentFormat` — nutzen dieselbe, geteilte `HeadingSectionSplitter`-Logik (Überschriftenpfad, Soft-/Hard-Zeichenlimit, „Abschn. …“-Fundort, Unterdrückung körperloser Abschnitte): `HtmlDocumentFormat` baut seinen eigenen Block-/Überschriftenpfad-Zustand aus der DOM-Traversierung auf, ruft für die Abschnittsbildung selbst aber `HeadingSectionSplitter.flushSection` direkt statt einer eigenen Kopie (#1104 Review, Nit 9) — die #1100-Nachbesserungen an dieser Logik leben damit an genau einer Stelle.
+Alle drei — sowie `HtmlDocumentFormat` — nutzen dieselbe, geteilte `HeadingSectionSplitter`-Logik (Überschriftenpfad, Soft-/Hard-Zeichenlimit, „Abschn. …“-Fundort, Unterdrückung körperloser Abschnitte): `HtmlDocumentFormat` baut seinen eigenen Block-/Überschriftenpfad-Zustand aus der DOM-Traversierung auf, übergibt ihn für die Abschnittsbildung aber als Ereignisliste an `HeadingSectionSplitter.chunk` statt einer eigenen Kopie (#1104 Review, Nit 9) — die #1100-Nachbesserungen an dieser Logik leben damit an genau einer Stelle.
 
 **Chunk-Größe: gesetzt, nicht gemessen** für alle drei — der bestehende Evaluierungskorpus enthält keine PDF-, DOCX- oder PPTX-Dokumente. **Baseline unberührt** — kein Korpusdokument dieses Typs.
 
@@ -513,7 +513,7 @@ für Fließtext und Tabellenzellen. **Baseline unberührt**, Fingerprint `pdf:2`
 Baselines als reine Fixpunkt-Ergänzung nachgezogen (Rohvektor 13 → 14, Pipeline 16 → 17,
 Mehrrunden-Pfad 6 → 7).
 
-**`MarkdownDocumentFormat` (`id` `markdown`, Version 1, seit #2327 Version 2) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
+**`MarkdownDocumentFormat` (`id` `markdown`, Version 1, seit #2327 Version 2, seit #2331 Version 3) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
 
 ### Chunk-Größen: gemessen, wo Messmaterial existiert — und sonst ehrlich gesetzt
 
@@ -557,6 +557,74 @@ nichts bewirken. Die mehrchunkige Domäne aus dem ADR-0010-Nachtrag ist der Anfa
 mit echter §-Gliederung, echten Tabellen und echten Folien die Voraussetzung. **Ohne diesen Korpus ist
 keine typspezifische Chunk-Größe messbar** — der Aufbau gehört deshalb vor die erste Messung, nicht nach
 sie.
+
+### Kleinstchunks: Zusammenlegen unter gemeinsamer Überschrift (#2331)
+
+Strukturreiche Dokumente zerfielen beim Schnitt entlang der Überschriften in sehr viele
+Kleinstchunks — in einem Haushaltsplan je Titel ein Chunk aus einer einzigen Zeile wie
+„Sachverständige 1.000.000". Ein solcher Chunk trägt kaum Kontext: Sein Vektor beschreibt eine
+Zeile, und er belegt einen Platz im Kontextfenster, ohne eine Frage beantworten zu können.
+
+`HeadingSectionSplitter#chunk` legt deshalb aufeinanderfolgende Kleinstabschnitte zusammen — Abschnitte,
+deren eigener Titel und Text zusammen unter `SMALL_SECTION_CHAR_LIMIT` (200 Zeichen) liegen:
+
+- Zusammengelegt wird bis zur Zielgröße `SOFT_CHUNK_CHAR_LIMIT` (4.000 Zeichen, dieselbe Konstante
+  wie für das Teilen); eine eigene Konfiguration gibt es nicht. Ein Abschnitt ab 200 Zeichen bleibt
+  immer ein eigener Chunk, ebenso ein für seine Länge geteilter Abschnitt.
+- Zusammengelegt werden nur Geschwister: Abschnitte mit genau derselben übergeordneten
+  Überschrift. Eine kurze Einleitung dieser Überschrift darf die Gruppe anführen. Eine Einleitung
+  oder eine leere Überschrift eine Ebene höher zieht deshalb nie die Titel mehrerer Titelgruppen in
+  einen Chunk. Abschnitte der obersten Ebene, Text vor der ersten Überschrift und Text unter einer
+  Überschrift ohne Titel (DOCX/ODT) werden nie zusammengelegt.
+- Überschriftenzeile und Fundort („Abschn. …") des Chunks sind der gemeinsame Überschriftenpfad;
+  vor dem Text jedes Mitglieds steht dessen eigener Pfad unterhalb davon. Gleichnamige Geschwister
+  werden über ihre Position unterschieden.
+- Seiten, Folien und Zeilengruppen werden nicht zusammengelegt, sie haben keine gemeinsame
+  Überschrift. PDF mit Gliederung trägt am Abschnitts-Chunk keine Seitenzahl; ein Seitenbereich
+  entsteht deshalb auch beim Zusammenlegen nicht.
+
+Betroffen sind alle Pipelines auf `HeadingSectionSplitter#chunk`: `markdown` 3, `docx` 5, `odt` 4,
+`html` 5, `confluence` 4, `pdf` 5; dazu `tabular` 3, `pptx` 3 und `odp` 4 (Budget neben Kontext,
+siehe unten). Die Messverträge steigen als reine Fixpunkt-Ergänzung
+(Rohvektor 15 → 16, Pipeline 18 → 19, Mehrrunden-Pfad 8 → 9): Kein Korpusdokument hat zwei
+aufeinanderfolgende Kleinstabschnitte, alle Chunks der drei Domänen sind byte-gleich.
+
+**Schwelle gemessen, Zielgröße gesetzt.** Die Schwelle ist gegen die Verwaltungsdomäne gemessen
+(CPU-Testcontainer, Rohvektor- und Pipeline-Pfad, 2026-10-08):
+
+| Schwelle | Rohvektor nDCG@10 / MRR / Recall@10 | Antwortspanne Hit@5 / mittlerer Rang | Pipeline nDCG@8 / MRR@8 / Recall@8 |
+|---|---|---|---|
+| keine (Stand #2327) und 200 Zeichen | 0,712 / 0,729 / 0,803 | 0,630 / 7,3 | 0,768 / 0,825 / 0,820 |
+| 500 Zeichen | 0,724 / 0,718 / 0,854 | 0,593 / 29,5 | 0,790 / 0,827 / 0,854 |
+
+Bei 500 Zeichen fallen über die Hälfte der Verwaltungsabschnitte unter die Schwelle — einzelne
+Paragrafen einer Satzung. Die Dokumentmetriken steigen, aber der Chunk mit der Antwort rutscht im
+Mittel von Rang 7 auf Rang 30, und die `exact_identifier`-Fälle verlieren deutlich: Ein einzelner §
+ist nicht mehr gezielt auffindbar.
+
+Dass ein Kleinstabschnitt nur mit anderen Kleinstabschnitten zusammengelegt wird und nicht an einen
+normal großen Nachbarn angehängt, ist ebenfalls Ergebnis der Messung. Eine erste Fassung hängte ihn
+an: Im Korpus betraf das genau einen Abschnitt, die „Geltungsdauer" der Vertretungsregelung (179
+Zeichen) hinter „Vertretung für Kulturamt". Einzelfragen beider Pfade blieben unverändert, im
+Mehrrunden-Pfad aber fiel die Runde „Wer vertritt die Sachbearbeitung des Kulturamts?"
+(`verw-conv-cc-004`, Runde 2), in der Baseline auf Rang 4, aus dem Fenster — innerhalb der
+Toleranz und ohne Vorher-Lauf am selben Tag nicht sicher zugeordnet, aber genau die Runde zu dem
+veränderten Chunk und ein Verlust ohne Gegenwert.
+
+Die Zielgröße von 4.000 Zeichen bleibt **gesetzt** wie in #2327. Ob das Zusammenlegen bei echten
+Kleinstchunks (Haushaltspläne, Satzungsanlagen) die Suche verbessert, misst der Korpus nicht: Er
+enthält solche Dokumente nicht.
+
+**Sehr breite Tabellen.** Übersteigen Kontext- und Kopfzeile einer Tabelle schon die halbe
+Zielgröße, bleiben den Datenzeilen trotzdem 2.000 Zeichen je Chunk — derselbe Anteil, den
+`HeadingSectionSplitter#boundedChunks` dem Rumpf einer Einheit lässt. Vorher schloss jede
+Datenzeile ihre Gruppe sofort, und jede Zeile wurde ein eigener Chunk mit der vollen Kopfzeile
+(`tabular` 3). Das Budget ist zugleich an der harten Grenze gedeckelt
+(`HeadingSectionSplitter#bodyBudget`): Kontext plus Rumpf überschreiten nie 8.000 Zeichen, sonst
+schnitte die harte Teilung ein Teilstück ohne Kontext- und Kopfzeile ab. Dasselbe Budget gilt für
+jedes Teilstück einer Einheit mit wiederholtem Kontext, also auch für Folien mit sehr langem Titel
+(`pptx` 3, `odp` 4). Erst ein Kontext, der allein bis auf 200 Zeichen an die harte Grenze
+heranreicht, bleibt der harten Teilung überlassen.
 
 ### Baseline-Aktualisierung als Schritt jedes Format-Issues
 
@@ -713,7 +781,7 @@ Abschnitt "Baseline-Aktualisierung als Schritt jedes Format-Issues".)
 
 #### Umgesetzt (#1110, styles.xml seit #1145)
 
-`OdtDocumentFormat` (`id` `odt`, Version 2, seit #2327 Version 3) und `OdpDocumentFormat` (`id` `odp`, Version 2, seit #2327 Version 3)
+`OdtDocumentFormat` (`id` `odt`, Version 2, seit #2327 Version 3, seit #2331 Version 4) und `OdpDocumentFormat` (`id` `odp`, Version 2, seit #2327 Version 3, seit #2331 Version 4)
 beanspruchen `.odt` bzw. `.odp` in der `DocumentFormatRegistry` und lösen damit die
 `TikaFallbackFormat` für beide Formate ab. Beide lesen `content.xml` (eine ODT-/ODP-Datei ist wie
 ODS ein ZIP-Archiv) direkt über einen gehärteten SAX-Parser, geteilt über `OdfPackage` (bis #1338
@@ -821,7 +889,7 @@ Inhalt muss Text sein **und** die Datei muss `.csv` heißen.
 
 #### Umgesetzt (#1058)
 
-`TabularDocumentFormat` (`id` `tabular`, Version 1, seit #2327 Version 2) beansprucht `.xlsx`, `.csv` und `.ods` in der
+`TabularDocumentFormat` (`id` `tabular`, Version 1, seit #2327 Version 2, seit #2331 Version 3) beansprucht `.xlsx`, `.csv` und `.ods` in der
 `DocumentFormatRegistry`. XLSX wird blatt- und zellenweise über Apache POI gelesen, CSV über einen
 Trennzeichen-erkennenden Parser (Komma, Semikolon, Tabulator — die reale Exportvarianten, siehe
 Test-Fixtures). **ODS liest POI nicht** — POI deckt OOXML (XLSX/DOCX/PPTX) und die alten
@@ -902,7 +970,7 @@ adressieren. Der Zuschnitt folgt den Überschriften h1–h3.
 
 #### Umgesetzt (#1059)
 
-`HtmlDocumentFormat` (`id` `html`, Version 1; seit #1315 Version 2, seit #1357 Version 3, seit #2327 Version 4, siehe unten) beansprucht `.html` in der
+`HtmlDocumentFormat` (`id` `html`, Version 1; seit #1315 Version 2, seit #1357 Version 3, seit #2327 Version 4, seit #2331 Version 5, siehe unten) beansprucht `.html` in der
 `DocumentFormatRegistry`; `.html` ist dafür neu in `SupportedDocumentFormats` zugelassen, über
 den unzweideutigen Tika-Medientyp `text/html` (bzw. `application/xhtml+xml`) — wie bei PDF/DOCX ein
 strenger, inhaltsbasierter Treffer, keine text-tolerante Sonderregel wie bei Markdown/Klartext/CSV.
@@ -1381,7 +1449,7 @@ Makro-Inhalt Seiteninhalt ist** und welcher zur Laufzeit aus anderen Quellen zus
 
 #### Umgesetzt (#1137)
 
-`ConfluenceStorageFormat` (`id` `confluence`, Version 1; seit #1357 Version 2, seit #2327 Version 3, siehe HTML-Pipeline) beansprucht **kein** Format in der
+`ConfluenceStorageFormat` (`id` `confluence`, Version 1; seit #1357 Version 2, seit #2327 Version 3, seit #2331 Version 4, siehe HTML-Pipeline) beansprucht **kein** Format in der
 `DocumentFormatRegistry` — der Confluence-Konnektor benennt sie im `DocumentIngest`
 (`pipelineId`), und `DocumentIngestService#ingest` ruft sie über `pipelineById` direkt auf, so wie
 seit #1315 auch ein Feed-Eintrag die HTML-Pipeline benennt; ohne registrierte Pipeline ist das ein

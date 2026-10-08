@@ -43,7 +43,7 @@ class PdfDocumentFormatTest {
   void claimsExactlyPdf() {
     assertThat(pipeline.handledFormats()).containsExactly(".pdf");
     assertThat(pipeline.id()).isEqualTo("pdf");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
   }
 
   @Test
@@ -51,8 +51,10 @@ class PdfDocumentFormatTest {
     Path file = tempDir.resolve("satzung.pdf");
     try (PDDocument doc = new PDDocument()) {
       PDPage page1 = addPage(doc, "Diese Satzung regelt die Gebuehren der Stadt.");
-      PDPage page2 = addPage(doc, "Fuer Personalausweise werden 37,00 EUR erhoben.");
-      PDPage page3 = addPage(doc, "Es gilt eine Ermaessigung fuer Minderjaehrige.");
+      PDPage page2 =
+          addPageWithLines(doc, withNaehere("Fuer Personalausweise werden 37,00 EUR erhoben."));
+      PDPage page3 =
+          addPageWithLines(doc, withNaehere("Es gilt eine Ermaessigung fuer Minderjaehrige."));
 
       PDDocumentOutline outline = new PDDocumentOutline();
       doc.getDocumentCatalog().setDocumentOutline(outline);
@@ -308,6 +310,15 @@ class PdfDocumentFormatTest {
             pipeline.readProperties(
                 DocumentFormatSource.ofFile(file, "kaputt-eigenschaften.pdf", ".pdf")))
         .isEqualTo(io.opaa.format.DocumentProperties.EMPTY);
+  }
+
+  /** {@code line} plus enough text to lift its section above the size of a combined section. */
+  private static List<String> withNaehere(String line) {
+    return List.of(
+        line,
+        "Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt",
+        "bekannt gemacht wird und fuer alle Dienststellen verbindlich ist; Ausnahmen",
+        "beduerfen der schriftlichen Zustimmung der Amtsleitung.");
   }
 
   private static PDPage addPage(PDDocument doc, String text) throws IOException {

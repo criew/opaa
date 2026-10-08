@@ -1,6 +1,6 @@
 # Format: Tabellen (XLSX, CSV, ODS)
 
-> **Entwurf.** Pipeline `tabular`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines steht
+> **Entwurf.** Pipeline `tabular`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht
 > im Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -28,7 +28,11 @@ Je Tabellenblatt (bei CSV: die eine Tabelle):
 
 1. Die **erste nicht-leere Zeile ist die Kopfzeile**.
 2. Die Datenzeilen werden zu **Gruppen von höchstens 50 Zeilen** zusammengefasst. Eine Gruppe
-   endet früher, wenn die nächste Zeile den Chunk über 4.000 Zeichen brächte. Eine einzelne
+   endet früher, wenn die nächste Zeile den Chunk über 4.000 Zeichen brächte. Sind Kontext- und
+   Kopfzeile allein schon länger als 2.000 Zeichen (eine sehr breite Tabelle), bleiben den
+   Datenzeilen trotzdem 2.000 Zeichen je Chunk, statt dass jede Zeile ein eigener Chunk mit der
+   vollen Kopfzeile wird — höchstens aber so viel, dass der Chunk die Obergrenze von 8.000
+   Zeichen nicht überschreitet. Eine einzelne
    Zeile, die für sich schon länger ist, wird in mehrere Chunks geteilt; jedes Teilstück beginnt
    mit Kontext- und Kopfzeile und trägt dieselbe Ortsangabe.
 3. **Jeder Chunk beginnt mit einer Kontextzeile und der Kopfzeile.** Beides steht im

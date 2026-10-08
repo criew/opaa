@@ -1,6 +1,6 @@
 # Format: Word (DOCX)
 
-> **Entwurf.** Pipeline `docx`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `docx`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5. Das ältere Binärformat `.doc` läuft über die
 > [Auffang-Pipeline](format-fallback.md).
 
@@ -21,8 +21,8 @@ sowie die Kopf- und Fußzeilen aller Abschnitte.
 **Überschriften.** Die Ebene kommt aus der Formatvorlage („Überschrift 1", „Heading 2",
 auch die englische und die umlautlose Schreibweise) oder aus der Gliederungsebene des Absatzes.
 Geschnitten wird an den Ebenen 1 bis 3; tiefere Überschriften bleiben Teil des Abschnittstexts.
-Zielgröße rund 4.000 Zeichen, größere Abschnitte werden ohne Textverlust geteilt
-(Kapitel [Indexierung](indexierung.md), Schritt 4), keine Überlappung; die Überschriftenzeile steht am Anfang jedes
+Zielgröße rund 4.000 Zeichen, größere Abschnitte werden ohne Textverlust geteilt, Abschnitte unter
+200 Zeichen unter derselben übergeordneten Überschrift zusammengelegt (Kapitel [Indexierung](indexierung.md), Schritt 4), keine Überlappung; die Überschriftenzeile steht am Anfang jedes
 Chunks.
 
 **Tabellen.** Jede Tabellenzeile wird eine Textzeile, Zellen durch ` | ` getrennt. Die ganze

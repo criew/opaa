@@ -1,6 +1,6 @@
 # Format: PDF
 
-> **Entwurf.** Pipeline `pdf`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `pdf`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -43,8 +43,9 @@ seiner Ebene. Es gibt keine Begrenzung der Ebenentiefe: Bei einer Satzung sind P
 Absatz oft zwei Gliederungsebenen, und beide sollen zitierfähig bleiben. Der Text wird entlang
 dieser Überschriften in Abschnitte geschnitten:
 
-- Zielgröße rund 4.000 Zeichen; kleinere Abschnitte werden bis dahin zusammengelegt, größere
-  geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
+- Zielgröße rund 4.000 Zeichen; aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
+  derselben übergeordneten Überschrift bis dahin zusammengelegt (Kapitel
+  [Indexierung](indexierung.md), Schritt 4), größere geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
   wird an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](indexierung.md), Schritt 4).
 - Die Überschriftenzeile steht am Anfang jedes Chunks, auch bei jedem Teilstück eines geteilten
   Abschnitts, und jedes Teilstück trägt die Ortsangabe des Abschnitts.

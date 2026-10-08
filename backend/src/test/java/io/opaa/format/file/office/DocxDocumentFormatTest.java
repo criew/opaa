@@ -39,11 +39,17 @@ class DocxDocumentFormatTest {
 
   private final DocxDocumentFormat pipeline = new DocxDocumentFormat();
 
+  /** Lifts a section above the size below which neighbouring sections are combined. */
+  private static final String NAEHERE =
+      " Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht"
+          + " wird und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der"
+          + " schriftlichen Zustimmung der Amtsleitung.";
+
   @Test
   void claimsExactlyDocx() {
     assertThat(pipeline.handledFormats()).containsExactly(".docx");
     assertThat(pipeline.id()).isEqualTo("docx");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
   }
 
   @Test
@@ -52,9 +58,10 @@ class DocxDocumentFormatTest {
     Path file = tempDir.resolve("satzung.docx");
     try (XWPFDocument doc = new XWPFDocument()) {
       addHeading(doc, "Verwaltungsgebuehrensatzung", "Heading1");
-      addParagraph(doc, "Diese Satzung regelt die Gebuehren der Stadt.");
+      addParagraph(doc, "Diese Satzung regelt die Gebuehren der Stadt." + NAEHERE);
       addHeading(doc, "Personaldokumente", "Heading2");
-      addParagraph(doc, "Fuer die Ausstellung eines Personalausweises werden Gebuehren erhoben.");
+      addParagraph(
+          doc, "Fuer die Ausstellung eines Personalausweises werden Gebuehren erhoben." + NAEHERE);
       write(doc, file);
     }
 

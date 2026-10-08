@@ -56,7 +56,7 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
   private static final Logger log = LoggerFactory.getLogger(DocxDocumentFormat.class);
 
   static final String ID = "docx";
-  static final short VERSION = 4;
+  static final short VERSION = 5;
 
   private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
