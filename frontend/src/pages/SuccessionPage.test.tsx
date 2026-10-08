@@ -116,48 +116,23 @@ describe('SuccessionPage', () => {
     expect(screen.getByText(/bisher: Andrea Vogt/)).toBeInTheDocument()
   })
 
-  it('keeps an entry open on purpose with its reason and reloads the list', async () => {
-    const reviews: Array<{ caseId: string; reason: string }> = []
-    server.use(
-      http.post('/api/v1/admin/succession/:caseId/reviews', async ({ params, request }) => {
-        const body = (await request.json()) as { reason: string }
-        reviews.push({ caseId: String(params.caseId), reason: body.reason })
-        return HttpResponse.json(
-          {
-            id: 'review-1',
-            caseId: String(params.caseId),
-            reviewedAt: '2026-09-22T08:00:00Z',
-            reason: body.reason,
-          },
-          { status: 201 },
-        )
-      }),
-    )
-    renderPage()
-    const user = userEvent.setup()
-
-    await screen.findByText('Bauakten Referat 50')
-    const row = rowOf('Bauakten Referat 50')
-    await user.click(within(row).getByRole('button', { name: 'Bewusst offen lassen …' }))
-    const reason = within(row).getByLabelText('Warum bleibt der Eintrag vorerst offen?')
-    expect(reason).toHaveFocus()
-    await user.type(reason, 'Nachfolge in Klärung')
-    await user.click(within(row).getByRole('button', { name: 'Festhalten' }))
-
-    await waitFor(() =>
-      expect(reviews).toEqual([{ caseId: 'case-1', reason: 'Nachfolge in Klärung' }]),
-    )
-  })
-
-  // Without a record of the detection run there is nothing a note could be written against.
-  it('offers no "keep open" for an entry the detection run has not seen yet', async () => {
+  it('says that an entry was just found before the detection run has seen it', async () => {
     renderPage()
 
     await screen.findByText('Projekt Phoenix')
     const row = rowOf('Projekt Phoenix')
     expect(row).toHaveTextContent('gerade erkannt')
-    expect(within(row).queryByRole('button', { name: 'Bewusst offen lassen …' })).toBeNull()
     expect(within(row).getByRole('button', { name: 'Nachfolge bestimmen' })).toBeInTheDocument()
+  })
+
+  it('offers only the one next step - there is no way to keep an entry open on purpose', async () => {
+    renderPage('/admin/succession/grants')
+
+    await screen.findByText('Referat 49')
+    const row = rowOf('Referat 49')
+    expect(within(row).getAllByRole('button')).toHaveLength(1)
+    // an earlier note from the backend is not shown either
+    expect(row).not.toHaveTextContent('Reorganisation läuft')
   })
 
   it('hands the rights of a group without members over to another group', async () => {
@@ -169,8 +144,6 @@ describe('SuccessionPage', () => {
     expect(row).toHaveTextContent(
       'Die Gruppe hat Rechte an 7 Objekten, aber kein aktives Mitglied mehr.',
     )
-    expect(row).toHaveTextContent('Bewusst offen gelassen am')
-    expect(row).toHaveTextContent('Reorganisation läuft')
     await user.click(within(row).getByRole('button', { name: 'Rechte übergeben' }))
 
     const dialog = await screen.findByRole('dialog')

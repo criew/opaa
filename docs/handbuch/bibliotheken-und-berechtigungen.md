@@ -1304,15 +1304,14 @@ gesperrt, der eine Bibliothek oder ein Space gehört, erscheint das hier.“
 
 Die Liste ist **vollständig ab dem ersten Tag**, gleich wer zuständig ist; die Angabe der
 Zuständigkeit ist eine Auskunft, keine Zugangsbeschränkung zur Liste. Einträge, die länger als die
-eingestellte Zeit offen sind (Abschnitt 15), tragen die Markierung **„lange offen“**. Wer einen
-Eintrag bewusst liegen lässt, hält das mit **„Bewusst offen lassen …“** und einem Grund fest (der
-**Sichtungsvermerk**, „geprüft am …, weiterhin offen, Grund“); die Markierung ruht dann für eine
-weitere Periode, der Eintrag bleibt in der Liste. Es gibt keine Frist, keine Erinnerung und keine
+eingestellte Zeit offen sind (Abschnitt 15), tragen die Markierung **„lange offen“**. Ein Eintrag
+bleibt in der Liste, bis wieder jemand zuständig ist; ihn ohne Nachfolge auszublenden oder als
+„geprüft“ zu vermerken, ist nicht vorgesehen. Es gibt keine Frist, keine Erinnerung und keine
 E-Mail — die Liste zeigt, sie treibt nicht.
 
 **Es gibt keine Abfrage „was gehörte Frau Vogt".** Die Liste geht vom Objekt aus; wem es gehört,
 steht in der Zeile, ist aber weder sortierbar noch zählbar. Dasselbe gilt für die Person, die einen
-Vorgang beendet oder einen Sichtungsvermerk gesetzt hat.
+Vorgang beendet hat.
 
 **Der Ausgang ist die Übertragung** (Abschnitt 13.2) mit dem Umfang „Eigentum und Verantwortung".
 Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde Person am Vorgang
@@ -1337,8 +1336,8 @@ hat **genau einen** hervorgehobenen nächsten Schritt:
 
 Übergeben wird in jedem Fall über denselben Übertragungsdialog wie in Abschnitt 13.2, mit Vorschau
 und ausdrücklicher Bestätigung. Eine Zeile, die der Feststellungslauf noch nicht gesehen hat
-(„gerade erkannt“), steht bereits in der Liste; „Bewusst offen lassen …“ bietet sie erst an, wenn
-ihr Vorgang angelegt ist. Wann der Lauf hinsieht, steht in Abschnitt 15.
+(„gerade erkannt“), steht bereits in der Liste; ihr Alter zählt ab dem ersten Lauf. Wann der Lauf
+hinsieht, steht in Abschnitt 15.
 
 **Der kleine Weg für ein einzelnes Objekt.** Geht es nur um eine Bibliothek und nicht um den ganzen
 Bestand einer Person, genügt im Reiter „Freigaben" der Abschnitt „Eigentümer" mit „Eigentum
