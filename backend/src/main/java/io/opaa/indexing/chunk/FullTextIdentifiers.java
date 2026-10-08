@@ -11,9 +11,9 @@ import java.util.regex.Pattern;
 /**
  * The curated pattern list behind the lexical path's identifier protection
  * (docs/features/hybrid-retrieval.md, "Die deutschen Besonderheiten"): paragraph references, file
- * numbers and Erlass-/Drucksachen numbers become <b>undecomposed lexemes</b>, so "§ 34" and "§ 35"
- * stay distinguishable under stemming. Write and query path call this same method, or the two sides
- * would build different lexemes and never match.
+ * numbers, Erlass-/Drucksachen numbers, email addresses and technical field names become
+ * <b>undecomposed lexemes</b>, so "§ 34" and "§ 35" stay distinguishable under stemming. Write and
+ * query path call this same method, or the two sides would build different lexemes and never match.
  *
  * <p>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix, so it can neither
  * collide with a stemmer lexeme nor carry an operator into {@code to_tsquery}. Every keyword-led
@@ -33,6 +33,14 @@ public final class FullTextIdentifiers {
   private static final String FILE_NUMBER_PREFIX = "xakz";
   private static final String ORDINANCE_NUMBER_PREFIX = "xnr";
   private static final String EMAIL_PREFIX = "xmail";
+  private static final String FIELD_NAME_PREFIX = "xfld";
+
+  /**
+   * Field names longer than this are not taken: a real field or element name stays far below it,
+   * while a base64 blob or a hash in running text also has a lowercase-uppercase transition and
+   * would otherwise become one oversized lexeme per occurrence.
+   */
+  static final int MAX_FIELD_NAME_LENGTH = 64;
 
   /**
    * A law abbreviation as it is actually written in German administrative texts: initial capital
@@ -103,6 +111,31 @@ public final class FullTextIdentifiers {
   private static final Pattern EMAIL_ADDRESS =
       Pattern.compile("\\b([A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})\\b");
 
+  /**
+   * A maximal run of letters, digits and underscores - the unit a field name is recognized in. A
+   * hyphen ends the run, so {@code EU-DSGVO} offers {@code DSGVO} on its own, as a question that
+   * names it bare does.
+   */
+  private static final Pattern WORD_RUN = Pattern.compile("[\\p{L}\\p{N}_]+");
+
+  /** {@code BELEG_NR}, {@code Z_KASSE_ID}: uppercase segments joined by underscores. */
+  private static final Pattern UPPER_SNAKE_CASE =
+      Pattern.compile("[A-ZÄÖÜ][A-ZÄÖÜ0-9]*(?:_[A-ZÄÖÜ0-9]+)+");
+
+  /**
+   * {@code ZahlungsDatenKV}, {@code MessageRefId}: a lowercase letter directly followed by an
+   * uppercase one inside the word. A capitalized word at the start of a sentence has no such
+   * transition and stays an ordinary word.
+   */
+  private static final Pattern CAMEL_CASE =
+      Pattern.compile("[A-Za-zÄÖÜäöüß0-9]*[a-zäöüß][A-ZÄÖÜ][A-Za-zÄÖÜäöüß0-9]*");
+
+  /**
+   * {@code VORORT}, {@code INHAUS}: an all-uppercase word of at least five letters. Deliberately
+   * without an exception list, so acronyms such as {@code ELSTER} are field-name lexemes as well.
+   */
+  private static final Pattern UPPERCASE_WORD = Pattern.compile("[A-ZÄÖÜ]{5,}");
+
   private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]");
 
   /** At least one digit and at least one separator - see {@link #looksLikeIdentifier}. */
@@ -127,6 +160,7 @@ public final class FullTextIdentifiers {
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
     collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
+    collectFieldNames(text, lexemes);
     List<String> result = new ArrayList<>(lexemes);
     return result.size() <= MAX_LEXEMES
         ? List.copyOf(result)
@@ -189,6 +223,36 @@ public final class FullTextIdentifiers {
         lexemes.add(prefix + joined);
       }
     }
+  }
+
+  /**
+   * One lexeme per technical field or element name: a word run of {@link #UPPER_SNAKE_CASE}, {@link
+   * #CAMEL_CASE} or {@link #UPPERCASE_WORD} shape. Collected last, so under {@link #MAX_LEXEMES}
+   * the other identifier kinds keep their place.
+   */
+  private static void collectFieldNames(String text, Set<String> lexemes) {
+    Matcher matcher = WORD_RUN.matcher(text);
+    while (matcher.find()) {
+      String word = matcher.group();
+      if (word.length() > MAX_FIELD_NAME_LENGTH || !looksLikeFieldName(word)) {
+        continue;
+      }
+      String normalized = normalize(transliterateUmlauts(word.toLowerCase(Locale.ROOT)));
+      if (!normalized.isEmpty()) {
+        lexemes.add(FIELD_NAME_PREFIX + normalized);
+      }
+    }
+  }
+
+  private static boolean looksLikeFieldName(String word) {
+    return UPPER_SNAKE_CASE.matcher(word).matches()
+        || CAMEL_CASE.matcher(word).matches()
+        || UPPERCASE_WORD.matcher(word).matches();
+  }
+
+  /** Keeps {@code PRÜFUNG} and {@code PRUEFUNG} on one lexeme instead of dropping the umlaut. */
+  private static String transliterateUmlauts(String lowercase) {
+    return lowercase.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss");
   }
 
   /**

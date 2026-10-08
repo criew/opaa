@@ -172,6 +172,73 @@ class FullTextChunkSearchIntegrationTest {
     assertThat(hits).extracting(Document::getId).contains(repetitive.toString());
   }
 
+  /**
+   * Regression guard for #2334: a question naming a technical field name must reach the one section
+   * that carries it, ahead of sections repeating the question's common words, and within a list
+   * budget smaller than the number of those sections. Ranked by term frequency alone the field name
+   * is one more body-text word and the field table falls off the list.
+   */
+  @Test
+  void aFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
+    for (int section = 1; section <= 10; section++) {
+      seed(
+          readableLibrary,
+          "Schnittstellenhandbuch Abschnitt "
+              + section
+              + ": Jedes Feld im Schnittstellenhandbuch hat eine Bedeutung. Das Feld ist"
+              + " Pflicht, das Feld wird geprüft, die Bedeutung jedes Feldes steht im"
+              + " Schnittstellenhandbuch.");
+    }
+    UUID fieldTable =
+        seed(readableLibrary, "Feldtabelle Satzart 20: VORORT, Länge 1, Kennzeichen Ortslage.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Was bedeutet das Feld VORORT im Schnittstellenhandbuch?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            8);
+
+    assertThat(hits).extracting(Document::getId).first().isEqualTo(fieldTable.toString());
+  }
+
+  /** The two other field-name shapes take the same route as the all-uppercase word. */
+  @Test
+  void snakeCaseAndCamelCaseFieldNamesOutrankRepeatedCommonWords() {
+    UUID snake = seed(readableLibrary, "Satzart 10 enthält BELEG_NR als Schlüssel.");
+    UUID camel = seed(readableLibrary, "Der Block ZahlungsDatenKV fasst die Zahlung zusammen.");
+    for (int section = 1; section <= 4; section++) {
+      seed(
+          readableLibrary,
+          "Beleg, Beleg und Beleg: die Nummer jedes Belegs, die Zahlung, die Daten der Zahlung und"
+              + " die Zahlungsdaten stehen in Abschnitt "
+              + section
+              + ".");
+    }
+
+    assertThat(
+            fullTextChunkSearch.search(
+                "Wie ist BELEG_NR aufgebaut?",
+                Set.of(readableLibrary),
+                MetadataFilter.NONE,
+                List.of(),
+                3))
+        .extracting(Document::getId)
+        .first()
+        .isEqualTo(snake.toString());
+    assertThat(
+            fullTextChunkSearch.search(
+                "Was steht in ZahlungsDatenKV?",
+                Set.of(readableLibrary),
+                MetadataFilter.NONE,
+                List.of(),
+                3))
+        .extracting(Document::getId)
+        .first()
+        .isEqualTo(camel.toString());
+  }
+
   /** The path answers the #938 case it exists for: a literal term the vector path ranks away. */
   @Test
   void aLiteralTermIsFoundWhereverItStands() {
