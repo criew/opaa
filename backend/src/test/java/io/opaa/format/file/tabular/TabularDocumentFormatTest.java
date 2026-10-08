@@ -500,6 +500,43 @@ class TabularDocumentFormatTest {
   }
 
   @Test
+  void rowsOfATableWhoseHeaderAloneExceedsTheTargetSizeAreStillGrouped() throws IOException {
+    // regression guard for #2331: with context and header line beyond the target size, every
+    // data row became a chunk of its own that repeated the whole header line.
+    StringBuilder csv = new StringBuilder();
+    for (int c = 1; c <= 140; c++) {
+      csv.append(c == 1 ? "" : ",").append(String.format("Erhebungsmerkmal Nummer %03d", c));
+    }
+    csv.append('\n');
+    for (int r = 1; r <= 20; r++) {
+      csv.append("Amt ").append(r).append(",").append(r * 12).append(",".repeat(138)).append('\n');
+    }
+    Path file = tempDir.resolve("breit.csv");
+    Files.writeString(file, csv.toString(), StandardCharsets.UTF_8);
+    String headerLine = csv.substring(0, csv.indexOf("\n")).replace(",", " | ");
+    assertThat(headerLine.length()).isGreaterThan(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "breit.csv"));
+
+    assertThat(result.chunks())
+        .hasSizeLessThanOrEqualTo(5)
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).startsWith("Tabelle: breit\n\n" + headerLine + "\n");
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
+            });
+    for (int r = 1; r <= 20; r++) {
+      String row = "Amt " + r + " | " + (r * 12) + " |";
+      assertThat(result.chunks().stream().filter(c -> c.getText().contains(row)).count())
+          .as(row)
+          .isEqualTo(1);
+    }
+    assertThat(result.chunks().getFirst().getMetadata())
+        .containsEntry(ChunkMetadataKeys.LOCATION_METADATA_KEY, "Zeilen 2–5");
+  }
+
+  @Test
   void aRowExceedingTheHardCharacterCeilingIsSplitIntoSeveralChunksWithoutLoss()
       throws IOException {
     // MAX_CHUNK_CHARS alone does not bound a single, giant row - the hard ceiling splits it, so
