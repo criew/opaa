@@ -59,6 +59,15 @@ ORIGINALABLAGE
   erhalten und gehört in die Sicherung, zusammen mit der Datenbank.
 {{- end }}
 
+{{- if .Values.metrics.serviceMonitor.enabled }}
+BETRIEBSÜBERWACHUNG
+  ServiceMonitor {{ include "opaa.backend.fullname" . }}: /actuator/prometheus auf Port {{ .Values.backend.managementPort }}.
+  {{- if not .Values.metrics.serviceMonitor.labels }}
+  metrics.serviceMonitor.labels ist leer. kube-prometheus-stack wählt ServiceMonitors nach
+  release: <Release-Name> aus; ohne passendes Label sammelt er die Metriken nicht ein.
+  {{- end }}
+
+{{ end -}}
 CLIENT-ADRESSE UND NETZTRENNUNG
 {{- if .Values.trustedProxyCidrs }}
   X-Forwarded-For wird von {{ join ", " .Values.trustedProxyCidrs }} ausgewertet. Das ist nur sicher, wenn

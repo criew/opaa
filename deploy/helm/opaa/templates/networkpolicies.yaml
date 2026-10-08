@@ -23,6 +23,14 @@ spec:
       ports:
         - port: http
           protocol: TCP
+    {{- if and (or .Values.metrics.serviceMonitor.enabled .Values.metrics.podAnnotations) .Values.metrics.scrapeFrom }}
+    # The scraper reaches the management port only, never the API.
+    - from:
+        {{- toYaml .Values.metrics.scrapeFrom | nindent 8 }}
+      ports:
+        - port: management
+          protocol: TCP
+    {{- end }}
 {{- end }}
 {{- if include "opaa.frontendIngress.enabled" . }}
 {{- with .Values.networkPolicy.frontendIngress.controllerNamespaceSelector }}

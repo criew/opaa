@@ -229,6 +229,14 @@ backend:
   # a value so that a future multi-instance release (#1292) does not change the values layout.
   replicas: 1
 
+  # Port of the actuator endpoints - probes and metrics (MANAGEMENT_SERVER_PORT). Kept apart from the
+  # API port, so that a scraper let in by the network policy reaches no API path.
+  managementPort: 8081
+
+  # Log format: empty for plain text, or structured JSON for a log collector: ecs, logstash or gelf
+  # (LOGGING_STRUCTURED_FORMAT_CONSOLE).
+  logFormat: ""
+
   # How long a stop lets accepted HTTP requests finish (OPAA_SHUTDOWN_TIMEOUT), per shutdown phase.
   shutdownTimeoutSeconds: 60
   # Must lie above shutdownTimeoutSeconds, otherwise the kubelet cuts the graceful shutdown short.
@@ -345,6 +353,37 @@ frontend:
   extraEnv: []
   extraVolumes: []
   extraVolumeMounts: []
+
+# Metrics of the backend (Micrometer, /actuator/prometheus on backend.managementPort) for the
+# cluster's monitoring.
+metrics:
+  # A ServiceMonitor of the Prometheus Operator, e.g. kube-prometheus-stack.
+  serviceMonitor:
+    enabled: false
+    # Labels the Prometheus selects ServiceMonitors by; kube-prometheus-stack by default
+    # release: <its release name>.
+    labels: {}
+    interval: 30s
+    scrapeTimeout: 10s
+  # prometheus.io/* annotations on the backend pod, for scrapers configured by annotations.
+  podAnnotations: false
+  # Who may reach the management port while metrics are on (NetworkPolicy peers). The default
+  # matches the Prometheus pods of the Prometheus Operator in any namespace.
+  scrapeFrom:
+    - namespaceSelector: {}
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: prometheus
+  # A PrometheusRule with basic alerts; the readiness alert needs kube-state-metrics.
+  prometheusRule:
+    enabled: false
+    labels: {}
+    # Share of answers with status 5xx over 10 minutes.
+    errorRateThreshold: 0.05
+    # Share of the maximum heap in use over 15 minutes.
+    heapUsageThreshold: 0.9
+    # An indexing run is active, but no document was processed for this long.
+    indexingStallMinutes: 60
 
 # Client addresses behind the proxy chain ingress/gateway controller -> frontend nginx -> backend.
 # The backend reads X-Forwarded-For only from connections out of these networks; the resolved

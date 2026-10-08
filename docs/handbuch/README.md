@@ -76,7 +76,8 @@ Drei Eigenschaften prägen alles Weitere:
 | Diagnose | Testfrage im gewählten Rechtekontext, jede Stufe einzeln, „Dokument verfolgen" | [Suche](suche.md), Abschnitt 8 |
 | Modelle | Chat-, Embedding- und Rerank-Rolle, Endpunkte, Zugangsdaten | [Deployment](deployment.md), Abschnitte „LLM-Anbieter" und „Reranking einschalten" |
 | Authentifizierung | Entwicklungsmodus, OIDC mit einem oder mehreren Anbietern, lokale Konten mit Passwort | [Deployment](deployment.md), Abschnitt „Authentifizierung" |
-| Konten verwalten | Lokale Konten anlegen, einladen, sperren, zurücksetzen, befristen; Rollen und Anlegerechte; Selbstregistrierung | [Benutzerverwaltung](benutzerverwaltung.md) |
+| Konten verwalten | Lokale Konten anlegen, einladen, sperren, zurücksetzen, befristen; Rollen und Anlegerechte; Selbstregistrierung | [Kubernetes](kubernetes.md) | Entwurf: Betrieb mit dem Helm-Chart; bisher die Betriebsüberwachung mit Management-Port, ServiceMonitor, Metriken, Grundalarmen und strukturierten Protokollen |
+| [Benutzerverwaltung](benutzerverwaltung.md) |
 | Rechte vergeben und nachweisen | Rollen an Bibliotheken und Räumen, Gruppen als Empfänger, Anlegerechte, Vollmachten, Herleitung „warum sehe ich das", Rechtehistorie und Stichtagsauskunft, Übertragung, „Nachfolge offen" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) |
 | Prompt-Bibliotheken | Wiederkehrende Formulierungshilfen als benannte Prompts mit Variablen anlegen, pflegen, an Personen und Gruppen freigeben, Räumen zuordnen und im Chat einsetzen | [Prompt-Bibliotheken](prompt-bibliotheken.md) |
 | Katalog | Wissens- und Prompt-Bibliotheken finden: genau die lesbaren, mit Freigabe an alle, Aktualisierung und zuständiger Stelle; Suche, Filter nach Art und Favoriten, feste Reihenfolge Favoriten zuerst, dann Name | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
