@@ -103,8 +103,14 @@ public record EvaluationReport(
    * <p><b>Bumped to 14 by issue #2330:</b> {@code PdfDocumentFormat#version()} moved 2 → 3 (a
    * raised, smaller digit is separated from a following digit or letter) - fingerprint-only, for
    * the same reason as 13.
+   *
+   * <p><b>Bumped to 15 by issues #2327/#2328:</b> the chunking of oversized sections (split instead
+   * of truncated at 20,000 characters, pages, slides and row groups cut to the 4,000-character
+   * target) moved pdf 3 -> 4, docx, pptx, odt, odp, tabular, markdown, html and confluence -
+   * fingerprint-only, no block of any corpus document reaches 4,000 characters, so no measured
+   * chunk changes.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 14;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 15;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

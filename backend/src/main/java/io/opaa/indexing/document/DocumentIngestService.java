@@ -12,6 +12,7 @@ import io.opaa.format.DocumentService;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
+import io.opaa.indexing.chunk.ChunkNotEmbeddableException;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.Document;
@@ -59,6 +60,10 @@ public class DocumentIngestService {
 
   /** The row's {@code error_message} for a document that could not be parsed or embedded. */
   static final String PROCESSING_FAILED_MESSAGE = "Die Datei konnte nicht verarbeitet werden";
+
+  static final String NOT_EMBEDDABLE_MESSAGE =
+      "Die Datei konnte nicht verarbeitet werden: Ein Textabschnitt ist zu lang für das"
+          + " Embedding-Modell";
 
   /** Text that never was a file has no detectable media type; every text source delivers XHTML. */
   private static final String TEXT_CONTENT_TYPE = "text/html";
@@ -339,7 +344,7 @@ public class DocumentIngestService {
       }
     } catch (Exception e) {
       if (!(ingest.reindex() && preservingPreviousChunks)) {
-        markConnectorFailedAfterException(documentId, preservingPreviousChunks);
+        markConnectorFailedAfterException(documentId, preservingPreviousChunks, failureMessage(e));
       }
       metrics.recordFailed();
       throw e;
@@ -430,7 +435,7 @@ public class DocumentIngestService {
       };
     } catch (RuntimeException | Error e) {
       if (existingRow != null && !ingest.reindex()) {
-        markConnectorFailedAfterException(existingRow.getId(), true);
+        markConnectorFailedAfterException(existingRow.getId(), true, PROCESSING_FAILED_MESSAGE);
       }
       metrics.recordFailed();
       throw e;
@@ -673,7 +678,7 @@ public class DocumentIngestService {
    *     describing them; otherwise the chunks go and the row is left at {@code chunk_count = 0}
    */
   private void markConnectorFailedAfterException(
-      UUID documentId, boolean preservingPreviousChunks) {
+      UUID documentId, boolean preservingPreviousChunks, String errorMessage) {
     if (!preservingPreviousChunks) {
       try {
         vectorChunkStore.deleteByDocumentId(documentId);
@@ -687,11 +692,29 @@ public class DocumentIngestService {
     }
     int updated =
         preservingPreviousChunks
-            ? documentRepository.markFailed(documentId, PROCESSING_FAILED_MESSAGE)
-            : documentRepository.markFailedWithoutChunks(documentId, PROCESSING_FAILED_MESSAGE);
+            ? documentRepository.markFailed(documentId, errorMessage)
+            : documentRepository.markFailedWithoutChunks(documentId, errorMessage);
     if (updated == 0) {
       log.warn("Document {} was deleted before it could be marked FAILED", documentId);
     }
+  }
+
+  /**
+   * The user-facing reason for {@code failure}: a chunk too long to embed is named by its Fundort,
+   * or by its position when it has none; every other failure gets {@link
+   * #PROCESSING_FAILED_MESSAGE}.
+   */
+  static String failureMessage(Exception failure) {
+    if (!(failure instanceof ChunkNotEmbeddableException notEmbeddable)) {
+      return PROCESSING_FAILED_MESSAGE;
+    }
+    if (notEmbeddable.location() != null) {
+      return NOT_EMBEDDABLE_MESSAGE + " (" + notEmbeddable.location() + ")";
+    }
+    if (notEmbeddable.chunkIndex() != null) {
+      return NOT_EMBEDDABLE_MESSAGE + " (Teil " + (notEmbeddable.chunkIndex() + 1) + ")";
+    }
+    return NOT_EMBEDDABLE_MESSAGE;
   }
 
   /**
@@ -818,7 +841,7 @@ public class DocumentIngestService {
                   Map<String, Object> metadata = new HashMap<>();
                   metadata.put(
                       VectorChunkStore.DOCUMENT_ID_METADATA_KEY, document.getId().toString());
-                  metadata.put("chunk_index", index);
+                  metadata.put(VectorChunkStore.CHUNK_INDEX_METADATA_KEY, index);
                   metadata.put("file_name", document.getFileName());
                   metadata.put(
                       VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
@@ -959,6 +982,9 @@ public class DocumentIngestService {
       vectorChunkStore.addChunks(enriched);
       return;
     }
+    // Sub-batches commit independently; an oversized chunk must fail the document before any of
+    // them is embedded or written.
+    vectorChunkStore.requireEmbeddable(enriched);
 
     List<CompletableFuture<Void>> futures =
         subBatches.stream()

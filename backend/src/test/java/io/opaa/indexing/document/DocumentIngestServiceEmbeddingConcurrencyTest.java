@@ -4,9 +4,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,6 +16,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.indexing.IndexingProperties;
+import io.opaa.indexing.chunk.ChunkNotEmbeddableException;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorStoreWriter;
@@ -280,6 +283,57 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
 
     verify(documentRepository)
         .markFailedWithoutChunks(any(), eq(DocumentIngestService.PROCESSING_FAILED_MESSAGE));
+  }
+
+  @Test
+  void aChunkTooLongToEmbedFailsTheDocumentBeforeAnySubBatchIsEmbeddedOrWritten()
+      throws IOException {
+    // regression guard for #2328: with concurrent sub-batches, the ones without the oversized
+    // chunk were embedded and committed - searchable - before the failure removed them again.
+    Path file = tempDir.resolve("one-oversized-chunk.txt");
+    Files.writeString(file, "irrelevant");
+    List<org.springframework.ai.document.Document> chunks =
+        List.of(
+            new org.springframework.ai.document.Document("chunk-0"),
+            new org.springframework.ai.document.Document("chunk-1"),
+            new org.springframework.ai.document.Document("oversized"));
+    stubParseAndChunk(file, "one-oversized-chunk.txt", chunks);
+    IllegalArgumentException tooLong =
+        new IllegalArgumentException(
+            "Tokens in a single document exceeds the maximum number of allowed input tokens");
+    lenient()
+        .when(batchingStrategy.batch(anyList()))
+        .thenAnswer(
+            call -> {
+              List<org.springframework.ai.document.Document> batch = call.getArgument(0);
+              if (batch.stream().anyMatch(c -> "oversized".equals(c.getText()))) {
+                throw tooLong;
+              }
+              return List.of(batch);
+            });
+    lenient()
+        .when(embeddingModel.embed(anyList(), any(), eq(batchingStrategy)))
+        .thenAnswer(
+            call -> {
+              List<org.springframework.ai.document.Document> batch = call.getArgument(0);
+              if (batch.stream().anyMatch(c -> "oversized".equals(c.getText()))) {
+                throw tooLong;
+              }
+              return batch.stream().map(c -> new float[] {0.1f}).toList();
+            });
+
+    RecordingVectorStoreWriter writer = new RecordingVectorStoreWriter(null);
+    DocumentIngestService service = service(writer, 3, 50);
+
+    assertThatThrownBy(
+            () -> service.ingest(DocumentIngest.localFile(targetLibrary, file).build(), null))
+        .isInstanceOf(ChunkNotEmbeddableException.class);
+
+    assertThat(writer.writeCalls).isEmpty();
+    verify(embeddingModel, never()).embed(anyList(), any(), any());
+    verify(documentRepository)
+        .markFailedWithoutChunks(
+            any(), eq(DocumentIngestService.NOT_EMBEDDABLE_MESSAGE + " (Teil 3)"));
   }
 
   /**

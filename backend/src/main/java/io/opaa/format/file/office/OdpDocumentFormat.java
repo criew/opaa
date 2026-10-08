@@ -39,7 +39,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
   private static final Logger log = LoggerFactory.getLogger(OdpDocumentFormat.class);
 
   static final String ID = "odp";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   private static final String MASTER_SLIDE_LOCATION = "Masterfolie";
 
@@ -122,11 +122,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       return DocumentFormatResult.noExtractableText();
     }
     List<Document> chunks = new ArrayList<>(content.slideChunks());
-    Document masterSlideChunk =
-        RepeatingHeaderChunk.ofOrNull(MASTER_SLIDE_LOCATION, content.masterSlideText());
-    if (masterSlideChunk != null) {
-      chunks.add(0, masterSlideChunk);
-    }
+    chunks.addAll(0, RepeatingHeaderChunk.of(MASTER_SLIDE_LOCATION, content.masterSlideText()));
     return DocumentFormatResult.chunked(chunks);
   }
 
@@ -357,17 +353,17 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       String body = currentBody.toString();
       String notes = currentNotes.length() == 0 ? null : currentNotes.toString();
       String location = "Folie " + slideNumber + (title == null ? "" : ": " + title);
-      String text = title == null ? body : body.isEmpty() ? title : title + "\n\n" + body;
+      String rest = body;
       if (notes != null) {
-        text = text.isEmpty() ? "Notizen: " + notes : text + "\n\nNotizen: " + notes;
+        rest = rest.isEmpty() ? "Notizen: " + notes : rest + "\n\nNotizen: " + notes;
       }
       boolean hasText = title != null || currentHasBodyText || notes != null;
-      if (text.isBlank()) {
-        text = location;
+      if (title == null && rest.isBlank()) {
+        rest = location;
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-      chunks.add(new Document(HeadingSectionSplitter.capChunkLength(text), metadata));
+      chunks.addAll(HeadingSectionSplitter.boundedChunks(title, rest, metadata));
       anySlideHasText |= hasText;
       hasSlide = false;
     }

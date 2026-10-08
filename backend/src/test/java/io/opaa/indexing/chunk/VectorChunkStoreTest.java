@@ -1,20 +1,26 @@
 package io.opaa.indexing.chunk;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.ai.embedding.TokenCountBatchingStrategy;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
@@ -55,6 +61,64 @@ class VectorChunkStoreTest {
 
     verify(vectorStoreWriter).writeEmbeddedChunks(chunks, embeddings);
     verifyNoInteractions(vectorStore);
+  }
+
+  @Test
+  void aChunkBeyondTheTokenBudgetIsNamedByItsFundortAndNothingIsWritten() {
+    // regression guard for #2328: the batching strategy's bare IllegalArgumentException said
+    // neither which chunk nor why; the document's failure must name the chunk.
+    VectorChunkStore store = storeWithTheProductionBatchingStrategy();
+    List<Document> chunks =
+        List.of(
+            chunk("Kurzer Abschnitt.", "S. 1", 0),
+            chunk("漢字".repeat(6_000), "Abschn. Anlage 3", 1),
+            chunk("Noch ein kurzer Abschnitt.", "S. 9", 2));
+
+    assertThatThrownBy(() -> store.addChunks(chunks))
+        .isInstanceOfSatisfying(
+            ChunkNotEmbeddableException.class,
+            e -> {
+              assertThat(e.location()).isEqualTo("Abschn. Anlage 3");
+              assertThat(e.chunkIndex()).isEqualTo(1);
+            });
+    verifyNoInteractions(vectorStoreWriter);
+  }
+
+  @Test
+  void anArgumentErrorNoSingleChunkCausesKeepsItsOwnException() {
+    IllegalArgumentException unrelated = new IllegalArgumentException("unsupported options");
+    when(embeddingModel.embed(anyList(), any(EmbeddingOptions.class), eq(batchingStrategy)))
+        .thenThrow(unrelated);
+    when(batchingStrategy.batch(anyList()))
+        .thenAnswer(
+            call -> {
+              List<Document> documents = call.getArgument(0);
+              return List.of(documents);
+            });
+
+    assertThatThrownBy(() -> vectorChunkStore.addChunks(List.of(new Document("chunk text"))))
+        .isSameAs(unrelated);
+  }
+
+  private VectorChunkStore storeWithTheProductionBatchingStrategy() {
+    when(embeddingModel.embed(anyList(), any(EmbeddingOptions.class), any())).thenCallRealMethod();
+    return new VectorChunkStore(
+        vectorStore,
+        embeddingModel,
+        new TokenCountBatchingStrategy(),
+        vectorStoreWriter,
+        fullTextChunkStore,
+        new EmbeddingRateEstimator(4.0));
+  }
+
+  private static Document chunk(String text, String location, int index) {
+    return new Document(
+        text,
+        Map.of(
+            ChunkMetadataKeys.LOCATION_METADATA_KEY,
+            location,
+            VectorChunkStore.CHUNK_INDEX_METADATA_KEY,
+            index));
   }
 
   @Test

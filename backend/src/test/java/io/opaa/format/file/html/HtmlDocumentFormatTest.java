@@ -32,7 +32,7 @@ class HtmlDocumentFormatTest {
   void claimsExactlyHtml() {
     assertThat(pipeline.handledFormats()).containsExactly(".html");
     assertThat(pipeline.id()).isEqualTo("html");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
   }
 
   /** ADR-0024: the page title and the first h1 are the HTML format's declared properties. */
@@ -487,11 +487,11 @@ class HtmlDocumentFormatTest {
   // --- Grenzfall: ein einzelner, riesiger Block ohne weitere Blockgrenzen (Backstop) ----------
 
   @Test
-  void aSinglePathologicallyLargeBlockIsTruncatedAtTheHardCharacterLimitAsABackstop()
-      throws IOException {
-    // One giant paragraph with no internal block boundary at all - block splitting cannot help
-    // here, so the hard limit is the only thing left to guard the embedding call.
-    String hugeParagraph = "Verwaltungsvorgang. ".repeat(2_000); // well past 20 000 characters
+  void aSinglePathologicallyLargeBlockIsSplitWithinItInsteadOfBeingTruncated() throws IOException {
+    // One giant paragraph with no block boundary at all: it is cut inside, at sentence ends, and
+    // every part keeps the heading line - nothing past the old 20,000-character backstop is lost.
+    String hugeParagraph =
+        "Verwaltungsvorgang. ".repeat(2_000) + "Letzter Satz des Vorgangs."; // > 40 000 chars
     String hugePage =
         "<html><body><main><h1>Grosser Vorgang</h1><p>"
             + hugeParagraph
@@ -500,10 +500,15 @@ class HtmlDocumentFormatTest {
     DocumentFormatResult result = pipeline.run(sourceFor(hugePage));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
-    assertThat(result.chunks()).hasSize(1);
-    String text = result.chunks().getFirst().getText();
-    assertThat(text).hasSize(HtmlDocumentFormat.HARD_CHUNK_CHAR_LIMIT);
-    assertThat(text).endsWith("[…gekürzt]");
+    assertThat(result.chunks()).hasSizeGreaterThan(1);
+    assertThat(result.chunks())
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).startsWith("Grosser Vorgang").doesNotContain("gekürzt");
+              assertThat(chunk.getText().length())
+                  .isLessThan(HtmlDocumentFormat.SOFT_CHUNK_CHAR_LIMIT + 200);
+            });
+    assertThat(result.chunks().getLast().getText()).endsWith("Letzter Satz des Vorgangs.");
   }
 
   // --- extracted text: a feed entry's main content arrives as HTML without a file -------------

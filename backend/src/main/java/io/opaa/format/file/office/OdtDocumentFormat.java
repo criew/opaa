@@ -38,7 +38,7 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
   private static final Logger log = LoggerFactory.getLogger(OdtDocumentFormat.class);
 
   static final String ID = "odt";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 
@@ -146,11 +146,8 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
       return DocumentFormatResult.noExtractableText();
     }
     List<Document> allChunks = new ArrayList<>(chunks);
-    Document headerFooterChunk =
-        RepeatingHeaderChunk.ofOrNull(HEADER_FOOTER_LOCATION, content.headerFooterText());
-    if (headerFooterChunk != null) {
-      allChunks.add(0, headerFooterChunk);
-    }
+    allChunks.addAll(
+        0, RepeatingHeaderChunk.of(HEADER_FOOTER_LOCATION, content.headerFooterText()));
     return DocumentFormatResult.chunked(allChunks);
   }
 

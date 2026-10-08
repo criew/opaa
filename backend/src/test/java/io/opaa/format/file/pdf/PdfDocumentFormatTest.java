@@ -43,7 +43,7 @@ class PdfDocumentFormatTest {
   void claimsExactlyPdf() {
     assertThat(pipeline.handledFormats()).containsExactly(".pdf");
     assertThat(pipeline.id()).isEqualTo("pdf");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
   }
 
   @Test

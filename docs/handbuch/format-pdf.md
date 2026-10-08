@@ -1,6 +1,6 @@
 # Format: PDF
 
-> **Entwurf.** Pipeline `pdf`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `pdf`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -43,18 +43,20 @@ seiner Ebene. Es gibt keine Begrenzung der Ebenentiefe: Bei einer Satzung sind P
 Absatz oft zwei Gliederungsebenen, und beide sollen zitierfähig bleiben. Der Text wird entlang
 dieser Überschriften in Abschnitte geschnitten:
 
-- Zielgröße rund 4.000 Zeichen; kleinere Abschnitte werden bis dahin zusammengelegt, größere an
-  Absatzgrenzen geteilt. Harte Obergrenze 20.000 Zeichen mit sichtbarem Vermerk „gekürzt".
+- Zielgröße rund 4.000 Zeichen; kleinere Abschnitte werden bis dahin zusammengelegt, größere
+  geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
+  wird an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](indexierung.md), Schritt 4).
 - Die Überschriftenzeile steht am Anfang jedes Chunks, auch bei jedem Teilstück eines geteilten
-  Abschnitts.
+  Abschnitts, und jedes Teilstück trägt die Ortsangabe des Abschnitts.
 - Zeigen mehrere Lesezeichen auf dieselbe Seite, wird der Seitentext anhand der
   Überschriftentexte aufgeteilt. Lässt sich ein Titel im Text nicht wörtlich wiederfinden, fällt
   der ganze Bereich dem letzten Eintrag zu.
 - Text vor dem ersten Lesezeichen wird ein eigener Chunk ohne Abschnittspfad.
 - Keine Überlappung zwischen Chunks.
 
-**Ohne Gliederung.** Eine Seite ist ein Chunk. Leere Seiten werden übersprungen. Auch hier gilt
-die Obergrenze von 20.000 Zeichen.
+**Ohne Gliederung.** Eine Seite ist ein Chunk. Leere Seiten werden übersprungen. Eine Seite mit
+mehr als rund 4.000 Zeichen wird nach denselben Regeln in mehrere Chunks geteilt; jeder trägt die
+Seitenzahl.
 
 **Tabellen.** Eine Tabelle, deren Zellen vollständig von Linien umschlossen sind, wird wie in
 allen anderen Formaten ausgegeben: jede Tabellenzeile eine Textzeile, Zellen durch ` | `
