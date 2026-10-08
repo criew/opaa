@@ -87,8 +87,12 @@ public record ConversationEvaluationReport(
    * moved pdf 3 -> 4, docx, pptx, odt, odp, tabular, markdown, html and confluence -
    * fingerprint-only, no block of any corpus document reaches 4,000 characters, so no measured
    * chunk changes.
+   *
+   * <p>Version 9 (issue #2331): runs of sections below 200 characters are combined under their
+   * common heading, row groups of very wide tables keep half the target size - seven format
+   * versions moved; fingerprint-only, every corpus chunk stays byte-identical.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 8;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 9;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

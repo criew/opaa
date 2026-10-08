@@ -126,8 +126,12 @@ public record PipelineEvaluationReport(
    * moved pdf 3 -> 4, docx, pptx, odt, odp, tabular, markdown, html and confluence -
    * fingerprint-only, no block of any corpus document reaches 4,000 characters, so no measured
    * chunk changes.
+   *
+   * <p>Version 19 (issue #2331): runs of sections below 200 characters are combined under their
+   * common heading, row groups of very wide tables keep half the target size - seven format
+   * versions moved; fingerprint-only, every corpus chunk stays byte-identical.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 18;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 19;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
