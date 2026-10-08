@@ -24,10 +24,13 @@ Dienst (`search`) und Diagnose (`searchadmin`) im Modul assistant setzen darauf 
   Eine neue Stufe wird dort eingefügt und bekommt einen `RetrievalStageName`.
 - **Das Wurzelpaket nennt keine Stufe.** Stufen hängen vom Rahmen ab, nur `config` nennt alle.
   So bleibt retrieval ohne Zyklen zwischen seinen Unterpaketen.
+- **Vektorsuche nur über `VectorChunkSearch`:** iterativer HNSW-Scan mit transaktionslokalen
+  Einstellungen, sonst liefert ein gefilterter Scan still weniger als fetch-k (#2345).
 - **Jede Stufe schreibt ihr Protokoll** (`StageOutcome` gibt es nicht ohne `StageExplanation`). Eine
   abgeschaltete Stufe erscheint als `DISABLED`; die Diagnose liest das Protokoll, statt
   Entscheidungen nachzubauen.
-- **Konfiguration:** `opaa.query.*` (`QueryProperties`) und `opaa.query.pipeline.*`. `QueryProperties`
+- **Konfiguration:** `opaa.query.*` (`QueryProperties`), `opaa.query.pipeline.*` und
+  `opaa.query.vector-index.*` (`VectorIndexScanProperties`). `QueryProperties`
   trägt auch die Breite des Gesprächsfensters, die die Antwort liest: Die Suche sieht nie mehr vom
   Gespräch als die Antwort.
 

@@ -5,6 +5,7 @@ import io.opaa.observability.QueryMetrics;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
+import io.opaa.retrieval.VectorIndexScanProperties;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
 import io.opaa.retrieval.ranking.RankFusionStage;
@@ -26,7 +27,11 @@ import org.springframework.context.annotation.Configuration;
  * and the stages depend on the frame in {@code io.opaa.retrieval}.
  */
 @Configuration
-@EnableConfigurationProperties({QueryProperties.class, RetrievalPipelineProperties.class})
+@EnableConfigurationProperties({
+  QueryProperties.class,
+  RetrievalPipelineProperties.class,
+  VectorIndexScanProperties.class
+})
 public class RetrievalConfiguration {
 
   /**

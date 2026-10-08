@@ -409,6 +409,18 @@ Metadatenfilter sind Teil dieser Abfrage. Die Schwelle ist bewusst niedrig: Sie 
 offensichtliches Rauschen fern, damit ein unscharf formulierter Fall nicht schon hier verloren
 geht.
 
+Die Suche läuft über einen Näherungsindex (HNSW) und prüft die Filter Eintrag für Eintrag, während
+sie den Index durchläuft. Sie läuft weiter, bis `fetch-k` Chunks innerhalb des Filters gefunden
+sind, und sortiert sie danach exakt nach Ähnlichkeit. Wie viel der Bestand anderer Bibliotheken
+umfasst, ändert deshalb nichts an der Länge der Liste: Wer nur eine kleine Bibliothek lesen darf,
+bekommt so viele Kandidaten wie jemand mit Zugriff auf alles. Kürzer wird eine Liste, wenn im
+Suchbereich oberhalb der Schwelle nicht mehr Chunks liegen, oder wenn der Indexdurchlauf seine
+Grenze erreicht: die Zahl durchlaufener Einträge (`vector-index.max-scan-tuples`, Abschnitt 10.3)
+oder den Arbeitsspeicher, den pgvector ihm zugesteht. Die Grenze erreicht in der Praxis nur ein
+sehr kleiner Suchbereich in einem sehr großen Bestand; für einen solchen Filter wählt PostgreSQL
+meist ohnehin die exakte Suche ohne Index. Eine kürzere Liste nennt das Erklärprotokoll mit der
+Zahl der gelieferten Kandidaten.
+
 Die Vektorsuche findet, was der Frage **in der Bedeutung** nahe ist, auch wenn kein Wort
 übereinstimmt („Parkausweis" trifft „Bewohnerparkberechtigung"). Ihre bekannte Schwäche ist der
 umgekehrte Fall: Ein Dokument, das den Suchbegriff wörtlich enthält, aber in einem Chunk, dessen
@@ -986,6 +998,7 @@ Abschnitt 12.
 | Sachfrage als „nichts zu suchen" eingestuft | Stufe „Teilfragen" („nichts zu suchen"), Metrik `opaa.query.decomposition.no-search` | das Chat-Modell hat eine Folgefrage für eine Nachricht ohne Suchbedarf gehalten; gesucht wurde mit der einzelnen Rückfall-Suchanfrage statt mit einer aufgelösten Teilfrage |
 | Bemerkung mit Quellen beantwortet | Fundstellen, „Durchsucht wurden"-Zeile unter einer Antwort auf einen Dank oder Formwunsch | beabsichtigt: auch eine Nachricht ohne Suchbedarf wird gesucht |
 | „Beleg nicht bestätigt" | Fundstelle | Modell hat eine Marke erfunden oder einen Wert abweichend wiedergegeben |
+| Vektorliste kürzer als `fetch-k` | Stufe „Vektorsuche" („… von fetch-k … geliefert") | Suchbereich oder Filter enthalten oberhalb der Ähnlichkeitsschwelle nicht mehr Chunks; selten: sehr kleiner Suchbereich in sehr großem Bestand, dessen Indexdurchlauf an seine Grenze kam |
 | viele „ohne Angabe" unter Filter | Fundstellen, Notiz der Suchstufen | Feld im Bestand schwach gefüllt; Bestandslauf oder Pflege (Kapitel [Metadaten](metadaten.md)) |
 
 Zwei bekannte, offene Schwächen gehören hierher, weil sie wie Fehler aussehen:
@@ -1044,6 +1057,7 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `top-k` | 8 | Chunks in der Endauswahl (1 bis 100) |
 | `fetch-k` | 25 | Kandidaten je Suchanfrage und Pfad (1 bis 200, mindestens `top-k`); die Reichweite der Suche |
 | `similarity-threshold` | 0,3 | Mindestähnlichkeit in der Vektorsuche |
+| `vector-index.max-scan-tuples` | 20000 | Indexeinträge, die eine Vektorsuche höchstens durchläuft, um `fetch-k` Chunks innerhalb ihres Filters zu finden; Laufzeit kostet ein höherer Wert nur bei Suchen, die ihn brauchen |
 | `query-decomposition-enabled` / `max-sub-queries` | an / 3 | Teilfragen-Zerlegung und ihre Obergrenze (1 bis 10) |
 | `full-text-search-enabled` | an | Volltextpfad; `false` lässt die Suche rein vektoriell laufen |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |

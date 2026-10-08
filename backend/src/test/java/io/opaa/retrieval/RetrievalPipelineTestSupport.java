@@ -17,13 +17,13 @@ import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.FullTextSearchStage;
 import io.opaa.retrieval.search.QueryDecompositionService;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import io.opaa.retrieval.search.VectorSearchStage;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * Builds the real {@link RetrievalPipeline} - the one {@link RetrievalConfiguration} wires - for
@@ -44,9 +44,9 @@ public final class RetrievalPipelineTestSupport {
    * not about how the candidates were found.
    */
   public static RetrievalPipeline vectorSearchPipeline(
-      VectorStore vectorStore, RerankModelRole rerankModelRole) {
+      VectorChunkSearch vectorChunkSearch, RerankModelRole rerankModelRole) {
     return pipeline(
-        vectorStore,
+        vectorChunkSearch,
         mock(FullTextChunkSearch.class),
         mock(ChunkEmbeddingLookup.class),
         mock(QueryDecompositionService.class),
@@ -60,7 +60,7 @@ public final class RetrievalPipelineTestSupport {
    * never run a different stage order than the application does.
    */
   public static RetrievalPipeline pipeline(
-      VectorStore vectorStore,
+      VectorChunkSearch vectorChunkSearch,
       FullTextChunkSearch fullTextChunkSearch,
       ChunkEmbeddingLookup chunkEmbeddingLookup,
       QueryDecompositionService queryDecompositionService,
@@ -71,7 +71,7 @@ public final class RetrievalPipelineTestSupport {
             new SearchScopeStage(),
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
-            new VectorSearchStage(vectorStore),
+            new VectorSearchStage(vectorChunkSearch),
             new FullTextSearchStage(fullTextChunkSearch),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),

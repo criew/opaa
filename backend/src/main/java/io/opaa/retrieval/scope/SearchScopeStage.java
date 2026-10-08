@@ -12,15 +12,14 @@ import io.opaa.retrieval.StageStatus;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.stereotype.Component;
 
 /**
  * The {@link RetrievalStageName#SEARCH_SCOPE} stage: turns the search scope the caller resolved
- * into the {@code library_id IN (...)} filter every search stage passes straight into {@link
- * VectorStore#similaritySearch} - never a filter applied to a search result afterwards
+ * into the {@code library_id IN (...)} filter every search stage passes straight into {@code
+ * VectorChunkSearch#similaritySearch} - never a filter applied to a search result afterwards
  * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
  *
  * <p>Resolves no permissions of its own: which libraries the acting user may read is decided before

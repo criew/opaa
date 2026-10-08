@@ -53,10 +53,11 @@ public enum RetrievalStageName {
   SUB_QUERY_DECOMPOSITION,
 
   /**
-   * One {@code VectorStore#similaritySearch} per search query, each with the identical filter from
-   * {@link #SEARCH_SCOPE} and the identical {@link QueryProperties#similarityThreshold}, yielding
-   * {@link QueryProperties#fetchK} candidates per query. One of the two stages that add candidates
-   * the pipeline did not already hold; every later stage is confined to what the two produced.
+   * One {@code VectorChunkSearch#similaritySearch} per search query, each with the identical filter
+   * from {@link #SEARCH_SCOPE} and the identical {@link QueryProperties#similarityThreshold},
+   * yielding up to {@link QueryProperties#fetchK} candidates per query. One of the two stages that
+   * add candidates the pipeline did not already hold; every later stage is confined to what the two
+   * produced.
    *
    * <p>Switched off, the pipeline retrieves through the lexical path alone - the {@code
    * lexical-only} variant, and nothing at all if that path is switched off too.

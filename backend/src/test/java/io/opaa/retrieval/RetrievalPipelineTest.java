@@ -15,6 +15,7 @@ import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.scope.SearchScopeStage;
 import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.QueryDecompositionService;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +27,6 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * The structural guarantees of the staged pipeline (issue #1046, docs/features/hybrid-retrieval.md,
@@ -43,7 +43,7 @@ class RetrievalPipelineTest {
   private static final QueryProperties PROPERTIES =
       new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
 
-  private final VectorStore vectorStore = mock(VectorStore.class);
+  private final VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
   private final QueryDecompositionService queryDecompositionService =
       mock(QueryDecompositionService.class);
@@ -55,7 +55,7 @@ class RetrievalPipelineTest {
    */
   private RetrievalPipeline pipeline(RetrievalPipelineProperties pipelineProperties) {
     return RetrievalPipelineTestSupport.pipeline(
-        vectorStore,
+        vectorChunkSearch,
         mock(FullTextChunkSearch.class),
         chunkEmbeddingLookup,
         queryDecompositionService,
@@ -68,7 +68,7 @@ class RetrievalPipelineTest {
   }
 
   private void stubSearch(List<Document> results) {
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(results);
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(results);
   }
 
   /**
@@ -131,7 +131,7 @@ class RetrievalPipelineTest {
     Document secondOnly = chunk("second", "doc-second", 0.7);
     when(queryDecompositionService.decompose(any(), any(Integer.class)))
         .thenReturn(Optional.of(List.of("q1", "q2")));
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenAnswer(
             invocation -> {
               SearchRequest request = invocation.getArgument(0);
@@ -183,7 +183,7 @@ class RetrievalPipelineTest {
                     RerankAvailability.SWITCHED_OFF));
 
     ArgumentCaptor<SearchRequest> captor = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(vectorStore).similaritySearch(captor.capture());
+    verify(vectorChunkSearch).similaritySearch(captor.capture());
     assertThat(captor.getValue().getQuery()).isEqualTo("Zweite Frage");
     verifyNoInteractions(queryDecompositionService);
     assertThat(withoutDecomposition.searchQueries()).containsExactly("Zweite Frage");
@@ -204,7 +204,7 @@ class RetrievalPipelineTest {
     assertThat(result.explanation().stages()).hasSameSizeAs(pipeline.registeredStages());
     assertThat(result.explanation().stages().subList(1, result.explanation().stages().size()))
         .allSatisfy(stage -> assertThat(stage.status()).isEqualTo(StageStatus.NOT_REACHED));
-    verifyNoInteractions(vectorStore, chunkEmbeddingLookup, queryDecompositionService);
+    verifyNoInteractions(vectorChunkSearch, chunkEmbeddingLookup, queryDecompositionService);
   }
 
   /**
