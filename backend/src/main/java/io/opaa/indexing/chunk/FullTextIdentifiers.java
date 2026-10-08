@@ -1,6 +1,8 @@
 package io.opaa.indexing.chunk;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -11,9 +13,9 @@ import java.util.regex.Pattern;
 /**
  * The curated pattern list behind the lexical path's identifier protection
  * (docs/features/hybrid-retrieval.md, "Die deutschen Besonderheiten"): paragraph references, file
- * numbers and Erlass-/Drucksachen numbers become <b>undecomposed lexemes</b>, so "§ 34" and "§ 35"
- * stay distinguishable under stemming. Write and query path call this same method, or the two sides
- * would build different lexemes and never match.
+ * numbers, Erlass-/Drucksachen numbers, email addresses and technical field names become
+ * <b>undecomposed lexemes</b>, so "§ 34" and "§ 35" stay distinguishable under stemming. Write and
+ * query path call this same method, or the two sides would build different lexemes and never match.
  *
  * <p>Every lexeme is lowercase ASCII alphanumeric with an {@code x…} type prefix, so it can neither
  * collide with a stemmer lexeme nor carry an operator into {@code to_tsquery}. Every keyword-led
@@ -23,9 +25,10 @@ import java.util.regex.Pattern;
 public final class FullTextIdentifiers {
 
   /**
-   * Upper bound on lexemes per text - a defence against a pathological input (a table of hundreds
-   * of file numbers) inflating one chunk's {@code tsvector}, not an expected case; real chunks stay
-   * far below it.
+   * Upper bound on lexemes per text, against one chunk's {@code tsvector} growing without limit.
+   * Paragraph, file-number, ordinance and email lexemes rarely come near it; field names can: a
+   * field table of more than this many names reaches it, and uppercase headings or acronyms earlier
+   * in the text take places first. What is cut are field names, in order of appearance.
    */
   static final int MAX_LEXEMES = 64;
 
@@ -33,6 +36,14 @@ public final class FullTextIdentifiers {
   private static final String FILE_NUMBER_PREFIX = "xakz";
   private static final String ORDINANCE_NUMBER_PREFIX = "xnr";
   private static final String EMAIL_PREFIX = "xmail";
+  private static final String FIELD_NAME_PREFIX = "xfld";
+
+  /**
+   * Field names longer than this are not taken: a real field or element name stays far below it,
+   * while a base64 blob or a hash in running text also has a lowercase-uppercase transition and
+   * would otherwise become one oversized lexeme per occurrence.
+   */
+  static final int MAX_FIELD_NAME_LENGTH = 64;
 
   /**
    * A law abbreviation as it is actually written in German administrative texts: initial capital
@@ -55,6 +66,21 @@ public final class FullTextIdentifiers {
               + "(?:\\s+("
               + LAW_ABBREVIATION
               + "))?");
+
+  /**
+   * A paragraph reference followed by any chain of Absatz, Satz, Nummer, Halbsatz or Buchstabe
+   * parts and then a law abbreviation: {@code § 35 Abs. 1 Nr. 4 BauGB}, {@code § 35 S. 1 BauGB}.
+   * Only locates the abbreviation as part of the reference, so it yields no field-name lexeme of
+   * its own; the paragraph lexemes stay those of {@link #PARAGRAPH}.
+   */
+  private static final Pattern LAW_OF_PARAGRAPH_REFERENCE =
+      Pattern.compile(
+          "§{1,2}\\s*\\d{1,4}[a-z]?(?:\\s*(?:,|und|u\\.)\\s*\\d{1,4}[a-z]?)*"
+              + "(?:\\s*(?:Absatz|Abs\\.?|Satz|S\\.|Nummer|Nr\\.?|Halbsatz|Hs\\.?|Buchstabe"
+              + "|Buchst\\.?)\\s*(?:\\d{1,4}[a-z]?|[a-z]\\)?))*"
+              + "\\s+("
+              + LAW_ABBREVIATION
+              + ")");
 
   /** Splits the number run {@link #PARAGRAPH} captured into its individual paragraph numbers. */
   private static final Pattern PARAGRAPH_RUN_SEPARATOR = Pattern.compile("\\s*(?:,|und|u\\.)\\s*");
@@ -103,6 +129,32 @@ public final class FullTextIdentifiers {
   private static final Pattern EMAIL_ADDRESS =
       Pattern.compile("\\b([A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\\.[A-Za-z]{2,})\\b");
 
+  /**
+   * A maximal run of letters, digits and underscores - the unit a field name is recognized in. A
+   * hyphen ends the run, so {@code EU-DSGVO} offers {@code DSGVO} on its own, as a question that
+   * names it bare does.
+   */
+  private static final Pattern WORD_RUN = Pattern.compile("[\\p{L}\\p{N}_]+");
+
+  /** {@code BELEG_NR}, {@code Z_KASSE_ID}: uppercase segments joined by underscores. */
+  private static final Pattern UPPER_SNAKE_CASE =
+      Pattern.compile("[A-ZÄÖÜẞ][A-ZÄÖÜẞ0-9]*(?:_[A-ZÄÖÜẞ0-9]+)+");
+
+  /**
+   * {@code ZahlungsDatenKV}, {@code MessageRefId}: a lowercase letter directly followed by an
+   * uppercase one inside the word. A capitalized word at the start of a sentence has no such
+   * transition and stays an ordinary word. A Binnen-I ({@code MitarbeiterInnen}) has one and is
+   * taken as well.
+   */
+  private static final Pattern CAMEL_CASE =
+      Pattern.compile("[A-Za-zÄÖÜẞäöüß0-9]*[a-zäöüß][A-ZÄÖÜẞ][A-Za-zÄÖÜẞäöüß0-9]*");
+
+  /**
+   * {@code VORORT}, {@code INHAUS}: an all-uppercase word of at least five letters. Deliberately
+   * without an exception list, so acronyms such as {@code ELSTER} are field-name lexemes as well.
+   */
+  private static final Pattern UPPERCASE_WORD = Pattern.compile("[A-ZÄÖÜẞ]{5,}");
+
   private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]");
 
   /** At least one digit and at least one separator - see {@link #looksLikeIdentifier}. */
@@ -114,12 +166,14 @@ public final class FullTextIdentifiers {
   /**
    * Every identifier lexeme {@code text} contains, in order of first appearance and without
    * duplicates. Never {@code null}; empty for text that carries no identifier at all, which is the
-   * common case for ordinary prose.
+   * common case for ordinary prose. The text is read in NFC, so an umlaut decomposed into letter
+   * and combining mark (common in PDF extraction) yields the same lexeme as the composed one.
    */
-  public static List<String> extract(String text) {
-    if (text == null || text.isEmpty()) {
+  public static List<String> extract(String rawText) {
+    if (rawText == null || rawText.isEmpty()) {
       return List.of();
     }
+    String text = Normalizer.normalize(rawText, Normalizer.Form.NFC);
     Set<String> lexemes = new LinkedHashSet<>();
     collectParagraphs(text, lexemes);
     collect(FILE_NUMBER, text, FILE_NUMBER_PREFIX, false, lexemes);
@@ -127,6 +181,7 @@ public final class FullTextIdentifiers {
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
     collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
+    collectFieldNames(text, lawAbbreviationStarts(text), lexemes);
     List<String> result = new ArrayList<>(lexemes);
     return result.size() <= MAX_LEXEMES
         ? List.copyOf(result)
@@ -164,6 +219,16 @@ public final class FullTextIdentifiers {
     }
   }
 
+  /** Start offsets of the law abbreviations {@link #LAW_OF_PARAGRAPH_REFERENCE} locates. */
+  private static Set<Integer> lawAbbreviationStarts(String text) {
+    Set<Integer> starts = new HashSet<>();
+    Matcher matcher = LAW_OF_PARAGRAPH_REFERENCE.matcher(text);
+    while (matcher.find()) {
+      starts.add(matcher.start(1));
+    }
+    return starts;
+  }
+
   /**
    * @param requireIdentifierShape whether the matched text must pass {@link #looksLikeIdentifier}.
    *     Set for the patterns whose match is only loosely constrained - a keyword followed by
@@ -189,6 +254,47 @@ public final class FullTextIdentifiers {
         lexemes.add(prefix + joined);
       }
     }
+  }
+
+  /**
+   * One lexeme per technical field or element name: a word run of {@link #UPPER_SNAKE_CASE}, {@link
+   * #CAMEL_CASE} or {@link #UPPERCASE_WORD} shape. Collected last, so under {@link #MAX_LEXEMES}
+   * the other identifier kinds keep their place.
+   *
+   * <p>A law abbreviation that is part of a paragraph reference ({@code § 35 BauGB}, {@code § 35
+   * Abs. 1 Nr. 4 BauGB}) yields none: the paragraph lexemes already carry it qualified, and a bare
+   * {@code xfldbaugb} on the question side would match every section naming the law at the weight
+   * that keeps § 34 and § 35 apart.
+   */
+  private static void collectFieldNames(
+      String text, Set<Integer> lawAbbreviationStarts, Set<String> lexemes) {
+    Matcher matcher = WORD_RUN.matcher(text);
+    while (matcher.find()) {
+      String word = matcher.group();
+      if (lawAbbreviationStarts.contains(matcher.start())
+          || word.length() > MAX_FIELD_NAME_LENGTH
+          || !looksLikeFieldName(word)) {
+        continue;
+      }
+      String normalized = normalize(transliterateUmlauts(word.toLowerCase(Locale.ROOT)));
+      if (!normalized.isEmpty()) {
+        lexemes.add(FIELD_NAME_PREFIX + normalized);
+      }
+    }
+  }
+
+  private static boolean looksLikeFieldName(String word) {
+    return UPPER_SNAKE_CASE.matcher(word).matches()
+        || CAMEL_CASE.matcher(word).matches()
+        || UPPERCASE_WORD.matcher(word).matches();
+  }
+
+  /**
+   * Keeps {@code PRÜFUNG} and {@code PRUEFUNG} on one lexeme instead of dropping the umlaut; the
+   * capital {@code ẞ} arrives here already lowercased to {@code ß}.
+   */
+  private static String transliterateUmlauts(String lowercase) {
+    return lowercase.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss");
   }
 
   /**

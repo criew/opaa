@@ -33,7 +33,7 @@ import org.springframework.ai.document.Document;
 public class HtmlDocumentFormat implements DocumentFormat {
 
   public static final String ID = "html";
-  static final short VERSION = 3;
+  static final short VERSION = 4;
 
   /** h1-h3 open a new chunk, h4-h6 fold into the text - like the Confluence pipeline. */
   static final int MAX_CUTTING_LEVEL = 3;
@@ -45,9 +45,6 @@ public class HtmlDocumentFormat implements DocumentFormat {
    * to measure against.
    */
   static final int SOFT_CHUNK_CHAR_LIMIT = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
-
-  /** Absolute ceiling on a single chunk's text - {@link HeadingSectionSplitter}'s backstop. */
-  static final int HARD_CHUNK_CHAR_LIMIT = HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT;
 
   @Override
   public String id() {

@@ -33,7 +33,7 @@ import org.springframework.ai.document.Document;
 public class ConfluenceStorageFormat implements DocumentFormat {
 
   public static final String ID = "confluence";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   /** h1-h3 open a new chunk, like the HTML and Markdown pipelines; h4-h6 fold into the text. */
   static final int MAX_CUTTING_LEVEL = 3;

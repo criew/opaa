@@ -141,17 +141,17 @@ class DocumentFormatRegistryRoutingIntegrationTest {
   void everyFormatKeepsItsPersistedIdAndVersion() {
     Map<String, Short> expectedVersionById =
         Map.ofEntries(
-            Map.entry("pdf", (short) 3),
-            Map.entry("docx", (short) 3),
-            Map.entry("pptx", (short) 1),
-            Map.entry("odt", (short) 2),
-            Map.entry("odp", (short) 2),
-            Map.entry("tabular", (short) 1),
-            Map.entry("markdown", (short) 1),
-            Map.entry("html", (short) 3),
+            Map.entry("pdf", (short) 4),
+            Map.entry("docx", (short) 4),
+            Map.entry("pptx", (short) 2),
+            Map.entry("odt", (short) 3),
+            Map.entry("odp", (short) 3),
+            Map.entry("tabular", (short) 2),
+            Map.entry("markdown", (short) 2),
+            Map.entry("html", (short) 4),
             Map.entry("email", (short) 5),
             Map.entry("tika-fallback", (short) 1),
-            Map.entry("confluence", (short) 2));
+            Map.entry("confluence", (short) 3));
 
     assertThat(registry.pipelines())
         .extracting(DocumentFormat::id)

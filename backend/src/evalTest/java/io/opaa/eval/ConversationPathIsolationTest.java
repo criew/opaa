@@ -27,7 +27,7 @@ class ConversationPathIsolationTest {
    */
   @Test
   void theMultiTurnPathCountsItsOwnContractVersionSeparately() {
-    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(7);
+    assertThat(ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION).isEqualTo(8);
   }
 
   @Test

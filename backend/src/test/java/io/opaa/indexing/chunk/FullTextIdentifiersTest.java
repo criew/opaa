@@ -32,8 +32,7 @@ class FullTextIdentifiersTest {
    */
   @Test
   void aParagraphWithALawAbbreviationAlsoYieldsItsBareForm() {
-    assertThat(FullTextIdentifiers.extract("§ 35 BauGB"))
-        .containsExactlyInAnyOrderElementsOf(List.of("xpar35", "xpar35baugb"));
+    assertThat(FullTextIdentifiers.extract("§ 35 BauGB")).contains("xpar35", "xpar35baugb");
     assertThat(FullTextIdentifiers.extract("§ 35")).containsExactly("xpar35");
   }
 
@@ -133,11 +132,167 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract("Die Azubine im Amt")).isEmpty();
   }
 
-  /** An uppercase abbreviation without a digit is a word, not a file number. */
+  /**
+   * An uppercase abbreviation without a digit is a word, not a file number. Its parts of five or
+   * more uppercase letters are field-name lexemes, nothing more.
+   */
   @Test
-  void hyphenatedUppercaseAbbreviationsWithoutADigitProduceNoLexeme() {
-    assertThat(FullTextIdentifiers.extract("Die EU-DSGVO gilt.")).isEmpty();
-    assertThat(FullTextIdentifiers.extract("IT-SICHERHEIT")).isEmpty();
+  void hyphenatedUppercaseAbbreviationsWithoutADigitProduceNoFileNumber() {
+    assertThat(FullTextIdentifiers.extract("Die EU-DSGVO gilt.")).containsExactly("xflddsgvo");
+    assertThat(FullTextIdentifiers.extract("IT-SICHERHEIT")).containsExactly("xfldsicherheit");
+    assertThat(FullTextIdentifiers.extract("Die EU-DSGVO und IT-SICHERHEIT"))
+        .noneMatch(lexeme -> lexeme.startsWith("xakz"));
+  }
+
+  @Test
+  void upperSnakeCaseFieldNamesSurviveAsOneLexeme() {
+    assertThat(FullTextIdentifiers.extract("Das Feld BELEG_NR ist Pflicht."))
+        .containsExactly("xfldbelegnr");
+    assertThat(FullTextIdentifiers.extract("UST_SCHLUESSEL und Z_KASSE_ID"))
+        .containsExactly("xfldustschluessel", "xfldzkasseid");
+  }
+
+  @Test
+  void camelCaseFieldNamesSurviveAsOneLexeme() {
+    assertThat(FullTextIdentifiers.extract("Der Block ZahlungsDatenKV folgt."))
+        .containsExactly("xfldzahlungsdatenkv");
+    assertThat(FullTextIdentifiers.extract("Element MessageRefId"))
+        .containsExactly("xfldmessagerefid");
+  }
+
+  /** No exception list: acronyms of five or more letters are field-name lexemes as well. */
+  @Test
+  void uppercaseWordsOfFiveOrMoreLettersSurviveAsOneLexeme() {
+    assertThat(FullTextIdentifiers.extract("Die Felder VORORT und INHAUS"))
+        .containsExactly("xfldvorort", "xfldinhaus");
+    assertThat(FullTextIdentifiers.extract("Übermittlung über ELSTER an KONSENS"))
+        .containsExactly("xfldelster", "xfldkonsens");
+  }
+
+  @Test
+  void uppercaseWordsBelowFiveLettersProduceNoLexeme() {
+    assertThat(FullTextIdentifiers.extract("Das BGB und die AO, KFZ und die ABGB")).isEmpty();
+  }
+
+  /** The umlaut is transliterated, not dropped, so both spellings meet on one lexeme. */
+  @Test
+  void umlautsInFieldNamesAreTransliterated() {
+    assertThat(FullTextIdentifiers.extract("PRÜFUNG")).containsExactly("xfldpruefung");
+    assertThat(FullTextIdentifiers.extract("PRUEFUNG")).containsExactly("xfldpruefung");
+  }
+
+  @Test
+  void theSameFieldNameYieldsTheSameLexemeInAChunkAndInAQuestion() {
+    for (String fieldName : List.of("VORORT", "BELEG_NR", "ZahlungsDatenKV")) {
+      assertThat(FullTextIdentifiers.extract("Was bedeutet das Feld " + fieldName + "?"))
+          .as("question form of %s", fieldName)
+          .isNotEmpty()
+          .containsExactlyElementsOf(
+              FullTextIdentifiers.extract("| " + fieldName + " | Pflichtfeld | Länge 8 |"));
+    }
+  }
+
+  /**
+   * Ordinary prose stays free of field-name lexemes: a capitalized noun at the start of a sentence
+   * has no lowercase-uppercase transition, and lowercase words never qualify.
+   */
+  @Test
+  void ordinaryNounsAndSentenceStartsProduceNoFieldName() {
+    assertThat(
+            FullTextIdentifiers.extract(
+                "Antrag auf Gebührenbefreiung. Satzung der Stadt. Die Bearbeitung dauert lange."))
+        .isEmpty();
+    assertThat(FullTextIdentifiers.extract("feld_name und beleg_nr")).isEmpty();
+  }
+
+  /**
+   * A law abbreviation read as part of a paragraph reference yields no field-name lexeme: a shared
+   * {@code xfldbaugb} would put every BauGB section next to the asked paragraph at weight A. Named
+   * on its own, the same abbreviation is a field-name lexeme like any other.
+   */
+  @Test
+  void aLawAbbreviationInsideAParagraphReferenceYieldsNoFieldName() {
+    assertThat(FullTextIdentifiers.extract("§ 35 BauGB")).containsExactly("xpar35", "xpar35baugb");
+    assertThat(FullTextIdentifiers.extract("§§ 34, 35 BauGB")).noneMatch(l -> l.startsWith("xfld"));
+    assertThat(FullTextIdentifiers.extract("Das BauGB gilt, auch nach § 35 BauGB."))
+        .containsExactly("xpar35", "xpar35baugb", "xfldbaugb");
+  }
+
+  /**
+   * Absatz, Satz, Nummer, Halbsatz and Buchstabe parts between paragraph and law keep the law part
+   * of the reference; the paragraph lexemes stay exactly those the reference yielded before.
+   */
+  @Test
+  void aLawAbbreviationBehindReferencePartsYieldsNoFieldName() {
+    assertThat(FullTextIdentifiers.extract("§ 35 Abs. 1 Nr. 4 BauGB"))
+        .containsExactly("xpar35", "xpar35abs1");
+    assertThat(FullTextIdentifiers.extract("§ 35 Abs. 1 Satz 2 BauGB"))
+        .containsExactly("xpar35", "xpar35abs1");
+    assertThat(FullTextIdentifiers.extract("§ 35 S. 1 BauGB")).containsExactly("xpar35");
+    assertThat(FullTextIdentifiers.extract("§ 35 Absatz 2 Halbsatz 1 BauGB"))
+        .containsExactly("xpar35", "xpar35abs2");
+    assertThat(FullTextIdentifiers.extract("§ 35 Abs. 3 Nr. 1 Hs. 2 BauGB"))
+        .containsExactly("xpar35", "xpar35abs3");
+    assertThat(FullTextIdentifiers.extract("§ 9 Abs. 1 Nr. 2 Buchst. a BauGB"))
+        .containsExactly("xpar9", "xpar9abs1");
+    assertThat(FullTextIdentifiers.extract("§ 35 Nummer 4 BauGB")).containsExactly("xpar35");
+  }
+
+  /** NFD text, as PDF extraction often yields it, gives the same lexeme as the composed form. */
+  @Test
+  void decomposedUmlautsYieldTheSameFieldNameAsComposedOnes() {
+    String decomposed = "ZAHLUNGSPRU\u0308FUNG";
+
+    assertThat(FullTextIdentifiers.extract(decomposed)).containsExactly("xfldzahlungspruefung");
+    assertThat(FullTextIdentifiers.extract("ZAHLUNGSPRÜFUNG"))
+        .containsExactly("xfldzahlungspruefung");
+  }
+
+  @Test
+  void theCapitalSharpSIsAnUppercaseLetter() {
+    assertThat(FullTextIdentifiers.extract("STRAẞE")).containsExactly("xfldstrasse");
+    assertThat(FullTextIdentifiers.extract("STRASSE")).containsExactly("xfldstrasse");
+  }
+
+  /** No exception list: a Binnen-I has the camel-case transition and is taken as well. */
+  @Test
+  void aBinnenIIsTakenAsCamelCase() {
+    assertThat(FullTextIdentifiers.extract("Alle MitarbeiterInnen"))
+        .containsExactly("xfldmitarbeiterinnen");
+  }
+
+  /** The paragraph lexemes are unchanged next to field names. */
+  @Test
+  void paragraphLexemesAreUnchangedNextToFieldNames() {
+    assertThat(FullTextIdentifiers.extract("§ 35 BauGB, Feld BELEG_NR"))
+        .containsExactly("xpar35", "xpar35baugb", "xfldbelegnr");
+    assertThat(FullTextIdentifiers.extract("§ 3 Abs. 2 VGS"))
+        .containsExactlyInAnyOrderElementsOf(
+            List.of("xpar3", "xpar3abs2", "xpar3vgs", "xpar3abs2vgs"));
+  }
+
+  /** A base64 blob or hash has the camel-case transition too, but no field name is that long. */
+  @Test
+  void aWordRunLongerThanAFieldNameProducesNoLexeme() {
+    String longRun = "aB".repeat(FullTextIdentifiers.MAX_FIELD_NAME_LENGTH);
+    String atTheBound = "aB".repeat(FullTextIdentifiers.MAX_FIELD_NAME_LENGTH / 2);
+
+    assertThat(FullTextIdentifiers.extract(longRun)).isEmpty();
+    assertThat(FullTextIdentifiers.extract(atTheBound)).hasSize(1);
+  }
+
+  /** Field names count against the same bound, after the other identifier kinds. */
+  @Test
+  void fieldNamesAreBoundedAfterTheOtherIdentifiers() {
+    StringBuilder text = new StringBuilder("§ 35 BauGB ");
+    for (int i = 0; i < FullTextIdentifiers.MAX_LEXEMES * 2; i++) {
+      text.append("FELD_").append(i).append(' ');
+    }
+
+    List<String> lexemes = FullTextIdentifiers.extract(text.toString());
+
+    assertThat(lexemes).hasSize(FullTextIdentifiers.MAX_LEXEMES);
+    assertThat(lexemes).startsWith("xpar35", "xpar35baugb");
   }
 
   /**
