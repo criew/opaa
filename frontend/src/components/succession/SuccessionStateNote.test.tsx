@@ -47,7 +47,7 @@ describe('successionAwareMessage', () => {
     )
 
     expect(message).toContain('Für dieses Objekt ist die Nachfolge offen.')
-    expect(message).toContain('Übernahme')
+    expect(message).toContain('Administration → Ohne Zuständigkeit')
   })
 
   it('leaves every other refusal untouched', () => {

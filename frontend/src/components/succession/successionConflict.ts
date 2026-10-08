@@ -4,8 +4,8 @@ import { apiErrorCode } from '../../services/apiErrorDetails'
 export const SUCCESSION_OPEN = 'SUCCESSION_OPEN'
 
 const TAKEOVER_HINT =
-  'Der Ausgang ist die Übernahme: Eigentum und Verantwortung werden übertragen — aus der ' +
-  'Betriebsliste (Administration → Lebenszyklus) oder aus der Gruppenverwaltung.'
+  'Der Ausweg ist eine Nachfolge: Eigentum und Verantwortung werden übertragen — unter ' +
+  'Administration → Ohne Zuständigkeit oder aus der Gruppenverwaltung.'
 
 /**
  * Die Ablehnung wegen offener Nachfolge als erklärte Grenze statt als roher Fehler: Die Meldung des

@@ -704,8 +704,8 @@ Rechtemodell zählen vier Folgen:
 - **Eine Umbenennung des Claim-Werts im Identitätsmanagement ist im Token-Betrieb ein
   Gruppenwechsel ohne Schutzmechanik.** Ab der ersten Anmeldung ist jede Person Mitglied der neuen
   Gruppe, und jede Freigabe an der alten Gruppe wirkt für niemanden mehr. Nichts wird dabei
-  gelöscht, und es fällt auch nicht von selbst auf — sichtbar wird es im Reiter „Freigaben ohne
-  Empfänger" der Betriebsliste (Abschnitt 13).
+  gelöscht, und es fällt auch nicht von selbst auf — sichtbar wird es im Reiter „Gruppen ohne
+  aktive Mitglieder" der Betriebsliste (Abschnitt 13).
 - **Die Genauigkeit der Rechtehistorie hängt am Mechanismus.** Im Verzeichnisbetrieb steht in der
   Historie der Zeitpunkt des Laufs, der die Änderung gesehen hat. Im Token-Betrieb steht dort der
   Zeitpunkt der **Anmeldung**: Eine Verzeichnisänderung vom 3. März erscheint für eine Person, die
@@ -1288,21 +1288,27 @@ und am **Space** selbst. Das Datum steht allein in der Betriebsliste. **Suchtref
 Quellenverweise tragen den Hinweis nicht:** Der Zustand betrifft die Zuständigkeit, nicht die Richtigkeit des Inhalts, und eine
 Kennzeichnung dort machte jede Antwort zu einer Zustandsauswertung.
 
-**Die Betriebsliste der Systemverwaltung** steht unter **Administration → Lebenszyklus** und **hat
-drei Reiter** — jeder mit eigener Adresse, damit ein Verweis im richtigen Reiter landet und ein
-Neuladen ihn behält (`/admin/succession/open`, `…/grants`, `…/groups`):
+**Die Betriebsliste der Systemverwaltung** steht unter **Administration → Ohne Zuständigkeit** und
+**hat drei Reiter**. Jeder Reiter hat eine eigene Adresse, damit ein Verweis im richtigen Reiter
+landet und ein Neuladen ihn behält (`/admin/succession/open`, `…/grants`, `…/groups`). Jeder Reiter
+zeigt, wie viele Einträge er enthält; gezählt wird nur nach Art des Eintrags, nie nach Person.
 
-| Reiter | Was darin steht |
-|---|---|
-| Offene Nachfolgen | Bibliotheken, Räume und interne Gruppen ohne handlungsfähige Verantwortliche — mit Zuständigkeit und Alter |
-| Freigaben ohne Empfänger | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Freigaben laufen ins Leere |
-| Gruppen ohne Wirkung | interne Gruppen, die nichts halten und niemanden erreichen |
+| Reiter | Was darin steht | Nächster Schritt |
+|---|---|---|
+| Inhalte ohne Verantwortliche | Bibliotheken, Räume und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr aktiv ist | „Nachfolge bestimmen“ bzw. bei einer Gruppe „Rechte übergeben“ |
+| Gruppen ohne aktive Mitglieder | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Rechte erreichen niemanden | „Rechte übergeben“ an eine andere Gruppe |
+| Leere Gruppen | interne Gruppen, die weder aktive Mitglieder noch Rechte haben | in der Gruppenverwaltung auflösen |
+
+Ein leerer Reiter sagt, wann dort etwas erscheint, zum Beispiel: „Wird das Konto einer Person
+gesperrt, der eine Bibliothek oder ein Space gehört, erscheint das hier.“
 
 Die Liste ist **vollständig ab dem ersten Tag**, gleich wer zuständig ist; die Angabe der
-Zuständigkeit ist eine Auskunft, keine Zugangsbeschränkung zur Liste. Gealterte Einträge werden
-hervorgehoben — ab welchem Alter, steht in Abschnitt 15 —, und ein **Sichtungsvermerk** („geprüft
-am …, weiterhin offen, Grund") nimmt die Hervorhebung für eine weitere Periode zurück. Es gibt keine
-Frist, keine Erinnerung und keine E-Mail — die Liste zeigt, sie treibt nicht.
+Zuständigkeit ist eine Auskunft, keine Zugangsbeschränkung zur Liste. Einträge, die länger als die
+eingestellte Zeit offen sind (Abschnitt 15), tragen die Markierung **„lange offen“**. Wer einen
+Eintrag bewusst liegen lässt, hält das mit **„Bewusst offen lassen …“** und einem Grund fest (der
+**Sichtungsvermerk**, „geprüft am …, weiterhin offen, Grund“); die Markierung ruht dann für eine
+weitere Periode, der Eintrag bleibt in der Liste. Es gibt keine Frist, keine Erinnerung und keine
+E-Mail — die Liste zeigt, sie treibt nicht.
 
 **Es gibt keine Abfrage „was gehörte Frau Vogt".** Die Liste geht vom Objekt aus; wem es gehört,
 steht in der Zeile, ist aber weder sortierbar noch zählbar. Dasselbe gilt für die Person, die einen
@@ -1313,16 +1319,24 @@ Endet der Zustand damit wirklich, wird der Vorgang geschlossen und die handelnde
 vermerkt; geht das Objekt an jemanden, der ebenfalls nicht handeln kann, bleibt der Vorgang offen —
 sonst begänne sein Alter von vorn.
 
-**Was eine Zeile zeigt und anbietet.** Objekt, zuständige Stelle und Alter; der Name des Objekts
-führt in die Bibliothek beziehungsweise in den Raum. Eine gealterte Zeile ist als solche
-gekennzeichnet, und der **Sichtungsvermerk** wird an ihr mit seinem Grund eingetragen. Jede Zeile hat
-ihren Ausgang: bei einer Gruppe die **Übernahme** an eine andere Gruppe, bei einem Objekt einer
-Person die **Nachfolge** von Person zu Person (Umfang Eigentum und Verantwortung; wessen Bestand
-übergeben wird, wählt die Systemverwaltung dabei selbst — die Liste nennt die Person nur als Text),
-und bei einem Objekt einer Gruppe der Weg in die Gruppenverwaltung. In jedem Fall ist es derselbe
-Übertragungsdialog wie in Abschnitt 13.2, mit Vorschau und ausdrücklicher Bestätigung. Eine Zeile,
-die der Feststellungslauf noch nicht gesehen hat, steht bereits in der Liste — einen Vermerk nimmt
-sie erst an, wenn ihr Vorgang angelegt ist; wann der Lauf hinsieht, steht in Abschnitt 15.
+**Was eine Zeile zeigt und anbietet.** Das Objekt mit seiner Art, darunter in einem Satz das
+Problem („Das Konto, dem die Bibliothek gehört, ist nicht mehr aktiv.“), seit wann der Eintrag
+offen ist („offen seit 12 Tagen“, vor dem ersten Feststellungslauf „gerade erkannt“) und wer
+zuständig ist. Die bisherige Eigentümerin und Hinweise, wo eine Nachfolge zu suchen ist, stehen als
+Text daneben. Der Name des Objekts führt in die Bibliothek beziehungsweise in den Raum. Jede Zeile
+hat **genau einen** hervorgehobenen nächsten Schritt:
+
+- **„Nachfolge bestimmen“** bei einem Objekt einer Person: Übergabe von Person zu Person, Umfang
+  Eigentum und Verantwortung. Wessen Bestand übergeben wird, wählt die Systemverwaltung dabei
+  selbst („Bisheriges Konto“); die Liste nennt die Person nur als Text.
+- **„Rechte übergeben“** bei einer Gruppe: Übernahme durch eine andere Gruppe.
+- **„Zur Gruppenverwaltung“** bei einem Objekt einer Gruppe und bei einer leeren Gruppe; eine
+  Gruppe, die nichts hält, hat nichts zu übergeben, sie wird aufgelöst.
+
+Übergeben wird in jedem Fall über denselben Übertragungsdialog wie in Abschnitt 13.2, mit Vorschau
+und ausdrücklicher Bestätigung. Eine Zeile, die der Feststellungslauf noch nicht gesehen hat
+(„gerade erkannt“), steht bereits in der Liste; „Bewusst offen lassen …“ bietet sie erst an, wenn
+ihr Vorgang angelegt ist. Wann der Lauf hinsieht, steht in Abschnitt 15.
 
 **Der kleine Weg für ein einzelnes Objekt.** Geht es nur um eine Bibliothek und nicht um den ganzen
 Bestand einer Person, genügt im Reiter „Freigaben" der Abschnitt „Eigentümer" mit „Eigentum
