@@ -5,8 +5,19 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-07T06:17:04Z</updated>
+  <updated>2026-10-08T06:26:45Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Mittwoch, 7. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-07.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-07.html</id>
+    <updated>2026-10-08T06:26:45Z</updated>
+    <summary type="text">feat: UI-Redesign der Admin-Seiten:
+— feat(admin): UI-Politur der Seite „Anlegerechte“ – Wer darf was anlegen?
+— feat(admin): UI-Politur der Seite „Anlegerechte“ – Wer darf was anlegen?
+Sonstiges:
+— fix(query): Antworten mit fremder Schrift (z. B. chinesische Zeichen) erkennen und einmal neu generieren</summary>
+  </entry>
   <entry>
     <title>Tagesreport Dienstag, 6. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-06.html"/>
@@ -866,23 +877,5 @@ Sonstiges:
 — Space mit fremden privaten Chats unlöschbar
 — Veraltete Space-Arten in CONCEPTS.md bereinigt
 — Übersprungene Dokumente mit Grund in Oberfläche anzeigen</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Dienstag, 18. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-18.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-18.html</id>
-    <updated>2026-08-19T01:59:51Z</updated>
-    <summary type="text">feat: Bibliothekstypen — Quellkonfiguration wandert in die Bibliothek:
-— Quellentyp und Quellkonfiguration an Bibliothek gespeichert
-— Bibliotheksanlage mit Typauswahl aus Templates
-— Bibliotheksdetailseite mit typspezifischem Bereich
-— Zugangsdaten der Quellkonfiguration verschlüsselt verwahrt
-Epic: Quellentypen erweiterbar machen und RSS-Feeds erschließen:
-— RSS_FEED als Quellentyp und Parser für RSS-2.0-Feeds
-— RSS-Feeds indizieren mit Detailseiten-Übernahme
-— Quellentyp im Indizierungsformular wählbar
-— Anlagen an Detailseiten mit Profilen indizieren
-Sonstiges:
-— Roadmap-Meilenstein 1 zum 31.08.2026 dokumentiert</summary>
   </entry>
 </feed>
