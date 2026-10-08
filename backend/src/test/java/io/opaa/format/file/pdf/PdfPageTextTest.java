@@ -10,6 +10,7 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.pdfbox.pdmodel.font.Standard14Fonts;
+import org.apache.pdfbox.util.Matrix;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -94,6 +95,54 @@ class PdfPageTextTest {
                   + "Fläche 25 m² zu 3 €.\n"
                   + "Gemäß Satzung3 gilt dies.\n"
                   + "Fließtext ohne Hochstellung.\n");
+    }
+  }
+
+  /**
+   * Regression guard: a font size below 1 pt scaled up by the {@code cm} matrix must be judged by
+   * its displayed size, so plain digits of equal size and baseline are never split.
+   */
+  @Test
+  void digitsScaledUpFromASubPointFontStayTogether() throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+        stream.transform(Matrix.getScaleInstance(20, 20));
+        stream.beginText();
+        stream.setFont(new PDType1Font(Standard14Fonts.FontName.HELVETICA), 0.5f);
+        stream.newLineAtOffset(2.5f, 38.5f);
+        stream.showText("Frist 2024 und 10 Jahre");
+        stream.endText();
+      }
+
+      assertThat(PdfPageText.extract(doc, 0)).isEqualTo("Frist 2024 und 10 Jahre\n");
+    }
+  }
+
+  @Test
+  void aRaisedDigitInATableCellIsSeparatedToo() throws IOException {
+    try (PDDocument doc = new PDDocument()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      try (PDPageContentStream stream = new PDPageContentStream(doc, page)) {
+        text(stream, 54, 726, "Frist");
+        superscriptFirst(stream, 204, 726, "1", "10 Jahre");
+        text(stream, 54, 706, "Ausnahme");
+        superscriptFirst(stream, 204, 706, "2", "Mit Akten");
+        for (float y : new float[] {740, 720, 700}) {
+          stream.moveTo(50, y);
+          stream.lineTo(350, y);
+        }
+        for (float x : new float[] {50, 200, 350}) {
+          stream.moveTo(x, 700);
+          stream.lineTo(x, 740);
+        }
+        stream.stroke();
+      }
+
+      assertThat(PdfPageText.extract(doc, 0))
+          .isEqualTo("Frist | 1 10 Jahre\nAusnahme | 2 Mit Akten\n");
     }
   }
 
