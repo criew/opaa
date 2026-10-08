@@ -43,7 +43,7 @@ public enum RetrievalNote {
   SIMILARITY_THRESHOLD("similarity threshold %s, applied in-query"),
   VECTOR_SEARCH_SHORT_LIST(
       "%s returned %d of fetch-k %d candidate(s): fewer qualify within filter and similarity"
-          + " threshold, or the index scan reached opaa.query.vector-index.max-scan-tuples"),
+          + " threshold, or the index scan stopped at its tuple or memory limit"),
 
   LEXICAL_PATH_DISABLED("lexical search path switched off (%s)"),
   FULL_TEXT_SEARCH_LISTS("full-text search, %d list(s)"),

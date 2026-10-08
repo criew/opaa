@@ -73,7 +73,7 @@ public class VectorChunkSearch {
   /**
    * Up to {@code request.getTopK()} chunks within the request's filter whose similarity reaches its
    * threshold, nearest first. Fewer only when fewer qualify, or when the index scan reached {@link
-   * VectorIndexScanProperties#maxScanTuples} first.
+   * VectorIndexScanProperties#maxScanTuples} or pgvector's scan memory limit first.
    */
   public List<Document> similaritySearch(SearchRequest request) {
     PGvector queryEmbedding = new PGvector(embeddingModel.embed(request.getQuery()));
@@ -136,6 +136,10 @@ public class VectorChunkSearch {
         + distance
         + " AS distance FROM nearest WHERE "
         + distance
-        + " < ? ORDER BY distance";
+        // "+ 0": PostgreSQL 17+ would otherwise take the CTE's ORDER BY as already satisfied and
+        // skip this sort, keeping the relaxed scan's only approximate order.
+        + " < ? ORDER BY "
+        + distance
+        + " + 0";
   }
 }

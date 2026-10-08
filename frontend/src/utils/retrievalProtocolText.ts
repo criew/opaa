@@ -137,9 +137,9 @@ const NOTE_RULES: NoteRule[] = [
   {
     name: 'VECTOR_SEARCH_SHORT_LIST',
     pattern:
-      /^(.+) returned (\d+) of fetch-k (\d+) candidate\(s\): fewer qualify within filter and similarity threshold, or the index scan reached (\S+)$/,
+      /^(.+) returned (\d+) of fetch-k (\d+) candidate\(s\): fewer qualify within filter and similarity threshold, or the index scan stopped at its tuple or memory limit$/,
     german: (m) =>
-      `${translateListLabel(m[1])}: ${m[2]} von fetch-k ${m[3]} geliefert. Innerhalb von Filter und Ähnlichkeitsschwelle gibt es nicht mehr, oder der Indexdurchlauf hat ${m[4]} erreicht.`,
+      `${translateListLabel(m[1])}: ${m[2]} von fetch-k ${m[3]} geliefert. Innerhalb von Filter und Ähnlichkeitsschwelle gibt es nicht mehr, oder der Indexdurchlauf hat seine Grenze für Einträge oder Arbeitsspeicher erreicht.`,
   },
 
   // FullTextSearchStage

@@ -87,8 +87,8 @@ Antwort trägt `noSpaceContext`. Jede Anfrage der Weboberfläche braucht einen S
 suchen nur der Fremdzugang und `POST /api/v1/search` ([ADR-0039](../decisions/0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)).
 Die lesbaren Bibliotheken selbst liefert
 `LibraryAccessService#readableLibraryIds`; der resultierende Suchbereich (`searchScope`, eine Menge von
-Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`SearchScopeStage#libraryFilter`) **Teil des
-`similaritySearch`-Aufrufs selbst**, nicht ein Filter auf dessen Ergebnis (siehe
+Bibliotheks-Kennungen) wird als `library_id IN (...)`-Filter (`SearchScopeStage#libraryFilter`) **Teil der
+Vektorabfrage selbst**, nicht ein Filter auf dessen Ergebnis (siehe
 [Durchsetzung zur Abfragezeit](./spaces-and-assets.md#durchsetzung-zur-abfragezeit) sowie die
 Javadoc-Begründung an `QueryService#query`). Ein leerer Suchbereich überspringt die Schritte 2–6
 vollständig (`relevantChunks = List.of()`, keine der dortigen Aufrufe läuft) — Schritt 7 läuft trotzdem,
@@ -171,15 +171,17 @@ Zerlegungskontext aus Frage und Suchfenster.
 
 ### 3. Vektorsuche je Teilfrage
 
-Stufenname: `VECTOR_SEARCH`. `VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 einen eigenen
-`VectorStore#similaritySearch`-Aufruf gegen PostgreSQL/pgvector auf,
+Stufenname: `VECTOR_SEARCH`. `VectorSearchStage` ruft für **jede** Suchanfrage aus Schritt 2 eine eigene
+Vektorabfrage (`VectorChunkSearch#similaritySearch`) gegen PostgreSQL/pgvector auf,
 mit identischem Rechtefilter (`searchScope` aus Schritt 1) und identischer Ähnlichkeitsschwelle für jede
 Teilfrage. Parameter: `opaa.query.fetch-k` (`OPAA_QUERY_FETCH_K`, Default `25`) Kandidaten je Aufruf,
 `opaa.query.similarity-threshold` (`OPAA_QUERY_SIMILARITY_THRESHOLD`, Default `0,3`) als Mindest-Kosinus-
 Ähnlichkeit — ein Chunk unterhalb der Schwelle wird gar nicht erst zum Kandidaten. Eine Einthemen-Frage
 ohne Kontextbezug decodiert typischerweise zu genau einer Suchanfrage; dieser Fall läuft denselben Pfad
 wie vor #923, nur ohne die vorangestellte Verlaufs-Heuristik. Details zu beiden Parametern in der
-Stellschrauben-Tabelle.
+Stellschrauben-Tabelle. Mit HNSW-Index läuft die Abfrage als iterativer Indexscan, damit der Filter
+nicht erst auf den ersten `hnsw.ef_search` Kandidaten greift; eine Liste unter `fetch-k` nennt das
+Erklärprotokoll ([Hybride Suche, #2345](./hybrid-retrieval.md#rechtefilter-im-vektorpfad-und-der-hnsw-index-2345)).
 
 ### 3b. Volltextsuche je Teilfrage (#1048/#1049)
 
@@ -403,7 +405,7 @@ Frage + Gesprächsfenster
 2. Suchfenster schneiden (search-window-turns Runden), LLM-Teilfragen-Zerlegung
    (1..max-sub-queries Suchanfragen, Fallback: letzte Nutzerfrage des Suchfensters + Frage)
         ↓
-3. Je Suchanfrage: similaritySearch (fetch-k Kandidaten, Rechtefilter + Schwelle)
+3. Je Suchanfrage: Vektorabfrage (bis zu fetch-k Kandidaten, Rechtefilter + Schwelle)
         ↓
 3b. Je Suchanfrage: Volltextsuche (fetch-k, identischer Rechtefilter)
         ↓

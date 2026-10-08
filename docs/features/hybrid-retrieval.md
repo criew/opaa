@@ -656,6 +656,62 @@ Zwei Folgerungen sind verbindlich:
   Volltextpfad mockt, prüft den Filter nicht — das ist genau die Kategorie „mockt weg, worum es geht"
   aus den [Agenten-Anweisungen](../../AGENTS.md#reproduktionsnachweis).
 
+### Rechtefilter im Vektorpfad und der HNSW-Index (#2345)
+
+Im Vektorpfad ist der Filter ebenfalls Teil der Abfrage. Mit dem HNSW-Index wertet PostgreSQL ihn
+aber erst auf den Zeilen aus, die der Indexscan liefert, und ein einfacher Scan liefert höchstens
+`hnsw.ef_search` Zeilen (pgvector-Default 40). Bis #2345 lieferte die Vektorsuche deshalb still
+weniger als `fetch-k`, sobald der Planer den Index nahm: bei einem engen Suchbereich nur die wenigen
+Treffer unter den ersten 40 Kandidaten, ohne engen Filter jedes `fetch-k` über 40 gekappt auf 40.
+Weder die Integrationstests (ohne Index) noch die Eval-Korpora (so klein, dass der Planer exakt
+sucht) konnten das sehen.
+
+**Entscheidung.** Der Vektorpfad läuft über eine eigene Abfrage (`VectorChunkSearch`) statt über
+`PgVectorStore#similaritySearch`, mit derselben Filterübersetzung, Distanz, Bewertung und Schwelle:
+
+- **Iterativer Indexscan** (`hnsw.iterative_scan = relaxed_order`, pgvector ab 0.8.0): Der Scan
+  läuft weiter, bis `fetch-k` Zeilen den Filter bestehen. Ein höheres `ef_search` allein reicht
+  nicht; in der Sonde blieb ein enger Filter auch damit bei 10 von 25.
+- **`hnsw.ef_search = max(40, fetch-k)`**, damit schon der erste Durchgang so breit ist wie die
+  angeforderte Liste.
+- **`hnsw.max_scan_tuples`** aus `opaa.query.vector-index.max-scan-tuples`, Standard 20000 (der
+  pgvector-Default). Er begrenzt die Laufzeit des ungünstigsten Falls, eines sehr kleinen
+  Suchbereichs in einem großen Bestand; pgvector beendet einen solchen Scan zusätzlich an seiner
+  Speichergrenze (`hnsw.scan_mem_multiplier` × `work_mem`). Eine dort kürzere Liste nennt das
+  Erklärprotokoll. Für solche Filter schätzt der Planer die exakte Suche meist ohnehin günstiger.
+- **Transaktionslokal:** Die drei Werte setzt `set_config(…, true)` in einer kurzen Transaktion,
+  in der danach die Suche läuft; sie gelten nie für eine andere Abfrage auf derselben Verbindung.
+  Das Embedding der Suchanfrage entsteht vorher, damit keine Verbindung während des Modellaufrufs
+  gehalten wird.
+- **Exakte Ordnung:** `relaxed_order` liefert die Zeilen nur ungefähr sortiert. Die Abfrage
+  materialisiert die nächsten `fetch-k` Zeilen in einem CTE und sortiert außen exakt nach Distanz,
+  über `distance + 0`: Ab PostgreSQL 17 übernimmt der Planer sonst die Ordnung des CTE und lässt
+  die äußere Sortierung weg (im Plan nachgesehen, und der Test sah ohne `+ 0` unsortierte Listen).
+  Die Ähnlichkeitsschwelle wirkt ebenfalls außen: Das ergibt dieselben Zeilen wie die Schwelle im
+  Scan, ohne dass eine strenge Schwelle den Scan bis an seine Grenze treibt.
+- **Mindestversion:** `PgVectorVersionGuard` bricht den Start bei pgvector älter als 0.8.0 ab. Das
+  ausgelieferte Image `pgvector/pgvector:pg18` bringt 0.8.7 mit.
+
+Die Diagnose, die Suche als Dienst, MCP und der Eval-Harness erreichen den Vektorpfad nur über die
+Stufe `VECTOR_SEARCH` und sind damit alle abgedeckt; eine andere Vektorabfrage gibt es nicht.
+
+**Messung** (Sonde, pgvector 0.8.7, 200 000 Zeilen × 768 Dimensionen über 20 Bibliotheken plus eine
+mit 100 Zeilen, `ANALYZE`, Index erzwungen, Ausführungszeit warm):
+
+| Abfrage | vorher | nachher |
+|---|---|---|
+| Filter auf 1 von 20 Bibliotheken, fetch-k 25 | 0 von 25, 9 ms | 25 von 25, 40–60 ms (kalt 120–140 ms) |
+| Filter auf 5 von 20 Bibliotheken, fetch-k 25 | 6 von 25, 6 ms | 25 von 25, 17 ms |
+| alle 20 Bibliotheken, fetch-k 100 | 40 von 100, 5 ms | 100 von 100, 10 ms |
+| alle 20 Bibliotheken, fetch-k 200 | 40 von 200, 55 ms | 200 von 200, 23 ms |
+| Bibliothek mit 100 Zeilen (0,05 %), fetch-k 25 | 0 von 25, 7 ms | 16 von 25, 220–250 ms |
+
+Ohne erzwungenen Index wählte der Planer hier für alle gefilterten Abfragen die exakte Suche
+(parallele sequentielle Suche, rund 1–1,5 s, immer vollständig); nur die ungefilterte nahm den
+Index. Für die Kleinstbibliothek brachte erst `max_scan_tuples` 100 000 mit achtfachem
+Scan-Speicher 25 von 25, nach 2,5 s und damit langsamer als die exakte Suche. Deshalb bleibt der
+Standard bei 20000 und der Speicherfaktor bei pgvectors Vorgabe.
+
 ---
 
 ## Arbeitspaket 3: Fusion
