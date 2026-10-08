@@ -88,6 +88,10 @@ Für eine Startwert-Variable, die die Datenbank danach übergeht, bietet der Cha
 dauerhaften Schalter an. Auch einen Rückgriff wie `OPAA_OIDC_BOOTSTRAP=force` gibt es dort nicht:
 Ein solcher Wert bliebe in GitOps-Werkzeugen stehen und würde bei jedem Neustart erneut wirken.
 
+Dasselbe gilt für die Notfallwiederherstellung des Erstadmins (`OPAA_LOCAL_ADMIN_RESET=force`). Sie
+wird einmalig gesetzt, etwa mit `kubectl set env` oder einem befristeten `extraEnv`, und nach dem
+Neustart wieder entfernt. Die Einzelheiten beschreibt das Handbuch (#2357).
+
 **Einzige Ausnahme ist eine Erprobungsdatenbank:**
 
 - ein schlichtes StatefulSet mit dem Image `pgvector/pgvector` und einem PVC
@@ -116,8 +120,23 @@ Chart bringt keine Zertifikatslogik mit.
 
 Zwischen Eingang, Frontend und Backend bleibt die Proxy-Kette dieselbe wie im Compose-Betrieb. Die
 Liste der vertrauenswürdigen Proxys (`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`) ist ein Wert des Charts.
-Sie muss das Pod-Netz abdecken, damit Rate-Limits und Kontosperre die Adresse des Clients sehen und
-nicht die des Eingangs (#2353).
+Sie entscheidet über mehr als das Rate-Limit: Auch die Fehlversuch-Grenzen der lokalen Anmeldung und
+die Netzbeschränkung lokaler Systemverwalter (`OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`) lesen die
+Client-Adresse aus der Kette, die diese Liste freigibt.
+
+Im Compose-Betrieb steht dort nur die feste Adresse des Frontend-Containers. Pods haben keine feste
+Adresse, die Liste muss also das Pod-Netz nennen. Das ist nur vertretbar, wenn außer dem Frontend
+kein Pod das Backend erreicht. Daraus folgt:
+
+- **Eingangs-Policy des Backends standardmäßig an.** Eine NetworkPolicy lässt Verbindungen zum
+  Backend nur von den Frontend-Pods zu, dazu auf Wunsch von der Betriebsüberwachung. Sie sperrt
+  keinen Ausgang und bricht deshalb keine frische Installation.
+- **Liste ohne Vorgabe.** Der Chart kennt das Pod-Netz nicht; die Liste bleibt leer, bis der
+  Betreiber sie setzt. Leer heißt: Das Backend sieht die Adresse des Frontend-Pods, die Grenzen
+  wirken zu streng, aber nicht umgehbar.
+- **Pod-Netz nur mit wirksamer Policy.** Ist die Eingangs-Policy abgeschaltet oder setzt die
+  Netzwerkschicht des Clusters keine NetworkPolicies durch, darf das Pod-Netz nicht eingetragen
+  werden. Werte und Handbuch sagen das an der Stelle, an der die Liste gesetzt wird (#2353).
 
 ### 5. Geheimnisse nur aus Secrets, nie vom Chart erzeugt
 
@@ -142,8 +161,12 @@ prüft sie erst beim ersten Gebrauch, damit eine bestehende Installation ohne ge
 Zugangsdaten weiter startet. Eine Installation mit dem Chart ist eine neue Installation, und ein
 fehlender Schlüssel fiele dort erst auf, wenn die erste Bibliothek ihre Zugangsdaten speichern will.
 
-Optional sind die Schlüssel für LLM-Endpunkte und Objektspeicher sowie das Kennwort des Erstadmins.
-Fehlt das Kennwort, erzeugt das Backend beim ersten Start eines und gibt es einmal im Protokoll aus.
+Pflicht unter einer Bedingung sind Zugangs- und Geheimschlüssel des Objektspeichers: sobald die
+Originalablage dort liegt (`OPAA_UPLOAD_STORE=s3`). Das Schema prüft das als Bedingung
+(`if`/`then`).
+
+Optional sind die Schlüssel für LLM-Endpunkte und das Kennwort des Erstadmins. Fehlt das Kennwort,
+erzeugt das Backend beim ersten Start eines und gibt es einmal im Protokoll aus.
 
 Wo die Prüfung greift, hängt vom Weg ab:
 
@@ -175,9 +198,13 @@ Was die Images dafür noch brauchen, regeln #2348 (Frontend) und #2349 (Backend)
 mit zugewiesenen UIDs (OpenShift `restricted-v2`) ohne Anpassung. Wer die Originalablage auf einem
 PVC hält, setzt `fsGroup` über einen Wert (#2352).
 
-NetworkPolicies liefert der Chart mit, aber standardmäßig ausgeschaltet. Ein gesperrter Ausgang
-bräche eine frische Installation, solange die Ziele für Identitätsanbieter, Modelle und Quellen nicht
-eingetragen sind. Das Handbuch empfiehlt, sie nach der Einrichtung einzuschalten (#2353).
+NetworkPolicies liefert der Chart in zwei Teilen:
+
+- **Eingang zum Backend:** standardmäßig an (siehe Proxy-Kette in Entscheidung 4).
+- **Übrige Policies:** standardmäßig aus, vor allem die Begrenzung des Ausgangs. Ein gesperrter
+  Ausgang bräche eine frische Installation, solange die Ziele für Identitätsanbieter, Modelle und
+  Quellen nicht eingetragen sind. Das Handbuch empfiehlt, sie nach der Einrichtung einzuschalten
+  (#2353).
 
 ### 7. Versionierung: eine Nummer für Anwendung und Chart
 
