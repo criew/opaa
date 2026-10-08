@@ -512,12 +512,14 @@ class ContextPrefixRerunIntegrationTest {
         ## § 7 Gebühren für Personaldokumente
 
         Für die Ausstellung eines Personalausweises wird eine Gebühr von 37,00 EUR erhoben.
-        Die Gebühr ist bei Antragstellung fällig und wird nicht erstattet.
+        Die Gebühr ist bei Antragstellung fällig und wird nicht erstattet. Für einen
+        vorläufigen Personalausweis wird eine ermäßigte Gebühr von 10,00 EUR erhoben.
 
         ## § 8 Befreiungen
 
         Von der Gebühr befreit sind Personen, die Leistungen nach dem Zweiten Buch
         Sozialgesetzbuch beziehen und dies durch einen aktuellen Bescheid nachweisen.
+        Die Befreiung ist bei Antragstellung zu beantragen und gilt nur für diesen Antrag.
         """,
         StandardCharsets.UTF_8);
     assertThat(

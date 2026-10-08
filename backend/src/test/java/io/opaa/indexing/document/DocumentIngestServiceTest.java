@@ -96,6 +96,12 @@ class DocumentIngestServiceTest {
       "https://wiki.behoerde.example/pages/viewpage.action?pageId=102";
   private static final String PUBLISHED_AT = "2025-06-15T10:30:00Z";
 
+  /** Lifts a section above the size below which neighbouring sections are combined. */
+  private static final String NAEHERE =
+      " Das Nähere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht"
+          + " wird und für alle Dienststellen verbindlich ist; Ausnahmen bedürfen der schriftlichen"
+          + " Zustimmung der Amtsleitung.";
+
   @Mock private DocumentService documentService;
   @Mock private ChunkingService chunkingService;
   @Mock private DocumentRepository documentRepository;
@@ -1360,8 +1366,11 @@ class DocumentIngestServiceTest {
               .ingest(
                   DocumentIngests.rssEntry(
                       targetLibrary,
-                      "<main><h1>Meldung</h1><p>Einleitung.</p><h2>Details</h2><p>Mehr.</p>"
-                          + "</main>",
+                      "<main><h1>Meldung</h1><p>Einleitung."
+                          + NAEHERE
+                          + "</p><h2>Details</h2><p>Mehr."
+                          + NAEHERE
+                          + "</p></main>",
                       "Titel",
                       ENTRY_URL,
                       PUBLISHED_AT),
@@ -1372,8 +1381,8 @@ class DocumentIngestServiceTest {
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
       List<org.springframework.ai.document.Document> stored = storedChunks();
       assertThat(stored).hasSize(2);
-      assertThat(stored.get(0).getText()).isEqualTo("Meldung\n\nEinleitung.");
-      assertThat(stored.get(1).getText()).isEqualTo("Meldung › Details\n\nMehr.");
+      assertThat(stored.get(0).getText()).isEqualTo("Meldung\n\nEinleitung." + NAEHERE);
+      assertThat(stored.get(1).getText()).isEqualTo("Meldung › Details\n\nMehr." + NAEHERE);
       assertThat(stored.get(0).getMetadata())
           .containsEntry("pipeline_id", "html")
           .containsEntry("file_name", "Titel")

@@ -47,9 +47,9 @@ public final class HeadingSectionSplitter {
 
   /**
    * A section whose own title and body together stay below this many characters is a tiny chunk and
-   * combined with its neighbours (ingestion-pipelines.md, "Kleinstchunks"). Set below the shortest
-   * section of the evaluation corpora - a one-Absatz §, about 200 characters - so that every
-   * section measured there stays a chunk of its own.
+   * combined with its tiny neighbours. <b>Gemessen</b> against the verwaltung domain
+   * (ingestion-pipelines.md, "Kleinstchunks"): at 500 a single § was no longer retrievable on its
+   * own.
    */
   public static final int SMALL_SECTION_CHAR_LIMIT = 200;
 
@@ -89,24 +89,26 @@ public final class HeadingSectionSplitter {
    */
   private record Section(List<PathEntry> path, List<String> bodies) {
 
-    /** Neither split for its size nor at the document root, so it may share a chunk. */
-    boolean combinable() {
-      return bodies.size() <= 1 && !path.isEmpty();
-    }
-
-    /** Its own title and body - the ancestors' titles repeat in every section below them. */
-    int ownLength() {
-      return path.getLast().title().length() + (bodies.isEmpty() ? 0 : bodies.getFirst().length());
+    /**
+     * Below {@link #SMALL_SECTION_CHAR_LIMIT} with its own title and body - the ancestors' titles
+     * repeat in every section below them - and under at least one heading.
+     */
+    boolean tiny() {
+      if (path.isEmpty() || bodies.size() > 1) {
+        return false;
+      }
+      int body = bodies.isEmpty() ? 0 : bodies.getFirst().length();
+      return path.getLast().title().length() + body < SMALL_SECTION_CHAR_LIMIT;
     }
   }
 
   /**
-   * Cuts {@code events} into one section per cutting heading, then combines neighbouring sections
-   * below {@link #SMALL_SECTION_CHAR_LIMIT} into one chunk of at most {@link
+   * Cuts {@code events} into one section per cutting heading, then combines each run of
+   * neighbouring tiny sections ({@link Section#tiny}) into chunks of at most {@link
    * #SOFT_CHUNK_CHAR_LIMIT}. A combined chunk never leaves the parent of its first section: its
    * heading line and Fundort are the members' common heading path, and each member keeps its
-   * remaining headings inline in front of its text. Sections without a common heading, and a
-   * section split for its size, are never combined.
+   * remaining headings inline in front of its text. A section of regular size is never combined,
+   * nor are sections without a common heading.
    *
    * @param maxCuttingLevel the deepest heading level that still opens a new chunk; a {@link
    *     Heading} deeper than this folds into the current section's text instead.
@@ -170,14 +172,11 @@ public final class HeadingSectionSplitter {
       Section first = sections.get(start);
       List<PathEntry> common = first.path();
       int end = start + 1;
-      if (first.combinable()) {
+      if (first.tiny()) {
         int floor = Math.max(1, first.path().size() - 1);
-        int smallLength = first.ownLength();
         while (end < sections.size()) {
           Section next = sections.get(end);
-          if (!next.combinable()
-              || (smallLength >= SMALL_SECTION_CHAR_LIMIT
-                  && next.ownLength() >= SMALL_SECTION_CHAR_LIMIT)) {
+          if (!next.tiny()) {
             break;
           }
           List<PathEntry> shared = commonPrefix(common, next.path());
@@ -190,7 +189,6 @@ public final class HeadingSectionSplitter {
             break;
           }
           common = shared;
-          smallLength += next.ownLength();
           end++;
         }
       }
