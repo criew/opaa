@@ -21,7 +21,8 @@ import org.slf4j.LoggerFactory;
  * ruled table ({@link PdfTableGrids}) whose text fills at least two rows and two columns is written
  * in the shared {@link TableText} form at the place of its first glyph; everything outside it is
  * extracted exactly as without tables. Whenever the table path fails or cannot place a table
- * unambiguously, the page falls back to plain extraction.
+ * unambiguously, the page falls back to plain extraction. A digit set raised in a smaller size is
+ * separated by a space from a digit or letter directly after it ({@link #separateRaisedDigits}).
  */
 final class PdfPageText {
 
@@ -29,6 +30,12 @@ final class PdfPageText {
 
   /** Named apart from {@code PDFTextStripper.LINE_SEPARATOR}, which a subclass would inherit. */
   private static final String NEWLINE = "\n";
+
+  /** A raised glyph is at most this share of the following glyph's font size. */
+  private static final float RAISED_MAX_SIZE_RATIO = 0.9f;
+
+  /** A raised glyph's baseline lies at least this share of the following font size higher. */
+  private static final float RAISED_MIN_RISE_RATIO = 0.15f;
 
   /** Finds a page's table grids; production uses {@link #candidateGrids}. */
   @FunctionalInterface
@@ -88,7 +95,7 @@ final class PdfPageText {
   }
 
   private static String plain(PDDocument doc, int pageIndex) throws IOException {
-    return strip(new PDFTextStripper(), doc, pageIndex);
+    return strip(new RaisedDigitStripper(), doc, pageIndex);
   }
 
   private static String strip(PDFTextStripper stripper, PDDocument doc, int pageIndex)
@@ -125,6 +132,62 @@ final class PdfPageText {
     return result;
   }
 
+  /**
+   * {@code text} with a space after every digit that is raised and smaller than the digit or letter
+   * following it within the word, as a sentence or footnote number before its sentence. Only adds
+   * spaces; a word whose text does not spell out its glyphs one by one is returned unchanged.
+   */
+  static String separateRaisedDigits(String text, List<TextPosition> positions) {
+    StringBuilder separated = new StringBuilder(text.length() + 1);
+    int offset = 0;
+    for (int i = 0; i < positions.size(); i++) {
+      String glyph = positions.get(i).getUnicode();
+      if (glyph == null || !text.startsWith(glyph, offset)) {
+        return text;
+      }
+      separated.append(glyph);
+      offset += glyph.length();
+      if (i + 1 < positions.size() && isRaisedDigitBefore(positions.get(i), positions.get(i + 1))) {
+        separated.append(' ');
+      }
+    }
+    return offset == text.length() ? separated.toString() : text;
+  }
+
+  private static boolean isRaisedDigitBefore(TextPosition digit, TextPosition next) {
+    String digitText = digit.getUnicode();
+    String nextText = next.getUnicode();
+    if (digitText.length() != 1
+        || !Character.isDigit(digitText.charAt(0))
+        || nextText == null
+        || nextText.isEmpty()
+        || !Character.isLetterOrDigit(nextText.codePointAt(0))) {
+      return false;
+    }
+    float digitSize = displayedSize(digit);
+    float nextSize = displayedSize(next);
+    float rise = next.getYDirAdj() - digit.getYDirAdj();
+    return digitSize > 0
+        && nextSize > 0
+        && digitSize <= nextSize * RAISED_MAX_SIZE_RATIO
+        && rise > 0
+        && rise >= nextSize * RAISED_MIN_RISE_RATIO;
+  }
+
+  /** Font size as rendered on the page, including text matrix and {@code cm} scaling. */
+  private static float displayedSize(TextPosition position) {
+    return Math.abs(position.getYScale());
+  }
+
+  /** Writes every word through {@link #separateRaisedDigits}. */
+  private static class RaisedDigitStripper extends PDFTextStripper {
+
+    @Override
+    protected void writeString(String text, List<TextPosition> textPositions) throws IOException {
+      super.writeString(separateRaisedDigits(text, textPositions), textPositions);
+    }
+  }
+
   /** Private-use code points around the table index; a page repeating it falls back. */
   static String marker(int table) {
     return "\uE000" + table + "\uE001";
@@ -135,7 +198,7 @@ final class PdfPageText {
    * page's; the first one of each table also stays in the page's list, as its anchor, where it is
    * written as the table's marker.
    */
-  private static final class TableStripper extends PDFTextStripper {
+  private static final class TableStripper extends RaisedDigitStripper {
 
     private final List<TableGrid> grids;
     private final List<List<ArrayList<List<TextPosition>>>> cellCharacters = new ArrayList<>();

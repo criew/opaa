@@ -462,7 +462,7 @@ bedeutungsleer, mit ihr eine beantwortbare Frage.
 
 #### Umgesetzt (#1061)
 
-`PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
+`PdfDocumentFormat` (`id` `pdf`, Version 1; seit #2033 Version 2, seit #2330 Version 3, siehe unten), `DocxDocumentFormat` (`id` `docx`, Version 3 seit
 #1187) und `PptxDocumentFormat` (`id` `pptx`, Version 1) sind registriert und beanspruchen `.pdf`,
 `.docx` bzw. `.pptx` in der `DocumentFormatRegistry`. `.doc` bleibt unverändert bei
 `TikaFallbackFormat` — POIs OOXML-Leser kann das ältere Binärformat gar nicht öffnen.
@@ -502,6 +502,16 @@ mit „ | " getrennt), alle übrigen Seiten sind zeichengleich.
 `ingestionPipelineFingerprint` (`pdf:1` → `pdf:2`); die sieben Baselines sind als reine
 Fixpunkt-Ergänzung nachgezogen (Rohvektor-Messvertrag 12 → 13, Pipeline 15 → 16, Mehrrunden-Pfad
 5 → 6).
+
+**Hochgestellte Satznummern (#2330, PDF Version 3).** PDFBox setzt eine hochgestellte Satz- oder
+Fußnotennummer ohne Abstand vor den folgenden Text („¹10 Jahre" wurde zu „110 Jahre", eine falsche
+Frist im Index). `PdfPageText` trennt deshalb innerhalb eines Worts eine Ziffer mit einem
+Leerzeichen von einer folgenden Ziffer oder einem Buchstaben, wenn sie gegenüber dem Folgezeichen
+kleiner dargestellt und mit angehobener Grundlinie gesetzt ist (Darstellungsgröße und Grundlinie
+aus der `TextPosition`, also einschließlich `cm`-Skalierung). Es wird nur Leerraum ergänzt; gilt
+für Fließtext und Tabellenzellen. **Baseline unberührt**, Fingerprint `pdf:2` → `pdf:3`, die sieben
+Baselines als reine Fixpunkt-Ergänzung nachgezogen (Rohvektor 13 → 14, Pipeline 16 → 17,
+Mehrrunden-Pfad 6 → 7).
 
 **`MarkdownDocumentFormat` (`id` `markdown`, Version 1) ist seit #1103 als Bean registriert**, anstelle von `TikaFallbackFormat` für `.md`. Der gesamte Evaluierungskorpus (`eval/corpus/`) ist Markdown; das Umschalten war deshalb — anders als bei PDF/DOCX/PPTX — keine für den Bestand verhaltensneutrale Änderung, sondern eine Messvertrags-Änderung, siehe [ADR-0012, Nachtrag „Strukturbewusstes Markdown-Chunking"](decisions/0012-messvertrag-retrieval-harness.md#nachtrag-strukturbewusstes-markdown-chunking-issue-1103) für die gemessene Verschiebung und die Baseline-Folgen. Ein Fund bei der Registrierung: Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block vor der ersten Überschrift, den `HeadingSectionSplitter` sonst zu einem eigenen, überschriftslosen ersten Chunk gemacht hätte — `MarkdownDocumentFormat` verwirft einen `---`-begrenzten Block am Dateianfang deshalb, statt ihn zu chunken (siehe die Pipeline-eigene Javadoc).
 
