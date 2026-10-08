@@ -69,12 +69,11 @@ public class TabularDocumentFormat implements DocumentFormat {
   static final int MAX_ROWS_PER_CHUNK = 50;
 
   /**
-   * Soft cap on a chunk's rendered character length, checked before a further row is added, against
-   * a pathologically wide sheet producing an unboundedly large chunk. A single row that alone
-   * exceeds it still becomes its own one-row chunk rather than being split mid-row - unless it
-   * passes {@link HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT}, which splits it into parts.
+   * Cap on a chunk's rendered character length - the shared target size - checked before a further
+   * row is added. A single row that alone exceeds it becomes its own chunk, split by {@link
+   * HeadingSectionSplitter#boundedChunks} with context and header line repeated in every part.
    */
-  static final int MAX_CHUNK_CHARS = 6_000;
+  static final int MAX_CHUNK_CHARS = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
 
   private static final char[] CSV_DELIMITER_CANDIDATES = {',', ';', '\t'};
 
@@ -571,14 +570,13 @@ public class TabularDocumentFormat implements DocumentFormat {
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
-    String text = prefix + "\n\n" + TableText.row(row.values());
 
     String rowRange = "Zeile " + row.number();
     String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return HeadingSectionSplitter.boundedChunks(text, metadata);
+    return HeadingSectionSplitter.boundedChunks(prefix, TableText.row(row.values()), metadata);
   }
 
   /**
@@ -603,7 +601,8 @@ public class TabularDocumentFormat implements DocumentFormat {
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
     String headerLine = TableText.row(header);
-    int baseChars = prefix.length() + headerLine.length();
+    // Counted as rendered: the blank line after the context line, one line break per row.
+    int baseChars = prefix.length() + 2 + headerLine.length();
 
     List<Document> chunks = new ArrayList<>();
     List<List<String>> currentRows = new ArrayList<>();
@@ -614,7 +613,7 @@ public class TabularDocumentFormat implements DocumentFormat {
     for (int i = 0; i < dataRows.size(); i++) {
       List<String> row = dataRows.get(i);
       long rowNumber = dataRowNumbers.get(i);
-      int rowLineLength = TableText.row(row).length();
+      int rowLineLength = TableText.row(row).length() + 1;
 
       boolean exceedsRowCount = currentRows.size() >= MAX_ROWS_PER_CHUNK;
       boolean exceedsCharBudget =
@@ -647,7 +646,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       String sheetName,
       long startRow,
       long endRow) {
-    StringBuilder text = new StringBuilder(prefix).append("\n\n").append(headerLine).append('\n');
+    StringBuilder text = new StringBuilder();
     for (List<String> row : rows) {
       text.append(String.join(" | ", row)).append('\n');
     }
@@ -658,6 +657,7 @@ public class TabularDocumentFormat implements DocumentFormat {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return HeadingSectionSplitter.boundedChunks(text.toString().stripTrailing(), metadata);
+    return HeadingSectionSplitter.boundedChunks(
+        prefix + "\n\n" + headerLine, "\n", text.toString().stripTrailing(), metadata);
   }
 }

@@ -35,6 +35,6 @@ public final class RepeatingHeaderChunk {
     }
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return HeadingSectionSplitter.boundedChunks(stripped, metadata);
+    return HeadingSectionSplitter.boundedChunks(null, stripped, metadata);
   }
 }

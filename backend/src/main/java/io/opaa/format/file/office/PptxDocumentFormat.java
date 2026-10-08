@@ -139,15 +139,14 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
       appendParagraph(body, "Notizen: " + notes);
     }
     String location = "Folie " + slideNumber + (title == null ? "" : ": " + title);
-    String text =
-        title == null ? body.toString() : body.length() == 0 ? title : title + "\n\n" + body;
+    String rest = body.toString();
     boolean hasText = title != null || hasBodyText || notes != null;
-    if (text.isBlank()) {
-      text = location;
+    if (title == null && rest.isBlank()) {
+      rest = location;
     }
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new SlideChunk(HeadingSectionSplitter.boundedChunks(text, metadata), hasText);
+    return new SlideChunk(HeadingSectionSplitter.boundedChunks(title, rest, metadata), hasText);
   }
 
   /**

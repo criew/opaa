@@ -434,8 +434,8 @@ class TabularDocumentFormatTest {
 
   @Test
   void aSingleGiantRowBecomesItsOwnChunkInsteadOfBeingSplitOrDropped() throws IOException {
-    // Past MAX_CHUNK_CHARS, still below the hard ceiling that would split the row itself.
-    String hugeValue = "x".repeat(7_000);
+    // Fills the chunk almost alone, so the following row cannot join it.
+    String hugeValue = "x".repeat(3_950);
     Path file = tempDir.resolve("riesenzeile.csv");
     Files.writeString(
         file, "Spalte1,Spalte2\n" + hugeValue + ",normal\nzweite,zeile\n", StandardCharsets.UTF_8);

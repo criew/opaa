@@ -39,10 +39,10 @@ public final class HeadingSectionSplitter {
   public static final int SOFT_CHUNK_CHAR_LIMIT = 4_000;
 
   /**
-   * Ceiling of every chunk text, for the formats whose natural unit (page, slide, row group) has no
-   * soft budget; {@link #boundedChunks} splits anything longer. Even at two characters per token -
-   * dense numbers and file references - 8,000 characters stay well inside the embedding step's
-   * token budget (7,372 tokens of Spring AI's default {@code TokenCountBatchingStrategy}).
+   * Ceiling of every chunk text, reached only where a heading line or a unit's leading context is
+   * itself too long for {@link #SOFT_CHUNK_CHAR_LIMIT}. Even at two characters per token - dense
+   * numbers and file references - 8,000 characters stay well inside the embedding step's token
+   * budget (7,372 tokens of Spring AI's default {@code TokenCountBatchingStrategy}).
    */
   public static final int HARD_CHUNK_CHAR_LIMIT = 8_000;
 
@@ -138,7 +138,7 @@ public final class HeadingSectionSplitter {
     for (String body : bodies) {
       String text =
           headingLine == null ? body : body.isEmpty() ? headingLine : headingLine + "\n\n" + body;
-      chunks.addAll(boundedChunks(text, metadata));
+      chunks.addAll(withinCeiling(text, metadata));
     }
   }
 
@@ -176,12 +176,46 @@ public final class HeadingSectionSplitter {
     return result;
   }
 
+  /** {@link #boundedChunks(String, String, String, Map)} with a blank line after the context. */
+  public static List<Document> boundedChunks(
+      String context, String body, Map<String, Object> metadata) {
+    return boundedChunks(context, "\n\n", body, metadata);
+  }
+
+  /**
+   * The chunks of one unit (page, slide, row group): {@code context + separator + body} as one
+   * chunk while it fits {@link #SOFT_CHUNK_CHAR_LIMIT}, otherwise {@code body} cut by {@link
+   * BoundarySplitter} with {@code context} - a slide title, a table's context and header line -
+   * repeated in front of every part. Every chunk gets its own copy of {@code metadata}, so each
+   * part keeps the unit's Fundort.
+   *
+   * @param context the leading text every part repeats, or {@code null}
+   */
+  public static List<Document> boundedChunks(
+      String context, String separator, String body, Map<String, Object> metadata) {
+    boolean hasContext = context != null && !context.isEmpty();
+    String whole = !hasContext ? body : body.isEmpty() ? context : context + separator + body;
+    if (whole.length() <= SOFT_CHUNK_CHAR_LIMIT || body.isBlank()) {
+      return withinCeiling(whole, metadata);
+    }
+    int bodyLimit =
+        hasContext
+            ? Math.max(
+                SOFT_CHUNK_CHAR_LIMIT - context.length() - separator.length(),
+                SOFT_CHUNK_CHAR_LIMIT / 2)
+            : SOFT_CHUNK_CHAR_LIMIT;
+    List<Document> chunks = new ArrayList<>();
+    for (String part : BoundarySplitter.split(body, bodyLimit)) {
+      chunks.addAll(withinCeiling(hasContext ? context + separator + part : part, metadata));
+    }
+    return chunks;
+  }
+
   /**
    * One chunk for {@code text}, or - beyond {@link #HARD_CHUNK_CHAR_LIMIT} - one per part cut by
-   * {@link BoundarySplitter}, in order. Every chunk gets its own copy of {@code metadata}, so each
-   * part keeps the Fundort of the unit it came from.
+   * {@link BoundarySplitter}, in order, each with its own copy of {@code metadata}.
    */
-  public static List<Document> boundedChunks(String text, Map<String, Object> metadata) {
+  private static List<Document> withinCeiling(String text, Map<String, Object> metadata) {
     if (text.length() <= HARD_CHUNK_CHAR_LIMIT) {
       return List.of(new Document(text, new HashMap<>(metadata)));
     }

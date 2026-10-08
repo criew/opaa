@@ -277,7 +277,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. " + (i + 1));
-      chunks.addAll(HeadingSectionSplitter.boundedChunks(text.strip(), metadata));
+      chunks.addAll(HeadingSectionSplitter.boundedChunks(null, text.strip(), metadata));
     }
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();

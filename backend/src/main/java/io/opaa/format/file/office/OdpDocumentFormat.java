@@ -353,17 +353,17 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       String body = currentBody.toString();
       String notes = currentNotes.length() == 0 ? null : currentNotes.toString();
       String location = "Folie " + slideNumber + (title == null ? "" : ": " + title);
-      String text = title == null ? body : body.isEmpty() ? title : title + "\n\n" + body;
+      String rest = body;
       if (notes != null) {
-        text = text.isEmpty() ? "Notizen: " + notes : text + "\n\nNotizen: " + notes;
+        rest = rest.isEmpty() ? "Notizen: " + notes : rest + "\n\nNotizen: " + notes;
       }
       boolean hasText = title != null || currentHasBodyText || notes != null;
-      if (text.isBlank()) {
-        text = location;
+      if (title == null && rest.isBlank()) {
+        rest = location;
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-      chunks.addAll(HeadingSectionSplitter.boundedChunks(text, metadata));
+      chunks.addAll(HeadingSectionSplitter.boundedChunks(title, rest, metadata));
       anySlideHasText |= hasText;
       hasSlide = false;
     }
