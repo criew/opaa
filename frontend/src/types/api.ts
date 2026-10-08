@@ -101,8 +101,6 @@ export type SuccessionObjectType = components['schemas']['SuccessionObjectType']
 export type SuccessionAddressee = components['schemas']['SuccessionAddressee']
 export type SuccessionEntryResponse = components['schemas']['SuccessionEntryResponse']
 export type SuccessionListResponse = components['schemas']['SuccessionListResponse']
-export type SuccessionReviewRequest = components['schemas']['SuccessionReviewRequest']
-export type SuccessionReviewResponse = components['schemas']['SuccessionReviewResponse']
 export type SuccessionStateResponse = components['schemas']['SuccessionStateResponse']
 
 export type DirectorySyncOutcome = components['schemas']['DirectorySyncOutcome']

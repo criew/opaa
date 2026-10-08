@@ -31,6 +31,12 @@ setzt".
 Nur-Besitzerin-Regel, der Ausschluss von „Sicht als“, die Vollmacht „Vorfallszugriff“ und die
 Leserolle des Verbindungsprotokolls. Der Nachtrag steht in Entscheidung 5.
 
+**Nachtrag vom 08.10.2026 (#2336):** Der **Sichtungsvermerk** entfällt auf Entscheidung des
+Maintainers, in Oberfläche, API und Datenbank. Ein Eintrag der Betriebsliste bleibt, bis wieder
+jemand handlungsfähig ist; die Hervorhebung hängt allein am Alter. Alles Übrige aus Entscheidung 6
+gilt unverändert, insbesondere: keine Frist, keine Erinnerung, keine Auswertung nach Person. Die
+Liste heißt in der Oberfläche jetzt „Ohne Zuständigkeit".
+
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
 [ADR-0033](0033-lokale-benutzerverwaltung.md) (Entscheidung 2).
@@ -533,6 +539,8 @@ Dazu:
   ein Sichtungsvermerk („geprüft am …, weiterhin offen, Grund") hebt die Hervorhebung für eine
   weitere Periode auf. Das verhindert, dass eine Zeile zehn Jahre unberührt bleibt, ersetzt aber
   keine fachliche Zuständigkeit und löst nichts aus.
+  *(Der Sichtungsvermerk ist mit dem Nachtrag vom 08.10.2026 entfallen; die Hervorhebung nach Alter
+  bleibt.)*
 - **Sichtbar am Objekt, nicht nur in der Liste.** Übersicht und Detailansicht tragen für jeden
   Leseberechtigten **Zustand und Adressat** („Nachfolge offen — zuständig: Systemverwaltung") —
   **ohne Datum, ohne den bisherigen Eigentümer, ohne Grund**: Der Zustand tritt bei einem

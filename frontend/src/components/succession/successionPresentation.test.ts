@@ -16,8 +16,6 @@ function entry(overrides: Partial<SuccessionEntryResponse>): SuccessionEntryResp
     affectedObjects: 0,
     firstSeenAt: null,
     highlighted: false,
-    lastReviewedAt: null,
-    lastReviewReason: null,
     ...overrides,
   }
 }

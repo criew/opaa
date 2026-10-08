@@ -131,8 +131,6 @@ describe('SuccessionPage', () => {
     await screen.findByText('Referat 49')
     const row = rowOf('Referat 49')
     expect(within(row).getAllByRole('button')).toHaveLength(1)
-    // an earlier note from the backend is not shown either
-    expect(row).not.toHaveTextContent('Reorganisation läuft')
   })
 
   it('hands the rights of a group without members over to another group', async () => {

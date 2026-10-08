@@ -2,11 +2,9 @@ package io.opaa.succession.web;
 
 import io.opaa.api.dto.SuccessionEntryResponse;
 import io.opaa.api.dto.SuccessionListResponse;
-import io.opaa.api.dto.SuccessionReviewResponse;
 import io.opaa.permission.SuccessionFinding;
 import io.opaa.succession.SuccessionEntry;
 import io.opaa.succession.SuccessionPage;
-import io.opaa.succession.SuccessionReview;
 
 /**
  * Maps the lifecycle's domain records onto their generated counterparts (ADR-0006).
@@ -46,13 +44,6 @@ final class SuccessionResponseMapper {
         .addresseeLabel(finding.addresseeLabel())
         .ownerHint(finding.ownerHint())
         .membershipHints(finding.membershipHints())
-        .firstSeenAt(entry.firstSeenAt())
-        .lastReviewedAt(entry.lastReviewedAt())
-        .lastReviewReason(entry.lastReviewReason());
-  }
-
-  static SuccessionReviewResponse toResponse(SuccessionReview review) {
-    return new SuccessionReviewResponse(
-        review.getId(), review.getCaseId(), review.getReviewedAt(), review.getReason());
+        .firstSeenAt(entry.firstSeenAt());
   }
 }
