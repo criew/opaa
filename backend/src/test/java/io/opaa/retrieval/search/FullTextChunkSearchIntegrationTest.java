@@ -254,6 +254,29 @@ class FullTextChunkSearchIntegrationTest {
     assertFirstHit(hits, wanted);
   }
 
+  /**
+   * The same with Absatz, Nummer and Satz between paragraph and law, the common form in
+   * administrative texts: the law abbreviation still belongs to the reference.
+   */
+  @Test
+  void aLawAbbreviationBehindAbsatzAndNummerDoesNotLiftOtherParagraphsOfThatLaw() {
+    UUID wanted = seed(readableLibrary, "§ 35 regelt Vorhaben im Außenbereich.");
+    seed(
+        readableLibrary,
+        "Nach § 34 Abs. 1 Satz 1 BauGB ist ein Vorhaben im Innenbereich zulässig, wenn es sich"
+            + " einfügt.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Ist mein Vorhaben nach § 35 Abs. 1 Nr. 4 BauGB privilegiert?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
+
+    assertFirstHit(hits, wanted);
+  }
+
   /** The path answers the #938 case it exists for: a literal term the vector path ranks away. */
   @Test
   void aLiteralTermIsFoundWhereverItStands() {

@@ -67,6 +67,21 @@ public final class FullTextIdentifiers {
               + LAW_ABBREVIATION
               + "))?");
 
+  /**
+   * A paragraph reference followed by any chain of Absatz, Satz, Nummer, Halbsatz or Buchstabe
+   * parts and then a law abbreviation: {@code § 35 Abs. 1 Nr. 4 BauGB}, {@code § 35 S. 1 BauGB}.
+   * Only locates the abbreviation as part of the reference, so it yields no field-name lexeme of
+   * its own; the paragraph lexemes stay those of {@link #PARAGRAPH}.
+   */
+  private static final Pattern LAW_OF_PARAGRAPH_REFERENCE =
+      Pattern.compile(
+          "§{1,2}\\s*\\d{1,4}[a-z]?(?:\\s*(?:,|und|u\\.)\\s*\\d{1,4}[a-z]?)*"
+              + "(?:\\s*(?:Absatz|Abs\\.?|Satz|S\\.|Nummer|Nr\\.?|Halbsatz|Hs\\.?|Buchstabe"
+              + "|Buchst\\.?)\\s*(?:\\d{1,4}[a-z]?|[a-z]\\)?))*"
+              + "\\s+("
+              + LAW_ABBREVIATION
+              + ")");
+
   /** Splits the number run {@link #PARAGRAPH} captured into its individual paragraph numbers. */
   private static final Pattern PARAGRAPH_RUN_SEPARATOR = Pattern.compile("\\s*(?:,|und|u\\.)\\s*");
 
@@ -160,13 +175,13 @@ public final class FullTextIdentifiers {
     }
     String text = Normalizer.normalize(rawText, Normalizer.Form.NFC);
     Set<String> lexemes = new LinkedHashSet<>();
-    Set<Integer> lawAbbreviationStarts = collectParagraphs(text, lexemes);
+    collectParagraphs(text, lexemes);
     collect(FILE_NUMBER, text, FILE_NUMBER_PREFIX, false, lexemes);
     collect(KEYWORD_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
     collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
-    collectFieldNames(text, lawAbbreviationStarts, lexemes);
+    collectFieldNames(text, lawAbbreviationStarts(text), lexemes);
     List<String> result = new ArrayList<>(lexemes);
     return result.size() <= MAX_LEXEMES
         ? List.copyOf(result)
@@ -178,16 +193,10 @@ public final class FullTextIdentifiers {
    * enumeration ({@code §§ 34, 35 BauGB}) the law qualifies every number - that is what the
    * notation means - while an Absatz does not: which of the listed paragraphs it belongs to is not
    * decidable from the text, so it is only applied to a single-number reference.
-   *
-   * @return the start offsets of the law abbreviations read as part of a reference
    */
-  private static Set<Integer> collectParagraphs(String text, Set<String> lexemes) {
-    Set<Integer> lawAbbreviationStarts = new HashSet<>();
+  private static void collectParagraphs(String text, Set<String> lexemes) {
     Matcher matcher = PARAGRAPH.matcher(text);
     while (matcher.find()) {
-      if (matcher.group(3) != null) {
-        lawAbbreviationStarts.add(matcher.start(3));
-      }
       String[] numbers = PARAGRAPH_RUN_SEPARATOR.split(matcher.group(1).trim());
       String absatz = numbers.length == 1 ? normalize(matcher.group(2)) : "";
       String law = normalize(matcher.group(3));
@@ -208,7 +217,16 @@ public final class FullTextIdentifiers {
         }
       }
     }
-    return lawAbbreviationStarts;
+  }
+
+  /** Start offsets of the law abbreviations {@link #LAW_OF_PARAGRAPH_REFERENCE} locates. */
+  private static Set<Integer> lawAbbreviationStarts(String text) {
+    Set<Integer> starts = new HashSet<>();
+    Matcher matcher = LAW_OF_PARAGRAPH_REFERENCE.matcher(text);
+    while (matcher.find()) {
+      starts.add(matcher.start(1));
+    }
+    return starts;
   }
 
   /**
@@ -243,9 +261,10 @@ public final class FullTextIdentifiers {
    * #CAMEL_CASE} or {@link #UPPERCASE_WORD} shape. Collected last, so under {@link #MAX_LEXEMES}
    * the other identifier kinds keep their place.
    *
-   * <p>A law abbreviation read as part of a paragraph reference ({@code § 35 BauGB}) yields none:
-   * the paragraph lexemes already carry it qualified, and a bare {@code xfldbaugb} on the question
-   * side would match every section naming the law at the weight that keeps § 34 and § 35 apart.
+   * <p>A law abbreviation that is part of a paragraph reference ({@code § 35 BauGB}, {@code § 35
+   * Abs. 1 Nr. 4 BauGB}) yields none: the paragraph lexemes already carry it qualified, and a bare
+   * {@code xfldbaugb} on the question side would match every section naming the law at the weight
+   * that keeps § 34 and § 35 apart.
    */
   private static void collectFieldNames(
       String text, Set<Integer> lawAbbreviationStarts, Set<String> lexemes) {

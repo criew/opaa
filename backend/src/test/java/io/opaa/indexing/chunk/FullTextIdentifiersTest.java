@@ -218,6 +218,26 @@ class FullTextIdentifiersTest {
         .containsExactly("xpar35", "xpar35baugb", "xfldbaugb");
   }
 
+  /**
+   * Absatz, Satz, Nummer, Halbsatz and Buchstabe parts between paragraph and law keep the law part
+   * of the reference; the paragraph lexemes stay exactly those the reference yielded before.
+   */
+  @Test
+  void aLawAbbreviationBehindReferencePartsYieldsNoFieldName() {
+    assertThat(FullTextIdentifiers.extract("§ 35 Abs. 1 Nr. 4 BauGB"))
+        .containsExactly("xpar35", "xpar35abs1");
+    assertThat(FullTextIdentifiers.extract("§ 35 Abs. 1 Satz 2 BauGB"))
+        .containsExactly("xpar35", "xpar35abs1");
+    assertThat(FullTextIdentifiers.extract("§ 35 S. 1 BauGB")).containsExactly("xpar35");
+    assertThat(FullTextIdentifiers.extract("§ 35 Absatz 2 Halbsatz 1 BauGB"))
+        .containsExactly("xpar35", "xpar35abs2");
+    assertThat(FullTextIdentifiers.extract("§ 35 Abs. 3 Nr. 1 Hs. 2 BauGB"))
+        .containsExactly("xpar35", "xpar35abs3");
+    assertThat(FullTextIdentifiers.extract("§ 9 Abs. 1 Nr. 2 Buchst. a BauGB"))
+        .containsExactly("xpar9", "xpar9abs1");
+    assertThat(FullTextIdentifiers.extract("§ 35 Nummer 4 BauGB")).containsExactly("xpar35");
+  }
+
   /** NFD text, as PDF extraction often yields it, gives the same lexeme as the composed form. */
   @Test
   void decomposedUmlautsYieldTheSameFieldNameAsComposedOnes() {

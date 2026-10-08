@@ -518,9 +518,12 @@ nicht enthält, ändert deren Rangfolge nicht. Enthält die Frage es, hebt es je
 demselben Wort mit Gewicht `A` an: Eine Frage mit „ELSTER“ bevorzugt Abschnitte, die „ELSTER“ nennen,
 eine Frage mit Binnen-I Abschnitte in derselben Schreibung. Das ist die bewusst in Kauf genommene Wirkung.
 
-Eine strukturelle Regel (keine Ausnahmeliste) gilt für Gesetzeskürzel: **Ein Kürzel, das `PARAGRAPH`
-als Teil einer §-Angabe gelesen hat, erzeugt kein `xfld`-Token.** Die §-Tokens tragen es schon
-qualifiziert (`xpar35baugb`). Ein zusätzliches `xfldbaugb` auf der Frageseite träfe jeden Abschnitt,
+Eine strukturelle Regel (keine Ausnahmeliste) gilt für Gesetzeskürzel: **Ein Kürzel, das Teil einer
+§-Angabe ist, erzeugt kein `xfld`-Token** — auch wenn zwischen Paragraf und Kürzel eine Folge aus
+Abs./Absatz, Satz/S., Nr./Nummer, Hs./Halbsatz oder Buchst./Buchstabe mit Zahl oder Buchstabe steht
+(„§ 35 Abs. 1 Nr. 4 BauGB“). Ein eigenes Muster ortet dafür nur das Kürzel; die §-Tokens selbst
+bleiben die von `PARAGRAPH` und tragen das Kürzel, wo `PARAGRAPH` es liest, schon qualifiziert
+(`xpar35baugb`). Ein zusätzliches `xfldbaugb` auf der Frageseite träfe jeden Abschnitt,
 der das BauGB nennt, mit Gewicht `A` — gemessen überholte so ein §-34-Abschnitt mit „BauGB“ den
 §-35-Abschnitt, nach dem gefragt war. Außerhalb einer §-Angabe bleibt „BauGB“ ein Feldname-Token.
 
