@@ -155,6 +155,10 @@
     {
       "name": "VECTOR_SEARCH_LISTS",
       "template": "vector search, %d list(s)"
+    },
+    {
+      "name": "VECTOR_SEARCH_SHORT_LIST",
+      "template": "%s returned %d of fetch-k %d candidate(s): fewer qualify within filter and similarity threshold, or the index scan reached opaa.query.vector-index.max-scan-tuples"
     }
   ],
   "listLabels": [

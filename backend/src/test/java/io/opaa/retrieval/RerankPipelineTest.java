@@ -22,6 +22,7 @@ import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.FullTextSearchStage;
 import io.opaa.retrieval.search.QueryDecompositionService;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import io.opaa.retrieval.search.VectorSearchStage;
 import java.util.List;
 import java.util.Map;
@@ -31,7 +32,6 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * Reranking at the level it is claimed on (docs/features/hybrid-retrieval.md, Arbeitspaket 4): the
@@ -54,7 +54,7 @@ class RerankPipelineTest {
   private static final QueryProperties WITHOUT_RERANKING =
       new QueryProperties(TOP_K, 25, 1.0, 0.3, false, 3, 1, false, 0, 20, 2);
 
-  private final VectorStore vectorStore = mock(VectorStore.class);
+  private final VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
   private final ChunkEmbeddingLookup chunkEmbeddingLookup = mock(ChunkEmbeddingLookup.class);
   private final QueryDecompositionService queryDecompositionService =
       mock(QueryDecompositionService.class);
@@ -70,7 +70,7 @@ class RerankPipelineTest {
             new SearchScopeStage(),
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
-            new VectorSearchStage(vectorStore),
+            new VectorSearchStage(vectorChunkSearch),
             // The lexical path is switched off in every QueryProperties here: this class is about
             // what happens to the fused list afterwards, not about how it was retrieved.
             new FullTextSearchStage(mock(FullTextChunkSearch.class)),
@@ -96,7 +96,7 @@ class RerankPipelineTest {
 
   private RetrievalPipelineResult run(
       RetrievalPipeline pipeline, QueryProperties properties, RerankAvailability availability) {
-    when(vectorStore.similaritySearch(any(SearchRequest.class)))
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(IntStream.range(0, 25).mapToObj(RerankPipelineTest::chunk).toList());
     return pipeline.run(
         new RetrievalContext(

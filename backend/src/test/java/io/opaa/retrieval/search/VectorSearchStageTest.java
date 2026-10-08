@@ -10,7 +10,6 @@ import io.opaa.retrieval.RetrievalState;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /** The vector path's stage on its own (docs/handbuch/suche.md, Stufe 4). */
 class VectorSearchStageTest {
@@ -19,7 +18,7 @@ class VectorSearchStageTest {
   private static final QueryProperties PROPERTIES =
       new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
 
-  private final VectorStore vectorStore = mock(VectorStore.class);
+  private final VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
 
   /**
    * A search stage without the filter stage before it must fail loudly, never search unfiltered.
@@ -28,10 +27,10 @@ class VectorSearchStageTest {
   void searchStageRefusesToRunWithoutAPermissionFilter() {
     assertThatThrownBy(
             () ->
-                new VectorSearchStage(vectorStore)
+                new VectorSearchStage(vectorChunkSearch)
                     .apply(context(Set.of(LIBRARY_ID), PROPERTIES), RetrievalState.initial()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("without a rights filter");
-    verifyNoInteractions(vectorStore);
+    verifyNoInteractions(vectorChunkSearch);
   }
 }

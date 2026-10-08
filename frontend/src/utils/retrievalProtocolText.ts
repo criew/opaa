@@ -134,6 +134,13 @@ const NOTE_RULES: NoteRule[] = [
     pattern: /^similarity threshold (.+), applied in-query$/,
     german: (m) => `Ähnlichkeitsschwelle ${m[1]}, in der Suchanfrage angewendet.`,
   },
+  {
+    name: 'VECTOR_SEARCH_SHORT_LIST',
+    pattern:
+      /^(.+) returned (\d+) of fetch-k (\d+) candidate\(s\): fewer qualify within filter and similarity threshold, or the index scan reached (\S+)$/,
+    german: (m) =>
+      `${translateListLabel(m[1])}: ${m[2]} von fetch-k ${m[3]} geliefert. Innerhalb von Filter und Ähnlichkeitsschwelle gibt es nicht mehr, oder der Indexdurchlauf hat ${m[4]} erreicht.`,
+  },
 
   // FullTextSearchStage
   {

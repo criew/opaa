@@ -17,13 +17,13 @@ import io.opaa.retrieval.RetrievalPipelineTestSupport;
 import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.search.FullTextChunkSearch;
 import io.opaa.retrieval.search.QueryDecompositionService;
+import io.opaa.retrieval.search.VectorChunkSearch;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * Document completion after fusion, inside the pipeline it belongs to (docs/handbuch/suche.md,
@@ -33,11 +33,11 @@ class DocumentCompletionStageTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();
 
-  private final VectorStore vectorStore = mock(VectorStore.class);
+  private final VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
 
   private RetrievalPipeline pipeline(RetrievalPipelineProperties pipelineProperties) {
     return RetrievalPipelineTestSupport.pipeline(
-        vectorStore,
+        vectorChunkSearch,
         mock(FullTextChunkSearch.class),
         mock(ChunkEmbeddingLookup.class),
         mock(QueryDecompositionService.class),
@@ -58,7 +58,7 @@ class DocumentCompletionStageTest {
             chunk("b-0", "doc-b", 0.8),
             chunk("c-0", "doc-c", 0.7),
             chunk("a-1", "doc-a", 0.5));
-    when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(candidates);
     QueryProperties completing =
         new QueryProperties(3, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
     QueryProperties notCompleting =

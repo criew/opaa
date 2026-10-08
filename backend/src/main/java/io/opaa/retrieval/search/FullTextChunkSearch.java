@@ -172,7 +172,7 @@ public class FullTextChunkSearch {
             Document.builder()
                 .id(rs.getString("chunk_id"))
                 .text(rs.getString("content"))
-                .metadata(readMetadata(rs.getString("metadata")))
+                .metadata(readMetadata(objectMapper, rs.getString("metadata")))
                 .score((double) rs.getFloat("rank"))
                 .build());
   }
@@ -248,11 +248,11 @@ public class FullTextChunkSearch {
   }
 
   /**
-   * The chunk's metadata as {@code similaritySearch} would have returned it. Null-valued keys are
-   * dropped: {@link Document} rejects them outright, and a chunk must not become unretrievable
-   * through the lexical path over a metadata key the vector path never reads either.
+   * A chunk's {@code metadata} column as a map, shared by both search paths. Null-valued keys are
+   * dropped: {@link Document} rejects them outright, and a chunk must not become unretrievable over
+   * a metadata key no stage reads.
    */
-  private Map<String, Object> readMetadata(String metadataJson) {
+  static Map<String, Object> readMetadata(ObjectMapper objectMapper, String metadataJson) {
     if (metadataJson == null || metadataJson.isBlank()) {
       return Map.of();
     }
