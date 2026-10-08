@@ -26,11 +26,16 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
   schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Liquibase.
   `PgVectorDimensionsGuard` verweigert den Start, wenn die Spalte `embedding` eine andere Dimension
   hat als konfiguriert, `PgVectorVersionGuard` bei pgvector älter als 0.8.0. `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit
-  Zugangsdaten. `DatabasePrerequisiteCheck` läuft vor Liquibase und bricht ab, wenn pgvector fehlt
-  oder das Konto Erweiterung bzw. Rolle `opaa_audit_owner` nicht anlegen darf; den Bericht schreibt
+  Zugangsdaten. `DatabasePrerequisiteCheck` läuft vor jeder `SpringLiquibase`-Bean und bricht ab,
+  wenn pgvector auf dem Server nicht installiert ist; den Bericht schreibt
   `DatabasePrerequisiteFailureAnalyzer` (registriert in `META-INF/spring.factories`). Eine
   Fehlerkette auszuwerten genügt dafür nicht: SQLState 0A000 lässt den Pool die Verbindung
-  schließen, und Liquibase meldet danach nur „Connection is closed".
+  schließen, und Liquibase meldet danach nur „Connection is closed". Fehlende Rechte (42501) kommen
+  dagegen lesbar an und bleiben der Migration überlassen, sonst würden verwaltete Dienste mit eigener
+  Verwaltungsrolle abgewiesen.
+- **`TrustStoreBuilder`** ist ein Hauptprogramm ohne Spring, das der Init-Container des Helm-Charts
+  über `PropertiesLauncher` startet (`extraCACertificates`): Laufzeit-CAs plus alle PEM-Zertifikate
+  in einen frischen Truststore.
 - **Reihenfolge für einen neuen Endpunkt:** OpenAPI-Fragment, generierte DTOs, Enum-Mappings,
   Frontend-Typen, API-Funktion, MSW-Handler (`agents/roles/developer.md`, „Repository-Praxis").
 

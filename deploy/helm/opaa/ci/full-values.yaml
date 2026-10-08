@@ -50,8 +50,6 @@ filesystemSources:
         path: /export/opaa
 extraCACertificates:
   configMap: internal-ca
-  keys:
-    - internal-root-ca.crt
 backend:
   image:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000

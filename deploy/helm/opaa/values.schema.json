@@ -58,9 +58,14 @@
             "properties": {
               "s3": {
                 "required": [
+                  "endpoint",
                   "bucket"
                 ],
                 "properties": {
+                  "endpoint": {
+                    "type": "string",
+                    "pattern": "^https?://\\S+$"
+                  },
                   "bucket": {
                     "type": "string",
                     "minLength": 1
@@ -451,13 +456,6 @@
         },
         "secret": {
           "type": "string"
-        },
-        "keys": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "minLength": 1
-          }
         }
       }
     },

@@ -53,7 +53,7 @@ spec:
       {{- end }}
       containers:
         - name: postgresql
-          image: {{ printf "%s:%s" .Values.evaluationDatabase.image.repository .Values.evaluationDatabase.image.tag | quote }}
+          image: {{ include "opaa.image" (dict "root" . "image" .Values.evaluationDatabase.image) | quote }}
           imagePullPolicy: {{ .Values.evaluationDatabase.image.pullPolicy }}
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
@@ -61,9 +61,6 @@ spec:
             - name: postgresql
               containerPort: 5432
               protocol: TCP
-          args:
-            - -p
-            - {{ .Values.database.port | quote }}
           env:
             - name: POSTGRES_USER
               value: {{ .Values.database.username | quote }}
@@ -78,8 +75,6 @@ spec:
             exec:
               command:
                 - pg_isready
-                - -p
-                - {{ .Values.database.port | quote }}
                 - -U
                 - {{ .Values.database.username | quote }}
                 - -d

@@ -103,7 +103,7 @@ app.kubernetes.io/component: {{ .component }}
 {{- end }}
 
 {{- define "opaa.extraCACertificates.enabled" -}}
-{{- if and (or .Values.extraCACertificates.configMap .Values.extraCACertificates.secret) .Values.extraCACertificates.keys }}true{{ end }}
+{{- if or .Values.extraCACertificates.configMap .Values.extraCACertificates.secret }}true{{ end }}
 {{- end }}
 
 {{/* host[:port] the frontend nginx forwards /api/ and /mcp to. */}}
@@ -136,8 +136,23 @@ message names the rule no matter which object Helm renders first.
 {{- if and .Values.extraCACertificates.configMap .Values.extraCACertificates.secret }}
 {{- fail "extraCACertificates names both a configMap and a secret; choose one." }}
 {{- end }}
-{{- if and .Values.extraCACertificates.keys (not (or .Values.extraCACertificates.configMap .Values.extraCACertificates.secret)) }}
-{{- fail "extraCACertificates.keys is set, but neither extraCACertificates.configMap nor extraCACertificates.secret names their source." }}
+{{- $mountPaths := list }}
+{{- $sourceNames := list }}
+{{- range .Values.filesystemSources }}
+{{- if has .name $sourceNames }}
+{{- fail (printf "filesystemSources names %q twice." .name) }}
+{{- end }}
+{{- $sourceNames = append $sourceNames .name }}
+{{- $path := trimSuffix "/" .mountPath }}
+{{- if has $path $mountPaths }}
+{{- fail (printf "filesystemSources mounts %s twice." $path) }}
+{{- end }}
+{{- $mountPaths = append $mountPaths $path }}
+{{- range list "/tmp" "/app" "/etc/opaa" "/opt/java" }}
+{{- if or (eq $path .) (hasPrefix (printf "%s/" .) $path) }}
+{{- fail (printf "filesystemSources mount path %s lies in %s, which the backend uses itself." $path .) }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- if and .Values.ingress.enabled (not .Values.ingress.host) }}
 {{- fail "ingress.enabled is true, but ingress.host is empty." }}

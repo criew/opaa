@@ -2934,15 +2934,20 @@ GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION;
 
 - **Erweiterung `vector`** (pgvector 0.8.0 oder neuer). Sie muss auf dem Datenbankserver installiert
   sein, etwa über das Image `pgvector/pgvector` oder das Paket `postgresql-<Version>-pgvector`.
-  Anlegen darf sie nur ein Superuser, weil pgvector keine „vertrauenswürdige“ Erweiterung ist.
+  Anlegen darf sie ein Superuser; verwaltete Dienste (etwa Amazon RDS, Azure Database for
+  PostgreSQL, Google Cloud SQL) erlauben es auch ihrer eigenen Verwaltungsrolle.
 - **Rolle `opaa_audit_owner`.** Ihr gehören die Protokolltabellen, damit das Konto von OPAA sie
-  nicht löschen kann (ADR-0015). Hat das Konto `CREATEROLE`, legt die Migration die Rolle selbst an.
+  nicht löschen kann. Hat das Konto `CREATEROLE`, legt die Migration die Rolle selbst an. Eine
+  vorab angelegte Rolle braucht `WITH ADMIN OPTION`, sonst scheitert die Migration mit
+  `permission denied to grant role`.
 
 Daneben muss das Konto in der Datenbank Objekte anlegen dürfen, am einfachsten als Eigentümer der
 Datenbank. Für ein eigenes Schema gelten die Regeln im folgenden Abschnitt.
 
-Fehlt eine der beiden Voraussetzungen, prüft OPAA das vor der Migration und bricht den Start mit
-einem Bericht ab, der die fehlende Voraussetzung und die Anweisung nennt:
+Fehlt ein Recht, bricht die Migration mit der Meldung von PostgreSQL ab, etwa
+`permission denied to create extension "vector"`. Ist pgvector auf dem Server gar nicht installiert,
+prüft OPAA das vor der Migration und bricht mit einem eigenen Bericht ab, weil die Meldung von
+PostgreSQL in diesem Fall verloren ginge:
 
 ```text
 APPLICATION FAILED TO START

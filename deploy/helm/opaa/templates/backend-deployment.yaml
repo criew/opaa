@@ -3,6 +3,8 @@
 {{- $podSecurityContext := deepCopy .Values.podSecurityContext }}
 {{- if and (eq .Values.uploads.store "persistentVolumeClaim") .Values.uploads.persistence.fsGroup }}
 {{- $_ := set $podSecurityContext "fsGroup" .Values.uploads.persistence.fsGroup }}
+{{- /* Changes ownership only when the volume root does not match, not on every start. */}}
+{{- $_ := set $podSecurityContext "fsGroupChangePolicy" "OnRootMismatch" }}
 {{- end }}
 {{- $requiredKeys := list "OPAA_AUTH_JWT_SECRET" "OPAA_DB_PASSWORD" "OPAA_CREDENTIALS_ENCRYPTION_KEY" "OPAA_SETTINGS_ENCRYPTION_KEY" }}
 {{- if eq .Values.uploads.store "s3" }}
@@ -41,8 +43,8 @@ spec:
       {{- include "opaa.podSpecCommon" (dict "root" . "component" .Values.backend "podSecurityContext" $podSecurityContext) | nindent 6 }}
       terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
       {{- if include "opaa.extraCACertificates.enabled" . }}
-      # A copy of the runtime's truststore plus extraCACertificates, rebuilt on every start; the
-      # backend image's keytool needs no shell.
+      # Writes the runtime's CAs plus extraCACertificates into a fresh truststore on every start; a
+      # main class of the backend image, because the image has no shell.
       initContainers:
         - name: truststore
           image: {{ include "opaa.image" (dict "root" . "image" .Values.backend.image) | quote }}
@@ -50,46 +52,15 @@ spec:
           securityContext:
             {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           command:
-            - /opt/java/openjdk/bin/keytool
-            - -importkeystore
-            - -noprompt
-            - -srckeystore
-            - /opt/java/openjdk/lib/security/cacerts
-            - -srcstorepass
-            - changeit
-            - -destkeystore
+            - /opt/java/openjdk/bin/java
+            - -cp
+            - /app/app.jar
+            - -Dloader.main=io.opaa.config.TrustStoreBuilder
+            - org.springframework.boot.loader.launch.PropertiesLauncher
             - /etc/opaa/truststore/cacerts
-            - -deststoretype
-            - PKCS12
-            - -deststorepass
-            - changeit
+            - /etc/opaa/ca-certificates
           resources:
-            {{- toYaml $.Values.backend.initResources | nindent 12 }}
-          volumeMounts:
-            - name: truststore
-              mountPath: /etc/opaa/truststore
-            - name: tmp
-              mountPath: /tmp
-        {{- range $index, $key := .Values.extraCACertificates.keys }}
-        - name: {{ printf "ca-%d" $index }}
-          image: {{ include "opaa.image" (dict "root" $ "image" $.Values.backend.image) | quote }}
-          imagePullPolicy: {{ $.Values.backend.image.pullPolicy }}
-          securityContext:
-            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
-          command:
-            - /opt/java/openjdk/bin/keytool
-            - -importcert
-            - -noprompt
-            - -alias
-            - {{ printf "opaa-extra-%s" $key | quote }}
-            - -file
-            - {{ printf "/etc/opaa/ca-certificates/%s" $key | quote }}
-            - -keystore
-            - /etc/opaa/truststore/cacerts
-            - -storepass
-            - changeit
-          resources:
-            {{- toYaml $.Values.backend.initResources | nindent 12 }}
+            {{- toYaml .Values.backend.initResources | nindent 12 }}
           volumeMounts:
             - name: truststore
               mountPath: /etc/opaa/truststore
@@ -98,7 +69,6 @@ spec:
               readOnly: true
             - name: tmp
               mountPath: /tmp
-        {{- end }}
       {{- end }}
       containers:
         - name: backend

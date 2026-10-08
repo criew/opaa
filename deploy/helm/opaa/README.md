@@ -11,7 +11,7 @@ nicht mitgeliefert.
 - Kubernetes in einer der drei jüngsten gepflegten Minor-Versionen
 - Helm 4 oder Helm 3 ab 3.8
 - eine erreichbare PostgreSQL-Datenbank mit pgvector 0.8.0 oder neuer; ohne Superuser-Konto legt ein
-  Datenbankverwalter vorher Erweiterung und Rolle an (`values.yaml`, Abschnitt `database`, und
+  Datenbankverwalter vorher Erweiterung und gegebenenfalls Rolle an (`values.yaml`, Abschnitt `database`, und
   Handbuch „Voraussetzungen einer eigenen PostgreSQL“). Zum Ausprobieren gibt es
   `evaluationDatabase.enabled` - nicht für den Betrieb.
 - für die Originale ein S3-kompatibler Objektspeicher (empfohlen) oder ein Volume

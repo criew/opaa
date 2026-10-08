@@ -1,6 +1,7 @@
 package io.opaa.config;
 
 import javax.sql.DataSource;
+import liquibase.integration.spring.SpringLiquibase;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanDefinition;
@@ -12,14 +13,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
  * Refuses to start, before the schema migration, when the database lacks a prerequisite named in
- * {@link DatabasePrerequisites}. Liquibase is made to depend on the check, so it never runs into
- * the missing prerequisite itself.
+ * {@link DatabasePrerequisites}. Every {@link SpringLiquibase} bean is made to depend on the check,
+ * so the migration never runs into the missing prerequisite itself.
  */
 @Configuration(proxyBeanMethods = false)
 public class DatabasePrerequisiteCheck {
 
   static final String CHECK_BEAN = "databasePrerequisiteVerification";
-  static final String LIQUIBASE_BEAN = "liquibase";
 
   @Bean(CHECK_BEAN)
   InitializingBean databasePrerequisiteVerification(ObjectProvider<DataSource> dataSource) {
@@ -39,17 +39,18 @@ public class DatabasePrerequisiteCheck {
   }
 
   private static void addDependency(ConfigurableListableBeanFactory beanFactory) {
-    if (!beanFactory.containsBeanDefinition(LIQUIBASE_BEAN)
-        || !beanFactory.containsBeanDefinition(CHECK_BEAN)) {
+    if (!beanFactory.containsBeanDefinition(CHECK_BEAN)) {
       return;
     }
-    BeanDefinition liquibase = beanFactory.getBeanDefinition(LIQUIBASE_BEAN);
-    String[] dependsOn = liquibase.getDependsOn();
-    String[] extended = new String[dependsOn == null ? 1 : dependsOn.length + 1];
-    if (dependsOn != null) {
-      System.arraycopy(dependsOn, 0, extended, 0, dependsOn.length);
+    for (String name : beanFactory.getBeanNamesForType(SpringLiquibase.class, true, false)) {
+      BeanDefinition liquibase = beanFactory.getBeanDefinition(name);
+      String[] dependsOn = liquibase.getDependsOn();
+      String[] extended = new String[dependsOn == null ? 1 : dependsOn.length + 1];
+      if (dependsOn != null) {
+        System.arraycopy(dependsOn, 0, extended, 0, dependsOn.length);
+      }
+      extended[extended.length - 1] = CHECK_BEAN;
+      liquibase.setDependsOn(extended);
     }
-    extended[extended.length - 1] = CHECK_BEAN;
-    liquibase.setDependsOn(extended);
   }
 }

@@ -48,7 +48,8 @@ database:
   #   CREATE EXTENSION vector;
   #   CREATE ROLE opaa_audit_owner NOLOGIN;  -- or: grant the account CREATEROLE
   #   GRANT opaa_audit_owner TO <username> WITH ADMIN OPTION;
-  # A missing prerequisite stops the backend with a report naming the statement.
+  # Managed services (RDS, Azure, Cloud SQL) let their administrator role create the extension.
+  # Without pgvector on the server the backend stops with a report naming the fix.
   # Empty while evaluationDatabase.enabled: then the chart's own evaluation database is used.
   host: ""
   port: 5432
@@ -63,12 +64,14 @@ database:
 
 # A PostgreSQL with pgvector inside the release, ONLY FOR EVALUATION: no backup, no replication, no
 # upgrade path across major versions. Production uses the database of the data centre or an
-# operator such as CloudNativePG (ADR-0042, Entscheidung 3).
+# operator such as CloudNativePG (ADR-0042, Entscheidung 3). It runs as the image's postgres account
+# (UID 999), which platforms assigning UIDs themselves (OpenShift restricted-v2) refuse.
 evaluationDatabase:
   enabled: false
   image:
     repository: docker.io/pgvector/pgvector
     tag: pg18
+    digest: ""
     pullPolicy: IfNotPresent
   persistence:
     size: 8Gi
@@ -126,7 +129,8 @@ uploads:
   # persistentVolumeClaim: a volume mounted at /app/uploads (ReadWriteOnce suffices).
   store: s3
   s3:
-    # e.g. https://s3.example.org; empty uses AWS
+    # Required, e.g. https://s3.example.org; for AWS https://s3.<region>.amazonaws.com with
+    # pathStyle: false.
     endpoint: ""
     bucket: ""
     region: us-east-1
@@ -156,16 +160,14 @@ uploads:
 #     # or e.g. nfs: { server: nas.example.org, path: /export/opaa }
 filesystemSources: []
 
-# CA certificates (PEM, one per key) trusted in addition to the public CAs of the backend's Java
-# runtime: for an identity provider, model endpoint, object store or database with an internal PKI.
-# An init container imports them into a copy of the runtime's truststore on every start, so image
-# updates keep bringing new public CAs.
+# CA certificates trusted in addition to the public CAs of the backend's Java runtime: for an
+# identity provider, model endpoint, object store or database with an internal PKI. Every key of
+# the ConfigMap or Secret is read, and every PEM certificate in it, so a bundle (e.g. from
+# trust-manager) works as well. An init container writes the runtime's CAs plus these into a fresh
+# truststore on every start, so image updates keep bringing new public CAs.
 extraCACertificates:
-  # Name of a ConfigMap (e.g. from trust-manager) or a Secret holding the certificates.
   configMap: ""
   secret: ""
-  # Keys to import, e.g. [internal-root-ca.crt]
-  keys: []
 
 # Bootstrap values: read once, on the very first start, and taken over into the database.
 # Afterwards the user interface leads; changing them here has no effect on a running installation.
