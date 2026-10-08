@@ -583,6 +583,67 @@ keine Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Für den 
   überschreiben.
 - **Der Prozess läuft ohne Sonderrechte** unter der Kennung `65532` (siehe unten). Das betrifft die
   Eigentümerverhältnisse der eingehängten Verzeichnisse.
+- **Das Root-Dateisystem darf nur lesbar sein.** Siehe
+  [„Nur lesbares Dateisystem"](#nur-lesbares-dateisystem) unten.
+- **Die Heap-Grenze richtet sich nach der Speichergrenze des Containers.** Siehe
+  [„Speicher und Container-Grenzen"](#speicher-und-container-grenzen) unten.
+
+### Nur lesbares Dateisystem
+
+Das Backend schreibt an genau zwei Stellen:
+
+| Pfad | Inhalt | Nötig |
+|---|---|---|
+| `/tmp` (`java.io.tmpdir`) | Arbeitsdateien von Tomcat und Uploads, heruntergeladene Quelldateien, Arbeitskopien für den Objektspeicher, der Font-Cache von PDFBox, Laufzeitdaten der JVM | immer |
+| `/app/uploads` (`OPAA_UPLOAD_STORAGE_PATH`) | die hochgeladenen Originale | nur, solange sie im Dateisystem liegen (`OPAA_UPLOAD_STORE` nicht auf `s3`) |
+
+Alles andere liest der Prozess nur. Ein eigenes `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder
+`OPAA_INDEXING_S3_TEMP_DIRECTORY` kommt als dritter beschreibbarer Pfad hinzu.
+
+Der Compose-Stack startet das Backend deshalb mit `read_only: true`, ohne Capabilities und mit
+`no-new-privileges`; `/tmp` ist dort das benannte Volume `opaa-backend-tmp`. Ein Volume statt
+`tmpfs`, weil die Dateien dort die Größe eines Dokuments erreichen und keinen Arbeitsspeicher belegen
+sollen. Unter Kubernetes gehört ein `emptyDir` ohne `medium: Memory` nach `/tmp`, mit einem
+`sizeLimit`, das mehrere der größten erwarteten Dokumente gleichzeitig fasst.
+
+Der Pfad `/app/uploads` ist im Image fest als `OPAA_UPLOAD_STORAGE_PATH` gesetzt. Das ist die
+absolute Form der Anwendungsvorgabe `./uploads`.
+
+### Speicher und Container-Grenzen
+
+Die JVM richtet ihre Heap-Grenze nach dem Speicher, den sie sieht. Ohne eigene Angabe nimmt sie
+**25 %** davon: ohne Container-Grenze 25 % des Host-Speichers, mit Grenze 25 % der Grenze. Mit einer
+Grenze bleibt so viel Speicher ungenutzt, deshalb wird der Anteil dann über `JAVA_TOOL_OPTIONS`
+angehoben:
+
+```text
+JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70
+```
+
+Der Rest der Grenze gehört nicht dem Heap, sondern Klassen, übersetztem Code, Threads und Puffern.
+Ohne Container-Grenze wird der Anteil **nicht** angehoben, sonst konkurriert die JVM mit Datenbank
+und Modellbetrieb um den Host-Speicher.
+
+**Messwert als Ausgangspunkt.** Die E2E-Suite (110 Szenarien mit Uploads, Indexierung von PDF-, Office-
+und Mail-Dateien und Chat) lief mit einer Grenze von 1,5 GiB und 75 % Heap ohne Abbruch:
+
+- Spitze des Containers 1,0 GiB
+- belegter Heap höchstens rund 400 MiB
+- Klassen, Code und Threads zusammen rund 420 MiB
+
+Für den Betrieb empfohlen:
+
+| | Anforderung (`requests`) | Grenze (`limits`) | Heap-Anteil |
+|---|---|---|---|
+| Speicher | 1 GiB | 2 GiB | `-XX:MaxRAMPercentage=70` |
+| CPU | 0,5 | keine | — |
+
+Die CPU-Werte sind nicht gemessen. Eine CPU-Grenze drosselt die JVM gerade beim Start und bei der
+Indexierung, deshalb wird sie nur gesetzt, wenn der Cluster sie verlangt.
+
+Große Bestände, sehr große PDF-Dateien oder viele gleichzeitige Indexierungen brauchen mehr. Ein
+Abbruch wegen der Grenze zeigt sich unter Kubernetes als `OOMKilled` im Status des Pods, unter
+Compose als Exit-Code `137`. Dann die Grenze anheben, nicht den Heap-Anteil.
 
 ### Nicht-root-Betrieb des Backend-Containers
 
@@ -1101,7 +1162,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:3000` | Erlaubte CORS-Origins (kommagetrennt). Der Anwendungs-Default passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — die Compose-Belegung trägt deshalb bewusst den Frontend-Host-Port, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
 | `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
 | `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln. Darunter liegt je Organisation ein Ordner, darin je Bibliothek einer, darin je Dokument eine Datei unter einem Zufallsnamen: `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` |
+| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads`; im Backend-Image `/app/uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln. Darunter liegt je Organisation ein Ordner, darin je Bibliothek einer, darin je Dokument eine Datei unter einem Zufallsnamen: `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` |
 | `OPAA_UPLOAD_STORE` | `filesystem` | nicht gesetzt (Anwendungs-Default gilt) | Welche Ablage die hochgeladenen Originale hält (`opaa.upload.store`): `filesystem` — die Dateien liegen unter `OPAA_UPLOAD_STORAGE_PATH`, ein dorthin eingehängtes Netzlaufwerk eingeschlossen — oder `s3`, ein S3-kompatibler Objektspeicher nach den `OPAA_UPLOAD_S3_*`-Variablen darunter. Jeder andere Wert bricht den Start mit einer Meldung ab, statt stillschweigend auf das Dateisystem zurückzufallen. Mit `s3` liegt jedes Original als Objekt `<Präfix><Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` im Bucket — dieselbe Struktur wie auf der Platte, `documents.file_path` trägt `s3://<Bucket>/<Schlüssel>`; ein nicht erreichbarer Objektspeicher bricht den Start **nicht** ab, sondern wird beim Start als Warnung protokolliert und erscheint in `/actuator/health` als eigene Gruppe `upload-store` (`GET /actuator/health/upload-store`) — bewusst nicht im Gesamtstatus, damit ein gestörter Objektspeicher die Instanz nicht aus einer Lastverteilung nimmt, während Chat und Suche weiterlaufen. Der Abruf eines Originals antwortet bei nicht erreichbarem Speicher mit `503` und deutscher Meldung, bei nicht vorhandenem Objekt wie bisher mit `404`; der Upload antwortet bei derselben Störung ebenfalls mit `503`. **Downloads S3-gestützter Originale streamen ohne Zwischendatei; HTTP-Bereichsanfragen (`Range`) und die Wiederaufnahme eines abgebrochenen Downloads entfallen dafür** — mit `filesystem` bleiben beide erhalten |
 | `OPAA_UPLOAD_S3_ENDPOINT` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Adresse des Objektspeichers, `http://` oder `https://` mit Host und Port, ohne Pfad (`opaa.upload.s3.endpoint`), z. B. `http://objectstore:9000` im Compose-Netz. Fehlt sie bei `s3`, bricht der Start mit einer Meldung ab, die die Variable nennt. Der konfigurierte Endpunkt selbst passiert die Zieladressprüfung immer (nach Schema, Host und Port), braucht also keinen Eintrag in `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` |
 | `OPAA_UPLOAD_S3_REGION` | `us-east-1` | nicht gesetzt | Signaturregion (`opaa.upload.s3.region`); bei einem selbst betriebenen Speicher beliebig, bei AWS die Region des Buckets |
