@@ -60,6 +60,7 @@ backend:
     example.org/team: platform
 frontend:
   replicas: 2
+  cspConnectSrcExtra: https://login.example.org
 ingress:
   enabled: true
   className: nginx
@@ -79,3 +80,29 @@ httpRoute:
     - opaa.example.org
   timeouts:
     request: 300s
+trustedProxyCidrs:
+  - 10.244.0.0/16
+localAdminAllowedCidrs:
+  - 10.20.0.0/16
+networkPolicy:
+  backendIngress:
+    extraFrom:
+      - namespaceSelector:
+          matchLabels:
+            kubernetes.io/metadata.name: monitoring
+  frontendIngress:
+    controllerNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: ingress-nginx
+    controllerPodSelector:
+      matchLabels:
+        app.kubernetes.io/name: ingress-nginx
+  egress:
+    enabled: true
+    backendRules:
+      - to:
+          - ipBlock:
+              cidr: 10.20.0.15/32
+        ports:
+          - port: 5433
+            protocol: TCP

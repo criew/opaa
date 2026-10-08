@@ -27,6 +27,8 @@ data:
   OPAA_UPLOAD_STORE: filesystem
   OPAA_UPLOAD_STORAGE_PATH: /app/uploads
   {{- end }}
+  OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS: {{ join "," .Values.trustedProxyCidrs | quote }}
+  OPAA_LOCAL_ADMIN_ALLOWED_CIDRS: {{ join "," .Values.localAdminAllowedCidrs | quote }}
   OPAA_INDEXING_FILESYSTEM_ALLOWLIST: {{ include "opaa.filesystemAllowlist" . | quote }}
   OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.indexingAllowlist | quote }}
   OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.identityProviderAllowlist | quote }}

@@ -65,6 +65,32 @@ Schlüssel es enthalten muss, steht in [`values.yaml`](values.yaml).
 - **Startwerte wirken nur beim ersten Start.** `bootstrap.*` wird einmal in die Datenbank übernommen,
   danach führt die Oberfläche.
 
+## Netz und Client-Adresse
+
+Der Namespace sollte Pod Security Admission auf `restricted` setzen; der Chart läuft ohne Ausnahme
+darunter:
+
+```bash
+kubectl label namespace opaa pod-security.kubernetes.io/enforce=restricted
+```
+
+- **Eingang zum Backend:** Standardmäßig lässt eine NetworkPolicy nur die Frontend-Pods und den Pod
+  von `helm test` zu. Eine Betriebsüberwachung kommt über `networkPolicy.backendIngress.extraFrom`
+  hinzu.
+- **Eingang zum Frontend:** Nur der Ingress- oder Gateway-Controller, sobald
+  `networkPolicy.frontendIngress.controllerNamespaceSelector` gesetzt ist.
+- **Ausgang:** `networkPolicy.egress.enabled` begrenzt den Ausgang von Backend und Frontend auf DNS,
+  die Pods des Releases und `networkPolicy.egress.backendRules`. Das ist empfohlen, sobald
+  Datenbank, Identitätsanbieter, Modelle und Quellen eingetragen sind.
+- **Client-Adresse:** `trustedProxyCidrs` nennt das Pod-Netz, damit Rate-Limits, Anmeldesperre und
+  `localAdminAllowedCidrs` die Adresse der Person sehen statt der des Frontend-Pods. Das Rendern
+  bricht ab, solange nicht beide Eingangs-Policies an sind. Die Netzwerkschicht des Clusters muss
+  NetworkPolicies durchsetzen, das kann der Chart nicht prüfen.
+- **Actuator:** Von außen ist kein `/actuator`-Pfad erreichbar; der Frontend-nginx reicht nur `/api/`
+  und `/mcp` weiter. Prometheus fragt das Backend direkt ab.
+- **CSP:** Liegt die OIDC-Authority auf einem anderen Origin als `publicBaseUrl`, gehört dieser in
+  `frontend.cspConnectSrcExtra`.
+
 ## Prüfen
 
 ```bash

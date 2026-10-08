@@ -1,0 +1,133 @@
+{{- $testPod := dict "app.kubernetes.io/instance" .Release.Name "app.kubernetes.io/component" "test" }}
+{{- if .Values.networkPolicy.backendIngress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opaa.backend.fullname" . }}-ingress
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "frontend") | nindent 14 }}
+        - podSelector:
+            matchLabels:
+              {{- toYaml $testPod | nindent 14 }}
+        {{- with .Values.networkPolicy.backendIngress.extraFrom }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      ports:
+        - port: http
+          protocol: TCP
+{{- end }}
+{{- with .Values.networkPolicy.frontendIngress.controllerNamespaceSelector }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opaa.frontend.fullname" $ }}-ingress
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" $ "component" "frontend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" $ "component" "frontend") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - namespaceSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- with $.Values.networkPolicy.frontendIngress.controllerPodSelector }}
+          podSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        - podSelector:
+            matchLabels:
+              {{- toYaml $testPod | nindent 14 }}
+      ports:
+        - port: http
+          protocol: TCP
+{{- end }}
+{{- if and .Values.evaluationDatabase.enabled .Values.networkPolicy.backendIngress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opaa.evaluationDatabase.fullname" . }}-ingress
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "evaluation-database") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "evaluation-database") | nindent 6 }}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 14 }}
+      ports:
+        - port: postgresql
+          protocol: TCP
+{{- end }}
+{{- if .Values.networkPolicy.egress.enabled }}
+{{- $dns := .Values.networkPolicy.egress.dns }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opaa.frontend.fullname" . }}-egress
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "frontend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "frontend") | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    {{- include "opaa.networkPolicy.dnsRule" $dns | nindent 4 }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 14 }}
+      ports:
+        - port: http
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "opaa.backend.fullname" . }}-egress
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 6 }}
+  policyTypes:
+    - Egress
+  egress:
+    {{- include "opaa.networkPolicy.dnsRule" $dns | nindent 4 }}
+    {{- if .Values.evaluationDatabase.enabled }}
+    - to:
+        - podSelector:
+            matchLabels:
+              {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "evaluation-database") | nindent 14 }}
+      ports:
+        - port: {{ .Values.database.port }}
+          protocol: TCP
+    {{- end }}
+    {{- with .Values.networkPolicy.egress.backendRules }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+{{- end }}

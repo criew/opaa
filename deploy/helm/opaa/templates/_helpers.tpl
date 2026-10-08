@@ -154,6 +154,9 @@ message names the rule no matter which object Helm renders first.
 {{- end }}
 {{- end }}
 {{- end }}
+{{- if and .Values.trustedProxyCidrs (not (and .Values.networkPolicy.backendIngress.enabled .Values.networkPolicy.frontendIngress.controllerNamespaceSelector)) }}
+{{- fail "trustedProxyCidrs is set, but not both ingress policies are on: every pod in the trusted network could then forge X-Forwarded-For. Keep networkPolicy.backendIngress.enabled and set networkPolicy.frontendIngress.controllerNamespaceSelector (ADR-0042, Entscheidung 4)." }}
+{{- end }}
 {{- if and .Values.ingress.enabled (not .Values.ingress.host) }}
 {{- fail "ingress.enabled is true, but ingress.host is empty." }}
 {{- end }}
@@ -223,4 +226,18 @@ emptyDir:
 {{- $paths = append $paths .mountPath }}
 {{- end }}
 {{- join "," $paths }}
+{{- end }}
+
+{{/* Egress rule to the cluster DNS; call with .Values.networkPolicy.egress.dns. */}}
+{{- define "opaa.networkPolicy.dnsRule" -}}
+- to:
+    - namespaceSelector:
+        {{- toYaml .namespaceSelector | nindent 8 }}
+      podSelector:
+        {{- toYaml .podSelector | nindent 8 }}
+  ports:
+    - port: 53
+      protocol: UDP
+    - port: 53
+      protocol: TCP
 {{- end }}
