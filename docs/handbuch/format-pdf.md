@@ -1,6 +1,6 @@
 # Format: PDF
 
-> **Entwurf.** Pipeline `pdf`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
+> **Entwurf.** Pipeline `pdf`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
 > Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -19,6 +19,13 @@ Die Pipeline liest PDFs direkt mit Apache PDFBox. Sie nutzt drei Quellen:
 - den **Text** in Lesereihenfolge, seitenweise,
 - die **Linien** einer Seite, um Tabellen mit Gitter zu erkennen (Abschnitt 3),
 - die **Lesezeichen-Gliederung** (Outline), sofern das Dokument eine hat.
+
+**Hochgestellte Satz- und Fußnotennummern.** Eine Ziffer, die kleiner und mit angehobener
+Grundlinie gesetzt ist, wird durch ein Leerzeichen von einer unmittelbar folgenden Ziffer oder
+einem Buchstaben getrennt: Aus „¹10 Jahre" wird „1 10 Jahre", aus „²Mit" wird „2 Mit". Es wird
+nur Leerraum ergänzt, die Nummer selbst bleibt im Text. Normal gesetzte Zahlen, Sonderzeichen wie
+€ und Einheiten mit eigenem Hochzeichen wie m² bleiben unverändert. Das gilt auch in
+Tabellenzellen.
 
 ```mermaid
 flowchart TB
@@ -48,7 +55,7 @@ dieser Überschriften in Abschnitte geschnitten:
 - Keine Überlappung zwischen Chunks.
 
 **Ohne Gliederung.** Eine Seite ist ein Chunk. Leere Seiten werden übersprungen. Eine Seite mit
-mehr als 8.000 Zeichen wird nach denselben Regeln in mehrere Chunks geteilt; jeder trägt die
+mehr als rund 4.000 Zeichen wird nach denselben Regeln in mehrere Chunks geteilt; jeder trägt die
 Seitenzahl.
 
 **Tabellen.** Eine Tabelle, deren Zellen vollständig von Linien umschlossen sind, wird wie in

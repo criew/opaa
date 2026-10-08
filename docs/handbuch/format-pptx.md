@@ -28,7 +28,8 @@ Aufbau eines Chunks:
 3. Sprechernotizen als abschließender Absatz „Notizen: …"
 
 Ausgefiltert werden Foliennummer, Datum, Kopf- und Fußzeilenplatzhalter. Eine Folie mit mehr als
-8.000 Zeichen wird in mehrere Chunks geteilt, jeder mit der Ortsangabe der Folie
+rund 4.000 Zeichen wird in mehrere Chunks geteilt, jeder beginnt mit dem Folientitel und trägt die
+Ortsangabe der Folie
 (Kapitel [Indexierung](indexierung.md), Schritt 4); eine Zielgröße gibt es bei Folien nicht.
 
 ## 4. Metadaten am Chunk

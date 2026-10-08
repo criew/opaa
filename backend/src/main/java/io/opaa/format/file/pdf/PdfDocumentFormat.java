@@ -41,7 +41,7 @@ import org.springframework.ai.document.Document;
 public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfContent> {
 
   static final String ID = "pdf";
-  static final short VERSION = 3;
+  static final short VERSION = 4;
 
   @Override
   public String id() {

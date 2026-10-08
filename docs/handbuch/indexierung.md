@@ -1057,13 +1057,15 @@ Was alle Pipelines gemeinsam haben:
   Satzenden, zuletzt an Leerzeichen. Nur eine Zeichenfolge ganz ohne solche Grenze wird hart
   geschnitten. Jedes Teilstück beginnt mit der Überschriftenzeile seines Abschnitts und trägt
   dessen Ortsangabe.
-- Die überschriftengetriebenen Pipelines (PDF mit Gliederung, Word, OpenDocument Text, HTML,
-  Markdown, Confluence) zielen auf rund **4.000 Zeichen** je Chunk. Pipelines, deren Einheit eine
-  Seite, eine Folie oder eine Zeilengruppe ist, teilen diese Einheit erst ab **8.000 Zeichen**;
-  jedes Teilstück behält deren Ortsangabe („S. 4", „Folie 3", „Zeile 12"). Länger wird kein Chunk
-  einer Format-Pipeline. Ein Abschnitts-Chunk liegt damit bei grob 1.000 Tokens und passt auch in
-  kleine Kontextfenster wie das von `nomic-embed-text`; die 8.000 Zeichen bleiben selbst bei
-  zahlenlastigem Text deutlich unter der Eingabegrenze, die OPAA beim Embedden prüft (Schritt 6).
+- Alle Format-Pipelines zielen auf rund **4.000 Zeichen** je Chunk: die überschriftengetriebenen
+  (PDF mit Gliederung, Word, OpenDocument Text, HTML, Markdown, Confluence) je Abschnitt, die
+  übrigen je Seite, Folie oder Zeilengruppe. Eine längere Seite oder Folie wird ebenso geteilt;
+  jedes Teilstück behält deren Ortsangabe („S. 4", „Folie 3", „Zeile 12") und wiederholt den
+  Folientitel bzw. bei Tabellen Kontext- und Kopfzeile. Ein Chunk liegt damit bei grob 1.000
+  Tokens und passt auch in kleine Kontextfenster wie das von `nomic-embed-text`. Nur wenn schon
+  die Überschriftenzeile oder der Folientitel selbst zu lang ist, greift als letzte Grenze
+  **8.000 Zeichen**; auch die bleiben selbst bei zahlenlastigem Text deutlich unter der
+  Eingabegrenze, die OPAA beim Embedden prüft (Schritt 6).
 - Die Chunk-Größen sind je Pipeline **projektseitig festgelegt**, nicht über einen
   Admin-Regler. Die konfigurierbaren Werte für Chunk-Größe und Überlappung gelten nur noch für
   die Auffang-Pipeline und strukturlose Texte. Dort wird nach Tokens geschnitten, standardmäßig
