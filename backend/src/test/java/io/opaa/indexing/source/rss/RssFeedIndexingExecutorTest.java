@@ -296,8 +296,10 @@ class RssFeedIndexingExecutorTest {
           <main>
             <h1>Rat beschliesst Hundesteuersatzung</h1>
             <p>Der Rat hat die neue Satzung beschlossen.</p>
+        <p>Sie tritt zum ersten Januar des kommenden Jahres in Kraft und ersetzt die bisherige Satzung vollstaendig, einschliesslich aller Nachtraege.</p>
             <h2>Hintergrund</h2>
             <p>Die alte Satzung stammt aus dem Jahr 2010.</p>
+        <p>Seitdem wurden die Steuersaetze nicht mehr angepasst, obwohl die Zahl der gemeldeten Hunde im Stadtgebiet um ein Drittel gestiegen ist und der Verwaltungsaufwand deutlich wuchs.</p>
           </main>
           <footer><p>Impressum</p></footer>
         </body></html>
@@ -324,9 +326,13 @@ class RssFeedIndexingExecutorTest {
     assertThat(cut.chunks())
         .extracting(chunk -> chunk.getText())
         .containsExactly(
-            "Rat beschliesst Hundesteuersatzung\n\nDer Rat hat die neue Satzung beschlossen.",
+            "Rat beschliesst Hundesteuersatzung\n\nDer Rat hat die neue Satzung beschlossen."
+                + "\n\nSie tritt zum ersten Januar des kommenden Jahres in Kraft und ersetzt die"
+                + " bisherige Satzung vollstaendig, einschliesslich aller Nachtraege.",
             "Rat beschliesst Hundesteuersatzung › Hintergrund\n\nDie alte Satzung stammt aus dem"
-                + " Jahr 2010.");
+                + " Jahr 2010.\n\nSeitdem wurden die Steuersaetze nicht mehr angepasst, obwohl die"
+                + " Zahl der gemeldeten Hunde im Stadtgebiet um ein Drittel gestiegen ist und der"
+                + " Verwaltungsaufwand deutlich wuchs.");
   }
 
   @Test
