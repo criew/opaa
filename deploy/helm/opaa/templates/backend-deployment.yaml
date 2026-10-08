@@ -1,5 +1,13 @@
 {{- include "opaa.validate" . }}
 {{- $secretName := include "opaa.secretName" . }}
+{{- $podSecurityContext := deepCopy .Values.podSecurityContext }}
+{{- if and (eq .Values.uploads.store "persistentVolumeClaim") .Values.uploads.persistence.fsGroup }}
+{{- $_ := set $podSecurityContext "fsGroup" .Values.uploads.persistence.fsGroup }}
+{{- end }}
+{{- $requiredKeys := list "OPAA_AUTH_JWT_SECRET" "OPAA_DB_PASSWORD" "OPAA_CREDENTIALS_ENCRYPTION_KEY" "OPAA_SETTINGS_ENCRYPTION_KEY" }}
+{{- if eq .Values.uploads.store "s3" }}
+{{- $requiredKeys = concat $requiredKeys (list "OPAA_UPLOAD_S3_ACCESS_KEY" "OPAA_UPLOAD_S3_SECRET_KEY") }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -30,8 +38,68 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- include "opaa.podSpecCommon" (dict "root" . "component" .Values.backend) | nindent 6 }}
+      {{- include "opaa.podSpecCommon" (dict "root" . "component" .Values.backend "podSecurityContext" $podSecurityContext) | nindent 6 }}
       terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
+      {{- if include "opaa.extraCACertificates.enabled" . }}
+      # A copy of the runtime's truststore plus extraCACertificates, rebuilt on every start; the
+      # backend image's keytool needs no shell.
+      initContainers:
+        - name: truststore
+          image: {{ include "opaa.image" (dict "root" . "image" .Values.backend.image) | quote }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          command:
+            - /opt/java/openjdk/bin/keytool
+            - -importkeystore
+            - -noprompt
+            - -srckeystore
+            - /opt/java/openjdk/lib/security/cacerts
+            - -srcstorepass
+            - changeit
+            - -destkeystore
+            - /etc/opaa/truststore/cacerts
+            - -deststoretype
+            - PKCS12
+            - -deststorepass
+            - changeit
+          resources:
+            {{- toYaml $.Values.backend.initResources | nindent 12 }}
+          volumeMounts:
+            - name: truststore
+              mountPath: /etc/opaa/truststore
+            - name: tmp
+              mountPath: /tmp
+        {{- range $index, $key := .Values.extraCACertificates.keys }}
+        - name: {{ printf "ca-%d" $index }}
+          image: {{ include "opaa.image" (dict "root" $ "image" $.Values.backend.image) | quote }}
+          imagePullPolicy: {{ $.Values.backend.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          command:
+            - /opt/java/openjdk/bin/keytool
+            - -importcert
+            - -noprompt
+            - -alias
+            - {{ printf "opaa-extra-%s" $key | quote }}
+            - -file
+            - {{ printf "/etc/opaa/ca-certificates/%s" $key | quote }}
+            - -keystore
+            - /etc/opaa/truststore/cacerts
+            - -storepass
+            - changeit
+          resources:
+            {{- toYaml $.Values.backend.initResources | nindent 12 }}
+          volumeMounts:
+            - name: truststore
+              mountPath: /etc/opaa/truststore
+            - name: ca-certificates
+              mountPath: /etc/opaa/ca-certificates
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+        {{- end }}
+      {{- end }}
       containers:
         - name: backend
           image: {{ include "opaa.image" (dict "root" . "image" .Values.backend.image) | quote }}
@@ -59,14 +127,14 @@ spec:
             {{- end }}
             # Required keys carry no "optional": a missing key keeps the pod from starting
             # (CreateContainerConfigError) instead of surfacing at first use (ADR-0042, Entscheidung 5).
-            {{- range list "OPAA_AUTH_JWT_SECRET" "OPAA_DB_PASSWORD" "OPAA_CREDENTIALS_ENCRYPTION_KEY" "OPAA_SETTINGS_ENCRYPTION_KEY" }}
+            {{- range $requiredKeys }}
             - name: {{ . }}
               valueFrom:
                 secretKeyRef:
                   name: {{ $secretName }}
                   key: {{ . }}
             {{- end }}
-            {{- range list "OPAA_OPENAI_EMBEDDING_API_KEY" "OPAA_OPENAI_CHAT_API_KEY" "OPAA_INITIAL_ADMIN_PASSWORD" }}
+            {{- range list "OPAA_OPENAI_EMBEDDING_API_KEY" "OPAA_OPENAI_CHAT_API_KEY" "OPAA_RERANK_API_KEY" "OPAA_INITIAL_ADMIN_PASSWORD" }}
             - name: {{ . }}
               valueFrom:
                 secretKeyRef:
@@ -105,16 +173,48 @@ spec:
           volumeMounts:
             - name: tmp
               mountPath: /tmp
+            {{- if eq .Values.uploads.store "persistentVolumeClaim" }}
             - name: uploads
               mountPath: /app/uploads
+            {{- end }}
+            {{- if include "opaa.extraCACertificates.enabled" . }}
+            - name: truststore
+              mountPath: /etc/opaa/truststore
+              readOnly: true
+            {{- end }}
+            {{- range .Values.filesystemSources }}
+            - name: {{ printf "source-%s" .name }}
+              mountPath: {{ .mountPath }}
+              readOnly: true
+            {{- end }}
             {{- with .Values.backend.extraVolumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
       volumes:
         - name: tmp
           {{- include "opaa.emptyDir" .Values.backend.tmp | nindent 10 }}
+        {{- if eq .Values.uploads.store "persistentVolumeClaim" }}
         - name: uploads
-          {{- include "opaa.emptyDir" .Values.backend.uploads | nindent 10 }}
+          persistentVolumeClaim:
+            claimName: {{ include "opaa.uploads.claimName" . }}
+        {{- end }}
+        {{- if include "opaa.extraCACertificates.enabled" . }}
+        - name: truststore
+          emptyDir:
+            sizeLimit: 16Mi
+        - name: ca-certificates
+          {{- if .Values.extraCACertificates.configMap }}
+          configMap:
+            name: {{ .Values.extraCACertificates.configMap }}
+          {{- else }}
+          secret:
+            secretName: {{ .Values.extraCACertificates.secret }}
+          {{- end }}
+        {{- end }}
+        {{- range .Values.filesystemSources }}
+        - name: {{ printf "source-%s" .name }}
+          {{- toYaml .volume | nindent 10 }}
+        {{- end }}
         {{- with .Values.backend.extraVolumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}

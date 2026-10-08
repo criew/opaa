@@ -26,7 +26,11 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
   schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Liquibase.
   `PgVectorDimensionsGuard` verweigert den Start, wenn die Spalte `embedding` eine andere Dimension
   hat als konfiguriert, `PgVectorVersionGuard` bei pgvector älter als 0.8.0. `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit
-  Zugangsdaten.
+  Zugangsdaten. `DatabasePrerequisiteCheck` läuft vor Liquibase und bricht ab, wenn pgvector fehlt
+  oder das Konto Erweiterung bzw. Rolle `opaa_audit_owner` nicht anlegen darf; den Bericht schreibt
+  `DatabasePrerequisiteFailureAnalyzer` (registriert in `META-INF/spring.factories`). Eine
+  Fehlerkette auszuwerten genügt dafür nicht: SQLState 0A000 lässt den Pool die Verbindung
+  schließen, und Liquibase meldet danach nur „Connection is closed".
 - **Reihenfolge für einen neuen Endpunkt:** OpenAPI-Fragment, generierte DTOs, Enum-Mappings,
   Frontend-Typen, API-Funktion, MSW-Handler (`agents/roles/developer.md`, „Repository-Praxis").
 
@@ -35,6 +39,7 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
 - ADRs (`docs/decisions/`): 0005, 0006
 - Handbuch: `docs/handbuch/deployment.md`, „Konfiguration" und „Datenbank"
 - Strukturtests: `TransportStatusCodeSpecificationTest`, `DatabaseSchemaGuardTest`,
+  `DatabasePrerequisitesTest`,
   `OpenAiBaseUrlGuardTest`, `ModularArchitectureTest`
 
 ## Tests bei Änderungen

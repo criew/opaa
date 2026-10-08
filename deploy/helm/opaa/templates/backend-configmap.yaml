@@ -11,12 +11,47 @@ data:
   OPAA_SHUTDOWN_TIMEOUT: {{ printf "%vs" .Values.backend.shutdownTimeoutSeconds | quote }}
   OPAA_PUBLIC_BASE_URL: {{ $publicBaseUrl | quote }}
   OPAA_CORS_ALLOWED_ORIGINS: {{ $publicBaseUrl | quote }}
-  OPAA_DB_URL: {{ printf "jdbc:postgresql://%s:%v/%s?prepareThreshold=0" .Values.database.host .Values.database.port .Values.database.name | quote }}
+  OPAA_DB_URL: {{ include "opaa.databaseUrl" . | quote }}
   OPAA_DB_USERNAME: {{ .Values.database.username | quote }}
+  {{- with .Values.database.schema }}
+  OPAA_DB_SCHEMA: {{ . | quote }}
+  {{- end }}
+  {{- if eq .Values.uploads.store "s3" }}
+  OPAA_UPLOAD_STORE: s3
+  OPAA_UPLOAD_S3_ENDPOINT: {{ .Values.uploads.s3.endpoint | quote }}
+  OPAA_UPLOAD_S3_BUCKET: {{ .Values.uploads.s3.bucket | quote }}
+  OPAA_UPLOAD_S3_REGION: {{ .Values.uploads.s3.region | quote }}
+  OPAA_UPLOAD_S3_PATH_STYLE: {{ .Values.uploads.s3.pathStyle | quote }}
+  OPAA_UPLOAD_S3_KEY_PREFIX: {{ .Values.uploads.s3.keyPrefix | quote }}
+  {{- else }}
+  OPAA_UPLOAD_STORE: filesystem
   OPAA_UPLOAD_STORAGE_PATH: /app/uploads
+  {{- end }}
+  OPAA_INDEXING_FILESYSTEM_ALLOWLIST: {{ include "opaa.filesystemAllowlist" . | quote }}
+  OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.indexingAllowlist | quote }}
+  OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST: {{ join "," .Values.targetValidation.identityProviderAllowlist | quote }}
   OPAA_OPENAI_EMBEDDING_BASE_URL: {{ .Values.embedding.baseUrl | quote }}
   OPAA_OPENAI_EMBEDDING_MODEL: {{ .Values.embedding.model | quote }}
   OPAA_PGVECTOR_DIMENSIONS: {{ .Values.embedding.dimensions | quote }}
+  OPAA_RERANK_ENABLED: {{ .Values.rerank.enabled | quote }}
+  {{- with .Values.rerank.baseUrl }}
+  OPAA_RERANK_BASE_URL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.rerank.model }}
+  OPAA_RERANK_MODEL: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.rerank.timeout }}
+  OPAA_RERANK_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.mail.connectTimeout }}
+  OPAA_MAIL_CONNECT_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.mail.readTimeout }}
+  OPAA_MAIL_READ_TIMEOUT: {{ . | quote }}
+  {{- end }}
+  {{- with .Values.mail.writeTimeout }}
+  OPAA_MAIL_WRITE_TIMEOUT: {{ . | quote }}
+  {{- end }}
   # Bootstrap values - read on the first start only, see values.yaml.
   OPAA_INITIAL_ADMIN_EMAIL: {{ .Values.bootstrap.initialAdmin.email | quote }}
   {{- with .Values.bootstrap.chatModel.baseUrl }}

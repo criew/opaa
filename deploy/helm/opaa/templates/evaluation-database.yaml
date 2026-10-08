@@ -1,0 +1,118 @@
+{{- if .Values.evaluationDatabase.enabled }}
+{{- $name := include "opaa.evaluationDatabase.fullname" . }}
+# ONLY FOR EVALUATION: no backup, no replication, no upgrade path across major versions
+# (ADR-0042, Entscheidung 3).
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "evaluation-database") | nindent 4 }}
+spec:
+  type: ClusterIP
+  ports:
+    - name: postgresql
+      port: {{ .Values.database.port }}
+      targetPort: postgresql
+      protocol: TCP
+  selector:
+    {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "evaluation-database") | nindent 4 }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ $name }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "evaluation-database") | nindent 4 }}
+spec:
+  serviceName: {{ $name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "evaluation-database") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "evaluation-database") | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "opaa.serviceAccountName" . }}
+      automountServiceAccountToken: false
+      enableServiceLinks: false
+      # The postgres account of the image; its entrypoint runs unprivileged when the data directory
+      # is writable, which fsGroup ensures.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile:
+          type: RuntimeDefault
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: postgresql
+          image: {{ printf "%s:%s" .Values.evaluationDatabase.image.repository .Values.evaluationDatabase.image.tag | quote }}
+          imagePullPolicy: {{ .Values.evaluationDatabase.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          args:
+            - -p
+            - {{ .Values.database.port | quote }}
+          env:
+            - name: POSTGRES_USER
+              value: {{ .Values.database.username | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.database.name | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opaa.secretName" . }}
+                  key: OPAA_DB_PASSWORD
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -p
+                - {{ .Values.database.port | quote }}
+                - -U
+                - {{ .Values.database.username | quote }}
+                - -d
+                - {{ .Values.database.name | quote }}
+            periodSeconds: 5
+          {{- with .Values.evaluationDatabase.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql
+            - name: run
+              mountPath: /var/run/postgresql
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: run
+          emptyDir:
+            sizeLimit: 16Mi
+        - name: tmp
+          emptyDir:
+            sizeLimit: 256Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- with .Values.evaluationDatabase.persistence.storageClassName }}
+        storageClassName: {{ . }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.evaluationDatabase.persistence.size }}
+{{- end }}

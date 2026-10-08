@@ -21,6 +21,10 @@
 {{- printf "%s-backend" (include "opaa.fullname" .) }}
 {{- end }}
 
+{{- define "opaa.evaluationDatabase.fullname" -}}
+{{- printf "%s-postgresql" (include "opaa.fullname" .) }}
+{{- end }}
+
 {{- define "opaa.frontend.fullname" -}}
 {{- printf "%s-frontend" (include "opaa.fullname" .) }}
 {{- end }}
@@ -73,6 +77,35 @@ app.kubernetes.io/component: {{ .component }}
 {{- default (include "opaa.fullname" .) .Values.secrets.existingSecret }}
 {{- end }}
 
+{{/* Database host: the external one, or the evaluation database of the release. */}}
+{{- define "opaa.databaseHost" -}}
+{{- if .Values.evaluationDatabase.enabled }}
+{{- include "opaa.evaluationDatabase.fullname" . }}
+{{- else }}
+{{- .Values.database.host }}
+{{- end }}
+{{- end }}
+
+{{- define "opaa.databaseUrl" -}}
+{{- $params := list "prepareThreshold=0" }}
+{{- with .Values.database.sslMode }}
+{{- $params = append $params (printf "sslmode=%s" .) }}
+{{- if hasPrefix "verify-" . }}
+{{- /* Checks the server certificate against the Java truststore (public CAs plus extraCACertificates) instead of ~/.postgresql/root.crt. */}}
+{{- $params = append $params "sslfactory=org.postgresql.ssl.DefaultJavaSSLFactory" }}
+{{- end }}
+{{- end }}
+{{- printf "jdbc:postgresql://%s:%v/%s?%s" (include "opaa.databaseHost" .) .Values.database.port .Values.database.name (join "&" $params) }}
+{{- end }}
+
+{{- define "opaa.uploads.claimName" -}}
+{{- default (printf "%s-uploads" (include "opaa.fullname" .)) .Values.uploads.persistence.existingClaim }}
+{{- end }}
+
+{{- define "opaa.extraCACertificates.enabled" -}}
+{{- if and (or .Values.extraCACertificates.configMap .Values.extraCACertificates.secret) .Values.extraCACertificates.keys }}true{{ end }}
+{{- end }}
+
 {{/* host[:port] the frontend nginx forwards /api/ and /mcp to. */}}
 {{- define "opaa.backendUpstream" -}}
 {{- printf "%s:%v" (include "opaa.backend.fullname" .) .Values.backend.service.port }}
@@ -97,6 +130,15 @@ message names the rule no matter which object Helm renders first.
 {{- fail "backend.extraEnv must not set JAVA_TOOL_OPTIONS, it would drop backend.maxRamPercentage; use backend.javaToolOptions instead." }}
 {{- end }}
 {{- end }}
+{{- if and .Values.evaluationDatabase.enabled .Values.database.host }}
+{{- fail "database.host and evaluationDatabase.enabled exclude each other: either connect an external database or run the evaluation database." }}
+{{- end }}
+{{- if and .Values.extraCACertificates.configMap .Values.extraCACertificates.secret }}
+{{- fail "extraCACertificates names both a configMap and a secret; choose one." }}
+{{- end }}
+{{- if and .Values.extraCACertificates.keys (not (or .Values.extraCACertificates.configMap .Values.extraCACertificates.secret)) }}
+{{- fail "extraCACertificates.keys is set, but neither extraCACertificates.configMap nor extraCACertificates.secret names their source." }}
+{{- end }}
 {{- if and .Values.ingress.enabled (not .Values.ingress.host) }}
 {{- fail "ingress.enabled is true, but ingress.host is empty." }}
 {{- end }}
@@ -111,19 +153,25 @@ message names the rule no matter which object Helm renders first.
 {{- with .Values.backend.maxRamPercentage }}
 {{- $options = append $options (printf "-XX:MaxRAMPercentage=%v" .) }}
 {{- end }}
+{{- if include "opaa.extraCACertificates.enabled" . }}
+{{- $options = append $options "-Djavax.net.ssl.trustStore=/etc/opaa/truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit" }}
+{{- end }}
 {{- with .Values.backend.javaToolOptions }}
 {{- $options = append $options . }}
 {{- end }}
 {{- join " " $options }}
 {{- end }}
 
-{{/* Pod-level fields shared by all workloads; call with (dict "root" $ "component" .Values.backend). */}}
+{{/*
+Pod-level fields shared by all workloads; call with (dict "root" $ "component" .Values.backend),
+optionally with "podSecurityContext" replacing the chart-wide one.
+*/}}
 {{- define "opaa.podSpecCommon" -}}
 serviceAccountName: {{ include "opaa.serviceAccountName" .root }}
 automountServiceAccountToken: false
 enableServiceLinks: false
 securityContext:
-  {{- toYaml .root.Values.podSecurityContext | nindent 2 }}
+  {{- toYaml (default .root.Values.podSecurityContext .podSecurityContext) | nindent 2 }}
 {{- with .root.Values.imagePullSecrets }}
 imagePullSecrets:
   {{- toYaml . | nindent 2 }}
@@ -151,4 +199,13 @@ emptyDir:
   {{- with .sizeLimit }}
   sizeLimit: {{ . }}
   {{- end }}
+{{- end }}
+
+{{/* Mount paths of filesystemSources, comma-separated: the allowlist of the FILESYSTEM connector. */}}
+{{- define "opaa.filesystemAllowlist" -}}
+{{- $paths := list }}
+{{- range .Values.filesystemSources }}
+{{- $paths = append $paths .mountPath }}
+{{- end }}
+{{- join "," $paths }}
 {{- end }}
