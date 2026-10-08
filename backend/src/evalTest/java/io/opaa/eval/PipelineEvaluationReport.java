@@ -117,8 +117,13 @@ public record PipelineEvaluationReport(
    * <p>Version 16 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2 (ruled tables
    * written one line per row) - fingerprint-only, same collective-fingerprint reasoning as versions
    * 5 and 6 above; no corpus in this repository routes a document through that pipeline.
+   *
+   * <p>Version 17 (issues #2327/#2328): the chunking of oversized sections (blocks past 4,000
+   * characters split instead of truncated at 20,000) moved the versions of pdf, docx, pptx, odt,
+   * odp, tabular, markdown, html and confluence - fingerprint-only, no block of any corpus document
+   * reaches 4,000 characters, so no measured chunk changes.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 16;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 17;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be

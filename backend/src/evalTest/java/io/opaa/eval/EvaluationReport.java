@@ -99,8 +99,13 @@ public record EvaluationReport(
    * enclosed by a complete ruled grid is written one line per row, cells joined by {@code " | "}),
    * shifting the collective fingerprint - no corpus in this repository routes a document through
    * that pipeline, so this is a fingerprint-only bump.
+   *
+   * <p><b>Bumped to 14 by issues #2327/#2328:</b> the chunking of oversized sections (blocks past
+   * 4,000 characters split instead of truncated at 20,000) moved the versions of pdf, docx, pptx,
+   * odt, odp, tabular, markdown, html and confluence - fingerprint-only, no block of any corpus
+   * document reaches 4,000 characters, so no measured chunk changes.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 13;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 14;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

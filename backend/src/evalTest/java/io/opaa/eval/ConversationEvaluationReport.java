@@ -78,8 +78,13 @@ public record ConversationEvaluationReport(
    * <p>Version 6 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2, shifting the
    * shared pipeline block's {@code ingestionPipelineFingerprint} - fingerprint-only, no corpus in
    * this repository routes a document through that pipeline.
+   *
+   * <p>Version 7 (issues #2327/#2328): the chunking of oversized sections (blocks past 4,000
+   * characters split instead of truncated at 20,000) moved the versions of pdf, docx, pptx, odt,
+   * odp, tabular, markdown, html and confluence - fingerprint-only, no block of any corpus document
+   * reaches 4,000 characters, so no measured chunk changes.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 6;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 7;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:
