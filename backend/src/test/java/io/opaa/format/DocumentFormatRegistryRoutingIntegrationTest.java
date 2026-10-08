@@ -141,7 +141,7 @@ class DocumentFormatRegistryRoutingIntegrationTest {
   void everyFormatKeepsItsPersistedIdAndVersion() {
     Map<String, Short> expectedVersionById =
         Map.ofEntries(
-            Map.entry("pdf", (short) 2),
+            Map.entry("pdf", (short) 3),
             Map.entry("docx", (short) 3),
             Map.entry("pptx", (short) 1),
             Map.entry("odt", (short) 2),

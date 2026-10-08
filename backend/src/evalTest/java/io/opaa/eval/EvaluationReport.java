@@ -99,8 +99,12 @@ public record EvaluationReport(
    * enclosed by a complete ruled grid is written one line per row, cells joined by {@code " | "}),
    * shifting the collective fingerprint - no corpus in this repository routes a document through
    * that pipeline, so this is a fingerprint-only bump.
+   *
+   * <p><b>Bumped to 14 by issue #2330:</b> {@code PdfDocumentFormat#version()} moved 2 → 3 (a
+   * raised, smaller digit is separated from a following digit or letter) - fingerprint-only, for
+   * the same reason as 13.
    */
-  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 13;
+  public static final int CURRENT_MEASUREMENT_CONTRACT_VERSION = 14;
 
   /** Configuration of the measured run — lets a reader trace a number back to what produced it. */
   public record RunConfiguration(

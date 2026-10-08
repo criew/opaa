@@ -117,8 +117,11 @@ public record PipelineEvaluationReport(
    * <p>Version 16 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2 (ruled tables
    * written one line per row) - fingerprint-only, same collective-fingerprint reasoning as versions
    * 5 and 6 above; no corpus in this repository routes a document through that pipeline.
+   *
+   * <p>Version 17 (issue #2330): {@code PdfDocumentFormat#version()} moved 2 → 3 (raised sentence
+   * numbers separated from the following text) - fingerprint-only, as version 16.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 16;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 17;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
