@@ -61,13 +61,12 @@ services:
     # OPAA_SHUTDOWN_TIMEOUT - which is a window per shutdown phase, not a budget for the whole stop
     # - so the graceful shutdown runs its course instead of being cut short by SIGKILL.
     stop_grace_period: ${OPAA_STOP_GRACE_PERIOD:-75s}
-    # The same restrictions the Helm chart applies (ADR-0042): the image runs with a read-only root
-    # filesystem and no capabilities. Besides the mounts above it writes only below /tmp
+    # Read-only root filesystem: besides the mounts above the process writes only below /tmp
     # (java.io.tmpdir: Tomcat, multipart uploads, downloads, S3 working copies), which is a volume
     # here rather than tmpfs, because those files reach the size of a document and must not take RAM.
+    # Capabilities are not dropped: uid 65532 holds none anyway, and the documented fallback
+    # user: "0:0" needs root's file permission overrides on foreign-owned mounts.
     read_only: true
-    cap_drop:
-      - ALL
     security_opt:
       - no-new-privileges:true
 

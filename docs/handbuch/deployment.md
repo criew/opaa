@@ -122,7 +122,10 @@ das `docker compose up -d`:
 
    **Ebenfalls prüfen, weil `root` bisher jede Leseberechtigung umging:** ob `documents/`, jedes
    über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis und ein eigenes
-   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Einzelheiten, der Weg ohne `sudo`,
+   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Ein eigenes
+   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder `OPAA_INDEXING_S3_TEMP_DIRECTORY` muss zudem auf einem
+   eingehängten Volume oder unter `/tmp` liegen: Das übrige Dateisystem des Containers ist nur lesbar.
+   Ein Verstoß zeigt sich erst beim ersten Upload, nicht beim Start. Einzelheiten, der Weg ohne `sudo`,
    die Lage auf einem Netzlaufwerk und die Fehlermeldungen, an denen man es erkennt, stehen unter
    [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
@@ -600,13 +603,32 @@ Das Backend schreibt an genau zwei Stellen:
 Alles andere liest der Prozess nur. Ein eigenes `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder
 `OPAA_INDEXING_S3_TEMP_DIRECTORY` kommt als dritter beschreibbarer Pfad hinzu.
 
-Der Compose-Stack startet das Backend deshalb mit `read_only: true`, ohne Capabilities und mit
-`no-new-privileges`; `/tmp` ist dort das benannte Volume `opaa-backend-tmp`. Ein Volume statt
-`tmpfs`, weil die Dateien dort die Größe eines Dokuments erreichen und keinen Arbeitsspeicher belegen
-sollen. Unter Kubernetes gehört ein `emptyDir` ohne `medium: Memory` nach `/tmp`, mit einem
-`sizeLimit`, das mehrere der größten erwarteten Dokumente gleichzeitig fasst.
+Diagnoseziele gehören deshalb immer absolut unter `/tmp`: Ein `jcmd … GC.heap_dump heap.hprof`, ein
+`JFR.dump` ohne `filename` und `-XX:+HeapDumpOnOutOfMemoryError` ohne `-XX:HeapDumpPath=/tmp`
+schreiben sonst ins Arbeitsverzeichnis `/app` und scheitern mit `Read-only file system`.
 
-Der Pfad `/app/uploads` ist im Image fest als `OPAA_UPLOAD_STORAGE_PATH` gesetzt. Das ist die
+Der Compose-Stack startet das Backend deshalb mit `read_only: true` und `no-new-privileges`; `/tmp`
+ist dort das benannte Volume `opaa-backend-tmp`. Ein Volume statt `tmpfs`, weil die Dateien dort die
+Größe eines Dokuments erreichen und keinen Arbeitsspeicher belegen sollen.
+
+**Das Volume überlebt Neuerstellung und `docker compose down`.** Was ein geordneter Stopp nicht
+selbst entfernt, bleibt liegen: Arbeitsdateien eines harten Abbruchs, etwa nach einem Abbruch wegen
+der Speichergrenze, und jeder Heap-Dump oder JFR-Mitschnitt. Diese Dateien können Inhalte privater
+Bibliotheken enthalten, ein Heap-Dump zusätzlich Geheimnisse und entschlüsselte Zugangsdaten.
+Aufgeräumt wird bei angehaltenem Backend:
+
+```bash
+docker compose stop backend && docker compose rm -f backend
+docker volume rm <projekt>_opaa-backend-tmp
+docker compose up -d backend
+```
+
+Unter Kubernetes gehört ein `emptyDir` ohne `medium: Memory` nach `/tmp`, mit einem `sizeLimit`, das
+mehrere der größten erwarteten Dokumente gleichzeitig fasst, und einen Heap-Dump, wenn einer
+vorgesehen ist: Er wird so groß wie der Heap. Überschreitet das Verzeichnis das `sizeLimit`, verdrängt
+das Kubelet den Pod. Ein `emptyDir` verschwindet mit dem Pod.
+
+Der Pfad `/app/uploads` ist im Image als Vorgabe von `OPAA_UPLOAD_STORAGE_PATH` gesetzt. Das ist die
 absolute Form der Anwendungsvorgabe `./uploads`.
 
 ### Speicher und Container-Grenzen
@@ -624,8 +646,8 @@ Der Rest der Grenze gehört nicht dem Heap, sondern Klassen, übersetztem Code, 
 Ohne Container-Grenze wird der Anteil **nicht** angehoben, sonst konkurriert die JVM mit Datenbank
 und Modellbetrieb um den Host-Speicher.
 
-**Messwert als Ausgangspunkt.** Die E2E-Suite (110 Szenarien mit Uploads, Indexierung von PDF-, Office-
-und Mail-Dateien und Chat) lief mit einer Grenze von 1,5 GiB und 75 % Heap ohne Abbruch:
+**Messwert als Ausgangspunkt.** Die E2E-Suite (Uploads, Indexierung von PDF-, Office- und
+Mail-Dateien, Chat) lief mit einer Grenze von 1,5 GiB und 75 % Heap ohne Abbruch:
 
 - Spitze des Containers 1,0 GiB
 - belegter Heap höchstens rund 400 MiB
@@ -643,7 +665,8 @@ Indexierung, deshalb wird sie nur gesetzt, wenn der Cluster sie verlangt.
 
 Große Bestände, sehr große PDF-Dateien oder viele gleichzeitige Indexierungen brauchen mehr. Ein
 Abbruch wegen der Grenze zeigt sich unter Kubernetes als `OOMKilled` im Status des Pods, unter
-Compose als Exit-Code `137`. Dann die Grenze anheben, nicht den Heap-Anteil.
+Compose als `true` in `docker inspect --format '{{.State.OOMKilled}}' <container>`. Der Exit-Code
+`137` allein ist nicht eindeutig, er entsteht auch nach Ablauf von `stop_grace_period`. Dann die Grenze anheben, nicht den Heap-Anteil.
 
 ### Nicht-root-Betrieb des Backend-Containers
 
@@ -823,8 +846,13 @@ Thread- und Heap-Dump ohne Shell:
 docker exec <container> /opt/java/openjdk/bin/jcmd 1 Thread.print
 docker exec <container> /opt/java/openjdk/bin/jcmd 1 GC.heap_dump /tmp/heap.hprof
 docker cp <container>:/tmp/heap.hprof ./heap.hprof
+docker run --rm -v <projekt>_opaa-backend-tmp:/t busybox rm -f /t/heap.hprof   # Dump im Container entfernen
 docker kill -s QUIT <container>   # Alternative: Thread-Dump ins Log, braucht nichts im Image
 ```
+
+Der Dump muss mit absolutem Pfad unter `/tmp` liegen, weil das übrige Dateisystem nur lesbar ist.
+Er enthält Geheimnisse und Inhalte und bleibt im Volume `opaa-backend-tmp` liegen, bis er entfernt
+wird; deshalb die dritte Zeile.
 
 `docker kill -s QUIT` beendet den Container **nicht** — die JVM behandelt `SIGQUIT` als Aufforderung,
 einen Thread-Dump auf die Standardausgabe zu schreiben, er landet also in `docker compose logs`.
@@ -995,7 +1023,9 @@ diese Abfrage mit. Neu aufsetzen geht so:
    `<projekt>` ist der Name des Compose-Projekts, ohne eigene Angabe der Name des Verzeichnisses mit
    der `docker-compose.yml`; `docker volume ls | grep opaa-postgres-data` zeigt den genauen Namen.
    **Nicht** `docker compose down -v`: Das verwirft alle Volumes des Stapels, auch
-   `<projekt>_opaa-ollama-data` mit den heruntergeladenen Modellen.
+   `<projekt>_opaa-ollama-data` mit den heruntergeladenen Modellen. Das Volume
+   `<projekt>_opaa-backend-tmp` mit Arbeitsdateien des alten Stands kann im selben Zug mit
+   `docker volume rm` verworfen werden.
 3. Die abgelegten Originale der alten Bibliotheken entfernen — das Verzeichnis `uploads/` bei
    Ablage im Dateisystem, den Inhalt des Buckets bei Ablage im Objektspeicher; beim mitgelieferten
    Objektspeicher genügt `docker volume rm <projekt>_opaa-upload-store-data` (vorher mit
