@@ -499,20 +499,7 @@
               "type": "boolean"
             },
             "dns": {
-              "type": "object",
-              "additionalProperties": false,
-              "properties": {
-                "namespaceSelector": {
-                  "type": "object"
-                },
-                "podSelector": {
-                  "type": "object"
-                }
-              },
-              "required": [
-                "namespaceSelector",
-                "podSelector"
-              ]
+              "type": "array"
             },
             "backendRules": {
               "type": "array"
@@ -946,7 +933,7 @@
         },
         "cspConnectSrcExtra": {
           "type": "string",
-          "pattern": "^[^;\"'{}$\\\\\\n]*$",
+          "pattern": "^[^;\"'{}$\\\\\\x00-\\x1f\\x7f]*$",
           "description": "Origins for connect-src, space-separated; spliced into the nginx configuration, so no quotes, semicolons, braces or $"
         },
         "resources": {

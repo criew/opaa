@@ -367,31 +367,39 @@ networkPolicy:
   # Blocks no egress, so it breaks no fresh installation (ADR-0042, Entscheidung 4).
   backendIngress:
     enabled: true
-    # Further NetworkPolicy peers, e.g. the cluster's Prometheus:
-    #   - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } }
-    #     podSelector: { matchLabels: { app.kubernetes.io/name: prometheus } }
+    # Further NetworkPolicy peers reaching the API port. With trustedProxyCidrs they count as
+    # trusted proxies and need a podSelector, e.g.
+    #   - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: tools } }
+    #     podSelector: { matchLabels: { app: mcp-gateway } }
     extraFrom: []
   # Ingress to the frontend: only from the ingress or gateway controller and the pod of helm test.
-  # On as soon as controllerNamespaceSelector is set.
+  # On as soon as both selectors name labels (matchLabels or matchExpressions).
   frontendIngress:
     # e.g. { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } }
     controllerNamespaceSelector: {}
-    # e.g. { matchLabels: { app.kubernetes.io/name: ingress-nginx } }; empty: every pod of that
-    # namespace
+    # e.g. { matchLabels: { app.kubernetes.io/name: ingress-nginx } }
     controllerPodSelector: {}
   # Egress of backend and frontend: DNS, the frontend to the backend, the backend to the evaluation
   # database and to the targets below. Off by default - enabled too early, it blocks identity
   # provider, models and sources that are not listed yet. Recommended after the setup.
   egress:
     enabled: false
-    # The cluster DNS.
+    # Egress rules to the cluster DNS, for backend and frontend. OpenShift: namespace openshift-dns,
+    # pods dns.operator.openshift.io/daemonset-dns: default, port 5353; NodeLocal DNSCache: an
+    # ipBlock rule for 169.254.20.10/32.
     dns:
-      namespaceSelector:
-        matchLabels:
-          kubernetes.io/metadata.name: kube-system
-      podSelector:
-        matchLabels:
-          k8s-app: kube-dns
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: kube-system
+            podSelector:
+              matchLabels:
+                k8s-app: kube-dns
+        ports:
+          - port: 53
+            protocol: UDP
+          - port: 53
+            protocol: TCP
     # NetworkPolicy egress rules of the backend for everything outside the release: database,
     # identity provider, model endpoints, object store, mail server and the sources of libraries.
     #   - to: [{ ipBlock: { cidr: 10.20.0.15/32 } }]

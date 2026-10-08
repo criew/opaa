@@ -72,10 +72,12 @@ CLIENT-ADRESSE UND NETZTRENNUNG
   Die Eingangs-Policy des Backends ist aus: Jeder Pod im Cluster erreicht das Backend direkt.
 {{- end }}
 {{- with .Values.bootstrap.oidc.authority }}
-{{- $authority := urlParse . }}
-{{- $origin := printf "%s://%s" $authority.scheme $authority.host }}
-{{- $public := urlParse $.Values.publicBaseUrl }}
-{{- if and (ne $origin (printf "%s://%s" $public.scheme $public.host)) (not (contains $origin $.Values.frontend.cspConnectSrcExtra)) }}
+{{- $origin := include "opaa.origin" . }}
+{{- $allowed := list (include "opaa.origin" $.Values.publicBaseUrl) }}
+{{- range splitList " " $.Values.frontend.cspConnectSrcExtra }}
+{{- if . }}{{ $allowed = append $allowed (include "opaa.origin" .) }}{{ end }}
+{{- end }}
+{{- if not (has $origin $allowed) }}
 
 ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
   Die OIDC-Authority liegt auf einem anderen Origin als publicBaseUrl. Ohne

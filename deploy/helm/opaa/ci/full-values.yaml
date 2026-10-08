@@ -89,7 +89,10 @@ networkPolicy:
     extraFrom:
       - namespaceSelector:
           matchLabels:
-            kubernetes.io/metadata.name: monitoring
+            kubernetes.io/metadata.name: tools
+        podSelector:
+          matchLabels:
+            app: mcp-gateway
   frontendIngress:
     controllerNamespaceSelector:
       matchLabels:
