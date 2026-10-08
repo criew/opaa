@@ -282,6 +282,11 @@ Baseline-Vergleich damit ab.
   Rohvektor-Pfad scheiterte dann an „… did not reach documentTopK=10 distinct documents“. Im
   Container-Pfad fiel das nie auf: Die CPU-Indexierung dauert länger als ein Autovacuum-Zyklus,
   die Statistik lag also immer schon vor. Auf der GPU war die Indexierung schneller fertig.
+  Auch mit Statistik sucht PostgreSQL nur bei der heutigen Korpusgröße (rund 1 000 Chunks) exakt
+  per Seq Scan. Bei einer größeren Tabelle kann der Planer wieder den HNSW-Index wählen.
+  Deshalb prüft der Rohvektor-Pfad bei jeder ungefilterten Frage, ob die Suche
+  `min(chunkTopK, Chunkzahl)` Treffer geliefert hat. Fehlen Treffer, bricht er mit dem Hinweis auf
+  die `ef_search`-Grenze ab und meldet nicht erst die verfehlte `documentTopK`-Abdeckung.
 
 ### Was der Lauf tut
 
