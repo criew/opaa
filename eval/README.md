@@ -264,6 +264,30 @@ Baseline-Vergleich damit ab.
 - Ohne die Property ist das Verhalten byte-identisch zum bisherigen Stand (Testcontainer, CPU) — CI
   setzt die Property nie, bleibt also unberührt.
 
+**Voraussetzungen für den Host-Pfad** (Issue #2338):
+
+- Das Host-Ollama ist erreichbar und führt beide gepinnten Modelle mit dem erwarteten Digest:
+  `nomic-embed-text:v1.5` und `qwen2.5:1.5b-instruct`. Fehlt eines, zieht der Harness es über
+  `POST /api/pull` in den Modellspeicher des Hosts; weicht der Digest ab, bricht er mit der
+  Drift-Meldung ab. Ein vorhandenes `nomic-embed-text:latest` mit demselben Digest stört nicht,
+  gezogen und genutzt wird nur das gepinnte Tag.
+- Eine bestimmte Ollama-Version ist nicht nötig, die Vektoren hängen aber von ihr ab. Gemessen am
+  8.10.2026: Bis etwa 500 Token Eingabe liefern Host-Ollama 0.40.1 und der gepinnte Container
+  0.6.5 dieselben Vektoren (Kosinus 1,0000). Darüber weichen sie ab (Kosinus 0,41 bis 0,79 für
+  dieselbe Eingabe). Der Container springt bei 511 Token, und dieser Sprung ist Verhalten von
+  0.6.5, nicht des Modells. Auch deshalb ist ein Host-Lauf nicht baseline-tauglich.
+- Der Harness erhebt nach der Indexierung die Planer-Statistik von `vector_store` (`ANALYZE`).
+  Ohne sie wählt PostgreSQL für die Ähnlichkeitssuche den HNSW-Index, und der liefert höchstens
+  `hnsw.ef_search` (40) Treffer statt der angeforderten `chunkTopK` (190 bei `verwaltung`). Der
+  Rohvektor-Pfad scheiterte dann an „… did not reach documentTopK=10 distinct documents“. Im
+  Container-Pfad fiel das nie auf: Die CPU-Indexierung dauert länger als ein Autovacuum-Zyklus,
+  die Statistik lag also immer schon vor. Auf der GPU war die Indexierung schneller fertig.
+  Auch mit Statistik sucht PostgreSQL nur bei der heutigen Korpusgröße (rund 1 000 Chunks) exakt
+  per Seq Scan. Bei einer größeren Tabelle kann der Planer wieder den HNSW-Index wählen.
+  Deshalb prüft der Rohvektor-Pfad bei jeder ungefilterten Frage, ob die Suche
+  `min(chunkTopK, Chunkzahl)` Treffer geliefert hat. Fehlen Treffer, bricht er mit dem Hinweis auf
+  die `ef_search`-Grenze ab und meldet nicht erst die verfehlte `documentTopK`-Abdeckung.
+
 ### Was der Lauf tut
 
 1. Prüft `eval/corpus/comic-characters/MANIFEST.sha256` gegen die tatsächlichen Korpusdateien und
@@ -275,7 +299,10 @@ Baseline-Vergleich damit ab.
    aus der laufenden Anwendungskonfiguration gelesen (`IndexingProperties.chunkSize()`) — siehe
    ADR-0010. Der Harness assertiert diesen Wert zusätzlich gegen den zum Zeitpunkt der letzten
    Baseline bekannten Anwendungsdefault (1000); weicht er ab, bricht der Lauf ab, statt still mit
-   einer möglicherweise nicht mehr gültigen Ein-Chunk-Invariante weiterzumessen.
+   einer möglicherweise nicht mehr gültigen Ein-Chunk-Invariante weiterzumessen. Danach erhebt er
+   die Planer-Statistik von `vector_store` (`ANALYZE`), damit der Plan der folgenden Suchen nicht
+   davon abhängt, ob Autovacuum die Tabelle schon analysiert hat (siehe „Voraussetzungen für den
+   Host-Pfad“ oben).
 3. Prüft die **Chunk-Zahl-Invariante** der jeweiligen Domäne (ADR-0010, Nachtrag Issue #721):
    `comic-characters` verlangt weiterhin genau einen Chunk je Dokument (Ein-Chunk-Invariante,
    unverändert). Das ist die beweiskräftige Prüfung, die die Byte-Vorabprüfung im Generator
