@@ -58,7 +58,7 @@ public class TabularDocumentFormat implements DocumentFormat {
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentFormat.class);
 
   static final String ID = "tabular";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
@@ -70,7 +70,8 @@ public class TabularDocumentFormat implements DocumentFormat {
 
   /**
    * Cap on a chunk's rendered character length - the shared target size - checked before a further
-   * row is added. A single row that alone exceeds it becomes its own chunk, split by {@link
+   * row is added; a context and header line beyond half of it still leave the rows half of it. A
+   * single row that alone exceeds it becomes its own chunk, split by {@link
    * HeadingSectionSplitter#boundedChunks} with context and header line repeated in every part.
    */
   static final int MAX_CHUNK_CHARS = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
@@ -603,10 +604,13 @@ public class TabularDocumentFormat implements DocumentFormat {
     String headerLine = TableText.row(header);
     // Counted as rendered: the blank line after the context line, one line break per row.
     int baseChars = prefix.length() + 2 + headerLine.length();
+    // The rows keep at least half the target size even when context and header line alone exceed
+    // it, the same share HeadingSectionSplitter#boundedChunks leaves the body of a unit.
+    int rowChars = Math.max(MAX_CHUNK_CHARS - baseChars, MAX_CHUNK_CHARS / 2);
 
     List<Document> chunks = new ArrayList<>();
     List<List<String>> currentRows = new ArrayList<>();
-    int currentChars = baseChars;
+    int currentChars = 0;
     long chunkStartRow = -1;
     long lastRow = -1;
 
@@ -616,13 +620,12 @@ public class TabularDocumentFormat implements DocumentFormat {
       int rowLineLength = TableText.row(row).length() + 1;
 
       boolean exceedsRowCount = currentRows.size() >= MAX_ROWS_PER_CHUNK;
-      boolean exceedsCharBudget =
-          !currentRows.isEmpty() && currentChars + rowLineLength > MAX_CHUNK_CHARS;
+      boolean exceedsCharBudget = !currentRows.isEmpty() && currentChars + rowLineLength > rowChars;
       if (!currentRows.isEmpty() && (exceedsRowCount || exceedsCharBudget)) {
         chunks.addAll(
             renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
         currentRows = new ArrayList<>();
-        currentChars = baseChars;
+        currentChars = 0;
       }
 
       if (currentRows.isEmpty()) {

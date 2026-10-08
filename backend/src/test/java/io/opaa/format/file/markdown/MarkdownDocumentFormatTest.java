@@ -29,7 +29,7 @@ class MarkdownDocumentFormatTest {
   void claimsExactlyMarkdown() {
     assertThat(pipeline.handledFormats()).containsExactly(".md");
     assertThat(pipeline.id()).isEqualTo("markdown");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   @Test
@@ -42,19 +42,19 @@ class MarkdownDocumentFormatTest {
       """
       # Verwaltungsgebuehrensatzung
 
-      Diese Satzung regelt die Gebuehren der Stadt.
+      Diese Satzung regelt die Gebuehren der Stadt. Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der schriftlichen Zustimmung der Amtsleitung.
 
       ## Personaldokumente
 
-      Fuer die Ausstellung eines Personalausweises werden Gebuehren erhoben.
+      Fuer die Ausstellung eines Personalausweises werden Gebuehren erhoben. Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der schriftlichen Zustimmung der Amtsleitung.
 
       ### Ermaessigung
 
-      Es gilt eine Ermaessigung fuer Minderjaehrige.
+      Es gilt eine Ermaessigung fuer Minderjaehrige. Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der schriftlichen Zustimmung der Amtsleitung.
 
       ## Gewerbeanmeldung
 
-      Die Gewerbeanmeldung kostet 26,00 EUR.
+      Die Gewerbeanmeldung kostet 26,00 EUR. Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der schriftlichen Zustimmung der Amtsleitung.
       """;
 
   @Test

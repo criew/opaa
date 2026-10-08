@@ -33,11 +33,17 @@ class OdtDocumentFormatTest {
   private final OdtDocumentFormat pipeline =
       new OdtDocumentFormat(new OdfProperties(0, 0, 0, 0, 0));
 
+  /** Lifts a section above the size below which neighbouring sections are combined. */
+  private static final String NAEHERE =
+      " Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht"
+          + " wird und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der"
+          + " schriftlichen Zustimmung der Amtsleitung.";
+
   @Test
   void claimsExactlyOdt() {
     assertThat(pipeline.handledFormats()).containsExactly(".odt");
     assertThat(pipeline.id()).isEqualTo("odt");
-    assertThat(pipeline.version()).isEqualTo((short) 3);
+    assertThat(pipeline.version()).isEqualTo((short) 4);
   }
 
   private static final String META_XML =
@@ -102,10 +108,11 @@ class OdtDocumentFormatTest {
     writeOdt(
         file,
         odtHeading(1, "Verwaltungsgebuehrensatzung")
-            + odtParagraph("Diese Satzung regelt die Gebuehren der Stadt.")
+            + odtParagraph("Diese Satzung regelt die Gebuehren der Stadt." + NAEHERE)
             + odtHeading(2, "Personaldokumente")
             + odtParagraph(
-                "Fuer die Ausstellung eines Personalausweises werden Gebuehren erhoben."));
+                "Fuer die Ausstellung eines Personalausweises werden Gebuehren erhoben."
+                    + NAEHERE));
 
     DocumentFormatResult result =
         pipeline.run(DocumentFormatSource.ofFile(file, "satzung.odt", ".odt"));

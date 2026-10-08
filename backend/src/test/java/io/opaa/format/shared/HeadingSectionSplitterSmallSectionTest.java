@@ -41,7 +41,7 @@ class HeadingSectionSplitterSmallSectionTest {
       for (int n = 1; n <= 12; n++) {
         String titel = titel(gruppe, n);
         String line = titelLine(gruppe, n);
-        assertThat(chunks.stream().filter(c -> c.getText().contains(line + "\n")).count())
+        assertThat(chunks.stream().filter(c -> c.getText().contains(line)).count())
             .as(titel)
             .isEqualTo(1);
         assertThat(chunks).anySatisfy(c -> assertThat(c.getText()).contains(titel + "\n\n" + line));

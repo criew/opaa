@@ -38,7 +38,7 @@ import org.springframework.ai.document.Document;
 public class MarkdownDocumentFormat implements DocumentFormat {
 
   static final String ID = "markdown";
-  static final short VERSION = 2;
+  static final short VERSION = 3;
 
   /**
    * Cutting stops at level 3, per the Teil 2 table; a deeper heading folds into its section's text.

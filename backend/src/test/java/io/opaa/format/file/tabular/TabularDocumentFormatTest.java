@@ -45,7 +45,7 @@ class TabularDocumentFormatTest {
   void claimsExactlyXlsxCsvAndOds() {
     assertThat(pipeline.handledFormats()).containsExactlyInAnyOrder(".xlsx", ".csv", ".ods");
     assertThat(pipeline.id()).isEqualTo("tabular");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
   }
 
   // --- XLSX ------------------------------------------------------------------------------------

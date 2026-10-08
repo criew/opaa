@@ -38,7 +38,7 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
   private static final Logger log = LoggerFactory.getLogger(OdtDocumentFormat.class);
 
   static final String ID = "odt";
-  static final short VERSION = 3;
+  static final short VERSION = 4;
 
   private static final String HEADER_FOOTER_LOCATION = "Kopf-/Fußzeile";
 

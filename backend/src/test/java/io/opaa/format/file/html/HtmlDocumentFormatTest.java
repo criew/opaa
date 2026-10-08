@@ -32,7 +32,7 @@ class HtmlDocumentFormatTest {
   void claimsExactlyHtml() {
     assertThat(pipeline.handledFormats()).containsExactly(".html");
     assertThat(pipeline.id()).isEqualTo("html");
-    assertThat(pipeline.version()).isEqualTo((short) 4);
+    assertThat(pipeline.version()).isEqualTo((short) 5);
   }
 
   /** ADR-0024: the page title and the first h1 are the HTML format's declared properties. */
@@ -115,12 +115,20 @@ class HtmlDocumentFormatTest {
           <main>
             <h1>Personalausweis beantragen</h1>
             <p>Der Personalausweis ist ein amtliches Ausweisdokument.</p>
+            <p>Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird
+            und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der Zustimmung.</p>
             <h2>Voraussetzungen</h2>
             <p>Sie muessen persoenlich erscheinen und ein biometrisches Lichtbild mitbringen.</p>
+            <p>Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird
+            und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der Zustimmung.</p>
             <h3>Fuer Minderjaehrige</h3>
             <p>Es ist die Zustimmung der Erziehungsberechtigten erforderlich.</p>
+            <p>Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird
+            und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der Zustimmung.</p>
             <h2>Gebuehren</h2>
             <p>Die Gebuehr betraegt 37,00 EUR fuer Antragstellende ab 24 Jahren.</p>
+            <p>Das Naehere regelt die Verwaltungsvorschrift, die im Amtsblatt der Stadt bekannt gemacht wird
+            und fuer alle Dienststellen verbindlich ist; Ausnahmen beduerfen der Zustimmung.</p>
           </main>
           <footer>
             <p>Impressum | Datenschutz</p>
@@ -557,8 +565,7 @@ class HtmlDocumentFormatTest {
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(result.chunks())
         .extracting(d -> d.getText())
-        .containsExactly(
-            "Pressemitteilung\n\nEinleitung.", "Pressemitteilung › Hintergrund\n\nDetails.");
+        .containsExactly("Pressemitteilung\n\nEinleitung.\n\nHintergrund\n\nDetails.");
   }
 
   private DocumentFormatSource sourceFor(String html) throws IOException {
