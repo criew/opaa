@@ -1066,6 +1066,16 @@ Was alle Pipelines gemeinsam haben:
   die Überschriftenzeile oder der Folientitel selbst zu lang ist, greift als letzte Grenze
   **8.000 Zeichen**; auch die bleiben selbst bei zahlenlastigem Text deutlich unter der
   Eingabegrenze, die OPAA beim Embedden prüft (Schritt 6).
+- **Kleinstabschnitte werden zusammengefasst.** Bei den überschriftengetriebenen Pipelines gilt ein
+  Abschnitt, der samt eigener Überschrift kürzer als **200 Zeichen** ist, als Kleinstabschnitt —
+  etwa ein Haushaltstitel mit einer einzigen Zeile. Aufeinanderfolgende Kleinstabschnitte unter
+  derselben übergeordneten Überschrift werden zu einem Chunk von höchstens rund 4.000 Zeichen
+  zusammengelegt. Der Chunk beginnt mit dem gemeinsamen Überschriftenpfad, der auch seine
+  Ortsangabe ist; vor dem Text jedes zusammengelegten Abschnitts steht dessen eigene Überschrift.
+  Über die Grenze der übergeordneten Überschrift hinweg wird nie zusammengelegt, Abschnitte ganz
+  ohne gemeinsame Überschrift bleiben getrennt. Ein Abschnitt ab 200 Zeichen bleibt immer ein
+  eigener Chunk: Ein einzelner Paragraf soll gezielt auffindbar bleiben. Seiten, Folien und
+  Zeilengruppen werden nicht zusammengelegt.
 - Die Chunk-Größen sind je Pipeline **projektseitig festgelegt**, nicht über einen
   Admin-Regler. Die konfigurierbaren Werte für Chunk-Größe und Überlappung gelten nur noch für
   die Auffang-Pipeline und strukturlose Texte. Dort wird nach Tokens geschnitten, standardmäßig
