@@ -65,7 +65,6 @@ class SuccessionLifecycleIntegrationTest {
   @Autowired private SuccessionDetectionService detectionService;
   @Autowired private SuccessionRetentionService retentionService;
   @Autowired private SuccessionCaseRepository cases;
-  @Autowired private SuccessionReviewRepository reviews;
   @Autowired private LibraryExternalAccessService externalAccessService;
   @Autowired private KnowledgeLibraryService libraryService;
   @Autowired private KnowledgeLibraryRepository libraries;
@@ -109,7 +108,6 @@ class SuccessionLifecycleIntegrationTest {
         new ArrayList<>(jdbcTemplate.queryForList("SELECT id FROM succession_cases", UUID.class));
     written.removeAll(foreignCaseIds);
     for (UUID caseId : written) {
-      jdbcTemplate.update("DELETE FROM succession_reviews WHERE case_id = ?", caseId);
       jdbcTemplate.update("DELETE FROM succession_cases WHERE id = ?", caseId);
     }
     for (UUID ownOrganizationId : ownOrganizationIds) {
@@ -122,7 +120,6 @@ class SuccessionLifecycleIntegrationTest {
   private void removeRowsOf(UUID scopedOrganizationId) {
     for (String table :
         List.of(
-            "succession_reviews",
             "succession_cases",
             "space_memberships",
             "space_membership_history",
@@ -363,34 +360,6 @@ class SuccessionLifecycleIntegrationTest {
     assertThat(page.entries()).extracting(entry -> entry.finding().objectId()).contains(group);
   }
 
-  /** The Sichtungsvermerk lifts the highlight and triggers nothing else. */
-  @Test
-  void aSichtungsvermerkIsRecordedAgainstTheCase() {
-    CurrentUser owner = user(SystemRole.USER);
-    libraryOwnedByUser(owner.id());
-    lock(owner.id());
-    detectionService.runFor(organizationId);
-    UUID caseId =
-        successionService
-            .list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50)
-            .entries()
-            .get(0)
-            .caseId();
-
-    SuccessionReview review =
-        successionService.review(caseId, "Nachfolge wird im Referat geklärt", admin);
-
-    assertThat(review.getCaseId()).isEqualTo(caseId);
-    assertThat(review.getReviewedByUserId()).isEqualTo(admin.id());
-    assertThat(
-            successionService
-                .list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50)
-                .entries()
-                .get(0)
-                .lastReviewReason())
-        .isEqualTo("Nachfolge wird im Referat geklärt");
-  }
-
   /**
    * The other half of the frozen reach, and the one a guard in the wrong place silently breaks:
    * everything that takes reach away stays possible - a downgrade, an expiry brought forward, a
@@ -566,48 +535,37 @@ class SuccessionLifecycleIntegrationTest {
   }
 
   // -------------------------------------------------------------------------------------------
-  // The age, the Sichtungsvermerk and the retention of the records
+  // The age and the retention of the records
   // -------------------------------------------------------------------------------------------
 
-  /** The only figure that makes this feature configurable - and what a Sichtungsvermerk does. */
+  /** The only figure that makes this feature configurable. */
   @Test
-  void anAgedEntryIsHighlightedUntilASichtungsvermerkAndAgainAfterOnePeriod() {
+  void anEntryOlderThanTheAgingThresholdIsHighlighted() {
     CurrentUser owner = user(SystemRole.USER);
     libraryOwnedByUser(owner.id());
     lock(owner.id());
     detectionService.runFor(organizationId);
     UUID caseId = firstEntry().caseId();
-    backdateFirstSeen(caseId, 400);
 
+    assertThat(firstEntry().highlighted()).as("a fresh entry is not highlighted").isFalse();
+
+    backdateFirstSeen(caseId, 400);
     assertThat(firstEntry().highlighted())
         .as("older than the aging threshold of twelve months")
-        .isTrue();
-
-    successionService.review(caseId, "geprüft, Nachfolge in Vorbereitung", admin);
-    assertThat(firstEntry().highlighted())
-        .as("a Sichtungsvermerk lifts the highlight for one more period")
-        .isFalse();
-
-    jdbcTemplate.update(
-        "UPDATE succession_reviews SET reviewed_at = now() - interval '400 days' WHERE case_id = ?",
-        caseId);
-    assertThat(firstEntry().highlighted())
-        .as("and only for one - an aged Sichtungsvermerk highlights the entry again")
         .isTrue();
   }
 
   /**
    * ADR-0036, Entscheidung 8: the records are protocol and follow the protocol's window. A closed
-   * record goes with its Sichtungsvermerke; an open one is never deleted, whatever its age.
+   * record goes; an open one is never deleted, whatever its age.
    */
   @Test
-  void theRetentionRunDeletesClosedRecordsWithTheirSichtungsvermerkeAndKeepsOpenOnes() {
+  void theRetentionRunDeletesClosedRecordsAndKeepsOpenOnes() {
     CurrentUser owner = user(SystemRole.USER);
     libraryOwnedByUser(owner.id());
     lock(owner.id());
     detectionService.runFor(organizationId);
     UUID closedId = firstEntry().caseId();
-    successionService.review(closedId, "geprüft, weiterhin offen", admin);
     unlock(owner.id());
     detectionService.runFor(organizationId);
     jdbcTemplate.update(
@@ -625,7 +583,6 @@ class SuccessionLifecycleIntegrationTest {
     retentionService.runOnce();
 
     assertThat(cases.findById(closedId)).isEmpty();
-    assertThat(reviews.findByCaseIdInOrderByReviewedAtDesc(List.of(closedId))).isEmpty();
     assertThat(cases.findById(openId))
         .as("an open record still describes something that holds")
         .isPresent();

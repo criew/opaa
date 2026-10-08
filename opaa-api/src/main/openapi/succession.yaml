@@ -145,9 +145,9 @@ paths:
         previous owner or by acting person. The order is fixed - oldest first.
 
         The entries are derived on every call, never stored: an object that has a capable
-        responsible party again is gone from the list at once. Only the age and the Sichtungsvermerk
-        come from the record the hourly detection run keeps; an entry the run has not seen yet is
-        listed with firstSeenAt absent.
+        responsible party again is gone from the list at once. Only the age comes from the record
+        the hourly detection run keeps; an entry the run has not seen yet is listed with
+        firstSeenAt absent.
       parameters:
         - name: kind
           in: query
@@ -188,55 +188,6 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "403":
           description: The operational list is reserved to SYSTEM_ADMIN.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /api/v1/admin/succession/{caseId}/reviews:
-    parameters:
-      - name: caseId
-        in: path
-        required: true
-        schema:
-          type: string
-          format: uuid
-
-    post:
-      operationId: reviewSuccessionCase
-      tags: [succession]
-      summary: Write a Sichtungsvermerk on one entry ("geprüft am …, weiterhin offen, Grund")
-      description: >
-        Lifts the highlight of an aged entry for one more period and triggers nothing else - no
-        deadline, no escalation, no mail. Who wrote it is readable at the entry and is no
-        evaluation axis.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/SuccessionReviewRequest"
-      responses:
-        "201":
-          description: Sichtungsvermerk recorded
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/SuccessionReviewResponse"
-        "400":
-          description: The reason is missing, or the entry is already closed.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: The operational list is reserved to SYSTEM_ADMIN.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: No such entry in the caller's organization.
           content:
             application/json:
               schema:
@@ -509,8 +460,8 @@ components:
           format: uuid
           nullable: true
           description: >
-            What a Sichtungsvermerk is written against - absent until the hourly detection run has
-            seen the finding. The list is complete from day one; the record follows within the hour.
+            The record the hourly detection run keeps for this finding - absent until the run has
+            seen it. The list is complete from day one; the record follows within the hour.
         objectType:
           $ref: "#/components/schemas/SuccessionObjectType"
         assetType:
@@ -555,15 +506,8 @@ components:
         highlighted:
           type: boolean
           description: >
-            Older than the configured threshold (12 months by default) without a Sichtungsvermerk
-            since. A highlight, never a deadline: nothing follows from it.
-        lastReviewedAt:
-          type: string
-          format: date-time
-          nullable: true
-        lastReviewReason:
-          type: string
-          nullable: true
+            Open for longer than the configured threshold (12 months by default). A highlight,
+            never a deadline: nothing follows from it.
 
     SuccessionListResponse:
       type: object
@@ -581,32 +525,6 @@ components:
           type: integer
         totalPages:
           type: integer
-
-    SuccessionReviewRequest:
-      type: object
-      required: [reason]
-      properties:
-        reason:
-          type: string
-          minLength: 1
-          maxLength: 1000
-          description: Why the entry is still open - "geprüft am …, weiterhin offen, Grund".
-
-    SuccessionReviewResponse:
-      type: object
-      required: [id, caseId, reviewedAt, reason]
-      properties:
-        id:
-          type: string
-          format: uuid
-        caseId:
-          type: string
-          format: uuid
-        reviewedAt:
-          type: string
-          format: date-time
-        reason:
-          type: string
 
     SuccessionStateResponse:
       type: object

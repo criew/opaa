@@ -3,10 +3,13 @@ import { Link as RouterLink } from 'react-router'
 import Box from '@mui/material/Box'
 import Tab from '@mui/material/Tab'
 import Tabs from '@mui/material/Tabs'
+import { radius } from '../theme/tokens'
 
 export interface AreaTab<T extends string> {
   value: T
   label: string
+  /** A neutral count after the label, e.g. open entries; part of the tab's accessible name. */
+  count?: number
 }
 
 interface AreaTabsProps<T extends string> {
@@ -47,6 +50,10 @@ export default function AreaTabs<T extends string>({
       <Tabs
         value={value}
         aria-label={label}
+        // Long labels or a narrow screen scroll instead of being cut off.
+        variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{
           borderBottom: 1,
           borderColor: 'divider',
@@ -64,7 +71,31 @@ export default function AreaTabs<T extends string>({
         {tabs.map((entry) => (
           <Tab
             key={entry.value}
-            label={entry.label}
+            label={
+              entry.count === undefined ? (
+                entry.label
+              ) : (
+                <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 1 }}>
+                  {entry.label}{' '}
+                  <Box
+                    component="span"
+                    sx={{
+                      minWidth: 22,
+                      px: 0.75,
+                      borderRadius: `${radius.pill}px`,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      lineHeight: '20px',
+                      textAlign: 'center',
+                      bgcolor: entry.count > 0 ? 'action.selected' : 'transparent',
+                      color: entry.count > 0 ? 'text.primary' : 'text.secondary',
+                    }}
+                  >
+                    {entry.count}
+                  </Box>
+                </Box>
+              )
+            }
             value={entry.value}
             component={RouterLink}
             to={href(entry.value)}

@@ -52,7 +52,7 @@ public class FullTextChunkStore {
    * before it ships. Public because the {@code io.opaa.retrieval} tests seed rows below it to pin
    * that contract.
    */
-  public static final short CURRENT_TSV_VERSION = 5;
+  public static final short CURRENT_TSV_VERSION = 6;
 
   private final JdbcTemplate jdbcTemplate;
 

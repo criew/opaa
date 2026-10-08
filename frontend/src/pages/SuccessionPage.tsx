@@ -1,43 +1,78 @@
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Navigate, useParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined'
-import type { SuccessionKind } from '../types/api'
 import { useAuthStore } from '../stores/authStore'
+import { getSuccessionEntries } from '../services/successionApi'
 import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import AreaTabs from '../components/AreaTabs'
 import SuccessionList from '../components/succession/SuccessionList'
+import {
+  SUCCESSION_TABS,
+  type SuccessionTab,
+} from '../components/succession/successionPresentation'
 import { contentWidth } from '../theme/tokens'
 
-export type SuccessionTab = 'open' | 'grants' | 'groups'
-
-const tabs: Array<{ value: SuccessionTab; label: string }> = [
-  { value: 'open', label: 'Offene Nachfolgen' },
-  { value: 'grants', label: 'Freigaben ohne Empfänger' },
-  { value: 'groups', label: 'Gruppen ohne Wirkung' },
-]
-
-const kindOf: Record<SuccessionTab, SuccessionKind> = {
-  open: 'OPEN_SUCCESSION',
-  grants: 'GRANTS_WITHOUT_RECIPIENT',
-  groups: 'GROUP_WITHOUT_EFFECT',
-}
-
-const emptyTextOf: Record<SuccessionTab, string> = {
-  open: 'Für jedes Objekt gibt es eine handlungsfähige zuständige Stelle.',
-  grants: 'Jede Gruppe, die Rechte trägt, hat mindestens ein aktives Mitglied.',
-  groups: 'Es gibt keine interne Gruppe ohne Wirkung und ohne aktives Mitglied.',
-}
+const TAB_ORDER: SuccessionTab[] = ['open', 'grants', 'groups']
 
 function isSuccessionTab(value: string | undefined): value is SuccessionTab {
   return value === 'open' || value === 'grants' || value === 'groups'
 }
 
 /**
- * Die Betriebsliste des Lebenszyklus (#1821 gegen #1819, ADR-0036 Entscheidung 6): drei Reiter mit
- * derselben Mechanik — Objekt, Adressat, Alter, Sichtungsvermerk. Die Liste zeigt, sie treibt
- * nicht: keine Frist, keine Erinnerung, keine E-Mail.
+ * How many entries each tab holds - per kind of entry only, never per person (ADR-0036,
+ * Entscheidung 6). Undefined while loading or when a count could not be read. Reloaded on every
+ * tab change; an answer that arrives after a newer request is dropped.
+ */
+function useTabCounts(
+  activeTab: SuccessionTab,
+): [Partial<Record<SuccessionTab, number>>, () => void] {
+  const [counts, setCounts] = useState<Partial<Record<SuccessionTab, number>>>({})
+  const latest = useRef(0)
+  const load = useCallback(() => {
+    const request = ++latest.current
+    void Promise.all(
+      TAB_ORDER.map((tab) =>
+        getSuccessionEntries(SUCCESSION_TABS[tab].kind, 0, 1)
+          .then((listing) => [tab, listing.totalElements] as const)
+          .catch(() => [tab, undefined] as const),
+      ),
+    ).then((entries) => {
+      if (request === latest.current) setCounts(Object.fromEntries(entries))
+    })
+  }, [])
+  useEffect(() => {
+    load()
+  }, [load, activeTab])
+  return [counts, load]
+}
+
+/** The page body for the system administration - the counts are only asked for here. */
+function SuccessionContent({ activeTab }: { activeTab: SuccessionTab }) {
+  const [counts, reloadCounts] = useTabCounts(activeTab)
+  return (
+    <AreaTabs
+      tabs={TAB_ORDER.map((value) => ({
+        value,
+        label: SUCCESSION_TABS[value].title,
+        count: counts[value],
+      }))}
+      value={activeTab}
+      href={(value) => `/admin/succession/${value}`}
+      label="Bereiche der Liste"
+      idPrefix="succession"
+    >
+      {(value) => <SuccessionList text={SUCCESSION_TABS[value]} onChanged={reloadCounts} />}
+    </AreaTabs>
+  )
+}
+
+/**
+ * What nobody takes care of any more (ADR-0036, Entscheidung 6): objects and groups whose
+ * responsible person left or whose group emptied. The list shows, it does not push - no deadline,
+ * no reminder, no e-mail.
  */
 export default function SuccessionPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -51,10 +86,9 @@ export default function SuccessionPage() {
   if (!isSystemAdmin) {
     return (
       <Box sx={{ flexGrow: 1, p: { xs: 2.5, md: 5 }, maxWidth: contentWidth.notice }}>
-        <PageHeading title="Lebenszyklus" gutterBottom />
+        <PageHeading title="Ohne Zuständigkeit" gutterBottom />
         <Alert severity="info">
-          Die Betriebsliste führt die Systemverwaltung. Für Ihr Konto ist diese Seite nicht
-          freigegeben.
+          Diese Liste führt die Systemverwaltung. Für Ihr Konto ist diese Seite nicht freigegeben.
         </Alert>
       </Box>
     )
@@ -65,19 +99,11 @@ export default function SuccessionPage() {
       <Box sx={{ maxWidth: contentWidth.areaContent }}>
         <AreaPageHeader
           icon={AssignmentLateOutlinedIcon}
-          title="Lebenszyklus"
-          description="Objekte und Gruppen, für die niemand mehr handeln kann. Die Liste ist vollständig ab dem ersten Tag und geht vom Objekt aus. Das jeweilige Objekt bleibt nutzbar, bestehende Rechte bleiben, nichts wird gelöscht — eingefroren ist allein die Reichweite."
+          title="Ohne Zuständigkeit"
+          description="Hier steht, um was sich niemand mehr kümmern kann – etwa weil die verantwortliche Person ausgeschieden ist oder eine Gruppe keine Mitglieder mehr hat. Die Inhalte bleiben nutzbar, und nichts wird gelöscht; neue Freigaben sind aber gesperrt, bis wieder jemand zuständig ist. Die Liste erinnert nicht und verschickt nichts."
         />
 
-        <AreaTabs
-          tabs={tabs}
-          value={activeTab}
-          href={(value) => `/admin/succession/${value}`}
-          label="Reiter der Betriebsliste"
-          idPrefix="succession"
-        >
-          {(value) => <SuccessionList kind={kindOf[value]} emptyText={emptyTextOf[value]} />}
-        </AreaTabs>
+        <SuccessionContent activeTab={activeTab} />
       </Box>
     </Box>
   )
