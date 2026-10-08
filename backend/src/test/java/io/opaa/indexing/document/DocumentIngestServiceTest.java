@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -1838,6 +1839,33 @@ class DocumentIngestServiceTest {
           .markFailedWithoutChunks(doc.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
       verify(documentRepository, never()).delete(any(Document.class));
       assertThat(counter("failed")).isEqualTo(1.0);
+    }
+
+    @Test
+    void aChunkTooLongToEmbedFailsTheDocumentWithAReasonNamingItsFundort() throws IOException {
+      // regression guard for #2328: the document ended with the generic processing failure, and
+      // nobody could tell which part of it was the problem.
+      Path file = fileNamed("anlage.pdf", "content");
+      Document doc = pendingUpload("anlage.pdf");
+      when(checksumService.computeSha256(file)).thenReturn("checksum");
+      stubParsedInto(
+          file,
+          List.of(
+              new org.springframework.ai.document.Document(
+                  "ueberlanger Abschnitt",
+                  Map.of(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. 4"))));
+      IllegalArgumentException tooLong =
+          new IllegalArgumentException(
+              "Tokens in a single document exceeds the maximum number of allowed input tokens");
+      when(embeddingModel.embed(anyList(), any(), eq(batchingStrategy))).thenCallRealMethod();
+      when(batchingStrategy.batch(anyList())).thenThrow(tooLong);
+
+      service.processUploadedFileAsync(upload(doc, file), null, null);
+
+      verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
+      verify(documentRepository)
+          .markFailedWithoutChunks(
+              doc.getId(), DocumentIngestService.NOT_EMBEDDABLE_MESSAGE + " (S. 4)");
     }
 
     @Test

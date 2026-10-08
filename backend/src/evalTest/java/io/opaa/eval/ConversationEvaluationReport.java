@@ -81,8 +81,14 @@ public record ConversationEvaluationReport(
    *
    * <p>Version 7 (issue #2330): {@code PdfDocumentFormat#version()} moved 2 → 3 (raised sentence
    * numbers separated from the following text) - fingerprint-only, as version 6.
+   *
+   * <p>Version 8 (issues #2327/#2328): the chunking of oversized sections (split instead of
+   * truncated at 20,000 characters, pages, slides and row groups cut to the 4,000-character target)
+   * moved pdf 3 -> 4, docx, pptx, odt, odp, tabular, markdown, html and confluence -
+   * fingerprint-only, no block of any corpus document reaches 4,000 characters, so no measured
+   * chunk changes.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 7;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 8;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

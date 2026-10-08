@@ -29,7 +29,7 @@ class MarkdownDocumentFormatTest {
   void claimsExactlyMarkdown() {
     assertThat(pipeline.handledFormats()).containsExactly(".md");
     assertThat(pipeline.id()).isEqualTo("markdown");
-    assertThat(pipeline.version()).isEqualTo((short) 1);
+    assertThat(pipeline.version()).isEqualTo((short) 2);
   }
 
   @Test

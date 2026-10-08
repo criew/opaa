@@ -58,7 +58,7 @@ public class TabularDocumentFormat implements DocumentFormat {
   private static final Logger log = LoggerFactory.getLogger(TabularDocumentFormat.class);
 
   static final String ID = "tabular";
-  static final short VERSION = 1;
+  static final short VERSION = 2;
 
   /**
    * Rows of data grouped per chunk, the repeated header not counting against it - <b>gesetzt, nicht
@@ -69,12 +69,11 @@ public class TabularDocumentFormat implements DocumentFormat {
   static final int MAX_ROWS_PER_CHUNK = 50;
 
   /**
-   * Soft cap on a chunk's rendered character length, checked before a further row is added, against
-   * a pathologically wide sheet producing an unboundedly large chunk. A single row that alone
-   * exceeds it still becomes its own one-row chunk rather than being split mid-row - see {@link
-   * HeadingSectionSplitter#HARD_CHUNK_CHAR_LIMIT} for the absolute ceiling it is still subject to.
+   * Cap on a chunk's rendered character length - the shared target size - checked before a further
+   * row is added. A single row that alone exceeds it becomes its own chunk, split by {@link
+   * HeadingSectionSplitter#boundedChunks} with context and header line repeated in every part.
    */
-  static final int MAX_CHUNK_CHARS = 6_000;
+  static final int MAX_CHUNK_CHARS = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
 
   private static final char[] CSV_DELIMITER_CANDIDATES = {',', ';', '\t'};
 
@@ -552,7 +551,7 @@ public class TabularDocumentFormat implements DocumentFormat {
       return List.of();
     }
     if (nonBlank.size() == 1) {
-      return List.of(renderSingleRowChunk(sheetName, tableName, nonBlank.getFirst()));
+      return renderSingleRowChunk(sheetName, tableName, nonBlank.getFirst());
     }
 
     List<String> header = nonBlank.getFirst().values();
@@ -565,20 +564,19 @@ public class TabularDocumentFormat implements DocumentFormat {
     return buildChunks(sheetName, tableName, header, dataRows, dataRowNumbers);
   }
 
-  private static Document renderSingleRowChunk(String sheetName, String tableName, RawRow row) {
+  private static List<Document> renderSingleRowChunk(
+      String sheetName, String tableName, RawRow row) {
     String prefix =
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
-    String text =
-        HeadingSectionSplitter.capChunkLength(prefix + "\n\n" + TableText.row(row.values()));
 
     String rowRange = "Zeile " + row.number();
     String location = sheetName != null ? "Blatt " + sheetName + " · " + rowRange : rowRange;
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new Document(text, metadata);
+    return HeadingSectionSplitter.boundedChunks(prefix, TableText.row(row.values()), metadata);
   }
 
   /**
@@ -603,7 +601,8 @@ public class TabularDocumentFormat implements DocumentFormat {
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
             : "Tabelle: " + tableName;
     String headerLine = TableText.row(header);
-    int baseChars = prefix.length() + headerLine.length();
+    // Counted as rendered: the blank line after the context line, one line break per row.
+    int baseChars = prefix.length() + 2 + headerLine.length();
 
     List<Document> chunks = new ArrayList<>();
     List<List<String>> currentRows = new ArrayList<>();
@@ -614,13 +613,14 @@ public class TabularDocumentFormat implements DocumentFormat {
     for (int i = 0; i < dataRows.size(); i++) {
       List<String> row = dataRows.get(i);
       long rowNumber = dataRowNumbers.get(i);
-      int rowLineLength = TableText.row(row).length();
+      int rowLineLength = TableText.row(row).length() + 1;
 
       boolean exceedsRowCount = currentRows.size() >= MAX_ROWS_PER_CHUNK;
       boolean exceedsCharBudget =
           !currentRows.isEmpty() && currentChars + rowLineLength > MAX_CHUNK_CHARS;
       if (!currentRows.isEmpty() && (exceedsRowCount || exceedsCharBudget)) {
-        chunks.add(renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
+        chunks.addAll(
+            renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
         currentRows = new ArrayList<>();
         currentChars = baseChars;
       }
@@ -633,19 +633,20 @@ public class TabularDocumentFormat implements DocumentFormat {
       lastRow = rowNumber;
     }
     if (!currentRows.isEmpty()) {
-      chunks.add(renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
+      chunks.addAll(
+          renderChunk(prefix, headerLine, currentRows, sheetName, chunkStartRow, lastRow));
     }
     return chunks;
   }
 
-  private static Document renderChunk(
+  private static List<Document> renderChunk(
       String prefix,
       String headerLine,
       List<List<String>> rows,
       String sheetName,
       long startRow,
       long endRow) {
-    StringBuilder text = new StringBuilder(prefix).append("\n\n").append(headerLine).append('\n');
+    StringBuilder text = new StringBuilder();
     for (List<String> row : rows) {
       text.append(String.join(" | ", row)).append('\n');
     }
@@ -656,7 +657,7 @@ public class TabularDocumentFormat implements DocumentFormat {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new Document(
-        HeadingSectionSplitter.capChunkLength(text.toString().stripTrailing()), metadata);
+    return HeadingSectionSplitter.boundedChunks(
+        prefix + "\n\n" + headerLine, "\n", text.toString().stripTrailing(), metadata);
   }
 }

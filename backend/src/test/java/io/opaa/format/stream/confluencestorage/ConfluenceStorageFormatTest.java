@@ -63,7 +63,7 @@ class ConfluenceStorageFormatTest {
     // DocumentIngestService for every document with a source context - not declared here.
     assertThat(pipeline.handledFormats()).isEmpty();
     assertThat(pipeline.id()).isEqualTo("confluence");
-    assertThat(pipeline.version()).isEqualTo((short) 2);
+    assertThat(pipeline.version()).isEqualTo((short) 3);
     assertThat(pipeline.passthroughMetadataKeys())
         .containsExactlyInAnyOrder(ChunkMetadataKeys.LOCATION_METADATA_KEY);
   }

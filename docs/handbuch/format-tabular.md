@@ -1,6 +1,6 @@
 # Format: Tabellen (XLSX, CSV, ODS)
 
-> **Entwurf.** Pipeline `tabular`, Version 1. Der gemeinsame Rahmen aller Format-Pipelines steht
+> **Entwurf.** Pipeline `tabular`, Version 2. Der gemeinsame Rahmen aller Format-Pipelines steht
 > im Kapitel [Indexierung](indexierung.md), Abschnitt 5.
 
 ## 1. Zulassung
@@ -28,9 +28,9 @@ Je Tabellenblatt (bei CSV: die eine Tabelle):
 
 1. Die **erste nicht-leere Zeile ist die Kopfzeile**.
 2. Die Datenzeilen werden zu **Gruppen von höchstens 50 Zeilen** zusammengefasst. Eine Gruppe
-   endet früher, wenn die nächste Zeile den Chunk über 6.000 Zeichen brächte. Eine einzelne
-   Zeile, die für sich schon länger ist, wird nie in der Mitte geschnitten, sondern ein eigener
-   Chunk.
+   endet früher, wenn die nächste Zeile den Chunk über 4.000 Zeichen brächte. Eine einzelne
+   Zeile, die für sich schon länger ist, wird in mehrere Chunks geteilt; jedes Teilstück beginnt
+   mit Kontext- und Kopfzeile und trägt dieselbe Ortsangabe.
 3. **Jeder Chunk beginnt mit einer Kontextzeile und der Kopfzeile.** Beides steht im
    Chunk-Text selbst, nicht nur in den Metadaten, damit die Volltextsuche „Gebühr" in einer
    Spaltenüberschrift auch in der 200. Zeile trifft.
@@ -85,7 +85,7 @@ Schlüssel unter `opaa.indexing.tabular.*`:
 | `max-ods-rows` | 100.000 | Zeilen je ODS-Datei |
 
 Fest und nicht konfigurierbar, weil sie den Zuschnitt beschreiben und kein Sicherheitslimit
-sind: 50 Zeilen und 6.000 Zeichen je Chunk. XLSX braucht keinen eigenen Deckel, Apache POI
+sind: 50 Zeilen und 4.000 Zeichen je Chunk. XLSX braucht keinen eigenen Deckel, Apache POI
 schützt prozessweit gegen ZIP-Bomben. Der ODS-Leser verarbeitet keine externen XML-Entitäten.
 
 ## 7. Nicht verarbeitet
