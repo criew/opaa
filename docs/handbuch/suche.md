@@ -436,9 +436,19 @@ Als **technischer Feldname** gilt ein Wort in einer dieser Formen:
 Fragt jemand „Was bedeutet das Feld VORORT?", steht damit der Abschnitt mit diesem Feldnamen vor
 Abschnitten, in denen nur „Feld" oder der Name des Handbuchs häufig vorkommen. Eine Ausnahmeliste gibt
 es nicht: Auch Abkürzungen wie `ELSTER` oder `KONSENS`, Gesetzeskürzel wie `BauGB` und Überschriften in
-Großbuchstaben werden so erfasst. Das schadet nicht, denn eine Kennung wirkt nur, wenn die Frage sie
-ebenfalls enthält. Gewöhnliche Wörter, auch großgeschriebene am Satzanfang, sind keine Feldnamen.
-Umlaute werden umgeschrieben, sodass `PRÜFUNG` und `PRUEFUNG` dieselbe Kennung ergeben.
+Großbuchstaben werden so erfasst, ebenso Wörter mit Binnen-I wie „MitarbeiterInnen". Eine solche
+Kennung wirkt nur, wenn die Frage sie ebenfalls enthält. Dann aber hebt sie jeden Abschnitt mit
+demselben Wort an: Eine Frage mit „ELSTER" bevorzugt Abschnitte, die „ELSTER" nennen, und eine Frage in
+Binnen-I-Schreibung bevorzugt Abschnitte in genau dieser Schreibung vor solchen mit „Mitarbeiterinnen
+und Mitarbeiter". Ein Gesetzeskürzel innerhalb einer Paragrafenangabe („§ 35 BauGB") ergibt keine
+eigene Feldnamen-Kennung, damit „§ 34 BauGB" und „§ 35 BauGB" unterscheidbar bleiben. Gewöhnliche
+Wörter, auch großgeschriebene am Satzanfang, sind keine Feldnamen. Umlaute werden umgeschrieben,
+sodass `PRÜFUNG` und `PRUEFUNG` dieselbe Kennung ergeben, auch wenn der Umlaut im Dokument in zwei
+Zeichen zerlegt gespeichert ist, wie es bei PDF-Texten vorkommt.
+
+Je Abschnitt werden höchstens 64 Kennungen geführt. Eine Feldtabelle mit mehr Feldnamen erreicht diese
+Grenze. Dann fehlen die späteren Feldnamen, und Überschriften oder Abkürzungen in Großbuchstaben
+weiter vorn im Abschnitt belegen Plätze vor ihnen.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
 in einer Transaktion (Kapitel [Indexierung](indexierung.md), Schritt 7); auf diesem Weg entsteht

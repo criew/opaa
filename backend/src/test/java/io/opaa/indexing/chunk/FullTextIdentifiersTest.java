@@ -23,14 +23,7 @@ class FullTextIdentifiersTest {
 
     assertThat(outerArea).isNotEmpty();
     assertThat(innerArea).isNotEmpty();
-    // Both name the BauGB, so they share its field-name lexeme; the paragraph lexemes stay apart.
-    assertThat(outerArea).containsAll(List.of("xpar35", "xpar35baugb"));
-    assertThat(outerArea)
-        .filteredOn(lexeme -> lexeme.startsWith("xpar"))
-        .doesNotContainAnyElementsOf(innerArea);
-    assertThat(outerArea)
-        .filteredOn(lexeme -> !lexeme.startsWith("xpar"))
-        .containsExactly("xfldbaugb");
+    assertThat(outerArea).doesNotContainAnyElementsOf(innerArea);
   }
 
   /**
@@ -212,11 +205,47 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract("feld_name und beleg_nr")).isEmpty();
   }
 
-  /** The paragraph lexemes are unchanged; a law abbreviation adds its field-name form, no more. */
+  /**
+   * A law abbreviation read as part of a paragraph reference yields no field-name lexeme: a shared
+   * {@code xfldbaugb} would put every BauGB section next to the asked paragraph at weight A. Named
+   * on its own, the same abbreviation is a field-name lexeme like any other.
+   */
+  @Test
+  void aLawAbbreviationInsideAParagraphReferenceYieldsNoFieldName() {
+    assertThat(FullTextIdentifiers.extract("§ 35 BauGB")).containsExactly("xpar35", "xpar35baugb");
+    assertThat(FullTextIdentifiers.extract("§§ 34, 35 BauGB")).noneMatch(l -> l.startsWith("xfld"));
+    assertThat(FullTextIdentifiers.extract("Das BauGB gilt, auch nach § 35 BauGB."))
+        .containsExactly("xpar35", "xpar35baugb", "xfldbaugb");
+  }
+
+  /** NFD text, as PDF extraction often yields it, gives the same lexeme as the composed form. */
+  @Test
+  void decomposedUmlautsYieldTheSameFieldNameAsComposedOnes() {
+    String decomposed = "ZAHLUNGSPRU\u0308FUNG";
+
+    assertThat(FullTextIdentifiers.extract(decomposed)).containsExactly("xfldzahlungspruefung");
+    assertThat(FullTextIdentifiers.extract("ZAHLUNGSPRÜFUNG"))
+        .containsExactly("xfldzahlungspruefung");
+  }
+
+  @Test
+  void theCapitalSharpSIsAnUppercaseLetter() {
+    assertThat(FullTextIdentifiers.extract("STRAẞE")).containsExactly("xfldstrasse");
+    assertThat(FullTextIdentifiers.extract("STRASSE")).containsExactly("xfldstrasse");
+  }
+
+  /** No exception list: a Binnen-I has the camel-case transition and is taken as well. */
+  @Test
+  void aBinnenIIsTakenAsCamelCase() {
+    assertThat(FullTextIdentifiers.extract("Alle MitarbeiterInnen"))
+        .containsExactly("xfldmitarbeiterinnen");
+  }
+
+  /** The paragraph lexemes are unchanged next to field names. */
   @Test
   void paragraphLexemesAreUnchangedNextToFieldNames() {
-    assertThat(FullTextIdentifiers.extract("§ 35 BauGB"))
-        .containsExactly("xpar35", "xpar35baugb", "xfldbaugb");
+    assertThat(FullTextIdentifiers.extract("§ 35 BauGB, Feld BELEG_NR"))
+        .containsExactly("xpar35", "xpar35baugb", "xfldbelegnr");
     assertThat(FullTextIdentifiers.extract("§ 3 Abs. 2 VGS"))
         .containsExactlyInAnyOrderElementsOf(
             List.of("xpar3", "xpar3abs2", "xpar3vgs", "xpar3abs2vgs"));
@@ -254,7 +283,7 @@ class FullTextIdentifiersTest {
   void paragraphEnumerationsYieldALexemePerNumber() {
     assertThat(FullTextIdentifiers.extract("§§ 34, 35 BauGB"))
         .containsExactlyInAnyOrderElementsOf(
-            List.of("xpar34", "xpar34baugb", "xpar35", "xpar35baugb", "xfldbaugb"));
+            List.of("xpar34", "xpar34baugb", "xpar35", "xpar35baugb"));
     assertThat(FullTextIdentifiers.extract("§§ 34 und 35 BauGB")).contains("xpar35baugb");
   }
 

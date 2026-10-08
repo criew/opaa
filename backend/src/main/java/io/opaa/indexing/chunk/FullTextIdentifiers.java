@@ -1,6 +1,8 @@
 package io.opaa.indexing.chunk;
 
+import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -23,9 +25,10 @@ import java.util.regex.Pattern;
 public final class FullTextIdentifiers {
 
   /**
-   * Upper bound on lexemes per text - a defence against a pathological input (a table of hundreds
-   * of file numbers) inflating one chunk's {@code tsvector}, not an expected case; real chunks stay
-   * far below it.
+   * Upper bound on lexemes per text, against one chunk's {@code tsvector} growing without limit.
+   * Paragraph, file-number, ordinance and email lexemes rarely come near it; field names can: a
+   * field table of more than this many names reaches it, and uppercase headings or acronyms earlier
+   * in the text take places first. What is cut are field names, in order of appearance.
    */
   static final int MAX_LEXEMES = 64;
 
@@ -120,21 +123,22 @@ public final class FullTextIdentifiers {
 
   /** {@code BELEG_NR}, {@code Z_KASSE_ID}: uppercase segments joined by underscores. */
   private static final Pattern UPPER_SNAKE_CASE =
-      Pattern.compile("[A-ZÄÖÜ][A-ZÄÖÜ0-9]*(?:_[A-ZÄÖÜ0-9]+)+");
+      Pattern.compile("[A-ZÄÖÜẞ][A-ZÄÖÜẞ0-9]*(?:_[A-ZÄÖÜẞ0-9]+)+");
 
   /**
    * {@code ZahlungsDatenKV}, {@code MessageRefId}: a lowercase letter directly followed by an
    * uppercase one inside the word. A capitalized word at the start of a sentence has no such
-   * transition and stays an ordinary word.
+   * transition and stays an ordinary word. A Binnen-I ({@code MitarbeiterInnen}) has one and is
+   * taken as well.
    */
   private static final Pattern CAMEL_CASE =
-      Pattern.compile("[A-Za-zÄÖÜäöüß0-9]*[a-zäöüß][A-ZÄÖÜ][A-Za-zÄÖÜäöüß0-9]*");
+      Pattern.compile("[A-Za-zÄÖÜẞäöüß0-9]*[a-zäöüß][A-ZÄÖÜẞ][A-Za-zÄÖÜẞäöüß0-9]*");
 
   /**
    * {@code VORORT}, {@code INHAUS}: an all-uppercase word of at least five letters. Deliberately
    * without an exception list, so acronyms such as {@code ELSTER} are field-name lexemes as well.
    */
-  private static final Pattern UPPERCASE_WORD = Pattern.compile("[A-ZÄÖÜ]{5,}");
+  private static final Pattern UPPERCASE_WORD = Pattern.compile("[A-ZÄÖÜẞ]{5,}");
 
   private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]");
 
@@ -147,20 +151,22 @@ public final class FullTextIdentifiers {
   /**
    * Every identifier lexeme {@code text} contains, in order of first appearance and without
    * duplicates. Never {@code null}; empty for text that carries no identifier at all, which is the
-   * common case for ordinary prose.
+   * common case for ordinary prose. The text is read in NFC, so an umlaut decomposed into letter
+   * and combining mark (common in PDF extraction) yields the same lexeme as the composed one.
    */
-  public static List<String> extract(String text) {
-    if (text == null || text.isEmpty()) {
+  public static List<String> extract(String rawText) {
+    if (rawText == null || rawText.isEmpty()) {
       return List.of();
     }
+    String text = Normalizer.normalize(rawText, Normalizer.Form.NFC);
     Set<String> lexemes = new LinkedHashSet<>();
-    collectParagraphs(text, lexemes);
+    Set<Integer> lawAbbreviationStarts = collectParagraphs(text, lexemes);
     collect(FILE_NUMBER, text, FILE_NUMBER_PREFIX, false, lexemes);
     collect(KEYWORD_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
     collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
-    collectFieldNames(text, lexemes);
+    collectFieldNames(text, lawAbbreviationStarts, lexemes);
     List<String> result = new ArrayList<>(lexemes);
     return result.size() <= MAX_LEXEMES
         ? List.copyOf(result)
@@ -172,10 +178,16 @@ public final class FullTextIdentifiers {
    * enumeration ({@code §§ 34, 35 BauGB}) the law qualifies every number - that is what the
    * notation means - while an Absatz does not: which of the listed paragraphs it belongs to is not
    * decidable from the text, so it is only applied to a single-number reference.
+   *
+   * @return the start offsets of the law abbreviations read as part of a reference
    */
-  private static void collectParagraphs(String text, Set<String> lexemes) {
+  private static Set<Integer> collectParagraphs(String text, Set<String> lexemes) {
+    Set<Integer> lawAbbreviationStarts = new HashSet<>();
     Matcher matcher = PARAGRAPH.matcher(text);
     while (matcher.find()) {
+      if (matcher.group(3) != null) {
+        lawAbbreviationStarts.add(matcher.start(3));
+      }
       String[] numbers = PARAGRAPH_RUN_SEPARATOR.split(matcher.group(1).trim());
       String absatz = numbers.length == 1 ? normalize(matcher.group(2)) : "";
       String law = normalize(matcher.group(3));
@@ -196,6 +208,7 @@ public final class FullTextIdentifiers {
         }
       }
     }
+    return lawAbbreviationStarts;
   }
 
   /**
@@ -229,12 +242,19 @@ public final class FullTextIdentifiers {
    * One lexeme per technical field or element name: a word run of {@link #UPPER_SNAKE_CASE}, {@link
    * #CAMEL_CASE} or {@link #UPPERCASE_WORD} shape. Collected last, so under {@link #MAX_LEXEMES}
    * the other identifier kinds keep their place.
+   *
+   * <p>A law abbreviation read as part of a paragraph reference ({@code § 35 BauGB}) yields none:
+   * the paragraph lexemes already carry it qualified, and a bare {@code xfldbaugb} on the question
+   * side would match every section naming the law at the weight that keeps § 34 and § 35 apart.
    */
-  private static void collectFieldNames(String text, Set<String> lexemes) {
+  private static void collectFieldNames(
+      String text, Set<Integer> lawAbbreviationStarts, Set<String> lexemes) {
     Matcher matcher = WORD_RUN.matcher(text);
     while (matcher.find()) {
       String word = matcher.group();
-      if (word.length() > MAX_FIELD_NAME_LENGTH || !looksLikeFieldName(word)) {
+      if (lawAbbreviationStarts.contains(matcher.start())
+          || word.length() > MAX_FIELD_NAME_LENGTH
+          || !looksLikeFieldName(word)) {
         continue;
       }
       String normalized = normalize(transliterateUmlauts(word.toLowerCase(Locale.ROOT)));
@@ -250,7 +270,10 @@ public final class FullTextIdentifiers {
         || UPPERCASE_WORD.matcher(word).matches();
   }
 
-  /** Keeps {@code PRÜFUNG} and {@code PRUEFUNG} on one lexeme instead of dropping the umlaut. */
+  /**
+   * Keeps {@code PRÜFUNG} and {@code PRUEFUNG} on one lexeme instead of dropping the umlaut; the
+   * capital {@code ẞ} arrives here already lowercased to {@code ß}.
+   */
   private static String transliterateUmlauts(String lowercase) {
     return lowercase.replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss");
   }

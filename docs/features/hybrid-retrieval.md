@@ -450,7 +450,8 @@ Welche Muster als Kennung gelten, ist eine überschaubare, gepflegte Liste (Para
 ohne Gesetzeskürzel, Aktenzeichen in den üblichen Formen, Erlass- und Drucksachennummern,
 E-Mail-Adressen seit #1130, technische Feld- und Elementnamen seit #2334) — nicht ein allgemeiner
 Erkennungsversuch. Eine falsch erkannte Kennung
-erzeugt ein Token, das nie gesucht wird; eine nicht erkannte Kennung ist der Fehler, der wehtut.
+erzeugt meist ein Token, das nie gesucht wird; eine nicht erkannte Kennung ist der Fehler, der wehtut.
+Bei Feldnamen gilt das „nie gesucht" nicht durchweg, siehe unten.
 
 Bei E-Mail-Adressen liegt die Lücke anders als bei Aktenzeichen: PostgreSQLs eigener Parser hält eine
 Adresse bereits als ein einzelnes `email`-Token — die Zerstörung passiert nicht beim Schreiben, sondern
@@ -512,10 +513,24 @@ als Kennung mit Präfix `xfld`, je Wort aus Buchstaben, Ziffern und Unterstriche
 
 Bewusst **ohne Ausnahmeliste** (Maintainer-Entscheidung zu #2334): Akronyme wie `KONSENS`, `ELSTER` oder
 `DSGVO`, Gesetzeskürzel in CamelCase-Form wie `BauGB` und großgeschriebene Überschriften („HINWEIS“)
-werden ebenfalls zum Kennungstoken. Das kostet wenig: Ein Token, das die Frage nicht enthält, ändert
-deren Rangfolge nicht. Umlaute werden umgeschrieben (`PRÜFUNG` und `PRUEFUNG` ergeben dasselbe Token),
-ein Wort über 64 Zeichen ist kein Feldname (eine Base64-Folge hätte sonst ebenfalls CamelCase-Form).
-Feldnamen zählen gegen dieselbe Obergrenze von 64 Kennungen je Text, nach den übrigen Kennungsarten.
+werden ebenfalls zum Kennungstoken, ebenso das Binnen-I („MitarbeiterInnen“). Ein Token, das die Frage
+nicht enthält, ändert deren Rangfolge nicht. Enthält die Frage es, hebt es jeden Abschnitt mit
+demselben Wort mit Gewicht `A` an: Eine Frage mit „ELSTER“ bevorzugt Abschnitte, die „ELSTER“ nennen,
+eine Frage mit Binnen-I Abschnitte in derselben Schreibung. Das ist die bewusst in Kauf genommene Wirkung.
+
+Eine strukturelle Regel (keine Ausnahmeliste) gilt für Gesetzeskürzel: **Ein Kürzel, das `PARAGRAPH`
+als Teil einer §-Angabe gelesen hat, erzeugt kein `xfld`-Token.** Die §-Tokens tragen es schon
+qualifiziert (`xpar35baugb`). Ein zusätzliches `xfldbaugb` auf der Frageseite träfe jeden Abschnitt,
+der das BauGB nennt, mit Gewicht `A` — gemessen überholte so ein §-34-Abschnitt mit „BauGB“ den
+§-35-Abschnitt, nach dem gefragt war. Außerhalb einer §-Angabe bleibt „BauGB“ ein Feldname-Token.
+
+Der Text wird vor der Erkennung in NFC gebracht; ein in Buchstabe und Kombinationszeichen zerlegter
+Umlaut (häufig aus PDFs) ergibt so dasselbe Token wie der zusammengesetzte. Umlaute werden umgeschrieben
+(`PRÜFUNG` und `PRUEFUNG` ergeben dasselbe Token, `ẞ` zählt als Großbuchstabe), ein Wort über 64 Zeichen
+ist kein Feldname (eine Base64-Folge hätte sonst ebenfalls CamelCase-Form). Feldnamen zählen gegen
+dieselbe Obergrenze von 64 Kennungen je Text, nach den übrigen Kennungsarten. Eine Feldtabelle kann
+diese Grenze erreichen; abgeschnitten werden dann Feldnamen in der Reihenfolge ihres Auftretens, und
+Überschriften oder Akronyme weiter vorn belegen Plätze vor den eigentlichen Feldnamen.
 
 ### Die bekannte Grenze: `ts_rank` ist kein BM25
 

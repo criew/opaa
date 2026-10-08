@@ -229,6 +229,31 @@ class FullTextChunkSearchIntegrationTest {
     assertFirstHit(hits, fieldTable);
   }
 
+  /**
+   * Regression guard for #2334: a law abbreviation read as part of a paragraph reference yields no
+   * field-name lexeme of its own. Otherwise every section naming the same law shares a weight-A
+   * match with the question, and a § 34 section overtakes the § 35 one the question asks for.
+   */
+  @Test
+  void aLawAbbreviationInsideAParagraphReferenceDoesNotLiftOtherParagraphsOfThatLaw() {
+    UUID wanted = seed(readableLibrary, "§ 35 regelt Vorhaben im Außenbereich.");
+    seed(
+        readableLibrary,
+        "Nach § 34 BauGB ist ein Vorhaben im Innenbereich zulässig, wenn es sich einfügt; das"
+            + " BauGB nennt dafür die Eigenart der näheren Umgebung.");
+    seed(readableLibrary, "Das BauGB ist das zentrale Gesetz des Bauplanungsrechts.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Ist ein Vorhaben im Außenbereich nach § 35 BauGB zulässig?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            25);
+
+    assertFirstHit(hits, wanted);
+  }
+
   /** The path answers the #938 case it exists for: a literal term the vector path ranks away. */
   @Test
   void aLiteralTermIsFoundWhereverItStands() {
