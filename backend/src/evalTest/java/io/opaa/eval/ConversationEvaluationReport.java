@@ -78,8 +78,11 @@ public record ConversationEvaluationReport(
    * <p>Version 6 (issue #2033): {@code PdfDocumentFormat#version()} moved 1 → 2, shifting the
    * shared pipeline block's {@code ingestionPipelineFingerprint} - fingerprint-only, no corpus in
    * this repository routes a document through that pipeline.
+   *
+   * <p>Version 7 (issue #2330): {@code PdfDocumentFormat#version()} moved 2 → 3 (raised sentence
+   * numbers separated from the following text) - fingerprint-only, as version 6.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 6;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 7;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:

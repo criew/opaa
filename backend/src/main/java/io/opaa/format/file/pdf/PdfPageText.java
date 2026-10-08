@@ -164,9 +164,19 @@ final class PdfPageText {
         || !Character.isLetterOrDigit(nextText.codePointAt(0))) {
       return false;
     }
-    float nextSize = next.getFontSizeInPt();
-    return digit.getFontSizeInPt() <= nextSize * RAISED_MAX_SIZE_RATIO
-        && next.getYDirAdj() - digit.getYDirAdj() >= nextSize * RAISED_MIN_RISE_RATIO;
+    float digitSize = displayedSize(digit);
+    float nextSize = displayedSize(next);
+    float rise = next.getYDirAdj() - digit.getYDirAdj();
+    return digitSize > 0
+        && nextSize > 0
+        && digitSize <= nextSize * RAISED_MAX_SIZE_RATIO
+        && rise > 0
+        && rise >= nextSize * RAISED_MIN_RISE_RATIO;
+  }
+
+  /** Font size as rendered on the page, including text matrix and {@code cm} scaling. */
+  private static float displayedSize(TextPosition position) {
+    return Math.abs(position.getYScale());
   }
 
   /** Writes every word through {@link #separateRaisedDigits}. */

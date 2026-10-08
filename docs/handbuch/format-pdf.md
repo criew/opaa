@@ -23,8 +23,9 @@ Die Pipeline liest PDFs direkt mit Apache PDFBox. Sie nutzt drei Quellen:
 **Hochgestellte Satz- und Fußnotennummern.** Eine Ziffer, die kleiner und mit angehobener
 Grundlinie gesetzt ist, wird durch ein Leerzeichen von einer unmittelbar folgenden Ziffer oder
 einem Buchstaben getrennt: Aus „¹10 Jahre" wird „1 10 Jahre", aus „²Mit" wird „2 Mit". Es wird
-nur Leerraum ergänzt, die Nummer selbst bleibt im Text. Normal gesetzte Zahlen und Einheiten mit
-eigenem Hochzeichen (m², €) bleiben unverändert.
+nur Leerraum ergänzt, die Nummer selbst bleibt im Text. Normal gesetzte Zahlen, Sonderzeichen wie
+€ und Einheiten mit eigenem Hochzeichen wie m² bleiben unverändert. Das gilt auch in
+Tabellenzellen.
 
 ```mermaid
 flowchart TB
