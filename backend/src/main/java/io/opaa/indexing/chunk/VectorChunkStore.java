@@ -88,6 +88,24 @@ public class VectorChunkStore implements ChunkMetadataStore {
   }
 
   /**
+   * Checks every chunk against the batching strategy's token budget without embedding anything -
+   * for a caller that splits {@code chunks} across several {@link #addChunks} calls, each of which
+   * commits on its own.
+   *
+   * @throws ChunkNotEmbeddableException naming the first chunk that exceeds the budget alone
+   */
+  public void requireEmbeddable(List<Document> chunks) {
+    if (chunks.isEmpty()) {
+      return;
+    }
+    try {
+      batchingStrategy.batch(chunks);
+    } catch (IllegalArgumentException e) {
+      throw oversizedChunkOr(chunks, e);
+    }
+  }
+
+  /**
    * The first chunk {@link #batchingStrategy} rejects on its own, as a {@link
    * ChunkNotEmbeddableException}; {@code failure} itself when every chunk passes alone, so an
    * unrelated argument error keeps its own cause. Only runs after a failed call.

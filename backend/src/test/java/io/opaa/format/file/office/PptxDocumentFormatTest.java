@@ -8,6 +8,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitter;
 import java.awt.Rectangle;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -82,6 +83,34 @@ class PptxDocumentFormatTest {
             .filter(PassthroughMetadataKeysTestSupport.REGISTRY_UNION::contains)
             .collect(toSet());
     assertThat(pipeline.passthroughMetadataKeys()).containsAll(actualKeysInUnion);
+  }
+
+  @Test
+  void aSlideBeyondTheTargetSizeIsSplitAndEveryPartRepeatsTheSlideTitle() throws IOException {
+    // A part without the title would lose the slide's topic for both embedding and full text.
+    Path file = tempDir.resolve("lange-folie.pptx");
+    String body =
+        "Die Gebuehr wird bei Antragstellung faellig und ist bar zu entrichten. ".repeat(130)
+            + "Letzter Satz der Folie.";
+    try (XMLSlideShow show = new XMLSlideShow()) {
+      addSlide(show, "Gebuehrenordnung", body, null);
+      write(show, file);
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, "lange-folie.pptx", ".pptx"));
+
+    assertThat(result.chunks())
+        .hasSizeGreaterThan(1)
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).startsWith("Gebuehrenordnung\n\n");
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+              assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
+                  .isEqualTo("Folie 1: Gebuehrenordnung");
+            });
+    assertThat(result.chunks().getLast().getText()).endsWith("Letzter Satz der Folie.");
   }
 
   @Test

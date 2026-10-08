@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitter;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -100,6 +101,31 @@ class PdfDocumentFormatOversizedSectionTest {
     assertThat(
             result.chunks().getFirst().getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
         .isEqualTo("S. 1");
+  }
+
+  @Test
+  void aPageBeyondTheTargetSizeIsSplitToTheTargetSize() throws IOException {
+    // A page between the target size and the hard limit would exceed small embedding context
+    // windows; it is split to the same target size as a section.
+    Path file = tempDir.resolve("volle-seite.pdf");
+    try (PDDocument doc = new PDDocument()) {
+      addPages(doc, new ArrayList<>(), fristenLines(90), new PDRectangle(600, 1_200), 8, 10);
+      doc.save(file.toFile());
+    }
+
+    DocumentFormatResult result =
+        pipeline.run(DocumentFormatSource.ofFile(file, file.getFileName().toString(), ".pdf"));
+
+    assertThat(String.join("", fristenLines(90)).length()).isBetween(4_500, 8_000);
+    assertThat(result.chunks())
+        .hasSizeGreaterThan(1)
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+              assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
+                  .isEqualTo("S. 1");
+            });
   }
 
   /** Numbered, token-dense entries of a Fristenliste, one line each and short enough for a page. */

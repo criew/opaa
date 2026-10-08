@@ -452,6 +452,54 @@ class TabularDocumentFormatTest {
   }
 
   @Test
+  void everyPartOfASplitRowRepeatsTheContextLineAndTheHeaderRow() throws IOException {
+    // format-tabular.md: every chunk opens with the context line and the header row, so a search
+    // for a column name also hits the later parts.
+    Path file = tempDir.resolve("riesig.csv");
+    Files.writeString(
+        file,
+        "Spalte1,Spalte2\n" + "Wert ".repeat(3_000) + ",Zeilenende\n",
+        StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "riesig.csv"));
+
+    assertThat(result.chunks())
+        .hasSizeGreaterThan(1)
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).startsWith("Tabelle: riesig\n\nSpalte1 | Spalte2\n");
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+            });
+  }
+
+  @Test
+  void rowGroupsStayWithinTheTargetSizeOfTheEmbeddingStep() throws IOException {
+    // A row group closes at the shared target size, so a dense table chunk fits small embedding
+    // context windows instead of being cut off silently by the model.
+    StringBuilder csv = new StringBuilder("Nr,Beschreibung\n");
+    for (int i = 1; i <= 40; i++) {
+      csv.append(i)
+          .append(',')
+          .append("Eintrag mit laengerer Beschreibung ".repeat(3))
+          .append('\n');
+    }
+    Path file = tempDir.resolve("dicht.csv");
+    Files.writeString(file, csv.toString(), StandardCharsets.UTF_8);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "dicht.csv"));
+
+    assertThat(result.chunks())
+        .hasSizeGreaterThan(1)
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).contains("Nr | Beschreibung");
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+            });
+  }
+
+  @Test
   void aRowExceedingTheHardCharacterCeilingIsSplitIntoSeveralChunksWithoutLoss()
       throws IOException {
     // MAX_CHUNK_CHARS alone does not bound a single, giant row - the hard ceiling splits it, so

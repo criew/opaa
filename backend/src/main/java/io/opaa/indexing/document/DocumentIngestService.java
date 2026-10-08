@@ -982,6 +982,9 @@ public class DocumentIngestService {
       vectorChunkStore.addChunks(enriched);
       return;
     }
+    // Sub-batches commit independently; an oversized chunk must fail the document before any of
+    // them is embedded or written.
+    vectorChunkStore.requireEmbeddable(enriched);
 
     List<CompletableFuture<Void>> futures =
         subBatches.stream()
