@@ -537,6 +537,46 @@ class TabularDocumentFormatTest {
   }
 
   @Test
+  void everyChunkOfATableWhoseHeaderNearlyFillsTheHardLimitStillOpensWithContextAndHeader()
+      throws IOException {
+    // review finding on #2331: with context and header line beyond 6,000 characters, a row group
+    // ran past the hard limit and its second part lost both lines.
+    StringBuilder csv = new StringBuilder();
+    for (int c = 1; c <= 155; c++) {
+      csv.append(c == 1 ? "" : ",")
+          .append(String.format("Erhebungsmerkmal der Statistik Nummer %03d", c));
+    }
+    csv.append('\n');
+    for (int r = 1; r <= 20; r++) {
+      csv.append("Amt ").append(r).append(",").append(r * 12).append(",".repeat(153)).append('\n');
+    }
+    csv.append("Amt 21,").append("Wert ".repeat(600)).append("Zeilenende").append(",".repeat(153));
+    csv.append('\n');
+    Path file = tempDir.resolve("sehrbreit.csv");
+    Files.writeString(file, csv.toString(), StandardCharsets.UTF_8);
+    String opening =
+        "Tabelle: sehrbreit\n\n" + csv.substring(0, csv.indexOf("\n")).replace(",", " | ");
+    assertThat(opening.length()).isBetween(6_500, 7_500);
+
+    DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "sehrbreit.csv"));
+
+    assertThat(result.chunks())
+        .allSatisfy(
+            chunk -> {
+              assertThat(chunk.getText()).startsWith(opening + "\n");
+              assertThat(chunk.getText().length())
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.HARD_CHUNK_CHAR_LIMIT);
+            });
+    for (int r = 1; r <= 20; r++) {
+      String row = "Amt " + r + " | " + (r * 12) + " |";
+      assertThat(result.chunks().stream().filter(c -> c.getText().contains(row)).count())
+          .as(row)
+          .isEqualTo(1);
+    }
+    assertThat(result.chunks()).anySatisfy(c -> assertThat(c.getText()).contains("Zeilenende"));
+  }
+
+  @Test
   void aRowExceedingTheHardCharacterCeilingIsSplitIntoSeveralChunksWithoutLoss()
       throws IOException {
     // MAX_CHUNK_CHARS alone does not bound a single, giant row - the hard ceiling splits it, so

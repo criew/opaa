@@ -189,6 +189,67 @@ class HeadingSectionSplitterSmallSectionTest {
             chunk -> assertThat(chunk.getText()).startsWith(KAPITEL + " › Erläuterungen\n\n"));
   }
 
+  @Test
+  void anIntroductionUnderAusgabenDoesNotPullSeveralTitelgruppenIntoOneChunk() {
+    // review finding on #2331: a short intro one level up lifted the group's common heading to
+    // "Ausgaben", and the Titel of all Titelgruppen were combined.
+    List<Event> events = new ArrayList<>();
+    events.add(new Heading(1, KAPITEL));
+    events.add(new Heading(2, AUSGABEN));
+    events.add(new Paragraph("Erläuterungen siehe Anlage."));
+    events.addAll(haushaltsplan(List.of("51", "52"), 2).subList(2, 12));
+
+    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+
+    assertThat(chunks).allSatisfy(chunk -> assertThat(gruppenIn(chunk)).isLessThanOrEqualTo(1));
+  }
+
+  @Test
+  void anEmptyTitelgruppeDoesNotPullTheNextTitelgruppesTitelIntoItsChunk() {
+    List<Event> events = new ArrayList<>();
+    events.add(new Heading(1, KAPITEL));
+    events.add(new Heading(2, AUSGABEN));
+    events.add(new Heading(3, titelgruppe("50")));
+    events.addAll(haushaltsplan(List.of("51"), 3).subList(2, 9));
+
+    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+
+    assertThat(chunks)
+        .filteredOn(chunk -> chunk.getText().contains(titelLine("51", 1)))
+        .singleElement()
+        .satisfies(
+            chunk -> {
+              assertThat(chunk.getText()).doesNotContain(titelgruppe("50"));
+              assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
+                  .isEqualTo("Abschn. " + KAPITEL + " › " + AUSGABEN + " › " + titelgruppe("51"));
+            });
+  }
+
+  @Test
+  void textUnderAnUntitledHeadingIsNotAttributedToThePreviousTitel() {
+    // DOCX and ODT emit a Heading with a blank title for an empty heading paragraph.
+    List<Event> events = new ArrayList<>();
+    events.add(new Heading(1, KAPITEL));
+    events.add(new Heading(2, AUSGABEN));
+    events.add(new Heading(3, "Titel 511 01"));
+    events.add(new Paragraph("Geschäftsbedarf 80.000"));
+    events.add(new Heading(3, ""));
+    events.add(new Paragraph("Fußnote zur Tabelle."));
+
+    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+
+    assertThat(chunks)
+        .filteredOn(chunk -> chunk.getText().contains("Fußnote zur Tabelle."))
+        .singleElement()
+        .satisfies(chunk -> assertThat(chunk.getText()).doesNotContain("Titel 511 01"));
+  }
+
+  private static long gruppenIn(Document chunk) {
+    return List.of("51", "52").stream()
+        .filter(g -> chunk.getText().contains(titelLine(g, 1)))
+        .count();
+  }
+
   /**
    * One Kapitel with the Ausgaben split into {@code gruppen}, each with {@code titelCount} Titel of
    * a single line - the shape the issue reports from a real Haushaltsplan.
