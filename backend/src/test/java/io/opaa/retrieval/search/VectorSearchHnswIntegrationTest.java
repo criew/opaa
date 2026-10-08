@@ -9,6 +9,7 @@ import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageOutcome;
+import io.opaa.retrieval.VectorIndexScanProperties;
 import io.opaa.retrieval.scope.SearchScopeStage;
 import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
@@ -20,10 +21,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.embedding.Embedding;
+import org.springframework.ai.embedding.EmbeddingModel;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.embedding.EmbeddingResponse;
+import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * The vector path against a real HNSW index (docs/handbuch/suche.md, Stufe 4): the permission
@@ -36,32 +44,75 @@ import org.springframework.transaction.support.TransactionTemplate;
  * class builds one for the duration of each method and drops it again. The search runs with {@code
  * enable_seqscan = off}: whether the planner picks the index on its own depends on table size and
  * statistics, and this class is about what happens <em>when</em> it does, as in production.
+ *
+ * <p>Other classes leave chunks embedded by {@code FakeEmbeddingModel} ({@code sin(0.01 i)})
+ * behind. This class therefore searches with its own query vector, the negation of that one, so
+ * those rows lie at the far end of the index and cannot crowd out its own chunks.
  */
 @OpaaIntegrationTest
 class VectorSearchHnswIntegrationTest {
 
   private static final String INDEX_NAME = "vector_store_hnsw_probe_idx";
+  private static final int DIMENSIONS = 1536;
   private static final int LIBRARIES = 20;
   private static final int CHUNKS_PER_LIBRARY = 100;
   private static final int SMALL_LIBRARY_CHUNKS = 10;
 
   @Autowired private SearchScopeStage searchScopeStage;
-  @Autowired private VectorSearchStage vectorSearchStage;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private PlatformTransactionManager transactionManager;
+  @Autowired private ObjectMapper objectMapper;
+
+  @Value("${opaa.database.schema}")
+  private String schemaName;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final UUID smallLibrary = UUID.randomUUID();
   private final String marker = UUID.randomUUID().toString();
+  private VectorSearchStage vectorSearchStage;
 
   @BeforeEach
   void chunksAndAnHnswIndexExist() {
+    vectorSearchStage =
+        new VectorSearchStage(
+            new VectorChunkSearch(
+                jdbcTemplate,
+                transactionManager,
+                new NegatedFakeEmbeddingModel(),
+                objectMapper,
+                new VectorIndexScanProperties(20000),
+                PgDistanceType.COSINE_DISTANCE,
+                schemaName,
+                "vector_store"));
     for (int i = 0; i < LIBRARIES; i++) {
       UUID library = UUID.randomUUID();
       libraries.add(library);
       insertChunks(library, CHUNKS_PER_LIBRARY);
     }
     insertChunks(smallLibrary, SMALL_LIBRARY_CHUNKS);
+    // What neighbouring classes may leave behind: FakeEmbeddingModel's vector, outside any scope.
+    jdbcTemplate.update(
+        """
+        INSERT INTO vector_store (id, content, metadata, embedding)
+        SELECT gen_random_uuid(), 'neighbour chunk ' || g,
+               json_build_object('library_id', ?, 'probe_marker', ?),
+               (SELECT array_agg(sin(i * 0.01) ORDER BY i) FROM generate_series(0, 1535) i)::vector
+          FROM generate_series(1, 1000) g
+        """,
+        UUID.randomUUID().toString(),
+        marker);
+    // Cosine distance 2 to the query: inside the scope, but far beyond the similarity threshold.
+    jdbcTemplate.update(
+        """
+        INSERT INTO vector_store (id, content, metadata, embedding)
+        SELECT gen_random_uuid(), 'opposite chunk',
+               json_build_object('library_id', ?, 'probe_marker', ?,
+                                 'document_id', gen_random_uuid()::text,
+                                 'file_name', 'probe-opposite.md'),
+               (SELECT array_agg(sin(i * 0.01) ORDER BY i) FROM generate_series(0, 1535) i)::vector
+        """,
+        smallLibrary.toString(),
+        marker);
     new TransactionTemplate(transactionManager)
         .executeWithoutResult(
             status -> {
@@ -106,22 +157,18 @@ class VectorSearchHnswIntegrationTest {
         .isSortedAccordingTo((a, b) -> Double.compare(b, a));
   }
 
+  /** The opposite chunk is in scope and within fetch-k, so only the threshold keeps it out. */
   @Test
-  void aShortListIsNamedInTheExplanationProtocol() {
+  void aShortListIsNamedInTheExplanationProtocolAndHonoursTheThreshold() {
     StageOutcome small = search(Set.of(smallLibrary), 25);
     StageOutcome full = search(Set.of(libraries.get(0)), 25);
 
-    // An approximate index need not reach every one of a handful of chunks among thousands; the
-    // contract is that the protocol states exactly how many came back.
-    List<Document> smallList = onlyList(small);
-    assertThat(smallList).isNotEmpty().hasSizeLessThanOrEqualTo(SMALL_LIBRARY_CHUNKS);
+    assertThat(onlyList(small))
+        .hasSize(SMALL_LIBRARY_CHUNKS)
+        .extracting(Document::getText)
+        .doesNotContain("opposite chunk");
     assertThat(small.explanation().notes())
-        .anyMatch(
-            note ->
-                note.startsWith(
-                    "vector search · sub-query 1 returned "
-                        + smallList.size()
-                        + " of fetch-k 25 candidate(s)"));
+        .anyMatch(note -> note.startsWith("vector search · sub-query 1 returned 10 of fetch-k 25"));
     assertThat(full.explanation().notes()).noneMatch(note -> note.contains(" of fetch-k "));
   }
 
@@ -158,9 +205,9 @@ class VectorSearchHnswIntegrationTest {
   }
 
   /**
-   * {@code count} chunks of {@code library}, each the query vector of {@code FakeEmbeddingModel}
-   * ({@code sin(0.01 i)}) plus uniform noise of a per-chunk amplitude, so the distances to the
-   * query spread and stay well above the similarity threshold.
+   * {@code count} chunks of {@code library}, each the query vector ({@code -sin(0.01 i)}) plus
+   * uniform noise of a per-chunk amplitude, so the distances to the query spread and stay well
+   * below the threshold's distance.
    */
   private void insertChunks(UUID library, int count) {
     jdbcTemplate.update(
@@ -171,7 +218,7 @@ class VectorSearchHnswIntegrationTest {
                json_build_object('library_id', ?, 'probe_marker', ?,
                                  'document_id', gen_random_uuid()::text,
                                  'file_name', 'probe-' || g || '.md'),
-               (SELECT array_agg(sin(i * 0.01) + (random() * 2 - 1) * (0.3 + 0.9 * a.amp)
+               (SELECT array_agg(-sin(i * 0.01) + (random() * 2 - 1) * (0.3 + 0.9 * a.amp)
                                  ORDER BY i)
                   FROM generate_series(0, 1535) i)::vector
           FROM generate_series(1, ?) g
@@ -180,5 +227,31 @@ class VectorSearchHnswIntegrationTest {
         library.toString(),
         marker,
         count);
+  }
+
+  /** Embeds every text as {@code -sin(0.01 i)}, the opposite of {@code FakeEmbeddingModel}. */
+  private static final class NegatedFakeEmbeddingModel implements EmbeddingModel {
+
+    @Override
+    public EmbeddingResponse call(EmbeddingRequest request) {
+      List<Embedding> embeddings = new ArrayList<>();
+      for (int i = 0; i < request.getInstructions().size(); i++) {
+        embeddings.add(new Embedding(vector(), i));
+      }
+      return new EmbeddingResponse(embeddings);
+    }
+
+    @Override
+    public float[] embed(Document document) {
+      return vector();
+    }
+
+    private static float[] vector() {
+      float[] embedding = new float[DIMENSIONS];
+      for (int i = 0; i < DIMENSIONS; i++) {
+        embedding[i] = (float) -Math.sin(i * 0.01);
+      }
+      return embedding;
+    }
   }
 }

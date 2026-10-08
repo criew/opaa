@@ -679,8 +679,10 @@ sucht) konnten das sehen.
   Suchbereichs in einem großen Bestand; pgvector beendet einen solchen Scan zusätzlich an seiner
   Speichergrenze (`hnsw.scan_mem_multiplier` × `work_mem`). Eine dort kürzere Liste nennt das
   Erklärprotokoll. Für solche Filter schätzt der Planer die exakte Suche meist ohnehin günstiger.
-- **Transaktionslokal:** Die drei Werte setzt `set_config(…, true)` in einer kurzen Transaktion,
-  in der danach die Suche läuft; sie gelten nie für eine andere Abfrage auf derselben Verbindung.
+- **Transaktionslokal:** Die drei Werte setzt `set_config(…, true)` in einer kurzen, lesenden
+  Transaktion, in der danach die Suche läuft. Sie gelten bis zu deren Ende; läuft die Suche in einer
+  äußeren Transaktion, gelten sie bis zu deren Ende und damit auch für weitere HNSW-Scans darin,
+  also weitere Vektorsuchen. Auf anderen Verbindungen und nach dem Ende gelten sie nie.
   Das Embedding der Suchanfrage entsteht vorher, damit keine Verbindung während des Modellaufrufs
   gehalten wird.
 - **Exakte Ordnung:** `relaxed_order` liefert die Zeilen nur ungefähr sortiert. Die Abfrage
@@ -692,8 +694,12 @@ sucht) konnten das sehen.
 - **Mindestversion:** `PgVectorVersionGuard` bricht den Start bei pgvector älter als 0.8.0 ab. Das
   ausgelieferte Image `pgvector/pgvector:pg18` bringt 0.8.7 mit.
 
-Die Diagnose, die Suche als Dienst, MCP und der Eval-Harness erreichen den Vektorpfad nur über die
-Stufe `VECTOR_SEARCH` und sind damit alle abgedeckt; eine andere Vektorabfrage gibt es nicht.
+Chat-Abfrage, Diagnose, Suche als Dienst, MCP und der Pipeline-Lauf des Eval-Harness erreichen den
+Vektorpfad nur über die Stufe `VECTOR_SEARCH` und sind damit alle abgedeckt. Außerhalb davon fragen
+nur noch der Health-Check (`topK` 1, ohne Filter) und der Rohvektorpfad des Eval-Harness
+(`CityLandmarksRetrievalEvaluationHarnessTest`) direkt über `PgVectorStore` ab. Dieser Pfad
+bleibt unverändert; die Korpora sind so klein, dass der Planer dort exakt sucht und seine Zahlen
+nicht betroffen sind.
 
 **Messung** (Sonde, pgvector 0.8.7, 200 000 Zeilen × 768 Dimensionen über 20 Bibliotheken plus eine
 mit 100 Zeilen, `ANALYZE`, Index erzwungen, Ausführungszeit warm):

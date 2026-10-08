@@ -27,8 +27,9 @@ import tools.jackson.databind.ObjectMapper;
  * index entry, so the search runs as an iterative index scan ({@code hnsw.iterative_scan =
  * relaxed_order}, pgvector 0.8 or later) that keeps walking until {@code topK} rows pass or {@link
  * VectorIndexScanProperties#maxScanTuples} entries were visited; the outer query restores the exact
- * distance order the relaxed scan gives up. The settings are transaction-local and set after the
- * query embedding exists, so no connection is held during the embedding call.
+ * distance order the relaxed scan gives up. The settings are set after the query embedding exists,
+ * so no connection is held during the embedding call. They last until the transaction ends: this
+ * search's own, or a caller's it joins.
  */
 @Component
 public class VectorChunkSearch {
@@ -63,6 +64,7 @@ public class VectorChunkSearch {
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.transactionTemplate.setReadOnly(true);
     this.embeddingModel = embeddingModel;
     this.objectMapper = objectMapper;
     this.scanProperties = scanProperties;
