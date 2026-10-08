@@ -420,10 +420,25 @@ Je Suchanfrage läuft zusätzlich eine Volltextsuche über denselben Bestand, mi
 demselben Rechte- und Metadatenfilter und demselben Kandidatenbudget `fetch-k`. Die Suchanfrage wird
 mit deutscher Wortstammbildung zerlegt (die Wörter sind mit ODER verknüpft, damit auch ein Chunk
 gefunden wird, der nur einen Teil der Wörter enthält), und erkannte **Kennungen** (Paragrafen,
-Aktenzeichen, Drucksachennummern, E-Mail-Adressen) werden unzerlegt und mit hohem Gewicht gesucht.
-Es sind dieselben Muster, mit denen die Indexierung die Kennungen abgelegt hat, sodass „§ 12 Abs. 3"
-in Frage und Dokument dieselbe Kennung ergibt. So bleibt „§ 34" von „§ 35" unterscheidbar, was die
-Vektorsuche nicht leistet.
+Aktenzeichen, Drucksachennummern, E-Mail-Adressen, technische Feldnamen) werden unzerlegt und mit
+hohem Gewicht gesucht. Es sind dieselben Muster, mit denen die Indexierung die Kennungen abgelegt hat,
+sodass „§ 12 Abs. 3" in Frage und Dokument dieselbe Kennung ergibt. So bleibt „§ 34" von „§ 35"
+unterscheidbar, was die Vektorsuche nicht leistet.
+
+Als **technischer Feldname** gilt ein Wort in einer dieser Formen:
+
+| Form | Beispiele |
+|---|---|
+| Großbuchstaben mit Unterstrich | `BELEG_NR`, `UST_SCHLUESSEL`, `Z_KASSE_ID` |
+| Kleinbuchstabe direkt vor einem Großbuchstaben im Wortinneren | `ZahlungsDatenKV`, `MessageRefId` |
+| nur Großbuchstaben, mindestens fünf | `VORORT`, `INHAUS` |
+
+Fragt jemand „Was bedeutet das Feld VORORT?", steht damit der Abschnitt mit diesem Feldnamen vor
+Abschnitten, in denen nur „Feld" oder der Name des Handbuchs häufig vorkommen. Eine Ausnahmeliste gibt
+es nicht: Auch Abkürzungen wie `ELSTER` oder `KONSENS`, Gesetzeskürzel wie `BauGB` und Überschriften in
+Großbuchstaben werden so erfasst. Das schadet nicht, denn eine Kennung wirkt nur, wenn die Frage sie
+ebenfalls enthält. Gewöhnliche Wörter, auch großgeschriebene am Satzanfang, sind keine Feldnamen.
+Umlaute werden umgeschrieben, sodass `PRÜFUNG` und `PRUEFUNG` dieselbe Kennung ergeben.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
 in einer Transaktion (Kapitel [Indexierung](indexierung.md), Schritt 7); auf diesem Weg entsteht

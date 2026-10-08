@@ -448,7 +448,8 @@ ist der ganze Pfad für seinen Hauptzweck wertlos.
 
 Welche Muster als Kennung gelten, ist eine überschaubare, gepflegte Liste (Paragrafenverweise mit und
 ohne Gesetzeskürzel, Aktenzeichen in den üblichen Formen, Erlass- und Drucksachennummern,
-E-Mail-Adressen seit #1130) — nicht ein allgemeiner Erkennungsversuch. Eine falsch erkannte Kennung
+E-Mail-Adressen seit #1130, technische Feld- und Elementnamen seit #2334) — nicht ein allgemeiner
+Erkennungsversuch. Eine falsch erkannte Kennung
 erzeugt ein Token, das nie gesucht wird; eine nicht erkannte Kennung ist der Fehler, der wehtut.
 
 Bei E-Mail-Adressen liegt die Lücke anders als bei Aktenzeichen: PostgreSQLs eigener Parser hält eine
@@ -496,6 +497,25 @@ behebt genau diese Asymmetrie, mit demselben Mechanismus wie bei Aktenzeichen.
   dahin findbar, nur ohne die neuen Lexeme — Bedingung dafür ist, dass die Änderung additiv ist; eine
   brechende Änderung der Lexemform braucht wieder einen Versionsfilter im Suchpfad
   ([ADR-0028](../decisions/0028-tsv-version-uebergang.md)).
+
+**Technische Feld- und Elementnamen** (#2334). Schnittstellenhandbücher, XML-Schemata und
+Exportformate benennen Felder wie `BELEG_NR`, `ZahlungsDatenKV` oder `VORORT`. Als gewöhnliches Wort
+geführt, verliert der eine Abschnitt mit der Feldtabelle gegen Abschnitte, in denen „Feld“ und der
+Handbuchname öfter stehen — `ts_rank` kennt keine Seltenheit (siehe unten). Drei Formen gelten deshalb
+als Kennung mit Präfix `xfld`, je Wort aus Buchstaben, Ziffern und Unterstrichen geprüft:
+
+- **Großbuchstaben mit Unterstrich:** `BELEG_NR`, `Z_KASSE_ID`
+- **CamelCase**, also ein Kleinbuchstabe direkt vor einem Großbuchstaben im Wortinneren:
+  `ZahlungsDatenKV`, `MessageRefId`. Ein großgeschriebenes Substantiv am Satzanfang hat keinen solchen
+  Übergang.
+- **Reine Großbuchstabenwörter ab fünf Buchstaben:** `VORORT`, `INHAUS`
+
+Bewusst **ohne Ausnahmeliste** (Maintainer-Entscheidung zu #2334): Akronyme wie `KONSENS`, `ELSTER` oder
+`DSGVO`, Gesetzeskürzel in CamelCase-Form wie `BauGB` und großgeschriebene Überschriften („HINWEIS“)
+werden ebenfalls zum Kennungstoken. Das kostet wenig: Ein Token, das die Frage nicht enthält, ändert
+deren Rangfolge nicht. Umlaute werden umgeschrieben (`PRÜFUNG` und `PRUEFUNG` ergeben dasselbe Token),
+ein Wort über 64 Zeichen ist kein Feldname (eine Base64-Folge hätte sonst ebenfalls CamelCase-Form).
+Feldnamen zählen gegen dieselbe Obergrenze von 64 Kennungen je Text, nach den übrigen Kennungsarten.
 
 ### Die bekannte Grenze: `ts_rank` ist kein BM25
 
