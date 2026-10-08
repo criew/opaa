@@ -7,13 +7,14 @@ set -eu
 ME=$(basename "$0")
 
 # The value is spliced verbatim into proxy_pass by envsubst; anything beyond host[:port] could
-# inject nginx directives. grep matches line by line, so a line break is rejected separately.
+# inject nginx directives. Hostnames may contain "_" (Docker container names), ports run 1-65535.
+# grep matches line by line, so a line break is rejected separately.
 NEWLINE='
 '
 case "$OPAA_BACKEND_UPSTREAM" in
   *"$NEWLINE"*) VALID=false ;;
   *) if printf '%s' "$OPAA_BACKEND_UPSTREAM" \
-    | grep -Eqx '([A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?|\[[0-9A-Fa-f:.]+\])(:[0-9]{1,5})?'; then
+    | grep -Eqx '([A-Za-z0-9]([A-Za-z0-9._-]*[A-Za-z0-9])?|\[[0-9A-Fa-f:.]+\])(:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?'; then
     VALID=true
   else
     VALID=false

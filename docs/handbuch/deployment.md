@@ -74,8 +74,9 @@ Neuindizierung nötig.
 **Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung.** Die
 Punkte 1 bis 4 werden einmalig in der `.env.docker` erledigt; ohne sie startet das Backend nicht
 mehr. Punkt 5 betrifft nicht die Konfiguration, sondern die Eigentumsverhältnisse auf dem Host —
-ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Alle Schritte gehören **vor**
-das `docker compose up -d`:
+ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Punkt 6 betrifft die
+Compose-Datei selbst — ohne ihn ist die Oberfläche nicht mehr erreichbar. Alle Schritte gehören
+**vor** das `docker compose up -d`:
 
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Das Wurzelgeheimnis des anwendungseigenen
    Ausstellers. Im Betriebsmodus `oidc` bricht der Start ohne es ab, ebenso bei weniger als 32
@@ -125,6 +126,20 @@ das `docker compose up -d`:
    `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Einzelheiten, der Weg ohne `sudo`,
    die Lage auf einem Netzlaufwerk und die Fehlermeldungen, an denen man es erkennt, stehen unter
    [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+
+6. **Containerport des Frontends von `80` auf `8080` umstellen — Pflicht für jede eigene
+   Compose-Datei.** Der Frontend-Container läuft nicht mehr als `root` und lauscht deshalb auf
+   `8080`. Eine Compose-Datei, die nicht aus diesem Repository stammt, etwa nach
+   [„Deployment aus vorgebauten Images"](#deployment-aus-vorgebauten-images-ghcr), bildet noch auf
+   `80` ab. Nach dem nächsten Pull antwortet der Host-Port dann nicht mehr, und ein vorgeschalteter
+   Proxy meldet `502`. Umzustellen sind:
+
+   - die Port-Abbildung des Dienstes `frontend`, etwa `"127.0.0.1:3000:80"` zu
+     `"127.0.0.1:3000:8080"`,
+   - ein eigener Proxy, der den Container im Docker-Netz direkt anspricht, von `frontend:80` auf
+     `frontend:8080`.
+
+   Einzelheiten stehen unter [„Frontend-Laufzeitimage"](#frontend-laufzeitimage).
 
 Was sich **nicht** ändert: Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind. Wer
 bisher einen Identitätsanbieter betreibt, betreibt ihn unverändert weiter; die lokale
@@ -551,7 +566,7 @@ aber Indizierung und Fragen schlagen fehl.
 
 | Service     | Host-Port | Container-Port | Beschreibung                                          |
 |-------------|-----------|-----------------|--------------------------------------------------------|
-| frontend    | 3000      | 80              | React-App über Nginx bereitgestellt                    |
+| frontend    | 3000      | 8080            | React-App über Nginx bereitgestellt                    |
 | backend     | 8081      | 8080            | Spring Boot API                                         |
 | postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
@@ -787,25 +802,29 @@ Laufprotokoll ihrer Bibliothek ([Benutzerverwaltung](benutzerverwaltung.md), „
 
 Das Frontend liefert die Oberfläche aus und reicht `/api/` und `/mcp` an das Backend weiter. Es
 läuft auf dem unprivilegierten nginx-Image (`nginxinc/nginx-unprivileged`) und hält dieselben
-Einschränkungen ein, die ein Kubernetes-Cluster mit Pod Security Standard `restricted` verlangt
-([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md)):
+Einschränkungen ein, die ein Kubernetes-Cluster mit Pod Security Standard `restricted` verlangt:
 
 - **Ohne root:** Der Prozess läuft als Benutzer `101` und lauscht auf **Port 8080**. Der Compose-Stack
-  bildet weiterhin den Host-Port `OPAA_FRONTEND_PORT` (Vorgabe `3000`) darauf ab.
+  bildet den Host-Port `OPAA_FRONTEND_PORT` darauf ab.
 - **Nur lesbares Dateisystem:** Beim Start schreibt der Container ausschließlich unter `/tmp`. Dort
   liegen die erzeugte Serverkonfiguration (`/tmp/nginx/conf.d/`), die PID-Datei und die
   Zwischenablage für Uploads. Der Compose-Stack startet den Dienst deshalb mit `read_only: true`,
   `/tmp` als `tmpfs`, ohne Capabilities und mit `no-new-privileges`. Unter Kubernetes gehört ein
   `emptyDir` nach `/tmp`.
+- **`/tmp` ist unter Compose Arbeitsspeicher:** Das `tmpfs` ist auf 512 MiB begrenzt. Dort puffert
+  nginx Uploads und, bei langsamen Clients, große Antworten des Backends. Je Antwort ist der
+  Puffer begrenzt, darüber liefert nginx im Takt des Clients aus. Reicht der Platz bei vielen
+  gleichzeitigen großen Uploads nicht, wird die Grenze in der eigenen Compose-Datei angehoben.
 - **Beliebige Kennung:** Das Image läuft auch unter einer vom Cluster zugewiesenen Kennung, etwa
   bei OpenShift, solange `/tmp` beschreibbar ist.
-- **Backend-Ziel einstellbar:** `OPAA_BACKEND_UPSTREAM` (Vorgabe `backend:8080`) nennt
-  Host und Port des Backends. Ein Wert, der nicht die Form `host[:port]` hat, bricht den Start
-  mit einer Meldung im Protokoll ab, statt in die nginx-Konfiguration zu gelangen.
+- **Backend-Ziel einstellbar:** `OPAA_BACKEND_UPSTREAM` nennt Host und Port des Backends. Ein Wert,
+  der nicht die Form `host[:port]` hat (Port 1 bis 65535), bricht den Start mit einer Meldung im
+  Protokoll ab, statt in die nginx-Konfiguration zu gelangen.
 
-**Bestehende Installation mit eigenem Proxy.** Wer den Frontend-Container nicht über den
-Compose-Port, sondern direkt im Docker-Netz anspricht, etwa mit einem eigenen Reverse-Proxy auf
-`frontend:80`, stellt das Ziel auf `frontend:8080` um. Über den Host-Port (`3000`) ändert sich nichts.
+**Bestehende Installation.** Mit der `docker-compose.yml` aus diesem Repository ändert sich nichts:
+Sie bildet den Host-Port bereits auf `8080` ab. Eine eigene Compose-Datei und ein eigener Proxy im
+Docker-Netz müssen umgestellt werden, siehe Punkt 6 der
+[Vorbereitungsschritte](#vorbereitungsschritte-für-bestandsinstallationen).
 
 ## Bereitschaft und Lebendigkeit
 
