@@ -67,7 +67,7 @@ services:
       dockerfile: frontend/Dockerfile
     env_file: ${OPAA_ENV_FILE:-.env.docker}
     ports:
-      - "${OPAA_FRONTEND_PORT:-3000}:80"
+      - "${OPAA_FRONTEND_PORT:-3000}:8080"
     # A fixed address inside the subnet below, so OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS can trust
     # exactly this container's nginx (ADR-0033, Entscheidung 9) - not the whole network, whose
     # gateway address every host process and every other container could speak from.
@@ -76,6 +76,15 @@ services:
         ipv4_address: ${OPAA_COMPOSE_FRONTEND_ADDRESS:-172.28.0.10}
     depends_on:
       - backend
+    # The same restrictions the Helm chart applies (ADR-0042): the image must start with a read-only
+    # root filesystem and no capabilities, writing only below /tmp.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
   keycloak:
     image: quay.io/keycloak/keycloak:26.8
