@@ -538,6 +538,7 @@ class VerwaltungRetrievalEvaluationHarnessTest {
         .isZero();
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
+    VectorStoreStatistics.refresh(jdbcTemplate, log);
     // Every runner started so far must have computed with the pinned CPU backend: the embedding
     // runner always, the chat runner only when it lives in this container (see the count below).
     String ollamaCpuBackend =

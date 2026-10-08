@@ -523,6 +523,7 @@ class RetrievalEvaluationHarnessTest {
         .isZero();
     assertThat(completedJob.getDocumentsProcessed()).isEqualTo(manifest.fileNames().size());
     log.info("Indexed {} documents", completedJob.getDocumentsProcessed());
+    VectorStoreStatistics.refresh(jdbcTemplate, log);
     // Every runner started so far - the embedding runner, and the chat runner of a decomposing run
     // - must have computed with the pinned CPU backend.
     String ollamaCpuBackend =
