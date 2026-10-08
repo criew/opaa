@@ -6,8 +6,6 @@ metadata:
   labels:
     {{- include "opaa.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
 data:
-  # Fixed: the production mode; "dev" is reserved for development and tests (ADR-0005).
-  SPRING_PROFILES_ACTIVE: oidc
   # server.address defaults to localhost, which the kubelet's probes cannot reach.
   OPAA_SERVER_ADDRESS: 0.0.0.0
   OPAA_SHUTDOWN_TIMEOUT: {{ printf "%vs" .Values.backend.shutdownTimeoutSeconds | quote }}

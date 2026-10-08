@@ -112,7 +112,7 @@
               "type": "string",
               "pattern": "^[^@\\s]+@[^@\\s]+$",
               "not": {
-                "const": "admin@opaa.local"
+                "pattern": "(?i)^admin@opaa\\.local$"
               },
               "description": "Deliverable mailbox of the first system administrator; admin@opaa.local is refused by the backend"
             }
@@ -212,7 +212,10 @@
         "properties": {
           "jwtSecret": {
             "minLength": 32,
-            "description": "At least 32 characters, e.g. openssl rand -base64 48"
+            "not": {
+              "pattern": "(?i)(^\\s*(change_me|change-me|changeme|changeit|secret|password|opaa|example|default))|NICHT-FUER-DEN-PRODUKTIVBETRIEB"
+            },
+            "description": "At least 32 characters, not starting with a placeholder such as secret or opaa (the backend's SecretValidator), e.g. openssl rand -base64 48"
           },
           "databasePassword": {
             "minLength": 1
@@ -220,12 +223,24 @@
           "credentialsEncryptionKey": {
             "type": "string",
             "pattern": "^[A-Za-z0-9+/]{43}=$",
-            "description": "Base64 of 32 random bytes, e.g. openssl rand -base64 32"
+            "not": {
+              "enum": [
+                "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+                "c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="
+              ]
+            },
+            "description": "Base64 of 32 random bytes, e.g. openssl rand -base64 32; the publicly known development keys are refused"
           },
           "settingsEncryptionKey": {
             "type": "string",
             "pattern": "^[A-Za-z0-9+/]{43}=$",
-            "description": "Base64 of 32 random bytes, e.g. openssl rand -base64 32"
+            "not": {
+              "enum": [
+                "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+                "c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="
+              ]
+            },
+            "description": "Base64 of 32 random bytes, e.g. openssl rand -base64 32; the publicly known development keys are refused"
           }
         }
       }
@@ -264,7 +279,8 @@
         },
         "replicas": {
           "type": "integer",
-          "description": "Exactly 1 (ADR-0021)"
+          "minimum": 0,
+          "description": "1, or 0 to stop the backend; more than one instance is refused (ADR-0021)"
         },
         "shutdownTimeoutSeconds": {
           "type": "integer",
@@ -281,6 +297,9 @@
           ],
           "minimum": 1,
           "maximum": 95
+        },
+        "javaToolOptions": {
+          "type": "string"
         },
         "resources": {
           "type": "object"

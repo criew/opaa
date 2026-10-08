@@ -2,15 +2,23 @@ OPAA ist installiert: Release {{ .Release.Name }}, Namespace {{ .Release.Namespa
 
 Erreichbar unter {{ .Values.publicBaseUrl }}
 {{- if not (or .Values.ingress.enabled .Values.httpRoute.enabled) }}
-  Weder ingress.enabled noch httpRoute.enabled ist gesetzt. Zum Ausprobieren:
-    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "opaa.frontend.fullname" . }} 8080:{{ .Values.frontend.service.port }}
+{{- $url := urlParse .Values.publicBaseUrl }}
+  Weder ingress.enabled noch httpRoute.enabled ist gesetzt.
+{{- if eq (regexReplaceAll ":[0-9]+$" $url.host "") "localhost" }}
+  Zum Ausprobieren:
+    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "opaa.frontend.fullname" . }} {{ regexFind "[0-9]+$" $url.host | default "80" }}:{{ .Values.frontend.service.port }}
+{{- else }}
+  Zum Ausprobieren über kubectl port-forward muss publicBaseUrl auf genau diese lokale Adresse
+  zeigen, z. B. http://localhost:8080 - sonst lehnt das Backend die Anmeldung als fremde Herkunft
+  ab (CORS).
+{{- end }}
 {{- end }}
 
 Der erste Start migriert das Datenbankschema; das Backend ist erst danach bereit:
   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "opaa.backend.fullname" . }}
 
 Anmeldung als Systemverwaltung: {{ .Values.bootstrap.initialAdmin.email }}
-{{- if and (not .Values.secrets.existingSecret) (not .Values.secrets.initialAdminPassword) }}
+{{- if and .Release.IsInstall (not .Values.secrets.existingSecret) (not .Values.secrets.initialAdminPassword) }}
   Das Einmalpasswort steht einmalig im Protokoll des ersten Starts:
     kubectl -n {{ .Release.Namespace }} logs deploy/{{ include "opaa.backend.fullname" . }} | grep -A5 NOTANKER
 {{- end }}

@@ -79,15 +79,23 @@ app.kubernetes.io/component: {{ .component }}
 {{- end }}
 
 {{/*
-Aborts the rendering on combinations the schema cannot express. Included by every workload, so
-helm template fails no matter which subset of templates is rendered.
+Aborts the rendering on combinations the schema cannot express. Included by both workloads, so the
+message names the rule no matter which object Helm renders first.
 */}}
 {{- define "opaa.validate" -}}
-{{- if ne (int .Values.backend.replicas) 1 }}
-{{- fail (printf "backend.replicas is %v, but OPAA runs exactly one backend instance (ADR-0021, docs/decisions/0021-single-instance-betrieb.md). Raise it only together with a release that supports several instances." .Values.backend.replicas) }}
+{{- if gt (int .Values.backend.replicas) 1 }}
+{{- fail (printf "backend.replicas is %v, but OPAA runs exactly one backend instance (ADR-0021, docs/decisions/0021-single-instance-betrieb.md). 0 stops the backend, more than 1 is refused." .Values.backend.replicas) }}
 {{- end }}
 {{- if le (int .Values.backend.terminationGracePeriodSeconds) (int .Values.backend.shutdownTimeoutSeconds) }}
 {{- fail (printf "backend.terminationGracePeriodSeconds (%v) must be greater than backend.shutdownTimeoutSeconds (%v), otherwise the kubelet kills the backend before its graceful shutdown ends." .Values.backend.terminationGracePeriodSeconds .Values.backend.shutdownTimeoutSeconds) }}
+{{- end }}
+{{- range .Values.backend.extraEnv }}
+{{- if has .name (list "SPRING_PROFILES_ACTIVE" "SPRING_PROFILES_INCLUDE" "SPRING_PROFILES_DEFAULT") }}
+{{- fail (printf "backend.extraEnv must not set %s: the chart runs the production profile oidc only, the dev profile authenticates every request without a credential (ADR-0005)." .name) }}
+{{- end }}
+{{- if eq .name "JAVA_TOOL_OPTIONS" }}
+{{- fail "backend.extraEnv must not set JAVA_TOOL_OPTIONS, it would drop backend.maxRamPercentage; use backend.javaToolOptions instead." }}
+{{- end }}
 {{- end }}
 {{- if and .Values.ingress.enabled (not .Values.ingress.host) }}
 {{- fail "ingress.enabled is true, but ingress.host is empty." }}
@@ -95,6 +103,18 @@ helm template fails no matter which subset of templates is rendered.
 {{- if and .Values.httpRoute.enabled (not .Values.httpRoute.parentRefs) }}
 {{- fail "httpRoute.enabled is true, but httpRoute.parentRefs names no Gateway." }}
 {{- end }}
+{{- end }}
+
+{{/* JAVA_TOOL_OPTIONS of the backend: the heap share plus the operator's own options. */}}
+{{- define "opaa.backend.javaToolOptions" -}}
+{{- $options := list }}
+{{- with .Values.backend.maxRamPercentage }}
+{{- $options = append $options (printf "-XX:MaxRAMPercentage=%v" .) }}
+{{- end }}
+{{- with .Values.backend.javaToolOptions }}
+{{- $options = append $options . }}
+{{- end }}
+{{- join " " $options }}
 {{- end }}
 
 {{/* Pod-level fields shared by all workloads; call with (dict "root" $ "component" .Values.backend). */}}

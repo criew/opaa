@@ -1,6 +1,6 @@
 # Values of the OPAA chart. The chart runs exactly one backend instance (ADR-0021) next to the
 # frontend; PostgreSQL with pgvector, the model endpoints and an identity provider are operated
-# outside of it and only connected (ADR-0042). docs/handbuch/ describes every value in German.
+# outside of it and only connected (ADR-0042).
 #
 # Three kinds of configuration (ADR-0042, Entscheidung 3):
 #   - deployment values, read on every start: everything outside of "bootstrap"
@@ -82,7 +82,8 @@ bootstrap:
 
 secrets:
   # Name of an existing secret holding the keys below (recommended: External Secrets, Sealed
-  # Secrets, Vault). When set, the chart creates no secret and ignores the values below.
+  # Secrets, Vault). When set, the chart creates no secret and ignores the values below. A changed
+  # key reaches the backend only with its next restart (kubectl rollout restart).
   #   required: OPAA_AUTH_JWT_SECRET, OPAA_DB_PASSWORD, OPAA_CREDENTIALS_ENCRYPTION_KEY,
   #             OPAA_SETTINGS_ENCRYPTION_KEY
   #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_OPENAI_CHAT_API_KEY, OPAA_INITIAL_ADMIN_PASSWORD
@@ -110,8 +111,8 @@ backend:
     digest: ""
     pullPolicy: IfNotPresent
 
-  # Exactly one instance (ADR-0021); any other value aborts the rendering. Kept as a value so that
-  # a future multi-instance release (#1292) does not change the values layout.
+  # Exactly one instance (ADR-0021); 0 stops the backend, more than 1 aborts the rendering. Kept as
+  # a value so that a future multi-instance release (#1292) does not change the values layout.
   replicas: 1
 
   # How long a stop lets accepted HTTP requests finish (OPAA_SHUTDOWN_TIMEOUT), per shutdown phase.
@@ -123,6 +124,10 @@ backend:
   # JAVA_TOOL_OPTIONS). The rest of the limit belongs to classes, compiled code, threads and buffers.
   # Only effective together with resources.limits.memory; empty leaves the JVM default (25 %).
   maxRamPercentage: 70
+  # Further JVM options, appended to JAVA_TOOL_OPTIONS after the heap share, e.g. a JFR recording
+  # (-XX:StartFlightRecording=filename=/tmp/opaa.jfr). Targets belong below /tmp, the only writable
+  # path besides the storage.
+  javaToolOptions: ""
 
   # Recommendation of docs/handbuch/deployment.md ("Speicher und Container-Grenzen").
   resources:

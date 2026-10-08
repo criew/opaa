@@ -49,9 +49,13 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           env:
-            {{- if .Values.backend.maxRamPercentage }}
+            # Fixed production mode; "dev" is reserved for development and tests (ADR-0005). Set in env
+            # rather than the ConfigMap, because env takes precedence over every envFrom source.
+            - name: SPRING_PROFILES_ACTIVE
+              value: oidc
+            {{- with include "opaa.backend.javaToolOptions" . }}
             - name: JAVA_TOOL_OPTIONS
-              value: {{ printf "-XX:MaxRAMPercentage=%v" .Values.backend.maxRamPercentage | quote }}
+              value: {{ . | quote }}
             {{- end }}
             # Required keys carry no "optional": a missing key keeps the pod from starting
             # (CreateContainerConfigError) instead of surfacing at first use (ADR-0042, Entscheidung 5).
@@ -77,17 +81,23 @@ spec:
             httpGet:
               path: /actuator/health/liveness
               port: http
-            {{- toYaml .Values.backend.startupProbe | nindent 12 }}
+            {{- with .Values.backend.startupProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
               port: http
-            {{- toYaml .Values.backend.livenessProbe | nindent 12 }}
+            {{- with .Values.backend.livenessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
               port: http
-            {{- toYaml .Values.backend.readinessProbe | nindent 12 }}
+            {{- with .Values.backend.readinessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- with .Values.backend.resources }}
           resources:
             {{- toYaml . | nindent 12 }}

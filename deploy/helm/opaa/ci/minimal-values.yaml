@@ -15,5 +15,5 @@ bootstrap:
 secrets:
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
-  credentialsEncryptionKey: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
-  settingsEncryptionKey: c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE=
+  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
+  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
