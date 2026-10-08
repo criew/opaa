@@ -179,16 +179,8 @@ class FullTextChunkSearchIntegrationTest {
    * is one more body-text word and the field table falls off the list.
    */
   @Test
-  void aFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
-    for (int section = 1; section <= 10; section++) {
-      seed(
-          readableLibrary,
-          "Schnittstellenhandbuch Abschnitt "
-              + section
-              + ": Jedes Feld im Schnittstellenhandbuch hat eine Bedeutung. Das Feld ist"
-              + " Pflicht, das Feld wird geprüft, die Bedeutung jedes Feldes steht im"
-              + " Schnittstellenhandbuch.");
-    }
+  void anUppercaseFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
+    seedHandbookSections(10);
     UUID fieldTable =
         seed(readableLibrary, "Feldtabelle Satzart 20: VORORT, Länge 1, Kennzeichen Ortslage.");
 
@@ -200,43 +192,41 @@ class FullTextChunkSearchIntegrationTest {
             List.of(),
             8);
 
-    assertThat(hits).extracting(Document::getId).first().isEqualTo(fieldTable.toString());
+    assertFirstHit(hits, fieldTable);
   }
 
-  /** The two other field-name shapes take the same route as the all-uppercase word. */
+  /** The underscore form takes the same route as the all-uppercase word. */
   @Test
-  void snakeCaseAndCamelCaseFieldNamesOutrankRepeatedCommonWords() {
-    UUID snake = seed(readableLibrary, "Satzart 10 enthält BELEG_NR als Schlüssel.");
-    UUID camel = seed(readableLibrary, "Der Block ZahlungsDatenKV fasst die Zahlung zusammen.");
-    for (int section = 1; section <= 4; section++) {
-      seed(
-          readableLibrary,
-          "Beleg, Beleg und Beleg: die Nummer jedes Belegs, die Zahlung, die Daten der Zahlung und"
-              + " die Zahlungsdaten stehen in Abschnitt "
-              + section
-              + ".");
-    }
+  void anUpperSnakeCaseFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
+    seedHandbookSections(10);
+    UUID fieldTable = seed(readableLibrary, "Satzart 10: BELEG_NR, numerisch, achtstellig.");
 
-    assertThat(
-            fullTextChunkSearch.search(
-                "Wie ist BELEG_NR aufgebaut?",
-                Set.of(readableLibrary),
-                MetadataFilter.NONE,
-                List.of(),
-                3))
-        .extracting(Document::getId)
-        .first()
-        .isEqualTo(snake.toString());
-    assertThat(
-            fullTextChunkSearch.search(
-                "Was steht in ZahlungsDatenKV?",
-                Set.of(readableLibrary),
-                MetadataFilter.NONE,
-                List.of(),
-                3))
-        .extracting(Document::getId)
-        .first()
-        .isEqualTo(camel.toString());
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Wie ist das Feld BELEG_NR im Schnittstellenhandbuch aufgebaut?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            8);
+
+    assertFirstHit(hits, fieldTable);
+  }
+
+  /** The camel-case form takes the same route as the all-uppercase word. */
+  @Test
+  void aCamelCaseFieldNameOutranksSectionsThatOnlyRepeatTheQuestionsCommonWords() {
+    seedHandbookSections(10);
+    UUID fieldTable = seed(readableLibrary, "Satzart 30: ZahlungsDatenKV, Gruppe, wiederholbar.");
+
+    List<Document> hits =
+        fullTextChunkSearch.search(
+            "Was bedeutet das Feld ZahlungsDatenKV im Schnittstellenhandbuch?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            8);
+
+    assertFirstHit(hits, fieldTable);
   }
 
   /** The path answers the #938 case it exists for: a literal term the vector path ranks away. */
@@ -420,6 +410,28 @@ class FullTextChunkSearchIntegrationTest {
             "Satzung Gebühr", Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 25);
 
     assertThat(hits).extracting(hit -> hit.getMetadata().get("chunk_index")).containsExactly(2, 10);
+  }
+
+  /** Compares ids, but reports the hit texts, which say more than two UUIDs. */
+  private static void assertFirstHit(List<Document> hits, UUID expected) {
+    assertThat(hits)
+        .as("hits in rank order: %s", hits.stream().map(Document::getText).toList())
+        .extracting(Document::getId)
+        .first()
+        .isEqualTo(expected.toString());
+  }
+
+  /** Sections of a fictitious interface manual that repeat the common words of a field question. */
+  private void seedHandbookSections(int count) {
+    for (int section = 1; section <= count; section++) {
+      seed(
+          readableLibrary,
+          "Schnittstellenhandbuch Abschnitt "
+              + section
+              + ": Jedes Feld im Schnittstellenhandbuch hat eine Bedeutung und ist fest aufgebaut."
+              + " Das Feld ist Pflicht, das Feld wird geprüft, die Bedeutung jedes Feldes steht im"
+              + " Schnittstellenhandbuch.");
+    }
   }
 
   private UUID seed(UUID libraryId, String text) {
