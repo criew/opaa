@@ -320,10 +320,11 @@ frontend:
   cspConnectSrcExtra: ""
 
   # How long the frontend nginx waits for the backend's answer on /api/ and /mcp
-  # (OPAA_BACKEND_READ_TIMEOUT), a number with unit s, m or h. A chat answer arrives in one piece
-  # after retrieval, reranking and the model call; raise it together with rerank.timeout. The
-  # ingress or gateway in front must wait at least as long.
-  backendReadTimeout: 600s
+  # (OPAA_BACKEND_READ_TIMEOUT), a number with unit s, m or h; empty keeps the image default (600s,
+  # frontend/Dockerfile). A chat answer arrives in one piece after retrieval, reranking and the
+  # model call; raise it together with rerank.timeout. The ingress or gateway in front must wait at
+  # least as long.
+  backendReadTimeout: ""
 
   resources:
     requests:

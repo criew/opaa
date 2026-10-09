@@ -63,6 +63,7 @@ jobs:
               - 'frontend/Dockerfile'
               - 'frontend/nginx.conf'
               - 'frontend/docker-entrypoint.d/**'
+              - 'frontend/scripts/check-backend-read-timeout.sh'
 
   static:
     name: Statische Prüfung (Helm ${{ matrix.helm }})
@@ -156,6 +157,18 @@ jobs:
           load: true
           cache-from: type=gha,scope=helm-chart-frontend
           cache-to: type=gha,mode=max,scope=helm-chart-frontend
+
+      # The image hardened as in the chart, in front of a stand-in backend that answers late: the
+      # variable reaches /api/ and /mcp, and the default renders as 600s - checked in the
+      # configuration, not by waiting for it.
+      - name: Wartezeit des Frontend-nginx prüfen
+        env:
+          IMAGE: opaa-ci/frontend:ci
+        run: |
+          OPAA_BACKEND_READ_TIMEOUT=3s EXPECT_READ_TIMEOUT=3s DELAY=6 EXPECT=504 \
+            frontend/scripts/check-backend-read-timeout.sh
+          OPAA_BACKEND_READ_TIMEOUT=3s DELAY=1 EXPECT=200 frontend/scripts/check-backend-read-timeout.sh
+          EXPECT_READ_TIMEOUT=600s DELAY=1 EXPECT=200 frontend/scripts/check-backend-read-timeout.sh
 
       - uses: helm/kind-action@v1
         with:
