@@ -191,7 +191,7 @@ ingress:
   host: opaa.example.org
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: 52m
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-buffering: "off"
   tls:
     - secretName: opaa-tls
@@ -498,6 +498,7 @@ Fest gesetzt und nicht über Werte änderbar sind `SPRING_PROFILES_ACTIVE=oidc`,
 | `frontend.image.repository` | `ghcr.io/criew/opaa-frontend` | — | Image |
 | `frontend.image.tag`, `.digest`, `.pullPolicy` | leer (Version des Charts), leer, `IfNotPresent` | — | wie beim Backend |
 | `frontend.replicas` | `1` | — | Zahl der Frontend-Pods; mehr als einer ist zulässig |
+| `frontend.backendReadTimeout` | `600s` | `OPAA_BACKEND_READ_TIMEOUT` | wie lange der Frontend-nginx auf die Antwort des Backends wartet, für `/api/` und `/mcp`; Zahl mit Einheit `s`, `m` oder `h`. Mit `rerank.timeout` zusammen anheben; Controller oder Gateway davor brauchen mindestens denselben Wert |
 | `frontend.cspConnectSrcExtra` | leer | `OPAA_CSP_CONNECT_SRC_EXTRA` | weitere Origins für `connect-src`, durch Leerzeichen getrennt; Pflicht, wenn ein Identitätsanbieter auf einem anderen Origin liegt als `publicBaseUrl` |
 | `frontend.resources` | 50m CPU und 64Mi angefordert, 256Mi Grenze | — | Ressourcen |
 | `frontend.livenessProbe`, `.readinessProbe` | alle `20` bzw. `10` s, Zeitgrenze `3` s, `3` Fehlversuche | — | Proben auf `/index.html` |
@@ -525,7 +526,7 @@ Chart selbst auf den Backend-Service.
 | `ingress.className`, `.annotations`, `.host`, `.tls` | leer | — | Klasse, Annotationen des Controllers, Hostname (Pflicht bei `enabled`), TLS-Block |
 | `httpRoute.enabled` | `false` | — | legt eine HTTPRoute der Gateway API an |
 | `httpRoute.parentRefs` | leer | — | das Gateway, an das die Route gebunden wird; Pflicht bei `enabled` |
-| `httpRoute.hostnames`, `.annotations`, `.timeouts` | leer | — | Hostnamen, Annotationen, Zeitgrenzen der Route, etwa `request: 300s` |
+| `httpRoute.hostnames`, `.annotations`, `.timeouts` | leer | — | Hostnamen, Annotationen, Zeitgrenzen der Route, etwa `request: 600s`; nicht kürzer als `frontend.backendReadTimeout` |
 
 ### Metriken und Alarme
 
@@ -716,13 +717,15 @@ Zwei Eigenschaften des Frontends muss der Controller mittragen, jeder nennt sie 
 
 - **Uploads:** Der Frontend-nginx nimmt Anfragen bis zu einer festen Größe an (siehe Tabelle). Die
   Grenze des Controllers darf nicht kleiner sein, sonst antwortet er selbst mit `413`.
-- **Lange Antworten:** Der MCP-Endpunkt antwortet als Datenstrom. Der Controller darf ihn nicht
-  puffern und darf ihn nicht früher abbrechen als der Frontend-nginx.
+- **Lange Antworten:** Eine Chat-Antwort kommt am Stück, erst wenn Suche, Reranking und
+  Modellaufruf fertig sind; bis dahin können Minuten vergehen. Der MCP-Endpunkt kann als Datenstrom
+  antworten. Der Controller darf `/mcp` nicht puffern und darf keine der beiden Antworten früher
+  abbrechen als der Frontend-nginx, sonst antwortet er selbst mit `504`.
 
 | Grenze des Frontend-nginx | Wert |
 |---|---|
 | Größe einer Anfrage an `/api/` | 52m |
-| Lesezeit einer Antwort von `/mcp` | 300 s |
+| Wartezeit auf eine Antwort von `/api/` und `/mcp` | `frontend.backendReadTimeout` |
 
 Für ingress-nginx stehen die passenden Annotationen im Beispiel unter
 [Werte-Datei schreiben](#4-werte-datei-schreiben). HAProxy Ingress kennt
@@ -741,7 +744,7 @@ httpRoute:
   hostnames:
     - opaa.example.org
   timeouts:
-    request: 300s
+    request: 600s
 ```
 
 Die Größengrenze einer Anfrage ist dort eine Eigenschaft der Gateway-Implementierung und steht in
