@@ -62,12 +62,14 @@ backend:
 frontend:
   replicas: 2
   cspConnectSrcExtra: https://login.example.org
+  backendReadTimeout: 15m
 ingress:
   enabled: true
   className: nginx
   host: opaa.example.org
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: 52m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "900"
   tls:
     - secretName: opaa-tls
       hosts:
@@ -80,7 +82,7 @@ httpRoute:
   hostnames:
     - opaa.example.org
   timeouts:
-    request: 300s
+    request: 900s
 trustedProxyCidrs:
   - 10.244.0.0/16
 localAdminAllowedCidrs:

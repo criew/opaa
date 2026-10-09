@@ -40,6 +40,8 @@ ENV OPAA_CSP_CONNECT_SRC_EXTRA=""
 ENV OPAA_DEMO_MODE="false"
 # Where /api/ and /mcp are forwarded to, as host[:port]; validated at start by 05-opaa-runtime.sh.
 ENV OPAA_BACKEND_UPSTREAM="backend:8080"
+# How long nginx waits for the backend's answer on /api/ and /mcp; validated by 05-opaa-runtime.sh.
+ENV OPAA_BACKEND_READ_TIMEOUT="600s"
 # Numeric, so Kubernetes can verify runAsNonRoot without a runAsUser override.
 USER 101
 EXPOSE 8080

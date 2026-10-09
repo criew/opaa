@@ -59,6 +59,7 @@ echo "--- guards"
 expect_refusal "ADR-0021" --set backend.replicas=2
 expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE' --set 'backend.extraEnv[0].value=dev'
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
+expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
 
 # The release packaging of publish-images.yml without the push: a release and a pre-release tag are
 # packaged, malformed tags and versions Helm does not accept as SemVer are refused. The tag format

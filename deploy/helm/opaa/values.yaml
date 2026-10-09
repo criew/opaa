@@ -319,6 +319,13 @@ frontend:
   # publicBaseUrl - otherwise the browser blocks the sign-in silently.
   cspConnectSrcExtra: ""
 
+  # How long the frontend nginx waits for the backend's answer on /api/ and /mcp
+  # (OPAA_BACKEND_READ_TIMEOUT), a number with unit s, m or h; empty keeps the image default (600s,
+  # frontend/Dockerfile). A chat answer arrives in one piece after retrieval, reranking and the
+  # model call; raise it together with rerank.timeout. The ingress or gateway in front must wait at
+  # least as long.
+  backendReadTimeout: ""
+
   resources:
     requests:
       cpu: 50m
@@ -457,10 +464,12 @@ networkPolicy:
 # forwards /api/ and /mcp to the backend.
 #
 # The frontend accepts uploads of up to 52m per request (client_max_body_size in
-# frontend/nginx.conf) and streams chat answers for minutes. Each controller names its own limits,
-# set them through the annotations, e.g. for ingress-nginx:
+# frontend/nginx.conf). A chat answer is one response that may take minutes to start, and /mcp may
+# answer as an event stream; the frontend waits frontend.backendReadTimeout for either. The
+# controller must not give up earlier and must not buffer /mcp. Each controller names its own
+# limits, set them through the annotations, e.g. for ingress-nginx:
 #   nginx.ingress.kubernetes.io/proxy-body-size: 52m
-#   nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+#   nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
 #   nginx.ingress.kubernetes.io/proxy-buffering: "off"
 # HAProxy Ingress: haproxy-ingress.github.io/proxy-body-size: 52m
 # Traefik has no request size limit by default.
@@ -480,6 +489,6 @@ httpRoute:
   parentRefs: []
   # e.g. [opaa.example.org]
   hostnames: []
-  # Gateway API route timeouts, e.g. { request: 300s }; the upload size limit is a property of the
-  # Gateway implementation (see its documentation).
+  # Gateway API route timeouts, at least frontend.backendReadTimeout, e.g. { request: 600s }; the
+  # upload size limit is a property of the Gateway implementation (see its documentation).
   timeouts: {}
