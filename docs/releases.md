@@ -269,6 +269,12 @@ Docker-Dokumentation):
 Ein Digest ohne Tag gilt für die Existenzprüfung nicht als veröffentlicht; ein abgebrochener Lauf
 belegt also keine Version.
 
+**Zeitgrenzen.** Ein Bein von `build` braucht üblicherweise ein bis vier Minuten, ohne Cache
+(wöchentlicher Neubau) etwas länger. Nach 30 Minuten bricht GitHub es ab, statt den Lauf stundenlang
+zu blockieren; die übrigen Jobs haben Grenzen von 10 bis 15 Minuten. Ein abgebrochenes Bein holt
+*Re-run failed jobs* nach: Die fertigen Beine behalten ihre Digests, `publish` setzt die Tags erst
+danach (#2427).
+
 **Nativ statt emuliert.** Für ein öffentliches Repository stehen arm64-Runner ohne Aufpreis zur
 Verfügung. Ein emulierter Bau (QEMU) auf einem amd64-Runner wäre einfacher zu verdrahten, aber der
 Gradle-Bau und `jlink` laufen dort um ein Vielfaches langsamer: Schon unter Rosetta, das deutlich
