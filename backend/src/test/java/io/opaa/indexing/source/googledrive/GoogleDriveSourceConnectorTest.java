@@ -169,8 +169,23 @@ class GoogleDriveSourceConnectorTest {
     SourceConnectionTestResult result = connector.testConnection(settings, null);
 
     assertThat(result.reachable()).isFalse();
-    assertThat(result.message()).contains("1 von 2");
+    assertThat(result.message()).isEqualTo("1 von 2 Bereichen ist für das Konto nicht sichtbar.");
     assertThat(result.details().toJson()).contains("drive:drive0").contains("folder:fehlt");
+  }
+
+  @Test
+  void theConnectionTestSpeaksOfASingleScopeInTheSingular() {
+    SourceSettings settings =
+        new SourceSettings(
+            null,
+            server.base().toString(),
+            null,
+            FakeDriveServer.TOKEN,
+            false,
+            scopes(Map.of("drive", "drive0")));
+
+    assertThat(connector.testConnection(settings, null).message())
+        .isEqualTo("Anmeldung erfolgreich; der Bereich ist erreichbar.");
   }
 
   @Test

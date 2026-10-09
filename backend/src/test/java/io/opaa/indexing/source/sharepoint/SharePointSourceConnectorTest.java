@@ -243,6 +243,52 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void theConnectionTestSpeaksOfASingleLibraryInTheSingular() {
+    assertThat(connector.testConnection(withToken(libraries(DRIVE_0)), null).message())
+        .isEqualTo("Anmeldung erfolgreich; die Dokumentbibliothek ist erreichbar.");
+    assertThat(connector.testConnection(withToken(libraries("b!onedrive")), null).message())
+        .isEqualTo("Die Dokumentbibliothek ist für die Anwendung nicht erreichbar.");
+    assertThat(connector.testConnection(withToken(libraries(DRIVE_0, DRIVE_1)), null).message())
+        .isEqualTo("Anmeldung erfolgreich; alle 2 Dokumentbibliotheken sind erreichbar.");
+    assertThat(
+            connector.testConnection(withToken(libraries(DRIVE_0, "b!onedrive")), null).message())
+        .isEqualTo("1 von 2 Dokumentbibliotheken ist für die Anwendung nicht erreichbar.");
+  }
+
+  @Test
+  void aMissingFolderIsNamedByTheNameItIsShownUnder() {
+    SourceConnectionTestResult result =
+        connector.testConnection(
+            withToken(
+                ConnectorData.of(
+                    Map.of(
+                        "libraries",
+                        List.of(
+                            Map.of(
+                                "driveId",
+                                DRIVE_0,
+                                "folders",
+                                List.of(
+                                    Map.of("id", "geloescht", "name", "Akten / 2019"),
+                                    "fehlt")))))),
+            null);
+
+    assertThat(result.details().toJson())
+        .contains("Der gewählte Ordner „Akten / 2019“ ist in der Dokumentbibliothek nicht mehr")
+        .doesNotContain("„geloescht“");
+  }
+
+  @Test
+  void aRefusedSiteAddressNamesTheFieldAsTheFormShowsIt() {
+    assertThatThrownBy(() -> browse(Map.of("siteUrl", "http://contoso.sharepoint.com/sites/team")))
+        .isInstanceOf(ValidationException.class)
+        .hasMessageStartingWith("Die Adresse der Site ist eine https-Adresse")
+        .hasMessageNotContaining("siteUrl");
+    assertThat(browse(Map.of()).message())
+        .isEqualTo("Bitte eine Site suchen oder ihre Adresse angeben.");
+  }
+
+  @Test
   void theConnectionTestWithoutTokenAsksForAProfile() {
     SourceConnectionTestResult result =
         connector.testConnection(request(null, libraries(DRIVE_0)), null);
@@ -281,7 +327,10 @@ class SharePointSourceConnectorTest {
         .extracting(SourceListing.Entry::key)
         .containsExactly("site:" + SITE);
     assertThat(refused.complete()).isFalse();
-    assertThat(refused.message()).contains("Sites.Read.All").contains("siteUrl");
+    assertThat(refused.message())
+        .contains("Sites.Read.All")
+        .contains("Adresse der Site")
+        .doesNotContain("siteUrl");
     assertThat(stillByAddress.entries()).hasSize(1);
   }
 

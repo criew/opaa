@@ -376,7 +376,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
         if (item == null || !item.folder()) {
           throw new FileAccessException.ContainerUnlistable(
               "Der gewählte Ordner „"
-                  + folder
+                  + library.folderNames().getOrDefault(folder, folder)
                   + "“ ist in der Dokumentbibliothek nicht mehr vorhanden; bitte die Ordnerauswahl"
                   + " anpassen.");
         }

@@ -35,7 +35,8 @@ record SharePointLibrary(
 
   /**
    * Reads {@code {"driveId": id, "folders": [id | {"id": id, "name": text}, ...], "name": text}};
-   * only the drive is required. A folder named twice keeps the first place and the last name.
+   * only the drive is required. A folder listed twice keeps its first place and the last name any
+   * of its entries gives; an entry without a name leaves an earlier name standing.
    */
   static SharePointLibrary fromJson(Object value) {
     if (!(value instanceof Map<?, ?> map) || !(map.get("driveId") instanceof String driveId)) {
