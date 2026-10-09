@@ -47,7 +47,7 @@ public final class TestSourceConnectors {
   private S3ConnectionService s3ConnectionService = mock(S3ConnectionService.class);
   private UploadedOriginalStore uploadedOriginalStore = mock(UploadedOriginalStore.class);
   private TargetAddressValidator targetAddressValidator = TargetAddressValidator.disabled();
-  private RemoteContentProperties remoteContentProperties = new RemoteContentProperties(0, 0);
+  private RemoteContentProperties remoteContentProperties = new RemoteContentProperties(0, 0, 0);
   private S3OriginalAccess s3OriginalAccess = mock(S3OriginalAccess.class);
   private ConfluenceWebhookService confluenceWebhookService = mock(ConfluenceWebhookService.class);
   private S3EventService s3EventService = mock(S3EventService.class);

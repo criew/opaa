@@ -110,7 +110,12 @@ class BoundedDownloaderTest {
     try (InputStream stream =
         downloader
             .downloadStreaming(
-                httpClient, baseUrl + "/slow-stream", 1024, null, Duration.ofSeconds(1))
+                httpClient,
+                baseUrl + "/slow-stream",
+                1024,
+                null,
+                Duration.ofSeconds(5),
+                Duration.ofSeconds(1))
             .stream()) {
       assertThatThrownBy(stream::readAllBytes)
           .isInstanceOf(java.net.http.HttpTimeoutException.class);
@@ -127,7 +132,12 @@ class BoundedDownloaderTest {
     try (InputStream stream =
         downloader
             .downloadStreaming(
-                httpClient, baseUrl + "/slow-stream", 1024, null, Duration.ofMillis(500))
+                httpClient,
+                baseUrl + "/slow-stream",
+                1024,
+                null,
+                Duration.ofSeconds(5),
+                Duration.ofMillis(500))
             .stream()) {
       assertThatThrownBy(stream::readAllBytes)
           .isInstanceOf(java.net.http.HttpTimeoutException.class);
@@ -149,7 +159,12 @@ class BoundedDownloaderTest {
     try (InputStream stream =
         downloader
             .downloadStreaming(
-                httpClient, baseUrl + "/fast-stream", 10_000, null, Duration.ofSeconds(5))
+                httpClient,
+                baseUrl + "/fast-stream",
+                10_000,
+                null,
+                Duration.ofSeconds(5),
+                Duration.ofSeconds(5))
             .stream()) {
       assertThat(stream.readAllBytes()).isEqualTo(body);
     }
@@ -441,7 +456,8 @@ class BoundedDownloaderTest {
         downloader.downloadBounded(httpClient, url, "anlage.pdf", 10_000, null).path());
     try (InputStream stream =
         downloader
-            .downloadStreaming(httpClient, url, 10_000, null, Duration.ofSeconds(5))
+            .downloadStreaming(
+                httpClient, url, 10_000, null, Duration.ofSeconds(5), Duration.ofSeconds(5))
             .stream()) {
       stream.readAllBytes();
     }
@@ -513,7 +529,12 @@ class BoundedDownloaderTest {
     assertThatThrownBy(
             () ->
                 downloader.downloadStreaming(
-                    httpClient, baseUrl + "/anlage.pdf", 10_000, null, Duration.ofSeconds(5)))
+                    httpClient,
+                    baseUrl + "/anlage.pdf",
+                    10_000,
+                    null,
+                    Duration.ofSeconds(5),
+                    Duration.ofSeconds(5)))
         .isInstanceOf(BoundedDownloader.HttpStatusException.class);
     assertThat(sleeps).isEmpty();
   }

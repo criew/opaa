@@ -1204,12 +1204,25 @@ Löst den Kostenpunkt aus dem Nachtrag zu #2276 für Dateiablagen.
   die Prüfung mit der tatsächlichen Größe unter `holdIntake`. Eine untertreibende Listengröße
   kostet den Download wie bisher; eine übertreibende hält die Datei zurück, bis Platz für die
   gelistete Größe frei ist.
-- **Marken halten an beiden Kontingenten im Dateiabgleich:** Damit eine falsche Listengröße keine
-  Datei hinter einen Änderungscursor fallen lässt, zählt `FileSync` jede Ablehnung an einem der
-  beiden Kontingente, vor oder nach dem Download, als vorübergehenden Fehler (Cursor bleibt,
-  Ordnergedächtnis wird aufgehoben). Das erledigt für Dateiablagen den Weg „Änderungslauf“ aus
-  #2295; Anhänge, RSS, Confluence INCREMENTAL und die Laufkategorie einer Ablehnung am Kontingent
-  je Bibliothek bleiben dort offen.
+- **Marken halten an beiden Kontingenten im Dateiabgleich, nie den Abschluss:** Damit eine falsche
+  Listengröße keine Datei hinter einen Änderungscursor fallen lässt, zählt `FileSync` jede
+  Ablehnung an einem der beiden Kontingente, vor oder nach dem Download, eigens
+  (`ChangeStreams.Sink#quotaHolds`), nicht als vorübergehenden Fehler. Ein Änderungslauf hält für
+  ihren Strom den Cursor, das Ordnergedächtnis wird aufgehoben. Am Ende einer Runde mit
+  `AbsenceProof.CHANGE_FEED` gilt die Lesung dagegen als beweiskräftig: Die gemeldeten Löschungen
+  werden angewendet, die Runde schließt, und der Strom behält den zu Rundenbeginn gehaltenen Cursor
+  statt des neuen, sodass der nächste Änderungslauf die Datei erneut trifft. Als vorübergehender
+  Fehler gezählt, hielte die Ablehnung die Runde dauerhaft offen (`Closing.OPEN`), und keine
+  Löschung käme an, auch nicht die, die den Platz freimacht; für das Kontingent je Person bestand
+  dieser Hänger seit #2276 und ist damit behoben (Review zu PR #2443). Vorläufige Linie des
+  Koordinators für #2295: Eine Ablehnung am Kontingent hält Marken nur am Element bzw. Cursor, nie
+  den Abschluss und nie die Entfernungen. Das erledigt für Dateiablagen den Weg „Änderungslauf“
+  aus #2295; Anhänge, RSS, Confluence INCREMENTAL und die Laufkategorie einer Ablehnung am
+  Kontingent je Bibliothek bleiben dort offen.
+- **Frist des Originalabrufs (#2417):** Die Gesamtfrist von `downloadStreaming` ist eine eigene
+  Einstellung, `OPAA_DOCUMENTS_REMOTE_CONTENT_TRANSFER_TIMEOUT_SECONDS` (Vorgabe 120 s, nie kürzer
+  als der Timeout je Hop). Mit dem Timeout je Hop gekoppelt, hätte sie bei der Bytegrenze von
+  20 MiB eine Leitung von 8,4 Mbit/s zur Quelle und zum Browser verlangt.
 
 ## Referenzen
 

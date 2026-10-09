@@ -43,6 +43,9 @@ final class ChangeStreams {
 
     /** The failures so far that may pass by themselves. */
     int transientFailures();
+
+    /** The entries so far rejected at a storage quota; they come again once there is room. */
+    int quotaHolds();
   }
 
   /** How the read of one stream ended. */
@@ -61,8 +64,10 @@ final class ChangeStreams {
    * @param cleanStart the cursor the next read starts at, set only when the stream was read to its
    *     last page with every container reachable and no file failing transiently
    * @param message the source's message when the read did not end {@link Ending#READ}
+   * @param quotaHeld whether an entry of this read was rejected at a storage quota: the read still
+   *     proves what it reports, but the stream's cursor must not pass that entry
    */
-  record StreamRead(Ending ending, String cleanStart, String message) {}
+  record StreamRead(Ending ending, String cleanStart, String message, boolean quotaHeld) {}
 
   /**
    * A removal a stream reported, with the containers it counts for ({@code null} for any) and the
@@ -123,6 +128,7 @@ final class ChangeStreams {
     containers.forEach(container -> own.add(container.key()));
     int read = ++reads;
     int transientBefore = sink.transientFailures();
+    int quotaHoldsBefore = sink.quotaHolds();
     String newStart = null;
     String next = cursor;
     try {
@@ -146,7 +152,7 @@ final class ChangeStreams {
           frame.library().loggedNames().of(feedKey),
           frame.library().loggedNames().of(e.getMessage()));
       dropRemovalsOf(read);
-      return new StreamRead(Ending.EXPIRED, null, e.getMessage());
+      return new StreamRead(Ending.EXPIRED, null, e.getMessage(), false);
     } catch (FileAccessException.RunEnding e) {
       throw FileSync.runFailure(e);
     } catch (FileAccessException e) {
@@ -154,10 +160,11 @@ final class ChangeStreams {
       dropRemovalsOf(read);
       frame.events().record(IndexingEventCategory.UNREACHABLE, e.getMessage(), feedKey);
       frame.progress().recordFailed();
-      return new StreamRead(Ending.FAILED, null, e.getMessage());
+      return new StreamRead(Ending.FAILED, null, e.getMessage(), false);
     }
     boolean clean = reachable && sink.transientFailures() == transientBefore;
-    return new StreamRead(Ending.READ, clean ? newStart : null, null);
+    return new StreamRead(
+        Ending.READ, clean ? newStart : null, null, sink.quotaHolds() > quotaHoldsBefore);
   }
 
   /**

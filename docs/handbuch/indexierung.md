@@ -1040,11 +1040,11 @@ privaten Bibliotheken zusammen (Kapitel [Bibliotheken und Berechtigungen](biblio
 „Private Bibliotheken"). Überschreitet das Element dieses Kontingent, wird es wie am Kontingent
 der Bibliothek abgelehnt, und das Laufprotokoll nennt am Element den Grund. Der Lauf geht weiter,
 gleicht ab und endet als unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Das abgelehnte Element
-gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Anders als am Kontingent der
-Bibliothek hält die Ablehnung jede Fortschrittsmarke wie ein vorübergehender Fehler:
-Änderungsstand und Ordnergedächtnis einer Dateiablage, Anker eines inkrementellen
-Confluence-Laufs und Feed-Zustand bleiben stehen, und ein Dokument, dessen Anhang abgelehnt wurde,
-wird ohne Prüfsumme und Änderungsmerkmal gespeichert. Der nächste Lauf liest das Element deshalb
+gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Die Ablehnung hält jede
+Fortschrittsmarke am Element: Änderungsstand und Ordnergedächtnis einer Dateiablage, Anker eines
+inkrementellen Confluence-Laufs und Feed-Zustand bleiben stehen, und ein Dokument, dessen Anhang
+abgelehnt wurde, wird ohne Prüfsumme und Änderungsmerkmal gespeichert. Am Kontingent der
+Bibliothek gilt das bisher nur für die Datei selbst in einer Dateiablage (siehe unten). Der nächste Lauf liest das Element deshalb
 erneut. Prüfung und Speichern der Dokumentzeile laufen für alle privaten Bibliotheken einer
 Person nacheinander, sodass auch gleichzeitige Läufe das Kontingent nicht überschreiten.
 
@@ -1059,7 +1059,10 @@ mit der tatsächlichen Größe vor dem Speichern. Weil eine falsche Listengröß
 Unrecht zurückhalten kann, hält in einer Dateiablage jede Ablehnung an einem der beiden
 Kontingente Änderungsstand und Ordnergedächtnis; der nächste Lauf prüft die Datei erneut, und
 sobald Platz für die gelistete Größe frei ist, wird sie geladen und mit ihrer echten Größe
-gezählt.
+gezählt. Gehalten wird nur die Marke am Element, nie der Abschluss: Ein Vollabgleich über mehrere
+Läufe endet trotzdem, und die Löschungen, die das Änderungsprotokoll meldet, werden übernommen –
+oft sind es gerade diese, die den Platz freimachen. Der nächste Änderungslauf liest das Protokoll
+dann ab dem Stand, an dem der Vollabgleich begann, und trifft die abgelehnte Datei erneut.
 
 ### Schritt 3: Format erkennen und Pipeline wählen
 

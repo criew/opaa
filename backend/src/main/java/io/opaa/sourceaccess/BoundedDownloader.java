@@ -282,17 +282,22 @@ public class BoundedDownloader {
 
   /**
    * Streams {@code fileUrl} without ever buffering the full body, for a click-driven path a viewer
-   * can trigger arbitrarily often, with a caller-supplied short {@code timeout}; redirects are
-   * restricted as in {@link #downloadBounded}, a {@code 429} is not waited out. The returned {@link
-   * DownloadedStream#stream()} is the live body, closed by the caller and wrapped so a read past
-   * {@code maxBytes} throws and the body ends {@code timeout} after the answer's start ({@link
-   * BoundedStreams#inputBefore}); an over-large declared {@code Content-Length} is rejected up
-   * front.
+   * can trigger arbitrarily often; redirects are restricted as in {@link #downloadBounded}, a
+   * {@code 429} is not waited out. The returned {@link DownloadedStream#stream()} is the live body,
+   * closed by the caller and wrapped so a read past {@code maxBytes} throws and the body ends
+   * {@code transferTimeout} after the answer's start ({@link BoundedStreams#inputBefore}); an
+   * over-large declared {@code Content-Length} is rejected up front.
    *
-   * @param timeout the bound of each hop and of the whole body transfer
+   * @param perRequestTimeout the bound of each hop up to its answer
+   * @param transferTimeout the bound of the whole body from the answer's start
    */
   public DownloadedStream downloadStreaming(
-      HttpClient httpClient, String fileUrl, long maxBytes, String authHeader, Duration timeout)
+      HttpClient httpClient,
+      String fileUrl,
+      long maxBytes,
+      String authHeader,
+      Duration perRequestTimeout,
+      Duration transferTimeout)
       throws IOException, InterruptedException {
     log.debug("Streaming (bounded to {} bytes): {}", maxBytes, fileUrl);
 
@@ -300,11 +305,11 @@ public class BoundedDownloader {
         RedirectFollowingFetcher.sendFollowingRedirects(
             httpClient,
             fileUrl,
-            timeout,
+            perRequestTimeout,
             requestPolicy.headers(authHeader),
             targetAddressValidator,
             RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
-    long deadline = System.nanoTime() + timeout.toNanos();
+    long deadline = System.nanoTime() + transferTimeout.toNanos();
 
     if (response.statusCode() != 200) {
       closeQuietly(response.body());

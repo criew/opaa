@@ -24,10 +24,11 @@ import org.slf4j.LoggerFactory;
  * credentials and TLS switch apply as for a run; the credentials reach only the outbound {@code
  * Authorization} header.
  *
- * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming, each hop
- * and the whole transfer by {@link RemoteContentProperties#timeoutSeconds()}: a reader waits on
- * this click, not an unattended run. Every failure - source offline, target refused, invalid stored
- * configuration - is "no original", never a 5xx that would suggest an OPAA-side error.
+ * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming, each hop by
+ * {@link RemoteContentProperties#timeoutSeconds()} and the whole transfer by {@link
+ * RemoteContentProperties#transferTimeoutSeconds()}: a reader waits on this click, not an
+ * unattended run. Every failure - source offline, target refused, invalid stored configuration - is
+ * "no original", never a 5xx that would suggest an OPAA-side error.
  */
 public class RemoteOriginalAccess implements OriginalAccess {
 
@@ -71,7 +72,8 @@ public class RemoteOriginalAccess implements OriginalAccess {
               sourceUrl,
               properties.maxBytes(),
               authHeader,
-              Duration.ofSeconds(properties.timeoutSeconds()));
+              Duration.ofSeconds(properties.timeoutSeconds()),
+              Duration.ofSeconds(properties.transferTimeoutSeconds()));
 
       // the type decided at index time comes first; the declared one is only a fallback
       String contentType = document.getContentType();

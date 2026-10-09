@@ -2,6 +2,7 @@ package io.opaa.indexing.filesync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
@@ -11,6 +12,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /**
  * What {@link FileSync} does with a full sync that spans several runs, beyond the contract
@@ -551,6 +554,46 @@ class FileSyncRoundTest {
     assertThat(closing.ingested()).contains(added);
     assertThat(harness.stored(added)).isPresent();
     assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+  }
+
+  /**
+   * A file rejected at a quota at the round's end holds its stream's cursor, not the round: the
+   * removals the log reports - one of which may free the room - are applied and the round closes;
+   * the next change run reads from the round's start and takes the file once there is room.
+   */
+  @ParameterizedTest
+  @ValueSource(strings = {"library", "owner", "listed size"})
+  void aFileHeldAtAQuotaAtTheRoundsEndLetsTheRoundCloseAndKeepsItsStreamsStart(String quota) {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    Map<String, String> held = harness.state().pendingChangeCursors();
+    store.put("A", "a/15.txt", "Neu hinter dem Fortsetzungspunkt, passt nicht mehr.");
+    String added = store.filePathOf("A", "a/15.txt");
+    switch (quota) {
+      case "library" -> harness.rejectAtLibraryQuotaOf(added);
+      case "owner" -> harness.rejectAtQuotaOf(added);
+      default -> harness.rejectBeforeDownload(added, DocumentIngestResult.QUOTA_EXCEEDED);
+    }
+    String deleted = store.filePathOf("A", "z/3.txt");
+    store.remove("A", "z/3.txt");
+
+    for (int run = 0; run < 3 && harness.state().isFullSyncInterrupted(); run++) {
+      run(store, 0);
+    }
+
+    assertThat(harness.state().isFullSyncInterrupted()).as("the round closed").isFalse();
+    assertThat(harness.stored(deleted)).as("the deletion at the source arrived").isEmpty();
+    assertThat(harness.stored(STALE)).isEmpty();
+    assertThat(harness.stored(added)).isEmpty();
+    assertThat(harness.state().changeCursors().get("stream:A"))
+        .as("the stream keeps the cursor held at the round's start")
+        .isEqualTo(held.get("stream:A"));
+
+    harness.freeQuota();
+    FileSyncHarness.Run next = harness.changeRun(store.reset());
+
+    assertThat(next.ingested()).contains(added);
+    assertThat(harness.stored(added)).isPresent();
   }
 
   @Test

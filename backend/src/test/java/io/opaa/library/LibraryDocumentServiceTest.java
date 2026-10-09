@@ -214,7 +214,7 @@ class LibraryDocumentServiceTest {
     when(filesystemAllowlist.isAllowed(any())).thenReturn(true);
     disabledTargetAddressValidator = TargetAddressValidator.disabled();
     boundedDownloader = new BoundedDownloader(disabledTargetAddressValidator);
-    remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5);
+    remoteContentProperties = new RemoteContentProperties(10L * 1024 * 1024, 5, 0);
     folderRepository = mock(LibraryFolderRepository.class);
     folderService = mock(LibraryFolderService.class);
     attachmentExtractor = mock(AttachmentExtractor.class);
