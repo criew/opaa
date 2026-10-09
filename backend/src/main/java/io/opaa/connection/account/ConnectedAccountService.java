@@ -181,6 +181,8 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   public AccountOverview.Account established(
       CurrentUser caller, ConnectionProfile profile, NewSecret secret, String label) {
     requireConnectable(caller, profile);
+    // token row before account row, as every end of a connection; the account is read after it
+    secrets.lockHeld(new PersonOwned(profile.getId(), caller.id()));
     Instant now = clock.instant();
     Optional<ConnectedAccount> existing =
         accounts.findByUserIdAndProfileId(caller.id(), profile.getId());

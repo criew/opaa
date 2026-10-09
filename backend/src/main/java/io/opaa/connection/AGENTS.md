@@ -26,7 +26,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
   ist: `SecretTarget#key` (`sameOrigin` plus `credentialBinding`) ist die eine Zielfunktion.
   Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`ownedByOneLibrary`), nie das geteilte
   einer Person; das endet nur mit dem Konto. Die OAuth-Zustimmung einer Bibliothek
-  (`SourceConsent`) prüft keine Person; vor Anlage wartet sie als `PendingConsent` ihrer Person.
+  (`SourceConsent`) prüft keine Person; vor Anlage wartet sie als `PendingConsent` ihrer Person. **Sperrreihenfolge:** Token-Zeile vor Kontozeile, wer das Konto zuerst schreibt, ruft vorher `lockHeld` (Deadlock, #2428).
 - **„Ruhend“/„deaktiviert“ werden abgeleitet;** `ConnectionLifecycleReconciler` beendet nur bei
   `DEACTIVATED`, je Person in eigener Transaktion; die getrennte Zeile bleibt für private Bibliotheken.
 - **Die Verwaltung sieht verbundene Konten nur über `PersonNumbers`** („weniger als N“, auch bei 0,

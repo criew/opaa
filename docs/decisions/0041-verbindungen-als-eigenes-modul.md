@@ -1097,6 +1097,22 @@ Endpunkte, für die es eingetragen wurde.
   Secret erreicht die nächste Anmeldung nur den neuen Endpunkt eines zweiten Fake-Servers, mit dem
   neuen Secret.
 
+## Nachtrag vom 09.10.2026: Sperrreihenfolge Token vor Konto (#2428)
+
+Jeder Weg, der die Token-Zeile einer Person und ihr verbundenes Konto schreibt, sperrt zuerst die
+Token-Zeile. Die Verwurfspfade in `ConnectionSecrets` (`discard`, `discardAllUnder`, die Erneuerung
+mit `grantRejected`) taten das schon. `ConnectedAccountService#established` schrieb dagegen zuerst
+das Konto und dann das Token. Lief ein Neuverbinden parallel zum Beenden desselben Kontos, erkannte
+Postgres einen Deadlock und brach eine Aktion ab.
+
+- `established` ruft vor jedem Zugriff auf das Konto `ConnectionSecrets#lockHeld` und liest das
+  Konto erst danach. Ein Neuverbinden wartet also auf ein laufendes Beenden und legt danach ein
+  neues Konto an, statt das beendete zu überschreiben.
+- **Belegt** in `ConnectedAccountLockOrderIntegrationTest`: Eine dritte Transaktion hält die
+  Token-Zeile, das Trennen und danach das Neuverbinden reihen sich dahinter ein. Auf dem alten
+  Stand endet das in `CannotAcquireLockException` („deadlock detected“), mit der Regel enden beide
+  ohne Fehler.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

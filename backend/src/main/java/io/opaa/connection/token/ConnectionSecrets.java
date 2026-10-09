@@ -294,6 +294,15 @@ public class ConnectionSecrets {
   }
 
   /**
+   * Locks the stored secret of {@code person}, if any, until the caller's transaction ends. Every
+   * path writing both a person's token row and her connected account takes the token row first; one
+   * that writes the account first calls this before.
+   */
+  public void lockHeld(PersonOwned person) {
+    accountIdOf(person).ifPresent(tokens::findLockedByConnectedAccountId);
+  }
+
+  /**
    * Holds {@code grant}, obtained by {@code userId} as {@code accountLabel} ({@code null} for
    * unknown) on profile {@code profileId} for a library not created yet and issued for {@code
    * target}, until {@code lifetime} has passed.
