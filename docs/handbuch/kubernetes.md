@@ -459,7 +459,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `bootstrap.oidc.issuerUri` | leer | `OPAA_OIDC_ISSUER_URI` | Issuer des ersten Identitätsanbieters |
 | `bootstrap.oidc.clientId` | leer | `OPAA_OIDC_CLIENT_ID` | Client-ID dieses Anbieters |
 | `bootstrap.oidc.jwkSetUri` | leer | `OPAA_OIDC_JWK_SET_URI` | Adresse der Signaturschlüssel, falls das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser |
-| `bootstrap.oidc.authority` | leer | `OPAA_OIDC_AUTHORITY` | ohne Wirkung, der Issuer ist zugleich die Authority. Der Wert wird nur noch angenommen, damit bestehende Werte-Dateien gültig bleiben; weicht er vom Issuer ab, vermerkt das Backend das im Protokoll |
+| `bootstrap.oidc.authority` | leer | `OPAA_OIDC_AUTHORITY` | ohne Wirkung, der Issuer ist zugleich die Authority. Der Wert wird angenommen, damit bestehende Werte-Dateien gültig bleiben; weicht er vom Issuer ab, vermerkt das Backend das im Protokoll |
 | `bootstrap.chatModel.baseUrl`, `.model` | leer, Pflicht | `OPAA_OPENAI_CHAT_BASE_URL`, `OPAA_OPENAI_CHAT_MODEL` | das erste Chat-Modell; der Schlüssel kommt aus dem Secret |
 
 ### Backend
