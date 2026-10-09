@@ -118,9 +118,16 @@ jobs:
               - '.github/scripts/image_smoke_test.sh'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/ci.yml'
+            # renovate.json5 belongs here because test_check_action_pins.py compares its pinDigests
+            # rule with the file list of the action pin guard.
             scripts:
               - '.github/scripts/**'
               - '.github/workflows/ci.yml'
+              - 'renovate.json5'
+            # Step-level filter of the action pin guard below, not a job output.
+            workflows:
+              - '.github/workflows/**'
+              - '.github/scripts/check_action_pins.sh'
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
             # asserts the realm export keeps the audience mapper the seed's token
             # path depends on (#1515) - otherwise only the nightly demo smoke run
@@ -145,6 +152,13 @@ jobs:
       # and a non-required job would go red without stopping a Renovate auto-merge.
       - name: Corepack-Hash im packageManager-Feld prüfen
         run: .github/scripts/check_package_manager_hash.sh
+
+      # Workflows with write access to published artifacts or the repository reference actions
+      # by commit SHA only (docs/renovate.md). Same job as above: a required check, so a tag that
+      # slips back in blocks the merge.
+      - name: SHA-Pins der Actions in Workflows mit Schreibrechten prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
+        run: .github/scripts/check_action_pins.sh
 
   # The backend suite runs as three parallel package shards (see `testShards` in
   # backend/build.gradle.kts) plus one build job for everything `build` does besides the root
