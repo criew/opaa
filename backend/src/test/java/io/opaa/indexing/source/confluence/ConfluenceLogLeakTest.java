@@ -11,6 +11,7 @@ import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,8 @@ class ConfluenceLogLeakTest {
 
   @BeforeEach
   void attach() {
+    // the fake server's threads log while the test reads the list
+    appender.list = new CopyOnWriteArrayList<>();
     appender.start();
     for (String name : WATCHED_LOGGERS) {
       Logger logger = (Logger) LoggerFactory.getLogger(name);

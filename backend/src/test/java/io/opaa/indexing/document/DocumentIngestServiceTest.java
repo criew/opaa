@@ -72,6 +72,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.Mock;
@@ -1118,6 +1121,63 @@ class DocumentIngestServiceTest {
       verify(documentService, never()).parseDocument(any());
       verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
       assertThat(counter("skipped")).isEqualTo(1.0);
+    }
+
+    /** Before the download a listed size past either quota rejects the file as the intake would. */
+    @ParameterizedTest
+    @CsvSource({"LIBRARY_EXHAUSTED, QUOTA_EXCEEDED", "PERSON_EXHAUSTED, PERSONAL_QUOTA_EXCEEDED"})
+    void aListedSizePastAQuotaIsRejectedBeforeTheDownload(
+        QuotaVerdict verdict, DocumentIngestResult rejection) {
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), "mem://A/b.txt"))
+          .thenReturn(Optional.empty());
+      when(storageQuotaService.verdictFor(targetLibrary, 600L)).thenReturn(verdict);
+
+      assertThat(service.rejectionBeforeDownload(targetLibrary, "mem://A/b.txt", 600L))
+          .contains(rejection);
+      assertThat(counter("skipped")).isEqualTo(1.0);
+    }
+
+    @Test
+    void aListedSizeWithinTheQuotasAdmitsTheDownload() {
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), "mem://A/b.txt"))
+          .thenReturn(Optional.empty());
+
+      assertThat(service.rejectionBeforeDownload(targetLibrary, "mem://A/b.txt", 600L)).isEmpty();
+      verify(storageQuotaService).verdictFor(targetLibrary, 600L);
+      assertThat(counter("skipped")).isZero();
+    }
+
+    /** A stored row is measured by its growth, as the intake measures the delta. */
+    @Test
+    void aStoredRowIsMeasuredByTheGrowthTheListedSizeAnnounces() {
+      Document existing =
+          new Document("b.txt", "mem://A/b.txt", "text/plain", 400L, SourceTypes.S3);
+      when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), "mem://A/b.txt"))
+          .thenReturn(Optional.of(existing));
+      when(storageQuotaService.verdictFor(targetLibrary, 300L))
+          .thenReturn(QuotaVerdict.LIBRARY_EXHAUSTED);
+
+      assertThat(service.rejectionBeforeDownload(targetLibrary, "mem://A/b.txt", 700L))
+          .contains(DocumentIngestResult.QUOTA_EXCEEDED);
+    }
+
+    /**
+     * Without announced growth the download goes ahead: an unknown size, a shrinking file or new
+     * bytes of the same size are for the intake to decide, which also skips an unchanged checksum.
+     */
+    @ParameterizedTest
+    @ValueSource(longs = {-1L, 0L, 300L, 400L})
+    void withoutAnnouncedGrowthTheQuotaIsNotAsked(long listedSize) {
+      Document existing =
+          new Document("b.txt", "mem://A/b.txt", "text/plain", 400L, SourceTypes.S3);
+      lenient()
+          .when(
+              documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), "mem://A/b.txt"))
+          .thenReturn(Optional.of(existing));
+
+      assertThat(service.rejectionBeforeDownload(targetLibrary, "mem://A/b.txt", listedSize))
+          .isEmpty();
+      verify(storageQuotaService, never()).verdictFor(any(), anyLong());
     }
 
     /** The check and the save of the row it admits happen under one hold, released after it. */

@@ -52,7 +52,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Runs of a private library at its owner's exhausted storage quota, through the real document path
  * and the Liquibase schema: a file past the quota is rejected like one past the library's quota,
  * the run goes on to its reconciliation, and deleting at the source frees the room the next run
- * takes the rejected file in with.
+ * takes the rejected file in with. A listed size past the quota spares the download; the intake
+ * stays the binding check.
  */
 @OpaaIntegrationTest
 class FileSyncPersonalQuotaIntegrationTest {
@@ -188,6 +189,102 @@ class FileSyncPersonalQuotaIntegrationTest {
     assertThat(after.getStatus()).isEqualTo(DocumentStatus.INDEXED);
     assertThat(after.getChunkCount()).isPositive();
     assertThat(storedPaths()).hasSize(2);
+  }
+
+  /** A listed size past the owner's quota is rejected before the download, as after it. */
+  @Test
+  void aFileWhoseListedSizeExceedsTheOwnersQuotaIsRejectedWithoutADownload() {
+    InMemoryFileStore store = new InMemoryFileStore().put(CONTAINER, "a.txt", text("a", 600));
+    assertThat(run(store).getDocumentsProcessed()).isEqualTo(1);
+
+    store.put(CONTAINER, "b.txt", text("b", 600));
+    IndexingJob atTheQuota = run(store.reset());
+
+    assertThat(store.calls()).doesNotContain("fetch " + CONTAINER + "/b.txt");
+    assertThat(atTheQuota.getStatus()).isEqualTo(JobStatus.COMPLETED);
+    assertThat(atTheQuota.getListingComplete()).isTrue();
+    assertThat(atTheQuota.getFailureCategory()).isEqualTo("QUOTA_EXHAUSTED");
+    List<IndexingRunEvent> rejections = rejectionsOf(atTheQuota);
+    assertThat(rejections).hasSize(1);
+    assertThat(rejections.getFirst().getReference()).isEqualTo(pathOf(store, "b.txt"));
+    assertThat(rejections.getFirst().getMessage())
+        .startsWith("Speicherkontingent Ihrer privaten Bibliotheken erschöpft");
+    assertThat(storedPaths()).containsExactly(pathOf(store, "a.txt"));
+  }
+
+  /** A changed file is measured by the growth its listed size announces over the stored row. */
+  @Test
+  void aChangedFileIsMeasuredBeforeItsDownloadByItsGrowthOnly() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .put(CONTAINER, "a.txt", text("a", 400))
+            .put(CONTAINER, "b.txt", text("b", 500));
+    assertThat(run(store).getDocumentsProcessed()).isEqualTo(2);
+
+    store.put(CONTAINER, "a.txt", text("a-neu", 450));
+    IndexingJob within = run(store.reset());
+
+    assertThat(within.getFailureCategory()).isNull();
+    assertThat(within.getDocumentsProcessed()).isEqualTo(1);
+
+    store.put(CONTAINER, "a.txt", text("a-neu-und-laenger", 700));
+    IndexingJob past = run(store.reset());
+
+    assertThat(store.calls()).doesNotContain("fetch " + CONTAINER + "/a.txt");
+    assertThat(past.getFailureCategory()).isEqualTo("QUOTA_EXHAUSTED");
+    assertThat(
+            documentRepository
+                .findByLibraryIdAndFilePath(library.getId(), pathOf(store, "a.txt"))
+                .orElseThrow()
+                .getFileSize())
+        .as("the stored version stands")
+        .isEqualTo(450L);
+  }
+
+  /** The check before the download only advises: the intake still holds a file to the quota. */
+  @Test
+  void aListingThatUnderstatesTheSizeIsStillHeldToTheQuotaAtIntake() {
+    InMemoryFileStore store = new InMemoryFileStore().put(CONTAINER, "a.txt", text("a", 600));
+    assertThat(run(store).getDocumentsProcessed()).isEqualTo(1);
+
+    store.put(CONTAINER, "b.txt", text("b", 600)).listedSize(CONTAINER, "b.txt", 10);
+    IndexingJob atTheQuota = run(store.reset());
+
+    assertThat(store.calls()).contains("fetch " + CONTAINER + "/b.txt");
+    assertThat(atTheQuota.getFailureCategory()).isEqualTo("QUOTA_EXHAUSTED");
+    assertThat(rejectionsOf(atTheQuota))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(pathOf(store, "b.txt"));
+    assertThat(storedPaths()).containsExactly(pathOf(store, "a.txt"));
+  }
+
+  /**
+   * A listing that overstates the size holds the file back only while the listed size finds no
+   * room; it is not lost, the run after the room frees takes it with its real size.
+   */
+  @Test
+  void aListingThatOverstatesTheSizeLosesNoFile() {
+    InMemoryFileStore store = new InMemoryFileStore().put(CONTAINER, "a.txt", text("a", 600));
+    assertThat(run(store).getDocumentsProcessed()).isEqualTo(1);
+
+    store.put(CONTAINER, "b.txt", text("b", 300)).listedSize(CONTAINER, "b.txt", 700);
+    IndexingJob held = run(store.reset());
+
+    assertThat(store.calls()).doesNotContain("fetch " + CONTAINER + "/b.txt");
+    assertThat(held.getFailureCategory()).isEqualTo("QUOTA_EXHAUSTED");
+
+    store.remove(CONTAINER, "a.txt");
+    run(store.reset());
+    IndexingJob next = run(store.reset());
+
+    assertThat(next.getFailureCategory()).isNull();
+    assertThat(storedPaths()).containsExactly(pathOf(store, "b.txt"));
+    assertThat(
+            documentRepository
+                .findByLibraryIdAndFilePath(library.getId(), pathOf(store, "b.txt"))
+                .orElseThrow()
+                .getFileSize())
+        .isEqualTo(300L);
   }
 
   // -------------------------------------------------------------------------------------------

@@ -101,6 +101,80 @@ class BoundedDownloaderTest {
     assertThat(trickleTestFiles()).isEqualTo(before);
   }
 
+  /** The streamed body ends at the caller's timeout from the answer's start, read by read. */
+  @Test
+  void aStreamedBodyTricklingInPastTheTimeoutIsCutOffWhileTheCallerReads() throws Exception {
+    serveTrickle("/slow-stream");
+    long start = System.nanoTime();
+
+    try (InputStream stream =
+        downloader
+            .downloadStreaming(
+                httpClient, baseUrl + "/slow-stream", 1024, null, Duration.ofSeconds(1))
+            .stream()) {
+      assertThatThrownBy(stream::readAllBytes)
+          .isInstanceOf(java.net.http.HttpTimeoutException.class);
+    }
+
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(10));
+  }
+
+  /** A read after the deadline throws, too - even once the closed body would answer end of data. */
+  @Test
+  void aStreamedBodyReadAgainAfterItsDeadlineNeverLooksComplete() throws Exception {
+    serveTrickle("/slow-stream");
+
+    try (InputStream stream =
+        downloader
+            .downloadStreaming(
+                httpClient, baseUrl + "/slow-stream", 1024, null, Duration.ofMillis(500))
+            .stream()) {
+      assertThatThrownBy(stream::readAllBytes)
+          .isInstanceOf(java.net.http.HttpTimeoutException.class);
+      assertThatThrownBy(stream::read).isInstanceOf(java.net.http.HttpTimeoutException.class);
+    }
+  }
+
+  @Test
+  void aStreamedBodyWithinTheTimeoutIsReadWhole() throws Exception {
+    byte[] body = "x".repeat(4096).getBytes(StandardCharsets.UTF_8);
+    server.createContext(
+        "/fast-stream",
+        exchange -> {
+          exchange.sendResponseHeaders(200, body.length);
+          exchange.getResponseBody().write(body);
+          exchange.close();
+        });
+
+    try (InputStream stream =
+        downloader
+            .downloadStreaming(
+                httpClient, baseUrl + "/fast-stream", 10_000, null, Duration.ofSeconds(5))
+            .stream()) {
+      assertThat(stream.readAllBytes()).isEqualTo(body);
+    }
+  }
+
+  /** Answers {@code 200} and then one byte every 100 ms for 30 s. */
+  private void serveTrickle(String path) {
+    server.createContext(
+        path,
+        exchange -> {
+          exchange.sendResponseHeaders(200, 0);
+          try (var out = exchange.getResponseBody()) {
+            for (int i = 0; i < 300; i++) {
+              out.write('x');
+              out.flush();
+              Thread.sleep(100);
+            }
+          } catch (IOException e) {
+            // the client hung up
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
+  }
+
   private static Set<Path> trickleTestFiles() throws IOException {
     try (var files = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
       return files

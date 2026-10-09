@@ -2,6 +2,7 @@ package io.opaa.indexing.filesync;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.sourceaccess.SourceRequestMeter;
@@ -12,6 +13,8 @@ import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 /**
  * The change run of {@link FileSync} (ADR-0040, Entscheidung 6): reported files go the full sync's
@@ -123,6 +126,61 @@ class FileSyncChangeRunTest {
 
     harness.changeRun(store.reset());
 
+    assertThat(harness.state().changeCursors().get("stream:A")).isEqualTo(before.get("stream:A"));
+
+    harness.freeQuota();
+    FileSyncHarness.Run next = harness.changeRun(store.reset());
+
+    assertThat(next.ingested()).containsExactly(path);
+    assertThat(harness.state().changeCursors().get("stream:A"))
+        .isNotEqualTo(before.get("stream:A"));
+  }
+
+  /**
+   * The library's own quota holds the cursor like the owner's: the file comes once there is room.
+   */
+  @Test
+  void aFileRejectedAtTheLibraryQuotaKeepsTheCursorAndTheRunAfterTheRoomFreesTakesItIn() {
+    Map<String, String> before = harness.state().changeCursors();
+    String path = InMemoryFileStore.filePath("A", "neu/d.txt");
+    store.put("A", "neu/d.txt", "Neu.").changed("A", "neu/d.txt");
+    harness.rejectAtLibraryQuotaOf(path);
+
+    harness.changeRun(store.reset());
+
+    assertThat(harness.state().changeCursors().get("stream:A")).isEqualTo(before.get("stream:A"));
+
+    harness.freeQuota();
+    FileSyncHarness.Run next = harness.changeRun(store.reset());
+
+    assertThat(next.ingested()).containsExactly(path);
+    assertThat(harness.state().changeCursors().get("stream:A"))
+        .isNotEqualTo(before.get("stream:A"));
+  }
+
+  /**
+   * A listed size past either quota rejects the file without its download, recorded as a rejection
+   * after the download would be; the cursor stays, because the listed size may be wrong.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = DocumentIngestResult.class,
+      names = {"QUOTA_EXCEEDED", "PERSONAL_QUOTA_EXCEEDED"})
+  void aFileRejectedAtAQuotaBeforeItsDownloadIsNotFetchedAndKeepsTheCursor(
+      DocumentIngestResult rejection) {
+    Map<String, String> before = harness.state().changeCursors();
+    String path = InMemoryFileStore.filePath("A", "neu/d.txt");
+    store.put("A", "neu/d.txt", "Neu.").changed("A", "neu/d.txt");
+    harness.rejectBeforeDownload(path, rejection);
+
+    FileSyncHarness.Run run = harness.changeRun(store.reset());
+
+    assertThat(store.calls()).noneMatch(call -> call.startsWith("fetch"));
+    assertThat(run.ingested()).isEmpty();
+    assertThat(run.skipped()).isEqualTo(1);
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(path);
     assertThat(harness.state().changeCursors().get("stream:A")).isEqualTo(before.get("stream:A"));
 
     harness.freeQuota();
