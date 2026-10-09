@@ -143,16 +143,21 @@ Hinweis (`notice`). Das gilt gleichermaßen für
 - den wöchentlichen Neubau: Er baut den Stand von `main` zum Startzeitpunkt. Kommt während des
   Baus ein Push, setzt er `main` nicht mehr, der Lauf des Pushs übernimmt.
 
-Lässt sich der Stand von `main` nicht abfragen, scheitert `publish`, ohne einen Tag zu setzen; der
-Job lässt sich wiederholen. Release-Tags sind nicht betroffen: Ein Release-Lauf setzt `main` nie,
-die Prüfung fragt dann gar nicht nach.
+Lässt sich der Stand von `main` auch nach drei Versuchen nicht abfragen, scheitert `publish`, ohne
+einen Tag zu setzen; der Job lässt sich wiederholen. Release-Tags sind nicht betroffen: Ein
+Release-Lauf setzt `main` nie, die Prüfung fragt dann gar nicht nach.
 
 **Restfenster.** Zwischen der Abfrage und dem Setzen der Tags liegen Sekunden. Ein Commit, der in
 diesem Fenster auf `main` landet, hat dann noch kein Image; sein eigener Lauf setzt `main` erst
 nach dem Bau, also Minuten später und damit danach. `main` könnte nur zurückgehen, wenn der Lauf
 des jüngeren Commits vollständig in diese Sekunden fiele. Eine zweite Prüfung nach dem Setzen
 gibt es deshalb nicht: Sie fände fast immer nur einen jüngeren Lauf, der noch baut, und meldete
-damit einen Zustand, der sich gleich selbst behebt.
+damit einen Zustand, der sich gleich selbst behebt. Backend und Frontend fragen getrennt ab: Landet
+ein Push genau zwischen beiden Abfragen, zeigt `main` kurz auf gemischte Stände (etwa das Backend
+des jüngeren, das Frontend des älteren Commits), bis der Lauf des neuen Commits beide setzt.
+
+Ein einzelner Netzfehler bei der Abfrage kostet den Lauf keine Tags: Das Skript versucht es dreimal
+im Abstand von fünf Sekunden, erst danach scheitert `publish`.
 
 **Folge für gescheiterte Läufe.** Scheitert der Lauf des jüngsten Commits, bleibt `main` auf dem
 zuletzt gesetzten Stand, auch wenn danach noch ein Lauf eines älteren Commits fertig wird. Die

@@ -61,7 +61,8 @@ image: ghcr.io/criew/opaa-backend@sha256:…
 ```
 
 Auch `sha-<commit>` taugt dafür nicht: Der wöchentliche Neubau veröffentlicht denselben Commit erneut
-und verschiebt `main` **und** `sha-<commit>` gemeinsam auf den neuen Digest. `sha-<commit>` beantwortet
+und verschiebt `main` **und** `sha-<commit>` gemeinsam auf den neuen Digest, sofern der Commit noch
+der Stand von `main` ist; sonst nur `sha-<commit>`. `sha-<commit>` beantwortet
 also „aus welchem Commit“, nicht „welches Image“. Den Digest eines laufenden Stands liefert
 `docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main`.
 

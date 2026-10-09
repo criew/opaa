@@ -5,6 +5,7 @@ The workflow only runs on main and never on a pull request, so a broken filter w
 stale and current commit, release tags without :main, exact matching, and an unreadable origin.
 """
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -43,14 +44,38 @@ def clone(tmp_path: Path) -> Path:
     return work
 
 
-def run_filter(cwd: Path, sha: str, tags: list[str]) -> subprocess.CompletedProcess:
+def run_filter(
+    cwd: Path, sha: str, tags: list[str], env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         [BASH, SCRIPT.as_posix(), IMAGE, sha],
         cwd=cwd,
         input="".join(f"{tag}\n" for tag in tags),
         capture_output=True,
         text=True,
+        env={**os.environ, "LS_REMOTE_RETRY_DELAY": "0", **(env or {})},
     )
+
+
+def flaky_git(tmp_path: Path, failures: int) -> dict[str, str]:
+    """PATH with a git whose first <failures> ls-remote calls fail; counts every ls-remote call."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    counter = tmp_path / "ls-remote-calls"
+    counter.write_text("0", encoding="utf-8")
+    real_git = shutil.which("git")
+    wrapper = bin_dir / "git"
+    wrapper.write_text(
+        "#!/usr/bin/env bash\n"
+        'if [[ "$1" == ls-remote ]]; then\n'
+        f'  n=$(( $(cat "{counter}") + 1 )); echo "$n" >"{counter}"\n'
+        f'  if (( n <= {failures} )); then echo "fatal: network down" >&2; exit 128; fi\n'
+        "fi\n"
+        f'exec "{real_git}" "$@"\n',
+        encoding="utf-8",
+    )
+    wrapper.chmod(0o755)
+    return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "CALLS": counter.as_posix()}
 
 
 def main_tags(sha: str) -> list[str]:
@@ -99,6 +124,29 @@ def test_matches_the_main_tag_exactly(clone: Path) -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.splitlines() == tags[1:]
+
+
+def test_retries_a_failed_query_of_origin(clone: Path, tmp_path: Path) -> None:
+    older = git(clone, "rev-parse", "HEAD~1")
+    env = flaky_git(tmp_path, failures=2)
+
+    result = run_filter(clone, older, main_tags(older), env)
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == main_tags(older)[1:]
+    assert Path(env["CALLS"]).read_text(encoding="utf-8").strip() == "3"
+
+
+def test_gives_up_after_three_failed_queries(clone: Path, tmp_path: Path) -> None:
+    tip = git(clone, "rev-parse", "HEAD")
+    env = flaky_git(tmp_path, failures=99)
+
+    result = run_filter(clone, tip, main_tags(tip), env)
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "::error::" in result.stderr
+    assert Path(env["CALLS"]).read_text(encoding="utf-8").strip() == "3"
 
 
 def test_fails_without_tags_when_origin_cannot_be_read(clone: Path, tmp_path: Path) -> None:
