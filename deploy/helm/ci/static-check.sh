@@ -60,4 +60,29 @@ expect_refusal "ADR-0021" --set backend.replicas=2
 expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE' --set 'backend.extraEnv[0].value=dev'
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 
-echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS"
+# The release packaging of publish-images.yml without the push: a release and a pre-release tag are
+# packaged, malformed tags and versions Helm does not accept as SemVer are refused.
+echo "--- release packaging"
+for tag in v1.2.3 v1.2.3-rc.1; do
+  CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh "$tag" "$work_dir/packages" >/dev/null
+  echo "packaged as expected: $tag"
+done
+expect_tag_refusal() {
+  local tag="$1" expected="$2" output
+  if output="$(CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh "$tag" "$work_dir/packages" 2>&1)"; then
+    echo "Expected release packaging to refuse tag $tag, but it packaged." >&2
+    return 1
+  fi
+  if ! grep -qi -- "$expected" <<<"$output"; then
+    echo "Release packaging refused tag $tag, but without naming '$expected':" >&2
+    echo "$output" >&2
+    return 1
+  fi
+  echo "refused as expected: $tag"
+}
+for tag in 1.2.3 v1.2 v1.2.3+build.1 v01.2.3; do
+  expect_tag_refusal "$tag" "is not a release version"
+done
+expect_tag_refusal v1.0.0-rc.01 "segment starts with 0"
+
+echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging"

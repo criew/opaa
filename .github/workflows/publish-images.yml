@@ -3,9 +3,9 @@ name: Publish Images
 on:
   push:
     branches: [main]
-    # A release (docs/releases.md): vX.Y.Z publishes the images as X.Y.Z and X.Y and opens the
-    # GitHub release. The format and the origin of the tag are checked in the job, not here, so a
-    # malformed tag fails visibly instead of being ignored.
+    # A release (docs/releases.md): vX.Y.Z publishes the images as X.Y.Z and X.Y, the Helm chart as
+    # X.Y.Z and opens the GitHub release. The format and the origin of the tag are checked in the
+    # job, not here, so a malformed tag fails visibly instead of being ignored.
     tags: ['v*']
   # Weekly rebuild without a code change: the runtime stage pulls the OS security updates of the
   # build day (issue #1450), so a published image is otherwise only as current as the last push to
@@ -58,14 +58,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # A version tag is immutable: an image already published as X.Y.Z is never rebuilt over,
-      # whether by a re-pushed tag or a dispatch on the tag ref. Only "not found" counts as free;
-      # any other lookup error fails the run rather than risking an overwrite.
+      # A version tag is immutable: an image or chart already published as X.Y.Z is never rebuilt
+      # over, whether by a re-pushed tag or a dispatch on the tag ref. The chart is checked here as
+      # well, so a taken chart version stops the release before any image is pushed. Only
+      # "not found" counts as free; any other lookup error fails the run rather than risking an
+      # overwrite.
       - name: Release-Tag prüfen
         if: startsWith(github.ref, 'refs/tags/')
         env:
           TAG: ${{ github.ref_name }}
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/opaa-${{ matrix.name }}
+          CHART: ${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/opaa
         run: |
           if ! [[ "$TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
             echo "::error::Tag $TAG ist keine Version vX.Y.Z bzw. vX.Y.Z-<vorab> (docs/releases.md)"
@@ -75,13 +78,15 @@ jobs:
             echo "::error::Tag $TAG zeigt auf einen Commit, der nicht auf main liegt (docs/releases.md)"
             exit 1
           fi
-          if out=$(docker buildx imagetools inspect "$IMAGE:${TAG#v}" 2>&1); then
-            echo "::error::$IMAGE:${TAG#v} ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
-            exit 1
-          elif ! grep -qi 'not found' <<<"$out"; then
-            echo "::error::Abfrage von $IMAGE:${TAG#v} fehlgeschlagen: $out"
-            exit 1
-          fi
+          for ref in "$IMAGE:${TAG#v}" "$CHART:${TAG#v}"; do
+            if out=$(docker buildx imagetools inspect "$ref" 2>&1); then
+              echo "::error::$ref ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
+              exit 1
+            elif ! grep -qi 'not found' <<<"$out"; then
+              echo "::error::Abfrage von $ref fehlgeschlagen: $out"
+              exit 1
+            fi
+          done
 
       - name: Extract metadata
         id: meta
@@ -139,10 +144,95 @@ jobs:
           # re-resolved and re-fetched instead of an old layer being reused.
           no-cache-filters: runtime
 
-  # The GitHub release follows the images, so its notes never announce an image that failed to
-  # publish. Notes are generated from the merged PRs, grouped by .github/release.yml.
-  release:
+  # The chart follows the images, so it never points at an image that failed to publish. Chart
+  # version, appVersion and the default image tags are the release version (ADR-0042,
+  # Entscheidung 7). The guard repeats the one in publish so that re-running this job alone after a
+  # failure never pushes over a chart that already went out.
+  chart:
     needs: publish
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+    env:
+      TAG: ${{ github.ref_name }}
+      CHART_REPOSITORY: ghcr.io/${{ github.repository_owner }}/charts
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+        with:
+          # renovate: datasource=github-releases depName=helm/helm
+          version: v4.3.0
+
+      - name: Bei GHCR anmelden
+        env:
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: helm registry login ghcr.io --username "$REGISTRY_USER" --password-stdin <<<"$REGISTRY_PASSWORD"
+
+      - name: Chart-Version prüfen
+        run: |
+          if out=$(helm show chart "oci://$CHART_REPOSITORY/opaa" --version "${TAG#v}" 2>&1); then
+            echo "::error::$CHART_REPOSITORY/opaa:${TAG#v} ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
+            exit 1
+          elif ! grep -qi 'not found' <<<"$out"; then
+            echo "::error::Abfrage von $CHART_REPOSITORY/opaa:${TAG#v} fehlgeschlagen: $out"
+            exit 1
+          fi
+
+      - name: Chart packen
+        id: package
+        env:
+          IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/opaa
+        run: |
+          package=$(deploy/helm/ci/package-chart.sh "$TAG" "$RUNNER_TEMP/chart")
+          echo "path=$package" >>"$GITHUB_OUTPUT"
+
+      - name: Chart veröffentlichen
+        id: push
+        env:
+          PACKAGE: ${{ steps.package.outputs.path }}
+        run: |
+          out=$(helm push "$PACKAGE" "oci://$CHART_REPOSITORY" 2>&1)
+          echo "$out"
+          digest=$(sed -n 's/^Digest: *//p' <<<"$out")
+          if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::helm push nannte keinen Digest für $CHART_REPOSITORY/opaa:${TAG#v}"
+            exit 1
+          fi
+          echo "digest=$digest" >>"$GITHUB_OUTPUT"
+
+  # Signed SLSA provenance for the chart, stored with GitHub and next to the chart in GHCR. Kept out
+  # of the chart job so that a failed attestation can be re-run without touching the pushed chart.
+  chart-attestation:
+    needs: chart
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+      packages: write
+    steps:
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/attest@v4
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/opaa
+          subject-digest: ${{ needs.chart.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false
+
+  # The GitHub release follows images and chart, so its notes never announce an artifact that failed
+  # to publish. Notes are generated from the merged PRs, grouped by .github/release.yml.
+  release:
+    needs: [publish, chart, chart-attestation]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
@@ -156,11 +246,22 @@ jobs:
           OWNER: ${{ github.repository_owner }}
         run: |
           version="${TAG#v}"
-          notes=$(printf '%s\n\n%s\n%s\n\n%s' \
-            '**Images**' \
-            "- \`ghcr.io/${OWNER}/opaa-backend:${version}\`" \
-            "- \`ghcr.io/${OWNER}/opaa-frontend:${version}\`" \
-            'Vor dem Update die Vorbereitungsschritte für Bestandsinstallationen im Handbuch prüfen (docs/handbuch/deployment.md).')
+          notes=$(cat <<EOF
+          **Images**
+          - \`ghcr.io/${OWNER}/opaa-backend:${version}\`
+          - \`ghcr.io/${OWNER}/opaa-frontend:${version}\`
+
+          **Helm-Chart**
+          - \`oci://ghcr.io/${OWNER}/charts/opaa\`, Version \`${version}\`
+
+          \`\`\`bash
+          helm install opaa oci://ghcr.io/${OWNER}/charts/opaa --version ${version} \\
+            -n opaa --create-namespace -f meine-werte.yaml
+          \`\`\`
+
+          Vor dem Update die Vorbereitungsschritte für Bestandsinstallationen im Handbuch prüfen (docs/handbuch/deployment.md).
+          EOF
+          )
           flags=(--verify-tag --title "OPAA ${TAG}")
           # Without an earlier release the generated notes would span the whole history, beyond
           # what a release body may hold; the first release therefore carries the fixed text alone.
