@@ -52,8 +52,10 @@ public final class InMemoryFileStore implements FileStore {
   private boolean structureChanged;
   private boolean earlyNewStart;
   private boolean swallowExpiry;
+  private boolean recordChanges;
   private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
+  private int rejectAfter = -1;
   private boolean endAfterFirstPage;
   private boolean checkpoints;
   private int checkpointGeneration;
@@ -72,12 +74,14 @@ public final class InMemoryFileStore implements FileStore {
   public InMemoryFileStore put(String container, String name, byte[] bytes, String mediaType) {
     container(container).containers.get(container).put(name, new StoredFile(bytes, mediaType));
     ids.computeIfAbsent(container + "\n" + name, key -> ++nextId);
+    recordChange(container, name);
     return this;
   }
 
   public InMemoryFileStore remove(String container, String name) {
     containers.get(container).remove(name);
     departed(container, name);
+    recordChange(container, name);
     return this;
   }
 
@@ -132,6 +136,16 @@ public final class InMemoryFileStore implements FileStore {
 
   public InMemoryFileStore acceptCredentials() {
     credentialsRejected = false;
+    rejectAfter = -1;
+    return this;
+  }
+
+  /**
+   * From now on every request of a run after its first {@code requests} fails as if the credentials
+   * were revoked mid-run; {@link #acceptCredentials()} ends it.
+   */
+  public InMemoryFileStore rejectCredentialsAfter(int requests) {
+    rejectAfter = requests;
     return this;
   }
 
@@ -232,6 +246,11 @@ public final class InMemoryFileStore implements FileStore {
         Long id = ids.remove(container + "\n" + name);
         if (id != null) {
           ids.put(container + "\n" + target, id);
+        }
+        recordChange(container, target);
+        if (!stableIds) {
+          // the old name is another identity, reported removed
+          recordChange(container, name);
         }
       }
     }
@@ -359,6 +378,21 @@ public final class InMemoryFileStore implements FileStore {
   public InMemoryFileStore expireCursors() {
     cursorsExpired = true;
     return this;
+  }
+
+  /**
+   * From now on every put, removal and move notes itself in its container's stream, as the change
+   * log of a real source does; a moved file under stable ids is reported once, at its new name.
+   */
+  public InMemoryFileStore recordingChanges() {
+    recordChanges = true;
+    return this;
+  }
+
+  private void recordChange(String container, String name) {
+    if (recordChanges) {
+      changed(container, name);
+    }
   }
 
   /** A broken feed for the contract's own test: the first page already names the new start. */
@@ -635,7 +669,7 @@ public final class InMemoryFileStore implements FileStore {
     }
     calls.add(call);
     meter.recordRequest();
-    if (credentialsRejected) {
+    if (credentialsRejected || (rejectAfter >= 0 && meter.requests() > rejectAfter)) {
       throw new FileAccessException.RunEnding("Die Zugangsdaten wurden abgelehnt.");
     }
   }

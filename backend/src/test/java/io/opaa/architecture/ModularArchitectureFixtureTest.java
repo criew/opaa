@@ -246,6 +246,23 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
+   * The web layer revokes through the OAuth client and an account class runs the port's revocation
+   * itself; the port's implementation, the completion of a consent and the store pass.
+   */
+  @Test
+  void aRevocationPastThePoolIsReported() {
+    Scenario scenario = new Scenario("revocation");
+
+    assertThat(scenario.violations(ModularArchitecture::grantsAreRevokedOnlyAfterTheCommit))
+        .hasSize(2)
+        .anySatisfy(violation -> assertThat(violation).contains("web.RevokeApi", "revoke"))
+        .anySatisfy(violation -> assertThat(violation).contains("account.Shortcut", "revocation"))
+        .noneSatisfy(violation -> assertThat(violation).contains("oauth.ProviderTokens"))
+        .noneSatisfy(violation -> assertThat(violation).contains("ConnectionAuthorizationService"))
+        .noneSatisfy(violation -> assertThat(violation).contains("token.ConnectionSecrets"));
+  }
+
+  /**
    * The administration's controller and another module's web layer reach a connected account; the
    * numbers pass, and so does the controller of a person's own accounts.
    */

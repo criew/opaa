@@ -21,7 +21,19 @@ interface ConnectionTokenRepository extends JpaRepository<ConnectionToken, UUID>
   @Query("select t from ConnectionToken t where t.id = :id")
   Optional<ConnectionToken> findLockedById(@Param("id") UUID id);
 
-  /** The persons' OAuth grants under {@code profileId}, read before they are deleted. */
+  /**
+   * The row of {@code connectedAccountId}, locked before it is discarded: a renewal running at the
+   * same time commits first, and the discard revokes the tokens it left.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
+  @Query("select t from ConnectionToken t where t.connectedAccountId = :accountId")
+  Optional<ConnectionToken> findLockedByConnectedAccountId(@Param("accountId") UUID accountId);
+
+  /**
+   * The persons' OAuth grants under {@code profileId}, locked before they are deleted, as {@link
+   * #findLockedByConnectedAccountId}.
+   */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
       "select t from ConnectionToken t where t.profileId = :profileId"
           + " and t.connectedAccountId is not null"
@@ -58,9 +70,10 @@ interface ConnectionTokenRepository extends JpaRepository<ConnectionToken, UUID>
   List<ConnectionToken> findByLibraryIdIn(Collection<UUID> libraryIds);
 
   /**
-   * The rows of libraries' own consents and pending consents under {@code profileId}, read before
-   * they are deleted.
+   * The rows of libraries' own consents and pending consents under {@code profileId}, locked before
+   * they are deleted, as {@link #findLockedByConnectedAccountId}.
    */
+  @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
       "select t from ConnectionToken t where t.profileId = :profileId"
           + " and (t.libraryId is not null or t.pendingUserId is not null)")
