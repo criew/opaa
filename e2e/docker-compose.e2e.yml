@@ -114,7 +114,7 @@ services:
   # into the stock node image, so there is nothing extra to build or cache.
   ai-stub:
     # Deliberately the same floating `node:22-alpine` tag already used for frontend/Dockerfile
-    # (and the equally floating `eclipse-temurin:21-jdk`/`nginx:alpine`/`pgvector/pgvector:pg18`
+    # (and the equally floating `eclipse-temurin:21-jdk`/`nginxinc/nginx-unprivileged:alpine`/`pgvector/pgvector:pg18`
     # elsewhere in the repo) - PR #453 review flagged this as a nightly-schedule risk (a new base
     # image landing between runs), which is real but not specific to this service: pinning only
     # ai-stub, and to what would then be the only digest-pinned image in the whole stack, would

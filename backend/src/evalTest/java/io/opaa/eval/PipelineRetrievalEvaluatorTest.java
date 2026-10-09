@@ -125,10 +125,10 @@ class PipelineRetrievalEvaluatorTest {
 
     assertThat(report.pipelineMeasurementContractVersion())
         .isEqualTo(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION);
-    assertThat(report.metricWindowNote()).contains("nDCG@8").contains("Rohvektor-Pfad");
+    assertThat(report.metricWindowNote()).contains("nDCG@20").contains("Rohvektor-Pfad");
     assertThat(report.overall().n()).isEqualTo(2);
     assertThat(report.overall().hitRateAt5()).isEqualTo(1.0);
-    assertThat(report.overall().mrrAt8()).isCloseTo(0.75, within(TOLERANCE));
+    assertThat(report.overall().mrrAt20()).isCloseTo(0.75, within(TOLERANCE));
     assertThat(report.allQueryResults()).hasSize(2);
     // Worst first: case "b" (hit at rank 2) is ordered before case "a" (hit at rank 1).
     assertThat(report.allQueryResults().get(0).id()).isEqualTo("b");

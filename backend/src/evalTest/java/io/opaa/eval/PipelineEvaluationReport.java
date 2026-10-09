@@ -130,8 +130,11 @@ public record PipelineEvaluationReport(
    * <p>Version 19 (issue #2331): runs of sections below 200 characters are combined under their
    * common heading, row groups of very wide tables keep half the target size - nine format versions
    * moved; fingerprint-only, every corpus chunk stays byte-identical.
+   *
+   * <p>Version 20 (issue #2373): the production top-k rose from 8 to 20, and with it this path's
+   * ranking window and every component name (MRR@20, nDCG@20, Recall@20). Re-measured.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 19;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 20;
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -230,8 +233,8 @@ public record PipelineEvaluationReport(
 
   /**
    * One golden case's pipeline result. Metric components carry their window in their name for the
-   * same reason {@link PipelineMetricsAggregate}'s do. {@code reciprocalRankAt8} is the per-case
-   * value MRR@8 averages — named like the raw-vector path's per-case {@code reciprocalRank}, since
+   * same reason {@link PipelineMetricsAggregate}'s do. {@code reciprocalRankAt20} is the per-case
+   * value MRR@20 averages — named like the raw-vector path's per-case {@code reciprocalRank}, since
    * "mean reciprocal rank" of a single case would be a contradiction.
    *
    * @param chunksReturned how many chunks the pipeline selected for this query (at most {@code
@@ -252,10 +255,10 @@ public record PipelineEvaluationReport(
       String difficulty,
       String language,
       double hitRateAt5,
-      double reciprocalRankAt8,
-      double ndcgAt8,
-      double recallAt8,
-      double allExpectedDocumentsHitAt8,
+      double reciprocalRankAt20,
+      double ndcgAt20,
+      double recallAt20,
+      double allExpectedDocumentsHitAt20,
       // Issue #1151: the margin (RetrievalMetrics#marginAtK) this case's first relevant hit had
       // against each window; null when no expected document appears anywhere in rankedFileNames.
       Integer hitRateMargin,

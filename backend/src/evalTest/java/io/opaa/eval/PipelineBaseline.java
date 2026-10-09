@@ -14,7 +14,7 @@ import tools.jackson.databind.json.JsonMapper;
  * VectorStore.similaritySearch} directly.
  *
  * <p><b>A separate type and a separate file per path and domain, never a shared one.</b> The two
- * paths measure at different windows (@10 without a similarity threshold vs. @8 with it applied),
+ * paths measure at different windows (@10 without a similarity threshold vs. @20 with it applied),
  * are not interconvertible, and carry independently counted contract versions (ADR-0012, Nachtrag
  * Pipeline-Messpfad, decision 16). Sharing a schema would make it possible for a pipeline
  * re-measurement to be written over a raw-vector baseline — the one outcome {@code

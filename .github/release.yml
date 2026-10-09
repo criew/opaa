@@ -1,0 +1,23 @@
+# Groups the generated release notes (publish-images.yml, job "release") by PR label.
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - wontfix
+  categories:
+    - title: Sicherheit
+      labels:
+        - security
+    - title: Neue Funktionen
+      labels:
+        - enhancement
+    - title: Fehlerbehebungen
+      labels:
+        - bug
+    - title: Dokumentation
+      labels:
+        - documentation
+    - title: Weitere Änderungen
+      labels:
+        - "*"

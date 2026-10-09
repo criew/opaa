@@ -18,7 +18,7 @@ import java.util.function.Function;
  *
  * <p><b>Every component name carries its own window on purpose.</b> The two paths measure at
  * different windows — {@code documentTopK=10} for the raw-vector path, the production {@code
- * top-k=8} here — and are not interconvertible. A generically named {@code ndcg} would read as
+ * top-k=20} here — and are not interconvertible. A generically named {@code ndcg} would read as
  * comparable to the raw path's {@code ndcgAt10} the moment two numbers land in the same table,
  * which the specification calls an evaluation error outright. {@link #of} therefore also refuses
  * results measured at any other window rather than letting a component name lie.
@@ -28,28 +28,28 @@ import java.util.function.Function;
  * raw path uses. What is duplicated is only the aggregation shape, deliberately, so the raw path's
  * report and baseline schema stay byte-for-byte what they were.
  *
- * @param recallAt8Ceiling the highest Recall@8 this group could reach, given how many cases expect
- *     more than eight documents — same purpose and same definition as {@link
+ * @param recallAt20Ceiling the highest Recall@20 this group could reach, given how many cases
+ *     expect more than twenty documents — same purpose and same definition as {@link
  *     MetricsAggregate#recallAt10Ceiling()}, at this path's window. Deliberately the
- *     <b>structural</b> bound {@code min(8, |expected|) / |expected|}, never the number of
+ *     <b>structural</b> bound {@code min(20, |expected|) / |expected|}, never the number of
  *     documents a run happened to surface: a ceiling derived from the measurement can never be
  *     missed, so a run whose threshold filtered everything but one chunk away would report "Recall
  *     at the maximum achievable" while missing most of the expected documents.
- * @param hitCountAt8 the number of cases with a relevant document anywhere in the (at most
- *     eight-entry) ranked list, i.e. the identical per-case event behind {@code mrrAt8 > 0}, {@code
- *     ndcgAt8 > 0} and {@code recallAt8 > 0}.
+ * @param hitCountAt20 the number of cases with a relevant document anywhere in the (at most
+ *     twenty-entry) ranked list, i.e. the identical per-case event behind {@code mrrAt20 > 0},
+ *     {@code ndcgAt20 > 0} and {@code recallAt20 > 0}.
  */
 public record PipelineMetricsAggregate(
     int n,
     double hitRateAt5,
-    double mrrAt8,
-    double ndcgAt8,
-    double recallAt8,
-    double recallAt8Ceiling,
+    double mrrAt20,
+    double ndcgAt20,
+    double recallAt20,
+    double recallAt20Ceiling,
     int distinctExpectedDocumentSets,
     int hitCountAt5,
-    int hitCountAt8,
-    double allExpectedDocumentsHitAt8) {
+    int hitCountAt20,
+    double allExpectedDocumentsHitAt20) {
 
   /**
    * The Hit Rate window, unchanged from the raw-vector path (ADR-0012 decision 2): "what a user
@@ -61,14 +61,14 @@ public record PipelineMetricsAggregate(
    * The ranking window of the pipeline path: the production {@code opaa.query.top-k}, i.e. the
    * actual number of chunks a real answer is built from. The harness asserts the configured value
    * against this constant, so a changed production default fails loudly instead of silently
-   * producing an {@code …At8} component holding an @-something-else number.
+   * producing an {@code …At20} component holding an @-something-else number.
    */
-  public static final int RANKING_K = 8;
+  public static final int RANKING_K = 20;
 
   /** Human-readable window label carried into every report and summary. */
   public static final String METRIC_WINDOW_NOTE =
-      "Hit Rate@5, MRR@8, nDCG@8, Recall@8 — das Fenster des Pipeline-Pfads ist die tatsächliche "
-          + "Trefferzahl der Produktion (opaa.query.top-k=8). Diese Zahlen sind nicht mit den "
+      "Hit Rate@5, MRR@20, nDCG@20, Recall@20 — das Fenster des Pipeline-Pfads ist die tatsächliche "
+          + "Trefferzahl der Produktion (opaa.query.top-k=20). Diese Zahlen sind nicht mit den "
           + "@10-Zahlen des Rohvektor-Pfads (documentTopK=10, ohne Ähnlichkeitsschwelle) "
           + "vergleichbar und dürfen nicht ohne Fensterangabe nebeneinandergestellt werden "
           + "(docs/features/retrieval-benchmark.md, Abschnitt 1).";
@@ -103,7 +103,7 @@ public record PipelineMetricsAggregate(
             .distinct()
             .count();
     long hitCountAt5 = results.stream().filter(r -> r.hitRate() > 0).count();
-    long hitCountAt8 = results.stream().filter(r -> r.ndcg() > 0).count();
+    long hitCountAt20 = results.stream().filter(r -> r.ndcg() > 0).count();
     double allExpectedDocumentsHit =
         results.stream()
                 .mapToDouble(RetrievalMetrics.WindowedQueryResult::allExpectedDocumentsHit)
@@ -118,7 +118,7 @@ public record PipelineMetricsAggregate(
         recallCeiling,
         (int) distinctExpectedSets,
         (int) hitCountAt5,
-        (int) hitCountAt8,
+        (int) hitCountAt20,
         allExpectedDocumentsHit);
   }
 
@@ -136,7 +136,7 @@ public record PipelineMetricsAggregate(
 
   /**
    * Guards the promise this record's component names make: a result measured at any other window
-   * would be reported under an {@code …At8}/{@code …At5} name that does not describe it.
+   * would be reported under an {@code …At20}/{@code …At5} name that does not describe it.
    */
   private static void requireExpectedWindows(List<RetrievalMetrics.WindowedQueryResult> results) {
     for (RetrievalMetrics.WindowedQueryResult result : results) {

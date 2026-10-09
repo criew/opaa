@@ -34,7 +34,7 @@ class PipelineBaselineTest {
   /**
    * Issue #1040's first acceptance criterion from the loading side: the two paths' baselines are
    * not interchangeable files that happen to live in the same directory. A raw-vector baseline
-   * handed to this loader must fail, not deserialize into a pipeline baseline whose {@code …At8}
+   * handed to this loader must fail, not deserialize into a pipeline baseline whose {@code …At20}
    * fields were quietly defaulted from {@code …At10} data that means something else.
    */
   @Test
@@ -73,13 +73,13 @@ class PipelineBaselineTest {
   }
 
   @Test
-  void rejectsAGroupWhereHitCountAt8IsBelowHitCountAt5() throws IOException {
+  void rejectsAGroupWhereHitCountAt20IsBelowHitCountAt5() throws IOException {
     Path file = tempDir.resolve("pipeline-baseline.json");
-    Files.writeString(file, VALID_JSON.replace("\"hitCountAt8\": 70,", "\"hitCountAt8\": 0,"));
+    Files.writeString(file, VALID_JSON.replace("\"hitCountAt20\": 70,", "\"hitCountAt20\": 0,"));
 
     assertThatThrownBy(() -> PipelineBaseline.load(file))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("0 <= hitCountAt5 <= hitCountAt8 <= n");
+        .hasMessageContaining("0 <= hitCountAt5 <= hitCountAt20 <= n");
   }
 
   @Test
@@ -88,11 +88,11 @@ class PipelineBaselineTest {
     Files.writeString(
         file,
         VALID_JSON.replace(
-            "\"allExpectedDocumentsHitAt8\": 0.400", "\"allExpectedDocumentsHitAt8\": 0.900"));
+            "\"allExpectedDocumentsHitAt20\": 0.400", "\"allExpectedDocumentsHitAt20\": 0.900"));
 
     assertThatThrownBy(() -> PipelineBaseline.load(file))
         .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("allExpectedDocumentsHitAt8");
+        .hasMessageContaining("allExpectedDocumentsHitAt20");
   }
 
   /**
@@ -164,14 +164,14 @@ class PipelineBaselineTest {
           "overall": {
             "n": 121,
             "hitRateAt5": 0.521,
-            "mrrAt8": 0.461,
-            "ndcgAt8": 0.445,
-            "recallAt8": 0.490,
-            "recallAt8Ceiling": 0.960,
+            "mrrAt20": 0.461,
+            "ndcgAt20": 0.445,
+            "recallAt20": 0.490,
+            "recallAt20Ceiling": 0.960,
             "distinctExpectedDocumentSets": 94,
             "hitCountAt5": 63,
-            "hitCountAt8": 70,
-            "allExpectedDocumentsHitAt8": 0.400
+            "hitCountAt20": 70,
+            "allExpectedDocumentsHitAt20": 0.400
           }
         },
         "measuredAt": "2026-08-31",

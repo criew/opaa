@@ -216,7 +216,7 @@ opaa:
     chat-import:
       enabled: ${OPAA_DEMO_CHAT_IMPORT_ENABLED:false}
   query:
-    top-k: ${OPAA_QUERY_TOP_K:8}
+    top-k: ${OPAA_QUERY_TOP_K:20}
     fetch-k: ${OPAA_QUERY_FETCH_K:25}
     mmr-lambda: ${OPAA_QUERY_MMR_LAMBDA:1.0}
     similarity-threshold: ${OPAA_QUERY_SIMILARITY_THRESHOLD:0.3}

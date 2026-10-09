@@ -3,32 +3,47 @@
 ## Deployment aus vorgebauten Images (GHCR)
 
 Für Zielsysteme, auf denen nicht aus dem Quellcode gebaut werden soll, veröffentlicht CI fertige
-Container-Images — bei jedem Push auf `main` und zusätzlich wöchentlich (montags), damit die Images
-auch ohne Codeänderung die aktuellen OS-Sicherheitsupdates tragen:
+Container-Images. Es gibt zwei Arten von Ständen:
+
+- **Releases** mit fester Versionsnummer. Ein Release wird einmal gebaut und nie überschrieben.
+- **Der Entwicklungsstand `main`.** Er wird bei jedem Push auf `main` und zusätzlich wöchentlich
+  (montags) neu gebaut, damit er auch ohne Codeänderung die aktuellen OS-Sicherheitsupdates trägt.
 
 | Image | Tags |
 |-------|------|
-| `ghcr.io/criew/opaa-backend` | `main`, `sha-<commit>` |
-| `ghcr.io/criew/opaa-frontend` | `main`, `sha-<commit>` |
+| `ghcr.io/criew/opaa-backend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
+| `ghcr.io/criew/opaa-frontend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
+
+`X.Y.Z` ist eine Release-Version und ändert ihren Inhalt nie. `X.Y` zeigt auf das jüngste
+Patch-Release dieser Linie. Die verfügbaren Versionen und ihre Änderungen stehen unter *Releases*
+im GitHub-Repository; jede nennt dort auch die Vorbereitungsschritte, die sie verlangt. Ein Tag
+`latest` gibt es nicht.
+
+Für einen Betrieb, der Aktualisierungen plant, ist eine Release-Version der empfohlene Stand. Ein
+Release bekommt Sicherheitsupdates des Basis-Images nicht durch den wöchentlichen Neubau, sondern
+über ein Patch-Release. Wer `X.Y` verwendet, erhält Patch-Releases mit dem nächsten Pull. Wer
+`X.Y.Z` pinnt, wechselt bewusst auf die neue Version.
 
 Auf dem Zielsystem wird kein Repository-Checkout benötigt — es genügt eine `docker-compose.yml`, die `image:` statt `build:` verwendet:
 
 ```yaml
 services:
   backend:
-    image: ghcr.io/criew/opaa-backend:main
+    image: ghcr.io/criew/opaa-backend:0.1.0   # oder :main für den Entwicklungsstand
   frontend:
-    image: ghcr.io/criew/opaa-frontend:main
+    image: ghcr.io/criew/opaa-frontend:0.1.0
 ```
 
-Aktualisieren auf den neuesten `main`-Stand:
+Backend und Frontend immer mit **derselben** Version betreiben.
+
+Aktualisieren auf den neuesten Stand des gewählten Tags:
 
 ```bash
 docker compose pull && docker compose up -d
 ```
 
-`main` folgt dem jeweils letzten Stand. Für reproduzierbare Deployments **den Digest pinnen**, nicht
-einen Tag:
+`main` folgt dem jeweils letzten Stand. Eine Release-Version `X.Y.Z` ist bereits reproduzierbar.
+Wer `main` betreibt und trotzdem einen festen Stand braucht, **pinnt den Digest**, nicht einen Tag:
 
 ```yaml
 image: ghcr.io/criew/opaa-backend@sha256:…
@@ -74,8 +89,9 @@ Neuindizierung nötig.
 **Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung.** Die
 Punkte 1 bis 4 werden einmalig in der `.env.docker` erledigt; ohne sie startet das Backend nicht
 mehr. Punkt 5 betrifft nicht die Konfiguration, sondern die Eigentumsverhältnisse auf dem Host —
-ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Alle Schritte gehören **vor**
-das `docker compose up -d`:
+ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Punkt 6 betrifft die
+Compose-Datei selbst — ohne ihn ist die Oberfläche nicht mehr erreichbar. Alle Schritte gehören
+**vor** das `docker compose up -d`:
 
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Das Wurzelgeheimnis des anwendungseigenen
    Ausstellers. Im Betriebsmodus `oidc` bricht der Start ohne es ab, ebenso bei weniger als 32
@@ -122,9 +138,27 @@ das `docker compose up -d`:
 
    **Ebenfalls prüfen, weil `root` bisher jede Leseberechtigung umging:** ob `documents/`, jedes
    über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis und ein eigenes
-   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Einzelheiten, der Weg ohne `sudo`,
+   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Ein eigenes
+   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder `OPAA_INDEXING_S3_TEMP_DIRECTORY` muss zudem auf einem
+   eingehängten Volume oder unter `/tmp` liegen: Das übrige Dateisystem des Containers ist nur lesbar.
+   Ein Verstoß zeigt sich erst beim ersten Upload bzw. beim ersten Lauf einer S3-Bibliothek, nicht
+   beim Start. Einzelheiten, der Weg ohne `sudo`,
    die Lage auf einem Netzlaufwerk und die Fehlermeldungen, an denen man es erkennt, stehen unter
    [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+
+6. **Containerport des Frontends von `80` auf `8080` umstellen — Pflicht für jede eigene
+   Compose-Datei.** Der Frontend-Container läuft nicht mehr als `root` und lauscht deshalb auf
+   `8080`. Eine Compose-Datei, die nicht aus diesem Repository stammt, etwa nach
+   [„Deployment aus vorgebauten Images"](#deployment-aus-vorgebauten-images-ghcr), bildet noch auf
+   `80` ab. Nach dem nächsten Pull antwortet der Host-Port dann nicht mehr, und ein vorgeschalteter
+   Proxy meldet `502`. Umzustellen sind:
+
+   - die Port-Abbildung des Dienstes `frontend`, etwa `"127.0.0.1:3000:80"` zu
+     `"127.0.0.1:3000:8080"`,
+   - ein eigener Proxy, der den Container im Docker-Netz direkt anspricht, von `frontend:80` auf
+     `frontend:8080`.
+
+   Einzelheiten stehen unter [„Frontend-Laufzeitimage"](#frontend-laufzeitimage).
 
 Was sich **nicht** ändert: Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind. Wer
 bisher einen Identitätsanbieter betreibt, betreibt ihn unverändert weiter; die lokale
@@ -551,7 +585,7 @@ aber Indizierung und Fragen schlagen fehl.
 
 | Service     | Host-Port | Container-Port | Beschreibung                                          |
 |-------------|-----------|-----------------|--------------------------------------------------------|
-| frontend    | 3000      | 80              | React-App über Nginx bereitgestellt                    |
+| frontend    | 3000      | 8080            | React-App über Nginx bereitgestellt                    |
 | backend     | 8081      | 8080            | Spring Boot API                                         |
 | postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
@@ -583,6 +617,88 @@ keine Shell, keine Coreutils, kein `curl`/`wget`, keinen Paketmanager. Für den 
   überschreiben.
 - **Der Prozess läuft ohne Sonderrechte** unter der Kennung `65532` (siehe unten). Das betrifft die
   Eigentümerverhältnisse der eingehängten Verzeichnisse.
+- **Das Root-Dateisystem darf nur lesbar sein.** Siehe
+  [„Nur lesbares Dateisystem"](#nur-lesbares-dateisystem) unten.
+- **Die Heap-Grenze richtet sich nach der Speichergrenze des Containers.** Siehe
+  [„Speicher und Container-Grenzen"](#speicher-und-container-grenzen) unten.
+
+### Nur lesbares Dateisystem
+
+Das Backend schreibt an genau zwei Stellen:
+
+| Pfad | Inhalt | Nötig |
+|---|---|---|
+| `/tmp` (`java.io.tmpdir`) | Arbeitsdateien von Tomcat und Uploads, heruntergeladene Quelldateien, Arbeitskopien für den Objektspeicher, der Font-Cache von PDFBox, Laufzeitdaten der JVM | immer |
+| `/app/uploads` (`OPAA_UPLOAD_STORAGE_PATH`) | die hochgeladenen Originale | nur, solange sie im Dateisystem liegen (`OPAA_UPLOAD_STORE` nicht auf `s3`) |
+
+Alles andere liest der Prozess nur. Ein eigenes `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder
+`OPAA_INDEXING_S3_TEMP_DIRECTORY` kommt als dritter beschreibbarer Pfad hinzu.
+
+Diagnoseziele gehören deshalb immer absolut unter `/tmp`: Ein `jcmd … GC.heap_dump heap.hprof`, ein
+`JFR.dump` ohne `filename` und `-XX:+HeapDumpOnOutOfMemoryError` ohne `-XX:HeapDumpPath=/tmp`
+schreiben sonst ins Arbeitsverzeichnis `/app` und scheitern mit `Read-only file system`.
+
+Der Compose-Stack startet das Backend deshalb mit `read_only: true` und `no-new-privileges`; `/tmp`
+ist dort das benannte Volume `opaa-backend-tmp`. Ein Volume statt `tmpfs`, weil die Dateien dort die
+Größe eines Dokuments erreichen und keinen Arbeitsspeicher belegen sollen.
+
+**Das Volume überlebt Neuerstellung und `docker compose down`.** Was ein geordneter Stopp nicht
+selbst entfernt, bleibt liegen: Arbeitsdateien eines harten Abbruchs, etwa nach einem Abbruch wegen
+der Speichergrenze, und jeder Heap-Dump oder JFR-Mitschnitt. Diese Dateien können Inhalte privater
+Bibliotheken enthalten, ein Heap-Dump zusätzlich Geheimnisse und entschlüsselte Zugangsdaten.
+Aufgeräumt wird bei angehaltenem Backend:
+
+```bash
+docker compose stop backend && docker compose rm -f backend
+docker volume rm <projekt>_opaa-backend-tmp
+docker compose up -d backend
+```
+
+Unter Kubernetes gehört ein `emptyDir` ohne `medium: Memory` nach `/tmp`, mit einem `sizeLimit`, das
+mehrere der größten erwarteten Dokumente gleichzeitig fasst, und einen Heap-Dump, wenn einer
+vorgesehen ist: Er wird so groß wie der Heap. Überschreitet das Verzeichnis das `sizeLimit`, verdrängt
+das Kubelet den Pod. Ein `emptyDir` verschwindet mit dem Pod.
+
+Der Pfad `/app/uploads` ist im Image als Vorgabe von `OPAA_UPLOAD_STORAGE_PATH` gesetzt. Das ist die
+absolute Form der Anwendungsvorgabe `./uploads`.
+
+### Speicher und Container-Grenzen
+
+Die JVM richtet ihre Heap-Grenze nach dem Speicher, den sie sieht. Ohne eigene Angabe nimmt sie
+**25 %** davon: ohne Container-Grenze 25 % des Host-Speichers, mit Grenze 25 % der Grenze. Mit einer
+Grenze bleibt so viel Speicher ungenutzt, deshalb wird der Anteil dann über `JAVA_TOOL_OPTIONS`
+angehoben:
+
+```text
+JAVA_TOOL_OPTIONS=-XX:MaxRAMPercentage=70
+```
+
+Der Rest der Grenze gehört nicht dem Heap, sondern Klassen, übersetztem Code, Threads und Puffern.
+Ohne Container-Grenze wird der Anteil **nicht** angehoben, sonst konkurriert die JVM mit Datenbank
+und Modellbetrieb um den Host-Speicher.
+
+**Messwert als Ausgangspunkt.** Die E2E-Suite (Uploads, Indexierung von PDF-, Office- und
+Mail-Dateien, Chat) lief mit einer Grenze von 1,5 GiB und 75 % Heap ohne Abbruch:
+
+- Spitze des Containers 1,0 GiB
+- belegter Heap höchstens rund 400 MiB
+- Klassen, Code und Threads zusammen rund 420 MiB
+
+Für den Betrieb empfohlen:
+
+| | Anforderung (`requests`) | Grenze (`limits`) | Heap-Anteil |
+|---|---|---|---|
+| Speicher | 1 GiB | 2 GiB | `-XX:MaxRAMPercentage=70` |
+| CPU | 0,5 | keine | — |
+
+Die CPU-Werte sind nicht gemessen. Eine CPU-Grenze drosselt die JVM gerade beim Start und bei der
+Indexierung, deshalb wird sie nur gesetzt, wenn der Cluster sie verlangt.
+
+Große Bestände, sehr große PDF-Dateien oder viele gleichzeitige Indexierungen brauchen mehr. Ein
+Abbruch wegen der Grenze zeigt sich unter Kubernetes als `OOMKilled` im Status des Pods, unter
+Compose als `true` in `docker inspect --format '{{.State.OOMKilled}}' <container>`. Der Exit-Code
+`137` allein ist nicht eindeutig, er entsteht auch nach Ablauf von `stop_grace_period`. Steht dort
+`true`, die Grenze anheben, nicht den Heap-Anteil.
 
 ### Nicht-root-Betrieb des Backend-Containers
 
@@ -762,8 +878,13 @@ Thread- und Heap-Dump ohne Shell:
 docker exec <container> /opt/java/openjdk/bin/jcmd 1 Thread.print
 docker exec <container> /opt/java/openjdk/bin/jcmd 1 GC.heap_dump /tmp/heap.hprof
 docker cp <container>:/tmp/heap.hprof ./heap.hprof
+docker run --rm -v <projekt>_opaa-backend-tmp:/t busybox rm -f /t/heap.hprof   # Dump im Container entfernen
 docker kill -s QUIT <container>   # Alternative: Thread-Dump ins Log, braucht nichts im Image
 ```
+
+Der Dump muss mit absolutem Pfad unter `/tmp` liegen, weil das übrige Dateisystem nur lesbar ist.
+Er enthält Geheimnisse und Inhalte und bleibt im Volume `opaa-backend-tmp` liegen, bis er entfernt
+wird; deshalb die dritte Zeile.
 
 `docker kill -s QUIT` beendet den Container **nicht** — die JVM behandelt `SIGQUIT` als Aufforderung,
 einen Thread-Dump auf die Standardausgabe zu schreiben, er landet also in `docker compose logs`.
@@ -782,6 +903,34 @@ Stack, ohne Meldungstext. Nicht abgedeckt sind die Protokollausgaben eingebunden
 Zeilenwerte nennen können, und der Eintrag „Unexpected error“ für einen unerwarteten Fehler einer
 Anfrage. Wer das Log über `INFO` hinaus öffnet, sollte es deshalb wie Inhalte behandeln. Was die Besitzerin wissen muss, steht im
 Laufprotokoll ihrer Bibliothek ([Benutzerverwaltung](benutzerverwaltung.md), „Verbundene Konten“).
+
+## Frontend-Laufzeitimage
+
+Das Frontend liefert die Oberfläche aus und reicht `/api/` und `/mcp` an das Backend weiter. Es
+läuft auf dem unprivilegierten nginx-Image (`nginxinc/nginx-unprivileged`) und hält dieselben
+Einschränkungen ein, die ein Kubernetes-Cluster mit Pod Security Standard `restricted` verlangt:
+
+- **Ohne root:** Der Prozess läuft als Benutzer `101` und lauscht auf **Port 8080**. Der Compose-Stack
+  bildet den Host-Port `OPAA_FRONTEND_PORT` darauf ab.
+- **Nur lesbares Dateisystem:** Beim Start schreibt der Container ausschließlich unter `/tmp`. Dort
+  liegen die erzeugte Serverkonfiguration (`/tmp/nginx/conf.d/`), die PID-Datei und die
+  Zwischenablage für Uploads. Der Compose-Stack startet den Dienst deshalb mit `read_only: true`,
+  `/tmp` als `tmpfs`, ohne Capabilities und mit `no-new-privileges`. Unter Kubernetes gehört ein
+  `emptyDir` nach `/tmp`.
+- **`/tmp` ist unter Compose Arbeitsspeicher:** Das `tmpfs` ist auf 512 MiB begrenzt. Dort puffert
+  nginx Uploads und, bei langsamen Clients, große Antworten des Backends. Je Antwort ist der
+  Puffer begrenzt, darüber liefert nginx im Takt des Clients aus. Reicht der Platz bei vielen
+  gleichzeitigen großen Uploads nicht, wird die Grenze in der eigenen Compose-Datei angehoben.
+- **Beliebige Kennung:** Das Image läuft auch unter einer vom Cluster zugewiesenen Kennung, etwa
+  bei OpenShift, solange `/tmp` beschreibbar ist.
+- **Backend-Ziel einstellbar:** `OPAA_BACKEND_UPSTREAM` nennt Host und Port des Backends. Ein Wert,
+  der nicht die Form `host[:port]` hat (Port 1 bis 65535), bricht den Start mit einer Meldung im
+  Protokoll ab, statt in die nginx-Konfiguration zu gelangen.
+
+**Bestehende Installation.** Mit der `docker-compose.yml` aus diesem Repository ändert sich nichts:
+Sie bildet den Host-Port bereits auf `8080` ab. Eine eigene Compose-Datei und ein eigener Proxy im
+Docker-Netz müssen umgestellt werden, siehe Punkt 6 der
+[Vorbereitungsschritte](#vorbereitungsschritte-für-bestandsinstallationen).
 
 ## Bereitschaft und Lebendigkeit
 
@@ -934,7 +1083,9 @@ diese Abfrage mit. Neu aufsetzen geht so:
    `<projekt>` ist der Name des Compose-Projekts, ohne eigene Angabe der Name des Verzeichnisses mit
    der `docker-compose.yml`; `docker volume ls | grep opaa-postgres-data` zeigt den genauen Namen.
    **Nicht** `docker compose down -v`: Das verwirft alle Volumes des Stapels, auch
-   `<projekt>_opaa-ollama-data` mit den heruntergeladenen Modellen.
+   `<projekt>_opaa-ollama-data` mit den heruntergeladenen Modellen. Das Volume
+   `<projekt>_opaa-backend-tmp` mit Arbeitsdateien des alten Stands kann im selben Zug mit
+   `docker volume rm` verworfen werden.
 3. Die abgelegten Originale der alten Bibliotheken entfernen — das Verzeichnis `uploads/` bei
    Ablage im Dateisystem, den Inhalt des Buckets bei Ablage im Objektspeicher; beim mitgelieferten
    Objektspeicher genügt `docker volume rm <projekt>_opaa-upload-store-data` (vorher mit
@@ -1101,7 +1252,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:5173` | `http://localhost:3000` | Erlaubte CORS-Origins (kommagetrennt). Der Anwendungs-Default passt nur außerhalb von Docker Compose (lokaler Vite-Dev-Server auf `:5173`) — die Compose-Belegung trägt deshalb bewusst den Frontend-Host-Port, standardmäßig `http://localhost:3000` (siehe [„Docker-spezifische Variablen"](#docker-spezifische-variablen) oben und [„POST-Anfragen geben 403 Forbidden zurück"](#post-anfragen-geben-403-forbidden-zurück) unten) — sonst schlägt jede POST-Anfrage aus dem Compose-Frontend am CORS-Preflight fehl |
 | `OPAA_INDEXING_DOCUMENT_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./documents`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `./documents` | Host-Pfad für Dokumente (in Container gemountet) |
 | `OPAA_UPLOAD_STORAGE_PATH_HOST` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `./uploads`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — nicht in `.env.docker.example` gesetzt; ohne Shell-Export gilt der Compose-Default `./uploads` | Host-Pfad für hochgeladene Dokumente (in Container gemountet) |
-| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln. Darunter liegt je Organisation ein Ordner, darin je Bibliothek einer, darin je Dokument eine Datei unter einem Zufallsnamen: `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` |
+| `OPAA_UPLOAD_STORAGE_PATH` | `./uploads`; im Backend-Image `/app/uploads` | — (`docker-compose.yml` setzt sie im Backend-Container fest auf `/app/uploads`, nicht über `.env.docker` änderbar) | Container-interner Speicherpfad für hochgeladene Dokumente (`opaa.upload.storage-path`) — bei Docker Compose nicht mit dem Bind-Mount `OPAA_UPLOAD_STORAGE_PATH_HOST` zu verwechseln. Darunter liegt je Organisation ein Ordner, darin je Bibliothek einer, darin je Dokument eine Datei unter einem Zufallsnamen: `<Pfad>/<Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` |
 | `OPAA_UPLOAD_STORE` | `filesystem` | nicht gesetzt (Anwendungs-Default gilt) | Welche Ablage die hochgeladenen Originale hält (`opaa.upload.store`): `filesystem` — die Dateien liegen unter `OPAA_UPLOAD_STORAGE_PATH`, ein dorthin eingehängtes Netzlaufwerk eingeschlossen — oder `s3`, ein S3-kompatibler Objektspeicher nach den `OPAA_UPLOAD_S3_*`-Variablen darunter. Jeder andere Wert bricht den Start mit einer Meldung ab, statt stillschweigend auf das Dateisystem zurückzufallen. Mit `s3` liegt jedes Original als Objekt `<Präfix><Organisations-ID>/<Bibliotheks-ID>/<Zufallsname><Endung>` im Bucket — dieselbe Struktur wie auf der Platte, `documents.file_path` trägt `s3://<Bucket>/<Schlüssel>`; ein nicht erreichbarer Objektspeicher bricht den Start **nicht** ab, sondern wird beim Start als Warnung protokolliert und erscheint in `/actuator/health` als eigene Gruppe `upload-store` (`GET /actuator/health/upload-store`) — bewusst nicht im Gesamtstatus, damit ein gestörter Objektspeicher die Instanz nicht aus einer Lastverteilung nimmt, während Chat und Suche weiterlaufen. Der Abruf eines Originals antwortet bei nicht erreichbarem Speicher mit `503` und deutscher Meldung, bei nicht vorhandenem Objekt wie bisher mit `404`; der Upload antwortet bei derselben Störung ebenfalls mit `503`. **Downloads S3-gestützter Originale streamen ohne Zwischendatei; HTTP-Bereichsanfragen (`Range`) und die Wiederaufnahme eines abgebrochenen Downloads entfallen dafür** — mit `filesystem` bleiben beide erhalten |
 | `OPAA_UPLOAD_S3_ENDPOINT` | — (leer; Pflicht bei `OPAA_UPLOAD_STORE=s3`) | nicht gesetzt | Adresse des Objektspeichers, `http://` oder `https://` mit Host und Port, ohne Pfad (`opaa.upload.s3.endpoint`), z. B. `http://objectstore:9000` im Compose-Netz. Fehlt sie bei `s3`, bricht der Start mit einer Meldung ab, die die Variable nennt. Der konfigurierte Endpunkt selbst passiert die Zieladressprüfung immer (nach Schema, Host und Port), braucht also keinen Eintrag in `OPAA_UPLOAD_S3_TARGET_VALIDATION_ALLOWLIST` |
 | `OPAA_UPLOAD_S3_REGION` | `us-east-1` | nicht gesetzt | Signaturregion (`opaa.upload.s3.region`); bei einem selbst betriebenen Speicher beliebig, bei AWS die Region des Buckets |
@@ -1136,16 +1287,16 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). Der Hostname `ollama` im Default löst auf, sobald der Compose-Stack mit dem Profil `ollama` gestartet wird (`docker compose --profile ollama up`, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack) unten) — ohne dieses Profil und ohne anderweitig erreichbaren Ollama-Server schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama stattdessen auf dem Host, `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert). Enthält der Wert Anmeldedaten (`https://benutzer:geheim@host/v1`), bricht der Start ab — die Adresse erscheint sonst im Meldungstext einer fehlgeschlagenen Einbettung samt Stacktrace im Log; Zugangsschlüssel gehören in `OPAA_OPENAI_EMBEDDING_API_KEY` |
 | `OPAA_OPENAI_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Embedding-Modellname |
 | **Abfrage (RAG-Retrieval)** | | | |
-| `OPAA_QUERY_TOP_K` | `8` | `8` | Endgültige Anzahl der für die Antwort ausgewählten Chunks, aus `OPAA_QUERY_FETCH_K` Kandidaten (1–100) |
+| `OPAA_QUERY_TOP_K` | `20` | `20` | Endgültige Anzahl der für die Antwort ausgewählten Chunks, aus `OPAA_QUERY_FETCH_K` Kandidaten (1–100). **Preis ist die Kontextgröße:** Jeder ausgewählte Chunk geht ungekürzt in den Prompt der Antwort, eine Kürzung auf das Kontextfenster des Chat-Modells gibt es nicht (siehe [Suche, Abschnitt 6](suche.md#6-antwort-erzeugen)). Der Prompt wächst linear mit diesem Wert und der Chunk-Länge (bis `OPAA_INDEXING_CHUNK_SIZE` Tokens je Chunk). Bei kleinem Kontextfenster den Wert an dessen Größe binden: etwa `6` bei rund 8.000 Tokens, `12` bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells |
 | `OPAA_QUERY_FETCH_K` | `25` | `25` | Anzahl der Kandidaten, die die Vektorsuche selbst abruft, bevor MMR daraus `OPAA_QUERY_TOP_K` auswählt (1–200, muss ≥ `OPAA_QUERY_TOP_K` sein). Fehlt der Wert, während `OPAA_QUERY_TOP_K` bereits über 25 konfiguriert ist, normalisiert sich der Default auf `max(25, OPAA_QUERY_TOP_K)` statt auf ein starres `25` — sonst würde ein solches Bestandssystem allein durch diese Anhebung nicht mehr starten |
-| `OPAA_QUERY_MMR_LAMBDA` | `1.0` | `1.0` | Abwägung zwischen Relevanz und Vielfalt bei der MMR-Auswahl aus `OPAA_QUERY_FETCH_K` Kandidaten (0,0–1,0) — `1,0` schaltet die Vielfaltsauswahl vollständig ab (reine Top-K-Relevanz) und ist bewusst der Default: Gegen 20 Mehrthemen-Golden-Fälle gemessen (beide erwarteten Dokumente unter den zurückgegebenen Chunks vertreten) erreichte `0,7` mit echten Chunk-Embeddings 19/20 Fälle, reines `topK=8` (dieser Default) 20/20 — MMR ist damit implementiert und per niedrigerem Wert aktivierbar, aber bewusst kein Default (siehe `QueryProperties#mmrLambda`) |
+| `OPAA_QUERY_MMR_LAMBDA` | `1.0` | `1.0` | Abwägung zwischen Relevanz und Vielfalt bei der MMR-Auswahl aus `OPAA_QUERY_FETCH_K` Kandidaten (0,0–1,0) — `1,0` schaltet die Vielfaltsauswahl vollständig ab (reine Top-K-Relevanz) und ist bewusst der Default: Gegen 20 Mehrthemen-Golden-Fälle gemessen (beide erwarteten Dokumente unter den zurückgegebenen Chunks vertreten) erreichte `0,7` mit echten Chunk-Embeddings 19/20 Fälle, reines `topK=8` (der damalige Default) 20/20 — MMR ist damit implementiert und per niedrigerem Wert aktivierbar, aber bewusst kein Default (siehe `QueryProperties#mmrLambda`) |
 | `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
 | `OPAA_QUERY_DECOMPOSITION_ENABLED` | `true` | `true` | Zerlegt eine Frage vor dem Retrieval per LLM-Aufruf in bis zu `OPAA_QUERY_MAX_SUB_QUERIES` eigenständige Suchanfragen, je mit eigenem berechtigungs- und schwellenwertgeprüften `similaritySearch`-Aufruf, rangbasiert (Reciprocal Rank Fusion) zusammengeführt. Ein LLM-Fehlschlag oder eine unparsebare Antwort fällt auf die Ein-Suche-Logik zurück, nie auf einen Fehler; Modellwahl folgt dem systemweiten aktiven Chat-Modell (kein zusätzlicher API-Anbindungsweg) |
 | `OPAA_QUERY_MAX_SUB_QUERIES` | `3` | `3` | Obergrenze der Teilfragen aus der Zerlegung — darüber hinaus kappt die Zerlegung, ohne die Zahl der `similaritySearch`-Aufrufe (und damit die Retrieval-Latenz) unbegrenzt wachsen zu lassen |
 | `OPAA_QUERY_CONVERSATION_WINDOW_MESSAGES` | `20` | `20` | Breite des Gesprächsfensters in Nachrichten (2–100, gerade) — so viele der jüngsten Nachrichten eines Chats trägt der Antwort-Prompt, und so viele werden bei kaltem Zwischenspeicher aus der Datenbank nachgeladen. Gerade, weil das Fenster in Runden (Frage und Antwort) gezählt wird. Zitiermarken früherer Antworten stehen im Fenster nicht; der gespeicherte Antworttext behält sie |
 | `OPAA_QUERY_SEARCH_WINDOW_TURNS` | `2` | `2` | Wie viele der jüngsten Runden die Teilfragen-Zerlegung vom Gesprächsfenster sieht (0 bis `OPAA_QUERY_CONVERSATION_WINDOW_MESSAGES` ÷ 2) — die Suche sieht nie mehr vom Gespräch als die Antwort. `0` heißt „nur die Frage". Derselbe Ausschnitt gilt für den Rückfall, der die letzte Nutzerfrage des Fensters voranstellt |
 | `OPAA_QUERY_VECTOR_INDEX_MAX_SCAN_TUPLES` | `20000` | nicht gesetzt (Anwendungs-Default gilt) | Wie viele Einträge des HNSW-Vektorindex eine Vektorsuche höchstens durchläuft, um `OPAA_QUERY_FETCH_K` Treffer innerhalb von Rechte- und Metadatenfilter zu finden (pgvector `hnsw.max_scan_tuples`, mindestens `1`). Reicht das nicht, endet die Liste kürzer, und das Erklärprotokoll der Diagnose nennt sie. Die Grenze bemisst die Laufzeit einer Suche mit sehr kleinem Suchbereich in einem großen Bestand; ein höherer Wert allein hilft dort selten, weil pgvector auch den Arbeitsspeicher des Durchlaufs begrenzt (Vielfaches von `work_mem`), und für solche Filter wählt PostgreSQL meist ohnehin die exakte Suche |
-| `OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT` | `2` | `2` | Nach der Fusions-/MMR-Auswahl bevorzugt bis zu diese viele Chunks je bereits ausgewähltem Dokument aus der ohnehin berechtigungs- und schwellenwertgefilterten Kandidatenmenge — zweistufige Verdrängung: zuerst der schwächste Chunk eines Dokuments, das schon mit mindestens zwei Chunks vertreten ist; existiert keine solche Quelle, der auswahlrang-letzte Chunk der Gesamtauswahl, sofern das zu vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als dieser (die Dokumentvielfalt darf dabei sinken) — auf `max(1, OPAA_QUERY_TOP_K / 4)` solcher Verdrängungen je Abfrage gedeckelt (bei Default `OPAA_QUERY_TOP_K=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen zugunsten eines einzigen verdrängt. `1` schaltet die Dokument-Vervollständigung vollständig ab |
+| `OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT` | `2` | `2` | Nach der Fusions-/MMR-Auswahl bevorzugt bis zu diese viele Chunks je bereits ausgewähltem Dokument aus der ohnehin berechtigungs- und schwellenwertgefilterten Kandidatenmenge — zweistufige Verdrängung: zuerst der schwächste Chunk eines Dokuments, das schon mit mindestens zwei Chunks vertreten ist; existiert keine solche Quelle, der auswahlrang-letzte Chunk der Gesamtauswahl, sofern das zu vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als dieser (die Dokumentvielfalt darf dabei sinken) — auf `max(1, OPAA_QUERY_TOP_K / 4)` solcher Verdrängungen je Abfrage gedeckelt (bei Default `OPAA_QUERY_TOP_K=20` also 5), damit eine einzelne Abfrage nicht mehrere Themen zugunsten eines einzigen verdrängt. `1` schaltet die Dokument-Vervollständigung vollständig ab |
 | `OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED` | `true` | `true` | Ob der lexikalische Suchpfad seine Volltextabfrage ausführt und seine Trefferliste in die Ergebnis-Fusion einbringt (siehe [„Volltextsuche (lexikalischer Suchpfad)"](#volltextsuche-lexikalischer-suchpfad)). `false` spart die Abfrage und lässt die Suche rein vektoriell laufen — der Pfad erscheint dann weiterhin im Erklärprotokoll der Suche und weist sich dort als abgeschaltet aus. Der Wert wirkt unmittelbar auf die Antwort; auf der Verwaltungs-Evaldomäne kostet `false` gemessen 15 Prozentpunkte Hit Rate@5 (0,935 → 0,783) |
 | `OPAA_CHAT_NOTE_MAX_ITEMS` | `10` | `10` | Notizpunkte, die die Gesprächsnotiz eines Chats höchstens hält (1–50) — beim Anhängen darüber hinaus fällt der älteste Punkt weg. Alles andere an der Notiz ist ein fester Wert: zwei Punkte je Runde, 200 Zeichen je Punkt, das Modell (das systemweit aktive Chat-Modell) und die Tatsache, dass verdichtet wird |
 | `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `90` | `90` | Archivfrist der automatischen Chat-Bereinigung: Tage ohne Aktivität, nach denen ein nicht angehefteter Chat in einem Space mit eingeschalteter Chat-Bereinigung in das Chat-Archiv seines Autors wandert. **Untergrenze 90** — ein kleinerer Wert bricht den Start ab. Die Frist beginnt frühestens mit dem Einschalten im Space (siehe [Suche](suche.md), Abschnitt 2) |
@@ -1356,6 +1507,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt | Kommagetrennte Hostnamen weiterer interner Identitätsanbieter. Die beiden Adressen aus `OPAA_OIDC_ISSUER_URI`/`OPAA_OIDC_JWK_SET_URI` (Schema, Host, Port) sind ohne Eintrag erlaubt |
 | `OPAA_CSP_CONNECT_SRC_EXTRA` | — (kein Spring-Property; leer als Image-Default des Frontend-nginx-`envsubst`-Templates) | nicht gesetzt (auskommentiert) — der Compose-Standardfall `docker,dev` startet keinen Keycloak (Compose-Profil `oidc`); der Kommentar in `.env.docker.example` verweist auf den Wechsel zu `docker,oidc` | Zusätzliche Origin(s) in der `connect-src`-Richtlinie des Frontend-nginx, leerzeichengetrennt bei mehreren. Erforderlich, wenn die OIDC-Authority auf einem anderen Origin liegt als das Frontend selbst — sonst blockiert die Content-Security-Policy die OIDC-Anmeldung stillschweigend |
 | `OPAA_DEMO_MODE` | — (kein Spring-Property; `"false"` als Image-Default des Frontend-nginx-`envsubst`-Templates, siehe `frontend/Dockerfile`) | nicht gesetzt (auskommentiert) | Schaltet den Quellen- und Demo-Hinweis im Dialog „Info zu …" ein, den das Profilmenü öffnet (`frontend/src/layouts/DemoNotice.tsx` in `AboutDialog.tsx`; bis #1921 stand er in einer Fußzeile unter jeder Seite) — **nur für Demo-Instanzen gedacht**, nicht für reguläre OPAA-Installationen. Nach demselben Muster wie `OPAA_CSP_CONNECT_SRC_EXTRA`: `frontend/nginx.conf` setzt den Wert beim Containerstart per `envsubst` in eine kleine, gleichen-Origin-JavaScript-Antwort unter `/runtime-config.js` (normalisiert über eine nginx-`map`-Direktive auf ein literales `true`/`false`, damit ein fehlerhafter Wert nie ungeprüft in die Antwort gelangt) — kein Rebuild des Images nötig, um den Hinweis umzuschalten |
+| `OPAA_BACKEND_UPSTREAM` | — (kein Spring-Property; `backend:8080` als Image-Default des Frontend-nginx-`envsubst`-Templates, siehe `frontend/Dockerfile`) | nicht gesetzt (Image-Default passt zum Compose-Dienstnamen) | Host und Port (`host[:port]`), an die der nginx im Frontend-Container `/api/` und `/mcp` weiterreicht. Nötig, wenn das Backend nicht unter dem Namen `backend` erreichbar ist, etwa unter Kubernetes mit dem Service-Namen des Releases. Ein Wert mit Schema, Pfad, Leerzeichen oder Zeilenumbruch bricht den Containerstart ab (siehe [„Frontend-Laufzeitimage"](#frontend-laufzeitimage)) |
 | `OPAA_DEMO_CHAT_IMPORT_ENABLED` | `false` | nicht gesetzt (auskommentiert) | Schaltet den Einspielweg für vorbereitete Chatverläufe der Demo-Instanz ein (`POST /api/v1/spaces/{spaceId}/chat-imports`): Die aufrufende Person legt in einem Space, dessen Mitglied sie ist, einen eigenen Chat mit vorgegebenen Fragen, Antworten, Zeitpunkten und Belegen an, ohne Modellaufruf. Jeder Beleg muss auf ein Dokument zeigen, das sie lesen darf, und jede Fundstellenmarke im Antworttext auf einen Beleg derselben Runde mit dessen Dateinamen; Dateiname und Metadaten des Belegs stammen aus dem Dokument, mit denselben Feldern wie bei einer erzeugten Antwort. Jeder eingespielte Chat trägt einen Importschlüssel, den nur der Import setzt; `GET` auf dieselbe Adresse listet die eingespielten Chats der aufrufenden Person mit ihrem Schlüssel, und ein zweiter Import unter demselben Schlüssel im selben Space wird abgelehnt. **Nur für Demo-Instanzen gedacht und dort nur für die Dauer des Seed-Laufs gesetzt**, danach entfernt und das Backend neu gestartet: Solange der Schalter an ist, kann jedes angemeldete Konto Antworttexte ohne Modell und mit beliebigen Zeitpunkten in eigene Chats schreiben – auf einer Instanz mit geteilten Demo-Konten sehen andere Besuchende diese Inhalte. Ohne den Schalter existiert die Route nicht und antwortet wie jede unbekannte Adresse |
 | **Docker-Compose-Ports** | | | |
 | `OPAA_BACKEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8081`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `8081` | Backend-Host-Port |
@@ -1404,7 +1556,7 @@ Auf `/api/`-Antworten setzt zusätzlich Spring Security eigene `X-Content-Type-O
 
 **`Strict-Transport-Security` wird hier bewusst nicht gesetzt.** Der Frontend-Container terminiert im Compose-Betrieb kein TLS — er spricht selbst nur `http` (siehe Hinweis zu `X-Forwarded-Proto` oben). Diesen Header trotzdem hier zu setzen wäre wirkungslos für Installationen ohne vorgelagerten TLS-Weg und schädlich für solche mit einem: HSTS an zwei Stellen im selben Antwortpfad zu pflegen — hier und am vorgelagerten Proxy — schafft nur eine weitere Möglichkeit, dass beide auseinanderlaufen (z. B. unterschiedliches `max-age` oder `includeSubDomains`), ohne einen Sicherheitsgewinn gegenüber einer einzigen, korrekt gepflegten Stelle. Wer OPAA hinter einem TLS-terminierenden Proxy betreibt (siehe Hinweis oben), setzt `Strict-Transport-Security` an genau diesem äußeren Proxy — dort, wo TLS tatsächlich endet.
 
-**`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image; `.env.docker.example` führt den Origin des mitgelieferten Keycloak als auskommentiertes Beispiel, siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten für den Fall, in dem er tatsächlich gebraucht wird). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`- und `OPAA_DEMO_*`-Variablen (Letztere für den Demo-Hinweis, siehe `OPAA_DEMO_MODE` oben), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
+**`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image; `.env.docker.example` führt den Origin des mitgelieferten Keycloak als auskommentiertes Beispiel, siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten für den Fall, in dem er tatsächlich gebraucht wird). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO|BACKEND)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`-, `OPAA_DEMO_*`- und `OPAA_BACKEND_*`-Variablen (für den Demo-Hinweis siehe `OPAA_DEMO_MODE` oben, für das Weiterleitungsziel `OPAA_BACKEND_UPSTREAM`), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
 
 Die genannten Header sind gegen den Produktions-Build (`pnpm run build`) und das gebaute Docker-Image verprobt: `dist/index.html` referenziert ausschließlich selbst gehostete, gehashte `<script>`- und `<link>`-Dateien (keine Inline-Skripte), und ein Abruf des laufenden Containers zeigt alle Header sowohl auf `/` als auch auf `/api/`-Antworten (Vererbung über den `server`-Block, siehe Kommentare in `frontend/nginx.conf`).
 

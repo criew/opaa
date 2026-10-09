@@ -40,8 +40,11 @@ class SearchDiagnosisIntegrationTest {
   private static final UUID DEFAULT_ORGANIZATION_ID =
       UUID.fromString("00000000-0000-0000-0000-000000000001");
 
-  /** Comfortably above {@code opaa.query.top-k} (8), so a run must displace candidates. */
-  private static final int DOCUMENT_COUNT = 15;
+  /**
+   * Above {@code opaa.query.top-k} (20), so a run must displace candidates, and within {@code
+   * opaa.query.fetch-k} (25), so every document is found before it is displaced.
+   */
+  private static final int DOCUMENT_COUNT = 24;
 
   @Autowired private VectorStore vectorStore;
   @Autowired private VectorChunkStore vectorChunkStore;
