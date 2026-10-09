@@ -118,8 +118,10 @@ class ConnectionProfileResponseMapperTest {
   @Test
   void theImpactCarriesWhatSavingDiscardsAndItsConfirmation() {
     Discards rebound =
-        new Discards(0, 2, 3, TestPersonCounts.of(1, 0).total(), List.of("Imitiertes Konto"), 3);
-    Discards moved = new Discards(3, 2, 3, TestPersonCounts.of(1, 0).total(), List.of(), 0);
+        new Discards(
+            0, 2, 3, TestPersonCounts.of(1, 0).total(), List.of("Imitiertes Konto"), 3, List.of());
+    Discards moved =
+        new Discards(3, 2, 3, TestPersonCounts.of(1, 0).total(), List.of(), 0, List.of());
 
     ConnectionProfileImpactResponse impact = impactWith(rebound);
     ConnectionProfileImpactResponse address = impactWith(moved);

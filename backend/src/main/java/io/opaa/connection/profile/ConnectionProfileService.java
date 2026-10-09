@@ -59,7 +59,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Creates, changes and deletes connection profiles - system administration only, enforced by the
  * caller. A changed server address or app registration discards every secret held under the profile
  * - of libraries and of persons, whose connections end through {@link PersonConnections}; a new
- * client secret alone discards nothing. A changed default only the profile sets (Google Drive's
+ * client secret alone discards nothing; a stored one never follows a token or revocation endpoint
+ * the profile names to another address. A changed default only the profile sets (Google Drive's
  * imitated account) discards the run state of every library on it and notifies their managers. What
  * a change discards ({@link Discards}) is confirmed first; private libraries are neither counted
  * nor waited for. The client secret - a service account key is checked here and names the client id
@@ -71,6 +72,9 @@ public class ConnectionProfileService {
 
   /** Refusal of a change that would discard secrets without the caller's confirmation. */
   public static final String CONFIRMATION_REQUIRED = "CONNECTION_PROFILE_CONFIRMATION_REQUIRED";
+
+  /** Refusal of a change moving a token or revocation endpoint that keeps the stored secret. */
+  public static final String CLIENT_SECRET_REQUIRED = "CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED";
 
   /** How many days before its expiry a client secret is reported as expiring. */
   public static final int SECRET_EXPIRY_WARNING_DAYS = 14;
@@ -240,6 +244,7 @@ public class ConnectionProfileService {
   public Answers check(UUID id, ConnectionProfileValues values, String secret, boolean confirmed) {
     ConnectionProfile profile = get(id);
     ProfileChange change = plan(profile, keyed(values, secret, profile).values());
+    requireSecretFollows(profile, change.values(), secret);
     if (!confirmed) {
       requireConfirmed(discardsOf(change, id));
     }
@@ -262,15 +267,17 @@ public class ConnectionProfileService {
 
   /**
    * Replaces every editable field; {@code secret} {@code null} keeps the stored one, blank clears
-   * it, anything else replaces it and lifts a rejection of the profile's own sign-in. A new
-   * address, client id (for a service account key: another account in the key), tenant, scope list,
-   * endpoint or sign-in method discards every secret held under the profile - revoked with the
-   * registration before the change - and ends the persons' connections, a new binding the secrets
-   * it concerns, a changed default only the profile sets the run state of every library on it -
-   * each refused with 409 {@value #CONFIRMATION_REQUIRED} while there are such and {@code
-   * confirmed} is false. Every library whose effective configuration changes passes its connector
-   * first ({@code answers} given by {@link #check}); one refusal leaves profile and libraries
-   * unchanged (400 {@value ChangeRejection#PROFILE_CHANGE_REJECTED}).
+   * it, anything else replaces it and lifts a rejection of the profile's own sign-in; kept while a
+   * token or revocation endpoint the profile names moves, it is refused with 400 {@value
+   * #CLIENT_SECRET_REQUIRED} before anything else. A new address, client id (for a service account
+   * key: another account in the key), tenant, scope list, endpoint or sign-in method discards every
+   * secret held under the profile - revoked with the registration before the change - and ends the
+   * persons' connections, a new binding the secrets it concerns, a changed default only the profile
+   * sets the run state of every library on it - each refused with 409 {@value
+   * #CONFIRMATION_REQUIRED} while there are such and {@code confirmed} is false. Every library
+   * whose effective configuration changes passes its connector first ({@code answers} given by
+   * {@link #check}); one refusal leaves profile and libraries unchanged (400 {@value
+   * ChangeRejection#PROFILE_CHANGE_REJECTED}).
    */
   @Transactional
   public ConnectionProfile update(
@@ -288,17 +295,16 @@ public class ConnectionProfileService {
     String newSecret = blankToNull(keyed.secret());
     requireSecretFits(validated.authMethod(), newSecret);
     String ciphertext;
-    boolean keyChangesMeaning =
-        (validated.authMethod() == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY)
-            != (profile.getAuthMethod() == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY);
     if (!validated.authMethod().usesAppRegistration()) {
       ciphertext = null;
     } else if (secret == null) {
       // a client secret is no key file, and a key file no client secret
-      ciphertext = keyChangesMeaning ? null : profile.getClientSecretCiphertext();
+      ciphertext =
+          keyChangesMeaning(profile, validated) ? null : profile.getClientSecretCiphertext();
     } else {
       ciphertext = encryptor.encrypt(newSecret);
     }
+    requireSecretFollows(profile, validated, secret);
     if (!confirmed) {
       requireConfirmed(discardsOf(change, id));
     }
@@ -400,7 +406,86 @@ public class ConnectionProfileService {
         change.configurationsChanged(),
         change.personsConcerned() ? personNumbers.totalOf(id) : null,
         change.fullSyncLabels(),
-        change.fullSyncs());
+        change.fullSyncs(),
+        change.endpointChanges());
+  }
+
+  /** Whether {@code validated} turns a client secret into a key file or a key file into one. */
+  private static boolean keyChangesMeaning(
+      ConnectionProfile profile, ConnectionProfileValues validated) {
+    return (validated.authMethod() == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY)
+        != (profile.getAuthMethod() == ConnectionAuthMethod.SERVICE_ACCOUNT_KEY);
+  }
+
+  /**
+   * Refuses with 400 {@value #CLIENT_SECRET_REQUIRED} a change that would keep the stored client
+   * secret ({@code secret} {@code null}) while a token or revocation endpoint the profile names
+   * moves, or while the proxy changes and one of them is plain {@code http://}: the secret is sent
+   * to both, through the proxy, and goes only where it was entered for. The authorization endpoint
+   * receives none; a profile without a stored secret is a public client.
+   */
+  private static void requireSecretFollows(
+      ConnectionProfile profile, ConnectionProfileValues validated, String secret) {
+    if (secret != null
+        || !profile.isClientSecretSet()
+        || !validated.authMethod().usesAppRegistration()
+        || keyChangesMeaning(profile, validated)) {
+      return;
+    }
+    ProfileEndpoints before = profile.getEndpoints();
+    ProfileEndpoints after = validated.endpoints();
+    List<String> moved = new ArrayList<>();
+    endpointChange("Der Token-Endpunkt", before.token(), after.token()).ifPresent(moved::add);
+    endpointChange("Der Widerrufs-Endpunkt", before.revocation(), after.revocation())
+        .ifPresent(moved::add);
+    if (!moved.isEmpty()) {
+      throw new ValidationException(
+          String.join(" ", moved)
+              + " Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet:"
+              + " Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für"
+              + " einen öffentlichen Client.",
+          CLIENT_SECRET_REQUIRED);
+    }
+    List<String> plain =
+        Stream.of(after.token(), after.revocation())
+            .filter(Objects::nonNull)
+            .filter(endpoint -> endpoint.regionMatches(true, 0, "http://", 0, 7))
+            .toList();
+    if (!plain.isEmpty() && !Objects.equals(profile.getSourceProxy(), validated.sourceProxy())) {
+      throw new ValidationException(
+          "Der Proxy des Zugangs ändert sich, und "
+              + String.join(" sowie ", plain)
+              + (plain.size() > 1 ? " sind" : " ist")
+              + " unverschlüsselt (http://): Der Proxy sähe das hinterlegte Client-Secret."
+              + " Bitte geben Sie das Client-Secret erneut an, oder ein leeres für einen"
+              + " öffentlichen Client.",
+          CLIENT_SECRET_REQUIRED);
+    }
+  }
+
+  /**
+   * The sentence naming how an endpoint the profile names changes from {@code before} to {@code
+   * after}; empty where it stays or the connector fixes it afterwards.
+   */
+  private static Optional<String> endpointChange(String label, String before, String after) {
+    if (after == null || after.equals(before)) {
+      return Optional.empty();
+    }
+    return Optional.of(
+        before == null
+            ? label + " ist künftig " + after + "."
+            : label + " wechselt von " + before + " zu " + after + ".");
+  }
+
+  /** The changes of every endpoint the profile names, as the confirmation tells them. */
+  private static List<String> endpointChanges(ProfileEndpoints before, ProfileEndpoints after) {
+    return Stream.of(
+            endpointChange(
+                "Der Autorisierungs-Endpunkt", before.authorization(), after.authorization()),
+            endpointChange("Der Token-Endpunkt", before.token(), after.token()),
+            endpointChange("Der Widerrufs-Endpunkt", before.revocation(), after.revocation()))
+        .flatMap(Optional::stream)
+        .toList();
   }
 
   /** Refuses with 409 a change that discards anything without the caller's confirmation. */
@@ -521,7 +606,8 @@ public class ConnectionProfileService {
         connected.size() - privateLibraries.size(),
         moves,
         privateLibraries,
-        fullSyncLabels);
+        fullSyncLabels,
+        endpointChanges(profile.getEndpoints(), validated.endpoints()));
   }
 
   private static Object valueOf(ConnectorData defaults, DefaultKey key) {
@@ -921,6 +1007,8 @@ public class ConnectionProfileService {
    *     them; {@code null} where it ends none
    * @param fullSyncLabels the changed defaults only the profile sets
    * @param fullSyncs the shared libraries whose run state they discard
+   * @param endpointChanges how the endpoints the profile names change, one sentence each, old and
+   *     new address
    */
   public record Discards(
       long connections,
@@ -928,13 +1016,15 @@ public class ConnectionProfileService {
       long configurations,
       PersonCount connectedAccounts,
       List<String> fullSyncLabels,
-      long fullSyncs) {
+      long fullSyncs,
+      List<String> endpointChanges) {
 
-    public static final Discards NONE = new Discards(0, 0, 0, null, List.of(), 0);
+    public static final Discards NONE = new Discards(0, 0, 0, null, List.of(), 0, List.of());
 
     /**
      * The question saving asks first - the message of the 409 {@value #CONFIRMATION_REQUIRED} -
-     * {@code null} where it asks none. It names persons without a number.
+     * {@code null} where it asks none. It names persons without a number, and the old and the new
+     * address of every endpoint the profile names that changes.
      */
     public String confirmation() {
       boolean persons = connectedAccounts != null;
@@ -970,6 +1060,9 @@ public class ConnectionProfileService {
             .append(libraries(fullSyncs, "Bibliothek", "Bibliotheken"))
             .append(" wird verworfen, der nächste Lauf liest die Quelle vollständig neu. ");
       }
+      for (String change : endpointChanges) {
+        text.append(change).append(' ');
+      }
       return text.append("Bitte bestätigen.").toString();
     }
 
@@ -984,6 +1077,7 @@ public class ConnectionProfileService {
    * @param forPersons whether the profile admitted persons before the change
    * @param connections the connections of shared libraries
    * @param privateLibraries the private libraries on the profile
+   * @param endpointChanges how the endpoints the profile names change, for the confirmation
    */
   private record ProfileChange(
       ConnectionProfileValues values,
@@ -995,7 +1089,8 @@ public class ConnectionProfileService {
       long connections,
       List<Move> moves,
       Set<UUID> privateLibraries,
-      List<String> fullSyncLabels) {
+      List<String> fullSyncLabels,
+      List<String> endpointChanges) {
 
     /**
      * The private libraries saving releases from the profile: every one where the ownership no

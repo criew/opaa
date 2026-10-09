@@ -1098,7 +1098,8 @@ sofort zurück. Ersetzt in „Widerruf nach dem Commit“ den Teil „im aufrufe
   verbundene Konten, „Quelle verbinden“ und Neuverbinden gleich, bei MCP-Servern immer, bei
   Konnektoren mit deklariertem Issuer. Ein Konnektor, dessen Endpunkte der Zugang setzt
   (`Endpoint.FromProfile`, etwa ein selbst betriebenes Keycloak), kennt seinen Issuer nicht aus der
-  Deklaration; für ihn wird nichts verglichen, bis der Zugang den Issuer selbst nennt. Heute bietet
+  Deklaration, und der Zugang trägt keinen Issuer. Für ihn wird nichts verglichen; das Restrisiko
+  Mix-up bleibt dort ausdrücklich bestehen, solange der Zugang keinen Issuer trägt. Heute bietet
   kein Produktionskonnektor OAuth an.
 - **Belegt** in `McpServerIssuerIntegrationTest` mit zwei `FakeMcpServer`: Mix-up mit fremdem
   `iss` (kein Code am Token-Endpunkt, `state` verbraucht, Log ohne Code und `state`), fehlendes
@@ -1108,6 +1109,64 @@ sofort zurück. Ersetzt in „Widerruf nach dem Commit“ den Teil „im aufrufe
   den `FakeAuthorizationServer`, `ResponseIssuerTest` die Regel, `McpServerDiscoveryTest` das Lesen
   der Ankündigung. `KeycloakOAuthConsentTest` (nur `keycloakIntegrationTest`) zeigt, dass Keycloak
   `iss` ankündigt und liefert und nur der eigene Issuer angenommen wird.
+
+## Nachtrag vom 09.10.2026: Client-Secret folgt keinem Endpunkt des Zugangs (#2297)
+
+Ergänzt den Nachtrag zum OAuth-Kern (`Endpoint.FromProfile`) um die Regel, die der Nachtrag zur
+MCP-Grundlage für MCP-Zugänge schon trifft: Ein gespeichertes Client-Secret geht nur an die
+Endpunkte, für die es eingetragen wurde.
+
+- **Regel:** Ändert `ConnectionProfileService#update` bei einem Zugang mit gespeichertem Secret den
+  Token- oder Widerrufs-Endpunkt, den der Zugang selbst nennt, verlangt die Änderung ein neues
+  Secret im Request. Ohne eines antwortet sie mit `400 CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED`;
+  ein leeres macht den Zugang zum öffentlichen Client. Beide Endpunkte bekommen das Secret
+  (`OAuthClient#authenticate` beim Token-Request und beim Widerruf nach RFC 7009). Sonst könnte,
+  wer einen Zugang ändern, das Secret aber nicht lesen darf, es an einen eigenen Endpunkt lenken.
+- **Proxy:** Token- und Widerrufs-Requests laufen über den Proxy des Zugangs. Ist einer dieser
+  Endpunkte `http://`, sähe ein neuer Proxy das Secret im Klartext; ein geänderter `sourceProxy`
+  verlangt dann ebenso ein neues Secret (derselbe Code). Bei `https://` bleibt das Secret. Es
+  zählen nur die Endpunkte, die der Zugang nennt; die festen der Konnektoren sind `https://`.
+- **Vor allem anderen:** Die Prüfung läuft in `check` und `update` vor der Rückfrage und vor jedem
+  Verwurf. Profil, Secret, Token und Bibliotheken bleiben bei der Abweisung unverändert, auch mit
+  `confirmDiscard`.
+- **Nicht betroffen:** der Autorisierungs-Endpunkt, der nur Client-ID, `state` und Challenge
+  bekommt; ein Zugang ohne gespeichertes Secret; ein Wechsel zwischen Client-Secret und
+  Dienstkonto-Schlüssel, der das Secret ohnehin verwirft; ein Endpunkt, den der Konnektor fest
+  vorgibt. Auch ein Wechsel nur des Mandanten (`Endpoint.WithTenant`) zählt nicht: Der Host bleibt
+  der des Anbieters, nur der Pfad wechselt (Maintainer-Entscheidung im Issue).
+- **Rückfrage:** Die `409 CONNECTION_PROFILE_CONFIRMATION_REQUIRED` und wortgleich die Vorschau
+  (`Discards#endpointChanges`) nennen bei jedem geänderten Endpunkt des Zugangs, auch dem
+  Autorisierungs-Endpunkt, die alte und die neue Adresse; der Autorisierungs-Endpunkt schickt die
+  Person zur Zustimmung.
+- **Formular:** Ändert sich ein solcher Endpunkt bei hinterlegtem Secret, wird das Feld
+  Client-Secret Pflicht, oder die Verwaltung wählt ausdrücklich „Ohne Client-Secret speichern“.
+- **Belegt** in `ProfileEndpointsTest` (400 bei Token- und Widerrufs-Endpunkt mit und ohne
+  Bestätigung, nichts verworfen; Autorisierungs-Endpunkt allein; öffentlicher Client; Rückfrage
+  mit alten und neuen Adressen) und `EndpointChangeClientSecretTest`: Nach der Änderung mit neuem
+  Secret erreicht die nächste Anmeldung nur den neuen Endpunkt eines zweiten Fake-Servers, mit dem
+  neuen Secret.
+
+## Nachtrag vom 09.10.2026: Sperrreihenfolge Token vor Konto (#2428)
+
+Jeder Weg, der die Token-Zeile einer Person und ihr verbundenes Konto schreibt, sperrt zuerst die
+Token-Zeile. Die Verwurfspfade in `ConnectionSecrets` (`discard`, `discardAllUnder`, die Erneuerung
+mit `grantRejected`) taten das schon. Zwei Wege schrieben dagegen zuerst das Konto:
+`ConnectedAccountService#established` (Neuverbinden) und `expire`, wenn eine abgewiesene Anmeldung
+im Lauf über `ProfileSourceConnectionResolver#credentialsRejected` → `rejected` hereinkommt. Dort
+lädt `expire` das Konto vor dem Token, und Hibernate schreibt beim Flush in Ladereihenfolge. Lief
+einer davon parallel zum Beenden desselben Kontos, erkannte Postgres einen Deadlock und brach eine
+Aktion ab.
+
+- `established` und `expire` rufen vor jedem Zugriff auf das Konto `ConnectionSecrets#lockHeld`
+  und lesen das Konto erst danach. Kommt `expire` aus der Erneuerung, hält dieselbe Transaktion die
+  Zeile schon. Ein Neuverbinden wartet also auf ein laufendes Beenden und legt danach ein neues
+  Konto an; eine abgewiesene Anmeldung findet das Konto getrennt und tut nichts.
+- Weitere Schreiber des Kontos ohne Token: `dropDisconnectedWithoutPrivateLibrary` (nur getrennte
+  Konten ohne Token) und `markUsed` (eigene Transaktion, nur das Konto).
+- **Belegt** in `ConnectedAccountLockOrderIntegrationTest`: Eine dritte Transaktion hält die
+  Token-Zeile, das Trennen und danach das Neuverbinden bzw. die abgewiesene Anmeldung einer privaten
+  Bibliothek reihen sich dahinter ein. Auf dem alten Stand enden beide Fälle in
+  `CannotAcquireLockException` („deadlock detected“), mit der Regel ohne Fehler.
 
 ## Nachtrag vom 09.10.2026: Abgleichstand mit Fingerabdruck statt Vermerk im Speicher (#2268)
 

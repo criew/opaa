@@ -181,6 +181,8 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   public AccountOverview.Account established(
       CurrentUser caller, ConnectionProfile profile, NewSecret secret, String label) {
     requireConnectable(caller, profile);
+    // token row before account row, as every end of a connection; the account is read after it
+    secrets.lockHeld(new PersonOwned(profile.getId(), caller.id()));
     Instant now = clock.instant();
     Optional<ConnectedAccount> existing =
         accounts.findByUserIdAndProfileId(caller.id(), profile.getId());
@@ -296,6 +298,8 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
    * {@code body}; ignored once it is not connected.
    */
   private void expire(PersonOwned owner, AuditObjectType objectType, UUID objectId, String body) {
+    // token row before account row; a renewal's own transaction holds it already
+    secrets.lockHeld(owner);
     Optional<ConnectedAccount> found =
         accounts.findByUserIdAndProfileId(owner.userId(), owner.profileId());
     if (found.isEmpty() || found.get().getState() != ConnectedAccountState.CONNECTED) {
