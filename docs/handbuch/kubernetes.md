@@ -627,11 +627,16 @@ Images ihre aktualisierten öffentlichen CAs mit. Der Handgriff aus
 ### Identitätsanbieter
 
 Ohne `bootstrap.oidc` melden sich Personen mit lokalen Konten an
-([Benutzerverwaltung](benutzerverwaltung.md)). Das Protokoll nennt dann bei jedem Start, dass kein
-Identitätsanbieter übernommen wurde; das ist in diesem Fall erwartet.
+([Benutzerverwaltung](benutzerverwaltung.md)). Das Protokoll nennt dann bei jedem Start auf Stufe
+`INFO`, dass kein Identitätsanbieter konfiguriert ist und die Anmeldung nur mit lokalen Konten
+geht. Ein Fehler (`ERROR`) erscheint in diesem Fall nur, wenn auch kein anmeldefähiges lokales
+Systemverwalterkonto existiert, etwa weil das Notanker-Konto nicht angelegt werden konnte; dann
+kann sich niemand anmelden.
 
 Mit einem Identitätsanbieter gehören `bootstrap.oidc.issuerUri` und `bootstrap.oidc.clientId`
-zusammen; fehlt eines, übernimmt der erste Start keinen Anbieter. Beim Anbieter werden eingetragen:
+zusammen; fehlt eines, übernimmt der erste Start keinen Anbieter. Das Protokoll meldet das bei
+jedem Start als Fehler (`ERROR`), bis die Angabe vollständig ist; die Anmeldung mit lokalen Konten
+geht in dieser Zeit weiter. Beim Anbieter werden eingetragen:
 
 - als Weiterleitungs-URI `<publicBaseUrl>/auth/callback`
 - als Web-Origin und Abmelde-Weiterleitung `<publicBaseUrl>`
