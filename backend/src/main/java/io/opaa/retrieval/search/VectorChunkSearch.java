@@ -74,8 +74,10 @@ public class VectorChunkSearch {
 
   /**
    * Up to {@code request.getTopK()} chunks within the request's filter whose similarity reaches its
-   * threshold, nearest first. Fewer only when fewer qualify, or when the index scan reached {@link
-   * VectorIndexScanProperties#maxScanTuples} or pgvector's scan memory limit first.
+   * threshold, nearest first. Fewer when fewer qualify, when the index scan reached {@link
+   * VectorIndexScanProperties#maxScanTuples} or pgvector's scan memory limit first, or when the
+   * HNSW graph leaves matching nodes unreachable from its entry point (approximate; rare with real
+   * embeddings).
    */
   public List<Document> similaritySearch(SearchRequest request) {
     PGvector queryEmbedding = new PGvector(embeddingModel.embed(request.getQuery()));

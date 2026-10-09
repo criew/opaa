@@ -111,6 +111,8 @@ public abstract class FileStoreChangeFeedContract extends FileStoreContract {
   @org.junit.jupiter.params.ParameterizedTest
   @org.junit.jupiter.params.provider.CsvSource({"0, 1", "1, 0"})
   void aFileMovedBetweenContainersStaysADocument(int from, int to) throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        fixture.keepsIdentityAcrossContainers(), "a move across containers makes a new document");
     fixture.put(from, "wandert.txt", "Bleibt gleich.");
     fullSync();
     String path = fixture.filePath(from, "wandert.txt");

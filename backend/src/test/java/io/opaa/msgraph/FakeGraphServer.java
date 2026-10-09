@@ -83,6 +83,15 @@ public final class FakeGraphServer implements AutoCloseable {
     public byte[] content = new byte[0];
     public boolean deleted;
 
+    /** The {@code package} type, such as {@code oneNote}; {@code null} for a plain item. */
+    public String packageType;
+
+    /** Whether Microsoft flagged the item as malware ({@code malware} facet). */
+    public boolean malware;
+
+    /** The {@code file.mimeType} a file reports. */
+    public String mimeType = "application/octet-stream";
+
     Item(String id, String driveId, boolean folder) {
       this.id = id;
       this.driveId = driveId;
@@ -122,13 +131,19 @@ public final class FakeGraphServer implements AutoCloseable {
   private final AtomicInteger plainDownloadHits = new AtomicInteger();
   private final Set<String> trickling = ConcurrentHashMap.newKeySet();
   private volatile boolean trickleDownloads;
-  private volatile String acceptedToken = TOKEN;
+  private final Set<String> acceptedTokens = ConcurrentHashMap.newKeySet();
+  private final List<String> sentTokens = new CopyOnWriteArrayList<>();
+  private volatile Set<String> grantedSites;
   private volatile boolean deltaTokensExpired;
+  private volatile int pageTokensExpiredThrough;
+  private volatile boolean repeatDeltaEntries;
+  private final Map<String, String> staleParents = new ConcurrentHashMap<>();
   private volatile DownloadHost downloadHost = DownloadHost.HTTPS;
   private volatile DeltaLinkForm deltaLinkForm = DeltaLinkForm.QUERY;
   private volatile UnaryOperator<String> linkRewrite = UnaryOperator.identity();
 
   public FakeGraphServer() {
+    acceptedTokens.add(TOKEN);
     try {
       graph = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
       download = HttpsServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -219,6 +234,70 @@ public final class FakeGraphServer implements AutoCloseable {
     changed(item);
   }
 
+  /** Brings a deleted item back under its id, as a restore from the recycle bin does. */
+  public void restore(String id) {
+    Item item = items.get(id);
+    item.deleted = false;
+    changed(item);
+  }
+
+  /** New content for a file, logged as its change. */
+  public void update(String id, byte[] content) {
+    Item item = items.get(id);
+    item.content = content;
+    changed(item);
+  }
+
+  /** Moves an item under {@code parentId} of the same drive, logged at its old and new place. */
+  public void move(String id, String parentId) {
+    Item item = items.get(id);
+    changed(item);
+    item.parentId = parentId;
+    changed(item);
+  }
+
+  /** Logs a change of {@code id} again, as Graph does for any change of an item. */
+  public void touch(String id) {
+    changed(items.get(id));
+  }
+
+  /**
+   * From now on only the sites {@code siteIds} are granted to the application, as under {@code
+   * Sites.Selected}: every other site, its drives and items answer {@code 403 accessDenied}, and so
+   * does the site search.
+   */
+  public void grantOnly(String... siteIds) {
+    grantedSites = Set.of(siteIds);
+  }
+
+  /** From now on also {@code token} is accepted. */
+  public void alsoAccept(String token) {
+    acceptedTokens.add(token);
+  }
+
+  /** The bearer token of every request to the Graph endpoint, in order. */
+  public List<String> tokens() {
+    return List.copyOf(sentTokens);
+  }
+
+  /** Every page token handed out so far answers 410; delta tokens and later ones stay valid. */
+  public void expirePageTokens() {
+    pageTokensExpiredThrough = tokenCounter.get();
+  }
+
+  /**
+   * A new enumeration reports {@code id} first under its former parent {@code oldParentId}, then as
+   * it is: repeated reports of one item may differ, and the last one is its state.
+   */
+  public void reportStaleParent(String id, String oldParentId) {
+    staleParents.put(id, oldParentId);
+  }
+
+  /** Every delta entry is handed out twice in a row, as Graph may repeat an item. */
+  public void repeatDeltaEntries() {
+    repeatDeltaEntries = true;
+  }
+
   /** The next {@code times} requests whose path contains {@code pathPart} fail this way. */
   public void failNext(String pathPart, int status, String code, String retryAfter, int times) {
     failures.add(new Failure(pathPart, status, code, retryAfter, new int[] {times}));
@@ -226,7 +305,8 @@ public final class FakeGraphServer implements AutoCloseable {
 
   /** From now on only {@code token} is accepted. */
   public void acceptOnly(String token) {
-    acceptedToken = token;
+    acceptedTokens.clear();
+    acceptedTokens.add(token);
   }
 
   /** Every delta token handed out so far, and every page token of an enumeration, answers 410. */
@@ -284,8 +364,13 @@ public final class FakeGraphServer implements AutoCloseable {
     URI uri = exchange.getRequestURI();
     requests.add(uri.getRawPath() + (uri.getRawQuery() == null ? "" : "?" + uri.getRawQuery()));
     try {
-      if (!("Bearer " + acceptedToken)
-          .equals(exchange.getRequestHeaders().getFirst("Authorization"))) {
+      String authorization = exchange.getRequestHeaders().getFirst("Authorization");
+      String sent =
+          authorization != null && authorization.startsWith("Bearer ")
+              ? authorization.substring("Bearer ".length())
+              : "";
+      sentTokens.add(sent);
+      if (!acceptedTokens.contains(sent)) {
         error(exchange, 401, "InvalidAuthenticationToken", null);
         return;
       }
@@ -297,10 +382,43 @@ public final class FakeGraphServer implements AutoCloseable {
       if (fail(exchange, path)) {
         return;
       }
+      if (!granted(path.substring(VERSION.length()))) {
+        error(exchange, 403, "accessDenied", null);
+        return;
+      }
       route(exchange, path.substring(VERSION.length()), query(uri.getRawQuery()));
     } finally {
       exchange.close();
     }
+  }
+
+  /** Whether the application may reach what {@code path} names under the granted sites. */
+  private boolean granted(String path) {
+    Set<String> granted = grantedSites;
+    if (granted == null) {
+      return true;
+    }
+    if (path.equals("sites")) {
+      return false;
+    }
+    Matcher site = Pattern.compile("sites/([^/:]+)(:(/.*))?(/.*)?").matcher(path);
+    if (site.matches()) {
+      String siteId =
+          site.group(3) == null
+              ? site.group(1)
+              : sites.values().stream()
+                  .filter(s -> s.hostname().equals(site.group(1)) && s.path().equals(site.group(3)))
+                  .map(Site::id)
+                  .findFirst()
+                  .orElse(null);
+      return siteId == null || granted.contains(siteId);
+    }
+    Matcher drive = Pattern.compile("drives/([^/]+).*").matcher(path);
+    if (drive.matches()) {
+      Drive known = drives.get(drive.group(1));
+      return known == null || granted.contains(known.siteId());
+    }
+    return true;
   }
 
   private void route(HttpExchange exchange, String path, Map<String, String> query)
@@ -378,7 +496,10 @@ public final class FakeGraphServer implements AutoCloseable {
       deltaPage(exchange, path, driveId, new Pending(driveId, List.of(), log.size()), top);
       return;
     }
-    if (token != null && deltaTokensExpired) {
+    if (token != null
+        && (deltaTokensExpired
+            || (token.startsWith("p")
+                && Integer.parseInt(token.substring(1)) <= pageTokensExpiredThrough))) {
       error(exchange, 410, "resyncRequired", null);
       return;
     }
@@ -387,23 +508,57 @@ public final class FakeGraphServer implements AutoCloseable {
       List<Map<String, Object>> all = new ArrayList<>();
       items.values().stream()
           .filter(item -> item.driveId.equals(driveId) && !item.deleted)
-          .sorted((a, b) -> Integer.compare(depth(a), depth(b)))
+          .sorted(
+              (a, b) ->
+                  depth(a) != depth(b)
+                      ? Integer.compare(depth(a), depth(b))
+                      : a.name.compareTo(b.name))
           .forEach(item -> all.add(item(item)));
-      start = new Pending(driveId, all, log.size());
+      start = new Pending(driveId, repeated(withStaleParents(all)), log.size());
     } else if (token.startsWith("d")) {
       int position = Integer.parseInt(token.substring(1));
       List<Map<String, Object>> changed = new ArrayList<>();
       new LinkedHashSet<>(log.subList(position, log.size()))
           .forEach(id -> changed.add(item(items.get(id))));
-      start = new Pending(driveId, changed, log.size());
+      start = new Pending(driveId, repeated(changed), log.size());
     } else {
-      start = pending.remove(token);
+      start = pending.get(token);
       if (start == null || !start.driveId().equals(driveId)) {
         error(exchange, 410, "resyncRequired", null);
         return;
       }
     }
     deltaPage(exchange, path, driveId, start, top);
+  }
+
+  /** {@code entries}, each preceded by a stale report where {@link #reportStaleParent} asks. */
+  private List<Map<String, Object>> withStaleParents(List<Map<String, Object>> entries) {
+    List<Map<String, Object>> reported = new ArrayList<>();
+    for (Map<String, Object> entry : entries) {
+      String oldParent = staleParents.get((String) entry.get("id"));
+      if (oldParent != null) {
+        Map<String, Object> stale = new LinkedHashMap<>(entry);
+        stale.put(
+            "parentReference",
+            Map.of("driveId", items.get(entry.get("id")).driveId, "id", oldParent));
+        reported.add(stale);
+      }
+      reported.add(entry);
+    }
+    return reported;
+  }
+
+  /** {@code entries}, each twice in a row while {@link #repeatDeltaEntries()} is on. */
+  private List<Map<String, Object>> repeated(List<Map<String, Object>> entries) {
+    if (!repeatDeltaEntries) {
+      return entries;
+    }
+    List<Map<String, Object>> repeated = new ArrayList<>();
+    for (Map<String, Object> entry : entries) {
+      repeated.add(entry);
+      repeated.add(entry);
+    }
+    return repeated;
   }
 
   private void deltaPage(HttpExchange exchange, String path, String driveId, Pending from, int top)
@@ -600,17 +755,19 @@ public final class FakeGraphServer implements AutoCloseable {
     if (item.parentId == null) {
       json.put("root", Map.of());
     }
-    if (item.folder) {
+    if (item.packageType != null) {
+      json.put("package", Map.of("type", item.packageType));
+    } else if (item.folder) {
       json.put("folder", Map.of());
     } else {
       json.put("size", item.content.length);
       json.put(
           "file",
           Map.of(
-              "mimeType",
-              "application/octet-stream",
-              "hashes",
-              Map.of("quickXorHash", digest(item.content))));
+              "mimeType", item.mimeType, "hashes", Map.of("quickXorHash", digest(item.content))));
+    }
+    if (item.malware) {
+      json.put("malware", Map.of("description", "fake malware"));
     }
     json.put("cTag", "c:" + digest(item.content) + item.name);
     json.put("lastModifiedDateTime", "2026-10-01T10:00:00Z");
