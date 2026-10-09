@@ -187,6 +187,31 @@ class FileSyncChangeRunTest {
   }
 
   /**
+   * A stream that fails on a later page is read again from its old cursor; a removal from its
+   * earlier pages waits for that read, since a later report may withdraw it.
+   */
+  @Test
+  void aRemovalOfAStreamThatFailsOnALaterPageWaitsForTheNextRead() {
+    store
+        .pageSize(1)
+        .remove("A", "b.txt")
+        .changed("A", "b.txt")
+        .put("A", "neu.txt", "Neu.")
+        .changed("A", "neu.txt");
+
+    FileSyncHarness.Run failed = harness.changeRun(new FailingSecondPage(store.reset()));
+
+    assertThat(failed.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(InMemoryFileStore.filePath("A", "b.txt"))).isPresent();
+
+    FileSyncHarness.Run retried = harness.changeRun(store.reset());
+
+    assertThat(retried.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(InMemoryFileStore.filePath("A", "b.txt"));
+  }
+
+  /**
    * A provider's account-wide stream also reports files of a container another stream serves; its
    * removal is no finding for that container's documents.
    */
@@ -291,6 +316,75 @@ class FileSyncChangeRunTest {
     @Override
     public Optional<ChangeFeed> changes() {
       return store.changes();
+    }
+
+    @Override
+    public SourceRequestMeter meter() {
+      return store.meter();
+    }
+
+    @Override
+    public void close() {}
+  }
+
+  /** Reads the first page of each stream, then fails the next page as a passing error. */
+  private record FailingSecondPage(FileStore store) implements FileStore {
+
+    @Override
+    public List<FileContainer> containers() {
+      return store.containers();
+    }
+
+    @Override
+    public FilePage list(FileContainer container, String continuation)
+        throws FileAccessException, InterruptedException {
+      return store.list(container, continuation);
+    }
+
+    @Override
+    public FileEntry head(FileContainer container, String id)
+        throws FileAccessException, InterruptedException {
+      return store.head(container, id);
+    }
+
+    @Override
+    public FetchedFile fetch(FileEntry entry, long maxBytes)
+        throws FileAccessException, InterruptedException {
+      return store.fetch(entry, maxBytes);
+    }
+
+    @Override
+    public Optional<ChangeFeed> changes() {
+      ChangeFeed feed = store.changes().orElseThrow();
+      java.util.Set<String> started = new java.util.HashSet<>();
+      return Optional.of(
+          new ChangeFeed() {
+            @Override
+            public String feedKey(FileContainer container) {
+              return feed.feedKey(container);
+            }
+
+            @Override
+            public String startCursor(String feedKey)
+                throws FileAccessException, InterruptedException {
+              return feed.startCursor(feedKey);
+            }
+
+            @Override
+            public ChangePage read(String feedKey, String cursor)
+                throws FileAccessException, InterruptedException {
+              if (!started.add(feedKey)) {
+                throw new FileAccessException.Transient("Die Seite ist nicht lesbar.");
+              }
+              return feed.read(feedKey, cursor);
+            }
+
+            @Override
+            public void requireReachable(FileContainer container)
+                throws FileAccessException, InterruptedException {
+              feed.requireReachable(container);
+            }
+          });
     }
 
     @Override

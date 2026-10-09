@@ -82,6 +82,8 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   private static final String LIBRARIES_STATE = "sharePointLibraries";
   private static final int MAX_BROWSE_PAGES = 10;
   private static final Pattern HOST = Pattern.compile("[A-Za-z0-9.-]{1,253}");
+  private static final Pattern SITE_ID =
+      Pattern.compile("[A-Za-z0-9][A-Za-z0-9.-]{0,252},[0-9A-Fa-f-]{36},[0-9A-Fa-f-]{36}");
 
   private final URI apiBase;
   private final SourceConnectorDescriptor descriptor;
@@ -459,9 +461,12 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
         "siteUrl ist die https-Adresse einer Site, etwa https://contoso.sharepoint.com/sites/team");
   }
 
-  /** A site id is {@code host,siteCollectionId,webId}; nothing that could change a path. */
-  private static String requireSiteId(String id) {
-    if (id == null || !id.matches("[A-Za-z0-9.,_-]{1,300}")) {
+  /**
+   * A site id is {@code host,siteCollectionId,webId} with two GUIDs; a host of letters, digits,
+   * dots and hyphens without an empty label, so nothing that could change a path.
+   */
+  static String requireSiteId(String id) {
+    if (id == null || !SITE_ID.matcher(id).matches() || id.contains("..")) {
       throw new ValidationException("site ist die ID einer Site aus der Auflistung");
     }
     return id;

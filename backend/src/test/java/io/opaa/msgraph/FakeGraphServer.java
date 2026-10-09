@@ -89,6 +89,9 @@ public final class FakeGraphServer implements AutoCloseable {
     /** Whether Microsoft flagged the item as malware ({@code malware} facet). */
     public boolean malware;
 
+    /** The {@code file.mimeType} a file reports. */
+    public String mimeType = "application/octet-stream";
+
     Item(String id, String driveId, boolean folder) {
       this.id = id;
       this.driveId = driveId;
@@ -134,6 +137,7 @@ public final class FakeGraphServer implements AutoCloseable {
   private volatile boolean deltaTokensExpired;
   private volatile int pageTokensExpiredThrough;
   private volatile boolean repeatDeltaEntries;
+  private final Map<String, String> staleParents = new ConcurrentHashMap<>();
   private volatile DownloadHost downloadHost = DownloadHost.HTTPS;
   private volatile DeltaLinkForm deltaLinkForm = DeltaLinkForm.QUERY;
   private volatile UnaryOperator<String> linkRewrite = UnaryOperator.identity();
@@ -279,6 +283,14 @@ public final class FakeGraphServer implements AutoCloseable {
   /** Every page token handed out so far answers 410; delta tokens and later ones stay valid. */
   public void expirePageTokens() {
     pageTokensExpiredThrough = tokenCounter.get();
+  }
+
+  /**
+   * A new enumeration reports {@code id} first under its former parent {@code oldParentId}, then as
+   * it is: repeated reports of one item may differ, and the last one is its state.
+   */
+  public void reportStaleParent(String id, String oldParentId) {
+    staleParents.put(id, oldParentId);
   }
 
   /** Every delta entry is handed out twice in a row, as Graph may repeat an item. */
@@ -502,7 +514,7 @@ public final class FakeGraphServer implements AutoCloseable {
                       ? Integer.compare(depth(a), depth(b))
                       : a.name.compareTo(b.name))
           .forEach(item -> all.add(item(item)));
-      start = new Pending(driveId, repeated(all), log.size());
+      start = new Pending(driveId, repeated(withStaleParents(all)), log.size());
     } else if (token.startsWith("d")) {
       int position = Integer.parseInt(token.substring(1));
       List<Map<String, Object>> changed = new ArrayList<>();
@@ -517,6 +529,23 @@ public final class FakeGraphServer implements AutoCloseable {
       }
     }
     deltaPage(exchange, path, driveId, start, top);
+  }
+
+  /** {@code entries}, each preceded by a stale report where {@link #reportStaleParent} asks. */
+  private List<Map<String, Object>> withStaleParents(List<Map<String, Object>> entries) {
+    List<Map<String, Object>> reported = new ArrayList<>();
+    for (Map<String, Object> entry : entries) {
+      String oldParent = staleParents.get((String) entry.get("id"));
+      if (oldParent != null) {
+        Map<String, Object> stale = new LinkedHashMap<>(entry);
+        stale.put(
+            "parentReference",
+            Map.of("driveId", items.get(entry.get("id")).driveId, "id", oldParent));
+        reported.add(stale);
+      }
+      reported.add(entry);
+    }
+    return reported;
   }
 
   /** {@code entries}, each twice in a row while {@link #repeatDeltaEntries()} is on. */
@@ -735,10 +764,7 @@ public final class FakeGraphServer implements AutoCloseable {
       json.put(
           "file",
           Map.of(
-              "mimeType",
-              "application/octet-stream",
-              "hashes",
-              Map.of("quickXorHash", digest(item.content))));
+              "mimeType", item.mimeType, "hashes", Map.of("quickXorHash", digest(item.content))));
     }
     if (item.malware) {
       json.put("malware", Map.of("description", "fake malware"));

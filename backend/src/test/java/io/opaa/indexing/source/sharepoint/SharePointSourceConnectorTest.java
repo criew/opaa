@@ -257,6 +257,21 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void aSiteIdHasTheFormOfHostAndTwoGuids() {
+    assertThat(SharePointSourceConnector.requireSiteId(SITE)).isEqualTo(SITE);
+    for (String refused :
+        List.of(
+            "..",
+            "contoso..com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe",
+            "contoso.sharepoint.com,site-1,web-1",
+            "contoso.sharepoint.com/../drives")) {
+      assertThatThrownBy(() -> SharePointSourceConnector.requireSiteId(refused))
+          .as(refused)
+          .isInstanceOf(ValidationException.class);
+    }
+  }
+
+  @Test
   void theOriginalComesThroughGraphFromAConfiguredLibraryOnly() throws Exception {
     Optional<DocumentContent> original =
         connector.openOriginal(

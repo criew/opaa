@@ -208,6 +208,7 @@ nicht gelisteten in einen schon gelisteten Teil gewandert ist, bleibt so erhalte
 | Gewählter Ordner gelöscht | Die Dokumentbibliothek gilt als nicht erreichbar, es wird nichts entfernt; das Protokoll verlangt eine angepasste Ordnerauswahl |
 | Datei in eine andere Dokumentbibliothek verschoben | dort ein neues Dokument; das alte entfernt der nächste Änderungslauf, sobald Graph die Datei in der bisherigen Dokumentbibliothek als gelöscht meldet, sonst der nächste Vollabgleich |
 | Dokumentbibliothek nicht mehr erreichbar (Freigabe entzogen) | keine Löschung; der Bestand bleibt, bis sie wieder erreichbar ist, und das Protokoll nennt sie |
+| Freigabe während eines Laufs entzogen (Graph verweigert einen Ordner oder eine Datei) | keine Löschung: Der Änderungslauf liest den Strom beim nächsten Lauf erneut, ein Vollabgleich nennt die Dokumentbibliothek nicht listbar, eine einzelne Datei gilt als nicht lesbar und behält ihren Stand |
 
 Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich. Wie lang es höchstens
 ist, bestimmt der Vollabgleichsrhythmus (`full-sync-interval`, Abschnitt 12); die Vorgabe ist
@@ -307,6 +308,10 @@ feste Konstanten.
   Leitung), gilt in jedem Lauf als vorübergehend fehlgeschlagen und hält den Änderungsstrom und
   einen Abgleich über mehrere Läufe an. Abhilfe: `download-timeout` erhöhen.
 - Ordneränderungen erreichen die Dokumente erst mit dem nächsten Vollabgleich (Abschnitt 5).
+- Lehnt Graph einen gemerkten Fortsetzungspunkt oder einen Ordner der Kette dauerhaft ab (ein
+  anderer Fehler als „verfallen“, etwa „ungültige Anfrage“), beginnt die Auflistung dieser
+  Dokumentbibliothek im selben Abgleich neu. Geschieht das wieder, gilt sie in diesem Lauf als nicht
+  listbar, und es wird nichts entfernt; das Protokoll nennt sie mit „… beginnt neu“.
 - Ein Ordnerfilter spart keine Anfragen: Auflistung und Änderungsprotokoll umfassen immer die ganze
   Dokumentbibliothek.
 - Braucht das Änderungsprotokoll seit Beginn eines Abgleichs über mehrere Läufe mehr Anfragen, als

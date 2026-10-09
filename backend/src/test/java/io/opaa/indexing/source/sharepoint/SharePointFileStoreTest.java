@@ -189,6 +189,90 @@ class SharePointFileStoreTest {
     assertThat(retried.ingested()).containsExactly(path("vermerk"));
   }
 
+  // regression guard for review of #2438: a stale earlier report must not hide the last one
+  @Test
+  void aRepeatedItemWhoseFirstReportIsStaleIsListedAtItsLastPlace() {
+    harness.fullSync(all());
+    server.folder(DRIVE_0, "weg", "Weg", ROOT_0);
+    server.delete("weg");
+    server.reportStaleParent("bericht", "weg");
+
+    FileSyncHarness.Run run = harness.fullSync(all());
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.listingComplete()).isTrue();
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(path("bericht"))).isPresent();
+  }
+
+  // regression guard for review of #2438: a 403 on the head of a file is no absence
+  @Test
+  void aFileWhoseHeadIsRefusedKeepsItsDocument() {
+    server.file(DRIVE_0, "readme", "README", ROOT_0, bytes("Lies mich.")).mimeType = "text/plain";
+    harness.fullSync(all());
+    assertThat(harness.stored(path("readme"))).isPresent();
+
+    server.update("readme", bytes("Lies mich, geändert und länger."));
+    server.failNext("items/readme", 403, "accessDenied", null, 1);
+    FileSyncHarness.Run run = harness.fullSync(all());
+
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(path("readme"));
+    assertThat(harness.stored(path("readme"))).isPresent();
+  }
+
+  // regression guard for review of #2438: a 403 on a parent folder holds the stream, removes
+  // nothing
+  @Test
+  void aParentFolderRefusedInTheChangeRunHoldsTheStreamAndRemovesNothing() {
+    harness.fullSync(all());
+    Map<String, String> before = harness.state().changeCursors();
+
+    server.update("bericht", bytes("Eine neue, längere Fassung des Berichts."));
+    server.failNext("items/akten", 403, "accessDenied", null, 1);
+    FileSyncHarness.Run refused = harness.changeRun(all());
+
+    assertThat(refused.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(path("bericht"))).isPresent();
+    assertThat(harness.state().changeCursors()).isEqualTo(before);
+
+    FileSyncHarness.Run retried = harness.changeRun(all());
+
+    assertThat(retried.ingested()).containsExactly(path("bericht"));
+  }
+
+  @Test
+  void aParentFolderRefusedInTheListingKeepsTheBestand() {
+    harness.fullSync(all());
+
+    server.failNext("items/akten", 403, "accessDenied", null, 1);
+    FileSyncHarness.Run run = harness.fullSync(all());
+
+    assertThat(run.listingComplete()).isFalse();
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.storedPaths()).contains(path("bericht"), path("vermerk"));
+  }
+
+  /** A checkpoint Graph refuses for good starts the library over instead of failing every run. */
+  @Test
+  void aCheckpointRefusedForGoodStartsTheLibraryOver() {
+    for (int i = 0; i < 12; i++) {
+      server.file(DRIVE_0, "mehr" + i, "Mehr " + i + ".txt", ROOT_0, bytes("Text " + i));
+    }
+    harness.fullSync(budgeted(5));
+    assertThat(harness.state().isFullSyncInterrupted()).isTrue();
+
+    server.failNext("root/delta", 400, "invalidRequest", null, 1);
+    FileSyncHarness.Run run = harness.fullSync(budgeted(5));
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getMessage)
+        .anySatisfy(message -> assertThat(message).contains("beginnt neu"));
+  }
+
   @Test
   void oneNoteNotebooksAndTheirSectionsAreNoDocumentsAndNeverFetched() {
     server.folder(DRIVE_0, "buch", "Notizbuch", ROOT_0).packageType = "oneNote";

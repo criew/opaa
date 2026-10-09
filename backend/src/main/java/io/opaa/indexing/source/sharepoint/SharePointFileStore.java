@@ -150,7 +150,8 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
           continue;
         }
         remember(library, item);
-        if (item.holdsItems() || !delivered.add(library.driveId() + "/" + item.id())) {
+        String key = library.driveId() + "/" + item.id();
+        if (item.holdsItems() || delivered.contains(key)) {
           continue;
         }
         Chain chain = chain(library, item.parentId());
@@ -158,7 +159,8 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
           log.info(
               "Folder chain of SharePoint item {} no longer reaches its library - not listed",
               item.id());
-        } else if (chain.within(library)) {
+        } else if (chain.within(library) && delivered.add(key)) {
+          // only a report that is listed counts: a stale earlier one must not hide the last
           entries.add(entry(library, item, chain, null));
         }
       }
@@ -176,6 +178,11 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
                 "Microsoft Graph nimmt den Fortsetzungspunkt der Auflistung nicht mehr an.");
         case UNAUTHORIZED -> new FileAccessException.CredentialsRejected(e.getMessage());
         case NOT_FOUND, FORBIDDEN -> new FileAccessException.ContainerUnlistable(e.getMessage());
+        // a page or folder Graph refuses for good starts the library over, bounded by the core
+        case TRANSIENT ->
+            durable(e.status())
+                ? new FileAccessException.CheckpointExpired(e.getMessage())
+                : new FileAccessException.RunEnding(e.getMessage() + LISTING_RESUMES_SUFFIX);
         default -> new FileAccessException.RunEnding(e.getMessage() + LISTING_RESUMES_SUFFIX);
       };
     }
@@ -414,7 +421,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
 
   /**
    * The chain above {@code parentId}, {@code null} when it does not reach the library's root - a
-   * parent deleted, out of sight or the walk too deep.
+   * parent deleted or the walk too deep. A parent Graph refuses ({@code 403}) fails the walk.
    */
   private Chain chain(SharePointLibrary library, String parentId)
       throws GraphException, InterruptedException {
@@ -447,7 +454,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
 
   /**
    * The item {@code id} of the library: a folder from this run's chains, else read once; {@code
-   * null} when it is deleted, unknown or out of sight.
+   * null} when it is deleted or unknown ({@code 404}); every other failure is thrown.
    */
   private DriveItem holderOrItem(SharePointLibrary library, String id)
       throws GraphException, InterruptedException {
@@ -459,7 +466,8 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
     try {
       item = DriveItem.of(graph.get(itemPath(library, id), Map.of("$select", DriveItem.SELECT)));
     } catch (GraphException e) {
-      if (e.kind() == GraphException.Kind.NOT_FOUND || e.kind() == GraphException.Kind.FORBIDDEN) {
+      // within a visible library a 403 means access lost, not absence: it fails the caller
+      if (e.kind() == GraphException.Kind.NOT_FOUND) {
         return null;
       }
       throw e;
