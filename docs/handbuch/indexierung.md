@@ -430,11 +430,11 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
 - **Endpunkte** (Autorisierungs-, Token- und Widerrufs-Endpunkt) fragt das Formular nur bei OAuth
   bzw. Client-Credentials ab und nur die, die die Quellart dem Zugang überlässt, etwa weil sie vom
-  Realm eines Keycloak abhängen; dann sind sie Pflicht. Der Autorisierungs-Endpunkt beginnt mit
-  `https://` oder `http://`, Token- und Widerrufs-Endpunkt nur mit `https://`: Sie bekommen
-  Refresh-Tokens und das Client-Secret, die bei `http://` jede Station auf dem Weg mitlesen könnte,
-  auch der Proxy des Zugangs. Eine andere Adresse markiert das Formular, und OPAA weist sie beim
-  Speichern ab. Endpunkte, die die Quellart selbst festlegt, fragt es nicht ab, und ein Wert dafür wird
+  Realm eines Keycloak abhängen; dann sind sie Pflicht und beginnen mit `https://`, auch auf dem
+  eigenen Rechner. Token- und Widerrufs-Endpunkt bekommen Refresh-Tokens und das Client-Secret, die
+  bei `http://` jede Station auf dem Weg mitlesen könnte, auch der Proxy des Zugangs; am
+  Autorisierungs-Endpunkt meldet sich die Person an, und eine `http://`-Seite ließe sich unterwegs
+  austauschen. Eine andere Adresse markiert das Formular, und OPAA weist sie beim Speichern ab. Endpunkte, die die Quellart selbst festlegt, fragt es nicht ab, und ein Wert dafür wird
   abgewiesen. OPAA schreibt sie beim Speichern fest und erkennt sie nie zur Laufzeit neu.
   Token- und Widerrufs-Endpunkt bekommen das Client-Secret. Ändert die Verwaltung einen davon an
   einem Zugang mit hinterlegtem Secret, verlangt das Formular ein neues Secret: Das hinterlegte geht

@@ -109,7 +109,8 @@ public final class FakeAuthorizationServer implements AutoCloseable {
 
   /**
    * A server on {@code https://127.0.0.1} with the certificate of {@link LoopbackTls}, which the
-   * default TLS context of this JVM trusts from now on; it answers no request as a proxy.
+   * default TLS context of this JVM trusts until {@link LoopbackTls#restore}, which the calling
+   * test class runs in {@code @AfterAll}; it answers no request as a proxy.
    */
   public static FakeAuthorizationServer overTls() {
     LoopbackTls.trustInThisJvm();

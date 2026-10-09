@@ -22,14 +22,14 @@ import javax.net.ssl.X509ExtendedTrustManager;
  * {@code keytool}, for a test server that must be reached over {@code https://}. {@link
  * #trustInThisJvm} lets the JVM's default TLS context trust it besides the JDK's own trust anchors,
  * so a production client built without a context of its own reaches such a server with the full
- * certificate and host name check. No other certificate gains trust: its key exists only in this
- * JVM.
+ * certificate and host name check; {@link #restore} ends that. No other certificate gains trust:
+ * its key exists only in this JVM.
  */
 public final class LoopbackTls {
 
   private static final String PASSWORD = "changeit";
   private static KeyStore keyStore;
-  private static boolean trusted;
+  private static SSLContext previous;
 
   private LoopbackTls() {}
 
@@ -47,9 +47,12 @@ public final class LoopbackTls {
     }
   }
 
-  /** Makes the default TLS context of this JVM trust the loopback certificate as well; once. */
+  /**
+   * Makes the default TLS context of this JVM trust the loopback certificate as well, until {@link
+   * #restore}; the test class that calls it restores in {@code @AfterAll}.
+   */
   public static synchronized void trustInThisJvm() {
-    if (trusted) {
+    if (previous != null) {
       return;
     }
     try {
@@ -57,10 +60,18 @@ public final class LoopbackTls {
       X509ExtendedTrustManager own = trustManager(keyStore());
       SSLContext context = SSLContext.getInstance("TLS");
       context.init(null, new X509ExtendedTrustManager[] {new Either(jdk, own)}, null);
+      previous = SSLContext.getDefault();
       SSLContext.setDefault(context);
-      trusted = true;
     } catch (Exception e) {
       throw new IllegalStateException("cannot trust the loopback certificate", e);
+    }
+  }
+
+  /** Puts back the default TLS context {@link #trustInThisJvm} replaced; nothing if none. */
+  public static synchronized void restore() {
+    if (previous != null) {
+      SSLContext.setDefault(previous);
+      previous = null;
     }
   }
 

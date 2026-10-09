@@ -368,8 +368,8 @@ paths:
         the profile names to another address: such a change without clientSecret is 400 with
         code CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED, checked before anything else and before
         any confirmation; an empty clientSecret makes the profile a public client. A new
-        sourceProxy keeps the secret: tokenEndpoint and revocationEndpoint are https only, so the
-        proxy never sees it. A new authorizationEndpoint alone keeps the secret, which is never
+        sourceProxy keeps the secret: every endpoint the profile names is https, so the proxy
+        never sees it. A new authorizationEndpoint alone keeps the secret, which is never
         sent there.
         A new serverUrl, clientId, tenant, scope list, endpoint or authMethod discards every
         secret held under the profile; a library address under the old server address moves
@@ -408,8 +408,8 @@ paths:
         "400":
           description: >
             Invalid values, a library the connector refuses the change for (code
-            CONNECTION_PROFILE_CHANGE_REJECTED), a tokenEndpoint or revocationEndpoint that is not
-            https, or a new tokenEndpoint or revocationEndpoint without a new client secret while
+            CONNECTION_PROFILE_CHANGE_REJECTED), an endpoint the profile names that is not https,
+            or a new tokenEndpoint or revocationEndpoint without a new client secret while
             one is stored (code
             CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED, the error naming the old and the new
             endpoint).
@@ -1318,22 +1318,23 @@ components:
           nullable: true
           description: >
             Only where the connector's OAuth sign-in leaves its endpoints to the profile
-            (SourceTypeSignIn); then required, an absolute http or https address. A change is a
-            change of the registration.
+            (SourceTypeSignIn); then required, an absolute https address (400 for http, as for
+            every endpoint the profile names: the person signs in there). A change is a change of
+            the registration.
         tokenEndpoint:
           type: string
           maxLength: 2000
           nullable: true
           description: >
-            As authorizationEndpoint, for the token endpoint, but https only (400 for http): it
-            receives refresh tokens and the client secret.
+            As authorizationEndpoint, for the token endpoint, which receives refresh tokens and
+            the client secret.
         revocationEndpoint:
           type: string
           maxLength: 2000
           nullable: true
           description: >
-            As authorizationEndpoint, for the token revocation (RFC 7009), but https only (400 for
-            http): it receives tokens and the client secret.
+            As authorizationEndpoint, for the token revocation (RFC 7009), which receives tokens
+            and the client secret.
         connectorSettings:
           type: object
           additionalProperties: true
@@ -1427,24 +1428,23 @@ components:
           nullable: true
           description: >
             Only where the connector's OAuth sign-in leaves its endpoints to the profile
-            (SourceTypeSignIn); then required, an absolute http or https address. A change is a
-            change of the registration.
+            (SourceTypeSignIn); then required, an absolute https address (400 for http, as for
+            every endpoint the profile names: the person signs in there). A change is a change of
+            the registration.
         tokenEndpoint:
           type: string
           maxLength: 2000
           nullable: true
           description: >
-            As authorizationEndpoint, for the token endpoint, but https only (400 for http): it
-            receives refresh tokens and the client secret, and a stored secret does not follow a
-            change.
+            As authorizationEndpoint, for the token endpoint, which receives refresh tokens and
+            the client secret; a stored secret does not follow a change.
         revocationEndpoint:
           type: string
           maxLength: 2000
           nullable: true
           description: >
-            As authorizationEndpoint, for the token revocation (RFC 7009), but https only (400 for
-            http): it receives tokens and the client secret, and a stored secret does not follow a
-            change.
+            As authorizationEndpoint, for the token revocation (RFC 7009), which receives tokens
+            and the client secret; a stored secret does not follow a change.
         connectorSettings:
           type: object
           additionalProperties: true

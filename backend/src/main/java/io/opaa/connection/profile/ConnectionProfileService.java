@@ -420,11 +420,9 @@ public class ConnectionProfileService {
   /**
    * Refuses with 400 {@value #CLIENT_SECRET_REQUIRED} a change that would keep the stored client
    * secret ({@code secret} {@code null}) while a token or revocation endpoint the profile names
-   * moves, or while the proxy changes and one of them is plain {@code http://}: the secret is sent
-   * to both, through the proxy, and goes only where it was entered for. The authorization endpoint
-   * receives none; a profile without a stored secret is a public client. The proxy rule stays as a
-   * second line: {@link #endpointsOf} admits only {@code https://} for both endpoints, so today no
-   * validated change reaches it with a plain one.
+   * moves: the secret is sent to both and goes only where it was entered for. A new proxy keeps it,
+   * as both are {@code https://} ({@link #endpointsOf}). The authorization endpoint receives none;
+   * a profile without a stored secret is a public client.
    */
   private static void requireSecretFollows(
       ConnectionProfile profile, ConnectionProfileValues validated, String secret) {
@@ -446,21 +444,6 @@ public class ConnectionProfileService {
               + " Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet:"
               + " Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für"
               + " einen öffentlichen Client.",
-          CLIENT_SECRET_REQUIRED);
-    }
-    List<String> plain =
-        Stream.of(after.token(), after.revocation())
-            .filter(Objects::nonNull)
-            .filter(endpoint -> endpoint.regionMatches(true, 0, "http://", 0, 7))
-            .toList();
-    if (!plain.isEmpty() && !Objects.equals(profile.getSourceProxy(), validated.sourceProxy())) {
-      throw new ValidationException(
-          "Der Proxy des Zugangs ändert sich, und "
-              + String.join(" sowie ", plain)
-              + (plain.size() > 1 ? " sind" : " ist")
-              + " unverschlüsselt (http://): Der Proxy sähe das hinterlegte Client-Secret."
-              + " Bitte geben Sie das Client-Secret erneut an, oder ein leeres für einen"
-              + " öffentlichen Client.",
           CLIENT_SECRET_REQUIRED);
     }
   }
@@ -791,9 +774,9 @@ public class ConnectionProfileService {
 
   /**
    * The endpoints {@code given} for {@code signIn}: each one its sign-in leaves to the profile is
-   * required, an absolute address without user info or fragment - {@code https} for the token and
-   * revocation endpoints, which receive refresh tokens and the client secret, {@code http(s)} for
-   * the authorization endpoint; any other is a 400.
+   * required, an absolute {@code https} address without user info or fragment - the token and
+   * revocation endpoints receive refresh tokens and the client secret, and at the authorization
+   * endpoint the person signs in; any other is a 400.
    */
   private static ProfileEndpoints endpointsOf(SignIn signIn, ProfileEndpoints given) {
     boolean authorization = false;
@@ -807,13 +790,12 @@ public class ConnectionProfileService {
       token = auth.token() instanceof Endpoint.FromProfile;
     }
     return new ProfileEndpoints(
-        endpoint(given.authorization(), authorization, "authorizationEndpoint", false),
-        endpoint(given.token(), token, "tokenEndpoint", true),
-        endpoint(given.revocation(), revocation, "revocationEndpoint", true));
+        endpoint(given.authorization(), authorization, "authorizationEndpoint"),
+        endpoint(given.token(), token, "tokenEndpoint"),
+        endpoint(given.revocation(), revocation, "revocationEndpoint"));
   }
 
-  private static String endpoint(
-      String value, boolean fromProfile, String field, boolean httpsOnly) {
+  private static String endpoint(String value, boolean fromProfile, String field) {
     String trimmed = optional(value, field, MAX_URL_LENGTH);
     if (!fromProfile) {
       if (trimmed != null) {
@@ -832,18 +814,15 @@ public class ConnectionProfileService {
       throw new ValidationException(field + " ist keine gültige Adresse");
     }
     String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
-    if (!(scheme.equals("https") || !httpsOnly && scheme.equals("http"))
+    if (!scheme.equals("https")
         || uri.getHost() == null
         || uri.getRawUserInfo() != null
         || uri.getRawFragment() != null) {
       throw new ValidationException(
           field
-              + (httpsOnly
-                  ? " muss eine vollständige Adresse mit https:// sein, ohne Benutzerangabe und"
-                      + " Fragment; über http:// sähe jede Station auf dem Weg die Tokens und"
-                      + " das Client-Secret"
-                  : " muss eine vollständige Adresse mit https:// oder http:// sein, ohne"
-                      + " Benutzerangabe und Fragment"));
+              + " muss eine vollständige Adresse mit https:// sein, ohne Benutzerangabe und"
+              + " Fragment; über http:// könnte jede Station auf dem Weg die Anmeldung, die"
+              + " Tokens und das Client-Secret mitlesen oder die Seite austauschen");
     }
     return trimmed;
   }

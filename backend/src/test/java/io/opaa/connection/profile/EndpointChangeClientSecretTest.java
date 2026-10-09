@@ -24,6 +24,7 @@ import io.opaa.permission.CapabilityService;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.FakeAuthorizationServer;
+import io.opaa.test.LoopbackTls;
 import io.opaa.test.MutableClock;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -31,6 +32,7 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
@@ -60,6 +62,11 @@ class EndpointChangeClientSecretTest {
   void stop() {
     registered.close();
     elsewhere.close();
+  }
+
+  @AfterAll
+  static void forgetTheLoopbackCertificate() {
+    LoopbackTls.restore();
   }
 
   /** Regression guard for #2297: the secret goes only where it was entered for. */

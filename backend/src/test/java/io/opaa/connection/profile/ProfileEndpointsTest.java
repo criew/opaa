@@ -272,22 +272,18 @@ class ProfileEndpointsTest {
   }
 
   /**
-   * Token and revocation endpoints receive refresh tokens and the client secret, through the
-   * profile's proxy as well: only {@code https://}. The authorization endpoint receives neither.
+   * Token and revocation endpoints receive refresh tokens and the client secret, and at the
+   * authorization endpoint the person signs in: every endpoint the profile names is {@code
+   * https://} only, loopback included.
    */
   @Test
-  void theTokenAndRevocationEndpointsTakeOnlyHttps() {
+  void everyEndpointTheProfileNamesTakesOnlyHttps() {
     ProfileDeclaration declaration = new RealmProbe().descriptor().profileDeclaration();
-    ProfileEndpoints plainAuthorization =
-        new ProfileEndpoints("http://keycloak.intern/auth", REALM.token(), REALM.revocation());
 
-    assertThat(
-            service
-                .validate(declaration, "Probe", values(plainAuthorization, "R"), null)
-                .endpoints())
-        .isEqualTo(plainAuthorization);
     for (ProfileEndpoints plain :
         List.of(
+            new ProfileEndpoints("http://keycloak.intern/auth", REALM.token(), REALM.revocation()),
+            new ProfileEndpoints("http://127.0.0.1:8080/auth", REALM.token(), REALM.revocation()),
             new ProfileEndpoints(
                 REALM.authorization(), "http://keycloak.intern/token", REALM.revocation()),
             new ProfileEndpoints(

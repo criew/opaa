@@ -36,7 +36,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **Registrierung des Zugangs** (Secret/Schlüssel nur Ja/Nein) gibt nur `registrationOf` heraus, nur
   an `connection.oauth`; dort erreicht nur `OAuthClient` den Anbieter. Refresh-Tokens verlassen
   token/oauth nie; Erneuerung unter Zeilensperre, Widerruf verworfener Grants erst nach Commit und nur im Pool `GrantRevocations`, ein Eintrag je Commit; den frischen Grant in `complete` widerruft der Abschluss nach dem Rollback direkt (alles ArchUnit/ADR-0041).
-- **Ursprungsbindung:** Bibliotheksadresse unter der Server-Adresse des Profils, sonst sperrt der Port. Token-/Widerrufs-Endpunkt des Zugangs nur `https://`.
+- **Ursprungsbindung:** Bibliotheksadresse unter der Server-Adresse des Profils, sonst sperrt der Port. Endpunkte des Zugangs nur `https://`.
   Neue Adresse/Registrierung verwirft vorher alle Geheimnisse, beendet die Konten; gelöscht: `NULL`.
 - **Übergänge** (Profiländerung, Zuordnen, Lösen) sind je Bibliothek ein `SourceTransitions.Move` durch `SourceChangeGate`: erst Bestätigung, dann alle prüfen (`Answers`), dann schreiben. Je Zugang serialisiert über die Profilzeile, immer vor jeder anderen Zeile (ADR-0041, Nachtrag #2246).
 - **Eine Zusammenführung:** `EffectiveSourceSettings` setzt Lauf, Änderung und Entwurf (`ofDraft`,
