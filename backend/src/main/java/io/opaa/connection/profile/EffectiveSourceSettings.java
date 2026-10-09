@@ -269,6 +269,17 @@ public class EffectiveSourceSettings {
     return secretFor(library, profile, Purpose.RUN);
   }
 
+  /**
+   * The account at the provider {@code library}'s connection was consented as, {@code null} for
+   * none or a library without a connection. Read anew on every call.
+   */
+  public String connectedAccountOf(KnowledgeLibrary library) {
+    return connections
+        .findById(library.getId())
+        .map(LibraryConnection::getAccountLabel)
+        .orElse(null);
+  }
+
   /** The owner of the secret {@code library} is reached with, as its connection names it. */
   public SecretOwner secretOwnerOf(KnowledgeLibrary library) {
     return connections

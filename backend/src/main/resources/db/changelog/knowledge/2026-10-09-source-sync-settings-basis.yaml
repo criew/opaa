@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-09-source-sync-settings-basis
+      author: opaa
+      comment: "The fingerprint of the settings a sync state was written under (ADR-0040). A run under another one discards the state; NULL, as for every state written before, counts as another one."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE source_sync_state ADD COLUMN settings_basis varchar(64);

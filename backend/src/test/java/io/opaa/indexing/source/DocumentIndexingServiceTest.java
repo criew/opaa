@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -102,7 +103,11 @@ class DocumentIndexingServiceTest {
             libraryRepository,
             libraryAccessService,
             indexingRunEventRepository,
-            new LibrarySourceConnectionResolver());
+            new LibrarySourceConnectionResolver(),
+            new DefaultRunModes(
+                new LibrarySourceConnectionResolver(),
+                mock(SourceSyncStateRepository.class),
+                SyncStateBasis.WHOLE_SETTINGS));
 
     currentUser = new User("subject", "issuer", "user@example.com", "Test User");
     currentUser.setOrganizationId(organizationId);

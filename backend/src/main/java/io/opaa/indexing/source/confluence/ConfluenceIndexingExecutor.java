@@ -231,6 +231,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         syncStateRepository
             .findByLibraryId(libraryId)
             .orElseGet(() -> new SourceSyncState(libraryId));
+    run.frame.adopt(state);
     List<ConfluenceSpaceSelection> spaces =
         orderForResumption(run.frame.settings().connectorSettings(), state);
     run.resumed = state.isFullSyncInterrupted();
@@ -301,14 +302,19 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   /**
    * The incremental run: asks CQL for the pages in the selected spaces modified since the anchor
    * minus the overlap and visits what it names. The anchor moves only when the run failed nothing
-   * and its owner's quota rejected nothing, so no window is lost.
+   * and its owner's quota rejected nothing, so no window is lost. A state written under other
+   * settings is discarded, and the run searches nothing: the next one is a full sync.
    */
   private ListingOutcome incrementalSync(ConfluenceRun run, Instant startedAt)
       throws ConfluenceAccessException, InterruptedException {
     UUID libraryId = run.library.getId();
+    Optional<SourceSyncState> found = syncStateRepository.findByLibraryId(libraryId);
+    if (found.isPresent() && run.frame.adopt(found.get())) {
+      syncStateRepository.save(found.get());
+      return ListingOutcome.partial();
+    }
     SourceSyncState state =
-        syncStateRepository
-            .findByLibraryId(libraryId)
+        found
             .filter(s -> s.getIncrementalAnchor() != null && !s.isFullSyncInterrupted())
             .orElseThrow(
                 () ->

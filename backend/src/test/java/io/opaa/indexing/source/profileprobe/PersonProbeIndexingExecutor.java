@@ -19,9 +19,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * The run of {@link PersonProbeSourceConnector}: lists nothing and remembers per library the secret
- * the core handed it, so a test can read whose secret a connector sees. A held run keeps its run
- * state as a resumable full sync does - written at its start, again after its one folder - and
- * waits in between until the test releases it.
+ * the core handed it, so a test can read whose secret a connector sees. Every run takes over the
+ * library's run state as a connector does ({@link io.opaa.indexing.source.IndexingRun#adopt}). A
+ * held run keeps its run state as a resumable full sync does - written at its start, again after
+ * its one folder - and waits in between until the test releases it.
  */
 @Component
 public class PersonProbeIndexingExecutor implements SourceIndexingExecutor {
@@ -56,12 +57,15 @@ public class PersonProbeIndexingExecutor implements SourceIndexingExecutor {
         this,
         run -> {
           seen.put(targetLibrary.getId(), run.credentials().value());
+          Optional<SourceSyncState> found = states.findByLibraryId(targetLibrary.getId());
+          if (found.isPresent() && run.adopt(found.get())) {
+            states.save(found.get());
+          }
           Hold hold = holds.remove(targetLibrary.getId());
           if (hold != null) {
             SourceSyncState state =
-                states
-                    .findByLibraryId(targetLibrary.getId())
-                    .orElseGet(() -> new SourceSyncState(targetLibrary.getId()));
+                found.orElseGet(() -> new SourceSyncState(targetLibrary.getId()));
+            run.adopt(state);
             state.beginFullSync(jobId);
             SourceSyncState saved = states.save(state);
             hold.entered.countDown();

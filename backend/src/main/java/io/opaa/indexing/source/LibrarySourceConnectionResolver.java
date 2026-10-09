@@ -42,6 +42,11 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
   }
 
   @Override
+  public SourceSettings settingsOnly(KnowledgeLibrary library) {
+    return stored(library).withoutCredentials();
+  }
+
+  @Override
   public Secret currentSecret(KnowledgeLibrary library) {
     Optional<SourceConnector> signing = signing(library);
     if (signing.isEmpty()) {
