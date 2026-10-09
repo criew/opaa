@@ -98,15 +98,6 @@ public class SourceChangeGate {
   }
 
   /**
-   * Discards once more the run state a saved change of {@code library} invalidated, with the keys
-   * {@link #applied} returned for it - for a run that kept writing it meanwhile.
-   */
-  public void discardAgain(
-      KnowledgeLibrary library, boolean addressChanged, Set<String> changedSettings) {
-    connector(library).onSourceChanged(library, addressChanged, changedSettings);
-  }
-
-  /**
    * Discards the run state a new address of {@code library} invalidates, its settings unchanged.
    */
   public void addressMoved(KnowledgeLibrary library) {

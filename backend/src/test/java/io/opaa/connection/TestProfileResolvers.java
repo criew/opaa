@@ -10,7 +10,6 @@ import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.LibraryRows;
 import io.opaa.connection.profile.ProfileRequirements;
-import io.opaa.connection.profile.RunStateResets;
 import io.opaa.connection.profile.SourceBlocks;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.TestSecrets;
@@ -64,7 +63,6 @@ final class TestProfileResolvers {
             new ServiceAccountTokens(TargetAddressValidator.disabled(), Clock.systemUTC())),
         blocks,
         secrets,
-        mock(RunStateResets.class),
         accounts());
   }
 

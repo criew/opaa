@@ -40,6 +40,7 @@ import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.RunFailureCategory;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.SyncStateBasis;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -293,6 +294,26 @@ class ConfluenceIndexingExecutorTest {
     };
   }
 
+  /** A state written under the library's current settings, as its own last run left it. */
+  private SourceSyncState writtenUnderCurrentSettings() {
+    SourceSyncState state = new SourceSyncState(library.getId());
+    state.adoptSettingsBasis(
+        SyncStateBasis.WHOLE_SETTINGS.of(library, resolver.resolve(library), connectedAccount));
+    return state;
+  }
+
+  /** The account the library's source is connected as; {@code null} for none. */
+  private String connectedAccount;
+
+  /** The library's own fields, connected as {@link #connectedAccount}. */
+  private final LibrarySourceConnectionResolver resolver =
+      new LibrarySourceConnectionResolver() {
+        @Override
+        public String connectedAccount(KnowledgeLibrary candidate) {
+          return connectedAccount;
+        }
+      };
+
   /** The real run frame over the mocked job bookkeeping and the spied reconciliation. */
   private IndexingRunTemplate runTemplate() {
     return new IndexingRunTemplate(
@@ -301,7 +322,7 @@ class ConfluenceIndexingExecutorTest {
         cleanupService,
         documentRepository,
         storageQuotaService,
-        new LibrarySourceConnectionResolver());
+        resolver);
   }
 
   /** The real generalized attachment path over the mocked processing. */
@@ -568,7 +589,7 @@ class ConfluenceIndexingExecutorTest {
   void anInterruptedFullSyncResumesWithTheUnfinishedSpacesFirst(ConfluenceEdition edition)
       throws Exception {
     start(edition, null, "ENG", "HR");
-    SourceSyncState interrupted = new SourceSyncState(library.getId());
+    SourceSyncState interrupted = writtenUnderCurrentSettings();
     interrupted.beginFullSync(UUID.randomUUID());
     interrupted.markScopeCompleted("ENG");
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(interrupted));
@@ -795,7 +816,7 @@ class ConfluenceIndexingExecutorTest {
   // ---- incremental run ----------------------------------------------------------------
 
   private SourceSyncState completedFullSync(Instant anchor) {
-    SourceSyncState state = new SourceSyncState(library.getId());
+    SourceSyncState state = writtenUnderCurrentSettings();
     state.beginFullSync(UUID.randomUUID());
     state.completeFullSync(anchor, anchor);
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
@@ -849,6 +870,48 @@ class ConfluenceIndexingExecutorTest {
     // the anchor moves to this run's start, not its end
     assertThat(state.getIncrementalAnchor()).isEqualTo(NOW);
     verify(syncStateRepository).save(state);
+  }
+
+  // regression guard for #2268: the anchor of another connected account misses what this one sees
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anIncrementalRunAsAnotherAccountSearchesNothingAndAFullSyncFollows(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG", "HR");
+    connectedAccount = "alt@example.org";
+    SourceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    connectedAccount = "neu@example.org";
+    server.updatePage("101", "<p>Überarbeitet.</p>", NOW.minus(Duration.ofHours(1)));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(server.requests()).noneMatch(r -> r.contains("search"));
+    verify(documentIngestService, never()).ingest(any(), any());
+    verify(syncStateRepository).save(state);
+    assertThat(state.getIncrementalAnchor()).isNull();
+  }
+
+  // regression guard for #2268: an anchor kept under another space selection misses older pages
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anIncrementalRunUnderOtherSettingsSearchesNothingAndAFullSyncFollows(
+      ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG", "HR");
+    SourceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    state.adoptSettingsBasis("eine frühere Auswahl");
+    state.completeFullSync(NOW.minus(Duration.ofHours(2)), NOW.minus(Duration.ofHours(2)));
+    server.updatePage("101", "<p>Überarbeitet.</p>", NOW.minus(Duration.ofHours(1)));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(server.requests()).noneMatch(r -> r.contains("search"));
+    verify(documentIngestService, never()).ingest(any(), any());
+    verify(eventRepository)
+        .save(argThat(event(IndexingEventCategory.SUMMARY, "Quelleinstellungen", null)));
+    verify(syncStateRepository).save(state);
+    assertThat(state.getIncrementalAnchor()).isNull();
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .isEqualTo(IndexingRunMode.FULL);
   }
 
   @ParameterizedTest
@@ -1048,7 +1111,7 @@ class ConfluenceIndexingExecutorTest {
         .as("interrupted")
         .isEqualTo(IndexingRunMode.FULL);
 
-    SourceSyncState old = new SourceSyncState(library.getId());
+    SourceSyncState old = writtenUnderCurrentSettings();
     old.beginFullSync(UUID.randomUUID());
     old.completeFullSync(NOW.minus(Duration.ofDays(8)), NOW.minus(Duration.ofDays(8)));
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(old));

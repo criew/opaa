@@ -35,7 +35,7 @@ von foundation, format und knowledge ab.
 - **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` =
   effektiv, `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab; Ziel nicht erreichbar oder Anmeldung abgelehnt lehnt er mit `SourceTargetRefusedException` ab.
 - **Der Laufrahmen ist `IndexingRunTemplate`:** Der Körper zählt nur die Quelle auf und meldet
-  einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen.
+  einen `ListingOutcome`; Fortschritt, Protokoll und Abgleich durch Abwesenheit besitzt der Rahmen. Einen `SourceSyncState` nur über `IndexingRun#adopt` übernehmen (Fingerabdruck `SyncStateBasis`).
 - **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
   `indexing.filesync`; Abgleich über Läufe besitzt `FileSync`. Tests: `FileStore(Resumption)Contract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.

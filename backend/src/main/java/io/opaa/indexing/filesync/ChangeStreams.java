@@ -73,21 +73,14 @@ final class ChangeStreams {
   private final IndexingRun frame;
   private final DocumentRepository documentRepository;
   private final Sink sink;
-  private final boolean atRoundsEnd;
   private final Set<String> changedContainers = new LinkedHashSet<>();
   private final List<PendingRemoval> pendingRemovals = new ArrayList<>();
   private int reads;
 
-  /**
-   * @param atRoundsEnd the reader closes a round: a deselected file waits with the removals instead
-   *     of going at once
-   */
-  ChangeStreams(
-      IndexingRun frame, DocumentRepository documentRepository, Sink sink, boolean atRoundsEnd) {
+  ChangeStreams(IndexingRun frame, DocumentRepository documentRepository, Sink sink) {
     this.frame = frame;
     this.documentRepository = documentRepository;
     this.sink = sink;
-    this.atRoundsEnd = atRoundsEnd;
   }
 
   /** Whether every container of a stream can be reached now; each one that cannot is noted. */
@@ -186,12 +179,8 @@ final class ChangeStreams {
         FileEntry entry = updated.entry();
         changedContainers.add(entry.container().key());
         if (entry.exclusion() instanceof Exclusion.Deselected) {
-          // outside the patterns now: not part of the bestand, as in a full sync
-          if (atRoundsEnd) {
-            pendingRemovals.add(new PendingRemoval(entry.filePath(), null, read));
-          } else {
-            sink.remove(entry.filePath());
-          }
+          // outside the patterns now: not part of the bestand; waits with the removals
+          pendingRemovals.add(new PendingRemoval(entry.filePath(), null, read));
         } else {
           // the file exists now: an earlier report of its removal is outdated
           pendingRemovals.removeIf(removal -> removal.filePath().equals(entry.filePath()));

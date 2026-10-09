@@ -1168,6 +1168,25 @@ Aktion ab.
   Bibliothek reihen sich dahinter ein. Auf dem alten Stand enden beide Fälle in
   `CannotAcquireLockException` („deadlock detected“), mit der Regel ohne Fehler.
 
+## Nachtrag vom 09.10.2026: Abgleichstand mit Fingerabdruck statt Vermerk im Speicher (#2268)
+
+- **`RunStateResets` und `SourceConnectionResolver#runEnded` entfallen.** Der Abgleichstand trägt
+  jetzt den Fingerabdruck der Einstellungen, unter denen er geschrieben wurde (ADR-0040, Nachtrag
+  „Abgleichstand mit Fingerabdruck seiner Einstellungen“). Ein Stand, den ein laufender Lauf nach
+  einer Änderung des Zugangs mit den alten Einstellungen schreibt, verwirft der nächste Lauf selbst,
+  auch nach einem Neustart und auch für einen Lauf, der zwischen der Prüfung und dem Commit der
+  Änderung startete. Das Restrisiko aus dem Nachtrag zu #2164 („Vollabgleich ohne private
+  Bibliotheken“) besteht damit nicht mehr, für private wie für geteilte Bibliotheken.
+- **Ein Lauf, dessen Einstellungen sich währenddessen ändern, entfernt nichts durch Abwesenheit**;
+  der Rahmen liest sie vor dem Abgleich neu, ohne Geheimnis (`SourceConnectionResolver#settingsOnly`).
+- **Das verbundene Konto zählt mit** (`SourceConnectionResolver#connectedAccount`, beim Zugang die
+  Kontokennung der Verbindung). Ein Kontowechsel über „Neu verbinden“ verwirft damit auch einen
+  Stand, den ein laufender Lauf des alten Kontos zurückschreibt.
+- **Die Ablehnung `CONNECTION_PROFILE_RUN_IN_PROGRESS` bleibt bewusst** für geteilte Bibliotheken:
+  Ein laufender Lauf holt jedes Element mit dem gerade gültigen Geheimnis, nach der Änderung also
+  unter dem neuen Konto mit den alten Einstellungen. Der Fingerabdruck schützt Abgleichstand und
+  Abgleich, nicht diese Aufnahmen. Private Bibliotheken halten die Änderung weiter nicht auf.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

@@ -26,9 +26,11 @@ import tools.jackson.databind.json.JsonMapper;
  * bucket/prefix} keys - the running full sync has already completed, so an aborted run is resumed
  * scope by scope instead of from scratch; when the last full sync completed; and, for a connector
  * with an incremental mode, the anchor or the change cursors the next incremental run reads from.
- * Keyed by library alone. Absent for a library that never ran a full sync, and deleted by {@code
- * KnowledgeLibraryService} whenever the address or the selection changes: "no state" is how the
- * next run learns it has to be a full one that starts over.
+ * Keyed by library alone. Absent for a library that never ran a full sync, and deleted by its
+ * connector whenever the address or the selection changes: "no state" is how the next run learns it
+ * has to be a full one that starts over. A state also names the {@link SyncStateBasis} it was
+ * written under; a run under another one discards it ({@link #adoptSettingsBasis}), so a state a
+ * run wrote back after such a change, or one a restart left, is never continued.
  */
 @Entity
 @Table(name = "source_sync_state")
@@ -85,6 +87,13 @@ public class SourceSyncState {
   @Column(name = "scan_progress", columnDefinition = "jsonb")
   private String scanProgress;
 
+  /**
+   * The {@link SyncStateBasis} of the settings this state was written under; {@code null} for a
+   * state written before bases were kept, which no run continues.
+   */
+  @Column(name = "settings_basis")
+  private String settingsBasis;
+
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
@@ -135,6 +144,41 @@ public class SourceSyncState {
 
   public Instant getUpdatedAt() {
     return updatedAt;
+  }
+
+  public String getSettingsBasis() {
+    return settingsBasis;
+  }
+
+  /**
+   * Makes {@code basis} the one this state is written under. A state written under another one - or
+   * under none - loses what it held: round, completed scopes, change cursors, anchor, folder memory
+   * and the last completed full sync, so the run is a first one. Revisits stay.
+   *
+   * @return whether something was discarded
+   */
+  public boolean adoptSettingsBasis(String basis) {
+    if (basis.equals(settingsBasis)) {
+      return false;
+    }
+    boolean held =
+        fullSyncJobId != null
+            || completedScopeKeys != null
+            || fullSyncCompletedAt != null
+            || incrementalAnchor != null
+            || changeCursors != null
+            || subtreeMarkers != null
+            || scanProgress != null;
+    fullSyncJobId = null;
+    completedScopeKeys = null;
+    fullSyncCompletedAt = null;
+    incrementalAnchor = null;
+    changeCursors = null;
+    subtreeMarkers = null;
+    scanProgress = null;
+    settingsBasis = basis;
+    touch();
+    return held;
   }
 
   /** Whether a previous full sync was interrupted before it completed. */
@@ -316,6 +360,8 @@ public class SourceSyncState {
    * @param markers per container key, the first marker the round saw for every folder it listed
    * @param carried per container key, the recalled markers of folders reported unchanged
    * @param unsettled per container key, folders whose stored state the round could not settle
+   * @param proof the store's absence proof the round's presence was written under; another one does
+   *     not continue the round
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record ScanProgress(
@@ -326,7 +372,8 @@ public class SourceSyncState {
       Map<String, ContainerProgress> containers,
       Map<String, Map<String, String>> markers,
       Map<String, Map<String, String>> carried,
-      Map<String, Set<String>> unsettled) {
+      Map<String, Set<String>> unsettled,
+      String proof) {
 
     public ScanProgress {
       containers = containers == null ? Map.of() : Map.copyOf(containers);

@@ -151,4 +151,70 @@ class SourceSyncStateTest {
     assertThat(memory.basis()).isEqualTo("v1|1024|txt");
     assertThat(memory.containers()).containsOnlyKeys("A");
   }
+
+  @Test
+  void aStateWrittenUnderOtherSettingsLosesEverythingItHeld() {
+    SourceSyncState state = heldUnder("erste");
+
+    assertThat(state.adoptSettingsBasis("zweite")).isTrue();
+
+    assertThat(state.getSettingsBasis()).isEqualTo("zweite");
+    assertThat(state.isFullSyncInterrupted()).isFalse();
+    assertThat(state.completedScopeKeys()).isEmpty();
+    assertThat(state.getFullSyncCompletedAt()).isNull();
+    assertThat(state.getIncrementalAnchor()).isNull();
+    assertThat(state.changeCursors()).isEmpty();
+    assertThat(state.pendingChangeCursors()).isEmpty();
+    assertThat(state.subtreeMemory()).isEqualTo(SourceSyncState.SubtreeMemory.NONE);
+    assertThat(state.scanProgress()).isNull();
+    assertThat(state.isFullSyncDue(Duration.ofDays(7), Instant.parse("2026-10-09T10:00:00Z")))
+        .isTrue();
+  }
+
+  @Test
+  void aStateUnderItsOwnSettingsKeepsWhatItHolds() {
+    SourceSyncState state = heldUnder("erste");
+
+    assertThat(state.adoptSettingsBasis("erste")).isFalse();
+
+    assertThat(state.changeCursors()).containsEntry("stream:A", "cursor-2");
+    assertThat(state.getIncrementalAnchor()).isNotNull();
+    assertThat(state.subtreeMemory().containers()).containsOnlyKeys("A");
+  }
+
+  @Test
+  void aStateWithoutABasisCountsAsWrittenUnderOtherSettings() {
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+    state.beginFullSync(UUID.randomUUID());
+    state.markScopeCompleted("A");
+    assertThat(state.getSettingsBasis()).isNull();
+
+    assertThat(state.adoptSettingsBasis("erste")).isTrue();
+
+    assertThat(state.completedScopeKeys()).isEmpty();
+    assertThat(state.isFullSyncInterrupted()).isFalse();
+  }
+
+  @Test
+  void aFreshStateTakesTheBasisWithoutDiscardingAnything() {
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+
+    assertThat(state.adoptSettingsBasis("erste")).isFalse();
+    assertThat(state.getSettingsBasis()).isEqualTo("erste");
+  }
+
+  private static SourceSyncState heldUnder(String basis) {
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+    state.adoptSettingsBasis(basis);
+    state.beginFullSync(UUID.randomUUID());
+    state.holdPendingChangeCursors(Map.of("stream:A", "cursor-2"));
+    state.rememberSubtrees(
+        new SourceSyncState.SubtreeMemory(
+            "v2|1024|txt", Instant.parse("2026-10-01T10:00:00Z"), Map.of("A", Map.of("", "m"))));
+    state.completeFullSync(
+        Instant.parse("2026-10-08T10:00:00Z"), Instant.parse("2026-10-08T09:00:00Z"));
+    state.beginFullSync(UUID.randomUUID());
+    state.markScopeCompleted("A");
+    return state;
+  }
 }

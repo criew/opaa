@@ -119,7 +119,8 @@ class ScanJournalIntegrationTest {
         Map.of("Projekte", new SourceSyncState.ContainerProgress(checkpoint, 0, 1, true, null)),
         null,
         null,
-        null);
+        null,
+        "LOCATION_IDENTITY");
   }
 
   // regression guard for #2202: a run never writes back a state deleted while it held it

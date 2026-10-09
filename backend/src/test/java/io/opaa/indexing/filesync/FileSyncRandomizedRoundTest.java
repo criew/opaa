@@ -18,14 +18,16 @@ import org.junit.jupiter.api.Test;
  * Full syncs over several runs against the reference store under a budget that changes from run to
  * run and with one to three downloads in flight, while between and during the runs files are added,
  * changed, moved within and across containers, deleted, folders renamed, documents deleted by hand,
- * containers made unlistable for a while or for good, downloads and ingests failing, runs failing
- * and event runs coming in - with a fixed start value per scenario, named in every failure. No
- * document is removed whose file exists under the same identity; for a store whose identity is the
- * location, under the same identity since the round began; for a store whose change log proves
- * absence, also at the end of a round over several runs. A file that rests in a listable container
- * is taken up; once the source stays still and every container is listable, the bestand matches it.
- * {@code -Dopaa.filesync.randomSeeds}, {@code .randomRuns} and {@code .firstSeed} (or the
- * environment variables {@code OPAA_FILESYNC_RANDOM_*}) widen the search.
+ * containers made unlistable for a while or for good, downloads and ingests failing, runs failing,
+ * event runs coming in and the library's file filter changing between and during runs - with a
+ * fixed start value per scenario, named in every failure. No document is removed whose file exists
+ * under the same identity and passes the filter in force; for a store whose identity is the
+ * location, under the same identity since the round began or the filter last changed; for a store
+ * whose change log proves absence, also at the end of a round over several runs. A file that rests
+ * in a listable container and passes the filter is taken up; once the source stays still and every
+ * container is listable, the bestand matches it. {@code -Dopaa.filesync.randomSeeds}, {@code
+ * .randomRuns} and {@code .firstSeed} (or the environment variables {@code OPAA_FILESYNC_RANDOM_*})
+ * widen the search.
  */
 class FileSyncRandomizedRoundTest {
 
@@ -47,6 +49,8 @@ class FileSyncRandomizedRoundTest {
   /** Removals in the run that ended a round over several runs. */
   private int removalsAtARoundsEnd;
 
+  private int filterChanges;
+
   @Test
   void aStoreTrackedByIdentityRemovesNothingThatStillExists() {
     for (long seed = FIRST_SEED; seed < FIRST_SEED + SEEDS; seed++) {
@@ -55,6 +59,7 @@ class FileSyncRandomizedRoundTest {
     assertThat(multiRunRounds).as("rounds over several runs were exercised").isPositive();
     assertThat(removals).as("removals were exercised").isPositive();
     assertThat(lockedOut).as("containers locked out for good were exercised").isPositive();
+    assertThat(filterChanges).as("changes of the filter were exercised").isPositive();
   }
 
   @Test
@@ -65,6 +70,7 @@ class FileSyncRandomizedRoundTest {
     assertThat(multiRunRounds).as("rounds over several runs were exercised").isPositive();
     assertThat(removals).as("removals were exercised").isPositive();
     assertThat(lockedOut).as("containers locked out for good were exercised").isPositive();
+    assertThat(filterChanges).as("changes of the filter were exercised").isPositive();
   }
 
   @Test
@@ -77,6 +83,7 @@ class FileSyncRandomizedRoundTest {
         .as("removals at the end of a round over several runs were exercised")
         .isPositive();
     assertThat(lockedOut).as("containers locked out for good were exercised").isPositive();
+    assertThat(filterChanges).as("changes of the filter were exercised").isPositive();
   }
 
   /** One seeded sequence of runs and changes over a fresh library. */
@@ -113,6 +120,13 @@ class FileSyncRandomizedRoundTest {
 
     private int run;
     private int roundStart;
+
+    /** Whether the filter leaves out the names {@link #outsideFilter} accepts. */
+    private boolean filtered;
+
+    /** Whether the filter changed since the last run began: the next run begins a new round. */
+    private boolean filterChanged;
+
     private int version;
     private int folderNames;
 
@@ -165,7 +179,7 @@ class FileSyncRandomizedRoundTest {
           if (kind == 1) {
             eventRun();
           }
-          runOnce(random.nextInt(5) == 0 ? 0 : 3 + random.nextInt(25), kind == 2);
+          runOnce(random.nextInt(5) == 0 ? 0 : 3 + random.nextInt(25), kind == 2, kind == 3);
         }
       }
       quiet();
@@ -187,7 +201,7 @@ class FileSyncRandomizedRoundTest {
       // a removal by a store without location proof needs one run over everything
       boolean removalsDue = lockedOutContainer == null && (budget == 0 || byLocation);
       for (int i = 0; i < runs && !(i >= 4 && settled(removalsDue)); i++, run++) {
-        runOnce(budget, false);
+        runOnce(budget, false, false);
       }
       Set<String> stored = new HashSet<>(harness.storedPaths());
       for (String container : CONTAINERS) {
@@ -217,15 +231,17 @@ class FileSyncRandomizedRoundTest {
       return !removalsDue || stored.equals(new HashSet<>(identities()));
     }
 
-    private void runOnce(int budget, boolean deletionDuringTheRun) {
-      if (harness.state().scanProgress() == null) {
-        roundStart = run;
-      }
+    private void runOnce(int budget, boolean deletionDuringTheRun, boolean filterDuringTheRun) {
+      beginRun();
       boolean wasOpen = harness.state().isFullSyncInterrupted();
       FileStore opened = store.reset().budget(budget);
       if (deletionDuringTheRun) {
         String container = CONTAINERS.get(random.nextInt(CONTAINERS.size()));
         opened = new BeforeListingStore(opened, container, this::forgetOne);
+      }
+      if (filterDuringTheRun) {
+        String container = CONTAINERS.get(random.nextInt(CONTAINERS.size()));
+        opened = new BeforeListingStore(opened, container, this::toggleFilter);
       }
       FileSyncHarness.Run result = harness.fullSync(opened);
       assertThat(result.failure()).as("seed %s, run %s", seed, run).isNull();
@@ -241,9 +257,7 @@ class FileSyncRandomizedRoundTest {
      * completed. A run that fails removes nothing; one that ends first is checked like any other.
      */
     private void failingRun() {
-      if (harness.state().scanProgress() == null) {
-        roundStart = run;
-      }
+      beginRun();
       store.reset().budget(0).rejectCredentialsAfter(random.nextInt(30));
       FileSyncHarness.Run result = harness.fullSync(store);
       store.acceptCredentials();
@@ -254,6 +268,26 @@ class FileSyncRandomizedRoundTest {
             .as("seed %s, run %s fails and removes nothing", seed, run)
             .isEmpty();
       }
+    }
+
+    /** A round begins with a run that finds none open, or the first after the filter changed. */
+    private void beginRun() {
+      if (harness.state().scanProgress() == null || filterChanged) {
+        roundStart = run;
+      }
+      filterChanged = false;
+    }
+
+    /**
+     * The library's filter changes, and with it what the store lists: its settings and its view
+     * change together, as they do when a manager edits the patterns.
+     */
+    private void toggleFilter() {
+      filtered = !filtered;
+      store.deselectWhere(filtered ? FileSyncRandomizedRoundTest::outsideFilter : name -> false);
+      harness.library().updateSourceSettings("{\"filtered\":" + filtered + "}");
+      filterChanged = true;
+      filterChanges++;
     }
 
     /** An event run over one to three files that exist. */
@@ -292,7 +326,7 @@ class FileSyncRandomizedRoundTest {
     private void change() {
       int changes = 1 + random.nextInt(3);
       for (int i = 0; i < changes; i++) {
-        switch (random.nextInt(14)) {
+        switch (random.nextInt(15)) {
           case 0, 1 -> add();
           case 2 -> rewrite();
           case 3 -> delete();
@@ -304,6 +338,7 @@ class FileSyncRandomizedRoundTest {
           case 10 -> toggleListing();
           case 11 -> toggleReading();
           case 12 -> failOrHealIngest();
+          case 13 -> toggleFilter();
           default -> add();
         }
       }
@@ -448,8 +483,12 @@ class FileSyncRandomizedRoundTest {
       }
     }
 
+    /** The identities of the files of {@code container} that pass the filter in force. */
     private List<String> identitiesOf(String container) {
-      return live.get(container).stream().map(name -> store.filePathOf(container, name)).toList();
+      return live.get(container).stream()
+          .filter(name -> !(filtered && outsideFilter(name)))
+          .map(name -> store.filePathOf(container, name))
+          .toList();
     }
 
     private List<String> identities() {
@@ -457,6 +496,11 @@ class FileSyncRandomizedRoundTest {
       CONTAINERS.forEach(container -> identities.addAll(identitiesOf(container)));
       return identities;
     }
+  }
+
+  /** Whether the filter, while in force, leaves out the file {@code name}. */
+  private static boolean outsideFilter(String name) {
+    return name.substring(name.lastIndexOf('/') + 1).startsWith("f1");
   }
 
   /** A system property, else the environment variable of the same name, else {@code fallback}. */
