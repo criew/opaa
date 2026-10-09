@@ -94,18 +94,8 @@ class VectorSearchHnswIntegrationTest {
       insertChunks(library, CHUNKS_PER_LIBRARY);
     }
     insertChunks(smallLibrary, SMALL_LIBRARY_CHUNKS);
-    // What neighbouring classes may leave behind: FakeEmbeddingModel's vector, outside any scope.
-    jdbcTemplate.update(
-        """
-        INSERT INTO vector_store (id, content, metadata, embedding)
-        SELECT gen_random_uuid(), 'neighbour chunk ' || g,
-               json_build_object('library_id', ?, 'probe_marker', ?),
-               (SELECT array_agg(sin(i * 0.01) ORDER BY i) FROM generate_series(0, 1535) i)::vector
-          FROM generate_series(1, 1000) g
-        """,
-        UUID.randomUUID().toString(),
-        marker);
     // Cosine distance 2 to the query: inside the scope, but far beyond the similarity threshold.
+    // Inserted before the near-duplicate neighbours so the HNSW graph keeps it reachable.
     jdbcTemplate.update(
         """
         INSERT INTO vector_store (id, content, metadata, embedding)
@@ -116,6 +106,17 @@ class VectorSearchHnswIntegrationTest {
                (SELECT array_agg(sin(i * 0.01) ORDER BY i) FROM generate_series(0, 1535) i)::vector
         """,
         smallLibrary.toString(),
+        marker);
+    // What neighbouring classes may leave behind: FakeEmbeddingModel's vector, outside any scope.
+    jdbcTemplate.update(
+        """
+        INSERT INTO vector_store (id, content, metadata, embedding)
+        SELECT gen_random_uuid(), 'neighbour chunk ' || g,
+               json_build_object('library_id', ?, 'probe_marker', ?),
+               (SELECT array_agg(sin(i * 0.01) ORDER BY i) FROM generate_series(0, 1535) i)::vector
+          FROM generate_series(1, 1000) g
+        """,
+        UUID.randomUUID().toString(),
         marker);
     new TransactionTemplate(transactionManager)
         .executeWithoutResult(
@@ -161,12 +162,16 @@ class VectorSearchHnswIntegrationTest {
         .isSortedAccordingTo((a, b) -> Double.compare(b, a));
   }
 
-  /** The opposite chunk is in scope and within fetch-k, so only the threshold keeps it out. */
+  /**
+   * The opposite chunk is reachable through the index and within fetch-k, so only the similarity
+   * threshold keeps it out.
+   */
   @Test
   void aShortListIsNamedInTheExplanationProtocolAndHonoursTheThreshold() {
     StageOutcome small = search(Set.of(smallLibrary), 25);
     StageOutcome full = search(Set.of(libraries.get(0)), 25);
 
+    assertThat(contentReachedByIndexScan(smallLibrary)).contains("opposite chunk");
     assertThat(onlyList(small))
         .hasSize(SMALL_LIBRARY_CHUNKS)
         .extracting(Document::getText)
@@ -174,6 +179,27 @@ class VectorSearchHnswIntegrationTest {
     assertThat(small.explanation().notes())
         .anyMatch(note -> note.startsWith("vector search · sub-query 1 returned 10 of fetch-k 25"));
     assertThat(full.explanation().notes()).noneMatch(note -> note.contains(" of fetch-k "));
+  }
+
+  /** Content an iterative HNSW scan over {@code library} reaches for the test's query vector. */
+  private List<String> contentReachedByIndexScan(UUID library) {
+    return new TransactionTemplate(transactionManager)
+        .execute(
+            status -> {
+              jdbcTemplate.execute("SET LOCAL enable_seqscan = off");
+              jdbcTemplate.execute("SET LOCAL hnsw.iterative_scan = relaxed_order");
+              return jdbcTemplate.queryForList(
+                  """
+                  SELECT content FROM vector_store
+                   WHERE metadata->>'library_id' = ? AND metadata->>'probe_marker' = ?
+                   ORDER BY embedding <=> (SELECT array_agg(-sin(i * 0.01) ORDER BY i)
+                                             FROM generate_series(0, 1535) i)::vector
+                   LIMIT 25
+                  """,
+                  String.class,
+                  library.toString(),
+                  marker);
+            });
   }
 
   private StageOutcome search(Set<UUID> scope, int fetchK) {

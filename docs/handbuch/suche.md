@@ -413,10 +413,12 @@ Die Suche läuft über einen Näherungsindex (HNSW) und prüft die Filter Eintra
 sie den Index durchläuft. Sie läuft weiter, bis `fetch-k` Chunks innerhalb des Filters gefunden
 sind, und sortiert sie danach exakt nach Ähnlichkeit. Wie viel der Bestand anderer Bibliotheken
 umfasst, ändert deshalb nichts an der Länge der Liste: Wer nur eine kleine Bibliothek lesen darf,
-bekommt so viele Kandidaten wie jemand mit Zugriff auf alles. Kürzer wird eine Liste, wenn im
-Suchbereich oberhalb der Schwelle nicht mehr Chunks liegen, oder wenn der Indexdurchlauf seine
-Grenze erreicht: die Zahl durchlaufener Einträge (`vector-index.max-scan-tuples`, Abschnitt 10.3)
-oder den Arbeitsspeicher, den pgvector ihm zugesteht. Die Grenze erreicht in der Praxis nur ein
+bekommt so viele Kandidaten wie jemand mit Zugriff auf alles. Kürzer wird eine Liste aus drei Gründen: Im
+Suchbereich liegen oberhalb der Schwelle nicht mehr Chunks, der Indexdurchlauf erreicht seine
+Grenze (die Zahl durchlaufener Einträge `vector-index.max-scan-tuples`, Abschnitt 10.3, oder den
+Arbeitsspeicher, den pgvector ihm zugesteht), oder der Index-Graph lässt Einträge vom Einstiegspunkt
+aus unerreichbar. Letzteres liegt in der Natur des Näherungsindex und kommt bei echten Embeddings
+selten vor. Die Grenze erreicht in der Praxis nur ein
 sehr kleiner Suchbereich in einem sehr großen Bestand; für einen solchen Filter wählt PostgreSQL
 meist ohnehin die exakte Suche ohne Index. Eine kürzere Liste nennt das Erklärprotokoll mit der
 Zahl der gelieferten Kandidaten.
@@ -1006,7 +1008,7 @@ Abschnitt 12.
 | Sachfrage als „nichts zu suchen" eingestuft | Stufe „Teilfragen" („nichts zu suchen"), Metrik `opaa.query.decomposition.no-search` | das Chat-Modell hat eine Folgefrage für eine Nachricht ohne Suchbedarf gehalten; gesucht wurde mit der einzelnen Rückfall-Suchanfrage statt mit einer aufgelösten Teilfrage |
 | Bemerkung mit Quellen beantwortet | Fundstellen, „Durchsucht wurden"-Zeile unter einer Antwort auf einen Dank oder Formwunsch | beabsichtigt: auch eine Nachricht ohne Suchbedarf wird gesucht |
 | „Beleg nicht bestätigt" | Fundstelle | Modell hat eine Marke erfunden oder einen Wert abweichend wiedergegeben |
-| Vektorliste kürzer als `fetch-k` | Stufe „Vektorsuche" („… von fetch-k … geliefert") | Suchbereich oder Filter enthalten oberhalb der Ähnlichkeitsschwelle nicht mehr Chunks; selten: sehr kleiner Suchbereich in sehr großem Bestand, dessen Indexdurchlauf an seine Grenze kam |
+| Vektorliste kürzer als `fetch-k` | Stufe „Vektorsuche" („… von fetch-k … geliefert") | Suchbereich oder Filter enthalten oberhalb der Ähnlichkeitsschwelle nicht mehr Chunks; selten: sehr kleiner Suchbereich in sehr großem Bestand, dessen Indexdurchlauf an seine Grenze kam, oder Chunks, die der Index-Graph (HNSW) vom Einstiegspunkt aus nicht erreicht |
 | viele „ohne Angabe" unter Filter | Fundstellen, Notiz der Suchstufen | Feld im Bestand schwach gefüllt; Bestandslauf oder Pflege (Kapitel [Metadaten](metadaten.md)) |
 
 Zwei bekannte, offene Schwächen gehören hierher, weil sie wie Fehler aussehen:
