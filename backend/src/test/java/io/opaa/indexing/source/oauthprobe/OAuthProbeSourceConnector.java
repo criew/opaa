@@ -22,7 +22,8 @@ import org.springframework.stereotype.Component;
 /**
  * A connector that exists only in test code and signs in persons by OAuth against the shared {@link
  * FakeAuthorizationServer}: authorization code with PKCE, renewal, revocation by RFC 7009. It knows
- * nothing of the flow; its run asks the core for a token like any other secret.
+ * nothing of the flow; its run asks the core for a token like any other secret. It declares the
+ * server's issuer without the announcement, so a response may name it or not, but no other.
  */
 @Component
 public class OAuthProbeSourceConnector implements SourceConnector {
@@ -45,7 +46,9 @@ public class OAuthProbeSourceConnector implements SourceConnector {
                             new Revocation.Rfc7009(new Endpoint.Fixed(server.revocationEndpoint())),
                             SCOPES,
                             Map.of("access_type", "offline"),
-                            ClientAuthentication.CLIENT_SECRET_BASIC),
+                            ClientAuthentication.CLIENT_SECRET_BASIC,
+                            server.issuer(),
+                            false),
                         ConnectionOwnership.PERSON))
                 .withAddress(ServerAddressRule.schemes("https")));
   }

@@ -17,7 +17,9 @@ import java.util.UUID;
  * CredentialsEncryptor} ciphertext and the profile version it is bound to, for one completion
  * before {@link #getExpiresAt}. A consent for a library's source records when the caller confirmed
  * a service account and, for a reconnection, the library, who answers for it and whether a changed
- * account is confirmed. {@link #toString} shows neither secret.
+ * account is confirmed. Where the profile knows its authorization server's issuer, the consent
+ * keeps it as of the start, with whether the response must name it (RFC 9207). {@link #toString}
+ * shows neither secret.
  */
 @Entity
 @Table(name = "connection_authorizations")
@@ -71,6 +73,12 @@ class ConnectionAuthorization {
 
   @Column(name = "account_change_confirmed_at")
   private Instant accountChangeConfirmedAt;
+
+  @Column(name = "expected_issuer", length = 2000)
+  private String expectedIssuer;
+
+  @Column(name = "issuer_required")
+  private Boolean issuerRequired;
 
   protected ConnectionAuthorization() {}
 
@@ -150,6 +158,25 @@ class ConnectionAuthorization {
       this.responsibleId = responsible.id();
     }
     this.accountChangeConfirmedAt = acceptsAccountChange ? confirmedAt : null;
+  }
+
+  /**
+   * Binds the consent to the authorization server {@code issuer} of the profile at the start;
+   * {@code required} where that server announced the {@code iss} parameter (RFC 9207).
+   */
+  void expectIssuer(String issuer, boolean required) {
+    this.expectedIssuer = issuer;
+    this.issuerRequired = issuer != null && required;
+  }
+
+  /** The issuer the provider's response must not contradict, {@code null} where none is known. */
+  String getExpectedIssuer() {
+    return expectedIssuer;
+  }
+
+  /** Whether the provider's response must name {@link #getExpectedIssuer}. */
+  boolean isIssuerRequired() {
+    return Boolean.TRUE.equals(issuerRequired);
   }
 
   UUID getLibraryId() {

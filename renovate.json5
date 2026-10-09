@@ -322,6 +322,51 @@
       matchFileNames: ['.github/workflows/helm-chart.yml', '.github/workflows/publish-images.yml'],
       enabled: false,
     },
+    // Workflows mit Schreibrechten auf veröffentlichte Artefakte oder das Repository pinnen ihre
+    // Actions auf den Commit-SHA mit exaktem Versionskommentar (#2397, docs/renovate.md). Renovate
+    // pflegt beides gemeinsam. Ein neues Release wird erst nach drei Tagen vorgeschlagen; vorher
+    // entsteht kein Branch, also auch kein PR-Lauf mit Schreibtoken. Die Dateiliste muss in allen
+    // drei Regeln PINNED_WORKFLOWS in .github/scripts/check_action_pins.sh entsprechen;
+    // test_check_action_pins.py prüft das.
+    {
+      matchManagers: ['github-actions'],
+      matchFileNames: [
+        '.github/workflows/cla.yml',
+        '.github/workflows/cve-scan.yml',
+        '.github/workflows/daily-report.yml',
+        '.github/workflows/dependency-graph.yml',
+        '.github/workflows/landing-page.yml',
+        '.github/workflows/publish-images.yml',
+      ],
+      matchDepTypes: ['action'],
+      pinDigests: true,
+      minimumReleaseAge: '3 days',
+    },
+    // Ein neuer SHA bei unveränderter Version heißt: Der Tag wurde umgehängt. Genau das ist der
+    // Angriff, gegen den die Pins schützen. Renovate legt dafür erst nach Freigabe in der
+    // Abhängigkeits-Übersicht einen Branch an, denn cve-scan.yml und dependency-graph.yml laufen
+    // schon im PR mit Schreibrechten.
+    {
+      matchManagers: ['github-actions'],
+      matchFileNames: [
+        '.github/workflows/cla.yml',
+        '.github/workflows/cve-scan.yml',
+        '.github/workflows/daily-report.yml',
+        '.github/workflows/dependency-graph.yml',
+        '.github/workflows/landing-page.yml',
+        '.github/workflows/publish-images.yml',
+      ],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
+      automerge: false,
+    },
+    // Die Actions der Veröffentlichung übt kein Required Check aus, sie laufen aber bei jedem Push
+    // auf main mit packages: write. Ihre Updates mergen deshalb nie automatisch.
+    {
+      matchManagers: ['github-actions'],
+      matchFileNames: ['.github/workflows/publish-images.yml'],
+      automerge: false,
+    },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
     // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21
     // (Auto-Provisioning ist aus) — der Automerge von #988 hat den Backend-Image-Build und

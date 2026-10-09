@@ -46,12 +46,15 @@ function completeOnce(
   return started
 }
 
-/** What the provider sent back, read from the address once; `null` without a state. */
+/**
+ * What the provider sent back, read from the address once, `iss` (RFC 9207) unchanged for the
+ * server to compare; `null` without a state.
+ */
 function readCallback(search: string): ConnectionAuthorizationCompleteRequest | null {
   const params = new URLSearchParams(search)
   const state = params.get('state')
   if (!state) return null
-  return { state, code: params.get('code'), error: params.get('error') }
+  return { state, code: params.get('code'), error: params.get('error'), iss: params.get('iss') }
 }
 
 function failureMessage(err: unknown): string {
