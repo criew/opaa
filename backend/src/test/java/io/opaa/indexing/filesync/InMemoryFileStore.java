@@ -53,6 +53,7 @@ public final class InMemoryFileStore implements FileStore {
   private boolean earlyNewStart;
   private boolean swallowExpiry;
   private boolean recordChanges;
+  private Runnable beforeNextRead;
   private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
   private int rejectAfter = -1;
@@ -292,6 +293,11 @@ public final class InMemoryFileStore implements FileStore {
           @Override
           public ChangePage read(String feedKey, String cursor) throws FileAccessException {
             call("read " + feedKey + " @" + cursor);
+            if (beforeNextRead != null) {
+              Runnable once = beforeNextRead;
+              beforeNextRead = null;
+              once.run();
+            }
             Integer position = cursorPositions.get(cursor);
             if (cursorsExpired || position == null) {
               if (swallowExpiry) {
@@ -327,6 +333,15 @@ public final class InMemoryFileStore implements FileStore {
             }
           }
         };
+    return this;
+  }
+
+  /**
+   * Runs {@code action} once, while the next page of the change log is read - something that
+   * happens while a change run is under way.
+   */
+  public InMemoryFileStore beforeNextChangeRead(Runnable action) {
+    beforeNextRead = action;
     return this;
   }
 
