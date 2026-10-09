@@ -6,9 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.http.HttpTimeoutException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -21,13 +21,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class BoundedStreams {
 
   /** Closes a body still being read when its deadline passes. */
-  private static final ScheduledExecutorService DEADLINES =
-      Executors.newSingleThreadScheduledExecutor(
-          runnable -> {
-            Thread thread = new Thread(runnable, "bounded-read-deadline");
-            thread.setDaemon(true);
-            return thread;
-          });
+  private static final ScheduledExecutorService DEADLINES = deadlineScheduler();
+
+  private static ScheduledExecutorService deadlineScheduler() {
+    ScheduledThreadPoolExecutor scheduler =
+        new ScheduledThreadPoolExecutor(
+            1,
+            runnable -> {
+              Thread thread = new Thread(runnable, "bounded-read-deadline");
+              thread.setDaemon(true);
+              return thread;
+            });
+    scheduler.setRemoveOnCancelPolicy(true);
+    return scheduler;
+  }
 
   private BoundedStreams() {}
 
@@ -124,6 +131,31 @@ public final class BoundedStreams {
    */
   public static byte[] readFullyBefore(InputStream in, long maxBytes, long deadlineNanos)
       throws IOException {
+    return before(in, deadlineNanos, () -> readFully(in, maxBytes));
+  }
+
+  /**
+   * {@link #copy} that also ends at {@code deadlineNanos} (on the {@link System#nanoTime()} scale),
+   * covering the whole transfer rather than each read: a body still flowing then is closed and
+   * {@link HttpTimeoutException} thrown. Crossing the limit still throws {@link
+   * LimitExceededException}; the caller deletes the partial target.
+   */
+  public static void copyBefore(InputStream in, OutputStream out, long maxBytes, long deadlineNanos)
+      throws IOException {
+    before(
+        in,
+        deadlineNanos,
+        () -> {
+          copy(in, out, maxBytes);
+          return null;
+        });
+  }
+
+  private interface Read<T> {
+    T run() throws IOException;
+  }
+
+  private static <T> T before(InputStream in, long deadlineNanos, Read<T> read) throws IOException {
     AtomicBoolean expired = new AtomicBoolean();
     ScheduledFuture<?> stop =
         DEADLINES.schedule(
@@ -134,11 +166,11 @@ public final class BoundedStreams {
             Math.max(0, deadlineNanos - System.nanoTime()),
             TimeUnit.NANOSECONDS);
     try {
-      byte[] read = readFully(in, maxBytes);
+      T result = read.run();
       if (expired.get()) {
         throw new HttpTimeoutException("the body was not read completely before its deadline");
       }
-      return read;
+      return result;
     } catch (IOException e) {
       if (expired.get() && !(e instanceof LimitExceededException)) {
         throw new HttpTimeoutException("the body was not read completely before its deadline");

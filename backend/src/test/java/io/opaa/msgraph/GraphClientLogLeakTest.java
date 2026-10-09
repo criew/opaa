@@ -130,6 +130,7 @@ class GraphClientLogLeakTest {
             RateLimitPolicy.of(2, Duration.ofSeconds(1)), wait -> {}, RateLimitListener.NONE),
         new SourceRequestMeter(),
         Duration.ofSeconds(5),
+        GraphClient.DEFAULT_DOWNLOAD_TIMEOUT,
         GraphClient.DEFAULT_MAX_JSON_BYTES);
   }
 }

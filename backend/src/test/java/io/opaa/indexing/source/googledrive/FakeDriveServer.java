@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import tools.jackson.databind.json.JsonMapper;
@@ -45,6 +46,7 @@ final class FakeDriveServer implements AutoCloseable {
     boolean canDownload = true;
     boolean sharedWithMe;
     boolean exportTooLarge;
+    boolean trickle;
     String redirectTo;
     byte[] content = new byte[0];
     Instant modifiedTime = Instant.parse("2026-10-01T10:00:00Z");
@@ -246,6 +248,8 @@ final class FakeDriveServer implements AutoCloseable {
         } else if (item.redirectTo != null) {
           exchange.getResponseHeaders().add("Location", item.redirectTo);
           exchange.sendResponseHeaders(302, -1);
+        } else if (item.trickle) {
+          trickled(exchange, item.content);
         } else {
           bytes(exchange, item.content);
         }
@@ -390,6 +394,22 @@ final class FakeDriveServer implements AutoCloseable {
     exchange.sendResponseHeaders(200, bytes.length);
     try (OutputStream out = exchange.getResponseBody()) {
       out.write(bytes);
+    }
+  }
+
+  /** Headers first, then one byte every 100 ms until the client hangs up. */
+  private static void trickled(HttpExchange exchange, byte[] bytes) throws IOException {
+    exchange.sendResponseHeaders(200, 0);
+    try (OutputStream out = exchange.getResponseBody()) {
+      for (byte b : bytes) {
+        out.write(b);
+        out.flush();
+        TimeUnit.MILLISECONDS.sleep(100);
+      }
+    } catch (IOException e) {
+      // the client hung up
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
     }
   }
 
