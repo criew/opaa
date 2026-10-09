@@ -34,7 +34,7 @@ import sys
 from pathlib import Path
 
 # Alle Messpfade in einer Liste (Issue #1040): der Rohvektor-Pfad führt seine Metriken am
-# @10-Fenster, der Pipeline- und der Mehrrunden-Pfad am @8-Fenster der Produktion. Eine
+# @10-Fenster, der Pipeline- und der Mehrrunden-Pfad am @20-Fenster der Produktion (top-k). Eine
 # Baseline-Datei enthält immer nur die Felder ihres eigenen Pfades; die des jeweils anderen fehlen
 # und werden unten übersprungen (`main_value is None`). Verglichen wird deshalb nie über
 # Pfadgrenzen hinweg — der Vergleich läuft ohnehin je Dateiname, und die Dateinamen sind je Pfad
@@ -45,10 +45,10 @@ METRICS = (
     "ndcgAt10",
     "recallAt10",
     "allExpectedDocumentsHitAt10",
-    "mrrAt8",
-    "ndcgAt8",
-    "recallAt8",
-    "allExpectedDocumentsHitAt8",
+    "mrrAt20",
+    "ndcgAt20",
+    "recallAt20",
+    "allExpectedDocumentsHitAt20",
 )
 
 # Issue #306: the two case counts BaselineComparator reads for the case-count check on
@@ -56,7 +56,7 @@ METRICS = (
 # the same "groups" object as METRICS above, so a PR that lowers one silently narrows a group's
 # protection the same way a lowered mean would — worth surfacing here for the same reason, even
 # though this script never gates anything (see module docstring).
-CASE_COUNT_FIELDS = ("hitCountAt5", "hitCountAt10", "hitCountAt8")
+CASE_COUNT_FIELDS = ("hitCountAt5", "hitCountAt10", "hitCountAt20")
 
 
 def load(path):

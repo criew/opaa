@@ -187,13 +187,13 @@ Grunds zu. Verliert ein solcher Fall seinen Treffer, meldet das Audit ihn als R�
 mit dem fehlenden Mechanismus als Grund — kein Datenpflegefehler, sondern der erwartbare Ausgang
 eines Treffers, den nie ein Mechanismus trug.
 
-| Pfad | Fälle mit Präfix (Stand 2026-09-14) |
+| Pfad | Fälle mit Präfix (Rohvektor Stand 2026-09-14, Pipeline Stand 2026-10-09) |
 |---|---|
 | Rohvektor | `verw-lit-008`, `-009`; `verw-id-003`, `-006` bis `-010`; `verw-comp-002` bis `-009`; `verw-hop-002` (17) |
-| Pipeline | `verw-comp-009`; `verw-hop-002`, `-003`, `-005` (4) |
+| Pipeline | `verw-comp-002`, `-003`, `-004`, `-008`, `-009`; `verw-hop-002`, `-003`, `-005` (8) |
 
-In `comic-characters` tragen es `comic-filter-017`, `-089` und ihre deutschen Gegenstücke
-`comic-de-019`, `-022` auf dem Pipeline-Pfad (die Domäne wendet keinen Filter an; seit #1657 gilt
+In `comic-characters` tragen es `comic-filter-017`, `-033`, `-089` und die deutschen Mengenfragen
+`comic-de-016`, `-019`, `-022` auf dem Pipeline-Pfad (`-033` und `de-016` seit #2373) (die Domäne wendet keinen Filter an; seit #1657 gilt
 das auch für deutsche Mengen- und Schwellenfragen der Klasse `crosslingual`), in `city-landmarks` kein Fall; der Mehrrunden-Datensatz führt flache
 Zustandsfelder und ist nicht betroffen.
 
@@ -212,6 +212,21 @@ Grund.
 Im Lauf auf dem Stand dieses Umbaus (CPU/Testcontainer, `checkVerwaltungRetrievalBaseline`) melden
 beide Audits keine Abweichung.
 
+**Zustandspflege mit #2373 (2026-10-09).** Der Produktions-Default `top-k` stieg von 8 auf 20, und
+mit ihm das Fenster des Pipeline-Pfads (MRR@20, nDCG@20, Recall@20). Die Pipeline-Auswahl umfasst
+im Mittel 6,9 statt 3,3 unterschiedliche Dokumente. Der Rohvektor-Pfad ist unberührt; jede seiner
+Rangfolgen ist identisch zum Lauf davor, seine Zustände und Gründe bleiben.
+
+| Fälle | Pipeline-Pfad | gemessene Ursache |
+|---|---|---|
+| `verw-comp-002`, `-003`, `-004`, `-008` | `known_gap` → `solved` | Das fehlende erwartete Dokument erreicht das Fenster von 20 Chunk-Plätzen (Ränge 4, 2, 3, 9); Rang 1 war schon erwartet. Die Asymmetrie aus #1156 ist für diese vier Fälle aufgehoben. |
+| `verw-lit-008` | `solved` → `known_gap` | Rang 1 → 2: Jede Suchliste behält vor der Fusion 20 statt 8 Kandidaten, und `verwaltung-0043_formularhinweis-kaemmerei-8.md` zieht in der Fusion vorbei. |
+
+`verw-comp-005`, `-006` und `-007` bleiben auf dem Pipeline-Pfad `known_gap`: Auch 20 Chunk-Plätze
+fassen die dritte bzw. zweite Satzung nicht, weil die gefundenen Dokumente sie mit Abschnitten füllen.
+Alle 49 Pipeline-Gründe sind aus diesem Lauf neu erzeugt, mit demselben Generator, der die
+vorherigen 49 Gründe aus dem CI-Lauf 37837883487 Zeichen für Zeichen reproduziert.
+
 Jede Zustandsänderung ist ein bewusster Vorgang mit Datum und Begründung im selben PR wie ihr
 Auslöser — nie eine Datenpflege nebenbei —, und sie betrifft nur den Pfad, auf dem sie gemessen
 ist. Der Zustandsfelder-Abschnitt beider Reports **und** beider Markdown-Delta-Tabellen
@@ -221,7 +236,7 @@ Entscheidung über einen Zustandswechsel eine menschliche ist.
 
 ## `known_gap`-Fälle
 
-**Je Pfad, Stand 2026-09-14 (#1658):** Rohvektor-Pfad 22 von 49, Pipeline-Pfad 23 von 49; auf
+**Je Pfad, Stand 2026-10-09 (#2373):** Rohvektor-Pfad 22 von 49, Pipeline-Pfad 20 von 49; auf
 beiden Pfaden `known_gap` sind 16. Die Tabelle darunter gibt diesen Stand wieder; die
 Symptomtabellen je Klasse sind historisch und beschreiben die Läufe vom 2026-09-01/-05, für die 21 mit
 #1308 gepflegten Fälle gilt der Abschnitt „Zustandspflege mit #1308".
@@ -230,7 +245,8 @@ Symptomtabellen je Klasse sind historisch und beschreiben die Läufe vom 2026-09
 fester CPU-Variante `haswell`. Sie nennen zuerst den fehlenden oder wirkenden Baustein, dann den
 Fensteranteil, Rang 1 und die Ränge der erwarteten Dokumente, bei Filterfällen auch den
 Verwechslungspartner. Jede dieser Angaben ist mechanisch gegen die Fallergebnisse geprüft. Die
-Zustände haben sich dabei nicht bewegt.
+Zustände haben sich dabei nicht bewegt. Die Pipeline-Gründe beschreiben seit #2373 den Lauf vom
+2026-10-09 mit `top-k` 20 (Abschnitt „Zustandspflege mit #2373" oben).
 
 **Stand vor #1658: 29 von 49 Fällen** unter der damaligen Regel „gelöst auf beiden Pfaden",
 2026-09-14 (#1308).
@@ -252,9 +268,9 @@ Feld `expected_state.<pfad>.reason`; die Tabellen unten führen zusätzlich das 
 
 | Klasse | Fälle | `known_gap` Rohvektor | `known_gap` Pipeline | fehlender Baustein |
 |---|---|---|---|---|
-| `literal_term_weak_embedding` | 9 | 7 | 7 | lexikalischer Pfad und Fusion (Roadmap 1a/1b) — die #938-Klasse |
+| `literal_term_weak_embedding` | 9 | 7 | 8 | lexikalischer Pfad und Fusion (Roadmap 1a/1b) — die #938-Klasse |
 | `exact_identifier` | 10 | 4 | 0 | Schutz unzerlegter Kennungs-Tokens (Roadmap 1a) — im Volltextpfad gebaut, fehlt dem Rohvektor-Pfad |
-| `compound_word` | 9 | 1 | 8 | Komposita-Zerlegung (Roadmap 1a) |
+| `compound_word` | 9 | 1 | 4 | Komposita-Zerlegung (Roadmap 1a) |
 | `multi_hop` | 9 | 8 | 6 | Zusammenführung mehrgliedriger Ketten (Messgrundlage für Roadmap 3c) |
 | `metadata_filter` | 12 | 2 | 2 | für `verw-meta-003`/`-005`: Bibliotheksfeld Gültigkeit (#1071) |
 

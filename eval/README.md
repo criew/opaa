@@ -344,8 +344,8 @@ Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrec
 | | Rohvektor-Pfad | Pipeline-Pfad |
 |---|---|---|
 | Ähnlichkeitsschwelle | ausgewiesen, nicht angewandt | **angewandt** (`opaa.query.similarity-threshold`) |
-| Fenster | `documentTopK=10` | `opaa.query.top-k=8` |
-| Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | **Hit Rate@5, MRR@8, nDCG@8, Recall@8** |
+| Fenster | `documentTopK=10` | `opaa.query.top-k=20` (bis #2373: 8) |
+| Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | **Hit Rate@5, MRR@20, nDCG@20, Recall@20** |
 | Report | `build/eval-reports/retrieval-metrics[-<domäne>].json` | `build/eval-reports/pipeline-metrics-<domäne>.json` |
 | Baseline | `eval/baseline/<domäne>.json` | `eval/baseline/pipeline-<domäne>.json` |
 | Zustandsfelder-Audit | Abschnitt „Zustandsfelder" im Report, gegen `expected_state.raw_vector` | gegen `expected_state.pipeline`, am Fenster dieses Pfads |
@@ -353,9 +353,9 @@ Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrec
 
 Weil die Schwelle im Pipeline-Pfad tatsächlich greift, kann ein Dokument dort ganz aus der
 Rangliste verschwinden statt nur zurückzufallen — Recall-Werte liegen systematisch niedriger. Das
-ist kein Fehler, sondern die gemessene Realität. **Eine nDCG@8-Zahl neben einer nDCG@10-Zahl ohne
+ist kein Fehler, sondern die gemessene Realität. **Eine nDCG@20-Zahl neben einer nDCG@10-Zahl ohne
 Kennzeichnung ist ein Auswertungsfehler**; deshalb tragen die Feldnamen des Pipeline-Reports ihr
-Fenster selbst (`ndcgAt8`, `recallAt8`, `mrrAt8`), und der Report führt zusätzlich einen
+Fenster selbst (`ndcgAt20`, `recallAt20`, `mrrAt20`), und der Report führt zusätzlich einen
 `metricWindowNote`.
 
 Weitere Festlegungen des Pipeline-Pfads:
@@ -554,9 +554,9 @@ Was der Schritt tut, je Fall:
 2. Jede Runde läuft über `RetrievalContextFactory#contextFor` + `RetrievalPipeline#run`, mit dem
    Fenster als Gesprächsverlauf und der (noch leeren) Gesprächsnotiz.
 3. Gemessen wird **je Runde** mit denselben vier Metriken und demselben Fenster wie im
-   Pipeline-Pfad (Hit Rate@5, MRR@8, nDCG@8, Recall@8). Ein Fall gilt als gelöst, wenn **jede**
+   Pipeline-Pfad (Hit Rate@5, MRR@20, nDCG@20, Recall@20). Ein Fall gilt als gelöst, wenn **jede**
    Runde gelöst ist (alle erwarteten Dokumente im Fenster und eines auf Rang 1).
-4. Mehrfachlauf-Regel: drei Läufe, berichtet wird der Median-Lauf nach nDCG@8 — zusammen mit dem
+4. Mehrfachlauf-Regel: drei Läufe, berichtet wird der Median-Lauf nach nDCG@20 — zusammen mit dem
    Streubereich je Metrik und der Zahl der **Runden**, deren Zerlegung über die Läufe hinweg abwich.
    Dieser Pfad ruft die Zerlegung einmal je Runde statt einmal je Fall; die Abweichungszahl ist
    deshalb die Aussage darüber, wie stabil die Messung überhaupt ist.
@@ -621,18 +621,18 @@ Der Pipeline-Report (`pipeline-metrics-<domäne>.json`) hat dieselbe Grundstrukt
 Schema: `pipelineMeasurementContractVersion`, `metricWindowNote`, die Produktionsparameter in
 `runConfiguration`, ein `selectionCoverage`-Block (wie viele Chunks die Pipeline je Anfrage
 tatsächlich lieferte und bei wie vielen Anfragen die Schwelle **alles** herausfilterte) sowie
-Gruppen- und Einzelfallzahlen unter den fenstertragenden Namen `hitRateAt5`/`mrrAt8`/`ndcgAt8`/
-`recallAt8`.
+Gruppen- und Einzelfallzahlen unter den fenstertragenden Namen `hitRateAt5`/`mrrAt20`/`ndcgAt20`/
+`recallAt20`.
 
 Ein Punkt, der beim Lesen mitgedacht werden muss: **Das Fenster des Pipeline-Pfads zählt Chunks,
-die Metriken zählen Dokumente.** Bei `max-chunks-per-document = 2` können acht Chunks auf so wenige
+die Metriken zählen Dokumente.** Bei `max-chunks-per-document = 2` können zwanzig Chunks auf so wenige
 wie vier Dokumente zusammenfallen — die Rangliste, über die gemessen wird, ist dann entsprechend
 kürzer als acht. Die Konsolenzusammenfassung weist deshalb das **effektive Dokumentfenster** aus
-(unterschiedliche Dokumente je Anfrage im Mittel, gegen die nominal acht Chunk-Plätze), und der
+(unterschiedliche Dokumente je Anfrage im Mittel, gegen die nominal zwanzig Chunk-Plätze), und der
 JSON-Report führt dieselbe Zahl je Anfrage als `distinctDocumentsReturned`.
 
-`recallAt8Ceiling` bleibt davon bewusst unberührt: Es ist die **strukturelle** Obergrenze
-`min(8, |erwartete Dokumente|) / |erwartete Dokumente|` — dieselbe Definition wie
+`recallAt20Ceiling` bleibt davon bewusst unberührt: Es ist die **strukturelle** Obergrenze
+`min(20, |erwartete Dokumente|) / |erwartete Dokumente|` — dieselbe Definition wie
 `recallAt10Ceiling` im Rohvektor-Pfad. Eine aus dem Messergebnis abgeleitete Obergrenze könnte
 nie verfehlt werden: Filterte die Schwelle alles bis auf einen Chunk weg, meldete der Report
 „Recall am Maximum des Erreichbaren", obwohl fast alle erwarteten Dokumente verfehlt wurden.
@@ -703,7 +703,7 @@ Baseline, die Schwellenwerte und die CI-Anbindung aufgesetzt:
 
 Was genau gemessen wird — Gain-Funktion, IDCG-Basis, die ungleichen Fenster von Hit Rate@5 und
 nDCG@10, dass ohne Ähnlichkeitsschwelle gemessen wird statt mit der Produktionskonfiguration
-(`top-k=8`/`threshold=0,3`, seit #914; zuvor `top-k=5`), wie die Recall-Obergrenze bei `|E|>k` gehandhabt wird, dass Mikro- statt
+(`top-k=20`/`threshold=0,3`, seit #2373; zuvor `top-k=8` seit #914 und davor `top-k=5`), wie die Recall-Obergrenze bei `|E|>k` gehandhabt wird, dass Mikro- statt
 Makro-Mittel gebildet wird, und (seit Messvertrag-Version 2, Issue #721) dass das k-Fenster
 ausdrücklich dokumentbezogen ist und eine zweite Metrikfamilie auf Chunkebene existiert — ist in
 [ADR-0012](../docs/decisions/0012-messvertrag-retrieval-harness.md) festgehalten, nicht nur im

@@ -15,11 +15,11 @@ import java.util.List;
  *     MultiRunAggregator#DECOMPOSITION_RUN_COUNT} by the specification, carried here rather than
  *     hard-coded again at every reader).
  * @param hitRateAt5 minimum, median and maximum Hit Rate@5 across the runs.
- * @param mrrAt8 minimum, median and maximum MRR@8 across the runs.
- * @param ndcgAt8 minimum, median and maximum nDCG@8 across the runs.
- * @param recallAt8 minimum, median and maximum Recall@8 across the runs.
+ * @param mrrAt20 minimum, median and maximum MRR@20 across the runs.
+ * @param ndcgAt20 minimum, median and maximum nDCG@20 across the runs.
+ * @param recallAt20 minimum, median and maximum Recall@20 across the runs.
  * @param medianRunIndex the index into the variant's own list of runs (not exposed on this record —
- *     only {@link MultiRunAggregator} needs the raw list) whose nDCG@8 is the median value; that
+ *     only {@link MultiRunAggregator} needs the raw list) whose nDCG@20 is the median value; that
  *     run is what {@link VariantOutcome#report()} returns for a multi-run outcome, so every
  *     per-case delta and every other field of the report is the median run's, not an average.
  * @param decompositionDeviatingCaseCount how many golden cases got a different ordered list of
@@ -37,9 +37,9 @@ import java.util.List;
 public record MultiRunSummary(
     int runCount,
     MetricRange hitRateAt5,
-    MetricRange mrrAt8,
-    MetricRange ndcgAt8,
-    MetricRange recallAt8,
+    MetricRange mrrAt20,
+    MetricRange ndcgAt20,
+    MetricRange recallAt20,
     int medianRunIndex,
     int decompositionDeviatingCaseCount,
     List<String> decompositionDeviatingCaseIds) {

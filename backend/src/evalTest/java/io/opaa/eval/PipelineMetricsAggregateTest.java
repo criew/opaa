@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.Test;
  * Docker-free unit tests for the pipeline path's windowed metric math and aggregation (issue
  * #1039), run via the {@code evalUnitTest} Gradle task.
  *
- * <p>The expected values below are hand-computed at {@code k=8}, independently of the production
+ * <p>The expected values below are hand-computed at {@code k=20}, independently of the production
  * code, so a future change to the window or to the metric definitions fails here instead of
  * silently shifting a pipeline report.
  */
@@ -24,7 +25,7 @@ class PipelineMetricsAggregateTest {
         id, "test", "query " + id, expected, category, "easy", "de", "t", null, null);
   }
 
-  private static RetrievalMetrics.WindowedQueryResult at8(
+  private static RetrievalMetrics.WindowedQueryResult at20(
       GoldenCase goldenCase, List<String> ranked) {
     return RetrievalMetrics.evaluateAt(
         goldenCase,
@@ -35,16 +36,16 @@ class PipelineMetricsAggregateTest {
 
   @Test
   void windowIsTheProductionTopK() {
-    assertThat(PipelineMetricsAggregate.RANKING_K).isEqualTo(8);
+    assertThat(PipelineMetricsAggregate.RANKING_K).isEqualTo(20);
     assertThat(PipelineMetricsAggregate.HIT_RATE_K).isEqualTo(5);
   }
 
   @Test
   void hitAtRankOneScoresPerfectlyAtEveryMetric() {
-    var result = at8(goldenCase("a", "c", List.of("e")), List.of("e", "d2", "d3"));
+    var result = at20(goldenCase("a", "c", List.of("e")), List.of("e", "d2", "d3"));
 
     assertThat(result.hitRateK()).isEqualTo(5);
-    assertThat(result.rankingK()).isEqualTo(8);
+    assertThat(result.rankingK()).isEqualTo(20);
     assertThat(result.hitRate()).isEqualTo(1.0);
     assertThat(result.reciprocalRank()).isEqualTo(1.0);
     assertThat(result.ndcg()).isCloseTo(1.0, within(TOLERANCE));
@@ -53,30 +54,52 @@ class PipelineMetricsAggregateTest {
   }
 
   /**
-   * The characteristic difference to the raw-vector path: a hit at document rank 9 or 10 still
-   * counts there ({@code k=10}) but is outside this path's window entirely. On the pipeline path
-   * such a list cannot occur (the selection is capped at {@code top-k}), which is exactly why the
-   * two paths' numbers are not interconvertible.
+   * A hit at document rank 21 lies outside this path's window, however the list came about. On the
+   * pipeline path such a list cannot occur (the selection is capped at {@code top-k}).
    */
   @Test
-  void hitBeyondRankEightIsOutsideTheWindow() {
-    List<String> ranked = List.of("d1", "d2", "d3", "d4", "d5", "d6", "d7", "d8", "e", "d10");
-    GoldenCase goldenCase = goldenCase("a", "c", List.of("e"));
+  void hitBeyondRankTwentyIsOutsideTheWindow() {
+    List<String> ranked = new ArrayList<>();
+    for (int rank = 1; rank <= 20; rank++) {
+      ranked.add("d" + rank);
+    }
+    ranked.add("e");
 
-    var windowed = at8(goldenCase, ranked);
+    var windowed = at20(goldenCase("a", "c", List.of("e")), ranked);
     assertThat(windowed.hitRate()).isEqualTo(0.0);
     assertThat(windowed.reciprocalRank()).isEqualTo(0.0);
     assertThat(windowed.ndcg()).isEqualTo(0.0);
     assertThat(windowed.recall()).isEqualTo(0.0);
+  }
+
+  /**
+   * The characteristic difference to the raw-vector path: a hit at document rank 15 counts here
+   * ({@code k=20}) but lies outside that path's {@code k=10} window, which is why the two paths'
+   * numbers are not interconvertible.
+   */
+  @Test
+  void hitAtRankFifteenCountsHereButNotOnTheRawVectorPath() {
+    List<String> ranked = new ArrayList<>();
+    for (int rank = 1; rank <= 14; rank++) {
+      ranked.add("d" + rank);
+    }
+    ranked.add("e");
+    GoldenCase goldenCase = goldenCase("a", "c", List.of("e"));
+
+    var windowed = at20(goldenCase, ranked);
+    assertThat(windowed.hitRate()).isEqualTo(0.0);
+    assertThat(windowed.reciprocalRank()).isCloseTo(1.0 / 15, within(TOLERANCE));
+    assertThat(windowed.recall()).isEqualTo(1.0);
+    // DCG = 1/log2(16) = 0.25; IDCG for one expected = 1.
+    assertThat(windowed.ndcg()).isCloseTo(0.25, within(TOLERANCE));
 
     var rawVector = RetrievalMetrics.evaluate(goldenCase, ranked);
-    assertThat(rawVector.recallAt10()).isEqualTo(1.0);
-    assertThat(rawVector.reciprocalRank()).isCloseTo(1.0 / 9, within(TOLERANCE));
+    assertThat(rawVector.recallAt10()).isEqualTo(0.0);
   }
 
   @Test
   void partialRecallOfAMultiDocumentCase() {
-    var result = at8(goldenCase("a", "c", List.of("e1", "e2")), List.of("d1", "e1", "d3"));
+    var result = at20(goldenCase("a", "c", List.of("e1", "e2")), List.of("d1", "e1", "d3"));
 
     assertThat(result.hitRate()).isEqualTo(1.0);
     assertThat(result.reciprocalRank()).isCloseTo(0.5, within(TOLERANCE));
@@ -89,7 +112,7 @@ class PipelineMetricsAggregateTest {
 
   @Test
   void emptySelectionScoresZeroRatherThanFailing() {
-    var result = at8(goldenCase("a", "c", List.of("e")), List.of());
+    var result = at20(goldenCase("a", "c", List.of("e")), List.of());
 
     assertThat(result.hitRate()).isEqualTo(0.0);
     assertThat(result.reciprocalRank()).isEqualTo(0.0);
@@ -99,29 +122,32 @@ class PipelineMetricsAggregateTest {
 
   @Test
   void aggregatesAsAMicroMeanOverCases() {
-    var hit = at8(goldenCase("a", "c1", List.of("e")), List.of("e"));
-    var miss = at8(goldenCase("b", "c1", List.of("x")), List.of("e"));
+    var hit = at20(goldenCase("a", "c1", List.of("e")), List.of("e"));
+    var miss = at20(goldenCase("b", "c1", List.of("x")), List.of("e"));
 
     PipelineMetricsAggregate aggregate = PipelineMetricsAggregate.of(List.of(hit, miss));
 
     assertThat(aggregate.n()).isEqualTo(2);
     assertThat(aggregate.hitRateAt5()).isCloseTo(0.5, within(TOLERANCE));
-    assertThat(aggregate.mrrAt8()).isCloseTo(0.5, within(TOLERANCE));
-    assertThat(aggregate.ndcgAt8()).isCloseTo(0.5, within(TOLERANCE));
-    assertThat(aggregate.recallAt8()).isCloseTo(0.5, within(TOLERANCE));
+    assertThat(aggregate.mrrAt20()).isCloseTo(0.5, within(TOLERANCE));
+    assertThat(aggregate.ndcgAt20()).isCloseTo(0.5, within(TOLERANCE));
+    assertThat(aggregate.recallAt20()).isCloseTo(0.5, within(TOLERANCE));
     assertThat(aggregate.hitCountAt5()).isEqualTo(1);
-    assertThat(aggregate.hitCountAt8()).isEqualTo(1);
+    assertThat(aggregate.hitCountAt20()).isEqualTo(1);
     assertThat(aggregate.distinctExpectedDocumentSets()).isEqualTo(2);
   }
 
   @Test
-  void recallCeilingReflectsCasesExpectingMoreThanEightDocuments() {
-    List<String> twelveExpected =
-        List.of("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12");
+  void recallCeilingReflectsCasesExpectingMoreThanTwentyDocuments() {
+    List<String> twentyFourExpected = new ArrayList<>();
+    for (int document = 1; document <= 24; document++) {
+      twentyFourExpected.add(String.valueOf(document));
+    }
     PipelineMetricsAggregate aggregate =
-        PipelineMetricsAggregate.of(List.of(at8(goldenCase("a", "c", twelveExpected), List.of())));
+        PipelineMetricsAggregate.of(
+            List.of(at20(goldenCase("a", "c", twentyFourExpected), List.of())));
 
-    assertThat(aggregate.recallAt8Ceiling()).isCloseTo(8.0 / 12.0, within(TOLERANCE));
+    assertThat(aggregate.recallAt20Ceiling()).isCloseTo(20.0 / 24.0, within(TOLERANCE));
   }
 
   /**
@@ -135,10 +161,10 @@ class PipelineMetricsAggregateTest {
 
     double withEightDocumentsReturned =
         PipelineMetricsAggregate.of(
-                List.of(at8(goldenCase, List.of("1", "2", "3", "4", "5", "6", "d7", "d8"))))
-            .recallAt8Ceiling();
+                List.of(at20(goldenCase, List.of("1", "2", "3", "4", "5", "6", "d7", "d8"))))
+            .recallAt20Ceiling();
     double withNothingReturned =
-        PipelineMetricsAggregate.of(List.of(at8(goldenCase, List.of()))).recallAt8Ceiling();
+        PipelineMetricsAggregate.of(List.of(at20(goldenCase, List.of()))).recallAt20Ceiling();
 
     assertThat(withEightDocumentsReturned).isEqualTo(1.0);
     assertThat(withNothingReturned).isEqualTo(withEightDocumentsReturned);
@@ -146,8 +172,8 @@ class PipelineMetricsAggregateTest {
 
   @Test
   void groupsByAnArbitraryKey() {
-    var a = at8(goldenCase("a", "alpha", List.of("e")), List.of("e"));
-    var b = at8(goldenCase("b", "beta", List.of("e")), List.of("x"));
+    var a = at20(goldenCase("a", "alpha", List.of("e")), List.of("e"));
+    var b = at20(goldenCase("b", "beta", List.of("e")), List.of("x"));
 
     var grouped = PipelineMetricsAggregate.groupBy(List.of(a, b), GoldenCase::category);
 

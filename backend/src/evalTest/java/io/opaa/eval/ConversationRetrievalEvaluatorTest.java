@@ -198,7 +198,7 @@ class ConversationRetrievalEvaluatorTest {
     assertThat(report.byCategory()).containsOnlyKeys("anaphora_resolution");
     assertThat(report.byTurn()).containsOnlyKeys("1", "2");
     assertThat(report.byTurn().get("1").hitRateAt5()).isEqualTo(1.0);
-    assertThat(report.byTurn().get("2").mrrAt8())
+    assertThat(report.byTurn().get("2").mrrAt20())
         .as("the follow-up turn found its document only on rank 2")
         .isEqualTo(0.5);
     assertThat(report.caseOutcomes().cases()).isEqualTo(1);
