@@ -19,44 +19,33 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  publish:
+  # Runs once, before any image is built: the release guard and the tags, labels and annotations of
+  # both images. Checked here instead of in each build job, so the guard runs exactly once and
+  # nothing is pushed - not even an untagged digest - before it has passed.
+  prepare:
     runs-on: ubuntu-latest
-    # Only runs building the very same commit may cancel each other - a scheduled and a push run of
-    # the same tip, where the slower one would otherwise push last and leave :main on the older
-    # build. github.sha keeps a run for an earlier commit alive, so every pushed commit gets its
-    # sha-<commit> image; matrix.name keeps the two images from cancelling each other.
-    concurrency:
-      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-${{ matrix.name }}
-      cancel-in-progress: true
     permissions:
       contents: read
+      # The registry lookups below run with the same token rights as the pushes they protect.
       packages: write
-    strategy:
-      matrix:
-        include:
-          - name: backend
-            dockerfile: backend/Dockerfile
-            # Repo-root context (issue #896): backend's Gradle build depends on the sibling
-            # opaa-api/ module via settings.gradle.kts, so a context scoped to backend/ alone
-            # would not see it.
-            context: .
-          - name: frontend
-            dockerfile: frontend/Dockerfile
-            context: .
+    outputs:
+      image-prefix: ${{ steps.prefix.outputs.image-prefix }}
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      annotations: ${{ steps.meta.outputs.annotations }}
     steps:
       - uses: actions/checkout@v7
         with:
           # The release guard below needs main's history to tell whether the tag lies on it.
           fetch-depth: ${{ startsWith(github.ref, 'refs/tags/') && '0' || '1' }}
 
-      - uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # Lower case like the names metadata-action derives: a push by digest takes the name verbatim,
+      # and an OCI repository name has no upper case.
+      - name: Image-Präfix bestimmen
+        id: prefix
+        env:
+          PREFIX: ${{ env.REGISTRY }}/${{ github.repository_owner }}/opaa
+        run: echo "image-prefix=$(tr '[:upper:]' '[:lower:]' <<<"$PREFIX")" >>"$GITHUB_OUTPUT"
 
       # A version tag is immutable: an image or chart already published as X.Y.Z is never rebuilt
       # over, whether by a re-pushed tag or a dispatch on the tag ref. The chart is checked here as
@@ -67,14 +56,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         env:
           TAG: ${{ github.ref_name }}
-          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/opaa-${{ matrix.name }}
+          PREFIX: ${{ steps.prefix.outputs.image-prefix }}
           CHART: ${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/opaa
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        # IMAGE in lower case like the name metadata-action pushes; the chart reference stays as
-        # given, so an owner with upper case fails the lookup before any image is pushed.
+        # The chart reference stays as given, so an owner with upper case fails the lookup before
+        # any image is pushed.
         run: |
-          IMAGE="$(tr '[:upper:]' '[:lower:]' <<<"$IMAGE")"
           if ! deploy/helm/ci/release-version.sh "$TAG" >/dev/null; then
             echo "::error::Tag $TAG ist keine Version vX.Y.Z bzw. vX.Y.Z-<vorab> (docs/releases.md)"
             exit 1
@@ -83,7 +71,7 @@ jobs:
             echo "::error::Tag $TAG zeigt auf einen Commit, der nicht auf main liegt (docs/releases.md)"
             exit 1
           fi
-          for ref in "$IMAGE" "$CHART"; do
+          for ref in "$PREFIX-backend" "$PREFIX-frontend" "$CHART"; do
             if ! published=$(deploy/helm/ci/oci-published.sh "$ref" "${TAG#v}"); then
               echo "::error::Abfrage von $ref:${TAG#v} fehlgeschlagen, siehe Meldung oben (docs/releases.md)"
               exit 1
@@ -96,8 +84,14 @@ jobs:
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
+        env:
+          # The annotations go onto the manifest index publish creates; the labels go into the image
+          # of every platform.
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
         with:
-          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/opaa-${{ matrix.name }}
+          images: |
+            ${{ steps.prefix.outputs.image-prefix }}-backend
+            ${{ steps.prefix.outputs.image-prefix }}-frontend
           # A scheduled rebuild republishes the tags of a commit that already has an image; both
           # tags move to the new digest together, so sha-<commit> is always the newest build of that
           # commit and never diverges from :main. A release build leaves sha-<commit> alone for the
@@ -120,27 +114,78 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
           TAGS: ${{ steps.meta.outputs.tags }}
-          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/opaa-${{ matrix.name }}
+          PREFIX: ${{ steps.prefix.outputs.image-prefix }}
         run: |
-          if ! grep -qxF "$IMAGE:${TAG#v}" <<<"$TAGS"; then
-            echo "::error::Aus $TAG entsteht kein Image-Tag ${TAG#v}; keine gültige SemVer-Version (docs/releases.md)"
-            exit 1
-          fi
+          for image in "$PREFIX-backend" "$PREFIX-frontend"; do
+            if ! grep -qxF "$image:${TAG#v}" <<<"$TAGS"; then
+              echo "::error::Aus $TAG entsteht kein Image-Tag ${TAG#v}; keine gültige SemVer-Version (docs/releases.md)"
+              exit 1
+            fi
+          done
 
-      - name: Build & push
+  # One job per image and architecture, each on a runner of that architecture: Gradle and jlink under
+  # QEMU emulation take several times as long (docs/releases.md). A job pushes its image by digest
+  # only, without a tag; publish joins the digests of an image into one manifest index.
+  build:
+    name: build (${{ matrix.image.name }}, ${{ matrix.platform.arch }})
+    needs: prepare
+    runs-on: ${{ matrix.platform.runner }}
+    # Only runs building the very same commit may cancel each other - a scheduled and a push run of
+    # the same tip, where the slower one would otherwise push last and leave :main on the older
+    # build. github.sha keeps a run for an earlier commit alive, so every pushed commit gets its
+    # sha-<commit> image; image and architecture keep the build jobs from cancelling each other.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-build-${{ matrix.image.name }}-${{ matrix.platform.arch }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image:
+          # Repo-root context for both (issue #896): backend's Gradle build depends on the sibling
+          # opaa-api/ module via settings.gradle.kts, so a context scoped to backend/ alone would
+          # not see it.
+          - name: backend
+            dockerfile: backend/Dockerfile
+          - name: frontend
+            dockerfile: frontend/Dockerfile
+        # The platforms of the published images; publish refuses an index without exactly these
+        # (EXPECTED_PLATFORMS there).
+        platform:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      IMAGE: ${{ needs.prepare.outputs.image-prefix }}-${{ matrix.image.name }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push by digest
+        id: build
         uses: docker/build-push-action@v7
         with:
-          context: ${{ matrix.context }}
-          file: ${{ matrix.dockerfile }}
-          push: true
-          # SBOM and provenance attestations are attached to the image in GHCR;
-          # retrieval is documented in docs/sbom.md.
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          platforms: linux/${{ matrix.platform.arch }}
+          labels: ${{ needs.prepare.outputs.labels }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          # SBOM and provenance attestations are attached per platform and carried over into the
+          # index by publish; retrieval is documented in docs/sbom.md.
           sbom: true
           provenance: mode=max
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+          cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
           # The frontend's runtime stage applies the OS security updates of the build day (issue
           # #1450); a cache hit on that layer would republish the state of an arbitrarily old
           # build, so this one stage is always rebuilt while every earlier stage keeps its cache.
@@ -148,6 +193,119 @@ jobs:
           # kept out of the cache for the same effect one level down: the distroless base is
           # re-resolved and re-fetched instead of an old layer being reused.
           no-cache-filters: runtime
+
+      - name: Digest ablegen
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          ARCH: ${{ matrix.platform.arch }}
+        run: |
+          if ! [[ "$DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::Kein Digest für $IMAGE (linux/$ARCH): '$DIGEST'"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/digests"
+          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+          echo "$IMAGE@$DIGEST"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digests-${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+          # "Re-run failed jobs" reuses the run and would otherwise collide with the artifact name
+          # already uploaded by the first attempt.
+          overwrite: true
+
+  # Joins the platform digests of one image into a manifest index and gives the index the tags -
+  # the first moment a tag of this run appears. Each platform's SBOM and provenance attestation
+  # moves into the index along with its image.
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}-${{ github.sha }}-publish-${{ matrix.name }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        name: [backend, frontend]
+    env:
+      IMAGE: ${{ needs.prepare.outputs.image-prefix }}-${{ matrix.name }}
+      # Sorted, space-separated; must match the platform list of the build matrix.
+      EXPECTED_PLATFORMS: linux/amd64 linux/arm64
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: digests-${{ matrix.name }}-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/digests
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The guard in prepare ran before the builds; asked again right before the tag is set, a
+      # version published meanwhile - or by an earlier attempt of this job - is not overwritten.
+      - name: Versions-Tag noch frei
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG: ${{ github.ref_name }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if ! published=$(deploy/helm/ci/oci-published.sh "$IMAGE" "${TAG#v}"); then
+            echo "::error::Abfrage von $IMAGE:${TAG#v} fehlgeschlagen, siehe Meldung oben (docs/releases.md)"
+            exit 1
+          elif [[ "$published" == true ]]; then
+            echo "::error::$IMAGE:${TAG#v} ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
+            exit 1
+          fi
+
+      - name: Manifest-Index anlegen
+        env:
+          TAGS: ${{ needs.prepare.outputs.tags }}
+          ANNOTATIONS: ${{ needs.prepare.outputs.annotations }}
+        run: |
+          tags=()
+          args=()
+          while IFS= read -r tag; do
+            if [[ "$tag" == "$IMAGE:"* ]]; then
+              tags+=("$tag")
+              args+=(--tag "$tag")
+            fi
+          done <<<"$TAGS"
+          if ((${#tags[@]} == 0)); then
+            echo "::error::Kein Tag für $IMAGE in der Ausgabe von metadata-action"
+            exit 1
+          fi
+          while IFS= read -r annotation; do
+            if [[ -n "$annotation" ]]; then
+              args+=(--annotation "$annotation")
+            fi
+          done <<<"$ANNOTATIONS"
+          sources=()
+          for file in "$RUNNER_TEMP"/digests/*; do
+            sources+=("$IMAGE@sha256:$(basename "$file")")
+          done
+          # Checked on the dry run, so no tag ever points at an index that lacks a platform.
+          platforms=$(docker buildx imagetools create --dry-run "${args[@]}" "${sources[@]}" |
+            jq -r '[.manifests[].platform | select(.os != "unknown") | "\(.os)/\(.architecture)"] | sort | join(" ")')
+          if [[ "$platforms" != "$EXPECTED_PLATFORMS" ]]; then
+            echo "::error::Index für $IMAGE enthält '$platforms' statt '$EXPECTED_PLATFORMS'"
+            exit 1
+          fi
+          docker buildx imagetools create "${args[@]}" "${sources[@]}"
+          docker buildx imagetools inspect "${tags[0]}"
 
   # The chart follows the images, so it never points at an image that failed to publish. Chart
   # version, appVersion and the default image tags are the release version (ADR-0042,
@@ -289,7 +447,7 @@ jobs:
         run: |
           version="${TAG#v}"
           notes=$(cat <<EOF
-          **Images**
+          **Images** (\`linux/amd64\`, \`linux/arm64\`)
           - \`ghcr.io/${OWNER}/opaa-backend:${version}\`
           - \`ghcr.io/${OWNER}/opaa-frontend:${version}\`
 

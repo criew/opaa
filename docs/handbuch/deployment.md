@@ -19,6 +19,10 @@ Container-Images. Es gibt zwei Arten von Ständen:
 | `ghcr.io/criew/opaa-backend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 | `ghcr.io/criew/opaa-frontend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 
+Jeder Tag zeigt auf einen Manifest-Index mit je einem Image für `linux/amd64` und `linux/arm64`.
+Docker und Kubernetes ziehen die Variante, die zur Architektur des Hosts passt; auf ARM-Servern und
+Apple-Silicon-Rechnern läuft OPAA damit ohne Emulation.
+
 `X.Y.Z` ist eine Release-Version und ändert ihren Inhalt nie. `X.Y` zeigt auf das jüngste
 Patch-Release dieser Linie. Die verfügbaren Versionen und ihre Änderungen stehen unter *Releases*
 im GitHub-Repository; jede nennt dort auch die Vorbereitungsschritte, die sie verlangt. Ein Tag
@@ -59,12 +63,15 @@ und verschiebt `main` **und** `sha-<commit>` gemeinsam auf den neuen Digest. `sh
 also „aus welchem Commit“, nicht „welches Image“. Den Digest eines laufenden Stands liefert
 `docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main`.
 
-Jedes Image trägt eine SBOM- und eine Provenance-Attestierung, die beim Bauen erzeugt werden; die
-SBOM deckt auch die Betriebssystempakete des Basis-Images ab. Abruf:
+Jedes Image trägt je Architektur eine SBOM- und eine Provenance-Attestierung, die beim Bauen erzeugt
+werden; die SBOM deckt auch die Betriebssystempakete des Basis-Images ab. Abruf, nach Architektur
+gegliedert:
 
 ```bash
 docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .SBOM }}'
 docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .Provenance }}'
+# nur eine Architektur
+docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json (index .SBOM "linux/arm64") }}'
 ```
 
 (für das Frontend entsprechend mit `opaa-frontend`). Zusätzlich legt die CI bei jedem Push auf

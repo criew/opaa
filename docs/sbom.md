@@ -7,11 +7,14 @@ Schwachstellen stecken, prüft [`docs/cve-scanning.md`](./cve-scanning.md).
 ## Ebene 1 — Image-Attestierungen
 
 Jedes in GHCR veröffentlichte Image (`ghcr.io/criew/opaa-backend`, `ghcr.io/criew/opaa-frontend`)
-trägt eine SBOM- und eine Provenance-Attestierung, die BuildKit beim Push erzeugt
-(`.github/workflows/publish-images.yml`, `sbom: true` / `provenance: mode=max`). Die SBOM
-deckt auch die OS-Pakete des Basis-Images ab.
+trägt je Architektur (`linux/amd64`, `linux/arm64`) eine SBOM- und eine Provenance-Attestierung,
+die BuildKit beim Push erzeugt (`.github/workflows/publish-images.yml`, Job `build`,
+`sbom: true` / `provenance: mode=max`). Jede Architektur wird in einem eigenen Job auf einem Runner
+dieser Architektur gebaut; der Job `publish` führt die Images samt ihren Attestierungs-Manifesten
+zu einem Manifest-Index zusammen, auf den die Tags zeigen. Die SBOM deckt auch die OS-Pakete des
+Basis-Images ab.
 
-Abrufen:
+Abrufen (die Ausgabe ist nach Plattform gegliedert):
 
 ```bash
 docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .SBOM }}'
@@ -20,6 +23,9 @@ docker buildx imagetools inspect ghcr.io/criew/opaa-frontend:main --format '{{ j
 # Provenance-Attestierung (Build-Herkunft, Quell-Commit, Build-Parameter)
 docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json .Provenance }}'
 docker buildx imagetools inspect ghcr.io/criew/opaa-frontend:main --format '{{ json .Provenance }}'
+
+# nur eine Plattform
+docker buildx imagetools inspect ghcr.io/criew/opaa-backend:main --format '{{ json (index .SBOM "linux/arm64") }}'
 ```
 
 ## Ebene 2 — Ökosystem-SBOMs (CycloneDX, CI-Artefakte)

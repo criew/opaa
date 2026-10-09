@@ -11,12 +11,12 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 
 | Ergebnis | Inhalt |
 |---|---|
-| `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand, **nie überschrieben** |
+| `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
 | GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen und der `helm install`-Befehl |
 
-Wie bei `main` tragen die Images eine SBOM- und eine Provenance-Attestierung
+Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
 und neben dem Chart in GHCR. Prüfen lässt sie sich mit:
 
@@ -56,7 +56,7 @@ Vorab-Version des Charts installiert Helm nur, wenn `--version` sie ausdrücklic
 
 ## Schutzregeln im Workflow
 
-Bevor gebaut wird, bricht der Lauf ab, wenn:
+Bevor gebaut wird, bricht der Lauf im Job `prepare` ab, wenn:
 
 - das Tag nicht die Form `vX.Y.Z` bzw. `vX.Y.Z-<vorab>` hat oder keine gültige
   [SemVer](https://semver.org/lang/de/)-Version ist, etwa `v1.0.0-rc.01` mit führender Null,
@@ -84,13 +84,19 @@ Images und Chart, `deploy/helm/ci/oci-published.sh`. Sie fragt die Registry-API 
 den HTTP-Status aus. `docker buildx imagetools inspect` taugt dafür nicht, weil es eine
 Verweigerung ebenfalls als „not found“ meldet.
 
-Der Lauf ist in Jobs gestaffelt: erst die Images, dann der Chart, dann seine Attestierung, zuletzt
-das GitHub-Release. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
+Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
+und Architektur, `publish` je Image), dann der Chart, dann seine Attestierung, zuletzt das
+GitHub-Release. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
 den Lauf rot. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
-GitHub-Release kündigt nichts an, was fehlt.
+GitHub-Release kündigt nichts an, was fehlt. Wie die Images für zwei Architekturen entstehen,
+beschreibt [Mehrere Architekturen](#mehrere-architekturen).
 
 Scheitert ein späterer Job an einer vorübergehenden Störung, etwa von GHCR oder Sigstore, wird er
-mit *Re-run failed jobs* wiederholt; bereits veröffentlichte Teile bleiben unberührt. Hat der Job
+mit *Re-run failed jobs* wiederholt; bereits veröffentlichte Teile bleiben unberührt. Das gilt
+auch für `build` und `publish`: Ein wiederholter `build`-Job pusht nur einen Digest ohne Tag, und
+`publish` fragt vor dem Setzen der Tags erneut, ob `X.Y.Z` noch frei ist. Hat `publish` die Tags
+schon gesetzt und ist erst danach gescheitert, ist die Version vergeben; das Release erscheint mit
+der nächsten Patch-Version. Hat der Job
 `chart` den Chart schon gepusht und ist erst danach gescheitert, überspringt die Wiederholung den
 Push und liest den Digest aus der Registry, damit Attestierung und GitHub-Release folgen können.
 *Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
@@ -202,17 +208,50 @@ auch wenn `main` schon behoben ist. Es schließt erst mit dem Patch-Release.
 
 ## Mehrere Architekturen
 
-Die Images werden nur für `linux/amd64` gebaut. Ein zusätzlicher Bau für `linux/arm64` ist
-geprüft und **vorerst zurückgestellt**:
+Beide Images erscheinen für `linux/amd64` und `linux/arm64`, bei `main`, beim wöchentlichen Neubau
+und bei Release-Tags gleichermaßen (#2401). Jeder Tag (`main`, `sha-<commit>`, `X.Y.Z`, `X.Y`)
+zeigt auf einen Manifest-Index mit beiden Plattformen; Docker und Kubernetes ziehen die passende.
 
-- **Kosten:** Für ein öffentliches Repository stehen native arm64-Runner zur Verfügung, ein
-  emulierter Bau ist also nicht nötig. Der Aufwand liegt im Workflow, der je Architektur baut und
-  die Ergebnisse zu einem Manifest zusammenführt. Dazu kommen die doppelten Laufzeiten bei jedem
-  Push auf `main`.
-- **Basis-Images:** Alle verwendeten Basis-Images gibt es auch für arm64: Temurin, Distroless,
-  `nginx-unprivileged`, `pgvector/pgvector`.
-- **Bedarf:** Es gibt keine Zielumgebung, die arm64 verlangt. E2E-Suite und Scans laufen nur
-  auf amd64. Ein ungeprüftes arm64-Image wäre eine Zusage, die niemand einlöst.
+**Ablauf in `publish-images.yml`** (das Muster „Distribute build across multiple runners“ aus der
+Docker-Dokumentation):
 
-Wieder aufgegriffen wird das, sobald eine Installation arm64 braucht. Dann gehören E2E und Scan für
-arm64 dazu, nicht nur der Bau.
+1. `prepare` prüft das Release-Tag einmal für den ganzen Lauf und bestimmt Tags, Labels und
+   Index-Annotationen mit `docker/metadata-action`.
+2. `build` läuft je Image und Architektur auf einem Runner dieser Architektur (`ubuntu-latest`
+   bzw. `ubuntu-24.04-arm`). Er pusht das Image samt SBOM- und Provenance-Attestierung **nur per
+   Digest**, ohne Tag, und reicht den Digest als Artefakt weiter. Die Labels stehen im Image jeder
+   Plattform.
+3. `publish` führt je Image die Digests mit `docker buildx imagetools create` zu einem Index
+   zusammen und setzt erst dabei die Tags und die Index-Annotationen. Vorher prüft er im
+   Probelauf, dass der Index genau `linux/amd64` und `linux/arm64` enthält; ein Index mit nur einer
+   Plattform bekommt nie einen Tag.
+
+Ein Digest ohne Tag gilt für die Existenzprüfung nicht als veröffentlicht; ein abgebrochener Lauf
+belegt also keine Version.
+
+**Nativ statt emuliert.** Für ein öffentliches Repository stehen arm64-Runner ohne Aufpreis zur
+Verfügung. Ein emulierter Bau (QEMU) auf einem amd64-Runner wäre einfacher zu verdrahten, aber der
+Gradle-Bau und `jlink` laufen dort um ein Vielfaches langsamer: Schon unter Rosetta, das deutlich
+schneller emuliert als QEMU, brauchte `bootJar` lokal etwa das Dreifache der nativen Zeit
+(103 s statt 35 s, das ganze Backend-Image 282 s statt 162 s, gemessen am 09.10.2026 auf einem
+Apple-Silicon-Rechner ohne Cache).
+
+**Native Bibliotheken.** Das `app.jar` ist für beide Architekturen dasselbe. Nativen Code enthalten
+darin nur Netty-Module: QUIC liegt für `linux-x86_64` und `linux-aarch_64` bei, der
+Epoll-Transport nur für `linux-x86_64`. Ohne passende Epoll-Bibliothek nimmt Reactor Netty den
+Java-NIO-Transport; OPAA konfiguriert keinen Transport selbst. Tesseract, ONNX oder andere
+JNI-Bibliotheken gibt es im Image nicht. Die übrigen nativen Teile bringt die `jlink`-Laufzeit mit,
+die in der Bau-Stufe der jeweiligen Architektur entsteht.
+
+**Was arm64 prüft:**
+
+- Der Job `image-smoke-arm64` in `.github/workflows/ci.yml` baut beide Images auf einem
+  arm64-Runner und startet sie gehärtet (nur lesbares Wurzeldateisystem, keine Capabilities) mit
+  `.github/scripts/image_smoke_test.sh`: das Backend gegen PostgreSQL mit pgvector bis zur
+  Bereitschaft, das Frontend davor, bis `/api/health` durch dessen nginx antwortet. Er läuft bei
+  jedem Push auf `main` und auf Pull Requests, die Dockerfiles, Frontend-Laufzeitdateien, den
+  Publish-Workflow oder die Abhängigkeitsdeklarationen ändern. Kein Required Check.
+- Der CVE-Scan prüft jede veröffentlichte Plattform ([cve-scanning.md](cve-scanning.md)).
+- E2E-Suite und Installationstest des Charts laufen weiter nur auf amd64. Fachliche Fehler
+  hängen nicht an der Architektur; was an ihr hängt, sind Start, Laufzeit und native Bibliotheken,
+  und die deckt der Rauchtest ab.
