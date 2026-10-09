@@ -1187,6 +1187,30 @@ Aktion ab.
   unter dem neuen Konto mit den alten Einstellungen. Der Fingerabdruck schützt Abgleichstand und
   Abgleich, nicht diese Aufnahmen. Private Bibliotheken halten die Änderung weiter nicht auf.
 
+## Nachtrag vom 09.10.2026: Kontingent vor dem Download (#2294)
+
+Löst den Kostenpunkt aus dem Nachtrag zu #2276 für Dateiablagen.
+
+- **Vorprüfung:** `FileSync` fragt vor dem Abruf `DocumentIngestService#rejectionBeforeDownload`
+  mit der Größe aus dem Listing. Die Methode bleibt in `DocumentIngestService`, damit `verdictFor`
+  nur dort gerufen wird (`personalUsageIsReadOnlyByItsOwner` unverändert). Sie misst wie die
+  Aufnahme das Wachstum gegenüber der gespeicherten Zeile und gilt für beide Kontingente.
+  Unbekannte (`-1`), gleiche oder kleinere Größe lässt sie durch, ebenso einen unveränderten
+  Inhalt, den erst die Prüfsumme der Aufnahme erkennt.
+- **Gleiche Folgen:** Eine Ablehnung vor dem Download liefert dasselbe Ergebnis
+  (`QUOTA_EXCEEDED` bzw. `PERSONAL_QUOTA_EXCEEDED`) mit demselben Log, derselben Metrik, demselben
+  Protokolleintrag, derselben Präsenz und derselben Laufkategorie wie nach dem Download.
+- **Beratend:** Die Vorprüfung läuft ohne `holdIntake`, sie speichert nichts. Maßgeblich bleibt
+  die Prüfung mit der tatsächlichen Größe unter `holdIntake`. Eine untertreibende Listengröße
+  kostet den Download wie bisher; eine übertreibende hält die Datei zurück, bis Platz für die
+  gelistete Größe frei ist.
+- **Marken halten an beiden Kontingenten im Dateiabgleich:** Damit eine falsche Listengröße keine
+  Datei hinter einen Änderungscursor fallen lässt, zählt `FileSync` jede Ablehnung an einem der
+  beiden Kontingente, vor oder nach dem Download, als vorübergehenden Fehler (Cursor bleibt,
+  Ordnergedächtnis wird aufgehoben). Das erledigt für Dateiablagen den Weg „Änderungslauf“ aus
+  #2295; Anhänge, RSS, Confluence INCREMENTAL und die Laufkategorie einer Ablehnung am Kontingent
+  je Bibliothek bleiben dort offen.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
