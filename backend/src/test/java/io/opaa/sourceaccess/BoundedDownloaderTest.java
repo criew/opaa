@@ -26,7 +26,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -86,6 +88,7 @@ class BoundedDownloaderTest {
             TargetAddressValidator.disabled(),
             SourceRequestPolicy.defaults(),
             Duration.ofSeconds(1));
+    Set<Path> before = trickleTestFiles();
     long start = System.nanoTime();
 
     assertThatThrownBy(
@@ -95,9 +98,14 @@ class BoundedDownloaderTest {
         .isInstanceOf(java.net.http.HttpTimeoutException.class);
 
     assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(10));
-    try (var left = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
-      assertThat(left.filter(file -> file.getFileName().toString().endsWith(".trickletest")))
-          .isEmpty();
+    assertThat(trickleTestFiles()).isEqualTo(before);
+  }
+
+  private static Set<Path> trickleTestFiles() throws IOException {
+    try (var files = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return files
+          .filter(file -> file.getFileName().toString().endsWith(".trickletest"))
+          .collect(Collectors.toSet());
     }
   }
 
