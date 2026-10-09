@@ -1006,7 +1006,8 @@ Vier Abweichungen vom Schnitt ergaben der Zufallstest und die Abschlussfälle:
   ist.
 - **Reihenfolge der Meldungen.** Löschbefunde und abgewählte Dateien warten, bis alle Ströme gelesen
   sind. Meldet ein Strom eine Datei danach wieder als vorhanden, verfällt ihr früherer Löschbefund.
-  Der Änderungslauf macht das noch nicht ([#2430](https://github.com/criew/opaa/issues/2430)).
+  Seit [#2430](https://github.com/criew/opaa/issues/2430) gilt das auch im Änderungslauf (Nachtrag
+  „SharePoint-Konnektor gebaut“).
 - **Ordnergedächtnis.** Eine im Abschluss gemeldete Datei hält ihren Ordner aus dem Gedächtnis der
   Runde heraus (`unsettle`), wie der Änderungslauf das Gedächtnis der Container verwirft, die er
   geändert hat. Die nächste Runde listet diesen Ordner wieder, statt ihn über ein Merkmal von vor
@@ -1019,6 +1020,67 @@ Offen bleibt die Grenze aus dem Plan: Braucht das Protokoll seit Rundenbeginn me
 Lauf hat, endet jeder Abschluss am Budget, und die Runde kommt nicht zum Ende. Gelöscht wird dabei
 nichts. Folge-Issue: [#2413](https://github.com/criew/opaa/issues/2413), es gilt auch für den
 Änderungslauf.
+
+## Nachtrag: SharePoint-Konnektor gebaut (#2153, Schnitt S1, 09.10.2026)
+
+Gebaut wie im Nachtrag „SharePoint (#2153)“, Paket `indexing.source.sharepoint`, ohne neue
+Modulkante (connectors → foundation für `io.opaa.msgraph`). Handbuch: `konnektor-sharepoint.md`.
+Abweichungen und Festlegungen, die der Plan offenließ:
+
+1. **Keine Anforderungslücke am Typ.** `withRequirementGap` gilt nur für Typen, deren Profilpflicht
+   sich umschalten lässt; SharePoint verlangt den Zugang immer (`REQUIRED`), die Registry weist eine
+   Lücke dort ab. Dass Downloads auf den vorab signierten Host weiterleiten, beschreibt das Handbuch.
+2. **Fehlerabbildung.** Auflistung: `410` → `CheckpointExpired`, `403`/`404` der Bibliothek →
+   `ContainerUnlistable`, jede andere vorübergehende Störung → `RunEnding`. Der Lauf endet dann als
+   Fehler, die gesicherte Marke bleibt, und der nächste Lauf setzt dort fort; `ContainerUnlistable`
+   hätte eine Runde mit Marken verworfen. Änderungsstrom: `410` → `CursorExpired`, sonst `Transient`.
+   Download: `404` → `Gone`, `403` → `Unreadable`, `TRANSIENT` mit einem 4xx außer `408` und `429`
+   → `Unavailable` (dauerhaft, hält weder Strom noch Runde), übrige `TRANSIENT` (5xx, `429` nach
+   allen Wiederholungen, Status 200 bei gerissener Download-Frist) → `Transient`.
+3. **Nicht erreichbare Bibliothek beim Start.** Antwortet Graph auf `delta?token=latest` mit
+   `403`/`404`, gibt der Store den Platzhalter `~unreachable` als Startzeiger zurück, statt den Lauf
+   zu beenden: Der Kern bricht jeden Lauf ab, dessen Startzeiger scheitert. Die Auflistung meldet die
+   Bibliothek dann als nicht listbar; der Platzhalter wird nie gesendet, sein Lesen ist
+   `CursorExpired`, der nächste Lauf also ein Vollabgleich.
+4. **Ordnerfilter.** Die Erreichbarkeitsprüfung liest jeden gewählten Ordner. Fehlt einer, ist die
+   Bibliothek nicht listbar; sonst würde jede Datei darunter zu einem Löschbefund.
+5. **Ordnerkette.** Ein Elternordner, den Graph mit `403`/`404` beantwortet, macht die Datei zu
+   „außerhalb der Bibliothek“ (Auflistung: nicht geliefert, Strom: `Removed`), wie bei Drive. Eine
+   vorübergehende Störung folgt Punkt 2. Der Plan sah die Datei als `Transient` vor; der Port kennt in
+   der Auflistung keine einzelne vorübergehend gescheiterte Datei.
+6. **Gelöschte Einträge** im Strom werden `Removed`, ohne `fullSyncNeeded`, auch bei Ordnern: Ob
+   Graph die Dateien eines gelöschten Ordners einzeln meldet, ist unsicher; der tägliche
+   Vollabgleich deckt den Rest (M2).
+7. **Merkmal.** Bestandteile über 32 Zeichen (etwa `cTag`) gehen gehasht ein; die Spalte trägt
+   64 Zeichen.
+8. **Vertrag.** Eine Datei in einer anderen Dokumentbibliothek ist ein anderes Dokument. Der Fall
+   `aFileMovedBetweenContainersStaysADocument` gilt deshalb nur für Stores, deren Fixture
+   `keepsIdentityAcrossContainers` meldet.
+9. **#2430** ist im selben PR behoben: Im Änderungslauf hebt eine spätere Präsenzmeldung einen
+   früheren Löschbefund derselben Datei auf. Graph `delta` liefert Elemente mehrfach („use the last
+   occurrence“). Abgewählte Dateien brauchten keine Änderung: Im Änderungslauf werden sie sofort
+   entfernt, eine spätere Präsenzmeldung nimmt sie wieder auf.
+10. **#2413 nicht mitgenommen.** Den Fortschritt im Protokoll über Läufe zu halten heißt, gelesene
+    Zeiger und noch nicht angewandte Löschbefunde mit der Runde zu speichern (Persistenz in
+    `source_sync_state`, Löschsemantik über Ströme, Änderungslauf und Abschluss zugleich, neues
+    Szenario im Zufallstest). Das ist ein eigener Kernumbau mit Löschwirkung, der Drive genauso
+    trifft, und für SharePoint erst bei Millionen Änderungen je Runde tragend.
+
+**Testdoppel.** `FakeGraphServer` kann zusätzlich: Freigabe nur einzelner Sites (`Sites.Selected`,
+sonst `403 accessDenied`, auch für die Site-Suche), Verschieben, Wiederherstellen, Inhalt ändern,
+OneNote-Pakete, Schadsoftware-Facette, mehrfach gelieferte Delta-Einträge, mehrere Tokens,
+verfallene Seiten-Tokens getrennt von Delta-Tokens. Die Aufzählung liefert Eltern vor Kindern und
+innerhalb einer Ebene nach Namen; der Store verlässt sich darauf nicht.
+
+**Weitere unsichere Annahmen**, die der Tenant-Lauf (S3) prüft:
+
+| Annahme | Stand |
+|---|---|
+| Ein `nextLink`-Token einer Aufzählung lässt sich in einem späteren Lauf erneut senden (Marke über Läufe) | unsicher; sonst beginnt die Bibliothek in derselben Runde neu |
+| Mit einem Token dürfen `$top` und `$select` erneut gesendet werden | unsicher |
+| `$select` mit `deleted` liefert gelöschte Einträge samt Facette | unsicher |
+| Nicht freigegebene Site unter `Sites.Selected` antwortet `403`; die Site-Suche ebenso | unsicher |
+| `drives/{id}/root/children` und `sites/{host}:/{pfad}` verhalten sich wie im Testdoppel | unsicher |
 
 ## Referenzen
 
