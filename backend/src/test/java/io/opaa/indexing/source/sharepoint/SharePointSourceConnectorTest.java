@@ -159,6 +159,52 @@ class SharePointSourceConnectorTest {
   }
 
   @Test
+  void aFolderMayCarryTheNameItIsShownUnderWithoutChangingTheSelection() {
+    ConnectorData named =
+        connector.readSettings(
+            ConnectorData.of(
+                Map.of(
+                    "libraries",
+                    List.of(
+                        Map.of(
+                            "driveId",
+                            DRIVE_0,
+                            "folders",
+                            List.of(
+                                Map.of("id", "akten", "name", "Akten / 2026"), "protokolle"))))));
+    KnowledgeLibrary library = mock(KnowledgeLibrary.class);
+    Map<String, Object> plain =
+        connector.settingsState(
+            library,
+            ConnectorData.of(
+                Map.of(
+                    "libraries",
+                    List.of(
+                        Map.of("driveId", DRIVE_0, "folders", List.of("akten", "protokolle"))))));
+
+    assertThat(named.toJson())
+        .contains("{\"id\":\"akten\",\"name\":\"Akten / 2026\"}")
+        .contains("\"protokolle\"");
+    assertThat(connector.settingsState(library, named)).isEqualTo(plain);
+    for (Object refused :
+        List.of(
+            Map.of("id", "a?b"),
+            Map.of("name", "Akten"),
+            Map.of("id", "akten", "name", "x".repeat(201)),
+            Map.of("id", "akten", "path", "/Akten"))) {
+      assertThatThrownBy(
+              () ->
+                  connector.readSettings(
+                      ConnectorData.of(
+                          Map.of(
+                              "libraries",
+                              List.of(Map.of("driveId", DRIVE_0, "folders", List.of(refused)))))))
+          .as(refused.toString())
+          .isInstanceOf(ValidationException.class);
+    }
+  }
+
+  @Test
   void aChangedSelectionDiscardsTheRunStateAndAnUnchangedOneDoesNot() {
     KnowledgeLibrary library = mock(KnowledgeLibrary.class);
     UUID id = UUID.randomUUID();

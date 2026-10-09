@@ -1502,7 +1502,12 @@ components:
         query:
           description: >
             The listing's own parameters, read by the type's connector: CONFLUENCE takes edition,
-            S3 region and pathStyle (absent, a stored library's own values stand in).
+            S3 region and pathStyle (absent, a stored library's own values stand in),
+            GOOGLE_DRIVE subject. SHAREPOINT lists in stages, one per request: search (sites
+            matching a term, needs Sites.Read.All) or siteUrl (the site at that address) gives
+            site:<id> entries, site gives the document libraries of a site as drive:<id>, drive
+            with an optional folder gives the folders below as folder:<id>. A refusal by Microsoft
+            Graph answers complete false with the German reason in message.
           nullable: true
           type: object
           additionalProperties: true
@@ -2240,7 +2245,7 @@ components:
       description: >
         The open key of a source type (ADR-0038) - which keys exist GET /api/v1/source-types
         says. Delivered today: UPLOAD, FILESYSTEM, HTTP_DIRECTORY, RSS_FEED, CONFLUENCE, S3,
-        NEXTCLOUD, GOOGLE_DRIVE, SMB.
+        NEXTCLOUD, GOOGLE_DRIVE, SHAREPOINT, SMB.
       example: FILESYSTEM
 
     LibraryDocumentResponse:
