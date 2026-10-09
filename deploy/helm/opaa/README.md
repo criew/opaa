@@ -101,8 +101,9 @@ kubectl label namespace opaa pod-security.kubernetes.io/enforce=restricted
   NetworkPolicies durchsetzen, das kann der Chart nicht prüfen.
 - **Actuator:** Von außen ist kein `/actuator`-Pfad erreichbar; der Frontend-nginx reicht nur `/api/`
   und `/mcp` weiter. Prometheus fragt das Backend direkt ab.
-- **CSP:** Liegt die OIDC-Authority auf einem anderen Origin als `publicBaseUrl`, gehört dieser in
-  `frontend.cspConnectSrcExtra`.
+- **CSP:** Liegt der Issuer des Identitätsanbieters (`bootstrap.oidc.issuerUri`) auf einem anderen
+  Origin als `publicBaseUrl`, gehört dieser in `frontend.cspConnectSrcExtra`. Fehlt er dort, warnt
+  `helm install` in seinen Hinweisen.
 
 ## Betriebsüberwachung
 
@@ -127,9 +128,13 @@ Metriken und Alarme beschreibt das Handbuch im Kapitel „Kubernetes“.
 ## Prüfen
 
 ```bash
-helm lint deploy/helm/opaa -f deploy/helm/opaa/ci/minimal-values.yaml
+helm template opaa deploy/helm/opaa -f meine-werte.yaml > /dev/null
 helm test opaa -n opaa
 ```
+
+`helm template` bricht ab, wenn das Schema oder eine Regel des Charts die Werte ablehnt, etwa
+`backend.replicas: 2`. `helm lint` eignet sich dafür nicht: Es meldet die Regeln des Charts nur als
+`[INFO]` und endet trotzdem erfolgreich.
 
 `helm test` ruft `/api/health` über den Frontend-Service ab und prüft damit die Kette
 Frontend-nginx → Backend.

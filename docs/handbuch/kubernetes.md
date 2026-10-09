@@ -459,7 +459,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `bootstrap.oidc.issuerUri` | leer | `OPAA_OIDC_ISSUER_URI` | Issuer des ersten Identitätsanbieters |
 | `bootstrap.oidc.clientId` | leer | `OPAA_OIDC_CLIENT_ID` | Client-ID dieses Anbieters |
 | `bootstrap.oidc.jwkSetUri` | leer | `OPAA_OIDC_JWK_SET_URI` | Adresse der Signaturschlüssel, falls das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser |
-| `bootstrap.oidc.authority` | leer | `OPAA_OIDC_AUTHORITY` | wird nicht gebraucht; der Issuer ist zugleich die Authority |
+| `bootstrap.oidc.authority` | leer | `OPAA_OIDC_AUTHORITY` | ohne Wirkung, der Issuer ist zugleich die Authority. Der Wert wird angenommen, damit bestehende Werte-Dateien gültig bleiben; weicht er vom Issuer ab, vermerkt das Backend das im Protokoll |
 | `bootstrap.chatModel.baseUrl`, `.model` | leer, Pflicht | `OPAA_OPENAI_CHAT_BASE_URL`, `OPAA_OPENAI_CHAT_MODEL` | das erste Chat-Modell; der Schlüssel kommt aus dem Secret |
 
 ### Backend
@@ -478,7 +478,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil an der Speichergrenze; wirkt nur mit `resources.limits.memory` |
 | `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp` |
 | `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](deployment.md#speicher-und-container-grenzen) |
-| `backend.initResources` | 50m CPU und 128Mi angefordert, 256Mi Grenze | — | Init-Container, der mit `extraCACertificates` den Truststore baut |
+| `backend.initResources` | 50m CPU und 128Mi angefordert, 256Mi Grenze | — | Init-Container des Backends: der Truststore mit `extraCACertificates` und das Warten auf die Erprobungsdatenbank |
 | `backend.startupProbe` | alle `10` s, Zeitgrenze `5` s, `60` Fehlversuche | — | gibt dem ersten Start und der Migration Zeit (`periodSeconds` mal `failureThreshold`) |
 | `backend.livenessProbe` | alle `20` s, Zeitgrenze `5` s, `3` Fehlversuche | — | Lebendigkeit |
 | `backend.readinessProbe` | alle `10` s, Zeitgrenze `5` s, `3` Fehlversuche | — | Bereitschaft; je Probe außerdem `initialDelaySeconds` und `successThreshold` |
@@ -554,6 +554,8 @@ Datenbank gehört deshalb dorthin.
 - läuft als das Konto `postgres` des Images mit fester Kennung; Plattformen, die Kennungen selbst
   zuweisen (OpenShift `restricted-v2`), lassen den Pod nicht zu
 - ihr Volume bleibt nach `helm uninstall` erhalten und wird bei Bedarf von Hand gelöscht
+- das Backend wartet in einem Init-Container, bis sie über ihren Service Verbindungen annimmt; erst
+  dann startet es. Mit einer eigenen Datenbank entfällt das Warten
 
 ### Originalablage
 
@@ -638,8 +640,9 @@ Drei Werte hängen am Netz des Clusters:
 
 - **`frontend.cspConnectSrcExtra`:** Liegt der Issuer auf einem anderen Origin als `publicBaseUrl`,
   gehört dieser Origin hierher. Sonst blockiert die Content-Security-Policy die Anmeldung, ohne eine
-  Meldung zu zeigen. Kommt später in der Oberfläche ein Anbieter mit einem weiteren Origin hinzu, wird
-  der Wert ergänzt und mit `helm upgrade` übernommen.
+  Meldung zu zeigen. Fehlt der Origin, warnt `helm install` in seiner Ausgabe davor. Kommt später in
+  der Oberfläche ein Anbieter mit einem weiteren Origin hinzu, wird der Wert ergänzt und mit
+  `helm upgrade` übernommen.
 - **`bootstrap.oidc.jwkSetUri`:** Erreicht das Backend den Anbieter nur unter einer internen Adresse,
   die der Browser nicht kennt, nennt dieser Wert die Adresse der Signaturschlüssel unter der internen
   Adresse. Der Issuer bleibt die Adresse, die der Browser sieht.
@@ -1130,6 +1133,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Pod im Zustand `CreateContainerConfigError` | Dem vorhandenen Secret fehlt ein Pflichtschlüssel; `kubectl describe pod` nennt ihn |
 | `ImagePullBackOff` mit dem Tag `0.0.0-dev` | Installation aus dem Repository ohne `backend.image.tag` und `frontend.image.tag` |
 | Pod wird vom Namespace abgewiesen | Die Erprobungsdatenbank unter einer Plattform, die Kennungen selbst zuweist; oder ein eigener Wert in `podSecurityContext`, der `restricted` verletzt |
+| Backend-Pod bleibt mit der Erprobungsdatenbank im Zustand `Init` | Die Erprobungsdatenbank nimmt keine Verbindungen an, etwa weil ihr Volume nicht bereitgestellt wird. Den Grund zeigt `kubectl -n opaa describe pod opaa-postgresql-0`; `kubectl -n opaa logs deploy/opaa-backend -c wait-for-database` bestätigt nur, auf welches Ziel und welchen Port gewartet wird |
 | Backend startet wiederholt neu, das Protokoll zeigt eine laufende Migration | Die Migration braucht länger, als die Startup-Probe erlaubt. `backend.startupProbe.failureThreshold` anheben |
 | Backend wird nie bereit, das Protokoll zeigt `Waiting for changelog lock` | Ein früherer Start wurde mitten in der Migration beendet, etwa von der Startup-Probe, und die Sperre in `databasechangeloglock` ist stehen geblieben. Backend anhalten (`kubectl -n opaa scale deploy/opaa-backend --replicas=0`), in der Datenbank `UPDATE databasechangeloglock SET locked = false, lockgranted = null, lockedby = null WHERE id = 1;` ausführen, mit einem eigenen Schema vorangestellt, und das Backend wieder auf eine Instanz setzen. Vorher die Startup-Probe großzügiger stellen, sonst wiederholt sich der Abbruch |
 | `APPLICATION FAILED TO START` mit dem Hinweis auf pgvector | pgvector ist auf dem Datenbankserver nicht installiert (siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql)) |

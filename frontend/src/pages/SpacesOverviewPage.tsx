@@ -68,11 +68,11 @@ export default function SpacesOverviewPage() {
   const error = useSpaceStore((s) => s.error)
   const loadSpaces = useSpaceStore((s) => s.loadSpaces)
 
+  // Re-read on every visit: the figures (chats, members) change through actions on other pages,
+  // and the cached cards stay visible while the fresh list loads.
   useEffect(() => {
-    if (spaces.length === 0) {
-      void loadSpaces()
-    }
-  }, [loadSpaces, spaces.length])
+    void loadSpaces()
+  }, [loadSpaces])
 
   const searchText = useCallback(
     (space: SpaceListResponse) => `${space.name} ${space.description ?? ''}`,

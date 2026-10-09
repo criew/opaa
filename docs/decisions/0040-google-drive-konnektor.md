@@ -763,6 +763,229 @@ Stores lebt nur im Lauf (ADR-0021 unverändert).
   Profil nicht an (`EffectiveSourceSettings#ofDraftToValidate`); Verbindungstest und Auflistung tun
   es.
 
+## Nachtrag: SharePoint (#2153, 05.10.2026)
+
+Dokumentbibliotheken von SharePoint über Microsoft Graph. Paket `indexing.source.sharepoint`, Typ
+`SHAREPOINT`, Graph-Zugriff in einem eigenen Paket `io.opaa.msgraph` (foundation, Vorbild
+`io.opaa.s3`). Plan: [Kommentar an #2153](https://github.com/criew/opaa/issues/2153#issuecomment-5984246614).
+Aus [#2264](https://github.com/criew/opaa/issues/2264) braucht der Konnektor nichts: Client-Credentials
+mit Mandanten-Vorlage, `ProfileOwned` und `ProfileSignIn` liegen seit #2257 vor.
+
+**Maintainer-Entscheidungen vom 05.10.2026**
+([Übersicht](https://github.com/criew/opaa/issues/2147#issuecomment-5990074460)):
+
+| Punkt | Entscheidung |
+|---|---|
+| M1 – Identität | `sharepoint://<driveId>/<itemId>`, ohne Deep Link |
+| M2 – Ordner umbenannt oder verschoben | Täglicher Vollabgleich als Vorgabe, kein Kern-Umbau; das Handbuch nennt das Fenster von bis zu einem Tag |
+| M3 – Berechtigung | `Sites.Selected` empfohlen, `Sites.Read.All` als dokumentierte Alternative |
+| K1 – `CHANGE_FEED`-Abschluss | Freigegeben, eigenes Issue [#2408](https://github.com/criew/opaa/issues/2408) unter #2146, vor dem Konnektor |
+
+### Zielbild
+
+**Anmeldung**
+
+- Nur App-only: `SignIn.clientCredentials` mit
+  `Endpoint.WithTenant("https://login.microsoftonline.com/{tenant}/oauth2/v2.0/token")`, Scope
+  `https://graph.microsoft.com/.default`, `CLIENT_SECRET_POST`.
+- Profilangabe `REQUIRED`, Adresse fest `https://graph.microsoft.com`, kein TLS-Schalter. Am Zugang
+  bleibt das Feld „Scopes“ leer; ein anderer Wert als `.default` scheitert bei Entra.
+- Delegiert (OAuth) ist nicht Teil von #2153; das wäre der Weg für OneDrive als verbundenes Konto.
+
+**Berechtigungen**
+
+- Empfohlen `Sites.Selected` (Anwendung) mit Rolle `read` je Site; Alternative `Sites.Read.All`.
+  `Files.Read.All` nennt das Handbuch nicht, weil es OneDrives einschließt.
+- OneDrive wird technisch abgewiesen: Die Erreichbarkeitsprüfung liest `driveType`; alles außer
+  `documentLibrary` ist `ContainerUnlistable`.
+
+**Quelle und Einstellungen**
+
+- `source_settings`: `libraries` mit 1 bis 50 Einträgen `{driveId, folders?: [itemId…]}`, dazu
+  `fullSyncIntervalDays` (Vorgabe 1, siehe M2).
+- Container ist die Dokumentbibliothek, Schlüssel `drive:<driveId>`. Ordner sind ein Filter im Store,
+  kein eigener Container: je Laufwerk eine Aufzählung und ein Strom. Eine geänderte Auswahl verwirft
+  den Abgleichszustand (`onSourceChanged`, wie Drive).
+- `SourceBrowser` in Stufen über Parameter in den Konnektor-Einstellungen der Anfrage: Site (Suche bei
+  `Sites.Read.All`, sonst Adresse eingeben und über `/sites/{host}:/{pfad}` auflösen), Bibliotheken
+  (`/sites/{id}/drives`), Ordner (`/drives/{id}/items/{id}/children`).
+
+**Identität und `file_path`**
+
+- `sharepoint://<driveId>/<itemId>`, rund 110 ASCII-Zeichen; die Grenze aus #2267 ist nicht
+  erreichbar, keine Abhängigkeit.
+- Umbenennen und Verschieben im Laufwerk behalten das Dokument. Ein Wechsel der Bibliothek ist Löschen
+  und Neuanlegen.
+- Kein Deep Link (`withoutDeepLink()`); das Original liefert `OriginalAccess` über Graph.
+  `source_hierarchy_path` ist die Ordnerkette, bei mehreren Bibliotheken steht der Bibliotheksname vorn.
+
+**Änderungsmerkmal**
+
+- `x:<quickXorHash>|<size>|<h(name, parentId)>`, ersatzweise `c:<cTag>|…` oder
+  `t:<lastModified>|<size>|…`.
+- Der Ortsteil sorgt dafür, dass eine umbenannte oder verschobene Datei einmal geholt wird. Bei
+  gleicher SHA-256 führt die Aufnahme Titel und Pfad nach, ohne neu zu schneiden.
+
+**Rechte** werden nicht übernommen (Epic: außerhalb des Umfangs). Das Handbuch sagt deutlich: Was die
+App lesen darf, sehen alle Leser der Bibliothek.
+
+**Delta**
+
+- Listing: `GET /drives/{id}/root/delta` mit `$select` und `$top`. `continuation` und `checkpoint`
+  sind der Token des `nextLink`; gespeichert wird nur der Token, nie die Adresse, der Store baut die
+  URL selbst. `410` ist `CheckpointExpired`. Als gelöscht gemeldete Einträge und Doppelte im Lauf
+  filtert der Store.
+- Ordnerkette: Delta-Einträge tragen keinen Pfad. Der Store führt je Lauf eine Tabelle
+  id → (Name, Eltern) aus den Ordner-Einträgen und holt fehlende Ordner einzeln. Ist die Kette nicht
+  auflösbar, ist die Datei `Transient`; sie wird nicht an die Wurzel gelegt, sonst kippte das Merkmal.
+- `ChangeFeed`: `feedKey` ist der Container-Schlüssel, `startCursor` kommt über `delta?token=latest`,
+  `410` ist `CursorExpired`. `deleted` wird `Change.Removed`, eine Datei außerhalb des Ordnerfilters
+  ebenfalls. `absenceProof()` ist `CHANGE_FEED`.
+
+**Drosselung:** `429` und `503` mit `Retry-After` warten über `RateLimitPolicy#waitFor` mit Deckel,
+melden sich am Budget (`throttled`) und höchstens `max-retries` mal; danach `Transient`. Die
+Gesamtwartezeit je Lauf begrenzt `RequestBudget(maxThrottleWait)`.
+
+**Download:** `GET …/items/{id}/content` leitet auf einen vorab signierten Fremdhost weiter. Nur dieser
+Aufruf nutzt `RedirectPolicy.DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN` (`GraphClient#download`; nur https, Zielprüfung je Sprung). Die Ziel-URL erscheint
+nie in Log oder Meldung, weil sie ein Kurzzeit-Token trägt. Größe aus dem Listing als Vorfilter,
+Byte-Deckel beim Kopieren (Vorgabe 50 MiB). OneNote-Pakete (`package`) sind `NotADocument`, Einträge
+mit `malware`-Facette `Unavailable`.
+
+**Dauerhaft kaputte Dateien (Vorgabe für S1 aus dem Review von #2269, keine Maintainer-Entscheidung).** `GraphClient` meldet jede Nicht-2xx-Antwort des Downloadhosts und alle
+4xx ohne eigene Art (etwa `400`, `409`) als `GraphException.Kind.TRANSIENT`; den Status liefert
+`GraphException#status()`. Der `SharePointFileStore` muss daran dauerhaft gescheiterte Dateien von
+vorübergehenden unterscheiden: Bei `TRANSIENT` mit 4xx-Status (außer `429`) wählt er eine
+Datei-Ausnahme, die die Runde nicht offen hält. Sonst hielte eine einzige dauerhaft kaputte Datei die
+Runde für immer offen, der `CHANGE_FEED`-Abschluss würde nie erreicht und Löschungen wären nie
+bewiesen. Ein Store-Test mit `FakeGraphServer.failNext("/blob/", 403, …, n)` über mehrere Läufe sichert
+das.
+
+**Löschungen, Umbenennen, Verschieben**
+
+| Ereignis | Verhalten |
+|---|---|
+| Datei gelöscht | Änderungslauf entfernt sie (`deleted`), sonst der Vollabgleich durch Abwesenheit |
+| Datei umbenannt oder verschoben | Dokument bleibt, ein Abruf, Titel und Pfad nachgeführt |
+| Ordner umbenannt oder verschoben | Der Vollabgleich führt den gespiegelten OPAA-Ordner ohne Download nach (`placeSeen`); `source_hierarchy_path` bleibt alt, bis sich die Datei ändert |
+| Ordner aus einem Ordnerfilter herausgeschoben | Dateien bleiben bis zum nächsten Vollabgleich durchsuchbar (M2) |
+| Bibliothek nicht erreichbar | `ContainerUnlistable`, kein Löschbefund |
+
+### Belege
+
+Alle Aussagen über Graph und Entra stammen aus API-Kenntnis und sind nicht gegen die Dokumentation
+oder einen Tenant geprüft. Bis zum Tenant-Lauf (S3) ist der `FakeGraphServer` die einzige Wahrheit;
+Formfehler fallen erst dort auf. Die Ergebnisse des Laufs kommen als weiterer Nachtrag.
+
+| Aussage | Stand |
+|---|---|
+| Client-Credentials, Mandanten-Vorlage, `ProfileOwned`, `ProfileSignIn` auf main (#2257) | belegt (Code) |
+| Länge von `file_path` unterhalb der Grenze aus #2267 | belegt (Rechnung) |
+| `GraphException#status()` und Art `TRANSIENT` für 4xx ohne eigene Art | belegt (Code, #2269) |
+| `driveId`/`itemId` bleiben bei Umbenennen und Verschieben stabil | unsicher (API-Kenntnis) |
+| Wirkung von `Sites.Selected`: zulässige Aufrufe, Fehlerbild für nicht freigegebene Sites (`403` oder `404`), Verhalten der Site-Suche | unsicher |
+| Entra-Fehlercodes (falsches oder abgelaufenes Secret, fehlender Admin-Consent, unbekannter Mandant) gegen die Abbildung in `ClientCredentialsGrant` | unsicher |
+| `/content`: Zielhosts der Weiterleitung, Durchlass durch die Zielprüfung | unsicher |
+| Delta: `$top` wird beachtet; Haltbarkeit von `nextLink`- und Delta-Token; Formen des `410` | unsicher |
+| Delta: Eltern vor Kind; `parentReference.path` fehlt; gelöschter Ordner meldet seine Dateien einzeln; Facetten gelöschter Einträge | unsicher |
+| Delta meldet bei umbenanntem oder verschobenem Ordner nur den Ordner, nicht die Dateien darunter | unsicher |
+| Graph meldet Elternordner bei jeder Änderung darunter mit | unsicher |
+| Delta auf Ordnern (`items/{id}/delta`) als spätere Optimierung | unsicher |
+| Reale Drosselung und `Retry-After`-Werte (für die Vorgaben) | unsicher |
+| `quickXorHash` für alle Dateiarten; `cTag` bei reinen Metadatenänderungen; Umschreiben von Office-Dateien durch SharePoint | unsicher |
+| Sonderfälle: ausgecheckte und Entwurfsfassungen, Vertraulichkeitsbezeichnungen, OneNote, Systembibliotheken, Sites privater Teams-Kanäle | unsicher |
+| Ein im Browser öffnbarer, ID-stabiler SharePoint-Link | unsicher (nicht belegbar; Anlass für M1) |
+
+### Verworfene Alternativen
+
+- **Offizielles Graph-SDK.** Rund 60 MB Abhängigkeit für eine Handvoll GET-Aufrufe. Die Aufrufe laufen
+  über `sourceaccess` in `io.opaa.msgraph`, das tokenneutral ist und von Exchange
+  ([#2172](https://github.com/criew/opaa/issues/2172)) mitgenutzt wird.
+- **`webUrl` als Identität.** Sie ist pfadbasiert: Umbenennen oder Verschieben ändert sie, das Dokument
+  wäre neu. Ein ID-stabiler, öffnbarer Link ist ohne Tenant nicht belegbar. Ein späterer Wechsel der
+  Identität hieße Neuindexierung aller SharePoint-Bibliotheken; ein Link-Feld neben `file_path` wäre ein
+  großer Umbau am Dokumentmodell.
+- **Ordner als Container.** Das vervielfachte Aufzählungen und Ströme je Laufwerk. Der Container ist
+  die Bibliothek, der Ordner ein Filter im Store.
+- **`fullSyncNeeded` bei Ordner-Einträgen im Protokoll** (Regel von Drive). Sie passt nicht, weil Graph
+  Elternordner bei jeder Änderung darunter mitmeldet; fast jeder Änderungslauf würde zum Vollabgleich.
+  Stattdessen gilt der tägliche Vollabgleich (M2). Die Alternative, eine dauerhafte Ordnertabelle je
+  Bibliothek mit Changeset und einer neuen `Change`-Variante im Kern, wäre ein großer Kern-Umbau.
+- **`Files.Read.All` als Empfehlung.** Es schlösse OneDrives ein und gäbe mandantenweite Leserechte;
+  empfohlen ist `Sites.Selected` (M3).
+
+### Risiken
+
+Überdauern die `nextLink`-Token keine Läufe, beginnt ein Container neu; nach zwei Verfällen ist er im
+Lauf nicht listbar. Unterhalb des Budgets ist das unschädlich.
+
+### Nicht gebaut
+
+Nationale Clouds (`graph.microsoft.us`, China; die Adresse ist fest), Freigabe je Bibliothek über
+`Lists.SelectedOperations.Selected`, delegierter Zugang für OneDrive, Rechte der Quelle. Folge-Issues
+sind „Ort ohne Download nachführen“ im Kern (träfe auch Drive) und „Änderungslauf mit mehr Seiten als
+Budget“.
+
+## Nachtrag: `CHANGE_FEED`-Abschluss (#2408, 05.10.2026)
+
+Der Kern-Eingriff K1 ([#2408](https://github.com/criew/opaa/issues/2408), unter #2146) ist
+freigegeben und kommt vor dem SharePoint-Konnektor, damit dieser `CHANGE_FEED` von Anfang an erklärt
+und Dropbox ([#2154](https://github.com/criew/opaa/issues/2154)) ihn mitnutzt.
+
+**Warum vor dem Konnektor.** Fachlich ist er für SharePoint keine harte Voraussetzung: Ohne ihn endet
+eine Runde über mehrere Läufe wie bei `SINGLE_RUN`, die gehaltenen Cursor werden gültig, und der
+nächste Änderungslauf holt alles nach. Tragend wird er, wenn die reine Auflistung das Budget übersteigt
+(bei 200 Einträgen je Seite und 20 000 Anfragen rund 4 Mio. Einträge) oder nach einem verfallenen
+Cursor.
+
+**Schnitt**
+
+- `AbsenceProof.CHANGE_FEED`: Das Änderungsprotokoll ab den zu Rundenbeginn gehaltenen Cursorn beweist
+  Abwesenheit.
+- Neuer Zweig in `FileSync#run` nach der Containerschleife, nur wenn `!provenByThisRun()`:
+  1. Jeden Strom ab `state.pendingChangeCursors()` bis zur letzten Seite lesen.
+  2. `Updated` geht durch `visit` (präsent, bei Bedarf Abruf). `Deselected` und `Removed` laufen wie im
+     Änderungslauf, einschließlich `applyRemovals` und Erreichbarkeitsprüfung.
+  3. Bei Erfolg: `presenceToFrame()`, Abgleich durch den Rahmen. Im Haken `afterReconciliation(true)`
+     erst die neuen Startcursor als ausstehend setzen, dann `finish(true)`.
+- Ausgänge ohne Abgleich:
+  - `fullSyncNeeded` oder `CursorExpired`: `finish(false)`, Protokollnotiz. Die alten Cursor bleiben;
+    der nächste Änderungslauf entscheidet wie heute.
+  - Vorübergehender Fehler, nicht erreichbarer Container oder vorübergehend gescheiterte Datei: Die
+    Runde bleibt offen, Ergebnis `truncated`. Der nächste Lauf wiederholt nur den Abschluss; fertige
+    Container werden nicht neu gelistet.
+  - Budget-Ende im Abschluss: Der `catch`-Zweig umfasst ihn, die Runde bleibt offen.
+- `ScanRound`: `resumable` behandelt `CHANGE_FEED` nicht als „erschöpft“. Eine Runde ohne gehaltene
+  Cursor für alle Ströme wird verworfen, weil der Beweis sonst nicht ab Rundenbeginn gilt. Präsenz wird
+  wie heute geschrieben, sobald die Runde über Läufe reicht.
+- Das Stromlesen (`readStream`, `apply`, `applyRemovals`) wandert in eine eigene paketprivate Klasse,
+  die `runChanges` und der Abschluss teilen. Löschaufrufe bleiben in `FileSync`, sonst müsste
+  `RUN_REMOVERS` erweitert werden.
+- Kein Changeset, keine SPI-Änderung außer der Enum-Konstante.
+
+**Tests**
+
+- `FileStoreResumptionContract`: Zweig für `CHANGE_FEED` in
+  `aFileDeletedAtTheSourceIsRemovedOnlyOnceItsAbsenceIsProven`; am Rundenende wird entfernt.
+- Neue Fälle in `FileSyncRoundTest` und im Vertrag:
+  - Ein Altdokument ohne Datei und ohne Protokolleintrag wird am Ende einer Runde über mehrere Läufe
+    entfernt (Reproduktionsfall; mit `SINGLE_RUN` bleibt es stehen).
+  - Eine Datei wandert hinter die Marke: Das Dokument bleibt am neuen Ort.
+  - Eine neue Datei im schon gelisteten Teil ist am Rundenende aufgenommen.
+  - `fullSyncNeeded` und verfallener Cursor: nichts entfernt.
+  - Vorübergehender Fehler: Runde offen, der nächste Lauf listet keinen Container.
+  - Budget-Ende im Abschluss.
+  - Runde ohne gehaltene Cursor wird verworfen.
+  - Ein Lauf, der alles allein listet, liest das Protokoll nicht.
+- `FileSyncRandomizedRoundTest`: drittes Szenario (stabile IDs, Protokoll, Marken, `CHANGE_FEED`) mit
+  der Invariante „kein Dokument entfernt, dessen Datei existiert“. `InMemoryFileStore` protokolliert
+  Änderungen dafür selbst.
+
+**Auswirkungen.** Drive, Nextcloud, SMB und S3 ändern sich nicht; ihre Vertragstests und
+`FileSyncChangeRunTest` bleiben unverändert grün (Abnahmekriterium). Der Eingriff ist additiv, hat aber
+Löschwirkung (geschätzt 400 bis 600 Zeilen plus Tests) und ist deshalb meldepflichtig. Der Schutz:
+Abgleich nur nach fehlerfrei gelesenem Protokoll ab Rundenbeginn, sonst kein Abgleich.
+
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)

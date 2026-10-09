@@ -88,7 +88,8 @@ pnpm run format                         # Automatisch mit Prettier formatieren
 
 # Helm-Chart (aus deploy/helm/opaa/, ADR-0042) — die Vorgabewerte allein sind bewusst
 # unvollständig, geprüft wird mit den Wertedateien unter ci/
-helm lint . -f ci/minimal-values.yaml
+helm template opaa . -f ci/minimal-values.yaml   # bricht bei Abbruchregeln ab; helm lint meldet
+                                                # sie nur als INFO und endet mit Exit 0
 helm template opaa . -f ci/full-values.yaml
 
 # Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
