@@ -53,9 +53,16 @@ public final class OAuthClient {
   private static final JsonMapper JSON = JsonMapper.builder().build();
 
   private final TargetAddressValidator targetAddressValidator;
+  private final Duration timeout;
 
   public OAuthClient(TargetAddressValidator targetAddressValidator) {
+    this(targetAddressValidator, TIMEOUT);
+  }
+
+  /** A client whose every call to the authorization server ends after {@code timeout}. */
+  OAuthClient(TargetAddressValidator targetAddressValidator, Duration timeout) {
     this.targetAddressValidator = targetAddressValidator;
+    this.timeout = timeout;
   }
 
   /**
@@ -191,7 +198,7 @@ public final class OAuthClient {
         }
       }
       SourceFormPost.Response response =
-          post(registration, endpoint, form, headers, TIMEOUT, REVOCATION_ENDPOINT);
+          post(registration, endpoint, form, headers, timeout, REVOCATION_ENDPOINT);
       if (!response.isSuccess()) {
         log.warn(
             "Revocation endpoint {} refused a token of profile {} (HTTP {})",
@@ -226,7 +233,7 @@ public final class OAuthClient {
     Map<String, String> headers = new LinkedHashMap<>();
     authenticate(registration, auth, form, headers);
     SourceFormPost.Response response =
-        post(registration, endpoint, form, headers, TIMEOUT, TOKEN_ENDPOINT);
+        post(registration, endpoint, form, headers, timeout, TOKEN_ENDPOINT);
     JsonNode body = readBody(response);
     if (!response.isSuccess()) {
       String error = field(body, "error");

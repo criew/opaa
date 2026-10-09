@@ -200,6 +200,11 @@ class ModularArchitectureTest {
   }
 
   @Test
+  void grantsAreRevokedOnlyAfterTheCommit() {
+    ARCHITECTURE.grantsAreRevokedOnlyAfterTheCommit().check(mainClasses);
+  }
+
+  @Test
   void theConnectorReleaseIsDecidedInConnections() {
     ARCHITECTURE.theConnectorReleaseIsDecidedInConnections().check(mainClasses);
   }
