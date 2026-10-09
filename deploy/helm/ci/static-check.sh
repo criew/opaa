@@ -62,30 +62,6 @@ expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
 
-# The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
-# renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.
-echo "--- notes"
-if helm install --help | grep -q -- '--dry-run string'; then
-  # Renders the NOTES of the minimal value set with extra arguments.
-  notes() {
-    helm install opaa "$CHART_DIR" --dry-run=client --namespace opaa \
-      --values "$CHART_DIR/ci/minimal-values.yaml" "$@" | sed -n '/^NOTES:/,$p'
-  }
-  issuer=(--set bootstrap.oidc.issuerUri=https://login.example.org/realms/opaa --set bootstrap.oidc.clientId=opaa)
-  if [[ "$(notes "${issuer[@]}")" != *"ANMELDUNG ÜBER https://login.example.org WIRD BLOCKIERT"* ]]; then
-    echo "Expected a CSP warning for an issuer on another origin, but the notes show none." >&2
-    exit 1
-  fi
-  echo "warned as expected: issuer on another origin"
-  if [[ "$(notes "${issuer[@]}" --set frontend.cspConnectSrcExtra=https://login.example.org)" == *"WIRD BLOCKIERT"* ]]; then
-    echo "Expected no CSP warning once cspConnectSrcExtra names the issuer's origin." >&2
-    exit 1
-  fi
-  echo "silent as expected: issuer origin in cspConnectSrcExtra"
-else
-  echo "skipped: Helm $(helm version --short) has no client-side dry run"
-fi
-
 # The release packaging of publish-images.yml without the push: a release and a pre-release tag are
 # packaged, malformed tags and versions Helm does not accept as SemVer are refused. The tag format
 # itself comes from release-version.sh, which the image release guard calls as well.
@@ -160,5 +136,31 @@ if ((rc != 2)) || ! grep -q "not a valid OCI repository name" <<<"$output"; then
   exit 1
 fi
 echo "refused as expected: invalid repository name"
+
+# The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
+# renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.
+echo "--- notes"
+if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
+  # Renders the NOTES of the minimal value set with extra arguments.
+  notes() {
+    helm install opaa "$CHART_DIR" --dry-run=client --namespace opaa \
+      --values "$CHART_DIR/ci/minimal-values.yaml" "$@" | sed -n '/^NOTES:/,$p'
+  }
+  issuer=(--set bootstrap.oidc.issuerUri=https://login.example.org/realms/opaa
+    --set bootstrap.oidc.clientId=opaa)
+  if [[ "$(notes "${issuer[@]}")" != *"ANMELDUNG ÜBER https://login.example.org WIRD BLOCKIERT"* ]]; then
+    echo "Expected a CSP warning for an issuer on another origin, but the notes show none." >&2
+    exit 1
+  fi
+  echo "warned as expected: issuer on another origin"
+  csp=(--set frontend.cspConnectSrcExtra=https://login.example.org)
+  if [[ "$(notes "${issuer[@]}" "${csp[@]}")" == *"WIRD BLOCKIERT"* ]]; then
+    echo "Expected no CSP warning once cspConnectSrcExtra names the issuer's origin." >&2
+    exit 1
+  fi
+  echo "silent as expected: issuer origin in cspConnectSrcExtra"
+else
+  echo "skipped: Helm $(helm version --short) has no client-side dry run"
+fi
 
 echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging, re-run provenance, registry lookup"
