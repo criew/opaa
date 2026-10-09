@@ -187,8 +187,7 @@ class ProfileEndpointsTest {
       for (boolean confirmed : new boolean[] {false, true}) {
         assertThatThrownBy(
                 () ->
-                    service.update(
-                        ADMIN, profile.getId(), values(moved, "Realm"), null, confirmed))
+                    service.update(ADMIN, profile.getId(), values(moved, "Realm"), null, confirmed))
             .as("%s, confirmed %s", moved, confirmed)
             .isInstanceOf(ValidationException.class)
             .hasFieldOrPropertyWithValue("code", "CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED")

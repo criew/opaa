@@ -124,6 +124,101 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
     expect(notice).not.toHaveTextContent('/connections/callback')
   })
 
+  describe('a stored client secret and a moved endpoint', () => {
+    const TOKEN = 'https://idp.example.org/realms/r/protocol/openid-connect/token'
+    const MOVED = 'https://anderer.example.org/token'
+
+    beforeEach(() => {
+      mockConnectionProfiles[0] = {
+        ...mockConnectionProfiles[0],
+        authMethod: 'OAUTH',
+        ownership: 'PERSON',
+        clientId: 'opaa',
+        clientSecretSet: true,
+        connectorSettings: null,
+        connectionCount: 0,
+        authorizationEndpoint: 'https://idp.example.org/realms/r/protocol/openid-connect/auth',
+        tokenEndpoint: TOKEN,
+        revocationEndpoint: null,
+      }
+    })
+
+    async function openWithMovedTokenEndpoint() {
+      const user = userEvent.setup()
+      const sent: Array<Record<string, unknown>> = []
+      server.events.on('request:start', async ({ request }) => {
+        if (request.method === 'PUT' && request.url.includes('/admin/connection-profiles/')) {
+          sent.push((await request.clone().json()) as Record<string, unknown>)
+        }
+      })
+      renderWithProviders(<ConnectionProfileManagementPage />)
+      await user.click(
+        await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
+      )
+      const dialog = await screen.findByRole('dialog', { name: /bearbeiten/ })
+      const save = within(dialog).getByRole('button', { name: 'Speichern' })
+      expect(save).toBeEnabled()
+      expect(within(dialog).getByLabelText(/^Client-Secret/)).not.toBeRequired()
+
+      const token = within(dialog).getByLabelText(/^Token-Endpunkt/)
+      await user.clear(token)
+      await user.click(token)
+      await user.paste(MOVED)
+      return { user, dialog, save, sent }
+    }
+
+    it('asks for a new secret before a moved token endpoint can be saved', async () => {
+      const { user, dialog, save, sent } = await openWithMovedTokenEndpoint()
+
+      const secret = within(dialog).getByLabelText(/^Client-Secret/)
+      expect(secret).toBeRequired()
+      expect(
+        within(dialog).getByText(/Der Token-Endpunkt ändert sich\. Das hinterlegte Secret/),
+      ).toBeVisible()
+      expect(save).toBeDisabled()
+
+      await user.type(secret, 'neues-geheimnis')
+      expect(save).toBeEnabled()
+      await user.click(save)
+
+      await waitFor(() => expect(sent).toHaveLength(1))
+      expect(sent[0]).toMatchObject({ tokenEndpoint: MOVED, clientSecret: 'neues-geheimnis' })
+    })
+
+    it('saves a public client with an empty secret once that is chosen', async () => {
+      const { user, dialog, save, sent } = await openWithMovedTokenEndpoint()
+      expect(save).toBeDisabled()
+
+      await user.click(
+        within(dialog).getByRole('checkbox', {
+          name: 'Ohne Client-Secret speichern (öffentlicher Client)',
+        }),
+      )
+      expect(within(dialog).getByLabelText(/^Client-Secret/)).toBeDisabled()
+      await user.click(save)
+
+      await waitFor(() => expect(sent).toHaveLength(1))
+      expect(sent[0]).toMatchObject({ tokenEndpoint: MOVED, clientSecret: '' })
+    })
+
+    it('keeps the stored secret where only the authorization endpoint moves', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(<ConnectionProfileManagementPage />)
+      await user.click(
+        await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
+      )
+      const dialog = await screen.findByRole('dialog', { name: /bearbeiten/ })
+      const authorization = within(dialog).getByLabelText(/^Autorisierungs-Endpunkt/)
+      await user.clear(authorization)
+      await user.click(authorization)
+      await user.paste('https://anderer.example.org/authorize')
+
+      expect(within(dialog).getByLabelText(/^Client-Secret/)).not.toBeRequired()
+      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument()
+      expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeEnabled()
+    })
+  })
+
   it('warns at a profile whose expired connections reach the threshold', async () => {
     mockConnectionProfiles[0] = {
       ...mockConnectionProfiles[0],

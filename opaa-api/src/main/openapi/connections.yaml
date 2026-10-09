@@ -354,13 +354,19 @@ paths:
       description: >
         clientSecret follows the three-way convention of updateLlmModel: omitted keeps the stored
         secret, an empty string clears it, any other value replaces it - without touching any
-        connection. A new serverUrl, clientId, tenant, scope list or authMethod discards every
+        connection. A stored client secret never follows a tokenEndpoint or revocationEndpoint
+        the profile names to another address: such a change without clientSecret is 400 with
+        code CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED, checked before anything else and before
+        any confirmation; an empty clientSecret makes the profile a public client. A new
+        authorizationEndpoint alone keeps the secret, which is never sent there.
+        A new serverUrl, clientId, tenant, scope list, endpoint or authMethod discards every
         secret held under the profile; a library address under the old server address moves
         under the new one. While the change discards a stored secret of a library, ends
         connected accounts of persons or the whole sync state of libraries (a changed default
         only the profile sets), it needs confirmDiscard
         (otherwise 409 with code CONNECTION_PROFILE_CONFIRMATION_REQUIRED, whose error is the
-        confirmation previewConnectionProfileChange names beforehand). The part of a library's
+        confirmation previewConnectionProfileChange names beforehand; it names the old and the
+        new address of every endpoint the profile names that changes). The part of a library's
         sync state a new configuration makes invalid - also of a new proxy or TLS switch - its
         connector discards without that confirmation. The connector of a profile never changes.
         Every library whose effective configuration the change alters (address, proxy, TLS
@@ -388,7 +394,16 @@ paths:
               schema:
                 $ref: "#/components/schemas/ConnectionProfileResponse"
         "400":
-          $ref: "#/components/responses/ValidationError"
+          description: >
+            Invalid values, a library the connector refuses the change for (code
+            CONNECTION_PROFILE_CHANGE_REJECTED), or a new tokenEndpoint or revocationEndpoint
+            without a new client secret while one is stored (code
+            CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED, the error naming the old and the new
+            endpoint).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
@@ -1371,7 +1386,9 @@ components:
           description: >
             Write-only; never returned (see clientSecretSet). For SERVICE_ACCOUNT_KEY the JSON key
             file of the service account; only client_email, private_key_id and private_key are
-            kept, and a key naming another client_email is a change of the registration.
+            kept, and a key naming another client_email is a change of the registration. Required
+            when the change moves tokenEndpoint or revocationEndpoint while a secret is stored (an
+            empty one for a public client).
         clientSecretExpiresOn:
           type: string
           pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
@@ -1399,12 +1416,16 @@ components:
           type: string
           maxLength: 2000
           nullable: true
-          description: As authorizationEndpoint, for the token endpoint.
+          description: >
+            As authorizationEndpoint, for the token endpoint, which receives the client secret:
+            a stored secret does not follow a change.
         revocationEndpoint:
           type: string
           maxLength: 2000
           nullable: true
-          description: As authorizationEndpoint, for the token revocation (RFC 7009).
+          description: >
+            As authorizationEndpoint, for the token revocation (RFC 7009), which receives the
+            client secret: a stored secret does not follow a change.
         connectorSettings:
           type: object
           additionalProperties: true
@@ -1641,7 +1662,8 @@ components:
           description: >
             The question saving the proposed change asks before it discards anything, word for
             word the error of the 409 CONNECTION_PROFILE_CONFIRMATION_REQUIRED of updateConnectionProfile;
-            absent where saving asks none. It names persons without a number.
+            absent where saving asks none. It names persons without a number, and the old and the
+            new address of every endpoint the profile names that changes.
         rejectedLibraries:
           type: integer
           format: int64

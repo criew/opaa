@@ -406,6 +406,12 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   Realm eines Keycloak abhängen; dann sind sie Pflicht, je eine Adresse mit `https://` oder
   `http://`. Endpunkte, die die Quellart selbst festlegt, fragt es nicht ab, und ein Wert dafür wird
   abgewiesen. OPAA schreibt sie beim Speichern fest und erkennt sie nie zur Laufzeit neu.
+  Token- und Widerrufs-Endpunkt bekommen das Client-Secret. Ändert die Verwaltung einen davon an
+  einem Zugang mit hinterlegtem Secret, verlangt das Formular ein neues Secret: Das hinterlegte geht
+  nie an eine neue Adresse. Für einen öffentlichen Client lässt sich stattdessen „Ohne
+  Client-Secret speichern“ wählen. Ohne beides weist OPAA die Änderung ab und ändert nichts. Der
+  Autorisierungs-Endpunkt bekommt kein Secret; ändert sich nur er, bleibt das Secret. Die Rückfrage
+  vor dem Speichern nennt bei jedem geänderten Endpunkt die alte und die neue Adresse.
 - **Scopes** nennt unter dem Feld die Vorgabe der Quellart, die gilt, solange das Feld leer bleibt.
 - **Dienstkonto-Schlüssel** lädt das Formular als JSON-Schlüsseldatei hoch; eine Client-ID fragt
   es dafür nicht ab, OPAA übernimmt sie aus `client_email` des Schlüssels. Gespeichert werden nur
@@ -718,7 +724,7 @@ steht in ihren Kapiteln.
 | Handlung | Folge |
 |---|---|
 | Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und der Bibliotheken, deren gespeicherte Zugangsdaten neu einzutragen sind |
-| Client-ID, Mandant, Scopes, einen Endpunkt oder die Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden |
+| Client-ID, Mandant, Scopes, einen Endpunkt oder die Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden. Ein neuer Token- oder Widerrufs-Endpunkt verlangt zudem ein neues Client-Secret, wenn eines hinterlegt ist |
 | Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter. Das gilt nicht für eine Vorgabe nur des Zugangs (bei Google Drive das imitierte Konto): Entfällt sie, imitiert keine Bibliothek mehr ein Konto |
 | Dienstkonto-Schlüssel eines anderen Dienstkontos hochladen | wie eine neue Client-ID |
 | Vorgabe nur des Zugangs ändern (bei Google Drive das imitierte Konto) | Nach Bestätigung, die die Zahl der Bibliotheken nennt, verwirft OPAA ihren Abgleichstand; der nächste Lauf jeder Bibliothek liest die Quelle vollständig neu, und ihre Verwaltenden erhalten eine Benachrichtigung. Dokumente des bisherigen Kontos bleiben bis zu diesem Vollabgleich durchsuchbar |

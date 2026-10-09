@@ -240,6 +240,20 @@ export const connectionProfileHandlers = [
     if (index < 0) return notFound()
     const current = mockConnectionProfiles[index]
     const body = (await request.json()) as ConnectionProfileUpdateRequest
+    const movedSecretEndpoint = (['tokenEndpoint', 'revocationEndpoint'] as const).some(
+      (key) => body[key] != null && body[key] !== (current[key] ?? null),
+    )
+    if (current.clientSecretSet && body.clientSecret == null && movedSecretEndpoint) {
+      return HttpResponse.json(
+        {
+          error:
+            'Der Token-Endpunkt ändert sich. Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet: Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für einen öffentlichen Client.',
+          status: 400,
+          code: 'CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED',
+        },
+        { status: 400 },
+      )
+    }
     const { confirmation } = discardsOf(current, body)
     const refusals = refusalsOf(current, body)
     if (refusals.length > 0) {
@@ -269,7 +283,8 @@ export const connectionProfileHandlers = [
       authMethod: body.authMethod,
       ownership: body.ownership,
       clientId: body.clientId ?? null,
-      clientSecretSet: body.clientSecret ? true : current.clientSecretSet,
+      clientSecretSet:
+        body.clientSecret == null ? current.clientSecretSet : body.clientSecret.trim() !== '',
       clientSecretExpiresOn: body.clientSecretExpiresOn ?? null,
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,

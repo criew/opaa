@@ -5,6 +5,7 @@ import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
+import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
@@ -142,6 +143,9 @@ const ENDPOINT_FIELDS = [
   },
 ] as const
 
+/** The endpoints the client secret is sent to: a stored one never follows them to a new address. */
+const SECRET_ENDPOINTS = ['tokenEndpoint', 'revocationEndpoint'] as const
+
 interface ConnectionProfileFormDialogProps {
   open: boolean
   /** The profile being edited; `null` creates a new one. */
@@ -184,6 +188,8 @@ export default function ConnectionProfileFormDialog({
       : draftFrom(profile),
   )
   const [secret, setSecret] = useState('')
+  // a public client: saving clears the stored secret instead of entering a new one
+  const [withoutSecret, setWithoutSecret] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [preview, setPreview] = useState<{
@@ -219,6 +225,19 @@ export default function ConnectionProfileFormDialog({
   const connectorTypes = sourceTypes.filter((type) => !type.uploads)
   const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
   const descriptorMissing = isEdit && descriptor === null
+  // the server refuses to keep a stored secret while a token or revocation endpoint moves
+  const movedSecretEndpoints = SECRET_ENDPOINTS.filter((key) => {
+    const entered = endpointFields.some((field) => field.key === key) ? draft[key].trim() : ''
+    return entered !== '' && entered !== (profile?.[key] ?? '')
+  })
+  const secretMustFollow =
+    profile !== null &&
+    profile.clientSecretSet &&
+    profile.authMethod !== 'SERVICE_ACCOUNT_KEY' &&
+    usesRegistration &&
+    !usesKey &&
+    movedSecretEndpoints.length > 0
+  const sendsNoSecret = secretMustFollow && withoutSecret
   const complete =
     showFields &&
     !descriptorMissing &&
@@ -227,7 +246,8 @@ export default function ConnectionProfileFormDialog({
     method !== null &&
     ownerships.includes(draft.ownership) &&
     (!usesRegistration || usesKey || draft.clientId.trim() !== '') &&
-    endpointFields.every((field) => draft[field.key].trim() !== '')
+    endpointFields.every((field) => draft[field.key].trim() !== '') &&
+    (!secretMustFollow || withoutSecret || secret.trim() !== '')
 
   const asksRedirect = method === 'OAUTH' && redirect === undefined
   useEffect(() => {
@@ -270,7 +290,11 @@ export default function ConnectionProfileFormDialog({
           endpointFields.includes(field) ? blankToNull(draft[field.key]) : null,
         ]),
       ),
-      clientSecret: usesRegistration && secret.trim() !== '' ? secret.trim() : undefined,
+      clientSecret: sendsNoSecret
+        ? ''
+        : usesRegistration && secret.trim() !== ''
+          ? secret.trim()
+          : undefined,
       connectorSettings: connectorDefaults(defaultKeys, draft.defaults),
       sourceProxy: takesTransport ? blankToNull(draft.sourceProxy) : null,
       sourceInsecureSsl: takesTransport && draft.sourceInsecureSsl,
@@ -488,14 +512,29 @@ export default function ConnectionProfileFormDialog({
                     type="password"
                     size="small"
                     autoComplete="new-password"
-                    value={secret}
+                    required={secretMustFollow && !withoutSecret}
+                    disabled={sendsNoSecret}
+                    value={sendsNoSecret ? '' : secret}
                     onChange={(e) => setSecret(e.target.value)}
                     helperText={
-                      profile?.clientSecretSet
-                        ? 'Ein Secret ist hinterlegt. Leer lassen, um es zu behalten.'
-                        : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
+                      secretMustFollow
+                        ? `Der ${movedSecretEndpoints.map((key) => (key === 'tokenEndpoint' ? 'Token-Endpunkt' : 'Widerrufs-Endpunkt')).join(' und der ')} ändert sich. Das hinterlegte Secret wird nicht an eine neue Adresse gesendet: Bitte das Secret für den neuen Endpunkt eingeben.`
+                        : profile?.clientSecretSet
+                          ? 'Ein Secret ist hinterlegt. Leer lassen, um es zu behalten.'
+                          : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
                     }
                   />
+                  {secretMustFollow && (
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={withoutSecret}
+                          onChange={(e) => setWithoutSecret(e.target.checked)}
+                        />
+                      }
+                      label="Ohne Client-Secret speichern (öffentlicher Client)"
+                    />
+                  )}
                   <TextField
                     label="Ablaufdatum des Secrets"
                     type="date"

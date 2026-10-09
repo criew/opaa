@@ -1065,6 +1065,38 @@ sofort zurück. Ersetzt in „Widerruf nach dem Commit“ den Teil „im aufrufe
   Widerrufsprüfung, bis der Pool leer ist, und `OpaaTestBeanResetListener` wartet vor jeder
   Testmethode darauf.
 
+## Nachtrag vom 09.10.2026: Client-Secret folgt keinem Endpunkt des Zugangs (#2297)
+
+Ergänzt den Nachtrag zum OAuth-Kern (`Endpoint.FromProfile`) um die Regel, die der Nachtrag zur
+MCP-Grundlage für MCP-Zugänge schon trifft: Ein gespeichertes Client-Secret geht nur an die
+Endpunkte, für die es eingetragen wurde.
+
+- **Regel:** Ändert `ConnectionProfileService#update` bei einem Zugang mit gespeichertem Secret den
+  Token- oder Widerrufs-Endpunkt, den der Zugang selbst nennt, verlangt die Änderung ein neues
+  Secret im Request. Ohne eines antwortet sie mit `400 CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED`;
+  ein leeres macht den Zugang zum öffentlichen Client. Beide Endpunkte bekommen das Secret
+  (`OAuthClient#authenticate` beim Token-Request und beim Widerruf nach RFC 7009). Sonst könnte,
+  wer einen Zugang ändern, das Secret aber nicht lesen darf, es an einen eigenen Endpunkt lenken.
+- **Vor allem anderen:** Die Prüfung läuft in `check` und `update` vor der Rückfrage und vor jedem
+  Verwurf. Profil, Secret, Token und Bibliotheken bleiben bei der Abweisung unverändert, auch mit
+  `confirmDiscard`.
+- **Nicht betroffen:** der Autorisierungs-Endpunkt, der nur Client-ID, `state` und Challenge
+  bekommt; ein Zugang ohne gespeichertes Secret; ein Wechsel zwischen Client-Secret und
+  Dienstkonto-Schlüssel, der das Secret ohnehin verwirft; ein Endpunkt, den der Konnektor fest
+  vorgibt. Auch ein Wechsel nur des Mandanten (`Endpoint.WithTenant`) zählt nicht: Der Host bleibt
+  der des Anbieters, nur der Pfad wechselt (Maintainer-Entscheidung im Issue).
+- **Rückfrage:** Die `409 CONNECTION_PROFILE_CONFIRMATION_REQUIRED` und wortgleich die Vorschau
+  (`Discards#endpointChanges`) nennen bei jedem geänderten Endpunkt des Zugangs, auch dem
+  Autorisierungs-Endpunkt, die alte und die neue Adresse; der Autorisierungs-Endpunkt schickt die
+  Person zur Zustimmung.
+- **Formular:** Ändert sich ein solcher Endpunkt bei hinterlegtem Secret, wird das Feld
+  Client-Secret Pflicht, oder die Verwaltung wählt ausdrücklich „Ohne Client-Secret speichern“.
+- **Belegt** in `ProfileEndpointsTest` (400 bei Token- und Widerrufs-Endpunkt mit und ohne
+  Bestätigung, nichts verworfen; Autorisierungs-Endpunkt allein; öffentlicher Client; Rückfrage
+  mit alten und neuen Adressen) und `EndpointChangeClientSecretTest`: Nach der Änderung mit neuem
+  Secret erreicht die nächste Anmeldung nur den neuen Endpunkt eines zweiten Fake-Servers, mit dem
+  neuen Secret.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
