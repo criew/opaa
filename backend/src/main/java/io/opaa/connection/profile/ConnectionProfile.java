@@ -91,6 +91,9 @@ public class ConnectionProfile {
   @Column(name = "issuer", length = 2000)
   private String issuer;
 
+  @Column(name = "issuer_parameter_supported")
+  private Boolean issuerParameterSupported;
+
   @Column(name = "locked_at")
   private Instant lockedAt;
 
@@ -196,9 +199,18 @@ public class ConnectionProfile {
     return issuer;
   }
 
-  void mcpServerFrame(UUID responsibleGroupId, String issuer) {
+  /**
+   * Whether the authorization server of an MCP server announced the {@code iss} parameter in its
+   * authorization response (RFC 9207) when it was saved; then every response must name it.
+   */
+  public boolean isIssuerParameterSupported() {
+    return Boolean.TRUE.equals(issuerParameterSupported);
+  }
+
+  void mcpServerFrame(UUID responsibleGroupId, String issuer, boolean issuerParameterSupported) {
     this.responsibleGroupId = responsibleGroupId;
     this.issuer = issuer;
+    this.issuerParameterSupported = issuerParameterSupported;
   }
 
   public String getServerUrl() {

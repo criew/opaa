@@ -10,7 +10,10 @@ import java.util.Set;
  * {@code token} and revoked as {@code revocation} says. The profile's client id and secret prove
  * the client as {@code clientAuth} names; the connector gets the access token alone. {@code
  * defaultScopes} stand where the profile names none, {@code authorizationParams} are added to every
- * authorization request (such as {@code token_access_type=offline}).
+ * authorization request (such as {@code token_access_type=offline}). {@code issuer} is the
+ * authorization server's issuer the response's {@code iss} must not contradict (RFC 9207), {@code
+ * null} where none is known; {@code issuerParameterSupported} says it announced {@code
+ * authorization_response_iss_parameter_supported}, so every response must name it.
  */
 public record OAuthAuth(
     Endpoint authorization,
@@ -18,7 +21,9 @@ public record OAuthAuth(
     Revocation revocation,
     String defaultScopes,
     Map<String, String> authorizationParams,
-    ClientAuthentication clientAuth)
+    ClientAuthentication clientAuth,
+    String issuer,
+    boolean issuerParameterSupported)
     implements SignInDetails {
 
   /** The parameters of an authorization request the sign-in sets itself. */
@@ -42,12 +47,37 @@ public record OAuthAuth(
       defaultScopes = null;
     }
     authorizationParams = authorizationParams == null ? Map.of() : Map.copyOf(authorizationParams);
+    if (issuer != null && issuer.isBlank()) {
+      issuer = null;
+    }
+    if (issuerParameterSupported && issuer == null) {
+      throw new IllegalArgumentException("an announced iss parameter needs the issuer it names");
+    }
     for (String name : authorizationParams.keySet()) {
       if (RESERVED_PARAMS.contains(name)) {
         throw new IllegalArgumentException(
             "the authorization request sets " + name + " itself, never a connector");
       }
     }
+  }
+
+  /** A sign-in without a known issuer, whose response is not compared (RFC 9207). */
+  public OAuthAuth(
+      Endpoint authorization,
+      Endpoint token,
+      Revocation revocation,
+      String defaultScopes,
+      Map<String, String> authorizationParams,
+      ClientAuthentication clientAuth) {
+    this(
+        authorization,
+        token,
+        revocation,
+        defaultScopes,
+        authorizationParams,
+        clientAuth,
+        null,
+        false);
   }
 
   /** Whether any endpoint of this sign-in is taken from the profile. */

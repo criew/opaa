@@ -104,7 +104,7 @@ public class ProfileRegistrations {
   /**
    * The registration of an MCP server: OAuth with the endpoints discovered when it was saved,
    * revoked by RFC 7009 where its authorization server names an endpoint, every request naming the
-   * server as resource.
+   * server as resource, its response compared with the discovered issuer.
    */
   private ClientRegistration mcpServerRegistration(ConnectionProfile profile) {
     ProfileEndpoints endpoints = profile.getEndpoints();
@@ -117,7 +117,9 @@ public class ProfileRegistrations {
                 : new Revocation.Rfc7009(new Endpoint.FromProfile()),
             null,
             Map.of(),
-            ClientAuthentication.CLIENT_SECRET_BASIC);
+            ClientAuthentication.CLIENT_SECRET_BASIC,
+            profile.getIssuer(),
+            profile.isIssuerParameterSupported());
     return new ClientRegistration(
         profile.getId(),
         ConnectionAuthMethod.OAUTH,
