@@ -1,9 +1,9 @@
 # Releases
 
-Ein Release ist ein unveränderlicher, benannter Stand von OPAA: zwei Container-Images in GHCR mit
-derselben Versionsnummer und ein GitHub-Release mit der Änderungsübersicht. Daneben gibt es weiter
-den beweglichen Stand `main`, der jedem Merge folgt. Wer reproduzierbar betreiben will, etwa mit dem
-geplanten Helm-Chart (Epic #2346), pinnt eine Version.
+Ein Release ist ein unveränderlicher, benannter Stand von OPAA: zwei Container-Images und ein
+Helm-Chart in GHCR mit derselben Versionsnummer und ein GitHub-Release mit der Änderungsübersicht.
+Daneben gibt es weiter den beweglichen Stand `main`, der jedem Merge folgt. Wer reproduzierbar
+betreiben will, pinnt eine Version.
 
 ## Was ein Release erzeugt
 
@@ -13,10 +13,28 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 |---|---|
 | `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand, **nie überschrieben** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
-| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen |
+| Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
+| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen und der `helm install`-Befehl |
 
 Wie bei `main` tragen die Images eine SBOM- und eine Provenance-Attestierung
-([sbom.md](sbom.md)).
+([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
+und neben dem Chart in GHCR. Prüfen lässt sie sich mit:
+
+```bash
+gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
+```
+
+Installiert wird der Chart ohne Checkout des Repositories; was in die Wertedatei gehört, beschreibt
+die [Chart-README](../deploy/helm/opaa/README.md):
+
+```bash
+helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z \
+  -n opaa --create-namespace -f meine-werte.yaml
+```
+
+Im Repository trägt der Chart zwischen zwei Releases die Platzhalterversion `0.0.0-dev`; erst der
+Release-Lauf setzt die Version ([ADR-0042](decisions/0042-kubernetes-lieferung-mit-helm.md),
+Entscheidung 7). Ein reiner Chart-Fix erscheint deshalb als Patch-Release.
 
 Ein Tag `latest` gibt es bewusst nicht. Wer keine Version pinnt, folgt `main`.
 
@@ -24,15 +42,17 @@ Ein Vorab-Stand behält seinen Suffix vollständig im Image-Tag, damit am Tag er
 ein Alpha-, Beta- oder Release-Kandidat ist. Er bekommt kein `X.Y` und wird als Vorab-Release
 markiert. Nur das führende `v` des Git-Tags entfällt:
 
-| Git-Tag | Image-Tags | GitHub-Release |
-|---|---|---|
-| `v1.2.3-alpha.1` | `1.2.3-alpha.1` | Vorab-Release |
-| `v1.2.3-beta.2` | `1.2.3-beta.2` | Vorab-Release |
-| `v1.2.3-rc.1` | `1.2.3-rc.1` | Vorab-Release |
-| `v1.2.3` | `1.2.3`, `1.2` | Release |
+| Git-Tag | Image-Tags | Chart-Version | GitHub-Release |
+|---|---|---|---|
+| `v1.2.3-alpha.1` | `1.2.3-alpha.1` | `1.2.3-alpha.1` | Vorab-Release |
+| `v1.2.3-beta.2` | `1.2.3-beta.2` | `1.2.3-beta.2` | Vorab-Release |
+| `v1.2.3-rc.1` | `1.2.3-rc.1` | `1.2.3-rc.1` | Vorab-Release |
+| `v1.2.3` | `1.2.3`, `1.2` | `1.2.3` | Release |
 
-Der Workflow bricht ab, wenn aus dem Git-Tag nicht genau dieses Image-Tag entsteht. Ein
-abgeschnittener Suffix würde also nie veröffentlicht.
+Der Workflow bricht ab, wenn aus dem Git-Tag nicht genau dieses Image-Tag bzw. diese
+Chart-Version entsteht. Ein abgeschnittener Suffix würde also nie veröffentlicht. Eine
+Vorab-Version des Charts installiert Helm nur, wenn `--version` sie ausdrücklich nennt oder
+`--devel` gesetzt ist.
 
 ## Schutzregeln im Workflow
 
@@ -41,9 +61,19 @@ Bevor gebaut wird, bricht der Lauf ab, wenn:
 - das Tag nicht die Form `vX.Y.Z` bzw. `vX.Y.Z-<vorab>` hat oder keine gültige
   [SemVer](https://semver.org/lang/de/)-Version ist, etwa `v1.0.0-rc.01` mit führender Null,
 - der getaggte Commit nicht auf `main` liegt,
-- `X.Y.Z` in GHCR bereits existiert. Das gilt auch für einen erneut gepushten Tag und einen
-  manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt, sondern durch die
-  nächste Patch-Version abgelöst.
+- `X.Y.Z` in GHCR bereits existiert, als Image oder als Chart. Das gilt auch für einen erneut
+  gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
+  sondern durch die nächste Patch-Version abgelöst.
+
+Der Lauf ist in Jobs gestaffelt: erst die Images, dann der Chart, dann seine Attestierung, zuletzt
+das GitHub-Release. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
+den Lauf rot. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
+GitHub-Release kündigt nichts an, was fehlt. Scheitert ein späterer Job, etwa an einer Störung von
+GHCR, wird er mit *Re-run failed jobs* allein wiederholt; bereits veröffentlichte Teile bleiben
+unberührt. *Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
+
+Die Chart-CI (`.github/workflows/helm-chart.yml`) packt den Chart bei jeder Chart-Änderung mit
+Beispiel-Tags auf demselben Weg (`deploy/helm/ci/package-chart.sh`), ohne zu veröffentlichen.
 
 Der wöchentliche Neubau (#1450) läuft nur auf `main`. Er berührt Release-Tags nie.
 
@@ -63,13 +93,18 @@ vor Absicht. Ablauf:
    git push origin v0.1.0
    ```
 
-4. Den Lauf von „Publish Images“ abwarten. Danach steht das GitHub-Release unter *Releases*.
+4. Den Lauf von „Publish Images“ abwarten. Danach stehen Images und Chart in GHCR und das
+   GitHub-Release unter *Releases*.
    Das erste Release trägt nur einen festen Text: Ohne Vorgänger umfassten generierte Notizen die
    gesamte Historie.
 5. Die generierten Notizen bei Bedarf ergänzen, vor allem um **Vorbereitungsschritte** für
    Bestandsinstallationen, wenn das Release welche verlangt.
 
 Die erste Version ist `v0.1.0`.
+
+**Einmalig nach dem ersten Release mit Chart:** GHCR legt das Paket `charts/opaa` beim ersten Push
+privat an. Ein Maintainer stellt es unter *Packages → charts/opaa → Package settings* auf
+**Public**, wie die beiden Images. Bis dahin scheitert `helm install` ohne Anmeldung.
 
 ## Versionsnummern
 
