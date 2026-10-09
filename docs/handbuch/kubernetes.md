@@ -459,7 +459,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `bootstrap.oidc.issuerUri` | leer | `OPAA_OIDC_ISSUER_URI` | Issuer des ersten Identitätsanbieters |
 | `bootstrap.oidc.clientId` | leer | `OPAA_OIDC_CLIENT_ID` | Client-ID dieses Anbieters |
 | `bootstrap.oidc.jwkSetUri` | leer | `OPAA_OIDC_JWK_SET_URI` | Adresse der Signaturschlüssel, falls das Backend den Anbieter unter einer anderen Adresse erreicht als der Browser |
-| `bootstrap.oidc.authority` | leer | `OPAA_OIDC_AUTHORITY` | wird nicht gebraucht; der Issuer ist zugleich die Authority |
+| `bootstrap.oidc.authority` | leer | `OPAA_OIDC_AUTHORITY` | ohne Wirkung, der Issuer ist zugleich die Authority. Der Wert wird nur noch angenommen, damit bestehende Werte-Dateien gültig bleiben; weicht er vom Issuer ab, vermerkt das Backend das im Protokoll |
 | `bootstrap.chatModel.baseUrl`, `.model` | leer, Pflicht | `OPAA_OPENAI_CHAT_BASE_URL`, `OPAA_OPENAI_CHAT_MODEL` | das erste Chat-Modell; der Schlüssel kommt aus dem Secret |
 
 ### Backend
@@ -638,8 +638,9 @@ Drei Werte hängen am Netz des Clusters:
 
 - **`frontend.cspConnectSrcExtra`:** Liegt der Issuer auf einem anderen Origin als `publicBaseUrl`,
   gehört dieser Origin hierher. Sonst blockiert die Content-Security-Policy die Anmeldung, ohne eine
-  Meldung zu zeigen. Kommt später in der Oberfläche ein Anbieter mit einem weiteren Origin hinzu, wird
-  der Wert ergänzt und mit `helm upgrade` übernommen.
+  Meldung zu zeigen. Fehlt der Origin, warnt `helm install` in seiner Ausgabe davor. Kommt später in
+  der Oberfläche ein Anbieter mit einem weiteren Origin hinzu, wird der Wert ergänzt und mit
+  `helm upgrade` übernommen.
 - **`bootstrap.oidc.jwkSetUri`:** Erreicht das Backend den Anbieter nur unter einer internen Adresse,
   die der Browser nicht kennt, nennt dieser Wert die Adresse der Signaturschlüssel unter der internen
   Adresse. Der Issuer bleibt die Adresse, die der Browser sieht.

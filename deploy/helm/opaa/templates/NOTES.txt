@@ -81,7 +81,7 @@ CLIENT-ADRESSE UND NETZTRENNUNG
 {{- if not .Values.networkPolicy.backendIngress.enabled }}
   Die Eingangs-Policy des Backends ist aus: Jeder Pod im Cluster erreicht das Backend direkt.
 {{- end }}
-{{- with .Values.bootstrap.oidc.authority }}
+{{- with .Values.bootstrap.oidc.issuerUri }}
 {{- $origin := include "opaa.origin" . }}
 {{- $allowed := list (include "opaa.origin" $.Values.publicBaseUrl) }}
 {{- range splitList " " $.Values.frontend.cspConnectSrcExtra }}
@@ -90,7 +90,7 @@ CLIENT-ADRESSE UND NETZTRENNUNG
 {{- if not (has $origin $allowed) }}
 
 ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
-  Die OIDC-Authority liegt auf einem anderen Origin als publicBaseUrl. Ohne
+  Der Issuer des Identitätsanbieters liegt auf einem anderen Origin als publicBaseUrl. Ohne
   frontend.cspConnectSrcExtra: "{{ $origin }}" verhindert die Content-Security-Policy die Anmeldung.
 {{- end }}
 {{- end }}

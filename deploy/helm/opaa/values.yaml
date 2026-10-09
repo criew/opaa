@@ -182,6 +182,8 @@ bootstrap:
   oidc:
     issuerUri: ""
     clientId: ""
+    # Without effect: the issuer is the authority of the sign-in flow as well. Still accepted so that
+    # existing value files keep rendering; the backend only logs a value that differs from issuerUri.
     authority: ""
     jwkSetUri: ""
   # The first chat model. Its key, if needed, comes from the secret (key OPAA_OPENAI_CHAT_API_KEY).
@@ -315,8 +317,8 @@ frontend:
   replicas: 1
 
   # Content Security Policy of the frontend nginx: further origins of connect-src, space-separated
-  # (OPAA_CSP_CONNECT_SRC_EXTRA). Required when an OIDC authority lives on another origin than
-  # publicBaseUrl - otherwise the browser blocks the sign-in silently.
+  # (OPAA_CSP_CONNECT_SRC_EXTRA). Required when the issuer of an identity provider lives on another
+  # origin than publicBaseUrl - otherwise the browser blocks the sign-in silently.
   cspConnectSrcExtra: ""
 
   # How long the frontend nginx waits for the backend's answer on /api/ and /mcp
