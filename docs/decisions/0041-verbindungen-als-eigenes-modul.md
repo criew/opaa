@@ -1122,6 +1122,10 @@ Endpunkte, für die es eingetragen wurde.
   ein leeres macht den Zugang zum öffentlichen Client. Beide Endpunkte bekommen das Secret
   (`OAuthClient#authenticate` beim Token-Request und beim Widerruf nach RFC 7009). Sonst könnte,
   wer einen Zugang ändern, das Secret aber nicht lesen darf, es an einen eigenen Endpunkt lenken.
+- **Proxy:** Token- und Widerrufs-Requests laufen über den Proxy des Zugangs. Ist einer dieser
+  Endpunkte `http://`, sähe ein neuer Proxy das Secret im Klartext; ein geänderter `sourceProxy`
+  verlangt dann ebenso ein neues Secret (derselbe Code). Bei `https://` bleibt das Secret. Es
+  zählen nur die Endpunkte, die der Zugang nennt; die festen der Konnektoren sind `https://`.
 - **Vor allem anderen:** Die Prüfung läuft in `check` und `update` vor der Rückfrage und vor jedem
   Verwurf. Profil, Secret, Token und Bibliotheken bleiben bei der Abweisung unverändert, auch mit
   `confirmDiscard`.
@@ -1146,17 +1150,23 @@ Endpunkte, für die es eingetragen wurde.
 
 Jeder Weg, der die Token-Zeile einer Person und ihr verbundenes Konto schreibt, sperrt zuerst die
 Token-Zeile. Die Verwurfspfade in `ConnectionSecrets` (`discard`, `discardAllUnder`, die Erneuerung
-mit `grantRejected`) taten das schon. `ConnectedAccountService#established` schrieb dagegen zuerst
-das Konto und dann das Token. Lief ein Neuverbinden parallel zum Beenden desselben Kontos, erkannte
-Postgres einen Deadlock und brach eine Aktion ab.
+mit `grantRejected`) taten das schon. Zwei Wege schrieben dagegen zuerst das Konto:
+`ConnectedAccountService#established` (Neuverbinden) und `expire`, wenn eine abgewiesene Anmeldung
+im Lauf über `ProfileSourceConnectionResolver#credentialsRejected` → `rejected` hereinkommt. Dort
+lädt `expire` das Konto vor dem Token, und Hibernate schreibt beim Flush in Ladereihenfolge. Lief
+einer davon parallel zum Beenden desselben Kontos, erkannte Postgres einen Deadlock und brach eine
+Aktion ab.
 
-- `established` ruft vor jedem Zugriff auf das Konto `ConnectionSecrets#lockHeld` und liest das
-  Konto erst danach. Ein Neuverbinden wartet also auf ein laufendes Beenden und legt danach ein
-  neues Konto an, statt das beendete zu überschreiben.
+- `established` und `expire` rufen vor jedem Zugriff auf das Konto `ConnectionSecrets#lockHeld`
+  und lesen das Konto erst danach. Kommt `expire` aus der Erneuerung, hält dieselbe Transaktion die
+  Zeile schon. Ein Neuverbinden wartet also auf ein laufendes Beenden und legt danach ein neues
+  Konto an; eine abgewiesene Anmeldung findet das Konto getrennt und tut nichts.
+- Weitere Schreiber des Kontos ohne Token: `dropDisconnectedWithoutPrivateLibrary` (nur getrennte
+  Konten ohne Token) und `markUsed` (eigene Transaktion, nur das Konto).
 - **Belegt** in `ConnectedAccountLockOrderIntegrationTest`: Eine dritte Transaktion hält die
-  Token-Zeile, das Trennen und danach das Neuverbinden reihen sich dahinter ein. Auf dem alten
-  Stand endet das in `CannotAcquireLockException` („deadlock detected“), mit der Regel enden beide
-  ohne Fehler.
+  Token-Zeile, das Trennen und danach das Neuverbinden bzw. die abgewiesene Anmeldung einer privaten
+  Bibliothek reihen sich dahinter ein. Auf dem alten Stand enden beide Fälle in
+  `CannotAcquireLockException` („deadlock detected“), mit der Regel ohne Fehler.
 
 ## Referenzen
 

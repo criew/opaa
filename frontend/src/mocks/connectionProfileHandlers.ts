@@ -240,14 +240,33 @@ export const connectionProfileHandlers = [
     if (index < 0) return notFound()
     const current = mockConnectionProfiles[index]
     const body = (await request.json()) as ConnectionProfileUpdateRequest
-    const movedSecretEndpoint = (['tokenEndpoint', 'revocationEndpoint'] as const).some(
-      (key) => body[key] != null && body[key] !== (current[key] ?? null),
+    // as the server: a stored secret follows no moved token or revocation endpoint, and no new
+    // proxy in front of a plain http:// one
+    const secretEndpoints = [
+      ['tokenEndpoint', 'Token-Endpunkt'],
+      ['revocationEndpoint', 'Widerrufs-Endpunkt'],
+    ] as const
+    const moved = secretEndpoints.filter(
+      ([key]) => body[key] != null && body[key] !== (current[key] ?? null),
     )
-    if (current.clientSecretSet && body.clientSecret == null && movedSecretEndpoint) {
+    const plain =
+      (body.sourceProxy ?? null) !== (current.sourceProxy ?? null)
+        ? secretEndpoints.filter(([key]) => /^http:\/\//i.test(body[key] ?? ''))
+        : []
+    const keepsSecret =
+      current.clientSecretSet &&
+      body.clientSecret == null &&
+      ['OAUTH', 'CLIENT_CREDENTIALS'].includes(body.authMethod) &&
+      current.authMethod !== 'SERVICE_ACCOUNT_KEY'
+    if (keepsSecret && (moved.length > 0 || plain.length > 0)) {
+      const named = (list: typeof moved) =>
+        list.map(([key, label]) => `${label} ${body[key]}`).join(' und der ')
       return HttpResponse.json(
         {
           error:
-            'Der Token-Endpunkt ändert sich. Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet: Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für einen öffentlichen Client.',
+            moved.length > 0
+              ? `Der ${named(moved)} ${moved.length > 1 ? 'ändern' : 'ändert'} sich. Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet: Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für einen öffentlichen Client.`
+              : `Der Proxy des Zugangs ändert sich, und der ${named(plain)} ist unverschlüsselt (http://): Der Proxy sähe das hinterlegte Client-Secret. Bitte geben Sie das Client-Secret erneut an, oder ein leeres für einen öffentlichen Client.`,
           status: 400,
           code: 'CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED',
         },

@@ -411,7 +411,9 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   nie an eine neue Adresse. Für einen öffentlichen Client lässt sich stattdessen „Ohne
   Client-Secret speichern“ wählen. Ohne beides weist OPAA die Änderung ab und ändert nichts. Der
   Autorisierungs-Endpunkt bekommt kein Secret; ändert sich nur er, bleibt das Secret. Die Rückfrage
-  vor dem Speichern nennt bei jedem geänderten Endpunkt die alte und die neue Adresse.
+  vor dem Speichern nennt bei jedem geänderten Endpunkt die alte und die neue Adresse. Beginnt der
+  Token- oder Widerrufs-Endpunkt mit `http://`, verlangt auch ein geänderter Proxy das Secret neu,
+  denn der Proxy sieht dann, was dorthin geht; bei `https://` nicht.
 - **Scopes** nennt unter dem Feld die Vorgabe der Quellart, die gilt, solange das Feld leer bleibt.
 - **Dienstkonto-Schlüssel** lädt das Formular als JSON-Schlüsseldatei hoch; eine Client-ID fragt
   es dafür nicht ab, OPAA übernimmt sie aus `client_email` des Schlüssels. Gespeichert werden nur

@@ -146,6 +146,24 @@ const ENDPOINT_FIELDS = [
 /** The endpoints the client secret is sent to: a stored one never follows them to a new address. */
 const SECRET_ENDPOINTS = ['tokenEndpoint', 'revocationEndpoint'] as const
 
+const SECRET_ENDPOINT_LABELS = {
+  tokenEndpoint: 'Token-Endpunkt',
+  revocationEndpoint: 'Widerrufs-Endpunkt',
+} as const
+
+/** Why the stored secret is not kept: endpoints that move, else plain ones behind a new proxy. */
+function secretHint(
+  moved: ReadonlyArray<(typeof SECRET_ENDPOINTS)[number]>,
+  plain: ReadonlyArray<(typeof SECRET_ENDPOINTS)[number]>,
+): string {
+  const named = (keys: typeof moved) =>
+    `Der ${keys.map((key) => SECRET_ENDPOINT_LABELS[key]).join(' und der ')}`
+  if (moved.length > 0) {
+    return `${named(moved)} ${moved.length > 1 ? 'ändern' : 'ändert'} sich. Das hinterlegte Secret wird nicht an eine neue Adresse gesendet: Bitte das Secret für den neuen Endpunkt eingeben.`
+  }
+  return `Der Proxy ändert sich, und ${named(plain).replace(/^Der/, 'der')} ${plain.length > 1 ? 'sind' : 'ist'} unverschlüsselt (http://). Das hinterlegte Secret wird nicht über einen neuen Proxy gesendet: Bitte das Secret erneut eingeben.`
+}
+
 interface ConnectionProfileFormDialogProps {
   open: boolean
   /** The profile being edited; `null` creates a new one. */
@@ -225,18 +243,26 @@ export default function ConnectionProfileFormDialog({
   const connectorTypes = sourceTypes.filter((type) => !type.uploads)
   const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
   const descriptorMissing = isEdit && descriptor === null
-  // the server refuses to keep a stored secret while a token or revocation endpoint moves
+  // the server refuses to keep a stored secret while a token or revocation endpoint moves, or
+  // while the proxy changes in front of a plain http:// one
+  const enteredEndpoint = (key: (typeof SECRET_ENDPOINTS)[number]) =>
+    endpointFields.some((field) => field.key === key) ? draft[key].trim() : ''
   const movedSecretEndpoints = SECRET_ENDPOINTS.filter((key) => {
-    const entered = endpointFields.some((field) => field.key === key) ? draft[key].trim() : ''
+    const entered = enteredEndpoint(key)
     return entered !== '' && entered !== (profile?.[key] ?? '')
   })
+  const proxyChanged =
+    (takesTransport ? blankToNull(draft.sourceProxy) : null) !== (profile?.sourceProxy ?? null)
+  const plainSecretEndpoints = proxyChanged
+    ? SECRET_ENDPOINTS.filter((key) => /^http:\/\//i.test(enteredEndpoint(key)))
+    : []
   const secretMustFollow =
     profile !== null &&
     profile.clientSecretSet &&
     profile.authMethod !== 'SERVICE_ACCOUNT_KEY' &&
     usesRegistration &&
     !usesKey &&
-    movedSecretEndpoints.length > 0
+    (movedSecretEndpoints.length > 0 || plainSecretEndpoints.length > 0)
   const sendsNoSecret = secretMustFollow && withoutSecret
   const complete =
     showFields &&
@@ -518,7 +544,7 @@ export default function ConnectionProfileFormDialog({
                     onChange={(e) => setSecret(e.target.value)}
                     helperText={
                       secretMustFollow
-                        ? `Der ${movedSecretEndpoints.map((key) => (key === 'tokenEndpoint' ? 'Token-Endpunkt' : 'Widerrufs-Endpunkt')).join(' und der ')} ändert sich. Das hinterlegte Secret wird nicht an eine neue Adresse gesendet: Bitte das Secret für den neuen Endpunkt eingeben.`
+                        ? secretHint(movedSecretEndpoints, plainSecretEndpoints)
                         : profile?.clientSecretSet
                           ? 'Ein Secret ist hinterlegt. Leer lassen, um es zu behalten.'
                           : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'

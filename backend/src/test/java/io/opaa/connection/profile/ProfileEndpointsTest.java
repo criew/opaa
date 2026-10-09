@@ -269,6 +269,46 @@ class ProfileEndpointsTest {
     assertThat(profile.isClientSecretSet()).isFalse();
   }
 
+  /**
+   * Regression guard: a new proxy sees what goes to a plain {@code http://} token or revocation
+   * endpoint, so it needs the secret anew as well; over {@code https://} it sees nothing.
+   */
+  @Test
+  void aNewProxyBeforeAPlainHttpEndpointNeedsANewClientSecret() {
+    when(encryptor.encrypt("neu")).thenReturn("enc:neu");
+    ProfileEndpoints plain =
+        new ProfileEndpoints(
+            REALM.authorization(), "http://keycloak.intern/token", REALM.revocation());
+    ConnectionProfile profile = new ConnectionProfile(RealmProbe.TYPE, NOW);
+    profile.replace(values(plain, "Realm", null), "enc:alt", NOW);
+    when(profiles.findById(profile.getId())).thenReturn(Optional.of(profile));
+
+    assertThatThrownBy(
+            () ->
+                service.update(
+                    ADMIN,
+                    profile.getId(),
+                    values(plain, "Realm", "proxy.example.org:3128"),
+                    null,
+                    true))
+        .isInstanceOf(ValidationException.class)
+        .hasFieldOrPropertyWithValue("code", "CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED")
+        .hasMessageContaining("http://keycloak.intern/token");
+    assertThat(profile.getSourceProxy()).isNull();
+    assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:alt");
+
+    service.update(
+        ADMIN, profile.getId(), values(plain, "Realm", "proxy.example.org:3128"), "neu", true);
+    assertThat(profile.getSourceProxy()).isEqualTo("proxy.example.org:3128");
+    assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:neu");
+
+    ConnectionProfile secured = profileWithSecret("enc:alt");
+    service.update(
+        ADMIN, secured.getId(), values(REALM, "Realm", "proxy.example.org:3128"), null, true);
+    assertThat(secured.getSourceProxy()).isEqualTo("proxy.example.org:3128");
+    assertThat(secured.getClientSecretCiphertext()).isEqualTo("enc:alt");
+  }
+
   private ConnectionProfile profileWithSecret(String ciphertext) {
     ConnectionProfile profile = new ConnectionProfile(RealmProbe.TYPE, NOW);
     profile.replace(values(REALM, "Realm"), ciphertext, NOW);
@@ -277,6 +317,11 @@ class ProfileEndpointsTest {
   }
 
   private static ConnectionProfileValues values(ProfileEndpoints endpoints, String name) {
+    return values(endpoints, name, null);
+  }
+
+  private static ConnectionProfileValues values(
+      ProfileEndpoints endpoints, String name, String proxy) {
     return new ConnectionProfileValues(
         name,
         SERVER,
@@ -287,7 +332,7 @@ class ProfileEndpointsTest {
         null,
         null,
         null,
-        null,
+        proxy,
         false,
         endpoints);
   }

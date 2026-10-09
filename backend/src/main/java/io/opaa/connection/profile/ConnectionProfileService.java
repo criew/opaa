@@ -424,8 +424,9 @@ public class ConnectionProfileService {
   /**
    * Refuses with 400 {@value #CLIENT_SECRET_REQUIRED} a change that would keep the stored client
    * secret ({@code secret} {@code null}) while a token or revocation endpoint the profile names
-   * moves: the secret is sent to both and goes only where it was entered for. The authorization
-   * endpoint receives none; a profile without a stored secret is a public client.
+   * moves, or while the proxy changes and one of them is plain {@code http://}: the secret is sent
+   * to both, through the proxy, and goes only where it was entered for. The authorization endpoint
+   * receives none; a profile without a stored secret is a public client.
    */
   private static void requireSecretFollows(
       ConnectionProfile profile, ConnectionProfileValues validated, String secret) {
@@ -447,6 +448,21 @@ public class ConnectionProfileService {
               + " Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet:"
               + " Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für"
               + " einen öffentlichen Client.",
+          CLIENT_SECRET_REQUIRED);
+    }
+    List<String> plain =
+        Stream.of(after.token(), after.revocation())
+            .filter(Objects::nonNull)
+            .filter(endpoint -> endpoint.regionMatches(true, 0, "http://", 0, 7))
+            .toList();
+    if (!plain.isEmpty() && !Objects.equals(profile.getSourceProxy(), validated.sourceProxy())) {
+      throw new ValidationException(
+          "Der Proxy des Zugangs ändert sich, und "
+              + String.join(" sowie ", plain)
+              + (plain.size() > 1 ? " sind" : " ist")
+              + " unverschlüsselt (http://): Der Proxy sähe das hinterlegte Client-Secret."
+              + " Bitte geben Sie das Client-Secret erneut an, oder ein leeres für einen"
+              + " öffentlichen Client.",
           CLIENT_SECRET_REQUIRED);
     }
   }

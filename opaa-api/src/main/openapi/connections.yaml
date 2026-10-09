@@ -359,8 +359,10 @@ paths:
         connection. A stored client secret never follows a tokenEndpoint or revocationEndpoint
         the profile names to another address: such a change without clientSecret is 400 with
         code CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED, checked before anything else and before
-        any confirmation; an empty clientSecret makes the profile a public client. A new
-        authorizationEndpoint alone keeps the secret, which is never sent there.
+        any confirmation; an empty clientSecret makes the profile a public client. The same holds
+        for a new sourceProxy while tokenEndpoint or revocationEndpoint is plain http://, where the
+        proxy would see the secret. A new authorizationEndpoint alone keeps the secret, which is
+        never sent there.
         A new serverUrl, clientId, tenant, scope list, endpoint or authMethod discards every
         secret held under the profile; a library address under the old server address moves
         under the new one. While the change discards a stored secret of a library, ends
@@ -398,8 +400,9 @@ paths:
         "400":
           description: >
             Invalid values, a library the connector refuses the change for (code
-            CONNECTION_PROFILE_CHANGE_REJECTED), or a new tokenEndpoint or revocationEndpoint
-            without a new client secret while one is stored (code
+            CONNECTION_PROFILE_CHANGE_REJECTED), or a new tokenEndpoint or revocationEndpoint -
+            or a new sourceProxy in front of a plain http:// one - without a new client secret
+            while one is stored (code
             CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED, the error naming the old and the new
             endpoint).
           content:

@@ -201,6 +201,31 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
       expect(sent[0]).toMatchObject({ tokenEndpoint: MOVED, clientSecret: '' })
     })
 
+    it('asks for the secret anew when the proxy changes in front of a plain http endpoint', async () => {
+      mockConnectionProfiles[0] = {
+        ...mockConnectionProfiles[0],
+        tokenEndpoint: 'http://keycloak.intern/token',
+      }
+      const user = userEvent.setup()
+      renderWithProviders(<ConnectionProfileManagementPage />)
+      await user.click(
+        await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
+      )
+      const dialog = await screen.findByRole('dialog', { name: /bearbeiten/ })
+      expect(within(dialog).getByLabelText(/^Client-Secret/)).not.toBeRequired()
+
+      await user.click(within(dialog).getByLabelText(/^Proxy/))
+      await user.paste('proxy.example.org:3128')
+
+      expect(within(dialog).getByLabelText(/^Client-Secret/)).toBeRequired()
+      expect(
+        within(dialog).getByText(
+          /Der Proxy ändert sich, und der Token-Endpunkt ist unverschlüsselt \(http:\/\/\)/,
+        ),
+      ).toBeVisible()
+      expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
+    })
+
     it('keeps the stored secret where only the authorization endpoint moves', async () => {
       const user = userEvent.setup()
       renderWithProviders(<ConnectionProfileManagementPage />)
