@@ -35,7 +35,7 @@ spec:
           # unless never matches and the alert keeps working.
           expr: >-
             absent(up{ {{- $scrape }}} == 1)
-            or on() ({{ $replicas }} == 0)
+            unless on() ({{ $replicas }} == 0)
           for: 10m
           labels:
             severity: warning
