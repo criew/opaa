@@ -1,9 +1,10 @@
 name: Helm-Chart
 
 # Checks the chart under deploy/helm/opaa (ADR-0042) so it cannot silently fall behind the images
-# and their configuration. The static check runs on every PR touching the chart; the installation
-# test on kind runs for chart and image changes, nightly, and on a PR labelled "helm-suite" - the
-# opt-in for changes that affect the running chart without touching it.
+# and their configuration. The static check, including the unit test of the alerts, runs on every PR
+# touching the chart; the installation test on kind runs for chart and image changes, nightly, and on
+# a PR labelled "helm-suite" - the opt-in for changes that affect the running chart without touching
+# it.
 on:
   # No branches filter: stacked PRs (base = another feature branch) must run the checks too.
   pull_request:
@@ -27,6 +28,9 @@ env:
   KUBECONFORM_VERSION: v0.8.0
   # renovate: datasource=github-releases depName=helm/chart-testing
   CT_VERSION: v3.15.0
+  # promtool for the unit test of the chart's alerts; it ships with Prometheus.
+  # renovate: datasource=github-releases depName=prometheus/prometheus
+  PROMETHEUS_VERSION: v3.15.0
   # renovate: datasource=github-releases depName=kubernetes-sigs/kind
   KIND_VERSION: v0.33.0
   # Newest supported Kubernetes version (ADR-0042, Entscheidung 8), image from the release notes of
@@ -94,6 +98,21 @@ jobs:
       - name: Lint, Rendern und Schemaprüfung
         run: deploy/helm/ci/static-check.sh
 
+      - name: promtool installieren
+        working-directory: ${{ runner.temp }}
+        run: |
+          dir="prometheus-${PROMETHEUS_VERSION#v}.linux-amd64"
+          base="https://github.com/prometheus/prometheus/releases/download/${PROMETHEUS_VERSION}"
+          curl -sSfLO "$base/$dir.tar.gz"
+          curl -sSfLO "$base/sha256sums.txt"
+          grep " $dir.tar.gz\$" sha256sums.txt | sha256sum --check --strict -
+          tar -xzf "$dir.tar.gz" --strip-components=1 "$dir/promtool"
+          sudo install promtool /usr/local/bin/promtool
+
+      # yq comes with the runner image.
+      - name: Alarmregeln testen
+        run: deploy/helm/ci/rule-test.sh
+
       # Full version: the floating v2 tag lags behind and cannot verify the signature of current ct.
       - uses: helm/chart-testing-action@v2.9.0
         with:
@@ -159,13 +178,12 @@ jobs:
       - name: Chart installieren und helm test ausführen
         run: deploy/helm/ci/install-test.sh
 
-      # ct prints the logs of the release's pods itself; this adds the helper database and events.
-      # Diagnostics only: a step that failed before the cluster or database existed must not hide
-      # the original failure behind a second one.
+      # ct prints the logs of the release's pods itself, the evaluation database included; this adds
+      # pods and events of the whole cluster. Diagnostics only: a step that failed before the cluster
+      # existed must not hide the original failure behind a second one.
       - name: Clusterzustand ausgeben
         if: failure()
         continue-on-error: true
         run: |
           kubectl get pods --all-namespaces --output wide
           kubectl get events --all-namespaces --sort-by=.lastTimestamp | tail -n 100
-          kubectl --namespace opaa-ci-db logs deployment/postgres --tail=100

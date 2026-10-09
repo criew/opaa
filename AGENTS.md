@@ -104,10 +104,11 @@ deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
                                         # der Vorgabewerte; veröffentlicht nichts. Das Tag-Format
                                         # steht allein in release-version.sh, die Existenzprüfung
                                         # des Charts in GHCR in chart-published.sh
-deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdatenbank, dann
-                                        # ct install in einen Namespace mit Pod Security Standard
-                                        # restricted; wartet auf Backend und Frontend und führt
-                                        # helm test aus, ohne LLM. Braucht kubectl, helm, ct und
+deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der Erprobungsdatenbank
+                                        # des Charts und eingeschalteten NetworkPolicies in einen
+                                        # Namespace mit Pod Security Standard restricted; wartet auf
+                                        # Datenbank, Backend und Frontend und führt helm test aus,
+                                        # ohne LLM. Braucht kubectl, helm, ct und
                                         # einen kind-Cluster mit den Images aus dem Commit:
                                         #   kind create cluster
                                         #   docker build -f backend/Dockerfile -t opaa-ci/backend:ci .
@@ -115,6 +116,10 @@ deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdaten
                                         #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
                                         # In CI bei Änderungen am Chart und an den Image-Dateien,
                                         # nightly und per Label "helm-suite"
+deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert die PrometheusRule
+                                        # und führt deploy/helm/opaa/ci/prometheusrule-test.yaml
+                                        # mit promtool aus; braucht helm, yq und promtool. In CI
+                                        # Teil der statischen Prüfung
 
 # E2E-Suite (aus e2e/, siehe e2e/README.md)
 pnpm install                            # Abhängigkeiten installieren

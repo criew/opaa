@@ -1,9 +1,14 @@
-# Value set of the installation test on kind (install-test.sh): the helper database from
-# postgres.yaml, the images built from the commit and loaded into the cluster, throwaway secrets.
-# The model endpoints do not exist; the backend's readiness does not depend on them.
+# Value set of the installation test on kind (install-test.sh): the chart's evaluation database,
+# the images built from the commit and loaded into the cluster, throwaway secrets. The model
+# endpoints do not exist; the backend's readiness does not depend on them.
 publicBaseUrl: https://opaa.example.org
-database:
-  host: postgres.opaa-ci-db.svc.cluster.local
+evaluationDatabase:
+  enabled: true
+# Besides the default backend ingress policy, the egress policies are on, so the backend reaches the
+# evaluation database only through the rule the chart grants it.
+networkPolicy:
+  egress:
+    enabled: true
 embedding:
   baseUrl: http://models.invalid/v1
   model: nomic-embed-text
