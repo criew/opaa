@@ -254,7 +254,8 @@ public class McpServerProfileService {
             metadata.endpoints()),
         ciphertext,
         now);
-    profile.mcpServerFrame(checked.responsibleGroupId(), metadata.issuer());
+    profile.mcpServerFrame(
+        checked.responsibleGroupId(), metadata.issuer(), metadata.issuerParameterSupported());
   }
 
   private static String scopesOf(Checked checked, McpServerDiscovery.Metadata metadata) {

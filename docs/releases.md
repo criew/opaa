@@ -128,6 +128,41 @@ geänderten ablehnt und dass die Existenzprüfung ohne erreichbare Registry sche
 
 Der wöchentliche Neubau (#1450) läuft nur auf `main`. Er berührt Release-Tags nie.
 
+## Der Tag `main` geht nie zurück
+
+Läufe für verschiedene Commits von `main` laufen parallel und brechen sich nicht gegenseitig ab,
+damit jeder Commit sein `sha-<commit>` bekommt. Ohne weitere Prüfung setzte der Lauf, der zuletzt
+fertig wird, den Tag `main` – auch wenn sein Commit älter ist (#2418). Deshalb fragt `publish`
+unmittelbar vor `docker buildx imagetools create` mit `git ls-remote origin refs/heads/main` ab,
+ob der Commit des Laufs noch der Stand von `main` ist (`.github/scripts/drop_stale_main_tag.sh`).
+Ist er es nicht, entfällt nur `main`; `sha-<commit>` wird gesetzt, und der Lauf meldet das als
+Hinweis (`notice`). Das gilt gleichermaßen für
+
+- einen älteren Lauf, der langsamer ist als der jüngere,
+- die Wiederholung (*Re-run*) eines alten Laufs,
+- den wöchentlichen Neubau: Er baut den Stand von `main` zum Startzeitpunkt. Kommt während des
+  Baus ein Push, setzt er `main` nicht mehr, der Lauf des Pushs übernimmt.
+
+Lässt sich der Stand von `main` auch nach drei Versuchen nicht abfragen, scheitert `publish`, ohne
+einen Tag zu setzen; der Job lässt sich wiederholen. Release-Tags sind nicht betroffen: Ein
+Release-Lauf setzt `main` nie, die Prüfung fragt dann gar nicht nach.
+
+**Restfenster.** Zwischen der Abfrage und dem Setzen der Tags liegen Sekunden. Ein Commit, der in
+diesem Fenster auf `main` landet, hat dann noch kein Image; sein eigener Lauf setzt `main` erst
+nach dem Bau, also Minuten später und damit danach. `main` könnte nur zurückgehen, wenn der Lauf
+des jüngeren Commits vollständig in diese Sekunden fiele. Eine zweite Prüfung nach dem Setzen
+gibt es deshalb nicht: Sie fände fast immer nur einen jüngeren Lauf, der noch baut, und meldete
+damit einen Zustand, der sich gleich selbst behebt. Backend und Frontend fragen getrennt ab: Landet
+ein Push genau zwischen beiden Abfragen, zeigt `main` kurz auf gemischte Stände (etwa das Backend
+des jüngeren, das Frontend des älteren Commits), bis der Lauf des neuen Commits beide setzt.
+
+Ein einzelner Netzfehler bei der Abfrage kostet den Lauf keine Tags: Das Skript versucht es dreimal
+im Abstand von fünf Sekunden, erst danach scheitert `publish`.
+
+**Folge für gescheiterte Läufe.** Scheitert der Lauf des jüngsten Commits, bleibt `main` auf dem
+zuletzt gesetzten Stand, auch wenn danach noch ein Lauf eines älteren Commits fertig wird. Die
+Wiederholung des gescheiterten Laufs setzt `main` – solange kein neuerer Commit auf `main` liegt.
+
 ## Wer ein Release anlegt
 
 Releases legen Maintainer an, nie ein Agent ohne ausdrückliche Freigabe. Technisch kann heute
@@ -233,6 +268,12 @@ Docker-Dokumentation):
 
 Ein Digest ohne Tag gilt für die Existenzprüfung nicht als veröffentlicht; ein abgebrochener Lauf
 belegt also keine Version.
+
+**Zeitgrenzen.** Ein Bein von `build` braucht üblicherweise ein bis vier Minuten, ohne Cache
+(wöchentlicher Neubau) etwas länger. Nach 30 Minuten bricht GitHub es ab, statt den Lauf stundenlang
+zu blockieren; die übrigen Jobs haben Grenzen von 10 bis 15 Minuten. Ein abgebrochenes Bein holt
+*Re-run failed jobs* nach: Die fertigen Beine behalten ihre Digests, `publish` setzt die Tags erst
+danach (#2427).
 
 **Nativ statt emuliert.** Für ein öffentliches Repository stehen arm64-Runner ohne Aufpreis zur
 Verfügung. Ein emulierter Bau (QEMU) auf einem amd64-Runner wäre einfacher zu verdrahten, aber der

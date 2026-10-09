@@ -41,6 +41,17 @@ class McpServerDiscoveryTest {
   }
 
   @Test
+  void readsWhetherTheAuthorizationResponseNamesItsIssuer() {
+    assertThat(discovery.discover(server.resource()).issuerParameterSupported()).isFalse();
+
+    server.announceIssuerParameter(false);
+    assertThat(discovery.discover(server.resource()).issuerParameterSupported()).isFalse();
+
+    server.announceIssuerParameter(true);
+    assertThat(discovery.discover(server.resource()).issuerParameterSupported()).isTrue();
+  }
+
+  @Test
   void refusesMetadataNamingAnotherResource() {
     server.announceResource("http://127.0.0.1:1/mcp");
 

@@ -942,6 +942,15 @@ Entscheidungen des Maintainers vom 05.10.2026 zu M2 aus #2275 und zur Schwellenw
   Zeitstempel; die Frist läuft ab dem festgehaltenen Beginn. Die Neuanlage des Anbieters löst nach
   dem Commit einen Abgleich aus, der diesen Beginn verwirft. Nur wenn dieser Abgleich scheitert und
   der Anbieter vor dem täglichen Abgleich erneut gelöscht wird, zählt der alte Beginn.
+- **Erledigt (09.10.2026, #2289):** Das Löschen eines Anbieters hält je Issuer den Zeitpunkt fest
+  (`oidc_provider_removals`, identity; eine erneute Löschung ersetzt die Zeile).
+  `AccountUsability.Snapshot#deactivationsOf` liefert ihn für ein Konto ohne Anbieter als `since`;
+  `ConnectionLifecycle` nimmt wie bei Verzeichnis- und lokaler Sperre den späteren von
+  festgehaltenem Beginn und Akt. Die Frist beginnt damit beim letzten Löschen, unabhängig davon, ob
+  ein Abgleich dazwischen gelang. Verworfen: den Beginn bei jedem Abgleich zu verwerfen, der die
+  Issuer-URI wieder zuordnet — genau dieser Abgleich ist es, der im Fehlerfall ausbleibt; ihn in
+  die Transaktion der Neuanlage zu ziehen, hängte die Anbieterverwaltung an einen Fehler der
+  Verbindungen.
 
 ### Akzeptierte Restrisiken der Personenzahlen
 
@@ -1064,6 +1073,41 @@ sofort zurück. Ersetzt in „Widerruf nach dem Commit“ den Teil „im aufrufe
   Commit und nach einem Rollback wird nichts übergeben. Die Integrationstests warten vor jeder
   Widerrufsprüfung, bis der Pool leer ist, und `OpaaTestBeanResetListener` wartet vor jeder
   Testmethode darauf.
+
+## Nachtrag vom 09.10.2026: Mix-up-Schutz im Rücksprung (#2266)
+
+- **Behoben: Restrisiko Mix-up (RFC 9207)** aus dem Nachtrag „OAuth-Kern“ und der offene Punkt
+  aus „MCP-Grundlage“. Der Rücksprung reicht `iss` von der Seite `/connections/callback` unverändert
+  durch `POST /api/v1/connections/authorizations/complete`.
+- **Erwarteter Issuer je Anmeldung:** `OAuthAuth` trägt den Issuer (`issuer`) und die Ankündigung
+  `authorization_response_iss_parameter_supported` (`issuerParameterSupported`). Ein Konnektor
+  deklariert sie für einen festen Anbieter. Für einen MCP-Server füllt `ProfileRegistrations` sie
+  aus der Erkennung, die `McpServerDiscovery` bei jedem Speichern durchführt (`connection_profiles.issuer`,
+  `issuer_parameter_supported`). Eine Ankündigung ohne Issuer weist `OAuthAuth` ab.
+- **Festgehalten beim Start:** `ConnectionAuthorization` übernimmt beide Werte
+  (`expected_issuer`, `issuer_required`). Ein später geänderter Zugang ändert die Vergleichsgröße
+  einer laufenden Zustimmung nicht.
+- **Regel (`ResponseIssuer`):** Ist ein Issuer bekannt, muss ein geliefertes `iss` ihm Zeichen für
+  Zeichen entsprechen, ohne Normalisierung (auch kein abschließender Schrägstrich). Mit
+  Ankündigung ist `iss` Pflicht, ohne darf es fehlen. Geprüft wird direkt nach dem Verbrauch des
+  `state` und vor allem anderen, auch vor einer Fehlerantwort des Anbieters: Ein Code erreicht
+  keinen Token-Endpunkt, die Zustimmung bleibt verbraucht, die Antwort ist `400` mit
+  `CONNECTION_AUTHORIZATION_ISSUER_MISMATCH` und einer deutschen Meldung. Das Log nennt nur den
+  Zugang, weder Code, `state` noch den gelieferten Wert.
+- **Geltung:** Die Prüfung hängt an der Anmeldung des Zugangs, nicht am Zweck. Sie gilt für
+  verbundene Konten, „Quelle verbinden“ und Neuverbinden gleich, bei MCP-Servern immer, bei
+  Konnektoren mit deklariertem Issuer. Ein Konnektor, dessen Endpunkte der Zugang setzt
+  (`Endpoint.FromProfile`, etwa ein selbst betriebenes Keycloak), kennt seinen Issuer nicht aus der
+  Deklaration; für ihn wird nichts verglichen, bis der Zugang den Issuer selbst nennt. Heute bietet
+  kein Produktionskonnektor OAuth an.
+- **Belegt** in `McpServerIssuerIntegrationTest` mit zwei `FakeMcpServer`: Mix-up mit fremdem
+  `iss` (kein Code am Token-Endpunkt, `state` verbraucht, Log ohne Code und `state`), fehlendes
+  `iss` trotz Ankündigung, korrektes `iss`, abschließender Schrägstrich, Anbieter ohne Ankündigung,
+  Fehlerantwort mit fremdem `iss` und Issuer des Starts nach Wechsel des Autorisierungsservers.
+  `ConnectionAuthorizationIntegrationTest` belegt den deklarierten Issuer eines Konnektors gegen
+  den `FakeAuthorizationServer`, `ResponseIssuerTest` die Regel, `McpServerDiscoveryTest` das Lesen
+  der Ankündigung. `KeycloakOAuthConsentTest` (nur `keycloakIntegrationTest`) zeigt, dass Keycloak
+  `iss` ankündigt und liefert und nur der eigene Issuer angenommen wird.
 
 ## Referenzen
 

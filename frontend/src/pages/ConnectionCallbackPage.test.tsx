@@ -100,8 +100,20 @@ describe('ConnectionCallbackPage', () => {
 
     expect(await screen.findByText('Verbundene Konten', { selector: 'div' })).toBeInTheDocument()
     expect(await screen.findByText('Ihr Konto ist mit „Zugang Dropbox“ verbunden.')).toBeVisible()
-    expect(sent).toEqual([{ state: 's-1', code: 'c-1', error: null }])
+    expect(sent).toEqual([{ state: 's-1', code: 'c-1', error: null, iss: null }])
     expect(screen.getByTestId('address')).toHaveTextContent(/^\/settings\/accounts$/)
+  })
+
+  it('passes the issuer the provider named on unchanged, for the server to compare', async () => {
+    const sent = serveComplete(DONE)
+    renderAt(
+      `/connections/callback?code=c-12&state=s-12&iss=${encodeURIComponent('https://as.example/auth')}`,
+    )
+
+    expect(await screen.findByText('Verbundene Konten', { selector: 'div' })).toBeInTheDocument()
+    expect(sent).toEqual([
+      { state: 's-12', code: 'c-12', error: null, iss: 'https://as.example/auth' },
+    ])
   })
 
   it('redeems a state once even when the page mounts again while the first answer is pending', async () => {
@@ -139,7 +151,7 @@ describe('ConnectionCallbackPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Die Zustimmung beim Anbieter wurde abgelehnt oder abgebrochen.',
     )
-    expect(sent).toEqual([{ state: 's-2', code: null, error: 'access_denied' }])
+    expect(sent).toEqual([{ state: 's-2', code: null, error: 'access_denied', iss: null }])
     // neither the state nor the provider's answer stays in the address
     expect(screen.getByTestId('address')).toHaveTextContent(/^\/connections\/callback$/)
     expect(screen.getByRole('button', { name: 'Zu den verbundenen Konten' })).toBeInTheDocument()

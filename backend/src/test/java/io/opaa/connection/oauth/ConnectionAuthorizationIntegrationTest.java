@@ -248,6 +248,30 @@ class ConnectionAuthorizationIntegrationTest {
     assertNothingLeaked();
   }
 
+  /** RFC 9207 for a connector: the issuer its sign-in declares, compared without normalization. */
+  @Test
+  void aConnectorsDeclaredIssuerIsCompared() throws Exception {
+    complete(
+            "dev-user",
+            service.start(caller, profile, ConnectionAuthorizationPurpose.ACCOUNT),
+            "https://anderer-anbieter.example.org")
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.code").value(ConnectionAuthorizationService.ISSUER_MISMATCH));
+    complete(
+            "dev-user",
+            service.start(caller, profile, ConnectionAuthorizationPurpose.ACCOUNT),
+            PROVIDER.issuer() + "/")
+        .andExpect(status().isBadRequest());
+    assertThat(PROVIDER.requests("authorization_code")).isEmpty();
+
+    complete(
+            "dev-user",
+            service.start(caller, profile, ConnectionAuthorizationPurpose.ACCOUNT),
+            PROVIDER.issuer())
+        .andExpect(status().isOk());
+    assertThat(PROVIDER.requests("authorization_code")).hasSize(1);
+  }
+
   @Test
   void aStateCompletesOnlyOnceOnlyForItsPersonAndOnlyInTime() throws Exception {
     ConnectionAuthorizationService.Started started =
@@ -686,6 +710,12 @@ class ConnectionAuthorizationIntegrationTest {
 
   private ResultActions complete(String user, ConnectionAuthorizationService.Started started)
       throws Exception {
+    return complete(user, started, null);
+  }
+
+  /** Completes as the provider answers, naming {@code iss} where not {@code null}. */
+  private ResultActions complete(
+      String user, ConnectionAuthorizationService.Started started, String iss) throws Exception {
     URI url = started.authorizationUrl();
     String code = PROVIDER.approve(url);
     String state = query(url).get("state");
@@ -693,7 +723,9 @@ class ConnectionAuthorizationIntegrationTest {
     ResultActions result =
         mockMvc.perform(
             as(user, post(AUTHORIZATIONS + "/complete"))
-                .content("{\"state\": \"%s\", \"code\": \"%s\"}".formatted(state, code)));
+                .content(
+                    "{\"state\": \"%s\", \"code\": \"%s\"%s}"
+                        .formatted(state, code, iss == null ? "" : ", \"iss\": \"" + iss + "\"")));
     answers.add(result.andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8));
     return result;
   }

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.connection.oauth.OAuthClient;
+import io.opaa.connection.oauth.ResponseIssuer;
 import io.opaa.connection.profile.ClientRegistration;
 import io.opaa.connection.profile.ProfileEndpoints;
 import io.opaa.indexing.source.ClientAuthentication;
@@ -15,6 +16,9 @@ import io.opaa.indexing.source.SignInRejectedException;
 import io.opaa.indexing.source.SourceCredentialsException;
 import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -24,13 +28,16 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The OAuth client against a real Keycloak (#2168): a person's consent by the authorization code
  * flow with PKCE, an offline grant, rotation of the refresh token, refusal of a used or revoked
  * one, and a code without its verifier refused - what the fake authorization server asserts,
  * re-verified against the answers a real provider gives. The endpoints come from the profile, as
- * for any Keycloak.
+ * for any Keycloak. Keycloak announces and names {@code iss} (RFC 9207); a sign-in declaring its
+ * issuer accepts that response, one declaring another refuses it.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class KeycloakOAuthConsentTest {
@@ -84,6 +91,31 @@ class KeycloakOAuthConsentTest {
   }
 
   @Test
+  void keycloakNamesTheIssuerItAnnouncesAndOnlyThatIssuerIsAccepted() throws Exception {
+    HttpResponse<String> discovery =
+        HttpClient.newHttpClient()
+            .send(
+                HttpRequest.newBuilder(
+                        URI.create(keycloak.issuerUri() + "/.well-known/openid-configuration"))
+                    .build(),
+                HttpResponse.BodyHandlers.ofString());
+    JsonNode metadata = JsonMapper.builder().build().readTree(discovery.body());
+    assertThat(metadata.get("issuer").asString()).isEqualTo(keycloak.issuerUri());
+    assertThat(metadata.get("authorization_response_iss_parameter_supported").asBoolean()).isTrue();
+
+    URI url =
+        client.authorizationUrl(
+            registration(), FROM_PROFILE, "zustand", challenge(verifier()), REDIRECT);
+    String iss = signIn(url).get("iss");
+
+    assertThat(iss).isEqualTo(keycloak.issuerUri());
+    assertThat(ResponseIssuer.of(declaring(keycloak.issuerUri())).accepts(iss)).isTrue();
+    assertThat(ResponseIssuer.of(declaring(keycloak.issuerUri())).accepts(null)).isFalse();
+    assertThat(ResponseIssuer.of(declaring(keycloak.baseUrl() + "/realms/anderes")).accepts(iss))
+        .isFalse();
+  }
+
+  @Test
   void aCodeWithoutItsVerifierIsRefused() throws Exception {
     String verifier = verifier();
     URI url =
@@ -108,6 +140,19 @@ class KeycloakOAuthConsentTest {
     assertThat(back).containsEntry("state", "zustand");
     return client.exchange(
         registration(), FROM_PROFILE, back.get("code"), verifier, REDIRECT, Instant.now());
+  }
+
+  /** {@link #FROM_PROFILE} declaring {@code issuer} with Keycloak's announcement. */
+  private static OAuthAuth declaring(String issuer) {
+    return new OAuthAuth(
+        FROM_PROFILE.authorization(),
+        FROM_PROFILE.token(),
+        FROM_PROFILE.revocation(),
+        FROM_PROFILE.defaultScopes(),
+        FROM_PROFILE.authorizationParams(),
+        FROM_PROFILE.clientAuth(),
+        issuer,
+        true);
   }
 
   private static Map<String, String> signIn(URI url) {
