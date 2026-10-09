@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
  * Reads the change streams of one {@link FileSync} run - a change run, or the end of a round proven
  * by the change log. A reported file goes the run's way at once; a reported removal waits until
  * every stream is read ({@link #applyRemovals()}) and counts only for a document of its stream's
- * containers while they are reachable. The removal itself stays with the run ({@link Sink#remove}).
+ * containers while they are reachable. The last report of a file is its state: a later report of
+ * it as present withdraws an earlier removal. The removal itself stays with the run ({@link
+ * Sink#remove}).
  */
 final class ChangeStreams {
 
@@ -73,8 +75,8 @@ final class ChangeStreams {
   private final List<PendingRemoval> pendingRemovals = new ArrayList<>();
 
   /**
-   * @param atRoundsEnd the reader closes a round: a deselected file waits with the removals, and a
-   *     later report of a file as present withdraws an earlier removal of it
+   * @param atRoundsEnd the reader closes a round: a deselected file waits with the removals
+   *     instead of going at once
    */
   ChangeStreams(
       IndexingRun frame, DocumentRepository documentRepository, Sink sink, boolean atRoundsEnd) {
@@ -184,10 +186,8 @@ final class ChangeStreams {
             sink.remove(entry.filePath());
           }
         } else {
-          if (atRoundsEnd) {
-            // the file exists now: an earlier report of its removal is outdated
-            pendingRemovals.removeIf(removal -> removal.filePath().equals(entry.filePath()));
-          }
+          // the file exists now: an earlier report of its removal is outdated
+          pendingRemovals.removeIf(removal -> removal.filePath().equals(entry.filePath()));
           sink.visit(entry);
         }
       }

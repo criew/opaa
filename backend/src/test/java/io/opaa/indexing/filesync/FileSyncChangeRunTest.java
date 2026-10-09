@@ -169,6 +169,23 @@ class FileSyncChangeRunTest {
     assertThat(harness.stored(InMemoryFileStore.filePath("A", "a.txt"))).isEmpty();
   }
 
+  // regression guard for #2430: a later report of a file as present withdraws its earlier removal
+  @Test
+  void aFileReportedRemovedAndThenPresentAgainStaysADocument() {
+    store
+        .reportingAsLogged()
+        .remove("A", "b.txt")
+        .changed("A", "b.txt")
+        .put("A", "b.txt", "Bleibt nicht.")
+        .changed("A", "b.txt");
+
+    FileSyncHarness.Run run = harness.changeRun(store.reset());
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(InMemoryFileStore.filePath("A", "b.txt"))).isPresent();
+  }
+
   /**
    * A provider's account-wide stream also reports files of a container another stream serves; its
    * removal is no finding for that container's documents.
