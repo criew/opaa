@@ -34,9 +34,11 @@ spec:
           ports:
             - name: postgres
               containerPort: 5432
+          # Over TCP: the entrypoint's temporary server during initialisation listens on the socket
+          # only, so the probe cannot report ready before the final server is up.
           readinessProbe:
             exec:
-              command: ["pg_isready", "-U", "opaa", "-d", "opaa"]
+              command: ["pg_isready", "-h", "127.0.0.1", "-U", "opaa", "-d", "opaa"]
             periodSeconds: 5
           volumeMounts:
             - name: data
