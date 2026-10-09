@@ -89,8 +89,9 @@ Neuindizierung nötig.
 **Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung.** Die
 Punkte 1 bis 4 werden einmalig in der `.env.docker` erledigt; ohne sie startet das Backend nicht
 mehr. Punkt 5 betrifft nicht die Konfiguration, sondern die Eigentumsverhältnisse auf dem Host —
-ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Alle Schritte gehören **vor**
-das `docker compose up -d`:
+ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Punkt 6 betrifft die
+Compose-Datei selbst — ohne ihn ist die Oberfläche nicht mehr erreichbar. Alle Schritte gehören
+**vor** das `docker compose up -d`:
 
 1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Das Wurzelgeheimnis des anwendungseigenen
    Ausstellers. Im Betriebsmodus `oidc` bricht der Start ohne es ab, ebenso bei weniger als 32
@@ -144,6 +145,20 @@ das `docker compose up -d`:
    beim Start. Einzelheiten, der Weg ohne `sudo`,
    die Lage auf einem Netzlaufwerk und die Fehlermeldungen, an denen man es erkennt, stehen unter
    [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+
+6. **Containerport des Frontends von `80` auf `8080` umstellen — Pflicht für jede eigene
+   Compose-Datei.** Der Frontend-Container läuft nicht mehr als `root` und lauscht deshalb auf
+   `8080`. Eine Compose-Datei, die nicht aus diesem Repository stammt, etwa nach
+   [„Deployment aus vorgebauten Images"](#deployment-aus-vorgebauten-images-ghcr), bildet noch auf
+   `80` ab. Nach dem nächsten Pull antwortet der Host-Port dann nicht mehr, und ein vorgeschalteter
+   Proxy meldet `502`. Umzustellen sind:
+
+   - die Port-Abbildung des Dienstes `frontend`, etwa `"127.0.0.1:3000:80"` zu
+     `"127.0.0.1:3000:8080"`,
+   - ein eigener Proxy, der den Container im Docker-Netz direkt anspricht, von `frontend:80` auf
+     `frontend:8080`.
+
+   Einzelheiten stehen unter [„Frontend-Laufzeitimage"](#frontend-laufzeitimage).
 
 Was sich **nicht** ändert: Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind. Wer
 bisher einen Identitätsanbieter betreibt, betreibt ihn unverändert weiter; die lokale
@@ -570,7 +585,7 @@ aber Indizierung und Fragen schlagen fehl.
 
 | Service     | Host-Port | Container-Port | Beschreibung                                          |
 |-------------|-----------|-----------------|--------------------------------------------------------|
-| frontend    | 3000      | 80              | React-App über Nginx bereitgestellt                    |
+| frontend    | 3000      | 8080            | React-App über Nginx bereitgestellt                    |
 | backend     | 8081      | 8080            | Spring Boot API                                         |
 | postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
@@ -888,6 +903,34 @@ Stack, ohne Meldungstext. Nicht abgedeckt sind die Protokollausgaben eingebunden
 Zeilenwerte nennen können, und der Eintrag „Unexpected error“ für einen unerwarteten Fehler einer
 Anfrage. Wer das Log über `INFO` hinaus öffnet, sollte es deshalb wie Inhalte behandeln. Was die Besitzerin wissen muss, steht im
 Laufprotokoll ihrer Bibliothek ([Benutzerverwaltung](benutzerverwaltung.md), „Verbundene Konten“).
+
+## Frontend-Laufzeitimage
+
+Das Frontend liefert die Oberfläche aus und reicht `/api/` und `/mcp` an das Backend weiter. Es
+läuft auf dem unprivilegierten nginx-Image (`nginxinc/nginx-unprivileged`) und hält dieselben
+Einschränkungen ein, die ein Kubernetes-Cluster mit Pod Security Standard `restricted` verlangt:
+
+- **Ohne root:** Der Prozess läuft als Benutzer `101` und lauscht auf **Port 8080**. Der Compose-Stack
+  bildet den Host-Port `OPAA_FRONTEND_PORT` darauf ab.
+- **Nur lesbares Dateisystem:** Beim Start schreibt der Container ausschließlich unter `/tmp`. Dort
+  liegen die erzeugte Serverkonfiguration (`/tmp/nginx/conf.d/`), die PID-Datei und die
+  Zwischenablage für Uploads. Der Compose-Stack startet den Dienst deshalb mit `read_only: true`,
+  `/tmp` als `tmpfs`, ohne Capabilities und mit `no-new-privileges`. Unter Kubernetes gehört ein
+  `emptyDir` nach `/tmp`.
+- **`/tmp` ist unter Compose Arbeitsspeicher:** Das `tmpfs` ist auf 512 MiB begrenzt. Dort puffert
+  nginx Uploads und, bei langsamen Clients, große Antworten des Backends. Je Antwort ist der
+  Puffer begrenzt, darüber liefert nginx im Takt des Clients aus. Reicht der Platz bei vielen
+  gleichzeitigen großen Uploads nicht, wird die Grenze in der eigenen Compose-Datei angehoben.
+- **Beliebige Kennung:** Das Image läuft auch unter einer vom Cluster zugewiesenen Kennung, etwa
+  bei OpenShift, solange `/tmp` beschreibbar ist.
+- **Backend-Ziel einstellbar:** `OPAA_BACKEND_UPSTREAM` nennt Host und Port des Backends. Ein Wert,
+  der nicht die Form `host[:port]` hat (Port 1 bis 65535), bricht den Start mit einer Meldung im
+  Protokoll ab, statt in die nginx-Konfiguration zu gelangen.
+
+**Bestehende Installation.** Mit der `docker-compose.yml` aus diesem Repository ändert sich nichts:
+Sie bildet den Host-Port bereits auf `8080` ab. Eine eigene Compose-Datei und ein eigener Proxy im
+Docker-Netz müssen umgestellt werden, siehe Punkt 6 der
+[Vorbereitungsschritte](#vorbereitungsschritte-für-bestandsinstallationen).
 
 ## Bereitschaft und Lebendigkeit
 
@@ -1464,6 +1507,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | — (leer) | nicht gesetzt | Kommagetrennte Hostnamen weiterer interner Identitätsanbieter. Die beiden Adressen aus `OPAA_OIDC_ISSUER_URI`/`OPAA_OIDC_JWK_SET_URI` (Schema, Host, Port) sind ohne Eintrag erlaubt |
 | `OPAA_CSP_CONNECT_SRC_EXTRA` | — (kein Spring-Property; leer als Image-Default des Frontend-nginx-`envsubst`-Templates) | nicht gesetzt (auskommentiert) — der Compose-Standardfall `docker,dev` startet keinen Keycloak (Compose-Profil `oidc`); der Kommentar in `.env.docker.example` verweist auf den Wechsel zu `docker,oidc` | Zusätzliche Origin(s) in der `connect-src`-Richtlinie des Frontend-nginx, leerzeichengetrennt bei mehreren. Erforderlich, wenn die OIDC-Authority auf einem anderen Origin liegt als das Frontend selbst — sonst blockiert die Content-Security-Policy die OIDC-Anmeldung stillschweigend |
 | `OPAA_DEMO_MODE` | — (kein Spring-Property; `"false"` als Image-Default des Frontend-nginx-`envsubst`-Templates, siehe `frontend/Dockerfile`) | nicht gesetzt (auskommentiert) | Schaltet den Quellen- und Demo-Hinweis im Dialog „Info zu …" ein, den das Profilmenü öffnet (`frontend/src/layouts/DemoNotice.tsx` in `AboutDialog.tsx`; bis #1921 stand er in einer Fußzeile unter jeder Seite) — **nur für Demo-Instanzen gedacht**, nicht für reguläre OPAA-Installationen. Nach demselben Muster wie `OPAA_CSP_CONNECT_SRC_EXTRA`: `frontend/nginx.conf` setzt den Wert beim Containerstart per `envsubst` in eine kleine, gleichen-Origin-JavaScript-Antwort unter `/runtime-config.js` (normalisiert über eine nginx-`map`-Direktive auf ein literales `true`/`false`, damit ein fehlerhafter Wert nie ungeprüft in die Antwort gelangt) — kein Rebuild des Images nötig, um den Hinweis umzuschalten |
+| `OPAA_BACKEND_UPSTREAM` | — (kein Spring-Property; `backend:8080` als Image-Default des Frontend-nginx-`envsubst`-Templates, siehe `frontend/Dockerfile`) | nicht gesetzt (Image-Default passt zum Compose-Dienstnamen) | Host und Port (`host[:port]`), an die der nginx im Frontend-Container `/api/` und `/mcp` weiterreicht. Nötig, wenn das Backend nicht unter dem Namen `backend` erreichbar ist, etwa unter Kubernetes mit dem Service-Namen des Releases. Ein Wert mit Schema, Pfad, Leerzeichen oder Zeilenumbruch bricht den Containerstart ab (siehe [„Frontend-Laufzeitimage"](#frontend-laufzeitimage)) |
 | `OPAA_DEMO_CHAT_IMPORT_ENABLED` | `false` | nicht gesetzt (auskommentiert) | Schaltet den Einspielweg für vorbereitete Chatverläufe der Demo-Instanz ein (`POST /api/v1/spaces/{spaceId}/chat-imports`): Die aufrufende Person legt in einem Space, dessen Mitglied sie ist, einen eigenen Chat mit vorgegebenen Fragen, Antworten, Zeitpunkten und Belegen an, ohne Modellaufruf. Jeder Beleg muss auf ein Dokument zeigen, das sie lesen darf, und jede Fundstellenmarke im Antworttext auf einen Beleg derselben Runde mit dessen Dateinamen; Dateiname und Metadaten des Belegs stammen aus dem Dokument, mit denselben Feldern wie bei einer erzeugten Antwort. Jeder eingespielte Chat trägt einen Importschlüssel, den nur der Import setzt; `GET` auf dieselbe Adresse listet die eingespielten Chats der aufrufenden Person mit ihrem Schlüssel, und ein zweiter Import unter demselben Schlüssel im selben Space wird abgelehnt. **Nur für Demo-Instanzen gedacht und dort nur für die Dauer des Seed-Laufs gesetzt**, danach entfernt und das Backend neu gestartet: Solange der Schalter an ist, kann jedes angemeldete Konto Antworttexte ohne Modell und mit beliebigen Zeitpunkten in eigene Chats schreiben – auf einer Instanz mit geteilten Demo-Konten sehen andere Besuchende diese Inhalte. Ohne den Schalter existiert die Route nicht und antwortet wie jede unbekannte Adresse |
 | **Docker-Compose-Ports** | | | |
 | `OPAA_BACKEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8081`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `8081` | Backend-Host-Port |
@@ -1512,7 +1556,7 @@ Auf `/api/`-Antworten setzt zusätzlich Spring Security eigene `X-Content-Type-O
 
 **`Strict-Transport-Security` wird hier bewusst nicht gesetzt.** Der Frontend-Container terminiert im Compose-Betrieb kein TLS — er spricht selbst nur `http` (siehe Hinweis zu `X-Forwarded-Proto` oben). Diesen Header trotzdem hier zu setzen wäre wirkungslos für Installationen ohne vorgelagerten TLS-Weg und schädlich für solche mit einem: HSTS an zwei Stellen im selben Antwortpfad zu pflegen — hier und am vorgelagerten Proxy — schafft nur eine weitere Möglichkeit, dass beide auseinanderlaufen (z. B. unterschiedliches `max-age` oder `includeSubDomains`), ohne einen Sicherheitsgewinn gegenüber einer einzigen, korrekt gepflegten Stelle. Wer OPAA hinter einem TLS-terminierenden Proxy betreibt (siehe Hinweis oben), setzt `Strict-Transport-Security` an genau diesem äußeren Proxy — dort, wo TLS tatsächlich endet.
 
-**`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image; `.env.docker.example` führt den Origin des mitgelieferten Keycloak als auskommentiertes Beispiel, siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten für den Fall, in dem er tatsächlich gebraucht wird). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`- und `OPAA_DEMO_*`-Variablen (Letztere für den Demo-Hinweis, siehe `OPAA_DEMO_MODE` oben), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
+**`connect-src` und ein OIDC-Anbieter auf fremdem Origin.** `oidc-client-ts` holt die OIDC-Discovery-Metadaten und tauscht später den Auth-Code gegen Tokens jeweils per `fetch` direkt aus dem Browser gegen die Authority — liegt die Authority nicht auf demselben Origin wie das Frontend, blockiert eine reine `connect-src 'self'`-Richtlinie diese Aufrufe **stillschweigend** (kein Fehler in der Oberfläche, die Anmeldung tut einfach nichts). `frontend/nginx.conf` ist deshalb kein fest gebackenes Ergebnis mehr, sondern ein `envsubst`-Template (`/etc/nginx/templates/default.conf.template`, siehe `frontend/Dockerfile`): Die Umgebungsvariable `OPAA_CSP_CONNECT_SRC_EXTRA` wird beim Containerstart in `connect-src 'self' ${OPAA_CSP_CONNECT_SRC_EXTRA}` eingesetzt (leer per Voreinstellung im Image; `.env.docker.example` führt den Origin des mitgelieferten Keycloak als auskommentiertes Beispiel, siehe [„OIDC (Keycloak)"](#oidc-keycloak) unten für den Fall, in dem er tatsächlich gebraucht wird). `NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO|BACKEND)_` im Dockerfile begrenzt die Ersetzung auf `OPAA_CSP_*`-, `OPAA_DEMO_*`- und `OPAA_BACKEND_*`-Variablen (für den Demo-Hinweis siehe `OPAA_DEMO_MODE` oben, für das Weiterleitungsziel `OPAA_BACKEND_UPSTREAM`), damit `envsubst` nicht versehentlich echte nginx-Variablen (`$scheme`, `$host`, `$remote_addr`, …) in derselben Datei anfasst. Details zum Betrieb mit einem eigenen Behörden-Identitätsanbieter: Abschnitt „OIDC (Keycloak)" unten.
 
 Die genannten Header sind gegen den Produktions-Build (`pnpm run build`) und das gebaute Docker-Image verprobt: `dist/index.html` referenziert ausschließlich selbst gehostete, gehashte `<script>`- und `<link>`-Dateien (keine Inline-Skripte), und ein Abruf des laufenden Containers zeigt alle Header sowohl auf `/` als auch auf `/api/`-Antworten (Vererbung über den `server`-Block, siehe Kommentare in `frontend/nginx.conf`).
 
