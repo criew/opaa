@@ -27,8 +27,7 @@ class AccountUsabilityTest {
 
   private final LocalCredentialsRepository credentials = mock(LocalCredentialsRepository.class);
   private final OidcProviderRepository providers = mock(OidcProviderRepository.class);
-  private final OidcProviderRemovalRepository removals =
-      mock(OidcProviderRemovalRepository.class);
+  private final OidcProviderRemovalRepository removals = mock(OidcProviderRemovalRepository.class);
   private final List<OidcProvider> providerRows = new ArrayList<>();
   private OidcProvider enabledProvider;
   private OidcProvider localRow;
@@ -94,8 +93,7 @@ class AccountUsabilityTest {
         .thenReturn(List.of(new OidcProviderRemoval(gone, NOW.minusSeconds(60))));
 
     assertThat(usability.snapshot().deactivationsOf(List.of(user)))
-        .containsEntry(
-            user.getId(), new AccountUsability.Deactivation(NOW.minusSeconds(60)));
+        .containsEntry(user.getId(), new AccountUsability.Deactivation(NOW.minusSeconds(60)));
   }
 
   @Test

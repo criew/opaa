@@ -189,8 +189,8 @@ class ProviderShutdownIntegrationTest {
   }
 
   /**
-   * Regression guard for #2289: deleted, re-created with the reconciliation after it failed, deleted
-   * again - the deletion period starts with the second deletion, not the first.
+   * Regression guard for #2289: deleted, re-created with the reconciliation after it failed,
+   * deleted again - the deletion period starts with the second deletion, not the first.
    */
   @Test
   void aSecondDeletionStartsTheDeletionPeriodAnewEvenWithoutAReconciliationInBetween()

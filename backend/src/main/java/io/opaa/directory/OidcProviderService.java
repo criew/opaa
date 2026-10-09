@@ -308,8 +308,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
    *
    * <p>Its accounts count as deactivated afterwards: their connections end at once and the deletion
    * period of their private libraries begins with this deletion, even after an earlier one of the
-   * same issuer - so the deletion needs {@code confirmConnections}
-   * wherever persons may have connections.
+   * same issuer - so the deletion needs {@code confirmConnections} wherever persons may have
+   * connections.
    */
   @Transactional
   public void deleteProvider(
