@@ -104,15 +104,21 @@ echo "matches as expected: same chart packaged twice"
 cp -R "$CHART_DIR" "$work_dir/other-chart"
 echo "# another commit" >>"$work_dir/other-chart/values.yaml"
 CHART_DIR="$work_dir/other-chart" deploy/helm/ci/package-chart.sh v1.2.3 "$work_dir/other" >/dev/null
-if output="$(deploy/helm/ci/chart-matches.sh "$work_dir/packages/opaa-1.2.3.tgz" "$work_dir/other/opaa-1.2.3.tgz" 2>&1)"; then
-  echo "Expected chart-matches.sh to refuse a chart of another state, but it matched." >&2
-  exit 1
-elif ! grep -q "differs in content" <<<"$output"; then
-  echo "chart-matches.sh failed, but not for the content:" >&2
-  echo "$output" >&2
-  exit 1
-fi
-echo "refused as expected: chart of another state"
+# Runs chart-matches.sh and fails unless it exits with the expected code and names the expected text.
+expect_match_exit() {
+  local code="$1" expected="$2" output rc=0
+  shift 2
+  output="$(deploy/helm/ci/chart-matches.sh "$@" 2>&1)" || rc=$?
+  if ((rc != code)) || ! grep -q -- "$expected" <<<"$output"; then
+    echo "Expected chart-matches.sh to exit $code naming '$expected', got $rc:" >&2
+    echo "$output" >&2
+    return 1
+  fi
+}
+expect_match_exit 1 "differs in content" "$work_dir/packages/opaa-1.2.3.tgz" "$work_dir/other/opaa-1.2.3.tgz"
+echo "refused as expected: chart of another state (exit 1)"
+expect_match_exit 2 "is not a file" "$work_dir/packages/opaa-1.2.3.tgz" "$work_dir/other/missing.tgz"
+echo "refused as expected: missing package (exit 2)"
 
 # The registry lookup of the release guards counts a registry without an answer as an error, never
 # as a free version. Port 9 on the loopback interface is closed on the runners.
@@ -122,5 +128,13 @@ if output="$(REGISTRY_SCHEME=http deploy/helm/ci/oci-published.sh 127.0.0.1:9/cr
   exit 1
 fi
 echo "refused as expected: no registry"
+# Upper case is no valid OCI repository name; such a name is refused before any request.
+rc=0
+output="$(deploy/helm/ci/oci-published.sh ghcr.io/Criew/opaa-backend 1.2.3 2>&1)" || rc=$?
+if ((rc != 2)) || ! grep -q "not a valid OCI repository name" <<<"$output"; then
+  echo "Expected oci-published.sh to refuse an upper-case repository name with exit 2, got $rc: $output" >&2
+  exit 1
+fi
+echo "refused as expected: invalid repository name"
 
 echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging, re-run provenance, registry lookup"

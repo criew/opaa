@@ -65,9 +65,13 @@ Bevor gebaut wird, bricht der Lauf ab, wenn:
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
   sondern durch die nächste Patch-Version abgelöst,
 - GHCR die Abfrage nach einem Image oder dem Chart nicht eindeutig beantwortet. Frei ist eine
-  Version nur, wenn die Registry mit HTTP 404 „nicht vorhanden“ meldet. Eine Verweigerung (401
-  oder 403, auch schon bei der Token-Anfrage), ein Serverfehler (5xx) oder eine Registry ohne
-  Antwort stoppt den Lauf, bevor ein Image veröffentlicht ist. Abhilfe bei einer Verweigerung:
+  Version nur, wenn die Registry mit HTTP 404 und dem Registry-Fehlercode `MANIFEST_UNKNOWN` oder
+  `NAME_UNKNOWN` „nicht vorhanden“ meldet. Eine 404 ohne diesen Code (etwa die Klartext-Antwort
+  eines Routers), eine Verweigerung (401 oder 403, auch schon bei der Token-Anfrage), ein
+  Serverfehler (5xx) oder eine Registry ohne Antwort stoppt den Lauf, bevor ein Image
+  veröffentlicht ist. Ein Repository-Name mit Großbuchstaben, etwa aus einem Fork, ist kein
+  gültiger OCI-Name und wird gar nicht erst abgefragt; der Image-Name wird dafür wie beim Push
+  kleingeschrieben. Abhilfe bei einer Verweigerung:
   Unter *Packages → (Paket aus der Meldung) → Package settings → Manage Actions access* dem
   Repository Schreibzugriff geben bzw. die Organisationseinstellung für Pakete prüfen und dann
   *Re-run all jobs*. Tritt das schon beim allerersten Release auf, weil das Paket noch nicht
@@ -98,9 +102,10 @@ Archive selbst taugt nicht, weil `helm package` die Zeitstempel des Checkouts ü
 Inhalt ab, bricht der Job ab und attestiert nichts. Das betrifft vor allem eine Wiederholung:
 Wurde das Tag zwischenzeitlich auf einen anderen Commit gesetzt und hat dessen Lauf die Version
 schon veröffentlicht, trüge der fremde Chart sonst die Provenance dieses Commits. Die Meldung, dass
-der Push entfällt, erscheint nur bei Übereinstimmung. Ein solcher Abbruch lässt sich nicht durch
-Wiederholen beheben; die Version ist vergeben, das Release erscheint mit der nächsten
-Patch-Version.
+der Push entfällt, erscheint nur bei Übereinstimmung. Ein Abbruch wegen abweichenden Inhalts lässt
+sich nicht durch Wiederholen beheben; die Version ist vergeben, das Release erscheint mit der
+nächsten Patch-Version. Fehlt dagegen eines der Pakete oder ist es nicht lesbar, meldet der Job
+das getrennt und attestiert ebenfalls nichts; dieser Fall lässt sich wiederholen.
 
 **Grenze:** Eine Wiederholung nutzt die Workflow-Datei des getaggten Commits. Ein dauerhafter
 Fehler im Workflow selbst, etwa eine Attestierung, die nie gelingt, lässt sich für dieses Tag

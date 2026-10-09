@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Tells whether a tag exists in an OCI repository, container image and Helm chart alike, for the
 # release guards in publish-images.yml: prints "true" or "false". Asks the registry API itself and
-# counts only HTTP 404 as free; 401, 403, 5xx, a refused token or a network error fail with the
-# registry's answer, so an unreadable repository never passes as an unused version. Optional
-# credentials: REGISTRY_USER and REGISTRY_PASSWORD. REGISTRY_SCHEME=http serves a local registry.
+# counts only a 404 carrying the registry error MANIFEST_UNKNOWN or NAME_UNKNOWN as free; any other
+# answer (401, 403, 5xx, a plain 404 of a router, a refused token, a network error) fails, so an
+# unreadable repository never passes as an unused version. Optional credentials: REGISTRY_USER and
+# REGISTRY_PASSWORD. REGISTRY_SCHEME=http serves a local registry.
 set -euo pipefail
 
 if (($# != 2)); then
@@ -14,8 +15,16 @@ ref="${1#oci://}"
 tag="$2"
 registry="${ref%%/*}"
 repository="${ref#*/}"
-if [[ "$ref" != */* || -z "$registry" || -z "$repository" ]]; then
+# Repository names as the OCI distribution spec allows them: lower case only. A name outside it
+# never reaches the registry API, whose router may answer it with a plain 404.
+host_pattern='^[A-Za-z0-9.-]+(:[0-9]+)?$'
+name_pattern='^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$'
+if [[ "$ref" != */* ]] || ! [[ "$registry" =~ $host_pattern ]]; then
   echo "$1 is not a reference registry/repository" >&2
+  exit 2
+fi
+if ! [[ "$repository" =~ $name_pattern ]]; then
+  echo "$repository is not a valid OCI repository name (lower case, see the OCI distribution spec)" >&2
   exit 2
 fi
 if ! [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]]; then
@@ -94,6 +103,13 @@ fi
 
 case "$status" in
   200) echo true ;;
-  404) echo false ;;
+  404)
+    if jq -e '[.errors[]?.code] | any(. == "MANIFEST_UNKNOWN" or . == "NAME_UNKNOWN")' \
+      "$work_dir/body" >/dev/null 2>&1; then
+      echo false
+    else
+      fail "HTTP 404 without the registry error MANIFEST_UNKNOWN or NAME_UNKNOWN"
+    fi
+    ;;
   *) fail "HTTP $status" ;;
 esac

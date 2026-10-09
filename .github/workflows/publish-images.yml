@@ -71,7 +71,10 @@ jobs:
           CHART: ${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/opaa
           REGISTRY_USER: ${{ github.actor }}
           REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+        # IMAGE in lower case like the name metadata-action pushes; the chart reference stays as
+        # given, so an owner with upper case fails the lookup before any image is pushed.
         run: |
+          IMAGE="$(tr '[:upper:]' '[:lower:]' <<<"$IMAGE")"
           if ! deploy/helm/ci/release-version.sh "$TAG" >/dev/null; then
             echo "::error::Tag $TAG ist keine Version vX.Y.Z bzw. vX.Y.Z-<vorab> (docs/releases.md)"
             exit 1
@@ -230,8 +233,13 @@ jobs:
             echo "::error::Kein Digest für $ref: $out"
             exit 1
           fi
-          if ! deploy/helm/ci/chart-matches.sh "$PACKAGE" "$RUNNER_TEMP/pulled/$(basename "$PACKAGE")"; then
-            echo "::error::$ref weicht inhaltlich vom Chart dieses Commits ab und wird nicht attestiert (docs/releases.md)"
+          rc=0
+          deploy/helm/ci/chart-matches.sh "$PACKAGE" "$RUNNER_TEMP/pulled/$(basename "$PACKAGE")" || rc=$?
+          if ((rc == 1)); then
+            echo "::error::$ref weicht inhaltlich vom Chart dieses Commits ab und wird nicht attestiert; die Version ist vergeben (docs/releases.md)"
+            exit 1
+          elif ((rc != 0)); then
+            echo "::error::$ref ließ sich nicht mit dem Chart dieses Commits vergleichen, siehe Meldung oben; nichts attestiert, der Job ist wiederholbar"
             exit 1
           fi
           if [[ "$PUBLISHED" == true ]]; then
