@@ -68,18 +68,24 @@
   dependencyDashboardTitle: 'Abhängigkeits-Übersicht (Renovate)',
   dependencyDashboardLabels: ['ci'],
 
-  // Vorgabeliste aus :ignoreModulesAndTests (via config:recommended) ohne "**/test/**" und
-  // "**/tests/**": ignorePaths filtert die Dateiliste VOR jedem Manager, und die Image-Pins der
-  // Integrationssuiten liegen unter backend/src/test/. Die Liste ist eine Kopie — bei einem
+  // Vorgabeliste aus :ignoreModulesAndTests (via config:recommended) ohne "**/test/**",
+  // "**/tests/**" und "**/examples/**": ignorePaths filtert die Dateiliste VOR jedem Manager, die
+  // Image-Pins der Integrationssuiten liegen unter backend/src/test/ und die des
+  // Kubernetes-Erprobungsaufbaus unter examples/. Die Liste ist eine Kopie — bei einem
   // Renovate-Major gegen das Preset abgleichen (docs/renovate.md).
   ignorePaths: [
     '**/node_modules/**',
     '**/bower_components/**',
     '**/vendor/**',
-    '**/examples/**',
     '**/__tests__/**',
     '**/__fixtures__/**',
   ],
+
+  // Der kubernetes-Manager kennt kein Dateimuster von sich aus; er liest die Images der Hilfsdienste
+  // des Erprobungsaufbaus (#2423). Die OPAA-Images dort setzt trial.sh, sie tragen keinen Pin.
+  kubernetes: {
+    managerFilePatterns: ['examples/kubernetes-trial/manifests/*.yaml'],
+  },
 
   // Regex-Manager für Pins, die kein regulärer Manager sieht; jeder liest Datasource und Paket
   // aus einem "renovate:"-Kommentar direkt über der gepinnten Zeile (übliches Renovate-Muster).
@@ -282,6 +288,13 @@
     // Image also unbeaufsichtigt auf main lassen; ein Vorschlag bleibt als PR zur Entscheidung.
     {
       matchPackageNames: ['quay.io/keycloak/keycloak'],
+      automerge: false,
+    },
+    // Den Erprobungsaufbau unter examples/ prüft keine CI; ein Bump seiner Hilfsdienste wird lokal
+    // mit "trial.sh up" belegt (examples/kubernetes-trial/README.md) und nie automatisch gemergt.
+    {
+      matchManagers: ['kubernetes'],
+      addLabels: ['ci'],
       automerge: false,
     },
     // Die Werkzeuge der Chart-Prüfung prüft nur der Helm-Workflow, und der ist kein Required
