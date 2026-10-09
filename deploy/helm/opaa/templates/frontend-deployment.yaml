@@ -38,6 +38,8 @@ spec:
               value: {{ include "opaa.backendUpstream" . | quote }}
             - name: OPAA_CSP_CONNECT_SRC_EXTRA
               value: {{ .Values.frontend.cspConnectSrcExtra | quote }}
+            - name: OPAA_BACKEND_READ_TIMEOUT
+              value: {{ .Values.frontend.backendReadTimeout | quote }}
             {{- with .Values.frontend.extraEnv }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
