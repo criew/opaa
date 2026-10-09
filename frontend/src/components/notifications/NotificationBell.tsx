@@ -90,7 +90,17 @@ export default function NotificationBell() {
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={() => setAnchorEl(null)}
-        slotProps={{ paper: { sx: { minWidth: 320, maxWidth: 420 } } }}
+        slotProps={{
+          paper: {
+            // Capped to the viewport minus the popover's 16px margin on each side, so the paper
+            // never grows wider than the screen and gets shifted off its left edge.
+            sx: {
+              minWidth: 'min(320px, calc(100vw - 32px))',
+              maxWidth: 'min(420px, calc(100vw - 32px))',
+              overflowWrap: 'anywhere',
+            },
+          },
+        }}
       >
         {notifications.length === 0 ? (
           <MenuItem disabled>Keine Benachrichtigungen</MenuItem>
