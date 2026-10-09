@@ -307,6 +307,9 @@ Die Obergrenze von fünfzig Bereichen ist eine feste Konstante.
 - Eine Ordneränderung im Änderungsstrom löst immer einen Vollabgleich aus, auch wenn der Ordner
   außerhalb der Bereiche liegt.
 - Ohne Zugang hängt Delegation an der Sorgfalt der Verwaltenden der Bibliothek (Funktionskonto).
+- Eine Datei, die die `download-timeout`-Frist dauerhaft reißt (sehr große Datei, langsame Leitung),
+  gilt in jedem Lauf als vorübergehend fehlgeschlagen und hält den Änderungsstrom an. Abhilfe:
+  `download-timeout` erhöhen.
 
 ## 14. Nicht gebaut
 

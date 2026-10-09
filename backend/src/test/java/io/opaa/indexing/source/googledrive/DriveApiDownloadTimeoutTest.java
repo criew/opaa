@@ -10,17 +10,18 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * The download timeout of {@link DriveApi} covers the whole body: a host that keeps trickling bytes
  * is cut off at the deadline as a transient failure and leaves no temp file.
  */
 class DriveApiDownloadTimeoutTest {
+
+  @TempDir private Path staging;
 
   private FakeDriveServer server;
 
@@ -41,7 +42,6 @@ class DriveApiDownloadTimeoutTest {
             "slow", "Langsam.txt", "text/plain", FakeDriveServer.ROOT_ID, null, new byte[300]);
     slow.trickle = true;
     DriveApi api = api(Duration.ofSeconds(1));
-    Set<String> before = tempFiles();
     long start = System.nanoTime();
 
     Throwable thrown =
@@ -50,7 +50,9 @@ class DriveApiDownloadTimeoutTest {
     assertThat(thrown).isInstanceOf(DriveApiException.class);
     assertThat(((DriveApiException) thrown).kind()).isEqualTo(DriveApiException.Kind.TRANSIENT);
     assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(10));
-    assertThat(tempFiles()).isEqualTo(before);
+    try (var left = Files.list(staging)) {
+      assertThat(left).isEmpty();
+    }
   }
 
   @Test
@@ -73,15 +75,7 @@ class DriveApiDownloadTimeoutTest {
     SourceSettings settings =
         new SourceSettings(null, server.base().toString(), null, null, false, null);
     return new DriveApiFactory(properties, TargetAddressValidator.disabled(), wait -> {})
-        .open(settings, () -> FakeDriveServer.TOKEN, RequestBudget.unbounded());
-  }
-
-  private static Set<String> tempFiles() throws Exception {
-    try (var files = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
-      return files
-          .map(file -> file.getFileName().toString())
-          .filter(name -> name.startsWith("opaa-gdrive-"))
-          .collect(Collectors.toSet());
-    }
+        .open(settings, () -> FakeDriveServer.TOKEN, RequestBudget.unbounded())
+        .stagingIn(staging);
   }
 }

@@ -81,33 +81,8 @@ public final class GraphClient {
    *     charged to
    * @param meter receives the downloaded bytes; requests are counted by the listener
    * @param timeout bounds each attempt, the reading of a JSON answer included
-   */
-  public GraphClient(
-      URI origin,
-      Supplier<String> token,
-      Predicate<String> renewedAfterRejection,
-      HttpClient httpClient,
-      TargetAddressValidator targetAddressValidator,
-      RateLimitHandling rateLimit,
-      SourceRequestMeter meter,
-      Duration timeout,
-      long maxJsonBytes) {
-    this(
-        origin,
-        token,
-        renewedAfterRejection,
-        httpClient,
-        targetAddressValidator,
-        rateLimit,
-        meter,
-        timeout,
-        DEFAULT_DOWNLOAD_TIMEOUT,
-        maxJsonBytes);
-  }
-
-  /**
-   * Like the shorter constructor, with {@code downloadTimeout} bounding one {@link #download} from
-   * the start of its answer to the last byte.
+   * @param downloadTimeout bounds one {@link #download} from the start of its answer to the last
+   *     byte; must be positive
    */
   public GraphClient(
       URI origin,
@@ -131,6 +106,10 @@ public final class GraphClient {
     this.meter = Objects.requireNonNull(meter, "meter");
     this.timeout = Objects.requireNonNull(timeout, "timeout");
     this.downloadTimeout = Objects.requireNonNull(downloadTimeout, "downloadTimeout");
+    if (downloadTimeout.isZero() || downloadTimeout.isNegative()) {
+      throw new IllegalArgumentException(
+          "downloadTimeout must be positive, got " + downloadTimeout);
+    }
     if (maxJsonBytes <= 0) {
       throw new IllegalArgumentException("maxJsonBytes must be positive, got " + maxJsonBytes);
     }

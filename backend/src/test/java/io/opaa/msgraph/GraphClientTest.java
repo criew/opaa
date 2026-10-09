@@ -436,6 +436,7 @@ class GraphClientTest {
             new RateLimitHandling(POLICY, slept::add, budget),
             meter,
             Duration.ofSeconds(5),
+            GraphClient.DEFAULT_DOWNLOAD_TIMEOUT,
             GraphClient.DEFAULT_MAX_JSON_BYTES);
 
     assertThatThrownBy(() -> client.page("drives/" + DRIVE + "/root/delta", Map.of(), null))
@@ -568,6 +569,7 @@ class GraphClientTest {
         new RateLimitHandling(policy, slept::add, listener),
         meter,
         timeout,
+        GraphClient.DEFAULT_DOWNLOAD_TIMEOUT,
         maxJsonBytes);
   }
 

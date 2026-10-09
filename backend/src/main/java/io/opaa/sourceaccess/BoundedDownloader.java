@@ -31,8 +31,16 @@ public class BoundedDownloader {
   /** Per-request timeout of an unattended background download. */
   static final Duration DOWNLOAD_TIMEOUT = Duration.ofSeconds(120);
 
+  /**
+   * Bound of one whole transfer to disk, from the answer's start to its last byte. Fixed: the byte
+   * ceiling of every caller is at most a few hundred MiB, which this allows on a slow line; an
+   * overrun is an {@link java.net.http.HttpTimeoutException}, retried with the next run.
+   */
+  static final Duration TOTAL_DOWNLOAD_TIMEOUT = Duration.ofMinutes(10);
+
   private final TargetAddressValidator targetAddressValidator;
   private final SourceRequestPolicy requestPolicy;
+  private final Duration totalTimeout;
 
   /** With {@link SourceRequestPolicy#defaults()}. */
   public BoundedDownloader(TargetAddressValidator targetAddressValidator) {
@@ -41,8 +49,16 @@ public class BoundedDownloader {
 
   public BoundedDownloader(
       TargetAddressValidator targetAddressValidator, SourceRequestPolicy requestPolicy) {
+    this(targetAddressValidator, requestPolicy, TOTAL_DOWNLOAD_TIMEOUT);
+  }
+
+  BoundedDownloader(
+      TargetAddressValidator targetAddressValidator,
+      SourceRequestPolicy requestPolicy,
+      Duration totalTimeout) {
     this.targetAddressValidator = targetAddressValidator;
     this.requestPolicy = requestPolicy;
+    this.totalTimeout = totalTimeout;
   }
 
   /**
@@ -308,8 +324,9 @@ public class BoundedDownloader {
 
   /**
    * The one transfer to disk behind {@link #download} and {@link #downloadBounded}: a temp file
-   * named after {@code fileName}'s extension, filled under {@code maxBytes} while streaming; on any
-   * failure the partial file is deleted before the exception leaves.
+   * named after {@code fileName}'s extension, filled under {@code maxBytes} and within the total
+   * timeout while streaming; on any failure the partial file is deleted before the exception
+   * leaves.
    */
   private DownloadedFile downloadToTempFile(
       HttpClient httpClient,
@@ -333,6 +350,7 @@ public class BoundedDownloader {
             redirectPolicy,
             requestPolicy.rateLimitHandling(rateLimitListener),
             authorizationScope);
+    long deadline = System.nanoTime() + totalTimeout.toNanos();
 
     try (InputStream body = response.body()) {
       if (response.statusCode() != 200) {
@@ -346,7 +364,7 @@ public class BoundedDownloader {
       Path tempFile = Files.createTempFile("opaa-", extractExtension(fileName));
       try (OutputStream out =
           Files.newOutputStream(tempFile, StandardOpenOption.TRUNCATE_EXISTING)) {
-        BoundedStreams.copy(body, out, maxBytes);
+        BoundedStreams.copyBefore(body, out, maxBytes, deadline);
       } catch (BoundedStreams.LimitExceededException e) {
         Files.deleteIfExists(tempFile);
         throw new AttachmentTooLargeException();

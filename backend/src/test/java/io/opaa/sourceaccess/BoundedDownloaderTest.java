@@ -64,6 +64,44 @@ class BoundedDownloaderTest {
   }
 
   @Test
+  void aBodyTricklingInPastTheTotalTimeoutIsCutOffAndLeavesNoTempFile() throws Exception {
+    server.createContext(
+        "/slow.trickletest",
+        exchange -> {
+          exchange.sendResponseHeaders(200, 0);
+          try (var out = exchange.getResponseBody()) {
+            for (int i = 0; i < 300; i++) {
+              out.write('x');
+              out.flush();
+              Thread.sleep(100);
+            }
+          } catch (IOException e) {
+            // the client hung up
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
+    BoundedDownloader limited =
+        new BoundedDownloader(
+            TargetAddressValidator.disabled(),
+            SourceRequestPolicy.defaults(),
+            Duration.ofSeconds(1));
+    long start = System.nanoTime();
+
+    assertThatThrownBy(
+            () ->
+                limited.download(
+                    httpClient, null, baseUrl + "/slow.trickletest", "slow.trickletest", 1024))
+        .isInstanceOf(java.net.http.HttpTimeoutException.class);
+
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(10));
+    try (var left = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      assertThat(left.filter(file -> file.getFileName().toString().endsWith(".trickletest")))
+          .isEmpty();
+    }
+  }
+
+  @Test
   void preservesFileExtension() throws IOException, InterruptedException {
     // download() now streams the response body itself (via
     // RedirectFollowingFetcher.sendFollowingRedirects, HttpResponse<InputStream>) instead of

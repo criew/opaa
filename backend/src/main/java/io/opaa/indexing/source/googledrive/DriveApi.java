@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -55,6 +56,9 @@ final class DriveApi {
   private final Duration backoff;
   private final Sleeper sleeper;
 
+  /** Where downloads are staged; {@code null} for the system temp directory. */
+  private Path tempDirectory;
+
   DriveApi(
       URI apiBase,
       Supplier<String> token,
@@ -78,6 +82,11 @@ final class DriveApi {
     this.maxRetries = Math.max(0, maxRetries);
     this.backoff = backoff;
     this.sleeper = sleeper;
+  }
+
+  DriveApi stagingIn(Path directory) {
+    this.tempDirectory = directory;
+    return this;
   }
 
   RequestBudget budget() {
@@ -106,7 +115,10 @@ final class DriveApi {
     Path temp = null;
     try (Answer answer = send(path, query)) {
       long deadline = System.nanoTime() + downloadTimeout.toNanos();
-      temp = Files.createTempFile("opaa-gdrive-", ".bin");
+      temp =
+          tempDirectory == null
+              ? Files.createTempFile("opaa-gdrive-", ".bin")
+              : Files.createTempFile(tempDirectory, "opaa-gdrive-", ".bin");
       try (InputStream in = answer.response().body();
           OutputStream out = Files.newOutputStream(temp)) {
         BoundedStreams.copyBefore(in, out, maxBytes, deadline);
@@ -119,6 +131,14 @@ final class DriveApi {
           DriveApiException.Kind.TOO_LARGE,
           200,
           "Die Datei ist größer als " + maxBytes + " Bytes.");
+    } catch (HttpTimeoutException e) {
+      deleteQuietly(temp);
+      throw new DriveApiException(
+          DriveApiException.Kind.TRANSIENT,
+          200,
+          "Die Übertragung von Google Drive dauerte länger als "
+              + downloadTimeout.toSeconds()
+              + " s.");
     } catch (IOException e) {
       deleteQuietly(temp);
       throw new DriveApiException(

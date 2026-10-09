@@ -6,9 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.http.HttpTimeoutException;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -21,13 +21,20 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public final class BoundedStreams {
 
   /** Closes a body still being read when its deadline passes. */
-  private static final ScheduledExecutorService DEADLINES =
-      Executors.newSingleThreadScheduledExecutor(
-          runnable -> {
-            Thread thread = new Thread(runnable, "bounded-read-deadline");
-            thread.setDaemon(true);
-            return thread;
-          });
+  private static final ScheduledExecutorService DEADLINES = deadlineScheduler();
+
+  private static ScheduledExecutorService deadlineScheduler() {
+    ScheduledThreadPoolExecutor scheduler =
+        new ScheduledThreadPoolExecutor(
+            1,
+            runnable -> {
+              Thread thread = new Thread(runnable, "bounded-read-deadline");
+              thread.setDaemon(true);
+              return thread;
+            });
+    scheduler.setRemoveOnCancelPolicy(true);
+    return scheduler;
+  }
 
   private BoundedStreams() {}
 
