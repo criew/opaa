@@ -1,0 +1,31 @@
+# Value set of the installation test on kind (install-test.sh): the helper database from
+# postgres.yaml, the images built from the commit and loaded into the cluster, throwaway secrets.
+# The model endpoints do not exist; the backend's readiness does not depend on them.
+publicBaseUrl: https://opaa.example.org
+database:
+  host: postgres.opaa-ci-db.svc.cluster.local
+embedding:
+  baseUrl: http://models.invalid/v1
+  model: nomic-embed-text
+  dimensions: 768
+bootstrap:
+  initialAdmin:
+    email: it-postfach@example.org
+  chatModel:
+    baseUrl: http://models.invalid/v1
+    model: qwen2.5:3b
+secrets:
+  jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
+  databasePassword: ci-only-password
+  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
+  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+backend:
+  image:
+    repository: opaa-ci/backend
+    tag: ci
+    pullPolicy: Never
+frontend:
+  image:
+    repository: opaa-ci/frontend
+    tag: ci
+    pullPolicy: Never

@@ -134,6 +134,16 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s]+)',
       ],
     },
+    // Die Werkzeuge der Chart-Prüfung (#2355) stehen als Umgebungsvariable, Action-Eingabe oder
+    // Matrix-Eintrag direkt unter ihrem Kommentar. Die älteste unterstützte Helm-3-Version trägt
+    // bewusst keinen Kommentar: Sie ist eine Zusage aus ADR-0042, kein Stand zum Nachziehen.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['.github/workflows/helm-chart.yml'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*(?:[A-Za-z_]+:|-)\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)',
+      ],
+    },
   ],
 
   packageRules: [
