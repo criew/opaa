@@ -61,8 +61,16 @@ expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 
 # The release packaging of publish-images.yml without the push: a release and a pre-release tag are
-# packaged, malformed tags and versions Helm does not accept as SemVer are refused.
+# packaged, malformed tags and versions Helm does not accept as SemVer are refused. The tag format
+# itself comes from release-version.sh, which the image release guard calls as well.
 echo "--- release packaging"
+for tag in v1.2.3 v1.2.3-rc.1; do
+  version="$(deploy/helm/ci/release-version.sh "$tag")"
+  if [[ "$version" != "${tag#v}" ]]; then
+    echo "release-version.sh turned $tag into '$version' instead of '${tag#v}'" >&2
+    exit 1
+  fi
+done
 for tag in v1.2.3 v1.2.3-rc.1; do
   CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh "$tag" "$work_dir/packages" >/dev/null
   echo "packaged as expected: $tag"

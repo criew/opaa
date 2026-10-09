@@ -15,13 +15,7 @@ fi
 tag="$1"
 out_dir="$2"
 
-# Same form as the release guard in publish-images.yml; SemVer details such as leading zeros in the
-# pre-release part are left to helm package, which refuses them.
-if ! [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
-  echo "Tag $tag is not a release version vX.Y.Z or vX.Y.Z-<pre> (docs/releases.md)" >&2
-  exit 1
-fi
-version="${tag#v}"
+version="$("$(dirname "$0")/release-version.sh" "$tag")"
 
 mkdir -p "$out_dir"
 helm package "$CHART_DIR" --version "$version" --app-version "$version" --destination "$out_dir" >&2
