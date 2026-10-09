@@ -166,8 +166,10 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
       --values "$CHART_DIR/ci/minimal-values.yaml" "$@" | sed -n '/^NOTES:/,$p'
   }
   # Checks the CSP warning for an issuer (publicBaseUrl https://opaa.example.org) and a value of
-  # cspConnectSrcExtra; "warn" expects the warning naming the issuer's origin, "silent" none.
+  # cspConnectSrcExtra; "warn" expects the warning naming the issuer's origin, "silent" neither
+  # warning nor path note, "path" the note that a path admits the discovery document only.
   # Every case runs; the block fails at its end if any of them did not hold.
+  path_note="erlaubt nur das Discovery-Dokument"
   csp_failures=0
   csp_case() {
     local expectation="$1" issuer="$2" extra="$3" reason="${4:-}" output origin
@@ -186,9 +188,16 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
       echo "Expected the warning for issuer $issuer with cspConnectSrcExtra '$extra' to name '$reason':" >&2
       sed -n '/WIRD BLOCKIERT/,+3p' <<<"$output" >&2
       csp_failures=$((csp_failures + 1))
-    elif [[ "$expectation" == silent && "$output" == *"WIRD BLOCKIERT"* ]]; then
+    elif [[ "$expectation" != warn && "$output" == *"WIRD BLOCKIERT"* ]]; then
       echo "Expected no CSP warning for issuer $issuer with cspConnectSrcExtra '$extra':" >&2
       sed -n '/WIRD BLOCKIERT/,+2p' <<<"$output" >&2
+      csp_failures=$((csp_failures + 1))
+    elif [[ "$expectation" == silent && "$output" == *"$path_note"* ]]; then
+      echo "Expected no path note for issuer $issuer with cspConnectSrcExtra '$extra'." >&2
+      csp_failures=$((csp_failures + 1))
+    elif [[ "$expectation" == path && "$output" != *"$path_note"* ]]; then
+      echo "Expected the note that a path admits the discovery document only, for issuer $issuer with cspConnectSrcExtra '$extra':" >&2
+      sed -n '/ORIGIN$/,+2p' <<<"$output" >&2
       csp_failures=$((csp_failures + 1))
     else
       echo "${expectation} as expected: issuer $issuer, cspConnectSrcExtra '$extra'"
@@ -204,10 +213,15 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
   csp_case silent "$issuer" "*.example.org"
   csp_case silent "$issuer" "LOGIN.Example.ORG"
   csp_case silent "$issuer" "https://login.example.org:443"
-  # A path restricts the source, checked against the discovery document: ending in / it is a
-  # prefix, otherwise it must match exactly - the issuer's own path admits neither endpoint.
-  csp_case silent "$issuer" "https://login.example.org/realms/"
-  csp_case silent "$issuer" "https://login.example.org/realms/opaa/"
+  # A path restricts the source: ending in / it is a prefix, otherwise it must match exactly. Only
+  # an empty path or / admits the whole origin; any other path that covers the discovery document
+  # still may miss the token endpoint, the issuer's own path admits neither.
+  csp_case silent "$issuer" "https://login.example.org/"
+  csp_case path "$issuer" "https://login.example.org/realms/"
+  csp_case path "$issuer" "https://login.example.org/realms/opaa/"
+  csp_case path "$issuer" "https://login.example.org/realms/opaa/.well-known/"
+  csp_case path "https://login.microsoftonline.com/t1/v2.0" "https://login.microsoftonline.com/t1/v2.0/"
+  csp_case silent "https://login.microsoftonline.com/t1/v2.0" "https://login.microsoftonline.com"
   csp_case warn "$issuer" "https://login.example.org/realms/opaa"
   csp_case warn "$issuer" "https://login.example.org/other/"
   csp_case silent "$issuer" "https://other.example.net login.example.org"
@@ -229,9 +243,11 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
   csp_case warn "http://login.example.org/realms/opaa" "login.example.org"
   csp_case warn "$issuer" "self"
   # An http issuer on an https page is mixed content, whatever the CSP admits; the browser only
-  # makes an exception for the local machine.
+  # makes an exception for the local machine (loopback addresses and *.localhost).
   csp_case warn "http://login.example.org/realms/opaa" "http://login.example.org" "Mixed Content"
   csp_case silent "http://localhost:8180/realms/opaa" "http://localhost:8180"
+  csp_case silent "http://foo.localhost:8180/realms/opaa" "http://foo.localhost:8180"
+  csp_case silent "http://127.0.0.2:8180/realms/opaa" "http://127.0.0.2:8180"
   # The browser also calls the token endpoint, which Helm cannot look up: an admitted issuer on
   # another origin still points to it, an issuer on the page's own origin needs no note.
   output="$(notes --set "bootstrap.oidc.issuerUri=$issuer" --set bootstrap.oidc.clientId=opaa \
