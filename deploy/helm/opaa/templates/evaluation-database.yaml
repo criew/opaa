@@ -71,10 +71,14 @@ spec:
                 secretKeyRef:
                   name: {{ include "opaa.secretName" . }}
                   key: OPAA_DB_PASSWORD
+          # Over TCP, not the socket: on the first start the entrypoint runs a temporary server for
+          # initdb that answers on the socket only, while the service still refuses connections.
           readinessProbe:
             exec:
               command:
                 - pg_isready
+                - -h
+                - 127.0.0.1
                 - -U
                 - {{ .Values.database.username | quote }}
                 - -d
