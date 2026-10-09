@@ -178,13 +178,12 @@ jobs:
       - name: Chart installieren und helm test ausführen
         run: deploy/helm/ci/install-test.sh
 
-      # ct prints the logs of the release's pods itself; this adds the helper database and events.
-      # Diagnostics only: a step that failed before the cluster or database existed must not hide
-      # the original failure behind a second one.
+      # ct prints the logs of the release's pods itself, the evaluation database included; this adds
+      # pods and events of the whole cluster. Diagnostics only: a step that failed before the cluster
+      # existed must not hide the original failure behind a second one.
       - name: Clusterzustand ausgeben
         if: failure()
         continue-on-error: true
         run: |
           kubectl get pods --all-namespaces --output wide
           kubectl get events --all-namespaces --sort-by=.lastTimestamp | tail -n 100
-          kubectl --namespace opaa-ci-db logs deployment/postgres --tail=100

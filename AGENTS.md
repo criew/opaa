@@ -97,10 +97,11 @@ deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesa
                                         # drei unterstützten Kubernetes-Versionen, Prüfung der
                                         # Abbruchregeln; braucht helm und kubeconform. Neue
                                         # Wertesätze dort ablegen, sie werden automatisch geprüft
-deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdatenbank, dann
-                                        # ct install in einen Namespace mit Pod Security Standard
-                                        # restricted; wartet auf Backend und Frontend und führt
-                                        # helm test aus, ohne LLM. Braucht kubectl, helm, ct und
+deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der Erprobungsdatenbank
+                                        # des Charts und eingeschalteten NetworkPolicies in einen
+                                        # Namespace mit Pod Security Standard restricted; wartet auf
+                                        # Datenbank, Backend und Frontend und führt helm test aus,
+                                        # ohne LLM. Braucht kubectl, helm, ct und
                                         # einen kind-Cluster mit den Images aus dem Commit:
                                         #   kind create cluster
                                         #   docker build -f backend/Dockerfile -t opaa-ci/backend:ci .
