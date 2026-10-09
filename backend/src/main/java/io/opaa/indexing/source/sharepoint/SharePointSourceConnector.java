@@ -77,10 +77,6 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
   static final String UNAVAILABLE =
       "SharePoint ist derzeit nicht erreichbar. Bitte später erneut versuchen.";
 
-  static final String REQUIREMENT_GAP =
-      "Downloads folgen einer Weiterleitung von Microsoft Graph auf die SharePoint-Adresse des"
-          + " Mandanten; sie trägt keine Zugangsdaten, nur eine kurzlebige Freigabe in der Adresse.";
-
   private static final Logger log = LoggerFactory.getLogger(SharePointSourceConnector.class);
 
   private static final String LIBRARIES_STATE = "sharePointLibraries";
@@ -112,8 +108,7 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
                                 new Endpoint.WithTenant(tokenTemplate),
                                 SCOPE,
                                 ClientAuthentication.CLIENT_SECRET_POST)))
-                    .withAddress(ServerAddressRule.fixed(apiBase.toString()))
-                    .withRequirementGap(REQUIREMENT_GAP));
+                    .withAddress(ServerAddressRule.fixed(apiBase.toString())));
   }
 
   @Override
@@ -320,13 +315,19 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
       if (asked.get("drive") != null) {
         String drive = SharePointLibrary.requireId(string(asked, "drive"));
         Object folder = asked.get("folder");
-        String parent =
-            folder == null ? "root" : SharePointLibrary.requireId(string(asked, "folder"));
+        String children =
+            folder == null
+                ? "drives/" + drive + "/root/children"
+                : "drives/"
+                    + drive
+                    + "/items/"
+                    + SharePointLibrary.requireId(string(asked, "folder"))
+                    + "/children";
         return new SourceListing(
             true,
             collect(
                 graph,
-                "drives/" + drive + "/items/" + parent + "/children",
+                children,
                 Map.of("$select", "id,name,folder"),
                 item -> item.get("folder") != null ? "folder:" + text(item, "id") : null,
                 "name"),
