@@ -349,7 +349,8 @@ jobs:
 
       # Der Tagesreport läuft nur nachts; ein Fehler fiele sonst erst dann auf.
       # Die Selbstprobe des Corepack-Guards liegt daneben, weil dessen CI-Lauf nur
-      # den grünen Zweig ausübt (#1660).
+      # den grünen Zweig ausübt (#1660). Ebenso der :main-Filter von
+      # publish-images.yml, der nur auf main läuft, nie in einem PR.
       - name: Test
         run: pytest .github/scripts
 

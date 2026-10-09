@@ -40,7 +40,10 @@ final class LeftoverRowGuard extends AbstractTestExecutionListener {
           "vector_store",
           // #1816: a provider row left behind is not inert - it decides whether the next class's
           // first provider becomes the default one, and fk_groups_provider holds its groups.
-          "oidc_providers");
+          "oidc_providers",
+          // a deletion time left behind starts the deletion period of the next class's accounts
+          // of that issuer at it
+          "oidc_provider_removals");
 
   private static final String STARTING_COUNTS = LeftoverRowGuard.class.getName() + ".counts";
   private static final String IDLE_GATE = LeftoverRowGuard.class.getName() + ".idleGate";
