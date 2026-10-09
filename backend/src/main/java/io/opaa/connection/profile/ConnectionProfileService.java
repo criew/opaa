@@ -358,10 +358,6 @@ public class ConnectionProfileService {
       }
       Set<String> changed = transitions.applied(move);
       transitions.record(caller, library, changed);
-      if (change.resetsRunState() && change.privateLibraries().contains(library.getId())) {
-        fullSync.repeatAfterGoingRun(
-            library, !Objects.equals(move.before().sourceUrl(), move.after().sourceUrl()), changed);
-      }
     }
     if (change.resetsRunState()) {
       fullSync.notifyManagers(

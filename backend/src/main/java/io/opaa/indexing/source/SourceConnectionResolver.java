@@ -55,12 +55,6 @@ public interface SourceConnectionResolver {
   default void credentialsRejected(KnowledgeLibrary library) {}
 
   /**
-   * A run of {@code library} ended, whatever its outcome, after its last write of run state and
-   * before its job is closed.
-   */
-  default void runEnded(KnowledgeLibrary library) {}
-
-  /**
    * The value of {@link #currentSecret}.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now

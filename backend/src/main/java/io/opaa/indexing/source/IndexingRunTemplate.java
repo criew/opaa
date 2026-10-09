@@ -66,6 +66,7 @@ public class IndexingRunTemplate {
   private final Clock clock;
   private final ServiceAccountTokens tokens;
   private final KnowledgeLibraryRepository libraries;
+  private final SyncStateBasis settingsBasis;
 
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -143,6 +144,36 @@ public class IndexingRunTemplate {
       Clock clock,
       ServiceAccountTokens tokens,
       KnowledgeLibraryRepository libraries) {
+    this(
+        indexingJobService,
+        eventRepository,
+        staleDocumentCleanupService,
+        documentRepository,
+        storageQuotaService,
+        connectionResolver,
+        clock,
+        tokens,
+        libraries,
+        SyncStateBasis.WHOLE_SETTINGS);
+  }
+
+  /**
+   * {@code settingsBasis} fingerprints the settings a run begins with; a sync state written under
+   * another fingerprint is not continued, and a run whose settings change meanwhile removes nothing
+   * for being absent.
+   */
+  public IndexingRunTemplate(
+      IndexingJobService indexingJobService,
+      IndexingRunEventRepository eventRepository,
+      VanishedDocumentReconciler staleDocumentCleanupService,
+      DocumentRepository documentRepository,
+      LibraryStorageQuotaService storageQuotaService,
+      SourceConnectionResolver connectionResolver,
+      Clock clock,
+      ServiceAccountTokens tokens,
+      KnowledgeLibraryRepository libraries,
+      SyncStateBasis settingsBasis) {
+    this.settingsBasis = settingsBasis;
     this.libraries = libraries;
     this.tokens = tokens;
     this.clock = clock;
@@ -169,9 +200,11 @@ public class IndexingRunTemplate {
       return;
     }
     SourceSettings settings;
+    String basis;
     try {
       requireNotErased(library);
       settings = connectionResolver.resolve(library);
+      basis = settingsBasis.of(library, settings);
     } catch (LibraryErasureRequestedException e) {
       progress.fail(e.getMessage());
       return;
@@ -215,6 +248,8 @@ public class IndexingRunTemplate {
               return connectionResolver.secretAfterRejection(library, rejected);
             },
             clock);
+    run.bindSettingsBasis(
+        basis, () -> settingsBasis.of(library, connectionResolver.resolveForChange(now(library))));
     boolean failed = false;
     String failure = null;
     RunFailureCategory category = null;
@@ -314,7 +349,6 @@ public class IndexingRunTemplate {
         failed,
         category,
         library.loggedNames().of(failure));
-    tellRunEnded(library);
     // The interrupt flag is restored only after the job row is written: a pending interrupt makes
     // the connection acquisition for that write fail and would leave the job RUNNING forever.
     try {
@@ -335,6 +369,14 @@ public class IndexingRunTemplate {
     }
   }
 
+  /**
+   * The library as stored now - a run holds the one it began with. A library gone meanwhile counts
+   * as the one held: its deletion ends the run on its own.
+   */
+  private KnowledgeLibrary now(KnowledgeLibrary library) {
+    return libraries == null ? library : libraries.findById(library.getId()).orElse(library);
+  }
+
   private void requireNotErased(KnowledgeLibrary library) {
     if (libraries != null && libraries.isErasureRequested(library.getId())) {
       throw new LibraryErasureRequestedException();
@@ -353,18 +395,6 @@ public class IndexingRunTemplate {
     }
   }
 
-  /** A failure to tell the port is logged; it never keeps the run from ending. */
-  private void tellRunEnded(KnowledgeLibrary library) {
-    try {
-      connectionResolver.runEnded(library);
-    } catch (RuntimeException e) {
-      log.warn(
-          "Failed to report the end of a run of library {}",
-          library.getId(),
-          library.loggedNames().of(e));
-    }
-  }
-
   private static String failureMessage(Exception e) {
     return e.getMessage() != null
         ? e.getMessage()
@@ -376,10 +406,24 @@ public class IndexingRunTemplate {
    * complete, one with unreadable areas reconciles all but their retained documents and is assessed
    * incomplete, an incomplete one is assessed as such and reconciles nothing, a truncated one
    * leaves the previous assessment standing. A partial listing is a contract violation of the
-   * executor.
+   * executor. A listing whose settings changed while it went reconciles nothing and is assessed
+   * incomplete: what it did not meet under the old settings may exist under the new ones.
    */
   private void finishCompleteListing(
       IndexingRun run, SourceIndexingExecutor executor, ListingOutcome listing) {
+    if ((listing instanceof ListingOutcome.Complete
+            || listing instanceof ListingOutcome.CompleteExcept)
+        && !run.settingsUnchanged()) {
+      log.info(
+          "Indexing run {} for library {}: settings changed during the run, nothing reconciled",
+          run.jobId(),
+          run.library().getId());
+      run.events()
+          .recordRunNote(
+              IndexingEventCategory.SUMMARY, IndexingRun.SETTINGS_CHANGED_DURING_MESSAGE);
+      indexingJobService.recordListingAssessment(run.jobId(), false, List.of());
+      return;
+    }
     switch (listing) {
       case ListingOutcome.Complete complete -> {
         run.reconciliationFinished(reconcile(run, executor));

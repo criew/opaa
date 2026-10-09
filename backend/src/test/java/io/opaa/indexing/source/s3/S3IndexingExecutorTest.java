@@ -38,6 +38,7 @@ import io.opaa.indexing.source.RunFailureCategory;
 import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncState;
 import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.SyncStateBasis;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
@@ -153,6 +154,15 @@ class S3IndexingExecutorTest {
             mock(LibraryStorageQuotaService.class),
             new LibrarySourceConnectionResolver()),
         ProductionDocumentFormats.supportedFormats());
+  }
+
+  /** A state written under the library's current settings, as its own last run left it. */
+  private SourceSyncState writtenUnderCurrentSettings() {
+    SourceSyncState state = new SourceSyncState(library.getId());
+    state.adoptSettingsBasis(
+        SyncStateBasis.WHOLE_SETTINGS.of(
+            library, new LibrarySourceConnectionResolver().resolve(library)));
+    return state;
   }
 
   private static S3Properties serial(long maxObjectSizeBytes, int maxObjectsPerRun) {
@@ -1002,7 +1012,7 @@ class S3IndexingExecutorTest {
                     S3Scope.of("dokumente", "2025/"),
                     S3Scope.of("satzungen", ""),
                     S3Scope.of("archiv", ""))));
-    SourceSyncState interrupted = new SourceSyncState(library.getId());
+    SourceSyncState interrupted = writtenUnderCurrentSettings();
     interrupted.beginFullSync(UUID.randomUUID());
     interrupted.markScopeCompleted("dokumente/2025/");
     when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(interrupted));

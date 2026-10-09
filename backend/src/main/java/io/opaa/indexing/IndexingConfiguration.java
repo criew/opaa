@@ -33,6 +33,7 @@ import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.StoredDocumentSourceAccess;
+import io.opaa.indexing.source.SyncStateBasis;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -245,7 +246,8 @@ public class IndexingConfiguration {
       LibraryStorageQuotaService libraryStorageQuotaService,
       SourceConnectionResolver sourceConnectionResolver,
       ServiceAccountTokens serviceAccountTokens,
-      KnowledgeLibraryRepository knowledgeLibraryRepository) {
+      KnowledgeLibraryRepository knowledgeLibraryRepository,
+      ObjectProvider<SourceConnectorRegistry> sourceConnectorRegistry) {
     return new IndexingRunTemplate(
         indexingJobService,
         indexingRunEventRepository,
@@ -255,7 +257,8 @@ public class IndexingConfiguration {
         sourceConnectionResolver,
         Clock.systemUTC(),
         serviceAccountTokens,
-        knowledgeLibraryRepository);
+        knowledgeLibraryRepository,
+        new SyncStateBasis(sourceConnectorRegistry::getObject));
   }
 
   /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */

@@ -34,6 +34,7 @@ public final class InMemoryFileStore implements FileStore {
   private final Set<String> unlistable = new HashSet<>();
   private final Set<String> unreadable = new HashSet<>();
   private final Set<String> deselected = new HashSet<>();
+  private java.util.function.Predicate<String> deselectedWhere = name -> false;
   private final Map<String, Map<String, String>> recalled = new LinkedHashMap<>();
   private boolean folderMarkers;
   private boolean shallowMarkers;
@@ -176,6 +177,15 @@ public final class InMemoryFileStore implements FileStore {
   /** {@code name} lies outside the library's patterns, in listing and single check alike. */
   public InMemoryFileStore deselect(String name) {
     deselected.add(name);
+    return this;
+  }
+
+  /**
+   * From now on every name {@code outside} accepts lies outside the library's patterns, as {@link
+   * #deselect} does for one name; {@code name -> false} selects everything again.
+   */
+  public InMemoryFileStore deselectWhere(java.util.function.Predicate<String> outside) {
+    deselectedWhere = outside;
     return this;
   }
 
@@ -708,7 +718,9 @@ public final class InMemoryFileStore implements FileStore {
         file.bytes().length,
         marker(file),
         file.mediaType(),
-        deselected.contains(name) ? new Exclusion.Deselected(" außerhalb der Muster") : null);
+        deselected.contains(name) || deselectedWhere.test(name)
+            ? new Exclusion.Deselected(" außerhalb der Muster")
+            : null);
   }
 
   private static String marker(StoredFile file) {

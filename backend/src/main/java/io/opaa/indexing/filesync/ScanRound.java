@@ -136,10 +136,11 @@ final class ScanRound {
 
   /**
    * The round {@code state} holds, or {@code null} for a new one. A round that no longer fits the
-   * containers is dropped; so is one whose every container is complete under {@link
-   * AbsenceProof#SINGLE_RUN}, which can only follow a failed reconciliation and proves nothing, and
-   * one under {@link AbsenceProof#CHANGE_FEED} without a start cursor for every stream, whose log
-   * would not reach back to the round's beginning.
+   * containers is dropped; so is one begun under another absence proof, whose presence that proof
+   * did not write; one whose every container is complete under {@link AbsenceProof#SINGLE_RUN},
+   * which can only follow a failed reconciliation and proves nothing; and one under {@link
+   * AbsenceProof#CHANGE_FEED} without a start cursor for every stream, whose log would not reach
+   * back to the round's beginning.
    */
   private static ScanProgress resumable(
       SourceSyncState state, List<FileContainer> stores, AbsenceProof proof, boolean cursorsHeld) {
@@ -152,6 +153,7 @@ final class ScanRound {
     Set<String> completed = state.completedScopeKeys();
     boolean fits =
         state.isFullSyncInterrupted()
+            && proof.name().equals(progress.proof())
             && keys.containsAll(progress.containers().keySet())
             && keys.containsAll(completed);
     boolean exhausted = proof == AbsenceProof.SINGLE_RUN && completed.containsAll(keys);
@@ -478,7 +480,8 @@ final class ScanRound {
             containers,
             memory.listedMarkers(),
             memory.carriedMarkers(),
-            memory.unsettledFolders()));
+            memory.unsettledFolders(),
+            proof.name()));
     state = journal.save(state, scanId, frame.library().getId(), newPresence(withheld));
   }
 

@@ -447,6 +447,72 @@ class IndexingRunTemplateTest {
   }
 
   @Test
+  void aListingWhoseSettingsChangedMeanwhileReconcilesNothingAndIsAssessedIncomplete() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library)).thenReturn(fileSettings("/srv/dokumente"));
+    when(resolver.resolveForChange(library)).thenReturn(fileSettings("/srv/andere"));
+    AtomicReference<Boolean> hook = new AtomicReference<>();
+
+    runCompleteListingWith(resolver, hook);
+
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+    assertThat(hook.get()).as("no reconciliation was attempted").isNull();
+    verify(jobService).recordListingAssessment(jobId, false, List.of());
+    verify(eventRepository)
+        .save(
+            argThat(
+                (IndexingRunEvent event) ->
+                    event.getCategory() == IndexingEventCategory.SUMMARY
+                        && event.getMessage().equals(IndexingRun.SETTINGS_CHANGED_DURING_MESSAGE)));
+    verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  @Test
+  void aListingWhoseSettingsCannotBeReadAgainReconcilesNothing() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library)).thenReturn(fileSettings("/srv/dokumente"));
+    when(resolver.resolveForChange(library)).thenThrow(new IllegalStateException("gesperrt"));
+
+    runCompleteListingWith(resolver, new AtomicReference<>());
+
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+    verify(jobService).recordListingAssessment(jobId, false, List.of());
+  }
+
+  @Test
+  void aListingUnderUnchangedSettingsReconciles() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library)).thenReturn(fileSettings("/srv/dokumente"));
+    when(resolver.resolveForChange(library)).thenReturn(fileSettings("/srv/dokumente"));
+    AtomicReference<Boolean> hook = new AtomicReference<>();
+
+    runCompleteListingWith(resolver, hook);
+
+    assertThat(hook.get()).isTrue();
+    verify(jobService).recordListingAssessment(jobId, true, List.of());
+  }
+
+  private void runCompleteListingWith(
+      SourceConnectionResolver resolver, AtomicReference<Boolean> hook) {
+    new IndexingRunTemplate(
+            jobService, eventRepository, cleanupService, documentRepository, quotaService, resolver)
+        .run(
+            jobId,
+            library,
+            IndexingRunMode.FULL,
+            fullListingExecutor,
+            run -> {
+              run.markPresent("/srv/dokumente/a.txt");
+              run.afterReconciliation(hook::set);
+              return ListingOutcome.complete();
+            });
+  }
+
+  private static SourceSettings fileSettings(String path) {
+    return new SourceSettings(path, null, null, null, false, null);
+  }
+
+  @Test
   void aFailedReconciliationIsReportedToTheHookAndNeverFailsTheRun() {
     AtomicReference<Boolean> hook = new AtomicReference<>();
     doThrow(new IllegalStateException("Datenbank nicht erreichbar"))
