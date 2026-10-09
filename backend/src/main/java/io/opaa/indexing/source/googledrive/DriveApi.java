@@ -15,6 +15,7 @@ import java.net.URI;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpResponse;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,10 +50,14 @@ final class DriveApi {
   private final HttpClient httpClient;
   private final TargetAddressValidator targetAddressValidator;
   private final Duration timeout;
+  private final Duration downloadTimeout;
   private final RequestBudget budget;
   private final int maxRetries;
   private final Duration backoff;
   private final Sleeper sleeper;
+
+  /** Where downloads are staged; {@code null} for the system temp directory. */
+  private Path tempDirectory;
 
   DriveApi(
       URI apiBase,
@@ -61,6 +66,7 @@ final class DriveApi {
       HttpClient httpClient,
       TargetAddressValidator targetAddressValidator,
       Duration timeout,
+      Duration downloadTimeout,
       RequestBudget budget,
       int maxRetries,
       Duration backoff,
@@ -71,10 +77,16 @@ final class DriveApi {
     this.httpClient = httpClient;
     this.targetAddressValidator = targetAddressValidator;
     this.timeout = timeout;
+    this.downloadTimeout = downloadTimeout;
     this.budget = budget;
     this.maxRetries = Math.max(0, maxRetries);
     this.backoff = backoff;
     this.sleeper = sleeper;
+  }
+
+  DriveApi stagingIn(Path directory) {
+    this.tempDirectory = directory;
+    return this;
   }
 
   RequestBudget budget() {
@@ -95,16 +107,21 @@ final class DriveApi {
 
   /**
    * The body of {@code GET <path>?<query>} - a download or an export - in a temp file <b>the caller
-   * deletes</b>, at most {@code maxBytes}.
+   * deletes</b>, at most {@code maxBytes} and within the download timeout counted from the answer's
+   * start; an overrun is {@code TRANSIENT} and leaves no temp file.
    */
   Path download(String path, Map<String, String> query, long maxBytes)
       throws DriveApiException, InterruptedException {
     Path temp = null;
     try (Answer answer = send(path, query)) {
-      temp = Files.createTempFile("opaa-gdrive-", ".bin");
+      long deadline = System.nanoTime() + downloadTimeout.toNanos();
+      temp =
+          tempDirectory == null
+              ? Files.createTempFile("opaa-gdrive-", ".bin")
+              : Files.createTempFile(tempDirectory, "opaa-gdrive-", ".bin");
       try (InputStream in = answer.response().body();
           OutputStream out = Files.newOutputStream(temp)) {
-        BoundedStreams.copy(in, out, maxBytes);
+        BoundedStreams.copyBefore(in, out, maxBytes, deadline);
       }
       budget.meter().recordBytes(Files.size(temp));
       return temp;
@@ -114,6 +131,14 @@ final class DriveApi {
           DriveApiException.Kind.TOO_LARGE,
           200,
           "Die Datei ist größer als " + maxBytes + " Bytes.");
+    } catch (HttpTimeoutException e) {
+      deleteQuietly(temp);
+      throw new DriveApiException(
+          DriveApiException.Kind.TRANSIENT,
+          200,
+          "Die Übertragung von Google Drive dauerte länger als "
+              + downloadTimeout.toSeconds()
+              + " s.");
     } catch (IOException e) {
       deleteQuietly(temp);
       throw new DriveApiException(

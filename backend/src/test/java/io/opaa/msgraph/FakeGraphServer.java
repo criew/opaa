@@ -121,6 +121,7 @@ public final class FakeGraphServer implements AutoCloseable {
   private final List<String> downloadAuthorizations = new CopyOnWriteArrayList<>();
   private final AtomicInteger plainDownloadHits = new AtomicInteger();
   private final Set<String> trickling = ConcurrentHashMap.newKeySet();
+  private volatile boolean trickleDownloads;
   private volatile String acceptedToken = TOKEN;
   private volatile boolean deltaTokensExpired;
   private volatile DownloadHost downloadHost = DownloadHost.HTTPS;
@@ -249,6 +250,11 @@ public final class FakeGraphServer implements AutoCloseable {
   /** Answers requests whose path contains {@code pathPart} one byte every 100 ms. */
   public void trickle(String pathPart) {
     trickling.add(pathPart);
+  }
+
+  /** Serves every download body one byte every 100 ms, headers first. */
+  public void trickleDownloads() {
+    trickleDownloads = true;
   }
 
   // --- observing -------------------------------------------------------------------------------
@@ -505,7 +511,21 @@ public final class FakeGraphServer implements AutoCloseable {
     exchange.getResponseHeaders().set("Content-Type", "application/octet-stream");
     exchange.sendResponseHeaders(200, 0);
     try (OutputStream out = exchange.getResponseBody()) {
-      out.write(item.content);
+      if (trickleDownloads) {
+        for (byte b : item.content) {
+          out.write(b);
+          out.flush();
+          TimeUnit.MILLISECONDS.sleep(100);
+        }
+      } else {
+        out.write(item.content);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } catch (IOException e) {
+      if (!trickleDownloads) {
+        throw e;
+      }
     }
   }
 
