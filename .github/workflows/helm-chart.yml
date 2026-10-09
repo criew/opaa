@@ -94,7 +94,8 @@ jobs:
       - name: Lint, Rendern und Schemaprüfung
         run: deploy/helm/ci/static-check.sh
 
-      - uses: helm/chart-testing-action@v2
+      # Full version: the floating v2 tag lags behind and cannot verify the signature of current ct.
+      - uses: helm/chart-testing-action@v2.9.0
         with:
           version: ${{ env.CT_VERSION }}
 
@@ -150,7 +151,8 @@ jobs:
           # renovate: datasource=github-releases depName=helm/helm
           version: v4.3.0
 
-      - uses: helm/chart-testing-action@v2
+      # Full version: the floating v2 tag lags behind and cannot verify the signature of current ct.
+      - uses: helm/chart-testing-action@v2.9.0
         with:
           version: ${{ env.CT_VERSION }}
 
@@ -158,8 +160,11 @@ jobs:
         run: deploy/helm/ci/install-test.sh
 
       # ct prints the logs of the release's pods itself; this adds the helper database and events.
+      # Diagnostics only: a step that failed before the cluster or database existed must not hide
+      # the original failure behind a second one.
       - name: Clusterzustand ausgeben
         if: failure()
+        continue-on-error: true
         run: |
           kubectl get pods --all-namespaces --output wide
           kubectl get events --all-namespaces --sort-by=.lastTimestamp | tail -n 100
