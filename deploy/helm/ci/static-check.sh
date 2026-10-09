@@ -62,6 +62,19 @@ expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
 
+# On the first start the image's entrypoint runs a temporary server for initdb that answers on the
+# socket only; a readiness probe over the socket reports ready while the service refuses TCP.
+echo "--- evaluation database readiness"
+probe="$(helm template opaa "$CHART_DIR" --values "$CHART_DIR/ci/evaluation-values.yaml" \
+  --show-only templates/evaluation-database.yaml | sed -n '/readinessProbe:/,/periodSeconds:/p' |
+  tr -s ' \n' ' ')"
+if [[ "$probe" != *"- pg_isready - -h - 127.0.0.1 "* ]]; then
+  echo "The readiness probe of the evaluation database must run pg_isready -h 127.0.0.1:" >&2
+  echo "$probe" >&2
+  exit 1
+fi
+echo "probes over TCP as expected"
+
 # The release packaging of publish-images.yml without the push: a release and a pre-release tag are
 # packaged, malformed tags and versions Helm does not accept as SemVer are refused. The tag format
 # itself comes from release-version.sh, which the image release guard calls as well.
