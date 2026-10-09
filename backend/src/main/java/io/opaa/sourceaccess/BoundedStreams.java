@@ -151,6 +151,66 @@ public final class BoundedStreams {
         });
   }
 
+  /**
+   * {@link #input} for a body its caller reads at its own pace, ending at {@code deadlineNanos} (on
+   * the {@link System#nanoTime()} scale): the body is closed then, and every read from then on
+   * throws {@link HttpTimeoutException} - never an end of data that would pass for a complete body.
+   * Closing the returned stream drops the deadline.
+   */
+  public static InputStream inputBefore(InputStream in, long maxBytes, long deadlineNanos) {
+    AtomicBoolean expired = new AtomicBoolean();
+    ScheduledFuture<?> stop =
+        DEADLINES.schedule(
+            () -> {
+              expired.set(true);
+              closeQuietly(in);
+            },
+            Math.max(0, deadlineNanos - System.nanoTime()),
+            TimeUnit.NANOSECONDS);
+    return new FilterInputStream(input(in, maxBytes)) {
+      @Override
+      public int read() throws IOException {
+        return checked(() -> super.read());
+      }
+
+      @Override
+      public int read(byte[] b, int off, int len) throws IOException {
+        return checked(() -> super.read(b, off, len));
+      }
+
+      @Override
+      public long skip(long n) throws IOException {
+        return checked(() -> super.skip(n));
+      }
+
+      private <T> T checked(Read<T> read) throws IOException {
+        T result;
+        try {
+          result = read.run();
+        } catch (IOException e) {
+          if (expired.get() && !(e instanceof LimitExceededException)) {
+            throw expiredBody();
+          }
+          throw e;
+        }
+        if (expired.get()) {
+          throw expiredBody();
+        }
+        return result;
+      }
+
+      @Override
+      public void close() throws IOException {
+        stop.cancel(false);
+        super.close();
+      }
+    };
+  }
+
+  private static HttpTimeoutException expiredBody() {
+    return new HttpTimeoutException("the body was not read completely before its deadline");
+  }
+
   private interface Read<T> {
     T run() throws IOException;
   }
@@ -168,12 +228,12 @@ public final class BoundedStreams {
     try {
       T result = read.run();
       if (expired.get()) {
-        throw new HttpTimeoutException("the body was not read completely before its deadline");
+        throw expiredBody();
       }
       return result;
     } catch (IOException e) {
       if (expired.get() && !(e instanceof LimitExceededException)) {
-        throw new HttpTimeoutException("the body was not read completely before its deadline");
+        throw expiredBody();
       }
       throw e;
     } finally {

@@ -20,11 +20,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     by buffering the whole response first. Default 20 MiB (20 971 520) - generous for a typical
  *     Dienstanweisung PDF while bounding how long a single click can hold a connection to an
  *     unbounded remote body open.
- * @param timeoutSeconds per-request timeout for each hop of the proxied fetch (including
- *     redirects). Default 20s - well under {@code
- *     io.opaa.sourceaccess.BoundedDownloader#downloadBounded}'s 120s background-indexing timeout,
- *     since a caller waiting on this endpoint is a human watching a spinner, not an unattended
- *     crawl.
+ * @param timeoutSeconds timeout for each hop of the proxied fetch (including redirects) and for the
+ *     whole body from the answer's start, however slowly it trickles in. Default 20s - well under
+ *     the background-indexing timeouts, since a caller waiting on this endpoint is a human watching
+ *     a spinner, not an unattended crawl.
  */
 @ConfigurationProperties(prefix = "opaa.documents.remote-content")
 public record RemoteContentProperties(long maxBytes, int timeoutSeconds) {

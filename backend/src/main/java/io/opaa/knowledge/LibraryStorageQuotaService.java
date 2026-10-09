@@ -103,7 +103,8 @@ public class LibraryStorageQuotaService {
    * QuotaVerdict#LIBRARY_EXHAUSTED} as {@link #wouldExceedQuota(UUID, long)} says, else for a
    * private library {@link QuotaVerdict#PERSON_EXHAUSTED} when the use of all private libraries of
    * its owner would pass the {@link PersonalStorageQuota}. Call it under {@link #holdIntake} and
-   * store what it admits before letting go.
+   * store what it admits before letting go; only an advisory check that stores nothing may call it
+   * without the hold.
    */
   public QuotaVerdict verdictFor(KnowledgeLibrary library, long additionalBytes) {
     if (wouldExceedQuota(library.getId(), additionalBytes)) {

@@ -824,8 +824,9 @@ public final class FileSync implements AutoCloseable {
   /**
    * One listed entry: present from the first look, then skipped for what the listing already shows
    * (no document, an unsupported extension, unavailable, oversize), skipped without a download when
-   * the change feature is already stored, otherwise fetched and handed to the document path. A name
-   * without an extension costs one {@link FileStore#head} whose media type decides.
+   * the change feature is already stored, rejected without one when its listed size finds no room
+   * in a storage quota, otherwise fetched and handed to the document path. A name without an
+   * extension costs one {@link FileStore#head} whose media type decides.
    */
   private void visit(FileEntry entry, int page) throws InterruptedException {
     String filePath = entry.filePath();
@@ -887,6 +888,13 @@ public final class FileSync implements AutoCloseable {
     }
     if (!supportedByName && !headAdmits(entry)) {
       existing.ifPresent(document -> unsettle(entry));
+      return;
+    }
+    Optional<DocumentIngestResult> atQuota =
+        documentIngestService.rejectionBeforeDownload(frame.library(), filePath, entry.size());
+    if (atQuota.isPresent()) {
+      recordOutcome(entry, atQuota.get());
+      frame.progress().report();
       return;
     }
     enqueueDownload(entry, existing.isPresent() ? folderId : folderFor(entry), page);
@@ -1044,10 +1052,6 @@ public final class FileSync implements AutoCloseable {
   }
 
   /**
-   * Places an existing row in {@code folderId} and pins the folder; its attachments follow only
-   * when the row actually moved.
-   */
-  /**
    * Mirrors the folder of a stored row and moves it to the container it was seen in: that container
    * decides which change stream may report it removed. One save covers both.
    */
@@ -1064,6 +1068,10 @@ public final class FileSync implements AutoCloseable {
     }
   }
 
+  /**
+   * Places an existing row in {@code folderId} and pins the folder; its attachments follow only
+   * when the row actually moved.
+   */
   private void mirrorFolder(Document document, UUID folderId) {
     try {
       folderMirror.markSeen(folderId);
@@ -1151,17 +1159,7 @@ public final class FileSync implements AutoCloseable {
                   .folder(folderId)
                   .build(),
               attachmentAccess);
-      if (result != DocumentIngestResult.PROCESSED
-          && result != DocumentIngestResult.SKIPPED
-          && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
-        unsettle(entry);
-      }
-      boolean processed = frame.recordOutcome(result, filePath);
-      if (frame.progress().personalQuotaRejections() > rejectedBefore) {
-        // like a transient failure: the cursor and the folder memory stay for the next run
-        unsettle(entry);
-        transientFailures++;
-      }
+      boolean processed = recordOutcome(entry, result, rejectedBefore);
       if (processed) {
         frame.markReprocessed(filePath);
         if (fetched.note() != null) {
@@ -1189,6 +1187,34 @@ public final class FileSync implements AutoCloseable {
       deleteQuietly(file);
       frame.progress().report();
     }
+  }
+
+  /** {@link #recordOutcome(FileEntry, DocumentIngestResult, int)} for a result without ingest. */
+  private void recordOutcome(FileEntry entry, DocumentIngestResult result) {
+    recordOutcome(entry, result, frame.progress().personalQuotaRejections());
+  }
+
+  /**
+   * Records one entry's result. A rejection at a quota - the item's own at either quota, or an
+   * attachment's at its owner's since {@code personalRejectionsBefore} - holds the cursor and the
+   * folder memory like a transient failure, so the entry comes again once there is room.
+   *
+   * @return whether the entry was processed
+   */
+  private boolean recordOutcome(
+      FileEntry entry, DocumentIngestResult result, int personalRejectionsBefore) {
+    if (result != DocumentIngestResult.PROCESSED
+        && result != DocumentIngestResult.SKIPPED
+        && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
+      unsettle(entry);
+    }
+    boolean processed = frame.recordOutcome(result, entry.filePath());
+    if (result == DocumentIngestResult.QUOTA_EXCEEDED
+        || frame.progress().personalQuotaRejections() > personalRejectionsBefore) {
+      unsettle(entry);
+      transientFailures++;
+    }
+    return processed;
   }
 
   private static void deleteQuietly(Path file) {

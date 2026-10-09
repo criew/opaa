@@ -24,10 +24,10 @@ import org.slf4j.LoggerFactory;
  * credentials and TLS switch apply as for a run; the credentials reach only the outbound {@code
  * Authorization} header.
  *
- * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming and each hop
- * by its own short timeout: a reader waits on this click, not an unattended run. Every failure -
- * source offline, target refused, invalid stored configuration - is "no original", never a 5xx that
- * would suggest an OPAA-side error.
+ * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming, each hop
+ * and the whole transfer by {@link RemoteContentProperties#timeoutSeconds()}: a reader waits on
+ * this click, not an unattended run. Every failure - source offline, target refused, invalid stored
+ * configuration - is "no original", never a 5xx that would suggest an OPAA-side error.
  */
 public class RemoteOriginalAccess implements OriginalAccess {
 

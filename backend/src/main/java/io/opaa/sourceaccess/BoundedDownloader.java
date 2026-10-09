@@ -282,18 +282,17 @@ public class BoundedDownloader {
 
   /**
    * Streams {@code fileUrl} without ever buffering the full body, for a click-driven path a viewer
-   * can trigger arbitrarily often, with a caller-supplied short {@code perRequestTimeout};
-   * redirects are restricted as in {@link #downloadBounded}, a {@code 429} is not waited out. The
-   * returned {@link DownloadedStream#stream()} is the live body, wrapped so a read past {@code
-   * maxBytes} throws and closed by the caller; an over-large declared {@code Content-Length} is
-   * rejected up front.
+   * can trigger arbitrarily often, with a caller-supplied short {@code timeout}; redirects are
+   * restricted as in {@link #downloadBounded}, a {@code 429} is not waited out. The returned {@link
+   * DownloadedStream#stream()} is the live body, closed by the caller and wrapped so a read past
+   * {@code maxBytes} throws and the body ends {@code timeout} after the answer's start ({@link
+   * BoundedStreams#inputBefore}); an over-large declared {@code Content-Length} is rejected up
+   * front.
+   *
+   * @param timeout the bound of each hop and of the whole body transfer
    */
   public DownloadedStream downloadStreaming(
-      HttpClient httpClient,
-      String fileUrl,
-      long maxBytes,
-      String authHeader,
-      Duration perRequestTimeout)
+      HttpClient httpClient, String fileUrl, long maxBytes, String authHeader, Duration timeout)
       throws IOException, InterruptedException {
     log.debug("Streaming (bounded to {} bytes): {}", maxBytes, fileUrl);
 
@@ -301,10 +300,11 @@ public class BoundedDownloader {
         RedirectFollowingFetcher.sendFollowingRedirects(
             httpClient,
             fileUrl,
-            perRequestTimeout,
+            timeout,
             requestPolicy.headers(authHeader),
             targetAddressValidator,
             RedirectFollowingFetcher.RedirectPolicy.REJECT_OFF_ORIGIN);
+    long deadline = System.nanoTime() + timeout.toNanos();
 
     if (response.statusCode() != 200) {
       closeQuietly(response.body());
@@ -317,7 +317,7 @@ public class BoundedDownloader {
     }
 
     String contentType = response.headers().firstValue("Content-Type").orElse(null);
-    InputStream bounded = BoundedStreams.input(response.body(), maxBytes);
+    InputStream bounded = BoundedStreams.inputBefore(response.body(), maxBytes, deadline);
     log.debug("Streaming {} (content-type {})", fileUrl, contentType);
     return new DownloadedStream(bounded, contentType);
   }

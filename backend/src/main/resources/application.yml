@@ -508,9 +508,8 @@ opaa:
   documents:
     # #748 review, finding 1: the synchronous remote-content proxy path (GET
     # /api/v1/documents/{documentId}/content for a HTTP_DIRECTORY/RSS_FEED document, #747) gets its
-    # own, smaller bound and shorter per-hop timeout instead of reusing opaa.upload.max-file-size
-    # and io.opaa.sourceaccess.BoundedDownloader#downloadBounded's 120s background-indexing
-    # timeout - see RemoteContentProperties.
+    # own, smaller bound and a short timeout per hop and for the whole body instead of reusing
+    # opaa.upload.max-file-size and the background-indexing timeouts - see RemoteContentProperties.
     remote-content:
       max-bytes: ${OPAA_DOCUMENTS_REMOTE_CONTENT_MAX_BYTES:20971520}
       timeout-seconds: ${OPAA_DOCUMENTS_REMOTE_CONTENT_TIMEOUT_SECONDS:20}
