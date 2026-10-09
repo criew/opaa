@@ -42,6 +42,7 @@ jobs:
       backendCore: ${{ steps.filter.outputs.backendCore }}
       bundleParity: ${{ steps.filter.outputs.bundleParity }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      images: ${{ steps.filter.outputs.images }}
       scripts: ${{ steps.filter.outputs.scripts }}
       seed: ${{ steps.filter.outputs.seed }}
     steps:
@@ -95,6 +96,21 @@ jobs:
               - 'frontend/scripts/check-openapi-bundle-parity.mjs'
               - 'frontend/package.json'
               - 'frontend/pnpm-lock.yaml'
+              - '.github/workflows/ci.yml'
+            # What decides whether the images build and start on arm64: the Dockerfiles and the
+            # frontend's runtime files, the publish workflow, and the dependency declarations that
+            # can bring a native library (or a build tool with one) into an image.
+            images:
+              - 'backend/Dockerfile'
+              - 'backend/build.gradle.kts'
+              - 'backend/gradle/libs.versions.toml'
+              - 'frontend/Dockerfile'
+              - 'frontend/nginx.conf'
+              - 'frontend/docker-entrypoint.d/**'
+              - 'frontend/package.json'
+              - 'frontend/pnpm-lock.yaml'
+              - '.github/scripts/image_smoke_test.sh'
+              - '.github/workflows/publish-images.yml'
               - '.github/workflows/ci.yml'
             scripts:
               - '.github/scripts/**'
@@ -377,3 +393,44 @@ jobs:
       - run: pnpm run lint
       - run: pnpm run test
       - run: pnpm run build
+
+  # Builds both images on an arm64 runner and starts them hardened against PostgreSQL with pgvector
+  # (.github/scripts/image_smoke_test.sh), since publish-images.yml publishes arm64 without starting
+  # it. Not a required check; on pull requests only for the `images` paths, the two image builds
+  # take minutes. linux/amd64 needs no such job: helm-chart.yml and the E2E suite start those images.
+  image-smoke-arm64:
+    needs: changes
+    if: github.event_name != 'pull_request' || needs.changes.outputs.images == 'true'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Repo root as context: the backend's Gradle build depends on the sibling opaa-api/. Reads
+      # the layer cache publish-images.yml writes on main; writes none of its own.
+      - name: Backend-Image bauen
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/arm64
+          tags: opaa-ci/backend:arm64
+          load: true
+          cache-from: type=gha,scope=backend-arm64
+
+      - name: Frontend-Image bauen
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/arm64
+          tags: opaa-ci/frontend:arm64
+          load: true
+          cache-from: type=gha,scope=frontend-arm64
+
+      - name: Images starten und Bereitschaft prüfen
+        env:
+          EXPECT_ARCH: arm64
+        run: .github/scripts/image_smoke_test.sh opaa-ci/backend:arm64 opaa-ci/frontend:arm64
