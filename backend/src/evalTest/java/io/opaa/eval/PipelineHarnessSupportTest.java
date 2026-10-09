@@ -89,7 +89,7 @@ class PipelineHarnessSupportTest {
                     EvalDomainConfig.COMIC_CHARACTERS,
                     IDENTITY,
                     failing,
-                    new RetrievalContextFactory(productionLikeProperties(8, false), disabledRole),
+                    new RetrievalContextFactory(productionLikeProperties(20, false), disabledRole),
                     RetrievalPipelineProperties.allStagesEnabled(),
                     false,
                     // Never dereferenced on this path: the failure happens while querying, before
@@ -112,7 +112,7 @@ class PipelineHarnessSupportTest {
     assertThatThrownBy(
             () ->
                 runWith(
-                    productionLikeProperties(8, true),
+                    productionLikeProperties(20, true),
                     RetrievalPipelineProperties.allStagesEnabled(),
                     false,
                     null))
@@ -138,7 +138,7 @@ class PipelineHarnessSupportTest {
     assertThatCode(
             () ->
                 PipelineHarnessSupport.requireMeasurableConfiguration(
-                    productionLikeProperties(8, true),
+                    productionLikeProperties(20, true),
                     RetrievalPipelineProperties.allStagesEnabled(),
                     false,
                     CHAT_MODEL))
@@ -156,7 +156,7 @@ class PipelineHarnessSupportTest {
     assertThatThrownBy(
             () ->
                 runWith(
-                    productionLikeProperties(8, false),
+                    productionLikeProperties(20, false),
                     new RetrievalPipelineProperties(Set.of(RetrievalStageName.MMR_SELECTION))))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("disabled-stages");
@@ -170,7 +170,7 @@ class PipelineHarnessSupportTest {
   @Test
   void aRunWithoutTheLexicalPathIsRejectedAsUnmeasurable() {
     QueryProperties vectorOnly =
-        new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
+        new QueryProperties(20, 25, 1.0, 0.3, false, 3, 2, false, 50, 20, 2);
 
     assertThatThrownBy(() -> runWith(vectorOnly, RetrievalPipelineProperties.allStagesEnabled()))
         .isInstanceOf(IllegalStateException.class)
@@ -183,7 +183,7 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void aRunThatWouldRerankIsRejectedAsUnmeasurable() {
-    QueryProperties reranking = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50, 20, 2);
+    QueryProperties reranking = new QueryProperties(20, 25, 1.0, 0.3, false, 3, 2, true, 50, 20, 2);
 
     assertThatThrownBy(
             () -> runWith(reranking, RetrievalPipelineProperties.allStagesEnabled(), true))
@@ -197,7 +197,7 @@ class PipelineHarnessSupportTest {
    */
   @Test
   void aUsableRerankRoleWithAZeroCandidateWindowStaysMeasurable() {
-    QueryProperties windowOff = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 0, 20, 2);
+    QueryProperties windowOff = new QueryProperties(20, 25, 1.0, 0.3, false, 3, 2, true, 0, 20, 2);
 
     assertThatCode(
             () ->

@@ -12,7 +12,7 @@ import java.util.Map;
  * five inequalities is how one of the two quietly stops checking one of them.
  *
  * <p>Same derivations as {@link Baseline}'s corresponding methods, at this window: {@code
- * hitCountAt8} takes {@code hitCountAt10}'s role, because the ranked list of a pipeline run never
+ * hitCountAt20} takes {@code hitCountAt10}'s role, because the ranked list of a pipeline run never
  * has more than {@link PipelineMetricsAggregate#RANKING_K} entries, so "a hit exists in the list"
  * and "a hit exists in the top 8" are the identical event.
  */
@@ -59,56 +59,56 @@ final class PipelineGroupInvariants {
               + "fix the field in the baseline file.");
     }
     if (aggregate.hitCountAt5() < 0
-        || aggregate.hitCountAt5() > aggregate.hitCountAt8()
-        || aggregate.hitCountAt8() > aggregate.n()) {
+        || aggregate.hitCountAt5() > aggregate.hitCountAt20()
+        || aggregate.hitCountAt20() > aggregate.n()) {
       throw new IllegalStateException(
           prefix(baselineLabel, key, file)
-              + " violates 0 <= hitCountAt5 <= hitCountAt8 <= n (hitCountAt5="
+              + " violates 0 <= hitCountAt5 <= hitCountAt20 <= n (hitCountAt5="
               + aggregate.hitCountAt5()
-              + ", hitCountAt8="
-              + aggregate.hitCountAt8()
+              + ", hitCountAt20="
+              + aggregate.hitCountAt20()
               + ", n="
               + aggregate.n()
               + ") — every top-5 hit is also a top-8 hit, and neither count can exceed the case "
               + "count. Fix the field(s) in the baseline file.");
     }
     double impliedMinimumHits =
-        Math.max(aggregate.mrrAt8(), Math.max(aggregate.ndcgAt8(), aggregate.recallAt8()))
+        Math.max(aggregate.mrrAt20(), Math.max(aggregate.ndcgAt20(), aggregate.recallAt20()))
             * aggregate.n();
-    if (aggregate.hitCountAt8() + 0.1 < impliedMinimumHits) {
+    if (aggregate.hitCountAt20() + 0.1 < impliedMinimumHits) {
       throw new IllegalStateException(
           prefix(baselineLabel, key, file)
-              + " has hitCountAt8="
-              + aggregate.hitCountAt8()
-              + ", too small for mrrAt8/ndcgAt8/recallAt8 over n="
+              + " has hitCountAt20="
+              + aggregate.hitCountAt20()
+              + ", too small for mrrAt20/ndcgAt20/recallAt20 over n="
               + aggregate.n()
               + " (each case contributes at most 1.0 to every one of those three metrics, so their "
-              + "sum can never exceed hitCountAt8) — fix the field(s) in the baseline file.");
+              + "sum can never exceed hitCountAt20) — fix the field(s) in the baseline file.");
     }
-    double allTopicsHit = aggregate.allExpectedDocumentsHitAt8();
+    double allTopicsHit = aggregate.allExpectedDocumentsHitAt20();
     double roundingEpsilon = 0.0005 * aggregate.n() + 1e-9;
-    if (allTopicsHit > aggregate.recallAt8() + roundingEpsilon) {
+    if (allTopicsHit > aggregate.recallAt20() + roundingEpsilon) {
       throw new IllegalStateException(
           prefix(baselineLabel, key, file)
-              + " has allExpectedDocumentsHitAt8="
+              + " has allExpectedDocumentsHitAt20="
               + allTopicsHit
-              + " but recallAt8="
-              + aggregate.recallAt8()
+              + " but recallAt20="
+              + aggregate.recallAt20()
               + " — a case only counts toward the former if it also fully counts toward the "
               + "latter, so the former can never exceed the latter. Fix the field(s) in the "
               + "baseline file.");
     }
-    if (allTopicsHit * aggregate.n() > aggregate.hitCountAt8() + roundingEpsilon) {
+    if (allTopicsHit * aggregate.n() > aggregate.hitCountAt20() + roundingEpsilon) {
       throw new IllegalStateException(
           prefix(baselineLabel, key, file)
-              + " has allExpectedDocumentsHitAt8="
+              + " has allExpectedDocumentsHitAt20="
               + allTopicsHit
               + " over n="
               + aggregate.n()
-              + ", too large for hitCountAt8="
-              + aggregate.hitCountAt8()
-              + " (every case counted by allExpectedDocumentsHitAt8 also counts toward "
-              + "hitCountAt8) — fix the field(s) in the baseline file.");
+              + ", too large for hitCountAt20="
+              + aggregate.hitCountAt20()
+              + " (every case counted by allExpectedDocumentsHitAt20 also counts toward "
+              + "hitCountAt20) — fix the field(s) in the baseline file.");
     }
   }
 

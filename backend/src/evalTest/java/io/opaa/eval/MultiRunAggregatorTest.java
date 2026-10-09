@@ -41,11 +41,11 @@ class MultiRunAggregatorTest {
 
   /**
    * A run where "frage a" hits at a chosen rank ({@code 1}, {@code 3}, or a miss) while "frage b"
-   * always hits at rank 1. Unlike {@link #identicalRun}, this varies MRR@8 and nDCG@8 independently
-   * of Hit Rate@5/Recall@8 (both stay 1.0 for a rank-1 and a rank-3 hit — the expected document is
-   * still within the top-5/top-8 window either way) — issue #1044 review, Befund 3: a metric
-   * swapped for another in the aggregation loop below would otherwise go unnoticed as long as it
-   * swapped two metrics that happened to carry the same value.
+   * always hits at rank 1. Unlike {@link #identicalRun}, this varies MRR@20 and nDCG@20
+   * independently of Hit Rate@5/Recall@20 (both stay 1.0 for a rank-1 and a rank-3 hit — the
+   * expected document is still within the top-5/top-8 window either way) — issue #1044 review,
+   * Befund 3: a metric swapped for another in the aggregation loop below would otherwise go
+   * unnoticed as long as it swapped two metrics that happened to carry the same value.
    */
   private static PipelineEvaluationReport runWithCaseAHitAtRank(String rank) {
     List<String> rankedForA =
@@ -69,10 +69,10 @@ class MultiRunAggregatorTest {
 
   @Test
   void perMetricMinMedianMaxAreComputedAcrossRuns() {
-    // Three runs with three genuinely distinct MRR@8/nDCG@8 values: run 0 hits "frage a" at rank
+    // Three runs with three genuinely distinct MRR@20/nDCG@20 values: run 0 hits "frage a" at rank
     // 1 (best), run 1 at rank 3 (worse but still a hit), run 2 misses it entirely (worst) — "frage
-    // b" hits at rank 1 in every run, so Hit Rate@5/Recall@8 stay at their ceiling for run 0/1 and
-    // only nDCG@8/MRR@8 actually order the three runs (see runWithCaseAHitAtRank's Javadoc).
+    // b" hits at rank 1 in every run, so Hit Rate@5/Recall@20 stay at their ceiling for run 0/1 and
+    // only nDCG@20/MRR@20 actually order the three runs (see runWithCaseAHitAtRank's Javadoc).
     var runs =
         List.of(
             runWithCaseAHitAtRank("1"), runWithCaseAHitAtRank("3"), runWithCaseAHitAtRank("miss"));
@@ -80,9 +80,10 @@ class MultiRunAggregatorTest {
     var summary = MultiRunAggregator.summarize(runs);
 
     assertThat(summary.runCount()).isEqualTo(3);
-    assertThat(summary.ndcgAt8().min()).isLessThan(summary.ndcgAt8().median());
-    assertThat(summary.ndcgAt8().median()).isLessThan(summary.ndcgAt8().max());
-    // Sorted by nDCG@8 ascending, the middle value is run 1 (rank-3 hit) — neither the best (run 0)
+    assertThat(summary.ndcgAt20().min()).isLessThan(summary.ndcgAt20().median());
+    assertThat(summary.ndcgAt20().median()).isLessThan(summary.ndcgAt20().max());
+    // Sorted by nDCG@20 ascending, the middle value is run 1 (rank-3 hit) — neither the best (run
+    // 0)
     // nor the worst (run 2) run.
     assertThat(summary.medianRunIndex()).isEqualTo(1);
   }

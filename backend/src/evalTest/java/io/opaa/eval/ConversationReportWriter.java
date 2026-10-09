@@ -278,18 +278,18 @@ public final class ConversationReportWriter {
   private static void appendMetricLine(StringBuilder sb, PipelineMetricsAggregate a) {
     sb.append(
         format(
-            "HitRate@5=%.3f  MRR@8=%.3f  nDCG@8=%.3f  Recall@8=%.3f  AlleThemenGetroffen@8=%.3f\n",
+            "HitRate@5=%.3f  MRR@20=%.3f  nDCG@20=%.3f  Recall@20=%.3f  AlleThemenGetroffen@20=%.3f\n",
             a.hitRateAt5(),
-            a.mrrAt8(),
-            a.ndcgAt8(),
-            a.recallAt8(),
-            a.allExpectedDocumentsHitAt8()));
+            a.mrrAt20(),
+            a.ndcgAt20(),
+            a.recallAt20(),
+            a.allExpectedDocumentsHitAt20()));
   }
 
   private static void appendMarkdownTable(
       StringBuilder sb, Map<String, PipelineMetricsAggregate> groups, String keyPrefix) {
     sb.append(
-        "| Gruppe | n | Hit Rate@5 | MRR@8 | nDCG@8 | Recall@8 |\n|---|---|---|---|---|---|\n");
+        "| Gruppe | n | Hit Rate@5 | MRR@20 | nDCG@20 | Recall@20 |\n|---|---|---|---|---|---|\n");
     groups.forEach(
         (key, a) ->
             sb.append(
@@ -298,9 +298,9 @@ public final class ConversationReportWriter {
                     keyPrefix + key,
                     a.n(),
                     a.hitRateAt5(),
-                    a.mrrAt8(),
-                    a.ndcgAt8(),
-                    a.recallAt8())));
+                    a.mrrAt20(),
+                    a.ndcgAt20(),
+                    a.recallAt20())));
   }
 
   private static String shortHash(String hash) {
