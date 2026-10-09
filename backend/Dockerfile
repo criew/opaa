@@ -64,11 +64,16 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 COPY --from=jlink /javaruntime ${JAVA_HOME}
 COPY --from=appdirs /skel/ /
 WORKDIR /app
+# The absolute form of the application default ./uploads, so the path does not depend on the
+# working directory of whoever starts the image.
+ENV OPAA_UPLOAD_STORAGE_PATH=/app/uploads
 COPY --from=build /app/backend/build/libs/*.jar app.jar
 # The process needs no privilege of its own: it binds 8080 (above 1024) and writes to /app/uploads,
 # to /tmp (1777 in the base, java.io.tmpdir) and to whatever temp directory the operator configures.
-# Everything else it reads. Explicit so that a change of the base image cannot silently bring uid 0
-# back.
+# Everything else it reads, so the root filesystem may be mounted read-only once /tmp (and
+# /app/uploads for the filesystem store) is writable; PDFBox's font cache falls back to
+# java.io.tmpdir when the home directory is not writable. Explicit so that a change of the base
+# image cannot silently bring uid 0 back.
 USER 65532:65532
 EXPOSE 8080
 ENTRYPOINT ["/opt/java/openjdk/bin/java", "-Duser.language=en", "-Duser.country=US", "-jar", "/app/app.jar"]

@@ -51,6 +51,7 @@ services:
     volumes:
       - ${OPAA_INDEXING_DOCUMENT_PATH_HOST:-./documents}:/app/documents
       - ${OPAA_UPLOAD_STORAGE_PATH_HOST:-./uploads}:/app/uploads
+      - opaa-backend-tmp:/tmp
     environment:
       OPAA_UPLOAD_STORAGE_PATH: /app/uploads
     depends_on:
@@ -60,6 +61,14 @@ services:
     # OPAA_SHUTDOWN_TIMEOUT - which is a window per shutdown phase, not a budget for the whole stop
     # - so the graceful shutdown runs its course instead of being cut short by SIGKILL.
     stop_grace_period: ${OPAA_STOP_GRACE_PERIOD:-75s}
+    # Read-only root filesystem: besides the mounts above the process writes only below /tmp
+    # (java.io.tmpdir: Tomcat, multipart uploads, downloads, S3 working copies), which is a volume
+    # here rather than tmpfs, because those files reach the size of a document and must not take RAM.
+    # Capabilities are not dropped: uid 65532 holds none anyway, and the documented fallback
+    # user: "0:0" needs root's file permission overrides on foreign-owned mounts.
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
 
   frontend:
     build:
@@ -420,6 +429,7 @@ services:
 
 volumes:
   opaa-postgres-data:
+  opaa-backend-tmp:
   opaa-ollama-data:
   opaa-upload-store-data:
   opaa-demo-objectstore-data:
