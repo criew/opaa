@@ -639,7 +639,9 @@
               "type": "string"
             },
             "authority": {
-              "type": "string"
+              "type": "string",
+              "description": "Without effect: the issuer is the authority of the sign-in flow as well. Still accepted so that existing value files keep rendering.",
+              "deprecated": true
             },
             "jwkSetUri": {
               "type": "string"

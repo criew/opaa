@@ -101,8 +101,9 @@ kubectl label namespace opaa pod-security.kubernetes.io/enforce=restricted
   NetworkPolicies durchsetzen, das kann der Chart nicht prüfen.
 - **Actuator:** Von außen ist kein `/actuator`-Pfad erreichbar; der Frontend-nginx reicht nur `/api/`
   und `/mcp` weiter. Prometheus fragt das Backend direkt ab.
-- **CSP:** Liegt die OIDC-Authority auf einem anderen Origin als `publicBaseUrl`, gehört dieser in
-  `frontend.cspConnectSrcExtra`.
+- **CSP:** Liegt der Issuer des Identitätsanbieters (`bootstrap.oidc.issuerUri`) auf einem anderen
+  Origin als `publicBaseUrl`, gehört dieser in `frontend.cspConnectSrcExtra`. Fehlt er dort, warnt
+  `helm install` in seinen Hinweisen.
 
 ## Betriebsüberwachung
 
