@@ -668,9 +668,9 @@ Vollabgleich ist jetzt eine **Runde**, die sich über mehrere Läufe erstrecken 
    - `LOCATION_IDENTITY` (SMB): Abgleich gegen die Präsenz der Runde. Ein Ort, an dem in keinem
      Lauf eine Datei war, ist unter diesem Pfad wirklich weg. Präsenz schreibt jeder Weg, der eine
      Datei bestätigt, solange eine Runde offen ist, auch der Ereignis- und der Änderungslauf.
-   - Das Änderungsprotokoll als Beweis (`CHANGE_FEED`, SharePoint, Dropbox) ist nicht gebaut. Der
-     Abschluss der Runde liegt in `FileSync#run` nach der Liste der Container und vor dem Haken des
-     Rahmens; ein dritter Zweig kommt dort hinzu, ohne SPI oder Persistenz zu ändern.
+   - `CHANGE_FEED` (SharePoint, Dropbox): Am Ende der Runde liest der Kern das Änderungsprotokoll ab
+     den Zeigern, die zu Rundenbeginn gehalten wurden, und gleicht erst nach einem fehlerfreien
+     Lesen ab. Gebaut mit #2408, siehe Nachtrag „`CHANGE_FEED`-Abschluss“.
 5. **Gedächtnis.** Das erste Merkmal, das eine Runde für einen Ordner sieht, gilt: Alles darunter
    wurde danach gelistet. Ändert sich die Grundlage mitten in der Runde, verwirft sie ihre Merkmale.
    Einen Ordner, den die Runde erst als unverändert übernahm und später neu listete, merkt sie
@@ -985,6 +985,26 @@ Cursor.
 `FileSyncChangeRunTest` bleiben unverändert grün (Abnahmekriterium). Der Eingriff ist additiv, hat aber
 Löschwirkung (geschätzt 400 bis 600 Zeilen plus Tests) und ist deshalb meldepflichtig. Der Schutz:
 Abgleich nur nach fehlerfrei gelesenem Protokoll ab Rundenbeginn, sonst kein Abgleich.
+
+**Umsetzung (#2408).** Gebaut wie oben, mit drei Abweichungen, die der Zufallstest und die
+Abschlussfälle ergaben:
+
+- **Nicht erreichbarer Container.** Er zählt beim Abschluss wie ein nicht auflistbarer Container in
+  der Auflistung: Die Runde wird aufgegeben, der nächste Lauf beginnt eine neue und listet die übrigen
+  Container wieder. Bliebe die Runde offen, wiederholte jeder Lauf nur den Abschluss; ein dauerhaft
+  gesperrter Container hielte dann die ganze Bibliothek an, und neue Dateien in erreichbaren
+  Containern kämen nie mehr hinein. Gelesen wird kein Strom, solange ein Container nicht erreichbar
+  ist.
+- **Reihenfolge der Meldungen.** Löschbefunde und abgewählte Dateien warten, bis alle Ströme gelesen
+  sind. Meldet ein Strom eine Datei danach wieder als vorhanden, verfällt ihr früherer Löschbefund.
+- **Neue Runde, neue Zeiger.** Eine Runde, die nicht aus einem früheren Lauf fortgesetzt wird, holt
+  frische Startzeiger, auch wenn eine abgebrochene Runde noch welche hielt. So bleibt das Protokoll
+  des Abschlusses so kurz wie die Runde.
+
+Offen bleibt die Grenze aus dem Plan: Braucht das Protokoll seit Rundenbeginn mehr Anfragen als ein
+Lauf hat, endet jeder Abschluss am Budget, und die Runde kommt nicht zum Ende. Gelöscht wird dabei
+nichts. Folge-Issue: [#2413](https://github.com/criew/opaa/issues/2413), es gilt auch für den
+Änderungslauf.
 
 ## Referenzen
 
