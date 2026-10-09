@@ -209,10 +209,12 @@ class ProviderShutdownIntegrationTest {
 
     Instant beforeSecondDeletion = Instant.now().truncatedTo(ChronoUnit.MILLIS);
     deleteConfirmed(provider);
+    Instant afterSecondDeletion = Instant.now();
 
     assertThat(lifecycle.deactivatedSince(List.of(persons.getFirst())))
         .hasEntrySatisfying(
-            persons.getFirst(), start -> assertThat(start).isAfterOrEqualTo(beforeSecondDeletion));
+            persons.getFirst(),
+            start -> assertThat(start).isBetween(beforeSecondDeletion, afterSecondDeletion));
   }
 
   private void deleteConfirmed(UUID onProvider) throws Exception {
