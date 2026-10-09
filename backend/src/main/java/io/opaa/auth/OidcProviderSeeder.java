@@ -49,14 +49,17 @@ public class OidcProviderSeeder {
   private final OidcProviderRepository repository;
   private final OidcProviderSeedMarkerRepository markerRepository;
   private final AuthProperties authProperties;
+  private final LocalAdminAvailabilityGuard adminAvailability;
 
   OidcProviderSeeder(
       OidcProviderRepository repository,
       OidcProviderSeedMarkerRepository markerRepository,
-      AuthProperties authProperties) {
+      AuthProperties authProperties,
+      LocalAdminAvailabilityGuard adminAvailability) {
     this.repository = repository;
     this.markerRepository = markerRepository;
     this.authProperties = authProperties;
+    this.adminAvailability = adminAvailability;
   }
 
   @Transactional
