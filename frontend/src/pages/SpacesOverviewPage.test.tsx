@@ -1,7 +1,9 @@
 import { describe, expect, it, beforeEach } from 'vitest'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Route, Routes } from 'react-router'
+import { http, HttpResponse } from 'msw'
+import { server } from '../mocks/server'
 import { renderWithProviders } from '../test/test-utils'
 import SpacesOverviewPage from './SpacesOverviewPage'
 import { useSpaceStore } from '../stores/spaceStore'
@@ -40,6 +42,22 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
   beforeEach(() => {
     window.localStorage.clear()
     useSpaceStore.setState({ spaces: [personal, team], isLoadingList: false, error: null })
+    server.use(http.get('/api/v1/spaces', () => HttpResponse.json([personal, team])))
+  })
+
+  // regression guard for #2377: a chat created, deleted or archived elsewhere changes chatCount,
+  // so the overview must re-read the list on every visit instead of trusting the cached store.
+  it('re-reads the space list on mount even when spaces are already cached (#2377)', async () => {
+    useSpaceStore.setState({ spaces: [{ ...personal, chatCount: 1 }, team] })
+    server.use(
+      http.get('/api/v1/spaces', () => HttpResponse.json([{ ...personal, chatCount: 2 }, team])),
+    )
+
+    renderWithProviders(<SpacesOverviewPage />, { withRouter: true })
+
+    const personalCard = screen.getByRole('link', { name: /Mein Space/ })
+    expect(personalCard).toHaveTextContent('1 Chat')
+    await waitFor(() => expect(personalCard).toHaveTextContent('2 Chats'))
   })
 
   it('heads the overview with the space count (#1914)', () => {
