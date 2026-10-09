@@ -2,6 +2,7 @@ package io.opaa.connection.oauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.awaitility.Awaitility.await;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -29,6 +30,7 @@ import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.McpServerTokens;
 import io.opaa.connection.profile.ProfileRegistrations;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.GrantRevocations;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.source.SourceBlock.Reason;
@@ -42,6 +44,7 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -90,6 +93,7 @@ class McpServerConnectionIntegrationTest {
   @Autowired private TargetAddressValidator targetAddressValidator;
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private ConnectionSecrets secrets;
+  @Autowired private GrantRevocations grantRevocations;
   @Autowired private McpServerTokens mcpTokens;
 
   private final FakeMcpServer serverA = new FakeMcpServer();
@@ -258,6 +262,7 @@ class McpServerConnectionIntegrationTest {
     call("dev-admin", put(ADMIN + "/" + profileA), request("MCP-Server A", serverB, null, true));
 
     assertRefused(() -> mcpTokens.accessFor(admin, profileA), Reason.NOT_CONNECTED);
+    awaitRevocations();
     assertThat(serverA.revocations()).singleElement();
     assertThat(serverB.requests()).isEmpty();
     assertThat(serverA.audienceOf(held)).isEqualTo(serverA.resource());
@@ -359,12 +364,14 @@ class McpServerConnectionIntegrationTest {
     mockMvc
         .perform(as("dev-admin", delete("/api/v1/me/connected-accounts/" + profile)))
         .andExpect(status().isNoContent());
+    awaitRevocations();
     assertThat(serverA.revocations()).hasSize(1);
     assertRefused(() -> mcpTokens.accessFor(admin, profile), Reason.NOT_CONNECTED);
 
     connect(serverA, profile);
     String shutdown = call("dev-admin", post(ADMIN + "/" + profile + "/disconnect-all"), null);
     assertThat((Integer) JsonPath.read(shutdown, "$.connectedAccounts.fewerThan")).isPositive();
+    awaitRevocations();
     assertThat(serverA.revocations()).hasSize(2);
     assertThat(
             jdbc.queryForObject(
@@ -391,6 +398,7 @@ class McpServerConnectionIntegrationTest {
     mockMvc
         .perform(as("dev-admin", delete(ADMIN + "/" + profile)))
         .andExpect(status().isNoContent());
+    awaitRevocations();
     assertThat(serverA.revocations()).hasSize(3);
     assertRefused(() -> mcpTokens.accessFor(admin, profile), Reason.ACCESS_REMOVED);
     assertNothingLeaked(profile);
@@ -563,5 +571,10 @@ class McpServerConnectionIntegrationTest {
     return request
         .header(DevAuthFilter.DEV_USER_HEADER, user)
         .contentType(MediaType.APPLICATION_JSON);
+  }
+
+  /** Waits until every revocation handed over so far has run. */
+  private void awaitRevocations() {
+    await().pollDelay(Duration.ZERO).atMost(Duration.ofSeconds(30)).until(grantRevocations::idle);
   }
 }
