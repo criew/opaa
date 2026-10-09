@@ -298,6 +298,8 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
    * {@code body}; ignored once it is not connected.
    */
   private void expire(PersonOwned owner, AuditObjectType objectType, UUID objectId, String body) {
+    // token row before account row; a renewal's own transaction holds it already
+    secrets.lockHeld(owner);
     Optional<ConnectedAccount> found =
         accounts.findByUserIdAndProfileId(owner.userId(), owner.profileId());
     if (found.isEmpty() || found.get().getState() != ConnectedAccountState.CONNECTED) {

@@ -9,17 +9,25 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.api.types.SystemRole;
+import io.opaa.asset.AssetShellService;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
+import io.opaa.indexing.source.SourceConnectionResolver;
 import io.opaa.indexing.source.profileprobe.PersonProbeSourceConnector;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
+import io.opaa.test.OwnLibraryFixtures;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,11 +42,12 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The lock order of a person's connection on real Postgres: every path writing her token row and
- * her connected account takes the token row first. A reconnection racing the end of the same
- * account therefore waits for the end instead of deadlocking with it.
+ * her connected account takes the token row first. A reconnection or a rejected sign-in racing the
+ * end of the same account therefore waits for the end instead of deadlocking with it.
  */
 @OpaaIntegrationTest
 class ConnectedAccountLockOrderIntegrationTest {
@@ -51,6 +60,13 @@ class ConnectedAccountLockOrderIntegrationTest {
   @Autowired private JdbcTemplate jdbc;
   @Autowired private DataSource dataSource;
   @Autowired private ConnectedAccountService accounts;
+  @Autowired private SourceConnectionResolver resolver;
+  @Autowired private KnowledgeLibraryRepository libraryRepository;
+  @Autowired private AssetShellService shellService;
+  @Autowired private TransactionTemplate transactions;
+  @Autowired private OwnLibraryFixtures libraryFixtures;
+
+  private final List<UUID> libraries = new ArrayList<>();
 
   private UUID profile;
   private UUID person;
@@ -86,6 +102,10 @@ class ConnectedAccountLockOrderIntegrationTest {
 
   @AfterEach
   void removeOwnRows() {
+    libraryFixtures.removeLibraries(libraries.toArray(UUID[]::new));
+    jdbc.update(
+        "DELETE FROM notifications WHERE type = 'CONNECTION_EXPIRED' AND recipient_user_id = ?",
+        person);
     jdbc.update("DELETE FROM connection_tokens WHERE profile_id = ?", profile);
     jdbc.update("DELETE FROM connected_accounts WHERE profile_id = ?", profile);
     jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", profile);
@@ -104,8 +124,33 @@ class ConnectedAccountLockOrderIntegrationTest {
    */
   @Test
   void aReconnectionRacingTheEndOfTheSameAccountWaitsInsteadOfDeadlocking() throws Exception {
-    CurrentUser caller =
-        CurrentUser.of(person, Organization.DEFAULT_ID, SystemRole.USER, "Dev User");
+    raceBehindTheHeldTokenRow(() -> accounts.connect(caller(), profile, "avogt", PASSWORD));
+
+    assertThat(stateOfAccount()).isEqualTo("CONNECTED");
+    assertThat(tokenRows()).isEqualTo(1);
+  }
+
+  /**
+   * Regression guard for #2428: a run whose sign-in the provider rejected expires the account. It
+   * loaded the account before the token row, so its flush wrote them in that order and deadlocked
+   * with the disconnection queued before it. Token row first, it finds the account disconnected.
+   */
+  @Test
+  void aRejectedSignInRacingTheEndOfTheSameAccountWaitsInsteadOfDeadlocking() throws Exception {
+    KnowledgeLibrary library = privateLibraryOnTheProfile();
+
+    raceBehindTheHeldTokenRow(() -> resolver.credentialsRejected(library));
+
+    assertThat(stateOfAccount()).isEqualTo("DISCONNECTED");
+    assertThat(tokenRows()).isZero();
+  }
+
+  /**
+   * A third transaction holds the person's token row while she disconnects (queued on the token
+   * row), then {@code second} starts and queues as well; only then is the row released.
+   */
+  private void raceBehindTheHeldTokenRow(Runnable second) throws Exception {
+    CurrentUser caller = caller();
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try (Connection holder = dataSource.getConnection()) {
       holder.setAutoCommit(false);
@@ -124,30 +169,63 @@ class ConnectedAccountLockOrderIntegrationTest {
 
       Future<?> disconnection = executor.submit(() -> accounts.disconnect(caller, profile));
       awaitWaitingBehind(holderPid, 1);
-      Future<?> reconnection =
-          executor.submit(() -> accounts.connect(caller, profile, "avogt", PASSWORD));
+      Future<?> racing = executor.submit(second);
       awaitWaitingBehind(holderPid, 2);
 
       holder.commit();
       disconnection.get(30, TimeUnit.SECONDS);
-      reconnection.get(30, TimeUnit.SECONDS);
+      racing.get(30, TimeUnit.SECONDS);
     } finally {
       executor.shutdownNow();
     }
+  }
 
-    assertThat(
-            jdbc.queryForObject(
-                "SELECT state FROM connected_accounts WHERE profile_id = ? AND user_id = ?",
-                String.class,
-                profile,
-                person))
-        .isEqualTo("CONNECTED");
-    assertThat(
-            jdbc.queryForObject(
-                "SELECT count(*) FROM connection_tokens WHERE profile_id = ?",
-                Integer.class,
-                profile))
-        .isEqualTo(1);
+  private CurrentUser caller() {
+    return CurrentUser.of(person, Organization.DEFAULT_ID, SystemRole.USER, "Dev User");
+  }
+
+  private String stateOfAccount() {
+    return jdbc.queryForObject(
+        "SELECT state FROM connected_accounts WHERE profile_id = ? AND user_id = ?",
+        String.class,
+        profile,
+        person);
+  }
+
+  private int tokenRows() {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM connection_tokens WHERE profile_id = ?", Integer.class, profile);
+  }
+
+  /** A private library of the person on the profile, reached with her connected account. */
+  private KnowledgeLibrary privateLibraryOnTheProfile() {
+    KnowledgeLibrary library =
+        transactions.execute(
+            status -> {
+              KnowledgeLibrary saved =
+                  libraryRepository.save(
+                      KnowledgeLibrary.ownerOnly(
+                          Organization.DEFAULT_ID,
+                          "Ablage Sperrreihenfolge " + UUID.randomUUID(),
+                          null,
+                          person,
+                          PersonProbeSourceConnector.TYPE,
+                          null,
+                          SERVER + "/ablage",
+                          null,
+                          null,
+                          false));
+              shellService.registerCreated(
+                  saved, person, Map.of("name", saved.getName(), "sourceType", "PERSON_PROBE"));
+              return saved;
+            });
+    libraries.add(library.getId());
+    jdbc.update(
+        "INSERT INTO library_connections (library_id, profile_id, created_at, updated_at,"
+            + " version) VALUES (?, ?, now(), now(), 0)",
+        library.getId(),
+        profile);
+    return library;
   }
 
   private static int pidOf(Connection connection) throws Exception {
