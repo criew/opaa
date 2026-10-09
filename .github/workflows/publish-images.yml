@@ -58,31 +58,19 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # The chart guard below asks with Helm: imagetools reports a refused lookup as "not found" too.
-      - uses: azure/setup-helm@v5
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          # renovate: datasource=github-releases depName=helm/helm
-          version: v4.3.0
-
-      - name: Helm bei GHCR anmelden
-        if: startsWith(github.ref, 'refs/tags/')
-        env:
-          REGISTRY_USER: ${{ github.actor }}
-          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
-        run: helm registry login "$REGISTRY" --username "$REGISTRY_USER" --password-stdin <<<"$REGISTRY_PASSWORD"
-
       # A version tag is immutable: an image or chart already published as X.Y.Z is never rebuilt
       # over, whether by a re-pushed tag or a dispatch on the tag ref. The chart is checked here as
       # well, so a taken chart version or a refused lookup (e.g. 403) stops the release before any
-      # image is pushed. Only "not found" counts as free; any other lookup error fails the run
-      # rather than risking an overwrite.
+      # image is pushed. oci-published.sh counts only HTTP 404 as free; any other answer fails the
+      # run rather than risking an overwrite.
       - name: Release-Tag prüfen
         if: startsWith(github.ref, 'refs/tags/')
         env:
           TAG: ${{ github.ref_name }}
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/opaa-${{ matrix.name }}
-          CHART: oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/opaa
+          CHART: ${{ env.REGISTRY }}/${{ github.repository_owner }}/charts/opaa
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if ! deploy/helm/ci/release-version.sh "$TAG" >/dev/null; then
             echo "::error::Tag $TAG ist keine Version vX.Y.Z bzw. vX.Y.Z-<vorab> (docs/releases.md)"
@@ -92,20 +80,15 @@ jobs:
             echo "::error::Tag $TAG zeigt auf einen Commit, der nicht auf main liegt (docs/releases.md)"
             exit 1
           fi
-          if out=$(docker buildx imagetools inspect "$IMAGE:${TAG#v}" 2>&1); then
-            echo "::error::$IMAGE:${TAG#v} ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
-            exit 1
-          elif ! grep -qi 'not found' <<<"$out"; then
-            echo "::error::Abfrage von $IMAGE:${TAG#v} fehlgeschlagen: $out"
-            exit 1
-          fi
-          if ! published=$(deploy/helm/ci/chart-published.sh "$CHART" "${TAG#v}"); then
-            echo "::error::Abfrage des Charts $CHART ${TAG#v} fehlgeschlagen, siehe Meldung oben (docs/releases.md)"
-            exit 1
-          elif [[ "$published" == true ]]; then
-            echo "::error::${CHART#oci://}:${TAG#v} ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
-            exit 1
-          fi
+          for ref in "$IMAGE" "$CHART"; do
+            if ! published=$(deploy/helm/ci/oci-published.sh "$ref" "${TAG#v}"); then
+              echo "::error::Abfrage von $ref:${TAG#v} fehlgeschlagen, siehe Meldung oben (docs/releases.md)"
+              exit 1
+            elif [[ "$published" == true ]]; then
+              echo "::error::$ref:${TAG#v} ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
+              exit 1
+            fi
+          done
 
       - name: Extract metadata
         id: meta
@@ -166,8 +149,9 @@ jobs:
   # The chart follows the images, so it never points at an image that failed to publish. Chart
   # version, appVersion and the default image tags are the release version (ADR-0042,
   # Entscheidung 7). On the first attempt an existing chart version fails the job like the guard in
-  # publish. A re-run of this job finds the chart its earlier attempt pushed, skips the push and
-  # carries on with the digest from the registry, so attestation and release can still follow.
+  # publish. A re-run of this job that finds the version published skips the push and carries on
+  # with the digest from the registry, so attestation and release can still follow - provided the
+  # published chart has the content of this commit's package; otherwise the job fails.
   chart:
     needs: publish
     if: startsWith(github.ref, 'refs/tags/v')
@@ -198,18 +182,17 @@ jobs:
         id: check
         env:
           RUN_ATTEMPT: ${{ github.run_attempt }}
+          REGISTRY_USER: ${{ github.actor }}
+          REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ref="$CHART_REPOSITORY/opaa:${TAG#v}"
-          if ! published=$(deploy/helm/ci/chart-published.sh "oci://$CHART_REPOSITORY/opaa" "${TAG#v}"); then
+          if ! published=$(deploy/helm/ci/oci-published.sh "$CHART_REPOSITORY/opaa" "${TAG#v}"); then
             echo "::error::Abfrage von $ref fehlgeschlagen, siehe Meldung oben (docs/releases.md)"
             exit 1
           fi
-          if [[ "$published" == true ]]; then
-            if ((RUN_ATTEMPT == 1)); then
-              echo "::error::$ref ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
-              exit 1
-            fi
-            echo "::notice::$ref hat ein früherer Versuch dieses Laufs veröffentlicht; der Push entfällt"
+          if [[ "$published" == true ]] && ((RUN_ATTEMPT == 1)); then
+            echo "::error::$ref ist bereits veröffentlicht; Versions-Tags werden nie überschrieben"
+            exit 1
           fi
           echo "published=$published" >>"$GITHUB_OUTPUT"
 
@@ -228,9 +211,13 @@ jobs:
         run: helm push "$PACKAGE" "oci://$CHART_REPOSITORY"
 
       # Read back from the registry rather than taken from the push, so a re-run that skipped the
-      # push attests exactly the chart that is published.
+      # push attests exactly the chart that is published - and only if that chart has the content
+      # this commit packages. A chart of another commit under the same version is never attested.
       - name: Digest des Charts bestimmen
         id: digest
+        env:
+          PACKAGE: ${{ steps.package.outputs.path }}
+          PUBLISHED: ${{ steps.check.outputs.published }}
         run: |
           ref="$CHART_REPOSITORY/opaa:${TAG#v}"
           mkdir -p "$RUNNER_TEMP/pulled"
@@ -242,6 +229,13 @@ jobs:
           if ! [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "::error::Kein Digest für $ref: $out"
             exit 1
+          fi
+          if ! deploy/helm/ci/chart-matches.sh "$PACKAGE" "$RUNNER_TEMP/pulled/$(basename "$PACKAGE")"; then
+            echo "::error::$ref weicht inhaltlich vom Chart dieses Commits ab und wird nicht attestiert (docs/releases.md)"
+            exit 1
+          fi
+          if [[ "$PUBLISHED" == true ]]; then
+            echo "::notice::$ref stimmt inhaltlich mit dem Chart dieses Commits überein; der Push entfällt"
           fi
           echo "$ref@$digest"
           echo "digest=$digest" >>"$GITHUB_OUTPUT"

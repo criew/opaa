@@ -2,7 +2,8 @@
 # Static check of the OPAA chart, run by .github/workflows/helm-chart.yml and locally from the
 # repository root. Lints and renders the chart with every value set in <chart>/ci/, validates the
 # rendered manifests against each supported Kubernetes version and asserts that the chart's guards
-# still refuse the misconfigurations they exist for. Needs helm and kubeconform on the PATH.
+# still refuse the misconfigurations they exist for, and dry-runs the release scripts of
+# publish-images.yml. Needs helm and kubeconform on the PATH, the dry run also curl and jq.
 set -euo pipefail
 
 CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
@@ -94,4 +95,32 @@ for tag in 1.2.3 v1.2 v1.2.3+build.1 v01.2.3; do
 done
 expect_tag_refusal v1.0.0-rc.01 "segment starts with 0"
 
-echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging"
+# The provenance check of a re-run in the chart job: the same chart packaged twice matches by
+# content, a chart of another state under the same version does not.
+echo "--- re-run provenance"
+CHART_DIR="$CHART_DIR" deploy/helm/ci/package-chart.sh v1.2.3 "$work_dir/again" >/dev/null
+deploy/helm/ci/chart-matches.sh "$work_dir/packages/opaa-1.2.3.tgz" "$work_dir/again/opaa-1.2.3.tgz"
+echo "matches as expected: same chart packaged twice"
+cp -R "$CHART_DIR" "$work_dir/other-chart"
+echo "# another commit" >>"$work_dir/other-chart/values.yaml"
+CHART_DIR="$work_dir/other-chart" deploy/helm/ci/package-chart.sh v1.2.3 "$work_dir/other" >/dev/null
+if output="$(deploy/helm/ci/chart-matches.sh "$work_dir/packages/opaa-1.2.3.tgz" "$work_dir/other/opaa-1.2.3.tgz" 2>&1)"; then
+  echo "Expected chart-matches.sh to refuse a chart of another state, but it matched." >&2
+  exit 1
+elif ! grep -q "differs in content" <<<"$output"; then
+  echo "chart-matches.sh failed, but not for the content:" >&2
+  echo "$output" >&2
+  exit 1
+fi
+echo "refused as expected: chart of another state"
+
+# The registry lookup of the release guards counts a registry without an answer as an error, never
+# as a free version. Port 9 on the loopback interface is closed on the runners.
+echo "--- registry lookup"
+if output="$(REGISTRY_SCHEME=http deploy/helm/ci/oci-published.sh 127.0.0.1:9/criew/opaa-backend 1.2.3 2>&1)"; then
+  echo "Expected oci-published.sh to fail without a registry, but it answered '$output'." >&2
+  exit 1
+fi
+echo "refused as expected: no registry"
+
+echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging, re-run provenance, registry lookup"

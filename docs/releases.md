@@ -64,16 +64,21 @@ Bevor gebaut wird, bricht der Lauf ab, wenn:
 - `X.Y.Z` in GHCR bereits existiert, als Image oder als Chart. Das gilt auch für einen erneut
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
   sondern durch die nächste Patch-Version abgelöst,
-- GHCR die Abfrage nach dem Chart verweigert (etwa 401 oder 403) statt „not found“ zu melden.
-  Frei ist eine Version nur bei eindeutigem „not found“; eine Verweigerung stoppt den Lauf, bevor
-  ein Image veröffentlicht ist. Abhilfe: Unter *Packages → charts/opaa → Package settings →
-  Manage Actions access* dem Repository Schreibzugriff geben bzw. die Organisationseinstellung für
-  Pakete prüfen und dann *Re-run all jobs*. Tritt das schon beim allerersten Release auf, weil das
-  Paket noch nicht existiert, muss die Prüfung im Workflow angepasst werden; das zeigt der
-  Vorab-Release (siehe unten).
+- GHCR die Abfrage nach einem Image oder dem Chart nicht eindeutig beantwortet. Frei ist eine
+  Version nur, wenn die Registry mit HTTP 404 „nicht vorhanden“ meldet. Eine Verweigerung (401
+  oder 403, auch schon bei der Token-Anfrage), ein Serverfehler (5xx) oder eine Registry ohne
+  Antwort stoppt den Lauf, bevor ein Image veröffentlicht ist. Abhilfe bei einer Verweigerung:
+  Unter *Packages → (Paket aus der Meldung) → Package settings → Manage Actions access* dem
+  Repository Schreibzugriff geben bzw. die Organisationseinstellung für Pakete prüfen und dann
+  *Re-run all jobs*. Tritt das schon beim allerersten Release auf, weil das Paket noch nicht
+  existiert, muss die Prüfung im Workflow angepasst werden; das zeigt der Vorab-Release (siehe
+  unten).
 
 Das Tag-Format steht an einer Stelle, `deploy/helm/ci/release-version.sh`; die Prüfung der Images
-und das Packen des Charts rufen es beide auf.
+und das Packen des Charts rufen es beide auf. Ebenso gibt es eine einzige Existenzprüfung für
+Images und Chart, `deploy/helm/ci/oci-published.sh`. Sie fragt die Registry-API direkt und wertet
+den HTTP-Status aus. `docker buildx imagetools inspect` taugt dafür nicht, weil es eine
+Verweigerung ebenfalls als „not found“ meldet.
 
 Der Lauf ist in Jobs gestaffelt: erst die Images, dann der Chart, dann seine Attestierung, zuletzt
 das GitHub-Release. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
@@ -86,12 +91,25 @@ mit *Re-run failed jobs* wiederholt; bereits veröffentlichte Teile bleiben unbe
 Push und liest den Digest aus der Registry, damit Attestierung und GitHub-Release folgen können.
 *Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
 
+Bevor der Job `chart` einen Digest an die Attestierung weitergibt, vergleicht er den Chart aus der
+Registry inhaltlich mit dem Chart, den er selbst aus dem getaggten Commit gepackt hat
+(`deploy/helm/ci/chart-matches.sh`: beide Pakete entpacken, `diff -r`). Ein Vergleich der
+Archive selbst taugt nicht, weil `helm package` die Zeitstempel des Checkouts übernimmt. Weicht der
+Inhalt ab, bricht der Job ab und attestiert nichts. Das betrifft vor allem eine Wiederholung:
+Wurde das Tag zwischenzeitlich auf einen anderen Commit gesetzt und hat dessen Lauf die Version
+schon veröffentlicht, trüge der fremde Chart sonst die Provenance dieses Commits. Die Meldung, dass
+der Push entfällt, erscheint nur bei Übereinstimmung. Ein solcher Abbruch lässt sich nicht durch
+Wiederholen beheben; die Version ist vergeben, das Release erscheint mit der nächsten
+Patch-Version.
+
 **Grenze:** Eine Wiederholung nutzt die Workflow-Datei des getaggten Commits. Ein dauerhafter
 Fehler im Workflow selbst, etwa eine Attestierung, die nie gelingt, lässt sich für dieses Tag
 nicht mehr beheben. Er wird auf `main` korrigiert und erscheint mit der nächsten Patch-Version.
 
 Die Chart-CI (`.github/workflows/helm-chart.yml`) packt den Chart bei jeder Chart-Änderung mit
-Beispiel-Tags auf demselben Weg (`deploy/helm/ci/package-chart.sh`), ohne zu veröffentlichen.
+Beispiel-Tags auf demselben Weg (`deploy/helm/ci/package-chart.sh`), ohne zu veröffentlichen. Sie
+prüft dabei auch, dass der Inhaltsvergleich einen zweimal gepackten Chart annimmt und einen
+geänderten ablehnt und dass die Existenzprüfung ohne erreichbare Registry scheitert.
 
 Der wöchentliche Neubau (#1450) läuft nur auf `main`. Er berührt Release-Tags nie.
 
