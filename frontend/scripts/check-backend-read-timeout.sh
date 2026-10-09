@@ -60,6 +60,22 @@ docker network create "$network" >/dev/null
 docker run -d --name "$backend" --network "$network" --network-alias backend-standin \
   -e DELAY="$DELAY" "$BACKEND_IMAGE" python -c "$backend_script" >/dev/null
 
+# Waits for the listening socket only: an HTTP probe would itself take DELAY seconds.
+backend_ready=false
+for _ in $(seq 1 30); do
+  if docker exec "$backend" python -c \
+    'import socket; socket.create_connection(("127.0.0.1", 8080), 1).close()' >/dev/null 2>&1; then
+    backend_ready=true
+    break
+  fi
+  sleep 1
+done
+if [ "$backend_ready" != true ]; then
+  echo "FAIL: stand-in backend did not start listening" >&2
+  docker logs "$backend" >&2
+  exit 1
+fi
+
 frontend_env=(-e OPAA_BACKEND_UPSTREAM=backend-standin:8080)
 if [ -n "${OPAA_BACKEND_READ_TIMEOUT+x}" ]; then
   frontend_env+=(-e "OPAA_BACKEND_READ_TIMEOUT=$OPAA_BACKEND_READ_TIMEOUT")
