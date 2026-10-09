@@ -1020,6 +1020,84 @@ Lauf hat, endet jeder Abschluss am Budget, und die Runde kommt nicht zum Ende. G
 nichts. Folge-Issue: [#2413](https://github.com/criew/opaa/issues/2413), es gilt auch für den
 Änderungslauf.
 
+## Nachtrag: SharePoint-Konnektor gebaut (#2153, Schnitt S1, 09.10.2026)
+
+Gebaut wie im Nachtrag „SharePoint (#2153)“, Paket `indexing.source.sharepoint`, ohne neue
+Modulkante (connectors → foundation für `io.opaa.msgraph`). Handbuch: `konnektor-sharepoint.md`.
+Abweichungen und Festlegungen, die der Plan offenließ:
+
+1. **Keine Anforderungslücke am Typ.** `withRequirementGap` gilt nur für Typen, deren Profilpflicht
+   sich umschalten lässt; SharePoint verlangt den Zugang immer (`REQUIRED`), die Registry weist eine
+   Lücke dort ab. Dass Downloads auf den vorab signierten Host weiterleiten, beschreibt das Handbuch.
+2. **Fehlerabbildung.** Auflistung: `410` → `CheckpointExpired`, `403`/`404` der Bibliothek →
+   `ContainerUnlistable`, ein dauerhafter 4xx (außer `408`/`429`) auf eine Seite, eine Marke oder
+   einen Ordner der Kette → `CheckpointExpired`: Die Bibliothek beginnt in derselben Runde neu, nach
+   dem zweiten Verfall in Folge gilt sie in diesem Lauf als nicht listbar. Jede andere
+   vorübergehende Störung → `RunEnding`. Der Lauf endet dann als Fehler, die gesicherte Marke
+   bleibt, und der nächste Lauf setzt dort fort; `ContainerUnlistable` hätte eine Runde mit Marken
+   verworfen. Änderungsstrom: `410` → `CursorExpired`, sonst `Transient`.
+   Download: `404` → `Gone`, `403` → `Unreadable`, `TRANSIENT` mit einem 4xx außer `408` und `429`
+   → `Unavailable` (dauerhaft, hält weder Strom noch Runde), übrige `TRANSIENT` (5xx, `429` nach
+   allen Wiederholungen, Status 200 bei gerissener Download-Frist) → `Transient`.
+3. **Nicht erreichbare Bibliothek beim Start.** Antwortet Graph auf `delta?token=latest` mit
+   `403`/`404`, gibt der Store den Platzhalter `~unreachable` als Startzeiger zurück, statt den Lauf
+   zu beenden: Der Kern bricht jeden Lauf ab, dessen Startzeiger scheitert. Die Auflistung meldet die
+   Bibliothek dann als nicht listbar; der Platzhalter wird nie gesendet, sein Lesen ist
+   `CursorExpired`, der nächste Lauf also ein Vollabgleich.
+4. **Ordnerfilter.** Die Erreichbarkeitsprüfung liest jeden gewählten Ordner. Fehlt einer, ist die
+   Bibliothek nicht listbar; sonst würde jede Datei darunter zu einem Löschbefund.
+5. **Ordnerkette.** Nur ein Elternordner, den Graph mit `404` beantwortet, macht die Datei zu
+   „außerhalb der Bibliothek“ (Auflistung: nicht geliefert, Strom: `Removed`). Ein `403` ist kein
+   Abwesenheitsbefund: Die Freigabe gilt für die ganze Site, innerhalb einer sichtbaren
+   Dokumentbibliothek heißt `403` „Zugriff verloren“ (anders als bei Drive, wo eine geteilte Datei
+   in einem fremden Ordner liegen kann). Er wird in `head` zu `Unreadable`, im Strom zu `Transient`
+   (der Strom bleibt stehen) und in der Auflistung zu `ContainerUnlistable`. Eine vorübergehende
+   Störung folgt Punkt 2. Der Plan sah die Datei als `Transient` vor; der Port kennt in der
+   Auflistung keine einzelne vorübergehend gescheiterte Datei.
+   **Mehrfache Meldungen in der Auflistung:** Als geliefert gilt ein Element erst, wenn eine Meldung
+   in die Seite aufgenommen wurde. Eine veraltete frühere Meldung (Elternordner inzwischen gelöscht
+   oder außerhalb des Filters) verdeckt so nicht die letzte; sonst entfernte ein Vollabgleich in
+   einem Lauf die vorhandene Datei.
+6. **Gelöschte Einträge** im Strom werden `Removed`, ohne `fullSyncNeeded`, auch bei Ordnern: Ob
+   Graph die Dateien eines gelöschten Ordners einzeln meldet, ist unsicher; der tägliche
+   Vollabgleich deckt den Rest (M2).
+7. **Merkmal.** Bestandteile über 32 Zeichen (etwa `cTag`) gehen gehasht ein; die Spalte trägt
+   64 Zeichen.
+8. **Vertrag.** Eine Datei in einer anderen Dokumentbibliothek ist ein anderes Dokument. Der Fall
+   `aFileMovedBetweenContainersStaysADocument` gilt deshalb nur für Stores, deren Fixture
+   `keepsIdentityAcrossContainers` meldet.
+9. **#2430** ist im selben PR behoben: Im Änderungslauf hebt eine spätere Präsenzmeldung einen
+   früheren Löschbefund derselben Datei auf. Graph `delta` liefert Elemente mehrfach („use the last
+   occurrence“). Abgewählte Dateien brauchten keine Änderung: Im Änderungslauf werden sie sofort
+   entfernt, eine spätere Präsenzmeldung nimmt sie wieder auf. Aus demselben Grund verwirft
+   `ChangeStreams` die Löschbefunde eines Stroms, der nicht bis zur letzten Seite gelesen wurde
+   (Fehler oder verfallener Zeiger): Eine ungelesene spätere Seite könnte sie zurücknehmen, und der
+   Strom wird ab seinem alten Zeiger erneut gelesen. Bisher wandte der Änderungslauf sie trotzdem
+   an.
+10. **#2413 nicht mitgenommen.** Den Fortschritt im Protokoll über Läufe zu halten heißt, gelesene
+    Zeiger und noch nicht angewandte Löschbefunde mit der Runde zu speichern (Persistenz in
+    `source_sync_state`, Löschsemantik über Ströme, Änderungslauf und Abschluss zugleich, neues
+    Szenario im Zufallstest). Das ist ein eigener Kernumbau mit Löschwirkung, der Drive genauso
+    trifft, und für SharePoint erst bei Millionen Änderungen je Runde tragend.
+
+**Testdoppel.** `FakeGraphServer` kann zusätzlich: Freigabe nur einzelner Sites (`Sites.Selected`,
+sonst `403 accessDenied`, auch für die Site-Suche), Verschieben, Wiederherstellen, Inhalt ändern,
+OneNote-Pakete, Schadsoftware-Facette, mehrfach gelieferte Delta-Einträge, mehrere Tokens,
+verfallene Seiten-Tokens getrennt von Delta-Tokens. Die Aufzählung liefert Eltern vor Kindern und
+innerhalb einer Ebene nach Namen; der Store verlässt sich darauf nicht.
+
+**Weitere unsichere Annahmen**, die der Tenant-Lauf (S3) prüft:
+
+| Annahme | Stand |
+|---|---|
+| Ein `nextLink`-Token einer Aufzählung lässt sich in einem späteren Lauf erneut senden (Marke über Läufe) | unsicher; sonst beginnt die Bibliothek in derselben Runde neu |
+| Mit einem Token dürfen `$top` und `$select` erneut gesendet werden | unsicher |
+| `$select` mit `deleted` liefert gelöschte Einträge samt Facette | unsicher |
+| Nicht freigegebene Site unter `Sites.Selected` antwortet `403`; die Site-Suche ebenso | unsicher |
+| `drives/{id}/root/children` und `sites/{host}:/{pfad}` verhalten sich wie im Testdoppel | unsicher |
+| Wiederholte Meldungen eines Elements in einer Aufzählung können sich unterscheiden (etwa ein früherer Elternordner); die letzte gilt | unsicher, im Testdoppel nachgestellt (`reportStaleParent`) |
+| Eine Marke, die Graph nicht mehr annimmt, beantwortet Graph mit `410`; ein anderer 4xx gilt ebenfalls als verfallen | unsicher |
+
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)

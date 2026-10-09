@@ -53,6 +53,7 @@ public final class InMemoryFileStore implements FileStore {
   private boolean earlyNewStart;
   private boolean swallowExpiry;
   private boolean recordChanges;
+  private boolean reportAsLogged;
   private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
   private int rejectAfter = -1;
@@ -304,7 +305,10 @@ public final class InMemoryFileStore implements FileStore {
             for (; index < changeLog.size() && changes.size() < pageSize; index++) {
               String[] logged = changeLog.get(index);
               if (feedKey.equals("stream:" + logged[0])) {
-                changes.add(change(logged[1], logged[2]));
+                changes.add(
+                    reportAsLogged && !Boolean.parseBoolean(logged[3])
+                        ? new Change.Removed(filePathOf(logged[1], logged[2]))
+                        : change(logged[1], logged[2]));
               }
             }
             boolean more = false;
@@ -364,7 +368,8 @@ public final class InMemoryFileStore implements FileStore {
    * does.
    */
   public InMemoryFileStore changedIn(String stream, String container, String name) {
-    changeLog.add(new String[] {stream, container, name});
+    boolean present = containers.getOrDefault(container, new TreeMap<>()).containsKey(name);
+    changeLog.add(new String[] {stream, container, name, Boolean.toString(present)});
     return this;
   }
 
@@ -393,6 +398,16 @@ public final class InMemoryFileStore implements FileStore {
     if (recordChanges) {
       changed(container, name);
     }
+  }
+
+  /**
+   * From now on a noted removal is reported as one even if the file exists again by the time the
+   * stream is read, as a change log that reports each entry in its logged form does: the same file
+   * may then appear removed and present in one read, the last report being its state.
+   */
+  public InMemoryFileStore reportingAsLogged() {
+    reportAsLogged = true;
+    return this;
   }
 
   /** A broken feed for the contract's own test: the first page already names the new start. */
