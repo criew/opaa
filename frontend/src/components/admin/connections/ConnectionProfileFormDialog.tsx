@@ -143,6 +143,18 @@ const ENDPOINT_FIELDS = [
   },
 ] as const
 
+/** The endpoints that receive tokens and the client secret: the server takes only https:// there. */
+const HTTPS_ONLY_ENDPOINTS: ReadonlyArray<string> = ['tokenEndpoint', 'revocationEndpoint']
+
+/** Why an entered endpoint cannot be saved; `null` while it can (or is still empty). */
+function endpointError(field: (typeof ENDPOINT_FIELDS)[number], value: string): string | null {
+  const entered = value.trim()
+  if (entered === '' || !HTTPS_ONLY_ENDPOINTS.includes(field.key)) return null
+  return /^https:\/\//i.test(entered)
+    ? null
+    : `Der ${field.label} muss mit https:// beginnen: Er erhält Tokens und das Client-Secret, die über http:// unverschlüsselt übertragen würden.`
+}
+
 /** The endpoints the client secret is sent to: a stored one never follows them to a new address. */
 const SECRET_ENDPOINTS = ['tokenEndpoint', 'revocationEndpoint'] as const
 
@@ -272,7 +284,9 @@ export default function ConnectionProfileFormDialog({
     method !== null &&
     ownerships.includes(draft.ownership) &&
     (!usesRegistration || usesKey || draft.clientId.trim() !== '') &&
-    endpointFields.every((field) => draft[field.key].trim() !== '') &&
+    endpointFields.every(
+      (field) => draft[field.key].trim() !== '' && endpointError(field, draft[field.key]) === null,
+    ) &&
     (!secretMustFollow || withoutSecret || secret.trim() !== '')
 
   const asksRedirect = method === 'OAUTH' && redirect === undefined
@@ -591,20 +605,27 @@ export default function ConnectionProfileFormDialog({
                   }
                 />
               )}
-              {endpointFields.map((field) => (
-                <TextField
-                  key={field.key}
-                  label={field.label}
-                  required
-                  size="small"
-                  value={draft[field.key]}
-                  onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
-                  placeholder="https://"
-                  autoComplete="off"
-                  helperText={`${field.hint} Beginnt mit https:// oder http://; eine Änderung verlangt neue Zustimmungen.`}
-                  slotProps={{ htmlInput: { maxLength: 2000 } }}
-                />
-              ))}
+              {endpointFields.map((field) => {
+                const invalid = endpointError(field, draft[field.key])
+                return (
+                  <TextField
+                    key={field.key}
+                    label={field.label}
+                    required
+                    size="small"
+                    value={draft[field.key]}
+                    onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
+                    placeholder="https://"
+                    autoComplete="off"
+                    error={invalid !== null}
+                    helperText={
+                      invalid ??
+                      `${field.hint} Beginnt mit ${HTTPS_ONLY_ENDPOINTS.includes(field.key) ? 'https://' : 'https:// oder http://'}; eine Änderung verlangt neue Zustimmungen.`
+                    }
+                    slotProps={{ htmlInput: { maxLength: 2000 } }}
+                  />
+                )
+              })}
               {method === 'OAUTH' && redirect === 'failed' && (
                 <Alert severity="warning" data-testid="connection-profile-redirect-uri">
                   Die Rücksprungadresse ließ sich nicht laden. Sie lautet

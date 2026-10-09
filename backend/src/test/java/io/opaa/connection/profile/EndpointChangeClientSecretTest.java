@@ -38,8 +38,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 /**
  * A profile naming its own token endpoint ({@code Endpoint.FromProfile}) against two fake
- * authorization servers: its stored client secret never reaches a token endpoint the profile is
- * changed to; only the secret entered with the change does.
+ * authorization servers over {@code https://}: its stored client secret never reaches a token
+ * endpoint the profile is changed to; only the secret entered with the change does.
  */
 class EndpointChangeClientSecretTest {
 
@@ -49,8 +49,8 @@ class EndpointChangeClientSecretTest {
   private static final CurrentUser ADMIN =
       CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Admin");
 
-  private final FakeAuthorizationServer registered = new FakeAuthorizationServer();
-  private final FakeAuthorizationServer elsewhere = new FakeAuthorizationServer();
+  private final FakeAuthorizationServer registered = FakeAuthorizationServer.overTls();
+  private final FakeAuthorizationServer elsewhere = FakeAuthorizationServer.overTls();
   private final MutableClock clock = new MutableClock(Instant.parse("2026-10-09T08:00:00Z"));
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final CredentialsEncryptor encryptor = mock(CredentialsEncryptor.class);

@@ -403,17 +403,20 @@ sichtbar. Das Formular richtet sich nach der Quellart:
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
 - **Endpunkte** (Autorisierungs-, Token- und Widerrufs-Endpunkt) fragt das Formular nur bei OAuth
   bzw. Client-Credentials ab und nur die, die die Quellart dem Zugang überlässt, etwa weil sie vom
-  Realm eines Keycloak abhängen; dann sind sie Pflicht, je eine Adresse mit `https://` oder
-  `http://`. Endpunkte, die die Quellart selbst festlegt, fragt es nicht ab, und ein Wert dafür wird
+  Realm eines Keycloak abhängen; dann sind sie Pflicht. Der Autorisierungs-Endpunkt beginnt mit
+  `https://` oder `http://`, Token- und Widerrufs-Endpunkt nur mit `https://`: Sie bekommen
+  Refresh-Tokens und das Client-Secret, die bei `http://` jede Station auf dem Weg mitlesen könnte,
+  auch der Proxy des Zugangs. Eine andere Adresse markiert das Formular, und OPAA weist sie beim
+  Speichern ab. Endpunkte, die die Quellart selbst festlegt, fragt es nicht ab, und ein Wert dafür wird
   abgewiesen. OPAA schreibt sie beim Speichern fest und erkennt sie nie zur Laufzeit neu.
   Token- und Widerrufs-Endpunkt bekommen das Client-Secret. Ändert die Verwaltung einen davon an
   einem Zugang mit hinterlegtem Secret, verlangt das Formular ein neues Secret: Das hinterlegte geht
   nie an eine neue Adresse. Für einen öffentlichen Client lässt sich stattdessen „Ohne
   Client-Secret speichern“ wählen. Ohne beides weist OPAA die Änderung ab und ändert nichts. Der
   Autorisierungs-Endpunkt bekommt kein Secret; ändert sich nur er, bleibt das Secret. Die Rückfrage
-  vor dem Speichern nennt bei jedem geänderten Endpunkt die alte und die neue Adresse. Beginnt der
-  Token- oder Widerrufs-Endpunkt mit `http://`, verlangt auch ein geänderter Proxy das Secret neu,
-  denn der Proxy sieht dann, was dorthin geht; bei `https://` nicht.
+  vor dem Speichern nennt bei jedem geänderten Endpunkt die alte und die neue Adresse. Ein
+  geänderter Proxy lässt das Secret bestehen, denn über `https://` sieht er nicht, was zu den
+  Endpunkten geht.
 - **Scopes** nennt unter dem Feld die Vorgabe der Quellart, die gilt, solange das Feld leer bleibt.
 - **Dienstkonto-Schlüssel** lädt das Formular als JSON-Schlüsseldatei hoch; eine Client-ID fragt
   es dafür nicht ab, OPAA übernimmt sie aus `client_email` des Schlüssels. Gespeichert werden nur

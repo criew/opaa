@@ -103,6 +103,43 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
     })
   })
 
+  it('takes the token endpoint only over https, the authorization endpoint also over http', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfileManagementPage />)
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Keycloak')
+    await user.click(within(dialog).getByLabelText(/^Server-Adresse/))
+    await user.paste('https://cloud.example.org')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'OAuth' }))
+    await user.type(within(dialog).getByLabelText(/^Client-ID/), 'opaa')
+    await user.click(within(dialog).getByLabelText(/^Autorisierungs-Endpunkt/))
+    await user.paste('http://idp.intern/auth')
+    const token = within(dialog).getByLabelText(/^Token-Endpunkt/)
+    await user.click(token)
+    await user.paste('http://idp.intern/token')
+
+    const create = within(dialog).getByRole('button', { name: 'Anlegen' })
+    expect(token).toHaveAttribute('aria-invalid', 'true')
+    expect(
+      within(dialog).getByText(/Der Token-Endpunkt muss mit https:\/\/ beginnen/),
+    ).toBeVisible()
+    expect(within(dialog).getByLabelText(/^Autorisierungs-Endpunkt/)).toHaveAttribute(
+      'aria-invalid',
+      'false',
+    )
+    expect(create).toBeDisabled()
+
+    await user.clear(token)
+    await user.click(token)
+    await user.paste('https://idp.intern/token')
+    expect(token).toHaveAttribute('aria-invalid', 'false')
+    expect(create).toBeEnabled()
+  })
+
   it('says that no consent is possible where the server has no public address', async () => {
     server.use(
       http.get('/api/v1/admin/connection-profiles/oauth-redirect', () =>

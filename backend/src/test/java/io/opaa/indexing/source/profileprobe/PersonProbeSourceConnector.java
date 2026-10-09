@@ -169,8 +169,8 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
   }
 
   /**
-   * Runs {@code hook} once, inside the next sign-in and before it answers, as something that happens
-   * while the provider is asked; {@code null} drops a hook not run yet.
+   * Runs {@code hook} once, inside the next sign-in and before it answers, as something that
+   * happens while the provider is asked; {@code null} drops a hook not run yet.
    */
   public void duringSignIn(Runnable hook) {
     this.duringSignIn = hook;

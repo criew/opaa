@@ -1168,6 +1168,46 @@ Aktion ab.
   Bibliothek reihen sich dahinter ein. Auf dem alten Stand enden beide Fälle in
   `CannotAcquireLockException` („deadlock detected“), mit der Regel ohne Fehler.
 
+## Nachtrag vom 09.10.2026: Verbinden mit persönlichem Geheimnis gegen Profiländerung (#2279)
+
+Schließt die Lücke, die der Nachtrag #2246 unter „Sperrreihenfolge“ offen lässt, und ergänzt den
+Nachtrag #2297 um eine Pflicht für die Endpunkte.
+
+- **Wettlauf:** `ConnectedAccountService#connect` liest den Zugang, meldet sich außerhalb einer
+  Transaktion beim Anbieter an und legt danach Konto und Geheimnis mit dem Ziel ab, das es vor der
+  Anmeldung gelesen hat. Ändert die Verwaltung dazwischen Adresse, Registrierung oder Bindung, sieht
+  die Profiländerung das neue Konto noch nicht und beendet es nicht. Das Konto stand danach als
+  verbunden da, sein Geheimnis galt dem alten Ziel und wurde nie herausgegeben (`SecretTarget`).
+- **Regel wie beim OAuth-Abschluss:** Die Transaktion des Ablegens hält als erste Anweisung die
+  Profilzeile mit `FOR SHARE` (`lockedVersion`) und vergleicht die Version mit der des gelesenen
+  Zugangs. Weicht sie ab oder fehlt die Zeile, wird nichts gespeichert: `409
+  CONNECTED_ACCOUNT_PROFILE_CHANGED`, die Person verbindet erneut. Kam das Ablegen zuerst, wartet
+  die Profiländerung, sieht danach das Konto und beendet es wie jedes andere.
+- **Sperrreihenfolge:** Profilzeile, dann Token-Zeile (`lockHeld` in `established`), dann
+  Kontozeile. Das ist die Reihenfolge der Profiländerung und der Verwurfspfade; ein neuer Zyklus
+  entsteht nicht. Unter `FOR SHARE` läuft kein Netzzugriff, die Anmeldung ist vorher abgeschlossen.
+- **Token- und Widerrufs-Endpunkt nur `https://`:** Nennt der Zugang diese Endpunkte selbst
+  (`Endpoint.FromProfile`), nimmt `ConnectionProfileService` dort nur noch `https://` an, sonst
+  `400`. Bei `http://` sähen ein Proxy und jede Station auf dem Weg auch die Refresh-Tokens; bei
+  einem öffentlichen Client greift die Secret-Regel aus #2297 gar nicht. Der Autorisierungs-Endpunkt
+  bekommt weder Token noch Secret und nimmt weiter `http://` an. Die Endpunkte von MCP-Servern prüft
+  weiterhin `McpServerDiscovery` (`https`, `http` nur auf Loopback).
+- **Proxy-Regel aus #2297 bleibt im Code** (`requireSecretFollows`), greift aber nur noch für
+  Altbestand mit `http://`-Endpunkt. Solchen Bestand gibt es nicht, eine Migration entfällt. Weil
+  jede Speicherung die Endpunkte neu prüft, erreicht heute keine gültige Änderung die Regel: Ein
+  Zugang mit `http://`-Endpunkt lässt sich nur mit `https://` speichern.
+- **Tests:** Die Prüfung gilt nur für Endpunkte, die der Zugang nennt. Fest deklarierte Endpunkte
+  der Testkonnektoren zeigen weiter auf den `FakeAuthorizationServer` über `http://127.0.0.1`. Wo
+  ein Test einen Zugang mit eigenem Token-Endpunkt speichert, läuft der Fake über TLS
+  (`FakeAuthorizationServer.overTls()`): ein selbst signiertes Zertifikat für `127.0.0.1` aus
+  `keytool`, dem der Standard-TLS-Kontext der Test-JVM zusätzlich zu den JDK-Vertrauensankern
+  vertraut (`LoopbackTls`). Die Produktionsregel kennt keine Ausnahme für Loopback.
+- **Belegt** in `ConnectedAccountIntegrationTest` (die Testquelle ändert während der Anmeldung die
+  Adresse; ohne die Regel `200` und ein verbundenes Konto, mit ihr `409` und kein Konto),
+  `ProfileEndpointsTest` (`http://` an Token- und Widerrufs-Endpunkt abgewiesen, am
+  Autorisierungs-Endpunkt angenommen; ein Zugang mit `http://`-Endpunkt bleibt bei jeder Änderung
+  unverändert) und `EndpointChangeClientSecretTest` gegen zwei Fakes über TLS.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

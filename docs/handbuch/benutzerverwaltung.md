@@ -464,6 +464,7 @@ der zuletzt eingegebene Benutzername vorbelegt.
 | „Die Anmeldung wurde nicht angenommen: …“ | Der Anbieter hat die Zugangsdaten abgelehnt oder war nicht erreichbar; der Text nennt, was der Anbieter meldet. Nichts wurde gespeichert |
 | „Dieser Zugang ist für Sie nicht freigegeben …“ | Ein neues Konto auf einem Zugang ohne Freigabe |
 | „Der Zugang ist gesperrt …“ | Zugang oder Quellart sind gesperrt; Trennen geht weiterhin |
+| „Der Zugang … wurde geändert, während Sie sich angemeldet haben …“ | Die Systemverwaltung hat den Zugang während der Anmeldung geändert oder entfernt; nichts wurde gespeichert, erneut verbinden |
 | „… keine Zugangsdaten speichern kann …“ | Der Installation fehlt der Schlüssel für Zugangsdaten ([Deployment](deployment.md#zugangsdaten-verschlüsselung)); zuständig ist die Systemverwaltung |
 
 **Anmeldung beim Anbieter (OAuth).** Bei einem Zugang dieser Anmeldeart gibt es kein Formular:
