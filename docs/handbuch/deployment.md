@@ -3,32 +3,47 @@
 ## Deployment aus vorgebauten Images (GHCR)
 
 Für Zielsysteme, auf denen nicht aus dem Quellcode gebaut werden soll, veröffentlicht CI fertige
-Container-Images — bei jedem Push auf `main` und zusätzlich wöchentlich (montags), damit die Images
-auch ohne Codeänderung die aktuellen OS-Sicherheitsupdates tragen:
+Container-Images. Es gibt zwei Arten von Ständen:
+
+- **Releases** mit fester Versionsnummer. Ein Release wird einmal gebaut und nie überschrieben.
+- **Der Entwicklungsstand `main`.** Er wird bei jedem Push auf `main` und zusätzlich wöchentlich
+  (montags) neu gebaut, damit er auch ohne Codeänderung die aktuellen OS-Sicherheitsupdates trägt.
 
 | Image | Tags |
 |-------|------|
-| `ghcr.io/criew/opaa-backend` | `main`, `sha-<commit>` |
-| `ghcr.io/criew/opaa-frontend` | `main`, `sha-<commit>` |
+| `ghcr.io/criew/opaa-backend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
+| `ghcr.io/criew/opaa-frontend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
+
+`X.Y.Z` ist eine Release-Version und ändert ihren Inhalt nie. `X.Y` zeigt auf das jüngste
+Patch-Release dieser Linie. Die verfügbaren Versionen und ihre Änderungen stehen unter *Releases*
+im GitHub-Repository; jede nennt dort auch die Vorbereitungsschritte, die sie verlangt. Ein Tag
+`latest` gibt es nicht.
+
+Für einen Betrieb, der Aktualisierungen plant, ist eine Release-Version der empfohlene Stand. Ein
+Release bekommt Sicherheitsupdates des Basis-Images nicht durch den wöchentlichen Neubau, sondern
+über ein Patch-Release. Wer `X.Y` verwendet, erhält Patch-Releases mit dem nächsten Pull. Wer
+`X.Y.Z` pinnt, wechselt bewusst auf die neue Version.
 
 Auf dem Zielsystem wird kein Repository-Checkout benötigt — es genügt eine `docker-compose.yml`, die `image:` statt `build:` verwendet:
 
 ```yaml
 services:
   backend:
-    image: ghcr.io/criew/opaa-backend:main
+    image: ghcr.io/criew/opaa-backend:0.1.0   # oder :main für den Entwicklungsstand
   frontend:
-    image: ghcr.io/criew/opaa-frontend:main
+    image: ghcr.io/criew/opaa-frontend:0.1.0
 ```
 
-Aktualisieren auf den neuesten `main`-Stand:
+Backend und Frontend immer mit **derselben** Version betreiben.
+
+Aktualisieren auf den neuesten Stand des gewählten Tags:
 
 ```bash
 docker compose pull && docker compose up -d
 ```
 
-`main` folgt dem jeweils letzten Stand. Für reproduzierbare Deployments **den Digest pinnen**, nicht
-einen Tag:
+`main` folgt dem jeweils letzten Stand. Eine Release-Version `X.Y.Z` ist bereits reproduzierbar.
+Wer `main` betreibt und trotzdem einen festen Stand braucht, **pinnt den Digest**, nicht einen Tag:
 
 ```yaml
 image: ghcr.io/criew/opaa-backend@sha256:…
