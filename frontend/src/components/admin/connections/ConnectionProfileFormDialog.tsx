@@ -143,6 +143,18 @@ const ENDPOINT_FIELDS = [
   },
 ] as const
 
+/**
+ * Why an entered endpoint cannot be saved; `null` while it can (or is still empty). The server
+ * takes only https:// for every endpoint a profile names.
+ */
+function endpointError(field: (typeof ENDPOINT_FIELDS)[number], value: string): string | null {
+  const entered = value.trim()
+  if (entered === '' || /^https:\/\//i.test(entered)) return null
+  return field.key === 'authorizationEndpoint'
+    ? `Der ${field.label} muss mit https:// beginnen: Dort meldet sich die Person an, und über http:// ließe sich die Seite unterwegs austauschen.`
+    : `Der ${field.label} muss mit https:// beginnen: Er erhält Tokens und das Client-Secret, die über http:// unverschlüsselt übertragen würden.`
+}
+
 /** The endpoints the client secret is sent to: a stored one never follows them to a new address. */
 const SECRET_ENDPOINTS = ['tokenEndpoint', 'revocationEndpoint'] as const
 
@@ -151,17 +163,10 @@ const SECRET_ENDPOINT_LABELS = {
   revocationEndpoint: 'Widerrufs-Endpunkt',
 } as const
 
-/** Why the stored secret is not kept: endpoints that move, else plain ones behind a new proxy. */
-function secretHint(
-  moved: ReadonlyArray<(typeof SECRET_ENDPOINTS)[number]>,
-  plain: ReadonlyArray<(typeof SECRET_ENDPOINTS)[number]>,
-): string {
-  const named = (keys: typeof moved) =>
-    `Der ${keys.map((key) => SECRET_ENDPOINT_LABELS[key]).join(' und der ')}`
-  if (moved.length > 0) {
-    return `${named(moved)} ${moved.length > 1 ? 'ändern' : 'ändert'} sich. Das hinterlegte Secret wird nicht an eine neue Adresse gesendet: Bitte das Secret für den neuen Endpunkt eingeben.`
-  }
-  return `Der Proxy ändert sich, und ${named(plain).replace(/^Der/, 'der')} ${plain.length > 1 ? 'sind' : 'ist'} unverschlüsselt (http://). Das hinterlegte Secret wird nicht über einen neuen Proxy gesendet: Bitte das Secret erneut eingeben.`
+/** Why the stored secret is not kept: the endpoints that move. */
+function secretHint(moved: ReadonlyArray<(typeof SECRET_ENDPOINTS)[number]>): string {
+  const named = `Der ${moved.map((key) => SECRET_ENDPOINT_LABELS[key]).join(' und der ')}`
+  return `${named} ${moved.length > 1 ? 'ändern' : 'ändert'} sich. Das hinterlegte Secret wird nicht an eine neue Adresse gesendet: Bitte das Secret für den neuen Endpunkt eingeben.`
 }
 
 interface ConnectionProfileFormDialogProps {
@@ -243,26 +248,20 @@ export default function ConnectionProfileFormDialog({
   const connectorTypes = sourceTypes.filter((type) => !type.uploads)
   const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
   const descriptorMissing = isEdit && descriptor === null
-  // the server refuses to keep a stored secret while a token or revocation endpoint moves, or
-  // while the proxy changes in front of a plain http:// one
+  // the server refuses to keep a stored secret while a token or revocation endpoint moves
   const enteredEndpoint = (key: (typeof SECRET_ENDPOINTS)[number]) =>
     endpointFields.some((field) => field.key === key) ? draft[key].trim() : ''
   const movedSecretEndpoints = SECRET_ENDPOINTS.filter((key) => {
     const entered = enteredEndpoint(key)
     return entered !== '' && entered !== (profile?.[key] ?? '')
   })
-  const proxyChanged =
-    (takesTransport ? blankToNull(draft.sourceProxy) : null) !== (profile?.sourceProxy ?? null)
-  const plainSecretEndpoints = proxyChanged
-    ? SECRET_ENDPOINTS.filter((key) => /^http:\/\//i.test(enteredEndpoint(key)))
-    : []
   const secretMustFollow =
     profile !== null &&
     profile.clientSecretSet &&
     profile.authMethod !== 'SERVICE_ACCOUNT_KEY' &&
     usesRegistration &&
     !usesKey &&
-    (movedSecretEndpoints.length > 0 || plainSecretEndpoints.length > 0)
+    movedSecretEndpoints.length > 0
   const sendsNoSecret = secretMustFollow && withoutSecret
   const complete =
     showFields &&
@@ -272,7 +271,9 @@ export default function ConnectionProfileFormDialog({
     method !== null &&
     ownerships.includes(draft.ownership) &&
     (!usesRegistration || usesKey || draft.clientId.trim() !== '') &&
-    endpointFields.every((field) => draft[field.key].trim() !== '') &&
+    endpointFields.every(
+      (field) => draft[field.key].trim() !== '' && endpointError(field, draft[field.key]) === null,
+    ) &&
     (!secretMustFollow || withoutSecret || secret.trim() !== '')
 
   const asksRedirect = method === 'OAUTH' && redirect === undefined
@@ -544,7 +545,7 @@ export default function ConnectionProfileFormDialog({
                     onChange={(e) => setSecret(e.target.value)}
                     helperText={
                       secretMustFollow
-                        ? secretHint(movedSecretEndpoints, plainSecretEndpoints)
+                        ? secretHint(movedSecretEndpoints)
                         : profile?.clientSecretSet
                           ? 'Ein Secret ist hinterlegt. Leer lassen, um es zu behalten.'
                           : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
@@ -591,20 +592,27 @@ export default function ConnectionProfileFormDialog({
                   }
                 />
               )}
-              {endpointFields.map((field) => (
-                <TextField
-                  key={field.key}
-                  label={field.label}
-                  required
-                  size="small"
-                  value={draft[field.key]}
-                  onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
-                  placeholder="https://"
-                  autoComplete="off"
-                  helperText={`${field.hint} Beginnt mit https:// oder http://; eine Änderung verlangt neue Zustimmungen.`}
-                  slotProps={{ htmlInput: { maxLength: 2000 } }}
-                />
-              ))}
+              {endpointFields.map((field) => {
+                const invalid = endpointError(field, draft[field.key])
+                return (
+                  <TextField
+                    key={field.key}
+                    label={field.label}
+                    required
+                    size="small"
+                    value={draft[field.key]}
+                    onChange={(e) => setDraft({ ...draft, [field.key]: e.target.value })}
+                    placeholder="https://"
+                    autoComplete="off"
+                    error={invalid !== null}
+                    helperText={
+                      invalid ??
+                      `${field.hint} Beginnt mit https://; eine Änderung verlangt neue Zustimmungen.`
+                    }
+                    slotProps={{ htmlInput: { maxLength: 2000 } }}
+                  />
+                )
+              })}
               {method === 'OAUTH' && redirect === 'failed' && (
                 <Alert severity="warning" data-testid="connection-profile-redirect-uri">
                   Die Rücksprungadresse ließ sich nicht laden. Sie lautet

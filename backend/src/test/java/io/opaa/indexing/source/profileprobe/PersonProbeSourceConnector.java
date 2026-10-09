@@ -56,6 +56,7 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
 
   private final SourceSyncStateRepository states;
   private final List<UUID> sourceChanges = new CopyOnWriteArrayList<>();
+  private volatile Runnable duringSignIn;
 
   public PersonProbeSourceConnector(SourceSyncStateRepository states) {
     this.states = states;
@@ -167,8 +168,21 @@ public class PersonProbeSourceConnector implements SourceConnector, SourceBrowse
     return new SourceListing(false, List.of(), "Die Anmeldung bei der Testquelle fehlt.");
   }
 
+  /**
+   * Runs {@code hook} once, inside the next sign-in and before it answers, as something that
+   * happens while the provider is asked; {@code null} drops a hook not run yet.
+   */
+  public void duringSignIn(Runnable hook) {
+    this.duringSignIn = hook;
+  }
+
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
+    Runnable hook = duringSignIn;
+    duringSignIn = null;
+    if (hook != null) {
+      hook.run();
+    }
     String credentials = settings.sourceCredentials();
     if (credentials != null && credentials.endsWith(":" + ACCEPTED_PASSWORD)) {
       return new SourceConnectionTestResult(true, "Testquelle für Personen erreichbar.", 0L);
