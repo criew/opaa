@@ -236,13 +236,24 @@ class FileSyncRandomizedRoundTest {
       }
     }
 
-    /** A run the source refuses half way: it fails and removes nothing. */
+    /**
+     * A run the source refuses after a random number of requests - also after a container the round
+     * completed. A run that fails removes nothing; one that ends first is checked like any other.
+     */
     private void failingRun() {
-      store.reset().budget(0).rejectCredentials();
+      if (harness.state().scanProgress() == null) {
+        roundStart = run;
+      }
+      store.reset().budget(0).rejectCredentialsAfter(random.nextInt(30));
       FileSyncHarness.Run result = harness.fullSync(store);
       store.acceptCredentials();
-      assertThat(result.failure()).as("seed %s, run %s fails", seed, run).isNotNull();
-      assertThat(result.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+      if (result.failure() == null) {
+        check(result);
+      } else {
+        assertThat(result.eventsOf(IndexingEventCategory.REMOVED))
+            .as("seed %s, run %s fails and removes nothing", seed, run)
+            .isEmpty();
+      }
     }
 
     /** An event run over one to three files that exist. */

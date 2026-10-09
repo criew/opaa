@@ -217,11 +217,6 @@ final class ChangeStreams {
     pendingRemovals.clear();
   }
 
-  /** Drops the removals read so far without applying any. */
-  void discardRemovals() {
-    pendingRemovals.clear();
-  }
-
   /** The containers the read changes added to or removed from. */
   Set<String> changedContainers() {
     return changedContainers;

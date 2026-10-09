@@ -986,8 +986,17 @@ Cursor.
 Löschwirkung (geschätzt 400 bis 600 Zeilen plus Tests) und ist deshalb meldepflichtig. Der Schutz:
 Abgleich nur nach fehlerfrei gelesenem Protokoll ab Rundenbeginn, sonst kein Abgleich.
 
-**Umsetzung (#2408).** Gebaut wie oben, mit drei Abweichungen, die der Zufallstest und die
-Abschlussfälle ergaben:
+**Umsetzung (#2408).** Gebaut wie oben. Der Schutz braucht zusätzlich die **vollständige Präsenz der
+Runde**: Das Protokoll belegt nur, was sich seit Rundenbeginn geändert hat. Alles Unveränderte muss
+eine Auflistung der Runde als gesehen eingetragen haben. Unter `CHANGE_FEED` schreibt die Runde ihre
+Präsenz deshalb bei jedem Speichern, wie unter `LOCATION_IDENTITY`, und nicht erst, wenn sie über
+Läufe reicht. Sonst bliebe ein Container ohne Präsenz, wenn der Lauf, der ihn fertig gelistet hat,
+danach scheitert (abgelehnte Zugangsdaten, Eintragsgrenze, Abbruch, Neustart). Der nächste Lauf
+überspränge ihn, und der Abschluss entfernte alle seine Dokumente (Review von #2425,
+`aContainerCompletedByARunThatThenFailedKeepsItsDocumentsAtTheRoundsEnd`). Aus demselben Grund
+trägt auch ein Ereignislauf bei offener Runde Präsenz ein.
+
+Vier Abweichungen vom Schnitt ergaben der Zufallstest und die Abschlussfälle:
 
 - **Nicht erreichbarer Container.** Er zählt beim Abschluss wie ein nicht auflistbarer Container in
   der Auflistung: Die Runde wird aufgegeben, der nächste Lauf beginnt eine neue und listet die übrigen
@@ -997,6 +1006,11 @@ Abschlussfälle ergaben:
   ist.
 - **Reihenfolge der Meldungen.** Löschbefunde und abgewählte Dateien warten, bis alle Ströme gelesen
   sind. Meldet ein Strom eine Datei danach wieder als vorhanden, verfällt ihr früherer Löschbefund.
+  Der Änderungslauf macht das noch nicht ([#2430](https://github.com/criew/opaa/issues/2430)).
+- **Ordnergedächtnis.** Eine im Abschluss gemeldete Datei hält ihren Ordner aus dem Gedächtnis der
+  Runde heraus (`unsettle`), wie der Änderungslauf das Gedächtnis der Container verwirft, die er
+  geändert hat. Die nächste Runde listet diesen Ordner wieder, statt ihn über ein Merkmal von vor
+  der Änderung als unverändert zu übernehmen.
 - **Neue Runde, neue Zeiger.** Eine Runde, die nicht aus einem früheren Lauf fortgesetzt wird, holt
   frische Startzeiger, auch wenn eine abgebrochene Runde noch welche hielt. So bleibt das Protokoll
   des Abschlusses so kurz wie die Runde.

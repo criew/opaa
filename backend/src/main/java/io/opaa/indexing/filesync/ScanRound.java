@@ -491,7 +491,7 @@ final class ScanRound {
     ScanProgress progress = state.scanProgress();
     if (progress == null
         || frame.currentPaths().isEmpty()
-        || (proof != AbsenceProof.LOCATION_IDENTITY
+        || (proof == AbsenceProof.SINGLE_RUN
             && progress.containers().values().stream().noneMatch(ContainerProgress::resumable))) {
       return;
     }
@@ -500,12 +500,14 @@ final class ScanRound {
   }
 
   /**
-   * The present paths not yet written. Under {@link AbsenceProof#LOCATION_IDENTITY} at every save,
-   * else once a round that resumes from checkpoints spans runs: until then, and for a store without
-   * checkpoints, the run's own listing decides alone.
+   * The present paths not yet written. Under {@link AbsenceProof#LOCATION_IDENTITY} and {@link
+   * AbsenceProof#CHANGE_FEED} at every save - their reconciliation after several runs rests on the
+   * presence of every container the round completed, also in a run that failed afterwards. Under
+   * {@link AbsenceProof#SINGLE_RUN} once a round that resumes from checkpoints spans runs: until
+   * then, and for a store without checkpoints, the run's own listing decides alone.
    */
   private Set<String> newPresence(Set<String> withheld) {
-    if (proof != AbsenceProof.LOCATION_IDENTITY && !(spansRuns && resumes())) {
+    if (proof == AbsenceProof.SINGLE_RUN && !(spansRuns && resumes())) {
       return Set.of();
     }
     Set<String> fresh = new HashSet<>(frame.currentPaths());

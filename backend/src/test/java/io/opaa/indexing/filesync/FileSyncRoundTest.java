@@ -653,6 +653,34 @@ class FileSyncRoundTest {
         .containsExactlyInAnyOrder(deleted, STALE);
   }
 
+  // regression guard: a container completed by a run that then failed keeps its presence, so the
+  // round's end removes none of its documents
+  @Test
+  void aContainerCompletedByARunThatThenFailedKeepsItsDocumentsAtTheRoundsEnd() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    for (String container : List.of("A", "B")) {
+      for (String name : NAMES) {
+        store.put(container, name, container + " " + name + ", zweite, längere Fassung.");
+      }
+    }
+    // two start cursors, two pages and four downloads of A pass, the first listing of B is refused
+    FileSyncHarness.Run failed = run(store.rejectCredentialsAfter(8), 0);
+    assertThat(failed.failure()).isNotNull();
+    assertThat(harness.state().completedScopeKeys()).containsExactly("A");
+    store.acceptCredentials();
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(store.calls())
+        .as("A is not listed again")
+        .noneMatch(call -> call.startsWith("list A") || call.startsWith("resume A"));
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .isEmpty();
+    assertThat(harness.storedPaths()).hasSize(8);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+  }
+
   // regression guard: a container out of reach at the round's end must not hold the round forever
   @Test
   void aContainerOutOfReachAtTheRoundsEndCountsAsNotListedAndTheNextRoundListsTheOthers() {
