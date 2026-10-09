@@ -500,6 +500,14 @@ danach, ihr Inhalt bleibt durchsuchbar und wird nicht mehr aktualisiert, bis die
 wieder verbindet. Nutzt keine Bibliothek die Verbindung, verschwindet sie aus der Liste; war der
 Zugang nicht mehr freigegeben, sagt die Rückfrage, dass danach kein neues Verbinden möglich ist.
 
+Bei einer Anmeldung beim Anbieter (OAuth) zieht OPAA die Zustimmung anschließend auch beim Anbieter
+zurück, im Hintergrund: Trennen und Notabschaltung warten nicht auf den Anbieter. Gelingt das
+nicht, etwa weil der Anbieter nicht erreichbar ist oder OPAA gerade neu startet, bleibt die
+Zustimmung dort gültig, bis der Anbieter sie beendet, bei manchen Anbietern unbegrenzt. OPAA selbst
+hat sie dann schon gelöscht und nutzt sie nicht mehr; wer sicher gehen will, entzieht sie zusätzlich
+in den Kontoeinstellungen des Anbieters. Die Systemverwaltung sieht einen verlorenen Widerruf nur als
+Warnung im Betriebslog.
+
 ### Was die Verwaltung sieht
 
 Den eigenen Kontonamen beim Anbieter und die Inhalte der privaten Bibliotheken sieht nur die Person

@@ -125,6 +125,7 @@ an den JVM-Prozess gebunden, der ihn eingereiht hat):
 | Fundstelle | Zustand |
 | --- | --- |
 | `IndexingConfiguration.indexingTaskExecutor`, `.embeddingTaskExecutor`, `.uploadTaskExecutor` | Drei `ThreadPoolTaskExecutor`-Bohnen mit eigener, rein prozessinterner Warteschlange - eine Zeile, die auf Instanz A als `RUNNING` eingereiht wurde, hat auf Instanz B keinen wartenden Task, den ein Neustart von B jemals hätte abbrechen können |
+| `connection.token.GrantRevocations` (#2265, ADR-0041) | Die Widerrufe verworfener OAuth-Grants beim Anbieter warten in einer begrenzten Warteschlange im Prozess. Endet er, sind die wartenden verloren; nichts in der Datenbank erinnert an sie, die Grants bleiben beim Anbieter bis zu ihrem Ablauf gültig. Mehrere Instanzen ändern daran nichts Qualitatives, jede führt ihre eigene Warteschlange und Grenze; ein dauerhafter Widerruf bräuchte eine Tabelle offener Widerrufe |
 
 **Prozesslokale Warteschlange mit eigener Entprellung** (kein `@Scheduled` und kein Task-Executor,
 sondern eine dritte Bauart — eine Map im Prozess plus ein eigener `TaskScheduler`):
