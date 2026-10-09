@@ -97,6 +97,10 @@ deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesa
                                         # drei unterstützten Kubernetes-Versionen, Prüfung der
                                         # Abbruchregeln; braucht helm und kubeconform. Neue
                                         # Wertesätze dort ablegen, sie werden automatisch geprüft
+deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert die PrometheusRule
+                                        # und führt deploy/helm/opaa/ci/prometheusrule-test.yaml
+                                        # mit promtool aus; braucht helm, yq und promtool. In CI
+                                        # Teil der statischen Prüfung
 deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdatenbank, dann
                                         # ct install in einen Namespace mit Pod Security Standard
                                         # restricted; wartet auf Backend und Frontend und führt

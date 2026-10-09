@@ -125,5 +125,6 @@ Frontend-nginx → Backend.
 
 Die CI (`.github/workflows/helm-chart.yml`) rendert den Chart mit jedem Wertesatz unter
 [`ci/`](ci/), prüft die Manifeste mit Helm 3.8 und Helm 4 gegen die unterstützten
-Kubernetes-Versionen und installiert ihn auf kind. Die Skripte dazu liegen unter
-[`deploy/helm/ci/`](../ci/).
+Kubernetes-Versionen, führt die Unit-Tests der Alarme
+([`ci/prometheusrule-test.yaml`](ci/prometheusrule-test.yaml)) mit promtool aus und installiert
+ihn auf kind. Die Skripte dazu liegen unter [`deploy/helm/ci/`](../ci/).
