@@ -372,4 +372,29 @@ class FullTextIdentifiersTest {
     assertThat(FullTextIdentifiers.extract(manyIdentifiers.toString()))
         .hasSize(FullTextIdentifiers.MAX_LEXEMES);
   }
+
+  /**
+   * Java matches a repeated regex group recursively, so an unbounded repetition overflows the stack
+   * on a long enough chain. Every repetition in the patterns is bounded; no input text may raise a
+   * {@link StackOverflowError} on the write or the question path.
+   */
+  @Test
+  void pathologicallyLongChainsDoNotOverflowTheStack() {
+    String enumeration = "§§ 1" + ", 2".repeat(50_000) + " BauGB";
+    String referenceParts = "§ 35" + " Abs. 1".repeat(50_000) + " BauGB";
+    String fileNumber = "AB" + "-1".repeat(50_000);
+
+    assertThat(FullTextIdentifiers.extract(enumeration)).contains("xpar1", "xpar2");
+    assertThat(FullTextIdentifiers.extract(referenceParts)).contains("xpar35", "xpar35abs1");
+    assertThat(FullTextIdentifiers.extract(fileNumber)).isNotNull();
+  }
+
+  /** Enumerations and reference chains as long as real citations get keep their full lexemes. */
+  @Test
+  void realisticallyLongChainsKeepAllLexemes() {
+    assertThat(FullTextIdentifiers.extract("§§ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 BauGB"))
+        .contains("xpar1", "xpar12", "xpar1baugb", "xpar12baugb");
+    assertThat(FullTextIdentifiers.extract("§ 35 Abs. 1 Satz 2 Nr. 4 Hs. 1 Buchst. a BauGB"))
+        .doesNotContain("xfldbaugb");
+  }
 }

@@ -287,6 +287,7 @@ Alle Schlüssel unter `opaa.indexing.google-drive.*`.
 | `page-size` | `OPAA_INDEXING_GOOGLE_DRIVE_PAGE_SIZE` | 1000 | Einträge je Auflistungs- und Änderungsseite; höchstens 1000 |
 | `max-file-size-bytes` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILE_SIZE_BYTES` | 52428800 (50 MiB) | Obergrenze je Download oder Export |
 | `request-timeout` | `OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_TIMEOUT` | 30s | Zeitlimit je Anfrage |
+| `download-timeout` | `OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_TIMEOUT` | 10m | Gesamtfrist je Download oder Export, vom Antwortbeginn bis zum letzten Byte; ein Host, der Bytes nur tröpfeln lässt, bricht danach ab, die Datei gilt als vorübergehend fehlgeschlagen und folgt im nächsten Lauf |
 | `max-retries` | `OPAA_INDEXING_GOOGLE_DRIVE_MAX_RETRIES` | 5 | Wiederholungen einer gedrosselten Anfrage |
 | `retry-backoff` | `OPAA_INDEXING_GOOGLE_DRIVE_RETRY_BACKOFF` | 1s | Basis des wachsenden Abstands zwischen Wiederholungen |
 | `request-budget-per-run` | `OPAA_INDEXING_GOOGLE_DRIVE_REQUEST_BUDGET_PER_RUN` | 20000 | Anfragen je Lauf, bevor er als „unvollständig, wird fortgesetzt" endet |
@@ -306,6 +307,9 @@ Die Obergrenze von fünfzig Bereichen ist eine feste Konstante.
 - Eine Ordneränderung im Änderungsstrom löst immer einen Vollabgleich aus, auch wenn der Ordner
   außerhalb der Bereiche liegt.
 - Ohne Zugang hängt Delegation an der Sorgfalt der Verwaltenden der Bibliothek (Funktionskonto).
+- Eine Datei, die die `download-timeout`-Frist dauerhaft reißt (sehr große Datei, langsame Leitung),
+  gilt in jedem Lauf als vorübergehend fehlgeschlagen und hält den Änderungsstrom an. Abhilfe:
+  `download-timeout` erhöhen.
 
 ## 14. Nicht gebaut
 

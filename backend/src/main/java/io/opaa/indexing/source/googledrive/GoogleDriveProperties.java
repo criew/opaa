@@ -12,6 +12,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * @param maxFileSizeBytes the bound of one download or export, applied while streaming; default 50
  *     MiB
  * @param requestTimeout per request; default 30 seconds
+ * @param downloadTimeout the whole of one download or export, from the answer's start to its last
+ *     byte; default 10 minutes
  * @param maxRetries retries of a throttled request ({@code 429}, {@code 403 rateLimitExceeded});
  *     default 5, negative turns them off
  * @param retryBackoff base of the exponential wait between retries; default 1 second
@@ -26,6 +28,7 @@ public record GoogleDriveProperties(
     int pageSize,
     long maxFileSizeBytes,
     Duration requestTimeout,
+    Duration downloadTimeout,
     Integer maxRetries,
     Duration retryBackoff,
     int requestBudgetPerRun,
@@ -44,6 +47,9 @@ public record GoogleDriveProperties(
     }
     if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
       requestTimeout = Duration.ofSeconds(30);
+    }
+    if (downloadTimeout == null || downloadTimeout.isZero() || downloadTimeout.isNegative()) {
+      downloadTimeout = Duration.ofMinutes(10);
     }
     if (maxRetries == null) {
       maxRetries = 5;
@@ -66,6 +72,6 @@ public record GoogleDriveProperties(
   }
 
   public static GoogleDriveProperties defaults() {
-    return new GoogleDriveProperties(0, 0, null, null, null, 0, 0, 0, null);
+    return new GoogleDriveProperties(0, 0, null, null, null, null, 0, 0, 0, null);
   }
 }

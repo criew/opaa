@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -12,7 +13,9 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.api.types.ProviderType;
+import io.opaa.organization.Organization;
 import io.opaa.test.ProviderFixtures;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -29,9 +32,11 @@ class OidcProviderSeederTest {
   private final OidcProviderRepository repository = mock(OidcProviderRepository.class);
   private final OidcProviderSeedMarkerRepository markerRepository =
       mock(OidcProviderSeedMarkerRepository.class);
+  private final LocalAdminAvailabilityGuard adminAvailability =
+      mock(LocalAdminAvailabilityGuard.class);
 
   private OidcProviderSeeder seederFor(AuthProperties properties) {
-    return new OidcProviderSeeder(repository, markerRepository, properties);
+    return new OidcProviderSeeder(repository, markerRepository, properties, adminAvailability);
   }
 
   private static AuthProperties oidc(
@@ -271,9 +276,14 @@ class OidcProviderSeederTest {
     verify(markerRepository, never()).save(any());
   }
 
+  /**
+   * The forced restore was asked for explicitly and cannot run: ERROR regardless of local
+   * administrators, which are not even asked.
+   */
   @Test
   void forcedBootstrapWithAnIncompleteEnvironmentChangesNothing() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(true);
+    when(adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID)).thenReturn(1L);
     AuthProperties forced =
         new AuthProperties(
             "oidc",
@@ -282,10 +292,18 @@ class OidcProviderSeederTest {
             null,
             "admin@opaa.local");
 
-    seederFor(forced).seedIfNeeded();
+    List<ILoggingEvent> events = capturedLogsOf(forced);
 
     verify(repository, never()).save(any());
     verify(repository, never()).saveAndFlush(any());
+    assertThat(events)
+        .filteredOn(event -> event.getLevel() == Level.ERROR)
+        .map(ILoggingEvent::getFormattedMessage)
+        .anyMatch(
+            message ->
+                message.contains("keine Anmeldung möglich")
+                    && message.contains("OPAA_OIDC_CLIENT_ID ist nicht gesetzt"));
+    verifyNoInteractions(adminAvailability);
   }
 
   @Test
@@ -298,5 +316,91 @@ class OidcProviderSeederTest {
     ArgumentCaptor<OidcProvider> captor = ArgumentCaptor.forClass(OidcProvider.class);
     verify(repository).save(captor.capture());
     assertThat(captor.getValue().getIssuerUri()).isEqualTo("https://tenant.eu.auth0.com/");
+  }
+
+  /**
+   * Without a provider but with a login-capable local administrator, the installation runs on local
+   * accounts alone: an INFO naming that, never an ERROR claiming no sign-in is possible (#2396).
+   */
+  @Test
+  void noIssuerWithALoginCapableLocalAdministratorIsReportedAsInfoNotAsError() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
+    when(adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID)).thenReturn(1L);
+
+    List<ILoggingEvent> events = capturedLogsOf(oidc("", null, null, ""));
+
+    assertThat(events).noneMatch(event -> event.getLevel() == Level.ERROR);
+    assertThat(events)
+        .filteredOn(event -> event.getLevel() == Level.INFO)
+        .map(ILoggingEvent::getFormattedMessage)
+        .anyMatch(
+            message ->
+                message.contains("Kein Identitätsanbieter konfiguriert")
+                    && message.contains("nur mit lokalen Konten")
+                    && message.contains("OPAA_OIDC_ISSUER_URI"));
+    verify(markerRepository, never()).save(any());
+  }
+
+  /** Neither a provider nor a login-capable local administrator: no one can sign in at all. */
+  @Test
+  void noIssuerAndNoLoginCapableLocalAdministratorIsStillReportedAsError() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
+    when(adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID)).thenReturn(0L);
+
+    List<ILoggingEvent> events = capturedLogsOf(oidc("", null, null, ""));
+
+    assertThat(events)
+        .filteredOn(event -> event.getLevel() == Level.ERROR)
+        .map(ILoggingEvent::getFormattedMessage)
+        .anyMatch(
+            message ->
+                message.contains("keine Anmeldung möglich")
+                    && message.contains("OPAA_OIDC_ISSUER_URI ist nicht gesetzt")
+                    && message.contains("OPAA_INITIAL_ADMIN_EMAIL")
+                    && message.contains("OPAA_LOCAL_ADMIN_RESET=force"));
+    verify(markerRepository, never()).save(any());
+  }
+
+  /**
+   * A half-set environment is a misconfiguration and stays ERROR so alerting reports it, but with a
+   * login-capable local administrator it must not claim that no sign-in is possible.
+   */
+  @Test
+  void anIncompleteEnvironmentWithALoginCapableLocalAdministratorIsAnErrorThatKeepsLocalSignIn() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
+    when(adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID)).thenReturn(1L);
+
+    List<ILoggingEvent> events =
+        capturedLogsOf(oidc("https://idp.example/realms/opaa", null, null, ""));
+
+    List<String> errors =
+        events.stream()
+            .filter(event -> event.getLevel() == Level.ERROR)
+            .map(ILoggingEvent::getFormattedMessage)
+            .toList();
+    assertThat(errors)
+        .anyMatch(
+            message ->
+                message.contains("OPAA_OIDC_CLIENT_ID ist nicht gesetzt")
+                    && message.contains("nur mit lokalen Konten")
+                    && message.contains("korrigieren"));
+    assertThat(errors).noneMatch(message -> message.contains("keine Anmeldung möglich"));
+    verify(markerRepository, never()).save(any());
+  }
+
+  private List<ILoggingEvent> capturedLogsOf(AuthProperties properties) {
+    ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    logs.start();
+    Logger logger = (Logger) LoggerFactory.getLogger(OidcProviderSeeder.class);
+    logger.addAppender(logs);
+    try {
+      seederFor(properties).seedIfNeeded();
+      return List.copyOf(logs.list);
+    } finally {
+      logger.detachAppender(logs);
+    }
   }
 }

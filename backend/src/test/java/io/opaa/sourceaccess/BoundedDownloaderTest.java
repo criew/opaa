@@ -26,7 +26,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +63,50 @@ class BoundedDownloaderTest {
   @AfterEach
   void tearDown() {
     server.stop(0);
+  }
+
+  @Test
+  void aBodyTricklingInPastTheTotalTimeoutIsCutOffAndLeavesNoTempFile() throws Exception {
+    server.createContext(
+        "/slow.trickletest",
+        exchange -> {
+          exchange.sendResponseHeaders(200, 0);
+          try (var out = exchange.getResponseBody()) {
+            for (int i = 0; i < 300; i++) {
+              out.write('x');
+              out.flush();
+              Thread.sleep(100);
+            }
+          } catch (IOException e) {
+            // the client hung up
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+        });
+    BoundedDownloader limited =
+        new BoundedDownloader(
+            TargetAddressValidator.disabled(),
+            SourceRequestPolicy.defaults(),
+            Duration.ofSeconds(1));
+    Set<Path> before = trickleTestFiles();
+    long start = System.nanoTime();
+
+    assertThatThrownBy(
+            () ->
+                limited.download(
+                    httpClient, null, baseUrl + "/slow.trickletest", "slow.trickletest", 1024))
+        .isInstanceOf(java.net.http.HttpTimeoutException.class);
+
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(10));
+    assertThat(trickleTestFiles()).isEqualTo(before);
+  }
+
+  private static Set<Path> trickleTestFiles() throws IOException {
+    try (var files = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+      return files
+          .filter(file -> file.getFileName().toString().endsWith(".trickletest"))
+          .collect(Collectors.toSet());
+    }
   }
 
   @Test

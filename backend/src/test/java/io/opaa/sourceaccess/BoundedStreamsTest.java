@@ -128,6 +128,49 @@ class BoundedStreamsTest {
   }
 
   @Test
+  void copyBeforeClosesABodyStillFlowingAtTheDeadlineEvenIfEveryReadSucceeds() {
+    CountDownLatch closed = new CountDownLatch(1);
+    InputStream endless =
+        new InputStream() {
+          @Override
+          public int read() throws IOException {
+            if (closed.getCount() == 0) {
+              throw new IOException("closed");
+            }
+            return 'x';
+          }
+
+          @Override
+          public void close() {
+            closed.countDown();
+          }
+        };
+    long start = System.nanoTime();
+
+    assertThatThrownBy(
+            () ->
+                BoundedStreams.copyBefore(
+                    endless,
+                    OutputStream.nullOutputStream(),
+                    Long.MAX_VALUE,
+                    System.nanoTime() + Duration.ofMillis(200).toNanos()))
+        .isInstanceOf(HttpTimeoutException.class);
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(5));
+  }
+
+  @Test
+  void copyBeforeStillEnforcesTheLimit() {
+    assertThatThrownBy(
+            () ->
+                BoundedStreams.copyBefore(
+                    new ByteArrayInputStream(bytes(11)),
+                    OutputStream.nullOutputStream(),
+                    10,
+                    System.nanoTime() + Duration.ofSeconds(5).toNanos()))
+        .isInstanceOf(BoundedStreams.LimitExceededException.class);
+  }
+
+  @Test
   void readFullyBeforeStillEnforcesTheLimit() {
     assertThatThrownBy(
             () ->
