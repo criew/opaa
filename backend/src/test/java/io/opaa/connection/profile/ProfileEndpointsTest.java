@@ -3,7 +3,12 @@ package io.opaa.connection.profile;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ConnectionAuthMethod;
@@ -13,6 +18,7 @@ import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
+import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.indexing.source.ClientAuthentication;
 import io.opaa.indexing.source.Endpoint;
 import io.opaa.indexing.source.OAuthAuth;
@@ -48,6 +54,8 @@ class ProfileEndpointsTest {
 
   private static final Instant NOW = Instant.parse("2026-10-04T08:00:00Z");
   private static final String SERVER = "https://keycloak.example.org";
+  private static final CurrentUser ADMIN =
+      CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Admin");
   private static final ProfileEndpoints REALM =
       new ProfileEndpoints(
           SERVER + "/realms/haus/protocol/openid-connect/auth",
@@ -62,18 +70,20 @@ class ProfileEndpointsTest {
       TestSourceConnectors.connectors().with(new RealmProbe()).registry();
   private final TransitionWiring wiring =
       new TransitionWiring(registry, connections, profiles, libraries);
+  private final ConnectionSecrets secrets = spy(wiring.secrets);
+  private final CredentialsEncryptor encryptor = mock(CredentialsEncryptor.class);
   private final ConnectionProfileService service =
       new ConnectionProfileService(
           profiles,
           connections,
           libraries,
           registry,
-          wiring.secrets,
+          secrets,
           TestPersonCounts.NO_PERSONS,
           TestPersonCounts.NO_CONSENTS,
           TestPersonCounts.numbers(),
           wiring.transitions,
-          mock(CredentialsEncryptor.class),
+          encryptor,
           wiring.audit,
           mock(CapabilityService.class),
           mock(PrivateLibraryRelease.class),
@@ -156,6 +166,115 @@ class ProfileEndpointsTest {
 
     assertThat(profile.getEndpoints()).isEqualTo(moved);
     assertThat(ReflectionTestUtils.getField(profile, "tokenEndpoint")).isEqualTo(moved.token());
+  }
+
+  /**
+   * Regression guard for #2297: the stored client secret never follows a new token or revocation
+   * endpoint the profile names; without a new secret the change is refused before anything is
+   * discarded, the confirmation notwithstanding.
+   */
+  @Test
+  void aNewTokenOrRevocationEndpointNeedsANewClientSecret() {
+    ConnectionProfile profile = profileWithSecret("enc:alt");
+    ProfileEndpoints newToken =
+        new ProfileEndpoints(
+            REALM.authorization(), "https://fremd.example.org/token", REALM.revocation());
+    ProfileEndpoints newRevocation =
+        new ProfileEndpoints(
+            REALM.authorization(), REALM.token(), "https://fremd.example.org/revoke");
+
+    for (ProfileEndpoints moved : new ProfileEndpoints[] {newToken, newRevocation}) {
+      for (boolean confirmed : new boolean[] {false, true}) {
+        assertThatThrownBy(
+                () ->
+                    service.update(
+                        ADMIN, profile.getId(), values(moved, "Realm"), null, confirmed))
+            .as("%s, confirmed %s", moved, confirmed)
+            .isInstanceOf(ValidationException.class)
+            .hasFieldOrPropertyWithValue("code", "CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED")
+            .hasMessageContaining("https://fremd.example.org/");
+      }
+    }
+
+    assertThat(profile.getEndpoints()).isEqualTo(REALM);
+    assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:alt");
+    verify(secrets, never()).discardAllUnder(any(), any());
+    verify(profiles, never()).save(any());
+    verifyNoInteractions(wiring.audit);
+  }
+
+  @Test
+  void aNewClientSecretOrNoneLetsTheEndpointChange() {
+    when(encryptor.encrypt("neu")).thenReturn("enc:neu");
+    ConnectionProfile profile = profileWithSecret("enc:alt");
+    ProfileEndpoints moved =
+        new ProfileEndpoints(
+            REALM.authorization(), "https://anders.example.org/token", REALM.revocation());
+
+    service.update(ADMIN, profile.getId(), values(moved, "Realm"), "neu", true);
+    assertThat(profile.getEndpoints()).isEqualTo(moved);
+    assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:neu");
+
+    // an empty secret makes it a public client
+    service.update(ADMIN, profile.getId(), values(REALM, "Realm"), "", true);
+    assertThat(profile.getEndpoints()).isEqualTo(REALM);
+    assertThat(profile.isClientSecretSet()).isFalse();
+  }
+
+  /** The authorization endpoint receives no secret: a new one alone keeps the stored secret. */
+  @Test
+  void aNewAuthorizationEndpointAloneKeepsTheClientSecret() {
+    ConnectionProfile profile = profileWithSecret("enc:alt");
+    ProfileEndpoints moved =
+        new ProfileEndpoints(
+            "https://anders.example.org/authorize", REALM.token(), REALM.revocation());
+
+    service.update(ADMIN, profile.getId(), values(moved, "Realm"), null, true);
+
+    assertThat(profile.getEndpoints()).isEqualTo(moved);
+    assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:alt");
+  }
+
+  @Test
+  void theQuestionNamesTheOldAndTheNewEndpoints() {
+    when(encryptor.encrypt("neu")).thenReturn("enc:neu");
+    ConnectionProfile profile = profileWithSecret("enc:alt");
+    ProfileEndpoints moved =
+        new ProfileEndpoints(
+            "https://anders.example.org/authorize",
+            "https://anders.example.org/token",
+            "https://anders.example.org/revoke");
+
+    assertThatThrownBy(
+            () -> service.update(ADMIN, profile.getId(), values(moved, "Realm"), "neu", false))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining(REALM.authorization())
+        .hasMessageContaining(moved.authorization())
+        .hasMessageContaining(REALM.token())
+        .hasMessageContaining(moved.token())
+        .hasMessageContaining(REALM.revocation())
+        .hasMessageContaining(moved.revocation());
+    assertThat(profile.getEndpoints()).isEqualTo(REALM);
+  }
+
+  @Test
+  void aPublicClientChangesItsEndpointsWithoutASecret() {
+    ConnectionProfile profile = profileWithSecret(null);
+    ProfileEndpoints moved =
+        new ProfileEndpoints(
+            REALM.authorization(), "https://anders.example.org/token", REALM.revocation());
+
+    service.update(ADMIN, profile.getId(), values(moved, "Realm"), null, true);
+
+    assertThat(profile.getEndpoints()).isEqualTo(moved);
+    assertThat(profile.isClientSecretSet()).isFalse();
+  }
+
+  private ConnectionProfile profileWithSecret(String ciphertext) {
+    ConnectionProfile profile = new ConnectionProfile(RealmProbe.TYPE, NOW);
+    profile.replace(values(REALM, "Realm"), ciphertext, NOW);
+    when(profiles.findById(profile.getId())).thenReturn(Optional.of(profile));
+    return profile;
   }
 
   private static ConnectionProfileValues values(ProfileEndpoints endpoints, String name) {
