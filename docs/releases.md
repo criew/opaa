@@ -63,14 +63,32 @@ Bevor gebaut wird, bricht der Lauf ab, wenn:
 - der getaggte Commit nicht auf `main` liegt,
 - `X.Y.Z` in GHCR bereits existiert, als Image oder als Chart. Das gilt auch für einen erneut
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
-  sondern durch die nächste Patch-Version abgelöst.
+  sondern durch die nächste Patch-Version abgelöst,
+- GHCR die Abfrage nach dem Chart verweigert (etwa 401 oder 403) statt „not found“ zu melden.
+  Frei ist eine Version nur bei eindeutigem „not found“; eine Verweigerung stoppt den Lauf, bevor
+  ein Image veröffentlicht ist. Abhilfe: Unter *Packages → charts/opaa → Package settings →
+  Manage Actions access* dem Repository Schreibzugriff geben bzw. die Organisationseinstellung für
+  Pakete prüfen und dann *Re-run all jobs*. Tritt das schon beim allerersten Release auf, weil das
+  Paket noch nicht existiert, muss die Prüfung im Workflow angepasst werden; das zeigt der
+  Vorab-Release (siehe unten).
+
+Das Tag-Format steht an einer Stelle, `deploy/helm/ci/release-version.sh`; die Prüfung der Images
+und das Packen des Charts rufen es beide auf.
 
 Der Lauf ist in Jobs gestaffelt: erst die Images, dann der Chart, dann seine Attestierung, zuletzt
 das GitHub-Release. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
 den Lauf rot. Der Chart zeigt also nie auf ein Image, das nicht veröffentlicht wurde, und das
-GitHub-Release kündigt nichts an, was fehlt. Scheitert ein späterer Job, etwa an einer Störung von
-GHCR, wird er mit *Re-run failed jobs* allein wiederholt; bereits veröffentlichte Teile bleiben
-unberührt. *Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
+GitHub-Release kündigt nichts an, was fehlt.
+
+Scheitert ein späterer Job an einer vorübergehenden Störung, etwa von GHCR oder Sigstore, wird er
+mit *Re-run failed jobs* wiederholt; bereits veröffentlichte Teile bleiben unberührt. Hat der Job
+`chart` den Chart schon gepusht und ist erst danach gescheitert, überspringt die Wiederholung den
+Push und liest den Digest aus der Registry, damit Attestierung und GitHub-Release folgen können.
+*Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
+
+**Grenze:** Eine Wiederholung nutzt die Workflow-Datei des getaggten Commits. Ein dauerhafter
+Fehler im Workflow selbst, etwa eine Attestierung, die nie gelingt, lässt sich für dieses Tag
+nicht mehr beheben. Er wird auf `main` korrigiert und erscheint mit der nächsten Patch-Version.
 
 Die Chart-CI (`.github/workflows/helm-chart.yml`) packt den Chart bei jeder Chart-Änderung mit
 Beispiel-Tags auf demselben Weg (`deploy/helm/ci/package-chart.sh`), ohne zu veröffentlichen.
@@ -102,9 +120,17 @@ vor Absicht. Ablauf:
 
 Die erste Version ist `v0.1.0`.
 
-**Einmalig nach dem ersten Release mit Chart:** GHCR legt das Paket `charts/opaa` beim ersten Push
-privat an. Ein Maintainer stellt es unter *Packages → charts/opaa → Package settings* auf
-**Public**, wie die beiden Images. Bis dahin scheitert `helm install` ohne Anmeldung.
+**Erstes Release mit Chart.** Der erste Lauf legt das Paket `charts/opaa` in GHCR an. Ob das mit
+dem `GITHUB_TOKEN` des Workflows gelingt, wie GHCR die Abfrage nach dem noch fehlenden Paket
+beantwortet und ob die Attestierung landet, lässt sich nur dort prüfen. Deshalb:
+
+1. **Vorher** in den Organisationseinstellungen erlauben, dass Workflows neue Pakete anlegen.
+   Sonst scheitert der Job `chart`, nachdem die Images schon veröffentlicht sind.
+2. Das erste Release als **Vorab-Tag** fahren, etwa `v0.1.0-rc.1`. Ein Fehlschlag kostet dann nur
+   eine Vorab-Version, nicht `v0.1.0`.
+3. **Danach** das Paket unter *Packages → charts/opaa → Package settings* auf **Public** stellen,
+   wie die beiden Images. GHCR legt es privat an; bis dahin scheitert `helm install` ohne
+   Anmeldung.
 
 ## Versionsnummern
 

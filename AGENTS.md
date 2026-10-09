@@ -101,7 +101,9 @@ deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesa
 deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
                                         # Chart packen wie der Release-Lauf (publish-images.yml):
                                         # Version und appVersion aus dem Tag, prüft die Image-Tags
-                                        # der Vorgabewerte; veröffentlicht nichts
+                                        # der Vorgabewerte; veröffentlicht nichts. Das Tag-Format
+                                        # steht allein in release-version.sh, die Existenzprüfung
+                                        # des Charts in GHCR in chart-published.sh
 deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdatenbank, dann
                                         # ct install in einen Namespace mit Pod Security Standard
                                         # restricted; wartet auf Backend und Frontend und führt

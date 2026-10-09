@@ -19,8 +19,9 @@ nicht mitgeliefert.
 
 ## Installation
 
-Jedes Release veröffentlicht den Chart neben den Images in GHCR ([Releases](../../../docs/releases.md)).
-Chart-Version und Image-Tags sind dieselbe Versionsnummer:
+Jedes Release veröffentlicht den Chart neben den Images in GHCR ([Releases](../../../docs/releases.md)),
+ab dem ersten Release mit Chart; bis dahin wird aus dem Repository installiert (unten). Chart-Version
+und Image-Tags sind dieselbe Versionsnummer:
 
 ```bash
 helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z \
