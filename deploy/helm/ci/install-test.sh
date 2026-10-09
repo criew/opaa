@@ -18,8 +18,15 @@ kubectl label --overwrite namespace "$NAMESPACE" \
 
 # ct install runs once per ci/*-values.yaml. The chart's own value sets point at hosts that do not
 # exist, so the test installs a copy of the chart whose ci/ holds only this cluster's value set.
+# ct uninstall keeps the evaluation database's claim (volumeClaimTemplates); without the cleanup,
+# every local run would leave one more PVC in the namespace.
 work_dir="$(mktemp -d)"
-trap 'rm -rf "$work_dir"' EXIT
+cleanup() {
+  rm -rf "$work_dir"
+  kubectl --namespace "$NAMESPACE" delete pvc \
+    --selector app.kubernetes.io/component=evaluation-database --ignore-not-found || true
+}
+trap cleanup EXIT
 cp -R "$CHART_DIR" "$work_dir/opaa"
 rm -rf "$work_dir/opaa/ci"
 mkdir "$work_dir/opaa/ci"
