@@ -52,6 +52,7 @@ public final class InMemoryFileStore implements FileStore {
   private boolean structureChanged;
   private boolean earlyNewStart;
   private boolean swallowExpiry;
+  private boolean recordChanges;
   private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
   private boolean endAfterFirstPage;
@@ -72,12 +73,14 @@ public final class InMemoryFileStore implements FileStore {
   public InMemoryFileStore put(String container, String name, byte[] bytes, String mediaType) {
     container(container).containers.get(container).put(name, new StoredFile(bytes, mediaType));
     ids.computeIfAbsent(container + "\n" + name, key -> ++nextId);
+    recordChange(container, name);
     return this;
   }
 
   public InMemoryFileStore remove(String container, String name) {
     containers.get(container).remove(name);
     departed(container, name);
+    recordChange(container, name);
     return this;
   }
 
@@ -233,6 +236,11 @@ public final class InMemoryFileStore implements FileStore {
         if (id != null) {
           ids.put(container + "\n" + target, id);
         }
+        recordChange(container, target);
+        if (!stableIds) {
+          // the old name is another identity, reported removed
+          recordChange(container, name);
+        }
       }
     }
     files.putAll(moved);
@@ -359,6 +367,21 @@ public final class InMemoryFileStore implements FileStore {
   public InMemoryFileStore expireCursors() {
     cursorsExpired = true;
     return this;
+  }
+
+  /**
+   * From now on every put, removal and move notes itself in its container's stream, as the change
+   * log of a real source does; a moved file under stable ids is reported once, at its new name.
+   */
+  public InMemoryFileStore recordingChanges() {
+    recordChanges = true;
+    return this;
+  }
+
+  private void recordChange(String container, String name) {
+    if (recordChanges) {
+      changed(container, name);
+    }
   }
 
   /** A broken feed for the contract's own test: the first page already names the new start. */

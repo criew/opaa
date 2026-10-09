@@ -77,6 +77,13 @@ public final class FileSync implements AutoCloseable {
   public static final String UNPROVEN_ROUND_MESSAGE =
       "Vollabgleich über mehrere Läufe abgeschlossen; in der Quelle gelöschte Dateien entfernt erst"
           + " ein Lauf, der alle Geltungsbereiche allein auflistet";
+  public static final String UNPROVEN_CHANGE_LOG_MESSAGE =
+      "Vollabgleich über mehrere Läufe abgeschlossen; das Änderungsprotokoll meldet eine"
+          + " Strukturänderung oder ist nicht mehr lesbar, deshalb wurde nichts entfernt. In der"
+          + " Quelle gelöschte Dateien entfernt ein späterer Vollabgleich";
+  public static final String OPEN_CHANGE_LOG_MESSAGE =
+      "Vollabgleich über mehrere Läufe: Das Änderungsprotokoll wurde nicht fehlerfrei gelesen;"
+          + " der nächste Lauf liest es erneut und gleicht erst dann den Bestand ab";
   public static final String RESTART_SUFFIX =
       " Die Auflistung dieses Geltungsbereichs beginnt neu.";
   public static final String OVERSIZED_CHECKPOINT_MESSAGE =

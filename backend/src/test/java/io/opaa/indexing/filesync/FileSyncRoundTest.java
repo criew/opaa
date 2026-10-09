@@ -4,8 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceSyncState;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -404,6 +408,385 @@ class FileSyncRoundTest {
         .singleElement()
         .satisfies(message -> assertThat(message).contains("zu groß zum Speichern"));
     assertThat(checkpointOf(harness.state(), "A")).isNull();
+  }
+
+  /** The path of a stored document whose file no longer exists and that no change reports. */
+  private static final String STALE = "mem://A/#alt";
+
+  private static final List<String> NAMES = List.of("a/1.txt", "a/2.txt", "z/3.txt", "z/4.txt");
+
+  /**
+   * A store tracked by id whose change log notes every change, over two containers with two folders
+   * each; a first full sync has taken everything up.
+   */
+  private InMemoryFileStore changeLogStore(AbsenceProof proof) {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withCheckpoints()
+            .withFolderMarkers()
+            .withStableIds()
+            .withChangeFeed()
+            .recordingChanges()
+            .absenceProof(proof)
+            .pageSize(2)
+            .container("A")
+            .container("B");
+    for (String container : List.of("A", "B")) {
+      for (String name : NAMES) {
+        store.put(container, name, container + " " + name + ".");
+      }
+    }
+    run(store, 0);
+    return store;
+  }
+
+  /**
+   * Leaves a round open after its first run: every file changed, so the budget ends the listing of
+   * A behind its first page ({@code a/1.txt}, {@code a/2.txt}); a stale document stands.
+   */
+  private void openRound(InMemoryFileStore store) {
+    harness.store(STALE, "h:0|0");
+    for (String container : List.of("A", "B")) {
+      for (String name : NAMES) {
+        store.put(container, name, container + " " + name + ", zweite, längere Fassung.");
+      }
+    }
+    run(store, 6);
+    assertThat(harness.state().isFullSyncInterrupted()).as("the round is open").isTrue();
+    assertThat(checkpointOf(harness.state(), "A")).isEqualTo("g0:a/2.txt");
+    assertThat(harness.stored(STALE)).isPresent();
+  }
+
+  @Test
+  void aStaleDocumentStaysAfterARoundOverSeveralRunsWithoutAProof() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.SINGLE_RUN);
+    openRound(store);
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(STALE)).isPresent();
+  }
+
+  @Test
+  void aStaleDocumentIsRemovedAtTheEndOfARoundOverSeveralRunsOnceTheChangeLogIsRead() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(store.calls()).as("the round resumes").startsWith("resume A @g0:a/2.txt");
+    assertThat(store.calls()).anyMatch(call -> call.startsWith("read stream:A"));
+    assertThat(closing.listingComplete()).isTrue();
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(STALE);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    assertThat(harness.storedPaths()).hasSize(8);
+  }
+
+  @Test
+  void aFileDeletedInThePartAlreadyListedIsRemovedThroughTheChangeLog() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    String deleted = store.filePathOf("A", "a/1.txt");
+    store.remove("A", "a/1.txt");
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactlyInAnyOrder(deleted, STALE);
+    assertThat(harness.storedPaths()).hasSize(7);
+  }
+
+  @Test
+  void aFileMovedBehindTheCheckpointKeepsItsDocumentAtItsNewPlace() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    String moved = store.filePathOf("A", "z/4.txt");
+    store.move("A", "z/4.txt", "a/0.txt");
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(STALE);
+    assertThat(harness.stored(moved)).isPresent();
+    assertThat(harness.stored(moved).orElseThrow().getSourceHierarchyPath()).isEqualTo("a");
+    assertThat(harness.stored(moved).orElseThrow().getFileName()).isEqualTo("0.txt");
+  }
+
+  @Test
+  void aNewFileInThePartAlreadyListedIsTakenUpAtTheRoundsEnd() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    store.put("A", "a/15.txt", "Neu hinter dem Fortsetzungspunkt.");
+    String added = store.filePathOf("A", "a/15.txt");
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(closing.ingested()).contains(added);
+    assertThat(harness.stored(added)).isPresent();
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+  }
+
+  @Test
+  void aChangeOfStructureEndsTheRoundWithoutRemovingAnything() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    Map<String, String> held = harness.state().pendingChangeCursors();
+    store.remove("A", "a/1.txt");
+    store.structureChanged();
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.storedPaths()).hasSize(9);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    assertThat(harness.state().changeCursors())
+        .as("the next change run reads from where the round began")
+        .isEqualTo(held);
+    assertThat(closing.eventsOf(IndexingEventCategory.SUMMARY))
+        .extracting(IndexingRunEvent::getMessage)
+        .contains(FileSync.UNPROVEN_CHANGE_LOG_MESSAGE);
+  }
+
+  @Test
+  void anExpiredCursorEndsTheRoundWithoutRemovingAnything() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    store.remove("A", "a/1.txt");
+    store.expireCursors();
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(closing.failure()).isNull();
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.storedPaths()).hasSize(9);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+  }
+
+  @Test
+  void aTransientFailureOfTheChangeLogKeepsTheRoundOpenAndTheNextRunListsNoContainer() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    String deleted = store.filePathOf("A", "a/1.txt");
+    store.remove("A", "a/1.txt");
+
+    FileSyncHarness.Run failed =
+        harness.fullSync(
+            new FailingChangeLog(
+                store.reset().budget(0),
+                "stream:B",
+                () -> new FileAccessException.Transient("Der Dienst antwortet nicht.")));
+
+    assertThat(failed.failure()).isNull();
+    assertThat(failed.listingComplete()).as("nothing reconciled").isNull();
+    assertThat(failed.eventsOf(IndexingEventCategory.REMOVED))
+        .as("a removal read before the failure is not applied")
+        .isEmpty();
+    assertThat(harness.state().isFullSyncInterrupted()).isTrue();
+
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(store.calls())
+        .as("no container is listed again")
+        .allMatch(call -> call.startsWith("read ") || call.startsWith("reachable "));
+    assertThat(store.meter().requests()).isEqualTo(store.calls().size());
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactlyInAnyOrder(deleted, STALE);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+  }
+
+  @Test
+  void aFileFailingTransientlyInTheChangeLogKeepsTheRoundOpen() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    store.put("A", "a/15.txt", "Neu hinter dem Fortsetzungspunkt.");
+    String added = store.filePathOf("A", "a/15.txt");
+    harness.failIngestOf(added);
+
+    FileSyncHarness.Run failed = run(store, 0);
+
+    assertThat(failed.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.state().isFullSyncInterrupted()).isTrue();
+
+    harness.healIngests();
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(next.ingested()).containsExactly(added);
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(STALE);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+  }
+
+  @Test
+  void aBudgetEndingWhileTheChangeLogIsReadKeepsTheRoundOpen() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    String deleted = store.filePathOf("A", "a/1.txt");
+    store.remove("A", "a/1.txt");
+
+    FileSyncHarness.Run spent =
+        harness.fullSync(
+            new FailingChangeLog(
+                store.reset().budget(0),
+                "stream:B",
+                () -> RequestBudgetExhaustedException.requests(20)));
+
+    assertThat(spent.failure()).isNull();
+    assertThat(spent.eventsOf(IndexingEventCategory.BUDGET_EXHAUSTED)).hasSize(1);
+    assertThat(spent.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.storedPaths()).hasSize(9);
+    assertThat(harness.state().isFullSyncInterrupted()).isTrue();
+
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(store.calls())
+        .noneMatch(call -> call.startsWith("list") || call.startsWith("resume"));
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactlyInAnyOrder(deleted, STALE);
+  }
+
+  @Test
+  void aRoundWithoutAHeldCursorForEveryStreamStartsOver() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    String streamA = harness.state().pendingChangeCursors().get("stream:A");
+    harness.state().holdPendingChangeCursors(Map.of("stream:A", streamA));
+
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(store.calls())
+        .as("new start cursors, then every container from its first page")
+        .startsWith("startCursor stream:A", "startCursor stream:B", "list A")
+        .noneMatch(call -> call.startsWith("resume") || call.startsWith("read"));
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED))
+        .as("this run listed everything alone")
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(STALE);
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+  }
+
+  @Test
+  void aRunThatListsEveryContainerAloneReadsNoChangeLog() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    harness.store(STALE, "h:0|0");
+    String deleted = store.filePathOf("A", "a/1.txt");
+    store.remove("A", "a/1.txt");
+
+    FileSyncHarness.Run run = run(store, 0);
+
+    assertThat(store.calls()).noneMatch(call -> call.startsWith("read"));
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactlyInAnyOrder(STALE, deleted);
+  }
+
+  /**
+   * Delegates to {@code store}; the first read of {@code feedKey} throws what {@code failure}
+   * gives.
+   */
+  private static final class FailingChangeLog implements FileStore {
+
+    private final FileStore store;
+    private final String feedKey;
+    private Supplier<Exception> failure;
+
+    private FailingChangeLog(FileStore store, String feedKey, Supplier<Exception> failure) {
+      this.store = store;
+      this.feedKey = feedKey;
+      this.failure = failure;
+    }
+
+    @Override
+    public List<FileContainer> containers() {
+      return store.containers();
+    }
+
+    @Override
+    public void recall(FileContainer container, Map<String, String> subtreeMarkers) {
+      store.recall(container, subtreeMarkers);
+    }
+
+    @Override
+    public FilePage list(FileContainer container, String continuation)
+        throws FileAccessException, InterruptedException {
+      return store.list(container, continuation);
+    }
+
+    @Override
+    public FilePage resume(FileContainer container, String checkpoint)
+        throws FileAccessException, InterruptedException {
+      return store.resume(container, checkpoint);
+    }
+
+    @Override
+    public AbsenceProof absenceProof() {
+      return store.absenceProof();
+    }
+
+    @Override
+    public FileEntry head(FileContainer container, String id)
+        throws FileAccessException, InterruptedException {
+      return store.head(container, id);
+    }
+
+    @Override
+    public FetchedFile fetch(FileEntry entry, long maxBytes)
+        throws FileAccessException, InterruptedException {
+      return store.fetch(entry, maxBytes);
+    }
+
+    @Override
+    public Optional<ChangeFeed> changes() {
+      ChangeFeed feed = store.changes().orElseThrow();
+      return Optional.of(
+          new ChangeFeed() {
+            @Override
+            public String feedKey(FileContainer container) {
+              return feed.feedKey(container);
+            }
+
+            @Override
+            public String startCursor(String key) throws FileAccessException, InterruptedException {
+              return feed.startCursor(key);
+            }
+
+            @Override
+            public ChangePage read(String key, String cursor)
+                throws FileAccessException, InterruptedException {
+              if (failure != null && key.equals(feedKey)) {
+                Exception thrown = failure.get();
+                failure = null;
+                if (thrown instanceof FileAccessException access) {
+                  throw access;
+                }
+                throw (RuntimeException) thrown;
+              }
+              return feed.read(key, cursor);
+            }
+
+            @Override
+            public void requireReachable(FileContainer container)
+                throws FileAccessException, InterruptedException {
+              feed.requireReachable(container);
+            }
+          });
+    }
+
+    @Override
+    public io.opaa.sourceaccess.SourceRequestMeter meter() {
+      return store.meter();
+    }
+
+    @Override
+    public void close() {}
   }
 
   /** Pads every checkpoint beyond what the core keeps. */
