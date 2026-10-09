@@ -417,7 +417,8 @@ trustedProxyCidrs: []
 localAdminAllowedCidrs: []
 
 networkPolicy:
-  # Ingress to the backend: only from the frontend pods, the pod of helm test and the peers below.
+  # Ingress to the backend: only from the frontend pods and the peers below. The pod of helm test
+  # reaches the backend through the frontend, see frontendIngress.
   # Blocks no egress, so it breaks no fresh installation (ADR-0042, Entscheidung 4).
   backendIngress:
     enabled: true

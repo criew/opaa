@@ -128,9 +128,13 @@ Metriken und Alarme beschreibt das Handbuch im Kapitel „Kubernetes“.
 ## Prüfen
 
 ```bash
-helm lint deploy/helm/opaa -f deploy/helm/opaa/ci/minimal-values.yaml
+helm template opaa deploy/helm/opaa -f meine-werte.yaml > /dev/null
 helm test opaa -n opaa
 ```
+
+`helm template` bricht ab, wenn das Schema oder eine Regel des Charts die Werte ablehnt, etwa
+`backend.replicas: 2`. `helm lint` eignet sich dafür nicht: Es meldet die Regeln des Charts nur als
+`[INFO]` und endet trotzdem erfolgreich.
 
 `helm test` ruft `/api/health` über den Frontend-Service ab und prüft damit die Kette
 Frontend-nginx → Backend.
