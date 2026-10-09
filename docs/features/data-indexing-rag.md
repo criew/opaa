@@ -273,7 +273,7 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Chunk-Größe** | 1000 Token **(gebaut)** | Wie lang eine in sich verständliche Sinneinheit im Bestand ist | Mehr Zusammenhang je Fundstelle, aber unschärfere Treffer und längere Belegauszüge |
 | **Mindestgröße eines Chunks** | 350 Zeichen **(gebaut)** | Wie stark der Bestand zu Kurzabschnitten neigt | Weniger inhaltsleere Splitter, aber Verlust kurzer, präziser Definitionen |
 | **Überlappung** | 100 Token **(gebaut)** | Ob Aussagen regelmäßig über Abschnittsgrenzen laufen | Weniger an der Grenze zerschnittene Aussagen, aber mehr Chunks, mehr Speicher und doppelte Treffer |
-| **`top-k`** | 8 **(gebaut)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
+| **`top-k`** | 20 **(gebaut, seit #2373; zuvor 8)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
 | **`fetch-k`** | 25 **(gebaut)** | Wie viele Kandidaten die Vektorsuche liefert, bevor die Vielfaltsauswahl (MMR, siehe direkt unter der Tabelle) daraus `top-k` auswählt | Mehr Spielraum für Vielfalt bei Mehrthemen-Fragen, aber mehr Rechenaufwand für die Auswahl |
 | **MMR-λ (`mmr-lambda`)** | 1,0 **(gebaut, Vielfalt per Default deaktiviert)** | Abwägung zwischen Relevanz und Vielfalt bei der Auswahl aus `fetch-k` Kandidaten (Maximal Marginal Relevance) — `1,0` schaltet die Vielfalt ab und wählt reine Top-`k`-Relevanz | Höherer Wert bevorzugt Relevanz stärker, niedrigerer Wert verdrängt redundante Fundstellen zugunsten thematisch anderer stärker |
 | **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber häufiger keine ausreichend ähnliche Fundstelle und damit eine Antwort ohne Beleg |
@@ -493,7 +493,7 @@ einzigen Chunk stellte — genau der Fall, den #912 beheben sollte):
    nicht zum selben Dokument gehört. Die Dokumentvielfalt der Fusion/MMR-Auswahl darf hier sinken
    — bewusste Abwägung: der zweite Chunk eines stark gerankten Dokuments ist mehr wert als der
    einzige Chunk des Tabellenendes. Auf `max(1, top-k / 4)` Stufe-2-Verdrängungen je Abfrage
-   gedeckelt (bei Default `top-k=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen
+   gedeckelt (bei Default `top-k=20` also 5, bis #2373 bei `top-k=8` also 2), damit eine einzelne Abfrage nicht mehrere Themen
    zugunsten eines einzigen verdrängt.
 
 Das Gesamtbudget bleibt `top-k`, unverändert gegenüber dem Stand vor #932.

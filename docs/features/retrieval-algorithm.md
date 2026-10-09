@@ -234,7 +234,7 @@ Die Auswahl ist dann bit-identisch zu der ohne sie — die Messvariante `vector-
 Stufenname: `MMR_SELECTION`. `MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
 Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` auf das **Kandidatenbudget** des Laufs
 (`RetrievalContext#candidateBudget`). Ohne Reranking ist das `opaa.query.top-k`
-(`OPAA_QUERY_TOP_K`, Default `8`) — das Verhalten von vor #1050. Läuft die Rerank-Stufe, ist es
+(`OPAA_QUERY_TOP_K`, Default `20`, bis #2373 `8`) — das Verhalten von vor #1050. Läuft die Rerank-Stufe, ist es
 stattdessen `opaa.query.rerank-candidate-count`: Ein Reranker, der nur `top-k` Kandidaten je
 Liste zu sehen bekäme, könnte nichts mehr hochziehen, was die vorgelagerten Stufen bereits
 verworfen haben, und wäre damit zwecklos. Steuernder Parameter ist `opaa.query.mmr-lambda`

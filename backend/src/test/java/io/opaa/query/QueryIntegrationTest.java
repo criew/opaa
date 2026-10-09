@@ -523,10 +523,10 @@ class QueryIntegrationTest {
   /**
    * The granted pool {@link
    * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem} and
-   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share: twenty
-   * single-chunk documents ({@code doc-a-0}..{@code doc-a-19}) plus {@code doc-a-multi}'s three
-   * chunks - 23 granted chunks over 21 distinct documents - so {@code DocumentCompletion} (#932)
-   * actually runs its tier-1 eviction (a document already holding two chunks) against this
+   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share:
+   * twenty single-chunk documents ({@code doc-a-0}..{@code doc-a-19}) plus {@code doc-a-multi}'s
+   * three chunks - 23 granted chunks over 21 distinct documents - so {@code DocumentCompletion}
+   * (#932) actually runs its tier-1 eviction (a document already holding two chunks) against this
    * permission-filtered pool, not just single-chunk documents that only tier 2 can touch.
    *
    * <p>All 23 tie under {@code FakeEmbeddingModel} (see the first caller's comment), so a plain

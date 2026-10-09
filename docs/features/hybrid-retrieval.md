@@ -145,7 +145,8 @@ Der Volltextpfad kommt als eine weitere Eingangsliste hinzu — derselbe Mechani
 ## Reranking: der zweite Blick
 
 Die fusionierte Liste ist auf **Abdeckung** optimiert: Sie soll die richtige Fundstelle irgendwo unter
-den ersten 50 haben. Was an das Sprachmodell übergeben wird, sind aber nur die besten 8 — und dafür
+den ersten 50 haben. Was an das Sprachmodell übergeben wird, sind aber nur die besten `top-k` (bis
+#2373 8, seither 20) — und dafür
 braucht es **Präzision**.
 
 Der Unterschied liegt darin, wie bewertet wird. Bei der Vektorsuche werden Frage und Chunk **getrennt**
@@ -161,7 +162,7 @@ ist ein Cross-Encoder als Erststufe über einer Million Chunks unbrauchbar und a
 
 Die zweite, ebenso wichtige Grenze: **Ein Reranker kann fehlenden Recall nicht heilen.** Was die
 Erststufe gar nicht liefert, kann er nicht nach oben sortieren. Er ist die Antwort auf „die richtige
-Fundstelle war unter den ersten 50, aber nicht unter den ersten 8" — die zweite Hälfte des
+Fundstelle war unter den ersten 50, aber nicht unter den ersten `top-k`" — die zweite Hälfte des
 #938-Problems. Die erste Hälfte löst die lexikalische Suche.
 
 ## Wo das alles sitzt
