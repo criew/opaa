@@ -143,6 +143,11 @@ public abstract class FileStoreResumptionContract extends FileStoreContract {
     if (absenceProof() == AbsenceProof.SINGLE_RUN) {
       assertThat(removed).as("a round over several runs proves no absence").isEmpty();
     }
+    if (absenceProof() == AbsenceProof.CHANGE_FEED) {
+      assertThat(removed)
+          .as("the change log since the round began proves both absences at its end")
+          .containsExactlyInAnyOrder(fixture.filePath(0, early), fixture.filePath(1, late));
+    }
     unbounded();
     unbounded();
     assertThat(removed)

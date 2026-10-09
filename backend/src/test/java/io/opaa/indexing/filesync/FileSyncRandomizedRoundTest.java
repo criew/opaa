@@ -21,10 +21,11 @@ import org.junit.jupiter.api.Test;
  * containers made unlistable for a while or for good, downloads and ingests failing, runs failing
  * and event runs coming in - with a fixed start value per scenario, named in every failure. No
  * document is removed whose file exists under the same identity; for a store whose identity is the
- * location, under the same identity since the round began. A file that rests in a listable
- * container is taken up; once the source stays still and every container is listable, the bestand
- * matches it. {@code -Dopaa.filesync.randomSeeds}, {@code .randomRuns} and {@code .firstSeed} (or
- * the environment variables {@code OPAA_FILESYNC_RANDOM_*}) widen the search.
+ * location, under the same identity since the round began; for a store whose change log proves
+ * absence, also at the end of a round over several runs. A file that rests in a listable container
+ * is taken up; once the source stays still and every container is listable, the bestand matches it.
+ * {@code -Dopaa.filesync.randomSeeds}, {@code .randomRuns} and {@code .firstSeed} (or the
+ * environment variables {@code OPAA_FILESYNC_RANDOM_*}) widen the search.
  */
 class FileSyncRandomizedRoundTest {
 
@@ -43,10 +44,13 @@ class FileSyncRandomizedRoundTest {
   private int removals;
   private int lockedOut;
 
+  /** Removals in the run that ended a round over several runs. */
+  private int removalsAtARoundsEnd;
+
   @Test
   void aStoreTrackedByIdentityRemovesNothingThatStillExists() {
     for (long seed = FIRST_SEED; seed < FIRST_SEED + SEEDS; seed++) {
-      new Scenario(seed, false).play();
+      new Scenario(seed, false, false).play();
     }
     assertThat(multiRunRounds).as("rounds over several runs were exercised").isPositive();
     assertThat(removals).as("removals were exercised").isPositive();
@@ -56,10 +60,22 @@ class FileSyncRandomizedRoundTest {
   @Test
   void aStoreIdentifiedByLocationRemovesNothingThatExistedSinceTheRoundBegan() {
     for (long seed = FIRST_SEED; seed < FIRST_SEED + SEEDS; seed++) {
-      new Scenario(seed, true).play();
+      new Scenario(seed, true, false).play();
     }
     assertThat(multiRunRounds).as("rounds over several runs were exercised").isPositive();
     assertThat(removals).as("removals were exercised").isPositive();
+    assertThat(lockedOut).as("containers locked out for good were exercised").isPositive();
+  }
+
+  @Test
+  void aStoreWhoseChangeLogProvesAbsenceRemovesNothingThatStillExists() {
+    for (long seed = FIRST_SEED; seed < FIRST_SEED + SEEDS; seed++) {
+      new Scenario(seed, false, true).play();
+    }
+    assertThat(multiRunRounds).as("rounds over several runs were exercised").isPositive();
+    assertThat(removalsAtARoundsEnd)
+        .as("removals at the end of a round over several runs were exercised")
+        .isPositive();
     assertThat(lockedOut).as("containers locked out for good were exercised").isPositive();
   }
 
@@ -68,6 +84,10 @@ class FileSyncRandomizedRoundTest {
 
     private final long seed;
     private final boolean byLocation;
+
+    /** A store tracked by id whose change log proves absence at a round's end. */
+    private final boolean changeLog;
+
     private final Random random;
     private final InMemoryFileStore store;
     private final FileSyncHarness harness;
@@ -96,15 +116,19 @@ class FileSyncRandomizedRoundTest {
     private int version;
     private int folderNames;
 
-    private Scenario(long seed, boolean byLocation) {
+    private Scenario(long seed, boolean byLocation, boolean changeLog) {
       this.seed = seed;
       this.byLocation = byLocation;
+      this.changeLog = changeLog;
       this.random = new Random(seed);
       this.store = new InMemoryFileStore().withCheckpoints().pageSize(1 + random.nextInt(3));
       if (byLocation) {
         store.absenceProof(AbsenceProof.LOCATION_IDENTITY);
       } else {
         store.withFolderMarkers().withStableIds();
+      }
+      if (changeLog) {
+        store.withChangeFeed().recordingChanges().absenceProof(AbsenceProof.CHANGE_FEED);
       }
       try {
         this.harness = new FileSyncHarness().downloadConcurrency(1 + random.nextInt(3));
@@ -149,14 +173,16 @@ class FileSyncRandomizedRoundTest {
 
     /**
      * The source stays still, every passing failure ends; only a locked-out container stays. Half
-     * the seeds keep a small budget, so the round spans runs beside the locked-out container.
+     * the seeds keep a small budget, so the round spans runs beside the locked-out container; a
+     * store proving absence by its change log does not, as a round's end reads the log in one run.
      */
     private void quiet() {
       store.acceptCredentials();
       harness.healIngests();
       unreadable.forEach(store::allowReading);
       deniedForAWhile.forEach(store::allowListing);
-      int budget = random.nextBoolean() ? 0 : 8 + random.nextInt(20);
+      // a log longer than the budget keeps the round open until #2413
+      int budget = random.nextBoolean() || changeLog ? 0 : 8 + random.nextInt(20);
       int runs = budget == 0 ? 4 : QUIET_BUDGETED_RUNS;
       // a removal by a store without location proof needs one run over everything
       boolean removalsDue = lockedOutContainer == null && (budget == 0 || byLocation);
@@ -206,16 +232,28 @@ class FileSyncRandomizedRoundTest {
       check(result);
       if (wasOpen && !harness.state().isFullSyncInterrupted() && roundStart < run) {
         multiRunRounds++;
+        removalsAtARoundsEnd += result.eventsOf(IndexingEventCategory.REMOVED).size();
       }
     }
 
-    /** A run the source refuses half way: it fails and removes nothing. */
+    /**
+     * A run the source refuses after a random number of requests - also after a container the round
+     * completed. A run that fails removes nothing; one that ends first is checked like any other.
+     */
     private void failingRun() {
-      store.reset().budget(0).rejectCredentials();
+      if (harness.state().scanProgress() == null) {
+        roundStart = run;
+      }
+      store.reset().budget(0).rejectCredentialsAfter(random.nextInt(30));
       FileSyncHarness.Run result = harness.fullSync(store);
       store.acceptCredentials();
-      assertThat(result.failure()).as("seed %s, run %s fails", seed, run).isNotNull();
-      assertThat(result.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+      if (result.failure() == null) {
+        check(result);
+      } else {
+        assertThat(result.eventsOf(IndexingEventCategory.REMOVED))
+            .as("seed %s, run %s fails and removes nothing", seed, run)
+            .isEmpty();
+      }
     }
 
     /** An event run over one to three files that exist. */
