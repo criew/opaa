@@ -102,8 +102,10 @@ kubectl label namespace opaa pod-security.kubernetes.io/enforce=restricted
 - **Actuator:** Von außen ist kein `/actuator`-Pfad erreichbar; der Frontend-nginx reicht nur `/api/`
   und `/mcp` weiter. Prometheus fragt das Backend direkt ab.
 - **CSP:** Liegt der Issuer des Identitätsanbieters (`bootstrap.oidc.issuerUri`) auf einem anderen
-  Origin als `publicBaseUrl`, gehört dieser in `frontend.cspConnectSrcExtra`. Fehlt er dort, warnt
-  `helm install` in seinen Hinweisen.
+  Origin als `publicBaseUrl`, gehört dieser in `frontend.cspConnectSrcExtra`, ebenso der Origin des
+  `token_endpoint` aus seinem Discovery-Dokument, wenn er abweicht (Google:
+  `https://oauth2.googleapis.com`). Erlaubt die Policy den Issuer nicht, warnt `helm install` in
+  seinen Hinweisen; den `token_endpoint` kann Helm nicht prüfen.
 
 ## Betriebsüberwachung
 

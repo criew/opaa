@@ -317,9 +317,10 @@ frontend:
   # The frontend holds no state and may run more than once.
   replicas: 1
 
-  # Content Security Policy of the frontend nginx: further origins of connect-src, space-separated
-  # (OPAA_CSP_CONNECT_SRC_EXTRA). Required when the issuer of an identity provider lives on another
-  # origin than publicBaseUrl - otherwise the browser blocks the sign-in silently.
+  # Content Security Policy of the frontend nginx: further sources of connect-src, space-separated
+  # (OPAA_CSP_CONNECT_SRC_EXTRA). Required when the issuer of an identity provider or the
+  # token_endpoint of its discovery document lives on another origin than publicBaseUrl - otherwise
+  # the browser blocks the sign-in. CSP Level 3 syntax: origin, host without scheme or *.domain.
   cspConnectSrcExtra: ""
 
   # How long the frontend nginx waits for the backend's answer on /api/ and /mcp

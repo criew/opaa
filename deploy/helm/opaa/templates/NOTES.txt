@@ -83,15 +83,23 @@ CLIENT-ADRESSE UND NETZTRENNUNG
 {{- end }}
 {{- with .Values.bootstrap.oidc.issuerUri }}
 {{- $origin := include "opaa.origin" . }}
-{{- $allowed := list (include "opaa.origin" $.Values.publicBaseUrl) }}
-{{- range splitList " " $.Values.frontend.cspConnectSrcExtra }}
-{{- if . }}{{ $allowed = append $allowed (include "opaa.origin" .) }}{{ end }}
-{{- end }}
-{{- if not (has $origin $allowed) }}
+{{- $discovery := printf "%s/.well-known/openid-configuration" (trimSuffix "/" .) }}
+{{- if ne $origin (include "opaa.origin" $.Values.publicBaseUrl) }}
+{{- $sources := printf "'self' %s" $.Values.frontend.cspConnectSrcExtra }}
+{{- if include "opaa.cspAdmits" (dict "url" . "page" $.Values.publicBaseUrl "sources" $sources) }}
+
+IDENTITÄTSANBIETER AUF EINEM ANDEREN ORIGIN
+  Die Content-Security-Policy erlaubt den Issuer {{ $origin }}.
+{{- else }}
 
 ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
   Der Issuer des Identitätsanbieters liegt auf einem anderen Origin als publicBaseUrl. Ohne
   frontend.cspConnectSrcExtra: "{{ $origin }}" verhindert die Content-Security-Policy die Anmeldung.
+{{- end }}
+  Der Browser ruft außerdem den token_endpoint aus dem Discovery-Dokument auf:
+    {{ $discovery }}
+  Liegt er auf einem weiteren Origin, bei Google https://oauth2.googleapis.com, gehört auch dieser
+  nach frontend.cspConnectSrcExtra.
 {{- end }}
 {{- end }}
 

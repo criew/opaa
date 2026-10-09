@@ -203,9 +203,10 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
   csp_case silent "$issuer" "https://login.example.org:443"
   csp_case silent "$issuer" "https://login.example.org/realms/"
   csp_case silent "$issuer" "https://other.example.net login.example.org"
-  # The page is https: an http source is upgraded, scheme sources and * admit everything https.
+  # An http source is upgraded to https, also as a scheme source; https: and * admit any https URL.
   csp_case silent "$issuer" "http://login.example.org"
   csp_case silent "$issuer" "https:"
+  csp_case silent "$issuer" "http:"
   csp_case silent "$issuer" "*"
   csp_case silent "https://login.example.org:8443/realms/opaa" "login.example.org:8443"
   csp_case silent "https://login.example.org:8443/realms/opaa" "https://login.example.org:*"
@@ -215,10 +216,25 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
   csp_case warn "$issuer" "https://login.example.org:8443"
   csp_case warn "https://login.example.org:8443/realms/opaa" "login.example.org"
   csp_case warn "$issuer" "https://login.example.org.evil.example"
-  csp_case warn "$issuer" "http:"
+  csp_case warn "$issuer" "data: blob:"
   # Without a scheme, an https page admits https only; a bare word is a host name, not a keyword.
   csp_case warn "http://login.example.org/realms/opaa" "login.example.org"
   csp_case warn "$issuer" "self"
+  # The browser also calls the token endpoint, which Helm cannot look up: an admitted issuer on
+  # another origin still points to it, an issuer on the page's own origin needs no note.
+  output="$(notes --set "bootstrap.oidc.issuerUri=$issuer" --set bootstrap.oidc.clientId=opaa \
+    --set frontend.cspConnectSrcExtra=login.example.org)"
+  if [[ "$output" != *"token_endpoint aus dem Discovery-Dokument"* ||
+    "$output" != *"$issuer/.well-known/openid-configuration"* ]]; then
+    echo "Expected the note on the token endpoint for an admitted issuer on another origin." >&2
+    csp_failures=$((csp_failures + 1))
+  fi
+  output="$(notes --set bootstrap.oidc.issuerUri=https://opaa.example.org/realms/opaa \
+    --set bootstrap.oidc.clientId=opaa)"
+  if [[ "$output" == *"token_endpoint"* ]]; then
+    echo "Expected no note on the identity provider for an issuer on the page's own origin." >&2
+    csp_failures=$((csp_failures + 1))
+  fi
   if ((csp_failures > 0)); then
     echo "$csp_failures CSP warning case(s) failed." >&2
     exit 1

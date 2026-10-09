@@ -499,7 +499,7 @@ Fest gesetzt und nicht über Werte änderbar sind `SPRING_PROFILES_ACTIVE=oidc`,
 | `frontend.image.tag`, `.digest`, `.pullPolicy` | leer (Version des Charts), leer, `IfNotPresent` | — | wie beim Backend |
 | `frontend.replicas` | `1` | — | Zahl der Frontend-Pods; mehr als einer ist zulässig |
 | `frontend.backendReadTimeout` | leer (Vorgabe des Images, `600s`) | `OPAA_BACKEND_READ_TIMEOUT` | wie lange der Frontend-nginx auf die Antwort des Backends wartet, für `/api/` und `/mcp`; Zahl mit Einheit `s`, `m` oder `h`. Mit `rerank.timeout` zusammen anheben; Controller oder Gateway davor brauchen mindestens denselben Wert |
-| `frontend.cspConnectSrcExtra` | leer | `OPAA_CSP_CONNECT_SRC_EXTRA` | weitere Origins für `connect-src`, durch Leerzeichen getrennt; Pflicht, wenn ein Identitätsanbieter auf einem anderen Origin liegt als `publicBaseUrl` |
+| `frontend.cspConnectSrcExtra` | leer | `OPAA_CSP_CONNECT_SRC_EXTRA` | weitere Quellen für `connect-src`, durch Leerzeichen getrennt; Pflicht, wenn der Issuer eines Identitätsanbieters oder sein `token_endpoint` auf einem anderen Origin liegt als `publicBaseUrl`, siehe [Identitätsanbieter](#identitätsanbieter) |
 | `frontend.resources` | 50m CPU und 64Mi angefordert, 256Mi Grenze | — | Ressourcen |
 | `frontend.livenessProbe`, `.readinessProbe` | alle `20` bzw. `10` s, Zeitgrenze `3` s, `3` Fehlversuche | — | Proben auf `/index.html` |
 | `frontend.tmp.sizeLimit`, `.medium` | `512Mi`, leer | — | `emptyDir` unter `/tmp` für die erzeugte Konfiguration und Puffer von nginx |
@@ -638,17 +638,37 @@ zusammen; fehlt eines, übernimmt der erste Start keinen Anbieter. Beim Anbieter
 
 Drei Werte hängen am Netz des Clusters:
 
-- **`frontend.cspConnectSrcExtra`:** Liegt der Issuer auf einem anderen Origin als `publicBaseUrl`,
-  gehört dieser Origin hierher. Sonst blockiert die Content-Security-Policy die Anmeldung, ohne eine
-  Meldung zu zeigen. Fehlt der Origin, warnt `helm install` in seiner Ausgabe davor. Kommt später in
-  der Oberfläche ein Anbieter mit einem weiteren Origin hinzu, wird der Wert ergänzt und mit
-  `helm upgrade` übernommen.
+- **`frontend.cspConnectSrcExtra`:** Der Browser ruft zwei Endpunkte des Anbieters per `fetch` auf:
+  das Discovery-Dokument unter dem Issuer und den `token_endpoint` aus diesem Dokument. Liegt einer
+  davon auf einem anderen Origin als `publicBaseUrl`, gehört dieser Origin hierher; sonst blockiert
+  die Content-Security-Policy die Anmeldung, und nur die Browser-Konsole nennt die blockierte
+  Adresse. Anmelde- und Abmeldeseite des Anbieters sind Seitenwechsel und brauchen keinen Eintrag,
+  `userinfo_endpoint` und `jwks_uri` ruft der Browser nicht auf. Kommt später in der Oberfläche ein
+  Anbieter mit einem weiteren Origin hinzu, wird der Wert ergänzt und mit `helm upgrade` übernommen.
 - **`bootstrap.oidc.jwkSetUri`:** Erreicht das Backend den Anbieter nur unter einer internen Adresse,
   die der Browser nicht kennt, nennt dieser Wert die Adresse der Signaturschlüssel unter der internen
   Adresse. Der Issuer bleibt die Adresse, die der Browser sieht.
 - **`targetValidation.identityProviderAllowlist`:** Weitere Anbieter mit privater Adresse, die in der
   Oberfläche angelegt werden, brauchen hier ihren Hostnamen. Die Adressen des Startanbieters sind
   immer erlaubt.
+
+Gemessene Beispiele aus den Discovery-Dokumenten der Anbieter, abgerufen im Oktober 2026; für
+andere Anbieter zeigt `curl -s <Issuer>/.well-known/openid-configuration` den `token_endpoint`:
+
+| Anbieter | Issuer | `token_endpoint` | `frontend.cspConnectSrcExtra` |
+|---|---|---|---|
+| Keycloak mit Hostname `login.example.org` | `https://login.example.org/realms/<Realm>` | `https://login.example.org/realms/<Realm>/protocol/openid-connect/token` | `https://login.example.org` |
+| Microsoft Entra ID, Endpunkt v2.0 eines Mandanten | `https://login.microsoftonline.com/<Mandant>/v2.0` | `https://login.microsoftonline.com/<Mandant>/oauth2/v2.0/token` | `https://login.microsoftonline.com` |
+| Google | `https://accounts.google.com` | `https://oauth2.googleapis.com/token` | `https://accounts.google.com https://oauth2.googleapis.com` |
+
+Die Einträge folgen der Syntax von Content Security Policy Level 3: ein Origin, ein Host ohne Schema
+(`login.example.org`, dann gilt das Schema von `publicBaseUrl`) oder ein Platzhalter für Subdomains
+(`https://*.example.org` erlaubt `login.example.org`, nicht aber `example.org` selbst); ohne Port
+gilt der Standardport des Schemas. Nach denselben Regeln prüft die Ausgabe von `helm install` und
+`helm upgrade` den Issuer aus `bootstrap.oidc.issuerUri`: Erlaubt die Policy ihn nicht, warnt sie
+mit „ANMELDUNG ÜBER … WIRD BLOCKIERT“. Den `token_endpoint` kann Helm nicht prüfen, weil es das
+Discovery-Dokument nicht abruft; liegt der Issuer auf einem anderen Origin als `publicBaseUrl`,
+erinnert die Ausgabe deshalb an ihn und nennt die Adresse des Discovery-Dokuments.
 
 Stellt eine hauseigene CA das Zertifikat des Anbieters aus, gehört sie nach `extraCACertificates`.
 Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht unter
@@ -1149,7 +1169,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Bild | Wahrscheinliche Ursache |
 |---|---|
 | Kein Einmalpasswort im Protokoll | `OPAA_INITIAL_ADMIN_PASSWORD` steht im Secret, die Adresse wurde abgelehnt, oder der Pod ist seit dem ersten Start mehrmals neu gestartet und das Protokoll ist weg. Weiter unter [Kein Einmalpasswort im Log zu finden](deployment.md#kein-einmalpasswort-im-log-zu-finden) und mit dem [Notfallzugang](#was-der-chart-setzt-und-was-die-oberfläche-pflegt) |
-| Die Anmeldung über den Identitätsanbieter tut nichts, keine Meldung | Die Content-Security-Policy blockiert den Issuer; sein Origin fehlt in `frontend.cspConnectSrcExtra` |
+| „Die Anmeldung bei … konnte nicht gestartet werden“, oder nach der Anmeldung beim Anbieter eine technische Fehlermeldung auf `/auth/callback` | Die Content-Security-Policy blockiert den Issuer oder den `token_endpoint`; der Origin fehlt in `frontend.cspConnectSrcExtra`. Die Browser-Konsole nennt die blockierte Adresse, siehe [Identitätsanbieter](#identitätsanbieter) |
 | Anmeldeschleife oder Fehler beim Anbieter nach der Rückkehr | Die Weiterleitungs-URI beim Anbieter ist nicht `<publicBaseUrl>/auth/callback`, oder `publicBaseUrl` stimmt nicht mit der Adresse im Browser überein |
 | Anmeldung gelingt beim Anbieter, OPAA antwortet `401` | Der Issuer im Token ist nicht `bootstrap.oidc.issuerUri`, das Backend erreicht die Signaturschlüssel nicht (dann `bootstrap.oidc.jwkSetUri` setzen oder die Egress-Regel ergänzen), oder die Client-ID passt nicht. Den Grund nennt der Header `WWW-Authenticate` |
 | `POST`-Anfragen antworten `403` | Die Adresse im Browser ist nicht `publicBaseUrl`, und die Herkunftsprüfung lehnt ab |
