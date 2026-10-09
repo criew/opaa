@@ -108,6 +108,10 @@ deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdaten
                                         #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
                                         # In CI bei Änderungen am Chart und an den Image-Dateien,
                                         # nightly und per Label "helm-suite"
+deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert die PrometheusRule
+                                        # und führt deploy/helm/opaa/ci/prometheusrule-test.yaml
+                                        # mit promtool aus; braucht helm, yq und promtool. In CI
+                                        # Teil der statischen Prüfung
 
 # E2E-Suite (aus e2e/, siehe e2e/README.md)
 pnpm install                            # Abhängigkeiten installieren
