@@ -17,7 +17,18 @@ nicht mitgeliefert.
 - für die Originale ein S3-kompatibler Objektspeicher (empfohlen) oder ein Volume
 - ein OpenAI-kompatibler Endpunkt für Einbettung und Chat
 
-## Installation aus dem Repository
+## Installation
+
+Jedes Release veröffentlicht den Chart neben den Images in GHCR ([Releases](../../../docs/releases.md)),
+ab dem ersten Release mit Chart; bis dahin wird aus dem Repository installiert (unten). Chart-Version
+und Image-Tags sind dieselbe Versionsnummer:
+
+```bash
+helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z \
+  -n opaa --create-namespace -f meine-werte.yaml
+```
+
+Aus dem Repository, etwa um den Stand von `main` zu betreiben:
 
 ```bash
 helm install opaa deploy/helm/opaa -n opaa --create-namespace -f meine-werte.yaml \
@@ -126,5 +137,6 @@ Frontend-nginx → Backend.
 Die CI (`.github/workflows/helm-chart.yml`) rendert den Chart mit jedem Wertesatz unter
 [`ci/`](ci/), prüft die Manifeste mit Helm 3.8 und Helm 4 gegen die unterstützten
 Kubernetes-Versionen, führt die Unit-Tests der Alarme
-([`ci/prometheusrule-test.yaml`](ci/prometheusrule-test.yaml)) mit promtool aus und installiert
-ihn auf kind. Die Skripte dazu liegen unter [`deploy/helm/ci/`](../ci/).
+([`ci/prometheusrule-test.yaml`](ci/prometheusrule-test.yaml)) mit promtool aus, packt ihn mit
+Beispiel-Tags wie der Release-Lauf und installiert ihn auf kind. Die Skripte dazu liegen unter
+[`deploy/helm/ci/`](../ci/).
