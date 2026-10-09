@@ -35,6 +35,7 @@ import io.opaa.connection.oauth.ConnectionAuthorizationService.Started;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.ProfileRegistrations;
+import io.opaa.connection.token.GrantRevocations;
 import io.opaa.indexing.source.SecretKind;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.consentprobe.ConsentProbeIndexingExecutor;
@@ -98,6 +99,7 @@ class SourceConsentIntegrationTest {
   @Autowired private JdbcTemplate jdbc;
   @Autowired private ConnectionAuthorizationRepository authorizationRepository;
   @Autowired private ConnectionProfileRepository profileRepository;
+  @Autowired private GrantRevocations grantRevocations;
   @Autowired private ProfileRegistrations registrations;
   @Autowired private ConnectedAccountService accounts;
   @Autowired private SourceConsentService consents;
@@ -376,6 +378,7 @@ class SourceConsentIntegrationTest {
         .andExpect(jsonPath("$.error").value(containsString("anderes-konto@example.org")));
 
     String refused = PROVIDER.lastRefreshToken();
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .as("the fresh grant is revoked")
         .anySatisfy(request -> assertThat(request.form()).containsEntry("token", refused));
@@ -437,6 +440,7 @@ class SourceConsentIntegrationTest {
         .perform(as("dev-user", delete("/api/v1/libraries/" + library + "/source-connection")))
         .andExpect(status().isNoContent());
 
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(
@@ -466,6 +470,7 @@ class SourceConsentIntegrationTest {
         .perform(as("dev-user", delete("/api/v1/libraries/" + library)))
         .andExpect(status().isNoContent());
 
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(request -> assertThat(request.form()).containsEntry("token", refresh));
@@ -500,6 +505,7 @@ class SourceConsentIntegrationTest {
         put(ADMIN + "/" + profile),
         change.formatted(UUID.randomUUID(), SERVER, ", \"confirmDiscard\": true"));
 
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(
@@ -560,6 +566,7 @@ class SourceConsentIntegrationTest {
             jdbc.queryForObject(
                 "SELECT count(*) FROM connection_tokens WHERE id = ?", Integer.class, pending))
         .isZero();
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(request -> assertThat(request.form()).containsEntry("token", refresh));
@@ -667,6 +674,7 @@ class SourceConsentIntegrationTest {
     complete("dev-user", started).andExpect(status().isBadRequest());
 
     String refresh = PROVIDER.lastRefreshToken();
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(request -> assertThat(request.form()).containsEntry("token", refresh));
@@ -729,6 +737,7 @@ class SourceConsentIntegrationTest {
       ConnectorReleases.withdraw(jdbc, "TYPE:" + ConsentProbeSourceConnector.TYPE.key());
     }
 
+    awaitRevocations();
     assertThat(PROVIDER.revocations()).isEmpty();
     assertThat(consentRows(library)).isEqualTo(1);
   }
@@ -834,6 +843,7 @@ class SourceConsentIntegrationTest {
 
   /** The consent's refresh token went back once, proven with the registration it came from. */
   private void assertRevokedWithTheOldRegistration(String refresh) {
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(
@@ -1078,5 +1088,10 @@ class SourceConsentIntegrationTest {
     return request
         .header(DevAuthFilter.DEV_USER_HEADER, user)
         .contentType(MediaType.APPLICATION_JSON);
+  }
+
+  /** Waits until every revocation handed over so far has run. */
+  private void awaitRevocations() {
+    await().atMost(Duration.ofSeconds(30)).until(grantRevocations::idle);
   }
 }

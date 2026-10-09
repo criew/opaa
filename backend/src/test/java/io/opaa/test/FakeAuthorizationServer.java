@@ -20,7 +20,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
@@ -30,8 +32,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * (target, {@code Authorization}, form) and answers with new tokens, or with the OAuth error set by
  * {@link #rejectWith}. {@link #approve} stands for the person consenting in the browser, as the
  * account {@link #account} names; {@link #accountOf} tells which account an access token was issued
- * to. It also answers a request sent to it as a proxy. {@link #shared()} serves the Spring
- * contexts.
+ * to. {@link #holdRevocations} stands for a provider that takes a revocation but does not answer.
+ * It also answers a request sent to it as a proxy. {@link #shared()} serves the Spring contexts.
  */
 public final class FakeAuthorizationServer implements AutoCloseable {
 
@@ -68,6 +70,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   private volatile Duration delay = Duration.ZERO;
   private volatile boolean unreachable;
   private volatile Runnable beforeCodeAnswer;
+  private volatile CountDownLatch revocationGate;
 
   public FakeAuthorizationServer() {
     try {
@@ -161,6 +164,23 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     this.unreachable = unreachable;
   }
 
+  /**
+   * From now on every revocation is recorded on arrival and then left without an answer until
+   * {@link #releaseRevocations} or {@link #reset}; a client gives up after its own time limit.
+   */
+  public void holdRevocations() {
+    revocationGate = new CountDownLatch(1);
+  }
+
+  /** Answers every held revocation and those that follow. */
+  public void releaseRevocations() {
+    CountDownLatch gate = revocationGate;
+    revocationGate = null;
+    if (gate != null) {
+      gate.countDown();
+    }
+  }
+
   /** Runs {@code hook} once the next code exchange arrived, before it is answered. */
   public void beforeCodeAnswer(Runnable hook) {
     this.beforeCodeAnswer = hook;
@@ -233,6 +253,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
 
   /** Forgets the requests and every setting; tokens keep counting. */
   public void reset() {
+    releaseRevocations();
     requests.clear();
     error = null;
     rotateRefreshTokens = true;
@@ -325,6 +346,19 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     Map<String, String> form = form(body);
     String authorization = exchange.getRequestHeaders().getFirst("Authorization");
     requests.add(new Request(exchange.getRequestURI(), authorization, form));
+    CountDownLatch gate = revocationGate;
+    if (gate != null) {
+      try {
+        if (!gate.await(5, TimeUnit.MINUTES)) {
+          exchange.close();
+          return;
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        exchange.close();
+        return;
+      }
+    }
     String token = form.get("token");
     if (token != null) {
       liveRefreshTokens.remove(token);
