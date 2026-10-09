@@ -204,7 +204,7 @@ public class IndexingRunTemplate {
     try {
       requireNotErased(library);
       settings = connectionResolver.resolve(library);
-      basis = settingsBasis.of(library, settings);
+      basis = settingsBasis.of(library, settings, connectionResolver.connectedAccount(library));
     } catch (LibraryErasureRequestedException e) {
       progress.fail(e.getMessage());
       return;
@@ -248,8 +248,7 @@ public class IndexingRunTemplate {
               return connectionResolver.secretAfterRejection(library, rejected);
             },
             clock);
-    run.bindSettingsBasis(
-        basis, () -> settingsBasis.of(library, connectionResolver.resolveForChange(now(library))));
+    run.bindSettingsBasis(basis, () -> settingsBasis.current(now(library), connectionResolver));
     boolean failed = false;
     String failure = null;
     RunFailureCategory category = null;
@@ -418,9 +417,7 @@ public class IndexingRunTemplate {
           "Indexing run {} for library {}: settings changed during the run, nothing reconciled",
           run.jobId(),
           run.library().getId());
-      run.events()
-          .recordRunNote(
-              IndexingEventCategory.SUMMARY, IndexingRun.SETTINGS_CHANGED_DURING_MESSAGE);
+      run.events().recordRunNote(IndexingEventCategory.SUMMARY, run.settingsChangeNote());
       indexingJobService.recordListingAssessment(run.jobId(), false, List.of());
       return;
     }

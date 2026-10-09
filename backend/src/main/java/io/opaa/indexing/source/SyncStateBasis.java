@@ -13,9 +13,10 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The fingerprint of the settings a library's {@link SourceSyncState} means something under:
- * address, path and the connector settings its connector compares ({@link
- * SourceConnector#settingsState}). A state is continued only under the fingerprint it was written
- * with; equal settings give an equal fingerprint whatever the order of their keys.
+ * address, path, the connector settings its connector compares ({@link
+ * SourceConnector#settingsState}) and the connected account. A state is continued only under the
+ * fingerprint it was written with; equal settings give an equal fingerprint whatever the order of
+ * their keys.
  */
 public final class SyncStateBasis {
 
@@ -35,8 +36,25 @@ public final class SyncStateBasis {
     this.connectors = connectors;
   }
 
-  /** The fingerprint of {@code library} under {@code settings}, its effective configuration. */
+  /**
+   * The fingerprint of {@code library} as {@code resolver} reads its settings and account now,
+   * without a secret ({@link SourceConnectionResolver#settingsOnly}).
+   */
+  public String current(KnowledgeLibrary library, SourceConnectionResolver resolver) {
+    return of(library, resolver.settingsOnly(library), resolver.connectedAccount(library));
+  }
+
+  /** The fingerprint of {@code library} under {@code settings}, without a connected account. */
   public String of(KnowledgeLibrary library, SourceSettings settings) {
+    return of(library, settings, null);
+  }
+
+  /**
+   * The fingerprint of {@code library} under {@code settings}, its effective configuration, as
+   * {@code account} ({@link SourceConnectionResolver#connectedAccount}, case ignored, {@code null}
+   * for none) sees its source.
+   */
+  public String of(KnowledgeLibrary library, SourceSettings settings, String account) {
     ConnectorData connectorSettings = settings.connectorSettings();
     Map<String, ?> compared =
         connectors == null
@@ -50,6 +68,9 @@ public final class SyncStateBasis {
     basis.put("sourceUrl", settings.sourceUrl());
     basis.put("sourcePath", settings.sourcePath());
     basis.put("settings", compared);
+    if (account != null) {
+      basis.put("account", account.toLowerCase(java.util.Locale.ROOT));
+    }
     return sha256(CANONICAL.writeValueAsString(basis));
   }
 

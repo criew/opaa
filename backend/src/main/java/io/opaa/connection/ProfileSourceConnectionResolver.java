@@ -61,6 +61,16 @@ public class ProfileSourceConnectionResolver implements SourceConnectionResolver
   }
 
   @Override
+  public SourceSettings settingsOnly(KnowledgeLibrary library) {
+    return effective.of(library, Purpose.SETTINGS_ONLY);
+  }
+
+  @Override
+  public String connectedAccount(KnowledgeLibrary library) {
+    return effective.connectedAccountOf(library);
+  }
+
+  @Override
   public Secret currentSecret(KnowledgeLibrary library) {
     return effective.currentSecret(library);
   }

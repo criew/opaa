@@ -28,6 +28,22 @@ public interface SourceConnectionResolver {
   }
 
   /**
+   * Target, proxy, TLS switch and connector settings of {@code library} as {@link #resolve}
+   * composes them, without any secret: no sign-in, no renewal and no block refuses it.
+   */
+  default SourceSettings settingsOnly(KnowledgeLibrary library) {
+    return resolveForChange(library).withoutCredentials();
+  }
+
+  /**
+   * The account at the provider {@code library}'s source is connected as, {@code null} where none
+   * is named; another account may see another source. Never a secret.
+   */
+  default String connectedAccount(KnowledgeLibrary library) {
+    return null;
+  }
+
+  /**
    * The secret {@code library} is reached with now, with its kind, {@code null} for none.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now

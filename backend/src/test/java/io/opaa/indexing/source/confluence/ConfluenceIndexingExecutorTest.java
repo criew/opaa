@@ -298,10 +298,21 @@ class ConfluenceIndexingExecutorTest {
   private SourceSyncState writtenUnderCurrentSettings() {
     SourceSyncState state = new SourceSyncState(library.getId());
     state.adoptSettingsBasis(
-        SyncStateBasis.WHOLE_SETTINGS.of(
-            library, new LibrarySourceConnectionResolver().resolve(library)));
+        SyncStateBasis.WHOLE_SETTINGS.of(library, resolver.resolve(library), connectedAccount));
     return state;
   }
+
+  /** The account the library's source is connected as; {@code null} for none. */
+  private String connectedAccount;
+
+  /** The library's own fields, connected as {@link #connectedAccount}. */
+  private final LibrarySourceConnectionResolver resolver =
+      new LibrarySourceConnectionResolver() {
+        @Override
+        public String connectedAccount(KnowledgeLibrary candidate) {
+          return connectedAccount;
+        }
+      };
 
   /** The real run frame over the mocked job bookkeeping and the spied reconciliation. */
   private IndexingRunTemplate runTemplate() {
@@ -311,7 +322,7 @@ class ConfluenceIndexingExecutorTest {
         cleanupService,
         documentRepository,
         storageQuotaService,
-        new LibrarySourceConnectionResolver());
+        resolver);
   }
 
   /** The real generalized attachment path over the mocked processing. */
@@ -859,6 +870,25 @@ class ConfluenceIndexingExecutorTest {
     // the anchor moves to this run's start, not its end
     assertThat(state.getIncrementalAnchor()).isEqualTo(NOW);
     verify(syncStateRepository).save(state);
+  }
+
+  // regression guard for #2268: the anchor of another connected account misses what this one sees
+  @ParameterizedTest
+  @MethodSource("editions")
+  void anIncrementalRunAsAnotherAccountSearchesNothingAndAFullSyncFollows(ConfluenceEdition edition)
+      throws Exception {
+    start(edition, null, "ENG", "HR");
+    connectedAccount = "alt@example.org";
+    SourceSyncState state = completedFullSync(NOW.minus(Duration.ofHours(2)));
+    connectedAccount = "neu@example.org";
+    server.updatePage("101", "<p>Überarbeitet.</p>", NOW.minus(Duration.ofHours(1)));
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(server.requests()).noneMatch(r -> r.contains("search"));
+    verify(documentIngestService, never()).ingest(any(), any());
+    verify(syncStateRepository).save(state);
+    assertThat(state.getIncrementalAnchor()).isNull();
   }
 
   // regression guard for #2268: an anchor kept under another space selection misses older pages

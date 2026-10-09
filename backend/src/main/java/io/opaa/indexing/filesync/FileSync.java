@@ -289,10 +289,7 @@ public final class FileSync implements AutoCloseable {
       }
       if (closing == Closing.STALE) {
         round.continuesLater();
-        frame
-            .events()
-            .recordRunNote(
-                IndexingEventCategory.SUMMARY, IndexingRun.SETTINGS_CHANGED_DURING_MESSAGE);
+        frame.events().recordRunNote(IndexingEventCategory.SUMMARY, frame.settingsChangeNote());
         return ListingOutcome.truncated();
       }
       round.presenceToFrame();
@@ -408,10 +405,7 @@ public final class FileSync implements AutoCloseable {
         pendingCursors.forEach(state::advanceChangeCursor);
       } else {
         // read under the old settings: no removal, no cursor; the next run discards the state
-        frame
-            .events()
-            .recordRunNote(
-                IndexingEventCategory.SUMMARY, IndexingRun.SETTINGS_CHANGED_DURING_MESSAGE);
+        frame.events().recordRunNote(IndexingEventCategory.SUMMARY, frame.settingsChangeNote());
       }
     } finally {
       forgetChangedContainers(reader.changedContainers());
@@ -463,6 +457,10 @@ public final class FileSync implements AutoCloseable {
         return Closing.OPEN;
       }
       next.put(stream.getKey(), read.cleanStart());
+    }
+    if (!frame.settingsUnchanged()) {
+      // read under the old settings: the findings prove nothing under the new ones
+      return Closing.STALE;
     }
     reader.applyRemovals();
     closingCursors = next;

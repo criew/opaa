@@ -1068,6 +1068,27 @@ Bibliotheken.
    das neue Konto unter den alten Einstellungen. Der Fingerabdruck hält Stand und Abgleich davon
    frei, nicht die Aufnahme.
 
+Nachbesserung aus dem Review:
+
+- **Abschluss über das Protokoll:** Die Prüfung aus Punkt 5 steht zusätzlich unmittelbar vor dem
+  Anwenden der Löschbefunde, nicht nur vor dem Lesen; eine Änderung während des Lesens entfernte
+  sonst noch.
+- **Abgewählte Dateien im Änderungslauf** warten wie gemeldete Löschungen in `ChangeStreams` auf
+  `applyRemovals`, statt sofort zu entfernen; sonst umgingen sie die Prüfung.
+- **Betriebsart:** `DefaultRunModes` wählt für einen Lauf ohne gewählte Betriebsart (Zeitplan,
+  manuell ohne Angabe, übergelaufener Ereignisstapel) `FULL`, wenn der Executor ihn kennt und der
+  gespeicherte Stand einen anderen oder keinen Fingerabdruck trägt. Kein Konnektor baut das nach.
+- **Geheimnisfreie Lesart:** Die Nachprüfung liest über `SourceConnectionResolver#settingsOnly`
+  (`Purpose.SETTINGS_ONLY`), ohne Anmeldung beim Anbieter. Nicht lesbare Einstellungen haben einen
+  eigenen Protokollvermerk, ebenso ein Stand ohne Fingerabdruck.
+- **Konto:** `SourceConnectionResolver#connectedAccount` (die Kontokennung der Verbindung, nie das
+  Geheimnis, ohne Groß- und Kleinschreibung) geht in den Fingerabdruck. Damit verwirft auch ein
+  Kontowechsel einen Stand, den ein Lauf des alten Kontos zurückschreibt, etwa den Anker von
+  Confluence. Punkt 6 ist insoweit überholt.
+- **Hin- und Rückwechsel während eines Laufs** hat laut Review keine Löschwirkung; es bleibt ohne
+  Revisionszähler.
+- `SourceChangeGate#discardAgain` entfällt mit `RunStateResets`.
+
 Tests: `FileSyncSettingsBasisTest` (fünf Reproduktionsfälle, auf `main` rot),
 `FileSyncRandomizedRoundTest` (der Filter der Bibliothek wechselt zwischen und während der Läufe;
 die Invariante gilt für Dateien, die der geltende Filter zulässt), `SourceSyncStateTest`,

@@ -1178,7 +1178,10 @@ Aktion ab.
   Änderung startete. Das Restrisiko aus dem Nachtrag zu #2164 („Vollabgleich ohne private
   Bibliotheken“) besteht damit nicht mehr, für private wie für geteilte Bibliotheken.
 - **Ein Lauf, dessen Einstellungen sich währenddessen ändern, entfernt nichts durch Abwesenheit**;
-  der Rahmen liest sie vor dem Abgleich neu.
+  der Rahmen liest sie vor dem Abgleich neu, ohne Geheimnis (`SourceConnectionResolver#settingsOnly`).
+- **Das verbundene Konto zählt mit** (`SourceConnectionResolver#connectedAccount`, beim Zugang die
+  Kontokennung der Verbindung). Ein Kontowechsel über „Neu verbinden“ verwirft damit auch einen
+  Stand, den ein laufender Lauf des alten Kontos zurückschreibt.
 - **Die Ablehnung `CONNECTION_PROFILE_RUN_IN_PROGRESS` bleibt bewusst** für geteilte Bibliotheken:
   Ein laufender Lauf holt jedes Element mit dem gerade gültigen Geheimnis, nach der Änderung also
   unter dem neuen Konto mit den alten Einstellungen. Der Fingerabdruck schützt Abgleichstand und

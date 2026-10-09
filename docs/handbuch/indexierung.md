@@ -309,13 +309,26 @@ hat, schließt den Zustand. Eine Änderung des Endpoints oder der Geltungsbereic
 einer Runde, Änderungszeiger, Anker des inkrementellen Laufs, gemerkte Ordner) gilt nur für die
 Quelleinstellungen, unter denen er entstand: Adresse, Pfad und die Einstellungen, die der Konnektor
 als auswahlbestimmend vergleicht, etwa Ordner, Spaces, Geltungsbereiche, Filter oder das imitierte
-Konto. Vorgaben des Zugangs zählen mit. Findet ein Lauf einen Stand anderer Einstellungen vor, verwirft
-er ihn, vermerkt das im Protokoll und gleicht vollständig neu ab; ein inkrementeller Lauf sucht dann
-nichts, der nächste Lauf ist ein Vollabgleich. Das gilt auch, wenn ein Lauf, der vor der Änderung
-begann, den alten Stand danach noch einmal geschrieben hat, und auch nach einem Neustart. Ändern sich
-die Einstellungen, während ein Lauf läuft, entfernt dieser Lauf nichts als verschwunden und gilt als
-unvollständig; der nächste Lauf gleicht unter den neuen Einstellungen ab. Proxy, Zertifikatsprüfung
-und der Vollabgleich-Rhythmus gehören nicht dazu.
+Konto, dazu das Konto, als das die Quelle verbunden ist. Vorgaben des Zugangs zählen mit. Proxy,
+Zertifikatsprüfung und der Vollabgleich-Rhythmus gehören nicht dazu.
+
+- Ein Lauf, für den niemand eine Betriebsart gewählt hat (Zeitplan, „Jetzt indizieren“, ein
+  übergelaufener Ereignisstapel), ist ein Vollabgleich, sobald der gespeicherte Stand zu anderen
+  Einstellungen gehört.
+- Findet ein Lauf einen Stand anderer Einstellungen vor, verwirft er ihn, vermerkt das im Protokoll
+  und gleicht vollständig neu ab. Ein ausdrücklich inkrementell gestarteter Lauf sucht dann nichts;
+  der nächste Lauf ist ein Vollabgleich. Ein Stand, der vor dieser Prüfung entstand, nennt seine
+  Einstellungen nicht; er wird einmal verworfen, mit eigenem Protokollvermerk.
+- Das gilt auch, wenn ein Lauf, der vor der Änderung begann, den alten Stand danach noch einmal
+  geschrieben hat, und auch nach einem Neustart.
+- Ändern sich die Einstellungen, während ein Lauf läuft, entfernt dieser Lauf nichts als
+  verschwunden, weder am Ende der Auflistung noch aus dem Änderungsprotokoll. Bei den Dateiablagen
+  endet er meist als **fehlgeschlagen** mit „Die Quelle der Bibliothek wurde während des Laufs
+  geändert …“, weil die Änderung den Stand verworfen hat und der Lauf ihn nicht neu anlegt. Sichert
+  er danach nichts mehr, und bei Confluence, gilt er als **unvollständig** mit einem
+  Protokollvermerk. Lassen sich die Einstellungen vor dem Abgleich nicht erneut lesen, vermerkt das
+  Protokoll das eigens, und der Lauf entfernt ebenfalls nichts. In jedem Fall gleicht der nächste
+  Lauf unter den neuen Einstellungen ab.
 
 ## 4. Die Quellen: der Übergabepunkt an die Konnektoren
 

@@ -450,7 +450,7 @@ class IndexingRunTemplateTest {
   void aListingWhoseSettingsChangedMeanwhileReconcilesNothingAndIsAssessedIncomplete() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library)).thenReturn(fileSettings("/srv/dokumente"));
-    when(resolver.resolveForChange(library)).thenReturn(fileSettings("/srv/andere"));
+    when(resolver.settingsOnly(library)).thenReturn(fileSettings("/srv/andere"));
     AtomicReference<Boolean> hook = new AtomicReference<>();
 
     runCompleteListingWith(resolver, hook);
@@ -471,7 +471,27 @@ class IndexingRunTemplateTest {
   void aListingWhoseSettingsCannotBeReadAgainReconcilesNothing() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library)).thenReturn(fileSettings("/srv/dokumente"));
-    when(resolver.resolveForChange(library)).thenThrow(new IllegalStateException("gesperrt"));
+    when(resolver.settingsOnly(library)).thenThrow(new IllegalStateException("gesperrt"));
+
+    runCompleteListingWith(resolver, new AtomicReference<>());
+
+    verify(cleanupService, never()).reconcile(any(), any(), any(), any(), any(), any(), any());
+    verify(jobService).recordListingAssessment(jobId, false, List.of());
+    verify(eventRepository)
+        .save(
+            argThat(
+                (IndexingRunEvent event) ->
+                    event.getCategory() == IndexingEventCategory.SUMMARY
+                        && event.getMessage().equals(IndexingRun.SETTINGS_UNREADABLE_MESSAGE)));
+    verify(resolver, never()).resolveForChange(any());
+  }
+
+  @Test
+  void aListingWhoseConnectedAccountChangedMeanwhileReconcilesNothing() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    when(resolver.resolve(library)).thenReturn(fileSettings("/srv/dokumente"));
+    when(resolver.settingsOnly(library)).thenReturn(fileSettings("/srv/dokumente"));
+    when(resolver.connectedAccount(library)).thenReturn("alt@example.org", "neu@example.org");
 
     runCompleteListingWith(resolver, new AtomicReference<>());
 
@@ -483,7 +503,7 @@ class IndexingRunTemplateTest {
   void aListingUnderUnchangedSettingsReconciles() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library)).thenReturn(fileSettings("/srv/dokumente"));
-    when(resolver.resolveForChange(library)).thenReturn(fileSettings("/srv/dokumente"));
+    when(resolver.settingsOnly(library)).thenReturn(fileSettings("/srv/dokumente"));
     AtomicReference<Boolean> hook = new AtomicReference<>();
 
     runCompleteListingWith(resolver, hook);

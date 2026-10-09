@@ -145,6 +145,49 @@ class FileSyncSettingsBasisTest {
     assertThat(harness.state().changeCursors()).isEqualTo(before);
   }
 
+  // regression guard for #2268: a deselected file waits with the removals like a removed one
+  @Test
+  void aChangeRunWhoseSettingsChangeWhileItGoesRemovesNoDeselectedFile() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .container("A")
+            .withChangeFeed()
+            .put("A", "a.txt", "Erste Fassung.")
+            .put("A", "b.txt", "Zweiter Text.");
+    harness.fullSync(store);
+    var before = harness.state().changeCursors();
+
+    store
+        .deselect("b.txt")
+        .changed("A", "b.txt")
+        .beforeNextChangeRead(() -> harness.library().updateSourceSettings(SECOND));
+    FileSyncHarness.Run run = harness.changeRun(store.reset());
+
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .isEmpty();
+    assertThat(harness.storedPaths()).contains(InMemoryFileStore.filePath("A", "b.txt"));
+    assertThat(harness.state().changeCursors()).isEqualTo(before);
+  }
+
+  @Test
+  void aChangeRunUnderUnchangedSettingsRemovesADeselectedFile() {
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .container("A")
+            .withChangeFeed()
+            .put("A", "a.txt", "Erste Fassung.")
+            .put("A", "b.txt", "Zweiter Text.");
+    harness.fullSync(store);
+
+    store.deselect("b.txt").changed("A", "b.txt");
+    FileSyncHarness.Run run = harness.changeRun(store.reset());
+
+    assertThat(run.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(InMemoryFileStore.filePath("A", "b.txt"));
+  }
+
   private static InMemoryFileStore round() {
     return new InMemoryFileStore()
         .withCheckpoints()

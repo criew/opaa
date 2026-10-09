@@ -73,8 +73,8 @@ final class ChangeStreams {
   private final List<PendingRemoval> pendingRemovals = new ArrayList<>();
 
   /**
-   * @param atRoundsEnd the reader closes a round: a deselected file waits with the removals, and a
-   *     later report of a file as present withdraws an earlier removal of it
+   * @param atRoundsEnd the reader closes a round: a later report of a file as present withdraws an
+   *     earlier removal of it
    */
   ChangeStreams(
       IndexingRun frame, DocumentRepository documentRepository, Sink sink, boolean atRoundsEnd) {
@@ -177,12 +177,8 @@ final class ChangeStreams {
         FileEntry entry = updated.entry();
         changedContainers.add(entry.container().key());
         if (entry.exclusion() instanceof Exclusion.Deselected) {
-          // outside the patterns now: not part of the bestand, as in a full sync
-          if (atRoundsEnd) {
-            pendingRemovals.add(new PendingRemoval(entry.filePath(), null));
-          } else {
-            sink.remove(entry.filePath());
-          }
+          // outside the patterns now: not part of the bestand; waits with the removals
+          pendingRemovals.add(new PendingRemoval(entry.filePath(), null));
         } else {
           if (atRoundsEnd) {
             // the file exists now: an earlier report of its removal is outdated

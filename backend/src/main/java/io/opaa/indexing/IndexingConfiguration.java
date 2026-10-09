@@ -18,6 +18,7 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
 import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.DefaultRunModes;
 import io.opaa.indexing.source.DocumentIndexingService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -316,14 +317,28 @@ public class IndexingConfiguration {
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       IndexingRunEventRepository indexingRunEventRepository,
-      SourceConnectionResolver sourceConnectionResolver) {
+      SourceConnectionResolver sourceConnectionResolver,
+      DefaultRunModes defaultRunModes) {
     return new DocumentIndexingService(
         indexingJobService,
         indexingSourceExecutorRegistry,
         libraryRepository,
         libraryAccessService,
         indexingRunEventRepository,
-        sourceConnectionResolver);
+        sourceConnectionResolver,
+        defaultRunModes);
+  }
+
+  /** The run mode of a run nobody chose a mode for, aware of a state of other settings. */
+  @Bean
+  DefaultRunModes defaultRunModes(
+      SourceConnectionResolver sourceConnectionResolver,
+      SourceSyncStateRepository sourceSyncStateRepository,
+      ObjectProvider<SourceConnectorRegistry> sourceConnectorRegistry) {
+    return new DefaultRunModes(
+        sourceConnectionResolver,
+        sourceSyncStateRepository,
+        new SyncStateBasis(sourceConnectorRegistry::getObject));
   }
 
   /**

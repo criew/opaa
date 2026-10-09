@@ -49,6 +49,15 @@ public final class IndexingRun {
       "Die Quelleinstellungen der Bibliothek haben sich seit dem gespeicherten Abgleichstand"
           + " geändert; er wurde verworfen, die Quelle wird vollständig neu abgeglichen";
 
+  public static final String STATE_WITHOUT_BASIS_MESSAGE =
+      "Der gespeicherte Abgleichstand stammt aus einer früheren Version und nennt seine"
+          + " Einstellungen nicht; er wurde verworfen, die Quelle wird einmal vollständig neu"
+          + " abgeglichen";
+
+  public static final String SETTINGS_UNREADABLE_MESSAGE =
+      "Die Quelleinstellungen der Bibliothek ließen sich vor dem Abgleich nicht erneut lesen; der"
+          + " Lauf entfernt nichts, der nächste gleicht ab";
+
   public static final String SETTINGS_CHANGED_DURING_MESSAGE =
       "Die Quelleinstellungen der Bibliothek haben sich während des Laufs geändert; der Lauf"
           + " entfernt nichts, der nächste gleicht unter den neuen Einstellungen ab";
@@ -79,6 +88,7 @@ public final class IndexingRun {
   private ReconciliationHook reconciliationHook = reconciled -> {};
   private String settingsBasis;
   private Supplier<String> currentSettingsBasis = () -> settingsBasis;
+  private boolean settingsUnreadable;
 
   public IndexingRun(
       UUID jobId,
@@ -197,13 +207,19 @@ public final class IndexingRun {
    * @return whether {@code state} held something it discarded
    */
   public boolean adopt(SourceSyncState state) {
-    if (settingsBasis == null || !state.adoptSettingsBasis(settingsBasis)) {
+    if (settingsBasis == null) {
+      return false;
+    }
+    boolean withoutBasis = state.getSettingsBasis() == null;
+    if (!state.adoptSettingsBasis(settingsBasis)) {
       return false;
     }
     log.info(
         "Library {} has other settings than its sync state was written under - discarded",
         library.getId());
-    events.recordRunNote(IndexingEventCategory.SUMMARY, SETTINGS_CHANGED_BEFORE_MESSAGE);
+    events.recordRunNote(
+        IndexingEventCategory.SUMMARY,
+        withoutBasis ? STATE_WITHOUT_BASIS_MESSAGE : SETTINGS_CHANGED_BEFORE_MESSAGE);
     return true;
   }
 
@@ -217,14 +233,21 @@ public final class IndexingRun {
       return true;
     }
     try {
+      settingsUnreadable = false;
       return settingsBasis.equals(currentSettingsBasis.get());
     } catch (RuntimeException e) {
       log.warn(
           "Could not read the settings of library {} again; taken as changed",
           library.getId(),
           library.loggedNames().of(e));
+      settingsUnreadable = true;
       return false;
     }
+  }
+
+  /** The protocol note for the last {@link #settingsUnchanged} that answered {@code false}. */
+  public String settingsChangeNote() {
+    return settingsUnreadable ? SETTINGS_UNREADABLE_MESSAGE : SETTINGS_CHANGED_DURING_MESSAGE;
   }
 
   /**
