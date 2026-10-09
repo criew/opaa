@@ -55,13 +55,16 @@ public class McpServerDiscovery {
    * What the authorization server of the MCP server {@code resource} names.
    *
    * @param scopes the scopes the server names as supported, {@code null} for none
+   * @param issuerParameterSupported whether the authorization server announces {@code
+   *     authorization_response_iss_parameter_supported} (RFC 9207), only for a JSON {@code true}
    */
   public record Metadata(
       String issuer,
       String authorizationEndpoint,
       String tokenEndpoint,
       String revocationEndpoint,
-      String scopes) {
+      String scopes,
+      boolean issuerParameterSupported) {
 
     ProfileEndpoints endpoints() {
       return new ProfileEndpoints(authorizationEndpoint, tokenEndpoint, revocationEndpoint);
@@ -114,7 +117,14 @@ public class McpServerDiscovery {
     String authorization = endpoint(metadata, "authorization_endpoint", true);
     String token = endpoint(metadata, "token_endpoint", true);
     String revocation = endpoint(metadata, "revocation_endpoint", false);
-    return new Metadata(issuer, authorization, token, revocation, scopesOf(protectedResource));
+    JsonNode issuerParameter = metadata.get("authorization_response_iss_parameter_supported");
+    return new Metadata(
+        issuer,
+        authorization,
+        token,
+        revocation,
+        scopesOf(protectedResource),
+        issuerParameter != null && issuerParameter.isBoolean() && issuerParameter.asBoolean());
   }
 
   /** RFC 9728, 3.1 and RFC 8414, 3.1: the well-known suffix before the path, then at the root. */

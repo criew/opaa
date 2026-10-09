@@ -55,6 +55,7 @@ public final class FakeMcpServer implements AutoCloseable {
   private volatile String announcedIssuer;
   private volatile FakeMcpServer authorizationServer;
   private volatile boolean offersS256 = true;
+  private volatile Boolean announcesIssuerParameter;
 
   public FakeMcpServer() {
     try {
@@ -118,6 +119,14 @@ public final class FakeMcpServer implements AutoCloseable {
   /** Whether the server metadata offers PKCE with S256 (default). */
   public void offerS256(boolean offers) {
     this.offersS256 = offers;
+  }
+
+  /**
+   * From now on the server metadata names {@code authorization_response_iss_parameter_supported}
+   * (RFC 9207) as {@code announces}; {@code null} leaves it out (default).
+   */
+  public void announceIssuerParameter(Boolean announces) {
+    this.announcesIssuerParameter = announces;
   }
 
   /**
@@ -216,6 +225,10 @@ public final class FakeMcpServer implements AutoCloseable {
             + "\", \"response_types_supported\": [\"code\"],"
             + " \"code_challenge_methods_supported\": "
             + (offersS256 ? "[\"S256\"]" : "[\"plain\"]")
+            + (announcesIssuerParameter == null
+                ? ""
+                : ", \"authorization_response_iss_parameter_supported\": "
+                    + announcesIssuerParameter)
             + "}");
   }
 

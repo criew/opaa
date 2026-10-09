@@ -161,7 +161,7 @@ paths:
       summary: Complete an OAuth consent with what the provider sent back
       description: >
         Called by the page /connections/callback with state and code, or state and error, as the
-        provider returned them. The state must be the caller's own, unused and not expired; it is
+        provider returned them, and iss where it named one (RFC 9207). The state must be the caller's own, unused and not expired; it is
         used up by this call whatever its outcome. Whoever may connect is checked again as at the
         start. The server exchanges the code with the profile's client secret and the PKCE
         verifier, asks the connector for the account's address where it names one, and stores the
@@ -186,7 +186,9 @@ paths:
         "400":
           description: >
             The provider refused or cancelled the consent, or the exchange of the code failed (the
-            message says which).
+            message says which); the response came from another authorization server than the
+            consent started with, or did not name it where it must (code
+            CONNECTION_AUTHORIZATION_ISSUER_MISMATCH) - nothing reached the provider.
           content:
             application/json:
               schema:
@@ -1984,6 +1986,15 @@ components:
           maxLength: 256
           nullable: true
           description: The provider's error code (RFC 6749, 4.1.2.1) where it refused or cancelled.
+        iss:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: >
+            The issuer the provider named in its response (RFC 9207), null where it named none -
+            also for an error. It must equal the issuer the consent started with character for
+            character, and it is required where that authorization server announced it
+            (authorization_response_iss_parameter_supported).
 
     ConnectionAuthorizationCompleteResponse:
       type: object

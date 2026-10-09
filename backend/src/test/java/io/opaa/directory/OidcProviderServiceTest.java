@@ -28,6 +28,7 @@ import io.opaa.auth.OidcAddressPolicy;
 import io.opaa.auth.OidcClaimMapping;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.auth.OidcProviderRemovalRepository;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.ProviderConnectionsImpact;
@@ -62,6 +63,7 @@ class OidcProviderServiceTest {
   private static final Instant NOW = Instant.parse("2026-09-11T12:00:00Z");
 
   private final OidcProviderRepository repository = mock(OidcProviderRepository.class);
+  private final OidcProviderRemovalRepository removals = mock(OidcProviderRemovalRepository.class);
   private final UserRepository userRepository = mock(UserRepository.class);
   private final OidcAddressPolicy addressPolicy = mock(OidcAddressPolicy.class);
   private final OidcProviderRegistry registry = mock(OidcProviderRegistry.class);
@@ -81,6 +83,7 @@ class OidcProviderServiceTest {
     service =
         new OidcProviderService(
             repository,
+            removals,
             userRepository,
             providerGroups,
             addressPolicy,
