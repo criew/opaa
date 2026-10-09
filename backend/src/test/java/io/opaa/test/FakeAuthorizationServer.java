@@ -92,6 +92,11 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     return shared;
   }
 
+  /** The issuer this server names itself as (RFC 8414), its origin without a path. */
+  public String issuer() {
+    return "http://127.0.0.1:" + server.getAddress().getPort();
+  }
+
   public URI tokenEndpoint() {
     return endpoint("/token");
   }

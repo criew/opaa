@@ -204,7 +204,7 @@ public class ConnectionAuthorizationService {
                   redirect.toString(),
                   now,
                   expiresAt);
-          authorization.expectIssuer(profile.getIssuer(), profile.isIssuerParameterSupported());
+          authorization.expectIssuer(auth.issuer(), auth.issuerParameterSupported());
           if (purpose != ConnectionAuthorizationPurpose.ACCOUNT) {
             authorization.forLibrary(
                 now,
@@ -441,15 +441,12 @@ public class ConnectionAuthorizationService {
 
   /**
    * Refuses a response from another authorization server than the one the consent started with
-   * (mix-up, RFC 9207, 2.4): {@code iss} must equal the expected issuer character for character,
-   * and is required where that server announced it. Without a known issuer nothing is compared.
+   * (mix-up, RFC 9207, 2.4), as {@link ResponseIssuer#accepts} decides.
    */
   private static void requireIssuer(ConnectionAuthorization authorization, String iss) {
-    String expected = authorization.getExpectedIssuer();
-    if (expected == null || expected.equals(iss)) {
-      return;
-    }
-    if (iss == null && !authorization.isIssuerRequired()) {
+    ResponseIssuer expected =
+        new ResponseIssuer(authorization.getExpectedIssuer(), authorization.isIssuerRequired());
+    if (expected.accepts(iss)) {
       return;
     }
     log.warn(
