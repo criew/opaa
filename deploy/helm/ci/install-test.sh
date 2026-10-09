@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Installation test of the OPAA chart, run by .github/workflows/helm-chart.yml and locally from the
 # repository root. Expects the current kubectl context to point at a kind cluster that already holds
-# the images named in install-values.yaml. Starts the helper database, then lets chart-testing
-# install the chart into a namespace enforcing the Pod Security Standard "restricted", wait until
+# the images named in install-values.yaml. Lets chart-testing install the chart with its evaluation
+# database into a namespace enforcing the Pod Security Standard "restricted", wait until database,
 # backend and frontend are ready, run helm test and uninstall again. Needs kubectl, helm and ct.
 set -euo pipefail
 
@@ -12,17 +12,21 @@ NAMESPACE="${INSTALL_NAMESPACE:-opaa-ct}"
 # The first start migrates the schema; the chart's startup probe allows up to ten minutes for it.
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-900s}"
 
-kubectl apply -f "$CI_DIR/postgres.yaml"
-kubectl --namespace opaa-ci-db rollout status deployment/postgres --timeout=300s
-
 kubectl create namespace "$NAMESPACE" --dry-run=client --output yaml | kubectl apply -f -
 kubectl label --overwrite namespace "$NAMESPACE" \
   pod-security.kubernetes.io/enforce=restricted pod-security.kubernetes.io/enforce-version=latest
 
 # ct install runs once per ci/*-values.yaml. The chart's own value sets point at hosts that do not
 # exist, so the test installs a copy of the chart whose ci/ holds only this cluster's value set.
+# ct uninstall keeps the evaluation database's claim (volumeClaimTemplates); without the cleanup,
+# every local run would leave one more PVC in the namespace.
 work_dir="$(mktemp -d)"
-trap 'rm -rf "$work_dir"' EXIT
+cleanup() {
+  rm -rf "$work_dir"
+  kubectl --namespace "$NAMESPACE" delete pvc \
+    --selector app.kubernetes.io/component=evaluation-database --ignore-not-found || true
+}
+trap cleanup EXIT
 cp -R "$CHART_DIR" "$work_dir/opaa"
 rm -rf "$work_dir/opaa/ci"
 mkdir "$work_dir/opaa/ci"

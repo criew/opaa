@@ -1,9 +1,8 @@
-# Unit test of the alerts in templates/prometheusrule.yaml (release "r", namespace "opaa"):
-#   helm template r . -n opaa -f ci/full-values.yaml --show-only templates/prometheusrule.yaml \
-#     | sed -n '/^spec:/,$p' | sed '1d; s/^  //' > /tmp/opaa-rules.yaml
-#   promtool test rules ci/prometheusrule-test.yaml
+# Unit test of the alerts in templates/prometheusrule.yaml (release "r", namespace "opaa"), run from
+# the repository root with deploy/helm/ci/rule-test.sh; that script renders the rules into
+# opaa-rules.yaml next to a copy of this file.
 rule_files:
-  - /tmp/opaa-rules.yaml
+  - opaa-rules.yaml
 evaluation_interval: 1m
 tests:
   # Idle for two hours, then a run that processes its first document after 20 minutes: no alert,

@@ -134,12 +134,13 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s]+)',
       ],
     },
-    // Die Werkzeuge der Chart-Prüfung (#2355) stehen als Umgebungsvariable, Action-Eingabe oder
-    // Matrix-Eintrag direkt unter ihrem Kommentar. Die älteste unterstützte Helm-3-Version trägt
-    // bewusst keinen Kommentar: Sie ist eine Zusage aus ADR-0042, kein Stand zum Nachziehen.
+    // Die Werkzeuge der Chart-Prüfung (#2355) und das Helm der Chart-Veröffentlichung (#2356) stehen
+    // als Umgebungsvariable, Action-Eingabe oder Matrix-Eintrag direkt unter ihrem Kommentar. Die
+    // älteste unterstützte Helm-3-Version trägt bewusst keinen Kommentar: Sie ist eine Zusage aus
+    // ADR-0042, kein Stand zum Nachziehen.
     {
       customType: 'regex',
-      managerFilePatterns: ['.github/workflows/helm-chart.yml'],
+      managerFilePatterns: ['.github/workflows/helm-chart.yml', '.github/workflows/publish-images.yml'],
       matchStrings: [
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*(?:[A-Za-z_]+:|-)\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)',
       ],
@@ -206,8 +207,10 @@
       rebaseWhen: 'behind-base-branch',
       platformAutomerge: false,
     },
+    // helmv3 und helm-values lesen den Chart unter deploy/helm/opaa (#2356): Chart.yaml-Abhängigkeiten
+    // (derzeit keine) und die Images in values.yaml mit festem Tag.
     {
-      matchManagers: ['github-actions', 'dockerfile', 'docker-compose'],
+      matchManagers: ['github-actions', 'dockerfile', 'docker-compose', 'helmv3', 'helm-values'],
       addLabels: ['ci'],
     },
     // Die customManagers oben firmieren als "custom.regex"; ohne diese Regel trügen ihre PRs nur
@@ -288,12 +291,19 @@
       matchFileNames: ['.github/workflows/helm-chart.yml'],
       automerge: false,
     },
-    // Helm 4 im Helm-Workflow pflegt der eigene Regex-Manager (customManagers oben); ohne diese
+    // Das Helm der Chart-Veröffentlichung läuft nur bei einem Release-Tag, kein PR prüft es; ein
+    // Vorschlag bleibt deshalb ebenfalls als PR zur Entscheidung.
+    {
+      matchFileNames: ['.github/workflows/publish-images.yml'],
+      matchDepNames: ['helm/helm'],
+      automerge: false,
+    },
+    // Helm 4 in beiden Workflows pflegt der eigene Regex-Manager (customManagers oben); ohne diese
     // Regel schlüge der github-actions-Manager denselben Bump über setup-helm ein zweites Mal vor.
     {
       matchManagers: ['github-actions'],
       matchDepNames: ['helm'],
-      matchFileNames: ['.github/workflows/helm-chart.yml'],
+      matchFileNames: ['.github/workflows/helm-chart.yml', '.github/workflows/publish-images.yml'],
       enabled: false,
     },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
