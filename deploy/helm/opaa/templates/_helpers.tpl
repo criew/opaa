@@ -154,6 +154,16 @@ message names the rule no matter which object Helm renders first.
 {{- end }}
 {{- end }}
 {{- end }}
+{{- if .Values.trustedProxyCidrs }}
+{{- if not (and .Values.networkPolicy.backendIngress.enabled (include "opaa.frontendIngress.enabled" .)) }}
+{{- fail "trustedProxyCidrs is set, but not both ingress policies are on: every pod in the trusted network could then forge X-Forwarded-For. Keep networkPolicy.backendIngress.enabled and set networkPolicy.frontendIngress.controllerNamespaceSelector and controllerPodSelector, each with matchLabels or matchExpressions (ADR-0042, Entscheidung 4)." }}
+{{- end }}
+{{- range .Values.networkPolicy.backendIngress.extraFrom }}
+{{- if not (include "opaa.selectorSet" .podSelector) }}
+{{- fail "trustedProxyCidrs is set, so every peer of networkPolicy.backendIngress.extraFrom counts as a trusted proxy and needs a podSelector with matchLabels or matchExpressions." }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- if and .Values.ingress.enabled (not .Values.ingress.host) }}
 {{- fail "ingress.enabled is true, but ingress.host is empty." }}
 {{- end }}
@@ -223,4 +233,26 @@ emptyDir:
 {{- $paths = append $paths .mountPath }}
 {{- end }}
 {{- join "," $paths }}
+{{- end }}
+
+
+{{/* "true" when a label selector selects by something; an empty selector matches everything. */}}
+{{- define "opaa.selectorSet" -}}
+{{- if and . (or .matchLabels .matchExpressions) }}true{{ end }}
+{{- end }}
+
+{{/* "true" when the frontend ingress policy is rendered: controller namespace and pods are named. */}}
+{{- define "opaa.frontendIngress.enabled" -}}
+{{- with .Values.networkPolicy.frontendIngress }}
+{{- if and (include "opaa.selectorSet" .controllerNamespaceSelector) (include "opaa.selectorSet" .controllerPodSelector) }}true{{ end }}
+{{- end }}
+{{- end }}
+
+{{/* Normalized origin of a URL: lower case, without path and without the scheme's default port. */}}
+{{- define "opaa.origin" -}}
+{{- $url := urlParse (lower (trim .)) }}
+{{- $host := $url.host }}
+{{- if eq $url.scheme "https" }}{{ $host = trimSuffix ":443" $host }}{{ end }}
+{{- if eq $url.scheme "http" }}{{ $host = trimSuffix ":80" $host }}{{ end }}
+{{- printf "%s://%s" $url.scheme $host }}
 {{- end }}

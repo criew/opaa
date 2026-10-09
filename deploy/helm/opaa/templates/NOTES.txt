@@ -59,4 +59,30 @@ ORIGINALABLAGE
   erhalten und gehört in die Sicherung, zusammen mit der Datenbank.
 {{- end }}
 
+CLIENT-ADRESSE UND NETZTRENNUNG
+{{- if .Values.trustedProxyCidrs }}
+  X-Forwarded-For wird von {{ join ", " .Values.trustedProxyCidrs }} ausgewertet. Das ist nur sicher, wenn
+  die Netzwerkschicht des Clusters NetworkPolicies durchsetzt - sonst kann jeder Pod die
+  Client-Adresse fälschen. Prüfen: Ein Pod außerhalb des Controllers erreicht das Frontend nicht.
+{{- else }}
+  trustedProxyCidrs ist leer: Das Backend sieht den Frontend-Pod als Client, alle Personen teilen
+  sich einen Zähler der Rate-Limits und der Anmeldesperre.
+{{- end }}
+{{- if not .Values.networkPolicy.backendIngress.enabled }}
+  Die Eingangs-Policy des Backends ist aus: Jeder Pod im Cluster erreicht das Backend direkt.
+{{- end }}
+{{- with .Values.bootstrap.oidc.authority }}
+{{- $origin := include "opaa.origin" . }}
+{{- $allowed := list (include "opaa.origin" $.Values.publicBaseUrl) }}
+{{- range splitList " " $.Values.frontend.cspConnectSrcExtra }}
+{{- if . }}{{ $allowed = append $allowed (include "opaa.origin" .) }}{{ end }}
+{{- end }}
+{{- if not (has $origin $allowed) }}
+
+ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
+  Die OIDC-Authority liegt auf einem anderen Origin als publicBaseUrl. Ohne
+  frontend.cspConnectSrcExtra: "{{ $origin }}" verhindert die Content-Security-Policy die Anmeldung.
+{{- end }}
+{{- end }}
+
 Prüfen: helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

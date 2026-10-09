@@ -306,6 +306,11 @@ frontend:
   # The frontend holds no state and may run more than once.
   replicas: 1
 
+  # Content Security Policy of the frontend nginx: further origins of connect-src, space-separated
+  # (OPAA_CSP_CONNECT_SRC_EXTRA). Required when an OIDC authority lives on another origin than
+  # publicBaseUrl - otherwise the browser blocks the sign-in silently.
+  cspConnectSrcExtra: ""
+
   resources:
     requests:
       cpu: 50m
@@ -340,6 +345,68 @@ frontend:
   extraEnv: []
   extraVolumes: []
   extraVolumeMounts: []
+
+# Client addresses behind the proxy chain ingress/gateway controller -> frontend nginx -> backend.
+# The backend reads X-Forwarded-For only from connections out of these networks; the resolved
+# address keys every per-address rate limit, the lockout of local sign-ins and
+# localAdminAllowedCidrs. Pods have no fixed address, so the list names the pod network (e.g.
+# 10.244.0.0/16). That trusts every pod in it, which is acceptable only while no other pod can
+# reach frontend or backend: setting the list therefore requires both ingress policies below, and
+# the cluster's network plugin must enforce NetworkPolicies - the chart cannot check that.
+# Empty (default): the backend sees the frontend pod as client; all users share one counter.
+# The controller must set X-Forwarded-For and X-Forwarded-Proto authoritatively and see the real
+# client address (e.g. externalTrafficPolicy: Local on its LoadBalancer service).
+trustedProxyCidrs: []
+
+# Networks local system administrator accounts may sign in from (OPAA_LOCAL_ADMIN_ALLOWED_CIDRS),
+# judged by the client address resolved through trustedProxyCidrs. Empty: no restriction.
+localAdminAllowedCidrs: []
+
+networkPolicy:
+  # Ingress to the backend: only from the frontend pods, the pod of helm test and the peers below.
+  # Blocks no egress, so it breaks no fresh installation (ADR-0042, Entscheidung 4).
+  backendIngress:
+    enabled: true
+    # Further NetworkPolicy peers reaching the API port. With trustedProxyCidrs they count as
+    # trusted proxies and need a podSelector, e.g.
+    #   - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: tools } }
+    #     podSelector: { matchLabels: { app: mcp-gateway } }
+    extraFrom: []
+  # Ingress to the frontend: only from the ingress or gateway controller and the pod of helm test.
+  # On as soon as both selectors name labels (matchLabels or matchExpressions).
+  frontendIngress:
+    # e.g. { matchLabels: { kubernetes.io/metadata.name: ingress-nginx } }
+    controllerNamespaceSelector: {}
+    # e.g. { matchLabels: { app.kubernetes.io/name: ingress-nginx } }
+    controllerPodSelector: {}
+  # Egress of backend and frontend: DNS, the frontend to the backend, the backend to the evaluation
+  # database and to the targets below. Off by default - enabled too early, it blocks identity
+  # provider, models and sources that are not listed yet. Recommended after the setup.
+  egress:
+    enabled: false
+    # Egress rules to the cluster DNS, for backend and frontend. OpenShift: namespace openshift-dns,
+    # pods dns.operator.openshift.io/daemonset-dns: default, port 5353; NodeLocal DNSCache: an
+    # ipBlock rule for 169.254.20.10/32.
+    dns:
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                kubernetes.io/metadata.name: kube-system
+            podSelector:
+              matchLabels:
+                k8s-app: kube-dns
+        ports:
+          - port: 53
+            protocol: UDP
+          - port: 53
+            protocol: TCP
+    # NetworkPolicy egress rules of the backend for everything outside the release: database,
+    # identity provider, model endpoints, object store, mail server and the sources of libraries.
+    #   - to: [{ ipBlock: { cidr: 10.20.0.15/32 } }]
+    #     ports: [{ port: 5432, protocol: TCP }]
+    #   - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: ai } } }]
+    #     ports: [{ port: 11434, protocol: TCP }]
+    backendRules: []
 
 # Entry into the cluster; choose Ingress or Gateway API (HTTPRoute). TLS ends there, certificates
 # are managed by the operator (e.g. cert-manager). Both send every path to the frontend, whose nginx
