@@ -1098,6 +1098,25 @@ innerhalb einer Ebene nach Namen; der Store verlässt sich darauf nicht.
 | Wiederholte Meldungen eines Elements in einer Aufzählung können sich unterscheiden (etwa ein früherer Elternordner); die letzte gilt | unsicher, im Testdoppel nachgestellt (`reportStaleParent`) |
 | Eine Marke, die Graph nicht mehr annimmt, beantwortet Graph mit `410`; ein anderer 4xx gilt ebenfalls als verfallen | unsicher |
 
+## Nachtrag: SharePoint-Formular (#2153, Schnitt S2, 09.10.2026)
+
+Das Formular nutzt die Bausteine der anderen Konnektoren: Zugangswahl und Zugangswunsch des
+Assistenten, die eine Auflistung (`browse`) in Stufen und den Verbindungstest mit Befund je
+Dokumentbibliothek (`details.libraries`). Festlegungen:
+
+1. **Ordner mit Anzeigenamen.** Ein Eintrag in `folders` darf `{"id": …, "name": …}` sein. Ohne
+   Namen zeigte das Formular nach dem Speichern nur Graph-Kennungen. Der Name ist der Pfad ab der
+   Wurzel („Akten / 2026“), nur Anzeige: `coverage` vergleicht weiter nur die Kennungen, ein
+   umbenannter Ordner verwirft den Abgleichstand nicht. Die reine Kennung bleibt gültig.
+   Verworfen: Ordnernamen beim Öffnen des Formulars je Ordner bei Graph nachschlagen (eine Anfrage
+   je Ordner und Öffnen, scheitert bei entzogener Freigabe gerade dann, wenn man sie braucht).
+2. **Name der Dokumentbibliothek** ist „Bibliothek (Site)“, etwa „Dokumente (Bauamt)“: Fast jede
+   Site hat eine Bibliothek „Dokumente“. Den Ordnernamen im Lauf liefert weiter Graph.
+3. **Keine Site in den Einstellungen.** Die Site ist nur der Weg zur Bibliothek; gespeichert wird das
+   Laufwerk. Beim Bearbeiten öffnet man die Site neu, um weitere Bibliotheken zu wählen.
+4. **Mock-Mandant** für `VITE_ENABLE_MOCKS` mit `Sites.Selected`: freigegebene Sites, eine nicht
+   freigegebene, eine ohne Dokumentbibliothek und ein OneDrive, mit den Meldungen des Konnektors.
+
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)
