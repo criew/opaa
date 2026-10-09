@@ -18,7 +18,7 @@ jederzeit auch lokal ausführen (unten).
 | Gradle-Wrapper | `gradle-wrapper` | `backend` |
 | `frontend/package.json` + `pnpm-lock.yaml` (inkl. `packageManager`-Pinning) | `npm` | `frontend` |
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
-| GitHub-Actions-Workflows (`.github/workflows/`) | `github-actions` | `ci` |
+| GitHub-Actions-Workflows (`.github/workflows/`); in Workflows mit Schreibrechten Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-in-workflows-mit-schreibrechten-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
@@ -54,6 +54,59 @@ erscheint als „Pending" in der Abhängigkeits-Übersicht.
 Bump als PR sichtbar statt als stilles Lockfile-only-Update. Der allererste Lauf erzeugt dafür
 einmalig einen „Pin dependencies"-PR, der alle Caret-Ranges auf exakte Versionen umschreibt;
 `engines` bleibt bewusst eine Range, `packageManager` ist bereits exakt gepinnt.
+
+## Actions in Workflows mit Schreibrechten per Commit-SHA
+
+Im Repository gilt für Actions grundsätzlich **Tag-Pinning** (`uses: actions/checkout@v7`). Davon
+ausgenommen sind die Workflows, die veröffentlichte Artefakte oder das Repository selbst verändern
+können (#2397). Dort ist jede Action auf den vollen Commit-SHA festgelegt, mit der exakten Version
+als Kommentar:
+
+```yaml
+- uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+```
+
+Ein Tag lässt sich auf anderen Code umhängen, ein SHA nicht. Wird ein Action-Repository
+kompromittiert, kann ein umgehängter Tag sonst in einem Release-Lauf manipulierte Images
+veröffentlichen und gültig attestieren.
+
+| Workflow | Schreibrecht, das die Aufnahme begründet |
+|---|---|
+| `publish-images.yml` | `packages: write`, `id-token: write`, `attestations: write` (Images, Chart, Attestierungen), `contents: write` (GitHub-Release) |
+| `cve-scan.yml` | `security-events: write` (Code-Scanning-Alerts), `issues: write` |
+| `cla.yml` | `contents: write` (Branch `cla-signatures`), zusätzlich das PAT `CLA_TOKEN`; läuft als `pull_request_target` |
+| `daily-report.yml` | `contents: write` (Push auf `gh-pages`) |
+| `landing-page.yml` | `contents: write` (Push auf `gh-pages`) |
+| `dependency-graph.yml` | `contents: write` (Dependency-Snapshots, Grundlage der Dependabot-Alerts) |
+
+Nicht aufgenommen sind Workflows, die höchstens Issues, PR-Kommentare oder Caches schreiben
+(`e2e.yml`, `retrieval-regression.yml`, `baseline-diff.yml`) oder nur lesen. `renovate.yml`
+nutzt zwar das PAT `RENOVATE_TOKEN`, enthält aber keine Action, sondern startet ein
+Docker-Image. Eine Ausweitung auf alle Workflows wäre eine Abkehr von der Grundregel und
+bekäme ein eigenes Issue.
+
+**Renovate pflegt SHA und Kommentar gemeinsam.** Eine `packageRule` in `renovate.json5` setzt
+für genau diese Dateien `pinDigests: true` beim `github-actions`-Manager. Renovate liest dann
+`currentValue` aus dem Kommentar und `currentDigest` aus dem SHA und schreibt bei einem Update
+beides neu. Minor- und Patch-Releases mergen wie alle anderen Updates automatisch, Majors nicht.
+**Ein Digest-Update mergt in diesen Dateien nie automatisch**: Ein neuer SHA bei gleicher Version
+heißt, dass der Tag umgehängt wurde. Ein solcher PR wird geprüft, bevor er gemergt wird.
+
+**Der Guard `.github/scripts/check_action_pins.sh`** (Job `changes` in `ci.yml`, bei Änderungen
+unter `.github/workflows/`) lehnt in diesen Dateien jedes `uses:` ohne vollen SHA und
+`# vX.Y.Z`-Kommentar ab; lokale Actions (`./…`) und `docker://…@sha256:…` sind ausgenommen.
+Seine Dateiliste und die der Renovate-Regel müssen übereinstimmen, das prüft
+`test_check_action_pins.py`. Wer einen Workflow aufnimmt oder entfernt, ändert beide Listen.
+
+Eine neue Action in einem dieser Workflows bekommt ihren SHA über die GitHub-API, nicht von Hand
+aus der Weboberfläche. Bei annotierten Tags (`"type": "tag"`) zeigt die Referenz auf das
+Tag-Objekt, nicht auf den Commit, und muss einmal dereferenziert werden:
+
+```bash
+gh api repos/docker/login-action/git/ref/tags/v4.6.0 --jq '.object'
+# bei "type": "tag" zusätzlich:
+gh api repos/<owner>/<repo>/git/tags/<sha> --jq '.object.sha'
+```
 
 ## Voraussetzungen
 
