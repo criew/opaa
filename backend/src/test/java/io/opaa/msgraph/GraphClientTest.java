@@ -249,6 +249,36 @@ class GraphClientTest {
   }
 
   @Test
+  void aDownloadTricklingInPastTheDownloadTimeoutIsCutOffAndLeavesNoTempFile() throws Exception {
+    server.file(DRIVE, "a", "a.txt", FakeGraphServer.rootId(DRIVE), new byte[300]);
+    server.trickleDownloads();
+    GraphClient client =
+        new GraphClient(
+            server.origin(),
+            () -> FakeGraphServer.TOKEN,
+            null,
+            server.httpClient(),
+            TargetAddressValidator.disabled(),
+            new RateLimitHandling(POLICY, slept::add, listener),
+            meter,
+            Duration.ofSeconds(5),
+            Duration.ofSeconds(1),
+            GraphClient.DEFAULT_MAX_JSON_BYTES);
+    List<Path> before = tempFiles();
+    long start = System.nanoTime();
+
+    assertFailure(
+        () -> client.download("drives/" + DRIVE + "/items/a/content", 1024),
+        GraphException.Kind.TRANSIENT,
+        200,
+        null);
+
+    assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(10));
+    assertThat(tempFiles()).containsExactlyInAnyOrderElementsOf(before);
+    assertThat(meter.bytesDownloaded()).isZero();
+  }
+
+  @Test
   void downloadsFromThePresignedHostWithoutAuthorization() throws Exception {
     server.file(DRIVE, "a", "a.txt", FakeGraphServer.rootId(DRIVE), bytes("Inhalt"));
 

@@ -49,6 +49,7 @@ final class DriveApi {
   private final HttpClient httpClient;
   private final TargetAddressValidator targetAddressValidator;
   private final Duration timeout;
+  private final Duration downloadTimeout;
   private final RequestBudget budget;
   private final int maxRetries;
   private final Duration backoff;
@@ -61,6 +62,7 @@ final class DriveApi {
       HttpClient httpClient,
       TargetAddressValidator targetAddressValidator,
       Duration timeout,
+      Duration downloadTimeout,
       RequestBudget budget,
       int maxRetries,
       Duration backoff,
@@ -71,6 +73,7 @@ final class DriveApi {
     this.httpClient = httpClient;
     this.targetAddressValidator = targetAddressValidator;
     this.timeout = timeout;
+    this.downloadTimeout = downloadTimeout;
     this.budget = budget;
     this.maxRetries = Math.max(0, maxRetries);
     this.backoff = backoff;
@@ -95,16 +98,18 @@ final class DriveApi {
 
   /**
    * The body of {@code GET <path>?<query>} - a download or an export - in a temp file <b>the caller
-   * deletes</b>, at most {@code maxBytes}.
+   * deletes</b>, at most {@code maxBytes} and within the download timeout counted from the answer's
+   * start; an overrun is {@code TRANSIENT} and leaves no temp file.
    */
   Path download(String path, Map<String, String> query, long maxBytes)
       throws DriveApiException, InterruptedException {
     Path temp = null;
     try (Answer answer = send(path, query)) {
+      long deadline = System.nanoTime() + downloadTimeout.toNanos();
       temp = Files.createTempFile("opaa-gdrive-", ".bin");
       try (InputStream in = answer.response().body();
           OutputStream out = Files.newOutputStream(temp)) {
-        BoundedStreams.copy(in, out, maxBytes);
+        BoundedStreams.copyBefore(in, out, maxBytes, deadline);
       }
       budget.meter().recordBytes(Files.size(temp));
       return temp;
