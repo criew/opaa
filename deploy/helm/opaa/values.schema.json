@@ -1,0 +1,659 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OPAA Helm chart values",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "publicBaseUrl",
+    "database",
+    "embedding",
+    "bootstrap",
+    "secrets"
+  ],
+  "properties": {
+    "global": {
+      "type": "object"
+    },
+    "nameOverride": {
+      "type": "string"
+    },
+    "fullnameOverride": {
+      "type": "string"
+    },
+    "publicBaseUrl": {
+      "type": "string",
+      "pattern": "^https?://[^\\s/]+$",
+      "description": "Public address with scheme and without trailing slash or path, e.g. https://opaa.example.org"
+    },
+    "imagePullSecrets": {
+      "type": "array"
+    },
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        }
+      }
+    },
+    "podSecurityContext": {
+      "type": "object"
+    },
+    "containerSecurityContext": {
+      "type": "object"
+    },
+    "database": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "username": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "host",
+        "port",
+        "name",
+        "username"
+      ]
+    },
+    "embedding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "baseUrl": {
+          "type": "string",
+          "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dimensions": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "baseUrl",
+        "model",
+        "dimensions"
+      ]
+    },
+    "bootstrap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "initialAdmin": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "type": "string",
+              "pattern": "^[^@\\s]+@[^@\\s]+$",
+              "not": {
+                "pattern": "(?i)^admin@opaa\\.local$"
+              },
+              "description": "Deliverable mailbox of the first system administrator; admin@opaa.local is refused by the backend"
+            }
+          },
+          "required": [
+            "email"
+          ]
+        },
+        "oidc": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "issuerUri": {
+              "type": "string"
+            },
+            "clientId": {
+              "type": "string"
+            },
+            "authority": {
+              "type": "string"
+            },
+            "jwkSetUri": {
+              "type": "string"
+            }
+          }
+        },
+        "chatModel": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "baseUrl": {
+              "type": "string",
+              "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$"
+            },
+            "model": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "baseUrl",
+            "model"
+          ]
+        }
+      },
+      "required": [
+        "initialAdmin",
+        "chatModel"
+      ]
+    },
+    "secrets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "existingSecret": {
+          "type": "string"
+        },
+        "jwtSecret": {
+          "type": "string"
+        },
+        "databasePassword": {
+          "type": "string"
+        },
+        "credentialsEncryptionKey": {
+          "type": "string"
+        },
+        "settingsEncryptionKey": {
+          "type": "string"
+        },
+        "embeddingApiKey": {
+          "type": "string"
+        },
+        "chatApiKey": {
+          "type": "string"
+        },
+        "initialAdminPassword": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "existingSecret"
+      ],
+      "if": {
+        "properties": {
+          "existingSecret": {
+            "const": ""
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "jwtSecret",
+          "databasePassword",
+          "credentialsEncryptionKey",
+          "settingsEncryptionKey"
+        ],
+        "properties": {
+          "jwtSecret": {
+            "minLength": 32,
+            "not": {
+              "pattern": "(?i)(^\\s*(change_me|change-me|changeme|changeit|secret|password|opaa|example|default))|NICHT-FUER-DEN-PRODUKTIVBETRIEB"
+            },
+            "description": "At least 32 characters, not starting with a placeholder such as secret or opaa (the backend's SecretValidator), e.g. openssl rand -base64 48"
+          },
+          "databasePassword": {
+            "minLength": 1
+          },
+          "credentialsEncryptionKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]{43}=$",
+            "not": {
+              "enum": [
+                "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+                "c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="
+              ]
+            },
+            "description": "Base64 of 32 random bytes, e.g. openssl rand -base64 32; the publicly known development keys are refused"
+          },
+          "settingsEncryptionKey": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9+/]{43}=$",
+            "not": {
+              "enum": [
+                "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+                "c2V0dGluZ3NkZXZrZXkwMHNldHRpbmdzZGV2a2V5MDE="
+              ]
+            },
+            "description": "Base64 of 32 random bytes, e.g. openssl rand -base64 32; the publicly known development keys are refused"
+          }
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tag": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^(sha256:[a-f0-9]{64})?$"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          },
+          "required": [
+            "repository"
+          ]
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "1, or 0 to stop the backend; more than one instance is refused (ADR-0021)"
+        },
+        "shutdownTimeoutSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "terminationGracePeriodSeconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "maxRamPercentage": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 95
+        },
+        "javaToolOptions": {
+          "type": "string"
+        },
+        "resources": {
+          "type": "object"
+        },
+        "startupProbe": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "initialDelaySeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "successThreshold": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "livenessProbe": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "initialDelaySeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "successThreshold": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "readinessProbe": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "initialDelaySeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "successThreshold": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "tmp": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sizeLimit": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "medium": {
+              "type": "string",
+              "enum": [
+                "",
+                "Memory"
+              ]
+            }
+          }
+        },
+        "uploads": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sizeLimit": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "medium": {
+              "type": "string",
+              "enum": [
+                "",
+                "Memory"
+              ]
+            }
+          }
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "port": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "extraEnvFrom": {
+          "type": "array"
+        },
+        "podAnnotations": {
+          "type": "object"
+        },
+        "podLabels": {
+          "type": "object"
+        },
+        "nodeSelector": {
+          "type": "object"
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "extraEnv": {
+          "type": "array"
+        },
+        "extraVolumes": {
+          "type": "array"
+        },
+        "extraVolumeMounts": {
+          "type": "array"
+        }
+      }
+    },
+    "frontend": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tag": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^(sha256:[a-f0-9]{64})?$"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          },
+          "required": [
+            "repository"
+          ]
+        },
+        "replicas": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "resources": {
+          "type": "object"
+        },
+        "livenessProbe": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "initialDelaySeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "successThreshold": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "readinessProbe": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "periodSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "failureThreshold": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "initialDelaySeconds": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "successThreshold": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "tmp": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "sizeLimit": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "medium": {
+              "type": "string",
+              "enum": [
+                "",
+                "Memory"
+              ]
+            }
+          }
+        },
+        "service": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "ClusterIP",
+                "NodePort",
+                "LoadBalancer"
+              ]
+            },
+            "port": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "podAnnotations": {
+          "type": "object"
+        },
+        "podLabels": {
+          "type": "object"
+        },
+        "nodeSelector": {
+          "type": "object"
+        },
+        "tolerations": {
+          "type": "array"
+        },
+        "affinity": {
+          "type": "object"
+        },
+        "extraEnv": {
+          "type": "array"
+        },
+        "extraVolumes": {
+          "type": "array"
+        },
+        "extraVolumeMounts": {
+          "type": "array"
+        }
+      }
+    },
+    "ingress": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "className": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "host": {
+          "type": "string"
+        },
+        "tls": {
+          "type": "array"
+        }
+      }
+    },
+    "httpRoute": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "annotations": {
+          "type": "object"
+        },
+        "parentRefs": {
+          "type": "array"
+        },
+        "hostnames": {
+          "type": "array"
+        },
+        "timeouts": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

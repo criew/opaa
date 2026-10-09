@@ -86,6 +86,11 @@ pnpm run test                           # Tests (Vitest)
 pnpm run format:check                   # Prettier-Formatierung prüfen
 pnpm run format                         # Automatisch mit Prettier formatieren
 
+# Helm-Chart (aus deploy/helm/opaa/, ADR-0042) — die Vorgabewerte allein sind bewusst
+# unvollständig, geprüft wird mit den Wertedateien unter ci/
+helm lint . -f ci/minimal-values.yaml
+helm template opaa . -f ci/full-values.yaml
+
 # E2E-Suite (aus e2e/, siehe e2e/README.md)
 pnpm install                            # Abhängigkeiten installieren
 pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)
@@ -240,6 +245,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `opaa-api/` — Gradle-Modul mit OpenAPI-Spec, Generator-Konfiguration und geteilten Domain-Enums (`io.opaa.api.types`), siehe [ADR-0006](docs/decisions/0006-openapi-dto-generation.md) (#896)
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
+- `deploy/helm/opaa/` — Helm-Chart für den Kubernetes-Betrieb (Single-Instance), siehe [ADR-0042](docs/decisions/0042-kubernetes-lieferung-mit-helm.md); eine betriebsrelevante Änderung zieht ihn im selben PR nach
 - `docs/renovate.md` — selbst betriebene Abhängigkeits-Updates (Renovate, Issue #751); Regeln in `renovate.json5`
 - `docs/releases.md` — Release-Verfahren: Versions-Tags `vX.Y.Z`, unveränderliche Release-Images, Versionszählung, Patch-Releases für Sicherheitsupdates (Issue #2350)
 - `docs/sbom.md` — Software Bill of Materials: Image-Attestierungen und CycloneDX-CI-Artefakte (Issue #1078)

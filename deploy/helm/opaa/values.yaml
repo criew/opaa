@@ -1,0 +1,257 @@
+# Values of the OPAA chart. The chart runs exactly one backend instance (ADR-0021) next to the
+# frontend; PostgreSQL with pgvector, the model endpoints and an identity provider are operated
+# outside of it and only connected (ADR-0042).
+#
+# Three kinds of configuration (ADR-0042, Entscheidung 3):
+#   - deployment values, read on every start: everything outside of "bootstrap"
+#   - bootstrap values, taken over into the database on the FIRST start only: "bootstrap"
+#   - administration settings (mail server, further providers, models): none here, they live in
+#     the user interface
+
+nameOverride: ""
+fullnameOverride: ""
+
+# The address under which users reach OPAA, with scheme and without a trailing slash, e.g.
+# https://opaa.example.org. Base of every link in a mail, of the OAuth callback and of the allowed
+# CORS origin. Required.
+publicBaseUrl: ""
+
+imagePullSecrets: []
+
+serviceAccount:
+  # One account for all pods of the release; it never receives an API token.
+  create: true
+  name: ""
+  annotations: {}
+
+# Applied to every pod of the chart. Pod Security Standard "restricted" without exceptions
+# (ADR-0042, Entscheidung 6). runAsUser, runAsGroup and fsGroup stay empty on purpose, so platforms
+# assigning UIDs themselves (OpenShift restricted-v2) need no override.
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+# Applied to every container of the chart.
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  capabilities:
+    drop:
+      - ALL
+
+database:
+  # External PostgreSQL with the pgvector extension. The password comes from the secret
+  # (key OPAA_DB_PASSWORD).
+  host: ""
+  port: 5432
+  name: opaa
+  username: opaa
+
+# Embedding endpoint (OpenAI-compatible API), read on every start. The key, if the endpoint needs
+# one, comes from the secret (key OPAA_OPENAI_EMBEDDING_API_KEY).
+embedding:
+  # e.g. http://ollama.ai.svc.cluster.local:11434/v1
+  baseUrl: ""
+  # e.g. nomic-embed-text
+  model: ""
+  # Dimensions of the embedding model, e.g. 768 for nomic-embed-text, 1536 for
+  # text-embedding-3-small. Cannot be changed later without re-indexing.
+  dimensions: null
+
+# Bootstrap values: read once, on the very first start, and taken over into the database.
+# Afterwards the user interface leads; changing them here has no effect on a running installation.
+bootstrap:
+  initialAdmin:
+    # Address of the local emergency system administrator, a deliverable mailbox. Required. Its
+    # initial password comes from the secret (key OPAA_INITIAL_ADMIN_PASSWORD); without one, the
+    # backend generates a password and logs it once.
+    email: ""
+  # The first OIDC identity provider. Leave empty to start with local user management only
+  # (ADR-0033); further providers are added in the user interface.
+  oidc:
+    issuerUri: ""
+    clientId: ""
+    authority: ""
+    jwkSetUri: ""
+  # The first chat model. Its key, if needed, comes from the secret (key OPAA_OPENAI_CHAT_API_KEY).
+  chatModel:
+    baseUrl: ""
+    model: ""
+
+secrets:
+  # Name of an existing secret holding the keys below (recommended: External Secrets, Sealed
+  # Secrets, Vault). When set, the chart creates no secret and ignores the values below. A changed
+  # key reaches the backend only with its next restart (kubectl rollout restart).
+  #   required: OPAA_AUTH_JWT_SECRET, OPAA_DB_PASSWORD, OPAA_CREDENTIALS_ENCRYPTION_KEY,
+  #             OPAA_SETTINGS_ENCRYPTION_KEY
+  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_OPENAI_CHAT_API_KEY, OPAA_INITIAL_ADMIN_PASSWORD
+  existingSecret: ""
+  # Values for a secret created by the chart. The chart never generates a key: a generated key is
+  # lost with helm template, in GitOps tools or on reinstallation (ADR-0042, Entscheidung 5).
+  # At least 32 characters, e.g. openssl rand -base64 48
+  jwtSecret: ""
+  databasePassword: ""
+  # Base64 of 32 random bytes each, e.g. openssl rand -base64 32. Losing one makes the secrets
+  # encrypted with it unreadable - keep a copy outside of the cluster.
+  credentialsEncryptionKey: ""
+  settingsEncryptionKey: ""
+  embeddingApiKey: ""
+  chatApiKey: ""
+  initialAdminPassword: ""
+
+backend:
+  image:
+    repository: ghcr.io/criew/opaa-backend
+    # Defaults to the chart's appVersion. Between two releases the chart carries 0.0.0-dev, for
+    # which no image exists - set "main" or a release version when installing from the repository.
+    tag: ""
+    # Pins the image by digest (sha256:...); takes precedence over the tag.
+    digest: ""
+    pullPolicy: IfNotPresent
+
+  # Exactly one instance (ADR-0021); 0 stops the backend, more than 1 aborts the rendering. Kept as
+  # a value so that a future multi-instance release (#1292) does not change the values layout.
+  replicas: 1
+
+  # How long a stop lets accepted HTTP requests finish (OPAA_SHUTDOWN_TIMEOUT), per shutdown phase.
+  shutdownTimeoutSeconds: 60
+  # Must lie above shutdownTimeoutSeconds, otherwise the kubelet cuts the graceful shutdown short.
+  terminationGracePeriodSeconds: 75
+
+  # Share of the container memory limit the JVM may use as heap (-XX:MaxRAMPercentage, set through
+  # JAVA_TOOL_OPTIONS). The rest of the limit belongs to classes, compiled code, threads and buffers.
+  # Only effective together with resources.limits.memory; empty leaves the JVM default (25 %).
+  maxRamPercentage: 70
+  # Further JVM options, appended to JAVA_TOOL_OPTIONS after the heap share, e.g. a JFR recording
+  # (-XX:StartFlightRecording=filename=/tmp/opaa.jfr). Targets belong below /tmp, the only writable
+  # path besides the storage.
+  javaToolOptions: ""
+
+  # Recommendation of docs/handbuch/deployment.md ("Speicher und Container-Grenzen").
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 2Gi
+
+  # The first start runs the schema migration before the probes can answer; the startup probe
+  # gives it periodSeconds * failureThreshold (here 10 minutes) before liveness and readiness begin.
+  startupProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 60
+  livenessProbe:
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+  readinessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # /tmp is the only writable path of the backend besides its storage (Tomcat, multipart uploads,
+  # downloads). Files there reach the size of a document.
+  tmp:
+    sizeLimit: 2Gi
+    # Set to "Memory" for a tmpfs; then the size counts against the memory limit.
+    medium: ""
+
+  # Original documents of uploaded libraries (OPAA_UPLOAD_STORAGE_PATH). Without persistence they
+  # are lost with the pod.
+  uploads:
+    sizeLimit: 10Gi
+
+  service:
+    port: 8080
+
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  # Further environment variables, e.g. an OPAA_* setting the values do not cover yet.
+  extraEnv: []
+  extraEnvFrom: []
+  extraVolumes: []
+  extraVolumeMounts: []
+
+frontend:
+  image:
+    repository: ghcr.io/criew/opaa-frontend
+    # Defaults to the chart's appVersion, see backend.image.tag.
+    tag: ""
+    digest: ""
+    pullPolicy: IfNotPresent
+
+  # The frontend holds no state and may run more than once.
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 256Mi
+
+  livenessProbe:
+    periodSeconds: 20
+    timeoutSeconds: 3
+    failureThreshold: 3
+  readinessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+  # nginx writes its generated configuration, pid and proxy buffers (at most 64m per response)
+  # below /tmp.
+  tmp:
+    sizeLimit: 512Mi
+    medium: ""
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  podAnnotations: {}
+  podLabels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  extraEnv: []
+  extraVolumes: []
+  extraVolumeMounts: []
+
+# Entry into the cluster; choose Ingress or Gateway API (HTTPRoute). TLS ends there, certificates
+# are managed by the operator (e.g. cert-manager). Both send every path to the frontend, whose nginx
+# forwards /api/ and /mcp to the backend.
+#
+# The frontend accepts uploads of up to 52m per request (client_max_body_size in
+# frontend/nginx.conf) and streams chat answers for minutes. Each controller names its own limits,
+# set them through the annotations, e.g. for ingress-nginx:
+#   nginx.ingress.kubernetes.io/proxy-body-size: 52m
+#   nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+#   nginx.ingress.kubernetes.io/proxy-buffering: "off"
+# HAProxy Ingress: haproxy-ingress.github.io/proxy-body-size: 52m
+# Traefik has no request size limit by default.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  # Host name, e.g. opaa.example.org; normally the host of publicBaseUrl.
+  host: ""
+  # Standard Ingress TLS block, e.g. [{ secretName: opaa-tls, hosts: [opaa.example.org] }]
+  tls: []
+
+httpRoute:
+  enabled: false
+  annotations: {}
+  # The existing Gateway the route attaches to, e.g. [{ name: public, namespace: gateway-system }]
+  parentRefs: []
+  # e.g. [opaa.example.org]
+  hostnames: []
+  # Gateway API route timeouts, e.g. { request: 300s }; the upload size limit is a property of the
+  # Gateway implementation (see its documentation).
+  timeouts: {}

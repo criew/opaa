@@ -1,0 +1,52 @@
+# Every optional object switched on, with an existing secret instead of secret values.
+publicBaseUrl: https://opaa.example.org
+database:
+  host: postgres.example.org
+  port: 5433
+  name: opaa_prod
+  username: opaa_app
+embedding:
+  baseUrl: https://models.example.org/v1
+  model: text-embedding-3-small
+  dimensions: 1536
+bootstrap:
+  initialAdmin:
+    email: it-postfach@example.org
+  oidc:
+    issuerUri: https://login.example.org/realms/opaa
+    clientId: opaa
+    authority: https://login.example.org/realms/opaa
+  chatModel:
+    baseUrl: https://models.example.org/v1
+    model: gpt-4.1-mini
+secrets:
+  existingSecret: opaa-secrets
+backend:
+  image:
+    digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  extraEnv:
+    - name: OPAA_QUERY_TOP_K
+      value: "10"
+  podAnnotations:
+    example.org/team: platform
+frontend:
+  replicas: 2
+ingress:
+  enabled: true
+  className: nginx
+  host: opaa.example.org
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 52m
+  tls:
+    - secretName: opaa-tls
+      hosts:
+        - opaa.example.org
+httpRoute:
+  enabled: true
+  parentRefs:
+    - name: public
+      namespace: gateway-system
+  hostnames:
+    - opaa.example.org
+  timeouts:
+    request: 300s

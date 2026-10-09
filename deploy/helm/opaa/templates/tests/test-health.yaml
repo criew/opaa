@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "opaa.fullname" . }}-test-health
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "test") | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  serviceAccountName: {{ include "opaa.serviceAccountName" . }}
+  automountServiceAccountToken: false
+  enableServiceLinks: false
+  securityContext:
+    {{- toYaml .Values.podSecurityContext | nindent 4 }}
+  {{- with .Values.imagePullSecrets }}
+  imagePullSecrets:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  containers:
+    - name: health
+      # The frontend image brings busybox wget and a numeric non-root user, so the test needs no
+      # image of its own.
+      image: {{ include "opaa.image" (dict "root" . "image" .Values.frontend.image) | quote }}
+      imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+      securityContext:
+        {{- toYaml .Values.containerSecurityContext | nindent 8 }}
+      # Through the frontend service, i.e. the same chain a browser uses: nginx -> backend.
+      command:
+        - sh
+        - -c
+        - |
+          url=http://{{ include "opaa.frontend.fullname" . }}:{{ .Values.frontend.service.port }}/api/health
+          for attempt in 1 2 3 4 5; do
+            if wget -q -T 10 -O - "$url" | grep -q '"status":"UP"'; then exit 0; fi
+            sleep 3
+          done
+          echo "no UP from $url" >&2
+          exit 1
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          memory: 32Mi

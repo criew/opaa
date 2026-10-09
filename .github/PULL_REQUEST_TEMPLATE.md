@@ -20,6 +20,7 @@ Closes #
 - [ ] Bei Bugfix: Reproduktionsnachweis erbracht — der Test schlägt auf dem fehlerhaften Stand fehl und besteht mit dem Fix (rote Fehlermeldung unten einfügen)
 - [ ] Dokumentation aktualisiert (falls zutreffend)
 - [ ] Handbuch (`docs/handbuch/`) nachgezogen oder ausdrücklich nicht betroffen (bei Änderungen an sichtbarem Verhalten oder Konfiguration)
+- [ ] Helm-Chart (`deploy/helm/opaa`) und Compose-Setup nachgezogen oder ausdrücklich nicht betroffen (bei Änderungen an Konfiguration oder Laufzeitverhalten, ADR-0042)
 - [ ] Barrierefreiheit nach `docs/design/accessibility.md` geprüft (bei UI-Änderungen; sonst entfällt)
 - [ ] Keine Secrets oder Anmeldeinformationen committet
 - [ ] Commit-Nachrichten folgen Conventional Commits

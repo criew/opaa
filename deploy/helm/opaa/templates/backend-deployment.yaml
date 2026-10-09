@@ -1,0 +1,120 @@
+{{- include "opaa.validate" . }}
+{{- $secretName := include "opaa.secretName" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opaa.backend.fullname" . }}
+  labels:
+    {{- include "opaa.componentLabels" (dict "root" . "component" "backend") | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicas }}
+  # Liquibase migrates the schema on start: the old and the new version must never run side by side.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "opaa.componentSelectorLabels" (dict "root" . "component" "backend") | nindent 8 }}
+        {{- with .Values.backend.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/backend-configmap.yaml") . | sha256sum }}
+        {{- if not .Values.secrets.existingSecret }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- end }}
+        {{- with .Values.backend.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "opaa.podSpecCommon" (dict "root" . "component" .Values.backend) | nindent 6 }}
+      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
+      containers:
+        - name: backend
+          image: {{ include "opaa.image" (dict "root" . "image" .Values.backend.image) | quote }}
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "opaa.backend.fullname" . }}
+            {{- with .Values.backend.extraEnvFrom }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          env:
+            # Fixed production mode; "dev" is reserved for development and tests (ADR-0005). Set in env
+            # rather than the ConfigMap, because env takes precedence over every envFrom source.
+            - name: SPRING_PROFILES_ACTIVE
+              value: oidc
+            {{- with include "opaa.backend.javaToolOptions" . }}
+            - name: JAVA_TOOL_OPTIONS
+              value: {{ . | quote }}
+            {{- end }}
+            # Required keys carry no "optional": a missing key keeps the pod from starting
+            # (CreateContainerConfigError) instead of surfacing at first use (ADR-0042, Entscheidung 5).
+            {{- range list "OPAA_AUTH_JWT_SECRET" "OPAA_DB_PASSWORD" "OPAA_CREDENTIALS_ENCRYPTION_KEY" "OPAA_SETTINGS_ENCRYPTION_KEY" }}
+            - name: {{ . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ . }}
+            {{- end }}
+            {{- range list "OPAA_OPENAI_EMBEDDING_API_KEY" "OPAA_OPENAI_CHAT_API_KEY" "OPAA_INITIAL_ADMIN_PASSWORD" }}
+            - name: {{ . }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secretName }}
+                  key: {{ . }}
+                  optional: true
+            {{- end }}
+            {{- with .Values.backend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            {{- with .Values.backend.startupProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            {{- with .Values.backend.livenessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            {{- with .Values.backend.readinessProbe }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.backend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            - name: uploads
+              mountPath: /app/uploads
+            {{- with .Values.backend.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          {{- include "opaa.emptyDir" .Values.backend.tmp | nindent 10 }}
+        - name: uploads
+          {{- include "opaa.emptyDir" .Values.backend.uploads | nindent 10 }}
+        {{- with .Values.backend.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
