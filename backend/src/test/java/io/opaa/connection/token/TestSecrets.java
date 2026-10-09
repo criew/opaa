@@ -52,6 +52,7 @@ public final class TestSecrets {
         issuers,
         mock(ObjectProvider.class),
         mock(ObjectProvider.class),
+        new GrantRevocations(),
         ConnectionLifecycleProperties.defaults(),
         mock(PlatformTransactionManager.class),
         Clock.systemUTC());

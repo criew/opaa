@@ -2,6 +2,7 @@ package io.opaa.connection.oauth;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.connection.profile.ClientRegistration;
@@ -166,6 +167,35 @@ class OAuthClientTest {
     assertThat(server.revocations().get(1).authorization())
         .isEqualTo("Bearer " + grant.accessToken());
     assertThat(server.isLive(grant.refreshToken())).isFalse();
+  }
+
+  /**
+   * A provider that takes the revocation but never answers costs one call its time limit, not more:
+   * the revocation gives up, reports failure and throws nothing.
+   */
+  @Test
+  void aRevocationThatIsNeverAnsweredEndsAtItsTimeLimit() {
+    OAuthClient.Grant grant = consent();
+    OAuthClient bounded =
+        new OAuthClient(TargetAddressValidator.disabled(), Duration.ofMillis(300));
+    server.holdRevocations();
+    try {
+      boolean revoked =
+          assertTimeoutPreemptively(
+              Duration.ofSeconds(30),
+              () ->
+                  bounded.revoke(
+                      registration(ProfileEndpoints.NONE),
+                      fixed(
+                          new Revocation.Rfc7009(new Endpoint.Fixed(server.revocationEndpoint()))),
+                      grant.refreshToken(),
+                      grant.accessToken()));
+
+      assertThat(revoked).isFalse();
+      assertThat(server.revocations()).as("the provider got the request").hasSize(1);
+    } finally {
+      server.releaseRevocations();
+    }
   }
 
   @Test

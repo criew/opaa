@@ -31,6 +31,7 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.EffectiveSourceSettings;
 import io.opaa.connection.profile.ProfileRegistrations;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.GrantRevocations;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.source.Secret;
@@ -54,6 +55,7 @@ import io.opaa.test.OwnLibraryFixtures;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -110,6 +112,7 @@ class ConnectionAuthorizationIntegrationTest {
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private TransactionTemplate transactions;
   @Autowired private ConnectionSecrets secrets;
+  @Autowired private GrantRevocations grantRevocations;
   @Autowired private EffectiveSourceSettings effective;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private AssetShellService shellService;
@@ -531,17 +534,23 @@ class ConnectionAuthorizationIntegrationTest {
     connect();
     String refresh = PROVIDER.lastRefreshToken();
 
+    // a revocation handed over too early would stay in flight here, the provider holds it
+    PROVIDER.holdRevocations();
     transactions.executeWithoutResult(
         status -> {
           secrets.discard(new PersonOwned(profile, person));
+          assertThat(grantRevocations.idle()).as("nothing is revoked before the commit").isTrue();
           status.setRollbackOnly();
         });
-    assertThat(PROVIDER.revocations()).as("a rolled back discard revokes nothing").isEmpty();
+    assertThat(grantRevocations.idle()).as("a rolled back discard revokes nothing").isTrue();
+    assertThat(PROVIDER.revocations()).isEmpty();
+    PROVIDER.releaseRevocations();
 
     mockMvc
         .perform(as("dev-user", delete("/api/v1/me/connected-accounts/" + profile)))
         .andExpect(status().isNoContent());
 
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(
@@ -568,12 +577,106 @@ class ConnectionAuthorizationIntegrationTest {
         """
             .formatted(UUID.randomUUID(), SERVER));
 
+    awaitRevocations();
     assertThat(PROVIDER.revocations())
         .singleElement()
         .satisfies(
             request ->
                 assertThat(request.authorization()).isEqualTo(basic(CLIENT_ID, CLIENT_SECRET)));
     assertThat(accountRows()).isZero();
+  }
+
+  /**
+   * Acceptance criteria of #2265: an emergency shutdown answers while the provider holds every
+   * revocation without an answer. The discard is committed and the request has returned, and with
+   * it its database connection, before any revocation is answered; each grant is still revoked.
+   */
+  @Test
+  void anEmergencyShutdownAnswersWhileTheProviderHoldsItsRevocations() throws Exception {
+    connect();
+    String personRefresh = PROVIDER.lastRefreshToken();
+    UUID admin = userIdOf("admin@opaa.local");
+    complete(
+            "dev-admin",
+            service.start(
+                CurrentUser.of(
+                    admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Dev Admin"),
+                profile,
+                ConnectionAuthorizationPurpose.ACCOUNT))
+        .andExpect(status().isOk());
+    String adminRefresh = PROVIDER.lastRefreshToken();
+    PROVIDER.holdRevocations();
+
+    long started = System.nanoTime();
+    call("dev-admin", post(ADMIN + "/" + profile + "/disconnect-all"), null);
+    Duration answeredAfter = Duration.ofNanos(System.nanoTime() - started);
+
+    try {
+      // far below a single revocation's own time limit of 15 s, let alone two of them
+      assertThat(answeredAfter).isLessThan(Duration.ofSeconds(10));
+      assertThat(tokenRows()).as("the discard committed before any revocation").isZero();
+      await().atMost(Duration.ofSeconds(30)).until(() -> !PROVIDER.revocations().isEmpty());
+      assertThat(grantRevocations.idle()).as("the revocations are still in flight").isFalse();
+    } finally {
+      PROVIDER.releaseRevocations();
+    }
+    awaitRevocations();
+    assertThat(PROVIDER.revocations())
+        .extracting(request -> request.form().get("token"))
+        .containsExactlyInAnyOrder(personRefresh, adminRefresh);
+  }
+
+  /**
+   * An emergency shutdown of far more grants than the revocation queue has places is one entry of
+   * the pool: every grant is revoked, none is dropped.
+   */
+  @Test
+  void anEmergencyShutdownOfMoreGrantsThanTheQueueHoldsRevokesEveryOne() throws Exception {
+    int grants = 1500;
+    Instant now = Instant.now();
+    List<String> refreshTokens = new ArrayList<>();
+    List<Object[]> rows = new ArrayList<>();
+    for (int i = 0; i < grants; i++) {
+      String refresh = "bulk-refresh-" + i + "-" + UUID.randomUUID();
+      refreshTokens.add(refresh);
+      rows.add(
+          new Object[] {
+            UUID.randomUUID(),
+            profile,
+            encryptor.encrypt(refresh),
+            encryptor.encrypt("bulk-access-" + i),
+            Timestamp.from(now.plus(Duration.ofHours(1))),
+            Timestamp.from(now.plus(Duration.ofMinutes(10))),
+            person,
+            Timestamp.from(now),
+            Timestamp.from(now)
+          });
+    }
+    // pending consents of one person: the cheapest grants under a profile that a shutdown revokes
+    jdbc.batchUpdate(
+        "INSERT INTO connection_tokens (id, profile_id, kind, secret_ciphertext,"
+            + " access_token_ciphertext, access_token_expires_at, issued_for, pending_expires_at,"
+            + " pending_user_id, created_at, updated_at, version)"
+            + " VALUES (?, ?, 'OAUTH', ?, ?, ?, 'bulk', ?, ?, ?, ?, 0)",
+        rows);
+
+    call("dev-admin", post(ADMIN + "/" + profile + "/disconnect-all"), null);
+
+    await().pollDelay(Duration.ZERO).atMost(Duration.ofMinutes(5)).until(grantRevocations::idle);
+    assertThat(tokenRows()).isZero();
+    assertThat(PROVIDER.revocations())
+        .extracting(request -> request.form().get("token"))
+        .containsExactlyInAnyOrderElementsOf(refreshTokens);
+  }
+
+  private int tokenRows() {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM connection_tokens WHERE profile_id = ?", Integer.class, profile);
+  }
+
+  /** Waits until every revocation handed over so far has run. */
+  private void awaitRevocations() {
+    await().pollDelay(Duration.ZERO).atMost(Duration.ofSeconds(30)).until(grantRevocations::idle);
   }
 
   private void connect() throws Exception {
