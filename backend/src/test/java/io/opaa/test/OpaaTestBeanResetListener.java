@@ -31,6 +31,8 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
     testContext.getApplicationContext().getBean(FakeDirectoryClient.class).reset();
     GrantRevocations revocations =
         testContext.getApplicationContext().getBean(GrantRevocations.class);
-    Awaitility.await().atMost(REVOCATIONS_IDLE_TIMEOUT).until(revocations::idle);
+    if (!revocations.idle()) {
+      Awaitility.await().atMost(REVOCATIONS_IDLE_TIMEOUT).until(revocations::idle);
+    }
   }
 }

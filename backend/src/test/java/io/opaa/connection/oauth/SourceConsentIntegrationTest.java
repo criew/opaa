@@ -1092,6 +1092,6 @@ class SourceConsentIntegrationTest {
 
   /** Waits until every revocation handed over so far has run. */
   private void awaitRevocations() {
-    await().atMost(Duration.ofSeconds(30)).until(grantRevocations::idle);
+    await().pollDelay(Duration.ZERO).atMost(Duration.ofSeconds(30)).until(grantRevocations::idle);
   }
 }

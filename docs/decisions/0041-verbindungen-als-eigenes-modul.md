@@ -987,6 +987,46 @@ Beide nach Maintainer-Entscheidung vom 05.10.2026 ohne Gegenmaßnahme:
   große Datei nicht, weil die Grenze eine Start-Einstellung ist, die einen eigenen Testkontext
   verlangte.
 
+## Nachtrag vom 09.10.2026: Widerruf über einen begrenzten Pool (#2265)
+
+Maintainer-Entscheidung vom 05.10.2026: begrenzter Executor nach dem Commit, der Request kehrt
+sofort zurück. Ersetzt in „Widerruf nach dem Commit“ den Teil „im aufrufenden Thread“ und löst die
+„Bekannte Grenze des Widerrufs“ ab.
+
+- **Übergabe nach dem Commit:** `ConnectionSecrets` nimmt den Schnappschuss wie bisher in der
+  Transaktion (Registrierung, wie sie gerade steht) und übergibt die Widerrufe in `afterCommit` an
+  `connection.token.GrantRevocations`, einen je Grant. Ohne Transaktion sofort. Ein Rollback übergibt
+  nichts. Kein Widerruf läuft im Request-Thread, keiner hält dessen Datenbankverbindung.
+- **Begrenzung:** fester Pool aus zwei Threads, Warteschlange mit 1000 Plätzen. Ist sie voll, wird
+  der Widerruf mit einer WARN-Zeile (Zugangskennung, kein Token) verworfen, der Aufrufer blockiert
+  nie. Jeder Aufruf behält sein eigenes Zeitlimit von 15 s (`OAuthClient`, ganzer Austausch). Ein
+  verlorener Widerruf kostet keinen Zugriff auf OPAA, dort ist das Token schon gelöscht. Beim
+  Anbieter bleibt der Grant bis zu seinem Ablauf gültig.
+- **Herunterfahren:** Der Pool stoppt bei der Zerstörung der Bean, also nach dem Webserver. Nach
+  einer Gnadenfrist von 2 s werden laufende Widerrufe unterbrochen und wartende verworfen, ihre Zahl
+  steht in einer WARN-Zeile. Die Warteschlange liegt nur im Prozess (Eintrag in ADR-0021).
+- **`BearerPost` erneuert vorher (Merkposten aus #2154):** Ist das gespeicherte Zugriffstoken
+  abgelaufen, läuft es binnen 5 Minuten ab oder ist sein Ende unbekannt, erneuert der Widerruf es zuerst
+  mit dem Refresh-Token und schickt das frische. Das geschieht im Pool, nicht in der Transaktion
+  und ohne Zeilensperre: Die Zeile ist schon gelöscht, eine zweite Erneuerung desselben Grants gibt es
+  nicht mehr. Ein rotierter Refresh-Token wird nicht gespeichert. Nimmt der Anbieter den Refresh-Token
+  nicht mehr an (`invalid_grant`), bleibt nichts zu widerrufen. Ist er nicht erreichbar, wird das
+  gespeicherte Token versucht. Verworfen: Widerruf per Refresh-Token. Ein `BearerPost`-Anbieter wie
+  Dropbox nimmt am Widerrufs-Endpunkt nur das Zugriffstoken als Bearer an; ein Refresh-Token geht dort
+  nur über RFC 7009, und das ist eine andere Deklaration. Offen für D1 (#2154): ob Dropbox den POST
+  mit leerem Formular-Body annimmt.
+- **Nicht über den Pool:** Der Widerruf eines frischen Grants, den der Abschluss einer Zustimmung
+  nicht ablegen kann (`ConnectionAuthorizationService#complete`). Er läuft nach dem Rollback ohne
+  gehaltene Verbindung, ist ein einzelner Aufruf derselben Person, und deren Anbieter hat Sekunden
+  vorher geantwortet.
+- **Belegt** in `GrantRevocationsTest` (Begrenzung, volle Warteschlange, Fehler, Herunterfahren; nur
+  Latches, kein Warten auf Zeit), `OAuthClientTest` (Zeitlimit gegen einen Anbieter, der nicht
+  antwortet), `ProviderTokensRevocationTest` (Erneuerung vor `BearerPost`) und
+  `ConnectionAuthorizationIntegrationTest`: Eine Notabschaltung antwortet, während der Anbieter
+  alle Widerrufe unbeantwortet hält, und davor übergibt ein Rollback nichts. Die
+  Integrationstests warten vor jeder Widerrufsprüfung, bis der Pool leer ist, und
+  `OpaaTestBeanResetListener` wartet vor jeder Testmethode darauf.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
