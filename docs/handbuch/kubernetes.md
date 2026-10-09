@@ -249,7 +249,8 @@ helm install opaa oci://ghcr.io/criew/charts/opaa --version <x.y.z> -n opaa -f o
 ```
 
 Die verfügbaren Versionen und ihre Vorbereitungsschritte stehen unter *Releases* im
-GitHub-Repository. Wer den Entwicklungsstand `main` aus einem Checkout des Repositorys installiert,
+GitHub-Repository. Vor dem ersten Release mit Chart liegt unter dieser Adresse noch keine Version;
+bis dahin bleibt nur die Installation aus einem Checkout. Wer den Entwicklungsstand `main` aus einem Checkout des Repositorys installiert,
 nennt die Image-Tags ausdrücklich, weil der Chart im Repository keine Release-Version trägt:
 
 ```bash
