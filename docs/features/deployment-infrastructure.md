@@ -5,9 +5,9 @@
 > Andockung an die Bausteine des souveränen Arbeitsplatzes in **Phase 4**. Der Umfang der
 > Speicher-Abstraktion für Dokumente ist entschieden (siehe [Speicher-Backends](#speicher-backends)).
 >
-> Diese Spezifikation beschreibt das **Zielbild**. Der tatsächlich verfügbare Betriebsweg ist in
-> [deployment.md](../handbuch/deployment.md) beschrieben; wo beide auseinandergehen, gilt für den Betrieb
-> heute jenes Dokument.
+> Diese Spezifikation beschreibt das **Zielbild**. Die tatsächlich verfügbaren Betriebswege sind in
+> [deployment.md](../handbuch/deployment.md) (Docker Compose) und [kubernetes.md](../handbuch/kubernetes.md)
+> (Helm-Chart) beschrieben; wo beide auseinandergehen, gilt für den Betrieb heute das Handbuch.
 
 ## Motivation
 
@@ -82,8 +82,9 @@ Die Ausbaustufen der Anwendung sind dieselben. Was sich unterscheidet, ist der B
 außerhalb der Prozesse, jeder Dienst ist neustartbar, und keine Instanz hält Wissen, das nicht auch
 woanders steht.
 
-Das Projekt wird dafür einen Helm-Chart als Bestandteil jedes Releases liefern, veröffentlicht neben
-den Images in GHCR ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md), Epic #2346). Er
+Das Projekt liefert dafür einen Helm-Chart; jedes Release veröffentlicht ihn neben den Images in
+GHCR ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md), Epic #2346); den
+Betrieb damit beschreibt [kubernetes.md](../handbuch/kubernetes.md). Er
 bildet zunächst die Single-Instance-Stufe nach
 [ADR-0021](../decisions/0021-single-instance-betrieb.md) ab: eine Backend-Instanz, Aktualisierung mit
 kurzer Unterbrechung, Datenbank extern, Anmeldung über einen externen Identitätsanbieter oder die
@@ -386,7 +387,10 @@ Risiko genau des Ausfalls, den das Wartungsfenster verhindern sollte.
 Der Compose-Stapel wird aktualisiert, indem neue Abbilder bezogen und die betroffenen Container neu
 erstellt werden. Das ist eine **kurze Unterbrechung**, keine unterbrechungsfreie Umschaltung: Es gibt
 eine Instanz je Dienst, und während des Neustarts ist sie nicht erreichbar. Der genaue Ablauf und was
-er mit dem Index macht, steht in [deployment.md](../handbuch/deployment.md).
+er mit dem Index macht, steht in [deployment.md](../handbuch/deployment.md). Unter Kubernetes gilt
+dasselbe: Der Helm-Chart ersetzt das Backend mit der Strategie `Recreate`, und der Rückweg über eine
+Schemaänderung hinweg führt über die Datenbanksicherung
+([kubernetes.md](../handbuch/kubernetes.md#aktualisierung-und-rückweg)).
 
 ### Zielbild für große Installationen
 

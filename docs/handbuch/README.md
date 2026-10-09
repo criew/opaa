@@ -8,7 +8,7 @@ läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 
 | Rolle | Typische Aufgaben | Einstieg |
 |---|---|---|
-| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Deployment](deployment.md), danach [Indexierung](indexierung.md) und [Suche](suche.md) |
+| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Deployment](deployment.md), unter Kubernetes zusätzlich [Kubernetes](kubernetes.md), danach [Indexierung](indexierung.md) und [Suche](suche.md) |
 | **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Indexierung](indexierung.md), die Konnektor-Kapitel, [Metadaten](metadaten.md), [Suche](suche.md) Abschnitt 8 |
 
 Nicht Zielgruppe sind Entwickler (Spezifikationen und Entscheidungen liegen im Repository unter
@@ -82,7 +82,7 @@ Drei Eigenschaften prägen alles Weitere:
 | Katalog | Wissens- und Prompt-Bibliotheken finden: genau die lesbaren, mit Freigabe an alle, Aktualisierung und zuständiger Stelle; Suche, Filter nach Art und Favoriten, feste Reihenfolge Favoriten zuerst, dann Name | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
 | Fremdzugänge | Freigegebene Bibliotheken für fremde KI-Werkzeuge erreichbar machen: Schalter, Freigabe je Bibliothek, persönliche Zugangstokens, MCP-Server, Kontingent und Abflussalarm | [Fremdzugänge](fremdzugaenge.md) |
 | E-Mail-Versand | SMTP als Verwaltungseinstellung, öffentliche Basis-URL aus der Umgebung, zwölf überschreibbare Vorlagen, Testversand | [Deployment](deployment.md), Abschnitt „E-Mail-Versand (SMTP)" |
-| Installation und Update | Docker Compose, Umgebungsvariablen, Härtung, Update-Verhalten des Index | [Deployment](deployment.md) |
+| Installation und Update | Docker Compose oder Kubernetes mit dem Helm-Chart, Umgebungsvariablen, Härtung, Update-Verhalten des Index, Rückweg über die Datenbanksicherung | [Deployment](deployment.md), [Kubernetes](kubernetes.md) |
 
 ## 4. Kapitel
 
@@ -91,7 +91,7 @@ Drei Eigenschaften prägen alles Weitere:
 | Kapitel | Inhalt |
 |---|---|
 | [Deployment](deployment.md) | Installation aus Images, Update-Ablauf und Folgen für den Index, alle Umgebungsvariablen, Härtung, Modellanbieter, Authentifizierung samt Erststart und Notfallprozedur, E-Mail-Versand, Originalablage der Uploads, Fehlerbehebung |
-| [Kubernetes](kubernetes.md) | Entwurf: Betrieb mit dem Helm-Chart; bisher die Betriebsüberwachung mit Management-Port, ServiceMonitor, Metriken, Grundalarmen und strukturierten Protokollen |
+| [Kubernetes](kubernetes.md) | Entwurf: Betrieb mit dem Helm-Chart; Abgrenzung zu Compose, Voraussetzungen, Installation Schritt für Schritt, Geheimnisse, Wertereferenz mit Zuordnung zu den Umgebungsvariablen, Anbindungen, Eingang, Proxy-Kette, NetworkPolicies, Pod Security, Aktualisierung und Rückweg, Sicherung, Betriebsüberwachung, Fehlersuche |
 | [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen und Anlegerechte, Löschen gegen Sperren, Übergabe an einen Identitätsanbieter, Selbstregistrierung, Selbstbedienung, verbundene Konten, Regeln und Fristen |
 | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) | Das Berechtigungsmodell an einer Stelle: Subjekte, die Begriffe Rolle / Anlegerecht / Vollmacht / Systemrolle, Rollen an Bibliothek und Raum, Reichweite („Alle Konten"), der Katalog, Freigabe-Obergrenze für Konnektorbibliotheken, Gruppenherkunft und -mechanismus, interne Gruppen und ihre Verantwortlichen, was wer sieht, die Herleitung „warum sehe ich das", Anlegerechte, Systemrollen und Vollmachten, Rechtehistorie und Stichtagsauskunft, Kontosperre aus dem Verzeichnis, Übertragung, „Nachfolge offen", Diagnose im Gruppenkontext, Konfiguration |
 | [Prompt-Bibliotheken](prompt-bibliotheken.md) | Prompt-Bibliothek und Prompt, Befehl und Variablen, Rollen, Anlegen mit Gruppeneigentum, Detailseite mit dem gemeinsamen Freigabeabschnitt, Zuordnung zu Räumen, Finden im Katalog, Prompts pflegen mit Prüfung und Vorschau, Einsetzen im Chat, „Nachfolge offen", Protokoll |
@@ -118,6 +118,7 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 | Anlass | Reihenfolge |
 |---|---|
 | Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitt 2 |
+| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md) „Voraussetzungen" und „Installation" → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Kubernetes](kubernetes.md) „Netz und Sicherheit" → [Indexierung](indexierung.md) Abschnitt 2 |
 | Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md) „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen sollen |
 | Rechte einer Bibliothek oder eines Raums vergeben | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 2 bis 5 → Abschnitte 6 bis 8 (Gruppen) |
 | Eine Person scheidet aus, ein Referat wird aufgelöst | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 13 → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitte 4 und 8 |
@@ -128,6 +129,7 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 | Eine Antwort ist schlecht | [Suche](suche.md) Abschnitte 8 und 9 → Diagnosewerkzeug → je nach Befund [Indexierung](indexierung.md) oder [Metadaten](metadaten.md) |
 | Filter oder Beleg zeigen falsche Werte | [Metadaten](metadaten.md) Abschnitte 4, 7 und 8 |
 | Update steht an | [Deployment](deployment.md) „Aktualisierung" und „Was ein Update mit dem Index macht" → [Indexierung](indexierung.md) Abschnitt 9 (Nachzug) |
+| Update unter Kubernetes steht an | [Kubernetes](kubernetes.md) „Aktualisierung und Rückweg" → [Deployment](deployment.md) „Was ein Update mit dem Index macht" |
 | Reranking einschalten | [Deployment](deployment.md) „Reranking einschalten" → [Suche](suche.md) Stufe 8 |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 (anlegen mit Gruppeneigentum, freigeben, einem Raum zuordnen) → Abschnitt 5 (Prompts pflegen) → [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 6 bis 8 (Gruppen) |
 | Herausfinden, ob es etwas schon gibt, und wer zuständig ist | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 4 („Reichweite" und „Der Katalog") → [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 („Im Katalog finden") → Abschnitt 6 (im Chat einsetzen) |
