@@ -240,6 +240,39 @@ export const connectionProfileHandlers = [
     if (index < 0) return notFound()
     const current = mockConnectionProfiles[index]
     const body = (await request.json()) as ConnectionProfileUpdateRequest
+    // as the server: a stored secret follows no moved token or revocation endpoint, and no new
+    // proxy in front of a plain http:// one
+    const secretEndpoints = [
+      ['tokenEndpoint', 'Token-Endpunkt'],
+      ['revocationEndpoint', 'Widerrufs-Endpunkt'],
+    ] as const
+    const moved = secretEndpoints.filter(
+      ([key]) => body[key] != null && body[key] !== (current[key] ?? null),
+    )
+    const plain =
+      (body.sourceProxy ?? null) !== (current.sourceProxy ?? null)
+        ? secretEndpoints.filter(([key]) => /^http:\/\//i.test(body[key] ?? ''))
+        : []
+    const keepsSecret =
+      current.clientSecretSet &&
+      body.clientSecret == null &&
+      ['OAUTH', 'CLIENT_CREDENTIALS'].includes(body.authMethod) &&
+      current.authMethod !== 'SERVICE_ACCOUNT_KEY'
+    if (keepsSecret && (moved.length > 0 || plain.length > 0)) {
+      const named = (list: typeof moved) =>
+        list.map(([key, label]) => `${label} ${body[key]}`).join(' und der ')
+      return HttpResponse.json(
+        {
+          error:
+            moved.length > 0
+              ? `Der ${named(moved)} ${moved.length > 1 ? 'ändern' : 'ändert'} sich. Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet: Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für einen öffentlichen Client.`
+              : `Der Proxy des Zugangs ändert sich, und der ${named(plain)} ist unverschlüsselt (http://): Der Proxy sähe das hinterlegte Client-Secret. Bitte geben Sie das Client-Secret erneut an, oder ein leeres für einen öffentlichen Client.`,
+          status: 400,
+          code: 'CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED',
+        },
+        { status: 400 },
+      )
+    }
     const { confirmation } = discardsOf(current, body)
     const refusals = refusalsOf(current, body)
     if (refusals.length > 0) {
@@ -269,7 +302,8 @@ export const connectionProfileHandlers = [
       authMethod: body.authMethod,
       ownership: body.ownership,
       clientId: body.clientId ?? null,
-      clientSecretSet: body.clientSecret ? true : current.clientSecretSet,
+      clientSecretSet:
+        body.clientSecret == null ? current.clientSecretSet : body.clientSecret.trim() !== '',
       clientSecretExpiresOn: body.clientSecretExpiresOn ?? null,
       tenant: body.tenant ?? null,
       scopes: body.scopes ?? null,
