@@ -14,7 +14,7 @@ import java.util.Map;
  * <p>Same derivations as {@link Baseline}'s corresponding methods, at this window: {@code
  * hitCountAt20} takes {@code hitCountAt10}'s role, because the ranked list of a pipeline run never
  * has more than {@link PipelineMetricsAggregate#RANKING_K} entries, so "a hit exists in the list"
- * and "a hit exists in the top 8" are the identical event.
+ * and "a hit exists in the window" (the production top-k, 20) are the identical event.
  */
 final class PipelineGroupInvariants {
 
