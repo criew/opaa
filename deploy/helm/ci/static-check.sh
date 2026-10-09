@@ -31,7 +31,11 @@ for values in "${value_sets[@]}"; do
   name="$(basename "$values" -values.yaml)"
   echo "--- value set $name"
   helm lint --strict "$CHART_DIR" --values "$values"
-  helm template opaa "$CHART_DIR" --namespace opaa --values "$values" >"$work_dir/$name.yaml"
+  # helm lint reports a refusal of the chart (fail) only as INFO and exits 0; rendering fails on it.
+  if ! helm template opaa "$CHART_DIR" --namespace opaa --values "$values" >"$work_dir/$name.yaml"; then
+    echo "Value set $name does not render: the chart refuses it (message above)." >&2
+    exit 1
+  fi
   for version in $KUBERNETES_VERSIONS; do
     kubeconform -strict -summary -kubernetes-version "$version" -cache "$work_dir/schemas" \
       -schema-location default -schema-location "$CRD_SCHEMA_LOCATION" "$work_dir/$name.yaml"
