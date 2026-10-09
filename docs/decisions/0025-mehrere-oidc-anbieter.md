@@ -290,6 +290,14 @@ vertippt" ein Totalausfall der Verwaltung mit Datenbankzugriff als einzigem Ausw
 > aktivierte OIDC-Anbieter darf mit `acknowledgeLastProvider` und geprüftem lokalen
 > Systemverwalterkonto deaktiviert oder gelöscht werden (`LocalAdminAvailabilityGuard`);
 > `OPAA_OIDC_BOOTSTRAP=force` bleibt bis 31.03.2027, Ersatz ist `OPAA_LOCAL_ADMIN_RESET=force`.
+>
+> **Nachtrag (#2396):** Die Meldung eines Starts ohne übernommenen Anbieter sagt nur noch dann
+> „keine Anmeldung möglich“ (`ERROR`), wenn kein anmeldefähiger lokaler Systemverwalter existiert.
+> Mit einem solchen Konto ist eine fehlende Issuer-URI
+> `INFO` (Betrieb nur mit lokalen Konten). Eine unvollständige oder fehlerhafte Angabe bleibt
+> `ERROR`, damit eine Alarmierung die Fehlkonfiguration weiter meldet, nennt aber die weiterhin
+> mögliche Anmeldung mit lokalen Konten statt „keine Anmeldung möglich“.
+> `OPAA_OIDC_BOOTSTRAP=force` mit unvollständiger Umgebung bleibt `ERROR`.
 
 **Erstadministrator-Regel je Anbieter (aufgehoben durch ADR-0033):** `opaa.auth.initial-admin-email` galt ausschließlich für
 Konten, die über den **Standardanbieter** (`is_default`) provisioniert werden, und wie heute nur

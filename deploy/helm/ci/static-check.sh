@@ -65,6 +65,8 @@ expect_refusal "ADR-0021" --set backend.replicas=2
 expect_refusal "ADR-0005" --set 'backend.extraEnv[0].name=SPRING_PROFILES_ACTIVE' --set 'backend.extraEnv[0].value=dev'
 expect_refusal "jwtSecret" --set secrets.jwtSecret=changeme-0123456789abcdefghijklmnopqrstuv
 expect_refusal "backendReadTimeout" --set frontend.backendReadTimeout=600
+# CSP keywords such as 'self' are quoted; quotes would break the nginx configuration.
+expect_refusal "cspConnectSrcExtra" --set-string "frontend.cspConnectSrcExtra='self' https://login.example.org"
 
 # On the first start the image's entrypoint runs a temporary server for initdb that answers on the
 # socket only; a readiness probe over the socket reports ready while the service refuses TCP.
@@ -163,19 +165,108 @@ if [[ "$(helm install --help)" == *"--dry-run string"* ]]; then
     helm install opaa "$CHART_DIR" --dry-run=client --namespace opaa \
       --values "$CHART_DIR/ci/minimal-values.yaml" "$@" | sed -n '/^NOTES:/,$p'
   }
-  issuer=(--set bootstrap.oidc.issuerUri=https://login.example.org/realms/opaa
-    --set bootstrap.oidc.clientId=opaa)
-  if [[ "$(notes "${issuer[@]}")" != *"ANMELDUNG ÜBER https://login.example.org WIRD BLOCKIERT"* ]]; then
-    echo "Expected a CSP warning for an issuer on another origin, but the notes show none." >&2
+  # Checks the CSP warning for an issuer (publicBaseUrl https://opaa.example.org) and a value of
+  # cspConnectSrcExtra; "warn" expects the warning naming the issuer's origin, "silent" neither
+  # warning nor path note, "path" the note that a path admits the discovery document only.
+  # Every case runs; the block fails at its end if any of them did not hold.
+  path_note="erlaubt nur das Discovery-Dokument"
+  csp_failures=0
+  csp_case() {
+    local expectation="$1" issuer="$2" extra="$3" reason="${4:-}" output origin
+    if ! output="$(notes --set-string "bootstrap.oidc.issuerUri=$issuer" --set bootstrap.oidc.clientId=opaa \
+      --set-string "frontend.cspConnectSrcExtra=$extra" 2>&1)"; then
+      echo "Issuer $issuer with cspConnectSrcExtra '$extra' does not install:" >&2
+      echo "$output" >&2
+      csp_failures=$((csp_failures + 1))
+      return
+    fi
+    origin="$(sed -E 's#^([a-z]+://[^/]+).*#\1#' <<<"$issuer")"
+    if [[ "$expectation" == warn && "$output" != *"ANMELDUNG ÜBER $origin WIRD BLOCKIERT"* ]]; then
+      echo "Expected a CSP warning for issuer $issuer with cspConnectSrcExtra '$extra', but the notes show none." >&2
+      csp_failures=$((csp_failures + 1))
+    elif [[ "$expectation" == warn && "$output" != *"$reason"* ]]; then
+      echo "Expected the warning for issuer $issuer with cspConnectSrcExtra '$extra' to name '$reason':" >&2
+      sed -n '/WIRD BLOCKIERT/,+3p' <<<"$output" >&2
+      csp_failures=$((csp_failures + 1))
+    elif [[ "$expectation" != warn && "$output" == *"WIRD BLOCKIERT"* ]]; then
+      echo "Expected no CSP warning for issuer $issuer with cspConnectSrcExtra '$extra':" >&2
+      sed -n '/WIRD BLOCKIERT/,+2p' <<<"$output" >&2
+      csp_failures=$((csp_failures + 1))
+    elif [[ "$expectation" == silent && "$output" == *"$path_note"* ]]; then
+      echo "Expected no path note for issuer $issuer with cspConnectSrcExtra '$extra'." >&2
+      csp_failures=$((csp_failures + 1))
+    elif [[ "$expectation" == path && "$output" != *"$path_note"* ]]; then
+      echo "Expected the note that a path admits the discovery document only, for issuer $issuer with cspConnectSrcExtra '$extra':" >&2
+      sed -n '/ORIGIN$/,+2p' <<<"$output" >&2
+      csp_failures=$((csp_failures + 1))
+    else
+      echo "${expectation} as expected: issuer $issuer, cspConnectSrcExtra '$extra'"
+    fi
+  }
+  issuer=https://login.example.org/realms/opaa
+  csp_case warn "$issuer" ""
+  csp_case silent "$issuer" "https://login.example.org"
+  # CSP Level 3 host sources: without a scheme the page's scheme applies, a leading *. stands for
+  # any subdomain, host names compare case-insensitively and the default port may be named.
+  csp_case silent "$issuer" "login.example.org"
+  csp_case silent "$issuer" "https://*.example.org"
+  csp_case silent "$issuer" "*.example.org"
+  csp_case silent "$issuer" "LOGIN.Example.ORG"
+  csp_case silent "$issuer" "https://login.example.org:443"
+  # A path restricts the source: ending in / it is a prefix, otherwise it must match exactly. Only
+  # an empty path or / admits the whole origin; any other path that covers the discovery document
+  # still may miss the token endpoint, the issuer's own path admits neither.
+  csp_case silent "$issuer" "https://login.example.org/"
+  csp_case path "$issuer" "https://login.example.org/realms/"
+  csp_case path "$issuer" "https://login.example.org/realms/opaa/"
+  csp_case path "$issuer" "https://login.example.org/realms/opaa/.well-known/"
+  csp_case path "https://login.microsoftonline.com/t1/v2.0" "https://login.microsoftonline.com/t1/v2.0/"
+  csp_case silent "https://login.microsoftonline.com/t1/v2.0" "https://login.microsoftonline.com"
+  csp_case warn "$issuer" "https://login.example.org/realms/opaa"
+  csp_case warn "$issuer" "https://login.example.org/other/"
+  csp_case silent "$issuer" "https://other.example.net login.example.org"
+  # An http source is upgraded to https, also as a scheme source; https: and * admit any https URL.
+  csp_case silent "$issuer" "http://login.example.org"
+  csp_case silent "$issuer" "https:"
+  csp_case silent "$issuer" "http:"
+  csp_case silent "$issuer" "*"
+  csp_case silent "https://login.example.org:8443/realms/opaa" "login.example.org:8443"
+  csp_case silent "https://login.example.org:8443/realms/opaa" "https://login.example.org:*"
+  # The wildcard matches subdomains, not the domain itself; other ports and other hosts do not match.
+  csp_case warn "https://example.org/realms/opaa" "https://*.example.org"
+  csp_case warn "$issuer" "https://*.login.example.org"
+  csp_case warn "$issuer" "https://login.example.org:8443"
+  csp_case warn "https://login.example.org:8443/realms/opaa" "login.example.org"
+  csp_case warn "$issuer" "https://login.example.org.evil.example"
+  csp_case warn "$issuer" "data: blob:"
+  # Without a scheme, an https page admits https only; a bare word is a host name, not a keyword.
+  csp_case warn "http://login.example.org/realms/opaa" "login.example.org"
+  csp_case warn "$issuer" "self"
+  # An http issuer on an https page is mixed content, whatever the CSP admits; the browser only
+  # makes an exception for the local machine (loopback addresses and *.localhost).
+  csp_case warn "http://login.example.org/realms/opaa" "http://login.example.org" "Mixed Content"
+  csp_case silent "http://localhost:8180/realms/opaa" "http://localhost:8180"
+  csp_case silent "http://foo.localhost:8180/realms/opaa" "http://foo.localhost:8180"
+  csp_case silent "http://127.0.0.2:8180/realms/opaa" "http://127.0.0.2:8180"
+  # The browser also calls the token endpoint, which Helm cannot look up: an admitted issuer on
+  # another origin still points to it, an issuer on the page's own origin needs no note.
+  output="$(notes --set "bootstrap.oidc.issuerUri=$issuer" --set bootstrap.oidc.clientId=opaa \
+    --set frontend.cspConnectSrcExtra=login.example.org)"
+  if [[ "$output" != *"token_endpoint aus dem Discovery-Dokument"* ||
+    "$output" != *"$issuer/.well-known/openid-configuration"* ]]; then
+    echo "Expected the note on the token endpoint for an admitted issuer on another origin." >&2
+    csp_failures=$((csp_failures + 1))
+  fi
+  output="$(notes --set bootstrap.oidc.issuerUri=https://opaa.example.org/realms/opaa \
+    --set bootstrap.oidc.clientId=opaa)"
+  if [[ "$output" == *"token_endpoint"* ]]; then
+    echo "Expected no note on the identity provider for an issuer on the page's own origin." >&2
+    csp_failures=$((csp_failures + 1))
+  fi
+  if ((csp_failures > 0)); then
+    echo "$csp_failures CSP warning case(s) failed." >&2
     exit 1
   fi
-  echo "warned as expected: issuer on another origin"
-  csp=(--set frontend.cspConnectSrcExtra=https://login.example.org)
-  if [[ "$(notes "${issuer[@]}" "${csp[@]}")" == *"WIRD BLOCKIERT"* ]]; then
-    echo "Expected no CSP warning once cspConnectSrcExtra names the issuer's origin." >&2
-    exit 1
-  fi
-  echo "silent as expected: issuer origin in cspConnectSrcExtra"
 else
   echo "skipped: Helm $(helm version --short) has no client-side dry run"
 fi

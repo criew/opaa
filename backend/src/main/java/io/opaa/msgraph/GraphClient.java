@@ -51,6 +51,9 @@ public final class GraphClient {
   /** Default bound of one JSON answer. */
   public static final long DEFAULT_MAX_JSON_BYTES = 16L * 1024 * 1024;
 
+  /** Bound of one download when none is named; generous for the byte ceiling on a slow line. */
+  public static final Duration DEFAULT_DOWNLOAD_TIMEOUT = Duration.ofMinutes(10);
+
   private static final Logger log = LoggerFactory.getLogger(GraphClient.class);
 
   private static final String VERSION_PATH = "/v1.0/";
@@ -67,6 +70,7 @@ public final class GraphClient {
   private final RateLimitHandling rateLimit;
   private final SourceRequestMeter meter;
   private final Duration timeout;
+  private final Duration downloadTimeout;
   private final long maxJsonBytes;
 
   /**
@@ -77,6 +81,8 @@ public final class GraphClient {
    *     charged to
    * @param meter receives the downloaded bytes; requests are counted by the listener
    * @param timeout bounds each attempt, the reading of a JSON answer included
+   * @param downloadTimeout bounds one {@link #download} from the start of its answer to the last
+   *     byte; must be positive
    */
   public GraphClient(
       URI origin,
@@ -87,6 +93,7 @@ public final class GraphClient {
       RateLimitHandling rateLimit,
       SourceRequestMeter meter,
       Duration timeout,
+      Duration downloadTimeout,
       long maxJsonBytes) {
     this.origin = URI.create(origin.getScheme() + "://" + origin.getRawAuthority());
     this.token = Objects.requireNonNull(token, "token");
@@ -98,6 +105,11 @@ public final class GraphClient {
     this.rateLimit = Objects.requireNonNull(rateLimit, "rateLimit");
     this.meter = Objects.requireNonNull(meter, "meter");
     this.timeout = Objects.requireNonNull(timeout, "timeout");
+    this.downloadTimeout = Objects.requireNonNull(downloadTimeout, "downloadTimeout");
+    if (downloadTimeout.isZero() || downloadTimeout.isNegative()) {
+      throw new IllegalArgumentException(
+          "downloadTimeout must be positive, got " + downloadTimeout);
+    }
     if (maxJsonBytes <= 0) {
       throw new IllegalArgumentException("maxJsonBytes must be positive, got " + maxJsonBytes);
     }
@@ -162,11 +174,13 @@ public final class GraphClient {
 
   /**
    * The body of {@code GET /v1.0/<path>} - typically {@code drives/<id>/items/<id>/content} - in a
-   * temp file <b>the caller deletes</b>, at most {@code maxBytes}.
+   * temp file <b>the caller deletes</b>, at most {@code maxBytes} and within the download timeout
+   * counted from the answer's start; an overrun is {@code TRANSIENT} and leaves no temp file.
    */
   public Path download(String path, long maxBytes) throws GraphException, InterruptedException {
     Answer answer =
         send(url(path, Map.of()), RedirectPolicy.DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN, "*/*");
+    long deadline = System.nanoTime() + downloadTimeout.toNanos();
     Path temp = null;
     boolean kept = false;
     try (InputStream body = answer.response().body()) {
@@ -175,13 +189,21 @@ public final class GraphClient {
       }
       temp = Files.createTempFile("opaa-msgraph-", ".bin");
       try (OutputStream out = Files.newOutputStream(temp)) {
-        BoundedStreams.copy(body, out, maxBytes);
+        BoundedStreams.copyBefore(body, out, maxBytes, deadline);
       }
       meter.recordBytes(Files.size(temp));
       kept = true;
       return temp;
     } catch (BoundedStreams.LimitExceededException e) {
       throw tooLarge(maxBytes);
+    } catch (HttpTimeoutException e) {
+      throw new GraphException(
+          GraphException.Kind.TRANSIENT,
+          answer.response().statusCode(),
+          null,
+          "Die Übertragung von Microsoft Graph dauerte länger als "
+              + downloadTimeout.toSeconds()
+              + " s.");
     } catch (IOException e) {
       log.debug("Microsoft Graph download broke off: {}", e.getClass().getSimpleName());
       throw new GraphException(

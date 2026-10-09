@@ -275,3 +275,13 @@ gestützt.
 - Ein Operator, eine Kustomize-Basis oder plattformspezifische Pakete wie OpenShift-Templates oder
   Marketplace-Einträge.
 - Ob Images zusätzlich für `linux/arm64` gebaut werden, entscheidet #2350.
+
+## Nachtrag: Images für `linux/arm64` (#2401, 09.10.2026)
+
+Der offene Punkt „Ob Images zusätzlich für `linux/arm64` gebaut werden“ ist entschieden: Backend und
+Frontend erscheinen mit [#2401](https://github.com/criew/opaa/issues/2401) für `linux/amd64` und
+`linux/arm64`, bei `main` und bei Release-Tags. Jede Architektur wird auf einem Runner dieser
+Architektur gebaut und per Digest gepusht; erst der zusammengeführte Manifest-Index bekommt die
+Tags. Der Chart ändert sich dadurch nicht, die Knoten ziehen die passende Variante. Ablauf,
+Prüfungen und Abgrenzung (E2E-Suite und Installationstest bleiben auf amd64, ein Rauchtest prüft
+arm64) stehen in [releases.md](../releases.md#mehrere-architekturen).

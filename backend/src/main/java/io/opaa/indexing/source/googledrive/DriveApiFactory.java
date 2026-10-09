@@ -64,6 +64,7 @@ final class DriveApiFactory {
         SourceHttpClientFactory.buildHttpClient(proxy.proxyHost(), proxy.proxyPort(), false),
         targetAddressValidator,
         properties.requestTimeout(),
+        properties.downloadTimeout(),
         budget,
         properties.maxRetries(),
         properties.retryBackoff(),
