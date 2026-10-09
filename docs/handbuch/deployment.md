@@ -52,7 +52,8 @@ Aktualisieren auf den neuesten Stand des gewählten Tags:
 docker compose pull && docker compose up -d
 ```
 
-`main` folgt dem jeweils letzten Stand. Eine Release-Version `X.Y.Z` ist bereits reproduzierbar.
+`main` folgt dem jeweils letzten Stand. Ein Neubau eines inzwischen überholten Commits setzt `main`
+nicht zurück, sondern nur sein `sha-<commit>`. Eine Release-Version `X.Y.Z` ist bereits reproduzierbar.
 Wer `main` betreibt und trotzdem einen festen Stand braucht, **pinnt den Digest**, nicht einen Tag:
 
 ```yaml

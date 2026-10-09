@@ -278,7 +278,13 @@ jobs:
         env:
           TAGS: ${{ needs.prepare.outputs.tags }}
           ANNOTATIONS: ${{ needs.prepare.outputs.annotations }}
+        # :main is set only while this run's commit is still the tip of main, so an older run that
+        # finishes late, a re-run or a rebuild overtaken by a push never moves it backwards. Asked
+        # right before the tags are set; docs/releases.md describes the remaining window.
         run: |
+          if ! TAGS=$(.github/scripts/drop_stale_main_tag.sh "$IMAGE" "$GITHUB_SHA" <<<"$TAGS"); then
+            exit 1
+          fi
           tags=()
           args=()
           while IFS= read -r tag; do
