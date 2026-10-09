@@ -29,8 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>How loud an unseeded start is depends on whether anyone can still sign in: with a
  * login-capable local system administrator ({@link LocalAdminAvailabilityGuard}) no issuer is INFO
- * - operation with local accounts only - and an incomplete or malformed one is WARN; without one it
- * is ERROR.
+ * - operation with local accounts only. An incomplete or malformed environment stays ERROR so that
+ * alerting still reports it, but says that local accounts keep working; without such an
+ * administrator the ERROR says no one can sign in.
  *
  * <p><b>{@code OPAA_OIDC_BOOTSTRAP=force}</b> restores the environment provider once despite the
  * marker - a row with this issuer is overwritten with the environment values, enabled and made the
@@ -56,6 +57,13 @@ public class OidcProviderSeeder {
           + " möglich. OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
           + " OPAA_OIDC_JWK_SET_URI) setzen und neu starten - die Übernahme wird dann"
           + " nachgeholt. Siehe docs/handbuch/deployment.md.";
+  private static final String NO_SIGN_IN_AT_ALL_MESSAGE =
+      "Kein Identitätsanbieter übernommen ({}) und kein anmeldefähiges lokales"
+          + " Systemverwalterkonto: Bis eines von beiden existiert, ist keine Anmeldung möglich."
+          + " Entweder OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
+          + " OPAA_OIDC_JWK_SET_URI) setzen, oder für das lokale Notanker-Konto"
+          + " OPAA_INITIAL_ADMIN_EMAIL setzen bzw. es mit OPAA_LOCAL_ADMIN_RESET=force"
+          + " wiederherstellen, und neu starten. Siehe docs/handbuch/deployment.md.";
 
   private final OidcProviderRepository repository;
   private final OidcProviderSeedMarkerRepository markerRepository;
@@ -205,13 +213,13 @@ public class OidcProviderSeeder {
   }
 
   /**
-   * Tells the operator about a start that seeded nothing. ERROR only when no one can sign in at
-   * all; with a login-capable local administrator the installation runs on local accounts - no
-   * issuer is a deliberate choice (INFO), a half-set one a misconfiguration (WARN).
+   * Tells the operator about a start that seeded nothing. With a login-capable local administrator
+   * the installation runs on local accounts: no issuer is a deliberate choice (INFO), a half-set
+   * one a misconfiguration (ERROR, without claiming no sign-in is possible).
    */
   private void reportUnseededStart(AuthProperties.OidcAuth oidc, String problem) {
     if (adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID) == 0) {
-      log.error(NO_SIGN_IN_MESSAGE, problem);
+      log.error(NO_SIGN_IN_AT_ALL_MESSAGE, problem);
     } else if (trimmed(oidc.issuerUri()).isEmpty()) {
       log.info(
           "Kein Identitätsanbieter konfiguriert ({}): Anmeldung nur mit lokalen Konten. Einen"
@@ -219,7 +227,7 @@ public class OidcProviderSeeder {
               + " OPAA_OIDC_CLIENT_ID setzen und neu starten - die Übernahme wird dann nachgeholt.",
           problem);
     } else {
-      log.warn(
+      log.error(
           "Kein Identitätsanbieter übernommen ({}): Anmeldung bis dahin nur mit lokalen Konten."
               + " OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
               + " OPAA_OIDC_JWK_SET_URI) korrigieren und neu starten - die Übernahme wird dann"

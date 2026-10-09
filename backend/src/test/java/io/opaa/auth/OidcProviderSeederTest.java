@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
@@ -275,9 +276,14 @@ class OidcProviderSeederTest {
     verify(markerRepository, never()).save(any());
   }
 
+  /**
+   * The forced restore was asked for explicitly and cannot run: ERROR regardless of local
+   * administrators, which are not even asked.
+   */
   @Test
   void forcedBootstrapWithAnIncompleteEnvironmentChangesNothing() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(true);
+    when(adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID)).thenReturn(1L);
     AuthProperties forced =
         new AuthProperties(
             "oidc",
@@ -286,10 +292,18 @@ class OidcProviderSeederTest {
             null,
             "admin@opaa.local");
 
-    seederFor(forced).seedIfNeeded();
+    List<ILoggingEvent> events = capturedLogsOf(forced);
 
     verify(repository, never()).save(any());
     verify(repository, never()).saveAndFlush(any());
+    assertThat(events)
+        .filteredOn(event -> event.getLevel() == Level.ERROR)
+        .map(ILoggingEvent::getFormattedMessage)
+        .anyMatch(
+            message ->
+                message.contains("keine Anmeldung möglich")
+                    && message.contains("OPAA_OIDC_CLIENT_ID ist nicht gesetzt"));
+    verifyNoInteractions(adminAvailability);
   }
 
   @Test
@@ -343,16 +357,18 @@ class OidcProviderSeederTest {
         .anyMatch(
             message ->
                 message.contains("keine Anmeldung möglich")
-                    && message.contains("OPAA_OIDC_ISSUER_URI ist nicht gesetzt"));
+                    && message.contains("OPAA_OIDC_ISSUER_URI ist nicht gesetzt")
+                    && message.contains("OPAA_INITIAL_ADMIN_EMAIL")
+                    && message.contains("OPAA_LOCAL_ADMIN_RESET=force"));
     verify(markerRepository, never()).save(any());
   }
 
   /**
-   * A half-set environment is a misconfiguration worth a WARN, but with a login-capable local
-   * administrator it is no ERROR: the sign-in with local accounts still works.
+   * A half-set environment is a misconfiguration and stays ERROR so alerting reports it, but with a
+   * login-capable local administrator it must not claim that no sign-in is possible.
    */
   @Test
-  void anIncompleteEnvironmentWithALoginCapableLocalAdministratorIsReportedAsWarning() {
+  void anIncompleteEnvironmentWithALoginCapableLocalAdministratorIsAnErrorThatKeepsLocalSignIn() {
     when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
     when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
     when(adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID)).thenReturn(1L);
@@ -360,14 +376,19 @@ class OidcProviderSeederTest {
     List<ILoggingEvent> events =
         capturedLogsOf(oidc("https://idp.example/realms/opaa", null, null, ""));
 
-    assertThat(events).noneMatch(event -> event.getLevel() == Level.ERROR);
-    assertThat(events)
-        .filteredOn(event -> event.getLevel() == Level.WARN)
-        .map(ILoggingEvent::getFormattedMessage)
+    List<String> errors =
+        events.stream()
+            .filter(event -> event.getLevel() == Level.ERROR)
+            .map(ILoggingEvent::getFormattedMessage)
+            .toList();
+    assertThat(errors)
         .anyMatch(
             message ->
                 message.contains("OPAA_OIDC_CLIENT_ID ist nicht gesetzt")
-                    && message.contains("nur mit lokalen Konten"));
+                    && message.contains("nur mit lokalen Konten")
+                    && message.contains("korrigieren"));
+    assertThat(errors).noneMatch(message -> message.contains("keine Anmeldung möglich"));
+    verify(markerRepository, never()).save(any());
   }
 
   private List<ILoggingEvent> capturedLogsOf(AuthProperties properties) {
