@@ -22,7 +22,7 @@ jederzeit auch lokal ausführen (unten).
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
-| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml` | `custom.regex` | `ci` |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml` | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle, junrar —
@@ -118,6 +118,7 @@ trifft, hat gar keine Zeile** — das ist der Befund. Erwartet:
 DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/s3/S3TestFixture.java
 DEBUG: Matched 1 file(s) for manager regex: backend/src/test/java/io/opaa/integration/keycloak/KeycloakFixture.java
 DEBUG: Matched 1 file(s) for manager regex: .github/workflows/sbom.yml
+DEBUG: Matched 1 file(s) for manager regex: .github/workflows/helm-chart.yml
 ```
 
 Dass die Datei getroffen wurde, heißt noch nicht, dass der `matchStrings`-Ausdruck greift; dafür

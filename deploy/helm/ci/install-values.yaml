@@ -14,6 +14,11 @@ bootstrap:
   chatModel:
     baseUrl: http://models.invalid/v1
     model: qwen2.5:3b
+# kind ships a default StorageClass (local-path); fsGroup makes the volume writable for the backend.
+uploads:
+  store: persistentVolumeClaim
+  persistence:
+    fsGroup: 65532
 secrets:
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password

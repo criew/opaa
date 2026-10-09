@@ -12,7 +12,14 @@ bootstrap:
   chatModel:
     baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
     model: qwen2.5:3b
+uploads:
+  store: s3
+  s3:
+    endpoint: https://s3.example.org
+    bucket: opaa-uploads
 secrets:
+  s3AccessKey: ci-only-access-key
+  s3SecretKey: ci-only-secret-key
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
   credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=

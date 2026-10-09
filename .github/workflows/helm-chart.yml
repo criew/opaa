@@ -117,7 +117,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@v4
 
-      # Repo root as context (#896): the backend's Gradle build depends on the sibling opaa-api/.
+      # Repo root as context: the backend's Gradle build depends on the sibling opaa-api/.
       - name: Backend-Image bauen
         uses: docker/build-push-action@v7
         with:
