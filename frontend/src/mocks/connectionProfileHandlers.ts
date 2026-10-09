@@ -109,6 +109,26 @@ function notFound() {
   return HttpResponse.json({ error: 'Zugang nicht gefunden', status: 404 }, { status: 404 })
 }
 
+/** As the server: every endpoint the profile names is https:// only. */
+function notHttpsEndpoint(body: {
+  authorizationEndpoint?: string | null
+  tokenEndpoint?: string | null
+  revocationEndpoint?: string | null
+}) {
+  const field = (['authorizationEndpoint', 'tokenEndpoint', 'revocationEndpoint'] as const).find(
+    (key) => body[key] != null && !/^https:\/\//i.test(body[key] ?? ''),
+  )
+  return field
+    ? HttpResponse.json(
+        {
+          error: `${field} muss eine vollständige Adresse mit https:// sein, ohne Benutzerangabe und Fragment; über http:// könnte jede Station auf dem Weg die Anmeldung, die Tokens und das Client-Secret mitlesen oder die Seite austauschen`,
+          status: 400,
+        },
+        { status: 400 },
+      )
+    : null
+}
+
 /** The libraries on a profile, as the impact counts them. */
 function librariesOn(profile: ConnectionProfileResponse) {
   return Math.ceil(profile.connectionCount / 2)
@@ -192,6 +212,8 @@ export const connectionProfileHandlers = [
 
   http.post(ADMIN, async ({ request }) => {
     const body = (await request.json()) as ConnectionProfileCreateRequest
+    const notHttps = notHttpsEndpoint(body)
+    if (notHttps) return notHttps
     const now = new Date().toISOString()
     const created: ConnectionProfileResponse = {
       id: `connection-profile-${crypto.randomUUID().slice(0, 8)}`,
@@ -240,33 +262,27 @@ export const connectionProfileHandlers = [
     if (index < 0) return notFound()
     const current = mockConnectionProfiles[index]
     const body = (await request.json()) as ConnectionProfileUpdateRequest
-    // as the server: a stored secret follows no moved token or revocation endpoint, and no new
-    // proxy in front of a plain http:// one
+    // as the server: every endpoint https:// only, and a stored secret follows no moved token or
+    // revocation endpoint
     const secretEndpoints = [
       ['tokenEndpoint', 'Token-Endpunkt'],
       ['revocationEndpoint', 'Widerrufs-Endpunkt'],
     ] as const
+    const notHttps = notHttpsEndpoint(body)
+    if (notHttps) return notHttps
     const moved = secretEndpoints.filter(
       ([key]) => body[key] != null && body[key] !== (current[key] ?? null),
     )
-    const plain =
-      (body.sourceProxy ?? null) !== (current.sourceProxy ?? null)
-        ? secretEndpoints.filter(([key]) => /^http:\/\//i.test(body[key] ?? ''))
-        : []
     const keepsSecret =
       current.clientSecretSet &&
       body.clientSecret == null &&
       ['OAUTH', 'CLIENT_CREDENTIALS'].includes(body.authMethod) &&
       current.authMethod !== 'SERVICE_ACCOUNT_KEY'
-    if (keepsSecret && (moved.length > 0 || plain.length > 0)) {
-      const named = (list: typeof moved) =>
-        list.map(([key, label]) => `${label} ${body[key]}`).join(' und der ')
+    if (keepsSecret && moved.length > 0) {
+      const named = moved.map(([key, label]) => `${label} ${body[key]}`).join(' und der ')
       return HttpResponse.json(
         {
-          error:
-            moved.length > 0
-              ? `Der ${named(moved)} ${moved.length > 1 ? 'ändern' : 'ändert'} sich. Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet: Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für einen öffentlichen Client.`
-              : `Der Proxy des Zugangs ändert sich, und der ${named(plain)} ist unverschlüsselt (http://): Der Proxy sähe das hinterlegte Client-Secret. Bitte geben Sie das Client-Secret erneut an, oder ein leeres für einen öffentlichen Client.`,
+          error: `Der ${named} ${moved.length > 1 ? 'ändern' : 'ändert'} sich. Das hinterlegte Client-Secret wird nicht an einen geänderten Endpunkt gesendet: Bitte geben Sie das Client-Secret für den neuen Endpunkt an, oder ein leeres für einen öffentlichen Client.`,
           status: 400,
           code: 'CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED',
         },

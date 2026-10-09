@@ -2,6 +2,8 @@ package io.opaa.test;
 
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpsConfigurator;
+import com.sun.net.httpserver.HttpsServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
@@ -33,7 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  * {@link #rejectWith}. {@link #approve} stands for the person consenting in the browser, as the
  * account {@link #account} names; {@link #accountOf} tells which account an access token was issued
  * to. {@link #holdRevocations} stands for a provider that takes a revocation but does not answer.
- * It also answers a request sent to it as a proxy. {@link #shared()} serves the Spring contexts.
+ * It also answers a request sent to it as a proxy. {@link #shared()} serves the Spring contexts;
+ * {@link #overTls()} serves {@code https://} for an endpoint a profile names, which must be one.
  */
 public final class FakeAuthorizationServer implements AutoCloseable {
 
@@ -55,6 +58,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   private record Consent(String clientId, String redirectUri, String challenge) {}
 
   private final HttpServer server;
+  private final String scheme;
   private final List<Request> requests = new CopyOnWriteArrayList<>();
   private final AtomicInteger issued = new AtomicInteger();
   private final AtomicInteger refreshIssued = new AtomicInteger();
@@ -73,11 +77,22 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   private volatile CountDownLatch revocationGate;
 
   public FakeAuthorizationServer() {
+    this(false);
+  }
+
+  private FakeAuthorizationServer(boolean tls) {
     try {
-      server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+      if (tls) {
+        HttpsServer https = HttpsServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        https.setHttpsConfigurator(new HttpsConfigurator(LoopbackTls.serverContext()));
+        server = https;
+      } else {
+        server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+      }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
+    scheme = tls ? "https" : "http";
     server.createContext("/token", this::handleToken);
     server.createContext("/revoke", this::handleRevocation);
     server.setExecutor(Executors.newCachedThreadPool());
@@ -92,9 +107,19 @@ public final class FakeAuthorizationServer implements AutoCloseable {
     return shared;
   }
 
+  /**
+   * A server on {@code https://127.0.0.1} with the certificate of {@link LoopbackTls}, which the
+   * default TLS context of this JVM trusts until {@link LoopbackTls#restore}, which the calling
+   * test class runs in {@code @AfterAll}; it answers no request as a proxy.
+   */
+  public static FakeAuthorizationServer overTls() {
+    LoopbackTls.trustInThisJvm();
+    return new FakeAuthorizationServer(true);
+  }
+
   /** The issuer this server names itself as (RFC 8414), its origin without a path. */
   public String issuer() {
-    return "http://127.0.0.1:" + server.getAddress().getPort();
+    return scheme + "://127.0.0.1:" + server.getAddress().getPort();
   }
 
   public URI tokenEndpoint() {
@@ -115,7 +140,7 @@ public final class FakeAuthorizationServer implements AutoCloseable {
   }
 
   private URI endpoint(String path) {
-    return URI.create("http://127.0.0.1:" + server.getAddress().getPort() + path);
+    return URI.create(issuer() + path);
   }
 
   /** {@code host:port} of this server, to be named as a proxy. */

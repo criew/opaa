@@ -15,9 +15,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import io.opaa.api.types.ConnectionAuthMethod;
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.SystemRole;
 import io.opaa.asset.AssetShellService;
+import io.opaa.auth.CurrentUser;
 import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.UserRepository;
+import io.opaa.connection.profile.ConnectionProfileService;
+import io.opaa.connection.profile.ConnectionProfileValues;
 import io.opaa.connection.profile.SecretTarget;
 import io.opaa.connection.profile.SourceTransitions;
 import io.opaa.connection.token.ConnectionSecrets;
@@ -80,6 +86,8 @@ class ConnectedAccountIntegrationTest {
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private PersonProbeIndexingExecutor probe;
   @Autowired private SourceTransitions transitions;
+  @Autowired private PersonProbeSourceConnector personProbe;
+  @Autowired private ConnectionProfileService profileService;
 
   private final List<UUID> libraries = new ArrayList<>();
   private UUID profile;
@@ -114,6 +122,7 @@ class ConnectedAccountIntegrationTest {
 
   @AfterEach
   void removeOwnRows() {
+    personProbe.duringSignIn(null);
     restoreAccount();
     jdbc.update("DELETE FROM connected_accounts WHERE profile_id = ?", profile);
     jdbc.update("DELETE FROM connection_log WHERE profile_id = ?", profile);
@@ -177,6 +186,48 @@ class ConnectedAccountIntegrationTest {
         .extracting(entry -> entry.get("event_type"), entry -> entry.get("cause"))
         .containsExactly(
             tuple("CONNECTED", null), tuple("RECONNECTED", null), tuple("DISCONNECTED", "SELF"));
+  }
+
+  /**
+   * Regression guard for #2279: the profile's address changes while the provider is asked. The
+   * change ends the account and sees no secret yet; the reconnection must then store none for the
+   * old target, but refuse with 409 and leave nothing connected.
+   */
+  @Test
+  void anAddressChangeDuringTheSignInLeavesNoConnectionForTheOldTarget() throws Exception {
+    connect("dev-user", PASSWORD).andExpect(status().isOk());
+    String moved = "https://umgezogen.example.org";
+    personProbe.duringSignIn(
+        () ->
+            profileService.update(
+                CurrentUser.of(admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Admin"),
+                profile,
+                new ConnectionProfileValues(
+                    profileName,
+                    moved,
+                    ConnectionAuthMethod.PERSONAL_SECRET,
+                    ConnectionOwnership.PERSON,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false,
+                    null),
+                null,
+                true));
+
+    connect("dev-user", PASSWORD)
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("CONNECTED_ACCOUNT_PROFILE_CHANGED"));
+
+    assertThat(
+            jdbc.queryForObject(
+                "SELECT server_url FROM connection_profiles WHERE id = ?", String.class, profile))
+        .isEqualTo(moved);
+    assertThat(accountRows(person)).isZero();
+    assertThat(tokenRows()).isZero();
   }
 
   /** Acceptance criterion of #2163: the release counts for a new account only. */

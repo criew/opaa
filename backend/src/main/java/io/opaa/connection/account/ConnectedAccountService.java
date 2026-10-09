@@ -9,6 +9,7 @@ import io.opaa.api.types.NotificationType;
 import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.log.ConnectionLog;
@@ -67,6 +68,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @Service
 public class ConnectedAccountService implements PersonConnections, GrantRejections {
+
+  /** The profile changed between the sign-in with a personal secret and its storing. */
+  public static final String PROFILE_CHANGED = "CONNECTED_ACCOUNT_PROFILE_CHANGED";
 
   private static final Capability RELEASE = Capability.CREATE_CONNECTOR_LIBRARY;
   private static final String ADMINISTRATION = "Systemverwaltung";
@@ -174,8 +178,10 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
    * #requireConnectable}: a new account is connected, an existing one reconnected. {@code label} is
    * the caller's account name at the provider, {@code null} for none; only the caller sees it. It
    * trusts that the secret signed in already, so only this package and the OAuth flow call it
-   * ({@code aConnectionIsEstablishedOnlyAfterItsSignIn}). Returns the connection as the overview
-   * shows it, {@code null} for an MCP server, which it does not show.
+   * ({@code aConnectionIsEstablishedOnlyAfterItsSignIn}). Its caller already holds the profile row
+   * at the version {@code profile} was read in, before the token and account rows taken here.
+   * Returns the connection as the overview shows it, {@code null} for an MCP server, which it does
+   * not show.
    */
   @Transactional
   public AccountOverview.Account established(
@@ -211,7 +217,9 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
   /**
    * Connects or reconnects the caller's account on {@code profileId} with a personal secret, after
    * the connector signed in with it; nothing is stored when the sign-in fails ({@code 400}). The
-   * sign-in runs outside a transaction.
+   * sign-in runs outside a transaction; the secret is stored only while the profile row is held at
+   * the version signed in with, else {@code 409} {@value #PROFILE_CHANGED}: a change either went
+   * first and refuses it, or comes after and ends the new connection.
    */
   public AccountOverview.Account connect(
       CurrentUser caller, UUID profileId, String username, String secretValue) {
@@ -241,7 +249,26 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
     String value = secretOf(form, user, secretValue);
     signIn(profile, value);
     return transactions.execute(
-        status -> established(caller, profile, NewSecret.personal(value), user));
+        status -> {
+          // profile row first, before the token and account rows established writes
+          holdUnchanged(profile);
+          return established(caller, profile, NewSecret.personal(value), user);
+        });
+  }
+
+  /**
+   * Holds the row of {@code read} against a change until the transaction ends; 409 {@value
+   * #PROFILE_CHANGED} when it changed or went since it was read.
+   */
+  private void holdUnchanged(ConnectionProfile read) {
+    Long version = profiles.lockedVersion(read.getId());
+    if (version == null || version != read.getVersion()) {
+      throw new ConflictException(
+          "Der Zugang „"
+              + read.getName()
+              + "“ wurde geändert, während Sie sich angemeldet haben. Bitte verbinden Sie erneut.",
+          PROFILE_CHANGED);
+    }
   }
 
   /**

@@ -39,6 +39,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -105,7 +106,8 @@ class ProfileEndpointsTest {
           "ftp://keycloak.example.org/token",
           "https://admin:geheim@keycloak.example.org/token",
           "https://keycloak.example.org/token#x",
-          "/realms/haus/token"
+          "/realms/haus/token",
+          "http://keycloak.example.org/token"
         }) {
       assertThatThrownBy(
               () ->
@@ -270,12 +272,38 @@ class ProfileEndpointsTest {
   }
 
   /**
-   * Regression guard: a new proxy sees what goes to a plain {@code http://} token or revocation
-   * endpoint, so it needs the secret anew as well; over {@code https://} it sees nothing.
+   * Token and revocation endpoints receive refresh tokens and the client secret, and at the
+   * authorization endpoint the person signs in: every endpoint the profile names is {@code
+   * https://} only, loopback included.
    */
   @Test
-  void aNewProxyBeforeAPlainHttpEndpointNeedsANewClientSecret() {
-    when(encryptor.encrypt("neu")).thenReturn("enc:neu");
+  void everyEndpointTheProfileNamesTakesOnlyHttps() {
+    ProfileDeclaration declaration = new RealmProbe().descriptor().profileDeclaration();
+
+    for (ProfileEndpoints plain :
+        List.of(
+            new ProfileEndpoints("http://keycloak.intern/auth", REALM.token(), REALM.revocation()),
+            new ProfileEndpoints("http://127.0.0.1:8080/auth", REALM.token(), REALM.revocation()),
+            new ProfileEndpoints(
+                REALM.authorization(), "http://keycloak.intern/token", REALM.revocation()),
+            new ProfileEndpoints(
+                REALM.authorization(), "HTTP://keycloak.intern/token", REALM.revocation()),
+            new ProfileEndpoints(
+                REALM.authorization(), REALM.token(), "http://keycloak.intern/revoke"))) {
+      assertThatThrownBy(() -> service.validate(declaration, "Probe", values(plain, "R"), null))
+          .as(plain.toString())
+          .isInstanceOf(ValidationException.class)
+          .hasMessageContaining("muss eine vollständige Adresse mit https:// sein");
+    }
+  }
+
+  /**
+   * A profile holding a plain {@code http://} token endpoint keeps it in no change, not even with a
+   * new secret and a new proxy, and nothing changes; before an {@code https://} one a new proxy
+   * sees nothing, so the secret stays.
+   */
+  @Test
+  void aPlainHttpEndpointIsKeptByNoChangeAndANewProxyBeforeHttpsKeepsTheSecret() {
     ProfileEndpoints plain =
         new ProfileEndpoints(
             REALM.authorization(), "http://keycloak.intern/token", REALM.revocation());
@@ -289,18 +317,13 @@ class ProfileEndpointsTest {
                     ADMIN,
                     profile.getId(),
                     values(plain, "Realm", "proxy.example.org:3128"),
-                    null,
+                    "neu",
                     true))
         .isInstanceOf(ValidationException.class)
-        .hasFieldOrPropertyWithValue("code", "CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED")
-        .hasMessageContaining("http://keycloak.intern/token");
+        .hasMessageContaining("tokenEndpoint muss eine vollständige Adresse mit https:// sein");
     assertThat(profile.getSourceProxy()).isNull();
     assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:alt");
-
-    service.update(
-        ADMIN, profile.getId(), values(plain, "Realm", "proxy.example.org:3128"), "neu", true);
-    assertThat(profile.getSourceProxy()).isEqualTo("proxy.example.org:3128");
-    assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:neu");
+    assertThat(profile.getEndpoints()).isEqualTo(plain);
 
     ConnectionProfile secured = profileWithSecret("enc:alt");
     service.update(

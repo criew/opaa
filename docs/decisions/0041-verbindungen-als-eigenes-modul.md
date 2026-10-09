@@ -1187,6 +1187,53 @@ Aktion ab.
   unter dem neuen Konto mit den alten Einstellungen. Der Fingerabdruck schützt Abgleichstand und
   Abgleich, nicht diese Aufnahmen. Private Bibliotheken halten die Änderung weiter nicht auf.
 
+## Nachtrag vom 09.10.2026: Verbinden mit persönlichem Geheimnis gegen Profiländerung (#2279)
+
+Schließt die Lücke, die der Nachtrag #2246 unter „Sperrreihenfolge“ offen lässt. Ergänzt den
+Nachtrag #2297 um eine https-Pflicht für die Endpunkte und ersetzt dort die Proxy-Regel.
+
+- **Wettlauf:** `ConnectedAccountService#connect` liest den Zugang, meldet sich außerhalb einer
+  Transaktion beim Anbieter an und legt danach Konto und Geheimnis mit dem Ziel ab, das es vor der
+  Anmeldung gelesen hat. Ändert die Verwaltung dazwischen Adresse, Registrierung oder Bindung, sieht
+  die Profiländerung das neue Konto noch nicht und beendet es nicht. Das Konto stand danach als
+  verbunden da, sein Geheimnis galt dem alten Ziel und wurde nie herausgegeben (`SecretTarget`).
+- **Regel wie beim OAuth-Abschluss:** Die Transaktion des Ablegens hält als erste Anweisung die
+  Profilzeile mit `FOR SHARE` (`lockedVersion`) und vergleicht die Version mit der des gelesenen
+  Zugangs. Weicht sie ab oder fehlt die Zeile, wird nichts gespeichert: `409
+  CONNECTED_ACCOUNT_PROFILE_CHANGED`, die Person verbindet erneut. Kam das Ablegen zuerst, wartet
+  die Profiländerung, sieht danach das Konto und beendet es wie jedes andere.
+- **Sperrreihenfolge:** Profilzeile, dann Token-Zeile (`lockHeld` in `established`), dann
+  Kontozeile. Das ist die Reihenfolge der Profiländerung und der Verwurfspfade; ein neuer Zyklus
+  entsteht nicht. Unter `FOR SHARE` läuft kein Netzzugriff, die Anmeldung ist vorher abgeschlossen.
+- **Jeder Endpunkt des Zugangs nur `https://`:** Nennt der Zugang Autorisierungs-, Token- oder
+  Widerrufs-Endpunkt selbst (`Endpoint.FromProfile`), nimmt `ConnectionProfileService` dort nur
+  `https://` an, sonst `400`; eine Ausnahme für Loopback gibt es nicht. Token- und
+  Widerrufs-Endpunkt bekommen Refresh-Tokens und das Client-Secret: Bei `http://` sähen ein Proxy
+  und jede Station auf dem Weg sie mit, und bei einem öffentlichen Client griffe die Secret-Regel
+  aus #2297 gar nicht. Am Autorisierungs-Endpunkt meldet sich die Person an; eine `http://`-Seite
+  ließe sich unterwegs austauschen (Entscheidung des Koordinators im Review). Die Endpunkte von
+  MCP-Servern prüft weiterhin `McpServerDiscovery`. Bestand mit `http://`-Endpunkt gibt es nicht,
+  eine Migration entfällt.
+- **Entfällt: Proxy-Regel aus #2297.** Ein geänderter Proxy verlangte dort ein neues Secret, wenn
+  Token- oder Widerrufs-Endpunkt `http://` waren. Weil jede Speicherung die Endpunkte neu prüft und
+  nur `https://` annimmt, erreichte keine gültige Änderung diesen Zweig mehr; er ist samt
+  Formularhinweis entfernt. Über `https://` sieht ein Proxy nichts von dem, was zu den Endpunkten
+  geht, das Secret bleibt bei einem neuen Proxy. Die Regel für geänderte Endpunkte bleibt.
+- **Tests:** Die Prüfung gilt nur für Endpunkte, die der Zugang nennt. Fest deklarierte Endpunkte
+  der Testkonnektoren und direkt gebaute Registrierungen zeigen weiter auf den
+  `FakeAuthorizationServer` über `http://127.0.0.1`. Wo ein Test einen Zugang mit eigenem Endpunkt
+  über den Service speichert (`EndpointChangeClientSecretTest`), läuft der Fake über TLS
+  (`FakeAuthorizationServer.overTls()`): ein selbst signiertes Zertifikat für `127.0.0.1` aus
+  `keytool`, dem der Standard-TLS-Kontext der Test-JVM zusätzlich zu den JDK-Vertrauensankern
+  vertraut (`LoopbackTls`), bis die Testklasse in `@AfterAll` den vorigen Kontext wiederherstellt
+  (`LoopbackTls.restore`). Ein eigener Kontext je Client ginge nur mit einer Naht im
+  Produktionscode (`SourceHttpClientFactory` baut ihn selbst).
+- **Belegt** in `ConnectedAccountIntegrationTest` (die Testquelle ändert während der Anmeldung die
+  Adresse; ohne die Regel `200` und ein verbundenes Konto, mit ihr `409` und kein Konto),
+  `ProfileEndpointsTest` (`http://` an jedem Endpunkt abgewiesen, auch auf `127.0.0.1`; ein Zugang
+  mit `http://`-Endpunkt bleibt bei jeder Änderung unverändert; ein neuer Proxy vor `https://`
+  behält das Secret) und `EndpointChangeClientSecretTest` gegen zwei Fakes über TLS.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

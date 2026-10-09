@@ -89,6 +89,9 @@ export function connectErrorMessage(
   if (status === 404) {
     return 'Diesen Zugang gibt es nicht mehr. Laden Sie die Seite neu.'
   }
+  if (status === 409) {
+    return message || 'Der Zugang wurde während der Anmeldung geändert. Bitte verbinden Sie erneut.'
+  }
   if (status === 503) {
     return 'Verbinden ist derzeit nicht möglich, weil diese Installation keine Zugangsdaten speichern kann. Zuständig ist die Systemverwaltung.'
   }

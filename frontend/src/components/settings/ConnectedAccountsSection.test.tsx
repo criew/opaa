@@ -358,6 +358,45 @@ describe('ConnectedAccountsSection', () => {
     expect(await within(dialog).findByRole('alert')).toHaveTextContent(text)
   })
 
+  it('asks to connect again when the profile changed during the sign-in (409)', async () => {
+    serve({
+      accounts: [],
+      connectable: [
+        {
+          profileId: 'opendesk',
+          name: 'Zugang openDesk',
+          sourceType: 'NEXTCLOUD',
+          authMethod: 'PERSONAL_SECRET',
+          secretForm: 'TOKEN',
+        },
+      ],
+      missingAccess: MISSING,
+    })
+    server.use(
+      http.put(`${ME}/opendesk`, () =>
+        errorBody(
+          409,
+          'Der Zugang „Zugang openDesk“ wurde geändert, während Sie sich angemeldet haben. Bitte verbinden Sie erneut.',
+          'CONNECTED_ACCOUNT_PROFILE_CHANGED',
+        ),
+      ),
+    )
+    const user = userEvent.setup()
+    renderSection()
+
+    await user.click(
+      await screen.findByRole('button', { name: 'Konto verbinden: Zugang openDesk' }),
+    )
+    const dialog = screen.getByRole('dialog')
+    await user.click(within(dialog).getByLabelText(/App-Passwort oder Token/))
+    await user.paste('geheim')
+    await user.click(within(dialog).getByRole('button', { name: 'Verbinden' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'wurde geändert, während Sie sich angemeldet haben. Bitte verbinden Sie erneut.',
+    )
+  })
+
   it('reconnects an expired account with the user name entered last time', async () => {
     let sent: ConnectedAccountConnectRequest | null = null
     serve({

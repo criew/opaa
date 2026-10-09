@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../mocks/server'
@@ -8,6 +8,16 @@ import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import type { SourceTypeDescriptor } from '../types/api'
 import ConnectionProfileManagementPage from './ConnectionProfileManagementPage'
+
+/**
+ * Input without delays and without the pointer-events check on every step: the long form of a new
+ * OAuth profile otherwise runs close to the default test timeout.
+ */
+const FAST_INPUT = {
+  delay: null,
+  skipHover: true,
+  pointerEventsCheck: PointerEventsCheckLevel.Never,
+} as const
 
 const REALM: SourceTypeDescriptor = {
   type: 'NEXTCLOUD',
@@ -57,25 +67,32 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
     server.events.removeAllListeners()
   })
 
+  /** Opens „Zugang anlegen“ for the OAuth realm with name, address and client id entered. */
+  async function newOAuthProfile(user: ReturnType<typeof userEvent.setup>) {
+    renderWithProviders(<ConnectionProfileManagementPage />)
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await user.click(within(dialog).getByLabelText(/^Name/))
+    await user.paste('Zugang Keycloak')
+    await user.click(within(dialog).getByLabelText(/^Server-Adresse/))
+    await user.paste('https://cloud.example.org')
+    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
+    await user.click(await screen.findByRole('option', { name: 'OAuth' }))
+    await user.click(within(dialog).getByLabelText(/^Client-ID/))
+    await user.paste('opaa')
+    return dialog
+  }
+
   it('asks for exactly the endpoints the connector leaves to the profile and names the redirect URI', async () => {
-    const user = userEvent.setup()
+    const user = userEvent.setup(FAST_INPUT)
     const sent: Array<Record<string, unknown>> = []
     server.events.on('request:start', async ({ request }) => {
       if (request.method === 'POST' && request.url.endsWith('/admin/connection-profiles')) {
         sent.push((await request.clone().json()) as Record<string, unknown>)
       }
     })
-    renderWithProviders(<ConnectionProfileManagementPage />)
-
-    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
-    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Keycloak')
-    await user.click(within(dialog).getByLabelText(/^Server-Adresse/))
-    await user.paste('https://cloud.example.org')
-    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
-    await user.click(await screen.findByRole('option', { name: 'OAuth' }))
-    await user.type(within(dialog).getByLabelText(/^Client-ID/), 'opaa')
+    const dialog = await newOAuthProfile(user)
 
     expect(within(dialog).queryByLabelText(/^Widerrufs-Endpunkt/)).not.toBeInTheDocument()
     expect(within(dialog).getByText(/Vorgabe der Quellart: „openid offline_access“/)).toBeVisible()
@@ -101,6 +118,40 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
       tokenEndpoint: 'https://idp.example.org/realms/r/protocol/openid-connect/token',
       revocationEndpoint: null,
     })
+    // the first test of the file also pays the cold render of the page and its dialog; measured
+    // 3.5 s alone and over 5 s on a loaded machine, hence a timeout of its own
+  }, 15_000)
+
+  it('takes every endpoint only over https', async () => {
+    const user = userEvent.setup(FAST_INPUT)
+    const dialog = await newOAuthProfile(user)
+    const authorization = within(dialog).getByLabelText(/^Autorisierungs-Endpunkt/)
+    await user.click(authorization)
+    await user.paste('http://idp.intern/auth')
+    const token = within(dialog).getByLabelText(/^Token-Endpunkt/)
+    await user.click(token)
+    await user.paste('http://idp.intern/token')
+
+    const create = within(dialog).getByRole('button', { name: 'Anlegen' })
+    expect(authorization).toHaveAttribute('aria-invalid', 'true')
+    expect(token).toHaveAttribute('aria-invalid', 'true')
+    expect(
+      within(dialog).getByText(/Der Autorisierungs-Endpunkt muss mit https:\/\/ beginnen/),
+    ).toBeVisible()
+    expect(
+      within(dialog).getByText(/Der Token-Endpunkt muss mit https:\/\/ beginnen/),
+    ).toBeVisible()
+    expect(create).toBeDisabled()
+
+    await user.clear(authorization)
+    await user.click(authorization)
+    await user.paste('https://idp.intern/auth')
+    await user.clear(token)
+    await user.click(token)
+    await user.paste('https://idp.intern/token')
+    expect(authorization).toHaveAttribute('aria-invalid', 'false')
+    expect(token).toHaveAttribute('aria-invalid', 'false')
+    expect(create).toBeEnabled()
   })
 
   it('says that no consent is possible where the server has no public address', async () => {
@@ -199,31 +250,6 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
 
       await waitFor(() => expect(sent).toHaveLength(1))
       expect(sent[0]).toMatchObject({ tokenEndpoint: MOVED, clientSecret: '' })
-    })
-
-    it('asks for the secret anew when the proxy changes in front of a plain http endpoint', async () => {
-      mockConnectionProfiles[0] = {
-        ...mockConnectionProfiles[0],
-        tokenEndpoint: 'http://keycloak.intern/token',
-      }
-      const user = userEvent.setup()
-      renderWithProviders(<ConnectionProfileManagementPage />)
-      await user.click(
-        await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
-      )
-      const dialog = await screen.findByRole('dialog', { name: /bearbeiten/ })
-      expect(within(dialog).getByLabelText(/^Client-Secret/)).not.toBeRequired()
-
-      await user.click(within(dialog).getByLabelText(/^Proxy/))
-      await user.paste('proxy.example.org:3128')
-
-      expect(within(dialog).getByLabelText(/^Client-Secret/)).toBeRequired()
-      expect(
-        within(dialog).getByText(
-          /Der Proxy ändert sich, und der Token-Endpunkt ist unverschlüsselt \(http:\/\/\)/,
-        ),
-      ).toBeVisible()
-      expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
     })
 
     it('keeps the stored secret where only the authorization endpoint moves', async () => {
