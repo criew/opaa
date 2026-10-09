@@ -463,13 +463,13 @@
             },
             "interval": {
               "type": "string",
-              "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
-              "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+              "pattern": "^(0|([0-9]+(ms|s|m|h|d|w|y))+)?$",
+              "description": "Prometheus duration such as 30s or 1m30s; empty keeps the Prometheus default"
             },
             "scrapeTimeout": {
               "type": "string",
-              "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
-              "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+              "pattern": "^(0|([0-9]+(ms|s|m|h|d|w|y))+)?$",
+              "description": "Prometheus duration such as 30s or 1m30s; empty keeps the Prometheus default"
             }
           }
         },
@@ -498,6 +498,10 @@
               "type": "number",
               "exclusiveMinimum": 0,
               "maximum": 1
+            },
+            "errorRateMinRequests": {
+              "type": "integer",
+              "minimum": 0
             },
             "indexingStallMinutes": {
               "type": "integer",

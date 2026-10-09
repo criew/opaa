@@ -61,7 +61,8 @@ Die wichtigsten Metriken:
 
 ### Alarme
 
-`metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit fünf Alarmen an.
+`metrics.prometheusRule.enabled` legt eine `PrometheusRule` mit fünf Alarmen an. Sie setzt den
+ServiceMonitor voraus, weil die Alarme die Metriken über dessen Labels auswählen.
 `metrics.prometheusRule.labels` trägt die Labels, nach denen der Prometheus Regeln auswählt; bei
 kube-prometheus-stack wieder `release: <Release-Name>`.
 
@@ -69,18 +70,26 @@ kube-prometheus-stack wieder `release: <Release-Name>`.
 |---|---|---|---|
 | `OpaaBackendNotReady` | critical | das Backend zehn Minuten lang weniger bereite Pods hat als gewünscht | Protokoll des Pods; ist die Datenbank erreichbar? |
 | `OpaaBackendMetricsMissing` | warning | Prometheus das Backend zehn Minuten lang nicht abfragen kann | Pod, `ServiceMonitor`, `metrics.scrapeFrom` |
-| `OpaaHighErrorRate` | warning | der Anteil der Antworten mit Status 5xx zehn Minuten lang über der Schwelle liegt | Protokoll; oft ein nicht erreichbares Modell |
-| `OpaaIndexingStalled` | warning | ein Indexierungslauf aktiv ist, aber in der Frist kein Dokument verarbeitet hat | Laufstatus der Bibliothek, Quelle, Embedding-Modell |
+| `OpaaHighErrorRate` | warning | der Anteil der Antworten mit Status 5xx zehn Minuten lang über der Schwelle liegt, bei einer Mindestzahl von Anfragen | Protokoll; oft ein nicht erreichbares Modell |
+| `OpaaIndexingStalled` | warning | die ganze Frist über ein Indexierungslauf aktiv war, aber kein Dokument verarbeitet wurde | Laufstatus der Bibliothek, Quelle, Embedding-Modell |
 | `OpaaHeapUsageHigh` | warning | der Heap 15 Minuten lang über der Schwelle belegt ist | Speichergrenze oder Heap-Anteil anheben |
 
 | Wert | Vorgabe | Wirkung |
 |---|---|---|
 | `metrics.prometheusRule.errorRateThreshold` | `0.05` | Schwelle von `OpaaHighErrorRate` (Anteil) |
+| `metrics.prometheusRule.errorRateMinRequests` | `20` | Mindestzahl der Anfragen in zehn Minuten, ab der `OpaaHighErrorRate` zählt |
 | `metrics.prometheusRule.heapUsageThreshold` | `0.9` | Schwelle von `OpaaHeapUsageHigh` (Anteil des maximalen Heaps) |
 | `metrics.prometheusRule.indexingStallMinutes` | `60` | Frist ohne Fortschritt für `OpaaIndexingStalled` |
 
 `OpaaBackendNotReady` liest die Metriken von **kube-state-metrics**, das kube-prometheus-stack
-mitbringt. Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigt der Alarm.
+mitbringt. Ist das Backend mit `backend.replicas: 0` bewusst angehalten, schweigen
+`OpaaBackendNotReady` und `OpaaBackendMetricsMissing`.
+
+Uploads zählen ebenfalls als verarbeitete Dokumente. Ein Upload während eines hängenden Laufs
+verschiebt `OpaaIndexingStalled` deshalb um eine Frist.
+
+Schwellen mit Nachkommastellen gehören in eine Wertedatei oder `--set-json`: `--set` übergibt sie
+als Text, und das Schema lehnt sie ab.
 
 ### Protokolle
 
