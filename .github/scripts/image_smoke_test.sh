@@ -58,8 +58,9 @@ docker run -d --name "$postgres" --network "$network" --network-alias postgres \
   "$postgres_image" >/dev/null
 
 db_ready=false
+# Over TCP: the image's init phase runs a temporary server on the Unix socket only and restarts it.
 for _ in $(seq 1 60); do
-  if docker exec "$postgres" pg_isready -U opaa -d opaa >/dev/null 2>&1; then
+  if docker exec "$postgres" pg_isready -h 127.0.0.1 -U opaa -d opaa >/dev/null 2>&1; then
     db_ready=true
     break
   fi

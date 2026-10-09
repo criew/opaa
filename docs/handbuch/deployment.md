@@ -19,9 +19,10 @@ Container-Images. Es gibt zwei Arten von Ständen:
 | `ghcr.io/criew/opaa-backend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 | `ghcr.io/criew/opaa-frontend` | `X.Y.Z`, `X.Y`, `main`, `sha-<commit>` |
 
-Jeder Tag zeigt auf einen Manifest-Index mit je einem Image für `linux/amd64` und `linux/arm64`.
-Docker und Kubernetes ziehen die Variante, die zur Architektur des Hosts passt; auf ARM-Servern und
-Apple-Silicon-Rechnern läuft OPAA damit ohne Emulation.
+Jedes Release und der aktuelle Stand `main` liegen als Manifest-Index mit je einem Image für
+`linux/amd64` und `linux/arm64` vor. Docker und Kubernetes ziehen die Variante, die zur Architektur
+des Hosts passt; auf ARM-Servern und Apple-Silicon-Rechnern läuft OPAA damit ohne Emulation.
+Ältere `sha-<commit>`-Tags aus der Zeit, bevor arm64 gebaut wurde, gibt es nur für `linux/amd64`.
 
 `X.Y.Z` ist eine Release-Version und ändert ihren Inhalt nie. `X.Y` zeigt auf das jüngste
 Patch-Release dieser Linie. Die verfügbaren Versionen und ihre Änderungen stehen unter *Releases*

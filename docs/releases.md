@@ -94,9 +94,13 @@ beschreibt [Mehrere Architekturen](#mehrere-architekturen).
 Scheitert ein späterer Job an einer vorübergehenden Störung, etwa von GHCR oder Sigstore, wird er
 mit *Re-run failed jobs* wiederholt; bereits veröffentlichte Teile bleiben unberührt. Das gilt
 auch für `build` und `publish`: Ein wiederholter `build`-Job pusht nur einen Digest ohne Tag, und
-`publish` fragt vor dem Setzen der Tags erneut, ob `X.Y.Z` noch frei ist. Hat `publish` die Tags
-schon gesetzt und ist erst danach gescheitert, ist die Version vergeben; das Release erscheint mit
-der nächsten Patch-Version. Hat der Job
+`publish` fragt vor dem Setzen der Tags erneut, ob `X.Y.Z` noch frei ist. Die Digests liegen sieben
+Tage als Artefakt des Laufs bereit; so lange lässt sich `publish` allein wiederholen. Die beiden
+`publish`-Jobs (Backend, Frontend) laufen unabhängig: Scheitert einer, läuft der andere zu Ende,
+und nur der gescheiterte wird wiederholt. Nach dem Setzen der Tags färbt `publish` den Lauf nicht
+mehr rot; die abschließende Anzeige des Index ist nur eine Ausgabe. Hat `publish` die Tags doch
+schon teilweise gesetzt und ist erst danach gescheitert, ist die Version vergeben; das Release
+erscheint mit der nächsten Patch-Version. Hat der Job
 `chart` den Chart schon gepusht und ist erst danach gescheitert, überspringt die Wiederholung den
 Push und liest den Digest aus der Registry, damit Attestierung und GitHub-Release folgen können.
 *Re-run all jobs* scheitert dagegen absichtlich an der Prüfung oben.
@@ -209,8 +213,9 @@ auch wenn `main` schon behoben ist. Es schließt erst mit dem Patch-Release.
 ## Mehrere Architekturen
 
 Beide Images erscheinen für `linux/amd64` und `linux/arm64`, bei `main`, beim wöchentlichen Neubau
-und bei Release-Tags gleichermaßen (#2401). Jeder Tag (`main`, `sha-<commit>`, `X.Y.Z`, `X.Y`)
-zeigt auf einen Manifest-Index mit beiden Plattformen; Docker und Kubernetes ziehen die passende.
+und bei Release-Tags gleichermaßen (#2401). Jeder Tag, den ein Lauf seither setzt (`main`,
+`sha-<commit>`, `X.Y.Z`, `X.Y`), zeigt auf einen Manifest-Index mit beiden Plattformen; Docker und
+Kubernetes ziehen die passende. Ältere `sha-<commit>`-Tags gibt es nur für `linux/amd64`.
 
 **Ablauf in `publish-images.yml`** (das Muster „Distribute build across multiple runners“ aus der
 Docker-Dokumentation):

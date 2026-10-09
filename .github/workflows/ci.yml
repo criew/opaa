@@ -97,18 +97,24 @@ jobs:
               - 'frontend/package.json'
               - 'frontend/pnpm-lock.yaml'
               - '.github/workflows/ci.yml'
-            # What decides whether the images build and start on arm64: the Dockerfiles and the
-            # frontend's runtime files, the publish workflow, and the dependency declarations that
-            # can bring a native library (or a build tool with one) into an image.
+            # Everything the Dockerfiles copy except the source trees, plus the build context filter
+            # and the publish workflow: what decides whether the images build and start on arm64.
+            # Source changes are covered by the run on main.
             images:
+              - '.dockerignore'
               - 'backend/Dockerfile'
               - 'backend/build.gradle.kts'
-              - 'backend/gradle/libs.versions.toml'
+              - 'backend/settings.gradle.kts'
+              - 'backend/gradle.properties'
+              - 'backend/gradlew'
+              - 'backend/gradle/**'
+              - 'opaa-api/build.gradle.kts'
               - 'frontend/Dockerfile'
               - 'frontend/nginx.conf'
               - 'frontend/docker-entrypoint.d/**'
               - 'frontend/package.json'
               - 'frontend/pnpm-lock.yaml'
+              - 'frontend/pnpm-workspace.yaml'
               - '.github/scripts/image_smoke_test.sh'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/ci.yml'

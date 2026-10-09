@@ -212,7 +212,8 @@ jobs:
           name: digests-${{ matrix.image.name }}-${{ matrix.platform.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
-          retention-days: 1
+          # Long enough for "Re-run failed jobs" of publish days later; the digests stay in GHCR.
+          retention-days: 7
           # "Re-run failed jobs" reuses the run and would otherwise collide with the artifact name
           # already uploaded by the first attempt.
           overwrite: true
@@ -230,6 +231,8 @@ jobs:
       contents: read
       packages: write
     strategy:
+      # A failed index of one image must not cancel the other's half-way through its tags.
+      fail-fast: false
       matrix:
         name: [backend, frontend]
     env:
@@ -305,7 +308,10 @@ jobs:
             exit 1
           fi
           docker buildx imagetools create "${args[@]}" "${sources[@]}"
-          docker buildx imagetools inspect "${tags[0]}"
+          # Report only: once the tags are set, a red job would invite a re-run that the version
+          # check above then refuses.
+          docker buildx imagetools inspect "${tags[0]}" ||
+            echo "::warning::Index ${tags[0]} ist gesetzt, ließ sich aber nicht anzeigen"
 
   # The chart follows the images, so it never points at an image that failed to publish. Chart
   # version, appVersion and the default image tags are the release version (ADR-0042,

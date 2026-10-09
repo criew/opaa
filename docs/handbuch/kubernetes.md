@@ -79,7 +79,7 @@ flowchart LR
 | Was | Anforderung |
 |---|---|
 | Kubernetes | eine der drei jüngsten Minor-Versionen, die das Kubernetes-Projekt zum Zeitpunkt des OPAA-Releases pflegt; ältere können funktionieren, werden aber nicht geprüft |
-| Knoten | `linux/amd64` oder `linux/arm64`; beide Images gibt es für beide Architekturen, der Knoten zieht die passende |
+| Knoten | `linux/amd64` oder `linux/arm64`; Releases und `main` gibt es für beide Architekturen, der Knoten zieht die passende (ältere `sha-<commit>`-Stände nur für `linux/amd64`) |
 | Helm | Helm 4, oder Helm 3 ab 3.8 |
 | Namespace | Pod Security Admission auf `restricted` ist möglich und empfohlen; der Chart braucht keine Ausnahme |
 | Netzwerkschicht | setzt NetworkPolicies durch, sobald `trustedProxyCidrs` gesetzt wird (siehe [Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)) |
