@@ -128,6 +128,11 @@ class OidcProviderServiceIntegrationTest {
         "DELETE FROM diagnostic_impersonation_grants WHERE organization_id = ?", organizationId);
     jdbcTemplate.update("DELETE FROM assets WHERE organization_id = ?", organizationId);
     removeOwnProviders();
+    jdbcTemplate.update(
+        "DELETE FROM oidc_provider_removals WHERE issuer_uri_normalized LIKE ?"
+            + " OR issuer_uri_normalized LIKE ?",
+        OWN_ISSUER_PREFIX + "%",
+        "http://127.0.0.1:%");
     jdbcTemplate.update("DELETE FROM groups WHERE organization_id = ?", organizationId);
     registry.refresh();
     userRepository.deleteById(userId);

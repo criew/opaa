@@ -57,16 +57,19 @@ public class AccountUsability {
 
   private final LocalCredentialsRepository credentials;
   private final OidcProviderRepository providers;
+  private final OidcProviderRemovalRepository removals;
   private final AuthProperties authProperties;
   private final Clock clock;
 
   public AccountUsability(
       LocalCredentialsRepository credentials,
       OidcProviderRepository providers,
+      OidcProviderRemovalRepository removals,
       AuthProperties authProperties,
       Clock clock) {
     this.credentials = credentials;
     this.providers = providers;
+    this.removals = removals;
     this.authProperties = authProperties;
     this.clock = clock;
   }
@@ -164,9 +167,13 @@ public class AccountUsability {
      */
     public Map<UUID, Deactivation> deactivationsOf(Collection<User> users) {
       Map<UUID, LocalCredentials> rows = localRowsOf(users);
+      Map<String, Instant> removedAt = new LinkedHashMap<>();
+      for (OidcProviderRemoval removal : removals.findAll()) {
+        removedAt.put(removal.getIssuerUriNormalized(), removal.getRemovedAt());
+      }
       Map<UUID, Deactivation> found = new LinkedHashMap<>();
       for (User user : users) {
-        Deactivation deactivation = deactivationOf(user, rows.get(user.getId()));
+        Deactivation deactivation = deactivationOf(user, rows.get(user.getId()), removedAt);
         if (deactivation != null) {
           found.put(user.getId(), deactivation);
         }
@@ -174,7 +181,8 @@ public class AccountUsability {
       return found;
     }
 
-    private Deactivation deactivationOf(User user, LocalCredentials row) {
+    private Deactivation deactivationOf(
+        User user, LocalCredentials row, Map<String, Instant> removedAt) {
       if (withoutInactivity(user, row) != State.DEACTIVATED) {
         return null;
       }
@@ -182,7 +190,7 @@ public class AccountUsability {
         return new Deactivation(user.getDirectoryLockedAt());
       }
       if (!isLocal(user)) {
-        return new Deactivation(null);
+        return new Deactivation(removedAt.get(OidcIssuerUris.normalize(user.getIssuer())));
       }
       if (row == null) {
         return null;
@@ -243,8 +251,8 @@ public class AccountUsability {
   }
 
   /**
-   * A deactivation by an act that ends the account; {@code since} is when that act took effect,
-   * {@code null} where the account does not tell (a provider gone).
+   * A deactivation by an act that ends the account; {@code since} is when that act took effect -
+   * for a provider gone its last deletion - {@code null} where nothing tells.
    */
   public record Deactivation(Instant since) {}
 
