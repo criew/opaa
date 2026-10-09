@@ -381,6 +381,20 @@ opaa:
       max-files-per-run: ${OPAA_INDEXING_GOOGLE_DRIVE_MAX_FILES_PER_RUN:1000000}
       download-concurrency: ${OPAA_INDEXING_GOOGLE_DRIVE_DOWNLOAD_CONCURRENCY:2}
       full-sync-interval: ${OPAA_INDEXING_GOOGLE_DRIVE_FULL_SYNC_INTERVAL:7d}
+    # SharePoint document libraries over Microsoft Graph (see SharePointProperties); the daily full
+    # sync bounds how long a renamed or moved folder keeps its files at the old place.
+    sharepoint:
+      page-size: ${OPAA_INDEXING_SHAREPOINT_PAGE_SIZE:200}
+      max-file-size-bytes: ${OPAA_INDEXING_SHAREPOINT_MAX_FILE_SIZE_BYTES:52428800}
+      request-timeout: ${OPAA_INDEXING_SHAREPOINT_REQUEST_TIMEOUT:30s}
+      download-timeout: ${OPAA_INDEXING_SHAREPOINT_DOWNLOAD_TIMEOUT:10m}
+      max-retries: ${OPAA_INDEXING_SHAREPOINT_MAX_RETRIES:5}
+      max-retry-wait: ${OPAA_INDEXING_SHAREPOINT_MAX_RETRY_WAIT:60s}
+      max-throttle-wait-per-run: ${OPAA_INDEXING_SHAREPOINT_MAX_THROTTLE_WAIT_PER_RUN:30m}
+      request-budget-per-run: ${OPAA_INDEXING_SHAREPOINT_REQUEST_BUDGET_PER_RUN:20000}
+      max-files-per-run: ${OPAA_INDEXING_SHAREPOINT_MAX_FILES_PER_RUN:1000000}
+      download-concurrency: ${OPAA_INDEXING_SHAREPOINT_DOWNLOAD_CONCURRENCY:2}
+      full-sync-interval: ${OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL:1d}
     # The shared event intake behind every push path (Confluence webhooks, S3 event
     # notifications): how long reported keys are collected before one targeted run checks them,
     # how many keys a batch holds before the connector's ordinary run takes over, and how often a

@@ -2,6 +2,7 @@ package io.opaa.indexing.source;
 
 import static io.opaa.api.types.ConnectionProfileSupport.FORBIDDEN;
 import static io.opaa.api.types.ConnectionProfileSupport.OPTIONAL;
+import static io.opaa.api.types.ConnectionProfileSupport.REQUIRED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -71,7 +72,8 @@ class SourceConnectorProfileContractTest {
    * without sign-in, the others with the library's own secret; Confluence leaves the edition to a
    * profile, S3 region and addressing style, SMB takes an {@code smb://} server, and the feed names
    * what a requirement leaves open. Google Drive signs in with the profile's service account key,
-   * the imitated account set by the profile alone. Upload and file system admit none.
+   * the imitated account set by the profile alone. SharePoint signs in only through a profile, with
+   * its client credentials at the tenant's token endpoint. Upload and file system admit none.
    */
   private static final Set<String> PERSONS = Set.of("NEXTCLOUD");
 
@@ -137,6 +139,22 @@ class SourceConnectorProfileContractTest {
         .singleElement()
         .satisfies(key -> assertThat(key.key() + key.profileOnly()).isEqualTo("subjecttrue"));
     softly.assertThat(drive.address().fixed()).as("GOOGLE_DRIVE").isNotNull();
+    ProfileDeclaration sharePoint = declared.get("SHAREPOINT");
+    softly.assertThat(sharePoint.support()).as("SHAREPOINT").isEqualTo(REQUIRED);
+    softly
+        .assertThat(sharePoint.signIns().stream().map(SignIn::method).toList())
+        .as("SHAREPOINT")
+        .isEqualTo(List.of(ConnectionAuthMethod.CLIENT_CREDENTIALS));
+    softly
+        .assertThat(sharePoint.signIns().getFirst().details())
+        .as("SHAREPOINT")
+        .isInstanceOfSatisfying(
+            ClientCredentialsAuth.class, auth -> assertThat(auth.token().needsTenant()).isTrue());
+    softly
+        .assertThat(sharePoint.address().fixed())
+        .as("SHAREPOINT")
+        .isEqualTo("https://graph.microsoft.com");
+    softly.assertThat(sharePoint.defaults().keys()).as("SHAREPOINT").isEmpty();
     for (String type : List.of("UPLOAD", "FILESYSTEM")) {
       softly.assertThat(declared.get(type).support()).as(type).isEqualTo(FORBIDDEN);
     }

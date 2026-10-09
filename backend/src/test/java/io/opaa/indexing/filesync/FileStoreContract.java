@@ -71,6 +71,14 @@ public abstract class FileStoreContract {
       throw new UnsupportedOperationException("this fixture cannot move across containers");
     }
 
+    /**
+     * Whether a file moved into another container keeps its identity; a store whose identity names
+     * the container (a SharePoint document library) makes it another document.
+     */
+    default boolean keepsIdentityAcrossContainers() {
+      return true;
+    }
+
     /** From now on the store accepts no stored cursor. */
     default void expireCursors() throws Exception {
       throw new UnsupportedOperationException("this fixture has no change log");

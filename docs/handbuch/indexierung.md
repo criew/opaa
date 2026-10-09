@@ -87,6 +87,7 @@ Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
 | `CONFLUENCE` | keine Ordner. Space und Gliederungspfad einer Seite stehen am Dokument und erscheinen in Zitat, Protokoll und Chunk-Kontext, nicht als Ordner. | entfällt |
 | `S3` | Der Lauf spiegelt die Schlüsselpräfixe der Geltungsbereiche: bei einem Bereich ist dessen Präfix die Wurzel, bei mehreren beginnt jede Kette mit dem Bucket und seinen Präfixsegmenten. Ordner entstehen nur entlang gefundener Objekte; ein Ordnermarker (`…/`) allein erzeugt keinen. Siehe [Konnektor S3](konnektor-s3.md), Abschnitt 10. | nein |
 | `GOOGLE_DRIVE` | Der Lauf spiegelt die Ordnerkette bis zum Bereich; bei mehreren Bereichen beginnt jede Kette mit dem Namen der Ablage bzw. des Ordners. Siehe [Konnektor Google Drive](konnektor-google-drive.md), Abschnitt 6. | nein |
+| `SHAREPOINT` | Der Lauf spiegelt die Ordnerkette ab der Wurzel der Dokumentbibliothek; bei mehreren Dokumentbibliotheken beginnt jede Kette mit deren Namen. Siehe [Konnektor SharePoint](konnektor-sharepoint.md), Abschnitt 6. | nein |
 | `NEXTCLOUD` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinen Pfadsegmenten. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Nextcloud](konnektor-nextcloud.md), Abschnitt 5. | nein |
 | `SMB` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner der Freigabe, wie bei Nextcloud. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Windows-Dateifreigabe](konnektor-smb.md), Abschnitt 5. | nein |
 
@@ -274,10 +275,11 @@ zu Ende geführt werden konnte.
 
 Ein Lauf kann `COMPLETED` und trotzdem **unvollständig** sein: Ein Confluence-Lauf, der sein
 Anfragebudget verbraucht hat, endet geordnet mit dem Kennzeichen „unvollständig, wird fortgesetzt";
-der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts. Bei den Dateiablagen Nextcloud und SMB setzt
-der nächste Lauf an der gemerkten Stelle innerhalb der Ordner fort; ein Vollabgleich darf sich so
-über mehrere Läufe erstrecken ([Nextcloud](konnektor-nextcloud.md), Abschnitt 3.1;
-[SMB](konnektor-smb.md), Abschnitt 3.1).
+der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts. Bei den Dateiablagen Nextcloud,
+SMB und SharePoint setzt der nächste Lauf an der gemerkten Stelle der Auflistung fort; ein
+Vollabgleich darf sich so über mehrere Läufe erstrecken ([Nextcloud](konnektor-nextcloud.md),
+Abschnitt 3.1; [SMB](konnektor-smb.md), Abschnitt 3.1; [SharePoint](konnektor-sharepoint.md),
+Abschnitt 4.1).
 
 ### 3.3 Wiederanlauf nach Störungen
 
@@ -395,8 +397,8 @@ genannten Dinge mit.
 > [Verzeichnis im Dateisystem](konnektor-filesystem.md),
 > [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
 > [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md),
-> [Google Drive](konnektor-google-drive.md), [Nextcloud](konnektor-nextcloud.md) und
-> [Windows-Dateifreigabe (SMB)](konnektor-smb.md).
+> [Google Drive](konnektor-google-drive.md), [SharePoint](konnektor-sharepoint.md),
+> [Nextcloud](konnektor-nextcloud.md) und [Windows-Dateifreigabe (SMB)](konnektor-smb.md).
 
 ### Zugänge
 
@@ -701,11 +703,13 @@ Konnektoren melden:
 | S3-Objektspeicher | möglich | persönliches Geheimnis (Access Key und Secret Key) | Region, Path-Style-Adressierung | `https://`, `http://` |
 | Windows-Dateifreigabe (SMB) | möglich | persönliches Geheimnis (Benutzername und Passwort) | keine | `smb://`, ohne Proxy und Zertifikatsprüfung |
 | Google Drive | möglich | Dienstkonto-Schlüssel (am Zugang) | imitiertes Konto (nur am Zugang) | fest `https://www.googleapis.com` |
+| SharePoint | Pflicht | Client-Credentials (am Zugang, mit Mandant) | keine | fest `https://graph.microsoft.com` |
 | Upload, Dateisystem | verboten | – | – | – |
 
 Das persönliche Geheimnis gehört der Bibliothek: Ihre Verwaltenden tragen es ein, der Zugang legt
 nur Server, Anmeldeart, Proxy, Zertifikatsprüfung und Vorgaben fest. Den Dienstkonto-Schlüssel von
 Google Drive trägt dagegen der Zugang (Kapitel [Google Drive](konnektor-google-drive.md),
+Abschnitt 2.5), ebenso das Client-Secret von SharePoint (Kapitel [SharePoint](konnektor-sharepoint.md),
 Abschnitt 2.5). Bei „ohne Anmeldung“ erreicht
 ein Lauf die Quelle ohne Zugangsdaten. Was die einzelnen Quellarten auf einem Zugang beachten,
 steht in ihren Kapiteln.
@@ -1444,6 +1448,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `rss.*`, `crawl.*`, `confluence.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
 | `s3.*` | siehe [S3-Objektspeicher, Abschnitt 15](konnektor-s3.md#15-konfiguration) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende, `download-concurrency` als Obergrenze gleichzeitiger Downloads und `events.*` für den Ereigniseingang) | Grenzwerte des S3-Konnektors |
 | `google-drive.*` | siehe [Google Drive, Abschnitt 12](konnektor-google-drive.md#12-konfiguration) (`OPAA_INDEXING_GOOGLE_DRIVE_*`) | Grenzwerte des Google-Drive-Konnektors |
+| `sharepoint.*` | siehe [SharePoint, Abschnitt 12](konnektor-sharepoint.md#12-konfiguration) (`OPAA_INDEXING_SHAREPOINT_*`, darunter `full-sync-interval` als Fenster für Ordneränderungen) | Grenzwerte des SharePoint-Konnektors |
 | `nextcloud.*` | siehe [Nextcloud, Abschnitt 8](konnektor-nextcloud.md#8-konfiguration) (`OPAA_INDEXING_NEXTCLOUD_*`, darunter `full-descent-interval` als Höchstalter der gemerkten Ordner-Prüfsummen) | Grenzwerte des Nextcloud-Konnektors |
 | `smb.*` | siehe [Windows-Dateifreigabe, Abschnitt 8](konnektor-smb.md#8-konfiguration) (`OPAA_INDEXING_SMB_*`) | Grenzwerte des SMB-Konnektors |
 
@@ -1464,8 +1469,8 @@ Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
 - Konnektoren je Quellentyp: [Verzeichnis im Dateisystem](konnektor-filesystem.md),
   [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
   [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md),
-  [Google Drive](konnektor-google-drive.md), [Nextcloud](konnektor-nextcloud.md),
-  [Windows-Dateifreigabe (SMB)](konnektor-smb.md)
+  [Google Drive](konnektor-google-drive.md), [SharePoint](konnektor-sharepoint.md),
+  [Nextcloud](konnektor-nextcloud.md), [Windows-Dateifreigabe (SMB)](konnektor-smb.md)
 - Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
 - Wie der Index abgefragt wird, von der Frage bis zur belegten Antwort: [Suche](suche.md)
 - Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)

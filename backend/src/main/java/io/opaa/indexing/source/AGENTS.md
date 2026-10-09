@@ -1,7 +1,7 @@
 # Modul connectors
 
 Pakete (`io.opaa.indexing.source.*`): confluence, filesystem, googledrive, nextcloud, rss, s3,
-smb, upload, web — jedes direkte Unterpaket ist ein Konnektor, der Vertrag in `indexing.source`.
+sharepoint, smb, upload, web — jedes direkte Unterpaket ist ein Konnektor, der Vertrag in `indexing.source`.
 
 ## Zweck und Grenze
 
@@ -39,8 +39,8 @@ von foundation, format und knowledge ab.
 - **Dateiablagen** implementieren `FileStore` (mit Änderungsprotokoll auch `ChangeFeed`) aus
   `indexing.filesync`; Abgleich über Läufe besitzt `FileSync`. Tests: `FileStore(Resumption)Contract`.
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
-- **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, SMB nur
-  über `smb.SmbShareClient`. Testdoppel: `S3TestFixture`, `FakeNextcloudServer`, `SambaFixture`.
+- **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über `io.opaa.msgraph`,
+  SMB nur über `smb.SmbShareClient`. Testdoppel: `S3TestFixture`, `FakeNextcloudServer`, `FakeGraphServer`, `SambaFixture`.
 
 ## Verweise
 

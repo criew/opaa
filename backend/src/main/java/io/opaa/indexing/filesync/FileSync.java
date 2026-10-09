@@ -520,8 +520,7 @@ public final class FileSync implements AutoCloseable {
           public int transientFailures() {
             return transientFailures;
           }
-        },
-        atRoundsEnd);
+        });
   }
 
   /** Drops the folder memory of every container a change run touched. */
