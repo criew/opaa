@@ -100,9 +100,9 @@ public final class VariantComparisonRunner {
     VariantReport.AggregateDelta aggregateDelta =
         new VariantReport.AggregateDelta(
             variantAggregate.hitRateAt5() - referenceAggregate.hitRateAt5(),
-            variantAggregate.mrrAt8() - referenceAggregate.mrrAt8(),
-            variantAggregate.ndcgAt8() - referenceAggregate.ndcgAt8(),
-            variantAggregate.recallAt8() - referenceAggregate.recallAt8());
+            variantAggregate.mrrAt20() - referenceAggregate.mrrAt20(),
+            variantAggregate.ndcgAt20() - referenceAggregate.ndcgAt20(),
+            variantAggregate.recallAt20() - referenceAggregate.recallAt20());
 
     Map<String, PipelineQueryResult> referenceByCaseId = new HashMap<>();
     for (PipelineQueryResult result : referenceReport.allQueryResults()) {
@@ -131,13 +131,13 @@ public final class VariantComparisonRunner {
               caseResult.query(),
               caseResult.category(),
               caseResult.hitRateAt5() - referenceCase.hitRateAt5(),
-              caseResult.reciprocalRankAt8() - referenceCase.reciprocalRankAt8(),
-              caseResult.ndcgAt8() - referenceCase.ndcgAt8(),
-              caseResult.recallAt8() - referenceCase.recallAt8()));
+              caseResult.reciprocalRankAt20() - referenceCase.reciprocalRankAt20(),
+              caseResult.ndcgAt20() - referenceCase.ndcgAt20(),
+              caseResult.recallAt20() - referenceCase.recallAt20()));
     }
-    // Worst-first by nDCG@8 delta: the specification calls "which five questions got worse" the
+    // Worst-first by nDCG@20 delta: the specification calls "which five questions got worse" the
     // interesting information, not the aggregate mean.
-    caseDeltas.sort(Comparator.comparingDouble(VariantReport.CaseDelta::ndcgAt8Delta));
+    caseDeltas.sort(Comparator.comparingDouble(VariantReport.CaseDelta::ndcgAt20Delta));
 
     return new VariantReport.VariantComparisonAgainstReference(
         variantOutcome.variant().name(), aggregateDelta, caseDeltas);

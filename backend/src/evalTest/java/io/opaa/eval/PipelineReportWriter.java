@@ -12,7 +12,7 @@ import tools.jackson.databind.json.JsonMapper;
  * Writes the {@link PipelineEvaluationReport} as JSON and as a human-readable summary (issue
  * #1039). Separate from {@link ReportWriter} so the raw-vector path's output stays byte-for-byte
  * what it was, and so every metric label rendered here can state its window — {@code HitRate@5
- * MRR@8 nDCG@8 Recall@8}, never a bare {@code nDCG}.
+ * MRR@20 nDCG@20 Recall@20}, never a bare {@code nDCG}.
  */
 public final class PipelineReportWriter {
 
@@ -133,18 +133,18 @@ public final class PipelineReportWriter {
     appendMarginGroup(sb, "Je Sprache", report.marginsByLanguage());
     sb.append('\n');
 
-    sb.append("Schlechteste 10 Anfragen (nach nDCG@8):\n");
+    sb.append("Schlechteste 10 Anfragen (nach nDCG@20):\n");
     for (var q : report.worstQueries()) {
       sb.append(
           format(
-              "  [%s|%s|%s] nDCG@8=%.3f hit@5=%.0f Recall@8=%.3f Chunks=%d Dokumente=%d — \"%s\" "
+              "  [%s|%s|%s] nDCG@20=%.3f hit@5=%.0f Recall@20=%.3f Chunks=%d Dokumente=%d — \"%s\" "
                   + "erwartet=%s gefunden=%s\n",
               q.category(),
               q.difficulty(),
               q.language(),
-              q.ndcgAt8(),
+              q.ndcgAt20(),
               q.hitRateAt5(),
-              q.recallAt8(),
+              q.recallAt20(),
               q.chunksReturned(),
               q.distinctDocumentsReturned(),
               q.query(),
@@ -172,16 +172,16 @@ public final class PipelineReportWriter {
   private static void appendMetricLine(StringBuilder sb, PipelineMetricsAggregate a) {
     sb.append(
         format(
-            "HitRate@5=%.3f  MRR@8=%.3f  nDCG@8=%.3f  Recall@8=%.3f "
+            "HitRate@5=%.3f  MRR@20=%.3f  nDCG@20=%.3f  Recall@20=%.3f "
                 + "(Obergrenze am effektiven Dokumentfenster=%.3f, distinct=%d)  "
-                + "AlleThemenGetroffen@8=%.3f\n",
+                + "AlleThemenGetroffen@20=%.3f\n",
             a.hitRateAt5(),
-            a.mrrAt8(),
-            a.ndcgAt8(),
-            a.recallAt8(),
-            a.recallAt8Ceiling(),
+            a.mrrAt20(),
+            a.ndcgAt20(),
+            a.recallAt20(),
+            a.recallAt20Ceiling(),
             a.distinctExpectedDocumentSets(),
-            a.allExpectedDocumentsHitAt8()));
+            a.allExpectedDocumentsHitAt20()));
   }
 
   private static void appendMarginGroup(

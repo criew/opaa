@@ -46,8 +46,8 @@ public record ConversationBaselineVerdict(Kind kind, String headline, String det
     return new ConversationBaselineVerdict(
         Kind.REGRESSION,
         "**Regression im Mehrrunden-Messpfad erkannt.**",
-        "Betroffen sind die folgenden Gruppe/Metrik-Paare (Fenster: Hit Rate@5, MRR@8, nDCG@8, "
-            + "Recall@8 — nicht mit dem Rohvektor-Pfad vergleichbar):\n"
+        "Betroffen sind die folgenden Gruppe/Metrik-Paare (Fenster: Hit Rate@5, MRR@20, nDCG@20, "
+            + "Recall@20 — nicht mit dem Rohvektor-Pfad vergleichbar):\n"
             + result.failedChecks().stream()
                 .map(Object::toString)
                 .collect(Collectors.joining("\n")));

@@ -234,7 +234,7 @@
       prBodyColumns: ['Package', 'Type', 'Update', 'Change'],
     },
     // Docker-Basisimages sind im Projekt BEWUSST gleitende Tags (node:22-alpine,
-    // nginx:alpine, pgvector/pgvector:pg18, eclipse-temurin:21-jdk — siehe Kommentar in
+    // nginxinc/nginx-unprivileged:alpine, pgvector/pgvector:pg18, eclipse-temurin:21-jdk — siehe Kommentar in
     // e2e/docker-compose.e2e.yml zu PR #453). pinDigests: false ist derzeit ohnehin der
     // Default; die Regel schreibt die Entscheidung fest, damit ein künftiger Preset- oder
     // Renovate-Wechsel sie nicht still kippt. Major-Tag-Wechsel (z. B. node 22 → 24)

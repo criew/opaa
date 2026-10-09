@@ -69,9 +69,9 @@ final class MehrfachlaufRule {
         + summary.medianRunIndex()
         + "):\n"
         + renderMetric("Hit Rate@5", summary.hitRateAt5())
-        + renderMetric("MRR@8", summary.mrrAt8())
-        + renderMetric("nDCG@8", summary.ndcgAt8())
-        + renderMetric("Recall@8", summary.recallAt8())
+        + renderMetric("MRR@20", summary.mrrAt20())
+        + renderMetric("nDCG@20", summary.ndcgAt20())
+        + renderMetric("Recall@20", summary.recallAt20())
         + "  Fälle mit abweichender Zerlegung: "
         + summary.decompositionDeviatingCaseCount()
         + (summary.decompositionDeviatingCaseIds().isEmpty()

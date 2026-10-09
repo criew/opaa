@@ -90,7 +90,7 @@ final class PipelineBaselineRegressionCheck {
     assertThat(result.failedChecks())
         .as(
             "Regression im Pipeline-Messpfad gegenüber der Baseline erkannt (Fenster: "
-                + "Hit Rate@5, MRR@8, nDCG@8, Recall@8 — nicht mit dem Rohvektor-Pfad "
+                + "Hit Rate@5, MRR@20, nDCG@20, Recall@20 — nicht mit dem Rohvektor-Pfad "
                 + "vergleichbar):\n%s",
             result.failedChecks().stream().map(Object::toString).reduce("", (a, b) -> a + "\n" + b))
         .isEmpty();

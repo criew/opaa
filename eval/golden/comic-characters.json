@@ -43,7 +43,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0022_agent-13.md und comic-0021_agent-13-mcu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0021_agent-13-mcu.md, comic-0022_agent-13.md steht auf Rang 2."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0022_agent-13.md und comic-0021_agent-13-mcu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0021_agent-13-mcu.md, comic-0022_agent-13.md steht auf Rang 2."
       }
     }
   },
@@ -235,7 +235,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
       }
     }
   },
@@ -401,9 +401,9 @@
         "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       },
       "pipeline": {
-        "state": "solved",
-        "since": "2026-09-14",
-        "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Pipeline-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
+        "state": "known_gap",
+        "since": "2026-10-09",
+        "reason": "Fehlende Bindung an die genannte Figur in der Fusion: Seit top-k 20 (#2373) behält jede Suchliste vor der Fusion 20 statt 8 Kandidaten, und eine thematisch nahe, andere Figur sammelt dort mehr Punkte als die gefragte. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0512_ghost-rider-2099.md, comic-0728_kenshiro.md steht auf Rang 2."
       }
     }
   },
@@ -787,7 +787,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0467_faora-dceu.md, comic-0113_bane-dark-knight.md steht auf Rang 2."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0565_harley-quinn.md, comic-0113_bane-dark-knight.md steht auf Rang 3."
       }
     }
   },
@@ -811,7 +811,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0396_doc-green.md, comic-0274_castiel.md steht auf Rang 7."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0396_doc-green.md, comic-0274_castiel.md steht auf Rang 7."
       }
     }
   },
@@ -859,7 +859,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0139_batman-lego.md, comic-0526_golden-ninja.md steht auf Rang 2."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0139_batman-lego.md, comic-0526_golden-ninja.md steht auf Rang 2."
       }
     }
   },
@@ -931,7 +931,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 2."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-1278_the-flash-cw.md, comic-0483_flash-cw.md steht auf Rang 2."
       }
     }
   },
@@ -1001,9 +1001,9 @@
         "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellt die Einbettung eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: comic-0609_howard-the-duck.md liegt außerhalb des Fensters (10 Dokumente), Rang 1 belegt comic-1432_yellow-claw.md; der Pipeline-Pfad (Volltextpfad in der Fusion) führt comic-0609_howard-the-duck.md auf Rang 2."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1432_yellow-claw.md, comic-0609_howard-the-duck.md steht auf Rang 2."
+        "state": "solved",
+        "since": "2026-10-09",
+        "reason": "Gelöst mit Einbettung und Volltextpfad in der Fusion: Seit top-k 20 (#2373) behält jede Suchliste vor der Fusion 20 statt 8 Kandidaten, und die gesuchte Figur rückt von Rang 2 auf Rang 1. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       }
     }
   },
@@ -1051,7 +1051,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0614_hulk-stark-gauntlet-mcu.md, comic-0651_iron-man.md steht auf Rang 2."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0124_batgirl-iii.md, comic-0651_iron-man.md steht auf Rang 3."
       }
     }
   },
@@ -1075,7 +1075,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1084_reverse-flash-cw.md, comic-0693_johnny-quick.md steht auf Rang 5."
+        "reason": "Fehlender Abgleich der Attributkombination (kein Attributfilter für diese Domäne): Die Beschreibung nennt Attributwerte statt eines Namens, und ohne Abgleich der Werte stellen Einbettung und Volltextpfad eine Figur vor die gesuchte, die die Kombination nicht erfüllt. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-1084_reverse-flash-cw.md, comic-0693_johnny-quick.md steht auf Rang 4."
       }
     }
   },
@@ -1123,7 +1123,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1014_poison-ivy.md und comic-1013_poison-ivy-new-52.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1013_poison-ivy-new-52.md, comic-1014_poison-ivy.md steht auf Rang 2."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1014_poison-ivy.md und comic-1013_poison-ivy-new-52.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-1013_poison-ivy-new-52.md, comic-1014_poison-ivy.md steht auf Rang 2."
       }
     }
   },
@@ -1195,7 +1195,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1252_superman-2006.md und comic-1253_superman-post-crisis.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-1253_superman-post-crisis.md, comic-1252_superman-2006.md steht auf Rang 2."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-1252_superman-2006.md und comic-1253_superman-post-crisis.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-1253_superman-post-crisis.md, comic-1252_superman-2006.md steht auf Rang 2."
       }
     }
   },
@@ -1225,7 +1225,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0982_one-above-all.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 5 von 7 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1260,7 +1260,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 12 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0046_amanda-waller.md; mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 4 von 12 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0046_amanda-waller.md."
       }
     }
   },
@@ -1321,7 +1321,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 12 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen); mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 5 von 12 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1346,9 +1346,9 @@
         "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 3 von 4 erwarteten Dokumenten im Fenster (10 Dokumente)."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
+        "state": "solved",
+        "since": "2026-10-09",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden); erst das Fenster von top-k 20 (#2373) fasst alle vier erwarteten Figuren. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       }
     }
   },
@@ -1373,7 +1373,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0056_angel-of-death.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0056_angel-of-death.md."
       }
     }
   },
@@ -1399,7 +1399,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 3 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0921_morro.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle 3 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0921_morro.md."
       }
     }
   },
@@ -1436,7 +1436,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 14 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-1289_the-one-below-all.md; mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 5 von 14 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-1289_the-one-below-all.md."
       }
     }
   },
@@ -1469,7 +1469,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 10 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-1390_warp.md; mit 10 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 5 von 10 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-1390_warp.md."
       }
     }
   },
@@ -1504,7 +1504,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 5 von 12 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen); mit 12 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 6 von 12 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1542,7 +1542,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0584_heat-wave.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 6 von 15 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1595,7 +1595,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 2 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1623,7 +1623,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0235_bullseye-wild-west.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 4 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0365_dash.md."
       }
     }
   },
@@ -1650,7 +1650,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0430_ego-mcu.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 4 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1680,7 +1680,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0431_ego.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 7 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0521_goblin-force.md."
       }
     }
   },
@@ -1717,7 +1717,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 5 von 14 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen); mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 8 von 14 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1746,7 +1746,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 6 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0154_beyonder.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 5 von 6 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0154_beyonder.md."
       }
     }
   },
@@ -1771,7 +1771,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0346_damage-control.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-1336_true-form-oblivion.md."
       }
     }
   },
@@ -1797,7 +1797,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 3 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0741_killer-frost-cw.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle 3 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0742_killer-frost.md."
       }
     }
   },
@@ -1826,7 +1826,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 6 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 5 von 6 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -1851,7 +1851,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-1158_sherlock-holmes.md."
       }
     }
   },
@@ -1878,7 +1878,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -1909,7 +1909,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -1943,7 +1943,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-1091_riddler.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-1091_riddler.md."
       }
     }
   },
@@ -1975,7 +1975,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -2001,7 +2001,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 3 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 3 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md."
       }
     }
   },
@@ -2026,7 +2026,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0002_514a-gotham.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0002_514a-gotham.md."
       }
     }
   },
@@ -2054,7 +2054,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0002_514a-gotham.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0757_kool-aid-man.md."
       }
     }
   },
@@ -2082,7 +2082,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md."
       }
     }
   },
@@ -2120,7 +2120,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0077_aracnido-jr.md."
       }
     }
   },
@@ -2145,7 +2145,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -2181,7 +2181,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 13 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 13 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 13 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0123_batcow.md."
       }
     }
   },
@@ -2219,7 +2219,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 15 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -2251,7 +2251,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0369_deacons-of-the-deep.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0369_deacons-of-the-deep.md."
       }
     }
   },
@@ -2279,7 +2279,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0818_lord-of-cinder.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0818_lord-of-cinder.md."
       }
     }
   },
@@ -2307,7 +2307,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0656_j-jonah-jameson.md."
       }
     }
   },
@@ -2403,7 +2403,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
+        "reason": "Fehlende Unterscheidung gleichnamiger Figurenfassungen: comic-0433_el-diablo.md und comic-0432_el-diablo-dceu.md sind Fassungen derselben Heldenidentität, und kein Baustein bevorzugt die gemeinte Fassung. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: Rang 1 belegt comic-0432_el-diablo-dceu.md, comic-0433_el-diablo.md steht auf Rang 2."
       }
     }
   },
@@ -2577,7 +2577,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0414_doppelganger.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 4 von 7 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0982_one-above-all.md."
       }
     }
   },
@@ -2614,7 +2614,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 14 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0139_batman-lego.md; mit 14 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 3 von 14 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0376_death-of-the-endless.md."
       }
     }
   },
@@ -2652,7 +2652,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0584_heat-wave.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 3 von 15 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0584_heat-wave.md."
       }
     }
   },
@@ -2677,7 +2677,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0393_devilman.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0393_devilman.md."
       }
     }
   },
@@ -2707,7 +2707,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0414_doppelganger.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 4 von 7 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -2735,9 +2735,9 @@
         "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, die Einbettung rankt nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: 4 von 7 erwarteten Dokumenten im Fenster (10 Dokumente)."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 3 von 7 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
+        "state": "solved",
+        "since": "2026-10-09",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden); erst das Fenster von top-k 20 (#2373) fasst alle sieben erwarteten Figuren. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       }
     }
   },
@@ -2768,7 +2768,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 8 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen)."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 7 von 8 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -2796,7 +2796,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 2 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0056_angel-of-death.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle 5 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0056_angel-of-death.md."
       }
     }
   },
@@ -2857,7 +2857,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 4 von 11 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0888_mirage.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 9 von 11 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen)."
       }
     }
   },
@@ -2882,7 +2882,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0046_amanda-waller.md."
+        "reason": "Fehlender Attributfilter über Gesinnung, Schöpfer und Fähigkeit (für diese Domäne nicht vorhanden): Die Mengenfrage verlangt jede Figur mit dieser Kombination, Einbettung und Volltextpfad ranken nach Themennähe. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle 2 erwarteten Dokumente im Fenster, Rang 1 belegt comic-0046_amanda-waller.md."
       }
     }
   },
@@ -2933,7 +2933,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -2964,7 +2964,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 8 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -2996,7 +2996,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 1 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0226_brainiac-5.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 9 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0226_brainiac-5.md."
       }
     }
   },
@@ -3021,7 +3021,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0226_brainiac-5.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0226_brainiac-5.md."
       }
     }
   },
@@ -3049,7 +3049,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0152_ben-10.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0152_ben-10.md."
       }
     }
   },
@@ -3074,7 +3074,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0588_hellboy-injustice-2.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0588_hellboy-injustice-2.md."
       }
     }
   },
@@ -3112,7 +3112,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 15 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0752_kisame.md; mit 15 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 15 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0752_kisame.md."
       }
     }
   },
@@ -3144,7 +3144,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 9 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0752_kisame.md; mit 9 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 9 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0752_kisame.md."
       }
     }
   },
@@ -3172,7 +3172,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -3200,7 +3200,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0281_century.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 5 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0281_century.md."
       }
     }
   },
@@ -3227,7 +3227,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 4 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0647_iron-man-model-45.md."
       }
     }
   },
@@ -3261,7 +3261,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (8 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt comic-0634_indiana-jones.md; mit 11 erwarteten Dokumenten ist der Fall in diesem Fenster (8 Plätze) auch bei idealer Rangfolge nicht vollständig lösbar."
+        "reason": "Fehlender numerischer Bereichsfilter über die Kennwerte (für diese Domäne nicht vorhanden): Einbettung und Volltextpfad ranken nach Themennähe, ohne einen Kennwert mit der Schwelle der Frage zu vergleichen. Die Frage ist deutsch gestellt, der Korpus englisch. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 11 erwarteten Dokumenten im Fenster (20 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt comic-0634_indiana-jones.md."
       }
     }
   }

@@ -12,10 +12,19 @@ import org.junit.jupiter.api.Test;
 class QueryPropertiesTest {
 
   @Test
-  void nonPositiveTopKDefaultsToEight() {
+  void nonPositiveTopKDefaultsToTwenty() {
     QueryProperties properties = new QueryProperties(0, 25, 0.7, 0.3, true, 3, 2, true, 50, 20, 2);
 
-    assertThat(properties.topK()).isEqualTo(8);
+    assertThat(properties.topK()).isEqualTo(20);
+  }
+
+  /** Both defaults together: the default topK stays below the 25 floor of the fetchK default. */
+  @Test
+  void nonPositiveTopKAndFetchKDefaultToTwentyAndTwentyFive() {
+    QueryProperties properties = new QueryProperties(0, 0, 0.7, 0.3, true, 3, 2, true, 50, 20, 2);
+
+    assertThat(properties.topK()).isEqualTo(20);
+    assertThat(properties.fetchK()).isEqualTo(25);
   }
 
   @Test

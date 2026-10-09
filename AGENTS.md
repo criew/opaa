@@ -247,6 +247,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
 - `deploy/helm/opaa/` — Helm-Chart für den Kubernetes-Betrieb (Single-Instance), siehe [ADR-0042](docs/decisions/0042-kubernetes-lieferung-mit-helm.md); eine betriebsrelevante Änderung zieht ihn im selben PR nach
 - `docs/renovate.md` — selbst betriebene Abhängigkeits-Updates (Renovate, Issue #751); Regeln in `renovate.json5`
+- `docs/releases.md` — Release-Verfahren: Versions-Tags `vX.Y.Z`, unveränderliche Release-Images, Versionszählung, Patch-Releases für Sicherheitsupdates (Issue #2350)
 - `docs/sbom.md` — Software Bill of Materials: Image-Attestierungen und CycloneDX-CI-Artefakte (Issue #1078)
 - `docs/cve-scanning.md` — CVE-Erkennung: Dependabot-Alerts, Trivy-Image-Scan und Triage-Verfahren (Issues #1079, #1450)
 - `eval/` — Korpora, Golden Datasets und Generatoren der Suchqualitäts-Evaluierung, siehe `eval/README.md`. Liegt bewusst außerhalb von Gradle-Build und CI; die Generatoren laufen nur bei bewussten Korpus-Änderungen, nie automatisch. Der Metrik-Harness selbst ist ein Integrationstest im Backend

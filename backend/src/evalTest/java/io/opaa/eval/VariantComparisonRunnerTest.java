@@ -103,10 +103,10 @@ class VariantComparisonRunnerTest {
 
     assertThat(comparison.variantName()).isEqualTo("better");
     assertThat(comparison.aggregateDelta().hitRateAt5Delta()).isCloseTo(1.0, within(TOLERANCE));
-    assertThat(comparison.aggregateDelta().ndcgAt8Delta()).isCloseTo(1.0, within(TOLERANCE));
+    assertThat(comparison.aggregateDelta().ndcgAt20Delta()).isCloseTo(1.0, within(TOLERANCE));
     assertThat(comparison.caseDeltas()).hasSize(2);
     assertThat(comparison.caseDeltas())
-        .allSatisfy(d -> assertThat(d.ndcgAt8Delta()).isCloseTo(1.0, within(TOLERANCE)));
+        .allSatisfy(d -> assertThat(d.ndcgAt20Delta()).isCloseTo(1.0, within(TOLERANCE)));
   }
 
   @Test
@@ -119,10 +119,10 @@ class VariantComparisonRunnerTest {
     var comparison = VariantComparisonRunner.delta(same, reference);
 
     assertThat(comparison.aggregateDelta().hitRateAt5Delta()).isZero();
-    assertThat(comparison.aggregateDelta().mrrAt8Delta()).isZero();
-    assertThat(comparison.aggregateDelta().ndcgAt8Delta()).isZero();
-    assertThat(comparison.aggregateDelta().recallAt8Delta()).isZero();
-    assertThat(comparison.caseDeltas()).allSatisfy(d -> assertThat(d.ndcgAt8Delta()).isZero());
+    assertThat(comparison.aggregateDelta().mrrAt20Delta()).isZero();
+    assertThat(comparison.aggregateDelta().ndcgAt20Delta()).isZero();
+    assertThat(comparison.aggregateDelta().recallAt20Delta()).isZero();
+    assertThat(comparison.caseDeltas()).allSatisfy(d -> assertThat(d.ndcgAt20Delta()).isZero());
   }
 
   @Test
@@ -139,7 +139,7 @@ class VariantComparisonRunnerTest {
     var comparison = VariantComparisonRunner.delta(worse, reference);
 
     assertThat(comparison.caseDeltas().get(0).caseId()).isEqualTo("a");
-    assertThat(comparison.caseDeltas().get(0).ndcgAt8Delta()).isLessThan(0.0);
+    assertThat(comparison.caseDeltas().get(0).ndcgAt20Delta()).isLessThan(0.0);
   }
 
   /**
