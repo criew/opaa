@@ -847,12 +847,12 @@ melden sich am Budget (`throttled`) und höchstens `max-retries` mal; danach `Tr
 Gesamtwartezeit je Lauf begrenzt `RequestBudget(maxThrottleWait)`.
 
 **Download:** `GET …/items/{id}/content` leitet auf einen vorab signierten Fremdhost weiter. Nur dieser
-Aufruf nutzt `DROP_AUTHORIZATION_OFF_ORIGIN` (nur https, Zielprüfung je Sprung). Die Ziel-URL erscheint
+Aufruf nutzt `RedirectPolicy.DROP_AUTHORIZATION_HTTPS_ONLY_OFF_ORIGIN` (`GraphClient#download`; nur https, Zielprüfung je Sprung). Die Ziel-URL erscheint
 nie in Log oder Meldung, weil sie ein Kurzzeit-Token trägt. Größe aus dem Listing als Vorfilter,
 Byte-Deckel beim Kopieren (Vorgabe 50 MiB). OneNote-Pakete (`package`) sind `NotADocument`, Einträge
 mit `malware`-Facette `Unavailable`.
 
-**Dauerhaft kaputte Dateien.** `GraphClient` meldet jede Nicht-2xx-Antwort des Downloadhosts und alle
+**Dauerhaft kaputte Dateien (Vorgabe für S1 aus dem Review von #2269, keine Maintainer-Entscheidung).** `GraphClient` meldet jede Nicht-2xx-Antwort des Downloadhosts und alle
 4xx ohne eigene Art (etwa `400`, `409`) als `GraphException.Kind.TRANSIENT`; den Status liefert
 `GraphException#status()`. Der `SharePointFileStore` muss daran dauerhaft gescheiterte Dateien von
 vorübergehenden unterscheiden: Bei `TRANSIENT` mit 4xx-Status (außer `429`) wählt er eine
@@ -894,7 +894,7 @@ Formfehler fallen erst dort auf. Die Ergebnisse des Laufs kommen als weiterer Na
 | Reale Drosselung und `Retry-After`-Werte (für die Vorgaben) | unsicher |
 | `quickXorHash` für alle Dateiarten; `cTag` bei reinen Metadatenänderungen; Umschreiben von Office-Dateien durch SharePoint | unsicher |
 | Sonderfälle: ausgecheckte und Entwurfsfassungen, Vertraulichkeitsbezeichnungen, OneNote, Systembibliotheken, Sites privater Teams-Kanäle | unsicher |
-| Ein im Browser öffenbarer, ID-stabiler SharePoint-Link | unsicher (nicht belegbar; Anlass für M1) |
+| Ein im Browser öffnbarer, ID-stabiler SharePoint-Link | unsicher (nicht belegbar; Anlass für M1) |
 
 ### Verworfene Alternativen
 
@@ -902,7 +902,7 @@ Formfehler fallen erst dort auf. Die Ergebnisse des Laufs kommen als weiterer Na
   über `sourceaccess` in `io.opaa.msgraph`, das tokenneutral ist und von Exchange
   ([#2172](https://github.com/criew/opaa/issues/2172)) mitgenutzt wird.
 - **`webUrl` als Identität.** Sie ist pfadbasiert: Umbenennen oder Verschieben ändert sie, das Dokument
-  wäre neu. Ein ID-stabiler, öffenbarer Link ist ohne Tenant nicht belegbar. Ein späterer Wechsel der
+  wäre neu. Ein ID-stabiler, öffnbarer Link ist ohne Tenant nicht belegbar. Ein späterer Wechsel der
   Identität hieße Neuindexierung aller SharePoint-Bibliotheken; ein Link-Feld neben `file_path` wäre ein
   großer Umbau am Dokumentmodell.
 - **Ordner als Container.** Das vervielfachte Aufzählungen und Ströme je Laufwerk. Der Container ist
@@ -913,6 +913,11 @@ Formfehler fallen erst dort auf. Die Ergebnisse des Laufs kommen als weiterer Na
   Bibliothek mit Changeset und einer neuen `Change`-Variante im Kern, wäre ein großer Kern-Umbau.
 - **`Files.Read.All` als Empfehlung.** Es schlösse OneDrives ein und gäbe mandantenweite Leserechte;
   empfohlen ist `Sites.Selected` (M3).
+
+### Risiken
+
+Überdauern die `nextLink`-Token keine Läufe, beginnt ein Container neu; nach zwei Verfällen ist er im
+Lauf nicht listbar. Unterhalb des Budgets ist das unschädlich.
 
 ### Nicht gebaut
 
