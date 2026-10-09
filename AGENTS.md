@@ -95,15 +95,17 @@ helm template opaa . -f ci/full-values.yaml
 deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
                                         # deploy/helm/opaa/ci/*-values.yaml, kubeconform gegen die
                                         # drei unterstützten Kubernetes-Versionen, Prüfung der
-                                        # Abbruchregeln und Trockenlauf der Release-Paketierung;
-                                        # braucht helm und kubeconform. Neue Wertesätze dort
+                                        # Abbruchregeln und Trockenlauf der Release-Skripte;
+                                        # braucht helm, kubeconform, curl und jq. Neue Wertesätze dort
                                         # ablegen, sie werden automatisch geprüft
 deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
                                         # Chart packen wie der Release-Lauf (publish-images.yml):
                                         # Version und appVersion aus dem Tag, prüft die Image-Tags
                                         # der Vorgabewerte; veröffentlicht nichts. Das Tag-Format
                                         # steht allein in release-version.sh, die Existenzprüfung
-                                        # des Charts in GHCR in chart-published.sh
+                                        # von Images und Chart in GHCR in oci-published.sh (nur
+                                        # HTTP 404 gilt als frei), der Inhaltsvergleich des Charts
+                                        # vor der Attestierung in chart-matches.sh
 deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der Erprobungsdatenbank
                                         # des Charts und eingeschalteten NetworkPolicies in einen
                                         # Namespace mit Pod Security Standard restricted; wartet auf
