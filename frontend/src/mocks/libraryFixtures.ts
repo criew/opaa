@@ -535,6 +535,29 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
     locked: false,
   },
   {
+    type: 'SHAREPOINT',
+    displayName: 'SharePoint',
+    indexingRun: true,
+    uploads: false,
+    pushIntake: false,
+    browsable: true,
+    profileSupport: 'REQUIRED',
+    profileRequired: true,
+    signIns: [
+      {
+        method: 'CLIENT_CREDENTIALS',
+        ownerships: ['LIBRARY'],
+        defaultScopes: 'https://graph.microsoft.com/.default',
+      },
+    ],
+    profileDefaults: [],
+    serverAddress: { schemes: [], fixed: 'https://graph.microsoft.com' },
+    creatable: true,
+    creatableWithOwnAddress: false,
+    locked: false,
+    fullSyncIntervalDefaultDays: 1,
+  },
+  {
     type: 'SMB',
     displayName: 'Windows-Dateifreigabe (SMB)',
     indexingRun: true,
@@ -575,4 +598,106 @@ export const mockConfluenceSpaces: ConfluenceSpaceRef[] = [
   { key: 'IT', name: 'IT-Betrieb' },
   { key: 'KAEM', name: 'Kämmerei' },
   { key: 'RECHT', name: 'Rechtsamt' },
+]
+
+/** A folder of a mock SharePoint document library, with the folders below it. */
+export interface MockSharePointFolder {
+  id: string
+  name: string
+  children: MockSharePointFolder[]
+}
+
+/** A drive of a mock site; only `documentLibrary` is a document library the connector reads. */
+export interface MockSharePointDrive {
+  id: string
+  name: string
+  driveType: 'documentLibrary' | 'business' | 'personal'
+  folders: MockSharePointFolder[]
+}
+
+/** A site of the mock tenant; `granted` says whether it is released to the app (Sites.Selected). */
+export interface MockSharePointSite {
+  id: string
+  name: string
+  url: string
+  granted: boolean
+  drives: MockSharePointDrive[]
+}
+
+/**
+ * The mock tenant behind the SharePoint connector (ADR-0040, Nachtrag „SharePoint“): the app holds
+ * Sites.Selected, so only released sites answer and the site search is refused. „Personalrat“ is
+ * not released, „Archiv“ holds no document library, and the OneDrive site holds only an OneDrive.
+ */
+export const mockSharePointSites: MockSharePointSite[] = [
+  {
+    id: 'rheinfurt.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe',
+    name: 'Rathaus',
+    url: 'https://rheinfurt.sharepoint.com/sites/rathaus',
+    granted: true,
+    drives: [
+      {
+        id: 'b!rathausDokumente',
+        name: 'Dokumente',
+        driveType: 'documentLibrary',
+        folders: [
+          { id: '01RATSBESCHLUESSE', name: 'Ratsbeschlüsse', children: [] },
+          { id: '01DIENSTANWEISUNGEN', name: 'Dienstanweisungen', children: [] },
+        ],
+      },
+      { id: 'b!rathausSatzungen', name: 'Satzungen', driveType: 'documentLibrary', folders: [] },
+    ],
+  },
+  {
+    id: 'rheinfurt.sharepoint.com,7d6f0a1e-3c41-4f0e-9d8b-1a2b3c4d5e6f,8e7f1b2c-4d52-4a1f-8e9c-2b3c4d5e6f70',
+    name: 'Bauamt',
+    url: 'https://rheinfurt.sharepoint.com/sites/bauamt',
+    granted: true,
+    drives: [
+      {
+        id: 'b!bauamtDokumente',
+        name: 'Dokumente',
+        driveType: 'documentLibrary',
+        folders: [
+          {
+            id: '01AKTEN',
+            name: 'Akten',
+            children: [
+              { id: '01AKTEN2025', name: '2025', children: [] },
+              { id: '01AKTEN2026', name: '2026', children: [] },
+            ],
+          },
+          { id: '01PLAENE', name: 'Pläne', children: [] },
+        ],
+      },
+    ],
+  },
+  {
+    id: 'rheinfurt.sharepoint.com,9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d,0b1c2d3e-4f5a-4b6c-9d7e-8f9a0b1c2d3e',
+    name: 'Personalrat',
+    url: 'https://rheinfurt.sharepoint.com/sites/personalrat',
+    granted: false,
+    drives: [
+      {
+        id: 'b!personalratDokumente',
+        name: 'Dokumente',
+        driveType: 'documentLibrary',
+        folders: [],
+      },
+    ],
+  },
+  {
+    id: 'rheinfurt.sharepoint.com,1f2e3d4c-5b6a-4978-8695-a4b3c2d1e0f9,2a3b4c5d-6e7f-4809-9a1b-2c3d4e5f6a7b',
+    name: 'Archiv',
+    url: 'https://rheinfurt.sharepoint.com/sites/archiv',
+    granted: true,
+    drives: [{ id: 'b!archivListe', name: 'Altbestand', driveType: 'business', folders: [] }],
+  },
+  {
+    id: 'rheinfurt-my.sharepoint.com,3c4d5e6f-7a8b-49c0-8d1e-2f3a4b5c6d7e,4d5e6f7a-8b9c-40d1-9e2f-3a4b5c6d7e8f',
+    name: 'Maier, Anna',
+    url: 'https://rheinfurt-my.sharepoint.com/personal/anna_maier_rheinfurt_de',
+    granted: true,
+    drives: [{ id: 'b!onedriveMaier', name: 'OneDrive', driveType: 'business', folders: [] }],
+  },
 ]

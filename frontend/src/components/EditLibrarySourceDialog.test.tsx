@@ -846,6 +846,74 @@ describe('EditLibrarySourceDialog', () => {
       server.events.removeAllListeners()
     }, 15000)
 
+    it('edits a SharePoint library on its profile and saves the document libraries as a whole (#2153)', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog
+          open
+          onClose={() => {}}
+          libraryId="lib-sp"
+          library={{
+            name: 'Bauamt',
+            description: null,
+            sourceType: 'SHAREPOINT',
+            sourcePath: null,
+            sourceUrl: 'https://graph.microsoft.com',
+            sourceProxy: null,
+            sourceInsecureSsl: false,
+            sourceCredentialsSet: false,
+            sourceSettings: {
+              libraries: [
+                {
+                  driveId: 'b!bauamtDokumente',
+                  name: 'Dokumente (Bauamt)',
+                  folders: [{ id: '01AKTEN2026', name: 'Akten / 2026' }],
+                },
+                { driveId: 'b!rathausSatzungen', name: 'Satzungen (Rathaus)' },
+              ],
+              fullSyncIntervalDays: 3,
+            },
+            connectionProfile: {
+              id: 'connection-profile-sharepoint',
+              name: 'SharePoint Rheinfurt',
+              serverUrl: 'https://graph.microsoft.com',
+              authMethod: 'CLIENT_CREDENTIALS',
+              connectorDefaults: null,
+              sourceProxy: null,
+              sourceInsecureSsl: false,
+            },
+          }}
+        />,
+      )
+
+      expect(await screen.findByTestId('sharepoint-profile')).toHaveTextContent(
+        'SharePoint Rheinfurt',
+      )
+      expect(screen.getByTestId('sharepoint-library-b!bauamtDokumente')).toHaveTextContent(
+        'Dokumente (Bauamt) · Ordner: Akten / 2026',
+      )
+      await user.click(
+        screen.getByRole('button', { name: 'Dokumentbibliothek „Satzungen (Rathaus)“ entfernen' }),
+      )
+      await user.click(screen.getByRole('button', { name: 'Speichern' }))
+
+      await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalledTimes(1))
+      const [, request] = mockUpdateLibrary.mock.calls[0]
+      expect(request.sourceUrl).toBe('https://graph.microsoft.com')
+      expect(request.sourceCredentials).toBeUndefined()
+      expect(request.sourceProxy).toBeUndefined()
+      expect(request.sourceSettings).toEqual({
+        libraries: [
+          {
+            driveId: 'b!bauamtDokumente',
+            name: 'Dokumente (Bauamt)',
+            folders: [{ id: '01AKTEN2026', name: 'Akten / 2026' }],
+          },
+        ],
+        fullSyncIntervalDays: 3,
+      })
+    }, 15000)
+
     it('keeps the stored values and refuses to save when the library names too little of its profile', async () => {
       renderWithProviders(
         <EditLibrarySourceDialog

@@ -33,6 +33,7 @@ describe('the source registry (ADR-0038)', () => {
       'CONFLUENCE',
       'S3',
       'GOOGLE_DRIVE',
+      'SHAREPOINT',
       'NEXTCLOUD',
       'SMB',
     ])
@@ -54,6 +55,64 @@ describe('the source registry (ADR-0038)', () => {
     expect(
       mockSourceTypes.find((descriptor) => descriptor.type === 'FILESYSTEM')?.profileSupport,
     ).toBe('FORBIDDEN')
+    // SharePoint signs in only through a profile, at the fixed Graph address (ADR-0040)
+    expect(mockSourceTypes.find((descriptor) => descriptor.type === 'SHAREPOINT')).toMatchObject({
+      profileSupport: 'REQUIRED',
+      profileRequired: true,
+      creatableWithOwnAddress: false,
+      serverAddress: { fixed: 'https://graph.microsoft.com' },
+      signIns: [{ method: 'CLIENT_CREDENTIALS' }],
+    })
+  })
+
+  describe('SharePoint (#2153, ADR-0040)', () => {
+    const library = {
+      sourceType: 'SHAREPOINT',
+      sourceUrl: 'https://graph.microsoft.com',
+      sourceSettings: {
+        libraries: [
+          { driveId: 'b!a', name: 'Dokumente (Rathaus)', folders: [{ id: '01X', name: 'Akten' }] },
+          { driveId: 'b!b', name: 'Satzungen (Rathaus)' },
+        ],
+        fullSyncIntervalDays: 3,
+      },
+    }
+
+    it('reads a stored library back unchanged and refuses a new one without a profile', () => {
+      const sharePoint = configurationOf('SHAREPOINT')
+      const values = sharePoint.fromLibrary(library)
+      expect(sharePoint.toPayload(values)).toEqual({
+        sourceUrl: 'https://graph.microsoft.com',
+        sourceInsecureSsl: false,
+        sourceSettings: library.sourceSettings,
+      })
+      expect(sharePoint.validate(values, context('SHAREPOINT'))).toBe(
+        'SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.',
+      )
+      expect(
+        sharePoint.validate(
+          values,
+          context('SHAREPOINT', {
+            connection: {
+              profileId: 'p',
+              name: 'SharePoint',
+              serverUrl: 'https://graph.microsoft.com',
+              authMethod: 'CLIENT_CREDENTIALS',
+              defaults: {},
+            },
+          }),
+        ),
+      ).toBeNull()
+      expect(sharePoint.nameFromSource(values)).toBe('')
+    })
+
+    it('names an unreachable document library of the last run by its name', () => {
+      const hero = sourceRegistration('SHAREPOINT')?.configuration?.scopeHero
+      expect(hero?.summary(library)).toBe('2 Dokumentbibliotheken')
+      expect(hero?.unlistedWarning(['drive:b!b', 'drive:b!unbekannt'], library)).toMatch(
+        /^Der letzte Lauf konnte die Dokumentbibliotheken „Satzungen \(Rathaus\)“, „drive:b!unbekannt“ nicht erreichen/,
+      )
+    })
   })
 
   it('sends only the fields of the chosen type for the generic sources', () => {

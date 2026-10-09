@@ -8,6 +8,7 @@ import {
 import { mockMyGroups } from './groupFixtures'
 import { isMockIndexingActive } from './indexingHandlers'
 import { mockConnectionProfiles, mockProfileRef } from './connectionProfileFixtures'
+import { browseSharePoint, testSharePoint } from './sharePointSourceMock'
 import type {
   SourceTypeKey,
   AssetOwnerType,
@@ -238,6 +239,7 @@ export const libraryHandlers = [
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
         body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'SHAREPOINT' ||
         body.sourceType === 'NEXTCLOUD' ||
         body.sourceType === 'SMB'
           ? (body.sourceUrl ?? profile?.serverUrl ?? null)
@@ -256,6 +258,7 @@ export const libraryHandlers = [
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
         body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'SHAREPOINT' ||
         body.sourceType === 'NEXTCLOUD' ||
         body.sourceType === 'SMB'
           ? (body.sourceSettings ?? null)
@@ -264,6 +267,7 @@ export const libraryHandlers = [
         body.sourceType === 'S3' ||
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'SHAREPOINT' ||
         body.sourceType === 'NEXTCLOUD' ||
         body.sourceType === 'SMB'
           ? Boolean(body.sourceCredentials)
@@ -274,6 +278,7 @@ export const libraryHandlers = [
         body.sourceType === 'RSS_FEED' ||
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
+        body.sourceType === 'SHAREPOINT' ||
         body.sourceType === 'NEXTCLOUD'
           ? Boolean(body.sourceInsecureSsl)
           : null,
@@ -301,8 +306,10 @@ export const libraryHandlers = [
       sourceUrl?: string
       sourceCredentials?: string | null
       libraryId?: string | null
+      connectionProfileId?: string | null
       query?: Record<string, unknown> | null
     }
+    if (sourceType === 'SHAREPOINT') return browseSharePoint(body)
     if (sourceType === 'CONFLUENCE') {
       if (!body.sourceUrl || !body.query?.edition) {
         return HttpResponse.json(
@@ -408,7 +415,9 @@ export const libraryHandlers = [
       sourceCredentials?: string | null
       sourceSettings?: Record<string, unknown> | null
       libraryId?: string | null
+      connectionProfileId?: string | null
     }
+    if (body.sourceType === 'SHAREPOINT') return testSharePoint(body)
     if (body.sourceType === 'GOOGLE_DRIVE') {
       // every requested area is reachable for the mock service account (ADR-0040)
       const settings = body.sourceSettings as { scopes?: Record<string, unknown>[] } | null
