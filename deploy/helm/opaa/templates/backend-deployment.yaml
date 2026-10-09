@@ -47,10 +47,37 @@ spec:
     spec:
       {{- include "opaa.podSpecCommon" (dict "root" . "component" .Values.backend "podSecurityContext" $podSecurityContext) | nindent 6 }}
       terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
-      {{- if include "opaa.extraCACertificates.enabled" . }}
-      # Writes the runtime's CAs plus extraCACertificates into a fresh truststore on every start; a
-      # main class of the backend image, because the image has no shell.
+      {{- if or .Values.evaluationDatabase.enabled (include "opaa.extraCACertificates.enabled" .) }}
       initContainers:
+      {{- end }}
+      {{- if .Values.evaluationDatabase.enabled }}
+        # Holds the backend back until the evaluation database accepts connections through its
+        # service; on the first start initdb takes longer than the backend needs to reach the
+        # database. Uses the database image, whose postgres account (999) satisfies runAsNonRoot.
+        - name: wait-for-database
+          image: {{ include "opaa.image" (dict "root" . "image" .Values.evaluationDatabase.image) | quote }}
+          imagePullPolicy: {{ .Values.evaluationDatabase.image.pullPolicy }}
+          securityContext:
+            {{- toYaml (merge (dict "runAsUser" 999 "runAsGroup" 999) .Values.containerSecurityContext) | nindent 12 }}
+          command:
+            - sh
+            - -c
+            - echo "Waiting for $PGHOST:$PGPORT"; until pg_isready --quiet; do sleep 2; done
+          env:
+            - name: PGHOST
+              value: {{ include "opaa.evaluationDatabase.fullname" . | quote }}
+            - name: PGPORT
+              value: {{ .Values.database.port | quote }}
+            - name: PGUSER
+              value: {{ .Values.database.username | quote }}
+            - name: PGDATABASE
+              value: {{ .Values.database.name | quote }}
+          resources:
+            {{- toYaml .Values.backend.initResources | nindent 12 }}
+      {{- end }}
+      {{- if include "opaa.extraCACertificates.enabled" . }}
+        # Writes the runtime's CAs plus extraCACertificates into a fresh truststore on every start; a
+        # main class of the backend image, because the image has no shell.
         - name: truststore
           image: {{ include "opaa.image" (dict "root" . "image" .Values.backend.image) | quote }}
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
