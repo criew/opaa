@@ -14,12 +14,14 @@ import org.springframework.stereotype.Component;
 
 /**
  * The bounded pool on which discarded OAuth grants are revoked at their provider, never on the
- * thread that discarded them: a fixed number of threads and a bounded queue. A revocation that
- * finds the queue full is dropped with a WARN line and the caller goes on; a lost revocation costs
- * no access to OPAA, whose token is already gone, only leaves the grant valid at the provider until
- * it expires. Each revocation is bounded by its own call's time limit ({@code OAuthClient}). The
- * queue lives in this process (ADR-0021): on shutdown what runs is interrupted after a short grace
- * period and what waits is dropped, with its count logged.
+ * thread that discarded them. One entry is one commit: it revokes its grants one after the other,
+ * each bounded by its own call's time limit ({@code OAuthClient}), and a failing grant does not
+ * stop the rest. The queue bounds commits, not grants, so an emergency shutdown of thousands of
+ * grants is one entry; its memory is the snapshot the discard already held (two tokens and a
+ * registration, a few KiB per grant), and {@link #QUEUE_CAPACITY} commits of single grants stay
+ * within a few MiB. A commit that finds the queue full is dropped with a WARN line and the caller
+ * goes on. The queue lives in this process (ADR-0021): on shutdown what runs is interrupted after a
+ * short grace period and what waits is dropped, with the number of grants logged.
  */
 @Component
 public class GrantRevocations {
@@ -29,6 +31,9 @@ public class GrantRevocations {
   static final Duration SHUTDOWN_GRACE = Duration.ofSeconds(2);
 
   private static final Logger log = LoggerFactory.getLogger(GrantRevocations.class);
+
+  /** One grant to revoke: what revokes it, and the profile it was issued under, for the log. */
+  public record Grant(UUID profileId, Runnable revocation) {}
 
   private final ThreadPoolExecutor executor;
   private final Duration shutdownGrace;
@@ -52,21 +57,24 @@ public class GrantRevocations {
               thread.setDaemon(true);
               return thread;
             },
-            (runnable, pool) -> dropped((Revocation) runnable, pool));
+            (runnable, pool) -> dropped((Commit) runnable, pool));
     this.shutdownGrace = shutdownGrace;
   }
 
   /**
-   * Hands the revocation of a grant of {@code profileId} to the pool and returns at once; a full
-   * queue or a stopped pool drops it with a WARN line. {@code revocation} must not throw; if it
-   * does, the failure is logged and the pool goes on.
+   * Hands the revocations of one commit to the pool as one entry and returns at once; a full queue
+   * or a stopped pool drops it with a WARN line. A revocation must not throw; if it does, the
+   * failure is logged and the next grant of the commit is revoked.
    */
-  public void submit(UUID profileId, Runnable revocation) {
+  public void submit(List<Grant> grants) {
+    if (grants.isEmpty()) {
+      return;
+    }
     outstanding.incrementAndGet();
-    executor.execute(new Revocation(profileId, revocation));
+    executor.execute(new Commit(List.copyOf(grants)));
   }
 
-  /** Whether no revocation is waiting or running - for tests and diagnostics. */
+  /** Whether no commit is waiting or running - for tests and diagnostics. */
   public boolean idle() {
     return outstanding.get() == 0;
   }
@@ -83,46 +91,61 @@ public class GrantRevocations {
     }
     List<Runnable> waiting = executor.shutdownNow();
     outstanding.addAndGet(-waiting.size());
-    if (!waiting.isEmpty()) {
+    int grants = waiting.stream().mapToInt(commit -> ((Commit) commit).grants.size()).sum();
+    if (grants > 0) {
       log.warn(
           "OAuth revocation pool stopped: {} revocation(s) still waiting were dropped; those"
-              + " grants stay valid at their provider until they expire",
-          waiting.size());
+              + " grants stay valid at their provider",
+          grants);
     }
   }
 
-  private void dropped(Revocation revocation, ThreadPoolExecutor pool) {
+  private void dropped(Commit commit, ThreadPoolExecutor pool) {
     outstanding.decrementAndGet();
     log.warn(
-        "OAuth revocation for a grant of profile {} dropped ({}); the grant stays valid at its"
-            + " provider until it expires",
-        revocation.profileId,
+        "{} OAuth revocation(s) under profile(s) {} dropped ({}); those grants stay valid at their"
+            + " provider",
+        commit.grants.size(),
+        commit.grants.stream().map(Grant::profileId).distinct().toList(),
         pool.isShutdown()
             ? "the pool is stopped"
-            : "queue full, " + pool.getQueue().size() + " waiting");
+            : "queue full, " + pool.getQueue().size() + " commits waiting");
   }
 
-  private final class Revocation implements Runnable {
+  private final class Commit implements Runnable {
 
-    private final UUID profileId;
-    private final Runnable work;
+    private final List<Grant> grants;
 
-    Revocation(UUID profileId, Runnable work) {
-      this.profileId = profileId;
-      this.work = work;
+    Commit(List<Grant> grants) {
+      this.grants = grants;
     }
 
     @Override
     public void run() {
       try {
-        work.run();
+        for (int i = 0; i < grants.size(); i++) {
+          if (Thread.currentThread().isInterrupted()) {
+            log.warn(
+                "OAuth revocation pool stopped: {} revocation(s) of a running commit were"
+                    + " dropped; those grants stay valid at their provider",
+                grants.size() - i);
+            return;
+          }
+          revoke(grants.get(i));
+        }
+      } finally {
+        outstanding.decrementAndGet();
+      }
+    }
+
+    private void revoke(Grant grant) {
+      try {
+        grant.revocation().run();
       } catch (RuntimeException e) {
         log.warn(
             "OAuth revocation for a grant of profile {} failed ({})",
-            profileId,
+            grant.profileId(),
             e.getClass().getSimpleName());
-      } finally {
-        outstanding.decrementAndGet();
       }
     }
   }

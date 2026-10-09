@@ -118,6 +118,41 @@ class ProviderTokensRevocationTest {
   }
 
   @Test
+  void aProviderThatCannotBeReachedForTheRenewalGetsTheStoredToken() {
+    OAuthClient.Grant grant = consent(bearer());
+    server.unreachable(true);
+
+    tokens
+        .revocation(
+            profile,
+            new StoredTokens(grant.refreshToken(), grant.accessToken(), NOW.minusSeconds(60)))
+        .run();
+
+    assertThat(server.requests("refresh_token")).hasSize(1);
+    assertThat(server.revocations())
+        .singleElement()
+        .satisfies(
+            request ->
+                assertThat(request.authorization()).isEqualTo("Bearer " + grant.accessToken()));
+  }
+
+  @Test
+  void anExpiredAccessTokenWithoutRefreshTokenIsSentAsItIs() {
+    OAuthClient.Grant grant = consent(bearer());
+
+    tokens
+        .revocation(profile, new StoredTokens(null, grant.accessToken(), NOW.minusSeconds(60)))
+        .run();
+
+    assertThat(server.requests("refresh_token")).isEmpty();
+    assertThat(server.revocations())
+        .singleElement()
+        .satisfies(
+            request ->
+                assertThat(request.authorization()).isEqualTo("Bearer " + grant.accessToken()));
+  }
+
+  @Test
   void rfc7009RevokesTheRefreshTokenWithoutRenewing() {
     OAuthClient.Grant grant =
         consent(new Revocation.Rfc7009(new Endpoint.Fixed(server.revocationEndpoint())));

@@ -55,6 +55,7 @@ import io.opaa.test.OwnLibraryFixtures;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -614,8 +615,8 @@ class ConnectionAuthorizationIntegrationTest {
       // far below a single revocation's own time limit of 15 s, let alone two of them
       assertThat(answeredAfter).isLessThan(Duration.ofSeconds(10));
       assertThat(tokenRows()).as("the discard committed before any revocation").isZero();
-      await().atMost(Duration.ofSeconds(30)).until(() -> PROVIDER.revocations().size() == 2);
-      assertThat(grantRevocations.idle()).as("both revocations are still in flight").isFalse();
+      await().atMost(Duration.ofSeconds(30)).until(() -> !PROVIDER.revocations().isEmpty());
+      assertThat(grantRevocations.idle()).as("the revocations are still in flight").isFalse();
     } finally {
       PROVIDER.releaseRevocations();
     }
@@ -623,6 +624,49 @@ class ConnectionAuthorizationIntegrationTest {
     assertThat(PROVIDER.revocations())
         .extracting(request -> request.form().get("token"))
         .containsExactlyInAnyOrder(personRefresh, adminRefresh);
+  }
+
+  /**
+   * An emergency shutdown of far more grants than the revocation queue has places is one entry of
+   * the pool: every grant is revoked, none is dropped.
+   */
+  @Test
+  void anEmergencyShutdownOfMoreGrantsThanTheQueueHoldsRevokesEveryOne() throws Exception {
+    int grants = 1500;
+    Instant now = Instant.now();
+    List<String> refreshTokens = new ArrayList<>();
+    List<Object[]> rows = new ArrayList<>();
+    for (int i = 0; i < grants; i++) {
+      String refresh = "bulk-refresh-" + i + "-" + UUID.randomUUID();
+      refreshTokens.add(refresh);
+      rows.add(
+          new Object[] {
+            UUID.randomUUID(),
+            profile,
+            encryptor.encrypt(refresh),
+            encryptor.encrypt("bulk-access-" + i),
+            Timestamp.from(now.plus(Duration.ofHours(1))),
+            Timestamp.from(now.plus(Duration.ofMinutes(10))),
+            person,
+            Timestamp.from(now),
+            Timestamp.from(now)
+          });
+    }
+    // pending consents of one person: the cheapest grants under a profile that a shutdown revokes
+    jdbc.batchUpdate(
+        "INSERT INTO connection_tokens (id, profile_id, kind, secret_ciphertext,"
+            + " access_token_ciphertext, access_token_expires_at, issued_for, pending_expires_at,"
+            + " pending_user_id, created_at, updated_at, version)"
+            + " VALUES (?, ?, 'OAUTH', ?, ?, ?, 'bulk', ?, ?, ?, ?, 0)",
+        rows);
+
+    call("dev-admin", post(ADMIN + "/" + profile + "/disconnect-all"), null);
+
+    await().pollDelay(Duration.ZERO).atMost(Duration.ofMinutes(5)).until(grantRevocations::idle);
+    assertThat(tokenRows()).isZero();
+    assertThat(PROVIDER.revocations())
+        .extracting(request -> request.form().get("token"))
+        .containsExactlyInAnyOrderElementsOf(refreshTokens);
   }
 
   private int tokenRows() {

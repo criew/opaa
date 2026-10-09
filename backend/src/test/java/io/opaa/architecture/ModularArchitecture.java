@@ -396,6 +396,24 @@ public final class ModularArchitecture {
   static final String FORM_POST = "sourceaccess.SourceFormPost";
 
   /**
+   * Who revokes a grant at its provider, relative to the root: a discarded grant only through
+   * {@link #REVOCATION_PORTS}{@code #revocation}, called only by {@link #REVOCATION_SCHEDULER},
+   * which runs it on the pool after the commit; {@code OAuthClient#revoke} only from {@link
+   * #DIRECT_REVOKERS} - the port's implementation and the completion of a consent, which revokes a
+   * fresh grant it could not store after the rollback.
+   */
+  static final Set<String> REVOCATION_PORTS =
+      Set.of("connection.token.SecretIssuer", "connection.oauth.ProviderTokens");
+
+  static final String REVOCATION_SCHEDULER = "connection.token.ConnectionSecrets";
+
+  static final Set<String> DIRECT_REVOKERS =
+      Set.of(
+          "connection.oauth.OAuthClient",
+          "connection.oauth.ProviderTokens",
+          "connection.oauth.ConnectionAuthorizationService");
+
+  /**
    * The profiles' repository, relative to the root, and its lists across every kind of profile: an
    * MCP server has no source type, so the connector paths list only through {@code
    * findConnectorsByName} and only {@link #MCP_SERVER_ADMINISTRATION} lists MCP servers.
@@ -1472,6 +1490,36 @@ public final class ModularArchitecture {
   }
 
   /**
+   * Calls of {@code OAuthClient#revoke} outside {@link #DIRECT_REVOKERS} and of {@link
+   * #REVOCATION_PORTS}{@code #revocation} outside {@link #REVOCATION_SCHEDULER}.
+   */
+  ArchRule grantsAreRevokedOnlyAfterTheCommit() {
+    return noClasses()
+        .should()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call " + OAUTH_CLIENT + "#revoke outside " + DIRECT_REVOKERS,
+                access ->
+                    access.getName().equals("revoke")
+                        && OAUTH_CLIENT.equals(relativeName(access.getTargetOwner()))
+                        && !DIRECT_REVOKERS.contains(
+                            relativeName(topLevel(access.getOriginOwner())))))
+        .orShould()
+        .accessTargetWhere(
+            DescribedPredicate.describe(
+                "call " + REVOCATION_PORTS + "#revocation outside " + REVOCATION_SCHEDULER,
+                access ->
+                    access.getName().equals("revocation")
+                        && REVOCATION_PORTS.contains(relativeName(access.getTargetOwner()))
+                        && !REVOCATION_SCHEDULER.equals(
+                            relativeName(topLevel(access.getOriginOwner())))))
+        .because(
+            "a discarded grant is revoked only once its discard committed and only on the"
+                + " revocation pool, never on the thread that holds the request and its connection")
+        .allowEmptyShould(true);
+  }
+
+  /**
    * Reads of {@code refreshToken()} on a {@link #REFRESH_TOKEN_CARRIERS} value outside {@link
    * #TOKEN_STORE_PACKAGES}.
    */
@@ -1649,6 +1697,7 @@ public final class ModularArchitecture {
         theProfileRegistrationLeavesOnlyToTheSignIn(),
         theAuthorizationServerIsReachedOnlyThroughTheOAuthClient(),
         refreshTokensStayInTheTokenStore(),
+        grantsAreRevokedOnlyAfterTheCommit(),
         theForeignContextNeverUsesTheOwnFormula(),
         privateLibrariesAreNotEnumeratedOutsideListedClasses(),
         personalUsageIsReadOnlyByItsOwner(),

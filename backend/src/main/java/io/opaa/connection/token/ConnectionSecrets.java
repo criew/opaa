@@ -379,7 +379,7 @@ public class ConnectionSecrets {
               .map(
                   accountId -> {
                     tokens
-                        .findByConnectedAccountId(accountId)
+                        .findLockedByConnectedAccountId(accountId)
                         .ifPresent(token -> revokeAfterCommit(List.of(token)));
                     return tokens.deleteByAccount(accountId);
                   })
@@ -476,8 +476,9 @@ public class ConnectionSecrets {
       libraries.eraseSourceCredentials(libraryId);
     }
     forgetMinted(profileId);
-    revokeAfterCommit(tokens.findPersonGrantsUnder(profileId));
-    revokeAfterCommit(tokens.findConsentsUnder(profileId));
+    List<ConnectionToken> held = new ArrayList<>(tokens.findPersonGrantsUnder(profileId));
+    held.addAll(tokens.findConsentsUnder(profileId));
+    revokeAfterCommit(held);
     tokens.deleteConsentsUnder(profileId);
     int persons = tokens.deletePersonsUnder(profileId);
     log.info(
@@ -671,7 +672,7 @@ public class ConnectionSecrets {
    * discard revokes nothing, and no revocation runs on the caller's thread or holds its connection.
    */
   private void revokeAfterCommit(List<ConnectionToken> held) {
-    List<Map.Entry<UUID, Runnable>> byProfile = new ArrayList<>();
+    List<GrantRevocations.Grant> grants = new ArrayList<>();
     for (ConnectionToken token : held) {
       if (token.getKind() != ConnectionToken.Kind.OAUTH) {
         continue;
@@ -681,23 +682,22 @@ public class ConnectionSecrets {
               decryptQuietly(token), decryptAccess(token), token.getAccessTokenExpiresAt());
       Runnable revocation = issuer().revocation(token.getProfileId(), stored);
       if (revocation != null) {
-        byProfile.add(Map.entry(token.getProfileId(), revocation));
+        grants.add(new GrantRevocations.Grant(token.getProfileId(), revocation));
       }
     }
-    if (byProfile.isEmpty()) {
+    if (grants.isEmpty()) {
       return;
     }
-    Runnable handOver = () -> byProfile.forEach(e -> revocations.submit(e.getKey(), e.getValue()));
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(
           new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-              handOver.run();
+              revocations.submit(grants);
             }
           });
     } else {
-      handOver.run();
+      revocations.submit(grants);
     }
   }
 
