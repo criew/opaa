@@ -46,6 +46,18 @@ public final class FullTextIdentifiers {
   static final int MAX_FIELD_NAME_LENGTH = 64;
 
   /**
+   * Upper bound on the further numbers of a paragraph enumeration ({@code §§ 34, 35}), on the
+   * reference parts behind a paragraph ({@code Abs. 1 Nr. 4}) and on the hyphenated parts of a
+   * structured file number. Java matches a repeated regex group recursively, so every repetition in
+   * these patterns is bounded: no input text can overflow the stack. A chain beyond the bound ends
+   * its match there; real citations stay far below it.
+   */
+  private static final int MAX_REPETITIONS = 16;
+
+  private static final String PARAGRAPH_RUN =
+      "\\d{1,4}[a-z]?(?:\\s*(?:,|und|u\\.)\\s*\\d{1,4}[a-z]?){0," + MAX_REPETITIONS + "}";
+
+  /**
    * A law abbreviation as it is actually written in German administrative texts: initial capital
    * plus at least one further capital ({@code BauGB}, {@code VwVfG}, {@code VGS}, {@code BGB}). The
    * second capital is what keeps an ordinary capitalized word ({@code Satzung}) from being read as
@@ -61,7 +73,9 @@ public final class FullTextIdentifiers {
    */
   private static final Pattern PARAGRAPH =
       Pattern.compile(
-          "§{1,2}\\s*(\\d{1,4}[a-z]?(?:\\s*(?:,|und|u\\.)\\s*\\d{1,4}[a-z]?)*)"
+          "§{1,2}\\s*("
+              + PARAGRAPH_RUN
+              + ")"
               + "(?:\\s*Abs(?:atz|\\.)?\\s*(\\d{1,3}[a-z]?))?"
               + "(?:\\s+("
               + LAW_ABBREVIATION
@@ -75,9 +89,12 @@ public final class FullTextIdentifiers {
    */
   private static final Pattern LAW_OF_PARAGRAPH_REFERENCE =
       Pattern.compile(
-          "§{1,2}\\s*\\d{1,4}[a-z]?(?:\\s*(?:,|und|u\\.)\\s*\\d{1,4}[a-z]?)*"
+          "§{1,2}\\s*"
+              + PARAGRAPH_RUN
               + "(?:\\s*(?:Absatz|Abs\\.?|Satz|S\\.|Nummer|Nr\\.?|Halbsatz|Hs\\.?|Buchstabe"
-              + "|Buchst\\.?)\\s*(?:\\d{1,4}[a-z]?|[a-z]\\)?))*"
+              + "|Buchst\\.?)\\s*(?:\\d{1,4}[a-z]?|[a-z]\\)?)){0,"
+              + MAX_REPETITIONS
+              + "}"
               + "\\s+("
               + LAW_ABBREVIATION
               + ")");
@@ -107,7 +124,8 @@ public final class FullTextIdentifiers {
    * #looksLikeIdentifier} keeps it off ordinary hyphenated abbreviations, which carry no digit.
    */
   private static final Pattern STRUCTURED_FILE_NUMBER =
-      Pattern.compile("\\b([A-Z]{2,4}(?:-[A-Z0-9]{1,4})+(?:/\\d{2,4})?)\\b");
+      Pattern.compile(
+          "\\b([A-Z]{2,4}(?:-[A-Z0-9]{1,4}){1," + MAX_REPETITIONS + "}(?:/\\d{2,4})?)\\b");
 
   /**
    * Erlass- and Drucksachen numbers: {@code Drucksache 19/1234}, {@code Drs. 19/1234}, {@code
