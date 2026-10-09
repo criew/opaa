@@ -28,7 +28,8 @@ import org.junit.jupiter.api.Test;
 /**
  * A revocation by bearer sends an access token that is valid when it is sent: one that has expired
  * or is about to is renewed with the refresh token first, outside any transaction, and a grant the
- * provider no longer renews is not sent at all. RFC 7009 sends the refresh token and renews nothing.
+ * provider no longer renews is not sent at all. RFC 7009 sends the refresh token and renews
+ * nothing.
  */
 class ProviderTokensRevocationTest {
 

@@ -123,8 +123,7 @@ class GrantRevocationsTest {
   }
 
   @Test
-  void stoppingInterruptsTheRunningRevocationAndDropsTheWaitingOnesWithACount()
-      throws Exception {
+  void stoppingInterruptsTheRunningRevocationAndDropsTheWaitingOnesWithACount() throws Exception {
     GrantRevocations revocations = new GrantRevocations(1, 10, Duration.ZERO);
     CountDownLatch running = new CountDownLatch(1);
     CountDownLatch interrupted = new CountDownLatch(1);

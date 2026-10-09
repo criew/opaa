@@ -594,11 +594,12 @@ class ConnectionAuthorizationIntegrationTest {
   void anEmergencyShutdownAnswersWhileTheProviderHoldsItsRevocations() throws Exception {
     connect();
     String personRefresh = PROVIDER.lastRefreshToken();
-    UUID admin = userIdOf("dev-admin@opaa.local");
+    UUID admin = userIdOf("admin@opaa.local");
     complete(
             "dev-admin",
             service.start(
-                CurrentUser.of(admin, Organization.DEFAULT_ID, SystemRole.ADMIN, "Dev Admin"),
+                CurrentUser.of(
+                    admin, Organization.DEFAULT_ID, SystemRole.SYSTEM_ADMIN, "Dev Admin"),
                 profile,
                 ConnectionAuthorizationPurpose.ACCOUNT))
         .andExpect(status().isOk());
@@ -613,9 +614,7 @@ class ConnectionAuthorizationIntegrationTest {
       // far below a single revocation's own time limit of 15 s, let alone two of them
       assertThat(answeredAfter).isLessThan(Duration.ofSeconds(10));
       assertThat(tokenRows()).as("the discard committed before any revocation").isZero();
-      await()
-          .atMost(Duration.ofSeconds(30))
-          .until(() -> PROVIDER.revocations().size() == 2);
+      await().atMost(Duration.ofSeconds(30)).until(() -> PROVIDER.revocations().size() == 2);
       assertThat(grantRevocations.idle()).as("both revocations are still in flight").isFalse();
     } finally {
       PROVIDER.releaseRevocations();
