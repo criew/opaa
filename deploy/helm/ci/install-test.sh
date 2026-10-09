@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Installation test of the OPAA chart, run by .github/workflows/helm-chart.yml and locally from the
 # repository root. Expects the current kubectl context to point at a kind cluster that already holds
-# the images named in install-values.yaml. Starts the helper database, then lets chart-testing
-# install the chart into a namespace enforcing the Pod Security Standard "restricted", wait until
+# the images named in install-values.yaml. Lets chart-testing install the chart with its evaluation
+# database into a namespace enforcing the Pod Security Standard "restricted", wait until database,
 # backend and frontend are ready, run helm test and uninstall again. Needs kubectl, helm and ct.
 set -euo pipefail
 
@@ -11,9 +11,6 @@ CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
 NAMESPACE="${INSTALL_NAMESPACE:-opaa-ct}"
 # The first start migrates the schema; the chart's startup probe allows up to ten minutes for it.
 INSTALL_TIMEOUT="${INSTALL_TIMEOUT:-900s}"
-
-kubectl apply -f "$CI_DIR/postgres.yaml"
-kubectl --namespace opaa-ci-db rollout status deployment/postgres --timeout=300s
 
 kubectl create namespace "$NAMESPACE" --dry-run=client --output yaml | kubectl apply -f -
 kubectl label --overwrite namespace "$NAMESPACE" \
