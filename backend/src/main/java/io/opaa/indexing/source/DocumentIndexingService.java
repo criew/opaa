@@ -45,6 +45,7 @@ public class DocumentIndexingService {
   private final IndexingRunEventRepository indexingRunEventRepository;
 
   private final SourceConnectionResolver connectionResolver;
+  private final DefaultRunModes defaultRunModes;
 
   public DocumentIndexingService(
       IndexingJobService indexingJobService,
@@ -52,8 +53,10 @@ public class DocumentIndexingService {
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       IndexingRunEventRepository indexingRunEventRepository,
-      SourceConnectionResolver connectionResolver) {
+      SourceConnectionResolver connectionResolver,
+      DefaultRunModes defaultRunModes) {
     this.connectionResolver = connectionResolver;
+    this.defaultRunModes = defaultRunModes;
     this.indexingJobService = indexingJobService;
     this.executorRegistry = executorRegistry;
     this.libraryRepository = libraryRepository;
@@ -182,7 +185,7 @@ public class DocumentIndexingService {
    * supports; without a request the executor's own default for this library applies - the only mode
    * a one-mode executor knows, or for Confluence the mode its sync state calls for (a full run when
    * none completed yet, after a selection change or once the full-sync interval passed, incremental
-   * otherwise).
+   * otherwise), and a full run for a sync state of other settings ({@link DefaultRunModes}).
    */
   private IndexingRunMode resolveRunMode(
       SourceIndexingExecutor executor, KnowledgeLibrary library, IndexingRunMode requested) {
@@ -210,7 +213,7 @@ public class DocumentIndexingService {
       }
       return requested;
     }
-    return executor.defaultRunMode(library, connectionResolver.effectiveSettings(library));
+    return defaultRunModes.of(executor, library);
   }
 
   /**

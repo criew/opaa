@@ -18,6 +18,7 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
 import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.source.DefaultRunModes;
 import io.opaa.indexing.source.DocumentIndexingService;
 import io.opaa.indexing.source.FilesystemPathAllowlist;
 import io.opaa.indexing.source.IndexingRunTemplate;
@@ -33,6 +34,7 @@ import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.StoredDocumentSourceAccess;
+import io.opaa.indexing.source.SyncStateBasis;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -245,7 +247,8 @@ public class IndexingConfiguration {
       LibraryStorageQuotaService libraryStorageQuotaService,
       SourceConnectionResolver sourceConnectionResolver,
       ServiceAccountTokens serviceAccountTokens,
-      KnowledgeLibraryRepository knowledgeLibraryRepository) {
+      KnowledgeLibraryRepository knowledgeLibraryRepository,
+      ObjectProvider<SourceConnectorRegistry> sourceConnectorRegistry) {
     return new IndexingRunTemplate(
         indexingJobService,
         indexingRunEventRepository,
@@ -255,7 +258,8 @@ public class IndexingConfiguration {
         sourceConnectionResolver,
         Clock.systemUTC(),
         serviceAccountTokens,
-        knowledgeLibraryRepository);
+        knowledgeLibraryRepository,
+        new SyncStateBasis(sourceConnectorRegistry::getObject));
   }
 
   /** Signs service account assertions for the connectors that sign in with a key (ADR-0040). */
@@ -313,14 +317,28 @@ public class IndexingConfiguration {
       KnowledgeLibraryRepository libraryRepository,
       LibraryAccessService libraryAccessService,
       IndexingRunEventRepository indexingRunEventRepository,
-      SourceConnectionResolver sourceConnectionResolver) {
+      SourceConnectionResolver sourceConnectionResolver,
+      DefaultRunModes defaultRunModes) {
     return new DocumentIndexingService(
         indexingJobService,
         indexingSourceExecutorRegistry,
         libraryRepository,
         libraryAccessService,
         indexingRunEventRepository,
-        sourceConnectionResolver);
+        sourceConnectionResolver,
+        defaultRunModes);
+  }
+
+  /** The run mode of a run nobody chose a mode for, aware of a state of other settings. */
+  @Bean
+  DefaultRunModes defaultRunModes(
+      SourceConnectionResolver sourceConnectionResolver,
+      SourceSyncStateRepository sourceSyncStateRepository,
+      ObjectProvider<SourceConnectorRegistry> sourceConnectorRegistry) {
+    return new DefaultRunModes(
+        sourceConnectionResolver,
+        sourceSyncStateRepository,
+        new SyncStateBasis(sourceConnectorRegistry::getObject));
   }
 
   /**

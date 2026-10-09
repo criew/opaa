@@ -34,6 +34,7 @@ public final class InMemoryFileStore implements FileStore {
   private final Set<String> unlistable = new HashSet<>();
   private final Set<String> unreadable = new HashSet<>();
   private final Set<String> deselected = new HashSet<>();
+  private java.util.function.Predicate<String> deselectedWhere = name -> false;
   private final Map<String, Map<String, String>> recalled = new LinkedHashMap<>();
   private boolean folderMarkers;
   private boolean shallowMarkers;
@@ -53,6 +54,7 @@ public final class InMemoryFileStore implements FileStore {
   private boolean earlyNewStart;
   private boolean swallowExpiry;
   private boolean recordChanges;
+  private Runnable beforeNextRead;
   private boolean reportAsLogged;
   private final Set<String> textExports = new HashSet<>();
   private boolean credentialsRejected;
@@ -179,6 +181,15 @@ public final class InMemoryFileStore implements FileStore {
     return this;
   }
 
+  /**
+   * From now on every name {@code outside} accepts lies outside the library's patterns, as {@link
+   * #deselect} does for one name; {@code name -> false} selects everything again.
+   */
+  public InMemoryFileStore deselectWhere(java.util.function.Predicate<String> outside) {
+    deselectedWhere = outside;
+    return this;
+  }
+
   /** A broken store for the contract's own test: it reports the first page as the last one. */
   public InMemoryFileStore endAfterFirstPage() {
     endAfterFirstPage = true;
@@ -293,6 +304,11 @@ public final class InMemoryFileStore implements FileStore {
           @Override
           public ChangePage read(String feedKey, String cursor) throws FileAccessException {
             call("read " + feedKey + " @" + cursor);
+            if (beforeNextRead != null) {
+              Runnable once = beforeNextRead;
+              beforeNextRead = null;
+              once.run();
+            }
             Integer position = cursorPositions.get(cursor);
             if (cursorsExpired || position == null) {
               if (swallowExpiry) {
@@ -331,6 +347,15 @@ public final class InMemoryFileStore implements FileStore {
             }
           }
         };
+    return this;
+  }
+
+  /**
+   * Runs {@code action} once, while the next page of the change log is read - something that
+   * happens while a change run is under way.
+   */
+  public InMemoryFileStore beforeNextChangeRead(Runnable action) {
+    beforeNextRead = action;
     return this;
   }
 
@@ -708,7 +733,9 @@ public final class InMemoryFileStore implements FileStore {
         file.bytes().length,
         marker(file),
         file.mediaType(),
-        deselected.contains(name) ? new Exclusion.Deselected(" außerhalb der Muster") : null);
+        deselected.contains(name) || deselectedWhere.test(name)
+            ? new Exclusion.Deselected(" außerhalb der Muster")
+            : null);
   }
 
   private static String marker(StoredFile file) {

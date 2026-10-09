@@ -1098,6 +1098,81 @@ innerhalb einer Ebene nach Namen; der Store verlässt sich darauf nicht.
 | Wiederholte Meldungen eines Elements in einer Aufzählung können sich unterscheiden (etwa ein früherer Elternordner); die letzte gilt | unsicher, im Testdoppel nachgestellt (`reportStaleParent`) |
 | Eine Marke, die Graph nicht mehr annimmt, beantwortet Graph mit `410`; ein anderer 4xx gilt ebenfalls als verfallen | unsicher |
 
+## Nachtrag: Abgleichstand mit Fingerabdruck seiner Einstellungen (#2268, 09.10.2026)
+
+Bis hierhin verwarf eine Änderung, die den Abgleichstand ungültig macht, ihn nur einmal: Der
+Konnektor löschte die Zeile in `source_sync_state` (`onSourceChanged`). Ein Lauf, der die alten
+Einstellungen schon gelesen hatte, schrieb danach einen neuen Stand unter ihnen; der nächste Lauf
+setzte Runde, Präsenz, Änderungszeiger, Anker und Ordnergedächtnis unter den neuen Einstellungen
+fort. Bei `LOCATION_IDENTITY` und `CHANGE_FEED` entfernte der Abschluss einer solchen Runde
+Dokumente, deren Datei unter den neuen Einstellungen existiert (die Runde hatte sie unter den alten
+nicht gesehen). Bei Drive und Confluence las der nächste Lauf Zeiger bzw. Anker der alten Auswahl
+weiter. `RunStateResets` (ADR-0041, #2164) milderte das nur im Speicher und nur für private
+Bibliotheken.
+
+1. **Fingerabdruck.** `SyncStateBasis` bildet SHA-256 über Adresse, Pfad und
+   `SourceConnector#settingsState` der effektiven Einstellungen, mit sortierten Schlüsseln. Was der
+   Konnektor nicht vergleicht (etwa der Vollabgleich-Rhythmus), erzwingt keinen Vollabgleich.
+   Proxy, Zertifikatsprüfung und Geheimnis zählen nicht. Ein Rahmen ohne Konnektorregister (Tests)
+   nimmt alle Konnektoreinstellungen.
+2. **Persistenz.** `source_sync_state.settings_basis` (`varchar(64)`, nullbar, additiv). Ein Stand
+   ohne Fingerabdruck, also jeder vor dieser Änderung geschriebene, gilt als abweichend; es gibt
+   keinen Backfill.
+3. **Übernahme.** Der Laufrahmen bildet den Fingerabdruck aus den Einstellungen, mit denen der Lauf
+   beginnt (`IndexingRun#settingsBasis`). `IndexingRun#adopt` verwirft einen Stand mit anderem
+   Fingerabdruck vollständig (Runde, fertige Bereiche, Änderungszeiger, Anker, Ordnergedächtnis,
+   letzter Vollabgleich) und vermerkt das im Protokoll; Löschvermerke bleiben. `FileSync` übernimmt
+   im Konstruktor, also für Vollabgleich, Änderungs- und Ereignislauf; Confluence beim Laden. Jeder
+   gespeicherte Stand trägt so den Fingerabdruck des Laufs, der ihn schrieb. Ein Stand, den ein
+   Lauf mit alten Einstellungen nach der Änderung schreibt, wird damit vom nächsten Lauf verworfen,
+   auch nach einem Neustart.
+4. **Abwesenheitsbeweis in der Runde.** `ScanProgress.proof` hält den `AbsenceProof`, unter dem die
+   Runde ihre Präsenz schrieb. Eine Runde unter einem anderen Beweis wird nicht fortgesetzt: Eine
+   Runde unter `SINGLE_RUN` schreibt Präsenz erst, wenn sie über Läufe reicht, und fortgesetzt unter
+   `LOCATION_IDENTITY` entfernte sie den Bestand eines Containers, den ein gescheiterter Lauf fertig
+   gelistet hatte.
+5. **Änderung während des Laufs.** Vor jedem Entfernen durch Abwesenheit liest der Rahmen die
+   Einstellungen der Bibliothek neu (`IndexingRun#settingsUnchanged`, über `resolveForChange` und
+   die frisch gelesene Bibliothek). Weicht der Fingerabdruck ab oder lassen sie sich nicht lesen,
+   gleicht der Lauf nicht ab und gilt als unvollständig. `FileSync` prüft dasselbe vor dem
+   `CHANGE_FEED`-Abschluss (die Runde bleibt offen) und im Änderungslauf vor den Löschbefunden
+   (keine Löschung, kein Zeiger rückt vor). Ein ABA-Wechsel während eines Laufs (hin und zurück)
+   bleibt unerkannt; beide Lesungen sehen dann dieselben Einstellungen.
+6. **Was entfällt, was bleibt.** `RunStateResets` und `SourceConnectionResolver#runEnded` entfallen.
+   `onSourceChanged` bleibt: Es verwirft den Stand sofort, und der Wechsel des verbundenen Kontos
+   (`SourceChangeGate#accountChanged`) ist keine Einstellung und hat keinen Fingerabdruck. Die
+   Ablehnung `CONNECTION_PROFILE_RUN_IN_PROGRESS` für geteilte Bibliotheken bleibt bewusst: Ein
+   laufender Lauf holt jedes Element mit dem Geheimnis, das gerade gilt, nach der Änderung also als
+   das neue Konto unter den alten Einstellungen. Der Fingerabdruck hält Stand und Abgleich davon
+   frei, nicht die Aufnahme.
+
+Nachbesserung aus dem Review:
+
+- **Abschluss über das Protokoll:** Die Prüfung aus Punkt 5 steht zusätzlich unmittelbar vor dem
+  Anwenden der Löschbefunde, nicht nur vor dem Lesen; eine Änderung während des Lesens entfernte
+  sonst noch.
+- **Abgewählte Dateien im Änderungslauf** warten wie gemeldete Löschungen in `ChangeStreams` auf
+  `applyRemovals`, statt sofort zu entfernen; sonst umgingen sie die Prüfung.
+- **Betriebsart:** `DefaultRunModes` wählt für einen Lauf ohne gewählte Betriebsart (Zeitplan,
+  manuell ohne Angabe, übergelaufener Ereignisstapel) `FULL`, wenn der Executor ihn kennt und der
+  gespeicherte Stand einen anderen oder keinen Fingerabdruck trägt. Kein Konnektor baut das nach.
+- **Geheimnisfreie Lesart:** Die Nachprüfung liest über `SourceConnectionResolver#settingsOnly`
+  (`Purpose.SETTINGS_ONLY`), ohne Anmeldung beim Anbieter. Nicht lesbare Einstellungen haben einen
+  eigenen Protokollvermerk, ebenso ein Stand ohne Fingerabdruck.
+- **Konto:** `SourceConnectionResolver#connectedAccount` (die Kontokennung der Verbindung, nie das
+  Geheimnis, ohne Groß- und Kleinschreibung) geht in den Fingerabdruck. Damit verwirft auch ein
+  Kontowechsel einen Stand, den ein Lauf des alten Kontos zurückschreibt, etwa den Anker von
+  Confluence. Punkt 6 ist insoweit überholt.
+- **Hin- und Rückwechsel während eines Laufs** hat laut Review keine Löschwirkung; es bleibt ohne
+  Revisionszähler.
+- `SourceChangeGate#discardAgain` entfällt mit `RunStateResets`.
+
+Tests: `FileSyncSettingsBasisTest` (fünf Reproduktionsfälle, auf `main` rot),
+`FileSyncRandomizedRoundTest` (der Filter der Bibliothek wechselt zwischen und während der Läufe;
+die Invariante gilt für Dateien, die der geltende Filter zulässt), `SourceSyncStateTest`,
+`SyncStateBasisTest`, `IndexingRunTemplateTest`, `ConfluenceIndexingExecutorTest` und der
+Delta-Test `SourceSyncSettingsBasisMigrationTest`.
+
 ## Referenzen
 
 - [ADR-0017](0017-quellentypmodell-indizierung.md), [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md)

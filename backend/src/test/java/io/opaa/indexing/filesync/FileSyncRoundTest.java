@@ -486,6 +486,27 @@ class FileSyncRoundTest {
     assertThat(harness.storedPaths()).hasSize(8);
   }
 
+  // regression guard for #2268: findings of a log read under the old settings prove nothing
+  @Test
+  void aRoundsEndWhoseSettingsChangeWhileTheLogIsReadRemovesNothing() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    String gone = store.filePathOf("A", "a/1.txt");
+    store
+        .remove("A", "a/1.txt")
+        .beforeNextChangeRead(
+            () -> harness.library().updateSourceSettings("{\"auswahl\":\"neu\"}"));
+
+    FileSyncHarness.Run closing = run(store, 0);
+
+    assertThat(store.calls()).anyMatch(call -> call.startsWith("read stream:A"));
+    assertThat(closing.eventsOf(IndexingEventCategory.REMOVED))
+        .extracting(IndexingRunEvent::getReference)
+        .isEmpty();
+    assertThat(harness.storedPaths()).contains(gone, STALE);
+    assertThat(harness.state().isFullSyncInterrupted()).as("the round stays open").isTrue();
+  }
+
   @Test
   void aFileDeletedInThePartAlreadyListedIsRemovedThroughTheChangeLog() {
     InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);

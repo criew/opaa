@@ -145,7 +145,8 @@ class SourceSyncStateRepositoryIntegrationTest {
                     "nc1:[\"Akten\"]", 1, 42, true, Set.of(UUID.randomUUID()))),
             Map.of("/Projekte", Map.of("", "\"6ac1\"")),
             Map.of("/Projekte", Map.of("Akten / 2025", "\"6ac2\"")),
-            Map.of("/Projekte", Set.of("Akten")));
+            Map.of("/Projekte", Set.of("Akten")),
+            "LOCATION_IDENTITY");
     state.recordScanProgress(progress);
     repository.save(state);
 

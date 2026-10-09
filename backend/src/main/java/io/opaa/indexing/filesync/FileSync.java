@@ -61,7 +61,9 @@ import org.slf4j.LoggerFactory;
  * AbsenceProof} covers the runs before. An unlistable container keeps its bestand; a {@link
  * FileAccessException.RunEnding} fails the run. Downloads run concurrently but are ingested in
  * listing order; {@link #close()} ends every download thread and deletes every temp file. Every
- * access to the store first asks the run's credentials, so a refused source ends the run there.
+ * access to the store first asks the run's credentials, so a refused source ends the run there. A
+ * state written under other settings is discarded first ({@link IndexingRun#adopt}), and a run
+ * whose settings changed meanwhile removes nothing itself ({@link IndexingRun#settingsUnchanged}).
  */
 public final class FileSync implements AutoCloseable {
 
@@ -167,7 +169,9 @@ public final class FileSync implements AutoCloseable {
     /** A passing failure: the round stays open and the next run reads the log again. */
     OPEN,
     /** A container out of reach: it counts as not listed, so the round ends as for a listing. */
-    UNREACHABLE
+    UNREACHABLE,
+    /** The settings changed during the run: the round stays open, the next run discards it. */
+    STALE
   }
 
   public FileSync(
@@ -191,6 +195,7 @@ public final class FileSync implements AutoCloseable {
     this.documentRepository = documentRepository;
     this.cleanupService = cleanupService;
     this.folderMirror = new SourceFolderMirror(folderService, frame.library());
+    frame.adopt(state);
     this.state = state;
     this.journal = journal;
     this.clock = clock;
@@ -237,7 +242,7 @@ public final class FileSync implements AutoCloseable {
       if (unlistedContainerKeys.isEmpty()
           && !round.provenByThisRun()
           && proof == AbsenceProof.CHANGE_FEED) {
-        closing = closeByChangeLog();
+        closing = frame.settingsUnchanged() ? closeByChangeLog() : Closing.STALE;
       }
     } catch (RequestBudgetExhaustedException e) {
       drainUntilRefused();
@@ -280,6 +285,11 @@ public final class FileSync implements AutoCloseable {
       if (closing == Closing.OPEN) {
         round.continuesLater();
         frame.events().recordRunNote(IndexingEventCategory.SUMMARY, OPEN_CHANGE_LOG_MESSAGE);
+        return ListingOutcome.truncated();
+      }
+      if (closing == Closing.STALE) {
+        round.continuesLater();
+        frame.events().recordRunNote(IndexingEventCategory.SUMMARY, frame.settingsChangeNote());
         return ListingOutcome.truncated();
       }
       round.presenceToFrame();
@@ -389,9 +399,14 @@ public final class FileSync implements AutoCloseable {
           pendingCursors.put(stream.getKey(), read.cleanStart());
         }
       }
-      reader.applyRemovals();
-      // all at once, after the removals: a run that ends early moves no cursor past a removal
-      pendingCursors.forEach(state::advanceChangeCursor);
+      if (frame.settingsUnchanged()) {
+        reader.applyRemovals();
+        // all at once, after the removals: a run that ends early moves no cursor past a removal
+        pendingCursors.forEach(state::advanceChangeCursor);
+      } else {
+        // read under the old settings: no removal, no cursor; the next run discards the state
+        frame.events().recordRunNote(IndexingEventCategory.SUMMARY, frame.settingsChangeNote());
+      }
     } finally {
       forgetChangedContainers(reader.changedContainers());
       state = journal.save(state);
@@ -442,6 +457,10 @@ public final class FileSync implements AutoCloseable {
         return Closing.OPEN;
       }
       next.put(stream.getKey(), read.cleanStart());
+    }
+    if (!frame.settingsUnchanged()) {
+      // read under the old settings: the findings prove nothing under the new ones
+      return Closing.STALE;
     }
     reader.applyRemovals();
     closingCursors = next;
@@ -501,8 +520,7 @@ public final class FileSync implements AutoCloseable {
           public int transientFailures() {
             return transientFailures;
           }
-        },
-        atRoundsEnd);
+        });
   }
 
   /** Drops the folder memory of every container a change run touched. */

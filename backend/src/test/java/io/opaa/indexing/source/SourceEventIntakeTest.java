@@ -99,7 +99,11 @@ class SourceEventIntakeTest {
             new SourceEventProperties(Duration.ofSeconds(5), 3, 2),
             scheduler,
             Clock.fixed(NOW, ZoneOffset.UTC),
-            new LibrarySourceConnectionResolver());
+            new LibrarySourceConnectionResolver(),
+            new DefaultRunModes(
+                new LibrarySourceConnectionResolver(),
+                mock(SourceSyncStateRepository.class),
+                SyncStateBasis.WHOLE_SETTINGS));
   }
 
   private void enqueue(String... keys) {
@@ -167,7 +171,9 @@ class SourceEventIntakeTest {
             new SourceEventProperties(Duration.ofSeconds(5), 3, 2),
             scheduler,
             Clock.fixed(NOW, ZoneOffset.UTC),
-            locked);
+            locked,
+            new DefaultRunModes(
+                locked, mock(SourceSyncStateRepository.class), SyncStateBasis.WHOLE_SETTINGS));
     enqueue("102");
 
     scheduled.get(0).run();

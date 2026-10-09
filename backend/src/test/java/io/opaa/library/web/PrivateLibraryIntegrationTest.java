@@ -642,7 +642,8 @@ class PrivateLibraryIntegrationTest {
   /**
    * A changed default only the profile sets counts and waits for the shared libraries alone: a
    * private one is told to the administration in no number and no refusal, even while it runs. Its
-   * run state is discarded like theirs and stays discarded once its run ends; its owner is told.
+   * run state is discarded like theirs; what its going run writes back under the old settings, the
+   * next run discards. Its owner is told.
    */
   @Test
   void aRunningPrivateLibraryNeitherCountsInNorHoldsUpAFullSyncOfItsProfile() throws Exception {
@@ -694,14 +695,18 @@ class PrivateLibraryIntegrationTest {
     }
 
     running.get(30, java.util.concurrent.TimeUnit.SECONDS);
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () ->
-                mockMvc
-                    .perform(as("dev-user", get(LIBRARIES + "/" + library + "/indexing/status")))
-                    .andExpect(jsonPath("$.status").value("COMPLETED")));
-    assertThat(syncStates(library)).as("the run state the change discarded").isZero();
+    awaitCompleted(library);
+    assertThat(syncStatesWithCompletedScopes(library))
+        .as("the going run wrote its state back under the old settings")
+        .isOne();
+
+    mockMvc
+        .perform(as("dev-user", post(LIBRARIES + "/" + library + "/indexing")))
+        .andExpect(status().isAccepted());
+    awaitCompleted(library);
+    assertThat(syncStatesWithCompletedScopes(library))
+        .as("the next run discards a state of other settings, also after a restart")
+        .isZero();
     assertThat(profileOf(library)).isEqualTo(both);
     assertThat(fullSyncNotices(owner, library)).isEqualTo(1);
     assertThat(fullSyncNotices(admin, shared)).isEqualTo(1);
@@ -729,6 +734,24 @@ class PrivateLibraryIntegrationTest {
   private int syncStates(UUID library) {
     return jdbc.queryForObject(
         "SELECT count(*) FROM source_sync_state WHERE library_id = ?", Integer.class, library);
+  }
+
+  private int syncStatesWithCompletedScopes(UUID library) {
+    return jdbc.queryForObject(
+        "SELECT count(*) FROM source_sync_state WHERE library_id = ?"
+            + " AND completed_scope_keys IS NOT NULL",
+        Integer.class,
+        library);
+  }
+
+  private void awaitCompleted(UUID library) {
+    await()
+        .atMost(Duration.ofSeconds(20))
+        .untilAsserted(
+            () ->
+                mockMvc
+                    .perform(as("dev-user", get(LIBRARIES + "/" + library + "/indexing/status")))
+                    .andExpect(jsonPath("$.status").value("COMPLETED")));
   }
 
   private int fullSyncNotices(UUID recipient, UUID library) {

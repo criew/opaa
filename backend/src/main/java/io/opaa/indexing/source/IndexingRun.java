@@ -45,6 +45,23 @@ public final class IndexingRun {
 
   static final String DEFAULT_BUDGET_CONTINUATION = "der nächste Lauf setzt fort";
 
+  public static final String SETTINGS_CHANGED_BEFORE_MESSAGE =
+      "Die Quelleinstellungen der Bibliothek haben sich seit dem gespeicherten Abgleichstand"
+          + " geändert; er wurde verworfen, die Quelle wird vollständig neu abgeglichen";
+
+  public static final String STATE_WITHOUT_BASIS_MESSAGE =
+      "Der gespeicherte Abgleichstand stammt aus einer früheren Version und nennt seine"
+          + " Einstellungen nicht; er wurde verworfen, die Quelle wird einmal vollständig neu"
+          + " abgeglichen";
+
+  public static final String SETTINGS_UNREADABLE_MESSAGE =
+      "Die Quelleinstellungen der Bibliothek ließen sich vor dem Abgleich nicht erneut lesen; der"
+          + " Lauf entfernt nichts, der nächste gleicht ab";
+
+  public static final String SETTINGS_CHANGED_DURING_MESSAGE =
+      "Die Quelleinstellungen der Bibliothek haben sich während des Laufs geändert; der Lauf"
+          + " entfernt nichts, der nächste gleicht unter den neuen Einstellungen ab";
+
   /**
    * Runs once the frame has attempted the reconciliation; {@code reconciled} is false if it threw.
    */
@@ -69,6 +86,9 @@ public final class IndexingRun {
   private Supplier<String> budgetContinuation = () -> DEFAULT_BUDGET_CONTINUATION;
   private String budgetStallAdvice;
   private ReconciliationHook reconciliationHook = reconciled -> {};
+  private String settingsBasis;
+  private Supplier<String> currentSettingsBasis = () -> settingsBasis;
+  private boolean settingsUnreadable;
 
   public IndexingRun(
       UUID jobId,
@@ -164,6 +184,70 @@ public final class IndexingRun {
 
   public IndexingRunEventRecorder events() {
     return events;
+  }
+
+  void bindSettingsBasis(String basis, Supplier<String> current) {
+    this.settingsBasis = basis;
+    this.currentSettingsBasis = current;
+  }
+
+  /**
+   * The {@link SyncStateBasis} of {@link #settings()}, {@code null} for a run whose frame keeps
+   * none.
+   */
+  public String settingsBasis() {
+    return settingsBasis;
+  }
+
+  /**
+   * Continues {@code state} only under this run's settings basis: a state written under another one
+   * is discarded ({@link SourceSyncState#adoptSettingsBasis}), with a {@code SUMMARY} note when it
+   * held something. Unchanged without a basis.
+   *
+   * @return whether {@code state} held something it discarded
+   */
+  public boolean adopt(SourceSyncState state) {
+    if (settingsBasis == null) {
+      return false;
+    }
+    boolean withoutBasis = state.getSettingsBasis() == null;
+    if (!state.adoptSettingsBasis(settingsBasis)) {
+      return false;
+    }
+    log.info(
+        "Library {} has other settings than its sync state was written under - discarded",
+        library.getId());
+    events.recordRunNote(
+        IndexingEventCategory.SUMMARY,
+        withoutBasis ? STATE_WITHOUT_BASIS_MESSAGE : SETTINGS_CHANGED_BEFORE_MESSAGE);
+    return true;
+  }
+
+  /**
+   * Whether the library's settings still have the basis the run began with - asked before anything
+   * is removed for being absent, since a listing under the old settings proves nothing under the
+   * new ones. Settings that cannot be read now count as changed; without a basis always true.
+   */
+  public boolean settingsUnchanged() {
+    if (settingsBasis == null) {
+      return true;
+    }
+    try {
+      settingsUnreadable = false;
+      return settingsBasis.equals(currentSettingsBasis.get());
+    } catch (RuntimeException e) {
+      log.warn(
+          "Could not read the settings of library {} again; taken as changed",
+          library.getId(),
+          library.loggedNames().of(e));
+      settingsUnreadable = true;
+      return false;
+    }
+  }
+
+  /** The protocol note for the last {@link #settingsUnchanged} that answered {@code false}. */
+  public String settingsChangeNote() {
+    return settingsUnreadable ? SETTINGS_UNREADABLE_MESSAGE : SETTINGS_CHANGED_DURING_MESSAGE;
   }
 
   /**

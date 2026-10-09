@@ -44,6 +44,7 @@ public class SourceEventIntake {
   private final TaskScheduler scheduler;
   private final Clock clock;
   private final SourceConnectionResolver connectionResolver;
+  private final DefaultRunModes defaultRunModes;
 
   private final Map<UUID, PendingBatch> pending = new HashMap<>();
 
@@ -53,8 +54,10 @@ public class SourceEventIntake {
       SourceEventProperties properties,
       @Qualifier("sourceEventScheduler") TaskScheduler scheduler,
       Clock clock,
-      SourceConnectionResolver connectionResolver) {
+      SourceConnectionResolver connectionResolver,
+      DefaultRunModes defaultRunModes) {
     this.connectionResolver = connectionResolver;
+    this.defaultRunModes = defaultRunModes;
     this.libraryRepository = libraryRepository;
     this.indexingJobService = indexingJobService;
     this.properties = properties;
@@ -146,9 +149,7 @@ public class SourceEventIntake {
     // calls for at drain time.
     IndexingRunMode runMode =
         batch.overflowed
-            ? target
-                .executor()
-                .defaultRunMode(library, connectionResolver.effectiveSettings(library))
+            ? defaultRunModes.of(target.executor(), library)
             : target.targetedRunMode();
     IndexingJob job;
     try {
