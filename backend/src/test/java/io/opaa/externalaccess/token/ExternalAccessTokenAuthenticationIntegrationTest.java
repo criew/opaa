@@ -400,6 +400,8 @@ class ExternalAccessTokenAuthenticationIntegrationTest {
       if (recreated != null) {
         providers.delete(recreated);
       }
+      jdbcTemplate.update(
+          "DELETE FROM oidc_provider_removals WHERE issuer_uri_normalized = ?", issuer);
     }
   }
 

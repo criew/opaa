@@ -1,0 +1,14 @@
+databaseChangeLog:
+  - changeSet:
+      id: identity-2026-10-09-provider-removals
+      author: opaa
+      comment: "When the provider of an issuer was last deleted (#2289, ADR-0041): the start of a deactivation by a provider gone, which the accounts of that issuer do not carry themselves."
+      changes:
+        - sql:
+            splitStatements: false
+            sql: |
+              CREATE TABLE oidc_provider_removals (
+                  issuer_uri_normalized character varying(500) NOT NULL,
+                  removed_at timestamp with time zone NOT NULL,
+                  CONSTRAINT oidc_provider_removals_pkey PRIMARY KEY (issuer_uri_normalized)
+              );
