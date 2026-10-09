@@ -128,11 +128,11 @@ class ConversationBaselineVerdictTest {
 
   private static BaselineComparator.MetricCheck failedCheck() {
     return new BaselineComparator.MetricCheck(
-        "turn:2", "nDCG@8", 27, 0.649, 0.500, -0.149, 0.030, false, 0.2, true, false);
+        "turn:2", "nDCG@20", 27, 0.649, 0.500, -0.149, 0.030, false, 0.2, true, false);
   }
 
   private static BaselineComparator.MetricCheck passedCheck() {
     return new BaselineComparator.MetricCheck(
-        "turn:2", "nDCG@8", 27, 0.649, 0.648, -0.001, 0.030, true, 0.2, true, false);
+        "turn:2", "nDCG@20", 27, 0.649, 0.648, -0.001, 0.030, true, 0.2, true, false);
   }
 }

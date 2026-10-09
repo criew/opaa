@@ -212,7 +212,7 @@ gehören in den Bericht, nebeneinander und getrennt ausgewiesen.
 
 Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrechenbar**. Der
 Pipeline-Pfad arbeitet mit der Produktionskonfiguration (`fetch-k=25`, `similarity-threshold=0,3`,
-`top-k=8`, `max-chunks-per-document=2`), der Rohvektor-Pfad bewusst ohne Ähnlichkeitsschwelle und mit
+`top-k=8`, seit #2373 `top-k=20`, `max-chunks-per-document=2`), der Rohvektor-Pfad bewusst ohne Ähnlichkeitsschwelle und mit
 `documentTopK=10` ([ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Entscheidung 3).
 Vier Konsequenzen, die vor der ersten Zeile Code feststehen müssen:
 
@@ -231,7 +231,8 @@ Vier Konsequenzen, die vor der ersten Zeile Code feststehen müssen:
 4. **`top-k=8` gegen `documentTopK=10`.** Das Fenster des Pipeline-Pfads ist die tatsächliche
    Trefferzahl der Produktion. Die Metriken heißen dort folglich Hit Rate@5, MRR@8, nDCG@8 und
    Recall@8. Ein Nebeneinanderstellen von nDCG@8 und nDCG@10 in einer Tabelle ohne Kennzeichnung ist
-   ein Auswertungsfehler; der Bericht führt das Fenster deshalb an jeder Zahl mit.
+   ein Auswertungsfehler; der Bericht führt das Fenster deshalb an jeder Zahl mit. Seit #2373 ist der
+   Produktions-Default `top-k=20`, das Fenster heißt entsprechend @20 (ADR-0012, Nachtrag top-k 20).
 
 ### Regressionsschutz
 
@@ -573,9 +574,9 @@ Drei Milderungen, keine Lösungen:
 > | `comic-characters` | `attribute_lookup`, `entity_description`, übrige `crosslingual`-Fragen | kein eigener Baustein: Einbettung und Chunking | beide |
 > | `city-landmarks` | alle sechs Kategorien | kein eigener Baustein: Chunking, Kontextpräfix, Fensterbreite | beide |
 >
-> Stand 2026-09-15: `verwaltung` Rohvektor 17 Gründe, Pipeline 4; `comic-characters` Pipeline 4
-> (`comic-filter-017`, `-089`, `comic-de-019`, `-022`); `city-landmarks` keine. Die Fallliste steht in
-> `eval/corpus/verwaltung/MAINTENANCE.md`.
+> Stand 2026-10-09 (#2373, `top-k` 20): `verwaltung` Rohvektor 17 Gründe, Pipeline 8;
+> `comic-characters` Pipeline 6 (`comic-filter-017`, `-033`, `-089`, `comic-de-016`, `-019`, `-022`);
+> `city-landmarks` keine. Die Fallliste steht in `eval/corpus/verwaltung/MAINTENANCE.md`.
 >
 > **Fehlende Bausteine der `known_gap`-Einträge in `comic-characters` und `city-landmarks`** (Issue
 > #1657): Jeder Grund beginnt mit dem fehlenden Baustein und nennt danach das Symptom aus dem

@@ -47,13 +47,13 @@ public final class VariantReportWriter {
         var a = outcome.report().overall();
         sb.append(
             format(
-                "  %s (%s)\n      ausgeführt  HitRate@5=%.3f MRR@8=%.3f nDCG@8=%.3f Recall@8=%.3f\n",
+                "  %s (%s)\n      ausgeführt  HitRate@5=%.3f MRR@20=%.3f nDCG@20=%.3f Recall@20=%.3f\n",
                 paddedName,
                 describeOverrides(outcome.variant().queryOverrides()),
                 a.hitRateAt5(),
-                a.mrrAt8(),
-                a.ndcgAt8(),
-                a.recallAt8()));
+                a.mrrAt20(),
+                a.ndcgAt20(),
+                a.recallAt20()));
         if (outcome.multiRun() != null) {
           sb.append(renderMultiRun(outcome.multiRun()));
         }
@@ -72,28 +72,28 @@ public final class VariantReportWriter {
       var d = comparison.aggregateDelta();
       sb.append(
           format(
-              "%s vs. %s: ΔHitRate@5=%+.3f ΔMRR@8=%+.3f ΔnDCG@8=%+.3f ΔRecall@8=%+.3f\n",
+              "%s vs. %s: ΔHitRate@5=%+.3f ΔMRR@20=%+.3f ΔnDCG@20=%+.3f ΔRecall@20=%+.3f\n",
               comparison.variantName(),
               report.referenceVariant(),
               d.hitRateAt5Delta(),
-              d.mrrAt8Delta(),
-              d.ndcgAt8Delta(),
-              d.recallAt8Delta()));
-      long improved = comparison.caseDeltas().stream().filter(c -> c.ndcgAt8Delta() > 0).count();
-      long regressed = comparison.caseDeltas().stream().filter(c -> c.ndcgAt8Delta() < 0).count();
+              d.mrrAt20Delta(),
+              d.ndcgAt20Delta(),
+              d.recallAt20Delta()));
+      long improved = comparison.caseDeltas().stream().filter(c -> c.ndcgAt20Delta() > 0).count();
+      long regressed = comparison.caseDeltas().stream().filter(c -> c.ndcgAt20Delta() < 0).count();
       sb.append(
           format(
-              "  %d von %d Fällen verbessert, %d verschlechtert (nach nDCG@8)\n",
+              "  %d von %d Fällen verbessert, %d verschlechtert (nach nDCG@20)\n",
               improved, comparison.caseDeltas().size(), regressed));
       comparison.caseDeltas().stream()
-          .filter(c -> c.ndcgAt8Delta() < 0)
+          .filter(c -> c.ndcgAt20Delta() < 0)
           .limit(5)
           .forEach(
               c ->
                   sb.append(
                       format(
-                          "    [%s] ΔnDCG@8=%+.3f — \"%s\"\n",
-                          c.category(), c.ndcgAt8Delta(), c.query())));
+                          "    [%s] ΔnDCG@20=%+.3f — \"%s\"\n",
+                          c.category(), c.ndcgAt20Delta(), c.query())));
     }
     return sb.toString();
   }
@@ -108,18 +108,18 @@ public final class VariantReportWriter {
     StringBuilder sb = new StringBuilder();
     // The "median=" figure below is the median VALUE of that one metric across the runs, computed
     // independently per metric — it can therefore come from a different run than the "Median-Lauf"
-    // named here, which is chosen once, by nDCG@8 (see MultiRunAggregator#medianIndexByNdcg), and
+    // named here, which is chosen once, by nDCG@20 (see MultiRunAggregator#medianIndexByNdcg), and
     // is what the delta against the reference variant above this block actually compares. Reading
     // every "median=" figure as if it came from that same single run is the apparent contradiction
     // this note heads off.
     sb.append(
         format(
-            "      %d Läufe (Median-Lauf, gewählt nach nDCG@8, gegen Referenz verglichen):\n",
+            "      %d Läufe (Median-Lauf, gewählt nach nDCG@20, gegen Referenz verglichen):\n",
             summary.runCount()));
     sb.append(format("        HitRate@5: %s\n", renderRange(summary.hitRateAt5())));
-    sb.append(format("        MRR@8:     %s\n", renderRange(summary.mrrAt8())));
-    sb.append(format("        nDCG@8:    %s\n", renderRange(summary.ndcgAt8())));
-    sb.append(format("        Recall@8:  %s\n", renderRange(summary.recallAt8())));
+    sb.append(format("        MRR@20:     %s\n", renderRange(summary.mrrAt20())));
+    sb.append(format("        nDCG@20:    %s\n", renderRange(summary.ndcgAt20())));
+    sb.append(format("        Recall@20:  %s\n", renderRange(summary.recallAt20())));
     sb.append(
         format(
             "        Zerlegung wich bei %d Fällen zwischen den Läufen ab%s\n",

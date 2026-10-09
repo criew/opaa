@@ -11,7 +11,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *
  * @param topK the number of chunks that reach the answer prompt. {@link
  *     RetrievalStageName#RANK_FUSION} caps the fused list at it, or - with reranking active - the
- *     reranker restores the cap after re-scoring the wider window. Default 8; at most 100.
+ *     reranker restores the cap after re-scoring the wider window. Default 20; at most 100.
  * @param fetchK candidates each search query retrieves, per search path, before the narrowing
  *     stages work on them. Default 25, normalized to {@code max(25, topK)} when unset so a
  *     deployment that raised {@code topK} alone does not fail the {@code fetchK >= topK} check.
@@ -72,7 +72,7 @@ public record QueryProperties(
 
   public QueryProperties {
     if (topK <= 0) {
-      topK = 8;
+      topK = 20;
     }
     if (topK > 100) {
       throw new IllegalArgumentException("topK must be at most 100, got " + topK);

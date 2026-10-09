@@ -38,7 +38,7 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   `fetchK`, `mmrLambda`, `similarityThreshold`, `queryDecompositionEnabled`, `maxSubQueries`,
   `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049), `rerankCandidateCount`
   (seit Issue #1050; `0` ist die Variante ohne Reranking). `topK` ist bewusst kein
-  Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt8`, …) sind an das
+  Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt20`, …) sind an das
   Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
 - Eine Variante mit `fullTextSearchEnabled: true` wird als „nicht ausgeführt" gemeldet, solange der
   Volltextindex der gemessenen Bibliothek unvollständig ist: Die fehlenden Abschnitte sind für den

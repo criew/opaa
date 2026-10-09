@@ -91,6 +91,24 @@ pnpm run format                         # Automatisch mit Prettier formatieren
 helm lint . -f ci/minimal-values.yaml
 helm template opaa . -f ci/full-values.yaml
 
+# Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
+deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
+                                        # deploy/helm/opaa/ci/*-values.yaml, kubeconform gegen die
+                                        # drei unterstützten Kubernetes-Versionen, Prüfung der
+                                        # Abbruchregeln; braucht helm und kubeconform. Neue
+                                        # Wertesätze dort ablegen, sie werden automatisch geprüft
+deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdatenbank, dann
+                                        # ct install in einen Namespace mit Pod Security Standard
+                                        # restricted; wartet auf Backend und Frontend und führt
+                                        # helm test aus, ohne LLM. Braucht kubectl, helm, ct und
+                                        # einen kind-Cluster mit den Images aus dem Commit:
+                                        #   kind create cluster
+                                        #   docker build -f backend/Dockerfile -t opaa-ci/backend:ci .
+                                        #   docker build -f frontend/Dockerfile -t opaa-ci/frontend:ci .
+                                        #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
+                                        # In CI bei Änderungen am Chart und an den Image-Dateien,
+                                        # nightly und per Label "helm-suite"
+
 # E2E-Suite (aus e2e/, siehe e2e/README.md)
 pnpm install                            # Abhängigkeiten installieren
 pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)
@@ -247,6 +265,7 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
 - `deploy/helm/opaa/` — Helm-Chart für den Kubernetes-Betrieb (Single-Instance), siehe [ADR-0042](docs/decisions/0042-kubernetes-lieferung-mit-helm.md); eine betriebsrelevante Änderung zieht ihn im selben PR nach
 - `docs/renovate.md` — selbst betriebene Abhängigkeits-Updates (Renovate, Issue #751); Regeln in `renovate.json5`
+- `docs/releases.md` — Release-Verfahren: Versions-Tags `vX.Y.Z`, unveränderliche Release-Images, Versionszählung, Patch-Releases für Sicherheitsupdates (Issue #2350)
 - `docs/sbom.md` — Software Bill of Materials: Image-Attestierungen und CycloneDX-CI-Artefakte (Issue #1078)
 - `docs/cve-scanning.md` — CVE-Erkennung: Dependabot-Alerts, Trivy-Image-Scan und Triage-Verfahren (Issues #1079, #1450)
 - `eval/` — Korpora, Golden Datasets und Generatoren der Suchqualitäts-Evaluierung, siehe `eval/README.md`. Liegt bewusst außerhalb von Gradle-Build und CI; die Generatoren laufen nur bei bewussten Korpus-Änderungen, nie automatisch. Der Metrik-Harness selbst ist ein Integrationstest im Backend

@@ -134,6 +134,16 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s]+)',
       ],
     },
+    // Die Werkzeuge der Chart-Prüfung (#2355) stehen als Umgebungsvariable, Action-Eingabe oder
+    // Matrix-Eintrag direkt unter ihrem Kommentar. Die älteste unterstützte Helm-3-Version trägt
+    // bewusst keinen Kommentar: Sie ist eine Zusage aus ADR-0042, kein Stand zum Nachziehen.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['.github/workflows/helm-chart.yml'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*(?:[A-Za-z_]+:|-)\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)',
+      ],
+    },
   ],
 
   packageRules: [
@@ -234,7 +244,7 @@
       prBodyColumns: ['Package', 'Type', 'Update', 'Change'],
     },
     // Docker-Basisimages sind im Projekt BEWUSST gleitende Tags (node:22-alpine,
-    // nginx:alpine, pgvector/pgvector:pg18, eclipse-temurin:21-jdk — siehe Kommentar in
+    // nginxinc/nginx-unprivileged:alpine, pgvector/pgvector:pg18, eclipse-temurin:21-jdk — siehe Kommentar in
     // e2e/docker-compose.e2e.yml zu PR #453). pinDigests: false ist derzeit ohnehin der
     // Default; die Regel schreibt die Entscheidung fest, damit ein künftiger Preset- oder
     // Renovate-Wechsel sie nicht still kippt. Major-Tag-Wechsel (z. B. node 22 → 24)
@@ -270,6 +280,21 @@
     {
       matchPackageNames: ['quay.io/keycloak/keycloak'],
       automerge: false,
+    },
+    // Die Werkzeuge der Chart-Prüfung prüft nur der Helm-Workflow, und der ist kein Required
+    // Check. Ein Bump, der etwa nicht zur gepinnten chart-testing-action oder zum kind-Node-Image
+    // passt, bliebe sonst unbeaufsichtigt auf main; ein Vorschlag bleibt als PR zur Entscheidung.
+    {
+      matchFileNames: ['.github/workflows/helm-chart.yml'],
+      automerge: false,
+    },
+    // Helm 4 im Helm-Workflow pflegt der eigene Regex-Manager (customManagers oben); ohne diese
+    // Regel schlüge der github-actions-Manager denselben Bump über setup-helm ein zweites Mal vor.
+    {
+      matchManagers: ['github-actions'],
+      matchDepNames: ['helm'],
+      matchFileNames: ['.github/workflows/helm-chart.yml'],
+      enabled: false,
     },
     // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
     // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21

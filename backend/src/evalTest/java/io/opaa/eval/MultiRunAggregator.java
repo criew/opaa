@@ -69,17 +69,17 @@ final class MultiRunAggregator {
     }
 
     List<Double> hitRateAt5 = new ArrayList<>(runs.size());
-    List<Double> mrrAt8 = new ArrayList<>(runs.size());
-    List<Double> ndcgAt8 = new ArrayList<>(runs.size());
-    List<Double> recallAt8 = new ArrayList<>(runs.size());
+    List<Double> mrrAt20 = new ArrayList<>(runs.size());
+    List<Double> ndcgAt20 = new ArrayList<>(runs.size());
+    List<Double> recallAt20 = new ArrayList<>(runs.size());
     for (RunView run : runs) {
       hitRateAt5.add(run.overall().hitRateAt5());
-      mrrAt8.add(run.overall().mrrAt8());
-      ndcgAt8.add(run.overall().ndcgAt8());
-      recallAt8.add(run.overall().recallAt8());
+      mrrAt20.add(run.overall().mrrAt20());
+      ndcgAt20.add(run.overall().ndcgAt20());
+      recallAt20.add(run.overall().recallAt20());
     }
 
-    int medianRunIndex = medianIndexByNdcg(ndcgAt8);
+    int medianRunIndex = medianIndexByNdcg(ndcgAt20);
 
     Map<String, List<String>> subQueriesByCaseIdInFirstRun = runs.get(0).subQueriesByCaseId();
 
@@ -103,9 +103,9 @@ final class MultiRunAggregator {
     return new MultiRunSummary(
         runs.size(),
         range(hitRateAt5),
-        range(mrrAt8),
-        range(ndcgAt8),
-        range(recallAt8),
+        range(mrrAt20),
+        range(ndcgAt20),
+        range(recallAt20),
         medianRunIndex,
         deviatingCaseIds.size(),
         List.copyOf(deviatingCaseIds));
@@ -125,17 +125,17 @@ final class MultiRunAggregator {
   }
 
   /**
-   * The run whose nDCG@8 is the median value — nDCG@8 is the finest-grained of the four metrics
+   * The run whose nDCG@20 is the median value — nDCG@20 is the finest-grained of the four metrics
    * (docs/features/retrieval-benchmark.md, Teil 0), so it is the tie-breaking choice among the four
    * possible "median run" candidates when the odd-length {@link #DECOMPOSITION_RUN_COUNT} runs
    * don't already agree on which run is the middle one for every metric at once.
    */
-  private static int medianIndexByNdcg(List<Double> ndcgAt8) {
+  private static int medianIndexByNdcg(List<Double> ndcgAt20) {
     List<Integer> indicesByValue = new ArrayList<>();
-    for (int i = 0; i < ndcgAt8.size(); i++) {
+    for (int i = 0; i < ndcgAt20.size(); i++) {
       indicesByValue.add(i);
     }
-    indicesByValue.sort((a, b) -> Double.compare(ndcgAt8.get(a), ndcgAt8.get(b)));
+    indicesByValue.sort((a, b) -> Double.compare(ndcgAt20.get(a), ndcgAt20.get(b)));
     return indicesByValue.get(indicesByValue.size() / 2);
   }
 

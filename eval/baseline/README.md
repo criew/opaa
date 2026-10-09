@@ -15,11 +15,11 @@ Baselines:
 |---|---|---|---|
 | `comic-characters.json` | Rohvektor (`similaritySearch` direkt) | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | `measurementContractVersion` |
 | `city-landmarks.json` | Rohvektor | dieselben | `measurementContractVersion` |
-| `pipeline-comic-characters.json` | Pipeline (Schritte 2–6 der Produktion) | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
+| `pipeline-comic-characters.json` | Pipeline (Schritte 2–6 der Produktion) | Hit Rate@5, MRR@20, nDCG@20, Recall@20 | `pipelineMeasurementContractVersion` |
 | `pipeline-city-landmarks.json` | Pipeline | dieselben | `pipelineMeasurementContractVersion` |
 | `verwaltung.json` | Rohvektor | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | `measurementContractVersion` |
-| `pipeline-verwaltung.json` | Pipeline | Hit Rate@5, MRR@8, nDCG@8, Recall@8 | `pipelineMeasurementContractVersion` |
-| `pipeline-verwaltung-conversations.json` | Mehrrunden (Issue #1484) | Hit Rate@5, MRR@8, nDCG@8, Recall@8, **je Runde** | `conversationMeasurementContractVersion` |
+| `pipeline-verwaltung.json` | Pipeline | Hit Rate@5, MRR@20, nDCG@20, Recall@20 | `pipelineMeasurementContractVersion` |
+| `pipeline-verwaltung-conversations.json` | Mehrrunden (Issue #1484) | Hit Rate@5, MRR@20, nDCG@20, Recall@20, **je Runde** | `conversationMeasurementContractVersion` |
 
 Die Pipeline-Baseline von `city-landmarks` ist seit Issue #1081 gezogen, aus dem CPU-Artefakt eines
 erfolgreichen, label-ausgelösten Regressionslaufs (Run 33437536393, Branch von PR #1084) statt aus
@@ -30,11 +30,12 @@ dieser Domäne liefern damit ein Urteil (`checkCityLandmarksRetrievalBaseline` p
 `null`.
 
 **Die beiden Pfade sind nicht ineinander umrechenbar** (ADR-0012, Nachtrag „Pipeline-Messpfad",
-Entscheidung 12): Der Pipeline-Pfad wendet die Produktionsschwelle tatsächlich an und misst am
-engeren Fenster, seine Recall-Werte liegen deshalb systematisch niedriger. Eine Zahl aus einer
+Entscheidung 12): Der Pipeline-Pfad wendet die Produktionsschwelle tatsächlich an und misst an einem
+Fenster aus Chunk-Plätzen (`top-k`, seit #2373 20), nicht aus Dokumenten. Eine Zahl aus einer
 `pipeline-*.json` neben einer aus der gleichnamigen Rohvektor-Datei zu stellen, ohne das Fenster zu
 nennen, ist ein Auswertungsfehler — deshalb tragen die Feldnamen ihr Fenster selbst
-(`mrrAt8`/`ndcgAt8`/`recallAt8`/`hitCountAt8`/`allExpectedDocumentsHitAt8` gegen `mrr`/`ndcgAt10`/…).
+(`mrrAt20`/`ndcgAt20`/`recallAt20`/`hitCountAt20`/`allExpectedDocumentsHitAt20` gegen `mrr`/`ndcgAt10`/…;
+bis #2373 `mrrAt8` usw. am damaligen `top-k` 8).
 
 **Eine Pipeline-Baseline überschreibt nie eine Rohvektor-Baseline.** Der Dateiname wird in
 `EvalDomainConfig.pipelineBaselineFileName()` aus dem Rohvektor-Namen mit festem `pipeline-`-Präfix
@@ -571,9 +572,9 @@ Gleiche Gliederung wie oben, mit drei Unterschieden:
   `decomposition-off`, weil sein Kontext kein Chat-Modell hat. Ein Modellname auf nur einer der
   beiden Seiten macht die Baseline ungültig, statt einen Lauf „mit Zerlegung" gegen einen ohne zu
   vergleichen.
-- **`groups` führt die Metriken am @8-Fenster**: `hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`,
-  `recallAt8Ceiling`, `distinctExpectedDocumentSets`, `hitCountAt5`, `hitCountAt8`,
-  `allExpectedDocumentsHitAt8`.
+- **`groups` führt die Metriken am Fenster der Produktion, seit #2373 @20**: `hitRateAt5`, `mrrAt20`,
+  `ndcgAt20`, `recallAt20`, `recallAt20Ceiling`, `distinctExpectedDocumentSets`, `hitCountAt5`,
+  `hitCountAt20`, `allExpectedDocumentsHitAt20` (bis #2373 dieselben Felder mit `At8`).
 
 ### Erstziehung (2026-08-31)
 
@@ -593,6 +594,16 @@ Der Rohvektor-Lauf desselben Tages traf die committete Baseline aus #228 auf jed
 Metrik im Rahmen der Rundung (größtes Delta 0,001, keine Prüfung verletzt) — die Erweiterung hat an
 dieser Messung nichts verändert.
 
+### Neuziehung mit `top-k` 20 (2026-10-09, Issue #2373)
+
+Der Produktions-Default `top-k` stieg von 8 auf 20, und mit ihm das Fenster des Pipeline- und des
+Mehrrunden-Pfads. Alle drei `pipeline-*.json` und `pipeline-verwaltung-conversations.json` sind aus
+CPU-Testcontainer-Läufen dieses Tages neu gezogen (Pipeline-Messvertrag 20, Mehrrunden-Messvertrag 10).
+Die Rohvektor-Baselines behalten ihre Zahlen; jede Rangfolge ihres Pfads war identisch zum Lauf
+davor. `verwaltung.json` und `comic-characters.json` tragen nur den neuen Golden-Hash, weil
+Pipeline-Zustände und -Gründe im selben Datensatz nachgezogen sind. Vorher/Nachher je Domäne und die
+Ursache jeder sinkenden Zahl stehen in ADR-0012, Nachtrag top-k 20, und in den `notes` der Dateien.
+
 ### Fehlerkriterium: unverändert ADR-0013
 
 Toleranzformel, fallzahlbasierte Konjunktion (#306) und die Kombination aus baseline-relativer und
@@ -601,9 +612,10 @@ Beide Vergleicher erzeugen ihre Prüfungen über dieselbe Methode
 (`BaselineComparator.metricCheck`), können also nicht auseinanderlaufen.
 
 **Eine Abweichung, bewusst und vorab festgelegt:** die *festen* Anker der harten Untergrenze. Der
-Pipeline-Pfad misst am engeren Fenster und mit angewandter Schwelle und liegt aus diesen Gründen
-systematisch niedriger als der Rohvektor-Pfad, an dessen Zahlen ADR-0013s Anker kalibriert sind.
-Für den Pipeline-Pfad gelten deshalb Hit Rate@5 ≥ 0,15 und MRR@8/nDCG@8/Recall@8 ≥ 0,125 — die
+Pipeline-Pfad misst mit angewandter Schwelle an einem Fenster aus Chunk-Plätzen und lag bei der
+Festlegung (damals `top-k` 8) systematisch niedriger als der Rohvektor-Pfad, an dessen Zahlen
+ADR-0013s Anker kalibriert sind.
+Für den Pipeline-Pfad gelten deshalb Hit Rate@5 ≥ 0,15 und MRR/nDCG/Recall am Pipeline-Fenster ≥ 0,125 — die
 Hälfte der jeweiligen ADR-0013-Werte, **vor** der ersten Messung festgelegt, damit die Untergrenze
 nicht am Ergebnis entlang gewählt wird. Die relative Komponente (0,8 · Baselinewert) ist unverändert
 und dominiert wie beim Rohvektor-Pfad im Regelfall.
@@ -642,9 +654,9 @@ Dasselbe Verfahren wie unten, mit zwei Präzisierungen:
   Baselines bewegt hat, statt einen Pipelinewechsel unentdeckt gegen die Retrieval-Metriken laufen zu
   lassen (ADR-0012, Nachtrag Ingestion-Pipeline-Fixpunkt). Seit Issue #1650 steht dahinter
   `contextPrefixFingerprint` (siehe [Kontextpräfix-Form](#kontextpräfix-form-issue-1650)).
-- `hitCountAt5`/`hitCountAt8` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
+- `hitCountAt5`/`hitCountAt20` stehen nicht in der Textausgabe; sie werden aus `allQueryResults` des
   Pipeline-Reports (`build/eval-reports/pipeline-metrics-<domäne>.json`) desselben Laufs gezählt
-  (`hitRateAt5 > 0` bzw. `ndcgAt8 > 0`) — nicht aus den Mittelwerten zurückgerechnet.
+  (`hitRateAt5 > 0` bzw. `ndcgAt20 > 0`) — nicht aus den Mittelwerten zurückgerechnet.
 
 ## Besonderheiten der Mehrrunden-Baseline (Issues #1484/#1485/#1490)
 

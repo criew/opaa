@@ -581,7 +581,7 @@ class PipelineBaselineComparatorTest {
         .allSatisfy(check -> assertThat(check.hardFloor()).isEqualTo(Double.NEGATIVE_INFINITY));
     assertThat(result.checks())
         .filteredOn(
-            check -> Baseline.OVERALL.equals(check.group()) && "ndcgAt8".equals(check.metric()))
+            check -> Baseline.OVERALL.equals(check.group()) && "ndcgAt20".equals(check.metric()))
         .singleElement()
         .satisfies(check -> assertThat(check.hardFloor()).isGreaterThan(0.0));
   }
@@ -622,7 +622,7 @@ class PipelineBaselineComparatorTest {
               assertThat(c.passesHardFloor()).isFalse();
             });
     assertThat(overall)
-        .filteredOn(c -> List.of("mrrAt8", "ndcgAt8", "recallAt8").contains(c.metric()))
+        .filteredOn(c -> List.of("mrrAt20", "ndcgAt20", "recallAt20").contains(c.metric()))
         .hasSize(3)
         .allSatisfy(
             c -> {

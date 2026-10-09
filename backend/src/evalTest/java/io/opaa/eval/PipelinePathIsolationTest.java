@@ -76,12 +76,13 @@ class PipelinePathIsolationTest {
     // from issue #2033 (PdfDocumentFormat#version() moved 1 -> 2, ruled tables one line per row),
     // plus 1 from issue #2330 (PdfDocumentFormat#version() moved 2 -> 3, raised sentence numbers),
     // plus 1 from issues #2327/#2328 (nine format versions moved, oversized sections split),
-    // plus 1 from issue #2331 (nine format versions moved, tiny sections combined)
+    // plus 1 from issue #2331 (nine format versions moved, tiny sections combined), plus 1 from
+    // issue #2373 (production top-k 8 -> 20, ranking window @20; this path only)
     // — counted independently of the raw-vector path above, whose own count (2 plus the same
     // #1144/#1164/#1183/#1070/#1242/#1315/#1357/#1522/#1652/#1650/#2033/#2330/#2327/#2331 bumps)
     // moves
     // for unrelated reasons at unrelated points in its history.
-    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(19);
+    assertThat(PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION).isEqualTo(20);
   }
 
   @Test

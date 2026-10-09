@@ -51,8 +51,8 @@ class ReferenceVariantSelfCheckTest {
 
   /**
    * A measurement whose runs differ in a reproducible way: run 0 misses, runs 1 and 2 hit. The
-   * median-by-nDCG@8 run is therefore run 1 and never run 0 — which is what makes this fixture able
-   * to tell "median on both sides" apart from "median against a single first run".
+   * median-by-nDCG@20 run is therefore run 1 and never run 0 — which is what makes this fixture
+   * able to tell "median on both sides" apart from "median against a single first run".
    */
   private static Supplier<PipelineEvaluationReport> unstableMeasurement() {
     AtomicInteger call = new AtomicInteger();

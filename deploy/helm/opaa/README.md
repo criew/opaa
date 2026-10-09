@@ -122,3 +122,8 @@ helm test opaa -n opaa
 
 `helm test` ruft `/api/health` über den Frontend-Service ab und prüft damit die Kette
 Frontend-nginx → Backend.
+
+Die CI (`.github/workflows/helm-chart.yml`) rendert den Chart mit jedem Wertesatz unter
+[`ci/`](ci/), prüft die Manifeste mit Helm 3.8 und Helm 4 gegen die unterstützten
+Kubernetes-Versionen und installiert ihn auf kind. Die Skripte dazu liegen unter
+[`deploy/helm/ci/`](../ci/).

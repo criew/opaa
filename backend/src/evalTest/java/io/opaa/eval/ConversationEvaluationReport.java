@@ -15,7 +15,7 @@ import java.util.Map;
  * shape would invite exactly the unlabelled side-by-side comparison ADR-0012's Nachtrag zum
  * Pipeline-Messpfad rules out. The metric mathematics is <b>not</b> duplicated: a turn is measured
  * by {@link RetrievalMetrics} and aggregated by {@link PipelineMetricsAggregate} at this path's own
- * windows, which are the pipeline path's (Hit Rate@5, MRR@8, nDCG@8, Recall@8).
+ * windows, which are the pipeline path's (Hit Rate@5, MRR@20, nDCG@20, Recall@20).
  *
  * @param singlePathNote records once per report that this measurement runs on the pipeline path
  *     alone - see {@link #SINGLE_PATH_NOTE}.
@@ -91,8 +91,11 @@ public record ConversationEvaluationReport(
    * <p>Version 9 (issue #2331): runs of sections below 200 characters are combined under their
    * common heading, row groups of very wide tables keep half the target size - nine format versions
    * moved; fingerprint-only, every corpus chunk stays byte-identical.
+   *
+   * <p>Version 10 (issue #2373): the production top-k rose from 8 to 20, and with it the per-turn
+   * ranking window shared with the pipeline path (MRR@20, nDCG@20, Recall@20). Re-measured.
    */
-  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 9;
+  public static final int CONVERSATION_MEASUREMENT_CONTRACT_VERSION = 10;
 
   /**
    * The Einpfad-Regel of docs/features/retrieval-benchmark.md §5, recorded <b>once per report</b>:
@@ -211,10 +214,10 @@ public record ConversationEvaluationReport(
       List<String> expectedDocuments,
       List<String> rankedFileNames,
       Double hitRateAt5,
-      Double reciprocalRankAt8,
-      Double ndcgAt8,
-      Double recallAt8,
-      Double allExpectedDocumentsHitAt8,
+      Double reciprocalRankAt20,
+      Double ndcgAt20,
+      Double recallAt20,
+      Double allExpectedDocumentsHitAt20,
       Integer hitRateMargin,
       Integer rankingMargin,
       boolean solved,
