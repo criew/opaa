@@ -671,13 +671,23 @@ Die Einträge folgen der Syntax von Content Security Policy Level 3: ein Origin,
 (`https://*.example.org` erlaubt `login.example.org`, nicht aber `example.org` selbst); ohne Port
 gilt der Standardport des Schemas. Ein Pfad im Eintrag schränkt die Quelle ein:
 `https://login.example.org/realms/opaa` erlaubt weder das Discovery-Dokument noch den
-`token_endpoint`, deshalb nur Origins eintragen. Nach denselben Regeln prüft die Ausgabe von
-`helm install` und `helm upgrade` das Discovery-Dokument unter `bootstrap.oidc.issuerUri`: Erlaubt
-die Policy es nicht, warnt sie mit „ANMELDUNG ÜBER … WIRD BLOCKIERT“. Dieselbe Warnung erscheint,
-wenn der Issuer per `http` erreichbar ist und `publicBaseUrl` per `https`: Der Browser sperrt den
-Aufruf dann als Mixed Content, ausgenommen sind nur `localhost` und `127.0.0.1`. Den `token_endpoint` kann Helm nicht prüfen, weil es das
-Discovery-Dokument nicht abruft; liegt der Issuer auf einem anderen Origin als `publicBaseUrl`,
-erinnert die Ausgabe deshalb an ihn und nennt die Adresse des Discovery-Dokuments.
+`token_endpoint`, `https://login.example.org/realms/opaa/` nur das Discovery-Dokument, denn der
+`token_endpoint` liegt meist unter einem anderen Pfad. Deshalb nur Origins eintragen.
+
+Nach denselben Regeln prüft die Ausgabe von `helm install` und `helm upgrade` den Eintrag gegen
+`bootstrap.oidc.issuerUri`:
+
+- Erlaubt die Policy den ganzen Origin des Issuers, bestätigt die Ausgabe das.
+- Erlaubt ein Eintrag mit Pfad nur das Discovery-Dokument, weist sie darauf hin, dass der
+  `token_endpoint` gesperrt bleiben kann.
+- Erlaubt sie nicht einmal das Discovery-Dokument, warnt sie mit „ANMELDUNG ÜBER … WIRD BLOCKIERT“.
+  Dieselbe Warnung erscheint, wenn der Issuer per `http` erreichbar ist und `publicBaseUrl` per
+  `https`: Der Browser sperrt den Aufruf dann als Mixed Content. Ausgenommen sind Adressen des
+  eigenen Rechners: `localhost` und seine Subdomains, `127.0.0.0/8` und `[::1]`.
+
+Den `token_endpoint` selbst kann Helm nicht prüfen, weil es das Discovery-Dokument nicht abruft.
+Liegt der Issuer auf einem anderen Origin als `publicBaseUrl`, erinnert die Ausgabe deshalb an ihn
+und nennt die Adresse des Discovery-Dokuments.
 
 Stellt eine hauseigene CA das Zertifikat des Anbieters aus, gehört sie nach `extraCACertificates`.
 Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht unter
