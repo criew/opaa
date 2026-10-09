@@ -26,3 +26,15 @@ if [ "$VALID" != true ]; then
 fi
 
 mkdir -p "$NGINX_ENVSUBST_OUTPUT_DIR"
+
+# nginx.conf includes /tmp/nginx/listen.d/*.conf in its server block. The IPv6 listen is only
+# written where the kernel offers IPv6 - the same /proc/net/if_inet6 check the base image uses -
+# because a [::] listen without it aborts nginx with "Address family not supported".
+LISTEN_DIR=/tmp/nginx/listen.d
+mkdir -p "$LISTEN_DIR"
+if [ -f /proc/net/if_inet6 ]; then
+  echo 'listen [::]:8080;' > "$LISTEN_DIR/ipv6.conf"
+else
+  rm -f "$LISTEN_DIR/ipv6.conf"
+  echo "$ME: info: ipv6 not available, listening on IPv4 only"
+fi
