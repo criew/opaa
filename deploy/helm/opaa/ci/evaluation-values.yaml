@@ -1,7 +1,7 @@
-# Smallest set of values a fresh installation needs; the secrets are throwaway test values.
-publicBaseUrl: https://opaa.example.org
-database:
-  host: postgres.example.org
+# Evaluation setup: database inside the release, originals on a volume.
+publicBaseUrl: http://localhost:8080
+evaluationDatabase:
+  enabled: true
 embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
   model: nomic-embed-text
@@ -15,7 +15,9 @@ bootstrap:
 secrets:
   jwtSecret: ci-only-jwt-secret-0123456789abcdefghijklmnop
   databasePassword: ci-only-password
-  credentialsEncryptionKey: bjzhjv2AKbnBjZCYAR2V/Glp7TYZzqABwkqXs3lEyCY=
-  settingsEncryptionKey: CH1X+hsIYeijer8S9wq5wKRnQa4DpUPePzw4KxGMTMw=
+  credentialsEncryptionKey: 3J0X7GKz9q3Hq1zEo2mJ1n5Q2k8m3r9T4v6w8y0A2c4=
+  settingsEncryptionKey: Zm9yLWNpLW9ubHktc2V0dGluZ3Mta2V5LTAxMjM0NTY=
 uploads:
   store: persistentVolumeClaim
+  persistence:
+    fsGroup: 65532

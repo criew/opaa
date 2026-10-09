@@ -8,7 +8,148 @@
     "database",
     "embedding",
     "bootstrap",
-    "secrets"
+    "secrets",
+    "uploads"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "evaluationDatabase": {
+            "properties": {
+              "enabled": {
+                "const": false
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "database": {
+            "required": [
+              "host"
+            ],
+            "properties": {
+              "host": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "uploads": {
+            "properties": {
+              "store": {
+                "const": "s3"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "uploads": {
+            "properties": {
+              "s3": {
+                "required": [
+                  "endpoint",
+                  "bucket"
+                ],
+                "properties": {
+                  "endpoint": {
+                    "type": "string",
+                    "pattern": "^https?://\\S+$"
+                  },
+                  "bucket": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "uploads": {
+            "properties": {
+              "store": {
+                "const": "s3"
+              }
+            }
+          },
+          "secrets": {
+            "properties": {
+              "existingSecret": {
+                "const": ""
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "secrets": {
+            "required": [
+              "s3AccessKey",
+              "s3SecretKey"
+            ],
+            "properties": {
+              "s3AccessKey": {
+                "type": "string",
+                "minLength": 1
+              },
+              "s3SecretKey": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "rerank": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "rerank": {
+            "required": [
+              "baseUrl",
+              "model"
+            ],
+            "properties": {
+              "baseUrl": {
+                "type": "string",
+                "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$"
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
   ],
   "properties": {
     "global": {
@@ -54,8 +195,7 @@
       "additionalProperties": false,
       "properties": {
         "host": {
-          "type": "string",
-          "minLength": 1
+          "type": "string"
         },
         "port": {
           "type": "integer",
@@ -68,14 +208,256 @@
         "username": {
           "type": "string",
           "minLength": 1
+        },
+        "schema": {
+          "type": "string",
+          "pattern": "^([a-z_][a-z0-9_]{0,62})?$",
+          "description": "Plain lower-case identifier (OPAA_DB_SCHEMA); empty: public"
+        },
+        "sslMode": {
+          "type": "string",
+          "enum": [
+            "",
+            "disable",
+            "allow",
+            "prefer",
+            "require",
+            "verify-ca",
+            "verify-full"
+          ]
         }
       },
       "required": [
-        "host",
         "port",
         "name",
         "username"
       ]
+    },
+    "evaluationDatabase": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "image": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repository": {
+              "type": "string",
+              "minLength": 1
+            },
+            "tag": {
+              "type": "string"
+            },
+            "digest": {
+              "type": "string",
+              "pattern": "^(sha256:[a-f0-9]{64})?$"
+            },
+            "pullPolicy": {
+              "type": "string",
+              "enum": [
+                "Always",
+                "IfNotPresent",
+                "Never"
+              ]
+            }
+          },
+          "required": [
+            "repository"
+          ]
+        },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "size": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "storageClassName": {
+              "type": "string"
+            }
+          }
+        },
+        "resources": {
+          "type": "object"
+        }
+      }
+    },
+    "rerank": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+        }
+      }
+    },
+    "mail": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "connectTimeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+        },
+        "readTimeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+        },
+        "writeTimeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+        }
+      }
+    },
+    "targetValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "indexingAllowlist": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "identityProviderAllowlist": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "uploads": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "store": {
+          "type": "string",
+          "enum": [
+            "s3",
+            "persistentVolumeClaim"
+          ]
+        },
+        "s3": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "endpoint": {
+              "type": "string",
+              "pattern": "^(https?://\\S+)?$"
+            },
+            "bucket": {
+              "type": "string"
+            },
+            "region": {
+              "type": "string",
+              "minLength": 1
+            },
+            "pathStyle": {
+              "type": "boolean"
+            },
+            "keyPrefix": {
+              "type": "string"
+            }
+          }
+        },
+        "persistence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "existingClaim": {
+              "type": "string"
+            },
+            "size": {
+              "type": [
+                "string",
+                "integer"
+              ]
+            },
+            "storageClassName": {
+              "type": "string"
+            },
+            "accessModes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1
+            },
+            "fsGroup": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "required": [
+        "store"
+      ]
+    },
+    "filesystemSources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9]([-a-z0-9]{0,53}[a-z0-9])?$"
+          },
+          "mountPath": {
+            "type": "string",
+            "pattern": "^/\\S+$"
+          },
+          "volume": {
+            "type": "object",
+            "minProperties": 1,
+            "description": "A Kubernetes volume source, e.g. persistentVolumeClaim or nfs"
+          }
+        },
+        "required": [
+          "name",
+          "mountPath",
+          "volume"
+        ]
+      }
+    },
+    "extraCACertificates": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "configMap": {
+          "type": "string"
+        },
+        "secret": {
+          "type": "string"
+        }
+      }
     },
     "embedding": {
       "type": "object",
@@ -182,10 +564,19 @@
         "settingsEncryptionKey": {
           "type": "string"
         },
+        "s3AccessKey": {
+          "type": "string"
+        },
+        "s3SecretKey": {
+          "type": "string"
+        },
         "embeddingApiKey": {
           "type": "string"
         },
         "chatApiKey": {
+          "type": "string"
+        },
+        "rerankApiKey": {
           "type": "string"
         },
         "initialAdminPassword": {
@@ -382,26 +773,10 @@
             }
           }
         },
-        "tmp": {
-          "type": "object",
-          "additionalProperties": false,
-          "properties": {
-            "sizeLimit": {
-              "type": [
-                "string",
-                "integer"
-              ]
-            },
-            "medium": {
-              "type": "string",
-              "enum": [
-                "",
-                "Memory"
-              ]
-            }
-          }
+        "initResources": {
+          "type": "object"
         },
-        "uploads": {
+        "tmp": {
           "type": "object",
           "additionalProperties": false,
           "properties": {

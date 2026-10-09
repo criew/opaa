@@ -3069,6 +3069,48 @@ docker compose down -v
 > und in welcher Reihenfolge, steht unter
 > [„Nacharbeit nach einer Rücksicherung der Datenbank"](#nacharbeit-nach-einer-rücksicherung-der-datenbank).
 
+### Voraussetzungen einer eigenen PostgreSQL
+
+Der mitgelieferte Compose-Stapel startet PostgreSQL mit einem Superuser-Konto; dort ist nichts
+vorzubereiten. Eine Datenbank des Rechenzentrums stellt OPAA dagegen meist ein Konto ohne
+Superuser-Rechte zur Verfügung. Die Schemamigration braucht dann zwei Dinge, die ein
+Datenbankverwalter **vor dem ersten Start** einmalig anlegt:
+
+```sql
+-- in der Datenbank von OPAA, als Superuser:
+CREATE EXTENSION vector;
+-- nur, wenn das Konto von OPAA nicht CREATEROLE hat:
+CREATE ROLE opaa_audit_owner NOLOGIN;
+GRANT opaa_audit_owner TO opaa WITH ADMIN OPTION;
+```
+
+- **Erweiterung `vector`** (pgvector 0.8.0 oder neuer). Sie muss auf dem Datenbankserver installiert
+  sein, etwa über das Image `pgvector/pgvector` oder das Paket `postgresql-<Version>-pgvector`.
+  Anlegen darf sie ein Superuser; verwaltete Dienste (etwa Amazon RDS, Azure Database for
+  PostgreSQL, Google Cloud SQL) erlauben es auch ihrer eigenen Verwaltungsrolle.
+- **Rolle `opaa_audit_owner`.** Ihr gehören die Protokolltabellen, damit das Konto von OPAA sie
+  nicht löschen kann. Hat das Konto `CREATEROLE`, legt die Migration die Rolle selbst an. Eine
+  vorab angelegte Rolle braucht `WITH ADMIN OPTION`, sonst scheitert die Migration mit
+  `permission denied to grant role`.
+
+Daneben muss das Konto in der Datenbank Objekte anlegen dürfen, am einfachsten als Eigentümer der
+Datenbank. Für ein eigenes Schema gelten die Regeln im folgenden Abschnitt.
+
+Fehlt ein Recht, bricht die Migration mit der Meldung von PostgreSQL ab, etwa
+`permission denied to create extension "vector"`. Ist pgvector auf dem Server gar nicht installiert,
+prüft OPAA das vor der Migration und bricht mit einem eigenen Bericht ab, weil die Meldung von
+PostgreSQL in diesem Fall verloren ginge:
+
+```text
+APPLICATION FAILED TO START
+
+Description:
+The PostgreSQL server has the pgvector extension not installed; the schema migration of OPAA needs it (CREATE EXTENSION vector).
+
+Action:
+Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/deployment.md, section "Datenbank".
+```
+
 ### Eigenes Datenbankschema
 
 Ohne weitere Angabe legt OPAA alles im Schema `public` an. Mit `OPAA_DB_SCHEMA` lässt sich ein

@@ -42,23 +42,132 @@ containerSecurityContext:
       - ALL
 
 database:
-  # External PostgreSQL with the pgvector extension. The password comes from the secret
-  # (key OPAA_DB_PASSWORD).
+  # External PostgreSQL with the pgvector extension (0.8.0 or later). The password comes from the
+  # secret (key OPAA_DB_PASSWORD). Before the first start, unless the account is a superuser, a
+  # database administrator runs in the database:
+  #   CREATE EXTENSION vector;
+  #   CREATE ROLE opaa_audit_owner NOLOGIN;  -- or: grant the account CREATEROLE
+  #   GRANT opaa_audit_owner TO <username> WITH ADMIN OPTION;
+  # Managed services (RDS, Azure, Cloud SQL) let their administrator role create the extension.
+  # Without pgvector on the server the backend stops with a report naming the fix.
+  # Empty while evaluationDatabase.enabled: then the chart's own evaluation database is used.
   host: ""
   port: 5432
   name: opaa
   username: opaa
+  # Schema for all tables of OPAA (OPAA_DB_SCHEMA); must exist before the first start. Empty: public.
+  schema: ""
+  # sslmode of the JDBC driver: disable, allow, prefer, require, verify-ca or verify-full. Empty
+  # keeps the driver default (prefer). verify-ca and verify-full check the server certificate
+  # against the Java truststore: the public CAs plus extraCACertificates.
+  sslMode: ""
+
+# A PostgreSQL with pgvector inside the release, ONLY FOR EVALUATION: no backup, no replication, no
+# upgrade path across major versions. Production uses the database of the data centre or an
+# operator such as CloudNativePG (ADR-0042, Entscheidung 3). It runs as the image's postgres account
+# (UID 999), which platforms assigning UIDs themselves (OpenShift restricted-v2) refuse.
+evaluationDatabase:
+  enabled: false
+  image:
+    repository: docker.io/pgvector/pgvector
+    tag: pg18
+    digest: ""
+    pullPolicy: IfNotPresent
+  persistence:
+    size: 8Gi
+    storageClassName: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 1Gi
 
 # Embedding endpoint (OpenAI-compatible API), read on every start. The key, if the endpoint needs
-# one, comes from the secret (key OPAA_OPENAI_EMBEDDING_API_KEY).
+# one, comes from the secret (key OPAA_OPENAI_EMBEDDING_API_KEY). A model server inside the cluster
+# is addressed by its service, e.g. Ollama: http://ollama.ai.svc.cluster.local:11434/v1
 embedding:
-  # e.g. http://ollama.ai.svc.cluster.local:11434/v1
   baseUrl: ""
   # e.g. nomic-embed-text
   model: ""
   # Dimensions of the embedding model, e.g. 768 for nomic-embed-text, 1536 for
   # text-embedding-3-small. Cannot be changed later without re-indexing.
   dimensions: null
+
+# Rerank endpoint (POST {baseUrl}/rerank), read on every start. The key, if needed, comes from the
+# secret (key OPAA_RERANK_API_KEY).
+rerank:
+  enabled: false
+  # Without the path /rerank and without credentials in the address, e.g. http://reranker.ai:80
+  baseUrl: ""
+  # e.g. BAAI/bge-reranker-v2-m3
+  model: ""
+  # Budget of one rerank request; empty keeps the application default (240s).
+  timeout: ""
+
+# Time limits of the SMTP connection. The mail server itself is an administration setting in the
+# user interface, not a value of the chart. Empty keeps the application defaults (10s, 15s, 15s).
+mail:
+  connectTimeout: ""
+  readTimeout: ""
+  writeTimeout: ""
+
+# Host names exempted from the address check (SSRF protection), which refuses private and
+# cluster-internal addresses by default.
+targetValidation:
+  # Sources of libraries inside the cluster or the data centre, e.g. an in-house S3 endpoint or
+  # Confluence (OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST).
+  indexingAllowlist: []
+  # Further identity providers added in the user interface; the bootstrap provider is always
+  # allowed (OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST).
+  identityProviderAllowlist: []
+
+# Where the original documents of uploaded libraries are kept.
+uploads:
+  # s3 (recommended): an S3-compatible object store; the access keys come from the secret (keys
+  # OPAA_UPLOAD_S3_ACCESS_KEY, OPAA_UPLOAD_S3_SECRET_KEY).
+  # persistentVolumeClaim: a volume mounted at /app/uploads (ReadWriteOnce suffices).
+  store: s3
+  s3:
+    # Required, e.g. https://s3.example.org; for AWS https://s3.<region>.amazonaws.com with
+    # pathStyle: false.
+    endpoint: ""
+    bucket: ""
+    region: us-east-1
+    # Path-style addressing (https://endpoint/bucket); most in-house stores need it.
+    pathStyle: true
+    # Prefix of every object key, e.g. opaa/
+    keyPrefix: ""
+  persistence:
+    # Use an existing claim instead of creating one.
+    existingClaim: ""
+    size: 20Gi
+    storageClassName: ""
+    accessModes:
+      - ReadWriteOnce
+    # Group the volume is made writable for (the backend runs as 65532). Empty by default, so that
+    # platforms assigning UIDs themselves need no override; set 65532 if the volume is not writable.
+    fsGroup: null
+
+# Directories the FILESYSTEM connector may index, each mounted read-only. Their mount paths form the
+# allowlist of the connector (OPAA_INDEXING_FILESYSTEM_ALLOWLIST); without entries the source type
+# is switched off.
+#   - name: shared-drive
+#     mountPath: /data/shared-drive
+#     volume:
+#       persistentVolumeClaim:
+#         claimName: shared-drive
+#     # or e.g. nfs: { server: nas.example.org, path: /export/opaa }
+filesystemSources: []
+
+# CA certificates trusted in addition to the public CAs of the backend's Java runtime: for an
+# identity provider, model endpoint, object store or database with an internal PKI. Every key of
+# the ConfigMap or Secret is read, and every PEM certificate in it, so a bundle (e.g. from
+# trust-manager) works as well. An init container writes the runtime's CAs plus these into a fresh
+# truststore on every start, so image updates keep bringing new public CAs.
+extraCACertificates:
+  configMap: ""
+  secret: ""
 
 # Bootstrap values: read once, on the very first start, and taken over into the database.
 # Afterwards the user interface leads; changing them here has no effect on a running installation.
@@ -86,7 +195,9 @@ secrets:
   # key reaches the backend only with its next restart (kubectl rollout restart).
   #   required: OPAA_AUTH_JWT_SECRET, OPAA_DB_PASSWORD, OPAA_CREDENTIALS_ENCRYPTION_KEY,
   #             OPAA_SETTINGS_ENCRYPTION_KEY
-  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_OPENAI_CHAT_API_KEY, OPAA_INITIAL_ADMIN_PASSWORD
+  #   required with uploads.store s3: OPAA_UPLOAD_S3_ACCESS_KEY, OPAA_UPLOAD_S3_SECRET_KEY
+  #   optional: OPAA_OPENAI_EMBEDDING_API_KEY, OPAA_OPENAI_CHAT_API_KEY, OPAA_RERANK_API_KEY,
+  #             OPAA_INITIAL_ADMIN_PASSWORD
   existingSecret: ""
   # Values for a secret created by the chart. The chart never generates a key: a generated key is
   # lost with helm template, in GitOps tools or on reinstallation (ADR-0042, Entscheidung 5).
@@ -97,8 +208,11 @@ secrets:
   # encrypted with it unreadable - keep a copy outside of the cluster.
   credentialsEncryptionKey: ""
   settingsEncryptionKey: ""
+  s3AccessKey: ""
+  s3SecretKey: ""
   embeddingApiKey: ""
   chatApiKey: ""
+  rerankApiKey: ""
   initialAdminPassword: ""
 
 backend:
@@ -137,6 +251,14 @@ backend:
     limits:
       memory: 2Gi
 
+  # Init containers importing extraCACertificates into the truststore (one keytool run each).
+  initResources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
   # The first start runs the schema migration before the probes can answer; the startup probe
   # gives it periodSeconds * failureThreshold (here 10 minutes) before liveness and readiness begin.
   startupProbe:
@@ -158,11 +280,6 @@ backend:
     sizeLimit: 2Gi
     # Set to "Memory" for a tmpfs; then the size counts against the memory limit.
     medium: ""
-
-  # Original documents of uploaded libraries (OPAA_UPLOAD_STORAGE_PATH). Without persistence they
-  # are lost with the pod.
-  uploads:
-    sizeLimit: 10Gi
 
   service:
     port: 8080

@@ -10,7 +10,11 @@ nicht mitgeliefert.
 
 - Kubernetes in einer der drei jüngsten gepflegten Minor-Versionen
 - Helm 4 oder Helm 3 ab 3.8
-- eine erreichbare PostgreSQL-Datenbank mit der Erweiterung `vector`
+- eine erreichbare PostgreSQL-Datenbank mit pgvector 0.8.0 oder neuer; ohne Superuser-Konto legt ein
+  Datenbankverwalter vorher Erweiterung und gegebenenfalls Rolle an (`values.yaml`, Abschnitt `database`, und
+  Handbuch „Voraussetzungen einer eigenen PostgreSQL“). Zum Ausprobieren gibt es
+  `evaluationDatabase.enabled` - nicht für den Betrieb.
+- für die Originale ein S3-kompatibler Objektspeicher (empfohlen) oder ein Volume
 - ein OpenAI-kompatibler Endpunkt für Einbettung und Chat
 
 ## Installation aus dem Repository
@@ -36,6 +40,19 @@ Die Schlüssel erzeugt der Betreiber selbst:
 
 Für den Betrieb wird statt der Werte ein vorhandenes Secret empfohlen (`secrets.existingSecret`). Welche
 Schlüssel es enthalten muss, steht in [`values.yaml`](values.yaml).
+
+## Was der Chart anbindet
+
+| Werte | Wofür |
+|---|---|
+| `database` | externe PostgreSQL, mit `sslMode` und eigenem `schema` |
+| `evaluationDatabase` | PostgreSQL im Release, **nur zur Erprobung** |
+| `uploads` | Originalablage im Objektspeicher (`s3`, Vorgabe) oder auf einem Volume (`persistentVolumeClaim`) |
+| `filesystemSources` | Verzeichnisse für den Dateisystem-Konnektor, nur lesend eingehängt |
+| `extraCACertificates` | eigene CA-Zertifikate für Identitätsanbieter, Modelle, Objektspeicher und Datenbank |
+| `embedding`, `rerank` | Modell-Endpunkte, auch im Cluster (etwa Ollama über seinen Service) |
+| `mail` | Zeitgrenzen der SMTP-Verbindung; den Mailserver richtet die Oberfläche ein |
+| `targetValidation` | Ausnahmen der Adressprüfung für Quellen und Identitätsanbieter im eigenen Netz |
 
 ## Was der Chart festlegt
 

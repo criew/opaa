@@ -42,7 +42,21 @@ GEHEIMNISSE
   die damit gespeicherten Zugangsdaten unlesbar - Kopie außerhalb des Clusters aufbewahren.
 {{- end }}
 
-ORIGINALABLAGE OHNE PERSISTENZ
-  Hochgeladene Originale liegen in einem emptyDir und gehen mit dem Pod verloren.
+{{- if .Values.evaluationDatabase.enabled }}
+
+ERPROBUNGSDATENBANK - NICHT FÜR DEN BETRIEB
+  Die Datenbank läuft im Release ({{ include "opaa.evaluationDatabase.fullname" . }}), ohne Sicherung,
+  ohne Replikation und ohne Aktualisierungspfad über Hauptversionen. Für den Betrieb eine
+  Datenbank des Rechenzentrums oder einen Operator wie CloudNativePG anbinden.
+{{- end }}
+
+ORIGINALABLAGE
+{{- if eq .Values.uploads.store "s3" }}
+  Objektspeicher: Bucket {{ .Values.uploads.s3.bucket }}{{ with .Values.uploads.s3.endpoint }} auf {{ . }}{{ end }}.
+  Zustand: GET /actuator/health/upload-store (mit Anmeldung).
+{{- else }}
+  Volume {{ include "opaa.uploads.claimName" . }} unter /app/uploads. Es bleibt bei helm uninstall
+  erhalten und gehört in die Sicherung, zusammen mit der Datenbank.
+{{- end }}
 
 Prüfen: helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

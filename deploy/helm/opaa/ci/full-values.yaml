@@ -5,6 +5,8 @@ database:
   port: 5433
   name: opaa_prod
   username: opaa_app
+  schema: opaa
+  sslMode: verify-full
 embedding:
   baseUrl: https://models.example.org/v1
   model: text-embedding-3-small
@@ -21,6 +23,33 @@ bootstrap:
     model: gpt-4.1-mini
 secrets:
   existingSecret: opaa-secrets
+uploads:
+  store: s3
+  s3:
+    endpoint: https://s3.example.org
+    bucket: opaa-originals
+    keyPrefix: prod/
+rerank:
+  enabled: true
+  baseUrl: http://reranker.ai.svc.cluster.local:80
+  model: BAAI/bge-reranker-v2-m3
+  timeout: 120s
+mail:
+  connectTimeout: 5s
+targetValidation:
+  indexingAllowlist:
+    - confluence.example.org
+  identityProviderAllowlist:
+    - login2.example.org
+filesystemSources:
+  - name: shared-drive
+    mountPath: /data/shared-drive
+    volume:
+      nfs:
+        server: nas.example.org
+        path: /export/opaa
+extraCACertificates:
+  configMap: internal-ca
 backend:
   image:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
