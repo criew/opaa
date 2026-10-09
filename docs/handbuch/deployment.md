@@ -912,11 +912,16 @@ Einschränkungen ein, die ein Kubernetes-Cluster mit Pod Security Standard `rest
 
 - **Ohne root:** Der Prozess läuft als Benutzer `101` und lauscht auf **Port 8080**. Der Compose-Stack
   bildet den Host-Port `OPAA_FRONTEND_PORT` darauf ab.
+- **IPv4 und IPv6:** nginx lauscht auf Port 8080 über IPv4 und, wenn der Container IPv6 hat, auch
+  über IPv6. Ein Healthcheck oder eine Probe kann deshalb `localhost` verwenden, und in IPv6-only-
+  oder Dual-Stack-Clustern ist das Frontend über beide Adressfamilien erreichbar. Ob IPv6 vorhanden
+  ist, entscheidet der Container beim Start anhand von `/proc/net/if_inet6`. Fehlt die Datei, weil
+  der Kernel ohne IPv6 läuft, lauscht nginx nur über IPv4 und meldet das im Protokoll.
 - **Nur lesbares Dateisystem:** Beim Start schreibt der Container ausschließlich unter `/tmp`. Dort
-  liegen die erzeugte Serverkonfiguration (`/tmp/nginx/conf.d/`), die PID-Datei und die
-  Zwischenablage für Uploads. Der Compose-Stack startet den Dienst deshalb mit `read_only: true`,
-  `/tmp` als `tmpfs`, ohne Capabilities und mit `no-new-privileges`. Unter Kubernetes gehört ein
-  `emptyDir` nach `/tmp`.
+  liegen die erzeugte Serverkonfiguration (`/tmp/nginx/conf.d/`, `/tmp/nginx/listen.d/`), die
+  PID-Datei und die Zwischenablage für Uploads. Der Compose-Stack startet den Dienst deshalb mit
+  `read_only: true`, `/tmp` als `tmpfs`, ohne Capabilities und mit `no-new-privileges`. Unter
+  Kubernetes gehört ein `emptyDir` nach `/tmp`.
 - **`/tmp` ist unter Compose Arbeitsspeicher:** Das `tmpfs` ist auf 512 MiB begrenzt. Dort puffert
   nginx Uploads und, bei langsamen Clients, große Antworten des Backends. Je Antwort ist der
   Puffer begrenzt, darüber liefert nginx im Takt des Clients aus. Reicht der Platz bei vielen
@@ -1170,7 +1175,7 @@ Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und soll
 | Variable | Erforderlicher Wert | Warum |
 |----------|---------------------|-------|
 | `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert Docker-spezifische Konfiguration (DB-URL, openai-kompatible Basis-Adresse) und den Auth-Modus; ohne `oidc` oder `dev` startet das Backend nicht |
-| `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend muss an alle Schnittstellen binden, um von anderen Containern erreichbar zu sein |
+| `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend muss an alle Schnittstellen binden, um von anderen Containern erreichbar zu sein. `0.0.0.0` bindet unter Java IPv4 und, wo vorhanden, IPv6; `::` dagegen verhindert den Start in einem Container ohne IPv6 |
 | `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Muss mit dem Host-Port des Frontends übereinstimmen |
 | `OPAA_DB_USERNAME` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
 | `OPAA_DB_PASSWORD` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
