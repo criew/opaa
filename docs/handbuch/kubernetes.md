@@ -133,6 +133,7 @@ printf '%s' '<Passwort des Datenbankkontos>' > OPAA_DB_PASSWORD
 printf '%s' '<Zugangsschlüssel des Objektspeichers>' > OPAA_UPLOAD_S3_ACCESS_KEY
 printf '%s' '<Geheimschlüssel des Objektspeichers>' > OPAA_UPLOAD_S3_SECRET_KEY
 kubectl -n opaa create secret generic opaa-secrets --from-file=.
+cd ..
 ```
 
 Jede Datei wird ein Schlüssel des Secrets, ihr Name ist der Schlüsselname. `tr -d '\n'` und
@@ -483,7 +484,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `backend.tmp.sizeLimit`, `.medium` | `2Gi`, leer | — | `emptyDir` unter `/tmp`; `Memory` macht daraus ein tmpfs, das gegen die Speichergrenze zählt |
 | `backend.service.port` | `8080` | — | Port des Backend-Service |
 | `backend.podAnnotations`, `.podLabels`, `.nodeSelector`, `.tolerations`, `.affinity` | leer | — | Planung und Kennzeichnung des Pods |
-| `backend.extraEnv`, `.extraEnvFrom` | leer | beliebige | weitere Variablen, etwa eine `OPAA_*`-Einstellung ohne eigenen Wert; `SPRING_PROFILES_*` und `JAVA_TOOL_OPTIONS` werden abgelehnt |
+| `backend.extraEnv`, `.extraEnvFrom` | leer | beliebige | weitere Variablen, etwa eine `OPAA_*`-Einstellung ohne eigenen Wert; `SPRING_PROFILES_*` und `JAVA_TOOL_OPTIONS` lehnt der Chart in `extraEnv` ab. Den Inhalt einer Quelle aus `extraEnvFrom` prüft er nicht; dort gehören sie ebenso wenig hin |
 | `backend.extraVolumes`, `.extraVolumeMounts` | leer | — | weitere Volumes |
 
 Fest gesetzt und nicht über Werte änderbar sind `SPRING_PROFILES_ACTIVE=oidc`,
@@ -896,6 +897,15 @@ Hinweise zum Aufruf:
   alten Image.
 - **Backend und Frontend immer in derselben Version.** Beides folgt aus der Chart-Version, solange
   kein Tag und kein Digest gesetzt ist.
+- **Installation aus einem Checkout:** `helm upgrade opaa deploy/helm/opaa -n opaa -f opaa-werte.yaml`
+  braucht bei jedem Aufruf wieder `--set backend.image.tag=main --set frontend.image.tag=main`. Ohne
+  sie fällt der Tag auf die Version des Charts im Repository zurück, `0.0.0-dev`, zu der es kein Image
+  gibt, und der neue Pod bleibt in `ImagePullBackOff`.
+- **Der Tag `main` bringt mit `helm upgrade` allein kein neues Image.** Bleibt der Tag gleich, ändert
+  sich die Pod-Vorlage nicht, und mit `pullPolicy: IfNotPresent` verwendet der Knoten das vorhandene
+  Image weiter. Einen neuen Stand von `main` holt entweder ein Digest in `backend.image.digest` und
+  `frontend.image.digest`, der die Pod-Vorlage ändert, oder `pullPolicy: Always` zusammen mit
+  `kubectl -n opaa rollout restart deploy/opaa-backend deploy/opaa-frontend`.
 
 Ob die Aktualisierung den Index berührt, steht unter
 [Was ein Update mit dem Index macht](deployment.md#was-ein-update-mit-dem-index-macht).
@@ -904,38 +914,47 @@ Ob die Aktualisierung den Index berührt, steht unter
 
 Liquibase migriert das Schema beim Start und **nur vorwärts**. `helm rollback` stellt Manifeste und
 Images der alten Revision wieder her, nicht die Datenbank. Eine ältere Fassung auf einem neueren Schema
-wird nicht unterstützt.
+wird nicht unterstützt. **Der verlässliche Rückweg auf eine ältere Version ist deshalb die
+Datenbanksicherung von vor dem Upgrade.**
 
-Ob die Aktualisierung das Schema geändert hat, zeigt die Tabelle `databasechangelog`. Vor und nach dem
-Upgrade, mit einem eigenen Schema vorangestellt:
+Ein Signal dafür, ob die Aktualisierung das Schema geändert hat, gibt die Tabelle `databasechangelog`.
+Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
 
 ```sql
 SELECT count(*) FROM databasechangelog;
 ```
 
-- **Gleiche Zahl:** keine Schemaänderung. `helm rollback` genügt:
+- **Gleiche Zahl:** Kein Changeset ist hinzugekommen. `helm rollback` ist dann der vorgesehene Weg,
+  aber keine Garantie: Eine neue Version kann Daten in einer Form schreiben, die die alte nicht liest,
+  ohne dass dafür ein Changeset nötig war, etwa einen neuen Wert in einer Spalte ohne Prüfregel. Zeigt
+  die alte Version danach Fehler, bleibt die Sicherung der Rückfall, wie unten beschrieben.
 
   ```bash
   helm history opaa -n opaa
   helm rollback opaa <Revision> -n opaa
   ```
 
-- **Größere Zahl:** Das Schema ist migriert. Zurück geht es nur über die Sicherung von vor dem Upgrade:
+- **Größere Zahl:** Das Schema ist migriert. Zurück geht es ausschließlich über die Sicherung von vor
+  dem Upgrade:
 
   1. Backend anhalten: `kubectl -n opaa scale deploy/opaa-backend --replicas=0`
   2. Die Datenbank aus der Sicherung wiederherstellen, auf eine leere Datenbank.
-  3. `helm rollback opaa <Revision> -n opaa` auf die Revision vor dem Upgrade.
-  4. Prüfen, dass das Backend wieder mit einer Instanz läuft (`kubectl -n opaa get deploy`), sonst
+  3. `OPAA_AUTH_JWT_SECRET` im Secret durch einen neuen Wert ersetzen, **bevor** das Backend auf der
+     zurückgespielten Datenbank startet. Die beiden Verschlüsselungsschlüssel bleiben unverändert.
+  4. `helm rollback opaa <Revision> -n opaa` auf die Revision vor dem Upgrade.
+  5. Prüfen, dass das Backend wieder mit einer Instanz läuft (`kubectl -n opaa get deploy`), sonst
      `kubectl -n opaa scale deploy/opaa-backend --replicas=1`.
-  5. Die [Nacharbeit nach einer Rücksicherung der Datenbank](deployment.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
-     erledigen.
+  6. Die übrige [Nacharbeit nach einer Rücksicherung der Datenbank](deployment.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
+     erledigen: die Sperren und Rücksetzungen der Zwischenzeit erneut vornehmen.
 
   Alles, was seit der Sicherung entstanden ist, ist danach verloren: Uploads, Chats, Rechteänderungen.
   Originale, die in dieser Zeit hochgeladen wurden, bleiben als verwaiste Originale liegen (siehe
   [Verwaiste Originale aufräumen](deployment.md#verwaiste-originale-aufräumen)).
 
 Ein Upgrade, dessen neuer Pod nie bereit wurde, kann trotzdem einen Teil der Migration ausgeführt
-haben. Auch dann entscheidet die Zahl der Zeilen.
+haben. Auch dann gilt die Zahl der Zeilen als Signal. Wurde der Pod mitten in der Migration beendet,
+etwa von der Startup-Probe, bleibt außerdem die Sperre in `databasechangeloglock` stehen, und jeder
+weitere Start wartet auf sie (siehe [Fehlersuche](#installation-und-start)).
 
 ## Sicherung und Wiederherstellung
 
@@ -960,14 +979,16 @@ vorher existieren (siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.m
 Wiederhergestellt wird mit einem Konto, das Eigentümer setzen darf, damit die Protokolltabellen
 `opaa_audit_owner` gehören.
 
-**Wiederherstellung auf einem neuen Cluster.** Namespace und Secret mit **denselben** Schlüsseln
-anlegen, Originale und Datenbank zurückspielen, dann den Chart mit derselben Werte-Datei und derselben
-Version installieren. Die Startwerte wirken dabei nicht erneut, weil die Datenbank sie bereits enthält.
+**Wiederherstellung auf einem neuen Cluster.** Namespace und Secret anlegen, mit **denselben**
+Verschlüsselungsschlüsseln und demselben Datenbankpasswort, aber einem **neuen**
+`OPAA_AUTH_JWT_SECRET`. Originale und Datenbank zurückspielen, dann den Chart mit derselben
+Werte-Datei und derselben Version installieren. Die Startwerte wirken dabei nicht erneut, weil die Datenbank sie bereits enthält.
 
 **Nach jeder Rücksicherung der Datenbank** gehört die
 [Nacharbeit nach einer Rücksicherung der Datenbank](deployment.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
-dazu: `OPAA_AUTH_JWT_SECRET` im Secret ersetzen, das Backend neu starten und die Sperren der
-Zwischenzeit erneut setzen. Sind Fremdzugänge in Betrieb, folgt die Prüfliste aus
+dazu: `OPAA_AUTH_JWT_SECRET` im Secret ersetzen, bevor das Backend auf der zurückgespielten Datenbank
+startet, und die Sperren der Zwischenzeit erneut setzen. `OPAA_CREDENTIALS_ENCRYPTION_KEY` und
+`OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Sind Fremdzugänge in Betrieb, folgt die Prüfliste aus
 [Fremdzugänge](fremdzugaenge.md).
 
 ## Betriebsüberwachung
@@ -1106,6 +1127,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | `ImagePullBackOff` mit dem Tag `0.0.0-dev` | Installation aus dem Repository ohne `backend.image.tag` und `frontend.image.tag` |
 | Pod wird vom Namespace abgewiesen | Die Erprobungsdatenbank unter einer Plattform, die Kennungen selbst zuweist; oder ein eigener Wert in `podSecurityContext`, der `restricted` verletzt |
 | Backend startet wiederholt neu, das Protokoll zeigt eine laufende Migration | Die Migration braucht länger, als die Startup-Probe erlaubt. `backend.startupProbe.failureThreshold` anheben |
+| Backend wird nie bereit, das Protokoll zeigt `Waiting for changelog lock` | Ein früherer Start wurde mitten in der Migration beendet, etwa von der Startup-Probe, und die Sperre in `databasechangeloglock` ist stehen geblieben. Backend anhalten (`kubectl -n opaa scale deploy/opaa-backend --replicas=0`), in der Datenbank `UPDATE databasechangeloglock SET locked = false, lockgranted = null, lockedby = null WHERE id = 1;` ausführen, mit einem eigenen Schema vorangestellt, und das Backend wieder auf eine Instanz setzen. Vorher die Startup-Probe großzügiger stellen, sonst wiederholt sich der Abbruch |
 | `APPLICATION FAILED TO START` mit dem Hinweis auf pgvector | pgvector ist auf dem Datenbankserver nicht installiert (siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql)) |
 | Migration bricht mit `permission denied to create extension "vector"` oder `permission denied to grant role` ab | Die Vorbereitung der Datenbank fehlt, siehe derselbe Abschnitt |
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |

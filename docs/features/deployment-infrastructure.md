@@ -82,8 +82,8 @@ Die Ausbaustufen der Anwendung sind dieselben. Was sich unterscheidet, ist der B
 außerhalb der Prozesse, jeder Dienst ist neustartbar, und keine Instanz hält Wissen, das nicht auch
 woanders steht.
 
-Das Projekt liefert dafür einen Helm-Chart als Bestandteil jedes Releases, veröffentlicht neben
-den Images in GHCR ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md), Epic #2346); den
+Das Projekt liefert dafür einen Helm-Chart; jedes Release veröffentlicht ihn neben den Images in
+GHCR ([ADR-0042](../decisions/0042-kubernetes-lieferung-mit-helm.md), Epic #2346); den
 Betrieb damit beschreibt [kubernetes.md](../handbuch/kubernetes.md). Er
 bildet zunächst die Single-Instance-Stufe nach
 [ADR-0021](../decisions/0021-single-instance-betrieb.md) ab: eine Backend-Instanz, Aktualisierung mit
