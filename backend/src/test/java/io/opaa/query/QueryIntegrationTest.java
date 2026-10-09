@@ -436,12 +436,12 @@ class QueryIntegrationTest {
     // gives the user a real, non-empty readable set with a second, ungranted library present in
     // the same store, and asserts on the *count* of results, not just their content.
     //
-    // The granted library A (13 chunks in 11 documents) and ungranted library B (250 chunks) are
+    // The granted library A (23 chunks in 21 documents) and ungranted library B (250 chunks) are
     // deliberately lopsided, and every B chunk is strictly closer to the question than every A
     // chunk (see the embedding offset below), so a broken, post-hoc filter is distinguishable from
     // the correct, search-time one at fetchK=25 candidates: the correct filter only ever sees A's
-    // 13 members and returns all of them as candidates - MmrSelector then narrows those 13 down to
-    // topK (8), all "a"-prefixed. A post-filter would request the unfiltered top-25 of 263
+    // 23 members and returns all of them as candidates - MmrSelector then narrows those 23 down to
+    // topK (20), all "a"-prefixed. A post-filter would request the unfiltered top-25 of 273
     // candidates first, which are then all of B, and be left with nothing authorized to answer
     // from. See the PR description for the reproduction: reverting QueryService's
     // filterExpression(...) call turns this test red while every other test in this class,
@@ -505,7 +505,7 @@ class QueryIntegrationTest {
               true,
               java.util.List.of());
 
-      // Exactly topK (8, application.yml default) retrieved chunks, every one of them from the
+      // Exactly topK (20, application.yml default) retrieved chunks, every one of them from the
       // granted library - the count itself is the assertion that matters (see the comment above).
       // Summed matchCount, not response.sources().size(): with #grantedChunksWithOneMulti
       // ChunkDocument's tied candidates, how many of doc-a-multi's chunks the ANN tie order keeps
@@ -513,7 +513,7 @@ class QueryIntegrationTest {
       assertThat(response.sources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
       assertThat(response.sources().stream().mapToInt(ChatSource::getMatchCount).sum())
-          .isEqualTo(8);
+          .isEqualTo(20);
     } finally {
       vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
       jdbcTemplate.update("DELETE FROM assets WHERE id = ?", ungrantedLibraryId);
@@ -523,15 +523,15 @@ class QueryIntegrationTest {
   /**
    * The granted pool {@link
    * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem} and
-   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share: ten
-   * single-chunk documents ({@code doc-a-0}..{@code doc-a-9}) plus {@code doc-a-multi}'s three
-   * chunks - 13 granted chunks over 11 distinct documents - so {@code DocumentCompletion} (#932)
-   * actually runs its tier-1 eviction (a document already holding two chunks) against this
+   * {@link #queryFiltersEveryDecomposedSubQuerysSimilaritySearchByTheSameGrantedLibrary} share:
+   * twenty single-chunk documents ({@code doc-a-0}..{@code doc-a-19}) plus {@code doc-a-multi}'s
+   * three chunks - 23 granted chunks over 21 distinct documents - so {@code DocumentCompletion}
+   * (#932) actually runs its tier-1 eviction (a document already holding two chunks) against this
    * permission-filtered pool, not just single-chunk documents that only tier 2 can touch.
    *
-   * <p>All 13 tie under {@code FakeEmbeddingModel} (see the first caller's comment), so a plain
-   * top-k-by-tied-score selection's exact choice of 8 - and in particular how many of {@code
-   * doc-a-multi}'s three chunks land in that top 8 - is <b>not</b> pinned by this method's chunk
+   * <p>All 23 tie under {@code FakeEmbeddingModel} (see the first caller's comment), so a plain
+   * top-k-by-tied-score selection's exact choice of 20 - and in particular how many of {@code
+   * doc-a-multi}'s three chunks land in that top 20 - is <b>not</b> pinned by this method's chunk
    * placement; that ANN tie order is not something a test may assume. Both callers therefore assert
    * on the retrieved <em>chunk</em> count (always exactly {@code topK}, summed via {@code
    * ChatSource#getMatchCount()}) rather than the distinct <em>source</em> count, which would vary
@@ -558,7 +558,7 @@ class QueryIntegrationTest {
     for (int chunkIndex = 0; chunkIndex < 3; chunkIndex++) {
       chunks.add(multiChunkDocumentChunk(chunkIndex));
     }
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 20; i++) {
       chunks.add(
           new Document(
               "Granted content " + i,
@@ -592,7 +592,7 @@ class QueryIntegrationTest {
   /**
    * #923's guard for the multi-sub-query path
    * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit): the same
-   * 250-unauthorized-vs-10 authorized setup as {@link
+   * 250-unauthorized-vs-23 authorized setup as {@link
    * #queryOnlyReturnsChunksFromTheGrantedLibraryEvenWhenUnauthorizedChunksWouldOutscoreThem}, but
    * with query decomposition forced to two sub-queries (a two-line decomposition response) so every
    * one of {@code VectorSearchStage}'s per-sub-query {@code similaritySearch} calls - not only the
@@ -647,16 +647,16 @@ class QueryIntegrationTest {
               true,
               java.util.List.of());
 
-      // Exactly topK (8) retrieved chunks: each sub-query is independently MMR-narrowed to the
+      // Exactly topK (20) retrieved chunks: each sub-query is independently MMR-narrowed to the
       // full topK before fusion (#923 review) - with both sub-queries returning the identical,
       // fully-overlapping authorized candidate set (FakeEmbeddingModel ties every embedding), the
-      // fused result is exactly that same set of 8, not fewer. Summed matchCount, not
+      // fused result is exactly that same set of 20, not fewer. Summed matchCount, not
       // response.sources().size() - see #grantedChunksWithOneMultiChunkDocument's Javadoc for
       // why the distinct-source count is not pinned by this fixture.
       assertThat(response.sources())
           .allSatisfy(source -> assertThat(source.getFileName()).startsWith("a"));
       assertThat(response.sources().stream().mapToInt(ChatSource::getMatchCount).sum())
-          .isEqualTo(8);
+          .isEqualTo(20);
     } finally {
       vectorChunkStore.deleteByLibraryId(ungrantedLibraryId);
       jdbcTemplate.update("DELETE FROM assets WHERE id = ?", ungrantedLibraryId);

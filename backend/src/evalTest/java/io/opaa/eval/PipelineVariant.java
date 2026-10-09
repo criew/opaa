@@ -41,7 +41,7 @@ public record PipelineVariant(
   /**
    * Partial override of {@link io.opaa.retrieval.QueryProperties}. Every field is nullable/boxed:
    * {@code null} means "inherit the production value", not zero. {@code topK} is deliberately not a
-   * field here — the pipeline path's metric component names ({@code hitRateAt5}, {@code ndcgAt8},
+   * field here — the pipeline path's metric component names ({@code hitRateAt5}, {@code ndcgAt20},
    * …) are pinned to the production window (docs/features/retrieval-benchmark.md §1, "Folgen für
    * Messvertrag und Baselines", 4.), and a variant that changed it would need a new window and new
    * component names, not a silently relabeled report.

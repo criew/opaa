@@ -46,7 +46,11 @@ Einzelfragen-Pipeline-Pfad nicht mehr) und den
 [Nachtrag zu Runden ohne Suchbedarf](#nachtrag-runden-ohne-suchbedarf-issue-1684)
 (Issue #1684: eine Mehrrunden-Runde kann keine Suche erwarten und steht dann außerhalb aller
 Metrik-Aggregate, Mehrrunden-Messvertrag 5, neue Klasse `answer_continuation`, Temperatur eines
-externen Befundlaufs einstellbar).
+externen Befundlaufs einstellbar) und den
+[Nachtrag zu top-k 20](#nachtrag-produktionsfenster-top-k-20-issue-2373)
+(Issue #2373: der Produktions-Default `top-k` steigt von 8 auf 20, das Fenster des Pipeline- und
+des Mehrrunden-Pfads mit ihm, Feldnamen @20, Messvertrag-Versionen Pipeline 20, Mehrrunden 10,
+Rohvektor unverändert; vier Baselines neu gezogen).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -1622,3 +1626,69 @@ den 0,70 der Demo. Ohne `opaa.eval.chatBaseUrl` weist der Harness die Eigenschaf
 des gepinnten Modells beruhen auf Temperatur 0. Die Temperatur ist kein Festpunkt; ein externer Lauf
 ist über `chatModel` ohnehin mit keiner Baseline vergleichbar. Sie steht im Log des Laufs und als
 Beobachtungsfeld `chatTemperature` in der Run-Konfiguration des Mehrrunden-Berichts.
+
+
+## Nachtrag: Produktionsfenster top-k 20 (Issue #2373)
+
+**Datum:** 2026-10-09 · **Betrifft:** Fenster und Feldnamen des Pipeline- und des Mehrrunden-Pfads,
+deren Vertragsversionen, vier Baselines und die Zustände des Pipeline-Pfads in zwei Golden Datasets.
+
+Der Produktions-Default `opaa.query.top-k` steigt von 8 auf 20; `max-chunks-per-document` bleibt 2,
+`fetch-k` 25. Anlass ist eine Messung auf einem realen Verwaltungskorpus ohne Reranking, in der
+`top-k` der einzige wirksame Regler war (Anteil der Kernfakten im Antwortkontext 42 % bei 8, 62 % bei
+20). Entscheidung 11 bindet das Fenster des Pipeline-Pfads an genau diesen Wert („die tatsächliche
+Trefferzahl der Produktion"), und `PipelineHarnessSupport#requireMeasurableConfiguration` verweigert
+jeden Lauf, dessen `top-k` vom Fenster abweicht. Der Default bewegt deshalb den Messvertrag.
+
+### 63. Das Fenster folgt der Produktion: @20 statt @8
+
+`PipelineMetricsAggregate.RANKING_K` ist 20. Alle fenstertragenden Namen heißen entsprechend
+(`mrrAt20`, `ndcgAt20`, `recallAt20`, `recallAt20Ceiling`, `hitCountAt20`,
+`allExpectedDocumentsHitAt20`, je Fall `reciprocalRankAt20`), im Pipeline-, im Mehrrunden- und im
+Variantenbericht. Entscheidung 12 gilt unverändert; nur ihre Begründung „engeres Fenster" trifft
+nicht mehr zu. Das Pipeline-Fenster (20 Chunk-Plätze) ist jetzt nominell breiter als das des
+Rohvektor-Pfads (10 Dokumente), zählt aber Chunks; im Mittel umfasst es 6,9 (`verwaltung`), 20
+(`comic-characters`) und 11,8 (`city-landmarks`) unterschiedliche Dokumente.
+
+**Verworfen: das Fenster bei 8 lassen und nur die ersten acht Chunks einer 20er-Auswahl messen.**
+Das hätte die Feldnamen gerettet, aber genau das ausgeblendet, was die Änderung bewirkt: welche
+Dokumente das Modell zusätzlich sieht. Entscheidung 11 begründet das Produktionsfenster mit der
+Nutzererfahrung, und die bestimmt die ganze Endauswahl.
+
+**Die absoluten Anker der harten Untergrenze bleiben** (Hit Rate@5 ≥ 0,15, MRR/nDCG/Recall ≥ 0,125,
+Entscheidung 19). Sie sind ein Netz gegen leere oder falsch konfigurierte Vektor-Stores, kein
+Qualitätsziel; ein breiteres Fenster hebt die Werte, das Netz bleibt weit darunter.
+
+### 64. Pipeline 19 → 20, Mehrrunden 9 → 10, Rohvektor bleibt 16
+
+Eine Fensteränderung ist nach Entscheidung 6 eine Vertragsänderung beider Pfade, die es messen. Der
+Rohvektor-Pfad sieht `top-k` nicht (`documentTopK` 10, `chunkTopK` aus `EvalDomainConfig`); jede
+seiner Rangfolgen ist im Lauf dieses Nachtrags identisch zum Lauf davor (CI-Lauf 37837883487). Seine
+Baselines behalten ihre Zahlen; in `verwaltung.json` und `comic-characters.json` ändert sich nur
+`goldenDatasetSha256`, weil die Pipeline-Zustände im selben Datensatz stehen (Entscheidung 53).
+
+### 65. Neuziehung und Zustandspflege
+
+Alle drei Pipeline-Baselines und die Mehrrunden-Baseline sind aus CPU-Testcontainer-Läufen vom
+2026-10-09 neu gezogen (`haswell`). Hit Rate@5 hat dasselbe Fenster wie vorher und ist direkt
+vergleichbar; die @20-Werte sind es mit den @8-Werten nur eingeschränkt.
+
+| Domäne (Pipeline) | Hit Rate@5 | MRR@8 → @20 | nDCG@8 → @20 | Recall@8 → @20 | gelöst |
+|---|---|---|---|---|---|
+| `verwaltung` | 0,939 → 0,959 | 0,825 → 0,823 | 0,768 → 0,800 | 0,820 → 0,884 | 26 → 29 von 49 |
+| `comic-characters` | 0,736 → 0,736 | 0,604 → 0,634 | 0,584 → 0,614 | 0,634 → 0,697 | 52 → 54 von 121 |
+| `city-landmarks` | 1,000 → 1,000 | 0,980 → 0,980 | 0,985 → 0,985 | 1,000 → 1,000 | 104 → 104 von 108 |
+| `verwaltung`, Mehrrunden (je Runde) | 0,783 → 0,800 | 0,722 → 0,723 | 0,718 → 0,740 | 0,767 → 0,841 | 11 → 11 von 38 |
+
+Im Mehrrunden-Pfad steigt der Themenwechsel-Bleed von 3 auf 4 Dokumente in denselben drei von neun
+Wechselrunden: Das breitere Fenster fasst mehr vom Vorthema. Die drei Läufe zerlegen identisch.
+
+Wo ein Wert sinkt, hat er eine gemeinsame Ursache: Jede Suchliste behält vor der Fusion `top-k`
+Kandidaten, also 20 statt 8, und weitere Dokumente sammeln in der RRF-Fusion Punkte aus beiden
+Listen. Das verschiebt einzelne Rang-1-Plätze (`verw-lit-008`, `comic-attr-102`) und zweite Ränge
+(`city-multi_topic-016`). Die Zustände des Pipeline-Pfads sind nachgezogen: `verwaltung`
+`verw-comp-002`/`-003`/`-004`/`-008` gelöst, `verw-lit-008` nicht mehr; `comic-characters`
+`comic-filter-033`, `comic-de-016`, `comic-desc-024` gelöst, `comic-attr-102` nicht mehr.
+`city-landmarks` bewegt keinen Zustand. Die Gründe mit Fensterangaben beschreiben den neuen Lauf; der
+Generator dafür reproduziert die vorherigen Gründe beider Datensätze aus dem Vorher-Lauf Zeichen für
+Zeichen.

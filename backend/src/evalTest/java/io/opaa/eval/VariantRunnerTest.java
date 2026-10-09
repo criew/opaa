@@ -48,7 +48,7 @@ class VariantRunnerTest {
   }
 
   /**
-   * A report whose overall nDCG@8 is controllable, so median selection is deterministic to test.
+   * A report whose overall nDCG@20 is controllable, so median selection is deterministic to test.
    */
   private static PipelineEvaluationReport reportWithNdcg(double hitRateForCaseA) {
     var goldenCases =
@@ -136,9 +136,10 @@ class VariantRunnerTest {
   @Test
   void theReportedOutcomeIsExactlyTheMedianRun() {
     QueryProperties effective = productionProperties(true);
-    // Distinct nDCG@8 per run via distinct hit/no-hit outcomes for the one case: run 1 misses
-    // (nDCG@8 = 0.0), runs 0 and 2 hit (nDCG@8 = 1.0). MultiRunAggregator's stable sort keeps tied
-    // values in original run order, so the median-by-nDCG@8 selection is run 0, not run 2 — this
+    // Distinct nDCG@20 per run via distinct hit/no-hit outcomes for the one case: run 1 misses
+    // (nDCG@20 = 0.0), runs 0 and 2 hit (nDCG@20 = 1.0). MultiRunAggregator's stable sort keeps
+    // tied
+    // values in original run order, so the median-by-nDCG@20 selection is run 0, not run 2 — this
     // assertion is exact, not merely "one of the tied runs".
     List<PipelineEvaluationReport> runsInOrder = new ArrayList<>();
     var outcome =

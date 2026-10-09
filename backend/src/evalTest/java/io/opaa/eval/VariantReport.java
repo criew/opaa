@@ -23,11 +23,11 @@ public record VariantReport(
       String variantName, AggregateDelta aggregateDelta, List<CaseDelta> caseDeltas) {}
 
   /**
-   * Aggregated delta at the pipeline path's fixed window (Hit Rate@5, MRR@8, nDCG@8, Recall@8) —
+   * Aggregated delta at the pipeline path's fixed window (Hit Rate@5, MRR@20, nDCG@20, Recall@20) —
    * positive means the variant scored higher than the reference variant.
    */
   public record AggregateDelta(
-      double hitRateAt5Delta, double mrrAt8Delta, double ndcgAt8Delta, double recallAt8Delta) {}
+      double hitRateAt5Delta, double mrrAt20Delta, double ndcgAt20Delta, double recallAt20Delta) {}
 
   /**
    * One golden case's delta between a variant and the reference variant — the "welche fünf Fragen
@@ -39,7 +39,7 @@ public record VariantReport(
       String query,
       String category,
       double hitRateAt5Delta,
-      double reciprocalRankAt8Delta,
-      double ndcgAt8Delta,
-      double recallAt8Delta) {}
+      double reciprocalRankAt20Delta,
+      double ndcgAt20Delta,
+      double recallAt20Delta) {}
 }

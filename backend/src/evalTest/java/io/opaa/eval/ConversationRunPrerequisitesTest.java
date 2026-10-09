@@ -55,7 +55,7 @@ class ConversationRunPrerequisitesTest {
   }
 
   /**
-   * The Mehrfachlauf-Regel, through the shared implementation: three runs, the median by nDCG@8,
+   * The Mehrfachlauf-Regel, through the shared implementation: three runs, the median by nDCG@20,
    * <b>and</b> the spread plus the count of turns whose decomposition deviated across the runs.
    * This path calls the decomposition once per turn, so that count is its statement about how
    * stable the measurement is at all - a median alone would throw it away.
@@ -73,10 +73,10 @@ class ConversationRunPrerequisitesTest {
     MehrfachlaufRule.Measurement<ConversationEvaluationReport> measurement =
         MehrfachlaufRule.measure(true, scripted::next, ConversationHarnessSupport::runView);
 
-    assertThat(measurement.report().overall().ndcgAt8()).isEqualTo(0.50);
+    assertThat(measurement.report().overall().ndcgAt20()).isEqualTo(0.50);
     assertThat(measurement.multiRun()).isTrue();
-    assertThat(measurement.summary().ndcgAt8().min()).isEqualTo(0.10);
-    assertThat(measurement.summary().ndcgAt8().max()).isEqualTo(0.90);
+    assertThat(measurement.summary().ndcgAt20().min()).isEqualTo(0.10);
+    assertThat(measurement.summary().ndcgAt20().max()).isEqualTo(0.90);
     assertThat(measurement.summary().decompositionDeviatingCaseIds())
         .as("the turn whose decomposition differed between runs is named, not only counted")
         .containsExactly("verw-conv-001#1");

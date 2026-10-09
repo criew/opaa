@@ -554,7 +554,7 @@ Ist `rerank-candidate-count` **kleiner** als `top-k`, liefert die Fusion trotzde
 Kandidaten (das Kandidatenbudget ist dann das Maximum aus beiden Werten, damit die Antwort nicht
 unter `top-k` schrumpft), aber der Reranker bewertet nur die ersten `rerank-candidate-count` davon.
 Die Kandidaten dahinter werden **angehängt**, in fusionierter Reihenfolge, nicht verworfen. Im
-Auslieferungsstand (`rerank-candidate-count` 50 ≥ `top-k` 8) tritt der Fall nicht ein; erst eine
+Auslieferungsstand (`rerank-candidate-count` ≥ `top-k`, Abschnitt 10.3) tritt der Fall nicht ein; erst eine
 Konfiguration mit `rerank-candidate-count < top-k` löst ihn aus.
 
 Das Fenster **erweitert die Reichweite der Suche nicht**. Was keine Suchstufe zurückgegeben hat,
@@ -628,6 +628,14 @@ Quellen zu erfinden. Das Modell wird bei jedem Aufruf neu aufgelöst; eine Aktiv
 Modells in der Verwaltung wirkt ohne Neustart. Ist kein Chat-Modell aktiv oder antwortet das
 Embedding-Modell in Stufe 4 nicht, endet die Frage mit einer deutschen Fehlermeldung; anders als
 beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
+
+**Die Endauswahl geht ungekürzt in den Prompt.** Ihr Umfang ist `top-k` mal die Länge der
+gewählten Chunks; nichts kürzt sie auf das Kontextfenster des Chat-Modells. Ein höheres `top-k`
+bringt mehr Belege in die Antwort und kostet Eingabetokens je Frage, die Laufzeit eines Modells mit
+großem Kontextfenster ändert sich dabei kaum. Ein lokales Modell mit kleinem Kontextfenster bekommt
+dagegen mehr Text, als es fassen kann: Je nach Anbieter schneidet es den Prompt still ab, oder die
+Anfrage scheitert. Für solche Modelle `top-k` senken; die Empfehlung steht in Abschnitt 10.3. Wie
+viele Tokens eine Antwort verbraucht hat, steht an der Antwort und in den Metriken (Abschnitt 10.2).
 
 Die Systemanweisung ist **nicht konfigurierbar**: Sie ist im Code festgelegt und enthält nur die
 Rolle, die Vorgabe der Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten zu antworten,
@@ -1054,7 +1062,7 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
-| `top-k` | 8 | Chunks in der Endauswahl (1 bis 100) |
+| `top-k` | 20 | Chunks in der Endauswahl (1 bis 100); jeder geht ungekürzt in den Prompt der Antwort (Abschnitt 6). Bei kleinem Kontextfenster des Chat-Modells an dessen Größe binden: etwa 6 bei rund 8.000 Tokens, 12 bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells |
 | `fetch-k` | 25 | Kandidaten je Suchanfrage und Pfad (1 bis 200, mindestens `top-k`); die Reichweite der Suche |
 | `similarity-threshold` | 0,3 | Mindestähnlichkeit in der Vektorsuche |
 | `vector-index.max-scan-tuples` | 20000 | Indexeinträge, die eine Vektorsuche höchstens durchläuft, um `fetch-k` Chunks innerhalb ihres Filters zu finden; Laufzeit kostet ein höherer Wert nur bei Suchen, die ihn brauchen |
@@ -1123,6 +1131,8 @@ entsprechen.
   dem Default der gängigen Suchsysteme.
 - **Ein einstellbarer Systemprompt** für Antwort oder Zerlegung, etwa je Installation, Raum oder
   Bibliothek.
+- **Eine Kürzung der Endauswahl nach Tokens**, etwa passend zum Kontextfenster des aktiven
+  Chat-Modells. `top-k` ist eine Zahl von Chunks, unabhängig von ihrer Länge und vom Modell.
 
 ## 11. Weiterführende Kapitel
 

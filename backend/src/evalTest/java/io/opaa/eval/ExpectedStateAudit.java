@@ -56,10 +56,10 @@ public final class ExpectedStateAudit {
 
   /**
    * Whether a case counts as solved in this run: every expected document inside the path's window
-   * ({@code allExpectedDocumentsHitAt10} on the raw-vector path, {@code allExpectedDocumentsHitAt8}
-   * on the pipeline path — both 1.0 or 0.0 per case) <b>and</b> an expected document at rank 1. The
-   * rank-1 half is what makes the criterion say anything about {@code metadata_filter}, whose two
-   * Fassungen rank next to each other.
+   * ({@code allExpectedDocumentsHitAt10} on the raw-vector path, {@code
+   * allExpectedDocumentsHitAt20} on the pipeline path — both 1.0 or 0.0 per case) <b>and</b> an
+   * expected document at rank 1. The rank-1 half is what makes the criterion say anything about
+   * {@code metadata_filter}, whose two Fassungen rank next to each other.
    *
    * @param rankedFileNames the case's ranked documents, best first, at that path's window.
    */

@@ -17,8 +17,8 @@ import java.util.TreeSet;
  * here is produced by {@link BaselineComparator#metricCheck} — the same tolerance formula, the same
  * case-based conjunction from issue #306, the same hard-floor combination. Nothing about "what
  * counts as a regression" is redefined for this path; what differs is only <i>what is measured</i>
- * (the pipeline's @8 window with the similarity threshold applied) and <i>which fixed points make a
- * baseline valid</i>.
+ * (the pipeline's @20 window with the similarity threshold applied) and <i>which fixed points make
+ * a baseline valid</i>.
  *
  * <p><b>Own fixed points, including the five that were previously only reported.</b> ADR-0012's
  * Nachtrag zum Pipeline-Messpfad listed {@code fetch-k}, {@code similarity-threshold}, {@code
@@ -48,12 +48,12 @@ public final class PipelineBaselineComparator {
    * <p><b>Own values, deliberately lower than the raw-vector path's.</b> ADR-0013's absolute floors
    * were calibrated against @10 measurements taken without a similarity threshold. This path
    * applies the production threshold, so a document can leave the ranking entirely rather than fall
-   * back, and it scores at a narrower window — its numbers lie systematically lower for reasons
-   * that have nothing to do with retrieval quality (ADR-0012, Nachtrag, decision 12). Carrying the
-   * raw path's numbers over would either fire on a healthy run or, if the pipeline scored higher
-   * than expected, anchor at an arbitrary point; the values below are anchored at half of
-   * ADR-0013's respective floors, which is far under any plausible healthy measurement of this path
-   * and still far above the "vector store returned nothing" case the floor exists for.
+   * back, and its window counts chunks, not documents — its numbers lie systematically lower for
+   * reasons that have nothing to do with retrieval quality (ADR-0012, Nachtrag, decision 12).
+   * Carrying the raw path's numbers over would either fire on a healthy run or, if the pipeline
+   * scored higher than expected, anchor at an arbitrary point; the values below are anchored at
+   * half of ADR-0013's respective floors, which is far under any plausible healthy measurement of
+   * this path and still far above the "vector store returned nothing" case the floor exists for.
    */
   static final double HARD_FLOOR_ABSOLUTE_HIT_RATE = 0.15;
 

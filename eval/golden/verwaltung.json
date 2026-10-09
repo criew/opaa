@@ -20,7 +20,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (4 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 2."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (4 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 2."
       }
     }
   },
@@ -46,7 +46,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0039_gebuehrenordnung-kaemmerei.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 3; außerhalb des Fensters: verwaltung-0043_formularhinweis-kaemmerei-8.md."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (7 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0039_gebuehrenordnung-kaemmerei.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 4; außerhalb des Fensters: verwaltung-0043_formularhinweis-kaemmerei-8.md."
       }
     }
   },
@@ -71,7 +71,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 0 von 1 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md; außerhalb des Fensters: verwaltung-0043_formularhinweis-kaemmerei-8.md."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (4 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md; verwaltung-0043_formularhinweis-kaemmerei-8.md steht auf Rang 2."
       }
     }
   },
@@ -97,7 +97,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-leitfaden-barrierefreiheit.md; außerhalb des Fensters: verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 2 erwarteten Dokumenten im Fenster (9 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-leitfaden-barrierefreiheit.md; außerhalb des Fensters: verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md."
       }
     }
   },
@@ -123,7 +123,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 2 von 2 erwarteten Dokumenten im Fenster (5 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md; verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md steht auf Rang 2, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md steht auf Rang 4."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 2 von 2 erwarteten Dokumenten im Fenster (14 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md; verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md steht auf Rang 2, verwaltung-0041_dienstanweisung-kaemmerei-2-2024.md steht auf Rang 4."
       }
     }
   },
@@ -148,7 +148,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (5 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0035_dienstanweisung-buergeramt-2-2024.md; verwaltung-0039_gebuehrenordnung-kaemmerei.md steht auf Rang 4."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (14 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0035_dienstanweisung-buergeramt-2-2024.md; verwaltung-0039_gebuehrenordnung-kaemmerei.md steht auf Rang 4."
       }
     }
   },
@@ -173,7 +173,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (6 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0035_dienstanweisung-buergeramt-2-2024.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 2."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (16 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0014_dienstanweisung-bauamt-2-2024.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 3."
       }
     }
   },
@@ -196,9 +196,9 @@
         "reason": "Ohne geprüften Mechanismus: Gelöst ohne den lexikalischen Pfad, den dieser Messpfad nicht hat (Roadmap 1a/1b). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente), Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
       },
       "pipeline": {
-        "state": "solved",
-        "since": "2026-09-14",
-        "reason": "Gelöst mit dem lexikalischen Pfad in der Fusion (Roadmap 1a/1b). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
+        "state": "known_gap",
+        "since": "2026-10-09",
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Seit top-k 20 (#2373) behält jede Suchliste 20 statt 8 Kandidaten für die Fusion, und ein thematisch nahes Formular der Kämmerei zieht dort am wörtlich passenden Zieldokument vorbei. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (7 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0043_formularhinweis-kaemmerei-8.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 2."
       }
     }
   },
@@ -223,7 +223,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Gelöst mit dem lexikalischen Pfad in der Fusion (Roadmap 1a/1b). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md."
+        "reason": "Gelöst mit dem lexikalischen Pfad in der Fusion (Roadmap 1a/1b). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (14 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md."
       }
     }
   },
@@ -248,7 +248,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0004_dienstanweisung-sozialamt-1-2023.md."
       }
     }
   },
@@ -273,7 +273,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (2 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0005_dienstanweisung-sozialamt-1-2024.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0005_dienstanweisung-sozialamt-1-2024.md."
       }
     }
   },
@@ -298,7 +298,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-08-31",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0014_dienstanweisung-bauamt-2-2024.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (8 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0014_dienstanweisung-bauamt-2-2024.md."
       }
     }
   },
@@ -323,7 +323,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0012_dienstanweisung-bauamt-1-2023.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0012_dienstanweisung-bauamt-1-2023.md."
       }
     }
   },
@@ -348,7 +348,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md."
       }
     }
   },
@@ -373,7 +373,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-08-31",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (1 Dokument aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (2 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0042_formularhinweis-kaemmerei-7.md."
       }
     }
   },
@@ -398,7 +398,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-08-31",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (1 Dokument aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0043_formularhinweis-kaemmerei-8.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0043_formularhinweis-kaemmerei-8.md."
       }
     }
   },
@@ -423,7 +423,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-08-31",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (2 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0037_formularhinweis-buergeramt-8.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0037_formularhinweis-buergeramt-8.md."
       }
     }
   },
@@ -448,7 +448,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-08-31",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (14 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
       }
     }
   },
@@ -474,7 +474,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-08-31",
-        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md steht auf Rang 2."
+        "reason": "Gelöst mit den unzerlegten Kennungs-Lexemen des Volltextpfads (Roadmap 1a). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (8 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md steht auf Rang 2."
       }
     }
   },
@@ -501,7 +501,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 0 von 3 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0057_abfallgebuehrensatzung.md; außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md, verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md, verwaltung-0033_gebuehrenordnung-buergeramt.md."
+        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 0 von 3 erwarteten Dokumenten im Fenster (6 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0057_abfallgebuehrensatzung.md; außerhalb des Fensters: verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md, verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md, verwaltung-0033_gebuehrenordnung-buergeramt.md."
       }
     }
   },
@@ -525,9 +525,9 @@
         "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente), Rang 1 belegt verwaltung-0057_abfallgebuehrensatzung.md; verwaltung-0058_gebuehrenordnung-umweltamt.md steht auf Rang 8."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0057_abfallgebuehrensatzung.md; außerhalb des Fensters: verwaltung-0058_gebuehrenordnung-umweltamt.md."
+        "state": "solved",
+        "since": "2026-10-09",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist; das zweite erwartete Dokument erreicht erst das Fenster von top-k 20 (#2373). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0057_abfallgebuehrensatzung.md; verwaltung-0058_gebuehrenordnung-umweltamt.md steht auf Rang 4."
       }
     }
   },
@@ -551,9 +551,9 @@
         "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente), Rang 1 belegt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md; verwaltung-0064_gebuehrenordnung-kulturamt.md steht auf Rang 2."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md; außerhalb des Fensters: verwaltung-0064_gebuehrenordnung-kulturamt.md."
+        "state": "solved",
+        "since": "2026-10-09",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist; das zweite erwartete Dokument erreicht erst das Fenster von top-k 20 (#2373). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md; verwaltung-0064_gebuehrenordnung-kulturamt.md steht auf Rang 2."
       }
     }
   },
@@ -578,9 +578,9 @@
         "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente), Rang 1 belegt verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md; verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md steht auf Rang 2, verwaltung-0019_gebuehrenordnung-ordnungsamt.md steht auf Rang 4."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 2 von 3 erwarteten Dokumenten im Fenster (2 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md; verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md steht auf Rang 2; außerhalb des Fensters: verwaltung-0019_gebuehrenordnung-ordnungsamt.md."
+        "state": "solved",
+        "since": "2026-10-09",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist; das dritte erwartete Dokument erreicht erst das Fenster von top-k 20 (#2373). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md; verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md steht auf Rang 2, verwaltung-0019_gebuehrenordnung-ordnungsamt.md steht auf Rang 3."
       }
     }
   },
@@ -607,7 +607,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 3 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md; außerhalb des Fensters: verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md, verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md."
+        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 2 von 3 erwarteten Dokumenten im Fenster (6 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0011_gebuehrenordnung-bauamt.md; verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md steht auf Rang 5; außerhalb des Fensters: verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md."
       }
     }
   },
@@ -634,7 +634,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 2 von 3 erwarteten Dokumenten im Fenster (2 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md; verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md steht auf Rang 2; außerhalb des Fensters: verwaltung-0052_gebuehrenordnung-jugendamt.md."
+        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 2 von 3 erwarteten Dokumenten im Fenster (2 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md; verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md steht auf Rang 2; außerhalb des Fensters: verwaltung-0052_gebuehrenordnung-jugendamt.md."
       }
     }
   },
@@ -660,7 +660,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md; außerhalb des Fensters: verwaltung-0026_gebuehrenordnung-standesamt.md."
+        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (5 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0025_personenstandsurkundengebuehrensatzung.md; außerhalb des Fensters: verwaltung-0026_gebuehrenordnung-standesamt.md."
       }
     }
   },
@@ -684,9 +684,9 @@
         "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente), Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md; verwaltung-0045_gebuehrenordnung-personalamt.md steht auf Rang 2."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Komposita-Zerlegung (Roadmap 1a): Die Frage nennt nur einen Wortbestandteil, das Dokument führt das Kompositum. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md; außerhalb des Fensters: verwaltung-0045_gebuehrenordnung-personalamt.md."
+        "state": "solved",
+        "since": "2026-10-09",
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist; das zweite erwartete Dokument erreicht erst das Fenster von top-k 20 (#2373). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (11 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md; verwaltung-0045_gebuehrenordnung-personalamt.md steht auf Rang 9."
       }
     }
   },
@@ -713,7 +713,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0003_gebuehrenordnung-sozialamt.md; verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md steht auf Rang 2, verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md steht auf Rang 3."
+        "reason": "Ohne geprüften Mechanismus: Gelöst ohne Komposita-Zerlegung (Roadmap 1a), die in keinem Messpfad gebaut ist. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0003_gebuehrenordnung-sozialamt.md; verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md steht auf Rang 2, verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md steht auf Rang 3."
       }
     }
   },
@@ -739,7 +739,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 2 von 2 erwarteten Dokumenten im Fenster (4 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 3, verwaltung-vertretungsregelung.md steht auf Rang 4."
+        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 2 von 2 erwarteten Dokumenten im Fenster (4 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 4, verwaltung-vertretungsregelung.md steht auf Rang 2."
       }
     }
   },
@@ -765,7 +765,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, ohne ein Verfahren, das sie zusammenführt (Roadmap 3c). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md; verwaltung-vertretungsregelung.md steht auf Rang 2."
+        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, ohne ein Verfahren, das sie zusammenführt (Roadmap 3c). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md; verwaltung-vertretungsregelung.md steht auf Rang 3."
       }
     }
   },
@@ -791,7 +791,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, ohne ein Verfahren, das sie zusammenführt (Roadmap 3c). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md; verwaltung-vertretungsregelung.md steht auf Rang 3."
+        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, ohne ein Verfahren, das sie zusammenführt (Roadmap 3c). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-geschaeftsverteilungsplan.md; verwaltung-vertretungsregelung.md steht auf Rang 2."
       }
     }
   },
@@ -817,7 +817,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0019_gebuehrenordnung-ordnungsamt.md; verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md steht auf Rang 2; außerhalb des Fensters: verwaltung-geschaeftsverteilungsplan.md."
+        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (5 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0019_gebuehrenordnung-ordnungsamt.md; verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md steht auf Rang 2; außerhalb des Fensters: verwaltung-geschaeftsverteilungsplan.md."
       }
     }
   },
@@ -843,7 +843,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, ohne ein Verfahren, das sie zusammenführt (Roadmap 3c). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-vertretungsregelung.md; verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md steht auf Rang 4."
+        "reason": "Ohne geprüften Mechanismus: Beide Glieder der Kette gefunden, ohne ein Verfahren, das sie zusammenführt (Roadmap 3c). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-vertretungsregelung.md; verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md steht auf Rang 2."
       }
     }
   },
@@ -869,7 +869,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0060_dienstanweisung-umweltamt-2-2024.md; außerhalb des Fensters: verwaltung-vertretungsregelung.md."
+        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (12 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0060_dienstanweisung-umweltamt-2-2024.md; außerhalb des Fensters: verwaltung-vertretungsregelung.md."
       }
     }
   },
@@ -895,7 +895,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 2 von 2 erwarteten Dokumenten im Fenster (3 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md; verwaltung-geschaeftsverteilungsplan.md steht auf Rang 3, verwaltung-vertretungsregelung.md steht auf Rang 2."
+        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 2 von 2 erwarteten Dokumenten im Fenster (3 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0063_bibliotheksbenutzungsgebuehrensatzung.md; verwaltung-geschaeftsverteilungsplan.md steht auf Rang 3, verwaltung-vertretungsregelung.md steht auf Rang 2."
       }
     }
   },
@@ -921,7 +921,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-08-31",
-        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (5 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md; außerhalb des Fensters: verwaltung-vertretungsregelung.md."
+        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (12 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0044_personalaktenauskunftsgebuehrensatzung.md; außerhalb des Fensters: verwaltung-vertretungsregelung.md."
       }
     }
   },
@@ -947,7 +947,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (2 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md; außerhalb des Fensters: verwaltung-vertretungsregelung.md."
+        "reason": "Fehlende Zusammenführung mehrgliedriger Ketten (Roadmap 3c; die Teilfragen-Zerlegung ist in dieser Messung abgeschaltet): Die Frage verlangt Dokumente, die nur über eine Kette zusammenhängen. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 2 erwarteten Dokumenten im Fenster (2 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md; außerhalb des Fensters: verwaltung-vertretungsregelung.md."
       }
     }
   },
@@ -976,7 +976,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-14",
-        "reason": "Gelöst mit dem Kernfeld-Filter (#1070). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md; Verwechslungspartner verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md nicht im Fenster."
+        "reason": "Gelöst mit dem Kernfeld-Filter (#1070). Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (11 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md; Verwechslungspartner verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md nicht im Fenster."
       }
     }
   },
@@ -1006,7 +1006,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (1 Dokument aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md; Verwechslungspartner verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md nicht im Fenster."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md; Verwechslungspartner verwaltung-0010_baugenehmigungsgebuehrensatzung-fassung-2024.md nicht im Fenster."
       }
     }
   },
@@ -1034,7 +1034,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-05",
-        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „derzeit gültig\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (5 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md; verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md steht auf Rang 2; Verwechslungspartner verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md steht auf Rang 1."
+        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „derzeit gültig\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (5 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md; verwaltung-0018_gewerbeanmeldegebuehrensatzung-fassung-2024.md steht auf Rang 2; Verwechslungspartner verwaltung-0017_gewerbeanmeldegebuehrensatzung-fassung-2023.md steht auf Rang 1."
       }
     }
   },
@@ -1063,7 +1063,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (1 Dokument aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; Verwechslungspartner verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md nicht im Fenster."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md; Verwechslungspartner verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md nicht im Fenster."
       }
     }
   },
@@ -1091,7 +1091,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-05",
-        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „gilt heute\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (2 Dokumente aus 8 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md; verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md steht auf Rang 2; Verwechslungspartner verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md steht auf Rang 1."
+        "reason": "Kein Kernfeld-Filter trifft die Frage (#1070, siehe filter_note): „gilt heute\" ist eine Gültigkeits-/Nachfolgeaussage, kein Datumsvergleich — der Fall wird ungefiltert gemessen, bis #1071 das Bibliotheksfeld liefert. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (4 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md; verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md steht auf Rang 2; Verwechslungspartner verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md steht auf Rang 1."
       }
     }
   },
@@ -1121,7 +1121,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2024-01-01 bis 2024-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0005_dienstanweisung-sozialamt-1-2024.md; Verwechslungspartner verwaltung-0004_dienstanweisung-sozialamt-1-2023.md nicht im Fenster."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2024-01-01 bis 2024-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0005_dienstanweisung-sozialamt-1-2024.md; Verwechslungspartner verwaltung-0004_dienstanweisung-sozialamt-1-2023.md nicht im Fenster."
       }
     }
   },
@@ -1151,7 +1151,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0012_dienstanweisung-bauamt-1-2023.md; Verwechslungspartner verwaltung-0013_dienstanweisung-bauamt-1-2024.md nicht im Fenster."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster 2023-01-01 bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0012_dienstanweisung-bauamt-1-2023.md; Verwechslungspartner verwaltung-0013_dienstanweisung-bauamt-1-2024.md nicht im Fenster."
       }
     }
   },
@@ -1180,7 +1180,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (2 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md; Verwechslungspartner verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md nicht im Fenster."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Das Datumsfenster bis 2023-12-31 schließt die Fassung des falschen Stands aus. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0020_dienstanweisung-ordnungsamt-1-2023.md; Verwechslungspartner verwaltung-0021_dienstanweisung-ordnungsamt-1-2024.md nicht im Fenster."
       }
     }
   },
@@ -1211,7 +1211,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (1 Dokument aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md; Verwechslungspartner verwaltung-0038_verwaltungsgebuehrensatzung.md nicht im Fenster."
+        "reason": "Kernfeld-Filter in beiden Suchpfaden (#1070): Die Dokumentart DIENSTANWEISUNG schließt die Satzung aus. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md; Verwechslungspartner verwaltung-0038_verwaltungsgebuehrensatzung.md nicht im Fenster."
       }
     }
   },
@@ -1242,7 +1242,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (5 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-dienstanweisung-aktenaufbewahrung.md."
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (13 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-dienstanweisung-aktenaufbewahrung.md."
       }
     }
   },
@@ -1274,7 +1274,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Dokumentart keinen Wert und bleibt trotzdem im Fenster. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (3 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-leitfaden-barrierefreiheit.md."
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Dokumentart keinen Wert und bleibt trotzdem im Fenster. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (15 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-leitfaden-barrierefreiheit.md."
       }
     }
   },
@@ -1308,7 +1308,7 @@
       "pipeline": {
         "state": "solved",
         "since": "2026-09-05",
-        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster. Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (4 Dokumente aus 8 Chunk-Plätzen), Rang 1 belegt verwaltung-dienstanweisung-aktenaufbewahrung.md."
+        "reason": "Leerwert-Regel des Kernfeld-Filters (#1070): Das erwartete Dokument trägt im gefilterten Feld Datum/Stand keinen Wert und bleibt trotzdem im Fenster. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (11 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-dienstanweisung-aktenaufbewahrung.md."
       }
     }
   }
