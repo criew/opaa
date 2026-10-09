@@ -183,7 +183,7 @@ In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z.
 
 ### GitHub-Actions-Workflows
 
-Actions werden grundsätzlich über Tags eingebunden (`uses: actions/checkout@v7`). **Workflows mit Schreibrechten auf veröffentlichte Artefakte oder das Repository pinnen ihre Actions dagegen auf den vollen Commit-SHA** mit exakter Version als Kommentar (`uses: docker/login-action@<40-stelliger SHA> # v4.6.0`). Welche Workflows das sind und wie man einen SHA ermittelt, steht in [docs/renovate.md](docs/renovate.md#actions-in-workflows-mit-schreibrechten-per-commit-sha); `.github/scripts/check_action_pins.sh` prüft es in der CI. Wer einem Workflow Schreibrechte gibt, nimmt ihn dort und in der Renovate-Regel auf.
+Actions werden grundsätzlich über Tags eingebunden (`uses: actions/checkout@v7`). **Workflows mit Schreibrechten auf veröffentlichte Artefakte oder das Repository pinnen ihre Actions dagegen auf den vollen Commit-SHA** mit exakter Version als Kommentar (`uses: docker/login-action@<40-stelliger SHA> # v4.6.0`). Welche Workflows das sind und wie man einen SHA ermittelt, steht in [docs/renovate.md](docs/renovate.md#actions-in-workflows-mit-schreibrechten-per-commit-sha); `.github/scripts/check_action_pins.sh` prüft es in der CI. Wer einem Workflow Schreibrechte gibt, nimmt ihn dort, in den Renovate-Regeln und im Guard auf.
 
 ### Commit-Nachrichten
 

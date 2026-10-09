@@ -2,8 +2,9 @@
 
 The CI run only exercises the green branch against the repository's own workflows; a change
 that makes the guard laxer would go unnoticed there. These cases pin the rejecting branches
-(tag, branch, short SHA, SHA without version comment, docker tag, missing workflow) and keep the
-guarded file list in sync with the pinDigests rule in renovate.json5.
+(tag, branch, short SHA, SHA without version comment, docker tag, flow mapping, quoted key,
+missing workflow). They also keep the guarded file list in sync with the Renovate rules and with
+the workflows that actually hold a write permission.
 """
 
 import re
@@ -59,13 +60,15 @@ def test_accepts_sha_pins_local_actions_and_docker_digests(repo: Path) -> None:
             f"      - uses: github/codeql-action/upload-sarif@{SHA}  #  v4.38.3\n",
             "      - uses: ./.github/actions/local\n",
             "      - uses: docker://alpine@sha256:" + "a" * 64 + "\n",
+            f"      - {{ name: Flow, uses: actions/cache@{SHA} }} # v6.0.0\n",
+            f'      - "uses": "actions/setup-node@{SHA}" # v7.1.0\n',
         ),
     )
 
     result = run_guard(repo)
 
     assert result.returncode == 0, result.stdout
-    assert "All 10 action references" in result.stdout
+    assert "All 12 action references" in result.stdout
 
 
 @pytest.mark.parametrize(
@@ -80,6 +83,10 @@ def test_accepts_sha_pins_local_actions_and_docker_digests(repo: Path) -> None:
         f"      - uses: actions/checkout@{SHA.upper()} # v7.0.1\n",
         "      - uses: docker://alpine:3.22\n",
         "        uses: \"aquasecurity/trivy-action@v0.36.0\"\n",
+        "      - { name: Flow, uses: actions/cache@v6 }\n",
+        "      - {uses: actions/cache@v6, with: {path: x}}\n",
+        "      - \"uses\": actions/setup-node@v7\n",
+        "      - 'uses' : actions/setup-node@v7\n",
     ],
 )
 def test_rejects_unpinned_reference(repo: Path, line: str) -> None:
@@ -111,13 +118,70 @@ def test_rejects_when_nothing_was_checked(repo: Path) -> None:
     assert "would pass without checking anything" in result.stdout
 
 
-def test_guarded_files_match_renovate_pin_rule() -> None:
+def github_actions_rules() -> list[str]:
+    """Every packageRule of the github-actions manager; the rules hold no nested objects."""
     config = RENOVATE_CONFIG.read_text(encoding="utf-8")
-    rule = re.search(
-        r"\{[^{}]*matchManagers: \['github-actions'\],[^{}]*pinDigests: true,[^{}]*\}", config
-    )
-    assert rule, "no github-actions rule with pinDigests: true in renovate.json5"
-    files = re.search(r"matchFileNames: \[([^\]]*)\]", rule.group(0))
-    assert files, "pinDigests rule in renovate.json5 has no matchFileNames"
+    return [
+        rule
+        for rule in re.findall(r"\{[^{}]*\}", config)
+        if re.search(r"matchManagers: \['github-actions'\]", rule)
+    ]
 
-    assert sorted(re.findall(r"'([^']+)'", files.group(1))) == sorted(guarded_workflows())
+
+def file_names(rule: str) -> list[str]:
+    files = re.search(r"matchFileNames: \[([^\]]*)\]", rule)
+    return sorted(re.findall(r"'([^']+)'", files.group(1))) if files else []
+
+
+def only_rule(*settings: str) -> str:
+    rules = [rule for rule in github_actions_rules() if all(s in rule for s in settings)]
+    assert len(rules) == 1, f"expected exactly one github-actions rule with {settings}"
+    return rules[0]
+
+
+def test_every_renovate_rule_for_the_pinned_workflows_lists_exactly_them() -> None:
+    pinned = sorted(guarded_workflows())
+    pin_rule = only_rule("pinDigests: true", "minimumReleaseAge: '3 days'")
+    digest_rule = only_rule(
+        "matchUpdateTypes: ['digest']", "dependencyDashboardApproval: true", "automerge: false"
+    )
+
+    assert file_names(pin_rule) == pinned
+    assert file_names(digest_rule) == pinned
+    for rule in github_actions_rules():
+        if any(s in rule for s in ("pinDigests", "minimumReleaseAge", "dependencyDashboardApproval")):
+            assert file_names(rule) == pinned, rule
+
+
+def test_publish_images_actions_never_automerge() -> None:
+    rule = only_rule("matchFileNames: ['.github/workflows/publish-images.yml']", "automerge: false")
+
+    assert "matchUpdateTypes" not in rule and "matchDepNames" not in rule
+    assert ".github/workflows/publish-images.yml" in guarded_workflows()
+
+
+# Workflows that hold a write permission but are deliberately not pinned (docs/renovate.md):
+# they write issues or PR comments only, never published artifacts or repository contents.
+WRITE_WITHOUT_PINNING = {
+    ".github/workflows/baseline-diff.yml": "pull-requests: write - PR comment only",
+    ".github/workflows/e2e.yml": "issues: write - failure alert issue only",
+    ".github/workflows/retrieval-regression.yml": "issues/pull-requests: write - comments only",
+}
+
+
+def write_privileged_workflows(root: Path) -> set[str]:
+    return {
+        path.relative_to(root).as_posix()
+        for path in sorted((root / ".github" / "workflows").glob("*.y*ml"))
+        if re.search(r"^\s*[a-z-]+:\s*write", path.read_text(encoding="utf-8"), re.M)
+    }
+
+
+def test_every_write_privileged_workflow_is_pinned_or_explicitly_exempt() -> None:
+    root = SCRIPTS.parent.parent
+    pinned = set(guarded_workflows())
+    privileged = write_privileged_workflows(root)
+
+    assert privileged - pinned - WRITE_WITHOUT_PINNING.keys() == set()
+    assert pinned.isdisjoint(WRITE_WITHOUT_PINNING)
+    assert set(WRITE_WITHOUT_PINNING) <= privileged, "stale exemption"

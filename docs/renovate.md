@@ -85,18 +85,45 @@ nutzt zwar das PAT `RENOVATE_TOKEN`, enthält aber keine Action, sondern startet
 Docker-Image. Eine Ausweitung auf alle Workflows wäre eine Abkehr von der Grundregel und
 bekäme ein eigenes Issue.
 
-**Renovate pflegt SHA und Kommentar gemeinsam.** Eine `packageRule` in `renovate.json5` setzt
-für genau diese Dateien `pinDigests: true` beim `github-actions`-Manager. Renovate liest dann
-`currentValue` aus dem Kommentar und `currentDigest` aus dem SHA und schreibt bei einem Update
-beides neu. Minor- und Patch-Releases mergen wie alle anderen Updates automatisch, Majors nicht.
-**Ein Digest-Update mergt in diesen Dateien nie automatisch**: Ein neuer SHA bei gleicher Version
-heißt, dass der Tag umgehängt wurde. Ein solcher PR wird geprüft, bevor er gemergt wird.
+**Renovate pflegt SHA und Kommentar gemeinsam.** Drei `packageRules` in `renovate.json5` regeln
+für genau diese Dateien Folgendes:
+
+- **`pinDigests: true`** beim `github-actions`-Manager. Renovate liest `currentValue` aus dem
+  Kommentar und `currentDigest` aus dem SHA und schreibt bei einem Update beides neu.
+- **`minimumReleaseAge: '3 days'`.** Ein neues Release wird frühestens drei Tage nach seinem
+  Zeitstempel vorgeschlagen; bis dahin steht es als „Pending“ in der Abhängigkeits-Übersicht, und
+  Renovate legt keinen Branch an (`internalChecksFilter` steht auf der Vorgabe `strict`). Ohne
+  Branch gibt es auch keinen PR-Lauf. Das ist wichtig, weil `cve-scan.yml` und
+  `dependency-graph.yml` auch bei `pull_request` laufen, und zwar in der Fassung des PRs mit ihren
+  Schreibrechten. Ein späteres `automerge: false` käme dafür zu spät.
+  **Der Schutz ist nur teilweise:** Der Zeitstempel der Datasource `github-tags` ist das
+  Commit-Datum (leichtgewichtiger Tag) bzw. das Tagger-Datum (annotierter Tag), angehoben auf das
+  Datum eines GitHub-Releases, falls es eins gibt und es später liegt. Commit- und Tagger-Datum
+  setzt der Autor selbst. Ohne GitHub-Release lässt sich ein Tag also rückdatieren.
+- **Digest-Updates brauchen eine Freigabe** (`dependencyDashboardApproval: true`, dazu
+  `automerge: false`). Ein neuer SHA bei gleicher Version heißt, dass der Tag umgehängt wurde,
+  also genau der Angriff, gegen den die Pins schützen. Renovate legt den Branch erst an, wenn ein
+  Maintainer das Update in der Abhängigkeits-Übersicht anhakt; vorher läuft nichts mit
+  Schreibrechten. Vor der Freigabe wird geklärt, warum der Tag umgehängt wurde.
+- **`publish-images.yml` mergt nie automatisch**, auch nicht bei Minor- und Patch-Updates. Kein
+  Required Check übt diese Actions aus, sie laufen aber bei jedem Push auf `main` mit
+  `packages: write`.
+
+In den übrigen fünf Dateien mergen Minor- und Patch-Releases nach Ablauf der Frist wie alle
+anderen Updates automatisch, Majors nie.
 
 **Der Guard `.github/scripts/check_action_pins.sh`** (Job `changes` in `ci.yml`, bei Änderungen
 unter `.github/workflows/`) lehnt in diesen Dateien jedes `uses:` ohne vollen SHA und
-`# vX.Y.Z`-Kommentar ab; lokale Actions (`./…`) und `docker://…@sha256:…` sind ausgenommen.
-Seine Dateiliste und die der Renovate-Regel müssen übereinstimmen, das prüft
-`test_check_action_pins.py`. Wer einen Workflow aufnimmt oder entfernt, ändert beide Listen.
+`# vX.Y.Z`-Kommentar ab. Er erkennt Block-Stil, gequotete Schlüssel und Flow-Mappings
+(`- { uses: … }`), nicht aber einen Wert auf einer eigenen Folgezeile. Lokale Actions (`./…`)
+und `docker://…@sha256:…` sind ausgenommen. Die Selbstprobe `test_check_action_pins.py` prüft
+außerdem:
+
+- Die Dateiliste des Guards stimmt mit der in den Renovate-Regeln überein. Wer einen Workflow
+  aufnimmt oder entfernt, ändert beide.
+- Jeder Workflow mit einem `…: write`-Recht steht entweder in dieser Liste oder in der
+  Ausnahmeliste `WRITE_WITHOUT_PINNING` im Test, mit Begründung. Ein neuer Workflow mit
+  Schreibrechten fällt so in der CI auf.
 
 Eine neue Action in einem dieser Workflows bekommt ihren SHA über die GitHub-API, nicht von Hand
 aus der Weboberfläche. Bei annotierten Tags (`"type": "tag"`) zeigt die Referenz auf das
@@ -107,6 +134,14 @@ gh api repos/docker/login-action/git/ref/tags/v4.6.0 --jq '.object'
 # bei "type": "tag" zusätzlich:
 gh api repos/<owner>/<repo>/git/tags/<sha> --jq '.object.sha'
 ```
+
+**Herkunft im Review prüfen.** Ein Commit aus einem Fork ist auch über das Upstream-Repository
+erreichbar. `gh api repos/<owner>/<repo>/commits/<sha>` findet ihn, und der Tarball unter
+`codeload.github.com/<owner>/<repo>/tar.gz/<sha>`, den der Runner lädt, wird ausgeliefert.
+Geprüft am 09.10.2026 mit einem Commit, der nur im Fork `bhouston/checkout-git-dedup` liegt,
+abgefragt über `actions/checkout`. Dass der SHA existiert, beweist also nichts. Das Review
+gleicht jeden neuen oder geänderten Pin mit den beiden Befehlen oben ab: Der dereferenzierte
+Commit des Tags aus dem Kommentar muss genau der gepinnte SHA sein.
 
 ## Voraussetzungen
 

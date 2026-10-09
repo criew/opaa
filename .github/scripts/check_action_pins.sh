@@ -16,6 +16,11 @@ PINNED_WORKFLOWS=(
   .github/workflows/publish-images.yml
 )
 
+# A uses key in block style ("- uses:", "uses:"), quoted ("'uses':", "\"uses\":") or inside a
+# flow mapping ("- { name: x, uses: ... }"). A value on its own continuation line is not
+# recognised; the workflows here never write one.
+USES_KEY="(^[[:space:]]*(-[[:space:]]+)?|[{,][[:space:]]*)['\"]?uses['\"]?[[:space:]]*:"
+
 cd "$(git rev-parse --show-toplevel)"
 
 checked=0
@@ -31,7 +36,7 @@ for workflow in "${PINNED_WORKFLOWS[@]}"; do
   # "|| true": a workflow without any uses: line is valid, not a reason to abort.
   while IFS=: read -r line content; do
     checked=$((checked + 1))
-    ref="$(printf '%s' "$content" | sed -E "s/^[[:space:]]*(-[[:space:]]+)?uses:[[:space:]]*['\"]?([^'\" ]*)['\"]?.*/\2/")"
+    ref="$(printf '%s' "$content" | sed -E "s/.*uses['\"]?[[:space:]]*:[[:space:]]*['\"]?([^'\" ,}]*).*/\1/")"
     comment="$(printf '%s' "$content" | sed -nE 's/.*[[:space:]]#[[:space:]]*(.*)$/\1/p')"
 
     case "$ref" in
@@ -56,7 +61,7 @@ for workflow in "${PINNED_WORKFLOWS[@]}"; do
 
     rejected=$((rejected + 1))
     echo "::error file=$workflow,line=$line::\"$ref\" is not pinned to a full commit SHA with an exact version comment. Expected: uses: owner/repo@<40-character SHA> # vX.Y.Z (resolve the tag via 'gh api repos/<owner>/<repo>/git/ref/tags/<tag>', dereferencing annotated tags)."
-  done < <(grep -nE '^[[:space:]]*(-[[:space:]]+)?uses:' "$workflow" || true)
+  done < <(grep -nE "$USES_KEY" "$workflow" || true)
 done
 
 if [ "$checked" -eq 0 ] && [ "$rejected" -eq 0 ]; then
