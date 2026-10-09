@@ -1006,15 +1006,20 @@ sofort zurück. Ersetzt in „Widerruf nach dem Commit“ den Teil „im aufrufe
   in derselben Transaktion, die Reihenfolge bleibt: Profilzeile, Token-Zeilen, dann die Konten
   (`endAllUnder`). Die Erneuerung sperrt eine Token-Zeile und danach höchstens das Konto ihrer Person
   (`grantRejected`), also in derselben Richtung; ein neuer Zyklus entsteht nicht.
-- **Begrenzung:** fester Pool aus zwei Threads, Warteschlange mit 1000 Plätzen für **Commits**,
-  nicht für Grants. Ein Eintrag widerruft seine Grants nacheinander; jeder Aufruf hat sein eigenes
+- **Begrenzung:** fester Pool aus zwei Threads, Warteschlange mit 1000 Plätzen für **Verwürfe**,
+  nicht für Grants: ein Eintrag je Aufruf von `revokeAfterCommit`, also je Verwurf, nicht je
+  Transaktion. Ein Eintrag widerruft seine Grants nacheinander; jeder Aufruf hat sein eigenes
   Zeitlimit von 15 s (`OAuthClient`, ganzer Austausch), ein toter Anbieter kostet also je Grant
   höchstens dieses Zeitlimit, und ein Fehler bei einem Grant bricht die übrigen nicht ab. Die Grenze
   folgt aus dem Speicher: Ein Grant im Schnappschuss sind zwei Token und eine Registrierung, wenige
   KiB, die der Verwurf ohnehin schon geladen hatte; 1000 Commits einzelner Grants bleiben bei wenigen
   MiB, eine Notabschaltung mit tausenden Grants ist ein Eintrag. Ist die Warteschlange voll, wird
-  der Commit mit einer WARN-Zeile (Zahl der Grants, Zugangskennungen, kein Token) verworfen, der
-  Aufrufer blockiert nie.
+  der Eintrag mit einer WARN-Zeile (Zahl der Grants, Zugangskennungen, kein Token) verworfen, der
+  Aufrufer blockiert nie. Massenfall, in dem das trotzdem geschehen kann: `ConnectionLifecycleReconciler`
+  beendet je Person in eigener Transaktion, also mit je einem Eintrag. Deaktiviert ein Abgleich mehr
+  als rund 1000 Personen mit OAuth-Konten (etwa nach dem Start oder bei einer großen
+  Verzeichnisbereinigung) und kommt der Pool nicht hinterher, läuft die Warteschlange über. Gedeckt
+  durch das Restrisiko „Warteschlange voll“ unten.
 - **Herunterfahren:** Der Pool stoppt bei der Zerstörung der Bean, also nach dem Webserver. Nach
   einer Gnadenfrist von 2 s wird der laufende Widerruf unterbrochen, die übrigen Grants seines
   Eintrags und alle wartenden Einträge werden verworfen; die Zahl der Grants steht in einer

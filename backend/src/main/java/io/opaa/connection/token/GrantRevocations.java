@@ -14,14 +14,15 @@ import org.springframework.stereotype.Component;
 
 /**
  * The bounded pool on which discarded OAuth grants are revoked at their provider, never on the
- * thread that discarded them. One entry is one commit: it revokes its grants one after the other,
- * each bounded by its own call's time limit ({@code OAuthClient}), and a failing grant does not
- * stop the rest. The queue bounds commits, not grants, so an emergency shutdown of thousands of
- * grants is one entry; its memory is the snapshot the discard already held (two tokens and a
- * registration, a few KiB per grant), and {@link #QUEUE_CAPACITY} commits of single grants stay
- * within a few MiB. A commit that finds the queue full is dropped with a WARN line and the caller
- * goes on. The queue lives in this process (ADR-0021): on shutdown what runs is interrupted after a
- * short grace period and what waits is dropped, with the number of grants logged.
+ * thread that discarded them. One entry is one discard handed over after its commit (one call of
+ * {@code ConnectionSecrets#revokeAfterCommit}): it revokes its grants one after the other, each
+ * bounded by its own call's time limit ({@code OAuthClient}), and a failing grant does not stop the
+ * rest. The queue bounds discards, not grants, so an emergency shutdown of thousands of grants is
+ * one entry; its memory is the snapshot the discard already held (two tokens and a registration, a
+ * few KiB per grant), and {@link #QUEUE_CAPACITY} entries of single grants stay within a few MiB.
+ * An entry that finds the queue full is dropped with a WARN line and the caller goes on. The queue
+ * lives in this process (ADR-0021): on shutdown what runs is interrupted after a short grace period
+ * and what waits is dropped, with the number of grants logged.
  */
 @Component
 public class GrantRevocations {
