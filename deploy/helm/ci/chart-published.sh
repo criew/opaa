@@ -10,9 +10,11 @@ if (($# != 2)); then
   exit 2
 fi
 
+command -v helm >/dev/null || { echo "helm is not installed" >&2; exit 1; }
+
 if out="$(helm show chart "$1" --version "$2" 2>&1)"; then
   echo true
-elif grep -qi 'not found' <<<"$out"; then
+elif grep -qE ': not found$' <<<"$out"; then
   echo false
 else
   echo "Lookup of $1 version $2 failed: $out" >&2
