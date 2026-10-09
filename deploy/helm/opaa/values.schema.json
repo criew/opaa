@@ -447,6 +447,70 @@
         ]
       }
     },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "serviceMonitor": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "labels": {
+              "type": "object"
+            },
+            "interval": {
+              "type": "string",
+              "pattern": "^(0|([0-9]+(ms|s|m|h|d|w|y))+)?$",
+              "description": "Prometheus duration such as 30s or 1m30s; empty keeps the Prometheus default"
+            },
+            "scrapeTimeout": {
+              "type": "string",
+              "pattern": "^(0|([0-9]+(ms|s|m|h|d|w|y))+)?$",
+              "description": "Prometheus duration such as 30s or 1m30s; empty keeps the Prometheus default"
+            }
+          }
+        },
+        "podAnnotations": {
+          "type": "boolean"
+        },
+        "scrapeFrom": {
+          "type": "array"
+        },
+        "prometheusRule": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "labels": {
+              "type": "object"
+            },
+            "errorRateThreshold": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "heapUsageThreshold": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 1
+            },
+            "errorRateMinRequests": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "indexingStallMinutes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
     "trustedProxyCidrs": {
       "type": "array",
       "items": {
@@ -737,6 +801,24 @@
         "shutdownTimeoutSeconds": {
           "type": "integer",
           "minimum": 1
+        },
+        "managementPort": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 65535,
+          "not": {
+            "const": 8080
+          },
+          "description": "Port of the actuator endpoints; must differ from the API port 8080"
+        },
+        "logFormat": {
+          "type": "string",
+          "enum": [
+            "",
+            "ecs",
+            "logstash",
+            "gelf"
+          ]
         },
         "terminationGracePeriodSeconds": {
           "type": "integer",

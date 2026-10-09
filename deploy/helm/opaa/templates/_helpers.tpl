@@ -164,6 +164,9 @@ message names the rule no matter which object Helm renders first.
 {{- end }}
 {{- end }}
 {{- end }}
+{{- if and .Values.metrics.prometheusRule.enabled (not .Values.metrics.serviceMonitor.enabled) }}
+{{- fail "metrics.prometheusRule needs metrics.serviceMonitor: its alerts select the series by the service label the ServiceMonitor sets." }}
+{{- end }}
 {{- if and .Values.ingress.enabled (not .Values.ingress.host) }}
 {{- fail "ingress.enabled is true, but ingress.host is empty." }}
 {{- end }}

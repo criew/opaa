@@ -53,10 +53,20 @@ ERPROBUNGSDATENBANK - NICHT FÜR DEN BETRIEB
 ORIGINALABLAGE
 {{- if eq .Values.uploads.store "s3" }}
   Objektspeicher: Bucket {{ .Values.uploads.s3.bucket }}{{ with .Values.uploads.s3.endpoint }} auf {{ . }}{{ end }}.
-  Zustand: GET /actuator/health/upload-store (mit Anmeldung).
+  Zustand: GET /actuator/health/upload-store auf Port {{ .Values.backend.managementPort }} (mit Anmeldung).
 {{- else }}
   Volume {{ include "opaa.uploads.claimName" . }} unter /app/uploads. Es bleibt bei helm uninstall
   erhalten und gehört in die Sicherung, zusammen mit der Datenbank.
+{{- end }}
+
+{{- if .Values.metrics.serviceMonitor.enabled }}
+
+BETRIEBSÜBERWACHUNG
+  ServiceMonitor {{ include "opaa.backend.fullname" . }}: /actuator/prometheus auf Port {{ .Values.backend.managementPort }}.
+  {{- if not .Values.metrics.serviceMonitor.labels }}
+  metrics.serviceMonitor.labels ist leer. kube-prometheus-stack wählt ServiceMonitors nach
+  release: <Release-Name> aus; ohne passendes Label sammelt er die Metriken nicht ein.
+  {{- end }}
 {{- end }}
 
 CLIENT-ADRESSE UND NETZTRENNUNG

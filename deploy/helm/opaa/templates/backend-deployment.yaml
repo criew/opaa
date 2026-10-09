@@ -36,6 +36,11 @@ spec:
         {{- if not .Values.secrets.existingSecret }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- end }}
+        {{- if .Values.metrics.podAnnotations }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.backend.managementPort | quote }}
+        prometheus.io/path: /actuator/prometheus
+        {{- end }}
         {{- with .Values.backend.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -80,6 +85,9 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            - name: management
+              containerPort: {{ .Values.backend.managementPort }}
+              protocol: TCP
           envFrom:
             - configMapRef:
                 name: {{ include "opaa.backend.fullname" . }}
@@ -118,21 +126,21 @@ spec:
           startupProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: http
+              port: management
             {{- with .Values.backend.startupProbe }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           livenessProbe:
             httpGet:
               path: /actuator/health/liveness
-              port: http
+              port: management
             {{- with .Values.backend.livenessProbe }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
           readinessProbe:
             httpGet:
               path: /actuator/health/readiness
-              port: http
+              port: management
             {{- with .Values.backend.readinessProbe }}
             {{- toYaml . | nindent 12 }}
             {{- end }}

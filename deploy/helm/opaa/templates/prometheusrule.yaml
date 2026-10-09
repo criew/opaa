@@ -1,0 +1,95 @@
+{{- if .Values.metrics.prometheusRule.enabled }}
+{{- $rule := .Values.metrics.prometheusRule }}
+{{- $deployment := include "opaa.backend.fullname" . }}
+{{- $scrape := printf "namespace=%q, service=%q" .Release.Namespace $deployment }}
+{{- $replicas := printf "kube_deployment_spec_replicas{namespace=%q, deployment=%q}" .Release.Namespace $deployment }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "opaa.fullname" . }}
+  labels:
+    {{- include "opaa.labels" . | nindent 4 }}
+    {{- with $rule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  groups:
+    - name: opaa
+      rules:
+        - alert: OpaaBackendNotReady
+          # Ten minutes cover the schema migration of a start; 0 replicas (stopped on purpose) do not alert.
+          expr: >-
+            kube_deployment_status_replicas_available{namespace="{{ .Release.Namespace }}", deployment="{{ $deployment }}"}
+            < kube_deployment_spec_replicas{namespace="{{ .Release.Namespace }}", deployment="{{ $deployment }}"}
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: OPAA-Backend ist nicht bereit
+            description: >-
+              Das Backend {{ $deployment }} in {{ .Release.Namespace }} ist seit zehn Minuten nicht
+              bereit. Anmeldung und Suche sind nicht verfügbar. Protokoll des Pods und
+              /actuator/health/readiness prüfen (Datenbank erreichbar?).
+        - alert: OpaaBackendMetricsMissing
+          # Silent while the backend is stopped on purpose (replicas 0); without kube-state-metrics the
+          # unless never matches and the alert keeps working.
+          expr: >-
+            absent(up{ {{- $scrape }}} == 1)
+            unless on() ({{ $replicas }} == 0)
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Keine Metriken vom OPAA-Backend
+            description: >-
+              Prometheus erreicht /actuator/prometheus des Backends {{ $deployment }} seit zehn
+              Minuten nicht. Pod, ServiceMonitor und die NetworkPolicy (metrics.scrapeFrom) prüfen.
+        - alert: OpaaHighErrorRate
+          # Needs a minimum of requests, so that two failures on a quiet night do not alert.
+          expr: >-
+            (
+              sum(rate(http_server_requests_seconds_count{ {{- $scrape }}, status=~"5.."}[10m]))
+              / sum(rate(http_server_requests_seconds_count{ {{- $scrape }}}[10m]))
+              > {{ $rule.errorRateThreshold }}
+            )
+            and on() sum(increase(http_server_requests_seconds_count{ {{- $scrape }}}[10m])) >= {{ $rule.errorRateMinRequests }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: Viele Fehlerantworten des OPAA-Backends
+            description: >-
+              Mehr als {{ mulf $rule.errorRateThreshold 100 }} % der Anfragen an {{ $deployment }}
+              enden seit zehn Minuten mit einem Status 5xx. Häufige Ursache: ein nicht erreichbares
+              Modell. Protokoll des Pods prüfen.
+        - alert: OpaaIndexingStalled
+          # A run active through the whole window - already at its start, so a young series after a
+          # pod start does not count as a full window - and no document processed in it.
+          expr: >-
+            max(min_over_time(executor_active_threads{ {{- $scrape }}, name="indexingTaskExecutor"}[{{ $rule.indexingStallMinutes }}m])) > 0
+            and on() max(executor_active_threads{ {{- $scrape }}, name="indexingTaskExecutor"} offset {{ $rule.indexingStallMinutes }}m) > 0
+            and on() sum(increase(opaa_indexing_documents_total{ {{- $scrape }}}[{{ $rule.indexingStallMinutes }}m])) == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Indexierung ohne Fortschritt
+            description: >-
+              Ein Indexierungslauf in {{ $deployment }} ist aktiv, hat aber seit
+              {{ $rule.indexingStallMinutes }} Minuten kein Dokument verarbeitet. Laufstatus der
+              Bibliothek und Erreichbarkeit von Quelle und Embedding-Modell prüfen.
+        - alert: OpaaHeapUsageHigh
+          expr: >-
+            sum(jvm_memory_used_bytes{ {{- $scrape }}, area="heap"})
+            / sum(jvm_memory_max_bytes{ {{- $scrape }}, area="heap"})
+            > {{ $rule.heapUsageThreshold }}
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: Heap des OPAA-Backends fast voll
+            description: >-
+              Das Backend {{ $deployment }} nutzt seit 15 Minuten mehr als
+              {{ mulf $rule.heapUsageThreshold 100 }} % seines Heaps. Speichergrenze
+              (backend.resources.limits.memory) oder backend.maxRamPercentage anheben.
+{{- end }}

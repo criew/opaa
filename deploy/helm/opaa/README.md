@@ -93,6 +93,26 @@ kubectl label namespace opaa pod-security.kubernetes.io/enforce=restricted
 - **CSP:** Liegt die OIDC-Authority auf einem anderen Origin als `publicBaseUrl`, gehört dieser in
   `frontend.cspConnectSrcExtra`.
 
+## Betriebsüberwachung
+
+Proben und Metriken laufen über den Management-Port (`backend.managementPort`), getrennt von der API.
+`metrics.serviceMonitor` legt einen ServiceMonitor an, `metrics.prometheusRule` Grundalarme, und
+`backend.logFormat` schaltet JSON-Protokolle ein. Mit kube-prometheus-stack:
+
+```yaml
+metrics:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+  prometheusRule:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+```
+
+Metriken und Alarme beschreibt das Handbuch im Kapitel „Kubernetes“.
+
 ## Prüfen
 
 ```bash

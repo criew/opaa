@@ -1,0 +1,106 @@
+# Unit test of the alerts in templates/prometheusrule.yaml (release "r", namespace "opaa"):
+#   helm template r . -n opaa -f ci/full-values.yaml --show-only templates/prometheusrule.yaml \
+#     | sed -n '/^spec:/,$p' | sed '1d; s/^  //' > /tmp/opaa-rules.yaml
+#   promtool test rules ci/prometheusrule-test.yaml
+rule_files:
+  - /tmp/opaa-rules.yaml
+evaluation_interval: 1m
+tests:
+  # Idle for two hours, then a run that processes its first document after 20 minutes: no alert,
+  # because the run was not active through the whole window.
+  - interval: 1m
+    input_series:
+      - series: 'executor_active_threads{namespace="opaa",service="r-opaa-backend",name="indexingTaskExecutor"}'
+        values: '0x119 1x60'
+      - series: 'opaa_indexing_documents_total{namespace="opaa",service="r-opaa-backend",result="processed"}'
+        values: '5x139 6x40'
+    alert_rule_test:
+      - eval_time: 136m
+        alertname: OpaaIndexingStalled
+        exp_alerts: []
+  # A run active from the pod start on without any document: no alert before the series is as old
+  # as the window, then after the window plus the 5 minutes of "for".
+  - interval: 1m
+    input_series:
+      - series: 'executor_active_threads{namespace="opaa",service="r-opaa-backend",name="indexingTaskExecutor"}'
+        values: '1x90'
+      - series: 'opaa_indexing_documents_total{namespace="opaa",service="r-opaa-backend",result="processed"}'
+        values: '5x90'
+    alert_rule_test:
+      - eval_time: 62m
+        alertname: OpaaIndexingStalled
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: OpaaIndexingStalled
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Indexierung ohne Fortschritt
+              description: "Ein Indexierungslauf in r-opaa-backend ist aktiv, hat aber seit 60 Minuten kein Dokument verarbeitet. Laufstatus der Bibliothek und Erreichbarkeit von Quelle und Embedding-Modell prüfen."
+  # Stopped on purpose (replicas 0): neither readiness nor missing metrics alert.
+  - interval: 1m
+    input_series:
+      - series: 'kube_deployment_spec_replicas{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '0x30'
+      - series: 'kube_deployment_status_replicas_available{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: OpaaBackendMetricsMissing
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: OpaaBackendNotReady
+        exp_alerts: []
+  # One replica wanted, none ready and no scrape: both alerts fire.
+  - interval: 1m
+    input_series:
+      - series: 'kube_deployment_spec_replicas{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '1x30'
+      - series: 'kube_deployment_status_replicas_available{namespace="opaa",deployment="r-opaa-backend"}'
+        values: '0x30'
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: OpaaBackendMetricsMissing
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Keine Metriken vom OPAA-Backend
+              description: "Prometheus erreicht /actuator/prometheus des Backends r-opaa-backend seit zehn Minuten nicht. Pod, ServiceMonitor und die NetworkPolicy (metrics.scrapeFrom) prüfen."
+      - eval_time: 25m
+        alertname: OpaaBackendNotReady
+        exp_alerts:
+          - exp_labels:
+              severity: critical
+              namespace: opaa
+              deployment: r-opaa-backend
+            exp_annotations:
+              summary: OPAA-Backend ist nicht bereit
+              description: "Das Backend r-opaa-backend in opaa ist seit zehn Minuten nicht bereit. Anmeldung und Suche sind nicht verfügbar. Protokoll des Pods und /actuator/health/readiness prüfen (Datenbank erreichbar?)."
+  # Two failures among few requests do not alert; a steady 10 % failure share does.
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{namespace="opaa",service="r-opaa-backend",status="500"}'
+        values: '0+0.2x40'
+      - series: 'http_server_requests_seconds_count{namespace="opaa",service="r-opaa-backend",status="200"}'
+        values: '0+0.4x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: OpaaHighErrorRate
+        exp_alerts: []
+  - interval: 1m
+    input_series:
+      - series: 'http_server_requests_seconds_count{namespace="opaa",service="r-opaa-backend",status="500"}'
+        values: '0+1x40'
+      - series: 'http_server_requests_seconds_count{namespace="opaa",service="r-opaa-backend",status="200"}'
+        values: '0+9x40'
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: OpaaHighErrorRate
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: Viele Fehlerantworten des OPAA-Backends
+              description: "Mehr als 5 % der Anfragen an r-opaa-backend enden seit zehn Minuten mit einem Status 5xx. Häufige Ursache: ein nicht erreichbares Modell. Protokoll des Pods prüfen."

@@ -51,6 +51,7 @@ filesystemSources:
 extraCACertificates:
   configMap: internal-ca
 backend:
+  logFormat: ecs
   image:
     digest: sha256:0000000000000000000000000000000000000000000000000000000000000000
   extraEnv:
@@ -109,3 +110,12 @@ networkPolicy:
         ports:
           - port: 5433
             protocol: TCP
+metrics:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+  prometheusRule:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
