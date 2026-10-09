@@ -1,0 +1,21 @@
+# Two namespaces, so that "trial.sh down" removes exactly what "up" created and never touches a
+# regular OPAA installation in namespace "opaa".
+# OPAA itself runs under the Pod Security Standard "restricted", like a production installation.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opaa-trial
+  labels:
+    app.kubernetes.io/part-of: opaa-trial
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# The services stand in for what a house operates itself. Ollama's image runs as root, so this
+# namespace enforces "baseline" only.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: opaa-trial-services
+  labels:
+    app.kubernetes.io/part-of: opaa-trial
+    pod-security.kubernetes.io/enforce: baseline

@@ -1,0 +1,35 @@
+# Values of the OPAA chart for the trial setup - NOT FOR PRODUCTION.
+# trial.sh adds what depends on the chosen address or is shared with the services (publicBaseUrl,
+# ingress.host, bootstrap.oidc.issuerUri, frontend.cspConnectSrcExtra, models, bucket, the first
+# administrator's address, image tags); everything else the chart needs is here. The services live
+# in namespace opaa-trial-services (manifests/).
+
+# PostgreSQL with pgvector inside the release: no backup, no replication, no upgrade path.
+evaluationDatabase:
+  enabled: true
+
+embedding:
+  baseUrl: http://ollama.opaa-trial-services.svc.cluster.local:11434/v1
+  dimensions: 768
+
+bootstrap:
+  oidc:
+    clientId: opaa
+    # The issuer is the browser's address (keycloak.localhost), which does not resolve inside the
+    # cluster. The backend fetches the signing keys from the Keycloak service instead.
+    jwkSetUri: http://keycloak.opaa-trial-services.svc.cluster.local:8080/realms/opaa/protocol/openid-connect/certs
+  chatModel:
+    baseUrl: http://ollama.opaa-trial-services.svc.cluster.local:11434/v1
+
+# Created by trial.sh with generated keys; never part of this file.
+secrets:
+  existingSecret: opaa-secrets
+
+uploads:
+  store: s3
+  s3:
+    endpoint: http://rustfs.opaa-trial-services.svc.cluster.local:9000
+
+ingress:
+  enabled: true
+  className: traefik

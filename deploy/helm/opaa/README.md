@@ -17,6 +17,13 @@ nicht mitgeliefert.
 - für die Originale ein S3-kompatibler Objektspeicher (empfohlen) oder ein Volume
 - ein OpenAI-kompatibler Endpunkt für Einbettung und Chat
 
+## Ausprobieren
+
+Wer OPAA unter Kubernetes erst einmal ausprobieren oder vorführen will, startet den
+[Erprobungsaufbau](../../../examples/kubernetes-trial/README.md): Ein Befehl bringt den Chart mit
+Keycloak, Ollama, RustFS, Mailpit und der Erprobungsdatenbank in einen leeren lokalen Cluster. Er ist
+nicht für den Betrieb gedacht.
+
 ## Installation
 
 Jedes Release veröffentlicht den Chart neben den Images in GHCR ([Releases](../../../docs/releases.md)),

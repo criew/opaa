@@ -338,6 +338,73 @@ kubectl -n opaa port-forward svc/opaa-frontend 8080:80
 Die Erprobungsdatenbank hat keine Sicherung, keine Replikation und keinen Aktualisierungsweg über
 Hauptversionen von PostgreSQL. Wer aus der Erprobung einen Betrieb macht, setzt neu auf.
 
+## Erprobung mit dem Beispiel-Setup
+
+Wer OPAA unter Kubernetes vorführen oder einen ersten Eindruck gewinnen will, braucht neben dem Chart
+alle Dienste, die der Chart nur anbindet. Das Beispiel-Setup im Repository unter
+`examples/kubernetes-trial/` baut sie mit einem Befehl in einem leeren lokalen Cluster auf und
+installiert den Chart mit passenden Werten. Ablauf, Einstellungen und Fehlersuche stehen in der
+README dieses Verzeichnisses.
+
+> **Nicht für den Betrieb.** Jeder Dienst läuft mit einer Instanz, ohne TLS und ohne Sicherung.
+> Keycloak läuft im Entwicklungsmodus mit Testkonten, deren Passwörter im Repository stehen. Aus dem
+> Beispiel-Setup wird kein Betrieb; eine Installation beginnt mit [Installation](#installation).
+
+| Dienst | Im Beispiel-Setup | Anbindung im Chart |
+|---|---|---|
+| Datenbank | Erprobungsdatenbank des Charts | `evaluationDatabase.enabled` |
+| Identitätsanbieter | Keycloak mit dem Realm `opaa`, einem öffentlichen Client und zwei Testkonten | `bootstrap.oidc`, `frontend.cspConnectSrcExtra` |
+| Modelle | Ollama mit einem kleinen Chat-Modell und `nomic-embed-text`, vorab gezogen | `embedding`, `bootstrap.chatModel` |
+| Originalablage | RustFS mit einem vorab angelegten Bucket | `uploads.s3` |
+| Mailserver | Mailpit; ein Job trägt es nach dem Start als Mailserver ein und schickt die Testnachricht | keiner, Verwaltungseinstellung |
+| Eingang | Traefik des Clusters, Hostnamen unter `*.localhost` | `ingress` |
+
+Die Geheimnisse erzeugt das Skript beim ersten Start und legt sie als Secret an, das der Chart über
+`secrets.existingSecret` liest. Ein weiterer Start lässt sie unverändert.
+
+### Starten und abbauen
+
+Voraussetzung ist ein lokaler Cluster mit Traefik als Ingress-Controller, etwa k3d, dazu `kubectl`,
+`helm` und `openssl`:
+
+```bash
+k3d cluster create opaa-trial -p "8088:80@loadbalancer"
+examples/kubernetes-trial/trial.sh up
+```
+
+Das Skript arbeitet im aktuellen kubectl-Kontext und nennt ihn zuerst. Es legt die Namespaces
+`opaa-trial` (OPAA, Pod Security Standard `restricted`) und `opaa-trial-services` (die Dienste) an
+und wartet, bis alles bereit ist. Am Ende nennt es die Adressen und die Befehle, mit denen die
+erzeugten Verwaltungspasswörter aus den Secrets gelesen werden. Angemeldet wird über Keycloak oder
+als erster Systemverwalter über `/login/system`.
+
+```bash
+examples/kubernetes-trial/trial.sh down
+```
+
+`down` löscht beide Namespaces und mit ihnen Datenbank, Modelle, Originale und Geheimnisse.
+
+| Umgebungsvariable | Vorgabe | Wirkung |
+|---|---|---|
+| `TRIAL_PORT` | `8088` | Port, unter dem der Ingress-Controller auf dem Rechner erreichbar ist; nach dem ersten Start nicht mehr ändern, weil der Issuer ein Startwert ist |
+| `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und OPAA beim ersten Start übernimmt |
+| `OPAA_IMAGE_TAG` | `main` | Tag der OPAA-Images |
+| `KUBE_CONTEXT` | aktueller Kontext | kubectl-Kontext des Zielclusters |
+
+### Was sich daraus für eine Installation ablesen lässt
+
+- **Issuer und Signaturschlüssel.** Der Browser erreicht Keycloak unter einer Adresse, die im Cluster
+  nicht auflöst. Das Backend vergleicht den Issuer nur mit dem Token und holt die Schlüssel über
+  `bootstrap.oidc.jwkSetUri` unter der internen Adresse (siehe [Identitätsanbieter](#identitätsanbieter)).
+- **Content-Security-Policy.** Keycloak liegt auf einem anderen Origin als OPAA; sein Origin steht
+  deshalb in `frontend.cspConnectSrcExtra`, und die Ausgabe von `helm install` bestätigt ihn.
+- **Modelle vor dem ersten Start.** Das Chat-Modell aus `bootstrap.chatModel` muss im Endpunkt
+  vorhanden sein, bevor jemand chattet; ein späterer Wechsel geht über die Modellverwaltung.
+- **Bucket vorab.** OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job vor dem Start.
+- **Mailserver in der Oberfläche.** Er ist kein Wert des Charts; das Beispiel-Setup trägt ihn über die
+  Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
+  ([E-Mail-Versand](deployment.md#e-mail-versand-smtp)).
+
 ## Geheimnisse
 
 Geheimnisse stehen nie in der ConfigMap. Der Chart liest sie aus einem Secret, auf einem von zwei

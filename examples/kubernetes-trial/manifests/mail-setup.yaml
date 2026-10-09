@@ -1,0 +1,72 @@
+# The mail server is an administration setting of OPAA, not a value of the chart. Once OPAA
+# answers, this job signs in as the first system administrator, enters Mailpit as mail server and
+# sends the test mail to that administrator, which then shows in Mailpit. Runs in namespace
+# opaa-trial because it reads the administrator's password from the secret there; it reaches the
+# backend through the frontend service, as the chart's network policy requires.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: opaa-mail-setup
+  namespace: opaa-trial
+  labels:
+    app.kubernetes.io/name: opaa-mail-setup
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 1800
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opaa-mail-setup
+        app.kubernetes.io/part-of: opaa-trial
+    spec:
+      restartPolicy: OnFailure
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mail-setup
+          image: curlimages/curl:8.22.0
+          env:
+            - name: OPAA_PUBLIC_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: trial-settings
+                  key: OPAA_PUBLIC_BASE_URL
+            - name: ADMIN_EMAIL
+              valueFrom:
+                configMapKeyRef:
+                  name: trial-settings
+                  key: ADMIN_EMAIL
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: opaa-secrets
+                  key: OPAA_INITIAL_ADMIN_PASSWORD
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              api=http://opaa-frontend/api
+              until curl -fs -o /dev/null "$api/health"; do sleep 5; done
+              login=$(printf '{"email":"%s","password":"%s"}' "$ADMIN_EMAIL" "$ADMIN_PASSWORD")
+              token=$(curl -fsS -X POST -H 'Content-Type: application/json' \
+                -H "Origin: $OPAA_PUBLIC_BASE_URL" --data "$login" "$api/v1/auth/local/login" \
+                | sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p')
+              test -n "$token"
+              curl -fsS -o /dev/null -X PUT -H "Authorization: Bearer $token" \
+                -H 'Content-Type: application/json' -H "Origin: $OPAA_PUBLIC_BASE_URL" \
+                --data '{"enabled":true,"host":"mailpit.opaa-trial-services.svc.cluster.local","port":1025,"encryption":"NONE","fromAddress":"opaa@opaa-trial.example","fromName":"OPAA (Erprobung)"}' \
+                "$api/v1/system/mail-settings"
+              result=$(curl -fsS -X POST -H "Authorization: Bearer $token" \
+                -H "Origin: $OPAA_PUBLIC_BASE_URL" "$api/v1/system/mail-settings/test")
+              echo "$result"
+              echo "$result" | grep -q '"outcome":"SENT"'
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]

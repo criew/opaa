@@ -1,0 +1,134 @@
+# Keycloak in development mode with the realm "opaa" imported on every start (no database volume).
+# The fixed user ids in the realm keep each account's subject stable across restarts, so OPAA
+# finds its existing user row instead of provisioning a second one.
+#
+# KC_HOSTNAME is the address the browser uses; it becomes the "iss" of every token. The backend
+# never calls that address: it fetches the signing keys from the service below
+# (bootstrap.oidc.jwkSetUri in opaa-values.yaml), so *.localhost needs no DNS inside the cluster.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: opaa-trial-services
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: keycloak
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: keycloak
+        app.kubernetes.io/part-of: opaa-trial
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: keycloak
+          image: quay.io/keycloak/keycloak:26.8
+          args: ["start-dev", "--import-realm"]
+          env:
+            - name: KC_HOSTNAME
+              valueFrom:
+                configMapKeyRef:
+                  name: trial-settings
+                  key: KEYCLOAK_URL
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            - name: KC_HTTP_ENABLED
+              value: "true"
+            - name: KC_PROXY_HEADERS
+              value: xforwarded
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            # Read by the placeholders in realm-opaa.json while importing.
+            - name: OPAA_PUBLIC_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: trial-settings
+                  key: OPAA_PUBLIC_BASE_URL
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
+              value: admin
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: keycloak-admin
+                  key: password
+          ports:
+            - name: http
+              containerPort: 8080
+            - name: management
+              containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: management
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /health/started
+              port: management
+            periodSeconds: 5
+            failureThreshold: 60
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: realm
+              mountPath: /opt/keycloak/data/import
+              readOnly: true
+      volumes:
+        - name: realm
+          configMap:
+            name: keycloak-realm
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: opaa-trial-services
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  selector:
+    app.kubernetes.io/name: keycloak
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: keycloak
+  namespace: opaa-trial-services
+  labels:
+    app.kubernetes.io/name: keycloak
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: keycloak.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port:
+                  name: http

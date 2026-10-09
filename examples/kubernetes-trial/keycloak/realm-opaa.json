@@ -1,0 +1,86 @@
+{
+  "realm": "opaa",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 3600,
+  "ssoSessionMaxLifespan": 36000,
+  "clients": [
+    {
+      "clientId": "opaa",
+      "name": "OPAA",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["${OPAA_PUBLIC_BASE_URL}/*"],
+      "webOrigins": ["${OPAA_PUBLIC_BASE_URL}"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "${OPAA_PUBLIC_BASE_URL}/*"
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true",
+            "claim.name": "groups"
+          }
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "Bürgerbüro Rheinfurt",
+      "path": "/Bürgerbüro Rheinfurt"
+    },
+    {
+      "name": "Meldewesen",
+      "path": "/Meldewesen"
+    }
+  ],
+  "users": [
+    {
+      "id": "00000000-0000-4000-8000-000000000001",
+      "username": "testuser",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "test@opaa.local",
+      "firstName": "Test",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "testpass",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "id": "00000000-0000-4000-8000-000000000003",
+      "username": "maria.weber",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "maria.weber@stadt-rheinfurt.example",
+      "firstName": "Maria",
+      "lastName": "Weber",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "RheinfurtDemo!2026",
+          "temporary": false
+        }
+      ],
+      "groups": ["/Bürgerbüro Rheinfurt", "/Meldewesen"]
+    }
+  ]
+}
