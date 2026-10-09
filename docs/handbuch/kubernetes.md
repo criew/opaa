@@ -368,11 +368,14 @@ Voraussetzung ist ein lokaler Cluster mit Traefik als Ingress-Controller, etwa k
 `helm` und `openssl`:
 
 ```bash
-k3d cluster create opaa-trial -p "8088:80@loadbalancer"
+k3d cluster create opaa-trial -p "127.0.0.1:8088:80@loadbalancer"
 examples/kubernetes-trial/trial.sh up
 ```
 
-Das Skript arbeitet im aktuellen kubectl-Kontext und nennt ihn zuerst. Es legt die Namespaces
+Der Port ist nur auf dem eigenen Rechner erreichbar (`127.0.0.1`), weil Mailpit Einladungs- und
+Rücksetzlinks zeigt und die Testkonten bekannt sind. Das Skript arbeitet im aktuellen kubectl-Kontext
+und nennt ihn zuerst. Einen Kontext, der nicht nach einem lokalen Cluster aussieht, lehnt es ab, und
+es ändert keinen gleichnamigen Namespace, den es nicht selbst angelegt hat. Es legt die Namespaces
 `opaa-trial` (OPAA, Pod Security Standard `restricted`) und `opaa-trial-services` (die Dienste) an
 und wartet, bis alles bereit ist. Am Ende nennt es die Adressen und die Befehle, mit denen die
 erzeugten Verwaltungspasswörter aus den Secrets gelesen werden. Angemeldet wird über Keycloak oder
@@ -390,6 +393,7 @@ examples/kubernetes-trial/trial.sh down
 | `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und OPAA beim ersten Start übernimmt |
 | `OPAA_IMAGE_TAG` | `main` | Tag der OPAA-Images |
 | `KUBE_CONTEXT` | aktueller Kontext | kubectl-Kontext des Zielclusters |
+| `TRIAL_ALLOW_CONTEXT` | leer | Name eines Kontexts, der nicht nach einem lokalen Cluster aussieht (`k3d-*`, `kind-*`, `docker-desktop`, `rancher-desktop`, `orbstack`, `minikube`) und trotzdem gemeint ist |
 
 ### Was sich daraus für eine Installation ablesen lässt
 
@@ -400,7 +404,7 @@ examples/kubernetes-trial/trial.sh down
   deshalb in `frontend.cspConnectSrcExtra`, und die Ausgabe von `helm install` bestätigt ihn.
 - **Modelle vor dem ersten Start.** Das Chat-Modell aus `bootstrap.chatModel` muss im Endpunkt
   vorhanden sein, bevor jemand chattet; ein späterer Wechsel geht über die Modellverwaltung.
-- **Bucket vorab.** OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job vor dem Start.
+- **Bucket vorab.** OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.
 - **Mailserver in der Oberfläche.** Er ist kein Wert des Charts; das Beispiel-Setup trägt ihn über die
   Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
   ([E-Mail-Versand](deployment.md#e-mail-versand-smtp)).

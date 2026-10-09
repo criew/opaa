@@ -127,7 +127,7 @@ deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert di
 # Kubernetes-Erprobungsaufbau (aus dem Wurzelverzeichnis, siehe examples/kubernetes-trial/README.md):
 # OPAA-Chart mit Keycloak, Ollama, RustFS, Mailpit und Erprobungsdatenbank im aktuellen
 # kubectl-Kontext; nicht für den Betrieb, nicht Teil der CI
-k3d cluster create opaa-trial -p "8088:80@loadbalancer"
+k3d cluster create opaa-trial -p "127.0.0.1:8088:80@loadbalancer"
 examples/kubernetes-trial/trial.sh up   # installieren oder aktualisieren, danach http://opaa.localhost:8088
 examples/kubernetes-trial/trial.sh down # beide Namespaces samt Daten entfernen
 

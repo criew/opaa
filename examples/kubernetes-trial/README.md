@@ -32,12 +32,23 @@ Verzeichnis zeigt, wie die Anbindung aussieht, und ändert am Chart nichts.
 ## Starten
 
 ```bash
-k3d cluster create opaa-trial -p "8088:80@loadbalancer"
+k3d cluster create opaa-trial -p "127.0.0.1:8088:80@loadbalancer"
 examples/kubernetes-trial/trial.sh up
 ```
 
+`127.0.0.1` bindet den Port nur an den eigenen Rechner, wie die Ports des Compose-Stapels. Ohne
+diese Angabe wären OPAA mit den bekannten Testkonten, die Keycloak-Verwaltung und Mailpit mit seinen
+Einladungs- und Rücksetzlinks aus dem ganzen Netz erreichbar.
+
 `k3d cluster create` stellt den kubectl-Kontext auf den neuen Cluster um. `trial.sh` arbeitet immer
-im aktuellen Kontext und nennt ihn zuerst; mit `KUBE_CONTEXT=<Name>` wählt es einen anderen.
+im aktuellen Kontext und nennt ihn zuerst; mit `KUBE_CONTEXT=<Name>` wählt es einen anderen. Zwei
+Sperren schützen vor einem falschen Cluster:
+
+- Nur Kontexte, die nach einem lokalen Cluster aussehen (`k3d-*`, `kind-*`, `docker-desktop`,
+  `rancher-desktop`, `orbstack`, `minikube`), werden ohne Weiteres angenommen. Jeden anderen nimmt
+  das Skript nur, wenn `TRIAL_ALLOW_CONTEXT` genau seinen Namen nennt.
+- `up` und `down` ändern einen Namespace `opaa-trial` oder `opaa-trial-services` nur, wenn er das
+  Label `app.kubernetes.io/part-of=opaa-trial` trägt, also von diesem Aufbau stammt.
 
 Der erste Start lädt die Images und die Modelle und dauert je nach Leitung wenige Minuten; jeder
 weitere Aufruf von `up` ist schnell und ändert nichts an Daten und Geheimnissen. Am Ende stehen die
@@ -76,8 +87,9 @@ Datenbank, Modellen, Originalen und Geheimnissen. Der Cluster selbst bleibt; ihn
 |---|---|---|
 | `TRIAL_PORT` | `8088` | Port, unter dem der Ingress-Controller auf diesem Rechner erreichbar ist; muss zum Port aus `k3d cluster create -p` passen. Bei `80` entfällt der Port in allen Adressen. Nach dem ersten `up` nicht mehr ändern (siehe unten) |
 | `TRIAL_CHAT_MODEL` | `qwen2.5:3b` | Chat-Modell, das Ollama zieht und OPAA beim ersten Start als Chat-Modell übernimmt |
-| `OPAA_IMAGE_TAG` | `main` | Tag der OPAA-Images; nach dem ersten Release mit Chart eine Versionsnummer |
+| `OPAA_IMAGE_TAG` | `main` | Tag der OPAA-Images; nach dem ersten Release mit Chart eine Versionsnummer. Bei `main` zieht jeder neu gestartete Pod den aktuellen Stand (`pullPolicy: Always`); `kubectl -n opaa-trial rollout restart deploy` holt ihn |
 | `KUBE_CONTEXT` | aktueller Kontext | kubectl-Kontext des Zielclusters |
+| `TRIAL_ALLOW_CONTEXT` | leer | Name eines Kontexts, der nicht nach einem lokalen Cluster aussieht und trotzdem gemeint ist |
 
 Adresse und Chat-Modell sind Startwerte von OPAA: Der erste Start übernimmt den Identitätsanbieter
 samt Issuer und das Chat-Modell in die Datenbank. Ein späteres `up` mit anderem `TRIAL_PORT` oder
@@ -96,7 +108,8 @@ Ollama in `manifests/ollama.yaml` zulässt; wer eines ausprobiert, hebt die Gren
 |---|---|
 | `trial.sh` | erzeugt Geheimnisse und Einstellungen, wendet die Manifeste an, installiert den Chart und wartet, bis alles bereit ist |
 | `opaa-values.yaml` | Werte des Charts; was von Port und Modellen abhängt, setzt `trial.sh` |
-| `manifests/` | Keycloak, Ollama, RustFS, Mailpit und drei Jobs: Bucket anlegen, Modelle ziehen, Mailserver eintragen |
+| `manifests/` | Namespaces, Keycloak, Ollama, RustFS und Mailpit; mit `kubectl apply` angewendet |
+| `jobs/` | Bucket anlegen, Modelle ziehen, Mailserver eintragen. Ein Job lässt sich nicht ändern, nur ersetzen: `trial.sh` löscht die ersten beiden bei jedem `up` und legt sie neu an, den Mail-Job nur, solange er nicht erfolgreich war |
 | `keycloak/realm-opaa.json` | Realm `opaa` mit dem öffentlichen Client `opaa` und den Testkonten |
 
 **Geheimnisse.** Beim ersten `up` erzeugt `trial.sh` mit `openssl` die Pflichtgeheimnisse des Charts,
@@ -167,7 +180,7 @@ Ollama-Image und 2,2 GiB Modelle, Datenbank und Objektspeicher.
 
 ## Pflege
 
-Die Images der Hilfsdienste sind in `manifests/` gepinnt. Renovate liest sie mit dem
+Die Images der Hilfsdienste sind in `manifests/` und `jobs/` gepinnt. Renovate liest sie mit dem
 `kubernetes`-Manager ([docs/renovate.md](../../docs/renovate.md)) und schlägt Updates als PR vor,
 zusammen mit demselben Image im Compose-Stapel. Diese PRs mergen nie automatisch, weil keine CI den
 Aufbau prüft: Vor dem Merge einmal `trial.sh up` auf einem frischen Cluster laufen lassen und die
@@ -192,6 +205,9 @@ helm template opaa deploy/helm/opaa -f examples/kubernetes-trial/opaa-values.yam
 | `up` wartet lange auf `job/ollama-pull-models` | Die Modelle werden geladen; Fortschritt mit `kubectl -n opaa-trial-services logs -f job/ollama-pull-models` |
 | Browser findet `opaa.localhost` nicht | Der Browser löst `*.localhost` nicht selbst auf; Einträge in `/etc/hosts` ergänzen |
 | Seite nicht erreichbar, obwohl `up` fertig ist | `TRIAL_PORT` passt nicht zum Port aus `k3d cluster create -p` |
+| `up` oder `down` bricht mit „ist kein lokaler Cluster“ ab | Der Kontext heißt nicht wie ein lokaler Cluster; ist er gemeint, `TRIAL_ALLOW_CONTEXT=<Name>` setzen |
+| `up` oder `down` bricht mit „gehört nicht zum Erprobungsaufbau“ ab | Ein gleichnamiger Namespace stammt nicht von `trial.sh`; das Skript ändert ihn nicht |
+| `up` bricht mit „job/… ist fehlgeschlagen“ ab | Der genannte Job hat aufgegeben; die Ursache zeigt der dort genannte `kubectl logs`-Befehl |
 | Anmeldung bei Keycloak endet mit „Invalid parameter: redirect_uri“, oder OPAA lehnt das Token ab | `TRIAL_PORT` wurde nach dem ersten `up` geändert; mit `down` und `up` neu anlegen |
 | Ollama startet mit `OOMKilled` neu, der Chat antwortet „KI-Dienst vorübergehend nicht verfügbar“ | Ein größeres oder ein zweites Chat-Modell passt nicht in die Speichergrenze von Ollama; Grenze in `manifests/ollama.yaml` anheben oder beim kleinen Modell bleiben |
 | Chat antwortet „Fehler im KI-Dienst“ | Das Chat-Modell fehlt in Ollama; `kubectl -n opaa-trial-services exec deploy/ollama -- ollama list` |

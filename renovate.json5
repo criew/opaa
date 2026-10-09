@@ -84,7 +84,10 @@
   // Der kubernetes-Manager kennt kein Dateimuster von sich aus; er liest die Images der Hilfsdienste
   // des Erprobungsaufbaus (#2423). Die OPAA-Images dort setzt trial.sh, sie tragen keinen Pin.
   kubernetes: {
-    managerFilePatterns: ['examples/kubernetes-trial/manifests/*.yaml'],
+    managerFilePatterns: [
+      'examples/kubernetes-trial/manifests/*.yaml',
+      'examples/kubernetes-trial/jobs/*.yaml',
+    ],
   },
 
   // Regex-Manager für Pins, die kein regulärer Manager sieht; jeder liest Datasource und Paket
