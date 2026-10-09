@@ -11,7 +11,8 @@ import java.util.Map;
 /** Stores and connections of the SharePoint tests over the {@link FakeGraphServer}. */
 final class SharePointTestStores {
 
-  static final String SITE = "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe";
+  static final String SITE =
+      "contoso.sharepoint.com,2c712604-1370-44e7-a1f5-426573fda80a,2d2244c3-251a-49ea-93a8-39e1c3a060fe";
   static final String DRIVE_0 = "b!drive-0";
   static final String DRIVE_1 = "b!drive-1";
 

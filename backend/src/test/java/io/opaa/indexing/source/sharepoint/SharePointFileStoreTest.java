@@ -243,11 +243,15 @@ class SharePointFileStoreTest {
     assertThat(retried.ingested()).containsExactly(path("bericht"));
   }
 
+  /**
+   * A folder Graph refuses during the listing makes the library unlistable, not the file absent.
+   */
   @Test
   void aParentFolderRefusedInTheListingKeepsTheBestand() {
     harness.fullSync(all());
 
-    server.failNext("items/akten", 403, "accessDenied", null, 1);
+    server.reportStaleParent("bericht", "verborgen");
+    server.failNext("items/verborgen", 403, "accessDenied", null, 1);
     FileSyncHarness.Run run = harness.fullSync(all());
 
     assertThat(run.listingComplete()).isFalse();
