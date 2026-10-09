@@ -259,7 +259,8 @@ backend:
     limits:
       memory: 2Gi
 
-  # Init containers importing extraCACertificates into the truststore (one keytool run each).
+  # Init containers of the backend pod: the truststore build with extraCACertificates, and the wait
+  # for the evaluation database while evaluationDatabase.enabled.
   initResources:
     requests:
       cpu: 50m
