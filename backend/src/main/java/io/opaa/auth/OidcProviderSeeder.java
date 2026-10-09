@@ -2,6 +2,7 @@ package io.opaa.auth;
 
 import io.opaa.api.types.ProviderType;
 import io.opaa.common.ValidationException;
+import io.opaa.organization.Organization;
 import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -26,6 +27,11 @@ import org.springframework.transaction.annotation.Transactional;
  * set and the next start tries again). Existing rows with no marker get the marker without any
  * seeding, mirroring {@code LlmModelSeeder}.
  *
+ * <p>How loud an unseeded start is depends on whether anyone can still sign in: with a
+ * login-capable local system administrator ({@link LocalAdminAvailabilityGuard}) no issuer is INFO
+ * - operation with local accounts only - and an incomplete or malformed one is WARN; without one it
+ * is ERROR.
+ *
  * <p><b>{@code OPAA_OIDC_BOOTSTRAP=force}</b> restores the environment provider once despite the
  * marker - a row with this issuer is overwritten with the environment values, enabled and made the
  * default; otherwise it is created. Since ADR-0033 (Entscheidung 5) the way back from a mistyped
@@ -45,6 +51,11 @@ public class OidcProviderSeeder {
   static final String SEEDED_DISPLAY_NAME = "Verzeichnisdienst";
   static final String BOOTSTRAP_FORCE_REMOVAL_DATE = "31.03.2027";
   private static final String OIDC_MODE = "oidc";
+  private static final String NO_SIGN_IN_MESSAGE =
+      "Kein Identitätsanbieter übernommen ({}): Bis ein Anbieter existiert, ist keine Anmeldung"
+          + " möglich. OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
+          + " OPAA_OIDC_JWK_SET_URI) setzen und neu starten - die Übernahme wird dann"
+          + " nachgeholt. Siehe docs/handbuch/deployment.md.";
 
   private final OidcProviderRepository repository;
   private final OidcProviderSeedMarkerRepository markerRepository;
@@ -82,10 +93,12 @@ public class OidcProviderSeeder {
       markerRepository.save(new OidcProviderSeedMarker(Instant.now()));
       return;
     }
-    String issuer = requireBootstrapConfiguration(oidc);
-    if (issuer == null) {
+    String problem = bootstrapProblem(oidc);
+    if (problem != null) {
+      reportUnseededStart(oidc, problem);
       return;
     }
+    String issuer = oidc.issuerUri().trim();
     OidcProvider provider = environmentProvider(oidc, issuer);
     provider.markDefault();
     // The bootstrap provider is this installation's own directory, not another house's - the
@@ -107,10 +120,12 @@ public class OidcProviderSeeder {
             + " Anbieter-Fehlkonfiguration ist die Anmeldung als lokaler Systemverwalter;"
             + " OPAA_LOCAL_ADMIN_RESET=force stellt dessen Konto wieder her (ADR-0033).",
         BOOTSTRAP_FORCE_REMOVAL_DATE);
-    String issuer = requireBootstrapConfiguration(oidc);
-    if (issuer == null) {
+    String problem = bootstrapProblem(oidc);
+    if (problem != null) {
+      log.error(NO_SIGN_IN_MESSAGE, problem);
       return;
     }
+    String issuer = oidc.issuerUri().trim();
     String key = OidcIssuerUris.normalize(issuer);
     repository
         .findByDefaultProviderTrue()
@@ -169,34 +184,51 @@ public class OidcProviderSeeder {
   }
 
   /**
-   * The issuer exactly as configured (trimmed), or {@code null} - with the operator told why - when
-   * the environment could not seed a provider anyone can sign in through. An unset variable binds
-   * to the empty string, so blank means unset.
+   * Why the environment cannot seed a provider anyone can sign in through, or {@code null} when it
+   * can - then the trimmed {@code OPAA_OIDC_ISSUER_URI} is the issuer exactly as configured. An
+   * unset variable binds to the empty string, so blank means unset.
    */
-  private static String requireBootstrapConfiguration(AuthProperties.OidcAuth oidc) {
-    String issuer = oidc.issuerUri() == null ? "" : oidc.issuerUri().trim();
-    String clientId = oidc.clientId() == null ? "" : oidc.clientId().trim();
-    String problem = null;
+  private static String bootstrapProblem(AuthProperties.OidcAuth oidc) {
+    String issuer = trimmed(oidc.issuerUri());
     if (issuer.isEmpty()) {
-      problem = "OPAA_OIDC_ISSUER_URI ist nicht gesetzt";
-    } else if (clientId.isEmpty()) {
-      problem = "OPAA_OIDC_CLIENT_ID ist nicht gesetzt";
+      return "OPAA_OIDC_ISSUER_URI ist nicht gesetzt";
+    }
+    if (trimmed(oidc.clientId()).isEmpty()) {
+      return "OPAA_OIDC_CLIENT_ID ist nicht gesetzt";
+    }
+    try {
+      OidcIssuerUris.requireHttpUri(issuer, "OPAA_OIDC_ISSUER_URI");
+      return null;
+    } catch (ValidationException e) {
+      return e.getMessage();
+    }
+  }
+
+  /**
+   * Tells the operator about a start that seeded nothing. ERROR only when no one can sign in at
+   * all; with a login-capable local administrator the installation runs on local accounts - no
+   * issuer is a deliberate choice (INFO), a half-set one a misconfiguration (WARN).
+   */
+  private void reportUnseededStart(AuthProperties.OidcAuth oidc, String problem) {
+    if (adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID) == 0) {
+      log.error(NO_SIGN_IN_MESSAGE, problem);
+    } else if (trimmed(oidc.issuerUri()).isEmpty()) {
+      log.info(
+          "Kein Identitätsanbieter konfiguriert ({}): Anmeldung nur mit lokalen Konten. Einen"
+              + " Anbieter in der Anbieterverwaltung anlegen oder OPAA_OIDC_ISSUER_URI und"
+              + " OPAA_OIDC_CLIENT_ID setzen und neu starten - die Übernahme wird dann nachgeholt.",
+          problem);
     } else {
-      try {
-        OidcIssuerUris.requireHttpUri(issuer, "OPAA_OIDC_ISSUER_URI");
-      } catch (ValidationException e) {
-        problem = e.getMessage();
-      }
+      log.warn(
+          "Kein Identitätsanbieter übernommen ({}): Anmeldung bis dahin nur mit lokalen Konten."
+              + " OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
+              + " OPAA_OIDC_JWK_SET_URI) korrigieren und neu starten - die Übernahme wird dann"
+              + " nachgeholt. Siehe docs/handbuch/deployment.md.",
+          problem);
     }
-    if (problem == null) {
-      return issuer;
-    }
-    log.error(
-        "Kein Identitätsanbieter übernommen ({}): Bis ein Anbieter existiert, ist keine Anmeldung"
-            + " möglich. OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
-            + " OPAA_OIDC_JWK_SET_URI) setzen und neu starten - die Übernahme wird dann"
-            + " nachgeholt. Siehe docs/handbuch/deployment.md.",
-        problem);
-    return null;
+  }
+
+  private static String trimmed(String value) {
+    return value == null ? "" : value.trim();
   }
 }

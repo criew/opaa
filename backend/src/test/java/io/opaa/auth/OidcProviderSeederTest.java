@@ -347,6 +347,29 @@ class OidcProviderSeederTest {
     verify(markerRepository, never()).save(any());
   }
 
+  /**
+   * A half-set environment is a misconfiguration worth a WARN, but with a login-capable local
+   * administrator it is no ERROR: the sign-in with local accounts still works.
+   */
+  @Test
+  void anIncompleteEnvironmentWithALoginCapableLocalAdministratorIsReportedAsWarning() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    when(repository.countByProviderType(ProviderType.OIDC)).thenReturn(0L);
+    when(adminAvailability.countLoginCapableSystemAdmins(Organization.DEFAULT_ID)).thenReturn(1L);
+
+    List<ILoggingEvent> events =
+        capturedLogsOf(oidc("https://idp.example/realms/opaa", null, null, ""));
+
+    assertThat(events).noneMatch(event -> event.getLevel() == Level.ERROR);
+    assertThat(events)
+        .filteredOn(event -> event.getLevel() == Level.WARN)
+        .map(ILoggingEvent::getFormattedMessage)
+        .anyMatch(
+            message ->
+                message.contains("OPAA_OIDC_CLIENT_ID ist nicht gesetzt")
+                    && message.contains("nur mit lokalen Konten"));
+  }
+
   private List<ILoggingEvent> capturedLogsOf(AuthProperties properties) {
     ListAppender<ILoggingEvent> logs = new ListAppender<>();
     logs.start();
