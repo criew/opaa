@@ -263,21 +263,27 @@ emptyDir:
 {{/*
 "true" when a connect-src source list admits the URL .url on a page served from .page, after the
 CSP Level 3 rules for host and scheme sources: a source without scheme takes the page's, http admits
-https, "*." matches subdomains but not the domain itself, a missing port means the default port.
-Paths are not compared. .sources is space-separated; keywords other than 'self' admit nothing.
+https, "*." matches subdomains but not the domain itself, a missing port means the default port, a
+path ending in "/" is a prefix and any other path must match exactly (paths are case-sensitive).
+.sources is space-separated; keywords other than 'self' admit nothing. Known limits, all erring
+towards "not admitted": ports with leading zeros, the upgrade of a source port 80 to 443, a page
+on an explicit default port, IPv6 literals, percent-encoded paths.
 */}}
 {{- define "opaa.cspAdmits" -}}
 {{- $url := urlParse (lower (trim .url)) }}
+{{- $urlPath := (urlParse (trim .url)).path }}
 {{- $page := urlParse (lower (trim .page)) }}
 {{- $defaultPorts := dict "http" "80" "https" "443" "ws" "80" "wss" "443" }}
 {{- $host := regexReplaceAll ":[0-9]*$" $url.host "" }}
 {{- $port := trimPrefix ":" (regexFind ":[0-9]+$" $url.host) }}
 {{- if eq $port (get $defaultPorts $url.scheme) }}{{ $port = "" }}{{ end }}
-{{- /* groups: 2 scheme, 3 host with optional leading "*.", 7 port */}}
-{{- $hostSource := `^(([a-z][a-z0-9+.-]*)://)?(\*|(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*)(:(\*|[0-9]+))?(/.*)?$` }}
+{{- /* groups: 2 scheme, 3 host with optional leading "*.", 7 port, 8 path */}}
+{{- $hostSource := `^(?i)(([a-z][a-z0-9+.-]*)://)?(\*|(\*\.)?[a-z0-9-]+(\.[a-z0-9-]+)*)(:(\*|[0-9]+))?(/.*)?$` }}
 {{- $admitted := false }}
-{{- range splitList " " (lower .sources) }}
-{{- $source := . }}
+{{- range splitList " " .sources }}
+{{- $sourcePath := "" }}
+{{- if regexMatch $hostSource . }}{{ $sourcePath = regexReplaceAll $hostSource . "${8}" }}{{ end }}
+{{- $source := lower . }}
 {{- if eq $source "'self'" }}{{ $source = printf "%s://%s" $page.scheme $page.host }}{{ end }}
 {{- if eq $source "*" }}
 {{- if has $url.scheme (list "http" "https" $page.scheme) }}{{ $admitted = true }}{{ end }}
@@ -289,7 +295,9 @@ Paths are not compared. .sources is space-separated; keywords other than 'self' 
 {{- $sourcePort := regexReplaceAll $hostSource $source "${7}" }}
 {{- $hostMatches := or (eq $pattern "*" $host) (and (hasPrefix "*." $pattern) (hasSuffix (trimPrefix "*" $pattern) $host)) }}
 {{- $portMatches := or (eq $sourcePort "*" $port) (and (not $port) (eq $sourcePort (get $defaultPorts $url.scheme))) }}
-{{- if and $hostMatches $portMatches (include "opaa.cspSchemeMatches" (list $scheme $url.scheme)) }}{{ $admitted = true }}{{ end }}
+{{- /* a prefix ending in "/" can only end on a segment boundary of the URL's path */}}
+{{- $pathMatches := or (not $sourcePath) (eq $sourcePath $urlPath) (and (hasSuffix "/" $sourcePath) (hasPrefix $sourcePath $urlPath)) }}
+{{- if and $hostMatches $portMatches $pathMatches (include "opaa.cspSchemeMatches" (list $scheme $url.scheme)) }}{{ $admitted = true }}{{ end }}
 {{- end }}
 {{- end }}
 {{- if $admitted }}true{{ end }}

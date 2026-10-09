@@ -664,9 +664,13 @@ andere Anbieter zeigt `curl -s <Issuer>/.well-known/openid-configuration` den `t
 Die Einträge folgen der Syntax von Content Security Policy Level 3: ein Origin, ein Host ohne Schema
 (`login.example.org`, dann gilt das Schema von `publicBaseUrl`) oder ein Platzhalter für Subdomains
 (`https://*.example.org` erlaubt `login.example.org`, nicht aber `example.org` selbst); ohne Port
-gilt der Standardport des Schemas. Nach denselben Regeln prüft die Ausgabe von `helm install` und
-`helm upgrade` den Issuer aus `bootstrap.oidc.issuerUri`: Erlaubt die Policy ihn nicht, warnt sie
-mit „ANMELDUNG ÜBER … WIRD BLOCKIERT“. Den `token_endpoint` kann Helm nicht prüfen, weil es das
+gilt der Standardport des Schemas. Ein Pfad im Eintrag schränkt die Quelle ein:
+`https://login.example.org/realms/opaa` erlaubt weder das Discovery-Dokument noch den
+`token_endpoint`, deshalb nur Origins eintragen. Nach denselben Regeln prüft die Ausgabe von
+`helm install` und `helm upgrade` das Discovery-Dokument unter `bootstrap.oidc.issuerUri`: Erlaubt
+die Policy es nicht, warnt sie mit „ANMELDUNG ÜBER … WIRD BLOCKIERT“. Dieselbe Warnung erscheint,
+wenn der Issuer per `http` erreichbar ist und `publicBaseUrl` per `https`: Der Browser sperrt den
+Aufruf dann als Mixed Content, ausgenommen sind nur `localhost` und `127.0.0.1`. Den `token_endpoint` kann Helm nicht prüfen, weil es das
 Discovery-Dokument nicht abruft; liegt der Issuer auf einem anderen Origin als `publicBaseUrl`,
 erinnert die Ausgabe deshalb an ihn und nennt die Adresse des Discovery-Dokuments.
 

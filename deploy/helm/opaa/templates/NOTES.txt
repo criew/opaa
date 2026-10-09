@@ -86,15 +86,23 @@ CLIENT-ADRESSE UND NETZTRENNUNG
 {{- $discovery := printf "%s/.well-known/openid-configuration" (trimSuffix "/" .) }}
 {{- if ne $origin (include "opaa.origin" $.Values.publicBaseUrl) }}
 {{- $sources := printf "'self' %s" $.Values.frontend.cspConnectSrcExtra }}
-{{- if include "opaa.cspAdmits" (dict "url" . "page" $.Values.publicBaseUrl "sources" $sources) }}
+{{- $issuerHost := regexReplaceAll ":[0-9]+$" (urlParse $origin).host "" }}
+{{- $mixed := and (hasPrefix "https://" (lower $.Values.publicBaseUrl)) (hasPrefix "http://" $origin) (not (has $issuerHost (list "localhost" "127.0.0.1" "[::1]"))) }}
+{{- if $mixed }}
+
+ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
+  Der Issuer ist per http erreichbar, OPAA per https. Der Browser sperrt solche Aufrufe als
+  Mixed Content, unabhängig von frontend.cspConnectSrcExtra. Den Anbieter per https anbinden.
+{{- else if include "opaa.cspAdmits" (dict "url" $discovery "page" $.Values.publicBaseUrl "sources" $sources) }}
 
 IDENTITÄTSANBIETER AUF EINEM ANDEREN ORIGIN
-  Die Content-Security-Policy erlaubt den Issuer {{ $origin }}.
+  Die Content-Security-Policy erlaubt das Discovery-Dokument des Issuers {{ $origin }}.
 {{- else }}
 
 ANMELDUNG ÜBER {{ $origin }} WIRD BLOCKIERT
   Der Issuer des Identitätsanbieters liegt auf einem anderen Origin als publicBaseUrl. Ohne
   frontend.cspConnectSrcExtra: "{{ $origin }}" verhindert die Content-Security-Policy die Anmeldung.
+  Ein Pfad im Eintrag schränkt die Quelle ein - nur den Origin eintragen.
 {{- end }}
   Der Browser ruft außerdem den token_endpoint aus dem Discovery-Dokument auf:
     {{ $discovery }}
