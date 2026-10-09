@@ -215,6 +215,9 @@ Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
 - Branches immer mit `feature/` erstellen — **ausnahmslos**, auch bei Fehlerbehebungen, dringenden Korrekturen und Dokumentationsänderungen. Es gibt kein `fix/`-, `hotfix/`- oder `docs/`-Präfix.
 - Immer die GitHub-Issue-ID im Branch-Namen angeben.
 - Keine generischen Namen wie `feature/workspace` ohne Issue-ID verwenden.
+- **Cloud-Sessions:** Gibt die Umgebung einen `claude/…`-Branch vor, haben Agenten hiermit die ausdrückliche Erlaubnis und die Pflicht,
+  stattdessen auf `feature/<issue-id>_<kurz>` zu pushen (`git push -u origin HEAD:feature/…`) und den PR von dort zu öffnen.
+  Auf den `claude/`-Branch wird nichts gepusht.
 
 **Ausnahme Renovate:** Von Renovate erzeugte Update-Branches heißen `renovate/<slug>` (ohne
 `feature/`-Präfix und ohne Issue-ID), und Renovate-PRs verwenden weder das PR-Template noch
