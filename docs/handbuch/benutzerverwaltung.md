@@ -503,8 +503,10 @@ Zugang nicht mehr freigegeben, sagt die Rückfrage, dass danach kein neues Verbi
 Bei einer Anmeldung beim Anbieter (OAuth) zieht OPAA die Zustimmung anschließend auch beim Anbieter
 zurück, im Hintergrund: Trennen und Notabschaltung warten nicht auf den Anbieter. Gelingt das
 nicht, etwa weil der Anbieter nicht erreichbar ist oder OPAA gerade neu startet, bleibt die
-Zustimmung dort bis zu ihrem Ablauf gültig. OPAA selbst hat sie dann schon gelöscht und nutzt sie
-nicht mehr; wer sicher gehen will, entzieht sie zusätzlich in den Kontoeinstellungen des Anbieters.
+Zustimmung dort gültig, bis der Anbieter sie beendet, bei manchen Anbietern unbegrenzt. OPAA selbst
+hat sie dann schon gelöscht und nutzt sie nicht mehr; wer sicher gehen will, entzieht sie zusätzlich
+in den Kontoeinstellungen des Anbieters. Die Systemverwaltung sieht einen verlorenen Widerruf nur als
+Warnung im Betriebslog.
 
 ### Was die Verwaltung sieht
 

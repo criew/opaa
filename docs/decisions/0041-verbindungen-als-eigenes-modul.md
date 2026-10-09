@@ -994,38 +994,71 @@ sofort zurück. Ersetzt in „Widerruf nach dem Commit“ den Teil „im aufrufe
 „Bekannte Grenze des Widerrufs“ ab.
 
 - **Übergabe nach dem Commit:** `ConnectionSecrets` nimmt den Schnappschuss wie bisher in der
-  Transaktion (Registrierung, wie sie gerade steht) und übergibt die Widerrufe in `afterCommit` an
-  `connection.token.GrantRevocations`, einen je Grant. Ohne Transaktion sofort. Ein Rollback übergibt
+  Transaktion (Registrierung, wie sie gerade steht) und übergibt die Widerrufe eines Verwurfs in
+  `afterCommit` als **einen** Eintrag an `connection.token.GrantRevocations`; `discardAllUnder` legt
+  Personen-Grants und Zustimmungen dafür zusammen. Ohne Transaktion sofort. Ein Rollback übergibt
   nichts. Kein Widerruf läuft im Request-Thread, keiner hält dessen Datenbankverbindung.
-- **Begrenzung:** fester Pool aus zwei Threads, Warteschlange mit 1000 Plätzen. Ist sie voll, wird
-  der Widerruf mit einer WARN-Zeile (Zugangskennung, kein Token) verworfen, der Aufrufer blockiert
-  nie. Jeder Aufruf behält sein eigenes Zeitlimit von 15 s (`OAuthClient`, ganzer Austausch). Ein
-  verlorener Widerruf kostet keinen Zugriff auf OPAA, dort ist das Token schon gelöscht. Beim
-  Anbieter bleibt der Grant bis zu seinem Ablauf gültig.
+- **Schnappschuss unter Zeilensperre:** Die Verwurfspfade lesen die Token-Zeilen mit
+  `PESSIMISTIC_WRITE` (`findLockedByConnectedAccountId`, `findPersonGrantsUnder`,
+  `findConsentsUnder`). Läuft gleichzeitig eine Erneuerung (`renewLocked`, eigene Transaktion mit
+  `FOR UPDATE` auf derselben Zeile), wartet der Verwurf auf deren Commit und nimmt den rotierten
+  Refresh-Token in den Schnappschuss. Die Sperre nahm bisher erst das `DELETE`; sie kommt nur früher
+  in derselben Transaktion, die Reihenfolge bleibt: Profilzeile, Token-Zeilen, dann die Konten
+  (`endAllUnder`). Die Erneuerung sperrt eine Token-Zeile und danach höchstens das Konto ihrer Person
+  (`grantRejected`), also in derselben Richtung; ein neuer Zyklus entsteht nicht.
+- **Begrenzung:** fester Pool aus zwei Threads, Warteschlange mit 1000 Plätzen für **Commits**,
+  nicht für Grants. Ein Eintrag widerruft seine Grants nacheinander; jeder Aufruf hat sein eigenes
+  Zeitlimit von 15 s (`OAuthClient`, ganzer Austausch), ein toter Anbieter kostet also je Grant
+  höchstens dieses Zeitlimit, und ein Fehler bei einem Grant bricht die übrigen nicht ab. Die Grenze
+  folgt aus dem Speicher: Ein Grant im Schnappschuss sind zwei Token und eine Registrierung, wenige
+  KiB, die der Verwurf ohnehin schon geladen hatte; 1000 Commits einzelner Grants bleiben bei wenigen
+  MiB, eine Notabschaltung mit tausenden Grants ist ein Eintrag. Ist die Warteschlange voll, wird
+  der Commit mit einer WARN-Zeile (Zahl der Grants, Zugangskennungen, kein Token) verworfen, der
+  Aufrufer blockiert nie.
 - **Herunterfahren:** Der Pool stoppt bei der Zerstörung der Bean, also nach dem Webserver. Nach
-  einer Gnadenfrist von 2 s werden laufende Widerrufe unterbrochen und wartende verworfen, ihre Zahl
-  steht in einer WARN-Zeile. Die Warteschlange liegt nur im Prozess (Eintrag in ADR-0021).
+  einer Gnadenfrist von 2 s wird der laufende Widerruf unterbrochen, die übrigen Grants seines
+  Eintrags und alle wartenden Einträge werden verworfen; die Zahl der Grants steht in einer
+  WARN-Zeile. Die Warteschlange liegt nur im Prozess (Eintrag in ADR-0021).
+- **Head-of-Line-Blocking:** Die Warteschlange ist eine für alle Zugänge, in Reihenfolge des Commits.
+  Hält ein toter Anbieter eine Notabschaltung mit 1000 Grants, ist ein Thread rund 1000 × 15 s
+  belegt, bei `BearerPost` (Erneuerung plus Widerruf) bis zu doppelt so lange; zwei solche Einträge
+  belegen beide Threads, und die Widerrufe aller anderen Zugänge warten. Folge bei Anbietern, deren
+  Widerruf die ganze Autorisierung des Clients für die Person beendet: Trennt eine Person und
+  verbindet neu, bevor ihr alter Widerruf lief, kann er die neue Verbindung mitreißen. Eine
+  Verteilung je Zugang ist nicht gebaut.
+- **Restrisiko:** Ein Widerruf geht verloren, wenn die Warteschlange voll ist, wenn der Prozess
+  endet, bevor er lief, und wenn der Anbieter nicht erreichbar ist. Das einzige Signal ist die
+  WARN-Zeile im Betriebslog; nichts in der Datenbank oder der Oberfläche erinnert an ihn. OPAA selbst
+  hat das Token dann schon gelöscht. Beim Anbieter bleibt der Grant gültig, bis er abläuft, und
+  Refresh-Tokens etwa von Dropbox laufen nicht von selbst ab, also unter Umständen unbegrenzt. Gerade
+  bei der Notabschaltung trägt der Widerruf die Schutzwirkung. Gegenmaßnahme der Verwaltung: das
+  Client-Secret der App-Registrierung beim Anbieter erneuern; dann löst bei einem vertraulichen
+  Client niemand mehr einen entwendeten Refresh-Token ein.
 - **`BearerPost` erneuert vorher (Merkposten aus #2154):** Ist das gespeicherte Zugriffstoken
   abgelaufen, läuft es binnen 5 Minuten ab oder ist sein Ende unbekannt, erneuert der Widerruf es zuerst
-  mit dem Refresh-Token und schickt das frische. Das geschieht im Pool, nicht in der Transaktion
-  und ohne Zeilensperre: Die Zeile ist schon gelöscht, eine zweite Erneuerung desselben Grants gibt es
-  nicht mehr. Ein rotierter Refresh-Token wird nicht gespeichert. Nimmt der Anbieter den Refresh-Token
-  nicht mehr an (`invalid_grant`), bleibt nichts zu widerrufen. Ist er nicht erreichbar, wird das
-  gespeicherte Token versucht. Verworfen: Widerruf per Refresh-Token. Ein `BearerPost`-Anbieter wie
-  Dropbox nimmt am Widerrufs-Endpunkt nur das Zugriffstoken als Bearer an; ein Refresh-Token geht dort
-  nur über RFC 7009, und das ist eine andere Deklaration. Offen für D1 (#2154): ob Dropbox den POST
-  mit leerem Formular-Body annimmt.
+  mit dem Refresh-Token und schickt das frische. Das geschieht im Pool, nach dem Commit und ohne
+  Zeilensperre: Die Zeile ist gelöscht, und weil der Schnappschuss unter Zeilensperre genommen wurde,
+  trägt er den letzten Refresh-Token. Ein rotierter Refresh-Token wird nicht gespeichert. Nimmt der
+  Anbieter den Refresh-Token nicht mehr an (`invalid_grant`), bleibt nichts zu widerrufen. Ist er
+  nicht erreichbar, wird das gespeicherte Token versucht, ohne Refresh-Token ebenso. Verworfen:
+  Widerruf per Refresh-Token. Ein `BearerPost`-Anbieter wie Dropbox nimmt am Widerrufs-Endpunkt nur
+  das Zugriffstoken als Bearer an; ein Refresh-Token geht dort nur über RFC 7009, und das ist eine
+  andere Deklaration. Offen für D1 (#2154): ob Dropbox den POST mit leerem Formular-Body annimmt.
 - **Nicht über den Pool:** Der Widerruf eines frischen Grants, den der Abschluss einer Zustimmung
-  nicht ablegen kann (`ConnectionAuthorizationService#complete`). Er läuft nach dem Rollback ohne
-  gehaltene Verbindung, ist ein einzelner Aufruf derselben Person, und deren Anbieter hat Sekunden
-  vorher geantwortet.
-- **Belegt** in `GrantRevocationsTest` (Begrenzung, volle Warteschlange, Fehler, Herunterfahren; nur
-  Latches, kein Warten auf Zeit), `OAuthClientTest` (Zeitlimit gegen einen Anbieter, der nicht
-  antwortet), `ProviderTokensRevocationTest` (Erneuerung vor `BearerPost`) und
+  nicht ablegen kann (`ConnectionAuthorizationService#complete`). Er läuft nach dem Rollback direkt,
+  ohne gehaltene Verbindung, ist ein einzelner Aufruf derselben Person, und deren Anbieter hat
+  Sekunden vorher geantwortet. ArchUnit `grantsAreRevokedOnlyAfterTheCommit` hält fest:
+  `OAuthClient#revoke` rufen nur `ProviderTokens` und `ConnectionAuthorizationService` auf,
+  `SecretIssuer#revocation` nur `ConnectionSecrets`.
+- **Belegt** in `GrantRevocationsTest` (Begrenzung, volle Warteschlange, ein Eintrag mit 1500
+  Grants, Fehler mitten im Eintrag, Herunterfahren mitten im Eintrag; nur Latches, kein Warten auf
+  Zeit), `OAuthClientTest` (Zeitlimit gegen einen Anbieter, der nicht antwortet),
+  `ProviderTokensRevocationTest` (Erneuerung vor `BearerPost` und ihre Rückfälle) und
   `ConnectionAuthorizationIntegrationTest`: Eine Notabschaltung antwortet, während der Anbieter
-  alle Widerrufe unbeantwortet hält, und davor übergibt ein Rollback nichts. Die
-  Integrationstests warten vor jeder Widerrufsprüfung, bis der Pool leer ist, und
-  `OpaaTestBeanResetListener` wartet vor jeder Testmethode darauf.
+  alle Widerrufe unbeantwortet hält; eine Notabschaltung über 1500 Grants widerruft jeden; vor dem
+  Commit und nach einem Rollback wird nichts übergeben. Die Integrationstests warten vor jeder
+  Widerrufsprüfung, bis der Pool leer ist, und `OpaaTestBeanResetListener` wartet vor jeder
+  Testmethode darauf.
 
 ## Referenzen
 
