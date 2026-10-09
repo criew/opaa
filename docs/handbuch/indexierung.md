@@ -305,6 +305,18 @@ die Downloads, denn ein Objekt, dessen Änderungsmerkmal bereits gespeichert ist
 Abruf; erst ein Lauf, der jeden Bereich bis zur letzten Seite gelistet und den Bestand abgeglichen
 hat, schließt den Zustand. Eine Änderung des Endpoints oder der Geltungsbereiche verwirft ihn.
 
+**Abgleichstand und Einstellungen.** Jeder Abgleichstand (Wiederaufnahmezustand, Fortsetzungsstelle
+einer Runde, Änderungszeiger, Anker des inkrementellen Laufs, gemerkte Ordner) gilt nur für die
+Quelleinstellungen, unter denen er entstand: Adresse, Pfad und die Einstellungen, die der Konnektor
+als auswahlbestimmend vergleicht, etwa Ordner, Spaces, Geltungsbereiche, Filter oder das imitierte
+Konto. Vorgaben des Zugangs zählen mit. Findet ein Lauf einen Stand anderer Einstellungen vor, verwirft
+er ihn, vermerkt das im Protokoll und gleicht vollständig neu ab; ein inkrementeller Lauf sucht dann
+nichts, der nächste Lauf ist ein Vollabgleich. Das gilt auch, wenn ein Lauf, der vor der Änderung
+begann, den alten Stand danach noch einmal geschrieben hat, und auch nach einem Neustart. Ändern sich
+die Einstellungen, während ein Lauf läuft, entfernt dieser Lauf nichts als verschwunden und gilt als
+unvollständig; der nächste Lauf gleicht unter den neuen Einstellungen ab. Proxy, Zertifikatsprüfung
+und der Vollabgleich-Rhythmus gehören nicht dazu.
+
 ## 4. Die Quellen: der Übergabepunkt an die Konnektoren
 
 Jeder lauf-basierte Quellentyp hat einen eigenen **Konnektor** (im Code: Executor). Der

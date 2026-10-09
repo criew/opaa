@@ -439,7 +439,8 @@ gilt trotzdem; die Besitzerin erhält eine Benachrichtigung. Ist ihr Konto gerad
 (ruhend, deaktiviert), wird der Konnektor für ihre Bibliothek nicht gefragt, und sie bleibt am
 Zugang. Verwirft eine Änderung den Abgleichstand des Zugangs, zählt OPAA private Bibliotheken
 dabei nicht mit und wartet nicht auf ihre laufenden Indexierungen; ihr Abgleichstand wird ebenso
-verworfen, nach dem Ende eines laufenden Laufs noch einmal, und die Besitzerin wird benachrichtigt. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
+verworfen, und die Besitzerin wird benachrichtigt. Schreibt ein laufender Lauf den Stand mit den
+alten Einstellungen weiter, verwirft ihn der nächste Lauf selbst. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
 nicht in Zählern und Hinweisen oder beim Löschen des Space. Im Revisionsprotokoll und in der
 Stichtagsauskunft heißt sie „Private Bibliothek“ und ist nur an ihrer Kennung zu erkennen.
 
