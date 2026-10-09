@@ -653,6 +653,37 @@ class FileSyncRoundTest {
         .containsExactlyInAnyOrder(deleted, STALE);
   }
 
+  // regression guard: a container out of reach at the round's end must not hold the round forever
+  @Test
+  void aContainerOutOfReachAtTheRoundsEndCountsAsNotListedAndTheNextRoundListsTheOthers() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    harness.fullSync(
+        new FailingChangeLog(
+            store.reset().budget(0),
+            "stream:A",
+            () -> new FileAccessException.Transient("Der Dienst antwortet nicht.")));
+    assertThat(harness.state().completedScopeKeys()).containsExactlyInAnyOrder("A", "B");
+    store.denyListing("B");
+    store.put("A", "a/15.txt", "Neu hinter dem Fortsetzungspunkt.");
+
+    FileSyncHarness.Run unreachable = run(store, 0);
+
+    assertThat(store.calls())
+        .as("no stream is read while a container is out of reach")
+        .noneMatch(call -> call.startsWith("read"));
+    assertThat(unreachable.listingComplete()).isFalse();
+    assertThat(unreachable.unlistedContainerKeys()).containsExactly("B");
+    assertThat(unreachable.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(store.calls()).as("a new round lists A again").contains("list A");
+    assertThat(next.ingested()).contains(store.filePathOf("A", "a/15.txt"));
+    assertThat(next.eventsOf(IndexingEventCategory.REMOVED)).isEmpty();
+    assertThat(harness.stored(STALE)).isPresent();
+  }
+
   @Test
   void aRoundWithoutAHeldCursorForEveryStreamStartsOver() {
     InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);

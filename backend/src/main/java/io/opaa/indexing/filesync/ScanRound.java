@@ -49,6 +49,9 @@ final class ScanRound {
   /** Whether the round started in an earlier run or goes on in a later one. */
   private boolean spansRuns;
 
+  /** Whether the round started in an earlier run. */
+  private final boolean continued;
+
   private String current;
   private long entriesBase;
   private int pageCounter;
@@ -98,11 +101,14 @@ final class ScanRound {
       containers.putAll(progress.containers());
       spansRuns = true;
     }
+    this.continued = progress != null;
   }
 
   /**
    * Resumes the round {@code state} holds when it still fits {@code stores}'s containers, else
    * starts a new one; begins the full sync under the run's job. Nothing is saved yet.
+   *
+   * @param cursorsHeld whether the state holds a start cursor for every change stream
    */
   static ScanRound begin(
       SourceSyncState state,
@@ -113,8 +119,9 @@ final class ScanRound {
       AbsenceProof proof,
       Clock clock,
       FileSyncSettings settings,
-      io.opaa.format.SupportedDocumentFormats supportedFormats) {
-    ScanProgress progress = resumable(state, stores, proof);
+      io.opaa.format.SupportedDocumentFormats supportedFormats,
+      boolean cursorsHeld) {
+    ScanProgress progress = resumable(state, stores, proof, cursorsHeld);
     FolderRevisits revisits = FolderRevisits.load(journal, state.getId());
     FolderMemory memory =
         new FolderMemory(
@@ -130,10 +137,12 @@ final class ScanRound {
   /**
    * The round {@code state} holds, or {@code null} for a new one. A round that no longer fits the
    * containers is dropped; so is one whose every container is complete under {@link
-   * AbsenceProof#SINGLE_RUN}, which can only follow a failed reconciliation and proves nothing.
+   * AbsenceProof#SINGLE_RUN}, which can only follow a failed reconciliation and proves nothing, and
+   * one under {@link AbsenceProof#CHANGE_FEED} without a start cursor for every stream, whose log
+   * would not reach back to the round's beginning.
    */
   private static ScanProgress resumable(
-      SourceSyncState state, List<FileContainer> stores, AbsenceProof proof) {
+      SourceSyncState state, List<FileContainer> stores, AbsenceProof proof, boolean cursorsHeld) {
     ScanProgress progress = state.scanProgress();
     if (progress == null) {
       return null;
@@ -146,7 +155,8 @@ final class ScanRound {
             && keys.containsAll(progress.containers().keySet())
             && keys.containsAll(completed);
     boolean exhausted = proof == AbsenceProof.SINGLE_RUN && completed.containsAll(keys);
-    if (fits && !exhausted) {
+    boolean unprovable = proof == AbsenceProof.CHANGE_FEED && !cursorsHeld;
+    if (fits && !exhausted && !unprovable) {
       return progress;
     }
     state.discardScan();
@@ -383,6 +393,16 @@ final class ScanRound {
 
   AbsenceProof proof() {
     return proof;
+  }
+
+  /** Whether this run goes on with a round an earlier run began. */
+  boolean continuesEarlierRuns() {
+    return continued;
+  }
+
+  /** Holds {@code cursors} as the start cursors the round's end makes the valid ones. */
+  void holdChangeCursors(Map<String, String> cursors) {
+    state.holdPendingChangeCursors(cursors);
   }
 
   /** Whether a container of the round gave a checkpoint, so the next run resumes it. */
