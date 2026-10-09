@@ -91,6 +91,24 @@ pnpm run format                         # Automatisch mit Prettier formatieren
 helm lint . -f ci/minimal-values.yaml
 helm template opaa . -f ci/full-values.yaml
 
+# Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
+deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
+                                        # deploy/helm/opaa/ci/*-values.yaml, kubeconform gegen die
+                                        # drei unterstützten Kubernetes-Versionen, Prüfung der
+                                        # Abbruchregeln; braucht helm und kubeconform. Neue
+                                        # Wertesätze dort ablegen, sie werden automatisch geprüft
+deploy/helm/ci/install-test.sh          # Installationstest: pgvector-Hilfsdatenbank, dann
+                                        # ct install in einen Namespace mit Pod Security Standard
+                                        # restricted; wartet auf Backend und Frontend und führt
+                                        # helm test aus, ohne LLM. Braucht kubectl, helm, ct und
+                                        # einen kind-Cluster mit den Images aus dem Commit:
+                                        #   kind create cluster
+                                        #   docker build -f backend/Dockerfile -t opaa-ci/backend:ci .
+                                        #   docker build -f frontend/Dockerfile -t opaa-ci/frontend:ci .
+                                        #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
+                                        # In CI bei Änderungen am Chart und an den Image-Dateien,
+                                        # nightly und per Label "helm-suite"
+
 # E2E-Suite (aus e2e/, siehe e2e/README.md)
 pnpm install                            # Abhängigkeiten installieren
 pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)

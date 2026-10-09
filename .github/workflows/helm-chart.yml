@@ -1,0 +1,171 @@
+name: Helm-Chart
+
+# Checks the chart under deploy/helm/opaa (ADR-0042) so it cannot silently fall behind the images
+# and their configuration. The static check runs on every PR touching the chart; the installation
+# test on kind runs for chart and image changes, nightly, and on a PR labelled "helm-suite" - the
+# opt-in for changes that affect the running chart without touching it.
+on:
+  # No branches filter: stacked PRs (base = another feature branch) must run the checks too.
+  pull_request:
+    types: [opened, synchronize, reopened, labeled]
+  schedule:
+    # After the other container suites (Keycloak 5:25, Nextcloud 5:55 UTC).
+    - cron: '25 6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+# A new push cancels the PR's previous run; a label event gets a group of its own, so labelling
+# never cancels the run of the push before it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}-${{ github.event.action == 'labeled' && github.event.label.name || 'run' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # renovate: datasource=github-releases depName=yannh/kubeconform
+  KUBECONFORM_VERSION: v0.8.0
+  # renovate: datasource=github-releases depName=helm/chart-testing
+  CT_VERSION: v3.15.0
+  # renovate: datasource=github-releases depName=kubernetes-sigs/kind
+  KIND_VERSION: v0.33.0
+  # Newest supported Kubernetes version (ADR-0042, Entscheidung 8), image from the release notes of
+  # KIND_VERSION; pinned by digest as kind recommends.
+  KIND_NODE_IMAGE: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+
+jobs:
+  changes:
+    if: github.event_name == 'pull_request' && github.event.action != 'labeled'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      chart: ${{ steps.filter.outputs.chart }}
+      install: ${{ steps.filter.outputs.install }}
+    steps:
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            chart:
+              - 'deploy/helm/**'
+              - '.github/workflows/helm-chart.yml'
+            # The chart relies on the images' contract: user, port, writable paths, entrypoint.
+            install:
+              - 'deploy/helm/**'
+              - '.github/workflows/helm-chart.yml'
+              - 'backend/Dockerfile'
+              - 'frontend/Dockerfile'
+              - 'frontend/nginx.conf'
+              - 'frontend/docker-entrypoint.d/**'
+
+  static:
+    name: Statische Prüfung (Helm ${{ matrix.helm }})
+    needs: changes
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || needs.changes.outputs.chart == 'true') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        helm:
+          # Oldest supported Helm 3 (ADR-0042, Entscheidung 1); changes only together with the ADR.
+          - v3.8.0
+          # renovate: datasource=github-releases depName=helm/helm
+          - v4.3.0
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: azure/setup-helm@v5
+        with:
+          version: ${{ matrix.helm }}
+
+      - name: kubeconform installieren
+        working-directory: ${{ runner.temp }}
+        run: |
+          base="https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}"
+          curl -sSfLO "$base/kubeconform-linux-amd64.tar.gz"
+          curl -sSfLO "$base/CHECKSUMS"
+          grep ' kubeconform-linux-amd64.tar.gz$' CHECKSUMS | sha256sum --check --strict -
+          tar -xzf kubeconform-linux-amd64.tar.gz kubeconform
+          sudo install kubeconform /usr/local/bin/kubeconform
+
+      - name: Lint, Rendern und Schemaprüfung
+        run: deploy/helm/ci/static-check.sh
+
+      # Full version: the floating v2 tag lags behind and cannot verify the signature of current ct.
+      - uses: helm/chart-testing-action@v2.9.0
+        with:
+          version: ${{ env.CT_VERSION }}
+
+      - name: ct lint
+        run: ct lint --config deploy/helm/ci/ct.yaml --charts deploy/helm/opaa
+
+  install:
+    name: Installationstest auf kind
+    needs: changes
+    if: >-
+      ${{ !cancelled() && (github.event_name != 'pull_request'
+      || needs.changes.outputs.install == 'true'
+      || (github.event.action == 'labeled' && github.event.label.name == 'helm-suite')) }}
+    runs-on: ubuntu-latest
+    # Image builds plus the first backend start with its schema migration.
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      # Repo root as context: the backend's Gradle build depends on the sibling opaa-api/.
+      - name: Backend-Image bauen
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: backend/Dockerfile
+          tags: opaa-ci/backend:ci
+          load: true
+          cache-from: type=gha,scope=helm-chart-backend
+          cache-to: type=gha,mode=max,scope=helm-chart-backend
+
+      - name: Frontend-Image bauen
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          tags: opaa-ci/frontend:ci
+          load: true
+          cache-from: type=gha,scope=helm-chart-frontend
+          cache-to: type=gha,mode=max,scope=helm-chart-frontend
+
+      - uses: helm/kind-action@v1
+        with:
+          version: ${{ env.KIND_VERSION }}
+          node_image: ${{ env.KIND_NODE_IMAGE }}
+
+      - name: Images in kind laden
+        run: kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci --name chart-testing
+
+      - uses: azure/setup-helm@v5
+        with:
+          # renovate: datasource=github-releases depName=helm/helm
+          version: v4.3.0
+
+      # Full version: the floating v2 tag lags behind and cannot verify the signature of current ct.
+      - uses: helm/chart-testing-action@v2.9.0
+        with:
+          version: ${{ env.CT_VERSION }}
+
+      - name: Chart installieren und helm test ausführen
+        run: deploy/helm/ci/install-test.sh
+
+      # ct prints the logs of the release's pods itself; this adds the helper database and events.
+      # Diagnostics only: a step that failed before the cluster or database existed must not hide
+      # the original failure behind a second one.
+      - name: Clusterzustand ausgeben
+        if: failure()
+        continue-on-error: true
+        run: |
+          kubectl get pods --all-namespaces --output wide
+          kubectl get events --all-namespaces --sort-by=.lastTimestamp | tail -n 100
+          kubectl --namespace opaa-ci-db logs deployment/postgres --tail=100

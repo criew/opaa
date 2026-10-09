@@ -1,0 +1,7 @@
+# chart-testing configuration of the OPAA chart (.github/workflows/helm-chart.yml).
+# Chart.yaml carries 0.0.0-dev between two releases; only the release pipeline sets the version
+# (ADR-0042, Entscheidung 7), so a chart change never raises it.
+check-version-increment: false
+# The chart is maintained by the project, not by named people; Chart.yaml lists no maintainers.
+validate-maintainers: false
+target-branch: main

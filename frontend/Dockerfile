@@ -30,6 +30,8 @@ COPY --from=build /app/dist /usr/share/nginx/html
 # substitute the file's own nginx variables ($scheme, $host, $remote_addr, ...) against any
 # matching container environment variable, which is not the intent here.
 COPY frontend/nginx.conf /etc/nginx/templates/default.conf.template
+# 05-opaa-runtime.sh writes the IPv6 listen for port 8080; the build fails if nginx.conf moves away from it.
+RUN grep -q '^    listen 8080;$' /etc/nginx/templates/default.conf.template
 COPY --chmod=755 frontend/docker-entrypoint.d/05-opaa-runtime.sh /docker-entrypoint.d/
 ENV NGINX_ENVSUBST_OUTPUT_DIR=/tmp/nginx/conf.d
 ENV NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO|BACKEND)_
