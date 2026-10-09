@@ -27,6 +27,7 @@ class AccountUsabilityTest {
 
   private final LocalCredentialsRepository credentials = mock(LocalCredentialsRepository.class);
   private final OidcProviderRepository providers = mock(OidcProviderRepository.class);
+  private final OidcProviderRemovalRepository removals = mock(OidcProviderRemovalRepository.class);
   private final List<OidcProvider> providerRows = new ArrayList<>();
   private OidcProvider enabledProvider;
   private OidcProvider localRow;
@@ -81,6 +82,18 @@ class AccountUsabilityTest {
     user.lockFromDirectory(NOW.minusSeconds(60));
 
     assertThat(usability.stateOf(user)).isEqualTo(State.DEACTIVATED);
+  }
+
+  /** A provider gone deactivates since its last deletion, whatever spelling the account carries. */
+  @Test
+  void aProviderGoneDeactivatesSinceItsLastDeletion() {
+    String gone = "https://idp.example/realms/gone";
+    User user = oidcUser(gone + "/");
+    when(removals.findAll())
+        .thenReturn(List.of(new OidcProviderRemoval(gone, NOW.minusSeconds(60))));
+
+    assertThat(usability.snapshot().deactivationsOf(List.of(user)))
+        .containsEntry(user.getId(), new AccountUsability.Deactivation(NOW.minusSeconds(60)));
   }
 
   @Test
@@ -226,6 +239,7 @@ class AccountUsabilityTest {
     return new AccountUsability(
         credentials,
         providers,
+        removals,
         new AuthProperties(mode, null, null, null),
         Clock.fixed(NOW, ZoneOffset.UTC));
   }
