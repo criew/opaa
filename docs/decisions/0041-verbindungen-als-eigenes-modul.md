@@ -987,6 +987,36 @@ Beide nach Maintainer-Entscheidung vom 05.10.2026 ohne Gegenmaßnahme:
   große Datei nicht, weil die Grenze eine Start-Einstellung ist, die einen eigenen Testkontext
   verlangte.
 
+## Nachtrag vom 09.10.2026: Mix-up-Schutz im Rücksprung (#2266)
+
+- **Behoben: Restrisiko Mix-up (RFC 9207)** aus dem Nachtrag „OAuth-Kern“ und der offene Punkt
+  aus „MCP-Grundlage“. Der Rücksprung reicht `iss` von der Seite `/connections/callback` unverändert
+  durch `POST /api/v1/connections/authorizations/complete`.
+- **Erwarteter Issuer aus dem Start:** `ConnectionAuthorization` hält beim Start den Issuer des
+  Zugangs (`expected_issuer`) fest und ob der Autorisierungsserver
+  `authorization_response_iss_parameter_supported` angekündigt hat (`issuer_required`). Die
+  Ankündigung liest `McpServerDiscovery` bei jedem Speichern und legt sie am Zugang ab
+  (`issuer_parameter_supported`). Ein später geänderter Zugang ändert die Vergleichsgröße einer
+  laufenden Zustimmung nicht.
+- **Regel:** Ist ein Issuer bekannt, muss ein geliefertes `iss` ihm Zeichen für Zeichen entsprechen,
+  ohne Normalisierung (auch kein abschließender Schrägstrich). Mit Ankündigung ist `iss` Pflicht,
+  ohne darf es fehlen. Geprüft wird direkt nach dem Verbrauch des `state` und vor allem anderen,
+  auch vor einer Fehlerantwort des Anbieters: Ein Code erreicht keinen Token-Endpunkt, die
+  Zustimmung bleibt verbraucht, die Antwort ist `400` mit
+  `CONNECTION_AUTHORIZATION_ISSUER_MISMATCH` und einer deutschen Meldung. Das Log nennt nur den
+  Zugang, weder Code, `state` noch den gelieferten Wert.
+- **Geltung nach Zugangsart:** Die Prüfung hängt am Zugang, nicht am Zweck; sie gilt für verbundene
+  Konten, „Quelle verbinden“ und Neuverbinden gleich. Einen Issuer kennt heute nur ein
+  MCP-Server-Zugang. Konnektor-Zugänge haben keine Metadaten-Erkennung (feste oder vom Zugang
+  gesetzte Endpunkte), dort wird nichts verglichen. Kein Produktionskonnektor bietet heute OAuth an.
+  Kommt einer hinzu, braucht er einen erwarteten Issuer (Deklaration oder Erkennung beim Speichern),
+  sonst bleibt für ihn das Restrisiko aus dem Nachtrag „OAuth-Kern“ bestehen.
+- **Belegt** in `McpServerIssuerIntegrationTest` mit zwei `FakeMcpServer`: Mix-up mit fremdem
+  `iss` (kein Code am Token-Endpunkt, `state` verbraucht, Log ohne Code und `state`), fehlendes
+  `iss` trotz Ankündigung, korrektes `iss`, abschließender Schrägstrich, Anbieter ohne Ankündigung,
+  Fehlerantwort mit fremdem `iss` und Issuer des Starts nach Wechsel des Autorisierungsservers.
+  `McpServerDiscoveryTest` belegt das Lesen der Ankündigung.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

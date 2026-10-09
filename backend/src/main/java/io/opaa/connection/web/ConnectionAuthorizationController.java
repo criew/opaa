@@ -67,7 +67,8 @@ public class ConnectionAuthorizationController {
       @Valid @RequestBody ConnectionAuthorizationCompleteRequest request,
       @Caller CurrentUser caller) {
     Completed completed =
-        authorizations.complete(caller, request.getState(), request.getCode(), request.getError());
+        authorizations.complete(
+            caller, request.getState(), request.getCode(), request.getError(), request.getIss());
     return new ConnectionAuthorizationCompleteResponse()
         .purpose(completed.purpose())
         .profileId(completed.profileId())

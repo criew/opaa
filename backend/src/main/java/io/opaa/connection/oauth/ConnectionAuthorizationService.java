@@ -64,6 +64,9 @@ public class ConnectionAuthorizationService {
   public static final String PROFILE_CHANGED = "CONNECTION_AUTHORIZATION_PROFILE_CHANGED";
   public static final String PUBLIC_BASE_URL_MISSING = "PUBLIC_BASE_URL_MISSING";
 
+  /** Refusal of a response whose {@code iss} is not the issuer the consent started with. */
+  public static final String ISSUER_MISMATCH = "CONNECTION_AUTHORIZATION_ISSUER_MISMATCH";
+
   /** Refusal of a consent for a library's source without the confirmed service account. */
   public static final String SERVICE_ACCOUNT_CONFIRMATION_REQUIRED =
       "SERVICE_ACCOUNT_CONFIRMATION_REQUIRED";
@@ -201,6 +204,7 @@ public class ConnectionAuthorizationService {
                   redirect.toString(),
                   now,
                   expiresAt);
+          authorization.expectIssuer(profile.getIssuer(), profile.isIssuerParameterSupported());
           if (purpose != ConnectionAuthorizationPurpose.ACCOUNT) {
             authorization.forLibrary(
                 now,
@@ -225,15 +229,20 @@ public class ConnectionAuthorizationService {
 
   /**
    * Completes the caller's consent named by {@code state} with the provider's {@code code}, or ends
-   * it with the provider's {@code error}. The state is used up first, whatever follows: {@code 404}
-   * for one unknown, another person's, used up or expired; {@code 409} when the profile changed
-   * since the start, also while the code was exchanged, and for another account than a library's
-   * source was connected as ({@value SourceConsentService#ACCOUNT_CHANGED}); {@code 400} when the
-   * provider refused or the exchange failed. Whoever may connect is checked as at the start. A
-   * grant that cannot be stored is revoked with the registration it came from.
+   * it with the provider's {@code error}, as the provider's {@code iss} names it ({@code null}
+   * where absent). The state is used up first, whatever follows: {@code 404} for one unknown,
+   * another person's, used up or expired; {@code 400} {@value #ISSUER_MISMATCH} when {@code iss} is
+   * not exactly the issuer the consent started with, or missing where that issuer announced it (RFC
+   * 9207), before anything reaches the provider; {@code 409} when the profile changed since the
+   * start, also while the code was exchanged, and for another account than a library's source was
+   * connected as ({@value SourceConsentService#ACCOUNT_CHANGED}); {@code 400} when the provider
+   * refused or the exchange failed. Whoever may connect is checked as at the start. A grant that
+   * cannot be stored is revoked with the registration it came from.
    */
-  public Completed complete(CurrentUser caller, String state, String code, String error) {
+  public Completed complete(
+      CurrentUser caller, String state, String code, String error, String iss) {
     ConnectionAuthorization authorization = useUp(caller, state);
+    requireIssuer(authorization, iss);
     if (error != null && !error.isBlank()) {
       throw new ValidationException(refusal(error));
     }
@@ -428,6 +437,30 @@ public class ConnectionAuthorizationService {
             purpose, profile.getId(), LIBRARY_PAGE + library.getId(), null, library.getId(), null);
       }
     };
+  }
+
+  /**
+   * Refuses a response from another authorization server than the one the consent started with
+   * (mix-up, RFC 9207, 2.4): {@code iss} must equal the expected issuer character for character,
+   * and is required where that server announced it. Without a known issuer nothing is compared.
+   */
+  private static void requireIssuer(ConnectionAuthorization authorization, String iss) {
+    String expected = authorization.getExpectedIssuer();
+    if (expected == null || expected.equals(iss)) {
+      return;
+    }
+    if (iss == null && !authorization.isIssuerRequired()) {
+      return;
+    }
+    log.warn(
+        "A consent under profile {} was refused: the provider's response {} the expected issuer",
+        authorization.getProfileId(),
+        iss == null ? "did not name" : "named another than");
+    throw new ValidationException(
+        "Die Antwort kam nicht vom Anmeldedienst dieses Zugangs. Aus Sicherheitsgründen wurde"
+            + " nichts verbunden. Bitte verbinden Sie erneut; tritt das wieder auf, ist die"
+            + " Systemverwaltung zuständig.",
+        ISSUER_MISMATCH);
   }
 
   private static ConflictException profileChanged(ConnectionProfile profile) {

@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-09-authorization-response-issuer
+      author: opaa
+      comment: "Mix-up protection (RFC 9207, #2266): whether an MCP server's authorization server announces the iss parameter in its authorization response, and the issuer a started consent expects back together with whether it must be named."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_profiles ADD COLUMN issuer_parameter_supported boolean;
+              ALTER TABLE connection_authorizations ADD COLUMN expected_issuer character varying(2000);
+              ALTER TABLE connection_authorizations ADD COLUMN issuer_required boolean;
