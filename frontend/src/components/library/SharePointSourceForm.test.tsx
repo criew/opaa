@@ -110,7 +110,7 @@ describe('SharePointSourceForm (ADR-0040, Nachtrag „SharePoint“)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
     expect(await screen.findByTestId('sharepoint-test-status')).toHaveTextContent(
-      'Anmeldung erfolgreich; alle 1 Dokumentbibliotheken sind erreichbar.',
+      'Anmeldung erfolgreich; die Dokumentbibliothek ist erreichbar.',
     )
     expect(chosen).toHaveTextContent('· erreichbar')
 
@@ -164,6 +164,42 @@ describe('SharePointSourceForm (ADR-0040, Nachtrag „SharePoint“)', () => {
     expect(screen.queryByRole('list', { name: /Ordner auf der Ebene/ })).not.toBeInTheDocument()
   }, 20000)
 
+  it('keeps the keyboard focus inside the folder picker and returns it on „Fertig“', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<Harness />)
+    await openSite(user, 'https://rheinfurt.sharepoint.com/sites/bauamt')
+    await user.click(await screen.findByRole('checkbox', { name: 'Dokumente' }))
+    const choose = screen.getByRole('button', { name: 'Ordner von „Dokumente (Bauamt)“ wählen' })
+
+    choose.focus()
+    await user.keyboard('{Enter}')
+    const heading = screen.getByRole('heading', { name: 'Ordner in „Dokumente (Bauamt)“' })
+    expect(document.activeElement).toBe(heading)
+    const level = screen.getByTestId('test-sp-folder-level')
+    await waitFor(() => expect(level).toHaveTextContent('Ebene: Stamm'))
+
+    screen.getByRole('button', { name: 'Unterordner von „Akten“ anzeigen' }).focus()
+    await user.keyboard('{Enter}')
+    // the pressed button is gone with its level; the focus stays on the heading, not on <body>
+    expect(document.activeElement).toBe(heading)
+    await screen.findByRole('list', { name: 'Ordner auf der Ebene Stamm / Akten' })
+    expect(document.activeElement).toBe(heading)
+    expect(level).toHaveTextContent('Ebene: Stamm / Akten')
+
+    screen.getByRole('button', { name: 'Eine Ebene höher' }).focus()
+    await user.keyboard('{Enter}')
+    expect(document.activeElement).toBe(heading)
+    await screen.findByRole('list', { name: 'Ordner auf der Ebene Stamm' })
+    expect(document.activeElement).toBe(heading)
+    expect(level).toHaveTextContent('Ebene: Stamm')
+
+    screen.getByRole('button', { name: 'Fertig' }).focus()
+    await user.keyboard('{Enter}')
+    expect(screen.queryByRole('heading', { name: /Ordner in/ })).not.toBeInTheDocument()
+    expect(document.activeElement).toBe(choose)
+    expect(choose).toHaveAttribute('aria-expanded', 'false')
+  }, 20000)
+
   it('names a site that is not released to the app under Sites.Selected', async () => {
     const user = userEvent.setup()
     renderWithProviders(<Harness />)
@@ -194,7 +230,7 @@ describe('SharePointSourceForm (ADR-0040, Nachtrag „SharePoint“)', () => {
     await openSite(user, 'http://rheinfurt.sharepoint.com/sites/rathaus')
 
     expect(await screen.findByTestId('sharepoint-site-status')).toHaveTextContent(
-      'siteUrl ist die https-Adresse einer Site',
+      'Die Adresse der Site ist eine https-Adresse',
     )
   })
 
@@ -261,7 +297,7 @@ describe('SharePointSourceForm (ADR-0040, Nachtrag „SharePoint“)', () => {
       'Dokumente (Personalrat): Die Dokumentbibliothek ist für die Anwendung nicht sichtbar.',
     )
     expect(screen.getByTestId('sharepoint-library-b!bauamtDokumente')).toHaveTextContent(
-      'ist in der Dokumentbibliothek nicht mehr vorhanden',
+      'Der gewählte Ordner „Alt“ ist in der Dokumentbibliothek nicht mehr vorhanden',
     )
     expect(screen.getByTestId('sharepoint-library-b!rathausDokumente')).toHaveTextContent(
       '· erreichbar',
@@ -340,7 +376,7 @@ describe('SharePointSourceForm (ADR-0040, Nachtrag „SharePoint“)', () => {
       'Dokumente (Bauamt) · Ordner: Akten / 2026',
     )
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
-    await screen.findByText(/alle 1 Dokumentbibliotheken sind erreichbar/)
+    await screen.findByText(/die Dokumentbibliothek ist erreichbar/)
 
     const [test] = bodiesTo('/api/v1/libraries/source-test')
     expect(test.libraryId).toBe('library-sp')

@@ -9,15 +9,15 @@ import {
 /** The wording of SharePointSourceConnector and SharePointFileStore, so the mock answers alike. */
 export const SHAREPOINT_MESSAGES = {
   noProfile: 'Für die Auflistung ist ein Zugang mit App-Registrierung erforderlich',
-  noStage: 'Bitte eine Site suchen (search) oder ihre Adresse angeben (siteUrl).',
+  noStage: 'Bitte eine Site suchen oder ihre Adresse angeben.',
   searchNeedsReadAll:
-    'Die Suche nach Sites braucht die Berechtigung Sites.Read.All. Bitte die Adresse der Site angeben (siteUrl).',
+    'Die Suche nach Sites braucht die Berechtigung Sites.Read.All. Bitte die Adresse der Site angeben.',
   notFound:
     'Microsoft Graph kennt die Site oder Bibliothek nicht oder zeigt sie der Anwendung nicht.',
   forbidden:
     'Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein.',
   invalidSiteUrl:
-    'siteUrl ist die https-Adresse einer Site, etwa https://contoso.sharepoint.com/sites/team',
+    'Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker, etwa https://contoso.sharepoint.com/sites/team',
   notALibrary:
     'Das Laufwerk ist keine SharePoint-Dokumentbibliothek; OneDrive und andere Laufwerke werden nicht gelesen.',
   libraryNotVisible:
@@ -130,7 +130,20 @@ export function browseSharePoint(body: ProbeBody & { query?: Record<string, unkn
 
 interface SharePointLibrarySetting {
   driveId?: string
-  folders?: Array<string | { id?: string }>
+  folders?: Array<string | { id?: string; name?: string | null }>
+}
+
+/** The summary of SharePointSourceConnector#testConnection, singular for a single library. */
+function testMessage(reachable: number, total: number) {
+  if (total === 1) {
+    return reachable === 1
+      ? 'Anmeldung erfolgreich; die Dokumentbibliothek ist erreichbar.'
+      : 'Die Dokumentbibliothek ist für die Anwendung nicht erreichbar.'
+  }
+  const unreachable = total - reachable
+  return unreachable === 0
+    ? `Anmeldung erfolgreich; alle ${total} Dokumentbibliotheken sind erreichbar.`
+    : `${unreachable} von ${total} Dokumentbibliotheken ${unreachable === 1 ? 'ist' : 'sind'} für die Anwendung nicht erreichbar.`
 }
 
 /**
@@ -167,11 +180,12 @@ export function testSharePoint(
     }
     for (const folder of library.folders ?? []) {
       const id = typeof folder === 'string' ? folder : (folder.id ?? '')
+      const shown = typeof folder === 'string' ? id : folder.name || id
       if (!findFolder(found.drive.folders, id)) {
         return {
           driveId,
           reachable: false,
-          message: `Der gewählte Ordner „${id}“ ist in der Dokumentbibliothek nicht mehr vorhanden; bitte die Ordnerauswahl anpassen.`,
+          message: `Der gewählte Ordner „${shown}“ ist in der Dokumentbibliothek nicht mehr vorhanden; bitte die Ordnerauswahl anpassen.`,
         }
       }
     }
@@ -182,10 +196,7 @@ export function testSharePoint(
   return HttpResponse.json({
     reachable: reachable === total,
     credentialsVerified: true,
-    message:
-      reachable === total
-        ? `Anmeldung erfolgreich; alle ${reachable} Dokumentbibliotheken sind erreichbar.`
-        : `${total - reachable} von ${total} Dokumentbibliotheken sind für die Anwendung nicht erreichbar.`,
+    message: testMessage(reachable, total),
     details: { libraries: findings },
   })
 }

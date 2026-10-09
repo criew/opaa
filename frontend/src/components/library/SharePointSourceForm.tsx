@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -115,6 +115,8 @@ export default function SharePointSourceForm({
   const drivesGeneration = useRef(0)
   const foldersGeneration = useRef(0)
   const testGeneration = useRef(0)
+  // the „Ordner wählen“ button of each chosen library, to return the focus once its picker closes
+  const folderButtons = useRef(new Map<string, HTMLButtonElement>())
 
   const profile = connection.connection
   const usable = profile !== null || mode === 'edit'
@@ -265,10 +267,12 @@ export default function SharePointSourceForm({
     }
   }
 
-  const closeFolders = () => {
+  const closeFolders = (returnFocus = false) => {
+    const driveId = folders?.driveId
     foldersGeneration.current++
     setLoadingFolders(false)
     setFolders(null)
+    if (returnFocus && driveId) folderButtons.current.get(driveId)?.focus()
   }
 
   const setFoldersOf = (driveId: string, next: SharePointFolder[]) => {
@@ -516,6 +520,10 @@ export default function SharePointSourceForm({
                           : ` · ${check.message ?? 'nicht erreichbar'}`)}
                     </Typography>
                     <Button
+                      ref={(button: HTMLButtonElement | null) => {
+                        if (button) folderButtons.current.set(library.driveId, button)
+                        else folderButtons.current.delete(library.driveId)
+                      }}
                       size="small"
                       variant="text"
                       onClick={() =>
@@ -552,7 +560,7 @@ export default function SharePointSourceForm({
                           folderLibrary.folders.filter((f) => f.id !== id),
                         )
                       }
-                      onClose={closeFolders}
+                      onClose={() => closeFolders(true)}
                     />
                   )}
                 </ListItem>
@@ -621,21 +629,40 @@ function FolderPicker({
 }: FolderPickerProps) {
   const label = sharePointLibraryLabel(library)
   const headingId = `${idPrefix}-folders-${library.driveId}`
+  const heading = useRef<HTMLHeadingElement | null>(null)
   const where = ['Stamm', ...level.trail.map((step) => step.name ?? '…')].join(' / ')
   const selected = new Set(library.folders.map((folder) => folder.id))
   const full = library.folders.length >= MAX_SHAREPOINT_FOLDERS
+
+  // the picker takes the focus when it opens; a change of level keeps it on the heading, which
+  // stays while the list it replaces is gone - the status region then names the new level
+  useEffect(() => {
+    heading.current?.focus()
+  }, [])
+  const goTo = (trail: Entry[]) => {
+    heading.current?.focus()
+    onOpen(trail)
+  }
+
   return (
     <Box
       component="section"
       aria-labelledby={headingId}
       sx={{ mt: 1, ml: 2, pl: 1.5, borderLeft: 2, borderColor: 'divider' }}
     >
-      <Typography id={headingId} variant="body2" component="h4" sx={{ fontWeight: 600 }}>
+      <Typography
+        id={headingId}
+        ref={heading}
+        tabIndex={-1}
+        variant="body2"
+        component="h4"
+        sx={{ fontWeight: 600 }}
+      >
         Ordner in „{label}“
       </Typography>
       <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>
         Ohne Ordner liest OPAA die ganze Dokumentbibliothek, mit Ordnern nur Dateien in oder unter
-        ihnen. Ebene: {where}
+        ihnen.
       </Typography>
       {library.folders.length > 0 && (
         <List dense aria-label={`Gewählte Ordner in „${label}“`}>
@@ -659,12 +686,10 @@ function FolderPicker({
           ))}
         </List>
       )}
-      {loading && (
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-          Ordner werden geladen …
+      <Box role="status" aria-live="polite" data-testid={`${idPrefix}-folder-level`}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
+          {loading ? `Ordner werden geladen … (Ebene: ${where})` : `Ebene: ${where}`}
         </Typography>
-      )}
-      <Box role="status" aria-live="polite">
         {level.message && (
           <Alert severity={level.message.severity} sx={{ mt: 1 }} role="none">
             {level.message.text}
@@ -686,7 +711,7 @@ function FolderPicker({
                 <Button
                   size="small"
                   variant="text"
-                  onClick={() => onOpen([...level.trail, folder])}
+                  onClick={() => goTo([...level.trail, folder])}
                   aria-label={`Unterordner von „${folder.name ?? folder.id}“ anzeigen`}
                 >
                   Öffnen
@@ -709,7 +734,7 @@ function FolderPicker({
       )}
       <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
         {level.trail.length > 0 && (
-          <Button size="small" variant="text" onClick={() => onOpen(level.trail.slice(0, -1))}>
+          <Button size="small" variant="text" onClick={() => goTo(level.trail.slice(0, -1))}>
             Eine Ebene höher
           </Button>
         )}

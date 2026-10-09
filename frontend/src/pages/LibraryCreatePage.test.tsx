@@ -1436,6 +1436,12 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         ),
       ).toBeInTheDocument()
 
+      // the rhythm names the type's own default (one day for SharePoint), in no other source's terms
+      const rhythm = screen.getByLabelText(/Vollabgleich alle/)
+      expect(rhythm).toHaveAttribute('placeholder', '1')
+      expect(rhythm).toHaveAccessibleDescription(/^Leer = Vorgabe der Instanz \(täglich\)\./)
+      expect(rhythm).not.toHaveAccessibleDescription(/Confluence/)
+
       // nothing chosen yet: the step does not go on
       await next(user)
       expect(screen.getByText('Bitte mindestens eine Dokumentbibliothek wählen.')).toBeVisible()

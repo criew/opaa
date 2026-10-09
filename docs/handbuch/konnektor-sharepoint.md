@@ -148,7 +148,7 @@ Ordnern. Mögliche Befunde:
 | „Microsoft Graph hat das Zugriffstoken abgewiesen“ | Secret, Mandant oder Zustimmung stimmen nicht |
 | „Die Dokumentbibliothek ist für die Anwendung nicht sichtbar …“ | Site nicht für die App freigegeben (`Sites.Selected`) oder Kennung falsch |
 | „Das Laufwerk ist keine SharePoint-Dokumentbibliothek …“ | ein OneDrive oder ein anderes Laufwerk |
-| „Der gewählte Ordner … ist in der Dokumentbibliothek nicht mehr vorhanden …“ | Ordner gelöscht oder in eine andere Dokumentbibliothek verschoben |
+| „Der gewählte Ordner … ist in der Dokumentbibliothek nicht mehr vorhanden …“ | Ordner gelöscht oder in eine andere Dokumentbibliothek verschoben; genannt mit dem Anzeigenamen aus der Auswahl, etwa „Akten / 2026“, sonst mit seiner Kennung |
 
 Die Auflistung geht in Stufen:
 
@@ -180,7 +180,9 @@ kommt vom Zugang.
 4. **Ordner wählen (optional):** „Ordner wählen“ an einer gewählten Dokumentbibliothek zeigt deren
    Ordner Ebene für Ebene. „Öffnen“ wechselt in die Unterordner, „Eine Ebene höher“ zurück.
    Ein angekreuzter Ordner wird mit seinem Pfad gespeichert, etwa „Akten / 2026“, und gilt samt
-   Unterordnern. Ohne Ordner liest OPAA die ganze Dokumentbibliothek.
+   Unterordnern. Ohne Ordner liest OPAA die ganze Dokumentbibliothek. Mit der Tastatur bleibt der
+   Fokus beim Wechsel der Ebene auf der Überschrift der Ordnerauswahl, die neue Ebene wird
+   angesagt; „Fertig“ gibt den Fokus an „Ordner wählen“ zurück.
 5. **Verbindung testen:** prüft jede gewählte Dokumentbibliothek über den Zugang und schreibt den
    Befund aus Abschnitt 3.1 hinter ihren Namen.
 
@@ -190,14 +192,16 @@ Was das Formular meldet:
 |---|---|
 | „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein.“ | Die Site ist der App nicht freigegeben (Abschnitt 2.3) |
 | „Microsoft Graph kennt die Site oder Bibliothek nicht …“ | Adresse falsch, Site gelöscht, oder Graph zeigt sie der App nicht |
-| „siteUrl ist die https-Adresse einer Site …“ | keine `https`-Adresse oder mit Port, Anmeldedaten, Abfrage oder Anker |
+| „Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker …“ | die eingetragene Adresse hat eine dieser Formen |
 | „Die Site … hat keine Dokumentbibliothek, die die Anwendung lesen kann. OneDrive und andere Laufwerke liest der Konnektor nicht.“ | die Site hält nur andere Laufwerke, etwa ein OneDrive (`…-my.sharepoint.com/personal/…`) |
 | „Die Suche nach Sites braucht die Berechtigung Sites.Read.All …“ | Suche unter `Sites.Selected`; die Adresse eingeben |
 
 Unter **Quelle → Umfang** stehen die gewählten Dokumentbibliotheken für alle Leseberechtigten der
 Bibliothek, jeweils mit „ganze Dokumentbibliothek“ oder den gewählten Ordnern. Erreicht der letzte
 Lauf eine Dokumentbibliothek nicht, nennt der Kopf der Bibliothek sie mit ihrem Namen. Den eigenen
-Vollabgleichsrhythmus setzt „Zeitplan bearbeiten“.
+Vollabgleichsrhythmus setzt „Vollabgleich alle … Tage“ im Assistenten oder unter „Zeitplan
+bearbeiten“; leer gilt die Vorgabe der Installation (`full-sync-interval`, Abschnitt 12), die das
+Feld nennt.
 
 ## 4. Betriebsart
 

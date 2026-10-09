@@ -432,7 +432,10 @@ export const libraryHandlers = [
       return HttpResponse.json({
         reachable: true,
         credentialsVerified: true,
-        message: `Anmeldung erfolgreich; alle ${scopes.length} Bereiche sind erreichbar.`,
+        message:
+          scopes.length === 1
+            ? 'Anmeldung erfolgreich; der Bereich ist erreichbar.'
+            : `Anmeldung erfolgreich; alle ${scopes.length} Bereiche sind erreichbar.`,
         details: { scopes },
       })
     }

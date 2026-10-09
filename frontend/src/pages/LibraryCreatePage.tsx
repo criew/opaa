@@ -109,13 +109,6 @@ const stepHeadings: Record<string, string> = {
   [STEP_SHARING]: 'Freigaben',
 }
 
-/**
- * Die Vollabgleich-Angabe beim Anlegen: Die Bibliothek hat noch keinen eigenen Rhythmus, und die
- * Vorgabe der Instanz steht erst in ihrer Antwort - leer heißt hier wie dort „Vorgabe der
- * Instanz", und das Formular nennt deren ausgelieferten Wert.
- */
-const NEW_CONFLUENCE_RHYTHM: ConfluenceFullSyncRhythm = { intervalDays: null, defaultDays: null }
-
 const CONSENT_REQUIRED = 'Bitte verbinden Sie zuerst die Quelle.'
 const PENDING_CONNECTION_UNUSABLE =
   'Die Zustimmung beim Anbieter ist abgelaufen oder schon verwendet. Bitte verbinden Sie die Quelle erneut.'
@@ -358,7 +351,10 @@ export default function LibraryCreatePage() {
     }
     setError(null)
   }
-  const confluenceRhythm = configuration?.fullSyncRhythm ? NEW_CONFLUENCE_RHYTHM : undefined
+  // a new library has no rhythm of its own yet; empty means the instance's, named by the type
+  const confluenceRhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
+    ? { intervalDays: null, defaultDays: descriptor?.fullSyncIntervalDefaultDays ?? null }
+    : undefined
   // Without the list of source types nothing may be chosen - not even the upload library a stale
   // default would otherwise let through.
   const typesUnavailable = !sourceTypesLoaded || sourceTypesError != null
