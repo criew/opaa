@@ -2,6 +2,7 @@ package io.opaa.retrieval.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.pgvector.PGvector;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.QueryProperties;
@@ -15,6 +16,7 @@ import io.opaa.test.OpaaIntegrationTest;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -57,6 +59,7 @@ class VectorSearchHnswIntegrationTest {
   private static final int LIBRARIES = 20;
   private static final int CHUNKS_PER_LIBRARY = 100;
   private static final int SMALL_LIBRARY_CHUNKS = 10;
+  private static final int OFFSET_DIRECTIONS = 8;
 
   @Autowired private SearchScopeStage searchScopeStage;
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -69,6 +72,7 @@ class VectorSearchHnswIntegrationTest {
   private final List<UUID> libraries = new ArrayList<>();
   private final UUID smallLibrary = UUID.randomUUID();
   private final String marker = UUID.randomUUID().toString();
+  private final Random random = new Random(42);
   private VectorSearchStage vectorSearchStage;
 
   @BeforeEach
@@ -205,28 +209,50 @@ class VectorSearchHnswIntegrationTest {
   }
 
   /**
-   * {@code count} chunks of {@code library}, each the query vector ({@code -sin(0.01 i)}) plus
-   * uniform noise of a per-chunk amplitude, so the distances to the query spread and stay well
-   * below the threshold's distance.
+   * {@code count} chunks of {@code library}, each the query vector ({@code -sin(0.01 i)}) plus an
+   * offset of a per-chunk amplitude within the {@value #OFFSET_DIRECTIONS}-dimensional span of
+   * {@code cos(0.003 k i + k)}, so the distances to the query spread and stay well below the
+   * threshold's distance (at most about 0.5 against 0.7).
+   *
+   * <p>The offsets span few dimensions, as real embeddings do. Independent noise in all 1536
+   * dimensions makes the HNSW build prune the in-edges of early-inserted chunks until roughly a
+   * quarter of them, and at times three quarters of the first library, are unreachable from the
+   * entry point: then not even an exhaustive iterative scan finds fetch-k of them.
    */
   private void insertChunks(UUID library, int count) {
-    jdbcTemplate.update(
+    List<Object[]> rows = new ArrayList<>(count);
+    for (int g = 1; g <= count; g++) {
+      double scale = (0.3 + 0.9 * random.nextDouble()) / 3;
+      double[] weights = new double[OFFSET_DIRECTIONS];
+      for (int k = 0; k < OFFSET_DIRECTIONS; k++) {
+        weights[k] = random.nextDouble() * 2 - 1;
+      }
+      float[] embedding = new float[DIMENSIONS];
+      for (int i = 0; i < DIMENSIONS; i++) {
+        double offset = 0;
+        for (int k = 1; k <= OFFSET_DIRECTIONS; k++) {
+          offset += weights[k - 1] * Math.cos(0.003 * k * i + k);
+        }
+        embedding[i] = (float) (-Math.sin(i * 0.01) + scale * offset);
+      }
+      rows.add(
+          new Object[] {
+            "probe chunk " + g,
+            library.toString(),
+            marker,
+            "probe-" + g + ".md",
+            new PGvector(embedding)
+          });
+    }
+    jdbcTemplate.batchUpdate(
         """
         INSERT INTO vector_store (id, content, metadata, embedding)
-        SELECT gen_random_uuid(),
-               'probe chunk ' || g,
-               json_build_object('library_id', ?, 'probe_marker', ?,
-                                 'document_id', gen_random_uuid()::text,
-                                 'file_name', 'probe-' || g || '.md'),
-               (SELECT array_agg(-sin(i * 0.01) + (random() * 2 - 1) * (0.3 + 0.9 * a.amp)
-                                 ORDER BY i)
-                  FROM generate_series(0, 1535) i)::vector
-          FROM generate_series(1, ?) g
-          CROSS JOIN LATERAL (SELECT random() + g * 0 AS amp) a
+        VALUES (gen_random_uuid(), ?,
+                json_build_object('library_id', ?, 'probe_marker', ?,
+                                  'document_id', gen_random_uuid()::text, 'file_name', ?),
+                ?)
         """,
-        library.toString(),
-        marker,
-        count);
+        rows);
   }
 
   /** Embeds every text as {@code -sin(0.01 i)}, the opposite of {@code FakeEmbeddingModel}. */
