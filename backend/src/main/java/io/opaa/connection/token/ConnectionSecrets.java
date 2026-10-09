@@ -50,10 +50,10 @@ import org.springframework.transaction.support.TransactionTemplate;
  * ({@link AccountUsability} with the configured inactivity threshold) and only to the target it was
  * issued for; resting and deactivated are derived here at every use, never stored. A hand-out
  * records the account's use at most once per {@link #USE_RESOLUTION}. An OAuth grant is renewed
- * here under its row lock and revoked after a discard commits. A profile's own sign-in holds no
- * row: its token comes from {@link SecretIssuer#mint}, and whether it is refused the profile row
- * says. A library's own consent is handed out whoever gave it; a pending consent only to the person
- * who gave it, until its library takes it over or it expires.
+ * here under its row lock and, once a discard committed, revoked on {@link GrantRevocations}. A
+ * profile's own sign-in holds no row: its token comes from {@link SecretIssuer#mint}, and whether
+ * it is refused the profile row says. A library's own consent is handed out whoever gave it; a
+ * pending consent only to the person who gave it, until its library takes it over or it expires.
  */
 @Component
 public class ConnectionSecrets {
@@ -80,6 +80,7 @@ public class ConnectionSecrets {
   private final ObjectProvider<SecretIssuer> issuers;
   private final ObjectProvider<GrantRejections> grantRejections;
   private final ObjectProvider<SourceConsentRejections> consentRejections;
+  private final GrantRevocations revocations;
   private final Duration inactivityThreshold;
   private final TransactionTemplate usage;
   private final TransactionTemplate renewal;
@@ -96,6 +97,7 @@ public class ConnectionSecrets {
       ObjectProvider<SecretIssuer> issuers,
       ObjectProvider<GrantRejections> grantRejections,
       ObjectProvider<SourceConsentRejections> consentRejections,
+      GrantRevocations revocations,
       ConnectionLifecycleProperties lifecycle,
       PlatformTransactionManager transactionManager,
       Clock clock) {
@@ -109,6 +111,7 @@ public class ConnectionSecrets {
     this.issuers = issuers;
     this.grantRejections = grantRejections;
     this.consentRejections = consentRejections;
+    this.revocations = revocations;
     this.inactivityThreshold = lifecycle.inactivityThreshold();
     this.usage = new TransactionTemplate(transactionManager);
     this.usage.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -662,37 +665,39 @@ public class ConnectionSecrets {
   }
 
   /**
-   * Revokes the OAuth grants among {@code held} at their provider once the caller's transaction
-   * committed - with the registration as it stands now, so a caller discards before it changes the
-   * registration -, at once without a transaction. A rolled back discard revokes nothing.
+   * Hands the revocation of the OAuth grants among {@code held} to {@link GrantRevocations} once
+   * the caller's transaction committed - with the registration as it stands now, so a caller
+   * discards before it changes the registration -, at once without a transaction. A rolled back
+   * discard revokes nothing, and no revocation runs on the caller's thread or holds its connection.
    */
   private void revokeAfterCommit(List<ConnectionToken> held) {
-    List<Runnable> revocations = new ArrayList<>();
+    List<Map.Entry<UUID, Runnable>> byProfile = new ArrayList<>();
     for (ConnectionToken token : held) {
       if (token.getKind() != ConnectionToken.Kind.OAUTH) {
         continue;
       }
       SecretIssuer.StoredTokens stored =
-          new SecretIssuer.StoredTokens(decryptQuietly(token), decryptAccess(token));
+          new SecretIssuer.StoredTokens(
+              decryptQuietly(token), decryptAccess(token), token.getAccessTokenExpiresAt());
       Runnable revocation = issuer().revocation(token.getProfileId(), stored);
       if (revocation != null) {
-        revocations.add(revocation);
+        byProfile.add(Map.entry(token.getProfileId(), revocation));
       }
     }
-    if (revocations.isEmpty()) {
+    if (byProfile.isEmpty()) {
       return;
     }
-    Runnable all = () -> revocations.forEach(Runnable::run);
+    Runnable handOver = () -> byProfile.forEach(e -> revocations.submit(e.getKey(), e.getValue()));
     if (TransactionSynchronizationManager.isSynchronizationActive()) {
       TransactionSynchronizationManager.registerSynchronization(
           new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-              all.run();
+              handOver.run();
             }
           });
     } else {
-      all.run();
+      handOver.run();
     }
   }
 

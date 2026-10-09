@@ -25,8 +25,8 @@ public interface SecretIssuer {
 
   /**
    * What revokes {@code tokens} at the provider, with the registration of {@code profileId} as it
-   * stands now, to run once after the discard committed; {@code null} where the provider offers no
-   * revocation. It never throws.
+   * stands now, to run once after the discard committed, off any transaction; {@code null} where
+   * the provider offers no revocation. It never throws.
    */
   Runnable revocation(UUID profileId, StoredTokens tokens);
 
@@ -65,10 +65,12 @@ public interface SecretIssuer {
   }
 
   /**
-   * The tokens of a stored grant as they were before its discard; either may be {@code null}.
-   * {@link #toString} shows no value.
+   * The tokens of a stored grant as they were before its discard; any may be {@code null}. {@link
+   * #toString} shows no value.
+   *
+   * @param accessTokenExpiresAt when the access token ends, {@code null} for unknown
    */
-  record StoredTokens(String refreshToken, String accessToken) {
+  record StoredTokens(String refreshToken, String accessToken, Instant accessTokenExpiresAt) {
 
     @Override
     public String toString() {
