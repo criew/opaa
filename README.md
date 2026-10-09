@@ -94,7 +94,10 @@ begründet:
 - **Modelle:** jede OpenAI-kompatible Schnittstelle. **Voreingestellt sind lokal betriebene Modelle** für
   Chat und Einbettung; ein anderer Anbieter ist konfigurierbar, aber nicht voreingestellt — und wer
   ihn wählt, gibt dessen Adresse ausdrücklich an, weil es dafür keine Voreinstellung gibt.
-- **Betrieb:** Docker Compose; Kubernetes und Betrieb ohne Netzanbindung sind Ziel, aber noch nicht gebaut
+- **Betrieb:** Docker Compose oder Kubernetes mit dem mitgelieferten Helm-Chart, jeweils mit einer
+  Backend-Instanz ([Handbuch: Deployment](docs/handbuch/deployment.md),
+  [Handbuch: Kubernetes](docs/handbuch/kubernetes.md)). Hochverfügbarkeit mit mehreren Instanzen und
+  der Betrieb ohne Netzanbindung sind Ziel, aber noch nicht gebaut
 
 ## Mitwirken
 

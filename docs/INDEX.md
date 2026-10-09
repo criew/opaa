@@ -133,7 +133,8 @@ Abfrage bleibt unprotokolliert.
 ### J · Betrieb & Deployment
 
 **[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** ·
-ergänzend **[`handbuch/deployment.md`](./handbuch/deployment.md)**
+ergänzend **[`handbuch/deployment.md`](./handbuch/deployment.md)** und
+**[`handbuch/kubernetes.md`](./handbuch/kubernetes.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
 durch Rechenzentren · Konfiguration, Sicherung, Aktualisierung.
@@ -155,6 +156,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   Kapitel, Lesewege nach Anlass, Glossar, Konventionen
 - **[`handbuch/deployment.md`](./handbuch/deployment.md)** — Installation und Betrieb der vorhandenen
   Software: Docker Compose, Umgebungsvariablen, Härtung
+- **[`handbuch/kubernetes.md`](./handbuch/kubernetes.md)** — Betrieb unter Kubernetes mit dem Helm-Chart:
+  Installation, Wertereferenz, Netz und Sicherheit, Aktualisierung und Rückweg, Überwachung, Fehlersuche
 - **[`handbuch/indexierung.md`](./handbuch/indexierung.md)** — die Aufnahmestrecke: Läufe, Betriebsarten,
   Dokumentstrecke, Anhänge, Löscherkennung, Protokoll, Pipeline-Versionen; mit je einem Kapitel pro
   Konnektor (`konnektor-*.md`) und Format-Pipeline (`format-*.md`)

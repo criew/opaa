@@ -252,9 +252,11 @@ Originalablage wahlweise im Dateisystem oder S3-kompatibel (ADR-0030) mit Aufrä
 öffentliche Testinstanz. Demo-Instanz „Stadt Rheinfurt": generierter Verwaltungskorpus in
 sieben Bibliotheken über Webverzeichnis, RSS, Upload und S3 (inklusive Formattest-Bibliothek), Gruppen per
 Verzeichnisabgleich, Prompt-Bibliotheken, Seed-Profile für Demo und E2E, Vorführ-Drehbuch und
-Demo-Video. Das Backend ist auf Single-Instance-Betrieb ausgelegt (ADR-0021).
+Demo-Video. Das Backend ist auf Single-Instance-Betrieb ausgelegt (ADR-0021). Helm-Chart für den
+Betrieb unter Kubernetes mit einer Backend-Instanz (ADR-0042), beschrieben im Handbuchkapitel
+`kubernetes.md`.
 
-**Nicht gebaut:** Kubernetes/Hochverfügbarkeit (Epic #1439), Multiinstanzbetrieb (Epic #1292),
+**Nicht gebaut:** Hochverfügbarkeit unter Kubernetes (Epic #1439), Multiinstanzbetrieb (Epic #1292),
 air-gapped-Lieferung.
 
 ### K · Verwaltungs-Spezifika
