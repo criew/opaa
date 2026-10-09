@@ -18,6 +18,8 @@ import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -48,6 +50,7 @@ class ProviderShutdownIntegrationTest {
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OidcProviderRegistry registry;
   @Autowired private AuthProperties authProperties;
+  @Autowired private ConnectionLifecycle lifecycle;
 
   private final List<UUID> profiles = new ArrayList<>();
   private final List<UUID> providers = new ArrayList<>();
@@ -84,6 +87,9 @@ class ProviderShutdownIntegrationTest {
       jdbc.update("DELETE FROM audit_log WHERE object_id = ?", each.toString());
       jdbc.update("DELETE FROM oidc_providers WHERE id = ?", each);
     }
+    jdbc.update(
+        "DELETE FROM oidc_provider_removals WHERE issuer_uri_normalized LIKE ?",
+        "https://idp.example/provider-shutdown-it/%");
     registry.refresh();
   }
 
@@ -180,6 +186,42 @@ class ProviderShutdownIntegrationTest {
 
     assertThat(tokenRows()).isZero();
     assertThat(personState("deactivated_since")).isNotNull();
+  }
+
+  /**
+   * Regression guard for #2289: deleted, re-created with the reconciliation after it failed, deleted
+   * again - the deletion period starts with the second deletion, not the first.
+   */
+  @Test
+  void aSecondDeletionStartsTheDeletionPeriodAnewEvenWithoutAReconciliationInBetween()
+      throws Exception {
+    connect("dev-user", profile);
+    personSignsInThroughTheProvider();
+    deleteConfirmed(provider);
+    provider = provider(issuer);
+    // what a failed reconciliation after the re-creation leaves: the start of the first deletion
+    Instant firstDeletion = Instant.now().minus(30, ChronoUnit.DAYS);
+    jdbc.update(
+        "UPDATE connection_person_states SET deactivated_since = ?, dormant_since = NULL"
+            + " WHERE user_id = ?",
+        Timestamp.from(firstDeletion),
+        persons.getFirst());
+
+    Instant beforeSecondDeletion = Instant.now().truncatedTo(ChronoUnit.MILLIS);
+    deleteConfirmed(provider);
+
+    assertThat(lifecycle.deactivatedSince(List.of(persons.getFirst())))
+        .hasEntrySatisfying(
+            persons.getFirst(), start -> assertThat(start).isAfterOrEqualTo(beforeSecondDeletion));
+  }
+
+  private void deleteConfirmed(UUID onProvider) throws Exception {
+    mockMvc
+        .perform(
+            as("dev-admin", delete(PROVIDERS + "/" + onProvider))
+                .param("acknowledgeLastProvider", "true")
+                .param("confirmConnections", "true"))
+        .andExpect(status().isNoContent());
   }
 
   private UUID profileForPersons() throws Exception {

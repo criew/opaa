@@ -22,6 +22,8 @@ import io.opaa.auth.OidcIssuerUris;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderDeletedEvent;
 import io.opaa.auth.OidcProviderRegistry;
+import io.opaa.auth.OidcProviderRemoval;
+import io.opaa.auth.OidcProviderRemovalRepository;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.OidcProvidersChangedEvent;
 import io.opaa.auth.ProviderConnectionsImpact;
@@ -108,6 +110,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
   private static final String LOCAL_ROW_LABEL = "Zeile der lokalen Konten";
 
   private final OidcProviderRepository repository;
+  private final OidcProviderRemovalRepository removals;
   private final UserRepository userRepository;
   private final ProviderGroupDirectory providerGroups;
   private final OidcAddressPolicy addressPolicy;
@@ -122,6 +125,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
 
   public OidcProviderService(
       OidcProviderRepository repository,
+      OidcProviderRemovalRepository removals,
       UserRepository userRepository,
       ProviderGroupDirectory providerGroups,
       OidcAddressPolicy addressPolicy,
@@ -134,6 +138,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
       ProviderConnectionsImpact connectionsImpact,
       Clock clock) {
     this.repository = repository;
+    this.removals = removals;
     this.userRepository = userRepository;
     this.providerGroups = providerGroups;
     this.addressPolicy = addressPolicy;
@@ -302,7 +307,8 @@ public class OidcProviderService implements LocalAccountsSwitch {
    * remove those rights; disabling the provider stays possible at any time.
    *
    * <p>Its accounts count as deactivated afterwards: their connections end at once and the deletion
-   * period of their private libraries begins - so the deletion needs {@code confirmConnections}
+   * period of their private libraries begins with this deletion, even after an earlier one of the
+   * same issuer - so the deletion needs {@code confirmConnections}
    * wherever persons may have connections.
    */
   @Transactional
@@ -346,6 +352,7 @@ public class OidcProviderService implements LocalAccountsSwitch {
     Map<String, Object> before = auditState(provider);
     providerGroups.deleteGroupsOfProvider(provider.getId(), actorUserId);
     repository.delete(provider);
+    removals.save(new OidcProviderRemoval(provider.getIssuerUri(), clock.instant()));
     auditEventRecorder.recordUserAction(
         AuditEvent.builder()
             .organizationId(organizationId)

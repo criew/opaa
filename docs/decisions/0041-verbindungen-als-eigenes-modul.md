@@ -942,6 +942,15 @@ Entscheidungen des Maintainers vom 05.10.2026 zu M2 aus #2275 und zur Schwellenw
   Zeitstempel; die Frist läuft ab dem festgehaltenen Beginn. Die Neuanlage des Anbieters löst nach
   dem Commit einen Abgleich aus, der diesen Beginn verwirft. Nur wenn dieser Abgleich scheitert und
   der Anbieter vor dem täglichen Abgleich erneut gelöscht wird, zählt der alte Beginn.
+- **Erledigt (09.10.2026, #2289):** Das Löschen eines Anbieters hält je Issuer den Zeitpunkt fest
+  (`oidc_provider_removals`, identity; eine erneute Löschung ersetzt die Zeile).
+  `AccountUsability.Snapshot#deactivationsOf` liefert ihn für ein Konto ohne Anbieter als `since`;
+  `ConnectionLifecycle` nimmt wie bei Verzeichnis- und lokaler Sperre den späteren von
+  festgehaltenem Beginn und Akt. Die Frist beginnt damit beim letzten Löschen, unabhängig davon, ob
+  ein Abgleich dazwischen gelang. Verworfen: den Beginn bei jedem Abgleich zu verwerfen, der die
+  Issuer-URI wieder zuordnet — genau dieser Abgleich ist es, der im Fehlerfall ausbleibt; ihn in
+  die Transaktion der Neuanlage zu ziehen, hängte die Anbieterverwaltung an einen Fehler der
+  Verbindungen.
 
 ### Akzeptierte Restrisiken der Personenzahlen
 
