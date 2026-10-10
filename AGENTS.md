@@ -190,7 +190,7 @@ In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z.
 
 ### GitHub-Actions-Workflows
 
-Actions werden grundsätzlich über Tags eingebunden (`uses: actions/checkout@v7`). **Workflows mit Schreibrechten auf veröffentlichte Artefakte oder das Repository pinnen ihre Actions dagegen auf den vollen Commit-SHA** mit exakter Version als Kommentar (`uses: docker/login-action@<40-stelliger SHA> # v4.6.0`). Welche Workflows das sind und wie man einen SHA ermittelt, steht in [docs/renovate.md](docs/renovate.md#actions-in-workflows-mit-schreibrechten-per-commit-sha); `.github/scripts/check_action_pins.sh` prüft es in der CI. Wer einem Workflow Schreibrechte gibt, nimmt ihn dort, in den Renovate-Regeln und im Guard auf.
+**Jeder Workflow bindet seine Actions über den vollen Commit-SHA ein**, mit exakter Version als Kommentar (`uses: docker/login-action@<40-stelliger SHA> # v4.6.0`), nie über einen Tag wie `@v7`. Wie man den SHA ermittelt und im Review prüft, steht in [docs/renovate.md](docs/renovate.md#actions-per-commit-sha); `.github/scripts/check_action_pins.sh` prüft jede Datei unter `.github/workflows/` in der CI, ein neuer Workflow ist ohne Liste erfasst. Release-Builds in `publish-images.yml` lesen und schreiben keinen gha-Cache; wer das ändert, liest vorher dort den Abschnitt „Sicherheitsmodell des gha-Caches“.
 
 ### Commit-Nachrichten
 

@@ -18,7 +18,7 @@ jederzeit auch lokal ausführen (unten).
 | Gradle-Wrapper | `gradle-wrapper` | `backend` |
 | `frontend/package.json` + `pnpm-lock.yaml` (inkl. `packageManager`-Pinning) | `npm` | `frontend` |
 | `e2e/package.json` + `pnpm-lock.yaml` | `npm` | `frontend` |
-| GitHub-Actions-Workflows (`.github/workflows/`); in Workflows mit Schreibrechten Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-in-workflows-mit-schreibrechten-per-commit-sha)) | `github-actions` | `ci` |
+| GitHub-Actions-Workflows (`.github/workflows/`), Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
@@ -57,41 +57,94 @@ Bump als PR sichtbar statt als stilles Lockfile-only-Update. Der allererste Lauf
 einmalig einen „Pin dependencies"-PR, der alle Caret-Ranges auf exakte Versionen umschreibt;
 `engines` bleibt bewusst eine Range, `packageManager` ist bereits exakt gepinnt.
 
-## Actions in Workflows mit Schreibrechten per Commit-SHA
+## Actions per Commit-SHA
 
-Im Repository gilt für Actions grundsätzlich **Tag-Pinning** (`uses: actions/checkout@v7`). Davon
-ausgenommen sind die Workflows, die veröffentlichte Artefakte oder das Repository selbst verändern
-können (#2397). Dort ist jede Action auf den vollen Commit-SHA festgelegt, mit der exakten Version
-als Kommentar:
+Alle Workflows unter `.github/workflows/` binden jede Action über den vollen Commit-SHA ein, mit
+der exakten Version als Kommentar (#2397, mit #2432 auf alle Workflows ausgeweitet):
 
 ```yaml
 - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
 ```
 
 Ein Tag lässt sich auf anderen Code umhängen, ein SHA nicht. Wird ein Action-Repository
-kompromittiert, kann ein umgehängter Tag sonst in einem Release-Lauf manipulierte Images
-veröffentlichen und gültig attestieren.
+kompromittiert, läuft ein umgehängter Tag sonst beim nächsten Lauf mit den Rechten des Workflows,
+in einem Release-Lauf bis hin zu manipulierten, gültig attestierten Images.
 
-| Workflow | Schreibrecht, das die Aufnahme begründet |
-|---|---|
-| `publish-images.yml` | `packages: write`, `id-token: write`, `attestations: write` (Images, Chart, Attestierungen), `contents: write` (GitHub-Release) |
-| `cve-scan.yml` | `security-events: write` (Code-Scanning-Alerts), `issues: write` |
-| `cla.yml` | `contents: write` (Branch `cla-signatures`), zusätzlich das PAT `CLA_TOKEN`; läuft als `pull_request_target` |
-| `daily-report.yml` | `contents: write` (Push auf `gh-pages`) |
-| `landing-page.yml` | `contents: write` (Push auf `gh-pages`) |
-| `dependency-graph.yml` | `contents: write` (Dependency-Snapshots, Grundlage der Dependabot-Alerts) |
+**Warum alle Workflows.** Bis #2432 galt der SHA nur für Workflows mit Schreibrechten auf
+veröffentlichte Artefakte oder das Repository. Zwei Wege führten daran vorbei:
 
-Nicht aufgenommen sind Workflows, die höchstens Issues, PR-Kommentare oder Caches schreiben
-(`e2e.yml`, `retrieval-regression.yml`, `baseline-diff.yml`) oder nur lesen. `renovate.yml`
-nutzt zwar das PAT `RENOVATE_TOKEN`, enthält aber keine Action, sondern startet ein
-Docker-Image. Eine Ausweitung auf alle Workflows wäre eine Abkehr von der Grundregel und
-bekäme ein eigenes Issue.
+- **Der GitHub-Actions-Cache.** Jeder Job, der auf `main` läuft, darf in den Cache von `main`
+  schreiben, und zwar unter jedem Schlüssel (siehe [unten](#sicherheitsmodell-des-gha-caches)).
+  Eine kompromittierte Action in `e2e.yml` oder `demo-smoke.yml` hätte so Einträge für den
+  Bau-Cache von `publish-images.yml` anlegen können.
+- **Schreibrechte unterhalb der Artefakte.** `e2e.yml`, `retrieval-regression.yml` und
+  `baseline-diff.yml` legen Issues oder PR-Kommentare an.
 
-**Renovate pflegt SHA und Kommentar gemeinsam.** Drei `packageRules` in `renovate.json5` regeln
-für genau diese Dateien Folgendes:
+Eine Grenze nach Schreibrechten müsste beides einzeln nachhalten. Eine Regel für alle Dateien
+ist einfacher zu prüfen und braucht keine Ausnahmeliste.
 
-- **`pinDigests: true`** beim `github-actions`-Manager. Renovate liest `currentValue` aus dem
-  Kommentar und `currentDigest` aus dem SHA und schreibt bei einem Update beides neu.
+Der Preis sind mehr Renovate-PRs. Über einen gleitenden Major-Tag (`@v7`) kam jedes Minor- und
+Patch-Release still an; mit SHA schlägt Renovate jedes einzeln vor. Neu betroffen sind die acht
+Action-Repositories, die vorher in keinem Workflow gepinnt waren. Sie hatten in den sechs Monaten
+bis zum 10.10.2026 zusammen 33 Releases, also etwa einen zusätzlichen PR pro Woche. Die übrigen
+Actions waren schon gepinnt. Renovate bündelt ein Update über alle Dateien in einem Branch, ihr
+PR ändert jetzt nur mehr Dateien.
+
+### Sicherheitsmodell des gha-Caches
+
+Zugriffsregeln laut GitHub-Dokumentation („Dependency caching reference“, Abschnitte
+„Restrictions for accessing a cache“ und „Cache access for low-trust workflow triggers“, Stand
+10.10.2026):
+
+| Lauf | darf lesen | darf schreiben |
+|---|---|---|
+| `push`, `schedule`, `workflow_dispatch` auf `main` | Cache von `main` | Cache von `main` |
+| `pull_request`, auch aus einem Fork | eigener Merge-Ref, Basis-Branch, `main` | nur den eigenen Merge-Ref; sichtbar nur für erneute Läufe desselben PRs |
+| `pull_request_target`, `issue_comment`, `workflow_run` auf `main` (hier `cla.yml`) | Cache von `main` | nichts, solange der Workflow kein schreibendes `cache-mode` setzt; keiner tut das |
+| Release-Tag `vX.Y.Z` | eigener Tag, `main` | eigener Tag; kein anderer Tag sieht ihn |
+
+Daraus folgt:
+
+- **Ein Pull Request, auch aus einem Fork, kann weder den Cache von `main` noch den eines
+  Releases vergiften.**
+- **Ein Scope ist keine Grenze.** `scope=backend-amd64` ist nur ein Präfix der Cache-Schlüssel.
+  Wer in den Cache von `main` schreiben darf, darf jeden Schlüssel anlegen, auch einen jüngeren
+  Index-Eintrag für den Scope eines anderen Workflows. Dazu genügt jede Action in einem Job auf
+  `main`. Öffentlich beschrieben ist außerdem, dass Code in einem `run`-Schritt das Cache-Token
+  aus dem Runner-Prozess lesen kann (Adnan Khan, „The Monsters in Your Build Cache“, 2024; hier
+  nicht nachgestellt). Dann reicht auch eine kompromittierte Abhängigkeit, die ein solcher Job
+  installiert oder ausführt, und dagegen hilft kein SHA-Pin.
+- **`cache-mode` hilft hier nicht.** Das Workflow-Schlüsselwort regelt Lesen und Schreiben je
+  Job, nicht je Schlüssel, und die Jobs auf `main` brauchen ihre eigenen Caches.
+
+Deshalb gilt zusätzlich zu den Pins:
+
+- **Releases bauen ohne gha-Cache.** `publish-images.yml` setzt `cache-from` und `cache-to` nur
+  bei Läufen, die nicht von einem Tag kommen. Ein Release-Image entsteht damit nur aus Checkout,
+  Basis-Images und Paketquellen, unabhängig davon, was ein Job auf `main` in den Cache gelegt
+  hat. `test_publish_images_cache.py` hält die Bedingung fest. Gemessen an den ersten Läufen mit
+  den Scopes je Architektur, die keinen Cache-Treffer hatten (#2411, Läufe 37980307632 und
+  37980340271), braucht ein Bein ohne Cache 280 bis 354 s (Backend) bzw. 87 bis 105 s
+  (Frontend), mit Cache 85 bis 108 s bzw. 51 bis 65 s (Lauf 38036312587). Die Beine laufen
+  parallel, ein Release dauert also rund vier Minuten länger.
+- **`:main`, `sha-<commit>` und der wöchentliche Neubau nutzen den Cache weiter.** Das ist ein
+  bewusst getragenes Restrisiko: Code, der in einem Job auf `main` läuft, kann den Bau-Cache
+  dieser Images vergiften. Nach den SHA-Pins bleiben dafür eine kompromittierte Abhängigkeit, ein
+  Fehler in einem gemergten Workflow oder ein per Tag referenziertes Image, das Jobs auf `main`
+  starten. Solche Images sind die Compose-Stacks von E2E-, Demo- und Anmelde-Läufen (etwa
+  `node:24-alpine`, `pgvector/pgvector:pg18`, `httpd:2.4-alpine`), die Datenbank im Rauchtest
+  von `image-smoke-arm64` und das kind-Node-Image im Helm-Test. Ein umgehängter Tag dort läuft im
+  selben Job wie die Schritte, die den Cache schreiben dürfen. Die Stufe `runtime` baut jeder Lauf ohnehin neu
+  (`no-cache-filters`). Wer geprüft und reproduzierbar betreiben will, nimmt ein Release
+  ([releases.md](releases.md)).
+
+### Renovate pflegt SHA und Kommentar gemeinsam
+
+Zwei `packageRules` in `renovate.json5` gelten für den `github-actions`-Manager in allen
+Workflows, ohne Dateiliste:
+
+- **`pinDigests: true`.** Renovate liest `currentValue` aus dem Kommentar und `currentDigest` aus
+  dem SHA und schreibt bei einem Update beides neu.
 - **`minimumReleaseAge: '3 days'`.** Ein neues Release wird frühestens drei Tage nach seinem
   Zeitstempel vorgeschlagen; bis dahin steht es als „Pending“ in der Abhängigkeits-Übersicht, und
   Renovate legt keinen Branch an (`internalChecksFilter` steht auf der Vorgabe `strict`). Ohne
@@ -105,31 +158,35 @@ für genau diese Dateien Folgendes:
 - **Digest-Updates brauchen eine Freigabe** (`dependencyDashboardApproval: true`, dazu
   `automerge: false`). Ein neuer SHA bei gleicher Version heißt, dass der Tag umgehängt wurde,
   also genau der Angriff, gegen den die Pins schützen. Renovate legt den Branch erst an, wenn ein
-  Maintainer das Update in der Abhängigkeits-Übersicht anhakt; vorher läuft nichts mit
-  Schreibrechten. Vor der Freigabe wird geklärt, warum der Tag umgehängt wurde.
-- **`publish-images.yml` mergt nie automatisch**, auch nicht bei Minor- und Patch-Updates. Kein
-  Required Check übt diese Actions aus, sie laufen aber bei jedem Push auf `main` mit
-  `packages: write`.
+  Maintainer das Update in der Abhängigkeits-Übersicht anhakt; vorher läuft nichts. Vor der
+  Freigabe wird geklärt, warum der Tag umgehängt wurde.
 
-In den übrigen fünf Dateien mergen Minor- und Patch-Releases nach Ablauf der Frist wie alle
-anderen Updates automatisch, Majors nie.
+Eine dritte Regel betrifft nur `publish-images.yml`: **Ihre Actions mergen nie automatisch**, auch
+nicht bei Minor- und Patch-Updates. Kein Required Check übt sie aus, sie laufen aber bei jedem
+Push auf `main` mit `packages: write`. Dasselbe gilt für alle Updates in `helm-chart.yml`
+(bestehende Regel mit `automerge: false`, weil der Helm-Workflow kein Required Check ist). Ein
+Update-Branch umfasst alle Dateien mit derselben Action. Enthält er ein Upgrade aus einer dieser
+beiden Dateien, mergt der ganze Branch nicht automatisch, auch mit dem Teil in anderen Workflows.
+
+Alle übrigen Minor- und Patch-Releases mergen nach Ablauf der Frist wie andere Updates
+automatisch, Majors nie. Das entspricht dem Stand vor den Pins, als diese Releases über den
+gleitenden Major-Tag ohne PR ankamen.
+
+### Prüfung in der CI
 
 **Der Guard `.github/scripts/check_action_pins.sh`** (Job `changes` in `ci.yml`, bei Änderungen
-unter `.github/workflows/`) lehnt in diesen Dateien jedes `uses:` ohne vollen SHA und
-`# vX.Y.Z`-Kommentar ab. Er erkennt Block-Stil, gequotete Schlüssel und Flow-Mappings
-(`- { uses: … }`), nicht aber einen Wert auf einer eigenen Folgezeile. Lokale Actions (`./…`)
-und `docker://…@sha256:…` sind ausgenommen. Die Selbstprobe `test_check_action_pins.py` prüft
-außerdem:
+unter `.github/workflows/`) lehnt in jeder Datei `.github/workflows/*.yml` und `*.yaml` jedes
+`uses:` ohne vollen SHA und `# vX.Y.Z`-Kommentar ab. Er erkennt Block-Stil, gequotete Schlüssel
+und Flow-Mappings (`- { uses: … }`), nicht aber einen Wert auf einer eigenen Folgezeile. Lokale
+Actions (`./…`) und `docker://…@sha256:…` sind ausgenommen. Ein neuer Workflow ist ohne weiteres
+Zutun erfasst. Die Selbstprobe `test_check_action_pins.py` prüft außerdem, dass die beiden
+Renovate-Regeln oben keine Dateiliste tragen, also ebenfalls für jeden Workflow gelten.
 
-- Die Dateiliste des Guards stimmt mit der in den Renovate-Regeln überein. Wer einen Workflow
-  aufnimmt oder entfernt, ändert beide.
-- Jeder Workflow mit einem `…: write`-Recht steht entweder in dieser Liste oder in der
-  Ausnahmeliste `WRITE_WITHOUT_PINNING` im Test, mit Begründung. Ein neuer Workflow mit
-  Schreibrechten fällt so in der CI auf.
+### SHA ermitteln und im Review prüfen
 
-Eine neue Action in einem dieser Workflows bekommt ihren SHA über die GitHub-API, nicht von Hand
-aus der Weboberfläche. Bei annotierten Tags (`"type": "tag"`) zeigt die Referenz auf das
-Tag-Objekt, nicht auf den Commit, und muss einmal dereferenziert werden:
+Eine neue Action bekommt ihren SHA über die GitHub-API, nicht von Hand aus der Weboberfläche. Bei
+annotierten Tags (`"type": "tag"`) zeigt die Referenz auf das Tag-Objekt, nicht auf den Commit,
+und muss einmal dereferenziert werden:
 
 ```bash
 gh api repos/docker/login-action/git/ref/tags/v4.6.0 --jq '.object'
@@ -353,9 +410,9 @@ releaseTimestamp`, greift die Seitenbegrenzung nicht.
 **Warum nicht `renovatebot/github-action`.** Die offizielle Action startet ebenfalls ein
 Docker-Image und empfiehlt selbst, die Renovate-Version per Regex-Manager zu pinnen. Sie bringt
 also keinen eigenen Pin mit, sondern eine zweite Komponente, die das Token in der Hand hat: Ihr
-JavaScript läuft mit dem Token im Runner und bräuchte ihrerseits einen SHA-Pin. `renovate.yml`
-käme dann in die Liste des Guards `check_action_pins.sh`. Der direkte `docker run` hat eine
-vertrauenswürdige Komponente weniger und bleibt deshalb.
+JavaScript läuft mit dem Token im Runner und bräuchte ihrerseits einen SHA-Pin, den der Guard
+`check_action_pins.sh` automatisch erfasst. Der direkte `docker run` hat eine vertrauenswürdige
+Komponente weniger und bleibt deshalb.
 
 ### Token: minimale Rechte
 
@@ -394,8 +451,9 @@ ist ein Fine-grained PAT für `criew/opaa` also nicht möglich. Wege:
    (`criew,*[bot]`). PRs und Commits zeigen dann `criew` als Urheber.
 2. **Eigene GitHub App**, nur in `criew/opaa` installiert, mit den Rechten aus der Renovate-Doku.
    Die Installations-Tokens gelten eine Stunde, kein Personenkonto steht dahinter. Der Workflow
-   müsste das Token mit einer Action erzeugen (`actions/create-github-app-token`, SHA-gepinnt),
-   und `renovate.yml` käme in die Pin-Liste des Guards. Das ist ein eigener Umbau mit eigenem Issue.
+   müsste das Token mit einer Action erzeugen (`actions/create-github-app-token`, SHA-gepinnt,
+   der Guard `check_action_pins.sh` erfasst sie automatisch). Das ist ein eigener Umbau mit
+   eigenem Issue.
 3. **Klassisches PAT eines eigenen Maschinenkontos**, das nur Collaborator von `criew/opaa` ist.
    `repo` reicht dann nicht weiter als dieses eine Repository, die Scopes bleiben aber grob.
 

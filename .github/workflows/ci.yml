@@ -46,7 +46,7 @@ jobs:
       scripts: ${{ steps.filter.outputs.scripts }}
       seed: ${{ steps.filter.outputs.seed }}
     steps:
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         if: github.event_name == 'pull_request'
         with:
@@ -118,12 +118,15 @@ jobs:
               - '.github/scripts/image_smoke_test.sh'
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/ci.yml'
-            # renovate.json5 belongs here because test_check_action_pins.py compares its pinDigests
-            # rule with the file list of the action pin guard. renovate.yml belongs here because
-            # test_renovate_image_pin.py checks its image pin against the regex manager.
+            # renovate.json5 belongs here because test_check_action_pins.py checks that its pinDigests
+            # rule covers every workflow, like the action pin guard. publish-images.yml belongs here
+            # because test_publish_images_cache.py checks that release builds skip the gha cache,
+            # renovate.yml because test_renovate_image_pin.py checks its image pin against the regex
+            # manager.
             scripts:
               - '.github/scripts/**'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/publish-images.yml'
               - '.github/workflows/renovate.yml'
               - 'renovate.json5'
             # Step-level filter of the action pin guard below, not a job output.
@@ -142,7 +145,7 @@ jobs:
               - 'keycloak/**'
               - '.github/workflows/ci.yml'
 
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Guards the Corepack integrity hash that frontend/Dockerfile relies on
       # ("corepack enable", then "pnpm install --frozen-lockfile"): corepack verifies
@@ -155,10 +158,9 @@ jobs:
       - name: Corepack-Hash im packageManager-Feld prüfen
         run: .github/scripts/check_package_manager_hash.sh
 
-      # Workflows with write access to published artifacts or the repository reference actions
-      # by commit SHA only (docs/renovate.md). Same job as above: a required check, so a tag that
-      # slips back in blocks the merge.
-      - name: SHA-Pins der Actions in Workflows mit Schreibrechten prüfen
+      # Every workflow references actions by commit SHA only (docs/renovate.md). Same job as above:
+      # a required check, so a tag that slips back in blocks the merge.
+      - name: SHA-Pins der Actions in allen Workflows prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.workflows == 'true'
         run: .github/scripts/check_action_pins.sh
 
@@ -175,9 +177,9 @@ jobs:
       run:
         working-directory: backend/
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '25.0.4+101.0.LTS'
@@ -187,7 +189,7 @@ jobs:
       # actions/cache-Musters, das bei exaktem Key-Treffer nie neu speicherte
       # (#832). Configuration-Cache-Daten werden bewusst nicht persistiert
       # (braeuchte cache-encryption-key + build-root-directory).
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Build (ohne Testsuite)
         run: ./gradlew build -x :test
@@ -199,7 +201,7 @@ jobs:
 
       - name: Upload build reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-build-reports
           path: |
@@ -220,21 +222,21 @@ jobs:
       run:
         working-directory: backend/
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '25.0.4+101.0.LTS'
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: Test (Shard ${{ matrix.shard }})
         run: ./gradlew :test -PtestShard=${{ matrix.shard }}
 
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-test-reports-${{ matrix.shard }}
           path: backend/build/reports/tests/
@@ -248,20 +250,20 @@ jobs:
     if: github.event_name != 'pull_request' || needs.changes.outputs.bundleParity == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '25.0.4+101.0.LTS'
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           package_json_file: frontend/package.json
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -327,15 +329,15 @@ jobs:
       run:
         working-directory: backend/
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '25.0.4+101.0.LTS'
 
       # Cache-Verwaltung wie im backend-Job: read-only auf PRs, Schreiben nur auf main (#832).
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       - name: OpenAI Integration Tests
         if: env.OPAA_OPENAI_API_KEY != ''
@@ -343,7 +345,7 @@ jobs:
 
       - name: Upload integration test reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: backend-integration-test-reports
           path: backend/build/reports/tests/
@@ -354,9 +356,9 @@ jobs:
     if: github.event_name != 'pull_request' || needs.changes.outputs.scripts == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.14'
 
@@ -375,9 +377,9 @@ jobs:
     if: github.event_name != 'pull_request' || needs.changes.outputs.seed == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.14'
 
@@ -397,15 +399,15 @@ jobs:
       run:
         working-directory: frontend/
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       # Installs the pnpm version pinned in the "packageManager" field of
       # frontend/package.json.
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         with:
           package_json_file: frontend/package.json
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: pnpm
@@ -427,14 +429,14 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # Repo root as context: the backend's Gradle build depends on the sibling opaa-api/. Reads
       # the layer cache publish-images.yml writes on main; writes none of its own.
       - name: Backend-Image bauen
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: backend/Dockerfile
@@ -444,7 +446,7 @@ jobs:
           cache-from: type=gha,scope=backend-arm64
 
       - name: Frontend-Image bauen
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: frontend/Dockerfile

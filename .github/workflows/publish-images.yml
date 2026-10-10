@@ -133,8 +133,9 @@ jobs:
     name: build (${{ matrix.image.name }}, ${{ matrix.platform.arch }})
     needs: prepare
     runs-on: ${{ matrix.platform.runner }}
-    # A leg takes 1-4 minutes, a cold one (weekly rebuild, no cache) a few more. A hung leg is
-    # cancelled instead of holding the run for hours; "Re-run failed jobs" resumes the run.
+    # A leg takes 1-4 minutes, a cold one (release tag, or the cache evicted after 7 days without
+    # access) up to about six. A hung leg is cancelled instead of holding the run for hours;
+    # "Re-run failed jobs" resumes the run.
     timeout-minutes: 30
     # Only runs building the very same commit may cancel each other - a scheduled and a push run of
     # the same tip, where the slower one would otherwise push last and leave :main on the older
@@ -190,8 +191,10 @@ jobs:
           # index by publish; retrieval is documented in docs/sbom.md.
           sbom: true
           provenance: mode=max
-          cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          # A release tag builds without the gha cache: every job that runs on main may write there,
+          # whatever scope it names, and a tag run restores from main's cache (docs/renovate.md).
+          cache-from: ${{ github.ref_type != 'tag' && format('type=gha,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
+          cache-to: ${{ github.ref_type != 'tag' && format('type=gha,mode=max,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
           # The frontend's runtime stage applies the OS security updates of the build day (issue
           # #1450); a cache hit on that layer would republish the state of an arbitrarily old
           # build, so this one stage is always rebuilt while every earlier stage keeps its cache.

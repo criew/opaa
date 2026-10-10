@@ -84,6 +84,12 @@ Images und Chart, `deploy/helm/ci/oci-published.sh`. Sie fragt die Registry-API 
 den HTTP-Status aus. `docker buildx imagetools inspect` taugt dafür nicht, weil es eine
 Verweigerung ebenfalls als „not found“ meldet.
 
+**Ein Release baut ohne Build-Cache.** Bei einem Tag lesen und schreiben die `build`-Jobs den
+GitHub-Actions-Cache nicht. In den Cache von `main` darf jeder Job schreiben, der auf `main` läuft,
+und ein Tag-Lauf liest aus ihm. Ein Release-Image entsteht deshalb nur aus dem getaggten Commit,
+den Basis-Images und den Paketquellen. Die Abwägung und das verbleibende Risiko für `main` stehen
+in [renovate.md](renovate.md#sicherheitsmodell-des-gha-caches).
+
 Der Lauf ist in Jobs gestaffelt: erst die Prüfungen (`prepare`), dann die Images (`build` je Image
 und Architektur, `publish` je Image), dann der Chart, dann seine Attestierung, zuletzt das
 GitHub-Release. Jeder Job startet nur, wenn die vorigen gelungen sind, und ein Fehlschlag färbt
@@ -269,9 +275,10 @@ Docker-Dokumentation):
 Ein Digest ohne Tag gilt für die Existenzprüfung nicht als veröffentlicht; ein abgebrochener Lauf
 belegt also keine Version.
 
-**Zeitgrenzen.** Ein Bein von `build` braucht üblicherweise ein bis vier Minuten, ohne Cache
-(wöchentlicher Neubau) etwas länger. Nach 30 Minuten bricht GitHub es ab, statt den Lauf stundenlang
-zu blockieren; die übrigen Jobs haben Grenzen von 10 bis 15 Minuten. Ein abgebrochenes Bein holt
+**Zeitgrenzen.** Ein Bein von `build` braucht mit Cache üblicherweise ein bis vier Minuten. Ohne
+Cache, also bei einem Release oder nachdem GitHub einen sieben Tage nicht abgerufenen Cache
+verdrängt hat, sind es bis etwa sechs Minuten. Nach 30 Minuten bricht GitHub es ab, statt den
+Lauf stundenlang zu blockieren; die übrigen Jobs haben Grenzen von 10 bis 15 Minuten. Ein abgebrochenes Bein holt
 *Re-run failed jobs* nach: Die fertigen Beine behalten ihre Digests, `publish` setzt die Tags erst
 danach (#2427).
 
