@@ -1161,7 +1161,7 @@ public final class FileSync implements AutoCloseable {
       String changeMarker =
           entry.changeMarker() != null ? entry.changeMarker() : fetched.changeMarker();
       ReconcilingAttachmentAccess attachmentAccess = frame.attachmentAccess(entry.context());
-      int rejectedBefore = frame.progress().personalQuotaRejections();
+      int rejectedBefore = frame.progress().quotaRejections();
       DocumentIngestResult result =
           documentIngestService.ingest(
               DocumentIngest.builder(frame.library())
@@ -1206,7 +1206,7 @@ public final class FileSync implements AutoCloseable {
 
   /** {@link #recordOutcome(FileEntry, DocumentIngestResult, int)} for a result without ingest. */
   private void recordOutcome(FileEntry entry, DocumentIngestResult result) {
-    recordOutcome(entry, result, frame.progress().personalQuotaRejections());
+    recordOutcome(entry, result, frame.progress().quotaRejections());
   }
 
   /**
@@ -1226,7 +1226,7 @@ public final class FileSync implements AutoCloseable {
     }
     boolean processed = frame.recordOutcome(result, entry.filePath());
     if (result == DocumentIngestResult.QUOTA_EXCEEDED
-        || frame.progress().personalQuotaRejections() > personalRejectionsBefore) {
+        || frame.progress().quotaRejections() > personalRejectionsBefore) {
       unsettle(entry);
       quotaHolds++;
     }

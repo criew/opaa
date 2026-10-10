@@ -333,7 +333,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       visitPage(run, summary, PageVisitPolicy.INCREMENTAL);
       run.progress.report();
     }
-    if (run.progress.failedCount() == 0 && !run.progress.personalQuotaReached()) {
+    if (run.progress.failedCount() == 0 && !run.progress.quotaReached()) {
       state.advanceIncrementalAnchor(startedAt);
       syncStateRepository.save(state);
     } else {

@@ -261,7 +261,7 @@ public class DocumentIngestService {
                 // Before the attachments: their own quota checks must already see the parent's
                 // corrected (attachment-free) fileSize, or the attachment bytes count twice.
                 applyContentByteSizeOverride(savedDoc, result);
-                int rejectedBefore = attachmentAccess.progress().personalQuotaRejections();
+                int rejectedBefore = attachmentAccess.progress().quotaRejections();
                 processDiscoveredAttachments(
                     result.discoveredAttachments(),
                     documentId,
@@ -269,7 +269,7 @@ public class DocumentIngestService {
                     savedDoc.getSourceType(),
                     attachmentAccess);
                 attachmentAtQuota[0] =
-                    attachmentAccess.progress().personalQuotaRejections() > rejectedBefore;
+                    attachmentAccess.progress().quotaRejections() > rejectedBefore;
               });
       if (ingest.reindex() && parsed.outcome() != DocumentFormatResult.Outcome.CHUNKED) {
         log.warn(

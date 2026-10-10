@@ -12,10 +12,10 @@ public interface AttachmentProgressSink {
   void recordAttachment(AttachmentOutcome outcome);
 
   /** Notes that an attachment was rejected at the owner's private storage quota. */
-  default void recordPersonalQuotaReached() {}
+  default void recordQuotaReached() {}
 
   /** How many items and attachments were rejected at the owner's private storage quota so far. */
-  default int personalQuotaRejections() {
+  default int quotaRejections() {
     return 0;
   }
 }

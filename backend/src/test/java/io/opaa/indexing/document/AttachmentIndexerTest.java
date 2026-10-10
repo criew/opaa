@@ -414,7 +414,7 @@ class AttachmentIndexerTest {
     verify(progress, org.mockito.Mockito.times(1)).recordAttachment(AttachmentOutcome.PROCESSED);
     verify(progress, org.mockito.Mockito.times(2)).recordAttachment(AttachmentOutcome.SKIPPED);
     verify(progress, org.mockito.Mockito.times(3)).recordAttachment(AttachmentOutcome.FAILED);
-    verify(progress, org.mockito.Mockito.times(1)).recordPersonalQuotaReached();
+    verify(progress, org.mockito.Mockito.times(1)).recordQuotaReached();
     verify(access, org.mockito.Mockito.times(6))
         .recordIndexedAttachment(eq("/mail.eml/0/anlage.txt"), anyBoolean());
   }

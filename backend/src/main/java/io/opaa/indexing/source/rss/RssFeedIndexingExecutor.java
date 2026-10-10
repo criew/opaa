@@ -190,7 +190,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     // accounted for every entry it saw.
     if (!ctx.anyEntryDeferred().get()
         && run.progress().failedCount() == 0
-        && !run.progress().personalQuotaReached()) {
+        && !run.progress().quotaReached()) {
       feedFetcher.saveState(targetLibrary.getId(), feedUrl, loaded.get().feedResponse());
     } else {
       log.info(

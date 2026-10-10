@@ -325,7 +325,7 @@ public class IndexingRunTemplate {
       failed = true;
       failure = failureMessage(e);
     }
-    if (!failed && progress.personalQuotaReached()) {
+    if (!failed && progress.quotaReached()) {
       incomplete = true;
       category = RunFailureCategory.QUOTA_EXHAUSTED;
     }
