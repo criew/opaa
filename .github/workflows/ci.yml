@@ -434,7 +434,9 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # Repo root as context: the backend's Gradle build depends on the sibling opaa-api/. Reads
-      # the layer cache publish-images.yml writes on main; writes none of its own.
+      # the layer cache publish-images.yml writes on main; writes none of its own. Built with a
+      # version like a release run, so the start line and /actuator/info are checked against it;
+      # this rebuilds the bootJar layer, the dependency layer before it stays cached.
       - name: Backend-Image bauen
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -443,6 +445,7 @@ jobs:
           platforms: linux/arm64
           tags: opaa-ci/backend:arm64
           load: true
+          build-args: OPAA_VERSION=0.0.0-smoke.1
           cache-from: type=gha,scope=backend-arm64
 
       - name: Frontend-Image bauen
@@ -458,4 +461,5 @@ jobs:
       - name: Images starten und Bereitschaft prüfen
         env:
           EXPECT_ARCH: arm64
+          EXPECT_VERSION: 0.0.0-smoke.1
         run: .github/scripts/image_smoke_test.sh opaa-ci/backend:arm64 opaa-ci/frontend:arm64

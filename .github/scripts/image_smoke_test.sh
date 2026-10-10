@@ -10,6 +10,9 @@
 #   EXPECT_ARCH       architecture both images must have, e.g. arm64 (default: the Docker host's)
 #   POSTGRES_IMAGE    database image (default: pgvector/pgvector:pg18)
 #   READY_TIMEOUT     seconds the backend may take to become ready (default: 300)
+#   EXPECT_VERSION    version the backend must report in its start line and under /actuator/info,
+#                     e.g. the OPAA_VERSION build argument of the image (default: not checked);
+#                     needs jq
 set -euo pipefail
 
 if (($# != 2)); then
@@ -21,6 +24,7 @@ frontend_image="$2"
 expect_arch="${EXPECT_ARCH:-$(docker version --format '{{.Server.Arch}}')}"
 postgres_image="${POSTGRES_IMAGE:-pgvector/pgvector:pg18}"
 ready_timeout="${READY_TIMEOUT:-300}"
+expect_version="${EXPECT_VERSION:-}"
 
 suffix="$$"
 network="opaa-smoke-$suffix"
@@ -44,6 +48,8 @@ fail() {
   done
   exit 1
 }
+
+[[ -z "$expect_version" ]] || command -v jq >/dev/null || fail "EXPECT_VERSION needs jq"
 
 # A locally present image of the wrong architecture would run emulated and prove nothing.
 for image in "$backend_image" "$frontend_image"; do
@@ -105,6 +111,17 @@ while (($(date +%s) - start < ready_timeout)); do
 done
 [[ "$readiness" == *'"status":"UP"'* ]] || fail "backend not ready within ${ready_timeout}s: ${readiness:-no answer}"
 echo "backend ready after $(($(date +%s) - start))s: $readiness"
+
+if [[ -n "$expect_version" ]]; then
+  start_line="$(docker logs "$backend" 2>&1 | grep -m 1 'Starting OpaaApplication' || true)"
+  [[ "$start_line" == *"Starting OpaaApplication v$expect_version using "* ]] ||
+    fail "backend start line does not report version $expect_version: ${start_line:-none}"
+  echo "start line reports version $expect_version"
+  info="$(curl -sS --max-time 5 "http://127.0.0.1:$backend_port/actuator/info" || true)"
+  [[ "$(jq -r '.build.version // empty' <<<"$info" 2>/dev/null)" == "$expect_version" ]] ||
+    fail "/actuator/info does not report version $expect_version: ${info:-no answer}"
+  echo "/actuator/info reports version $expect_version"
+fi
 
 docker run -d --name "$frontend" --network "$network" \
   --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \

@@ -7,7 +7,15 @@ plugins {
 }
 
 group = "io.opaa"
-version = "0.0.1-SNAPSHOT"
+// A release build passes the version of its tag as -PopaaVersion (docs/releases.md); every other
+// build, main images included, reports the development placeholder the chart carries as well.
+// Only the format release-version.sh prints is accepted.
+version =
+    providers.gradleProperty("opaaVersion").orNull.orEmpty().ifEmpty { "0.0.0-dev" }.also {
+        require(Regex("""(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?""").matches(it)) {
+            "opaaVersion '$it' is not a version X.Y.Z or X.Y.Z-<pre> (docs/releases.md)"
+        }
+    }
 description = "OPAA Spring Boot Backend"
 
 java {
@@ -519,6 +527,14 @@ dependencyManagement {
         dependency(libs.bouncycastle.bcpkix.get().toString())
         dependency(libs.bouncycastle.bcjmail.get().toString())
         dependency(libs.junrar.get().toString())
+    }
+}
+
+// META-INF/build-info.properties, shown under /actuator/info. Without the build time the file
+// depends only on the project coordinates, so jar and build cache stay reproducible.
+springBoot {
+    buildInfo {
+        excludes.set(setOf("time"))
     }
 }
 

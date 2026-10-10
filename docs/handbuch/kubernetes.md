@@ -1031,6 +1031,13 @@ Wegen der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt lauf
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
 Start als abgebrochen erkannt (siehe [Sanftes Herunterfahren](deployment.md#sanftes-herunterfahren)).
 Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
+Ob die neue Version läuft, zeigt die Startzeile des Backends:
+
+```bash
+kubectl -n opaa logs deploy/opaa-backend | grep -m 1 'Starting OpaaApplication'
+```
+
+Sie nennt die Version des Releases, etwa `Starting OpaaApplication v<neue Version>`.
 
 Hinweise zum Aufruf:
 
