@@ -1012,8 +1012,10 @@ Proben und Metriken laufen über den Management-Port (siehe
 
 ### Ablauf
 
-1. **Vorbereitungsschritte lesen.** Jedes Release nennt unter *Releases* im GitHub-Repository die
-   Schritte, die eine Bestandsinstallation vorher erledigen muss.
+1. **Vorbereitung prüfen.** Die Notizen jedes Release unter *Releases* im GitHub-Repository
+   enthalten den Abschnitt „Vorbereitung für Bestandsinstallationen“. Er nennt die Schritte, die eine
+   Bestandsinstallation vor dem Update erledigen muss, oder sagt „Keine Vorbereitung nötig.“ Wer
+   Versionen überspringt, prüft diesen Abschnitt bei jedem übersprungenen Release.
 2. **Datenbank sichern**, danach die Originale (siehe
    [Sicherung und Wiederherstellung](#sicherung-und-wiederherstellung)). Ohne diese Sicherung gibt es
    nach einer Schemaänderung keinen Rückweg.
@@ -1026,6 +1028,10 @@ Proben und Metriken laufen über den Management-Port (siehe
    kubectl -n opaa rollout status deploy/opaa-backend --timeout=15m
    helm test opaa -n opaa
    ```
+
+   Die Hinweise, die `helm upgrade` ausgibt, beginnen mit „OPAA ist aktualisiert auf
+   Chart-Version …“ und nennen die neue Revision; der [Rückweg](#rückweg) führt auf die Revision
+   davor.
 
 Wegen der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten

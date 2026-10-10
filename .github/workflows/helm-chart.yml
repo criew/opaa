@@ -52,9 +52,15 @@ jobs:
         id: filter
         with:
           filters: |
+            # The static check also covers the release notes (upgrade notes, linked handbook
+            # headings) and the code blocks of docs/releases.md.
             chart:
               - 'deploy/helm/**'
               - '.github/workflows/helm-chart.yml'
+              - 'docs/releases.md'
+              - 'docs/upgrade-notes/**'
+              - 'docs/handbuch/kubernetes.md'
+              - 'docs/handbuch/deployment.md'
             # The chart relies on the images' contract: user, port, writable paths, entrypoint.
             install:
               - 'deploy/helm/**'

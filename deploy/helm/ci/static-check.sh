@@ -118,10 +118,14 @@ expect_tag_refusal v1.0.0-rc.01 "segment starts with 0"
 # The installation in the release notes creates the namespace with both Pod Security labels of the
 # handbook before helm install; --create-namespace would create it without them.
 echo "--- release notes"
-release_notes="$(deploy/helm/ci/release-notes.sh criew/opaa v1.2.3-rc.1)"
+mkdir -p "$work_dir/upgrade-notes"
+release_notes="$(UPGRADE_NOTES_DIR="$work_dir/upgrade-notes" deploy/helm/ci/release-notes.sh criew/opaa v1.2.3-rc.1)"
 for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enforce=restricted" \
   "pod-security.kubernetes.io/warn=restricted" "--version 1.2.3-rc.1" \
-  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#installation"; do
+  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#installation" \
+  "**Vorbereitung für Bestandsinstallationen**" "Keine Vorbereitung nötig." \
+  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#aktualisierung-und-rückweg" \
+  "blob/v1.2.3-rc.1/docs/handbuch/deployment.md#vorbereitungsschritte-für-bestandsinstallationen"; do
   if [[ "$release_notes" != *"$expected"* ]]; then
     echo "The release notes do not contain '$expected':" >&2
     echo "$release_notes" >&2
@@ -139,6 +143,77 @@ for label in enforce warn; do
   fi
 done
 echo "namespace labelled before helm install as expected"
+# Every handbook link of the notes points to a heading of this commit, by GitHub's anchor rules.
+# The anchors go to a file first: grep -q in the pipeline would exit early, and under pipefail the
+# SIGPIPE of jq would turn a found anchor into a failure.
+heading_anchors() {
+  awk '/^[[:space:]]*```/ { block = !block; next } !block && /^#+ / { sub(/^#+ +/, ""); print }' "$1" |
+    jq -Rr 'gsub("Ä";"ä") | gsub("Ö";"ö") | gsub("Ü";"ü") | ascii_downcase | gsub("[^\\p{L}\\p{N} _-]";"") | gsub(" ";"-")'
+}
+links="$(grep -o 'blob/v1\.2\.3-rc\.1/docs/handbuch/[a-z0-9-]*\.md#[^)]*' <<<"$release_notes")"
+while read -r link; do
+  file="${link%%#*}"
+  file="docs/handbuch/${file##*/}"
+  heading_anchors "$file" >"$work_dir/anchors"
+  if ! grep -qxF -- "${link#*#}" "$work_dir/anchors"; then
+    echo "The release notes link $link, but $file has no heading with this anchor." >&2
+    exit 1
+  fi
+done <<<"$links"
+echo "handbook links resolve as expected: $(wc -l <<<"$links" | tr -d ' ')"
+# A file docs/upgrade-notes/<version>.md replaces "Keine Vorbereitung nötig." with its text. A
+# release X.Y.0 needs the file, since only it can bring a break; an empty or symlinked file and one
+# with an unclosed code fence are refused, the rest of the notes would otherwise go missing.
+upgrade_notes() {
+  UPGRADE_NOTES_DIR="$work_dir/upgrade-notes" deploy/helm/ci/release-notes.sh criew/opaa "$1"
+}
+# Fails unless the release notes of the tag are refused with a message naming the expected text.
+expect_notes_refusal() {
+  local tag="$1" expected="$2" case="$3" output
+  if output="$(upgrade_notes "$tag" 2>&1)" || [[ "$output" != *"$expected"* ]]; then
+    echo "Expected the release notes of $tag to be refused naming '$expected' ($case):" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  echo "refused as expected: $case"
+}
+printf '%s\n' '- **Kubernetes:** `$(id)` ${HOME} vor dem Update setzen.' >"$work_dir/upgrade-notes/1.2.3-rc.1.md"
+release_notes="$(upgrade_notes v1.2.3-rc.1)"
+if [[ "$release_notes" != *'`$(id)` ${HOME} vor dem Update setzen.'* || "$release_notes" == *"Keine Vorbereitung nötig."* ]]; then
+  echo "The release notes do not show the preparation of upgrade-notes/1.2.3-rc.1.md verbatim:" >&2
+  echo "$release_notes" >&2
+  exit 1
+fi
+echo "preparation taken from the upgrade notes as expected"
+printf ' \n\n' >"$work_dir/upgrade-notes/1.2.3-rc.1.md"
+expect_notes_refusal v1.2.3-rc.1 "must be a file naming the preparation steps" "empty upgrade notes"
+printf '%s\n' '```bash' 'kubectl get pods' >"$work_dir/upgrade-notes/1.2.3-rc.1.md"
+expect_notes_refusal v1.2.3-rc.1 "unclosed code fence" "unclosed code fence"
+rm "$work_dir/upgrade-notes/1.2.3-rc.1.md"
+printf '%s\n' '- Schritt' >"$work_dir/elsewhere.md"
+ln -s "$work_dir/elsewhere.md" "$work_dir/upgrade-notes/1.2.3-rc.1.md"
+expect_notes_refusal v1.2.3-rc.1 "must not be a symbolic link" "symlinked upgrade notes"
+expect_notes_refusal v1.3.0 "1.3.0.md is missing" "missing upgrade notes for v1.3.0"
+printf '%s\n' 'Keine Vorbereitung nötig.' >"$work_dir/upgrade-notes/1.3.0.md"
+if [[ "$(upgrade_notes v1.3.0)" != *"Keine Vorbereitung nötig."* ]]; then
+  echo "The release notes of v1.3.0 do not take the text of upgrade-notes/1.3.0.md." >&2
+  exit 1
+fi
+echo "as expected: v1.3.0 with upgrade notes"
+if [[ "$(upgrade_notes v1.2.4)" != *"Keine Vorbereitung nötig."* ]]; then
+  echo "The release notes of the patch release v1.2.4 without upgrade notes must say 'Keine Vorbereitung nötig.'" >&2
+  exit 1
+fi
+echo "as expected: v1.2.4 without upgrade notes"
+# Each file in docs/upgrade-notes is named after a release version and yields release notes.
+for file in docs/upgrade-notes/*; do
+  name="$(basename "$file")"
+  if [[ "$name" != *.md ]] || ! deploy/helm/ci/release-notes.sh criew/opaa "v${name%.md}" >/dev/null; then
+    echo "$file must be named <version>.md after a release version X.Y.Z[-<pre>] and name the preparation steps." >&2
+    exit 1
+  fi
+  echo "upgrade notes as expected: $file"
+done
 # The same holds for the installation commands of the chart README and docs/releases.md; prose may
 # name the flag, a fenced code block may not.
 for doc in "$CHART_DIR/README.md" docs/releases.md; do
@@ -190,6 +265,36 @@ if ((rc != 2)) || ! grep -q "not a valid OCI repository name" <<<"$output"; then
   exit 1
 fi
 echo "refused as expected: invalid repository name"
+
+# NOTES.txt tells a first installation from an upgrade. helm template skips NOTES.txt, so a copy of
+# the chart renders it as the value of a YAML document; --is-upgrade sets .Release.IsUpgrade.
+echo "--- notes on install and upgrade"
+cp -R "$CHART_DIR" "$work_dir/notes-chart"
+{
+  printf '{{- define "opaa.notesCheck" }}'
+  cat "$CHART_DIR/templates/NOTES.txt"
+  printf '{{- end }}\nnotes: {{ include "opaa.notesCheck" . | toJson }}\n'
+} >"$work_dir/notes-chart/templates/notes-check.yaml"
+rendered_notes() {
+  helm template opaa "$work_dir/notes-chart" --namespace opaa --values "$CHART_DIR/ci/minimal-values.yaml" \
+    --show-only templates/notes-check.yaml "$@" | sed -n 's/^notes: //p' | jq -r .
+}
+# Checks that the notes of one kind of release contain one text and lack the other.
+notes_case() {
+  local kind="$1" expected="$2" unexpected="$3" output
+  shift 3
+  output="$(rendered_notes "$@")"
+  if [[ "$output" != *"$expected"* || "$output" == *"$unexpected"* ]]; then
+    echo "The notes of $kind must name '$expected' and not '$unexpected':" >&2
+    echo "$output" >&2
+    exit 1
+  fi
+  echo "notes as expected: $kind"
+}
+notes_case "an installation" "OPAA ist installiert" "OPAA ist aktualisiert"
+notes_case "an installation" "Der erste Start migriert" "Der Start migriert"
+notes_case "an upgrade" "OPAA ist aktualisiert" "OPAA ist installiert" --is-upgrade
+notes_case "an upgrade" "Der Start migriert" "Der erste Start migriert" --is-upgrade
 
 # The CSP warning of NOTES.txt follows the issuer, the authority of the sign-in flow. Only install
 # renders NOTES.txt; a dry run without a cluster exists from Helm 3.13 on, older Helm skips this.
@@ -306,4 +411,4 @@ else
   echo "skipped: Helm $(helm version --short) has no client-side dry run"
 fi
 
-echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging, release notes, re-run provenance, registry lookup"
+echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging, release notes, re-run provenance, registry lookup, notes"
