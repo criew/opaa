@@ -14,7 +14,7 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
-| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen und der `helm install`-Befehl |
+| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen und die Installationsbefehle |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
@@ -24,13 +24,23 @@ und neben dem Chart in GHCR. Prüfen lässt sie sich mit:
 gh attestation verify oci://ghcr.io/criew/charts/opaa:X.Y.Z --owner criew
 ```
 
-Installiert wird der Chart ohne Checkout des Repositories; was in die Wertedatei gehört, beschreibt
-die [Chart-README](../deploy/helm/opaa/README.md):
+Installiert wird der Chart ohne Checkout des Repositories, in der Reihenfolge des Handbuchs
+([Kubernetes, Installation](handbuch/kubernetes.md#installation)): zuerst der Namespace mit den
+Labels für Pod Security `restricted`, dann Datenbank, Geheimnisse und Werte-Datei, zuletzt der
+Chart. Was in die Werte-Datei gehört, beschreibt die [Chart-README](../deploy/helm/opaa/README.md):
 
 ```bash
-helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z \
-  -n opaa --create-namespace -f meine-werte.yaml
+kubectl create namespace opaa
+kubectl label namespace opaa \
+  pod-security.kubernetes.io/enforce=restricted \
+  pod-security.kubernetes.io/warn=restricted
+helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z -n opaa -f opaa-werte.yaml
 ```
+
+`--create-namespace` legt den Namespace ohne diese Labels an und gehört deshalb nicht in die
+Anleitung. Die Release-Notizen zeigen dieselben Befehle; ihren festen Teil erzeugt
+`deploy/helm/ci/release-notes.sh`, und die statische Prüfung des Charts stellt sicher, dass er den
+Namespace vor `helm install` mit beiden Labels anlegt.
 
 Das Backend eines Release-Images meldet dieselbe Version in seiner Startzeile
 (`Starting OpaaApplication vX.Y.Z`) und unter `/actuator/info`; der Release-Lauf übergibt sie dem

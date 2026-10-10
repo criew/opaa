@@ -26,38 +26,64 @@ nicht für den Betrieb gedacht.
 
 ## Installation
 
-Jedes Release veröffentlicht den Chart neben den Images in GHCR ([Releases](../../../docs/releases.md)),
-ab dem ersten Release mit Chart; bis dahin wird aus dem Repository installiert (unten). Chart-Version
-und Image-Tags sind dieselbe Versionsnummer:
+Die Reihenfolge entspricht dem Handbuch, Kapitel „Kubernetes“, Abschnitt „Installation“
+([`docs/handbuch/kubernetes.md`](../../../docs/handbuch/kubernetes.md#installation)), das jeden Schritt
+ausführlich beschreibt.
+
+**1. Namespace anlegen**, mit Pod Security Admission auf `restricted`. Der Chart läuft ohne Ausnahme
+darunter. Der Namespace entsteht vor dem Chart, damit die Labels von Anfang an gelten; `helm install`
+braucht deshalb kein `--create-namespace`:
 
 ```bash
-helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z \
-  -n opaa --create-namespace -f meine-werte.yaml
+kubectl create namespace opaa
+kubectl label namespace opaa \
+  pod-security.kubernetes.io/enforce=restricted \
+  pod-security.kubernetes.io/warn=restricted
+```
+
+**2. Datenbank vorbereiten**, wie unter [Voraussetzungen](#voraussetzungen) beschrieben.
+
+**3. Geheimnisse anlegen.** Für den Betrieb wird ein vorhandenes Secret empfohlen
+(`secrets.existingSecret`); welche Schlüssel es enthalten muss, steht in [`values.yaml`](values.yaml).
+Alternativ legt der Chart das Secret aus den Werten an. Pflicht sind:
+
+| Wert | Schlüssel im Secret | Inhalt |
+|---|---|---|
+| `secrets.jwtSecret` | `OPAA_AUTH_JWT_SECRET` | erzeugt mit `openssl rand -base64 48` |
+| `secrets.databasePassword` | `OPAA_DB_PASSWORD` | Passwort des Datenbankkontos |
+| `secrets.credentialsEncryptionKey` | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | erzeugt mit `openssl rand -base64 32` |
+| `secrets.settingsEncryptionKey` | `OPAA_SETTINGS_ENCRYPTION_KEY` | erzeugt mit `openssl rand -base64 32` |
+| `secrets.s3AccessKey` | `OPAA_UPLOAD_S3_ACCESS_KEY` | bei `uploads.store: s3`: Zugangsschlüssel des Objektspeichers |
+| `secrets.s3SecretKey` | `OPAA_UPLOAD_S3_SECRET_KEY` | bei `uploads.store: s3`: Geheimschlüssel des Objektspeichers |
+
+Die Schlüssel erzeugt der Betreiber selbst; der Chart erzeugt keine. Optionale Schlüssel, etwa für
+die Modell-Endpunkte, stehen in [`values.yaml`](values.yaml).
+
+**4. Werte-Datei schreiben.** `opaa-werte.yaml` braucht mindestens die Werte aus
+[`ci/minimal-values.yaml`](ci/minimal-values.yaml), mit eigenen Geheimnissen. Fehlt ein Pflichtwert,
+lehnt `values.schema.json` die Installation ab; `helm template` zeigt das schon vorher (siehe
+[Prüfen](#prüfen)).
+
+**5. Installieren.** Jedes Release veröffentlicht den Chart neben den Images in GHCR
+([Releases](../../../docs/releases.md)), ab dem ersten Release mit Chart; bis dahin wird aus dem
+Repository installiert (unten). Chart-Version und Image-Tags sind dieselbe Versionsnummer:
+
+```bash
+helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z -n opaa -f opaa-werte.yaml
 ```
 
 Aus dem Repository, etwa um den Stand von `main` zu betreiben:
 
 ```bash
-helm install opaa deploy/helm/opaa -n opaa --create-namespace -f meine-werte.yaml \
+helm install opaa deploy/helm/opaa -n opaa -f opaa-werte.yaml \
   --set backend.image.tag=main --set frontend.image.tag=main
 ```
 
 Zwischen zwei Releases trägt `Chart.yaml` die Platzhalterversion `0.0.0-dev`, zu der es kein Image
 gibt. Deshalb nennt die Installation aus dem Repository die Image-Tags ausdrücklich.
 
-`meine-werte.yaml` braucht mindestens die Werte aus [`ci/minimal-values.yaml`](ci/minimal-values.yaml),
-mit eigenen Geheimnissen. Fehlt ein Pflichtwert, lehnt `values.schema.json` die Installation ab.
-
-Die Schlüssel erzeugt der Betreiber selbst:
-
-| Wert | Erzeugen mit |
-|---|---|
-| `secrets.jwtSecret` | `openssl rand -base64 48` |
-| `secrets.credentialsEncryptionKey` | `openssl rand -base64 32` |
-| `secrets.settingsEncryptionKey` | `openssl rand -base64 32` |
-
-Für den Betrieb wird statt der Werte ein vorhandenes Secret empfohlen (`secrets.existingSecret`). Welche
-Schlüssel es enthalten muss, steht in [`values.yaml`](values.yaml).
+**6. Auf das Backend warten und prüfen**, wie unter [Prüfen](#prüfen) beschrieben. Der erste Start
+legt das Datenbankschema an; erst danach meldet sich das Backend bereit.
 
 ## Was der Chart anbindet
 
@@ -84,13 +110,6 @@ Schlüssel es enthalten muss, steht in [`values.yaml`](values.yaml).
   danach führt die Oberfläche.
 
 ## Netz und Client-Adresse
-
-Der Namespace sollte Pod Security Admission auf `restricted` setzen; der Chart läuft ohne Ausnahme
-darunter:
-
-```bash
-kubectl label namespace opaa pod-security.kubernetes.io/enforce=restricted
-```
 
 - **Eingang zum Backend:** Standardmäßig lässt eine NetworkPolicy nur die Frontend-Pods zu, dazu
   `networkPolicy.backendIngress.extraFrom`.
@@ -137,7 +156,10 @@ Metriken und Alarme beschreibt das Handbuch im Kapitel „Kubernetes“.
 ## Prüfen
 
 ```bash
-helm template opaa deploy/helm/opaa -f meine-werte.yaml > /dev/null
+# vor der Installation
+helm template opaa deploy/helm/opaa -n opaa -f opaa-werte.yaml > /dev/null
+# nach der Installation
+kubectl -n opaa rollout status deploy/opaa-backend --timeout=15m
 helm test opaa -n opaa
 ```
 
