@@ -1272,6 +1272,47 @@ Löst den Kostenpunkt aus dem Nachtrag zu #2276 für Dateiablagen.
   startet; nur ein ausdrücklich kürzerer Wert bricht den Start ab. Mit dem Timeout je Hop gekoppelt, hätte sie bei der Bytegrenze von
   20 MiB eine Leitung von 8,4 Mbit/s zur Quelle und zum Browser verlangt.
 
+## Nachtrag vom 10.10.2026: Kontingent je Bibliothek hält Marken am Element (#2295)
+
+Vorläufige Entscheidung des Koordinators (der Maintainer kann sie kippen): Eine Ablehnung am
+Kontingent je Bibliothek wird behandelt wie die am Kontingent je Person (#2276).
+
+- **Lauf:** Das Element wird übersprungen, der Lauf läuft weiter und endet als unvollständig mit
+  derselben Kategorie `QUOTA_EXHAUSTED`; eine eigene Kategorie gibt es nicht. Gezählt wird an
+  einer Stelle: `IndexingRunProgress#recordOutcome` und `AttachmentIndexer` zählen Ablehnungen an
+  beiden Kontingenten in `AttachmentProgressSink#quotaRejections` (zuvor
+  `personalQuotaRejections`). Daran hängen alle Marken aus dem Nachtrag zu #2276: Das Dokument mit
+  abgelehntem Anhang wird ohne Prüfsumme und Änderungsmerkmal gespeichert, `FileSync` hält Cursor
+  und Ordnergedächtnis auch für einen Anhang, RSS speichert den Feed-Zustand nicht, Confluence
+  INCREMENTAL hält den Anker. Gehalten wird nur die Marke am Element, nie der Abschluss einer Runde
+  und nie die Entfernungen (Nachtrag zu #2294).
+- **Erneut gelesenes Archiv:** Die Aufnahme misst ein bestehendes Dokument an seinem gespeicherten
+  Fußabdruck (`DocumentIngestService#storedFootprint`): eigene Zeile plus alle Anhänge, deren Pfad
+  die Form von `AttachmentFilePath` unter dem Elternpfad hat, in jeder Tiefe. Ein separat
+  abgerufener Anhang (Feed-Eintrag, Confluence-Seite) gehört nicht dazu. Vorher zählten die schon
+  gespeicherten Anhänge eines Mail-Archivs beim Wiederlesen ein zweites Mal, und das Archiv kam
+  erst wieder, wenn Platz für alle Anhänge frei war; dabei wurde es selbst als abgelehnt
+  protokolliert. Dieselbe Messung gilt für die Vorprüfung vor dem Download. Übrig bleibt der
+  Aufschlag der Kodierung: Ein Anhang steckt in der Mail kodiert und damit größer als gespeichert.
+- **Vollabgleich nach einer Ablehnung in der Auflistung:** Eine Datei, die die Auflistung eines
+  Vollabgleichs am Kontingent festhält, meldet das Änderungsprotokoll danach nicht wieder. Die
+  Runde merkt sich das (`ScanProgress#heldAtQuota`, über mehrere Läufe hinweg), und ihr Ende ruft
+  `SourceSyncState#requireFullSync`: Der nächste Lauf ist ein Vollabgleich. Eine Ablehnung erst
+  beim Lesen des Protokolls am Rundenende braucht das nicht, dort hält der Strom seinen Startcursor.
+  Ebenso ruft ein Confluence-Vollabgleich mit Ablehnung `requireFullSync`, weil die abgelehnte
+  Seite älter als der neue Anker ist. Abwägung: Solange die Bibliothek voll bleibt, ersetzt bei
+  Google Drive und SharePoint ein Vollabgleich jeden Änderungslauf. Das kostet Auflistungen, aber
+  keine Downloads unveränderter Dateien; ohne das käme die Datei erst mit dem Vollabgleich nach
+  dessen Intervall.
+- **Kennzeichnung:** Die Laufmeldung lautet für beide Kontingente „unvollständig:
+  Speicherkontingent erschöpft, Dateien übersprungen“. Die Oberfläche nennt bei einer privaten
+  Bibliothek weiter das Kontingent der Person, bei einer geteilten das Kontingent der Bibliothek.
+  Die Zählung der Läufe je Kategorie in der Übersicht privater Speicher enthält damit auch
+  Läufe privater Bibliotheken, die an ihrem eigenen Kontingent endeten.
+- **Unverändert:** `ModularArchitecture#PERSONAL_USAGE_READERS` und die ArchUnit-Regeln; der Text
+  an die Besitzerin entsteht weiter nur in `DocumentIngestOutcomes`. Logs nennen Elemente nur über
+  `loggedNames()`.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)
