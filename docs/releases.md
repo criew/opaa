@@ -80,8 +80,9 @@ Bevor gebaut wird, bricht der Lauf im Job `prepare` ab, wenn:
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
   sondern durch die nächste Patch-Version abgelöst,
 - sich die Release-Notizen nicht erzeugen lassen, etwa weil die Datei mit den
-  [Vorbereitungsschritten](#vorbereitung-für-bestandsinstallationen) leer ist. Der Job `release`
-  erzeugt sie erst, wenn Images und Chart schon veröffentlicht sind,
+  [Vorbereitungsschritten](#vorbereitung-für-bestandsinstallationen) bei einem finalen `vX.Y.0`
+  fehlt oder leer ist. Der Job `release` erzeugt sie erst, wenn Images und Chart schon
+  veröffentlicht sind,
 - GHCR die Abfrage nach einem Image oder dem Chart nicht eindeutig beantwortet. Frei ist eine
   Version nur, wenn die Registry mit HTTP 404 und dem Registry-Fehlercode `MANIFEST_UNKNOWN` oder
   `NAME_UNKNOWN` „nicht vorhanden“ meldet. Eine 404 ohne diesen Code (etwa die Klartext-Antwort
@@ -195,9 +196,13 @@ vor Absicht. Ablauf:
 
 1. Prüfen, dass `main` grün ist, einschließlich des letzten nächtlichen E2E-Laufs.
 2. Version nach den Regeln unten bestimmen.
-3. Entscheiden, ob das Release von Bestandsinstallationen Vorbereitung verlangt. Wenn ja, die
-   Datei `docs/upgrade-notes/X.Y.Z.md` per PR auf `main` bringen, **bevor** das Tag gesetzt wird
-   (siehe [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen)).
+3. Die Vorbereitung für Bestandsinstallationen festlegen. Bei einem finalen `vX.Y.0` und bei
+   jedem Vorab-Release, das Vorbereitung verlangt, die Datei `docs/upgrade-notes/<version>.md` per
+   PR auf `main` bringen, **bevor** das Tag gesetzt wird (siehe
+   [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen)). Für
+   `vX.Y.0` ist sie Pflicht, notfalls mit dem Text „Keine Vorbereitung nötig.“; ohne sie bricht der
+   Lauf ab, bevor etwas veröffentlicht ist. Ein Patch-Release verlangt nie Vorbereitung und braucht
+   keine Datei.
 4. Tag setzen und pushen:
 
    ```bash
@@ -214,7 +219,8 @@ vor Absicht. Ablauf:
 Von Hand nachbearbeiten muss man die Notizen nicht: Was ein Release von Bestandsinstallationen
 verlangt, kommt über Schritt 3 aus dem Repository.
 
-Die erste Version ist `v0.1.0`.
+Die erste Version ist `v0.1.0`. Auch sie ist ein finales `X.Y.0` und braucht deshalb
+`docs/upgrade-notes/0.1.0.md`, bevor das Tag gesetzt wird.
 
 **Erstes Release mit Chart.** Der erste Lauf legt das Paket `charts/opaa` in GHCR an. Ob das mit
 dem `GITHUB_TOKEN` des Workflows gelingt, wie GHCR die Abfrage nach dem noch fehlenden Paket
@@ -236,8 +242,9 @@ Die Notizen jedes Release enthalten den Abschnitt **Vorbereitung für Bestandsin
 | Im getaggten Commit | Abschnitt in den Notizen |
 |---|---|
 | `docs/upgrade-notes/X.Y.Z.md` (bei einem Vorab-Release mit Suffix, etwa `1.2.3-rc.1.md`) | der Inhalt der Datei, unverändert als Markdown |
-| keine solche Datei | „Keine Vorbereitung nötig.“ |
-| die Datei, aber leer | kein Release: Der Job `prepare` bricht ab, bevor etwas veröffentlicht ist |
+| keine solche Datei, Patch-Release `X.Y.Z` mit `Z` > 0 oder Vorab-Release | „Keine Vorbereitung nötig.“ |
+| keine solche Datei, finales Release `X.Y.0` | kein Release: Der Job `prepare` bricht ab, bevor etwas veröffentlicht ist |
+| die Datei, aber leer, als symbolischer Link oder mit einem nicht geschlossenen Codeblock (ungerade Zahl von Zeilen mit ```` ``` ````) | ebenfalls kein Release |
 
 Darunter verlinken die Notizen in beiden Fällen den Ablauf der Aktualisierung im Handbuch im Stand
 des Tags: für Kubernetes [Aktualisierung und Rückweg](handbuch/kubernetes.md#aktualisierung-und-rückweg),
@@ -262,12 +269,21 @@ Regeln:
   Notizen eines Vorab-Release standen: Betreiber eines finalen Release lesen die Vorab-Releases nicht.
 - Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release; das sagen auch
   die Notizen.
+- **Ein finales `X.Y.0` braucht die Datei immer.** Vorbereitung verlangt nur ein Bruch, und ein
+  Bruch erhöht nach den [Versionsnummern](#versionsnummern) `Y` (unter `0.x`) bzw. `X` (ab
+  `1.0.0`). Ein Patch-Release verlangt deshalb nie Vorbereitung. Für ein `X.Y.0` erzwingt die
+  Pflichtdatei die Entscheidung; „Keine Vorbereitung nötig.“ ist ein gültiger Inhalt.
+- **Finales Tag auf dem Commit eines Release-Kandidaten:** Wird `vX.Y.0` auf denselben Commit
+  gesetzt wie zuvor `vX.Y.0-rc.N`, muss `docs/upgrade-notes/X.Y.0.md` schon in diesem Commit
+  liegen. Die Datei gehört also vor das Tag des letzten Release-Kandidaten, zusammen mit einer
+  eventuellen `X.Y.0-rc.N.md`.
 - Ein Patch-Release ohne Codeänderung liegt auf dem Commit des vorigen Release, in dem es keine
   Datei für die neue Version geben kann. Es verlangt auch keine Vorbereitung; die Notizen sagen
   das ausdrücklich.
 - Die statische Prüfung des Charts (`deploy/helm/ci/static-check.sh`, in der Chart-CI auch bei
-  Änderungen unter `docs/upgrade-notes/`) prüft, dass jede Datei nach einer Release-Version benannt
-  und nicht leer ist und dass die verlinkten Überschriften im Handbuch existieren.
+  Änderungen unter `docs/upgrade-notes/`) prüft, dass jede Datei nach einer Release-Version benannt,
+  nicht leer und kein symbolischer Link ist, ihre Codeblöcke schließt und dass die verlinkten
+  Überschriften im Handbuch existieren.
 
 ## Versionsnummern
 
