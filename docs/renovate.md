@@ -39,12 +39,20 @@ Achtung bei den Demo-Requirements: Für Änderungen ausschließlich unter `demo/
 Merge lokal gegen `demo/seed/seed.py` bzw. den Generator prüfen.
 
 Regeln in [`renovate.json5`](../renovate.json5) (kommentiert): deutsche Commit-/PR-Texte im
-Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels je Bereich, höchstens fünf
+Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels (unten), höchstens fünf
 gleichzeitig offene Update-PRs, Spring-Plattform als ein gebündelter PR, **kein**
 Digest-Pinning für Docker-Images (gleitende Tags sind eine dokumentierte Projektentscheidung,
 siehe `e2e/docker-compose.e2e.yml`; einzige Ausnahme ist das Renovate-Image selbst, siehe
 [unten](#renovate-image-und-token-des-workflows)). Zusätzlich pflegt Renovate ein Übersichts-Issue
 („Abhängigkeits-Übersicht (Renovate)") mit allen anstehenden Updates.
+
+**Labels:** Jeder Update-PR trägt `dependencies` und dazu das Bereichs-Label aus der Tabelle oben.
+Über `dependencies` führen die Release-Notizen Renovate-Updates unter der eigenen Rubrik
+„Abhängigkeiten“ statt unter „Neue Funktionen“ (#2458). Die Rubrik steht in `.github/release.yml`
+hinter „Sicherheit“; trägt ein Update-PR zusätzlich `security`, erscheint er weiter dort, weil
+die erste passende Rubrik gewinnt. Renovate vergibt `security` nicht selbst, das Label setzt
+bei Bedarf ein Mensch. Bereichs-Labels ergänzen die `packageRules` per `addLabels`; eine Regel
+mit `labels` würde `dependencies` ersetzen. Die Abhängigkeits-Übersicht trägt `ci`.
 
 **npm-Releases brauchen 24 h Reife** (`minimumReleaseAge: '1 day'`, #954): pnpm 11 lehnt
 jüngere Releases per Standard-Supply-Chain-Richtlinie ohnehin ab — Renovate schlägt deshalb

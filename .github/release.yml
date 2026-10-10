@@ -9,6 +9,10 @@ changelog:
     - title: Sicherheit
       labels:
         - security
+    # After "Sicherheit": the first matching category wins, so a Renovate PR with "security" stays there.
+    - title: Abhängigkeiten
+      labels:
+        - dependencies
     - title: Neue Funktionen
       labels:
         - enhancement
