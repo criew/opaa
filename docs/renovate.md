@@ -128,8 +128,12 @@ Deshalb gilt zusätzlich zu den Pins:
   parallel, ein Release dauert also rund vier Minuten länger.
 - **`:main`, `sha-<commit>` und der wöchentliche Neubau nutzen den Cache weiter.** Das ist ein
   bewusst getragenes Restrisiko: Code, der in einem Job auf `main` läuft, kann den Bau-Cache
-  dieser Images vergiften. Nach den SHA-Pins bleiben dafür eine kompromittierte Abhängigkeit oder
-  ein Fehler in einem gemergten Workflow. Die Stufe `runtime` baut jeder Lauf ohnehin neu
+  dieser Images vergiften. Nach den SHA-Pins bleiben dafür eine kompromittierte Abhängigkeit, ein
+  Fehler in einem gemergten Workflow oder ein per Tag referenziertes Image, das Jobs auf `main`
+  starten. Solche Images sind die Compose-Stacks von E2E-, Demo- und Anmelde-Läufen (etwa
+  `node:24-alpine`, `pgvector/pgvector:pg18`, `httpd:2.4-alpine`), die Datenbank im Rauchtest
+  von `image-smoke-arm64` und das kind-Node-Image im Helm-Test. Ein umgehängter Tag dort läuft im
+  selben Job wie die Schritte, die den Cache schreiben dürfen. Die Stufe `runtime` baut jeder Lauf ohnehin neu
   (`no-cache-filters`). Wer geprüft und reproduzierbar betreiben will, nimmt ein Release
   ([releases.md](releases.md)).
 
@@ -158,8 +162,10 @@ Workflows, ohne Dateiliste:
 
 Eine dritte Regel betrifft nur `publish-images.yml`: **Ihre Actions mergen nie automatisch**, auch
 nicht bei Minor- und Patch-Updates. Kein Required Check übt sie aus, sie laufen aber bei jedem
-Push auf `main` mit `packages: write`. Weil ein Update-Branch alle Dateien mit derselben Action
-umfasst, gilt das auch für den Teil in anderen Workflows.
+Push auf `main` mit `packages: write`. Dasselbe gilt für alle Updates in `helm-chart.yml`
+(bestehende Regel mit `automerge: false`, weil der Helm-Workflow kein Required Check ist). Ein
+Update-Branch umfasst alle Dateien mit derselben Action. Enthält er ein Upgrade aus einer dieser
+beiden Dateien, mergt der ganze Branch nicht automatisch, auch mit dem Teil in anderen Workflows.
 
 Alle übrigen Minor- und Patch-Releases mergen nach Ablauf der Frist wie andere Updates
 automatisch, Majors nie. Das entspricht dem Stand vor den Pins, als diese Releases über den

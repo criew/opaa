@@ -275,9 +275,10 @@ Docker-Dokumentation):
 Ein Digest ohne Tag gilt für die Existenzprüfung nicht als veröffentlicht; ein abgebrochener Lauf
 belegt also keine Version.
 
-**Zeitgrenzen.** Ein Bein von `build` braucht mit Cache üblicherweise ein bis vier Minuten, ohne
-Cache, also bei einem Release, bis etwa sechs Minuten. Nach 30 Minuten bricht GitHub es ab, statt den Lauf stundenlang
-zu blockieren; die übrigen Jobs haben Grenzen von 10 bis 15 Minuten. Ein abgebrochenes Bein holt
+**Zeitgrenzen.** Ein Bein von `build` braucht mit Cache üblicherweise ein bis vier Minuten. Ohne
+Cache, also bei einem Release oder nachdem GitHub einen sieben Tage nicht abgerufenen Cache
+verdrängt hat, sind es bis etwa sechs Minuten. Nach 30 Minuten bricht GitHub es ab, statt den
+Lauf stundenlang zu blockieren; die übrigen Jobs haben Grenzen von 10 bis 15 Minuten. Ein abgebrochenes Bein holt
 *Re-run failed jobs* nach: Die fertigen Beine behalten ihre Digests, `publish` setzt die Tags erst
 danach (#2427).
 

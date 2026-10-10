@@ -133,8 +133,9 @@ jobs:
     name: build (${{ matrix.image.name }}, ${{ matrix.platform.arch }})
     needs: prepare
     runs-on: ${{ matrix.platform.runner }}
-    # A leg takes 1-4 minutes, a cold one (release tag, no cache) up to about six. A hung leg is
-    # cancelled instead of holding the run for hours; "Re-run failed jobs" resumes the run.
+    # A leg takes 1-4 minutes, a cold one (release tag, or the cache evicted after 7 days without
+    # access) up to about six. A hung leg is cancelled instead of holding the run for hours;
+    # "Re-run failed jobs" resumes the run.
     timeout-minutes: 30
     # Only runs building the very same commit may cancel each other - a scheduled and a push run of
     # the same tip, where the slower one would otherwise push last and leave :main on the older
