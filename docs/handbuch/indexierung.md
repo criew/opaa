@@ -1054,14 +1054,20 @@ Ablehnung hält jede Fortschrittsmarke am Element, damit ein späterer Lauf es e
 
 - Eine Dateiablage hält Änderungsstand und Ordnergedächtnis (siehe unten).
 - Ein inkrementeller Confluence-Lauf rückt seinen Anker nicht vor. Nach einem Confluence-Vollabgleich
-  mit Ablehnung ist der nächste Lauf wieder ein Vollabgleich, denn die abgelehnte Seite ist älter
-  als der Anker, und kein inkrementeller Lauf fände sie.
+  mit Ablehnung ist der nächste Lauf wieder ein Vollabgleich, denn die abgelehnte Seite oder ihr
+  Anhang ist älter als der Anker, und kein inkrementeller Lauf fände sie. Das gilt auch, wenn sich
+  der Vollabgleich über mehrere Läufe erstreckt und die Ablehnung in einem früheren davon lag.
 - Ein RSS-Lauf speichert den Feed-Zustand nicht, der nächste Abruf liefert den Feed also vollständig.
 - Ein Dokument, dessen Anhang abgelehnt wurde, etwa eine Mail mit Anlagen, wird ohne Prüfsumme und
   Änderungsmerkmal gespeichert, und der nächste Lauf liest es erneut. Gemessen wird es dann an dem,
   was von ihm schon gespeichert ist, also an seiner eigenen Zeile samt der Anhänge, die aus ihm
-  stammen. Platz braucht es nur für die noch fehlenden Anhänge in der Form, in der sie im Dokument
-  stecken (bei einer Mail kodiert und damit etwas größer), nicht erneut für die gespeicherten.
+  stammen. Die gespeicherten Anhänge zählen dabei nicht noch einmal mit ihrer vollen Größe, wohl
+  aber mit dem Aufschlag ihrer Kodierung: In einer Mail stecken Anhänge meist base64-kodiert, also
+  rund ein Drittel größer als gespeichert. Platz braucht das Wiederlesen deshalb für die fehlenden
+  Anhänge in kodierter Form und für den Kodierungsaufschlag der schon gespeicherten. Beispiel: Eine
+  Mail mit neun gespeicherten und einem fehlenden Anhang zu je 1 MB braucht rund 0,37 MB je
+  gespeichertem Anhang und 1,37 MB für den fehlenden, zusammen etwa 4,7 MB freien Platz. Solange
+  der nicht frei ist, endet jeder Lauf, der die Mail erreicht, wieder als unvollständig.
 
 Gehalten wird nur die Marke am Element, nie der Abschluss einer Runde und nie die Entfernungen:
 Löschungen in der Quelle werden übernommen, und oft sind es gerade diese, die den Platz freimachen.
@@ -1401,8 +1407,11 @@ dauerhaft sichtbare Warnung einer unvollständigen Auflistung und die Betriebsar
 Vollabgleich, inkrementell; S3: Vollabgleich, Ereignislauf). Ein Lauf, der an einem Speicherkontingent
 Elemente übersprungen hat, trägt stattdessen „unvollständig: Speicherkontingent erschöpft, Dateien
 übersprungen“ und aufgeklappt den Hinweis, was Platz schafft: Dateien in der Quelle löschen, die
-Quelle eingrenzen oder ein höheres Kontingent je Bibliothek, das der Betrieb festlegt. Eine private
-Bibliothek nennt dort das Kontingent ihrer Besitzerin (Kapitel
+Quelle eingrenzen oder ein höheres Kontingent je Bibliothek, das der Betrieb festlegt. Bei einer
+privaten Bibliothek kann der Lauf an ihrem eigenen Kontingent oder am gemeinsamen Kontingent der
+privaten Bibliotheken ihrer Besitzerin geendet haben. Marke und Hinweis nennen deshalb kein
+bestimmtes Kontingent, der Hinweis beschreibt beide Wege, und das Laufprotokoll nennt an jeder
+übersprungenen Datei, welches erschöpft war (Kapitel
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen

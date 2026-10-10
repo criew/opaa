@@ -101,6 +101,29 @@ class SourceSyncStateRepositoryIntegrationTest {
     assertThat(completed.pendingChangeCursors()).isEmpty();
   }
 
+  /**
+   * The quota mark of a full sync outlives the run that set it; a row written before the column
+   * existed carries NULL and reads as not held.
+   */
+  @Test
+  void theQuotaMarkSurvivesTheRoundTripAndAnOldRowReadsAsNotHeld() {
+    SourceSyncState state = new SourceSyncState(library.getId());
+    state.beginFullSync(UUID.randomUUID());
+    state.holdFullSyncAtQuota();
+    repository.save(state);
+
+    assertThat(repository.findByLibraryId(library.getId()).orElseThrow().isFullSyncHeldAtQuota())
+        .isTrue();
+
+    jdbcTemplate.update(
+        "UPDATE source_sync_state SET full_sync_quota_held = NULL WHERE library_id = ?",
+        library.getId());
+    SourceSyncState old = repository.findByLibraryId(library.getId()).orElseThrow();
+    assertThat(old.isFullSyncHeldAtQuota()).isFalse();
+    old.completeFullSync(Instant.parse("2026-10-10T10:00:00Z"));
+    assertThat(old.getFullSyncCompletedAt()).isNotNull();
+  }
+
   @Test
   void aConnectorWithoutAChangeLogLeavesTheColumnNull() {
     SourceSyncState state = new SourceSyncState(library.getId());
@@ -146,8 +169,7 @@ class SourceSyncStateRepositoryIntegrationTest {
             Map.of("/Projekte", Map.of("", "\"6ac1\"")),
             Map.of("/Projekte", Map.of("Akten / 2025", "\"6ac2\"")),
             Map.of("/Projekte", Set.of("Akten")),
-            "LOCATION_IDENTITY",
-            true);
+            "LOCATION_IDENTITY");
     state.recordScanProgress(progress);
     repository.save(state);
 

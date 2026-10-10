@@ -1138,8 +1138,8 @@ class ConfluenceIndexingExecutorTest {
   }
 
   /**
-   * A rejection in an earlier run of a full sync over several runs is not forgotten when a later run
-   * completes it without one: the next run is a full sync all the same.
+   * A rejection in an earlier run of a full sync over several runs is not forgotten when a later
+   * run completes it without one: the next run is a full sync all the same.
    */
   @ParameterizedTest
   @MethodSource("editions")

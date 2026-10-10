@@ -120,8 +120,7 @@ class ScanJournalIntegrationTest {
         null,
         null,
         null,
-        "LOCATION_IDENTITY",
-        false);
+        "LOCATION_IDENTITY");
   }
 
   // regression guard for #2202: a run never writes back a state deleted while it held it

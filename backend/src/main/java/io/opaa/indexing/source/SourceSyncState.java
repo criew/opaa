@@ -97,6 +97,13 @@ public class SourceSyncState {
   @Column(name = "updated_at", nullable = false)
   private Instant updatedAt;
 
+  /**
+   * Whether the full sync in progress left an item behind at a storage quota, in this run or an
+   * earlier one of it; {@code null}, as in a state written before, counts as no.
+   */
+  @Column(name = "full_sync_quota_held")
+  private Boolean fullSyncQuotaHeld;
+
   /** Whether this instance was read from or written to the database. */
   @Transient private boolean stored;
 
@@ -172,6 +179,7 @@ public class SourceSyncState {
     fullSyncJobId = null;
     completedScopeKeys = null;
     fullSyncCompletedAt = null;
+    fullSyncQuotaHeld = null;
     incrementalAnchor = null;
     changeCursors = null;
     subtreeMarkers = null;
@@ -202,6 +210,7 @@ public class SourceSyncState {
     if (!isFullSyncInterrupted()) {
       completedScopeKeys = null;
       scanProgress = null;
+      fullSyncQuotaHeld = null;
       ChangeCursors cursors = readChangeCursors();
       writeChangeCursors(new ChangeCursors(cursors.current(), Map.of()));
     }
@@ -223,7 +232,10 @@ public class SourceSyncState {
    * incremental anchor is left as it is - the variant for a connector without an incremental mode.
    */
   public void completeFullSync(Instant completedAt) {
-    fullSyncCompletedAt = completedAt;
+    // what a quota held back lies before the new cursors and the new anchor: only a full sync finds
+    // it again
+    fullSyncCompletedAt = isFullSyncHeldAtQuota() ? null : completedAt;
+    fullSyncQuotaHeld = null;
     completedScopeKeys = null;
     scanProgress = null;
     fullSyncJobId = null;
@@ -270,13 +282,27 @@ public class SourceSyncState {
   }
 
   /**
-   * The next run is a full sync, whatever the interval says - after a change of structure, a
-   * dropped stream, or a full sync that left an entry behind at a storage quota. The completed full
-   * sync it starts clears the mark.
+   * The next run is a full sync, whatever the interval says - after a change of structure or a
+   * dropped stream. The completed full sync it starts clears the mark.
    */
   public void requireFullSync() {
     fullSyncCompletedAt = null;
     touch();
+  }
+
+  /**
+   * The full sync in progress left an item behind at a storage quota. It still completes, but its
+   * completion leaves the next run a full sync ({@link #completeFullSync(Instant)}); a resumed full
+   * sync keeps the mark, a fresh one starts without it.
+   */
+  public void holdFullSyncAtQuota() {
+    fullSyncQuotaHeld = true;
+    touch();
+  }
+
+  /** Whether the full sync in progress left an item behind at a storage quota. */
+  public boolean isFullSyncHeldAtQuota() {
+    return Boolean.TRUE.equals(fullSyncQuotaHeld);
   }
 
   /**
@@ -363,9 +389,6 @@ public class SourceSyncState {
    * @param unsettled per container key, folders whose stored state the round could not settle
    * @param proof the store's absence proof the round's presence was written under; another one does
    *     not continue the round
-   * @param heldAtQuota whether the round's listing rejected an entry at a storage quota; its end
-   *     then makes the next run a full sync. Absent in a round written before, read as {@code
-   *     false}
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record ScanProgress(
@@ -377,11 +400,9 @@ public class SourceSyncState {
       Map<String, Map<String, String>> markers,
       Map<String, Map<String, String>> carried,
       Map<String, Set<String>> unsettled,
-      String proof,
-      Boolean heldAtQuota) {
+      String proof) {
 
     public ScanProgress {
-      heldAtQuota = Boolean.TRUE.equals(heldAtQuota);
       containers = containers == null ? Map.of() : Map.copyOf(containers);
       markers = markers == null ? Map.of() : Map.copyOf(markers);
       carried = carried == null ? Map.of() : Map.copyOf(carried);

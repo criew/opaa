@@ -37,7 +37,6 @@ import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 import { sourceRegistration } from './sources/registry'
 import {
-  LIBRARY_QUOTA_EXHAUSTED_LABEL,
   LIBRARY_QUOTA_EXHAUSTED_REMEDY,
   QUOTA_EXHAUSTED_LABEL,
   QUOTA_EXHAUSTED_REMEDY,
@@ -455,8 +454,8 @@ function LibraryIndexingHistorySection({
   sourceType: SourceTypeKey
   privateLibrary: boolean
 }) {
-  // both quotas share the run category; a shared library has only its own
-  const quotaLabel = privateLibrary ? QUOTA_EXHAUSTED_LABEL : LIBRARY_QUOTA_EXHAUSTED_LABEL
+  // both quotas share the run category: a private library may have hit either, a shared one only
+  // its own
   const quotaRemedy = privateLibrary ? QUOTA_EXHAUSTED_REMEDY : LIBRARY_QUOTA_EXHAUSTED_REMEDY
   const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
   // ADR-0023, Entscheidung 4: only a source with two Betriebsarten shows the mode - for every other
@@ -512,7 +511,11 @@ function LibraryIndexingHistorySection({
                   )}
                   {run.incomplete && (
                     <Chip
-                      label={quotaExhausted(run) ? quotaLabel : 'unvollständig, wird fortgesetzt'}
+                      label={
+                        quotaExhausted(run)
+                          ? QUOTA_EXHAUSTED_LABEL
+                          : 'unvollständig, wird fortgesetzt'
+                      }
                       size="small"
                       color="warning"
                       data-testid={`run-incomplete-${run.id}`}

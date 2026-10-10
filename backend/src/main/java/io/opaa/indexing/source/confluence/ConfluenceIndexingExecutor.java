@@ -269,6 +269,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       for (ConfluencePageSummary page : pages) {
         visitPage(run, page, PageVisitPolicy.FULL_SYNC);
         run.progress.report();
+        state = heldAtQuota(run, state);
       }
       state.markScopeCompleted(key);
       state = syncStateRepository.save(state);
@@ -288,10 +289,6 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         reconciled -> {
           if (reconciled) {
             completedState.completeFullSync(clock.instant(), startedAt);
-            if (run.progress.quotaReached()) {
-              // what a quota left behind is older than the anchor: no incremental run finds it
-              completedState.requireFullSync();
-            }
             syncStateRepository.save(completedState);
           } else {
             run.events.record(
@@ -301,6 +298,19 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
           }
         });
     return ListingOutcome.complete();
+  }
+
+  /**
+   * Marks the full sync as held at a quota once this run rejected something, saved at once: what a
+   * quota left behind is older than the anchor the full sync ends with, so its completion - perhaps
+   * by a later run - leaves the next run a full sync.
+   */
+  private SourceSyncState heldAtQuota(ConfluenceRun run, SourceSyncState state) {
+    if (!run.progress.quotaReached() || state.isFullSyncHeldAtQuota()) {
+      return state;
+    }
+    state.holdFullSyncAtQuota();
+    return syncStateRepository.save(state);
   }
 
   /**

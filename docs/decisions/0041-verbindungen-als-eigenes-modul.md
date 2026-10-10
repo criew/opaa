@@ -1293,20 +1293,34 @@ Kontingent je Bibliothek wird behandelt wie die am Kontingent je Person (#2276).
   gespeicherten Anhänge eines Mail-Archivs beim Wiederlesen ein zweites Mal, und das Archiv kam
   erst wieder, wenn Platz für alle Anhänge frei war; dabei wurde es selbst als abgelehnt
   protokolliert. Dieselbe Messung gilt für die Vorprüfung vor dem Download. Übrig bleibt der
-  Aufschlag der Kodierung: Ein Anhang steckt in der Mail kodiert und damit größer als gespeichert.
+  Aufschlag der Kodierung, und zwar für alle Anhänge der Mail: Gespeichert sind die dekodierten
+  Größen, die gelistete und geladene Größe enthält die Anhänge meist base64-kodiert (Faktor rund
+  1,37). Das Wachstum beim Wiederlesen beträgt also etwa 0,37 × Σ(gespeicherte Anhänge) + 1,37 ×
+  Σ(fehlende) + MIME-Rest. Beispiel: neun gespeicherte und ein fehlender Anhang zu je 1 MB brauchen
+  rund 4,7 MB Platz. Den Aufschlag herauszurechnen ist nicht möglich, weil gespeichert ist weder die
+  Transferkodierung je Anhang (base64, quoted-printable, 7bit) noch die Rohgröße der Mail. Ein fester
+  Faktor würde bei 7bit- und quoted-printable-Anhängen zu wenig zählen und das Kontingent
+  überschreiten lassen. Abhilfe wäre eine gespeicherte Rohgröße je Dokument mit Nachpflege
+  bestehender Zeilen.
 - **Vollabgleich nach einer Ablehnung in der Auflistung:** Eine Datei, die die Auflistung eines
-  Vollabgleichs am Kontingent festhält, meldet das Änderungsprotokoll danach nicht wieder. Die
-  Runde merkt sich das (`ScanProgress#heldAtQuota`, über mehrere Läufe hinweg), und ihr Ende ruft
-  `SourceSyncState#requireFullSync`: Der nächste Lauf ist ein Vollabgleich. Eine Ablehnung erst
-  beim Lesen des Protokolls am Rundenende braucht das nicht, dort hält der Strom seinen Startcursor.
-  Ebenso ruft ein Confluence-Vollabgleich mit Ablehnung `requireFullSync`, weil die abgelehnte
-  Seite älter als der neue Anker ist. Abwägung: Solange die Bibliothek voll bleibt, ersetzt bei
+  Vollabgleichs am Kontingent festhält, meldet das Änderungsprotokoll danach nicht wieder. Der
+  Abgleichstand trägt dafür die Marke `SourceSyncState#holdFullSyncAtQuota` (Spalte
+  `full_sync_quota_held`, `NULL` in alten Zeilen gilt als nein). Ein fortgesetzter Vollabgleich
+  behält sie, ein frischer beginnt ohne. `completeFullSync` schließt einen markierten Vollabgleich
+  ab, lässt aber `fullSyncCompletedAt` leer: Der nächste Lauf ist ein Vollabgleich, auch wenn ein
+  späterer Lauf die Runde ohne Ablehnung beendet. Eine Ablehnung erst beim Lesen des Protokolls am
+  Rundenende braucht das nicht, dort hält der Strom seinen Startcursor. Ein Confluence-Vollabgleich
+  setzt dieselbe Marke, sobald ein Lauf etwas ablehnt, und speichert sie sofort, weil die abgelehnte
+  Seite oder ihr Anhang älter als der neue Anker ist. Ein fortgesetzter Lauf listet die Anhänge
+  unveränderter Seiten nicht und träfe ihn sonst nicht wieder. Abwägung: Solange die Bibliothek voll bleibt, ersetzt bei
   Google Drive und SharePoint ein Vollabgleich jeden Änderungslauf. Das kostet Auflistungen, aber
   keine Downloads unveränderter Dateien; ohne das käme die Datei erst mit dem Vollabgleich nach
   dessen Intervall.
 - **Kennzeichnung:** Die Laufmeldung lautet für beide Kontingente „unvollständig:
-  Speicherkontingent erschöpft, Dateien übersprungen“. Die Oberfläche nennt bei einer privaten
-  Bibliothek weiter das Kontingent der Person, bei einer geteilten das Kontingent der Bibliothek.
+  Speicherkontingent erschöpft, Dateien übersprungen“, ebenso die Marke in der Oberfläche. Eine
+  private Bibliothek kann an beiden Kontingenten enden, und `verdictFor` prüft das der Bibliothek
+  zuerst. Ihr Hinweis nennt deshalb beide Ursachen und beide Wege; welches Kontingent erschöpft war,
+  steht im Laufprotokoll am Element. Eine geteilte Bibliothek nennt nur ihr eigenes.
   Die Zählung der Läufe je Kategorie in der Übersicht privater Speicher enthält damit auch
   Läufe privater Bibliotheken, die an ihrem eigenen Kontingent endeten.
 - **Unverändert:** `ModularArchitecture#PERSONAL_USAGE_READERS` und die ArchUnit-Regeln; der Text

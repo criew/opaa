@@ -52,9 +52,6 @@ final class ScanRound {
   /** Whether the round started in an earlier run. */
   private final boolean continued;
 
-  /** Whether the round's listing rejected an entry at a storage quota, in this run or before. */
-  private boolean heldAtQuota;
-
   private String current;
   private long entriesBase;
   private int pageCounter;
@@ -103,7 +100,6 @@ final class ScanRound {
     if (progress != null) {
       containers.putAll(progress.containers());
       spansRuns = true;
-      heldAtQuota = progress.heldAtQuota();
     }
     this.continued = progress != null;
   }
@@ -463,9 +459,6 @@ final class ScanRound {
     }
     state.rememberSubtrees(memory.remembered(open));
     state.completeFullSync(clock.instant());
-    if (heldAtQuota) {
-      state.requireFullSync();
-    }
     state = journal.saveEnded(state);
     List<UUID> consumed = new ArrayList<>();
     seen.values().forEach(consumed::addAll);
@@ -474,10 +467,11 @@ final class ScanRound {
 
   /**
    * The listing rejected an entry at a storage quota. No change log reports it again after the
-   * round, so the round's end makes the next run a full sync.
+   * round, so the round's end leaves the next run a full sync ({@link
+   * SourceSyncState#holdFullSyncAtQuota}).
    */
   void heldAtQuota() {
-    heldAtQuota = true;
+    state.holdFullSyncAtQuota();
   }
 
   /** Keeps the round as it stands, with the presence this run has seen so far. */
@@ -496,8 +490,7 @@ final class ScanRound {
             memory.listedMarkers(),
             memory.carriedMarkers(),
             memory.unsettledFolders(),
-            proof.name(),
-            heldAtQuota));
+            proof.name()));
     state = journal.save(state, scanId, frame.library().getId(), newPresence(withheld));
   }
 
