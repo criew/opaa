@@ -1267,8 +1267,9 @@ Löst den Kostenpunkt aus dem Nachtrag zu #2276 für Dateiablagen.
   aus #2295; Anhänge, RSS, Confluence INCREMENTAL und die Laufkategorie einer Ablehnung am
   Kontingent je Bibliothek bleiben dort offen.
 - **Frist des Originalabrufs (#2417):** Die Gesamtfrist von `downloadStreaming` ist eine eigene
-  Einstellung, `OPAA_DOCUMENTS_REMOTE_CONTENT_TRANSFER_TIMEOUT_SECONDS` (Vorgabe 120 s, nie kürzer
-  als der Timeout je Hop). Mit dem Timeout je Hop gekoppelt, hätte sie bei der Bytegrenze von
+  Einstellung, `OPAA_DOCUMENTS_REMOTE_CONTENT_TRANSFER_TIMEOUT_SECONDS`. Ungesetzt gilt 120 s oder
+  der Timeout je Hop, falls dieser länger ist, damit eine bestehende Konfiguration beim Update
+  startet; nur ein ausdrücklich kürzerer Wert bricht den Start ab. Mit dem Timeout je Hop gekoppelt, hätte sie bei der Bytegrenze von
   20 MiB eine Leitung von 8,4 Mbit/s zur Quelle und zum Browser verlangt.
 
 ## Referenzen

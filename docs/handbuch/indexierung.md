@@ -1060,12 +1060,14 @@ Ohne bekannte Größe, bei gleicher oder kleinerer Größe wird geladen. Die Vor
 beratend, denn die gelistete Größe kann von der geladenen abweichen: Maßgeblich bleibt die Prüfung
 mit der tatsächlichen Größe vor dem Speichern. Weil eine falsche Listengröße eine Datei auch zu
 Unrecht zurückhalten kann, hält in einer Dateiablage jede Ablehnung an einem der beiden
-Kontingente Änderungsstand und Ordnergedächtnis; der nächste Lauf prüft die Datei erneut, und
-sobald Platz für die gelistete Größe frei ist, wird sie geladen und mit ihrer echten Größe
-gezählt. Gehalten wird nur die Marke am Element, nie der Abschluss: Ein Vollabgleich über mehrere
+Kontingente Änderungsstand und Ordnergedächtnis. Eine Datei, die das Änderungsprotokoll meldet,
+prüft schon der nächste Änderungslauf erneut; eine Datei, die in der Auflistung eines
+Vollabgleichs abgelehnt wurde, erst der nächste Vollabgleich. Sobald Platz für die gelistete
+Größe frei ist, wird sie geladen und mit ihrer echten Größe gezählt. Gehalten wird nur die Marke am Element, nie der Abschluss: Ein Vollabgleich über mehrere
 Läufe endet trotzdem, und die Löschungen, die das Änderungsprotokoll meldet, werden übernommen –
 oft sind es gerade diese, die den Platz freimachen. Der nächste Änderungslauf liest das Protokoll
-dann ab dem Stand, an dem der Vollabgleich begann, und trifft die abgelehnte Datei erneut.
+dann ab dem Stand, an dem der Vollabgleich begann, und trifft eine Datei erneut, die das Protokoll
+in dieser Zeit gemeldet hat.
 
 ### Schritt 3: Format erkennen und Pipeline wählen
 

@@ -24,8 +24,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     answer. Default 20s - well under the background-indexing timeouts, since a caller waiting on
  *     this endpoint is a human watching a spinner, not an unattended crawl.
  * @param transferTimeoutSeconds bound of the whole body from the answer's start, however slowly it
- *     trickles in and however slowly the browser reads it. Default 120s, about 1.4 Mbit/s for a
- *     body at the default {@code maxBytes}; never shorter than {@code timeoutSeconds}.
+ *     trickles in and however slowly the browser reads it. Unset ({@code <= 0}) it is 120s - about
+ *     1.4 Mbit/s for a body at the default {@code maxBytes} - or {@code timeoutSeconds} if that is
+ *     longer; a value set explicitly below {@code timeoutSeconds} fails the start.
  */
 @ConfigurationProperties(prefix = "opaa.documents.remote-content")
 public record RemoteContentProperties(
@@ -39,7 +40,7 @@ public record RemoteContentProperties(
       timeoutSeconds = 20;
     }
     if (transferTimeoutSeconds <= 0) {
-      transferTimeoutSeconds = 120;
+      transferTimeoutSeconds = Math.max(120, timeoutSeconds);
     }
     if (transferTimeoutSeconds < timeoutSeconds) {
       throw new IllegalArgumentException(

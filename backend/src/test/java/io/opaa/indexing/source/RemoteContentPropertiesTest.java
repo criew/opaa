@@ -16,6 +16,12 @@ class RemoteContentPropertiesTest {
     assertThat(properties.transferTimeoutSeconds()).isEqualTo(120);
   }
 
+  /** An existing longer hop timeout never fails the start once the new value is left unset. */
+  @Test
+  void anUnsetTransferTimeoutIsNeverShorterThanTheHopTimeout() {
+    assertThat(new RemoteContentProperties(0, 180, 0).transferTimeoutSeconds()).isEqualTo(180);
+  }
+
   @Test
   void theTransferMayTakeLongerThanAHop() {
     assertThat(new RemoteContentProperties(0, 30, 300).transferTimeoutSeconds()).isEqualTo(300);
