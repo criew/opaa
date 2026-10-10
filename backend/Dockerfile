@@ -13,7 +13,11 @@ WORKDIR /app
 COPY backend/src/ backend/src/
 COPY opaa-api/src/ opaa-api/src/
 WORKDIR /app/backend
-RUN ./gradlew bootJar --no-daemon -x test
+# Version the backend reports (start line, /actuator/info). A release build passes the version of
+# its tag; left empty, Gradle keeps its development placeholder. Declared after the dependency layer
+# so that changing it does not invalidate the downloaded dependencies.
+ARG OPAA_VERSION=
+RUN ./gradlew bootJar --no-daemon -x test "-PopaaVersion=${OPAA_VERSION}"
 
 # Custom Java runtime (ADR-0029, issue #1459). java.se is the whole Java SE API including
 # java.desktop, which PDFBox and POI require; the jdk.* modules below are service providers the

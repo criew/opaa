@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Single source of the release tag format (docs/releases.md): prints X.Y.Z[-<pre>] for a tag
 # vX.Y.Z[-<pre>] and fails for anything else. Used by the release guard in publish-images.yml and by
-# package-chart.sh. SemVer details such as leading zeros in the pre-release part are left to the
-# consumers (metadata-action, helm package), which refuse them.
+# package-chart.sh; backend/build.gradle.kts accepts the printed form as its version and must
+# follow a change of the pattern. SemVer details such as leading zeros in the pre-release part are
+# left to the consumers (metadata-action, helm package), which refuse them.
 set -euo pipefail
 
 if (($# != 1)); then

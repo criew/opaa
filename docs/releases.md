@@ -32,6 +32,11 @@ helm install opaa oci://ghcr.io/criew/charts/opaa --version X.Y.Z \
   -n opaa --create-namespace -f meine-werte.yaml
 ```
 
+Das Backend eines Release-Images meldet dieselbe Version in seiner Startzeile
+(`Starting OpaaApplication vX.Y.Z`) und unter `/actuator/info`; der Release-Lauf übergibt sie dem
+Gradle-Build als Build-Argument `OPAA_VERSION`. Ein Image von `main` und jeder lokale Build melden
+`0.0.0-dev`.
+
 Im Repository trägt der Chart zwischen zwei Releases die Platzhalterversion `0.0.0-dev`; erst der
 Release-Lauf setzt die Version ([ADR-0042](decisions/0042-kubernetes-lieferung-mit-helm.md),
 Entscheidung 7). Ein reiner Chart-Fix erscheint deshalb als Patch-Release.

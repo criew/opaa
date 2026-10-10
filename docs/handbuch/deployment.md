@@ -857,6 +857,7 @@ Wurzelzertifikate mitbringt: Die gemountete Kopie überdeckt den Stand des Image
 
 ```bash
 docker compose logs -f backend                       # Logs
+curl -s http://localhost:8081/actuator/info          # Version des Backends
 curl -s http://localhost:8081/actuator/health        # Zustandsübersicht
 curl -s http://localhost:8081/actuator/health/readiness   # Bereitschaft (Lastverteiler-Probe)
 curl -s http://localhost:8081/actuator/health/liveness    # Lebendigkeit des Prozesses
@@ -866,6 +867,10 @@ docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container
 docker run --rm -it --network container:<container> nicolaka/netshoot   # Netzwerkdiagnose im selben Netz
 curl -s -H "Authorization: Bearer <token>" https://<host>/api/v1/admin/diagnostics/client-address   # aufgelöste Client-Adresse dieser Anfrage
 ```
+
+Welche Version läuft, nennen `/actuator/info` unter `build.version` und die Startzeile des
+Protokolls (`Starting OpaaApplication v<Version>`). Ein Release-Image meldet die Version seines
+Tags, ein Image von `main` den Entwicklungsstand `0.0.0-dev`.
 
 Der letzte Aufruf (nur Systemverwaltung, mit dem Zugangstoken einer angemeldeten Sitzung und über
 denselben Weg, den auch die Browser nehmen — also durch den Proxy) zeigt, wie das Backend die
