@@ -45,13 +45,19 @@ kubectl label namespace opaa \
 
 **3. Geheimnisse anlegen.** Für den Betrieb wird ein vorhandenes Secret empfohlen
 (`secrets.existingSecret`); welche Schlüssel es enthalten muss, steht in [`values.yaml`](values.yaml).
-Alternativ legt der Chart das Secret aus den Werten an. Die Schlüssel erzeugt der Betreiber selbst:
+Alternativ legt der Chart das Secret aus den Werten an. Pflicht sind:
 
-| Wert | Schlüssel im Secret | Erzeugen mit |
+| Wert | Schlüssel im Secret | Inhalt |
 |---|---|---|
-| `secrets.jwtSecret` | `OPAA_AUTH_JWT_SECRET` | `openssl rand -base64 48` |
-| `secrets.credentialsEncryptionKey` | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | `openssl rand -base64 32` |
-| `secrets.settingsEncryptionKey` | `OPAA_SETTINGS_ENCRYPTION_KEY` | `openssl rand -base64 32` |
+| `secrets.jwtSecret` | `OPAA_AUTH_JWT_SECRET` | erzeugt mit `openssl rand -base64 48` |
+| `secrets.databasePassword` | `OPAA_DB_PASSWORD` | Passwort des Datenbankkontos |
+| `secrets.credentialsEncryptionKey` | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | erzeugt mit `openssl rand -base64 32` |
+| `secrets.settingsEncryptionKey` | `OPAA_SETTINGS_ENCRYPTION_KEY` | erzeugt mit `openssl rand -base64 32` |
+| `secrets.s3AccessKey` | `OPAA_UPLOAD_S3_ACCESS_KEY` | bei `uploads.store: s3`: Zugangsschlüssel des Objektspeichers |
+| `secrets.s3SecretKey` | `OPAA_UPLOAD_S3_SECRET_KEY` | bei `uploads.store: s3`: Geheimschlüssel des Objektspeichers |
+
+Die Schlüssel erzeugt der Betreiber selbst; der Chart erzeugt keine. Optionale Schlüssel, etwa für
+die Modell-Endpunkte, stehen in [`values.yaml`](values.yaml).
 
 **4. Werte-Datei schreiben.** `opaa-werte.yaml` braucht mindestens die Werte aus
 [`ci/minimal-values.yaml`](ci/minimal-values.yaml), mit eigenen Geheimnissen. Fehlt ein Pflichtwert,

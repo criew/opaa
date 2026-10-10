@@ -132,11 +132,22 @@ if [[ "$release_notes" == *"--create-namespace"* ]]; then
   echo "The release notes create the namespace with --create-namespace, without the Pod Security labels." >&2
   exit 1
 fi
-if [[ "${release_notes%%helm install*}" != *"pod-security.kubernetes.io/warn=restricted"* ]]; then
-  echo "The release notes must label the namespace before helm install." >&2
-  exit 1
-fi
+for label in enforce warn; do
+  if [[ "${release_notes%%helm install*}" != *"pod-security.kubernetes.io/${label}=restricted"* ]]; then
+    echo "The release notes must set the label ${label}=restricted before helm install." >&2
+    exit 1
+  fi
+done
 echo "namespace labelled before helm install as expected"
+# The same holds for the installation commands of the chart README and docs/releases.md; prose may
+# name the flag, a fenced code block may not.
+for doc in "$CHART_DIR/README.md" docs/releases.md; do
+  if awk '/^[[:space:]]*```/ { block = !block; next } block && /--create-namespace/ { found = 1 } END { exit !found }' "$doc"; then
+    echo "A code block in $doc creates the namespace with --create-namespace, without the Pod Security labels." >&2
+    exit 1
+  fi
+done
+echo "no --create-namespace in the code blocks of the chart README and docs/releases.md"
 
 # The provenance check of a re-run in the chart job: the same chart packaged twice matches by
 # content, a chart of another state under the same version does not.
