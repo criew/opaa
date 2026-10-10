@@ -26,8 +26,10 @@ des Hosts passt; auf ARM-Servern und Apple-Silicon-Rechnern läuft OPAA damit oh
 
 `X.Y.Z` ist eine Release-Version und ändert ihren Inhalt nie. `X.Y` zeigt auf das jüngste
 Patch-Release dieser Linie. Die verfügbaren Versionen und ihre Änderungen stehen unter *Releases*
-im GitHub-Repository; jede nennt dort auch die Vorbereitungsschritte, die sie verlangt. Ein Tag
-`latest` gibt es nicht.
+im GitHub-Repository. Die Notizen jedes Release enthalten den Abschnitt „Vorbereitung für
+Bestandsinstallationen“: Er nennt die Schritte, die eine Bestandsinstallation vor dem Update
+erledigen muss, oder sagt „Keine Vorbereitung nötig.“ Wer Versionen überspringt, prüft diesen
+Abschnitt bei jedem übersprungenen Release. Ein Tag `latest` gibt es nicht.
 
 Für einen Betrieb, der Aktualisierungen plant, ist eine Release-Version der empfohlene Stand. Ein
 Release bekommt Sicherheitsupdates des Basis-Images nicht durch den wöchentlichen Neubau, sondern
@@ -100,6 +102,11 @@ also kein Aktualisierungs-, sondern ein Neuaufsetzschritt; danach ist zwingend e
 Neuindizierung nötig.
 
 ### Vorbereitungsschritte für Bestandsinstallationen
+
+Welche Schritte ein Release verlangt, nennen seine Notizen im Abschnitt „Vorbereitung für
+Bestandsinstallationen“ (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr));
+für Einzelheiten verweisen sie auf dieses Kapitel. Den Ablauf unter Kubernetes beschreibt das
+Kapitel [Kubernetes](kubernetes.md#aktualisierung-und-rückweg).
 
 **Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung.** Die
 Punkte 1 bis 4 werden einmalig in der `.env.docker` erledigt; ohne sie startet das Backend nicht

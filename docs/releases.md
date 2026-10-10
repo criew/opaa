@@ -14,7 +14,7 @@ Ein Git-Tag `vX.Y.Z` auf einem Commit von `main` startet `.github/workflows/publ
 | `ghcr.io/criew/opaa-backend:X.Y.Z`, `ghcr.io/criew/opaa-frontend:X.Y.Z` | der Release-Stand für `linux/amd64` und `linux/arm64` (ein Manifest-Index je Image), **nie überschrieben** |
 | `…:X.Y` | wandert mit jedem Patch-Release dieser Linie mit |
 | Helm-Chart `oci://ghcr.io/criew/charts/opaa`, Version `X.Y.Z` | Chart-Version und `appVersion` sind `X.Y.Z`, die Vorgabewerte zeigen auf die Images `X.Y.Z`; **nie überschrieben** |
-| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen und die Installationsbefehle |
+| GitHub-Release `OPAA vX.Y.Z` | Änderungsübersicht aus den gemergten PRs, gruppiert nach Label (`.github/release.yml`), dazu die Image-Namen, die Installationsbefehle und die [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen) |
 
 Wie bei `main` tragen die Images je Architektur eine SBOM- und eine Provenance-Attestierung
 ([sbom.md](sbom.md)). Der Chart trägt eine signierte Provenance-Attestierung, abgelegt bei GitHub
@@ -79,6 +79,9 @@ Bevor gebaut wird, bricht der Lauf im Job `prepare` ab, wenn:
 - `X.Y.Z` in GHCR bereits existiert, als Image oder als Chart. Das gilt auch für einen erneut
   gepushten Tag und einen manuellen Lauf auf dem Tag. Eine fehlerhafte Version wird nicht ersetzt,
   sondern durch die nächste Patch-Version abgelöst,
+- sich die Release-Notizen nicht erzeugen lassen, etwa weil die Datei mit den
+  [Vorbereitungsschritten](#vorbereitung-für-bestandsinstallationen) leer ist. Der Job `release`
+  erzeugt sie erst, wenn Images und Chart schon veröffentlicht sind,
 - GHCR die Abfrage nach einem Image oder dem Chart nicht eindeutig beantwortet. Frei ist eine
   Version nur, wenn die Registry mit HTTP 404 und dem Registry-Fehlercode `MANIFEST_UNKNOWN` oder
   `NAME_UNKNOWN` „nicht vorhanden“ meldet. Eine 404 ohne diesen Code (etwa die Klartext-Antwort
@@ -192,7 +195,10 @@ vor Absicht. Ablauf:
 
 1. Prüfen, dass `main` grün ist, einschließlich des letzten nächtlichen E2E-Laufs.
 2. Version nach den Regeln unten bestimmen.
-3. Tag setzen und pushen:
+3. Entscheiden, ob das Release von Bestandsinstallationen Vorbereitung verlangt. Wenn ja, die
+   Datei `docs/upgrade-notes/X.Y.Z.md` per PR auf `main` bringen, **bevor** das Tag gesetzt wird
+   (siehe [Vorbereitung für Bestandsinstallationen](#vorbereitung-für-bestandsinstallationen)).
+4. Tag setzen und pushen:
 
    ```bash
    git fetch origin
@@ -200,12 +206,13 @@ vor Absicht. Ablauf:
    git push origin v0.1.0
    ```
 
-4. Den Lauf von „Publish Images“ abwarten. Danach stehen Images und Chart in GHCR und das
+5. Den Lauf von „Publish Images“ abwarten. Danach stehen Images und Chart in GHCR und das
    GitHub-Release unter *Releases*.
    Das erste Release trägt nur einen festen Text: Ohne Vorgänger umfassten generierte Notizen die
    gesamte Historie.
-5. Die generierten Notizen bei Bedarf ergänzen, vor allem um **Vorbereitungsschritte** für
-   Bestandsinstallationen, wenn das Release welche verlangt.
+
+Von Hand nachbearbeiten muss man die Notizen nicht: Was ein Release von Bestandsinstallationen
+verlangt, kommt über Schritt 3 aus dem Repository.
 
 Die erste Version ist `v0.1.0`.
 
@@ -220,6 +227,47 @@ beantwortet und ob die Attestierung landet, lässt sich nur dort prüfen. Deshal
 3. **Danach** das Paket unter *Packages → charts/opaa → Package settings* auf **Public** stellen,
    wie die beiden Images. GHCR legt es privat an; bis dahin scheitert `helm install` ohne
    Anmeldung.
+
+## Vorbereitung für Bestandsinstallationen
+
+Die Notizen jedes Release enthalten den Abschnitt **Vorbereitung für Bestandsinstallationen**.
+`deploy/helm/ci/release-notes.sh` füllt ihn aus dem getaggten Commit:
+
+| Im getaggten Commit | Abschnitt in den Notizen |
+|---|---|
+| `docs/upgrade-notes/X.Y.Z.md` (bei einem Vorab-Release mit Suffix, etwa `1.2.3-rc.1.md`) | der Inhalt der Datei, unverändert als Markdown |
+| keine solche Datei | „Keine Vorbereitung nötig.“ |
+| die Datei, aber leer | kein Release: Der Job `prepare` bricht ab, bevor etwas veröffentlicht ist |
+
+Darunter verlinken die Notizen in beiden Fällen den Ablauf der Aktualisierung im Handbuch im Stand
+des Tags: für Kubernetes [Aktualisierung und Rückweg](handbuch/kubernetes.md#aktualisierung-und-rückweg),
+für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](handbuch/deployment.md#vorbereitungsschritte-für-bestandsinstallationen).
+
+Die Datei nennt, was eine Bestandsinstallation **vor** dem Update erledigen muss, getrennt nach
+Kubernetes und Docker Compose, und verweist für Einzelheiten auf das Kapitel des Handbuchs. Was
+als Vorbereitung zählt, entspricht der Liste der Brüche unter [Versionsnummern](#versionsnummern):
+eine neue Pflicht-Variable oder ein neuer Pflichtwert im Chart, ein geänderter Port, geänderte
+Eigentumsrechte, eine Neuindizierung. Ein Beispiel:
+
+```markdown
+- **Kubernetes:** Keine.
+- **Docker Compose:** `OPAA_BEISPIEL` in der `.env.docker` setzen, sonst startet das Backend nicht
+  (Handbuch, Deployment, Vorbereitungsschritte für Bestandsinstallationen).
+```
+
+Regeln:
+
+- Die Datei beschreibt den Sprung vom **vorigen Release** aus. Ein finales Release nach
+  Vorab-Releases nennt alle Schritte seit dem vorigen finalen Release, auch wenn sie schon in den
+  Notizen eines Vorab-Release standen: Betreiber eines finalen Release lesen die Vorab-Releases nicht.
+- Wer Versionen überspringt, prüft die Vorbereitung jedes übersprungenen Release; das sagen auch
+  die Notizen.
+- Ein Patch-Release ohne Codeänderung liegt auf dem Commit des vorigen Release, in dem es keine
+  Datei für die neue Version geben kann. Es verlangt auch keine Vorbereitung; die Notizen sagen
+  das ausdrücklich.
+- Die statische Prüfung des Charts (`deploy/helm/ci/static-check.sh`, in der Chart-CI auch bei
+  Änderungen unter `docs/upgrade-notes/`) prüft, dass jede Datei nach einer Release-Version benannt
+  und nicht leer ist und dass die verlinkten Überschriften im Handbuch existieren.
 
 ## Versionsnummern
 
