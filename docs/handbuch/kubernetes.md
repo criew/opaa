@@ -116,6 +116,9 @@ Ein Datenbankverwalter legt die Erweiterung `vector` und gegebenenfalls die Roll
 Soll OPAA in einem eigenen Schema liegen, muss es ebenfalls vorher existieren
 ([Eigenes Datenbankschema](deployment.md#eigenes-datenbankschema)).
 
+Mit der [Erprobungsdatenbank](#datenbank) entfällt dieser Schritt: Ihr Konto ist Superuser und legt
+Erweiterung und Rolle bei der Migration selbst an.
+
 ### 3. Geheimnisse anlegen
 
 Der empfohlene Weg ist ein Secret, das der Chart nur liest (`secrets.existingSecret`). Welche
@@ -132,6 +135,7 @@ openssl rand -base64 32 | tr -d '\n' > OPAA_SETTINGS_ENCRYPTION_KEY
 printf '%s' '<Passwort des Datenbankkontos>' > OPAA_DB_PASSWORD
 printf '%s' '<Zugangsschlüssel des Objektspeichers>' > OPAA_UPLOAD_S3_ACCESS_KEY
 printf '%s' '<Geheimschlüssel des Objektspeichers>' > OPAA_UPLOAD_S3_SECRET_KEY
+wc -c *
 kubectl -n opaa create secret generic opaa-secrets --from-file=.
 cd ..
 ```
@@ -140,6 +144,11 @@ Jede Datei wird ein Schlüssel des Secrets, ihr Name ist der Schlüsselname. `tr
 `printf '%s'` verhindern einen Zeilenumbruch am Ende des Werts. Die beiden Dateien des Objektspeichers
 entfallen, wenn die Originale auf einem Volume liegen. Optionale Schlüssel, etwa ein API-Schlüssel der
 Modelle, kommen als weitere Datei dazu.
+
+`wc -c *` zeigt vor dem Anlegen die Länge jedes Werts. Keine Datei darf leer sein; ging beim Kopieren
+der Befehle ein `openssl` verloren, steht dort `0`. Die beiden Verschlüsselungsschlüssel haben
+44 Zeichen, `OPAA_AUTH_JWT_SECRET` hat 64. Einen leeren Wert in einem vorhandenen Secret erkennt der
+Chart nicht, weil er nur den Namen des Secrets sieht (siehe [Geheimnisse](#geheimnisse)).
 
 **Das Verzeichnis ist danach die einzige Kopie der Verschlüsselungsschlüssel außerhalb des
 Clusters.** Es gehört dorthin, wo das Haus seine Notfallgeheimnisse verwahrt, und vom Arbeitsrechner
@@ -211,6 +220,11 @@ ingress:
   Neuindizierung ändern.
 - `bootstrap.*` sind **Startwerte**. Sie wirken nur beim allerersten Start (siehe
   [Was der Chart setzt und was die Oberfläche pflegt](#was-der-chart-setzt-und-was-die-oberfläche-pflegt)).
+- **Modelle vorher prüfen.** Das Modell aus `bootstrap.chatModel.model` und das aus `embedding.model`
+  müssen im jeweiligen Endpunkt vorhanden sein. Fehlt das Chat-Modell, scheitert jede Frage im Chat
+  mit „Fehler im KI-Dienst“, und eine geänderte Werte-Datei behebt das nicht mehr, weil der Wert ein
+  Startwert ist; der Wechsel geht dann über die Modellverwaltung. Ein OpenAI-kompatibler Endpunkt
+  nennt seine Modelle unter `<baseUrl>/models`, etwa mit `curl -s https://modelle.example.org/v1/models`.
 - Ohne Identitätsanbieter entfällt `bootstrap.oidc` ganz, und `frontend.cspConnectSrcExtra` bleibt
   leer.
 - Der Eingang ist hier ein Ingress für ingress-nginx; andere Controller und die Gateway API stehen
@@ -249,8 +263,7 @@ helm install opaa oci://ghcr.io/criew/charts/opaa --version <x.y.z> -n opaa -f o
 ```
 
 Die verfügbaren Versionen und ihre Vorbereitungsschritte stehen unter *Releases* im
-GitHub-Repository. Vor dem ersten Release mit Chart liegt unter dieser Adresse noch keine Version;
-bis dahin bleibt nur die Installation aus einem Checkout. Wer den Entwicklungsstand `main` aus einem Checkout des Repositorys installiert,
+GitHub-Repository. Wer den Entwicklungsstand `main` aus einem Checkout des Repositorys installiert,
 nennt die Image-Tags ausdrücklich, weil der Chart im Repository keine Release-Version trägt:
 
 ```bash
@@ -648,6 +661,17 @@ Plattformen, die Kennungen selbst zuweisen, setzen dort ihre eigene Gruppe oder 
 
 Ein vom Chart angelegter Claim trägt `helm.sh/resource-policy: keep` und **bleibt nach
 `helm uninstall` erhalten**. Gelöscht wird er nur bewusst mit `kubectl delete pvc`.
+
+**Ein knotengebundenes Volume bindet das Backend an seinen Knoten.** Manche StorageClasses legen
+das Volume auf der Platte eines einzelnen Knotens an, etwa `local-path` von k3s, lokale
+PersistentVolumes oder `hostPath`. Der Backend-Pod kann dann nur auf diesem Knoten laufen. Wird der
+Knoten gewartet (`kubectl cordon` und `kubectl drain`) oder fällt er aus, bleibt der neue Pod im
+Zustand `Pending`, und OPAA antwortet nicht, bis der Knoten zurück ist. Soll das Backend den Knoten
+wechseln können, gehört die Originalablage auf eine StorageClass mit Netzspeicher oder in den
+Objektspeicher. Dasselbe gilt für das Volume der Erprobungsdatenbank.
+
+Auch mit Netzspeicher unterbricht eine Knotenwartung OPAA so lange, bis der Pod auf einem anderen
+Knoten bereit ist: Es gibt genau einen Backend-Pod, und der Chart legt kein PodDisruptionBudget an.
 
 Wie eine laufende Installation vom Volume auf den Objektspeicher wechselt, steht unter
 [Eine laufende Installation auf den Objektspeicher umstellen](deployment.md#eine-laufende-installation-auf-den-objektspeicher-umstellen).
@@ -1090,6 +1114,76 @@ Originale, dann die Datenbank. Die Begründung steht unter
 Originalablage des Deployment-Kapitels. Einen genau zusammenpassenden Stand ergibt eine Sicherung bei
 angehaltenem Backend (`backend.replicas: 0` oder `kubectl scale`).
 
+**Originale auf einem Volume kopieren.** Das Backend-Image hat weder Shell noch `tar`. Die Kopie
+macht ein eigener Pod, der den Claim einhängt und im Namespace unter `restricted` zulässig ist. Bei
+einem `ReadWriteOnce`-Volume läuft er erst, wenn das Backend angehalten ist, oder auf demselben
+Knoten:
+
+```yaml
+# opaa-uploads-kopie.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: opaa-uploads-kopie
+  namespace: opaa
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 65532
+    runAsGroup: 65532
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: kopie
+      image: docker.io/library/busybox:1.37
+      command: ["sleep", "3600"]
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop: [ALL]
+      volumeMounts:
+        - name: uploads
+          mountPath: /uploads
+  volumes:
+    - name: uploads
+      persistentVolumeClaim:
+        claimName: opaa-uploads
+```
+
+```bash
+kubectl -n opaa scale deploy/opaa-backend --replicas=0
+kubectl apply -f opaa-uploads-kopie.yaml
+kubectl -n opaa wait --for=condition=Ready pod/opaa-uploads-kopie
+# sichern
+kubectl -n opaa exec opaa-uploads-kopie -- tar -C /uploads -cf - . > opaa-uploads.tar
+# zurückspielen, auf ein leeres Volume
+kubectl -n opaa exec -i opaa-uploads-kopie -- tar -C /uploads -xf - < opaa-uploads.tar
+kubectl -n opaa delete pod opaa-uploads-kopie
+kubectl -n opaa scale deploy/opaa-backend --replicas=1
+```
+
+Liegt in `uploads.persistence.fsGroup` eine Gruppe, gehört sie auch unter `securityContext.fsGroup`
+dieses Pods.
+
+**Signaturgeheimnis im vorhandenen Secret ersetzen.** Nach einer Rücksicherung bekommt
+`OPAA_AUTH_JWT_SECRET` einen neuen Wert, bevor das Backend startet. Aus dem Verzeichnis mit den
+Geheimnissen aus [Geheimnisse anlegen](#3-geheimnisse-anlegen):
+
+```bash
+cd opaa-geheimnisse
+openssl rand -base64 48 | tr -d '\n' > OPAA_AUTH_JWT_SECRET
+kubectl -n opaa create secret generic opaa-secrets --from-file=. --dry-run=client -o yaml \
+  | kubectl apply -f -
+cd ..
+```
+
+Das ersetzt das ganze Secret durch den Inhalt des Verzeichnisses; die übrigen Schlüssel müssen dort
+deshalb unverändert liegen. Wer External Secrets, Sealed Secrets oder Vault verwendet, ändert den Wert
+dort.
+
 **Was eine Datenbanksicherung nicht enthält.** `pg_dump` sichert eine Datenbank, nicht die Rollen der
 PostgreSQL-Instanz. Auf dem Ziel müssen die Erweiterung `vector` und die Rolle `opaa_audit_owner`
 vorher existieren (siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql)).
@@ -1244,6 +1338,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | `ImagePullBackOff` mit dem Tag `0.0.0-dev` | Installation aus dem Repository ohne `backend.image.tag` und `frontend.image.tag` |
 | Pod wird vom Namespace abgewiesen | Die Erprobungsdatenbank unter einer Plattform, die Kennungen selbst zuweist; oder ein eigener Wert in `podSecurityContext`, der `restricted` verletzt |
 | Backend-Pod bleibt mit der Erprobungsdatenbank im Zustand `Init` | Die Erprobungsdatenbank nimmt keine Verbindungen an, etwa weil ihr Volume nicht bereitgestellt wird. Den Grund zeigt `kubectl -n opaa describe pod opaa-postgresql-0`; `kubectl -n opaa logs deploy/opaa-backend -c wait-for-database` bestätigt nur, auf welches Ziel und welchen Port gewartet wird |
+| Backend-Pod bleibt nach einer Knotenwartung im Zustand `Pending`, das Ereignis nennt `didn't match PersistentVolume's node affinity` | Die Originalablage oder die Erprobungsdatenbank liegt auf einem knotengebundenen Volume, und dessen Knoten ist gesperrt oder fort. `kubectl uncordon` auf diesen Knoten; zur Abhilfe auf Dauer siehe [Originalablage](#originalablage) |
 | Backend startet wiederholt neu, das Protokoll zeigt eine laufende Migration | Die Migration braucht länger, als die Startup-Probe erlaubt. `backend.startupProbe.failureThreshold` anheben |
 | Backend wird nie bereit, das Protokoll zeigt `Waiting for changelog lock` | Ein früherer Start wurde mitten in der Migration beendet, etwa von der Startup-Probe, und die Sperre in `databasechangeloglock` ist stehen geblieben. Backend anhalten (`kubectl -n opaa scale deploy/opaa-backend --replicas=0`), in der Datenbank `UPDATE databasechangeloglock SET locked = false, lockgranted = null, lockedby = null WHERE id = 1;` ausführen, mit einem eigenen Schema vorangestellt, und das Backend wieder auf eine Instanz setzen. Vorher die Startup-Probe großzügiger stellen, sonst wiederholt sich der Abbruch |
 | `APPLICATION FAILED TO START` mit dem Hinweis auf pgvector | pgvector ist auf dem Datenbankserver nicht installiert (siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql)) |
