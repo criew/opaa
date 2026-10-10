@@ -151,8 +151,18 @@ Commit des Tags aus dem Kommentar muss genau der gepinnte SHA sein.
 - Ein GitHub-Token als Umgebungsvariable `RENOVATE_TOKEN` — **nie committen**. Die minimalen
   Rechte und warum ein Fine-grained PAT hier nur vom Konto `criew` ausgestellt werden kann,
   stehen unter [Token: minimale Rechte](#token-minimale-rechte). Ein klassisches PAT braucht die
-  Scopes `repo` **und** `workflow`. Für den Alltag genügt das CLI-Token eines angemeldeten
-  Maintainers (`RENOVATE_TOKEN=$(gh auth token)`) — es bringt beide Scopes mit.
+  Scopes `repo` **und** `workflow`. Für einen schreibenden Lauf ein Token mit genau diesen
+  Rechten verwenden, **nicht** das CLI-Token (`gh auth token`): Es trägt meist weitere Scopes
+  und reicht über alle Repositories seines Inhabers. Für die reinen Lese-Läufe unten
+  (`RENOVATE_PLATFORM=local`) genügt das CLI-Token als `GITHUB_COM_TOKEN`; Renovate nutzt es dort
+  nur für Abfragen.
+- Dasselbe Image wie der Workflow. Die Befehle unten lesen es aus `renovate.yml`, statt
+  `latest` zu ziehen; `RENOVATE_DOCKER_MAX_PAGES=10` hält wie im Workflow die Zeitstempel von
+  Docker Hub (siehe [unten](#renovate-image-und-token-des-workflows)):
+
+  ```bash
+  IMAGE=$(sed -n 's/^ *IMAGE: //p' .github/workflows/renovate.yml)
+  ```
 
 ## Probelauf ohne Schreibzugriff (Dry-Run)
 
@@ -165,8 +175,9 @@ GITHUB_COM_TOKEN=$(gh auth token) docker run --rm \
   -v "$(pwd)":/usr/src/app -w /usr/src/app \
   -e RENOVATE_PLATFORM=local \
   -e GITHUB_COM_TOKEN \
+  -e RENOVATE_DOCKER_MAX_PAGES=10 \
   -e LOG_LEVEL=info \
-  renovate/renovate:latest
+  "$IMAGE"
 ```
 
 Der Dry-Run funktioniert auch ganz ohne Token, endet dann aber mit `WARN: GitHub token is
@@ -187,8 +198,8 @@ geänderter Eintrag wird deshalb **belegt**, nicht angenommen:
 
 ```bash
 docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
-  -e RENOVATE_PLATFORM=local -e LOG_LEVEL=debug \
-  renovate/renovate:latest > renovate-debug.log 2>&1
+  -e RENOVATE_PLATFORM=local -e RENOVATE_DOCKER_MAX_PAGES=10 -e LOG_LEVEL=debug \
+  "$IMAGE" > renovate-debug.log 2>&1
 
 grep 'Matched .* file(s) for manager regex' renovate-debug.log
 ```
@@ -318,8 +329,9 @@ neuere Release als „Pending“ zurück. Der Pin fröre still ein. Deshalb setz
 `RENOVATE_DOCKER_MAX_PAGES=10`: Renovate liest die 1000 zuletzt geschobenen Tags und behält deren
 Zeitstempel. Die Einstellung gilt für alle Docker-Hub-Images; Images mit weniger als 1000 Tags
 betrifft sie nicht, bei den übrigen fehlen nur Tags, die seit Langem niemand geschoben hat. Bei
-anderen Registries außer `ghcr.io` und `quay.io` begrenzt sie die Tag-Liste auf 10 statt der
-Vorgabe von 20 Seiten.
+anderen Registries begrenzt sie die Tag-Liste auf 10 statt der Vorgabe von 20 Seiten; ausgenommen
+sind `ghcr.io`, `quay.io`, `cgr.dev` und die Red-Hat-Registries, die Renovate immer vollständig
+liest.
 
 **Beleg nach einer Änderung** am Eintrag oder an der Zeile (die Selbstprobe
 `.github/scripts/test_renovate_image_pin.py` prüft Zeile, Ausdruck und Regeln, aber keine
@@ -329,7 +341,7 @@ Abfrage gegen die Registry):
 docker run --rm -v "$(pwd)":/usr/src/app:ro -w /usr/src/app \
   -e RENOVATE_PLATFORM=local -e RENOVATE_ENABLED_MANAGERS=custom.regex \
   -e RENOVATE_DOCKER_MAX_PAGES=10 -e LOG_LEVEL=debug \
-  <Image aus renovate.yml> > renovate-debug.log 2>&1
+  "$IMAGE" > renovate-debug.log 2>&1
 ```
 
 Im Block `packageFiles with updates` steht unter `.github/workflows/renovate.yml` der Eintrag
@@ -377,9 +389,9 @@ ist ein Fine-grained PAT für `criew/opaa` also nicht möglich. Wege:
    Jahr. Hinterlegen mit `gh secret set RENOVATE_TOKEN`, *Run workflow* einmal anstoßen und im Log
    auf 401/403 prüfen, danach das alte klassische PAT widerrufen. Im selben PR `gitAuthor` in
    `renovate.json5` auf die Noreply-Adresse von `criew` umstellen
-   (`<id>+criew@users.noreply.github.com`, `<id>` aus `gh api users/criew --jq .id`), und vorher
-   klären, dass `criew` die CLA unterschrieben hat oder in der Allowlist steht; sonst fallen die
-   Update-PRs durch den CLA-Check (#924). PRs und Commits zeigen dann `criew` als Urheber.
+   (`<id>+criew@users.noreply.github.com`, `<id>` aus `gh api users/criew --jq .id`). Der
+   CLA-Check (#924) bleibt dabei grün: `criew` steht in `cla.yml` in der `allowlist`
+   (`criew,*[bot]`). PRs und Commits zeigen dann `criew` als Urheber.
 2. **Eigene GitHub App**, nur in `criew/opaa` installiert, mit den Rechten aus der Renovate-Doku.
    Die Installations-Tokens gelten eine Stunde, kein Personenkonto steht dahinter. Der Workflow
    müsste das Token mit einer Action erzeugen (`actions/create-github-app-token`, SHA-gepinnt),
@@ -396,19 +408,21 @@ dem Token kein anderes Image.
 Renovate liest die `renovate.json5` aus dem Default-Branch des Zielrepositories:
 
 ```bash
-RENOVATE_TOKEN=$(gh auth token) docker run --rm \
+read -rs RENOVATE_TOKEN && export RENOVATE_TOKEN   # Token mit den minimalen Rechten, nicht gh auth token
+docker run --rm \
   -e RENOVATE_TOKEN \
   -e RENOVATE_PLATFORM=github \
   -e RENOVATE_REPOSITORIES=criew/opaa \
   -e RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper \
+  -e RENOVATE_DOCKER_MAX_PAGES=10 \
   -e LOG_LEVEL=info \
-  renovate/renovate:latest
+  "$IMAGE"
+```
 
 `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper` erlaubt Renovate, bei einem Gradle-Update den
 Wrapper-Befehl auszuführen (#997) — ohne die Freigabe aktualisiert es nur
 `gradle-wrapper.properties`, nicht die Wrapper-Skripte/JAR, und der Lauf meldet eine WARN-Zeile im
 Dependency-Dashboard. Bewusst nur dieser eine Befehl, keine weiteren unsicheren Ausführungen.
-```
 
 Der Lauf ist idempotent: erneutes Ausführen aktualisiert bestehende Update-Branches (Rebase
 bei Bedarf), schließt Überholtes und legt nur Neues an.
@@ -431,15 +445,15 @@ Nach Änderungen an `renovate.json5`:
 ```bash
 docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   -e RENOVATE_CONFIG_FILE=/usr/src/app/renovate.json5 \
-  --entrypoint renovate-config-validator renovate/renovate:latest
+  --entrypoint renovate-config-validator "$IMAGE"
 ```
 
 ## Typische Fehlerbilder
 
 - **`Repository is disabled` / Onboarding-PR statt Updates:** `renovate.json5` liegt nicht im
   Default-Branch — erst mergen, dann laufen lassen.
-- **403/401 beim echten Lauf:** Token abgelaufen oder Zuschnitt zu eng (siehe oben);
-  `gh auth token` liefert nur ein gültiges Token, solange `gh auth status` angemeldet ist.
+- **403/401 beim echten Lauf:** Token abgelaufen oder Zuschnitt zu eng (siehe
+  [Token: minimale Rechte](#token-minimale-rechte)).
 - **Gradle-Updates fehlen im Log:** Der `gradle`-Manager braucht die
   `libs.versions.toml`-Einträge in Standardform (`[versions]`/`[libraries]`-Referenzen) —
   direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md). Ein

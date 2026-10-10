@@ -17,7 +17,17 @@ PINNED_IMAGE = re.compile(r"renovate/renovate:(\d+\.\d+\.\d+)@(sha256:[0-9a-f]{6
 
 
 def image_references() -> list[str]:
-    return re.findall(r"renovate/renovate[:@]\S*", WORKFLOW.read_text(encoding="utf-8"))
+    """Every mention of the image, also without tag; the manager comment names it as depName."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+    return re.findall(r"(?<!depName=)renovate/renovate\b\S*", text)
+
+
+def docker_run_image_argument() -> str:
+    """The last word of the docker run command, after joining its continuation lines."""
+    text = WORKFLOW.read_text(encoding="utf-8").replace("\\\n", " ")
+    commands = [line for line in text.splitlines() if line.strip().startswith("docker run")]
+    assert len(commands) == 1, "expected exactly one docker run command in renovate.yml"
+    return commands[0].split()[-1]
 
 
 def config_blocks() -> list[str]:
@@ -46,6 +56,10 @@ def test_every_image_reference_is_pinned_to_version_and_digest() -> None:
     assert references, "renovate.yml no longer references renovate/renovate"
     for reference in references:
         assert PINNED_IMAGE.fullmatch(reference), reference
+
+
+def test_docker_run_starts_exactly_the_pinned_image_variable() -> None:
+    assert docker_run_image_argument() == '"$IMAGE"'
 
 
 def test_regex_manager_extracts_the_pinned_version_and_digest() -> None:
