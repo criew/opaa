@@ -3,7 +3,8 @@
 # repository root. Lints and renders the chart with every value set in <chart>/ci/, validates the
 # rendered manifests against each supported Kubernetes version and asserts that the chart's guards
 # still refuse the misconfigurations they exist for, and dry-runs the release scripts of
-# publish-images.yml. Needs helm and kubeconform on the PATH, the dry run also curl and jq.
+# publish-images.yml, including the release notes. Needs helm and kubeconform on the PATH, the dry
+# run also curl and jq.
 set -euo pipefail
 
 CHART_DIR="${CHART_DIR:-deploy/helm/opaa}"
@@ -113,6 +114,29 @@ for tag in 1.2.3 v1.2 v1.2.3+build.1 v01.2.3; do
   expect_tag_refusal "$tag" "is not a release version"
 done
 expect_tag_refusal v1.0.0-rc.01 "segment starts with 0"
+
+# The installation in the release notes creates the namespace with both Pod Security labels of the
+# handbook before helm install; --create-namespace would create it without them.
+echo "--- release notes"
+release_notes="$(deploy/helm/ci/release-notes.sh criew/opaa v1.2.3-rc.1)"
+for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enforce=restricted" \
+  "pod-security.kubernetes.io/warn=restricted" "--version 1.2.3-rc.1" \
+  "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#installation"; do
+  if [[ "$release_notes" != *"$expected"* ]]; then
+    echo "The release notes do not contain '$expected':" >&2
+    echo "$release_notes" >&2
+    exit 1
+  fi
+done
+if [[ "$release_notes" == *"--create-namespace"* ]]; then
+  echo "The release notes create the namespace with --create-namespace, without the Pod Security labels." >&2
+  exit 1
+fi
+if [[ "${release_notes%%helm install*}" != *"pod-security.kubernetes.io/warn=restricted"* ]]; then
+  echo "The release notes must label the namespace before helm install." >&2
+  exit 1
+fi
+echo "namespace labelled before helm install as expected"
 
 # The provenance check of a re-run in the chart job: the same chart packaged twice matches by
 # content, a chart of another state under the same version does not.
@@ -271,4 +295,4 @@ else
   echo "skipped: Helm $(helm version --short) has no client-side dry run"
 fi
 
-echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging, re-run provenance, registry lookup"
+echo "Static check passed: ${#value_sets[@]} value sets, Kubernetes $KUBERNETES_VERSIONS, release packaging, release notes, re-run provenance, registry lookup"
