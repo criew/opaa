@@ -11,7 +11,8 @@
 #   POSTGRES_IMAGE    database image (default: pgvector/pgvector:pg18)
 #   READY_TIMEOUT     seconds the backend may take to become ready (default: 300)
 #   EXPECT_VERSION    version the backend must report in its start line and under /actuator/info,
-#                     e.g. the OPAA_VERSION build argument of the image (default: not checked)
+#                     e.g. the OPAA_VERSION build argument of the image (default: not checked);
+#                     needs jq
 set -euo pipefail
 
 if (($# != 2)); then
@@ -47,6 +48,8 @@ fail() {
   done
   exit 1
 }
+
+[[ -z "$expect_version" ]] || command -v jq >/dev/null || fail "EXPECT_VERSION needs jq"
 
 # A locally present image of the wrong architecture would run emulated and prove nothing.
 for image in "$backend_image" "$frontend_image"; do
