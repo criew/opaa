@@ -1031,6 +1031,22 @@ Wegen der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt lauf
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
 Start als abgebrochen erkannt (siehe [Sanftes Herunterfahren](deployment.md#sanftes-herunterfahren)).
 Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
+
+Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, einige hundert MB. Der Knoten lädt
+es erst, wenn der alte Pod beendet ist, und je nach Anbindung an die Registry ist der Download der
+größte Teil der Unterbrechung. Kürzer wird sie, wenn das Image vorher auf allen Knoten liegt, auf
+denen das Backend laufen kann, etwa mit `crictl pull` oder einem DaemonSet, das das Image vorab zieht.
+Die Oberfläche lädt in dieser Zeit weiter, bis auf einen Aussetzer von wenigen Sekunden beim Wechsel
+des Frontend-Pods. Anfragen an `/api/` beantwortet das Frontend mit `502`, weil es `/api/` an das noch
+nicht bereite Backend weiterreicht.
+
+Der alte Backend-Pod endet mit dem Exit-Code `143` und steht in `kubectl get pods` kurz als `Error`.
+Das ist die normale Antwort der JVM auf `SIGTERM`. Ob er sauber herunterfuhr, zeigt sein Protokoll:
+`Graceful shutdown complete` heißt sauber, `Graceful shutdown aborted with one or more requests still
+active` heißt, dass Anfragen nach `backend.shutdownTimeoutSeconds` abgebrochen wurden. Nach dem Wechsel
+ist das Protokoll des alten Pods nicht mehr abrufbar. Es lässt sich während des Upgrades mit
+`kubectl -n opaa logs -f deploy/opaa-backend` mitlesen oder später aus der Protokollsammlung holen.
+
 Ob die neue Version läuft, zeigt die Startzeile des Backends:
 
 ```bash
@@ -1075,6 +1091,18 @@ Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
 SELECT count(*) FROM databasechangelog;
 ```
 
+Mit der [Erprobungsdatenbank](#datenbank) läuft die Abfrage im Pod der Datenbank; die Zugangsdaten
+stehen dort in den Umgebungsvariablen. Mit einem eigenen Schema (`database.schema`) heißt die Tabelle
+`<schema>.databasechangelog`:
+
+```bash
+kubectl -n opaa exec opaa-postgresql-0 -- \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM databasechangelog"'
+```
+
+Sichern und Zurückspielen der Erprobungsdatenbank stehen unter
+[Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern).
+
 - **Gleiche Zahl:** Kein Changeset ist hinzugekommen. `helm rollback` ist dann der vorgesehene Weg,
   aber keine Garantie: Eine neue Version kann Daten in einer Form schreiben, die die alte nicht liest,
   ohne dass dafür ein Changeset nötig war, etwa einen neuen Wert in einer Spalte ohne Prüfregel. Zeigt
@@ -1089,7 +1117,8 @@ SELECT count(*) FROM databasechangelog;
   dem Upgrade:
 
   1. Backend anhalten: `kubectl -n opaa scale deploy/opaa-backend --replicas=0`
-  2. Die Datenbank aus der Sicherung wiederherstellen, auf eine leere Datenbank.
+  2. Die Datenbank aus der Sicherung wiederherstellen, auf eine leere Datenbank. Bei der
+     Erprobungsdatenbank mit den Befehlen unter [Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern).
   3. `OPAA_AUTH_JWT_SECRET` im Secret durch einen neuen Wert ersetzen, **bevor** das Backend auf der
      zurückgespielten Datenbank startet. Die beiden Verschlüsselungsschlüssel bleiben unverändert.
   4. `helm rollback opaa <Revision> -n opaa` auf die Revision vor dem Upgrade.
@@ -1116,7 +1145,9 @@ weitere Start wartet auf sie (siehe [Fehlersuche](#installation-und-start)).
 | Geheimnisse | Secret `opaa-secrets` | Kopie außerhalb des Clusters, vor allem `OPAA_CREDENTIALS_ENCRYPTION_KEY`, `OPAA_SETTINGS_ENCRYPTION_KEY` und `OPAA_AUTH_JWT_SECRET` |
 | Konfiguration | Werte-Datei | Versionsverwaltung; sie nennt auch Endpunkt und Bucket, auf die die Verweise in der Datenbank zeigen |
 
-Nicht zu sichern sind die Pods, `/tmp` und das Frontend. Die Erprobungsdatenbank wird nicht gesichert.
+Nicht zu sichern sind die Pods, `/tmp` und das Frontend. Die Erprobungsdatenbank sichert der Chart
+nicht; wer sie vor einem Upgrade von Hand sichern will, folgt
+[Erprobungsdatenbank sichern](#erprobungsdatenbank-sichern).
 
 **Reihenfolge.** Erst die Datenbank sichern, dann die Originale; wiederherstellen umgekehrt, erst die
 Originale, dann die Datenbank. Die Begründung steht unter
@@ -1239,6 +1270,30 @@ dazu: `OPAA_AUTH_JWT_SECRET` im Secret ersetzen, bevor das Backend auf der zurü
 startet, und die Sperren der Zwischenzeit erneut setzen. `OPAA_CREDENTIALS_ENCRYPTION_KEY` und
 `OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Sind Fremdzugänge in Betrieb, folgt die Prüfliste aus
 [Fremdzugänge](fremdzugaenge.md).
+
+### Erprobungsdatenbank sichern
+
+Die Erprobungsdatenbank läuft im Pod `opaa-postgresql-0`; Konto und Datenbank stehen dort in den
+Umgebungsvariablen. Gesichert und zurückgespielt wird bei angehaltenem Backend (siehe
+*Reihenfolge* oben):
+
+```bash
+# sichern
+kubectl -n opaa exec opaa-postgresql-0 -- \
+  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > opaa-db.dump
+
+# zurückspielen: Datenbank leeren, neu anlegen, Sicherung einspielen
+kubectl -n opaa exec -i opaa-postgresql-0 -- \
+  sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" &&
+         createdb -U "$POSTGRES_USER" "$POSTGRES_DB" &&
+         pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --exit-on-error' < opaa-db.dump
+```
+
+Die Rolle `opaa_audit_owner` gehört zur PostgreSQL-Instanz, nicht zur Datenbank, und bleibt bei
+`dropdb` bestehen. Auf einer neuen Erprobungsdatenbank muss sie vor `pg_restore` angelegt werden (siehe
+oben, *Was eine Datenbanksicherung nicht enthält*). Nach dem Zurückspielen gilt die übliche
+Nacharbeit, zuerst ein neues `OPAA_AUTH_JWT_SECRET`, bevor das Backend wieder startet (siehe oben,
+*Signaturgeheimnis im vorhandenen Secret ersetzen*).
 
 ## Betriebsüberwachung
 
