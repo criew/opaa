@@ -141,9 +141,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.timeout_minutes }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '25.0.4+101.0.LTS'
@@ -153,7 +153,7 @@ jobs:
       # actions/cache-Musters, das bei exaktem Key-Treffer nie neu speicherte
       # (#832). Configuration-Cache-Daten werden bewusst nicht persistiert
       # (braeuchte cache-encryption-key + build-root-directory).
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       # Named Docker volume that RetrievalEvaluationHarnessTest bind-mounts into the Ollama
       # container (see its OLLAMA_MODEL_VOLUME javadoc). On a developer machine this volume
@@ -190,7 +190,7 @@ jobs:
       # `if:`, so it still executes even when the overall job is later marked cancelled.
       - name: Restore Ollama model cache
         id: ollama-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ollama-model-cache.tar
           key: ollama-models-nomic-embed-text-v1.5-0a109f42-qwen2.5-1.5b-instruct-65ec0654
@@ -255,7 +255,7 @@ jobs:
       # saved by an earlier run — cache keys are immutable, so that is expected once warm.
       - name: Ollama model cache speichern
         if: always() && hashFiles('ollama-model-cache.tar') != ''
-        uses: actions/cache/save@v6
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ollama-model-cache.tar
           key: ollama-models-nomic-embed-text-v1.5-0a109f42-qwen2.5-1.5b-instruct-65ec0654
@@ -311,7 +311,7 @@ jobs:
       # überdecken.
       - name: Report als Artefakt hochladen
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact_name }}
           path: |
@@ -332,7 +332,7 @@ jobs:
       - name: Delta-Tabelle als PR-Kommentar posten
         if: always() && github.event_name == 'pull_request'
         continue-on-error: true
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
@@ -382,7 +382,7 @@ jobs:
       # steht in seiner Tabelle; der jeweils andere kann im selben Lauf grün sein.
       - name: Fehlschlag als Issue melden (nächtlicher/manueller Lauf)
         if: (failure() || cancelled()) && github.event_name != 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
@@ -459,7 +459,7 @@ jobs:
       # liegen zu lassen.
       - name: Alarm-Issue bei erneutem Bestehen schließen
         if: success() && github.event_name != 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const marker = '${{ matrix.marker }}';
@@ -542,20 +542,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: ${{ matrix.timeout_minutes }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: actions/setup-java@v6
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
           distribution: temurin
           java-version: '25.0.4+101.0.LTS'
 
-      - uses: gradle/actions/setup-gradle@v6
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
 
       # Derselbe Cache-Schlüssel wie im Job `evaluate` — dort steht auch die vollständige
       # Begründung des restore/save-Musters. Dieser Pfad zieht dieselben zwei Modelle.
       - name: Restore Ollama model cache
         id: ollama-cache
-        uses: actions/cache/restore@v6
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ollama-model-cache.tar
           key: ollama-models-nomic-embed-text-v1.5-0a109f42-qwen2.5-1.5b-instruct-65ec0654
@@ -613,7 +613,7 @@ jobs:
 
       - name: Report als Artefakt hochladen
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.artifact_name }}
           path: |
@@ -626,7 +626,7 @@ jobs:
       - name: Delta-Tabelle als PR-Kommentar posten
         if: always() && github.event_name == 'pull_request'
         continue-on-error: true
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
@@ -656,7 +656,7 @@ jobs:
       # über den Einzelfragen-Lauf derselben Domäne und darf dessen Alarm-Issue nicht mitbenutzen.
       - name: Fehlschlag als Issue melden (nächtlicher/manueller Lauf)
         if: (failure() || cancelled()) && github.event_name != 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');
@@ -721,7 +721,7 @@ jobs:
       # sieht, ohne die Deltas, um die es ging.
       - name: Alarm-Issue bei erneutem Bestehen schließen
         if: success() && github.event_name != 'pull_request'
-        uses: actions/github-script@v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         with:
           script: |
             const fs = require('fs');

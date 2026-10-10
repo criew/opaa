@@ -322,22 +322,13 @@
       matchFileNames: ['.github/workflows/helm-chart.yml', '.github/workflows/publish-images.yml'],
       enabled: false,
     },
-    // Workflows mit Schreibrechten auf veröffentlichte Artefakte oder das Repository pinnen ihre
-    // Actions auf den Commit-SHA mit exaktem Versionskommentar (#2397, docs/renovate.md). Renovate
-    // pflegt beides gemeinsam. Ein neues Release wird erst nach drei Tagen vorgeschlagen; vorher
-    // entsteht kein Branch, also auch kein PR-Lauf mit Schreibtoken. Die Dateiliste muss in allen
-    // drei Regeln PINNED_WORKFLOWS in .github/scripts/check_action_pins.sh entsprechen;
-    // test_check_action_pins.py prüft das.
+    // Alle Workflows pinnen ihre Actions auf den Commit-SHA mit exaktem Versionskommentar (#2397,
+    // #2432, docs/renovate.md); Renovate pflegt beides gemeinsam. Ein neues Release wird erst nach
+    // drei Tagen vorgeschlagen; vorher entsteht kein Branch, also auch kein PR-Lauf. Beide Regeln
+    // gelten ohne Dateiliste, wie .github/scripts/check_action_pins.sh; test_check_action_pins.py
+    // prüft das.
     {
       matchManagers: ['github-actions'],
-      matchFileNames: [
-        '.github/workflows/cla.yml',
-        '.github/workflows/cve-scan.yml',
-        '.github/workflows/daily-report.yml',
-        '.github/workflows/dependency-graph.yml',
-        '.github/workflows/landing-page.yml',
-        '.github/workflows/publish-images.yml',
-      ],
       matchDepTypes: ['action'],
       pinDigests: true,
       minimumReleaseAge: '3 days',
@@ -348,14 +339,6 @@
     // schon im PR mit Schreibrechten.
     {
       matchManagers: ['github-actions'],
-      matchFileNames: [
-        '.github/workflows/cla.yml',
-        '.github/workflows/cve-scan.yml',
-        '.github/workflows/daily-report.yml',
-        '.github/workflows/dependency-graph.yml',
-        '.github/workflows/landing-page.yml',
-        '.github/workflows/publish-images.yml',
-      ],
       matchUpdateTypes: ['digest'],
       dependencyDashboardApproval: true,
       automerge: false,

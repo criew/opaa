@@ -48,7 +48,7 @@ jobs:
       chart: ${{ steps.filter.outputs.chart }}
       install: ${{ steps.filter.outputs.install }}
     steps:
-      - uses: dorny/paths-filter@v4
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -80,9 +80,9 @@ jobs:
           # renovate: datasource=github-releases depName=helm/helm
           - v4.3.0
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: azure/setup-helm@v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           version: ${{ matrix.helm }}
 
@@ -114,8 +114,9 @@ jobs:
       - name: Alarmregeln testen
         run: deploy/helm/ci/rule-test.sh
 
-      # Full version: the floating v2 tag lags behind and cannot verify the signature of current ct.
-      - uses: helm/chart-testing-action@v2.9.0
+      # v2.9.0 or later: older releases, which the floating v2 tag still points to, cannot verify the
+      # signature of current ct.
+      - uses: helm/chart-testing-action@720270857a28afd41e2426521a7801db09e9b510 # v2.9.0
         with:
           version: ${{ env.CT_VERSION }}
 
@@ -133,13 +134,13 @@ jobs:
     # Image builds plus the first backend start with its schema migration.
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - uses: docker/setup-buildx-action@v4
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       # Repo root as context: the backend's Gradle build depends on the sibling opaa-api/.
       - name: Backend-Image bauen
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: backend/Dockerfile
@@ -149,7 +150,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=helm-chart-backend
 
       - name: Frontend-Image bauen
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: frontend/Dockerfile
@@ -170,7 +171,7 @@ jobs:
           OPAA_BACKEND_READ_TIMEOUT=3s DELAY=1 EXPECT=200 frontend/scripts/check-backend-read-timeout.sh
           EXPECT_READ_TIMEOUT=600s DELAY=1 EXPECT=200 frontend/scripts/check-backend-read-timeout.sh
 
-      - uses: helm/kind-action@v1
+      - uses: helm/kind-action@ef37e7f390d99f746eb8b610417061a60e82a6cc # v1.14.0
         with:
           version: ${{ env.KIND_VERSION }}
           node_image: ${{ env.KIND_NODE_IMAGE }}
@@ -178,13 +179,14 @@ jobs:
       - name: Images in kind laden
         run: kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci --name chart-testing
 
-      - uses: azure/setup-helm@v5
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
         with:
           # renovate: datasource=github-releases depName=helm/helm
           version: v4.3.0
 
-      # Full version: the floating v2 tag lags behind and cannot verify the signature of current ct.
-      - uses: helm/chart-testing-action@v2.9.0
+      # v2.9.0 or later: older releases, which the floating v2 tag still points to, cannot verify the
+      # signature of current ct.
+      - uses: helm/chart-testing-action@720270857a28afd41e2426521a7801db09e9b510 # v2.9.0
         with:
           version: ${{ env.CT_VERSION }}
 
