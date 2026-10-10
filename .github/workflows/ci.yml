@@ -119,10 +119,12 @@ jobs:
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/ci.yml'
             # renovate.json5 belongs here because test_check_action_pins.py checks that its pinDigests
-            # rule covers every workflow, like the action pin guard.
+            # rule covers every workflow, like the action pin guard. publish-images.yml belongs here
+            # because test_publish_images_cache.py checks that release builds skip the gha cache.
             scripts:
               - '.github/scripts/**'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/publish-images.yml'
               - 'renovate.json5'
             # Step-level filter of the action pin guard below, not a job output.
             workflows:
