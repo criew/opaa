@@ -119,10 +119,12 @@ jobs:
               - '.github/workflows/publish-images.yml'
               - '.github/workflows/ci.yml'
             # renovate.json5 belongs here because test_check_action_pins.py compares its pinDigests
-            # rule with the file list of the action pin guard.
+            # rule with the file list of the action pin guard. renovate.yml belongs here because
+            # test_renovate_image_pin.py checks its image pin against the regex manager.
             scripts:
               - '.github/scripts/**'
               - '.github/workflows/ci.yml'
+              - '.github/workflows/renovate.yml'
               - 'renovate.json5'
             # Step-level filter of the action pin guard below, not a job output.
             workflows:
