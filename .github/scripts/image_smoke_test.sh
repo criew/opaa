@@ -10,9 +10,9 @@
 #   EXPECT_ARCH       architecture both images must have, e.g. arm64 (default: the Docker host's)
 #   POSTGRES_IMAGE    database image (default: pgvector/pgvector:pg18)
 #   READY_TIMEOUT     seconds the backend may take to become ready (default: 300)
-#   EXPECT_VERSION    version the backend must report in its start line and under /actuator/info,
-#                     e.g. the OPAA_VERSION build argument of the image (default: not checked);
-#                     needs jq
+#   EXPECT_VERSION    version the backend must report in its start line and under /actuator/info
+#                     and the frontend's entry bundle must carry for "Info zu OPAA", e.g. the
+#                     OPAA_VERSION build argument of both images (default: not checked); needs jq
 set -euo pipefail
 
 if (($# != 2)); then
@@ -137,6 +137,15 @@ for _ in $(seq 1 30); do
 done
 [[ "$index" == *'<div id="root">'* ]] || fail "frontend did not serve index.html"
 echo "frontend serves index.html"
+
+if [[ -n "$expect_version" ]]; then
+  entry="$(grep -o 'src="/assets/[^"]*\.js"' <<<"$index" | head -n 1 | sed 's/^src="//; s/"$//' || true)"
+  [[ -n "$entry" ]] || fail "index.html references no entry bundle under /assets/"
+  bundle="$(curl -fsS --max-time 10 "http://127.0.0.1:$frontend_port$entry" || true)"
+  [[ "$bundle" == *"v$expect_version"* ]] ||
+    fail "frontend bundle $entry does not carry version v$expect_version"
+  echo "frontend bundle $entry carries version v$expect_version"
+fi
 
 health_status="$(curl -sS -o /dev/null -w '%{http_code}' --max-time 10 \
   "http://127.0.0.1:$frontend_port/api/health" || true)"
