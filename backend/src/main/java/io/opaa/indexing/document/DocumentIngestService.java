@@ -34,7 +34,9 @@ import io.opaa.observability.IndexingMetrics;
 import io.opaa.sourceaccess.LoggedName;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -155,8 +157,10 @@ public class DocumentIngestService {
    * path and to a concurrent delete while chunks are embedded. A non-{@code null} {@code
    * attachmentAccess} turns every discovered attachment into a child {@code Document} (ADR-0022).
    * The quota check and the save of the row it admits run under the library's {@link
-   * LibraryStorageQuotaService#holdIntake}. A source document one of whose attachments its owner's
-   * quota rejected is stored without checksum and change marker, so the next run reads it again.
+   * LibraryStorageQuotaService#holdIntake}. A source document one of whose attachments a storage
+   * quota rejected is stored without checksum and change marker, so the next run reads it again; it
+   * is then measured by what it adds beyond its stored footprint ({@link #storedFootprint}), so the
+   * attachments already stored do not count a second time.
    *
    * @return {@code PROCESSED} once the row is {@code INDEXED} with its new chunks; {@code SKIPPED}
    *     for unchanged content and for a row that vanished meanwhile; otherwise the rejection or
@@ -215,8 +219,8 @@ public class DocumentIngestService {
         // The row is still present when the quota is checked, so the check measures the size
         // delta: the full new size against a usedBytes that still includes the old size would
         // double-count the document being replaced.
-        long previousSize = existingDoc.getFileSize() == null ? 0L : existingDoc.getFileSize();
-        DocumentIngestResult rejected = admit(library, byteSize - previousSize, filePath);
+        DocumentIngestResult rejected =
+            admit(library, byteSize - storedFootprint(existingDoc), filePath);
         if (rejected != null) {
           return rejected;
         }
@@ -469,25 +473,53 @@ public class DocumentIngestService {
   /**
    * The advisory quota check before a download (ADR-0041): the rejection {@link #ingest} would
    * return for a file of {@code listedSize} bytes at {@code filePath}, logged and counted the same,
-   * or empty to download it. Measured, like the intake, by the growth over a stored row; without
-   * announced growth (unknown size, same or smaller) it admits. Only the check under {@link
-   * LibraryStorageQuotaService#holdIntake} binds, because a listed size may be wrong.
+   * or empty to download it. Measured, like the intake, by the growth over what is stored of the
+   * file ({@link #storedFootprint}); without announced growth (unknown size, same or smaller) it
+   * admits. Only the check under {@link LibraryStorageQuotaService#holdIntake} binds, because a
+   * listed size may be wrong.
    */
   public Optional<DocumentIngestResult> rejectionBeforeDownload(
       KnowledgeLibrary library, String filePath, long listedSize) {
     if (listedSize <= 0) {
       return Optional.empty();
     }
-    long storedSize =
-        documentRepository
-            .findByLibraryIdAndFilePath(library.getId(), filePath)
-            .map(Document::getFileSize)
-            .orElse(0L);
-    long growth = listedSize - storedSize;
+    Optional<Document> stored =
+        documentRepository.findByLibraryIdAndFilePath(library.getId(), filePath);
+    long storedSize = stored.map(Document::getFileSize).orElse(0L);
+    if (listedSize - storedSize <= 0) {
+      return Optional.empty();
+    }
+    long growth = listedSize - stored.map(this::storedFootprint).orElse(0L);
     if (growth <= 0) {
       return Optional.empty();
     }
     return Optional.ofNullable(admit(library, growth, filePath));
+  }
+
+  /**
+   * What {@code stored} occupies of its library as one file: its own size plus that of every
+   * attachment the attachment path took out of it, at any depth - the rows whose path has the
+   * {@link AttachmentFilePath} shape under their parent's. An attachment fetched on its own (a feed
+   * entry's, a page's) is not part of the file and does not count.
+   */
+  private long storedFootprint(Document stored) {
+    long size = sizeOf(stored);
+    Deque<Document> parents = new ArrayDeque<>();
+    parents.push(stored);
+    while (!parents.isEmpty()) {
+      Document parent = parents.pop();
+      for (Document child : documentRepository.findByParentDocumentId(parent.getId())) {
+        if (AttachmentFilePath.indexIn(parent.getFilePath(), child.getFilePath()) >= 0) {
+          size += sizeOf(child);
+          parents.push(child);
+        }
+      }
+    }
+    return size;
+  }
+
+  private static long sizeOf(Document document) {
+    return document.getFileSize() == null ? 0L : document.getFileSize();
   }
 
   /**

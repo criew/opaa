@@ -270,8 +270,9 @@ public class SourceSyncState {
   }
 
   /**
-   * The next run is a full sync, whatever the interval says - after a change of structure or a
-   * dropped stream. The completed full sync it starts clears the mark.
+   * The next run is a full sync, whatever the interval says - after a change of structure, a
+   * dropped stream, or a full sync that left an entry behind at a storage quota. The completed full
+   * sync it starts clears the mark.
    */
   public void requireFullSync() {
     fullSyncCompletedAt = null;
@@ -362,6 +363,9 @@ public class SourceSyncState {
    * @param unsettled per container key, folders whose stored state the round could not settle
    * @param proof the store's absence proof the round's presence was written under; another one does
    *     not continue the round
+   * @param heldAtQuota whether the round's listing rejected an entry at a storage quota; its end
+   *     then makes the next run a full sync. Absent in a round written before, read as {@code
+   *     false}
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record ScanProgress(
@@ -373,9 +377,11 @@ public class SourceSyncState {
       Map<String, Map<String, String>> markers,
       Map<String, Map<String, String>> carried,
       Map<String, Set<String>> unsettled,
-      String proof) {
+      String proof,
+      Boolean heldAtQuota) {
 
     public ScanProgress {
+      heldAtQuota = Boolean.TRUE.equals(heldAtQuota);
       containers = containers == null ? Map.of() : Map.copyOf(containers);
       markers = markers == null ? Map.of() : Map.copyOf(markers);
       carried = carried == null ? Map.of() : Map.copyOf(carried);

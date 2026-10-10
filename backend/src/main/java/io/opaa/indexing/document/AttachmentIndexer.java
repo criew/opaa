@@ -483,7 +483,8 @@ public class AttachmentIndexer {
           filePathIdentity,
           DocumentIngestOutcomes.QuotaMessages.of(storageQuotaService, access.targetLibrary()),
           DocumentIngestOutcomes.ATTACHMENT_FAILED_MESSAGE);
-      if (result == DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED) {
+      if (result == DocumentIngestResult.QUOTA_EXCEEDED
+          || result == DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED) {
         access.progress().recordQuotaReached();
       }
       switch (result) {

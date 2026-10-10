@@ -66,8 +66,9 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
   /**
    * Maps one item's {@link DocumentIngestResult} onto the counters and the protocol: a rejection
    * ({@code QUOTA_EXCEEDED}, {@code PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}) and
-   * {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code PROCESSED} as processed; the
-   * protocol entry, if any, is the one {@link DocumentIngestOutcomes#record} writes.
+   * {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code PROCESSED} as processed; a
+   * rejection at either quota also counts towards {@link #quotaRejections()}. The protocol entry,
+   * if any, is the one {@link DocumentIngestOutcomes#record} writes.
    *
    * @return whether the item was processed
    */
@@ -84,11 +85,11 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
         return true;
       }
       case FAILED -> recordFailed();
-      case PERSONAL_QUOTA_EXCEEDED -> {
+      case QUOTA_EXCEEDED, PERSONAL_QUOTA_EXCEEDED -> {
         recordQuotaReached();
         recordSkipped();
       }
-      case SKIPPED, QUOTA_EXCEEDED, NO_EXTRACTABLE_TEXT -> recordSkipped();
+      case SKIPPED, NO_EXTRACTABLE_TEXT -> recordSkipped();
     }
     return false;
   }
@@ -103,7 +104,10 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
     return quotaRejections;
   }
 
-  /** Whether an item or attachment of this run was rejected at the owner's private quota. */
+  /**
+   * Whether an item or attachment of this run was rejected at a storage quota - its library's or,
+   * for a private library, its owner's.
+   */
   public boolean quotaReached() {
     return quotaRejections > 0;
   }

@@ -697,9 +697,10 @@ components:
             Why a failed run ended, where the run tells it apart from its message - without any
             reference to content: the SourceBlockReason of a blocked source, or
             CREDENTIALS_REJECTED when the source refused the secret. On a completed, incomplete
-            run QUOTA_EXHAUSTED: the run skipped at least one document because the storage quota
-            across all private libraries of the owner was reached, and went on to its end and its
-            reconciliation (#2166, #2276). Absent for any other end.
+            run QUOTA_EXHAUSTED: the run skipped at least one document or attachment because a
+            storage quota was reached - the library's own, or for a private library the one across
+            all private libraries of the owner - and went on to its end and its reconciliation
+            (#2166, #2276, #2295). Absent for any other end.
           example: NOT_CONNECTED
         startedAt:
           type: string

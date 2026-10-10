@@ -36,7 +36,12 @@ import ReconnectSourceDialog from './ReconnectSourceDialog'
 import { Link as RouterLink } from 'react-router'
 import { CONNECTED_ACCOUNTS_ROUTE } from '../../routes'
 import { sourceRegistration } from './sources/registry'
-import { QUOTA_EXHAUSTED_LABEL, QUOTA_EXHAUSTED_REMEDY } from './privateLibrary'
+import {
+  LIBRARY_QUOTA_EXHAUSTED_LABEL,
+  LIBRARY_QUOTA_EXHAUSTED_REMEDY,
+  QUOTA_EXHAUSTED_LABEL,
+  QUOTA_EXHAUSTED_REMEDY,
+} from './privateLibrary'
 
 export interface LibrarySourceSectionProps {
   libraryId: string
@@ -336,7 +341,11 @@ export default function LibrarySourceSection({
               {configuration.runsHint}
             </Typography>
           )}
-          <LibraryIndexingHistorySection libraryId={libraryId} sourceType={library.sourceType} />
+          <LibraryIndexingHistorySection
+            libraryId={libraryId}
+            sourceType={library.sourceType}
+            privateLibrary={Boolean(library.privateLibrary)}
+          />
         </PageSection>
       )}
     </Stack>
@@ -417,7 +426,7 @@ function RunMetricsLine({ run }: { run: IndexingRunResponse }) {
   )
 }
 
-/** The run ended at the storage quota across all private libraries of the owner. */
+/** The run ended at a storage quota: the library's own or, for a private one, its owner's. */
 function quotaExhausted(run: IndexingRunResponse): boolean {
   return run.failureCategory === 'QUOTA_EXHAUSTED'
 }
@@ -440,10 +449,15 @@ const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
 function LibraryIndexingHistorySection({
   libraryId,
   sourceType,
+  privateLibrary,
 }: {
   libraryId: string
   sourceType: SourceTypeKey
+  privateLibrary: boolean
 }) {
+  // both quotas share the run category; a shared library has only its own
+  const quotaLabel = privateLibrary ? QUOTA_EXHAUSTED_LABEL : LIBRARY_QUOTA_EXHAUSTED_LABEL
+  const quotaRemedy = privateLibrary ? QUOTA_EXHAUSTED_REMEDY : LIBRARY_QUOTA_EXHAUSTED_REMEDY
   const runs = useIndexingStore((s) => s.runHistoryByLibrary[libraryId] ?? EMPTY_RUN_HISTORY)
   // ADR-0023, Entscheidung 4: only a source with two Betriebsarten shows the mode - for every other
   // type it is implied by the source type and a chip would only repeat it.
@@ -498,11 +512,7 @@ function LibraryIndexingHistorySection({
                   )}
                   {run.incomplete && (
                     <Chip
-                      label={
-                        quotaExhausted(run)
-                          ? QUOTA_EXHAUSTED_LABEL
-                          : 'unvollständig, wird fortgesetzt'
-                      }
+                      label={quotaExhausted(run) ? quotaLabel : 'unvollständig, wird fortgesetzt'}
                       size="small"
                       color="warning"
                       data-testid={`run-incomplete-${run.id}`}
@@ -532,7 +542,7 @@ function LibraryIndexingHistorySection({
                     sx={{ mb: 1.5 }}
                     data-testid={`run-quota-remedy-${run.id}`}
                   >
-                    {QUOTA_EXHAUSTED_REMEDY}
+                    {quotaRemedy}
                   </Alert>
                 )}
                 {run.message && (

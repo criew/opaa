@@ -146,7 +146,8 @@ class SourceSyncStateRepositoryIntegrationTest {
             Map.of("/Projekte", Map.of("", "\"6ac1\"")),
             Map.of("/Projekte", Map.of("Akten / 2025", "\"6ac2\"")),
             Map.of("/Projekte", Set.of("Akten")),
-            "LOCATION_IDENTITY");
+            "LOCATION_IDENTITY",
+            true);
     state.recordScanProgress(progress);
     repository.save(state);
 

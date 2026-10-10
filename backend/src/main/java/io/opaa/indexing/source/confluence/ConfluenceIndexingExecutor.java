@@ -288,6 +288,10 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
         reconciled -> {
           if (reconciled) {
             completedState.completeFullSync(clock.instant(), startedAt);
+            if (run.progress.quotaReached()) {
+              // what a quota left behind is older than the anchor: no incremental run finds it
+              completedState.requireFullSync();
+            }
             syncStateRepository.save(completedState);
           } else {
             run.events.record(
@@ -302,7 +306,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   /**
    * The incremental run: asks CQL for the pages in the selected spaces modified since the anchor
    * minus the overlap and visits what it names. The anchor moves only when the run failed nothing
-   * and its owner's quota rejected nothing, so no window is lost. A state written under other
+   * and no storage quota rejected anything, so no window is lost. A state written under other
    * settings is discarded, and the run searches nothing: the next one is a full sync.
    */
   private ListingOutcome incrementalSync(ConfluenceRun run, Instant startedAt)
