@@ -11,7 +11,7 @@ tomcat = "11.0.26"
 spotless = "8.10.4"
 caffeine = "3.3.0"
 openapi-generator = "7.26.0"
-cyclonedx-bom = "3.5.0"
+cyclonedx-bom = "3.5.1"
 # Tokenizer used by Spring AI's TokenTextSplitter (CL100K_BASE). Referenced directly by
 # io.opaa.format.chunk.OverlappingTokenTextSplitter, so it is declared explicitly instead of being
 # relied on transitively. Must stay in sync with the version spring-ai-commons resolves to,
