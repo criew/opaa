@@ -1,0 +1,54 @@
+# Pulls the chat and the embedding model named in the ConfigMap trial-settings. A model already on
+# the volume is skipped without asking the registry, so a second "trial.sh up" works offline.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ollama-pull-models
+  namespace: opaa-trial-services
+  labels:
+    app.kubernetes.io/name: ollama-pull-models
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ollama-pull-models
+        app.kubernetes.io/part-of: opaa-trial
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: pull
+          image: ollama/ollama:0.40.2
+          env:
+            - name: OLLAMA_HOST
+              value: http://ollama:11434
+            - name: CHAT_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: trial-settings
+                  key: CHAT_MODEL
+            - name: EMBEDDING_MODEL
+              valueFrom:
+                configMapKeyRef:
+                  name: trial-settings
+                  key: EMBEDDING_MODEL
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -eu
+              until ollama list >/dev/null 2>&1; do sleep 2; done
+              for model in "$EMBEDDING_MODEL" "$CHAT_MODEL"; do
+                if ollama show "$model" >/dev/null 2>&1; then
+                  echo "$model already present"
+                else
+                  ollama pull "$model"
+                fi
+              done
+              ollama list
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false

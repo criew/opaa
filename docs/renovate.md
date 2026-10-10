@@ -21,6 +21,7 @@ jederzeit auch lokal ausführen (unten).
 | GitHub-Actions-Workflows (`.github/workflows/`); in Workflows mit Schreibrechten Commit-SHA und Versionskommentar gemeinsam (siehe [unten](#actions-in-workflows-mit-schreibrechten-per-commit-sha)) | `github-actions` | `ci` |
 | Docker-Basisimages (`Dockerfile`s, `docker-compose*.yml`) | `dockerfile`, `docker-compose` | `ci` |
 | Helm-Chart (`deploy/helm/opaa/`): Abhängigkeiten in `Chart.yaml` (derzeit keine) und Images mit festem Tag in `values.yaml` (die Evaluierungsdatenbank); Backend und Frontend folgen der Chart-Version und tragen dort keinen Tag | `helmv3`, `helm-values` | `ci` |
+| Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
 | Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml` | `custom.regex` | `ci` |
@@ -225,8 +226,10 @@ Zwei Stolpersteine, die beide schon zugeschlagen haben:
   `:ignoreModulesAndTests` unter anderem `**/test/**`, `**/tests/**`, `**/examples/**` und
   `**/__fixtures__/**` mit. Eine Datei unter `backend/src/test/…` ist damit für **alle** Manager
   unsichtbar, egal wie genau `managerFilePatterns` sie benennt. Deshalb überschreibt
-  `renovate.json5` die Liste gezielt (Kommentar dort), statt sie zu leeren. Ein Negativ-Eintrag ist
-  in `ignorePaths` nicht möglich, die Liste dort ist also eine **Kopie der Preset-Vorgabe** und
+  `renovate.json5` die Liste gezielt (Kommentar dort), statt sie zu leeren; neben den beiden
+  Testverzeichnissen fehlt dort auch `**/examples/**`, damit der `kubernetes`-Manager den
+  Erprobungsaufbau sieht. Ein Negativ-Eintrag ist in `ignorePaths` nicht möglich, die Liste dort
+  ist also eine **Kopie der Preset-Vorgabe** und
   friert deren heutigen Stand ein: Ergänzt Renovate `:ignoreModulesAndTests` später um einen
   Eintrag, greift der hier nicht mehr. Bei einem Renovate-Major deshalb abgleichen — der Workflow
   läuft auf `renovate/renovate:latest`, ein solcher Wechsel passiert von selbst und still.

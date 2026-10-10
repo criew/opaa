@@ -1,0 +1,86 @@
+# Ollama serves the chat and the embedding model through its OpenAI-compatible /v1 endpoint, on
+# the CPU. The models live on a volume; the job below pulls them once.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models
+  namespace: opaa-trial-services
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ollama
+  namespace: opaa-trial-services
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ollama
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ollama
+        app.kubernetes.io/part-of: opaa-trial
+    spec:
+      containers:
+        - name: ollama
+          image: ollama/ollama:0.40.2
+          env:
+            - name: OLLAMA_MODELS
+              value: /models
+            # The context window of every request. OPAA's prompts carry several retrieved chunks;
+            # a smaller window would cut them off silently.
+            - name: OLLAMA_CONTEXT_LENGTH
+              value: "8192"
+          ports:
+            - name: http
+              containerPort: 11434
+          readinessProbe:
+            httpGet:
+              path: /api/version
+              port: http
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              memory: 6Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ollama-models
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ollama
+  namespace: opaa-trial-services
+  labels:
+    app.kubernetes.io/name: ollama
+    app.kubernetes.io/part-of: opaa-trial
+spec:
+  selector:
+    app.kubernetes.io/name: ollama
+  ports:
+    - name: http
+      port: 11434
+      targetPort: http
