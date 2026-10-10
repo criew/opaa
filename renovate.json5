@@ -63,8 +63,10 @@
   prHourlyLimit: 0,
   prConcurrentLimit: 5,
 
-  // Jeder PR trägt Labels (AGENTS.md); die Bereichszuordnung ergänzen die packageRules.
-  labels: ['enhancement'],
+  // Jeder PR trägt Labels (AGENTS.md): "dependencies" ordnet ihn in den Release-Notizen der Rubrik
+  // „Abhängigkeiten“ zu (.github/release.yml), die Bereichs-Labels ergänzen die packageRules per
+  // addLabels. Eine packageRule mit "labels" statt "addLabels" würde diese Vorgabe ersetzen.
+  labels: ['dependencies'],
   dependencyDashboardTitle: 'Abhängigkeits-Übersicht (Renovate)',
   dependencyDashboardLabels: ['ci'],
 
