@@ -1043,14 +1043,31 @@ privaten Bibliotheken zusammen (Kapitel [Bibliotheken und Berechtigungen](biblio
 „Private Bibliotheken"). Überschreitet das Element dieses Kontingent, wird es wie am Kontingent
 der Bibliothek abgelehnt, und das Laufprotokoll nennt am Element den Grund. Der Lauf geht weiter,
 gleicht ab und endet als unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Das abgelehnte Element
-gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Die Datei wird dafür wie am
-Kontingent der Bibliothek erst heruntergeladen und dann abgelehnt. Anders als dort hält die
-Ablehnung jede Fortschrittsmarke wie ein vorübergehender Fehler: Änderungsstand und
-Ordnergedächtnis einer Dateiablage, Anker eines inkrementellen Confluence-Laufs und Feed-Zustand
-bleiben stehen, und ein Dokument, dessen Anhang abgelehnt wurde, wird ohne Prüfsumme und
-Änderungsmerkmal gespeichert. Der nächste Lauf liest das Element deshalb erneut. Prüfung und Speichern der Dokumentzeile laufen
-für alle privaten Bibliotheken einer Person nacheinander, sodass auch gleichzeitige Läufe das
-Kontingent nicht überschreiten.
+gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Die Ablehnung hält jede
+Fortschrittsmarke am Element: Änderungsstand und Ordnergedächtnis einer Dateiablage, Anker eines
+inkrementellen Confluence-Laufs und Feed-Zustand bleiben stehen, und ein Dokument, dessen Anhang
+abgelehnt wurde, wird ohne Prüfsumme und Änderungsmerkmal gespeichert. Am Kontingent der
+Bibliothek gilt das bisher nur für die Datei selbst in einer Dateiablage (siehe unten). Der nächste Lauf liest das Element deshalb
+erneut. Prüfung und Speichern der Dokumentzeile laufen für alle privaten Bibliotheken einer
+Person nacheinander, sodass auch gleichzeitige Läufe das Kontingent nicht überschreiten.
+
+Bei einer **Dateiablage** (Nextcloud, SharePoint, SMB, S3, Google Drive) wird ein Kontingent schon
+**vor dem Download** befragt, mit der Größe aus der Auflistung. Kündigt sie gegenüber der
+gespeicherten Fassung Wachstum an, das eines der beiden Kontingente überschreitet, wird die Datei
+gar nicht erst geladen und genauso abgelehnt wie nach dem Download: derselbe Protokolleintrag,
+dieselbe Kategorie `QUOTA_EXHAUSTED` am Kontingent der Besitzerin, die Datei gilt als vorhanden.
+Ohne bekannte Größe, bei gleicher oder kleinerer Größe wird geladen. Die Vorprüfung ist nur
+beratend, denn die gelistete Größe kann von der geladenen abweichen: Maßgeblich bleibt die Prüfung
+mit der tatsächlichen Größe vor dem Speichern. Weil eine falsche Listengröße eine Datei auch zu
+Unrecht zurückhalten kann, hält in einer Dateiablage jede Ablehnung an einem der beiden
+Kontingente Änderungsstand und Ordnergedächtnis. Eine Datei, die das Änderungsprotokoll meldet,
+prüft schon der nächste Änderungslauf erneut; eine Datei, die in der Auflistung eines
+Vollabgleichs abgelehnt wurde, erst der nächste Vollabgleich. Sobald Platz für die gelistete
+Größe frei ist, wird sie geladen und mit ihrer echten Größe gezählt. Gehalten wird nur die Marke am Element, nie der Abschluss: Ein Vollabgleich über mehrere
+Läufe endet trotzdem, und die Löschungen, die das Änderungsprotokoll meldet, werden übernommen –
+oft sind es gerade diese, die den Platz freimachen. Der nächste Änderungslauf liest das Protokoll
+dann ab dem Stand, an dem der Vollabgleich begann, und trifft eine Datei erneut, die das Protokoll
+in dieser Zeit gemeldet hat.
 
 ### Schritt 3: Format erkennen und Pipeline wählen
 

@@ -3,6 +3,7 @@ package io.opaa.indexing.filesync;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -40,6 +41,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -86,6 +88,8 @@ public final class FileSyncHarness {
   private final Set<String> failingIngests = new HashSet<>();
   private final Set<String> rejectedIngests = new HashSet<>();
   private final Set<String> overQuotaIngests = new HashSet<>();
+  private final Set<String> overLibraryQuotaIngests = new HashSet<>();
+  private final Map<String, DocumentIngestResult> rejectedBeforeDownload = new HashMap<>();
   private Duration subtreeMemoryMaxAge;
   private long maxEntriesPerRun = 1_000;
   private long maxFileSize = MAX_FILE_SIZE;
@@ -181,6 +185,9 @@ public final class FileSyncHarness {
               if (overQuotaIngests.contains(ingest.filePath())) {
                 return DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED;
               }
+              if (overLibraryQuotaIngests.contains(ingest.filePath())) {
+                return DocumentIngestResult.QUOTA_EXCEEDED;
+              }
               ingested.add(ingest.filePath());
               Document document =
                   stored.stream()
@@ -200,6 +207,10 @@ public final class FileSyncHarness {
               document.applySourceContext(ingest.context());
               return DocumentIngestResult.PROCESSED;
             });
+    when(ingestService.rejectionBeforeDownload(any(), anyString(), anyLong()))
+        .thenAnswer(
+            invocation ->
+                Optional.ofNullable(rejectedBeforeDownload.get(invocation.getArgument(1))));
     when(eventRepository.save(any()))
         .thenAnswer(
             invocation -> {
@@ -461,9 +472,26 @@ public final class FileSyncHarness {
     return this;
   }
 
-  /** Room again in the owner's private storage quota. */
+  /** From now on {@code filePath} does not fit into its library's storage quota. */
+  public FileSyncHarness rejectAtLibraryQuotaOf(String filePath) {
+    overLibraryQuotaIngests.add(filePath);
+    return this;
+  }
+
+  /**
+   * From now on the check before the download rejects {@code filePath} with {@code rejection}, as a
+   * listed size past a quota does.
+   */
+  public FileSyncHarness rejectBeforeDownload(String filePath, DocumentIngestResult rejection) {
+    rejectedBeforeDownload.put(filePath, rejection);
+    return this;
+  }
+
+  /** Room again in every quota. */
   public FileSyncHarness freeQuota() {
     overQuotaIngests.clear();
+    overLibraryQuotaIngests.clear();
+    rejectedBeforeDownload.clear();
     return this;
   }
 

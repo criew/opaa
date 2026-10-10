@@ -467,6 +467,30 @@ public class DocumentIngestService {
   }
 
   /**
+   * The advisory quota check before a download (ADR-0041): the rejection {@link #ingest} would
+   * return for a file of {@code listedSize} bytes at {@code filePath}, logged and counted the same,
+   * or empty to download it. Measured, like the intake, by the growth over a stored row; without
+   * announced growth (unknown size, same or smaller) it admits. Only the check under {@link
+   * LibraryStorageQuotaService#holdIntake} binds, because a listed size may be wrong.
+   */
+  public Optional<DocumentIngestResult> rejectionBeforeDownload(
+      KnowledgeLibrary library, String filePath, long listedSize) {
+    if (listedSize <= 0) {
+      return Optional.empty();
+    }
+    long storedSize =
+        documentRepository
+            .findByLibraryIdAndFilePath(library.getId(), filePath)
+            .map(Document::getFileSize)
+            .orElse(0L);
+    long growth = listedSize - storedSize;
+    if (growth <= 0) {
+      return Optional.empty();
+    }
+    return Optional.ofNullable(admit(library, growth, filePath));
+  }
+
+  /**
    * {@code null} when {@code library} may take in {@code delta} more bytes; otherwise the rejection
    * of the item for the quota that is full - its library's or its owner's private storage.
    */

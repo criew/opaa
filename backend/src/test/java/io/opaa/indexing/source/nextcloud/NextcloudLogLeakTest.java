@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,8 @@ class NextcloudLogLeakTest {
     previousLevel = root.getLevel();
     root.setLevel(Level.DEBUG);
     appender = new ListAppender<>();
+    // the fake server's threads log while the test reads the list
+    appender.list = new CopyOnWriteArrayList<>();
     appender.start();
     root.addAppender(appender);
   }

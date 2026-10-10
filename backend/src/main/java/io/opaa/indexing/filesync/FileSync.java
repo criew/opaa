@@ -138,6 +138,12 @@ public final class FileSync implements AutoCloseable {
   /** Failures that may pass by themselves - they hold a change stream's cursor. */
   private int transientFailures;
 
+  /**
+   * Entries rejected at a storage quota - they hold a change stream's cursor, but not the end of a
+   * round: the log still proves its removals, and one of them may be what frees the room.
+   */
+  private int quotaHolds;
+
   /** The new cursor of every stream read cleanly, written once the run's removals are done. */
   private final Map<String, String> pendingCursors = new LinkedHashMap<>();
 
@@ -363,12 +369,13 @@ public final class FileSync implements AutoCloseable {
    * reported file goes the full sync's way; a deselected one and a reported removal take the
    * document with its attachments - a removal only for a document of the stream's own containers,
    * and only while all of them are reachable. A stream's new cursor is kept unless a file failed
-   * transiently; a durable failure (an unreadable format) does not hold it. The cursors move only
-   * once every stream is read and the removals are applied, so a run that ends early loses none. A
-   * change of structure, an expired cursor or a stream without a cursor make the next run a full
-   * sync. The folder memory of every container the run changed is dropped. A new container on an
-   * existing stream has no full listing behind it: the connector discards the run state when its
-   * containers change. No listing, no reconciliation: {@link ListingOutcome#partial()}.
+   * transiently or was rejected at a storage quota; a durable failure (an unreadable format) does
+   * not hold it. The cursors move only once every stream is read and the removals are applied, so a
+   * run that ends early loses none. A change of structure, an expired cursor or a stream without a
+   * cursor make the next run a full sync. The folder memory of every container the run changed is
+   * dropped. A new container on an existing stream has no full listing behind it: the connector
+   * discards the run state when its containers change. No listing, no reconciliation: {@link
+   * ListingOutcome#partial()}.
    */
   public ListingOutcome runChanges() throws InterruptedException {
     ChangeFeed feed =
@@ -395,7 +402,7 @@ public final class FileSync implements AutoCloseable {
               .events()
               .recordRunNote(
                   IndexingEventCategory.REJECTED, read.message() + " " + wording.fullSyncFollows());
-        } else if (read.cleanStart() != null) {
+        } else if (read.cleanStart() != null && !read.quotaHeld()) {
           pendingCursors.put(stream.getKey(), read.cleanStart());
         }
       }
@@ -422,7 +429,9 @@ public final class FileSync implements AutoCloseable {
    * listing's way. Only once every stream was read cleanly are the reported removals applied, so a
    * file that moved into a part the round had already listed is present. A change of structure or
    * an expired cursor ends the round unproven, a passing failure keeps it open; a container out of
-   * reach counts as not listed, and no stream is read then. None of them removes anything.
+   * reach counts as not listed, and no stream is read then. None of them removes anything. A file
+   * rejected at a storage quota closes the round, but its stream keeps the cursor held at the
+   * round's start.
    */
   private Closing closeByChangeLog() throws InterruptedException {
     ChangeFeed feed = store.changes().orElseThrow();
@@ -456,7 +465,8 @@ public final class FileSync implements AutoCloseable {
       if (read.cleanStart() == null) {
         return Closing.OPEN;
       }
-      next.put(stream.getKey(), read.cleanStart());
+      // an entry held at a quota: the next change run starts where the round began and meets it
+      next.put(stream.getKey(), read.quotaHeld() ? held.get(stream.getKey()) : read.cleanStart());
     }
     if (!frame.settingsUnchanged()) {
       // read under the old settings: the findings prove nothing under the new ones
@@ -519,6 +529,11 @@ public final class FileSync implements AutoCloseable {
           @Override
           public int transientFailures() {
             return transientFailures;
+          }
+
+          @Override
+          public int quotaHolds() {
+            return quotaHolds;
           }
         });
   }
@@ -824,8 +839,9 @@ public final class FileSync implements AutoCloseable {
   /**
    * One listed entry: present from the first look, then skipped for what the listing already shows
    * (no document, an unsupported extension, unavailable, oversize), skipped without a download when
-   * the change feature is already stored, otherwise fetched and handed to the document path. A name
-   * without an extension costs one {@link FileStore#head} whose media type decides.
+   * the change feature is already stored, rejected without one when its listed size finds no room
+   * in a storage quota, otherwise fetched and handed to the document path. A name without an
+   * extension costs one {@link FileStore#head} whose media type decides.
    */
   private void visit(FileEntry entry, int page) throws InterruptedException {
     String filePath = entry.filePath();
@@ -887,6 +903,13 @@ public final class FileSync implements AutoCloseable {
     }
     if (!supportedByName && !headAdmits(entry)) {
       existing.ifPresent(document -> unsettle(entry));
+      return;
+    }
+    Optional<DocumentIngestResult> atQuota =
+        documentIngestService.rejectionBeforeDownload(frame.library(), filePath, entry.size());
+    if (atQuota.isPresent()) {
+      recordOutcome(entry, atQuota.get());
+      frame.progress().report();
       return;
     }
     enqueueDownload(entry, existing.isPresent() ? folderId : folderFor(entry), page);
@@ -1044,10 +1067,6 @@ public final class FileSync implements AutoCloseable {
   }
 
   /**
-   * Places an existing row in {@code folderId} and pins the folder; its attachments follow only
-   * when the row actually moved.
-   */
-  /**
    * Mirrors the folder of a stored row and moves it to the container it was seen in: that container
    * decides which change stream may report it removed. One save covers both.
    */
@@ -1064,6 +1083,10 @@ public final class FileSync implements AutoCloseable {
     }
   }
 
+  /**
+   * Places an existing row in {@code folderId} and pins the folder; its attachments follow only
+   * when the row actually moved.
+   */
   private void mirrorFolder(Document document, UUID folderId) {
     try {
       folderMirror.markSeen(folderId);
@@ -1151,17 +1174,7 @@ public final class FileSync implements AutoCloseable {
                   .folder(folderId)
                   .build(),
               attachmentAccess);
-      if (result != DocumentIngestResult.PROCESSED
-          && result != DocumentIngestResult.SKIPPED
-          && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
-        unsettle(entry);
-      }
-      boolean processed = frame.recordOutcome(result, filePath);
-      if (frame.progress().personalQuotaRejections() > rejectedBefore) {
-        // like a transient failure: the cursor and the folder memory stay for the next run
-        unsettle(entry);
-        transientFailures++;
-      }
+      boolean processed = recordOutcome(entry, result, rejectedBefore);
       if (processed) {
         frame.markReprocessed(filePath);
         if (fetched.note() != null) {
@@ -1189,6 +1202,35 @@ public final class FileSync implements AutoCloseable {
       deleteQuietly(file);
       frame.progress().report();
     }
+  }
+
+  /** {@link #recordOutcome(FileEntry, DocumentIngestResult, int)} for a result without ingest. */
+  private void recordOutcome(FileEntry entry, DocumentIngestResult result) {
+    recordOutcome(entry, result, frame.progress().personalQuotaRejections());
+  }
+
+  /**
+   * Records one entry's result. A rejection at a quota - the item's own at either quota, or an
+   * attachment's at its owner's since {@code personalRejectionsBefore} - holds the cursor and the
+   * folder memory, so the entry comes again once there is room; unlike a transient failure it does
+   * not keep a round from closing.
+   *
+   * @return whether the entry was processed
+   */
+  private boolean recordOutcome(
+      FileEntry entry, DocumentIngestResult result, int personalRejectionsBefore) {
+    if (result != DocumentIngestResult.PROCESSED
+        && result != DocumentIngestResult.SKIPPED
+        && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
+      unsettle(entry);
+    }
+    boolean processed = frame.recordOutcome(result, entry.filePath());
+    if (result == DocumentIngestResult.QUOTA_EXCEEDED
+        || frame.progress().personalQuotaRejections() > personalRejectionsBefore) {
+      unsettle(entry);
+      quotaHolds++;
+    }
+    return processed;
   }
 
   private static void deleteQuietly(Path file) {

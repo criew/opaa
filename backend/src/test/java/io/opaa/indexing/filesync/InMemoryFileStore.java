@@ -57,6 +57,7 @@ public final class InMemoryFileStore implements FileStore {
   private Runnable beforeNextRead;
   private boolean reportAsLogged;
   private final Set<String> textExports = new HashSet<>();
+  private final Map<String, Long> listedSizes = new HashMap<>();
   private boolean credentialsRejected;
   private int rejectAfter = -1;
   private boolean endAfterFirstPage;
@@ -465,6 +466,15 @@ public final class InMemoryFileStore implements FileStore {
         : new Change.Removed(filePathOf(container, name));
   }
 
+  /**
+   * From now on listings and checks report {@code size} for the file, whatever its bytes - a source
+   * whose listed size differs from the download.
+   */
+  public InMemoryFileStore listedSize(String container, String name, long size) {
+    listedSizes.put(container + "/" + name, size);
+    return this;
+  }
+
   public static String filePath(String container, String name) {
     return "mem://" + container + "/" + name;
   }
@@ -730,7 +740,7 @@ public final class InMemoryFileStore implements FileStore {
             folders.isEmpty()
                 ? null
                 : String.join(SourceDocumentContext.HIERARCHY_SEPARATOR, folders)),
-        file.bytes().length,
+        listedSizes.getOrDefault(container.key() + "/" + name, (long) file.bytes().length),
         marker(file),
         file.mediaType(),
         deselected.contains(name) || deselectedWhere.test(name)
