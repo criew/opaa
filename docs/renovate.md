@@ -24,7 +24,7 @@ jederzeit auch lokal ausführen (unten).
 | Images der Hilfsdienste im Kubernetes-Erprobungsaufbau (`examples/kubernetes-trial/manifests/` und `jobs/`); ohne Auto-Merge, weil keine CI den Aufbau prüft — Beleg vor dem Merge mit `trial.sh up` (README dort) | `kubernetes` | `ci` |
 | Demo-Seed-/Generator-Requirements (`demo/*/requirements.txt`) | `pip_requirements` | `demo` |
 | Node-Version für die lokale Entwicklung (`frontend/.nvmrc`) | `nvm` | `frontend` |
-| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml` | `custom.regex` | `ci` |
+| Pins, die kein regulärer Manager sieht: die Image-Konstanten in `S3TestFixture.java` und `KeycloakFixture.java`, der `pnpm dlx`-Aufruf in `sbom.yml`, die Werkzeugversionen der Chart-Prüfung in `helm-chart.yml`, die Helm-Version der Chart-Veröffentlichung in `publish-images.yml`, das Renovate-Image in `renovate.yml` (siehe [unten](#renovate-image-und-token-des-workflows)) | `custom.regex` | `ci` |
 
 **Rein transitive Sicherheits-Pins brauchen einen `[libraries]`-Eintrag.** Wird eine Bibliothek
 angehoben, die kein Build-Skript direkt deklariert (eingebetteter Tomcat, Bouncy Castle, junrar —
@@ -42,7 +42,8 @@ Regeln in [`renovate.json5`](../renovate.json5) (kommentiert): deutsche Commit-/
 Stil `chore(deps): <Paket> auf <Version> aktualisieren`, Labels je Bereich, höchstens fünf
 gleichzeitig offene Update-PRs, Spring-Plattform als ein gebündelter PR, **kein**
 Digest-Pinning für Docker-Images (gleitende Tags sind eine dokumentierte Projektentscheidung,
-siehe `e2e/docker-compose.e2e.yml`). Zusätzlich pflegt Renovate ein Übersichts-Issue
+siehe `e2e/docker-compose.e2e.yml`; einzige Ausnahme ist das Renovate-Image selbst, siehe
+[unten](#renovate-image-und-token-des-workflows)). Zusätzlich pflegt Renovate ein Übersichts-Issue
 („Abhängigkeits-Übersicht (Renovate)") mit allen anstehenden Updates.
 
 **npm-Releases brauchen 24 h Reife** (`minimumReleaseAge: '1 day'`, #954): pnpm 11 lehnt
@@ -204,19 +205,21 @@ Commit des Tags aus dem Kommentar muss genau der gepinnte SHA sein.
 ## Voraussetzungen
 
 - Docker
-- Ein GitHub-Token als Umgebungsvariable `RENOVATE_TOKEN` — **nie committen**. Minimaler
-  Zuschnitt (Fine-grained PAT, nur Repository `criew/opaa`):
-  - *Contents*: Read and write (Branches anlegen)
-  - *Pull requests*: Read and write (PRs eröffnen/aktualisieren)
-  - *Issues*: Read and write (Abhängigkeits-Übersicht)
-  - *Workflows*: Read and write — **ohne diese Berechtigung lehnt GitHub jeden Push ab, der
-    eine Datei unter `.github/workflows/` ändert**; der `github-actions`-Manager ist mit
-    Abstand der größte Update-Lieferant dieses Repos
-  - *Metadata*: Read
+- Ein GitHub-Token als Umgebungsvariable `RENOVATE_TOKEN` — **nie committen**. Die minimalen
+  Rechte und warum ein Fine-grained PAT hier nur vom Konto `criew` ausgestellt werden kann,
+  stehen unter [Token: minimale Rechte](#token-minimale-rechte). Ein klassisches PAT braucht die
+  Scopes `repo` **und** `workflow`. Für einen schreibenden Lauf ein Token mit genau diesen
+  Rechten verwenden, **nicht** das CLI-Token (`gh auth token`): Es trägt meist weitere Scopes
+  und reicht über alle Repositories seines Inhabers. Für die reinen Lese-Läufe unten
+  (`RENOVATE_PLATFORM=local`) genügt das CLI-Token als `GITHUB_COM_TOKEN`; Renovate nutzt es dort
+  nur für Abfragen.
+- Dasselbe Image wie der Workflow. Die Befehle unten lesen es aus `renovate.yml`, statt
+  `latest` zu ziehen; `RENOVATE_DOCKER_MAX_PAGES=10` hält wie im Workflow die Zeitstempel von
+  Docker Hub (siehe [unten](#renovate-image-und-token-des-workflows)):
 
-  Ein klassisches PAT braucht entsprechend die Scopes `repo` **und** `workflow`. Für den
-  Alltag genügt das CLI-Token eines angemeldeten Maintainers (`RENOVATE_TOKEN=$(gh auth
-  token)`) — es bringt beide Scopes mit.
+  ```bash
+  IMAGE=$(sed -n 's/^ *IMAGE: //p' .github/workflows/renovate.yml)
+  ```
 
 ## Probelauf ohne Schreibzugriff (Dry-Run)
 
@@ -229,8 +232,9 @@ GITHUB_COM_TOKEN=$(gh auth token) docker run --rm \
   -v "$(pwd)":/usr/src/app -w /usr/src/app \
   -e RENOVATE_PLATFORM=local \
   -e GITHUB_COM_TOKEN \
+  -e RENOVATE_DOCKER_MAX_PAGES=10 \
   -e LOG_LEVEL=info \
-  renovate/renovate:latest
+  "$IMAGE"
 ```
 
 Der Dry-Run funktioniert auch ganz ohne Token, endet dann aber mit `WARN: GitHub token is
@@ -251,8 +255,8 @@ geänderter Eintrag wird deshalb **belegt**, nicht angenommen:
 
 ```bash
 docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
-  -e RENOVATE_PLATFORM=local -e LOG_LEVEL=debug \
-  renovate/renovate:latest > renovate-debug.log 2>&1
+  -e RENOVATE_PLATFORM=local -e RENOVATE_DOCKER_MAX_PAGES=10 -e LOG_LEVEL=debug \
+  "$IMAGE" > renovate-debug.log 2>&1
 
 grep 'Matched .* file(s) for manager regex' renovate-debug.log
 ```
@@ -289,7 +293,7 @@ Zwei Stolpersteine, die beide schon zugeschlagen haben:
   ist also eine **Kopie der Preset-Vorgabe** und
   friert deren heutigen Stand ein: Ergänzt Renovate `:ignoreModulesAndTests` später um einen
   Eintrag, greift der hier nicht mehr. Bei einem Renovate-Major deshalb abgleichen — der Workflow
-  läuft auf `renovate/renovate:latest`, ein solcher Wechsel passiert von selbst und still.
+  wechselt erst mit dem Merge des Major-PRs für das Renovate-Image, das ist der Zeitpunkt dafür.
 - **`managerFilePatterns` sind Globs**, solange sie nicht in Schrägstriche gefasst sind
   (`/…regex…/`). Ein voller Pfad ohne Platzhalter ist ein gültiges Glob und trifft genau diese
   eine Datei — erkennbar an der `Using file pattern: … for manager regex`-Zeile kurz oberhalb.
@@ -301,10 +305,11 @@ und liefert nur `LOG_LEVEL=info`.
 
 ## Automatischer täglicher Lauf
 
-`.github/workflows/renovate.yml` führt täglich exakt das unten dokumentierte Docker-Kommando
-aus. Einzige Voraussetzung ist das Repository-Secret **`RENOVATE_TOKEN`** — ein PAT mit den
-oben beschriebenen Berechtigungen (Fine-grained inkl. *Workflows: Read and write* bzw.
-klassisch `repo` + `workflow`), hinterlegt von einem Maintainer:
+`.github/workflows/renovate.yml` führt täglich das unten dokumentierte Docker-Kommando aus, mit
+dem gepinnten Image statt `latest` (siehe
+[Renovate-Image und Token des Workflows](#renovate-image-und-token-des-workflows)). Einzige
+Voraussetzung ist das Repository-Secret **`RENOVATE_TOKEN`** — ein PAT mit den
+[dort beschriebenen Berechtigungen](#token-minimale-rechte), hinterlegt von einem Maintainer:
 
 ```bash
 gh secret set RENOVATE_TOKEN
@@ -321,24 +326,161 @@ auch nicht ändern. Fehlt das Secret, bricht der Lauf mit einer klaren Fehlermel
 Token-Rotation: neues PAT erzeugen, `gh secret set RENOVATE_TOKEN` erneut ausführen, altes
 Token widerrufen.
 
+## Renovate-Image und Token des Workflows
+
+### Image auf Version und Digest festgelegt
+
+`renovate.yml` übergibt dem Image das Token `RENOVATE_TOKEN`, das Code und Workflows im
+Repository ändern kann (#2433). Mit `renovate/renovate:latest` liefe jede neu veröffentlichte
+Fassung beim nächsten Lauf ungeprüft mit diesem Token, also mit mehr Rechten als jede gepinnte
+Action. Deshalb steht das Image in der Variable `IMAGE` des Schritts mit Version und Digest:
+
+```yaml
+# renovate: datasource=docker depName=renovate/renovate
+IMAGE: renovate/renovate:44.142.0@sha256:e9c2dcbc5a6027e68755b98cccb10470da8f941d0fbfaa67c0d85b7e064025c7
+```
+
+Der Digest ist der des Multi-Arch-Index, nicht der eines einzelnen Plattform-Images. Docker
+startet mit `Tag@Digest` immer den Digest; ein umgehängter Tag ändert also nichts. Docker Hub und
+`ghcr.io/renovatebot/renovate` liefern denselben Index-Digest. Ermitteln und Herkunft prüfen:
+
+```bash
+docker buildx imagetools inspect renovate/renovate:<version> --format '{{json .Manifest.Digest}}'
+docker buildx imagetools inspect ghcr.io/renovatebot/renovate:<version> --format '{{json .Manifest.Digest}}'
+# Signatur des Renovate-Release-Workflows (keyless, Sigstore):
+docker run --rm ghcr.io/sigstore/cosign/cosign:v3.0.2 verify \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github\.com/renovatebot/renovate/\.github/workflows/' \
+  ghcr.io/renovatebot/renovate@<digest>
+```
+
+**Update-Weg.** Den `docker run`-Aufruf sieht kein regulärer Manager; ein eigener Eintrag unter
+`customManagers` liest `currentValue` und `currentDigest` aus der Zeile unter dem Kommentar, ein
+Update schreibt beide neu. Zwei `packageRules` gelten nur für dieses Image:
+
+- **`pinDigests: true`**, als ausdrücklich festgehaltene Ausnahme von der Docker-Regel
+  `pinDigests: false`. Einen vorhandenen Digest pflegt Renovate auch ohne die Option mit. Fehlt
+  der Digest in der Zeile, greift der Ausdruck des Managers nicht mehr und das Image fiele aus
+  der Pflege; das fängt die Selbstprobe `test_renovate_image_pin.py` in der CI ab.
+- **`minimumReleaseAge: '3 days'`** wie bei den gepinnten Actions (Renovate rechnet seinen
+  Vorgabepuffer `minimumReleaseAgeBuffer` von 30 Minuten dazu), und **`automerge: false`** für
+  alle Updates, auch Minor und Patch. Renovate veröffentlicht mehrmals täglich; der Update-PR
+  (Branch `renovate/renovate-renovate-44.x`) bleibt offen und wird bei jedem Lauf auf das neueste
+  Release gehoben, das die Frist erfüllt. Ein Major kommt als eigener PR.
+- **Ein neuer Digest bei gleicher Version** braucht die Freigabe in der Abhängigkeits-Übersicht
+  (`dependencyDashboardApproval: true`). Ein Versionstag wie `44.142.0` wird nach der
+  Veröffentlichung nicht neu belegt; ein solcher Vorschlag heißt, dass der Tag umgehängt wurde.
+
+Der Update-PR selbst führt nichts mit dem Token aus: `renovate.yml` läuft nur nach Zeitplan und
+per *Run workflow*, nie bei `pull_request`. Das neue Image startet erst mit dem nächsten Lauf nach
+dem Merge. Vor dem Merge: Release Notes der übersprungenen Versionen überfliegen und den Digest
+mit den Befehlen oben gegen beide Registries und die Signatur abgleichen.
+
+**Zeitstempel kommen von Docker Hub.** Die Wartezeit rechnet ab `tag_last_pushed`, den die
+Registry beim Push setzt, nicht der Autor; anders als bei Git-Tags lässt er sich nicht
+rückdatieren. Anonym liefert Docker Hub aber höchstens 10 Seiten der Tag-Liste (1000 Tags), und
+`renovate/renovate` hat deutlich mehr. Ohne Begrenzung bricht die Abfrage auf Seite 11 mit 403 ab
+(`pagination offset too large for anonymous requests`), Renovate weicht auf die Tag-Liste der
+Registry ohne Zeitstempel aus und hält mit `minimumReleaseAgeBehaviour=timestamp-required` jedes
+neuere Release als „Pending“ zurück. Der Pin fröre still ein. Deshalb setzt `renovate.yml`
+`RENOVATE_DOCKER_MAX_PAGES=10`: Renovate liest die 1000 zuletzt geschobenen Tags und behält deren
+Zeitstempel. Die Einstellung gilt für alle Docker-Hub-Images; Images mit weniger als 1000 Tags
+betrifft sie nicht, bei den übrigen fehlen nur Tags, die seit Langem niemand geschoben hat. Bei
+anderen Registries begrenzt sie die Tag-Liste auf 10 statt der Vorgabe von 20 Seiten; ausgenommen
+sind `ghcr.io`, `quay.io`, `cgr.dev` und die Red-Hat-Registries, die Renovate immer vollständig
+liest.
+
+**Beleg nach einer Änderung** am Eintrag oder an der Zeile (die Selbstprobe
+`.github/scripts/test_renovate_image_pin.py` prüft Zeile, Ausdruck und Regeln, aber keine
+Abfrage gegen die Registry):
+
+```bash
+docker run --rm -v "$(pwd)":/usr/src/app:ro -w /usr/src/app \
+  -e RENOVATE_PLATFORM=local -e RENOVATE_ENABLED_MANAGERS=custom.regex \
+  -e RENOVATE_DOCKER_MAX_PAGES=10 -e LOG_LEVEL=debug \
+  "$IMAGE" > renovate-debug.log 2>&1
+```
+
+Im Block `packageFiles with updates` steht unter `.github/workflows/renovate.yml` der Eintrag
+`renovate/renovate` mit `currentValue` und `currentDigest`. Ein neueres Release erscheint als
+`newValue` mit `newDigest` und `releaseTimestamp`, jüngere als `pendingVersions`. Fehlt
+`releaseTimestamp` und steht im Log `Marking … release(s) as pending, as they do not have a
+releaseTimestamp`, greift die Seitenbegrenzung nicht.
+
+**Warum nicht `renovatebot/github-action`.** Die offizielle Action startet ebenfalls ein
+Docker-Image und empfiehlt selbst, die Renovate-Version per Regex-Manager zu pinnen. Sie bringt
+also keinen eigenen Pin mit, sondern eine zweite Komponente, die das Token in der Hand hat: Ihr
+JavaScript läuft mit dem Token im Runner und bräuchte ihrerseits einen SHA-Pin, den der Guard
+`check_action_pins.sh` automatisch erfasst. Der direkte `docker run` hat eine vertrauenswürdige
+Komponente weniger und bleibt deshalb.
+
+### Token: minimale Rechte
+
+Ein klassisches PAT mit `repo` und `workflow` gilt für **alle** Repositories, auf die sein
+Inhaber Zugriff hat. Kleiner geht es mit einem Fine-grained PAT, das nur `criew/opaa` sieht.
+Renovate braucht dort ([Renovate-Doku, GitHub-Plattform](https://docs.renovatebot.com/modules/platform/github/)):
+
+| Recht | Zugriff | Wofür |
+|---|---|---|
+| *Contents* | Read and write | `renovate.json5` lesen, Update-Branches pushen, Renovate-seitiger Merge der npm-PRs |
+| *Pull requests* | Read and write | PRs eröffnen, aktualisieren, GitHub-Auto-Merge setzen |
+| *Issues* | Read and write | Abhängigkeits-Übersicht, Labels |
+| *Workflows* | Read and write | Pushes, die Dateien unter `.github/workflows/` ändern (Actions, dieses Image) |
+| *Commit statuses* | Read and write | Status `renovate/stability-days` und `renovate/artifacts`, Prüfstatus vor dem Merge |
+| *Dependabot alerts* | Read-only | Schwachstellen-Hinweise in Update-PRs; ohne das Recht nur eine Warnung im Log |
+| *Metadata* | Read-only | wird automatisch gesetzt |
+
+*Members* aus der Renovate-Liste entfällt, weil `criew` ein persönliches Konto ist und keine
+Organisation.
+
+**Einschränkung: Ein Fine-grained PAT kann hier nur das Konto `criew` ausstellen.** Fine-grained
+PATs gelten für Repositories ihres Inhabers oder seiner Organisationen. Wer nur Collaborator
+eines fremden persönlichen Repositorys ist, kann damit nicht schreiben
+([GitHub-Doku, Limitations](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens#fine-grained-personal-access-tokens-limitations)).
+Das heutige Token gehört laut `gitAuthor` dem Collaborator-Konto `bigpuritz`; mit diesem Konto
+ist ein Fine-grained PAT für `criew/opaa` also nicht möglich. Wege:
+
+1. **Fine-grained PAT des Kontos `criew`** (empfohlen, kleinster Umbau). Als `criew` anmelden,
+   *Settings → Developer settings → Fine-grained tokens → Generate new token*; *Resource owner*
+   `criew`, *Only select repositories* `criew/opaa`, die Rechte der Tabelle, Ablauf höchstens ein
+   Jahr. Hinterlegen mit `gh secret set RENOVATE_TOKEN`, *Run workflow* einmal anstoßen und im Log
+   auf 401/403 prüfen, danach das alte klassische PAT widerrufen. Im selben PR `gitAuthor` in
+   `renovate.json5` auf die Noreply-Adresse von `criew` umstellen
+   (`<id>+criew@users.noreply.github.com`, `<id>` aus `gh api users/criew --jq .id`). Der
+   CLA-Check (#924) bleibt dabei grün: `criew` steht in `cla.yml` in der `allowlist`
+   (`criew,*[bot]`). PRs und Commits zeigen dann `criew` als Urheber.
+2. **Eigene GitHub App**, nur in `criew/opaa` installiert, mit den Rechten aus der Renovate-Doku.
+   Die Installations-Tokens gelten eine Stunde, kein Personenkonto steht dahinter. Der Workflow
+   müsste das Token mit einer Action erzeugen (`actions/create-github-app-token`, SHA-gepinnt,
+   der Guard `check_action_pins.sh` erfasst sie automatisch). Das ist ein eigener Umbau mit
+   eigenem Issue.
+3. **Klassisches PAT eines eigenen Maschinenkontos**, das nur Collaborator von `criew/opaa` ist.
+   `repo` reicht dann nicht weiter als dieses eine Repository, die Scopes bleiben aber grob.
+
+Solange keiner der Wege umgesetzt ist, bleibt das klassische PAT mit `repo` und `workflow`. Das
+Pinning des Images verkleinert das Risiko unabhängig davon: Ohne gemergten Update-PR startet mit
+dem Token kein anderes Image.
+
 ## Manueller Lauf (erzeugt Branches und PRs)
 
 Renovate liest die `renovate.json5` aus dem Default-Branch des Zielrepositories:
 
 ```bash
-RENOVATE_TOKEN=$(gh auth token) docker run --rm \
+read -rs RENOVATE_TOKEN && export RENOVATE_TOKEN   # Token mit den minimalen Rechten, nicht gh auth token
+docker run --rm \
   -e RENOVATE_TOKEN \
   -e RENOVATE_PLATFORM=github \
   -e RENOVATE_REPOSITORIES=criew/opaa \
   -e RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper \
+  -e RENOVATE_DOCKER_MAX_PAGES=10 \
   -e LOG_LEVEL=info \
-  renovate/renovate:latest
+  "$IMAGE"
+```
 
 `RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper` erlaubt Renovate, bei einem Gradle-Update den
 Wrapper-Befehl auszuführen (#997) — ohne die Freigabe aktualisiert es nur
 `gradle-wrapper.properties`, nicht die Wrapper-Skripte/JAR, und der Lauf meldet eine WARN-Zeile im
 Dependency-Dashboard. Bewusst nur dieser eine Befehl, keine weiteren unsicheren Ausführungen.
-```
 
 Der Lauf ist idempotent: erneutes Ausführen aktualisiert bestehende Update-Branches (Rebase
 bei Bedarf), schließt Überholtes und legt nur Neues an.
@@ -361,15 +503,15 @@ Nach Änderungen an `renovate.json5`:
 ```bash
 docker run --rm -v "$(pwd)":/usr/src/app -w /usr/src/app \
   -e RENOVATE_CONFIG_FILE=/usr/src/app/renovate.json5 \
-  --entrypoint renovate-config-validator renovate/renovate:latest
+  --entrypoint renovate-config-validator "$IMAGE"
 ```
 
 ## Typische Fehlerbilder
 
 - **`Repository is disabled` / Onboarding-PR statt Updates:** `renovate.json5` liegt nicht im
   Default-Branch — erst mergen, dann laufen lassen.
-- **403/401 beim echten Lauf:** Token abgelaufen oder Zuschnitt zu eng (siehe oben);
-  `gh auth token` liefert nur ein gültiges Token, solange `gh auth status` angemeldet ist.
+- **403/401 beim echten Lauf:** Token abgelaufen oder Zuschnitt zu eng (siehe
+  [Token: minimale Rechte](#token-minimale-rechte)).
 - **Gradle-Updates fehlen im Log:** Der `gradle`-Manager braucht die
   `libs.versions.toml`-Einträge in Standardform (`[versions]`/`[libraries]`-Referenzen) —
   direkt in `build.gradle.kts` eingetragene Versionen sind ohnehin verboten (AGENTS.md). Ein

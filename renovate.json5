@@ -154,6 +154,16 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*(?:[A-Za-z_]+:|-)\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)',
       ],
     },
+    // Das Renovate-Image selbst (#2433) startet renovate.yml per "docker run", den kein regulärer
+    // Manager liest. Version und Index-Digest stehen in der Variable IMAGE unter dem Kommentar;
+    // ein Update schreibt beide neu. test_renovate_image_pin.py prüft, dass der Ausdruck greift.
+    {
+      customType: 'regex',
+      managerFilePatterns: ['.github/workflows/renovate.yml'],
+      matchStrings: [
+        '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*IMAGE: [^:\\s]+:(?<currentValue>[^@\\s]+)@(?<currentDigest>sha256:[a-f0-9]+)',
+      ],
+    },
   ],
 
   packageRules: [
@@ -264,6 +274,28 @@
     {
       matchDatasources: ['docker'],
       pinDigests: false,
+    },
+    // Ausnahme von der Regel darüber (#2433): Das Renovate-Image in renovate.yml bekommt das
+    // Token mit repo- und workflow-Recht und trägt deshalb Version und Digest. Den vorhandenen
+    // Digest pflegt Renovate auch so; pinDigests: true hält die Ausnahme hier ausdrücklich fest.
+    // Ein neues Release wird erst nach drei Tagen vorgeschlagen, wie bei den gepinnten Actions,
+    // und nie automatisch gemergt.
+    {
+      matchManagers: ['custom.regex'],
+      matchFileNames: ['.github/workflows/renovate.yml'],
+      matchDepNames: ['renovate/renovate'],
+      pinDigests: true,
+      minimumReleaseAge: '3 days',
+      automerge: false,
+    },
+    // Ein neuer Digest bei gleicher Version heißt, dass der Tag umgehängt wurde. Renovate legt
+    // dafür erst nach Freigabe in der Abhängigkeits-Übersicht einen Branch an.
+    {
+      matchManagers: ['custom.regex'],
+      matchFileNames: ['.github/workflows/renovate.yml'],
+      matchDepNames: ['renovate/renovate'],
+      matchUpdateTypes: ['digest'],
+      dependencyDashboardApproval: true,
     },
     // Major-Updates mergen generell nicht automatisch (#1002): Auto-Merge greift, sobald die
     // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein

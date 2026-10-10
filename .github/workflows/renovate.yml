@@ -30,15 +30,24 @@ jobs:
       - name: Run Renovate
         env:
           RENOVATE_TOKEN: ${{ secrets.RENOVATE_TOKEN }}
+          # The image receives the write-capable token, so it is pinned to a release and its
+          # multi-arch index digest. Renovate proposes updates of both; they never merge
+          # automatically (renovate.json5, docs/renovate.md).
+          # renovate: datasource=docker depName=renovate/renovate
+          IMAGE: renovate/renovate:44.142.0@sha256:e9c2dcbc5a6027e68755b98cccb10470da8f941d0fbfaa67c0d85b7e064025c7
         run: |
           if [ -z "$RENOVATE_TOKEN" ]; then
             echo "::error::Secret RENOVATE_TOKEN fehlt - PAT mit repo+workflow-Scope hinterlegen (docs/renovate.md)."
             exit 1
           fi
+          # Docker Hub serves anonymous tag listings for at most 10 pages. Beyond that the lookup
+          # fails, Renovate falls back to the registry tag list without timestamps and holds every
+          # release back under minimumReleaseAge; stopping at page 10 keeps the timestamps.
           docker run --rm \
             -e RENOVATE_TOKEN \
             -e RENOVATE_PLATFORM=github \
             -e RENOVATE_REPOSITORIES=criew/opaa \
             -e RENOVATE_ALLOWED_UNSAFE_EXECUTIONS=gradleWrapper \
+            -e RENOVATE_DOCKER_MAX_PAGES=10 \
             -e LOG_LEVEL=info \
-            renovate/renovate:latest
+            "$IMAGE"
