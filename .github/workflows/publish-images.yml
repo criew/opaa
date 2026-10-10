@@ -77,6 +77,11 @@ jobs:
             echo "::error::Tag $TAG zeigt auf einen Commit, der nicht auf main liegt (docs/releases.md)"
             exit 1
           fi
+          # The release job builds the same notes only after the images are out; fail before.
+          if ! deploy/helm/ci/release-notes.sh "$GITHUB_REPOSITORY" "$TAG" >/dev/null; then
+            echo "::error::Release-Notizen für $TAG lassen sich nicht erzeugen, siehe Meldung oben (docs/releases.md)"
+            exit 1
+          fi
           for ref in "$PREFIX-backend" "$PREFIX-frontend" "$CHART"; do
             if ! published=$(deploy/helm/ci/oci-published.sh "$ref" "${TAG#v}"); then
               echo "::error::Abfrage von $ref:${TAG#v} fehlgeschlagen, siehe Meldung oben (docs/releases.md)"
