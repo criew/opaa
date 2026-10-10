@@ -785,6 +785,31 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
     expect(remedy).toHaveTextContent(/Systemverwaltung/)
   })
 
+  it('names the quota of a shared library without speaking of private libraries', async () => {
+    server.use(
+      http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
+        HttpResponse.json({ runs: [quotaRun('run-library-quota')] }),
+      ),
+    )
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-shared-quota"
+        library={{ ...nextcloud, privateLibrary: false }}
+        canEditSource
+      />,
+      { withRouter: true },
+    )
+
+    const chip = await screen.findByTestId('run-incomplete-run-library-quota')
+    expect(chip).toHaveTextContent(
+      'unvollständig: Speicherkontingent erschöpft, Dateien übersprungen',
+    )
+    expect(chip).not.toHaveTextContent('privaten')
+    const remedy = screen.getByTestId('run-quota-remedy-run-library-quota')
+    expect(remedy).toHaveTextContent(/in der Quelle löschen/)
+    expect(remedy).not.toHaveTextContent(/private Bibliothek/)
+  })
+
   it('keeps the budget wording for any other incomplete run', async () => {
     server.use(
       http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>

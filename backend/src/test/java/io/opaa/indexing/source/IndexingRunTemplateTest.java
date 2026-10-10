@@ -830,6 +830,42 @@ class IndexingRunTemplateTest {
     verify(jobService, never()).failJob(any(), any(), any());
   }
 
+  /** The library's own quota ends the run the same way: reconciled, incomplete, QUOTA_EXHAUSTED. */
+  @Test
+  void anItemAtTheExhaustedLibraryQuotaLetsTheRunReconcileAndMarksIt() throws Exception {
+    when(quotaService.quotaExceededMessage(library.getId()))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
+
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          run.markPresent("/srv/dokumente/a.txt");
+          run.recordOutcome(DocumentIngestResult.PROCESSED, "/srv/dokumente/a.txt");
+          run.markPresent("/srv/dokumente/b.txt");
+          run.recordOutcome(DocumentIngestResult.QUOTA_EXCEEDED, "/srv/dokumente/b.txt");
+          return ListingOutcome.complete();
+        });
+
+    verify(cleanupService)
+        .reconcile(
+            eq(library),
+            any(),
+            eq(Set.of("/srv/dokumente/a.txt", "/srv/dokumente/b.txt")),
+            any(),
+            any(),
+            any(),
+            any());
+    verify(jobService).recordRunMetrics(jobId, new IndexingRunCost(0, 0, 0L, 0, 0, 0, true, 0L));
+    InOrder order = inOrder(jobService);
+    order.verify(jobService).recordEndCategory(jobId, "QUOTA_EXHAUSTED");
+    order.verify(jobService).completeJob(jobId, 1, 0, 1, 1);
+    verify(jobService, never()).failJob(any(), any());
+    verify(jobService, never()).failJob(any(), any(), any());
+  }
+
   @Test
   void aBudgetSpentWithoutStoringAnythingAddsTheBodysAdviceAsAnError() {
     template.run(
