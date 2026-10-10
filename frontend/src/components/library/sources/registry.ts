@@ -5,6 +5,7 @@ import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericS
 import { googleDriveSource } from './googleDriveSource'
 import { nextcloudSource } from './nextcloudSource'
 import { s3Source } from './s3Source'
+import { sharePointSource } from './sharePointSource'
 import { smbSource } from './smbSource'
 import type { SourceRegistration } from './types'
 
@@ -31,6 +32,7 @@ const registrations: Record<SourceTypeKey, SourceRegistration> = {
   CONFLUENCE: confluenceSource,
   S3: s3Source,
   GOOGLE_DRIVE: googleDriveSource,
+  SHAREPOINT: sharePointSource,
   NEXTCLOUD: nextcloudSource,
   SMB: smbSource,
 }

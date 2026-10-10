@@ -2,7 +2,7 @@ import type { LibrarySchedule, ScheduleFrequency, ScheduleWeekday } from '../typ
 
 const DEFAULT_TIME = '03:00'
 
-/** The library's own full-sync rhythm (#1200) - present only for a CONFLUENCE library. */
+/** The library's own full-sync rhythm (#1200) - present only for a connector that has one. */
 export interface ConfluenceFullSyncRhythm {
   /** `null` means "follows the instance-wide default". */
   intervalDays: number | null
@@ -15,7 +15,7 @@ export interface LibraryScheduleValues {
   /** "HH:mm"; only read for DAILY and WEEKLY. */
   time: string
   weekday: ScheduleWeekday
-  /** Empty means "instance default"; only read for a CONFLUENCE library. */
+  /** Empty means "instance default"; only read for a connector with a full-sync rhythm. */
   fullSyncDays: string
 }
 

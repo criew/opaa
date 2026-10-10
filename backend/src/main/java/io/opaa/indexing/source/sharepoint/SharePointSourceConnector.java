@@ -275,13 +275,24 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
     }
     int total = sharePointSettings.libraries().size();
     boolean all = reachable == total;
-    String message =
-        all
-            ? "Anmeldung erfolgreich; alle " + reachable + " Dokumentbibliotheken sind erreichbar."
-            : (total - reachable)
-                + " von "
-                + total
-                + " Dokumentbibliotheken sind für die Anwendung nicht erreichbar.";
+    int unreachable = total - reachable;
+    String message;
+    if (total == 1) {
+      message =
+          all
+              ? "Anmeldung erfolgreich; die Dokumentbibliothek ist erreichbar."
+              : "Die Dokumentbibliothek ist für die Anwendung nicht erreichbar.";
+    } else {
+      message =
+          all
+              ? "Anmeldung erfolgreich; alle " + total + " Dokumentbibliotheken sind erreichbar."
+              : unreachable
+                  + " von "
+                  + total
+                  + " Dokumentbibliotheken "
+                  + (unreachable == 1 ? "ist" : "sind")
+                  + " für die Anwendung nicht erreichbar.";
+    }
     return new SourceConnectionTestResult(
         all, message, null, true, ConnectorData.of(Map.of("libraries", findings)));
   }
@@ -360,7 +371,7 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
       if (asked.get("search") != null) {
         String search = string(asked, "search").strip();
         if (search.isEmpty() || search.length() > 200) {
-          throw new ValidationException("search ist ein Suchbegriff bis 200 Zeichen");
+          throw new ValidationException("Der Suchbegriff hat 1 bis 200 Zeichen.");
         }
         try {
           List<SourceListing.Entry> sites = new ArrayList<>();
@@ -374,13 +385,13 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
                 false,
                 List.of(),
                 "Die Suche nach Sites braucht die Berechtigung Sites.Read.All. Bitte die Adresse"
-                    + " der Site angeben (siteUrl).");
+                    + " der Site angeben.");
           }
           throw e;
         }
       }
       return new SourceListing(
-          false, List.of(), "Bitte eine Site suchen (search) oder ihre Adresse angeben (siteUrl).");
+          false, List.of(), "Bitte eine Site suchen oder ihre Adresse angeben.");
     } catch (GraphException e) {
       return new SourceListing(false, List.of(), browseFailure(e));
     } catch (InterruptedException e) {
@@ -458,7 +469,8 @@ public class SharePointSourceConnector implements SourceConnector, SourceBrowser
 
   private static ValidationException invalidSiteUrl() {
     return new ValidationException(
-        "siteUrl ist die https-Adresse einer Site, etwa https://contoso.sharepoint.com/sites/team");
+        "Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker,"
+            + " etwa https://contoso.sharepoint.com/sites/team");
   }
 
   /**

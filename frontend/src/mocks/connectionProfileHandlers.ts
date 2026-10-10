@@ -48,6 +48,7 @@ const CONNECTOR_TYPES: MockConnectorType[] = [
   { sourceType: 'NEXTCLOUD', displayName: 'Nextcloud', profileSupport: 'OPTIONAL' },
   { sourceType: 'RSS_FEED', displayName: 'RSS-Feed', profileSupport: 'OPTIONAL' },
   { sourceType: 'S3', displayName: 'S3-Objektspeicher', profileSupport: 'OPTIONAL' },
+  { sourceType: 'SHAREPOINT', displayName: 'SharePoint', profileSupport: 'REQUIRED' },
   { sourceType: 'SMB', displayName: 'Windows-Dateifreigabe (SMB)', profileSupport: 'OPTIONAL' },
 ]
 

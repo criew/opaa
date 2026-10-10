@@ -17,7 +17,7 @@ interface LibraryScheduleFormProps {
   idPrefix: string
   values: LibraryScheduleValues
   onChange: (patch: Partial<LibraryScheduleValues>) => void
-  /** Present only for a CONFLUENCE library - the form then offers the full-sync rhythm. */
+  /** Present only for a connector with its own full-sync rhythm - the form then offers it. */
   confluence?: ConfluenceFullSyncRhythm
 }
 
@@ -67,8 +67,12 @@ export default function LibraryScheduleForm({
           type="number"
           value={values.fullSyncDays}
           onChange={(e) => onChange({ fullSyncDays: e.target.value })}
-          placeholder={confluence.defaultDays != null ? String(confluence.defaultDays) : '7'}
-          helperText={`Leer = Vorgabe der Instanz (alle ${confluence.defaultDays ?? 7} Tage). Der Vollabgleich ist verlängerbar, aber nicht abschaltbar — nur er erkennt Löschungen in Confluence.`}
+          placeholder={confluence.defaultDays != null ? String(confluence.defaultDays) : undefined}
+          helperText={`${
+            confluence.defaultDays != null
+              ? `Leer = Vorgabe der Instanz (${confluence.defaultDays === 1 ? 'täglich' : `alle ${confluence.defaultDays} Tage`}).`
+              : 'Leer = Vorgabe der Instanz.'
+          } Der Vollabgleich ist verlängerbar, aber nicht abschaltbar — nur er gleicht den ganzen Bestand mit der Quelle ab.`}
           slotProps={{ htmlInput: { min: 1, max: 365 } }}
           size="small"
         />

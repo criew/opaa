@@ -17,10 +17,9 @@
    außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen“
    für die Quellart SharePoint ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
    Abschnitt 9).
-5. Bibliothek anlegen: Zugang wählen, Dokumentbibliotheken und bei Bedarf Ordner wählen,
-   „Verbindung testen“. Alles aus den gewählten Dokumentbibliotheken ist für **alle**
-   Leseberechtigten der Bibliothek sichtbar. Das Formular dafür fehlt in der Oberfläche noch;
-   bis dahin entsteht eine Bibliothek über die Programmierschnittstelle (Abschnitt 14).
+5. Bibliothek anlegen: Zugang wählen, die Site über ihre Adresse öffnen, Dokumentbibliotheken und
+   bei Bedarf Ordner wählen, „Verbindung testen“ (Abschnitt 3.2). Alles aus den gewählten
+   Dokumentbibliotheken ist für **alle** Leseberechtigten der Bibliothek sichtbar.
 6. Zeitplan setzen. Der erste Lauf ist ein Vollabgleich, danach liest jeder Lauf nur das
    Änderungsprotokoll; im Vollabgleichsrhythmus folgt wieder ein Vollabgleich.
 7. Im Laufprotokoll auf „nicht sichtbar“, „keine SharePoint-Dokumentbibliothek“ und „nicht mehr
@@ -130,13 +129,14 @@ Site eingeben (Abschnitt 3.1).
 |---|---|
 | Zugang (`connectionProfileId`) | Pflicht, ein Zugang für SharePoint |
 | Adresse (`sourceUrl`) | fest `https://graph.microsoft.com`; jede andere wird abgewiesen |
-| Dokumentbibliotheken (`sourceSettings.libraries`) | Pflicht, ein bis fünfzig Einträge `{"driveId": "<ID>"}`, je Laufwerk höchstens einer; optional mit `"folders": ["<ID>", …]` (höchstens fünfzig Ordner) und einem Anzeigenamen `"name"` |
+| Dokumentbibliotheken (`sourceSettings.libraries`) | Pflicht, ein bis fünfzig Einträge `{"driveId": "<ID>"}`, je Laufwerk höchstens einer; optional mit `"folders"` (höchstens fünfzig Ordner, je Ordner `"<ID>"` oder `{"id": "<ID>", "name": "<Anzeigename>"}`) und einem Anzeigenamen `"name"` |
 | Eigener Vollabgleichsrhythmus (`sourceSettings.fullSyncIntervalDays`) | optional, ganze Tage; ohne Angabe gilt der Rhythmus der Installation |
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | nicht möglich, wird abgewiesen |
 
 - Mit Ordnern liest OPAA aus der Dokumentbibliothek nur Dateien in oder unter einem dieser Ordner.
 - Eine geänderte Auswahl (andere Dokumentbibliotheken oder Ordner) verwirft den Abgleichstand; der
-  nächste Lauf ist ein Vollabgleich. Ein geänderter Anzeigename tut das nicht.
+  nächste Lauf ist ein Vollabgleich. Ein geänderter Anzeigename, auch der eines Ordners, tut das
+  nicht. Anzeigenamen dienen nur der Darstellung; maßgeblich sind die Kennungen.
 
 ### 3.1 Verbindungstest und Auflistung
 
@@ -148,7 +148,7 @@ Ordnern. Mögliche Befunde:
 | „Microsoft Graph hat das Zugriffstoken abgewiesen“ | Secret, Mandant oder Zustimmung stimmen nicht |
 | „Die Dokumentbibliothek ist für die Anwendung nicht sichtbar …“ | Site nicht für die App freigegeben (`Sites.Selected`) oder Kennung falsch |
 | „Das Laufwerk ist keine SharePoint-Dokumentbibliothek …“ | ein OneDrive oder ein anderes Laufwerk |
-| „Der gewählte Ordner … ist in der Dokumentbibliothek nicht mehr vorhanden …“ | Ordner gelöscht oder in eine andere Dokumentbibliothek verschoben |
+| „Der gewählte Ordner … ist in der Dokumentbibliothek nicht mehr vorhanden …“ | Ordner gelöscht oder in eine andere Dokumentbibliothek verschoben; genannt mit dem Anzeigenamen aus der Auswahl, etwa „Akten / 2026“, sonst mit seiner Kennung |
 
 Die Auflistung geht in Stufen:
 
@@ -158,6 +158,50 @@ Die Auflistung geht in Stufen:
 2. **Dokumentbibliotheken der Site** (`site`): nur Laufwerke vom Typ Dokumentbibliothek.
 3. **Ordner** einer Dokumentbibliothek (`drive`, optional `folder` für die Unterordner eines
    Ordners).
+
+### 3.2 Im Formular
+
+Im Assistenten „Neue Bibliothek“ und unter **Quelle → Anbindung → Bearbeiten** führt dasselbe
+Formular durch die Stufen aus Abschnitt 3.1. Es fragt weder Adresse noch Zugangsdaten ab; beides
+kommt vom Zugang.
+
+1. **Zugang:** Im Assistenten steht über dem Formular die Wahl des Zugangs. „Eigene Adresse“ gibt
+   es für SharePoint nicht. Steht kein Zugang zur Verfügung, sagt der Assistent das und bietet
+   „Zugang vorschlagen“ an; die feste Adresse trägt der Vorschlag selbst ein. Ohne Zugang geht der
+   Assistent nicht weiter.
+2. **Site finden:** Unter „Adresse der Site“ die Adresse aus dem Browser eintragen, etwa
+   `https://contoso.sharepoint.com/sites/team`, und „Site öffnen“ wählen. „Oder nach Sites
+   suchen“ geht nur mit `Sites.Read.All`; unter `Sites.Selected` meldet das Formular, dass die
+   Suche diese Berechtigung braucht, und verweist auf die Adresse.
+3. **Dokumentbibliotheken wählen:** Das Formular listet die Dokumentbibliotheken der Site zum
+   Ankreuzen. Eine gewählte Dokumentbibliothek erscheint unter „Gewählte Dokumentbibliotheken“ mit
+   ihrem Namen und dem der Site, etwa „Dokumente (Bauamt)“. Weitere Sites lassen sich nacheinander
+   öffnen; die Auswahl bleibt dabei stehen.
+4. **Ordner wählen (optional):** „Ordner wählen“ an einer gewählten Dokumentbibliothek zeigt deren
+   Ordner Ebene für Ebene. „Öffnen“ wechselt in die Unterordner, „Eine Ebene höher“ zurück.
+   Ein angekreuzter Ordner wird mit seinem Pfad gespeichert, etwa „Akten / 2026“, und gilt samt
+   Unterordnern. Ohne Ordner liest OPAA die ganze Dokumentbibliothek. Mit der Tastatur bleibt der
+   Fokus beim Wechsel der Ebene auf der Überschrift der Ordnerauswahl, die neue Ebene wird
+   angesagt; „Fertig“ gibt den Fokus an „Ordner wählen“ zurück.
+5. **Verbindung testen:** prüft jede gewählte Dokumentbibliothek über den Zugang und schreibt den
+   Befund aus Abschnitt 3.1 hinter ihren Namen.
+
+Was das Formular meldet:
+
+| Meldung | Ursache und Abhilfe |
+|---|---|
+| „Die Anwendung darf das nicht lesen. Bei der Berechtigung Sites.Selected muss die Site für die App freigegeben sein.“ | Die Site ist der App nicht freigegeben (Abschnitt 2.3) |
+| „Microsoft Graph kennt die Site oder Bibliothek nicht …“ | Adresse falsch, Site gelöscht, oder Graph zeigt sie der App nicht |
+| „Die Adresse der Site ist eine https-Adresse ohne Port, Anmeldedaten, Abfrage und Anker …“ | die eingetragene Adresse hat eine dieser Formen |
+| „Die Site … hat keine Dokumentbibliothek, die die Anwendung lesen kann. OneDrive und andere Laufwerke liest der Konnektor nicht.“ | die Site hält nur andere Laufwerke, etwa ein OneDrive (`…-my.sharepoint.com/personal/…`) |
+| „Die Suche nach Sites braucht die Berechtigung Sites.Read.All …“ | Suche unter `Sites.Selected`; die Adresse eingeben |
+
+Unter **Quelle → Umfang** stehen die gewählten Dokumentbibliotheken für alle Leseberechtigten der
+Bibliothek, jeweils mit „ganze Dokumentbibliothek“ oder den gewählten Ordnern. Erreicht der letzte
+Lauf eine Dokumentbibliothek nicht, nennt der Kopf der Bibliothek sie mit ihrem Namen. Den eigenen
+Vollabgleichsrhythmus setzt „Vollabgleich alle … Tage“ im Assistenten oder unter „Zeitplan
+bearbeiten“; leer gilt die Vorgabe der Installation (`full-sync-interval`, Abschnitt 12), die das
+Feld nennt.
 
 ## 4. Betriebsart
 
@@ -320,9 +364,6 @@ feste Konstanten.
 
 ## 14. Nicht gebaut
 
-- **Formular in der Oberfläche** für die Quellkonfiguration (#2153); bis dahin legt die
-  Programmierschnittstelle (`POST /api/v1/libraries` mit `sourceType` `SHAREPOINT`) die Bibliothek
-  an, und `POST /api/v1/source-types/SHAREPOINT/browse` liefert die Auflistung aus Abschnitt 3.1
 - **OneDrive** und Anmeldung im Namen einer Person (delegiert, verbundenes Konto)
 - **Freigabe je Dokumentbibliothek** über `Lists.SelectedOperations.Selected`
 - **Nationale Clouds** (etwa Microsoft Cloud for US Government, 21Vianet); die Adresse ist fest

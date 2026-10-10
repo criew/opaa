@@ -270,14 +270,25 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
       Thread.currentThread().interrupt();
       return unreachable("Der Verbindungstest wurde unterbrochen.");
     }
-    boolean all = reachable == driveSettings.scopes().size();
-    String message =
-        all
-            ? "Anmeldung erfolgreich; alle " + reachable + " Bereiche sind erreichbar."
-            : (driveSettings.scopes().size() - reachable)
-                + " von "
-                + driveSettings.scopes().size()
-                + " Bereichen sind für das Konto nicht sichtbar.";
+    int total = driveSettings.scopes().size();
+    boolean all = reachable == total;
+    String message;
+    if (total == 1) {
+      message =
+          all
+              ? "Anmeldung erfolgreich; der Bereich ist erreichbar."
+              : "Der Bereich ist für das Konto nicht sichtbar.";
+    } else {
+      message =
+          all
+              ? "Anmeldung erfolgreich; alle " + total + " Bereiche sind erreichbar."
+              : (total - reachable)
+                  + " von "
+                  + total
+                  + " Bereichen "
+                  + (total - reachable == 1 ? "ist" : "sind")
+                  + " für das Konto nicht sichtbar.";
+    }
     return new SourceConnectionTestResult(
         all, message, null, true, ConnectorData.of(Map.of("scopes", findings)));
   }

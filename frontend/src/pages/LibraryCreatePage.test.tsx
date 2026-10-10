@@ -1404,6 +1404,95 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 15000)
   })
 
+  describe('SharePoint (#2153, ADR-0040)', () => {
+    const sharePointProfile = {
+      id: 'profile-sharepoint',
+      name: 'SharePoint Rheinfurt',
+      sourceType: 'SHAREPOINT',
+      serverUrl: 'https://graph.microsoft.com',
+      authMethod: 'CLIENT_CREDENTIALS' as const,
+      creatable: true,
+      connectorDefaults: null,
+    }
+
+    it('creates a library through the profile with the chosen document library, without a secret', async () => {
+      mockListConnectionProfileOptions.mockResolvedValue([sharePointProfile])
+      mockBrowseSource.mockImplementation(
+        async (_type: string, request: { query?: Record<string, unknown> }) =>
+          request.query?.siteUrl
+            ? { complete: true, entries: [{ key: 'site:host,a,b', name: 'Bauamt' }] }
+            : { complete: true, entries: [{ key: 'drive:b!bauamt', name: 'Dokumente' }] },
+      )
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /SharePoint/)
+
+      expect(mockListConnectionProfileOptions).toHaveBeenCalledWith('SHAREPOINT')
+      expect(await screen.findByRole('radio', { name: /SharePoint Rheinfurt/ })).toBeChecked()
+      expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
+      expect(
+        screen.getByText(
+          'Die Quellart „SharePoint“ ist nur über einen Zugang nutzbar; eine eigene Adresse ist nicht möglich.',
+        ),
+      ).toBeInTheDocument()
+
+      // the rhythm names the type's own default (one day for SharePoint), in no other source's terms
+      const rhythm = screen.getByLabelText(/Vollabgleich alle/)
+      expect(rhythm).toHaveAttribute('placeholder', '1')
+      expect(rhythm).toHaveAccessibleDescription(/^Leer = Vorgabe der Instanz \(täglich\)\./)
+      expect(rhythm).not.toHaveAccessibleDescription(/Confluence/)
+
+      // nothing chosen yet: the step does not go on
+      await next(user)
+      expect(screen.getByText('Bitte mindestens eine Dokumentbibliothek wählen.')).toBeVisible()
+
+      await user.type(
+        screen.getByLabelText('Adresse der Site'),
+        'https://rheinfurt.sharepoint.com/sites/bauamt',
+      )
+      await user.click(screen.getByRole('button', { name: 'Site öffnen' }))
+      await user.click(await screen.findByRole('checkbox', { name: 'Dokumente' }))
+      await next(user)
+      expect(screen.getByLabelText(/^Name/)).toHaveValue('Dokumente (Bauamt)')
+      await nameItAndContinue(user, 'Bauamt Dokumente')
+      await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
+
+      await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
+      const request = mockCreateNewLibrary.mock.calls[0][0]
+      expect(request).toMatchObject({
+        sourceType: 'SHAREPOINT',
+        connectionProfileId: 'profile-sharepoint',
+        sourceUrl: 'https://graph.microsoft.com',
+        sourceSettings: { libraries: [{ driveId: 'b!bauamt', name: 'Dokumente (Bauamt)' }] },
+      })
+      expect(request.sourceCredentials).toBeUndefined()
+      expect(request.sourceProxy).toBeUndefined()
+      expect(mockBrowseSource).toHaveBeenCalledWith(
+        'SHAREPOINT',
+        expect.objectContaining({
+          connectionProfileId: 'profile-sharepoint',
+          query: { siteUrl: 'https://rheinfurt.sharepoint.com/sites/bauamt' },
+        }),
+      )
+    }, 30000)
+
+    it('cannot be created without a profile and offers to suggest one', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /SharePoint/)
+
+      expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
+        'Für die Quellart „SharePoint“ steht Ihnen kein Zugang zur Verfügung.',
+      )
+      expect(screen.queryByLabelText('Adresse der Site')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Zugang für SharePoint vorschlagen' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Zugang vorschlagen' })
+      expect(dialog).toHaveTextContent(
+        'Die Quellart hat eine feste Adresse: https://graph.microsoft.com',
+      )
+    }, 20000)
+  })
+
   describe('Private Bibliothek (#2164)', () => {
     const profile = {
       id: 'profile-intern',
