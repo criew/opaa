@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-09</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Freitag, 9. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-08.html" rel="prev" title="Donnerstag, 8. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/38017498916" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">83</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+31</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">35</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">41</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2346">#2346</a> feat(deploy): Kubernetes-Deployment mit Helm-Chart (Single-Instance)</span>
+<span class="epic-progress">24 / 29 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 83%"></div></div>
+<ul><li>Kubernetes-Deployment mit Helm-Chart: 24 von 29 Tickets erledigt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2397">#2397</a></span>Actions in Release-Workflows auf Commit-SHAs festgelegt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2401">#2401</a></span>Container-Images für linux/arm64 veröffentlicht</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2391">#2391</a></span>Handbuchkapitel Kubernetes-Deployment mit Helm fertiggestellt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2429">#2429</a></span>ci(release): Actions in Workflows mit Schreibrechten auf Commit-SHAs festlegen (+447/−32, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2427">#2427</a></span>fix(ci): Älterer main-Lauf setzt den Tag :main nicht mehr (+290/−3, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2414">#2414</a></span>fix(deploy): CSP-Warnung wertet Quellausdrücke nach CSP Level 3 aus und nennt den Token-Endpunkt (+242/−30, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2411">#2411</a></span>ci(release): Container-Images zusätzlich für linux/arm64 veröffentlichen (+595/−112, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2407">#2407</a></span>fix(auth): Ohne Identitätsanbieter nur bei fehlender Anmeldemöglichkeit ERROR melden (+197/−37, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2406">#2406</a></span>fix(deploy): Policy-Kommentar und Prüfempfehlung im Helm-Chart korrigieren (+14/−4, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2405">#2405</a></span>fix(deploy): CSP-Warnung im Helm-Chart prüft issuerUri statt authority (+42/−10, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2404">#2404</a></span>fix(deploy): Readiness-Probe der Erprobungsdatenbank über TCP, Backend wartet beim Erststart (+53/−5, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2402">#2402</a></span>ci(release): Herkunft bei Wiederholung prüfen und Existenzprüfung der Images schärfen (+271/−77, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2400">#2400</a></span>fix(frontend): Frontend-nginx wartet auf lange /api/-Antworten statt nach 60 s mit 504 abzubrechen (+233/−23, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2392">#2392</a></span>ci(deploy): Installationstest der Chart-CI mit der Erprobungsdatenbank des Charts (+28/−80, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2391">#2391</a></span>docs(handbuch): Kapitel Kubernetes-Deployment mit Helm (+1111/−18, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2390">#2390</a></span>ci(release): Helm-Chart als OCI-Artefakt neben den Images in GHCR veröffentlichen (+397/−48, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2389">#2389</a></span>ci(deploy): Unit-Tests der Alarmregeln (promtool) in der Chart-CI ausführen (+56/−10, 5 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2385">#2385</a></span>ci(deploy): Helm-Chart in der CI prüfen — Lint, Schema und Installationstest auf kind (+455/−1, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2384">#2384</a></span>feat(frontend): Frontend-nginx zusätzlich auf IPv6 lauschen lassen (+26/−5, 4 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2372">#2372</a></span>feat(deploy): Betriebsüberwachung im Helm-Chart — ServiceMonitor und Grundalarme (+532/−4, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2371">#2371</a></span>feat(deploy): NetworkPolicies, Proxy-Kette und Pod Security im Helm-Chart (+382/−0, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2370">#2370</a></span>feat(deploy): Datenbank, Originalablage und externe Dienste im Helm-Chart anbinden (+1522/−44, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2369">#2369</a></span>feat(deploy): Helm-Chart-Grundgerüst für Backend und Frontend (+1690/−0, 21 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2367">#2367</a></span>ci(release): Versionierte Releases mit unveränderlichen Image-Tags (+320/−24, 7 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2366">#2366</a></span>feat(backend): Backend-Container mit nur lesbarem Root-Dateisystem betreiben (+113/−5, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2361">#2361</a></span>feat(frontend): Frontend-Image ohne root und mit nur lesbarem Dateisystem (+123/−23, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2359">#2359</a></span>docs(adr): Kubernetes-Lieferung mit Helm festlegen (ADR-0042) (+285/−2, 2 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2147">#2147</a> feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung</span>
+<span class="epic-progress">37 / 42 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 88%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2431">#2431</a></span>OAuth-Rücksprung prüft iss nach RFC 9207 (Mix-up-Schutz)</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2420">#2420</a></span>OAuth-Widerrufe nach Commit über begrenzten Pool</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2426">#2426</a></span>Löschfrist nach erneutem Löschen eines Anbieters korrigiert</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2431">#2431</a></span>fix(connection): iss im OAuth-Rücksprung prüfen (RFC 9207, Mix-up-Schutz) (+757/−28, 23 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2426">#2426</a></span>fix(identity): Löschfrist beginnt nach erneutem Löschen eines Anbieters beim letzten Löschen (+165/−8, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2420">#2420</a></span>feat(connections): OAuth-Widerrufe nach dem Commit über begrenzten Pool (+1174/−32, 30 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2146">#2146</a> feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox)</span>
+<span class="epic-progress">13 / 17 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 76%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2425">#2425</a></span>Abgleichsrunde mit CHANGE_FEED-Abschluss implementiert</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2412">#2412</a></span>Downloads von Google Drive und Graph mit Gesamtfrist begrenzt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2425">#2425</a></span>feat(indexing): Abgleichsrunde mit CHANGE_FEED-Abschluss (K1) (+1035/−157, 10 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2412">#2412</a></span>fix(indexing): Downloads von Google Drive und Graph mit Gesamtfrist begrenzen (+376/−24, 16 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2421">#2421</a></span>Regex-Wiederholungen in FullTextIdentifiers begrenzen StackOverflow</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2419">#2419</a></span>Benachrichtigungsliste auf Mobilgeräten im Viewport halten</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2378">#2378</a></span>Default top-k von 8 auf 20 angehoben</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2435">#2435</a></span>test(search): HNSW-Testfixture mit vollständig erreichbarem Graphen (+43/−17, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2424">#2424</a></span>docs(agents): Cloud-Sessions pushen auf feature/-Branches statt auf claude/-Branches (+3/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2421">#2421</a></span>fix(search): Regex-Wiederholungen in FullTextIdentifiers begrenzen (+47/−4, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2419">#2419</a></span>fix(frontend): Benachrichtigungsliste auf Mobilgeräten im Viewport halten (+11/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2409">#2409</a></span>docs(adr): SharePoint und CHANGE_FEED-Abschluss als Nachträge in ADR-0040 (+223/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2403">#2403</a></span>fix(frontend): Spaces-Übersicht bei jedem Aufruf neu laden (+23/−5, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2383">#2383</a></span>chore(deps): @playwright/test auf v1.64.0 aktualisieren (+17/−17, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2382">#2382</a></span>chore(deps): ollama/ollama docker tag to v0.40.2 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2381">#2381</a></span>chore(deps): com.diffplug.spotless auf v8.10.4 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2380">#2380</a></span>chore(deps): aws-java-sdk-v2 monorepo aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2379">#2379</a></span>chore(deps): amazon/aws-cli docker tag to v2.37.11 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2378">#2378</a></span>feat(search): Default top-k von 8 auf 20 anheben – mit Eval-Messung (+944/−780, 63 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-10 um 08:11 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-09T00:00:00 bis 2026-10-09T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>

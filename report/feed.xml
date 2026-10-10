@@ -5,8 +5,30 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-09T06:28:03Z</updated>
+  <updated>2026-10-10T06:11:59Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Freitag, 9. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-09.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-09.html</id>
+    <updated>2026-10-10T06:11:59Z</updated>
+    <summary type="text">feat(deploy): Kubernetes-Deployment mit Helm-Chart (Single-Instance):
+— Kubernetes-Deployment mit Helm-Chart: 24 von 29 Tickets erledigt
+— Actions in Release-Workflows auf Commit-SHAs festgelegt
+— Container-Images für linux/arm64 veröffentlicht
+— Handbuchkapitel Kubernetes-Deployment mit Helm fertiggestellt
+feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung:
+— OAuth-Rücksprung prüft iss nach RFC 9207 (Mix-up-Schutz)
+— OAuth-Widerrufe nach Commit über begrenzten Pool
+— Löschfrist nach erneutem Löschen eines Anbieters korrigiert
+feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox):
+— Abgleichsrunde mit CHANGE_FEED-Abschluss implementiert
+— Downloads von Google Drive und Graph mit Gesamtfrist begrenzt
+Sonstiges:
+— Regex-Wiederholungen in FullTextIdentifiers begrenzen StackOverflow
+— Benachrichtigungsliste auf Mobilgeräten im Viewport halten
+— Default top-k von 8 auf 20 angehoben</summary>
+  </entry>
   <entry>
     <title>Tagesreport Donnerstag, 8. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-08.html"/>
@@ -844,27 +866,5 @@ Sonstiges:
 — Schnellstart-Compose-Stack mit .env.docker.example repariert
 — HTTP→HTTPS-Upgrade-Redirect auf gleichem Host akzeptiert
 — Organisationsgrenze auf 18 Fremdschlüsseln und AdminController durchgesetzt</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Donnerstag, 20. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-20.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-20.html</id>
-    <updated>2026-08-21T02:07:38Z</updated>
-    <summary type="text">feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
-— Eingabezeile mit Suchbereichs-Statuszeile und @-Vorschlag umgesetzt
-— Chat-Antworten mit Fußnoten-Fundstellen statt Quellkarten
-— Seitenleiste nach Zielbild mit Space-Wechsler und Bereichsnavigation
-— Automatisierte Barrierefreiheits-Prüfungen in Lint und E2E-Suite
-Epic: Nacharbeiten Wissensbibliotheken und Upload:
-— Verbindungstest-Meldungen mit echten Umlauten und korrektem Singular
-— HTTP_DIRECTORY erkennt weitere Autoindex-Layouts
-— Quellkonfiguration nur für Bearbeitende sichtbar, Audit-Einträge ergänzt
-Epic: Chats im Space und Suchbereich per @-Bibliotheksreferenzen:
-— Chats im Space, @-Referenzen und Wissens-Schalter abgedeckt
-— Chats als space-eigene Objekte mit Persistenz und Chatliste
-Sonstiges:
-— Bibliotheksreferenzen eines Chats an Organisation binden
-— Fundort und durchsuchte Bestände in Query-API ergänzt
-— Typografie, Dichte und Komponentenmetrik an Mockup angleichen</summary>
   </entry>
 </feed>
