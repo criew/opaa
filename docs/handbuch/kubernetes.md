@@ -1031,6 +1031,18 @@ Wegen der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt lauf
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
 Start als abgebrochen erkannt (siehe [Sanftes Herunterfahren](deployment.md#sanftes-herunterfahren)).
 Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
+
+Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, rund 270 MB. Der Knoten lädt es erst,
+wenn der alte Pod beendet ist. In der Erprobung auf k3d dauerte der Sprung von `0.1.0-rc.1` auf
+`0.1.0-rc.2` so 72 Sekunden ohne Antwort der API, davon 49 Sekunden Download und 9 Sekunden Start;
+mit einem Image, das schon auf dem Knoten lag, waren es 22 Sekunden. Die Oberfläche lädt in dieser
+Zeit weiter, bis auf einen Aussetzer von wenigen Sekunden beim Wechsel des Frontend-Pods; Anfragen an
+`/api/` beantwortet der Eingang mit `502`.
+
+Der alte Backend-Pod endet mit dem Exit-Code `143` und steht in `kubectl get pods` kurz als `Error`.
+Das ist die normale Antwort der JVM auf `SIGTERM`; ob er sauber herunterfuhr, zeigt sein Protokoll
+mit `Graceful shutdown complete`.
+
 Ob die neue Version läuft, zeigt die Startzeile des Backends:
 
 ```bash
@@ -1073,6 +1085,16 @@ Vor und nach dem Upgrade, mit einem eigenen Schema vorangestellt:
 
 ```sql
 SELECT count(*) FROM databasechangelog;
+```
+
+Mit der [Erprobungsdatenbank](#datenbank) laufen Abfrage und Sicherung im Pod der Datenbank; die
+Zugangsdaten stehen dort in den Umgebungsvariablen:
+
+```bash
+kubectl -n opaa exec opaa-postgresql-0 -- \
+  sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "SELECT count(*) FROM databasechangelog"'
+kubectl -n opaa exec opaa-postgresql-0 -- \
+  sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > opaa-db.dump
 ```
 
 - **Gleiche Zahl:** Kein Changeset ist hinzugekommen. `helm rollback` ist dann der vorgesehene Weg,
