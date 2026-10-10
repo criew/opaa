@@ -300,7 +300,7 @@ describe('LibraryDetailPage – private Bibliothek: Speicherkontingent (#2276)',
     expect(asked).toBe(false)
   })
 
-  it('says in the head when the last run ended at the personal quota, and what frees space', async () => {
+  it('says in the head when the last run ended at a quota, naming both and what frees space', async () => {
     storage(10 * GIB, 10 * GIB)
     server.use(
       http.get('/api/v1/libraries/:libraryId/indexing/status', () =>
@@ -322,12 +322,12 @@ describe('LibraryDetailPage – private Bibliothek: Speicherkontingent (#2276)',
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     const notice = await screen.findByTestId('private-quota-exhausted-notice')
-    expect(notice).toHaveTextContent(
-      'unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft',
-    )
+    expect(notice).toHaveTextContent('unvollständig: Speicherkontingent erschöpft')
+    expect(notice).toHaveTextContent(/Kontingent dieser Bibliothek/)
+    expect(notice).toHaveTextContent(/gemeinsame Kontingent Ihrer privaten Bibliotheken/)
     expect(notice).toHaveTextContent(/eine ganze private Bibliothek löschen/)
     expect(notice).toHaveTextContent('Dateien übersprungen')
-    expect(notice).toHaveTextContent(/Dateien beim Anbieter löschen, die Quelle eingrenzen/)
+    expect(notice).toHaveTextContent(/Dateien beim Anbieter löschen oder die Quelle eingrenzen/)
     expect(notice).not.toHaveTextContent(/keinen Platz/)
   })
 })

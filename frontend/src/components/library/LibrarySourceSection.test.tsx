@@ -763,7 +763,7 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
     }
   }
 
-  it('marks a run ended at the personal quota and says what frees space', async () => {
+  it('marks a run of a private library ended at a quota and names both quotas and their remedies', async () => {
     server.use(
       http.get('/api/v1/libraries/:libraryId/indexing/runs', () =>
         HttpResponse.json({ runs: [quotaRun('run-quota')] }),
@@ -775,13 +775,18 @@ describe('LibrarySourceSection - private Bibliothek: Kontingent und Löschung (#
     )
 
     const chip = await screen.findByTestId('run-incomplete-run-quota')
+    // the run may have hit the library's own quota first: the chip names neither
     expect(chip).toHaveTextContent(
-      'unvollständig: Speicherkontingent Ihrer privaten Bibliotheken erschöpft',
+      'unvollständig: Speicherkontingent erschöpft, Dateien übersprungen',
     )
+    expect(chip).not.toHaveTextContent('privaten')
     expect(chip).not.toHaveTextContent('wird fortgesetzt')
     const remedy = screen.getByTestId('run-quota-remedy-run-quota')
+    expect(remedy).toHaveTextContent(/Kontingent dieser Bibliothek/)
+    expect(remedy).toHaveTextContent(/gemeinsame Kontingent Ihrer privaten Bibliotheken/)
+    expect(remedy).toHaveTextContent(/Laufprotokoll/)
     expect(remedy).toHaveTextContent(/eine ganze private Bibliothek löschen/)
-    expect(remedy).toHaveTextContent(/höhere Grenze/)
+    expect(remedy).toHaveTextContent(/legt der Betrieb fest/)
     expect(remedy).toHaveTextContent(/Systemverwaltung/)
   })
 

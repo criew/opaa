@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -150,6 +151,56 @@ class SourceSyncStateTest {
 
     assertThat(memory.basis()).isEqualTo("v1|1024|txt");
     assertThat(memory.containers()).containsOnlyKeys("A");
+  }
+
+  /**
+   * A full sync that left an item behind at a storage quota - in any of its runs - completes, but
+   * the next run is a full sync again; the one after that completes clean.
+   */
+  @Test
+  void aFullSyncHeldAtAQuotaCompletesAndLeavesTheNextRunAFullSync() {
+    Duration weekly = Duration.ofDays(7);
+    Instant done = Instant.parse("2026-10-10T10:00:00Z");
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+    state.beginFullSync(UUID.randomUUID());
+    state.holdFullSyncAtQuota();
+    state.beginFullSync(UUID.randomUUID());
+    assertThat(state.isFullSyncHeldAtQuota()).as("kept when the full sync resumes").isTrue();
+
+    state.completeFullSync(done, done);
+
+    assertThat(state.isFullSyncInterrupted()).isFalse();
+    assertThat(state.isFullSyncDue(weekly, done)).isTrue();
+    assertThat(state.canReadChanges(Set.of("stream:A"), weekly, done)).isFalse();
+    assertThat(state.isFullSyncHeldAtQuota()).isFalse();
+
+    state.beginFullSync(UUID.randomUUID());
+    state.completeFullSync(done, done);
+    assertThat(state.isFullSyncDue(weekly, done)).isFalse();
+  }
+
+  /** A fresh full sync, unlike a resumed one, starts without the mark. */
+  @Test
+  void aFreshFullSyncStartsWithoutTheQuotaMark() {
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+    state.holdFullSyncAtQuota();
+
+    state.beginFullSync(UUID.randomUUID());
+
+    assertThat(state.isFullSyncHeldAtQuota()).isFalse();
+  }
+
+  /** A row written before the mark existed carries NULL there and reads as not held. */
+  @Test
+  void aStateWrittenBeforeTheQuotaMarkReadsAsNotHeld() {
+    Instant done = Instant.parse("2026-10-10T10:00:00Z");
+    SourceSyncState state = new SourceSyncState(UUID.randomUUID());
+    state.beginFullSync(UUID.randomUUID());
+    ReflectionTestUtils.setField(state, "fullSyncQuotaHeld", null);
+
+    assertThat(state.isFullSyncHeldAtQuota()).isFalse();
+    state.completeFullSync(done, done);
+    assertThat(state.isFullSyncDue(Duration.ofDays(7), done)).isFalse();
   }
 
   @Test

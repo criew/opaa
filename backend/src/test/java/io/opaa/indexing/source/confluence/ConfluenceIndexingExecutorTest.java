@@ -1137,6 +1137,54 @@ class ConfluenceIndexingExecutorTest {
         .isEqualTo(IndexingRunMode.INCREMENTAL);
   }
 
+  /**
+   * A rejection in an earlier run of a full sync over several runs is not forgotten when a later run
+   * completes it without one: the next run is a full sync all the same.
+   */
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aRejectionInAnEarlierRunOfTheFullSyncMakesTheRunAfterItsCompletionAFullSync(
+      ConfluenceEdition edition) throws Exception {
+    requestBudget = 6;
+    start(edition, null, "ENG", "HR");
+    when(documentIngestService.ingest(
+            DocumentIngests.that().text().titled("Handbuch").match(), any()))
+        .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED)
+        .thenAnswer(this::storeAsProcessed);
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService).recordEndCategory(jobId, "QUOTA_EXHAUSTED");
+    ArgumentCaptor<SourceSyncState> saved = ArgumentCaptor.forClass(SourceSyncState.class);
+    verify(syncStateRepository, atLeast(1)).save(saved.capture());
+    SourceSyncState state = saved.getValue();
+    assertThat(state.isFullSyncInterrupted()).as("the budget ended the first run").isTrue();
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
+    ConfluenceProperties unbounded =
+        new ConfluenceProperties(
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
+    executor =
+        new ConfluenceIndexingExecutor(
+            new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
+            unbounded,
+            documentIngestService,
+            attachmentIndexer(),
+            documentRepository,
+            syncStateRepository,
+            cleanupService,
+            testClock(),
+            runTemplate());
+    UUID second = UUID.randomUUID();
+
+    executor.execute(second, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService, never()).recordEndCategory(second, "QUOTA_EXHAUSTED");
+    assertThat(state.isFullSyncInterrupted()).as("the second run completed it").isFalse();
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("the rejection of the first run still counts")
+        .isEqualTo(IndexingRunMode.FULL);
+  }
+
   /** Stores the page as the default answer of {@code setUp} does. */
   private DocumentIngestResult storeAsProcessed(InvocationOnMock invocation) {
     DocumentIngest ingest = invocation.getArgument(0);
