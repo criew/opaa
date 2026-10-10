@@ -1,7 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolveOpaaVersion } from './opaaVersion'
+import { resolveOpaaVersion } from './opaaVersion.ts'
 
 // TODO: Add code-splitting (lazy-load MUI, pages) to reduce bundle size below 500 kB
 // https://vite.dev/config/
