@@ -275,7 +275,9 @@ zu Ende geführt werden konnte.
 
 Ein Lauf kann `COMPLETED` und trotzdem **unvollständig** sein: Ein Confluence-Lauf, der sein
 Anfragebudget verbraucht hat, endet geordnet mit dem Kennzeichen „unvollständig, wird fortgesetzt";
-der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts. Bei den Dateiablagen Nextcloud,
+der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts. Unvollständig endet auch ein Lauf, der
+ein Element oder einen Anhang an einem Speicherkontingent abgelehnt hat; er trägt die Kategorie
+`QUOTA_EXHAUSTED`, gleicht aber ab (Abschnitt 5, Schritt 2). Bei den Dateiablagen Nextcloud,
 SMB und SharePoint setzt der nächste Lauf an der gemerkten Stelle der Auflistung fort; ein
 Vollabgleich darf sich so über mehrere Läufe erstrecken ([Nextcloud](konnektor-nextcloud.md),
 Abschnitt 3.1; [SMB](konnektor-smb.md), Abschnitt 3.1; [SharePoint](konnektor-sharepoint.md),
@@ -1036,38 +1038,66 @@ Löschen, hinterlässt eine 0.
 
 Jede Bibliothek hat ein Kontingent. Geprüft wird das **Delta**: Bei einer geänderten Datei
 zählt nur die Größendifferenz, nicht die volle Größe. Überschreitet das Element das Kontingent,
-wird es mit dem Ergebnis „Kontingent überschritten" abgelehnt.
+wird es mit dem Ergebnis „Kontingent überschritten" abgelehnt, und das Laufprotokoll nennt am
+Element den Grund.
 
 Eine private Bibliothek unterliegt zusätzlich dem **Kontingent ihrer Besitzerin** über alle ihre
 privaten Bibliotheken zusammen (Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
-„Private Bibliotheken"). Überschreitet das Element dieses Kontingent, wird es wie am Kontingent
-der Bibliothek abgelehnt, und das Laufprotokoll nennt am Element den Grund. Der Lauf geht weiter,
-gleicht ab und endet als unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Das abgelehnte Element
-gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Die Ablehnung hält jede
-Fortschrittsmarke am Element: Änderungsstand und Ordnergedächtnis einer Dateiablage, Anker eines
-inkrementellen Confluence-Laufs und Feed-Zustand bleiben stehen, und ein Dokument, dessen Anhang
-abgelehnt wurde, wird ohne Prüfsumme und Änderungsmerkmal gespeichert. Am Kontingent der
-Bibliothek gilt das bisher nur für die Datei selbst in einer Dateiablage (siehe unten). Der nächste Lauf liest das Element deshalb
-erneut. Prüfung und Speichern der Dokumentzeile laufen für alle privaten Bibliotheken einer
-Person nacheinander, sodass auch gleichzeitige Läufe das Kontingent nicht überschreiten.
+„Private Bibliotheken"). Überschreitet das Element dieses Kontingent, wird es genauso abgelehnt.
+Prüfung und Speichern der Dokumentzeile laufen für alle privaten Bibliotheken einer Person
+nacheinander, sodass auch gleichzeitige Läufe das Kontingent nicht überschreiten.
+
+**Eine Ablehnung wirkt an beiden Kontingenten gleich.** Der Lauf geht weiter, gleicht ab und endet
+als unvollständig mit der Kategorie `QUOTA_EXHAUSTED`, auch wenn nur ein Anhang abgelehnt wurde.
+Das abgelehnte Element gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Die
+Ablehnung hält jede Fortschrittsmarke am Element, damit ein späterer Lauf es erneut versucht:
+
+- Eine Dateiablage hält Änderungsstand und Ordnergedächtnis (siehe unten).
+- Ein inkrementeller Confluence-Lauf rückt seinen Anker nicht vor. Nach einem Confluence-Vollabgleich
+  mit Ablehnung ist der nächste Lauf wieder ein Vollabgleich, denn die abgelehnte Seite oder ihr
+  Anhang ist älter als der Anker, und kein inkrementeller Lauf fände sie. Das gilt auch, wenn sich
+  der Vollabgleich über mehrere Läufe erstreckt und die Ablehnung in einem früheren davon lag.
+- Ein RSS-Lauf speichert den Feed-Zustand nicht, der nächste Abruf liefert den Feed also vollständig.
+- Ein Dokument, dessen Anhang abgelehnt wurde, etwa eine Mail mit Anlagen, wird ohne Prüfsumme und
+  Änderungsmerkmal gespeichert, und der nächste Lauf liest es erneut. Gemessen wird es dann an dem,
+  was von ihm schon gespeichert ist, also an seiner eigenen Zeile samt der Anhänge, die aus ihm
+  stammen. Die gespeicherten Anhänge zählen dabei nicht noch einmal mit ihrer vollen Größe, wohl
+  aber mit dem Aufschlag ihrer Kodierung: In einer Mail stecken Anhänge meist base64-kodiert, also
+  rund ein Drittel größer als gespeichert. Platz braucht das Wiederlesen deshalb für die fehlenden
+  Anhänge in kodierter Form und für den Kodierungsaufschlag der schon gespeicherten. Beispiel: Eine
+  Mail mit neun gespeicherten und einem fehlenden Anhang zu je 1 MB braucht rund 0,37 MB je
+  gespeichertem Anhang und 1,37 MB für den fehlenden, zusammen etwa 4,7 MB freien Platz. Solange
+  der nicht frei ist, endet jeder Lauf, der die Mail erreicht, wieder als unvollständig.
+
+Gehalten wird nur die Marke am Element, nie der Abschluss einer Runde und nie die Entfernungen:
+Löschungen in der Quelle werden übernommen, und oft sind es gerade diese, die den Platz freimachen.
+Solange ein Element nicht passt, endet jeder Lauf, der es erreicht, wieder als unvollständig.
 
 Bei einer **Dateiablage** (Nextcloud, SharePoint, SMB, S3, Google Drive) wird ein Kontingent schon
-**vor dem Download** befragt, mit der Größe aus der Auflistung. Kündigt sie gegenüber der
-gespeicherten Fassung Wachstum an, das eines der beiden Kontingente überschreitet, wird die Datei
+**vor dem Download** befragt, mit der Größe aus der Auflistung. Kündigt sie gegenüber dem
+gespeicherten Stand Wachstum an, das eines der beiden Kontingente überschreitet, wird die Datei
 gar nicht erst geladen und genauso abgelehnt wie nach dem Download: derselbe Protokolleintrag,
-dieselbe Kategorie `QUOTA_EXHAUSTED` am Kontingent der Besitzerin, die Datei gilt als vorhanden.
-Ohne bekannte Größe, bei gleicher oder kleinerer Größe wird geladen. Die Vorprüfung ist nur
-beratend, denn die gelistete Größe kann von der geladenen abweichen: Maßgeblich bleibt die Prüfung
-mit der tatsächlichen Größe vor dem Speichern. Weil eine falsche Listengröße eine Datei auch zu
-Unrecht zurückhalten kann, hält in einer Dateiablage jede Ablehnung an einem der beiden
-Kontingente Änderungsstand und Ordnergedächtnis. Eine Datei, die das Änderungsprotokoll meldet,
-prüft schon der nächste Änderungslauf erneut; eine Datei, die in der Auflistung eines
-Vollabgleichs abgelehnt wurde, erst der nächste Vollabgleich. Sobald Platz für die gelistete
-Größe frei ist, wird sie geladen und mit ihrer echten Größe gezählt. Gehalten wird nur die Marke am Element, nie der Abschluss: Ein Vollabgleich über mehrere
-Läufe endet trotzdem, und die Löschungen, die das Änderungsprotokoll meldet, werden übernommen –
-oft sind es gerade diese, die den Platz freimachen. Der nächste Änderungslauf liest das Protokoll
-dann ab dem Stand, an dem der Vollabgleich begann, und trifft eine Datei erneut, die das Protokoll
-in dieser Zeit gemeldet hat.
+dieselbe Kategorie `QUOTA_EXHAUSTED`, die Datei gilt als vorhanden. Ohne bekannte Größe, bei
+gleicher oder kleinerer Größe wird geladen. Die Vorprüfung ist nur beratend, denn die gelistete
+Größe kann von der geladenen abweichen: Maßgeblich bleibt die Prüfung mit der tatsächlichen Größe
+vor dem Speichern. Weil eine falsche Listengröße eine Datei auch zu Unrecht zurückhalten kann, hält
+in einer Dateiablage jede Ablehnung an einem der beiden Kontingente, auch die eines Anhangs,
+Änderungsstand und Ordnergedächtnis. Sobald Platz für die gelistete Größe frei ist, wird die Datei
+geladen und mit ihrer echten Größe gezählt.
+
+Wann eine Dateiablage die Datei erneut prüft:
+
+- Nextcloud, SMB und S3 kennen nur den Vollabgleich; der nächste prüft die Datei erneut.
+- Bei Google Drive und SharePoint prüft eine Datei, die das Änderungsprotokoll meldet, schon der
+  nächste Änderungslauf erneut. Eine Datei, die in der Auflistung eines Vollabgleichs abgelehnt
+  wurde, meldet das Änderungsprotokoll danach nicht wieder. Deshalb ist der nächste Lauf nach einem
+  solchen Vollabgleich wieder ein Vollabgleich, auch wenn sich dieser über mehrere Läufe erstreckt
+  hat. Solange die Bibliothek voll bleibt, tritt so an die Stelle jedes Änderungslaufs ein
+  Vollabgleich; unveränderte Dateien lädt auch er nicht erneut.
+- Ein Vollabgleich über mehrere Läufe endet trotz einer Ablehnung, und die Löschungen, die das
+  Änderungsprotokoll meldet, werden übernommen. Wurde die Datei erst beim Lesen des Protokolls am
+  Ende der Runde abgelehnt, liest der nächste Änderungslauf das Protokoll ab dem Stand, an dem der
+  Vollabgleich begann, und trifft sie erneut.
 
 ### Schritt 3: Format erkennen und Pipeline wählen
 
@@ -1253,7 +1283,8 @@ Konsequenzen für den Betrieb:
   Die Verschachtelungstiefe ist begrenzt, Standard fünf Ebenen. Was darüber liegt, wird
   übersprungen und protokolliert.
 - Das Kontingent zählt Anhangsbytes nur einmal: Enthält ein Dokument seine Anhänge physisch,
-  wie eine Mail, wird seine eigene Größe auf den Anteil ohne Anhänge reduziert.
+  wie eine Mail, wird seine eigene Größe auf den Anteil ohne Anhänge reduziert. Wird es erneut
+  gelesen, zählen die schon gespeicherten Anhänge nicht noch einmal (Abschnitt 5, Schritt 2).
 - Wer Anhänge findet, **meldet** sie nur; verarbeitet werden sie von der Dokumentstrecke über
   dieselben Schritte wie jedes andere Dokument. Damit gelten Kontingent, Formatzulassung und
   Protokoll auch für Anhänge.
@@ -1373,7 +1404,15 @@ fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen zählt jeder 
 zählt S3. Das Kennzeichen „unvollständig, wird fortgesetzt" trägt jeder Lauf, der an seinem
 Anfragebudget oder am Deckel seiner 429-Wartezeit geordnet endete; bei Confluence und S3 kommen die
 dauerhaft sichtbare Warnung einer unvollständigen Auflistung und die Betriebsart hinzu (Confluence:
-Vollabgleich, inkrementell; S3: Vollabgleich, Ereignislauf).
+Vollabgleich, inkrementell; S3: Vollabgleich, Ereignislauf). Ein Lauf, der an einem Speicherkontingent
+Elemente übersprungen hat, trägt stattdessen „unvollständig: Speicherkontingent erschöpft, Dateien
+übersprungen“ und aufgeklappt den Hinweis, was Platz schafft: Dateien in der Quelle löschen, die
+Quelle eingrenzen oder ein höheres Kontingent je Bibliothek, das der Betrieb festlegt. Bei einer
+privaten Bibliothek kann der Lauf an ihrem eigenen Kontingent oder am gemeinsamen Kontingent der
+privaten Bibliotheken ihrer Besitzerin geendet haben. Marke und Hinweis nennen deshalb kein
+bestimmtes Kontingent, der Hinweis beschreibt beide Wege, und das Laufprotokoll nennt an jeder
+übersprungenen Datei, welches erschöpft war (Kapitel
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
 
 Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
 einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je

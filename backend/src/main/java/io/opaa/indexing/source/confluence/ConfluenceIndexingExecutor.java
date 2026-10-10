@@ -269,6 +269,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       for (ConfluencePageSummary page : pages) {
         visitPage(run, page, PageVisitPolicy.FULL_SYNC);
         run.progress.report();
+        state = heldAtQuota(run, state);
       }
       state.markScopeCompleted(key);
       state = syncStateRepository.save(state);
@@ -300,9 +301,22 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /**
+   * Marks the full sync as held at a quota once this run rejected something, saved at once: what a
+   * quota left behind is older than the anchor the full sync ends with, so its completion - perhaps
+   * by a later run - leaves the next run a full sync.
+   */
+  private SourceSyncState heldAtQuota(ConfluenceRun run, SourceSyncState state) {
+    if (!run.progress.quotaReached() || state.isFullSyncHeldAtQuota()) {
+      return state;
+    }
+    state.holdFullSyncAtQuota();
+    return syncStateRepository.save(state);
+  }
+
+  /**
    * The incremental run: asks CQL for the pages in the selected spaces modified since the anchor
    * minus the overlap and visits what it names. The anchor moves only when the run failed nothing
-   * and its owner's quota rejected nothing, so no window is lost. A state written under other
+   * and no storage quota rejected anything, so no window is lost. A state written under other
    * settings is discarded, and the run searches nothing: the next one is a full sync.
    */
   private ListingOutcome incrementalSync(ConfluenceRun run, Instant startedAt)
@@ -333,7 +347,7 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       visitPage(run, summary, PageVisitPolicy.INCREMENTAL);
       run.progress.report();
     }
-    if (run.progress.failedCount() == 0 && !run.progress.personalQuotaReached()) {
+    if (run.progress.failedCount() == 0 && !run.progress.quotaReached()) {
       state.advanceIncrementalAnchor(startedAt);
       syncStateRepository.save(state);
     } else {

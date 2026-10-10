@@ -379,10 +379,14 @@ Datei nicht mehr in das Kontingent, wird sie wie am Kontingent der Bibliothek ü
 nimmt sie nicht auf, läuft aber weiter, übernimmt Löschungen in der Quelle und endet als
 unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Eine übersprungene Datei gilt nicht als gelöscht;
 war sie schon aufgenommen und passt nur ihre neue Fassung nicht, bleibt die bisherige Fassung
-durchsuchbar. Im Reiter „Quelle“ trägt dieser Lauf unter „Läufe“ die Marke „unvollständig:
-Speicherkontingent Ihrer privaten Bibliotheken erschöpft, Dateien übersprungen“ und aufgeklappt den Hinweis, was Platz
-schafft; das Laufprotokoll nennt an jeder übersprungenen Datei ihren Verbrauch und die Grenze. Endete
-der letzte Lauf so, steht derselbe Hinweis auch im Kopf der Detailseite. Platz schaffen Dateien, die
+durchsuchbar. Dieselbe Kategorie trägt ein Lauf, der am Kontingent der Bibliothek selbst endete;
+dieses wird zuerst geprüft. Im Reiter „Quelle“ trägt der Lauf deshalb unter „Läufe“ die neutrale
+Marke „unvollständig: Speicherkontingent erschöpft, Dateien übersprungen“ und aufgeklappt einen
+Hinweis, der beide Ursachen und beide Wege nennt: Platz in dieser Bibliothek schaffen oder ihr
+Kontingent erhöhen lassen, das der Betrieb festlegt, oder die privaten Bibliotheken insgesamt
+verkleinern oder die persönliche Grenze von der Systemverwaltung erhöhen lassen. Welches Kontingent
+erschöpft war, nennt das Laufprotokoll an jeder übersprungenen Datei, mit Verbrauch und Grenze.
+Endete der letzte Lauf so, steht derselbe Hinweis auch im Kopf der Detailseite. Platz schaffen Dateien, die
 in der Quelle gelöscht werden oder durch eine eingegrenzte Quelle herausfallen, das Löschen einer
 ganzen privaten Bibliothek oder eine höhere Grenze der Systemverwaltung. Frei wird der Platz erst,
 wenn der Abgleich die Löschung übernimmt: bei einem Vollabgleich am Ende des Laufs, bei einer Runde
@@ -411,7 +415,10 @@ Revisionsprotokoll (`PRIVATE_STORAGE_QUOTA_CHANGED`).
 Darunter steht die **Übersicht der Verwaltung** (`GET /api/v1/admin/private-libraries/summary`). Sie
 zeigt für die eigene Organisation nur Summen: die Zahl der Besitzerinnen, den belegten Speicher
 insgesamt, eine Tabelle „Belegter Speicher je Zugang“ für Zugänge für Personen und eine Tabelle
-der Laufabbrüche je Ursache im Zeitfenster. Jede dieser Zahlen ruht auf Personen und folgt der
+der Laufabbrüche je Ursache im Zeitfenster. Die Ursache „Speicherkontingent erschöpft“ umfasst
+beide Kontingente: Läufe privater Bibliotheken, die an der persönlichen Grenze endeten, und solche,
+die am Kontingent ihrer Bibliothek endeten. Sie zeigt deshalb auch dann Läufe, wenn die persönliche
+Grenze auf „Unbegrenzt“ steht. Jede dieser Zahlen ruht auf Personen und folgt der
 Mindestgruppengröße: Die Gesamtzahlen erscheinen erst ab N Besitzerinnen, sonst als „weniger als
 N“. Eine Zahl je Zugang oder je Kategorie ist exakt nur, wenn ihre Besitzerinnen und die aller
 übrigen privaten Bibliotheken je mindestens N sind, und nur, solange das, was die exakten Zahlen je

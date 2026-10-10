@@ -68,6 +68,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatcher;
+import org.mockito.invocation.InvocationOnMock;
 
 /**
  * The full sync end to end against {@link FakeConfluenceServer}, for both editions: the access
@@ -1078,6 +1079,118 @@ class ConfluenceIndexingExecutorTest {
 
     assertThat(state.getIncrementalAnchor()).as("unchanged at the quota").isEqualTo(anchor);
     verify(syncStateRepository, never()).save(state);
+  }
+
+  /** The library's quota holds the anchor like the owner's, until the page fits. */
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aPageRejectedAtTheLibraryQuotaKeepsTheAnchorAndTheRunAfterTheRoomFreesTakesItIn(
+      ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    Instant anchor = NOW.minus(Duration.ofHours(2));
+    SourceSyncState state = completedFullSync(anchor);
+    server.updatePage("101", "<p>geändert</p>", NOW.minus(Duration.ofMinutes(20)));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().text().titled("Kapitel 1").match(), any()))
+        .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED)
+        .thenAnswer(this::storeAsProcessed);
+
+    executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(state.getIncrementalAnchor()).as("unchanged at the quota").isEqualTo(anchor);
+    verify(syncStateRepository, never()).save(state);
+    verify(indexingJobService).recordEndCategory(jobId, "QUOTA_EXHAUSTED");
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
+
+    assertThat(storedPage(pagePath(edition, "ENG", "101")).getLastModifiedRemote()).isNotNull();
+    assertThat(state.getIncrementalAnchor()).as("moves once the page is in").isAfter(anchor);
+  }
+
+  /**
+   * A full sync that rejected a page at a quota leaves no anchor an incremental run could rely on
+   * for it - the page is older than the anchor - so the next run is a full sync, which takes it in
+   * once there is room.
+   */
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aFullSyncThatRejectedAPageAtTheLibraryQuotaIsFollowedByAFullSyncThatTakesItIn(
+      ConfluenceEdition edition) throws Exception {
+    start(edition, null, "HR");
+    completedFullSync(NOW.minus(Duration.ofDays(2)));
+    when(documentIngestService.ingest(
+            DocumentIngests.that().text().titled("Onboarding").match(), any()))
+        .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED)
+        .thenAnswer(this::storeAsProcessed);
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService).recordEndCategory(jobId, "QUOTA_EXHAUSTED");
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("an incremental run would never search the rejected page again")
+        .isEqualTo(IndexingRunMode.FULL);
+
+    executor.execute(UUID.randomUUID(), library, IndexingRunMode.FULL);
+
+    assertThat(storedPage(pagePath(edition, "HR", "200")).getLastModifiedRemote()).isNotNull();
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .isEqualTo(IndexingRunMode.INCREMENTAL);
+  }
+
+  /**
+   * A rejection in an earlier run of a full sync over several runs is not forgotten when a later
+   * run completes it without one: the next run is a full sync all the same.
+   */
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aRejectionInAnEarlierRunOfTheFullSyncMakesTheRunAfterItsCompletionAFullSync(
+      ConfluenceEdition edition) throws Exception {
+    requestBudget = 6;
+    start(edition, null, "ENG", "HR");
+    when(documentIngestService.ingest(
+            DocumentIngests.that().text().titled("Handbuch").match(), any()))
+        .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED)
+        .thenAnswer(this::storeAsProcessed);
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService).recordEndCategory(jobId, "QUOTA_EXHAUSTED");
+    ArgumentCaptor<SourceSyncState> saved = ArgumentCaptor.forClass(SourceSyncState.class);
+    verify(syncStateRepository, atLeast(1)).save(saved.capture());
+    SourceSyncState state = saved.getValue();
+    assertThat(state.isFullSyncInterrupted()).as("the budget ended the first run").isTrue();
+    when(syncStateRepository.findByLibraryId(library.getId())).thenReturn(Optional.of(state));
+    ConfluenceProperties unbounded =
+        new ConfluenceProperties(
+            2, null, null, 3, Duration.ofSeconds(2), 0, 0, 0, FULL_SYNC_INTERVAL, OVERLAP, 0);
+    executor =
+        new ConfluenceIndexingExecutor(
+            new ConfluenceClientFactory(unbounded, TargetAddressValidator.disabled(), sleeps::add),
+            unbounded,
+            documentIngestService,
+            attachmentIndexer(),
+            documentRepository,
+            syncStateRepository,
+            cleanupService,
+            testClock(),
+            runTemplate());
+    UUID second = UUID.randomUUID();
+
+    executor.execute(second, library, IndexingRunMode.FULL);
+
+    verify(indexingJobService, never()).recordEndCategory(second, "QUOTA_EXHAUSTED");
+    assertThat(state.isFullSyncInterrupted()).as("the second run completed it").isFalse();
+    assertThat(executor.defaultRunMode(library, ConnectorData.storedIn(library)))
+        .as("the rejection of the first run still counts")
+        .isEqualTo(IndexingRunMode.FULL);
+  }
+
+  /** Stores the page as the default answer of {@code setUp} does. */
+  private DocumentIngestResult storeAsProcessed(InvocationOnMock invocation) {
+    DocumentIngest ingest = invocation.getArgument(0);
+    storedPages.add(
+        storedPage(ingest.fileName(), ingest.filePath(), ingest.changeMarker(), ingest.context()));
+    return DocumentIngestResult.PROCESSED;
   }
 
   @ParameterizedTest

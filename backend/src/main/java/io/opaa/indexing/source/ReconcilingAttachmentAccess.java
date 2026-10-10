@@ -14,7 +14,9 @@ import io.opaa.knowledge.SourceDocumentContext;
  * that notion.
  *
  * <p>{@link #markDeferred()} suppresses nothing: such a run keeps no conditional-GET state, and a
- * lost attachment is retried once its parent is re-processed. The attachment path counts each
+ * lost attachment is retried once its parent is re-processed. An attachment rejected at either
+ * storage quota is counted on {@link #progress()}, and that count is what makes the parent's intake
+ * leave its change marker unset, so the next run re-processes it. The attachment path counts each
  * attachment's outcome itself, through {@link #progress()}.
  */
 public final class ReconcilingAttachmentAccess implements AttachmentAccess {

@@ -83,10 +83,21 @@ class IndexingRunProgressTest {
     verify(events).record(IndexingEventCategory.REJECTED, QUOTA_MESSAGE, "datei.txt");
   }
 
+  /** The library's quota marks the run like the owner's: the frame completes it as incomplete. */
+  @Test
+  void anExceededLibraryQuotaMarksTheRunLikeThePersonalOne() {
+    assertThat(progress.quotaReached()).isFalse();
+
+    progress.recordOutcome(DocumentIngestResult.QUOTA_EXCEEDED, "datei.txt", events, QUOTA);
+
+    assertThat(progress.quotaReached()).isTrue();
+    assertThat(progress.quotaRejections()).isEqualTo(1);
+  }
+
   /** Like the library's quota, plus the mark the frame completes the run under. */
   @Test
   void anExceededPersonalQuotaCountsAsSkippedAndIsRejectedWithTheOwnersMessage() {
-    assertThat(progress.personalQuotaReached()).isFalse();
+    assertThat(progress.quotaReached()).isFalse();
 
     boolean processed =
         progress.recordOutcome(
@@ -94,15 +105,15 @@ class IndexingRunProgressTest {
 
     assertThat(processed).isFalse();
     assertThat(progress.skippedCount()).isEqualTo(1);
-    assertThat(progress.personalQuotaReached()).isTrue();
+    assertThat(progress.quotaReached()).isTrue();
     verify(events).record(IndexingEventCategory.REJECTED, PERSONAL_QUOTA_MESSAGE, "datei.txt");
   }
 
   @Test
   void anAttachmentAtThePersonalQuotaMarksTheRunToo() {
-    progress.recordPersonalQuotaReached();
+    progress.recordQuotaReached();
 
-    assertThat(progress.personalQuotaReached()).isTrue();
+    assertThat(progress.quotaReached()).isTrue();
   }
 
   @Test

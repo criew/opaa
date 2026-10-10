@@ -122,9 +122,12 @@ class LibraryIndexingControllerTest {
         .andExpect(jsonPath("$.documentsSkipped").value(0));
   }
 
-  /** A run ended at its owner's quota says so instead of promising that the next one continues. */
+  /**
+   * A run ended at a storage quota - the library's or its owner's - says so instead of promising
+   * that the next one continues; both share the category, so the wording names neither.
+   */
   @Test
-  void aRunEndedAtThePersonalQuotaNamesTheQuotaInItsMessageAndCategory() throws Exception {
+  void aRunEndedAtAQuotaNamesTheQuotaInItsMessageAndCategory() throws Exception {
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setDocumentsProcessed(7);
@@ -144,8 +147,7 @@ class LibraryIndexingControllerTest {
             jsonPath("$.runs[0].message")
                 .value(
                     "Indizierung abgeschlossen: 7 verarbeitet, 0 übersprungen, 0 fehlgeschlagen"
-                        + " — unvollständig: Speicherkontingent Ihrer privaten Bibliotheken"
-                        + " erschöpft, Dateien übersprungen"));
+                        + " — unvollständig: Speicherkontingent erschöpft, Dateien übersprungen"));
   }
 
   @Test

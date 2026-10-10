@@ -144,6 +144,9 @@ public final class FileSync implements AutoCloseable {
    */
   private int quotaHolds;
 
+  /** Whether the change log is being read at a round's end, after the listing. */
+  private boolean closingRound;
+
   /** The new cursor of every stream read cleanly, written once the run's removals are done. */
   private final Map<String, String> pendingCursors = new LinkedHashMap<>();
 
@@ -434,6 +437,7 @@ public final class FileSync implements AutoCloseable {
    * round's start.
    */
   private Closing closeByChangeLog() throws InterruptedException {
+    closingRound = true;
     ChangeFeed feed = store.changes().orElseThrow();
     Map<String, String> held = round.state().pendingChangeCursors();
     Map<String, List<FileContainer>> streams = streamsOf(feed);
@@ -1161,7 +1165,7 @@ public final class FileSync implements AutoCloseable {
       String changeMarker =
           entry.changeMarker() != null ? entry.changeMarker() : fetched.changeMarker();
       ReconcilingAttachmentAccess attachmentAccess = frame.attachmentAccess(entry.context());
-      int rejectedBefore = frame.progress().personalQuotaRejections();
+      int rejectedBefore = frame.progress().quotaRejections();
       DocumentIngestResult result =
           documentIngestService.ingest(
               DocumentIngest.builder(frame.library())
@@ -1206,29 +1210,32 @@ public final class FileSync implements AutoCloseable {
 
   /** {@link #recordOutcome(FileEntry, DocumentIngestResult, int)} for a result without ingest. */
   private void recordOutcome(FileEntry entry, DocumentIngestResult result) {
-    recordOutcome(entry, result, frame.progress().personalQuotaRejections());
+    recordOutcome(entry, result, frame.progress().quotaRejections());
   }
 
   /**
-   * Records one entry's result. A rejection at a quota - the item's own at either quota, or an
-   * attachment's at its owner's since {@code personalRejectionsBefore} - holds the cursor and the
-   * folder memory, so the entry comes again once there is room; unlike a transient failure it does
-   * not keep a round from closing.
+   * Records one entry's result. A rejection at a quota since {@code quotaRejectionsBefore} - the
+   * entry's own or one of its attachments', at either quota - holds the cursor and the folder
+   * memory, so the entry comes again once there is room; unlike a transient failure it does not
+   * keep a round from closing. Met in a full sync's listing, the entry is not in the change log
+   * after the round, so the round makes the next run a full sync.
    *
    * @return whether the entry was processed
    */
   private boolean recordOutcome(
-      FileEntry entry, DocumentIngestResult result, int personalRejectionsBefore) {
+      FileEntry entry, DocumentIngestResult result, int quotaRejectionsBefore) {
     if (result != DocumentIngestResult.PROCESSED
         && result != DocumentIngestResult.SKIPPED
         && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
       unsettle(entry);
     }
     boolean processed = frame.recordOutcome(result, entry.filePath());
-    if (result == DocumentIngestResult.QUOTA_EXCEEDED
-        || frame.progress().personalQuotaRejections() > personalRejectionsBefore) {
+    if (frame.progress().quotaRejections() > quotaRejectionsBefore) {
       unsettle(entry);
       quotaHolds++;
+      if (round != null && !closingRound) {
+        round.heldAtQuota();
+      }
     }
     return processed;
   }

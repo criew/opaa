@@ -187,10 +187,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     // An ETag/Last-Modified saved after a run that deferred entries would let a future 304
     // permanently hide those entries - the conditional-GET state only advances once a run has
-    // accounted for every entry it saw.
+    // accounted for every entry it saw. An entry or attachment rejected at either storage quota
+    // counts as deferred.
     if (!ctx.anyEntryDeferred().get()
         && run.progress().failedCount() == 0
-        && !run.progress().personalQuotaReached()) {
+        && !run.progress().quotaReached()) {
       feedFetcher.saveState(targetLibrary.getId(), feedUrl, loaded.get().feedResponse());
     } else {
       log.info(

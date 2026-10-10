@@ -465,6 +465,15 @@ final class ScanRound {
     revisits.consume(consumed);
   }
 
+  /**
+   * The listing rejected an entry at a storage quota. No change log reports it again after the
+   * round, so the round's end leaves the next run a full sync ({@link
+   * SourceSyncState#holdFullSyncAtQuota}).
+   */
+  void heldAtQuota() {
+    state.holdFullSyncAtQuota();
+  }
+
   /** Keeps the round as it stands, with the presence this run has seen so far. */
   void save() {
     save(Set.of());

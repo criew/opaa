@@ -32,8 +32,8 @@ import org.springframework.dao.DataIntegrityViolationException;
  * <p>A body ends its run early by throwing {@link IndexingRunFailedException} with the message the
  * job should carry. A {@link RequestBudgetExhaustedException} ends the run as truncated - noted
  * with the body's {@link IndexingRun#budgetContinuation continuation}, never failed. A run that
- * rejected an item at the owner's private storage quota goes on to its end and is completed as
- * incomplete with the category {@link RunFailureCategory#QUOTA_EXHAUSTED}. An {@link
+ * rejected an item at a storage quota (its library's or its owner's) goes on to its end and is
+ * completed as incomplete with the category {@link RunFailureCategory#QUOTA_EXHAUSTED}. An {@link
  * InterruptedException} fails the run as interrupted, a {@link SourceConnectionBlockedException}
  * from {@link IndexingRun#credentials} with the block's notice, a {@link
  * SourceCredentialsRejectedException} with its message after telling the port, a {@link
@@ -325,7 +325,7 @@ public class IndexingRunTemplate {
       failed = true;
       failure = failureMessage(e);
     }
-    if (!failed && progress.personalQuotaReached()) {
+    if (!failed && progress.quotaReached()) {
       incomplete = true;
       category = RunFailureCategory.QUOTA_EXHAUSTED;
     }

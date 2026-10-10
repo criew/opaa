@@ -34,7 +34,7 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
 
   private int attachmentsSkipped;
   private int attachmentsFailed;
-  private int personalQuotaRejections;
+  private int quotaRejections;
 
   public IndexingRunProgress(IndexingJobService indexingJobService, UUID jobId) {
     this.indexingJobService = indexingJobService;
@@ -66,8 +66,9 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
   /**
    * Maps one item's {@link DocumentIngestResult} onto the counters and the protocol: a rejection
    * ({@code QUOTA_EXCEEDED}, {@code PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}) and
-   * {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code PROCESSED} as processed; the
-   * protocol entry, if any, is the one {@link DocumentIngestOutcomes#record} writes.
+   * {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code PROCESSED} as processed; a
+   * rejection at either quota also counts towards {@link #quotaRejections()}. The protocol entry,
+   * if any, is the one {@link DocumentIngestOutcomes#record} writes.
    *
    * @return whether the item was processed
    */
@@ -84,28 +85,31 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
         return true;
       }
       case FAILED -> recordFailed();
-      case PERSONAL_QUOTA_EXCEEDED -> {
-        recordPersonalQuotaReached();
+      case QUOTA_EXCEEDED, PERSONAL_QUOTA_EXCEEDED -> {
+        recordQuotaReached();
         recordSkipped();
       }
-      case SKIPPED, QUOTA_EXCEEDED, NO_EXTRACTABLE_TEXT -> recordSkipped();
+      case SKIPPED, NO_EXTRACTABLE_TEXT -> recordSkipped();
     }
     return false;
   }
 
   @Override
-  public void recordPersonalQuotaReached() {
-    personalQuotaRejections++;
+  public void recordQuotaReached() {
+    quotaRejections++;
   }
 
   @Override
-  public int personalQuotaRejections() {
-    return personalQuotaRejections;
+  public int quotaRejections() {
+    return quotaRejections;
   }
 
-  /** Whether an item or attachment of this run was rejected at the owner's private quota. */
-  public boolean personalQuotaReached() {
-    return personalQuotaRejections > 0;
+  /**
+   * Whether an item or attachment of this run was rejected at a storage quota - its library's or,
+   * for a private library, its owner's.
+   */
+  public boolean quotaReached() {
+    return quotaRejections > 0;
   }
 
   /** Documents recorded as failed so far. */

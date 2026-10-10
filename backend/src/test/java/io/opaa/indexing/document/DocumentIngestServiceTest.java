@@ -1684,7 +1684,7 @@ class DocumentIngestServiceTest {
       when(attachmentIndexer.indexAll(eq(access), any(), any(), any(), any(), any()))
           .thenAnswer(
               invocation -> {
-                sink.recordPersonalQuotaReached();
+                sink.recordQuotaReached();
                 return List.of();
               });
 
@@ -1704,12 +1704,12 @@ class DocumentIngestServiceTest {
       public void recordAttachment(AttachmentOutcome outcome) {}
 
       @Override
-      public void recordPersonalQuotaReached() {
+      public void recordQuotaReached() {
         rejections++;
       }
 
       @Override
-      public int personalQuotaRejections() {
+      public int quotaRejections() {
         return rejections;
       }
     }

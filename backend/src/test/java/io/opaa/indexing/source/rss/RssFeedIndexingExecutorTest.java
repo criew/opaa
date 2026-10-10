@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -1182,6 +1183,38 @@ class RssFeedIndexingExecutorTest {
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
     verify(feedStateRepository, never()).save(any());
+  }
+
+  /**
+   * An entry rejected at the library's quota leaves the feed state unsaved like the owner's quota
+   * does, so no 304 hides it; once there is room, the next run takes it in and saves the state.
+   */
+  @Test
+  void anEntryRejectedAtTheLibraryQuotaKeepsTheFeedStateUntilTheRunAfterTheRoomFrees()
+      throws Exception {
+    serveFeedWithEtag("/feed.xml", feedXml(baseUrl + "/a.html"), "\"etag-library-quota\"");
+    serve("/a.html", 200, "text/html", "<html><body><main>Text</main></body></html>");
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.QUOTA_EXCEEDED);
+    when(storageQuotaService.quotaExceededMessage(library.getId()))
+        .thenReturn("Speicherkontingent der Bibliothek erschöpft (10 GB von 10 GB belegt)");
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(1), eq(0));
+    verify(indexingJobService).recordEndCategory(any(), eq("QUOTA_EXHAUSTED"));
+    verify(feedStateRepository, never()).save(any());
+
+    when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
+        .thenReturn(DocumentIngestResult.PROCESSED);
+
+    execute(baseUrl + "/feed.xml");
+
+    verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
+    verify(documentIngestService, times(2))
+        .ingest(DocumentIngests.that().text().in(library).match(), any());
+    verify(feedStateRepository, timeout(2000))
+        .save(argThat(state -> "\"etag-library-quota\"".equals(state.getEtag())));
   }
 
   @Test

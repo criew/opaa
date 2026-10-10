@@ -159,6 +159,39 @@ class FileSyncChangeRunTest {
   }
 
   /**
+   * A file a full sync's listing rejected at a quota is not in the change log, so a change run
+   * would not meet it again: the next run is a full sync, which takes it in once there is room.
+   */
+  @ParameterizedTest
+  @EnumSource(
+      value = DocumentIngestResult.class,
+      names = {"QUOTA_EXCEEDED", "PERSONAL_QUOTA_EXCEEDED"})
+  void aFileRejectedAtAQuotaInAFullSyncsListingMakesTheNextRunAFullSync(
+      DocumentIngestResult rejection) {
+    String path = InMemoryFileStore.filePath("A", "neu/d.txt");
+    store.put("A", "neu/d.txt", "Neu.");
+    if (rejection == DocumentIngestResult.QUOTA_EXCEEDED) {
+      harness.rejectAtLibraryQuotaOf(path);
+    } else {
+      harness.rejectAtQuotaOf(path);
+    }
+
+    harness.fullSync(store.reset());
+
+    assertThat(harness.stored(path)).isEmpty();
+    assertThat(harness.state().isFullSyncInterrupted()).as("the full sync completed").isFalse();
+    assertThat(harness.state().canReadChanges(STREAMS, WEEK, FileSyncHarness.NOW))
+        .as("the next run is a full sync")
+        .isFalse();
+
+    harness.freeQuota();
+    FileSyncHarness.Run next = harness.fullSync(store.reset());
+
+    assertThat(next.ingested()).containsExactly(path);
+    assertThat(harness.state().canReadChanges(STREAMS, WEEK, FileSyncHarness.NOW)).isTrue();
+  }
+
+  /**
    * A listed size past either quota rejects the file without its download, recorded as a rejection
    * after the download would be; the cursor stays, because the listed size may be wrong.
    */

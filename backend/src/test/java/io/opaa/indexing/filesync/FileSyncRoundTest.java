@@ -7,9 +7,11 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.SourceSyncState;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -595,6 +597,53 @@ class FileSyncRoundTest {
     assertThat(next.ingested()).contains(added);
     assertThat(harness.stored(added)).isPresent();
   }
+
+  /**
+   * A file held at a quota in an earlier run of a round lies before the round's start in the change
+   * log, so no change run would meet it again: the round still closes, and the next run is a full
+   * sync, which takes the file in once there is room.
+   */
+  @Test
+  void aFileHeldAtAQuotaInAnEarlierRunOfTheRoundMakesTheNextRunAFullSync() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    String held = store.filePathOf("A", "a/1.txt");
+    harness.rejectAtLibraryQuotaOf(held);
+    openRound(store);
+
+    for (int run = 0; run < 3 && harness.state().isFullSyncInterrupted(); run++) {
+      run(store, 0);
+    }
+
+    assertThat(harness.state().isFullSyncInterrupted()).as("the round closed").isFalse();
+    assertThat(harness.state().canReadChanges(STREAMS, WEEK, FileSyncHarness.NOW))
+        .as("the next run is a full sync")
+        .isFalse();
+
+    harness.freeQuota();
+    FileSyncHarness.Run next = run(store, 0);
+
+    assertThat(next.ingested()).contains(held);
+    assertThat(harness.state().canReadChanges(STREAMS, WEEK, FileSyncHarness.NOW)).isTrue();
+  }
+
+  /** A file held only at the round's end keeps its stream's start; change runs go on. */
+  @Test
+  void aFileHeldAtAQuotaOnlyAtTheRoundsEndLeavesTheChangeRunsInPlace() {
+    InMemoryFileStore store = changeLogStore(AbsenceProof.CHANGE_FEED);
+    openRound(store);
+    store.put("A", "a/15.txt", "Neu hinter dem Fortsetzungspunkt, passt nicht mehr.");
+    harness.rejectAtLibraryQuotaOf(store.filePathOf("A", "a/15.txt"));
+
+    for (int run = 0; run < 3 && harness.state().isFullSyncInterrupted(); run++) {
+      run(store, 0);
+    }
+
+    assertThat(harness.state().isFullSyncInterrupted()).as("the round closed").isFalse();
+    assertThat(harness.state().canReadChanges(STREAMS, WEEK, FileSyncHarness.NOW)).isTrue();
+  }
+
+  private static final Set<String> STREAMS = Set.of("stream:A", "stream:B");
+  private static final Duration WEEK = Duration.ofDays(7);
 
   @Test
   void aChangeOfStructureEndsTheRoundWithoutRemovingAnything() {
