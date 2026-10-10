@@ -448,6 +448,8 @@ jobs:
           build-args: OPAA_VERSION=0.0.0-smoke.1
           cache-from: type=gha,scope=backend-arm64
 
+      # Built with the same version, which the smoke test looks for in the entry bundle; this
+      # rebuilds the Vite build layer, the pnpm install layer before it stays cached.
       - name: Frontend-Image bauen
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -456,6 +458,7 @@ jobs:
           platforms: linux/arm64
           tags: opaa-ci/frontend:arm64
           load: true
+          build-args: OPAA_VERSION=0.0.0-smoke.1
           cache-from: type=gha,scope=frontend-arm64
 
       - name: Images starten und Bereitschaft prüfen

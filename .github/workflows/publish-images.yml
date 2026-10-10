@@ -33,7 +33,8 @@ jobs:
       packages: write
     outputs:
       image-prefix: ${{ steps.prefix.outputs.image-prefix }}
-      # X.Y.Z[-<pre>] on a release tag, empty otherwise; the backend reports it as its version.
+      # X.Y.Z[-<pre>] on a release tag, empty otherwise; backend and frontend report it as their
+      # version.
       version: ${{ steps.release.outputs.version }}
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
@@ -195,9 +196,10 @@ jobs:
           file: ${{ matrix.image.dockerfile }}
           platforms: linux/${{ matrix.platform.arch }}
           labels: ${{ needs.prepare.outputs.labels }}
-          # Only the backend reports a version. Outside a release the value is empty and the
-          # backend keeps its development version, with the same cache key as without the argument.
-          build-args: ${{ matrix.image.name == 'backend' && format('OPAA_VERSION={0}', needs.prepare.outputs.version) || '' }}
+          # Backend and frontend report the version of the release tag. Outside a release the value
+          # is empty and both keep their development version, with the same cache key as without
+          # the argument (the Dockerfiles declare it with an empty default).
+          build-args: OPAA_VERSION=${{ needs.prepare.outputs.version }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           # SBOM and provenance attestations are attached per platform and carried over into the
           # index by publish; retrieval is documented in docs/sbom.md.

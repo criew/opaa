@@ -1,11 +1,17 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolveOpaaVersion } from './opaaVersion'
 
 // TODO: Add code-splitting (lazy-load MUI, pages) to reduce bundle size below 500 kB
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  // The version shown under "Info zu OPAA"; release builds pass their tag's version as OPAA_VERSION
+  // (frontend/Dockerfile), every other build - tests included - is 0.0.0-dev.
+  define: {
+    __OPAA_VERSION__: JSON.stringify(resolveOpaaVersion(process.env.OPAA_VERSION)),
+  },
   build: {
     // #707: Vite inlines assets below 4 KB as data: URIs. The small Quicksand subsets
     // (cyrillic, vietnamese, …) fall under that limit and ended up as data: fonts in the
