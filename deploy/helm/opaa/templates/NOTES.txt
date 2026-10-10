@@ -1,4 +1,8 @@
+{{ if .Release.IsUpgrade -}}
+OPAA ist aktualisiert auf Chart-Version {{ .Chart.Version }}: Release {{ .Release.Name }}, Namespace {{ .Release.Namespace }}, Revision {{ .Release.Revision }}.
+{{- else -}}
 OPAA ist installiert: Release {{ .Release.Name }}, Namespace {{ .Release.Namespace }}.
+{{- end }}
 
 Erreichbar unter {{ .Values.publicBaseUrl }}
 {{- if not (or .Values.ingress.enabled .Values.httpRoute.enabled) }}
@@ -14,7 +18,12 @@ Erreichbar unter {{ .Values.publicBaseUrl }}
 {{- end }}
 {{- end }}
 
+{{ if .Release.IsUpgrade -}}
+Der Start migriert das Datenbankschema auf den Stand dieser Version; das Backend ist erst danach
+bereit, bis dahin antwortet OPAA nicht:
+{{- else -}}
 Der erste Start migriert das Datenbankschema; das Backend ist erst danach bereit:
+{{- end }}
   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "opaa.backend.fullname" . }}
 
 Anmeldung als Systemverwaltung: {{ .Values.bootstrap.initialAdmin.email }}
