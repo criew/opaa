@@ -217,11 +217,12 @@ describe('ConnectionProfilesTab', () => {
     server.use(http.get('/api/v1/admin/connection-profiles', failing))
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
-    expect(await screen.findByRole('button', { name: 'Erneut laden' })).toBeVisible()
+    expect(await screen.findByText('Interner Fehler')).toBeVisible()
     expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('region', { name: 'Handlungsbedarf der Zugänge' }),
     ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Erneut laden' })).toBeVisible()
   })
 
   it('calls the state incomplete, not good, while the releases failed', async () => {
