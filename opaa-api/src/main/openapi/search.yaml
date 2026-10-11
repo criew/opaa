@@ -709,7 +709,8 @@ components:
           nullable: true
           default: false
           description: >
-            True when no knowledge library is associated with the chat's space: the space offers
+            True when no knowledge library is associated with the chat's space - another person's
+            private library does not count, it does not exist for the caller: the space offers
             nothing to search, so no search ran and the answer carries no sources. The client shows
             the hint that leads to the association instead of an answer that looks sourced. Takes
             precedence over, and is mutually exclusive with, answeredWithoutKnowledge and

@@ -37,6 +37,12 @@ jemand handlungsfähig ist; die Hervorhebung hängt allein am Alter. Alles Übri
 gilt unverändert, insbesondere: keine Frist, keine Erinnerung, keine Auswertung nach Person. Die
 Liste heißt in der Oberfläche jetzt „Ohne Zuständigkeit".
 
+**Nachtrag vom 11.10.2026 (#2171):** Die Vollmacht „Vorfallszugriff“ aus Entscheidung 5, Punkt 5,
+entfällt auf Entscheidung des Maintainers; sie wird nicht gebaut. OPAA hält nur eine Kopie, ein
+Vorfall wird in der Originalquelle über die dort geregelten Wege des Hauses untersucht (etwa
+eDiscovery oder Verwaltungszugriff beim Anbieter). Einen Inhaltszugriff auf private Bibliotheken
+gibt es damit dauerhaft nicht.
+
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
 [ADR-0033](0033-lokale-benutzerverwaltung.md) (Entscheidung 2).
@@ -486,6 +492,7 @@ Entscheidung 1 widerspräche.
 >    dokumentierte Beteiligung des Personalrats. `SYSTEM_ADMIN` ist nicht eingeschlossen. Weil die
 >    Formel die Vollmacht kennen muss, liegt sie in rights oder darunter, nicht in connections. Rolle
 >    und Ablauf legt #2171 fest; bis dahin gibt es keinen Inhaltszugriff auf private Bibliotheken.
+>    *(Entfallen mit dem Nachtrag vom 11.10.2026: Die Vollmacht wird nicht gebaut, siehe Status.)*
 > 6. **Das Verbindungsprotokoll liest die Systemrolle `AUDITOR`** (Beschluss 13 des Maintainers
 >    vom 03.10.2026, Epic #2147). Gelesen wird über dasselbe Tor wie das
 >    Revisionsprotokoll (`AuditAccessGate`: Anlass, begrenzter Zeitraum, eigener Zugriffseintrag).
@@ -498,7 +505,7 @@ Entscheidung 1 widerspräche.
 >      Beschluss 12) erfüllt `AUDITOR`, weil die Rolle von der Systemverwaltung getrennt ist.
 >    - **Bewusst in Kauf genommen:** Dieselbe Rolle stellt auch den Antrag auf Vorfallszugriff
 >      (Punkt 5). Wer das Protokoll liest, kann also auch den Zugriff auf Inhalte beantragen, aber
->      nicht allein bestätigen.
+>      nicht allein bestätigen. *(Gegenstandslos seit dem Nachtrag vom 11.10.2026.)*
 >    - **Bewusst in Kauf genommen:** `AUDITOR` kann aus dem Rollen-Claim eines Anbieters stammen
 >      (`TokenRoleSynchronizer`, ADR-0025, Entscheidung 4). Wer die Rolle beim Anbieter vergibt,
 >      bestimmt dann auch, wer das Verbindungsprotokoll liest.

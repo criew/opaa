@@ -264,7 +264,12 @@ public class QueryService {
                 boolean effectiveUseKnowledge = chat.map(Chat::isUseKnowledge).orElse(false);
                 boolean noKnowledgeAssignedToSpace =
                     searchScope.isEmpty()
-                        && chat.map(c -> !chatService.spaceHasLibraryAssociations(c.getSpaceId()))
+                        && chat.map(
+                                c ->
+                                    !chatService.spaceHasLibraryAssociations(
+                                        c.getSpaceId(),
+                                        readableLibraryIds,
+                                        caller.organizationId()))
                             .orElse(false);
                 boolean answeredWithoutKnowledge =
                     !noSpaceContext

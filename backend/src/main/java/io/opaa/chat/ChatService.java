@@ -13,6 +13,7 @@ import io.opaa.space.ChatAutoCleanupProperties;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAccessPolicy;
 import io.opaa.space.SpaceAssetAssociationRepository;
+import io.opaa.space.SpaceAssetAssociationService;
 import io.opaa.space.SpaceRepository;
 import java.time.Instant;
 import java.util.Collection;
@@ -95,6 +96,7 @@ public class ChatService {
   private final SpaceRepository spaceRepository;
   private final SpaceAccessPolicy spaceAccessPolicy;
   private final SpaceAssetAssociationRepository spaceAssetAssociationRepository;
+  private final SpaceAssetAssociationService spaceAssetAssociationService;
   private final LibraryAccessService libraryAccessService;
   private final ObjectMapper objectMapper;
   private final ChatMessageWriter chatMessageWriter;
@@ -112,6 +114,7 @@ public class ChatService {
       SpaceRepository spaceRepository,
       SpaceAccessPolicy spaceAccessPolicy,
       SpaceAssetAssociationRepository spaceAssetAssociationRepository,
+      SpaceAssetAssociationService spaceAssetAssociationService,
       LibraryAccessService libraryAccessService,
       ObjectMapper objectMapper,
       ChatMessageWriter chatMessageWriter,
@@ -133,6 +136,7 @@ public class ChatService {
     this.spaceRepository = spaceRepository;
     this.spaceAccessPolicy = spaceAccessPolicy;
     this.spaceAssetAssociationRepository = spaceAssetAssociationRepository;
+    this.spaceAssetAssociationService = spaceAssetAssociationService;
     this.libraryAccessService = libraryAccessService;
     this.objectMapper = objectMapper;
     this.chatMessageWriter = chatMessageWriter;
@@ -510,13 +514,17 @@ public class ChatService {
   }
 
   /**
-   * Whether {@code spaceId} has at least one knowledge library associated, readable or not. An
-   * empty {@link #effectiveLibraryScope} means "nothing associated" when this is false and
-   * "associated, but nothing the caller may read" when it is true - two separate signals.
+   * Whether {@code spaceId} has a knowledge library associated as a caller who reads {@code
+   * readableLibraryIds} sees it, readable or not - another person's private library does not count,
+   * as in the space's content list. An empty {@link #effectiveLibraryScope} means "nothing
+   * associated" when this is false and "associated, but nothing the caller may read" when it is
+   * true - two separate signals.
    */
   @Transactional(readOnly = true)
-  public boolean spaceHasLibraryAssociations(UUID spaceId) {
-    return !spaceAssetAssociationRepository.findLibraryIdsBySpaceId(spaceId).isEmpty();
+  public boolean spaceHasLibraryAssociations(
+      UUID spaceId, Set<UUID> readableLibraryIds, UUID organizationId) {
+    return spaceAssetAssociationService.hasKnowledgeFor(
+        spaceId, readableLibraryIds, organizationId);
   }
 
   /**

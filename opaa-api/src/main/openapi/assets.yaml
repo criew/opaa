@@ -749,7 +749,8 @@ components:
         hasKnowledge:
           type: boolean
           description: >
-            Whether at least one knowledge library is associated with the space, readable or not.
+            Whether at least one knowledge library is associated with the space, readable or not -
+            another person's private library does not count, it does not exist for the caller.
             False means a chat in this space searches nothing until knowledge is associated.
         hasReadableKnowledge:
           type: boolean

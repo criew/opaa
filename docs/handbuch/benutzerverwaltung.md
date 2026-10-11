@@ -520,6 +520,12 @@ Pseudonym statt des Namens, das sich wie im Nachweisprotokoll in einer Vorfallsk
 zuordnen lässt ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
 Der Dialog zum Verbinden sagt das vor dem Absenden.
 
+**Kein Vorfallszugriff auf Inhalte.** Auch bei einem Sicherheitsvorfall öffnet OPAA den Inhalt einer
+privaten Bibliothek niemandem außer ihrer Besitzerin, weder der Systemverwaltung noch der Revision;
+die anlassbezogene Klärung filtert nur das Nachweisprotokoll. OPAA hält ohnehin nur eine Kopie, das
+Original liegt beim Anbieter. Ein Vorfall wird deshalb **in der Originalquelle** untersucht, über die
+dort geregelten Wege des Hauses, etwa eDiscovery oder den Verwaltungszugriff beim Anbieter.
+
 ### Lange Abwesenheit oder Versetzung
 
 - **Abwesenheit** beendet nichts. Nach der Inaktivitätsschwelle ohne Anmeldung
@@ -643,6 +649,8 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
   und Löschen erfolgen beim Anbieter; hier sind diese Konten mit Herkunft und Rolle sichtbar, und
   nur die Rolle lässt sich ändern.
 - **Kein Export und kein Massenabruf der Kontenliste** (Abschnitt 6).
+- **Keinen Vorfallszugriff auf private Bibliotheken.** Vorfälle werden in der Originalquelle
+  untersucht (Abschnitt 12, „Was die Verwaltung sieht“).
 - **Keine Übersicht der eigenen Sitzungen.** Eine Person kann ihre übrigen Sitzungen über einen
   Passwortwechsel beenden, aber nicht einzeln einsehen oder abmelden.
 - **Kein Zusammenführen zweier bestehender Konten.** Der einzige Weg, ein lokales Konto an eine

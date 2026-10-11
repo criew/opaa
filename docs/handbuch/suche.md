@@ -213,7 +213,9 @@ Grund ab:
 | Leiste bewusst geleert | — | „Diese Antwort wurde ohne Wissensbasis erstellt." |
 
 Beide Raum-Hinweise nennen keine Zahl: Wie viele zugeordnete Bibliotheken die Person nicht lesen
-darf, verrät die Oberfläche nicht. Dieselben zwei Hinweise stehen auch auf der Seite des Raums.
+darf, verrät die Oberfläche nicht. Die private Bibliothek einer anderen Person zählt dabei als nicht
+zugeordnet: Ordnet der Raum nur sie zu, sehen alle anderen Mitglieder den Hinweis, dass dem
+Raum kein Wissen zugeordnet ist. Dieselben zwei Hinweise stehen auch auf der Seite des Raums.
 
 **Prompts einsetzen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl der Prompts:
 die Prompts aller Prompt-Bibliotheken, die dem Raum zugeordnet sind und die die Person lesen darf,
