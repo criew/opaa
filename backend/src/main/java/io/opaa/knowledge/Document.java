@@ -52,7 +52,7 @@ public class Document {
   @Column(name = "source_type", nullable = false, length = 20)
   private SourceType sourceType;
 
-  @Column(name = "last_modified_remote", length = 64)
+  @Column(name = "last_modified_remote", columnDefinition = "text")
   private String lastModifiedRemote;
 
   /**

@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-11-document-change-marker-text
+      author: opaa
+      comment: "last_modified_remote holds a connector's change marker as the source states it, whatever its length (a Dropbox content hash with its prefix, an autoindex date cell): text instead of varchar(64), stored values unchanged."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE documents ALTER COLUMN last_modified_remote TYPE text;

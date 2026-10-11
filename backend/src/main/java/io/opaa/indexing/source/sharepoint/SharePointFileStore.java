@@ -74,7 +74,7 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
   /** Deeper chains are cut off: a cycle in the parents never ends a walk otherwise. */
   private static final int MAX_CHAIN = 500;
 
-  /** Longer parts of a change marker are hashed; the marker column holds 64 characters. */
+  /** Longer parts of a change marker are hashed, so the marker keeps a short, bounded length. */
   private static final int MAX_MARKER_PART = 32;
 
   private final GraphClient graph;
