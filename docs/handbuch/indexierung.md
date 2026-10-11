@@ -199,7 +199,7 @@ später an derselben Stelle wieder:
 
 | Schritt | Inhalt |
 |---|---|
-| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Fehlt das Anlegerecht für diese Art — „Bibliotheken für Uploads anlegen" und „Konnektorbibliotheken anlegen" sind zwei getrennte Rechte —, ist die Kachel gesperrt und nennt den Grund auf sich selbst. Eine Quellart, die für die Person nur über einen Zugang freigegeben ist, bleibt wählbar. Zwischen den Kacheln führen die Pfeiltasten |
+| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Fehlt das Recht „Bibliotheken für Uploads anlegen", ist die Upload-Kachel gesperrt und nennt den Grund auf sich selbst. Eine Konnektor-Quellart erscheint nur, wenn die Person sie auf mindestens einem Weg anlegen darf: mit eigener Adresse oder über einen nutzbaren Zugang. Fehlt die Freigabe oder ist die Quellart gesperrt, fehlt die Kachel. Eine Quellart, die für die Person nur über einen Zugang freigegeben ist, bleibt wählbar. Zwischen den Kacheln führen die Pfeiltasten |
 | **2. Quelle** | bei einer Quellart mit Zugängen zuerst die Wahl des **Zugangs** (siehe [Zugänge](#zugänge)), darunter Anbindung und Verbindungstest wie im gleichnamigen Reiter, dazu der **Zeitplan** und der Schalter „Erste Indizierung sofort nach dem Anlegen starten". Beide gelten für **jeden** Konnektortyp. Bei einer Upload-Bibliothek entfällt der Schritt, der Assistent hat dann drei |
 | **3. Name & Beschreibung** | der Name ist vorbelegt, wo die Quelle ihn hergibt — der einzelne Confluence-Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname — und bleibt überschreibbar |
 | **4. Freigaben** | Eigentümer („Mein Konto" oder eine Gruppe, in der die anlegende Person Mitglied ist) und vorgemerkte Freigaben an Personen und Gruppen. Eine Freigabe an „Alle Konten" gibt es hier nicht: Sie wird an der fertigen Bibliothek erteilt, wo auch die Obergrenze dafür gilt |
@@ -577,13 +577,12 @@ Adresse nicht zulässig ist:
 
 - **„Eigene Adresse“** steht zur Wahl, solange die Quellart keine Profilpflicht hat und die Person
   sie mit eigener Adresse anlegen darf. Sonst sagt ein Satz, warum es sie nicht gibt.
-- **Jeder Zugang** steht mit Server-Adresse, Anmeldeart und Vorgaben da. Ein Zugang, den die Person
-  nicht nutzen darf oder der gesperrt ist, bleibt sichtbar, ist aber nicht wählbar und nennt, wer
-  ihn freischaltet.
+- **Jeder Zugang, den die Person nutzen darf,** steht mit Server-Adresse, Anmeldeart und Vorgaben
+  da. Ein Zugang, der für sie nicht freigegeben oder der gesperrt ist, erscheint nicht.
 - Unter der Wahl steht „Zugang vorschlagen“ (siehe [Zugangswunsch](#zugangswunsch)) für den
   Fall, dass kein Zugang passt.
 - Gibt es weder einen nutzbaren Zugang noch die eigene Adresse, ist die Quellart schon im Schritt
-  „Art des Wissens“ nicht wählbar; der Schritt bietet dort „Zugang vorschlagen“ an.
+  „Art des Wissens“ nicht zu sehen; der Schritt bietet dort „Zugang vorschlagen“ an.
 
 Nach der Wahl eines Zugangs richtet sich das Formular nach ihm: Die Adresse ist mit der
 Server-Adresse des Zugangs vorbelegt (eine Adresse darunter ist möglich), das Feld für die
@@ -676,9 +675,12 @@ wenn sie darunter liegt, lässt sich prüfen und zuordnen. Test und Zuordnen bew
 Zugang, nicht die Sperre der Bibliothek; nach dem Zuordnen läuft sie wieder.
 
 Zur Wahl stehen beim Zuordnen und Wechseln nur Zugänge, die die Person nutzen darf; die übrigen
-bleiben mit ihrem Hinweis sichtbar. Das gilt auch für Verwaltende einer Bibliothek ohne das
-Anlegerecht „Konnektorbibliotheken anlegen“: Sie sehen die Zugänge der Quellart, die nicht für sie
-freigegebenen mit dem Hinweis, wer sie freischaltet. Die Hinweise „Zugang entfernt“ und die Sperre
+erscheinen nicht. Das gilt auch für Verwaltende einer Bibliothek ohne das Anlegerecht
+„Konnektorbibliotheken anlegen“: Sie sehen nur die Zugänge der Quellart, die für sie freigegeben
+und nicht gesperrt sind. Der Zustand der eigenen Bibliothek bleibt dagegen sichtbar: Ist ihr Zugang
+gesperrt oder entfernt, sagt der Reiter „Quelle“ das mit Grund und Aktion (siehe unten); ist er für
+die Verwaltenden nicht mehr freigegeben, nennt der Reiter ihn weiterhin, und die Bibliothek läuft
+weiter. Die Hinweise „Zugang entfernt“ und die Sperre
 wegen der Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verwaltenden bieten
 sie „Zugang zuordnen“ direkt an. Allgemein trägt ein Sperrhinweis für die Verwaltenden die Aktion,
 die ihn aufhebt: „Zugang zuordnen“, „Quelle bearbeiten“ (Geheimnis neu eintragen oder Adresse
@@ -907,7 +909,7 @@ Quellart gesperrt ist, die Marke „Quellart gesperrt“. Beim Entsperren sagt d
 andere Sperre bestehen bleibt. Die Folgen:
 
 - Neue Bibliotheken der Quellart oder auf dem Zugang sind nicht mehr möglich, auch nicht für die
-  Systemverwaltung; im Wissens-Assistenten ist die Kachel der Quellart gesperrt.
+  Systemverwaltung; im Wissens-Assistenten erscheinen die Quellart bzw. der Zugang nicht mehr.
 - Ein manuell ausgelöster Lauf endet vor dem ersten Element mit der Meldung „Gesperrt – Inhalt wird
   nicht mehr aktualisiert"; ein Lauf, der beim Sperren schon läuft, endet regulär. Der Zeitplan
   überspringt die Bibliothek, und Push-Ereignisse der Quelle werden verworfen, beides ohne

@@ -219,18 +219,14 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await expectCitedSource(page, ENTRY_TITLE)
   })
 
-  test('1c. Person außerhalb der Gruppe sieht den Zugang gesperrt, mit Hinweis auf die Systemverwaltung', async ({
+  test('1c. Person außerhalb der Gruppe sieht den Zugang nicht, nur ihre eigene Adresse', async ({
     outsiderPage: page,
   }) => {
     await openRssSourceStep(page)
-    const tile = connectionChoice(page).getByRole('radio', {
-      name: new RegExp(`^${PROFILE_NAME}`),
-    })
-    await expect(tile).toBeDisabled()
-    await expect(tile).toContainText(
-      `Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang „${PROFILE_NAME}“.`,
-    )
-    await expect(tile).toContainText('Wenden Sie sich an die Systemverwaltung')
+    await expect(page.getByText('Zugänge werden geladen …')).toHaveCount(0)
+    await expect(page.getByLabel('Adresse (URL)')).toBeVisible()
+    await expect(page.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })).toHaveCount(0)
+    await expect(connectionChoice(page)).toHaveCount(0)
   })
 
   test('2a. „Nur über Zugänge“ mit Bestandswahl „Sperren“ sperrt eine Bibliothek mit eigener Adresse', async ({
@@ -350,9 +346,10 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     outsiderPage: page,
   }) => {
     // Unter der Profilpflicht und ohne freigegebenen Zugang ist RSS für dev-outsider schon im
-    // Schritt „Art des Wissens“ nicht wählbar; dort steht „Zugang vorschlagen“.
+    // Schritt „Art des Wissens“ nicht zu sehen; dort steht „Zugang vorschlagen“.
     await openNewLibraryWizard(page)
-    await expect(page.getByRole('radio', { name: /RSS-Feed/ })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Zugang für RSS-Feed vorschlagen' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /RSS-Feed/ })).toHaveCount(0)
     await page.getByRole('button', { name: 'Zugang für RSS-Feed vorschlagen' }).click()
     const dialog = page.getByRole('dialog', { name: 'Zugang vorschlagen' })
     await dialog.getByLabel('Server-Adresse').fill(REQUESTED_SERVER_URL)

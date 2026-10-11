@@ -142,8 +142,15 @@ S3) sind je Typ für alle Konten frei, wie heute. Jeder neue Konnektor und jedes
 Eine gesperrte Bibliothek trägt den Hinweis „Gesperrt – Inhalt wird nicht mehr aktualisiert“. Im
 Chat erscheint bei Treffern aus ihr „Stand vom …“.
 
-**Kein toter Weg.** Ein Konnektor oder Zugang, der für die Person nicht freigegeben ist, erscheint im
-Anlage-Assistenten mit einem Hinweis, statt zu fehlen oder zu scheitern.
+**Nur Nutzbares.** Der Anlage-Assistent zeigt nur Konnektoren mit mindestens einem nutzbaren Weg
+(eigene Adresse oder nutzbarer Zugang) und nur Zugänge, die die Person jetzt nutzen darf; ein nicht
+freigegebener oder gesperrter erscheint nicht, auch nicht ausgegraut (Entscheidung vom 11.10.2026,
+#2495). Bei dutzenden Konnektoren wären ausgegraute Einträge nur Rauschen. Die Liste der Zugänge
+filtert schon der Server; die Liste der Quellarten liefert er weiter vollständig, weil Bibliotheken
+und Verwaltung jede Quellart darstellen, und der Assistent blendet die nicht nutzbaren aus. Der
+**Zustand einer bestehenden Bibliothek** bleibt sichtbar: Ist ihr Zugang gesperrt oder entfernt,
+nennt sie das mit Grund und der Aktion, die es aufhebt; ist er nicht mehr freigegeben, nennt sie ihn
+weiterhin und läuft weiter.
 
 **Regel für alle Hinweise dieses Dokuments:** Jeder Hinweis (gesperrt, ruhend, abgelaufen, nicht
 freigegeben, Zugang entfernt, Abbruch) nennt die **zuständige Stelle** und sagt, **was mit dem Inhalt

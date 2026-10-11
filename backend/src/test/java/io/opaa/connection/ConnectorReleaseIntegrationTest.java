@@ -111,8 +111,8 @@ class ConnectorReleaseIntegrationTest {
   }
 
   /**
-   * #2495: a person sees only the profiles she may use now - neither one not released to her nor a
-   * locked one - while the system administration's own list keeps every profile.
+   * A person sees only the profiles she may use now - neither one not released to her nor a locked
+   * one - while the system administration's own list keeps every profile.
    */
   @Test
   void aPersonIsOfferedOnlyTheProfilesSheMayUse() throws Exception {

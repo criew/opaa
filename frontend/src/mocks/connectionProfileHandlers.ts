@@ -470,9 +470,9 @@ export const connectionProfileHandlers = [
     },
   ),
 
-  // The profiles a library may be connected through - every one admitting libraries, the ones the
-  // caller may not use with the notice naming who releases them, and one for persons only where
-  // the caller has an account on it. With libraryId the managers of that library ask; the mocks
+  // The profiles a library may be connected through - every unlocked one admitting libraries and
+  // one for persons only where the caller has an account on it; a profile the caller may not use is
+  // not listed. With libraryId the managers of that library ask; the mocks
   // answer them alike.
   http.get('/api/v1/connection-profiles', ({ request }) => {
     const sourceType = new URL(request.url).searchParams.get('sourceType')
@@ -480,10 +480,12 @@ export const connectionProfileHandlers = [
     const options: ConnectionProfileOption[] = mockConnectionProfiles
       .filter(
         (p) =>
-          p.sourceType === sourceType && (p.ownership !== 'PERSON' || ownAccounts.includes(p.id)),
+          p.sourceType === sourceType &&
+          (p.ownership !== 'PERSON' || ownAccounts.includes(p.id)) &&
+          !p.locked &&
+          !lockedTypes.has(p.sourceType),
       )
       .map((p) => {
-        const creatable = !p.locked && !lockedTypes.has(p.sourceType)
         return {
           id: p.id,
           name: p.name,
@@ -494,10 +496,6 @@ export const connectionProfileHandlers = [
           ownAccount: ownAccounts.includes(p.id),
           sourceProxy: p.sourceProxy ?? null,
           sourceInsecureSsl: p.sourceInsecureSsl,
-          creatable,
-          creationNotice: creatable
-            ? null
-            : `Der Zugang „${p.name}“ ist gesperrt. Zuständig ist die Systemverwaltung.`,
           connectorDefaults: p.connectorSettings ?? null,
         }
       })

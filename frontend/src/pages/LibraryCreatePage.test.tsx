@@ -244,10 +244,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
     })
 
-    // ADR-0036, Nachtrag vom 03.10.2026: die Konnektor-Freigabe gilt je Quellart - eine nicht
-    // freigegebene Art bleibt mit dem Hinweis des Backends sichtbar, statt erst beim Anlegen zu
-    // scheitern.
-    it('locks the tile of a source type that is not released, with the notice from the backend', async () => {
+    // Die Konnektor-Freigabe gilt je Quellart: Eine Art ohne nutzbaren Weg - nicht freigegeben,
+    // gesperrt oder ohne nutzbaren Zugang - erscheint im Assistenten gar nicht.
+    it('hides the tile of a source type the person has no usable way for', async () => {
       const notice =
         'Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für die Quellart „RSS-Feed“.'
       mockListSourceTypes.mockResolvedValue(
@@ -264,10 +263,9 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       )
       await renderPage()
 
-      const rss = await screen.findByRole('radio', { name: /RSS-Feed/ })
-      expect(rss).toBeDisabled()
-      expect(rss).toHaveTextContent(notice)
-      expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
+      expect(await screen.findByRole('radio', { name: /Confluence/ })).toBeEnabled()
+      expect(screen.queryByRole('radio', { name: /RSS-Feed/ })).not.toBeInTheDocument()
+      expect(screen.queryByText(notice)).not.toBeInTheDocument()
     })
 
     it('names the connector right once a connector source is chosen', async () => {
@@ -1121,17 +1119,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       sourceType: 'NEXTCLOUD',
       serverUrl: 'https://cloud.intern.example',
       authMethod: 'PERSONAL_SECRET' as const,
-      creatable: true,
       connectorDefaults: null,
-    }
-    const locked = {
-      ...profile,
-      id: 'profile-partner',
-      name: 'Nextcloud Partner',
-      serverUrl: 'https://cloud.partner.example',
-      creatable: false,
-      creationNotice:
-        'Der Zugang „Nextcloud Partner“ ist gesperrt. Zuständig ist die Systemverwaltung.',
     }
 
     function withNextcloud(overrides: Record<string, unknown>) {
@@ -1141,7 +1129,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }
 
     it('creates a library through the chosen profile, its address prefilled', async () => {
-      mockListConnectionProfileOptions.mockResolvedValue([profile, locked])
+      mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
@@ -1154,7 +1142,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
       expect(screen.getByRole('radio', { name: /Eigene Adresse/ })).toBeChecked()
-      expect(screen.getByRole('radio', { name: /Nextcloud Partner/ })).toBeDisabled()
 
       await user.click(screen.getByRole('radio', { name: /Nextcloud intern/ }))
       expect(screen.getByLabelText(/Adresse der Nextcloud/)).toHaveValue(
@@ -1321,7 +1308,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListSourceTypes.mockResolvedValue(
         withNextcloud({ profileRequired: true, creatable: true, creatableWithOwnAddress: false }),
       )
-      mockListConnectionProfileOptions.mockResolvedValue([locked])
+      mockListConnectionProfileOptions.mockResolvedValue([])
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
@@ -1350,7 +1337,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       const user = userEvent.setup()
       await renderPage()
 
-      expect(screen.getByRole('radio', { name: /Nextcloud/ })).toBeDisabled()
+      expect(screen.queryByRole('radio', { name: /Nextcloud/ })).not.toBeInTheDocument()
       const action = await screen.findByTestId('library-create-NEXTCLOUD-connection-request')
       expect(action).toHaveTextContent(
         'Für „Nextcloud“ steht Ihnen noch kein nutzbarer Zugang zur Verfügung.',
@@ -1376,7 +1363,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       )
       await renderPage()
 
-      expect(screen.getByRole('radio', { name: /Nextcloud/ })).toBeDisabled()
+      expect(screen.queryByRole('radio', { name: /Nextcloud/ })).not.toBeInTheDocument()
       expect(
         screen.queryByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }),
       ).not.toBeInTheDocument()
@@ -1411,7 +1398,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       sourceType: 'SHAREPOINT',
       serverUrl: 'https://graph.microsoft.com',
       authMethod: 'CLIENT_CREDENTIALS' as const,
-      creatable: true,
       connectorDefaults: null,
     }
 
@@ -1503,7 +1489,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       ownership: 'BOTH' as const,
       ownAccount: false,
       sourceInsecureSsl: false,
-      creatable: true,
       connectorDefaults: null,
     }
     const ownProfile = { ...profile, ownAccount: true }

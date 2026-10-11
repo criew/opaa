@@ -29,9 +29,6 @@ import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 import { ownAddressAllowed } from './sources/sourceConnection'
 import ConnectionProfileRequestAction from './ConnectionProfileRequestAction'
 
-const NOT_RELEASED =
-  'Dieser Zugang ist für Sie nicht freigegeben. Freigaben erteilt die Systemverwaltung.'
-
 function defaultValueLabel(key: ProfileDefaultKey | undefined, value: unknown): string {
   if (key === undefined) return String(value)
   const kind = key.kind
@@ -91,9 +88,8 @@ interface ConnectionProfileSelectProps {
 }
 
 /**
- * The choice of a connection profile ("Zugang") for a library. A profile the person may not use
- * stays visible with the notice naming who releases it; „Eigene Adresse“ appears only where the
- * type admits it. Without any usable way the field says who sets up profiles instead; with
+ * The choice of a connection profile ("Zugang") for a library among the profiles the person may
+ * use now - the server lists no other; „Eigene Adresse“ appears only where the type admits it. Without any usable way the field says who sets up profiles instead; with
  * `offerRequest` the person can suggest one to the system administration right there.
  */
 export default function ConnectionProfileSelect({
@@ -145,7 +141,6 @@ export default function ConnectionProfileSelect({
         </>
       ),
       icon: <VpnKeyOutlinedIcon sx={{ fontSize: 22 }} />,
-      disabledReason: option.creatable ? null : (option.creationNotice ?? NOT_RELEASED),
     })),
   ]
   const privateTiles: ChoiceTile<string>[] = privateOptions.map((option) => ({
@@ -153,7 +148,6 @@ export default function ConnectionProfileSelect({
     label: `${option.name} · privat`,
     description: profileDescription(option, descriptor),
     icon: <LockOutlinedIcon sx={{ fontSize: 22 }} />,
-    disabledReason: option.creatable ? null : (option.creationNotice ?? NOT_RELEASED),
   }))
 
   return (

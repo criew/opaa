@@ -223,8 +223,9 @@ export default function LibraryCreatePage() {
   /**
    * Die Konnektor-Freigabe gilt je Quellart und je Zugang (ADR-0036, Nachtrag vom 03.10.2026): eine
    * Art, die die Person weder mit eigener Adresse noch über einen Zugang anlegen darf oder die
-   * gesperrt ist, bleibt mit dem Hinweis des Backends sichtbar. Welcher Weg offen ist, wählt der
-   * Schritt „Quelle“.
+   * gesperrt ist, hat keinen nutzbaren Weg und erscheint nicht als Kachel; der Hinweis des Backends
+   * erklärt nur noch eine Wahl, die keine Kachel mehr hat. Welcher Weg offen ist, wählt der Schritt
+   * „Quelle“.
    */
   function releaseMissingFor(type: SourceTypeKey): string | null {
     const descriptor = sourceTypes.find((d) => d.type === type)
@@ -238,6 +239,14 @@ export default function LibraryCreatePage() {
   }
 
   const selectableTypes = offeredTypes.filter((type) => missingFor(type) === null)
+  /**
+   * Die Kacheln: Eine Art mit Eingabemaske erscheint nur mit mindestens einem nutzbaren Weg. Eine
+   * Art ohne Maske bleibt gesperrt mit ihrem Grund stehen.
+   */
+  const shownTypes = offeredTypes.filter(
+    (type) =>
+      sourceRegistration(type)?.configuration === undefined || releaseMissingFor(type) === null,
+  )
 
   /**
    * Die Arten, die nur deshalb gesperrt sind, weil der Person kein nutzbarer Zugang zur Verfügung
@@ -629,7 +638,7 @@ export default function LibraryCreatePage() {
               setSourceType(next)
               setError(null)
             }}
-            tiles={offeredTypes.map((type) => ({
+            tiles={shownTypes.map((type) => ({
               value: type,
               label: displayNameOf(type),
               description: documentSourceTypeDescription(type),

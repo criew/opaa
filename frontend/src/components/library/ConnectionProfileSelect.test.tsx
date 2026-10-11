@@ -32,22 +32,7 @@ const RELEASED: ConnectionProfileOption = {
   ownership: 'LIBRARY',
   ownAccount: false,
   sourceInsecureSsl: false,
-  creatable: true,
   connectorDefaults: { shared: false },
-}
-
-const NOT_RELEASED: ConnectionProfileOption = {
-  id: 'profile-partner',
-  name: 'Nextcloud Partner',
-  sourceType: 'NEXTCLOUD',
-  serverUrl: 'https://cloud.partner.example',
-  authMethod: 'PERSONAL_SECRET',
-  ownership: 'LIBRARY',
-  ownAccount: false,
-  sourceInsecureSsl: false,
-  creatable: false,
-  creationNotice:
-    'Der Zugang „Nextcloud Partner“ ist für Sie nicht freigegeben. Freigaben erteilt die Systemverwaltung.',
 }
 
 function renderSelect(
@@ -92,18 +77,10 @@ describe('ConnectionProfileSelect', () => {
     expect(onChange).toHaveBeenCalledWith('profile-intern')
   })
 
-  it('shows a profile that is not released, locked, with the notice naming who releases it', () => {
-    renderSelect(NEXTCLOUD, [RELEASED, NOT_RELEASED])
-
-    const partner = screen.getByRole('radio', { name: /Nextcloud Partner/ })
-    expect(partner).toBeDisabled()
-    expect(partner).toHaveTextContent(/nicht freigegeben\. Freigaben erteilt die Systemverwaltung/)
-  })
-
   it('offers no own address while the type is usable only through profiles, and picks the first usable profile', () => {
     const { value } = renderSelect(
       { ...NEXTCLOUD, profileRequired: true, creatableWithOwnAddress: false },
-      [NOT_RELEASED, RELEASED],
+      [RELEASED],
     )
 
     expect(value).toBe('profile-intern')
@@ -117,14 +94,14 @@ describe('ConnectionProfileSelect', () => {
   it('names who sets up profiles instead of a dead end when there is no way at all', () => {
     const { value } = renderSelect(
       { ...NEXTCLOUD, profileRequired: true, creatableWithOwnAddress: false },
-      [NOT_RELEASED],
+      [],
     )
 
     expect(value).toBeNull()
     expect(screen.getByTestId('test-connection-none')).toHaveTextContent(
       'Für die Quellart „Nextcloud“ steht Ihnen kein Zugang zur Verfügung. Zugänge legt die Systemverwaltung an und gibt sie frei',
     )
-    expect(screen.getByRole('radio', { name: /Nextcloud Partner/ })).toBeDisabled()
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument()
   })
 
   it('never offers the own address where it is not part of the choice', () => {
