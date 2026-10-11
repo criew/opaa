@@ -13,8 +13,11 @@ import static org.mockito.Mockito.when;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.ReasoningTextStrippingChatModel;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.retrieval.ConversationNoteBlock;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -31,6 +34,7 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Unit tests for {@link QueryDecompositionService#decompose}'s parsing and fallback behaviour
@@ -638,6 +642,45 @@ class QueryDecompositionServiceTest {
     assertThat(systemTextOf(prompts.getAllValues().get(0)))
         .contains("Bezugsjahr 2024")
         .doesNotContain("Ordnungsamt");
+  }
+
+  /**
+   * Regression guard for #2509: a recorded Gemma 4 answer (Gemini's OpenAI compatibility) opens
+   * with a {@code <thought>} block whose lines would otherwise be parsed as sub-queries. The active
+   * model is wrapped exactly as {@link ActiveChatModelResolver} wraps it.
+   */
+  @Test
+  void aRecordedAnswerWithALeadingThoughtBlockDecomposesIntoItsAnswerLines() throws IOException {
+    String recorded;
+    try (InputStream in =
+        getClass().getResourceAsStream("/llm/gemma-4-thought-decomposition.json")) {
+      recorded =
+          new ObjectMapper()
+              .readTree(in)
+              .path("choices")
+              .path(0)
+              .path("message")
+              .path("content")
+              .asString();
+    }
+    assertThat(recorded).startsWith("<thought>");
+    when(chatModel.getOptions()).thenReturn(ChatOptions.builder().build());
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(recorded)))));
+    when(activeChatModelResolver.resolveChatClient())
+        .thenReturn(ChatClient.builder(new ReasoningTextStrippingChatModel(chatModel)).build());
+
+    Optional<List<String>> subQueries =
+        service.decompose(
+            DecompositionContext.of(
+                "Was kostet ein Personalausweis und wie lange dauert die Ausstellung eines"
+                    + " Reisepasses?",
+                List.of()),
+            3);
+
+    assertThat(subQueries)
+        .contains(
+            List.of("Kosten für einen Personalausweis", "Dauer der Ausstellung eines Reisepasses"));
   }
 
   /**

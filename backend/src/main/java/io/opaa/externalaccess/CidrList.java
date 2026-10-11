@@ -1,6 +1,6 @@
 package io.opaa.externalaccess;
 
-import io.opaa.security.NumericAddress;
+import io.opaa.common.NumericAddress;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;

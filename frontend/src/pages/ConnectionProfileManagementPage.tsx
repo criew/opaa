@@ -35,6 +35,7 @@ import ConnectionProfileFormDialog from '../components/admin/connections/Connect
 import ConnectorTypeLockSection from '../components/admin/connections/ConnectorTypeLockSection'
 import ConnectionLogRetentionSection from '../components/admin/connections/ConnectionLogRetentionSection'
 import PrivateStorageSection from '../components/admin/connections/PrivateStorageSection'
+import OutboundProxySection from '../components/admin/connections/OutboundProxySection'
 import DormantSourceConnectionsSection from '../components/admin/connections/DormantSourceConnectionsSection'
 import { confirmLock } from '../components/admin/connections/connectorLock'
 import {
@@ -435,6 +436,10 @@ export default function ConnectionProfileManagementPage() {
 
         <Box sx={{ mt: 4 }}>
           <PrivateStorageSection />
+        </Box>
+
+        <Box sx={{ mt: 4 }}>
+          <OutboundProxySection />
         </Box>
 
         <DormantSourceConnectionsSection />

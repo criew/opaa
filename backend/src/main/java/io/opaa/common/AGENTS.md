@@ -1,15 +1,15 @@
 # Modul foundation
 
-Pakete (`io.opaa.*`): common, observability, organization, security, ratelimit, sourceaccess, s3,
-msgraph.
+Pakete (`io.opaa.*`): common, observability, organization, outbound, security, ratelimit,
+sourceaccess, s3, msgraph.
 Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
 Die unterste Schicht: gemeinsame Ausnahmen und Hilfen, die Organisation als Mandantengrenze,
 Verschlüsselung und Schlüsselableitung, Ratenbegrenzung, Metriken, der Zugriff auf konfigurierte
-Quellen (HTTP), die S3-Clientschicht und der Microsoft-Graph-Client. foundation hängt von keinem
-anderen Modul ab.
+Quellen (HTTP), der Ausgangsproxy, die S3-Clientschicht und der Microsoft-Graph-Client.
+foundation hängt von keinem anderen Modul ab.
 
 ## Invarianten und Stolpersteine
 
@@ -36,6 +36,8 @@ anderen Modul ab.
   Schlüsselraum; jenseits des Deckels öffnet er. Ein Wildcard-Bereich in
   `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` wird in jedem Profil abgewiesen.
 - **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** — eine akzeptierte Grenze.
+- **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy,
+  `socket://` (SMB, SMTP, JDBC) und Loopback nie; das AWS SDK bekommt ihn über `proxyFor`.
 
 ## Verweise
 
@@ -48,7 +50,7 @@ anderen Modul ab.
 ## Tests bei Änderungen
 
 ```bash
-./gradlew test --tests 'io.opaa.common.*' --tests 'io.opaa.security.*' \
+./gradlew test --tests 'io.opaa.common.*' --tests 'io.opaa.security.*' --tests 'io.opaa.outbound.*' \
   --tests 'io.opaa.sourceaccess.*' --tests 'io.opaa.ratelimit.*' --tests 'io.opaa.s3.*' \
   --tests 'io.opaa.msgraph.*' --tests 'io.opaa.observability.*' --tests 'io.opaa.architecture.*'
 ```

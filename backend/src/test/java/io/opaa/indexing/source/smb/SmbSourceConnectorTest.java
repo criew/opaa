@@ -19,6 +19,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.test.OutboundProxyRoute;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -105,6 +106,33 @@ class SmbSourceConnectorTest {
                 assertThat(result.reachable()).isFalse();
                 assertThat(result.message()).contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
               });
+    }
+
+    /**
+     * SMB opens plain sockets, which never take the outbound proxy: a server name that does not
+     * resolve is "not found" with a proxy set, never let through for the proxy to resolve.
+     */
+    @Test
+    void anUnresolvableServerIsNotFoundEvenWithAnOutboundProxySet() {
+      SmbSourceConnector guarded =
+          new SmbSourceConnector(
+              SmbProperties.defaults(),
+              new TargetAddressValidator(true, List.of()),
+              mock(SourceSyncStateRepository.class));
+
+      try (OutboundProxyRoute route = OutboundProxyRoute.through("proxy.example.org:3128")) {
+        assertThatThrownBy(
+                () -> guarded.validate(settings("smb://fileserver.example.invalid/Daten", "a:b")))
+            .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
+        assertThat(
+                guarded.testConnection(
+                    settings("smb://fileserver.example.invalid/Daten", "a:b"), null))
+            .satisfies(
+                result -> {
+                  assertThat(result.reachable()).isFalse();
+                  assertThat(result.message()).contains("DNS-Auflösung fehlgeschlagen");
+                });
+      }
     }
 
     /** Same origin is not enough on a file server: credentials are bound to the share. */

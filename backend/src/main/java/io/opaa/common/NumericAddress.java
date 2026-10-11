@@ -1,15 +1,15 @@
-package io.opaa.security;
+package io.opaa.common;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.regex.Pattern;
 
 /**
- * "Is this string an IP address literal?" - the one check every network restriction shares ({@link
- * TrustedProxyClientIpResolver}, the administrator network check of ADR-0033, the channel networks
- * of the external access). It is the guard in front of every matcher: a string that is no literal
- * must never reach {@code InetAddress.getByName} through a matcher, where it would be resolved
- * through DNS.
+ * "Is this string an IP address literal?" - the one check every network restriction shares (the
+ * trusted-proxy resolution, the administrator network check of ADR-0033, the channel networks of
+ * the external access, the exclusion list of the outbound proxy). It is the guard in front of every
+ * matcher: a string that is no literal must never reach {@code InetAddress.getByName} through a
+ * matcher, where it would be resolved through DNS.
  */
 public final class NumericAddress {
 

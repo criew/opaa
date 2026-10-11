@@ -238,6 +238,12 @@ opaa:
     # (VectorIndexScanProperties); a narrower search ends with a short list the protocol names.
     vector-index:
       max-scan-tuples: ${OPAA_QUERY_VECTOR_INDEX_MAX_SCAN_TUPLES:20000}
+    # The neighbours of every selected chunk the answer prompt additionally carries
+    # (NeighborChunkProperties): chunk_index +- radius of the same document, bounded in characters.
+    # Radius 0 switches it off.
+    neighbor-chunks:
+      radius: ${OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS:1}
+      max-added-characters: ${OPAA_QUERY_NEIGHBOR_CHUNKS_MAX_ADDED_CHARACTERS:40000}
     # #1070: the entry condition of the core-field filter - the fill level a field must reach in
     # the asking person's search scope before the filter interface offers it. Committed before the
     # first measurement (ADR-0012); overridable for tests and deliberate experiments, not an

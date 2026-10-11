@@ -3,6 +3,8 @@ package io.opaa.indexing.source.s3;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.indexing.source.RenewableCredential;
+import io.opaa.outbound.OutboundProxySelector;
+import io.opaa.outbound.ProxyAddress;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3Connection;
@@ -75,9 +77,22 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
       Consumer<SdkHttpRequest> requestObserver) {
     this.properties = properties;
     this.current = current;
+    S3ClientSettings settings =
+        S3ClientSettings.of(
+            connection,
+            properties.requestTimeout(),
+            properties.maxRetries(),
+            properties.retryBackoff());
+    Optional<ProxyAddress> outboundProxy =
+        settings.hasProxy()
+            ? Optional.empty()
+            : OutboundProxySelector.instance().proxyFor(connection.endpoint());
+    if (outboundProxy.isPresent()) {
+      settings = settings.withProxy(outboundProxy.get().host(), outboundProxy.get().port());
+    }
     this.guard =
         new S3RequestGuard(
-            S3RequestGuard.TargetPolicy.hostOnly(targetAddressValidator),
+            S3RequestGuard.TargetPolicy.hostOnly(targetAddressValidator, outboundProxy.isPresent()),
             meter,
             requestBudget,
             requestObserver);
@@ -88,12 +103,6 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             TargetAddressValidator.ALLOWLIST_HINT,
             RequestBudgetExhaustedException::requests,
             RunEndingFailures::endingCause);
-    S3ClientSettings settings =
-        S3ClientSettings.of(
-            connection,
-            properties.requestTimeout(),
-            properties.maxRetries(),
-            properties.retryBackoff());
     this.client =
         current == null
             ? S3SdkClient.open(settings, guard)

@@ -1327,7 +1327,7 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). Der Hostname `ollama` im Default löst auf, sobald der Compose-Stack mit dem Profil `ollama` gestartet wird (`docker compose --profile ollama up`, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack) unten) — ohne dieses Profil und ohne anderweitig erreichbaren Ollama-Server schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama stattdessen auf dem Host, `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert). Enthält der Wert Anmeldedaten (`https://benutzer:geheim@host/v1`), bricht der Start ab — die Adresse erscheint sonst im Meldungstext einer fehlgeschlagenen Einbettung samt Stacktrace im Log; Zugangsschlüssel gehören in `OPAA_OPENAI_EMBEDDING_API_KEY` |
 | `OPAA_OPENAI_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Embedding-Modellname |
 | **Abfrage (RAG-Retrieval)** | | | |
-| `OPAA_QUERY_TOP_K` | `20` | `20` | Endgültige Anzahl der für die Antwort ausgewählten Chunks, aus `OPAA_QUERY_FETCH_K` Kandidaten (1–100). **Preis ist die Kontextgröße:** Jeder ausgewählte Chunk geht ungekürzt in den Prompt der Antwort, eine Kürzung auf das Kontextfenster des Chat-Modells gibt es nicht (siehe [Suche, Abschnitt 6](suche.md#6-antwort-erzeugen)). Der Prompt wächst linear mit diesem Wert und der Chunk-Länge (bis `OPAA_INDEXING_CHUNK_SIZE` Tokens je Chunk). Bei kleinem Kontextfenster den Wert an dessen Größe binden: etwa `6` bei rund 8.000 Tokens, `12` bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells |
+| `OPAA_QUERY_TOP_K` | `20` | `20` | Endgültige Anzahl der für die Antwort ausgewählten Chunks, aus `OPAA_QUERY_FETCH_K` Kandidaten (1–100). **Preis ist die Kontextgröße:** Jeder ausgewählte Chunk geht ungekürzt in den Prompt der Antwort, eine Kürzung auf das Kontextfenster des Chat-Modells gibt es nicht (siehe [Suche, Abschnitt 6](suche.md#6-antwort-erzeugen)). Der Prompt wächst linear mit diesem Wert und der Chunk-Länge (bis `OPAA_INDEXING_CHUNK_SIZE` Tokens je Chunk). Bei kleinem Kontextfenster den Wert an dessen Größe binden: etwa `6` bei rund 8.000 Tokens, `12` bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells. Diese Werte gelten ohne Nachbar-Chunks: Per Default kommen bis zu `OPAA_QUERY_NEIGHBOR_CHUNKS_MAX_ADDED_CHARACTERS` Zeichen Nachbarn hinzu; bei kleinem Kontextfenster dieses Budget senken oder `OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS=0` setzen |
 | `OPAA_QUERY_FETCH_K` | `25` | `25` | Anzahl der Kandidaten, die die Vektorsuche selbst abruft, bevor MMR daraus `OPAA_QUERY_TOP_K` auswählt (1–200, muss ≥ `OPAA_QUERY_TOP_K` sein). Fehlt der Wert, während `OPAA_QUERY_TOP_K` bereits über 25 konfiguriert ist, normalisiert sich der Default auf `max(25, OPAA_QUERY_TOP_K)` statt auf ein starres `25` — sonst würde ein solches Bestandssystem allein durch diese Anhebung nicht mehr starten |
 | `OPAA_QUERY_MMR_LAMBDA` | `1.0` | `1.0` | Abwägung zwischen Relevanz und Vielfalt bei der MMR-Auswahl aus `OPAA_QUERY_FETCH_K` Kandidaten (0,0–1,0) — `1,0` schaltet die Vielfaltsauswahl vollständig ab (reine Top-K-Relevanz) und ist bewusst der Default: Gegen 20 Mehrthemen-Golden-Fälle gemessen (beide erwarteten Dokumente unter den zurückgegebenen Chunks vertreten) erreichte `0,7` mit echten Chunk-Embeddings 19/20 Fälle, reines `topK=8` (der damalige Default) 20/20 — MMR ist damit implementiert und per niedrigerem Wert aktivierbar, aber bewusst kein Default (siehe `QueryProperties#mmrLambda`) |
 | `OPAA_QUERY_SIMILARITY_THRESHOLD` | `0.3` | `0.3` | Minimale Kosinus-Ähnlichkeit für Chunk-Aufnahme (0,0–1,0) |
@@ -1337,6 +1337,8 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_QUERY_SEARCH_WINDOW_TURNS` | `2` | `2` | Wie viele der jüngsten Runden die Teilfragen-Zerlegung vom Gesprächsfenster sieht (0 bis `OPAA_QUERY_CONVERSATION_WINDOW_MESSAGES` ÷ 2) — die Suche sieht nie mehr vom Gespräch als die Antwort. `0` heißt „nur die Frage". Derselbe Ausschnitt gilt für den Rückfall, der die letzte Nutzerfrage des Fensters voranstellt |
 | `OPAA_QUERY_VECTOR_INDEX_MAX_SCAN_TUPLES` | `20000` | nicht gesetzt (Anwendungs-Default gilt) | Wie viele Einträge des HNSW-Vektorindex eine Vektorsuche höchstens durchläuft, um `OPAA_QUERY_FETCH_K` Treffer innerhalb von Rechte- und Metadatenfilter zu finden (pgvector `hnsw.max_scan_tuples`, mindestens `1`). Reicht das nicht, endet die Liste kürzer, und das Erklärprotokoll der Diagnose nennt sie. Die Grenze bemisst die Laufzeit einer Suche mit sehr kleinem Suchbereich in einem großen Bestand; ein höherer Wert allein hilft dort selten, weil pgvector auch den Arbeitsspeicher des Durchlaufs begrenzt (Vielfaches von `work_mem`), und für solche Filter wählt PostgreSQL meist ohnehin die exakte Suche |
 | `OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT` | `2` | `2` | Nach der Fusions-/MMR-Auswahl bevorzugt bis zu diese viele Chunks je bereits ausgewähltem Dokument aus der ohnehin berechtigungs- und schwellenwertgefilterten Kandidatenmenge — zweistufige Verdrängung: zuerst der schwächste Chunk eines Dokuments, das schon mit mindestens zwei Chunks vertreten ist; existiert keine solche Quelle, der auswahlrang-letzte Chunk der Gesamtauswahl, sofern das zu vervollständigende Dokument mit seinem besten Chunk strikt besser rankt als dieser (die Dokumentvielfalt darf dabei sinken) — auf `max(1, OPAA_QUERY_TOP_K / 4)` solcher Verdrängungen je Abfrage gedeckelt (bei Default `OPAA_QUERY_TOP_K=20` also 5), damit eine einzelne Abfrage nicht mehrere Themen zugunsten eines einzigen verdrängt. `1` schaltet die Dokument-Vervollständigung vollständig ab |
+| `OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS` | `1` | nicht gesetzt (Anwendungs-Default gilt) | Wie viele Nachbar-Chunks je Seite (`chunk_index ± n` im selben Dokument) jeder Chunk der Endauswahl in den Prompt der Antwort mitbringt (0–3), damit eine Fundstelle, die an einer Chunk-Grenze abreißt, das Modell vollständig erreicht. `0` schaltet das Nachladen ab. Die Nachbarn kommen nur aus Bibliotheken des Suchbereichs, bleiben einzeln zitierbar, zählen in der Trefferzahl ihres Dokuments mit und ändern weder Endauswahl noch Suchtreffer ([Suche, Abschnitt 6](suche.md#6-antwort-erzeugen)) |
+| `OPAA_QUERY_NEIGHBOR_CHUNKS_MAX_ADDED_CHARACTERS` | `40000` | nicht gesetzt (Anwendungs-Default gilt) | Zeichen, die alle Nachbar-Chunks einer Antwort zusammen höchstens hinzufügen (0–1.000.000). Nachgeladen werden erst alle direkten Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren; was nicht mehr passt, bleibt weg. **Preis ist die Kontextgröße:** Der Default erhöht die Eingabetokens je Antwort spürbar; bei einem Chat-Modell mit kleinem Kontextfenster senken oder den Radius auf `0` setzen |
 | `OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED` | `true` | `true` | Ob der lexikalische Suchpfad seine Volltextabfrage ausführt und seine Trefferliste in die Ergebnis-Fusion einbringt (siehe [„Volltextsuche (lexikalischer Suchpfad)"](#volltextsuche-lexikalischer-suchpfad)). `false` spart die Abfrage und lässt die Suche rein vektoriell laufen — der Pfad erscheint dann weiterhin im Erklärprotokoll der Suche und weist sich dort als abgeschaltet aus. Der Wert wirkt unmittelbar auf die Antwort; auf der Verwaltungs-Evaldomäne kostet `false` gemessen 15 Prozentpunkte Hit Rate@5 (0,935 → 0,783) |
 | `OPAA_CHAT_NOTE_MAX_ITEMS` | `10` | `10` | Notizpunkte, die die Gesprächsnotiz eines Chats höchstens hält (1–50) — beim Anhängen darüber hinaus fällt der älteste Punkt weg. Alles andere an der Notiz ist ein fester Wert: zwei Punkte je Runde, 200 Zeichen je Punkt, das Modell (das systemweit aktive Chat-Modell) und die Tatsache, dass verdichtet wird |
 | `OPAA_CHAT_AUTO_CLEANUP_ARCHIVE_AFTER_DAYS` | `90` | `90` | Archivfrist der automatischen Chat-Bereinigung: Tage ohne Aktivität, nach denen ein nicht angehefteter Chat in einem Space mit eingeschalteter Chat-Bereinigung in das Chat-Archiv seines Autors wandert. **Untergrenze 90** — ein kleinerer Wert bricht den Start ab. Die Frist beginnt frühestens mit dem Einschalten im Space (siehe [Suche](suche.md), Abschnitt 2) |
@@ -1596,6 +1598,50 @@ Sinn; das ist jeweils vermerkt.
 
 **Laufzeit und Speicher eines RSS-Laufs.** Die Politeness-Wartezeit (`OPAA_INDEXING_RSS_REQUEST_DELAY_MS`, Voreinstellung 1000 ms) gilt für jede Anfrage einzeln — Detailseite und jede einzelne Anlage. Mit den Voreinstellungen (200 Einträge, bis zu 10 Anlagen je Eintrag) dauert ein Lauf, der bei jedem Eintrag das Limit ausschöpft, im ungünstigsten Fall rund 200 × 11 × 1 s ≈ 37 Minuten. Jede Anlage wird beim Herunterladen direkt auf die temporäre Datei gestreamt und dabei bei `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` (Voreinstellung 20 MiB) abgeschnitten (`io.opaa.sourceaccess.BoundedDownloader#downloadBounded`); der Heap hält davon nur den Kopierpuffer. Antwortet eine Quelle mit `429`, wartet der Lauf die in `Retry-After` genannte Zeit — je Anfrage bis zu `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES` × `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER`, mit den Voreinstellungen also bis zu 6 × 2 min = 12 Minuten. Je Lauf ist die Summe dieser Wartezeiten auf `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` (Voreinstellung 15 Minuten) gedeckelt, die Zahl der Anfragen optional auf `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN`: Eine Quelle, die jede Anfrage bis zum Ende drosselt, beendet den Lauf damit nach spätestens 15 Minuten Wartezeit geordnet als „unvollständig, wird fortgesetzt", statt ihn rechnerisch um 200 × 11 × 12 min zu verlängern. Wer schneller aufgeben will, senkt die Werte; Confluence und S3 begrenzen ihre Läufe über eigene Anfragebudgets.
 
+### Ausgangsproxy
+
+Muss das Backend über einen Proxy ins Netz, trägt die Systemverwaltung ihn in der Oberfläche ein:
+**Administration → Zugänge**, Abschnitt **Ausgangsproxy**. Es gibt genau einen Proxy für das ganze Haus;
+ohne Eintrag gehen alle Verbindungen direkt hinaus. Die JVM-Eigenschaften `http.proxyHost` und die
+Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus. Trägt eine Bibliothek oder
+ein Zugang noch einen eigenen Proxy, hat dieser Vorrang vor dem Ausgangsproxy.
+
+- **Was über den Proxy geht:** jede HTTP(S)-Verbindung des Backends — Quellen der Bibliotheken samt
+  Weiterleitungen und Original-Abruf, OAuth- und Token-Endpunkte der Zugänge, Dienstkonto-Tokens,
+  MCP-Server, Chat-, Einbettungs- und Rerank-Endpunkte samt Verbindungstest, Discovery-Dokument und
+  Signaturschlüssel der Identitätsanbieter und der Verzeichnisabgleich. `http`-Ziele gehen als
+  gewöhnliche Proxy-Anfrage hinaus, `https`-Ziele als Tunnel (`CONNECT`).
+- **Was nie über den Proxy geht:** Ziele auf `localhost` und Loopback-Adressen, die Datenbank, der
+  Mailserver, SMB-Freigaben und der Objektspeicher der Originalablage.
+- **Format:** `http://host:port` oder `host:port`. Ein Proxy über `https`, SOCKS und eine Anmeldung
+  am Proxy werden nicht unterstützt; ein Proxy, der eine Anmeldung verlangt, weist jede Verbindung
+  ab. Der Proxy muss OPAA deshalb über die Adresse des Servers zulassen.
+- **Ausnahmeliste:** ein Eintrag je Zeile. Ein Hostname gilt für sich und alle Subdomänen
+  (`intranet.example.org` trifft auch `wiki.intranet.example.org`; ein vorangestellter `.` oder `*.`
+  bedeutet dasselbe), eine IP-Adresse für sich, ein Netzbereich wie `10.0.0.0/8` für IP-Adressen
+  darin. Ein Netzbereich trifft nie einen Hostnamen, auch wenn dieser in den Bereich auflöst.
+  Abgewiesen werden `*`, Ports und Leerzeichen. Interne Ziele wie ein Modellserver im eigenen Netz
+  gehören auf diese Liste.
+- **Ausnahmeliste und Zielprüfung sind getrennt.** Die Ausnahmeliste entscheidet nur über den Weg.
+  Ob ein internes Ziel überhaupt erreicht werden darf, entscheidet weiter die Zielprüfung mit
+  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` (siehe oben). Ein internes Ziel braucht in der Regel
+  beides.
+- **Der Proxy bestimmt die Zieladresse.** Geprüft wird das Ziel, nie der Proxy. Ein Hostname, den der
+  Server selbst nicht auflösen kann, wird nicht abgelehnt, wenn die Verbindung über den Proxy geht,
+  denn der Proxy löst ihn auf. IP-Adressen und auflösbare Namen prüft OPAA unverändert. Welche
+  Adresse der Proxy für einen Namen tatsächlich wählt, sieht OPAA nicht: Wer interne Ziele hinter dem
+  Proxy ausschließen muss, sperrt sie am Proxy.
+- **Änderungen** gelten für jede danach aufgebaute Verbindung, ohne Neustart. Eine bereits offene,
+  wiederverwendete Verbindung (Keep-Alive) läuft auf ihrem bisherigen Weg weiter, bis sie schließt.
+  Jede Änderung steht als `OUTBOUND_PROXY_CHANGED` mit altem und neuem Stand im Revisionsprotokoll.
+- **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung (Status 407),
+  nennen der Verbindungstest von Webverzeichnis und RSS-Feed sowie Verbindungstest und Modellabruf
+  der Chat-Modelle den Ausgangsproxy samt Status. Die übrigen Stellen melden einen allgemeinen
+  Verbindungsfehler oder den Status 407 als Antwort des Servers.
+- **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen, weil auch
+  deren Signaturschlüssel über ihn geholt werden. Das lokale Konto der Systemverwaltung meldet sich
+  ohne Anbieter an und kann den Eintrag korrigieren.
+
 ### Netzwerkzugang
 
 Standardmäßig bindet das Backend an `localhost`. Um OPAA von anderen Geräten im Netzwerk zugänglich zu machen, setzen Sie:
@@ -1736,6 +1782,23 @@ liefert es keinen Text, protokolliert das Backend eine Warnung, und unter der An
 Hinweis, dass sie unvollständig ist beziehungsweise fehlt. Abhilfe ist eine höhere maximale
 Antwortlänge in der Modellverwaltung. Der Hinweis gilt nur für die gerade erzeugte Antwort; im
 gespeicherten Verlauf erscheint er nach dem Neuladen nicht mehr.
+
+#### Denktext im Antworttext
+
+Manche Anbieter liefern das Nachdenken eines Modells nicht getrennt, sondern am Anfang des
+Antworttexts als Block `<think>…</think>` oder `<thought>…</thought>` — etwa Gemma 4 über die
+openai-kompatible Schnittstelle von Gemini. OPAA entfernt solche Blöcke bei jedem Aufruf des aktiven
+Chat-Modells (Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion),
+bevor der Text weiterverarbeitet wird. Erkannt wird nur eine Antwort, die mit dem öffnenden Tag
+beginnt; entfernt wird nur, was ganz am Anfang steht, dieselben Zeichenfolgen weiter hinten bleiben
+Teil der Antwort. Denktext ohne öffnendes Tag (nur `…</think>` vor der Antwort) bleibt stehen; das
+kommt bei manchen selbst betriebenen Modellen vor, deren Chat-Template das öffnende Tag schon in den
+Prompt setzt. Ist ein führender Block nicht geschlossen, gilt die Antwort als leer, gleich aus
+welchem Grund das Modell abgebrochen hat, und unter ihr erscheint der Hinweis auf die fehlende
+Antwort. Ein Schalter je Modell ist dafür nicht nötig. Der Verbindungstest weist darauf hin, wenn
+die Testantwort mit einem Denkblock beginnt, etwa bei einem Modell, das über einen Server ohne
+Reasoning-Parser mit `<think>` anfängt. Gemma über die Gemini-Schnittstelle liefert auf die kurze
+Testanfrage gar keinen Text; dort erscheint der Hinweis nicht.
 
 ### Chat-Modelle in der Oberfläche anlegen
 

@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import io.opaa.common.NumericAddress;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletRequestWrapper;
 import jakarta.servlet.http.HttpServletRequest;

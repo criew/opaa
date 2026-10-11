@@ -82,18 +82,24 @@ public final class S3SdkClient implements AutoCloseable {
     Duration timeout = settings.requestTimeout();
     Apache5HttpClient.Builder http =
         Apache5HttpClient.builder().connectionTimeout(timeout).socketTimeout(timeout);
+    // Never the JVM's proxy properties or HTTP(S)_PROXY: without a proxy in the settings, direct.
+    ProxyConfiguration.Builder proxy =
+        ProxyConfiguration.builder()
+            .useSystemPropertyValues(false)
+            .useEnvironmentVariableValues(false);
     if (settings.hasProxy()) {
-      http.proxyConfiguration(
-          ProxyConfiguration.builder()
-              .endpoint(URI.create("http://" + settings.proxyHost() + ":" + settings.proxyPort()))
-              .useSystemPropertyValues(false)
-              .useEnvironmentVariableValues(false)
-              .build());
+      proxy.endpoint(
+          URI.create("http://" + hostForUri(settings.proxyHost()) + ":" + settings.proxyPort()));
     }
+    http.proxyConfiguration(proxy.build());
     return http.buildWithDefaults(
         AttributeMap.builder()
             .put(SdkHttpConfigurationOption.TRUST_ALL_CERTIFICATES, settings.insecureSsl())
             .build());
+  }
+
+  private static String hostForUri(String host) {
+    return host.contains(":") && !host.startsWith("[") ? "[" + host + "]" : host;
   }
 
   private static RetryStrategy retryStrategy(S3ClientSettings settings) {
