@@ -404,7 +404,7 @@ privaten Bibliotheken belegt (unbegrenzt)“. Die Zahl gilt für alle ihre priva
 zusammen (`GET /api/v1/me/private-storage`); im Einzelnen sieht sie niemand sonst.
 
 Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt: unter **Administration →
-Zugänge**, Abschnitt „Private Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
+Anbindungen → Einstellungen**, Abschnitt „Private Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
 und „Grenze speichern“ (`PUT /api/v1/admin/private-libraries/quota`). Der Abschnitt nennt, ob die
 Vorgabe der Installation oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
 Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“; „Vorgabe wiederherstellen“ führt zur Vorgabe
@@ -1172,8 +1172,8 @@ und Kontoadresse, den Zugang und wer ausgelöst hat — „System“ für ein Er
 Geblättert wird seitenweise, solange es weitere Einträge gibt. Eine leere Antwort sagt, dass Einträge
 erst mit verbundenen Konten entstehen.
 
-**Frist:** Die Systemverwaltung stellt die Aufbewahrungsfrist unter **Administration → Zugänge** im
-Abschnitt „Verbindungsprotokoll“ ein, innerhalb der Grenzen aus Abschnitt 15. Die Rückfrage vor dem
+**Frist:** Die Systemverwaltung stellt die Aufbewahrungsfrist unter **Administration → Anbindungen →
+Einstellungen** im Abschnitt „Verbindungsprotokoll“ ein, innerhalb der Grenzen aus Abschnitt 15. Die Rückfrage vor dem
 Speichern sagt, ob mit dem nächsten täglichen Lauf gelöscht wird (Verkürzung) oder die längere Frist
 sofort gilt (Verlängerung); eine Frist außerhalb der Grenzen nimmt die Maske nicht an. Lesen kann die
 Systemverwaltung das Protokoll dort nicht.
@@ -1392,7 +1392,7 @@ eingebaut.
 | `OPAA_SUCCESSION_DETECTION_CRON` | **stündlich** (`0 5 * * * *`) | Spring-Cron, sechs Felder | Wann der Feststellungslauf hinsieht. Er schreibt nur Erstfeststellung und Ende eines Vorgangs; der Zustand selbst ist abgeleitet und gilt auch ohne ihn — ohne den Lauf fehlt den Einträgen nur das Alter |
 | Aufbewahrungshöchstdauer der Rechtehistorie | **36 Monate** | 12 bis 120 Monate | Wie lange ein beendeter Zeitraum nach seinem Ende liegen bleibt; eine Verwaltungseinstellung, keine Umgebungsvariable ([Suche](suche.md), Abschnitt 8.4). Jede Änderung ist ein Protokollereignis |
 | Aufbewahrungsfrist des Nachweisprotokolls | **36 Monate** | 12 bis 120 Monate | Verwaltungseinstellung; ihr folgen auch die abgeschlossenen Nachfolgevorgänge (Abschnitt 13.3). Eine Verkürzung wirkt mit dem nächsten Monatslauf, und zwar vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
-| Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung unter Administration → Zugänge, Abschnitt „Verbindungsprotokoll“; einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
+| Aufbewahrungsfrist des Verbindungsprotokolls | **12 Monate** | 6 bis 24 Monate | Verwaltungseinstellung der Systemverwaltung unter Administration → Anbindungen → Einstellungen, Abschnitt „Verbindungsprotokoll“; einen Wert außerhalb der Grenzen weist sie ab, und die Datenbank erzwingt sie zusätzlich. Jede Änderung ist ein Protokollereignis. Eine Verkürzung wirkt mit dem nächsten täglichen Lauf vollständig; eine Verlängerung wirkt sofort, holt aber Gelöschtes nicht zurück |
 | Obergrenze einer Übertragung | **500 Zeilen** | fest | Mehr bewegt eine Übertragung nicht; darüber wird sie abgelehnt und in mehreren Schritten gefahren (Abschnitt 13.2) |
 | Gültigkeit einer Übertragungsvorschau | **30 Minuten** | fest | Danach wird gegen einen frischen Stand neu gerechnet, statt eine alte Vorschau anzuwenden |
 

@@ -2,12 +2,12 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../mocks/server'
-import { mockConnectionProfiles } from '../mocks/connectionProfileFixtures'
-import { renderWithProviders } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
-import type { SourceTypeDescriptor } from '../types/api'
-import ConnectionProfileManagementPage from './ConnectionProfileManagementPage'
+import { server } from '../../../mocks/server'
+import { mockConnectionProfiles } from '../../../mocks/connectionProfileFixtures'
+import { renderWithProviders } from '../../../test/test-utils'
+import { useAuthStore } from '../../../stores/authStore'
+import type { SourceTypeDescriptor } from '../../../types/api'
+import ConnectionProfilesTab from './ConnectionProfilesTab'
 
 /**
  * Input without delays and without the pointer-events check on every step: the long form of a new
@@ -44,7 +44,17 @@ const REALM: SourceTypeDescriptor = {
 }
 
 /** OAuth in the administration (#2168): endpoints the connector leaves to the profile. */
-describe('ConnectionProfileManagementPage, OAuth', () => {
+/** Chooses the source type of a new profile in the select of the dialog. */
+async function chooseSourceType(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  name: RegExp,
+) {
+  await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
+
+describe('ConnectionProfilesTab, OAuth', () => {
   beforeEach(() => {
     useAuthStore.setState({
       mode: 'dev',
@@ -69,13 +79,13 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
 
   /** Opens „Zugang anlegen“ for the OAuth realm with name, address and client id entered. */
   async function newOAuthProfile(user: ReturnType<typeof userEvent.setup>) {
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
     const button = await screen.findByRole('button', { name: 'Neuer Zugang' })
     // the button stays disabled until the source types are loaded
     await waitFor(() => expect(button).toBeEnabled())
     await user.click(button)
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Name/))
     await user.paste('Zugang Keycloak')
     await user.click(within(dialog).getByLabelText(/^Server-Adresse/))
@@ -164,11 +174,11 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'OAuth' }))
 
@@ -205,7 +215,7 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
           sent.push((await request.clone().json()) as Record<string, unknown>)
         }
       })
-      renderWithProviders(<ConnectionProfileManagementPage />)
+      renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
       await user.click(
         await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
       )
@@ -257,7 +267,7 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
 
     it('keeps the stored secret where only the authorization endpoint moves', async () => {
       const user = userEvent.setup()
-      renderWithProviders(<ConnectionProfileManagementPage />)
+      renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
       await user.click(
         await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
       )
@@ -279,7 +289,7 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
       expiredConnectionCount: { count: 12, fewerThan: null },
       expiredConnectionWarning: true,
     }
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const row = (await screen.findByText('Zugang Nextcloud intern')).closest('tr')!
     expect(within(row).getByText('12')).toBeInTheDocument()

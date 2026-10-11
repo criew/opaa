@@ -102,8 +102,8 @@ freigegeben sein, und die Person muss ihn für ein benanntes Werkzeug bewusst er
 
 Der Fremdzugang ist eine Einstellung der Systemverwaltung, installationsweit, **Standard aus**.
 
-> **Gebaut (#1717).** Die Einstellungszeile, ihre Oberfläche unter *Administration →
-> Fremdzugänge* und das Protokollereignis `EXTERNAL_ACCESS_SETTINGS_CHANGED` existieren. Die
+> **Gebaut (#1717).** Die Einstellungszeile, ihre Oberfläche (heute *Administration → Anbindungen →
+> Externe KI-Werkzeuge → Einstellungen*, #2504) und das Protokollereignis `EXTERNAL_ACCESS_SETTINGS_CHANGED` existieren. Die
 > ausgelieferten Werte sind: Kanal **aus**, Ablauf-Obergrenze 90 Tage, Kontingent 60 Anfragen je
 > Token und Stunde, Netzbereiche `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`,
 > `::1/128`, `fc00::/7` („Hausnetz"), Abflussalarm ab 600 Abrufen je Stunde und der Vorgabetext
@@ -115,8 +115,8 @@ Der Fremdzugang ist eine Einstellung der Systemverwaltung, installationsweit, **
 > Verwendung des Einleitungstextes im MCP-Handschlag (#1721).
 
 ```
-Systemkonfiguration → Fremdzugänge
-  [ ] Fremdzugänge erlauben                          (aus)
+Administration → Anbindungen → Externe KI-Werkzeuge → Einstellungen
+  [ ] Externe KI-Werkzeuge zulassen                  (aus)
       zuletzt geändert am … durch …
       Ablauf-Obergrenze für Zugangstokens:  90 Tage
       Kontingent je Token:                  … Anfragen je Stunde
@@ -451,7 +451,7 @@ Merkmal käme als Entwicklungsnutzer durch.
 Gebaut ist beides: der Reiter *Ihre Einstellungen → Zugangstokens* (eigene Liste mit Name, Präfix,
 Bibliotheken, Erstellung, Ablauf, „zuletzt benutzt" und Zustand; Anlegedialog mit Aufklärung,
 Bibliotheksauswahl und Ablaufdatum; Einmalanzeige des Werts; Widerruf mit Rückfrage) und der Reiter
-*Administration → Fremdzugänge → Zugangstokens* (Bestandsliste ohne Nutzungsdatum, Filter allein
+*Administration → Anbindungen → Externe KI-Werkzeuge*, Abschnitt „Zugangstokens“ (Bestandsliste ohne Nutzungsdatum, Filter allein
 über Zustand und Ablauf, Einzelsperre und Sperre je Person, je mit Rückfrage).
 
 Fünf Festlegungen weichen vom Entwurf oben ab oder ergänzen ihn:

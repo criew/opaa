@@ -40,6 +40,12 @@ import { catalogRoute } from './components/assets/assetTypeRegistry'
 import {
   CONNECTION_CALLBACK_ROUTE,
   CONNECTION_LOG_ROUTE,
+  CONNECTION_PROFILES_ROUTE,
+  CONNECTIONS_ADMIN_ROUTE,
+  EXTERNAL_TOOLS_LIBRARIES_ROUTE,
+  EXTERNAL_TOOLS_ROUTE,
+  EXTERNAL_TOOLS_SETTINGS_ROUTE,
+  EXTERNAL_TOOLS_TOKENS_ROUTE,
   FORGOT_PASSWORD_ROUTE,
   HANDOVER_ROUTE,
   REGISTER_ROUTE,
@@ -54,14 +60,12 @@ import { useUiStore } from './stores/uiStore'
 import { resolveThemeMode } from './theme/colorScheme'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 import LlmModelManagementPage from './pages/LlmModelManagementPage'
-import ConnectionProfileManagementPage from './pages/ConnectionProfileManagementPage'
+import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
 import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
 import RightsHistoryPage from './pages/RightsHistoryPage'
 import ConnectionLogPage from './pages/ConnectionLogPage'
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 import MailSettingsPage from './pages/MailSettingsPage'
-import ExternalAccessLibrariesPage from './pages/ExternalAccessLibrariesPage'
-import ExternalAccessSettingsPage from './pages/ExternalAccessSettingsPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
@@ -76,9 +80,8 @@ const ADMIN_SECTIONS = [
   { label: 'Identitätsanbieter', to: '/admin/identity-providers' },
   { label: 'Verzeichnisabgleich', to: '/admin/directory-sync' },
   { label: 'E-Mail', to: '/admin/mail' },
-  { label: 'Zugänge', to: '/admin/connection-profiles' },
-  { label: 'Fremdzugänge', to: '/admin/external-access' },
-  { label: 'Fremdzugangsfreigaben', to: '/admin/library-releases' },
+  // Zugänge, Quellarten und externe KI-Werkzeuge als ein Bereich mit Reitern.
+  { label: 'Anbindungen', to: CONNECTIONS_ADMIN_ROUTE },
   { label: 'Suche & Indexierung', to: '/admin/search' },
 ]
 
@@ -239,8 +242,35 @@ export default function App() {
                 />
                 <Route path="admin/directory-sync" element={<DirectorySyncPage />} />
                 <Route
+                  path="admin/connections"
+                  element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
+                />
+                <Route path="admin/connections/:tab" element={<ConnectionsAdminPage />} />
+                {/* Die früheren Seiten der Anbindungen: Lesezeichen und Verweise landen
+                    am selben Inhalt im neuen Bereich. */}
+                <Route
                   path="admin/connection-profiles"
-                  element={<ConnectionProfileManagementPage />}
+                  element={<Navigate to={CONNECTION_PROFILES_ROUTE} replace />}
+                />
+                <Route
+                  path="admin/library-releases"
+                  element={<Navigate to={EXTERNAL_TOOLS_LIBRARIES_ROUTE} replace />}
+                />
+                <Route
+                  path="admin/external-access"
+                  element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
+                />
+                <Route
+                  path="admin/external-access/channel"
+                  element={<Navigate to={EXTERNAL_TOOLS_SETTINGS_ROUTE} replace />}
+                />
+                <Route
+                  path="admin/external-access/tokens"
+                  element={<Navigate to={EXTERNAL_TOOLS_TOKENS_ROUTE} replace />}
+                />
+                <Route
+                  path="admin/external-access/*"
+                  element={<Navigate to={EXTERNAL_TOOLS_ROUTE} replace />}
                 />
                 <Route path="admin/capabilities" element={<CapabilityManagementPage />} />
                 <Route
@@ -248,13 +278,10 @@ export default function App() {
                   element={<Navigate to="/admin/succession/open" replace />}
                 />
                 <Route path="admin/succession/:tab" element={<SuccessionPage />} />
-                <Route path="admin/library-releases" element={<ExternalAccessLibrariesPage />} />
                 {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
                     Vorlagenverwaltung dort landet (#1542). */}
                 <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                 <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
-                <Route path="admin/external-access" element={<ExternalAccessSettingsPage />} />
-                <Route path="admin/external-access/:tab" element={<ExternalAccessSettingsPage />} />
                 <Route
                   path="admin/search"
                   element={<Navigate to="/admin/search/overview" replace />}

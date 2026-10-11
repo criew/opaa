@@ -2,14 +2,25 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { mockSourceTypes } from '../mocks/libraryFixtures'
-import { server } from '../mocks/server'
+import { mockSourceTypes } from '../../../mocks/libraryFixtures'
+import { server } from '../../../mocks/server'
 
-import { mockConnectionProfiles } from '../mocks/connectionProfileFixtures'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
-import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '../types/api'
-import ConnectionProfileManagementPage from './ConnectionProfileManagementPage'
+import { mockConnectionProfiles } from '../../../mocks/connectionProfileFixtures'
+import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
+import { useAuthStore } from '../../../stores/authStore'
+import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '../../../types/api'
+import ConnectionProfilesTab from './ConnectionProfilesTab'
+import ConnectorTypesTab from './ConnectorTypesTab'
+
+/** Chooses the source type of a new profile in the select of the dialog. */
+async function chooseSourceType(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  name: RegExp,
+) {
+  await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({
@@ -131,7 +142,7 @@ async function openEdit(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole('dialog', { name: new RegExp(PROFILE) })
 }
 
-describe('ConnectionProfileManagementPage', () => {
+describe('ConnectionProfilesTab', () => {
   beforeEach(() => {
     signInAs('SYSTEM_ADMIN')
     server.use(
@@ -143,18 +154,19 @@ describe('ConnectionProfileManagementPage', () => {
     server.events.removeAllListeners()
   })
 
-  it('tells a regular account that the system administration keeps the profiles', async () => {
-    signInAs('USER')
-    renderWithProviders(<ConnectionProfileManagementPage />)
+  it('marks the profile a link points at, e.g. from a notification about its secret', async () => {
+    renderWithProviders(<ConnectionProfilesTab />, {
+      withRouter: true,
+      initialRoute: `/admin/connections/access?profile=${mockConnectionProfiles[0].id}`,
+    })
 
-    expect(
-      await screen.findByText(/Zugänge werden von der Systemverwaltung gepflegt/),
-    ).toBeVisible()
+    const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
+    expect(row).toHaveAttribute('aria-current', 'true')
   })
 
   it('offers no dead end while no source type admits profiles', async () => {
     server.use(http.get('/api/v1/source-types', () => HttpResponse.json(WITHOUT_PROFILES)))
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     expect(await screen.findByTestId('no-profile-source-type')).toHaveTextContent(
       'Zugänge stehen zur Verfügung, sobald eine Quellart sie unterstützt.',
@@ -163,7 +175,7 @@ describe('ConnectionProfileManagementPage', () => {
   })
 
   it('lists the profiles with their connector, address and sign-in', async () => {
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
     expect(await within(row).findByText('Nextcloud')).toBeVisible()
@@ -191,7 +203,7 @@ describe('ConnectionProfileManagementPage', () => {
       connectedAccountCount: { count: 9, fewerThan: null },
       expiredConnectionCount: null,
     })
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const header = (await screen.findAllByRole('row'))[0]
     expect(header).toHaveTextContent('Verbundene Konten')
@@ -220,7 +232,7 @@ describe('ConnectionProfileManagementPage', () => {
       expiredConnectionCount: null,
       expiredConnectionWarning: true,
     })
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const exact = await screen.findByRole('row', { name: new RegExp(PROFILE) })
     expect(within(exact).getByText('Viele abgelaufen')).toBeVisible()
@@ -241,22 +253,37 @@ describe('ConnectionProfileManagementPage', () => {
       name: 'Zugang bald',
       clientSecretExpiresOn: '2999-12-24',
     })
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     expect(await screen.findByText('Secret abgelaufen am 31.03.2020')).toBeVisible()
     expect(screen.getByText('Secret läuft ab am 24.12.2999')).toBeVisible()
   })
 
-  it('creates a profile after choosing the connector as a tile; creating needs a complete choice', async () => {
+  it('preselects the source type when only one admits profiles', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    expect(within(dialog).getByRole('combobox', { name: /Quellart/ })).toHaveTextContent(
+      /^Nextcloud$/,
+    )
+    expect(within(dialog).getByLabelText(/^Name/)).toBeVisible()
+  })
+
+  it('creates a profile after choosing the connector in the select; creating needs a complete choice', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     const create = within(dialog).getByRole('button', { name: 'Anlegen' })
     expect(create).toBeDisabled()
-    expect(within(dialog).getByRole('radio', { name: /Dateisystem/ })).toBeDisabled()
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+    const fileSystem = await screen.findByRole('option', { name: /Dateisystem/ })
+    expect(fileSystem).toHaveAttribute('aria-disabled', 'true')
+    expect(fileSystem).toHaveTextContent('keine Zugänge möglich')
+    await user.click(await screen.findByRole('option', { name: /Nextcloud/ }))
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Nextcloud Partner')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://partner.example.org')
     expect(create).toBeDisabled()
@@ -275,11 +302,11 @@ describe('ConnectionProfileManagementPage', () => {
   it('shows a field per declared default and sends only the ones set, typed by kind', async () => {
     const user = userEvent.setup()
     const sent = capturePosts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     expect(within(dialog).queryByLabelText(/Konnektor-Vorgaben/)).not.toBeInTheDocument()
     expect(within(dialog).getByText('Vorgaben für jede Bibliothek')).toBeVisible()
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit Vorgaben')
@@ -301,11 +328,11 @@ describe('ConnectionProfileManagementPage', () => {
   it('sends proxy and certificate switch of the profile', async () => {
     const user = userEvent.setup()
     const sent = capturePosts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit Proxy')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://cloud.example.org')
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
@@ -326,11 +353,11 @@ describe('ConnectionProfileManagementPage', () => {
     server.use(http.get('/api/v1/source-types', () => HttpResponse.json([NEXTCLOUD, smb])))
     const user = userEvent.setup()
     const sent = capturePosts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Windows-Dateifreigabe/ }))
+    await chooseSourceType(user, dialog, /Windows-Dateifreigabe/)
     expect(within(dialog).queryByLabelText(/^Proxy/)).not.toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Zertifikatsprüfung aussetzen')).not.toBeInTheDocument()
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Dateiserver')
@@ -345,11 +372,11 @@ describe('ConnectionProfileManagementPage', () => {
 
   it('offers only the ownerships the chosen sign-in admits', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
     await user.click(within(dialog).getByLabelText(/^Besitzart/))
@@ -369,11 +396,11 @@ describe('ConnectionProfileManagementPage', () => {
     )
     const user = userEvent.setup()
     const sent = capturePosts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Ablage mit fester Adresse/ }))
+    await chooseSourceType(user, dialog, /Ablage mit fester Adresse/)
     expect(within(dialog).queryByLabelText(/^Server-Adresse/)).not.toBeInTheDocument()
     expect(within(dialog).getByText(/feste Adresse: https:\/\/api\.ablage\.example/)).toBeVisible()
     expect(within(dialog).queryByText('Vorgaben für jede Bibliothek')).not.toBeInTheDocument()
@@ -399,7 +426,7 @@ describe('ConnectionProfileManagementPage', () => {
     )
     const user = userEvent.setup()
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     const name = within(dialog).getByLabelText(/^Name/)
@@ -416,7 +443,7 @@ describe('ConnectionProfileManagementPage', () => {
   it('sends a text default as typed, trimmed, beside the stored choice', async () => {
     const user = userEvent.setup()
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     await user.type(within(dialog).getByLabelText(/^Region/), ' eu-central-1 ')
@@ -437,7 +464,7 @@ describe('ConnectionProfileManagementPage', () => {
     }
     const user = userEvent.setup()
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     const name = within(dialog).getByLabelText(/^Name/)
@@ -456,7 +483,7 @@ describe('ConnectionProfileManagementPage', () => {
   it('asks with the question of the server before a change that discards secrets', async () => {
     const user = userEvent.setup()
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     const address = within(dialog).getByLabelText(/^Server-Adresse/)
@@ -486,7 +513,7 @@ describe('ConnectionProfileManagementPage', () => {
       }
     })
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     const address = within(dialog).getByLabelText(/^Server-Adresse/)
@@ -540,7 +567,7 @@ describe('ConnectionProfileManagementPage', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     await user.type(within(dialog).getByLabelText(/^Region/), 'eu')
@@ -560,7 +587,7 @@ describe('ConnectionProfileManagementPage', () => {
     }
     const user = userEvent.setup()
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />, { withRouter: true })
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     await user.click(within(dialog).getByLabelText(/^Besitzart/))
@@ -581,7 +608,7 @@ describe('ConnectionProfileManagementPage', () => {
   it('names every library whose connector refuses the change and saves nothing', async () => {
     const user = userEvent.setup()
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />, { withRouter: true })
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     await user.type(within(dialog).getByLabelText(/^Proxy/), 'proxy.invalid:8080')
@@ -633,7 +660,7 @@ describe('ConnectionProfileManagementPage', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />, { withRouter: true })
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     await user.type(within(dialog).getByLabelText(/^Region/), 'eu')
@@ -653,7 +680,7 @@ describe('ConnectionProfileManagementPage', () => {
   it('saves a mere rename without a preview', async () => {
     const user = userEvent.setup()
     const sent = capturePuts()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     const name = within(dialog).getByLabelText(/^Name/)
@@ -667,7 +694,7 @@ describe('ConnectionProfileManagementPage', () => {
 
   it('asks with the number of connections before disconnecting all of them', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(
       await screen.findByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
@@ -682,7 +709,7 @@ describe('ConnectionProfileManagementPage', () => {
   it('tells before the emergency shutdown that persons are notified and reconnect themselves', async () => {
     mockConnectionProfiles[0] = { ...mockConnectionProfiles[0], ownership: 'BOTH' }
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(
       await screen.findByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
@@ -697,7 +724,7 @@ describe('ConnectionProfileManagementPage', () => {
 
   it('deletes a profile after naming what happens to its libraries', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: `${PROFILE} löschen` }))
     const question = await screen.findByRole('dialog', { name: /löschen\?/ })
@@ -711,7 +738,7 @@ describe('ConnectionProfileManagementPage', () => {
   // nennt, was mit Läufen und Inhalt geschieht; danach steht der Zugang als „Gesperrt“ in der Liste.
   it('locks a profile after naming what happens to its libraries, and unlocks it again', async () => {
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: `${PROFILE} sperren` }))
     const question = await screen.findByRole('dialog', { name: /sperren\?/ })
@@ -741,7 +768,7 @@ describe('ConnectionProfileManagementPage', () => {
       }),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectorTypesTab />)
 
     const types = await screen.findByRole('table', { name: 'Quellarten' })
     await user.click(within(types).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
@@ -775,7 +802,7 @@ describe('ConnectionProfileManagementPage', () => {
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
     expect(await within(row).findByText('Quellart gesperrt')).toBeVisible()
@@ -791,7 +818,7 @@ describe('ConnectionProfileManagementPage', () => {
   it('shows the description of the source type as loading rather than missing', async () => {
     server.use(http.get('/api/v1/source-types', () => new Promise<never>(() => {})))
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
     expect(within(dialog).getByText('Die Angaben der Quellart werden geladen …')).toBeVisible()
@@ -800,7 +827,7 @@ describe('ConnectionProfileManagementPage', () => {
   })
 })
 
-describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', () => {
+describe('ConnectorTypesTab - „Nur über Zugänge“ (#2162)', () => {
   const NEXTCLOUD_STATE = {
     sourceType: 'NEXTCLOUD',
     displayName: 'Nextcloud',
@@ -834,7 +861,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
   }
 
   it('offers the switch only for a type that admits profiles as optional', async () => {
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectorTypesTab />)
 
     const types = await typesTable()
     expect(
@@ -858,7 +885,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectorTypesTab />)
 
     await user.click(
       within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
@@ -880,7 +907,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
     async (stock, choice) => {
       const sent = captureRequirementPuts()
       const user = userEvent.setup()
-      renderWithProviders(<ConnectionProfileManagementPage />)
+      renderWithProviders(<ConnectorTypesTab />)
 
       await user.click(
         within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
@@ -923,7 +950,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
       ),
     )
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectorTypesTab />)
 
     await user.click(
       within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }),
@@ -942,7 +969,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
     server.use(http.get('/api/v1/admin/connector-types', () => HttpResponse.json([required])))
     const sent = captureRequirementPuts()
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectorTypesTab />)
 
     const types = await typesTable()
     expect(within(types).getByText(/laufen weiter, ihre Adresse ist eingefroren/)).toBeVisible()
@@ -962,7 +989,7 @@ describe('ConnectionProfileManagementPage - „Nur über Zugänge“ (#2162)', (
     server.use(http.get('/api/v1/admin/connector-types', () => HttpResponse.json([required])))
     const sent = captureRequirementPuts()
     const user = userEvent.setup()
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectorTypesTab />)
 
     const toggle = within(await typesTable()).getByRole('switch', {
       name: 'Nur über Zugänge für Nextcloud',

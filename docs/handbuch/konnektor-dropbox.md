@@ -10,7 +10,7 @@
 1. In der Dropbox App Console eine App mit „Scoped access“ anlegen, die Berechtigungen
    `account_info.read`, `files.metadata.read` und `files.content.read` setzen und die
    Rücksprungadresse von OPAA eintragen (Abschnitt 2).
-2. Unter **Administration → Zugänge** einen Zugang für Dropbox mit Anmeldeart OAuth, App key als
+2. Unter **Administration → Anbindungen → Zugänge** einen Zugang für Dropbox mit Anmeldeart OAuth, App key als
    Client-ID und App secret als Client-Secret anlegen (Abschnitt 2.4). Dropbox ist nur über einen
    Zugang nutzbar.
 3. Die Quellart Dropbox ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer außer
