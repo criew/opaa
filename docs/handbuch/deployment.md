@@ -1450,6 +1450,17 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_INDEXING_SHAREPOINT_MAX_FILES_PER_RUN` | `1000000` | `1000000` | Gelistete Dateien je Vollabgleich, bevor der Lauf sichtbar als Fehler endet |
 | `OPAA_INDEXING_SHAREPOINT_DOWNLOAD_CONCURRENCY` | `2` | `2` | Gleichzeitige Downloads je Lauf |
 | `OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL` | `1d` | `1d` | Rhythmus des Vollabgleichs und damit das längste Fenster, in dem umbenannte, verschobene oder gelöschte Ordner noch am alten Ort stehen; eine Bibliothek kann einen eigenen setzen |
+| `OPAA_INDEXING_DROPBOX_PAGE_SIZE` | `2000` | `2000` | Einträge je Auflistungs- und Änderungsseite des Dropbox-Konnektors (siehe [Konnektor Dropbox](konnektor-dropbox.md)); höchstens 2000 |
+| `OPAA_INDEXING_DROPBOX_MAX_FILE_SIZE_BYTES` | `52428800` (50 MiB) | `52428800` | Obergrenze je Download oder Export, auch für „Original öffnen“ |
+| `OPAA_INDEXING_DROPBOX_REQUEST_TIMEOUT` | `30s` | `30s` | Zeitlimit je Anfrage an Dropbox |
+| `OPAA_INDEXING_DROPBOX_DOWNLOAD_TIMEOUT` | `10m` | `10m` | Gesamtfrist je Download oder Export, vom Antwortbeginn bis zum letzten Byte; danach gilt die Datei als vorübergehend fehlgeschlagen |
+| `OPAA_INDEXING_DROPBOX_MAX_RETRIES` | `5` | `5` | Wiederholungen einer gedrosselten Anfrage (`429`) |
+| `OPAA_INDEXING_DROPBOX_MAX_RETRY_WAIT` | `5m` | `5m` | Längste einzelne Wartezeit, auch wenn `Retry-After` mehr verlangt |
+| `OPAA_INDEXING_DROPBOX_REQUEST_BUDGET_PER_RUN` | `20000` | `20000` | Anfragen je Lauf, bevor er als „unvollständig, wird fortgesetzt" endet |
+| `OPAA_INDEXING_DROPBOX_MAX_FILES_PER_RUN` | `1000000` | `1000000` | Gelistete Dateien je Vollabgleich, bevor der Lauf sichtbar als Fehler endet |
+| `OPAA_INDEXING_DROPBOX_DOWNLOAD_CONCURRENCY` | `2` | `2` | Gleichzeitige Downloads je Lauf |
+| `OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL` | `7d` | `7d` | Rhythmus des Vollabgleichs; eine Bibliothek kann einen eigenen setzen |
+| `OPAA_INDEXING_DROPBOX_API_BASE`, `OPAA_INDEXING_DROPBOX_CONTENT_BASE`, `OPAA_INDEXING_DROPBOX_AUTHORIZATION_ENDPOINT`, `OPAA_INDEXING_DROPBOX_TOKEN_ENDPOINT`, `OPAA_INDEXING_DROPBOX_REVOCATION_ENDPOINT` | die Adressen von Dropbox | nicht gesetzt | Nur für einen Ersatzserver in Tests; im Betrieb nie ändern |
 | **Dokument-Upload** | | | |
 | `OPAA_UPLOAD_THREAD_POOL_CORE_SIZE` | `2` | `2` | Kern-Threads für die asynchrone Verarbeitung hochgeladener Dokumente — eigener Pool, unabhängig von `OPAA_INDEXING_THREAD_POOL_*` |
 | `OPAA_UPLOAD_THREAD_POOL_MAX_SIZE` | `4` | `4` | Maximale Threads für die asynchrone Verarbeitung hochgeladener Dokumente |

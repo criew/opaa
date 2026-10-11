@@ -286,3 +286,17 @@ Modul connections.
   Nutzer ist `subject` von Google Drive.
 - **Registry beim Start:** Ein Konnektor mit Dienstkonto-Schlüssel darf Profile zulassen; der
   Schlüssel liegt dann am Profil, signiert wird weiter im Kern (ADR-0040, Nachtrag #2220).
+
+## Nachtrag: Zweiter fester Host ohne eigenes Feld (11.10.2026, #2154)
+
+Dropbox trennt API-Host (`api.dropboxapi.com`) und Inhalts-Host (`content.dropboxapi.com`). Das
+Zugriffstoken geht an beide.
+
+- **Kein weiteres Feld in `ServerAddressRule`.** Die Adresse der Bibliothek und damit das Ziel des
+  Tokens (`SecretTarget`) bleibt der API-Host. Den Inhalts-Host nennt der Konnektor selbst, fest aus
+  seiner Konfiguration (`opaa.indexing.dropbox.content-base`), nie aus einer Eingabe der Bibliothek,
+  des Zugangs oder einer Antwort. Beide Hosts stehen in derselben Betreiberkonfiguration; ein
+  zweites Feld in der Adressregel brächte keine Prüfung, die nicht schon dort liegt.
+- **Abwägung:** Mit einem Feld `alsoReaches` könnte die Verwaltung den zweiten Host in der Antwort
+  von `GET /source-types` sehen. Das lohnt erst, wenn ein Konnektor einen zweiten Host aus dem
+  Zugang nimmt; dann gehört das Feld in die Adressregel und das Ziel des Tokens um ihn erweitert.

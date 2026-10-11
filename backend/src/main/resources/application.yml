@@ -395,6 +395,24 @@ opaa:
       max-files-per-run: ${OPAA_INDEXING_SHAREPOINT_MAX_FILES_PER_RUN:1000000}
       download-concurrency: ${OPAA_INDEXING_SHAREPOINT_DOWNLOAD_CONCURRENCY:2}
       full-sync-interval: ${OPAA_INDEXING_SHAREPOINT_FULL_SYNC_INTERVAL:1d}
+    # Dropbox over its API v2 (see DropboxProperties). The addresses are Dropbox's own; they move
+    # only to a stand-in for tests.
+    dropbox:
+      api-base: ${OPAA_INDEXING_DROPBOX_API_BASE:https://api.dropboxapi.com}
+      content-base: ${OPAA_INDEXING_DROPBOX_CONTENT_BASE:https://content.dropboxapi.com}
+      authorization-endpoint: ${OPAA_INDEXING_DROPBOX_AUTHORIZATION_ENDPOINT:https://www.dropbox.com/oauth2/authorize}
+      token-endpoint: ${OPAA_INDEXING_DROPBOX_TOKEN_ENDPOINT:https://api.dropboxapi.com/oauth2/token}
+      revocation-endpoint: ${OPAA_INDEXING_DROPBOX_REVOCATION_ENDPOINT:https://api.dropboxapi.com/2/auth/token/revoke}
+      page-size: ${OPAA_INDEXING_DROPBOX_PAGE_SIZE:2000}
+      max-file-size-bytes: ${OPAA_INDEXING_DROPBOX_MAX_FILE_SIZE_BYTES:52428800}
+      request-timeout: ${OPAA_INDEXING_DROPBOX_REQUEST_TIMEOUT:30s}
+      download-timeout: ${OPAA_INDEXING_DROPBOX_DOWNLOAD_TIMEOUT:10m}
+      max-retries: ${OPAA_INDEXING_DROPBOX_MAX_RETRIES:5}
+      max-retry-wait: ${OPAA_INDEXING_DROPBOX_MAX_RETRY_WAIT:5m}
+      request-budget-per-run: ${OPAA_INDEXING_DROPBOX_REQUEST_BUDGET_PER_RUN:20000}
+      max-files-per-run: ${OPAA_INDEXING_DROPBOX_MAX_FILES_PER_RUN:1000000}
+      download-concurrency: ${OPAA_INDEXING_DROPBOX_DOWNLOAD_CONCURRENCY:2}
+      full-sync-interval: ${OPAA_INDEXING_DROPBOX_FULL_SYNC_INTERVAL:7d}
     # The shared event intake behind every push path (Confluence webhooks, S3 event
     # notifications): how long reported keys are collected before one targeted run checks them,
     # how many keys a batch holds before the connector's ordinary run takes over, and how often a

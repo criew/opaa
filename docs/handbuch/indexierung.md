@@ -90,6 +90,7 @@ Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
 | `SHAREPOINT` | Der Lauf spiegelt die Ordnerkette ab der Wurzel der Dokumentbibliothek; bei mehreren Dokumentbibliotheken beginnt jede Kette mit deren Namen. Siehe [Konnektor SharePoint](konnektor-sharepoint.md), Abschnitt 6. | nein |
 | `NEXTCLOUD` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinen Pfadsegmenten. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Nextcloud](konnektor-nextcloud.md), Abschnitt 5. | nein |
 | `SMB` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner der Freigabe, wie bei Nextcloud. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Windows-Dateifreigabe](konnektor-smb.md), Abschnitt 5. | nein |
+| `DROPBOX` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinem Namen. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Dropbox](konnektor-dropbox.md), Abschnitt 6. | nein |
 
 Das Löschen eines Ordners in einer Upload-Bibliothek löscht die enthaltenen Dokumente samt
 Chunks und Dateien, nach einer Bestätigung, die deren Anzahl nennt.
@@ -400,7 +401,8 @@ genannten Dinge mit.
 > [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
 > [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md),
 > [Google Drive](konnektor-google-drive.md), [SharePoint](konnektor-sharepoint.md),
-> [Nextcloud](konnektor-nextcloud.md) und [Windows-Dateifreigabe (SMB)](konnektor-smb.md).
+> [Nextcloud](konnektor-nextcloud.md), [Dropbox](konnektor-dropbox.md) und
+> [Windows-Dateifreigabe (SMB)](konnektor-smb.md).
 
 ### Zugänge
 
@@ -709,6 +711,7 @@ Konnektoren melden:
 | Windows-Dateifreigabe (SMB) | möglich | persönliches Geheimnis (Benutzername und Passwort) | keine | `smb://`, ohne Proxy und Zertifikatsprüfung |
 | Google Drive | möglich | Dienstkonto-Schlüssel (am Zugang) | imitiertes Konto (nur am Zugang) | fest `https://www.googleapis.com` |
 | SharePoint | Pflicht | Client-Credentials (am Zugang, mit Mandant) | keine | fest `https://graph.microsoft.com` |
+| Dropbox | Pflicht | OAuth (App am Zugang, eigene Zustimmung der Bibliothek) | keine | fest `https://api.dropboxapi.com` |
 | Upload, Dateisystem | verboten | – | – | – |
 
 Das persönliche Geheimnis gehört der Bibliothek: Ihre Verwaltenden tragen es ein, der Zugang legt
@@ -822,10 +825,10 @@ angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben.
 Meldet sich ein Zugang über OAuth an und lässt er die Besitzart Bibliothek zu, verbindet eine
 Bibliothek ihre Quelle mit einer **eigenen Zustimmung beim Anbieter**: Eine verwaltende Person
 meldet sich dort einmal mit einem **Dienstkonto** an und stimmt zu; die Zustimmung gehört danach der
-Bibliothek, nicht der Person, und die Läufe erneuern das Zugriffstoken selbst. Heute meldet noch
-kein mitgelieferter Konnektor diese Anmeldeart für Bibliotheken (siehe die Tabelle unter „Welcher
-Konnektor Zugänge kennt“); ohne einen solchen Zugang erscheint nichts von diesem Abschnitt in der
-Oberfläche. Der erste Konnektor dafür ist Dropbox (#2154).
+Bibliothek, nicht der Person, und die Läufe erneuern das Zugriffstoken selbst. Unter den
+mitgelieferten Konnektoren meldet diese Anmeldeart für Bibliotheken nur
+[Dropbox](konnektor-dropbox.md) (siehe die Tabelle unter „Welcher Konnektor Zugänge kennt“); ohne
+einen solchen Zugang erscheint nichts von diesem Abschnitt in der Oberfläche.
 
 **Im Wissens-Assistenten** steht nach der Wahl eines solchen Zugangs im Schritt „Quelle“ über dem
 Formular der Abschnitt **„Quelle verbinden“**:
@@ -1510,6 +1513,7 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `sharepoint.*` | siehe [SharePoint, Abschnitt 12](konnektor-sharepoint.md#12-konfiguration) (`OPAA_INDEXING_SHAREPOINT_*`, darunter `full-sync-interval` als Fenster für Ordneränderungen) | Grenzwerte des SharePoint-Konnektors |
 | `nextcloud.*` | siehe [Nextcloud, Abschnitt 8](konnektor-nextcloud.md#8-konfiguration) (`OPAA_INDEXING_NEXTCLOUD_*`, darunter `full-descent-interval` als Höchstalter der gemerkten Ordner-Prüfsummen) | Grenzwerte des Nextcloud-Konnektors |
 | `smb.*` | siehe [Windows-Dateifreigabe, Abschnitt 8](konnektor-smb.md#8-konfiguration) (`OPAA_INDEXING_SMB_*`) | Grenzwerte des SMB-Konnektors |
+| `dropbox.*` | siehe [Dropbox, Abschnitt 12](konnektor-dropbox.md#12-konfiguration) (`OPAA_INDEXING_DROPBOX_*`) | Adressen und Grenzwerte des Dropbox-Konnektors |
 
 ### 10.4 Was nicht gebaut ist
 
