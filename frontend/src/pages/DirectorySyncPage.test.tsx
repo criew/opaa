@@ -1,9 +1,13 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../mocks/server'
 import { mockPendingPlan } from '../mocks/groupAdminFixtures'
+import {
+  manyDirectoryProviders,
+  manyDirectoryStatuses,
+} from '../mocks/directorySyncScenarioFixtures'
 import { renderWithProviders } from '../test/test-utils'
 import DirectorySyncPage from './DirectorySyncPage'
 import { useAuthStore } from '../stores/authStore'
@@ -23,23 +27,99 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   })
 }
 
-const providerCard = () =>
-  screen.findByRole('region', { name: 'Verzeichnisabgleich Verzeichnisdienst' })
+/** jsdom has no matchMedia; the table renders only on a desktop viewport (guidelines 5.3). */
+function desktopMatchMedia(query: string): MediaQueryList {
+  return {
+    matches: query.includes('min-width'),
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  } as unknown as MediaQueryList
+}
+
+const overview = () => screen.findByRole('table', { name: 'Verzeichnisabgleich je Anbieter' })
+
+/** The overview row of a provider, found by its name cell. */
+async function rowOf(name: string) {
+  const table = await overview()
+  const cell = await within(table).findByText(name)
+  return cell.closest('tr') as HTMLElement
+}
+
+async function openPanel(user: ReturnType<typeof userEvent.setup>, name: string) {
+  const row = await rowOf(name)
+  await user.click(within(row).getByRole('button', { name: new RegExp(`: ${name}$`) }))
+  return screen.findByRole('dialog', { name })
+}
 
 describe('DirectorySyncPage', () => {
+  const originalMatchMedia = window.matchMedia
+
+  beforeAll(() => {
+    window.matchMedia = desktopMatchMedia
+  })
+  afterAll(() => {
+    window.matchMedia = originalMatchMedia
+  })
+
   beforeEach(() => {
     signInAs('SYSTEM_ADMIN')
     useOidcProviderStore.getState().reset()
   })
 
-  // ADR-0036, Entscheidung 3: Ein ausstehender Plan ist ein lauter Zustand - mit seinem Alter.
-  it('names the age of a pending plan and what it would do', async () => {
+  it('shows every provider with its mechanism, last run and next run at a glance', async () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
 
-    const card = await providerCard()
-    expect(within(card).getByText(/Ein Plan wartet seit/)).toBeInTheDocument()
-    expect(within(card).getByText(/23 Mitgliedschaften würden entzogen/)).toBeInTheDocument()
-    expect(within(card).getByText(/1 Konto gesperrt/)).toBeInTheDocument()
+    const directory = await rowOf('Verzeichnisdienst')
+    expect(within(directory).getByText('Eingeschaltet')).toBeInTheDocument()
+    expect(within(directory).getByText('alle 6 Stunden')).toBeInTheDocument()
+    expect(within(directory).getByText('Wartet auf Bestätigung')).toBeInTheDocument()
+
+    // ADR-0036, Entscheidung 2: a provider with a groups claim has its one mechanism already.
+    const partner = await rowOf('Partnerportal')
+    expect(within(partner).getByText('Gruppen aus dem Token')).toBeInTheDocument()
+    expect(within(partner).getByText('kein Lauf')).toBeInTheDocument()
+  })
+
+  // ADR-0036, Entscheidung 3: Ein ausstehender Plan ist ein lauter Zustand - mit seinem Alter,
+  // schon in der Übersicht, ohne dass etwas aufgeklappt werden muss.
+  it('names the age of a pending plan and what it would do in the overview', async () => {
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+
+    const row = await rowOf('Verzeichnisdienst')
+    expect(within(row).getByText('Entscheidung nötig')).toBeInTheDocument()
+    expect(within(row).getByText(/Plan wartet seit/)).toBeInTheDocument()
+    expect(
+      within(row).getByText(/23 Mitgliedschaften entziehen und 1 Konto sperren/),
+    ).toBeInTheDocument()
+    expect(
+      within(row).getByRole('button', { name: 'Entscheiden: Verzeichnisdienst' }),
+    ).toBeVisible()
+    expect(screen.getByText(/1 Anbieter braucht Ihre Entscheidung/)).toBeInTheDocument()
+  })
+
+  // ADR-0036, Entscheidung 9: Jeder Abruf des Plans ist ein Protokolleintrag - die Übersicht allein
+  // ruft ihn deshalb nicht ab, erst das Öffnen des Anbieters.
+  it('fetches a pending plan only once the provider is opened', async () => {
+    let planCalls = 0
+    server.events.on('request:start', ({ request }) => {
+      if (new URL(request.url).pathname.endsWith('/directory-sync/pending-plan')) planCalls++
+    })
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await rowOf('Verzeichnisdienst')
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(planCalls).toBe(0)
+
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    await within(panel).findByRole('button', { name: 'Plan bestätigen' })
+    expect(planCalls).toBe(1)
+    server.events.removeAllListeners()
   })
 
   // #237/#1816: Der Differenzbericht nennt die Mitgliederzahl je Gruppe, bevor etwas angewendet
@@ -48,33 +128,32 @@ describe('DirectorySyncPage', () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    const card = await providerCard()
-    await user.click(within(card).getByRole('button', { name: 'Trockenlauf' }))
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    await user.click(within(panel).getByRole('button', { name: 'Trockenlauf' }))
 
-    // Der ausstehende Plan zeigt denselben Bericht - geprüft wird, dass der Trockenlauf ihn
-    // überhaupt darstellt, nicht wie oft er auf der Karte steht.
-    expect((await within(card).findAllByText(/Referat 52.*9 Mitglieder/)).length).toBeGreaterThan(0)
-    expect(within(card).getAllByText(/Referat 50.*23 Mitglieder/).length).toBeGreaterThan(0)
-    expect(within(card).getAllByText(/Bernd Bauer/).length).toBeGreaterThan(0)
+    const result = await within(panel).findByRole('region', { name: 'Ergebnis des Trockenlaufs' })
+    expect(within(result).getByText(/Referat 52.*9 Mitglieder/)).toBeInTheDocument()
+    expect(within(result).getByText(/Referat 50.*23 Mitglieder/)).toBeInTheDocument()
+    expect(within(result).getByText(/Bernd Bauer/)).toBeInTheDocument()
   })
 
   it('applies a pending plan only with a reason', async () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    const card = await providerCard()
-    const confirm = await within(card).findByRole('button', { name: 'Plan bestätigen' })
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    const confirm = await within(panel).findByRole('button', { name: 'Plan bestätigen' })
     expect(confirm).toBeDisabled()
 
-    await user.type(within(card).getByLabelText(/grund/i), 'Reorganisation zum 01.10.')
-    expect(within(card).getByRole('button', { name: 'Plan bestätigen' })).toBeEnabled()
-    await user.click(within(card).getByRole('button', { name: 'Plan bestätigen' }))
+    await user.type(within(panel).getByLabelText(/grund/i), 'Reorganisation zum 01.10.')
+    expect(within(panel).getByRole('button', { name: 'Plan bestätigen' })).toBeEnabled()
+    await user.click(within(panel).getByRole('button', { name: 'Plan bestätigen' }))
 
-    expect(await within(card).findByText(/bestätigte Plan wurde angewendet/)).toBeInTheDocument()
+    expect(await within(panel).findByText(/bestätigte Plan wurde angewendet/)).toBeInTheDocument()
   })
 
-  // ADR-0036, Entscheidung 9: Jeder Abruf des Plans ist ein Protokolleintrag. Ein neu geladener
-  // Status, der denselben Plan meldet, darf ihn deshalb nicht erneut abrufen.
+  // ADR-0036, Entscheidung 9: Ein neu geladener Status, der denselben Plan meldet, darf ihn nicht
+  // erneut abrufen - auch nicht, wenn das Seitenpanel geschlossen und wieder geöffnet wird.
   it('fetches a pending plan once per plan id, not on every status reload', async () => {
     let statusCalls = 0
     let planCalls = 0
@@ -86,18 +165,22 @@ describe('DirectorySyncPage', () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    const card = await providerCard()
-    await within(card).findByRole('button', { name: 'Plan bestätigen' })
+    let panel = await openPanel(user, 'Verzeichnisdienst')
+    await within(panel).findByRole('button', { name: 'Plan bestätigen' })
     const statusCallsBefore = statusCalls
-    await user.click(within(card).getByRole('button', { name: 'Jetzt abgleichen' }))
+    await user.click(within(panel).getByRole('button', { name: 'Jetzt abgleichen' }))
 
     await waitFor(() => expect(statusCalls).toBeGreaterThan(statusCallsBefore))
     await waitFor(() =>
-      expect(within(card).getByRole('button', { name: 'Jetzt abgleichen' })).toBeEnabled(),
+      expect(within(panel).getByRole('button', { name: 'Jetzt abgleichen' })).toBeEnabled(),
     )
+    await user.click(within(panel).getByRole('button', { name: 'Schließen' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    panel = await openPanel(user, 'Verzeichnisdienst')
     // Gives a fetch triggered by the re-render the chance to start before counting.
     await new Promise((resolve) => setTimeout(resolve, 50))
-    expect(within(card).getByRole('button', { name: 'Plan bestätigen' })).toBeInTheDocument()
+    expect(within(panel).getByRole('button', { name: 'Plan bestätigen' })).toBeInTheDocument()
     expect(planCalls).toBe(1)
     server.events.removeAllListeners()
   })
@@ -139,21 +222,127 @@ describe('DirectorySyncPage', () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
     const user = userEvent.setup()
 
-    const card = await providerCard()
-    await within(card).findByRole('button', { name: 'Plan bestätigen' })
-    await user.type(within(card).getByLabelText(/grund/i), 'Reorganisation zum 01.10.')
-    await user.click(within(card).getByRole('button', { name: 'Plan bestätigen' }))
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    await within(panel).findByRole('button', { name: 'Plan bestätigen' })
+    await user.type(within(panel).getByLabelText(/grund/i), 'Reorganisation zum 01.10.')
+    await user.click(within(panel).getByRole('button', { name: 'Plan bestätigen' }))
 
     expect(
-      await within(card).findByText(/Verzeichnis hat sich seit der Vorlage geändert/),
+      await within(panel).findByText(/Verzeichnis hat sich seit der Vorlage geändert/),
     ).toBeInTheDocument()
-    expect(await within(card).findByText(/Neu gerechnet/)).toBeInTheDocument()
+    expect(await within(panel).findByText(/Neu gerechnet/)).toBeInTheDocument()
 
-    await user.type(within(card).getByLabelText(/grund/i), 'Neuer Stand geprüft')
-    await user.click(within(card).getByRole('button', { name: 'Plan bestätigen' }))
+    await user.type(within(panel).getByLabelText(/grund/i), 'Neuer Stand geprüft')
+    await user.click(within(panel).getByRole('button', { name: 'Plan bestätigen' }))
 
     // Die zweite Bestätigung trägt die Kennung des neu vorgelegten Plans, nicht die alte.
     await waitFor(() => expect(confirmed).toEqual(['plan-1', 'plan-2']))
+  })
+
+  it('switches the sync on and saves the interval from the side panel', async () => {
+    const requests: unknown[] = []
+    server.use(
+      http.put('/api/v1/admin/oidc-providers/:providerId/directory-sync', async ({ request }) => {
+        requests.push(await request.json())
+        return HttpResponse.json({})
+      }),
+    )
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Landesportal')
+    expect(within(panel).getByRole('button', { name: 'Trockenlauf' })).toBeDisabled()
+    await user.click(within(panel).getByRole('switch', { name: 'Abgleich eingeschaltet' }))
+    await waitFor(() => expect(requests).toEqual([{ enabled: true, intervalMinutes: 360 }]))
+  })
+
+  it('names the groups claim instead of offering a switch that would be refused', async () => {
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Partnerportal')
+    expect(within(panel).getByRole('switch', { name: 'Abgleich eingeschaltet' })).toBeDisabled()
+    expect(within(panel).getByText(/Gruppen-Claim „groups“/)).toBeInTheDocument()
+  })
+
+  it('closes the side panel with Escape and returns the focus to the row', async () => {
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await openPanel(user, 'Landesportal')
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Details: Landesportal' })).toHaveFocus()
+  })
+
+  describe('with many providers', () => {
+    beforeEach(() => {
+      server.use(
+        http.get('/api/v1/admin/oidc-providers', () => HttpResponse.json(manyDirectoryProviders())),
+        http.get('/api/v1/admin/directory-sync/status', () =>
+          HttpResponse.json(manyDirectoryStatuses()),
+        ),
+      )
+    })
+
+    it('lists every provider in one compact overview', async () => {
+      renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+
+      const table = await overview()
+      await within(table).findByText('Personalverwaltung')
+      // one header row plus one row per provider
+      expect(within(table).getAllByRole('row')).toHaveLength(manyDirectoryProviders().length + 1)
+    })
+
+    it('narrows the overview to the providers that need something done', async () => {
+      renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const table = await overview()
+      await within(table).findByText('Personalverwaltung')
+      const attention = manyDirectoryStatuses().filter(
+        (status) => status.pendingPlan || status.lastOutcome === 'UNREACHABLE',
+      )
+
+      await user.click(screen.getByRole('button', { name: /Handlungsbedarf/ }))
+      const rows = within(await overview())
+        .getAllByRole('row')
+        .slice(1)
+      expect(rows.length).toBeGreaterThanOrEqual(attention.length)
+      expect(rows.length).toBeLessThan(manyDirectoryProviders().length)
+      for (const status of attention) {
+        expect(within(table).getByText(status.providerDisplayName)).toBeInTheDocument()
+      }
+    })
+
+    it('finds a provider by its name', async () => {
+      renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const table = await overview()
+      await within(table).findByText('Personalverwaltung')
+      await user.type(screen.getByRole('searchbox', { name: 'Anbieter suchen' }), 'personal')
+
+      const rows = within(await overview())
+        .getAllByRole('row')
+        .slice(1)
+      expect(rows).toHaveLength(1)
+      expect(within(rows[0]).getByText('Personalverwaltung')).toBeInTheDocument()
+    })
+  })
+
+  it('falls back to a list below tablet width, with the same state and the same way in', async () => {
+    window.matchMedia = (query: string) =>
+      ({ ...desktopMatchMedia(query), matches: false }) as MediaQueryList
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+
+    const entry = await screen.findByRole('article', { name: 'Verzeichnisdienst' })
+    expect(within(entry).getByText('Entscheidung nötig')).toBeInTheDocument()
+    expect(
+      within(entry).getByRole('button', { name: 'Entscheiden: Verzeichnisdienst' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+    window.matchMedia = desktopMatchMedia
   })
 
   it('explains the page to an account without the system role', async () => {
