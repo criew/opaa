@@ -216,8 +216,9 @@ export default function ConnectionProfileSelect({
         )
       ) : state.loaded && selectable.length === 0 ? (
         <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>
-          Für die Quellart „{descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Zugänge
-          legt die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.
+          Für die Quellart „{descriptor.displayName}“ steht Ihnen{' '}
+          {excludeProfileId ? 'kein weiterer Zugang' : 'kein Zugang'} zur Verfügung. Zugänge legt
+          die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.
         </Alert>
       ) : (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>

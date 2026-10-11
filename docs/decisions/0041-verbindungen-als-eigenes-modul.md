@@ -241,6 +241,8 @@ Begründung:
     (`LibraryCreatePage.tsx`, `assetTypeRegistry.ts`) bleibt dadurch gültig.
   - `GET /api/v1/source-types` und die Liste der Zugänge tragen je Eintrag, ob die Person dort
     anlegen darf, mit Hinweis statt totem Weg. Danach richtet sich die Kachel im Assistenten.
+    (Für die Liste der Zugänge abgelöst durch den Nachtrag vom 11.10.2026 „Assistent zeigt nur
+    Nutzbares“.)
   - Die Prüfungen ohne Geltungsbereich (`SourceConnectionTestService`, `KnowledgeLibraryService`)
     nennen danach Typ oder Profil.
 - `ModularArchitecture`: `Module.CONNECTIONS` direkt nach `CONNECTORS` und `entry("connection",
@@ -1382,6 +1384,26 @@ Verweis auf die Systemverwaltung.
   und die ganze Liste ihrer Empfängerin scheitern ließen.
 - **Oberfläche:** Der Assistent bietet an keiner Stelle mehr „Zugang vorschlagen“ an; die
   Verwaltung der Zugänge hat keinen Abschnitt für Wünsche mehr.
+
+## Nachtrag vom 11.10.2026: Assistent zeigt nur Nutzbares (#2495, Epic #2492)
+
+Maintainer-Entscheidung vom 11.10.2026: Der Assistent zeigt nur Quellarten und Zugänge, die die
+Person nutzen darf. Ausgegraute Einträge mit „wer freischaltet“ wären bei dutzenden Konnektoren nur
+Rauschen. Das löst für die Liste der Zugänge die Festlegung „mit Hinweis statt totem Weg“ aus
+Entscheidung 8 ab.
+
+- **Zugänge serverseitig gefiltert:** `GET /api/v1/connection-profiles` (mit und ohne `libraryId`)
+  liefert nur Zugänge, die der Person freigegeben sind und weder selbst noch über ihre Quellart
+  gesperrt sind (`ConnectorReleaseService#profileOptions`). Die Felder `creatable` und
+  `creationNotice` von `ConnectionProfileOption` entfallen. Die Antwort dient nur der Auswahl;
+  Anlegen und Zuordnen verlangen ohnehin die Freigabe des Zugangs.
+- **Quellarten im Assistenten gefiltert:** `GET /api/v1/source-types` bleibt vollständig, weil
+  Bibliotheksansicht, Quellformulare und Verwaltung jede Quellart beschreiben. Der Assistent blendet
+  Quellarten ohne nutzbaren Weg aus, ebenso die Upload-Kachel ohne das Recht dazu; ist gar keine Art
+  nutzbar, zeigt der Schritt einen Leerzustand mit dem Hinweis auf die Systemverwaltung.
+- **Zustand einer bestehenden Bibliothek** bleibt sichtbar: Ein gesperrter oder entfernter Zugang
+  steht mit Grund und Aktion im Reiter „Quelle“; ein nicht mehr freigegebener wird weiter genannt.
+- **Verwaltung** sieht unter „Administration → Zugänge“ unverändert alle Zugänge und Quellarten.
 
 ## Referenzen
 

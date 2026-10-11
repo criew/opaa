@@ -108,6 +108,8 @@ const stepHeadings: Record<string, string> = {
 }
 
 const CONSENT_REQUIRED = 'Bitte verbinden Sie zuerst die Quelle.'
+const NOTHING_CREATABLE =
+  'Sie dürfen derzeit keine Bibliothek anlegen. Wenden Sie sich an die Systemverwaltung, wenn Sie es benötigen.'
 const PENDING_CONNECTION_UNUSABLE =
   'Die Zustimmung beim Anbieter ist abgelaufen oder schon verwendet. Bitte verbinden Sie die Quelle erneut.'
 
@@ -208,9 +210,15 @@ export default function LibraryCreatePage() {
     acceptsUploads(type) ? 'CREATE_LIBRARY' : 'CREATE_CONNECTOR_LIBRARY'
 
   /** Die Begründung, warum diese Art hier nicht zu wählen ist - oder `null`, wenn sie es ist. */
-  function missingFor(type: SourceTypeKey): string | null {
+  function hasForm(type: SourceTypeKey): boolean {
     const registration = sourceRegistration(type)
-    if (registration === undefined || (!acceptsUploads(type) && !registration.configuration)) {
+    return (
+      registration !== undefined && (acceptsUploads(type) || Boolean(registration.configuration))
+    )
+  }
+
+  function missingFor(type: SourceTypeKey): string | null {
+    if (!hasForm(type)) {
       return 'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.'
     }
     const capability = capabilityFor(type)
@@ -219,11 +227,10 @@ export default function LibraryCreatePage() {
   }
 
   /**
-   * Die Konnektor-Freigabe gilt je Quellart und je Zugang (ADR-0036, Nachtrag vom 03.10.2026): eine
-   * Art, die die Person weder mit eigener Adresse noch über einen Zugang anlegen darf oder die
-   * gesperrt ist, hat keinen nutzbaren Weg und erscheint nicht als Kachel; der Hinweis des Backends
-   * erklärt nur noch eine Wahl, die keine Kachel mehr hat. Welcher Weg offen ist, wählt der Schritt
-   * „Quelle“.
+   * The connector release applies per type and per profile (ADR-0036): a type the person may create
+   * neither with an own address nor through a profile, or a locked one, has no usable way and gets
+   * no tile; the backend's notice only explains a choice left without a tile. Which way is open is
+   * chosen in the step „Quelle“.
    */
   function releaseMissingFor(type: SourceTypeKey): string | null {
     const descriptor = sourceTypes.find((d) => d.type === type)
@@ -238,13 +245,13 @@ export default function LibraryCreatePage() {
 
   const selectableTypes = offeredTypes.filter((type) => missingFor(type) === null)
   /**
-   * Die Kacheln: Eine Art mit Eingabemaske erscheint nur mit mindestens einem nutzbaren Weg. Eine
-   * Art ohne Maske bleibt gesperrt mit ihrem Grund stehen.
+   * The tiles: a type with a form shows only while the person may use it - right, release and lock
+   * included. A type without a form in this client stays as a locked tile with its reason.
    */
-  const shownTypes = offeredTypes.filter(
-    (type) =>
-      sourceRegistration(type)?.configuration === undefined || releaseMissingFor(type) === null,
-  )
+  const shownTypes = offeredTypes.filter((type) => !hasForm(type) || missingFor(type) === null)
+  /** Nothing the person may create at all: the step shows no tile, only the hint above it. */
+  const nothingUsable =
+    sourceTypesLoaded && sourceTypesError == null && selectableTypes.length === 0
 
   /**
    * Die tatsächlich gewählte Art. Die Anlegerechte kommen erst nach dem ersten Rendern an; was
@@ -347,9 +354,11 @@ export default function LibraryCreatePage() {
   const typesUnavailable = !sourceTypesLoaded || sourceTypesError != null
 
   const requiredCapability: Capability = capabilityFor(sourceType)
-  const missingCapability = isMissing(requiredCapability)
-    ? capabilityMissingMessage(requiredCapability)
-    : releaseMissingFor(sourceType)
+  const missingCapability = nothingUsable
+    ? NOTHING_CREATABLE
+    : isMissing(requiredCapability)
+      ? capabilityMissingMessage(requiredCapability)
+      : releaseMissingFor(sourceType)
 
   // Der Fokus folgt dem Schritt (WCAG 2.4.3): Nach „Weiter" steht er auf der Überschrift des neuen
   // Schritts, nicht auf dem Knopf, der gerade verschwunden ist.
@@ -608,23 +617,26 @@ export default function LibraryCreatePage() {
           </Alert>
         )}
 
-        {currentStep === STEP_ART && sourceTypesLoaded && !sourceTypesError && (
-          <ChoiceTileGroup<SourceTypeKey>
-            aria-label="Art des Wissens wählen"
-            value={sourceType}
-            onChange={(next) => {
-              setSourceType(next)
-              setError(null)
-            }}
-            tiles={shownTypes.map((type) => ({
-              value: type,
-              label: displayNameOf(type),
-              description: documentSourceTypeDescription(type),
-              icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
-              disabledReason: missingFor(type),
-            }))}
-          />
-        )}
+        {currentStep === STEP_ART &&
+          sourceTypesLoaded &&
+          !sourceTypesError &&
+          shownTypes.length > 0 && (
+            <ChoiceTileGroup<SourceTypeKey>
+              aria-label="Art des Wissens wählen"
+              value={sourceType}
+              onChange={(next) => {
+                setSourceType(next)
+                setError(null)
+              }}
+              tiles={shownTypes.map((type) => ({
+                value: type,
+                label: displayNameOf(type),
+                description: documentSourceTypeDescription(type),
+                icon: <SourceTypeIcon sourceType={type} fontSize={22} />,
+                disabledReason: missingFor(type),
+              }))}
+            />
+          )}
 
         {currentStep === STEP_SOURCE && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>

@@ -344,7 +344,9 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
-    expect(await within(dialog).findByText(/steht Ihnen kein Zugang zur Verfügung/)).toBeVisible()
+    expect(
+      await within(dialog).findByText(/steht Ihnen kein weiterer Zugang zur Verfügung/),
+    ).toBeVisible()
     expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument()
     expect(within(dialog).queryByText(/nicht freigegeben/)).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' })).toBeDisabled()

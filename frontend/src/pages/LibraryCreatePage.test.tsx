@@ -233,18 +233,30 @@ describe('LibraryCreatePage (#596, #1942)', () => {
   })
 
   describe('Anlegerechte (#1813, ADR-0036 Entscheidung 5)', () => {
-    it('disables the tiles of a kind the caller may not create, with the reason on the tile', async () => {
+    it('hides the tile of a kind the caller may not create', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
       await renderPage()
 
-      const upload = await screen.findByRole('radio', { name: /Upload/ })
-      expect(upload).toBeDisabled()
-      expect(upload).toHaveAccessibleDescription(capabilityMissingMessage('CREATE_LIBRARY'))
+      await waitFor(() =>
+        expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument(),
+      )
       expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
+      expect(screen.queryByText(capabilityMissingMessage('CREATE_LIBRARY'))).not.toBeInTheDocument()
     })
 
-    // Die Konnektor-Freigabe gilt je Quellart: Eine Art ohne nutzbaren Weg - nicht freigegeben,
-    // gesperrt oder ohne nutzbaren Zugang - erscheint im Assistenten gar nicht.
+    it('shows an empty step naming the system administration when nothing may be created', async () => {
+      mockGetMyCapabilities.mockResolvedValue([])
+      renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+
+      await screen.findByText(/Sie dürfen derzeit keine Bibliothek anlegen/)
+      expect(document.getElementById('library-create-capability-hint')).toHaveTextContent(
+        'Wenden Sie sich an die Systemverwaltung',
+      )
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+    })
+
+    // The connector release applies per type: a type without a usable way - not released, locked
+    // or without a usable profile - does not appear in the wizard at all.
     it('hides the tile of a source type the person has no usable way for', async () => {
       const notice =
         'Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für die Quellart „RSS-Feed“.'
@@ -267,21 +279,19 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.queryByText(notice)).not.toBeInTheDocument()
     })
 
-    it('names the connector right once a connector source is chosen', async () => {
+    it('shows only the upload tile without the connector right', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
-      const user = userEvent.setup()
       await renderPage()
 
-      await waitFor(() => expect(screen.getByRole('radio', { name: /Dateisystem/ })).toBeDisabled())
-      expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
-      // Eine gesperrte Kachel wählt nichts aus - der Typ bleibt der zuvor gewählte.
-      await user.click(screen.getByRole('radio', { name: /Dateisystem/ }))
+      await waitFor(() =>
+        expect(screen.queryByRole('radio', { name: /Dateisystem/ })).not.toBeInTheDocument(),
+      )
       expect(screen.getByRole('radio', { name: /Upload/ })).toBeChecked()
     })
 
     // Die Anlegerechte kommen erst nach dem ersten Rendern an: Was dann gesperrt ist, darf nicht
     // ausgewählt stehen bleiben - sonst führte „Weiter" in einen Pfad, der nie anlegen kann.
-    it('moves the selection off a tile that turns out to be locked', async () => {
+    it('moves the selection off a tile that turns out to be hidden', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
       await renderPage()
 
@@ -292,22 +302,22 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           'true',
         ),
       )
-      expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled()
-      expect(screen.getByRole('radio', { name: /Upload/ })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument()
       expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
-      // Die Begründung steht weiter auf der gesperrten Kachel, aber nicht mehr als Hinweis über
-      // dem Assistenten: Der gälte der gewählten Art, und die ist jetzt eine erlaubte.
+      // no hint above the wizard: it would concern the chosen type, and that one is allowed now
       expect(document.getElementById('library-create-capability-hint')).toBeNull()
     })
   })
 
   // WAI-ARIA „radio group": ein Halt in der Tabulatorreihenfolge, die Pfeiltasten wählen innerhalb.
-  it('moves through the tiles with the arrow keys and skips a locked one', async () => {
+  it('moves through the tiles with the arrow keys', async () => {
     mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
     const user = userEvent.setup()
     await renderPage()
 
-    await waitFor(() => expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled())
+    await waitFor(() =>
+      expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument(),
+    )
     const filesystem = screen.getByRole('radio', { name: /Dateisystem/ })
     expect(filesystem).toHaveAttribute('tabindex', '0')
     expect(screen.getByRole('radio', { name: /Confluence/ })).toHaveAttribute('tabindex', '-1')
@@ -320,8 +330,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     )
     expect(screen.getByRole('radio', { name: /Webverzeichnis/ })).toHaveFocus()
 
-    // Rückwärts über den Anfang hinaus landet am Ende - und die gesperrte Upload-Kachel wird
-    // übersprungen, statt den Fokus zu verschlucken.
+    // backwards past the start lands at the end
     await user.keyboard('{ArrowLeft}{ArrowLeft}')
     expect(screen.getByRole('radio', { name: /Dateifreigabe/ })).toHaveAttribute(
       'aria-checked',

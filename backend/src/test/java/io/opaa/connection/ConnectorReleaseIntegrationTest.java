@@ -110,6 +110,27 @@ class ConnectorReleaseIntegrationTest {
         .andExpect(jsonPath("$[?(@.id == '" + other + "')]").isEmpty());
   }
 
+  /** A lock of the connector type takes every profile of the type out of the selection. */
+  @Test
+  void aLockedConnectorTypeLeavesNoProfileToChoose() throws Exception {
+    UUID released = createProfile("Zugang Typsperre " + UUID.randomUUID());
+    grantToAllAccounts("PROFILE:" + released);
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/connection-profiles?sourceType=PROFILE_PROBE")))
+        .andExpect(jsonPath("$[?(@.id == '" + released + "')].name").value(Matchers.hasSize(1)));
+
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/admin/connector-types/PROFILE_PROBE/lock"))
+                .content("{\"locked\": true}"))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/connection-profiles?sourceType=PROFILE_PROBE")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isEmpty());
+  }
+
   /**
    * A person sees only the profiles she may use now - neither one not released to her nor a locked
    * one - while the system administration's own list keeps every profile.
