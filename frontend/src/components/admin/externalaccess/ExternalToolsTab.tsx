@@ -160,8 +160,10 @@ export default function ExternalToolsTab() {
   }, [loadSettings, loadLibraries, loadActiveTokens])
 
   const anchor = location.hash.replace(/^#/, '')
-  const anchorReady =
-    anchor === TOKENS_ANCHOR || (anchor === LIBRARIES_ANCHOR && libraries !== null)
+  // Jump only once the parts above the list have their height, loaded or failed.
+  const aboveSettled =
+    (settings !== null || settingsError !== null) && (libraries !== null || librariesError !== null)
+  const anchorReady = (anchor === TOKENS_ANCHOR || anchor === LIBRARIES_ANCHOR) && aboveSettled
   useEffect(() => {
     if (anchorReady) document.getElementById(anchor)?.scrollIntoView?.({ block: 'start' })
   }, [anchor, anchorReady])
@@ -170,7 +172,9 @@ export default function ExternalToolsTab() {
     const next = new URLSearchParams(searchParams)
     if (open) next.set(PANEL_PARAM, SETTINGS_PANEL)
     else next.delete(PANEL_PARAM)
-    setSearchParams(next, { replace: !open, preventScrollReset: true })
+    // Opening and closing both replace the entry: „Zurück" leaves the tab rather than closing
+    // the panel past its question about unsaved changes.
+    setSearchParams(next, { replace: true, preventScrollReset: true })
   }
 
   async function switchOff() {
@@ -184,13 +188,16 @@ export default function ExternalToolsTab() {
     if (!confirmed) return
     setSwitchingOff(true)
     try {
+      // The update replaces the settings wholesale; read them right before, so a change made
+      // elsewhere since this page loaded is kept and only the switch is turned.
+      const current = await getExternalAccessSettings()
       const stored = await updateExternalAccessSettings({
         enabled: false,
-        tokenMaxLifetimeDays: settings.tokenMaxLifetimeDays,
-        tokenRateLimitPerHour: settings.tokenRateLimitPerHour,
-        allowedCidrs: settings.allowedCidrs,
-        massRetrievalAlertThreshold: settings.massRetrievalAlertThreshold,
-        serverInstructions: settings.serverInstructions,
+        tokenMaxLifetimeDays: current.tokenMaxLifetimeDays,
+        tokenRateLimitPerHour: current.tokenRateLimitPerHour,
+        allowedCidrs: current.allowedCidrs,
+        massRetrievalAlertThreshold: current.massRetrievalAlertThreshold,
+        serverInstructions: current.serverInstructions,
       })
       setSettings(stored)
       notify(
@@ -217,7 +224,7 @@ export default function ExternalToolsTab() {
           : null,
     },
     {
-      text: 'Wer eine Bibliothek verwaltet, gibt sie dort befristet frei.',
+      text: 'Wer eine Bibliothek verwaltet, gibt sie befristet frei – in der Bibliothek unter „Freigaben“.',
       state: librariesError
         ? 'Zahl nicht geladen'
         : libraries

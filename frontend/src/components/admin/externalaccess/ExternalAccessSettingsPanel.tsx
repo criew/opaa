@@ -117,8 +117,54 @@ export default function ExternalAccessSettingsPanel({
   onClose,
   onSaved,
 }: ExternalAccessSettingsPanelProps) {
+  // Escape and the backdrop ask the form, which alone knows whether something is unsaved. The
+  // form's state - and with it „unsaved" - ends whenever the panel closes, however it closes.
+  const requestCloseRef = useRef<(() => void) | null>(null)
+
+  return (
+    <Drawer
+      anchor="right"
+      open={settings !== null}
+      onClose={() => requestCloseRef.current?.()}
+      slotProps={{
+        paper: {
+          role: 'dialog',
+          'aria-labelledby': 'external-tools-settings-heading',
+          sx: { width: { xs: '100%', sm: 560 }, display: 'flex', flexDirection: 'column' },
+        },
+      }}
+    >
+      {settings && (
+        <SettingsForm
+          key={settings.updatedAt}
+          settings={settings}
+          requestCloseRef={requestCloseRef}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      )}
+    </Drawer>
+  )
+}
+
+function SettingsForm({
+  settings,
+  requestCloseRef,
+  onClose,
+  onSaved,
+}: {
+  settings: ExternalAccessSettingsResponse
+  requestCloseRef: { current: (() => void) | null }
+  onClose: () => void
+  onSaved: (stored: ExternalAccessSettingsResponse) => void
+}) {
+  const [initial] = useState(() => draftOf(settings))
+  const [draft, setDraft] = useState<Draft>(initial)
+  const [error, setError] = useState<string | null>(null)
+  const [fieldMessages, setFieldMessages] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState(false)
-  const [dirty, setDirty] = useState(false)
+  const errorRef = useRef<HTMLDivElement>(null)
+  const dirty = !sameDraft(draft, initial)
 
   async function requestClose() {
     if (busy) return
@@ -134,61 +180,15 @@ export default function ExternalAccessSettingsPanel({
     ) {
       return
     }
-    setDirty(false)
     onClose()
   }
 
-  return (
-    <Drawer
-      anchor="right"
-      open={settings !== null}
-      onClose={() => void requestClose()}
-      slotProps={{
-        paper: {
-          role: 'dialog',
-          'aria-labelledby': 'external-tools-settings-heading',
-          sx: { width: { xs: '100%', sm: 560 }, display: 'flex', flexDirection: 'column' },
-        },
-      }}
-    >
-      {settings && (
-        <SettingsForm
-          key={settings.updatedAt}
-          settings={settings}
-          busy={busy}
-          onBusy={setBusy}
-          onDirty={setDirty}
-          onClose={() => void requestClose()}
-          onSaved={(stored) => {
-            setDirty(false)
-            onSaved(stored)
-          }}
-        />
-      )}
-    </Drawer>
-  )
-}
-
-function SettingsForm({
-  settings,
-  busy,
-  onBusy,
-  onDirty,
-  onClose,
-  onSaved,
-}: {
-  settings: ExternalAccessSettingsResponse
-  busy: boolean
-  onBusy: (busy: boolean) => void
-  onDirty: (dirty: boolean) => void
-  onClose: () => void
-  onSaved: (stored: ExternalAccessSettingsResponse) => void
-}) {
-  const [initial] = useState(() => draftOf(settings))
-  const [draft, setDraft] = useState<Draft>(initial)
-  const [error, setError] = useState<string | null>(null)
-  const [fieldMessages, setFieldMessages] = useState<Record<string, string>>({})
-  const errorRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    requestCloseRef.current = () => void requestClose()
+    return () => {
+      requestCloseRef.current = null
+    }
+  })
 
   // After a failed save the focus goes to the message (docs/design/accessibility.md, 2.7).
   useEffect(() => {
@@ -196,15 +196,13 @@ function SettingsForm({
   }, [error])
 
   function update(change: Partial<Draft>) {
-    const next = { ...draft, ...change }
-    setDraft(next)
-    onDirty(!sameDraft(next, initial))
+    setDraft((current) => ({ ...current, ...change }))
   }
 
   async function save() {
     setError(null)
     setFieldMessages({})
-    onBusy(true)
+    setBusy(true)
     try {
       onSaved(await updateExternalAccessSettings(requestOf(draft)))
     } catch (err: unknown) {
@@ -212,7 +210,7 @@ function SettingsForm({
       setFieldMessages(Object.fromEntries(perField.map((e) => [e.field, e.message])))
       setError(err instanceof Error ? err.message : 'Speichern fehlgeschlagen.')
     } finally {
-      onBusy(false)
+      setBusy(false)
     }
   }
 
@@ -251,7 +249,12 @@ function SettingsForm({
             protokolliert.
           </Typography>
         </Box>
-        <IconButton aria-label="Schließen" onClick={onClose} disabled={busy} sx={{ mt: -0.5 }}>
+        <IconButton
+          aria-label="Schließen"
+          onClick={() => void requestClose()}
+          disabled={busy}
+          sx={{ mt: -0.5 }}
+        >
           <CloseIcon />
         </IconButton>
       </Box>
@@ -379,7 +382,7 @@ function SettingsForm({
           borderColor: 'divider',
         }}
       >
-        <Button onClick={onClose} disabled={busy}>
+        <Button onClick={() => void requestClose()} disabled={busy}>
           Abbrechen
         </Button>
         <BusyButton

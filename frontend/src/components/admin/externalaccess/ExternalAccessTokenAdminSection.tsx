@@ -309,6 +309,8 @@ export default function ExternalAccessTokenAdminSection({
               <Box component="dl" sx={definitionListSx}>
                 <dt>Bibliotheken</dt>
                 <dd>{librariesOf(token)}</dd>
+                <dt>Erstellt</dt>
+                <dd>{formatDate(token.createdAt)}</dd>
                 <dt>Läuft ab</dt>
                 <dd>{formatDate(token.expiresAt)}</dd>
                 <dt>Zustand</dt>
