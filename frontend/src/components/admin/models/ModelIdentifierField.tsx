@@ -1,6 +1,7 @@
 import Autocomplete, { createFilterOptions } from '@mui/material/Autocomplete'
 import Box from '@mui/material/Box'
 import CircularProgress from '@mui/material/CircularProgress'
+import ListSubheader from '@mui/material/ListSubheader'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel } from '../../../types/api'
@@ -65,6 +66,21 @@ export default function ModelIdentifierField({
       }}
       onChange={(_event, next) => {
         if (next !== null && typeof next !== 'string') onSelect(next)
+      }}
+      // A named `group` between listbox and options; MUI's default leaves a bare list item there,
+      // which breaks the listbox > option ownership screen readers rely on.
+      renderGroup={(params) => {
+        const headId = `llm-model-group-${params.key}`
+        return (
+          <Box component="li" key={params.key} role="group" aria-labelledby={headId}>
+            <ListSubheader id={headId} component="div" role="presentation">
+              {params.group}
+            </ListSubheader>
+            <Box component="ul" role="presentation" sx={{ p: 0, m: 0 }}>
+              {params.children}
+            </Box>
+          </Box>
+        )
       }}
       renderOption={(props, model) => {
         const { key, ...optionProps } = props as typeof props & { key: string }
