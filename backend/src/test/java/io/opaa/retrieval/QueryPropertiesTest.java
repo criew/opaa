@@ -3,7 +3,17 @@ package io.opaa.retrieval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.bind.PropertySourcesPlaceholdersResolver;
+import org.springframework.boot.context.properties.source.ConfigurationPropertySources;
+import org.springframework.boot.env.YamlPropertySourceLoader;
+import org.springframework.core.env.MapPropertySource;
+import org.springframework.core.env.PropertySource;
+import org.springframework.core.io.ClassPathResource;
 
 /**
  * Unit tests for {@link QueryProperties}'s compact-constructor defaults and validation (#914, #923,
@@ -137,6 +147,34 @@ class QueryPropertiesTest {
   }
 
   /** {@code 1} is the documented opt-out value (#932) - it must not be rejected as "unset". */
+  /**
+   * Neighbour chunks supply the document context, so the shipped default keeps one chunk per
+   * document and lets the next-ranked document take the slot instead.
+   */
+  @Test
+  void maxChunksPerDocumentDefaultsToOneWhenUnset() {
+    QueryProperties properties =
+        bind(List.<PropertySource<?>>of(new MapPropertySource("empty", Map.of())));
+
+    assertThat(properties.maxChunksPerDocument()).isEqualTo(1);
+  }
+
+  @Test
+  void applicationYmlShipsMaxChunksPerDocumentOne() throws IOException {
+    List<PropertySource<?>> yaml =
+        new YamlPropertySourceLoader()
+            .load("application.yml", new ClassPathResource("application.yml"));
+
+    assertThat(bind(yaml).maxChunksPerDocument()).isEqualTo(1);
+  }
+
+  private static QueryProperties bind(List<PropertySource<?>> sources) {
+    return new Binder(
+            ConfigurationPropertySources.from(sources),
+            new PropertySourcesPlaceholdersResolver(sources))
+        .bindOrCreate("opaa.query", QueryProperties.class);
+  }
+
   @Test
   void maxChunksPerDocumentOfOneIsAcceptedAsIs() {
     QueryProperties properties = new QueryProperties(8, 25, 1.0, 0.3, true, 3, 1, true, 50, 20, 2);
