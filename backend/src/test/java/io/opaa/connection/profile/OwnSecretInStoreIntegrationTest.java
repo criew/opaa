@@ -34,7 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * The own secret of a library on a profile lies in the token store with the library as owner, its
  * column stays empty: written on creation and change, moved in on connecting and back on release,
- * gone with another sign-in method, and a secret a column still holds moves in at start.
+ * carried along to another profile and gone with another sign-in method.
  */
 @OpaaIntegrationTest
 class OwnSecretInStoreIntegrationTest {
@@ -47,7 +47,6 @@ class OwnSecretInStoreIntegrationTest {
   @Autowired private OwnLibraryFixtures libraryFixtures;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private SourceConnectionResolver resolver;
-  @Autowired private OwnSecretRelocation relocation;
   @Autowired private TransactionTemplate transactions;
 
   private final List<UUID> profiles = new ArrayList<>();
@@ -157,21 +156,6 @@ class OwnSecretInStoreIntegrationTest {
   }
 
   @Test
-  void aCleartextValueLeftInTheColumnMovesEncrypted() throws Exception {
-    UUID profile = profile("PERSONAL_SECRET");
-    UUID library = libraryOn(profile, "nutzer:geheim");
-    jdbc.update("DELETE FROM connection_tokens WHERE library_id = ?", library);
-    jdbc.update(
-        "UPDATE knowledge_libraries SET source_credentials = 'alt:klartext' WHERE id = ?", library);
-
-    relocation.relocate();
-
-    assertThat(column(library)).isNull();
-    assertThat((String) row(library).get("secret_ciphertext")).startsWith("enc:");
-    assertThat(secretOf(library)).isEqualTo(new Secret(SecretKind.PERSONAL_SECRET, "alt:klartext"));
-  }
-
-  @Test
   void anotherSignInMethodDiscardsTheSecretInTheStore() throws Exception {
     UUID profile = profile("PERSONAL_SECRET");
     UUID library = libraryOn(profile, "nutzer:geheim");
@@ -197,27 +181,6 @@ class OwnSecretInStoreIntegrationTest {
 
     assertThat(rows(library)).isZero();
     assertThat(column(library)).isNull();
-  }
-
-  @Test
-  void aSecretTheColumnOfALibraryOnAProfileStillHoldsMovesIntoTheStoreAtStart() throws Exception {
-    UUID profile = profile("PERSONAL_SECRET");
-    UUID library = libraryOn(profile, "nutzer:geheim");
-    jdbc.update("DELETE FROM connection_tokens WHERE library_id = ?", library);
-    transactions.executeWithoutResult(
-        status ->
-            libraryRepository
-                .findById(library)
-                .orElseThrow()
-                .replaceSourceCredentials("alt:geheim"));
-    assertThat(column(library)).isNotNull();
-
-    assertThat(relocation.relocate().moved()).isGreaterThanOrEqualTo(1);
-    assertThat(relocation.relocate().moved()).isZero();
-
-    assertThat(column(library)).isNull();
-    assertThat(row(library)).containsEntry("profile_id", profile);
-    assertThat(secretOf(library)).isEqualTo(new Secret(SecretKind.PERSONAL_SECRET, "alt:geheim"));
   }
 
   private Secret secretOf(UUID library) {

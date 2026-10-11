@@ -1867,11 +1867,7 @@ Quelle Zugangsdaten verlangt.
 wurden, erkennt `CredentialsEncryptor` beim Lesen an einem fehlenden `enc:`-Präfix und behandelt sie
 weiterhin als Klartext — eine Liquibase-Migration kann sie nicht verschlüsseln, da der Schlüssel nur
 der Anwendung bekannt ist. Der nächste Schreibvorgang auf dieselbe Bibliothek (z. B. eine
-Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert. Liegt ein solcher Wert
-bei einer Bibliothek an einem Zugang noch in der Spalte, verschiebt ihn der Start in den
-Token-Speicher und verschlüsselt ihn dabei; dafür braucht er den Schlüssel. Ohne Schlüssel bleibt der
-Wert in der Spalte, der Start läuft weiter, das Protokoll nennt die Bibliothek mit ihrer ID, und der
-nächste Start versucht es erneut. Bis dahin gilt die Bibliothek als ohne Zugangsdaten. Ein Wert mit `enc:`-
+Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert. Ein Wert mit `enc:`-
 Präfix, aber unbekannter Version (nicht `enc:v1:`), wird dagegen nie als Klartext behandelt — Lesen
 scheitert weich (siehe oben), Schreiben hart.
 

@@ -1350,18 +1350,13 @@ Bibliothek aber im Token-Speicher. Jetzt hat jedes Geheimnis an einem Zugang gen
   den der fehlende Schlüssel nicht lesen kann, wandert als Geheimtext. Verwerfen je Bibliothek
   (`discardOwnSecret`) trifft Spalte und Zeile; `discardAllUnder` löscht die Zeilen mit denen der
   Zustimmungen.
-- **Bestand:** Bibliotheken, die vor diesem Stand an einem Zugang mit Geheimnis angelegt wurden,
-  halten es noch in der Spalte. `OwnSecretRelocation` verschiebt es beim Start einmal je Bibliothek
-  in eigener Transaktion, idempotent; ein Changeset kann das nicht, weil connections
-  `knowledge_libraries` nicht schreiben darf und nur die Anwendung Klartext-Altwerte verschlüsseln
-  kann. Eine Vorbereitung für Bestandsinstallationen entfällt damit. Scheitert eine Bibliothek
-  (etwa Klartext ohne Schlüssel), bleibt ihre Spalte stehen, der Start läuft weiter, und der nächste
-  Start versucht es erneut.
+- **Kein Bestand:** Es gibt keine Bestandsinstallationen; Bibliotheken an einem Zugang mit einem
+  Geheimnis in der Spalte werden nicht umgezogen, und eine Vorbereitung entfällt.
 - **Lesen der Spalte** bleibt `ConnectionSecrets` vorbehalten (`theLibrarySecretIsReadInOnePlace`,
   auch für `KnowledgeLibraryRepository#findStoredSourceCredentials` und
   `#restoreStoredSourceCredentials`, die den Geheimtext ohne Konverter bewegen).
-- **Belegt** in `OwnSecretInStoreIntegrationTest` (Anlegen, Ändern, Zuordnen, Lösen, andere
-  Anmeldeart, Umzug beim Start) und den angepassten Einheitstests über `TestSecrets.Store`.
+- **Belegt** in `OwnSecretInStoreIntegrationTest` (Anlegen, Ändern, Zuordnen, Lösen, Wechsel des
+  Zugangs, andere Anmeldeart) und den angepassten Einheitstests über `TestSecrets.Store`.
 
 ## Referenzen
 
