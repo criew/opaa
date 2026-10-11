@@ -170,6 +170,42 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/models/discover:
+    post:
+      operationId: discoverLlmModels
+      tags: [model]
+      summary: List the models an endpoint offers, saved or not yet saved (system admin only)
+      description: >
+        Asks the OpenAI-compatible endpoint at baseUrl for its models (GET {baseUrl}/models) with a
+        short timeout and a bounded response size, so the form can offer them for selection instead
+        of requiring the exact identifier to be typed. When the endpoint is recognized as Ollama,
+        each model is enriched with details from /api/tags and /api/show on the same origin (size,
+        family, parameter count, context length, capabilities). The stored-key rule is the same as
+        for testLlmModel: with modelId and without apiKey, the stored key of that model is used,
+        but only when baseUrl is same-origin with the model's own stored baseUrl - otherwise 400
+        before the key is decrypted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LlmModelDiscoveryRequest"
+      responses:
+        "200":
+          description: >
+            Discovery result - a 200 either way; success and failure carry the outcome, not the
+            HTTP status, the same convention testLlmModel uses.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlmModelDiscoveryResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /api/v1/admin/models/embedding-info:
     get:
       operationId: getEmbeddingInfo
@@ -334,6 +370,120 @@ components:
           type: string
           description: German, user-facing outcome - a distinguishable message for unreachable, unauthenticated and unknown-model failures.
           example: Verbindung erfolgreich, Modell hat geantwortet.
+
+    LlmModelDiscoveryRequest:
+      type: object
+      description: >
+        Lists an endpoint's models without requiring the entry to be saved first. apiKey and
+        modelId follow exactly the rules of LlmModelTestRequest.
+      required: [baseUrl]
+      properties:
+        baseUrl:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: >
+            The OpenAI-compatible endpoint, e.g. http://ollama:11434/v1. Must not contain userinfo
+            (https://user:secret@host/v1) - such an address is rejected with 400.
+          example: http://ollama:11434/v1
+        apiKey:
+          type: string
+          nullable: true
+          description: Plaintext key for this request only, never stored.
+        modelId:
+          type: string
+          format: uuid
+          nullable: true
+          description: >
+            When set and apiKey is omitted or empty, reuses that model's stored, decrypted key,
+            provided baseUrl is same-origin with the model's own stored baseUrl - 404 if modelId
+            does not exist, 400 if baseUrl is a different origin.
+
+    LlmModelDiscoveryFailure:
+      type: string
+      description: >
+        Why no model list could be read: INVALID_ADDRESS (not an http(s) URL), UNREACHABLE (DNS,
+        refused, timeout, TLS), UNAUTHENTICATED (HTTP 401 or 403), NO_MODEL_LIST (the endpoint
+        answers but offers no readable model list, e.g. HTTP 404) and UNEXPECTED_RESPONSE (any other
+        status, or a list beyond the size limit).
+      enum: [INVALID_ADDRESS, UNREACHABLE, UNAUTHENTICATED, NO_MODEL_LIST, UNEXPECTED_RESPONSE]
+
+    LlmModelDiscoveryResponse:
+      type: object
+      required: [success, message, ollama, models]
+      properties:
+        success:
+          type: boolean
+          description: Whether the endpoint returned a model list - possibly an empty one.
+        failure:
+          allOf:
+            - $ref: "#/components/schemas/LlmModelDiscoveryFailure"
+          nullable: true
+          description: Set exactly when success is false.
+        message:
+          type: string
+          description: German, user-facing outcome, distinguishable per failure.
+          example: 3 Modelle gefunden.
+        ollama:
+          type: boolean
+          description: Whether the endpoint was recognized as Ollama and its details were read.
+        models:
+          type: array
+          description: >
+            The offered models, chat-suitable ones first, each group sorted by identifier. Empty on
+            failure.
+          items:
+            $ref: "#/components/schemas/DiscoveredLlmModel"
+
+    DiscoveredLlmModel:
+      type: object
+      required: [identifier, capabilities, chatSuitable]
+      properties:
+        identifier:
+          type: string
+          description: The exact model identifier to send as "model", e.g. qwen3:8b.
+          example: qwen3:8b
+        family:
+          type: string
+          nullable: true
+          description: Model family as reported by Ollama, e.g. qwen3.
+          example: qwen3
+        parameterSize:
+          type: string
+          nullable: true
+          description: Parameter count as reported by Ollama, e.g. 8.2B.
+          example: 8.2B
+        quantization:
+          type: string
+          nullable: true
+          description: Quantization level as reported by Ollama, e.g. Q4_K_M.
+          example: Q4_K_M
+        sizeBytes:
+          type: integer
+          format: int64
+          nullable: true
+          description: Size of the model on disk in bytes (Ollama only).
+          example: 5225388164
+        contextLength:
+          type: integer
+          nullable: true
+          description: >
+            Context window in tokens, when the endpoint reports one (Ollama via /api/show, other
+            servers via a context_length or max_model_len field of /models).
+          example: 40960
+        capabilities:
+          type: array
+          description: >
+            Capabilities as reported by the endpoint (Ollama: completion, embedding, tools,
+            vision, thinking, ...); empty when the endpoint reports none.
+          items:
+            type: string
+        chatSuitable:
+          type: boolean
+          description: >
+            Whether the model can serve as a chat model. False for models that only embed (Ollama
+            capabilities, or an identifier that plainly names an embedding, speech or image model);
+            true when nothing speaks against it.
 
     EmbeddingInfoResponse:
       type: object
