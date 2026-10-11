@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { mockOidcProviderImpacts, mockOidcProviders } from './identityProviderFixtures'
+import { isManyDirectoriesScenario, manyDirectoryProviders } from './directorySyncScenarioFixtures'
 import type {
   OidcProviderOrderRequest,
   OidcProviderRequest,
@@ -39,6 +40,7 @@ export const identityProviderHandlers = [
   // while another provider is there, the last enabled one only with acknowledgeLastProvider
   // (ADR-0033, Entscheidung 4), a duplicate issuer is a conflict.
   http.get('/api/v1/admin/oidc-providers', () => {
+    if (isManyDirectoriesScenario()) return HttpResponse.json(manyDirectoryProviders())
     return HttpResponse.json([...mockOidcProviders].sort((a, b) => a.sortOrder - b.sortOrder))
   }),
 

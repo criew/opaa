@@ -2,29 +2,21 @@ package io.opaa.llm;
 
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
-import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.net.ConnectException;
-import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
-import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -64,23 +56,16 @@ public class LlmModelConnectionTester {
 
   private static final Logger log = LoggerFactory.getLogger(LlmModelConnectionTester.class);
 
-  /** Short enough that a caller testing several drafts in a row is never left waiting long. */
-  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
-
-  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
-
   private static final int MAX_REASON_LENGTH = 300;
 
-  private final LlmModelRepository repository;
-  private final SettingsEncryptor settingsEncryptor;
+  private final ModelEndpointAccess access;
   private final ObjectMapper objectMapper;
 
   public LlmModelConnectionTester(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
       ObjectMapper objectMapper) {
-    this.repository = repository;
-    this.settingsEncryptor = settingsEncryptor;
+    this.access = new ModelEndpointAccess(repository, settingsEncryptor);
     this.objectMapper = objectMapper;
   }
 
@@ -100,41 +85,8 @@ public class LlmModelConnectionTester {
    */
   public TestOutcome test(
       String baseUrl, String modelIdentifier, String apiKey, UUID modelId, BigDecimal temperature) {
-    if (ModelEndpointUri.containsCredentials(baseUrl)) {
-      throw new ValidationException(ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE);
-    }
-    String effectiveApiKey = apiKey;
-    if (!StringUtils.hasText(apiKey) && modelId != null) {
-      LlmModel model =
-          repository
-              .findById(modelId)
-              .orElseThrow(
-                  () ->
-                      new NotFoundException(
-                          "Kein Chat-Modell mit der ID " + modelId + " gefunden"));
-      if (model.getApiKeyCiphertext() == null) {
-        effectiveApiKey = null;
-      } else {
-        if (!sameOrigin(baseUrl, model.getBaseUrl())) {
-          throw new ValidationException(
-              "Die angegebene Basis-Adresse weicht von der gespeicherten Adresse dieses Modells"
-                  + " ab. Der gespeicherte Zugangsschlüssel kann nur für die ursprüngliche Adresse"
-                  + " verwendet werden - bitte den Schlüssel erneut eingeben oder die"
-                  + " gespeicherte Basis-Adresse zum Testen verwenden.");
-        }
-        effectiveApiKey = settingsEncryptor.decrypt(model.getApiKeyCiphertext());
-      }
-    }
-    return probe(baseUrl, modelIdentifier, effectiveApiKey, temperature);
-  }
-
-  private static boolean sameOrigin(String requestBaseUrl, String storedBaseUrl) {
-    try {
-      return RedirectFollowingFetcher.sameOrigin(
-          URI.create(requestBaseUrl), URI.create(storedBaseUrl));
-    } catch (IllegalArgumentException e) {
-      return false;
-    }
+    return probe(
+        baseUrl, modelIdentifier, access.effectiveApiKey(baseUrl, apiKey, modelId), temperature);
   }
 
   private TestOutcome probe(
@@ -145,40 +97,27 @@ public class LlmModelConnectionTester {
     } catch (IllegalArgumentException | URISyntaxException e) {
       return TestOutcome.failure("Die Basis-Adresse ist keine gültige URL.");
     }
-    String scheme = uri.getScheme();
-    if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+    if (!ModelEndpointAccess.isHttp(uri)) {
       return TestOutcome.failure("Die Basis-Adresse muss mit http:// oder https:// beginnen.");
     }
 
     String requestBody = buildRequestBody(modelIdentifier, temperature);
     HttpRequest.Builder requestBuilder =
-        HttpRequest.newBuilder(uri)
-            .timeout(REQUEST_TIMEOUT)
-            .header("Content-Type", "application/json")
-            .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8));
-    if (StringUtils.hasText(apiKey)) {
-      requestBuilder.header("Authorization", "Bearer " + apiKey);
-    }
+        ModelEndpointAccess.authorized(
+            HttpRequest.newBuilder(uri)
+                .timeout(ModelEndpointAccess.REQUEST_TIMEOUT)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody, StandardCharsets.UTF_8)),
+            apiKey);
 
-    // #757 review: HttpClient implements AutoCloseable since Java 21 (this project's runtime, see
-    // ADR-0002) - closed here rather than left to the garbage collector, same as any other
-    // per-request resource. Redirect.NEVER is explicit rather than relying on HttpClient's own
-    // default (also NEVER, but not a guarantee this class should depend on staying that way): the
-    // Authorization header carrying a real access key must never be replayed to a redirect target
-    // this class never validated, the same reasoning
-    // io.opaa.sourceaccess.RedirectFollowingFetcher's own manual redirect handling documents for
-    // its own Authorization header.
-    try (HttpClient httpClient =
-        HttpClient.newBuilder()
-            .connectTimeout(CONNECT_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .build()) {
+    // Closed per request; the client never follows a redirect (see ModelEndpointAccess).
+    try (HttpClient httpClient = ModelEndpointAccess.newHttpClient()) {
       HttpResponse<String> response =
           httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
       return interpret(response, temperature != null);
     } catch (IOException e) {
       log.warn("Chat model connection test failed for {}: {}", uri, e.getMessage());
-      return TestOutcome.failure(translateConnectionError(e));
+      return TestOutcome.failure(ModelEndpointAccess.translateConnectionError(e));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return TestOutcome.failure("Die Verbindung wurde unterbrochen.");
@@ -284,26 +223,6 @@ public class LlmModelConnectionTester {
       // (Strings, a List, numbers) can trigger that, so this is unreachable in practice.
       throw new IllegalStateException("Der Testaufruf konnte nicht aufgebaut werden", e);
     }
-  }
-
-  private static String translateConnectionError(IOException e) {
-    Optional<String> proxyRefusal = ProxyRefusal.describe(e);
-    if (proxyRefusal.isPresent()) {
-      return proxyRefusal.get();
-    }
-    if (e instanceof UnknownHostException) {
-      return "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).";
-    }
-    if (e instanceof ConnectException) {
-      return "Die Verbindung wurde vom Server abgelehnt.";
-    }
-    if (e instanceof HttpTimeoutException || e instanceof SocketTimeoutException) {
-      return "Die Verbindung ist in ein Zeitlimit gelaufen.";
-    }
-    if (e instanceof SSLException) {
-      return "Das Zertifikat des Servers konnte nicht geprüft werden.";
-    }
-    return "Die Adresse ist nicht erreichbar.";
   }
 
   /** The outcome of a connection test - German, user-facing {@link #message()} either way. */

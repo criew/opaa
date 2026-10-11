@@ -1778,6 +1778,72 @@ Hinweis, dass sie unvollständig ist beziehungsweise fehlt. Abhilfe ist eine hö
 Antwortlänge in der Modellverwaltung. Der Hinweis gilt nur für die gerade erzeugte Antwort; im
 gespeicherten Verlauf erscheint er nach dem Neuladen nicht mehr.
 
+### Chat-Modelle in der Oberfläche anlegen
+
+Unter **Administration → Modelle → Chat-Modelle** legt ein Systemverwalter Chat-Modelle an,
+bearbeitet, testet und aktiviert sie. Das Formular führt in drei Abschnitten:
+
+1. **Endpunkt.** Das Feld „Basis-Adresse“ schlägt beim Öffnen Vorlagen vor; jede andere
+   openai-kompatible Adresse (vLLM, LiteLLM, Azure …) wird einfach eingetragen.
+
+   | Vorlage | Trägt ein | Hinweis |
+   |---|---|---|
+   | Ollama | `http://ollama:11434/v1` | Der Host `ollama` ist danach markiert und wird mit dem eigenen überschrieben (siehe unten). |
+   | OpenAI | `https://api.openai.com/v1` | nur mit Zugangsschlüssel |
+   | Anthropic (Claude) | `https://api.anthropic.com/v1` | nur mit Zugangsschlüssel; das Feld Temperatur leer lassen |
+
+   Typische Ollama-Adressen, je nachdem, wo Ollama vom Backend aus erreichbar ist:
+
+   | Ollama läuft | Basis-Adresse |
+   |---|---|
+   | im Compose-Stack (nächster Abschnitt) | `http://ollama:11434/v1` |
+   | auf dem Docker-Host, OPAA im Container | `http://host.docker.internal:11434/v1` |
+   | im Kubernetes-Cluster | `http://ollama.<namespace>.svc.cluster.local:11434/v1` |
+   | auf demselben Rechner, Backend ohne Container (`./gradlew bootRun`) | `http://localhost:11434/v1` |
+
+   Mit eingeschalteten Ausgangs-Policies braucht das Backend im Cluster eine Ausgangsregel zu Port
+   11434 von Ollama ([Kubernetes, NetworkPolicies](kubernetes.md#networkpolicies)). Der
+   Zugangsschlüssel ist optional; er wird verschlüsselt gespeichert und nie wieder angezeigt.
+   Lehnt ein Anbieter die Modellliste mit seinem Schlüssel ab (etwa weil er sie nur in eigener
+   Form anbietet), nennt das Formular den Grund, und die Kennung wird von Hand eingetragen.
+2. **Modell.** „Modelle abrufen" (oder Enter im Adressfeld) fragt den Endpunkt nach seinen Modellen
+   (`GET {Basis-Adresse}/models`). Die Vorlagen für OpenAI und Anthropic rufen sofort ab, wenn schon
+   ein Schlüssel eingetragen ist; die Ollama-Vorlage nie, weil der Host erst zu bestätigen ist. Die
+   Modell-Kennung ist danach eine durchsuchbare Auswahl. Erkennt
+   OPAA hinter einer Adresse auf `/v1` ein Ollama, zeigt jede Zeile zusätzlich Parameterzahl, Größe,
+   Kontextlänge und Fähigkeiten (Werkzeuge, Bilder, Denkmodus), gelesen über Ollamas eigene
+   Schnittstelle (`/api/tags`, `/api/show`) auf derselben Adresse. Andere Server liefern meist nur die
+   Kennungen; eine Kontextlänge übernimmt OPAA, wenn der Server sie in der Liste mitschickt.
+   Reine Einbettungsmodelle stehen in einer eigenen Gruppe „Nicht für den Chat geeignet" und sind nicht
+   wählbar. Eine Kennung lässt sich immer auch von Hand eintragen.
+3. **Anzeige und Antwort.** Die Wahl eines Modells belegt den Anzeigenamen mit der Kennung (ohne
+   `:latest` und ohne Anbieterpfad). Ist das Kontextfenster des Modells bekannt, begrenzt sie die
+   maximale Antwortlänge auf die Hälfte davon, falls der Vorschlagswert für neue Einträge (siehe
+   [„Temperatur und maximale Antwortlänge"](#temperatur-und-maximale-antwortlänge)) nicht
+   hineinpasst; die andere Hälfte brauchen Frage, Gesprächsverlauf und gefundene Textstellen. Was
+   von Hand eingetragen wurde, überschreibt die Vorbelegung nicht; beim Bearbeiten bleibt die
+   gespeicherte Antwortlänge. Die Temperatur bleibt ohne
+   Eintrag leer.
+
+Nach der Wahl eines Modells läuft der Verbindungstest automatisch; „Verbindung testen" wiederholt
+ihn jederzeit. Kann der Endpunkt keine Liste liefern, nennt das Formular den Grund und bleibt von
+Hand bedienbar:
+
+| Meldung | Bedeutung |
+|---|---|
+| Host nicht gefunden, Verbindung abgelehnt, Zeitlimit, Zertifikat | Der Endpunkt ist von OPAA aus nicht erreichbar. Aus dem Backend-Container heraus zählt dessen Netz, nicht das des Browsers. |
+| Zugangsschlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht. |
+| keine Modellliste | Der Server antwortet, bietet `/models` aber nicht an. Die Kennung von Hand eintragen. |
+| Der Endpunkt meldet keine Modelle | Die Liste ist leer, bei Ollama ist noch kein Modell geladen (`ollama pull …`). |
+| Umleitung, anderer HTTP-Status, Liste zu groß | Der Server antwortet unerwartet. Umleitungen folgt OPAA nicht; die Zieladresse direkt eintragen. |
+
+Wie beim Verbindungstest gilt beim Bearbeiten: Ohne neu eingetragenen Schlüssel nutzt OPAA den
+gespeicherten, aber nur für eine Adresse mit demselben Ursprung (Schema, Host, Port) wie die
+gespeicherte. Bei einer anderen Adresse lehnt OPAA die Anfrage ab, statt den Schlüssel dorthin zu
+senden; dann den Schlüssel neu eintragen. Eine Adresse mit Anmeldedaten
+(`https://benutzer:passwort@host`) wird abgelehnt. Abfrage und Ollama-Details haben eine kurze
+Zeitgrenze und eine Größengrenze, damit ein langsamer Endpunkt das Formular nicht aufhält.
+
 ### Lokal betriebenes Ollama im Compose-Stack
 
 Der Compose-Stack (`docker-compose.yml`) enthält einen optionalen `ollama`-Service unter dem
@@ -2114,7 +2180,27 @@ Der dritte Fall ist der praktisch wichtige: Wird am Anbieter der Gruppen-Mapper 
 
 **Ein Anbieter hat genau einen Gruppenmechanismus**: entweder den **Gruppen-Claim** seiner Tokens (Vorgabe, funktioniert ohne Konfiguration) oder den **Verzeichnisabgleich** (empfohlen für Häuser mit gepflegtem Verzeichnis). Beides zugleich lehnt OPAA mit 409 (`DIRECTORY_SYNC_MECHANISM_CONFLICT`) ab — sonst entstünde dieselbe Verzeichnisgruppe zweimal, mit zwei Wahrheiten über die Mitgliedschaft und zwei Entzugszeitpunkten. Das Einschalten des Abgleichs verlangt also einen leeren Gruppen-Claim, und das Setzen eines Gruppen-Claims verlangt einen ausgeschalteten Abgleich.
 
-Bedient wird er unter **Administration → Verzeichnisabgleich**: je Anbieter eine Karte mit Schalter, Intervall, Statuszeile, Trockenlauf, Lauf, dem ausstehenden Plan samt Alter und dem hinterlegten Verzeichniszugang (Speichern, Verbindungstest, Entfernen). Dieselben Einstellungen über die Schnittstelle je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/directory-sync`, nur `SYSTEM_ADMIN`):
+Bedient wird er unter **Administration → Verzeichnisabgleich**. Die Seite zeigt alle Identitätsanbieter in einer Übersicht, eine Zeile je Anbieter:
+
+| Spalte | Inhalt |
+|---|---|
+| Anbieter | Name; „Anbieter deaktiviert“, wenn die Anbieterzeile abgeschaltet ist |
+| Abgleich | **Eingeschaltet** mit Intervall, **Pausiert** (eingeschaltet, aber der Anbieter ist deaktiviert), **Gruppen aus dem Token** (der Anbieter hat einen Gruppen-Claim) oder **Aus** |
+| Letzter Lauf | Ergebnis des letzten Laufs und wie lange er zurückliegt |
+| Nächster Lauf | Wann der Zeitplan den Anbieter wieder fällig findet: ein Intervall nach dem letzten Lauf; „jetzt fällig“, wenn das Intervall schon verstrichen ist oder der Anbieter noch nie gelaufen ist. Gilt nur, solange der Takt eingeschaltet ist (`OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED`, siehe „Zeitplan“ unten) |
+| Handlungsbedarf | **Entscheidung nötig** (ein Plan wartet, mit Alter und Wirkung), **Letzter Lauf gescheitert** (Verzeichnis nicht erreichbar oder leeres Ergebnis) oder **Verzeichniszugang fehlt** (Abgleich eingeschaltet, aber kein Zugang hinterlegt) |
+
+Zeilen mit Handlungsbedarf sind farbig markiert, und eine Zeile über der Übersicht fasst zusammen, wie viele Anbieter eine Entscheidung brauchen oder gestört sind. Ab sechs Anbietern lässt sich die Übersicht auf **Handlungsbedarf** oder **Eingeschaltet** eingrenzen und nach dem Namen durchsuchen.
+
+**Details** (bei einem wartenden Plan **Entscheiden**) öffnet den Anbieter in einem Seitenpanel. Dort steht, in dieser Reihenfolge:
+
+- **Ausstehender Plan** — nur, wenn einer wartet: Alter, Bericht, Pflichtfeld für den Grund, „Plan bestätigen“ und „Plan verwerfen“. Bestätigen ist ein Lauf und geht deshalb nur bei eingeschaltetem Abgleich und aktivem Anbieter; Verwerfen geht immer.
+- **Letzter Lauf** — Statuszeile mit Meldung, Zeitpunkt und Änderungsanteil, dazu „Trockenlauf“ und „Jetzt abgleichen“. Beide gehen nur bei eingeschaltetem Abgleich und aktivem Anbieter; das Ergebnis erscheint darunter.
+- **Zeitplan** — Schalter „Abgleich eingeschaltet“, Intervall in Minuten mit „Intervall speichern“ und der nächste Lauf. Bei einem Anbieter mit Gruppen-Claim ist der Schalter gesperrt, und das Panel nennt den Grund; ebenso lässt er sich nicht einschalten, solange das eingetragene Intervall außerhalb der zulässigen Grenzen liegt.
+- **Verzeichniszugang** — der hinterlegte Zugang (Verzeichnis, Realm, Dienstkonto, Adresse der Admin-API) und das Formular zum Speichern, Testen und Entfernen.
+- Ein Verweis auf die **Arbeitsliste der Gruppen** des Anbieters.
+
+Dieselben Einstellungen über die Schnittstelle je Anbieterzeile (`PUT /api/v1/admin/oidc-providers/{id}/directory-sync`, nur `SYSTEM_ADMIN`):
 
 | Einstellung | Bedeutung |
 |---|---|
@@ -2135,7 +2221,7 @@ Bedient wird er unter **Administration → Verzeichnisabgleich**: je Anbieter ei
 - **Verworfen** wird er unter `…/pending-plan/{planId}/discard`, ebenfalls mit Anlass. Das entscheidet über diesen Plan, es unterdrückt den Befund nicht: Der nächste Lauf rechnet ihn neu und legt ihn gegebenenfalls erneut vor.
 - Bestätigung und Verwerfen sind **Protokollereignisse** mit der handelnden Person und ihrem Anlass (`DIRECTORY_SYNC_RUN_COMPLETED` bzw. `DIRECTORY_SYNC_PLAN_DISCARDED`).
 
-**Der Bericht nennt Namen, und das steht im Protokoll.** Trockenlauf, Lauf und ausstehender Plan zeigen, wen ein Lauf in welche Gruppe aufnimmt oder aus ihr entfernt und welche Konten er sperrt oder entsperrt — für eine neu angelegte Gruppe die vollständige Mitgliederliste. Jeder Abruf des ausstehenden Plans, jeder Trockenlauf, jeder Lauf von Hand und jede Bestätigung, deren Bericht mindestens eine Person nennt, hinterlässt deshalb einen Protokolleintrag `DIRECTORY_SYNC_REPORT_READ`: mit der handelnden Person, dem Anbieter, dem Weg und der Zahl der genannten Gruppen und Personen, ohne die Namen. Ein Bericht ohne Namen und der zeitgesteuerte Lauf erzeugen keinen Eintrag. Schon das **Anzeigen eines offenen Plans** auf der Seite Verzeichnisabgleich erzeugt einen Eintrag; ein erneutes Laden der Seite für denselben Plan im selben Fenster erzeugt keinen weiteren. Lässt sich der Eintrag nicht schreiben, liefert OPAA den Bericht nicht aus und antwortet mit einem Fehler — bei einem Lauf von Hand und bei einer Bestätigung ist die Änderung dann trotzdem schon angewendet. Was der Lauf bewirkt hat, zeigen in diesem Fall die Statuszeile und das Protokoll.
+**Der Bericht nennt Namen, und das steht im Protokoll.** Trockenlauf, Lauf und ausstehender Plan zeigen, wen ein Lauf in welche Gruppe aufnimmt oder aus ihr entfernt und welche Konten er sperrt oder entsperrt — für eine neu angelegte Gruppe die vollständige Mitgliederliste. Jeder Abruf des ausstehenden Plans, jeder Trockenlauf, jeder Lauf von Hand und jede Bestätigung, deren Bericht mindestens eine Person nennt, hinterlässt deshalb einen Protokolleintrag `DIRECTORY_SYNC_REPORT_READ`: mit der handelnden Person, dem Anbieter, dem Weg und der Zahl der genannten Gruppen und Personen, ohne die Namen. Ein Bericht ohne Namen und der zeitgesteuerte Lauf erzeugen keinen Eintrag. Die Übersicht der Seite Verzeichnisabgleich ruft den Plan nicht ab, sie nennt nur sein Alter und seine Zahlen. Erst das **Öffnen eines Anbieters mit offenem Plan** erzeugt einen Eintrag; ein erneutes Öffnen oder ein neu geladener Abgleichstand mit demselben Plan erzeugt keinen weiteren, solange die Seite geöffnet bleibt. Lässt sich der Eintrag nicht schreiben, liefert OPAA den Bericht nicht aus und antwortet mit einem Fehler — bei einem Lauf von Hand und bei einer Bestätigung ist die Änderung dann trotzdem schon angewendet. Was der Lauf bewirkt hat, zeigen in diesem Fall die Statuszeile und das Protokoll.
 
 **Kontostatus aus dem Verzeichnis.** Derselbe Lauf übernimmt neben den Gruppen den **Kontostatus** der Konten dieses Anbieters. Ein Konto, das das Verzeichnis als gesperrt meldet **oder gar nicht mehr meldet**, verliert beim nächsten Lauf seinen Zugang — nicht erst, wenn sein Token abläuft:
 
