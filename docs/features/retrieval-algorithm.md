@@ -352,6 +352,27 @@ in diesem Aufruf hinzugefügt hat, kann in keiner der beiden Stufen selbst zum O
 Vervollständigung kann eine frühere im selben Aufruf also nie rückgängig machen. `max-chunks-per-document
 = 1` schaltet die Vervollständigung vollständig ab (Verhalten von vor #932).
 
+### 6b. Nachbar-Chunks im Antwortkontext (#2374)
+
+Keine Stufe der Pipeline, sondern der Schritt zwischen Endauswahl und Antwort:
+`io.opaa.retrieval.context.NeighborChunkExpansion`, aufgerufen in `QueryService#query`. Zu jedem Chunk
+der Endauswahl lädt `NeighborChunkLookup` die Chunks `chunk_index ± radius` desselben Dokuments
+(`opaa.query.neighbor-chunks.radius`, `OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS`, Default `1`), in einer
+SQL-Abfrage mit `library_id = ANY(Suchbereich)` in der Bedingung. Verteilt wird nach Rang und Abstand:
+erst alle Abstand-1-Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren, jeder nur neben einem
+schon vorhandenen Chunk, bis das Zeichenbudget `max-added-characters` (Default `40000`) erschöpft ist.
+Das Ergebnis ist nach zusammenhängenden Ausschnitten geordnet: Aneinandergrenzende Chunks eines
+Dokuments stehen in Indexreihenfolge, die Ausschnitte in der Rangfolge ihres besten Treffers.
+
+Jeder Nachbar bleibt ein eigenes `Document` mit eigenem Chunk-Kopf, die Zitierfrage löst sich damit
+ohne Sonderfall: Zitatvalidierung und Quellen-Mapping (Schritt 7) prüfen gegen genau die übergebene
+Liste, ein Zitat auf einen Nachbarn ist gültig, und seine `chunkLocations` erscheinen an der
+Quellenangabe seines Dokuments. Suchtreffer (`SearchService`), Erklärprotokoll, Diagnose und
+Retrieval-Harness sehen die Nachbarn nicht, weil sie die Pipeline ohne diesen Schritt ausführen.
+Messung auf dem Testkorpus Finanzverwaltung (Arbeitsmenge v1, 20 Fragen × 3 Läufe): Nachbarn ±1
+zusammen mit `max-chunks-per-document = 1` brachten 36 statt 18 richtige von 60 Antworten, bei rund
++63 % Tokens je Antwort ([#2374](https://github.com/criew/opaa/issues/2374)).
+
 ### 7. Antwortgenerierung, Zitatvalidierung, Quellen-Mapping
 
 `AnswerGenerationService#generateAnswer` formatiert die final ausgewählten Chunks als Kontextblock (mit
@@ -417,6 +438,8 @@ Frage + Gesprächsfenster
     (per Voreinstellung aus: OPAA_RERANK_ENABLED)
         ↓
 6. Dokument-Vervollständigung (max-chunks-per-document, zweistufige Verdrängung)
+        ↓
+6b. Nachbar-Chunks nachladen (neighbor-chunks.radius, Zeichenbudget; nur für die Antwort)
         ↓
 7. Antwortgenerierung, Zitatvalidierung, Quellen-Mapping
 ```

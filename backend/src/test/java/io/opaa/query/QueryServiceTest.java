@@ -66,6 +66,10 @@ import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.config.RetrievalConfiguration;
+import io.opaa.retrieval.context.ChunkPosition;
+import io.opaa.retrieval.context.NeighborChunkExpansion;
+import io.opaa.retrieval.context.NeighborChunkLookup;
+import io.opaa.retrieval.context.NeighborChunkProperties;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
@@ -147,6 +151,15 @@ class QueryServiceTest {
   private final UUID currentUserId = UUID.randomUUID();
   private final UUID organizationId = UUID.randomUUID();
   private final UUID readableLibraryId = UUID.randomUUID();
+
+  /**
+   * Switched off unless a test replaces it, so the other tests see exactly the pipeline's selection
+   * (the expansion itself is covered by NeighborChunkExpansionTest).
+   */
+  private NeighborChunkExpansion neighborChunkExpansion =
+      new NeighborChunkExpansion(
+          mock(NeighborChunkLookup.class), new NeighborChunkProperties(0, 40000));
+
   private final CurrentUser caller =
       CurrentUser.of(currentUserId, organizationId, SystemRole.USER, "User");
 
@@ -210,7 +223,8 @@ class QueryServiceTest {
         new QueryMetrics(new SimpleMeterRegistry()),
         mock(MetadataFilterValidator.class),
         promptService,
-        spikeHandlerProvider);
+        spikeHandlerProvider,
+        neighborChunkExpansion);
   }
 
   /**
@@ -1582,6 +1596,62 @@ class QueryServiceTest {
     QueryResult response = queryService.query("What?", null, caller, true, List.of());
 
     assertThat(response.sources().getFirst().getCitationValid()).isTrue();
+  }
+
+  /**
+   * A loaded neighbour reaches the model as a chunk of its own, in index order next to the hit, and
+   * a citation of it validates like a citation of the hit.
+   */
+  @Test
+  void aCitationOfALoadedNeighbourValidates() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    var hit =
+        Document.builder()
+            .id("hit")
+            .text("Die Pauschale ist ein echter Zuschuss.")
+            .metadata(Map.of("file_name", "erlass.pdf", "document_id", "doc-1", "chunk_index", 3))
+            .score(0.85)
+            .build();
+    var neighbour =
+        Document.builder()
+            .id("neighbour")
+            .text("Der Festzuschlag von 16 Cent ist steuerpflichtig.")
+            .metadata(Map.of("file_name", "erlass.pdf", "document_id", "doc-1", "chunk_index", 4))
+            .build();
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(hit));
+    NeighborChunkLookup lookup = mock(NeighborChunkLookup.class);
+    when(lookup.find(any(), eq(Set.of(readableLibraryId))))
+        .thenReturn(Map.of(new ChunkPosition("doc-1", 4), neighbour));
+    neighborChunkExpansion =
+        new NeighborChunkExpansion(lookup, new NeighborChunkProperties(1, 40000));
+    queryService =
+        newQueryService(
+            new QueryProperties(8, 25, 1.0, 0.3, true, 3, 2, false, 50, 20, 2), chatMemory);
+
+    var answer = "Der Festzuschlag von 16 Cent ist steuerpflichtig. 【source: doc-1#4 | erlass.pdf】";
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage(answer)))));
+
+    QueryResult response = queryService.query("Steuer?", null, caller, true, List.of());
+
+    verify(answerGenerationService)
+        .generateAnswer(
+            any(),
+            argThat(
+                chunks ->
+                    chunks.stream()
+                        .map(Document::getId)
+                        .toList()
+                        .equals(List.of("hit", "neighbour"))),
+            any(),
+            any(),
+            anyBoolean());
+    ChatSource source = response.sources().getFirst();
+    assertThat(source.getCited()).isTrue();
+    assertThat(source.getCitationValid()).isTrue();
+    assertThat(source.getChunkLocations())
+        .extracting(ChatSourceLocation::getChunkIndex)
+        .containsExactly(3, 4);
   }
 
   @Test
