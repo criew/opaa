@@ -12,6 +12,16 @@ import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '../..
 import ConnectionProfilesTab from './ConnectionProfilesTab'
 import ConnectorTypesTab from './ConnectorTypesTab'
 
+/** Chooses the source type of a new profile in the select of the dialog. */
+async function chooseSourceType(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  name: RegExp,
+) {
+  await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
+
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
   useAuthStore.setState({
     mode: 'dev',
@@ -249,7 +259,19 @@ describe('ConnectionProfilesTab', () => {
     expect(screen.getByText('Secret läuft ab am 24.12.2999')).toBeVisible()
   })
 
-  it('creates a profile after choosing the connector as a tile; creating needs a complete choice', async () => {
+  it('preselects the source type when only one admits profiles', async () => {
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
+    expect(within(dialog).getByRole('combobox', { name: /Quellart/ })).toHaveTextContent(
+      /^Nextcloud$/,
+    )
+    expect(within(dialog).getByLabelText(/^Name/)).toBeVisible()
+  })
+
+  it('creates a profile after choosing the connector in the select; creating needs a complete choice', async () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
@@ -257,8 +279,11 @@ describe('ConnectionProfilesTab', () => {
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     const create = within(dialog).getByRole('button', { name: 'Anlegen' })
     expect(create).toBeDisabled()
-    expect(within(dialog).getByRole('radio', { name: /Dateisystem/ })).toBeDisabled()
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+    const fileSystem = await screen.findByRole('option', { name: /Dateisystem/ })
+    expect(fileSystem).toHaveAttribute('aria-disabled', 'true')
+    expect(fileSystem).toHaveTextContent('keine Zugänge möglich')
+    await user.click(await screen.findByRole('option', { name: /Nextcloud/ }))
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Nextcloud Partner')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://partner.example.org')
     expect(create).toBeDisabled()
@@ -281,7 +306,7 @@ describe('ConnectionProfilesTab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     expect(within(dialog).queryByLabelText(/Konnektor-Vorgaben/)).not.toBeInTheDocument()
     expect(within(dialog).getByText('Vorgaben für jede Bibliothek')).toBeVisible()
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit Vorgaben')
@@ -307,7 +332,7 @@ describe('ConnectionProfilesTab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit Proxy')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://cloud.example.org')
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
@@ -332,7 +357,7 @@ describe('ConnectionProfilesTab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Windows-Dateifreigabe/ }))
+    await chooseSourceType(user, dialog, /Windows-Dateifreigabe/)
     expect(within(dialog).queryByLabelText(/^Proxy/)).not.toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Zertifikatsprüfung aussetzen')).not.toBeInTheDocument()
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Dateiserver')
@@ -351,7 +376,7 @@ describe('ConnectionProfilesTab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
     await user.click(within(dialog).getByLabelText(/^Besitzart/))
@@ -375,7 +400,7 @@ describe('ConnectionProfilesTab', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Ablage mit fester Adresse/ }))
+    await chooseSourceType(user, dialog, /Ablage mit fester Adresse/)
     expect(within(dialog).queryByLabelText(/^Server-Adresse/)).not.toBeInTheDocument()
     expect(within(dialog).getByText(/feste Adresse: https:\/\/api\.ablage\.example/)).toBeVisible()
     expect(within(dialog).queryByText('Vorgaben für jede Bibliothek')).not.toBeInTheDocument()

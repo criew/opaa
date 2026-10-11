@@ -416,8 +416,10 @@ selbst ein.
 
 Die Systemverwaltung pflegt Zugänge unter **Administration → Anbindungen → Zugänge**. Solange
 keine Quellart Zugänge anbietet, steht dort ein Hinweis, und „Neuer Zugang“ ist gesperrt. Sonst fragt „Neuer
-Zugang“ zuerst die Quellart als Kachel ab; Quellarten ohne Zugänge bleiben mit Grund gesperrt
-sichtbar. Das Formular richtet sich nach der Quellart:
+Zugang“ zuerst die Quellart im Auswahlfeld **Quellart** ab: je Eintrag Name und eine kurze
+Beschreibung, unter dem Feld die Beschreibung der gewählten Quellart. Quellarten ohne Zugänge stehen
+mit Grund in der Liste und lassen sich nicht wählen; ist nur eine Quellart möglich, ist sie
+vorausgewählt. Das Formular richtet sich nach der Quellart:
 
 - **Anmeldeart** bietet nur die Arten an, die die Quellart meldet; **Besitzart** nur die Besitzarten,
   die sie für die gewählte Anmeldeart zulässt.

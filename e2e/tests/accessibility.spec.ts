@@ -312,24 +312,24 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     }
   });
 
-  // #2493: eine gesperrte Kachel mit ihrem Grund in der Warnfarbe - die Quellarten ohne Zugänge im
-  // Dialog „Zugang anlegen". Der Grund steht außerhalb des gesperrten Bedienelements, also misst
-  // axe seinen Kontrast.
-  test("Gesperrte Kachel mit Grund in Warnfarbe in beiden Farbschemata", async ({
+  // #2493: eine gesperrte Quellart mit ihrem Grund in der Warnfarbe - im Dialog „Zugang anlegen"
+  // seit #2504 als Eintrag der Auswahlliste. Der Eintrag ist nur als nicht wählbar markiert, nicht
+  // abgeblendet, also misst axe den Kontrast seines Grundes.
+  test("Gesperrte Quellart mit Grund in Warnfarbe in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
     await gotoConnectionProfiles(page);
     await page.getByRole("button", { name: "Neuer Zugang" }).click();
     const form = page.getByRole("dialog", { name: "Zugang anlegen" });
-    await expect(form.getByRole("radio", { disabled: true }).first()).toHaveAccessibleDescription(
-      /keine Zugänge möglich/,
-    );
+    await form.getByRole("combobox", { name: /Quellart/ }).click();
+    const locked = page.locator('[role="option"][aria-disabled="true"]').first();
+    await expect(locked).toContainText(/keine Zugänge möglich/);
 
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expectNoSeriousA11yViolations(
         page,
-        `Zugang anlegen, gesperrte Quellart (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+        `Zugang anlegen, Auswahl der Quellart (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
       );
     }
   });

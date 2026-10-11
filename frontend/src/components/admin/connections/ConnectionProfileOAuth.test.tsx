@@ -44,6 +44,16 @@ const REALM: SourceTypeDescriptor = {
 }
 
 /** OAuth in the administration (#2168): endpoints the connector leaves to the profile. */
+/** Chooses the source type of a new profile in the select of the dialog. */
+async function chooseSourceType(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  name: RegExp,
+) {
+  await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
+
 describe('ConnectionProfilesTab, OAuth', () => {
   beforeEach(() => {
     useAuthStore.setState({
@@ -75,7 +85,7 @@ describe('ConnectionProfilesTab, OAuth', () => {
     await waitFor(() => expect(button).toBeEnabled())
     await user.click(button)
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Name/))
     await user.paste('Zugang Keycloak')
     await user.click(within(dialog).getByLabelText(/^Server-Adresse/))
@@ -168,7 +178,7 @@ describe('ConnectionProfilesTab, OAuth', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
+    await chooseSourceType(user, dialog, /Nextcloud/)
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'OAuth' }))
 

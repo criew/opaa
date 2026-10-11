@@ -36,6 +36,16 @@ const KEY_FILE = JSON.stringify({
 })
 
 /** A profile's own sign-in in the administration (#2220): key upload, rejection and its test. */
+/** Chooses the source type of a new profile in the select of the dialog. */
+async function chooseSourceType(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  name: RegExp,
+) {
+  await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
+
 describe('ConnectionProfilesTab, sign-in of the profile', () => {
   beforeEach(() => {
     useAuthStore.setState({
@@ -71,7 +81,7 @@ describe('ConnectionProfilesTab, sign-in of the profile', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Google Drive/ }))
+    await chooseSourceType(user, dialog, /Google Drive/)
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Drive')
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'Dienstkonto-Schlüssel' }))
