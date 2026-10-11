@@ -14,7 +14,11 @@ import TableCell from '@mui/material/TableCell'
 import TableHead from '@mui/material/TableHead'
 import TableRow from '@mui/material/TableRow'
 import TextField from '@mui/material/TextField'
+import TableContainer from '@mui/material/TableContainer'
 import Typography from '@mui/material/Typography'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
+import visuallyHidden from '@mui/utils/visuallyHidden'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import type {
   AdminExternalAccessTokenResponse,
@@ -28,6 +32,9 @@ import {
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import PageSection from '../../PageSection'
+import StateDot from '../../StateDot'
+import type { StatusTone } from '../../StatusLine'
+import { adminTableSx, definitionListSx, listCardSx } from '../list/adminListStyles'
 import {
   ADMIN_PURPOSE_HINT,
   BLOCK_ALL_CONSEQUENCE,
@@ -35,6 +42,22 @@ import {
   TOKEN_STATUS_LABEL,
   formatDate,
 } from '../../externalaccess/tokenLabels'
+
+const STATUS_TONE: Record<ExternalAccessTokenStatus, StatusTone> = {
+  ACTIVE: 'success',
+  EXPIRED: 'neutral',
+  REVOKED: 'neutral',
+  BLOCKED: 'error',
+}
+
+/** The state as a dot before its word; the colour carries no meaning on its own. */
+function TokenState({ status }: { status: ExternalAccessTokenStatus }) {
+  return <StateDot tone={STATUS_TONE[status]} label={TOKEN_STATUS_LABEL[status]} />
+}
+
+function librariesOf(token: AdminExternalAccessTokenResponse): string {
+  return token.libraries.map((library) => library.name).join(', ') || '—'
+}
 
 /** Der Ablauffilter des Entwurfs; er ist zugleich der einzige Zeitfilter der Liste. */
 const EXPIRING_WITHIN_DAYS = 30
@@ -97,7 +120,14 @@ function RowMenu({
  * Die Sperre je Person ist deshalb eine Handlung an einer Zeile und keine Auswertung: Sie schreibt,
  * statt die Liste nach Person zu gruppieren.
  */
-export default function ExternalAccessTokenAdminSection() {
+export default function ExternalAccessTokenAdminSection({
+  onChanged,
+}: {
+  /** Called after a block, so figures elsewhere on the page follow. */
+  onChanged?: () => void
+} = {}) {
+  const theme = useTheme()
+  const isDesktop = useMediaQuery(theme.breakpoints.up('md'))
   const [tokens, setTokens] = useState<AdminExternalAccessTokenResponse[] | null>(null)
   const [status, setStatus] = useState<ExternalAccessTokenStatus | 'ALL'>('ALL')
   const [expiringSoon, setExpiringSoon] = useState(false)
@@ -140,6 +170,7 @@ export default function ExternalAccessTokenAdminSection() {
       await blockExternalAccessToken(token.id)
       notify(`Das Token „${token.name}“ wurde gesperrt.`, 'success')
       await load()
+      onChanged?.()
     } catch (err: unknown) {
       notify(
         err instanceof Error ? err.message : 'Das Token konnte nicht gesperrt werden.',
@@ -165,6 +196,7 @@ export default function ExternalAccessTokenAdminSection() {
         'success',
       )
       await load()
+      onChanged?.()
     } catch (err: unknown) {
       notify(
         err instanceof Error ? err.message : 'Die Tokens konnten nicht gesperrt werden.',
@@ -210,43 +242,85 @@ export default function ExternalAccessTokenAdminSection() {
         <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
           Zu dieser Auswahl gibt es kein Zugangstoken.
         </Typography>
-      ) : (
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>Besitzer</TableCell>
-              <TableCell>Name</TableCell>
-              <TableCell>Bibliotheken</TableCell>
-              <TableCell>Erstellt</TableCell>
-              <TableCell>Läuft ab</TableCell>
-              <TableCell>Zustand</TableCell>
-              <TableCell />
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {tokens.map((token) => (
-              <TableRow key={token.id}>
-                <TableCell>{token.ownerDisplayName}</TableCell>
-                <TableCell sx={{ fontWeight: 500 }}>{token.name}</TableCell>
-                <TableCell>
-                  <Box sx={{ fontSize: 13 }}>
-                    {token.libraries.map((library) => library.name).join(', ') || '—'}
-                  </Box>
-                </TableCell>
-                <TableCell>{formatDate(token.createdAt)}</TableCell>
-                <TableCell>{formatDate(token.expiresAt)}</TableCell>
-                <TableCell>{TOKEN_STATUS_LABEL[token.status]}</TableCell>
-                <TableCell align="right">
-                  <RowMenu
-                    token={token}
-                    onBlock={(row) => void handleBlock(row)}
-                    onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}
-                  />
+      ) : isDesktop ? (
+        <TableContainer>
+          <Table size="small" aria-label="Zugangstokens" sx={{ ...adminTableSx, minWidth: 760 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ width: '17%' }}>Besitzer</TableCell>
+                <TableCell sx={{ width: '21%' }}>Name</TableCell>
+                <TableCell>Bibliotheken</TableCell>
+                <TableCell sx={{ width: 96 }}>Erstellt</TableCell>
+                <TableCell sx={{ width: 96 }}>Läuft ab</TableCell>
+                <TableCell sx={{ width: 112 }}>Zustand</TableCell>
+                <TableCell align="right" sx={{ width: 56 }}>
+                  <span style={visuallyHidden}>Aktionen</span>
                 </TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {tokens.map((token) => (
+                <TableRow key={token.id}>
+                  <TableCell>{token.ownerDisplayName}</TableCell>
+                  <TableCell sx={{ fontWeight: 600, overflowWrap: 'break-word' }}>
+                    {token.name}
+                  </TableCell>
+                  <TableCell sx={{ overflowWrap: 'break-word' }}>{librariesOf(token)}</TableCell>
+                  <TableCell>{formatDate(token.createdAt)}</TableCell>
+                  <TableCell>{formatDate(token.expiresAt)}</TableCell>
+                  <TableCell>
+                    <TokenState status={token.status} />
+                  </TableCell>
+                  <TableCell align="right" sx={{ py: 0.5 }}>
+                    <RowMenu
+                      token={token}
+                      onBlock={(row) => void handleBlock(row)}
+                      onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      ) : (
+        <Box
+          component="ul"
+          aria-label="Zugangstokens"
+          sx={{ listStyle: 'none', p: 0, m: 0, borderTop: 1, borderColor: 'divider' }}
+        >
+          {tokens.map((token) => (
+            <Box component="li" key={token.id} sx={listCardSx}>
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Typography sx={{ fontSize: 13.5, fontWeight: 600, overflowWrap: 'anywhere' }}>
+                    {token.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+                    {token.ownerDisplayName}
+                  </Typography>
+                </Box>
+                <RowMenu
+                  token={token}
+                  onBlock={(row) => void handleBlock(row)}
+                  onBlockAllOfOwner={(row) => void handleBlockAllOfOwner(row)}
+                />
+              </Box>
+              <Box component="dl" sx={definitionListSx}>
+                <dt>Bibliotheken</dt>
+                <dd>{librariesOf(token)}</dd>
+                <dt>Erstellt</dt>
+                <dd>{formatDate(token.createdAt)}</dd>
+                <dt>Läuft ab</dt>
+                <dd>{formatDate(token.expiresAt)}</dd>
+                <dt>Zustand</dt>
+                <dd>
+                  <TokenState status={token.status} />
+                </dd>
+              </Box>
+            </Box>
+          ))}
+        </Box>
       )}
     </PageSection>
   )

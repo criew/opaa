@@ -186,7 +186,7 @@ export async function deleteProfileViaApi(profileId: string): Promise<void> {
   })
 }
 
-/** Die Zeile eines Zugangs in der Liste unter „Administration → Zugänge“. */
+/** Die Zeile eines Zugangs in der Liste unter „Administration → Anbindungen → Zugänge“. */
 export function profileRow(page: Page, profileName: string): Locator {
   return page
     .getByRole('table', { name: 'Zugänge' })
@@ -194,15 +194,24 @@ export function profileRow(page: Page, profileName: string): Locator {
     .filter({ hasText: profileName })
 }
 
-/** Öffnet „Administration → Zugänge“ und wartet auf die Liste der Quellarten. */
+/** Öffnet „Administration → Anbindungen → Zugänge“ und wartet auf den Zustand der Quellarten. */
 export async function gotoConnectionProfiles(page: Page): Promise<void> {
+  await gotoConnectionsTab(page, '/admin/connections/access')
+}
+
+/** Öffnet „Administration → Anbindungen → Quellarten“ und wartet auf deren Liste. */
+export async function gotoSourceTypes(page: Page): Promise<void> {
+  await gotoConnectionsTab(page, '/admin/connections/source-types')
+}
+
+async function gotoConnectionsTab(page: Page, path: string): Promise<void> {
   await Promise.all([
     page.waitForResponse(
       (response) =>
         response.request().method() === 'GET' &&
         new URL(response.url()).pathname === '/api/v1/admin/connector-types',
     ),
-    page.goto('/admin/connection-profiles'),
+    page.goto(path),
   ])
 }
 

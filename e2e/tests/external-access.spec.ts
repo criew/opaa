@@ -247,7 +247,7 @@ test.describe.serial('Fremdzugänge', () => {
     await expect(tokenRow(personPage, TOKEN_WIDE)).toBeVisible()
     await expect(personPage.locator('body')).not.toContainText(wideToken)
 
-    await adminPage.goto('/admin/external-access/tokens')
+    await adminPage.goto('/admin/connections/external-tools#tokens')
     await expect(tokenRow(adminPage, TOKEN_WIDE)).toContainText(PERSON_DISPLAY_NAME)
     await expect(adminPage.locator('body')).not.toContainText(wideToken)
   })
@@ -377,11 +377,11 @@ test.describe.serial('Fremdzugänge', () => {
     // Ein Datum, keine Häufigkeit: nirgends in der Zeile steht eine Zahl von Aufrufen.
     await expect(tokenRow(personPage, TOKEN_WIDE)).not.toContainText(/\d+\s*(mal|Aufrufe)/)
 
-    await adminPage.goto('/admin/external-access/tokens')
+    await adminPage.goto('/admin/connections/external-tools#tokens')
     await expect(tokenRow(adminPage, TOKEN_WIDE)).toBeVisible()
     await expect(adminPage.getByRole('columnheader', { name: 'Zuletzt benutzt' })).toHaveCount(0)
     // Gefiltert wird über Zustand und Ablauf, nicht über Personen.
-    await expect(adminPage.getByLabel('Zustand')).toBeVisible()
+    await expect(adminPage.getByLabel('Zustand', { exact: true })).toBeVisible()
     await expect(
       adminPage.getByRole('combobox', { name: /Person|Besitzer|Nutzer/ }),
     ).toHaveCount(0)
@@ -474,8 +474,12 @@ test.describe.serial('Fremdzugänge', () => {
 
     // Die Freigabe von C steht unverändert, und die Auswahl im Token ist nicht ausgesetzt: Ein
     // fehlendes Leserecht erlischt nicht, es wirkt nur nicht.
-    await adminPage.goto('/admin/library-releases')
-    await expect(adminPage.getByText(LIBRARY_C, { exact: true })).toBeVisible()
+    await adminPage.goto('/admin/connections/external-tools#libraries')
+    await expect(
+      adminPage
+        .getByRole('table', { name: 'Freigegebene Bibliotheken' })
+        .getByText(LIBRARY_C, { exact: true }),
+    ).toBeVisible()
     await gotoOwnTokens(personPage)
     await expect(tokenRow(personPage, TOKEN_WIDE).getByText('Freigabe ausgesetzt')).toHaveCount(1)
   })
@@ -497,7 +501,7 @@ test.describe.serial('Fremdzugänge', () => {
     expect((await mcpRequest(revoked, 'tools/list')).status()).toBe(401)
     await revoked.dispose()
 
-    await adminPage.goto('/admin/external-access/tokens')
+    await adminPage.goto('/admin/connections/external-tools#tokens')
     await adminPage
       .getByRole('button', {
         name: `Aktionen für das Token „${TOKEN_WIDE}“ von ${PERSON_DISPLAY_NAME}`,

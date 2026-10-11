@@ -11,6 +11,7 @@ import {
   createReleasedGroupWithMember,
   deleteGroupViaApi,
   gotoConnectionProfiles,
+  gotoSourceTypes,
   gotoLibrary,
   openEvidenceRow,
   profileRow,
@@ -130,7 +131,8 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await gotoConnectionProfiles(page)
     await page.getByRole('button', { name: 'Neuer Zugang' }).click()
     const form = page.getByRole('dialog', { name: 'Zugang anlegen' })
-    await form.getByRole('radio', { name: /RSS-Feed/ }).click()
+    await form.getByRole('combobox', { name: /Quellart/ }).click()
+    await page.getByRole('option', { name: /RSS-Feed/ }).click()
     await form.getByLabel('Name').fill(PROFILE_NAME)
     await form.getByLabel('Server-Adresse').fill(SERVER_URL)
     await form.getByRole('combobox', { name: 'Anmeldeart' }).click()
@@ -242,7 +244,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     expect((await runIndexingViaApi('dev-user', stockLibraryId)).status).toBe('COMPLETED')
     await assignLibraryToDefaultSpace('dev-user', STOCK_LIBRARY)
 
-    await gotoConnectionProfiles(adminPage)
+    await gotoSourceTypes(adminPage)
     await adminPage.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }).click()
     const dialog = adminPage.getByRole('dialog', {
       name: '„Nur über Zugänge“ für RSS-Feed einschalten',
@@ -349,7 +351,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
   }) => {
     // Ausschalten der Pflicht über die Oberfläche: fragt nach, danach ist eine eigene Adresse
     // wieder möglich.
-    await gotoConnectionProfiles(adminPage)
+    await gotoSourceTypes(adminPage)
     await adminPage.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }).click()
     await acceptConfirm(adminPage, '„Nur über Zugänge“ für die Quellart „RSS-Feed“ ausschalten?')
     await expect(

@@ -20,4 +20,19 @@ describe('notificationTarget', () => {
     )
     expect(notificationTarget({ type: 'GROUP_MEMBER_ADDED', objectId: 'x' })).toBeNull()
   })
+
+  it('leads an expiring secret to its profile in the connections area', () => {
+    expect(
+      notificationTarget({ type: 'CONNECTION_PROFILE_SECRET_EXPIRING', objectId: 'profile-1' }),
+    ).toBe('/admin/connections/access?profile=profile-1')
+    expect(notificationTarget({ type: 'CONNECTION_PROFILE_SECRET_EXPIRING', objectId: null })).toBe(
+      '/admin/connections/access',
+    )
+  })
+
+  it('leads the mass retrieval alert to the token list, not to a person', () => {
+    expect(
+      notificationTarget({ type: 'EXTERNAL_ACCESS_MASS_RETRIEVAL', objectId: 'token-1' }),
+    ).toBe('/admin/connections/external-tools#tokens')
+  })
 })

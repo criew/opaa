@@ -312,24 +312,24 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     }
   });
 
-  // #2493: eine gesperrte Kachel mit ihrem Grund in der Warnfarbe - die Quellarten ohne Zugänge im
-  // Dialog „Zugang anlegen". Der Grund steht außerhalb des gesperrten Bedienelements, also misst
-  // axe seinen Kontrast.
-  test("Gesperrte Kachel mit Grund in Warnfarbe in beiden Farbschemata", async ({
+  // #2493: eine gesperrte Quellart mit ihrem Grund in der Warnfarbe - im Dialog „Zugang anlegen"
+  // seit #2504 als Eintrag der Auswahlliste. Der Eintrag ist nur als nicht wählbar markiert, nicht
+  // abgeblendet, also misst axe den Kontrast seines Grundes.
+  test("Gesperrte Quellart mit Grund in Warnfarbe in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
     await gotoConnectionProfiles(page);
     await page.getByRole("button", { name: "Neuer Zugang" }).click();
     const form = page.getByRole("dialog", { name: "Zugang anlegen" });
-    await expect(form.getByRole("radio", { disabled: true }).first()).toHaveAccessibleDescription(
-      /keine Zugänge möglich/,
-    );
+    await form.getByRole("combobox", { name: /Quellart/ }).click();
+    const locked = page.locator('[role="option"][aria-disabled="true"]').first();
+    await expect(locked).toContainText(/keine Zugänge möglich/);
 
     for (const scheme of ["light", "dark"] as const) {
       await page.emulateMedia({ colorScheme: scheme });
       await expectNoSeriousA11yViolations(
         page,
-        `Zugang anlegen, gesperrte Quellart (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+        `Zugang anlegen, Auswahl der Quellart (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
       );
     }
   });
@@ -605,6 +605,47 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       "Verwaltungsbereich (E-Mail, Vorlagen, helles Farbschema)",
       PREVIEW_IFRAME_EXCLUDED,
     );
+  });
+
+  // #2504: die Anbindungen mit allen Reitern; die externen KI-Werkzeuge zusätzlich mit offenem
+  // Einstellungs-Panel, das eigene Abschnitte und eine Fußleiste mitbringt.
+  test("Verwaltungsbereich: Anbindungen in allen Reitern und beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    const tabs = [
+      ["access", "Zugänge", page.getByRole("button", { name: "Neuer Zugang" })],
+      ["source-types", "Quellarten", page.getByRole("table", { name: "Quellarten" })],
+      ["settings", "Einstellungen", page.getByRole("region", { name: "Verbindungsprotokoll" })],
+      [
+        "external-tools",
+        "Externe KI-Werkzeuge",
+        page.getByRole("region", { name: "Zustand des Zugriffswegs" }),
+      ],
+    ] as const;
+    for (const [tab, label, ready] of tabs) {
+      await page.goto(`/admin/connections/${tab}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Anbindungen" })).toBeVisible();
+      await expect(ready).toBeVisible();
+      for (const scheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: scheme });
+        await expectNoSeriousA11yViolations(
+          page,
+          `Anbindungen, ${label} (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+        );
+      }
+    }
+
+    // Still on „Externe KI-Werkzeuge", the last tab of the loop.
+    await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
+    const panel = page.getByRole("dialog", { name: "Einstellungen für externe KI-Werkzeuge" });
+    await expect(panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" })).toBeVisible();
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expectNoSeriousA11yViolations(
+        page,
+        `Anbindungen, Einstellungen der KI-Werkzeuge (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+      );
+    }
   });
 
   // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie

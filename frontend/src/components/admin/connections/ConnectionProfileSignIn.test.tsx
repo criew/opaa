@@ -2,12 +2,12 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../mocks/server'
-import { mockConnectionProfiles } from '../mocks/connectionProfileFixtures'
-import { answerConfirm, renderWithProviders } from '../test/test-utils'
-import { useAuthStore } from '../stores/authStore'
-import type { SourceTypeDescriptor } from '../types/api'
-import ConnectionProfileManagementPage from './ConnectionProfileManagementPage'
+import { server } from '../../../mocks/server'
+import { mockConnectionProfiles } from '../../../mocks/connectionProfileFixtures'
+import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
+import { useAuthStore } from '../../../stores/authStore'
+import type { SourceTypeDescriptor } from '../../../types/api'
+import ConnectionProfilesTab from './ConnectionProfilesTab'
 
 const DRIVE: SourceTypeDescriptor = {
   type: 'GOOGLE_DRIVE',
@@ -36,7 +36,17 @@ const KEY_FILE = JSON.stringify({
 })
 
 /** A profile's own sign-in in the administration (#2220): key upload, rejection and its test. */
-describe('ConnectionProfileManagementPage, sign-in of the profile', () => {
+/** Chooses the source type of a new profile in the select of the dialog. */
+async function chooseSourceType(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: HTMLElement,
+  name: RegExp,
+) {
+  await user.click(within(dialog).getByRole('combobox', { name: /Quellart/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
+
+describe('ConnectionProfilesTab, sign-in of the profile', () => {
   beforeEach(() => {
     useAuthStore.setState({
       mode: 'dev',
@@ -67,11 +77,11 @@ describe('ConnectionProfileManagementPage, sign-in of the profile', () => {
         sent.push((await request.clone().json()) as Record<string, unknown>)
       }
     })
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await user.click(within(dialog).getByRole('radio', { name: /Google Drive/ }))
+    await chooseSourceType(user, dialog, /Google Drive/)
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Drive')
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'Dienstkonto-Schlüssel' }))
@@ -103,7 +113,7 @@ describe('ConnectionProfileManagementPage, sign-in of the profile', () => {
       clientSecretSet: true,
       signInRejected: true,
     }
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const row = await screen.findByRole('row', { name: /Zugang Nextcloud intern/ })
     expect(within(row).getByText('Anmeldung abgelehnt')).toBeVisible()
@@ -128,7 +138,7 @@ describe('ConnectionProfileManagementPage, sign-in of the profile', () => {
       authMethod: 'SERVICE_ACCOUNT_KEY',
       clientSecretSet: true,
     }
-    renderWithProviders(<ConnectionProfileManagementPage />)
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     await user.click(
       await screen.findByRole('button', {
