@@ -32,7 +32,14 @@ import DirectoryConnectorSection from './DirectoryConnectorSection'
 import DirectorySyncReportView from './DirectorySyncReportView'
 import DirectorySyncScheduleSection from './DirectorySyncScheduleSection'
 import PendingPlanSection from './PendingPlanSection'
-import { agoLabel, attentionOf, runBlocker, syncStateOf } from './directorySyncState'
+import type { PlanState } from './usePendingPlans'
+import {
+  agoLabel,
+  attentionOf,
+  confirmBlocker,
+  runBlocker,
+  syncStateOf,
+} from './directorySyncState'
 import {
   DIRECTORY_SYNC_CONFLICT_MESSAGES,
   formatDateTime,
@@ -65,24 +72,27 @@ interface DirectorySyncPanelProps {
   /** The provider to show; null keeps the panel closed. */
   provider: OidcProviderResponse | null
   status: DirectorySyncStatusResponse | undefined
-  /** The loaded pending plan; null while none is loaded or none waits. */
-  plan: DirectorySyncPendingPlanResponse | null
+  /** The provider's plan on this page; undefined while it is being loaded. */
+  planState: PlanState | undefined
   onPlanReplaced: (plan: DirectorySyncPendingPlanResponse | null) => void
+  /** Loads the plan again after a failed attempt. */
+  onPlanRetry: () => void
   onClose: () => void
   /** Reloads providers and status; the panel reads the new state from its props afterwards. */
   onChanged: () => Promise<void>
 }
 
 /**
- * Everything about one provider's directory sync (#2498): a pending plan first, because it waits
+ * Everything about one provider's directory sync: a pending plan first, because it waits
  * for a decision, then the last run with the manual runs, the schedule and the directory access.
  * The overview only shows; changes happen here.
  */
 export default function DirectorySyncPanel({
   provider,
   status,
-  plan,
+  planState,
   onPlanReplaced,
+  onPlanRetry,
   onClose,
   onChanged,
 }: DirectorySyncPanelProps) {
@@ -103,6 +113,7 @@ export default function DirectorySyncPanel({
 
   const providerId = provider.id
   const pendingSummary = status?.pendingPlan ?? null
+  const plan = planState?.kind === 'LOADED' ? planState.plan : null
   const state = syncStateOf(provider)
   const attention = attentionOf(provider, status)
   const blocker = runBlocker(provider)
@@ -202,6 +213,7 @@ export default function DirectorySyncPanel({
               key={plan.id}
               plan={plan}
               busy={busy}
+              confirmBlocker={confirmBlocker(provider)}
               onConfirm={(reason) =>
                 run(async () => {
                   setResult({
@@ -223,9 +235,26 @@ export default function DirectorySyncPanel({
             />
           </PanelSection>
         )}
-        {pendingSummary && !plan && (
+        {pendingSummary && !planState && (
           <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>
             Der ausstehende Plan wird geladen …
+          </Typography>
+        )}
+        {pendingSummary && planState?.kind === 'FAILED' && (
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={onPlanRetry}>
+                Erneut laden
+              </Button>
+            }
+          >
+            Der ausstehende Plan konnte nicht geladen werden.
+          </Alert>
+        )}
+        {pendingSummary && planState?.kind === 'NONE' && (
+          <Typography sx={{ color: 'text.secondary', fontSize: 13 }}>
+            Dieser Plan ist nicht mehr offen; der Abgleichstand wird aktualisiert.
           </Typography>
         )}
 

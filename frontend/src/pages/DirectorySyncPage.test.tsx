@@ -270,6 +270,9 @@ describe('DirectorySyncPage', () => {
       expect(within(panel).queryByText(/Plan wird geladen/)).not.toBeInTheDocument(),
     )
     expect(within(panel).queryByRole('button', { name: 'Plan bestätigen' })).not.toBeInTheDocument()
+    // the modal panel hides the overview from the accessibility tree until it is closed
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     const row = await rowOf('Verzeichnisdienst')
     expect(within(row).queryByText('Entscheidung nötig')).not.toBeInTheDocument()
   })

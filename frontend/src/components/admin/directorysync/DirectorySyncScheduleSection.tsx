@@ -56,7 +56,8 @@ export default function DirectorySyncScheduleSection({
           control={
             <Switch
               checked={enabled}
-              disabled={busy || Boolean(blocker)}
+              // Switching on sends the interval; an invalid one would silently fall back.
+              disabled={busy || (!enabled && (Boolean(blocker) || minutes === null))}
               onChange={(event) => onSave(event.target.checked, minutes, false)}
             />
           }

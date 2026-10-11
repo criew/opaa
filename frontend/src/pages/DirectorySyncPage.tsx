@@ -57,9 +57,9 @@ function attentionSummary(entries: OverviewEntry[]) {
 }
 
 /**
- * Der Verzeichnisabgleich je Anbieter (#1821, ADR-0036 Entscheidung 3; Übersicht seit #2498): eine
- * Zeile je Anbieter mit Mechanismus, letztem und nächstem Lauf und Handlungsbedarf — Bericht,
- * Plan, Zeitplan und Zugang im Seitenpanel.
+ * The directory sync per provider (ADR-0036, Entscheidung 3): one row per provider with its
+ * mechanism, last and next run and what needs doing; report, plan, schedule and access open in
+ * the side panel.
  */
 export default function DirectorySyncPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -72,7 +72,6 @@ export default function DirectorySyncPage() {
   const [filter, setFilter] = useState<OverviewFilter>('ALL')
   const [query, setQuery] = useState('')
   const [now, setNow] = useState(() => new Date())
-  const { plans, ensure, replace } = usePendingPlans()
 
   // Kein synchrones setState im Rumpf: Der Effekt unten ruft dieselbe Funktion, und ein synchrones
   // setState von dort erzeugt eine Renderkaskade (react-hooks/set-state-in-effect).
@@ -92,6 +91,7 @@ export default function DirectorySyncPage() {
         .finally(() => setIsLoading(false)),
     [loadProviders],
   )
+  const { plans, ensure, retry, replace } = usePendingPlans(reload)
 
   useEffect(() => {
     if (!isSystemAdmin) return
@@ -206,7 +206,9 @@ export default function DirectorySyncPage() {
           )}
           {!isLoading && entries.length > 0 && (
             <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1.5 }}>
-              Der nächste Lauf ergibt sich aus dem letzten Lauf und dem Intervall des Anbieters.
+              Der nächste Lauf ergibt sich aus dem letzten Lauf und dem Intervall des Anbieters;
+              „jetzt fällig“ heißt, das Intervall ist verstrichen. Das gilt nur, solange der
+              Zeittakt der Installation eingeschaltet ist – sonst laufen Abgleiche nur von Hand.
             </Typography>
           )}
         </Box>
@@ -216,8 +218,9 @@ export default function DirectorySyncPage() {
         key={selectedId ?? 'closed'}
         provider={selected?.provider ?? null}
         status={selected?.status}
-        plan={selectedId ? (plans[selectedId] ?? null) : null}
+        planState={selectedId ? plans[selectedId] : undefined}
         onPlanReplaced={(plan) => selectedId && replace(selectedId, plan)}
+        onPlanRetry={() => selectedId && retry(selectedId, selectedPlanId)}
         onClose={() => setSelectedId(null)}
         onChanged={reload}
       />

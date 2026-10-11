@@ -4,6 +4,7 @@ import {
   agoLabel,
   attentionOf,
   clockLabel,
+  confirmBlocker,
   intervalLabel,
   matchesFilter,
   nextRunOf,
@@ -215,6 +216,15 @@ describe('switchOnBlocker and runBlocker', () => {
     expect(runBlocker(provider({ directorySyncEnabled: false }))).toMatch(/eingeschaltet/)
     expect(runBlocker(provider({ enabled: false }))).toMatch(/deaktiviert/)
     expect(runBlocker(provider())).toBeNull()
+  })
+})
+
+describe('confirmBlocker', () => {
+  it('blocks confirming while the sync is off or the provider disabled, never discarding', () => {
+    expect(confirmBlocker(provider({ directorySyncEnabled: false }))).toMatch(/eingeschaltet/)
+    expect(confirmBlocker(provider({ enabled: false }))).toMatch(/aktiviert/)
+    expect(confirmBlocker(provider({ enabled: false }))).toMatch(/Verwerfen können Sie/)
+    expect(confirmBlocker(provider())).toBeNull()
   })
 })
 

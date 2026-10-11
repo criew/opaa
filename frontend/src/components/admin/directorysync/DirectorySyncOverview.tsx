@@ -251,7 +251,7 @@ function OverviewList({ entries, onOpen, now }: OverviewProps) {
 }
 
 /**
- * The directory sync of every provider on one screen (#2498): mechanism, last and next run and
+ * The directory sync of every provider on one screen: mechanism, last and next run and
  * what needs doing, one row each - details and changes open in the side panel. A table from the
  * `md` breakpoint, a list below it, the same words in both.
  */

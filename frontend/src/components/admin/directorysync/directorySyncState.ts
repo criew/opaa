@@ -2,12 +2,7 @@ import type { DirectorySyncStatusResponse, OidcProviderResponse } from '../../..
 import type { StatusTone } from '../../StatusLine'
 import { ageSinceLabel, countLabel } from '../../groups/groupOriginLabels'
 
-/**
- * What the overview of the directory sync reads from a provider and its status line: the
- * mechanism, what needs doing, and when the next run is due. Derived only - the page sends nothing
- * the old cards did not send.
- */
-
+/** How the sync of one provider stands, read from the provider row and its status line. */
 export type SyncStateKind = 'ON' | 'PAUSED' | 'TOKEN' | 'OFF'
 
 export interface SyncState {
@@ -151,6 +146,17 @@ export function runBlocker(provider: OidcProviderResponse): string | null {
   }
   if (!provider.enabled) {
     return 'Der Anbieter ist deaktiviert; sein Abgleich pausiert, solange das so bleibt.'
+  }
+  return null
+}
+
+/** Why a pending plan cannot be confirmed - a confirmation is a run and refused like one. */
+export function confirmBlocker(provider: OidcProviderResponse): string | null {
+  if (!provider.directorySyncEnabled) {
+    return 'Bestätigen geht erst, wenn der Abgleich eingeschaltet ist. Verwerfen können Sie den Plan jederzeit.'
+  }
+  if (!provider.enabled) {
+    return 'Bestätigen geht erst, wenn der Anbieter wieder aktiviert ist. Verwerfen können Sie den Plan jederzeit.'
   }
   return null
 }

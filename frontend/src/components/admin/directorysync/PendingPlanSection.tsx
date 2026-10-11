@@ -12,6 +12,8 @@ import { formatDateTime } from './directorySyncLabels'
 interface PendingPlanSectionProps {
   plan: DirectorySyncPendingPlanResponse
   busy: boolean
+  /** Why confirming is refused right now; discarding stays possible. */
+  confirmBlocker: string | null
   /** Both resolve true when the decision went through, so the reason can be cleared. */
   onConfirm: (reason: string) => Promise<boolean>
   onDiscard: (reason: string) => Promise<boolean>
@@ -24,6 +26,7 @@ interface PendingPlanSectionProps {
 export default function PendingPlanSection({
   plan,
   busy,
+  confirmBlocker,
   onConfirm,
   onDiscard,
 }: PendingPlanSectionProps) {
@@ -65,7 +68,7 @@ export default function PendingPlanSection({
         <Button
           variant="contained"
           size="small"
-          disabled={busy || trimmed === ''}
+          disabled={busy || trimmed === '' || Boolean(confirmBlocker)}
           onClick={() => void decide(onConfirm)}
         >
           Plan bestätigen
@@ -79,6 +82,11 @@ export default function PendingPlanSection({
           Plan verwerfen
         </Button>
       </Stack>
+      {confirmBlocker && (
+        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
+          {confirmBlocker}
+        </Typography>
+      )}
     </Box>
   )
 }

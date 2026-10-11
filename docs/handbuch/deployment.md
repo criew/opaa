@@ -2143,19 +2143,19 @@ Bedient wird er unter **Administration → Verzeichnisabgleich**. Die Seite zeig
 
 | Spalte | Inhalt |
 |---|---|
-| Anbieter | Name; „Anbieter deaktiviert„, wenn die Anbieterzeile abgeschaltet ist |
+| Anbieter | Name; „Anbieter deaktiviert“, wenn die Anbieterzeile abgeschaltet ist |
 | Abgleich | **Eingeschaltet** mit Intervall, **Pausiert** (eingeschaltet, aber der Anbieter ist deaktiviert), **Gruppen aus dem Token** (der Anbieter hat einen Gruppen-Claim) oder **Aus** |
 | Letzter Lauf | Ergebnis des letzten Laufs und wie lange er zurückliegt |
-| Nächster Lauf | Wann der Zeitplan den Anbieter wieder fällig findet: ein Intervall nach dem letzten Lauf, „jetzt fällig“ bei einem Anbieter, der noch nie gelaufen ist |
+| Nächster Lauf | Wann der Zeitplan den Anbieter wieder fällig findet: ein Intervall nach dem letzten Lauf; „jetzt fällig“, wenn das Intervall schon verstrichen ist oder der Anbieter noch nie gelaufen ist. Gilt nur, solange der Takt eingeschaltet ist (`OPAA_DIRECTORY_SYNC_SCHEDULE_ENABLED`, siehe „Zeitplan“ unten) |
 | Handlungsbedarf | **Entscheidung nötig** (ein Plan wartet, mit Alter und Wirkung), **Letzter Lauf gescheitert** (Verzeichnis nicht erreichbar oder leeres Ergebnis) oder **Verzeichniszugang fehlt** (Abgleich eingeschaltet, aber kein Zugang hinterlegt) |
 
 Zeilen mit Handlungsbedarf sind farbig markiert, und eine Zeile über der Übersicht fasst zusammen, wie viele Anbieter eine Entscheidung brauchen oder gestört sind. Ab sechs Anbietern lässt sich die Übersicht auf **Handlungsbedarf** oder **Eingeschaltet** eingrenzen und nach dem Namen durchsuchen.
 
 **Details** (bei einem wartenden Plan **Entscheiden**) öffnet den Anbieter in einem Seitenpanel. Dort steht, in dieser Reihenfolge:
 
-- **Ausstehender Plan** — nur, wenn einer wartet: Alter, Bericht, Pflichtfeld für den Grund, „Plan bestätigen„ und „Plan verwerfen“.
-- **Letzter Lauf** — Statuszeile mit Meldung, Zeitpunkt und Änderungsanteil, dazu „Trockenlauf„ und „Jetzt abgleichen“. Beide gehen nur bei eingeschaltetem Abgleich und aktivem Anbieter; das Ergebnis erscheint darunter.
-- **Zeitplan** — Schalter „Abgleich eingeschaltet„, Intervall in Minuten mit „Intervall speichern“ und der nächste Lauf. Bei einem Anbieter mit Gruppen-Claim ist der Schalter gesperrt, und das Panel nennt den Grund.
+- **Ausstehender Plan** — nur, wenn einer wartet: Alter, Bericht, Pflichtfeld für den Grund, „Plan bestätigen“ und „Plan verwerfen“. Bestätigen ist ein Lauf und geht deshalb nur bei eingeschaltetem Abgleich und aktivem Anbieter; Verwerfen geht immer.
+- **Letzter Lauf** — Statuszeile mit Meldung, Zeitpunkt und Änderungsanteil, dazu „Trockenlauf“ und „Jetzt abgleichen“. Beide gehen nur bei eingeschaltetem Abgleich und aktivem Anbieter; das Ergebnis erscheint darunter.
+- **Zeitplan** — Schalter „Abgleich eingeschaltet“, Intervall in Minuten mit „Intervall speichern“ und der nächste Lauf. Bei einem Anbieter mit Gruppen-Claim ist der Schalter gesperrt, und das Panel nennt den Grund; ebenso lässt er sich nicht einschalten, solange das eingetragene Intervall außerhalb der zulässigen Grenzen liegt.
 - **Verzeichniszugang** — der hinterlegte Zugang (Verzeichnis, Realm, Dienstkonto, Adresse der Admin-API) und das Formular zum Speichern, Testen und Entfernen.
 - Ein Verweis auf die **Arbeitsliste der Gruppen** des Anbieters.
 
