@@ -1635,8 +1635,8 @@ Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
   wiederverwendete Verbindung (Keep-Alive) läuft auf ihrem bisherigen Weg weiter, bis sie schließt.
   Jede Änderung steht als `OUTBOUND_PROXY_CHANGED` mit altem und neuem Stand im Revisionsprotokoll.
 - **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung (Status 407),
-  melden Verbindungstests und Läufe aller Quellarten, die Anmeldung an Zugängen und
-  Identitätsanbietern, der Verzeichnisabgleich und die Modell-Endpunkte, dass der Ausgangsproxy die
+  melden Verbindungstests und Läufe aller Quellarten, die Anmeldung an Zugängen, die
+  Prüfung der Identitätsanbieter, der Verzeichnisabgleich und die Modell-Endpunkte, dass der Ausgangsproxy die
   Verbindung abgelehnt oder das Ziel nicht erreicht hat, mit dem Status des Proxys. Ausnahme ist
   S3: Dort erkennt OPAA nur die Anmeldung (Status 407). Einen abgelehnten Tunnel meldet der
   S3-Konnektor als Antwort des Objektspeichers, etwa als fehlende Berechtigung bei Status 403.
