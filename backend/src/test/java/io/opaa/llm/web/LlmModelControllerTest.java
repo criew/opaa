@@ -19,11 +19,15 @@ import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.ConflictException;
+import io.opaa.common.ValidationException;
+import io.opaa.llm.DiscoveredModel;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
+import io.opaa.llm.LlmModelDiscoverer;
 import io.opaa.llm.LlmModelService;
+import io.opaa.llm.ModelDiscovery;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -62,6 +66,7 @@ class LlmModelControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private LlmModelService llmModelService;
   @MockitoBean private LlmModelConnectionTester connectionTester;
+  @MockitoBean private LlmModelDiscoverer discoverer;
   @MockitoBean private UserService userService;
   @MockitoBean private EmbeddingInfoService embeddingInfoService;
 
@@ -178,6 +183,17 @@ class LlmModelControllerTest {
                 .with(asRegularUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3\"}"))
+        .andExpect(status().isForbidden());
+  }
+
+  @Test
+  void discoverModelsAsRegularUserReturns403() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/admin/models/discover")
+                .with(asRegularUser())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"http://ollama:11434/v1\"}"))
         .andExpect(status().isForbidden());
   }
 
@@ -327,6 +343,78 @@ class LlmModelControllerTest {
                 .content("{\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true));
+  }
+
+  // --- Model discovery ---
+
+  @Test
+  void discoverModelsPassesTheRequestThroughAndReturnsTheModels() throws Exception {
+    UUID modelId = UUID.randomUUID();
+    when(discoverer.discover("http://ollama:11434/v1", "sk-x", modelId))
+        .thenReturn(
+            ModelDiscovery.found(
+                true,
+                List.of(
+                    new DiscoveredModel(
+                        "qwen3:8b",
+                        "qwen3",
+                        "8.2B",
+                        "Q4_K_M",
+                        5225388164L,
+                        40960,
+                        List.of("completion", "tools"),
+                        true))));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/models/discover")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"baseUrl\":\"http://ollama:11434/v1\",\"apiKey\":\"sk-x\",\"modelId\":\""
+                        + modelId
+                        + "\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.ollama").value(true))
+        .andExpect(jsonPath("$.models[0].identifier").value("qwen3:8b"))
+        .andExpect(jsonPath("$.models[0].contextLength").value(40960))
+        .andExpect(jsonPath("$.models[0].chatSuitable").value(true));
+  }
+
+  @Test
+  void aFailedDiscoveryIsA200CarryingTheFailure() throws Exception {
+    when(discoverer.discover("http://ollama:11434/v1", null, null))
+        .thenReturn(
+            ModelDiscovery.failed(
+                ModelDiscovery.Failure.UNREACHABLE, "Die Verbindung wurde vom Server abgelehnt."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/models/discover")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"baseUrl\":\"http://ollama:11434/v1\"}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.failure").value("UNREACHABLE"))
+        .andExpect(jsonPath("$.models").isEmpty());
+  }
+
+  @Test
+  void aStoredKeyForAnotherOriginIsRejectedWith400() throws Exception {
+    UUID modelId = UUID.randomUUID();
+    when(discoverer.discover("http://elsewhere:11434/v1", null, modelId))
+        .thenThrow(new ValidationException("Die angegebene Basis-Adresse weicht ab."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/models/discover")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"baseUrl\":\"http://elsewhere:11434/v1\",\"modelId\":\"" + modelId + "\"}"))
+        .andExpect(status().isBadRequest());
   }
 
   @Test
