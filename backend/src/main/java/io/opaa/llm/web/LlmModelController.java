@@ -1,6 +1,8 @@
 package io.opaa.llm.web;
 
 import io.opaa.api.dto.EmbeddingInfoResponse;
+import io.opaa.api.dto.LlmModelDiscoveryRequest;
+import io.opaa.api.dto.LlmModelDiscoveryResponse;
 import io.opaa.api.dto.LlmModelRequest;
 import io.opaa.api.dto.LlmModelResponse;
 import io.opaa.api.dto.LlmModelTestRequest;
@@ -12,6 +14,7 @@ import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
 import io.opaa.llm.LlmModel;
 import io.opaa.llm.LlmModelConnectionTester;
+import io.opaa.llm.LlmModelDiscoverer;
 import io.opaa.llm.LlmModelService;
 import jakarta.validation.Valid;
 import java.math.BigDecimal;
@@ -61,14 +64,17 @@ public class LlmModelController {
   private final LlmModelService llmModelService;
   private final LlmModelConnectionTester connectionTester;
   private final EmbeddingInfoService embeddingInfoService;
+  private final LlmModelDiscoverer discoverer;
 
   public LlmModelController(
       LlmModelService llmModelService,
       LlmModelConnectionTester connectionTester,
-      EmbeddingInfoService embeddingInfoService) {
+      EmbeddingInfoService embeddingInfoService,
+      LlmModelDiscoverer discoverer) {
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
     this.embeddingInfoService = embeddingInfoService;
+    this.discoverer = discoverer;
   }
 
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
@@ -157,6 +163,14 @@ public class LlmModelController {
             request.getApiKey(),
             request.getModelId());
     return new LlmModelTestResponse(outcome.success(), outcome.message());
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping("/discover")
+  public LlmModelDiscoveryResponse discoverModels(
+      @Valid @RequestBody LlmModelDiscoveryRequest request) {
+    return LlmModelDiscoveryResponseMapper.toResponse(
+        discoverer.discover(request.getBaseUrl(), request.getApiKey(), request.getModelId()));
   }
 
   private static BigDecimal toTemperature(Double temperature) {
