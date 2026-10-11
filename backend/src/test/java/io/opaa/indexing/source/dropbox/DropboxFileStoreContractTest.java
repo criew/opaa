@@ -73,6 +73,11 @@ class DropboxFileStoreContractTest extends FileStoreChangeFeedContract {
     }
 
     @Override
+    public boolean marksUnreachableStartCursor() {
+      return true;
+    }
+
+    @Override
     public void expireCursors() {
       server.expireCursors();
     }

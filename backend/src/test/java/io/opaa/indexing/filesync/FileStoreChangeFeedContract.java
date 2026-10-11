@@ -1,6 +1,7 @@
 package io.opaa.indexing.filesync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
@@ -72,6 +73,27 @@ public abstract class FileStoreChangeFeedContract extends FileStoreContract {
     assertThat(run.failure()).isNull();
     assertThat(harness.state().changeCursors()).as("the expired streams are dropped").isEmpty();
     assertThat(harness.state().getFullSyncCompletedAt()).as("the next run is a full sync").isNull();
+  }
+
+  /**
+   * The placeholder a store hands out for a container unreachable at the start of a full sync is
+   * never sent to the source: reading it expires the stream without a request.
+   */
+  @Test
+  void aPlaceholderStartCursorExpiresWithoutARequest() throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        fixture.marksUnreachableStartCursor(), "the store has no placeholder start cursor");
+    fixture.denyListing(0);
+    try (FileStore store = fixture.open(PAGE_SIZE)) {
+      ChangeFeed feed = store.changes().orElseThrow();
+      String feedKey = feed.feedKey(new FileContainer(fixture.containerKey(0)));
+      String placeholder = feed.startCursor(feedKey);
+      int before = store.meter().requests();
+
+      assertThatThrownBy(() -> feed.read(feedKey, placeholder))
+          .isInstanceOf(FileAccessException.CursorExpired.class);
+      assertThat(store.meter().requests()).as("no request reaches the source").isEqualTo(before);
+    }
   }
 
   @Test

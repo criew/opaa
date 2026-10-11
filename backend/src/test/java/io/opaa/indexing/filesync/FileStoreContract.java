@@ -84,6 +84,14 @@ public abstract class FileStoreContract {
       throw new UnsupportedOperationException("this fixture has no change log");
     }
 
+    /**
+     * Whether the store answers the start cursor of a container it cannot list with a placeholder
+     * instead of a failure; only a store under {@link FileStoreChangeFeedContract} has one.
+     */
+    default boolean marksUnreachableStartCursor() {
+      return false;
+    }
+
     String containerKey(int container);
 
     String filePath(int container, String name);

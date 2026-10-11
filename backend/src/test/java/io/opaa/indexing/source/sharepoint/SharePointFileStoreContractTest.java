@@ -155,6 +155,11 @@ class SharePointFileStoreContractTest extends FileStoreChangeFeedContract {
       return false;
     }
 
+    @Override
+    public boolean marksUnreachableStartCursor() {
+      return true;
+    }
+
     /** Item ids keep the container in their prefix, so a denial can target one container. */
     String id(int container, String name) {
       return ids.computeIfAbsent(
