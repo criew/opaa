@@ -12,6 +12,7 @@ import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
+import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.LibrarySourceConnectionResolver;
 import io.opaa.indexing.source.SecretKind;
@@ -36,13 +37,15 @@ class ProfileSourceConnectionResolverCompositionTest {
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
+  private final TestSecrets.Store store = new TestSecrets.Store();
   private final ProfileSourceConnectionResolver resolver =
       TestProfileResolvers.resolver(
           connections,
           profiles,
           TestProfileResolvers.blocks(
-              mock(ConnectorTypePolicyRepository.class), connections, profiles, rows),
-          rows);
+              mock(ConnectorTypePolicyRepository.class), connections, profiles, rows, store),
+          rows,
+          store);
 
   @Test
   void runChangeAndSettingsShareTheMergedConfigurationOfTheProfile() {
@@ -82,7 +85,7 @@ class ProfileSourceConnectionResolverCompositionTest {
     connectThroughProfile(row.getId(), SourceTypes.RSS_FEED, null);
 
     assertThat(resolver.currentCredentials(atRunStart)).isEqualTo("nutzer:geheim");
-    row.dropSourceCredentials();
+    store.drop(row.getId());
 
     assertThatThrownBy(() -> resolver.currentCredentials(atRunStart))
         .isInstanceOf(SourceConnectionBlockedException.class)
@@ -128,6 +131,7 @@ class ProfileSourceConnectionResolverCompositionTest {
     when(connections.findAllById(any())).thenReturn(List.of(connection));
     when(profiles.findById(profileId)).thenReturn(Optional.of(profile));
     when(profiles.findAllById(any())).thenReturn(List.of(profile));
+    store.moveIn(profileId, rows.get(libraryId), "https://ablage.example.org");
   }
 
   private KnowledgeLibrary library(String secret) {

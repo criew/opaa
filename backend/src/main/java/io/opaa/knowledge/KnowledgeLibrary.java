@@ -439,6 +439,12 @@ public class KnowledgeLibrary extends Asset {
     touch();
   }
 
+  /** Takes {@code sourceCredentials} as its own secret, as on its own address it holds one. */
+  public void replaceSourceCredentials(String sourceCredentials) {
+    this.sourceCredentials = sourceCredentials;
+    touch();
+  }
+
   /** Drops the secret from the attribute; erasing the column is the caller's part. */
   public void dropSourceCredentials() {
     this.sourceCredentials = null;

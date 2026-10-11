@@ -428,7 +428,9 @@ class ProfileChangeDiscardsIntegrationTest {
       held.put(
           library,
           jdbc.queryForObject(
-              "SELECT source_credentials IS NOT NULL FROM knowledge_libraries WHERE id = ?",
+              "SELECT l.source_credentials IS NOT NULL OR EXISTS (SELECT 1 FROM"
+                  + " connection_tokens t WHERE t.library_id = l.id AND t.kind ="
+                  + " 'PERSONAL_SECRET') FROM knowledge_libraries l WHERE l.id = ?",
               Boolean.class,
               library));
     }

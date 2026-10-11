@@ -46,6 +46,7 @@ class EffectiveSourceSettingsDraftTest {
   private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final Map<UUID, LibraryConnection> connectionRows = new HashMap<>();
   private final Map<UUID, ConnectionProfile> profileRows = new HashMap<>();
+  private final TestSecrets.Store store = new TestSecrets.Store();
   private EffectiveSourceSettings effective;
 
   @BeforeEach
@@ -77,7 +78,8 @@ class EffectiveSourceSettingsDraftTest {
                     new ProfileProbeSourceConnector(),
                     new UploadSourceConnector(mock(UploadedOriginalStore.class)))));
     ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
-    ConnectionSecrets secrets = TestSecrets.overLibraries(connections, LibraryRows.over(rows));
+    ConnectionSecrets secrets =
+        TestSecrets.overLibraries(connections, LibraryRows.over(rows), store);
     effective =
         new EffectiveSourceSettings(
             connections,
@@ -327,6 +329,7 @@ class EffectiveSourceSettingsDraftTest {
   private void connect(KnowledgeLibrary library, ConnectionProfile profile) {
     connectionRows.put(
         library.getId(), new LibraryConnection(library.getId(), profile.getId(), NOW));
+    store.moveIn(profile.getId(), library, SERVER);
   }
 
   private static SourceDraft draft(

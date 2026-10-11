@@ -330,7 +330,7 @@ class ProfileChangeTransitionTest {
     service.update(ADMIN, profile.getId(), moved, null, true);
 
     assertThat(library.getSourceUrl()).isEqualTo("https://neu.example.org/a");
-    assertThat(library.getSourceCredentials()).isNull();
+    assertThat(wiring.store.ownSecretOf(library.getId())).isEmpty();
     ProfileProbeSourceConnector.ChangeCheck check = probe.changeChecks().getFirst();
     assertThat(check.replacesConnection()).as("no secret to check a connection with").isFalse();
     assertThat(probe.sourceChanges())
@@ -355,7 +355,10 @@ class ProfileChangeTransitionTest {
         false);
   }
 
-  /** A library on the profile at {@code path} below its server address, with a stored secret. */
+  /**
+   * A library on the profile at {@code path} below its server address, with its own secret in the
+   * store.
+   */
   private KnowledgeLibrary library(String path, String topic) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
@@ -372,6 +375,7 @@ class ProfileChangeTransitionTest {
     library.updateSourceSettings("{\"topic\":\"" + topic + "\"}");
     rows.put(library.getId(), library);
     connected.add(new LibraryConnection(library.getId(), profile.getId(), NOW));
+    wiring.store.moveIn(profile.getId(), library, SERVER);
     return library;
   }
 

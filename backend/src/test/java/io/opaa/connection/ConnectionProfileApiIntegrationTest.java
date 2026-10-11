@@ -535,9 +535,14 @@ class ConnectionProfileApiIntegrationTest {
     return JsonPath.read(body, "$.message");
   }
 
+  /** The library's own secret as stored, in its column or in the token store. */
   private String storedCredentials(UUID library) {
     return jdbc.queryForObject(
-        "SELECT source_credentials FROM knowledge_libraries WHERE id = ?", String.class, library);
+        "SELECT coalesce(l.source_credentials, (SELECT t.secret_ciphertext FROM connection_tokens t"
+            + " WHERE t.library_id = l.id AND t.kind = 'PERSONAL_SECRET'))"
+            + " FROM knowledge_libraries l WHERE l.id = ?",
+        String.class,
+        library);
   }
 
   private String storedUrl(UUID library) {
