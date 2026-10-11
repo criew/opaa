@@ -1841,7 +1841,9 @@ bleibt stehen und ist mit dem wiedergefundenen Schlüssel unverändert lesbar. D
 Zugangsdaten in diesem Zustand allerdings als „nicht gesetzt“ an, obwohl sie gespeichert sind — das
 Ja/Nein wird aus dem gelesenen Wert abgeleitet. Zusätzlich hinterlässt jeder solche Lesevorgang eine
 Warnung im Protokoll (`io.opaa.knowledge.SourceCredentialsConverter`, ohne den Wert und ohne die
-Bibliotheks-ID).
+Bibliotheks-ID). Für eine Bibliothek an einem Zugang liegen die Zugangsdaten im Token-Speicher; die
+Anzeige leitet sich dort ebenso aus dem gelesenen Wert ab, die Warnung kommt von
+`io.opaa.connection.token.ConnectionSecrets` und nennt statt der Bibliothek die ID des Zugangs.
 
 **Zwei Vorgänge löschen den Geheimtext auch ohne Schlüssel — absichtlich:** ein Wechsel des Hosts in
 `sourceUrl`, ohne neue Zugangsdaten mitzusenden (die gespeicherten Zugangsdaten gelten nur für den
@@ -1865,7 +1867,11 @@ Quelle Zugangsdaten verlangt.
 wurden, erkennt `CredentialsEncryptor` beim Lesen an einem fehlenden `enc:`-Präfix und behandelt sie
 weiterhin als Klartext — eine Liquibase-Migration kann sie nicht verschlüsseln, da der Schlüssel nur
 der Anwendung bekannt ist. Der nächste Schreibvorgang auf dieselbe Bibliothek (z. B. eine
-Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert. Ein Wert mit `enc:`-
+Zugangsdaten-Rotation über die bestehende Update-API) verschlüsselt den Wert. Liegt ein solcher Wert
+bei einer Bibliothek an einem Zugang noch in der Spalte, verschiebt ihn der Start in den
+Token-Speicher und verschlüsselt ihn dabei; dafür braucht er den Schlüssel. Ohne Schlüssel bleibt der
+Wert in der Spalte, der Start läuft weiter, das Protokoll nennt die Bibliothek mit ihrer ID, und der
+nächste Start versucht es erneut. Bis dahin gilt die Bibliothek als ohne Zugangsdaten. Ein Wert mit `enc:`-
 Präfix, aber unbekannter Version (nicht `enc:v1:`), wird dagegen nie als Klartext behandelt — Lesen
 scheitert weich (siehe oben), Schreiben hart.
 

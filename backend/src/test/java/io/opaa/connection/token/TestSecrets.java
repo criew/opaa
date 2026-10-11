@@ -188,6 +188,13 @@ public final class TestSecrets {
           .map(stored -> stored.startsWith(MARKER) ? stored.substring(MARKER.length()) : stored);
     }
 
+    /** The own secret of {@code libraryId} as the row holds it, encrypted, empty for none. */
+    public Optional<String> rawOwnSecretOf(UUID libraryId) {
+      return ofLibrary(libraryId)
+          .filter(token -> token.getKind() == ConnectionToken.Kind.PERSONAL_SECRET)
+          .map(ConnectionToken::getSecretCiphertext);
+    }
+
     /** How many times the rows of one library were read so far. */
     public int singleReads() {
       return singleReads.get();

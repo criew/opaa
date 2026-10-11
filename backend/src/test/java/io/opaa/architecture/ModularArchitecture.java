@@ -283,10 +283,15 @@ public final class ModularArchitecture {
   static final String CHANGE_GATE = "indexing.source.SourceChangeGate";
 
   /**
-   * The library's own secret, relative to the root. Besides the core (module knowledge) only {@link
-   * #SECRET_STORE} reads it; everyone else asks the port.
+   * The ways to the library's own secret in its column, relative to the root: the entity and the
+   * repository's raw column access. Besides the core (module knowledge) only {@link #SECRET_STORE}
+   * uses them; everyone else asks the port.
    */
-  static final String LIBRARY_SECRET = "knowledge.KnowledgeLibrary#getSourceCredentials";
+  static final Set<String> LIBRARY_SECRET =
+      Set.of(
+          "knowledge.KnowledgeLibrary#getSourceCredentials",
+          "knowledge.KnowledgeLibraryRepository#findStoredSourceCredentials",
+          "knowledge.KnowledgeLibraryRepository#restoreStoredSourceCredentials");
 
   static final String SECRET_STORE = "connection.token.ConnectionSecrets";
 
@@ -1195,7 +1200,7 @@ public final class ModularArchitecture {
             DescribedPredicate.describe(
                 "read " + LIBRARY_SECRET,
                 access ->
-                    LIBRARY_SECRET.equals(
+                    LIBRARY_SECRET.contains(
                         relativeName(access.getTargetOwner()) + "#" + access.getName())))
         .because(
             "the secret has one store; the library administration asks the port, connections the"

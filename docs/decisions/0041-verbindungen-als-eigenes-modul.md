@@ -1354,10 +1354,12 @@ Bibliothek aber im Token-Speicher. Jetzt hat jedes Geheimnis an einem Zugang gen
   halten es noch in der Spalte. `OwnSecretRelocation` verschiebt es beim Start einmal je Bibliothek
   in eigener Transaktion, idempotent; ein Changeset kann das nicht, weil connections
   `knowledge_libraries` nicht schreiben darf und nur die Anwendung Klartext-Altwerte verschlüsseln
-  kann. Eine Vorbereitung für Bestandsinstallationen entfällt damit.
-- **Lesen der Spalte** bleibt `ConnectionSecrets` vorbehalten (`theLibrarySecretIsReadInOnePlace`);
-  für den Umzug liest es den Geheimtext über `KnowledgeLibraryRepository#findStoredSourceCredentials`
-  ohne Konverter.
+  kann. Eine Vorbereitung für Bestandsinstallationen entfällt damit. Scheitert eine Bibliothek
+  (etwa Klartext ohne Schlüssel), bleibt ihre Spalte stehen, der Start läuft weiter, und der nächste
+  Start versucht es erneut.
+- **Lesen der Spalte** bleibt `ConnectionSecrets` vorbehalten (`theLibrarySecretIsReadInOnePlace`,
+  auch für `KnowledgeLibraryRepository#findStoredSourceCredentials` und
+  `#restoreStoredSourceCredentials`, die den Geheimtext ohne Konverter bewegen).
 - **Belegt** in `OwnSecretInStoreIntegrationTest` (Anlegen, Ändern, Zuordnen, Lösen, andere
   Anmeldeart, Umzug beim Start) und den angepassten Einheitstests über `TestSecrets.Store`.
 

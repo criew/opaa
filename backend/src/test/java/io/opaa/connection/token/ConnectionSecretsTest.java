@@ -185,6 +185,42 @@ class ConnectionSecretsTest {
     }
   }
 
+  /** Releasing a library whose row the key cannot read writes it back as stored. */
+  @Test
+  void releasingAnUnreadableSecretRestoresItAsStored() {
+    TestSecrets.Store store = new TestSecrets.Store();
+    ConnectionSecrets withStore = TestSecrets.overLibraries(onProfile, libraries, store);
+    KnowledgeLibrary library = library(null);
+    store.holdUnreadable(UUID.randomUUID(), library.getId(), "https://quelle.example.org:443");
+
+    withStore.carryOver(library.getId(), new SecretOwner.LibraryOwned(library.getId()), null);
+
+    assertThat(store.ownSecretOf(library.getId())).isEmpty();
+    verify(libraries).restoreStoredSourceCredentials(library.getId(), "plain-not-encrypted");
+  }
+
+  /** A legacy cleartext value moves encrypted; a value left next to a row goes from the column. */
+  @Test
+  void aCleartextColumnMovesEncryptedAndAColumnBesideARowIsCleared() {
+    TestSecrets.Store store = new TestSecrets.Store();
+    ConnectionSecrets withStore = TestSecrets.overLibraries(onProfile, libraries, store);
+    UUID profileId = UUID.randomUUID();
+    KnowledgeLibrary moved = library("alt:klartext");
+    KnowledgeLibrary beside = library("rest:spalte");
+    store.hold(profileId, beside.getId(), "zeile:geheim", "https://quelle.example.org");
+
+    withStore.carryOver(
+        moved.getId(), new SecretOwner.LibraryOnProfile(profileId, moved.getId()), "ziel");
+    withStore.carryOver(
+        beside.getId(), new SecretOwner.LibraryOnProfile(profileId, beside.getId()), "ziel");
+
+    assertThat(store.rawOwnSecretOf(moved.getId())).contains("enc:v1:alt:klartext");
+    assertThat(moved.getSourceCredentials()).isNull();
+    assertThat(store.ownSecretOf(beside.getId())).contains("zeile:geheim");
+    assertThat(beside.getSourceCredentials()).isNull();
+    verify(libraries).eraseSourceCredentials(beside.getId());
+  }
+
   private KnowledgeLibrary library(String secret) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(

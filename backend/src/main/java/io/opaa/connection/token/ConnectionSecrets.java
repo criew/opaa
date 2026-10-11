@@ -257,12 +257,14 @@ public class ConnectionSecrets {
 
   /**
    * Whether {@code owner} holds a secret at all, regardless of whether it may be used now; a
-   * profile's registration is no secret of the library and counts as none.
+   * profile's registration is no secret of the library and counts as none. A library's own secret
+   * counts only while it can be read, in its column as in the store ({@link #holdsOwnSecret} asks
+   * regardless).
    */
   public boolean holds(SecretOwner owner) {
     return switch (owner) {
       case LibraryOwned ignored -> stored(owner) != null;
-      case LibraryOnProfile own -> ownSecretOf(own).isPresent();
+      case LibraryOnProfile own -> stored(owner) != null;
       case PersonOwned person -> tokenOf(person).isPresent();
       case ProfileOwned ignored -> false;
       case SourceConsent consent -> consentOf(consent).isPresent();
@@ -458,6 +460,10 @@ public class ConnectionSecrets {
         if (row.isPresent()) {
           row.get().movedTo(own.profileId(), target, now);
           tokens.save(row.get());
+          // one place only: a value left in the column next to the row goes
+          if (libraries.hasStoredSourceCredentials(libraryId)) {
+            discard(new LibraryOwned(libraryId));
+          }
           return;
         }
         String stored = libraries.findStoredSourceCredentials(libraryId);

@@ -130,6 +130,48 @@ class OwnSecretInStoreIntegrationTest {
   }
 
   @Test
+  void theSecretFollowsTheLibraryToAnotherProfileAndGoesOnlyWithThatOne() throws Exception {
+    UUID first = profile("PERSONAL_SECRET");
+    UUID second = profile("PERSONAL_SECRET");
+    UUID library = libraryOn(first, "nutzer:geheim");
+
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/libraries/" + library + "/connection-profile"))
+                .content("{\"profileId\": \"" + second + "\"}"))
+        .andExpect(status().isOk());
+
+    assertThat(row(library)).containsEntry("profile_id", second);
+    assertThat(secretOf(library))
+        .isEqualTo(new Secret(SecretKind.PERSONAL_SECRET, "nutzer:geheim"));
+
+    mockMvc
+        .perform(as("dev-admin", delete(ADMIN + "/" + first)))
+        .andExpect(status().is2xxSuccessful());
+    assertThat(rows(library)).isOne();
+
+    mockMvc
+        .perform(as("dev-admin", post(ADMIN + "/" + second + "/disconnect-all")))
+        .andExpect(status().is2xxSuccessful());
+    assertThat(rows(library)).isZero();
+  }
+
+  @Test
+  void aCleartextValueLeftInTheColumnMovesEncrypted() throws Exception {
+    UUID profile = profile("PERSONAL_SECRET");
+    UUID library = libraryOn(profile, "nutzer:geheim");
+    jdbc.update("DELETE FROM connection_tokens WHERE library_id = ?", library);
+    jdbc.update(
+        "UPDATE knowledge_libraries SET source_credentials = 'alt:klartext' WHERE id = ?", library);
+
+    relocation.relocate();
+
+    assertThat(column(library)).isNull();
+    assertThat((String) row(library).get("secret_ciphertext")).startsWith("enc:");
+    assertThat(secretOf(library)).isEqualTo(new Secret(SecretKind.PERSONAL_SECRET, "alt:klartext"));
+  }
+
+  @Test
   void anotherSignInMethodDiscardsTheSecretInTheStore() throws Exception {
     UUID profile = profile("PERSONAL_SECRET");
     UUID library = libraryOn(profile, "nutzer:geheim");
@@ -170,8 +212,8 @@ class OwnSecretInStoreIntegrationTest {
                 .replaceSourceCredentials("alt:geheim"));
     assertThat(column(library)).isNotNull();
 
-    assertThat(relocation.relocate()).isGreaterThanOrEqualTo(1);
-    assertThat(relocation.relocate()).isZero();
+    assertThat(relocation.relocate().moved()).isGreaterThanOrEqualTo(1);
+    assertThat(relocation.relocate().moved()).isZero();
 
     assertThat(column(library)).isNull();
     assertThat(row(library)).containsEntry("profile_id", profile);

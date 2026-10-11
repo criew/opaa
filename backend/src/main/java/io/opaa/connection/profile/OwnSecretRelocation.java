@@ -17,7 +17,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * Moves the own secret of every library on a profile that takes one from the library's column into
  * the store, at start: a library connected while its column held the secret runs on unchanged.
  * Idempotent - a library whose column is empty is left alone; each library moves in a transaction
- * of its own, and the log names numbers only.
+ * of its own. A library that fails - such as a cleartext value while the encryption key is missing
+ * - keeps its column and is tried again at the next start; it never stops the start. The log names
+ * numbers and ids only.
  */
 @Component
 class OwnSecretRelocation {
@@ -45,15 +47,29 @@ class OwnSecretRelocation {
 
   @EventListener(ApplicationReadyEvent.class)
   void atStart() {
-    int moved = relocate();
-    if (moved > 0) {
-      log.info("Moved the own secret of {} libraries on profiles into the token store", moved);
+    try {
+      Outcome outcome = relocate();
+      if (outcome.moved() > 0 || outcome.failed() > 0) {
+        log.info(
+            "Moved the own secret of {} libraries on profiles into the token store, {} failed",
+            outcome.moved(),
+            outcome.failed());
+      }
+    } catch (RuntimeException e) {
+      log.warn(
+          "Moving the own secrets of libraries on profiles into the token store failed ({});"
+              + " the next start tries again",
+          e.getClass().getSimpleName());
     }
   }
 
-  /** Moves what is left in the columns; returns how many libraries moved. */
-  int relocate() {
+  /** How many libraries moved and how many failed and kept their column. */
+  record Outcome(int moved, int failed) {}
+
+  /** Moves what is left in the columns, each library on its own. */
+  Outcome relocate() {
     int moved = 0;
+    int failed = 0;
     for (ConnectionProfile profile : profiles.findConnectorsByName()) {
       if (profile.getAuthMethod() != ConnectionAuthMethod.PERSONAL_SECRET) {
         continue;
@@ -67,13 +83,21 @@ class OwnSecretRelocation {
       }
       Set<UUID> holding = libraries.findIdsHoldingSourceCredentials(onProfile);
       for (UUID libraryId : holding) {
-        Boolean done = perLibrary.execute(status -> moveOne(libraryId, profile.getId()));
-        if (Boolean.TRUE.equals(done)) {
-          moved++;
+        try {
+          Boolean done = perLibrary.execute(status -> moveOne(libraryId, profile.getId()));
+          if (Boolean.TRUE.equals(done)) {
+            moved++;
+          }
+        } catch (RuntimeException e) {
+          failed++;
+          log.warn(
+              "The own secret of library {} stays in its column ({}); the next start tries again",
+              libraryId,
+              e.getClass().getSimpleName());
         }
       }
     }
-    return moved;
+    return new Outcome(moved, failed);
   }
 
   /** Re-reads library, connection and profile in the transaction; any change since is skipped. */
