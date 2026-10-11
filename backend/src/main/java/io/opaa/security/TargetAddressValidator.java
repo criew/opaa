@@ -21,8 +21,11 @@ import org.slf4j.LoggerFactory;
  * come from two resolutions of the same name, and the JDK client offers no hook to pin one.
  *
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
- * when its connection goes through the outbound proxy ({@link OutboundProxySelector#isProxied}),
- * because the proxy resolves it; IP literals and resolvable names are checked unchanged.
+ * only when its connection goes through the outbound proxy, because the proxy resolves it: for
+ * {@link #validate} when {@link OutboundProxySelector#proxyFor} routes the URI there, for {@link
+ * #validateHost(String, boolean)} when the caller says so. {@link #validateHost(String)} - SMB, a
+ * library's own proxy, the upload storage - stays strict. IP literals and resolvable names are
+ * checked unchanged.
  */
 public class TargetAddressValidator {
 
@@ -74,7 +77,7 @@ public class TargetAddressValidator {
     if (host == null) {
       throw new TargetAddressBlockedException("Die Zieladresse enthält keinen gültigen Host.");
     }
-    checkHost(host);
+    checkHost(host, OutboundProxySelector.instance().proxyFor(uri).isPresent());
   }
 
   /**
@@ -87,13 +90,22 @@ public class TargetAddressValidator {
    *     message when the host is rejected.
    */
   public void validateHost(String host) throws IOException {
+    validateHost(host, false);
+  }
+
+  /**
+   * {@link #validateHost(String)} for a client whose route the caller decided itself: with {@code
+   * throughOutboundProxy} the outbound proxy resolves the name, so a name that does not resolve
+   * locally passes. Only a caller that actually hands its client that proxy may say so.
+   */
+  public void validateHost(String host, boolean throughOutboundProxy) throws IOException {
     if (!enabled || host == null) {
       return;
     }
-    checkHost(host);
+    checkHost(host, throughOutboundProxy);
   }
 
-  private void checkHost(String host) throws IOException {
+  private void checkHost(String host, boolean throughOutboundProxy) throws IOException {
     if (isAllowedHost(host)) {
       return;
     }
@@ -101,7 +113,7 @@ public class TargetAddressValidator {
     try {
       addresses = InetAddress.getAllByName(host);
     } catch (UnknownHostException e) {
-      if (OutboundProxySelector.instance().isProxied(host)) {
+      if (throughOutboundProxy) {
         // The outbound proxy resolves the name, so a missing local resolution is no rejection.
         return;
       }

@@ -11,7 +11,7 @@ tags:
   - name: outbound-proxy
     description: >
       The house-wide outbound proxy every HTTP(S) connection of the backend goes through, and its
-      exclusion list (#2496).
+      exclusion list.
 paths:
   /api/v1/me/connected-accounts:
     get:

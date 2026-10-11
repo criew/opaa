@@ -108,6 +108,12 @@ final class ModelEndpointAccess {
     return builder;
   }
 
+  /** An answer status as German text; a {@code 407} is the outbound proxy refusing. */
+  static String unexpectedStatus(int status) {
+    return ProxyRefusal.describeStatus(status)
+        .orElse("Der Server antwortete mit HTTP " + status + ".");
+  }
+
   static String translateConnectionError(IOException e) {
     Optional<String> proxyRefusal = ProxyRefusal.describe(e);
     if (proxyRefusal.isPresent()) {

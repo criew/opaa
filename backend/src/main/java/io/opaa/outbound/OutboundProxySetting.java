@@ -8,7 +8,8 @@ import java.time.Instant;
 
 /**
  * The house-wide outbound proxy as the system administration set it; without the row every
- * connection goes direct. Written only through {@link OutboundProxySettingRepository#upsert}.
+ * connection goes direct. Written only through {@link OutboundProxySettingRepository#upsertProxy}
+ * and {@link OutboundProxySettingRepository#upsertDirect}.
  */
 @Entity
 @Table(name = "outbound_proxy_settings")

@@ -1381,23 +1381,30 @@ Bibliothek und Zugang bleibt bis PR 3 bestehen und überstimmt den globalen Prox
 - **Keine zweite Quelle:** JVM-Proxy-Properties und `HTTP(S)_PROXY` werden nicht gelesen. Ohne
   Eintrag geht alles direkt.
 - **Adressprüfung:** Geprüft wird weiter das Ziel, nie der Proxy. Ein lokal nicht auflösbarer Name
-  ist kein Ablehnungsgrund, wenn die Verbindung über den Proxy geht (`isProxied`), denn der Proxy
-  löst ihn auf. IP-Literale und auflösbare Namen werden unverändert geprüft. Das gilt in
-  `TargetAddressValidator` und damit auch für `OidcAddressPolicy` und `UploadS3TargetPolicy`.
+  ist nur dann kein Ablehnungsgrund, wenn die Verbindung tatsächlich über den Proxy geht, denn der
+  Proxy löst ihn auf: in `TargetAddressValidator#validate(URI)`, wenn `proxyFor(uri)` den Proxy
+  liefert (damit auch für `OidcAddressPolicy`), und in `validateHost(host, true)`, wenn der
+  Aufrufer die Route seines Clients selbst kennt (S3-Konnektor, `S3RequestGuard`).
+  `validateHost(host)` bleibt streng: SMB, der Proxy-Host aus `source_proxy` und die
+  Originalablage (`UploadS3TargetPolicy`) gehen nie über den Ausgangsproxy. IP-Literale und
+  auflösbare Namen werden unverändert geprüft.
   Ausnahmeliste und Allowlist (`OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`) bleiben getrennt: Die
   eine entscheidet über den Weg, die andere über die Erreichbarkeit. Akzeptierte Grenze: Welche
   Adresse der Proxy für einen Namen wählt, sieht OPAA nicht.
 - **Ausnahmeliste** im `NO_PROXY`-Stil: Hostname trifft sich und alle Subdomänen, IP-Literal sich
   selbst, CIDR nur IP-Literale und nie über DNS. Abgewiesen werden `*`, Ports und Leerzeichen.
-- **Speicher:** Singleton `outbound_proxy_settings` (foundation). Der Selector übernimmt den Stand
-  beim Start und jede Änderung erst nach dem Commit; ein Rollback leitet nie eine Verbindung um.
+- **Speicher:** Singleton `outbound_proxy_settings` (foundation). Der Selector liest den Stand beim
+  Start und nach jedem Commit einer Änderung neu (synchronisiert, damit zwei knapp aufeinander
+  folgende Änderungen nie den älteren Stand hinterlassen); ein Rollback leitet nie eine Verbindung
+  um.
   Prozesslokaler Zustand im Sinne von [ADR-0021](0021-single-instance-betrieb.md).
 - **Verwaltung:** `GET/PUT /api/v1/admin/outbound-proxy` nur für die Systemverwaltung
   (`OutboundProxyAdministration`), jede Änderung ist `OUTBOUND_PROXY_CHANGED` mit Vorher und
   Nachher. Keine Proxy-Authentifizierung: Der JDK sperrt Basic für `CONNECT`, und jede
   Client-Familie bräuchte einen eigenen Authenticator.
-- **Fehlerbild:** `ProxyRefusal` erkennt einen abgelehnten Tunnel (JDK, OkHttp, Apache) und meldet
-  ihn deutsch über `ConnectorChecks` und den Verbindungstest der Modelle.
+- **Fehlerbild:** `ProxyRefusal` erkennt einen abgelehnten Tunnel (JDK, OkHttp, Apache) und eine
+  Antwort `407`, die der JDK-Client nicht als Ausnahme, sondern als Antwort liefert. Beides meldet
+  er deutsch über `ConnectorChecks` und den Zugriff auf Modell-Endpunkte.
 - **Strukturfolge:** `NumericAddress` liegt jetzt in `io.opaa.common`, weil `outbound` unter
   `security` liegt und die Literalprüfung der Ausnahmeliste dieselbe ist.
 - **Belegt** in `OutboundProxySelectorTest`, `ProxyExclusionsTest`, `TargetAddressValidatorTest`,

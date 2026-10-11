@@ -88,7 +88,13 @@ public final class OutboundProxySelector extends ProxySelector {
 
   @Override
   public void connectFailed(URI uri, SocketAddress address, IOException failure) {
-    log.debug("Connection to {} via proxy {} failed: {}", uri, address, failure.toString());
+    log.debug(
+        "Connection to {}://{}:{} via proxy {} failed: {}",
+        uri.getScheme(),
+        uri.getHost(),
+        uri.getPort(),
+        address,
+        failure.getClass().getSimpleName());
   }
 
   /**

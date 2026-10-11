@@ -28,6 +28,24 @@ class ProxyRefusalTest {
   }
 
   @Test
+  void aProxyThatCannotReachTheTargetNamesATypoAsPossibleCause() {
+    assertThat(ProxyRefusal.describe(new IOException("Tunnel failed, got: 502")))
+        .hasValueSatisfying(
+            message ->
+                assertThat(message)
+                    .startsWith("Der Ausgangsproxy hat das Ziel nicht erreicht (Status 502)")
+                    .contains("Tippfehler"));
+  }
+
+  @Test
+  void onlyA407AnswerIsTheProxys() {
+    assertThat(ProxyRefusal.describeStatus(407))
+        .hasValueSatisfying(message -> assertThat(message).contains("Status 407"));
+    assertThat(ProxyRefusal.describeStatus(403)).isEmpty();
+    assertThat(ProxyRefusal.describeStatus(502)).isEmpty();
+  }
+
+  @Test
   void looksIntoTheCauses() {
     IOException wrapped =
         new IOException("wrapper", new RuntimeException("CONNECT refused by proxy: HTTP/1.1 403"));

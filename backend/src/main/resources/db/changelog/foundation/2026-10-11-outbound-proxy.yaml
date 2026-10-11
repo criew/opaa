@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: foundation-2026-10-11-outbound-proxy
       author: opaa
-      comment: "The house-wide outbound proxy and its NO_PROXY-style exclusion list, as the system administration set them (#2496). No row or no host means every connection goes direct."
+      comment: "The house-wide outbound proxy and its NO_PROXY-style exclusion list, as the system administration set them. No row or no host means every connection goes direct."
       changes:
         - sql:
             sql: |

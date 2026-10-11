@@ -144,7 +144,7 @@ public class LlmModelConnectionTester {
     if (status == 400) {
       return rejected(response.body(), temperatureSent);
     }
-    return TestOutcome.failure("Der Server antwortete mit HTTP " + status + ".");
+    return TestOutcome.failure(ModelEndpointAccess.unexpectedStatus(status));
   }
 
   /**

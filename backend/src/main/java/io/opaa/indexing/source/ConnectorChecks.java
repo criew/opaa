@@ -103,6 +103,15 @@ public final class ConnectorChecks {
   }
 
   /**
+   * An answer other than the expected {@code 200} as German, user-facing text; a {@code 407} is the
+   * outbound proxy refusing, not the server.
+   */
+  public static String unexpectedStatus(int status) {
+    return ProxyRefusal.describeStatus(status)
+        .orElse("Der Server antwortete mit HTTP " + status + ".");
+  }
+
+  /**
    * A connection-level {@link IOException} as German, user-facing text - never the exception's own
    * (English, sometimes internals-revealing) message, except the target validator's, which is
    * German and names only the refused host.

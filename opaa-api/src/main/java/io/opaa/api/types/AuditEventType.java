@@ -362,7 +362,7 @@ public enum AuditEventType {
   /** The retention period of the connection log changed; before/after carry both values. */
   CONNECTION_LOG_RETENTION_CHANGED,
   /**
-   * The system administration changed the house-wide outbound proxy or its exclusion list (#2496);
+   * The system administration changed the house-wide outbound proxy or its exclusion list;
    * before/after carry the proxy address and the exclusion list.
    */
   OUTBOUND_PROXY_CHANGED,

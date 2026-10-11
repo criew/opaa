@@ -228,9 +228,13 @@ class OutboundProxyIntegrationTest {
     assertThat(selector.isProxied("api.example.com")).isTrue();
   }
 
-  /** JDBC opens plain sockets, which never take the HTTP proxy - even with a proxy set. */
+  /**
+   * Smoke test only: the test database is on loopback, which is always direct, so this cannot catch
+   * a proxied socket. The invariant itself is {@code
+   * OutboundProxySelectorTest#aSocketTargetIsAlwaysDirect}.
+   */
   @Test
-  void theDatabaseStaysReachableWithAProxySet() throws Exception {
+  void smokeTestTheDatabaseStaysReachableWithAProxySet() throws Exception {
     transactionTemplate.executeWithoutResult(
         status -> outboundProxy.change(new ProxyAddress("proxy.example.invalid", 3128), List.of()));
     assertThat(selector.isProxied("db.example.com")).isTrue();

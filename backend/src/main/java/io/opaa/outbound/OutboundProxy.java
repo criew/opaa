@@ -37,8 +37,8 @@ public class OutboundProxy {
     }
   }
 
-  /** Published inside the changing transaction; applied to the selector after its commit. */
-  record Changed(OutboundProxySelector.Snapshot snapshot) {}
+  /** Published inside the changing transaction; the selector re-reads the row after its commit. */
+  record Changed() {}
 
   private final OutboundProxySettingRepository repository;
   private final ApplicationEventPublisher events;
@@ -49,9 +49,14 @@ public class OutboundProxy {
     this.events = events;
   }
 
-  /** Routes by the stored value - at startup, and whenever the stored row changed underneath. */
+  /**
+   * Routes by the stored value - at startup, after every committed change, and whenever the row
+   * changed underneath. Synchronized, so the last applied state is the last one read: two changes
+   * committed close together never leave the older one in force.
+   */
   @PostConstruct
-  public void reload() {
+  public synchronized void reload() {
+    OutboundProxyInstaller.install();
     selector.apply(read().snapshot());
   }
 
@@ -79,14 +84,13 @@ public class OutboundProxy {
     } else {
       repository.upsertProxy(proxy.host(), proxy.port(), column);
     }
-    Settings stored = read();
-    events.publishEvent(new Changed(stored.snapshot()));
-    return stored;
+    events.publishEvent(new Changed());
+    return read();
   }
 
   @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
   public void onChanged(Changed changed) {
-    selector.apply(changed.snapshot());
+    reload();
   }
 
   /** Whether a connection to {@code host} goes through the proxy right now. */

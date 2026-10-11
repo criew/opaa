@@ -29,7 +29,7 @@ function saveCapture() {
   return sent
 }
 
-describe('OutboundProxySection (#2496)', () => {
+describe('OutboundProxySection', () => {
   it('says that everything goes direct without a proxy and points to the allowlist', async () => {
     stored({ proxyUrl: null, noProxy: [], updatedAt: null })
     renderWithProviders(<OutboundProxySection />)
@@ -62,11 +62,10 @@ describe('OutboundProxySection (#2496)', () => {
     const user = userEvent.setup()
     renderWithProviders(<OutboundProxySection />)
 
-    await user.type(await screen.findByLabelText('Proxy-Adresse'), 'proxy.example.org:3128')
-    await user.type(
-      screen.getByLabelText('Ausnahmeliste'),
-      'intranet.example{enter}{enter}10.0.0.0/8',
-    )
+    await user.click(await screen.findByLabelText('Proxy-Adresse'))
+    await user.paste('proxy.example.org:3128')
+    await user.click(screen.getByLabelText('Ausnahmeliste'))
+    await user.paste('intranet.example\n\n10.0.0.0/8')
     await user.click(screen.getByRole('button', { name: 'Ausgangsproxy speichern' }))
 
     const question = 'Ausgangsproxy proxy.example.org:3128 speichern?'

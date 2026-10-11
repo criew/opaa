@@ -1601,7 +1601,8 @@ Sinn; das ist jeweils vermerkt.
 Muss das Backend über einen Proxy ins Netz, trägt die Systemverwaltung ihn in der Oberfläche ein:
 **Administration → Zugänge**, Abschnitt **Ausgangsproxy**. Es gibt genau einen Proxy für das ganze Haus;
 ohne Eintrag gehen alle Verbindungen direkt hinaus. Die JVM-Eigenschaften `http.proxyHost` und die
-Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
+Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus. Trägt eine Bibliothek oder
+ein Zugang noch einen eigenen Proxy, hat dieser Vorrang vor dem Ausgangsproxy.
 
 - **Was über den Proxy geht:** jede HTTP(S)-Verbindung des Backends — Quellen der Bibliotheken samt
   Weiterleitungen und Original-Abruf, OAuth- und Token-Endpunkte der Zugänge, Dienstkonto-Tokens,
@@ -1631,8 +1632,9 @@ Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
 - **Änderungen** gelten für jede danach aufgebaute Verbindung, ohne Neustart. Eine bereits offene,
   wiederverwendete Verbindung (Keep-Alive) läuft auf ihrem bisherigen Weg weiter, bis sie schließt.
   Jede Änderung steht als `OUTBOUND_PROXY_CHANGED` mit altem und neuem Stand im Revisionsprotokoll.
-- **Fehlerbild:** Lehnt der Proxy einen Tunnel ab, melden Verbindungstest und Lauf „Der Ausgangsproxy
-  hat die Verbindung zum Ziel abgelehnt" mit dem Status des Proxys.
+- **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung, melden
+  Verbindungstest und Lauf, dass der Ausgangsproxy die Verbindung abgelehnt oder das Ziel nicht
+  erreicht hat, mit dem Status des Proxys.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen, weil auch
   deren Signaturschlüssel über ihn geholt werden. Das lokale Konto der Systemverwaltung meldet sich
   ohne Anbieter an und kann den Eintrag korrigieren.

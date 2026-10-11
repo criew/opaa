@@ -263,8 +263,32 @@ class TargetAddressValidatorTest {
               () ->
                   enabled().validate(URI.create("https://only-the-proxy-knows.invalid.opaa-test/")))
           .doesNotThrowAnyException();
-      assertThatCode(() -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test"))
+      assertThatCode(() -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test", true))
           .doesNotThrowAnyException();
+    }
+  }
+
+  /**
+   * A bare host is SMB, a library's own proxy or the upload storage - never the outbound proxy, so
+   * a name that does not resolve stays "not found" even with a proxy set.
+   */
+  @Test
+  void aBareHostStaysStrictWithTheOutboundProxySet() {
+    try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
+      assertThatThrownBy(() -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test"))
+          .isInstanceOf(TargetAddressValidator.UnknownTargetHostException.class)
+          .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
+      assertThatThrownBy(
+              () -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test", false))
+          .isInstanceOf(TargetAddressValidator.UnknownTargetHostException.class);
+    }
+  }
+
+  @Test
+  void anUnresolvableLoopbackRouteIsNotProxiedAndStaysRejected() {
+    try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
+      assertThatThrownBy(() -> enabled().validate(URI.create("http://nothing.localhost/")))
+          .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
     }
   }
 

@@ -36,4 +36,25 @@ class ConnectorChecksOutboundProxyTest {
       assertThat(proxy.requests()).containsExactly("CONNECT wiki.example.invalid:443");
     }
   }
+
+  /** The JDK client hands a proxy's {@code 407} back as an answer, not as an exception. */
+  @Test
+  void aProxyAskingForALoginIsNamedAsSuch() throws Exception {
+    try (RecordingHttpProxy proxy = new RecordingHttpProxy();
+        OutboundProxyRoute route = OutboundProxyRoute.through(proxy.address())) {
+      proxy.refuseTunnels(407);
+      HttpClient client = SourceHttpClientFactory.buildHttpClient(null, 0, false);
+
+      HttpResponse<Void> response =
+          client.send(
+              HttpRequest.newBuilder(URI.create("https://wiki.example.invalid/")).build(),
+              HttpResponse.BodyHandlers.discarding());
+
+      assertThat(response.statusCode()).isEqualTo(407);
+      assertThat(ConnectorChecks.unexpectedStatus(response.statusCode()))
+          .startsWith("Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt (Status 407)");
+      assertThat(ConnectorChecks.unexpectedStatus(500))
+          .isEqualTo("Der Server antwortete mit HTTP 500.");
+    }
+  }
 }
