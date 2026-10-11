@@ -135,7 +135,8 @@ Registry inhaltlich mit dem Chart, den er selbst aus dem getaggten Commit gepack
 (`deploy/helm/ci/chart-matches.sh`: beide Pakete entpacken, `diff -r`). Ein Vergleich der
 Archive selbst taugt nicht, weil `helm package` die Zeitstempel des Checkouts übernimmt. Weicht der
 Inhalt ab, bricht der Job ab und attestiert nichts. Das betrifft vor allem eine Wiederholung:
-Wurde das Tag zwischenzeitlich auf einen anderen Commit gesetzt und hat dessen Lauf die Version
+Wurde das Tag zwischenzeitlich auf einen anderen Commit gesetzt (seit den [Rulesets](#wer-ein-release-anlegt)
+nur noch möglich, wenn ein Admin sie abschaltet) und hat dessen Lauf die Version
 schon veröffentlicht, trüge der fremde Chart sonst die Provenance dieses Commits. Die Meldung, dass
 der Push entfällt, erscheint nur bei Übereinstimmung. Ein Abbruch wegen abweichenden Inhalts lässt
 sich nicht durch Wiederholen beheben; die Version ist vergeben, das Release erscheint mit der
@@ -190,9 +191,20 @@ Wiederholung des gescheiterten Laufs setzt `main` – solange kein neuerer Commi
 
 ## Wer ein Release anlegt
 
-Releases legen Maintainer an, nie ein Agent ohne ausdrückliche Freigabe. Technisch kann heute
-jeder mit Schreibrecht ein Tag `v*` pushen; die Prüfungen im Workflow schützen vor Versehen, nicht
-vor Absicht. Ablauf:
+Releases legen Maintainer an, nie ein Agent ohne ausdrückliche Freigabe. Die Prüfungen im
+Workflow schützen vor Versehen, nicht vor Absicht. Wer ein Tag `v*` setzen darf, regeln deshalb
+zwei Tag-Rulesets des Repositorys (*Settings → Rules → Rulesets*, nur Admins können sie ändern):
+
+| Ruleset | Regel | Ausnahme |
+|---|---|---|
+| `release-tags-create` | Anlegen von `refs/tags/v*` gesperrt | Repository-Rollen *Admin* und *Maintain* |
+| `release-tags-immutable` | Verschieben (auch per Force-Push) und Löschen von `refs/tags/v*` gesperrt | keine |
+
+Ein Push von `v*` durch einen Account ohne diese Rollen wird abgelehnt. Damit läuft der
+Release-Workflow auch nie aus der Workflow-Datei eines Commits außerhalb von `main`, den jemand
+ohne Maintainer-Rolle getaggt hat. Ein vorhandenes Release-Tag bleibt, wo es ist; eine fehlerhafte
+Version wird durch die nächste Patch-Version abgelöst. Wer die Rulesets abschwächt, ändert diese
+Grenze und braucht dafür Admin-Rechte. Ablauf:
 
 1. Prüfen, dass `main` grün ist, einschließlich des letzten nächtlichen E2E-Laufs.
 2. Version nach den Regeln unten bestimmen.
