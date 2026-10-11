@@ -405,17 +405,13 @@ lassen.
   Bestandsbibliothek zeigt den Sperrhinweis, ihr Lauf endet ohne Element, der Beleg im Chat trägt
   „Stand vom …“, und der Assistent bietet keine eigene Adresse mehr an. Die Verwaltende repariert
   sie über „Zugang zuordnen“ (Prüfen vor dem Zuordnen), sie läuft wieder. Die Sperre des Zugangs
-  stoppt die Läufe mit Hinweis und „Stand vom …“, das Entsperren stellt sie wieder her. Zuletzt der
-  Zugangswunsch: `dev-outsider` schlägt im Schritt „Art des Wissens“ einen Zugang vor, die
-  Verwaltung legt ihn aus dem Wunsch an, der Wunsch steht danach als „Erledigt“ mit dem Zugang da,
-  und die Pflicht wird über die Oberfläche wieder ausgeschaltet.
+  stoppt die Läufe mit Hinweis und „Stand vom …“, das Entsperren stellt sie wieder her. Zuletzt
+  schaltet die Verwaltung die Pflicht über die Oberfläche wieder aus.
 
   `test.describe.serial`, weil die Profilpflicht einen passenden Zugang voraussetzt. Das Aufräumen
   (`fixtures/connectionProfiles.ts`) setzt die Quellart RSS-Feed zurück (keine Pflicht, nicht
   gesperrt) und entfernt Bibliotheken, Zugänge und Gruppe auch nach einem Fehlschlag - sonst
   scheiterten die RSS-Bibliotheken späterer Dateien an einer liegengebliebenen Pflicht.
-  `docker-compose.e2e.yml` hebt die Grenze neuer Zugangswünsche je Person und Stunde an; mit der
-  Vorgabe 5 scheitert schon ein Retry nach einigen lokalen Läufen gegen denselben Stack.
 
 - `tests/connected-accounts-private-libraries.spec.ts` (#2175, Szenarien 3 bis 5, Teil von Epic
   \#2147) — verbundene Konten und private Bibliotheken über den vollen Stack, gegen die echte

@@ -521,12 +521,6 @@ public enum AuditEventType {
    */
   CONNECTOR_PROFILE_OPTIONAL,
   /**
-   * The system administration marked a connection profile request ("Zugangswunsch") done or
-   * declined; {@code after} names the state, type, address and the profile serving it - never the
-   * reason or the answer text. A governance event.
-   */
-  CONNECTION_PROFILE_REQUEST_RESOLVED,
-  /**
    * The system administration tested a profile's own sign-in; the outcome says whether it held, and
    * a success lifts a rejection. Never carries the message, the secret or the token.
    */
