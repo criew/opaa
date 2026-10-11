@@ -261,6 +261,9 @@ der Lauf, bei Google-Formaten den Export.
   geplante Lauf setzt an.
 - Ein Änderungslauf ohne Änderungen kostet eine Anfrage je Strom und Bereich. Die Auflistung einer
   großen Ablage kostet eine Anfrage je Seite.
+- Das Änderungsprotokoll eines Stroms liest ein Lauf immer bis zum Ende, bevor er den neuen Stand
+  übernimmt. Eine Protokollseite fasst bis zu `page-size` Änderungen; mehr als etwa
+  `request-budget-per-run` × `page-size` Änderungen schafft ein Lauf deshalb nicht (Abschnitt 13).
 - Google hat eine Abrechnung oberhalb eines Tageskontingents angekündigt. Vor stündlichen
   Zeitplänen über sehr große Ablagen die Kontingentseite des Projekts prüfen.
 
@@ -310,6 +313,19 @@ Die Obergrenze von fünfzig Bereichen ist eine feste Konstante.
 - Eine Datei, die die `download-timeout`-Frist dauerhaft reißt (sehr große Datei, langsame Leitung),
   gilt in jedem Lauf als vorübergehend fehlgeschlagen und hält den Änderungsstrom an. Abhilfe:
   `download-timeout` erhöhen.
+- **Bekannte Einschränkung: ein zu langes Änderungsprotokoll.** Braucht das Protokoll seit dem
+  gespeicherten Stand mehr Anfragen, als ein Lauf hat (Abschnitt 10), endet jeder Änderungslauf als
+  „unvollständig, wird fortgesetzt“, und der nächste beginnt wieder am selben Stand. Das betrifft
+  nur Änderungsläufe: Ein Vollabgleich über mehrere Läufe liest das Protokoll an seinem Ende nicht,
+  und der erste Vollabgleich beginnt mit dem jüngsten Stand. Denkbar ist es nach einem Vollabgleich,
+  der sich über sehr viele Läufe hinzog, oder bei sehr vielen Änderungen zwischen zwei Läufen. Der
+  Strom des Kontos umfasst dabei alles, was das Konto sieht, nicht nur die Bereiche.
+  - **Wirkung:** Nichts wird fälschlich entfernt. Bis zum nächsten Vollabgleich im Rhythmus, der mit
+    einem neuen Stand beginnt, kommt die Bibliothek aber nicht voran: Entfernte Dateien bleiben im
+    Index, neue und geänderte kommen nur an, soweit ein Lauf im Protokoll kommt.
+  - **Abhilfe:** `request-budget-per-run` anheben, bis ein Lauf das Protokoll schafft. Oder die
+    Bereiche auf mehrere Bibliotheken in OPAA verteilen, denn jede hat ihr eigenes Budget je Lauf;
+    das hilft bei geteilten Ablagen, die je einen eigenen Strom haben.
 
 ## 14. Nicht gebaut
 

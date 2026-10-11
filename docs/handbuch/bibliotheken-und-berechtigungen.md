@@ -1412,9 +1412,85 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
   Die Übersicht unter Administration → Anlegerechte zeigt dafür je Recht den Stand; im Panel
   „Ändern" steht er als Klartextzeile unter „Stand jetzt".
 
+### Prüfliste vor einem Postfach-Konnektor (Vorbereitung)
+
+> **Vorbereitung:** Einen Postfach-Konnektor gibt es noch nicht (#2172). Die Prüfliste steht hier,
+> damit ein Haus die Fragen klären kann, bevor es einen solchen Konnektor freigibt. Sie ist **keine
+> Rechtsberatung**: Sie nennt die Fragen, die Antworten hängen von Aktenordnung,
+> Dienstvereinbarungen und Recht des jeweiligen Hauses ab.
+
+Wie jede neue Quellart ist ein Postfach-Konnektor ab Werk aus (Abschnitt 9, „Konnektor-Freigabe").
+Bis zur Freigabe sollten die folgenden Punkte geklärt sein, für **private Postfächer** (verbundenes
+Konto, private Bibliothek) wie für **Funktionspostfächer** (Bibliothek über einen Zugang, gelesen von
+den Personen und Gruppen mit Rolle an ihr).
+
+**1. Aktenführung und E-Akte**
+
+- *Worum es geht:* OPAA durchsucht das Postfach, wie es ist. Was zu einem Vorgang gehört, liegt nach
+  der Aktenordnung vieler Häuser maßgeblich in der Akte, nicht im Postfach.
+- *Warum es zählt:* Ein durchsuchbares Postfach kann zur Ablage neben der Akte werden. Antworten
+  stützen sich dann auf Korrespondenz, deren maßgebliche Fassung woanders liegt oder fehlt.
+- *Zu klären:* Welche Mails sind aktenrelevant, und wo liegen sie maßgeblich? Ist ein
+  Postfach-Index mit der Aktenordnung vereinbar? Wie wird verhindert, dass er die Ablage in der Akte
+  ersetzt?
+
+**2. Aufbewahrungs- und Löschpflichten gegenüber der Löschfrist**
+
+- *Worum es geht:* OPAA hält nur eine Kopie. Eine in der Quelle gelöschte Mail verschwindet mit dem
+  nächsten Abgleich aus dem Index. Eine private Bibliothek löscht die Besitzerin jederzeit selbst,
+  sonst der Löschlauf nach Ablauf der Löschfrist, sobald das Konto deaktiviert ist
+  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Benutzerverwaltung](benutzerverwaltung.md),
+  Abschnitt 12).
+- *Warum es zählt:* Aufbewahrungspflichten erfüllt OPAA nicht; sie müssen in Mailsystem oder Akte
+  erfüllt sein. Umgekehrt darf die Kopie nicht länger bestehen, als es die Löschpflichten erlauben.
+- *Zu klären:* Liegen alle Aufbewahrungspflichten bei Mailsystem oder Akte, sodass OPAA löschen
+  darf? Passt die eingestellte Löschfrist zu den Löschpflichten, etwa nach dem Ausscheiden einer
+  Person? Reicht der Laufrhythmus, damit eine in der Quelle gelöschte Mail rechtzeitig aus dem Index
+  verschwindet?
+
+**3. Vertretung und Zugriff Dritter**
+
+- *Worum es geht:* Eine private Bibliothek liest nur ihre Besitzerin (Abschnitt 4, „Private
+  Bibliotheken"): keine Freigabe, keine Nachfolge, kein „Sicht als", kein Vorfallszugriff.
+  Vertretungsrechte aus dem Mailsystem übernimmt OPAA nicht. Der Inhalt ist, was das Konto beim
+  Anbieter sieht.
+- *Warum es zählt:* Eine Vertretung arbeitet weiter im Mailsystem, nicht über den Index der
+  Abwesenden. Mails enthalten Daten Dritter, etwa von Bürgerinnen und Bürgern, die von der
+  Indexierung nichts wissen.
+- *Zu klären:* Genügt für Vertretungen der Weg über das Mailsystem? Sieht ein Konto beim Anbieter
+  fremde Postfächer, etwa über Vertretungsrechte, und sollen diese in seine private Bibliothek
+  gelangen? Auf welcher Grundlage werden Daten Dritter verarbeitet, und wie werden sie informiert?
+
+**4. Funktionspostfächer und Mitbestimmung**
+
+- *Worum es geht:* Ein Funktionspostfach wird nicht über ein verbundenes Konto angebunden, sondern
+  als Bibliothek über einen Zugang mit Anwendungsberechtigung. Welche Postfächer die Anwendung lesen
+  darf, beschränkt die Verwaltung des Mailsystems.
+- *Warum es zählt:* Ein gemeinsamer Index über die Korrespondenz mehrerer Beschäftigter kann geeignet
+  sein, Leistung und Verhalten zu überwachen. Schon die Eignung kann die Mitbestimmung der
+  Personalvertretung auslösen.
+- *Zu klären:* Braucht die Anbindung eine Dienstvereinbarung oder die Zustimmung der
+  Personalvertretung? Deckt sich der Kreis der Lesenden mit dem, der das Postfach heute liest? Auf
+  welche Postfächer ist die Anwendung beim Anbieter beschränkt? Gilt die Vereinbarung auch für
+  private Postfächer, die Beschäftigte freiwillig verbinden?
+
+**5. Sicherungen innerhalb der Löschfrist**
+
+- *Worum es geht:* Die Löschung einer privaten Bibliothek erfasst Sicherungen der Datenbank und der
+  Originalablage nicht. Eine vorher gezogene Sicherung enthält die Bibliothek weiterhin; nach einer
+  Wiederherstellung ist sie wieder da.
+- *Warum es zählt:* Die Zusage, dass eine Bibliothek gelöscht ist, gilt nur so weit, wie Sicherungen
+  mitgedacht sind.
+- *Zu klären:* Wie lange werden Sicherungen aufbewahrt, und ist diese Frist zusammen mit der
+  Löschfrist mit den Zusagen des Hauses vereinbar? Wer löscht nach einer Wiederherstellung die
+  inzwischen gelöschten privaten Bibliotheken erneut, und wie wird das dokumentiert?
+
 ## 17. Was es hier nicht gibt
 
 - **Keinen Administrator-Durchgriff in der Suche** (Abschnitt 10).
+- **Keinen Vorfallszugriff auf den Inhalt privater Bibliotheken.** Die anlassbezogene Klärung
+  (Abschnitt 10) filtert nur das Nachweisprotokoll; den Inhalt untersucht das Haus in der
+  Originalquelle ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12).
 - **Keinen Rückgriff auf alles Lesbare im Chat.** Ein Raum ohne Zuordnung sucht nichts; es gibt
   keinen Schalter, der einen Raum auf alle lesbaren Bibliotheken öffnet (Abschnitt 5).
 - **Keine Gruppenschachtelung** und keine vererbte Mitgliedschaft (Abschnitt 3).
