@@ -1,5 +1,7 @@
 import type {
   EmbeddingInfoResponse,
+  LlmModelDiscoveryRequest,
+  LlmModelDiscoveryResponse,
   LlmModelRequest,
   LlmModelResponse,
   LlmModelTestRequest,
@@ -60,6 +62,24 @@ export async function activateLlmModel(modelId: string): Promise<LlmModelRespons
 export async function testLlmModel(request: LlmModelTestRequest): Promise<LlmModelTestResponse> {
   try {
     const { data } = await client.post<LlmModelTestResponse>('/v1/admin/models/test', request)
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Lists the models the endpoint offers. A 200 either way: `success`/`failure` carry the outcome;
+ * only a request the backend rejects (400 for the stored-key rule, 404 for an unknown model) throws.
+ */
+export async function discoverLlmModels(
+  request: LlmModelDiscoveryRequest,
+): Promise<LlmModelDiscoveryResponse> {
+  try {
+    const { data } = await client.post<LlmModelDiscoveryResponse>(
+      '/v1/admin/models/discover',
+      request,
+    )
     return data
   } catch (err) {
     normalizeError(err)

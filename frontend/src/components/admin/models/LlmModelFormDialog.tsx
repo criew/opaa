@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -9,13 +9,23 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import type { LlmModelResponse } from '../../../types/api'
+import type { DiscoveredLlmModel, LlmModelResponse } from '../../../types/api'
 import { testLlmModel } from '../../../services/modelApi'
 import { useLlmModelStore } from '../../../stores/llmModelStore'
-
-export const BASE_URL_HELP_TEXT =
-  'Der OpenAI-kompatible Endpunkt der Modellschnittstelle. Auch lokal betriebene Modellserver ' +
-  'bedienen diese Schnittstelle – etwa Ollama, mit angehängtem „/v1“.'
+import BusyButton from '../../a11y/BusyButton'
+import SectionHead from '../../SectionHead'
+import BaseUrlField from './BaseUrlField'
+import DiscoveryStatus from './DiscoveryStatus'
+import ModelIdentifierField from './ModelIdentifierField'
+import {
+  displayNameFor,
+  formatTokens,
+  DEFAULT_MAX_TOKENS,
+  presetOf,
+  suggestedMaxTokens,
+  type EndpointPreset,
+} from './modelDiscovery'
+import { useModelDiscovery } from './useModelDiscovery'
 
 export const REQUIRED_FIELDS_HINT =
   'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
@@ -40,7 +50,7 @@ const NEW_DRAFT = {
   baseUrl: '',
   modelIdentifier: '',
   temperature: '',
-  maxTokens: '8000',
+  maxTokens: String(DEFAULT_MAX_TOKENS),
 }
 
 function draftFrom(model: LlmModelResponse | null) {
@@ -58,8 +68,13 @@ function draftFrom(model: LlmModelResponse | null) {
  * Das Formular eines Chat-Modells (#759, #1621) — dasselbe für Anlegen und Bearbeiten, wie
  * `UserFormDialog` unter „Benutzer".
  *
+ * Geführt in drei Abschnitten: Endpunkt (Vorlage oder eigene Adresse, Schlüssel,
+ * „Modelle abrufen"), Modell (Auswahl aus der Liste des Endpunkts oder freie Eingabe) und Anzeige.
+ * Eine Auswahl belegt Anzeigename und Antwortlänge vor, solange sie nicht von Hand gesetzt
+ * wurden, und testet die Verbindung sofort.
+ *
  * Kein Anbieter-Auswahlfeld: Die Schnittstelle spricht ausschließlich das OpenAI-kompatible
- * Protokoll, es gibt also nichts zu wählen außer Adresse und Zugangsdaten.
+ * Protokoll; die Vorlagen sind nur Adressen.
  *
  * Der Aufrufer gibt dem Dialog einen `key`, damit ein Wechsel des Modells den Entwurf neu setzt —
  * MUI unmountet beim Schließen nur die Kinder, nicht die Komponente.
@@ -85,10 +100,21 @@ export default function LlmModelFormDialog({
   const [submitting, setSubmitting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
+  // Vorbelegung überschreibt nur, was die Person nicht selbst gesetzt hat; beim Bearbeiten gilt die
+  // gespeicherte Antwortlänge als gesetzt.
+  const [suggestedName, setSuggestedName] = useState<string | null>(null)
+  const [maxTokensTouched, setMaxTokensTouched] = useState(model !== null)
+  const [contextLength, setContextLength] = useState<number | null>(null)
+  // Nur das Ergebnis des jüngsten Verbindungstests zählt, wie in useModelDiscovery.
+  const latestTest = useRef(0)
+  const discovery = useModelDiscovery()
+  const addressRef = useRef<HTMLInputElement>(null)
 
   const isEdit = model !== null
   const titel = isEdit ? `„${model.displayName}“ bearbeiten` : 'Chat-Modell anlegen'
   const requiredHintId = 'llm-model-form-required-hint'
+  const preset = presetOf(draft.baseUrl)
+  const typedKey = apiKeyTouched && apiKeyInput.trim() !== ''
   const temperatureFieldId = 'llm-model-form-temperature'
   // MUI vergibt der Hilfezeile eines TextField mit `id` die ID `<id>-helper-text`.
   const temperatureHelperId = `${temperatureFieldId}-helper-text`
@@ -106,9 +132,9 @@ export default function LlmModelFormDialog({
    * Löst auf, was für `apiKey` zu senden ist — die Dreiwege-Konvention von `LlmModelRequest`:
    * weggelassen heißt unverändert, leerer Text heißt entfernen, alles andere heißt setzen.
    *
-   * Der Verbindungstest bekommt denselben Wert, obwohl der leere Text dort etwas anderes
-   * bedeutet: Er speichert nie etwas, und ein weggelassener Schlüssel lässt ihn den **gespeicherten**
-   * Schlüssel dieses Modells weiterverwenden. Genau das soll auch mitten im Bearbeiten gelten.
+   * Verbindungstest und Modellermittlung bekommen denselben Wert, obwohl der leere Text dort etwas
+   * anderes bedeutet: Sie speichern nie etwas, und ein weggelassener Schlüssel lässt sie den
+   * **gespeicherten** Schlüssel dieses Modells weiterverwenden — nur für dessen eigene Adresse.
    */
   function resolveApiKey(): string | undefined {
     if (apiKeyClearRequested) return ''
@@ -126,26 +152,92 @@ export default function LlmModelFormDialog({
     onClose()
   }
 
-  async function handleTest() {
+  /**
+   * A new address invalidates the list and the last test result, a running test included; both
+   * belonged to the old one.
+   */
+  function changeBaseUrl(baseUrl: string) {
+    setDraft((current) => ({ ...current, baseUrl }))
+    discovery.reset()
+    latestTest.current++
+    setTesting(false)
+    setTestResult(null)
+  }
+
+  /** The stored key of the edited model serves only while its removal is not requested. */
+  function storedKeyModelId(): string | undefined {
+    return model && !apiKeyClearRequested ? model.id : undefined
+  }
+
+  function runDiscovery(baseUrl = draft.baseUrl) {
+    if (baseUrl.trim() === '') return
+    void discovery.discover({
+      baseUrl: baseUrl.trim(),
+      apiKey: resolveApiKey(),
+      modelId: storedKeyModelId(),
+    })
+  }
+
+  /**
+   * Fills in the preset's address. A host still to be confirmed (Ollama) is selected for
+   * overwriting and nothing is fetched yet; a keyed preset fetches at once if a key is typed.
+   */
+  function choosePreset(chosen: EndpointPreset) {
+    changeBaseUrl(chosen.baseUrl)
+    const host = chosen.placeholderHost
+    if (host !== null) {
+      // After the combobox has written the chosen address into the input.
+      setTimeout(() => {
+        const input = addressRef.current
+        if (!input) return
+        const start = chosen.baseUrl.indexOf(host)
+        input.focus()
+        input.setSelectionRange(start, start + host.length)
+      }, 0)
+      return
+    }
+    if (chosen.needsKey && typedKey) runDiscovery(chosen.baseUrl)
+  }
+
+  function selectModel(selected: DiscoveredLlmModel) {
+    const nameIsOurs = draft.displayName.trim() === '' || draft.displayName === suggestedName
+    const name = displayNameFor(selected.identifier)
+    setDraft((current) => ({
+      ...current,
+      modelIdentifier: selected.identifier,
+      displayName: nameIsOurs ? name : current.displayName,
+      maxTokens:
+        !maxTokensTouched && selected.contextLength
+          ? String(suggestedMaxTokens(selected.contextLength))
+          : current.maxTokens,
+    }))
+    if (nameIsOurs) setSuggestedName(name)
+    setContextLength(selected.contextLength ?? null)
+    void handleTest(selected.identifier)
+  }
+
+  async function handleTest(modelIdentifier = draft.modelIdentifier) {
+    const ticket = ++latestTest.current
     setTestResult(null)
     setTesting(true)
+    let result: { success: boolean; message: string }
     try {
-      const result = await testLlmModel({
+      result = await testLlmModel({
         baseUrl: draft.baseUrl.trim(),
-        modelIdentifier: draft.modelIdentifier.trim(),
+        modelIdentifier: modelIdentifier.trim(),
         apiKey: resolveApiKey(),
-        modelId: model?.id,
+        modelId: storedKeyModelId(),
         temperature: resolveTemperature(),
       })
-      setTestResult(result)
     } catch (err) {
-      setTestResult({
+      result = {
         success: false,
         message: err instanceof Error ? err.message : 'Verbindungstest fehlgeschlagen',
-      })
-    } finally {
-      setTesting(false)
+      }
     }
+    if (ticket !== latestTest.current) return
+    setTestResult(result)
+    setTesting(false)
   }
 
   async function handleSubmit() {
@@ -189,6 +281,15 @@ export default function LlmModelFormDialog({
     }
   }
 
+  const idleHint =
+    draft.baseUrl.trim() === ''
+      ? null
+      : preset?.needsKey && !typedKey && !model?.apiKeySet
+        ? 'Zugangsschlüssel eintragen, dann „Modelle abrufen“.'
+        : preset?.placeholderHost
+          ? 'Host anpassen, dann „Modelle abrufen“ oder Enter.'
+          : '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'
+
   return (
     <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
       <DialogTitle>{titel}</DialogTitle>
@@ -198,111 +299,164 @@ export default function LlmModelFormDialog({
             {error}
           </Alert>
         )}
-        {testResult && (
-          <Alert severity={testResult.success ? 'success' : 'error'} sx={{ mb: 2 }}>
-            {testResult.message}
-          </Alert>
-        )}
-        <Stack spacing={2} sx={{ mt: 1 }}>
-          <TextField
-            label="Anzeigename"
-            required
-            value={draft.displayName}
-            onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
-            size="small"
-            fullWidth
-          />
-          <TextField
-            label="Basis-Adresse"
-            required
-            value={draft.baseUrl}
-            onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })}
-            helperText={BASE_URL_HELP_TEXT}
-            size="small"
-            fullWidth
-          />
-          <TextField
-            label="Modell-Kennung"
-            required
-            value={draft.modelIdentifier}
-            onChange={(e) => setDraft({ ...draft, modelIdentifier: e.target.value })}
-            size="small"
-            fullWidth
-          />
-          <Stack direction="row" spacing={2}>
+        <Stack spacing={3.5} sx={{ mt: 1 }}>
+          <Box component="section" aria-labelledby="llm-model-endpoint-head">
+            <SectionHead component="h3" id="llm-model-endpoint-head">
+              1 · Endpunkt
+            </SectionHead>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
+            >
+              <BaseUrlField
+                value={draft.baseUrl}
+                inputRef={addressRef}
+                onType={changeBaseUrl}
+                onChoose={choosePreset}
+                onSubmit={() => runDiscovery()}
+              />
+              <BusyButton
+                variant="outlined"
+                busy={discovery.state.status === 'loading'}
+                busyAnnouncement="Modelle werden abgerufen"
+                disabled={draft.baseUrl.trim() === ''}
+                onClick={() => runDiscovery()}
+                sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}
+              >
+                Modelle abrufen
+              </BusyButton>
+            </Stack>
             <TextField
-              id={temperatureFieldId}
-              label="Temperatur (optional)"
-              type="number"
-              value={draft.temperature}
+              label="API-Schlüssel (optional)"
+              type="password"
+              value={apiKeyInput}
+              disabled={apiKeyClearRequested}
               onChange={(e) => {
-                // Eine unlesbare Zahl (etwa „0,7“ je nach Browser) liefert ebenfalls einen leeren
-                // Wert; sie darf nicht still als „keine Temperatur“ gespeichert werden.
-                setTemperatureUnreadable(e.target.validity.badInput)
-                setDraft({ ...draft, temperature: e.target.value })
+                setApiKeyTouched(true)
+                setApiKeyClearRequested(false)
+                setApiKeyInput(e.target.value)
               }}
-              error={temperatureUnreadable}
               helperText={
-                temperatureUnreadable ? TEMPERATURE_UNREADABLE_HINT : TEMPERATURE_HELP_TEXT
+                apiKeyClearRequested
+                  ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
+                  : isEdit
+                    ? 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
+                    : preset?.needsKey
+                      ? 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
+                      : 'Lokal betriebene Modellserver brauchen meist keinen.'
               }
-              slotProps={{ htmlInput: { min: 0, max: 2, step: 0.1 } }}
               size="small"
-              sx={{ flex: 1 }}
+              fullWidth
+              autoComplete="new-password"
+              sx={{ mt: 2 }}
             />
-            <TextField
-              label="Maximale Antwortlänge (Token)"
-              required
-              type="number"
-              value={draft.maxTokens}
-              onChange={(e) => setDraft({ ...draft, maxTokens: e.target.value })}
-              slotProps={{ htmlInput: { min: 1 } }}
-              size="small"
-              sx={{ flex: 1 }}
+            {model?.apiKeySet && (
+              <Box sx={{ mt: 0.5 }}>
+                {apiKeyClearRequested ? (
+                  <Button size="small" onClick={() => setApiKeyClearRequested(false)}>
+                    Entfernen rückgängig machen
+                  </Button>
+                ) : (
+                  <Button
+                    size="small"
+                    color="error"
+                    onClick={() => {
+                      setApiKeyClearRequested(true)
+                      setApiKeyTouched(false)
+                      setApiKeyInput('')
+                    }}
+                    aria-label={`Gespeicherten Schlüssel von "${model.displayName}" entfernen`}
+                  >
+                    Gespeicherten Schlüssel entfernen
+                  </Button>
+                )}
+              </Box>
+            )}
+            <DiscoveryStatus state={discovery.state} idleHint={idleHint} />
+          </Box>
+
+          <Box component="section" aria-labelledby="llm-model-model-head">
+            <SectionHead component="h3" id="llm-model-model-head">
+              2 · Modell
+            </SectionHead>
+            <ModelIdentifierField
+              value={draft.modelIdentifier}
+              models={discovery.models}
+              loading={discovery.state.status === 'loading'}
+              onInputChange={(modelIdentifier) => {
+                setDraft((current) => ({ ...current, modelIdentifier }))
+                setContextLength(null)
+              }}
+              onSelect={selectModel}
             />
-          </Stack>
-          <TextField
-            label="API-Schlüssel (optional)"
-            type="password"
-            value={apiKeyInput}
-            disabled={apiKeyClearRequested}
-            onChange={(e) => {
-              setApiKeyTouched(true)
-              setApiKeyClearRequested(false)
-              setApiKeyInput(e.target.value)
-            }}
-            helperText={
-              apiKeyClearRequested
-                ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
-                : isEdit
-                  ? 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
-                  : undefined
-            }
-            size="small"
-            fullWidth
-            autoComplete="new-password"
-          />
-          {model?.apiKeySet && (
-            <Box>
-              {apiKeyClearRequested ? (
-                <Button size="small" onClick={() => setApiKeyClearRequested(false)}>
-                  Entfernen rückgängig machen
-                </Button>
-              ) : (
-                <Button
-                  size="small"
-                  color="error"
-                  onClick={() => {
-                    setApiKeyClearRequested(true)
-                    setApiKeyTouched(false)
-                    setApiKeyInput('')
+            {testing && (
+              <Typography role="status" sx={{ mt: 1, fontSize: 12.5, color: 'text.secondary' }}>
+                Verbindung wird getestet …
+              </Typography>
+            )}
+            {testResult && (
+              <Alert severity={testResult.success ? 'success' : 'error'} sx={{ mt: 1.5 }}>
+                {testResult.message}
+              </Alert>
+            )}
+          </Box>
+
+          <Box component="section" aria-labelledby="llm-model-display-head">
+            <SectionHead component="h3" id="llm-model-display-head">
+              3 · Anzeige und Antwort
+            </SectionHead>
+            <Stack spacing={2}>
+              <TextField
+                label="Anzeigename"
+                required
+                value={draft.displayName}
+                onChange={(e) => setDraft({ ...draft, displayName: e.target.value })}
+                helperText="So erscheint das Modell in der Liste."
+                size="small"
+                fullWidth
+              />
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                <TextField
+                  id={temperatureFieldId}
+                  label="Temperatur (optional)"
+                  type="number"
+                  value={draft.temperature}
+                  onChange={(e) => {
+                    // Eine unlesbare Zahl (etwa „0,7“ je nach Browser) liefert ebenfalls einen
+                    // leeren Wert; sie darf nicht still als „keine Temperatur“ gespeichert werden.
+                    setTemperatureUnreadable(e.target.validity.badInput)
+                    setDraft({ ...draft, temperature: e.target.value })
                   }}
-                  aria-label={`Gespeicherten Schlüssel von "${model.displayName}" entfernen`}
-                >
-                  Gespeicherten Schlüssel entfernen
-                </Button>
-              )}
-            </Box>
-          )}
+                  error={temperatureUnreadable}
+                  helperText={
+                    temperatureUnreadable ? TEMPERATURE_UNREADABLE_HINT : TEMPERATURE_HELP_TEXT
+                  }
+                  slotProps={{ htmlInput: { min: 0, max: 2, step: 0.1 } }}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+                <TextField
+                  label="Maximale Antwortlänge (Token)"
+                  required
+                  type="number"
+                  value={draft.maxTokens}
+                  onChange={(e) => {
+                    setMaxTokensTouched(true)
+                    setDraft({ ...draft, maxTokens: e.target.value })
+                  }}
+                  helperText={
+                    contextLength
+                      ? `Kontextfenster des Modells: ${formatTokens(contextLength)} Token. Vorgeschlagen ist höchstens die Hälfte davon.`
+                      : undefined
+                  }
+                  slotProps={{ htmlInput: { min: 1, max: contextLength ?? undefined } }}
+                  size="small"
+                  sx={{ flex: 1 }}
+                />
+              </Stack>
+            </Stack>
+          </Box>
           {!isValid() && (
             <Typography id={requiredHintId} variant="caption" sx={{ color: 'text.secondary' }}>
               {REQUIRED_FIELDS_HINT}
