@@ -344,6 +344,40 @@ describe('chatStore', () => {
       expect(state.chatId).toBeNull()
     })
 
+    // #2486: the completeness flags of the answer reach the message the bubble renders its hint from.
+    it.each([
+      ['answerTruncated', { answerTruncated: true, answerEmpty: false }],
+      ['answerEmpty', { answerTruncated: false, answerEmpty: true }],
+    ] as const)('carries %s from the response onto the answer', async (flag, flags) => {
+      await useChatStore.getState().loadChat(EMPTY_CHAT_ID)
+      server.use(
+        http.post('/api/v1/query', () =>
+          HttpResponse.json({
+            answer: flag === 'answerEmpty' ? '' : 'Die Antwort bricht mitten im',
+            sources: [],
+            metadata: {
+              model: 'gpt-4o',
+              tokenCount: 8000,
+              durationMs: 120,
+              answeredWithoutKnowledge: false,
+              noKnowledgeAssignedToSpace: false,
+              noKnowledgeAvailableInSpace: false,
+              noSpaceContext: false,
+              ...flags,
+            },
+            chatId: EMPTY_CHAT_ID,
+          }),
+        ),
+      )
+
+      await useChatStore.getState().sendMessage('Frage')
+
+      const answer = useChatStore.getState().messages.at(-1)!
+      expect(answer.role).toBe('assistant')
+      expect(answer.answerTruncated).toBe(flags.answerTruncated)
+      expect(answer.answerEmpty).toBe(flags.answerEmpty)
+    })
+
     it('shows rate limit error when the server returns 429', async () => {
       useChatStore.getState().startNewChat(SPACE_ID)
       server.use(

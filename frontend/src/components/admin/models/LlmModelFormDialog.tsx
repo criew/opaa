@@ -24,6 +24,9 @@ export const TEMPERATURE_HELP_TEXT =
   'Leer lassen, um die Voreinstellung des Modells zu verwenden. Manche Modelle lehnen jede ' +
   'Temperatur ab.'
 
+export const TEMPERATURE_UNREADABLE_HINT =
+  'Die Temperatur ist keine gültige Zahl. Für keine Temperatur das Feld leeren.'
+
 interface LlmModelFormDialogProps {
   open: boolean
   /** The model being edited; `null` creates a new one. */
@@ -77,6 +80,7 @@ export default function LlmModelFormDialog({
   // startet bei jedem Modell leer, weil der Schlüssel nie zurückgelesen wird; unberührt-leer und
   // „bitte entfernen" wären sonst nicht zu unterscheiden.
   const [apiKeyClearRequested, setApiKeyClearRequested] = useState(false)
+  const [temperatureUnreadable, setTemperatureUnreadable] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
@@ -85,6 +89,9 @@ export default function LlmModelFormDialog({
   const isEdit = model !== null
   const titel = isEdit ? `„${model.displayName}“ bearbeiten` : 'Chat-Modell anlegen'
   const requiredHintId = 'llm-model-form-required-hint'
+  const temperatureFieldId = 'llm-model-form-temperature'
+  // MUI vergibt der Hilfezeile eines TextField mit `id` die ID `<id>-helper-text`.
+  const temperatureHelperId = `${temperatureFieldId}-helper-text`
 
   function isValid() {
     return (
@@ -144,6 +151,10 @@ export default function LlmModelFormDialog({
   async function handleSubmit() {
     if (!isValid()) {
       setError(REQUIRED_FIELDS_HINT)
+      return
+    }
+    if (temperatureUnreadable) {
+      setError(TEMPERATURE_UNREADABLE_HINT)
       return
     }
     setError(null)
@@ -220,11 +231,20 @@ export default function LlmModelFormDialog({
           />
           <Stack direction="row" spacing={2}>
             <TextField
+              id={temperatureFieldId}
               label="Temperatur (optional)"
               type="number"
               value={draft.temperature}
-              onChange={(e) => setDraft({ ...draft, temperature: e.target.value })}
-              helperText={TEMPERATURE_HELP_TEXT}
+              onChange={(e) => {
+                // Eine unlesbare Zahl (etwa „0,7“ je nach Browser) liefert ebenfalls einen leeren
+                // Wert; sie darf nicht still als „keine Temperatur“ gespeichert werden.
+                setTemperatureUnreadable(e.target.validity.badInput)
+                setDraft({ ...draft, temperature: e.target.value })
+              }}
+              error={temperatureUnreadable}
+              helperText={
+                temperatureUnreadable ? TEMPERATURE_UNREADABLE_HINT : TEMPERATURE_HELP_TEXT
+              }
               slotProps={{ htmlInput: { min: 0, max: 2, step: 0.1 } }}
               size="small"
               sx={{ flex: 1 }}
@@ -293,7 +313,12 @@ export default function LlmModelFormDialog({
       <DialogActions>
         <Button
           onClick={() => void handleTest()}
-          disabled={testing || draft.baseUrl.trim() === '' || draft.modelIdentifier.trim() === ''}
+          disabled={
+            testing ||
+            temperatureUnreadable ||
+            draft.baseUrl.trim() === '' ||
+            draft.modelIdentifier.trim() === ''
+          }
         >
           {testing ? 'Verbindung wird getestet …' : 'Verbindung testen'}
         </Button>
@@ -304,8 +329,10 @@ export default function LlmModelFormDialog({
         <Button
           variant="contained"
           onClick={() => void handleSubmit()}
-          disabled={submitting || !isValid()}
-          aria-describedby={!isValid() ? requiredHintId : undefined}
+          disabled={submitting || !isValid() || temperatureUnreadable}
+          aria-describedby={
+            !isValid() ? requiredHintId : temperatureUnreadable ? temperatureHelperId : undefined
+          }
         >
           {isEdit ? 'Speichern' : 'Anlegen'}
         </Button>

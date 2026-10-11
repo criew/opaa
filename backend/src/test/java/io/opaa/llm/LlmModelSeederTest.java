@@ -235,6 +235,24 @@ class LlmModelSeederTest {
     verify(markerRepository, times(1)).save(any());
   }
 
+  /** An unreadable temperature (decimal comma) is logged and seeds no temperature. */
+  @Test
+  void seedsWithoutTemperatureWhenTheConfiguredValueIsUnreadable() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "gpt-4o")
+            .withProperty("spring.ai.openai.chat.temperature", "0,7");
+
+    seederWith(environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getTemperature()).isNull();
+  }
+
   /** #2486: without a configured temperature the seeded model sends none. */
   @Test
   void seedsWithoutTemperatureAndWithTheDefaultMaxTokensWhenNeitherIsConfigured() {

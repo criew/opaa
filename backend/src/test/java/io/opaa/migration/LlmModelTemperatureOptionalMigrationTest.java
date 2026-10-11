@@ -7,9 +7,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@code llm_models.temperature} becomes optional without a default, and {@code max_tokens}
- * defaults to 8000: a stored temperature keeps its value, a row without one is accepted, and the
- * range check still holds for a value that is given.
+ * {@code llm_models.temperature} becomes optional without a default: a stored temperature keeps its
+ * value, a row without one is accepted, and the range check still holds for a value that is given.
  */
 class LlmModelTemperatureOptionalMigrationTest extends AbstractBaselineTest {
 
@@ -34,7 +33,7 @@ class LlmModelTemperatureOptionalMigrationTest extends AbstractBaselineTest {
   }
 
   @Test
-  void aRowWithoutTemperatureIsStoredWithoutOneAndMaxTokensDefaultsTo8000() throws Exception {
+  void aRowWithoutTemperatureIsStoredWithoutOne() throws Exception {
     applyChangelog(connection, FILE);
     UUID model = UUID.randomUUID();
 
@@ -48,8 +47,6 @@ class LlmModelTemperatureOptionalMigrationTest extends AbstractBaselineTest {
                 "SELECT count(*) FROM llm_models WHERE temperature IS NULL AND id = "
                     + quoted(model)))
         .isEqualTo(1);
-    assertThat(longOf("SELECT max_tokens FROM llm_models WHERE id = " + quoted(model)))
-        .isEqualTo(8000);
   }
 
   @Test

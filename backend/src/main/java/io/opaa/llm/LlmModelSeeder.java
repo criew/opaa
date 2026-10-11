@@ -316,6 +316,10 @@ class LlmModelSeeder {
     try {
       return new BigDecimal(value);
     } catch (NumberFormatException e) {
+      log.warn(
+          "OPAA_OPENAI_CHAT_TEMPERATURE='{}' is not a number (decimal point, not comma) - the"
+              + " seeded chat model gets no temperature",
+          value);
       return null;
     }
   }
