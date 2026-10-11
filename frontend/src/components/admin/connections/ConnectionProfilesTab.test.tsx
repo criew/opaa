@@ -189,6 +189,67 @@ describe('ConnectionProfilesTab', () => {
     )
   })
 
+  // Review #2515, finding 1: the summary must not call a state good that it could not load.
+  const RELEASED_OVERVIEW = [
+    {
+      capability: 'CREATE_CONNECTOR_LIBRARY',
+      scope: 'PROFILE:connection-profile-nextcloud',
+      scopeLabel: 'Zugang Zugang Nextcloud intern',
+      label: 'Konnektorbibliotheken anlegen',
+      statement: '',
+      grants: [
+        {
+          id: 'grant-all',
+          capability: 'CREATE_CONNECTOR_LIBRARY',
+          scope: 'PROFILE:connection-profile-nextcloud',
+          subjectType: 'ALL_ACCOUNTS',
+          subjectId: null,
+          subjectName: null,
+          grantedByUserId: null,
+          createdAt: '2026-10-01T09:00:00Z',
+        },
+      ],
+    },
+  ]
+  const failing = () => HttpResponse.json({ error: 'Interner Fehler' }, { status: 500 })
+
+  it('shows no summary while the list of profiles failed, and offers to load it again', async () => {
+    server.use(http.get('/api/v1/admin/connection-profiles', failing))
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByRole('button', { name: 'Erneut laden' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Handlungsbedarf der Zugänge' }),
+    ).not.toBeInTheDocument()
+  })
+
+  it('calls the state incomplete, not good, while the releases failed', async () => {
+    server.use(http.get('/api/v1/admin/capabilities', failing))
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByRole('heading', { name: /Stand unvollständig/ })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  it('calls the state incomplete, not good, while the resting sources failed', async () => {
+    server.use(
+      http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)),
+      http.get('/api/v1/admin/source-connections/dormant', failing),
+    )
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByRole('heading', { name: /Stand unvollständig/ })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  it('says there is nothing to do once every part is known and nothing is open', async () => {
+    server.use(http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)))
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByRole('heading', { name: 'Kein Handlungsbedarf' })).toBeVisible()
+  })
+
   it('sums up what needs doing above the overview', async () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
