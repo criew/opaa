@@ -17,3 +17,15 @@ export const listCardSx = {
   py: 1.5,
   '&:last-of-type': { borderBottom: 0 },
 } as const
+
+/** The facts of one entry in the narrow layout, as term and value side by side. */
+export const definitionListSx = {
+  display: 'grid',
+  gridTemplateColumns: 'max-content 1fr',
+  columnGap: 1.5,
+  rowGap: 0.75,
+  m: 0,
+  mt: 1.25,
+  '& dt': { fontSize: 12, color: 'text.secondary', pt: '1px' },
+  '& dd': { m: 0, fontSize: 13, minWidth: 0, overflowWrap: 'anywhere' },
+} as const
