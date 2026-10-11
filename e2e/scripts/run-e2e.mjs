@@ -101,6 +101,9 @@ const mailpitSmtpPort = process.env.OPAA_MAILPIT_SMTP_PORT ?? '11025'
 // comment. Only relevant for the "e2e" target; the ai-stub stand-ins of the "demo" and "local-auth"
 // targets publish no host port, and no scenario of theirs needs one.
 const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? '18089'
+// The host-published port of the suite's own Nextcloud (docker-compose.e2e.yml),
+// where the scenarios create accounts and files with WebDAV. Only the "e2e" target runs one.
+const nextcloudPort = process.env.OPAA_NEXTCLOUD_PORT ?? '18090'
 const keycloakPort = '8180'
 const baseUrl = process.env.E2E_BASE_URL ?? `http://localhost:${frontendPort}`
 const readyUrl = `${baseUrl}/api/v1/auth/config`
@@ -183,7 +186,9 @@ const composeEnv = {
     : isLocalAuth
       ? '172.31.0.10'
       : '172.29.0.10',
-  ...(isDemo || isLocalAuth ? {} : { OPAA_AI_STUB_PORT: aiStubPort }),
+  ...(isDemo || isLocalAuth
+    ? {}
+    : { OPAA_AI_STUB_PORT: aiStubPort, OPAA_NEXTCLOUD_PORT: nextcloudPort }),
   ...(isLocalAuth
     ? { OPAA_MAILPIT_WEB_PORT: mailpitWebPort, OPAA_MAILPIT_SMTP_PORT: mailpitSmtpPort }
     : {}),
@@ -384,7 +389,7 @@ async function main() {
       ? // No keycloak and no rss-feed: this target's whole point is an installation without an
         // OIDC provider, and no scenario indexes anything.
         ['ai-stub', 'mailpit', 'postgres', 'backend', 'frontend']
-      : ['ai-stub', 'rss-feed', 'postgres', 'backend', 'frontend']
+      : ['ai-stub', 'rss-feed', 'nextcloud', 'postgres', 'backend', 'frontend']
   console.log(
     `> Starting ${target} stack (${services.join(', ')}) as Compose project "${composeProjectName}"` +
       ` on ports ${dbPort}/${backendPort}/${frontendPort}` +
@@ -458,6 +463,8 @@ async function main() {
             // nginx-Auslieferung des Frontends leitet ausschließlich /api/ weiter - die Szenarien
             // sprechen ihn deshalb unter dem Host-Port dieses Laufs an, wie den KI-Stub darüber.
             E2E_BACKEND_BASE_URL: `http://localhost:${backendPort}`,
+            // WebDAV and the provisioning API of the suite's own Nextcloud.
+            E2E_NEXTCLOUD_BASE_URL: `http://localhost:${nextcloudPort}`,
           }),
       ...(isLocalAuth
         ? {

@@ -74,7 +74,7 @@ pnpm test
 
 1. `docker compose down -v` für das **eigene** Compose-Projekt `opaa-e2e` (definierte Ausgangslage;
    siehe "Isolation von einem laufenden Dev-Stack" unten).
-2. `docker compose up -d --build ai-stub rss-feed postgres backend frontend` unter diesem
+2. `docker compose up -d --build ai-stub rss-feed nextcloud postgres backend frontend` unter diesem
    Projektnamen, mit eigenen Host-Ports und `e2e/e2e.env` als Environment (siehe unten), und Warten
    auf Erreichbarkeit.
 3. **Seed-Lauf (#233):** `demo/seed/seed.py --profile e2e --base-url http://localhost:$OPAA_BACKEND_PORT/api`
@@ -233,6 +233,20 @@ ergibt den `RAHMEN`-Punkt „Arbeitet …", „bitte knapp" den `ANTWORTFORM`-Pu
 Antworten", jede andere Nachricht das Sentinel `KEINE`. Die Auswertung der Antwort (Art-Präfix,
 200-Zeichen-Deckel, höchstens zwei Zeilen) bleibt die produktive.
 
+### Nextcloud statt Testkonnektor
+
+`docker-compose.e2e.yml` startet zusätzlich `nextcloud` (offizielles Image, SQLite, dieselbe
+Version wie `backend/src/test/java/io/opaa/integration/nextcloud/NextcloudFixture.java`), weil der
+Backend-Container die Testkonnektoren aus `src/test` nicht kennt und die verbundenen Konten
+(#2147) einen echten Konnektor mit persönlichem App-Passwort brauchen. Das Backend erreicht ihn als
+`nextcloud` (in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` eingetragen), Playwright über den
+Host-Port `OPAA_NEXTCLOUD_PORT` (Vorgabe `18090`, als `E2E_NEXTCLOUD_BASE_URL` durchgereicht).
+Der Hook `nextcloud/post-installation/10-e2e-settings.sh` schaltet nur die Drosselung für
+Fehlanmeldungen ab; Konten, App-Passwörter und Dateien legen die Szenarien selbst über die
+Bereitstellungsschnittstelle und WebDAV an (`fixtures/nextcloud.ts`). Das Image ist rund 2 GB
+groß; die Installation beim ersten Start dauert etwa eine halbe Minute, die Szenarien warten
+darauf (`waitForNextcloud`).
+
 ## Serialisierungs-Konvention
 
 `playwright.config.ts` setzt `fullyParallel: false` und `workers: 1`: alle Specs teilen sich einen
@@ -390,6 +404,31 @@ lassen.
   scheiterten die RSS-Bibliotheken späterer Dateien an einer liegengebliebenen Pflicht.
   `docker-compose.e2e.yml` hebt die Grenze neuer Zugangswünsche je Person und Stunde an; mit der
   Vorgabe 5 scheitert schon ein Retry nach einigen lokalen Läufen gegen denselben Stack.
+
+- `tests/connected-accounts-private-libraries.spec.ts` (#2175, Szenarien 3 bis 5, Teil von Epic
+  \#2147) — verbundene Konten und private Bibliotheken über den vollen Stack, gegen die echte
+  Nextcloud der Suite (siehe unten); die Szenarien prüfen zugleich `docs/handbuch/benutzerverwaltung.md`,
+  Abschnitt „Verbundene Konten“, und `bibliotheken-und-berechtigungen.md`, „Private Bibliotheken“.
+  `dev-user` verbindet unter „Einstellungen → Verbundene Konten“ ihr Nextcloud-Konto mit einem
+  App-Passwort — ein falsches wird abgewiesen und nichts gespeichert, das Passwortfeld ist danach
+  leer — und legt im Assistenten über „Über mein verbundenes Konto“ eine private Bibliothek an (kein
+  Feld für Zugangsdaten, kein Schritt „Freigaben“, Ordnerliste und Verbindungstest über das Konto),
+  die nach dem Lauf die Marke „Privat“ trägt und ihre Datei enthält. Sie ordnet sie einem Space zu,
+  in dem auch `dev-outsider` Mitglied ist: Sie selbst findet den Inhalt im Chat mit Beleg, das andere
+  Mitglied sieht in „Inhalte“ weder die Zuordnung noch einen Hinweis „nicht alle lesbar“, findet die
+  Bibliothek weder im Katalog noch über die Adresse (404, auch für die Systemverwaltung) und bekommt
+  im Chat keinen Beleg. Teilen ist ausgeschlossen: Der Reiter „Freigaben“ zeigt den Hinweis statt
+  „Berechtigungen“ und „Externer Zugang“, die API antwortet mit `403 OWNER_ONLY_ASSET`, und für die
+  Systemverwaltung ist die Bibliothek nicht vorhanden. Zuletzt „Trennen“: die Rückfrage nennt die
+  Bibliothek, die Zeile bleibt als „Getrennt“, die Bibliothek trägt „Verbindung getrennt“ mit dem
+  Weg zurück, ihr Inhalt bleibt im Chat auffindbar, und „Neu verbinden“ hebt den Hinweis auf.
+
+  Zugang (Besitzart „Person“), das Anlegerecht dafür, Space samt Mitglied und das Nextcloud-Konto
+  samt Datei sind Vorbedingung und laufen über die API (`fixtures/privateLibraries.ts`,
+  `fixtures/nextcloud.ts`). `test.describe.serial`: Die Bibliothek aus Szenario 3 ist der Gegenstand
+  von 4 und 5. `afterAll` räumt auch nach einem Fehlschlag Bibliothek, Verbindung, Space, Zugang und
+  Nextcloud-Konto ab. Szenario 6 (Dropbox, OAuth-Ersatzserver) fehlt noch: Es braucht den Konnektor
+  aus \#2154.
 
 - `tests/llm-model-management.spec.ts` (#760, Teil von Epic #755) — die Modellverwaltung über den
   vollen Stack: ein Systemadministrator legt ein Chat-Modell ohne API-Schlüssel an, testet die
