@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-11-drop-profile-requests
+      author: opaa
+      comment: "Connection profile requests are withdrawn: the system administration enters profiles on its own. The table goes with its rows, constraints and indexes; the profiles a request pointed to stay."
+      changes:
+        - sql:
+            sql: |
+              DROP TABLE connection_profile_requests;

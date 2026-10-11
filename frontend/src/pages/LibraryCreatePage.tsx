@@ -19,7 +19,6 @@ import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
 import type { SourceFormContext } from '../components/library/sources/types'
 import ConnectionProfileSelect from '../components/library/ConnectionProfileSelect'
-import ConnectionProfileRequestAction from '../components/library/ConnectionProfileRequestAction'
 import {
   OWN_ADDRESS,
   effectiveConnection,
@@ -82,7 +81,6 @@ import type {
   GroupListResponse,
   AssetOwnerType,
   PendingSourceConnection,
-  SourceTypeDescriptor,
 } from '../types/api'
 
 /**
@@ -238,26 +236,6 @@ export default function LibraryCreatePage() {
   }
 
   const selectableTypes = offeredTypes.filter((type) => missingFor(type) === null)
-
-  /**
-   * Die Arten, die nur deshalb gesperrt sind, weil der Person kein nutzbarer Zugang zur Verfügung
-   * steht: Für sie bietet schon dieser Schritt „Zugang vorschlagen“ an, sonst wäre der Wunsch
-   * gerade dort unerreichbar, wo er gebraucht wird. Voraussetzung ist das Konnektor-Anlegerecht in
-   * irgendeinem Geltungsbereich, wie für das Backend.
-   */
-  const suggestableTypes = isMissing('CREATE_CONNECTOR_LIBRARY')
-    ? []
-    : offeredTypes
-        .map((type) => sourceTypes.find((d) => d.type === type))
-        .filter(
-          (d): d is SourceTypeDescriptor =>
-            d !== undefined &&
-            !d.uploads &&
-            !d.locked &&
-            !d.creatable &&
-            d.profileSupport !== 'FORBIDDEN' &&
-            Boolean(sourceRegistration(d.type)?.configuration),
-        )
 
   /**
    * Die tatsächlich gewählte Art. Die Anlegerechte kommen erst nach dem ersten Rendern an; was
@@ -639,18 +617,6 @@ export default function LibraryCreatePage() {
           />
         )}
 
-        {currentStep === STEP_ART &&
-          sourceTypesLoaded &&
-          !sourceTypesError &&
-          suggestableTypes.map((suggestable) => (
-            <ConnectionProfileRequestAction
-              key={suggestable.type}
-              descriptor={suggestable}
-              idPrefix={`library-create-${suggestable.type}`}
-              prompt={`Für „${suggestable.displayName}“ steht Ihnen noch kein nutzbarer Zugang zur Verfügung.`}
-            />
-          ))}
-
         {currentStep === STEP_SOURCE && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
             {showConnectionSelect && descriptor && (
@@ -660,18 +626,10 @@ export default function LibraryCreatePage() {
                 value={connectionChoice}
                 onChange={chooseConnection}
                 offerOwnAddress
-                offerRequest
                 offerPrivate
                 idPrefix="library-create"
               />
             )}
-            {admitsProfiles &&
-              descriptor &&
-              !showConnectionSelect &&
-              profileOptions.loaded &&
-              !isMissing('CREATE_CONNECTOR_LIBRARY') && (
-                <ConnectionProfileRequestAction descriptor={descriptor} idPrefix="library-create" />
-              )}
             {consentProfile && (
               <SourceConsentPanel
                 profileName={consentProfile.name}

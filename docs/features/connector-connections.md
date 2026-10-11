@@ -244,8 +244,9 @@ Bei „optional“ kann die Systemverwaltung die Profilpflicht einschalten:
   einem Profil zugeordnet ist;
 - danach bietet der Anlage-Assistent nur noch die Profilauswahl an.
 
-Wer einen fehlenden Server braucht, kann im Assistenten einen **Zugangswunsch** mit Server-Adresse
-an die Systemverwaltung stellen (optional).
+Zugänge trägt allein die Systemverwaltung ein. Wer einen fehlenden Server braucht, wendet sich über
+die Wege des Hauses an sie; der Assistent nimmt keine Anfragen nach Zugängen entgegen
+(Entscheidung vom 11.10.2026, #2494).
 
 Mit Profilpflicht für alle Konnektoren der Angabe „optional“ liegen alle entfernten Ziele, an die
 Zugangsdaten gehen, an einer Stelle in der Hand der Systemverwaltung. **Einschränkung RSS:** Die

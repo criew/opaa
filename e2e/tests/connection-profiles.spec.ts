@@ -41,7 +41,6 @@ import type { Page } from '@playwright/test'
 const runId = Date.now()
 const PREFIX = `E2E Zugang ${runId}`
 const PROFILE_NAME = `${PREFIX} RSS`
-const REQUESTED_PROFILE_NAME = `${PREFIX} aus Wunsch`
 const GROUP_NAME = `E2E Zugangsgruppe ${runId}`
 // Ohne Leerzeichen: die @-Referenz im Chat endet am ersten Leerzeichen (space-chats.spec.ts).
 const PROFILE_LIBRARY = `E2E-Zugang-Feed-${runId}`
@@ -52,8 +51,6 @@ const SERVER_URL = 'http://rss-feed'
 const FEED_URL = 'http://rss-feed/feed-ok.xml'
 // Ein Eintrag von feed-ok.xml; sein Titel ist der Dateiname des Dokuments (rss-feed-library.spec.ts).
 const ENTRY_TITLE = 'Öffnungszeiten der Bürgerauskunft angepasst'
-// Eine Adresse, die nur dieser Lauf vorschlägt: Derselbe offene Wunsch entsteht kein zweites Mal.
-const REQUESTED_SERVER_URL = `http://rss-feed/wunsch-${runId}`
 
 // „Stand vom“ mit dem Datum des letzten erfolgreichen Laufs, nicht „unbekannt“.
 const STAND_VOM = /Stand vom \d{2}\.\d{2}\.\d{4}/
@@ -347,51 +344,9 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     expect(resumed.status).toBe('COMPLETED')
   })
 
-  test('3. Zugangswunsch: eine Person schlägt einen Zugang vor, die Verwaltung legt ihn daraus an', async ({
+  test('3. Die Systemverwaltung schaltet „Nur über Zugänge“ über die Oberfläche aus', async ({
     authenticatedPage: adminPage,
-    outsiderPage: page,
   }) => {
-    // Unter der Profilpflicht und ohne freigegebenen Zugang ist RSS für dev-outsider schon im
-    // Schritt „Art des Wissens“ nicht wählbar; dort steht „Zugang vorschlagen“.
-    await openNewLibraryWizard(page)
-    await expect(page.getByRole('radio', { name: /RSS-Feed/ })).toBeDisabled()
-    await page.getByRole('button', { name: 'Zugang für RSS-Feed vorschlagen' }).click()
-    const dialog = page.getByRole('dialog', { name: 'Zugang vorschlagen' })
-    await dialog.getByLabel('Server-Adresse').fill(REQUESTED_SERVER_URL)
-    await dialog.getByLabel('Begründung').fill('Mitteilungen der Beispielbehörde')
-    await dialog.getByRole('button', { name: 'Vorschlagen' }).click()
-    await expect(dialog).toHaveCount(0)
-    const mine = page.getByRole('list', { name: 'Ihre Zugangswünsche' })
-    await expect(mine).toContainText(REQUESTED_SERVER_URL)
-    await expect(mine).toContainText('Offen')
-
-    await gotoConnectionProfiles(adminPage)
-    await adminPage
-      .getByRole('button', {
-        name: `Zugang für ${REQUESTED_SERVER_URL} anlegen`,
-      })
-      .click()
-    const form = adminPage.getByRole('dialog', { name: 'Zugang anlegen' })
-    await expect(form.getByTestId('connection-profile-from-request')).toContainText('Dev Outsider')
-    await expect(form.getByRole('radio', { name: /RSS-Feed/ })).toBeChecked()
-    await expect(form.getByLabel('Server-Adresse')).toHaveValue(REQUESTED_SERVER_URL)
-    await form.getByLabel('Name').fill(REQUESTED_PROFILE_NAME)
-    await form.getByRole('combobox', { name: 'Anmeldeart' }).click()
-    await adminPage.getByRole('option', { name: 'Ohne Anmeldung' }).click()
-    await form.getByRole('button', { name: 'Anlegen' }).click()
-    await expect(form).toHaveCount(0)
-    await expect(profileRow(adminPage, REQUESTED_PROFILE_NAME)).toContainText(REQUESTED_SERVER_URL)
-    await expect(
-      adminPage.getByRole('button', {
-        name: `Zugang für ${REQUESTED_SERVER_URL} anlegen`,
-      }),
-    ).toHaveCount(0)
-
-    await openNewLibraryWizard(page)
-    const done = page.getByRole('list', { name: 'Ihre Zugangswünsche' })
-    await expect(done).toContainText('Erledigt')
-    await expect(done).toContainText(`Zugang „${REQUESTED_PROFILE_NAME}“`)
-
     // Ausschalten der Pflicht über die Oberfläche: fragt nach, danach ist eine eigene Adresse
     // wieder möglich.
     await gotoConnectionProfiles(adminPage)
