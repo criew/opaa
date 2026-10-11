@@ -42,6 +42,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.metadata.CitationMetadataReader;
@@ -101,6 +102,7 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -332,7 +334,16 @@ class QueryServiceTest {
         new QueryResult(
             "Spike-Antwort",
             List.of(),
-            new QueryOutcome("gpt-4o", 10, 5L, false, false, false, false, List.of()),
+            new QueryOutcome(
+                "gpt-4o",
+                10,
+                5L,
+                false,
+                false,
+                false,
+                false,
+                List.of(),
+                AnswerCompleteness.COMPLETE),
             UUID.randomUUID(),
             null,
             null);
@@ -878,6 +889,52 @@ class QueryServiceTest {
     QueryResult response = queryService.query("Question", null, caller, true, List.of());
 
     assertThat(response.chatId()).isNotNull();
+  }
+
+  /** #2486: an answer cut off at the output limit reaches the caller marked as truncated. */
+  @Test
+  void anAnswerCutOffAtTheOutputLimitIsMarkedTruncated() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse =
+        new ChatResponse(
+            List.of(
+                new Generation(
+                    new AssistantMessage("Die Antwort bricht mitten im"),
+                    ChatGenerationMetadata.builder().finishReason("LENGTH").build())));
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(chatResponse);
+
+    QueryResult response = queryService.query("Question", null, caller, true, List.of());
+
+    assertThat(response.answer()).isEqualTo("Die Antwort bricht mitten im");
+    assertThat(response.metadata().answerCompleteness()).isEqualTo(AnswerCompleteness.TRUNCATED);
+  }
+
+  @Test
+  void anAnswerWithoutTextIsMarkedEmpty() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage(""))));
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(chatResponse);
+
+    QueryResult response = queryService.query("Question", null, caller, true, List.of());
+
+    assertThat(response.metadata().answerCompleteness()).isEqualTo(AnswerCompleteness.EMPTY);
+  }
+
+  @Test
+  void aRegularAnswerIsComplete() {
+    when(chatMemory.get(any())).thenReturn(List.of());
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class))).thenReturn(List.of());
+    var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
+    when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
+        .thenReturn(chatResponse);
+
+    QueryResult response = queryService.query("Question", null, caller, true, List.of());
+
+    assertThat(response.metadata().answerCompleteness()).isEqualTo(AnswerCompleteness.COMPLETE);
   }
 
   @Test

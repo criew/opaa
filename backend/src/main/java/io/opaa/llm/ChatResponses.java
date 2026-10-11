@@ -11,6 +11,8 @@ import org.springframework.ai.chat.model.ChatResponse;
  */
 public final class ChatResponses {
 
+  private static final String FINISH_REASON_LENGTH = "length";
+
   private ChatResponses() {}
 
   /** The assistant text, or {@code null} when the response carries none. */
@@ -26,6 +28,24 @@ public final class ChatResponses {
   public static String text(ChatResponse response) {
     String text = textOrNull(response);
     return text != null ? text : "";
+  }
+
+  /**
+   * {@link AnswerCompleteness#EMPTY} without visible text, {@link AnswerCompleteness#TRUNCATED}
+   * when the model reports its output limit as the finish reason ({@code length}), otherwise
+   * complete.
+   */
+  public static AnswerCompleteness completeness(ChatResponse response) {
+    String text = textOrNull(response);
+    if (text == null || text.isBlank()) {
+      return AnswerCompleteness.EMPTY;
+    }
+    if (response.getResult().getMetadata() != null
+        && FINISH_REASON_LENGTH.equalsIgnoreCase(
+            response.getResult().getMetadata().getFinishReason())) {
+      return AnswerCompleteness.TRUNCATED;
+    }
+    return AnswerCompleteness.COMPLETE;
   }
 
   /** The model that answered, or {@code "unknown"} when the response names none. */

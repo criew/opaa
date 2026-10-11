@@ -53,6 +53,8 @@ export const queryHandlers = [
           noKnowledgeAssignedToSpace: true,
           noKnowledgeAvailableInSpace: false,
           noSpaceContext: false,
+          answerTruncated: false,
+          answerEmpty: false,
         },
         chatId,
         chatTitle,

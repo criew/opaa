@@ -155,7 +155,8 @@ public class LlmModelController {
             request.getBaseUrl(),
             request.getModelIdentifier(),
             request.getApiKey(),
-            request.getModelId());
+            request.getModelId(),
+            toTemperature(request.getTemperature()));
     return new LlmModelTestResponse(outcome.success(), outcome.message());
   }
 

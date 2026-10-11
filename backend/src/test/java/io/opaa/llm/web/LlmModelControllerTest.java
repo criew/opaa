@@ -316,7 +316,7 @@ class LlmModelControllerTest {
 
   @Test
   void testModelReturnsTheTesterOutcome() throws Exception {
-    when(connectionTester.test("http://ollama:11434/v1", "phi3", null, null))
+    when(connectionTester.test("http://ollama:11434/v1", "phi3", null, null, null))
         .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
 
     mockMvc
@@ -327,6 +327,53 @@ class LlmModelControllerTest {
                 .content("{\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.success").value(true));
+  }
+
+  @Test
+  void testModelPassesTheDraftTemperatureToTheProbe() throws Exception {
+    when(connectionTester.test(
+            "http://ollama:11434/v1", "phi3", null, null, BigDecimal.valueOf(0.2)))
+        .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/models/test")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"baseUrl\":\"http://ollama:11434/v1\",\"modelIdentifier\":\"phi3\","
+                        + "\"temperature\":0.2}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true));
+  }
+
+  // --- Optional temperature (#2486) ---
+
+  @Test
+  void createWithoutTemperaturePassesNoTemperatureAndReturnsNull() throws Exception {
+    LlmModel created =
+        new LlmModel("Haiku", "https://api.example/v1", "claude-haiku", null, 8000, null);
+    when(llmModelService.createModel(
+            eq(actingAdminOrganizationId),
+            eq(actingAdminId),
+            eq("Haiku"),
+            eq("https://api.example/v1"),
+            eq("claude-haiku"),
+            isNull(),
+            eq(8000),
+            isNull()))
+        .thenReturn(created);
+
+    mockMvc
+        .perform(
+            post("/api/v1/admin/models")
+                .with(asAdmin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"displayName\":\"Haiku\",\"baseUrl\":\"https://api.example/v1\","
+                        + "\"modelIdentifier\":\"claude-haiku\",\"maxTokens\":8000}"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.temperature").value(org.hamcrest.Matchers.nullValue()));
   }
 
   private String validCreateRequestJson() {

@@ -7,6 +7,7 @@ import io.opaa.chat.ChatService;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.llm.ActiveChatModelResolver;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.observability.QueryMetrics;
@@ -238,7 +239,8 @@ public class SpikeToolLoopQueryHandler {
             false,
             false,
             chat.isEmpty(),
-            chatSourceAssembler.searchedLibraries(searchScope));
+            chatSourceAssembler.searchedLibraries(searchScope),
+            AnswerCompleteness.COMPLETE);
     return Optional.of(
         new QueryResult(displayAnswer, sources, metadata, effectiveChatId, chatTitle, notePoints));
   }
