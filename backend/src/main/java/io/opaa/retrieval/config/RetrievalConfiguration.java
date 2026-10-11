@@ -6,6 +6,7 @@ import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.VectorIndexScanProperties;
+import io.opaa.retrieval.context.NeighborChunkProperties;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
 import io.opaa.retrieval.ranking.RankFusionStage;
@@ -30,7 +31,8 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties({
   QueryProperties.class,
   RetrievalPipelineProperties.class,
-  VectorIndexScanProperties.class
+  VectorIndexScanProperties.class,
+  NeighborChunkProperties.class
 })
 public class RetrievalConfiguration {
 

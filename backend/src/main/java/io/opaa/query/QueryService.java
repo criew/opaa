@@ -29,6 +29,7 @@ import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineResult;
+import io.opaa.retrieval.context.NeighborChunkExpansion;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
 import java.util.List;
 import java.util.Optional;
@@ -82,6 +83,7 @@ public class QueryService {
   private final MetadataFilterValidator metadataFilterValidator;
   private final PromptService promptService;
   private final ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler;
+  private final NeighborChunkExpansion neighborChunkExpansion;
 
   public QueryService(
       KnowledgeRetrieval knowledgeRetrieval,
@@ -99,7 +101,8 @@ public class QueryService {
       QueryMetrics metrics,
       MetadataFilterValidator metadataFilterValidator,
       PromptService promptService,
-      ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler) {
+      ObjectProvider<SpikeToolLoopQueryHandler> spikeToolLoopQueryHandler,
+      NeighborChunkExpansion neighborChunkExpansion) {
     this.knowledgeRetrieval = knowledgeRetrieval;
     this.retrievalContextFactory = retrievalContextFactory;
     this.searchScopeResolver = searchScopeResolver;
@@ -116,6 +119,7 @@ public class QueryService {
     this.metadataFilterValidator = metadataFilterValidator;
     this.promptService = promptService;
     this.spikeToolLoopQueryHandler = spikeToolLoopQueryHandler;
+    this.neighborChunkExpansion = neighborChunkExpansion;
   }
 
   /**
@@ -297,7 +301,7 @@ public class QueryService {
                           noteTexts(notePoints, ChatNoteItemKind.RAHMEN),
                           searchScope,
                           metadataFilter);
-                  relevantChunks = retrieval.chunks();
+                  relevantChunks = neighborChunkExpansion.expand(retrieval.chunks(), searchScope);
                   searchNeeded = retrieval.searchNeeded();
                 }
 
