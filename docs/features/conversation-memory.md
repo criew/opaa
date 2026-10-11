@@ -240,7 +240,25 @@ Der **Zerlegungs-Block** enthält nur `RAHMEN`-Punkte, der **Antwort-Block** all
 erhält zusätzlich die Regel, die Notiz nur zur Auflösung rückverweisender oder unterbestimmter
 Wörter zu verwenden; eine eigenständige Frage bleibt unverändert. Ohne passende Punkte entfällt der
 jeweilige Block ganz. Die gerenderten Punkte gehören zum Ankerraum des Sicherheitsgurts (Invariante
-in Bauteil 1). Der Systemprompt bleibt wie bisher nicht konfigurierbar.
+in Bauteil 1). Die feste Systemanweisung bleibt nicht konfigurierbar.
+
+**Abgrenzung zur Anweisung des Space** ([ADR-0043](../decisions/0043-anweisung-je-space.md)): Ein
+Space kann eine dauerhafte Anweisung an das Modell tragen, die eine Person mit der Space-Rolle
+`ADMIN` setzt. Sie unterscheidet sich von der Notiz in Herkunft, Reichweite und Lebensdauer:
+
+| | Gesprächsnotiz | Anweisung des Space |
+|---|---|---|
+| Herkunft | verdichtet aus den Nachrichten der fragenden Person | von der Space-Leitung geschrieben |
+| Reichweite | ein Chat | jeder Chat des Space, auch ältere, ab der nächsten Frage |
+| Teilfragen-Zerlegung | `RAHMEN`-Punkte ja | nie |
+| Antwort | alle Punkte | ja |
+| Sichtbar für | die fragende Person, punktweise löschbar | jedes Mitglied, nur lesend |
+
+Wirken beide, steht im Antwort-Prompt zuerst der Space-Block, dann der Notiz-Block, dann der
+Kontextabschnitt: feste Regeln → Anweisung des Space → Gesprächsnotiz → Kontextdokumente. Die
+Kopfzeile des Space-Blocks sagt, dass ein abweichender Wunsch der fragenden Person aus diesem
+Gespräch ihm vorgeht — das Aktuelle überschreibt im Zweifel die Hausregel, nicht umgekehrt. Die Notiz
+selbst, ihre Kopfzeile und ihre Verdichtung ändern sich dadurch nicht.
 
 **Bei abgeschalteter Zerlegung** (`query-decomposition-enabled=false`) erreicht die Notiz die Suche
 gar nicht: Der Rückfall baut die Suchanfrage ohne Modell und ohne Notiz. Das ist akzeptiert —

@@ -619,7 +619,8 @@ Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten]
 ## 6. Antwort erzeugen
 
 Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname, Dokument-ID, Chunk-Nummer und die
-vorgegebene Zitierform) zusammen mit der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
+vorgegebene Zitierform) zusammen mit der **Anweisung des Raums**, sofern er eine trägt (siehe
+unten), der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
 das **systemweit aktive Chat-Modell**. Die Notiz steht als eigener Block vor dem Verlauf und
 enthält hier **alle** Punkte, auch die Wünsche zur Antwortform, die die Suche nie sieht
 (Abschnitt 2); ohne Punkte entfällt der Block. Die Systemanweisung ist deutsch und weist
@@ -657,12 +658,33 @@ Anfrage scheitert. Für solche Modelle `top-k` senken und die Nachbar-Chunks abs
 steht in Abschnitt 10.3. Wie
 viele Tokens eine Antwort verbraucht hat, steht an der Antwort und in den Metriken (Abschnitt 10.2).
 
-Die Systemanweisung ist **nicht konfigurierbar**: Sie ist im Code festgelegt und enthält nur die
-Rolle, die Vorgabe der Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten zu antworten,
-und die Zitierregeln. Tonfall oder fachlicher Rahmen sind nicht Teil davon; eine Antwortsprache je
-Bibliothek oder je Person lässt sich nicht einstellen. Das Zitatformat ist ohnehin
-fest, weil Belegprüfung und Fundstellen darauf aufbauen. Dasselbe gilt für die Anweisung der
-Teilfragen-Zerlegung (Stufe 3). Konfigurierbar ist nur, welches Modell die Anweisung bekommt.
+Die **feste Systemanweisung** ist nicht konfigurierbar: Sie ist im Code festgelegt und enthält nur
+die Rolle, die Vorgabe der Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten
+zu antworten, und die Zitierregeln. Das Zitatformat ist fest, weil Belegprüfung und Fundstellen
+darauf aufbauen. Dasselbe gilt für die Anweisung der Teilfragen-Zerlegung (Stufe 3).
+
+**Ergänzen lässt sie sich je Raum.** Ein Raum trägt optional eine **Anweisung an das Modell** von
+höchstens 1000 Zeichen, etwa „Wir sind ein Landkreis, keine kreisfreie Stadt" oder „Nenne bei
+Fristen immer die Rechtsgrundlage". Sie wirkt in jedem Chat des Raums, auch in Chats von vor der
+Änderung, ab der nächsten Frage und nur in der Antwort, nie in der Teilfragen-Zerlegung. Im Prompt
+steht sie als eigener Block direkt nach der festen Systemanweisung und vor der Gesprächsnotiz. Seine
+Kopfzeile sagt dem Modell, was der Block ist und was nicht:
+
+- eine Vorgabe des Raums, kein Beleg und keine Quelle;
+- sie darf Sprache, Tonfall, Form und fachlichen Rahmen festlegen, und eine Sprachvorgabe darin geht
+  der Vorgabe Deutsch vor; die wiederholte Zeile nach dem letzten Chunk lässt die Sprache dann der
+  Anweisung;
+- die Zitierregeln hebt sie nicht auf: Was sie zu Zitiermarken, Zitatformat oder Quellen anders
+  verlangt, gilt nicht;
+- ein abweichender Wunsch der fragenden Person in diesem Gespräch geht ihr vor.
+
+Belegprüfung und Fundstellen (Abschnitt 7) kennen die Anweisung nicht und arbeiten mit ihr genau wie
+ohne sie. Ohne Anweisung entfällt der Block, und der Prompt ist zeichengleich zu dem eines Raums, der
+nie eine hatte. Wer sie setzen darf und wo sie in der Oberfläche steht, steht in
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 5. Im Chat zeigt
+die Kopfzeile jedem Mitglied schon vor der ersten Frage die Schaltfläche „Anweisung des Space", die
+den Text aufklappt. Eine Anweisung je Bibliothek, je Chat oder je Person gibt es nicht; konfigurierbar
+ist außerdem, welches Modell die Anweisung bekommt.
 
 Bei einer leeren Endauswahl (leerer Suchbereich, leere Leiste, nichts über der Schwelle) antwortet
 das Modell aus dem Gespräch allein (die Hinweise dazu stehen in Abschnitt 2). Jede Antwort, die

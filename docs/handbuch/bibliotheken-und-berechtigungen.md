@@ -557,7 +557,7 @@ Die Seite hat drei Reiter, und keine Überschrift im Reiter wiederholt seinen Na
 
 | Reiter | Inhalt |
 |---|---|
-| **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation ([Suche](suche.md), Abschnitt 2) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
+| **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation ([Suche](suche.md), Abschnitt 2), die **Anweisung an das Modell** ([Suche](suche.md), Abschnitt 6) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — für Administratoren als Auswahl, beim Eigentümer als schreibgeschützte Auswahl „Eigentümer" mit Schloss statt Pfeil und dem Hinweis, dass der Eigentümer über „Zum Eigentümer machen" bei einem anderen Mitglied wechselt — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
 | **Inhalte** | Eine Kachelliste aller Arten von Bestand — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
 
@@ -587,6 +587,13 @@ Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertr
 Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
 Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
 archivieren noch löschen.
+
+**Die Anweisung an das Modell setzt und ändert nur, wer im Raum die Rolle Administrator hat** —
+direkt, über eine Gruppe oder als Eigentümer. Kuratoren und Mitglieder lesen sie in den Stammdaten,
+und die Systemverwaltung ändert sie ohne diese Rolle nicht; Name und Beschreibung ändert sie
+weiterhin. Im eigenen Standard-Raum ist die Person selbst Administrator und hinterlegt dort eine
+persönliche Daueranweisung. Ein leeres Feld entfernt die Anweisung. Jede Änderung steht im
+Revisionsprotokoll als Änderung des Raums mit dem Feldnamen, der Text selbst nicht.
 
 ### Einen Raum anlegen: der Space-Assistent
 

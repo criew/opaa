@@ -39,7 +39,7 @@ app ab.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0010, 0011, 0012, 0013, 0031, 0035 (Entscheidung 5)
+- ADRs (`docs/decisions/`): 0010, 0011, 0012, 0013, 0031, 0035 (Entscheidung 5), 0043
 - Handbuch: `docs/handbuch/suche.md`, `docs/handbuch/prompt-bibliotheken.md`; Evaluierung:
   `eval/README.md`
 - Strukturtests: `SearchDependencyStructureTest`, `SearchDiagnosisRerankParityTest`,

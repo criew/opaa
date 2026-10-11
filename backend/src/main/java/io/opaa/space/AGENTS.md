@@ -38,7 +38,7 @@ foundation, identity, rights und knowledge ab.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0015, 0036 (Entscheidung 6 und 8)
+- ADRs (`docs/decisions/`): 0015, 0036 (Entscheidung 6 und 8), 0043
 - Handbuch: `docs/handbuch/bibliotheken-und-berechtigungen.md`, Abschnitte 5, 12 und 14;
   `docs/handbuch/suche.md`, Abschnitt 8
 - Strukturtests: `PermissionPackageBoundaryTest`, `ModularArchitectureTest`
