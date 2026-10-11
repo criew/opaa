@@ -14,7 +14,7 @@ import {
 import { apiErrorMessage } from '../../../services/apiErrorDetails'
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
-import SectionHead from '../../SectionHead'
+import KeyValueList from '../../KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
 
 /**
@@ -49,14 +49,22 @@ export default function DirectoryConnectorSection({
   }
 
   return (
-    <Box sx={{ mt: 2 }}>
-      <SectionHead>Verzeichniszugang</SectionHead>
+    <Box>
       {connector ? (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
-          Hinterlegt: {connector.type} · Realm {connector.realm} · Dienstkonto {connector.clientId}
-        </Typography>
+        <KeyValueList
+          sx={{ mb: 2 }}
+          entries={[
+            {
+              label: 'Verzeichnis',
+              value: connector.type === 'KEYCLOAK' ? 'Keycloak' : connector.type,
+            },
+            { label: 'Realm', value: connector.realm },
+            { label: 'Dienstkonto', value: connector.clientId },
+            { label: 'Adresse der Admin-API', value: connector.baseUrl },
+          ]}
+        />
       ) : (
-        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 1 }}>
+        <Typography sx={{ fontSize: 13, color: 'text.secondary', mb: 2 }}>
           Noch kein Zugang hinterlegt. Ohne ihn meldet jeder Lauf das Verzeichnis als nicht
           erreichbar — und entzieht damit nichts.
         </Typography>
@@ -68,32 +76,38 @@ export default function DirectoryConnectorSection({
         </Alert>
       )}
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1}>
+      <Stack spacing={1.5}>
         <TextField
           size="small"
-          label="Adresse der Admin-API (optional)"
-          value={baseUrl}
-          onChange={(e) => setBaseUrl(e.target.value)}
-          sx={{ minWidth: 260 }}
-        />
-        <TextField
-          size="small"
-          label="Dienstkonto (client id)"
+          fullWidth
+          label="Dienstkonto (Client-ID)"
           value={clientId}
           onChange={(e) => setClientId(e.target.value)}
-          sx={{ minWidth: 200 }}
         />
         <TextField
           size="small"
+          fullWidth
           type="password"
-          label="Geheimnis"
+          label="Geheimnis des Dienstkontos"
+          helperText={
+            connector
+              ? 'Leer lassen, um mit dem hinterlegten Geheimnis zu testen. Zum Speichern neu eingeben.'
+              : 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
+          }
           value={clientSecret}
           onChange={(e) => setClientSecret(e.target.value)}
-          sx={{ minWidth: 200 }}
+        />
+        <TextField
+          size="small"
+          fullWidth
+          label="Adresse der Admin-API (optional)"
+          helperText="Leer lassen, wenn OPAA sie unter der Adresse des Anbieters erreicht."
+          value={baseUrl}
+          onChange={(e) => setBaseUrl(e.target.value)}
         />
       </Stack>
 
-      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+      <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: 'wrap' }}>
         <Button
           variant="outlined"
           size="small"

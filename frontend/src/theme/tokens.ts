@@ -62,27 +62,33 @@ export const offWhite = '#F6F8FB'
 export const smoke = '#EEF2F7'
 
 /**
- * Meaning-only colors (guidelines 2.1): success, warning - never decorative. Danger is a
- * per-scheme role ({@link SchemeRoles.danger}) because it also serves as text colour.
+ * Tones of a signal colour (guidelines 2.2), mapped onto MUI's main/dark/light. `main` is also a
+ * text colour: >= 4.5:1 against bg-1..3 of its scheme; bg-1 is the text on every tone.
  */
-export const semanticColors = {
-  success: '#16B77B',
-  warning: '#F5B83D',
-} as const
-
-/**
- * Hover tones of the filled success/warning surfaces. Both carry dark text, so the hover gets
- * lighter, not darker - MUI's derived darker tone left success at 3.9:1.
- */
-export const semanticHoverColors = {
-  success: '#38C18F',
-  warning: '#F7C35D',
-} as const
+export interface SignalTones {
+  main: string
+  /** Hover/pressed tone of filled surfaces: darker under light text, lighter under dark text. */
+  hover: string
+  /** Lighter variant (MUI `light`). */
+  soft: string
+}
 
 /** Danger tones of the light schemes; the main tone is >= 4.5:1 against white, off-white, smoke. */
-const dangerLight = { main: '#CE2C31', hover: '#901E22', soft: '#D23B40' } as const
+const dangerLight: SignalTones = { main: '#CE2C31', hover: '#901E22', soft: '#D23B40' }
 /** Danger tones of the dark grounds; the main tone is >= 4.5:1 against carbon and navy-900..700. */
-const dangerDark = { main: '#FF6369', hover: '#FF7A80', soft: '#FF8287' } as const
+const dangerDark: SignalTones = { main: '#FF6369', hover: '#FF7A80', soft: '#FF8287' }
+/** Light-scheme amber: the dark grounds' amber reaches only 1.78:1 as text on white. */
+const warningLight: SignalTones = { main: '#8F5A00', hover: '#6B4300', soft: '#9A6100' }
+const warningDark: SignalTones = { main: '#F5B83D', hover: '#F7C35D', soft: '#F8CC73' }
+/** Light-scheme green: the dark grounds' green reaches only 2.59:1 as text on white. */
+const successLight: SignalTones = { main: '#11774F', hover: '#0B5A3B', soft: '#0E7A52' }
+const successDark: SignalTones = { main: '#16B77B', hover: '#38C18F', soft: '#5BCB9F' }
+
+/**
+ * Marker behind matched words (search hits), the same pale amber in both schemes; translucent, so
+ * it takes on the surface below. fg-1 keeps >= 4.5:1 on it over bg-1..3 of either scheme.
+ */
+export const markHighlight = 'rgba(245, 184, 61, 0.25)'
 
 /**
  * Semantic roles - the vocabulary every component uses (guidelines 2.2). One value set per
@@ -134,6 +140,10 @@ export interface SchemeRoles {
   dangerHover: string
   /** Lighter danger variant (MUI `error.light`); bg-1 keeps >= 4.5:1 on it. */
   dangerSoft: string
+  /** Warning - consequential but reversible states and actions, as text, icon and surface. */
+  warning: SignalTones
+  /** Success - completed and healthy states, as text, icon and surface. */
+  success: SignalTones
 }
 
 export const lightRoles: SchemeRoles = {
@@ -159,6 +169,8 @@ export const lightRoles: SchemeRoles = {
   danger: dangerLight.main,
   dangerHover: dangerLight.hover,
   dangerSoft: dangerLight.soft,
+  warning: warningLight,
+  success: successLight,
 }
 
 export const darkRoles: SchemeRoles = {
@@ -178,6 +190,8 @@ export const darkRoles: SchemeRoles = {
   danger: dangerDark.main,
   dangerHover: dangerDark.hover,
   dangerSoft: dangerDark.soft,
+  warning: warningDark,
+  success: successDark,
 }
 
 /**
@@ -202,6 +216,8 @@ export const navyRoles: SchemeRoles = {
   danger: dangerDark.main,
   dangerHover: dangerDark.hover,
   dangerSoft: dangerDark.soft,
+  warning: warningDark,
+  success: successDark,
 }
 
 /**
@@ -230,6 +246,8 @@ export const railRoles: SchemeRoles = {
   danger: dangerDark.main,
   dangerHover: dangerDark.hover,
   dangerSoft: dangerDark.soft,
+  warning: warningDark,
+  success: successDark,
 }
 
 /**

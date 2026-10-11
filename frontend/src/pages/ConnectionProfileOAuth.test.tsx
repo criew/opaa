@@ -70,7 +70,10 @@ describe('ConnectionProfileManagementPage, OAuth', () => {
   /** Opens „Zugang anlegen“ for the OAuth realm with name, address and client id entered. */
   async function newOAuthProfile(user: ReturnType<typeof userEvent.setup>) {
     renderWithProviders(<ConnectionProfileManagementPage />)
-    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
+    const button = await screen.findByRole('button', { name: 'Neuer Zugang' })
+    // the button stays disabled until the source types are loaded
+    await waitFor(() => expect(button).toBeEnabled())
+    await user.click(button)
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     await user.click(within(dialog).getByRole('radio', { name: /Nextcloud/ }))
     await user.click(within(dialog).getByLabelText(/^Name/))

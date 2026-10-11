@@ -108,6 +108,20 @@ export async function runIndexingViaApi(
   })
 }
 
+/**
+ * Legt als Systemverwaltung einen RSS-Zugang ohne Anmeldung an. Ein neuer Zugang ist für niemanden
+ * außer der Systemverwaltung freigegeben; aufräumen mit {@link deleteProfileViaApi}.
+ */
+export async function createRssProfileViaApi(name: string, serverUrl: string): Promise<string> {
+  return withApi('dev-admin', async (api) => {
+    const created = await api.post('/api/v1/admin/connection-profiles', {
+      data: { name, sourceType: RSS_FEED, serverUrl, authMethod: 'NONE', ownership: 'LIBRARY' },
+    })
+    expect(created.status(), await created.text()).toBe(201)
+    return ((await created.json()) as { id: string }).id
+  })
+}
+
 /** Die Kennungen der Zugänge, deren Name mit `prefix` beginnt. */
 export async function profileIdsByPrefix(prefix: string): Promise<string[]> {
   return withApi('dev-admin', async (api) => {

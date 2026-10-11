@@ -27,7 +27,6 @@ import {
 } from './connectionChoice'
 import { PRIVATE_LIBRARY_NOTE } from './privateLibrary'
 import { ownAddressAllowed } from './sources/sourceConnection'
-import ConnectionProfileRequestAction from './ConnectionProfileRequestAction'
 
 function defaultValueLabel(key: ProfileDefaultKey | undefined, value: unknown): string {
   if (key === undefined) return String(value)
@@ -73,8 +72,6 @@ interface ConnectionProfileSelectProps {
   offerOwnAddress: boolean
   /** A profile not to offer, such as the one a library is already connected through. */
   excludeProfileId?: string
-  /** Whether „Zugang vorschlagen“ takes the place of the hint who sets up profiles. */
-  offerRequest?: boolean
   /**
    * The options are those of the caller's own connected accounts, for her private library: each
    * is offered once, and an empty choice leads to „Verbundene Konten“. Otherwise a profile she has
@@ -89,8 +86,8 @@ interface ConnectionProfileSelectProps {
 
 /**
  * The choice of a connection profile ("Zugang") for a library among the profiles the person may
- * use now - the server lists no other; „Eigene Adresse“ appears only where the type admits it. Without any usable way the field says who sets up profiles instead; with
- * `offerRequest` the person can suggest one to the system administration right there.
+ * use now - the server lists no other; „Eigene Adresse“ appears only where the type admits it.
+ * Without any usable way the field says who sets up profiles instead.
  */
 export default function ConnectionProfileSelect({
   descriptor,
@@ -99,7 +96,6 @@ export default function ConnectionProfileSelect({
   onChange,
   offerOwnAddress,
   excludeProfileId,
-  offerRequest = false,
   onlyOwnAccounts = false,
   offerPrivate = false,
   idPrefix,
@@ -220,17 +216,13 @@ export default function ConnectionProfileSelect({
         )
       ) : state.loaded && selectable.length === 0 ? (
         <Alert severity="info" sx={{ mt: 1.5 }} data-testid={`${idPrefix}-connection-none`}>
-          {offerRequest
-            ? `Für die Quellart „${descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Schlagen Sie der Systemverwaltung einen vor.`
-            : `Für die Quellart „${descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Zugänge legt die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.`}
+          Für die Quellart „{descriptor.displayName}“ steht Ihnen kein Zugang zur Verfügung. Zugänge
+          legt die Systemverwaltung an und gibt sie frei; bitte wenden Sie sich an sie.
         </Alert>
-      ) : offerRequest ? null : (
+      ) : (
         <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
           Zugänge legt die Systemverwaltung an und gibt sie frei.
         </Typography>
-      )}
-      {offerRequest && !state.error && state.loaded && (
-        <ConnectionProfileRequestAction descriptor={descriptor} idPrefix={idPrefix} />
       )}
     </Box>
   )

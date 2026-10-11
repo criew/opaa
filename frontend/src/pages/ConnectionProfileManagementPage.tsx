@@ -13,7 +13,6 @@ import Typography from '@mui/material/Typography'
 import VpnKeyOutlinedIcon from '@mui/icons-material/VpnKeyOutlined'
 import type {
   ConnectionProfileImpactResponse,
-  ConnectionProfileRequestResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
 } from '../types/api'
@@ -34,7 +33,6 @@ import PageHeading from '../components/a11y/PageHeading'
 import AreaPageHeader from '../components/AreaPageHeader'
 import ConnectionProfileFormDialog from '../components/admin/connections/ConnectionProfileFormDialog'
 import ConnectorTypeLockSection from '../components/admin/connections/ConnectorTypeLockSection'
-import ConnectionProfileRequestSection from '../components/admin/connections/ConnectionProfileRequestSection'
 import ConnectionLogRetentionSection from '../components/admin/connections/ConnectionLogRetentionSection'
 import PrivateStorageSection from '../components/admin/connections/PrivateStorageSection'
 import DormantSourceConnectionsSection from '../components/admin/connections/DormantSourceConnectionsSection'
@@ -88,7 +86,7 @@ function accountsClause(
 /**
  * Die Zugänge der Installation (#2160): je Zugang Quellart, Server-Adresse, Anmeldeart und Zahl
  * der Verbindungen, dazu Bearbeiten, Sperren, die Notabschaltung „Alle Verbindungen trennen“ und
- * Löschen. Darunter die offenen Zugangswünsche und die Sperre je Quellart (#2161). Jede dieser
+ * Löschen. Darunter die Sperre je Quellart (#2161). Jede dieser
  * Handlungen fragt nach.
  */
 export default function ConnectionProfileManagementPage() {
@@ -101,7 +99,6 @@ export default function ConnectionProfileManagementPage() {
   const [form, setForm] = useState<{
     open: boolean
     profile: ConnectionProfileResponse | null
-    request?: ConnectionProfileRequestResponse
   }>({
     open: false,
     profile: null,
@@ -425,14 +422,6 @@ export default function ConnectionProfileManagementPage() {
         )}
 
         <Box sx={{ mt: 4 }}>
-          <ConnectionProfileRequestSection
-            reloadKey={reloadKey}
-            displayNameOf={displayNameOf}
-            onCreateProfile={(request) => setForm({ open: true, profile: null, request })}
-          />
-        </Box>
-
-        <Box sx={{ mt: 4 }}>
           <ConnectorTypeLockSection
             states={typeStates}
             error={typeError}
@@ -455,10 +444,9 @@ export default function ConnectionProfileManagementPage() {
         </Box>
 
         <ConnectionProfileFormDialog
-          key={form.profile?.id ?? form.request?.id ?? (form.open ? 'new-open' : 'new')}
+          key={form.profile?.id ?? (form.open ? 'new-open' : 'new')}
           open={form.open}
           profile={form.profile}
-          fromRequest={form.request ?? null}
           sourceTypes={sourceTypes}
           sourceTypesLoaded={sourceTypesLoaded}
           onClose={() => setForm({ open: false, profile: null })}

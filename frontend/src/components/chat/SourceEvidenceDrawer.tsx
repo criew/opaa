@@ -412,11 +412,8 @@ export default function SourceEvidenceDrawer({
                     </Box>
                   )}
                   {!doc.citationValid && (
-                    // #697 review, Befund 2: reiner Text in warning.main unterschreitet auf heller
-                    // Fläche 4,5:1 (docs/design/accessibility.md 2.4, rund 1,8:1 gemessen). Die Farbe
-                    // trägt hier ohnehin nicht allein die Bedeutung (2.4, letzter Punkt) - das Icon in
-                    // error.main erfüllt die UI-Komponentenschwelle von 3:1 in beiden Schemata, der Text
-                    // selbst läuft in text.secondary (kontraststark, siehe "geprüft, nicht zitiert" oben).
+                    // Die Signalfarbe steht im Icon (error.main, über 3:1 in beiden Schemata), der Text
+                    // läuft in text.secondary (Gestaltungsleitlinien 2.3).
                     <Box
                       component="span"
                       sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}

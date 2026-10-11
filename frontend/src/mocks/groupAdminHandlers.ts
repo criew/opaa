@@ -15,6 +15,14 @@ import {
   mockPendingPlan,
 } from './groupAdminFixtures'
 import { mockGroups } from './groupFixtures'
+import { mockOidcProviders } from './identityProviderFixtures'
+import {
+  isManyDirectoriesScenario,
+  manyDirectoryPendingPlan,
+  manyDirectoryProviders,
+  manyDirectoryStatuses,
+  switchScenarioSync,
+} from './directorySyncScenarioFixtures'
 
 const KIND_ORDER = ['AD_HOC', 'IDENTITY_PROVIDER', 'ORG_UNIT']
 const STATE_ORDER: GroupState[] = [
@@ -125,7 +133,22 @@ export const groupAdminHandlers = [
     )
   }),
 
-  http.get('/api/v1/admin/directory-sync/status', () => HttpResponse.json(mockDirectorySyncStatus)),
+  // The status follows the provider row's switch, as the backend's status line does.
+  http.get('/api/v1/admin/directory-sync/status', () => {
+    if (isManyDirectoriesScenario()) return HttpResponse.json(manyDirectoryStatuses())
+    return HttpResponse.json(
+      mockDirectorySyncStatus.map((status) => {
+        const provider = mockOidcProviders.find((p) => p.id === status.providerId)
+        return provider
+          ? {
+              ...status,
+              enabled: provider.directorySyncEnabled,
+              intervalMinutes: provider.directorySyncIntervalMinutes ?? null,
+            }
+          : status
+      }),
+    )
+  }),
 
   http.post('/api/v1/admin/oidc-providers/:providerId/directory-sync/dry-run', () =>
     HttpResponse.json(mockDirectorySyncReport),
@@ -135,11 +158,17 @@ export const groupAdminHandlers = [
     HttpResponse.json({ ...mockDirectorySyncReport, outcome: 'PENDING_CONFIRMATION' }),
   ),
 
-  http.get('/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan', ({ params }) =>
-    params.providerId === mockPendingPlan.providerId
+  http.get('/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan', ({ params }) => {
+    if (isManyDirectoriesScenario()) {
+      const plan = manyDirectoryPendingPlan(String(params.providerId))
+      return plan
+        ? HttpResponse.json(plan)
+        : HttpResponse.json({ error: 'Kein ausstehender Plan' }, { status: 404 })
+    }
+    return params.providerId === mockPendingPlan.providerId
       ? HttpResponse.json(mockPendingPlan)
-      : HttpResponse.json({ error: 'Kein ausstehender Plan' }, { status: 404 }),
-  ),
+      : HttpResponse.json({ error: 'Kein ausstehender Plan' }, { status: 404 })
+  }),
 
   http.post(
     '/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan/:planId/confirm',
@@ -236,11 +265,26 @@ export const groupAdminHandlers = [
     HttpResponse.json({ success: true, message: 'Das Verzeichnis ist erreichbar.' }),
   ),
 
-  http.put('/api/v1/admin/oidc-providers/:providerId/directory-sync', async ({ request }) => {
-    const body = (await request.json()) as { enabled: boolean; intervalMinutes?: number | null }
-    return HttpResponse.json({
-      directorySyncEnabled: body.enabled,
-      directorySyncIntervalMinutes: body.intervalMinutes ?? 360,
-    })
-  }),
+  http.put(
+    '/api/v1/admin/oidc-providers/:providerId/directory-sync',
+    async ({ params, request }) => {
+      const body = (await request.json()) as { enabled: boolean; intervalMinutes?: number | null }
+      const providerId = String(params.providerId)
+      const interval = body.enabled ? (body.intervalMinutes ?? 360) : null
+      if (isManyDirectoriesScenario()) {
+        switchScenarioSync(providerId, body.enabled, interval)
+        return HttpResponse.json(
+          manyDirectoryProviders().find((provider) => provider.id === providerId),
+        )
+      }
+      const provider = mockOidcProviders.find((p) => p.id === providerId)
+      if (provider) {
+        provider.directorySyncEnabled = body.enabled
+        provider.directorySyncIntervalMinutes = interval
+      }
+      return HttpResponse.json(
+        provider ?? { directorySyncEnabled: body.enabled, directorySyncIntervalMinutes: interval },
+      )
+    },
+  ),
 ]

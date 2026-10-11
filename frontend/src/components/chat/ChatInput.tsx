@@ -603,9 +603,8 @@ export default function ChatInput({
           })}
         {scope === 'none' && (
           <>
-            {/* #697 review, Befund 2: warning.main auf heller Fläche unterschreitet 4,5:1 (docs/design/accessibility.md
-                2.4) - text.secondary erfüllt den Kontrast in beiden Schemata; die Aussage ist an sich schon eine
-                Warnung, sie braucht keine zusätzliche Signalfarbe, um verstanden zu werden. */}
+            {/* Die Aussage ist an sich schon eine Warnung; sie braucht keine Signalfarbe im Text
+                (Gestaltungsleitlinien 2.3). */}
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Antwortet ohne Dokumente.
             </Typography>

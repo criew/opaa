@@ -7,7 +7,6 @@ import { useLibraryStore } from '../stores/libraryStore'
 import { useIndexingStore } from '../stores/indexingStore'
 import { capabilityMissingMessage } from '../utils/labels'
 import { mockSourceTypes } from '../mocks/libraryFixtures'
-import { mockConnectionProfileRequests } from '../mocks/connectionProfileFixtures'
 
 const mockNavigate = vi.fn()
 
@@ -181,7 +180,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     const tile = screen.getByRole('radio', { name: /Testquelle/ })
     expect(tile).toBeDisabled()
-    expect(tile).toHaveTextContent(
+    expect(tile).toHaveAccessibleDescription(
       'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.',
     )
     expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
@@ -240,7 +239,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       const upload = await screen.findByRole('radio', { name: /Upload/ })
       expect(upload).toBeDisabled()
-      expect(upload).toHaveTextContent(capabilityMissingMessage('CREATE_LIBRARY'))
+      expect(upload).toHaveAccessibleDescription(capabilityMissingMessage('CREATE_LIBRARY'))
       expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
     })
 
@@ -1304,7 +1303,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.queryByRole('radio', { name: /Eigene Adresse/ })).not.toBeInTheDocument()
     }, 15000)
 
-    it('offers to suggest a profile and does not go on when no way is left', async () => {
+    it('names the system administration and does not go on when no way is left', async () => {
       mockListSourceTypes.mockResolvedValue(
         withNextcloud({ profileRequired: true, creatable: true, creatableWithOwnAddress: false }),
       )
@@ -1314,9 +1313,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
 
       expect(await screen.findByTestId('library-create-connection-none')).toHaveTextContent(
-        /Schlagen Sie der Systemverwaltung einen vor/,
+        /bitte wenden Sie sich an sie/,
       )
-      expect(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' })).toBeVisible()
       expect(screen.queryByLabelText(/Adresse der Nextcloud/)).not.toBeInTheDocument()
       await next(user)
       expect(
@@ -1324,7 +1322,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       ).toBeInTheDocument()
     }, 15000)
 
-    it('offers to suggest a profile already where the type is locked for want of one', async () => {
+    it('hides a type that is usable only through a profile while none is usable', async () => {
       mockListSourceTypes.mockResolvedValue(
         withNextcloud({
           profileRequired: true,
@@ -1334,51 +1332,20 @@ describe('LibraryCreatePage (#596, #1942)', () => {
             'Die Quellart „Nextcloud“ ist nur über einen Zugang nutzbar, und es gibt noch keinen. Zugänge legt die Systemverwaltung an.',
         }),
       )
-      const user = userEvent.setup()
       await renderPage()
 
+      expect(await screen.findByRole('radio', { name: /Confluence/ })).toBeEnabled()
       expect(screen.queryByRole('radio', { name: /Nextcloud/ })).not.toBeInTheDocument()
-      const action = await screen.findByTestId('library-create-NEXTCLOUD-connection-request')
-      expect(action).toHaveTextContent(
-        'Für „Nextcloud“ steht Ihnen noch kein nutzbarer Zugang zur Verfügung.',
-      )
-      await user.click(screen.getByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }))
-      const dialog = await screen.findByRole('dialog', { name: 'Zugang vorschlagen' })
-      expect(dialog).toHaveTextContent('Quellart: Nextcloud')
-      await user.type(within(dialog).getByLabelText(/Server-Adresse/), 'https://cloud.neu.example')
-      await user.click(within(dialog).getByRole('button', { name: 'Vorschlagen' }))
-
-      await waitFor(() =>
-        expect(mockConnectionProfileRequests.at(-1)).toMatchObject({
-          sourceType: 'NEXTCLOUD',
-          serverUrl: 'https://cloud.neu.example',
-        }),
-      )
+      expect(screen.queryByText(/es gibt noch keinen/)).not.toBeInTheDocument()
     }, 15000)
 
-    it('offers no suggestion in the first step without any connector right', async () => {
-      mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
-      mockListSourceTypes.mockResolvedValue(
-        withNextcloud({ profileRequired: true, creatable: false, creatableWithOwnAddress: false }),
-      )
-      await renderPage()
-
-      expect(screen.queryByRole('radio', { name: /Nextcloud/ })).not.toBeInTheDocument()
-      expect(
-        screen.queryByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }),
-      ).not.toBeInTheDocument()
-    }, 15000)
-
-    it('offers the suggestion beside the own address while no profile exists yet', async () => {
+    it('offers the own address alone while no profile exists yet', async () => {
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
 
       await screen.findByLabelText(/Adresse der Nextcloud/)
       expect(screen.queryByTestId('library-create-connection')).not.toBeInTheDocument()
-      expect(
-        await screen.findByRole('button', { name: 'Zugang für Nextcloud vorschlagen' }),
-      ).toBeVisible()
     }, 15000)
 
     it('asks for no profile for a type that admits none', async () => {
@@ -1462,7 +1429,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       )
     }, 30000)
 
-    it('cannot be created without a profile and offers to suggest one', async () => {
+    it('cannot be created without a profile', async () => {
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /SharePoint/)
@@ -1471,11 +1438,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         'Für die Quellart „SharePoint“ steht Ihnen kein Zugang zur Verfügung.',
       )
       expect(screen.queryByLabelText('Adresse der Site')).not.toBeInTheDocument()
-      await user.click(screen.getByRole('button', { name: 'Zugang für SharePoint vorschlagen' }))
-      const dialog = await screen.findByRole('dialog', { name: 'Zugang vorschlagen' })
-      expect(dialog).toHaveTextContent(
-        'Die Quellart hat eine feste Adresse: https://graph.microsoft.com',
-      )
     }, 20000)
   })
 

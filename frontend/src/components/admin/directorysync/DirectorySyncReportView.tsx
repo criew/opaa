@@ -56,17 +56,24 @@ function UserList({ title, users }: { title: string; users: DirectorySyncUserRef
  */
 export default function DirectorySyncReportView({
   report,
+  showOutcome = true,
 }: {
   report: DirectorySyncReportResponse
+  /** Off where the surrounding text already names the outcome - a pending plan; the message stays. */
+  showOutcome?: boolean
 }) {
   return (
     <Box sx={{ mt: 1.5 }}>
-      <StatusLine
-        headline={outcomeLabel(report.outcome)}
-        tone={outcomeTone(report.outcome)}
-        detail={report.message}
-        label="Ergebnis des Laufs"
-      />
+      {showOutcome && (
+        <StatusLine
+          headline={outcomeLabel(report.outcome)}
+          tone={outcomeTone(report.outcome)}
+          detail={report.message}
+        />
+      )}
+      {!showOutcome && (
+        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>{report.message}</Typography>
+      )}
       <Stack spacing={1} sx={{ mt: 1 }}>
         <Typography sx={{ fontSize: 13 }}>
           Mitgliedschaften: +{report.membershipsAdded} / −{report.membershipsRemoved} · Anteil{' '}

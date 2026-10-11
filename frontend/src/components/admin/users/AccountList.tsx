@@ -78,10 +78,8 @@ function LocalStateCell({ user }: { user: LocalUserResponse }) {
  * when that provider issues no tokens any more, that this way in is closed - with the reason in
  * its tooltip.
  *
- * Der Hinweis trägt ein Symbol in der Signalfarbe, der Text bleibt `text.secondary`:
- * `warning.main` als reiner Text misst auf heller Fläche rund 1,8:1 und unterschreitet 4,5:1 -
- * dieselbe Stelle wurde in SourceEvidenceDrawer und ChatInput bereits zweimal so beseitigt (#697).
- * Ein Symbol braucht nur 3:1 und darf die Farbe behalten.
+ * Der Hinweis trägt ein Symbol in der Signalfarbe, der Text bleibt `text.secondary` - die
+ * Signalfarbe steht in Symbol und Kante, nicht im Fließtext (Gestaltungsleitlinien 2.3).
  */
 function ProviderStateCell({ account }: { account: AccountResponse }) {
   const hint = providerStateHint(account)
