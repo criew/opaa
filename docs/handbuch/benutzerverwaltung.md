@@ -163,6 +163,8 @@ der Systemverwaltung zurückgesetzt" steht an anderer Stelle als „Bitte legen 
 fest". Ein administratives Zurücksetzen **bestätigt keine E-Mail-Adresse**: Ein Konto, das seine
 Adresse noch nicht bestätigt hat, wird dadurch nicht anmeldefähig.
 
+Am Notanker-Konto der Systemverwaltung stehen beide Wege nicht zur Verfügung (Abschnitt 8).
+
 ## 6. Die Liste und die Auflagenprüfung
 
 Die Kontenliste im Bereich **Konten** führt **alle Konten der Installation** — lokale und die der
@@ -297,10 +299,15 @@ ist beabsichtigt — der Nachweis, wer wann welche Rechte hatte, überlebt das K
 Fälle ist die Sperre der vorgesehene Weg.
 
 Das Notanker-Konto der Systemverwaltung lässt sich **weder löschen noch sperren, befristen, in der
-Rolle herabsetzen oder übergeben** — auch dann nicht, wenn weitere Systemverwalter anmeldefähig
-sind. Die Oberfläche bietet diese Handlungen an ihm gar nicht erst an: „Sperren" und „Löschen" sind
-im Zeilenmenü abgeblendet und nennen den Grund, im Bearbeiten-Dialog sind Rolle und Ablaufdatum
-nicht änderbar. Name, Adresse und Anlagegrund lassen sich wie bei jedem Konto pflegen. Von der
+Rolle herabsetzen oder übergeben**, und die Verwaltung kann ihm **weder ein Passwort erzeugen noch
+einen Link zum Zurücksetzen schicken** — auch dann nicht, wenn weitere Systemverwalter anmeldefähig
+sind. Ein ersetztes Passwort machte das versiegelt hinterlegte wertlos, ohne dass jemand davon
+erfährt. Die Oberfläche bietet diese Handlungen an ihm gar nicht erst an: „Sperren", „Löschen",
+„Rücksetz-Link per E-Mail" und „Passwort erzeugen" sind im Zeilenmenü abgeblendet und nennen den
+Grund, im Bearbeiten-Dialog sind Rolle und Ablaufdatum nicht änderbar. Name, Adresse und
+Anlagegrund lassen sich wie bei jedem Konto pflegen. Sein Passwort ändert das Konto nach der
+Anmeldung selbst; ohne Anmeldung setzt es nur die Notfallprozedur aus dem Kapitel
+[Deployment](deployment.md) neu. Von der
 Sperre nach Inaktivität ist es ausgenommen; neu treffen kann es nur noch die Fehlversuch-Sperre nach
 fünf falschen Passwörtern (15 Minuten).
 

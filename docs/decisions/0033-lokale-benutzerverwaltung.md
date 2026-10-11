@@ -349,7 +349,9 @@ Konto); das Notanker-Konto bleibt anmeldefähig, aber jede erfolgreiche Anmeldun
 Audit-Ereignis (`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und löst eine Mail an alle übrigen Systemverwalter
 aus. Es ist **gegenüber Verwaltungsakten unverletzlich** (Entscheidung 3): keine Sperre durch einen
 Verwalter, keine Sperre nach Inaktivität (sein Zweck ist, unbenutzt zu bleiben), kein Ablaufdatum, kein
-Rollenentzug, keine Löschung, keine Übergabe (Entscheidung 12); die Admin-API antwortet auf jeden
+Rollenentzug, keine Löschung, keine Übergabe (Entscheidung 12), kein von der Verwaltung erzeugtes
+Passwort und kein Link zum Zurücksetzen (seit #1988; sein Passwort ändert das Konto selbst, neu
+gesetzt wird es nur über `OPAA_LOCAL_ADMIN_RESET=force`); die Admin-API antwortet auf jeden
 dieser Versuche mit 409 `BOOTSTRAP_ACCOUNT`, und die Oberfläche bietet sie für dieses Konto gar nicht
 an. **Die Fehlversuch-Sperre aus Entscheidung 9 gilt auch für dieses Konto:** Fünf Fehlversuche
 sperren es für 15 Minuten. Die Alternative — als einzige Bremse gegen Passwortraten am

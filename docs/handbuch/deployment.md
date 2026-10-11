@@ -2394,9 +2394,13 @@ aktiviert es bewusst über die Notfallprozedur unten.
    Notfallzugänge hinterlegt. Es ist der Weg zurück, wenn die Anbieteranbindung bricht.
 
 Das Konto bleibt anmeldefähig. **Gegenüber Verwaltungsakten ist es unverletzlich**: Löschen,
-Sperren, Befristen, Herabsetzen der Rolle und die Übergabe an einen Identitätsanbieter lehnt OPAA
-immer ab (409 `BOOTSTRAP_ACCOUNT`), auch wenn weitere Systemverwalter anmeldefähig sind — ein
-Ablaufdatum in der Zukunft würde den Notweg sonst still und zeitversetzt schließen. Von der Sperre
+Sperren, Befristen, Herabsetzen der Rolle, die Übergabe an einen Identitätsanbieter sowie ein von
+der Verwaltung erzeugtes Passwort oder einen Link zum Zurücksetzen lehnt OPAA immer ab (409
+`BOOTSTRAP_ACCOUNT`), auch wenn weitere Systemverwalter anmeldefähig sind — ein
+Ablaufdatum in der Zukunft würde den Notweg sonst still und zeitversetzt schließen, ein von einer
+anderen Systemverwaltung ersetztes Passwort das versiegelte wertlos machen, ohne dass die
+Verwahrenden davon erfahren. Sein Passwort ändert das Konto nach der Anmeldung selbst; ohne
+Anmeldung setzt es nur die Notfallprozedur unten neu. Von der Sperre
 nach Inaktivität ist es ausgenommen (sein Zweck ist, unbenutzt zu bleiben). Nur die
 Fehlversuch-Sperre (15 Minuten nach fünf Fehlversuchen) gilt auch für dieses Konto. **Jede erfolgreiche Anmeldung
 mit ihm steht im Nachweisprotokoll** (`LOCAL_BOOTSTRAP_ACCOUNT_LOGIN`) und löst eine Nachricht an
