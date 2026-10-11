@@ -121,7 +121,7 @@ class DropboxFileStoreContractTest extends FileStoreChangeFeedContract {
         new DropboxApiFactory(
             DropboxProperties.at(server.base()), TargetAddressValidator.disabled(), wait -> {});
     return apis.open(
-        new SourceSettings(null, server.base().toString(), null, null, false, null),
+        new SourceSettings(null, server.base().toString(), null, false, null),
         () -> token,
         RequestBudget.unbounded());
   }

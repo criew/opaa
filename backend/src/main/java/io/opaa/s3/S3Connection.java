@@ -5,8 +5,8 @@ import java.net.URISyntaxException;
 
 /**
  * Everything a client needs to talk to one object store: the normalised endpoint, the signing
- * region, the addressing style, the credentials and the outbound connection options (proxy, relaxed
- * TLS).
+ * region, the addressing style, the credentials and the relaxed TLS switch. The proxy is the
+ * house-wide outbound proxy, chosen when a client is built.
  *
  * @param endpoint normalised by {@link #normalizeEndpoint}: scheme and host lower-case, no path,
  *     query, fragment or user info
@@ -15,16 +15,12 @@ import java.net.URISyntaxException;
  *     metadata) is never consulted (ADR-0027, Entscheidung 7)
  * @param pathStyle {@code true} addresses {@code endpoint/bucket/key} (MinIO, Ceph), {@code false}
  *     {@code bucket.endpoint/key} (AWS, Hetzner)
- * @param proxyHost {@code null} when no proxy is configured
- * @param proxyPort a port in 1..65535 whenever {@code proxyHost} is set, ignored otherwise
  */
 public record S3Connection(
     URI endpoint,
     String region,
     boolean pathStyle,
     S3Credentials credentials,
-    String proxyHost,
-    int proxyPort,
     boolean insecureSsl) {
 
   public static final String DEFAULT_REGION = "us-east-1";
@@ -40,9 +36,6 @@ public record S3Connection(
       region = DEFAULT_REGION;
     } else {
       region = region.strip();
-    }
-    if (proxyHost != null && !proxyHost.isBlank() && (proxyPort < 1 || proxyPort > 65535)) {
-      throw new IllegalArgumentException("a proxy needs a port in 1..65535, got " + proxyPort);
     }
   }
 
@@ -104,8 +97,6 @@ public record S3Connection(
         + region
         + ", pathStyle="
         + pathStyle
-        + ", proxy="
-        + (proxyHost == null ? "none" : proxyHost + ":" + proxyPort)
         + ", insecureSsl="
         + insecureSsl
         + "]";

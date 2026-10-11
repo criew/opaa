@@ -45,7 +45,6 @@ public final class ConnectionProfileResponseMapper {
         request.getTenant(),
         request.getScopes(),
         toSettings(request.getConnectorSettings()),
-        request.getSourceProxy(),
         Boolean.TRUE.equals(request.getSourceInsecureSsl()),
         new ProfileEndpoints(
             request.getAuthorizationEndpoint(),
@@ -64,7 +63,6 @@ public final class ConnectionProfileResponseMapper {
         request.getTenant(),
         request.getScopes(),
         toSettings(request.getConnectorSettings()),
-        request.getSourceProxy(),
         Boolean.TRUE.equals(request.getSourceInsecureSsl()),
         new ProfileEndpoints(
             request.getAuthorizationEndpoint(),
@@ -107,7 +105,6 @@ public final class ConnectionProfileResponseMapper {
         .tokenEndpoint(profile.getEndpoints().token())
         .revocationEndpoint(profile.getEndpoints().revocation())
         .connectorSettings(settings == null ? null : settings.asMap())
-        .sourceProxy(profile.getSourceProxy())
         .sourceInsecureSsl(profile.isSourceInsecureSsl())
         .connectionCount(connectionCount)
         .connectedAccountCount(toCount(accounts.total()))
@@ -133,7 +130,6 @@ public final class ConnectionProfileResponseMapper {
         .authMethod(profile.getAuthMethod())
         .ownership(profile.getOwnership())
         .ownAccount(option.ownAccount())
-        .sourceProxy(profile.getSourceProxy())
         .sourceInsecureSsl(profile.isSourceInsecureSsl());
   }
 

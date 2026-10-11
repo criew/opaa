@@ -26,7 +26,6 @@ class ConnectionProfileResponseMapperTest {
   @Test
   void anOptionCarriesTheProfileAndItsConnectorDefaults() {
     ConnectionProfile profile = profile("{\"edition\": \"DC\", \"pathStyle\": true}");
-    ReflectionTestUtils.setField(profile, "sourceProxy", "proxy.example.org:8080");
     ReflectionTestUtils.setField(profile, "sourceInsecureSsl", true);
     ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.PERSON);
 
@@ -41,20 +40,17 @@ class ConnectionProfileResponseMapperTest {
     assertThat(option.getOwnership()).isEqualTo(ConnectionOwnership.PERSON);
     assertThat(option.getOwnAccount()).isTrue();
     assertThat(option.getConnectorDefaults()).isEqualTo(Map.of("edition", "DC", "pathStyle", true));
-    assertThat(option.getSourceProxy()).isEqualTo("proxy.example.org:8080");
     assertThat(option.getSourceInsecureSsl()).isTrue();
   }
 
   @Test
-  void aResponseCarriesProxyAndTlsSwitch() {
+  void aResponseCarriesTheTlsSwitch() {
     ConnectionProfile profile = profile(null);
     ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.LIBRARY);
-    ReflectionTestUtils.setField(profile, "sourceProxy", "proxy.example.org:8080");
 
     ConnectionProfileResponse response =
         ConnectionProfileResponseMapper.toResponse(profile, false, 0, TestPersonCounts.of(0, 0));
 
-    assertThat(response.getSourceProxy()).isEqualTo("proxy.example.org:8080");
     assertThat(response.getSourceInsecureSsl()).isFalse();
   }
 

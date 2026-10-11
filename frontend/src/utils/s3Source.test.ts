@@ -69,7 +69,7 @@ describe('s3CredentialsOf / s3SettingsOf', () => {
   })
 
   it('reads a stored configuration back and recognises the provider from the endpoint', () => {
-    const values = s3ValuesFromSettings('https://s3.eu-central-1.amazonaws.com', null, false, {
+    const values = s3ValuesFromSettings('https://s3.eu-central-1.amazonaws.com', false, {
       region: 'eu-central-1',
       pathStyle: false,
       scopes: [{ bucket: 'dokumente', prefix: '2025/' }],
@@ -79,12 +79,10 @@ describe('s3CredentialsOf / s3SettingsOf', () => {
     expect(values.provider).toBe('AWS')
     expect(values.scopes).toEqual([{ bucket: 'dokumente', prefix: '2025/' }])
     expect(values.includePatterns).toBe('**/*.pdf')
-    expect(s3ValuesFromSettings('https://minio.intern:9000', null, null, null).provider).toBe(
-      'MINIO',
+    expect(s3ValuesFromSettings('https://minio.intern:9000', null, null).provider).toBe('MINIO')
+    expect(s3ValuesFromSettings('https://fsn1.your-objectstorage.com', null, null).provider).toBe(
+      'HETZNER',
     )
-    expect(
-      s3ValuesFromSettings('https://fsn1.your-objectstorage.com', null, null, null).provider,
-    ).toBe('HETZNER')
   })
 })
 

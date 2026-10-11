@@ -7,7 +7,6 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.source.IndexingRun;
-import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ReconcilingAttachmentAccess;
@@ -24,8 +23,8 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.BoundedDownloader;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import java.io.IOException;
@@ -109,15 +108,6 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
 
   private ListingOutcome crawlDirectory(IndexingRun run) throws IOException, InterruptedException {
     UrlIndexingRequest request = toUrlIndexingRequest(run.settings(), run.credentials().value());
-    ProxyAndCredentials config;
-    try {
-      config = ProxyAndCredentials.parse(request.proxy(), request.credentials());
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new IndexingRunFailedException(e.getMessage());
-    }
-    String proxyHost = config.proxyHost();
-    int proxyPort = config.proxyPort();
-
     String url = request.url();
     if (!url.endsWith("/") && !hasFileExtension(url)) {
       url = url + "/";
@@ -130,12 +120,11 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     // crawls again and skips what is stored unchanged
     run.budgetContinuation(
         () -> "der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut");
-    // the secret valid now on every request; the proxy stays as resolved at the start
+    // the secret valid now on every request
     RenewableCredential<String> authHeader =
-        run.credentials()
-            .renewableAfterRejection(secret -> basicAuthHeader(request.proxy(), secret));
+        run.credentials().renewableAfterRejection(UrlIndexingExecutor::basicAuthHeader);
     AutoindexCrawlerService.CrawlResult crawlResult =
-        crawlerService.crawl(url, proxyHost, proxyPort, authHeader, request.insecureSsl(), budget);
+        crawlerService.crawl(url, authHeader, request.insecureSsl(), budget);
     List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
     log.info("Discovered {} files for URL indexing", allFiles.size());
 
@@ -183,8 +172,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     run.progress().setTotal(allFiles.size());
     run.progress().report();
 
-    HttpClient httpClient =
-        SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, request.insecureSsl());
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient(request.insecureSsl());
     ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();
     var folderMirror = new SourceFolderMirror(folderService, run.library());
     String normalizedUrl = url;
@@ -467,8 +455,8 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
   }
 
   /** The Basic {@code Authorization} value of {@code credentials}, {@code null} for none. */
-  private static String basicAuthHeader(String proxy, String credentials) {
-    ProxyAndCredentials parsed = ProxyAndCredentials.parse(proxy, credentials);
+  private static String basicAuthHeader(String credentials) {
+    BasicCredentials parsed = BasicCredentials.parse(credentials);
     return SourceHttpClientFactory.buildAuthHeader(parsed.username(), parsed.password());
   }
 
@@ -478,7 +466,6 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * UrlIndexingExecutorCredentialsTest} can assert on it over the decryption path a real run takes.
    */
   static UrlIndexingRequest toUrlIndexingRequest(SourceSettings settings, String credentials) {
-    return new UrlIndexingRequest(
-        settings.sourceUrl(), settings.sourceProxy(), credentials, settings.sourceInsecureSsl());
+    return new UrlIndexingRequest(settings.sourceUrl(), credentials, settings.sourceInsecureSsl());
   }
 }

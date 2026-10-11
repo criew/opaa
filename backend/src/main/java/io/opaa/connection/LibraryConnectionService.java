@@ -206,9 +206,8 @@ public class LibraryConnectionService {
    * Connects a saved library through {@code profileId} at {@code requestedUrl}, which must lie
    * under the profile; without one an address under the previous profile moves under the new one.
    * The connector checks the configuration the profile gives the library (German 400 when it
-   * refuses); then the library adopts the frame (proxy, TLS switch, bound defaults - own values
-   * give way), and its secret stays only while its {@link io.opaa.connection.profile.SecretTarget}
-   * does.
+   * refuses); then the library adopts the frame (TLS switch, bound defaults - own values give way),
+   * and its secret stays only while its {@link io.opaa.connection.profile.SecretTarget} does.
    *
    * @return the fields the move changed, as the audit of a direct change names them
    */
@@ -281,8 +280,8 @@ public class LibraryConnectionService {
 
   /**
    * Releases the library from its profile; it keeps address and secret, and what the profile set
-   * for it - defaults, proxy, TLS switch - becomes its own, so it runs on unchanged. Refused while
-   * its type is usable only through a profile.
+   * for it - defaults, TLS switch - becomes its own, so it runs on unchanged. Refused while its
+   * type is usable only through a profile.
    *
    * @return the fields the release changed for the connector, none when it runs on unchanged
    */

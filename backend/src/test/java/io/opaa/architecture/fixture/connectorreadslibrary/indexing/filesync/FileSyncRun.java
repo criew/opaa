@@ -3,7 +3,7 @@ package io.opaa.architecture.fixture.connectorreadslibrary.indexing.filesync;
 import io.opaa.architecture.fixture.connectorreadslibrary.knowledge.KnowledgeLibrary;
 
 public class FileSyncRun {
-  String proxy(KnowledgeLibrary library) {
-    return library.getSourceProxy();
+  boolean insecureSsl(KnowledgeLibrary library) {
+    return library.isSourceInsecureSsl();
   }
 }

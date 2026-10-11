@@ -331,9 +331,9 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
-  void createLibraryRejectsFilesystemSourceTypeCombinedWithCredentialsAndProxy() {
-    // PR #489 review, Befund 6b: a FILESYSTEM request that only ever carries sourceCredentials/
-    // sourceProxy (no sourceUrl at all) must still be rejected - the earlier
+  void createLibraryRejectsFilesystemSourceTypeCombinedWithCredentials() {
+    // PR #489 review, Befund 6b: a FILESYSTEM request that only ever carries sourceCredentials
+    // (no sourceUrl at all) must still be rejected - the earlier
     // createLibraryRejectsFilesystemSourceTypeCombinedWithAUrl only exercised the sourceUrl branch
     // of the same check.
     UUID owner = createUser(organizationA);
@@ -341,7 +341,6 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
             .sourcePath("/data/documents")
             .sourceCredentials("admin:secret")
-            .sourceProxy("proxy.example.com:8080")
             .build();
 
     assertThatThrownBy(() -> libraryService.createLibrary(request, currentUserOf(owner)))
@@ -553,7 +552,6 @@ class KnowledgeLibraryServiceIntegrationTest {
     LibraryCreation request =
         libraryCreation("Web-Verzeichnis", SourceTypes.HTTP_DIRECTORY)
             .sourceUrl(URI.create("https://files.example.com/documents/"))
-            .sourceProxy("proxy.example.com:8080")
             .sourceCredentials("admin:secret")
             .sourceInsecureSsl(true)
             .build();
@@ -562,7 +560,6 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThat(response.library().getSourceType()).isEqualTo(SourceTypes.HTTP_DIRECTORY);
     assertThat(sourceUrl(response)).isEqualTo(URI.create("https://files.example.com/documents/"));
-    assertThat(response.managementDetail().sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(response.managementDetail().sourceInsecureSsl()).isTrue();
     assertThat(response.toString()).doesNotContain("admin:secret");
     assertThat(response.getClass().getMethods())
@@ -842,7 +839,6 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryUpdate("Web-Verzeichnis")
             .sourceUrl(URI.create("https://new.example.com/documents/"))
             .sourceCredentials("admin:new-secret")
-            .sourceProxy("proxy.example.com:8080")
             .sourceInsecureSsl(true)
             .build();
 
@@ -852,7 +848,6 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThat(updated.library().getSourceType()).isEqualTo(SourceTypes.HTTP_DIRECTORY);
     assertThat(sourceUrl(updated)).isEqualTo(URI.create("https://new.example.com/documents/"));
-    assertThat(updated.managementDetail().sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(updated.managementDetail().sourceInsecureSsl()).isTrue();
     assertThat(updated.toString()).doesNotContain("new-secret").doesNotContain("old-secret");
 
@@ -1411,7 +1406,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void getLibraryHidesSourceConfigurationFromAViewerButNotFromAManagerOrAbove() {
-    // #507: sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/sourceCredentialsSet expose
+    // #507: sourcePath/sourceUrl/sourceInsecureSsl/sourceCredentialsSet expose
     // internal server infrastructure (a filesystem path here) - fine for whoever may change it
     // (MANAGER+, the same bar updateLibrary enforces), a leak for a mere VIEWER of an
     // organization-wide connector library.
@@ -1464,7 +1459,6 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(asEditor.myRole()).isEqualTo(AssetRole.EDITOR);
     assertThat(asEditor.managementDetail().sourcePath()).isNull();
     assertThat(sourceUrl(asEditor)).isNull();
-    assertThat(asEditor.managementDetail().sourceProxy()).isNull();
     assertThat(asEditor.managementDetail().sourceInsecureSsl()).isNull();
     assertThat(asEditor.managementDetail().sourceCredentialsSet()).isNull();
 
@@ -1475,7 +1469,6 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(asViewer.myRole()).isEqualTo(AssetRole.VIEWER);
     assertThat(asViewer.managementDetail().sourcePath()).isNull();
     assertThat(sourceUrl(asViewer)).isNull();
-    assertThat(asViewer.managementDetail().sourceProxy()).isNull();
     assertThat(asViewer.managementDetail().sourceInsecureSsl()).isNull();
     assertThat(asViewer.managementDetail().sourceCredentialsSet()).isNull();
     // sourceType itself (the connector kind, not where it points) stays visible to everyone.

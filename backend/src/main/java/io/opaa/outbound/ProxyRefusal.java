@@ -27,8 +27,11 @@ public final class ProxyRefusal {
   private ProxyRefusal() {}
 
   /** The German message when {@code failure} or one of its causes is a refused tunnel. */
-  public static Optional<String> describe(IOException failure) {
+  public static Optional<String> describe(Throwable failure) {
     for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof RefusedException refused) {
+        return Optional.of(refused.getMessage());
+      }
       String message = cause.getMessage();
       if (message == null) {
         continue;
@@ -57,6 +60,33 @@ public final class ProxyRefusal {
     return status == PROXY_AUTHENTICATION_REQUIRED
         ? Optional.of(message(PROXY_AUTHENTICATION_REQUIRED))
         : Optional.empty();
+  }
+
+  /** {@code otherwise} unless {@code failure} or one of its causes is a refused tunnel. */
+  public static String failureMessage(Throwable failure, String otherwise) {
+    return describe(failure).orElse(otherwise);
+  }
+
+  /** {@code otherwise} unless {@code status} is the outbound proxy's {@code 407}. */
+  public static String statusMessage(int status, String otherwise) {
+    return describeStatus(status).orElse(otherwise);
+  }
+
+  /**
+   * The failure for an answer {@code status} that is no success: a {@link RefusedException} for the
+   * outbound proxy's {@code 407}, otherwise an {@link IOException} with {@code otherwise}.
+   */
+  public static IOException statusFailure(int status, String otherwise) {
+    return status == PROXY_AUTHENTICATION_REQUIRED
+        ? new RefusedException(status)
+        : new IOException(otherwise);
+  }
+
+  /** The outbound proxy refused the connection; the message is German and user-facing. */
+  public static final class RefusedException extends IOException {
+    public RefusedException(int status) {
+      super(message(status));
+    }
   }
 
   private static String message(int status) {

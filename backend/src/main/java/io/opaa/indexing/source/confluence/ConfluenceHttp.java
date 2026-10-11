@@ -2,6 +2,7 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.source.RequestBudget;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.RateLimitPolicy;
@@ -269,20 +270,6 @@ final class ConfluenceHttp {
     return connection;
   }
 
-  /**
-   * The proxy is as caller-controlled as the target and decides where the TCP connection - and the
-   * credentials on it - actually go; it passes the same address-range check, with the same
-   * allowlist hint.
-   */
-  static void validateProxy(TargetAddressValidator validator, String proxyHost)
-      throws ConfluenceAccessException {
-    try {
-      validator.validateHost(proxyHost);
-    } catch (IOException e) {
-      throw new ConfluenceAccessException(e.getMessage() + " " + ALLOWLIST_HINT, e);
-    }
-  }
-
   SourceRequestMeter meter() {
     return budget.meter();
   }
@@ -319,7 +306,8 @@ final class ConfluenceHttp {
               "Confluence kennt " + resource + " nicht (HTTP 404).");
       default ->
           new ConfluenceAccessException(
-              "Confluence antwortete für " + resource + " mit HTTP " + status + ".");
+              ProxyRefusal.statusMessage(
+                  status, "Confluence antwortete für " + resource + " mit HTTP " + status + "."));
     };
   }
 
@@ -338,6 +326,10 @@ final class ConfluenceHttp {
     String host = connection.baseUrl().getHost();
     if (e instanceof TargetAddressValidator.TargetAddressBlockedException) {
       return new ConfluenceAccessException(e.getMessage() + " " + ALLOWLIST_HINT, e);
+    }
+    Optional<String> proxyRefusal = ProxyRefusal.describe(e);
+    if (proxyRefusal.isPresent()) {
+      return new ConfluenceAccessException(proxyRefusal.get(), e);
     }
     if (e instanceof RedirectFollowingFetcher.RedirectRejectedException rejected) {
       return new ConfluenceAccessException(

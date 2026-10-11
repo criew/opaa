@@ -115,9 +115,7 @@ class DropboxSourceConnectorTest {
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("fest");
     assertThatThrownBy(
-            () ->
-                connector.validate(
-                    new SourceSettings(null, null, null, null, true, folders("/Akten"))))
+            () -> connector.validate(new SourceSettings(null, null, null, true, folders("/Akten"))))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Zertifikatsprüfung");
   }
@@ -272,7 +270,7 @@ class DropboxSourceConnectorTest {
   }
 
   private static SourceSettings request(String url, ConnectorData settings) {
-    return new SourceSettings(null, url, null, null, false, settings);
+    return new SourceSettings(null, url, null, false, settings);
   }
 
   private static ConnectorData folders(String... folders) {

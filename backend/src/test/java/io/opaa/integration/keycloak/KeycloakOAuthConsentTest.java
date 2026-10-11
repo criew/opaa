@@ -170,7 +170,6 @@ class KeycloakOAuthConsentTest {
         null,
         FROM_PROFILE,
         null,
-        null,
         false,
         new ProfileEndpoints(realm + "/auth", realm + "/token", realm + "/revoke"),
         0);

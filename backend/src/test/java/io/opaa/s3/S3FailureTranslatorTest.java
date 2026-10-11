@@ -62,6 +62,23 @@ class S3FailureTranslatorTest {
   }
 
   @Test
+  void theOutboundProxysAnswersAreNamedAsSuch() {
+    assertThat(translator.translate(S3Operation.LIST_OBJECTS, "b", null, service(407, null)))
+        .isInstanceOf(S3AccessException.Unreachable.class)
+        .hasMessageContaining("Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt")
+        .hasMessageContaining("Status 407");
+    SdkClientException refusedTunnel =
+        SdkClientException.builder()
+            .message("Unable to execute HTTP request")
+            .cause(new java.io.IOException("CONNECT refused by proxy: HTTP/1.1 403 Forbidden"))
+            .build();
+    assertThat(translator.translate(S3Operation.LIST_BUCKETS, null, null, refusedTunnel))
+        .isInstanceOf(S3AccessException.Unreachable.class)
+        .hasMessageContaining("Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt")
+        .hasMessageContaining("Status 403");
+  }
+
+  @Test
   void aNotFoundAnswerNamesWhatIsMissingForTheOperation() {
     assertThat(translator.translate(S3Operation.PUT_OBJECT, "b", "k", service(404, null)))
         .isInstanceOf(S3AccessException.BucketNotFound.class);

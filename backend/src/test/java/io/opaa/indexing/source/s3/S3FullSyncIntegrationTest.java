@@ -152,7 +152,6 @@ class S3FullSyncIntegrationTest {
             SourceTypes.S3,
             null,
             store.endpoint().toString(),
-            null,
             credentials.accessKey() + ":" + credentials.secretKey(),
             false);
     S3TestSettings.configure(

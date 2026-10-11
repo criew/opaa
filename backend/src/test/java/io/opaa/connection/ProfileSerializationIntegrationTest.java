@@ -44,7 +44,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 class ProfileSerializationIntegrationTest {
 
   private static final String ADMIN = "/api/v1/admin/connection-profiles";
-  private static final String PROXY = "proxy.example.org:3128";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
@@ -85,14 +84,14 @@ class ProfileSerializationIntegrationTest {
     connecting.awaitReached();
     probe.changeChecks();
     probe.validations();
-    Future<Integer> change = executor.submit(() -> statusOf(changeProxy(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
     waitUntilFinishedOrBlocked(change);
     connecting.release();
 
     assertThat(connect.get(30, TimeUnit.SECONDS)).isEqualTo(200);
     assertThat(change.get(30, TimeUnit.SECONDS)).isEqualTo(200);
     assertThat(connectedTo(library)).isEqualTo(profile);
-    assertThat(checkedWithProxy(url)).isTrue();
+    assertThat(checkedWithTlsSwitch(url)).isTrue();
   }
 
   @Test
@@ -103,7 +102,7 @@ class ProfileSerializationIntegrationTest {
     String url = "https://probe.example.org/waehrenddessen";
     UUID library = createOwnLibrary(url);
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeProxy(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
     changing.awaitReached();
     Future<Integer> connect = executor.submit(() -> statusOf(connect(library, profile)));
     waitUntilFinishedOrBlocked(connect);
@@ -112,8 +111,8 @@ class ProfileSerializationIntegrationTest {
     assertThat(change.get(30, TimeUnit.SECONDS)).isEqualTo(200);
     assertThat(connect.get(30, TimeUnit.SECONDS)).isIn(200, 409);
     if (profile.equals(connectedTo(library))) {
-      assertThat(checkedWithProxy(url))
-          .as("connected without a check under the new proxy")
+      assertThat(checkedWithTlsSwitch(url))
+          .as("connected without a check under the new TLS switch")
           .isTrue();
     }
   }
@@ -126,7 +125,7 @@ class ProfileSerializationIntegrationTest {
     String name = "Neu " + UUID.randomUUID();
     String url = "https://probe.example.org/neu";
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeProxy(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
     changing.awaitReached();
     Future<Integer> create =
         executor.submit(
@@ -148,7 +147,9 @@ class ProfileSerializationIntegrationTest {
         jdbc.queryForList("SELECT id FROM assets WHERE name = ?", UUID.class, name);
     libraries.addAll(created);
     if (!created.isEmpty()) {
-      assertThat(checkedWithProxy(url)).as("created without a check under the new proxy").isTrue();
+      assertThat(checkedWithTlsSwitch(url))
+          .as("created without a check under the new TLS switch")
+          .isTrue();
     }
   }
 
@@ -158,7 +159,7 @@ class ProfileSerializationIntegrationTest {
     Pause changing = probe.pauseSourceChange(createLibrary(profile, "vorhanden"));
     UUID library = createLibrary(profile, "loesen");
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeProxy(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
     changing.awaitReached();
     Future<Integer> release =
         executor.submit(
@@ -175,11 +176,11 @@ class ProfileSerializationIntegrationTest {
     if (connectedTo(library) == null) {
       assertThat(
               jdbc.queryForObject(
-                  "SELECT source_proxy FROM knowledge_libraries WHERE id = ?",
-                  String.class,
+                  "SELECT source_insecure_ssl FROM knowledge_libraries WHERE id = ?",
+                  Boolean.class,
                   library))
-          .as("released with the proxy the profile no longer sets")
-          .isEqualTo(PROXY);
+          .as("released with the TLS switch the profile no longer sets")
+          .isTrue();
     }
   }
 
@@ -191,7 +192,7 @@ class ProfileSerializationIntegrationTest {
     String url = "https://probe.example.org/alt";
     UUID library = createLibrary(profile, "alt");
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeProxy(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
     changing.awaitReached();
     Future<Integer> update =
         executor.submit(
@@ -217,20 +218,19 @@ class ProfileSerializationIntegrationTest {
                   .anyMatch(
                       requested ->
                           url.equals(requested.sourceUrl())
-                              && PROXY.equals(requested.sourceProxy())
+                              && requested.sourceInsecureSsl()
                               && requested.connectorSettings() != null
                               && "neu".equals(requested.connectorSettings().get("topic"))))
-          .as("changed without a check under the new proxy")
+          .as("changed without a check under the new TLS switch")
           .isTrue();
     }
   }
 
-  /** Whether the connector checked a configuration at {@code url} through the new proxy. */
-  private boolean checkedWithProxy(String url) {
+  /** Whether the connector checked a configuration at {@code url} with the new TLS switch. */
+  private boolean checkedWithTlsSwitch(String url) {
     return Stream.concat(
             probe.validations().stream(), probe.changeChecks().stream().map(ChangeCheck::requested))
-        .anyMatch(
-            settings -> url.equals(settings.sourceUrl()) && PROXY.equals(settings.sourceProxy()));
+        .anyMatch(settings -> url.equals(settings.sourceUrl()) && settings.sourceInsecureSsl());
   }
 
   private UUID connectedTo(UUID library) {
@@ -265,7 +265,7 @@ class ProfileSerializationIntegrationTest {
         .content("{\"profileId\": \"" + profile + "\"}");
   }
 
-  private MockHttpServletRequestBuilder changeProxy(UUID profile) throws Exception {
+  private MockHttpServletRequestBuilder changeTlsSwitch(UUID profile) throws Exception {
     String name =
         JsonPath.read(
             mockMvc
@@ -279,9 +279,9 @@ class ProfileSerializationIntegrationTest {
             """
             {"name": "%s", "serverUrl": "https://probe.example.org", "authMethod": "NONE",
              "ownership": "LIBRARY", "connectorSettings": {"edition": "DC"},
-             "sourceProxy": "%s"}
+             "sourceInsecureSsl": true}
             """
-                .formatted(name, PROXY));
+                .formatted(name));
   }
 
   private UUID createProfile() throws Exception {

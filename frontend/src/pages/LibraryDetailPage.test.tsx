@@ -1400,11 +1400,10 @@ describe('LibraryDetailPage', () => {
     expect(await screen.findByTestId('confluence-sharing-consequence')).toHaveTextContent(
       /weist das Laufprotokoll das aus/,
     )
-    // the scope itself - edition and spaces - is visible to the VIEWER, address and proxy are not
+    // the scope itself - edition and spaces - is visible to the VIEWER, the address is not
     expect(screen.getByText('Bauamt (BAU)')).toBeInTheDocument()
     // Die Edition steht zweimal: in der Umfangskurzzeile des Kopfes und im Reiter „Quelle".
     expect(screen.getAllByText(/Cloud/)).toHaveLength(2)
-    expect(screen.queryByText(/Proxy/)).not.toBeInTheDocument()
     unmount()
 
     setLibraryState(
@@ -1503,7 +1502,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByTestId('confluence-incomplete-listing-warning')).not.toBeInTheDocument()
   })
 
-  // #507: the backend now only serves sourcePath/sourceUrl/sourceProxy/sourceInsecureSsl/
+  // #507: the backend now only serves sourcePath/sourceUrl/sourceInsecureSsl/
   // sourceCredentialsSet to a caller with at least MANAGER - a VIEWER's library object simply
   // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to
   // prove the frontend itself withholds the display rather than merely reflecting an already
@@ -1554,7 +1553,6 @@ describe('LibraryDetailPage', () => {
         description: ownerLibrary.description,
         sourcePath: '/data/umgezogen',
         sourceUrl: undefined,
-        sourceProxy: undefined,
         sourceCredentials: undefined,
         sourceInsecureSsl: false,
         sourceSettings: { excludePatterns: [] },
@@ -3828,7 +3826,6 @@ describe('LibraryDetailPage', () => {
         detailsOf(connectorLibrary, {
           sourceType: 'HTTP_DIRECTORY',
           sourceUrl: 'https://files.example.com/dokumente/',
-          sourceProxy: null,
           sourceInsecureSsl: false,
         }),
       )

@@ -871,7 +871,6 @@ class LibraryDocumentServiceIntegrationTest {
             sourceType,
             null,
             remoteBaseUrl + "/",
-            null,
             sourceCredentials,
             false);
     library = libraryRepository.save(library);
@@ -1034,7 +1033,6 @@ class LibraryDocumentServiceIntegrationTest {
             null,
             blockedBaseUrl + "/",
             null,
-            null,
             false);
     remoteLibrary = libraryRepository.save(remoteLibrary);
     assetGrantRepository.save(
@@ -1155,7 +1153,6 @@ class LibraryDocumentServiceIntegrationTest {
             editor.getId(),
             SourceTypes.FILESYSTEM,
             sourcePath,
-            null,
             null,
             null,
             false);

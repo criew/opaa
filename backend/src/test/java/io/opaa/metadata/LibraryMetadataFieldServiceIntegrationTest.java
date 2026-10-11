@@ -707,7 +707,6 @@ class LibraryMetadataFieldServiceIntegrationTest {
             sourcePath.toString(),
             null,
             null,
-            null,
             false));
   }
 

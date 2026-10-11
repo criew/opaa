@@ -194,7 +194,6 @@ class ProviderTokensRevocationTest {
             null,
             auth,
             null,
-            null,
             false,
             ProfileEndpoints.NONE,
             0);

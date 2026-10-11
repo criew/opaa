@@ -4,8 +4,8 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.BoundedDownloader;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.io.FilterInputStream;
 import java.io.IOException;
@@ -20,9 +20,8 @@ import org.slf4j.LoggerFactory;
 /**
  * Streams the original of a URL-fetched document from the source URL stored at indexing time - no
  * part of the request decides which URL is fetched. The target validation is applied again on every
- * hop and to the proxy, a redirect is only followed within the same origin, and the resolved proxy,
- * credentials and TLS switch apply as for a run; the credentials reach only the outbound {@code
- * Authorization} header.
+ * hop, a redirect is only followed within the same origin, and the resolved credentials and TLS
+ * switch apply as for a run; the credentials reach only the outbound {@code Authorization} header.
  *
  * <p>The body is bounded by {@link RemoteContentProperties#maxBytes()} while streaming, each hop by
  * {@link RemoteContentProperties#timeoutSeconds()} and the whole transfer by {@link
@@ -56,13 +55,8 @@ public class RemoteOriginalAccess implements OriginalAccess {
     }
     HttpClient httpClient = null;
     try {
-      ProxyAndCredentials config =
-          ProxyAndCredentials.parse(settings.sourceProxy(), settings.sourceCredentials());
-      httpClient =
-          SourceHttpClientFactory.buildHttpClient(
-              config.proxyHost(), config.proxyPort(), settings.sourceInsecureSsl());
-      // the proxy decides where the connection (and Authorization below) goes
-      targetAddressValidator.validateHost(config.proxyHost());
+      BasicCredentials config = BasicCredentials.parse(settings.sourceCredentials());
+      httpClient = SourceHttpClientFactory.buildHttpClient(settings.sourceInsecureSsl());
       String authHeader =
           SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
 
@@ -98,9 +92,7 @@ public class RemoteOriginalAccess implements OriginalAccess {
           };
       return Optional.of(
           DocumentContent.ofStream(closingStream, document.getFileName(), contentType));
-    } catch (BoundedDownloader.AttachmentTooLargeException
-        | ProxyAndCredentials.InvalidProxyConfigurationException
-        | IOException e) {
+    } catch (BoundedDownloader.AttachmentTooLargeException | IOException e) {
       log.warn("Remote document content unavailable: {} ({})", sourceUrl, e.getMessage());
       closeQuietly(httpClient);
       return Optional.empty();

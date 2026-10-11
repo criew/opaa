@@ -163,9 +163,9 @@ public class S3AccessException extends IOException {
   }
 
   /**
-   * The target-address validation refused the endpoint, the proxy or a bucket host; the message
-   * names the allowlist variable of the side that owns the client (ADR-0027, Entscheidung 8;
-   * ADR-0030, Entscheidung 8).
+   * The target-address validation refused the endpoint or a bucket host; the message names the
+   * allowlist variable of the side that owns the client (ADR-0027, Entscheidung 8; ADR-0030,
+   * Entscheidung 8).
    */
   public static final class TargetBlocked extends S3AccessException {
     public TargetBlocked(String message, String allowlistHint) {

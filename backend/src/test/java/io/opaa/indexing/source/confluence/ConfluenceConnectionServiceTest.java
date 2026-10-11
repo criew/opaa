@@ -76,7 +76,7 @@ class ConfluenceConnectionServiceTest {
     String url =
         start(deployment) + (deployment.edition() == ConfluenceEdition.CLOUD ? "/wiki" : "");
 
-    ConfluenceConnectionService.Probe probe = service.probe(url, null, null, false, null);
+    ConfluenceConnectionService.Probe probe = service.probe(url, null, false, null);
 
     assertThat(probe.reachable()).isTrue();
     assertThat(probe.detectedEdition()).isEqualTo(deployment.edition());
@@ -95,7 +95,7 @@ class ConfluenceConnectionServiceTest {
     String url = start(deployment);
 
     ConfluenceConnectionService.Probe probe =
-        service.probe(url, null, credentials(deployment.edition()), false, deployment.edition());
+        service.probe(url, credentials(deployment.edition()), false, deployment.edition());
 
     assertThat(probe.reachable()).isTrue();
     assertThat(probe.credentialsVerified()).isTrue();
@@ -124,7 +124,7 @@ class ConfluenceConnectionServiceTest {
             : ConfluenceEdition.CLOUD;
 
     ConfluenceConnectionService.Probe refused =
-        service.probe(url, null, credentials(deployment.edition()) + "x", false, null);
+        service.probe(url, credentials(deployment.edition()) + "x", false, null);
     assertThat(refused.reachable()).isFalse();
     assertThat(refused.detectedEdition()).isEqualTo(deployment.edition());
     assertThat(refused.credentialsVerified()).isFalse();
@@ -133,62 +133,28 @@ class ConfluenceConnectionServiceTest {
         .doesNotContain(TOKEN);
 
     ConfluenceConnectionService.Probe mismatch =
-        service.probe(url, null, credentials(deployment.edition()), false, other);
+        service.probe(url, credentials(deployment.edition()), false, other);
     assertThat(mismatch.reachable()).isFalse();
     assertThat(mismatch.detectedEdition()).isEqualTo(deployment.edition());
     assertThat(mismatch.message()).contains("nicht");
 
     String wrongFormat = deployment.edition() == ConfluenceEdition.CLOUD ? "nur-token" : "a:b";
-    ConfluenceConnectionService.Probe badFormat =
-        service.probe(url, null, wrongFormat, false, null);
+    ConfluenceConnectionService.Probe badFormat = service.probe(url, wrongFormat, false, null);
     assertThat(badFormat.reachable()).isFalse();
     assertThat(badFormat.detectedEdition()).isEqualTo(deployment.edition());
     assertThat(badFormat.credentialsVerified()).isFalse();
   }
 
   @Test
-  void aMalformedOrBlockedProxyIsACallerErrorNotACrash() throws Exception {
-    String url = start(new Deployment(ConfluenceEdition.DATA_CENTER, ""));
-
-    assertThatThrownBy(() -> service.probe(url, "proxy:keine-zahl", null, false, null))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("host:port");
-    assertThatThrownBy(
-            () ->
-                service.listSpaces(
-                    url, ConfluenceEdition.DATA_CENTER, "proxy:keine-zahl", TOKEN, false))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("host:port");
-    assertThatThrownBy(
-            () ->
-                service.requireEdition(
-                    url, "proxy:keine-zahl", false, ConfluenceEdition.DATA_CENTER))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("host:port");
-
-    ConfluenceConnectionService strict =
-        new ConfluenceConnectionService(
-            new ConfluenceClientFactory(
-                ConfluenceProperties.defaults(), new TargetAddressValidator(true, List.of())));
-    // the target is public, the proxy is not - the proxy decides where the connection really goes
-    ConfluenceConnectionService.Probe probe =
-        strict.probe("https://example.atlassian.net", "10.0.0.5:8500", null, false, null);
-    assertThat(probe.reachable()).isFalse();
-    assertThat(probe.message())
-        .contains("gesperrten Adressbereich")
-        .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
-  }
-
-  @Test
   void noConfluenceAndBadAddressesAreTold() throws Exception {
     ConfluenceConnectionService.Probe probe =
-        service.probe("http://127.0.0.1:9/nichts", null, null, false, null);
+        service.probe("http://127.0.0.1:9/nichts", null, false, null);
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.detectedEdition()).isNull();
 
-    assertThatThrownBy(() -> service.probe("kein-url", null, null, false, null))
+    assertThatThrownBy(() -> service.probe("kein-url", null, false, null))
         .isInstanceOf(ValidationException.class);
-    assertThatThrownBy(() -> service.probe("https://a:b@wiki.example.org", null, null, false, null))
+    assertThatThrownBy(() -> service.probe("https://a:b@wiki.example.org", null, false, null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Zugangsdaten");
   }
@@ -201,13 +167,13 @@ class ConfluenceConnectionServiceTest {
                 ConfluenceProperties.defaults(), new TargetAddressValidator(true, List.of())));
     String url = start(new Deployment(ConfluenceEdition.DATA_CENTER, ""));
 
-    ConfluenceConnectionService.Probe probe = strict.probe(url, null, null, false, null);
+    ConfluenceConnectionService.Probe probe = strict.probe(url, null, false, null);
 
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.message())
         .contains("gesperrten Adressbereich")
         .contains("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
-    assertThatThrownBy(() -> strict.requireEdition(url, null, false, ConfluenceEdition.DATA_CENTER))
+    assertThatThrownBy(() -> strict.requireEdition(url, false, ConfluenceEdition.DATA_CENTER))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
   }
@@ -218,8 +184,7 @@ class ConfluenceConnectionServiceTest {
     String url = start(deployment);
 
     List<ConfluenceSpace> spaces =
-        service.listSpaces(
-            url, deployment.edition(), null, credentials(deployment.edition()), false);
+        service.listSpaces(url, deployment.edition(), credentials(deployment.edition()), false);
 
     assertThat(spaces).extracting(ConfluenceSpace::key).containsExactly("ENG", "HR", "SEC");
     assertThat(spaces)
@@ -232,15 +197,11 @@ class ConfluenceConnectionServiceTest {
     assertThatThrownBy(
             () ->
                 service.listSpaces(
-                    url,
-                    deployment.edition(),
-                    null,
-                    credentials(deployment.edition()) + "x",
-                    false))
+                    url, deployment.edition(), credentials(deployment.edition()) + "x", false))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining(deployment.edition() == ConfluenceEdition.CLOUD ? "401" : "anonym")
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain(TOKEN));
-    assertThatThrownBy(() -> service.listSpaces(url, null, null, TOKEN, false))
+    assertThatThrownBy(() -> service.listSpaces(url, null, TOKEN, false))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceSettings.edition");
   }
@@ -255,13 +216,13 @@ class ConfluenceConnectionServiceTest {
             ? ConfluenceEdition.DATA_CENTER
             : ConfluenceEdition.CLOUD;
 
-    service.requireEdition(url, null, false, deployment.edition());
+    service.requireEdition(url, false, deployment.edition());
 
-    assertThatThrownBy(() -> service.requireEdition(url, null, false, other))
+    assertThatThrownBy(() -> service.requireEdition(url, false, other))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("erkannt, nicht gewählt");
     server.close();
-    assertThatThrownBy(() -> service.requireEdition(url, null, false, deployment.edition()))
+    assertThatThrownBy(() -> service.requireEdition(url, false, deployment.edition()))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("konnte nicht bestätigt werden");
   }

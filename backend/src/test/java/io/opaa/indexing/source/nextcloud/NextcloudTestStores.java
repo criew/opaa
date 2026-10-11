@@ -18,7 +18,7 @@ public final class NextcloudTestStores {
   /** The source settings of a library on {@code baseUrl} over {@code folders}. */
   public static SourceSettings settings(String baseUrl, String credentials, List<String> folders) {
     return new SourceSettings(
-        null, baseUrl, null, credentials, false, ConnectorData.of(Map.of("folders", folders)));
+        null, baseUrl, credentials, false, ConnectorData.of(Map.of("folders", folders)));
   }
 
   /** Moves the ids a fixture keeps by path along with a renamed file or folder {@code from}. */

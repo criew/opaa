@@ -34,7 +34,6 @@ class ConfluenceSourceConnectorBrowseTest {
         new SourceSettings(
             null,
             "https://wiki.example.org",
-            null,
             credentials,
             false,
             new ConfluenceSourceSettings(ConfluenceEdition.DATA_CENTER, null, null).toData()),
@@ -43,7 +42,7 @@ class ConfluenceSourceConnectorBrowseTest {
 
   @Test
   void everySpaceBecomesAnEntryWithKeyAndName() throws Exception {
-    when(connectionService.listSpaces(anyString(), any(), any(), anyString(), anyBoolean()))
+    when(connectionService.listSpaces(anyString(), any(), anyString(), anyBoolean()))
         .thenReturn(
             List.of(
                 new ConfluenceSpace("1", "ENG", "Engineering"),

@@ -21,9 +21,8 @@ class S3ClientFactoryTest {
 
   private static final S3Credentials CREDENTIALS = S3Credentials.parse("AKIA:geheim");
 
-  private static S3Connection connection(String endpoint, boolean pathStyle, String proxyHost) {
-    return new S3Connection(
-        URI.create(endpoint), "us-east-1", pathStyle, CREDENTIALS, proxyHost, 3128, false);
+  private static S3Connection connection(String endpoint, boolean pathStyle) {
+    return new S3Connection(URI.create(endpoint), "us-east-1", pathStyle, CREDENTIALS, false);
   }
 
   @Test
@@ -34,8 +33,7 @@ class S3ClientFactoryTest {
     assertThatThrownBy(
             () ->
                 factory.create(
-                    connection("http://10.0.0.5:9000", true, null),
-                    List.of(S3Scope.of("docs", ""))))
+                    connection("http://10.0.0.5:9000", true), List.of(S3Scope.of("docs", ""))))
         .isInstanceOf(S3AccessException.TargetBlocked.class)
         .hasMessageContaining("10.0.0.5")
         .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
@@ -48,26 +46,10 @@ class S3ClientFactoryTest {
             S3Properties.defaults(), new TargetAddressValidator(true, List.of("10.0.0.5")));
 
     try (S3ObjectStore store =
-        factory.create(connection("http://10.0.0.5:9000", true, null), List.of())) {
+        factory.create(connection("http://10.0.0.5:9000", true), List.of())) {
       assertThat(store).isNotNull();
       assertThat(store.meter().requests()).isZero();
     }
-  }
-
-  @Test
-  void rejectsAPrivateProxy() {
-    S3ClientFactory factory =
-        new S3ClientFactory(
-            S3Properties.defaults(), new TargetAddressValidator(true, List.of("10.0.0.5")));
-
-    assertThatThrownBy(
-            () ->
-                factory.create(
-                    connection("http://10.0.0.5:9000", true, "10.0.0.9"),
-                    List.of(S3Scope.of("docs", ""))))
-        .isInstanceOf(S3AccessException.TargetBlocked.class)
-        .hasMessageContaining("10.0.0.9")
-        .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
   }
 
   @Test
@@ -82,7 +64,7 @@ class S3ClientFactoryTest {
     assertThatThrownBy(
             () ->
                 factory.create(
-                    connection("https://minio.intern", false, null),
+                    connection("https://minio.intern", false),
                     List.of(S3Scope.of("docs", "2025/"))))
         .isInstanceOf(S3AccessException.Unreachable.class)
         .hasMessageContaining("docs.minio.intern")
@@ -100,8 +82,7 @@ class S3ClientFactoryTest {
             S3Properties.defaults(), new TargetAddressValidator(true, List.of("minio.intern")));
 
     try (S3ObjectStore store =
-        factory.create(
-            connection("https://minio.intern", true, null), List.of(S3Scope.of("docs", "")))) {
+        factory.create(connection("https://minio.intern", true), List.of(S3Scope.of("docs", "")))) {
       assertThat(store).isNotNull();
     }
   }
@@ -110,7 +91,7 @@ class S3ClientFactoryTest {
   void aRunClientCarriesTheConfiguredBudgetAndAProbeClientNone() throws Exception {
     S3Properties properties = new S3Properties(0, 0, null, null, null, 7, null, 0, 0);
     S3ClientFactory factory = new S3ClientFactory(properties, TargetAddressValidator.disabled());
-    S3Connection connection = connection("http://localhost:1", true, null);
+    S3Connection connection = connection("http://localhost:1", true);
 
     try (AwsSdkS3ObjectStore run =
             (AwsSdkS3ObjectStore) factory.createForRun(connection, List.of());

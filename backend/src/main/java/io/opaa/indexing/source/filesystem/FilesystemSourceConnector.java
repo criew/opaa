@@ -56,8 +56,7 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
       "sourcePath liegt außerhalb der vom Betrieb freigegebenen Verzeichnisse. Die"
           + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.";
   private static final String FORBIDDEN_FIELDS =
-      "sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht"
-          + " zulässig";
+      "sourceUrl und sourceCredentials sind für sourceType FILESYSTEM nicht" + " zulässig";
   private static final String NO_INSECURE_SSL =
       "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig";
 
@@ -154,9 +153,7 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
     if (!sourcePath.startsWith("/")) {
       throw new ValidationException("sourcePath muss ein absoluter Pfad sein");
     }
-    if (requested.sourceUrl() != null
-        || requested.sourceProxy() != null
-        || requested.sourceCredentials() != null) {
+    if (requested.sourceUrl() != null || requested.sourceCredentials() != null) {
       throw new ValidationException(FORBIDDEN_FIELDS);
     }
     if (requested.sourceInsecureSsl()) {
@@ -188,7 +185,6 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
       throw new ValidationException("sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist");
     }
     if (blankToNull(settings.sourceUrl()) != null
-        || blankToNull(settings.sourceProxy()) != null
         || blankToNull(settings.sourceCredentials()) != null) {
       throw new ValidationException(FORBIDDEN_FIELDS);
     }

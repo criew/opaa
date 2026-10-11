@@ -31,7 +31,6 @@ class SyncStateBasisTest {
           null,
           "https://speicher.example.org",
           null,
-          null,
           false);
 
   private static SourceConnectorRegistry registryOf(SourceConnector connector) {
@@ -65,8 +64,7 @@ class SyncStateBasisTest {
         .isNotEqualTo(basis.of(library, first));
     assertThat(
             basis.of(
-                library,
-                new SourceSettings("/anderer/pfad", first.sourceUrl(), null, null, false, null)))
+                library, new SourceSettings("/anderer/pfad", first.sourceUrl(), null, false, null)))
         .isNotEqualTo(basis.of(library, first));
   }
 
@@ -81,10 +79,10 @@ class SyncStateBasisTest {
 
     assertThat(
             SyncStateBasis.WHOLE_SETTINGS.of(
-                library, new SourceSettings(null, "u", null, null, false, ConnectorData.of(ab))))
+                library, new SourceSettings(null, "u", null, false, ConnectorData.of(ab))))
         .isEqualTo(
             SyncStateBasis.WHOLE_SETTINGS.of(
-                library, new SourceSettings(null, "u", null, null, false, ConnectorData.of(ba))));
+                library, new SourceSettings(null, "u", null, false, ConnectorData.of(ba))));
   }
 
   @Test
@@ -99,12 +97,7 @@ class SyncStateBasisTest {
             SyncStateBasis.WHOLE_SETTINGS.of(
                 library,
                 new SourceSettings(
-                    null,
-                    weekly.sourceUrl(),
-                    "http://proxy.example.org:3128",
-                    "geheim",
-                    true,
-                    weekly.connectorSettings())))
+                    null, weekly.sourceUrl(), "geheim", true, weekly.connectorSettings())))
         .isEqualTo(SyncStateBasis.WHOLE_SETTINGS.of(library, weekly));
   }
 
@@ -112,7 +105,6 @@ class SyncStateBasisTest {
     return new SourceSettings(
         null,
         url,
-        null,
         null,
         false,
         ConnectorData.of(Map.of("auswahl", selection, "fullSyncIntervalDays", intervalDays)));

@@ -93,7 +93,7 @@ class GoogleDriveLogLeakTest {
             GoogleDriveProperties.defaults(), TargetAddressValidator.disabled(), wait -> {});
     return new DriveFileStore(
         apis.open(
-            new SourceSettings(null, server.base().toString(), null, null, false, null),
+            new SourceSettings(null, server.base().toString(), null, false, null),
             () -> FakeDriveServer.TOKEN,
             RequestBudget.unbounded()),
         GoogleDriveSettings.read(

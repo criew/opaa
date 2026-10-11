@@ -23,9 +23,8 @@ import org.slf4j.LoggerFactory;
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
  * {@link #validate} when {@link OutboundProxySelector#proxyFor} routes the URI there, for {@link
- * #validateHost(String, boolean)} when the caller says so. {@link #validateHost(String)} - SMB, a
- * library's own proxy, the upload storage - stays strict. IP literals and resolvable names are
- * checked unchanged.
+ * #validateHost(String, boolean)} when the caller says so. {@link #validateHost(String)} - SMB and
+ * the upload storage - stays strict. IP literals and resolvable names are checked unchanged.
  */
 public class TargetAddressValidator {
 
@@ -81,10 +80,9 @@ public class TargetAddressValidator {
   }
 
   /**
-   * Validates a bare hostname with no scheme: a proxy address is exactly as caller-controlled as
-   * the target URL and decides where the connection - and any credentials on it - actually goes,
-   * but carries no scheme to run {@link #validate}'s scheme check against. Applies the identical
-   * address-range check; a {@code null} host is a no-op, since a missing proxy is not an error.
+   * Validates a bare hostname with no scheme - an SMB server, a bucket host, the originals store -
+   * with the same address-range check as {@link #validate}, strictly: a name that does not resolve
+   * locally is rejected. A {@code null} host is a no-op.
    *
    * @throws TargetAddressBlockedException (an {@link IOException}) with a German, user-facing
    *     message when the host is rejected.

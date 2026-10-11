@@ -71,7 +71,6 @@ class RunSecretAskCountTest {
             SourceTypes.RSS_FEED,
             null,
             "https://ablage.example.org/akten",
-            null,
             "nutzer:geheim",
             false);
     rows.put(library.getId(), library);

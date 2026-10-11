@@ -61,7 +61,6 @@ class S3SourceConnectorViewTest {
         null,
         "https://s3.example.org",
         null,
-        null,
         false);
   }
 }

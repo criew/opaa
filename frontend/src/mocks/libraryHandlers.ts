@@ -45,7 +45,6 @@ export const libraryHandlers = [
       sourceType: SourceTypeKey
       sourcePath?: string | null
       sourceUrl?: string | null
-      sourceProxy?: string | null
       sourceCredentials?: string | null
       sourceInsecureSsl?: boolean | null
       sourceSettings?: Record<string, unknown> | null
@@ -91,13 +90,7 @@ export const libraryHandlers = [
     // Mirrors KnowledgeLibraryService#validateConfigurationForType (ADR-0018): only the fields
     // matching sourceType may be set, and the run-based types require their address field.
     if (body.sourceType === 'UPLOAD') {
-      if (
-        body.sourcePath ||
-        body.sourceUrl ||
-        body.sourceProxy ||
-        body.sourceCredentials ||
-        body.sourceInsecureSsl
-      ) {
+      if (body.sourcePath || body.sourceUrl || body.sourceCredentials || body.sourceInsecureSsl) {
         return HttpResponse.json(
           { error: 'sourceType UPLOAD erlaubt keine Quellkonfiguration' },
           { status: 400 },
@@ -117,12 +110,11 @@ export const libraryHandlers = [
           { status: 400 },
         )
       }
-      if (body.sourceUrl || body.sourceProxy || body.sourceCredentials) {
+      if (body.sourceUrl || body.sourceCredentials) {
         return HttpResponse.json(
           {
             error:
-              'sourceUrl, sourceProxy und sourceCredentials sind für sourceType FILESYSTEM nicht' +
-              ' zulässig',
+              'sourceUrl und sourceCredentials sind für sourceType FILESYSTEM nicht' + ' zulässig',
           },
           { status: 400 },
         )
@@ -245,15 +237,6 @@ export const libraryHandlers = [
           ? (body.sourceUrl ?? profile?.serverUrl ?? null)
           : null,
       connectionProfile: profile ? mockProfileRef(profile) : null,
-      sourceProxy:
-        body.sourceType === 'HTTP_DIRECTORY' ||
-        body.sourceType === 'RSS_FEED' ||
-        body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3' ||
-        body.sourceType === 'GOOGLE_DRIVE' ||
-        body.sourceType === 'NEXTCLOUD'
-          ? (body.sourceProxy ?? null)
-          : null,
       sourceSettings:
         body.sourceType === 'CONFLUENCE' ||
         body.sourceType === 'S3' ||
@@ -623,7 +606,6 @@ export const libraryHandlers = [
       description?: string
       schedule?: LibraryScheduleRequest
       sourceUrl?: string | null
-      sourceProxy?: string | null
       sourceInsecureSsl?: boolean | null
       sourceSettings?: Record<string, unknown> | null
     }
@@ -631,7 +613,6 @@ export const libraryHandlers = [
     if (library.sourceType === 'S3') {
       // the S3 edit dialog resends the typed configuration as a whole (ADR-0027)
       if (body.sourceUrl !== undefined) library.sourceUrl = body.sourceUrl
-      if (body.sourceProxy !== undefined) library.sourceProxy = body.sourceProxy
       if (body.sourceInsecureSsl !== undefined) library.sourceInsecureSsl = body.sourceInsecureSsl
       if (body.sourceSettings) library.sourceSettings = body.sourceSettings
     }

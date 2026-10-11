@@ -264,12 +264,6 @@ class S3LibraryConfigurationIntegrationTest {
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("10.0.0.5")
         .hasMessageContaining("OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST");
-    assertThatThrownBy(
-            () ->
-                libraryService.createLibrary(
-                    s3("Proxy intern", ENDPOINT).sourceProxy("10.0.0.9:3128").build(), caller))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("10.0.0.9");
     // virtual-host addressing contacts <bucket>.<host>: the allowlisted endpoint passes, the
     // bucket host "dokumente.localhost" is not allowlisted and is refused - as blocked where the
     // resolver maps *.localhost to loopback, as unreachable where it resolves nothing; either way

@@ -60,7 +60,6 @@ class IndexingRunTemplateErasureTest {
           "/srv/dokumente",
           null,
           null,
-          null,
           false);
 
   IndexingRunTemplateErasureTest() {

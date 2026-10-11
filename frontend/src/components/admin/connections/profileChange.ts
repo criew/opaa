@@ -29,7 +29,6 @@ export function reachesLibraries(
     blank(profile.authorizationEndpoint) !== blank(update.authorizationEndpoint) ||
     blank(profile.tokenEndpoint) !== blank(update.tokenEndpoint) ||
     blank(profile.revocationEndpoint) !== blank(update.revocationEndpoint) ||
-    blank(profile.sourceProxy) !== blank(update.sourceProxy) ||
     profile.sourceInsecureSsl !== Boolean(update.sourceInsecureSsl) ||
     JSON.stringify(profile.connectorSettings ?? null) !==
       JSON.stringify(update.connectorSettings ?? null)

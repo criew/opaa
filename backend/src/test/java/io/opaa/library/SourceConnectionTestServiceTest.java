@@ -861,7 +861,6 @@ class SourceConnectionTestServiceTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/dir/",
-            null,
             "admin:secret",
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
@@ -923,7 +922,6 @@ class SourceConnectionTestServiceTest {
               SourceTypes.HTTP_DIRECTORY,
               null,
               baseUrl + "/dir/",
-              null,
               "admin:secret",
               false);
       when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
@@ -957,69 +955,6 @@ class SourceConnectionTestServiceTest {
   }
 
   @Test
-  void libraryIdFallbackForcesTheLibrarysStoredProxyAndInsecureSslInsteadOfTheCallers()
-      throws IOException {
-    // #617: the origin check above bounds the *target* the stored credential may be tested
-    // against, but says nothing about the *path* the request travels to get there. A caller who
-    // does not know the stored credential (only enough access to trigger this fallback) could
-    // otherwise still set their own sourceProxy/sourceInsecureSsl on the very same, same-origin
-    // request and have the stored Basic-Auth credential replayed through a connection they
-    // control. Reproduced here with a caller-supplied proxy nothing listens on: before the fix,
-    // that bogus proxy is what buildHttpClient actually uses, and the request never reaches the
-    // real server at all (unreachable) - after the fix, the library's own stored proxy (none) is
-    // used instead, the real server is reached directly, and the stored credential is still the
-    // one sent.
-    UUID libraryId = UUID.randomUUID();
-    String expectedAuth =
-        "Basic "
-            + Base64.getEncoder().encodeToString("admin:secret".getBytes(StandardCharsets.UTF_8));
-    KnowledgeLibrary library =
-        KnowledgeLibrary.ownedByUser(
-            organizationId,
-            "Bibliothek",
-            null,
-            currentUserId,
-            SourceTypes.HTTP_DIRECTORY,
-            null,
-            baseUrl + "/dir/",
-            null, // stored sourceProxy: none
-            "admin:secret",
-            false); // stored sourceInsecureSsl: false
-    when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
-    when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
-        .thenReturn(AssetRole.MANAGER);
-    AtomicReference<String> observedAuth = new AtomicReference<>();
-    server.createContext(
-        "/dir/",
-        exchange -> {
-          observedAuth.set(exchange.getRequestHeaders().getFirst("Authorization"));
-          byte[] body =
-              "<html><head><title>Index of /dir/</title></head><body><table></table></body>"
-                  .getBytes(StandardCharsets.UTF_8);
-          exchange.sendResponseHeaders(200, body.length);
-          exchange.getResponseBody().write(body);
-          exchange.close();
-        });
-
-    // No sourceCredentials (falls back to the library's stored one), but a caller-supplied
-    // sourceProxy nothing listens on - port 1 is a well-known reserved TCP port real services do
-    // not bind, so connecting through it fails fast rather than hanging until a timeout.
-    SourceConnectionTestResult response =
-        service.test(
-            sourceConnectionTest()
-                .sourceType(SourceTypes.HTTP_DIRECTORY)
-                .sourceUrl(URI.create(baseUrl + "/dir/"))
-                .sourceProxy("127.0.0.1:1")
-                .sourceInsecureSsl(true)
-                .libraryId(libraryId)
-                .build(),
-            caller);
-
-    assertThat(response.reachable()).isTrue();
-    assertThat(observedAuth.get()).isEqualTo(expectedAuth);
-  }
-
-  @Test
   void libraryIdWithSystemAdminReachesTheSameRequireRoleCallAsAnOrdinaryManager() {
     // #615 review, finding 3: LibraryController passes the same systemAdmin flag to this test as
     // to KnowledgeLibraryService#updateLibrary for the save it precedes - hard-coding false here
@@ -1034,7 +969,6 @@ class SourceConnectionTestServiceTest {
             UUID.randomUUID(),
             SourceTypes.FILESYSTEM,
             "/data/documents",
-            null,
             null,
             null,
             false);
@@ -1074,7 +1008,6 @@ class SourceConnectionTestServiceTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/dir/",
-            null,
             "admin:secret",
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
@@ -1112,7 +1045,6 @@ class SourceConnectionTestServiceTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/manager-dir/",
-            null,
             "admin:secret",
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
@@ -1179,7 +1111,6 @@ class SourceConnectionTestServiceTest {
             SourceTypes.RSS_FEED,
             null,
             baseUrl + "/feed.xml",
-            null,
             "admin:secret",
             false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));

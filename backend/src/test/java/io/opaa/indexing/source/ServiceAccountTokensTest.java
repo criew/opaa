@@ -68,7 +68,7 @@ class ServiceAccountTokensTest {
 
   @Test
   void theAssertionIsSignedWithTheKeyAndNamesAccountScopeAudienceAndSubject() throws Exception {
-    String token = tokens.accessToken(storedKey(), "fachkonto@example.org", auth, null);
+    String token = tokens.accessToken(storedKey(), "fachkonto@example.org", auth);
 
     assertThat(token).isEqualTo("ya29.test-token");
     assertThat(endpoint.forms()).hasSize(1);
@@ -89,7 +89,7 @@ class ServiceAccountTokensTest {
 
   @Test
   void withoutSubjectTheAssertionImitatesNoOne() throws Exception {
-    tokens.accessToken(storedKey(), null, auth, null);
+    tokens.accessToken(storedKey(), null, auth);
 
     SignedJWT assertion = SignedJWT.parse(endpoint.forms().get(0).get("assertion"));
     assertThat(assertion.getJWTClaimsSet().getSubject()).isNull();
@@ -98,7 +98,7 @@ class ServiceAccountTokensTest {
   @Test
   void theTargetIsTheTokenEndpointOfTheDescriptionNeverTheTokenUriOfTheKeyFile() {
     // the fixture's token_uri names evil.example.org; only the description's endpoint is asked
-    tokens.accessToken(key.json(), null, auth, null);
+    tokens.accessToken(key.json(), null, auth);
 
     assertThat(endpoint.forms()).hasSize(1);
   }
@@ -108,7 +108,7 @@ class ServiceAccountTokensTest {
   void theAccessTokenCarriesTheInstantItExpires() {
     endpoint.answer(FakeTokenEndpoint.token("erstes", 3600));
 
-    Secret secret = tokens.accessSecret(storedKey(), null, auth, null);
+    Secret secret = tokens.accessSecret(storedKey(), null, auth);
 
     assertThat(secret.kind()).isEqualTo(SecretKind.ACCESS_TOKEN);
     assertThat(secret.value()).isEqualTo("erstes");
@@ -120,11 +120,11 @@ class ServiceAccountTokensTest {
     endpoint.answer(
         FakeTokenEndpoint.token("erstes", 3600), FakeTokenEndpoint.token("zweites", 3600));
 
-    assertThat(tokens.accessToken(storedKey(), null, auth, null)).isEqualTo("erstes");
+    assertThat(tokens.accessToken(storedKey(), null, auth)).isEqualTo("erstes");
     clock.advance(Duration.ofMinutes(54));
-    assertThat(tokens.accessToken(storedKey(), null, auth, null)).isEqualTo("erstes");
+    assertThat(tokens.accessToken(storedKey(), null, auth)).isEqualTo("erstes");
     clock.advance(Duration.ofMinutes(1));
-    assertThat(tokens.accessToken(storedKey(), null, auth, null)).isEqualTo("zweites");
+    assertThat(tokens.accessToken(storedKey(), null, auth)).isEqualTo("zweites");
     assertThat(endpoint.forms()).hasSize(2);
   }
 
@@ -132,8 +132,8 @@ class ServiceAccountTokensTest {
   void anotherSubjectGetsItsOwnToken() {
     endpoint.answer(FakeTokenEndpoint.token("a", 3600), FakeTokenEndpoint.token("b", 3600));
 
-    assertThat(tokens.accessToken(storedKey(), "a@example.org", auth, null)).isEqualTo("a");
-    assertThat(tokens.accessToken(storedKey(), "b@example.org", auth, null)).isEqualTo("b");
+    assertThat(tokens.accessToken(storedKey(), "a@example.org", auth)).isEqualTo("a");
+    assertThat(tokens.accessToken(storedKey(), "b@example.org", auth)).isEqualTo("b");
   }
 
   @Test
@@ -142,24 +142,24 @@ class ServiceAccountTokensTest {
         FakeTokenEndpoint.token("a", 3600),
         FakeTokenEndpoint.token("b", 3600),
         FakeTokenEndpoint.token("a-neu", 3600));
-    Secret rejected = tokens.accessSecret(storedKey(), "a@example.org", auth, null);
-    tokens.accessSecret(storedKey(), "b@example.org", auth, null);
+    Secret rejected = tokens.accessSecret(storedKey(), "a@example.org", auth);
+    tokens.accessSecret(storedKey(), "b@example.org", auth);
 
     tokens.discard(rejected);
 
-    assertThat(tokens.accessToken(storedKey(), "a@example.org", auth, null)).isEqualTo("a-neu");
-    assertThat(tokens.accessToken(storedKey(), "b@example.org", auth, null)).isEqualTo("b");
+    assertThat(tokens.accessToken(storedKey(), "a@example.org", auth)).isEqualTo("a-neu");
+    assertThat(tokens.accessToken(storedKey(), "b@example.org", auth)).isEqualTo("b");
     assertThat(endpoint.forms()).hasSize(3);
   }
 
   @Test
   void aDiscardedSecretOtherThanAnAccessTokenLeavesTheCacheAlone() {
     endpoint.answer(FakeTokenEndpoint.token("a", 3600));
-    tokens.accessToken(storedKey(), null, auth, null);
+    tokens.accessToken(storedKey(), null, auth);
 
     tokens.discard(Secret.personal("a"));
 
-    assertThat(tokens.accessToken(storedKey(), null, auth, null)).isEqualTo("a");
+    assertThat(tokens.accessToken(storedKey(), null, auth)).isEqualTo("a");
     assertThat(endpoint.forms()).hasSize(1);
   }
 
@@ -167,7 +167,7 @@ class ServiceAccountTokensTest {
   void aRefusedKeyNamesTheAccountAndNotTheKey() {
     endpoint.answer(FakeTokenEndpoint.error(400, "invalid_grant", "Invalid JWT Signature."));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth))
         .isInstanceOf(SignInRejectedException.class)
         .hasMessageContaining(ServiceAccountKeyFixture.CLIENT_EMAIL)
         .hasMessageContaining("ungültig, widerrufen");
@@ -186,14 +186,14 @@ class ServiceAccountTokensTest {
             "Invalid JWT: Token must be a short-lived token (60 minutes) and in a reasonable"
                 + " timeframe. Check your iat and exp values in the JWT claim."));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth))
         .isInstanceOf(SourceCredentialsException.class)
         .isNotInstanceOf(SignInRejectedException.class)
         .hasMessageContaining("Uhrzeit des Servers");
 
     endpoint.answer(FakeTokenEndpoint.error(400, "invalid_grant", ""));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth))
         .isInstanceOf(SignInRejectedException.class)
         .hasMessageContaining("ungültig, widerrufen")
         .hasMessageContaining("Uhrzeit des Servers abweicht");
@@ -205,12 +205,12 @@ class ServiceAccountTokensTest {
     endpoint.answer(
         FakeTokenEndpoint.error(401, "invalid_client", "The OAuth client was deleted."));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth))
         .isInstanceOf(SignInRejectedException.class);
 
     endpoint.answer(FakeTokenEndpoint.error(400, "invalid_scope", "Invalid scope."));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth))
         .isInstanceOf(SourceCredentialsException.class)
         .isNotInstanceOf(SignInRejectedException.class);
   }
@@ -224,7 +224,7 @@ class ServiceAccountTokensTest {
             "Client is unauthorized to retrieve access tokens using this method, or client not"
                 + " authorized for any of the scopes requested."));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), "fach@example.org", auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), "fach@example.org", auth))
         .isInstanceOf(SourceCredentialsException.class)
         .isNotInstanceOf(SignInRejectedException.class)
         .hasMessageContaining("domänenweite Delegation fehlt")
@@ -235,7 +235,7 @@ class ServiceAccountTokensTest {
   void anUnknownImitatedAccountIsNamedAsSuch() {
     endpoint.answer(FakeTokenEndpoint.error(400, "invalid_grant", "Invalid email or User ID"));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), "weg@example.org", auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), "weg@example.org", auth))
         .isInstanceOf(SourceCredentialsException.class)
         .isNotInstanceOf(SignInRejectedException.class)
         .hasMessageContaining("weg@example.org ist in der Domäne nicht bekannt");
@@ -245,7 +245,7 @@ class ServiceAccountTokensTest {
   void anOversizedAnswerIsNamedAsSuch() {
     endpoint.answer(new FakeTokenEndpoint.Answer(200, "{\"x\":\"" + "a".repeat(70_000) + "\"}"));
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, auth))
         .isInstanceOf(SourceCredentialsException.class)
         .hasMessageContaining("zu große Antwort");
   }
@@ -255,7 +255,7 @@ class ServiceAccountTokensTest {
     ServiceAccountTokens guarded =
         new ServiceAccountTokens(new TargetAddressValidator(true, List.of()), clock);
 
-    assertThatThrownBy(() -> guarded.accessToken(storedKey(), null, auth, null))
+    assertThatThrownBy(() -> guarded.accessToken(storedKey(), null, auth))
         .isInstanceOf(SourceCredentialsException.class);
     assertThat(endpoint.forms()).isEmpty();
   }
@@ -265,7 +265,7 @@ class ServiceAccountTokensTest {
     ServiceAccountKeyAuth closed =
         new ServiceAccountKeyAuth(URI.create("http://127.0.0.1:1/token"), SCOPE);
 
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, closed, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, closed))
         .isInstanceOf(SourceCredentialsException.class)
         .hasMessageContaining("nicht erreichbar");
   }
@@ -298,13 +298,13 @@ class ServiceAccountTokensTest {
     endpoint.answer(
         FakeTokenEndpoint.token("ya29.geheimes-token", 3600),
         FakeTokenEndpoint.error(400, "invalid_grant", "Invalid JWT Signature."));
-    tokens.accessToken(storedKey(), "fach@example.org", auth, null);
+    tokens.accessToken(storedKey(), "fach@example.org", auth);
     clock.advance(Duration.ofHours(2));
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), "fach@example.org", auth, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), "fach@example.org", auth))
         .isInstanceOf(SourceCredentialsException.class);
     ServiceAccountKeyAuth closed =
         new ServiceAccountKeyAuth(URI.create("http://127.0.0.1:1/token"), SCOPE);
-    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, closed, null))
+    assertThatThrownBy(() -> tokens.accessToken(storedKey(), null, closed))
         .isInstanceOf(SourceCredentialsException.class);
 
     String assertion = endpoint.forms().get(0).get("assertion");

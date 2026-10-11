@@ -50,6 +50,9 @@ Konnektor.
 - **Allgemeine Verbindungsfelder bleiben Spalten:** `source_path`, `source_url`, `source_proxy`,
   `source_credentials`, `source_insecure_ssl`. An ihnen hängen Regeln des Kerns: Ursprungsbindung
   der Zugangsdaten (`SourceOriginMatcher`), Verschlüsselung, Zieladressprüfung, Pfad-Allowlist.
+
+  > **Überholt (#2496):** `source_proxy` an Bibliothek und Zugang ist entfernt; alle Verbindungen gehen über den hausweiten Ausgangsproxy (ADR-0041, Nachtrag „Proxy je Bibliothek und Zugang entfernt“).
+
 - **Alles Konnektoreigene steht als ein Objekt in `source_settings`.** Form, Validierung,
   Normalisierung und die Sicht für Leser definiert der Konnektor mit einem eigenen Record in seinem
   Paket. Der Kern reicht das Objekt nur durch (`ConnectorData`) und kennt keinen seiner Schlüssel.

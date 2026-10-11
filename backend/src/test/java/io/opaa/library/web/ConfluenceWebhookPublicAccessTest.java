@@ -95,7 +95,6 @@ class ConfluenceWebhookPublicAccessTest {
                     null,
                     "https://quelle.example.org",
                     null,
-                    null,
                     false)));
     when(connectors.pushIntakeHandler(SourceTypes.CONFLUENCE))
         .thenReturn(

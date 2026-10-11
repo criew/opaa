@@ -21,7 +21,7 @@ class ConnectorChecksOutboundProxyTest {
     try (RecordingHttpProxy proxy = new RecordingHttpProxy();
         OutboundProxyRoute route = OutboundProxyRoute.through(proxy.address())) {
       proxy.refuseTunnels(403);
-      HttpClient client = SourceHttpClientFactory.buildHttpClient(null, 0, false);
+      HttpClient client = SourceHttpClientFactory.buildHttpClient(false);
 
       IOException failure =
           catchThrowableOfType(
@@ -43,7 +43,7 @@ class ConnectorChecksOutboundProxyTest {
     try (RecordingHttpProxy proxy = new RecordingHttpProxy();
         OutboundProxyRoute route = OutboundProxyRoute.through(proxy.address())) {
       proxy.refuseTunnels(407);
-      HttpClient client = SourceHttpClientFactory.buildHttpClient(null, 0, false);
+      HttpClient client = SourceHttpClientFactory.buildHttpClient(false);
 
       HttpResponse<Void> response =
           client.send(

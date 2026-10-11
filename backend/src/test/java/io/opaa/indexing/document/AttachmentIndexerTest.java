@@ -93,7 +93,6 @@ class AttachmentIndexerTest {
             null,
             null,
             null,
-            null,
             false);
     HttpClient httpClient = HttpClient.newHttpClient();
     ctx =
@@ -172,7 +171,6 @@ class AttachmentIndexerTest {
             tempDir.toString(),
             null,
             null,
-            null,
             false);
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(filesystemLibrary);
@@ -226,7 +224,6 @@ class AttachmentIndexerTest {
             UUID.randomUUID(),
             SourceTypes.FILESYSTEM,
             tempDir.toString(),
-            null,
             null,
             null,
             false);
@@ -340,7 +337,6 @@ class AttachmentIndexerTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example",
-            null,
             null,
             false);
     SourceDocumentContext pageContext = new SourceDocumentContext("ENG", "Handbuch / Kapitel 1");

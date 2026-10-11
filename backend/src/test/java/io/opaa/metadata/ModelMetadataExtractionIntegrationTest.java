@@ -109,7 +109,6 @@ class ModelMetadataExtractionIntegrationTest {
                 classTempDir.toString(),
                 null,
                 null,
-                null,
                 false));
   }
 

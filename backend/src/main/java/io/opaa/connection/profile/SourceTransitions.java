@@ -204,9 +204,6 @@ public class SourceTransitions {
     if (!Objects.equals(before.sourceUrl(), after.sourceUrl())) {
       changed.add("sourceUrl");
     }
-    if (!Objects.equals(before.sourceProxy(), after.sourceProxy())) {
-      changed.add("sourceProxy");
-    }
     if (before.sourceInsecureSsl() != after.sourceInsecureSsl()) {
       changed.add("sourceInsecureSsl");
     }
@@ -273,7 +270,6 @@ public class SourceTransitions {
     boolean replacesConnection() {
       boolean connectionChanged =
           !Objects.equals(before.sourceUrl(), after.sourceUrl())
-              || !Objects.equals(before.sourceProxy(), after.sourceProxy())
               || before.sourceInsecureSsl() != after.sourceInsecureSsl();
       return connectionChanged && (after.sourceCredentials() != null || !takesSecret);
     }

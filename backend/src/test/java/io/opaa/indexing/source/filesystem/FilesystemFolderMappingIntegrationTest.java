@@ -105,7 +105,6 @@ class FilesystemFolderMappingIntegrationTest {
                 classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
-                null,
                 false));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);

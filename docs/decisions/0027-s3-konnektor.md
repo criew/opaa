@@ -517,6 +517,9 @@ bewusst nach — Stück für Stück, mit Test je Stück:
   Client, alle drei aus dem einen Wert `request-timeout` abgeleitet.
 - **Proxy und TLS:** `source_proxy` als `ProxyConfiguration`, `source_insecure_ssl` als
   `TRUST_ALL_CERTIFICATES` des HTTP-Clients — dieselbe Warnung an der Oberfläche wie heute.
+
+  > **Überholt (#2496):** `source_proxy` an Bibliothek und Zugang ist entfernt; alle Verbindungen gehen über den hausweiten Ausgangsproxy (ADR-0041, Nachtrag „Proxy je Bibliothek und Zugang entfernt“). Der S3-Konnektor übergibt den Ausgangsproxy dem SDK als `ProxyConfiguration`.
+
 - **Weiterleitungen:** keine; ein `301 PermanentRedirect` ist ein Konfigurationsfehler (falsche
   Region oder falscher Adressstil) und wird als solcher gemeldet.
 - **Wiederholungen:** `503 SlowDown` und `429` werden mit exponentiellem Backoff wiederholt

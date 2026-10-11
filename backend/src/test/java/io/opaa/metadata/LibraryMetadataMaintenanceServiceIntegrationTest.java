@@ -390,7 +390,6 @@ class LibraryMetadataMaintenanceServiceIntegrationTest {
             sourcePath.toString(),
             null,
             null,
-            null,
             false));
   }
 

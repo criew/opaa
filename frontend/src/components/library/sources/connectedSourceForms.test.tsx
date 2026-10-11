@@ -235,7 +235,7 @@ describe('source forms under a connection profile', () => {
     },
   )
 
-  it('shows proxy and certificate check of the profile read-only and tests without them', async () => {
+  it('shows the certificate check of the profile read-only and tests without it', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <Connected
@@ -246,24 +246,17 @@ describe('source forms under a connection profile', () => {
           serverUrl: 'https://intranet.example',
           authMethod: 'NONE',
           defaults: {},
-          proxy: 'proxy.intranet.example:3128',
           insecureSsl: true,
         }}
       />,
     )
 
-    const proxy = screen.getByLabelText(/Proxy/)
-    expect(proxy).toHaveValue('proxy.intranet.example:3128')
-    expect(proxy).toHaveAttribute('readonly')
-    expect(
-      screen.getByText('Proxy und Zertifikatsprüfung gibt der Zugang „Intranet“ vor.'),
-    ).toBeVisible()
+    expect(screen.getByText('Die Zertifikatsprüfung gibt der Zugang „Intranet“ vor.')).toBeVisible()
     expect(screen.getByRole('switch', { name: 'Zertifikatsprüfung aussetzen' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
     await waitFor(() => expect(mockTestLibrarySource).toHaveBeenCalledTimes(1))
     const [request] = mockTestLibrarySource.mock.calls[0]
-    expect(request.sourceProxy).toBeUndefined()
     expect(request.sourceInsecureSsl).toBe(false)
     expect(request.connectionProfileId).toBe('profile-intranet')
   })
@@ -285,7 +278,6 @@ describe('source forms under a connection profile', () => {
           serverUrl: 'https://wiki.example',
           authMethod: 'PERSONAL_SECRET',
           defaults: { edition: 'DATA_CENTER' },
-          proxy: 'proxy.wiki.example:3128',
         }}
       />,
     )
@@ -296,11 +288,9 @@ describe('source forms under a connection profile', () => {
     await waitFor(() => expect(mockBrowseSource).toHaveBeenCalledTimes(1))
     const [test] = mockTestLibrarySource.mock.calls[0]
     expect(test.sourceSettings).toEqual({})
-    expect(test.sourceProxy).toBeUndefined()
     expect(test.sourceInsecureSsl).toBe(false)
     const [, listing] = mockBrowseSource.mock.calls[0]
     expect(listing.query).toEqual({})
-    expect(listing.sourceProxy).toBeUndefined()
     expect(listing.connectionProfileId).toBe('profile-wiki')
   })
 

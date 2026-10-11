@@ -106,8 +106,7 @@ class AutoindexCrawlerServiceEncodedTraversalTest {
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
-            Duration.ofSeconds(10),
-            () -> service.crawl(baseUrl + BASE_PATH, null, -1, null, null, false));
+            Duration.ofSeconds(10), () -> service.crawl(baseUrl + BASE_PATH, null, null, false));
 
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
@@ -165,8 +164,7 @@ class AutoindexCrawlerServiceEncodedTraversalTest {
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
-            Duration.ofSeconds(10),
-            () -> service.crawl(baseUrl + BASE_PATH, null, -1, null, null, false));
+            Duration.ofSeconds(10), () -> service.crawl(baseUrl + BASE_PATH, null, null, false));
 
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)

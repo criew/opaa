@@ -358,7 +358,7 @@ Wer eine Bibliothek vom Typ `HTTP_DIRECTORY` oder `RSS_FEED` anlegt, bestimmt be
 - **DNS-Rebinding bleibt eine grundsätzliche, dokumentierte Grenze:** Die Auflösung, die geprüft wird, und die Auflösung, mit der `HttpClient` tatsächlich verbindet, sind zwei getrennte Vorgänge — ein Resolver, der zwischen beiden eine andere Antwort gibt, wird von dieser Prüfung nicht erkannt. Der JDK-`HttpClient` bietet keinen unterstützten Weg, eine Verbindung auf eine bereits geprüfte Adresse festzulegen. Das ist Härtung gegen naheliegende Fehlgriffe und Missbrauch, keine vollständige Garantie. Dieselbe Grenze gilt für die übrigen Datenquellen (S3, Confluence) und für die Adressprüfung der Identitätsanbieter (Issuer, JWK-Set, `jwks_uri` aus dem Discovery-Dokument) und der Admin-API des Verzeichnisabgleichs. Wer das Restrisiko ausschließen muss, beschränkt die ausgehenden Verbindungen des Backends zusätzlich auf Netzebene (Egress-Regeln oder ein Proxy mit Zielliste).
 - Weiterleitungen werden gefolgt, aber nicht über `HttpClient.Redirect.NORMAL`: Der `HttpClient` steht auf `Redirect.NEVER`, jede Weiterleitung wird manuell verfolgt und dabei gegen den ursprünglichen Origin geprüft (Schema, Host, normalisierter Port) — eine Weiterleitung auf einen fremden Host wird abgelehnt, statt ihr zu folgen, ebenso ein Downgrade von `https` auf `http`. Ein Upgrade von `http` auf `https` auf demselben Host (Standard-Ports oder identischer expliziter Port) gilt dagegen als dieselbe Origin und wird gefolgt, Zugangsdaten eingeschlossen.
 - Mit `sourceInsecureSsl: true` lässt sich die Zertifikatsprüfung abschalten. Bei `HTTP_DIRECTORY` gilt das für den gesamten Crawl (Verzeichnislisting und jede darüber gefundene Datei). Bei `RSS_FEED` dagegen nur für den Origin der konfigurierten `sourceUrl` selbst: Eine Detailseite oder Anlage, auf die der Feed-Inhalt verweist und die auf einem fremden Origin liegt, wird weiterhin normal geprüft, unabhängig von `sourceInsecureSsl` — der Feed-Betreiber kontrolliert diesen Inhalt, nicht der Bibliothekseigentümer.
-- **Ein konfigurierter `sourceProxy` bestimmt, wohin die TCP-Verbindung tatsächlich geht, und wird deshalb ebenfalls geprüft** — beim Verbindungstest (`POST /api/v1/libraries/source-test`) direkt gegen die vom Aufrufer im Request gesetzte Proxy-Adresse, bei einem echten Indizierungslauf über den bereits geprüften `sourceUrl`/Redirect-Pfad hinaus nicht zusätzlich: Ein Lauf liest `sourceProxy` ausschließlich aus der bereits gespeicherten, durch mindestens `MANAGER` autorisierten Bibliothekskonfiguration (kein per-Request-Feld) — wer diesen Wert setzen darf, darf `sourceUrl` ohnehin frei wählen.
+- **Einen eigenen Proxy tragen weder Bibliothek noch Zugang.** Alle Verbindungen gehen über den hausweiten [Ausgangsproxy](#ausgangsproxy), den nur die Systemverwaltung setzt; geprüft wird weiter das Ziel.
 - Fehlermeldungen des Crawls landen im Jobstatus und sind über `GET /api/v1/libraries/{libraryId}/indexing/status` lesbar; sie unterscheiden erreichbare von nicht erreichbaren Zielen, eine abgelehnte Weiterleitung (Ziel als `Schema://Host` ohne Pfad/Query, nie die vollständige, potenziell sensible Ziel-URL) und ein per Zielprüfung gesperrtes Ziel.
 
 **Risikoeinordnung.** Die Anlage jedes Quellentyps steht bewusst und dauerhaft jedem Berechtigten offen (nicht nur `SYSTEM_ADMIN`) — kein Rollenkonstrukt tritt an die Stelle dieser Öffnung. Für `FILESYSTEM` ist die daraus entstehende Angriffsfläche über die Pfad-Allowlist (`opaa.indexing.filesystem.allowlist`) geschlossen: Sie sichert, welche Serverpfade überhaupt konfigurierbar sind, unabhängig davon, wer die Bibliothek anlegt. Für `HTTP_DIRECTORY`/`RSS_FEED` schließt die Zielprüfung (`opaa.indexing.target-validation`) die analoge Lücke: Sie sichert, welche Adressbereiche überhaupt erreichbar sind, ebenfalls unabhängig davon, wer die Bibliothek anlegt.
@@ -1604,8 +1604,7 @@ Muss das Backend über einen Proxy ins Netz, trägt die Systemverwaltung ihn in 
 **Administration → Anbindungen → Einstellungen**, Abschnitt **Ausgangsproxy**. Es gibt genau einen
 Proxy für das ganze Haus, und er gilt nicht nur für Quellen, sondern auch für Sprachmodelle und die
 Anmeldung bei Identitätsanbietern; ohne Eintrag gehen alle Verbindungen direkt hinaus. Die JVM-Eigenschaften `http.proxyHost` und die
-Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus. Trägt eine Bibliothek oder
-ein Zugang noch einen eigenen Proxy, hat dieser Vorrang vor dem Ausgangsproxy.
+Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
 
 - **Was über den Proxy geht:** jede HTTP(S)-Verbindung des Backends — Quellen der Bibliotheken samt
   Weiterleitungen und Original-Abruf, OAuth- und Token-Endpunkte der Zugänge, Dienstkonto-Tokens,
@@ -1636,9 +1635,11 @@ ein Zugang noch einen eigenen Proxy, hat dieser Vorrang vor dem Ausgangsproxy.
   wiederverwendete Verbindung (Keep-Alive) läuft auf ihrem bisherigen Weg weiter, bis sie schließt.
   Jede Änderung steht als `OUTBOUND_PROXY_CHANGED` mit altem und neuem Stand im Revisionsprotokoll.
 - **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung (Status 407),
-  nennen der Verbindungstest von Webverzeichnis und RSS-Feed sowie Verbindungstest und Modellabruf
-  der Chat-Modelle den Ausgangsproxy samt Status. Die übrigen Stellen melden einen allgemeinen
-  Verbindungsfehler oder den Status 407 als Antwort des Servers.
+  melden Verbindungstests und Läufe aller Quellarten, die Anmeldung an Zugängen, die
+  Prüfung der Identitätsanbieter, der Verzeichnisabgleich und die Modell-Endpunkte, dass der Ausgangsproxy die
+  Verbindung abgelehnt oder das Ziel nicht erreicht hat, mit dem Status des Proxys. Ausnahme ist
+  S3: Dort erkennt OPAA nur die Anmeldung (Status 407). Einen abgelehnten Tunnel meldet der
+  S3-Konnektor als Antwort des Objektspeichers, etwa als fehlende Berechtigung bei Status 403.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen, weil auch
   deren Signaturschlüssel über ihn geholt werden. Das lokale Konto der Systemverwaltung meldet sich
   ohne Anbieter an und kann den Eintrag korrigieren.

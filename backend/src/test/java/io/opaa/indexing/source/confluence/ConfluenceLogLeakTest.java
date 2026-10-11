@@ -75,8 +75,7 @@ class ConfluenceLogLeakTest {
               duration -> {});
       ConfluenceClient client =
           factory.create(
-              new ConfluenceConnection(
-                  URI.create(server.baseUrl()), edition, good, null, -1, false));
+              new ConfluenceConnection(URI.create(server.baseUrl()), edition, good, false));
 
       server.throttleNext(1, "1");
       client.listSpaces();
@@ -89,8 +88,7 @@ class ConfluenceLogLeakTest {
               : new ConfluenceCredentials.DataCenterPersonalAccessToken(TOKEN + "-falsch");
       ConfluenceClient wrongClient =
           factory.create(
-              new ConfluenceConnection(
-                  URI.create(server.baseUrl()), edition, wrong, null, -1, false));
+              new ConfluenceConnection(URI.create(server.baseUrl()), edition, wrong, false));
       assertThatThrownBy(wrongClient::verifyCredentials)
           .isInstanceOf(ConfluenceAccessException.class);
       server.close();

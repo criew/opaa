@@ -110,7 +110,6 @@ class AsyncIndexingExecutorTest {
             documentDir.toAbsolutePath().toString(),
             null,
             null,
-            null,
             false);
 
     executor =
@@ -458,7 +457,6 @@ class AsyncIndexingExecutorTest {
             UUID.randomUUID(),
             SourceTypes.FILESYSTEM,
             hiddenRoot.toAbsolutePath().toString(),
-            null,
             null,
             null,
             false);

@@ -5,7 +5,6 @@ import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.msgraph.GraphClient;
 import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RateLimitHandling;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.Sleeper;
@@ -17,15 +16,15 @@ import java.util.function.Supplier;
 
 /**
  * Opens a {@link GraphClient} on the resolved settings of a library: {@code sourceUrl} as the only
- * target of the token, the library's proxy, certificate validation always on, every attempt and
- * every throttle wait charged to the {@link RequestBudget}.
+ * target of the token, certificate validation always on, every attempt and every throttle wait
+ * charged to the {@link RequestBudget}.
  */
 final class GraphConnections {
 
-  /** Builds the HTTP client for a proxy, {@code null} host for none. */
+  /** Builds the HTTP client of one connection. */
   @FunctionalInterface
   interface HttpClients {
-    HttpClient build(String proxyHost, int proxyPort);
+    HttpClient build();
   }
 
   private final SharePointProperties properties;
@@ -41,7 +40,7 @@ final class GraphConnections {
         properties,
         targetAddressValidator,
         sleeper,
-        (host, port) -> SourceHttpClientFactory.buildHttpClient(host, port, false));
+        () -> SourceHttpClientFactory.buildHttpClient(false));
   }
 
   GraphConnections(
@@ -59,11 +58,7 @@ final class GraphConnections {
     return properties;
   }
 
-  /**
-   * A client sending {@code token} as it is, without a renewal after a rejection.
-   *
-   * @throws ProxyAndCredentials.InvalidProxyConfigurationException for an unreadable proxy
-   */
+  /** A client sending {@code token} as it is, without a renewal after a rejection. */
   GraphClient open(SourceSettings settings, Supplier<String> token, RequestBudget budget) {
     return open(settings, token, null, budget);
   }
@@ -71,8 +66,6 @@ final class GraphConnections {
   /**
    * A run's client: the token asked from {@code credentials} per attempt, and once more after Graph
    * rejected it.
-   *
-   * @throws ProxyAndCredentials.InvalidProxyConfigurationException for an unreadable proxy
    */
   GraphClient open(SourceSettings settings, RunCredentials credentials, RequestBudget budget) {
     return open(settings, credentials::value, credentials::renewedAfterRejection, budget);
@@ -83,12 +76,11 @@ final class GraphConnections {
       Supplier<String> token,
       Predicate<String> renewedAfterRejection,
       RequestBudget budget) {
-    ProxyAndCredentials proxy = ProxyAndCredentials.parse(settings.sourceProxy(), null);
     return new GraphClient(
         URI.create(settings.sourceUrl()),
         token,
         renewedAfterRejection,
-        httpClients.build(proxy.proxyHost(), proxy.proxyPort()),
+        httpClients.build(),
         targetAddressValidator,
         new RateLimitHandling(
             RateLimitPolicy.of(Math.max(0, properties.maxRetries()), properties.maxRetryWait()),

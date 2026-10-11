@@ -88,7 +88,7 @@ aus Entscheidung 3 nicht am Port. Deshalb:
 - Die Entität dient dem Konnektor nur noch für Identität und Bestand.
 - **ArchUnit-Regel:** Keine Klasse eines Konnektorpakets ruft `KnowledgeLibrary#getSourceCredentials`,
   `#getSourceUrl`, `#getSourceProxy`, `#isSourceInsecureSsl`, `#getSourceSettings` oder
-  `ConnectorData#storedIn` auf. Zwei Ausnahmen:
+  `ConnectorData#storedIn` auf (`#getSourceProxy` entfällt mit #2496). Zwei Ausnahmen:
   - `#getSourcePath`, weil das Dateisystem Profile verbietet und der Pfad kein Geheimnis ist.
   - `#getWebhookSecret`, weil das Push-Geheimnis an der Bibliothek bleibt und nicht am Profil
     hängt. Die Push-Adapter (`ConfluenceWebhookService`, `S3EventService`) lesen es weiter selbst.
@@ -487,7 +487,7 @@ Begründung:
 - **Ein Weg zum Anbieter:** `connection.oauth.OAuthClient` stellt Autorisierungsanfrage,
   Code-Tausch, Erneuerung und Widerruf; auch die Client-Credentials laufen darüber. Nur er ruft in
   connections `SourceFormPost` (Zielprüfung, keine Weiterleitung, Größengrenze), immer mit
-  Zertifikatsprüfung und dem Proxy des Zugangs (ArchUnit
+  Zertifikatsprüfung und (bis #2496) dem Proxy des Zugangs (ArchUnit
   `theAuthorizationServerIsReachedOnlyThroughTheOAuthClient` mit Fixture).
 - **Port `SecretIssuer` neu geschnitten:** `renew` liefert `Issued` (Zugriffstoken mit Ablauf,
   rotierter Refresh-Token mit Ablauf oder `null`), `revocation` bekommt einen Schnappschuss beider
@@ -1128,6 +1128,8 @@ Endpunkte, für die es eingetragen wurde.
   Endpunkte `http://`, sähe ein neuer Proxy das Secret im Klartext; ein geänderter `sourceProxy`
   verlangt dann ebenso ein neues Secret (derselbe Code). Bei `https://` bleibt das Secret. Es
   zählen nur die Endpunkte, die der Zugang nennt; die festen der Konnektoren sind `https://`.
+  Überholt mit #2496: Einen Proxy des Zugangs gibt es nicht mehr; ein geänderter Ausgangsproxy
+  verlangt kein neues Secret.
 - **Vor allem anderen:** Die Prüfung läuft in `check` und `update` vor der Rückfrage und vor jedem
   Verwurf. Profil, Secret, Token und Bibliotheken bleiben bei der Abweisung unverändert, auch mit
   `confirmDiscard`.
@@ -1409,7 +1411,8 @@ Entscheidung 8 ab.
 
 Der Proxy wird einmal hausweit in der Oberfläche gepflegt statt je Zugang und Bibliothek
 (Maintainer-Entscheidung vom 11.10.2026, Epic #2492). PR 1 baut den globalen Weg; `source_proxy` an
-Bibliothek und Zugang bleibt bis PR 3 bestehen und überstimmt den globalen Proxy bis dahin.
+Bibliothek und Zugang bleibt bis PR 3 bestehen und überstimmt den globalen Proxy bis dahin
+(überholt durch den folgenden Nachtrag).
 
 - **Mechanismus:** `io.opaa.outbound` (foundation, unter `security`). `OutboundProxyInstaller`
   setzt beim Start vor jeder Bean `OutboundProxySelector` als `ProxySelector.setDefault`. Der JDK-
@@ -1457,6 +1460,33 @@ Bibliothek und Zugang bleibt bis PR 3 bestehen und überstimmt den globalen Prox
 - **Belegt** in `OutboundProxySelectorTest`, `ProxyExclusionsTest`, `TargetAddressValidatorTest`,
   den Routing-Tests über `RecordingHttpProxy` (Quellzugriff samt Weiterleitung und Tunnel,
   OpenAI-Chat, S3-Konnektor) und `OutboundProxyIntegrationTest`.
+
+## Nachtrag vom 11.10.2026: Proxy je Bibliothek und Zugang entfernt (#2496, PR 2 und 3)
+
+Mit dem hausweiten Ausgangsproxy entfällt der Proxy an Bibliothek und Zugang ersatzlos.
+
+- **Datenbank:** `knowledge/2026-10-11-drop-library-source-proxy.yaml` entfernt
+  `knowledge_libraries.source_proxy`. `DROP COLUMN` verwürfe den Constraint
+  `chk_knowledge_libraries_upload_without_source` mit; die Datei legt ihn ohne die Spalte neu an.
+  `connections/2026-10-11-drop-profile-source-proxy.yaml` entfernt `connection_profiles.source_proxy`.
+  Belegt in `DropSourceProxyMigrationTest`.
+- **API und Oberfläche:** `sourceProxy` entfällt in allen Schemas der Bibliothek, des
+  Verbindungstests, der Auflistung und des Zugangs, ebenso die Formularfelder.
+- **Backend:** `SourceSettings`, `S3Connection`, `ConfluenceConnection`, `NextcloudConnection`,
+  `ClientRegistration`, `ConnectionProfileValues` und `TransportRules` tragen keinen Proxy mehr;
+  `ProxyAndCredentials` ist zu `BasicCredentials` geworden. `SourceHttpClientFactory` baut jeden
+  Client ohne eigenen Proxy, der S3-Konnektor nimmt nur noch `proxyFor(endpoint)`.
+- **Adressprüfung:** Ein Proxy-Host wird nicht mehr geprüft; `validateHost(host)` prüft nur noch
+  SMB, Bucket-Hosts und die Originalablage.
+- **Fehlerbild:** Eine Antwort `407` des Ausgangsproxys benennen jetzt alle Statuspfade
+  (`ProxyRefusal.statusMessage`; wo ein Pfad eine `IOException` wirft, `ProxyRefusal.statusFailure`
+  bzw. die Ursache an `BoundedDownloader.HttpStatusException`). Einen abgelehnten Tunnel
+  (`ProxyRefusal.describe`) benennen die Verbindungstests, OAuth, Dienstkonto-Tokens, MCP, OIDC,
+  der Verzeichnisabgleich, die Lauf-Clients von Confluence, Nextcloud, Graph, Google Drive und
+  Dropbox, der Abbruch jedes Laufs (`IndexingRunTemplate`) sowie Einzelfehler, Detailseiten und
+  Anlagen eines Laufs. Ausnahme ist S3: Apache HttpClient 5 reicht die Antwort des Proxys auf
+  `CONNECT` als Antwort des Ziels durch. Erkennbar ist dort nur `407`; ein abgelehnter Tunnel
+  (`403`, `502`) erscheint als Antwort des Objektspeichers.
 
 ## Referenzen
 

@@ -568,7 +568,6 @@ class LibraryMetadataSchemaChangeIntegrationTest {
             classTempDir.toString(),
             null,
             null,
-            null,
             false));
   }
 

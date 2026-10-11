@@ -37,13 +37,11 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.SourceTypes;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -110,7 +108,6 @@ class RssFeedIndexingExecutorTest {
           SourceTypes.RSS_FEED,
           null,
           "https://example.com/feed.xml",
-          null,
           null,
           false);
 
@@ -232,16 +229,13 @@ class RssFeedIndexingExecutorTest {
   }
 
   private void execute(String feedUrl) {
-    library.updateSourceConfiguration(null, feedUrl, null, null, false);
+    library.updateSourceConfiguration(null, feedUrl, null, false);
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
   }
 
-  /**
-   * Like {@link #execute(String)}, but also configures the library's own
-   * sourceProxy/sourceCredentials.
-   */
-  private void execute(String feedUrl, String proxy, String credentials) {
-    library.updateSourceConfiguration(null, feedUrl, proxy, credentials, false);
+  /** Like {@link #execute(String)}, but also configures the library's own sourceCredentials. */
+  private void execute(String feedUrl, String credentials) {
+    library.updateSourceConfiguration(null, feedUrl, credentials, false);
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
   }
 
@@ -1972,7 +1966,7 @@ class RssFeedIndexingExecutorTest {
     assertThat(sleeps).as("two retries, then deferred").hasSize(2);
   }
 
-  // --- sourceCredentials/sourceProxy applied to the feed fetch, detail pages and
+  // --- sourceCredentials applied to the feed fetch, detail pages and
   // attachments, mirroring UrlIndexingExecutor ---
 
   private static String expectedBasicAuth(String credentials) {
@@ -1994,7 +1988,7 @@ class RssFeedIndexingExecutorTest {
           exchange.close();
         });
 
-    execute(baseUrl + "/feed.xml", null, "user:pass");
+    execute(baseUrl + "/feed.xml", "user:pass");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(0), eq(0), eq(0), eq(0));
     assertThat(authorization.get()).isEqualTo(expectedBasicAuth("user:pass"));
@@ -2018,7 +2012,7 @@ class RssFeedIndexingExecutorTest {
     when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
         .thenReturn(DocumentIngestResult.PROCESSED);
 
-    execute(baseUrl + "/feed.xml", null, "admin:secret");
+    execute(baseUrl + "/feed.xml", "admin:secret");
 
     verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
     assertThat(authorization.get()).isEqualTo(expectedBasicAuth("admin:secret"));
@@ -2053,30 +2047,11 @@ class RssFeedIndexingExecutorTest {
     when(documentIngestService.ingest(DocumentIngests.that().file().in(library).match(), any()))
         .thenReturn(DocumentIngestResult.PROCESSED);
 
-    execute(baseUrl + "/feed.xml", null, "attachment:credentials");
+    execute(baseUrl + "/feed.xml", "attachment:credentials");
 
     verify(documentIngestService, timeout(2000))
         .ingest(DocumentIngests.that().file().in(library).match(), any());
     assertThat(authorization.get()).isEqualTo(expectedBasicAuth("attachment:credentials"));
-  }
-
-  @Test
-  void feedRequestUsesTheConfiguredProxyConnectionRefusedFailsTheJob() throws IOException {
-    // The feed server is reachable directly, but every request must still be routed through the
-    // configured (here: closed, unreachable) proxy instead - proving sourceProxy is actually
-    // applied to SourceHttpClientFactory.buildHttpClient, mirroring UrlIndexingExecutor.
-    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
-    int closedPort;
-    try (ServerSocket socket = new ServerSocket(0)) {
-      closedPort = socket.getLocalPort();
-    }
-
-    execute(baseUrl + "/feed.xml", "127.0.0.1:" + closedPort, null);
-
-    // The underlying connect-refused exception's own message can be null depending on the JDK's
-    // networking stack - unlike the other failJob assertions in this class, this test only cares
-    // that the run actually failed, not what it says.
-    verify(indexingJobService, timeout(2000)).failJob(any(), any());
   }
 
   // --- the feed's own origin, not just the redirect chain ---
@@ -2109,7 +2084,7 @@ class RssFeedIndexingExecutorTest {
       when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
           .thenReturn(DocumentIngestResult.PROCESSED);
 
-      execute(baseUrl + "/feed.xml", null, "admin:secret");
+      execute(baseUrl + "/feed.xml", "admin:secret");
 
       verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
       assertThat(authorization.get()).isNull();
@@ -2165,7 +2140,7 @@ class RssFeedIndexingExecutorTest {
       when(documentIngestService.ingest(DocumentIngests.that().file().in(library).match(), any()))
           .thenReturn(DocumentIngestResult.PROCESSED);
 
-      execute(baseUrl + "/feed.xml", null, "attachment:credentials");
+      execute(baseUrl + "/feed.xml", "attachment:credentials");
 
       verify(documentIngestService, timeout(2000))
           .ingest(DocumentIngests.that().file().in(library).match(), any());
@@ -2223,7 +2198,7 @@ class RssFeedIndexingExecutorTest {
       when(documentIngestService.ingest(DocumentIngests.that().text().in(library).match(), any()))
           .thenReturn(DocumentIngestResult.PROCESSED);
 
-      execute(baseUrl + "/feed.xml", null, "admin:secret");
+      execute(baseUrl + "/feed.xml", "admin:secret");
 
       verify(indexingJobService, timeout(2000)).completeJob(any(), eq(1), eq(0), eq(0), eq(1));
       verify(documentIngestService, never()).ingest(DocumentIngests.anyFile(), any());
@@ -2231,20 +2206,6 @@ class RssFeedIndexingExecutorTest {
     } finally {
       foreignServer.stop(0);
     }
-  }
-
-  @Test
-  void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() throws Exception {
-    // Reusing the shared ProxyAndCredentials.parse means an invalid
-    // port now fails with the same German message SourceConnectionTestService already gave,
-    // instead of the JDK's own NumberFormatException text leaking into progress.fail via the
-    // outer catch (Exception e).
-    serve("/feed.xml", 200, "application/rss+xml", feedXml(baseUrl + "/a.html"));
-
-    execute(baseUrl + "/feed.xml", "127.0.0.1:not-a-port", null);
-
-    verify(indexingJobService, timeout(2000))
-        .failJob(any(), eq(ProxyAndCredentials.INVALID_PROXY_MESSAGE));
   }
 
   // --- the run's own bounds and its end ------------------------------------------------------
@@ -2261,7 +2222,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   private UUID executeJob(String feedUrl) {
-    library.updateSourceConfiguration(null, feedUrl, null, null, false);
+    library.updateSourceConfiguration(null, feedUrl, null, false);
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
     return jobId;

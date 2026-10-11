@@ -20,7 +20,6 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
 import java.time.Duration;
@@ -122,12 +121,7 @@ public class GoogleDriveIndexingExecutor implements SourceIndexingExecutor {
     GoogleDriveProperties properties = apis.properties();
     RequestBudget budget =
         new RequestBudget(new SourceRequestMeter(), properties.requestBudgetPerRun(), null);
-    DriveApi api;
-    try {
-      api = apis.open(run.settings(), run.credentials(), budget);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new IndexingRunFailedException(e.getMessage());
-    }
+    DriveApi api = apis.open(run.settings(), run.credentials(), budget);
     run.recordRequestCost(budget.meter());
     UUID libraryId = run.library().getId();
     SourceSyncState state = journal.load(libraryId);

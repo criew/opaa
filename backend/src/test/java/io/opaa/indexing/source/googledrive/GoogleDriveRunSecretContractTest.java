@@ -54,7 +54,6 @@ class GoogleDriveRunSecretContractTest extends RunSecretContract {
     return new SourceSettings(
         null,
         server.base().toString(),
-        null,
         FakeDriveServer.TOKEN,
         false,
         ConnectorData.of(Map.of("scopes", List.of(Map.of("drive", "drive0")))));

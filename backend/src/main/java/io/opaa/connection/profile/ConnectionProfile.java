@@ -17,10 +17,10 @@ import java.util.UUID;
 
 /**
  * A connection profile ("Zugang"): the frame the administration sets for one connector - server
- * address, proxy and TLS switch, sign-in method, app registration, scopes and connector defaults -
- * or, of kind {@link ProfileKind#MCP_SERVER}, for an MCP server without a connector. The client
- * secret - for a service account key the key file - is held only as {@code CredentialsEncryptor}
- * ciphertext; only the profile administration and {@link ProfileRegistrations} read it.
+ * address and TLS switch, sign-in method, app registration, scopes and connector defaults - or, of
+ * kind {@link ProfileKind#MCP_SERVER}, for an MCP server without a connector. The client secret -
+ * for a service account key the key file - is held only as {@code CredentialsEncryptor} ciphertext;
+ * only the profile administration and {@link ProfileRegistrations} read it.
  */
 @Entity
 @Table(name = "connection_profiles")
@@ -78,9 +78,6 @@ public class ConnectionProfile {
 
   @Column(name = "revocation_endpoint", length = 2000)
   private String revocationEndpoint;
-
-  @Column(name = "source_proxy")
-  private String sourceProxy;
 
   @Column(name = "source_insecure_ssl", nullable = false)
   private boolean sourceInsecureSsl;
@@ -147,7 +144,6 @@ public class ConnectionProfile {
     this.scopes = values.scopes();
     this.connectorSettings =
         values.connectorSettings() == null ? null : values.connectorSettings().toJson();
-    this.sourceProxy = values.sourceProxy();
     this.sourceInsecureSsl = values.sourceInsecureSsl();
     this.authorizationEndpoint = values.endpoints().authorization();
     this.tokenEndpoint = values.endpoints().token();
@@ -263,11 +259,6 @@ public class ConnectionProfile {
   /** The connector defaults as stored JSON, {@code null} for none. */
   public String getConnectorSettings() {
     return connectorSettings;
-  }
-
-  /** The proxy every library on the profile is reached through, {@code null} for none. */
-  public String getSourceProxy() {
-    return sourceProxy;
   }
 
   /** Whether the certificate check is skipped for every library on the profile. */

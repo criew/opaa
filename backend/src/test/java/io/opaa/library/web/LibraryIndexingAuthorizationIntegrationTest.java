@@ -140,7 +140,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 documentDir.toAbsolutePath().toString(),
                 null,
                 null,
-                null,
                 false));
     ownLibraryIds.add(library.getId());
     return library;
@@ -312,7 +311,6 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 foreignOwnerId,
                 SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
-                null,
                 null,
                 null,
                 false));

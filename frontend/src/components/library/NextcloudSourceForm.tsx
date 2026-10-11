@@ -38,11 +38,11 @@ interface Message {
 }
 
 /**
- * The source form of a Nextcloud library: address, technical user with app password, proxy,
+ * The source form of a Nextcloud library: address, technical user with app password,
  * certificate switch and the folders, one per line. „Ordner laden" offers the folders in the
  * user's root (own ones, shares, group folders) as chips that add a line; „Verbindung testen"
  * signs in and checks every folder. Each result carries the values it was measured with and is
- * shown only while they are unchanged - a changed address, user, password, proxy, switch or (for
+ * shown only while they are unchanged - a changed address, user, password, switch or (for
  * the test) folder hides it, an answer arriving after a change included.
  */
 export default function NextcloudSourceForm({
@@ -76,7 +76,6 @@ export default function NextcloudSourceForm({
     sourceUrl: values.sourceUrl,
     username: values.username,
     appPassword: values.appPassword,
-    sourceProxy: values.sourceProxy,
     sourceInsecureSsl: values.sourceInsecureSsl,
   })
   const testToken = JSON.stringify({ connectionToken, folders: values.folders })
@@ -99,7 +98,6 @@ export default function NextcloudSourceForm({
   function connectionPayload() {
     return {
       sourceUrl: values.sourceUrl.trim(),
-      sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: nextcloudCredentialsOf(values),
     }
@@ -226,22 +224,6 @@ export default function NextcloudSourceForm({
             </Box>
           </>
         )}
-        <Box>
-          <FieldLabel htmlFor={`${idPrefix}-proxy`}>Proxy (optional)</FieldLabel>
-          <TextField
-            id={`${idPrefix}-proxy`}
-            size="small"
-            fullWidth
-            value={values.sourceProxy}
-            onChange={(e) => onChange({ sourceProxy: e.target.value })}
-            placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'}
-            helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
-            autoComplete="off"
-            slotProps={{
-              htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
-            }}
-          />
-        </Box>
         <FormControlLabel
           control={
             <Switch
@@ -252,6 +234,11 @@ export default function NextcloudSourceForm({
           }
           label="Zertifikatsprüfung aussetzen"
         />
+        {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
+          <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
+            {connection.transportHint}
+          </Typography>
+        )}
         <Box sx={{ gridColumn: '1 / -1' }}>
           <FieldLabel htmlFor={`${idPrefix}-folders`}>Ordner</FieldLabel>
           <TextField

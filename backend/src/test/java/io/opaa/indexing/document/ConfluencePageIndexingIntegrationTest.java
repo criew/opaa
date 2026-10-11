@@ -73,7 +73,6 @@ class ConfluencePageIndexingIntegrationTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.behoerde.example/confluence",
-            null,
             "enc:v1:token",
             false);
     ConfluenceTestSettings.configure(

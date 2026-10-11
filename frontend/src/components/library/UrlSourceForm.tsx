@@ -26,7 +26,7 @@ interface UrlSourceFormProps {
 }
 
 /**
- * The one Adress-Formular of a HTTP_DIRECTORY or RSS_FEED library (#1940): address, proxy,
+ * The one Adress-Formular of a HTTP_DIRECTORY or RSS_FEED library (#1940): address,
  * credentials and the certificate switch - used by the Anlage-Assistent and by the Bearbeiten-Weg
  * of the Reiter „Quelle" alike. The credentials field is write-only in both modes (ADR-0018); in
  * edit mode its hint says what leaving it blank means, including the case where a changed host
@@ -91,22 +91,6 @@ export default function UrlSourceForm({
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />
         </Box>
-        <Box>
-          <FieldLabel htmlFor={`${idPrefix}-proxy`}>Proxy (optional)</FieldLabel>
-          <TextField
-            id={`${idPrefix}-proxy`}
-            size="small"
-            fullWidth
-            value={values.sourceProxy}
-            onChange={(e) => onChange({ sourceProxy: e.target.value })}
-            placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'}
-            helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
-            autoComplete="off"
-            slotProps={{
-              htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
-            }}
-          />
-        </Box>
         {connection.asksSecret && (
           <Box>
             <FieldLabel htmlFor={`${idPrefix}-credentials`}>
@@ -137,6 +121,11 @@ export default function UrlSourceForm({
           }
           label="Zertifikatsprüfung aussetzen"
         />
+        {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
+          <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
+            {connection.transportHint}
+          </Typography>
+        )}
       </Box>
     </Box>
   )

@@ -41,7 +41,6 @@ public class UploadSourceConnector implements SourceConnector, OriginalAccess {
   public SourceSettings validate(SourceSettings requested) {
     if (requested.sourcePath() != null
         || requested.sourceUrl() != null
-        || requested.sourceProxy() != null
         || requested.sourceCredentials() != null
         || requested.sourceInsecureSsl()) {
       throw new ValidationException("sourceType UPLOAD erlaubt keine Quellkonfiguration");

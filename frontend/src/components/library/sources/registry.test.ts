@@ -8,7 +8,6 @@ import type { SourceConfiguration, SourceFormContext } from './types'
 const generic = {
   sourcePath: ' /data/dokumente ',
   sourceUrl: ' https://docs.example/ ',
-  sourceProxy: ' proxy.example:8080 ',
   sourceCredentials: ' user:pw ',
   sourceInsecureSsl: true,
 }
@@ -129,7 +128,6 @@ describe('the source registry (ADR-0038)', () => {
     })
     expect(configurationOf('HTTP_DIRECTORY').toPayload(generic)).toEqual({
       sourceUrl: 'https://docs.example/',
-      sourceProxy: 'proxy.example:8080',
       sourceCredentials: 'user:pw',
       sourceInsecureSsl: true,
     })
@@ -161,7 +159,6 @@ describe('the source registry (ADR-0038)', () => {
       configurationOf('CONFLUENCE').toPayload({
         ...EMPTY_CONFLUENCE_VALUES,
         sourceUrl: ' https://behoerde.atlassian.net ',
-        sourceProxy: '',
         edition: 'CLOUD',
         email: 'dienst@behoerde.example',
         token: 'tok',
@@ -173,7 +170,6 @@ describe('the source registry (ADR-0038)', () => {
       }),
     ).toEqual({
       sourceUrl: 'https://behoerde.atlassian.net',
-      sourceProxy: undefined,
       sourceCredentials: 'dienst@behoerde.example:tok',
       sourceInsecureSsl: false,
       sourceSettings: {
@@ -215,7 +211,6 @@ describe('the source registry (ADR-0038)', () => {
     const s3 = {
       ...EMPTY_S3_VALUES,
       sourceUrl: ' https://minio.intern.example:9000 ',
-      sourceProxy: ' proxy.intern:3128 ',
       accessKey: 'AKIAEXAMPLE',
       secretKey: 'geheim',
       scopes: [{ bucket: 'dokumente', prefix: '2025' }],
@@ -225,7 +220,6 @@ describe('the source registry (ADR-0038)', () => {
     it('derives endpoint, key and settings and nothing of the other types', () => {
       expect(configurationOf('S3').toPayload(s3)).toEqual({
         sourceUrl: 'https://minio.intern.example:9000',
-        sourceProxy: 'proxy.intern:3128',
         sourceCredentials: 'AKIAEXAMPLE:geheim',
         sourceInsecureSsl: false,
         sourceSettings: {

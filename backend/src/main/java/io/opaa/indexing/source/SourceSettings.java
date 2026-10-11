@@ -2,15 +2,14 @@ package io.opaa.indexing.source;
 
 /**
  * A library's source configuration as a {@link SourceConnector} sees it: the connection fields
- * every run-based type draws from (path, address, proxy, credentials with their kind, TLS switch)
- * and the connector-owned settings (ADR-0038). {@code connectorSettings} is {@code null} when
- * absent - on a change that means "leave the stored ones as they are". {@code credentialsKind} is
- * {@code null} exactly when there are no credentials, and a personal secret unless named otherwise.
+ * every run-based type draws from (path, address, credentials with their kind, TLS switch) and the
+ * connector-owned settings (ADR-0038). {@code connectorSettings} is {@code null} when absent - on a
+ * change that means "leave the stored ones as they are". {@code credentialsKind} is {@code null}
+ * exactly when there are no credentials, and a personal secret unless named otherwise.
  */
 public record SourceSettings(
     String sourcePath,
     String sourceUrl,
-    String sourceProxy,
     String sourceCredentials,
     boolean sourceInsecureSsl,
     ConnectorData connectorSettings,
@@ -28,18 +27,10 @@ public record SourceSettings(
   public SourceSettings(
       String sourcePath,
       String sourceUrl,
-      String sourceProxy,
       String sourceCredentials,
       boolean sourceInsecureSsl,
       ConnectorData connectorSettings) {
-    this(
-        sourcePath,
-        sourceUrl,
-        sourceProxy,
-        sourceCredentials,
-        sourceInsecureSsl,
-        connectorSettings,
-        null);
+    this(sourcePath, sourceUrl, sourceCredentials, sourceInsecureSsl, connectorSettings, null);
   }
 
   /** The credentials with their kind, {@code null} for none. */
@@ -54,8 +45,6 @@ public record SourceSettings(
         + sourcePath
         + ", sourceUrl="
         + sourceUrl
-        + ", sourceProxy="
-        + sourceProxy
         + ", sourceCredentials="
         + (sourceCredentials == null ? "null" : "***")
         + ", sourceInsecureSsl="
@@ -70,13 +59,7 @@ public record SourceSettings(
   /** A copy carrying {@code url} as its address - the normalised form a connector stores. */
   public SourceSettings withSourceUrl(String url) {
     return new SourceSettings(
-        sourcePath,
-        url,
-        sourceProxy,
-        sourceCredentials,
-        sourceInsecureSsl,
-        connectorSettings,
-        credentialsKind);
+        sourcePath, url, sourceCredentials, sourceInsecureSsl, connectorSettings, credentialsKind);
   }
 
   /** A copy carrying {@code credentials} as its secret, a personal one. */
@@ -89,7 +72,6 @@ public record SourceSettings(
     return new SourceSettings(
         sourcePath,
         sourceUrl,
-        sourceProxy,
         Secret.valueOf(secret),
         sourceInsecureSsl,
         connectorSettings,
@@ -104,12 +86,6 @@ public record SourceSettings(
   /** A copy carrying {@code settings} as the connector-owned part. */
   public SourceSettings withConnectorSettings(ConnectorData settings) {
     return new SourceSettings(
-        sourcePath,
-        sourceUrl,
-        sourceProxy,
-        sourceCredentials,
-        sourceInsecureSsl,
-        settings,
-        credentialsKind);
+        sourcePath, sourceUrl, sourceCredentials, sourceInsecureSsl, settings, credentialsKind);
   }
 }

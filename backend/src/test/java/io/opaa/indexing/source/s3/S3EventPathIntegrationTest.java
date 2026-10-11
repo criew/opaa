@@ -103,7 +103,6 @@ class S3EventPathIntegrationTest {
             SourceTypes.S3,
             null,
             store.endpoint().toString(),
-            null,
             store.rootCredentials().stored(),
             false);
     S3TestSettings.configure(

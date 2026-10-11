@@ -11,6 +11,7 @@ import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import io.opaa.s3.StubS3Server;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.test.OutboundProxyRoute;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -91,7 +92,7 @@ class AwsSdkS3ObjectStoreTest {
             ? new S3Credentials(ACCESS_KEY, SECRET_KEY, SESSION_TOKEN)
             : new S3Credentials(ACCESS_KEY, SECRET_KEY, null);
     S3Connection connection =
-        new S3Connection(endpoint, "us-east-1", pathStyle, credentials, null, -1, false);
+        new S3Connection(endpoint, "us-east-1", pathStyle, credentials, false);
     S3ClientFactory factory =
         new S3ClientFactory(properties, TargetAddressValidator.disabled(), observer);
     S3ObjectStore store =
@@ -233,8 +234,6 @@ class AwsSdkS3ObjectStoreTest {
             "us-east-1",
             true,
             new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            null,
-            -1,
             false);
     S3ObjectStore store =
         new S3ClientFactory(properties(1000, 1, 0), TargetAddressValidator.disabled())
@@ -365,8 +364,6 @@ class AwsSdkS3ObjectStoreTest {
             "us-east-1",
             true,
             new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            null,
-            -1,
             false);
     try (S3ObjectStore store =
         new AwsSdkS3ObjectStore(
@@ -390,8 +387,6 @@ class AwsSdkS3ObjectStoreTest {
             "us-east-1",
             true,
             new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            null,
-            -1,
             false);
     try (S3ObjectStore store =
         new AwsSdkS3ObjectStore(
@@ -411,7 +406,7 @@ class AwsSdkS3ObjectStoreTest {
   }
 
   @Test
-  void aConfiguredProxyCarriesEveryRequest() throws Exception {
+  void theOutboundProxyCarriesEveryRequest() throws Exception {
     // the endpoint host does not exist; only a proxy that receives the absolute request can answer
     int stubPort = URI.create(server.endpoint()).getPort();
     S3Connection viaProxy =
@@ -420,12 +415,11 @@ class AwsSdkS3ObjectStoreTest {
             "us-east-1",
             true,
             new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            "127.0.0.1",
-            stubPort,
             false);
     S3ClientFactory factory =
         new S3ClientFactory(properties(1000, 1, 0), TargetAddressValidator.disabled());
-    try (S3ObjectStore store = factory.create(viaProxy, List.of())) {
+    try (OutboundProxyRoute route = OutboundProxyRoute.through("127.0.0.1:" + stubPort);
+        S3ObjectStore store = factory.create(viaProxy, List.of())) {
       S3ObjectHead head = store.headObject("docs", "2025/a.pdf");
 
       assertThat(head.size()).isEqualTo(4);

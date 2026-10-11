@@ -529,7 +529,6 @@ class DocumentMetadataCorrectionServiceIntegrationTest {
             sourcePath.toString(),
             null,
             null,
-            null,
             false));
   }
 

@@ -212,7 +212,6 @@ class ConnectedAccountIntegrationTest {
                     null,
                     null,
                     null,
-                    null,
                     false,
                     null),
                 null,
@@ -668,7 +667,6 @@ class ConnectedAccountIntegrationTest {
                           PersonProbeSourceConnector.TYPE,
                           null,
                           SERVER + "/ablage",
-                          null,
                           null,
                           false));
               shellService.registerCreated(

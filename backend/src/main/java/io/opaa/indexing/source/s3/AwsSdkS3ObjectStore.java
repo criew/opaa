@@ -84,9 +84,7 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             properties.maxRetries(),
             properties.retryBackoff());
     Optional<ProxyAddress> outboundProxy =
-        settings.hasProxy()
-            ? Optional.empty()
-            : OutboundProxySelector.instance().proxyFor(connection.endpoint());
+        OutboundProxySelector.instance().proxyFor(connection.endpoint());
     if (outboundProxy.isPresent()) {
       settings = settings.withProxy(outboundProxy.get().host(), outboundProxy.get().port());
     }

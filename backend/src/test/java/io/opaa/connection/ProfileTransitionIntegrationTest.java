@@ -39,7 +39,6 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 class ProfileTransitionIntegrationTest {
 
   private static final String ADMIN = "/api/v1/admin/connection-profiles";
-  private static final String PROXY = "proxy.example.org:3128";
 
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
@@ -68,7 +67,7 @@ class ProfileTransitionIntegrationTest {
 
   @Test
   void aChangedDefaultReachesEveryLibraryAndOneRefusalChangesNothing() throws Exception {
-    UUID profile = createProfile("{\"edition\": \"CLOUD\"}", null);
+    UUID profile = createProfile("{\"edition\": \"CLOUD\"}", false);
     UUID first = createLibrary(profile, "t1");
     UUID second = createLibrary(profile, "t2");
     UUID third = createLibrary(profile, ProfileProbeSourceConnector.CLOUD_ONLY_TOPIC);
@@ -119,7 +118,7 @@ class ProfileTransitionIntegrationTest {
   @Test
   void connectingWithADefaultTheConnectorRefusesIsA400AndLeavesTheLibraryOnItsOwn()
       throws Exception {
-    UUID profile = createProfile("{\"edition\": \"DC\"}", null);
+    UUID profile = createProfile("{\"edition\": \"DC\"}", false);
     UUID library =
         createOwnLibrary(
             "https://probe.example.org/x",
@@ -142,8 +141,8 @@ class ProfileTransitionIntegrationTest {
 
   /** Rule 2: what the profile set becomes the library's own, so it runs on unchanged. */
   @Test
-  void releasingWritesTheDefaultsProxyAndTlsSwitchIntoTheLibrary() throws Exception {
-    UUID profile = createProfile("{\"edition\": \"DC\"}", PROXY);
+  void releasingWritesTheDefaultsAndTlsSwitchIntoTheLibrary() throws Exception {
+    UUID profile = createProfile("{\"edition\": \"DC\"}", true);
     UUID library = createLibrary(profile, "t");
 
     mockMvc
@@ -151,14 +150,13 @@ class ProfileTransitionIntegrationTest {
         .andExpect(status().isOk());
 
     assertThat(stored(library, "source_settings")).contains("DC").contains("\"t\"");
-    assertThat(stored(library, "source_proxy")).isEqualTo(PROXY);
     assertThat(stored(library, "source_insecure_ssl")).isEqualTo("true");
     assertThat(probe.sourceChanges()).isEmpty();
   }
 
   @Test
   void aLibraryTheProfileRequirementLocksIsRepairedByConnectingItWithAnAddress() throws Exception {
-    UUID profile = createProfile(null, null);
+    UUID profile = createProfile(null, false);
     UUID library = createOwnLibrary("https://eigen.example.org/x", "");
     mockMvc
         .perform(
@@ -180,7 +178,7 @@ class ProfileTransitionIntegrationTest {
 
   @Test
   void aManagerWithoutTheReleaseReadsTheProfileOfTheLibraryButIsNotOfferedIt() throws Exception {
-    UUID profile = createProfile("{\"edition\": \"DC\"}", PROXY);
+    UUID profile = createProfile("{\"edition\": \"DC\"}", true);
     UUID library = createLibrary(profile, "t");
     ConnectorReleases.withdraw(jdbc, "PROFILE:" + profile);
 
@@ -190,7 +188,6 @@ class ProfileTransitionIntegrationTest {
         .andExpect(jsonPath("$.connectionProfile.serverUrl").value("https://probe.example.org"))
         .andExpect(jsonPath("$.connectionProfile.authMethod").value("NONE"))
         .andExpect(jsonPath("$.connectionProfile.connectorDefaults.edition").value("DC"))
-        .andExpect(jsonPath("$.connectionProfile.sourceProxy").value(PROXY))
         .andExpect(jsonPath("$.connectionProfile.sourceInsecureSsl").value(true));
     mockMvc
         .perform(
@@ -259,7 +256,7 @@ class ProfileTransitionIntegrationTest {
                 + "}");
   }
 
-  private UUID createProfile(String defaults, String proxy) throws Exception {
+  private UUID createProfile(String defaults, boolean insecureSsl) throws Exception {
     String body =
         mockMvc
             .perform(
@@ -268,13 +265,12 @@ class ProfileTransitionIntegrationTest {
                         """
                         {"name": "Zugang Übergang %s", "sourceType": "PROFILE_PROBE",
                          "serverUrl": "https://probe.example.org", "authMethod": "NONE",
-                         "ownership": "LIBRARY", "sourceInsecureSsl": %s%s%s}
+                         "ownership": "LIBRARY", "sourceInsecureSsl": %s%s}
                         """
                             .formatted(
                                 UUID.randomUUID(),
-                                proxy != null,
-                                defaults == null ? "" : ", \"connectorSettings\": " + defaults,
-                                proxy == null ? "" : ", \"sourceProxy\": \"" + proxy + "\"")))
+                                insecureSsl,
+                                defaults == null ? "" : ", \"connectorSettings\": " + defaults)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()

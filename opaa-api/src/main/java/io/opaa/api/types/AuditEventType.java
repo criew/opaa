@@ -66,10 +66,10 @@ public enum AuditEventType {
   PROMPT_CHANGED,
   PROMPT_DELETED,
   /**
-   * A library's source configuration (sourcePath/sourceUrl/sourceProxy/sourceCredentials/
-   * sourceInsecureSsl) changed - distinct from {@link #LIBRARY_CHANGED} (name/description), which
-   * does not fire for a source configuration edit alone. Only which fields changed is recorded,
-   * never their values - sourceCredentials must never appear in the log at all.
+   * A library's source configuration (sourcePath/sourceUrl/sourceCredentials/ sourceInsecureSsl)
+   * changed - distinct from {@link #LIBRARY_CHANGED} (name/description), which does not fire for a
+   * source configuration edit alone. Only which fields changed is recorded, never their values -
+   * sourceCredentials must never appear in the log at all.
    */
   LIBRARY_SOURCE_UPDATED,
   GROUP_CREATED,

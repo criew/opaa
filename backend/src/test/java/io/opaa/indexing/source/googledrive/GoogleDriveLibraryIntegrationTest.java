@@ -104,8 +104,7 @@ class GoogleDriveLibraryIntegrationTest {
         .andExpect(status().isBadRequest());
     mockMvc
         .perform(
-            as(put("/api/v1/libraries/" + libraryId))
-                .content("{\"name\": \"Drive\", \"sourceProxy\": \"proxy.example.org:8080\"}"))
+            as(put("/api/v1/libraries/" + libraryId)).content("{\"name\": \"Drive umbenannt\"}"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.sourceCredentialsSet").value(true));
 

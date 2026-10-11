@@ -456,7 +456,7 @@ describe('ConnectionProfilesTab', () => {
     expect(sent[0].connectorSettings).toEqual({ edition: 'EXTERN', pathStyle: false })
   }, 20000)
 
-  it('sends proxy and certificate switch of the profile', async () => {
+  it('sends the certificate switch of the profile', async () => {
     const user = userEvent.setup()
     const sent = capturePosts()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
@@ -464,22 +464,20 @@ describe('ConnectionProfilesTab', () => {
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     await chooseSourceType(user, dialog, /Nextcloud/)
-    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit Proxy')
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit TLS-Schalter')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://cloud.example.org')
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'Ohne Anmeldung' }))
-    await user.type(within(dialog).getByLabelText(/^Proxy/), ' proxy.example.org:3128 ')
     await user.click(within(dialog).getByLabelText('Zertifikatsprüfung aussetzen'))
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await screen.findByRole('dialog', { name: 'Zugang mit Proxy' })
+    await screen.findByRole('dialog', { name: 'Zugang mit TLS-Schalter' })
     expect(sent[0]).toMatchObject({
-      sourceProxy: 'proxy.example.org:3128',
       sourceInsecureSsl: true,
     })
   }, 20000)
 
-  it('offers neither proxy nor certificate switch for a file server and sends neither', async () => {
+  it('offers no certificate switch for a file server and sends none', async () => {
     const smb = mockSourceTypes.find((type) => type.type === 'SMB')!
     server.use(http.get('/api/v1/source-types', () => HttpResponse.json([NEXTCLOUD, smb])))
     const user = userEvent.setup()
@@ -489,7 +487,6 @@ describe('ConnectionProfilesTab', () => {
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     await chooseSourceType(user, dialog, /Windows-Dateifreigabe/)
-    expect(within(dialog).queryByLabelText(/^Proxy/)).not.toBeInTheDocument()
     expect(within(dialog).queryByLabelText('Zertifikatsprüfung aussetzen')).not.toBeInTheDocument()
     await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Dateiserver')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'smb://dateiserver.example')
@@ -498,7 +495,7 @@ describe('ConnectionProfilesTab', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
     await screen.findByRole('dialog', { name: 'Zugang Dateiserver' })
-    expect(sent[0]).toMatchObject({ sourceProxy: null, sourceInsecureSsl: false })
+    expect(sent[0]).toMatchObject({ sourceInsecureSsl: false })
   }, 20000)
 
   it('offers only the ownerships the chosen sign-in admits', async () => {
@@ -742,14 +739,14 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const dialog = await openEdit(user)
-    await user.type(within(dialog).getByLabelText(/^Proxy/), 'proxy.invalid:8080')
+    const address = within(dialog).getByLabelText(/^Server-Adresse/)
+    await user.clear(address)
+    await user.type(address, 'https://cloud.invalid')
     await user.click(within(dialog).getByRole('button', { name: 'Weiter' }))
 
     const refusals = await within(dialog).findByTestId('profile-change-rejections')
     expect(refusals).toHaveTextContent(/lehnt die Änderung für 1 Bibliothek ab/)
-    expect(refusals).toHaveTextContent(
-      'Verbindung: Der Proxy proxy.invalid:8080 ist nicht erreichbar.',
-    )
+    expect(refusals).toHaveTextContent('Verbindung: Der Server cloud.invalid ist nicht erreichbar.')
     expect(
       within(refusals).getByRole('link', { name: 'Abgelehnte Bibliothek 1 öffnen' }),
     ).toHaveAttribute('href', '/libraries/library-on-connection-profile-nextcloud-1')

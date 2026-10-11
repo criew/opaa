@@ -112,8 +112,6 @@ class S3SdkClientTest {
             "eu-west-1",
             false,
             new S3Credentials("AKIA", "geheim", "token"),
-            "proxy.intern",
-            3128,
             true);
 
     S3ClientSettings settings =
@@ -126,8 +124,7 @@ class S3SdkClientTest {
     assertThat(settings.credentials().secretAccessKey()).isEqualTo("geheim");
     assertThat(settings.credentials())
         .isInstanceOf(software.amazon.awssdk.auth.credentials.AwsSessionCredentials.class);
-    assertThat(settings.proxyHost()).isEqualTo("proxy.intern");
-    assertThat(settings.proxyPort()).isEqualTo(3128);
+    assertThat(settings.hasProxy()).isFalse();
     assertThat(settings.insecureSsl()).isTrue();
     assertThat(settings.requestTimeout()).isEqualTo(Duration.ofSeconds(11));
     assertThat(settings.maxRetries()).isEqualTo(4);

@@ -53,7 +53,6 @@ class SmbLinkLoopTest {
         new SourceSettings(
             null,
             samba.url(SambaFixture.LINK_SHARE),
-            null,
             samba.credentials(),
             false,
             ConnectorData.of(Map.of("folders", List.of("/a/unten", "/echt"))));

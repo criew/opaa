@@ -125,7 +125,6 @@ public final class FileSyncHarness {
             null,
             "https://ablage.example",
             null,
-            null,
             false);
     state = new SourceSyncState(library.getId());
     when(documentRepository.findByLibraryIdAndFilePath(any(), any()))

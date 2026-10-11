@@ -36,7 +36,6 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.SourceRequestPolicy;
 import io.opaa.test.ProductionDocumentFormats;
@@ -92,7 +91,6 @@ class UrlIndexingExecutorExecuteTest {
           null,
           UUID.randomUUID(),
           SourceTypes.HTTP_DIRECTORY,
-          null,
           null,
           null,
           null,
@@ -205,7 +203,7 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   private void execute(String credentials) {
-    library.updateSourceConfiguration(null, baseUrl + "/files/", null, credentials, false);
+    library.updateSourceConfiguration(null, baseUrl + "/files/", credentials, false);
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.FULL);
     verify(indexingJobService, timeout(5000))
@@ -581,24 +579,6 @@ class UrlIndexingExecutorExecuteTest {
     }
   }
 
-  @Test
-  void anInvalidSourceProxyPortFailsTheJobWithAGermanMessage() throws IOException {
-    // Proxy/credentials parsing goes through the shared ProxyAndCredentials.parse
-    // rather than an inline copy - an invalid port now fails with the same understandable German
-    // message RssFeedIndexingExecutorTest#anInvalidSourceProxyPortFailsTheJobWithAGermanMessage
-    // already proves for the RSS path, instead of the JDK's own raw
-    // NumberFormatException message.
-    library.updateSourceConfiguration(
-        null, baseUrl + "/files/", "127.0.0.1:not-a-port", null, false);
-    UUID jobId = UUID.randomUUID();
-
-    executor.execute(jobId, library, IndexingRunMode.FULL);
-
-    verify(indexingJobService, timeout(5000))
-        .failJob(eq(jobId), eq(ProxyAndCredentials.INVALID_PROXY_MESSAGE));
-    verify(documentIngestService, never()).ingest(DocumentIngests.anyFile(), any());
-  }
-
   // --- the reconciliation only ever runs after a successful, uncapped crawl --
 
   @Test
@@ -799,7 +779,7 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   private UUID executeWithoutWaiting() {
-    library.updateSourceConfiguration(null, baseUrl + "/files/", null, null, false);
+    library.updateSourceConfiguration(null, baseUrl + "/files/", null, false);
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.FULL);
     return jobId;

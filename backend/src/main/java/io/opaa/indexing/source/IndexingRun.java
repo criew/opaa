@@ -13,6 +13,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.knowledge.SourceType;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.sourceaccess.LoggedName;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
@@ -155,8 +156,8 @@ public final class IndexingRun {
   }
 
   /**
-   * Target, proxy, TLS switch and connector settings as the core resolved them at the start of the
-   * run; never the secret, which {@link #credentials()} answers.
+   * Target, TLS switch and connector settings as the core resolved them at the start of the run;
+   * never the secret, which {@link #credentials()} answers.
    */
   public SourceSettings settings() {
     return settings;
@@ -280,7 +281,10 @@ public final class IndexingRun {
   public void recordFailure(String reference, Throwable failure) {
     LoggedName names = library.loggedNames();
     log.error("Failed to process {} ({})", names.of(reference), sourceType, names.of(failure));
-    events.record(IndexingEventCategory.ERROR, DocumentIngestOutcomes.FAILED_MESSAGE, reference);
+    events.record(
+        IndexingEventCategory.ERROR,
+        ProxyRefusal.failureMessage(failure, DocumentIngestOutcomes.FAILED_MESSAGE),
+        reference);
     progress.recordFailed();
   }
 

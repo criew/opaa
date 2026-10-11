@@ -39,11 +39,11 @@ final class ProfileFrame {
   }
 
   /**
-   * Proxy and certificate check the profile sets in place of its libraries' own; where they apply
-   * beyond the server address, the connector decides as for an own address.
+   * The certificate check the profile sets in place of its libraries' own; where it applies beyond
+   * the server address, the connector decides as for an own address.
    */
   TransportRules serverTransport() {
-    return new TransportRules(profile.getSourceProxy(), profile.isSourceInsecureSsl());
+    return new TransportRules(profile.isSourceInsecureSsl());
   }
 
   /** Whether a library on the profile holds its own personal secret. */
@@ -52,20 +52,13 @@ final class ProfileFrame {
   }
 
   /**
-   * Refuses {@code requested} where it differs from the frame: a proxy, a skipped certificate check
-   * or a bound connector setting other than the profile's. An absent value always fits.
+   * Refuses {@code requested} where it differs from the frame: a skipped certificate check or a
+   * bound connector setting other than the profile's. An absent value always fits.
    *
    * @throws ValidationException (German 400) naming the field
    */
   void requireFits(SourceSettings requested) {
-    String proxy = blankToNull(requested.sourceProxy());
     TransportRules transport = serverTransport();
-    if (proxy != null && !proxy.equals(transport.proxy())) {
-      throw new ValidationException(
-          "sourceProxy gibt der Zugang „"
-              + profile.getName()
-              + "“ vor; die Bibliothek setzt ihn nicht selbst");
-    }
     if (requested.sourceInsecureSsl() && !transport.insecureSsl()) {
       throw new ValidationException(
           "Die Zertifikatsprüfung gibt der Zugang „"
@@ -139,7 +132,6 @@ final class ProfileFrame {
     return new SourceSettings(
         validated.sourcePath(),
         validated.sourceUrl(),
-        null,
         takesSecret() ? validated.sourceCredentials() : null,
         false,
         ownSettings(validated.connectorSettings()),

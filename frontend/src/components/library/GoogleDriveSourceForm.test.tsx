@@ -211,7 +211,7 @@ describe('GoogleDriveSourceForm (ADR-0040)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
     expect(screen.getByRole('button', { name: 'Prüft …' })).toHaveAttribute('aria-disabled', 'true')
-    await user.type(screen.getByLabelText('Proxy (optional)'), 'p')
+    await user.type(screen.getByLabelText('Imitiertes Konto (optional)'), 'p')
     resolve({ reachable: true, message: 'alt', details: null })
 
     expect(await screen.findByRole('button', { name: 'Verbindung testen' })).toBeEnabled()

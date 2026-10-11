@@ -1005,7 +1005,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
                     PersonProbeSourceConnector.TYPE,
                     null,
                     URI.create(SERVER + "/geteilt"),
-                    null,
                     "geteilt:" + PASSWORD,
                     null,
                     null,
@@ -1186,7 +1185,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
     String name = "Personalakte " + suffix;
     libraryService.updateLibrary(
         library,
-        new LibraryUpdate(name, "Notiz " + suffix, null, null, null, null, null, null, null, null),
+        new LibraryUpdate(name, "Notiz " + suffix, null, null, null, null, null, null, null),
         ownerCaller);
     UUID document = UUID.randomUUID();
     String fileName = "gehaltsabrechnung-" + suffix + ".pdf";
@@ -1338,7 +1337,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
                 PersonProbeSourceConnector.TYPE,
                 null,
                 URI.create(SERVER + "/ablage"),
-                null,
                 null,
                 null,
                 null,

@@ -43,8 +43,6 @@ class AwsSdkS3ObjectStoreOutboundProxyTest {
                 "us-east-1",
                 true,
                 new S3Credentials("AKIASTUBACCESSKEY", "geheim", null),
-                null,
-                -1,
                 false);
         S3Properties properties =
             new S3Properties(

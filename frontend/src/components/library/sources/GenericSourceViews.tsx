@@ -103,13 +103,10 @@ export function StoredConnection({
   )
 }
 
-/** Proxy, certificate switch and the note on credentials - shared by every remote source. */
+/** Certificate switch and the note on credentials - shared by every remote source. */
 export function RemoteConnectionLines({ library }: { library: StoredLibrarySource }) {
   return (
     <>
-      <Typography variant="body2">
-        <strong>Proxy:</strong> {library.sourceProxy ?? 'nicht konfiguriert'}
-      </Typography>
       <Typography variant="body2">
         <strong>Zertifikatsprüfung aussetzen:</strong> {library.sourceInsecureSsl ? 'ja' : 'nein'}
       </Typography>

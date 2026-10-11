@@ -46,7 +46,6 @@ class IndexingRunTest {
           null,
           "https://host/",
           null,
-          null,
           false);
   private final IndexingRun run =
       new IndexingRun(

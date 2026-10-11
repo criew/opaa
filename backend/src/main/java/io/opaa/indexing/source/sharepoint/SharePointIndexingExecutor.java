@@ -21,7 +21,6 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
 import io.opaa.msgraph.GraphClient;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
 import java.time.Duration;
@@ -126,12 +125,7 @@ public class SharePointIndexingExecutor implements SourceIndexingExecutor {
             new SourceRequestMeter(),
             properties.requestBudgetPerRun(),
             properties.maxThrottleWaitPerRun());
-    GraphClient graph;
-    try {
-      graph = graphs.open(run.settings(), run.credentials(), budget);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new IndexingRunFailedException(e.getMessage());
-    }
+    GraphClient graph = graphs.open(run.settings(), run.credentials(), budget);
     run.recordRequestCost(budget.meter());
     UUID libraryId = run.library().getId();
     SourceSyncState state = journal.load(libraryId);

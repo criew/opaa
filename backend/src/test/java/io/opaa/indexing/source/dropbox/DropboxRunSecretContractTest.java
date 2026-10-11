@@ -50,7 +50,6 @@ class DropboxRunSecretContractTest extends RunSecretContract {
     return new SourceSettings(
         null,
         server.base().toString(),
-        null,
         FakeDropboxServer.TOKEN,
         false,
         ConnectorData.of(Map.of("folders", List.of("/Akten"))));

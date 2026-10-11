@@ -1,6 +1,7 @@
 package io.opaa.auth;
 
 import io.opaa.common.ValidationException;
+import io.opaa.outbound.ProxyRefusal;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
@@ -144,7 +145,9 @@ public class OidcDiscoveryClient {
           throw new OidcProbeException("Weiterleitungen werden nicht gefolgt.");
         }
         if (response.statusCode() != 200) {
-          throw new OidcProbeException("Antwort mit HTTP " + response.statusCode() + ".");
+          throw new OidcProbeException(
+              ProxyRefusal.statusMessage(
+                  response.statusCode(), "Antwort mit HTTP " + response.statusCode() + "."));
         }
         return text;
       }
@@ -157,7 +160,9 @@ public class OidcDiscoveryClient {
     } catch (IOException e) {
       log.info("OIDC probe of {} failed: {}", url, e.getMessage());
       throw new OidcProbeException(
-          "Der Anbieter ist nicht erreichbar (" + e.getMessage() + ").", true);
+          ProxyRefusal.failureMessage(
+              e, "Der Anbieter ist nicht erreichbar (" + e.getMessage() + ")."),
+          true);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new OidcProbeException("Der Abruf wurde unterbrochen.");

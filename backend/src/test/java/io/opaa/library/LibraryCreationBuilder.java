@@ -23,7 +23,6 @@ public final class LibraryCreationBuilder {
   private final SourceType sourceType;
   private String sourcePath;
   private URI sourceUrl;
-  private String sourceProxy;
   private String sourceCredentials;
   private Boolean sourceInsecureSsl;
   private ConfluenceEdition confluenceEdition;
@@ -63,11 +62,6 @@ public final class LibraryCreationBuilder {
 
   public LibraryCreationBuilder sourceUrl(URI sourceUrl) {
     this.sourceUrl = sourceUrl;
-    return this;
-  }
-
-  public LibraryCreationBuilder sourceProxy(String sourceProxy) {
-    this.sourceProxy = sourceProxy;
     return this;
   }
 
@@ -115,7 +109,6 @@ public final class LibraryCreationBuilder {
         sourceType,
         sourcePath,
         sourceUrl,
-        sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
         TestSourceSettings.of(

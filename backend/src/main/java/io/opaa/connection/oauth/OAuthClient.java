@@ -8,9 +8,9 @@ import io.opaa.indexing.source.OAuthAuth;
 import io.opaa.indexing.source.Revocation;
 import io.opaa.indexing.source.SignInRejectedException;
 import io.opaa.indexing.source.SourceCredentialsException;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceFormPost;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.io.IOException;
@@ -33,11 +33,10 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The one way to an authorization server for OAuth (RFC 6749, 7636, 7009): the authorization
  * request, the code exchange, the renewal and the revocation. Every request goes through {@link
- * SourceFormPost} - target check first, no redirect, bounded answer - and the profile's proxy,
- * always with the certificate check. Where the registration names a resource (RFC 8707, an MCP
- * server), the authorization request, the code exchange and every renewal name it, so the tokens
- * are issued for that server alone. Client secret, code, verifier and tokens reach no log and no
- * message.
+ * SourceFormPost} - target check first, no redirect, bounded answer - always with the certificate
+ * check. Where the registration names a resource (RFC 8707, an MCP server), the authorization
+ * request, the code exchange and every renewal name it, so the tokens are issued for that server
+ * alone. Client secret, code, verifier and tokens reach no log and no message.
  */
 public final class OAuthClient {
 
@@ -263,11 +262,13 @@ public final class OAuthClient {
                 + " verwendet. Bitte verbinden Sie erneut.");
       }
       throw new SourceCredentialsException(
-          "Der Token-Endpunkt "
-              + endpoint
-              + " hat die Anmeldung abgewiesen (HTTP "
-              + response.statusCode()
-              + ").");
+          ProxyRefusal.statusMessage(
+              response.statusCode(),
+              "Der Token-Endpunkt "
+                  + endpoint
+                  + " hat die Anmeldung abgewiesen (HTTP "
+                  + response.statusCode()
+                  + ")."));
     }
     String accessToken = field(body, "access_token");
     if (accessToken.isBlank()) {
@@ -339,7 +340,7 @@ public final class OAuthClient {
 
   /**
    * Posts {@code form} with {@code headers} to {@code endpoint} - the one call of {@link
-   * SourceFormPost} in this package - through the profile's proxy, with the certificate check.
+   * SourceFormPost} in this package - with the certificate check.
    *
    * @throws SourceCredentialsException with a German cause naming the {@code label}led endpoint
    */
@@ -351,17 +352,14 @@ public final class OAuthClient {
       Duration timeout,
       String label) {
     try {
-      ProxyAndCredentials proxy = ProxyAndCredentials.parse(registration.proxy(), null);
       return SourceFormPost.post(
-          SourceHttpClientFactory.buildHttpClient(proxy.proxyHost(), proxy.proxyPort(), false),
+          SourceHttpClientFactory.buildHttpClient(false),
           endpoint,
           form,
           headers,
           timeout,
           MAX_RESPONSE_BYTES,
           targetAddressValidator);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new SourceCredentialsException(e.getMessage());
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       throw new SourceCredentialsException(e.getMessage());
     } catch (BoundedStreams.LimitExceededException e) {
@@ -370,7 +368,8 @@ public final class OAuthClient {
     } catch (IOException e) {
       log.warn("{} {} not reachable: {}", label, endpoint, e.getClass().getSimpleName());
       throw new SourceCredentialsException(
-          "Der " + label + " " + endpoint + " ist nicht erreichbar.");
+          ProxyRefusal.failureMessage(
+              e, "Der " + label + " " + endpoint + " ist nicht erreichbar."));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new SourceCredentialsException("Der Abruf beim Anbieter wurde unterbrochen.");

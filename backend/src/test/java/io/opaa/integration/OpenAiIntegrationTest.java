@@ -108,7 +108,6 @@ class OpenAiIntegrationTest {
                 tempDir.toAbsolutePath().toString(),
                 null,
                 null,
-                null,
                 false));
     targetLibraryId = library.getId();
     // #419: an indexing run needs a caller who holds at least EDITOR on the target library.

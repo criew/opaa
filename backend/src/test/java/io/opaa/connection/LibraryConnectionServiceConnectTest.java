@@ -147,11 +147,10 @@ class LibraryConnectionServiceConnectTest {
   }
 
   @Test
-  void releasingMakesTheDefaultsProxyAndTlsSwitchOfTheProfileTheLibrarysOwn() {
+  void releasingMakesTheDefaultsAndTlsSwitchOfTheProfileTheLibrarysOwn() {
     KnowledgeLibrary library = connectedLibrary("{\"topic\": \"t\"}");
     ConnectionProfile current = profiles.findById(currentProfileOf(library)).orElseThrow();
     ReflectionTestUtils.setField(current, "connectorSettings", "{\"edition\": \"DC\"}");
-    ReflectionTestUtils.setField(current, "sourceProxy", "proxy.example.org:3128");
     ReflectionTestUtils.setField(current, "sourceInsecureSsl", true);
     ProfileProbeSourceConnector probe = new ProfileProbeSourceConnector();
 
@@ -159,7 +158,6 @@ class LibraryConnectionServiceConnectTest {
 
     assertThat(ConnectorData.storedIn(library).asMap())
         .isEqualTo(Map.of("topic", "t", "edition", "DC"));
-    assertThat(library.getSourceProxy()).isEqualTo("proxy.example.org:3128");
     assertThat(library.isSourceInsecureSsl()).isTrue();
     assertThat(library.getSourceUrl()).isEqualTo("https://probe.example.org/a/x");
     assertThat(library.getSourceCredentials()).isEqualTo("nutzer:geheim");
@@ -194,7 +192,6 @@ class LibraryConnectionServiceConnectTest {
             ProfileProbeSourceConnector.TYPE,
             null,
             url,
-            null,
             "nutzer:geheim",
             false);
     rows.put(library.getId(), library);

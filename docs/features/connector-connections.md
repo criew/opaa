@@ -224,8 +224,9 @@ Jeder Konnektor meldet, wie er zu Profilen steht:
 Stand der Umsetzung (#2219): Webverzeichnis, RSS, Confluence, S3, Nextcloud und SMB melden
 „optional“, jeweils mit dem persönlichen Geheimnis der Bibliothek, Webverzeichnis und RSS zusätzlich
 ohne Anmeldung. Vorgaben am Profil: Confluence `edition`, S3 `region` und `pathStyle`. Ein
-SMB-Profil hat eine `smb://`-Adresse und weder Proxy noch ausgesetzte Zertifikatsprüfung; beides
-gibt es nur bei einer `http(s)`-Adresse. Google Drive meldet „optional“ mit dem Dienstkonto-Schlüssel
+SMB-Profil hat eine `smb://`-Adresse und keine ausgesetzte Zertifikatsprüfung; die gibt es nur bei
+einer `http(s)`-Adresse. Einen eigenen Proxy trägt kein Profil (#2496): Alle Verbindungen gehen
+über den hausweiten Ausgangsproxy. Google Drive meldet „optional“ mit dem Dienstkonto-Schlüssel
 am Profil und dem imitierten Konto als Vorgabe nur des Profils. Nextcloud meldet sein persönliches
 Geheimnis seit #2167 für Bibliothek und Person. Die Registry prüft die Regel in beiden Richtungen: „verboten“ genau ohne entferntes Ziel oder
 bei Uploads.
@@ -276,7 +277,7 @@ Die bestehende Zielprüfung gegen private und lokale Adressbereiche bleibt daneb
 Ein Konnektor meldet, welche Anmeldearten er anbietet; das Profil wählt eine.
 
 **Anmeldung des Profils (Client-Credentials, Dienstkonto-Schlüssel):** OPAA holt das Zugriffstoken
-mit der Registrierung des Profils über dessen Proxy, nie mit abgeschalteter Zertifikatsprüfung, und
+mit der Registrierung des Profils, nie mit abgeschalteter Zertifikatsprüfung, und
 hält es bis kurz vor Ablauf. Lehnt der Anbieter die Registrierung ab, markiert OPAA das Profil: Alle
 Bibliotheken darauf zeigen „Abgelaufen“ mit der Systemverwaltung als zuständig, und kein Lauf fragt
 den Anbieter erneut, bis ein neues Secret eingetragen oder die Anmeldung am Profil getestet ist.

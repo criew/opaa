@@ -87,7 +87,7 @@ class NextcloudSourceConnectorTest {
     assertThatThrownBy(() -> connector.validate(withoutUser))
         .isInstanceOf(ValidationException.class);
     SourceSettings withPath =
-        new SourceSettings("/srv", server.baseUrl(), null, server.credentials(), false, null);
+        new SourceSettings("/srv", server.baseUrl(), server.credentials(), false, null);
     assertThatThrownBy(() -> connector.validate(withPath))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourcePath");
@@ -224,7 +224,6 @@ class NextcloudSourceConnectorTest {
         NextcloudSourceConnector.TYPE,
         null,
         server.baseUrl(),
-        null,
         null,
         false);
   }

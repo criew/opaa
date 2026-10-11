@@ -56,7 +56,6 @@ final class LibraryResponseMapper {
         toSourceType(request.getSourceType()),
         request.getSourcePath(),
         request.getSourceUrl(),
-        request.getSourceProxy(),
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         toSettings(request.getSourceSettings()),
@@ -104,7 +103,6 @@ final class LibraryResponseMapper {
         toSourceType(request.getSourceType()),
         request.getSourcePath(),
         request.getSourceUrl(),
-        request.getSourceProxy(),
         request.getSourceCredentials(),
         request.getSourceInsecureSsl(),
         toScheduleUpdate(request.getSchedule()),
@@ -179,7 +177,6 @@ final class LibraryResponseMapper {
         .sourcePath(managementDetail.sourcePath())
         .sourceUrl(
             managementDetail.sourceUrl() == null ? null : URI.create(managementDetail.sourceUrl()))
-        .sourceProxy(managementDetail.sourceProxy())
         .sourceInsecureSsl(managementDetail.sourceInsecureSsl())
         .sourceCredentialsSet(managementDetail.sourceCredentialsSet())
         .storageQuotaBytes(managementDetail.storageQuotaBytes())
@@ -221,7 +218,6 @@ final class LibraryResponseMapper {
           .authMethod(frame.authMethod())
           .connectorDefaults(
               frame.connectorDefaults() == null ? null : frame.connectorDefaults().asMap())
-          .sourceProxy(frame.sourceProxy())
           .sourceInsecureSsl(frame.sourceInsecureSsl());
     }
     return ref;

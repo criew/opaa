@@ -269,7 +269,6 @@ class RssFeedIndexingExecutorInsecureSslTest {
         null,
         feedUrl,
         null,
-        null,
         sourceInsecureSsl);
   }
 

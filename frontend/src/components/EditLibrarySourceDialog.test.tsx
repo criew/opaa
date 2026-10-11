@@ -63,7 +63,6 @@ const filesystemLibrary = {
   sourceType: 'FILESYSTEM' as const,
   sourcePath: '/data/dokumente',
   sourceUrl: null,
-  sourceProxy: null,
   sourceInsecureSsl: null,
 }
 
@@ -73,7 +72,6 @@ const httpDirectoryLibrary = {
   sourceType: 'HTTP_DIRECTORY' as const,
   sourcePath: null,
   sourceUrl: 'https://old.example.com/documents/',
-  sourceProxy: 'proxy.old.example.com:8080',
   sourceInsecureSsl: true,
   sourceCredentialsSet: true,
 }
@@ -164,7 +162,6 @@ describe('EditLibrarySourceDialog', () => {
         description: 'Interne Dokumente',
         sourcePath: '/data/neu',
         sourceUrl: undefined,
-        sourceProxy: undefined,
         sourceCredentials: undefined,
         sourceInsecureSsl: false,
         sourceSettings: { excludePatterns: [] },
@@ -201,7 +198,7 @@ describe('EditLibrarySourceDialog', () => {
     })
   })
 
-  it('prefills URL, proxy and SSL switch for an HTTP_DIRECTORY library, leaving credentials blank', async () => {
+  it('prefills URL and SSL switch for an HTTP_DIRECTORY library, leaving credentials blank', async () => {
     renderWithProviders(
       <EditLibrarySourceDialog
         open
@@ -214,7 +211,6 @@ describe('EditLibrarySourceDialog', () => {
     expect(await screen.findByLabelText(/adresse \(url\)/i)).toHaveValue(
       'https://old.example.com/documents/',
     )
-    expect(screen.getByLabelText(/^proxy/i)).toHaveValue('proxy.old.example.com:8080')
     expect(screen.getByRole('switch', { name: /zertifikatsprüfung aussetzen/i })).toBeChecked()
     expect(screen.getByLabelText(/neue zugangsdaten/i)).toHaveValue('')
   })
@@ -496,7 +492,7 @@ describe('EditLibrarySourceDialog', () => {
         ),
       ).toBeInTheDocument()
 
-      await user.type(screen.getByLabelText(/^proxy/i), '1')
+      await user.type(screen.getByLabelText(/adresse \(url\)/i), 'x')
 
       expect(
         screen.queryByText(
@@ -530,7 +526,6 @@ describe('EditLibrarySourceDialog', () => {
       sourceType: 'S3' as const,
       sourcePath: null,
       sourceUrl: 'https://minio.intern.example:9000',
-      sourceProxy: null,
       sourceInsecureSsl: false,
       sourceCredentialsSet: true,
       sourceSettings: {
@@ -618,7 +613,6 @@ describe('EditLibrarySourceDialog', () => {
       sourceType: 'CONFLUENCE' as const,
       sourcePath: null,
       sourceUrl: 'https://wiki.behoerde.example/confluence',
-      sourceProxy: null,
       sourceInsecureSsl: false,
       sourceCredentialsSet: true,
       sourceSettings: { edition: 'DATA_CENTER' as const, spaces: [{ key: 'BAU', name: 'Bauamt' }] },
@@ -762,7 +756,7 @@ describe('EditLibrarySourceDialog', () => {
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
     }, 15000)
 
-    it('keeps the curated selection when the proxy changes and only withdraws the verification', async () => {
+    it('keeps the curated selection when the TLS switch changes and only withdraws the verification', async () => {
       const user = userEvent.setup()
       renderWithProviders(
         <EditLibrarySourceDialog
@@ -774,7 +768,7 @@ describe('EditLibrarySourceDialog', () => {
       )
       await screen.findByLabelText(/Spaces suchen und auswählen/)
 
-      await user.type(screen.getByLabelText(/Proxy/), 'proxy.example:3128')
+      await user.click(screen.getByRole('switch', { name: /Zertifikatsprüfung aussetzen/ }))
 
       expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
       expect(screen.getByText(/Die bisherige Auswahl \(BAU\) bleibt bestehen/)).toBeInTheDocument()
@@ -788,7 +782,6 @@ describe('EditLibrarySourceDialog', () => {
       serverUrl: 'https://s3.rz.example',
       authMethod: 'PERSONAL_SECRET' as const,
       connectorDefaults: { region: 'eu-rz-1', pathStyle: true },
-      sourceProxy: 'proxy.rz.example:3128',
       sourceInsecureSsl: true,
     }
     const profiledS3Library = {
@@ -797,7 +790,6 @@ describe('EditLibrarySourceDialog', () => {
       sourceType: 'S3' as const,
       sourcePath: null,
       sourceUrl: 'https://s3.rz.example',
-      sourceProxy: null,
       sourceInsecureSsl: false,
       sourceCredentialsSet: true,
       sourceSettings: { scopes: [{ bucket: 'protokolle', prefix: null }] },
@@ -828,9 +820,6 @@ describe('EditLibrarySourceDialog', () => {
       const region = await screen.findByLabelText(/^Region/)
       expect(region).toHaveValue('eu-rz-1')
       expect(region).toHaveAttribute('readonly')
-      const proxy = screen.getByLabelText(/^Proxy/)
-      expect(proxy).toHaveValue('proxy.rz.example:3128')
-      expect(proxy).toHaveAttribute('readonly')
       expect(screen.getByRole('switch', { name: /TLS-Prüfung aussetzen/ })).toBeDisabled()
       await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
@@ -840,7 +829,6 @@ describe('EditLibrarySourceDialog', () => {
       expect(request.sourceSettings).not.toHaveProperty('region')
       expect(request.sourceSettings).not.toHaveProperty('pathStyle')
       expect(request.sourceSettings).toMatchObject({ scopes: [{ bucket: 'protokolle' }] })
-      expect(request.sourceProxy).toBeUndefined()
       expect(request.sourceInsecureSsl).toBe(false)
       expect(asked).toHaveLength(0)
       server.events.removeAllListeners()
@@ -859,7 +847,6 @@ describe('EditLibrarySourceDialog', () => {
             sourceType: 'SHAREPOINT',
             sourcePath: null,
             sourceUrl: 'https://graph.microsoft.com',
-            sourceProxy: null,
             sourceInsecureSsl: false,
             sourceCredentialsSet: false,
             sourceSettings: {
@@ -879,7 +866,6 @@ describe('EditLibrarySourceDialog', () => {
               serverUrl: 'https://graph.microsoft.com',
               authMethod: 'CLIENT_CREDENTIALS',
               connectorDefaults: null,
-              sourceProxy: null,
               sourceInsecureSsl: false,
             },
           }}
@@ -901,7 +887,6 @@ describe('EditLibrarySourceDialog', () => {
       const [, request] = mockUpdateLibrary.mock.calls[0]
       expect(request.sourceUrl).toBe('https://graph.microsoft.com')
       expect(request.sourceCredentials).toBeUndefined()
-      expect(request.sourceProxy).toBeUndefined()
       expect(request.sourceSettings).toEqual({
         libraries: [
           {

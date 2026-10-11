@@ -46,7 +46,6 @@ class ProfileSourceConnectionResolverLockTest {
           SourceTypes.RSS_FEED,
           null,
           "https://feeds.example.org/a.xml",
-          null,
           "nutzer:geheim",
           false);
 

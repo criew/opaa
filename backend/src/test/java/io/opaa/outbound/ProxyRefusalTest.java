@@ -46,6 +46,31 @@ class ProxyRefusalTest {
   }
 
   @Test
+  void aStatusFailureOfThe407IsTheProxysAndRecognizedDownTheCauses() {
+    IOException refused = ProxyRefusal.statusFailure(407, "HTTP 407 for URL: https://x.example");
+    assertThat(refused).isInstanceOf(ProxyRefusal.RefusedException.class);
+    assertThat(refused.getMessage()).contains("Status 407").doesNotContain("https://x.example");
+    assertThat(ProxyRefusal.describe(new IOException("wrapper", refused)))
+        .contains(refused.getMessage());
+
+    IOException other = ProxyRefusal.statusFailure(500, "HTTP 500 for URL: https://x.example");
+    assertThat(other).isNotInstanceOf(ProxyRefusal.RefusedException.class);
+    assertThat(ProxyRefusal.describe(other)).isEmpty();
+  }
+
+  @Test
+  void aFailureMessageFallsBackUnlessTheProxyRefused() {
+    assertThat(
+            ProxyRefusal.failureMessage(
+                new IOException("Tunnel failed, got: 403"), "Der Anbieter ist nicht erreichbar."))
+        .startsWith("Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt (Status 403)");
+    assertThat(
+            ProxyRefusal.failureMessage(
+                new ConnectException("Connection refused"), "Der Anbieter ist nicht erreichbar."))
+        .isEqualTo("Der Anbieter ist nicht erreichbar.");
+  }
+
+  @Test
   void looksIntoTheCauses() {
     IOException wrapped =
         new IOException("wrapper", new RuntimeException("CONNECT refused by proxy: HTTP/1.1 403"));

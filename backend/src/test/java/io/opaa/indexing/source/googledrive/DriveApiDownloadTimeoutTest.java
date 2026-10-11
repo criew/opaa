@@ -72,8 +72,7 @@ class DriveApiDownloadTimeoutTest {
   private DriveApi api(Duration downloadTimeout) {
     GoogleDriveProperties properties =
         new GoogleDriveProperties(0, 0, null, downloadTimeout, null, null, 0, 0, 0, null);
-    SourceSettings settings =
-        new SourceSettings(null, server.base().toString(), null, null, false, null);
+    SourceSettings settings = new SourceSettings(null, server.base().toString(), null, false, null);
     return new DriveApiFactory(properties, TargetAddressValidator.disabled(), wait -> {})
         .open(settings, () -> FakeDriveServer.TOKEN, RequestBudget.unbounded())
         .stagingIn(staging);

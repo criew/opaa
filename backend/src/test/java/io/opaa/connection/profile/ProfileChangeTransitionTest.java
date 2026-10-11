@@ -112,7 +112,7 @@ class ProfileChangeTransitionTest {
     KnowledgeLibrary first = library("/a", "Wetter");
     KnowledgeLibrary second = library("/b", "Verkehr");
 
-    service.update(ADMIN, profile.getId(), values("DC", null), null, false);
+    service.update(ADMIN, profile.getId(), values("DC", false), null, false);
 
     List<ProfileProbeSourceConnector.ChangeCheck> checks = probe.changeChecks();
     assertThat(checks).hasSize(2);
@@ -138,7 +138,7 @@ class ProfileChangeTransitionTest {
     KnowledgeLibrary third = library("/c", ProfileProbeSourceConnector.CLOUD_ONLY_TOPIC);
 
     assertThatThrownBy(
-            () -> service.update(ADMIN, profile.getId(), values("DC", null), null, false))
+            () -> service.update(ADMIN, profile.getId(), values("DC", false), null, false))
         .isInstanceOfSatisfying(
             ValidationException.class,
             refused -> {
@@ -164,7 +164,7 @@ class ProfileChangeTransitionTest {
     KnowledgeLibrary refused = library("/b", ProfileProbeSourceConnector.CLOUD_ONLY_TOPIC);
 
     ConnectionProfileService.ProfileImpact impact =
-        service.preview(profile.getId(), values("DC", null), null);
+        service.preview(profile.getId(), values("DC", false), null);
 
     assertThat(impact.connections()).isEqualTo(2);
     assertThat(impact.rejections())
@@ -186,9 +186,9 @@ class ProfileChangeTransitionTest {
     library("/same", "Wetter");
     library("/other", "Wetter");
 
-    Answers answers = service.check(profile.getId(), values("DC", null), null, false);
+    Answers answers = service.check(profile.getId(), values("DC", false), null, false);
     assertThat(probe.changeChecks()).hasSize(2);
-    service.update(ADMIN, profile.getId(), values("DC", null), null, false, answers);
+    service.update(ADMIN, profile.getId(), values("DC", false), null, false, answers);
 
     assertThat(probe.changeChecks()).as("the write reuses the answers").isEmpty();
     assertThat(probe.sourceChanges()).hasSize(3);
@@ -197,13 +197,10 @@ class ProfileChangeTransitionTest {
   /** The connector names the category: an unreachable target is CONNECTION, not SETTINGS. */
   @Test
   void aTargetTheConnectorCannotReachIsRefusedAsAConnection() {
-    library("/a", "Wetter");
+    library("/a", ProfileProbeSourceConnector.UNREACHABLE_TOPIC);
 
     ConnectionProfileService.ProfileImpact impact =
-        service.preview(
-            profile.getId(),
-            values("CLOUD", ProfileProbeSourceConnector.UNREACHABLE_PROXY + ":3128"),
-            null);
+        service.preview(profile.getId(), values("CLOUD", true), null);
 
     assertThat(impact.rejections())
         .singleElement()
@@ -227,7 +224,6 @@ class ProfileChangeTransitionTest {
             null,
             null,
             ConnectorData.of(Map.of("edition", "CLOUD")),
-            null,
             false);
 
     assertThatThrownBy(() -> service.check(profile.getId(), moved, null, false))
@@ -237,19 +233,18 @@ class ProfileChangeTransitionTest {
   }
 
   @Test
-  void aNewProxyIsAnEffectiveChangeCheckedAsAConnectionAndAudited() {
+  void aNewTlsSwitchIsAnEffectiveChangeCheckedAsAConnectionAndAudited() {
     KnowledgeLibrary library = library("/a", "Wetter");
 
-    service.update(ADMIN, profile.getId(), values("CLOUD", "proxy.example.org:3128"), null, false);
+    service.update(ADMIN, profile.getId(), values("CLOUD", true), null, false);
 
     ProfileProbeSourceConnector.ChangeCheck check = probe.changeChecks().getFirst();
     assertThat(check.replacesConnection()).isTrue();
-    assertThat(check.requested().sourceProxy()).isEqualTo("proxy.example.org:3128");
     assertThat(check.requested().sourceCredentials()).isEqualTo("nutzer:geheim");
     assertThat(probe.sourceChanges())
         .singleElement()
         .satisfies(change -> assertThat(change.addressChanged()).isFalse());
-    assertThat(sourceUpdates().get(library.getId())).containsExactly("sourceProxy");
+    assertThat(sourceUpdates().get(library.getId())).containsExactly("sourceInsecureSsl");
   }
 
   /**
@@ -266,7 +261,6 @@ class ProfileChangeTransitionTest {
             SERVER,
             ConnectionAuthMethod.PERSONAL_SECRET,
             ConnectionOwnership.LIBRARY,
-            null,
             null,
             null,
             null,
@@ -300,7 +294,6 @@ class ProfileChangeTransitionTest {
             null,
             null,
             ConnectorData.of(Map.of("edition", "CLOUD")),
-            null,
             false);
     service.update(ADMIN, profile.getId(), renamed, null, false);
 
@@ -324,7 +317,6 @@ class ProfileChangeTransitionTest {
             null,
             null,
             ConnectorData.of(Map.of("edition", "CLOUD")),
-            null,
             false);
 
     service.update(ADMIN, profile.getId(), moved, null, true);
@@ -340,7 +332,7 @@ class ProfileChangeTransitionTest {
         .containsExactlyInAnyOrder("sourceUrl", "sourceCredentials");
   }
 
-  private ConnectionProfileValues values(String edition, String proxy) {
+  private ConnectionProfileValues values(String edition, boolean insecureSsl) {
     return new ConnectionProfileValues(
         "Zugang Probe",
         SERVER,
@@ -351,8 +343,7 @@ class ProfileChangeTransitionTest {
         null,
         null,
         ConnectorData.of(Map.of("edition", edition)),
-        proxy,
-        false);
+        insecureSsl);
   }
 
   /**
@@ -369,7 +360,6 @@ class ProfileChangeTransitionTest {
             ProfileProbeSourceConnector.TYPE,
             null,
             SERVER + path,
-            null,
             "nutzer:geheim",
             false);
     library.updateSourceSettings("{\"topic\":\"" + topic + "\"}");

@@ -2,7 +2,6 @@
 export interface GenericSourceValues {
   sourcePath: string
   sourceUrl: string
-  sourceProxy: string
   sourceCredentials: string
   sourceInsecureSsl: boolean
 }
@@ -10,7 +9,6 @@ export interface GenericSourceValues {
 export const EMPTY_GENERIC_SOURCE_VALUES: GenericSourceValues = {
   sourcePath: '',
   sourceUrl: '',
-  sourceProxy: '',
   sourceCredentials: '',
   sourceInsecureSsl: false,
 }
@@ -23,7 +21,6 @@ export const EMPTY_GENERIC_SOURCE_VALUES: GenericSourceValues = {
 export interface LibrarySourceConfigPayload {
   sourcePath?: string
   sourceUrl?: string
-  sourceProxy?: string
   sourceCredentials?: string
   sourceInsecureSsl: boolean
   sourceSettings?: Record<string, unknown>
@@ -33,13 +30,11 @@ export interface LibrarySourceConfigPayload {
 export function storedGenericSourceValues(library: {
   sourcePath?: string | null
   sourceUrl?: string | null
-  sourceProxy?: string | null
   sourceInsecureSsl?: boolean | null
 }): GenericSourceValues {
   return {
     sourcePath: library.sourcePath ?? '',
     sourceUrl: library.sourceUrl ?? '',
-    sourceProxy: library.sourceProxy ?? '',
     sourceCredentials: '',
     sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
   }
@@ -85,7 +80,6 @@ export function genericSourcePayload(
   }
   return {
     sourceUrl: values.sourceUrl.trim(),
-    sourceProxy: values.sourceProxy.trim() || undefined,
     sourceCredentials: values.sourceCredentials.trim() || undefined,
     sourceInsecureSsl: values.sourceInsecureSsl,
   }

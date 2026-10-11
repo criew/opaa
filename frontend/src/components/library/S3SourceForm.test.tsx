@@ -163,7 +163,6 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
     expect(bucket).toHaveValue('satzungen')
     expect(mockBrowseSource).toHaveBeenCalledWith('S3', {
       sourceUrl: 'https://minio.intern.example:9000',
-      sourceProxy: undefined,
       sourceInsecureSsl: false,
       sourceCredentials: 'AKIAEXAMPLE:geheim',
       libraryId: undefined,
@@ -227,7 +226,6 @@ describe('S3SourceForm (#1377, ADR-0027)', () => {
     expect(mockTestLibrarySource).toHaveBeenCalledWith({
       sourceType: 'S3',
       sourceUrl: 'https://minio.intern.example:9000',
-      sourceProxy: undefined,
       sourceInsecureSsl: false,
       sourceCredentials: 'AKIAEXAMPLE:geheim',
       libraryId: undefined,

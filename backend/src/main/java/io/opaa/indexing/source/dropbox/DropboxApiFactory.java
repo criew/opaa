@@ -4,7 +4,6 @@ import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.Sleeper;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.util.function.Predicate;
@@ -12,7 +11,7 @@ import java.util.function.Supplier;
 
 /**
  * Opens a {@link DropboxApi} on the resolved settings of a library: the configured API and content
- * hosts, the profile's proxy, certificate validation always on.
+ * hosts, certificate validation always on.
  */
 final class DropboxApiFactory {
 
@@ -33,9 +32,6 @@ final class DropboxApiFactory {
     return properties;
   }
 
-  /**
-   * @throws ProxyAndCredentials.InvalidProxyConfigurationException for an unreadable proxy
-   */
   DropboxApi open(SourceSettings settings, Supplier<String> token, RequestBudget budget) {
     return open(settings, token, null, budget);
   }
@@ -43,8 +39,6 @@ final class DropboxApiFactory {
   /**
    * A run's API: the token asked from {@code credentials} per request, and once more after Dropbox
    * rejected it.
-   *
-   * @throws ProxyAndCredentials.InvalidProxyConfigurationException for an unreadable proxy
    */
   DropboxApi open(SourceSettings settings, RunCredentials credentials, RequestBudget budget) {
     return open(settings, credentials::value, credentials::renewedAfterRejection, budget);
@@ -55,13 +49,12 @@ final class DropboxApiFactory {
       Supplier<String> token,
       Predicate<String> renewedAfterRejection,
       RequestBudget budget) {
-    ProxyAndCredentials proxy = ProxyAndCredentials.parse(settings.sourceProxy(), null);
     return new DropboxApi(
         properties.apiBase(),
         properties.contentBase(),
         token,
         renewedAfterRejection,
-        SourceHttpClientFactory.buildHttpClient(proxy.proxyHost(), proxy.proxyPort(), false),
+        SourceHttpClientFactory.buildHttpClient(false),
         targetAddressValidator,
         properties.requestTimeout(),
         properties.downloadTimeout(),

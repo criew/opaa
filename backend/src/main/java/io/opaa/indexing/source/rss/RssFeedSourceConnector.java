@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.rss;
 
 import static io.opaa.indexing.source.ConnectorChecks.REQUEST_TIMEOUT;
-import static io.opaa.indexing.source.ConnectorChecks.parseProxyAndCredentials;
+import static io.opaa.indexing.source.ConnectorChecks.basicCredentials;
 import static io.opaa.indexing.source.ConnectorChecks.reachable;
 import static io.opaa.indexing.source.ConnectorChecks.requireHttpUrl;
 import static io.opaa.indexing.source.ConnectorChecks.translateConnectionError;
@@ -28,8 +28,8 @@ import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
+import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.BoundedStreams;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -139,17 +139,13 @@ public class RssFeedSourceConnector
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
     String url = requireHttpUrl(RssFeedSourceConnector.TYPE, settings);
-    ProxyAndCredentials config = parseProxyAndCredentials(settings);
-    HttpClient httpClient =
-        SourceHttpClientFactory.buildHttpClient(
-            config.proxyHost(), config.proxyPort(), settings.sourceInsecureSsl());
+    BasicCredentials config = basicCredentials(settings);
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient(settings.sourceInsecureSsl());
     String authHeader =
         SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
     Map<String, String> headers = requestPolicy.headers(authHeader);
 
     try {
-      // the proxy decides where the connection goes and is validated like the target itself
-      targetAddressValidator.validateHost(config.proxyHost());
       HttpResponse<InputStream> response =
           RedirectFollowingFetcher.sendFollowingRedirects(
               httpClient,

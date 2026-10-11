@@ -1,7 +1,5 @@
 package io.opaa.sourceaccess;
 
-import java.net.InetSocketAddress;
-import java.net.ProxySelector;
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyManagementException;
@@ -18,8 +16,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Builds the {@link HttpClient} and {@code Authorization} header shared by every source-access
- * caller (crawling, downloads, RSS fetches, the source connection test) - one place for proxy and
- * TLS configuration instead of a copy per caller.
+ * caller (crawling, downloads, RSS fetches, the source connection test) - one place for TLS
+ * configuration instead of a copy per caller.
  */
 public final class SourceHttpClientFactory {
 
@@ -37,18 +35,14 @@ public final class SourceHttpClientFactory {
    * Authorization} the moment it stops matching, depending on the caller's {@link
    * RedirectFollowingFetcher.RedirectPolicy}.
    *
-   * <p>Without {@code proxyHost} the client asks the JVM's default {@link ProxySelector}, which is
-   * the outbound proxy ({@code io.opaa.outbound.OutboundProxySelector}).
+   * <p>The client asks the JVM's default {@code ProxySelector}, which is the outbound proxy ({@code
+   * io.opaa.outbound.OutboundProxySelector}).
    */
-  public static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
+  public static HttpClient buildHttpClient(boolean insecureSsl) {
     HttpClient.Builder builder =
         HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NEVER)
             .connectTimeout(Duration.ofSeconds(30));
-
-    if (proxyHost != null && !proxyHost.isBlank()) {
-      builder.proxy(ProxySelector.of(new InetSocketAddress(proxyHost, proxyPort)));
-    }
 
     if (insecureSsl) {
       try {

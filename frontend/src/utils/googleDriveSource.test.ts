@@ -18,9 +18,8 @@ const values = (patch: Partial<GoogleDriveSourceValues>): GoogleDriveSourceValue
 
 describe('googleDriveSource (ADR-0040)', () => {
   it('sends the fixed address, the key only when uploaded, and never switches TLS off', () => {
-    expect(googleDrivePayloadOf(values({ sourceProxy: ' proxy:8080 ' }))).toEqual({
+    expect(googleDrivePayloadOf(values({}))).toEqual({
       sourceUrl: 'https://www.googleapis.com',
-      sourceProxy: 'proxy:8080',
       sourceCredentials: '{"client_email":"x"}',
       sourceInsecureSsl: false,
       sourceSettings: { scopes: [{ folder: 'f1', name: 'Freigabe' }], subject: null },

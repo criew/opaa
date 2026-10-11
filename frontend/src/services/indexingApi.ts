@@ -11,7 +11,7 @@ import type {
 import { apiClient as client, normalizeError } from './api'
 
 // the trigger reduces to "index this library" - sourceType and every typed configuration
-// field (url/proxy/credentials/insecureSsl) now live on the library itself (ADR-0018) and are no
+// field (url/credentials/insecureSsl) now live on the library itself (ADR-0018) and are no
 // longer sent from the frontend.
 /**
  * Starts a run; `runMode` (ADR-0023, Entscheidung 4) is optional - without it the backend picks

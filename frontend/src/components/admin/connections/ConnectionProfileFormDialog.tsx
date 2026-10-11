@@ -9,6 +9,7 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
+import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -36,7 +37,6 @@ import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS, admitsProfiles } from './connecti
 import ProfileChangePreview from './ProfileChangePreview'
 import ServiceAccountKeyField from './ServiceAccountKeyField'
 import SourceTypeSelect from './SourceTypeSelect'
-import TransportFields from './TransportFields'
 import { reachesLibraries as changeReachesLibraries } from './profileChange'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
@@ -58,7 +58,6 @@ interface Draft {
   tokenEndpoint: string
   revocationEndpoint: string
   clientSecretExpiresOn: string
-  sourceProxy: string
   sourceInsecureSsl: boolean
   /** One entry per declared profile default; an empty string sets nothing. */
   defaults: Record<string, string>
@@ -77,7 +76,6 @@ function draftFrom(profile: ConnectionProfileResponse | null): Draft {
     tokenEndpoint: profile?.tokenEndpoint ?? '',
     revocationEndpoint: profile?.revocationEndpoint ?? '',
     clientSecretExpiresOn: profile?.clientSecretExpiresOn ?? '',
-    sourceProxy: profile?.sourceProxy ?? '',
     sourceInsecureSsl: profile?.sourceInsecureSsl ?? false,
     defaults: Object.fromEntries(
       Object.entries(profile?.connectorSettings ?? {}).map(([key, value]) => [
@@ -229,7 +227,7 @@ export default function ConnectionProfileFormDialog({
   const defaultKeys = descriptor?.profileDefaults ?? []
   const fixedAddress = descriptor?.serverAddress.fixed ?? null
   const schemes = descriptor?.serverAddress.schemes ?? ['https', 'http']
-  // proxy and certificate check reach only an http(s) server; another scheme (smb) takes neither
+  // the certificate check reaches only an http(s) server; another scheme (smb) takes none
   const takesTransport =
     fixedAddress !== null
       ? /^https?:/i.test(fixedAddress)
@@ -315,7 +313,6 @@ export default function ConnectionProfileFormDialog({
           ? secret.trim()
           : undefined,
       connectorSettings: connectorDefaults(defaultKeys, draft.defaults),
-      sourceProxy: takesTransport ? blankToNull(draft.sourceProxy) : null,
       sourceInsecureSsl: takesTransport && draft.sourceInsecureSsl,
     }
   }
@@ -609,10 +606,14 @@ export default function ConnectionProfileFormDialog({
                 </>
               )}
               {takesTransport && (
-                <TransportFields
-                  proxy={draft.sourceProxy}
-                  insecureSsl={draft.sourceInsecureSsl}
-                  onChange={(change) => setDraft({ ...draft, ...change })}
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={draft.sourceInsecureSsl}
+                      onChange={(e) => setDraft({ ...draft, sourceInsecureSsl: e.target.checked })}
+                    />
+                  }
+                  label="Zertifikatsprüfung aussetzen"
                 />
               )}
               {defaultKeys.length > 0 && (

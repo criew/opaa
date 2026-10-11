@@ -79,7 +79,6 @@ class UrlIndexingExecutorCredentialsTest {
                 SourceTypes.HTTP_DIRECTORY,
                 null,
                 "https://files.example.com/documents/",
-                "proxy.example.com:8080",
                 "admin:super-secret-password",
                 true));
 
@@ -100,7 +99,6 @@ class UrlIndexingExecutorCredentialsTest {
             new LibrarySourceConnectionResolver().currentCredentials(reloaded));
 
     assertThat(request.url()).isEqualTo("https://files.example.com/documents/");
-    assertThat(request.proxy()).isEqualTo("proxy.example.com:8080");
     assertThat(request.credentials()).isEqualTo("admin:super-secret-password");
     assertThat(request.insecureSsl()).isTrue();
   }

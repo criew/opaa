@@ -1,5 +1,6 @@
 package io.opaa.sourceaccess;
 
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import java.io.IOException;
 import java.io.InputStream;
@@ -441,7 +442,11 @@ public class BoundedDownloader {
 
     /** {@code authorizationSent}: the answering hop received an {@code Authorization} header. */
     public HttpStatusException(int statusCode, String fileUrl, boolean authorizationSent) {
-      super("HTTP " + statusCode + " downloading: " + fileUrl);
+      super(
+          "HTTP " + statusCode + " downloading: " + fileUrl,
+          ProxyRefusal.describeStatus(statusCode).isPresent()
+              ? new ProxyRefusal.RefusedException(statusCode)
+              : null);
       this.statusCode = statusCode;
       this.authorizationSent = authorizationSent;
     }

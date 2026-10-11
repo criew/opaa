@@ -119,9 +119,6 @@ public class KnowledgeLibrary extends Asset {
   @Column(name = "source_url", length = 2000)
   private String sourceUrl;
 
-  @Column(name = "source_proxy", length = 255)
-  private String sourceProxy;
-
   /**
    * Never exposed by the API in any response (ADR-0018, Entscheidung 4) - {@code
    * KnowledgeLibraryService} must not read this field into any {@code LibraryResponse}/{@code
@@ -245,7 +242,6 @@ public class KnowledgeLibrary extends Asset {
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
-      String sourceProxy,
       String sourceCredentials,
       boolean sourceInsecureSsl,
       boolean ownerOnly) {
@@ -261,7 +257,6 @@ public class KnowledgeLibrary extends Asset {
     this.sourceType = sourceType;
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
-    this.sourceProxy = sourceProxy;
     this.sourceCredentials = sourceCredentials;
     this.sourceInsecureSsl = sourceInsecureSsl;
   }
@@ -273,16 +268,7 @@ public class KnowledgeLibrary extends Asset {
   public static KnowledgeLibrary ownedByUser(
       UUID organizationId, String name, String description, UUID ownerUserId) {
     return ownedByUser(
-        organizationId,
-        name,
-        description,
-        ownerUserId,
-        SourceType.UPLOAD,
-        null,
-        null,
-        null,
-        null,
-        false);
+        organizationId, name, description, ownerUserId, SourceType.UPLOAD, null, null, null, false);
   }
 
   public static KnowledgeLibrary ownedByUser(
@@ -293,7 +279,6 @@ public class KnowledgeLibrary extends Asset {
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
-      String sourceProxy,
       String sourceCredentials,
       boolean sourceInsecureSsl) {
     return new KnowledgeLibrary(
@@ -306,7 +291,6 @@ public class KnowledgeLibrary extends Asset {
         sourceType,
         sourcePath,
         sourceUrl,
-        sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
         false);
@@ -324,7 +308,6 @@ public class KnowledgeLibrary extends Asset {
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
-      String sourceProxy,
       String sourceCredentials,
       boolean sourceInsecureSsl) {
     return new KnowledgeLibrary(
@@ -337,7 +320,6 @@ public class KnowledgeLibrary extends Asset {
         sourceType,
         sourcePath,
         sourceUrl,
-        sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
         true);
@@ -359,7 +341,6 @@ public class KnowledgeLibrary extends Asset {
         null,
         null,
         null,
-        null,
         false);
   }
 
@@ -371,7 +352,6 @@ public class KnowledgeLibrary extends Asset {
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
-      String sourceProxy,
       String sourceCredentials,
       boolean sourceInsecureSsl) {
     return new KnowledgeLibrary(
@@ -384,7 +364,6 @@ public class KnowledgeLibrary extends Asset {
         sourceType,
         sourcePath,
         sourceUrl,
-        sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
         false);
@@ -398,14 +377,9 @@ public class KnowledgeLibrary extends Asset {
    * quellentyp, is not itself part of ADR-0018's "gewaehlt einmal, permanent" rule.
    */
   public void updateSourceConfiguration(
-      String sourcePath,
-      String sourceUrl,
-      String sourceProxy,
-      String sourceCredentials,
-      boolean sourceInsecureSsl) {
+      String sourcePath, String sourceUrl, String sourceCredentials, boolean sourceInsecureSsl) {
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
-    this.sourceProxy = sourceProxy;
     this.sourceCredentials = sourceCredentials;
     this.sourceInsecureSsl = sourceInsecureSsl;
     touch();
@@ -427,14 +401,13 @@ public class KnowledgeLibrary extends Asset {
     touch();
   }
 
-  /** Drops its own proxy and skipped certificate check: a connection profile decides them. */
+  /** Drops its own skipped certificate check: a connection profile decides it. */
   public void dropTransport() {
-    replaceTransport(null, false);
+    replaceTransport(false);
   }
 
-  /** Takes {@code sourceProxy} and the certificate switch as its own, as a released profile had. */
-  public void replaceTransport(String sourceProxy, boolean sourceInsecureSsl) {
-    this.sourceProxy = sourceProxy;
+  /** Takes the certificate switch as its own, as a released profile had it. */
+  public void replaceTransport(boolean sourceInsecureSsl) {
     this.sourceInsecureSsl = sourceInsecureSsl;
     touch();
   }
@@ -593,10 +566,6 @@ public class KnowledgeLibrary extends Asset {
 
   public String getSourceUrl() {
     return sourceUrl;
-  }
-
-  public String getSourceProxy() {
-    return sourceProxy;
   }
 
   public String getSourceCredentials() {

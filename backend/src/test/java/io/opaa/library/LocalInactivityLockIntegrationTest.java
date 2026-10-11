@@ -108,7 +108,6 @@ class LocalInactivityLockIntegrationTest {
                 null,
                 null,
                 null,
-                null,
                 profile),
             caller);
     assertThat(secrets.current(owner(), TARGET).value()).isNotBlank();

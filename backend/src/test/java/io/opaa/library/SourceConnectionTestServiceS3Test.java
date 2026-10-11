@@ -44,8 +44,8 @@ import org.mockito.Mockito;
 
 /**
  * The S3 branch of {@link SourceConnectionTestService} (#1376): the effective request handed to
- * {@link S3ConnectionService}, the stored fallback for credentials, proxy, TLS <em>and</em> the
- * scopes on the same origin, and the permission bar and type check of the bucket listing.
+ * {@link S3ConnectionService}, the stored fallback for credentials, TLS <em>and</em> the scopes on
+ * the same origin, and the permission bar and type check of the bucket listing.
  */
 class SourceConnectionTestServiceS3Test {
 
@@ -92,7 +92,6 @@ class SourceConnectionTestServiceS3Test {
             SourceTypes.S3,
             null,
             url,
-            "proxy.stored.example:3128",
             "AKIASTORED:stored-secret",
             true);
     S3TestSettings.configure(library, STORED_SETTINGS);
@@ -107,7 +106,7 @@ class SourceConnectionTestServiceS3Test {
   @Test
   void connectionTestDelegatesTheEffectiveRequestAndCarriesTheScopeFindings() throws Exception {
     S3ScopeCheck check = new S3ScopeCheck("dokumente", "", true, true, true, 3, false, null);
-    when(s3ConnectionService.probe("https://s3.example.org", null, "ak:sk", false, SETTINGS))
+    when(s3ConnectionService.probe("https://s3.example.org", "ak:sk", false, SETTINGS))
         .thenReturn(new S3ConnectionService.Probe(true, "erreichbar", true, List.of(check), 3L));
 
     SourceConnectionTestResult result =
@@ -147,32 +146,24 @@ class SourceConnectionTestServiceS3Test {
   }
 
   @Test
-  void connectionTestFallsBackToStoredCredentialsProxyTlsAndScopesOnTheSameOrigin()
-      throws Exception {
+  void connectionTestFallsBackToStoredCredentialsTlsAndScopesOnTheSameOrigin() throws Exception {
     UUID libraryId = UUID.randomUUID();
     s3Library(libraryId, "https://s3.example.org");
-    when(s3ConnectionService.probe(anyString(), any(), anyString(), anyBoolean(), any()))
-        .thenReturn(ok());
+    when(s3ConnectionService.probe(anyString(), anyString(), anyBoolean(), any())).thenReturn(ok());
 
     service.test(
         sourceConnectionTest()
             .sourceType(SourceTypes.S3)
             .sourceUrl(URI.create("https://s3.example.org/"))
-            .sourceProxy("attacker.example:8080")
             .sourceInsecureSsl(false)
             .libraryId(libraryId)
             .build(),
         caller);
 
-    // #617: the stored proxy and TLS switch win whenever the stored credential is replayed; the
+    // #617: the stored TLS switch wins whenever the stored credential is replayed; the
     // stored scopes stand in because the request named none
     verify(s3ConnectionService)
-        .probe(
-            "https://s3.example.org/",
-            "proxy.stored.example:3128",
-            "AKIASTORED:stored-secret",
-            true,
-            STORED_SETTINGS);
+        .probe("https://s3.example.org/", "AKIASTORED:stored-secret", true, STORED_SETTINGS);
     verify(libraryAccessService)
         .requireRole(any(), eq(currentUserId), eq(false), eq(AssetRole.MANAGER));
   }
@@ -182,8 +173,7 @@ class SourceConnectionTestServiceS3Test {
       throws Exception {
     UUID libraryId = UUID.randomUUID();
     s3Library(libraryId, "https://s3.example.org");
-    when(s3ConnectionService.probe(anyString(), any(), any(), anyBoolean(), any()))
-        .thenReturn(ok());
+    when(s3ConnectionService.probe(anyString(), any(), anyBoolean(), any())).thenReturn(ok());
 
     service.test(
         sourceConnectionTest()
@@ -193,8 +183,7 @@ class SourceConnectionTestServiceS3Test {
             .build(),
         caller);
 
-    verify(s3ConnectionService)
-        .probe("https://s3.other.example", null, null, false, STORED_SETTINGS);
+    verify(s3ConnectionService).probe("https://s3.other.example", null, false, STORED_SETTINGS);
   }
 
   /** #1856: the same connector release {@code createLibrary} needs, checked ahead of validation. */
@@ -212,7 +201,6 @@ class SourceConnectionTestServiceS3Test {
                         URI.create("https://s3.example.org"),
                         "ak:sk",
                         null,
-                        null,
                         TestConnectorSettings.s3Query(null, true),
                         null),
                     caller))
@@ -229,7 +217,6 @@ class SourceConnectionTestServiceS3Test {
                         URI.create("https://s3.example.org"),
                         null,
                         null,
-                        null,
                         TestConnectorSettings.s3Query(null, true),
                         null),
                     caller))
@@ -243,7 +230,6 @@ class SourceConnectionTestServiceS3Test {
                         null,
                         "ak:sk",
                         null,
-                        null,
                         TestConnectorSettings.s3Query(null, true),
                         null),
                     caller))
@@ -252,11 +238,11 @@ class SourceConnectionTestServiceS3Test {
   }
 
   @Test
-  void bucketListingFallsBackToStoredCredentialsAndForcesProxyAndTls() throws Exception {
+  void bucketListingFallsBackToStoredCredentialsAndForcesTls() throws Exception {
     UUID libraryId = UUID.randomUUID();
     s3Library(libraryId, "https://s3.example.org");
     when(s3ConnectionService.listBuckets(
-            anyString(), any(), anyString(), anyBoolean(), any(), anyBoolean()))
+            anyString(), anyString(), anyBoolean(), any(), anyBoolean()))
         .thenReturn(new S3BucketListResult(true, List.of("protokolle"), null));
 
     SourceListing result =
@@ -265,7 +251,6 @@ class SourceConnectionTestServiceS3Test {
                 SourceTypes.S3,
                 URI.create("https://s3.example.org"),
                 null,
-                "attacker.example:8080",
                 false,
                 TestConnectorSettings.s3Query("eu-west-1", false),
                 libraryId),
@@ -274,37 +259,21 @@ class SourceConnectionTestServiceS3Test {
     assertThat(result.entries()).extracting(SourceListing.Entry::key).containsExactly("protokolle");
     verify(s3ConnectionService)
         .listBuckets(
-            "https://s3.example.org",
-            "proxy.stored.example:3128",
-            "AKIASTORED:stored-secret",
-            true,
-            "eu-west-1",
-            false);
+            "https://s3.example.org", "AKIASTORED:stored-secret", true, "eu-west-1", false);
 
     // without region and style in the request, the stored settings sign the listing
     service.browse(
         new SourceBrowseRequest(
-            SourceTypes.S3,
-            URI.create("https://s3.example.org"),
-            null,
-            null,
-            null,
-            null,
-            libraryId),
+            SourceTypes.S3, URI.create("https://s3.example.org"), null, null, null, libraryId),
         caller);
     verify(s3ConnectionService)
         .listBuckets(
-            "https://s3.example.org",
-            "proxy.stored.example:3128",
-            "AKIASTORED:stored-secret",
-            true,
-            "eu-central-1",
-            true);
+            "https://s3.example.org", "AKIASTORED:stored-secret", true, "eu-central-1", true);
   }
 
   @Test
   void anInterruptedProbeIsReportedNotThrown() throws Exception {
-    when(s3ConnectionService.probe(anyString(), any(), anyString(), anyBoolean(), any()))
+    when(s3ConnectionService.probe(anyString(), anyString(), anyBoolean(), any()))
         .thenThrow(new InterruptedException());
 
     SourceConnectionTestResult result =
@@ -337,7 +306,6 @@ class SourceConnectionTestServiceS3Test {
                         URI.create("https://s3.example.org"),
                         null,
                         null,
-                        null,
                         TestConnectorSettings.s3Query(null, true),
                         libraryId),
                     caller))
@@ -354,7 +322,6 @@ class SourceConnectionTestServiceS3Test {
             null,
             "https://example.org/feed.xml",
             null,
-            null,
             false);
     when(libraryRepository.findById(rssId)).thenReturn(Optional.of(rss));
     Mockito.reset(libraryAccessService);
@@ -366,19 +333,18 @@ class SourceConnectionTestServiceS3Test {
                         URI.create("https://example.org"),
                         null,
                         null,
-                        null,
                         TestConnectorSettings.s3Query(null, true),
                         rssId),
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("keine S3-Bibliothek");
     verify(s3ConnectionService, Mockito.never())
-        .listBuckets(anyString(), any(), anyString(), anyBoolean(), any(), anyBoolean());
+        .listBuckets(anyString(), anyString(), anyBoolean(), any(), anyBoolean());
   }
 
   @Test
   void aTestWithoutSettingsAndWithoutALibraryReachesTheServiceWithNull() throws Exception {
-    when(s3ConnectionService.probe(anyString(), isNull(), anyString(), anyBoolean(), isNull()))
+    when(s3ConnectionService.probe(anyString(), anyString(), anyBoolean(), isNull()))
         .thenThrow(
             new ValidationException("sourceSettings sind für den Verbindungstest erforderlich"));
 

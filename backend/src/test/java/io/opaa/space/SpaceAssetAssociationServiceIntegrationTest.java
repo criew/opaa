@@ -251,7 +251,6 @@ class SpaceAssetAssociationServiceIntegrationTest {
                     null,
                     null,
                     null,
-                    null,
                     false))
             .getId();
     grant(privateLibrary, owner, AssetRole.OWNER);

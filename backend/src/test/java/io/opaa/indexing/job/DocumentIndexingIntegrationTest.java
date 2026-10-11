@@ -145,7 +145,6 @@ class DocumentIndexingIntegrationTest {
                 classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
-                null,
                 false));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
@@ -338,7 +337,6 @@ class DocumentIndexingIntegrationTest {
                 userId,
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
-                null,
                 null,
                 null,
                 false));
@@ -768,7 +766,6 @@ class DocumentIndexingIntegrationTest {
                 classTempDir.toAbsolutePath().toString(),
                 null,
                 null,
-                null,
                 false));
     UUID otherLibraryId = otherLibrary.getId();
     grantOwner(otherLibraryId, userId);
@@ -1020,7 +1017,6 @@ class DocumentIndexingIntegrationTest {
                     .toString(),
                 null,
                 null,
-                null,
                 false));
     grantOwner(outsideAllowlistLibrary.getId(), userId);
 
@@ -1178,7 +1174,6 @@ class DocumentIndexingIntegrationTest {
                 ownerId,
                 SourceTypes.FILESYSTEM,
                 libraryDir.toAbsolutePath().toString(),
-                null,
                 null,
                 null,
                 false));

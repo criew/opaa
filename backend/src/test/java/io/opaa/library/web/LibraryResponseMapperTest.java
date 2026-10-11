@@ -123,7 +123,6 @@ class LibraryResponseMapperTest {
     // LibraryManagementDetail field stays null even though the record itself is always present.
     assertThat(response.getSourcePath()).isNull();
     assertThat(response.getSourceUrl()).isNull();
-    assertThat(response.getSourceProxy()).isNull();
     assertThat(response.getSourceCredentialsSet()).isNull();
     assertThat(response.getPushSecretSet()).isNull();
     assertThat(response.getSourceSettings()).isNull();
@@ -179,7 +178,6 @@ class LibraryResponseMapperTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            null,
             "pat",
             false);
     Instant nextRunAt = Instant.now().plusSeconds(3600);
@@ -192,7 +190,6 @@ class LibraryResponseMapperTest {
         new LibraryManagementDetail(
             "/data/documents",
             "https://example.com/documents/",
-            "proxy.example.com:8080",
             true,
             true,
             true,
@@ -224,7 +221,6 @@ class LibraryResponseMapperTest {
     assertThat(response.getSourceSettings()).containsEntry("fullSyncIntervalDays", 14);
     assertThat(response.getFullSyncIntervalDefaultDays()).isEqualTo(7);
     assertThat(response.getSourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
-    assertThat(response.getSourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(response.getSourceInsecureSsl()).isTrue();
     assertThat(response.getSourceCredentialsSet()).isTrue();
     assertThat(response.getSchedule().getFrequency()).isEqualTo(ScheduleFrequency.DAILY);
@@ -255,7 +251,7 @@ class LibraryResponseMapperTest {
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Uploads", null, UUID.randomUUID());
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(
-            null, null, null, false, false, null, null, null, null, null, 0L, 0L, null, null);
+            null, null, false, false, null, null, null, null, null, 0L, 0L, null, null);
     LibraryDetail detail =
         new LibraryDetail(
             library, AssetRole.OWNER, 0L, managementDetail, true, AssetReach.NONE, null, null);
@@ -392,7 +388,7 @@ class LibraryResponseMapperTest {
   void toCreationCopiesEveryRequestField() {
     UUID ownerId = UUID.randomUUID();
     // #860 review, finding 2: every field below is deliberately a distinct value pairwise (in
-    // particular sourcePath/sourceProxy/sourceCredentials, three plain strings) - a mapper that
+    // particular sourcePath/sourceCredentials, two plain strings) - a mapper that
     // swapped two of them would otherwise still pass with equal placeholder values.
     LibraryRequest request =
         new LibraryRequest("Rechtsquellen", "HTTP_DIRECTORY")
@@ -401,7 +397,6 @@ class LibraryResponseMapperTest {
             .ownerId(ownerId)
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/documents/"))
-            .sourceProxy("proxy.example.com:8080")
             .sourceCredentials("admin:secret")
             .sourceInsecureSsl(true);
 
@@ -414,14 +409,13 @@ class LibraryResponseMapperTest {
     assertThat(creation.sourceType()).isEqualTo(SourceTypes.HTTP_DIRECTORY);
     assertThat(creation.sourcePath()).isEqualTo("/data/documents");
     assertThat(creation.sourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
-    assertThat(creation.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(creation.sourceCredentials()).isEqualTo("admin:secret");
     assertThat(creation.sourceInsecureSsl()).isTrue();
   }
 
   @Test
   void toUpdateCopiesEveryRequestFieldIncludingTheSchedule() {
-    // #860 review, finding 2: sourcePath/sourceProxy/sourceCredentials are three distinct plain
+    // #860 review, finding 2: sourcePath/sourceCredentials are two distinct plain
     // strings on purpose - see the identical reasoning on toCreationCopiesEveryRequestField above.
     LibraryUpdateRequest request =
         new LibraryUpdateRequest("Umbenannt")
@@ -429,7 +423,6 @@ class LibraryResponseMapperTest {
             .sourceType("RSS_FEED")
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/feed.xml"))
-            .sourceProxy("proxy.example.com:8080")
             .sourceCredentials("admin:secret")
             .sourceInsecureSsl(true)
             .schedule(
@@ -445,7 +438,6 @@ class LibraryResponseMapperTest {
     assertThat(update.sourceType()).isEqualTo(SourceTypes.RSS_FEED);
     assertThat(update.sourcePath()).isEqualTo("/data/documents");
     assertThat(update.sourceUrl()).isEqualTo(URI.create("https://example.com/feed.xml"));
-    assertThat(update.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(update.sourceCredentials()).isEqualTo("admin:secret");
     assertThat(update.sourceInsecureSsl()).isTrue();
     assertThat(update.schedule().frequency()).isEqualTo(ScheduleFrequency.WEEKLY);
@@ -499,7 +491,6 @@ class LibraryResponseMapperTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            null,
             "pat-geheim",
             false);
     ConfluenceTestSettings.configure(
@@ -535,7 +526,6 @@ class LibraryResponseMapperTest {
 
     LibraryManagementDetail management =
         new LibraryManagementDetail(
-            null,
             null,
             null,
             false,
@@ -576,7 +566,6 @@ class LibraryResponseMapperTest {
             SourceTypes.S3,
             null,
             "https://s3.example.org",
-            null,
             "AKIA:hochgeheim",
             false);
     S3TestSettings.configure(

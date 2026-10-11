@@ -151,7 +151,7 @@ final class SambaFixture {
 
   SourceSettings settings(String credentials, List<String> folders) {
     return new SourceSettings(
-        null, url(SHARE), null, credentials, false, ConnectorData.of(Map.of("folders", folders)));
+        null, url(SHARE), credentials, false, ConnectorData.of(Map.of("folders", folders)));
   }
 
   /** Creates {@code path} below the share {@code daten} and its parents. */

@@ -3,6 +3,7 @@ package io.opaa.indexing.source.rss;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.indexing.source.SourceCredentialsRejectedException;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;
@@ -96,7 +97,9 @@ class FeedFetcher {
     if (feedResponse.statusCode() != 200) {
       closeQuietly(feedResponse.body());
       throw new IndexingRunFailedException(
-          "Der RSS-Feed konnte nicht abgerufen werden: HTTP " + feedResponse.statusCode());
+          ProxyRefusal.statusMessage(
+              feedResponse.statusCode(),
+              "Der RSS-Feed konnte nicht abgerufen werden: HTTP " + feedResponse.statusCode()));
     }
 
     List<RssFeedEntry> entries;

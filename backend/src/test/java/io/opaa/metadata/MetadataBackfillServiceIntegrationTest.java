@@ -103,7 +103,6 @@ class MetadataBackfillServiceIntegrationTest {
                 classTempDir.toString(),
                 null,
                 null,
-                null,
                 false));
     Files.createDirectories(classTempDir);
     try (var files = Files.list(classTempDir)) {

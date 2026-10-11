@@ -398,9 +398,6 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
     if (blankToNull(settings.sourcePath()) != null) {
       throw new ValidationException("sourcePath ist für sourceType SMB nicht zulässig");
     }
-    if (blankToNull(settings.sourceProxy()) != null) {
-      throw new ValidationException("sourceProxy ist für sourceType SMB nicht zulässig");
-    }
     if (settings.sourceInsecureSsl()) {
       throw new ValidationException("sourceInsecureSsl ist für sourceType SMB nicht zulässig");
     }
