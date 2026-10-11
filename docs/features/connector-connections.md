@@ -550,8 +550,9 @@ Quellverbindungen gehören der Bibliothek und sind vom Lebenszyklus einer Person
 
 **Wiederherstellung einer Sicherung:** Nach dem Einspielen gleicht OPAA die Token ab: Token
 deaktivierter Konten werden gelöscht, abgelaufene gezählt. Wie mit Sicherungen umzugehen ist, die
-innerhalb der Löschfrist entstanden sind, klärt der Betreiber; das Handbuch führt die Frage in der
-[Prüfliste für Postfächer](#postfächer).
+innerhalb der Löschfrist entstanden sind, klärt der Betreiber. Die Frage gilt für alle privaten
+Bibliotheken (Nextcloud, Drive …), nicht nur für Postfächer; das Handbuch führt sie als allgemein
+gültigen Punkt in der [Prüfliste für Postfächer](#postfächer).
 
 ---
 
@@ -584,8 +585,9 @@ gesetzt“ und den Status.
 Indexierte Postfächer berühren Aktenführung, Aufbewahrungspflichten, Vertretungsregeln und die
 Mitbestimmung. **Das Projekt klärt diese Rechtsfragen nicht vorab** (Entscheidung des Maintainers
 vom 11.10.2026, [#2170](https://github.com/criew/opaa/issues/2170)): Sie sind in jedem Haus anders.
-Die Klärung liegt beim **Betreiber**, vor der Freigabe eines Postfach-Konnektors; ein neuer
-Konnektor ist ab Werk aus
+Die Klärung liegt beim **Betreiber**, vor dem Anlegen des ersten Zugangs zu einem Postfach und vor
+dessen Freigabe, denn die Systemverwaltung kann auch ohne Freigabe anlegen; ein neuer Konnektor ist
+ab Werk aus
 ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
 03.10.2026).
 

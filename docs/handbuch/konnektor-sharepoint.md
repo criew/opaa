@@ -236,9 +236,9 @@ nicht gelisteten in einen schon gelisteten Teil gewandert ist, bleibt so erhalte
   ein späterer Vollabgleich holt das Entfernen nach.
 - Ist eine Dokumentbibliothek nicht erreichbar, wird nichts entfernt, und der nächste Lauf beginnt
   einen neuen Abgleich.
-- Der erste Vollabgleich ist hier unkritisch, auch über viele Läufe: Sein Stand zu Beginn ist der
-  jüngste, am Ende liest er also nur, was sich während des Abgleichs geändert hat.
-- Braucht das Protokoll seit Beginn des Abgleichs mehr Anfragen, als ein Lauf hat, kommt der
+- Jeder Abgleich merkt sich zu Beginn den jüngsten Stand; kein Abgleich liest also Änderungen von
+  vor seinem Beginn, nur solche, die sich während seiner Läufe ansammeln.
+- Sammeln sich während seiner Läufe mehr Änderungen an, als ein Lauf lesen kann, kommt der
   Abgleich nicht zum Ende (bekannte Einschränkung, Abschnitt 13).
 
 ## 5. Löscherkennung, Umbenennen und Verschieben
@@ -299,9 +299,10 @@ einer Dokumentbibliothek, die die Bibliothek noch gewählt hat.
   beim erschöpften Budget.
 - Ein Änderungslauf ohne Änderungen kostet eine Anfrage je Dokumentbibliothek für die Prüfung der
   Erreichbarkeit, eine je gewähltem Ordner und eine je Protokollseite.
-- Das Änderungsprotokoll eines Stroms liest ein Lauf immer bis zum Ende, bevor er den neuen Stand
-  übernimmt. Eine Protokollseite fasst bis zu `page-size` Änderungen; mehr als etwa
-  `request-budget-per-run` × `page-size` Änderungen schafft ein Lauf deshalb nicht (Abschnitt 13).
+- Ein Lauf liest das Änderungsprotokoll **aller** Dokumentbibliotheken bis zum Ende, bevor er
+  einen neuen Stand übernimmt; ein langer Strom hält also auch die übrigen fest. Eine Protokollseite
+  fasst bis zu `page-size` Änderungen; mehr als etwa `request-budget-per-run` × `page-size`
+  Änderungen schafft ein Lauf deshalb nicht (Abschnitt 13).
 
 ## 11. Protokoll
 
@@ -366,12 +367,17 @@ feste Konstanten.
 - **Bekannte Einschränkung: ein zu langes Änderungsprotokoll.** Braucht das Protokoll mehr
   Anfragen, als ein Lauf hat (Abschnitt 10), endet jeder Lauf als „unvollständig, wird
   fortgesetzt“, und der nächste beginnt wieder am selben Stand.
-  - **Nicht betroffen** ist der erste Vollabgleich, auch wenn er viele Läufe braucht (Abschnitt 4.1).
-  - **Betroffen** ist ein Abgleich über mehrere Läufe, der so lange offen bleibt, dass sich seit
-    seinem Beginn entsprechend viele Änderungen angesammelt haben, etwa weil er sich über sehr viele
-    Läufe hinzieht. Er bleibt dann offen, bis ein Lauf das Protokoll schafft. Ebenso ein
-    Änderungslauf mit so vielen Änderungen seit dem letzten gespeicherten Stand; er hängt bis zum
-    nächsten Vollabgleich im Rhythmus, der mit einem neuen Stand beginnt.
+  - **Kein Abgleich liest Änderungen von vor seinem Beginn** (Abschnitt 4.1). Betroffen ist er nur,
+    wenn sich **während** seiner Läufe mehr Änderungen ansammeln, als ein Lauf lesen kann, etwa
+    weil er sich über sehr viele Läufe hinzieht. Ohne Abhilfe **endet ein solcher Abgleich nie**:
+    Das Protokoll wächst weiter, und der Vollabgleichsrhythmus greift nicht, solange der Abgleich
+    offen ist.
+  - **Ebenso betroffen** ist ein Änderungslauf mit so vielen Änderungen seit dem letzten
+    gespeicherten Stand. Er hängt bis zum nächsten Vollabgleich im Rhythmus, der mit einem neuen
+    Stand beginnt, sofern dieser seinerseits zu Ende kommt.
+  - **Erkennbar** an der Laufnotiz „Anfragebudget von … Anfragen erschöpft; …“ in jedem Lauf: beim
+    Änderungslauf mit dem Zusatz „der nächste Lauf liest das Änderungsprotokoll ab derselben Stelle
+    erneut“, beim offenen Abgleich obwohl alle Dokumentbibliotheken gelistet sind.
   - **Wirkung:** Nichts wird fälschlich entfernt. Die Bibliothek kommt aber nicht voran: Entfernte
     Dateien bleiben im Index, und neue oder geänderte Dateien im schon gelisteten Teil kommen nur an,
     soweit ein Lauf im Protokoll kommt.

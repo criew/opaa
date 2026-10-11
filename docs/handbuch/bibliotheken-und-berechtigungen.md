@@ -1419,10 +1419,12 @@ Drei Dinge gehören vor die Inbetriebnahme, nicht danach:
 > Rechtsberatung**: Sie nennt die Fragen, die Antworten hängen von Aktenordnung,
 > Dienstvereinbarungen und Recht des jeweiligen Hauses ab.
 
-Wie jede neue Quellart ist ein Postfach-Konnektor ab Werk aus (Abschnitt 9, „Konnektor-Freigabe").
-Bis zur Freigabe sollten die folgenden Punkte geklärt sein, für **private Postfächer** (verbundenes
-Konto, private Bibliothek) wie für **Funktionspostfächer** (Bibliothek über einen Zugang, gelesen von
-den Personen und Gruppen mit Rolle an ihr).
+Wie jede neue Quellart ist ein Postfach-Konnektor ab Werk aus (Abschnitt 9, „Konnektor-Freigabe“).
+Weil die Systemverwaltung auch ohne Freigabe anlegen kann, sollten die folgenden Punkte **vor dem
+Anlegen des ersten Zugangs zu einem Postfach und vor dessen Freigabe** geklärt sein, für **private
+Postfächer** (verbundenes Konto, private Bibliothek) wie für **Funktionspostfächer** (eine Bibliothek,
+die die Personen und Gruppen mit Rolle an ihr lesen). Wie ein Postfach-Konnektor anbindet, steht
+noch nicht fest; wo die Punkte einen Mechanismus nennen, beschreiben sie das bisherige Konzept.
 
 **1. Aktenführung und E-Akte**
 
@@ -1436,8 +1438,8 @@ den Personen und Gruppen mit Rolle an ihr).
 
 **2. Aufbewahrungs- und Löschpflichten gegenüber der Löschfrist**
 
-- *Worum es geht:* OPAA hält nur eine Kopie. Eine in der Quelle gelöschte Mail verschwindet mit dem
-  nächsten Abgleich aus dem Index. Eine private Bibliothek löscht die Besitzerin jederzeit selbst,
+- *Worum es geht:* OPAA hält nur eine Kopie. Eine in der Quelle gelöschte Mail verschwindet mit
+  einem späteren Abgleich aus dem Index. Eine private Bibliothek löscht die Besitzerin jederzeit selbst,
   sonst der Löschlauf nach Ablauf der Löschfrist, sobald das Konto deaktiviert ist
   (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Benutzerverwaltung](benutzerverwaltung.md),
   Abschnitt 12).
@@ -1451,9 +1453,10 @@ den Personen und Gruppen mit Rolle an ihr).
 **3. Vertretung und Zugriff Dritter**
 
 - *Worum es geht:* Eine private Bibliothek liest nur ihre Besitzerin (Abschnitt 4, „Private
-  Bibliotheken"): keine Freigabe, keine Nachfolge, kein „Sicht als", kein Vorfallszugriff.
-  Vertretungsrechte aus dem Mailsystem übernimmt OPAA nicht. Der Inhalt ist, was das Konto beim
-  Anbieter sieht.
+  Bibliotheken“): keine Freigabe, keine Nachfolge, kein „Sicht als“, kein Vorfallszugriff. Eine
+  Vertretung kann deshalb nicht über OPAA in die Bibliothek der Abwesenden sehen. Der Inhalt ist,
+  was das Konto beim Anbieter sieht; was das bei Vertretungsrechten im Mailsystem einschließt,
+  hängt vom künftigen Konnektor ab.
 - *Warum es zählt:* Eine Vertretung arbeitet weiter im Mailsystem, nicht über den Index der
   Abwesenden. Mails enthalten Daten Dritter, etwa von Bürgerinnen und Bürgern, die von der
   Indexierung nichts wissen.
@@ -1463,9 +1466,9 @@ den Personen und Gruppen mit Rolle an ihr).
 
 **4. Funktionspostfächer und Mitbestimmung**
 
-- *Worum es geht:* Ein Funktionspostfach wird nicht über ein verbundenes Konto angebunden, sondern
-  als Bibliothek über einen Zugang mit Anwendungsberechtigung. Welche Postfächer die Anwendung lesen
-  darf, beschränkt die Verwaltung des Mailsystems.
+- *Worum es geht:* Ein Funktionspostfach gehört keiner einzelnen Person. Nach dem bisherigen Konzept
+  wird es nicht über ein verbundenes Konto angebunden, sondern als Bibliothek über einen Zugang mit
+  Anwendungsberechtigung, die die Verwaltung des Mailsystems auf bestimmte Postfächer beschränkt.
 - *Warum es zählt:* Ein gemeinsamer Index über die Korrespondenz mehrerer Beschäftigter kann geeignet
   sein, Leistung und Verhalten zu überwachen. Schon die Eignung kann die Mitbestimmung der
   Personalvertretung auslösen.
@@ -1475,6 +1478,9 @@ den Personen und Gruppen mit Rolle an ihr).
   private Postfächer, die Beschäftigte freiwillig verbinden?
 
 **5. Sicherungen innerhalb der Löschfrist**
+
+Dieser Punkt gilt für **alle privaten Bibliotheken**, auch die heute schon möglichen, nicht nur für
+Postfächer.
 
 - *Worum es geht:* Die Löschung einer privaten Bibliothek erfasst Sicherungen der Datenbank und der
   Originalablage nicht. Eine vorher gezogene Sicherung enthält die Bibliothek weiterhin; nach einer

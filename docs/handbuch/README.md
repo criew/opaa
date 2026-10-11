@@ -137,7 +137,7 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 (anlegen mit Gruppeneigentum, freigeben, einem Raum zuordnen) → Abschnitt 5 (Prompts pflegen) → [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 6 bis 8 (Gruppen) |
 | Herausfinden, ob es etwas schon gibt, und wer zuständig ist | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 4 („Reichweite" und „Der Katalog") → [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 („Im Katalog finden") → Abschnitt 6 (im Chat einsetzen) |
 | Ein fremdes KI-Werkzeug anschließen | [Fremdzugänge](fremdzugaenge.md) Abschnitte 2 bis 5 (einschalten, freigeben, Token) → Abschnitt 9 (Einrichtung im Client) → bei Störungen Abschnitt 13 |
-| Postfächer anbinden wollen (Vorbereitung) | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 16, „Prüfliste vor einem Postfach-Konnektor" → Abschnitt 4, „Private Bibliotheken" → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 12 |
+| Postfächer anbinden wollen (Vorbereitung) | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 16, „Prüfliste vor einem Postfach-Konnektor“ → Abschnitt 4, „Private Bibliotheken“ → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 12 |
 | Originalablage wählen, sichern oder umstellen | [Deployment](deployment.md) „Originalablage" → Variablenliste desselben Kapitels |
 
 ## 6. Glossar
