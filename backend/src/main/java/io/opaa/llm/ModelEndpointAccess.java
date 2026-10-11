@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.UUID;
 import javax.net.ssl.SSLException;
 import org.springframework.util.StringUtils;
@@ -106,7 +108,17 @@ final class ModelEndpointAccess {
     return builder;
   }
 
+  /** An answer status as German text; a {@code 407} is the outbound proxy refusing. */
+  static String unexpectedStatus(int status) {
+    return ProxyRefusal.describeStatus(status)
+        .orElse("Der Server antwortete mit HTTP " + status + ".");
+  }
+
   static String translateConnectionError(IOException e) {
+    Optional<String> proxyRefusal = ProxyRefusal.describe(e);
+    if (proxyRefusal.isPresent()) {
+      return proxyRefusal.get();
+    }
     if (e instanceof UnknownHostException) {
       return "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).";
     }

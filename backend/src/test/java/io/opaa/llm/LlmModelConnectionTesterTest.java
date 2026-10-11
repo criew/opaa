@@ -10,6 +10,8 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
+import io.opaa.test.OutboundProxyRoute;
+import io.opaa.test.RecordingHttpProxy;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigDecimal;
@@ -104,6 +106,22 @@ class LlmModelConnectionTesterTest {
         tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isTrue();
+  }
+
+  /** The JDK client hands the outbound proxy's {@code 407} back as an answer. */
+  @Test
+  void aProxyAskingForALoginIsNamedAsTheOutboundProxy() throws IOException {
+    try (RecordingHttpProxy proxy = new RecordingHttpProxy();
+        OutboundProxyRoute route = OutboundProxyRoute.through(proxy.address())) {
+      proxy.refuseTunnels(407);
+
+      LlmModelConnectionTester.TestOutcome outcome =
+          tester.test("https://models.example.invalid/v1", "phi3:mini", null, null, null);
+
+      assertThat(outcome.success()).isFalse();
+      assertThat(outcome.message())
+          .startsWith("Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt (Status 407)");
+    }
   }
 
   @Test

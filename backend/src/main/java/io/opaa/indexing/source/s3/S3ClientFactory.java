@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.source.RenewableCredential;
+import io.opaa.outbound.OutboundProxySelector;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
@@ -163,8 +164,11 @@ public class S3ClientFactory {
         for (S3Scope scope : scopes) {
           buckets.add(scope.bucket());
         }
+        boolean throughOutboundProxy =
+            proxyHost == null && OutboundProxySelector.instance().proxyFor(endpoint).isPresent();
         for (String bucket : buckets) {
-          targetAddressValidator.validateHost(bucket + "." + endpoint.getHost());
+          targetAddressValidator.validateHost(
+              bucket + "." + endpoint.getHost(), throughOutboundProxy);
         }
       }
     } catch (TargetAddressValidator.UnknownTargetHostException e) {

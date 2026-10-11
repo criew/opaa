@@ -1,6 +1,6 @@
 package io.opaa.account;
 
-import io.opaa.security.NumericAddress;
+import io.opaa.common.NumericAddress;
 import java.util.List;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import org.springframework.stereotype.Component;

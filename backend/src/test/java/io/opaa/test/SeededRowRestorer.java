@@ -2,6 +2,7 @@ package io.opaa.test;
 
 import io.opaa.mail.MailSettingsService;
 import io.opaa.mail.MailTestSupport;
+import io.opaa.outbound.OutboundProxy;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,6 +55,7 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
               Map.entry("permission_history_retention_settings", Ownership.WHOLE_TABLE),
               Map.entry("connection_log_retention_settings", Ownership.WHOLE_TABLE),
               Map.entry("private_storage_quota_settings", Ownership.WHOLE_TABLE),
+              Map.entry("outbound_proxy_settings", Ownership.WHOLE_TABLE),
               Map.entry("capability_grants", Ownership.BY_ID),
               Map.entry("capability_grant_history", Ownership.BY_ID),
               Map.entry("local_auth_settings", Ownership.WHOLE_TABLE),
@@ -76,6 +78,7 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
     if (!testContext.hasAttribute(SNAPSHOT)) {
       testContext.setAttribute(SNAPSHOT, snapshot(jdbcTemplate(testContext)));
     }
+    routeByStoredProxy(testContext);
   }
 
   @Override
@@ -94,6 +97,7 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
           }
         });
     if (changed.isEmpty()) {
+      routeByStoredProxy(testContext);
       return;
     }
     // One transaction: a concurrent reader never sees a settings table without its row.
@@ -116,6 +120,15 @@ final class SeededRowRestorer extends AbstractTestExecutionListener {
       MailTestSupport.resetCaches(
           testContext.getApplicationContext().getBean(MailSettingsService.class));
     }
+    routeByStoredProxy(testContext);
+  }
+
+  /**
+   * The outbound proxy route is JVM-wide, the stored row is per context: every method starts and
+   * ends with the route of this context's row, so no route leaks into another context or test.
+   */
+  private static void routeByStoredProxy(TestContext testContext) {
+    testContext.getApplicationContext().getBean(OutboundProxy.class).reload();
   }
 
   /** The owned rows of every restored table, in a stable order. */

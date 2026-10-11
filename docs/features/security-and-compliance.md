@@ -289,7 +289,8 @@ Token-Kennung statt des frei formulierten Tokennamens, und die **Nutzung** eines
 keinen Eintrag) und — seit #1833 — die Aufbewahrungshöchstdauer der Rechtehistorie
 (`PERMISSION_HISTORY_RETENTION_CHANGED` mit Vorher/Nachher der Monatszahl) und — seit #2163 — die
 Aufbewahrungsfrist des Verbindungsprotokolls (`CONNECTION_LOG_RETENTION_CHANGED`, ebenfalls mit
-Vorher/Nachher der Monatszahl) und — seit #1814 — die
+Vorher/Nachher der Monatszahl) und — seit #2496 — der hausweite Ausgangsproxy
+(`OUTBOUND_PROXY_CHANGED` mit Vorher/Nachher von Proxy-Adresse und Ausnahmeliste) und — seit #1814 — die
 Verantwortlichen interner Gruppen samt Reichweitenfeldern (`GROUP_STEWARD_APPOINTED`,
 `GROUP_STEWARD_DISMISSED`, `GROUP_RELEASE_CHANGED` und `GROUP_PROTECTION_CHANGED`, die beiden
 letzten mit Vorher/Nachher des Kennzeichens; die betroffene Person steht als Pseudonym im Subjekt,
