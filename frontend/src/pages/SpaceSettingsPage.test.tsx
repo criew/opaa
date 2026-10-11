@@ -858,6 +858,77 @@ describe('SpaceSettingsPage', () => {
         'Team Renamed',
         'Team docs',
         undefined,
+        undefined,
+      )
+    })
+  })
+
+  describe('Anweisung an das Modell', () => {
+    const instruction = 'Wir sind ein Landkreis, keine kreisfreie Stadt.'
+
+    it('an admin sets it, with a hint on what belongs in it and the length limit', async () => {
+      setSpaceState(teamSpace)
+      renderTab('general')
+      const user = userEvent.setup()
+
+      const field = screen.getByRole('textbox', { name: 'Anweisung an das Modell' })
+      expect(field).not.toHaveAttribute('readonly')
+      expect(field).toHaveAttribute('maxlength', '1000')
+      expect(screen.getByText(/keine personenbezogenen Angaben/i)).toBeInTheDocument()
+      expect(screen.getByText(/Zitate und Quellenangaben bleiben/i)).toBeInTheDocument()
+
+      await user.type(field, instruction)
+      await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+
+      await waitFor(() => {
+        expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+          'space-team',
+          'Team',
+          'Team docs',
+          undefined,
+          instruction,
+        )
+      })
+    })
+
+    it('an admin removes it by emptying the field', async () => {
+      setSpaceState({ ...teamSpace, modelInstruction: instruction })
+      renderTab('general')
+      const user = userEvent.setup()
+
+      await user.clear(screen.getByRole('textbox', { name: 'Anweisung an das Modell' }))
+      await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
+
+      await waitFor(() => {
+        expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+          'space-team',
+          'Team',
+          'Team docs',
+          undefined,
+          '',
+        )
+      })
+    })
+
+    it('a member reads it but cannot change it', () => {
+      setSpaceState({ ...nonAdminSpace, modelInstruction: instruction })
+      renderTab('general')
+
+      const field = screen.getByRole('textbox', { name: 'Anweisung an das Modell' })
+      expect(field).toHaveValue(instruction)
+      expect(field).toHaveAttribute('readonly')
+      expect(screen.getByText(/Nur Mitglieder mit der Rolle ADMIN/)).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /einstellungen speichern/i }),
+      ).not.toBeInTheDocument()
+    })
+
+    it('a curator cannot change it either', () => {
+      setSpaceState({ ...nonAdminSpace, userRole: 'CURATOR', modelInstruction: instruction })
+      renderTab('general')
+
+      expect(screen.getByRole('textbox', { name: 'Anweisung an das Modell' })).toHaveAttribute(
+        'readonly',
       )
     })
   })
@@ -884,7 +955,13 @@ describe('SpaceSettingsPage', () => {
     await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
 
     await waitFor(() => {
-      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith('space-team', 'Team', 'Team docs', true)
+      expect(mockUpdateSpaceDetails).toHaveBeenCalledWith(
+        'space-team',
+        'Team',
+        'Team docs',
+        true,
+        undefined,
+      )
     })
   })
 

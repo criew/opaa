@@ -314,6 +314,54 @@ describe('ChatPage', () => {
     expect(screen.getByText('Etwas ist schiefgelaufen')).toBeInTheDocument()
   })
 
+  describe('Anweisung des Space', () => {
+    const instruction = 'Nenne bei Fristen immer die Rechtsgrundlage.'
+
+    function setSpaceWithInstruction(modelInstruction: string | null) {
+      useSpaceStore.setState({
+        spaces: [
+          {
+            id: 'space-personal',
+            name: 'Privater Bereich',
+            description: null,
+            isDefault: true,
+            archived: false,
+            memberCount: 1,
+            memberships: { groupCount: 0, userCount: 1 },
+            userRole: 'MEMBER',
+            modelInstruction,
+            createdAt: '2026-03-01T10:00:00Z',
+            updatedAt: '2026-03-01T10:00:00Z',
+          },
+        ],
+        isLoadingList: false,
+      })
+    }
+
+    it('shows a member before the first question that an instruction of the space takes part, and lets them read it', async () => {
+      setSpaceWithInstruction(instruction)
+      renderWithProviders(<ChatPage />, { withRouter: true })
+      const user = userEvent.setup()
+
+      const toggle = await screen.findByRole('button', { name: 'Anweisung des Space' })
+      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      await user.click(toggle)
+
+      const panel = screen.getByRole('region', { name: 'Anweisung des Space' })
+      expect(panel).toHaveTextContent(instruction)
+      expect(panel).toHaveTextContent(/bei jeder Antwort in diesem Space/)
+      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    })
+
+    it('shows nothing of the kind in a space without an instruction', async () => {
+      setSpaceWithInstruction(null)
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      await waitFor(() => expect(useChatStore.getState().spaceId).toBe('space-personal'))
+      expect(screen.queryByRole('button', { name: 'Anweisung des Space' })).not.toBeInTheDocument()
+    })
+  })
+
   // #1488: the Gesprächsnotiz sits in the chat's header. chat-engineering-2 (fixtures) is the one
   // chat with both prerequisites - two points and three completed rounds.
   describe('Gesprächsnotiz (#1488)', () => {
