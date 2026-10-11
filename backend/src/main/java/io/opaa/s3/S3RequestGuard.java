@@ -42,7 +42,15 @@ public final class S3RequestGuard implements ExecutionInterceptor {
 
     /** The host of every request passes {@code validator}. */
     static TargetPolicy hostOnly(TargetAddressValidator validator) {
-      return request -> validator.validateHost(request.host());
+      return hostOnly(validator, false);
+    }
+
+    /**
+     * As {@link #hostOnly(TargetAddressValidator)}; {@code throughOutboundProxy} is the route the
+     * client was built with, so a name only the outbound proxy resolves passes.
+     */
+    static TargetPolicy hostOnly(TargetAddressValidator validator, boolean throughOutboundProxy) {
+      return request -> validator.validateHost(request.host(), throughOutboundProxy);
     }
   }
 

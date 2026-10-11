@@ -13,6 +13,7 @@ import io.opaa.organization.OrganizationRepository;
 import io.opaa.test.LlmModelCatalogFixtures;
 import io.opaa.test.OpaaIntegrationTest;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
@@ -170,6 +171,52 @@ class ActiveChatModelResolverIntegrationTest {
     assertThat(serverATouched.get()).isTrue();
     assertThat(serverBTouched.get()).isFalse();
     assertThat(response.getResult().getOutput().getText()).isEqualTo("Antwort von Modell A");
+  }
+
+  /**
+   * Regression guard for #2509: both resolved clients hand out the answer of a recorded Gemma 4
+   * response (Gemini's OpenAI compatibility) without its leading {@code <thought>} block, with the
+   * provider's token usage untouched.
+   */
+  @Test
+  void bothResolvedClientsRemoveTheLeadingReasoningBlockAndKeepTheUsage() throws IOException {
+    byte[] recorded;
+    try (InputStream in =
+        getClass().getResourceAsStream("/llm/gemma-4-thought-decomposition.json")) {
+      recorded = in.readAllBytes();
+    }
+    HttpServer gemmaServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    gemmaServer.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          exchange.getResponseHeaders().add("Content-Type", "application/json");
+          exchange.sendResponseHeaders(200, recorded.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(recorded);
+          }
+        });
+    gemmaServer.start();
+    try {
+      LlmModel gemma =
+          createModel(
+              "Gemma",
+              "http://127.0.0.1:" + gemmaServer.getAddress().getPort() + "/v1",
+              "gemma-4-26b-a4b-it");
+      llmModelService.activateModel(organizationId, userId, gemma.getId());
+
+      for (ChatClient client :
+          List.of(
+              resolver.resolveChatClient(), resolver.resolveChatClient(Duration.ofSeconds(30)))) {
+        ChatResponse response = client.prompt().user("Frage").call().chatResponse();
+
+        assertThat(ChatResponses.text(response))
+            .isEqualTo("Kosten für einen Personalausweis\nDauer der Ausstellung eines Reisepasses");
+        assertThat(ChatResponses.totalTokens(response)).isEqualTo(528);
+        assertThat(ChatResponses.completeness(response)).isEqualTo(AnswerCompleteness.COMPLETE);
+      }
+    } finally {
+      gemmaServer.stop(0);
+    }
   }
 
   @Test

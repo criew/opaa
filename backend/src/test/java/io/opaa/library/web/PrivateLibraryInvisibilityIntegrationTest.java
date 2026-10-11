@@ -272,6 +272,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getMyPrivateStorage",
             "getPrivateStorageQuota",
             "getPrivateStorageSummary",
+            "getOutboundProxy",
             "listMyCapabilities",
             "listMyConnectedAccounts",
             "listOwnDiagnosticContextEvents",

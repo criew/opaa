@@ -8,6 +8,10 @@ tags:
       A person's own connected accounts ("Verbundene Konten"): their own app password or token on
       a profile with the ownership PERSON. Only the person sees them; the administration sees
       numbers only.
+  - name: outbound-proxy
+    description: >
+      The house-wide outbound proxy every HTTP(S) connection of the backend goes through, and its
+      exclusion list.
 paths:
   /api/v1/me/connected-accounts:
     get:
@@ -604,6 +608,58 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+
+  /api/v1/admin/outbound-proxy:
+    get:
+      operationId: getOutboundProxy
+      tags: [outbound-proxy]
+      summary: Read the outbound proxy (system admin only)
+      description: >
+        The house-wide outbound proxy and its exclusion list. Without a proxy every connection goes
+        direct; the JVM proxy properties and HTTP(S)_PROXY are never consulted. Loopback targets
+        and every scheme other than http/https (SMB, SMTP, the database) are always direct.
+      responses:
+        "200":
+          description: The stored settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboundProxyResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+    put:
+      operationId: updateOutboundProxy
+      tags: [outbound-proxy]
+      summary: Replace the outbound proxy (system admin only)
+      description: >
+        proxyUrl is http://host:port or host:port - no https, no SOCKS, no user information, no
+        path; null or blank removes the proxy. noProxy lists host names (matching the host and
+        every subdomain; a leading "." or "*." is dropped), IP literals and CIDR ranges (matching
+        IP literals only, never resolved through DNS); "*", ports and whitespace are refused. Case
+        and a trailing dot do not matter. Bounds: proxyUrl at most 300 characters, at most 100
+        noProxy entries of at most 253 characters each. Every bound is checked in the domain
+        service, so a violation answers 400 with German fieldErrors naming proxyUrl or noProxy.
+        The exclusion list is not the target allowlist (OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST):
+        an excluded target is still checked. Audited as OUTBOUND_PROXY_CHANGED with before and
+        after; the new route applies to connections opened after the change committed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OutboundProxyRequest"
+      responses:
+        "200":
+          description: The stored settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OutboundProxyResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "403":
+          $ref: "#/components/responses/Forbidden"
 
   /api/v1/admin/mcp-servers:
     get:
@@ -2104,6 +2160,39 @@ components:
       properties:
         locked:
           type: boolean
+
+    OutboundProxyRequest:
+      type: object
+      required: [noProxy]
+      properties:
+        proxyUrl:
+          type: string
+          nullable: true
+          description: http://host:port or host:port; null or blank for no proxy.
+        noProxy:
+          type: array
+          description: The exclusion list, one entry per host name, IP literal or CIDR range.
+          items:
+            type: string
+
+    OutboundProxyResponse:
+      type: object
+      required: [noProxy]
+      properties:
+        proxyUrl:
+          type: string
+          nullable: true
+          description: The proxy as http://host:port; null when every connection goes direct.
+        noProxy:
+          type: array
+          description: The normalized exclusion list.
+          items:
+            type: string
+        updatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the settings were last changed; null while never set.
 
     ConnectorTypeStateResponse:
       type: object

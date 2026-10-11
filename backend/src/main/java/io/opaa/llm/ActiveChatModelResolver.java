@@ -28,6 +28,9 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * built in their constructor - the only way an activation via the admin API (#764) can take effect
  * without a restart.
  *
+ * <p>Every client built here wraps the model in {@link ReasoningTextStrippingChatModel}: no caller
+ * reads reasoning text a server put in front of the answer.
+ *
  * <p><b>Built programmatically, not through Spring Boot's OpenAI autoconfiguration</b> - {@link
  * OpenAiChatModel#builder()} with an {@link OpenAiChatOptions} carrying the active model's own
  * {@code baseUrl}/{@code apiKey}/{@code model}/{@code temperature}/{@code maxTokens}. There is
@@ -191,7 +194,10 @@ public class ActiveChatModelResolver {
     ObservationRegistry observationRegistry =
         observationRegistryProvider.getIfUnique(() -> ObservationRegistry.NOOP);
     OpenAiChatModel chatModel = chatModelBuilder(model, observationRegistry, null).build();
-    ChatClient chatClient = ChatClient.builder(chatModel, observationRegistry, null, null).build();
+    ChatClient chatClient =
+        ChatClient.builder(
+                new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
+            .build();
     Resolved resolved = new Resolved(chatClient);
     // See this class's own Javadoc ("Race between an in-flight build and a concurrent
     // invalidation"): only commit if nothing invalidated the cache while this build was running.
@@ -224,7 +230,10 @@ public class ActiveChatModelResolver {
         chatModelBuilder(model, observationRegistry, requestTimeout).build();
     TimedResolved resolved =
         new TimedResolved(
-            requestTimeout, ChatClient.builder(chatModel, observationRegistry, null, null).build());
+            requestTimeout,
+            ChatClient.builder(
+                    new ReasoningTextStrippingChatModel(chatModel), observationRegistry, null, null)
+                .build());
     // The same commit rule as buildAndCache: a build whose generation changed underneath it is
     // handed to its own caller but never cached.
     if (generation.get() == generationAtStart) {

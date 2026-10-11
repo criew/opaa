@@ -186,7 +186,7 @@ export async function deleteProfileViaApi(profileId: string): Promise<void> {
   })
 }
 
-/** Die Zeile eines Zugangs in der Liste unter „Administration → Zugänge“. */
+/** Die Zeile eines Zugangs in der Liste unter „Administration → Anbindungen → Zugänge“. */
 export function profileRow(page: Page, profileName: string): Locator {
   return page
     .getByRole('table', { name: 'Zugänge' })
