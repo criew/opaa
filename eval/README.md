@@ -625,9 +625,9 @@ Gruppen- und Einzelfallzahlen unter den fenstertragenden Namen `hitRateAt5`/`mrr
 `recallAt20`.
 
 Ein Punkt, der beim Lesen mitgedacht werden muss: **Das Fenster des Pipeline-Pfads zählt Chunks,
-die Metriken zählen Dokumente.** Bei `max-chunks-per-document = 2` können zwanzig Chunks auf so wenige
+die Metriken zählen Dokumente.** Auch beim Default `max-chunks-per-document = 1` können zwanzig Chunks auf so wenige
 wie vier Dokumente zusammenfallen — die Rangliste, über die gemessen wird, ist dann entsprechend
-kürzer als acht. Die Konsolenzusammenfassung weist deshalb das **effektive Dokumentfenster** aus
+kürzer als zwanzig. Die Konsolenzusammenfassung weist deshalb das **effektive Dokumentfenster** aus
 (unterschiedliche Dokumente je Anfrage im Mittel, gegen die nominal zwanzig Chunk-Plätze), und der
 JSON-Report führt dieselbe Zahl je Anfrage als `distinctDocumentsReturned`.
 
