@@ -80,6 +80,8 @@ const PRESET_ICONS: Record<EndpointPresetKey, ReactNode> = {
   custom: <LinkOutlinedIcon fontSize="small" />,
 }
 
+const ARROW_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
+
 const PRESET_TILES = ENDPOINT_PRESETS.map((preset) => ({
   value: preset.key,
   label: preset.label,
@@ -91,7 +93,7 @@ const PRESET_TILES = ENDPOINT_PRESETS.map((preset) => ({
  * Das Formular eines Chat-Modells (#759, #1621) — dasselbe für Anlegen und Bearbeiten, wie
  * `UserFormDialog` unter „Benutzer".
  *
- * Geführt in drei Abschnitten (#2488): Endpunkt (Vorlage oder eigene Adresse, Schlüssel,
+ * Geführt in drei Abschnitten: Endpunkt (Vorlage oder eigene Adresse, Schlüssel,
  * „Modelle abrufen"), Modell (Auswahl aus der Liste des Endpunkts oder freie Eingabe) und Anzeige.
  * Eine Auswahl belegt Anzeigename und Antwortlänge vor, solange sie nicht von Hand gesetzt
  * wurden, und testet die Verbindung sofort.
@@ -123,17 +125,29 @@ export default function LlmModelFormDialog({
   const [submitting, setSubmitting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
-  // Vorbelegung überschreibt nur, was die Person nicht selbst gesetzt hat.
+  // Vorbelegung überschreibt nur, was die Person nicht selbst gesetzt hat; beim Bearbeiten gilt die
+  // gespeicherte Antwortlänge als gesetzt.
   const [suggestedName, setSuggestedName] = useState<string | null>(null)
-  const [maxTokensTouched, setMaxTokensTouched] = useState(false)
+  const [maxTokensTouched, setMaxTokensTouched] = useState(model !== null)
   const [contextLength, setContextLength] = useState<number | null>(null)
+  // „Eigene Adresse“ ist ein eigener Zustand: Auch eine leere oder einer Vorlage gleiche Adresse
+  // kann bewusst frei gewählt sein. Die zuletzt frei getippte Adresse kehrt beim Zurückwechseln
+  // wieder.
+  const [customChosen, setCustomChosen] = useState(false)
+  const customAddress = useRef(
+    model !== null && presetOf(model.baseUrl) === 'custom' ? model.baseUrl : '',
+  )
+  // Eine Wahl per Pfeiltaste blättert nur; abgerufen wird erst auf ausdrücklichen Wunsch.
+  const choosingByArrowKey = useRef(false)
+  // Nur das Ergebnis des jüngsten Verbindungstests zählt, wie in useModelDiscovery.
+  const latestTest = useRef(0)
   const discovery = useModelDiscovery()
   const addressRef = useRef<HTMLInputElement>(null)
 
   const isEdit = model !== null
   const titel = isEdit ? `„${model.displayName}“ bearbeiten` : 'Chat-Modell anlegen'
   const requiredHintId = 'llm-model-form-required-hint'
-  const preset = presetOf(draft.baseUrl)
+  const preset: EndpointPresetKey | null = customChosen ? 'custom' : presetOf(draft.baseUrl)
   const typedKey = apiKeyTouched && apiKeyInput.trim() !== ''
   const temperatureFieldId = 'llm-model-form-temperature'
   // MUI vergibt der Hilfezeile eines TextField mit `id` die ID `<id>-helper-text`.
@@ -172,11 +186,21 @@ export default function LlmModelFormDialog({
     onClose()
   }
 
-  /** A new address invalidates the list and the last test result; both belonged to the old one. */
+  /**
+   * A new address invalidates the list and the last test result, a running test included; both
+   * belonged to the old one.
+   */
   function changeBaseUrl(baseUrl: string) {
     setDraft((current) => ({ ...current, baseUrl }))
     discovery.reset()
+    latestTest.current++
+    setTesting(false)
     setTestResult(null)
+  }
+
+  /** The stored key of the edited model serves only while its removal is not requested. */
+  function storedKeyModelId(): string | undefined {
+    return model && !apiKeyClearRequested ? model.id : undefined
   }
 
   function runDiscovery(baseUrl = draft.baseUrl) {
@@ -184,19 +208,31 @@ export default function LlmModelFormDialog({
     void discovery.discover({
       baseUrl: baseUrl.trim(),
       apiKey: resolveApiKey(),
-      modelId: model && !apiKeyClearRequested ? model.id : undefined,
+      modelId: storedKeyModelId(),
     })
   }
 
+  function typeBaseUrl(baseUrl: string) {
+    if (presetOf(baseUrl) === 'custom') customAddress.current = baseUrl
+    else if (presetOf(baseUrl) !== null) setCustomChosen(false)
+    changeBaseUrl(baseUrl)
+  }
+
   function choosePreset(key: EndpointPresetKey) {
+    const byArrowKey = choosingByArrowKey.current
+    choosingByArrowKey.current = false
     const chosen = ENDPOINT_PRESETS.find((candidate) => candidate.key === key)!
     if (chosen.baseUrl === null) {
-      if (preset !== 'custom') changeBaseUrl('')
-      addressRef.current?.focus()
+      setCustomChosen(true)
+      if (customAddress.current !== '' && customAddress.current !== draft.baseUrl) {
+        changeBaseUrl(customAddress.current)
+      }
+      if (!byArrowKey) addressRef.current?.focus()
       return
     }
+    setCustomChosen(false)
     changeBaseUrl(chosen.baseUrl)
-    if (chosen.keyless || typedKey) runDiscovery(chosen.baseUrl)
+    if (!byArrowKey && (chosen.keyless || typedKey)) runDiscovery(chosen.baseUrl)
   }
 
   function selectModel(selected: DiscoveredLlmModel) {
@@ -217,25 +253,27 @@ export default function LlmModelFormDialog({
   }
 
   async function handleTest(modelIdentifier = draft.modelIdentifier) {
+    const ticket = ++latestTest.current
     setTestResult(null)
     setTesting(true)
+    let result: { success: boolean; message: string }
     try {
-      const result = await testLlmModel({
+      result = await testLlmModel({
         baseUrl: draft.baseUrl.trim(),
         modelIdentifier: modelIdentifier.trim(),
         apiKey: resolveApiKey(),
-        modelId: model?.id,
+        modelId: storedKeyModelId(),
         temperature: resolveTemperature(),
       })
-      setTestResult(result)
     } catch (err) {
-      setTestResult({
+      result = {
         success: false,
         message: err instanceof Error ? err.message : 'Verbindungstest fehlgeschlagen',
-      })
-    } finally {
-      setTesting(false)
+      }
     }
+    if (ticket !== latestTest.current) return
+    setTestResult(result)
+    setTesting(false)
   }
 
   async function handleSubmit() {
@@ -303,12 +341,19 @@ export default function LlmModelFormDialog({
             <Typography id="llm-model-endpoint-question" variant="body2" sx={{ mb: 1.5 }}>
               Wo läuft das Modell?
             </Typography>
-            <ChoiceTileGroup<EndpointPresetKey>
-              aria-labelledby="llm-model-endpoint-question"
-              value={preset}
-              onChange={choosePreset}
-              tiles={PRESET_TILES}
-            />
+            {/* Capture phase: marks an arrow key before the group turns it into a choice. */}
+            <Box
+              onKeyDownCapture={(e) => {
+                choosingByArrowKey.current = ARROW_KEYS.includes(e.key)
+              }}
+            >
+              <ChoiceTileGroup<EndpointPresetKey>
+                aria-labelledby="llm-model-endpoint-question"
+                value={preset}
+                onChange={choosePreset}
+                tiles={PRESET_TILES}
+              />
+            </Box>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
@@ -319,7 +364,7 @@ export default function LlmModelFormDialog({
                 required
                 value={draft.baseUrl}
                 inputRef={addressRef}
-                onChange={(e) => changeBaseUrl(e.target.value)}
+                onChange={(e) => typeBaseUrl(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { server } from '../../../mocks/server'
 import { mockLlmModels } from '../../../mocks/modelFixtures'
@@ -278,5 +278,194 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
       baseUrl: 'http://ollama:11434/v1',
       modelId: mockLlmModels[0].id,
     })
+  })
+})
+
+const SLOW_TEST_MS = 600
+
+/** Model A answers the connection test slowly and successfully, every other model at once. */
+function slowTestForModelA() {
+  server.use(
+    http.post('/api/v1/admin/models/test', async ({ request }) => {
+      const body = (await request.json()) as { modelIdentifier: string }
+      if (body.modelIdentifier === 'llama3.2:3b') {
+        await delay(SLOW_TEST_MS)
+        return HttpResponse.json({ success: true, message: 'Modell A hat geantwortet.' })
+      }
+      return HttpResponse.json({ success: false, message: 'Modell B wurde abgelehnt.' })
+    }),
+  )
+}
+
+async function chooseOption(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: ReturnType<typeof within>,
+  name: RegExp,
+) {
+  await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
+
+describe('LlmModelFormDialog – Review-Befunde', () => {
+  it('never lets a slower test of an earlier selection overwrite the latest one', async () => {
+    slowTestForModelA()
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await dialog.findByText(/4 Modelle gefunden/)
+
+    await chooseOption(user, dialog, /llama3\.2:3b/)
+    await chooseOption(user, dialog, /qwen3:8b/)
+    expect(await dialog.findByText('Modell B wurde abgelehnt.')).toBeInTheDocument()
+
+    // Long enough for model A's answer to arrive.
+    await new Promise((resolve) => setTimeout(resolve, SLOW_TEST_MS + 300))
+    expect(dialog.queryByText('Modell A hat geantwortet.')).not.toBeInTheDocument()
+    expect(dialog.getByText('Modell B wurde abgelehnt.')).toBeInTheDocument()
+  })
+
+  it('keeps showing a running test until the latest one has finished', async () => {
+    // B (older) answers after 300 ms, A (newer) after 1200 ms.
+    server.use(
+      http.post('/api/v1/admin/models/test', async ({ request }) => {
+        const body = (await request.json()) as { modelIdentifier: string }
+        if (body.modelIdentifier === 'llama3.2:3b') {
+          await delay(1200)
+          return HttpResponse.json({ success: true, message: 'Modell A hat geantwortet.' })
+        }
+        await delay(300)
+        return HttpResponse.json({ success: false, message: 'Modell B wurde abgelehnt.' })
+      }),
+    )
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await dialog.findByText(/4 Modelle gefunden/)
+
+    await chooseOption(user, dialog, /qwen3:8b/)
+    await chooseOption(user, dialog, /llama3\.2:3b/)
+    await new Promise((resolve) => setTimeout(resolve, 600))
+
+    expect(dialog.queryByText('Modell B wurde abgelehnt.')).not.toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Verbindung wird getestet …' })).toBeInTheDocument()
+    expect(
+      await dialog.findByText('Modell A hat geantwortet.', {}, { timeout: 2000 }),
+    ).toBeInTheDocument()
+  })
+
+  it('discards list and test result when the address changes, also during a running test', async () => {
+    slowTestForModelA()
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await dialog.findByText(/4 Modelle gefunden/)
+
+    await chooseOption(user, dialog, /llama3\.2:3b/)
+    await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'x')
+
+    await new Promise((resolve) => setTimeout(resolve, SLOW_TEST_MS + 300))
+    expect(dialog.queryByText('Modell A hat geantwortet.')).not.toBeInTheDocument()
+    expect(dialog.queryByText(/4 Modelle gefunden/)).not.toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Verbindung testen' })).toBeInTheDocument()
+  })
+
+  it('keeps the stored answer length of an edited model when a model is selected', async () => {
+    server.use(
+      http.post('/api/v1/admin/models/discover', () =>
+        HttpResponse.json({
+          success: true,
+          failure: null,
+          message: '1 Modell gefunden.',
+          ollama: true,
+          models: [
+            { identifier: 'phi3:mini', contextLength: 4096, capabilities: [], chatSuitable: true },
+          ],
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LlmModelFormDialog
+        open
+        model={{ ...mockLlmModels[0], maxTokens: 3000 }}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />,
+    )
+    const dialog = within(screen.getByRole('dialog'))
+
+    await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
+    await dialog.findByText(/1 Modell gefunden/)
+    await chooseOption(user, dialog, /phi3:mini/)
+
+    expect(dialog.getByLabelText('Maximale Antwortlänge (Token)', { exact: false })).toHaveValue(
+      3000,
+    )
+  })
+
+  it('shows "Eigene Adresse" as chosen and keeps the address', async () => {
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+    const address = dialog.getByLabelText('Basis-Adresse', { exact: false })
+
+    await user.click(dialog.getByRole('radio', { name: /Eigene Adresse/ }))
+    expect(dialog.getByRole('radio', { name: /Eigene Adresse/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(address).toHaveFocus()
+
+    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await user.click(dialog.getByRole('radio', { name: /Eigene Adresse/ }))
+    expect(dialog.getByRole('radio', { name: /Eigene Adresse/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(address).toHaveValue('http://ollama:11434/v1')
+  })
+
+  it('browses the templates by arrow keys without fetching and restores the typed address', async () => {
+    const discoveries = recordRequests('/api/v1/admin/models/discover')
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+    const address = dialog.getByLabelText('Basis-Adresse', { exact: false })
+    await user.type(address, 'http://vllm.intern:8000/v1')
+    const custom = dialog.getByRole('radio', { name: /Eigene Adresse/ })
+    expect(custom).toHaveAttribute('aria-checked', 'true')
+
+    custom.focus()
+    await user.keyboard('{ArrowLeft}{ArrowLeft}{ArrowLeft}')
+    expect(dialog.getByRole('radio', { name: /Ollama auf diesem Rechner/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}')
+
+    expect(dialog.getByRole('radio', { name: /Eigene Adresse/ })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    )
+    expect(address).toHaveValue('http://vllm.intern:8000/v1')
+    expect(discoveries).toHaveLength(0)
+  })
+
+  it('tests without the stored key once its removal is requested', async () => {
+    const tests = recordRequests('/api/v1/admin/models/test')
+    const user = userEvent.setup()
+    const withKey = { ...mockLlmModels[0], apiKeySet: true }
+    renderWithProviders(
+      <LlmModelFormDialog open model={withKey} onClose={vi.fn()} onSaved={vi.fn()} />,
+    )
+    const dialog = within(screen.getByRole('dialog'))
+
+    await user.click(
+      dialog.getByRole('button', {
+        name: `Gespeicherten Schlüssel von "${withKey.displayName}" entfernen`,
+      }),
+    )
+    await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))
+
+    await waitFor(() => expect(tests).toHaveLength(1))
+    expect(tests[0]).not.toHaveProperty('modelId')
   })
 })

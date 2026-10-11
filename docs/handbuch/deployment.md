@@ -1768,7 +1768,8 @@ bearbeitet, testet und aktiviert sie. Das Formular führt in drei Abschnitten:
    maximale Antwortlänge auf die Hälfte davon, falls der Vorschlagswert für neue Einträge (siehe
    [„Temperatur und maximale Antwortlänge"](#temperatur-und-maximale-antwortlänge)) nicht
    hineinpasst; die andere Hälfte brauchen Frage, Gesprächsverlauf und gefundene Textstellen. Was
-   von Hand eingetragen wurde, überschreibt die Vorbelegung nicht. Die Temperatur bleibt ohne
+   von Hand eingetragen wurde, überschreibt die Vorbelegung nicht; beim Bearbeiten bleibt die
+   gespeicherte Antwortlänge. Die Temperatur bleibt ohne
    Eintrag leer.
 
 Nach der Wahl eines Modells läuft der Verbindungstest automatisch; „Verbindung testen" wiederholt

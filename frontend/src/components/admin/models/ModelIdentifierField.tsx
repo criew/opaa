@@ -26,7 +26,7 @@ const filter = createFilterOptions<DiscoveredLlmModel>({
 
 /**
  * The model identifier as a searchable list of what the endpoint offers, with free input as the
- * way out for an endpoint without list (#2488). Models that only embed stay visible in their own
+ * way out for an endpoint without list. Models that only embed stay visible in their own
  * group but cannot be chosen; each option names the facts the endpoint reported.
  */
 export default function ModelIdentifierField({
