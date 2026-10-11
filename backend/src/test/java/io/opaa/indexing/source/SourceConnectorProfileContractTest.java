@@ -73,7 +73,8 @@ class SourceConnectorProfileContractTest {
    * profile, S3 region and addressing style, SMB takes an {@code smb://} server, and the feed names
    * what a requirement leaves open. Google Drive signs in with the profile's service account key,
    * the imitated account set by the profile alone. SharePoint signs in only through a profile, with
-   * its client credentials at the tenant's token endpoint. Upload and file system admit none.
+   * its client credentials at the tenant's token endpoint. Dropbox signs in only through a profile,
+   * by the library's own OAuth consent with a refresh token. Upload and file system admit none.
    */
   private static final Set<String> PERSONS = Set.of("NEXTCLOUD");
 
@@ -155,6 +156,28 @@ class SourceConnectorProfileContractTest {
         .as("SHAREPOINT")
         .isEqualTo("https://graph.microsoft.com");
     softly.assertThat(sharePoint.defaults().keys()).as("SHAREPOINT").isEmpty();
+    ProfileDeclaration dropbox = declared.get("DROPBOX");
+    softly.assertThat(dropbox.support()).as("DROPBOX").isEqualTo(REQUIRED);
+    softly
+        .assertThat(dropbox.signIns())
+        .as("DROPBOX")
+        .singleElement()
+        .satisfies(
+            signIn -> {
+              assertThat(signIn.method()).isEqualTo(ConnectionAuthMethod.OAUTH);
+              assertThat(signIn.owners()).containsExactly(ConnectionOwnership.LIBRARY);
+              assertThat(signIn.details())
+                  .isInstanceOfSatisfying(
+                      OAuthAuth.class,
+                      auth ->
+                          assertThat(auth.authorizationParams())
+                              .containsEntry("token_access_type", "offline"));
+            });
+    softly
+        .assertThat(dropbox.address().fixed())
+        .as("DROPBOX")
+        .isEqualTo("https://api.dropboxapi.com");
+    softly.assertThat(dropbox.defaults().keys()).as("DROPBOX").isEmpty();
     for (String type : List.of("UPLOAD", "FILESYSTEM")) {
       softly.assertThat(declared.get(type).support()).as(type).isEqualTo(FORBIDDEN);
     }

@@ -1,0 +1,472 @@
+package io.opaa.indexing.source.dropbox;
+
+import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
+import static io.opaa.indexing.source.ConnectorChecks.unreachable;
+
+import io.opaa.api.types.ConnectionOwnership;
+import io.opaa.api.types.ConnectionProfileSupport;
+import io.opaa.common.ValidationException;
+import io.opaa.indexing.filesync.FileAccessException;
+import io.opaa.indexing.filesync.FileContainer;
+import io.opaa.indexing.source.ClientAuthentication;
+import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.Endpoint;
+import io.opaa.indexing.source.OAuthAuth;
+import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.OriginalUnavailableException;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.source.Revocation;
+import io.opaa.indexing.source.SecretKind;
+import io.opaa.indexing.source.ServedOriginals;
+import io.opaa.indexing.source.ServerAddressRule;
+import io.opaa.indexing.source.SignIn;
+import io.opaa.indexing.source.SourceBrowser;
+import io.opaa.indexing.source.SourceConnectionTestResult;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.source.SourceCredentialsException;
+import io.opaa.indexing.source.SourceListing;
+import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentContent;
+import io.opaa.knowledge.KnowledgeLibrary;
+import io.opaa.knowledge.ServedContentTypes;
+import io.opaa.knowledge.SourceType;
+import io.opaa.sourceaccess.ProxyAndCredentials;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.OptionalLong;
+import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import tools.jackson.databind.JsonNode;
+
+/**
+ * Dropbox as the source of a library. Dropbox grants access only through OAuth with a refresh
+ * token, so a library always runs on a profile whose registration is the operator's Dropbox app;
+ * the library's own consent ("Quelle verbinden") lies in the token store, and the connector gets
+ * the access token alone. The address is fixed (the API host); the folders, the team space and the
+ * full-sync rhythm are the connector settings ({@link DropboxSettings}). A changed folder list or
+ * team space discards the run state, so the next run is a full sync.
+ */
+public class DropboxSourceConnector implements SourceConnector, SourceBrowser, OriginalAccess {
+
+  /** The type key this connector serves. */
+  public static final SourceType TYPE = SourceType.of("DROPBOX");
+
+  /** The permissions the Dropbox app needs; nothing it could write with. */
+  public static final String SCOPES = "account_info.read files.metadata.read files.content.read";
+
+  static final String UNAVAILABLE =
+      "Dropbox ist derzeit nicht erreichbar. Bitte später erneut versuchen.";
+
+  private static final Logger log = LoggerFactory.getLogger(DropboxSourceConnector.class);
+
+  private static final String FOLDERS_STATE = "dropboxFolders";
+  private static final String TEAM_SPACE_STATE = "dropboxTeamSpace";
+  private static final int MAX_BROWSE_PAGES = 10;
+
+  private final DropboxApiFactory apis;
+  private final SourceSyncStateRepository syncStateRepository;
+  private final SourceConnectorDescriptor descriptor;
+  private final String apiBase;
+
+  public DropboxSourceConnector(
+      DropboxApiFactory apis, SourceSyncStateRepository syncStateRepository) {
+    this.apis = apis;
+    this.syncStateRepository = syncStateRepository;
+    DropboxProperties properties = apis.properties();
+    this.apiBase = properties.apiBase().toString();
+    this.descriptor =
+        SourceConnectorDescriptor.remoteRun(TYPE, "Dropbox")
+            .withFullSyncInterval(properties.fullSyncInterval())
+            .withProfiles(
+                ProfileDeclaration.of(
+                        ConnectionProfileSupport.REQUIRED,
+                        SignIn.oauth(
+                            new OAuthAuth(
+                                new Endpoint.Fixed(properties.authorizationEndpoint()),
+                                new Endpoint.Fixed(properties.tokenEndpoint()),
+                                new Revocation.BearerPost(
+                                    new Endpoint.Fixed(properties.revocationEndpoint())),
+                                SCOPES,
+                                Map.of("token_access_type", "offline"),
+                                ClientAuthentication.CLIENT_SECRET_BASIC),
+                            ConnectionOwnership.LIBRARY))
+                    .withAddress(ServerAddressRule.fixed(apiBase)));
+  }
+
+  @Override
+  public SourceConnectorDescriptor descriptor() {
+    return descriptor;
+  }
+
+  @Override
+  public Set<String> settingsKeys() {
+    return DropboxSettings.KEYS;
+  }
+
+  @Override
+  public ConnectorData readSettings(ConnectorData requested) {
+    return DropboxSettings.read(requested).toData();
+  }
+
+  @Override
+  public String normalizeSourceUrl(String requested) {
+    String url = blankToNull(requested);
+    if (url == null) {
+      return apiBase;
+    }
+    String trimmed = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    return trimmed.equals(apiBase) ? apiBase : url;
+  }
+
+  @Override
+  public SourceSettings validate(SourceSettings requested) {
+    String url = checkConnection(requested);
+    if (requested.connectorSettings() == null) {
+      throw new ValidationException(
+          "sourceSettings sind erforderlich, wenn sourceType " + TYPE + " ist");
+    }
+    DropboxSettings settings = DropboxSettings.read(requested.connectorSettings());
+    return requested.withSourceUrl(url).withConnectorSettings(settings.toData());
+  }
+
+  @Override
+  public SourceSettings validateChange(
+      SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
+    if (replacesConnection) {
+      ConnectorData effective =
+          requested.connectorSettings() != null
+              ? requested.connectorSettings()
+              : stored.connectorSettings();
+      SourceSettings validated = validate(requested.withConnectorSettings(effective));
+      return requested.connectorSettings() == null
+          ? validated.withConnectorSettings(null)
+          : validated;
+    }
+    if (requested.connectorSettings() != null) {
+      return requested.withConnectorSettings(
+          DropboxSettings.read(requested.connectorSettings()).toData());
+    }
+    return requested;
+  }
+
+  /** Path, address, TLS switch and proxy of a request; returns the fixed address. */
+  private String checkConnection(SourceSettings requested) {
+    if (blankToNull(requested.sourcePath()) != null) {
+      throw new ValidationException("sourcePath ist für sourceType " + TYPE + " nicht zulässig");
+    }
+    String url = normalizeSourceUrl(requested.sourceUrl());
+    if (!url.equals(apiBase)) {
+      throw new ValidationException(
+          "sourceUrl ist für sourceType " + TYPE + " fest " + apiBase + " und nicht änderbar");
+    }
+    if (requested.sourceInsecureSsl()) {
+      throw new ValidationException(
+          "Die Zertifikatsprüfung lässt sich für sourceType " + TYPE + " nicht abschalten");
+    }
+    try {
+      ProxyAndCredentials.parse(blankToNull(requested.sourceProxy()), null);
+    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
+      throw new ValidationException(e.getMessage());
+    }
+    return url;
+  }
+
+  @Override
+  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
+    library.updateSourceSettings(validated.connectorSettings().toJson());
+  }
+
+  @Override
+  public void applyChange(
+      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
+    if (validated.connectorSettings() != null) {
+      library.updateSourceSettings(validated.connectorSettings().toJson());
+    }
+  }
+
+  @Override
+  public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
+    Map<String, Object> state = new LinkedHashMap<>();
+    DropboxSettings settings = stored == null ? null : DropboxSettings.stored(stored);
+    state.put(FOLDERS_STATE, settings == null ? null : settings.folders().toString());
+    state.put(TEAM_SPACE_STATE, settings == null ? null : settings.teamSpace());
+    return state;
+  }
+
+  /** A changed folder list or team space makes the next run a full one from scratch. */
+  @Override
+  public void onSourceChanged(
+      KnowledgeLibrary library, boolean addressChanged, Set<String> changedSettings) {
+    if (addressChanged
+        || changedSettings.contains(FOLDERS_STATE)
+        || changedSettings.contains(TEAM_SPACE_STATE)) {
+      syncStateRepository.deleteByLibraryId(library.getId());
+    }
+  }
+
+  /**
+   * The e-mail address of the account the access token was issued to.
+   *
+   * @throws SourceCredentialsException when Dropbox does not answer the lookup
+   */
+  @Override
+  public Optional<String> connectedAccount(SourceSettings settings) {
+    String token = tokenOf(settings);
+    if (token == null) {
+      return Optional.empty();
+    }
+    try {
+      JsonNode account =
+          apis.open(settings, () -> token, RequestBudget.unbounded())
+              .rpc("users/get_current_account", null);
+      return Optional.ofNullable(DropboxFileStore.text(account, "email"));
+    } catch (DropboxApiException e) {
+      throw new SourceCredentialsException(e.getMessage());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return Optional.empty();
+    }
+  }
+
+  // --- connection test and listing -------------------------------------------------------------
+
+  /**
+   * Checks each requested folder (or the stored ones) with the access token of the library's
+   * consent; the finding per folder is the {@code folders} detail.
+   */
+  @Override
+  public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
+    checkConnection(settings.withSourceUrl(normalizeSourceUrl(settings.sourceUrl())));
+    ConnectorData effective =
+        settings.connectorSettings() != null ? settings.connectorSettings() : stored;
+    String token = tokenOf(settings);
+    if (token == null) {
+      return unreachable("Bitte zuerst die Quelle verbinden.");
+    }
+    if (effective == null) {
+      return unreachable("Bitte mindestens einen Ordner angeben.");
+    }
+    DropboxSettings dropboxSettings = DropboxSettings.read(effective);
+    DropboxFileStore store =
+        new DropboxFileStore(
+            apis.open(settings, () -> token, RequestBudget.unbounded()), dropboxSettings, 1);
+    List<Map<String, Object>> findings = new ArrayList<>();
+    int reachable = 0;
+    try {
+      for (String folder : dropboxSettings.folders()) {
+        Map<String, Object> finding = new LinkedHashMap<>();
+        finding.put("folder", folder);
+        try {
+          store.requireReachable(new FileContainer(folder));
+          finding.put("reachable", true);
+          reachable++;
+        } catch (FileAccessException.RunEnding e) {
+          return new SourceConnectionTestResult(false, e.getMessage(), null, false, null);
+        } catch (FileAccessException e) {
+          finding.put("reachable", false);
+          finding.put("message", e.getMessage());
+        }
+        findings.add(finding);
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return unreachable("Der Verbindungstest wurde unterbrochen.");
+    }
+    int total = dropboxSettings.folders().size();
+    boolean all = reachable == total;
+    String message;
+    if (total == 1) {
+      message =
+          all
+              ? "Verbindung erfolgreich; der Ordner ist erreichbar."
+              : "Der Ordner ist für das verbundene Konto nicht sichtbar.";
+    } else {
+      message =
+          all
+              ? "Verbindung erfolgreich; alle " + total + " Ordner sind erreichbar."
+              : (total - reachable)
+                  + " von "
+                  + total
+                  + " Ordnern "
+                  + (total - reachable == 1 ? "ist" : "sind")
+                  + " für das verbundene Konto nicht sichtbar.";
+    }
+    return new SourceConnectionTestResult(
+        all, message, null, true, ConnectorData.of(Map.of("folders", findings)));
+  }
+
+  @Override
+  public String otherTypeMessage() {
+    return "Die Bibliothek ist keine Dropbox-Bibliothek";
+  }
+
+  /**
+   * The folders directly below {@code path} of the listing's parameters ({@code /} by default), in
+   * the team space where {@code teamSpace} asks for it; the keys are their paths.
+   */
+  @Override
+  public SourceListing browse(Query query) {
+    SourceSettings settings = query.settings();
+    String token = tokenOf(settings);
+    if (token == null) {
+      throw new ValidationException("Für die Ordnerauswahl muss die Quelle verbunden sein");
+    }
+    ConnectorData asked =
+        settings.connectorSettings() == null
+            ? ConnectorData.of(Map.of())
+            : settings.connectorSettings();
+    String path =
+        asked.get("path") instanceof String text && !text.isBlank()
+            ? DropboxSettings.normalize(text)
+            : "/";
+    boolean teamSpace =
+        Boolean.TRUE.equals(asked.get(DropboxSettings.TEAM_SPACE))
+            || (asked.get(DropboxSettings.TEAM_SPACE) == null
+                && DropboxSettings.teamSpaceOf(query.stored()));
+    DropboxApi api = apis.open(settings, () -> token, RequestBudget.unbounded());
+    List<SourceListing.Entry> entries = new ArrayList<>();
+    try {
+      if (teamSpace) {
+        String namespace = DropboxFileStore.teamSpaceOf(api.rpc("users/get_current_account", null));
+        if (namespace == null) {
+          return new SourceListing(
+              false,
+              List.of(),
+              "Das verbundene Dropbox-Konto gehört zu keinem Team mit Team-Bereich.");
+        }
+        api.rootAt(namespace);
+      }
+      Map<String, Object> args = new LinkedHashMap<>();
+      args.put("path", DropboxSettings.apiPath(path));
+      args.put("recursive", false);
+      args.put("limit", 2000);
+      JsonNode answer = api.rpc("files/list_folder", args);
+      for (int page = 0; ; page++) {
+        JsonNode items = answer.get("entries");
+        if (items != null && items.isArray()) {
+          for (JsonNode item : items) {
+            if ("folder".equals(DropboxFileStore.text(item, ".tag"))) {
+              String display = DropboxFileStore.text(item, "path_display");
+              entries.add(
+                  new SourceListing.Entry(
+                      display == null ? DropboxFileStore.text(item, "path_lower") : display,
+                      DropboxFileStore.text(item, "name")));
+            }
+          }
+        }
+        JsonNode more = answer.get("has_more");
+        if (more == null || !more.asBoolean() || page + 1 >= MAX_BROWSE_PAGES) {
+          break;
+        }
+        answer =
+            api.rpc(
+                "files/list_folder/continue",
+                Map.of("cursor", DropboxFileStore.text(answer, "cursor")));
+      }
+    } catch (DropboxApiException e) {
+      return new SourceListing(false, List.of(), e.getMessage());
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new ValidationException("Die Auflistung wurde unterbrochen.");
+    }
+    return new SourceListing(true, entries, null);
+  }
+
+  // --- original --------------------------------------------------------------------------------
+
+  /**
+   * Downloads or exports the file the document names, the way a run fetches it; the temp file is
+   * deleted when the served stream is closed. A file outside the library's folders, or one Dropbox
+   * no longer shows, is no original; Dropbox unreachable is {@link OriginalUnavailableException}.
+   */
+  @Override
+  public Optional<DocumentContent> openOriginal(
+      Document document, KnowledgeLibrary library, SourceSettings settings) {
+    String filePath = document.getFilePath();
+    String token = tokenOf(settings);
+    if (filePath == null || !filePath.startsWith(DropboxFileStore.OPEN_PREFIX) || token == null) {
+      return Optional.empty();
+    }
+    String pathLower = filePath.substring(DropboxFileStore.OPEN_PREFIX.length());
+    DropboxSettings dropboxSettings;
+    try {
+      dropboxSettings = DropboxSettings.stored(settings.connectorSettings());
+    } catch (RuntimeException e) {
+      return Optional.empty();
+    }
+    if (dropboxSettings == null
+        || dropboxSettings.folders().stream()
+            .noneMatch(folder -> DropboxSettings.contains(folder, pathLower))) {
+      return Optional.empty();
+    }
+    DropboxApi api = apis.open(settings, () -> token, RequestBudget.unbounded());
+    DropboxFileStore store = new DropboxFileStore(api, dropboxSettings, 1);
+    long bound = apis.properties().maxFileSizeBytes();
+    Path file;
+    try {
+      String folder =
+          dropboxSettings.folders().stream()
+              .filter(candidate -> DropboxSettings.contains(candidate, pathLower))
+              .findFirst()
+              .orElseThrow();
+      var entry = store.head(new FileContainer(folder), pathLower);
+      if (entry.exclusion() != null) {
+        return Optional.empty();
+      }
+      file = store.fetch(entry, bound).file();
+    } catch (FileAccessException.Gone
+        | FileAccessException.Unreadable
+        | FileAccessException.TooLarge e) {
+      return Optional.empty();
+    } catch (FileAccessException e) {
+      throw new OriginalUnavailableException(
+          UNAVAILABLE,
+          "Dropbox file of document " + document.getId() + " is not readable right now",
+          e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new OriginalUnavailableException(
+          UNAVAILABLE,
+          "Reading the Dropbox file of document " + document.getId() + " was interrupted",
+          e);
+    }
+    try {
+      InputStream stream =
+          ServedOriginals.deletingOnClose(Files.newInputStream(file), List.of(file));
+      return Optional.of(
+          DocumentContent.ofStream(
+              stream,
+              document.getFileName(),
+              ServedContentTypes.forFile(document.getContentType(), file)));
+    } catch (IOException e) {
+      ServedOriginals.deleteQuietly(file);
+      log.warn("Downloaded Dropbox file of document {} could not be opened", document.getId());
+      return Optional.empty();
+    }
+  }
+
+  @Override
+  public OptionalLong streamedOriginalBound() {
+    return OptionalLong.of(apis.properties().maxFileSizeBytes());
+  }
+
+  /** The access token among {@code settings}, {@code null} for none or another kind of secret. */
+  private static String tokenOf(SourceSettings settings) {
+    var secret = settings.credentials();
+    return secret == null || secret.kind() != SecretKind.ACCESS_TOKEN
+        ? null
+        : blankToNull(secret.value());
+  }
+}
