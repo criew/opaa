@@ -90,7 +90,18 @@ function AttentionCell({ attention }: { attention: ProfileAttention | null }) {
   return (
     <>
       <StateDot tone={attention.tone} label={attention.label} strong />
-      <Typography sx={secondarySx}>{attention.detail}</Typography>
+      <Typography
+        title={attention.detail}
+        sx={{
+          ...secondarySx,
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          overflow: 'hidden',
+        }}
+      >
+        {attention.detail}
+      </Typography>
     </>
   )
 }
@@ -167,13 +178,13 @@ export default function ConnectionProfileOverview({ entries, onOpen }: OverviewP
 
   return (
     <TableContainer>
-      <Table size="small" aria-label="Zugänge" sx={{ ...adminTableSx, minWidth: 860 }}>
+      <Table size="small" aria-label="Zugänge" sx={{ ...adminTableSx, minWidth: 920 }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ width: '25%' }}>Zugang</TableCell>
-            <TableCell sx={{ width: '18%' }}>Server</TableCell>
-            <TableCell sx={{ width: '15%' }}>Nutzbar für</TableCell>
-            <TableCell align="right" sx={{ width: 104 }}>
+            <TableCell sx={{ width: '23%' }}>Zugang</TableCell>
+            <TableCell sx={{ width: '16%' }}>Server</TableCell>
+            <TableCell sx={{ width: 200 }}>Nutzbar für</TableCell>
+            <TableCell align="right" sx={{ width: 112 }}>
               Verbindungen
             </TableCell>
             <TableCell>Handlungsbedarf</TableCell>

@@ -60,9 +60,9 @@ describe('ConnectionsAdminPage', () => {
 
   it.each([
     ['access', 'button', 'Neuer Zugang'],
-    ['source-types', 'table', 'Quellarten'],
+    ['source-types', 'region', 'Zustand der Quellarten'],
     ['external-tools', 'region', 'So kommt ein Werkzeug an Inhalte'],
-    ['settings', 'region', 'Private Bibliotheken'],
+    ['settings', 'region', 'Ausgangsproxy'],
   ] as const)('zeigt im Reiter %s seinen Inhalt', async (tab, role, name) => {
     signInAs('SYSTEM_ADMIN')
     render(`/admin/connections/${tab}`)

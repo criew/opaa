@@ -332,7 +332,7 @@ export default function PrivateStorageSection() {
 
   return (
     <PageSection
-      title="Private Bibliotheken"
+      title="Speicher privater Bibliotheken"
       description="Alle privaten Bibliotheken einer Person teilen sich ein Speicherkontingent. Hier legen Sie die hausweite Grenze fest und sehen, wie viel private Bibliotheken insgesamt belegen."
     >
       {loadError ? (
