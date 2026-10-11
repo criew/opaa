@@ -274,9 +274,10 @@ Rahmen und ein Häkchen.
 
 Wer eine Konnektorbibliothek anlegen darf, entscheidet auch über ihre Reichweite — bis zu einer
 **Obergrenze**, die ausschließlich die Systemverwaltung setzt. Ohne sie könnte, wer eine Bibliothek
-aus einem Dateiverzeichnis, einem Webverzeichnis, einem Feed, Confluence oder einem Objektspeicher
-anlegt, den eingespeisten Bestand im nächsten Schritt dem ganzen Haus öffnen — die Obergrenze ist
-die technische Sicherung gegen genau diesen einen Schritt. Bibliotheken für Uploads tragen keine
+aus einem Dateiverzeichnis, einem Webverzeichnis, einem Feed, Confluence, einem Objektspeicher
+oder einer Dateiablage wie Google Drive, SharePoint, Nextcloud, Dropbox oder einer
+Windows-Dateifreigabe anlegt, den eingespeisten Bestand im nächsten Schritt dem ganzen Haus
+öffnen — die Obergrenze ist die technische Sicherung gegen genau diesen einen Schritt. Bibliotheken für Uploads tragen keine
 Obergrenze: Dort kuratiert dieselbe Person ohnehin jedes Dokument einzeln.
 
 **Die Obergrenze gilt je Bibliothek und wird nicht automatisch gesetzt.** Neu angelegt ist jede
