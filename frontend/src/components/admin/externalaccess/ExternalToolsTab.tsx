@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
@@ -27,6 +27,7 @@ import ExternalAccessSettingsPanel, {
   SWITCH_CONSEQUENCE,
 } from './ExternalAccessSettingsPanel'
 import ExternalAccessTokenAdminSection from './ExternalAccessTokenAdminSection'
+import OwnTokensLink from './OwnTokensLink'
 import ReleasedLibrariesSection from './ReleasedLibrariesSection'
 import { channelStateOf } from './externalToolsState'
 
@@ -42,7 +43,8 @@ function plural(value: number, one: string, many: string): string {
 }
 
 interface Step {
-  text: string
+  key: string
+  text: ReactNode
   state: string | null
 }
 
@@ -55,7 +57,7 @@ function Steps({ steps }: { steps: Step[] }) {
         {steps.map((step, index) => (
           <Box
             component="li"
-            key={step.text}
+            key={step.key}
             sx={{
               display: 'grid',
               gridTemplateColumns: { xs: '28px 1fr', sm: '28px 1fr auto' },
@@ -214,6 +216,7 @@ export default function ExternalToolsTab() {
   const state = settings ? channelStateOf(settings) : null
   const steps: Step[] = [
     {
+      key: 'switch',
       text: 'Sie lassen externe KI-Werkzeuge hier zu.',
       state: settingsError
         ? 'nicht geladen'
@@ -224,6 +227,7 @@ export default function ExternalToolsTab() {
           : null,
     },
     {
+      key: 'release',
       text: 'Wer eine Bibliothek verwaltet, gibt sie befristet frei – in der Bibliothek unter „Freigaben“.',
       state: librariesError
         ? 'Zahl nicht geladen'
@@ -232,7 +236,13 @@ export default function ExternalToolsTab() {
           : null,
     },
     {
-      text: 'Eine Person erzeugt in ihren Einstellungen ein Zugangstoken für freigegebene Bibliotheken, die sie lesen darf.',
+      key: 'token',
+      text: (
+        <>
+          Jede Person erzeugt ihr Zugangstoken selbst unter <OwnTokensLink /> – für freigegebene
+          Bibliotheken, die sie lesen darf.
+        </>
+      ),
       state:
         activeTokens === null
           ? null

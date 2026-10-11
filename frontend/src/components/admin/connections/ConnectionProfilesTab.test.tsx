@@ -6,11 +6,11 @@ import { mockSourceTypes } from '../../../mocks/libraryFixtures'
 import { server } from '../../../mocks/server'
 
 import { mockConnectionProfiles } from '../../../mocks/connectionProfileFixtures'
-import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../../test/test-utils'
 import { useAuthStore } from '../../../stores/authStore'
 import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '../../../types/api'
 import ConnectionProfilesTab from './ConnectionProfilesTab'
-import ConnectorTypesTab from './ConnectorTypesTab'
+import { openProfile, useDesktopViewport } from './connectionTestUtils'
 
 /** Chooses the source type of a new profile in the select of the dialog. */
 async function chooseSourceType(
@@ -138,11 +138,14 @@ function capturePuts(): ConnectionProfileUpdateRequest[] {
 }
 
 async function openEdit(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('button', { name: `${PROFILE} bearbeiten` }))
-  return screen.findByRole('dialog', { name: new RegExp(PROFILE) })
+  const panel = await openProfile(user, PROFILE)
+  await user.click(within(panel).getByRole('button', { name: `${PROFILE} bearbeiten` }))
+  return screen.findByRole('dialog', { name: `„${PROFILE}“ bearbeiten` })
 }
 
 describe('ConnectionProfilesTab', () => {
+  useDesktopViewport()
+
   beforeEach(() => {
     signInAs('SYSTEM_ADMIN')
     server.use(
@@ -154,14 +157,124 @@ describe('ConnectionProfilesTab', () => {
     server.events.removeAllListeners()
   })
 
-  it('marks the profile a link points at, e.g. from a notification about its secret', async () => {
+  it('opens the panel of the profile a link points at, e.g. from a notification', async () => {
     renderWithProviders(<ConnectionProfilesTab />, {
       withRouter: true,
       initialRoute: `/admin/connections/access?profile=${mockConnectionProfiles[0].id}`,
     })
 
-    const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
-    expect(row).toHaveAttribute('aria-current', 'true')
+    const panel = await screen.findByRole('dialog', { name: PROFILE })
+    expect(within(panel).getByText('https://cloud.rheinfurt.example')).toBeVisible()
+  })
+
+  it('opens a profile nobody may use to all accounts in its panel, with the API of the Anlegerechte', async () => {
+    const grants: string[] = []
+    server.events.on('request:start', async ({ request }) => {
+      if (request.method === 'POST' && request.url.includes('/admin/capabilities/')) {
+        const body = (await request.clone().json()) as { subjectType: string; scope?: string }
+        grants.push(`${body.subjectType} @${body.scope}`)
+      }
+    })
+    const user = userEvent.setup()
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    const panel = await openProfile(user, PROFILE)
+    expect(within(panel).getByText('Noch für niemanden freigegeben')).toBeVisible()
+    await user.click(within(panel).getByRole('button', { name: 'Festlegen, wer ihn nutzen darf' }))
+    await user.click(within(panel).getByLabelText('Alle Konten'))
+    await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() =>
+      expect(grants).toEqual(['ALL_ACCOUNTS @PROFILE:connection-profile-nextcloud']),
+    )
+  })
+
+  // Review #2515, finding 1: the summary must not call a state good that it could not load.
+  const RELEASED_OVERVIEW = [
+    {
+      capability: 'CREATE_CONNECTOR_LIBRARY',
+      scope: 'PROFILE:connection-profile-nextcloud',
+      scopeLabel: 'Zugang Zugang Nextcloud intern',
+      label: 'Konnektorbibliotheken anlegen',
+      statement: '',
+      grants: [
+        {
+          id: 'grant-all',
+          capability: 'CREATE_CONNECTOR_LIBRARY',
+          scope: 'PROFILE:connection-profile-nextcloud',
+          subjectType: 'ALL_ACCOUNTS',
+          subjectId: null,
+          subjectName: null,
+          grantedByUserId: null,
+          createdAt: '2026-10-01T09:00:00Z',
+        },
+      ],
+    },
+  ]
+  const failing = () => HttpResponse.json({ error: 'Interner Fehler' }, { status: 500 })
+
+  it('shows no summary while the list of profiles failed, and offers to load it again', async () => {
+    server.use(http.get('/api/v1/admin/connection-profiles', failing))
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByText('Interner Fehler')).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('region', { name: 'Handlungsbedarf der Zugänge' }),
+    ).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Erneut laden' })).toBeVisible()
+  })
+
+  it('calls the state incomplete, not good, while the releases failed', async () => {
+    server.use(http.get('/api/v1/admin/capabilities', failing))
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByRole('heading', { name: /Stand unvollständig/ })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  it('calls the state incomplete, not good, while the resting sources failed', async () => {
+    server.use(
+      http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)),
+      http.get('/api/v1/admin/source-connections/dormant', failing),
+    )
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByRole('heading', { name: /Stand unvollständig/ })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
+  })
+
+  it('says there is nothing to do once every part is known and nothing is open', async () => {
+    server.use(http.get('/api/v1/admin/capabilities', () => HttpResponse.json(RELEASED_OVERVIEW)))
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(await screen.findByRole('heading', { name: 'Kein Handlungsbedarf' })).toBeVisible()
+  })
+
+  it('sums up what needs doing above the overview', async () => {
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    expect(
+      await screen.findByRole('heading', { name: '1 Zugang braucht Aufmerksamkeit' }),
+    ).toBeVisible()
+  })
+
+  it('shows the same statements as a list in a narrow window', async () => {
+    window.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+      }) as unknown as MediaQueryList) as typeof window.matchMedia
+    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+
+    const entry = await screen.findByRole('article', { name: PROFILE })
+    expect(entry).toHaveTextContent('cloud.rheinfurt.example')
+    expect(entry).toHaveTextContent('Noch für niemanden freigegeben')
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
   it('offers no dead end while no source type admits profiles', async () => {
@@ -179,13 +292,22 @@ describe('ConnectionProfilesTab', () => {
 
     const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
     expect(await within(row).findByText('Nextcloud')).toBeVisible()
-    expect(row).toHaveTextContent('https://cloud.rheinfurt.example')
-    expect(row).toHaveTextContent('Persönliches Geheimnis')
+    // The host only; the whole address stays in the title and in the panel.
+    expect(within(row).getByText('cloud.rheinfurt.example')).toHaveAttribute(
+      'title',
+      'https://cloud.rheinfurt.example',
+    )
+    expect(row).toHaveTextContent('Nur Systemverwaltung')
+    expect(row).toHaveTextContent('Noch für niemanden freigegeben')
+
+    const panel = await openProfile(userEvent.setup(), PROFILE)
+    expect(panel).toHaveTextContent('Persönliches Geheimnis, für Bibliothek')
   })
 
   it('shows the counts of connected and expired accounts exactly as the API rounds them', async () => {
     mockConnectionProfiles[0] = {
       ...mockConnectionProfiles[0],
+      ownership: 'BOTH',
       connectedAccountCount: { count: null, fewerThan: 5 },
       expiredConnectionCount: { count: null, fewerThan: 5 },
     }
@@ -203,18 +325,23 @@ describe('ConnectionProfilesTab', () => {
       connectedAccountCount: { count: 9, fewerThan: null },
       expiredConnectionCount: null,
     })
+    const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
-    const header = (await screen.findAllByRole('row'))[0]
-    expect(header).toHaveTextContent('Verbundene Konten')
-    expect(header).toHaveTextContent('Davon abgelaufen')
-    const cells = (name: string) =>
-      within(screen.getByRole('row', { name: new RegExp(name) }))
-        .getAllByRole('cell')
-        .map((cell) => cell.textContent)
-    expect(cells(PROFILE).slice(5, 7)).toEqual(['weniger als 5', 'weniger als 5'])
-    expect(cells('Zugang openDesk').slice(5, 7)).toEqual(['23', '7'])
-    expect(cells('Zugang Partner').slice(5, 7)).toEqual(['9', 'nicht ausgewiesen'])
+    const counts = async (name: string) => {
+      const panel = await openProfile(user, name)
+      const text = panel.textContent ?? ''
+      await user.click(within(panel).getByRole('button', { name: 'Schließen' }))
+      await waitForDialogClosed()
+      return text
+    }
+    expect(await counts(PROFILE)).toContain(
+      'Verbundene Kontenweniger als 5Davon abgelaufenweniger als 5',
+    )
+    expect(await counts('Zugang openDesk')).toContain('Verbundene Konten23Davon abgelaufen7')
+    expect(await counts('Zugang Partner')).toContain(
+      'Verbundene Konten9Davon abgelaufennicht ausgewiesen',
+    )
   })
 
   it('says a warning is only possible where the expired are not told exactly', async () => {
@@ -235,10 +362,12 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const exact = await screen.findByRole('row', { name: new RegExp(PROFILE) })
-    expect(within(exact).getByText('Viele abgelaufen')).toBeVisible()
+    expect(within(exact).getByText('Viele Konten abgelaufen')).toBeVisible()
     const withheld = screen.getByRole('row', { name: /Zugang Partner/ })
-    expect(within(withheld).getByText('Möglicherweise viele abgelaufen')).toBeVisible()
-    expect(within(withheld).queryByText('Viele abgelaufen')).not.toBeInTheDocument()
+    expect(within(withheld).getByText('Möglicherweise viele Konten abgelaufen')).toBeVisible()
+    expect(within(withheld).queryByText('Viele Konten abgelaufen')).not.toBeInTheDocument()
+    // Nothing to fix in the panel: the persons reconnect themselves.
+    expect(within(withheld).getByRole('button', { name: 'Details: Zugang Partner' })).toBeVisible()
   })
 
   it('shows the expiry of the secret as a German date and tells expired from expiring', async () => {
@@ -294,9 +423,11 @@ describe('ConnectionProfilesTab', () => {
     await user.type(within(dialog).getByLabelText(/^Client-Secret/), 'geheim')
     await user.click(create)
 
-    const row = await screen.findByRole('row', { name: /Zugang Nextcloud Partner/ })
-    expect(row).toHaveTextContent('OAuth')
-    expect(row).not.toHaveTextContent('geheim')
+    // A new profile opens in its panel, where its release is the next step.
+    const panel = await screen.findByRole('dialog', { name: 'Zugang Nextcloud Partner' })
+    expect(panel).toHaveTextContent('Noch für niemanden freigegeben')
+    expect(panel).toHaveTextContent('OAuth')
+    expect(panel).not.toHaveTextContent('geheim')
   }, 20000)
 
   it('shows a field per declared default and sends only the ones set, typed by kind', async () => {
@@ -319,7 +450,7 @@ describe('ConnectionProfilesTab', () => {
     await user.click(await screen.findByRole('option', { name: 'Nein' }))
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await screen.findByRole('row', { name: /Zugang mit Vorgaben/ })
+    await screen.findByRole('dialog', { name: 'Zugang mit Vorgaben' })
     expect(sent).toHaveLength(1)
     // the empty region sets nothing; the yes/no travels as a boolean
     expect(sent[0].connectorSettings).toEqual({ edition: 'EXTERN', pathStyle: false })
@@ -341,7 +472,7 @@ describe('ConnectionProfilesTab', () => {
     await user.click(within(dialog).getByLabelText('Zertifikatsprüfung aussetzen'))
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await screen.findByRole('row', { name: /Zugang mit Proxy/ })
+    await screen.findByRole('dialog', { name: 'Zugang mit Proxy' })
     expect(sent[0]).toMatchObject({
       sourceProxy: 'proxy.example.org:3128',
       sourceInsecureSsl: true,
@@ -366,7 +497,7 @@ describe('ConnectionProfilesTab', () => {
     await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await screen.findByRole('row', { name: /Zugang Dateiserver/ })
+    await screen.findByRole('dialog', { name: 'Zugang Dateiserver' })
     expect(sent[0]).toMatchObject({ sourceProxy: null, sourceInsecureSsl: false })
   }, 20000)
 
@@ -409,7 +540,7 @@ describe('ConnectionProfilesTab', () => {
     await user.click(await screen.findByRole('option', { name: 'Ohne Anmeldung' }))
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await screen.findByRole('row', { name: /Zugang Ablage/ })
+    await screen.findByRole('dialog', { name: 'Zugang Ablage' })
     expect(sent[0]).toMatchObject({
       serverUrl: 'https://api.ablage.example',
       connectorSettings: null,
@@ -472,7 +603,7 @@ describe('ConnectionProfilesTab', () => {
     await user.type(name, 'Zugang Nextcloud Rathaus')
     await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
 
-    await screen.findByRole('row', { name: /Zugang Nextcloud Rathaus/ })
+    await screen.findByRole('dialog', { name: 'Zugang Nextcloud Rathaus' })
     expect(sent).toHaveLength(1)
     expect(sent[0].connectorSettings).toEqual({ edition: 'INTERN' })
     // an empty secret field keeps the stored secret: the field is not sent at all
@@ -696,8 +827,9 @@ describe('ConnectionProfilesTab', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
+    const panel = await openProfile(user, PROFILE)
     await user.click(
-      await screen.findByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
+      within(panel).getByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
     )
     const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
     expect(question).toHaveTextContent('2 Verbindungen')
@@ -711,8 +843,9 @@ describe('ConnectionProfilesTab', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
+    const panel = await openProfile(user, PROFILE)
     await user.click(
-      await screen.findByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
+      within(panel).getByRole('button', { name: `Alle Verbindungen von ${PROFILE} trennen` }),
     )
     const question = await screen.findByRole('dialog', { name: /Alle Verbindungen von/ })
     expect(question).toHaveTextContent('verbundene Konten von Personen: weniger als 5')
@@ -726,11 +859,13 @@ describe('ConnectionProfilesTab', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
-    await user.click(await screen.findByRole('button', { name: `${PROFILE} löschen` }))
+    const panel = await openProfile(user, PROFILE)
+    await user.click(within(panel).getByRole('button', { name: `${PROFILE} löschen` }))
     const question = await screen.findByRole('dialog', { name: /löschen\?/ })
     expect(question).toHaveTextContent('Zugang entfernt')
     await answerConfirm(user, /löschen\?/, 'Löschen')
 
+    await waitForDialogClosed()
     expect(await screen.findByText('Es sind noch keine Zugänge angelegt.')).toBeVisible()
   })
 
@@ -740,45 +875,19 @@ describe('ConnectionProfilesTab', () => {
     const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
-    await user.click(await screen.findByRole('button', { name: `${PROFILE} sperren` }))
+    const panel = await openProfile(user, PROFILE)
+    await user.click(within(panel).getByRole('button', { name: `${PROFILE} sperren` }))
     const question = await screen.findByRole('dialog', { name: /sperren\?/ })
     expect(question).toHaveTextContent('bleibt durchsuchbar')
     await answerConfirm(user, /sperren\?/, 'Sperren')
 
-    const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
-    expect(await within(row).findByText('Gesperrt')).toBeVisible()
-
-    await user.click(screen.getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
-    await answerConfirm(user, /aufheben\?/, 'Entsperren')
-    expect(await screen.findByRole('button', { name: `${PROFILE} sperren` })).toBeVisible()
-  })
-
-  it('locks a connector type after a confirmation and sends nothing on abort', async () => {
-    const sent: Array<{ type: string; locked: boolean }> = []
-    server.use(
-      http.put('/api/v1/admin/connector-types/:sourceType/lock', async ({ params, request }) => {
-        const { locked } = (await request.json()) as { locked: boolean }
-        sent.push({ type: String(params.sourceType), locked })
-        return HttpResponse.json({
-          sourceType: String(params.sourceType),
-          displayName: 'Nextcloud',
-          locked,
-          lockedAt: null,
-        })
-      }),
+    expect(await within(panel).findByText('Gesperrt')).toBeVisible()
+    await user.click(
+      await within(panel).findByRole('button', { name: `Sperre von ${PROFILE} aufheben` }),
     )
-    const user = userEvent.setup()
-    renderWithProviders(<ConnectorTypesTab />)
-
-    const types = await screen.findByRole('table', { name: 'Quellarten' })
-    await user.click(within(types).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
-    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Abbrechen')
-    expect(sent).toEqual([])
-
-    await user.click(within(types).getByRole('button', { name: 'Quellart Nextcloud sperren' }))
-    await answerConfirm(user, /Quellart „Nextcloud“ sperren\?/, 'Sperren')
-    expect(await screen.findByText('Die Quellart „Nextcloud“ ist gesperrt.')).toBeVisible()
-    expect(sent).toEqual([{ type: 'NEXTCLOUD', locked: true }])
+    await answerConfirm(user, /aufheben\?/, 'Entsperren')
+    expect(await within(panel).findByRole('button', { name: `${PROFILE} sperren` })).toBeVisible()
+    expect(within(panel).queryByText('Gesperrt')).not.toBeInTheDocument()
   })
 
   // Eine Sperre der Quellart hat Vorrang: Wer nur den Zugang entsperrt, bekommt keinen Weiterlauf
@@ -806,7 +915,8 @@ describe('ConnectionProfilesTab', () => {
 
     const row = await screen.findByRole('row', { name: new RegExp(PROFILE) })
     expect(await within(row).findByText('Quellart gesperrt')).toBeVisible()
-    await user.click(within(row).getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
+    const panel = await openProfile(user, PROFILE)
+    await user.click(within(panel).getByRole('button', { name: `Sperre von ${PROFILE} aufheben` }))
     const question = await screen.findByRole('dialog', { name: /aufheben\?/ })
     expect(question).toHaveTextContent('Die Quellart „Nextcloud“ bleibt gesperrt')
     expect(question).not.toHaveTextContent('ohne Neueinrichtung weiter')
@@ -824,189 +934,5 @@ describe('ConnectionProfilesTab', () => {
     expect(within(dialog).getByText('Die Angaben der Quellart werden geladen …')).toBeVisible()
     expect(within(dialog).queryByText(/liegen nicht vor/)).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
-  })
-})
-
-describe('ConnectorTypesTab - „Nur über Zugänge“ (#2162)', () => {
-  const NEXTCLOUD_STATE = {
-    sourceType: 'NEXTCLOUD',
-    displayName: 'Nextcloud',
-    locked: false,
-    lockedAt: null,
-    profileSupport: 'OPTIONAL',
-    profileRequired: false,
-  }
-
-  beforeEach(() => {
-    signInAs('SYSTEM_ADMIN')
-  })
-
-  afterEach(() => {
-    server.events.removeAllListeners()
-  })
-
-  /** Captures the body of every PUT to a profile requirement. */
-  function captureRequirementPuts(): Array<Record<string, unknown>> {
-    const sent: Array<Record<string, unknown>> = []
-    server.events.on('request:start', async ({ request }) => {
-      if (request.method === 'PUT' && request.url.endsWith('/profile-requirement')) {
-        sent.push((await request.clone().json()) as Record<string, unknown>)
-      }
-    })
-    return sent
-  }
-
-  async function typesTable() {
-    return screen.findByRole('table', { name: 'Quellarten' })
-  }
-
-  it('offers the switch only for a type that admits profiles as optional', async () => {
-    renderWithProviders(<ConnectorTypesTab />)
-
-    const types = await typesTable()
-    expect(
-      within(types).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
-    ).not.toBeChecked()
-    expect(within(types).queryByRole('switch', { name: /für Dateisystem/ })).not.toBeInTheDocument()
-    expect(within(types).getAllByText('Keine Zugänge möglich').length).toBeGreaterThan(0)
-  })
-
-  it('says why the requirement cannot be switched on, and sends nothing', async () => {
-    const sent = captureRequirementPuts()
-    server.use(
-      http.get('/api/v1/admin/connector-types/:sourceType/profile-requirement', () =>
-        HttpResponse.json({
-          state: NEXTCLOUD_STATE,
-          switchable: false,
-          notSwitchableReason:
-            'Für Nextcloud gibt es keinen nicht gesperrten Zugang, der Bibliotheken zulässt.',
-          ownAddressLibraries: [],
-        }),
-      ),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<ConnectorTypesTab />)
-
-    await user.click(
-      within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
-    )
-    const dialog = await screen.findByRole('dialog', { name: /Nur über Zugänge/ })
-    expect(
-      await within(dialog).findByTestId('profile-requirement-not-switchable'),
-    ).toHaveTextContent('keinen nicht gesperrten Zugang')
-    expect(within(dialog).queryByRole('button', { name: 'Einschalten' })).not.toBeInTheDocument()
-    await user.click(within(dialog).getByRole('button', { name: 'Schließen' }))
-    expect(sent).toEqual([])
-  })
-
-  it.each([
-    ['RUNS', /Weiterlaufen lassen/],
-    ['LOCKED', /Sperren – sie laufen nicht mehr/],
-  ])(
-    'switches the requirement on with the choice %s for the libraries it lists',
-    async (stock, choice) => {
-      const sent = captureRequirementPuts()
-      const user = userEvent.setup()
-      renderWithProviders(<ConnectorTypesTab />)
-
-      await user.click(
-        within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
-      )
-      const dialog = await screen.findByRole('dialog', { name: /Nur über Zugänge/ })
-      const list = await within(dialog).findByRole('list', {
-        name: 'Bibliotheken mit eigener Adresse',
-      })
-      expect(list).toHaveTextContent('Projektablage · Gruppe Referat 50')
-      await user.click(within(dialog).getByRole('radio', { name: choice }))
-      await user.click(within(dialog).getByRole('button', { name: 'Einschalten' }))
-
-      await waitFor(() => expect(sent).toEqual([{ required: true, ownAddressStock: stock }]))
-      expect(
-        await screen.findByText('Die Quellart „Nextcloud“ ist jetzt nur über Zugänge nutzbar.'),
-      ).toBeVisible()
-      expect(
-        within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für Nextcloud' }),
-      ).toBeChecked()
-    },
-    20000,
-  )
-
-  it('names what the requirement does not cover for an RSS feed', async () => {
-    const coverage =
-      'Die Pflicht legt nur die Feed-Adresse fest. Detailseiten auf anderen Servern werden weiter abgerufen, aber ohne Zugangsdaten.'
-    server.use(
-      http.get('/api/v1/admin/connector-types', () =>
-        HttpResponse.json([
-          { ...NEXTCLOUD_STATE, sourceType: 'RSS_FEED', displayName: 'RSS-Feed' },
-        ]),
-      ),
-      http.get('/api/v1/admin/connector-types/:sourceType/profile-requirement', () =>
-        HttpResponse.json({
-          state: { ...NEXTCLOUD_STATE, sourceType: 'RSS_FEED', displayName: 'RSS-Feed' },
-          switchable: true,
-          ownAddressLibraries: [],
-          coverageNotice: coverage,
-        }),
-      ),
-    )
-    const user = userEvent.setup()
-    renderWithProviders(<ConnectorTypesTab />)
-
-    await user.click(
-      within(await typesTable()).getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }),
-    )
-    const dialog = await screen.findByRole('dialog', { name: /Nur über Zugänge/ })
-    expect(await within(dialog).findByTestId('profile-requirement-coverage')).toHaveTextContent(
-      coverage,
-    )
-    expect(
-      within(dialog).getByText('Keine Bibliothek dieser Quellart nutzt eine eigene Adresse.'),
-    ).toBeVisible()
-  })
-
-  it('changes the choice for the stock while the requirement holds', async () => {
-    const required = { ...NEXTCLOUD_STATE, profileRequired: true, ownAddressStock: 'RUNS' }
-    server.use(http.get('/api/v1/admin/connector-types', () => HttpResponse.json([required])))
-    const sent = captureRequirementPuts()
-    const user = userEvent.setup()
-    renderWithProviders(<ConnectorTypesTab />)
-
-    const types = await typesTable()
-    expect(within(types).getByText(/laufen weiter, ihre Adresse ist eingefroren/)).toBeVisible()
-    await user.click(
-      within(types).getByRole('button', { name: 'Bestandswahl für Nextcloud ändern' }),
-    )
-    const dialog = await screen.findByRole('dialog', { name: /Bestand von Nextcloud/ })
-    expect(await within(dialog).findByRole('radio', { name: /Weiterlaufen lassen/ })).toBeChecked()
-    await user.click(within(dialog).getByRole('radio', { name: /Sperren – sie laufen nicht mehr/ }))
-    await user.click(within(dialog).getByRole('button', { name: 'Wahl speichern' }))
-
-    await waitFor(() => expect(sent).toEqual([{ required: true, ownAddressStock: 'LOCKED' }]))
-  })
-
-  it('switches the requirement off only after a confirmation', async () => {
-    const required = { ...NEXTCLOUD_STATE, profileRequired: true, ownAddressStock: 'LOCKED' }
-    server.use(http.get('/api/v1/admin/connector-types', () => HttpResponse.json([required])))
-    const sent = captureRequirementPuts()
-    const user = userEvent.setup()
-    renderWithProviders(<ConnectorTypesTab />)
-
-    const toggle = within(await typesTable()).getByRole('switch', {
-      name: 'Nur über Zugänge für Nextcloud',
-    })
-    expect(toggle).toBeChecked()
-    await user.click(toggle)
-    await answerConfirm(
-      user,
-      /„Nur über Zugänge“ für die Quellart „Nextcloud“ ausschalten\?/,
-      'Abbrechen',
-    )
-    expect(sent).toEqual([])
-
-    await user.click(toggle)
-    const question = await screen.findByRole('dialog', { name: /ausschalten\?/ })
-    expect(question).toHaveTextContent('ohne Neueinrichtung weiter')
-    await answerConfirm(user, /ausschalten\?/, 'Ausschalten')
-    await waitFor(() => expect(sent).toEqual([{ required: false }]))
   })
 })

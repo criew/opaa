@@ -14,7 +14,8 @@ import {
   gotoSourceTypes,
   gotoLibrary,
   openEvidenceRow,
-  profileRow,
+  openProfilePanel,
+  openSourceTypePanel,
   referenceLibrary,
   deleteProfileViaApi,
   profileIdsByPrefix,
@@ -141,30 +142,27 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await form.getByRole('button', { name: 'Anlegen' }).click()
     await expect(form).toHaveCount(0)
 
-    const row = profileRow(page, PROFILE_NAME)
-    await expect(row).toContainText('RSS-Feed')
-    await expect(row).toContainText(SERVER_URL)
-    await expect(row).toContainText('Ohne Anmeldung')
-
+    // Ein neuer Zugang öffnet sein Panel; dort ist die Freigabe der nächste Schritt.
+    const profilePanel = page.getByRole('dialog', { name: PROFILE_NAME })
+    await expect(profilePanel).toContainText('RSS-Feed')
+    await expect(profilePanel).toContainText(SERVER_URL)
+    await expect(profilePanel).toContainText('Ohne Anmeldung')
     // Freigabe = Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang (Handbuch: „Wer einen
     // Zugang nutzen darf“). Ein neuer Zugang ist für niemanden außer der Systemverwaltung frei.
+    await expect(profilePanel).toContainText('Noch für niemanden freigegeben')
+    await profilePanel.getByRole('button', { name: 'Festlegen, wer ihn nutzen darf' }).click()
+    await profilePanel.getByLabel('Nur bestimmte Gruppen und Personen').click()
+    await profilePanel.getByLabel('Gruppe oder Person hinzufügen').fill(GROUP_NAME)
+    await page.getByRole('option', { name: new RegExp(GROUP_NAME) }).click()
+    await profilePanel.getByRole('button', { name: 'Speichern' }).click()
+    await expect(profilePanel).toContainText('1 Gruppe')
+    await expect(profilePanel).not.toContainText('Noch für niemanden freigegeben')
+    await profilePanel.getByRole('button', { name: 'Schließen' }).click()
+    await expect(profilePanel).toHaveCount(0)
+
+    // Dieselbe Freigabe steht unter Anlegerechte.
     await page.goto('/admin/capabilities')
     const right = page.getByRole('listitem', { name: 'Bibliotheken mit Anbindung' })
-    await expect(right).toContainText(`Zugang ${PROFILE_NAME}: aus, nur die Systemverwaltung.`)
-    await right.getByRole('button', { name: 'Ändern: Bibliotheken mit Anbindung' }).click()
-    const panel = page.getByRole('dialog')
-    await panel.getByRole('button', { name: new RegExp(PROFILE_NAME) }).click()
-    await panel.getByLabel('Nur bestimmte Gruppen und Personen').click()
-    await panel.getByLabel('Gruppe oder Person hinzufügen').fill(GROUP_NAME)
-    await page.getByRole('option', { name: new RegExp(GROUP_NAME) }).click()
-    await panel.getByRole('button', { name: 'Speichern' }).click()
-    // Saving returns to the list of sources and accesses; the overview behind the open panel is
-    // hidden from the accessibility tree until the panel is closed.
-    await expect(panel.getByRole('button', { name: new RegExp(PROFILE_NAME) })).toContainText(
-      '1 Gruppe',
-    )
-    await panel.getByRole('button', { name: 'Schließen' }).click()
-    await expect(panel).toHaveCount(0)
     await expect(right).toContainText(`Freigegeben für ${GROUP_NAME}`)
   })
 
@@ -239,7 +237,8 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await assignLibraryToDefaultSpace('dev-user', STOCK_LIBRARY)
 
     await gotoSourceTypes(adminPage)
-    await adminPage.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }).click()
+    const typePanel = await openSourceTypePanel(adminPage, 'RSS-Feed')
+    await typePanel.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }).click()
     const dialog = adminPage.getByRole('dialog', {
       name: '„Nur über Zugänge“ für RSS-Feed einschalten',
     })
@@ -251,9 +250,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await dialog.getByRole('radio', { name: /^Sperren/ }).check()
     await dialog.getByRole('button', { name: 'Einschalten' }).click()
     await expect(dialog).toHaveCount(0)
-    await expect(adminPage.getByRole('table', { name: 'Quellarten' })).toContainText(
-      'Bibliotheken mit eigener Adresse sind gesperrt.',
-    )
+    await expect(typePanel).toContainText('Bibliotheken mit eigener Adresse sind gesperrt.')
 
     // Die Bestandsbibliothek: Hinweis im Reiter „Quelle“, kein Lauf.
     await openSourceTab(page, stockLibraryId)
@@ -310,11 +307,10 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     regularUserPage: page,
   }) => {
     await gotoConnectionProfiles(adminPage)
-    await profileRow(adminPage, PROFILE_NAME)
-      .getByRole('button', { name: `${PROFILE_NAME} sperren` })
-      .click()
+    let profilePanel = await openProfilePanel(adminPage, PROFILE_NAME)
+    await profilePanel.getByRole('button', { name: `${PROFILE_NAME} sperren` }).click()
     await acceptConfirm(adminPage, `Den Zugang „${PROFILE_NAME}“ sperren?`)
-    await expect(profileRow(adminPage, PROFILE_NAME)).toContainText('Gesperrt')
+    await expect(profilePanel).toContainText('Gesperrt')
 
     await openSourceTab(page, stockLibraryId)
     await expect(lockNotice(page)).toContainText('Gesperrt – Inhalt wird nicht mehr aktualisiert')
@@ -328,11 +324,10 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await page.keyboard.press('Escape')
 
     await gotoConnectionProfiles(adminPage)
-    await profileRow(adminPage, PROFILE_NAME)
-      .getByRole('button', { name: `Sperre von ${PROFILE_NAME} aufheben` })
-      .click()
+    profilePanel = await openProfilePanel(adminPage, PROFILE_NAME)
+    await profilePanel.getByRole('button', { name: `Sperre von ${PROFILE_NAME} aufheben` }).click()
     await acceptConfirm(adminPage, `Sperre für den Zugang „${PROFILE_NAME}“ aufheben?`)
-    await expect(profileRow(adminPage, PROFILE_NAME)).not.toContainText('Gesperrt')
+    await expect(profilePanel.getByRole('button', { name: `${PROFILE_NAME} sperren` })).toBeVisible()
 
     await openSourceTab(page, stockLibraryId)
     await expect(lockNotice(page)).toHaveCount(0)
@@ -353,10 +348,11 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     // Ausschalten der Pflicht über die Oberfläche: fragt nach, danach ist eine eigene Adresse
     // wieder möglich.
     await gotoSourceTypes(adminPage)
-    await adminPage.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }).click()
+    const typePanel = await openSourceTypePanel(adminPage, 'RSS-Feed')
+    await typePanel.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }).click()
     await acceptConfirm(adminPage, '„Nur über Zugänge“ für die Quellart „RSS-Feed“ ausschalten?')
     await expect(
-      adminPage.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }),
+      typePanel.getByRole('switch', { name: 'Nur über Zugänge für RSS-Feed' }),
     ).not.toBeChecked()
   })
 })

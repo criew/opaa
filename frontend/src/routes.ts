@@ -12,6 +12,8 @@ export const HANDOVER_ROUTE = '/handover'
 /** Where every provider sign-in returns - the one route a running handover may pass through. */
 export const AUTH_CALLBACK_ROUTE = '/auth/callback'
 export const SETTINGS_ROUTE = '/settings'
+/** The person's own access tokens for external AI tools, a tab of the settings. */
+export const OWN_TOKENS_ROUTE = '/settings/tokens'
 /** The person's own connected accounts, a tab of the settings. */
 export const CONNECTED_ACCOUNTS_ROUTE = '/settings/accounts'
 /** Where a provider returns after an OAuth consent; the server names it as the redirect URI. */
