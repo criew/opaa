@@ -232,6 +232,33 @@ class FileSyncRoundTest {
     assertThat(harness.revisits()).isEmpty();
   }
 
+  /**
+   * A path beyond the stored identity stays rejected until the source renames it, so its folder is
+   * remembered like any settled one: the next round lists neither it nor its parents again.
+   */
+  @Test
+  void aFilePathBeyondTheLimitLeavesItsFolderInTheMemory() {
+    String deep = "tief/".repeat(420);
+    InMemoryFileStore store =
+        new InMemoryFileStore()
+            .withFolderMarkers()
+            .container("A")
+            .put("A", "akten/x.txt", "X.")
+            .put("A", deep + "bericht.txt", "Sehr tief.");
+    assertThat(io.opaa.knowledge.FilePathLimit.fits(store.filePathOf("A", deep + "bericht.txt")))
+        .isFalse();
+
+    FileSyncHarness.Run first = run(store, 0);
+
+    assertThat(store.calls()).noneMatch(call -> call.contains("bericht.txt"));
+    assertThat(first.eventsOf(IndexingEventCategory.REJECTED)).hasSize(1);
+    assertThat(harness.stored(store.filePathOf("A", "akten/x.txt"))).isPresent();
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    assertThat(harness.state().subtreeMemory().containers().getOrDefault("A", Map.of()))
+        .as("the folders above the rejected file are settled")
+        .containsKeys("", "tief");
+  }
+
   @Test
   void markersARoundJudgedUnderAnotherSizeBoundAreNotRemembered() {
     InMemoryFileStore store =

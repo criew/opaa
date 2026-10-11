@@ -6,6 +6,8 @@ Vorgeschlagen
 
 **Nachtrag (26.09.2026):** [ADR-0038](0038-steckbare-konnektoren.md) übernimmt Entscheidung 1 für jeden Konnektor und löst den Punkt „Umzug der bestehenden Typen" unter „Ausdrücklich offen". Die `CHECK`-Zweige je Typ entfallen; die Datenbank prüft nur noch, dass `source_settings` ein JSON-Objekt ist. Mindestens einen Bereich sichert allein der Record.
 
+**Nachtrag (11.10.2026, #2482):** Seit `documents.last_modified_remote` `text` ist (#2480), entfällt in Entscheidung 4 die Grenze von 64 Zeichen. Sie hatte nur die Spaltenbreite zum Grund. Ein ETag ist unabhängig von seiner Länge das Änderungsmerkmal `e:<ETag>|<Größe>`, auch in der eigenen Form eines S3-kompatiblen Speichers. Die Rückfallform `t:` bleibt dem Speicher ohne ETag vorbehalten. Damit gilt auch für solche Speicher, was Entscheidung 4 sichern will: Ein erneutes Hochladen desselben Inhalts löst keinen Download aus.
+
 ## Kontext
 
 OPAA kennt fünf Herkünfte: `UPLOAD`, `FILESYSTEM`, `HTTP_DIRECTORY`, `RSS_FEED` und `CONFLUENCE`.

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
+import io.opaa.knowledge.FilePathLimit;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Duration;
 import java.util.List;
@@ -222,6 +223,48 @@ class FileSyncChangeRunTest {
     assertThat(next.ingested()).containsExactly(path);
     assertThat(harness.state().changeCursors().get("stream:A"))
         .isNotEqualTo(before.get("stream:A"));
+  }
+
+  /**
+   * A path beyond the stored identity is rejected without a download for good: unlike a quota it
+   * holds neither the cursor nor the round, and the other documents stay.
+   */
+  @Test
+  void aFilePathBeyondTheLimitIsRejectedWithoutItsDownloadAndHoldsNothing() {
+    Map<String, String> before = harness.state().changeCursors();
+    String name = "tief/".repeat(420) + "bericht.txt";
+    String path = InMemoryFileStore.filePath("A", name);
+    assertThat(FilePathLimit.fits(path)).isFalse();
+    store.put("A", name, "Sehr tief.").changed("A", name);
+
+    FileSyncHarness.Run run = harness.changeRun(store.reset());
+
+    assertThat(store.calls()).noneMatch(call -> call.startsWith("fetch"));
+    assertThat(run.ingested()).isEmpty();
+    assertThat(run.failed()).isZero();
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED))
+        .extracting(IndexingRunEvent::getReference)
+        .containsExactly(FilePathLimit.cut(path));
+    assertThat(harness.stored(InMemoryFileStore.filePath("A", "a.txt"))).isPresent();
+    assertThat(harness.state().changeCursors().get("stream:A"))
+        .as("a rename alone changes the path, so the cursor moves on")
+        .isNotEqualTo(before.get("stream:A"));
+  }
+
+  @Test
+  void aFullSyncWithAFilePathBeyondTheLimitCompletesItsRound() {
+    String name = "tief/".repeat(420) + "bericht.txt";
+    store.put("A", name, "Sehr tief.");
+
+    FileSyncHarness.Run run = harness.fullSync(store.reset());
+
+    assertThat(store.calls()).noneMatch(call -> call.startsWith("fetch"));
+    assertThat(run.eventsOf(IndexingEventCategory.REJECTED)).hasSize(1);
+    assertThat(harness.stored(InMemoryFileStore.filePath("A", "a.txt"))).isPresent();
+    assertThat(harness.state().isFullSyncInterrupted()).isFalse();
+    assertThat(harness.state().canReadChanges(STREAMS, WEEK, FileSyncHarness.NOW))
+        .as("nothing is held, the next run reads the changes")
+        .isTrue();
   }
 
   @Test

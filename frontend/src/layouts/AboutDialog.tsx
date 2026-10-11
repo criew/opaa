@@ -7,8 +7,11 @@ import Typography from '@mui/material/Typography'
 import { useBrandingStore } from '../stores/brandingStore'
 import DemoNotice from './DemoNotice'
 
-/** The version alone; the product name in front of it comes from the branding (#583). */
-export const APP_VERSION = 'v0.1.0'
+/**
+ * The version alone, as the build was given it (vite.config.ts); the product name in front of it
+ * comes from the branding (#583).
+ */
+export const APP_VERSION = `v${__OPAA_VERSION__}`
 
 interface AboutDialogProps {
   open: boolean

@@ -495,6 +495,12 @@ public class AttachmentIndexer {
           access.progress().recordAttachment(AttachmentOutcome.FAILED);
           return Optional.empty();
         }
+        case FILE_PATH_TOO_LONG -> {
+          // Rejected for good without a row: the path grows with its parent's and its own name.
+          access.recordIndexedAttachment(filePathIdentity, false);
+          access.progress().recordAttachment(AttachmentOutcome.SKIPPED);
+          return Optional.empty();
+        }
         case NO_EXTRACTABLE_TEXT -> {
           // Rejected and marked FAILED for good - a scan PDF will not gain a text layer on retry.
           access.recordIndexedAttachment(filePathIdentity, false);

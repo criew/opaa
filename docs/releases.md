@@ -43,9 +43,9 @@ Anleitung. Die Release-Notizen zeigen dieselben Befehle; ihren festen Teil erzeu
 Namespace vor `helm install` mit beiden Labels anlegt.
 
 Das Backend eines Release-Images meldet dieselbe Version in seiner Startzeile
-(`Starting OpaaApplication vX.Y.Z`) und unter `/actuator/info`; der Release-Lauf übergibt sie dem
-Gradle-Build als Build-Argument `OPAA_VERSION`. Ein Image von `main` und jeder lokale Build melden
-`0.0.0-dev`.
+(`Starting OpaaApplication vX.Y.Z`) und unter `/actuator/info`, das Frontend im Dialog „Info zu
+OPAA“ (`OPAA vX.Y.Z`); der Release-Lauf übergibt sie beiden Image-Builds als Build-Argument
+`OPAA_VERSION`. Ein Image von `main` und jeder lokale Build melden `0.0.0-dev`.
 
 Im Repository trägt der Chart zwischen zwei Releases die Platzhalterversion `0.0.0-dev`; erst der
 Release-Lauf setzt die Version ([ADR-0042](decisions/0042-kubernetes-lieferung-mit-helm.md),

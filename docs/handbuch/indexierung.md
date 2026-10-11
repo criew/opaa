@@ -993,7 +993,9 @@ Reihenfolge:
 
 ```mermaid
 flowchart TB
-    S1[1 Prüfsumme bilden<br/>Dokumentzeile suchen] --> Q{unverändert und<br/>zuletzt erfolgreich?}
+    P{Quellpfad<br/>zu lang?} -- ja --> PL[abgewiesen:<br/>Pfad zu lang]
+    P -- nein --> S1[1 Prüfsumme bilden<br/>Dokumentzeile suchen]
+    S1 --> Q{unverändert und<br/>zuletzt erfolgreich?}
     Q -- ja --> SK[übersprungen]
     Q -- nein --> S2[2 Speicherkontingent prüfen]
     S2 --> S3[3 Format erkennen<br/>und Pipeline wählen]
@@ -1022,6 +1024,14 @@ Normalfall in jedem Folgelauf und der Grund, warum Folgeläufe schnell sind. Was
 über das Element sagt — Titel, Ort in der Quelle, Änderungsmarke, Ordner — wird dabei trotzdem auf
 den aktuellen Stand gebracht: So überspringt der nächste Lauf das Element schon vor dem Abruf, und
 Dokumentliste wie Zitat zeigen den aktuellen Titel.
+
+Der Quellpfad ist die Identität des Dokuments und deshalb begrenzt: auf 2000 Zeichen und
+2676 Byte (UTF-8). Gezählt wird der ganze Pfad bzw. die ganze Adresse, wie sie die Quelle bildet,
+bei einem Anhang samt dem Pfad des Dokuments, aus dem er stammt. Ein längerer Pfad bricht den Lauf
+nicht ab: Das Element erscheint im Laufprotokoll als **abgewiesen** mit dem Grund „Pfad oder
+Adresse ist länger als …", wird als übersprungen gezählt und nicht gespeichert. Eine Dateiablage
+lädt es dafür gar nicht erst herunter. Name, Ort in der Quelle und Änderungsmarke eines Elements
+sind dagegen nicht begrenzt und werden so gespeichert, wie die Quelle sie liefert.
 
 Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. Nur die Chunks
 werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
@@ -1369,7 +1379,7 @@ Eintrag. Die Kategorien:
 
 | Kategorie | Bedeutung |
 |---|---|
-| abgewiesen | die Quelle hat das Element zurückgewiesen (Bot-Schutz, HTTP 403/429, fremder Host) |
+| abgewiesen | das Element wurde nicht übernommen: Die Quelle hat es zurückgewiesen (Bot-Schutz, HTTP 403/429, fremder Host), ein Speicherkontingent ist erschöpft, es enthält keinen extrahierbaren Text, oder sein Quellpfad ist zu lang (Abschnitt 5, Schritt 1) |
 | nicht erreichbar | Verbindungsfehler oder Zeitüberschreitung |
 | Format nicht unterstützt | Datei- oder Inhaltstyp wird nicht indiziert |
 | Formatabweichung | indiziert, aber Endung und Inhalt passen nicht zusammen |

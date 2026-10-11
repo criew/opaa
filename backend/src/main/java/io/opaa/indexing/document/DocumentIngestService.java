@@ -17,6 +17,7 @@ import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.FilePathLimit;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.QuotaVerdict;
@@ -174,6 +175,9 @@ public class DocumentIngestService {
     LoggedName names = library.loggedNames();
     String filePath = ingest.filePath();
     String fileName = ingest.fileName();
+    if (!FilePathLimit.fits(filePath)) {
+      return filePathTooLong(filePath, library);
+    }
     String checksum;
     long byteSize;
     switch (ingest.content()) {
@@ -476,10 +480,13 @@ public class DocumentIngestService {
    * or empty to download it. Measured, like the intake, by the growth over what is stored of the
    * file ({@link #storedFootprint}); without announced growth (unknown size, same or smaller) it
    * admits. Only the check under {@link LibraryStorageQuotaService#holdIntake} binds, because a
-   * listed size may be wrong.
+   * listed size may be wrong. A {@code filePath} beyond {@link FilePathLimit} is rejected first.
    */
   public Optional<DocumentIngestResult> rejectionBeforeDownload(
       KnowledgeLibrary library, String filePath, long listedSize) {
+    if (!FilePathLimit.fits(filePath)) {
+      return Optional.of(filePathTooLong(filePath, library));
+    }
     if (listedSize <= 0) {
       return Optional.empty();
     }
@@ -540,6 +547,15 @@ public class DocumentIngestService {
       return DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED;
     }
     return null;
+  }
+
+  private DocumentIngestResult filePathTooLong(String filePath, KnowledgeLibrary library) {
+    log.warn(
+        "Skipping {}: its file path of {} characters exceeds the stored identity",
+        library.loggedNames().of(FilePathLimit.cut(filePath)),
+        filePath.length());
+    metrics.recordSkipped();
+    return DocumentIngestResult.FILE_PATH_TOO_LONG;
   }
 
   private DocumentIngestResult quotaExceeded(String filePath, KnowledgeLibrary library) {

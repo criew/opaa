@@ -31,6 +31,7 @@ import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.FilePathLimit;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.LibraryStorageQuotaService;
@@ -176,6 +177,9 @@ public final class FileSyncHarness {
         .thenAnswer(
             invocation -> {
               DocumentIngest ingest = invocation.getArgument(0);
+              if (!FilePathLimit.fits(ingest.filePath())) {
+                return DocumentIngestResult.FILE_PATH_TOO_LONG;
+              }
               if (failingIngests.contains(ingest.filePath())) {
                 throw new IllegalStateException("embedding service unavailable");
               }
@@ -210,7 +214,9 @@ public final class FileSyncHarness {
     when(ingestService.rejectionBeforeDownload(any(), anyString(), anyLong()))
         .thenAnswer(
             invocation ->
-                Optional.ofNullable(rejectedBeforeDownload.get(invocation.getArgument(1))));
+                FilePathLimit.fits(invocation.getArgument(1))
+                    ? Optional.ofNullable(rejectedBeforeDownload.get(invocation.getArgument(1)))
+                    : Optional.of(DocumentIngestResult.FILE_PATH_TOO_LONG));
     when(eventRepository.save(any()))
         .thenAnswer(
             invocation -> {

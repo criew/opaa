@@ -175,7 +175,8 @@ wirklich weg.
   gelten als vorhanden; eine gespeicherte Fassung bleibt.
 - Ein Name mit `/`, `\`, `:` oder Steuerzeichen, den nur ein Nicht-Windows-Server liefern kann,
   wird nicht gelesen und gezählt im Protokoll genannt.
-- Ein Pfad, der länger als 2000 Zeichen oder 2676 Byte (UTF-8) ist, wird nicht gelesen: Die
+- Ein Pfad, der länger als 2000 Zeichen oder 2676 Byte (UTF-8) ist, wird wie bei jeder Quelle
+  nicht gelesen (Kapitel [Indexierung](indexierung.md), „Schritt 1: Prüfsumme und Identität“): Die
   Datei erscheint in jedem Lauf als abgewiesen im Protokoll, ohne Download und ohne Fehler.
   Gezählt wird der ganze Pfad ab `smb://`. Lateinische Buchstaben ohne Akzent belegen ein Byte,
   Umlaute, Kyrillisch und Griechisch zwei, chinesische, japanische und koreanische Zeichen drei.

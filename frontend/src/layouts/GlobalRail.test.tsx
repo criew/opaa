@@ -160,7 +160,7 @@ describe('GlobalRail', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Info zu OPAA' }))
 
     const dialog = screen.getByRole('dialog', { name: 'Info zu OPAA' })
-    expect(dialog).toHaveTextContent('OPAA v0.1.0')
+    expect(dialog).toHaveTextContent('OPAA v0.0.0-dev')
 
     await user.click(screen.getByRole('button', { name: 'Schließen' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
