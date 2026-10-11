@@ -13,11 +13,11 @@
    genügt nicht.
 3. Die Quellart ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer außer ihr
    Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen" für die
-   Quellart SMB ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
-   Abschnitt 9).
-4. Bibliothek anlegen: Adresse `smb://server/freigabe`, Dienstkonto, Passwort, Ordner („Ordner
-   laden“ hilft), „Verbindung testen“. Alles aus diesen Ordnern ist für **alle**
-   Leseberechtigten der Bibliothek sichtbar.
+   Quellart SMB oder für einen Zugang
+   ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
+4. Bibliothek anlegen: Adresse `smb://server/freigabe` oder einen Zugang mit der Freigabe darunter
+   (Abschnitt 2), Dienstkonto, Passwort, Ordner („Ordner laden“ hilft), „Verbindung testen“.
+   Alles aus diesen Ordnern ist für **alle** Leseberechtigten der Bibliothek sichtbar.
 5. Zeitplan setzen. Jeder Lauf ist ein **Vollabgleich** über alle Ordner; reicht das Budget
    nicht, setzt der nächste Lauf fort (Abschnitt 3).
 6. Im Laufprotokoll auf „Geltungsbereich … nicht auflistbar“, „unvollständig, wird fortgesetzt“
@@ -250,5 +250,4 @@ Kapitel [Deployment](deployment.md)):
   ohne Befund, und sein Bestand wird entfernt.
 - **Ein- und Ausschlussmuster** wie beim S3-Konnektor. Heute schränken nur die Ordner ein.
 - **Benachrichtigungen** des Servers an OPAA. Änderungen kommen mit dem nächsten geplanten Lauf.
-- **Zugänge** (Verbindungsprofile) für SMB.
 - **Rechte aus der Freigabe.** Die Bibliothek bestimmt, wer liest.

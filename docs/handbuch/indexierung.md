@@ -282,7 +282,8 @@ ein Element oder einen Anhang an einem Speicherkontingent abgelehnt hat; er trä
 SMB und SharePoint setzt der nächste Lauf an der gemerkten Stelle der Auflistung fort; ein
 Vollabgleich darf sich so über mehrere Läufe erstrecken ([Nextcloud](konnektor-nextcloud.md),
 Abschnitt 3.1; [SMB](konnektor-smb.md), Abschnitt 3.1; [SharePoint](konnektor-sharepoint.md),
-Abschnitt 4.1).
+Abschnitt 4.1). Bei Dropbox listet der nächste Lauf zuerst die Ordner, die der Vollabgleich noch
+nicht gelistet hat ([Dropbox](konnektor-dropbox.md), Abschnitt 4).
 
 ### 3.3 Wiederanlauf nach Störungen
 
@@ -1086,8 +1087,8 @@ Gehalten wird nur die Marke am Element, nie der Abschluss einer Runde und nie di
 Löschungen in der Quelle werden übernommen, und oft sind es gerade diese, die den Platz freimachen.
 Solange ein Element nicht passt, endet jeder Lauf, der es erreicht, wieder als unvollständig.
 
-Bei einer **Dateiablage** (Nextcloud, SharePoint, SMB, S3, Google Drive) wird ein Kontingent schon
-**vor dem Download** befragt, mit der Größe aus der Auflistung. Kündigt sie gegenüber dem
+Bei einer **Dateiablage** (Nextcloud, SharePoint, SMB, S3, Google Drive, Dropbox) wird ein
+Kontingent schon **vor dem Download** befragt, mit der Größe aus der Auflistung. Kündigt sie gegenüber dem
 gespeicherten Stand Wachstum an, das eines der beiden Kontingente überschreitet, wird die Datei
 gar nicht erst geladen und genauso abgelehnt wie nach dem Download: derselbe Protokolleintrag,
 dieselbe Kategorie `QUOTA_EXHAUSTED`, die Datei gilt als vorhanden. Ohne bekannte Größe, bei
@@ -1101,8 +1102,8 @@ geladen und mit ihrer echten Größe gezählt.
 Wann eine Dateiablage die Datei erneut prüft:
 
 - Nextcloud, SMB und S3 kennen nur den Vollabgleich; der nächste prüft die Datei erneut.
-- Bei Google Drive und SharePoint prüft eine Datei, die das Änderungsprotokoll meldet, schon der
-  nächste Änderungslauf erneut. Eine Datei, die in der Auflistung eines Vollabgleichs abgelehnt
+- Bei Google Drive, SharePoint und Dropbox prüft eine Datei, die das Änderungsprotokoll meldet,
+  schon der nächste Änderungslauf erneut. Eine Datei, die in der Auflistung eines Vollabgleichs abgelehnt
   wurde, meldet das Änderungsprotokoll danach nicht wieder. Deshalb ist der nächste Lauf nach einem
   solchen Vollabgleich wieder ein Vollabgleich, auch wenn sich dieser über mehrere Läufe erstreckt
   hat. Solange die Bibliothek voll bleibt, tritt so an die Stelle jedes Änderungslaufs ein
@@ -1543,7 +1544,8 @@ Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
   [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
   [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md),
   [Google Drive](konnektor-google-drive.md), [SharePoint](konnektor-sharepoint.md),
-  [Nextcloud](konnektor-nextcloud.md), [Windows-Dateifreigabe (SMB)](konnektor-smb.md)
+  [Nextcloud](konnektor-nextcloud.md), [Dropbox](konnektor-dropbox.md),
+  [Windows-Dateifreigabe (SMB)](konnektor-smb.md)
 - Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
 - Wie der Index abgefragt wird, von der Frage bis zur belegten Antwort: [Suche](suche.md)
 - Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)

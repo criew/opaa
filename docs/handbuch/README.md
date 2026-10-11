@@ -33,6 +33,7 @@ flowchart LR
         Q10[SharePoint]
         Q8[Nextcloud]
         Q9[Dateifreigabe SMB]
+        Q11[Dropbox]
         Q6[Upload]
     end
     Q1 --> I[Indexierung<br/>Aufzählen, Parsen, Chunken, Embedden]
@@ -44,6 +45,7 @@ flowchart LR
     Q10 --> I
     Q8 --> I
     Q9 --> I
+    Q11 --> I
     Q6 --> I
     I --> DB[(PostgreSQL<br/>Vektoren, Volltext, Metadaten)]
     DB --> S[Suche<br/>Rechtefilter, zwei Pfade, Fusion]
@@ -70,7 +72,7 @@ Drei Eigenschaften prägen alles Weitere:
 
 | Funktion | Ein Satz | Kapitel |
 |---|---|---|
-| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 2 bis 4 |
+| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner, Dropbox-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 2 bis 4 |
 | Formate verarbeiten | PDF, Office, OpenDocument, Tabellen, HTML, Markdown, E-Mail samt Anhängen; Zulassung nach Inhalt, nicht nach Endung | [Indexierung](indexierung.md), Formatübersicht |
 | Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Indexierung](indexierung.md), Abschnitte 6 und 7 |
 | Metadaten | Titel, Dokumentart, Datum/Stand je Dokument, dazu Bibliotheks- und Formatfelder; Filter, Kontextpräfix, Beleg | [Metadaten](metadaten.md) |
@@ -151,7 +153,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Katalog** | Der eine Einstieg der Hauptnavigation für Bestände jeder Art, nur als Kacheln: genau die Wissens- und Prompt-Bibliotheken, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neu" beginnt dort das Anlegen mit der Wahl der Art |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
 | **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
-| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3, Google Drive, SharePoint, Nextcloud, Windows-Dateifreigabe) |
+| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3, Google Drive, SharePoint, Nextcloud, Dropbox, Windows-Dateifreigabe) |
 | **Konnektor** | Der Teil der Indexierung, der die Eigenheiten eines Quellentyps kennt: Aufzählen, Abrufen, Betriebsarten |
 | **Indexierungslauf** (Lauf) | Ein Durchgang über die Quelle einer Bibliothek mit Status, Zählern und Protokoll |
 | **Betriebsart** | Ob ein Lauf die Quelle vollständig auflistet (und Verschwundenes entfernen darf) oder nur ergänzt |
