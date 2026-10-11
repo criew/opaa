@@ -386,6 +386,23 @@ public class SpaceAssetAssociationService {
   }
 
   /**
+   * Whether the space has a knowledge library associated as {@code userId} sees it - the {@link
+   * SpaceAssetLinks#hasKnowledge()} of {@link #listForSpace}: another person's private library does
+   * not count, a library the caller merely cannot read does.
+   */
+  public boolean hasKnowledgeFor(UUID spaceId, UUID userId, UUID organizationId) {
+    Set<UUID> associated = libraryIdsInSpace(spaceId);
+    if (associated.isEmpty()) {
+      return false;
+    }
+    Set<UUID> readable =
+        assetAccessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, userId, organizationId);
+    return associated.size()
+        > foreignOwnerOnly(KnowledgeLibrary.ASSET_TYPE, associated, readable, organizationId)
+            .size();
+  }
+
+  /**
    * Every asset of {@code assetType} associated with the space, for a member of it - without a
    * rights filter of its own, like {@link #libraryIdsInSpace}: the caller intersects it with what
    * the person may read. An unknown space or one of another organization is a {@code 404}.
@@ -513,19 +530,25 @@ public class SpaceAssetAssociationService {
    */
   private Set<UUID> foreignOwnerOnly(
       Collection<AssetHeader> assets, Set<UUID> readable, UUID organizationId) {
-    Map<AssetType, Set<UUID>> unreadable = new HashMap<>();
+    Map<AssetType, Set<UUID>> byType = new HashMap<>();
     for (AssetHeader asset : assets) {
-      if (!readable.contains(asset.id())) {
-        unreadable
-            .computeIfAbsent(asset.assetType(), type -> new LinkedHashSet<>())
-            .add(asset.id());
-      }
+      byType.computeIfAbsent(asset.assetType(), type -> new LinkedHashSet<>()).add(asset.id());
     }
     Set<UUID> foreign = new LinkedHashSet<>();
-    unreadable.forEach(
+    byType.forEach(
         (assetType, ids) ->
-            foreign.addAll(assetRepository.findOwnerOnlyIdsAmong(assetType, organizationId, ids)));
+            foreign.addAll(foreignOwnerOnly(assetType, ids, readable, organizationId)));
     return foreign;
+  }
+
+  /** The owner-only assets of {@code assetType} among {@code assetIds} the caller does not read. */
+  private Set<UUID> foreignOwnerOnly(
+      AssetType assetType, Set<UUID> assetIds, Set<UUID> readable, UUID organizationId) {
+    Set<UUID> unreadable = new LinkedHashSet<>(assetIds);
+    unreadable.removeAll(readable);
+    return unreadable.isEmpty()
+        ? Set.of()
+        : assetRepository.findOwnerOnlyIdsAmong(assetType, organizationId, unreadable);
   }
 
   private Map<UUID, AssetHeader> headersOf(List<SpaceAssetAssociation> associations) {

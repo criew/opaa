@@ -871,12 +871,12 @@ class ChatServiceIntegrationTest {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
 
-    assertThat(chatService.spaceHasLibraryAssociations(spaceId)).isFalse();
+    assertThat(chatService.spaceHasLibraryAssociations(spaceId, author, organizationA)).isFalse();
 
     UUID library = createLibrary(author);
     associateLibrary(spaceId, library, author);
 
-    assertThat(chatService.spaceHasLibraryAssociations(spaceId)).isTrue();
+    assertThat(chatService.spaceHasLibraryAssociations(spaceId, author, organizationA)).isTrue();
   }
 
   /**
