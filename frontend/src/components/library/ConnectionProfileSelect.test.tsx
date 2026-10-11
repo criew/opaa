@@ -97,7 +97,9 @@ describe('ConnectionProfileSelect', () => {
 
     const partner = screen.getByRole('radio', { name: /Nextcloud Partner/ })
     expect(partner).toBeDisabled()
-    expect(partner).toHaveTextContent(/nicht freigegeben\. Freigaben erteilt die Systemverwaltung/)
+    expect(partner).toHaveAccessibleDescription(
+      /nicht freigegeben\. Freigaben erteilt die Systemverwaltung/,
+    )
   })
 
   it('offers no own address while the type is usable only through profiles, and picks the first usable profile', () => {

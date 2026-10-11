@@ -4,8 +4,13 @@ import {
   askQuestion,
   chatSidebarEntries,
   clearSearchScope,
+  openNewLibraryWizard,
   startFreshChat,
 } from "../fixtures/chat";
+import {
+  createRssProfileViaApi,
+  deleteProfileViaApi,
+} from "../fixtures/connectionProfiles";
 import { apiAs } from "../fixtures/externalAccess";
 import { createPromptLibraryViaApi } from "../fixtures/promptLibraries";
 
@@ -275,6 +280,47 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Quellart (helles Farbschema)");
     await page.emulateMedia({ colorScheme: "dark" });
     await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
+  });
+
+  // #2493: der Schritt „Quelle" mit Zugangswahl und Hinweisen. Ein frisch angelegter Zugang ist nur
+  // für die Systemverwaltung frei; die reguläre Person sieht ihn gesperrt, mit dem Grund in der
+  // Warnfarbe. Der Grund steht außerhalb der gesperrten Kachel, also misst axe seinen Kontrast.
+  test("Wissens-Assistent: Schritt Quelle mit Zugangswahl in beiden Farbschemata", async ({
+    authenticatedPage: adminPage,
+    regularUserPage: userPage,
+  }) => {
+    const profileName = `A11y Zugang ${Date.now()}`;
+    const profileId = await createRssProfileViaApi(profileName, "http://rss-feed");
+    try {
+      for (const [view, page, usable] of [
+        ["Systemverwaltung", adminPage, true],
+        ["reguläre Person", userPage, false],
+      ] as const) {
+        await openNewLibraryWizard(page);
+        await page.getByRole("radio", { name: /RSS-Feed/ }).click();
+        await page.getByRole("button", { name: "Weiter", exact: true }).click();
+        const tile = page
+          .getByRole("radiogroup", { name: "Zugang" })
+          .getByRole("radio", { name: new RegExp(`^${profileName}`) });
+        await expect(tile).toBeVisible();
+        if (usable) {
+          await expect(tile).toBeEnabled();
+        } else {
+          await expect(tile).toBeDisabled();
+          await expect(tile).toHaveAccessibleDescription(/Anlegerecht/);
+        }
+
+        for (const scheme of ["light", "dark"] as const) {
+          await page.emulateMedia({ colorScheme: scheme });
+          await expectNoSeriousA11yViolations(
+            page,
+            `Quelle, ${view} (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+          );
+        }
+      }
+    } finally {
+      await deleteProfileViaApi(profileId);
+    }
   });
 
   // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett, ein gesetzter

@@ -181,7 +181,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
     const tile = screen.getByRole('radio', { name: /Testquelle/ })
     expect(tile).toBeDisabled()
-    expect(tile).toHaveTextContent(
+    expect(tile).toHaveAccessibleDescription(
       'Für diese Quellart gibt es in dieser Oberfläche keine Eingabemaske.',
     )
     expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()

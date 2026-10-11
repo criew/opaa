@@ -227,10 +227,12 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
       name: new RegExp(`^${PROFILE_NAME}`),
     })
     await expect(tile).toBeDisabled()
-    await expect(tile).toContainText(
-      `Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang „${PROFILE_NAME}“.`,
+    // Der Grund ist die Beschreibung der gesperrten Kachel, nicht Teil ihres Namens (#2493).
+    await expect(tile).toHaveAccessibleDescription(
+      new RegExp(
+        `Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang „${PROFILE_NAME}“\\..*Wenden Sie sich an die Systemverwaltung`,
+      ),
     )
-    await expect(tile).toContainText('Wenden Sie sich an die Systemverwaltung')
   })
 
   test('2a. „Nur über Zugänge“ mit Bestandswahl „Sperren“ sperrt eine Bibliothek mit eigener Adresse', async ({

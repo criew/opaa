@@ -50,7 +50,20 @@ describe('ChoiceTileGroup (guidelines 5.11)', () => {
       expect(apple).toHaveTextContent('Rund und rot')
       const pear = screen.getByRole('radio', { name: /Birne/ })
       expect(pear).toBeDisabled()
-      expect(pear).toHaveTextContent('Nicht vorrätig')
+      expect(pear).toHaveAccessibleDescription('Nicht vorrätig')
+    })
+
+    // regression guard for #2493: the reason is information, not part of the inactive control - it
+    // sits outside the disabled tile (so axe's contrast check reaches it) and is never dimmed.
+    it('keeps the locked reason outside the disabled control and at full opacity', () => {
+      renderWithProviders(<Single />)
+
+      const pear = screen.getByRole('radio', { name: /Birne/ })
+      const reason = screen.getByText('Nicht vorrätig')
+      expect(pear).not.toContainElement(reason)
+      for (let node: HTMLElement | null = reason; node; node = node.parentElement) {
+        expect(['', '1']).toContain(getComputedStyle(node).opacity)
+      }
     })
 
     it('has one tab stop and moves choice and focus with the arrow keys, skipping locked tiles', async () => {
