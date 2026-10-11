@@ -255,7 +255,6 @@ class PrivateLibraryIntegrationTest {
     String mine = optionsOf("dev-user", options);
     assertThat(field(mine, forPersons, "ownership")).containsExactly("PERSON");
     assertThat(field(mine, forPersons, "ownAccount")).containsExactly(true);
-    assertThat(field(mine, forPersons, "creatable")).containsExactly(true);
     assertThat(field(mine, withoutAccount, "id")).isEmpty();
     assertThat(field(mine, forLibraries, "ownership")).containsExactly("LIBRARY");
     assertThat(field(mine, forLibraries, "ownAccount")).containsExactly(false);

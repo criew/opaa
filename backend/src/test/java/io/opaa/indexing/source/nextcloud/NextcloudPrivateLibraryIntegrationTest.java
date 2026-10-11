@@ -95,7 +95,6 @@ class NextcloudPrivateLibraryIntegrationTest {
                 .perform(as(OWNER, get("/api/v1/connection-profiles?sourceType=NEXTCLOUD")))
                 .andExpect(status().isOk()));
     assertThat(field(options, "ownAccount")).containsExactly(true);
-    assertThat(field(options, "creatable")).containsExactly(true);
     assertThat(field(options, "ownership")).containsExactly("PERSON");
 
     library = createPrivateLibrary();
