@@ -253,6 +253,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         'Wenden Sie sich an die Systemverwaltung',
       )
       expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
     })
 
     // The connector release applies per type: a type without a usable way - not released, locked

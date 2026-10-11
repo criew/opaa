@@ -458,6 +458,8 @@ export default function LibraryCreatePage() {
       setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
       return
     }
+    // the hint above the step bar already says why nothing can be created
+    if (currentStep === STEP_ART && nothingUsable) return
     if (currentStep === STEP_SOURCE && configuration) {
       if (connectionChoice === null) {
         setError(
@@ -834,7 +836,7 @@ export default function LibraryCreatePage() {
             <Button
               variant="contained"
               onClick={handleNext}
-              disabled={currentStep === STEP_ART && typesUnavailable}
+              disabled={currentStep === STEP_ART && (typesUnavailable || nothingUsable)}
             >
               Weiter
             </Button>
