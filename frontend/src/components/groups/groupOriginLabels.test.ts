@@ -21,6 +21,7 @@ const providerGroup: GroupListResponse = {
   parentGroupId: null,
   memberCount: 23,
   dissolved: false,
+  deactivated: false,
   releasedForUse: true,
   protectedGroup: false,
   stewards: [],

@@ -10,9 +10,13 @@ import Typography from '@mui/material/Typography'
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
+import PauseCircleOutlineIcon from '@mui/icons-material/PauseCircleOutlined'
+import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutlined'
 import PeopleOutlineIcon from '@mui/icons-material/PeopleOutlined'
 import SwapHorizOutlinedIcon from '@mui/icons-material/SwapHorizOutlined'
 import type { GroupListResponse } from '../../../types/api'
+import { setGroupDeactivation } from '../../../services/groupApi'
+import { confirmGroupDeactivation } from '../../groups/groupDeactivation'
 import { confirmAction } from '../../../stores/confirmStore'
 import { useGroupStore } from '../../../stores/groupStore'
 import { notify } from '../../../stores/notificationStore'
@@ -25,13 +29,16 @@ interface GroupRowMenuProps {
   onTransfer: (group: GroupListResponse) => void
   /** After a deletion: the page reloads, because a row left it. */
   onDeleted: () => void
+  /** After a deactivation or reactivation: the page reloads, because the state changed. */
+  onChanged: () => void
 }
 
 /**
  * Das Zeilenmenü einer Gruppe, gebaut wie das eines Kontos: Bearbeiten, Mitglieder und
- * „Rechte übertragen" öffnen ihren Dialog; „Löschen" steht nachrangig unter einer Trennlinie
- * und legt seine Konsequenz vorher im Bestätigungs-Overlay vor. Ein Eintrag, der für diese
- * Gruppe nicht gilt, ist abgeblendet und nennt den Grund.
+ * „Rechte übertragen" öffnen ihren Dialog; „Deaktivieren" bzw. „Reaktivieren" (nur interne
+ * Gruppen) und „Löschen" stehen nachrangig unter einer Trennlinie und legen ihre bezifferte
+ * Konsequenz vorher im Bestätigungs-Overlay vor. Ein Eintrag, der für diese Gruppe nicht gilt, ist
+ * abgeblendet und nennt den Grund.
  */
 export default function GroupRowMenu({
   group,
@@ -39,6 +46,7 @@ export default function GroupRowMenu({
   onMembers,
   onTransfer,
   onDeleted,
+  onChanged,
 }: GroupRowMenuProps) {
   const deleteExistingGroup = useGroupStore((s) => s.deleteExistingGroup)
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
@@ -50,6 +58,19 @@ export default function GroupRowMenu({
   function open(action: (group: GroupListResponse) => void) {
     close()
     action(group)
+  }
+
+  async function toggleDeactivation() {
+    close()
+    setBusy(true)
+    try {
+      const changed = await confirmGroupDeactivation(group, (deactivated) =>
+        setGroupDeactivation(group.id, deactivated),
+      )
+      if (changed) onChanged()
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function remove() {
@@ -119,6 +140,18 @@ export default function GroupRowMenu({
           Rechte übertragen
         </MenuItem>
         <Divider />
+        {group.kind === 'AD_HOC' && (
+          <MenuItem onClick={() => void toggleDeactivation()}>
+            <ListItemIcon>
+              {group.deactivated ? (
+                <PlayCircleOutlineIcon fontSize="small" />
+              ) : (
+                <PauseCircleOutlineIcon fontSize="small" />
+              )}
+            </ListItemIcon>
+            {group.deactivated ? 'Reaktivieren' : 'Deaktivieren'}
+          </MenuItem>
+        )}
         <MenuItem
           onClick={() => void remove()}
           disabled={deleteDisabled}

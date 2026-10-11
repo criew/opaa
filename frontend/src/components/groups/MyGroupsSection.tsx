@@ -19,6 +19,7 @@ import SectionHead from '../SectionHead'
 import GroupStewardsSection from './GroupStewardsSection'
 import PermissionTransferDialog from '../permissions/PermissionTransferDialog'
 import UserPicker from './UserPicker'
+import { confirmGroupDeactivation } from './groupDeactivation'
 import type { GroupListResponse, UserSummary } from '../../types/api'
 import { confirmAction } from '../../stores/confirmStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -35,6 +36,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
   const addMember = useGroupStore((s) => s.addMember)
   const removeMember = useGroupStore((s) => s.removeMember)
   const changeRelease = useGroupStore((s) => s.changeRelease)
+  const changeDeactivation = useGroupStore((s) => s.changeDeactivation)
 
   const [expanded, setExpanded] = useState(false)
   const [draft, setDraft] = useState<{ groupId: string | null; name: string; description: string }>(
@@ -74,6 +76,7 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
           <Typography sx={{ fontSize: 14.5, fontWeight: 600 }}>{group.name}</Typography>
           {group.protectedGroup && <MetaBadge>geschützt</MetaBadge>}
           <MetaBadge>{group.releasedForUse ? 'freigegeben' : 'nicht freigegeben'}</MetaBadge>
+          {group.deactivated && <MetaBadge>deaktiviert</MetaBadge>}
           <Typography sx={{ fontSize: 13, color: 'text.secondary', ml: 'auto', mr: 1 }}>
             {group.memberCount} {group.memberCount === 1 ? 'Mitglied' : 'Mitglieder'}
           </Typography>
@@ -164,6 +167,28 @@ function StewardedGroupCard({ group }: { group: GroupListResponse }) {
             Erst freigegeben kann jemand anderes diese Gruppe berechtigen. Name und Herkunft werden
             damit für alle sichtbar, denen die Gruppe zur Auswahl steht.
           </Typography>
+        </Stack>
+
+        <Divider sx={{ mb: 2 }} />
+
+        <SectionHead>Wirkung</SectionHead>
+        <Stack spacing={1} sx={{ mb: 2, alignItems: 'flex-start' }}>
+          <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
+            {group.deactivated
+              ? 'Die Gruppe ist deaktiviert und wirkt zurzeit für niemanden. Ihre Freigaben, Space-Mitgliedschaften und Anlegerechte sind gespeichert und gelten mit dem Reaktivieren wieder.'
+              : 'Eine deaktivierte Gruppe wirkt vorübergehend für niemanden – etwa bei einem ruhenden Projekt. Alles bleibt gespeichert und gilt mit dem Reaktivieren wieder.'}
+          </Typography>
+          <Button
+            variant="outlined"
+            size="small"
+            onClick={() =>
+              void confirmGroupDeactivation(group, (deactivated) =>
+                changeDeactivation(group.id, deactivated),
+              )
+            }
+          >
+            {group.deactivated ? 'Reaktivieren' : 'Deaktivieren'}
+          </Button>
         </Stack>
 
         <Divider sx={{ mb: 2 }} />

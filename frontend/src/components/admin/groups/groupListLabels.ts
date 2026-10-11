@@ -5,6 +5,7 @@ import { groupIneffectiveReason } from '../../groups/groupOriginLabels'
 export const GROUP_STATES: GroupState[] = [
   'ACTIVE',
   'NOT_RELEASED',
+  'DEACTIVATED',
   'UNMAINTAINED',
   'PROVIDER_DISABLED',
   'DISSOLVED',
@@ -13,6 +14,7 @@ export const GROUP_STATES: GroupState[] = [
 export const GROUP_STATE_LABEL: Record<GroupState, string> = {
   ACTIVE: 'Aktiv',
   NOT_RELEASED: 'Nicht freigegeben',
+  DEACTIVATED: 'Deaktiviert',
   UNMAINTAINED: 'Nicht mehr gepflegt',
   PROVIDER_DISABLED: 'Anbieter deaktiviert',
   DISSOLVED: 'Aufgelöst',
@@ -22,6 +24,7 @@ export const GROUP_STATE_LABEL: Record<GroupState, string> = {
 export const GROUP_STATE_COLOR: Record<GroupState, string> = {
   ACTIVE: 'success.main',
   NOT_RELEASED: 'text.disabled',
+  DEACTIVATED: 'warning.main',
   UNMAINTAINED: 'warning.main',
   PROVIDER_DISABLED: 'warning.main',
   DISSOLVED: 'error.main',

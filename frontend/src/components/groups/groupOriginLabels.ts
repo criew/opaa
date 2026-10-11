@@ -21,9 +21,10 @@ export function groupMechanismLabel(mechanism: GroupMechanism | undefined): stri
 
 /**
  * Warum diese Gruppe nirgends mehr neu gewählt werden kann — `null`, solange sie wirksam ist. Die
- * drei Gründe sind dieselben, die das Backend als Ziel einer Berechtigung oder einer Übertragung
- * abweist (`GroupSubject`: aufgelöst, Anbieter deaktiviert, eingefrorene Token-Gruppe); bestehende
- * Berechtigungen bleiben in jedem Fall unangetastet (ADR-0036, Entscheidungen 2 und 3).
+ * vier Gründe sind dieselben, die das Backend als Ziel einer Berechtigung oder einer Übertragung
+ * abweist (`GroupSubject`: aufgelöst, Anbieter deaktiviert, eingefrorene Token-Gruppe, deaktivierte
+ * interne Gruppe). Bestehende Berechtigungen bleiben gespeichert; nur bei einer deaktivierten
+ * Gruppe ruhen sie, bis sie reaktiviert wird (ADR-0036, Entscheidungen 2, 3 und 14).
  */
 export function groupIneffectiveReason(group: GroupListResponse): string | null {
   if (group.dissolved) {
@@ -31,6 +32,9 @@ export function groupIneffectiveReason(group: GroupListResponse): string | null 
   }
   if (group.provider && !group.provider.enabled) {
     return `Anbieter „${group.provider.displayName}" ist deaktiviert — die Gruppe ist kein neues Ziel für Berechtigungen und keine neue Space-Mitgliedschaft. Bestehende Berechtigungen bleiben.`
+  }
+  if (group.deactivated) {
+    return 'Deaktiviert — die Gruppe wirkt vorübergehend für niemanden: Ihre Freigaben, Space-Mitgliedschaften und Anlegerechte ruhen und sie ist kein neues Ziel. Alles bleibt gespeichert; „Reaktivieren“ stellt den vorherigen Stand wieder her.'
   }
   if (group.kind === 'IDENTITY_PROVIDER' && group.provider?.groupMechanism === 'DIRECTORY') {
     return 'Wird nicht mehr gepflegt — ihr Anbieter liefert seine Gruppen inzwischen über den Verzeichnisabgleich. Ihre Mitgliedschaft ist eingefroren; wählen Sie die entsprechende Organisationseinheit.'

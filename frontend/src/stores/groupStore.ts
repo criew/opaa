@@ -11,6 +11,7 @@ import {
   getMyStewardedGroups,
   listGroupMembers,
   removeGroupMember,
+  setGroupDeactivation,
   setGroupProtection,
   setGroupRelease,
   updateGroup,
@@ -55,6 +56,7 @@ interface GroupState {
   dismissSteward: (groupId: string, userId: string) => Promise<void>
   changeRelease: (groupId: string, releasedForUse: boolean) => Promise<void>
   changeProtection: (groupId: string, protectedGroup: boolean) => Promise<void>
+  changeDeactivation: (groupId: string, deactivated: boolean) => Promise<void>
 }
 
 function sortGroups(list: GroupListResponse[]): GroupListResponse[] {
@@ -208,6 +210,11 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   changeProtection: async (groupId, protectedGroup) => {
     await setGroupProtection(groupId, protectedGroup)
+    await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
+  },
+
+  changeDeactivation: async (groupId, deactivated) => {
+    await setGroupDeactivation(groupId, deactivated)
     await Promise.all([get().loadGroups(), get().loadGroupDetails(groupId)])
   },
 }))

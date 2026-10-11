@@ -1,4 +1,5 @@
 import type {
+  GroupDeactivationPreviewResponse,
   GroupListResponse,
   GroupMemberResponse,
   GroupResponse,
@@ -192,6 +193,38 @@ export async function setGroupRelease(
   try {
     const { data } = await client.put<GroupResponse>(`/v1/groups/${groupId}/release`, {
       releasedForUse,
+    })
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/**
+ * Was das Deaktivieren (oder Reaktivieren) einer internen Gruppe berührt, gezählt - die Zahlen der
+ * Bestätigung (ADR-0036, Entscheidung 14). Nennt auch den Grund, aus dem die Gruppe gerade nicht
+ * deaktiviert werden kann.
+ */
+export async function getGroupDeactivationPreview(
+  groupId: string,
+): Promise<GroupDeactivationPreviewResponse> {
+  try {
+    const { data } = await client.get<GroupDeactivationPreviewResponse>(
+      `/v1/groups/${groupId}/deactivation`,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+export async function setGroupDeactivation(
+  groupId: string,
+  deactivated: boolean,
+): Promise<GroupResponse> {
+  try {
+    const { data } = await client.put<GroupResponse>(`/v1/groups/${groupId}/deactivation`, {
+      deactivated,
     })
     return data
   } catch (err) {

@@ -81,6 +81,7 @@ export default function GroupManagementPage() {
             onMembers={setMembers}
             onTransfer={setTransfer}
             onDeleted={() => void loadGroups()}
+            onChanged={() => void loadGroups()}
           />
         )}
 

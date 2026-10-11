@@ -15,6 +15,8 @@ const {
   mockAppointGroupSteward,
   mockDismissGroupSteward,
   mockGetMyCapabilities,
+  mockSetGroupDeactivation,
+  mockGetGroupDeactivationPreview,
 } = vi.hoisted(() => ({
   mockGetMyStewardedGroups: vi.fn(),
   mockGetGroup: vi.fn(),
@@ -23,6 +25,8 @@ const {
   mockAppointGroupSteward: vi.fn(),
   mockDismissGroupSteward: vi.fn(),
   mockGetMyCapabilities: vi.fn(),
+  mockSetGroupDeactivation: vi.fn(),
+  mockGetGroupDeactivationPreview: vi.fn(),
 }))
 
 vi.mock('../../services/groupApi', async () => {
@@ -36,6 +40,8 @@ vi.mock('../../services/groupApi', async () => {
     setGroupProtection: mockSetGroupProtection,
     appointGroupSteward: mockAppointGroupSteward,
     dismissGroupSteward: mockDismissGroupSteward,
+    setGroupDeactivation: mockSetGroupDeactivation,
+    getGroupDeactivationPreview: mockGetGroupDeactivationPreview,
   }
 })
 
@@ -64,6 +70,7 @@ const group: GroupListResponse = {
   parentGroupId: null,
   memberCount: 1,
   dissolved: false,
+  deactivated: false,
   releasedForUse: false,
   protectedGroup: false,
   stewards: [
@@ -133,6 +140,47 @@ describe('MyGroupsSection', () => {
     await user.click(await screen.findByRole('switch', { name: /zur verwendung freigeben/i }))
 
     await waitFor(() => expect(mockSetGroupRelease).toHaveBeenCalledWith('group-phoenix', true))
+  })
+
+  // #1987: Verantwortliche deaktivieren ihre Gruppe selbst, nach einer bezifferten Rückfrage
+  it('deaktiviert die Gruppe nach einer Rückfrage mit den Folgen', async () => {
+    withGroups([group], ['CREATE_INTERNAL_GROUP'])
+    mockGetGroupDeactivationPreview.mockResolvedValue({
+      groupId: group.id,
+      deactivated: false,
+      assetGrants: 2,
+      grantedAssets: 2,
+      spaceMemberships: 0,
+      spaces: 0,
+      capabilities: 0,
+      activeMembers: 5,
+      blockedReason: null,
+    })
+    mockSetGroupDeactivation.mockResolvedValue({ ...details, deactivated: true })
+    renderWithProviders(<MyGroupsSection />, { withRouter: true })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByText('Projektbeteiligte Phoenix'))
+    await user.click(await screen.findByRole('button', { name: 'Deaktivieren' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: '„Projektbeteiligte Phoenix“ deaktivieren?',
+    })
+    expect(dialog).toHaveTextContent('2 Freigaben an 2 Objekten ruhen für 5 aktive Konten.')
+    await answerConfirm(user, '„Projektbeteiligte Phoenix“ deaktivieren?', 'Deaktivieren')
+
+    await waitFor(() =>
+      expect(mockSetGroupDeactivation).toHaveBeenCalledWith('group-phoenix', true),
+    )
+  })
+
+  it('kennzeichnet eine deaktivierte Gruppe und bietet das Reaktivieren an', async () => {
+    withGroups([{ ...group, deactivated: true, state: 'DEACTIVATED' }], ['CREATE_INTERNAL_GROUP'])
+    renderWithProviders(<MyGroupsSection />, { withRouter: true })
+    const user = userEvent.setup()
+
+    expect(await screen.findByText('deaktiviert')).toBeInTheDocument()
+    await user.click(screen.getByText('Projektbeteiligte Phoenix'))
+    expect(await screen.findByRole('button', { name: 'Reaktivieren' })).toBeInTheDocument()
   })
 
   // Über den Schutz entscheidet die Systemverwaltung (ADR-0036, Entscheidung 9) - Verantwortliche
