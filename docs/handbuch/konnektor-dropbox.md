@@ -42,7 +42,10 @@ Leserkreis oder bleiben außerhalb der Auswahl.
 
 Ein Dokument ist über seinen Pfad in Kleinbuchstaben identifiziert (`dropbox:<pfad>`). Umbenennen
 und Verschieben machen aus der Datei deshalb ein neues Dokument; das alte wird entfernt
-(Abschnitt 5). Einen Link in die Dropbox-Oberfläche hat ein Dokument nicht (Abschnitt 9).
+(Abschnitt 5). Einen Link in die Dropbox-Oberfläche hat ein Dokument nicht (Abschnitt 9). Ist
+`dropbox:<pfad>` länger als die Identität eines Dokuments fassen kann, wird die Datei nicht
+geladen und erscheint in jedem Lauf als abgewiesen im Protokoll (Kapitel
+[Indexierung](indexierung.md), „Schritt 1: Prüfsumme und Identität“).
 
 ## 2. Einrichtung bei Dropbox
 

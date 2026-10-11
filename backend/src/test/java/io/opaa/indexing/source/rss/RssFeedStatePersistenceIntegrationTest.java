@@ -68,7 +68,9 @@ class RssFeedStatePersistenceIntegrationTest {
   @Test
   void headersBeyondTheFormerColumnWidthsAreStoredAsSent() {
     String etag = "W/\"" + "feed-revision-0123456789abcdef-".repeat(20) + "\"";
-    String lastModified = "Sat, 11 Oct 2026 08:00:00 GMT; " + "origin=archiv-cache ".repeat(12);
+    // HttpHeaders strips surrounding whitespace, so the value carries none
+    String lastModified =
+        ("Sat, 11 Oct 2026 08:00:00 GMT; " + "origin=archiv-cache ".repeat(12)).strip();
     assertThat(etag.length()).isGreaterThan(500);
     assertThat(lastModified.length()).isGreaterThan(200);
     FeedFetcher fetcher = new FeedFetcher(null, feedStateRepository, null, null, null);

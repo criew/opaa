@@ -1023,6 +1023,14 @@ Normalfall in jedem Folgelauf und der Grund, warum Folgeläufe schnell sind. Was
 den aktuellen Stand gebracht: So überspringt der nächste Lauf das Element schon vor dem Abruf, und
 Dokumentliste wie Zitat zeigen den aktuellen Titel.
 
+Der Quellpfad ist die Identität des Dokuments und deshalb begrenzt: auf 2000 Zeichen und
+2676 Byte (UTF-8). Gezählt wird der ganze Pfad bzw. die ganze Adresse, wie sie die Quelle bildet,
+bei einem Anhang samt dem Pfad des Dokuments, aus dem er stammt. Ein längerer Pfad bricht den Lauf
+nicht ab: Das Element erscheint im Laufprotokoll als **abgewiesen** mit dem Grund „Pfad oder
+Adresse ist länger als …", wird als übersprungen gezählt und nicht gespeichert. Eine Dateiablage
+lädt es dafür gar nicht erst herunter. Name, Ort in der Quelle und Änderungsmarke eines Elements
+sind dagegen nicht begrenzt und werden so gespeichert, wie die Quelle sie liefert.
+
 Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. Nur die Chunks
 werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
 Anhängen, eine Aktualisierung.
