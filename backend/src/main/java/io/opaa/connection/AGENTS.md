@@ -23,7 +23,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 - **Geheimnisse liest, speichert und verwirft nur `ConnectionSecrets`** (token) über
   `SecretOwner.of`; library nur über den Port. Das Geheimnis einer Person geht nur heraus, solange
   ihr Konto nutzbar ist (`AccountUsability` mit Schwelle), und nur an das Ziel, für das es ausgestellt
-  ist: `SecretTarget#key` (`sameOrigin` plus `credentialBinding`) ist die eine Zielfunktion.
+  ist: `SecretTarget#key` (`sameOrigin` plus `credentialBinding`) ist die eine Zielfunktion. Das eigene Geheimnis einer Bibliothek liegt an einem Zugang im Speicher (`LibraryOnProfile`), sonst in der Spalte (`carryOver`).
   Verwerfen je Bibliothek trifft nur deren eigenes Geheimnis (`ownedByOneLibrary`), nie das geteilte
   einer Person; das endet nur mit dem Konto. Die OAuth-Zustimmung einer Bibliothek
   (`SourceConsent`) prüft keine Person; vor Anlage wartet sie als `PendingConsent` ihrer Person. **Sperrreihenfolge:** Profil-, dann Token-, dann Kontozeile; wer das Konto zuerst schreibt, ruft vorher `lockHeld` (#2428), Ablegen nach der Anmeldung hält das Profil (`lockedVersion`, #2279).

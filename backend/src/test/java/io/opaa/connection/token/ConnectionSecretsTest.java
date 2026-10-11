@@ -72,7 +72,7 @@ class ConnectionSecretsTest {
             false);
 
     assertThat(SecretOwner.of(profileId, ConnectionAuthMethod.PERSONAL_SECRET, shared))
-        .isEqualTo(new SecretOwner.LibraryOwned(shared.getId()));
+        .isEqualTo(new SecretOwner.LibraryOnProfile(profileId, shared.getId()));
     assertThat(SecretOwner.of(profileId, ConnectionAuthMethod.PERSONAL_SECRET, own))
         .isEqualTo(new SecretOwner.PersonOwned(profileId, own.getOwnerUserId()));
     assertThat(SecretOwner.of(null, null, own))

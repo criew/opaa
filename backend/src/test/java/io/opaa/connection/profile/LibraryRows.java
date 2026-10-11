@@ -38,6 +38,18 @@ public final class LibraryRows {
                     .filter(id -> rows.containsKey(id))
                     .filter(id -> rows.get(id).getSourceCredentials() != null)
                     .collect(Collectors.toSet()));
+    when(repository.findStoredSourceCredentials(any()))
+        .thenAnswer(
+            call ->
+                Optional.ofNullable(rows.get(call.<UUID>getArgument(0)))
+                    .map(KnowledgeLibrary::getSourceCredentials)
+                    .orElse(null));
+    when(repository.hasStoredSourceCredentials(any()))
+        .thenAnswer(
+            call ->
+                Optional.ofNullable(rows.get(call.<UUID>getArgument(0)))
+                    .map(KnowledgeLibrary::getSourceCredentials)
+                    .isPresent());
     return repository;
   }
 }

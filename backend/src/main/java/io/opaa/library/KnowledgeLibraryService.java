@@ -391,6 +391,9 @@ public class KnowledgeLibraryService {
         request.ownerType() != null ? request.ownerType() : AssetOwnerType.USER;
 
     SourceConfiguration sourceConfiguration = validateSourceConfiguration(request);
+    // on a profile the library's own secret lies in the store, written once the connection exists
+    String ownColumn =
+        request.connectionProfileId() == null ? sourceConfiguration.sourceCredentials() : null;
 
     KnowledgeLibrary library;
     if (ownerType == AssetOwnerType.GROUP) {
@@ -410,7 +413,7 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
               sourceConfiguration.sourceProxy(),
-              sourceConfiguration.sourceCredentials(),
+              ownColumn,
               sourceConfiguration.sourceInsecureSsl());
     } else {
       library =
@@ -423,7 +426,7 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
               sourceConfiguration.sourceProxy(),
-              sourceConfiguration.sourceCredentials(),
+              ownColumn,
               sourceConfiguration.sourceInsecureSsl());
     }
     connectors
@@ -443,6 +446,7 @@ public class KnowledgeLibraryService {
     KnowledgeLibrary saved = libraryRepository.save(library);
     if (request.connectionProfileId() != null) {
       libraryConnections.attachNew(saved, request.connectionProfileId());
+      libraryConnections.replaceOwnSecret(saved, sourceConfiguration.sourceCredentials(), false);
     }
     // The creator holds OWNER, an owning group MANAGER - never OWNER, see AssetShellService. The
     // shell also opens the ownership and reach intervals and writes LIBRARY_CREATED.
@@ -668,6 +672,16 @@ public class KnowledgeLibraryService {
     String previousSourceProxy = library.getSourceProxy();
     String previousSourceCredentials = connectionResolver.storedCredentials(library);
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
+    boolean ownSecretInStore = libraryConnections.ownSecretInStore(library);
+    boolean targetKept =
+        !replacesSourceConfiguration
+            || previousSourceUrl == null
+            || keepsTarget(
+                connector,
+                previousSourceUrl,
+                ConnectorData.storedIn(library),
+                validatedSettings.sourceUrl(),
+                validatedSettings.connectorSettings());
     library.rename(normalizedName, request.description());
     if (replacesSchedule) {
       library.updateSchedule(validatedSchedule.enabled(), validatedSchedule.cron());
@@ -677,7 +691,7 @@ public class KnowledgeLibraryService {
           validatedSettings.sourcePath(),
           validatedSettings.sourceUrl(),
           validatedSettings.sourceProxy(),
-          validatedSettings.sourceCredentials(),
+          ownSecretInStore ? null : validatedSettings.sourceCredentials(),
           validatedSettings.sourceInsecureSsl());
       // The discard a host change performs (see requestedSettingsChange's Javadoc) is
       // a security invariant and must not depend on the dirty check: with the key missing the
@@ -685,18 +699,16 @@ public class KnowledgeLibraryService {
       // ciphertext the returning key would otherwise send to the new host (#1806). A change that
       // keeps the origin is deliberately not erased - there the same null means "unreadable, leave
       // it alone".
-      if (validatedSettings.sourceCredentials() == null
-          && previousSourceUrl != null
-          && !keepsTarget(
-              connector,
-              previousSourceUrl,
-              ConnectorData.storedIn(library),
-              validatedSettings.sourceUrl(),
-              validatedSettings.connectorSettings())) {
+      if (!ownSecretInStore && validatedSettings.sourceCredentials() == null && !targetKept) {
         libraryRepository.eraseSourceCredentials(library.getId());
       }
     }
     changeGate.apply(library, validatedSettings.withoutCredentials());
+    if (replacesSourceConfiguration && ownSecretInStore) {
+      // after the connector settings: the store issues the secret for the target they bind
+      libraryConnections.replaceOwnSecret(
+          library, validatedSettings.sourceCredentials(), !targetKept);
+    }
     if (library.isOwnerOnly() && (replacesSourceConfiguration || replacesOwnSettings)) {
       privateConnections.requireOwnTargetOf(library);
     }
@@ -1370,12 +1382,12 @@ public class KnowledgeLibraryService {
             ConnectorData.storedIn(library),
             sourceUrl,
             connectorSettings);
-    // A new binding on the same origin is refused rather than dropped; fail-closed: the column
+    // A new binding on the same origin is refused rather than dropped; fail-closed: a stored secret
     // counts, not whether its ciphertext can be read right now.
     if (!keepsTarget
         && ServerAddress.sameOrigin(library.getSourceUrl(), sourceUrl)
         && sourceCredentials == null
-        && libraryRepository.hasStoredSourceCredentials(library.getId())) {
+        && libraryConnections.holdsOwnSecret(library)) {
       throw new ValidationException(TARGET_CHANGE_NEEDS_CREDENTIALS);
     }
     if (!replacesConnection) {

@@ -21,6 +21,7 @@ import io.opaa.connection.profile.LibraryRows;
 import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.profile.TransitionWiring;
+import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.indexing.source.SourceSettings;
@@ -53,6 +54,7 @@ class LibraryConnectionServiceConnectTest {
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final KnowledgeLibraryRepository libraries = LibraryRows.over(rows);
+  private final TestSecrets.Store store = new TestSecrets.Store();
 
   @Test
   void aMoveWithinTheOriginDiscardsTheSecretWhenTheConnectorBindsItNarrower() {
@@ -62,7 +64,7 @@ class LibraryConnectionServiceConnectTest {
         .connect(library, profile("https://probe.example.org/b", null).getId(), null);
 
     assertThat(library.getSourceUrl()).isEqualTo("https://probe.example.org/b/x");
-    verify(libraries).eraseSourceCredentials(library.getId());
+    assertThat(store.ownSecretOf(library.getId())).isEmpty();
   }
 
   @Test
@@ -73,6 +75,7 @@ class LibraryConnectionServiceConnectTest {
         .connect(library, profile("https://probe.example.org/b", null).getId(), null);
 
     assertThat(library.getSourceUrl()).isEqualTo("https://probe.example.org/b/x");
+    assertThat(store.ownSecretOf(library.getId())).contains("nutzer:geheim");
     verify(libraries, never()).eraseSourceCredentials(any());
   }
 
@@ -159,6 +162,8 @@ class LibraryConnectionServiceConnectTest {
     assertThat(library.getSourceProxy()).isEqualTo("proxy.example.org:3128");
     assertThat(library.isSourceInsecureSsl()).isTrue();
     assertThat(library.getSourceUrl()).isEqualTo("https://probe.example.org/a/x");
+    assertThat(library.getSourceCredentials()).isEqualTo("nutzer:geheim");
+    assertThat(store.ownSecretOf(library.getId())).isEmpty();
     verify(libraries, never()).eraseSourceCredentials(any());
     verify(connections).delete(any());
     assertThat(probe.changeChecks()).as("the effective configuration stays").isEmpty();
@@ -171,6 +176,7 @@ class LibraryConnectionServiceConnectTest {
     ConnectionProfile previous = profile("https://probe.example.org/a", null);
     when(connections.findById(library.getId()))
         .thenReturn(Optional.of(new LibraryConnection(library.getId(), previous.getId(), NOW)));
+    store.moveIn(previous.getId(), library, "https://probe.example.org");
     return library;
   }
 
@@ -210,7 +216,8 @@ class LibraryConnectionServiceConnectTest {
     SourceConnectorRegistry registry =
         new SourceConnectorRegistry(
             List.of(connector, new UploadSourceConnector(mock(UploadedOriginalStore.class))));
-    TransitionWiring wiring = new TransitionWiring(registry, connections, profiles, libraries);
+    TransitionWiring wiring =
+        new TransitionWiring(registry, connections, profiles, libraries, store);
     return new LibraryConnectionService(
         connections,
         profiles,

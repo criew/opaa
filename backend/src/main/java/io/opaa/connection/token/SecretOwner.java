@@ -12,6 +12,7 @@ import java.util.UUID;
  */
 public sealed interface SecretOwner
     permits SecretOwner.LibraryOwned,
+        SecretOwner.LibraryOnProfile,
         SecretOwner.PersonOwned,
         SecretOwner.ProfileOwned,
         SecretOwner.SourceConsent,
@@ -22,8 +23,8 @@ public sealed interface SecretOwner
    * ({@code null} for its own address) signing in by {@code method}: the owner's connected account
    * for an owner-only (private) library whatever the method - it never gets a profile's token -,
    * else the profile itself for its own sign-in (client credentials, service account key), the
-   * library's own consent in the store for OAuth, else the library itself; {@code NONE} names whose
-   * secret is absent.
+   * library's own consent in the store for OAuth, else the library's own secret in the store; on
+   * its own address the library holds it in its column. {@code NONE} names whose secret is absent.
    */
   static SecretOwner of(UUID profileId, ConnectionAuthMethod method, KnowledgeLibrary library) {
     if (profileId == null || method == null) {
@@ -35,22 +36,37 @@ public sealed interface SecretOwner
     return switch (method) {
       case CLIENT_CREDENTIALS, SERVICE_ACCOUNT_KEY -> new ProfileOwned(profileId);
       case OAUTH -> new SourceConsent(profileId, library.getId());
-      case NONE, PERSONAL_SECRET -> new LibraryOwned(library.getId());
+      case NONE, PERSONAL_SECRET -> new LibraryOnProfile(profileId, library.getId());
     };
   }
 
   /**
-   * Whether the secret belongs to one library alone - its column or its own consent - so that a
-   * move or a release of that library may discard it; a person's or a profile's never does.
+   * Whether the secret belongs to one library alone - its column, its own secret in the store or
+   * its own consent - so that a move or a release of that library may discard it; a person's or a
+   * profile's never does.
    */
   default boolean ownedByOneLibrary() {
-    return this instanceof LibraryOwned || this instanceof SourceConsent;
+    return this instanceof LibraryOwned
+        || this instanceof LibraryOnProfile
+        || this instanceof SourceConsent;
   }
 
-  /** The library holds its own secret ({@code source_credentials}). */
+  /** A library on its own address holds its own secret ({@code source_credentials}). */
   record LibraryOwned(UUID libraryId) implements SecretOwner {
 
     public LibraryOwned {
+      Objects.requireNonNull(libraryId, "libraryId");
+    }
+  }
+
+  /**
+   * A library's own personal secret on the profile {@code profileId}, held in the store with the
+   * library as owner; it is the library's alone, whoever entered it.
+   */
+  record LibraryOnProfile(UUID profileId, UUID libraryId) implements SecretOwner {
+
+    public LibraryOnProfile {
+      Objects.requireNonNull(profileId, "profileId");
       Objects.requireNonNull(libraryId, "libraryId");
     }
   }

@@ -5,6 +5,7 @@ import io.opaa.auth.AccountUsability;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.connection.token.PersonAccounts.AccountKey;
+import io.opaa.connection.token.SecretOwner.LibraryOnProfile;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.connection.token.SecretOwner.PendingConsent;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
@@ -53,7 +54,9 @@ import org.springframework.transaction.support.TransactionTemplate;
  * here under its row lock and, once a discard committed, revoked on {@link GrantRevocations}. A
  * profile's own sign-in holds no row: its token comes from {@link SecretIssuer#mint}, and whether
  * it is refused the profile row says. A library's own consent is handed out whoever gave it; a
- * pending consent only to the person who gave it, until its library takes it over or it expires.
+ * pending consent only to the person who gave it, until its library takes it over or it expires. A
+ * library holds its own personal secret in its column on its own address and in the store on a
+ * profile; {@link #carryOver} moves it between the two.
  */
 @Component
 public class ConnectionSecrets {
@@ -135,6 +138,7 @@ public class ConnectionSecrets {
         }
         yield secret;
       }
+      case LibraryOnProfile own -> librarySecret(own, target);
       case PersonOwned person -> personSecret(person, target, null);
       case ProfileOwned(UUID profileId) -> issuer().mint(profileId);
       case SourceConsent consent -> consentSecret(consent, consentOf(consent), target, null);
@@ -157,6 +161,7 @@ public class ConnectionSecrets {
       }
       case PersonOwned person -> personSecret(person, target, rejected);
       case LibraryOwned ignored -> current(owner, target);
+      case LibraryOnProfile ignored -> current(owner, target);
       case SourceConsent consent -> consentSecret(consent, consentOf(consent), target, rejected);
       case PendingConsent pending -> consentSecret(pending, pendingOf(pending), target, rejected);
     };
@@ -182,6 +187,7 @@ public class ConnectionSecrets {
     for (SecretOwner owner : owners) {
       switch (owner) {
         case LibraryOwned(UUID libraryId) -> libraryIds.add(libraryId);
+        case LibraryOnProfile own -> consenting.add(own.libraryId());
         case PersonOwned person -> persons.add(person);
         case SourceConsent consent -> consenting.add(consent.libraryId());
         case ProfileOwned ignored -> {}
@@ -212,9 +218,15 @@ public class ConnectionSecrets {
             states.put(owner, reason);
           }
         }
+        case LibraryOnProfile own -> {
+          ConnectionToken token = consentOfLibrary.get(own.libraryId());
+          if (token == null || token.getKind() != ConnectionToken.Kind.PERSONAL_SECRET) {
+            states.put(owner, Reason.NOT_CONNECTED);
+          }
+        }
         case SourceConsent consent -> {
           ConnectionToken token = consentOfLibrary.get(consent.libraryId());
-          if (token == null || !token.getProfileId().equals(consent.profileId())) {
+          if (token == null || !consentOn(token, consent.profileId())) {
             states.put(owner, Reason.NOT_CONNECTED);
           } else if (token.expiredAt(now)) {
             states.put(owner, Reason.EXPIRED);
@@ -235,6 +247,7 @@ public class ConnectionSecrets {
   public String stored(SecretOwner owner) {
     return switch (owner) {
       case LibraryOwned(UUID libraryId) -> columnOf(libraryId);
+      case LibraryOnProfile own -> ownSecretOf(own).map(this::decryptQuietly).orElse(null);
       case PersonOwned ignored -> null;
       case ProfileOwned ignored -> null;
       case SourceConsent ignored -> null;
@@ -249,6 +262,7 @@ public class ConnectionSecrets {
   public boolean holds(SecretOwner owner) {
     return switch (owner) {
       case LibraryOwned ignored -> stored(owner) != null;
+      case LibraryOnProfile own -> ownSecretOf(own).isPresent();
       case PersonOwned person -> tokenOf(person).isPresent();
       case ProfileOwned ignored -> false;
       case SourceConsent consent -> consentOf(consent).isPresent();
@@ -259,16 +273,23 @@ public class ConnectionSecrets {
   /**
    * Stores {@code secret} for {@code owner}, issued for {@code target}; it replaces a held one.
    *
-   * @throws IllegalStateException for a library, whose own secret the library administration
-   *     writes, for a profile, whose registration the profile administration writes, for a person
-   *     without a connected account on the profile, for anything but an OAuth grant as a library's
-   *     consent, and for a pending consent, which {@link #storePending} creates
+   * @throws IllegalStateException for a library on its own address, whose column the library
+   *     administration writes, for a profile, whose registration the profile administration writes,
+   *     for a person without a connected account on the profile, for anything but a personal secret
+   *     as a library's own on a profile or but an OAuth grant as its consent, and for a pending
+   *     consent, which {@link #storePending} creates
    */
   public void store(SecretOwner owner, NewSecret secret, String target) {
     switch (owner) {
       case LibraryOwned ignored ->
           throw new IllegalStateException(
               "a library's own secret is written by the library administration");
+      case LibraryOnProfile own -> {
+        if (!(secret instanceof NewSecret.Personal personal)) {
+          throw new IllegalStateException("a library's own secret is a personal secret");
+        }
+        storeLibrarySecret(own, personal, target);
+      }
       case PersonOwned person -> {
         UUID accountId =
             accountIdOf(person)
@@ -372,9 +393,10 @@ public class ConnectionSecrets {
   }
 
   /**
-   * Discards the secret of {@code owner}; for a library in the loaded entity and the column, for a
-   * profile the token held in the process - its registration stays with the profile. Returns how
-   * many stored secrets of a person went, always 0 for a library and a profile.
+   * Discards the secret of {@code owner}; for a library on its own address in the loaded entity and
+   * the column, on a profile its own row on whatever profile it lies, for a profile the token held
+   * in the process - its registration stays with the profile. Returns how many stored secrets of a
+   * person went, always 0 for a library and a profile.
    */
   public int discard(SecretOwner owner) {
     return switch (owner) {
@@ -383,6 +405,7 @@ public class ConnectionSecrets {
         libraries.eraseSourceCredentials(libraryId);
         yield 0;
       }
+      case LibraryOnProfile own -> discardRow(ownRowOf(own.libraryId()));
       case PersonOwned person ->
           accountIdOf(person)
               .map(
@@ -400,6 +423,82 @@ public class ConnectionSecrets {
       case SourceConsent consent -> discardRow(consentOf(consent));
       case PendingConsent pending -> discardRow(pendingOf(pending));
     };
+  }
+
+  /**
+   * Discards the own secret of the library {@code libraryId} wherever it lies - its column and its
+   * row in the store - as a move to another target does; a consent is not its own secret.
+   */
+  public void discardOwnSecret(UUID libraryId) {
+    discard(new LibraryOwned(libraryId));
+    discardRow(ownRowOf(libraryId));
+  }
+
+  /**
+   * Whether the library {@code libraryId} holds an own secret anywhere, readable or not: a rule
+   * that must fail closed asks this, not {@link #stored}.
+   */
+  public boolean holdsOwnSecret(UUID libraryId) {
+    return libraries.hasStoredSourceCredentials(libraryId) || ownRowOf(libraryId).isPresent();
+  }
+
+  /**
+   * Moves the own secret of the library {@code libraryId}, wherever it lies, to {@code to}: into
+   * its column for {@link LibraryOwned}, into the store issued for {@code target} for {@link
+   * LibraryOnProfile}. A value the key cannot read moves as stored; a library holding none is left
+   * alone. Needs a transaction.
+   *
+   * @throws IllegalStateException for any other owner, which no library carries along
+   */
+  public void carryOver(UUID libraryId, SecretOwner to, String target) {
+    Instant now = clock.instant();
+    switch (to) {
+      case LibraryOnProfile own -> {
+        Optional<ConnectionToken> row = ownRowOf(libraryId);
+        if (row.isPresent()) {
+          row.get().movedTo(own.profileId(), target, now);
+          tokens.save(row.get());
+          return;
+        }
+        String stored = libraries.findStoredSourceCredentials(libraryId);
+        if (stored == null) {
+          return;
+        }
+        String ciphertext =
+            stored.startsWith(ENCRYPTED_MARKER) ? stored : encryptor.encrypt(stored);
+        discardOtherRow(libraryId);
+        tokens.save(
+            ConnectionToken.ofLibrarySecret(own.profileId(), libraryId, ciphertext, target, now));
+        discard(new LibraryOwned(libraryId));
+      }
+      case LibraryOwned ignored -> {
+        Optional<ConnectionToken> row = ownRowOf(libraryId);
+        if (row.isEmpty()) {
+          return;
+        }
+        ConnectionToken token = row.get();
+        String value = decryptQuietly(token);
+        tokens.delete(token);
+        if (value != null) {
+          libraries.findById(libraryId).ifPresent(found -> found.replaceSourceCredentials(value));
+        } else {
+          libraries.restoreStoredSourceCredentials(libraryId, token.getSecretCiphertext());
+        }
+      }
+      default -> throw new IllegalStateException("only a library's own secret goes along with it");
+    }
+  }
+
+  /** Deletes a row of the library that is not its own secret, revoked after the commit. */
+  private void discardOtherRow(UUID libraryId) {
+    tokens
+        .findByLibraryId(libraryId)
+        .ifPresent(
+            other -> {
+              revokeAfterCommit(List.of(other));
+              tokens.delete(other);
+              tokens.flush();
+            });
   }
 
   /** Deletes {@code held}, revoked once the caller's transaction committed; 0 for none. */
@@ -507,6 +606,7 @@ public class ConnectionSecrets {
   public void rejected(SecretOwner owner) {
     switch (owner) {
       case LibraryOwned ignored -> {}
+      case LibraryOnProfile ignored -> {}
       case PendingConsent ignored -> {}
       case ProfileOwned(UUID profileId) -> forgetMinted(profileId);
       case PersonOwned person -> tokenOf(person).ifPresent(this::endNow);
@@ -517,6 +617,38 @@ public class ConnectionSecrets {
   private void endNow(ConnectionToken token) {
     token.endedAt(clock.instant());
     tokens.save(token);
+  }
+
+  /** The library's own personal secret on its profile, only for the target it was issued for. */
+  private Secret librarySecret(LibraryOnProfile owner, String target) {
+    ConnectionToken token =
+        ownSecretOf(owner).orElseThrow(() -> new SecretRefusedException(Reason.NOT_CONNECTED));
+    if (!token.getIssuedFor().equals(target)) {
+      throw new SecretRefusedException(Reason.TARGET_OUTSIDE_PROFILE);
+    }
+    return new Secret(SecretKind.PERSONAL_SECRET, decrypt(token));
+  }
+
+  /**
+   * Stores a library's own personal secret on its profile, replacing its row wherever it lies; a
+   * consent the library still held goes, revoked after the commit.
+   */
+  private void storeLibrarySecret(
+      LibraryOnProfile owner, NewSecret.Personal secret, String target) {
+    String ciphertext = encryptor.encrypt(secret.value());
+    Instant now = clock.instant();
+    Optional<ConnectionToken> held = ownRowOf(owner.libraryId());
+    if (held.isPresent()) {
+      ConnectionToken token = held.get();
+      token.movedTo(owner.profileId(), target, now);
+      token.replace(ciphertext, null, target, now);
+      tokens.save(token);
+      return;
+    }
+    discardOtherRow(owner.libraryId());
+    tokens.save(
+        ConnectionToken.ofLibrarySecret(
+            owner.profileId(), owner.libraryId(), ciphertext, target, now));
   }
 
   /**
@@ -631,6 +763,7 @@ public class ConnectionSecrets {
       case SourceConsent consent -> consentRejections.getObject().consentRejected(consent);
       case PendingConsent ignored -> endNow(token);
       case LibraryOwned ignored -> {}
+      case LibraryOnProfile ignored -> {}
       case ProfileOwned ignored -> {}
     }
   }
@@ -926,7 +1059,26 @@ public class ConnectionSecrets {
   private Optional<ConnectionToken> consentOf(SourceConsent owner) {
     return tokens
         .findByLibraryId(owner.libraryId())
-        .filter(token -> token.getProfileId().equals(owner.profileId()));
+        .filter(token -> consentOn(token, owner.profileId()));
+  }
+
+  /**
+   * The library's own personal secret, on whatever profile it was stored: like its column, it
+   * follows the library to any profile with the same target, which its issued target guards.
+   */
+  private Optional<ConnectionToken> ownSecretOf(LibraryOnProfile owner) {
+    return ownRowOf(owner.libraryId());
+  }
+
+  /** The library's own personal secret in the store, on whatever profile it lies. */
+  private Optional<ConnectionToken> ownRowOf(UUID libraryId) {
+    return tokens
+        .findByLibraryId(libraryId)
+        .filter(token -> token.getKind() == ConnectionToken.Kind.PERSONAL_SECRET);
+  }
+
+  private static boolean consentOn(ConnectionToken token, UUID profileId) {
+    return token.getKind() == ConnectionToken.Kind.OAUTH && token.getProfileId().equals(profileId);
   }
 
   /** The pending consent, only for its person and before it expires. */

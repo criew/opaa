@@ -22,19 +22,31 @@ public final class TransitionWiring {
 
   public final EffectiveSourceSettings effective;
   public final ConnectionSecrets secrets;
+  public final TestSecrets.Store store;
   public final SourceTransitions transitions;
   public final AuditEventRecorder audit = mock(AuditEventRecorder.class);
 
-  @SuppressWarnings("unchecked")
   public TransitionWiring(
       SourceConnectorRegistry registry,
       LibraryConnectionRepository connections,
       ConnectionProfileRepository profiles,
       KnowledgeLibraryRepository libraries) {
+    this(registry, connections, profiles, libraries, new TestSecrets.Store());
+  }
+
+  /** The wiring with the libraries' rows in {@code store}. */
+  @SuppressWarnings("unchecked")
+  public TransitionWiring(
+      SourceConnectorRegistry registry,
+      LibraryConnectionRepository connections,
+      ConnectionProfileRepository profiles,
+      KnowledgeLibraryRepository libraries,
+      TestSecrets.Store store) {
     ObjectProvider<SourceConnectorRegistry> provider = mock(ObjectProvider.class);
     when(provider.getObject()).thenReturn(registry);
     ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
-    this.secrets = TestSecrets.overLibraries(connections, libraries);
+    this.store = store;
+    this.secrets = TestSecrets.overLibraries(connections, libraries, store);
     this.effective =
         new EffectiveSourceSettings(
             connections,

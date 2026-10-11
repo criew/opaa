@@ -1327,6 +1327,40 @@ Kontingent je Bibliothek wird behandelt wie die am Kontingent je Person (#2276).
   an die Besitzerin entsteht weiter nur in `DocumentIngestOutcomes`. Logs nennen Elemente nur über
   `loggedNames()`.
 
+## Nachtrag vom 11.10.2026: Eigenes Geheimnis einer Bibliothek im Token-Speicher (#2273, T1)
+
+Setzt Abschnitt 2.7 des Phase-3-Plans um. Eine Bibliothek hatte ihr persönliches Geheimnis auch
+an einem Zugang in `knowledge_libraries.source_credentials`, die eigene OAuth-Zustimmung derselben
+Bibliothek aber im Token-Speicher. Jetzt hat jedes Geheimnis an einem Zugang genau einen Ort.
+
+- **Besitzart:** `SecretOwner.of` wählt für eine geteilte Bibliothek an einem Zugang mit
+  `PERSONAL_SECRET` (und `NONE`) `LibraryOnProfile(profileId, libraryId)`, eine Zeile in
+  `connection_tokens` mit `library_id` und `kind = 'PERSONAL_SECRET'`. `LibraryOwned` bedeutet nur
+  noch „eigene Adresse“ und bleibt bei `source_credentials`. Ein Schema-Changeset braucht es nicht:
+  Besitzer-`CHECK`, `ux_connection_tokens_library` und die Art `PERSONAL_SECRET` gibt es schon.
+- **Gilt wie die Spalte:** Die Zeile gehört der Bibliothek, gleich auf welchem Zugang sie
+  abgelegt wurde; das ausgestellte Ziel (`issued_for`, `SecretTarget#key`) bindet sie. Ein Entwurf
+  auf einem anderen Zugang mit demselben Ziel nutzt sie also wie vorher die Spalte. Sie läuft nicht
+  ab und wird nicht widerrufen; eine Ablehnung beim Anbieter setzt keinen Zustand.
+- **Schreibwege:** Anlegen und Ändern an einem Zugang schreiben über
+  `LibraryConnectionService#replaceOwnSecret` in den Speicher, die Spalte bleibt leer. Ein neues
+  Ziel ohne neues Geheimnis verwirft die Zeile wie vorher die Spalte. Zuordnen verschiebt das
+  Geheimnis in den Speicher (`EffectiveSourceSettings#adoptFrame`, `ConnectionSecrets#carryOver`),
+  ein Wechsel des Zugangs nimmt die Zeile mit, Lösen schreibt sie zurück in die Spalte. Ein Wert,
+  den der fehlende Schlüssel nicht lesen kann, wandert als Geheimtext. Verwerfen je Bibliothek
+  (`discardOwnSecret`) trifft Spalte und Zeile; `discardAllUnder` löscht die Zeilen mit denen der
+  Zustimmungen.
+- **Bestand:** Bibliotheken, die vor diesem Stand an einem Zugang mit Geheimnis angelegt wurden,
+  halten es noch in der Spalte. `OwnSecretRelocation` verschiebt es beim Start einmal je Bibliothek
+  in eigener Transaktion, idempotent; ein Changeset kann das nicht, weil connections
+  `knowledge_libraries` nicht schreiben darf und nur die Anwendung Klartext-Altwerte verschlüsseln
+  kann. Eine Vorbereitung für Bestandsinstallationen entfällt damit.
+- **Lesen der Spalte** bleibt `ConnectionSecrets` vorbehalten (`theLibrarySecretIsReadInOnePlace`);
+  für den Umzug liest es den Geheimtext über `KnowledgeLibraryRepository#findStoredSourceCredentials`
+  ohne Konverter.
+- **Belegt** in `OwnSecretInStoreIntegrationTest` (Anlegen, Ändern, Zuordnen, Lösen, andere
+  Anmeldeart, Umzug beim Start) und den angepassten Einheitstests über `TestSecrets.Store`.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

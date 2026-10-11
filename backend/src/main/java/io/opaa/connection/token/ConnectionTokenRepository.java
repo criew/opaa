@@ -70,8 +70,8 @@ interface ConnectionTokenRepository extends JpaRepository<ConnectionToken, UUID>
   List<ConnectionToken> findByLibraryIdIn(Collection<UUID> libraryIds);
 
   /**
-   * The rows of libraries' own consents and pending consents under {@code profileId}, locked before
-   * they are deleted, as {@link #findLockedByConnectedAccountId}.
+   * The rows of libraries - own secrets and own consents - and pending consents under {@code
+   * profileId}, locked before they are deleted, as {@link #findLockedByConnectedAccountId}.
    */
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   @Query(
@@ -79,7 +79,7 @@ interface ConnectionTokenRepository extends JpaRepository<ConnectionToken, UUID>
           + " and (t.libraryId is not null or t.pendingUserId is not null)")
   List<ConnectionToken> findConsentsUnder(@Param("profileId") UUID profileId);
 
-  /** Deletes every library's own consent and every pending consent under {@code profileId}. */
+  /** Deletes every library's row and every pending consent under {@code profileId}. */
   @Modifying(flushAutomatically = true)
   @Query(
       "delete from ConnectionToken t where t.profileId = :profileId"
