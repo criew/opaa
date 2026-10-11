@@ -1711,6 +1711,57 @@ Funktion; ohne sie gilt `OPAA_OPENAI_BASE_URL` für beide.
 > das Backend läuft. Jede Änderung des Chat-Modells über die Administrationsoberfläche ist
 > protokolliert und einer Person zurechenbar.
 
+### Chat-Modelle in der Oberfläche anlegen
+
+Unter **Administration → Modelle → Chat-Modelle** legt ein Systemverwalter Chat-Modelle an,
+bearbeitet, testet und aktiviert sie. Das Formular führt in drei Abschnitten:
+
+1. **Endpunkt.** Eine Vorlage füllt die Basis-Adresse:
+
+   | Vorlage | Basis-Adresse | Wann |
+   |---|---|---|
+   | Ollama auf diesem Rechner | `http://host.docker.internal:11434/v1` | OPAA läuft im Container, Ollama direkt auf demselben Rechner |
+   | Ollama im Compose-Stack | `http://ollama:11434/v1` | der `ollama`-Service des Compose-Stacks (nächster Abschnitt) |
+   | OpenAI | `https://api.openai.com/v1` | Modelle von OpenAI, nur mit Zugangsschlüssel |
+   | Eigene Adresse | frei | vLLM, LiteLLM, Azure und jeder andere openai-kompatible Server |
+
+   Läuft das Backend ohne Container (etwa `./gradlew bootRun`), ist Ollama auf demselben Rechner
+   unter `http://localhost:11434/v1` erreichbar, also über „Eigene Adresse". Der Zugangsschlüssel
+   ist optional; er wird verschlüsselt gespeichert und nie wieder angezeigt.
+2. **Modell.** „Modelle abrufen" (oder Enter im Adressfeld) fragt den Endpunkt nach seinen Modellen
+   (`GET {Basis-Adresse}/models`). Die beiden Ollama-Vorlagen tun das bei der Wahl sofort, weil
+   Ollama keinen Schlüssel braucht. Die Modell-Kennung ist danach eine durchsuchbare Auswahl. Erkennt
+   OPAA hinter einer Adresse auf `/v1` ein Ollama, zeigt jede Zeile zusätzlich Parameterzahl, Größe,
+   Kontextlänge und Fähigkeiten (Werkzeuge, Bilder, Denkmodus), gelesen über Ollamas eigene
+   Schnittstelle (`/api/tags`, `/api/show`) auf derselben Adresse. Andere Server liefern meist nur die
+   Kennungen; eine Kontextlänge übernimmt OPAA, wenn der Server sie in der Liste mitschickt.
+   Reine Einbettungsmodelle stehen in einer eigenen Gruppe „Nicht für den Chat geeignet" und sind nicht
+   wählbar. Eine Kennung lässt sich immer auch von Hand eintragen.
+3. **Anzeige und Antwort.** Die Wahl eines Modells belegt den Anzeigenamen mit der Kennung (ohne
+   `:latest` und ohne Anbieterpfad) und die maximale Antwortlänge mit einem Viertel des
+   Kontextfensters, mindestens 256 und höchstens 8.192 Token. Den Rest des Fensters brauchen Frage,
+   Gesprächsverlauf und gefundene Textstellen. Was von Hand eingetragen wurde, überschreibt die
+   Vorbelegung nicht.
+
+Nach der Wahl eines Modells läuft der Verbindungstest automatisch; „Verbindung testen" wiederholt
+ihn jederzeit. Kann der Endpunkt keine Liste liefern, nennt das Formular den Grund und bleibt von
+Hand bedienbar:
+
+| Meldung | Bedeutung |
+|---|---|
+| Host nicht gefunden, Verbindung abgelehnt, Zeitlimit, Zertifikat | Der Endpunkt ist von OPAA aus nicht erreichbar. Aus dem Backend-Container heraus zählt dessen Netz, nicht das des Browsers. |
+| Zugangsschlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht. |
+| keine Modellliste | Der Server antwortet, bietet `/models` aber nicht an. Die Kennung von Hand eintragen. |
+| Der Endpunkt meldet keine Modelle | Die Liste ist leer, bei Ollama ist noch kein Modell geladen (`ollama pull …`). |
+| Umleitung, anderer HTTP-Status, Liste zu groß | Der Server antwortet unerwartet. Umleitungen folgt OPAA nicht; die Zieladresse direkt eintragen. |
+
+Wie beim Verbindungstest gilt beim Bearbeiten: Ohne neu eingetragenen Schlüssel nutzt OPAA den
+gespeicherten, aber nur für eine Adresse mit demselben Ursprung (Schema, Host, Port) wie die
+gespeicherte. Bei einer anderen Adresse lehnt OPAA die Anfrage ab, statt den Schlüssel dorthin zu
+senden; dann den Schlüssel neu eintragen. Eine Adresse mit Anmeldedaten
+(`https://benutzer:passwort@host`) wird abgelehnt. Abfrage und Ollama-Details haben eine kurze
+Zeitgrenze und eine Größengrenze, damit ein langsamer Endpunkt das Formular nicht aufhält.
+
 ### Lokal betriebenes Ollama im Compose-Stack
 
 Der Compose-Stack (`docker-compose.yml`) enthält einen optionalen `ollama`-Service unter dem
