@@ -99,7 +99,7 @@ class DropboxFileStoreContractTest extends FileStoreChangeFeedContract {
 
     @Override
     public String filePath(int container, String name) {
-      return DropboxFileStore.OPEN_PREFIX + path(container, name).toLowerCase(Locale.ROOT);
+      return DropboxFileStore.IDENTITY_PREFIX + path(container, name).toLowerCase(Locale.ROOT);
     }
 
     @Override

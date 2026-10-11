@@ -162,11 +162,16 @@ export default function DropboxSourceForm({
               id={`${idPrefix}-team-space`}
               checked={values.teamSpace}
               onChange={(e) => onChange({ teamSpace: e.target.checked })}
+              slotProps={{ input: { 'aria-describedby': `${idPrefix}-team-space-help` } }}
             />
           }
           label="Team-Bereich lesen"
         />
-        <Typography variant="body2" sx={{ mt: -1, color: 'text.secondary' }}>
+        <Typography
+          id={`${idPrefix}-team-space-help`}
+          variant="body2"
+          sx={{ mt: -1, color: 'text.secondary' }}
+        >
           Aus: die Ordner des verbundenen Kontos. An: die Ordner des Team-Bereichs, wenn das Konto
           zu einem Dropbox-Team gehört.
         </Typography>

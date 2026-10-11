@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.dropbox;
 
+import io.opaa.indexing.filesync.AbsenceProof;
 import io.opaa.indexing.filesync.Change;
 import io.opaa.indexing.filesync.ChangeFeed;
 import io.opaa.indexing.filesync.ChangePage;
@@ -35,8 +36,18 @@ import tools.jackson.databind.JsonNode;
  */
 final class DropboxFileStore implements FileStore, ChangeFeed {
 
-  /** The document identity: the web address of the file in the account's Dropbox. */
-  static final String OPEN_PREFIX = "https://www.dropbox.com/home";
+  /**
+   * The prefix of a document identity, followed by the file's lower-case path; no address a reader
+   * opens, since Dropbox documents no stable web address for a path.
+   */
+  static final String IDENTITY_PREFIX = "dropbox:";
+
+  /**
+   * The cursor of a folder Dropbox refused at the start of a full sync. It is never sent: reading
+   * it expires the stream, so the round proves no absence through it and the next run is a full
+   * sync.
+   */
+  static final String UNREACHABLE_AT_START = "~unreachable";
 
   static final String NOT_DOWNLOADABLE_NOTE =
       " Dateien übersprungen, die Dropbox weder herausgibt noch exportiert";
@@ -178,6 +189,7 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
       args.put("recursive", true);
       args.put("include_deleted", true);
       args.put("include_non_downloadable_files", true);
+      args.put("limit", pageSize);
       String cursor = text(api.rpc("files/list_folder/get_latest_cursor", args), "cursor");
       if (cursor == null) {
         throw new FileAccessException.RunEnding(
@@ -185,6 +197,12 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
       }
       return cursor;
     } catch (DropboxApiException e) {
+      if (e.kind() == DropboxApiException.Kind.NOT_FOUND
+          || e.kind() == DropboxApiException.Kind.CONFLICT
+          || e.kind() == DropboxApiException.Kind.FORBIDDEN) {
+        // the listing names the folder unreachable; the run goes on without a finding there
+        return UNREACHABLE_AT_START;
+      }
       throw e.kind() == DropboxApiException.Kind.UNAUTHORIZED
           ? new FileAccessException.CredentialsRejected(e.getMessage())
           : new FileAccessException.RunEnding(e.getMessage());
@@ -197,6 +215,12 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
     String folder = foldersByKey.get(feedKey);
     if (folder == null) {
       throw new IllegalArgumentException("no folder " + feedKey);
+    }
+    if (UNREACHABLE_AT_START.equals(cursor)) {
+      throw new FileAccessException.CursorExpired(
+          "Der Ordner „"
+              + folder
+              + "“ war beim Beginn des letzten Vollabgleichs nicht erreichbar.");
     }
     List<Change> changes = new ArrayList<>();
     boolean structure = false;
@@ -218,8 +242,8 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
               structure = true;
               continue;
             }
-            changes.add(new Change.Removed(OPEN_PREFIX + pathLower));
-            if (!wasFile(pathLower)) {
+            changes.add(new Change.Removed(IDENTITY_PREFIX + pathLower));
+            if (!structure && !wasFile(pathLower)) {
               structure = true;
             }
           }
@@ -267,6 +291,12 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
       }
       throw e;
     }
+  }
+
+  /** The identity is the path: a file met nowhere in a round over several runs is gone. */
+  @Override
+  public AbsenceProof absenceProof() {
+    return AbsenceProof.LOCATION_IDENTITY;
   }
 
   @Override
@@ -392,7 +422,7 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
     return new FileEntry(
         new FileContainer(folder),
         id,
-        OPEN_PREFIX + pathLower,
+        IDENTITY_PREFIX + pathLower,
         fileName,
         SourceFolderPath.capped(segments),
         new SourceDocumentContext(

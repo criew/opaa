@@ -77,6 +77,7 @@ final class FakeDropboxServer implements AutoCloseable {
   private final Set<String> deniedListing = ConcurrentHashMap.newKeySet();
   private final Set<String> deniedReading = ConcurrentHashMap.newKeySet();
   private final AtomicInteger throttles = new AtomicInteger();
+  private final AtomicInteger brokenDownloads = new AtomicInteger();
   private volatile String acceptedToken = TOKEN;
   private volatile String alsoAcceptedToken = TOKEN;
   private volatile boolean cursorsExpired;
@@ -180,6 +181,10 @@ final class FakeDropboxServer implements AutoCloseable {
     for (String key : List.copyOf(tree.keySet())) {
       if (key.equals(fromLower) || key.startsWith(fromLower + "/")) {
         Item item = tree.remove(key);
+        if (!item.folder) {
+          // a moved file keeps its revisions under the old path, as Dropbox reports them
+          deletedFiles.computeIfAbsent(HOME, root -> ConcurrentHashMap.newKeySet()).add(key);
+        }
         item.pathDisplay = to + item.pathDisplay.substring(from.length());
         moved.add(item);
       }
@@ -226,6 +231,11 @@ final class FakeDropboxServer implements AutoCloseable {
   /** The next {@code times} requests are answered {@code 429} with {@code Retry-After: 1}. */
   void throttleNext(int times) {
     throttles.set(times);
+  }
+
+  /** The next download breaks off after its first bytes, as a dropped connection does. */
+  void breakNextDownload() {
+    brokenDownloads.set(1);
   }
 
   @Override
@@ -290,10 +300,11 @@ final class FakeDropboxServer implements AutoCloseable {
                 args.get("limit") == null ? 2000 : args.get("limit").asInt());
         case "files/list_folder/continue" -> continueListing(exchange, text(args, "cursor"));
         case "files/list_folder/get_latest_cursor" ->
-            json(
+            latestCursor(
                 exchange,
-                200,
-                Map.of("cursor", cursor("c", root, lower(text(args, "path")), seq.get(), 2000)));
+                root,
+                text(args, "path"),
+                args.get("limit") == null ? 2000 : args.get("limit").asInt());
         case "files/list_revisions" -> revisions(exchange, root, text(args, "path"));
         case "files/download" -> download(exchange, root, text(args, "path"), false);
         case "files/export" -> download(exchange, root, text(args, "path"), true);
@@ -349,6 +360,24 @@ final class FakeDropboxServer implements AutoCloseable {
       return;
     }
     page(exchange, cursor("l", root, folder, 0, limit) + (recursive ? "" : "|flat"));
+  }
+
+  /** As Dropbox answers: a missing folder is {@code path/not_found}, a denied one restricted. */
+  private void latestCursor(HttpExchange exchange, String root, String path, int limit)
+      throws IOException {
+    String folder = lower(path);
+    if (!folder.isEmpty()) {
+      Item item = roots.get(root).get(folder);
+      if (item == null || !item.folder) {
+        notFound(exchange, "path");
+        return;
+      }
+    }
+    if (denied(deniedListing, folder)) {
+      json(exchange, 409, Map.of("error_summary", "path/restricted_content/..."));
+      return;
+    }
+    json(exchange, 200, Map.of("cursor", cursor("c", root, folder, seq.get(), limit)));
   }
 
   private void continueListing(HttpExchange exchange, String cursor) throws IOException {
@@ -484,6 +513,12 @@ final class FakeDropboxServer implements AutoCloseable {
     }
     // as Dropbox does: a header carries ASCII only
     exchange.getResponseHeaders().add("Dropbox-API-Result", DropboxApi.asciiJson(meta(item)));
+    if (brokenDownloads.getAndUpdate(left -> Math.max(0, left - 1)) > 0) {
+      exchange.sendResponseHeaders(200, item.content.length + 100L);
+      exchange.getResponseBody().write(item.content);
+      exchange.getResponseBody().flush();
+      return;
+    }
     exchange.sendResponseHeaders(200, item.content.length == 0 ? -1 : item.content.length);
     try (OutputStream out = exchange.getResponseBody()) {
       out.write(item.content);

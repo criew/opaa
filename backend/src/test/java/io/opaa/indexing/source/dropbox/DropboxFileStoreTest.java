@@ -12,6 +12,7 @@ import io.opaa.indexing.filesync.FileAccessException;
 import io.opaa.indexing.filesync.FileContainer;
 import io.opaa.indexing.filesync.FileEntry;
 import io.opaa.indexing.filesync.FilePage;
+import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.source.ConnectorData;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -45,6 +46,77 @@ class DropboxFileStoreTest {
     server.close();
   }
 
+  /**
+   * Regression guard: Dropbox answers the start cursor of a missing folder with {@code 409
+   * path/not_found}; the full sync still lists the other folder and removes nothing.
+   */
+  @Test
+  void aFullSyncWithOneOfTwoFoldersGoneListsTheOtherAndRemovesNothing() throws Exception {
+    server.file("/Akten/a.txt", "A.");
+    server.file("/Projekte/p.txt", "P.");
+    FileSyncHarness harness = new FileSyncHarness();
+    harness.fullSync(store("/Akten", "/Projekte"));
+
+    server.remove("/Projekte");
+    server.file("/Akten/b.txt", "B.");
+    FileSyncHarness.Run run = harness.fullSync(store("/Akten", "/Projekte"));
+
+    assertThat(run.failure()).isNull();
+    assertThat(run.ingested()).containsExactly(DropboxFileStore.IDENTITY_PREFIX + "/akten/b.txt");
+    assertThat(run.unlistedContainerKeys()).containsExactly("/Projekte");
+    assertThat(harness.storedPaths())
+        .contains(DropboxFileStore.IDENTITY_PREFIX + "/projekte/p.txt");
+  }
+
+  /**
+   * The identity is the path: a full sync the budget splits over two runs completes in the second,
+   * which lists the open folder first and holds no new start cursor, and removes a file gone from
+   * the first folder meanwhile.
+   */
+  @Test
+  void aFullSyncOverTwoRunsCompletesAndRemovesWhatIsGone() throws Exception {
+    server.file("/Akten/a.txt", "A.");
+    server.file("/Akten/weg.txt", "Weg.");
+    server.file("/Projekte/p.txt", "P.");
+    FileSyncHarness harness = new FileSyncHarness();
+    harness.fullSync(store("/Akten", "/Projekte"));
+
+    // two start cursors, then reachability and listing of /Akten; nothing changed to download
+    FileSyncHarness.Run first = harness.fullSync(budgeted(4, "/Akten", "/Projekte"));
+    server.remove("/Akten/weg.txt");
+    server.requests().clear();
+    FileSyncHarness.Run second = harness.fullSync(budgeted(4, "/Akten", "/Projekte"));
+
+    assertThat(first.listingComplete()).isNotEqualTo(Boolean.TRUE);
+    assertThat(second.failure()).isNull();
+    assertThat(server.requests()).doesNotContain("files/list_folder/get_latest_cursor");
+    assertThat(second.listingComplete()).isTrue();
+    assertThat(harness.storedPaths())
+        .containsExactlyInAnyOrder(
+            DropboxFileStore.IDENTITY_PREFIX + "/akten/a.txt",
+            DropboxFileStore.IDENTITY_PREFIX + "/projekte/p.txt");
+  }
+
+  /** Handbook, section 5: a renamed file is a removal and a new file, still a change run. */
+  @Test
+  void aRenamedFileIsARemovalAndANewFileWithoutAFullSync() throws Exception {
+    server.file("/Akten/alt.txt", "Text.");
+    DropboxFileStore store = store("/Akten");
+    ChangeFeed feed = store.changes().orElseThrow();
+    String start = feed.startCursor(feed.feedKey(AKTEN));
+
+    server.move("/Akten/alt.txt", "/Akten/neu.txt");
+    ChangePage page = feed.read(feed.feedKey(AKTEN), start);
+
+    assertThat(page.fullSyncNeeded()).isFalse();
+    assertThat(page.changes())
+        .contains(new Change.Removed(DropboxFileStore.IDENTITY_PREFIX + "/akten/alt.txt"));
+    assertThat(page.changes())
+        .filteredOn(Change.Updated.class::isInstance)
+        .map(change -> ((Change.Updated) change).entry().filePath())
+        .containsExactly(DropboxFileStore.IDENTITY_PREFIX + "/akten/neu.txt");
+  }
+
   @Test
   void aDeletedFolderIsAChangeOfStructureAndADeletedFileIsNot() throws Exception {
     server.file("/Akten/2025/alt.txt", "Alt.");
@@ -61,7 +133,7 @@ class DropboxFileStoreTest {
     ChangePage folderGone = feed.read(feed.feedKey(AKTEN), fileGone.newStart());
 
     assertThat(fileGone.changes())
-        .containsExactly(new Change.Removed(DropboxFileStore.OPEN_PREFIX + "/akten/neu.txt"));
+        .containsExactly(new Change.Removed(DropboxFileStore.IDENTITY_PREFIX + "/akten/neu.txt"));
     assertThat(fileGone.fullSyncNeeded()).isFalse();
     assertThat(folderGone.fullSyncNeeded()).as("Dropbox names no file below it").isTrue();
   }
@@ -80,7 +152,7 @@ class DropboxFileStoreTest {
     assertThat(page.changes())
         .filteredOn(Change.Updated.class::isInstance)
         .map(change -> ((Change.Updated) change).entry().filePath())
-        .containsExactly(DropboxFileStore.OPEN_PREFIX + "/akten/neu/brief.txt");
+        .containsExactly(DropboxFileStore.IDENTITY_PREFIX + "/akten/neu/brief.txt");
   }
 
   @Test
@@ -112,7 +184,7 @@ class DropboxFileStoreTest {
     assertThat(single.folder().segments()).containsExactly("2026", "März");
     assertThat(single.context().hierarchyPath()).isEqualTo("2026 / März".replace(" / ", sep()));
     assertThat(single.filePath())
-        .isEqualTo(DropboxFileStore.OPEN_PREFIX + "/akten/2026/märz/bescheid.txt");
+        .isEqualTo(DropboxFileStore.IDENTITY_PREFIX + "/akten/2026/märz/bescheid.txt");
     assertThat(several.folder().segments()).containsExactly("Akten", "2026", "März");
   }
 
@@ -174,6 +246,22 @@ class DropboxFileStoreTest {
         DropboxFileStoreContractTest.api(server, FakeDropboxServer.TOKEN),
         DropboxSettings.read(ConnectorData.of(Map.of("folders", List.of(folders)))),
         2);
+  }
+
+  private DropboxFileStore budgeted(int requests, String... folders) {
+    DropboxApi api =
+        new DropboxApiFactory(
+                DropboxProperties.at(server.base()),
+                io.opaa.security.TargetAddressValidator.disabled(),
+                wait -> {})
+            .open(
+                new io.opaa.indexing.source.SourceSettings(
+                    null, server.base().toString(), null, null, false, null),
+                () -> FakeDropboxServer.TOKEN,
+                new io.opaa.indexing.source.RequestBudget(
+                    new io.opaa.sourceaccess.SourceRequestMeter(), requests, null));
+    return new DropboxFileStore(
+        api, DropboxSettings.read(ConnectorData.of(Map.of("folders", List.of(folders)))), 2);
   }
 
   private DropboxFileStore teamStore(String folder) {

@@ -88,6 +88,7 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
     this.apiBase = properties.apiBase().toString();
     this.descriptor =
         SourceConnectorDescriptor.remoteRun(TYPE, "Dropbox")
+            .withoutDeepLink()
             .withFullSyncInterval(properties.fullSyncInterval())
             .withProfiles(
                 ProfileDeclaration.of(
@@ -396,10 +397,12 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
       Document document, KnowledgeLibrary library, SourceSettings settings) {
     String filePath = document.getFilePath();
     String token = tokenOf(settings);
-    if (filePath == null || !filePath.startsWith(DropboxFileStore.OPEN_PREFIX) || token == null) {
+    if (filePath == null
+        || !filePath.startsWith(DropboxFileStore.IDENTITY_PREFIX)
+        || token == null) {
       return Optional.empty();
     }
-    String pathLower = filePath.substring(DropboxFileStore.OPEN_PREFIX.length());
+    String pathLower = filePath.substring(DropboxFileStore.IDENTITY_PREFIX.length());
     DropboxSettings dropboxSettings;
     try {
       dropboxSettings = DropboxSettings.stored(settings.connectorSettings());

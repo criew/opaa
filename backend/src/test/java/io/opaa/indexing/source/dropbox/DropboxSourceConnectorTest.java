@@ -75,6 +75,7 @@ class DropboxSourceConnectorTest {
     var descriptor = new DropboxSourceConnector(apisOn(null), syncState).descriptor();
 
     assertThat(descriptor.type().key()).isEqualTo("DROPBOX");
+    assertThat(descriptor.deepLink()).as("Dropbox documents no web address for a path").isFalse();
     assertThat(descriptor.profileDeclaration().support())
         .isEqualTo(ConnectionProfileSupport.REQUIRED);
     assertThat(descriptor.profileDeclaration().address().fixed())
@@ -258,7 +259,7 @@ class DropboxSourceConnectorTest {
 
   private static Document document(String pathLower) {
     Document document = mock(Document.class);
-    when(document.getFilePath()).thenReturn(DropboxFileStore.OPEN_PREFIX + pathLower);
+    when(document.getFilePath()).thenReturn(DropboxFileStore.IDENTITY_PREFIX + pathLower);
     when(document.getFileName()).thenReturn("Bescheid.txt");
     when(document.getContentType()).thenReturn("text/plain");
     when(document.getId()).thenReturn(UUID.randomUUID());

@@ -40,9 +40,9 @@ was das verbundene Konto in den gewählten Ordnern sieht, unabhängig davon, wer
 sehen dürfte. Vertrauliche Ordner gehören deshalb in eine eigene Bibliothek mit passendem
 Leserkreis oder bleiben außerhalb der Auswahl.
 
-Ein Dokument ist über seinen Pfad in Kleinbuchstaben identifiziert
-(`https://www.dropbox.com/home/<pfad>`). Umbenennen und Verschieben machen aus der Datei deshalb
-ein neues Dokument; das alte wird entfernt (Abschnitt 5).
+Ein Dokument ist über seinen Pfad in Kleinbuchstaben identifiziert (`dropbox:<pfad>`). Umbenennen
+und Verschieben machen aus der Datei deshalb ein neues Dokument; das alte wird entfernt
+(Abschnitt 5). Einen Link in die Dropbox-Oberfläche hat ein Dokument nicht (Abschnitt 9).
 
 ## 2. Einrichtung bei Dropbox
 
@@ -165,8 +165,14 @@ Assistenten oder unter „Zeitplan bearbeiten“.
 - Ein Änderungslauf übernimmt den neuen Stand eines Stroms nur, wenn keine Datei vorübergehend
   scheiterte. Sonst liest der nächste Lauf dieselben Änderungen noch einmal; Unverändertes erkennt
   er am Änderungsmerkmal.
-- Eine Auflistung, die das Anfragebudget erschöpft, setzt der nächste Lauf nicht fort, sondern
-  beginnt sie neu (Abschnitt 13).
+- **Vollabgleich über mehrere Läufe:** Reicht `request-budget-per-run` nicht für alle Ordner,
+  endet der Lauf geordnet als „unvollständig, wird fortgesetzt“. Der nächste Lauf listet zuerst die
+  Ordner, die noch nicht gelistet sind, danach die schon gelisteten erneut, soweit das Budget
+  reicht. Sind alle Ordner einmal gelistet, ist der Abgleich fertig und entfernt, was keiner seiner
+  Läufe gesehen hat: Die Identität ist der Pfad, eine Datei an keinem gelisteten Pfad gibt es nicht
+  mehr. Ein einzelner Ordner wird dabei immer in einem Lauf ganz gelistet (Abschnitt 13).
+- War ein Ordner beim Beginn eines Vollabgleichs nicht erreichbar, hat sein Strom keinen Stand;
+  der nächste Lauf ist wieder ein Vollabgleich.
 
 ## 5. Löscherkennung, Umbenennen und Verschieben
 
@@ -204,7 +210,9 @@ Laden: Ändert sich nur das Merkmal, nicht der Inhalt, wird nichts neu verarbeit
 
 ## 9. Original öffnen
 
-„Original öffnen“ lädt die Datei über OPAA, mit der Zustimmung der Bibliothek und derselben
+Dropbox-Dokumente haben **keinen Link** in die Dropbox-Oberfläche: Dropbox nennt für einen Pfad
+keine verlässliche Web-Adresse. „Original öffnen“ lädt die Datei über OPAA, mit der Zustimmung der
+Bibliothek und derselben
 Größengrenze wie der Lauf, und nur aus einem Ordner, den die Bibliothek noch gewählt hat. Eine
 Datei, die Dropbox nicht mehr kennt, ist kein Original mehr.
 
@@ -214,8 +222,10 @@ Datei, die Dropbox nicht mehr kennt, ist kein Original mehr.
   Lauf geordnet als „unvollständig, wird fortgesetzt“.
 - Drosselt Dropbox (`429`), wartet OPAA so lange, wie Dropbox mit `Retry-After` verlangt, höchstens
   `max-retry-wait` je Wartezeit, und wiederholt bis zu `max-retries` Mal.
-- Ein Änderungslauf ohne Änderungen kostet eine Anfrage je Ordner und Protokollseite; ein
-  gelöschter Pfad kostet eine weitere (Abschnitt 5).
+- Ein Änderungslauf ohne Änderungen kostet zwei Anfragen je Ordner: die Prüfung der
+  Erreichbarkeit und eine Protokollseite. Mit Team-Bereich kommt je Lauf eine Abfrage des Kontos
+  hinzu. Jede weitere Protokollseite kostet eine Anfrage, ein gelöschter Pfad eine weitere, solange
+  der Strom noch keine Strukturänderung gemeldet hat (Abschnitt 5).
 
 ## 11. Protokoll
 
@@ -229,6 +239,7 @@ Datei, die Dropbox nicht mehr kennt, ist kein Original mehr.
 | Dropbox drosselt die Anfragen weiterhin | eine Anfrage scheiterte nach allen Wiederholungen; der Strom wird erneut gelesen |
 | Die Übertragung von Dropbox dauerte länger als … | Download über `download-timeout`; die Datei gilt als vorübergehend fehlgeschlagen |
 | Dropbox nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an. | Strom verworfen, nächster Lauf ist ein Vollabgleich |
+| Der Ordner „…“ war beim Beginn des letzten Vollabgleichs nicht erreichbar. | sein Strom hat keinen Stand; der nächste Lauf ist ein Vollabgleich |
 
 ## 12. Konfiguration
 
@@ -257,9 +268,10 @@ Die Obergrenze von fünfzig Ordnern je Bibliothek ist eine feste Konstante.
   - die Form der Meldungen bei gelöschten und verschobenen Ordnern im Änderungsprotokoll,
   - der Export von Paper-Dokumenten als Markdown,
   - der Team-Bereich über die Wurzel des Teams (`Dropbox-API-Path-Root`).
-- Eine Auflistung, die das Anfragebudget erschöpft, beginnt im nächsten Lauf von vorn. Ein Ordner
-  mit mehr Einträgen, als ein Lauf auflisten kann, kommt deshalb nie zum Ende; Abhilfe:
-  `request-budget-per-run` anheben oder die Ordner auf mehrere Bibliotheken verteilen.
+- Ein Ordner wird immer in einem Lauf ganz gelistet; einen Fortsetzungspunkt innerhalb eines
+  Ordners gibt es nicht. Ein Ordner mit mehr Einträgen, als ein Lauf auflisten kann, kommt deshalb
+  nie zum Ende, und jeder Lauf endet als „unvollständig, wird fortgesetzt“. Abhilfe:
+  `request-budget-per-run` anheben oder den Ordner in mehrere Ordner oder Bibliotheken aufteilen.
 - Umbenennen und Verschieben machen ein neues Dokument (Abschnitt 1); die Datei wird dabei neu
   geladen und verarbeitet.
 
@@ -270,4 +282,5 @@ Die Obergrenze von fünfzig Ordnern je Bibliothek ist eine feste Konstante.
 - **Persönliche Verbindung** (Besitzart Person, private Bibliotheken)
 - **Rechteübernahme** aus Dropbox
 - **Push-Benachrichtigungen** über Webhooks; der Änderungslauf im Zeitplan ersetzt sie
-- **Fortsetzen einer Auflistung** über mehrere Läufe
+- **Fortsetzungspunkt innerhalb eines Ordners**; über mehrere Läufe setzt ein Vollabgleich nur
+  ordnerweise fort (Abschnitt 4)

@@ -100,6 +100,9 @@ describe('DropboxSourceForm', () => {
     })
     renderWithProviders(<Harness />)
 
+    expect(screen.getByLabelText('Team-Bereich lesen')).toHaveAccessibleDescription(
+      /Ordner des Team-Bereichs/,
+    )
     await user.click(screen.getByLabelText('Team-Bereich lesen'))
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
