@@ -31,6 +31,15 @@ services:
       # requests (opaa.indexing.rss.request-delay-ms) is meant for a real, foreign feed operator -
       # against the suite's own rss-feed fixture service it only adds dead time to every run.
       OPAA_INDEXING_RSS_REQUEST_DELAY_MS: "0"
+      # The Dropbox connector talks to dropbox-stub instead of Dropbox. Only the consent page is
+      # opened by the browser, so it names the host port; every other address is the service name.
+      OPAA_INDEXING_DROPBOX_API_BASE: http://dropbox-stub:8090
+      OPAA_INDEXING_DROPBOX_CONTENT_BASE: http://dropbox-stub:8090
+      OPAA_INDEXING_DROPBOX_AUTHORIZATION_ENDPOINT: http://localhost:${OPAA_DROPBOX_STUB_PORT:-18091}/oauth2/authorize
+      OPAA_INDEXING_DROPBOX_TOKEN_ENDPOINT: http://dropbox-stub:8090/oauth2/token
+      OPAA_INDEXING_DROPBOX_REVOCATION_ENDPOINT: http://dropbox-stub:8090/2/auth/token/revoke
+      # The redirect address of a consent: the provider sends the browser back to the frontend.
+      OPAA_PUBLIC_BASE_URL: http://localhost:${OPAA_FRONTEND_PORT}
       # test(e2e) #471 is the first scenario to trigger POST .../indexing more than once (its own
       # unchanged-feed rerun, to prove a second run creates no new documents) - the default
       # io.opaa.ratelimit.RateLimitConfiguration limit of 1 request per library per 60s
@@ -70,7 +79,7 @@ services:
       # legitimate, operator-chosen fixture hosts for this suite ("nextcloud" is the real connector target of the private-library scenarios), not an attacker-reachable target -
       # exactly the case opaa.indexing.target-validation.allowlist exists for, mirroring how a real
       # deployment names its own trusted internal sources.
-      OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: rss-feed,ai-stub,nextcloud
+      OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: rss-feed,ai-stub,nextcloud,dropbox-stub
       # The E2E stack uses its own host ports (see run-e2e.mjs) so it can
       # run alongside a developer's own docker-compose.yml stack; the
       # allowed CORS origin must match the frontend's actual port.
@@ -191,3 +200,22 @@ services:
       timeout: 5s
       retries: 60
       start_period: 30s
+
+  # Stands in for Dropbox (OAuth consent, token endpoint, the API v2 routes of the connector) for
+  # the source-connect scenario; see e2e/dropbox-stub/server.mjs. Like ai-stub it is a script
+  # mounted into the stock node image. The browser reaches the consent page on the host port.
+  dropbox-stub:
+    image: node:24-alpine
+    working_dir: /app
+    volumes:
+      - ./e2e/dropbox-stub:/app:ro
+    command: ["node", "server.mjs"]
+    environment:
+      PORT: "8090"
+    ports:
+      - "127.0.0.1:${OPAA_DROPBOX_STUB_PORT:-18091}:8090"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8090/health"]
+      interval: 2s
+      timeout: 2s
+      retries: 10

@@ -247,6 +247,18 @@ Bereitstellungsschnittstelle und WebDAV an (`fixtures/nextcloud.ts`). Das Image 
 groß; die Installation beim ersten Start dauert etwa eine halbe Minute, die Szenarien warten
 darauf (`waitForNextcloud`).
 
+### Dropbox-Ersatzserver
+
+`dropbox-stub` (`e2e/dropbox-stub/server.mjs`, wie `ai-stub` ein Skript im Standard-`node`-Image)
+ersetzt Dropbox: die Zustimmungsseite (leitet sofort mit Code und `state` zurück), den
+Token-Endpunkt und die API-Routen, die der Konnektor braucht, über einen festen Ordner
+`/E2E-Ablage` mit einer Datei. Die Adressen kommen über `OPAA_INDEXING_DROPBOX_*` im Overlay; nur
+die Zustimmungsseite nennt den Host-Port (`OPAA_DROPBOX_STUB_PORT`, Vorgabe `18091`, als
+`E2E_DROPBOX_STUB_BASE_URL` durchgereicht), weil der Browser sie öffnet. Der Dienst steht in der
+Ausnahmeliste für Zieladressen, und `OPAA_PUBLIC_BASE_URL` ist gesetzt, damit die Rücksprungadresse
+auf das Frontend des Stacks zeigt. Ein eigener Dienst statt einer Erweiterung von `ai-stub`: Dessen
+Aufgabe ist das deterministische Modell, und die Dropbox-Routen haben damit nichts gemeinsam.
+
 ## Serialisierungs-Konvention
 
 `playwright.config.ts` setzt `fullyParallel: false` und `workers: 1`: alle Specs teilen sich einen
@@ -429,6 +441,18 @@ lassen.
   von 4 und 5. `afterAll` räumt auch nach einem Fehlschlag Bibliothek, Verbindung, Space, Zugang und
   Nextcloud-Konto ab. Szenario 6 (Dropbox, OAuth-Ersatzserver) fehlt noch: Es braucht den Konnektor
   aus \#2154.
+
+- `tests/dropbox-source-connect.spec.ts` (#2175, Szenario 6, Teil von Epic #2147) — „Quelle
+  verbinden“ mit dem Dropbox-Konnektor gegen den Ersatzserver `dropbox-stub` (siehe unten). `dev-admin`
+  wählt im Assistenten den Dropbox-Zugang (OAuth, Besitzart Bibliothek): „Quelle verbinden“ ohne
+  die Bestätigung „Ich verbinde ein Dienstkonto, kein persönliches Konto“ nennt den Grund und leitet
+  nicht weiter (der Ersatzserver zählt die Besuche der Zustimmungsseite, `GET /__state`); mit ihr
+  läuft die Zustimmung über den Anbieter und zurück, der Assistent nennt „Verbunden als …“, Ordner
+  laden, Verbindung testen und Anlegen folgen, und unter „Quelle → Quellverbindung“ steht die
+  Kontoadresse. Das zweite Szenario lässt den Lauf eine Datei aufnehmen und findet sie im Chat. Es
+  ist bis zur Behebung von #2480 rot: Das Änderungsmerkmal (`h:` plus 64 Zeichen Hash) passt nicht in
+  `documents.last_modified_remote`. Der Zugang entsteht über die API (`fixtures/dropbox.ts`),
+  `afterAll` räumt Bibliothek und Zugang ab.
 
 - `tests/llm-model-management.spec.ts` (#760, Teil von Epic #755) — die Modellverwaltung über den
   vollen Stack: ein Systemadministrator legt ein Chat-Modell ohne API-Schlüssel an, testet die
