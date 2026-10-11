@@ -184,10 +184,10 @@ interface ConnectionProfileFormDialogProps {
  * without profiles stay visible with their reason. Sign-ins, ownerships, the address field and one
  * field per declared default follow the type's description; a fixed address asks for nothing. An
  * edit sends every field back, so it waits for that description - without it the defaults would be
- * lost. A new profile is created without a preview. An edit that may reach the libraries on the profile
- * shows its preview first - how many, which ones their connector refuses, what saving discards -
- * and saves only on a second click; a change that discards anything asks once more with the
- * server's own question.
+ * lost. A new profile is created without a preview. An edit that may reach the libraries on the
+ * profile shows its preview first - how many, which ones their connector refuses, what saving
+ * discards - and saves only on a second click; a change that discards anything asks once more with
+ * the server's own question.
  */
 export default function ConnectionProfileFormDialog({
   open,

@@ -521,6 +521,11 @@ public enum AuditEventType {
    */
   CONNECTOR_PROFILE_OPTIONAL,
   /**
+   * Retired: the system administration resolved a connection profile request. No longer written;
+   * kept so older entries of the append-only audit log stay readable.
+   */
+  CONNECTION_PROFILE_REQUEST_RESOLVED,
+  /**
    * The system administration tested a profile's own sign-in; the outcome says whether it held, and
    * a success lifts a rejection. Never carries the message, the secret or the token.
    */

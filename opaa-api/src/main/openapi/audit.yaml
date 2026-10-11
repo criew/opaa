@@ -480,7 +480,9 @@ components:
 
     AuditEventType:
       type: string
-      description: Mirrors io.opaa.api.types.AuditEventType - the closed first-stage event list.
+      description: >
+        Mirrors io.opaa.api.types.AuditEventType - the closed first-stage event list.
+        CONNECTION_PROFILE_REQUEST_RESOLVED is retired: no longer written, kept for older entries.
       enum:
         [
           ASSET_GRANT_GRANTED,
@@ -610,6 +612,7 @@ components:
           CONNECTOR_UNLOCKED,
           CONNECTOR_PROFILE_REQUIRED,
           CONNECTOR_PROFILE_OPTIONAL,
+          CONNECTION_PROFILE_REQUEST_RESOLVED,
           CONNECTION_PROFILE_SIGN_IN_TESTED,
         ]
       example: ASSET_GRANT_REVOKED
