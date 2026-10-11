@@ -1,4 +1,4 @@
-import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from 'react'
+import { useId, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
@@ -45,6 +45,9 @@ interface MultipleProps<K extends string> extends CommonProps<K> {
 export type ChoiceTileGroupProps<K extends string> = SingleProps<K> | MultipleProps<K>
 
 const TILE_ATTRIBUTE = 'data-choice-tile'
+/** The tile icons' size and their gap to the text; the locked reason aligns with the label. */
+const ICON_SIZE_PX = 22
+const ICON_GAP_PX = 12
 
 /**
  * The tile choice with icon (guidelines 5.11). A single choice is a `radiogroup` with one tab stop:
@@ -53,6 +56,7 @@ const TILE_ATTRIBUTE = 'data-choice-tile'
  */
 export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroupProps<K>) {
   const { tiles, columns = 2, readOnly = false } = props
+  const groupId = useId()
   const selectable = tiles.filter((tile) => !tile.disabledReason).map((tile) => tile.value)
 
   const isSelected = (value: K) =>
@@ -116,7 +120,15 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
         const selected = isSelected(tile.value)
         const locked = Boolean(tile.disabledReason)
         const inert = locked || readOnly
-        return (
+        const reasonId = `${groupId}-${tile.value}-reason`
+        const card = {
+          p: 2,
+          pr: 4.5,
+          border: selected ? 2 : 1,
+          borderColor: selected ? 'primary.main' : 'divider',
+          borderRadius: '10px',
+        }
+        const control = (
           <Box
             key={tile.value}
             component="button"
@@ -126,6 +138,7 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
             aria-checked={selected}
             aria-disabled={locked || tile.busy || undefined}
             aria-readonly={readOnly || undefined}
+            aria-describedby={locked ? reasonId : undefined}
             disabled={locked}
             // A radio group has exactly one tab stop (roving tabindex); a checkbox group one per tile.
             tabIndex={props.multiple ? 0 : tile.value === tabStop ? 0 : -1}
@@ -136,17 +149,14 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
               position: 'relative',
               display: 'flex',
               alignItems: 'flex-start',
-              gap: '12px',
+              gap: `${ICON_GAP_PX}px`,
               textAlign: 'left',
               font: 'inherit',
               cursor: locked ? 'not-allowed' : readOnly ? 'default' : 'pointer',
               opacity: locked ? 0.6 : 1,
-              p: 2,
-              pr: 4.5,
-              border: selected ? 2 : 1,
-              borderColor: selected ? 'primary.main' : 'divider',
-              borderRadius: '10px',
               color: 'text.primary',
+              // A locked tile's card is the wrapper below, which also holds the reason.
+              ...(locked ? { p: 0, border: 0, width: '100%' } : card),
               bgcolor: selected
                 ? (theme) =>
                     theme.palette.mode === 'dark'
@@ -158,7 +168,10 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
                 : { borderColor: selected ? 'primary.main' : 'text.disabled' },
             }}
           >
-            <Box aria-hidden sx={{ display: 'flex', color: 'text.secondary', mt: '2px' }}>
+            <Box
+              aria-hidden
+              sx={{ display: 'flex', color: 'text.secondary', mt: '2px', minWidth: ICON_SIZE_PX }}
+            >
               {tile.icon}
             </Box>
             <Box>
@@ -166,11 +179,6 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
               {tile.description && (
                 <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 0.25 }}>
                   {tile.description}
-                </Typography>
-              )}
-              {tile.disabledReason && (
-                <Typography sx={{ fontSize: 12.5, color: 'warning.main', mt: 0.5 }}>
-                  {tile.disabledReason}
                 </Typography>
               )}
             </Box>
@@ -187,6 +195,25 @@ export default function ChoiceTileGroup<K extends string>(props: ChoiceTileGroup
                 }}
               />
             )}
+          </Box>
+        )
+        if (!locked) return control
+        // The reason is information, not part of the inactive control: outside it, undimmed, and
+        // therefore held to the text contrast threshold (guidelines 2.4).
+        return (
+          <Box key={tile.value} sx={{ ...card, cursor: 'not-allowed' }}>
+            {control}
+            <Typography
+              id={reasonId}
+              sx={{
+                fontSize: 12.5,
+                color: 'warning.main',
+                mt: 0.5,
+                pl: `${ICON_SIZE_PX + ICON_GAP_PX}px`,
+              }}
+            >
+              {tile.disabledReason}
+            </Typography>
           </Box>
         )
       })}

@@ -32,10 +32,8 @@ interface StatusLineProps {
 /**
  * Ein Zustand als Zeile (#1608): farbiger Punkt, Satz, darunter der Grund — **keine Statuskarte**.
  *
- * Die Farbe steht im Punkt, nie im Text: `warning.main` als Fließtext misst auf heller Fläche rund
- * 1,8:1 und unterschreitet damit 4,5:1 (dieselbe Hausregel wie in SourceEvidenceDrawer, ChatInput
- * und der Kontenliste). Der Punkt ist dekorativ und für Screenreader ausgeblendet — die Aussage
- * steht vollständig im Wort.
+ * Die Farbe steht im Punkt, nie im Text (Gestaltungsleitlinien 5.10). Der Punkt ist dekorativ und
+ * für Screenreader ausgeblendet — die Aussage steht vollständig im Wort.
  */
 export default function StatusLine({
   headline,

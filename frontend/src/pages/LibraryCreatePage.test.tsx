@@ -240,7 +240,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       const upload = await screen.findByRole('radio', { name: /Upload/ })
       expect(upload).toBeDisabled()
-      expect(upload).toHaveTextContent(capabilityMissingMessage('CREATE_LIBRARY'))
+      expect(upload).toHaveAccessibleDescription(capabilityMissingMessage('CREATE_LIBRARY'))
       expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
     })
 
@@ -266,7 +266,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
 
       const rss = await screen.findByRole('radio', { name: /RSS-Feed/ })
       expect(rss).toBeDisabled()
-      expect(rss).toHaveTextContent(notice)
+      expect(rss).toHaveAccessibleDescription(notice)
       expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
     })
 

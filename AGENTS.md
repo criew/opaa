@@ -192,6 +192,10 @@ In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z.
 
 **Jeder Workflow bindet seine Actions über den vollen Commit-SHA ein**, mit exakter Version als Kommentar (`uses: docker/login-action@<40-stelliger SHA> # v4.6.0`), nie über einen Tag wie `@v7`. Wie man den SHA ermittelt und im Review prüft, steht in [docs/renovate.md](docs/renovate.md#actions-per-commit-sha); `.github/scripts/check_action_pins.sh` prüft jede Datei unter `.github/workflows/` in der CI, ein neuer Workflow ist ohne Liste erfasst. Release-Builds in `publish-images.yml` lesen und schreiben keinen gha-Cache; wer das ändert, liest vorher dort den Abschnitt „Sicherheitsmodell des gha-Caches“.
 
+### Farben und Kontrast
+
+Farben im Frontend kommen nur aus den Rollen in `frontend/src/theme/tokens.ts`. Text — auch in Hinweis-, Warn- und Statusfarben — erreicht mindestens 4,5:1 gegen seine Fläche (große Schrift 3:1), im hellen und im dunklen Farbschema; Regeln und Werte stehen in den [Gestaltungsleitlinien, Abschnitt 2.4](docs/design/guidelines.md#24-kontrast).
+
 ### Commit-Nachrichten
 
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) verwenden:
