@@ -367,9 +367,10 @@ paths:
 
         A protected group is not findable by search: it matches only when the query is its
         complete name (ADR-0036, Entscheidung 9), and it then carries no member count at all.
-        An ineffective group - dissolved, provider switched off, or a token group its provider no
-        longer maintains - is returned with selectable = false and the flag naming the reason, so
-        the selection can show it as not choosable instead of silently dropping it.
+        An ineffective group - dissolved, provider switched off, a token group its provider no
+        longer maintains, or an internal group deactivated for the time being - is returned with
+        selectable = false and the flag naming the reason, so the selection can show it as not
+        choosable instead of silently dropping it.
 
         Requires query (min. 2 characters, matched case-insensitively against the name and the
         source path) and caps the result at 20 rows, the same shape as GET /api/v1/users. The
@@ -516,6 +517,85 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/groups/{groupId}/deactivation:
+    parameters:
+      - name: groupId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+
+    get:
+      operationId: getGroupDeactivationPreview
+      tags: [group]
+      summary: What deactivating an internal group would affect, counted
+      description: >
+        The figures the confirmation shows before an internal group is deactivated or reactivated
+        (ADR-0036, Entscheidung 14): how many grants on how many objects, how many space
+        memberships in how many spaces, how many creation rights and how many active accounts stop
+        or start taking effect - and, while the group may not be deactivated, the reason. Counts
+        only, never a member's name, so reading them is no audit event. Readable by the group's
+        stewards and the system administration; anybody else gets 404 like for an unknown group.
+      responses:
+        "200":
+          description: The counted consequences
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupDeactivationPreviewResponse"
+        "400":
+          description: The group comes from a provider; only internal groups are deactivated here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+    put:
+      operationId: setGroupDeactivation
+      tags: [group]
+      summary: Deactivate an internal group for the time being, or reactivate it
+      description: >
+        While deactivated an internal group takes effect for nobody: its grants, space
+        memberships and creation rights reach none of its members, and it is no new grant target
+        (ADR-0036, Entscheidung 14). Everything stays stored - reactivating restores exactly the
+        previous state without a further decision. Independent of releasedForUse. Takes effect
+        at once, without a new sign-in. Recorded as GROUP_DEACTIVATED or GROUP_REACTIVATED.
+        Decided by the group's stewards and the system administration, for a protected group as
+        for any other; anybody else gets 404.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GroupDeactivationRequest"
+      responses:
+        "200":
+          description: State changed (or already as requested)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GroupResponse"
+        "400":
+          description: The group comes from a provider; only internal groups are deactivated here.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The group may not be deactivated: it is the only owner of at least one asset, or the
+            last capable ADMIN member of a space. The message names how many objects are in the
+            way.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /api/v1/admin/groups:
     get:
       operationId: listGroups
@@ -586,7 +666,8 @@ paths:
             default: name
           description: >
             origin puts internal groups first, then the providers by name; state puts what needs a
-            decision first (dissolved, provider disabled, unmaintained, not released, active).
+            decision first (dissolved, provider disabled, unmaintained, deactivated, not released,
+            active).
             Anything else is refused with 400.
         - name: direction
           in: query
@@ -700,10 +781,12 @@ components:
         Whether a group is in effect, in the order that decides when several apply
         (ADR-0036 Entscheidungen 2 and 3). DISSOLVED - the source no longer reports it;
         PROVIDER_DISABLED - its identity provider is disabled; UNMAINTAINED - a token group of a
-        provider that now delivers its groups through the directory sync; NOT_RELEASED - an
-        internal group not yet released for use; ACTIVE otherwise. Existing grants stay in every
-        state; only an ACTIVE group is a new grant target.
-      enum: [ACTIVE, NOT_RELEASED, UNMAINTAINED, PROVIDER_DISABLED, DISSOLVED]
+        provider that now delivers its groups through the directory sync; DEACTIVATED - an
+        internal group deactivated for the time being, which takes effect for nobody (ADR-0036,
+        Entscheidung 14); NOT_RELEASED - an internal group not yet released for use; ACTIVE
+        otherwise. Existing grants stay stored in every state and take effect in every state but
+        DEACTIVATED; only an ACTIVE group is a new grant target for everybody.
+      enum: [ACTIVE, NOT_RELEASED, DEACTIVATED, UNMAINTAINED, PROVIDER_DISABLED, DISSOLVED]
       example: ACTIVE
 
     GroupPageResponse:
@@ -946,9 +1029,63 @@ components:
             bodies (ADR-0036, Entscheidung 9). Named protectedGroup rather than protected because
             the latter is a Java keyword and the generated DTO would have to escape it.
 
+    GroupDeactivationRequest:
+      type: object
+      required: [deactivated]
+      properties:
+        deactivated:
+          type: boolean
+          description: >
+            True deactivates the internal group for the time being, false reactivates it
+            (ADR-0036, Entscheidung 14).
+
+    GroupDeactivationPreviewResponse:
+      type: object
+      description: >
+        What deactivating (or, for a deactivated group, reactivating) this group affects -
+        counts only (ADR-0036, Entscheidung 14).
+      required:
+        [groupId, deactivated, assetGrants, grantedAssets, spaceMemberships, spaces, capabilities, activeMembers]
+      properties:
+        groupId:
+          type: string
+          format: uuid
+        deactivated:
+          type: boolean
+          description: Whether the group is deactivated right now.
+        assetGrants:
+          type: integer
+          description: Grants the group holds on libraries and other assets.
+          example: 4
+        grantedAssets:
+          type: integer
+          description: Across how many distinct assets those grants run.
+          example: 3
+        spaceMemberships:
+          type: integer
+          example: 1
+        spaces:
+          type: integer
+          example: 1
+        capabilities:
+          type: integer
+          description: Creation rights ("Anlegerechte") the group holds.
+          example: 0
+        activeMembers:
+          type: integer
+          description: How many active accounts the group's rights reach while it is in effect.
+          example: 12
+        blockedReason:
+          type: string
+          nullable: true
+          description: >
+            Why the group may not be deactivated right now - the same German sentence the 409 of
+            setGroupDeactivation carries. Null when nothing is in the way, and always null for a
+            deactivated group: reactivating is never refused.
+
     GroupListResponse:
       type: object
-      required: [id, name, kind, origin, state, memberCount, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, stewards]
+      required: [id, name, kind, origin, state, memberCount, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, deactivated, stewards]
       properties:
         id:
           type: string
@@ -997,6 +1134,18 @@ components:
             selectable with that reason (ADR-0036, Entscheidung 2). Always false for an internal
             group, which has no directory counterpart to disappear from.
           example: false
+        deactivated:
+          type: boolean
+          description: >
+            Whether this internal group is deactivated for the time being: it takes effect for
+            nobody and is no new grant target, while everything it holds stays stored (ADR-0036,
+            Entscheidung 14). Always false for a group with a provider.
+          example: false
+        deactivatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the group is deactivated; null while it is not.
         releasedForUse:
           type: boolean
           description: >
@@ -1026,7 +1175,7 @@ components:
     SelectableGroupResponse:
       type: object
       required:
-        [id, origin, protectedGroup, selectable, dissolved, providerDisabled, unmaintained, smallGroup, emptyGroup]
+        [id, origin, protectedGroup, selectable, dissolved, providerDisabled, unmaintained, deactivated, smallGroup, emptyGroup]
       description: >
         One group as the Subjekt-Auswahl shows it (#1820, ADR-0036 Entscheidung 9): name, origin
         and the number of active accounts - never the members themselves. Everything a selection
@@ -1093,7 +1242,7 @@ components:
           type: boolean
           description: >
             False for a group that is no effective group - it may not become a new grant target or
-            a new space member, while the grants it already holds stay untouched. The three flags
+            a new space member, while the grants it already holds stay untouched. The four flags
             below name which of the reasons applies.
         dissolved:
           type: boolean
@@ -1105,10 +1254,15 @@ components:
           description: >
             A token group whose provider has since switched to the directory run: its membership
             is frozen, so it must not become a new grant target (ADR-0036, Entscheidung 3).
+        deactivated:
+          type: boolean
+          description: >
+            An internal group deactivated for the time being: it takes effect for nobody and must
+            not become a new grant target until it is reactivated (ADR-0036, Entscheidung 14).
 
     GroupResponse:
       type: object
-      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, stewards]
+      required: [id, name, kind, origin, memberCount, members, createdAt, updatedAt, releasedForUse, protectedGroup, dissolved, deactivated, stewards]
       properties:
         id:
           type: string
@@ -1162,6 +1316,18 @@ components:
             deletion. Its membership stays frozen and its grants keep working, but it is no
             effective group any more (ADR-0036, Entscheidung 2).
           example: false
+        deactivated:
+          type: boolean
+          description: >
+            Whether this internal group is deactivated for the time being: it takes effect for
+            nobody and is no new grant target, while everything it holds stays stored (ADR-0036,
+            Entscheidung 14). Always false for a group with a provider.
+          example: false
+        deactivatedAt:
+          type: string
+          format: date-time
+          nullable: true
+          description: Since when the group is deactivated; null while it is not.
         releasedForUse:
           type: boolean
           description: >
