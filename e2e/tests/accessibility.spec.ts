@@ -607,6 +607,47 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
   });
 
+  // #2504: die Anbindungen mit allen Reitern; die externen KI-Werkzeuge zusätzlich mit offenem
+  // Einstellungs-Panel, das eigene Abschnitte und eine Fußleiste mitbringt.
+  test("Verwaltungsbereich: Anbindungen in allen Reitern und beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    const tabs = [
+      ["access", "Zugänge", page.getByRole("button", { name: "Neuer Zugang" })],
+      ["source-types", "Quellarten", page.getByRole("table", { name: "Quellarten" })],
+      ["settings", "Einstellungen", page.getByRole("region", { name: "Verbindungsprotokoll" })],
+      [
+        "external-tools",
+        "Externe KI-Werkzeuge",
+        page.getByRole("region", { name: "Zustand des Zugriffswegs" }),
+      ],
+    ] as const;
+    for (const [tab, label, ready] of tabs) {
+      await page.goto(`/admin/connections/${tab}`);
+      await expect(page.getByRole("heading", { level: 1, name: "Anbindungen" })).toBeVisible();
+      await expect(ready).toBeVisible();
+      for (const scheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: scheme });
+        await expectNoSeriousA11yViolations(
+          page,
+          `Anbindungen, ${label} (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+        );
+      }
+    }
+
+    // Still on „Externe KI-Werkzeuge", the last tab of the loop.
+    await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
+    const panel = page.getByRole("dialog", { name: "Einstellungen für externe KI-Werkzeuge" });
+    await expect(panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" })).toBeVisible();
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expectNoSeriousA11yViolations(
+        page,
+        `Anbindungen, Einstellungen der KI-Werkzeuge (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+      );
+    }
+  });
+
   // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
   // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt (#788).
   test("Benutzer-Einstellungen", async ({ authenticatedPage: page }) => {
