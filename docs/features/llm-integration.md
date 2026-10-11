@@ -619,11 +619,15 @@ Der Aufruf wird aus fünf Teilen zusammengesetzt:
 1. **Systemvorspann** — Rolle, Ton, Umgang mit Nichtwissen, die verbindlichen Belegregeln und die
    Vorgabe, auf Deutsch zu antworten. Nicht über den Chat änderbar (siehe
    [Absicherung des Modells](#absicherung-des-modells-gegen-missbrauch)). **(gebaut: Rolle,
-   Belegregeln und Sprachvorgabe, letztere mit #1635; Ton und Umgang mit Nichtwissen nicht)**
+   Belegregeln und Sprachvorgabe, letztere mit #1635; Umgang mit Nichtwissen und Antwortregeln mit
+   #2376, nur bei vorhandenen Passagen und Suchbedarf; Ton nicht)**
 2. **Die Passagen, jede mit einem eigenen Kopf.** Der Kopf trägt die Angaben, die den späteren Beleg
    tragen: Dokument, Stelle im Dokument, Bezeichnung — und die **Zeichenfolge, mit der genau diese
    Passage zu zitieren ist**. Die Passagen sind voneinander sichtbar getrennt, damit das Modell sie
-   nicht zu einem Fließtext verschmilzt. **(gebaut)**
+   nicht zu einem Fließtext verschmilzt. **(gebaut)** Seit #2376 besteht der Kopf aus zwei Zeilen,
+   „Dokument: <Dateiname>" und „Zitiermarke: <Zeichenfolge>", ohne Klammern und ohne einzelne
+   Kennungen: Ein Kopf in eckigen Klammern wurde als `[Quelle: … | 【…】]` mit abgeschrieben. Nach der
+   letzten Passage wiederholt eine kurze Erinnerung die Zitierregel.
 3. **Der bisherige Gesprächsverlauf**, soweit er in die Kontextgrenze passt. **(gebaut)** Zielbild
    (Epic #1482): das Gesprächsfenster ohne Zitiermarken früherer Antworten, siehe
    [conversation-memory.md](./conversation-memory.md).
