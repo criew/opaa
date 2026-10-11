@@ -1,4 +1,6 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { useEffect } from 'react'
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -32,6 +34,39 @@ function desktopMatchMedia(query: string): MediaQueryList {
     removeListener: vi.fn(),
     dispatchEvent: vi.fn(),
   } as unknown as MediaQueryList
+}
+
+const CUSTOM_REQUEST = {
+  enabled: true,
+  tokenMaxLifetimeDays: 45,
+  tokenRateLimitPerHour: 17,
+  allowedCidrs: ['10.1.0.0/16'],
+  massRetrievalAlertThreshold: 333,
+  serverInstructions: 'Eigener Einleitungstext.',
+}
+const CUSTOM_SETTINGS = { ...CUSTOM_REQUEST, updatedBy: 'Dev Admin' }
+
+const navigateRef: { current: ((to: number | string) => void) | null } = { current: null }
+
+function NavigationProbe() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    navigateRef.current = (to) => void (typeof to === 'number' ? navigate(to) : navigate(to))
+  }, [navigate])
+  return null
+}
+
+/** The tab behind another page in the history, with a handle on „Zurück" and „Vor". */
+function renderInHistory() {
+  return renderWithProviders(
+    <MemoryRouter initialEntries={['/admin/other', '/admin/connections/external-tools']}>
+      <NavigationProbe />
+      <Routes>
+        <Route path="/admin/other" element={<p>Vorherige Seite</p>} />
+        <Route path="/admin/connections/external-tools" element={<ExternalToolsTab />} />
+      </Routes>
+    </MemoryRouter>,
+  )
 }
 
 function render(route = '/admin/connections/external-tools') {
@@ -190,7 +225,8 @@ describe('ExternalToolsTab', () => {
   })
 
   it('schaltet über die Zustandszeile aus, erst nach der Rückfrage', async () => {
-    setMockExternalAccessSettings({ ...mockExternalAccessSettings, enabled: true })
+    // Values off the defaults: a payload built from hard-coded defaults would show here.
+    setMockExternalAccessSettings({ ...mockExternalAccessSettings, ...CUSTOM_SETTINGS })
     const puts: unknown[] = []
     server.events.on('request:start', async ({ request }) => {
       if (request.method === 'PUT') puts.push(await request.clone().json())
@@ -206,10 +242,64 @@ describe('ExternalToolsTab', () => {
     await answerConfirm(user, 'Externe KI-Werkzeuge jetzt ausschalten?', 'Ausschalten')
 
     expect(await screen.findByRole('heading', { name: 'Ausgeschaltet' })).toBeVisible()
+    expect(puts).toEqual([{ ...CUSTOM_REQUEST, enabled: false }])
+  })
+
+  // Review #2508, finding 1: the switch-off replaces the settings wholesale, so it must send the
+  // stored state of the moment, not the one loaded with the page.
+  it('überschreibt beim Ausschalten keine zwischenzeitliche Änderung anderer', async () => {
+    setMockExternalAccessSettings({ ...mockExternalAccessSettings, ...CUSTOM_SETTINGS })
+    const user = userEvent.setup()
+    render()
+    await screen.findByRole('button', { name: 'Ausschalten' })
+
+    // Someone else narrows the network ranges and the lifetime while the page is open.
+    setMockExternalAccessSettings({
+      ...mockExternalAccessSettings,
+      allowedCidrs: ['10.20.0.0/24'],
+      tokenMaxLifetimeDays: 7,
+    })
+    await user.click(screen.getByRole('button', { name: 'Ausschalten' }))
+    await answerConfirm(user, 'Externe KI-Werkzeuge jetzt ausschalten?', 'Ausschalten')
+
+    expect(await screen.findByRole('heading', { name: 'Ausgeschaltet' })).toBeVisible()
     expect(mockExternalAccessSettings.enabled).toBe(false)
-    // Only the switch changes; every other value travels along unchanged.
-    expect(mockExternalAccessSettings.allowedCidrs).toContain('10.0.0.0/8')
-    expect(mockExternalAccessSettings.serverInstructions).toBe(DEFAULT_SERVER_INSTRUCTIONS)
+    expect(mockExternalAccessSettings.allowedCidrs).toEqual(['10.20.0.0/24'])
+    expect(mockExternalAccessSettings.tokenMaxLifetimeDays).toBe(7)
+  })
+
+  // Review #2508, finding 2: opening the panel adds no history entry, so „Zurück" leaves the tab
+  // instead of silently closing the panel with its unsaved changes.
+  it('legt beim Öffnen der Einstellungen keinen eigenen Verlaufseintrag an', async () => {
+    const user = userEvent.setup()
+    renderInHistory()
+
+    const panel = await openSettings(user)
+    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    act(() => navigateRef.current?.(-1))
+
+    expect(await screen.findByText('Vorherige Seite')).toBeInTheDocument()
+  })
+
+  it('fragt nach einem Schließen von außen beim nächsten Abbrechen nicht nach', async () => {
+    const user = userEvent.setup()
+    renderInHistory()
+
+    let panel = await openSettings(user)
+    await user.click(within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }))
+    // A link to the tab without ?panel closes the panel without its own close button.
+    act(() => navigateRef.current?.('/admin/connections/external-tools'))
+    await waitForDialogClosed()
+
+    panel = await openSettings(user)
+    expect(
+      within(panel).getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' }),
+    ).not.toBeChecked()
+    await user.click(within(panel).getByRole('button', { name: 'Abbrechen' }))
+    await waitForDialogClosed()
+    expect(
+      screen.queryByRole('dialog', { name: 'Ungespeicherte Änderungen verwerfen?' }),
+    ).not.toBeInTheDocument()
   })
 
   it('warnt, wenn der Weg eingeschaltet ist, aber kein Netzbereich eingetragen', async () => {
