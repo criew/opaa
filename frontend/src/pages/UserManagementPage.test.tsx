@@ -567,6 +567,35 @@ describe('UserManagementPage', () => {
   }, 20000)
 
   /**
+   * Regressionsschutz zu #1988: Am Notanker-Konto bietet die Oberfläche weder einen Rücksetz-Link
+   * noch ein erzeugtes Passwort an und nennt den Grund; an einem regulären Konto bleiben beide
+   * anwählbar.
+   */
+  it('offers no reset link and no generated password on the bootstrap account', async () => {
+    signInAs('SYSTEM_ADMIN', 'local-user-vogt')
+    const user = userEvent.setup()
+    renderAccounts()
+    await screen.findByRole('table', { name: 'Konten' })
+
+    const menu = await openRowMenu(user, 'Systemverwaltung', 'admin@opaa.local')
+    for (const name of ['Rücksetz-Link per E-Mail', 'Passwort erzeugen']) {
+      const item = within(menu).getByRole('menuitem', { name })
+      expect(item).toHaveAttribute('aria-disabled', 'true')
+      expect(item).toHaveAccessibleDescription(/Passwort .* nicht von der Verwaltung/)
+    }
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+
+    const regularMenu = await openRowMenu(user, 'T. Klein')
+    for (const name of ['Rücksetz-Link per E-Mail', 'Passwort erzeugen']) {
+      expect(within(regularMenu).getByRole('menuitem', { name })).not.toHaveAttribute(
+        'aria-disabled',
+      )
+    }
+    expect(within(regularMenu).queryByText(/nicht von der Verwaltung/)).not.toBeInTheDocument()
+  }, 20000)
+
+  /**
    * Ein Notanker-Konto aus der Zeit vor #1640 kann ein Ablaufdatum und eine andere Rolle tragen. Der
    * Dialog lässt genau die Rückkehr in den zugesagten Zustand zu: Datum entfernen, zurück zur
    * Systemverwaltung – und nichts, was das Backend ablehnen würde.
