@@ -1,9 +1,28 @@
 import { http, HttpResponse } from 'msw'
-import { mockEmbeddingInfo, mockLlmModels, resetMockLlmModels } from './modelFixtures'
-import type { LlmModelRequest, LlmModelTestRequest } from '../types/api'
+import {
+  mockEmbeddingInfo,
+  mockLlmModels,
+  mockOllamaDiscoveredModels,
+  mockOpenAiDiscoveredModels,
+  resetMockLlmModels,
+} from './modelFixtures'
+import type {
+  LlmModelDiscoveryFailure,
+  LlmModelDiscoveryRequest,
+  LlmModelDiscoveryResponse,
+  LlmModelRequest,
+  LlmModelTestRequest,
+} from '../types/api'
 
 export function resetLlmModelMockState() {
   resetMockLlmModels()
+}
+
+export function discoveryFailure(
+  failure: LlmModelDiscoveryFailure,
+  message: string,
+): LlmModelDiscoveryResponse {
+  return { success: false, failure, message, ollama: false, models: [] }
 }
 
 export const modelHandlers = [
@@ -121,6 +140,47 @@ export const modelHandlers = [
       success: true,
       message: 'Verbindung erfolgreich, Modell hat geantwortet.',
     })
+  }),
+
+  // Mirrors LlmModelDiscoverer by address: Ollama's port or host answers with details, OpenAI
+  // insists on a key, and the words "unerreichbar"/"ohne-liste" stand in for the two failures.
+  http.post('/api/v1/admin/models/discover', async ({ request }) => {
+    const body = (await request.json()) as LlmModelDiscoveryRequest
+    const address = body.baseUrl ?? ''
+    const hasKey = Boolean(body.apiKey && body.apiKey.trim() !== '')
+    if (address.includes('unerreichbar')) {
+      return HttpResponse.json(
+        discoveryFailure(
+          'UNREACHABLE',
+          'Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).',
+        ),
+      )
+    }
+    if (address.includes('ohne-liste')) {
+      return HttpResponse.json(
+        discoveryFailure(
+          'NO_MODEL_LIST',
+          'Der Endpunkt bietet keine Modellliste an. Tragen Sie die Modell-Kennung von Hand ein.',
+        ),
+      )
+    }
+    if (address.includes('api.openai.com') && !hasKey) {
+      return HttpResponse.json(
+        discoveryFailure(
+          'UNAUTHENTICATED',
+          'Der Endpunkt verlangt einen Zugangsschlüssel (HTTP 401). Tragen Sie ihn ein und rufen Sie die Modelle erneut ab.',
+        ),
+      )
+    }
+    const ollama = address.includes(':11434') || address.includes('ollama')
+    const models = ollama ? mockOllamaDiscoveredModels : mockOpenAiDiscoveredModels
+    return HttpResponse.json({
+      success: true,
+      failure: null,
+      message: `${models.length} Modelle gefunden.`,
+      ollama,
+      models,
+    } satisfies LlmModelDiscoveryResponse)
   }),
 
   http.get('/api/v1/admin/models/embedding-info', () => {

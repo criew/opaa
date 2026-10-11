@@ -1737,6 +1737,72 @@ Hinweis, dass sie unvollständig ist beziehungsweise fehlt. Abhilfe ist eine hö
 Antwortlänge in der Modellverwaltung. Der Hinweis gilt nur für die gerade erzeugte Antwort; im
 gespeicherten Verlauf erscheint er nach dem Neuladen nicht mehr.
 
+### Chat-Modelle in der Oberfläche anlegen
+
+Unter **Administration → Modelle → Chat-Modelle** legt ein Systemverwalter Chat-Modelle an,
+bearbeitet, testet und aktiviert sie. Das Formular führt in drei Abschnitten:
+
+1. **Endpunkt.** Das Feld „Basis-Adresse“ schlägt beim Öffnen Vorlagen vor; jede andere
+   openai-kompatible Adresse (vLLM, LiteLLM, Azure …) wird einfach eingetragen.
+
+   | Vorlage | Trägt ein | Hinweis |
+   |---|---|---|
+   | Ollama | `http://ollama:11434/v1` | Der Host `ollama` ist danach markiert und wird mit dem eigenen überschrieben (siehe unten). |
+   | OpenAI | `https://api.openai.com/v1` | nur mit Zugangsschlüssel |
+   | Anthropic (Claude) | `https://api.anthropic.com/v1` | nur mit Zugangsschlüssel; das Feld Temperatur leer lassen |
+
+   Typische Ollama-Adressen, je nachdem, wo Ollama vom Backend aus erreichbar ist:
+
+   | Ollama läuft | Basis-Adresse |
+   |---|---|
+   | im Compose-Stack (nächster Abschnitt) | `http://ollama:11434/v1` |
+   | auf dem Docker-Host, OPAA im Container | `http://host.docker.internal:11434/v1` |
+   | im Kubernetes-Cluster | `http://ollama.<namespace>.svc.cluster.local:11434/v1` |
+   | auf demselben Rechner, Backend ohne Container (`./gradlew bootRun`) | `http://localhost:11434/v1` |
+
+   Mit eingeschalteten Ausgangs-Policies braucht das Backend im Cluster eine Ausgangsregel zu Port
+   11434 von Ollama ([Kubernetes, NetworkPolicies](kubernetes.md#networkpolicies)). Der
+   Zugangsschlüssel ist optional; er wird verschlüsselt gespeichert und nie wieder angezeigt.
+   Lehnt ein Anbieter die Modellliste mit seinem Schlüssel ab (etwa weil er sie nur in eigener
+   Form anbietet), nennt das Formular den Grund, und die Kennung wird von Hand eingetragen.
+2. **Modell.** „Modelle abrufen" (oder Enter im Adressfeld) fragt den Endpunkt nach seinen Modellen
+   (`GET {Basis-Adresse}/models`). Die Vorlagen für OpenAI und Anthropic rufen sofort ab, wenn schon
+   ein Schlüssel eingetragen ist; die Ollama-Vorlage nie, weil der Host erst zu bestätigen ist. Die
+   Modell-Kennung ist danach eine durchsuchbare Auswahl. Erkennt
+   OPAA hinter einer Adresse auf `/v1` ein Ollama, zeigt jede Zeile zusätzlich Parameterzahl, Größe,
+   Kontextlänge und Fähigkeiten (Werkzeuge, Bilder, Denkmodus), gelesen über Ollamas eigene
+   Schnittstelle (`/api/tags`, `/api/show`) auf derselben Adresse. Andere Server liefern meist nur die
+   Kennungen; eine Kontextlänge übernimmt OPAA, wenn der Server sie in der Liste mitschickt.
+   Reine Einbettungsmodelle stehen in einer eigenen Gruppe „Nicht für den Chat geeignet" und sind nicht
+   wählbar. Eine Kennung lässt sich immer auch von Hand eintragen.
+3. **Anzeige und Antwort.** Die Wahl eines Modells belegt den Anzeigenamen mit der Kennung (ohne
+   `:latest` und ohne Anbieterpfad). Ist das Kontextfenster des Modells bekannt, begrenzt sie die
+   maximale Antwortlänge auf die Hälfte davon, falls der Vorschlagswert für neue Einträge (siehe
+   [„Temperatur und maximale Antwortlänge"](#temperatur-und-maximale-antwortlänge)) nicht
+   hineinpasst; die andere Hälfte brauchen Frage, Gesprächsverlauf und gefundene Textstellen. Was
+   von Hand eingetragen wurde, überschreibt die Vorbelegung nicht; beim Bearbeiten bleibt die
+   gespeicherte Antwortlänge. Die Temperatur bleibt ohne
+   Eintrag leer.
+
+Nach der Wahl eines Modells läuft der Verbindungstest automatisch; „Verbindung testen" wiederholt
+ihn jederzeit. Kann der Endpunkt keine Liste liefern, nennt das Formular den Grund und bleibt von
+Hand bedienbar:
+
+| Meldung | Bedeutung |
+|---|---|
+| Host nicht gefunden, Verbindung abgelehnt, Zeitlimit, Zertifikat | Der Endpunkt ist von OPAA aus nicht erreichbar. Aus dem Backend-Container heraus zählt dessen Netz, nicht das des Browsers. |
+| Zugangsschlüssel verlangt oder abgelehnt (HTTP 401), Zugriff verweigert (HTTP 403) | Schlüssel fehlt oder passt nicht. |
+| keine Modellliste | Der Server antwortet, bietet `/models` aber nicht an. Die Kennung von Hand eintragen. |
+| Der Endpunkt meldet keine Modelle | Die Liste ist leer, bei Ollama ist noch kein Modell geladen (`ollama pull …`). |
+| Umleitung, anderer HTTP-Status, Liste zu groß | Der Server antwortet unerwartet. Umleitungen folgt OPAA nicht; die Zieladresse direkt eintragen. |
+
+Wie beim Verbindungstest gilt beim Bearbeiten: Ohne neu eingetragenen Schlüssel nutzt OPAA den
+gespeicherten, aber nur für eine Adresse mit demselben Ursprung (Schema, Host, Port) wie die
+gespeicherte. Bei einer anderen Adresse lehnt OPAA die Anfrage ab, statt den Schlüssel dorthin zu
+senden; dann den Schlüssel neu eintragen. Eine Adresse mit Anmeldedaten
+(`https://benutzer:passwort@host`) wird abgelehnt. Abfrage und Ollama-Details haben eine kurze
+Zeitgrenze und eine Größengrenze, damit ein langsamer Endpunkt das Formular nicht aufhält.
+
 ### Lokal betriebenes Ollama im Compose-Stack
 
 Der Compose-Stack (`docker-compose.yml`) enthält einen optionalen `ollama`-Service unter dem
