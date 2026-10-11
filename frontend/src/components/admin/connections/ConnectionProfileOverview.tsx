@@ -106,13 +106,16 @@ function AttentionCell({ attention }: { attention: ProfileAttention | null }) {
   )
 }
 
-/** The one way into a profile; a profile with something to do says so on its button. */
+/** The one way into a profile; a profile with something to fix says so on its button. */
 function OpenButton({ entry, onOpen }: { entry: ProfileEntry; onOpen: OverviewProps['onOpen'] }) {
-  const verb = entry.attention ? 'Beheben' : 'Details'
+  // Only a task the panel offers a handling for gets „Beheben"; many expired accounts are for the
+  // persons to reconnect, the panel just explains them.
+  const fixable = entry.attention !== null && entry.attention.kind !== 'MANY_EXPIRED'
+  const verb = fixable ? 'Beheben' : 'Details'
   return (
     <Button
       size="small"
-      variant={entry.attention ? 'contained' : 'outlined'}
+      variant={fixable ? 'contained' : 'outlined'}
       aria-label={`${verb}: ${entry.profile.name}`}
       onClick={(event) => {
         event.stopPropagation()

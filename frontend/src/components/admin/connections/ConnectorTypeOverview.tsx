@@ -18,7 +18,8 @@ import { profileRuleLabel } from './connectorTypeState'
 
 export interface ConnectorTypeEntry {
   state: ConnectorTypeStateResponse
-  profileCount: number
+  /** null while the profiles are unknown. */
+  profileCount: number | null
 }
 
 interface OverviewProps {
@@ -49,6 +50,7 @@ function LockCell({ state }: { state: ConnectorTypeStateResponse }) {
 
 function profileCountLabel(entry: ConnectorTypeEntry): string {
   if (entry.state.profileSupport === 'FORBIDDEN') return '—'
+  if (entry.profileCount === null) return 'nicht geladen'
   return entry.profileCount === 1 ? '1 Zugang' : `${entry.profileCount} Zugänge`
 }
 

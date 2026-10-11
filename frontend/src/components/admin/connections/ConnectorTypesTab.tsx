@@ -85,7 +85,9 @@ export default function ConnectorTypesTab() {
 
   const entries = (states ?? []).map((state) => ({
     state,
-    profileCount: profiles.filter((profile) => profile.sourceType === state.sourceType).length,
+    profileCount: profilesError
+      ? null
+      : profiles.filter((profile) => profile.sourceType === state.sourceType).length,
   }))
   const locked = entries.filter((entry) => entry.state.locked).length
   const opened = states?.find((state) => state.sourceType === openKey) ?? null
@@ -140,7 +142,7 @@ export default function ConnectorTypesTab() {
 
       <ConnectorTypePanel
         state={opened}
-        profiles={profiles}
+        profiles={profilesError ? null : profiles}
         ownAddressEntry={ownAddressEntry}
         onClose={() => openPanel(null)}
         onChanged={() => setReloadKey((key) => key + 1)}

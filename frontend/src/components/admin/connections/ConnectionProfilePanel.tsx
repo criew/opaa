@@ -102,11 +102,13 @@ interface ConnectionProfilePanelProps extends ProfilePanelActions {
  */
 export default function ConnectionProfilePanel(props: ConnectionProfilePanelProps) {
   const { profile, onClose } = props
+  // Held here so that Escape and the backdrop cannot close the panel while a change runs.
+  const [busy, setBusy] = useState(false)
   return (
     <Drawer
       anchor="right"
       open={profile !== null}
-      onClose={onClose}
+      onClose={busy ? undefined : onClose}
       slotProps={{
         paper: {
           role: 'dialog',
@@ -115,7 +117,9 @@ export default function ConnectionProfilePanel(props: ConnectionProfilePanelProp
         },
       }}
     >
-      {profile && <PanelContent key={profile.id} {...props} profile={profile} />}
+      {profile && (
+        <PanelContent key={profile.id} {...props} profile={profile} busy={busy} setBusy={setBusy} />
+      )}
     </Drawer>
   )
 }
@@ -135,9 +139,14 @@ function PanelContent({
   onDisconnect,
   onDelete,
   onAccessChanged,
-}: ConnectionProfilePanelProps & { profile: ConnectionProfileResponse }) {
+  busy,
+  setBusy,
+}: ConnectionProfilePanelProps & {
+  profile: ConnectionProfileResponse
+  busy: boolean
+  setBusy: (busy: boolean) => void
+}) {
   const [editingAccess, setEditingAccess] = useState(false)
-  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const errorRef = useRef<HTMLDivElement>(null)
   const accessSectionRef = useRef<HTMLDivElement>(null)

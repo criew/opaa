@@ -268,6 +268,23 @@ describe('ConnectorTypesTab', () => {
     await waitFor(() => expect(sent).toEqual([{ required: false }]))
   })
 
+  it('names no count of profiles it could not load', async () => {
+    server.use(
+      http.get('/api/v1/admin/connection-profiles', () =>
+        HttpResponse.json({ error: 'Interner Fehler' }, { status: 500 }),
+      ),
+    )
+    const user = userEvent.setup()
+    render()
+
+    const table = await screen.findByRole('table', { name: 'Quellarten' })
+    expect(within(table).getByRole('row', { name: /Nextcloud/ })).toHaveTextContent('nicht geladen')
+    expect(within(table).queryByText('0 Zugänge')).not.toBeInTheDocument()
+    const panel = await openType(user, 'Nextcloud')
+    expect(panel).toHaveTextContent('Die Zugänge dieser Quellart konnten nicht geladen werden')
+    expect(panel).not.toHaveTextContent('Noch kein Zugang')
+  })
+
   it('opens the panel a link points at', async () => {
     render('/admin/connections/source-types?sourceType=NEXTCLOUD')
 

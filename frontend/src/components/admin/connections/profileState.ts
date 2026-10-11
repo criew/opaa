@@ -134,8 +134,16 @@ export interface Summary {
   detail: string
 }
 
-/** The line above the overview: what needs doing across all profiles and resting sources. */
-export function summaryOf(attentions: Array<ProfileAttention | null>, dormant: number): Summary {
+/**
+ * The line above the overview: what needs doing across all profiles and resting sources.
+ * `unknown` names the parts that could not be loaded; while one is missing the line never calls
+ * the state good.
+ */
+export function summaryOf(
+  attentions: Array<ProfileAttention | null>,
+  dormant: number,
+  unknown: string[] = [],
+): Summary {
   const open = attentions.filter((attention): attention is ProfileAttention => attention !== null)
   const parts = [
     open.length > 0 &&
@@ -143,15 +151,25 @@ export function summaryOf(attentions: Array<ProfileAttention | null>, dormant: n
     dormant > 0 &&
       `${dormant} ${dormant === 1 ? 'Bibliothek mit ruhender Quelle' : 'Bibliotheken mit ruhender Quelle'}`,
   ].filter((part): part is string => Boolean(part))
+  const failed = open.some((attention) => attention.tone === 'error')
+  if (unknown.length > 0) {
+    return {
+      tone: failed ? 'error' : 'warning',
+      headline:
+        parts.length > 0 ? `${parts.join('; ')} – Stand unvollständig` : 'Stand unvollständig',
+      detail: `Nicht geladen: ${unknown.join(', ')}. Was dort zu tun wäre, fehlt in dieser Übersicht.`,
+    }
+  }
   if (parts.length === 0) {
     return {
       tone: 'success',
       headline: 'Kein Handlungsbedarf',
-      detail: 'Alle Zugänge melden sich an, und keine Quelle einer Bibliothek ruht.',
+      detail:
+        'Kein Zugang meldet eine Störung oder offene Aufgabe, und keine Quelle einer Bibliothek ruht.',
     }
   }
   return {
-    tone: open.some((attention) => attention.tone === 'error') ? 'error' : 'warning',
+    tone: failed ? 'error' : 'warning',
     headline: parts.join('; '),
     detail: 'Die betroffenen Zeilen sind markiert; öffnen Sie den Zugang, um es zu beheben.',
   }

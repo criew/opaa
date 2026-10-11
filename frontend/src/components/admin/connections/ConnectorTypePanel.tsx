@@ -51,7 +51,8 @@ function PanelSection({ title, children }: { title: string; children: ReactNode 
 interface ConnectorTypePanelProps {
   /** The source type to show; null keeps the panel closed. */
   state: ConnectorTypeStateResponse | null
-  profiles: ConnectionProfileResponse[]
+  /** null while the profiles are unknown. */
+  profiles: ConnectionProfileResponse[] | null
   /** Who may create libraries with an own address, where the type admits them. */
   ownAddressEntry: CapabilityOverviewResponse | null
   onClose: () => void
@@ -90,8 +91,8 @@ function PanelContent({
   onChanged,
 }: ConnectorTypePanelProps & { state: ConnectorTypeStateResponse }) {
   const [requirementDialog, setRequirementDialog] = useState(false)
-  const own = profiles.filter((profile) => profile.sourceType === state.sourceType)
-  const lockedProfiles = own.filter((profile) => profile.locked).length
+  const own = profiles?.filter((profile) => profile.sourceType === state.sourceType) ?? null
+  const lockedProfiles = own?.filter((profile) => profile.locked).length ?? 0
 
   async function toggleLock() {
     const lock = !state.locked
@@ -241,13 +242,15 @@ function PanelContent({
                 component="h4"
                 sx={{ fontSize: 12, fontWeight: 600, color: 'text.secondary', mt: 2, mb: 0.75 }}
               >
-                {own.length === 0
-                  ? 'Noch kein Zugang dieser Quellart'
-                  : own.length === 1
-                    ? '1 Zugang dieser Quellart'
-                    : `${own.length} Zugänge dieser Quellart`}
+                {own === null
+                  ? 'Die Zugänge dieser Quellart konnten nicht geladen werden'
+                  : own.length === 0
+                    ? 'Noch kein Zugang dieser Quellart'
+                    : own.length === 1
+                      ? '1 Zugang dieser Quellart'
+                      : `${own.length} Zugänge dieser Quellart`}
               </Typography>
-              {own.length > 0 && (
+              {own !== null && own.length > 0 && (
                 <Box component="ul" sx={{ listStyle: 'none', p: 0, m: 0 }}>
                   {own.map((profile) => (
                     <Box component="li" key={profile.id} sx={{ py: 0.5 }}>
@@ -282,7 +285,7 @@ function PanelContent({
             </Link>
           </PanelSection>
         )}
-        {state.profileSupport !== 'FORBIDDEN' && own.length === 0 && state.profileRequired && (
+        {state.profileSupport !== 'FORBIDDEN' && own?.length === 0 && state.profileRequired && (
           <Alert severity="warning">
             Die Quellart ist nur über Zugänge nutzbar, hat aber keinen. Neue Bibliotheken sind damit
             nicht möglich.

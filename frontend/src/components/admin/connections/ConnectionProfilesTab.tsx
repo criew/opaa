@@ -80,11 +80,12 @@ export default function ConnectionProfilesTab() {
   const [overview, setOverview] = useState<CapabilityOverviewResponse[] | null>(null)
   const [overviewError, setOverviewError] = useState<string | null>(null)
   const [dormant, setDormant] = useState(0)
+  const [dormantFailed, setDormantFailed] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const reload = () => setReloadKey((key) => key + 1)
 
-  // Kein synchrones setState im Rumpf: Der Effekt unten ruft dieselbe Funktion, und ein
-  // synchrones setState von dort erzeugt eine Renderkaskade (react-hooks/set-state-in-effect).
+  // No synchronous setState in the body: the effect below calls this function, and a synchronous
+  // setState from there causes a render cascade (react-hooks/set-state-in-effect).
   const loadOverview = useCallback(
     () =>
       getCapabilityOverview()
@@ -229,9 +230,15 @@ export default function ConnectionProfilesTab() {
       attention: attentionOf(profile, access),
     }
   })
+  const unknown = [
+    overviewError !== null && 'wer die Zugänge nutzen darf',
+    typeError !== null && 'Sperren der Quellarten',
+    dormantFailed && 'Bibliotheken mit ruhender Quelle',
+  ].filter((part): part is string => Boolean(part))
   const summary = summaryOf(
     entries.map((entry) => entry.attention),
     dormant,
+    unknown,
   )
   const opened = entries.find((entry) => entry.profile.id === openId) ?? null
 
@@ -248,7 +255,7 @@ export default function ConnectionProfilesTab() {
         }}
       >
         <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
-          {loading ? null : (
+          {loading || error ? null : (
             <StatusLine
               component="h2"
               label="Handlungsbedarf der Zugänge"
@@ -279,7 +286,15 @@ export default function ConnectionProfilesTab() {
         </Alert>
       )}
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={reload}>
+              Erneut laden
+            </Button>
+          }
+        >
           {error}
         </Alert>
       )}
@@ -314,7 +329,13 @@ export default function ConnectionProfilesTab() {
       )}
 
       <Box sx={{ mt: 4 }}>
-        <DormantSourceConnectionsSection onLoaded={setDormant} />
+        <DormantSourceConnectionsSection
+          onLoaded={(count) => {
+            setDormant(count)
+            setDormantFailed(false)
+          }}
+          onFailed={() => setDormantFailed(true)}
+        />
       </Box>
 
       <ConnectionProfilePanel

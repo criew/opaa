@@ -365,6 +365,8 @@ describe('ConnectionProfilesTab', () => {
     const withheld = screen.getByRole('row', { name: /Zugang Partner/ })
     expect(within(withheld).getByText('Möglicherweise viele Konten abgelaufen')).toBeVisible()
     expect(within(withheld).queryByText('Viele Konten abgelaufen')).not.toBeInTheDocument()
+    // Nothing to fix in the panel: the persons reconnect themselves.
+    expect(within(withheld).getByRole('button', { name: 'Details: Zugang Partner' })).toBeVisible()
   })
 
   it('shows the expiry of the secret as a German date and tells expired from expiring', async () => {

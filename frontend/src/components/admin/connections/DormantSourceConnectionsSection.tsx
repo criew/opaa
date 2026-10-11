@@ -24,15 +24,20 @@ import {
  */
 export default function DormantSourceConnectionsSection({
   onLoaded,
+  onFailed,
 }: {
   /** Called with the number of resting connections, for the summary above the overview. */
   onLoaded?: (count: number) => void
+  /** Called when the list could not be loaded, so the summary does not count it as empty. */
+  onFailed?: () => void
 } = {}) {
   const [entries, setEntries] = useState<DormantSourceConnection[] | null>(null)
   // Loaded once on mount; the callback of the latest render receives the count.
   const onLoadedRef = useRef(onLoaded)
+  const onFailedRef = useRef(onFailed)
   useEffect(() => {
     onLoadedRef.current = onLoaded
+    onFailedRef.current = onFailed
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -45,13 +50,13 @@ export default function DormantSourceConnectionsSection({
         onLoadedRef.current?.(loaded.length)
       })
       .catch((err: unknown) => {
-        if (active) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : 'Die ruhenden Quellverbindungen konnten nicht geladen werden.',
-          )
-        }
+        if (!active) return
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Die Bibliotheken mit ruhender Quelle konnten nicht geladen werden.',
+        )
+        onFailedRef.current?.()
       })
     return () => {
       active = false
