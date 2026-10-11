@@ -21,8 +21,6 @@ import {
   navy,
   radius,
   railRoles,
-  semanticColors,
-  semanticHoverColors,
   shadow,
   white,
 } from './tokens'
@@ -118,8 +116,18 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           light: roles.dangerSoft,
           contrastText: roles.bg1,
         },
-        warning: { main: semanticColors.warning, dark: semanticHoverColors.warning },
-        success: { main: semanticColors.success, dark: semanticHoverColors.success },
+        warning: {
+          main: roles.warning.main,
+          dark: roles.warning.hover,
+          light: roles.warning.soft,
+          contrastText: roles.bg1,
+        },
+        success: {
+          main: roles.success.main,
+          dark: roles.success.hover,
+          light: roles.success.soft,
+          contrastText: roles.bg1,
+        },
         background: {
           default: roles.bg1,
           paper: roles.bg1,

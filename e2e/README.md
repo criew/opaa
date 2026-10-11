@@ -295,7 +295,9 @@ lassen.
 - `tests/smoke.spec.ts` — die Anwendung lädt und zeigt die Chat-Startseite (#231).
 - `tests/accessibility.spec.ts` (#586) — automatisierte Barrierefreiheitsprüfung mit axe-core
   (`@axe-core/playwright`, Helfer in `fixtures/a11y.ts`): Anmeldeseite, Chat in beiden
-  Farbschemata, Space-Seite, Kachelauswahl (Typwahl unter „Neu“ und Quellart im Wissens-Assistenten), Katalog, Verwaltungsbereich (Gruppen) und
+  Farbschemata, Space-Seite, Kachelauswahl (Typwahl unter „Neu“ und Quellart im Wissens-Assistenten), der
+  Schritt „Quelle“ des Wissens-Assistenten mit Zugangswahl, eine gesperrte Kachel mit Grund in der
+  Warnfarbe (Quellart ohne Zugänge im Dialog „Zugang anlegen“, #2493), Katalog, Verwaltungsbereich (Gruppen) und
   Benutzer-Einstellungen werden im Ausgangszustand gegen WCAG 2.1 A/AA geprüft. Verstöße der Stufen „serious" und „critical"
   lassen den Test fehlschlagen; „minor"/„moderate" landen als Annotation im Playwright-Report.
   Ausnahmen werden am Aufrufort als `exclude`/`disableRules` übergeben, jede mit Begründung und

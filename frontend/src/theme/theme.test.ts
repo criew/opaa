@@ -1,12 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import { alpha, decomposeColor, getContrastRatio } from '@mui/material/styles'
-import { createAppTheme } from './theme'
+import { createAppTheme, createRailTheme } from './theme'
 import {
   blue,
   carbon,
   darkRoles,
   gray,
   lightRoles,
+  markHighlight,
   navy,
   navyRoles,
   radius,
@@ -142,6 +143,41 @@ describe('createAppTheme', () => {
         contrastRatio(error.contrastText, error.main),
         `error.contrastText on error.main (${mode})`,
       ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+    }
+  })
+
+  // regression guard for #2493: warning and success also colour text (tile reasons, status lines,
+  // outlined chips, alert icons), so like danger they must reach 4.5:1 on every surface of their
+  // scheme - the former shared amber reached only 1.78:1 on white.
+  test.each(['warning', 'success'] as const)(
+    '%s works as text on every surface of its scheme (#2493)',
+    (key) => {
+      for (const [label, theme, roles] of [
+        ['light', createAppTheme('light'), lightRoles],
+        ['dark', createAppTheme('dark'), darkRoles],
+        ['rail', createRailTheme('light'), railRoles],
+      ] as const) {
+        for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+          expect
+            .soft(
+              contrastRatio(theme.palette[key].main, background),
+              `${key}.main on ${background} (${label})`,
+            )
+            .toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+        }
+      }
+    },
+  )
+
+  test('text keeps 4.5:1 on the search-hit marker over every surface (#2493)', () => {
+    for (const roles of [lightRoles, darkRoles]) {
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        const marker = flatten(markHighlight, background)
+        expect(
+          getContrastRatio(roles.fg1, marker),
+          `fg1 on marker over ${background}`,
+        ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+      }
     }
   })
 

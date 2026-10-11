@@ -75,11 +75,12 @@ der Anmeldeseite im hellen Schema:
 | Carbon-800 | `#252525` | Standardrahmen dunkel           |
 | Carbon-700 | `#333333` | betonter Rahmen, Tooltip dunkel |
 
-**Semantik:** Erfolg `#16B77B` · Warnung `#F5B83D`. In beiden Schemata identisch; Text auf
-diesen Flächen muss die Kontrastanforderung (2.4) erfüllen. Gefahr ist eine Rolle je Schema
-(`danger`, siehe 2.2), weil sie auch als Textfarbe dient (#2150): Hell `#CE2C31`, Dunkel
-`#FF6369`. Der frühere gemeinsame Wert `#E5484D` erreichte als Text auf Weiß nur 3,91:1 und auf
-Carbon-850 nur 4,21:1.
+**Semantik:** Gefahr, Warnung und Erfolg sind Rollen je Schema (`danger`, `warning`, `success`,
+siehe 2.2), weil sie auch als Textfarbe dienen. Gefahr: Hell `#CE2C31`, Dunkel `#FF6369` (#2150;
+der frühere gemeinsame Wert `#E5484D` erreichte als Text auf Weiß nur 3,91:1). Warnung: Hell
+`#8F5A00`, Dunkel `#F5B83D`; Erfolg: Hell `#11774F`, Dunkel `#16B77B` (#2493; die früher in
+beiden Schemata gemeinsamen Werte `#F5B83D` und `#16B77B` erreichten als Text auf Weiß nur
+1,78:1 bzw. 2,59:1).
 
 ### 2.2 Semantische Rollen
 
@@ -101,6 +102,13 @@ Die Rollen sind das Vokabular aller Komponenten. Werte je Schema:
 | `danger`         | Gefahr: zerstörende Aktion, Fehler (Text, Icon, gefüllte Fläche) | `#CE2C31`           | `#FF6369`            |
 | `danger-hover`   | Hover/Gedrückt gefüllter Gefahrflächen, gefüllte Fehlermeldung   | `#901E22`           | `#FF7A80`            |
 | `danger-soft`    | hellere Gefahr-Variante (MUI `error.light`)                      | `#D23B40`           | `#FF8287`            |
+| `warning`        | Warnung: folgenreich, aber umkehrbar (Text, Icon, Kante, Fläche) | `#8F5A00`           | `#F5B83D`            |
+| `success`        | Erfolg: abgeschlossen, in Ordnung (Text, Icon, Punkt, Fläche)    | `#11774F`           | `#16B77B`            |
+
+`warning` und `success` führen wie `danger` je eine Hover- und eine hellere Stufe (MUI `dark` und
+`light`): Warnung hell `#6B4300`/`#9A6100`, dunkel `#F7C35D`/`#F8CC73`; Erfolg hell
+`#0B5A3B`/`#0E7A52`, dunkel `#38C18F`/`#5BCB9F`. Die Werte stehen in
+`frontend/src/theme/tokens.ts` (`SignalTones`).
 
 `fg-3` im hellen Schema ist Grau-500, nicht Grau-400 (#725): Grau-400 (`#778797`) erreicht gegen
 Weiß nur 3,68:1 — unter der 4,5:1-Anforderung für Fließtext (2.4) — und lag als Tertiärtext in
@@ -159,19 +167,36 @@ andere Rolle.
   Icon mischen) — sie verlässt sich auf die Rolle.
 - **Semantikfarben tragen Bedeutung, keine Stimmung.** Ein als nicht bestätigt gekennzeichneter Beleg
   ist keine Warnung und erhält keine Signalfarbe (siehe redesign-prompt.md §4).
+- **Signalfarbe markiert, der Satz spricht.** In Zuständen, Hinweisen und Bestätigungen steht
+  die Signalfarbe in Punkt, Symbol oder Kante; der Fließtext daneben bleibt in `fg-*`. Die
+  Bedeutung trägt der Satz, die Farbe zeigt nur, wo er hingehört. Ausnahme ist ein knapper
+  Zustand ohne eigenes Zeichen, etwa der Grund unter einer gesperrten Kachel (5.11) — dort ist
+  die Rolle selbst die Textfarbe und hält 2.4.
+- **Markierung von Suchtreffern** liegt auf dem eigenen Ton `markHighlight` (blasses Amber zu
+  25 %, in beiden Schemata gleich), nicht auf einer Signalrolle; der Text darauf bleibt `fg-1`.
 
 ### 2.4 Kontrast
 
 Text mindestens 4,5:1 gegen seine Fläche, große Schrift (ab 24 px bzw. 19 px fett) und
 UI-Komponenten/Grafik mindestens 3:1 — in beiden Schemata. Die Rollen aus 2.2 erfüllen das in
-den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent-surface`, `accent`
-bzw. `danger` als Text auf `bg-1..3` des eigenen Schemas, `bg-1` als Text auf `danger`,
-`danger-hover` und `danger-soft`); wer andere Kombinationen bildet, weist den Kontrast im PR
-nach. Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
-deshalb wird er bei dunklem Text heller statt dunkler. Im dunklen Schema trägt Gefahr dunklen
-Text (`bg-1`), `danger-hover` ist dort `#FF7A80` mit 7,91:1. Im hellen Schema trägt Gefahr
-Weiß, `danger-hover` ist `#901E22` mit 8,77:1. Erfolg und Warnung tragen in beiden Schemata
-dunklen Text; ihr Hover ist deshalb heller (Erfolg `#38C18F`, Warnung `#F7C35D`) (#2150). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination
+den vorgesehenen Kombinationen (`fg-*` auf `bg-*`, `accent-fg` auf `accent-surface`, `accent`,
+`danger`, `warning` bzw. `success` als Text auf `bg-1..3` des eigenen Schemas, `bg-1` als Text
+auf jeder Stufe von `danger`, `warning` und `success`); wer andere Kombinationen bildet, weist
+den Kontrast im PR nach.
+
+**Hinweis-, Warn- und Statusfarben sind Textfarben.** Text in `danger`, `warning` oder `success`
+— Sperrgründe, Hinweise, Etiketten — erreicht mindestens 4,5:1 (große Schrift 3:1) gegen seine
+Fläche, im hellen und im dunklen Schema. Er steht in der Rolle selbst, nie in einem Skalenwert,
+einem Alpha-Ton oder unter gesenkter Deckkraft; ein gesperrtes Element darf ausgegraut sein,
+seine Begründung nicht (5.11). Wann Signalfarbe überhaupt im Text steht, regelt 2.3.
+`frontend/src/theme/theme.test.ts` weist die Rollen nach, die Barrierefreiheitsprüfung der
+E2E-Suite misst die gescannten Seiten (#2493).
+
+Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
+deshalb wird er bei dunklem Text heller statt dunkler. Im hellen Schema tragen Gefahr, Warnung
+und Erfolg Weiß, ihr Hover ist dunkler (`danger-hover` `#901E22` mit 8,77:1); im dunklen Schema
+tragen sie dunklen Text (`bg-1`), ihr Hover ist heller (`danger-hover` `#FF7A80` mit 7,91:1)
+(#2150, #2493). `accent-fg` auf `accent` ist seit #634 **keine** nachgewiesene Kombination
 mehr — Weiß erreichte auf Blau-500 nur 3,3:1; gefüllte Flächen liegen deshalb auf
 `accent-surface` (Blau-700, 5,2:1), und das helle Schema führt `accent` selbst als Blau-700,
 damit Akzent-Text auf Weiß 4,5:1 hält (dunkles Schema: Blau-500 auf Carbon-950 = 6,0:1). Ausnahme: `fg-3` in `navyRoles`/`railRoles`
@@ -481,8 +506,7 @@ ab, statt zu löschen.
 Anfrage lösen alle zu „nein" auf. Eine Bestätigung entsteht nur durch den Klick auf die
 benannte Handlung.
 
-Die Signalfarbe steht in Kante und Symbol, nie im Fließtext — `warning.main` als Text misst auf
-heller Fläche rund 1,8:1 und verfehlt 4,5:1 (dieselbe Regel wie in 4.1 und bei `StatusLine`).
+Die Signalfarbe steht in Kante und Symbol, nie im Fließtext (2.3).
 
 **Wann überhaupt bestätigen?** Nur, wenn die Handlung nicht folgenlos rückgängig zu machen ist
 oder fremde Arbeit trifft. Eine Bestätigung, die reflexhaft weggeklickt wird, schützt nichts und
@@ -510,7 +534,9 @@ kurzen Satz darunter in `fg-2`; bei Assets die Asset-Art (5.5).
 Die Kachel hat Kartenform (5.4). **Gewählt** zeigt sich an Rahmen in `accent` **und** einem
 Häkchen-Symbol — nie allein über Farbe. Eine **gesperrte** Kachel (fehlendes Recht, nicht
 verfügbare Quellart) bleibt sichtbar, ausgegraut, mit dem Grund im Satz darunter, wenn ihr Fehlen
-sonst Fragen aufwirft; Arten ohne Anlegerecht werden dagegen gar nicht angeboten.
+sonst Fragen aufwirft; Arten ohne Anlegerecht werden dagegen gar nicht angeboten. Der Grund steht
+in `warning`, nicht ausgegraut und außerhalb des gesperrten Bedienelements, das ihn als
+Beschreibung (`aria-describedby`) trägt — so gilt für ihn die Textschwelle aus 2.4.
 
 **Bedienung und Ansage.** Einfachauswahl ist eine `radiogroup`: eine Tab-Position für die Gruppe,
 Pfeiltasten wechseln (gesperrte Kacheln werden übersprungen), Leertaste und Enter wählen.

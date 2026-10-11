@@ -59,6 +59,9 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
 ### 2.4 Kontrast
 
 - [ ] Text ≥ 4,5:1 gegen seine Fläche; große Schrift (ab 24 px, oder 19 px fett) ≥ 3:1.
+- [ ] Das gilt auch für Text in Hinweis-, Warn- und Statusfarben (`danger`, `warning`,
+      `success`): nur über die Rolle, nie aufgehellt oder unter gesenkter Deckkraft, auch nicht
+      als Begründung an einem gesperrten Element ([Guidelines 2.4](./guidelines.md)).
 - [ ] UI-Komponenten und grafische Kennzeichen (Rahmen von Eingabefeldern, Icons,
       Fokusring, Diagramme) ≥ 3:1.
 - [ ] Beide Farbschemata geprüft. Die Rollen-Kombinationen aus

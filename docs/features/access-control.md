@@ -828,7 +828,7 @@ aktivierter Anbieter die Rollen über seinen Claim führt), Zustand als Punkt **
 (Eingeladen, Aktiv, Gesperrt mit Grund, Abgelaufen) samt Etikett „Passwortwechsel ausstehend" — bei
 Anbieterkonten stattdessen „Beim Anbieter", „Anbieter deaktiviert" oder „Anmeldung nicht möglich",
 Letzteres mit einem Warnsymbol in der Signalfarbe und dem Grund im Tooltip (der Text selbst bleibt
-sekundär, weil die Signalfarbe als Fließtext den Kontrastschwellwert unterschreitet) —, Ablauf mit
+sekundär, weil die Signalfarbe markiert und der Satz spricht, Gestaltungsleitlinien 2.3) —, Ablauf mit
 der **Aktivität als Klasse** darunter
 („nie", „länger als 90 Tage nicht", „aktiv" — nicht sortierbar und **nur für lokale Konten**; ein
 Anbieterkonto trägt keine), und Anlagedatum mit gekürztem Anlagegrund; unter Tablet-Breite wird

@@ -4,8 +4,14 @@ import {
   askQuestion,
   chatSidebarEntries,
   clearSearchScope,
+  openNewLibraryWizard,
   startFreshChat,
 } from "../fixtures/chat";
+import {
+  createRssProfileViaApi,
+  deleteProfileViaApi,
+  gotoConnectionProfiles,
+} from "../fixtures/connectionProfiles";
 import { apiAs } from "../fixtures/externalAccess";
 import { createPromptLibraryViaApi } from "../fixtures/promptLibraries";
 
@@ -275,6 +281,57 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Quellart (helles Farbschema)");
     await page.emulateMedia({ colorScheme: "dark" });
     await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
+  });
+
+  // #2493: der Schritt „Quelle" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
+  // frisch angelegten, wählbaren Zugang.
+  test("Wissens-Assistent: Schritt Quelle mit Zugangswahl in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    const profileName = `A11y Zugang ${Date.now()}`;
+    const profileId = await createRssProfileViaApi(profileName, "http://rss-feed");
+    try {
+      await openNewLibraryWizard(page);
+      await page.getByRole("radio", { name: /RSS-Feed/ }).click();
+      await page.getByRole("button", { name: "Weiter", exact: true }).click();
+      await expect(
+        page
+          .getByRole("radiogroup", { name: "Zugang" })
+          .getByRole("radio", { name: new RegExp(`^${profileName}`) }),
+      ).toBeEnabled();
+
+      for (const scheme of ["light", "dark"] as const) {
+        await page.emulateMedia({ colorScheme: scheme });
+        await expectNoSeriousA11yViolations(
+          page,
+          `Quelle (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+        );
+      }
+    } finally {
+      await deleteProfileViaApi(profileId);
+    }
+  });
+
+  // #2493: eine gesperrte Kachel mit ihrem Grund in der Warnfarbe - die Quellarten ohne Zugänge im
+  // Dialog „Zugang anlegen". Der Grund steht außerhalb des gesperrten Bedienelements, also misst
+  // axe seinen Kontrast.
+  test("Gesperrte Kachel mit Grund in Warnfarbe in beiden Farbschemata", async ({
+    authenticatedPage: page,
+  }) => {
+    await gotoConnectionProfiles(page);
+    await page.getByRole("button", { name: "Neuer Zugang" }).click();
+    const form = page.getByRole("dialog", { name: "Zugang anlegen" });
+    await expect(form.getByRole("radio", { disabled: true }).first()).toHaveAccessibleDescription(
+      /keine Zugänge möglich/,
+    );
+
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expectNoSeriousA11yViolations(
+        page,
+        `Zugang anlegen, gesperrte Quellart (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+      );
+    }
   });
 
   // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett, ein gesetzter
