@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.metadata.ChatGenerationMetadata;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.DefaultUsage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -71,6 +72,42 @@ class ChatResponsesTest {
 
     assertThat(ChatResponses.model(withMetadata)).isEqualTo("gpt-4o");
     assertThat(ChatResponses.totalTokens(withMetadata)).isEqualTo(300);
+  }
+
+  private static ChatResponse finishedWith(String text, String finishReason) {
+    return new ChatResponse(
+        List.of(
+            new Generation(
+                new AssistantMessage(text),
+                ChatGenerationMetadata.builder().finishReason(finishReason).build())));
+  }
+
+  @Test
+  void anAnswerThatStoppedOnItsOwnIsComplete() {
+    assertThat(ChatResponses.completeness(finishedWith("Die Antwort", "STOP")))
+        .isEqualTo(AnswerCompleteness.COMPLETE);
+    assertThat(ChatResponses.completeness(response("Die Antwort")))
+        .isEqualTo(AnswerCompleteness.COMPLETE);
+  }
+
+  /** The SDK reports OpenAI's {@code finish_reason=length} as the enum name {@code LENGTH}. */
+  @Test
+  void anAnswerCutOffAtTheOutputLimitIsTruncated() {
+    assertThat(ChatResponses.completeness(finishedWith("Die Antwort bricht", "LENGTH")))
+        .isEqualTo(AnswerCompleteness.TRUNCATED);
+    assertThat(ChatResponses.completeness(finishedWith("Die Antwort bricht", "length")))
+        .isEqualTo(AnswerCompleteness.TRUNCATED);
+  }
+
+  /** No visible text is empty, even when the whole budget went into hidden reasoning. */
+  @Test
+  void anAnswerWithoutVisibleTextIsEmptyWhateverTheFinishReason() {
+    assertThat(ChatResponses.completeness(finishedWith("", "STOP")))
+        .isEqualTo(AnswerCompleteness.EMPTY);
+    assertThat(ChatResponses.completeness(finishedWith("  \n", "LENGTH")))
+        .isEqualTo(AnswerCompleteness.EMPTY);
+    assertThat(ChatResponses.completeness(new ChatResponse(List.of())))
+        .isEqualTo(AnswerCompleteness.EMPTY);
   }
 
   /**

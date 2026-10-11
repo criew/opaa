@@ -6,6 +6,7 @@ import io.opaa.api.dto.SearchedLibrary;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.chat.web.ChatResponseMapper;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import java.util.List;
@@ -37,6 +38,8 @@ final class QueryResponseMapper {
         .noKnowledgeAssignedToSpace(outcome.noKnowledgeAssignedToSpace())
         .noKnowledgeAvailableInSpace(outcome.noKnowledgeAvailableInSpace())
         .noSpaceContext(outcome.noSpaceContext())
+        .answerTruncated(outcome.answerCompleteness() == AnswerCompleteness.TRUNCATED)
+        .answerEmpty(outcome.answerCompleteness() == AnswerCompleteness.EMPTY)
         .searchedLibraries(toSearchedLibraries(outcome.searchedLibraries()));
   }
 

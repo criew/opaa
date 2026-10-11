@@ -254,8 +254,11 @@ public class ActiveChatModelResolver {
             .baseUrl(model.getBaseUrl())
             .apiKey(apiKey)
             .model(model.getModelIdentifier())
-            .temperature(model.getTemperature().doubleValue())
             .maxTokens(model.getMaxTokens());
+    // Without a stored temperature the request carries none: some models reject the parameter.
+    if (model.getTemperature() != null) {
+      optionsBuilder.temperature(model.getTemperature().doubleValue());
+    }
     if (requestTimeout != null) {
       optionsBuilder.timeout(requestTimeout);
     }

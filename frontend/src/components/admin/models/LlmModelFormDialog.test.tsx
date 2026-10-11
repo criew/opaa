@@ -63,9 +63,9 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
 
     expect(dialog.getByRole('combobox', { name: /Modell-Kennung/ })).toHaveValue('qwen3:8b')
     expect(dialog.getByLabelText('Anzeigename', { exact: false })).toHaveValue('qwen3:8b')
-    // A quarter of the 40,960-token context window, capped at 8,192.
+    // The default of 8,000 fits into half of the 40,960-token context window and stays.
     expect(dialog.getByLabelText('Maximale Antwortlänge (Token)', { exact: false })).toHaveValue(
-      8192,
+      8000,
     )
     expect(dialog.getByText(/Kontextfenster des Modells: 40\.960 Token/)).toBeInTheDocument()
 
@@ -75,6 +75,38 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
       baseUrl: 'http://ollama:11434/v1',
       modelIdentifier: 'qwen3:8b',
     })
+  })
+
+  it('limits the answer length to half of a small context window, unless typed by hand', async () => {
+    server.use(
+      http.post('/api/v1/admin/models/discover', () =>
+        HttpResponse.json({
+          success: true,
+          failure: null,
+          message: '2 Modelle gefunden.',
+          ollama: true,
+          models: [
+            { identifier: 'phi3:mini', contextLength: 4096, capabilities: [], chatSuitable: true },
+            { identifier: 'tinyllama', contextLength: 2048, capabilities: [], chatSuitable: true },
+          ],
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+    const maxTokens = dialog.getByLabelText('Maximale Antwortlänge (Token)', { exact: false })
+
+    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await dialog.findByText(/2 Modelle gefunden/)
+    await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
+    await user.click(await screen.findByRole('option', { name: /phi3:mini/ }))
+    expect(maxTokens).toHaveValue(2048)
+
+    await user.clear(maxTokens)
+    await user.type(maxTokens, '1500')
+    await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
+    await user.click(await screen.findByRole('option', { name: /tinyllama/ }))
+    expect(maxTokens).toHaveValue(1500)
   })
 
   it('keeps a display name the person typed when a model is selected', async () => {

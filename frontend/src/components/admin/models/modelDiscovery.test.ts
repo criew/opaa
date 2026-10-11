@@ -46,11 +46,12 @@ describe('displayNameFor', () => {
 })
 
 describe('suggestedMaxTokens', () => {
-  it('suggests a quarter of the context window, between 256 and 8192 tokens', () => {
-    expect(suggestedMaxTokens(8192)).toBe(2048)
-    expect(suggestedMaxTokens(40960)).toBe(8192)
-    expect(suggestedMaxTokens(131072)).toBe(8192)
-    expect(suggestedMaxTokens(512)).toBe(256)
+  it('keeps the default answer length unless it exceeds half the context window', () => {
+    expect(suggestedMaxTokens(131072)).toBe(8000)
+    expect(suggestedMaxTokens(40960)).toBe(8000)
+    expect(suggestedMaxTokens(8192)).toBe(4096)
+    expect(suggestedMaxTokens(2048)).toBe(1024)
+    expect(suggestedMaxTokens(300)).toBe(256)
   })
 })
 

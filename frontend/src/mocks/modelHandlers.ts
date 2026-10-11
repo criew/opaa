@@ -46,7 +46,7 @@ export const modelHandlers = [
       displayName: body.displayName,
       baseUrl: body.baseUrl,
       modelIdentifier: body.modelIdentifier,
-      temperature: body.temperature,
+      temperature: body.temperature ?? null,
       maxTokens: body.maxTokens,
       apiKeySet: Boolean(body.apiKey && body.apiKey.trim() !== ''),
       active: false,
@@ -67,7 +67,7 @@ export const modelHandlers = [
     model.displayName = body.displayName
     model.baseUrl = body.baseUrl
     model.modelIdentifier = body.modelIdentifier
-    model.temperature = body.temperature
+    model.temperature = body.temperature ?? null
     model.maxTokens = body.maxTokens
     // Mirrors LlmModelRequest's three-way apiKey convention: omitted leaves it unchanged, an
     // empty string clears it, anything else sets it.

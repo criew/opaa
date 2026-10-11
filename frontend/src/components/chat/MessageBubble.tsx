@@ -17,6 +17,14 @@ import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
 import { NO_KNOWLEDGE_ASSIGNED, NO_KNOWLEDGE_READABLE } from '../space/spaceKnowledge'
 import { useDocumentPreview } from '../../hooks/useDocumentPreview'
 
+const ANSWER_TRUNCATED =
+  'Die Antwort ist unvollständig: Das Modell hat seine maximale Antwortlänge erreicht. Die ' +
+  'Systemverwaltung kann die Antwortlänge in der Modellverwaltung erhöhen.'
+
+const ANSWER_EMPTY =
+  'Das Modell hat keine Antwort geliefert. Bitte stellen Sie die Frage erneut. Tritt das ' +
+  'wiederholt auf, kann die Systemverwaltung die Antwortlänge in der Modellverwaltung erhöhen.'
+
 interface MessageBubbleProps {
   message: ChatMessage
 }
@@ -140,6 +148,17 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               citations={citations}
               onCitationClick={handleCitationClick}
             />
+          )}
+
+          {!isUser && message.answerTruncated && (
+            <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
+              {ANSWER_TRUNCATED}
+            </Alert>
+          )}
+          {!isUser && message.answerEmpty && (
+            <Alert severity="warning" variant="outlined" sx={{ mt: 1 }}>
+              {ANSWER_EMPTY}
+            </Alert>
           )}
 
           {!isUser && message.answeredWithoutKnowledge && (

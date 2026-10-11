@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-11-llm-model-temperature-optional
+      author: opaa
+      comment: "The temperature of a managed chat model is optional (no value: the parameter is not sent, some models reject it). Stored values unchanged."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE llm_models ALTER COLUMN temperature DROP NOT NULL;
+              ALTER TABLE llm_models ALTER COLUMN temperature DROP DEFAULT;

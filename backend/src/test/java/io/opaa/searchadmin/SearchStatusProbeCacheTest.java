@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -26,6 +27,7 @@ import io.opaa.metadata.LibraryMetadataSchemaChangeService;
 import io.opaa.metadata.ModelExtractionCounters;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalPipelineProperties;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -49,6 +51,9 @@ import org.springframework.ai.embedding.EmbeddingModel;
 class SearchStatusProbeCacheTest {
 
   private static final UUID ORGANIZATION_ID = UUID.randomUUID();
+
+  /** The probe runs with the active model's own temperature, exactly as the chat sends it. */
+  private static final BigDecimal MODEL_TEMPERATURE = new BigDecimal("0.20");
 
   private final LlmModelService llmModelService = mock(LlmModelService.class);
   private final LlmModelConnectionTester connectionTester = mock(LlmModelConnectionTester.class);
@@ -82,8 +87,9 @@ class SearchStatusProbeCacheTest {
     when(activeModel.getId()).thenReturn(UUID.randomUUID());
     when(activeModel.getBaseUrl()).thenReturn("https://llm.example.invalid");
     when(activeModel.getModelIdentifier()).thenReturn("gpt-test");
+    when(activeModel.getTemperature()).thenReturn(MODEL_TEMPERATURE);
     when(llmModelService.listModels()).thenReturn(List.of(activeModel));
-    when(connectionTester.test(any(), any(), isNull(), any()))
+    when(connectionTester.test(any(), any(), isNull(), any(), eq(MODEL_TEMPERATURE)))
         .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
     when(embeddingInfoService.getEmbeddingInfo())
         .thenReturn(
@@ -129,7 +135,7 @@ class SearchStatusProbeCacheTest {
     assertThat(conditionOf(service.statusForOrganization(ORGANIZATION_ID), ModelRole.EMBEDDING))
         .isEqualTo(ModelRoleCondition.ACTIVE);
 
-    verify(connectionTester, times(1)).test(any(), any(), isNull(), any());
+    verify(connectionTester, times(1)).test(any(), any(), isNull(), any(), eq(MODEL_TEMPERATURE));
     verify(embeddingModel, times(1)).embed(anyString());
   }
 
@@ -140,7 +146,7 @@ class SearchStatusProbeCacheTest {
     clock.advanceSeconds(SearchStatusService.PROBE_CACHE_TTL.toSeconds() + 1);
     service.statusForOrganization(ORGANIZATION_ID);
 
-    verify(connectionTester, times(2)).test(any(), any(), isNull(), any());
+    verify(connectionTester, times(2)).test(any(), any(), isNull(), any(), eq(MODEL_TEMPERATURE));
     verify(embeddingModel, times(2)).embed(anyString());
   }
 

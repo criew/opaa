@@ -1321,8 +1321,8 @@ Sinn; das ist jeweils vermerkt.
 | `OPAA_OPENAI_CHAT_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | **Nur noch Seed-Quelle für den ersten Start (siehe oben):** liefert den Zugangsschlüssel des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche |
 | `OPAA_OPENAI_CHAT_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_CHAT_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | **Nur noch Seed-Quelle für den ersten Start (siehe oben):** liefert die Basis-Adresse des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche (siehe [„LLM-Anbieter"](#llm-anbieter) unten). Enthält der Wert Anmeldedaten (`https://benutzer:geheim@host/v1`), bricht der Start ab — wie bei `OPAA_OPENAI_BASE_URL`; Zugangsschlüssel gehören in `OPAA_OPENAI_CHAT_API_KEY` |
 | `OPAA_OPENAI_CHAT_MODEL` | `phi3:mini` | `phi3:mini` | **Nur noch Seed-Quelle für den ersten Start (siehe oben):** liefert die Modell-Kennung des anfänglichen `llm_models`-Eintrags; danach maßgeblich ist die Administrationsoberfläche |
-| `OPAA_OPENAI_CHAT_TEMPERATURE` | `0.7` | `0.7` | **Nur noch Seed-Quelle für den ersten Start (siehe oben)** |
-| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `2000` | `2000` | **Nur noch Seed-Quelle für den ersten Start (siehe oben)** |
+| `OPAA_OPENAI_CHAT_TEMPERATURE` | — (leer: keine Temperatur) | — (leer) | **Nur noch Seed-Quelle für den ersten Start (siehe oben).** Leer heißt: Der anfängliche Eintrag hat keine Temperatur, der Parameter wird nicht gesendet (siehe [„Temperatur und maximale Antwortlänge"](#temperatur-und-maximale-antwortlänge)) |
+| `OPAA_OPENAI_CHAT_MAX_TOKENS` | `8000` | `8000` | **Nur noch Seed-Quelle für den ersten Start (siehe oben):** maximale Antwortlänge des anfänglichen Eintrags. Die Vorgabe des Formulars der Modellverwaltung für neue Einträge hängt nicht davon ab (siehe [„Temperatur und maximale Antwortlänge"](#temperatur-und-maximale-antwortlänge)) |
 | `OPAA_OPENAI_EMBEDDING_API_KEY` | — (kein eigener Default; fällt auf `OPAA_OPENAI_API_KEY` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}`) | nicht gesetzt (auskommentiert) — der Fallback auf `OPAA_OPENAI_API_KEY` gilt | Eigener Zugangsschlüssel nur für den Embedding-Aufruf |
 | `OPAA_OPENAI_EMBEDDING_BASE_URL` | — (kein eigener Default; fällt auf `OPAA_OPENAI_BASE_URL` zurück, verschachtelt: `${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}`, im Profil `docker` mit `http://ollama:11434/v1` als innerstem Default) | nicht gesetzt (auskommentiert) | Eigene Zieladresse nur für den Embedding-Aufruf, überschreibt `OPAA_OPENAI_BASE_URL` für diese eine Funktion (siehe [„LLM-Anbieter"](#llm-anbieter) unten). Der Hostname `ollama` im Default löst auf, sobald der Compose-Stack mit dem Profil `ollama` gestartet wird (`docker compose --profile ollama up`, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack) unten) — ohne dieses Profil und ohne anderweitig erreichbaren Ollama-Server schlagen Indizierung und Abfragen fehl (der Start selbst bricht nicht ab). Läuft Ollama stattdessen auf dem Host, `http://host.docker.internal:11434/v1` setzen (`extra_hosts` im `backend`-Service ist dafür bereits konfiguriert). Enthält der Wert Anmeldedaten (`https://benutzer:geheim@host/v1`), bricht der Start ab — die Adresse erscheint sonst im Meldungstext einer fehlgeschlagenen Einbettung samt Stacktrace im Log; Zugangsschlüssel gehören in `OPAA_OPENAI_EMBEDDING_API_KEY` |
 | `OPAA_OPENAI_EMBEDDING_MODEL` | `nomic-embed-text` | `nomic-embed-text` | Embedding-Modellname |
@@ -1711,6 +1711,32 @@ Funktion; ohne sie gilt `OPAA_OPENAI_BASE_URL` für beide.
 > das Backend läuft. Jede Änderung des Chat-Modells über die Administrationsoberfläche ist
 > protokolliert und einer Person zurechenbar.
 
+#### Temperatur und maximale Antwortlänge
+
+**Die Temperatur ist optional, und „keine Angabe" ist die Voreinstellung.** Ein Eintrag ohne
+Temperatur schickt den Parameter gar nicht mit, das Modell verwendet dann seine eigene
+Voreinstellung. Manche Modelle akzeptieren keine Temperatur außer ihrer eigenen: Bei neueren
+Anthropic-Modellen (etwa Claude Haiku 5.5 über die openai-kompatible Schnittstelle) lehnt der
+Anbieter jeden anderen Wert mit HTTP 400 ab, und dann scheitert jede Chat-Anfrage. Für solche
+Modelle das Feld Temperatur leer lassen. Weitere Sampling-Parameter (`top_p`, `top_k`) sendet OPAA
+nie.
+
+Der **Verbindungstest** der Modellverwaltung schickt die eingetragene Temperatur mit, genau wie
+später der Chat. Lehnt der Anbieter die Anfrage ab, zeigt der Test dessen Begründung an und weist
+bei einer abgelehnten Temperatur darauf hin, das Feld leer zu lassen. Dieselbe Prüfung läuft für
+das aktive Modell in der Statusanzeige der Suche.
+
+**Die maximale Antwortlänge** (Token) begrenzt die Ausgabe des Modells. Bei Modellen mit internem
+Reasoning zählt dieses Reasoning mit, ohne in der Antwort sichtbar zu werden; ein knapper Wert
+schneidet die sichtbare Antwort deshalb mitten im Satz ab oder lässt sie ganz leer. Das Formular der
+Modellverwaltung schlägt für neue Einträge einen fest eingestellten Wert vor, der darauf ausgelegt
+ist; `OPAA_OPENAI_CHAT_MAX_TOKENS` bestimmt nur den anfänglichen Eintrag beim ersten Start. Hält ein
+Modell die Grenze trotzdem nicht ein, erkennt OPAA das: Bricht das Modell an der Grenze ab oder
+liefert es keinen Text, protokolliert das Backend eine Warnung, und unter der Antwort erscheint ein
+Hinweis, dass sie unvollständig ist beziehungsweise fehlt. Abhilfe ist eine höhere maximale
+Antwortlänge in der Modellverwaltung. Der Hinweis gilt nur für die gerade erzeugte Antwort; im
+gespeicherten Verlauf erscheint er nach dem Neuladen nicht mehr.
+
 ### Chat-Modelle in der Oberfläche anlegen
 
 Unter **Administration → Modelle → Chat-Modelle** legt ein Systemverwalter Chat-Modelle an,
@@ -1738,10 +1764,12 @@ bearbeitet, testet und aktiviert sie. Das Formular führt in drei Abschnitten:
    Reine Einbettungsmodelle stehen in einer eigenen Gruppe „Nicht für den Chat geeignet" und sind nicht
    wählbar. Eine Kennung lässt sich immer auch von Hand eintragen.
 3. **Anzeige und Antwort.** Die Wahl eines Modells belegt den Anzeigenamen mit der Kennung (ohne
-   `:latest` und ohne Anbieterpfad) und die maximale Antwortlänge mit einem Viertel des
-   Kontextfensters, mindestens 256 und höchstens 8.192 Token. Den Rest des Fensters brauchen Frage,
-   Gesprächsverlauf und gefundene Textstellen. Was von Hand eingetragen wurde, überschreibt die
-   Vorbelegung nicht.
+   `:latest` und ohne Anbieterpfad). Ist das Kontextfenster des Modells bekannt, begrenzt sie die
+   maximale Antwortlänge auf die Hälfte davon, falls der Vorschlagswert für neue Einträge (siehe
+   [„Temperatur und maximale Antwortlänge"](#temperatur-und-maximale-antwortlänge)) nicht
+   hineinpasst; die andere Hälfte brauchen Frage, Gesprächsverlauf und gefundene Textstellen. Was
+   von Hand eingetragen wurde, überschreibt die Vorbelegung nicht. Die Temperatur bleibt ohne
+   Eintrag leer.
 
 Nach der Wahl eines Modells läuft der Verbindungstest automatisch; „Verbindung testen" wiederholt
 ihn jederzeit. Kann der Endpunkt keine Liste liefern, nennt das Formular den Grund und bleibt von

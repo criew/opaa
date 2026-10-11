@@ -364,6 +364,35 @@ describe('MessageBubble', () => {
     expect(screen.queryByText(/kein Wissen zugeordnet/)).not.toBeInTheDocument()
   })
 
+  // #2486: a cut-off or empty answer is never presented as if it were complete.
+  it('warns about a truncated and about an empty answer', () => {
+    const base: ChatMessage = {
+      id: '8c',
+      role: 'assistant',
+      content: 'Die Antwort bricht mitten im',
+      sources: [],
+      timestamp: new Date(),
+    }
+    const { unmount } = render(<MessageBubble message={{ ...base, answerTruncated: true }} />)
+    expect(screen.getByText(/maximale Antwortlänge erreicht/)).toBeInTheDocument()
+    expect(screen.queryByText(/keine Antwort geliefert/)).not.toBeInTheDocument()
+    unmount()
+
+    render(<MessageBubble message={{ ...base, content: '', answerEmpty: true }} />)
+    expect(screen.getByText(/keine Antwort geliefert/)).toBeInTheDocument()
+    expect(screen.queryByText(/maximale Antwortlänge erreicht/)).not.toBeInTheDocument()
+  })
+
+  it('shows no completeness warning for a complete answer', () => {
+    render(
+      <MessageBubble
+        message={{ id: '8d', role: 'assistant', content: 'Antwort', timestamp: new Date() }}
+      />,
+    )
+    expect(screen.queryByText(/maximale Antwortlänge erreicht/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/keine Antwort geliefert/)).not.toBeInTheDocument()
+  })
+
   it('does not show the hint when the answer used the knowledge base', () => {
     const msg: ChatMessage = {
       id: '9',

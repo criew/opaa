@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
@@ -306,6 +306,46 @@ describe('LlmModelManagementPage', () => {
     )
   })
 
+  // #2486: manche Modelle lehnen jede Temperatur ab - „keine Angabe“ ist die Voreinstellung.
+  it('creates a model without a temperature by default', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByLabelText('Temperatur (optional)')).toHaveValue(null)
+
+    await user.type(dialog.getByLabelText('Anzeigename', { exact: false }), 'Haiku')
+    await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
+    await user.type(dialog.getByLabelText('Modell-Kennung', { exact: false }), 'claude-haiku')
+    await user.click(dialog.getByRole('button', { name: 'Anlegen' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const anlegen = aufrufe.find((aufruf) => aufruf.method === 'POST')
+    expect(anlegen?.body?.temperature).toBeNull()
+    expect(anlegen?.body?.maxTokens).toBe(8000)
+  })
+
+  it('sends the entered temperature with the connection test', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
+    await user.type(dialog.getByLabelText('Modell-Kennung', { exact: false }), 'claude-haiku')
+    await user.type(dialog.getByLabelText('Temperatur (optional)'), '0.2')
+    await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))
+
+    await waitFor(() =>
+      expect(aufrufe.find((aufruf) => aufruf.path.endsWith('/test'))?.body?.temperature).toBe(0.2),
+    )
+  })
+
   it('activates a model, with a visible effect in the list', async () => {
     signInAs('SYSTEM_ADMIN')
     // Sets up a second, inactive model against the real mock handlers (mockLlmModels), so
@@ -444,6 +484,54 @@ describe('LlmModelManagementPage', () => {
     await waitFor(() => {
       expect(within(rowOf('Modell mit Schlüssel')).getByText('Ohne Schlüssel')).toBeInTheDocument()
     })
+  })
+
+  it('clears a stored temperature by emptying the field', async () => {
+    signInAs('SYSTEM_ADMIN')
+    await useLlmModelStore.getState().createNewModel({
+      displayName: 'Modell mit Temperatur',
+      baseUrl: 'http://t/v1',
+      modelIdentifier: 't',
+      temperature: 0.7,
+      maxTokens: 8000,
+    })
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await screen.findByRole('table', { name: 'Chat-Modelle' })
+    const dialog = await openEditDialog(user, 'Modell mit Temperatur')
+    const feld = within(dialog).getByLabelText('Temperatur (optional)')
+    expect(feld).toHaveValue(0.7)
+    await user.clear(feld)
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }))
+
+    await waitFor(() => expect(aufrufe.some((aufruf) => aufruf.method === 'PUT')).toBe(true))
+    expect(aufrufe.find((aufruf) => aufruf.method === 'PUT')!.body?.temperature).toBeNull()
+  })
+
+  // Eine unlesbare Zahl meldet der Browser als leeren Wert mit `validity.badInput`; sie darf nicht
+  // still als „keine Temperatur“ gespeichert werden. jsdom kennt badInput nicht, daher gesetzt.
+  it('blocks saving an unreadable temperature instead of storing none', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await user.type(dialog.getByLabelText('Anzeigename', { exact: false }), 'Haiku')
+    await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
+    await user.type(dialog.getByLabelText('Modell-Kennung', { exact: false }), 'claude-haiku')
+    const feld = dialog.getByLabelText('Temperatur (optional)') as HTMLInputElement
+    // Erst ein Wert, damit React den folgenden Wechsel auf „leer“ als Änderung meldet.
+    await user.type(feld, '1')
+    Object.defineProperty(feld, 'validity', { value: { badInput: true }, configurable: true })
+    fireEvent.change(feld, { target: { value: '' } })
+
+    expect(dialog.getByText(/keine gültige Zahl/)).toBeInTheDocument()
+    expect(dialog.getByRole('button', { name: 'Anlegen' })).toBeDisabled()
+    expect(aufrufe.filter((aufruf) => aufruf.method === 'POST')).toEqual([])
   })
 
   it('runs a connection test and shows the outcome', async () => {

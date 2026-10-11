@@ -10,6 +10,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -245,14 +246,18 @@ public class LlmModelService {
    * Never the key itself - only whether one is set, mirroring the branding logo's own convention.
    */
   private Map<String, Object> auditState(LlmModel model) {
-    return Map.of(
-        "displayName", model.getDisplayName(),
-        "baseUrl", model.getBaseUrl(),
-        "modelIdentifier", model.getModelIdentifier(),
-        "temperature", model.getTemperature(),
-        "maxTokens", model.getMaxTokens(),
-        "apiKeySet", model.getApiKeyCiphertext() != null,
-        "active", model.isActive());
+    // The audit event copies with Map.copyOf, which rejects null: no temperature, no key.
+    Map<String, Object> state = new LinkedHashMap<>();
+    state.put("displayName", model.getDisplayName());
+    state.put("baseUrl", model.getBaseUrl());
+    state.put("modelIdentifier", model.getModelIdentifier());
+    if (model.getTemperature() != null) {
+      state.put("temperature", model.getTemperature());
+    }
+    state.put("maxTokens", model.getMaxTokens());
+    state.put("apiKeySet", model.getApiKeyCiphertext() != null);
+    state.put("active", model.isActive());
+    return state;
   }
 
   /**

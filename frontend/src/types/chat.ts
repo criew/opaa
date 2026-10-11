@@ -29,6 +29,13 @@ export interface ChatMessage {
    */
   searchedLibraries?: SearchedLibrary[]
   /**
+   * The model stopped at its output limit, the answer breaks off (QueryMetadata#answerTruncated).
+   * Only known for answers of this session, like searchedLibraries.
+   */
+  answerTruncated?: boolean
+  /** The model returned no visible text at all (QueryMetadata#answerEmpty). */
+  answerEmpty?: boolean
+  /**
    * True when any source the answer was given with - cited or not - came from one of the
    * caller's private libraries (QueryResponse/ChatMessageResponse#privateSourcesInContext).
    */

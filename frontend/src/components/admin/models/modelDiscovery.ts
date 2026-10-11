@@ -60,18 +60,17 @@ export function displayNameFor(identifier: string): string {
   return withoutVendor.replace(/:latest$/, '')
 }
 
+/** The answer length a new entry starts with; reasoning models count their reasoning against it. */
+export const DEFAULT_MAX_TOKENS = 8000
+
 const MIN_SUGGESTED_TOKENS = 256
-export const MAX_SUGGESTED_TOKENS = 8192
 
 /**
- * The suggested answer length for a context window: a quarter of it, so question, chat history and
- * retrieved passages keep the rest - at least 256 and at most 8192 tokens.
+ * The suggested answer length for a context window: the default, unless it exceeds half the
+ * window - question, chat history and retrieved passages need the other half. Never below 256.
  */
 export function suggestedMaxTokens(contextLength: number): number {
-  return Math.min(
-    MAX_SUGGESTED_TOKENS,
-    Math.max(MIN_SUGGESTED_TOKENS, Math.floor(contextLength / 4)),
-  )
+  return Math.max(MIN_SUGGESTED_TOKENS, Math.min(DEFAULT_MAX_TOKENS, Math.floor(contextLength / 2)))
 }
 
 const CAPABILITY_LABELS: Record<string, string> = {

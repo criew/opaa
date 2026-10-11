@@ -46,7 +46,8 @@ public class LlmModel {
   @Column(name = "model_identifier", nullable = false, length = 200)
   private String modelIdentifier;
 
-  @Column(name = "temperature", nullable = false, precision = 3, scale = 2)
+  /** {@code null}: no temperature is sent to the model. */
+  @Column(name = "temperature", precision = 3, scale = 2)
   private BigDecimal temperature;
 
   @Column(name = "max_tokens", nullable = false)
