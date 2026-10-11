@@ -226,10 +226,12 @@ components:
         temperature:
           type: number
           format: double
+          nullable: true
+          description: Null when no temperature is set - the parameter is then not sent at all.
           example: 0.7
         maxTokens:
           type: integer
-          example: 2000
+          example: 8000
         apiKeySet:
           type: boolean
           description: Whether an access key is stored - never the key itself.
@@ -251,7 +253,7 @@ components:
         empty string clears it, any other value replaces it. On create, an omitted or empty apiKey
         simply means no key is stored - the key is optional (docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei),
         since a locally operated endpoint regularly requires no authentication at all.
-      required: [displayName, baseUrl, modelIdentifier, temperature, maxTokens]
+      required: [displayName, baseUrl, modelIdentifier, maxTokens]
       properties:
         displayName:
           type: string
@@ -276,13 +278,17 @@ components:
         temperature:
           type: number
           format: double
+          nullable: true
           minimum: 0
           maximum: 2
+          description: >
+            Optional. Omitted or null stores no temperature, and the chat request then carries no
+            temperature parameter - some models reject any value but their own.
           example: 0.7
         maxTokens:
           type: integer
           minimum: 1
-          example: 2000
+          example: 8000
         apiKey:
           type: string
           nullable: true
@@ -323,6 +329,15 @@ components:
             When set and apiKey is omitted or empty, reuses that model's stored, decrypted key for
             the probe, provided baseUrl is same-origin with the model's own stored baseUrl - 404 if
             modelId does not exist, 400 if baseUrl is a different origin.
+        temperature:
+          type: number
+          format: double
+          nullable: true
+          minimum: 0
+          maximum: 2
+          description: >
+            The draft's temperature, sent with the probe exactly as the chat would send it; omitted
+            or null sends none. A provider rejecting it is reported with its own reason.
 
     LlmModelTestResponse:
       type: object

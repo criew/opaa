@@ -79,8 +79,11 @@ class LlmModelSeeder {
   private static final Logger log = LoggerFactory.getLogger(LlmModelSeeder.class);
 
   static final String DEFAULT_DISPLAY_NAME = "Übernommen aus der Umgebungskonfiguration";
-  static final BigDecimal DEFAULT_TEMPERATURE = new BigDecimal("0.70");
-  static final int DEFAULT_MAX_TOKENS = 2000;
+
+  /** The temperature the legacy Ollama configuration always ran with. */
+  static final BigDecimal LEGACY_OLLAMA_TEMPERATURE = new BigDecimal("0.70");
+
+  static final int DEFAULT_MAX_TOKENS = 8000;
 
   /**
    * {@code application.yml}'s {@code spring.ai.openai.api-key} default - never a real key. A
@@ -259,7 +262,7 @@ class LlmModelSeeder {
         DEFAULT_DISPLAY_NAME,
         ensureV1Suffix(baseUrl),
         model,
-        DEFAULT_TEMPERATURE,
+        LEGACY_OLLAMA_TEMPERATURE,
         DEFAULT_MAX_TOKENS,
         null);
   }
@@ -305,14 +308,15 @@ class LlmModelSeeder {
         DEFAULT_DISPLAY_NAME, baseUrl, model, temperature, maxTokens, apiKeyCiphertext);
   }
 
+  /** Unset or unreadable means no temperature: the model's own default applies. */
   private BigDecimal parseTemperature(String value) {
     if (!StringUtils.hasText(value)) {
-      return DEFAULT_TEMPERATURE;
+      return null;
     }
     try {
       return new BigDecimal(value);
     } catch (NumberFormatException e) {
-      return DEFAULT_TEMPERATURE;
+      return null;
     }
   }
 

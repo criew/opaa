@@ -74,7 +74,11 @@ class LlmModelConnectionTesterTest {
     assertThatThrownBy(
             () ->
                 tester.test(
-                    "https://" + secret + "@modellserver.example.internal/v1", "m", null, null, null))
+                    "https://" + secret + "@modellserver.example.internal/v1",
+                    "m",
+                    null,
+                    null,
+                    null))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             e ->
@@ -96,7 +100,8 @@ class LlmModelConnectionTesterTest {
           }
         });
 
-    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null, null);
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isTrue();
   }
@@ -110,7 +115,8 @@ class LlmModelConnectionTesterTest {
           exchange.close();
         });
 
-    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null, null);
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isFalse();
     assertThat(outcome.message()).contains("Authentifizierung").contains("401");
@@ -136,7 +142,8 @@ class LlmModelConnectionTesterTest {
   void anUnreachableAddressReportsFailureNotAnException() {
     server.stop(0);
 
-    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null, null);
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isFalse();
     assertThat(outcome.message()).isNotBlank();

@@ -803,6 +803,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         noKnowledgeAssignedToSpace: response.metadata.noKnowledgeAssignedToSpace ?? false,
         noKnowledgeAvailableInSpace: response.metadata.noKnowledgeAvailableInSpace ?? false,
         searchedLibraries: response.metadata.searchedLibraries ?? [],
+        answerTruncated: response.metadata.answerTruncated ?? false,
+        answerEmpty: response.metadata.answerEmpty ?? false,
         privateSourcesInContext: response.privateSourcesInContext,
         timestamp: new Date(),
       }

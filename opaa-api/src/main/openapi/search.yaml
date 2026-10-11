@@ -737,6 +737,22 @@ components:
             answeredWithoutKnowledge, which covers the unrelated case of useKnowledge being
             deliberately false, and with noKnowledgeAssignedToSpace. Never true for an ephemeral
             query without a persisted chat.
+        answerTruncated:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            True when the model stopped at its output limit (finish_reason=length): the answer is
+            cut off. The client shows a hint instead of presenting the fragment as complete.
+            Mutually exclusive with answerEmpty.
+        answerEmpty:
+          type: boolean
+          nullable: true
+          default: false
+          description: >
+            True when the model returned no visible text at all - for a model with internal
+            reasoning typically because the whole output budget went into it. The client shows a
+            hint instead of an empty answer.
 
         searchedLibraries:
           type: array

@@ -18,8 +18,11 @@ export const BASE_URL_HELP_TEXT =
   'bedienen diese Schnittstelle – etwa Ollama, mit angehängtem „/v1“.'
 
 export const REQUIRED_FIELDS_HINT =
-  'Anzeigename, Basis-Adresse, Modell-Kennung, Temperatur und maximale Antwortlänge sind ' +
-  'erforderlich.'
+  'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
+
+export const TEMPERATURE_HELP_TEXT =
+  'Leer lassen, um die Voreinstellung des Modells zu verwenden. Manche Modelle lehnen jede ' +
+  'Temperatur ab.'
 
 interface LlmModelFormDialogProps {
   open: boolean
@@ -33,8 +36,8 @@ const NEW_DRAFT = {
   displayName: '',
   baseUrl: '',
   modelIdentifier: '',
-  temperature: '0.7',
-  maxTokens: '2000',
+  temperature: '',
+  maxTokens: '8000',
 }
 
 function draftFrom(model: LlmModelResponse | null) {
@@ -43,7 +46,7 @@ function draftFrom(model: LlmModelResponse | null) {
     displayName: model.displayName,
     baseUrl: model.baseUrl,
     modelIdentifier: model.modelIdentifier,
-    temperature: String(model.temperature),
+    temperature: model.temperature == null ? '' : String(model.temperature),
     maxTokens: String(model.maxTokens),
   }
 }
@@ -88,7 +91,6 @@ export default function LlmModelFormDialog({
       draft.displayName.trim() !== '' &&
       draft.baseUrl.trim() !== '' &&
       draft.modelIdentifier.trim() !== '' &&
-      draft.temperature.trim() !== '' &&
       draft.maxTokens.trim() !== ''
     )
   }
@@ -107,6 +109,11 @@ export default function LlmModelFormDialog({
     return undefined
   }
 
+  /** Ein leeres Feld heißt „keine Angabe“: Der Parameter geht dann gar nicht an das Modell. */
+  function resolveTemperature(): number | null {
+    return draft.temperature.trim() === '' ? null : Number(draft.temperature)
+  }
+
   function close() {
     if (submitting) return
     onClose()
@@ -121,6 +128,7 @@ export default function LlmModelFormDialog({
         modelIdentifier: draft.modelIdentifier.trim(),
         apiKey: resolveApiKey(),
         modelId: model?.id,
+        temperature: resolveTemperature(),
       })
       setTestResult(result)
     } catch (err) {
@@ -144,7 +152,7 @@ export default function LlmModelFormDialog({
       displayName: draft.displayName.trim(),
       baseUrl: draft.baseUrl.trim(),
       modelIdentifier: draft.modelIdentifier.trim(),
-      temperature: Number(draft.temperature),
+      temperature: resolveTemperature(),
       maxTokens: Number(draft.maxTokens),
       apiKey: resolveApiKey(),
     }
@@ -212,11 +220,11 @@ export default function LlmModelFormDialog({
           />
           <Stack direction="row" spacing={2}>
             <TextField
-              label="Temperatur"
-              required
+              label="Temperatur (optional)"
               type="number"
               value={draft.temperature}
               onChange={(e) => setDraft({ ...draft, temperature: e.target.value })}
+              helperText={TEMPERATURE_HELP_TEXT}
               slotProps={{ htmlInput: { min: 0, max: 2, step: 0.1 } }}
               size="small"
               sx={{ flex: 1 }}

@@ -303,6 +303,21 @@ class ActiveChatModelResolverIntegrationTest {
     assertThat(request.get("max_tokens").asInt()).isEqualTo(2000);
   }
 
+  /**
+   * Newer models reject any sampling parameter but their own default, and top_p together with a
+   * temperature: neither top_p nor top_k is ever sent implicitly.
+   */
+  @Test
+  void noOtherSamplingParameterIsSentImplicitly() throws IOException {
+    JsonNode withoutTemperature = requestBodySentBy(null);
+    JsonNode withTemperature = requestBodySentBy(new BigDecimal("1.00"));
+
+    assertThat(withoutTemperature.has("top_p")).isFalse();
+    assertThat(withoutTemperature.has("top_k")).isFalse();
+    assertThat(withTemperature.has("top_p")).isFalse();
+    assertThat(withTemperature.has("top_k")).isFalse();
+  }
+
   @Test
   void aModelWithTemperatureSendsIt() throws IOException {
     JsonNode request = requestBodySentBy(new BigDecimal("0.20"));

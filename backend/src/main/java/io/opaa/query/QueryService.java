@@ -11,6 +11,7 @@ import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchScopeResolver;
 import io.opaa.chat.UsedPrompt;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.llm.ChatResponses;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.metadata.MetadataFilterValidator;
@@ -327,6 +328,16 @@ public class QueryService {
                 long durationMs = System.currentTimeMillis() - startTime;
                 String model = ChatResponses.model(chatResponse);
                 int tokenCount = ChatResponses.totalTokens(chatResponse);
+                AnswerCompleteness completeness = ChatResponses.completeness(chatResponse);
+                if (completeness != AnswerCompleteness.COMPLETE) {
+                  log.warn(
+                      "Answer of model '{}' is {} after {} tokens - for TRUNCATED the output"
+                          + " limit was reached, the model's maximum response length may be too"
+                          + " small",
+                      model,
+                      completeness,
+                      tokenCount);
+                }
 
                 metrics.recordSuccess(tokenCount);
 
@@ -356,7 +367,8 @@ public class QueryService {
                         noKnowledgeAssignedToSpace,
                         noKnowledgeAvailableInSpace,
                         noSpaceContext,
-                        chatSourceAssembler.searchedLibraries(searchScope));
+                        chatSourceAssembler.searchedLibraries(searchScope),
+                        completeness);
                 return new QueryResult(
                     answer, sources, metadata, effectiveChatId, chatTitle, notePoints);
               } catch (RuntimeException e) {

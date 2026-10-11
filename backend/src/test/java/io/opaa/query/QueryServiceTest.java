@@ -334,7 +334,16 @@ class QueryServiceTest {
         new QueryResult(
             "Spike-Antwort",
             List.of(),
-            new QueryOutcome("gpt-4o", 10, 5L, false, false, false, false, List.of(), AnswerCompleteness.COMPLETE),
+            new QueryOutcome(
+                "gpt-4o",
+                10,
+                5L,
+                false,
+                false,
+                false,
+                false,
+                List.of(),
+                AnswerCompleteness.COMPLETE),
             UUID.randomUUID(),
             null,
             null);

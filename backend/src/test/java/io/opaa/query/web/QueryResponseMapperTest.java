@@ -86,7 +86,16 @@ class QueryResponseMapperTest {
             List.of(
                 new ChatSource("readme.md", 1.0, 1, true),
                 new ChatSource("privat.md", 0.5, 1, false).privateSource(true)),
-            new QueryOutcome("gpt-4o", 1, 1L, false, false, false, false, List.of(), AnswerCompleteness.COMPLETE),
+            new QueryOutcome(
+                "gpt-4o",
+                1,
+                1L,
+                false,
+                false,
+                false,
+                false,
+                List.of(),
+                AnswerCompleteness.COMPLETE),
             UUID.randomUUID(),
             null,
             null);
@@ -104,7 +113,16 @@ class QueryResponseMapperTest {
             new QueryResult(
                 "Antwort",
                 List.of(),
-                new QueryOutcome("gpt-4o", 0, 0L, false, true, false, false, List.of(), AnswerCompleteness.COMPLETE),
+                new QueryOutcome(
+                    "gpt-4o",
+                    0,
+                    0L,
+                    false,
+                    true,
+                    false,
+                    false,
+                    List.of(),
+                    AnswerCompleteness.COMPLETE),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -113,7 +131,16 @@ class QueryResponseMapperTest {
             new QueryResult(
                 "Antwort",
                 List.of(),
-                new QueryOutcome("gpt-4o", 0, 0L, false, false, true, false, List.of(), AnswerCompleteness.COMPLETE),
+                new QueryOutcome(
+                    "gpt-4o",
+                    0,
+                    0L,
+                    false,
+                    false,
+                    true,
+                    false,
+                    List.of(),
+                    AnswerCompleteness.COMPLETE),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -127,7 +154,16 @@ class QueryResponseMapperTest {
                     new QueryResult(
                         "Antwort",
                         List.of(),
-                        new QueryOutcome("gpt-4o", 0, 0L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
+                        new QueryOutcome(
+                            "gpt-4o",
+                            0,
+                            0L,
+                            false,
+                            false,
+                            false,
+                            true,
+                            List.of(),
+                            AnswerCompleteness.COMPLETE),
                         UUID.randomUUID(),
                         null,
                         null))
@@ -138,7 +174,9 @@ class QueryResponseMapperTest {
 
   @Test
   void toResponseLeavesSearchedLibrariesNullWhenAbsent() {
-    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, false, false, null, AnswerCompleteness.COMPLETE);
+    QueryOutcome metadata =
+        new QueryOutcome(
+            "gpt-4o", 0, 0L, false, false, false, false, null, AnswerCompleteness.COMPLETE);
     QueryResult result =
         new QueryResult("Antwort", List.of(), metadata, UUID.randomUUID(), null, null);
 

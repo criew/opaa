@@ -83,7 +83,7 @@ class SearchStatusProbeCacheTest {
     when(activeModel.getBaseUrl()).thenReturn("https://llm.example.invalid");
     when(activeModel.getModelIdentifier()).thenReturn("gpt-test");
     when(llmModelService.listModels()).thenReturn(List.of(activeModel));
-    when(connectionTester.test(any(), any(), isNull(), any()))
+    when(connectionTester.test(any(), any(), isNull(), any(), any()))
         .thenReturn(new LlmModelConnectionTester.TestOutcome(true, "Verbindung erfolgreich."));
     when(embeddingInfoService.getEmbeddingInfo())
         .thenReturn(
@@ -129,7 +129,7 @@ class SearchStatusProbeCacheTest {
     assertThat(conditionOf(service.statusForOrganization(ORGANIZATION_ID), ModelRole.EMBEDDING))
         .isEqualTo(ModelRoleCondition.ACTIVE);
 
-    verify(connectionTester, times(1)).test(any(), any(), isNull(), any());
+    verify(connectionTester, times(1)).test(any(), any(), isNull(), any(), any());
     verify(embeddingModel, times(1)).embed(anyString());
   }
 
@@ -140,7 +140,7 @@ class SearchStatusProbeCacheTest {
     clock.advanceSeconds(SearchStatusService.PROBE_CACHE_TTL.toSeconds() + 1);
     service.statusForOrganization(ORGANIZATION_ID);
 
-    verify(connectionTester, times(2)).test(any(), any(), isNull(), any());
+    verify(connectionTester, times(2)).test(any(), any(), isNull(), any(), any());
     verify(embeddingModel, times(2)).embed(anyString());
   }
 

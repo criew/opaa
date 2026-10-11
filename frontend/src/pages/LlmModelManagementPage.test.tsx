@@ -306,6 +306,46 @@ describe('LlmModelManagementPage', () => {
     )
   })
 
+  // #2486: manche Modelle lehnen jede Temperatur ab - „keine Angabe“ ist die Voreinstellung.
+  it('creates a model without a temperature by default', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
+    const dialog = within(screen.getByRole('dialog'))
+    expect(dialog.getByLabelText('Temperatur (optional)')).toHaveValue(null)
+
+    await user.type(dialog.getByLabelText('Anzeigename', { exact: false }), 'Haiku')
+    await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
+    await user.type(dialog.getByLabelText('Modell-Kennung', { exact: false }), 'claude-haiku')
+    await user.click(dialog.getByRole('button', { name: 'Anlegen' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    const anlegen = aufrufe.find((aufruf) => aufruf.method === 'POST')
+    expect(anlegen?.body?.temperature).toBeNull()
+    expect(anlegen?.body?.maxTokens).toBe(8000)
+  })
+
+  it('sends the entered temperature with the connection test', async () => {
+    signInAs('SYSTEM_ADMIN')
+    const aufrufe = recordModelRequests()
+    const user = userEvent.setup()
+
+    renderChat()
+    await user.click(screen.getByRole('button', { name: 'Neues Modell' }))
+    const dialog = within(screen.getByRole('dialog'))
+    await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
+    await user.type(dialog.getByLabelText('Modell-Kennung', { exact: false }), 'claude-haiku')
+    await user.type(dialog.getByLabelText('Temperatur (optional)'), '0.2')
+    await user.click(dialog.getByRole('button', { name: 'Verbindung testen' }))
+
+    await waitFor(() =>
+      expect(aufrufe.find((aufruf) => aufruf.path.endsWith('/test'))?.body?.temperature).toBe(0.2),
+    )
+  })
+
   it('activates a model, with a visible effect in the list', async () => {
     signInAs('SYSTEM_ADMIN')
     // Sets up a second, inactive model against the real mock handlers (mockLlmModels), so

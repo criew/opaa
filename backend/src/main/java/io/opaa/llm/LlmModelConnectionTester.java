@@ -5,6 +5,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import javax.net.ssl.SSLException;
@@ -65,6 +67,8 @@ public class LlmModelConnectionTester {
 
   private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
 
+  private static final int MAX_REASON_LENGTH = 300;
+
   private final LlmModelRepository repository;
   private final SettingsEncryptor settingsEncryptor;
   private final ObjectMapper objectMapper;
@@ -92,7 +96,8 @@ public class LlmModelConnectionTester {
    *     than the model's own, or when {@code baseUrl} itself carries credentials (#1147) - the
    *     probe URI is logged on failure, so such an address must not reach the probe at all
    */
-  public TestOutcome test(String baseUrl, String modelIdentifier, String apiKey, UUID modelId) {
+  public TestOutcome test(
+      String baseUrl, String modelIdentifier, String apiKey, UUID modelId, BigDecimal temperature) {
     if (ModelEndpointUri.containsCredentials(baseUrl)) {
       throw new ValidationException(ModelEndpointUri.CREDENTIALS_REJECTED_MESSAGE);
     }
@@ -118,7 +123,7 @@ public class LlmModelConnectionTester {
         effectiveApiKey = settingsEncryptor.decrypt(model.getApiKeyCiphertext());
       }
     }
-    return probe(baseUrl, modelIdentifier, effectiveApiKey);
+    return probe(baseUrl, modelIdentifier, effectiveApiKey, temperature);
   }
 
   private static boolean sameOrigin(String requestBaseUrl, String storedBaseUrl) {
@@ -130,7 +135,8 @@ public class LlmModelConnectionTester {
     }
   }
 
-  private TestOutcome probe(String baseUrl, String modelIdentifier, String apiKey) {
+  private TestOutcome probe(
+      String baseUrl, String modelIdentifier, String apiKey, BigDecimal temperature) {
     URI uri;
     try {
       uri = chatCompletionsUri(baseUrl);
@@ -142,7 +148,7 @@ public class LlmModelConnectionTester {
       return TestOutcome.failure("Die Basis-Adresse muss mit http:// oder https:// beginnen.");
     }
 
-    String requestBody = buildRequestBody(modelIdentifier);
+    String requestBody = buildRequestBody(modelIdentifier, temperature);
     HttpRequest.Builder requestBuilder =
         HttpRequest.newBuilder(uri)
             .timeout(REQUEST_TIMEOUT)
@@ -167,7 +173,7 @@ public class LlmModelConnectionTester {
             .build()) {
       HttpResponse<String> response =
           httpClient.send(requestBuilder.build(), HttpResponse.BodyHandlers.ofString());
-      return interpret(response);
+      return interpret(response, temperature != null);
     } catch (IOException e) {
       log.warn("Chat model connection test failed for {}: {}", uri, e.getMessage());
       return TestOutcome.failure(translateConnectionError(e));
@@ -177,7 +183,7 @@ public class LlmModelConnectionTester {
     }
   }
 
-  private TestOutcome interpret(HttpResponse<String> response) {
+  private TestOutcome interpret(HttpResponse<String> response, boolean temperatureSent) {
     int status = response.statusCode();
     if (status == 200) {
       return TestOutcome.success("Verbindung erfolgreich, Modell hat geantwortet.");
@@ -194,7 +200,50 @@ public class LlmModelConnectionTester {
           "Die Modell-Kennung wurde am Endpunkt nicht gefunden (HTTP 404). Prüfen Sie die"
               + " Modell-Kennung.");
     }
+    if (status == 400) {
+      return rejected(response.body(), temperatureSent);
+    }
     return TestOutcome.failure("Der Server antwortete mit HTTP " + status + ".");
+  }
+
+  /**
+   * A 400 is the provider refusing the request itself - an unsupported parameter, typically. Its
+   * own reason ({@code error.message} of the OpenAI error shape) is quoted, cut to a readable
+   * length.
+   */
+  private TestOutcome rejected(String body, boolean temperatureSent) {
+    String reason = providerReason(body);
+    StringBuilder message = new StringBuilder("Der Anbieter hat die Anfrage abgelehnt (HTTP 400)");
+    if (reason == null) {
+      message.append('.');
+    } else {
+      message.append(": „").append(reason).append("“");
+    }
+    if (temperatureSent
+        && reason != null
+        && reason.toLowerCase(Locale.ROOT).contains("temperature")) {
+      message.append(
+          " Dieses Modell akzeptiert offenbar keine Temperatur. Lassen Sie das Feld Temperatur leer.");
+    }
+    log.warn("Chat model connection test rejected with HTTP 400: {}", reason);
+    return TestOutcome.failure(message.toString());
+  }
+
+  private String providerReason(String body) {
+    if (!StringUtils.hasText(body)) {
+      return null;
+    }
+    try {
+      String reason = objectMapper.readTree(body).path("error").path("message").asString(null);
+      if (!StringUtils.hasText(reason)) {
+        return null;
+      }
+      return reason.length() > MAX_REASON_LENGTH
+          ? reason.substring(0, MAX_REASON_LENGTH) + " …"
+          : reason;
+    } catch (JacksonException e) {
+      return null;
+    }
   }
 
   /**
@@ -215,7 +264,7 @@ public class LlmModelConnectionTester {
    * modelIdentifier} is operator-entered free text and a hand-escaped string missed control
    * characters a real JSON serializer never would.
    */
-  private String buildRequestBody(String modelIdentifier) {
+  private String buildRequestBody(String modelIdentifier, BigDecimal temperature) {
     Map<String, Object> message = new LinkedHashMap<>();
     message.put("role", "user");
     message.put("content", "Ping");
@@ -223,11 +272,14 @@ public class LlmModelConnectionTester {
     body.put("model", modelIdentifier);
     body.put("messages", List.of(message));
     body.put("max_tokens", 1);
+    if (temperature != null) {
+      body.put("temperature", temperature.doubleValue());
+    }
     try {
       return objectMapper.writeValueAsString(body);
     } catch (JacksonException e) {
       // Only ever thrown for a value Jackson cannot serialize at all - none of the values above
-      // (Strings, a List, an int) can trigger that, so this is unreachable in practice.
+      // (Strings, a List, numbers) can trigger that, so this is unreachable in practice.
       throw new IllegalStateException("Der Testaufruf konnte nicht aufgebaut werden", e);
     }
   }

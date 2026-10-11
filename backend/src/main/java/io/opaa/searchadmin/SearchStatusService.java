@@ -326,7 +326,11 @@ public class SearchStatusService {
     try {
       outcome =
           connectionTester.test(
-              model.getBaseUrl(), model.getModelIdentifier(), null, model.getId());
+              model.getBaseUrl(),
+              model.getModelIdentifier(),
+              null,
+              model.getId(),
+              model.getTemperature());
     } catch (RuntimeException e) {
       log.warn("Chat role reachability probe failed: {}", e.getMessage());
       return new ModelRoleStatus(
