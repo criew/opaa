@@ -624,8 +624,8 @@ Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten]
 
 ## 6. Antwort erzeugen
 
-Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname, Dokument-ID, Chunk-Nummer und die
-vorgegebene Zitierform) zusammen mit der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
+Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname und Zitiermarke; Dokument-ID und
+Chunk-Nummer stehen nur in der Marke) zusammen mit der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
 das **systemweit aktive Chat-Modell**. Die Notiz steht als eigener Block vor dem Verlauf und
 enthält hier **alle** Punkte, auch die Wünsche zur Antwortform, die die Suche nie sieht
 (Abschnitt 2); ohne Punkte entfällt der Block. Die Systemanweisung ist deutsch und weist
@@ -665,7 +665,17 @@ viele Tokens eine Antwort verbraucht hat, steht an der Antwort und in den Metrik
 
 Die Systemanweisung ist **nicht konfigurierbar**: Sie ist im Code festgelegt und enthält nur die
 Rolle, die Vorgabe der Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten zu antworten,
-und die Zitierregeln. Tonfall oder fachlicher Rahmen sind nicht Teil davon; eine Antwortsprache je
+die Antwortregeln und die Zitierregeln. Die Antwortregeln stehen nur dort, wo Kontextdokumente vorliegen
+und die Nachricht etwas zu suchen hatte: zu Sachfragen nur wiedergeben, was die Dokumente, der
+Gesprächsverlauf oder die Gesprächsnotiz tragen, und nichts aus Allgemeinwissen ergänzen; Fehlendes als „in den
+vorliegenden Dokumenten nicht enthalten" benennen statt als „gibt es nicht"; die spezifische Regel vor der
+allgemeinen; Bedingungen, Ausnahmen, Geltungsbereich und Stand nennen, wenn sie erheblich sind; Abweichungen
+zwischen Dokumenten und die Bezugsgröße von Schwellen, Quoten und Fristen benennen; knapp antworten. Jeder
+Kontextabschnitt beginnt mit dem Dokumentnamen und einer Zeile „Zitiermarke:" mit der Zeichenfolge, die das
+Modell unverändert übernehmen soll. Die Zitierregeln zeigen ein Beispiel und nennen die abweichenden Formen
+(Markdown-Link, eigene Quellenangabe, Hülle um die Marke) als verboten; Markdown-Link und eigene
+Quellenangabe werden nicht als Beleg erkannt. Zusammen mit den Antwortregeln steht nach dem letzten
+Abschnitt eine kurze Erinnerung an die Zitierregel. Tonfall oder fachlicher Rahmen sind nicht Teil davon; eine Antwortsprache je
 Bibliothek oder je Person lässt sich nicht einstellen. Das Zitatformat ist ohnehin
 fest, weil Belegprüfung und Fundstellen darauf aufbauen. Dasselbe gilt für die Anweisung der
 Teilfragen-Zerlegung (Stufe 3). Konfigurierbar ist nur, welches Modell die Anweisung bekommt.

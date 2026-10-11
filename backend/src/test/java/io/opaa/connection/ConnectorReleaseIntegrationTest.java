@@ -106,11 +106,61 @@ class ConnectorReleaseIntegrationTest {
     mockMvc
         .perform(as("dev-user", get("/api/v1/connection-profiles?sourceType=PROFILE_PROBE")))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[?(@.id == '" + released + "')].creatable").value(true))
-        .andExpect(jsonPath("$[?(@.id == '" + other + "')].creatable").value(false))
-        .andExpect(
-            jsonPath("$[?(@.id == '" + other + "')].creationNotice")
-                .value(Matchers.hasItem(Matchers.containsString("Systemverwaltung"))));
+        .andExpect(jsonPath("$[?(@.id == '" + released + "')].name").value(Matchers.hasSize(1)))
+        .andExpect(jsonPath("$[?(@.id == '" + other + "')]").isEmpty());
+  }
+
+  /** A lock of the connector type takes every profile of the type out of the selection. */
+  @Test
+  void aLockedConnectorTypeLeavesNoProfileToChoose() throws Exception {
+    UUID released = createProfile("Zugang Typsperre " + UUID.randomUUID());
+    grantToAllAccounts("PROFILE:" + released);
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/connection-profiles?sourceType=PROFILE_PROBE")))
+        .andExpect(jsonPath("$[?(@.id == '" + released + "')].name").value(Matchers.hasSize(1)));
+
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/admin/connector-types/PROFILE_PROBE/lock"))
+                .content("{\"locked\": true}"))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/connection-profiles?sourceType=PROFILE_PROBE")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isEmpty());
+  }
+
+  /**
+   * A person sees only the profiles she may use now - neither one not released to her nor a locked
+   * one - while the system administration's own list keeps every profile.
+   */
+  @Test
+  void aPersonIsOfferedOnlyTheProfilesSheMayUse() throws Exception {
+    UUID released = createProfile("Zugang frei " + UUID.randomUUID());
+    UUID locked = createProfile("Zugang gesperrt " + UUID.randomUUID());
+    UUID withheld = createProfile("Zugang ohne Freigabe " + UUID.randomUUID());
+    grantToAllAccounts("PROFILE:" + released);
+    grantToAllAccounts("PROFILE:" + locked);
+    mockMvc
+        .perform(
+            as("dev-admin", put("/api/v1/admin/connection-profiles/" + locked + "/lock"))
+                .content("{\"locked\": true}"))
+        .andExpect(status().isOk());
+
+    mockMvc
+        .perform(as("dev-user", get("/api/v1/connection-profiles?sourceType=PROFILE_PROBE")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.id == '" + released + "')].name").value(Matchers.hasSize(1)))
+        .andExpect(jsonPath("$[?(@.id == '" + locked + "')]").isEmpty())
+        .andExpect(jsonPath("$[?(@.id == '" + withheld + "')]").isEmpty())
+        .andExpect(jsonPath("$[0].creatable").doesNotExist())
+        .andExpect(jsonPath("$[0].creationNotice").doesNotExist());
+    mockMvc
+        .perform(as("dev-admin", get("/api/v1/admin/connection-profiles")))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$[?(@.id == '" + locked + "')].locked").value(Matchers.hasItem(true)))
+        .andExpect(jsonPath("$[?(@.id == '" + withheld + "')].name").value(Matchers.hasSize(1)));
   }
 
   /**

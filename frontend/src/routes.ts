@@ -12,12 +12,36 @@ export const HANDOVER_ROUTE = '/handover'
 /** Where every provider sign-in returns - the one route a running handover may pass through. */
 export const AUTH_CALLBACK_ROUTE = '/auth/callback'
 export const SETTINGS_ROUTE = '/settings'
+/** The person's own access tokens for external AI tools, a tab of the settings. */
+export const OWN_TOKENS_ROUTE = '/settings/tokens'
 /** The person's own connected accounts, a tab of the settings. */
 export const CONNECTED_ACCOUNTS_ROUTE = '/settings/accounts'
 /** Where a provider returns after an OAuth consent; the server names it as the redirect URI. */
 export const CONNECTION_CALLBACK_ROUTE = '/connections/callback'
+/** The administration's area „Anbindungen"; a bare path lands on its first tab. */
+export const CONNECTIONS_ADMIN_ROUTE = '/admin/connections'
+/** The tabs of the area, in the order of the tab bar. */
+export const CONNECTIONS_ADMIN_TABS = [
+  'access',
+  'source-types',
+  'external-tools',
+  'settings',
+] as const
+export type ConnectionsAdminTab = (typeof CONNECTIONS_ADMIN_TABS)[number]
+export function connectionsAdminRoute(tab: ConnectionsAdminTab): string {
+  return `${CONNECTIONS_ADMIN_ROUTE}/${tab}`
+}
 /** The system administration's connection profiles. */
-export const CONNECTION_PROFILES_ROUTE = '/admin/connection-profiles'
+export const CONNECTION_PROFILES_ROUTE = connectionsAdminRoute('access')
+/** One profile in the list, e.g. from a notification about it. */
+export function connectionProfileRoute(profileId: string): string {
+  return `${CONNECTION_PROFILES_ROUTE}?profile=${encodeURIComponent(profileId)}`
+}
+/** The external AI tools: their settings panel and the anchors of the two lists. */
+export const EXTERNAL_TOOLS_ROUTE = connectionsAdminRoute('external-tools')
+export const EXTERNAL_TOOLS_SETTINGS_ROUTE = `${EXTERNAL_TOOLS_ROUTE}?panel=settings`
+export const EXTERNAL_TOOLS_TOKENS_ROUTE = `${EXTERNAL_TOOLS_ROUTE}#tokens`
+export const EXTERNAL_TOOLS_LIBRARIES_ROUTE = `${EXTERNAL_TOOLS_ROUTE}#libraries`
 /** The audit's read view of the connection log, next to the rights history. */
 export const CONNECTION_LOG_ROUTE = '/revision/verbindungsprotokoll'
 export const RIGHTS_HISTORY_ROUTE = '/revision/rechtehistorie'

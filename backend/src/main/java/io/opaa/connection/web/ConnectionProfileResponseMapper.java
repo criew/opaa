@@ -126,8 +126,6 @@ public final class ConnectionProfileResponseMapper {
     ConnectorData defaults = ConnectorData.fromJson(profile.getConnectorSettings());
     return new ConnectionProfileOption()
         .connectorDefaults(defaults == null ? null : defaults.asMap())
-        .creatable(option.creatable())
-        .creationNotice(option.notice())
         .id(profile.getId())
         .name(profile.getName())
         .sourceType(profile.getSourceType().key())

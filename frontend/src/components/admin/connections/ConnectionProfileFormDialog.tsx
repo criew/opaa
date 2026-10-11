@@ -9,7 +9,6 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -24,8 +23,6 @@ import type {
   SourceTypeSignIn,
 } from '../../../types/api'
 import BusyButton from '../../a11y/BusyButton'
-import ChoiceTileGroup from '../../choice/ChoiceTileGroup'
-import SourceTypeIcon from '../../library/sourceTypeIcon'
 import {
   changeRejected,
   createConnectionProfile,
@@ -35,9 +32,11 @@ import {
   updateConnectionProfile,
 } from '../../../services/connectionProfileApi'
 import { confirmAction } from '../../../stores/confirmStore'
-import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
+import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS, admitsProfiles } from './connectionProfileLabels'
 import ProfileChangePreview from './ProfileChangePreview'
 import ServiceAccountKeyField from './ServiceAccountKeyField'
+import SourceTypeSelect from './SourceTypeSelect'
+import TransportFields from './TransportFields'
 import { reachesLibraries as changeReachesLibraries } from './profileChange'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
@@ -180,8 +179,8 @@ interface ConnectionProfileFormDialogProps {
 }
 
 /**
- * Creates and edits a connection profile. Creating first asks for the source type as a tile; types
- * without profiles stay visible with their reason. Sign-ins, ownerships, the address field and one
+ * Creates and edits a connection profile. Creating first asks for the source type in a select;
+ * types without profiles stay listed with their reason, a single possible type is preselected. Sign-ins, ownerships, the address field and one
  * field per declared default follow the type's description; a fixed address asks for nothing. An
  * edit sends every field back, so it waits for that description - without it the defaults would be
  * lost. A new profile is created without a preview. An edit that may reach the libraries on the
@@ -213,7 +212,12 @@ export default function ConnectionProfileFormDialog({
   const [redirect, setRedirect] = useState<{ uri: string | null } | 'failed' | undefined>()
 
   const isEdit = profile !== null
-  const descriptor = sourceTypes.find((type) => type.type === sourceType) ?? null
+  const connectorTypes = sourceTypes.filter((type) => !type.uploads)
+  const selectableTypes = connectorTypes.filter(admitsProfiles)
+  // With a single possible type there is nothing to choose; it is preselected.
+  const chosenType =
+    sourceType ?? (!isEdit && selectableTypes.length === 1 ? selectableTypes[0].type : null)
+  const descriptor = sourceTypes.find((type) => type.type === chosenType) ?? null
   // While editing, the profile's own method stays offered even if the list has not loaded yet.
   const methods: ConnectionAuthMethod[] =
     descriptor?.signIns.map((signIn) => signIn.method) ?? (profile ? [profile.authMethod] : [])
@@ -234,7 +238,6 @@ export default function ConnectionProfileFormDialog({
   const usesScopes = method !== null && WITH_SCOPES.includes(method)
   // a service account key names its client id itself
   const usesKey = method === 'SERVICE_ACCOUNT_KEY'
-  const connectorTypes = sourceTypes.filter((type) => !type.uploads)
   const showFields = isEdit || (descriptor !== null && descriptor.profileSupport !== 'FORBIDDEN')
   const descriptorMissing = isEdit && descriptor === null
   // the server refuses to keep a stored secret while a token or revocation endpoint moves
@@ -323,7 +326,7 @@ export default function ConnectionProfileFormDialog({
     }
     return createConnectionProfile({
       ...fields(),
-      sourceType: sourceType as string,
+      sourceType: chosenType as string,
     })
   }
 
@@ -409,28 +412,14 @@ export default function ConnectionProfileFormDialog({
         )}
         <Stack spacing={2} sx={{ mt: 1 }}>
           {!isEdit && (
-            <>
-              <Typography variant="body2" id="connection-profile-source-type">
-                Für welche Quellart gilt der Zugang?
-              </Typography>
-              <ChoiceTileGroup<string>
-                aria-labelledby="connection-profile-source-type"
-                value={sourceType}
-                onChange={(next) => {
-                  setSourceType(next)
-                  setDraft({ ...draft, authMethod: '', defaults: {} })
-                }}
-                tiles={connectorTypes.map((type) => ({
-                  value: type.type,
-                  label: type.displayName,
-                  icon: <SourceTypeIcon sourceType={type.type} fontSize={22} />,
-                  disabledReason:
-                    type.profileSupport === 'FORBIDDEN'
-                      ? 'Für diese Quellart sind in dieser Version keine Zugänge möglich.'
-                      : null,
-                }))}
-              />
-            </>
+            <SourceTypeSelect
+              types={connectorTypes}
+              value={chosenType}
+              onChange={(next) => {
+                setSourceType(next)
+                setDraft({ ...draft, authMethod: '', defaults: {} })
+              }}
+            />
           )}
           {showFields && (
             <>
@@ -620,29 +609,11 @@ export default function ConnectionProfileFormDialog({
                 </>
               )}
               {takesTransport && (
-                <>
-                  <TextField
-                    label="Proxy (optional)"
-                    size="small"
-                    value={draft.sourceProxy}
-                    onChange={(e) => setDraft({ ...draft, sourceProxy: e.target.value })}
-                    placeholder="proxy.example.com:8080"
-                    autoComplete="off"
-                    helperText="Gilt für jede Bibliothek auf diesem Zugang; die Bibliothek setzt keinen eigenen."
-                    slotProps={{ htmlInput: { maxLength: 255 } }}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={draft.sourceInsecureSsl}
-                        onChange={(e) =>
-                          setDraft({ ...draft, sourceInsecureSsl: e.target.checked })
-                        }
-                      />
-                    }
-                    label="Zertifikatsprüfung aussetzen"
-                  />
-                </>
+                <TransportFields
+                  proxy={draft.sourceProxy}
+                  insecureSsl={draft.sourceInsecureSsl}
+                  onChange={(change) => setDraft({ ...draft, ...change })}
+                />
               )}
               {defaultKeys.length > 0 && (
                 <>

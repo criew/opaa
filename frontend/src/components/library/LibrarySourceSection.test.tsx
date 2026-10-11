@@ -76,7 +76,6 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     ownership: 'LIBRARY',
     ownAccount: false,
     sourceInsecureSsl: false,
-    creatable: true,
   }
   const neu: ConnectionProfileOption = {
     ...intern,
@@ -321,7 +320,7 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     expect(connect).not.toHaveBeenCalled()
   })
 
-  it('lets a manager without the right to create a library pick among the profiles of the library', async () => {
+  it('offers a manager only the profiles released to her, asking with the library', async () => {
     const asked: string[] = []
     server.use(
       http.get('/api/v1/connection-profiles', ({ request }) => {
@@ -330,15 +329,8 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
         if (url.searchParams.get('libraryId') !== 'library-1') {
           return HttpResponse.json({ error: 'Keine Berechtigung' }, { status: 403 })
         }
-        return HttpResponse.json([
-          intern,
-          {
-            ...neu,
-            creatable: false,
-            creationNotice:
-              'Der Zugang „Nextcloud neu“ ist für Sie nicht freigegeben. Zuständig ist die Systemverwaltung.',
-          },
-        ])
+        // „Nextcloud neu“ is not released to her: the server does not list it
+        return HttpResponse.json([intern])
       }),
     )
     const user = userEvent.setup()
@@ -352,10 +344,38 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
 
     await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
-    expect(await within(dialog).findByText(/ist für Sie nicht freigegeben/)).toBeVisible()
-    expect(within(dialog).getByRole('radio', { name: /Nextcloud neu/ })).toBeDisabled()
+    expect(
+      await within(dialog).findByText(/steht Ihnen kein weiterer Zugang zur Verfügung/),
+    ).toBeVisible()
+    expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument()
+    expect(within(dialog).queryByText(/nicht freigegeben/)).not.toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Prüfen und zuordnen' })).toBeDisabled()
     expect(asked.every((url) => url.includes('libraryId=library-1'))).toBe(true)
+  })
+
+  it('keeps the status of a library whose profile is locked, with its reason and the way out', async () => {
+    const notice =
+      'Gesperrt – Inhalt wird nicht mehr aktualisiert. Die Systemverwaltung hat den Zugang „Nextcloud intern“ gesperrt; der vorhandene Inhalt bleibt durchsuchbar. Zuständig ist die Systemverwaltung.'
+    // a locked profile is no option anymore - the library still names it and its lock
+    server.use(http.get('/api/v1/connection-profiles', () => HttpResponse.json([neu])))
+    const user = userEvent.setup()
+    renderWithProviders(
+      <LibrarySourceSection
+        libraryId="library-1"
+        library={{
+          ...nextcloud,
+          connectionProfile: internRef,
+          sourceBlock: { reason: 'PROFILE_LOCKED', responsible: 'Systemverwaltung', notice },
+        }}
+        canEditSource
+      />,
+    )
+
+    expect(screen.getByTestId('connection-profile')).toHaveTextContent('Nextcloud intern')
+    expect(screen.getByTestId('source-lock-notice')).toHaveTextContent(notice)
+    await user.click(await screen.findByRole('button', { name: 'Zugang wechseln' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Zugang wechseln' })
+    expect(await within(dialog).findByRole('radio', { name: /Nextcloud neu/ })).toBeChecked()
   })
 
   it('releases a library from its profile after a confirmation', async () => {

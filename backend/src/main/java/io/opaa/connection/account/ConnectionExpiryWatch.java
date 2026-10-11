@@ -157,9 +157,9 @@ public class ConnectionExpiryWatch {
             "Client-Secret läuft ab: Zugang „" + profile.getName() + "“",
             "Das Client-Secret des Zugangs "
                 + when
-                + ". Tragen Sie unter Administration → Zugänge ein neues Secret und dessen"
-                + " Ablaufdatum ein; mit einem abgelaufenen Secret meldet sich der Zugang beim"
-                + " Anbieter nicht mehr an.");
+                + ". Tragen Sie unter Administration → Anbindungen → Zugänge ein neues Secret"
+                + " und dessen Ablaufdatum ein; mit einem abgelaufenen Secret meldet sich der"
+                + " Zugang beim Anbieter nicht mehr an.");
       }
     }
     return due.size();

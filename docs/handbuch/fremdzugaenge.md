@@ -65,16 +65,23 @@ auch die Systemverwaltung sieht.
 
 ## 3. Der Schalter der Installation
 
-*Administration → Fremdzugänge → Kanaleinstellungen.* Die Seite gehört der Systemverwaltung und gilt
-für die ganze Installation.
+*Administration → Anbindungen → Externe KI-Werkzeuge.* Der Reiter gehört der Systemverwaltung und
+gilt für die ganze Installation. Oben steht der gespeicherte Zustand mit Datum und handelnder Person
+der letzten Änderung; ist der Kanal offen, steht daneben **Ausschalten** — der Notaus, mit Rückfrage
+und ohne Umweg über das Formular. Darunter nennen drei Zeilen die drei Schlüssel aus Abschnitt 1
+mit ihrem Stand: Schalter, Zahl der freigegebenen Bibliotheken, Zahl der gültigen Zugangstokens.
+Es folgen die freigegebenen Bibliotheken (Abschnitt 4) und die Zugangstokens (Abschnitt 6).
+
+Die Einstellungen selbst stehen im Seitenpanel **Einstellungen** des Reiters und werden dort
+gemeinsam gespeichert:
 
 | Einstellung | Bedeutung |
 |---|---|
-| **Fremdzugänge erlauben** | Der Hauptschalter und zugleich der **Notaus**. Ausgeliefert: aus |
-| **Höchstlaufzeit für Zugangstokens** | Die längste Befristung, die eine Person beim Anlegen wählen darf |
-| **Kontingent je Token** | Anfragen je Stunde und Token — eine Lastbremse (Abschnitt 10) |
-| **Netzbereiche des Kanals** | Aus welchen Netzen der Kanal überhaupt antwortet; ausgeliefert nur das Hausnetz |
-| **Schwelle des Abflussalarms** | Abrufe je Stunde über den ganzen Kanal, ab denen eine Meldung entsteht |
+| **Externe KI-Werkzeuge zulassen** | Der Hauptschalter und zugleich der **Notaus**. Ausgeliefert: aus |
+| **Zugangstokens höchstens gültig** | Die längste Befristung, die eine Person beim Anlegen wählen darf (Höchstlaufzeit) |
+| **Anfragen je Token und Stunde** | Das Kontingent je Token — eine Lastbremse (Abschnitt 10) |
+| **Abflussalarm ab** | Abrufe je Stunde über den ganzen Kanal, ab denen eine Meldung entsteht |
+| **Netzbereiche** | Aus welchen Netzen der Kanal überhaupt antwortet; ausgeliefert nur das Hausnetz |
 | **Einleitungstext für fremde Werkzeuge** | Der Text, den der MCP-Server dem fremden Modell beim Verbinden mitgibt |
 
 Vorgabewerte und Grenzen stehen in Abschnitt 15.
@@ -100,10 +107,10 @@ nicht. Eine Einschränkung je Token gibt es bewusst nicht.
 > Adresse des Proxys — die im Hausnetz liegt und damit **jeden** Aufrufer durchlässt. Siehe
 > [Deployment](deployment.md#alle-umgebungsvariablen).
 
-**Der Einleitungstext** wird auf derselben Seite gepflegt; ein Vorgabetext ist gesetzt und für die
+**Der Einleitungstext** wird im selben Panel gepflegt; ein Vorgabetext ist gesetzt und für die
 meisten Häuser ausreichend. Er sagt dem fremden Modell, wann es den Kanal in Betracht ziehen soll
 und dass es seine Antworten mit Fundstellen zu belegen hat. Seine Änderung ändert keine Reichweite
-und wird deshalb **nicht** protokolliert — jede andere Änderung auf dieser Seite schon.
+und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem Panel schon.
 
 ## 4. Die Freigabe einer Wissensbibliothek
 
@@ -134,9 +141,12 @@ wer den Bestand verantwortet.
   Eine Zahl, keine Namen, keine Personen, keine Nutzung — der eine Anhalt für die Frage, ob die
   Freigabe überhaupt gebraucht wird.
 
-*Administration → Fremdzugangsfreigaben* führt alle freigegebenen Bibliotheken der Installation mit
-ihrem Ablaufdatum — die Sicht, mit der die Systemverwaltung die Aussage „diese Bestände sind aus dem
-Haus erreichbar" belegen kann.
+*Administration → Anbindungen → Externe KI-Werkzeuge*, Abschnitt **„Freigegebene Bibliotheken“**,
+führt alle freigegebenen Bibliotheken der Installation mit ihrem Ablaufdatum, der Person, die die
+Freigabe gesetzt hat, und der Zahl der Zugangstokens — die Sicht, mit der die Systemverwaltung die
+Aussage „diese Bestände sind aus dem Haus erreichbar" belegen kann. Eine Freigabe, die bald endet,
+trägt die Marke „läuft in … Tagen ab“; der Name führt zum Reiter
+„Freigaben“ der Bibliothek.
 
 **Eine zurückgenommene oder erloschene Freigabe wirkt sofort für alle Tokens**, ohne dass diese
 angefasst werden müssen. Die betroffene Auswahl bleibt im Token gespeichert und wird dort als
@@ -193,8 +203,10 @@ keine Bibliothek wählbar.
 
 ## 6. Zugangstokens aus Sicht der Verwaltung
 
-*Administration → Fremdzugänge → Zugangstokens.* Die Liste ist eine **Bestandsliste für die
-Rechteprüfung und für Sperrentscheidungen**, mehr nicht.
+*Administration → Anbindungen → Externe KI-Werkzeuge*, Abschnitt **„Zugangstokens“**. Die Liste ist
+eine **Bestandsliste für die Rechteprüfung und für Sperrentscheidungen**, mehr nicht. Über ihr und
+im dritten Schritt der Einleitung steht, dass jede Person ihre Tokens selbst unter *Einstellungen →
+Zugangstokens* erzeugt, mit einem Link dorthin (Abschnitt 5).
 
 Sie zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand. Sie kennt **kein Nutzungsdatum, keine
 Nutzungszählung und keinen Filter nach Person**, sondern nur Filter über Zustand und Ablauf. Gesperrt
@@ -502,7 +514,8 @@ Zeit sortiert genau der Verlauf je Token, den dieser Kanal ausschließt. Die Fri
 fester Wert und keine Einstellung.
 
 Die Token-Kennung führt über die Tokenliste zur Person — ein Alarm, nach dem niemand handeln kann,
-wäre keiner. Sie steht unter derselben Zweckbindung wie der übrige Nachweisbestand: Vorfall und
+wäre keiner. Die Meldung führt deshalb auf die Tokenliste unter *Administration → Anbindungen →
+Externe KI-Werkzeuge*, ungefiltert und ohne die Zeile einer Person hervorzuheben. Sie steht unter derselben Zweckbindung wie der übrige Nachweisbestand: Vorfall und
 Sperre, nicht arbeitsrechtliche, disziplinarische oder leistungsbezogene Fragen. Der Alarm ist ein
 **Sicherheitsereignis** und steht **nicht** im Nachweisprotokoll; dorthin gelangt allein die daraus
 folgende Sperre.
@@ -601,9 +614,9 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `401`, `reason: account_not_active` | Das **Konto** ist gesperrt, abgelaufen, deaktiviert oder übergeben; alle seine Tokens sind damit außer Kraft. Oder sein Identitätsanbieter beziehungsweise die lokale Kontenverwaltung ist abgeschaltet | [Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 4. Danach ist ein neues Token nötig — die alten leben nicht wieder auf. Nur nach dem Wiedereinschalten des Anbieters oder der lokalen Kontenverwaltung gelten sie wieder; ein gelöschter Anbieter beendet sie dagegen endgültig (`token_revoked`) |
 | `401`, `reason: invalid_token` | Wert unbekannt, verstümmelt oder unvollständig kopiert | Neu einrichten. Der Wert ist nach der Einmalanzeige nirgends abrufbar; im Zweifel neues Token |
 | `401`, `reason: network_not_allowed` | Der Aufruf kam von außerhalb der zugelassenen Netzbereiche — Heimarbeit ohne Hausnetzverbindung, ein anderes Netzsegment, oder ein Reverse Proxy ohne Eintrag in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` (Abschnitt 3) | Verbindung ins Hausnetz herstellen, oder die Netzbereiche der Installation prüfen. **Trifft der Fehler alle Beschäftigten gleichzeitig, ist es die Proxy-Auflösung, nicht das Netz** |
-| `401`/`503`, `reason: channel_closed` | Der Schalter der Installation steht auf aus — Notaus, geplante Abschaltung oder ein Restore (Abschnitt 14) | *Administration → Fremdzugänge → Kanaleinstellungen*. Tokens sind dabei nicht verloren |
+| `401`/`503`, `reason: channel_closed` | Der Schalter der Installation steht auf aus — Notaus, geplante Abschaltung oder ein Restore (Abschnitt 14) | *Administration → Anbindungen → Externe KI-Werkzeuge*. Tokens sind dabei nicht verloren |
 | `404` am MCP-Endpunkt | Kanal aus **und** kein brauchbares Token — oder die falsche Adresse — oder ein Aufruf ganz ohne `Authorization`-Kopf | Zuerst mit einem gültigen Token wiederholen: Kommt dann `503`, ist der Schalter zu; kommt `401`, liegt es am Token; bleibt es bei `404`, ist die Adresse falsch |
-| Ein bestimmter Bestand fehlt in `list_libraries` und in den Treffern, alles andere geht | Einer der vier Faktoren der effektiven Sicht fehlt: Lesezugriff entzogen, **Freigabe zurückgenommen**, **Freigabe erloschen** (Fristablauf) oder Freigabe ausgesetzt. Eine fehlende Bibliothek erzeugt bewusst **keine** Fehlermeldung | Erst Lesezugriff der Person prüfen, dann *Administration → Fremdzugangsfreigaben*. Nach einer erneuten Freigabe lebt die Auswahl in bestehenden Tokens **nicht** wieder auf — es braucht ein neues Token |
+| Ein bestimmter Bestand fehlt in `list_libraries` und in den Treffern, alles andere geht | Einer der vier Faktoren der effektiven Sicht fehlt: Lesezugriff entzogen, **Freigabe zurückgenommen**, **Freigabe erloschen** (Fristablauf) oder Freigabe ausgesetzt. Eine fehlende Bibliothek erzeugt bewusst **keine** Fehlermeldung | Erst Lesezugriff der Person prüfen, dann *Administration → Anbindungen → Externe KI-Werkzeuge*, Abschnitt „Freigegebene Bibliotheken“. Nach einer erneuten Freigabe lebt die Auswahl in bestehenden Tokens **nicht** wieder auf — es braucht ein neues Token |
 | Die Bibliothek ist im Token als **ausgesetzt** markiert | Die Freigabe wurde zurückgenommen oder ist erloschen | Freigabe erneuern lassen, dann ein **neues** Token erzeugen |
 | `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
 | `403` bei einem Aufruf, der bis gestern lief | Ein Proxy hängt der Adresse etwas an (`/mcp;x=1`); solche Pfade weist die Anwendung ab, bevor sie den Endpunkt erreichen | Proxy-Regel bereinigen. Eine prozentkodierte Schreibweise (`/%6Dcp`) ist dagegen unschädlich — sie wird wie `/mcp` behandelt |
@@ -643,17 +656,17 @@ Schalter, Freigaben und Tokens sind Zeilen in der Datenbank. Eine Rücksicherung
 beides belegen würde, gleich mit. Nach jeder Wiederherstellung deshalb, zusätzlich zur allgemeinen
 Nacharbeit ([Deployment](deployment.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)):
 
-1. **Schalterzustand prüfen.** *Administration → Fremdzugänge → Kanaleinstellungen*: Steht der
-   Schalter so, wie er zuletzt stand? Die Seite zeigt Zeitpunkt und handelnde Person der letzten
+1. **Schalterzustand prüfen.** *Administration → Anbindungen → Externe KI-Werkzeuge*: Steht der
+   Schalter so, wie er zuletzt stand? Der Reiter zeigt Zeitpunkt und handelnde Person der letzten
    Änderung. War der Kanal wegen eines Vorfalls abgeschaltet, ist er nach dem Restore womöglich
    wieder offen.
 2. **Grenzwerte prüfen** — Höchstlaufzeit, Kontingent, Alarmschwelle, Netzbereiche. Eine kurz vor dem
    Sicherungsstand verschärfte Einstellung ist zurückgerollt.
-3. **Freigegebene Bibliotheken prüfen.** *Administration → Fremdzugangsfreigaben*: Steht eine
+3. **Freigegebene Bibliotheken prüfen.** Derselbe Reiter, Abschnitt „Freigegebene Bibliotheken“: Steht eine
    Bibliothek auf der Liste, deren Freigabe seit dem Sicherungsstand zurückgenommen wurde oder
    erloschen ist? Der tägliche Lauf holt Fristabläufe von selbst nach, eine **Rücknahme von Hand**
    aber nicht.
-4. **Tokenbestand prüfen.** *Administration → Fremdzugänge → Zugangstokens*: Ist ein Token wieder
+4. **Tokenbestand prüfen.** Derselbe Reiter, Abschnitt „Zugangstokens“: Ist ein Token wieder
    gültig, das gesperrt oder widerrufen war? Gesperrte Tokens gehören erneut gesperrt — abgelaufene
    erledigen sich von selbst.
 5. **Den Befund festhalten.** Die Protokolleinträge über Sperren und Rücknahmen aus dem verlorenen
@@ -664,17 +677,17 @@ wirkt sofort für alle Tokens und vernichtet keines.
 
 ## 15. Konfiguration
 
-**Systemeinstellungen** unter *Administration → Fremdzugänge → Kanaleinstellungen*. Sie gelten
+**Systemeinstellungen** unter *Administration → Anbindungen → Externe KI-Werkzeuge → Einstellungen*. Sie gelten
 installationsweit, werden je Aufruf gelesen und wirken ohne Neustart; jede Änderung außer der des
 Einleitungstextes wird protokolliert.
 
 | Einstellung | Auslieferung | Grenzen |
 |---|---|---|
-| Fremdzugänge erlauben | aus | an/aus |
-| Höchstlaufzeit für Zugangstokens | 90 Tage | 1–365 |
-| Kontingent je Token | 60 Anfragen/Stunde | 1–10.000 |
-| Schwelle des Abflussalarms | 600 Abrufe/Stunde | 1–1.000.000 |
-| Netzbereiche des Kanals | `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `::1/128`, `fc00::/7` | höchstens 50 Einträge, nur CIDR-Notation |
+| Externe KI-Werkzeuge zulassen | aus | an/aus |
+| Zugangstokens höchstens gültig | 90 Tage | 1–365 |
+| Anfragen je Token und Stunde | 60 Anfragen/Stunde | 1–10.000 |
+| Abflussalarm ab | 600 Abrufe/Stunde | 1–1.000.000 |
+| Netzbereiche | `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `::1/128`, `fc00::/7` | höchstens 50 Einträge, nur CIDR-Notation |
 | Einleitungstext für fremde Werkzeuge | Vorgabetext | höchstens 4.000 Zeichen |
 
 Eine leere Netzbereichsliste weist **jeden** Aufruf ab: Die Prüfung versagt geschlossen, und

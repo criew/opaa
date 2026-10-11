@@ -162,18 +162,23 @@ export async function mcpSearch(
   return result.results as McpHit[]
 }
 
-/** Der Schalter der Installation, über die Oberfläche der Systemverwaltung. */
+/**
+ * Der Schalter der Installation, über die Oberfläche der Systemverwaltung: das Einstellungs-Panel
+ * unter „Administration → Anbindungen → Externe KI-Werkzeuge“.
+ */
 export async function setChannelEnabled(adminPage: Page, enabled: boolean): Promise<void> {
-  await adminPage.goto('/admin/external-access/channel')
-  const toggle = adminPage.getByRole('switch', { name: 'Fremdzugänge erlauben' })
+  await adminPage.goto('/admin/connections/external-tools?panel=settings')
+  const panel = adminPage.getByRole('dialog', { name: 'Einstellungen für externe KI-Werkzeuge' })
+  const toggle = panel.getByRole('switch', { name: 'Externe KI-Werkzeuge zulassen' })
   await expect(toggle).toBeVisible()
   if ((await toggle.isChecked()) !== enabled) {
     await toggle.click()
   }
-  await adminPage.getByRole('button', { name: 'Speichern' }).click()
+  await panel.getByRole('button', { name: 'Speichern' }).click()
   await expect(
     adminPage.getByText('Die Einstellungen wurden gespeichert und wirken ab dem nächsten Aufruf.'),
   ).toBeVisible()
+  await expect(panel).toHaveCount(0)
 }
 
 /** Die Kanaleinstellungen, wie die Systemverwaltung sie sieht - für Sicherung und Wiederherstellung. */

@@ -233,20 +233,32 @@ describe('LibraryCreatePage (#596, #1942)', () => {
   })
 
   describe('Anlegerechte (#1813, ADR-0036 Entscheidung 5)', () => {
-    it('disables the tiles of a kind the caller may not create, with the reason on the tile', async () => {
+    it('hides the tile of a kind the caller may not create', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
       await renderPage()
 
-      const upload = await screen.findByRole('radio', { name: /Upload/ })
-      expect(upload).toBeDisabled()
-      expect(upload).toHaveAccessibleDescription(capabilityMissingMessage('CREATE_LIBRARY'))
+      await waitFor(() =>
+        expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument(),
+      )
       expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
+      expect(screen.queryByText(capabilityMissingMessage('CREATE_LIBRARY'))).not.toBeInTheDocument()
     })
 
-    // ADR-0036, Nachtrag vom 03.10.2026: die Konnektor-Freigabe gilt je Quellart - eine nicht
-    // freigegebene Art bleibt mit dem Hinweis des Backends sichtbar, statt erst beim Anlegen zu
-    // scheitern.
-    it('locks the tile of a source type that is not released, with the notice from the backend', async () => {
+    it('shows an empty step naming the system administration when nothing may be created', async () => {
+      mockGetMyCapabilities.mockResolvedValue([])
+      renderWithProviders(<LibraryCreatePage />, { withRouter: true })
+
+      await screen.findByText(/Sie dürfen derzeit keine Bibliothek anlegen/)
+      expect(document.getElementById('library-create-capability-hint')).toHaveTextContent(
+        'Wenden Sie sich an die Systemverwaltung',
+      )
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
+    })
+
+    // The connector release applies per type: a type without a usable way - not released, locked
+    // or without a usable profile - does not appear in the wizard at all.
+    it('hides the tile of a source type the person has no usable way for', async () => {
       const notice =
         'Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für die Quellart „RSS-Feed“.'
       mockListSourceTypes.mockResolvedValue(
@@ -263,27 +275,24 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       )
       await renderPage()
 
-      const rss = await screen.findByRole('radio', { name: /RSS-Feed/ })
-      expect(rss).toBeDisabled()
-      expect(rss).toHaveAccessibleDescription(notice)
-      expect(screen.getByRole('radio', { name: /Confluence/ })).toBeEnabled()
+      expect(await screen.findByRole('radio', { name: /Confluence/ })).toBeEnabled()
+      expect(screen.queryByRole('radio', { name: /RSS-Feed/ })).not.toBeInTheDocument()
+      expect(screen.queryByText(notice)).not.toBeInTheDocument()
     })
 
-    it('names the connector right once a connector source is chosen', async () => {
+    it('shows only the upload tile without the connector right', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_LIBRARY'])
-      const user = userEvent.setup()
       await renderPage()
 
-      await waitFor(() => expect(screen.getByRole('radio', { name: /Dateisystem/ })).toBeDisabled())
-      expect(screen.getByRole('radio', { name: /Upload/ })).toBeEnabled()
-      // Eine gesperrte Kachel wählt nichts aus - der Typ bleibt der zuvor gewählte.
-      await user.click(screen.getByRole('radio', { name: /Dateisystem/ }))
+      await waitFor(() =>
+        expect(screen.queryByRole('radio', { name: /Dateisystem/ })).not.toBeInTheDocument(),
+      )
       expect(screen.getByRole('radio', { name: /Upload/ })).toBeChecked()
     })
 
     // Die Anlegerechte kommen erst nach dem ersten Rendern an: Was dann gesperrt ist, darf nicht
     // ausgewählt stehen bleiben - sonst führte „Weiter" in einen Pfad, der nie anlegen kann.
-    it('moves the selection off a tile that turns out to be locked', async () => {
+    it('moves the selection off a tile that turns out to be hidden', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
       await renderPage()
 
@@ -294,22 +303,22 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           'true',
         ),
       )
-      expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled()
-      expect(screen.getByRole('radio', { name: /Upload/ })).toHaveAttribute('aria-checked', 'false')
+      expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument()
       expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
-      // Die Begründung steht weiter auf der gesperrten Kachel, aber nicht mehr als Hinweis über
-      // dem Assistenten: Der gälte der gewählten Art, und die ist jetzt eine erlaubte.
+      // no hint above the wizard: it would concern the chosen type, and that one is allowed now
       expect(document.getElementById('library-create-capability-hint')).toBeNull()
     })
   })
 
   // WAI-ARIA „radio group": ein Halt in der Tabulatorreihenfolge, die Pfeiltasten wählen innerhalb.
-  it('moves through the tiles with the arrow keys and skips a locked one', async () => {
+  it('moves through the tiles with the arrow keys', async () => {
     mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
     const user = userEvent.setup()
     await renderPage()
 
-    await waitFor(() => expect(screen.getByRole('radio', { name: /Upload/ })).toBeDisabled())
+    await waitFor(() =>
+      expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument(),
+    )
     const filesystem = screen.getByRole('radio', { name: /Dateisystem/ })
     expect(filesystem).toHaveAttribute('tabindex', '0')
     expect(screen.getByRole('radio', { name: /Confluence/ })).toHaveAttribute('tabindex', '-1')
@@ -322,8 +331,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     )
     expect(screen.getByRole('radio', { name: /Webverzeichnis/ })).toHaveFocus()
 
-    // Rückwärts über den Anfang hinaus landet am Ende - und die gesperrte Upload-Kachel wird
-    // übersprungen, statt den Fokus zu verschlucken.
+    // backwards past the start lands at the end
     await user.keyboard('{ArrowLeft}{ArrowLeft}')
     expect(screen.getByRole('radio', { name: /Dateifreigabe/ })).toHaveAttribute(
       'aria-checked',
@@ -1120,17 +1128,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       sourceType: 'NEXTCLOUD',
       serverUrl: 'https://cloud.intern.example',
       authMethod: 'PERSONAL_SECRET' as const,
-      creatable: true,
       connectorDefaults: null,
-    }
-    const locked = {
-      ...profile,
-      id: 'profile-partner',
-      name: 'Nextcloud Partner',
-      serverUrl: 'https://cloud.partner.example',
-      creatable: false,
-      creationNotice:
-        'Der Zugang „Nextcloud Partner“ ist gesperrt. Zuständig ist die Systemverwaltung.',
     }
 
     function withNextcloud(overrides: Record<string, unknown>) {
@@ -1140,7 +1138,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }
 
     it('creates a library through the chosen profile, its address prefilled', async () => {
-      mockListConnectionProfileOptions.mockResolvedValue([profile, locked])
+      mockListConnectionProfileOptions.mockResolvedValue([profile])
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
@@ -1153,7 +1151,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy()
       expect(screen.getByRole('radio', { name: /Eigene Adresse/ })).toBeChecked()
-      expect(screen.getByRole('radio', { name: /Nextcloud Partner/ })).toBeDisabled()
 
       await user.click(screen.getByRole('radio', { name: /Nextcloud intern/ }))
       expect(screen.getByLabelText(/Adresse der Nextcloud/)).toHaveValue(
@@ -1320,7 +1317,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockListSourceTypes.mockResolvedValue(
         withNextcloud({ profileRequired: true, creatable: true, creatableWithOwnAddress: false }),
       )
-      mockListConnectionProfileOptions.mockResolvedValue([locked])
+      mockListConnectionProfileOptions.mockResolvedValue([])
       const user = userEvent.setup()
       await renderPage()
       await chooseType(user, /Nextcloud/)
@@ -1333,6 +1330,23 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(
         screen.getByText('Für diese Quellart steht Ihnen kein Zugang zur Verfügung.'),
       ).toBeInTheDocument()
+    }, 15000)
+
+    it('hides a type that is usable only through a profile while none is usable', async () => {
+      mockListSourceTypes.mockResolvedValue(
+        withNextcloud({
+          profileRequired: true,
+          creatable: false,
+          creatableWithOwnAddress: false,
+          creationNotice:
+            'Die Quellart „Nextcloud“ ist nur über einen Zugang nutzbar, und es gibt noch keinen. Zugänge legt die Systemverwaltung an.',
+        }),
+      )
+      await renderPage()
+
+      expect(await screen.findByRole('radio', { name: /Confluence/ })).toBeEnabled()
+      expect(screen.queryByRole('radio', { name: /Nextcloud/ })).not.toBeInTheDocument()
+      expect(screen.queryByText(/es gibt noch keinen/)).not.toBeInTheDocument()
     }, 15000)
 
     it('offers the own address alone while no profile exists yet', async () => {
@@ -1361,7 +1375,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       sourceType: 'SHAREPOINT',
       serverUrl: 'https://graph.microsoft.com',
       authMethod: 'CLIENT_CREDENTIALS' as const,
-      creatable: true,
       connectorDefaults: null,
     }
 
@@ -1448,7 +1461,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       ownership: 'BOTH' as const,
       ownAccount: false,
       sourceInsecureSsl: false,
-      creatable: true,
       connectorDefaults: null,
     }
     const ownProfile = { ...profile, ownAccount: true }

@@ -1,4 +1,8 @@
-import type { ConnectionAuthMethod, ConnectionOwnership } from '../../../types/api'
+import type {
+  ConnectionAuthMethod,
+  ConnectionOwnership,
+  SourceTypeDescriptor,
+} from '../../../types/api'
 
 export const AUTH_METHOD_LABELS: Record<ConnectionAuthMethod, string> = {
   NONE: 'Ohne Anmeldung',
@@ -12,4 +16,11 @@ export const OWNERSHIP_LABELS: Record<ConnectionOwnership, string> = {
   LIBRARY: 'Bibliothek',
   PERSON: 'Person',
   BOTH: 'Bibliothek und Person',
+}
+
+export const NO_PROFILES_REASON = 'Für diese Quellart sind in dieser Version keine Zugänge möglich.'
+
+/** Whether a profile can be created for this source type at all. */
+export function admitsProfiles(type: SourceTypeDescriptor): boolean {
+  return type.profileSupport !== 'FORBIDDEN'
 }

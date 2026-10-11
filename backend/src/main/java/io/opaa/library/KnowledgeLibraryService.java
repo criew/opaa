@@ -237,8 +237,8 @@ public class KnowledgeLibraryService {
   }
 
   /**
-   * The profiles a library's managers may connect it through - {@code MANAGER} on the library, not
-   * the release: the ones not released to the caller come with the notice who can change that.
+   * The profiles a library's managers may connect it through - {@code MANAGER} on the library to
+   * ask, and only the profiles released to the caller and not locked are listed.
    */
   public List<ConnectorReleaseService.ProfileOption> profileOptions(
       UUID libraryId, SourceType sourceType, CurrentUser caller) {
