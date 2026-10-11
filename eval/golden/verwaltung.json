@@ -148,7 +148,7 @@
       "pipeline": {
         "state": "known_gap",
         "since": "2026-09-14",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (14 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0035_dienstanweisung-buergeramt-2-2024.md; verwaltung-0039_gebuehrenordnung-kaemmerei.md steht auf Rang 4."
+        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Der Volltextpfad in der Fusion hebt den wörtlich im Zieldokument stehenden Anfragebegriff nicht über thematisch nahe, sachlich falsche Amtsdokumente. Gemessen am 2026-10-11 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2502, top-k 20, max-chunks-per-document 1), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (16 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0035_dienstanweisung-buergeramt-2-2024.md; verwaltung-0039_gebuehrenordnung-kaemmerei.md steht auf Rang 4."
       }
     }
   },

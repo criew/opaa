@@ -604,6 +604,15 @@ davor. `verwaltung.json` und `comic-characters.json` tragen nur den neuen Golden
 Pipeline-Zustände und -Gründe im selben Datensatz nachgezogen sind. Vorher/Nachher je Domäne und die
 Ursache jeder sinkenden Zahl stehen in ADR-0012, Nachtrag top-k 20, und in den `notes` der Dateien.
 
+### Neuziehung mit `max-chunks-per-document` 1 (2026-10-11, Issue #2502)
+
+Der Produktions-Default `max-chunks-per-document` sank von 2 auf 1, ein geprüfter Fixpunkt dieses
+Pfads. Alle drei `pipeline-*.json` und `pipeline-verwaltung-conversations.json` sind aus
+CPU-Testcontainer-Läufen dieses Tages neu gezogen; keine Vertragsversion steigt. Die Gruppenzahlen der
+drei Einzelfragen-Domänen sind unverändert, weil der Harness die Endauswahl auf Dokumentebene misst und
+ein Geschwister-Chunk dort kein weiteres Dokument ist. `verwaltung.json` trägt nur den neuen
+Golden-Hash. Vorher/Nachher und Begründung: ADR-0012, Nachtrag max-chunks-per-document 1.
+
 ### Fehlerkriterium: unverändert ADR-0013
 
 Toleranzformel, fallzahlbasierte Konjunktion (#306) und die Kombination aus baseline-relativer und
