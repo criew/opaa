@@ -381,7 +381,7 @@ test.describe.serial('Fremdzugänge', () => {
     await expect(tokenRow(adminPage, TOKEN_WIDE)).toBeVisible()
     await expect(adminPage.getByRole('columnheader', { name: 'Zuletzt benutzt' })).toHaveCount(0)
     // Gefiltert wird über Zustand und Ablauf, nicht über Personen.
-    await expect(adminPage.getByLabel('Zustand')).toBeVisible()
+    await expect(adminPage.getByLabel('Zustand', { exact: true })).toBeVisible()
     await expect(
       adminPage.getByRole('combobox', { name: /Person|Besitzer|Nutzer/ }),
     ).toHaveCount(0)
