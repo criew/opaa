@@ -30,6 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
@@ -66,7 +67,7 @@ public class LlmModelDiscoverer {
   private static final int PARALLEL_DETAIL_CALLS = 6;
 
   /** Shared by all {@code /api/show} calls of one discovery. */
-  private static final Duration DETAILS_BUDGET = Duration.ofSeconds(8);
+  static final Duration DETAILS_BUDGET = Duration.ofSeconds(8);
 
   /** Identifier fragments of models that serve no chat: embedding, speech, image, moderation. */
   private static final List<String> NON_CHAT_MARKERS =
@@ -78,13 +79,25 @@ public class LlmModelDiscoverer {
 
   private final ModelEndpointAccess access;
   private final ObjectMapper objectMapper;
+  private final Duration detailsBudget;
 
+  @Autowired
   public LlmModelDiscoverer(
       LlmModelRepository repository,
       SettingsEncryptor settingsEncryptor,
       ObjectMapper objectMapper) {
+    this(repository, settingsEncryptor, objectMapper, DETAILS_BUDGET);
+  }
+
+  /** {@code detailsBudget} replaces {@link #DETAILS_BUDGET}, so a test need not wait it out. */
+  LlmModelDiscoverer(
+      LlmModelRepository repository,
+      SettingsEncryptor settingsEncryptor,
+      ObjectMapper objectMapper,
+      Duration detailsBudget) {
     this.access = new ModelEndpointAccess(repository, settingsEncryptor);
     this.objectMapper = objectMapper;
+    this.detailsBudget = detailsBudget;
   }
 
   /**
@@ -288,8 +301,8 @@ public class LlmModelDiscoverer {
   }
 
   /**
-   * One {@code /api/show} per model, a few at a time, within {@link #DETAILS_BUDGET} overall. A
-   * model whose call fails or does not finish in time simply has no entry.
+   * One {@code /api/show} per model, a few at a time, within the details budget overall. A model
+   * whose call fails or does not finish in time simply has no entry.
    */
   private Map<String, Show> shows(
       HttpClient client, String root, String key, Iterable<String> identifiers)
@@ -302,8 +315,11 @@ public class LlmModelDiscoverer {
     }
     Semaphore permits = new Semaphore(PARALLEL_DETAIL_CALLS);
     Map<String, Future<Show>> pending = new LinkedHashMap<>();
-    long deadline = System.nanoTime() + DETAILS_BUDGET.toNanos();
-    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+    long deadline = System.nanoTime() + detailsBudget.toNanos();
+    // Not closed via try-with-resources: close() would await calls still hanging after the budget
+    // or an interrupt. They are cancelled and the executor abandoned without waiting.
+    ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    try {
       int submitted = 0;
       for (String identifier : identifiers) {
         if (submitted++ >= MAX_DETAILED_MODELS) {
@@ -328,8 +344,10 @@ public class LlmModelDiscoverer {
           shows.put(entry.getKey(), show);
         }
       }
-      pending.values().forEach(future -> future.cancel(true));
       return shows;
+    } finally {
+      pending.values().forEach(future -> future.cancel(true));
+      executor.shutdownNow();
     }
   }
 

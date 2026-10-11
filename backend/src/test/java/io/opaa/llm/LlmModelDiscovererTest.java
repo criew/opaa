@@ -17,13 +17,18 @@ import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -286,6 +291,92 @@ class LlmModelDiscovererTest {
     assertThat(discovery.ollama()).isTrue();
     assertThat(model(discovery, "qwen3:8b").sizeBytes()).isEqualTo(5225388164L);
     assertThat(model(discovery, "qwen3:8b").contextLength()).isNull();
+  }
+
+  @Test
+  void aHangingDetailCallEndsWithTheBudgetAndKeepsTheBareList() throws IOException {
+    // regression guard: the details budget bounds the whole discovery, also when /api/show never
+    // answers - the pending calls are cancelled rather than awaited.
+    HttpServer ollama = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    ollama.setExecutor(Executors.newCachedThreadPool());
+    CountDownLatch release = new CountDownLatch(1);
+    ollama.createContext("/v1/models", exchange -> send(exchange, 200, OLLAMA_MODELS));
+    ollama.createContext("/api/tags", exchange -> send(exchange, 200, OLLAMA_TAGS));
+    ollama.createContext(
+        "/api/show",
+        exchange -> {
+          try {
+            release.await(30, TimeUnit.SECONDS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          exchange.close();
+        });
+    ollama.start();
+    try {
+      LlmModelDiscoverer budgeted =
+          new LlmModelDiscoverer(
+              repository, settingsEncryptor, new ObjectMapper(), Duration.ofMillis(300));
+      String ollamaBaseUrl = "http://127.0.0.1:" + ollama.getAddress().getPort() + "/v1";
+
+      long start = System.nanoTime();
+      ModelDiscovery discovery = budgeted.discover(ollamaBaseUrl, null, null);
+      Duration elapsed = Duration.ofNanos(System.nanoTime() - start);
+
+      assertThat(elapsed).isLessThan(Duration.ofSeconds(3));
+      assertThat(discovery.success()).isTrue();
+      assertThat(model(discovery, "qwen3:8b").sizeBytes()).isEqualTo(5225388164L);
+      assertThat(model(discovery, "qwen3:8b").contextLength()).isNull();
+    } finally {
+      release.countDown();
+      ollama.stop(0);
+    }
+  }
+
+  @Test
+  void anInterruptedDiscoveryCancelsHangingDetailCallsInsteadOfAwaitingThem() throws Exception {
+    // regression guard: an interrupt while awaiting /api/show cancels the pending calls; it must
+    // not leave the caller blocked until each call's own request timeout.
+    HttpServer ollama = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    ollama.setExecutor(Executors.newCachedThreadPool());
+    CountDownLatch release = new CountDownLatch(1);
+    CountDownLatch showReached = new CountDownLatch(1);
+    ollama.createContext("/v1/models", exchange -> send(exchange, 200, OLLAMA_MODELS));
+    ollama.createContext("/api/tags", exchange -> send(exchange, 200, OLLAMA_TAGS));
+    ollama.createContext(
+        "/api/show",
+        exchange -> {
+          showReached.countDown();
+          try {
+            release.await(30, TimeUnit.SECONDS);
+          } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+          }
+          exchange.close();
+        });
+    ollama.start();
+    try {
+      LlmModelDiscoverer budgeted =
+          new LlmModelDiscoverer(
+              repository, settingsEncryptor, new ObjectMapper(), Duration.ofSeconds(20));
+      String ollamaBaseUrl = "http://127.0.0.1:" + ollama.getAddress().getPort() + "/v1";
+      AtomicReference<ModelDiscovery> result = new AtomicReference<>();
+      Thread caller = new Thread(() -> result.set(budgeted.discover(ollamaBaseUrl, null, null)));
+
+      caller.start();
+      assertThat(showReached.await(5, TimeUnit.SECONDS)).isTrue();
+      long start = System.nanoTime();
+      caller.interrupt();
+      caller.join(Duration.ofSeconds(8));
+      Duration elapsed = Duration.ofNanos(System.nanoTime() - start);
+
+      assertThat(caller.isAlive()).isFalse();
+      assertThat(elapsed).isLessThan(Duration.ofSeconds(3));
+      assertThat(result.get().failure()).isEqualTo(Failure.UNREACHABLE);
+    } finally {
+      release.countDown();
+      ollama.stop(0);
+    }
   }
 
   @Test

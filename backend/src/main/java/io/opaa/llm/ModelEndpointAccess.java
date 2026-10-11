@@ -72,7 +72,7 @@ final class ModelEndpointAccess {
           "Die angegebene Basis-Adresse weicht von der gespeicherten Adresse dieses Modells"
               + " ab. Der gespeicherte Zugangsschlüssel kann nur für die ursprüngliche Adresse"
               + " verwendet werden - bitte den Schlüssel erneut eingeben oder die"
-              + " gespeicherte Basis-Adresse zum Testen verwenden.");
+              + " gespeicherte Basis-Adresse verwenden.");
     }
     return settingsEncryptor.decrypt(model.getApiKeyCiphertext());
   }
