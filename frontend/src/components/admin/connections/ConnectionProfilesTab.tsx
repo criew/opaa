@@ -1,17 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
-import Chip from '@mui/material/Chip'
-import Stack from '@mui/material/Stack'
-import Table from '@mui/material/Table'
-import TableBody from '@mui/material/TableBody'
-import TableCell from '@mui/material/TableCell'
-import TableHead from '@mui/material/TableHead'
-import TableRow from '@mui/material/TableRow'
-import Typography from '@mui/material/Typography'
 import type {
+  CapabilityOverviewResponse,
   ConnectionProfileImpactResponse,
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
@@ -19,6 +12,7 @@ import type {
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import { useSourceTypes } from '../../../hooks/useSourceTypes'
+import { getCapabilityOverview } from '../../../services/capabilityAdminApi'
 import {
   deleteConnectionProfile,
   disconnectAllConnections,
@@ -28,29 +22,16 @@ import {
   lockConnectionProfile,
   testConnectionProfileSignIn,
 } from '../../../services/connectionProfileApi'
+import StatusLine from '../../StatusLine'
+import { ListEmptyState, ListLoading } from '../list/AdminList'
 import ConnectionProfileFormDialog from './ConnectionProfileFormDialog'
+import ConnectionProfileOverview, { type ProfileEntry } from './ConnectionProfileOverview'
+import ConnectionProfilePanel from './ConnectionProfilePanel'
 import DormantSourceConnectionsSection from './DormantSourceConnectionsSection'
 import { confirmLock } from './connectorLock'
-import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
+import { admitsProfiles } from './connectionProfileLabels'
 import { admitsPersons, personCountLabel } from './profileChange'
-
-/** "31.03.2027" for an ISO date, read as a calendar day without a time zone shift. */
-function formatDay(isoDate: string) {
-  const [year, month, day] = isoDate.split('-')
-  return `${day}.${month}.${year}`
-}
-
-/** Whether the ISO date lies before today. */
-function isPast(isoDate: string) {
-  const today = new Date()
-  const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
-  return isoDate < iso
-}
-
-/** Whether the profile signs in itself, so its sign-in can be tested and rejected. */
-function signsInItself(profile: ConnectionProfileResponse) {
-  return profile.authMethod === 'CLIENT_CREDENTIALS' || profile.authMethod === 'SERVICE_ACCOUNT_KEY'
-}
+import { accessOf, attentionOf, profileAccessEntry, signsInItself, summaryOf } from './profileState'
 
 function connectionCount(count: number) {
   return count === 1 ? '1 Verbindung' : `${count} Verbindungen`
@@ -73,36 +54,52 @@ function accountsClause(
     : ''
 }
 
-/** The query parameter a link uses to point at one profile, e.g. from a notification. */
+/** The query parameter that opens the panel of one profile, e.g. from a notification. */
 export const PROFILE_PARAM = 'profile'
 
 /**
- * Der Reiter „Zugänge“ der Anbindungen: je Zugang Quellart, Server-Adresse, Anmeldeart und Zahl
- * der Verbindungen, dazu Bearbeiten, Sperren, die Notabschaltung „Alle Verbindungen trennen“ und
- * Löschen, darunter die ruhenden Quellverbindungen. Jede Handlung fragt nach. Die Rollenschranke
- * steht auf der Seite; `?profile=<id>` hebt die Zeile dieses Zugangs hervor und rollt zu ihr.
+ * Der Reiter „Zugänge“ der Anbindungen: oben, was zu tun ist, darunter je Zugang Quellart und
+ * Zustand, Server, wer ihn nutzen darf, die Verbindungen und der Handlungsbedarf - eine Zeile je
+ * Zugang. Alles Weitere steht im Seitenpanel; `?profile=<id>` öffnet es. Darunter die Bibliotheken
+ * mit ruhender Quelle. Die Rollenschranke steht auf der Seite.
  */
 export default function ConnectionProfilesTab() {
-  const [searchParams] = useSearchParams()
-  const pointedId = searchParams.get(PROFILE_PARAM)
-  const pointedRowRef = useRef<HTMLTableRowElement | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const openId = searchParams.get(PROFILE_PARAM)
   const { sourceTypes, loaded: sourceTypesLoaded } = useSourceTypes()
-  const anyTypeAdmitsProfiles = sourceTypes.some((type) => type.profileSupport !== 'FORBIDDEN')
+  const anyTypeAdmitsProfiles = sourceTypes.some(admitsProfiles)
   const [profiles, setProfiles] = useState<ConnectionProfileResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState<{
-    open: boolean
-    profile: ConnectionProfileResponse | null
-  }>({
+  const [form, setForm] = useState<{ open: boolean; profile: ConnectionProfileResponse | null }>({
     open: false,
     profile: null,
   })
-
   const [typeStates, setTypeStates] = useState<ConnectorTypeStateResponse[]>([])
   const [typeError, setTypeError] = useState<string | null>(null)
+  const [overview, setOverview] = useState<CapabilityOverviewResponse[] | null>(null)
+  const [overviewError, setOverviewError] = useState<string | null>(null)
+  const [dormant, setDormant] = useState(0)
+  const [dormantFailed, setDormantFailed] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const reload = () => setReloadKey((key) => key + 1)
+
+  // No synchronous setState in the body: the effect below calls this function, and a synchronous
+  // setState from there causes a render cascade (react-hooks/set-state-in-effect).
+  const loadOverview = useCallback(
+    () =>
+      getCapabilityOverview()
+        .then((loaded) => {
+          setOverview(loaded)
+          setOverviewError(null)
+        })
+        .catch((err: unknown) =>
+          setOverviewError(
+            err instanceof Error ? err.message : 'Die Freigaben konnten nicht geladen werden.',
+          ),
+        ),
+    [],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -133,18 +130,24 @@ export default function ConnectionProfilesTab() {
           )
         }
       })
+    void loadOverview()
     return () => {
       cancelled = true
     }
-  }, [reloadKey])
-
-  const pointedLoaded = !loading && profiles.some((profile) => profile.id === pointedId)
-  useEffect(() => {
-    if (pointedLoaded) pointedRowRef.current?.scrollIntoView?.({ block: 'center' })
-  }, [pointedLoaded])
+  }, [reloadKey, loadOverview])
 
   const displayNameOf = (type: string) =>
     sourceTypes.find((descriptor) => descriptor.type === type)?.displayName ?? type
+
+  const typeLocked = (sourceType: string) =>
+    typeStates.some((state) => state.sourceType === sourceType && state.locked)
+
+  function openPanel(profileId: string | null) {
+    const next = new URLSearchParams(searchParams)
+    if (profileId) next.set(PROFILE_PARAM, profileId)
+    else next.delete(PROFILE_PARAM)
+    setSearchParams(next, { replace: true, preventScrollReset: true })
+  }
 
   async function handleDisconnect(profile: ConnectionProfileResponse) {
     try {
@@ -165,9 +168,6 @@ export default function ConnectionProfilesTab() {
       notify(err instanceof Error ? err.message : 'Trennen fehlgeschlagen.', 'error')
     }
   }
-
-  const typeLocked = (sourceType: string) =>
-    typeStates.some((state) => state.sourceType === sourceType && state.locked)
 
   async function handleLock(profile: ConnectionProfileResponse) {
     const lock = !profile.locked
@@ -200,7 +200,7 @@ export default function ConnectionProfilesTab() {
     }
   }
 
-  async function handleDelete(profile: ConnectionProfileResponse) {
+  async function handleDelete(profile: ConnectionProfileResponse): Promise<boolean> {
     try {
       const impact = await getConnectionProfileImpact(profile.id)
       const confirmed = await confirmAction({
@@ -209,39 +209,71 @@ export default function ConnectionProfilesTab() {
         confirmLabel: 'Löschen',
         tone: 'danger',
       })
-      if (!confirmed) return
+      if (!confirmed) return false
       await deleteConnectionProfile(profile.id)
       notify(`„${profile.name}“ wurde gelöscht.`, 'success')
       reload()
+      return true
     } catch (err) {
       notify(err instanceof Error ? err.message : 'Löschen fehlgeschlagen.', 'error')
+      return false
     }
   }
 
+  const entries: ProfileEntry[] = profiles.map((profile) => {
+    const access = accessOf(overview, profile)
+    return {
+      profile,
+      sourceTypeName: displayNameOf(profile.sourceType),
+      typeLocked: typeLocked(profile.sourceType),
+      access,
+      attention: attentionOf(profile, access),
+    }
+  })
+  const unknown = [
+    overviewError !== null && 'wer die Zugänge nutzen darf',
+    typeError !== null && 'Sperren der Quellarten',
+    dormantFailed && 'Bibliotheken mit ruhender Quelle',
+  ].filter((part): part is string => Boolean(part))
+  const summary = summaryOf(
+    entries.map((entry) => entry.attention),
+    dormant,
+    unknown,
+  )
+  const opened = entries.find((entry) => entry.profile.id === openId) ?? null
+
   return (
     <>
-      <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
-        Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte. Er
-        legt für eine Quellart Server, Anmeldeart und App-Registrierung fest; Bibliotheken auf einem
-        Zugang tragen diese Angaben nicht selbst ein.
-      </Typography>
       <Box
         sx={{
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
           gap: 2,
-          flexWrap: 'wrap',
-          mb: 2,
+          rowGap: 1.5,
+          alignItems: 'flex-start',
+          flexWrap: { xs: 'wrap', md: 'nowrap' },
+          mb: 3,
         }}
       >
-        <Typography sx={{ fontSize: 13, color: 'text.secondary' }}>
-          {profiles.length === 1 ? '1 Zugang' : `${profiles.length} Zugänge`}
-        </Typography>
+        <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
+          {loading || error ? null : (
+            <StatusLine
+              component="h2"
+              label="Handlungsbedarf der Zugänge"
+              tone={summary.tone}
+              headline={summary.headline}
+              detail={
+                profiles.length === 0
+                  ? 'Mit einem Zugang meldet sich OPAA bei einem anderen System an und liest dort Inhalte.'
+                  : summary.detail
+              }
+            />
+          )}
+        </Box>
         <Button
           variant="contained"
           disabled={!anyTypeAdmitsProfiles}
           onClick={() => setForm({ open: true, profile: null })}
+          sx={{ flex: 'none' }}
         >
           Neuer Zugang
         </Button>
@@ -253,9 +285,16 @@ export default function ConnectionProfilesTab() {
           bietet noch keine Quellart Zugänge an.
         </Alert>
       )}
-
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
+        <Alert
+          severity="error"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={reload}>
+              Erneut laden
+            </Button>
+          }
+        >
           {error}
         </Alert>
       )}
@@ -264,162 +303,57 @@ export default function ConnectionProfilesTab() {
           {`Der Zustand der Quellarten konnte nicht geladen werden (${typeError}); eine Sperre der Quellart fehlt deshalb in der Liste.`}
         </Alert>
       )}
+      {overviewError && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => void loadOverview()}>
+              Erneut laden
+            </Button>
+          }
+        >
+          {`Wer die Zugänge nutzen darf, konnte nicht geladen werden (${overviewError}).`}
+        </Alert>
+      )}
 
       {loading ? (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Zugänge werden geladen …
-        </Typography>
-      ) : profiles.length === 0 ? (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary' }}>
-          Es sind noch keine Zugänge angelegt.
-        </Typography>
+        <ListLoading label="Zugänge werden geladen" />
+      ) : profiles.length === 0 && !error ? (
+        <ListEmptyState
+          title="Es sind noch keine Zugänge angelegt."
+          hint="Ein Zugang legt fest, wie OPAA sich bei einem anderen System anmeldet, etwa bei der Nextcloud des Hauses."
+        />
       ) : (
-        <Table size="small" aria-label="Zugänge">
-          <TableHead>
-            <TableRow>
-              <TableCell>Name</TableCell>
-              <TableCell>Quellart</TableCell>
-              <TableCell>Server-Adresse</TableCell>
-              <TableCell>Anmeldung</TableCell>
-              <TableCell>Verbindungen</TableCell>
-              <TableCell>Verbundene Konten</TableCell>
-              <TableCell>Davon abgelaufen</TableCell>
-              <TableCell align="right">Aktionen</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {profiles.map((profile) => (
-              <TableRow
-                key={profile.id}
-                ref={profile.id === pointedId ? pointedRowRef : undefined}
-                selected={profile.id === pointedId}
-                aria-current={profile.id === pointedId ? 'true' : undefined}
-              >
-                <TableCell>
-                  <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                    <span>{profile.name}</span>
-                    {profile.locked && <Chip size="small" color="error" label="Gesperrt" />}
-                    {typeLocked(profile.sourceType) && (
-                      <Chip
-                        size="small"
-                        color="error"
-                        variant="outlined"
-                        label="Quellart gesperrt"
-                      />
-                    )}
-                    {profile.signInRejected && (
-                      <Chip size="small" color="error" label="Anmeldung abgelehnt" />
-                    )}
-                    {profile.clientSecretExpiresSoon && profile.clientSecretExpiresOn && (
-                      <Chip
-                        size="small"
-                        color={isPast(profile.clientSecretExpiresOn) ? 'error' : 'warning'}
-                        label={
-                          isPast(profile.clientSecretExpiresOn)
-                            ? `Secret abgelaufen am ${formatDay(profile.clientSecretExpiresOn)}`
-                            : `Secret läuft ab am ${formatDay(profile.clientSecretExpiresOn)}`
-                        }
-                      />
-                    )}
-                  </Stack>
-                </TableCell>
-                <TableCell>{displayNameOf(profile.sourceType)}</TableCell>
-                <TableCell sx={{ wordBreak: 'break-all' }}>{profile.serverUrl}</TableCell>
-                <TableCell>
-                  {AUTH_METHOD_LABELS[profile.authMethod]}
-                  <Typography variant="caption" component="div" sx={{ color: 'text.secondary' }}>
-                    für {OWNERSHIP_LABELS[profile.ownership]}
-                  </Typography>
-                </TableCell>
-                <TableCell>{profile.connectionCount}</TableCell>
-                <TableCell>{personCountLabel(profile.connectedAccountCount)}</TableCell>
-                <TableCell>
-                  <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-                    <span>{personCountLabel(profile.expiredConnectionCount)}</span>
-                    {profile.expiredConnectionWarning && (
-                      <Chip
-                        size="small"
-                        color="warning"
-                        label={
-                          // Only an exact count shows the threshold reached; a masked one admits it.
-                          profile.expiredConnectionCount?.count != null
-                            ? 'Viele abgelaufen'
-                            : 'Möglicherweise viele abgelaufen'
-                        }
-                      />
-                    )}
-                  </Stack>
-                </TableCell>
-                <TableCell align="right">
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}
-                  >
-                    <Button
-                      size="small"
-                      onClick={() => setForm({ open: true, profile })}
-                      aria-label={`${profile.name} bearbeiten`}
-                    >
-                      Bearbeiten
-                    </Button>
-                    <Button
-                      size="small"
-                      color={profile.locked ? 'primary' : 'error'}
-                      onClick={() => void handleLock(profile)}
-                      aria-label={
-                        profile.locked
-                          ? `Sperre von ${profile.name} aufheben`
-                          : `${profile.name} sperren`
-                      }
-                    >
-                      {profile.locked ? 'Entsperren' : 'Sperren'}
-                    </Button>
-                    {signsInItself(profile) && (
-                      <Button
-                        size="small"
-                        onClick={() => void handleTestSignIn(profile)}
-                        aria-label={`Anmeldung von ${profile.name} testen`}
-                      >
-                        Anmeldung testen
-                      </Button>
-                    )}
-                    <Button
-                      size="small"
-                      color="warning"
-                      onClick={() => void handleDisconnect(profile)}
-                      aria-label={`Alle Verbindungen von ${profile.name} trennen`}
-                    >
-                      Alle Verbindungen trennen
-                    </Button>
-                    <Button
-                      size="small"
-                      color="error"
-                      onClick={() => void handleDelete(profile)}
-                      aria-label={`${profile.name} löschen`}
-                    >
-                      Löschen
-                    </Button>
-                  </Stack>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-      {!loading && profiles.length > 0 && (
-        <Typography sx={{ fontSize: 12.5, color: 'text.secondary', mt: 1 }}>
-          Verbundene Konten zählen die Konten von Personen auf einem Zugang, verbundene und
-          abgelaufene. Kleine Zahlen erscheinen nur als „weniger als …“, damit keine Zahl auf
-          einzelne Personen schließen lässt; „nicht ausgewiesen“ steht dort, wo schon die Zahl der
-          abgelaufenen Konten das täte. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen
-          Zahlen den eingestellten Schwellenwert erreichen.
-        </Typography>
+        <ConnectionProfileOverview entries={entries} onOpen={openPanel} />
       )}
 
       <Box sx={{ mt: 4 }}>
-        <DormantSourceConnectionsSection />
+        <DormantSourceConnectionsSection
+          onLoaded={(count) => {
+            setDormant(count)
+            setDormantFailed(false)
+          }}
+          onFailed={() => setDormantFailed(true)}
+        />
       </Box>
+
+      <ConnectionProfilePanel
+        profile={opened?.profile ?? null}
+        sourceTypeName={opened?.sourceTypeName ?? ''}
+        typeLocked={opened?.typeLocked ?? false}
+        attention={opened?.attention ?? null}
+        accessEntry={opened && overview ? profileAccessEntry(overview, opened.profile) : null}
+        accessError={overviewError}
+        onRetryAccess={() => void loadOverview()}
+        onClose={() => openPanel(null)}
+        onEdit={(profile) => setForm({ open: true, profile })}
+        onTestSignIn={handleTestSignIn}
+        onLock={handleLock}
+        onDisconnect={handleDisconnect}
+        onDelete={handleDelete}
+        onAccessChanged={loadOverview}
+      />
 
       <ConnectionProfileFormDialog
         key={form.profile?.id ?? (form.open ? 'new-open' : 'new')}
@@ -431,6 +365,8 @@ export default function ConnectionProfilesTab() {
         onSaved={(saved) => {
           notify(`„${saved.name}“ wurde gespeichert.`, 'success')
           reload()
+          // A new profile opens in its panel, where its release is the next step.
+          if (!form.profile) openPanel(saved.id)
         }}
       />
     </>

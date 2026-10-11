@@ -9,7 +9,6 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -37,6 +36,7 @@ import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS, admitsProfiles } from './connecti
 import ProfileChangePreview from './ProfileChangePreview'
 import ServiceAccountKeyField from './ServiceAccountKeyField'
 import SourceTypeSelect from './SourceTypeSelect'
+import TransportFields from './TransportFields'
 import { reachesLibraries as changeReachesLibraries } from './profileChange'
 
 const WITH_REGISTRATION: ConnectionAuthMethod[] = [
@@ -609,29 +609,11 @@ export default function ConnectionProfileFormDialog({
                 </>
               )}
               {takesTransport && (
-                <>
-                  <TextField
-                    label="Proxy (optional)"
-                    size="small"
-                    value={draft.sourceProxy}
-                    onChange={(e) => setDraft({ ...draft, sourceProxy: e.target.value })}
-                    placeholder="proxy.example.com:8080"
-                    autoComplete="off"
-                    helperText="Gilt für jede Bibliothek auf diesem Zugang; die Bibliothek setzt keinen eigenen."
-                    slotProps={{ htmlInput: { maxLength: 255 } }}
-                  />
-                  <FormControlLabel
-                    control={
-                      <Switch
-                        checked={draft.sourceInsecureSsl}
-                        onChange={(e) =>
-                          setDraft({ ...draft, sourceInsecureSsl: e.target.checked })
-                        }
-                      />
-                    }
-                    label="Zertifikatsprüfung aussetzen"
-                  />
-                </>
+                <TransportFields
+                  proxy={draft.sourceProxy}
+                  insecureSsl={draft.sourceInsecureSsl}
+                  onChange={(change) => setDraft({ ...draft, ...change })}
+                />
               )}
               {defaultKeys.length > 0 && (
                 <>

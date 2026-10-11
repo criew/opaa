@@ -179,7 +179,7 @@ class ProfileTransitionIntegrationTest {
   }
 
   @Test
-  void aManagerWithoutTheReleaseReadsTheProfileOfTheLibraryAndItsOptions() throws Exception {
+  void aManagerWithoutTheReleaseReadsTheProfileOfTheLibraryButIsNotOfferedIt() throws Exception {
     UUID profile = createProfile("{\"edition\": \"DC\"}", PROXY);
     UUID library = createLibrary(profile, "t");
     ConnectorReleases.withdraw(jdbc, "PROFILE:" + profile);
@@ -198,10 +198,7 @@ class ProfileTransitionIntegrationTest {
                 "dev-user",
                 get("/api/v1/connection-profiles?sourceType=PROFILE_PROBE&libraryId=" + library)))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$[?(@.id == '" + profile + "')].creatable").value(false))
-        .andExpect(
-            jsonPath("$[?(@.id == '" + profile + "')].creationNotice")
-                .value(Matchers.everyItem(Matchers.notNullValue())));
+        .andExpect(jsonPath("$[?(@.id == '" + profile + "')]").isEmpty());
     mockMvc
         .perform(
             as(

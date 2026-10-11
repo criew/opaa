@@ -35,7 +35,6 @@ const DROPBOX: ConnectionProfileOption = {
   ownership: 'LIBRARY',
   ownAccount: false,
   sourceInsecureSsl: false,
-  creatable: true,
 }
 
 const PENDING = {

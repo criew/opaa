@@ -618,9 +618,9 @@ Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten]
 
 ## 6. Antwort erzeugen
 
-Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname, Dokument-ID, Chunk-Nummer und die
-vorgegebene Zitierform) zusammen mit der **Anweisung des Raums**, sofern er eine trägt (siehe
-unten), der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
+Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname und Zitiermarke; Dokument-ID und
+Chunk-Nummer stehen nur in der Marke) zusammen mit der **Anweisung des Raums**, sofern er eine
+trägt (siehe unten), der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
 das **systemweit aktive Chat-Modell**. Die Notiz steht als eigener Block vor dem Verlauf und
 enthält hier **alle** Punkte, auch die Wünsche zur Antwortform, die die Suche nie sieht
 (Abschnitt 2); ohne Punkte entfällt der Block. Die Systemanweisung ist deutsch und weist
@@ -660,20 +660,31 @@ viele Tokens eine Antwort verbraucht hat, steht an der Antwort und in den Metrik
 
 Die **feste Systemanweisung** ist nicht konfigurierbar: Sie ist im Code festgelegt und enthält nur
 die Rolle, die Vorgabe der Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten
-zu antworten, und die Zitierregeln. Das Zitatformat ist fest, weil Belegprüfung und Fundstellen
-darauf aufbauen. Dasselbe gilt für die Anweisung der Teilfragen-Zerlegung (Stufe 3).
+zu antworten, die Antwortregeln und die Zitierregeln. Die Antwortregeln stehen nur dort, wo
+Kontextdokumente vorliegen und die Nachricht etwas zu suchen hatte: zu Sachfragen nur wiedergeben,
+was die Dokumente, der Gesprächsverlauf oder die Gesprächsnotiz tragen, und nichts aus
+Allgemeinwissen ergänzen; Fehlendes als „in den vorliegenden Dokumenten nicht enthalten" benennen
+statt als „gibt es nicht"; die spezifische Regel vor der allgemeinen; Bedingungen, Ausnahmen,
+Geltungsbereich und Stand nennen, wenn sie erheblich sind; Abweichungen zwischen Dokumenten und die
+Bezugsgröße von Schwellen, Quoten und Fristen benennen; knapp antworten. Jeder Kontextabschnitt
+beginnt mit dem Dokumentnamen und einer Zeile „Zitiermarke:" mit der Zeichenfolge, die das Modell
+unverändert übernehmen soll. Die Zitierregeln zeigen ein Beispiel und nennen die abweichenden Formen
+(Markdown-Link, eigene Quellenangabe, Hülle um die Marke) als verboten; Markdown-Link und eigene
+Quellenangabe werden nicht als Beleg erkannt. Zusammen mit den Antwortregeln steht nach dem letzten
+Abschnitt eine kurze Erinnerung an die Zitierregel. Das Zitatformat ist fest, weil Belegprüfung und
+Fundstellen darauf aufbauen. Dasselbe gilt für die Anweisung der Teilfragen-Zerlegung (Stufe 3).
 
 **Ergänzen lässt sie sich je Raum.** Ein Raum trägt optional eine **Anweisung an das Modell** von
 höchstens 1000 Zeichen, etwa „Wir sind ein Landkreis, keine kreisfreie Stadt" oder „Nenne bei
 Fristen immer die Rechtsgrundlage". Sie wirkt in jedem Chat des Raums, auch in Chats von vor der
 Änderung, ab der nächsten Frage und nur in der Antwort, nie in der Teilfragen-Zerlegung. Im Prompt
-steht sie als eigener Block direkt nach der festen Systemanweisung und vor der Gesprächsnotiz. Seine
+steht sie als eigener Block direkt nach den Zitierregeln und vor der Gesprächsnotiz. Seine
 Kopfzeile sagt dem Modell, was der Block ist und was nicht:
 
 - eine Vorgabe des Raums, kein Beleg und keine Quelle;
 - sie darf Sprache, Tonfall, Form und fachlichen Rahmen festlegen, und eine Sprachvorgabe darin geht
-  der Vorgabe Deutsch vor; die wiederholte Zeile nach dem letzten Chunk lässt die Sprache dann der
-  Anweisung;
+  der Vorgabe Deutsch vor; die wiederholte Sprachzeile nach dem letzten Chunk lässt die Sprache dann
+  der Anweisung;
 - die Zitierregeln hebt sie nicht auf: Was sie zu Zitiermarken, Zitatformat oder Quellen anders
   verlangt, gilt nicht;
 - ein abweichender Wunsch der fragenden Person in diesem Gespräch geht ihr vor.

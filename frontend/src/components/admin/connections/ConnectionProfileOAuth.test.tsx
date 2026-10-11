@@ -8,6 +8,7 @@ import { renderWithProviders } from '../../../test/test-utils'
 import { useAuthStore } from '../../../stores/authStore'
 import type { SourceTypeDescriptor } from '../../../types/api'
 import ConnectionProfilesTab from './ConnectionProfilesTab'
+import { openProfile, useDesktopViewport } from './connectionTestUtils'
 
 /**
  * Input without delays and without the pointer-events check on every step: the long form of a new
@@ -55,6 +56,8 @@ async function chooseSourceType(
 }
 
 describe('ConnectionProfilesTab, OAuth', () => {
+  useDesktopViewport()
+
   beforeEach(() => {
     useAuthStore.setState({
       mode: 'dev',
@@ -216,10 +219,11 @@ describe('ConnectionProfilesTab, OAuth', () => {
         }
       })
       renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+      const panel = await openProfile(user, 'Zugang Nextcloud intern')
       await user.click(
-        await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
+        within(panel).getByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
       )
-      const dialog = await screen.findByRole('dialog', { name: /bearbeiten/ })
+      const dialog = await screen.findByRole('dialog', { name: /bearbeiten$/ })
       const save = within(dialog).getByRole('button', { name: 'Speichern' })
       expect(save).toBeEnabled()
       expect(within(dialog).getByLabelText(/^Client-Secret/)).not.toBeRequired()
@@ -268,10 +272,11 @@ describe('ConnectionProfilesTab, OAuth', () => {
     it('keeps the stored secret where only the authorization endpoint moves', async () => {
       const user = userEvent.setup()
       renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
+      const panel = await openProfile(user, 'Zugang Nextcloud intern')
       await user.click(
-        await screen.findByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
+        within(panel).getByRole('button', { name: 'Zugang Nextcloud intern bearbeiten' }),
       )
-      const dialog = await screen.findByRole('dialog', { name: /bearbeiten/ })
+      const dialog = await screen.findByRole('dialog', { name: /bearbeiten$/ })
       const authorization = within(dialog).getByLabelText(/^Autorisierungs-Endpunkt/)
       await user.clear(authorization)
       await user.click(authorization)
@@ -289,10 +294,13 @@ describe('ConnectionProfilesTab, OAuth', () => {
       expiredConnectionCount: { count: 12, fewerThan: null },
       expiredConnectionWarning: true,
     }
+    mockConnectionProfiles[0] = { ...mockConnectionProfiles[0], ownership: 'BOTH' }
+    const user = userEvent.setup()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
-    const row = (await screen.findByText('Zugang Nextcloud intern')).closest('tr')!
-    expect(within(row).getByText('12')).toBeInTheDocument()
-    expect(within(row).getByText('Viele abgelaufen')).toBeInTheDocument()
+    const row = await screen.findByRole('row', { name: /Zugang Nextcloud intern/ })
+    expect(within(row).getByText('Viele Konten abgelaufen')).toBeInTheDocument()
+    const panel = await openProfile(user, 'Zugang Nextcloud intern')
+    expect(panel).toHaveTextContent('Davon abgelaufen12')
   })
 })

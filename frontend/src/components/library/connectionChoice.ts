@@ -35,9 +35,9 @@ export function onOwnAccount(option: ConnectionProfileOption): boolean {
   return option.ownAccount && option.ownership !== 'LIBRARY'
 }
 
-/** The profiles of `options` that may be chosen now, by id. */
+/** The profiles of `options` by id; the server lists only those the caller may use now. */
 export function profileChoices(options: ConnectionProfileOption[]): string[] {
-  return options.filter((option) => option.creatable).map((option) => option.id)
+  return options.map((option) => option.id)
 }
 
 /**

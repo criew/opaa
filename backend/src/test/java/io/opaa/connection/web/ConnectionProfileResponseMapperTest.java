@@ -31,8 +31,7 @@ class ConnectionProfileResponseMapperTest {
     ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.PERSON);
 
     ConnectionProfileOption option =
-        ConnectionProfileResponseMapper.toOption(
-            new ProfileOption(profile, false, "Der Zugang ist gesperrt.", true));
+        ConnectionProfileResponseMapper.toOption(new ProfileOption(profile, true));
 
     assertThat(option.getId()).isEqualTo(profile.getId());
     assertThat(option.getName()).isEqualTo("Zugang Wiki");
@@ -41,8 +40,6 @@ class ConnectionProfileResponseMapperTest {
     assertThat(option.getAuthMethod()).isEqualTo(ConnectionAuthMethod.PERSONAL_SECRET);
     assertThat(option.getOwnership()).isEqualTo(ConnectionOwnership.PERSON);
     assertThat(option.getOwnAccount()).isTrue();
-    assertThat(option.getCreatable()).isFalse();
-    assertThat(option.getCreationNotice()).isEqualTo("Der Zugang ist gesperrt.");
     assertThat(option.getConnectorDefaults()).isEqualTo(Map.of("edition", "DC", "pathStyle", true));
     assertThat(option.getSourceProxy()).isEqualTo("proxy.example.org:8080");
     assertThat(option.getSourceInsecureSsl()).isTrue();
@@ -162,11 +159,9 @@ class ConnectionProfileResponseMapperTest {
   @Test
   void anOptionWithoutDefaultsCarriesNone() {
     ConnectionProfileOption option =
-        ConnectionProfileResponseMapper.toOption(
-            new ProfileOption(profile(null), true, null, false));
+        ConnectionProfileResponseMapper.toOption(new ProfileOption(profile(null), false));
 
     assertThat(option.getConnectorDefaults()).isNull();
-    assertThat(option.getCreatable()).isTrue();
     assertThat(option.getOwnAccount()).isFalse();
   }
 

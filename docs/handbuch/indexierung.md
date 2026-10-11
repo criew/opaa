@@ -199,7 +199,7 @@ später an derselben Stelle wieder:
 
 | Schritt | Inhalt |
 |---|---|
-| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Fehlt das Anlegerecht für diese Art — „Bibliotheken für Uploads anlegen" und „Konnektorbibliotheken anlegen" sind zwei getrennte Rechte —, ist die Kachel gesperrt und nennt den Grund auf sich selbst. Eine Quellart, die für die Person nur über einen Zugang freigegeben ist, bleibt wählbar. Zwischen den Kacheln führen die Pfeiltasten |
+| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Eine Kachel erscheint nur für eine Art, die die Person anlegen darf: Upload nur mit dem Recht „Bibliotheken für Uploads anlegen", eine Konnektor-Quellart nur, wenn die Person sie auf mindestens einem Weg anlegen darf: mit eigener Adresse oder über einen nutzbaren Zugang. Fehlt die Freigabe oder ist die Quellart gesperrt, fehlt die Kachel. Eine Quellart, die für die Person nur über einen Zugang freigegeben ist, bleibt wählbar. Darf die Person gar keine Art anlegen, zeigt der Schritt keine Kachel, nur den Hinweis, dass sie derzeit keine Bibliothek anlegen darf, mit dem Verweis an die Systemverwaltung. Zwischen den Kacheln führen die Pfeiltasten |
 | **2. Quelle** | bei einer Quellart mit Zugängen zuerst die Wahl des **Zugangs** (siehe [Zugänge](#zugänge)), darunter Anbindung und Verbindungstest wie im gleichnamigen Reiter, dazu der **Zeitplan** und der Schalter „Erste Indizierung sofort nach dem Anlegen starten". Beide gelten für **jeden** Konnektortyp. Bei einer Upload-Bibliothek entfällt der Schritt, der Assistent hat dann drei |
 | **3. Name & Beschreibung** | der Name ist vorbelegt, wo die Quelle ihn hergibt — der einzelne Confluence-Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname — und bleibt überschreibbar |
 | **4. Freigaben** | Eigentümer („Mein Konto" oder eine Gruppe, in der die anlegende Person Mitglied ist) und vorgemerkte Freigaben an Personen und Gruppen. Eine Freigabe an „Alle Konten" gibt es hier nicht: Sie wird an der fertigen Bibliothek erteilt, wo auch die Obergrenze dafür gilt |
@@ -414,9 +414,28 @@ Proxy, die Zertifikatsprüfung und Vorgaben für die Einstellungen des Konnektor
 auf einem Zugang anlegt, wählt ihn aus und trägt Server, Registrierung, Proxy und Vorgaben nicht
 selbst ein.
 
-Die Systemverwaltung pflegt Zugänge unter **Administration → Anbindungen → Zugänge**. Solange
-keine Quellart Zugänge anbietet, steht dort ein Hinweis, und „Neuer Zugang“ ist gesperrt. Sonst fragt „Neuer
-Zugang“ zuerst die Quellart im Auswahlfeld **Quellart** ab: je Eintrag Name und eine kurze
+Die Systemverwaltung pflegt Zugänge unter **Administration → Anbindungen → Zugänge**. Oben steht,
+was zu tun ist („Kein Handlungsbedarf“ oder die Zahl der Zugänge, die Aufmerksamkeit brauchen, und
+der Bibliotheken mit ruhender Quelle). Darunter zeigt die Übersicht je Zugang eine Zeile: Name mit
+Quellart und den Marken „Gesperrt“ bzw. „Quellart gesperrt“, den Server (nur den Rechnernamen; die
+volle Adresse steht im Tooltip und im Panel), **Nutzbar für** (wer den Zugang wählen darf), die Zahl
+der Verbindungen und den **Handlungsbedarf**. Als Handlungsbedarf gilt, in dieser Reihenfolge:
+„Anmeldung abgelehnt“, „Secret abgelaufen am …“, „Secret läuft ab am …“, „Viele Konten
+abgelaufen“ und „Noch für niemanden freigegeben“; eine Sperre ist ein gewollter Zustand und kein
+Handlungsbedarf. In schmalen Fenstern stehen dieselben Angaben als Liste.
+
+Ein Klick auf die Zeile oder auf **Details** bzw. **Beheben** öffnet das **Seitenpanel** des
+Zugangs; die Adresse der Seite trägt dann `?profile=<id>`, ein solcher Link öffnet das Panel
+direkt (so führt die Benachrichtigung „Client-Secret läuft ab“ zum Zugang). Das Panel nennt zuerst
+den Handlungsbedarf mit der passenden Handlung, dann **„Wer darf diesen Zugang nutzen?“**, die
+**Angaben** mit „Bearbeiten“, die **Nutzung** (Verbindungen und, bei einem Zugang, der Personen
+zulässt, die verbundenen Konten) und die **Eingriffe**: „Anmeldung testen“ (nur bei
+Client-Credentials und Dienstkonto-Schlüssel), „Sperren“ bzw. „Entsperren“, „Alle Verbindungen
+trennen“ und „Zugang löschen“, je mit einem Satz zur Folge und der Rückfrage davor. Nach dem
+Anlegen öffnet sich das Panel des neuen Zugangs mit „Noch für niemanden freigegeben“.
+
+Solange keine Quellart Zugänge anbietet, steht über der Übersicht ein Hinweis, und „Neuer Zugang“
+ist gesperrt. Sonst fragt „Neuer Zugang“ zuerst die Quellart im Auswahlfeld **Quellart** ab: je Eintrag Name und eine kurze
 Beschreibung, unter dem Feld die Beschreibung der gewählten Quellart. Quellarten ohne Zugänge stehen
 mit Grund in der Liste und lassen sich nicht wählen; ist nur eine Quellart möglich, ist sie
 vorausgewählt. Das Formular richtet sich nach der Quellart:
@@ -467,10 +486,10 @@ signierten Schlüssel ein Zugriffstoken beim Token-Endpunkt, den der Konnektor n
 Bibliothek nur dieses Token. Der Abruf geht über den Proxy des Zugangs und immer mit
 Zertifikatsprüfung; der Schalter „Zertifikatsprüfung aussetzen“ gilt nur für die Server-Adresse.
 Das Token hält OPAA bis kurz vor seinem Ablauf. Lehnt der Anbieter die Registrierung ab (etwa ein
-falsches Client-Secret oder ein widerrufener Schlüssel), zeigt die Liste am Zugang „Anmeldung
-abgelehnt“, alle Bibliotheken darauf melden „Abgelaufen“ mit der Systemverwaltung als zuständig,
+falsches Client-Secret oder ein widerrufener Schlüssel), zeigt die Übersicht am Zugang den
+Handlungsbedarf „Anmeldung abgelehnt“, alle Bibliotheken darauf melden „Abgelaufen“ mit der Systemverwaltung als zuständig,
 und kein Lauf fragt den Anbieter erneut. Ein neues Client-Secret bzw. ein neuer Schlüssel oder
-**„Anmeldung testen“** am Zugang hebt das auf; der Test meldet sich einmal an und nennt bei einem
+**„Anmeldung testen“** im Panel des Zugangs hebt das auf; der Test meldet sich einmal an und nennt bei einem
 Fehler den Grund. Jeder Test steht mit seinem Ausgang (gelungen oder abgelehnt) im
 Revisionsprotokoll, ohne die Meldung des Anbieters.
 
@@ -504,35 +523,35 @@ schon bei der Zustimmung oder bei jeder Erneuerung innerhalb der Frist liegt (ei
 Ende, das sich durch Nutzung verschiebt), warnt nicht. Trennen widerruft das Token beim Anbieter, wo
 er das anbietet.
 
-Die Liste zeigt je Zugang Quellart, Server-Adresse, Anmeldeart, Besitzart und die Zahl der
-Verbindungen von Bibliotheken, dazu einen Hinweis, wenn das Client-Secret bald abläuft. 14 Tage vor
-dem Ablaufdatum des Secrets erhält zudem jede Systemverwaltung einmal die Benachrichtigung
-„Client-Secret läuft ab“; ein neues Secret oder ein neues Datum warnt erneut. Zwei weitere
-Spalten zählen die **verbundenen Konten** von Personen auf dem Zugang
+Läuft das Client-Secret bald ab, zeigt die Übersicht das als Handlungsbedarf. 14 Tage vor dem
+Ablaufdatum des Secrets erhält zudem jede Systemverwaltung einmal die Benachrichtigung
+„Client-Secret läuft ab“, die zum Panel des Zugangs führt; ein neues Secret oder ein neues Datum
+warnt erneut. Bei einem Zugang, der Personen zulässt, zählen im Panel unter „Nutzung“ zwei
+Angaben die **verbundenen Konten** von Personen auf dem Zugang
 ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12):
 
-| Spalte | Zählt | Darstellung |
+| Angabe | Zählt | Darstellung |
 |---|---|---|
 | **Verbundene Konten** | die Konten von Personen auf dem Zugang, verbundene und abgelaufene | genau ab der Mindestgruppengröße, darunter — auch bei null — nur „weniger als N“ |
-| **Davon abgelaufen** | die abgelaufenen unter ihnen | genau nur, wenn abgelaufene und aktive Konten je mindestens N sind — „niemand aktiv“ gilt wie „wenige aktiv“ —; sonst unter N „weniger als N“, ab N „nicht ausgewiesen“; bei einer Gesamtzahl unter 2N−1 immer „nicht ausgewiesen“. „Viele abgelaufen“ erscheint, sobald die ausgewiesenen Zahlen den Schwellenwert abgelaufener Konten zulassen; ist die Zahl nicht genau ausgewiesen, heißt die Warnung „Möglicherweise viele abgelaufen“ |
+| **Davon abgelaufen** | die abgelaufenen unter ihnen | genau nur, wenn abgelaufene und aktive Konten je mindestens N sind — „niemand aktiv“ gilt wie „wenige aktiv“ —; sonst unter N „weniger als N“, ab N „nicht ausgewiesen“; bei einer Gesamtzahl unter 2N−1 immer „nicht ausgewiesen“. „Viele Konten abgelaufen“ erscheint als Handlungsbedarf, sobald die ausgewiesenen Zahlen den Schwellenwert abgelaufener Konten zulassen; ist die Zahl nicht genau ausgewiesen, heißt die Warnung „Möglicherweise viele Konten abgelaufen“ |
 
 Der Schwellenwert wird nur gegen das geprüft, was die Liste ohnehin zeigt: gegen die genaue Zahl
 oder, wo sie nicht genau ausgewiesen ist, gegen die größte Zahl, die Gesamtzahl und Rundungsregel
 noch zulassen. Bei „nicht ausgewiesen“ ist das die Gesamtzahl, bei „weniger als N“ die Zahl N−1. Die
 Warnung verrät so nichts, was die Zahlen nicht schon sagen, und gleiche Zahlen tragen immer dieselbe
-Warnung. Dafür warnt die Liste auch dort, wo tatsächlich weniger Konten abgelaufen sind. Ein Zugang,
+Warnung. Dafür warnt die Übersicht auch dort, wo tatsächlich weniger Konten abgelaufen sind. Ein Zugang,
 der keine Personen zulässt, warnt nie.
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
-| `opaa.connection.expired-connections.warning-threshold` | 10 | sobald die ausgewiesenen Zahlen so viele abgelaufene verbundene Konten je Zugang zulassen, zeigt die Liste „Viele abgelaufen“ bzw. „Möglicherweise viele abgelaufen“; mindestens 1 |
+| `opaa.connection.expired-connections.warning-threshold` | 10 | sobald die ausgewiesenen Zahlen so viele abgelaufene verbundene Konten je Zugang zulassen, zeigt die Übersicht „Viele Konten abgelaufen“ bzw. „Möglicherweise viele Konten abgelaufen“; mindestens 1 |
 
-Die Seite zeigt die Zahlen genau so, wie OPAA sie liefert, und rechnet nichts daraus: „weniger als N“
+Das Panel zeigt die Zahlen genau so, wie OPAA sie liefert, und rechnet nichts daraus: „weniger als N“
 unterscheidet null nicht von einer kleinen Zahl, und keine Anzeige, kein Hinweistext und keine
 Rückfrage nennt eine genauere Zahl oder die Personen. „Alle Verbindungen trennen“ und „Löschen“
 nennen vor der Bestätigung die Zahl der betroffenen Verbindungen und, in derselben Rundung, der
 verbundenen Konten; eine Änderung, die Geheimnisse verwirft, nennt vorher die Zahl der Betroffenen.
-Unter der Liste stellt die
+Im Reiter **Einstellungen** stellt die
 Systemverwaltung im Abschnitt **„Verbindungsprotokoll“** dessen Aufbewahrungsfrist ein
 ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12). Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
 werden, sagt das Formular das und lässt noch nicht speichern.
@@ -579,11 +598,10 @@ Adresse nicht zulässig ist:
 
 - **„Eigene Adresse“** steht zur Wahl, solange die Quellart keine Profilpflicht hat und die Person
   sie mit eigener Adresse anlegen darf. Sonst sagt ein Satz, warum es sie nicht gibt.
-- **Jeder Zugang** steht mit Server-Adresse, Anmeldeart und Vorgaben da. Ein Zugang, den die Person
-  nicht nutzen darf oder der gesperrt ist, bleibt sichtbar, ist aber nicht wählbar und nennt, wer
-  ihn freischaltet.
+- **Jeder Zugang, den die Person nutzen darf,** steht mit Server-Adresse, Anmeldeart und Vorgaben
+  da. Ein Zugang, der für sie nicht freigegeben oder der gesperrt ist, erscheint nicht.
 - Gibt es weder einen nutzbaren Zugang noch die eigene Adresse, ist die Quellart schon im Schritt
-  „Art des Wissens“ nicht wählbar. Zugänge trägt allein die Systemverwaltung ein; wer einen
+  „Art des Wissens“ nicht zu sehen. Zugänge trägt allein die Systemverwaltung ein; wer einen
   fehlenden braucht, wendet sich an sie.
 
 Nach der Wahl eines Zugangs richtet sich das Formular nach ihm: Die Adresse ist mit der
@@ -624,9 +642,12 @@ wenn sie darunter liegt, lässt sich prüfen und zuordnen. Test und Zuordnen bew
 Zugang, nicht die Sperre der Bibliothek; nach dem Zuordnen läuft sie wieder.
 
 Zur Wahl stehen beim Zuordnen und Wechseln nur Zugänge, die die Person nutzen darf; die übrigen
-bleiben mit ihrem Hinweis sichtbar. Das gilt auch für Verwaltende einer Bibliothek ohne das
-Anlegerecht „Konnektorbibliotheken anlegen“: Sie sehen die Zugänge der Quellart, die nicht für sie
-freigegebenen mit dem Hinweis, wer sie freischaltet. Die Hinweise „Zugang entfernt“ und die Sperre
+erscheinen nicht. Das gilt auch für Verwaltende einer Bibliothek ohne das Anlegerecht
+„Konnektorbibliotheken anlegen“: Sie sehen nur die Zugänge der Quellart, die für sie freigegeben
+und nicht gesperrt sind. Der Zustand der eigenen Bibliothek bleibt dagegen sichtbar: Ist ihr Zugang
+gesperrt oder entfernt, sagt der Reiter „Quelle“ das mit Grund und Aktion (siehe unten); ist er für
+die Verwaltenden nicht mehr freigegeben, nennt der Reiter ihn weiterhin, und die Bibliothek läuft
+weiter. Die Hinweise „Zugang entfernt“ und die Sperre
 wegen der Profilpflicht stehen im Reiter „Quelle“ für alle Leseberechtigten; den Verwaltenden bieten
 sie „Zugang zuordnen“ direkt an. Allgemein trägt ein Sperrhinweis für die Verwaltenden die Aktion,
 die ihn aufhebt: „Zugang zuordnen“, „Quelle bearbeiten“ (Geheimnis neu eintragen oder Adresse
@@ -767,7 +788,10 @@ Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen 
 **Wer einen Zugang nutzen darf**, regelt das Anlegerecht „Konnektorbibliotheken anlegen", erteilt je
 Zugang; eine Bibliothek mit eigener Adresse braucht es für ihre Quellart (Kapitel
 [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9). Ein neu
-angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben.
+angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben. Die Systemverwaltung
+legt die Freigabe im Seitenpanel des Zugangs unter **„Wer darf diesen Zugang nutzen?“** fest, mit
+denselben drei Antworten wie unter Anlegerechte (nur die Systemverwaltung, alle Konten, bestimmte
+Gruppen und Personen); dort führt umgekehrt „Zugang ansehen“ zum Panel des Zugangs.
 
 #### Quelle verbinden
 
@@ -838,24 +862,26 @@ Zugang, Adress- oder Registrierungswechsel, Notabschaltung und Löschen des Zuga
 Bibliothek beenden die Zustimmung und widerrufen sie beim Anbieter. Eine private Bibliothek
 verbindet ihre Quelle nie so; sie läuft über das verbundene Konto ihrer Besitzerin.
 
-**Ruhende Quellverbindungen.** Unter **Administration → Anbindungen → Zugänge** listet die
-Systemverwaltung unter der Liste der Zugänge im Abschnitt **„Ruhende Quellverbindungen“** die geteilten Bibliotheken, deren eigene Quellverbindung
+**Bibliotheken mit ruhender Quelle.** Unter **Administration → Anbindungen → Zugänge** listet die
+Systemverwaltung unter der Übersicht im Abschnitt **„Bibliotheken mit ruhender Quelle“** die
+geteilten Bibliotheken, deren eigene Quellverbindung
 gerade nicht erreicht wird (abgelaufen, getrennt, gesperrt oder ohne Zugang), mit Zugang, Konto,
 Zustand, Grund und Zeitpunkt des Endes und den Verantwortlichen; der Name führt zum Reiter „Quelle“
 der Bibliothek. Private Bibliotheken stehen nie darin. Ruht keine Quellverbindung, entfällt der
-Abschnitt.
+Abschnitt; die Zusammenfassung über der Übersicht zählt die Bibliotheken mit.
 
 #### Sperre einer Quellart oder eines Zugangs
 
 Die Systemverwaltung kann eine **Quellart** (für alle ihre Bibliotheken, mit und ohne Zugang) oder
-einen **Zugang** sperren, unter **Administration → Anbindungen**: je Zugang mit „Sperren“ bzw.
-„Entsperren“ in der Liste des Reiters „Zugänge“, je Quellart im Reiter „Quellarten“. Beides fragt vorher nach
-und nennt die Folgen; ein gesperrter Zugang trägt in der Liste die Marke „Gesperrt“, einer, dessen
+einen **Zugang** sperren, unter **Administration → Anbindungen**: je Zugang im Seitenpanel des
+Reiters „Zugänge“ unter „Eingriffe“, je Quellart im Seitenpanel des Reiters „Quellarten“ unter
+„Zustand“. Beides fragt vorher nach und nennt die Folgen; ein gesperrter Zugang trägt in der
+Übersicht die Marke „Gesperrt“, einer, dessen
 Quellart gesperrt ist, die Marke „Quellart gesperrt“. Beim Entsperren sagt die Rückfrage, wenn eine
 andere Sperre bestehen bleibt. Die Folgen:
 
 - Neue Bibliotheken der Quellart oder auf dem Zugang sind nicht mehr möglich, auch nicht für die
-  Systemverwaltung; im Wissens-Assistenten ist die Kachel der Quellart gesperrt.
+  Systemverwaltung; im Wissens-Assistenten erscheinen die Quellart bzw. der Zugang nicht mehr.
 - Ein manuell ausgelöster Lauf endet vor dem ersten Element mit der Meldung „Gesperrt – Inhalt wird
   nicht mehr aktualisiert"; ein Lauf, der beim Sperren schon läuft, endet regulär. Der Zeitplan
   überspringt die Bibliothek, und Push-Ereignisse der Quelle werden verworfen, beides ohne
@@ -887,9 +913,14 @@ Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umscha
 ist die Pflicht damit für Webverzeichnis, RSS-Feed, Confluence, Nextcloud, S3-Objektspeicher,
 Windows-Dateifreigabe (SMB) und Google Drive.
 
-Der Schalter steht unter **Administration → Anbindungen → Quellarten**, Spalte
-„Zugänge“: Eine Quellart, die Zugänge verbietet, trägt dort „Keine Zugänge möglich“, eine, die sie
-verlangt, „Immer über Zugänge“; nur bei „möglich“ gibt es den Schalter **„Nur über Zugänge“**.
+Die Übersicht unter **Administration → Anbindungen → Quellarten** nennt je Quellart ihren Zustand
+(„Nutzbar“ oder „Gesperrt“), in der Spalte „Zugänge“ ihre Regel und die Zahl ihrer Zugänge: Eine
+Quellart, die Zugänge verbietet, trägt „Keine Zugänge möglich“, eine, die sie verlangt, „Immer über
+Zugänge“, eine mit möglicher Pflicht „Zugang oder eigene Adresse“ bzw. „Nur über Zugänge“. Der
+Schalter **„Nur über Zugänge“** steht im Seitenpanel der Quellart (Klick auf die Zeile oder
+„Details“; die Adresse trägt dann `?sourceType=<Schlüssel>`), nur bei einer Quellart mit möglicher
+Pflicht. Das Panel nennt außerdem die Zugänge der Quellart mit Verweis auf ihr Panel und, wo es
+Bibliotheken mit eigener Adresse gibt, wer sie anlegen darf.
 
 - **Einschalten** öffnet einen Dialog. Lässt sich die Pflicht nicht einschalten, nennt er den Grund
   und bietet nichts zu bestätigen an. Sonst listet er die Bibliotheken mit eigener Adresse mit ihren

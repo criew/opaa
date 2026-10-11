@@ -73,7 +73,7 @@ class AnswerGenerationServiceTest {
         .contains("- Bezugsjahr 2024")
         .contains("- Möchte knappe Antworten");
     // Ahead of the passages: under "Kontextdokumente:" the note would stand inside the
-    // section the "Zitiere nur Dokumente, die unten aufgeführt sind" rule governs - and in a chat
+    // section the "Zitiere nur Abschnitte, die unten aufgeführt sind" rule governs - and in a chat
     // without a knowledge base it would be the only thing there.
     assertThat(systemText.indexOf("Gesprächsnotiz"))
         .isLessThan(systemText.indexOf("Kontextdokumente:"));
@@ -210,23 +210,54 @@ class AnswerGenerationServiceTest {
       Unterhaltung. Die Kontextdokumente enthalten die für die aktuelle Frage abgerufenen \
       Projektinformationen.
 
+      ANTWORTREGELN:
+      - Gib zu Sachfragen nur wieder, was die Kontextdokumente, der Gesprächsverlauf oder die \
+      Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder Vermutung.
+      - Fehlt etwas in den Kontextdokumenten, sage, dass es in den vorliegenden Dokumenten nicht \
+      enthalten ist, und nicht, dass es das nicht gibt. Fehlt ein Teil der Grundlage, benenne \
+      die Lücke und lege dich nicht auf ein Ergebnis fest, das von ihr abhängt.
+      - Ziehe eine spezifische Regel einer allgemeinen Formulierung vor.
+      - Nenne Bedingungen, Ausnahmen, Geltungsbereich (etwa Land oder Behörde) und Stand der \
+      Quelle, wenn die Kontextdokumente sie nennen und sie für die Frage erheblich sind.
+      - Weichen Kontextdokumente voneinander ab, benenne die Abweichung ausdrücklich.
+      - Nenne bei Schwellen, Quoten und Fristen die Bezugsgröße. Ziehe aus einem Zahlenvergleich \
+      keinen Schluss, wenn die Bezugsgrößen verschieden sind.
+      - Beantworte die Frage direkt und knapp: keine Wiederholung der Frage, keine Einleitungs- \
+      oder Schlussfloskeln, nichts Unerhebliches.
+
       ZITIERREGELN (verbindlich):
-      - Belege jede Quelle, die du verwendest, mit einer Zitiermarke direkt im Antworttext.
-      - Verwende genau dieses Format: 【source: <document_id>#<chunk_index> | <file_name>】
-      - Übernimm die Werte exakt aus dem [Quelle]-Kopf des jeweiligen Kontextabschnitts.
-      - Beispiel: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#0 | readme.md】
-      - Erfinde keine Zitiermarken. Zitiere nur Dokumente, die unten aufgeführt sind.
-      - Setze die Zitiermarke an das Ende des Satzes oder Absatzes, der die Information \
-      verwendet.
+      - Jeder Kontextabschnitt beginnt mit den Zeilen „Dokument: …“ und „Zitiermarke: …“.
+      - Belege jede Aussage aus einem Kontextabschnitt mit dessen Zitiermarke direkt im \
+      Antworttext, am Ende des Satzes oder Absatzes. Eine Antwort, die Inhalte der \
+      Kontextdokumente wiedergibt, enthält mindestens eine Zitiermarke.
+      - Übernimm die Zitiermarke Zeichen für Zeichen aus der Zeile „Zitiermarke:“, mit den \
+      Klammern 【 und 】. Mehrere Zitiermarken stehen direkt hintereinander.
+      - Beispiel. Kopf eines Kontextabschnitts:
+        Dokument: merkblatt.pdf
+        Zitiermarke: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#4 | merkblatt.pdf】
+        Satz in der Antwort:
+        Der Antrag ist innerhalb eines Monats zu stellen. \
+      【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#4 | merkblatt.pdf】
+      - Verboten sind alle anderen Formen: kein Markdown-Link wie [Quelle](…#4), keine eigene \
+      Quellenangabe wie [Quelle: merkblatt.pdf, § 24], keine Klammern, Links oder Zusätze wie \
+      „Quelle:“ um die Zitiermarke, kein Dateiname anstelle der Dokumentkennung, kein \
+      abgeschriebener Kopf eines Kontextabschnitts.
+      - Erfinde keine Zitiermarken. Zitiere nur Abschnitte, die unten aufgeführt sind.
 
       Gesprächsnotiz — Angaben der fragenden Person aus diesem Gespräch (kein Beleg, keine \
       Quelle):
       - Bezugsjahr 2024
 
       Kontextdokumente:
-      [Quelle: ausweis.md, document_id: id-ausweis, chunk_index: 0, zitieren als: \
-      【source: id-ausweis#0 | ausweis.md】]
+      Dokument: ausweis.md
+      Zitiermarke: 【source: id-ausweis#0 | ausweis.md】
       Ein Personalausweis kostet 37,00 Euro.
+
+      ---
+
+      Belege jede Aussage aus den Kontextdokumenten mit der Zitiermarke ihres Abschnitts, \
+      unverändert aus der Zeile „Zitiermarke:“ übernommen, ohne Link, Klammer oder Zusatz darum. \
+      Was die Kontextdokumente nicht enthalten, benenne als nicht enthalten, statt es zu ergänzen.
 
       ---
 
@@ -360,7 +391,7 @@ class AnswerGenerationServiceTest {
     assertThat(withoutBlock).isEqualTo(FROZEN_SYSTEM_TEXT);
     assertThat(systemText)
         .contains("ZITIERREGELN (verbindlich):")
-        .contains("zitieren als: 【source: id-ausweis#0 | ausweis.md】]");
+        .contains("Zitiermarke: 【source: id-ausweis#0 | ausweis.md】\n");
     assertThat(response.getResult().getOutput().getText()).isEqualTo(citedAnswer);
   }
 
@@ -473,7 +504,169 @@ class AnswerGenerationServiceTest {
     String systemText = promptCaptor.getValue().getInstructions().get(0).getText();
     assertThat(systemText).contains("【source:");
     assertThat(systemText).contains("ZITIERREGELN");
-    assertThat(systemText).contains("zitieren als: 【source: uuid-1#0 | readme.md】");
+    assertThat(systemText).contains("\nZitiermarke: 【source: uuid-1#0 | readme.md】\nContent");
+  }
+
+  /**
+   * Regression guard for #2376: a passage head in brackets with a "Quelle:" prefix and the marker
+   * inside was copied into answers as {@code [Quelle: datei.pdf | 【…】]} or whole. The head names
+   * the document and carries the marker alone on its own line, so it can be taken over verbatim.
+   */
+  @Test
+  void thePassageHeadCarriesTheMarkerOnItsOwnLineWithoutABracketedSourceLabel() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    var chunk =
+        new Document(
+            "Der Antrag ist binnen eines Monats zu stellen.",
+            Map.of("file_name", "merkblatt.pdf", "document_id", "id-merk", "chunk_index", 4));
+
+    answerGenerationService.generateAnswer(
+        "Bis wann?", List.of(chunk), "conv-head", List.of(), true, null);
+
+    String passages =
+        passagesOf(systemTextOf(capturedPrompt()))
+            .replace(AnswerGenerationService.CITATION_REMINDER, "");
+    assertThat(passages)
+        .startsWith(
+            "Dokument: merkblatt.pdf\n"
+                + "Zitiermarke: 【source: id-merk#4 | merkblatt.pdf】\n"
+                + "Der Antrag ist binnen eines Monats zu stellen.")
+        .doesNotContain("[Quelle", "zitieren als", "document_id", "chunk_index");
+  }
+
+  /**
+   * Regression guard for #2376: the rules spell out the forms the model actually produced instead
+   * of the marker, and show a whole head-to-sentence example.
+   */
+  @Test
+  void theCitationRulesShowAPositiveExampleAndNameTheForbiddenForms() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer(
+        "Frage?", List.of(), "conv-rules", List.of(), true, null);
+
+    String rules = systemTextOf(capturedPrompt());
+    rules = rules.substring(rules.indexOf("ZITIERREGELN"), rules.indexOf("Kontextdokumente:\n"));
+    assertThat(rules)
+        .contains("Zitiermarke: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#4 | merkblatt.pdf】")
+        .contains(
+            "Der Antrag ist innerhalb eines Monats zu stellen."
+                + " 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#4 | merkblatt.pdf】")
+        .contains("Markdown-Link")
+        .contains("[Quelle](")
+        .contains("[Quelle: merkblatt.pdf, § 24]")
+        .contains("mindestens eine Zitiermarke");
+  }
+
+  /**
+   * Regression guard for #2376: with twice as many passage heads, marker forms drifted. The marker
+   * rule is repeated after the last passage, ahead of the closing language reminder, and names no
+   * marker of its own that could be cited.
+   */
+  @Test
+  void theCitationRuleIsRepeatedAfterTheLastPassageAheadOfTheLanguageReminder() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    var chunk =
+        new Document(
+            "Letzter Abschnitt.",
+            Map.of("file_name", "a.md", "document_id", "id-a", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "Frage?", List.of(chunk), "conv-recency", List.of(), true, null);
+
+    String systemText = systemTextOf(capturedPrompt());
+    assertThat(systemText)
+        .endsWith(
+            AnswerGenerationService.CITATION_REMINDER + AnswerGenerationService.LANGUAGE_REMINDER);
+    assertThat(systemText.indexOf(AnswerGenerationService.CITATION_REMINDER))
+        .isGreaterThan(systemText.indexOf("Letzter Abschnitt."));
+    assertThat(AnswerGenerationService.CITATION_REMINDER)
+        .contains("Zitiermarke")
+        .doesNotContain("【");
+  }
+
+  /**
+   * #2376: the answer rules - only what the passages carry, a gap named as missing from the
+   * documents rather than filled or denied, deviations and differing reference values named.
+   */
+  @Test
+  void theAnswerRulesKeepTheAnswerToThePassagesAndNameGapsAndDeviations() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    var chunk =
+        new Document(
+            "Inhalt.", Map.of("file_name", "a.md", "document_id", "id-a", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "Frage?", List.of(chunk), "conv-answer", List.of(), true, null);
+
+    String systemText = systemTextOf(capturedPrompt());
+    String answerRules =
+        systemText.substring(
+            systemText.indexOf("ANTWORTREGELN"), systemText.indexOf("ZITIERREGELN"));
+    assertThat(answerRules)
+        .contains("Allgemeinwissen")
+        .contains("der Gesprächsverlauf oder die Gesprächsnotiz")
+        .contains("in den vorliegenden Dokumenten nicht enthalten")
+        .contains("Abweichung")
+        .contains("Bezugsgröße")
+        .contains("Geltungsbereich");
+  }
+
+  /**
+   * An empty context is also a chat answered on purpose without a knowledge base, which answers
+   * from the conversation alone: neither the answer rules nor the citation reminder bind it to
+   * passages that are not there.
+   */
+  @Test
+  void aMessageWithoutSearchNeedKeepsItsPassagesButIsNotToldToNameWhatTheyLack() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Gern.")))));
+    var chunk =
+        new Document(
+            "Ein Personalausweis kostet 37,00 Euro.",
+            Map.of("file_name", "ausweis.md", "document_id", "id-ausweis", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "Danke, antworte bitte kürzer",
+        List.of(chunk),
+        "conv-no-search-rules",
+        List.of(),
+        false,
+        null);
+
+    String systemText = systemTextOf(capturedPrompt());
+    assertThat(systemText)
+        .contains(
+            "Ein Personalausweis kostet 37,00 Euro.", "Behaupte nicht, nichts gefunden zu haben")
+        .doesNotContain(
+            "ANTWORTREGELN", AnswerGenerationService.CITATION_REMINDER, "nicht enthalten")
+        .endsWith(
+            "Ein Personalausweis kostet 37,00 Euro." + AnswerGenerationService.LANGUAGE_REMINDER);
+  }
+
+  @Test
+  void withoutPassagesTheAnswerIsNotBoundToThem() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer(
+        "Frage?", List.of(), "conv-empty", List.of(), true, null);
+
+    assertThat(systemTextOf(capturedPrompt()))
+        .contains("ZITIERREGELN (verbindlich)")
+        .doesNotContain("ANTWORTREGELN", AnswerGenerationService.CITATION_REMINDER)
+        .endsWith("Kontextdokumente:\n" + AnswerGenerationService.LANGUAGE_REMINDER);
+  }
+
+  private static String passagesOf(String systemText) {
+    return systemText.substring(
+        systemText.indexOf("Kontextdokumente:\n") + "Kontextdokumente:\n".length(),
+        systemText.lastIndexOf(AnswerGenerationService.LANGUAGE_REMINDER));
   }
 
   @Test
