@@ -212,7 +212,7 @@ gehören in den Bericht, nebeneinander und getrennt ausgewiesen.
 
 Die beiden Pfade messen **unterschiedliche Dinge und sind nicht ineinander umrechenbar**. Der
 Pipeline-Pfad arbeitet mit der Produktionskonfiguration (`fetch-k=25`, `similarity-threshold=0,3`,
-`top-k=8`, seit #2373 `top-k=20`, `max-chunks-per-document=2`), der Rohvektor-Pfad bewusst ohne Ähnlichkeitsschwelle und mit
+`top-k=8`, seit #2373 `top-k=20`, `max-chunks-per-document=2`, seit #2502 `1`), der Rohvektor-Pfad bewusst ohne Ähnlichkeitsschwelle und mit
 `documentTopK=10` ([ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Entscheidung 3).
 Vier Konsequenzen, die vor der ersten Zeile Code feststehen müssen:
 

@@ -32,8 +32,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     without bound. Each list is narrowed on its own, so the chunk count stays capped at {@link
  *     #topK} regardless.
  * @param maxChunksPerDocument the upper bound on how many chunks of one document {@code
- *     DocumentCompletion} may hold in the final selection. Default 2; {@code 1} is the explicit
- *     opt-out that makes completion the identity.
+ *     DocumentCompletion} may hold in the final selection. Default 1, which makes completion the
+ *     identity: no sibling chunks are added, though the selection may still hold several chunks of
+ *     one document. The neighbour chunks loaded for the answer context supply surrounding text.
  * @param fullTextSearchEnabled whether {@link RetrievalStageName#FULL_TEXT_SEARCH} runs and
  *     contributes its lists to the fusion. Default {@code true}. Set to {@code false} for the
  *     {@code vector-only} measurement variant: the stage stays in the chain and says so in the
@@ -64,7 +65,7 @@ public record QueryProperties(
     double similarityThreshold,
     @DefaultValue("true") boolean queryDecompositionEnabled,
     @DefaultValue("3") int maxSubQueries,
-    @DefaultValue("2") int maxChunksPerDocument,
+    @DefaultValue("1") int maxChunksPerDocument,
     @DefaultValue("true") boolean fullTextSearchEnabled,
     @DefaultValue("50") int rerankCandidateCount,
     @DefaultValue("20") int conversationWindowMessages,

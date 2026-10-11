@@ -227,6 +227,11 @@ fassen die dritte bzw. zweite Satzung nicht, weil die gefundenen Dokumente sie m
 Alle 49 Pipeline-Gründe sind aus diesem Lauf neu erzeugt, mit demselben Generator, der die
 vorherigen 49 Gründe aus dem CI-Lauf 37837883487 Zeichen für Zeichen reproduziert.
 
+**Nachtrag #2502 (2026-10-11).** Der Default `max-chunks-per-document` sank von 2 auf 1. Kein Zustand
+bewegt sich, 48 der 49 Pipeline-Rangfolgen sind identisch. Nur der Pipeline-Grund von `verw-lit-006`
+nennt jetzt 16 statt 14 Dokumente im Fenster: Zwei Plätze, die vorher Geschwister-Chunks belegten,
+gehen an weitere Dokumente hinter dem erwarteten.
+
 Jede Zustandsänderung ist ein bewusster Vorgang mit Datum und Begründung im selben PR wie ihr
 Auslöser — nie eine Datenpflege nebenbei —, und sie betrifft nur den Pfad, auf dem sie gemessen
 ist. Der Zustandsfelder-Abschnitt beider Reports **und** beider Markdown-Delta-Tabellen
