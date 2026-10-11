@@ -37,7 +37,7 @@ export const ENDPOINT_PRESETS: readonly EndpointPreset[] = [
   {
     key: 'custom',
     label: 'Eigene Adresse',
-    description: 'vLLM, LiteLLM, Azure oder ein anderer OpenAI-kompatibler Server.',
+    description: 'vLLM, LiteLLM, Azure oder ein anderer Server mit derselben Schnittstelle.',
     baseUrl: null,
     keyless: false,
   },
@@ -61,7 +61,7 @@ export function displayNameFor(identifier: string): string {
 }
 
 const MIN_SUGGESTED_TOKENS = 256
-const MAX_SUGGESTED_TOKENS = 8192
+export const MAX_SUGGESTED_TOKENS = 8192
 
 /**
  * The suggested answer length for a context window: a quarter of it, so question, chat history and

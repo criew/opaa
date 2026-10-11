@@ -22,9 +22,7 @@ function recordRequests(path: string) {
 function renderCreate() {
   const onSaved = vi.fn()
   const onClose = vi.fn()
-  renderWithProviders(
-    <LlmModelFormDialog open model={null} onClose={onClose} onSaved={onSaved} />,
-  )
+  renderWithProviders(<LlmModelFormDialog open model={null} onClose={onClose} onSaved={onSaved} />)
   return { dialog: within(screen.getByRole('dialog')), onSaved, onClose }
 }
 
@@ -138,7 +136,9 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
 
     await user.click(dialog.getByRole('radio', { name: /OpenAI/ }))
 
-    expect(dialog.getByText(/Zugangsschlüssel eintragen, dann „Modelle abrufen“/)).toBeInTheDocument()
+    expect(
+      dialog.getByText(/Zugangsschlüssel eintragen, dann „Modelle abrufen“/),
+    ).toBeInTheDocument()
     expect(discoveries).toHaveLength(0)
   })
 
@@ -149,7 +149,9 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     await user.click(dialog.getByRole('radio', { name: /OpenAI/ }))
     await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
 
-    expect(await dialog.findByText(/verlangt einen Zugangsschlüssel \(HTTP 401\)/)).toBeInTheDocument()
+    expect(
+      await dialog.findByText(/verlangt einen Zugangsschlüssel \(HTTP 401\)/),
+    ).toBeInTheDocument()
     expect(dialog.getByText(/Kennung lässt sich trotzdem von Hand eintragen/)).toBeInTheDocument()
 
     await user.type(dialog.getByRole('combobox', { name: /Modell-Kennung/ }), 'gpt-4o')
@@ -222,9 +224,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
 
     await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
 
-    expect(
-      await dialog.findByText(/weicht von der gespeicherten Adresse ab/),
-    ).toBeInTheDocument()
+    expect(await dialog.findByText(/weicht von der gespeicherten Adresse ab/)).toBeInTheDocument()
   })
 
   it('reuses the stored key of the edited model without sending one', async () => {

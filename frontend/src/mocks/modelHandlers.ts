@@ -150,7 +150,10 @@ export const modelHandlers = [
     const hasKey = Boolean(body.apiKey && body.apiKey.trim() !== '')
     if (address.includes('unerreichbar')) {
       return HttpResponse.json(
-        discoveryFailure('UNREACHABLE', 'Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).'),
+        discoveryFailure(
+          'UNREACHABLE',
+          'Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).',
+        ),
       )
     }
     if (address.includes('ohne-liste')) {
