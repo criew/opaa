@@ -43,6 +43,12 @@ Vorfall wird in der Originalquelle über die dort geregelten Wege des Hauses unt
 eDiscovery oder Verwaltungszugriff beim Anbieter). Einen Inhaltszugriff auf private Bibliotheken
 gibt es damit dauerhaft nicht.
 
+**Nachtrag vom 11.10.2026 (#1987, Maintainer-Entscheidung):** Eine interne Gruppe lässt sich
+**vorübergehend deaktivieren**. Während sie deaktiviert ist, wirkt sie für niemanden; das Reaktivieren
+stellt den vorherigen Stand ohne weitere Entscheidung wieder her. Die Regeln stehen in der neuen
+Entscheidung 14; die Begriffe „wirksame“ und „handlungsfähige Gruppe“ sowie die Tabelle in
+Entscheidung 8 sind entsprechend ergänzt.
+
 **Präzisiert, ohne aufzuheben:** [ADR-0016](0016-loeschschicksal-rechtehistorie.md) (Entscheidung 8),
 [ADR-0025](0025-mehrere-oidc-anbieter.md) (Entscheidungen 2 und 3),
 [ADR-0033](0033-lokale-benutzerverwaltung.md) (Entscheidung 2).
@@ -110,7 +116,7 @@ ersten drei zusammen; **ADR, Oberfläche und Handbuch benutzen durchgehend die S
 | **Fähigkeit** | Anlegerecht | unbefristetes Recht, etwas **anzulegen**; an Person, Gruppe oder „Alle Konten"; ohne Gegenstand; öffnet nie einen Inhalt |
 | **Befugnis** | Vollmacht | befristete, an **genau eine Person** gebundene Erlaubnis mit Gegenstand und Begründungspflicht („Sicht als", Vorfallsbereich) |
 | **Systemrolle** | Systemrolle | `SYSTEM_ADMIN`, `AUDITOR` |
-| **Wirksame Gruppe** | — | eine Gruppe, der ein Recht **erteilt** werden darf: nicht aufgelöst und ihr Anbieter aktiviert (bei internen Gruppen entfällt das Zweite). Sie **darf leer sein** |
+| **Wirksame Gruppe** | — | eine Gruppe, der ein Recht **erteilt** werden darf: nicht aufgelöst und ihr Anbieter aktiviert (bei internen Gruppen entfällt das Zweite; an seine Stelle tritt seit dem Nachtrag vom 11.10.2026 „nicht deaktiviert“, Entscheidung 14). Sie **darf leer sein** |
 | **Handlungsfähige Gruppe** | — | eine wirksame Gruppe mit mindestens einem **aktiven** Konto — das Maß dafür, ob sie als Eigentümerin oder Space-`ADMIN` **handeln** kann |
 
 „Vollmacht" ist bereits Sprachgebrauch des Projekts (ADR-0016, Nachtrag: „Diagnose-Vollmacht");
@@ -133,6 +139,7 @@ ersten drei zusammen; **ADR, Oberfläche und Handbuch benutzen durchgehend die S
 | 9 | Sichtbarkeit | Opt-in „Freigabe zur Verwendung" für interne Gruppen, Bestandsgruppen mit Wirkung migriert als freigegeben | Wie heute (jeder `MANAGER` erteilt an jede Gruppe, auch per ID); Opt-out (der Schutz hängt daran, dass ihn jemand setzt — und gerade die Gruppen, die ihn brauchen, entstehen von Leuten, die an Freigabedialoge nicht denken) |
 | 10 | Übertragung | **eine** allgemeine Operation auf der Gruppenachse, mit vier Anlässen | Keine Operation (Handarbeit an 200 Objekten endet im `UPDATE` auf der Datenbank); Sonderfall je Anlass (dreimal dieselbe Historienschreibung mit drei Fehlerquellen) |
 | 11 | Migration | Waisen-Gruppen werden interne Gruppen ohne Verantwortliche | `provider_id` mit `RESTRICT` ohne Vorkehrung: Liquibase bricht ab, die Anwendung startet nicht, und die Baseline hat bewusst keine Rollback-Blöcke |
+| 14 | Deaktivieren (Nachtrag 11.10.2026) | eigener, umkehrbarer Schalter an internen Gruppen; ausgeblendet **an einer Stelle**, im `GroupMembershipResolver`; Historie über Schnitt der Mitgliedschaftsintervalle | dritter Wert eines gemeinsamen Zustands mit der Freigabe (vermischt Auswahl und Wirkung); eigene Zustandstabelle der Historie (jede Rekonstruktion müsste Intervalle abziehen) |
 
 ### 1. Vorbilder, und die eine Zusage, die dabei nicht fällt
 
@@ -658,6 +665,7 @@ Historienzeile sagt, *in welchem Zeitraum* ein Recht galt, und trägt die Sticht
 | **Systemrolle** | **neu** — weil `effectiveRole` `SYSTEM_ADMIN` als `OWNER` führt | `RESTRICT` | ja |
 | **Kontozustand** (aktiv/gesperrt) | **neu**, #1818 — Beleg der Kontenmenge zum Stichtag, zusammen mit `users` (siehe Nachtrag unten) | `RESTRICT` | ja |
 | Verantwortliche interner Gruppen | **keine** — Betriebsrecht der Gegenwart | — | ja |
+| Deaktivierung einer internen Gruppe (Nachtrag 11.10.2026) | `group_membership_history` — Schnitt aller Mitgliedschaftsintervalle der Gruppe (Entscheidung 14) | `RESTRICT` (bestehend) | ja |
 | Vollmachten | keine (ADR-0016, Nachtrag) | — | ja |
 | Nachfolgevorgänge, Sichtungsvermerke (letztere mit dem Nachtrag vom 08.10.2026 entfallen) | keine | — | ja |
 
@@ -1081,6 +1089,93 @@ für Mitgliedschaften zieht.
 | [ADR-0018](0018-quellkonfiguration-in-der-bibliothek.md) | Entscheidung 6 samt Nachtrag #484 wird **mit der Annahme dieses ADR abgelöst** (Entscheidung 5); der Rest gilt unverändert |
 | [ADR-0006](0006-openapi-dto-generation.md) | jede API-Änderung dieses Epics beginnt in `opaa-api.yaml`; das `403` der Fähigkeitsprüfung ist eine **eigene Entscheidung der Operation** und wird dort deklariert |
 | [ADR-0034](0034-liquibase-changeset-stil-und-schema.md) | jedes Changeset des Epics ist reines PostgreSQL-SQL ohne Schemaqualifizierung, mit eigenem Delta-Test |
+
+### 14. Deaktivieren einer internen Gruppe
+
+**Status: Maintainer-Entscheidung vom 11.10.2026** (Issue
+[#1987](https://github.com/criew/opaa/issues/1987)). Bis hierher kannte eine interne Gruppe zwei Wege,
+ihre Wirkung einzuschränken: die Freigabe zur Verwendung zurücknehmen (Entscheidung 9 — bestehende
+Rechte bleiben wirksam) und Wirkungen übertragen und die Gruppe löschen (Entscheidung 10 —
+endgültig). Es fehlte ein umkehrbarer Zwischenzustand für ein ruhendes Projekt, eine
+Umorganisation oder die Prüfung, ob die Rechte einer Gruppe noch stimmen.
+
+1. **Eigener Schalter, unabhängig von der Freigabe.** `groups.deactivated` (mit Zeitpunkt
+   `deactivated_at`), nur für interne Gruppen (`kind = AD_HOC`, Prüfregel). Freigabe und
+   Deaktivierung beantworten verschiedene Fragen — „darf man die Gruppe neu wählen?" und „wirkt sie
+   überhaupt?" —, deshalb kein dritter Wert eines gemeinsamen Zustands. **Reaktivieren stellt genau
+   den vorherigen Stand wieder her:** Grants, Space-Mitgliedschaften mit Rolle, Anlegerechte,
+   Gruppenmitgliedschaften, Verantwortliche, Freigabe- und Schutzkennzeichen bleiben während der
+   Deaktivierung gespeichert und werden nicht angefasst.
+2. **Während deaktiviert wirkt die Gruppe für niemanden.** Durchgesetzt wird das **an einer
+   Stelle**, im `GroupMembershipResolver`, über den jede Auswertung Gruppenmitgliedschaften auflöst:
+   `groupIdsForUser` liefert eine deaktivierte Gruppe nicht, und `resolveUserIds`/`activeMemberIds`
+   liefern für sie niemanden. Damit blendet ohne eigene Prüfung jeder Pfad sie aus:
+   - Bibliotheks- und Prompt-Grants samt Suche und Download (`AssetAccessService`), auch das
+     Rechteprofil der Suchdiagnose, das für eine deaktivierte Gruppe nur noch „Alle Konten" liest;
+   - Raum-Mitgliedschaft und Raumrolle (`SpaceAccessPolicy`);
+   - Anlegerechte (`CapabilityService#hasCapability`, auch in `GET /api/v1/me`);
+   - Eigentum — praktisch nie berührt, weil das Deaktivieren dann verweigert wird (Punkt 4);
+   - die Herleitung „warum sehe ich das" (Asset und Space) — sie zeigt keinen Weg über die Gruppe;
+   - Zuständigkeiten, die aus Rechten folgen (etwa die Zustimmung zu einem Verbindungsprofil).
+
+   Unberührt bleibt die **Verwaltung der Gruppe selbst:** Verantwortliche pflegen Mitglieder weiter,
+   und Mitglieder sehen die Gruppe in „Meine Gruppen" mit ihrem Zustand. Angezeigte
+   Mitgliederzahlen bleiben die tatsächlichen Zahlen; sie sind Bestand, keine Wirkung.
+3. **Keine wirksame und keine handlungsfähige Gruppe.** Eine deaktivierte Gruppe ist kein neues
+   Grant-Ziel, kein neues Space-Mitglied, kein Ziel einer Übertragung und kein Eigentümer einer neuen
+   Bibliothek; die Auswahl zeigt sie wie bei „Anbieter deaktiviert" als nicht wählbar **mit Grund**
+   (`deactivated`). Sie zählt nicht als handlungsfähiges `ADMIN`-Mitglied eines Space und erscheint
+   nicht in „Freigaben ohne Empfänger" — ihre Freigaben erreichen niemanden, aber das ist eine
+   Entscheidung, kein Befund.
+4. **Verweigert (`409`, mit Bezifferung) wird das Deaktivieren, solange die Gruppe**
+   - **einzige wirksame Eigentümerin** eines Assets ist. Ein Asset hat genau einen Eigentümer; besitzt
+     die Gruppe es, verlöre es mit ihr jeden handlungsfähigen Verantwortlichen — der Zustand
+     „Nachfolge offen" entstünde durch eine Verwaltungshandlung, die ihn nicht erzeugen darf
+     (Entscheidung 6). Die Regel gilt für **jede Asset-Art der Schale**, heute Wissens- und
+     Prompt-Bibliotheken, und nennt die Zahl je Art („einzige Eigentümerin von 2 Bibliotheken und
+     1 Prompt-Bibliothek"). **Spaces fallen nicht darunter:** Ein Space-Eigentümer ist immer eine
+     natürliche Person.
+   - **das letzte handlungsfähige `ADMIN`-Mitglied** eines Space ist. Das ist Schutzregel 1 aus
+     Entscheidung 6, angewendet auf diese Verwaltungshandlung; sie verweigert wie dort den Verlust,
+     nicht den Zustand.
+
+   Der Ausweg ist in beiden Fällen die Übertragung (Entscheidung 10) oder eine weitere
+   handlungsfähige Zuständigkeit — danach lässt sich die Gruppe deaktivieren.
+5. **Wer:** die Verantwortlichen der Gruppe und die Systemverwaltung — für geschützte wie für
+   ungeschützte Gruppen; das sind dieselben Rollen wie für jede andere Pflege der Gruppe
+   (Entscheidung 4). Wer die Gruppe nicht pflegen darf, erhält `404` wie für eine unbekannte Gruppe.
+   Anbietergruppen werden dort gepflegt, wo sie herkommen, und sind nicht deaktivierbar (`400`).
+6. **Die Wirkung ist sofort.** Setzen und Aufheben invalidieren nach dem Commit den Cache des
+   `GroupMembershipResolver` für alle Mitglieder der Gruppe und benachrichtigen jeden
+   `GroupMembershipChangeListener` (etwa die rechtebezogenen Filterwerte der Suche). Laufende
+   Sitzungen brauchen keine Neuanmeldung; die Zusage trägt wie in Entscheidung 5 nur unter
+   [ADR-0021](0021-single-instance-betrieb.md).
+7. **Keine Frist, keine Wiedervorlage.** Eine lange deaktivierte Gruppe bleibt deaktiviert, bis
+   jemand sie reaktiviert, überträgt oder löscht; wie in Entscheidung 6 gibt es keine Erinnerung.
+8. **Audit:** Setzen und Aufheben sind die Ereignisse `GROUP_DEACTIVATED` und `GROUP_REACTIVATED`
+   mit handelnder Person und den bezifferten Folgen (Freigaben, Space-Mitgliedschaften,
+   Anlegerechte, Mitglieder) — nie den Namen der Mitglieder.
+9. **Rechtehistorie: Der Zustandswechsel braucht einen Eintrag, sonst stimmt die Stichtagsauskunft
+   nicht.** Ohne ihn behauptete die Historie für die Zeit der Deaktivierung Zugriff über die Gruppe,
+   den es nicht gab. Eingetragen wird er in `group_membership_history`, nicht in einer eigenen
+   Tabelle: Das Deaktivieren schließt jedes offene Mitgliedschaftsintervall der Gruppe mit einer
+   Marke der Ursache `GROUP_DEACTIVATED`, das Reaktivieren öffnet für jedes dann bestehende Mitglied
+   ein neues mit `GROUP_REACTIVATED`; eine Aufnahme während der Deaktivierung öffnet kein Intervall.
+   Weil **jede** Rekonstruktion — `readableAssetIdsAsOf`, Space und Fähigkeiten zum Stichtag und
+   der Objekt-Einstieg der Stichtagsauskunft — Grant und Mitgliedschaft über diese Intervalle
+   schneidet, stimmen alle ohne eine Änderung an ihren Abfragen. Grant-, Space- und
+   Fähigkeitshistorie bleiben unberührt: Das Recht bestand fort, nur seine Empfänger nicht.
+   **Damit heißt ein Intervall dieser Tabelle genau genommen „wirkte über die Gruppe"**, nicht
+   „stand in der Mitgliederliste"; den Unterschied trägt das Protokoll (Aufnahme und Entfernung sind
+   Audit-Ereignisse auch während der Deaktivierung).
+
+**Verworfen:** ein dritter Wert neben „freigegeben"/„nicht freigegeben" (die Freigabe ginge beim
+Reaktivieren verloren oder müsste mitgeführt werden — zwei Entscheidungen in einem Feld); das
+Ausblenden an jeder Prüfstelle einzeln (sieben Stellen, und die achte vergäße es); eine eigene
+Zustandstabelle für die Historie (jede der vier Rekonstruktionen müsste Deaktivierungsintervalle von
+Mitgliedschaftsintervallen abziehen); das Deaktivieren trotz Eigentum zuzulassen (ein Asset ohne
+handlungsfähigen Verantwortlichen durch eine Verwaltungshandlung, die Entscheidung 6 gerade
+ausschließt).
 
 ## Zahlen, die dieser ADR setzt
 
