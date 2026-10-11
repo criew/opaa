@@ -11,7 +11,7 @@
    Anwendungsberechtigung `Sites.Selected` für Microsoft Graph mit Administratorzustimmung erteilen
    (Abschnitt 2).
 2. Jede Site, die OPAA lesen soll, für die App mit der Rolle `read` freigeben (Abschnitt 2.3).
-3. Unter **Administration → Zugänge** einen Zugang für SharePoint mit Mandant, Client-ID und
+3. Unter **Administration → Anbindungen → Zugänge** einen Zugang für SharePoint mit Mandant, Client-ID und
    Client-Secret anlegen (Abschnitt 2.5). SharePoint ist nur über einen Zugang nutzbar.
 4. Die Quellart SharePoint ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer
    außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen“

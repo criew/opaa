@@ -414,8 +414,8 @@ Proxy, die Zertifikatsprüfung und Vorgaben für die Einstellungen des Konnektor
 auf einem Zugang anlegt, wählt ihn aus und trägt Server, Registrierung, Proxy und Vorgaben nicht
 selbst ein.
 
-Die Systemverwaltung pflegt Zugänge unter **Administration → Zugänge**. Solange keine Quellart
-Zugänge anbietet, steht dort ein Hinweis, und „Neuer Zugang“ ist gesperrt. Sonst fragt „Neuer
+Die Systemverwaltung pflegt Zugänge unter **Administration → Anbindungen → Zugänge**. Solange
+keine Quellart Zugänge anbietet, steht dort ein Hinweis, und „Neuer Zugang“ ist gesperrt. Sonst fragt „Neuer
 Zugang“ zuerst die Quellart als Kachel ab; Quellarten ohne Zugänge bleiben mit Grund gesperrt
 sichtbar. Das Formular richtet sich nach der Quellart:
 
@@ -836,8 +836,8 @@ Zugang, Adress- oder Registrierungswechsel, Notabschaltung und Löschen des Zuga
 Bibliothek beenden die Zustimmung und widerrufen sie beim Anbieter. Eine private Bibliothek
 verbindet ihre Quelle nie so; sie läuft über das verbundene Konto ihrer Besitzerin.
 
-**Ruhende Quellverbindungen.** Unter **Administration → Zugänge** listet die Systemverwaltung im
-Abschnitt **„Ruhende Quellverbindungen“** die geteilten Bibliotheken, deren eigene Quellverbindung
+**Ruhende Quellverbindungen.** Unter **Administration → Anbindungen → Zugänge** listet die
+Systemverwaltung unter der Liste der Zugänge im Abschnitt **„Ruhende Quellverbindungen“** die geteilten Bibliotheken, deren eigene Quellverbindung
 gerade nicht erreicht wird (abgelaufen, getrennt, gesperrt oder ohne Zugang), mit Zugang, Konto,
 Zustand, Grund und Zeitpunkt des Endes und den Verantwortlichen; der Name führt zum Reiter „Quelle“
 der Bibliothek. Private Bibliotheken stehen nie darin. Ruht keine Quellverbindung, entfällt der
@@ -846,8 +846,8 @@ Abschnitt.
 #### Sperre einer Quellart oder eines Zugangs
 
 Die Systemverwaltung kann eine **Quellart** (für alle ihre Bibliotheken, mit und ohne Zugang) oder
-einen **Zugang** sperren, unter **Administration → Zugänge**: je Zugang mit „Sperren“ bzw.
-„Entsperren“ in der Liste, je Quellart im Abschnitt „Quellarten“ darunter. Beides fragt vorher nach
+einen **Zugang** sperren, unter **Administration → Anbindungen**: je Zugang mit „Sperren“ bzw.
+„Entsperren“ in der Liste des Reiters „Zugänge“, je Quellart im Reiter „Quellarten“. Beides fragt vorher nach
 und nennt die Folgen; ein gesperrter Zugang trägt in der Liste die Marke „Gesperrt“, einer, dessen
 Quellart gesperrt ist, die Marke „Quellart gesperrt“. Beim Entsperren sagt die Rückfrage, wenn eine
 andere Sperre bestehen bleibt. Die Folgen:
@@ -885,7 +885,7 @@ Quellart, die Zugänge verbietet oder ohnehin verlangt, lässt sich nicht umscha
 ist die Pflicht damit für Webverzeichnis, RSS-Feed, Confluence, Nextcloud, S3-Objektspeicher,
 Windows-Dateifreigabe (SMB) und Google Drive.
 
-Der Schalter steht unter **Administration → Zugänge** im Abschnitt „Quellarten“, Spalte
+Der Schalter steht unter **Administration → Anbindungen → Quellarten**, Spalte
 „Zugänge“: Eine Quellart, die Zugänge verbietet, trägt dort „Keine Zugänge möglich“, eine, die sie
 verlangt, „Immer über Zugänge“; nur bei „möglich“ gibt es den Schalter **„Nur über Zugänge“**.
 
