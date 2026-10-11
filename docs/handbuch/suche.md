@@ -584,6 +584,13 @@ besser rankt. Die zweite Stufe darf ein Dokument ganz aus der Antwort drängen u
 Frage auf ein Viertel von `top-k` solcher Verdrängungen gedeckelt. Das Protokoll unterscheidet
 beide Stufen, weil sie für die Diagnose zwei verschiedene Antworten sind.
 
+**Ab Werk zieht die Stufe nichts nach.** Der Standardwert von `max-chunks-per-document`
+(Abschnitt 10.3) ergänzt keine Geschwister-Chunks; die Auswahl bleibt, wie die Stufen davor sie
+gebildet haben, und kann dabei weiterhin mehrere Chunks eines Dokuments enthalten. Den Text um einen
+Treffer bringen die Nachbar-Chunks in den Antwortkontext (Abschnitt 6), ohne einen Platz der
+Endauswahl zu belegen. Die Stufe läuft trotzdem und vermerkt im Protokoll, dass sie keinen Chunk
+nachgezogen hat.
+
 Damit steht die **Endauswahl**: höchstens `top-k` Chunks aus meist mehreren Dokumenten,
 in einer Reihenfolge, die für jede Fundstelle dasselbe bedeutet, gleich über welchen Pfad sie kam.
 
@@ -1103,7 +1110,7 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `full-text-search-enabled` | an | Volltextpfad; `false` lässt die Suche rein vektoriell laufen |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
-| `max-chunks-per-document` | 2 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab |
+| `max-chunks-per-document` | 1 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
 | `neighbor-chunks.radius` | 1 | Nachbar-Chunks je Seite, die jeder Chunk der Endauswahl in den Prompt mitbringt (0 bis 3); 0 schaltet das Nachladen ab (Abschnitt 6) |
 | `neighbor-chunks.max-added-characters` | 40000 | Zeichen, die alle Nachbarn einer Antwort zusammen höchstens hinzufügen (0 bis 1.000.000); kostet entsprechend Eingabetokens je Frage |
 | `conversation-window-messages` | 20 | Breite des Gesprächsfensters in Nachrichten (2 bis 100, gerade) — was die Antwort sieht und was bei kaltem Zwischenspeicher nachgeladen wird |

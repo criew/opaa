@@ -1692,3 +1692,51 @@ Listen. Das verschiebt einzelne Rang-1-Plätze (`verw-lit-008`, `comic-attr-102`
 `city-landmarks` bewegt keinen Zustand. Die Gründe mit Fensterangaben beschreiben den neuen Lauf; der
 Generator dafür reproduziert die vorherigen Gründe beider Datensätze aus dem Vorher-Lauf Zeichen für
 Zeichen.
+
+
+## Nachtrag: max-chunks-per-document 1 (Issue #2502)
+
+**Datum:** 2026-10-11 · **Betrifft:** den Fixpunkt `maxChunksPerDocument` aller vier Baselines des
+Pipeline- und des Mehrrunden-Pfads; einen Grund im Golden Dataset `verwaltung`.
+
+Der Produktions-Default `opaa.query.max-chunks-per-document` sinkt von 2 auf 1. Die
+Dokument-Vervollständigung (Stufe `DOCUMENT_COMPLETION`) zieht damit ab Werk keinen Geschwister-Chunk
+mehr nach. Den Zusammenhang um einen Treffer liefern seit #2374 die Nachbar-Chunks im Antwortkontext,
+ohne einen Platz der Endauswahl zu belegen. Anlass ist eine Messung der Antwortqualität auf einem
+realen Verwaltungskorpus (Arbeitsmenge 20 Fragen × 3 Läufe, Nachbarn ±1): Mit
+`max-chunks-per-document` 1 standen 84 von 132 Kernfakten im Kontext (36/17/7 richtige, teilweise
+richtige und falsche Antworten), mit 2 nur 73 von 132. Die Vervollständigung hatte gut platzierte
+Fundstellen anderer Dokumente aus der Auswahl verdrängt.
+
+### 66. Ein Fixpunktwert bewegt sich, keine Vertragsversion
+
+`max-chunks-per-document` ist seit Entscheidung 18 ein geprüfter Fixpunkt. Sein Wert ändert sich,
+seine Bedeutung nicht; Metriken, Fenster und Schwellenbehandlung bleiben, wie in Entscheidung 27.
+Pipeline-Messvertrag (20), Mehrrunden-Messvertrag (10) und Rohvektor-Messvertrag (16) bleiben deshalb.
+Alle vier Baselines mit diesem Fixpunkt sind aus CPU-Testcontainer-Läufen vom 2026-10-11 neu gezogen
+(`haswell`). Vorher-Lauf ist der nächtliche Lauf 38125725528 (Stand `df3c8046`, Wert 2).
+
+| Domäne | Rangfolgen identisch | Gruppenzahlen | Zustände | Dokumente je Antwort (Mittel) |
+|---|---|---|---|---|
+| `verwaltung` | 48 von 49 | unverändert | unverändert | 6,88 → 6,92 |
+| `comic-characters` | 121 von 121 | unverändert | unverändert | 20 → 20 |
+| `city-landmarks` | 107 von 108 | unverändert | unverändert | 11,83 → 11,84 |
+| `verwaltung`, Mehrrunden | 125 von 127 Runden | unverändert | unverändert | 6,71 → 6,79 |
+
+Die beiden abweichenden Einzelfragen-Fälle (`verw-lit-006`, `city-cross_chunk-010`) behalten jedes
+Dokument auf seinem Rang; dahinter rücken zwei bzw. ein Dokument auf Plätze, die vorher
+Geschwister-Chunks belegten. `comic-characters` kann sich konstruktionsbedingt nicht bewegen, weil
+jedes Dokument genau einen Chunk hat (ADR-0010). Der Rohvektor-Pfad sieht den Wert nicht; jede seiner
+Rangfolgen ist identisch zum Vorher-Lauf. In `eval/golden/verwaltung.json` ist nur der Pipeline-Grund
+von `verw-lit-006` nachgezogen (Dokumentzahl im Fenster), deshalb tragen `verwaltung.json` und
+`pipeline-verwaltung.json` einen neuen Golden-Hash.
+
+### 67. Was dieser Harness von der Änderung sieht
+
+Der Harness misst die Endauswahl auf Dokumentebene und ohne Nachbar-Chunks
+(`docs/features/retrieval-algorithm.md`, Abschnitt 6b). Die Vervollständigung bewegt dort nur, welche
+Dokumente auf den hinteren Plätzen stehen: Ein Geschwister-Chunk zählt nicht als weiteres Dokument.
+Dass die Zahlen gleich bleiben, ist deshalb das erwartete Ergebnis und kein Beleg gegen die Änderung.
+Ihr Nutzen liegt im Antwortkontext, den nur eine Antwortmessung sieht; die Belege dafür stehen oben
+und im Issue. Ein Rückgang auf diesem Pfad wäre dagegen ein Befund gewesen: Er hätte gezeigt, dass die
+Vervollständigung erwartete Dokumente in die Auswahl geholt hatte, die nun fehlen.

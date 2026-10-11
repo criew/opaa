@@ -222,7 +222,7 @@ opaa:
     similarity-threshold: ${OPAA_QUERY_SIMILARITY_THRESHOLD:0.3}
     query-decomposition-enabled: ${OPAA_QUERY_DECOMPOSITION_ENABLED:true}
     max-sub-queries: ${OPAA_QUERY_MAX_SUB_QUERIES:3}
-    max-chunks-per-document: ${OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT:2}
+    max-chunks-per-document: ${OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT:1}
     full-text-search-enabled: ${OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED:true}
     # #1050: how many fused candidates the rerank stage scores, and the budget the fusion keeps
     # for it while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the

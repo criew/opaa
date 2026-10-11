@@ -295,8 +295,8 @@ läuft weiter, aber nicht unbemerkt.
 
 Die Kandidatenzahl steuert `opaa.query.rerank-candidate-count`
 (`OPAA_QUERY_RERANK_CANDIDATE_COUNT`, Default `50`, Ebene-1-Wert). `0` schaltet die Stufe über ihren
-eigenen Parameter ab — dieselbe explizite Abwahl, die `max-chunks-per-document = 1` für die
-Dokument-Vervollständigung ist. Der Startwert 50 entspricht dem, was zwei Suchpfade bei
+eigenen Parameter ab, so wie `max-chunks-per-document = 1` die Dokument-Vervollständigung
+abschaltet (dort seit #2502 der Default). Der Startwert 50 entspricht dem, was zwei Suchpfade bei
 `fetch-k = 25` je Teilfrage überhaupt liefern können.
 
 **Das Fenster vergrößert die Reichweite nicht.** Was keine Suchstufe zurückgegeben hat, kann weder
@@ -335,7 +335,7 @@ verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`
 Stufenname: `DOCUMENT_COMPLETION`. `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
 aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schritt 3 nach — nie darüber
 hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, darf bis zu
-`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `2`) Chunks stellen,
+`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `1`, bis #2502 `2`) Chunks stellen,
 bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt — die Abhilfe für den Fall, dass
 der Gebühren-Chunk eines Dokuments in RRF/MMR gegen Chunks *anderer* Dokumente verlor, weil der
 Einleitungs-Chunk desselben Dokuments dort besser rankte und dessen Platz belegte
@@ -350,7 +350,10 @@ gelten stufenübergreifend: Ein in diesem Aufruf bereits vervollständigtes Doku
 weiteres Dokument als Stufe-1-Quelle aus (`completedDocumentKeys`), und ein Chunk, den eine Vervollständigung
 in diesem Aufruf hinzugefügt hat, kann in keiner der beiden Stufen selbst zum Opfer werden — eine
 Vervollständigung kann eine frühere im selben Aufruf also nie rückgängig machen. `max-chunks-per-document
-= 1` schaltet die Vervollständigung vollständig ab (Verhalten von vor #932).
+= 1` schaltet die Vervollständigung vollständig ab (Verhalten von vor #932). Seit
+[#2502](https://github.com/criew/opaa/issues/2502) ist das der Default: Den Zusammenhang um einen
+Treffer liefern die Nachbar-Chunks (6b), ohne einen Platz der Endauswahl zu belegen, und die
+Vervollständigung hatte gut platzierte Fundstellen anderer Dokumente verdrängt.
 
 ### 6b. Nachbar-Chunks im Antwortkontext (#2374)
 
