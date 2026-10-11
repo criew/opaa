@@ -211,7 +211,8 @@ public class McpServerDiscovery {
       throw new ValidationException(address + " liefert kein gültiges JSON.");
     } catch (IOException e) {
       log.info("MCP discovery at {} failed: {}", address, e.getClass().getSimpleName());
-      throw new ValidationException(address + " ist nicht erreichbar.");
+      throw new ValidationException(
+          ProxyRefusal.failureMessage(e, address + " ist nicht erreichbar."));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Der Abruf von " + address + " wurde unterbrochen.");

@@ -4,6 +4,7 @@ import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.indexing.source.SourceCredentialsRejectedException;
 import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;
@@ -532,7 +533,8 @@ public class AutoindexCrawlerService {
             url, RedirectFollowingFetcher.authorizationSent(response));
       }
       if (response.statusCode() != 200) {
-        throw new IOException("HTTP " + response.statusCode() + " for URL: " + url);
+        throw ProxyRefusal.statusFailure(
+            response.statusCode(), "HTTP " + response.statusCode() + " for URL: " + url);
       }
       byte[] page;
       try {

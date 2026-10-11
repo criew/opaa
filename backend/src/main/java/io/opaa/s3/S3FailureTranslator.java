@@ -1,10 +1,12 @@
 package io.opaa.s3;
 
+import io.opaa.outbound.ProxyRefusal;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.function.Function;
@@ -157,6 +159,10 @@ public final class S3FailureTranslator {
       return translateService(op, bucket, key, service);
     }
     if (e instanceof SdkClientException) {
+      Optional<String> proxyRefusal = ProxyRefusal.describe(e);
+      if (proxyRefusal.isPresent()) {
+        return new S3AccessException.Unreachable(proxyRefusal.get());
+      }
       if (findCause(e, SSLException.class) != null) {
         return new S3AccessException.Tls();
       }
@@ -193,6 +199,10 @@ public final class S3FailureTranslator {
       S3Operation op, String bucket, String key, AwsServiceException e) {
     String code = e.awsErrorDetails() == null ? null : e.awsErrorDetails().errorCode();
     int status = e.statusCode();
+    Optional<String> proxyRefusal = ProxyRefusal.describeStatus(status);
+    if (proxyRefusal.isPresent()) {
+      return new S3AccessException.Unreachable(proxyRefusal.get());
+    }
     if (status == 301 || status == 307 || (code != null && REDIRECT_CODES.contains(code))) {
       return op == S3Operation.LIST_BUCKETS
           ? new S3AccessException.WrongRegionOrStyle()

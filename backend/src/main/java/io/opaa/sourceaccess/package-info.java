@@ -1,6 +1,6 @@
 /**
  * Access to externally configured document sources (HTTP client construction, redirect following,
- * proxy/credentials parsing, bounded downloads and the byte ceilings behind them, SSRF
+ * Basic credentials parsing, bounded downloads and the byte ceilings behind them, SSRF
  * target-address validation, the politeness delay {@link io.opaa.sourceaccess.RequestPoliteness}
  * applies before a request to a source OPAA does not operate, and the {@link
  * io.opaa.sourceaccess.SourceRequestPolicy} every such request carries: {@code User-Agent} and how

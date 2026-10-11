@@ -244,6 +244,24 @@ class OAuthClientTest {
         .hasMessageNotContaining(grant.refreshToken());
   }
 
+  @Test
+  void a407IsTheOutboundProxysRefusalNotTheProviders() {
+    OAuthClient.Grant grant = consent();
+    server.rejectWith(407, "proxy_authentication_required");
+
+    assertThatThrownBy(
+            () ->
+                client.refresh(
+                    registration(ProfileEndpoints.NONE),
+                    fixed(new Revocation.None()),
+                    grant.refreshToken(),
+                    NOW))
+        .isInstanceOf(SourceCredentialsException.class)
+        .isNotInstanceOf(SignInRejectedException.class)
+        .hasMessageStartingWith("Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt")
+        .hasMessageContaining("Status 407");
+  }
+
   private OAuthClient.Grant consent() {
     String verifier = "a".repeat(43);
     URI url =

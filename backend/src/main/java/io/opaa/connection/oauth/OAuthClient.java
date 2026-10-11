@@ -368,7 +368,8 @@ public final class OAuthClient {
     } catch (IOException e) {
       log.warn("{} {} not reachable: {}", label, endpoint, e.getClass().getSimpleName());
       throw new SourceCredentialsException(
-          "Der " + label + " " + endpoint + " ist nicht erreichbar.");
+          ProxyRefusal.failureMessage(
+              e, "Der " + label + " " + endpoint + " ist nicht erreichbar."));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new SourceCredentialsException("Der Abruf beim Anbieter wurde unterbrochen.");

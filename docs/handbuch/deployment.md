@@ -1637,7 +1637,9 @@ Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
 - **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung (Status 407),
   melden Verbindungstests und Läufe aller Quellarten, die Anmeldung an Zugängen und
   Identitätsanbietern, der Verzeichnisabgleich und die Modell-Endpunkte, dass der Ausgangsproxy die
-  Verbindung abgelehnt oder das Ziel nicht erreicht hat, mit dem Status des Proxys.
+  Verbindung abgelehnt oder das Ziel nicht erreicht hat, mit dem Status des Proxys. Ausnahme ist
+  S3: Dort erkennt OPAA nur die Anmeldung (Status 407). Einen abgelehnten Tunnel meldet der
+  S3-Konnektor als Antwort des Objektspeichers, etwa als fehlende Berechtigung bei Status 403.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen, weil auch
   deren Signaturschlüssel über ihn geholt werden. Das lokale Konto der Systemverwaltung meldet sich
   ohne Anbieter an und kann den Eintrag korrigieren.

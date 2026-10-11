@@ -1064,4 +1064,28 @@ class BoundedDownloaderTest {
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("gesperrten Adressbereich");
   }
+
+  @Test
+  void aProxyAnswer407IsNamedAsTheOutboundProxysRefusal() {
+    server.createContext(
+        "/anlage.pdf",
+        exchange -> {
+          exchange.sendResponseHeaders(407, -1);
+          exchange.close();
+        });
+
+    assertThatThrownBy(
+            () ->
+                downloader.downloadBounded(
+                    httpClient, baseUrl + "/anlage.pdf", "anlage.pdf", 10_000, null))
+        .isInstanceOf(BoundedDownloader.HttpStatusException.class)
+        .satisfies(
+            e ->
+                assertThat(io.opaa.outbound.ProxyRefusal.describe(e))
+                    .hasValueSatisfying(
+                        message ->
+                            assertThat(message)
+                                .startsWith("Der Ausgangsproxy hat die Verbindung")
+                                .contains("Status 407")));
+  }
 }

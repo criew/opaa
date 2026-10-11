@@ -55,6 +55,12 @@ class DropSourceProxyMigrationTest extends AbstractBaselineTest {
     String where = " WHERE id = " + quoted(upload);
 
     assertRejected(
+        "UPDATE knowledge_libraries SET source_path = '/data'" + where,
+        "chk_knowledge_libraries_upload_without_source");
+    assertRejected(
+        "UPDATE knowledge_libraries SET source_credentials = 'enc:v1:x'" + where,
+        "chk_knowledge_libraries_upload_without_source");
+    assertRejected(
         "UPDATE knowledge_libraries SET source_url = 'https://x.example'" + where,
         "chk_knowledge_libraries_upload_without_source");
     assertRejected(

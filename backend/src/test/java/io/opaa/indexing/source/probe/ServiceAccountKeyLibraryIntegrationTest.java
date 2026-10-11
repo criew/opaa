@@ -27,9 +27,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The core's rules for a connector that signs in with a service account key (ADR-0040,
  * Entscheidungen 2 to 4), through the HTTP API: the connector never sees the key, the stored form
- * keeps only what the core signs with, a changed imitated account needs the key again ({@code 400}
- * without, saved with), and a change of the proxy alone keeps it although the form never sends the
- * fixed address.
+ * keeps only what the core signs with, and a changed imitated account needs the key again ({@code
+ * 400} without, also next to a changed connection field; saved with).
  */
 @OpaaIntegrationTest
 class ServiceAccountKeyLibraryIntegrationTest {
@@ -109,6 +108,26 @@ class ServiceAccountKeyLibraryIntegrationTest {
 
     assertThat(refused).contains("imitierte Konto");
     assertThat(storedCredentials()).isEqualTo(stored);
+    assertThat(storedSubject()).isEqualTo("fach-a@example.org");
+  }
+
+  @Test
+  void aChangedSubjectTogetherWithAConnectionFieldButWithoutTheKeyIsRefusedToo() throws Exception {
+    String refused =
+        mockMvc
+            .perform(
+                as(put("/api/v1/libraries/" + libraryId))
+                    .content(
+                        """
+                        {"name": "Dienstkonto", "sourceInsecureSsl": true,
+                         "sourceSettings": {"subject": "fach-b@example.org"}}
+                        """))
+            .andExpect(status().isBadRequest())
+            .andReturn()
+            .getResponse()
+            .getContentAsString(StandardCharsets.UTF_8);
+
+    assertThat(refused).contains("imitierte Konto");
     assertThat(storedSubject()).isEqualTo("fach-a@example.org");
   }
 

@@ -77,7 +77,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 | Aktualität | statisch — die Fassung bleibt, wie sie übergeben wurde | selbst aktualisierend bei Änderung in der Quelle |
 | Ziel | eine eigene Bibliothek oder eine, an der die Person mindestens `EDITOR` ist | die eigene Bibliothek — sie **ist** die Quelle, Typ aus einem Template bei der Anlage gewählt |
 | Ablage des Originals | im Dokumentenspeicher von OPAA | im Quellsystem; OPAA hält Extrakt und Verweis |
-| Einrichtung | keine | Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, Zeitplan — an der Bibliothek hinterlegt (#485) |
+| Einrichtung | keine | Verzeichnispfad bzw. Adresse, Zugangsdaten, Zeitplan — an der Bibliothek hinterlegt (#485) |
 | Typischer Zweck | einzelner Vorgang, Anlage zu einer Frage, kurzlebiges Material | dauerhaft gepflegte Bestände, Rechtsquellen, Dienstanweisungen |
 
 Die beiden Wege stehen nicht in Konkurrenz. Der Fehler wäre, Dauerbestände über Uploads zu führen: Dann
@@ -171,7 +171,7 @@ Dokuments vorsah, ist ein Konnektor **kein eigenes Verwaltungsobjekt** mit mehre
 Bibliotheken zeigen: **Die Wissensbibliothek selbst ist die Quelle** (**gebaut**,
 [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Sie trägt genau einen
 **Quellentyp** — Dateisystem-Verzeichnis, Webverzeichnis, RSS-Feed — und, für diesen
-Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, Proxy, SSL-Schalter. Der
+Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, SSL-Schalter. Der
 **Typ** wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
 verlangt eine neue Bibliothek. Die **Konfiguration** dagegen ist keine reine Anlage-Entscheidung mehr:
 Berechtigte (MANAGER/OWNER, oder ein Systemadministrator ohne eigene Berechtigung) können sie auf der
@@ -462,7 +462,7 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    Auflistung) oder der insgesamt fehlgeschlagen ist.
 
 **Was der Weg heute kann:** rekursives Durchlaufen, einfache Anmeldung mit Benutzername und Kennwort,
-Zugriff über einen Netzvermittler (Proxy), auf Wunsch das Aussetzen der Zertifikatsprüfung für
+Zugriff über den hausweiten Ausgangsproxy (#2496), auf Wunsch das Aussetzen der Zertifikatsprüfung für
 Bestände hinter selbstsignierten Zertifikaten, und ein Parser, der die gängigen
 Verzeichnislistenlayouts versteht (#550): Apache `mod_autoindex` mit `IndexOptions HTMLTable`
 (eine `<table>`-Auflistung), Apache `mod_autoindex` ohne `HTMLTable` (eine `<pre>`-Auflistung mit
@@ -476,15 +476,15 @@ Verbindungstest das statt einer irreführenden "0 Dokumente gefunden".
 /api/v1/libraries/{libraryId}/indexing` oder die Detailseite der Bibliothek. Auslösen darf, wer an der
 Bibliothek mindestens `EDITOR` ist; die frühere Beschränkung auf die Systemverwaltung ist mit ADR-0018
 (Entscheidung 2) bewusst gefallen — ein Knopf, den nur die Systemverwaltung drücken darf, wäre für
-jeden anderen Eigentümer einer Bibliothek tot. Adresse, Zugangsdaten, Proxy und SSL-Schalter sind Teil
+jeden anderen Eigentümer einer Bibliothek tot. Adresse, Zugangsdaten und SSL-Schalter sind Teil
 der Bibliothekskonfiguration und werden nicht mehr je Lauf übergeben; ein Anstoß ohne Adresse wie beim
 früheren globalen Dateisystem-Fallback gibt es nicht mehr. Ein eigenes, enges Rate-Limit schützt den
 Anstoß-Endpunkt gegen Überlastung — je aufrufender Netzadresse **und** je Bibliothek —, und es läuft
 höchstens ein Lauf gleichzeitig je Bibliothek. Der Fortschritt ist über
 `GET /api/v1/libraries/{libraryId}/indexing/status` abrufbar.
 
-**Zielprüfung (gebaut, #267).** Jede ausgehende Adresse — Start-URL, jede Weiterleitung, der
-Proxy-Host und die Ziele des Verbindungstests im Erstellungsdialog — wird gegen private, lokale und
+**Zielprüfung (gebaut, #267).** Jede ausgehende Adresse — Start-URL, jede Weiterleitung und die
+Ziele des Verbindungstests im Erstellungsdialog — wird gegen private, lokale und
 nicht routbare Adressbereiche geprüft; zulässig sind nur die Schemata `http` und `https`, eine
 Weiterleitung von `https` auf `http` wird immer verweigert, und eine Weiterleitung auf einen fremden
 Ursprung verliert die Zugangsdaten. Konfigurierbar über `opaa.indexing.target-validation`
@@ -615,7 +615,7 @@ das Betriebshandbuch dazu ist [Konnektor: S3-Objektspeicher](../handbuch/konnekt
 **Konfigurationsmodell — erstmals ein typisiertes Bündel (ADR-0027, Entscheidung 1).** Eine
 S3-Bibliothek trägt in den bestehenden Spalten, was typübergreifend Regeln hat: den Endpoint als
 `sourceUrl` (ohne Pfad; Bucket und Präfix gehören nicht hinein), die Zugangsdaten verschlüsselt als
-`accessKey:secretKey[:sessionToken]` (Access und Secret Key ohne Doppelpunkt, sonst `400`), Proxy,
+`accessKey:secretKey[:sessionToken]` (Access und Secret Key ohne Doppelpunkt, sonst `400`),
 TLS-Schalter und Zeitplan. Alles Typspezifische — Region, Adressstil (Path-Style oder
 Virtual-Host), Ein-/Ausschlussmuster auf den Objektschlüssel und die Geltungsbereiche — lebt in
 **einem** validierten JSON-Feld `source_settings` (`S3SourceSettings`), nicht in weiteren Spalten
@@ -1231,7 +1231,7 @@ Idee wieder aufgemacht werden.
   [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md).
 - **Die Konfiguration eines erreichbaren Webverzeichnisses (und jedes anderen lauf-basierten
   Typs) lebt an der Bibliothek, nicht im einzelnen Anstoß-Request.** Verzeichnispfad bzw. Adresse,
-  Zugangsdaten, Proxy und das Aussetzen der Zertifikatsprüfung sind Teil der Bibliothekskonfiguration
+  Zugangsdaten und das Aussetzen der Zertifikatsprüfung sind Teil der Bibliothekskonfiguration
   und überleben den einzelnen Lauf. Damit ist auch geklärt, dass diese Felder **nicht** in ein
   gesondertes Konnektor-Objekt gehören, sondern an das Objekt, das ohnehin schon existiert — die
   Bibliothek. Entschieden mit ADR-0018.

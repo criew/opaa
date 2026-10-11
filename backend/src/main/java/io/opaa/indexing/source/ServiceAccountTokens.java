@@ -166,7 +166,8 @@ public class ServiceAccountTokens {
           auth.tokenEndpoint(),
           e.getClass().getSimpleName());
       throw new SourceCredentialsException(
-          "Der Token-Endpunkt " + auth.tokenEndpoint() + " ist nicht erreichbar.");
+          ProxyRefusal.failureMessage(
+              e, "Der Token-Endpunkt " + auth.tokenEndpoint() + " ist nicht erreichbar."));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new SourceCredentialsException("Der Abruf des Zugriffstokens wurde unterbrochen.");

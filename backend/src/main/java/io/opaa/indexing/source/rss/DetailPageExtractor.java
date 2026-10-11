@@ -3,6 +3,7 @@ package io.opaa.indexing.source.rss;
 import io.opaa.format.file.html.HtmlContentRoots;
 import io.opaa.format.shared.Whitespace;
 import io.opaa.indexing.attachment.AttachmentCandidate;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitListener;
@@ -87,7 +88,8 @@ public class DetailPageExtractor {
             "Vom Quellserver abgewiesen (HTTP " + response.statusCode() + ")");
       }
       if (response.statusCode() != 200) {
-        throw new IOException("HTTP " + response.statusCode() + " for URL: " + entryUrl);
+        throw ProxyRefusal.statusFailure(
+            response.statusCode(), "HTTP " + response.statusCode() + " for URL: " + entryUrl);
       }
 
       String contentType = response.headers().firstValue("Content-Type").orElse(null);

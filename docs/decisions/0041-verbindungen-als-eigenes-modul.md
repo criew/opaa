@@ -1479,8 +1479,14 @@ Mit dem hausweiten Ausgangsproxy entfällt der Proxy an Bibliothek und Zugang er
 - **Adressprüfung:** Ein Proxy-Host wird nicht mehr geprüft; `validateHost(host)` prüft nur noch
   SMB, Bucket-Hosts und die Originalablage.
 - **Fehlerbild:** Eine Antwort `407` des Ausgangsproxys benennen jetzt alle Statuspfade
-  (`ProxyRefusal.statusMessage`), einen abgelehnten Tunnel auch die Verbindungsfehler der Läufe von
-  Confluence, Nextcloud, Graph, Google Drive und Dropbox.
+  (`ProxyRefusal.statusMessage`; wo ein Pfad eine `IOException` wirft, `ProxyRefusal.statusFailure`
+  bzw. die Ursache an `BoundedDownloader.HttpStatusException`). Einen abgelehnten Tunnel
+  (`ProxyRefusal.describe`) benennen die Verbindungstests, OAuth, Dienstkonto-Tokens, MCP, OIDC,
+  der Verzeichnisabgleich, die Lauf-Clients von Confluence, Nextcloud, Graph, Google Drive und
+  Dropbox, der Abbruch jedes Laufs (`IndexingRunTemplate`) sowie Einzelfehler, Detailseiten und
+  Anlagen eines Laufs. Ausnahme ist S3: Apache HttpClient 5 reicht die Antwort des Proxys auf
+  `CONNECT` als Antwort des Ziels durch. Erkennbar ist dort nur `407`; ein abgelehnter Tunnel
+  (`403`, `502`) erscheint als Antwort des Objektspeichers.
 
 ## Referenzen
 

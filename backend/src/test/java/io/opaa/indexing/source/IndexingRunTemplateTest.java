@@ -381,6 +381,24 @@ class IndexingRunTemplateTest {
   }
 
   @Test
+  void aTunnelTheOutboundProxyRefusedFailsTheJobInGerman() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          throw new java.io.IOException("Tunnel failed, got: 403");
+        });
+
+    verify(jobService)
+        .failJob(
+            org.mockito.ArgumentMatchers.eq(jobId),
+            org.mockito.ArgumentMatchers.startsWith(
+                "Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt (Status 403)"));
+  }
+
+  @Test
   void anExceptionWithoutAMessageStillFailsTheJob() {
     // A ConnectException from the JDK's networking stack can carry no message at all - the run
     // failed regardless, and must never end COMPLETED for lack of a text.

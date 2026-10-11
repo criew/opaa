@@ -229,7 +229,9 @@ class KeycloakAdminApi {
     } catch (IOException e) {
       log.info("Keycloak directory call to {} failed: {}", url, e.getMessage());
       throw new DirectoryUnavailableException(
-          "Das Verzeichnis ist nicht erreichbar (" + e.getMessage() + ").", e);
+          ProxyRefusal.failureMessage(
+              e, "Das Verzeichnis ist nicht erreichbar (" + e.getMessage() + ")."),
+          e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new DirectoryUnavailableException("Der Abruf wurde unterbrochen.", e);

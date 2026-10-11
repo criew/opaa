@@ -11,6 +11,7 @@ import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceType;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.LoggedName;
@@ -344,7 +345,10 @@ public class AttachmentIndexer {
           names(access).of(e.getMessage()));
       access
           .events()
-          .record(IndexingEventCategory.UNREACHABLE, "Anlage nicht erreichbar", download.url());
+          .record(
+              IndexingEventCategory.UNREACHABLE,
+              ProxyRefusal.failureMessage(e, "Anlage nicht erreichbar"),
+              download.url());
       access.markDeferred();
       access.progress().recordAttachment(AttachmentOutcome.FAILED);
     } catch (Exception e) {

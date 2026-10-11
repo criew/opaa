@@ -11,10 +11,12 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.slf4j.Logger;
@@ -395,6 +397,10 @@ public class IndexingRunTemplate {
   }
 
   private static String failureMessage(Exception e) {
+    Optional<String> proxyRefusal = ProxyRefusal.describe(e);
+    if (proxyRefusal.isPresent()) {
+      return proxyRefusal.get();
+    }
     return e.getMessage() != null
         ? e.getMessage()
         : "Unerwarteter Fehler (" + e.getClass().getSimpleName() + ")";

@@ -25,6 +25,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.RequestPoliteness;
@@ -406,9 +407,11 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
           ctx,
           entryUrl,
           IndexingEventCategory.UNREACHABLE,
-          backfill
-              ? "Detailseite beim Nachladen von Anlagen nicht erreichbar"
-              : "Detailseite nicht erreichbar",
+          ProxyRefusal.failureMessage(
+              e,
+              backfill
+                  ? "Detailseite beim Nachladen von Anlagen nicht erreichbar"
+                  : "Detailseite nicht erreichbar"),
           !backfill);
     } catch (IllegalArgumentException e) {
       // entryUrl already passed isValidUri, but a redirect hop's own Location header can still

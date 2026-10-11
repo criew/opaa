@@ -160,7 +160,9 @@ public class OidcDiscoveryClient {
     } catch (IOException e) {
       log.info("OIDC probe of {} failed: {}", url, e.getMessage());
       throw new OidcProbeException(
-          "Der Anbieter ist nicht erreichbar (" + e.getMessage() + ").", true);
+          ProxyRefusal.failureMessage(
+              e, "Der Anbieter ist nicht erreichbar (" + e.getMessage() + ")."),
+          true);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new OidcProbeException("Der Abruf wurde unterbrochen.");
