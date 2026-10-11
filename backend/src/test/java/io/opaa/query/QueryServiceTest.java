@@ -993,7 +993,8 @@ class QueryServiceTest {
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
-    when(chatService.spaceHasLibraryAssociations(chat.getSpaceId(), currentUserId, organizationId))
+    when(chatService.spaceHasLibraryAssociations(
+            chat.getSpaceId(), Set.of(readableLibraryId), organizationId))
         .thenReturn(true);
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -1023,7 +1024,7 @@ class QueryServiceTest {
       when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
       when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
       when(chatService.spaceHasLibraryAssociations(
-              chat.getSpaceId(), currentUserId, organizationId))
+              chat.getSpaceId(), Set.of(readableLibraryId), organizationId))
           .thenReturn(false);
       var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
       when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))
@@ -1075,7 +1076,8 @@ class QueryServiceTest {
     when(chatMemory.get(currentUserId + ":" + chatId)).thenReturn(List.of());
     when(chatService.historyAsSpringAiMessages(chatId, 20)).thenReturn(List.of());
     when(chatService.effectiveLibraryScope(chat, Set.of(readableLibraryId))).thenReturn(Set.of());
-    when(chatService.spaceHasLibraryAssociations(chat.getSpaceId(), currentUserId, organizationId))
+    when(chatService.spaceHasLibraryAssociations(
+            chat.getSpaceId(), Set.of(readableLibraryId), organizationId))
         .thenReturn(true);
     var chatResponse = new ChatResponse(List.of(new Generation(new AssistantMessage("Answer"))));
     when(answerGenerationService.generateAnswer(any(), any(), any(), any(), anyBoolean()))

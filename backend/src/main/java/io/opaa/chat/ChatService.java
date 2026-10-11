@@ -514,14 +514,17 @@ public class ChatService {
   }
 
   /**
-   * Whether {@code spaceId} has a knowledge library associated as {@code userId} sees it, readable
-   * or not - another person's private library does not count, as in the space's content list. An
-   * empty {@link #effectiveLibraryScope} means "nothing associated" when this is false and
-   * "associated, but nothing the caller may read" when it is true - two separate signals.
+   * Whether {@code spaceId} has a knowledge library associated as a caller who reads {@code
+   * readableLibraryIds} sees it, readable or not - another person's private library does not count,
+   * as in the space's content list. An empty {@link #effectiveLibraryScope} means "nothing
+   * associated" when this is false and "associated, but nothing the caller may read" when it is
+   * true - two separate signals.
    */
   @Transactional(readOnly = true)
-  public boolean spaceHasLibraryAssociations(UUID spaceId, UUID userId, UUID organizationId) {
-    return spaceAssetAssociationService.hasKnowledgeFor(spaceId, userId, organizationId);
+  public boolean spaceHasLibraryAssociations(
+      UUID spaceId, Set<UUID> readableLibraryIds, UUID organizationId) {
+    return spaceAssetAssociationService.hasKnowledgeFor(
+        spaceId, readableLibraryIds, organizationId);
   }
 
   /**

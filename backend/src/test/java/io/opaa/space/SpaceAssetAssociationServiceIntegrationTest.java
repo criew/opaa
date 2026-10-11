@@ -231,6 +231,64 @@ class SpaceAssetAssociationServiceIntegrationTest {
     assertThat(seenByMemberWithAccess.hasReadableKnowledge()).isTrue();
   }
 
+  /**
+   * Regression guard for #2470: another person's private library does not count as associated
+   * knowledge, a merely unreadable shared library still does - also next to a private one.
+   */
+  @Test
+  void hasKnowledgeForLeavesOutOnlyAnotherPersonsPrivateLibrary() {
+    UUID owner = createUser();
+    UUID member = createUser();
+    UUID privateLibrary =
+        libraryRepository
+            .save(
+                KnowledgeLibrary.ownerOnly(
+                    organizationA,
+                    "Meine Ablage",
+                    null,
+                    owner,
+                    io.opaa.knowledge.SourceType.UPLOAD,
+                    null,
+                    null,
+                    null,
+                    null,
+                    false))
+            .getId();
+    grant(privateLibrary, owner, AssetRole.OWNER);
+    UUID unreadable = createLibrary(owner);
+    grant(unreadable, owner, AssetRole.OWNER);
+    UUID onlyPrivate = spaceWith(owner, member, privateLibrary);
+    UUID onlyUnreadable = spaceWith(owner, member, unreadable);
+    UUID mixed = spaceWith(owner, member, privateLibrary, unreadable);
+    Set<UUID> readable = libraryAccessService.readableLibraryIds(member, organizationA);
+
+    assertThat(associationService.hasKnowledgeFor(onlyPrivate, readable, organizationA))
+        .as("only another person's private library")
+        .isFalse();
+    assertThat(associationService.hasKnowledgeFor(onlyUnreadable, readable, organizationA))
+        .as("only an unreadable shared library")
+        .isTrue();
+    assertThat(associationService.hasKnowledgeFor(mixed, readable, organizationA))
+        .as("both")
+        .isTrue();
+    assertThat(
+            associationService.hasKnowledgeFor(
+                onlyPrivate,
+                libraryAccessService.readableLibraryIds(owner, organizationA),
+                organizationA))
+        .as("the owner of the private library")
+        .isTrue();
+  }
+
+  private UUID spaceWith(UUID owner, UUID member, UUID... libraries) {
+    UUID space = createSpace(owner, SpaceRole.ADMIN);
+    addMember(space, member, SpaceRole.MEMBER);
+    for (UUID library : libraries) {
+      associationRepository.save(new SpaceAssetAssociation(space, library, organizationA, owner));
+    }
+    return space;
+  }
+
   @Test
   void aSpaceWithNoAssociationsAtAllReportsHasAssociationsFalse() {
     UUID member = createUser();

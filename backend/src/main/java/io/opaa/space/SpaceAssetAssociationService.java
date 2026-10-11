@@ -386,19 +386,16 @@ public class SpaceAssetAssociationService {
   }
 
   /**
-   * Whether the space has a knowledge library associated as {@code userId} sees it - the {@link
-   * SpaceAssetLinks#hasKnowledge()} of {@link #listForSpace}: another person's private library does
-   * not count, a library the caller merely cannot read does.
+   * Whether the space has a knowledge library associated as a caller who reads {@code
+   * readableLibraryIds} sees it - the {@link SpaceAssetLinks#hasKnowledge()} of {@link
+   * #listForSpace}: another person's private library does not count, a library the caller merely
+   * cannot read does.
    */
-  public boolean hasKnowledgeFor(UUID spaceId, UUID userId, UUID organizationId) {
+  public boolean hasKnowledgeFor(UUID spaceId, Set<UUID> readableLibraryIds, UUID organizationId) {
     Set<UUID> associated = libraryIdsInSpace(spaceId);
-    if (associated.isEmpty()) {
-      return false;
-    }
-    Set<UUID> readable =
-        assetAccessService.readableAssetIds(KnowledgeLibrary.ASSET_TYPE, userId, organizationId);
     return associated.size()
-        > foreignOwnerOnly(KnowledgeLibrary.ASSET_TYPE, associated, readable, organizationId)
+        > foreignOwnerOnly(
+                KnowledgeLibrary.ASSET_TYPE, associated, readableLibraryIds, organizationId)
             .size();
   }
 

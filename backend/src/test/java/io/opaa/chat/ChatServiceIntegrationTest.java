@@ -867,16 +867,16 @@ class ChatServiceIntegrationTest {
   }
 
   @Test
-  void spaceHasLibraryAssociationsReflectsWhetherAnyAssociationExists() {
+  void spaceHasLibraryAssociationsReflectsWhetherTheCallerSeesAnAssociation() {
     UUID author = createUser();
     UUID spaceId = createSpaceWithMember(author);
 
-    assertThat(chatService.spaceHasLibraryAssociations(spaceId, author, organizationA)).isFalse();
+    assertThat(chatService.spaceHasLibraryAssociations(spaceId, Set.of(), organizationA)).isFalse();
 
     UUID library = createLibrary(author);
     associateLibrary(spaceId, library, author);
 
-    assertThat(chatService.spaceHasLibraryAssociations(spaceId, author, organizationA)).isTrue();
+    assertThat(chatService.spaceHasLibraryAssociations(spaceId, Set.of(), organizationA)).isTrue();
   }
 
   /**

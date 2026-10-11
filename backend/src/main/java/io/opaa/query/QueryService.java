@@ -267,7 +267,9 @@ public class QueryService {
                         && chat.map(
                                 c ->
                                     !chatService.spaceHasLibraryAssociations(
-                                        c.getSpaceId(), currentUserId, caller.organizationId()))
+                                        c.getSpaceId(),
+                                        readableLibraryIds,
+                                        caller.organizationId()))
                             .orElse(false);
                 boolean answeredWithoutKnowledge =
                     !noSpaceContext
