@@ -148,6 +148,25 @@ class NeighborChunkExpansionTest {
   }
 
   @Test
+  void aBudgetOfZeroSwitchesTheExpansionOffWithoutLookingUpAnything() {
+    store("a", 0, 1, 2);
+    List<Document> selection = List.of(index(chunk("a", 1)));
+
+    assertThat(new NeighborChunkProperties(1, 0).enabled()).isFalse();
+    assertThat(expansion(1, 0).expand(selection, SCOPE)).isSameAs(selection);
+    assertThat(lookups).isEmpty();
+  }
+
+  @Test
+  void acceptsTheBudgetBoundsAndRejectsValuesOutsideThem() {
+    assertThat(new NeighborChunkProperties(1, 1_000_000).maxAddedCharacters()).isEqualTo(1_000_000);
+    assertThatThrownBy(() -> new NeighborChunkProperties(1, -1))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new NeighborChunkProperties(1, 1_000_001))
+        .isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   void rejectsARadiusOutsideItsBounds() {
     assertThatThrownBy(() -> new NeighborChunkProperties(4, 1000))
         .isInstanceOf(IllegalArgumentException.class);

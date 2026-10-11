@@ -634,9 +634,10 @@ Embedding-Modell in Stufe 4 nicht, endet die Frage mit einer deutschen Fehlermel
 beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 
 **Nachbar-Chunks.** Vor dem Prompt bekommt jeder Chunk der Endauswahl seine Nachbarn im selben
-Dokument dazu, die Chunks direkt davor und danach (`neighbor-chunks.radius`). Eine Fundstelle, die
+Dokument dazu, die Chunks direkt davor und danach (`neighbor-chunks.radius`). Endauswahl und
+Nachbarn zusammen sind der **Antwortkontext**: alles, was das Modell liest. Eine Fundstelle, die
 an einer Chunk-Grenze abreißt, etwa eine Aufzählung oder eine Tabelle, erreicht das Modell so
-vollständig. Die Nachbarn werden zuerst für den bestplatzierten Chunk geladen, die näheren vor den
+vollständig. Geladen werden erst alle direkten Nachbarn in der Rangfolge ihrer Treffer, dann die
 ferneren, bis ein Zeichenbudget erschöpft ist (`neighbor-chunks.max-added-characters`). Sie kommen
 nur aus Bibliotheken des Suchbereichs. Im Prompt stehen aneinandergrenzende Chunks eines Dokuments als
 zusammenhängender Ausschnitt in ihrer Reihenfolge im Dokument. Die Ausschnitte folgen dem Rang ihres
@@ -646,9 +647,9 @@ zitieren, die Belegprüfung erkennt das Zitat an, und er erscheint als Fundstell
 enthalten die Nachbarn nicht. Sie zeigen, was die Suche gefunden hat, nicht, was das Modell gelesen
 hat.
 
-**Die Endauswahl geht ungekürzt in den Prompt**, zusammen mit ihren Nachbarn. Ihr Umfang ist `top-k`
-mal die Länge der gewählten Chunks, dazu höchstens das Zeichenbudget der Nachbarn; nichts kürzt sie
-auf das Kontextfenster des Chat-Modells. Ein höheres `top-k`
+**Der Antwortkontext geht ungekürzt in den Prompt.** Sein Umfang ist `top-k` mal die Länge der
+gewählten Chunks, dazu höchstens das Zeichenbudget der Nachbarn; nichts kürzt ihn auf das
+Kontextfenster des Chat-Modells. Ein höheres `top-k`
 bringt mehr Belege in die Antwort und kostet Eingabetokens je Frage, die Laufzeit eines Modells mit
 großem Kontextfenster ändert sich dabei kaum. Ein lokales Modell mit kleinem Kontextfenster bekommt
 dagegen mehr Text, als es fassen kann: Je nach Anbieter schneidet es den Prompt still ab, oder die
@@ -686,16 +687,15 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 
 ## 7. Belege prüfen und Fundstellen bilden
 
-Belegprüfung und Fundstellen gehen von allen Chunks aus, die das Modell bekommen hat, die
-Nachbar-Chunks aus Abschnitt 6 eingeschlossen; „Endauswahl" meint bis zum Beginn von Abschnitt 7.1
-diese Menge.
+Belegprüfung und Fundstellen gehen vom **Antwortkontext** aus (Abschnitt 6), also von der
+Endauswahl samt ihren Nachbar-Chunks: von allem, was das Modell gelesen hat.
 
 Bevor die Antwort geprüft, gespeichert oder angezeigt wird, werden **fehlerhafte Marken
 repariert**. Kleinere Modelle schreiben gelegentlich den Dateinamen an die Stelle der Dokument-ID,
 etwa `【source: 05_schulung.pptx#2 | 05_schulung.pptx】`. Eine solche Marke wird in die gültige Form
-umgeschrieben, wenn genau ein Dokument der Endauswahl diesen Dateinamen trägt und dessen Chunk mit
-dieser Nummer ebenfalls in der Endauswahl steht. Das gilt auch für einen Dateinamen ohne Endung,
-der formal wie eine Dokument-ID aussieht, solange er nicht die ID eines Dokuments der Endauswahl
+umgeschrieben, wenn genau ein Dokument des Antwortkontexts diesen Dateinamen trägt und dessen Chunk mit
+dieser Nummer ebenfalls im Antwortkontext steht. Das gilt auch für einen Dateinamen ohne Endung,
+der formal wie eine Dokument-ID aussieht, solange er nicht die ID eines Dokuments des Antwortkontexts
 ist. Jede andere Marke, die nicht der Form entspricht, wird entfernt: Sie lässt sich keinem Beleg
 zuordnen und würde sonst als Rohtext angezeigt. Als Marke gilt dabei nur, was mit `【source:`
 beginnt und in derselben Zeile mit `】` schließt; ein Anfang ohne Abschluss bleibt als Text stehen.
@@ -713,7 +713,7 @@ Die Zitiermarken werden nicht dem Modell geglaubt. Zwei deterministische Prüfun
 weiteren Modellaufruf:
 
 1. **Herkunftsprüfung.** Dokument-ID, Chunk-Nummer und Dateiname einer Marke müssen zu ein und
-   demselben Chunk der Endauswahl passen, also zu etwas, das diese Antwort tatsächlich gesehen hat.
+   demselben Chunk des Antwortkontexts passen, also zu etwas, das diese Antwort tatsächlich gesehen hat.
    Groß- und Kleinschreibung sowie die Unicode-Schreibweise von Umlauten im Dateinamen werden dabei
    vergeben; ein abgeschnittener Name, ein Pfad oder eine andere Endung nicht.
 2. **Faktenprüfung.** Für eine so bestätigte Marke wird der Satz davor auf den nächstgelegenen
@@ -726,18 +726,18 @@ weiteren Modellaufruf:
 
 Eine ungültige Marke wird nicht aus dem Antworttext entfernt. Sie wird an der Fundstelle als
 **„Beleg nicht bestätigt"** ausgewiesen, mit Warnsymbol. Zeigt eine Marke auf ein Dokument, das gar
-nicht in der Endauswahl war, entsteht dafür eine eigene Fundstellenzeile ohne Rang, damit der
+nicht im Antwortkontext war, entsteht dafür eine eigene Fundstellenzeile ohne Rang, damit der
 erfundene Beleg sichtbar ist und nicht in einer echten Fundstelle untergeht. Jede Antwort mit
 mindestens einer ungültigen Marke erzeugt eine Logzeile mit der Anzahl.
 
 Aus den Chunks werden dann die **Fundstellen** gebildet, **eine je Dokument**, in der Reihenfolge
-des ersten Auftretens in der Endauswahl:
+des ersten Auftretens im Antwortkontext:
 
 | Angabe | Bedeutung |
 |---|---|
 | Rang n | Position in der Fundstellenliste; lückenlos, gleichbedeutend über beide Suchpfade. Es ist keine Ähnlichkeit und kein Prozentwert |
-| zitiert / „geprüft, nicht zitiert" | ob das Modell das Dokument in der Antwort belegt hat; nicht zitierte Dokumente waren in der Endauswahl, wurden aber nicht verwendet |
-| Trefferzahl | wie viele Chunks des Dokuments in der Endauswahl standen |
+| zitiert / „geprüft, nicht zitiert" | ob das Modell das Dokument in der Antwort belegt hat; nicht zitierte Dokumente waren im Antwortkontext, wurden aber nicht verwendet |
+| Trefferzahl | wie viele Chunks des Dokuments im Antwortkontext standen; Nachbar-Chunks zählen mit, auch wenn die Suche sie selbst nicht gefunden hat |
 | Ortsangaben | je Chunk die Stelle im Dokument („S. 3 · Abschn. Fristen"), über die eine Fußnote im Text aufgelöst wird |
 | Titel · Dokumentart · Datum/Stand | die Kernfelder des Dokuments, dazu die Belegfelder der Bibliothek; ein abgeleiteter Wert ist als „(abgeleitet)" gekennzeichnet |
 | „ohne Angabe" | unter aktivem Filter: das Dokument wurde nur durch die Leerwert-Regel gefunden |
@@ -745,7 +745,7 @@ des ersten Auftretens in der Endauswahl:
 | „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Indexierung](indexierung.md), „Zugänge" |
 
 Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
-Zahl der zitierten Stellen und der weiteren geprüften Treffer. Fährt man mit der Maus über eine
+Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Fährt man mit der Maus über eine
 Fußnote im Antworttext, nennt ein Tooltip Dokument und Fundort; ein Klick öffnet das Belegfenster
 an der zugehörigen Fundstelle und markiert sie dort. Das
 Belegfenster stellt zitierte vor nicht zitierte und zeigt den Auszug jedes Chunks.
