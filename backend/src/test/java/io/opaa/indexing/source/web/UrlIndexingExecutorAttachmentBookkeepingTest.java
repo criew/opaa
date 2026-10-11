@@ -91,13 +91,11 @@ class UrlIndexingExecutorAttachmentBookkeepingTest {
             null,
             "https://example.com/docs/",
             null,
-            null,
             false);
 
     var entry =
         new AutoindexCrawlerService.CrawledFileEntry("mail.eml", MAIL_URL, null, "1", "FILE", 0);
-    when(crawlerService.crawl(
-            anyString(), any(), anyInt(), any(RenewableCredential.class), anyBoolean(), any()))
+    when(crawlerService.crawl(anyString(), any(RenewableCredential.class), anyBoolean(), any()))
         .thenReturn(
             new AutoindexCrawlerService.CrawlResult(
                 List.of(entry), false, false, false, List.of(), List.of()));

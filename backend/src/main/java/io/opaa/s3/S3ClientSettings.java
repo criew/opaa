@@ -67,7 +67,7 @@ public record S3ClientSettings(
     }
   }
 
-  /** The settings of {@code connection} under the given request bounds. */
+  /** The settings of {@code connection} under the given request bounds, without a proxy. */
   public static S3ClientSettings of(
       S3Connection connection, Duration requestTimeout, int maxRetries, Duration retryBackoff) {
     return new S3ClientSettings(
@@ -75,8 +75,8 @@ public record S3ClientSettings(
         connection.region(),
         connection.pathStyle(),
         aws(connection.credentials()),
-        connection.proxyHost(),
-        connection.proxyPort(),
+        null,
+        0,
         connection.insecureSsl(),
         requestTimeout,
         maxRetries,

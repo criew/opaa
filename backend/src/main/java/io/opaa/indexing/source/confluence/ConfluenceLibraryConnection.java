@@ -2,7 +2,6 @@ package io.opaa.indexing.source.confluence;
 
 import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.SourceSettings;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 
 /**
@@ -29,8 +28,6 @@ final class ConfluenceLibraryConnection {
             edition,
             credentials.renewableAfterRejection(
                 secret -> ConfluenceCredentials.parse(edition, secret))),
-        start.proxyHost(),
-        start.proxyPort(),
         start.insecureSsl());
   }
 
@@ -41,12 +38,6 @@ final class ConfluenceLibraryConnection {
       throw new InvalidConfluenceConfigurationException(
           "Die Bibliothek trägt keine Confluence-Edition; bitte die Quellkonfiguration prüfen.");
     }
-    ProxyAndCredentials proxy;
-    try {
-      proxy = ProxyAndCredentials.parse(settings.sourceProxy(), null);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new InvalidConfluenceConfigurationException(e.getMessage());
-    }
     URI baseUrl;
     ConfluenceCredentials parsed;
     try {
@@ -56,13 +47,7 @@ final class ConfluenceLibraryConnection {
         | ConfluenceCredentials.InvalidCredentialsFormatException e) {
       throw new InvalidConfluenceConfigurationException(e.getMessage());
     }
-    return new ConfluenceConnection(
-        baseUrl,
-        edition,
-        parsed,
-        proxy.proxyHost(),
-        proxy.proxyPort(),
-        settings.sourceInsecureSsl());
+    return new ConfluenceConnection(baseUrl, edition, parsed, settings.sourceInsecureSsl());
   }
 
   /** The configuration cannot be turned into a connection; the message is user-facing. */

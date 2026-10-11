@@ -99,7 +99,6 @@ class S3EventPublicAccessTest {
                     null,
                     "https://quelle.example.org",
                     null,
-                    null,
                     false)));
     when(connectors.pushIntakeHandler(SourceTypes.S3))
         .thenReturn(

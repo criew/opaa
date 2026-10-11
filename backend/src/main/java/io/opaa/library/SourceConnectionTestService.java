@@ -35,9 +35,9 @@ import org.springframework.stereotype.Service;
 /**
  * Tests a source configuration <em>before</em> a library is created or saved, and lists what a
  * source offers for selection. The configuration probed is the draft as {@link
- * EffectiveSourceSettings#ofDraft} composes it - with the defaults, proxy, TLS switch and sign-in
- * of the chosen profile, and the stored secret only where it may follow the address; the probe
- * itself is the connector's ({@link SourceConnector#testConnection}, {@link SourceBrowser}).
+ * EffectiveSourceSettings#ofDraft} composes it - with the defaults, TLS switch and sign-in of the
+ * chosen profile, and the stored secret only where it may follow the address; the probe itself is
+ * the connector's ({@link SourceConnector#testConnection}, {@link SourceBrowser}).
  *
  * <p>Without a {@code libraryId} a probe needs the connector release of its type or profile, as
  * creating the library would. With one it needs {@link AssetRole#MANAGER} on that library; another
@@ -100,7 +100,6 @@ public class SourceConnectionTestService {
         new SourceSettings(
             request.sourcePath(),
             connector.normalizeSourceUrl(target.url()),
-            request.sourceProxy(),
             request.sourceCredentials(),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
             request.connectorSettings() == null
@@ -192,7 +191,6 @@ public class SourceConnectionTestService {
                 new SourceSettings(
                     null,
                     sourceUrl,
-                    request.sourceProxy(),
                     request.sourceCredentials(),
                     Boolean.TRUE.equals(request.sourceInsecureSsl()),
                     request.query())),

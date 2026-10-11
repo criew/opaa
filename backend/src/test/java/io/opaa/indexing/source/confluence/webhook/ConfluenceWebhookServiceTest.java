@@ -63,7 +63,6 @@ class ConfluenceWebhookServiceTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            null,
             "token",
             false);
     ConfluenceTestSettings.configure(
@@ -119,7 +118,6 @@ class ConfluenceWebhookServiceTest {
             SourceTypes.S3,
             null,
             "https://minio.example.org",
-            null,
             "AKIA:geheim",
             false);
     s3.setWebhookSecret(SECRET);

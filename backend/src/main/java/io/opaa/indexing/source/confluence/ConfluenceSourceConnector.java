@@ -126,8 +126,8 @@ public class ConfluenceSourceConnector
 
   /**
    * The edition must be the instance's (Entscheidung 2): after the static checks one
-   * credential-free probe through the effective proxy and TLS switch, so the invariant never
-   * depends on what the client sent.
+   * credential-free probe with the effective TLS switch, so the invariant never depends on what the
+   * client sent.
    */
   @Override
   public SourceSettings validate(SourceSettings requested) {
@@ -138,8 +138,7 @@ public class ConfluenceSourceConnector
     if (spaces.isEmpty()) {
       throw new ValidationException(SPACES_REQUIRED);
     }
-    connectionService.requireEdition(
-        normalizedUrl, requested.sourceProxy(), requested.sourceInsecureSsl(), own.edition());
+    connectionService.requireEdition(normalizedUrl, requested.sourceInsecureSsl(), own.edition());
     return requested
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(
@@ -365,7 +364,6 @@ public class ConfluenceSourceConnector
       probe =
           connectionService.probe(
               settings.sourceUrl(),
-              blankToNull(settings.sourceProxy()),
               blankToNull(settings.sourceCredentials()),
               settings.sourceInsecureSsl(),
               ConfluenceSourceSettings.read(settings.connectorSettings()).edition());
@@ -402,7 +400,6 @@ public class ConfluenceSourceConnector
           connectionService.listSpaces(
               settings.sourceUrl(),
               ConfluenceSourceSettings.read(settings.connectorSettings()).edition(),
-              blankToNull(settings.sourceProxy()),
               credentials,
               settings.sourceInsecureSsl());
     } catch (InterruptedException e) {

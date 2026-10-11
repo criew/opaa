@@ -2,6 +2,7 @@ package io.opaa.indexing.source.nextcloud;
 
 import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.indexing.source.RequestBudget;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;
 import io.opaa.sourceaccess.BoundedStreams;
@@ -22,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import javax.net.ssl.SSLException;
 
 /**
@@ -76,9 +78,7 @@ final class NextcloudDav implements AutoCloseable {
       long maxResponseBytes) {
     this.connection = connection;
     this.authorization = authorization;
-    this.httpClient =
-        SourceHttpClientFactory.buildHttpClient(
-            connection.proxyHost(), connection.proxyPort(), connection.insecureSsl());
+    this.httpClient = SourceHttpClientFactory.buildHttpClient(connection.insecureSsl());
     this.targetAddressValidator = targetAddressValidator;
     this.requestPolicy = requestPolicy;
     this.budget = budget;
@@ -263,7 +263,8 @@ final class NextcloudDav implements AutoCloseable {
               "Nextcloud begrenzt die Anfragerate (HTTP 429); für " + resource + " aufgegeben.");
       default ->
           new NextcloudAccessException(
-              "Nextcloud antwortete für " + resource + " mit HTTP " + status + ".");
+              ProxyRefusal.statusMessage(
+                  status, "Nextcloud antwortete für " + resource + " mit HTTP " + status + "."));
     };
   }
 
@@ -280,6 +281,10 @@ final class NextcloudDav implements AutoCloseable {
     String host = connection.baseUrl().getHost();
     if (e instanceof TargetAddressValidator.TargetAddressBlockedException) {
       return new NextcloudAccessException.Unreachable(e.getMessage() + " " + ALLOWLIST_HINT);
+    }
+    Optional<String> proxyRefusal = ProxyRefusal.describe(e);
+    if (proxyRefusal.isPresent()) {
+      return new NextcloudAccessException.Unreachable(proxyRefusal.get());
     }
     if (e instanceof RedirectFollowingFetcher.RedirectRejectedException rejected) {
       return new NextcloudAccessException.Unreachable(

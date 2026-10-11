@@ -370,7 +370,6 @@ class ChatSourceAssemblerTest {
             "/privat",
             null,
             null,
-            null,
             false);
     KnowledgeLibrary shared =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Geteilt", null, UUID.randomUUID());

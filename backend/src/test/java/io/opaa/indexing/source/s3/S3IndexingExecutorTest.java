@@ -183,7 +183,6 @@ class S3IndexingExecutorTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            null,
             "AKIAEXAMPLE:geheim",
             false);
     S3TestSettings.configure(library, settings);
@@ -848,7 +847,6 @@ class S3IndexingExecutorTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            null,
             "nur-ein-teil",
             false);
     S3TestSettings.configure(broken, settings(List.of(S3Scope.of("dokumente", ""))));

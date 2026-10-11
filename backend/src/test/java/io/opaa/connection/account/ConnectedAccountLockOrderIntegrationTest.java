@@ -213,7 +213,6 @@ class ConnectedAccountLockOrderIntegrationTest {
                           null,
                           SERVER + "/ablage",
                           null,
-                          null,
                           false));
               shellService.registerCreated(
                   saved, person, Map.of("name", saved.getName(), "sourceType", "PERSON_PROBE"));

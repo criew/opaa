@@ -39,6 +39,7 @@ import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.test.FakeAuthorizationServer;
 import io.opaa.test.MutableClock;
+import io.opaa.test.OutboundProxyRoute;
 import java.io.File;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -64,7 +65,7 @@ import org.springframework.transaction.PlatformTransactionManager;
  * A profile's own sign-in against a fake authorization server, from the stored profile through
  * {@link ProfileRegistrations} to the token: client credentials as the test connector declares
  * them, held until shortly before they expire; a service account key signed by the core; a rejected
- * registration marked and asked no more; the profile's proxy used, its TLS switch never.
+ * registration marked and asked no more; the outbound proxy used, the profile's TLS switch never.
  */
 class ProfileSignInTest {
 
@@ -87,7 +88,7 @@ class ProfileSignInTest {
   @Test
   void clientCredentialsGoAsBasicAuthenticationAndTheTokenIsHeld() {
     wire(clientProbe(server.tokenEndpoint(), ClientAuthentication.CLIENT_SECRET_BASIC));
-    profile = clientProfile(null);
+    profile = clientProfile();
 
     Secret first = signIn.mint(profile.getId());
     Secret again = signIn.mint(profile.getId());
@@ -117,7 +118,7 @@ class ProfileSignInTest {
   @Test
   void clientCredentialsGoInTheFormAndTheProfileScopeWins() {
     wire(clientProbe(server.tokenEndpoint(), ClientAuthentication.CLIENT_SECRET_POST));
-    profile = clientProfile(null);
+    profile = clientProfile();
     ReflectionTestUtils.setField(profile, "scopes", "Files.Read");
 
     signIn.mint(profile.getId());
@@ -137,7 +138,7 @@ class ProfileSignInTest {
   @Test
   void aTokenIsObtainedAnewShortlyBeforeItExpiresAndAfterItWasForgotten() {
     wire(clientProbe(server.tokenEndpoint(), ClientAuthentication.CLIENT_SECRET_BASIC));
-    profile = clientProfile(null);
+    profile = clientProfile();
 
     Secret first = signIn.mint(profile.getId());
     clock.advance(Duration.ofMinutes(56));
@@ -154,7 +155,7 @@ class ProfileSignInTest {
   @Test
   void aRejectedRegistrationIsMarkedAndAskedNoMoreUntilATestLiftsIt() {
     wire(clientProbe(server.tokenEndpoint(), ClientAuthentication.CLIENT_SECRET_BASIC));
-    profile = clientProfile(null);
+    profile = clientProfile();
     server.rejectWith(401, "invalid_client");
 
     assertThatThrownBy(() -> signIn.mint(profile.getId()))
@@ -183,7 +184,7 @@ class ProfileSignInTest {
   @Test
   void theClientSecretAndTheTokenLeakNowhere() {
     wire(clientProbe(server.tokenEndpoint(), ClientAuthentication.CLIENT_SECRET_POST));
-    profile = clientProfile(null);
+    profile = clientProfile();
     ListAppender<ILoggingEvent> appender = new ListAppender<>();
     appender.start();
     Logger root = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
@@ -211,7 +212,7 @@ class ProfileSignInTest {
   @Test
   void aProfileWithoutSecretHandsOutNothingAndAsksNoOne() {
     wire(clientProbe(server.tokenEndpoint(), ClientAuthentication.CLIENT_SECRET_BASIC));
-    profile = clientProfile(null);
+    profile = clientProfile();
     ReflectionTestUtils.setField(profile, "clientSecretCiphertext", null);
 
     assertThatThrownBy(() -> signIn.mint(profile.getId()))
@@ -222,16 +223,18 @@ class ProfileSignInTest {
     assertThat(server.requests()).isEmpty();
   }
 
-  /** The request reaches the fake as a proxy, naming the declared endpoint's host as target. */
+  /** The request reaches the fake as the outbound proxy, naming the endpoint's host as target. */
   @Test
-  void theTokenIsFetchedThroughTheProfilesProxy() {
+  void theTokenIsFetchedThroughTheOutboundProxy() {
     wire(
         clientProbe(
             URI.create("http://token.example.invalid/token"),
             ClientAuthentication.CLIENT_SECRET_BASIC));
-    profile = clientProfile(server.address());
+    profile = clientProfile();
 
-    signIn.mint(profile.getId());
+    try (OutboundProxyRoute route = OutboundProxyRoute.through(server.address())) {
+      signIn.mint(profile.getId());
+    }
 
     assertThat(server.requests())
         .singleElement()
@@ -258,7 +261,7 @@ class ProfileSignInTest {
           clientProbe(
               URI.create("https://127.0.0.1:" + https.getAddress().getPort() + "/token"),
               ClientAuthentication.CLIENT_SECRET_BASIC));
-      profile = clientProfile(null);
+      profile = clientProfile();
       ReflectionTestUtils.setField(profile, "sourceInsecureSsl", true);
 
       SignInTest test = signIn.test(profile.getId());
@@ -344,12 +347,11 @@ class ProfileSignInTest {
     return new ClientCredentialsProbeSourceConnector(new Endpoint.Fixed(endpoint), clientAuth);
   }
 
-  private ConnectionProfile clientProfile(String proxy) {
+  private ConnectionProfile clientProfile() {
     ConnectionProfile created =
         profile(
             ClientCredentialsProbeSourceConnector.TYPE, ConnectionAuthMethod.CLIENT_CREDENTIALS);
     ReflectionTestUtils.setField(created, "clientId", CLIENT_ID);
-    ReflectionTestUtils.setField(created, "sourceProxy", proxy);
     secret(created, CLIENT_SECRET);
     return created;
   }

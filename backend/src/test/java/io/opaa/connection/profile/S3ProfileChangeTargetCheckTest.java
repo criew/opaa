@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -118,12 +117,11 @@ class S3ProfileChangeTargetCheckTest {
 
     Answers answers = service.check(profile.getId(), region("eu-west-1"), null, false);
 
-    verify(clientFactory, times(2))
-        .validateTargets(eq(URI.create(SERVER)), isNull(), eq(true), any());
+    verify(clientFactory, times(2)).validateTargets(eq(URI.create(SERVER)), eq(true), any());
 
     service.update(ADMIN, profile.getId(), region("eu-west-1"), null, false, answers);
 
-    verify(clientFactory, times(2)).validateTargets(any(URI.class), any(), anyBoolean(), any());
+    verify(clientFactory, times(2)).validateTargets(any(URI.class), anyBoolean(), any());
     for (KnowledgeLibrary library : List.of(first, second, third)) {
       verify(syncStates).deleteByLibraryId(library.getId());
     }
@@ -142,8 +140,7 @@ class S3ProfileChangeTargetCheckTest {
     assertThat(service.preview(profile.getId(), region("eu-west-1"), null).rejections()).isEmpty();
     service.update(ADMIN, profile.getId(), region("eu-west-1"), null, false);
 
-    verify(clientFactory, atLeastOnce())
-        .validateTargets(eq(URI.create(SERVER)), isNull(), eq(true), any());
+    verify(clientFactory, atLeastOnce()).validateTargets(eq(URI.create(SERVER)), eq(true), any());
     assertThat(profile.getConnectorSettings()).contains("eu-west-1");
   }
 
@@ -158,7 +155,6 @@ class S3ProfileChangeTargetCheckTest {
         null,
         null,
         ConnectorData.of(Map.of("region", region, "pathStyle", true)),
-        null,
         false);
   }
 
@@ -173,7 +169,6 @@ class S3ProfileChangeTargetCheckTest {
             SourceTypes.S3,
             null,
             SERVER,
-            null,
             "zugriff:geheim",
             false);
     library.updateSourceSettings("{\"scopes\":[{\"bucket\":\"" + bucket + "\"}]}");

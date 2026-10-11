@@ -601,7 +601,6 @@ class ContextPrefixRerunIntegrationTest {
             classTempDir.toString(),
             null,
             null,
-            null,
             false));
   }
 }

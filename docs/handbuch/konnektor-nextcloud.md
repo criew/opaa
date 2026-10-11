@@ -67,7 +67,6 @@ Abschnitt **„Umfang“** und sind für jeden Leseberechtigten sichtbar.
 | Adresse (`sourceUrl`) | Pflicht. `http(s)://host[:port][/pfad]` der Nextcloud. Eine eingefügte WebDAV-Adresse (`…/remote.php/dav/files/…`) wird auf die Instanzadresse gekürzt. Gespeichert ohne abschließenden Schrägstrich. |
 | Zugangsdaten (`sourceCredentials`) | Pflicht. `Benutzername:App-Passwort` des technischen Nutzers; das Formular hat zwei Felder. Der Benutzername darf keinen Doppelpunkt enthalten. Verschlüsselt gespeichert, nie ausgegeben. Gesendet wird es nur an die Adresse; eine geänderte Adresse verlangt neue Zugangsdaten. |
 | Ordner (`sourceSettings.folders`) | Pflicht, ein bis fünfzig Pfade, wie der technische Nutzer sie sieht, etwa `/Projekte` oder `/Bauamt/Satzungen`; `/` liest alles. Zwei Ordner derselben Bibliothek dürfen sich nicht überschneiden. Kein Komma, kein `.` oder `..`. Eine Änderung verwirft den Abgleichszustand; der nächste Lauf listet alles. |
-| Proxy (`sourceProxy`) | optional, `host:port`, unterliegt derselben Zieladressprüfung. |
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional, nur für ein bekanntes, selbstsigniertes Zertifikat im Hausnetz. |
 
 **„Ordner laden“** zeigt die Ordner im Stamm des technischen Nutzers, mit dem Zusatz „Freigabe“

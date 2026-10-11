@@ -307,7 +307,6 @@ class OwnerOnlyLibraryIntegrationTest {
             null,
             null,
             null,
-            null,
             false),
         owner);
   }

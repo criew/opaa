@@ -85,7 +85,6 @@ class IndexingRunTemplateTest {
           "/srv/dokumente",
           null,
           null,
-          null,
           false);
 
   private static SourceIndexingExecutor executor(
@@ -127,7 +126,7 @@ class IndexingRunTemplateTest {
     MutableClock clock = new MutableClock(Instant.parse("2026-10-04T12:00:00Z"));
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings(null, "https://quelle.example", null, "alt", false, null));
+        .thenReturn(new SourceSettings(null, "https://quelle.example", "alt", false, null));
     when(resolver.currentSecret(library))
         .thenReturn(Secret.personal("erstes"), Secret.personal("erneuert"));
     AtomicReference<SourceSettings> settings = new AtomicReference<>();
@@ -318,7 +317,7 @@ class IndexingRunTemplateTest {
   void aBlockDuringTheRunFailsTheJobWithItsNotice() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null, false, null));
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, false, null));
     when(resolver.currentSecret(library))
         .thenThrow(
             new SourceConnectionBlockedException(
@@ -350,7 +349,7 @@ class IndexingRunTemplateTest {
   void rejectedCredentialsFailTheJobWithTheSourcesMessageAndTellThePort() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null, false, null));
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, false, null));
 
     templateWith(resolver)
         .run(
@@ -529,7 +528,7 @@ class IndexingRunTemplateTest {
   }
 
   private static SourceSettings fileSettings(String path) {
-    return new SourceSettings(path, null, null, null, false, null);
+    return new SourceSettings(path, null, null, false, null);
   }
 
   @Test

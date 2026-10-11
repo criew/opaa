@@ -43,7 +43,6 @@ export function detectedConfluenceEdition(
  */
 export interface ConfluenceSourceValues {
   sourceUrl: string
-  sourceProxy: string
   sourceInsecureSsl: boolean
   edition: ConfluenceEdition | null
   email: string
@@ -58,7 +57,6 @@ export const MAX_CONFLUENCE_SPACES = 500
 
 export const EMPTY_CONFLUENCE_VALUES: ConfluenceSourceValues = {
   sourceUrl: '',
-  sourceProxy: '',
   sourceInsecureSsl: false,
   edition: null,
   email: '',

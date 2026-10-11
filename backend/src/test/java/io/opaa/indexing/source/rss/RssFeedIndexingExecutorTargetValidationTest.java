@@ -69,7 +69,6 @@ class RssFeedIndexingExecutorTargetValidationTest {
           null,
           "https://example.com/feed.xml",
           null,
-          null,
           false);
 
   /** The shared request policy: a test user agent, no retries, no real sleeping. */
@@ -137,7 +136,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
           exchange.sendResponseHeaders(302, -1);
           exchange.close();
         });
-    library.updateSourceConfiguration(null, baseUrl + "/feed.xml", null, null, false);
+    library.updateSourceConfiguration(null, baseUrl + "/feed.xml", null, false);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
 

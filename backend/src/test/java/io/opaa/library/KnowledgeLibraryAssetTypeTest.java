@@ -53,7 +53,6 @@ class KnowledgeLibraryAssetTypeTest {
             "/data/dokumente",
             null,
             null,
-            null,
             false);
     library.updateShareCap(false);
     return library;

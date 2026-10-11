@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.nextcloud;
 
 import io.opaa.indexing.source.SourceSettings;
-import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -9,18 +9,12 @@ import java.util.Locale;
 
 /**
  * How one library reaches its Nextcloud: the instance address, the technical user with its app
- * password (Basic Auth), proxy and TLS switch. Every request goes to {@link #baseUrl()}'s origin;
- * {@link #toString()} never names the password.
+ * password (Basic Auth) and TLS switch. Every request goes to {@link #baseUrl()}'s origin; {@link
+ * #toString()} never names the password.
  *
  * @param baseUrl the instance address without a trailing slash, possibly with a context path
  */
-record NextcloudConnection(
-    URI baseUrl,
-    String username,
-    String password,
-    String proxyHost,
-    int proxyPort,
-    boolean insecureSsl) {
+record NextcloudConnection(URI baseUrl, String username, String password, boolean insecureSsl) {
 
   static final String CREDENTIALS_FORMAT =
       "sourceCredentials müssen dem Format Benutzername:App-Passwort entsprechen";
@@ -32,22 +26,12 @@ record NextcloudConnection(
    */
   static NextcloudConnection of(SourceSettings source, String credentials) {
     URI baseUrl = normalizeBaseUrl(source.sourceUrl());
-    ProxyAndCredentials parsed;
-    try {
-      parsed = ProxyAndCredentials.parse(source.sourceProxy(), credentials);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new InvalidNextcloudConfigurationException(e.getMessage());
-    }
+    BasicCredentials parsed = BasicCredentials.parse(credentials);
     if (parsed.username() == null || parsed.password() == null || parsed.password().isEmpty()) {
       throw new InvalidNextcloudConfigurationException(CREDENTIALS_FORMAT);
     }
     return new NextcloudConnection(
-        baseUrl,
-        parsed.username(),
-        parsed.password(),
-        parsed.proxyHost(),
-        parsed.proxyPort(),
-        source.sourceInsecureSsl());
+        baseUrl, parsed.username(), parsed.password(), source.sourceInsecureSsl());
   }
 
   /**
@@ -151,8 +135,6 @@ record NextcloudConnection(
         + baseUrl
         + ", username="
         + username
-        + ", proxyHost="
-        + proxyHost
         + ", insecureSsl="
         + insecureSsl
         + "]";

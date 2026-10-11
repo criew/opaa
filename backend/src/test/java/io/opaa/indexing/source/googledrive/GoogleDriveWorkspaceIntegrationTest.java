@@ -75,8 +75,7 @@ class GoogleDriveWorkspaceIntegrationTest {
                 key,
                 SUBJECT == null || SUBJECT.isBlank() ? null : SUBJECT,
                 new ServiceAccountKeyAuth(
-                    GoogleDriveSourceConnector.TOKEN_ENDPOINT, GoogleDriveSourceConnector.SCOPE),
-                null);
+                    GoogleDriveSourceConnector.TOKEN_ENDPOINT, GoogleDriveSourceConnector.SCOPE));
   }
 
   @AfterEach
@@ -178,7 +177,6 @@ class GoogleDriveWorkspaceIntegrationTest {
     return new SourceSettings(
         null,
         GoogleDriveSourceConnector.API_BASE.toString(),
-        null,
         token,
         false,
         driveSettings().toData());

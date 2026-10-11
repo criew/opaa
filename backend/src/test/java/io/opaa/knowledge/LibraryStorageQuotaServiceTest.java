@@ -27,16 +27,7 @@ class LibraryStorageQuotaServiceTest {
   private static KnowledgeLibrary privateLibraryOf(UUID owner) {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownerOnly(
-            UUID.randomUUID(),
-            "Privat",
-            null,
-            owner,
-            SourceType.UPLOAD,
-            null,
-            null,
-            null,
-            null,
-            false);
+            UUID.randomUUID(), "Privat", null, owner, SourceType.UPLOAD, null, null, null, false);
     return library;
   }
 

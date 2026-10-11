@@ -22,25 +22,23 @@ export const confluenceSource: SourceRegistration = {
   opensAtSource: true,
   configuration: {
     empty: EMPTY_CONFLUENCE_VALUES,
-    draftFields: ['sourceUrl', 'sourceProxy', 'sourceInsecureSsl', 'edition', 'email', 'spaces'],
+    draftFields: ['sourceUrl', 'sourceInsecureSsl', 'edition', 'email', 'spaces'],
     addressDerived: ['edition', 'credentialsVerified'],
     // ADR-0023: the edition is fixed, the stored credentials stand until new ones are typed, and
     // the current selection is the starting point.
     fromLibrary: (library): ConfluenceSourceValues => ({
       ...EMPTY_CONFLUENCE_VALUES,
       sourceUrl: library.sourceUrl ?? '',
-      sourceProxy: library.sourceProxy ?? '',
       sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
       edition: confluenceSettingsOf(library).edition ?? null,
       credentialsVerified: Boolean(library.sourceCredentialsSet),
       spaces: confluenceSettingsOf(library).spaces ?? [],
     }),
     isDirty: (values: ConfluenceSourceValues) =>
-      values.sourceUrl !== '' || values.sourceProxy !== '' || values.sourceInsecureSsl,
+      values.sourceUrl !== '' || values.sourceInsecureSsl,
     validate: (values: ConfluenceSourceValues) => validateConfluenceValues(values),
     toPayload: (values: ConfluenceSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
-      sourceProxy: values.sourceProxy.trim() || undefined,
       sourceCredentials: confluenceCredentialsOf(values),
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceSettings: {

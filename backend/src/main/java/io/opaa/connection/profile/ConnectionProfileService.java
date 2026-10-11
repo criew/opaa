@@ -31,7 +31,6 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
 import io.opaa.security.CredentialsEncryptor;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.time.Clock;
@@ -419,9 +418,8 @@ public class ConnectionProfileService {
   /**
    * Refuses with 400 {@value #CLIENT_SECRET_REQUIRED} a change that would keep the stored client
    * secret ({@code secret} {@code null}) while a token or revocation endpoint the profile names
-   * moves: the secret is sent to both and goes only where it was entered for. A new proxy keeps it,
-   * as both are {@code https://} ({@link #endpointsOf}). The authorization endpoint receives none;
-   * a profile without a stored secret is a public client.
+   * moves: the secret is sent to both and goes only where it was entered for. The authorization
+   * endpoint receives none; a profile without a stored secret is a public client.
    */
   private static void requireSecretFollows(
       ConnectionProfile profile, ConnectionProfileValues validated, String secret) {
@@ -750,11 +748,9 @@ public class ConnectionProfileService {
     }
     ProfileEndpoints endpoints = endpointsOf(signIn, values.endpoints());
     ConnectorData settings = declaration.defaults().read(values.connectorSettings());
-    String proxy = proxyOf(values.sourceProxy());
-    if ((proxy != null || values.sourceInsecureSsl()) && !reachedOverHttp(serverUrl)) {
+    if (values.sourceInsecureSsl() && !reachedOverHttp(serverUrl)) {
       throw new ValidationException(
-          "Proxy und Zertifikatsprüfung gelten nur für eine Server-Adresse mit http:// oder"
-              + " https://");
+          "Die Zertifikatsprüfung gilt nur für eine Server-Adresse mit http:// oder https://");
     }
     return new ConnectionProfileValues(
         name,
@@ -766,7 +762,6 @@ public class ConnectionProfileService {
         tenant,
         scopes,
         settings,
-        proxy,
         values.sourceInsecureSsl(),
         endpoints);
   }
@@ -826,26 +821,11 @@ public class ConnectionProfileService {
     return trimmed;
   }
 
-  /** Whether the normalised {@code serverUrl} is reached over HTTP, where proxy and TLS apply. */
+  /**
+   * Whether the normalised {@code serverUrl} is reached over HTTP, where the TLS switch applies.
+   */
   private static boolean reachedOverHttp(String serverUrl) {
     return serverUrl.startsWith("https://") || serverUrl.startsWith("http://");
-  }
-
-  /** A proxy in {@code host:port} form, {@code null} for none. */
-  private static String proxyOf(String value) {
-    String proxy = optional(value, "sourceProxy", MAX_FIELD_LENGTH);
-    if (proxy == null) {
-      return null;
-    }
-    try {
-      ProxyAndCredentials parsed = ProxyAndCredentials.parse(proxy, null);
-      if (parsed.proxyHost() == null || proxy.contains("@")) {
-        throw new ValidationException(ProxyAndCredentials.INVALID_PROXY_MESSAGE);
-      }
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new ValidationException(e.getMessage());
-    }
-    return proxy;
   }
 
   private static void requireSecretFits(ConnectionAuthMethod method, String secret) {
@@ -874,7 +854,6 @@ public class ConnectionProfileService {
     state.put("tenantSet", profile.getTenant() != null);
     state.put("scopesSet", profile.getScopes() != null);
     state.put("connectorSettingsSet", profile.getConnectorSettings() != null);
-    state.put("sourceProxy", profile.getSourceProxy() == null ? "" : profile.getSourceProxy());
     state.put("sourceInsecureSsl", profile.isSourceInsecureSsl());
     ProfileEndpoints endpoints = profile.getEndpoints();
     if (!endpoints.equals(ProfileEndpoints.NONE)) {

@@ -113,10 +113,9 @@ export default function ConfluenceSourceForm({
   const connectionPayload = useCallback(
     () => ({
       sourceUrl: values.sourceUrl.trim(),
-      sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
     }),
-    [values.sourceUrl, values.sourceProxy, values.sourceInsecureSsl],
+    [values.sourceUrl, values.sourceInsecureSsl],
   )
 
   const loadSpaces = useCallback(async () => {
@@ -166,7 +165,7 @@ export default function ConfluenceSourceForm({
     spacesRequested.current = false
   }
 
-  // The selection survives every edit (a proxy typo must not wipe a curated list); what the new
+  // The selection survives every edit (an address typo must not wipe a curated list); what the new
   // listing cannot read is shown as such below, and only the verification is withdrawn.
   function changeAddress(patch: Partial<ConfluenceSourceValues>) {
     invalidateListing()
@@ -303,22 +302,6 @@ export default function ConfluenceSourceForm({
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
             />
           </Box>
-          <Box>
-            <FieldLabel htmlFor={`${idPrefix}-proxy`}>Proxy (optional)</FieldLabel>
-            <TextField
-              id={`${idPrefix}-proxy`}
-              size="small"
-              value={values.sourceProxy}
-              onChange={(e) => changeAddress({ sourceProxy: e.target.value })}
-              placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'}
-              helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
-              autoComplete="off"
-              fullWidth
-              slotProps={{
-                htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
-              }}
-            />
-          </Box>
           <FormControlLabel
             sx={{ gridColumn: '1 / -1' }}
             control={
@@ -330,6 +313,11 @@ export default function ConfluenceSourceForm({
             }
             label="Zertifikatsprüfung aussetzen"
           />
+          {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
+            <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
+              {connection.transportHint}
+            </Typography>
+          )}
         </Box>
         {!editionFixed && (
           <Box sx={{ mt: 1.5 }}>

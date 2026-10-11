@@ -1,6 +1,7 @@
 package io.opaa.directory.sync.keycloak;
 
 import io.opaa.directory.sync.DirectoryUnavailableException;
+import io.opaa.outbound.ProxyRefusal;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
@@ -216,7 +217,8 @@ class KeycloakAdminApi {
       }
       if (status != 200) {
         throw new DirectoryUnavailableException(
-            "Das Verzeichnis antwortet mit HTTP " + status + ".");
+            ProxyRefusal.statusMessage(
+                status, "Das Verzeichnis antwortet mit HTTP " + status + "."));
       }
       return text;
     } catch (HttpTimeoutException e) {

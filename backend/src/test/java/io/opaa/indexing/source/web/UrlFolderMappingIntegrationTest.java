@@ -126,7 +126,6 @@ class UrlFolderMappingIntegrationTest {
                 null,
                 baseUrl + "/dokumente/",
                 null,
-                null,
                 false));
   }
 

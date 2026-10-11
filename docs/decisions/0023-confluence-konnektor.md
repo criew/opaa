@@ -25,6 +25,9 @@ Stellen reicht diese Grundlage nicht:
 1. **Die Konfiguration hat erstmals einen Listenwert.** Eine Confluence-Bibliothek umfasst eine
    *Auswahl* von Spaces. ADR-0018 kennt Quellkonfiguration nur als Einzelwerte (`source_path`,
    `source_url`, `source_proxy`, `source_credentials`, `source_insecure_ssl`).
+
+   > **Überholt (#2496):** `source_proxy` an Bibliothek und Zugang ist entfernt; alle Verbindungen gehen über den hausweiten Ausgangsproxy (ADR-0041, Nachtrag „Proxy je Bibliothek und Zugang entfernt“).
+
 2. **Zwei Editionen mit unterschiedlicher API.** Confluence Cloud und Confluence Data Center
    unterscheiden sich in Basispfad, Authentifizierung, Paginierung und Inhaltsformat so weit, dass
    ein gemeinsamer Codepfad mit `if`-Zweigen die falsche Struktur wäre (Belege unten). Die Edition

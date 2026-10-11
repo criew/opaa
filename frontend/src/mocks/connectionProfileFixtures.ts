@@ -13,7 +13,6 @@ function initialProfiles(): ConnectionProfileResponse[] {
       clientSecretExpiresSoon: false,
       signInRejected: false,
       connectorSettings: { edition: 'INTERN' },
-      sourceProxy: null,
       sourceInsecureSsl: false,
       connectionCount: 2,
       connectedAccountCount: { count: null, fewerThan: 5 },
@@ -41,7 +40,6 @@ export function mockProfileRef(profile: ConnectionProfileResponse): ConnectionPr
     serverUrl: profile.serverUrl,
     authMethod: profile.authMethod,
     connectorDefaults: profile.connectorSettings ?? null,
-    sourceProxy: profile.sourceProxy ?? null,
     sourceInsecureSsl: profile.sourceInsecureSsl,
   }
 }

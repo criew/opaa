@@ -110,7 +110,7 @@ export default function S3SourceForm({
   const [bucketsMessage, setBucketsMessage] = useState<Message | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(
     () =>
-      values.includePatterns !== '' || values.excludePatterns !== '' || values.sourceProxy !== '',
+      values.includePatterns !== '' || values.excludePatterns !== '' || values.sourceInsecureSsl,
   )
   // two counters: the listing only depends on connection and key, so editing a scope or a
   // pattern must not discard a bucket listing that is still in flight
@@ -200,7 +200,6 @@ export default function S3SourceForm({
   function connectionPayload() {
     return {
       sourceUrl: values.sourceUrl.trim(),
-      sourceProxy: values.sourceProxy.trim() || undefined,
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: s3CredentialsOf(values),
     }
@@ -582,11 +581,11 @@ export default function S3SourceForm({
         )}
       </Box>
 
-      {/* Stage 5: advanced - key patterns, proxy, TLS */}
+      {/* Stage 5: advanced - key patterns, TLS */}
       <Accordion expanded={advancedOpen} onChange={(_e, open) => setAdvancedOpen(open)}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} id={`${idPrefix}-advanced`}>
           <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
-            Erweitert: Ein-/Ausschlussmuster, Proxy, TLS
+            Erweitert: Ein-/Ausschlussmuster, TLS
           </Typography>
         </AccordionSummary>
         <AccordionDetails>
@@ -627,26 +626,6 @@ export default function S3SourceForm({
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
               />
             </Box>
-            <Box>
-              <FieldLabel htmlFor={`${idPrefix}-proxy`}>Proxy (optional)</FieldLabel>
-              <TextField
-                id={`${idPrefix}-proxy`}
-                size="small"
-                value={values.sourceProxy}
-                onChange={(e) => changeConnection({ sourceProxy: e.target.value })}
-                placeholder={
-                  connection.isFixed('sourceProxy') ? undefined : 'proxy.example.com:8080'
-                }
-                helperText={
-                  connection.isFixed('sourceProxy') ? connection.transportHint : undefined
-                }
-                autoComplete="off"
-                fullWidth
-                slotProps={{
-                  htmlInput: { maxLength: 255, readOnly: connection.isFixed('sourceProxy') },
-                }}
-              />
-            </Box>
             <FormControlLabel
               sx={{ alignSelf: 'end' }}
               control={
@@ -658,6 +637,11 @@ export default function S3SourceForm({
               }
               label="TLS-Prüfung aussetzen"
             />
+            {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
+              <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
+                {connection.transportHint}
+              </Typography>
+            )}
             {values.sourceInsecureSsl && (
               <Alert severity="warning" sx={{ gridColumn: '1 / -1' }}>
                 Ohne Zertifikatsprüfung kann sich jeder Server als der Objektspeicher ausgeben und

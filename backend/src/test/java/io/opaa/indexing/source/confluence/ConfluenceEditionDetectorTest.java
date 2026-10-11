@@ -23,7 +23,7 @@ class ConfluenceEditionDetectorTest {
   void recognisesCloudBySiteSignatureAndStripsWikiFromTheAddress() throws Exception {
     try (FakeConfluenceServer cloud = new FakeConfluenceServer(ConfluenceEdition.CLOUD)) {
       ConfluenceEditionDetector.Detected detected =
-          detector.detect(cloud.baseUrl() + "/wiki/", null, -1, false);
+          detector.detect(cloud.baseUrl() + "/wiki/", false);
 
       assertThat(detected.edition()).isEqualTo(ConfluenceEdition.CLOUD);
       assertThat(detected.baseUrl().toString()).isEqualTo(cloud.baseUrl());
@@ -35,8 +35,7 @@ class ConfluenceEditionDetectorTest {
   void recognisesDataCenterBehindAContextPath() throws Exception {
     try (FakeConfluenceServer dc =
         new FakeConfluenceServer(ConfluenceEdition.DATA_CENTER, "/confluence")) {
-      ConfluenceEditionDetector.Detected detected =
-          detector.detect(dc.baseUrl() + "/", null, -1, false);
+      ConfluenceEditionDetector.Detected detected = detector.detect(dc.baseUrl() + "/", false);
 
       assertThat(detected.edition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
       assertThat(detected.baseUrl().toString()).isEqualTo(dc.baseUrl());
@@ -48,7 +47,7 @@ class ConfluenceEditionDetectorTest {
   void neverGuessesFromTheHostName() throws Exception {
     try (FakeConfluenceServer dc = new FakeConfluenceServer(ConfluenceEdition.DATA_CENTER)) {
       // a Data Center answering on a loopback address is still Data Center, whatever the name
-      assertThat(detector.detect(dc.baseUrl(), null, -1, false).edition())
+      assertThat(detector.detect(dc.baseUrl(), false).edition())
           .isEqualTo(ConfluenceEdition.DATA_CENTER);
     }
   }
@@ -69,7 +68,7 @@ class ConfluenceEditionDetectorTest {
     other.start();
     try {
       String url = "http://127.0.0.1:" + other.getAddress().getPort();
-      assertThatThrownBy(() -> detector.detect(url, null, -1, false))
+      assertThatThrownBy(() -> detector.detect(url, false))
           .isInstanceOf(ConfluenceAccessException.NoConfluence.class)
           .hasMessageContaining("kein Confluence erkannt");
     } finally {
@@ -91,7 +90,7 @@ class ConfluenceEditionDetectorTest {
     sso.start();
     try {
       String url = "http://127.0.0.1:" + sso.getAddress().getPort();
-      assertThatThrownBy(() -> detector.detect(url, null, -1, false))
+      assertThatThrownBy(() -> detector.detect(url, false))
           .isInstanceOf(ConfluenceAccessException.NoConfluence.class)
           .hasMessageContaining("kein Confluence erkannt")
           .hasMessageContaining("SSO");
@@ -102,9 +101,9 @@ class ConfluenceEditionDetectorTest {
 
   @Test
   void rejectsAddressesWithCredentialsOrWithoutScheme() {
-    assertThatThrownBy(() -> detector.detect("wiki.example.org", null, -1, false))
+    assertThatThrownBy(() -> detector.detect("wiki.example.org", false))
         .isInstanceOf(ConfluenceConnection.InvalidBaseUrlException.class);
-    assertThatThrownBy(() -> detector.detect("https://user:pw@wiki.example.org", null, -1, false))
+    assertThatThrownBy(() -> detector.detect("https://user:pw@wiki.example.org", false))
         .isInstanceOf(ConfluenceConnection.InvalidBaseUrlException.class)
         .hasMessageContaining("Zugangsdaten");
   }

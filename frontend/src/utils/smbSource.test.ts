@@ -59,7 +59,7 @@ describe('smbSource', () => {
     expect(smbCredentialsOf(values({ password: '' }))).toBeUndefined()
   })
 
-  it('sends address, credentials and folders, never proxy or certificate switch', () => {
+  it('sends address, credentials and folders, never a certificate switch', () => {
     const configuration = sourceRegistration('SMB')?.configuration
     expect(configuration).toBeTruthy()
     expect(

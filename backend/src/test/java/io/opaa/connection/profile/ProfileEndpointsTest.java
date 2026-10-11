@@ -299,37 +299,23 @@ class ProfileEndpointsTest {
 
   /**
    * A profile holding a plain {@code http://} token endpoint keeps it in no change, not even with a
-   * new secret and a new proxy, and nothing changes; before an {@code https://} one a new proxy
-   * sees nothing, so the secret stays.
+   * new secret, and nothing changes.
    */
   @Test
-  void aPlainHttpEndpointIsKeptByNoChangeAndANewProxyBeforeHttpsKeepsTheSecret() {
+  void aPlainHttpEndpointIsKeptByNoChange() {
     ProfileEndpoints plain =
         new ProfileEndpoints(
             REALM.authorization(), "http://keycloak.intern/token", REALM.revocation());
     ConnectionProfile profile = new ConnectionProfile(RealmProbe.TYPE, NOW);
-    profile.replace(values(plain, "Realm", null), "enc:alt", NOW);
+    profile.replace(values(plain, "Realm"), "enc:alt", NOW);
     when(profiles.findById(profile.getId())).thenReturn(Optional.of(profile));
 
     assertThatThrownBy(
-            () ->
-                service.update(
-                    ADMIN,
-                    profile.getId(),
-                    values(plain, "Realm", "proxy.example.org:3128"),
-                    "neu",
-                    true))
+            () -> service.update(ADMIN, profile.getId(), values(plain, "Realm"), "neu", true))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("tokenEndpoint muss eine vollständige Adresse mit https:// sein");
-    assertThat(profile.getSourceProxy()).isNull();
     assertThat(profile.getClientSecretCiphertext()).isEqualTo("enc:alt");
     assertThat(profile.getEndpoints()).isEqualTo(plain);
-
-    ConnectionProfile secured = profileWithSecret("enc:alt");
-    service.update(
-        ADMIN, secured.getId(), values(REALM, "Realm", "proxy.example.org:3128"), null, true);
-    assertThat(secured.getSourceProxy()).isEqualTo("proxy.example.org:3128");
-    assertThat(secured.getClientSecretCiphertext()).isEqualTo("enc:alt");
   }
 
   private ConnectionProfile profileWithSecret(String ciphertext) {
@@ -340,11 +326,6 @@ class ProfileEndpointsTest {
   }
 
   private static ConnectionProfileValues values(ProfileEndpoints endpoints, String name) {
-    return values(endpoints, name, null);
-  }
-
-  private static ConnectionProfileValues values(
-      ProfileEndpoints endpoints, String name, String proxy) {
     return new ConnectionProfileValues(
         name,
         SERVER,
@@ -355,7 +336,6 @@ class ProfileEndpointsTest {
         null,
         null,
         null,
-        proxy,
         false,
         endpoints);
   }

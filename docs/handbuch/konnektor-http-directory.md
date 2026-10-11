@@ -38,12 +38,8 @@ als **„Läufe"**, das Laufprotokoll.
 | Feld der Bibliothek | Regel |
 |---|---|
 | Adresse (`sourceUrl`) | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt. |
-| Proxy (`sourceProxy`) | optional, Format `host:port`. Keine Proxy-Authentifizierung. |
 | Zugangsdaten (`sourceCredentials`) | optional, Format `benutzer:passwort` für HTTP Basic Auth. Der erste Doppelpunkt trennt. |
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional. Akzeptiert jedes Zertifikat, für interne Server mit Eigenzertifikat. |
-
-Ein syntaktisch falscher Proxy fällt erst beim Lauf auf: Der Lauf scheitert sofort mit
-„sourceProxy muss dem Format host:port entsprechen".
 
 **Zugangsdaten** werden verschlüsselt gespeichert (AES-256-GCM, Schlüssel aus
 `OPAA_CREDENTIALS_ENCRYPTION_KEY`) und erscheinen in keiner API-Antwort, auch nicht für

@@ -5,20 +5,17 @@ import java.net.URISyntaxException;
 
 /**
  * Everything an adapter needs to talk to one Confluence instance on behalf of one library: the
- * normalised base address, the edition, the credentials and the outbound connection options a
- * library's source configuration already carries for the URL-based source types.
+ * normalised base address, the edition, the credentials and the TLS switch a library's source
+ * configuration already carries for the URL-based source types.
  *
  * @param baseUrl normalised by {@link #normalizeBaseUrl}: no trailing slash, no query/fragment, no
  *     user info; for Cloud a trailing {@code /wiki} is removed because the Cloud adapter adds it
  * @param credentials {@code null} only for the credential-free probes (edition detection)
- * @param proxyHost {@code null} when no proxy is configured
  */
 public record ConfluenceConnection(
     URI baseUrl,
     ConfluenceEdition edition,
     ConfluenceCredentials credentials,
-    String proxyHost,
-    int proxyPort,
     boolean insecureSsl) {
 
   /**
@@ -82,8 +79,6 @@ public record ConfluenceConnection(
         + edition
         + ", credentials="
         + (credentials == null ? "none" : "***")
-        + ", proxy="
-        + proxyHost
         + "]";
   }
 

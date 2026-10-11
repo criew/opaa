@@ -27,7 +27,6 @@ export const s3Source: SourceRegistration = {
       'sourceUrl',
       'region',
       'pathStyle',
-      'sourceProxy',
       'sourceInsecureSsl',
       'scopes',
       'includePatterns',
@@ -38,7 +37,6 @@ export const s3Source: SourceRegistration = {
     fromLibrary: (library): S3SourceValues =>
       s3ValuesFromSettings(
         library.sourceUrl,
-        library.sourceProxy,
         library.sourceInsecureSsl,
         s3SettingsFromLibrary(library),
       ),
@@ -59,7 +57,6 @@ export const s3Source: SourceRegistration = {
       ),
     toPayload: (values: S3SourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
-      sourceProxy: values.sourceProxy.trim() || undefined,
       sourceCredentials: s3CredentialsOf(values),
       sourceInsecureSsl: values.sourceInsecureSsl,
       sourceSettings: s3SettingsOf(values),

@@ -101,7 +101,6 @@ ausscheidet. OPAA nennt das Konto nach der Zustimmung mit seiner E-Mail-Adresse 
 | Client-ID | App key |
 | Client-Secret | App secret |
 | Scopes | leer lassen; OPAA fragt `account_info.read files.metadata.read files.content.read` |
-| Proxy | optional, `host:port`; gilt für Anmeldung und Abrufe aller Bibliotheken darauf |
 
 Die Bibliothek trägt kein Secret, nur ihre Zustimmung und ihre Ordner. Was eine geänderte
 Registrierung, die Notabschaltung und das Löschen des Zugangs mit den Zustimmungen tun, steht im

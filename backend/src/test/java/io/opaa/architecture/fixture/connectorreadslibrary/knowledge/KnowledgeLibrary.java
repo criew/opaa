@@ -9,8 +9,8 @@ public class KnowledgeLibrary {
     return null;
   }
 
-  public String getSourceProxy() {
-    return null;
+  public boolean isSourceInsecureSsl() {
+    return false;
   }
 
   public String getSourceSettings() {

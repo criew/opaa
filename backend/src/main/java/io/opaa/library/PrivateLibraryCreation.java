@@ -91,7 +91,6 @@ public class PrivateLibraryCreation {
             blankToNull(request.sourcePath()),
             privateConnections.addressOn(
                 profile, request.sourceUrl() == null ? null : request.sourceUrl().toString()),
-            blankToNull(request.sourceProxy()),
             blankToNull(request.sourceCredentials()),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
             readSettings(connector, request.sourceSettings()));
@@ -112,7 +111,6 @@ public class PrivateLibraryCreation {
             type,
             own.sourcePath(),
             own.sourceUrl(),
-            own.sourceProxy(),
             null,
             own.sourceInsecureSsl());
     connector.configureNew(library, own);

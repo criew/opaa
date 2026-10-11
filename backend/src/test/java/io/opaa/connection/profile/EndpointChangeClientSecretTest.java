@@ -157,7 +157,6 @@ class EndpointChangeClientSecretTest {
         null,
         null,
         null,
-        null,
         false,
         new ProfileEndpoints(null, tokenEndpoint, null));
   }

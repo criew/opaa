@@ -69,8 +69,6 @@ class ConfluenceCredentialsTest {
             URI.create("https://wiki.example.org"),
             ConfluenceEdition.DATA_CENTER,
             new ConfluenceCredentials.CloudApiToken("a@b.example", "t"),
-            null,
-            -1,
             false);
 
     assertThatThrownBy(() -> factory.create(mismatch)).isInstanceOf(IllegalArgumentException.class);

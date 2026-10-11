@@ -59,6 +59,11 @@ public final class ProxyRefusal {
         : Optional.empty();
   }
 
+  /** {@code otherwise} unless {@code status} is the outbound proxy's {@code 407}. */
+  public static String statusMessage(int status, String otherwise) {
+    return describeStatus(status).orElse(otherwise);
+  }
+
   private static String message(int status) {
     if (status == PROXY_AUTHENTICATION_REQUIRED) {
       return "Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt (Status 407): Er verlangt eine"

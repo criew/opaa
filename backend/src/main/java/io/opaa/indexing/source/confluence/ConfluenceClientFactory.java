@@ -43,10 +43,7 @@ public class ConfluenceClientFactory {
     this.requestPolicy = requestPolicy;
   }
 
-  /**
-   * @throws ConfluenceAccessException when the proxy host fails the target validation (the target
-   *     itself is validated on every request the client sends)
-   */
+  /** The target is validated on every request the client sends. */
   public ConfluenceClient create(ConfluenceConnection connection) throws ConfluenceAccessException {
     return create(connection, 0);
   }
@@ -63,7 +60,6 @@ public class ConfluenceClientFactory {
 
   private ConfluenceClient create(ConfluenceConnection connection, int requestBudget)
       throws ConfluenceAccessException {
-    ConfluenceHttp.validateProxy(targetAddressValidator, connection.proxyHost());
     if (connection.credentials() == null) {
       throw new IllegalArgumentException("a ConfluenceClient needs credentials");
     }
@@ -74,9 +70,7 @@ public class ConfluenceClientFactory {
               + ", connection is "
               + connection.edition());
     }
-    HttpClient httpClient =
-        SourceHttpClientFactory.buildHttpClient(
-            connection.proxyHost(), connection.proxyPort(), connection.insecureSsl());
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient(connection.insecureSsl());
     ConfluenceHttp http =
         new ConfluenceHttp(
             httpClient,

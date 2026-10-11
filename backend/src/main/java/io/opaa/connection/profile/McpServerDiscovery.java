@@ -1,6 +1,7 @@
 package io.opaa.connection.profile;
 
 import io.opaa.common.ValidationException;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
@@ -168,7 +169,7 @@ public class McpServerDiscovery {
 
   /** The JSON object at {@code address}, {@code null} for a 404. */
   private JsonNode fetch(URI address, String what) {
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(null, 0, false);
+    HttpClient client = SourceHttpClientFactory.buildHttpClient(false);
     long deadline = System.nanoTime() + TIMEOUT.toNanos();
     try {
       HttpResponse<InputStream> response =
@@ -185,13 +186,15 @@ public class McpServerDiscovery {
         }
         if (response.statusCode() != 200) {
           throw new ValidationException(
-              "Der Abruf von "
-                  + address
-                  + " für "
-                  + what
-                  + " ist gescheitert (HTTP "
-                  + response.statusCode()
-                  + ").");
+              ProxyRefusal.statusMessage(
+                  response.statusCode(),
+                  "Der Abruf von "
+                      + address
+                      + " für "
+                      + what
+                      + " ist gescheitert (HTTP "
+                      + response.statusCode()
+                      + ")."));
         }
         JsonNode json =
             JSON.readTree(BoundedStreams.readFullyBefore(body, MAX_RESPONSE_BYTES, deadline));

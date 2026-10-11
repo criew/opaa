@@ -63,7 +63,6 @@ class StaleDocumentCleanupServiceTest {
           null,
           null,
           null,
-          null,
           false);
 
   private static SourceIndexingExecutor removingOnAbsence() {

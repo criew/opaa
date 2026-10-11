@@ -19,7 +19,6 @@ public record ConnectionProfileValues(
     String tenant,
     String scopes,
     ConnectorData connectorSettings,
-    String sourceProxy,
     boolean sourceInsecureSsl,
     ProfileEndpoints endpoints) {
 
@@ -38,7 +37,6 @@ public record ConnectionProfileValues(
       String tenant,
       String scopes,
       ConnectorData connectorSettings,
-      String sourceProxy,
       boolean sourceInsecureSsl) {
     this(
         name,
@@ -50,7 +48,6 @@ public record ConnectionProfileValues(
         tenant,
         scopes,
         connectorSettings,
-        sourceProxy,
         sourceInsecureSsl,
         ProfileEndpoints.NONE);
   }
@@ -66,7 +63,6 @@ public record ConnectionProfileValues(
         tenant,
         scopes,
         connectorSettings,
-        sourceProxy,
         sourceInsecureSsl,
         endpoints);
   }
@@ -82,7 +78,6 @@ public record ConnectionProfileValues(
         tenant,
         scopes,
         settings,
-        sourceProxy,
         sourceInsecureSsl,
         endpoints);
   }

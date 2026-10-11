@@ -3,7 +3,6 @@ package io.opaa.indexing.source.s3;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 
 /**
@@ -30,14 +29,11 @@ final class S3LibraryConnection {
     }
     URI endpoint;
     S3Credentials parsed;
-    ProxyAndCredentials proxy;
     try {
       endpoint = S3Connection.normalizeEndpoint(source.sourceUrl());
       parsed = S3Credentials.parse(credentials);
-      proxy = ProxyAndCredentials.parse(source.sourceProxy(), null);
     } catch (S3Connection.InvalidEndpointException
-        | S3Credentials.InvalidCredentialsFormatException
-        | ProxyAndCredentials.InvalidProxyConfigurationException e) {
+        | S3Credentials.InvalidCredentialsFormatException e) {
       throw new InvalidS3ConfigurationException(e.getMessage());
     }
     return new S3Connection(
@@ -45,8 +41,6 @@ final class S3LibraryConnection {
         settings.effectiveRegion(),
         settings.pathStyle(),
         parsed,
-        proxy.proxyHost(),
-        proxy.proxyPort(),
         source.sourceInsecureSsl());
   }
 

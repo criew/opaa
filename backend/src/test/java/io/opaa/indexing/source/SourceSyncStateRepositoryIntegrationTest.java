@@ -63,7 +63,6 @@ class SourceSyncStateRepositoryIntegrationTest {
                 null,
                 "https://ablage.example",
                 null,
-                null,
                 false));
   }
 

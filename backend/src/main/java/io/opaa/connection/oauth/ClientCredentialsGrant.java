@@ -25,8 +25,8 @@ import tools.jackson.databind.json.JsonMapper;
 /**
  * The client credentials grant (RFC 6749, 4.4) of a profile: client id and secret, as the connector
  * declares ({@code client_secret_basic} or {@code _post}), go to the declared token endpoint
- * through {@link OAuthClient} and the profile's proxy, always with the certificate check. Id,
- * secret and token reach no log and no message.
+ * through {@link OAuthClient}, always with the certificate check. Id, secret and token reach no log
+ * and no message.
  */
 final class ClientCredentialsGrant {
 

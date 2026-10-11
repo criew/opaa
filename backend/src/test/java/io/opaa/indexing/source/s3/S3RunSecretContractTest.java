@@ -58,7 +58,6 @@ class S3RunSecretContractTest extends RunSecretContract {
     return new SourceSettings(
         null,
         fixture.endpoint().toString(),
-        null,
         fixture.rootCredentials().stored(),
         false,
         ConnectorData.fromJson(S3SourceSettingsJson.write(s3)));

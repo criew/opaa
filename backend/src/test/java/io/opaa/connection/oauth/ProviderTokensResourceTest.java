@@ -88,7 +88,6 @@ class ProviderTokensResourceTest {
             Map.of(),
             ClientAuthentication.CLIENT_SECRET_BASIC),
         null,
-        null,
         false,
         new ProfileEndpoints("https://auth.example.org/authorize", token, null),
         0,

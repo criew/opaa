@@ -4,7 +4,6 @@ import io.opaa.common.ValidationException;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
@@ -19,7 +18,7 @@ import org.springframework.stereotype.Service;
  * probe of #1376), on top of the access layer: every scope is probed in three steps - bucket
  * reachable, listing allowed, reading allowed - through {@link S3ObjectStore#testAccess}, and a
  * store problem is the test's <em>result</em>, never an exception; only a caller's own mistake (an
- * address that is no endpoint, a proxy without a usable port, missing settings) is a 400.
+ * address that is no endpoint, missing settings) is a 400.
  *
  * <p>The probe is bounded like every other synchronous connection test: its store uses {@link
  * S3ClientFactory#createForProbe} (short timeout, one retry) and the whole test stops after {@link
@@ -79,17 +78,12 @@ public class S3ConnectionService {
    * this before the key is complete.
    */
   public Probe probe(
-      String rawUrl,
-      String proxy,
-      String credentials,
-      boolean insecureSsl,
-      S3SourceSettings settings)
+      String rawUrl, String credentials, boolean insecureSsl, S3SourceSettings settings)
       throws InterruptedException {
     if (settings == null) {
       throw new ValidationException("sourceSettings sind für den Verbindungstest erforderlich");
     }
     URI endpoint = normalizeEndpoint(rawUrl);
-    ProxyAndCredentials proxyConfig = parseProxy(proxy);
     if (credentials == null || credentials.isBlank()) {
       return new Probe(
           false,
@@ -107,13 +101,7 @@ public class S3ConnectionService {
     }
     S3Connection connection =
         new S3Connection(
-            endpoint,
-            settings.effectiveRegion(),
-            settings.pathStyle(),
-            parsed,
-            proxyConfig.proxyHost(),
-            proxyConfig.proxyPort(),
-            insecureSsl);
+            endpoint, settings.effectiveRegion(), settings.pathStyle(), parsed, insecureSsl);
     Instant deadline = clock.instant().plus(PROBE_DEADLINE);
     try (S3ObjectStore store = clientFactory.createForProbe(connection, settings.scopes())) {
       List<ScopeFinding> findings = new ArrayList<>();
@@ -136,30 +124,16 @@ public class S3ConnectionService {
    * caller's 400 with the access layer's message.
    */
   public S3BucketListResult listBuckets(
-      String rawUrl,
-      String proxy,
-      String credentials,
-      boolean insecureSsl,
-      String region,
-      boolean pathStyle)
+      String rawUrl, String credentials, boolean insecureSsl, String region, boolean pathStyle)
       throws InterruptedException {
     URI endpoint = normalizeEndpoint(rawUrl);
-    ProxyAndCredentials proxyConfig = parseProxy(proxy);
     S3Credentials parsed;
     try {
       parsed = S3Credentials.parse(credentials);
     } catch (S3Credentials.InvalidCredentialsFormatException e) {
       throw new ValidationException(e.getMessage());
     }
-    S3Connection connection =
-        new S3Connection(
-            endpoint,
-            region,
-            pathStyle,
-            parsed,
-            proxyConfig.proxyHost(),
-            proxyConfig.proxyPort(),
-            insecureSsl);
+    S3Connection connection = new S3Connection(endpoint, region, pathStyle, parsed, insecureSsl);
     try (S3ObjectStore store = clientFactory.createForProbe(connection, List.of())) {
       return switch (store.listBuckets()) {
         case S3BucketListing.Listed listed -> new S3BucketListResult(true, listed.names(), null);
@@ -291,19 +265,5 @@ public class S3ConnectionService {
     } catch (S3Connection.InvalidEndpointException e) {
       throw new ValidationException(e.getMessage());
     }
-  }
-
-  /** {@code sourceProxy} in {@code host:port} with a usable port, or a 400 - never a 500. */
-  private static ProxyAndCredentials parseProxy(String proxy) {
-    ProxyAndCredentials parsed;
-    try {
-      parsed = ProxyAndCredentials.parse(proxy, null);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new ValidationException(e.getMessage());
-    }
-    if (parsed.proxyHost() != null && (parsed.proxyPort() < 1 || parsed.proxyPort() > 65535)) {
-      throw new ValidationException(ProxyAndCredentials.INVALID_PROXY_MESSAGE);
-    }
-    return parsed;
   }
 }

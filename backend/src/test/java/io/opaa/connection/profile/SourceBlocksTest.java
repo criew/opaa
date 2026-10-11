@@ -277,7 +277,6 @@ class SourceBlocksTest {
             "/srv/akten",
             null,
             null,
-            null,
             false);
     rows.put(files.getId(), files);
     ConnectorTypePolicy stale = new ConnectorTypePolicy(SourceTypes.FILESYSTEM, NOW);
@@ -615,7 +614,6 @@ class SourceBlocksTest {
             null,
             null,
             null,
-            null,
             false),
         "enc:v1:schluessel",
         NOW);
@@ -631,7 +629,6 @@ class SourceBlocksTest {
             SourceTypes.RSS_FEED,
             null,
             SERVER + "/b.xml",
-            null,
             null,
             false);
     rows.put(shared.getId(), shared);
@@ -694,7 +691,6 @@ class SourceBlocksTest {
                 ? "https://elsewhere.example.org/a.xml"
                 : SERVER + "/a.xml",
             null,
-            null,
             false);
     rows.put(library.getId(), library);
     if (facts.contains(Fact.TYPE_LOCK)) {
@@ -707,7 +703,6 @@ class SourceBlocksTest {
             SERVER,
             ConnectionAuthMethod.PERSONAL_SECRET,
             ConnectionOwnership.PERSON,
-            null,
             null,
             null,
             null,
@@ -747,7 +742,6 @@ class SourceBlocksTest {
             facts.contains(Fact.OUTSIDE)
                 ? "https://elsewhere.example.org/a.xml"
                 : SERVER + "/a.xml",
-            null,
             facts.contains(Fact.NO_SECRET) ? null : "nutzer:geheim",
             false);
     rows.put(library.getId(), library);
@@ -770,7 +764,6 @@ class SourceBlocksTest {
               SERVER,
               method,
               ConnectionOwnership.LIBRARY,
-              null,
               null,
               null,
               null,

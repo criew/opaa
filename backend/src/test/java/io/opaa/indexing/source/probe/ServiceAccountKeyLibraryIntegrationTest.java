@@ -113,21 +113,6 @@ class ServiceAccountKeyLibraryIntegrationTest {
   }
 
   @Test
-  void aChangedSubjectTogetherWithAConnectionFieldButWithoutTheKeyIsRefusedToo() throws Exception {
-    mockMvc
-        .perform(
-            as(put("/api/v1/libraries/" + libraryId))
-                .content(
-                    """
-                    {"name": "Dienstkonto", "sourceProxy": "proxy.example.org:8080",
-                     "sourceSettings": {"subject": "fach-b@example.org"}}
-                    """))
-        .andExpect(status().isBadRequest());
-
-    assertThat(storedSubject()).isEqualTo("fach-a@example.org");
-  }
-
-  @Test
   void aChangedSubjectWithTheKeyIsSaved() throws Exception {
     mockMvc
         .perform(
@@ -165,21 +150,6 @@ class ServiceAccountKeyLibraryIntegrationTest {
         .andExpect(status().isBadRequest());
 
     assertThat(storedSubject()).isEqualTo("fach-a@example.org");
-  }
-
-  @Test
-  void aProxyChangeWithoutTheFixedAddressKeepsTheKey() throws Exception {
-    String stored = storedCredentials();
-
-    mockMvc
-        .perform(
-            as(put("/api/v1/libraries/" + libraryId))
-                .content(
-                    "{\"name\": \"Dienstkonto\", \"sourceProxy\": \"proxy.example.org:8080\"}"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.sourceCredentialsSet").value(true));
-
-    assertThat(storedCredentials()).isEqualTo(stored);
   }
 
   @Test

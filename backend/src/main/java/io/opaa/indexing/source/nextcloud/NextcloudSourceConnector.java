@@ -398,15 +398,12 @@ public class NextcloudSourceConnector implements SourceConnector, SourceBrowser,
   }
 
   /**
-   * The address and the proxy pass the target validation before anything is stored; a refused
-   * target is a refusal of the connection, not of a setting.
+   * The address passes the target validation before anything is stored; a refused target is a
+   * refusal of the connection, not of a setting.
    */
   private void requireReachable(NextcloudConnection connection) {
     try {
       targetAddressValidator.validate(connection.baseUrl());
-      if (connection.proxyHost() != null) {
-        targetAddressValidator.validateHost(connection.proxyHost());
-      }
     } catch (IOException e) {
       throw new SourceTargetRefusedException(e.getMessage() + " " + NextcloudDav.ALLOWLIST_HINT);
     }

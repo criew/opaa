@@ -132,7 +132,6 @@ class ProfileRequirementsTest {
             null,
             "https://probe.example.org/a",
             null,
-            null,
             false);
 
     service.requireOwnAddressKept(library, "https://probe.example.org/a");

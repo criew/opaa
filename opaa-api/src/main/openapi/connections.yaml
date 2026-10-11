@@ -363,8 +363,7 @@ paths:
         the profile names to another address: such a change without clientSecret is 400 with
         code CONNECTION_PROFILE_CLIENT_SECRET_REQUIRED, checked before anything else and before
         any confirmation; an empty clientSecret makes the profile a public client. A new
-        sourceProxy keeps the secret: every endpoint the profile names is https, so the proxy
-        never sees it. A new authorizationEndpoint alone keeps the secret, which is never
+        authorizationEndpoint alone keeps the secret, which is never
         sent there.
         A new serverUrl, clientId, tenant, scope list, endpoint or authMethod discards every
         secret held under the profile; a library address under the old server address moves
@@ -374,9 +373,9 @@ paths:
         (otherwise 409 with code CONNECTION_PROFILE_CONFIRMATION_REQUIRED, whose error is the
         confirmation previewConnectionProfileChange names beforehand; it names the old and the
         new address of every endpoint the profile names that changes). The part of a library's
-        sync state a new configuration makes invalid - also of a new proxy or TLS switch - its
+        sync state a new configuration makes invalid - also of a new TLS switch - its
         connector discards without that confirmation. The connector of a profile never changes.
-        Every library whose effective configuration the change alters (address, proxy, TLS
+        Every library whose effective configuration the change alters (address, TLS
         switch, defaults) passes its connector's check first; when the connector refuses one,
         nothing is changed - neither the profile nor any library - and the answer is 400 with
         code CONNECTION_PROFILE_CHANGE_REJECTED, whose message names only how many libraries
@@ -1241,15 +1240,6 @@ components:
             Connector defaults: only keys the connector names in
             SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
             override a library's settings key by key. Never a secret.
-        sourceProxy:
-          type: string
-          maxLength: 255
-          nullable: true
-          description: >
-            Proxy server in host:port format every library on the profile is reached through;
-            absent for none. A library on the profile cannot set its own. Only for an http or
-            https server address; with any other (smb) it is a 400.
-          example: proxy.example.org:8080
         sourceInsecureSsl:
           type: boolean
           nullable: true
@@ -1343,15 +1333,6 @@ components:
             Connector defaults: only keys the connector names in
             SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
             override a library's settings key by key. Never a secret.
-        sourceProxy:
-          type: string
-          maxLength: 255
-          nullable: true
-          description: >
-            Proxy server in host:port format every library on the profile is reached through;
-            absent for none. A library on the profile cannot set its own. Only for an http or
-            https server address; with any other (smb) it is a 400.
-          example: proxy.example.org:8080
         sourceInsecureSsl:
           type: boolean
           nullable: true
@@ -1440,9 +1421,6 @@ components:
         connectorSettings:
           type: object
           additionalProperties: true
-          nullable: true
-        sourceProxy:
-          type: string
           nullable: true
         sourceInsecureSsl:
           type: boolean
@@ -1552,7 +1530,7 @@ components:
           format: int64
           description: >
             How many shared libraries the proposed change gives another effective configuration
-            (address, proxy, certificate check, defaults); each one's connector discards the part
+            (address, certificate check, defaults); each one's connector discards the part
             of its sync state the new configuration makes invalid. That alone asks no
             confirmation; the whole sync state goes only with fullSyncLibraries. 0 without a
             proposal; private libraries are not counted.
@@ -2140,10 +2118,6 @@ components:
           description: >
             The connector settings the profile sets for every library on it (see
             SourceTypeDescriptor.profileDefaults); absent for none. Never a secret.
-        sourceProxy:
-          type: string
-          nullable: true
-          description: The proxy every library on the profile is reached through; absent for none.
         sourceInsecureSsl:
           type: boolean
           description: Whether the certificate check is skipped for every library on the profile.
@@ -2326,10 +2300,6 @@ components:
           description: >
             The connector settings the profile sets for every library on it; from MANAGER on,
             absent for none.
-        sourceProxy:
-          type: string
-          nullable: true
-          description: The proxy every library on the profile is reached through; from MANAGER on.
         sourceInsecureSsl:
           type: boolean
           nullable: true

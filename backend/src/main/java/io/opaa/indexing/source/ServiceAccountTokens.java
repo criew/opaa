@@ -7,8 +7,8 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.RSASSASigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceFormPost;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.io.IOException;
@@ -81,11 +81,7 @@ public class ServiceAccountTokens {
     if (auth == null || settings.sourceCredentials() == null) {
       return settings.credentials();
     }
-    return accessSecret(
-        settings.sourceCredentials(),
-        subjectOf(connector, effective),
-        auth,
-        settings.sourceProxy());
+    return accessSecret(settings.sourceCredentials(), subjectOf(connector, effective), auth);
   }
 
   /** The subject {@code connector} imitates under {@code settings}, blank read as none. */
@@ -97,19 +93,15 @@ public class ServiceAccountTokens {
   /**
    * An access token valid now for {@code storedKey}, imitating {@code subject} when given.
    *
-   * @param sourceProxy the proxy of the library or of its profile, {@code host:port} or {@code
-   *     null}
    * @throws SourceCredentialsException with a German cause when the key cannot be used
    */
-  public String accessToken(
-      String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
-    return accessSecret(storedKey, subject, auth, sourceProxy).value();
+  public String accessToken(String storedKey, String subject, ServiceAccountKeyAuth auth) {
+    return accessSecret(storedKey, subject, auth).value();
   }
 
   /** {@link #accessToken} as an {@link SecretKind#ACCESS_TOKEN} carrying when it expires. */
-  public Secret accessSecret(
-      String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
-    Token token = token(storedKey, subject, auth, sourceProxy);
+  public Secret accessSecret(String storedKey, String subject, ServiceAccountKeyAuth auth) {
+    Token token = token(storedKey, subject, auth);
     return new Secret(SecretKind.ACCESS_TOKEN, token.value(), token.expiresAt());
   }
 
@@ -126,10 +118,9 @@ public class ServiceAccountTokens {
     tokens.values().removeIf(token -> token.value().equals(rejected.value()));
   }
 
-  private Token token(
-      String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
+  private Token token(String storedKey, String subject, ServiceAccountKeyAuth auth) {
     Objects.requireNonNull(storedKey, "storedKey");
-    String cacheKey = cacheKey(storedKey, subject, auth, sourceProxy);
+    String cacheKey = cacheKey(storedKey, subject, auth);
     Instant now = clock.instant();
     Token cached = tokens.get(cacheKey);
     if (cached != null && now.isBefore(cached.renewAt())) {
@@ -143,7 +134,7 @@ public class ServiceAccountTokens {
           "Der gespeicherte Dienstkonto-Schlüssel ist nicht lesbar. Bitte den Schlüssel erneut"
               + " hochladen.");
     }
-    Token token = exchange(key, subject, auth, sourceProxy, now);
+    Token token = exchange(key, subject, auth, now);
     if (tokens.size() >= MAX_CACHED) {
       tokens.clear();
     }
@@ -152,25 +143,18 @@ public class ServiceAccountTokens {
   }
 
   private Token exchange(
-      ServiceAccountKey key,
-      String subject,
-      ServiceAccountKeyAuth auth,
-      String sourceProxy,
-      Instant now) {
+      ServiceAccountKey key, String subject, ServiceAccountKeyAuth auth, Instant now) {
     String assertion = sign(key, subject, auth, now);
     SourceFormPost.Response response;
     try {
-      ProxyAndCredentials proxy = ProxyAndCredentials.parse(sourceProxy, null);
       response =
           SourceFormPost.post(
-              SourceHttpClientFactory.buildHttpClient(proxy.proxyHost(), proxy.proxyPort(), false),
+              SourceHttpClientFactory.buildHttpClient(false),
               auth.tokenEndpoint(),
               Map.of("grant_type", GRANT_TYPE, "assertion", assertion),
               TIMEOUT,
               MAX_RESPONSE_BYTES,
               targetAddressValidator);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new SourceCredentialsException(e.getMessage());
     } catch (TargetAddressValidator.TargetAddressBlockedException e) {
       throw new SourceCredentialsException(e.getMessage());
     } catch (io.opaa.sourceaccess.BoundedStreams.LimitExceededException e) {
@@ -287,7 +271,9 @@ public class ServiceAccountTokens {
           + " nicht mehr. Dieselbe Antwort gibt Google, wenn die Uhrzeit des Servers abweicht;"
           + " dann die Uhrzeit prüfen.";
     }
-    return "Der Token-Endpunkt hat den Dienstkonto-Schlüssel abgewiesen (HTTP " + status + ").";
+    return ProxyRefusal.statusMessage(
+        status,
+        "Der Token-Endpunkt hat den Dienstkonto-Schlüssel abgewiesen (HTTP " + status + ").");
   }
 
   /**
@@ -318,13 +304,11 @@ public class ServiceAccountTokens {
     return body.get(name).asString();
   }
 
-  private static String cacheKey(
-      String storedKey, String subject, ServiceAccountKeyAuth auth, String sourceProxy) {
+  private static String cacheKey(String storedKey, String subject, ServiceAccountKeyAuth auth) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
       digest.update(storedKey.getBytes(StandardCharsets.UTF_8));
-      for (String part :
-          new String[] {subject, auth.tokenEndpoint().toString(), auth.scope(), sourceProxy}) {
+      for (String part : new String[] {subject, auth.tokenEndpoint().toString(), auth.scope()}) {
         digest.update((byte) 0);
         if (part != null) {
           digest.update(part.getBytes(StandardCharsets.UTF_8));

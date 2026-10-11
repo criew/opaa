@@ -282,7 +282,6 @@ class OAuthClientTest {
         null,
         null,
         null,
-        null,
         false,
         endpoints,
         0);

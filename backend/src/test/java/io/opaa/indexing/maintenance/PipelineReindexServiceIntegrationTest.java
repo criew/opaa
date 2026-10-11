@@ -123,7 +123,6 @@ class PipelineReindexServiceIntegrationTest {
                 classTempDir.toString(),
                 null,
                 null,
-                null,
                 false));
     uploadLibrary =
         libraryRepository.save(
@@ -940,7 +939,6 @@ class PipelineReindexServiceIntegrationTest {
                 userId,
                 SourceTypes.FILESYSTEM,
                 withdrawnDirectory.toString(),
-                null,
                 null,
                 null,
                 false));

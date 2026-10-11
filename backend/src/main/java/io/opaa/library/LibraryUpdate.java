@@ -23,7 +23,6 @@ public record LibraryUpdate(
     SourceType sourceType,
     String sourcePath,
     URI sourceUrl,
-    String sourceProxy,
     String sourceCredentials,
     Boolean sourceInsecureSsl,
     LibraryScheduleUpdate schedule,

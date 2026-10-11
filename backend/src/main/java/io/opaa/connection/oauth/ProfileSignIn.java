@@ -128,7 +128,7 @@ public class ProfileSignIn {
         switch (registration.signIn()) {
           case ServiceAccountKeyAuth auth ->
               serviceAccountTokens.accessSecret(
-                  registration.secret(), registration.subject(), auth, registration.proxy());
+                  registration.secret(), registration.subject(), auth);
           case ClientCredentialsAuth auth -> grant.token(registration, auth, now);
           default ->
               throw new IllegalStateException(
@@ -139,7 +139,7 @@ public class ProfileSignIn {
     return secret;
   }
 
-  /** One value per registration: a changed secret, scope, tenant or proxy is another token. */
+  /** One value per registration: a changed secret, scope or tenant is another token. */
   private static String fingerprint(ClientRegistration registration) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -149,8 +149,7 @@ public class ProfileSignIn {
             registration.secret(),
             registration.tenant(),
             registration.scopes(),
-            registration.subject(),
-            registration.proxy()
+            registration.subject()
           }) {
         digest.update((byte) 0);
         if (part != null) {

@@ -263,7 +263,6 @@ public abstract class RunSecretContract {
                 type(),
                 settings.sourcePath(),
                 settings.sourceUrl(),
-                settings.sourceProxy(),
                 null,
                 settings.sourceInsecureSsl())
             : KnowledgeLibrary.ownedByUser(
@@ -274,7 +273,6 @@ public abstract class RunSecretContract {
                 type(),
                 settings.sourcePath(),
                 settings.sourceUrl(),
-                settings.sourceProxy(),
                 settings.sourceCredentials(),
                 settings.sourceInsecureSsl());
     if (settings.connectorSettings() != null) {

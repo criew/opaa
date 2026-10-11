@@ -281,7 +281,6 @@ class PrivateStorageQuotaIntegrationTest {
             null,
             null,
             null,
-            null,
             false),
         owner);
   }

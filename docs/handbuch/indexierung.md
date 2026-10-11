@@ -315,7 +315,7 @@ hat, schließt den Zustand. Eine Änderung des Endpoints oder der Geltungsbereic
 einer Runde, Änderungszeiger, Anker des inkrementellen Laufs, gemerkte Ordner) gilt nur für die
 Quelleinstellungen, unter denen er entstand: Adresse, Pfad und die Einstellungen, die der Konnektor
 als auswahlbestimmend vergleicht, etwa Ordner, Spaces, Geltungsbereiche, Filter oder das imitierte
-Konto, dazu das Konto, als das die Quelle verbunden ist. Vorgaben des Zugangs zählen mit. Proxy,
+Konto, dazu das Konto, als das die Quelle verbunden ist. Vorgaben des Zugangs zählen mit. Die
 Zertifikatsprüfung und der Vollabgleich-Rhythmus gehören nicht dazu.
 
 - Ein Lauf, für den niemand eine Betriebsart gewählt hat (Zeitplan, „Jetzt indizieren“, ein
@@ -410,9 +410,8 @@ genannten Dinge mit.
 Ein **Zugang** ist ein Rahmen, den die Systemverwaltung für einen Konnektor vorgibt: Name,
 Server-Adresse, Anmeldeart, bei Anmeldearten mit App-Registrierung Client-ID, Client-Secret,
 Mandant, Ablaufdatum des Secrets und Scopes, dazu die Besitzart (Bibliothek, Person oder beides),
-Proxy, die Zertifikatsprüfung und Vorgaben für die Einstellungen des Konnektors. Wer eine Bibliothek
-auf einem Zugang anlegt, wählt ihn aus und trägt Server, Registrierung, Proxy und Vorgaben nicht
-selbst ein.
+die Zertifikatsprüfung und Vorgaben für die Einstellungen des Konnektors. Wer eine Bibliothek auf
+einem Zugang anlegt, wählt ihn aus und trägt Server, Registrierung und Vorgaben nicht selbst ein.
 
 Die Systemverwaltung pflegt Zugänge unter **Administration → Anbindungen → Zugänge**. Oben steht,
 was zu tun ist („Kein Handlungsbedarf“ oder die Zahl der Zugänge, die Aufmerksamkeit brauchen, und
@@ -445,12 +444,13 @@ vorausgewählt. Das Formular richtet sich nach der Quellart:
 - **Server-Adresse** verlangt eines der Schemata, die die Quellart meldet; der Hinweis unter dem
   Feld nennt sie. Hat die Quellart eine feste Adresse, entfällt das Feld, und das Formular nennt die
   Adresse.
-- **Proxy** (`host:port`, ohne Zugangsdaten, optional) und **Zertifikatsprüfung aussetzen**
-  gelten für jede Bibliothek auf dem Zugang und ersetzen deren eigene Angaben. Wohin der Konnektor
-  sie anwendet, bestimmt er wie bei einer Bibliothek mit eigener Adresse: Beim RSS-Feed etwa gilt
-  der Proxy für jeden Abruf des Laufs, auch für Detailseiten fremder Server, die ausgesetzte
-  Zertifikatsprüfung dagegen nur für den Ursprung des Feeds. Beides gibt es nur bei einer Server-Adresse mit `http://` oder `https://`; einen Zugang mit
-  `smb://`-Adresse und Proxy oder ausgesetzter Zertifikatsprüfung weist OPAA beim Speichern ab.
+- **Zertifikatsprüfung aussetzen** gilt für jede Bibliothek auf dem Zugang und ersetzt deren
+  eigene Angabe. Wohin der Konnektor sie anwendet, bestimmt er wie bei einer Bibliothek mit eigener
+  Adresse: Beim RSS-Feed etwa gilt sie nur für den Ursprung des Feeds. Es gibt sie nur bei einer
+  Server-Adresse mit `http://` oder `https://`; einen Zugang mit `smb://`-Adresse und ausgesetzter
+  Zertifikatsprüfung weist OPAA beim Speichern ab. Einen Proxy tragen weder Zugang noch Bibliothek:
+  Alle Verbindungen gehen über den hausweiten
+  [Ausgangsproxy](deployment.md#ausgangsproxy).
 - **Vorgaben für jede Bibliothek** zeigt je Einstellung, die ein Zugang vorgeben darf, ein Feld:
   Text, Ja/Nein oder eine Auswahl, jeweils mit „Keine Vorgabe“. Meldet die Quellart keine solche
   Einstellung, fehlt der Abschnitt. Eine Vorgabe, die die Quellart nicht meldet, weist OPAA ab.
@@ -458,7 +458,7 @@ vorausgewählt. Das Formular richtet sich nach der Quellart:
   bzw. Client-Credentials ab und nur die, die die Quellart dem Zugang überlässt, etwa weil sie vom
   Realm eines Keycloak abhängen; dann sind sie Pflicht und beginnen mit `https://`, auch auf dem
   eigenen Rechner. Token- und Widerrufs-Endpunkt bekommen Refresh-Tokens und das Client-Secret, die
-  bei `http://` jede Station auf dem Weg mitlesen könnte, auch der Proxy des Zugangs; am
+  bei `http://` jede Station auf dem Weg mitlesen könnte, auch ein Proxy; am
   Autorisierungs-Endpunkt meldet sich die Person an, und eine `http://`-Seite ließe sich unterwegs
   austauschen. Eine andere Adresse markiert das Formular, und OPAA weist sie beim Speichern ab. Endpunkte, die die Quellart selbst festlegt, fragt es nicht ab, und ein Wert dafür wird
   abgewiesen. OPAA schreibt sie beim Speichern fest und erkennt sie nie zur Laufzeit neu.
@@ -467,9 +467,7 @@ vorausgewählt. Das Formular richtet sich nach der Quellart:
   nie an eine neue Adresse. Für einen öffentlichen Client lässt sich stattdessen „Ohne
   Client-Secret speichern“ wählen. Ohne beides weist OPAA die Änderung ab und ändert nichts. Der
   Autorisierungs-Endpunkt bekommt kein Secret; ändert sich nur er, bleibt das Secret. Die Rückfrage
-  vor dem Speichern nennt bei jedem geänderten Endpunkt die alte und die neue Adresse. Ein
-  geänderter Proxy lässt das Secret bestehen, denn über `https://` sieht er nicht, was zu den
-  Endpunkten geht.
+  vor dem Speichern nennt bei jedem geänderten Endpunkt die alte und die neue Adresse.
 - **Scopes** nennt unter dem Feld die Vorgabe der Quellart, die gilt, solange das Feld leer bleibt.
 - **Dienstkonto-Schlüssel** lädt das Formular als JSON-Schlüsseldatei hoch; eine Client-ID fragt
   es dafür nicht ab, OPAA übernimmt sie aus `client_email` des Schlüssels. Gespeichert werden nur
@@ -483,8 +481,7 @@ vorausgewählt. Das Formular richtet sich nach der Quellart:
 **Anmeldung des Zugangs (Client-Credentials, Dienstkonto-Schlüssel).** Bei diesen Anmeldearten
 meldet sich der Zugang selbst an: OPAA holt mit Client-ID und Client-Secret bzw. mit dem
 signierten Schlüssel ein Zugriffstoken beim Token-Endpunkt, den der Konnektor nennt, und gibt der
-Bibliothek nur dieses Token. Der Abruf geht über den Proxy des Zugangs und immer mit
-Zertifikatsprüfung; der Schalter „Zertifikatsprüfung aussetzen“ gilt nur für die Server-Adresse.
+Bibliothek nur dieses Token. Der Abruf geht immer mit Zertifikatsprüfung; der Schalter „Zertifikatsprüfung aussetzen“ gilt nur für die Server-Adresse.
 Das Token hält OPAA bis kurz vor seinem Ablauf. Lehnt der Anbieter die Registrierung ab (etwa ein
 falsches Client-Secret oder ein widerrufener Schlüssel), zeigt die Übersicht am Zugang den
 Handlungsbedarf „Anmeldung abgelehnt“, alle Bibliotheken darauf melden „Abgelaufen“ mit der Systemverwaltung als zuständig,
@@ -557,7 +554,7 @@ Systemverwaltung im Abschnitt **„Verbindungsprotokoll“** dessen Aufbewahrung
 werden, sagt das Formular das und lässt noch nicht speichern.
 
 **Vorschau beim Bearbeiten.** Ändert eine Bearbeitung, was für die Bibliotheken auf dem Zugang gilt
-(Server-Adresse, Anmeldeart, Registrierung, Besitzart, Proxy, Zertifikatsprüfung oder Vorgaben), und
+(Server-Adresse, Anmeldeart, Registrierung, Besitzart, Zertifikatsprüfung oder Vorgaben), und
 hat der Zugang Verbindungen, heißt der Knopf zuerst „Weiter“. Er zeigt, ohne etwas zu speichern, die
 Auswirkungen:
 
@@ -578,7 +575,7 @@ Lehnt der Konnektor die Änderung für eine Bibliothek ab, lässt sie sich so ni
 speichert ein zweiter Klick auf „Speichern“; eine Änderung, die etwas davon verwirft, fragt dann mit
 genau dem Text aus der Vorschau noch einmal nach. Die Rückfrage nennt Personen ohne Zahl. Eine
 Änderung, die keine gespeicherten Zugangsdaten und kein Konto verwirft und den Abgleichstand nicht
-ganz verwirft (etwa nur Proxy oder Zertifikatsprüfung), speichert ohne Rückfrage; den Teil des
+ganz verwirft (etwa nur die Zertifikatsprüfung), speichert ohne Rückfrage; den Teil des
 Abgleichstands, den die neue Konfiguration ungültig macht, verwirft der Konnektor dabei trotzdem.
 Ändert sich ein Feld, gilt die
 Vorschau nicht mehr, und der Knopf heißt
@@ -607,7 +604,7 @@ Adresse nicht zulässig ist:
 Nach der Wahl eines Zugangs richtet sich das Formular nach ihm: Die Adresse ist mit der
 Server-Adresse des Zugangs vorbelegt (eine Adresse darunter ist möglich), das Feld für die
 Zugangsdaten entfällt bei einem Zugang ohne Anmeldung, und Einstellungen, die der Zugang vorgibt
-(etwa die Confluence-Edition oder bei S3 Region und Adressstil), stehen ebenso wie Proxy und
+(etwa die Confluence-Edition oder bei S3 Region und Adressstil), stehen ebenso wie die
 Zertifikatsprüfung des Zugangs nur lesbar mit seinem Wert da. Die Oberfläche schickt für sie keinen
 Wert mit; ändert die Systemverwaltung den Wert einer Vorgabe, während das Formular offen ist, gilt
 beim Speichern der neue. Gibt der Zugang inzwischen eine Einstellung neu vor, die das offene
@@ -624,7 +621,7 @@ Verwaltenden mit diesen Aktionen:
 |---|---|---|
 | „Zugang zuordnen“ | Bibliothek mit eigener Adresse, auch nach „Zugang entfernt“ | verbindet sie über einen gewählten Zugang; die Adresse muss unter dessen Server-Adresse liegen. Liegt sie nicht darunter, fragt der Dialog eine neue Adresse unter dem Zugang ab; so lässt sich eine wegen der Profilpflicht gesperrte Bibliothek reparieren, deren eingefrorene Adresse unter keinem Zugang liegt |
 | „Zugang wechseln“ | Bibliothek auf einem Zugang | verbindet sie über einen anderen Zugang derselben Quellart; der bisherige steht nicht zur Wahl. Eine Adresse unter dem bisherigen Zugang wandert unter den neuen; der Dialog zeigt die neue Adresse. Ändert sich dabei der Server, werden die hinterlegten Zugangsdaten verworfen; die Meldung danach sagt das und führt zu „Quelle bearbeiten“, wo sie neu eingetragen werden |
-| „Zugang lösen“ | Bibliothek auf einem Zugang, ohne Profilpflicht der Quellart | fragt nach; die Bibliothek behält Adresse und Zugangsdaten als eigene, und was der Zugang vorgab (Vorgaben, Proxy, Zertifikatsprüfung), wird zu ihrer eigenen Einstellung. Sie läuft unverändert weiter |
+| „Zugang lösen“ | Bibliothek auf einem Zugang, ohne Profilpflicht der Quellart | fragt nach; die Bibliothek behält Adresse und Zugangsdaten als eigene, und was der Zugang vorgab (Vorgaben, Zertifikatsprüfung), wird zu ihrer eigenen Einstellung. Sie läuft unverändert weiter |
 
 **Test vor dem Zuordnen und Wechseln.** Der Dialog prüft den gewählten Zugang mit der Adresse und
 den Einstellungen der Bibliothek, bevor er etwas speichert: „Verbindung prüfen“ prüft nur,
@@ -657,7 +654,7 @@ eine Aktion. Steht für eine private Bibliothek der Tag fest, ab dem ihr Inhalt 
 der Hinweis ihn als Überschrift „Löschung ab dem …“, die Kachel im Katalog ebenso.
 
 Beim Bearbeiten der Quelle einer Bibliothek auf einem Zugang gelten dieselben Regeln wie im
-Assistenten. Die Angaben des Zugangs (Server-Adresse, Anmeldeart, Vorgaben, Proxy und
+Assistenten. Die Angaben des Zugangs (Server-Adresse, Anmeldeart, Vorgaben und
 Zertifikatsprüfung, nie ein Geheimnis) kommen mit der Bibliothek selbst; ein Anlegerecht braucht es
 dafür nicht. Fehlen sie, lässt sich nichts speichern, die eingetragenen Werte bleiben stehen, und
 der Hinweis sagt das.
@@ -678,14 +675,14 @@ Konnektoren melden:
 | Confluence | möglich | persönliches Geheimnis (Token) | Edition | `https://`, `http://` |
 | Nextcloud | möglich | persönliches Geheimnis (Benutzername und App-Passwort) | keine | `https://`, `http://` |
 | S3-Objektspeicher | möglich | persönliches Geheimnis (Access Key und Secret Key) | Region, Path-Style-Adressierung | `https://`, `http://` |
-| Windows-Dateifreigabe (SMB) | möglich | persönliches Geheimnis (Benutzername und Passwort) | keine | `smb://`, ohne Proxy und Zertifikatsprüfung |
+| Windows-Dateifreigabe (SMB) | möglich | persönliches Geheimnis (Benutzername und Passwort) | keine | `smb://`, ohne Zertifikatsprüfung |
 | Google Drive | möglich | Dienstkonto-Schlüssel (am Zugang) | imitiertes Konto (nur am Zugang) | fest `https://www.googleapis.com` |
 | SharePoint | Pflicht | Client-Credentials (am Zugang, mit Mandant) | keine | fest `https://graph.microsoft.com` |
 | Dropbox | Pflicht | OAuth (App am Zugang, eigene Zustimmung der Bibliothek) | keine | fest `https://api.dropboxapi.com` |
 | Upload, Dateisystem | verboten | – | – | – |
 
 Das persönliche Geheimnis gehört der Bibliothek: Ihre Verwaltenden tragen es ein, der Zugang legt
-nur Server, Anmeldeart, Proxy, Zertifikatsprüfung und Vorgaben fest. Den Dienstkonto-Schlüssel von
+nur Server, Anmeldeart, Zertifikatsprüfung und Vorgaben fest. Den Dienstkonto-Schlüssel von
 Google Drive trägt dagegen der Zugang (Kapitel [Google Drive](konnektor-google-drive.md),
 Abschnitt 2.5), ebenso das Client-Secret von SharePoint (Kapitel [SharePoint](konnektor-sharepoint.md),
 Abschnitt 2.5). Bei „ohne Anmeldung“ erreicht
@@ -696,7 +693,7 @@ steht in ihren Kapiteln.
 
 - Ihre Adresse liegt unter der Server-Adresse des Zugangs. Beim Anlegen ohne Adresse übernimmt sie
   die Server-Adresse; eine Adresse außerhalb wird abgewiesen.
-- Proxy, Zertifikatsprüfung und Vorgaben bestimmt der Zugang. Beim Anlegen, im Verbindungstest, in
+- Zertifikatsprüfung und Vorgaben bestimmt der Zugang. Beim Anlegen, im Verbindungstest, in
   der Auflistung und beim Ändern gelten sie schon, bevor etwas gespeichert ist; sie müssen nicht
   mitgeschickt werden. Ein abweichender Wert wird abgewiesen, ein gleicher angenommen. Die
   Bibliothek speichert nur, was der Zugang ihr überlässt.
@@ -705,12 +702,12 @@ steht in ihren Kapiteln.
   Client-Credentials, Dienstkonto-Schlüssel), weist OPAA mitgeschickte Zugangsdaten ab, und die
   Bibliothek speichert keine.
 - Die Verwaltenden der Bibliothek ordnen sie einem anderen Zugang desselben Konnektors zu oder
-  lösen sie vom Zugang. **Zuordnen übernimmt die Vorgaben des Zugangs:** Eigener Proxy, ausgesetzte
+  lösen sie vom Zugang. **Zuordnen übernimmt die Vorgaben des Zugangs:** Eine ausgesetzte
   Zertifikatsprüfung und eigene Werte für vorgegebene Einstellungen entfallen ohne Rückfrage, bei
   einer Anmeldeart ohne persönliches Geheimnis auch die Zugangsdaten. Eine Adresse unter dem
   bisherigen Zugang wandert dabei unter den neuen; was der bisherige Zugang vorgab und der neue
   nicht vorgibt, behält sie als eigene Einstellung. **Lösen schreibt die Vorgaben in die
-  Bibliothek:** Vorgegebene Einstellungen, Proxy und Zertifikatsprüfung des Zugangs werden ihre
+  Bibliothek:** Vorgegebene Einstellungen und die Zertifikatsprüfung des Zugangs werden ihre
   eigenen, sie läuft also unverändert weiter.
 - **Der Konnektor prüft jeden Übergang.** Ändert Zuordnen, Wechseln oder Lösen, womit die Bibliothek
   ihre Quelle erreicht, prüft ihr Konnektor das Ergebnis wie eine direkte Änderung, bevor etwas
@@ -734,7 +731,7 @@ steht in ihren Kapiteln.
 |---|---|
 | Server-Adresse ändern | Nach Bestätigung werden alle Geheimnisse der Bibliotheken auf dem Zugang verworfen; ihre Adressen wandern unter die neue Server-Adresse. Vorher nennt OPAA die Zahl der betroffenen Verbindungen und der Bibliotheken, deren gespeicherte Zugangsdaten neu einzutragen sind |
 | Client-ID, Mandant, Scopes, einen Endpunkt oder die Anmeldeart ändern | wie oben, ohne Adresswechsel: alle Verbindungen müssen neu verbunden werden. Ein neuer Token- oder Widerrufs-Endpunkt verlangt zudem ein neues Client-Secret, wenn eines hinterlegt ist |
-| Vorgaben, Proxy oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter. Das gilt nicht für eine Vorgabe nur des Zugangs (bei Google Drive das imitierte Konto): Entfällt sie, imitiert keine Bibliothek mehr ein Konto |
+| Vorgaben oder Zertifikatsprüfung ändern | Die Bibliotheken behalten ihre Geheimnisse, es sei denn, eine Vorgabe ändert, woran der Konnektor sie bindet; dann gilt die Bestätigung wie oben für die Betroffenen. Entfällt eine Vorgabe, wird ihr bisheriger Wert zur eigenen Einstellung jeder Bibliothek auf dem Zugang; sie laufen unverändert weiter. Das gilt nicht für eine Vorgabe nur des Zugangs (bei Google Drive das imitierte Konto): Entfällt sie, imitiert keine Bibliothek mehr ein Konto |
 | Dienstkonto-Schlüssel eines anderen Dienstkontos hochladen | wie eine neue Client-ID |
 | Vorgabe nur des Zugangs ändern (bei Google Drive das imitierte Konto) | Nach Bestätigung, die die Zahl der Bibliotheken nennt, verwirft OPAA ihren Abgleichstand; der nächste Lauf jeder Bibliothek liest die Quelle vollständig neu, und ihre Verwaltenden erhalten eine Benachrichtigung. Dokumente des bisherigen Kontos bleiben bis zu diesem Vollabgleich durchsuchbar |
 | nur ein neues Client-Secret zur selben Client-ID bzw. ein neuer Schlüssel desselben Dienstkontos | keine; die Verbindungen bleiben, eine abgelehnte Anmeldung ist aufgehoben |
@@ -742,7 +739,7 @@ steht in ihren Kapiteln.
 | Zugang löschen | alle Geheimnisse verworfen; die Bibliotheken bleiben mit Bestand und dem Hinweis „Zugang entfernt“ stehen |
 
 Jede Änderung, die die Konfiguration einer Bibliothek auf dem Zugang verändert (Server-Adresse,
-Proxy, Zertifikatsprüfung, Vorgaben), prüft zuerst der Konnektor jeder betroffenen Bibliothek, und
+Zertifikatsprüfung, Vorgaben), prüft zuerst der Konnektor jeder betroffenen Bibliothek, und
 zwar bevor etwas gespeichert wird; Bibliotheken mit gleicher Konfiguration prüft er nur einmal.
 Lehnt er die Änderung für eine Bibliothek ab, wird nichts geändert, weder am Zugang noch an einer
 Bibliothek, und die Meldung nennt die Zahl der Bibliotheken je Kategorie (Verbindung, Einstellungen).

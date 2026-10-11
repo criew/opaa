@@ -1,5 +1,6 @@
 package io.opaa.msgraph;
 
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitHandling;
@@ -289,7 +290,10 @@ public final class GraphClient {
     } catch (IOException e) {
       log.debug("Microsoft Graph request failed: {}", e.getClass().getSimpleName());
       throw new GraphException(
-          GraphException.Kind.TRANSIENT, 0, null, "Microsoft Graph ist nicht erreichbar.");
+          GraphException.Kind.TRANSIENT,
+          0,
+          null,
+          ProxyRefusal.describe(e).orElse("Microsoft Graph ist nicht erreichbar."));
     }
   }
 
@@ -299,7 +303,9 @@ public final class GraphClient {
           GraphException.Kind.TRANSIENT,
           status,
           null,
-          "Der Downloadserver von Microsoft Graph hat mit HTTP " + status + " geantwortet.");
+          ProxyRefusal.statusMessage(
+              status,
+              "Der Downloadserver von Microsoft Graph hat mit HTTP " + status + " geantwortet."));
     }
     String suffix = code == null ? "." : " (" + code + ").";
     return switch (status) {
@@ -339,7 +345,8 @@ public final class GraphClient {
               GraphException.Kind.TRANSIENT,
               status,
               code,
-              "Microsoft Graph hat mit HTTP " + status + " geantwortet" + suffix);
+              ProxyRefusal.statusMessage(
+                  status, "Microsoft Graph hat mit HTTP " + status + " geantwortet" + suffix));
     };
   }
 

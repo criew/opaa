@@ -366,7 +366,7 @@ export default function LibraryDetailPage() {
       name: fields.name.trim(),
       description: fields.description?.trim() || undefined,
       // Bewusst kein Quellkonfigurationsfeld gesetzt: das Backend lässt die gespeicherte
-      // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/sourceProxy/
+      // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/
       // sourceCredentials/sourceInsecureSsl-Felder in der Anfrage vorhanden ist (ADR-0018). Das
       // Bearbeiten der Quellkonfiguration selbst laeuft ueber EditLibrarySourceDialog weiter
       // unten in dieser Datei (#516) - dieses Stammdaten-Formular hier ruehrt sie nicht an.

@@ -125,7 +125,6 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
       serverUrl: 'https://cloud.personen.example',
       authMethod: 'PERSONAL_SECRET',
       connectorDefaults: null,
-      sourceProxy: null,
       sourceInsecureSsl: false,
     },
     privateLibrary: true,
@@ -232,7 +231,6 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 0,
     sourceType: 'S3',
     sourceUrl: 'https://minio.intern.example:9000',
-    sourceProxy: null,
     sourceInsecureSsl: false,
     sourceCredentialsSet: true,
     sourceSettings: {

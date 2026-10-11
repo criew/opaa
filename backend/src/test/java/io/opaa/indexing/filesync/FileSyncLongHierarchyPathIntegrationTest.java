@@ -97,7 +97,6 @@ class FileSyncLongHierarchyPathIntegrationTest {
                 null,
                 "https://ablage.example",
                 null,
-                null,
                 false));
   }
 

@@ -72,7 +72,6 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
     return new SourceSettings(
         library.getSourcePath(),
         library.getSourceUrl(),
-        library.getSourceProxy(),
         library.getSourceCredentials(),
         library.isSourceInsecureSsl(),
         ConnectorData.storedIn(library),

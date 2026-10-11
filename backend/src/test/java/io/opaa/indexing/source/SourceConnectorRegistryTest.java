@@ -343,7 +343,6 @@ class SourceConnectorRegistryTest {
             null,
             "https://example.org",
             null,
-            null,
             false);
     library.updateSourceSettings("{\"root\": \"/intern/pfad\"}");
     SourceConnector connector =

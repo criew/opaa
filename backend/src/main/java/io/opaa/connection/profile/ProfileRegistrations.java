@@ -95,7 +95,6 @@ public class ProfileRegistrations {
         profile.getScopes(),
         signIn,
         subject,
-        profile.getSourceProxy(),
         profile.isSignInRejected(),
         profile.getEndpoints(),
         profile.getVersion());
@@ -129,7 +128,6 @@ public class ProfileRegistrations {
         profile.getScopes(),
         signIn,
         null,
-        profile.getSourceProxy(),
         profile.isSignInRejected(),
         endpoints,
         profile.getVersion(),

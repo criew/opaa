@@ -610,7 +610,6 @@ class PrivateLibraryIntegrationTest {
         null,
         null,
         null,
-        null,
         profile);
   }
 

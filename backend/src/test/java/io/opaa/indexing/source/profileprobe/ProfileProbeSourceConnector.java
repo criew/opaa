@@ -45,8 +45,8 @@ public class ProfileProbeSourceConnector implements SourceConnector {
   /** What a profile of this type leaves open, as a feed leaves its detail pages. */
   public static final String GAP = "Die Pflicht legt nur die Adresse der Testquelle fest.";
 
-  /** A proxy host through which the connector cannot reach its target. */
-  public static final String UNREACHABLE_PROXY = "unerreichbar.example.org";
+  /** A topic whose source the connector cannot reach once the connection is checked. */
+  public static final String UNREACHABLE_TOPIC = "unerreichbar";
 
   /** A topic the connector refuses in edition {@code DC}. */
   public static final String CLOUD_ONLY_TOPIC = "nur-cloud";
@@ -151,9 +151,9 @@ public class ProfileProbeSourceConnector implements SourceConnector {
       throw new ValidationException("sourceUrl ist erforderlich");
     }
     requireTopicFits(requested.connectorSettings());
-    if (requested.sourceProxy() != null && requested.sourceProxy().startsWith(UNREACHABLE_PROXY)) {
-      throw new SourceTargetRefusedException(
-          "Die Testquelle ist über diesen Proxy nicht erreichbar");
+    if (requested.connectorSettings() != null
+        && UNREACHABLE_TOPIC.equals(requested.connectorSettings().get("topic"))) {
+      throw new SourceTargetRefusedException("Die Testquelle ist nicht erreichbar");
     }
     return requested;
   }

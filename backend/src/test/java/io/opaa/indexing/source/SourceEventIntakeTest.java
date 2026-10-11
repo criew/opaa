@@ -84,7 +84,6 @@ class SourceEventIntakeTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            null,
             "token",
             false);
     library.setWebhookSecret("geheim");

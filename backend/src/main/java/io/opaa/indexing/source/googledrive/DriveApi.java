@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.googledrive;
 
 import io.opaa.indexing.source.RequestBudget;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitHandling;
@@ -187,7 +188,9 @@ final class DriveApi {
       } catch (IOException e) {
         log.debug("Drive request to {} failed: {}", path, e.getClass().getSimpleName());
         throw new DriveApiException(
-            DriveApiException.Kind.TRANSIENT, 0, "Google Drive ist nicht erreichbar.");
+            DriveApiException.Kind.TRANSIENT,
+            0,
+            ProxyRefusal.describe(e).orElse("Google Drive ist nicht erreichbar."));
       }
       int status = response.statusCode();
       if (status >= 200 && status < 300) {
@@ -264,7 +267,8 @@ final class DriveApi {
           new DriveApiException(
               DriveApiException.Kind.TRANSIENT,
               status,
-              "Google Drive hat mit HTTP " + status + " geantwortet.");
+              ProxyRefusal.statusMessage(
+                  status, "Google Drive hat mit HTTP " + status + " geantwortet."));
     };
   }
 

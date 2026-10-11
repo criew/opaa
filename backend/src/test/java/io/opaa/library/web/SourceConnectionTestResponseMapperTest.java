@@ -58,7 +58,6 @@ class SourceConnectionTestResponseMapperTest {
         new SourceConnectionTestRequest("CONFLUENCE")
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/documents/"))
-            .sourceProxy("proxy.example.com:8080")
             .sourceCredentials("admin:secret")
             .sourceInsecureSsl(true)
             .libraryId(libraryId)
@@ -69,7 +68,6 @@ class SourceConnectionTestResponseMapperTest {
     assertThat(domain.sourceType()).isEqualTo(SourceTypes.CONFLUENCE);
     assertThat(domain.sourcePath()).isEqualTo("/data/documents");
     assertThat(domain.sourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
-    assertThat(domain.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(domain.sourceCredentials()).isEqualTo("admin:secret");
     assertThat(domain.sourceInsecureSsl()).isTrue();
     assertThat(domain.libraryId()).isEqualTo(libraryId);
@@ -107,7 +105,6 @@ class SourceConnectionTestResponseMapperTest {
     SourceBrowseRequest request =
         new SourceBrowseRequest(URI.create("https://s3.example.org"))
             .sourceCredentials("ak:sk")
-            .sourceProxy("proxy.example.com:8080")
             .sourceInsecureSsl(true)
             .query(Map.of("region", "eu-central-1", "pathStyle", true))
             .libraryId(libraryId);
@@ -118,7 +115,6 @@ class SourceConnectionTestResponseMapperTest {
     assertThat(domain.sourceType()).isEqualTo(SourceTypes.S3);
     assertThat(domain.sourceUrl()).isEqualTo(URI.create("https://s3.example.org"));
     assertThat(domain.sourceCredentials()).isEqualTo("ak:sk");
-    assertThat(domain.sourceProxy()).isEqualTo("proxy.example.com:8080");
     assertThat(domain.sourceInsecureSsl()).isTrue();
     assertThat(domain.query().asMap())
         .containsEntry("region", "eu-central-1")

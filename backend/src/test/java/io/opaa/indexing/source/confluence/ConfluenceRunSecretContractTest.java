@@ -76,8 +76,6 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
               java.net.URI.create("http://127.0.0.1:" + nothing.getAddress().getPort()),
               ConfluenceEdition.CLOUD,
               new ConfluenceCredentials.CloudApiToken("dienst@behoerde.example", "token"),
-              null,
-              -1,
               false);
       ConfluenceClient client =
           new ConfluenceClientFactory(properties(), TargetAddressValidator.disabled(), wait -> {})
@@ -115,7 +113,7 @@ class ConfluenceRunSecretContractTest extends RunSecretContract {
             List.of(new ConfluenceSpaceSelection("ENG", null)),
             null);
     ConnectorData settings = confluence.sortedByKey().toData();
-    return new SourceSettings(null, server.baseUrl(), null, TOKEN, false, settings);
+    return new SourceSettings(null, server.baseUrl(), TOKEN, false, settings);
   }
 
   @Override

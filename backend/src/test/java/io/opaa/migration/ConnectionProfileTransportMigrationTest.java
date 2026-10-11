@@ -14,9 +14,13 @@ class ConnectionProfileTransportMigrationTest extends AbstractBaselineTest {
 
   private static final String FILE = "db/changelog/connections/2026-10-04-profile-transport.yaml";
 
+  /** Drops the proxy column again and therefore depends on this file. */
+  private static final String DROP_PROXY =
+      "db/changelog/connections/2026-10-11-drop-profile-source-proxy.yaml";
+
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(FILE);
+    return MasterChangelog.filesExcept(FILE, DROP_PROXY);
   }
 
   @Test

@@ -181,7 +181,6 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
     return new SourceSettings(
         null,
         "http://127.0.0.1:" + server.getAddress().getPort() + "/feed.xml",
-        null,
         secret,
         false,
         null);

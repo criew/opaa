@@ -1,0 +1,9 @@
+databaseChangeLog:
+  - changeSet:
+      id: connections-2026-10-11-drop-profile-source-proxy
+      author: opaa
+      comment: "A connection profile carries no proxy of its own: every connection takes the house-wide outbound proxy."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE connection_profiles DROP COLUMN source_proxy;

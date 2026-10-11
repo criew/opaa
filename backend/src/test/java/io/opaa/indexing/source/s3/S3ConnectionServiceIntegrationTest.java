@@ -50,7 +50,6 @@ class S3ConnectionServiceIntegrationTest {
     S3ConnectionService.Probe probe =
         service.probe(
             endpoint() + "/",
-            null,
             store.rootCredentials().stored(),
             false,
             settings(S3Scope.of(bucket, "2025/"), S3Scope.of(bucket, "viele")));
@@ -78,8 +77,7 @@ class S3ConnectionServiceIntegrationTest {
             S3TestFixture.policyAllowing(bucket, "s3:ListBucket", "s3:GetBucketLocation"));
 
     S3ConnectionService.Probe probe =
-        service.probe(
-            endpoint(), null, listOnly.stored(), false, settings(S3Scope.of(bucket, "2025/")));
+        service.probe(endpoint(), listOnly.stored(), false, settings(S3Scope.of(bucket, "2025/")));
 
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.credentialsVerified()).isTrue();
@@ -101,7 +99,6 @@ class S3ConnectionServiceIntegrationTest {
     S3ConnectionService.Probe probe =
         service.probe(
             endpoint(),
-            null,
             otherOnly.stored(),
             false,
             settings(S3Scope.of(bucket, ""), S3Scope.of("opaa-gibtsnicht", "")));
@@ -120,11 +117,7 @@ class S3ConnectionServiceIntegrationTest {
   void refusedCredentialsEndTheTestAsSuchWithoutEchoingTheSecret() throws Exception {
     S3ConnectionService.Probe probe =
         service.probe(
-            endpoint(),
-            null,
-            "falscher-key:falsches-geheimnis",
-            false,
-            settings(S3Scope.of(bucket, "")));
+            endpoint(), "falscher-key:falsches-geheimnis", false, settings(S3Scope.of(bucket, "")));
 
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.credentialsVerified()).isFalse();
@@ -137,7 +130,7 @@ class S3ConnectionServiceIntegrationTest {
   @Test
   void listsTheBucketsTheKeyMaySee() throws Exception {
     S3BucketListResult root =
-        service.listBuckets(endpoint(), null, store.rootCredentials().stored(), false, null, true);
+        service.listBuckets(endpoint(), store.rootCredentials().stored(), false, null, true);
     assertThat(root.permitted()).isTrue();
     assertThat(root.buckets()).contains(bucket);
 
@@ -145,12 +138,12 @@ class S3ConnectionServiceIntegrationTest {
     S3Credentials restricted =
         store.createUser(S3TestFixture.policyAllowing(bucket, "s3:ListBucket"));
     S3BucketListResult filtered =
-        service.listBuckets(endpoint(), null, restricted.stored(), false, null, true);
+        service.listBuckets(endpoint(), restricted.stored(), false, null, true);
     assertThat(filtered.permitted()).isTrue();
     assertThat(filtered.buckets()).containsExactly(bucket);
 
     assertThatThrownBy(
-            () -> service.listBuckets(endpoint(), null, "falsch:geheim-0815", false, null, true))
+            () -> service.listBuckets(endpoint(), "falsch:geheim-0815", false, null, true))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Zugangsdaten abgelehnt")
         .satisfies(e -> assertThat(e.getMessage()).doesNotContain("geheim-0815"));

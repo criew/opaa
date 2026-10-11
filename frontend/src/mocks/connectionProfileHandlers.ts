@@ -127,15 +127,16 @@ function librariesOn(profile: ConnectionProfileResponse) {
 }
 
 /**
- * The connector's refusals of a proposed change: in the mocks, a proxy on an `.invalid` host is
- * out of reach for every library on the profile.
+ * The connector's refusals of a proposed change: in the mocks, a server address on an `.invalid`
+ * host is out of reach for every library on the profile.
  */
 function refusalsOf(profile: ConnectionProfileResponse, body: ConnectionProfileUpdateRequest) {
-  if (!body.sourceProxy?.split(':')[0].endsWith('.invalid')) return []
+  const host = body.serverUrl.replace(/^[a-z]+:\/\//i, '').split(/[/:]/)[0]
+  if (!host.endsWith('.invalid')) return []
   return Array.from({ length: librariesOn(profile) }, (_, index) => ({
     libraryId: `library-on-${profile.id}-${index + 1}`,
     category: 'CONNECTION' as const,
-    message: `Der Proxy ${body.sourceProxy} ist nicht erreichbar.`,
+    message: `Der Server ${host} ist nicht erreichbar.`,
   }))
 }
 
@@ -146,7 +147,7 @@ function count(n: number, one: string, many: string) {
 /**
  * What saving `body` discards, as the backend plans it: in the mocks a new address or registration
  * discards every secret of the profile - one stored secret per library - and ends the accounts of
- * persons, as does an ownership without persons; address, proxy, TLS switch and defaults change
+ * persons, as does an ownership without persons; address, TLS switch and defaults change
  * every library's configuration. The confirmation is the 409's text.
  */
 function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileUpdateRequest) {
@@ -159,7 +160,6 @@ function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileU
     (profile.revocationEndpoint ?? null) !== (body.revocationEndpoint ?? null)
   const reconfigured =
     profile.serverUrl !== body.serverUrl.replace(/\/+$/, '') ||
-    (profile.sourceProxy ?? null) !== (body.sourceProxy ?? null) ||
     profile.sourceInsecureSsl !== Boolean(body.sourceInsecureSsl) ||
     JSON.stringify(profile.connectorSettings ?? null) !==
       JSON.stringify(body.connectorSettings ?? null)
@@ -225,7 +225,6 @@ export const connectionProfileHandlers = [
       tokenEndpoint: body.tokenEndpoint ?? null,
       revocationEndpoint: body.revocationEndpoint ?? null,
       connectorSettings: body.connectorSettings ?? null,
-      sourceProxy: body.sourceProxy ?? null,
       sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       connectionCount: 0,
       connectedAccountCount: { count: null, fewerThan: 5 },
@@ -309,7 +308,6 @@ export const connectionProfileHandlers = [
       tokenEndpoint: body.tokenEndpoint ?? null,
       revocationEndpoint: body.revocationEndpoint ?? null,
       connectorSettings: body.connectorSettings ?? null,
-      sourceProxy: body.sourceProxy ?? null,
       sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       updatedAt: new Date().toISOString(),
     }
@@ -475,7 +473,6 @@ export const connectionProfileHandlers = [
           authMethod: p.authMethod,
           ownership: p.ownership,
           ownAccount: ownAccounts.includes(p.id),
-          sourceProxy: p.sourceProxy ?? null,
           sourceInsecureSsl: p.sourceInsecureSsl,
           connectorDefaults: p.connectorSettings ?? null,
         }

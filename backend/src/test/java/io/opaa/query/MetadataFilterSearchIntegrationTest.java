@@ -639,7 +639,6 @@ class MetadataFilterSearchIntegrationTest {
             sourcePath.toString(),
             null,
             null,
-            null,
             false));
   }
 

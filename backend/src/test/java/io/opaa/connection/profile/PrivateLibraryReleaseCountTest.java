@@ -94,7 +94,6 @@ class PrivateLibraryReleaseCountTest {
                     null,
                     "https://person.example.org/privat",
                     null,
-                    null,
                     false))
         .toList();
   }

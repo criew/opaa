@@ -390,7 +390,6 @@ class MetadataFilterOptionsServiceIntegrationTest {
             sourcePath.toString(),
             null,
             null,
-            null,
             false));
   }
 

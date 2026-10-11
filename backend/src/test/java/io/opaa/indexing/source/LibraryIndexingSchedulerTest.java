@@ -78,7 +78,6 @@ class LibraryIndexingSchedulerTest {
             null,
             "https://example.org/docs/",
             null,
-            null,
             false);
     library.updateSchedule(true, LibraryScheduleCodec.toCron(ScheduleFrequency.DAILY, 3, 0, null));
     return library;

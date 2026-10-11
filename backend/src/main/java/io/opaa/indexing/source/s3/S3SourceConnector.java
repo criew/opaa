@@ -32,7 +32,6 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -54,9 +53,9 @@ import org.springframework.http.HttpHeaders;
  * An S3-compatible object store (ADR-0027). {@code sourceUrl} is the endpoint, stored normalised;
  * the credentials are required as {@code accessKey:secretKey[:sessionToken]}; the scopes and
  * patterns are the connector settings, read as {@link S3SourceSettings}. Before anything is stored,
- * the endpoint, the proxy and - under virtual-host addressing - every bucket host pass the target
- * validation (Entscheidung 8). A changed endpoint or changed settings discard the resumption state,
- * so the next run lists every scope from scratch (Entscheidung 3).
+ * the endpoint and - under virtual-host addressing - every bucket host pass the target validation
+ * (Entscheidung 8). A changed endpoint or changed settings discard the resumption state, so the
+ * next run lists every scope from scratch (Entscheidung 3).
  */
 public class S3SourceConnector
     implements SourceConnector, SourceBrowser, OriginalAccess, PushIntakeHandler {
@@ -252,8 +251,7 @@ public class S3SourceConnector
       throw new ValidationException("sourceSettings sind erforderlich, wenn sourceType S3 ist");
     }
     S3SourceSettings settings = settingsOf(requested.connectorSettings());
-    requireReachableTargets(
-        normalizedUrl, requested.sourceProxy(), requested.sourceCredentials(), settings);
+    requireReachableTargets(normalizedUrl, requested.sourceCredentials(), settings);
     return requested
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(S3SourceSettingsJson.toData(settings));
@@ -279,8 +277,7 @@ public class S3SourceConnector
     }
     if (requested.connectorSettings() != null) {
       S3SourceSettings settings = settingsOf(requested.connectorSettings());
-      requireReachableTargets(
-          stored.sourceUrl(), stored.sourceProxy(), stored.sourceCredentials(), settings);
+      requireReachableTargets(stored.sourceUrl(), stored.sourceCredentials(), settings);
       return requested.withConnectorSettings(S3SourceSettingsJson.toData(settings));
     }
     return requested;
@@ -293,10 +290,7 @@ public class S3SourceConnector
    * after a profile's new server address); given ones must still parse.
    */
   private void requireReachableTargets(
-      String normalizedUrl,
-      String sourceProxy,
-      String sourceCredentials,
-      S3SourceSettings s3Settings) {
+      String normalizedUrl, String sourceCredentials, S3SourceSettings s3Settings) {
     if (sourceCredentials != null) {
       try {
         S3Credentials.parse(sourceCredentials);
@@ -304,18 +298,9 @@ public class S3SourceConnector
         throw new ValidationException(e.getMessage());
       }
     }
-    ProxyAndCredentials proxy;
-    try {
-      proxy = ProxyAndCredentials.parse(sourceProxy, null);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new ValidationException(e.getMessage());
-    }
     try {
       clientFactory.validateTargets(
-          URI.create(normalizedUrl),
-          proxy.proxyHost(),
-          s3Settings.pathStyle(),
-          s3Settings.scopes());
+          URI.create(normalizedUrl), s3Settings.pathStyle(), s3Settings.scopes());
     } catch (S3AccessException e) {
       throw new SourceTargetRefusedException(e.getMessage());
     }
@@ -395,7 +380,6 @@ public class S3SourceConnector
       probe =
           connectionService.probe(
               settings.sourceUrl(),
-              blankToNull(settings.sourceProxy()),
               blankToNull(settings.sourceCredentials()),
               settings.sourceInsecureSsl(),
               probed == null ? null : settingsOf(probed));
@@ -448,12 +432,7 @@ public class S3SourceConnector
     try {
       result =
           connectionService.listBuckets(
-              settings.sourceUrl(),
-              blankToNull(settings.sourceProxy()),
-              credentials,
-              settings.sourceInsecureSsl(),
-              region,
-              pathStyle);
+              settings.sourceUrl(), credentials, settings.sourceInsecureSsl(), region, pathStyle);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Bucket-Auflistung wurde unterbrochen.");

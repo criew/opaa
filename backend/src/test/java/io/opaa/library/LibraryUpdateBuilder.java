@@ -19,7 +19,6 @@ public final class LibraryUpdateBuilder {
   private SourceType sourceType;
   private String sourcePath;
   private URI sourceUrl;
-  private String sourceProxy;
   private String sourceCredentials;
   private Boolean sourceInsecureSsl;
   private LibraryScheduleUpdate schedule;
@@ -53,11 +52,6 @@ public final class LibraryUpdateBuilder {
 
   public LibraryUpdateBuilder sourceUrl(URI sourceUrl) {
     this.sourceUrl = sourceUrl;
-    return this;
-  }
-
-  public LibraryUpdateBuilder sourceProxy(String sourceProxy) {
-    this.sourceProxy = sourceProxy;
     return this;
   }
 
@@ -103,7 +97,6 @@ public final class LibraryUpdateBuilder {
         sourceType,
         sourcePath,
         sourceUrl,
-        sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
         schedule,

@@ -26,7 +26,6 @@ public record LibraryProfileState(UUID id, String name, boolean removed, Frame f
                 profile.getServerUrl(),
                 profile.getAuthMethod(),
                 ConnectorData.fromJson(profile.getConnectorSettings()),
-                profile.getSourceProxy(),
                 profile.isSourceInsecureSsl())
             : null);
   }
@@ -36,6 +35,5 @@ public record LibraryProfileState(UUID id, String name, boolean removed, Frame f
       String serverUrl,
       ConnectionAuthMethod authMethod,
       ConnectorData connectorDefaults,
-      String sourceProxy,
       boolean sourceInsecureSsl) {}
 }

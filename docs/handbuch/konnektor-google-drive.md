@@ -112,7 +112,6 @@ Schlüssel noch imitiertes Konto, nur ihre Bereiche.
 | Anmeldeart | Dienstkonto-Schlüssel |
 | Dienstkonto-Schlüssel | die JSON-Schlüsseldatei; die Client-ID übernimmt OPAA aus `client_email` |
 | Imitiertes Konto (Vorgabe `subject`) | optional; ohne Angabe imitiert keine Bibliothek ein Konto |
-| Proxy | optional, `host:port`; gilt für Anmeldung und Abrufe aller Bibliotheken darauf |
 
 - Ein imitiertes Konto an der Bibliothek weist OPAA unter einem Zugang ab.
 - **Imitiertes Konto ändern:** Vor dem Speichern nennt OPAA die Zahl der Bibliotheken auf dem
@@ -149,7 +148,6 @@ Schlüssel noch imitiertes Konto, nur ihre Bereiche.
 | Imitiertes Konto (`sourceSettings.subject`) | optional, die E-Mail-Adresse eines Kontos der Domäne; nur mit domänenweiter Delegation. Unter einem Zugang entfällt das Feld |
 | Bereiche (`sourceSettings.scopes`) | Pflicht, ein bis fünfzig Einträge `{"drive": "<ID>"}`, `{"folder": "<ID>"}` oder `{"myDrive": true}`; „Meine Ablage" nur mit imitiertem Konto |
 | Eigener Vollabgleichsrhythmus (`sourceSettings.fullSyncIntervalDays`) | optional, ganze Tage; ohne Angabe gilt der Rhythmus der Installation |
-| Proxy (`sourceProxy`) | optional, `host:port`; gilt für Anmeldung und Abrufe. Unter einem Zugang gilt dessen Proxy |
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | nicht möglich, wird abgewiesen |
 
 Überlappende Bereiche werden nicht abgewiesen. Eine Datei bleibt ein Dokument; ihr Ordner kommt

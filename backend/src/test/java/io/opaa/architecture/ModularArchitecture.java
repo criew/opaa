@@ -511,7 +511,6 @@ public final class ModularArchitecture {
       Set.of(
           "knowledge.KnowledgeLibrary#getSourceCredentials",
           "knowledge.KnowledgeLibrary#getSourceUrl",
-          "knowledge.KnowledgeLibrary#getSourceProxy",
           "knowledge.KnowledgeLibrary#isSourceInsecureSsl",
           "knowledge.KnowledgeLibrary#getSourceSettings",
           "indexing.source.ConnectorData#storedIn");

@@ -33,7 +33,6 @@ class DefaultRunModesTest {
           null,
           "https://wiki.example.org",
           null,
-          null,
           false);
   private final SourceIndexingExecutor incremental =
       executor(

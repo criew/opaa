@@ -27,7 +27,7 @@ export type GoogleDriveSettings = {
 
 /**
  * Everything the form edits (ADR-0040): the uploaded key file - never shown, never returned -, the
- * account it belongs to, the imitated account, the scopes and the proxy. `storedSubject` is the
+ * account it belongs to, the imitated account and the scopes. `storedSubject` is the
  * imitated account the stored key serves; another one needs the key again.
  */
 export interface GoogleDriveSourceValues {
@@ -36,7 +36,6 @@ export interface GoogleDriveSourceValues {
   subject: string
   storedSubject: string
   scopes: GoogleDriveScope[]
-  sourceProxy: string
   /** The library's own full-sync rhythm, resent as it is: the connector replaces its settings whole. */
   fullSyncIntervalDays: number | null
 }
@@ -47,7 +46,6 @@ export const EMPTY_GOOGLE_DRIVE_VALUES: GoogleDriveSourceValues = {
   subject: '',
   storedSubject: '',
   scopes: [],
-  sourceProxy: '',
   fullSyncIntervalDays: null,
 }
 
@@ -168,7 +166,6 @@ export function googleDriveSettingsOf(values: GoogleDriveSourceValues): Record<s
 export function googleDrivePayloadOf(values: GoogleDriveSourceValues): LibrarySourceConfigPayload {
   return {
     sourceUrl: GOOGLE_DRIVE_API,
-    sourceProxy: values.sourceProxy.trim() || undefined,
     sourceCredentials: values.keyFile || undefined,
     sourceInsecureSsl: false,
     sourceSettings: googleDriveSettingsOf(values),

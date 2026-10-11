@@ -49,7 +49,6 @@ const DRAFT: WizardDraft = {
   sourceValues: {
     sourceUrl: 'https://cloud.bauamt.example',
     username: '',
-    sourceProxy: '',
     sourceInsecureSsl: false,
     folders: '/Bauamt',
   },

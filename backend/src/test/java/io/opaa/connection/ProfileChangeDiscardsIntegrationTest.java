@@ -43,9 +43,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * The preview of a profile change names what saving it discards - stored secrets of libraries,
  * configurations, connected accounts of persons, sync states - and saving does exactly that, for
- * each kind of change: address, sign-in method, a default with and without binding, proxy and TLS
- * switch, ownership, registration. Its confirmation is word for word the question of the 409, and
- * the private libraries it releases are the ones saving releases, as masked as every other number.
+ * each kind of change: address, sign-in method, a default with and without binding, the TLS switch,
+ * ownership, registration. Its confirmation is word for word the question of the 409, and the
+ * private libraries it releases are the ones saving releases, as masked as every other number.
  */
 @OpaaIntegrationTest
 class ProfileChangeDiscardsIntegrationTest {
@@ -143,8 +143,8 @@ class ProfileChangeDiscardsIntegrationTest {
   }
 
   @Test
-  void aProxyAndTlsChangeKeepsTheSecretsAndAsksNothing() throws Exception {
-    String name = "Zugang Proxy " + UUID.randomUUID();
+  void aTlsChangeKeepsTheSecretsAndAsksNothing() throws Exception {
+    String name = "Zugang TLS " + UUID.randomUUID();
     UUID profile = probeProfile(name, "PERSONAL_SECRET", "");
     probeLibrary(profile, "/a", "a:1");
     probeLibrary(profile, "/b", null);
@@ -152,11 +152,7 @@ class ProfileChangeDiscardsIntegrationTest {
     Saved saved =
         previewThenSave(
             profile,
-            probeChange(
-                name,
-                PROBE_SERVER,
-                "PERSONAL_SECRET",
-                ", \"sourceProxy\": \"proxy.example.org:3128\", \"sourceInsecureSsl\": true"),
+            probeChange(name, PROBE_SERVER, "PERSONAL_SECRET", ", \"sourceInsecureSsl\": true"),
             false);
 
     assertThat(saved.secretsDiscarded()).isZero();
@@ -406,7 +402,6 @@ class ProfileChangeDiscardsIntegrationTest {
                           PersonProbeSourceConnector.TYPE,
                           null,
                           PERSON_SERVER + "/privat",
-                          null,
                           null,
                           false));
               shellService.registerCreated(

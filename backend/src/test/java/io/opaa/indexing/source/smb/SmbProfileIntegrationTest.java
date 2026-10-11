@@ -55,12 +55,7 @@ class SmbProfileIntegrationTest {
   }
 
   @Test
-  void aProfileOfAFileServerTakesNeitherProxyNorASkippedCertificateCheck() throws Exception {
-    mockMvc
-        .perform(
-            as(ADMIN, post(PROFILES)).content(profileJson(", \"sourceProxy\": \"p.example:8080\"")))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error").value(Matchers.containsString("http:// oder https://")));
+  void aProfileOfAFileServerTakesNoSkippedCertificateCheck() throws Exception {
     mockMvc
         .perform(as(ADMIN, post(PROFILES)).content(profileJson(", \"sourceInsecureSsl\": true")))
         .andExpect(status().isBadRequest())

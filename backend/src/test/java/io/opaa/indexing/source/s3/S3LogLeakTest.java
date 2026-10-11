@@ -125,8 +125,6 @@ class S3LogLeakTest {
             "us-east-1",
             true,
             new S3Credentials(ACCESS_KEY, SECRET_KEY, SESSION_TOKEN),
-            null,
-            -1,
             false);
 
     try (S3ObjectStore store = factory.create(connection, List.of(S3Scope.of("docs", "")))) {

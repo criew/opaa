@@ -44,27 +44,10 @@ class S3ConnectionTest {
   @Test
   void defaultsTheRegionAndNeverPrintsTheCredentials() {
     S3Connection connection =
-        new S3Connection(
-            URI.create("https://minio.intern:9000"), " ", true, CREDENTIALS, "proxy", 3128, false);
+        new S3Connection(URI.create("https://minio.intern:9000"), " ", true, CREDENTIALS, false);
 
     assertThat(connection.region()).isEqualTo(S3Connection.DEFAULT_REGION);
     assertThat(connection.toString()).doesNotContain("geheim").contains("minio.intern:9000");
-  }
-
-  @Test
-  void aProxyNeedsAUsablePort() {
-    assertThatThrownBy(
-            () ->
-                new S3Connection(
-                    URI.create("https://minio.intern"),
-                    "us-east-1",
-                    true,
-                    CREDENTIALS,
-                    "proxy",
-                    -1,
-                    false))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("port");
   }
 
   @Test
@@ -72,7 +55,7 @@ class S3ConnectionTest {
     assertThatThrownBy(
             () ->
                 new S3Connection(
-                    URI.create("https://minio.intern"), "us-east-1", true, null, null, -1, false))
+                    URI.create("https://minio.intern"), "us-east-1", true, null, false))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }

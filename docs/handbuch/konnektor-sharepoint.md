@@ -112,7 +112,6 @@ Site eingeben (Abschnitt 3.1).
 | Client-Secret | Wert des geheimen Clientschlüssels |
 | Ablaufdatum des Secrets | optional, für die Erinnerung |
 | Scopes | leer lassen; OPAA fragt `https://graph.microsoft.com/.default`, also alle erteilten Anwendungsberechtigungen. Ein anderer Wert scheitert bei Entra |
-| Proxy | optional, `host:port`; gilt für Anmeldung und Abrufe aller Bibliotheken darauf |
 
 - Die Bibliothek trägt weder Secret noch Token, nur ihre Dokumentbibliotheken.
 - **Abgelehntes Secret:** Weist Entra die App ab (Secret abgelaufen oder falsch, Zustimmung

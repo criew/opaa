@@ -111,7 +111,6 @@ class ConfluenceIndexingExecutorVisitPageTest {
             SourceTypes.CONFLUENCE,
             null,
             BASE,
-            null,
             "token",
             false);
     ConfluenceTestSettings.configure(

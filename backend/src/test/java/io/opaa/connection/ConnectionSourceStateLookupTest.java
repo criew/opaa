@@ -85,7 +85,6 @@ class ConnectionSourceStateLookupTest {
             SourceTypes.RSS_FEED,
             null,
             url,
-            null,
             secret,
             false);
     rows.put(library.getId(), library);

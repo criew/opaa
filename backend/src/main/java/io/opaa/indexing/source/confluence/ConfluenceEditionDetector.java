@@ -48,19 +48,17 @@ public final class ConfluenceEditionDetector {
    * @throws ConfluenceAccessException when the target validation rejects the address
    * @throws ConfluenceConnection.InvalidBaseUrlException when the address is not a usable URL
    */
-  public Detected detect(String rawBaseUrl, String proxyHost, int proxyPort, boolean insecureSsl)
+  public Detected detect(String rawBaseUrl, boolean insecureSsl)
       throws ConfluenceAccessException, InterruptedException {
-    ConfluenceHttp.validateProxy(targetAddressValidator, proxyHost);
     URI dataCenterBase =
         ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.DATA_CENTER);
     URI cloudBase = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.CLOUD);
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
+    HttpClient client = SourceHttpClientFactory.buildHttpClient(insecureSsl);
     SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionserkennung";
 
     ConfluenceConnection cloud =
-        new ConfluenceConnection(
-            cloudBase, ConfluenceEdition.CLOUD, null, proxyHost, proxyPort, insecureSsl);
+        new ConfluenceConnection(cloudBase, ConfluenceEdition.CLOUD, null, insecureSsl);
     ConfluenceHttp cloudHttp =
         new ConfluenceHttp(
             client,
@@ -78,8 +76,7 @@ public final class ConfluenceEditionDetector {
     }
 
     ConfluenceConnection dataCenter =
-        new ConfluenceConnection(
-            dataCenterBase, ConfluenceEdition.DATA_CENTER, null, proxyHost, proxyPort, insecureSsl);
+        new ConfluenceConnection(dataCenterBase, ConfluenceEdition.DATA_CENTER, null, insecureSsl);
     ConfluenceHttp dcHttp =
         new ConfluenceHttp(
             client,
@@ -130,20 +127,13 @@ public final class ConfluenceEditionDetector {
    *
    * @return whether the instance answers with the expected edition's signature
    */
-  public boolean confirms(
-      String rawBaseUrl,
-      String proxyHost,
-      int proxyPort,
-      boolean insecureSsl,
-      ConfluenceEdition expected)
+  public boolean confirms(String rawBaseUrl, boolean insecureSsl, ConfluenceEdition expected)
       throws ConfluenceAccessException, InterruptedException {
-    ConfluenceHttp.validateProxy(targetAddressValidator, proxyHost);
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(proxyHost, proxyPort, insecureSsl);
+    HttpClient client = SourceHttpClientFactory.buildHttpClient(insecureSsl);
     SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionsprüfung";
     URI base = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, expected);
-    ConfluenceConnection connection =
-        new ConfluenceConnection(base, expected, null, proxyHost, proxyPort, insecureSsl);
+    ConfluenceConnection connection = new ConfluenceConnection(base, expected, null, insecureSsl);
     ConfluenceHttp http =
         new ConfluenceHttp(
             client,

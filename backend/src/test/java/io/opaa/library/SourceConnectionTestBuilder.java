@@ -16,7 +16,6 @@ public final class SourceConnectionTestBuilder {
   private SourceType sourceType;
   private String sourcePath;
   private URI sourceUrl;
-  private String sourceProxy;
   private String sourceCredentials;
   private Boolean sourceInsecureSsl;
   private UUID libraryId;
@@ -41,11 +40,6 @@ public final class SourceConnectionTestBuilder {
 
   public SourceConnectionTestBuilder sourceUrl(URI sourceUrl) {
     this.sourceUrl = sourceUrl;
-    return this;
-  }
-
-  public SourceConnectionTestBuilder sourceProxy(String sourceProxy) {
-    this.sourceProxy = sourceProxy;
     return this;
   }
 
@@ -79,7 +73,6 @@ public final class SourceConnectionTestBuilder {
         sourceType,
         sourcePath,
         sourceUrl,
-        sourceProxy,
         sourceCredentials,
         sourceInsecureSsl,
         libraryId,

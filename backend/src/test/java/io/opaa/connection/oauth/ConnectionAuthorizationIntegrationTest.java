@@ -820,7 +820,6 @@ class ConnectionAuthorizationIntegrationTest {
                           null,
                           SERVER + "/ablage",
                           null,
-                          null,
                           false));
               shellService.registerCreated(
                   saved, person, Map.of("name", saved.getName(), "sourceType", "OAUTH_PROBE"));

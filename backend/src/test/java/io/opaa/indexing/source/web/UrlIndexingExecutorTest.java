@@ -102,7 +102,6 @@ class UrlIndexingExecutorTest {
             // target the SSRF check rejects.
             "http://127.0.0.1:1/dir/",
             null,
-            null,
             false);
 
     executorWithRealCrawler.execute(jobId, library, IndexingRunMode.FULL);

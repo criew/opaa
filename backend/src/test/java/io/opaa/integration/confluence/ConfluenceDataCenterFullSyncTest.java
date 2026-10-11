@@ -127,7 +127,6 @@ class ConfluenceDataCenterFullSyncTest {
             SourceTypes.CONFLUENCE,
             null,
             confluence.baseUrl(),
-            null,
             token,
             false);
     ConfluenceTestSettings.configure(
@@ -276,8 +275,6 @@ class ConfluenceDataCenterFullSyncTest {
                 ConfluenceEdition.DATA_CENTER,
                 new io.opaa.indexing.source.confluence.ConfluenceCredentials
                     .DataCenterPersonalAccessToken(confluence.adminToken()),
-                null,
-                -1,
                 false));
     long deadline = System.currentTimeMillis() + 60_000;
     while (System.currentTimeMillis() < deadline

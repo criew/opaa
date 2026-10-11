@@ -20,7 +20,6 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.time.Clock;
 import java.time.Duration;
@@ -122,12 +121,7 @@ public class DropboxIndexingExecutor implements SourceIndexingExecutor {
     DropboxProperties properties = apis.properties();
     RequestBudget budget =
         new RequestBudget(new SourceRequestMeter(), properties.requestBudgetPerRun(), null);
-    DropboxApi api;
-    try {
-      api = apis.open(run.settings(), run.credentials(), budget);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new IndexingRunFailedException(e.getMessage());
-    }
+    DropboxApi api = apis.open(run.settings(), run.credentials(), budget);
     run.recordRequestCost(budget.meter());
     SourceSyncState state = journal.load(run.library().getId());
     try (DropboxFileStore store = new DropboxFileStore(api, settings, properties.pageSize());

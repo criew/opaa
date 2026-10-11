@@ -637,7 +637,7 @@ public class ConnectedAccountService implements PersonConnections, GrantRejectio
               SourceDraft.ofPerson(
                   profile.getSourceType(),
                   profile.getId(),
-                  new SourceSettings(null, null, null, value, false, null)));
+                  new SourceSettings(null, null, value, false, null)));
     } catch (SourceCredentialsException e) {
       throw new ValidationException(e.getMessage());
     }

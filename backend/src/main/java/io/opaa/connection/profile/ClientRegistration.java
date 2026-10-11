@@ -7,8 +7,8 @@ import java.util.UUID;
 /**
  * What a profile's sign-in needs, read for {@code connection.oauth} only: the registration with its
  * decrypted secret (for a service account key the key file), the sign-in its connector declares,
- * the endpoints the profile names, the imitated account and the profile's proxy. The TLS switch is
- * the server address's and has no field here. {@link #toString} never shows the secret.
+ * the endpoints the profile names and the imitated account. The TLS switch is the server address's
+ * and has no field here. {@link #toString} never shows the secret.
  *
  * @param resource the resource indicator (RFC 8707) every authorization, token and renewal request
  *     names - an MCP server's address -, {@code null} for a connector
@@ -25,7 +25,6 @@ public record ClientRegistration(
     String scopes,
     SignInDetails signIn,
     String subject,
-    String proxy,
     boolean signInRejected,
     ProfileEndpoints endpoints,
     long version,
@@ -41,7 +40,6 @@ public record ClientRegistration(
       String scopes,
       SignInDetails signIn,
       String subject,
-      String proxy,
       boolean signInRejected,
       ProfileEndpoints endpoints,
       long version) {
@@ -54,7 +52,6 @@ public record ClientRegistration(
         scopes,
         signIn,
         subject,
-        proxy,
         signInRejected,
         endpoints,
         version,

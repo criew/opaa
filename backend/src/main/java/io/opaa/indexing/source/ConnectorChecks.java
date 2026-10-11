@@ -4,7 +4,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.knowledge.SourceType;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.BasicCredentials;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -81,17 +81,9 @@ public final class ConnectorChecks {
     }
   }
 
-  /**
-   * {@code sourceProxy} ({@code host:port}) and {@code sourceCredentials} ({@code user:password}),
-   * or a 400 for an unusable proxy - never a 500 for a caller's typo.
-   */
-  public static ProxyAndCredentials parseProxyAndCredentials(SourceSettings settings) {
-    try {
-      return ProxyAndCredentials.parse(
-          blankToNull(settings.sourceProxy()), blankToNull(settings.sourceCredentials()));
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new ValidationException(e.getMessage());
-    }
+  /** {@code sourceCredentials} ({@code user:password}) for Basic Auth. */
+  public static BasicCredentials basicCredentials(SourceSettings settings) {
+    return BasicCredentials.parse(blankToNull(settings.sourceCredentials()));
   }
 
   public static SourceConnectionTestResult reachable(String message, long documentCount) {

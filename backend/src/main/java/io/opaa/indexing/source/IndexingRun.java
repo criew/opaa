@@ -155,8 +155,8 @@ public final class IndexingRun {
   }
 
   /**
-   * Target, proxy, TLS switch and connector settings as the core resolved them at the start of the
-   * run; never the secret, which {@link #credentials()} answers.
+   * Target, TLS switch and connector settings as the core resolved them at the start of the run;
+   * never the secret, which {@link #credentials()} answers.
    */
   public SourceSettings settings() {
     return settings;

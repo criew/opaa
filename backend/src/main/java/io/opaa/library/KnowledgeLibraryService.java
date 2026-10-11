@@ -229,7 +229,6 @@ public class KnowledgeLibraryService {
       return new SourceSettings(
           library.getSourcePath(),
           library.getSourceUrl(),
-          library.getSourceProxy(),
           connectionResolver.storedCredentials(library),
           library.isSourceInsecureSsl(),
           connectionResolver.effectiveSettings(library));
@@ -275,7 +274,6 @@ public class KnowledgeLibraryService {
           library.getOwnerUserId(), profileId, library.getSourceType());
     }
     String previousUrl = library.getSourceUrl();
-    String previousProxy = library.getSourceProxy();
     boolean previousInsecureSsl = library.isSourceInsecureSsl();
     String previousSettings = library.getSourceSettings();
     boolean hadCredentials = connectionResolver.holdsCredentials(library);
@@ -288,9 +286,6 @@ public class KnowledgeLibraryService {
     Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
     if (!Objects.equals(previousUrl, updated.getSourceUrl())) {
       changed.add("sourceUrl");
-    }
-    if (!Objects.equals(previousProxy, updated.getSourceProxy())) {
-      changed.add("sourceProxy");
     }
     if (previousInsecureSsl != updated.isSourceInsecureSsl()) {
       changed.add("sourceInsecureSsl");
@@ -322,14 +317,10 @@ public class KnowledgeLibraryService {
       // locked.
       connectorRelease.requireDetachable(
           caller, library.getSourceType(), connection.get().profile());
-      String previousProxy = library.getSourceProxy();
       boolean previousInsecureSsl = library.isSourceInsecureSsl();
       String previousSettings = library.getSourceSettings();
       Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
       changed.addAll(libraryConnections.disconnect(library, caller.id()));
-      if (!Objects.equals(previousProxy, library.getSourceProxy())) {
-        changed.add("sourceProxy");
-      }
       if (previousInsecureSsl != library.isSourceInsecureSsl()) {
         changed.add("sourceInsecureSsl");
       }
@@ -412,7 +403,6 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
-              sourceConfiguration.sourceProxy(),
               ownColumn,
               sourceConfiguration.sourceInsecureSsl());
     } else {
@@ -425,7 +415,6 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
-              sourceConfiguration.sourceProxy(),
               ownColumn,
               sourceConfiguration.sourceInsecureSsl());
     }
@@ -669,7 +658,6 @@ public class KnowledgeLibraryService {
     String previousDescription = library.getDescription();
     String previousSourcePath = library.getSourcePath();
     String previousSourceUrl = library.getSourceUrl();
-    String previousSourceProxy = library.getSourceProxy();
     String previousSourceCredentials = connectionResolver.storedCredentials(library);
     boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
     boolean ownSecretInStore = libraryConnections.ownSecretInStore(library);
@@ -690,7 +678,6 @@ public class KnowledgeLibraryService {
       library.updateSourceConfiguration(
           validatedSettings.sourcePath(),
           validatedSettings.sourceUrl(),
-          validatedSettings.sourceProxy(),
           ownSecretInStore ? null : validatedSettings.sourceCredentials(),
           validatedSettings.sourceInsecureSsl());
       // The discard a host change performs (see requestedSettingsChange's Javadoc) is
@@ -754,9 +741,6 @@ public class KnowledgeLibraryService {
       if (sourceUrlChanged) {
         changedSourceFields.add("sourceUrl");
       }
-      if (!Objects.equals(previousSourceProxy, updated.getSourceProxy())) {
-        changedSourceFields.add("sourceProxy");
-      }
       if (!Objects.equals(
           previousSourceCredentials, connectionResolver.storedCredentials(updated))) {
         changedSourceFields.add("sourceCredentials");
@@ -770,7 +754,6 @@ public class KnowledgeLibraryService {
           new SourceSettings(
               updated.getSourcePath(),
               updated.getSourceUrl(),
-              updated.getSourceProxy(),
               null,
               updated.isSourceInsecureSsl(),
               connectionResolver.effectiveSettings(updated));
@@ -1266,7 +1249,6 @@ public class KnowledgeLibraryService {
         new SourceSettings(
             blankToNull(request.sourcePath()),
             blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()),
-            blankToNull(request.sourceProxy()),
             blankToNull(request.sourceCredentials()),
             Boolean.TRUE.equals(request.sourceInsecureSsl()),
             readSettings(sourceType, request.sourceSettings()));
@@ -1337,7 +1319,6 @@ public class KnowledgeLibraryService {
   private boolean hasSourceConfigurationFields(LibraryUpdate request) {
     return request.sourcePath() != null
         || request.sourceUrl() != null
-        || request.sourceProxy() != null
         || request.sourceCredentials() != null
         || request.sourceInsecureSsl() != null;
   }
@@ -1391,7 +1372,7 @@ public class KnowledgeLibraryService {
       throw new ValidationException(TARGET_CHANGE_NEEDS_CREDENTIALS);
     }
     if (!replacesConnection) {
-      return new SourceSettings(null, null, null, null, false, connectorSettings);
+      return new SourceSettings(null, null, null, false, connectorSettings);
     }
     if (sourceCredentials == null && keepsTarget) {
       sourceCredentials = connectionResolver.storedCredentials(library);
@@ -1399,7 +1380,6 @@ public class KnowledgeLibraryService {
     return new SourceSettings(
         blankToNull(request.sourcePath()),
         sourceUrl,
-        blankToNull(request.sourceProxy()),
         sourceCredentials,
         Boolean.TRUE.equals(request.sourceInsecureSsl()),
         connectorSettings);
@@ -1416,14 +1396,13 @@ public class KnowledgeLibraryService {
       String afterUrl,
       ConnectorData afterSettings) {
     return SecretTarget.of(
-            connector, new SourceSettings(null, beforeUrl, null, null, false, beforeSettings))
+            connector, new SourceSettings(null, beforeUrl, null, false, beforeSettings))
         .admits(
             SecretTarget.of(
                 connector,
                 new SourceSettings(
                     null,
                     afterUrl,
-                    null,
                     null,
                     false,
                     afterSettings != null ? afterSettings : beforeSettings)));
@@ -1454,10 +1433,6 @@ public class KnowledgeLibraryService {
 
     String sourceUrl() {
       return settings.sourceUrl();
-    }
-
-    String sourceProxy() {
-      return settings.sourceProxy();
     }
 
     String sourceCredentials() {
@@ -1554,7 +1529,7 @@ public class KnowledgeLibraryService {
     // totalElements - attachments are visible inside their parent's group, not in this count.
     long documentCount =
         documentRepository.countByLibraryIdAndParentDocumentIdIsNull(library.getId());
-    // #507/#119: sourcePath/sourceUrl/sourceProxy/schedule/storage quota are administration
+    // #507/#119: sourcePath/sourceUrl/schedule/storage quota are administration
     // detail - internal server paths, crawl targets and bestand size - gated at MANAGER, not
     // exposed to a mere VIEWER (or even EDITOR) of an organization-wide library.
     // sourceCredentials is deliberately never read here - ADR-0018 makes it a write-only field
@@ -1621,7 +1596,6 @@ public class KnowledgeLibraryService {
     return new LibraryManagementDetail(
         library.getSourcePath(),
         library.getSourceUrl(),
-        library.getSourceProxy(),
         library.isSourceInsecureSsl(),
         // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
         // a client phrase an accurate "leave blank to keep the current credential" hint only when

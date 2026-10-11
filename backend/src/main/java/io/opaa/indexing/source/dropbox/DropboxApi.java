@@ -1,6 +1,7 @@
 package io.opaa.indexing.source.dropbox;
 
 import io.opaa.indexing.source.RequestBudget;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;
 import io.opaa.sourceaccess.RateLimitHandling;
@@ -227,7 +228,10 @@ final class DropboxApi {
       } catch (IOException e) {
         log.debug("Dropbox request failed: {}", e.getClass().getSimpleName());
         throw new DropboxApiException(
-            DropboxApiException.Kind.TRANSIENT, 0, null, "Dropbox ist nicht erreichbar.");
+            DropboxApiException.Kind.TRANSIENT,
+            0,
+            null,
+            ProxyRefusal.describe(e).orElse("Dropbox ist nicht erreichbar."));
       }
       int status = response.statusCode();
       if (status >= 200 && status < 300) {
@@ -309,7 +313,8 @@ final class DropboxApi {
               DropboxApiException.Kind.TRANSIENT,
               status,
               summary,
-              "Dropbox hat mit HTTP " + status + " geantwortet.");
+              ProxyRefusal.statusMessage(
+                  status, "Dropbox hat mit HTTP " + status + " geantwortet."));
     };
   }
 

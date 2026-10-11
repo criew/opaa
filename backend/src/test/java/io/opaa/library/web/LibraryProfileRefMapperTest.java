@@ -30,7 +30,6 @@ class LibraryProfileRefMapperTest {
                     "https://probe.example.org",
                     ConnectionAuthMethod.PERSONAL_SECRET,
                     ConnectorData.of(Map.of("edition", "DC")),
-                    "proxy.example.org:3128",
                     true)));
 
     assertThat(ref.getId()).isEqualTo(ID);
@@ -38,7 +37,6 @@ class LibraryProfileRefMapperTest {
     assertThat(ref.getServerUrl()).isEqualTo("https://probe.example.org");
     assertThat(ref.getAuthMethod()).isEqualTo(ConnectionAuthMethod.PERSONAL_SECRET);
     assertThat(ref.getConnectorDefaults()).isEqualTo(Map.of("edition", "DC"));
-    assertThat(ref.getSourceProxy()).isEqualTo("proxy.example.org:3128");
     assertThat(ref.getSourceInsecureSsl()).isTrue();
   }
 
@@ -51,7 +49,6 @@ class LibraryProfileRefMapperTest {
     assertThat(ref.getServerUrl()).isNull();
     assertThat(ref.getAuthMethod()).isNull();
     assertThat(ref.getConnectorDefaults()).isNull();
-    assertThat(ref.getSourceProxy()).isNull();
     assertThat(ref.getSourceInsecureSsl()).isNull();
   }
 }

@@ -199,6 +199,9 @@ Nachtrag zur Invariante gibt es nicht. Kein Ziel kommt aus der Schlüsseldatei, 
   den Schlüssel. Ein Leck entsteht dabei nicht. Deshalb vergleicht der Kern gegen die von `validate`
   **normalisierte** Adresse. #2151 testet, dass eine Proxy-Änderung den Schlüssel behält.
 
+  > **Überholt (#2496):** `source_proxy` an Bibliothek und Zugang ist entfernt; alle Verbindungen gehen über den hausweiten Ausgangsproxy (ADR-0041, Nachtrag „Proxy je Bibliothek und Zugang entfernt“). Der Test prüft seither eine Änderung ohne Verbindungsfeld.
+
+
 ### 4. Profilangabe und domänenweite Delegation
 
 - **Profilangabe „optional“**, einmal für den Typ und ohne Sonderfall. Der Schlüssel enthält seine

@@ -29,7 +29,7 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * An {@code HTTP_DIRECTORY} library through a profile ("Zugang"), run against a loopback autoindex:
  * the address lies under the profile's, a profile without sign-in reaches the server anonymously,
- * one with a personal secret sends the library's own, and the profile's proxy carries the run.
+ * one with a personal secret sends the library's own.
  */
 @OpaaIntegrationTest
 class HttpDirectoryProfileIntegrationTest {
@@ -44,29 +44,28 @@ class HttpDirectoryProfileIntegrationTest {
 
   private ProfileLibraries api;
   private HttpServer origin;
-  private HttpServer proxy;
+  private HttpServer other;
   private final List<String> originAuthorizations = new CopyOnWriteArrayList<>();
-  private final List<String> proxiedTargets = new CopyOnWriteArrayList<>();
 
   @BeforeEach
   void setUp() throws IOException {
     api = new ProfileLibraries(mockMvc, jdbc, fixtures);
     origin = serve(exchange -> originAuthorizations.add(authorization(exchange)));
-    proxy = serve(exchange -> proxiedTargets.add(exchange.getRequestURI().toString()));
+    other = serve(exchange -> {});
   }
 
   @AfterEach
   void tearDown() {
     api.cleanUp();
     origin.stop(0);
-    proxy.stop(0);
+    other.stop(0);
   }
 
   @Test
   void aProfileWithoutSignInRunsAnonymouslyAndBindsTheAddress() throws Exception {
-    UUID profile = api.createProfile(profileJson("NONE", null));
+    UUID profile = api.createProfile(profileJson("NONE"));
 
-    api.postLibrary(libraryJson(profile, "http://127.0.0.1:" + proxyPort() + "/dokumente/", ""))
+    api.postLibrary(libraryJson(profile, "http://127.0.0.1:" + otherPort() + "/dokumente/", ""))
         .andExpect(status().isBadRequest())
         .andExpect(
             jsonPath("$.error").value(Matchers.containsString("Server-Adresse des Zugangs")));
@@ -83,7 +82,7 @@ class HttpDirectoryProfileIntegrationTest {
 
   @Test
   void aProfileWithAPersonalSecretSendsTheLibrarysOwn() throws Exception {
-    UUID profile = api.createProfile(profileJson("PERSONAL_SECRET", null));
+    UUID profile = api.createProfile(profileJson("PERSONAL_SECRET"));
     UUID library =
         api.createLibrary(
             libraryJson(profile, address(), "\"sourceCredentials\": \"nutzer:geheim\","));
@@ -97,37 +96,20 @@ class HttpDirectoryProfileIntegrationTest {
     assertThat(originAuthorizations).isNotEmpty().containsOnly(basic);
   }
 
-  @Test
-  void theProfilesProxyCarriesTheRun() throws Exception {
-    UUID profile = api.createProfile(profileJson("NONE", "127.0.0.1:" + proxyPort()));
-    UUID library = api.createLibrary(libraryJson(profile, address(), ""));
-
-    String status = api.run(library);
-
-    assertThat(JsonPath.<Integer>read(status, "$.documentsIndexedTotal")).as(status).isEqualTo(1);
-    assertThat(proxiedTargets).isNotEmpty().allMatch(target -> target.startsWith(address()));
-    assertThat(originAuthorizations).as("nothing reached the origin directly").isEmpty();
-    assertThat(api.stored(library, "source_proxy")).isNull();
-  }
-
   private String address() {
     return "http://127.0.0.1:" + origin.getAddress().getPort() + "/dokumente/";
   }
 
-  private int proxyPort() {
-    return proxy.getAddress().getPort();
+  private int otherPort() {
+    return other.getAddress().getPort();
   }
 
-  private String profileJson(String method, String proxyAddress) {
+  private String profileJson(String method) {
     return """
         {"name": "Zugang Web %s", "sourceType": "HTTP_DIRECTORY",
-         "serverUrl": "http://127.0.0.1:%d", "authMethod": "%s", "ownership": "LIBRARY"%s}
+         "serverUrl": "http://127.0.0.1:%d", "authMethod": "%s", "ownership": "LIBRARY"}
         """
-        .formatted(
-            UUID.randomUUID(),
-            origin.getAddress().getPort(),
-            method,
-            proxyAddress == null ? "" : ", \"sourceProxy\": \"" + proxyAddress + "\"");
+        .formatted(UUID.randomUUID(), origin.getAddress().getPort(), method);
   }
 
   private static String libraryJson(UUID profile, String url, String extra) {

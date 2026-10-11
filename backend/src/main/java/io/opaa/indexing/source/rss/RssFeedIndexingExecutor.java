@@ -13,7 +13,6 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.source.IndexingRun;
-import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.indexing.source.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
@@ -27,7 +26,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import io.opaa.security.TargetAddressValidator;
-import io.opaa.sourceaccess.ProxyAndCredentials;
+import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.RequestPoliteness;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestPolicy;
@@ -126,19 +125,12 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     KnowledgeLibrary targetLibrary = run.library();
     SourceSettings settings = run.settings();
     String feedUrl = settings.sourceUrl();
-    ProxyAndCredentials config;
-    try {
-      config = ProxyAndCredentials.parse(settings.sourceProxy(), run.credentials().value());
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new IndexingRunFailedException(e.getMessage());
-    }
-    // the secret valid now on every request; the proxy stays as resolved at the start
+    // the secret valid now on every request
     RenewableCredential<String> authHeader =
         run.credentials()
             .renewableAfterRejection(
                 secret -> {
-                  ProxyAndCredentials parsed =
-                      ProxyAndCredentials.parse(settings.sourceProxy(), secret);
+                  BasicCredentials parsed = BasicCredentials.parse(secret);
                   return SourceHttpClientFactory.buildAuthHeader(
                       parsed.username(), parsed.password());
                 });
@@ -146,12 +138,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     // secureClient always validates certificates normally; insecureClient relaxes validation
     // only when the library asks for it and is used exclusively for same-origin requests - see
     // RssFeedRunContext#httpClientFor's own Javadoc.
-    HttpClient secureClient =
-        SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), false);
+    HttpClient secureClient = SourceHttpClientFactory.buildHttpClient(false);
     HttpClient insecureClient =
-        settings.sourceInsecureSsl()
-            ? SourceHttpClientFactory.buildHttpClient(config.proxyHost(), config.proxyPort(), true)
-            : secureClient;
+        settings.sourceInsecureSsl() ? SourceHttpClientFactory.buildHttpClient(true) : secureClient;
 
     RequestBudget budget = RequestBudget.forRun(requestPolicy);
     run.recordRequestCost(budget.meter());

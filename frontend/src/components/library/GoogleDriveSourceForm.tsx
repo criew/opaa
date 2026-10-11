@@ -104,8 +104,8 @@ export default function GoogleDriveSourceForm({
     setTesting(false)
     setTestMessage(null)
     setChecks(null)
-    // a listing belongs to the key, the account and the route it was made with
-    if ('keyFile' in patch || 'subject' in patch || 'sourceProxy' in patch) {
+    // a listing belongs to the key and the account it was made with
+    if ('keyFile' in patch || 'subject' in patch) {
       listingGeneration.current++
       setListing(false)
       setOptions([])
@@ -116,7 +116,6 @@ export default function GoogleDriveSourceForm({
 
   const connectionRequest = () => ({
     sourceUrl: GOOGLE_DRIVE_API,
-    sourceProxy: values.sourceProxy.trim() || undefined,
     sourceCredentials: values.keyFile || undefined,
     sourceInsecureSsl: false,
   })
@@ -390,20 +389,6 @@ export default function GoogleDriveSourceForm({
             })}
           </List>
         )}
-      </Box>
-
-      <Box>
-        <FieldLabel htmlFor={`${idPrefix}-proxy`}>Proxy (optional)</FieldLabel>
-        <TextField
-          id={`${idPrefix}-proxy`}
-          size="small"
-          fullWidth
-          value={values.sourceProxy}
-          onChange={(e) => change({ sourceProxy: e.target.value })}
-          placeholder={connection.isFixed('sourceProxy') ? undefined : 'proxy.example.org:8080'}
-          helperText={connection.isFixed('sourceProxy') ? connection.transportHint : undefined}
-          slotProps={{ htmlInput: { readOnly: connection.isFixed('sourceProxy') } }}
-        />
       </Box>
 
       <Box>

@@ -343,8 +343,7 @@ class GoogleDriveFileStoreTest {
     DriveApiFactory apis =
         new DriveApiFactory(
             GoogleDriveProperties.defaults(), TargetAddressValidator.disabled(), wait -> {});
-    SourceSettings settings =
-        new SourceSettings(null, server.base().toString(), null, null, false, null);
+    SourceSettings settings = new SourceSettings(null, server.base().toString(), null, false, null);
     return new DriveFileStore(
         apis.open(settings, () -> FakeDriveServer.TOKEN, RequestBudget.unbounded()),
         GoogleDriveSettings.read(ConnectorData.of(Map.of("scopes", scopes))),
@@ -355,8 +354,7 @@ class GoogleDriveFileStoreTest {
     DriveApiFactory apis =
         new DriveApiFactory(
             GoogleDriveProperties.defaults(), TargetAddressValidator.disabled(), wait -> {});
-    SourceSettings settings =
-        new SourceSettings(null, server.base().toString(), null, null, false, null);
+    SourceSettings settings = new SourceSettings(null, server.base().toString(), null, false, null);
     GoogleDriveSettings driveSettings =
         GoogleDriveSettings.read(
             ConnectorData.of(

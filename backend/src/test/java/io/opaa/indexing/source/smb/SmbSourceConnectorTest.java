@@ -40,7 +40,7 @@ class SmbSourceConnectorTest {
           mock(SourceSyncStateRepository.class));
 
   private static SourceSettings settings(String url, String credentials) {
-    return new SourceSettings(null, url, null, credentials, false, null);
+    return new SourceSettings(null, url, credentials, false, null);
   }
 
   @Nested
@@ -61,20 +61,13 @@ class SmbSourceConnectorTest {
     void whatASharedoesNotUseIsRefusedRatherThanIgnored() {
       assertThatThrownBy(
               () ->
-                  CONNECTOR.validate(
-                      new SourceSettings(null, "smb://fs/Daten", "proxy:3128", "a:b", false, null)))
-          .isInstanceOf(ValidationException.class)
-          .hasMessageContaining("sourceProxy");
-      assertThatThrownBy(
-              () ->
-                  CONNECTOR.validate(
-                      new SourceSettings(null, "smb://fs/Daten", null, "a:b", true, null)))
+                  CONNECTOR.validate(new SourceSettings(null, "smb://fs/Daten", "a:b", true, null)))
           .isInstanceOf(ValidationException.class)
           .hasMessageContaining("sourceInsecureSsl");
       assertThatThrownBy(
               () ->
                   CONNECTOR.validate(
-                      new SourceSettings("/srv", "smb://fs/Daten", null, "a:b", false, null)))
+                      new SourceSettings("/srv", "smb://fs/Daten", "a:b", false, null)))
           .isInstanceOf(ValidationException.class)
           .hasMessageContaining("sourcePath");
     }

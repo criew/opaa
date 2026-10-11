@@ -67,7 +67,6 @@ class LibraryMetadataExtractionServiceIntegrationTest {
                 null,
                 null,
                 null,
-                null,
                 false));
     grantRepository.save(
         AssetGrant.forUser(

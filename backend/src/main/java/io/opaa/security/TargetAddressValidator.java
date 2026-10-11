@@ -23,9 +23,8 @@ import org.slf4j.LoggerFactory;
  * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
  * only when its connection goes through the outbound proxy, because the proxy resolves it: for
  * {@link #validate} when {@link OutboundProxySelector#proxyFor} routes the URI there, for {@link
- * #validateHost(String, boolean)} when the caller says so. {@link #validateHost(String)} - SMB, a
- * library's own proxy, the upload storage - stays strict. IP literals and resolvable names are
- * checked unchanged.
+ * #validateHost(String, boolean)} when the caller says so. {@link #validateHost(String)} - SMB and
+ * the upload storage - stays strict. IP literals and resolvable names are checked unchanged.
  */
 public class TargetAddressValidator {
 

@@ -18,11 +18,10 @@ import software.amazon.awssdk.http.SdkHttpRequest;
 
 /**
  * Builds the {@link S3ObjectStore} for a library's {@link S3Connection} (ADR-0027, Entscheidung 8
- * and 9). Before a client exists, the endpoint host, the proxy host and - under virtual-host
- * addressing - every {@code <bucket>.<host>} the SDK will contact pass the shared {@link
- * TargetAddressValidator}, so a private on-premises address is rejected here exactly as it is for a
- * web directory, with the allowlist hint appended; the store then re-checks the host of every
- * request it sends.
+ * and 9). Before a client exists, the endpoint host and - under virtual-host addressing - every
+ * {@code <bucket>.<host>} the SDK will contact pass the shared {@link TargetAddressValidator}, so a
+ * private on-premises address is rejected here exactly as it is for a web directory, with the
+ * allowlist hint appended; the store then re-checks the host of every request it sends.
  */
 public class S3ClientFactory {
 
@@ -49,7 +48,7 @@ public class S3ClientFactory {
    *
    * @param scopes the buckets the store will address; needed for the per-bucket host check under
    *     virtual-host addressing
-   * @throws S3AccessException.TargetBlocked when endpoint, proxy or a bucket host is rejected
+   * @throws S3AccessException.TargetBlocked when the endpoint or a bucket host is rejected
    * @throws S3AccessException.Unreachable when one of them does not resolve
    */
   public S3ObjectStore create(S3Connection connection, Collection<S3Scope> scopes)
@@ -141,31 +140,29 @@ public class S3ClientFactory {
 
   /**
    * The hosts this connection will contact, in the order a misconfiguration is most likely: the
-   * endpoint itself, the proxy, then one virtual-host name per distinct bucket. Also the check a
-   * library's configuration passes when it is saved (ADR-0027, Entscheidung 8), so a blocked
-   * address is refused before the first run.
+   * endpoint itself, then one virtual-host name per distinct bucket. Also the check a library's
+   * configuration passes when it is saved (ADR-0027, Entscheidung 8), so a blocked address is
+   * refused before the first run.
    */
   public void validateTargets(S3Connection connection, Collection<S3Scope> scopes)
       throws S3AccessException {
-    validateTargets(connection.endpoint(), connection.proxyHost(), connection.pathStyle(), scopes);
+    validateTargets(connection.endpoint(), connection.pathStyle(), scopes);
   }
 
   /**
    * {@link #validateTargets(S3Connection, Collection)} without credentials, which it never uses.
    */
-  public void validateTargets(
-      URI endpoint, String proxyHost, boolean pathStyle, Collection<S3Scope> scopes)
+  public void validateTargets(URI endpoint, boolean pathStyle, Collection<S3Scope> scopes)
       throws S3AccessException {
     try {
       targetAddressValidator.validate(endpoint);
-      targetAddressValidator.validateHost(proxyHost);
       if (!pathStyle) {
         Set<String> buckets = new LinkedHashSet<>();
         for (S3Scope scope : scopes) {
           buckets.add(scope.bucket());
         }
         boolean throughOutboundProxy =
-            proxyHost == null && OutboundProxySelector.instance().proxyFor(endpoint).isPresent();
+            OutboundProxySelector.instance().proxyFor(endpoint).isPresent();
         for (String bucket : buckets) {
           targetAddressValidator.validateHost(
               bucket + "." + endpoint.getHost(), throughOutboundProxy);

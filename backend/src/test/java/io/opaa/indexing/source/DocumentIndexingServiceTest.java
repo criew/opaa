@@ -130,7 +130,6 @@ class DocumentIndexingServiceTest {
             "/data/docs",
             null,
             null,
-            null,
             false);
   }
 
@@ -291,7 +290,6 @@ class DocumentIndexingServiceTest {
             null,
             "https://example.com/files/",
             null,
-            null,
             false);
     when(libraryRepository.findById(httpLibrary.getId())).thenReturn(Optional.of(httpLibrary));
     when(libraryAccessService.requireRole(httpLibrary, caller.id(), false, AssetRole.EDITOR))
@@ -321,7 +319,6 @@ class DocumentIndexingServiceTest {
             SourceTypes.RSS_FEED,
             null,
             "https://example.com/feed.xml",
-            null,
             null,
             false);
     when(libraryRepository.findById(rssLibrary.getId())).thenReturn(Optional.of(rssLibrary));

@@ -28,7 +28,6 @@ import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.ServedContentTypes;
 import io.opaa.knowledge.SourceType;
-import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -163,7 +162,7 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     return requested;
   }
 
-  /** Path, address, TLS switch and proxy of a request; returns the fixed address. */
+  /** Path, address and TLS switch of a request; returns the fixed address. */
   private String checkConnection(SourceSettings requested) {
     if (blankToNull(requested.sourcePath()) != null) {
       throw new ValidationException("sourcePath ist für sourceType " + TYPE + " nicht zulässig");
@@ -176,11 +175,6 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     if (requested.sourceInsecureSsl()) {
       throw new ValidationException(
           "Die Zertifikatsprüfung lässt sich für sourceType " + TYPE + " nicht abschalten");
-    }
-    try {
-      ProxyAndCredentials.parse(blankToNull(requested.sourceProxy()), null);
-    } catch (ProxyAndCredentials.InvalidProxyConfigurationException e) {
-      throw new ValidationException(e.getMessage());
     }
     return url;
   }

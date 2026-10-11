@@ -9,8 +9,8 @@ import java.util.List;
  * The typed configuration of an S3 library (ADR-0027, Entscheidung 1) as {@code
  * knowledge_libraries.source_settings} carries it: the signing region, the addressing style, one to
  * fifty non-overlapping {@link S3Scope}s and optional glob patterns on the object key. Validated on
- * construction; the endpoint, the credentials, the proxy and the TLS switch live in the library's
- * existing columns and are never part of this record.
+ * construction; the endpoint, the credentials and the TLS switch live in the library's existing
+ * columns and are never part of this record.
  *
  * @param region the region every request is signed for; {@code null} means {@link
  *     S3Connection#DEFAULT_REGION}

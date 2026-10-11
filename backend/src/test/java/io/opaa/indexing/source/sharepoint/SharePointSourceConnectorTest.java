@@ -117,8 +117,7 @@ class SharePointSourceConnectorTest {
         .hasMessageContaining("fest");
     assertThatThrownBy(
             () ->
-                connector.validate(
-                    new SourceSettings(null, null, null, null, true, libraries(DRIVE_0))))
+                connector.validate(new SourceSettings(null, null, null, true, libraries(DRIVE_0))))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Zertifikatsprüfung");
   }
@@ -399,11 +398,11 @@ class SharePointSourceConnectorTest {
 
   private SourceSettings withToken(ConnectorData connectorSettings) {
     return new SourceSettings(
-        null, server.origin().toString(), null, FakeGraphServer.TOKEN, false, connectorSettings);
+        null, server.origin().toString(), FakeGraphServer.TOKEN, false, connectorSettings);
   }
 
   private static SourceSettings request(String url, ConnectorData settings) {
-    return new SourceSettings(null, url, null, null, false, settings);
+    return new SourceSettings(null, url, null, false, settings);
   }
 
   private static ConnectorData libraries(String... drives) {

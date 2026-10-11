@@ -429,7 +429,6 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                 corpusWorkingDir.toAbsolutePath().toString(),
                 null,
                 null,
-                null,
                 false));
     evalLibraryId = library.getId();
 

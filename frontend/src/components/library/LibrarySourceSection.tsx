@@ -50,7 +50,6 @@ export interface LibrarySourceSectionProps {
     sourceType: SourceTypeKey
     sourcePath?: string | null
     sourceUrl?: string | null
-    sourceProxy?: string | null
     sourceInsecureSsl?: boolean | null
     sourceCredentialsSet?: boolean | null
     sourceSettings?: Record<string, unknown> | null
@@ -219,8 +218,7 @@ export default function LibrarySourceSection({
               ) : undefined
             }
           >
-            {/* #507: sourcePath/sourceUrl/sourceProxy expose internal server paths, source URLs and
-                proxy hosts - the backend only serves them to a caller with at least MANAGER, and
+            {/* #507: sourcePath/sourceUrl expose internal server paths and source URLs - the backend only serves them to a caller with at least MANAGER, and
                 this whole area only renders behind the same bar. */}
             <Stack spacing={0.75}>
               <LibraryConnectionPanel

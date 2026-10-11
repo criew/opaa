@@ -28,7 +28,6 @@ class SourceChangeGateTest {
           null,
           "https://neu.example.org/feed",
           null,
-          null,
           false);
 
   private static SourceConnectorRegistry registryOf(SourceConnector connector) {
@@ -81,7 +80,6 @@ class SourceChangeGateTest {
     return new SourceSettings(
         null,
         url,
-        null,
         null,
         false,
         selection == null ? null : ConnectorData.of(Map.of("auswahl", selection)));

@@ -126,7 +126,7 @@ class GoogleDriveFileStoreContractTest extends FileStoreChangeFeedContract {
           new DriveApiFactory(
               GoogleDriveProperties.defaults(), TargetAddressValidator.disabled(), wait -> {});
       SourceSettings settings =
-          new SourceSettings(null, server.base().toString(), null, null, false, null);
+          new SourceSettings(null, server.base().toString(), null, false, null);
       GoogleDriveSettings driveSettings =
           GoogleDriveSettings.read(
               ConnectorData.of(

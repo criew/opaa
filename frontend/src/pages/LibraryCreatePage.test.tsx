@@ -647,7 +647,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(mockTestLibrarySource).toHaveBeenCalledWith({
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://site.atlassian.net/wiki',
-        sourceProxy: undefined,
         sourceInsecureSsl: false,
       })
       expect(await screen.findByTestId('library-create-confluence-edition')).toHaveTextContent(
@@ -714,7 +713,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(mockTestLibrarySource).toHaveBeenLastCalledWith({
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        sourceProxy: undefined,
         sourceInsecureSsl: false,
         sourceSettings: { edition: 'DATA_CENTER' },
         sourceCredentials: 'pat-geheim',
@@ -744,7 +742,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         ownerId: undefined,
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        sourceProxy: undefined,
         sourceCredentials: 'pat-geheim',
         sourceInsecureSsl: false,
         sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'BAU', name: 'Bauamt' }] },
@@ -1247,11 +1244,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.getByRole('button', { name: 'Edition erkennen' })).toBeEnabled()
     }, 25000)
 
-    it('shows proxy and certificate check of the chosen profile read-only and sends neither', async () => {
+    it('shows the certificate check of the chosen profile read-only and sends none', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([
         {
           ...profile,
-          sourceProxy: 'proxy.intern.example:3128',
           sourceInsecureSsl: true,
         },
       ])
@@ -1260,9 +1256,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
       await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
 
-      const proxy = screen.getByLabelText(/^Proxy/)
-      expect(proxy).toHaveValue('proxy.intern.example:3128')
-      expect(proxy).toHaveAttribute('readonly')
       expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeChecked()
       expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeDisabled()
       await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
@@ -1274,7 +1267,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       const request = mockCreateNewLibrary.mock.calls[0][0]
       expect(request.connectionProfileId).toBe('profile-intern')
-      expect(request.sourceProxy).toBeUndefined()
       expect(request.sourceInsecureSsl).toBe(false)
     }, 30000)
 
@@ -1429,7 +1421,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         sourceSettings: { libraries: [{ driveId: 'b!bauamt', name: 'Dokumente (Bauamt)' }] },
       })
       expect(request.sourceCredentials).toBeUndefined()
-      expect(request.sourceProxy).toBeUndefined()
       expect(mockBrowseSource).toHaveBeenCalledWith(
         'SHAREPOINT',
         expect.objectContaining({

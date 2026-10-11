@@ -154,30 +154,24 @@ describe('withoutFixed and payloadUnder', () => {
 describe('nothing a profile sets is sent', () => {
   const FRAMED: SourceConnection = {
     ...S3_PROFILE,
-    proxy: 'proxy.rz.example:3128',
     insecureSsl: true,
   }
 
-  it('shows proxy and certificate switch of the profile and keeps them out of a change', () => {
-    const shown = withConnection(
-      { sourceUrl: '', sourceProxy: 'eigener:8080', sourceInsecureSsl: false },
-      FRAMED,
-    )
-    expect(shown).toMatchObject({ sourceProxy: 'proxy.rz.example:3128', sourceInsecureSsl: true })
+  it('shows the certificate switch of the profile and keeps it out of a change', () => {
+    const shown = withConnection({ sourceUrl: '', sourceInsecureSsl: false }, FRAMED)
+    expect(shown).toMatchObject({ sourceInsecureSsl: true })
 
     const fields = connectionFields(context({ connection: FRAMED }))
-    expect(fields.isFixed('sourceProxy')).toBe(true)
     expect(fields.isFixed('sourceInsecureSsl')).toBe(true)
-    expect(
-      withoutFixed({ sourceProxy: 'x:1', sourceInsecureSsl: false, prefix: 'a' }, FRAMED),
-    ).toEqual({ prefix: 'a' })
+    expect(withoutFixed({ sourceInsecureSsl: false, prefix: 'a' }, FRAMED)).toEqual({
+      prefix: 'a',
+    })
   })
 
-  it('drops defaults, proxy and the skipped certificate check from a create or update', () => {
+  it('drops defaults and the skipped certificate check from a create or update', () => {
     const payload = payloadUnder(
       {
         sourceUrl: 'https://s3.rz.example',
-        sourceProxy: 'proxy.rz.example:3128',
         sourceInsecureSsl: true,
         sourceCredentials: 'key:secret',
         sourceSettings: { region: 'eu-rz-1', pathStyle: true, scopes: [{ bucket: 'b' }] },
@@ -185,7 +179,6 @@ describe('nothing a profile sets is sent', () => {
       connectionFields(context({ connection: FRAMED })),
     )
 
-    expect(payload.sourceProxy).toBeUndefined()
     expect(payload.sourceInsecureSsl).toBe(false)
     expect(payload.sourceSettings).toEqual({ scopes: [{ bucket: 'b' }] })
     expect(payload.sourceCredentials).toBe('key:secret')
@@ -195,7 +188,6 @@ describe('nothing a profile sets is sent', () => {
     const probe = connectionFields(context({ connection: FRAMED })).probeRequest({
       sourceType: 'S3' as const,
       sourceUrl: 'https://s3.rz.example',
-      sourceProxy: 'proxy.rz.example:3128',
       sourceInsecureSsl: true,
       query: { region: 'eu-rz-1', pathStyle: true },
     })
@@ -203,7 +195,6 @@ describe('nothing a profile sets is sent', () => {
     expect(probe).toEqual({
       sourceType: 'S3',
       sourceUrl: 'https://s3.rz.example',
-      sourceProxy: undefined,
       sourceInsecureSsl: false,
       query: {},
       connectionProfileId: 'profile-s3',
@@ -214,7 +205,6 @@ describe('nothing a profile sets is sent', () => {
     const request = {
       sourceType: 'S3' as const,
       sourceUrl: 'https://s3.example',
-      sourceProxy: 'eigener:8080',
       sourceInsecureSsl: true,
       sourceSettings: { region: 'eu' },
     }
@@ -230,7 +220,6 @@ describe('nothing a profile sets is sent', () => {
       const connection: SourceConnection = { ...FRAMED, defaults: { ...sample.sourceSettings } }
       const values = {
         ...(configuration.empty as object),
-        sourceProxy: 'eigener:8080',
         sourceInsecureSsl: true,
       }
       const payload = payloadUnder(
@@ -238,7 +227,6 @@ describe('nothing a profile sets is sent', () => {
         connectionFields(context({ sourceType, connection })),
       )
 
-      expect(payload.sourceProxy).toBeUndefined()
       expect(payload.sourceInsecureSsl).toBe(false)
       expect(Object.keys(payload.sourceSettings ?? {})).toEqual([])
     },
@@ -275,19 +263,16 @@ describe('a switch of profile', () => {
       sourceUrl: string
       edition: string | null
       credentialsVerified: boolean
-      sourceProxy: string
     }
     const empty: Values = {
       sourceUrl: '',
       edition: null,
       credentialsVerified: false,
-      sourceProxy: '',
     }
     const values: Values = {
       sourceUrl: 'https://site.atlassian.net/wiki',
       edition: 'CLOUD',
       credentialsVerified: true,
-      sourceProxy: '',
     }
 
     expect(switchConnection(values, empty, null, NEXT, ['edition', 'credentialsVerified'])).toEqual(
@@ -299,9 +284,6 @@ describe('a switch of profile', () => {
         'edition',
       ]),
     ).toMatchObject({ sourceUrl: 'https://neu.example/wiki', edition: 'CLOUD' })
-    expect(
-      switchConnection({ ...values, sourceProxy: 'proxy.rz.example:3128' }, empty, NEXT, null),
-    ).toMatchObject({ sourceProxy: '' })
   })
 })
 
@@ -314,7 +296,6 @@ describe('sourceConnectionOfRef', () => {
         serverUrl: 'https://s3.example',
         authMethod: 'PERSONAL_SECRET',
         connectorDefaults: { region: 'eu' },
-        sourceProxy: 'proxy.example:1',
         sourceInsecureSsl: true,
       }),
     ).toEqual({
@@ -323,7 +304,6 @@ describe('sourceConnectionOfRef', () => {
       serverUrl: 'https://s3.example',
       authMethod: 'PERSONAL_SECRET',
       defaults: { region: 'eu' },
-      proxy: 'proxy.example:1',
       insecureSsl: true,
     })
   })
@@ -352,7 +332,6 @@ describe('sourceConnectionOf', () => {
       serverUrl: 'https://s3.example',
       authMethod: 'NONE',
       defaults: {},
-      proxy: null,
       insecureSsl: false,
     })
   })

@@ -36,10 +36,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * The one composition of a source configuration, for a stored library and for a draft alike: its
- * own fields, under a profile the profile's proxy, TLS switch and defaults over them, and the
- * secret its {@link SecretOwner} holds as the profile's sign-in method allows - for the profile's
- * own sign-in its access token. Without a profile the own fields and secret stand; a service
- * account key is exchanged by the core (ADR-0040), never handed to a connector.
+ * own fields, under a profile the profile's TLS switch and defaults over them, and the secret its
+ * {@link SecretOwner} holds as the profile's sign-in method allows - for the profile's own sign-in
+ * its access token. Without a profile the own fields and secret stand; a service account key is
+ * exchanged by the core (ADR-0040), never handed to a connector.
  */
 @Component
 public class EffectiveSourceSettings {
@@ -104,10 +104,10 @@ public class EffectiveSourceSettings {
   /**
    * The configuration a probe or a new library reaches the source with, before anything is saved.
    * The stored secret of the draft's library stands in for an omitted one only while its {@link
-   * SecretTarget} stays the same; without a profile the library's own proxy and TLS switch then
-   * travel with it. An uploaded service account key, and under a profile with its own sign-in the
-   * profile's registration, reaches the connector as its access token. A stored library's blocks do
-   * not refuse a draft.
+   * SecretTarget} stays the same; without a profile the library's own TLS switch then travels with
+   * it. An uploaded service account key, and under a profile with its own sign-in the profile's
+   * registration, reaches the connector as its access token. A stored library's blocks do not
+   * refuse a draft.
    *
    * @throws ValidationException (German 400) for a value the draft's profile sets otherwise or an
    *     address outside it
@@ -207,8 +207,8 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * Connecting {@code library} through {@code profile} adopts the profile's frame: its own proxy,
-   * TLS switch and values under bound keys go. Its own secret moves into the store, issued for its
+   * Connecting {@code library} through {@code profile} adopts the profile's frame: its own TLS
+   * switch and values under bound keys go. Its own secret moves into the store, issued for its
    * target under the profile, or goes where the profile takes none.
    */
   public void adoptFrame(KnowledgeLibrary library, ConnectionProfile profile) {
@@ -238,15 +238,15 @@ public class EffectiveSourceSettings {
 
   /**
    * Releasing {@code library} from {@code profile} makes the profile's frame its own: the defaults
-   * join its connector settings, proxy and TLS switch become the library's, and its own secret
-   * moves from the store into its column, so the configuration it runs with stays the same.
+   * join its connector settings, the TLS switch becomes the library's, and its own secret moves
+   * from the store into its column, so the configuration it runs with stays the same.
    */
   public void releaseFrame(KnowledgeLibrary library, ConnectionProfile profile) {
     ProfileFrame frame = frame(profile);
     ConnectorData settings = frame.over(ConnectorData.storedIn(library));
     library.updateSourceSettings(settings == null ? null : settings.toJson());
     TransportRules transport = frame.serverTransport();
-    library.replaceTransport(transport.proxy(), transport.insecureSsl());
+    library.replaceTransport(transport.insecureSsl());
     secrets.carryOver(library.getId(), new LibraryOwned(library.getId()), null);
   }
 
@@ -523,7 +523,7 @@ public class EffectiveSourceSettings {
     return SecretTarget.of(
             registry.getObject().connector(profile.getSourceType()),
             compose(
-                new Own(null, profile.getServerUrl(), new TransportRules(null, false), null),
+                new Own(null, profile.getServerUrl(), new TransportRules(false), null),
                 Optional.of(frame(profile)),
                 null))
         .key();
@@ -546,7 +546,7 @@ public class EffectiveSourceSettings {
       ConnectionProfile profile, KnowledgeLibrary library, Secret access) {
     Own own =
         library == null
-            ? new Own(null, profile.getServerUrl(), new TransportRules(null, false), null)
+            ? new Own(null, profile.getServerUrl(), new TransportRules(false), null)
             : Own.of(library);
     return compose(own, Optional.of(frame(profile)), access);
   }
@@ -721,7 +721,6 @@ public class EffectiveSourceSettings {
     return new SourceSettings(
             own.path(),
             own.url(),
-            toAddress.proxy(),
             null,
             toAddress.insecureSsl(),
             frame.map(found -> found.over(own.settings())).orElse(own.settings()))
@@ -735,7 +734,7 @@ public class EffectiveSourceSettings {
       return new Own(
           library.getSourcePath(),
           library.getSourceUrl(),
-          new TransportRules(library.getSourceProxy(), library.isSourceInsecureSsl()),
+          new TransportRules(library.isSourceInsecureSsl()),
           ConnectorData.storedIn(library));
     }
 
@@ -743,7 +742,7 @@ public class EffectiveSourceSettings {
       return new Own(
           requested.sourcePath(),
           requested.sourceUrl(),
-          new TransportRules(requested.sourceProxy(), requested.sourceInsecureSsl()),
+          new TransportRules(requested.sourceInsecureSsl()),
           requested.connectorSettings());
     }
 

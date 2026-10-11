@@ -229,11 +229,12 @@ bestehenden `MANAGER`-Schranke der Bibliothek.
 gespeicherte, passwortgeschützte Quelle nach, muss der Aufrufer das Passwort nicht erneut eintippen —
 fehlt `sourceCredentials` in der Anfrage und benennt `sourceUrl` weiterhin denselben Ursprung wie die
 gespeicherte Bibliothek, greift `SourceConnectionTestService` auf das gespeicherte Zugangsdatum
-zurück. Dabei erzwingt er zugleich den gespeicherten `sourceProxy`/`sourceInsecureSsl` der Bibliothek
-und ignoriert einen davon abweichenden Wert der Anfrage (#617): Der Ursprungs-Abgleich sichert nur das
-**Ziel**, nicht den **Weg** — ohne diese Erzwingung könnte ein Berechtigter, der das Passwort selbst
-nicht kennt (aber genug Rechte für den Fallback hat), es über einen selbst kontrollierten Proxy oder
-mit abgeschalteter Zertifikatsprüfung mitlesen.
+zurück. Dabei erzwingt er zugleich das gespeicherte `sourceInsecureSsl` der Bibliothek und ignoriert
+einen davon abweichenden Wert der Anfrage (#617): Der Ursprungs-Abgleich sichert nur das **Ziel**,
+nicht den **Weg** — ohne diese Erzwingung könnte ein Berechtigter, der das Passwort selbst nicht kennt
+(aber genug Rechte für den Fallback hat), es mit abgeschalteter Zertifikatsprüfung mitlesen. Einen
+eigenen Proxy trägt die Anfrage seit #2496 nicht mehr; alle Verbindungen gehen über den hausweiten
+Ausgangsproxy.
 
 Eine eigene Konnektor-Tabelle mit mehreren Quellen je Konnektor — das frühere Zielbild dieses
 Abschnitts, mit Konnektoren wie „Netzlaufwerk Kämmerei" oder „Intranet-Wiki", die mehrere Pfade auf

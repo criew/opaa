@@ -64,7 +64,6 @@ class S3EventServiceTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            null,
             "AKIA:geheim",
             false);
     S3TestSettings.configure(
@@ -144,7 +143,6 @@ class S3EventServiceTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            null,
             "token",
             false);
     confluence.setWebhookSecret(TOKEN);
@@ -190,7 +188,6 @@ class S3EventServiceTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            null,
             "AKIA:geheim",
             false);
     unconfigured.setWebhookSecret(TOKEN);
