@@ -633,12 +633,27 @@ Modells in der Verwaltung wirkt ohne Neustart. Ist kein Chat-Modell aktiv oder a
 Embedding-Modell in Stufe 4 nicht, endet die Frage mit einer deutschen Fehlermeldung; anders als
 beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 
-**Die Endauswahl geht ungekürzt in den Prompt.** Ihr Umfang ist `top-k` mal die Länge der
-gewählten Chunks; nichts kürzt sie auf das Kontextfenster des Chat-Modells. Ein höheres `top-k`
+**Nachbar-Chunks.** Vor dem Prompt bekommt jeder Chunk der Endauswahl seine Nachbarn im selben
+Dokument dazu, die Chunks direkt davor und danach (`neighbor-chunks.radius`). Eine Fundstelle, die
+an einer Chunk-Grenze abreißt, etwa eine Aufzählung oder eine Tabelle, erreicht das Modell so
+vollständig. Die Nachbarn werden zuerst für den bestplatzierten Chunk geladen, die näheren vor den
+ferneren, bis ein Zeichenbudget erschöpft ist (`neighbor-chunks.max-added-characters`). Sie kommen
+nur aus Bibliotheken des Suchbereichs. Im Prompt stehen aneinandergrenzende Chunks eines Dokuments als
+zusammenhängender Ausschnitt in ihrer Reihenfolge im Dokument. Die Ausschnitte folgen dem Rang ihres
+besten Treffers. Jeder Nachbar bleibt ein eigener Chunk mit eigenem Kopf. Das Modell kann ihn
+zitieren, die Belegprüfung erkennt das Zitat an, und er erscheint als Fundstelle seines Dokuments
+(Abschnitt 7). Endauswahl, Suchtreffer (Abschnitt 7.1) und das Protokoll der Diagnose (Abschnitt 8)
+enthalten die Nachbarn nicht. Sie zeigen, was die Suche gefunden hat, nicht, was das Modell gelesen
+hat.
+
+**Die Endauswahl geht ungekürzt in den Prompt**, zusammen mit ihren Nachbarn. Ihr Umfang ist `top-k`
+mal die Länge der gewählten Chunks, dazu höchstens das Zeichenbudget der Nachbarn; nichts kürzt sie
+auf das Kontextfenster des Chat-Modells. Ein höheres `top-k`
 bringt mehr Belege in die Antwort und kostet Eingabetokens je Frage, die Laufzeit eines Modells mit
 großem Kontextfenster ändert sich dabei kaum. Ein lokales Modell mit kleinem Kontextfenster bekommt
 dagegen mehr Text, als es fassen kann: Je nach Anbieter schneidet es den Prompt still ab, oder die
-Anfrage scheitert. Für solche Modelle `top-k` senken; die Empfehlung steht in Abschnitt 10.3. Wie
+Anfrage scheitert. Für solche Modelle `top-k` senken und die Nachbar-Chunks abschalten; die Empfehlung
+steht in Abschnitt 10.3. Wie
 viele Tokens eine Antwort verbraucht hat, steht an der Antwort und in den Metriken (Abschnitt 10.2).
 
 Die Systemanweisung ist **nicht konfigurierbar**: Sie ist im Code festgelegt und enthält nur die
@@ -670,6 +685,10 @@ persistiert — die Antwort im Fenster ohne ihre Zitiermarken, der gespeicherte 
 (Abschnitt 10.2).
 
 ## 7. Belege prüfen und Fundstellen bilden
+
+Belegprüfung und Fundstellen gehen von allen Chunks aus, die das Modell bekommen hat, die
+Nachbar-Chunks aus Abschnitt 6 eingeschlossen; „Endauswahl" meint bis zum Beginn von Abschnitt 7.1
+diese Menge.
 
 Bevor die Antwort geprüft, gespeichert oder angezeigt wird, werden **fehlerhafte Marken
 repariert**. Kleinere Modelle schreiben gelegentlich den Dateinamen an die Stelle der Dokument-ID,
@@ -1066,7 +1085,7 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
-| `top-k` | 20 | Chunks in der Endauswahl (1 bis 100); jeder geht ungekürzt in den Prompt der Antwort (Abschnitt 6). Bei kleinem Kontextfenster des Chat-Modells an dessen Größe binden: etwa 6 bei rund 8.000 Tokens, 12 bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells |
+| `top-k` | 20 | Chunks in der Endauswahl (1 bis 100); jeder geht ungekürzt in den Prompt der Antwort (Abschnitt 6). Bei kleinem Kontextfenster des Chat-Modells an dessen Größe binden: etwa 6 bei rund 8.000 Tokens, 12 bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells. Die Werte gelten ohne Nachbar-Chunks; bei so kleinem Fenster `neighbor-chunks.radius` auf 0 setzen |
 | `fetch-k` | 25 | Kandidaten je Suchanfrage und Pfad (1 bis 200, mindestens `top-k`); die Reichweite der Suche |
 | `similarity-threshold` | 0,3 | Mindestähnlichkeit in der Vektorsuche |
 | `vector-index.max-scan-tuples` | 20000 | Indexeinträge, die eine Vektorsuche höchstens durchläuft, um `fetch-k` Chunks innerhalb ihres Filters zu finden; Laufzeit kostet ein höherer Wert nur bei Suchen, die ihn brauchen |
@@ -1075,6 +1094,8 @@ Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen)
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `max-chunks-per-document` | 2 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab |
+| `neighbor-chunks.radius` | 1 | Nachbar-Chunks je Seite, die jeder Chunk der Endauswahl in den Prompt mitbringt (0 bis 3); 0 schaltet das Nachladen ab (Abschnitt 6) |
+| `neighbor-chunks.max-added-characters` | 40000 | Zeichen, die alle Nachbarn einer Antwort zusammen höchstens hinzufügen (0 bis 1.000.000); kostet entsprechend Eingabetokens je Frage |
 | `conversation-window-messages` | 20 | Breite des Gesprächsfensters in Nachrichten (2 bis 100, gerade) — was die Antwort sieht und was bei kaltem Zwischenspeicher nachgeladen wird |
 | `search-window-turns` | 2 | Runden des Gesprächsfensters, die die Teilfragen-Zerlegung sieht (0 bis `conversation-window-messages` ÷ 2); 0 heißt „nur die Frage" |
 | `metadata-filter.*` | 0,90 / 0,75 / 0,75 / 5m | Füllstandsschwellen für Dokumentart, Datum und Bibliotheksfelder, Cache der Filteroptionen |
