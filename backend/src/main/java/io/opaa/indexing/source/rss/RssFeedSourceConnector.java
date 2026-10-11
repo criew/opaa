@@ -164,7 +164,7 @@ public class RssFeedSourceConnector
               "Die Zugangsdaten wurden vom Server abgelehnt (HTTP 401 Unauthorized).");
         }
         if (response.statusCode() != 200) {
-          return unreachable("Der Server antwortete mit HTTP " + response.statusCode() + ".");
+          return unreachable(ConnectorChecks.unexpectedStatus(response.statusCode()));
         }
         byte[] bytes;
         try {

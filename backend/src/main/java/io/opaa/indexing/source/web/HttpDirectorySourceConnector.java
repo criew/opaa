@@ -163,7 +163,7 @@ public class HttpDirectorySourceConnector implements SourceConnector, OriginalAc
           return unreachable("Die Adresse wurde auf dem Server nicht gefunden (HTTP 404).");
         }
         if (response.statusCode() != 200) {
-          return unreachable("Der Server antwortete mit HTTP " + response.statusCode() + ".");
+          return unreachable(ConnectorChecks.unexpectedStatus(response.statusCode()));
         }
         byte[] bytes;
         try {

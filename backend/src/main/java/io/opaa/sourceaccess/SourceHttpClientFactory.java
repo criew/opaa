@@ -36,6 +36,9 @@ public final class SourceHttpClientFactory {
    * which re-validates the target host/scheme on every hop and drops or refuses {@code
    * Authorization} the moment it stops matching, depending on the caller's {@link
    * RedirectFollowingFetcher.RedirectPolicy}.
+   *
+   * <p>Without {@code proxyHost} the client asks the JVM's default {@link ProxySelector}, which is
+   * the outbound proxy ({@code io.opaa.outbound.OutboundProxySelector}).
    */
   public static HttpClient buildHttpClient(String proxyHost, int proxyPort, boolean insecureSsl) {
     HttpClient.Builder builder =

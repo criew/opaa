@@ -101,6 +101,21 @@ public record S3ClientSettings(
     return proxyHost != null;
   }
 
+  /** The same settings through the proxy at {@code host:port}. */
+  public S3ClientSettings withProxy(String host, int port) {
+    return new S3ClientSettings(
+        endpoint,
+        region,
+        pathStyle,
+        credentials,
+        host,
+        port,
+        insecureSsl,
+        requestTimeout,
+        maxRetries,
+        retryBackoff);
+  }
+
   /** Never prints the credentials - the record's generated form would. */
   @Override
   public String toString() {

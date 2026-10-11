@@ -3,6 +3,7 @@ package io.opaa.llm;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.ModelDiscovery.Failure;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.sourceaccess.BoundedStreams;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -175,6 +177,10 @@ public class LlmModelDiscoverer {
           "Der Endpunkt leitet auf eine andere Adresse um (HTTP "
               + status
               + "). Tragen Sie die Zieladresse direkt ein.");
+    }
+    Optional<String> proxyRefusal = ProxyRefusal.describeStatus(status);
+    if (proxyRefusal.isPresent()) {
+      return ModelDiscovery.failed(Failure.UNREACHABLE, proxyRefusal.get());
     }
     return ModelDiscovery.failed(
         Failure.UNEXPECTED_RESPONSE, "Der Server antwortete mit HTTP " + status + ".");
