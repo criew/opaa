@@ -218,20 +218,14 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await expectCitedSource(page, ENTRY_TITLE)
   })
 
-  test('1c. Person außerhalb der Gruppe sieht den Zugang gesperrt, mit Hinweis auf die Systemverwaltung', async ({
+  test('1c. Person außerhalb der Gruppe sieht den Zugang nicht, nur ihre eigene Adresse', async ({
     outsiderPage: page,
   }) => {
     await openRssSourceStep(page)
-    const tile = connectionChoice(page).getByRole('radio', {
-      name: new RegExp(`^${PROFILE_NAME}`),
-    })
-    await expect(tile).toBeDisabled()
-    // Der Grund ist die Beschreibung der gesperrten Kachel, nicht Teil ihres Namens (#2493).
-    await expect(tile).toHaveAccessibleDescription(
-      new RegExp(
-        `Ihnen fehlt das Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang „${PROFILE_NAME}“\\..*Wenden Sie sich an die Systemverwaltung`,
-      ),
-    )
+    await expect(page.getByText('Zugänge werden geladen …')).toHaveCount(0)
+    await expect(page.getByLabel('Adresse (URL)')).toBeVisible()
+    await expect(page.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) })).toHaveCount(0)
+    await expect(connectionChoice(page)).toHaveCount(0)
   })
 
   test('2a. „Nur über Zugänge“ mit Bestandswahl „Sperren“ sperrt eine Bibliothek mit eigener Adresse', async ({
@@ -346,9 +340,16 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     expect(resumed.status).toBe('COMPLETED')
   })
 
-  test('3. Die Systemverwaltung schaltet „Nur über Zugänge“ über die Oberfläche aus', async ({
+  test('3. Ohne nutzbaren Weg fehlt RSS im Assistenten; die Verwaltung schaltet die Pflicht aus', async ({
     authenticatedPage: adminPage,
+    outsiderPage: page,
   }) => {
+    // Unter der Profilpflicht und ohne freigegebenen Zugang hat dev-outsider keinen nutzbaren Weg
+    // zu RSS: Die Quellart erscheint im Schritt „Art des Wissens“ gar nicht.
+    await openNewLibraryWizard(page)
+    await expect(page.getByRole('radio', { name: /Upload/ })).toBeVisible()
+    await expect(page.getByRole('radio', { name: /RSS-Feed/ })).toHaveCount(0)
+
     // Ausschalten der Pflicht über die Oberfläche: fragt nach, danach ist eine eigene Adresse
     // wieder möglich.
     await gotoSourceTypes(adminPage)

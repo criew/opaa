@@ -200,9 +200,9 @@ export async function lockConnectorType(
 }
 
 /**
- * The profiles a library of `sourceType` may be connected through - also the ones the caller may
- * not use, each with `creatable` and, where not, a notice naming who can change that. With
- * `libraryId` the managers of that library may ask without the right to create a library.
+ * The profiles a library of `sourceType` may be connected through - only the profiles the caller
+ * may use now: released to her and neither the profile nor its type locked. With `libraryId` the
+ * managers of that library may ask without the right to create a library.
  */
 export async function listConnectionProfileOptions(
   sourceType: string,

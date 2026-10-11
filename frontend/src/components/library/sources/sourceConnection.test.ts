@@ -345,7 +345,6 @@ describe('sourceConnectionOf', () => {
         ownership: 'LIBRARY',
         ownAccount: false,
         sourceInsecureSsl: false,
-        creatable: true,
       }),
     ).toEqual({
       profileId: 'p',
