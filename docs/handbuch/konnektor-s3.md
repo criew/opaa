@@ -479,8 +479,8 @@ Drei Stufen, von billig nach teuer:
    der einen ETag wiederverwendet. Stimmt das Merkmal, entfällt der Download. `LastModified` ist
    **nicht** Teil des Merkmals: Ein erneutes Hochladen desselben Inhalts (Kopie, Replikation,
    Metadatenänderung per `CopyObject`) setzt den Zeitstempel neu, ohne dass sich etwas geändert
-   hat. Liefert der Speicher keinen ETag oder wäre das Merkmal länger als 64 Zeichen, tritt die
-   Rückfallform `t:<LastModified als Epochenmillisekunden>|<Größe>` an seine Stelle; die Präfixe
+   hat. Ein ETag gilt unabhängig von seiner Länge, auch in der eigenen Form eines S3-kompatiblen
+   Speichers. Liefert der Speicher keinen ETag, tritt die Rückfallform `t:<LastModified als Epochenmillisekunden>|<Größe>` an seine Stelle; die Präfixe
    `e:` und `t:` halten beide Formen unterscheidbar.
 2. **Prüfsumme** (SHA-256) über die geladenen Bytes, wie bei jeder Quelle. Ein Objekt mit neuem
    Merkmal, aber gleicher Prüfsumme (Multipart-Upload desselben Inhalts, Wechsel der

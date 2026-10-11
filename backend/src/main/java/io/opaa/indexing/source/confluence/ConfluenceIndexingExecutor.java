@@ -604,7 +604,8 @@ public class ConfluenceIndexingExecutor implements SourceIndexingExecutor {
       pageStored =
           result != DocumentIngestResult.QUOTA_EXCEEDED
               && result != DocumentIngestResult.PERSONAL_QUOTA_EXCEEDED
-              && result != DocumentIngestResult.FAILED;
+              && result != DocumentIngestResult.FAILED
+              && result != DocumentIngestResult.FILE_PATH_TOO_LONG;
     } catch (Exception e) {
       IndexingRun.rethrowRunEnding(e);
       run.frame.recordFailure(pagePath, e);

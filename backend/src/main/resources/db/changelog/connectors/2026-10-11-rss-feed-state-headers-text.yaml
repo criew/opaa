@@ -1,0 +1,10 @@
+databaseChangeLog:
+  - changeSet:
+      id: connectors-2026-10-11-rss-feed-state-headers-text
+      author: opaa
+      comment: "etag and last_modified hold the ETag and Last-Modified headers of the feed server as sent, whatever their length: text instead of varchar(500)/varchar(200), stored values unchanged. Neither column is indexed."
+      changes:
+        - sql:
+            sql: |
+              ALTER TABLE rss_feed_state ALTER COLUMN etag TYPE text;
+              ALTER TABLE rss_feed_state ALTER COLUMN last_modified TYPE text;
