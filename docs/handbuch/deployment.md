@@ -1739,6 +1739,19 @@ Hinweis, dass sie unvollständig ist beziehungsweise fehlt. Abhilfe ist eine hö
 Antwortlänge in der Modellverwaltung. Der Hinweis gilt nur für die gerade erzeugte Antwort; im
 gespeicherten Verlauf erscheint er nach dem Neuladen nicht mehr.
 
+#### Denktext im Antworttext
+
+Manche Anbieter liefern das Nachdenken eines Modells nicht getrennt, sondern am Anfang des
+Antworttexts als Block `<think>…</think>` oder `<thought>…</thought>` — etwa Gemma 4 über die
+openai-kompatible Schnittstelle von Gemini, oder selbst betriebene Modelle wie Qwen3 und DeepSeek-R1
+ohne Reasoning-Parser des Servers. OPAA entfernt solche Blöcke bei jedem Aufruf des aktiven
+Chat-Modells (Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion),
+bevor der Text weiterverarbeitet wird. Entfernt wird nur, was ganz am Anfang steht; dieselben
+Zeichenfolgen weiter hinten bleiben Teil der Antwort. Bricht das Modell schon innerhalb des
+Denkblocks an der maximalen Antwortlänge ab, gilt die Antwort als leer, und unter ihr erscheint der
+Hinweis auf die fehlende Antwort. Ein Schalter je Modell ist dafür nicht nötig. Der Verbindungstest
+weist darauf hin, wenn die Testantwort mit Denktext beginnt.
+
 ### Chat-Modelle in der Oberfläche anlegen
 
 Unter **Administration → Modelle → Chat-Modelle** legt ein Systemverwalter Chat-Modelle an,
