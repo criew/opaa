@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -69,6 +68,7 @@ class SourceBlocksTest {
   private final ConnectorTypePolicyRepository policies = mock(ConnectorTypePolicyRepository.class);
   private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
   private final KnowledgeLibraryRepository libraryRepository = LibraryRows.over(rows);
+  private final TestSecrets.Store store = new TestSecrets.Store();
   private SourceBlocks blocks;
 
   @BeforeEach
@@ -99,7 +99,7 @@ class SourceBlocksTest {
             connections,
             profiles,
             new ProfileRequirements(policies, registry),
-            TestSecrets.overLibraries(connections, libraryRepository),
+            TestSecrets.overLibraries(connections, libraryRepository, store),
             registry);
   }
 
@@ -181,7 +181,9 @@ class SourceBlocksTest {
         blocks.blocksAmong(List.of(first, second, third), SourceBlocks.ALL);
 
     assertThat(found.keySet()).containsExactly(second.getId());
-    verify(libraryRepository, times(1)).findIdsHoldingSourceCredentials(any());
+    assertThat(store.batchReads()).isOne();
+    assertThat(store.singleReads()).isZero();
+    assertThat(store.decryptions()).isZero();
     verify(libraryRepository, never()).findById(any());
   }
 
@@ -786,6 +788,9 @@ class SourceBlocksTest {
       connectionRows.add(
           new LibraryConnection(
               library.getId(), facts.contains(Fact.PROFILE_REMOVED) ? null : profile.getId(), NOW));
+      if (!facts.contains(Fact.PROFILE_REMOVED)) {
+        store.moveIn(profile.getId(), library, SERVER);
+      }
     }
     return library;
   }

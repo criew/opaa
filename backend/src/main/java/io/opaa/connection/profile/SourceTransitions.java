@@ -11,6 +11,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ChangeRejection.Category;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner;
+import io.opaa.connection.token.SecretOwner.LibraryOnProfile;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.Secret;
@@ -64,14 +65,19 @@ public class SourceTransitions {
   }
 
   /**
-   * The libraries among {@code libraries} that hold a stored secret of their own (the column), with
+   * The libraries among {@code libraries} on the profile {@code profileId} - {@code null} for their
+   * own address - that hold a stored secret of their own (the column, on a profile the store), with
    * one query - never by whether it can be decrypted now, and never a person's shared secret, which
    * no move of a single library discards.
    */
   public Set<UUID> holdingSecrets(Collection<KnowledgeLibrary> libraries, UUID profileId) {
     Map<SecretOwner, UUID> owners = new HashMap<>();
     for (KnowledgeLibrary library : libraries) {
-      owners.put(new LibraryOwned(library.getId()), library.getId());
+      SecretOwner owner =
+          profileId == null
+              ? new LibraryOwned(library.getId())
+              : new LibraryOnProfile(profileId, library.getId());
+      owners.put(owner, library.getId());
     }
     Set<SecretOwner> notHolding = secrets.statesAmong(owners.keySet()).keySet();
     Set<UUID> holding = new HashSet<>();
@@ -96,7 +102,7 @@ public class SourceTransitions {
    * {@code library} moving from {@code from} to {@code to} - empty for its own address, a profile
    * possibly not saved yet - at {@code address}. Its secret goes along only while {@code to} takes
    * one and its {@link SecretTarget} stays, and never when {@code discardSecret}; {@code
-   * holdsSecret} says whether its column holds one. A secret is read only for a changed
+   * holdsSecret} says whether it holds one of its own. A secret is read only for a changed
    * configuration.
    */
   public Move move(
@@ -239,7 +245,7 @@ public class SourceTransitions {
    * One library's planned move: the effective configuration before and after, the secret in {@code
    * after} only where it goes along.
    *
-   * @param discardsSecret whether the secret its column holds is to be discarded
+   * @param discardsSecret whether its own secret is to be discarded
    * @param takesSecret whether the frame after signs in with the library's own secret
    * @param keptDefaults the defaults of the frame before that the frame after no longer sets, which
    *     the library keeps as its own; {@code null} for none

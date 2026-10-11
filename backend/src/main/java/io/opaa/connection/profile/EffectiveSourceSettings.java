@@ -3,7 +3,9 @@ package io.opaa.connection.profile;
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.token.ConnectionSecrets;
+import io.opaa.connection.token.NewSecret;
 import io.opaa.connection.token.SecretOwner;
+import io.opaa.connection.token.SecretOwner.LibraryOnProfile;
 import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.connection.token.SecretOwner.PendingConsent;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
@@ -206,7 +208,8 @@ public class EffectiveSourceSettings {
 
   /**
    * Connecting {@code library} through {@code profile} adopts the profile's frame: its own proxy,
-   * TLS switch and values under bound keys go, and so does its secret where the profile takes none.
+   * TLS switch and values under bound keys go. Its own secret moves into the store, issued for its
+   * target under the profile, or goes where the profile takes none.
    */
   public void adoptFrame(KnowledgeLibrary library, ConnectionProfile profile) {
     ProfileFrame frame = frame(profile);
@@ -214,14 +217,29 @@ public class EffectiveSourceSettings {
     library.updateSourceSettings(own == null ? null : own.toJson());
     library.dropTransport();
     if (!frame.takesSecret()) {
-      secrets.discard(new LibraryOwned(library.getId()));
+      secrets.discardOwnSecret(library.getId());
+    } else {
+      moveOwnSecretIntoStore(library, profile);
+    }
+  }
+
+  /**
+   * Moves the own secret of {@code library} on {@code profile}, wherever it lies, into the store,
+   * issued for its target there; a private library holds none of its own.
+   */
+  void moveOwnSecretIntoStore(KnowledgeLibrary library, ConnectionProfile profile) {
+    if (!library.isOwnerOnly()) {
+      secrets.carryOver(
+          library.getId(),
+          new LibraryOnProfile(profile.getId(), library.getId()),
+          targetOf(library, profile).key());
     }
   }
 
   /**
    * Releasing {@code library} from {@code profile} makes the profile's frame its own: the defaults
-   * join its connector settings, and proxy and TLS switch become the library's, so the
-   * configuration it runs with stays the same.
+   * join its connector settings, proxy and TLS switch become the library's, and its own secret
+   * moves from the store into its column, so the configuration it runs with stays the same.
    */
   public void releaseFrame(KnowledgeLibrary library, ConnectionProfile profile) {
     ProfileFrame frame = frame(profile);
@@ -229,6 +247,30 @@ public class EffectiveSourceSettings {
     library.updateSourceSettings(settings == null ? null : settings.toJson());
     TransportRules transport = frame.serverTransport();
     library.replaceTransport(transport.proxy(), transport.insecureSsl());
+    secrets.carryOver(library.getId(), new LibraryOwned(library.getId()), null);
+  }
+
+  /**
+   * Writes {@code secret} as the own secret of {@code library} on {@code profile}, issued for its
+   * target there; {@code null} discards it where {@code discardWhenAbsent}, else leaves it. Nothing
+   * is written where the profile takes no own secret of the library.
+   */
+  public void replaceOwnSecret(
+      KnowledgeLibrary library,
+      ConnectionProfile profile,
+      String secret,
+      boolean discardWhenAbsent) {
+    if (!frame(profile).takesSecret() || library.isOwnerOnly()) {
+      return;
+    }
+    if (secret != null) {
+      secrets.store(
+          new LibraryOnProfile(profile.getId(), library.getId()),
+          NewSecret.personal(secret),
+          targetOf(library, profile).key());
+    } else if (discardWhenAbsent) {
+      secrets.discardOwnSecret(library.getId());
+    }
   }
 
   /**

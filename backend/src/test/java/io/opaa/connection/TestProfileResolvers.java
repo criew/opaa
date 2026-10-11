@@ -37,12 +37,22 @@ final class TestProfileResolvers {
       LibraryConnectionRepository connections,
       ConnectionProfileRepository profiles,
       Map<UUID, KnowledgeLibrary> rows) {
+    return blocks(policies, connections, profiles, rows, new TestSecrets.Store());
+  }
+
+  /** {@link #blocks} over the libraries' rows in {@code store}. */
+  static SourceBlocks blocks(
+      ConnectorTypePolicyRepository policies,
+      LibraryConnectionRepository connections,
+      ConnectionProfileRepository profiles,
+      Map<UUID, KnowledgeLibrary> rows,
+      TestSecrets.Store store) {
     return new SourceBlocks(
         policies,
         connections,
         profiles,
         new ProfileRequirements(policies, registry()),
-        secrets(connections, rows),
+        secrets(connections, rows, store),
         registry());
   }
 
@@ -51,7 +61,17 @@ final class TestProfileResolvers {
       ConnectionProfileRepository profiles,
       SourceBlocks blocks,
       Map<UUID, KnowledgeLibrary> rows) {
-    ConnectionSecrets secrets = secrets(connections, rows);
+    return resolver(connections, profiles, blocks, rows, new TestSecrets.Store());
+  }
+
+  /** {@link #resolver} over the libraries' rows in {@code store}. */
+  static ProfileSourceConnectionResolver resolver(
+      LibraryConnectionRepository connections,
+      ConnectionProfileRepository profiles,
+      SourceBlocks blocks,
+      Map<UUID, KnowledgeLibrary> rows,
+      TestSecrets.Store store) {
+    ConnectionSecrets secrets = secrets(connections, rows, store);
     return new ProfileSourceConnectionResolver(
         new EffectiveSourceSettings(
             connections,
@@ -67,8 +87,10 @@ final class TestProfileResolvers {
   }
 
   private static ConnectionSecrets secrets(
-      LibraryConnectionRepository connections, Map<UUID, KnowledgeLibrary> rows) {
-    return TestSecrets.overLibraries(connections, LibraryRows.over(rows));
+      LibraryConnectionRepository connections,
+      Map<UUID, KnowledgeLibrary> rows,
+      TestSecrets.Store store) {
+    return TestSecrets.overLibraries(connections, LibraryRows.over(rows), store);
   }
 
   @SuppressWarnings("unchecked")

@@ -1,10 +1,8 @@
 package io.opaa.connection.profile;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.ConnectionAuthMethod;
@@ -28,15 +26,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
- * Regression guard: a profile change that binds a library's secret anew discards it by the column,
- * not by whether its ciphertext can be read now - an unreadable secret would otherwise reach the
- * new binding once the key is back, and the confirmation would not count it.
+ * Regression guard: a profile change that binds a library's secret anew discards it by its row in
+ * the store, not by whether its ciphertext can be read now - an unreadable secret would otherwise
+ * reach the new binding once the key is back, and the confirmation would not count it.
  */
 class ProfileChangeUnreadableSecretTest {
 
@@ -75,7 +72,7 @@ class ProfileChangeUnreadableSecretTest {
           Clock.fixed(NOW, ZoneOffset.UTC));
 
   @Test
-  void aNewBindingDiscardsAnUnreadableSecretByItsColumnAndCountsItForTheConfirmation() {
+  void aNewBindingDiscardsAnUnreadableSecretByItsRowAndCountsItForTheConfirmation() {
     ConnectionProfile profile = new ConnectionProfile(ProfileProbeSourceConnector.TYPE, NOW);
     ReflectionTestUtils.setField(profile, "name", "Zugang Probe");
     ReflectionTestUtils.setField(profile, "serverUrl", SERVER);
@@ -83,7 +80,7 @@ class ProfileChangeUnreadableSecretTest {
     ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.LIBRARY);
     ReflectionTestUtils.setField(profile, "connectorSettings", "{\"edition\":\"CLOUD\"}");
     when(profiles.findById(profile.getId())).thenReturn(Optional.of(profile));
-    // the key is missing: the attribute reads null, the column holds the ciphertext
+    // the key is missing: the row holds a value the store cannot read
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(
             UUID.randomUUID(),
@@ -97,7 +94,7 @@ class ProfileChangeUnreadableSecretTest {
             null,
             false);
     rows.put(library.getId(), library);
-    doReturn(Set.of(library.getId())).when(libraries).findIdsHoldingSourceCredentials(any());
+    wiring.store.holdUnreadable(profile.getId(), library.getId(), SERVER + " CLOUD");
     LibraryConnection connection = new LibraryConnection(library.getId(), profile.getId(), NOW);
     when(connections.findByProfileId(profile.getId())).thenReturn(List.of(connection));
     when(connections.findById(library.getId())).thenReturn(Optional.of(connection));
@@ -122,7 +119,7 @@ class ProfileChangeUnreadableSecretTest {
         .hasMessageContaining("1 Bibliothek");
     service.update(admin, profile.getId(), rebound, null, true);
 
-    verify(libraries).eraseSourceCredentials(library.getId());
+    assertThat(wiring.store.ownSecretOf(library.getId())).isEmpty();
   }
 
   /** The probe, binding stored credentials to its edition like a service account to its subject. */

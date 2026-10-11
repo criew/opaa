@@ -13,6 +13,7 @@ import io.opaa.connection.profile.ConnectorTypePolicyRepository;
 import io.opaa.connection.profile.LibraryConnection;
 import io.opaa.connection.profile.LibraryConnectionRepository;
 import io.opaa.connection.profile.SourceBlocks;
+import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectionBlockedException;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -33,16 +34,18 @@ class ConnectionSourceStateLookupTest {
   private final LibraryConnectionRepository connections = mock(LibraryConnectionRepository.class);
   private final ConnectionProfileRepository profiles = mock(ConnectionProfileRepository.class);
   private final Map<UUID, KnowledgeLibrary> rows = new HashMap<>();
+  private final TestSecrets.Store store = new TestSecrets.Store();
   private final SourceBlocks blocks =
       TestProfileResolvers.blocks(
-          mock(ConnectorTypePolicyRepository.class), connections, profiles, rows);
+          mock(ConnectorTypePolicyRepository.class), connections, profiles, rows, store);
 
   @Test
   void aRunNamesTheAddressAndAnAnswerTheMissingSecret() {
     KnowledgeLibrary outside = libraryAt("https://elsewhere.example.org/a.xml", null);
-    KnowledgeLibrary inside = libraryAt("https://feeds.example.org/a.xml", "nutzer:geheim");
+    KnowledgeLibrary inside = libraryAt("https://feeds.example.org/a.xml", null);
     ConnectionProfile profile = mock(ConnectionProfile.class);
     UUID profileId = UUID.randomUUID();
+    store.hold(profileId, inside.getId(), "nutzer:geheim", "https://feeds.example.org");
     when(profile.getId()).thenReturn(profileId);
     when(profile.getName()).thenReturn("Feeds");
     when(profile.getServerUrl()).thenReturn("https://feeds.example.org");
@@ -54,7 +57,7 @@ class ConnectionSourceStateLookupTest {
                 new LibraryConnection(inside.getId(), profileId, Instant.EPOCH)));
     when(profiles.findAllById(any())).thenReturn(List.of(profile));
     ProfileSourceConnectionResolver resolver =
-        TestProfileResolvers.resolver(connections, profiles, blocks, rows);
+        TestProfileResolvers.resolver(connections, profiles, blocks, rows, store);
 
     assertThatThrownBy(() -> resolver.resolve(outside))
         .isInstanceOf(SourceConnectionBlockedException.class)

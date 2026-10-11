@@ -22,7 +22,6 @@ import io.opaa.connection.profile.SourceDraft.DraftOwner;
 import io.opaa.connection.profile.SourceTransitions;
 import io.opaa.connection.profile.SourceTransitions.Move;
 import io.opaa.connection.token.ConnectionSecrets;
-import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.SourceBlock;
 import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -266,7 +265,7 @@ public class LibraryConnectionService {
     }
     if (move.discardsSecret()) {
       // only the library's own secret: a person's is shared by every library on the account
-      secrets.discard(new LibraryOwned(library.getId()));
+      secrets.discardOwnSecret(library.getId());
     }
     transitions.keepDefaults(move);
     effective.adoptFrame(library, profile);
@@ -318,6 +317,41 @@ public class LibraryConnectionService {
     libraries.save(library);
     connections.delete(connection);
     return transitions.applied(move);
+  }
+
+  /**
+   * Whether the own secret of {@code library} lies in the store: it is connected through a profile
+   * that still exists. Otherwise its column holds it, which the library administration writes.
+   */
+  public boolean ownSecretInStore(KnowledgeLibrary library) {
+    return currentProfile(library).isPresent();
+  }
+
+  /**
+   * Writes {@code secret} as the own secret of {@code library} on its profile, issued for its
+   * target there as the library now stands; {@code null} discards a held one where {@code
+   * discardWhenAbsent}, else leaves it. A no-op without a profile ({@link #ownSecretInStore}).
+   */
+  @Transactional
+  public void replaceOwnSecret(KnowledgeLibrary library, String secret, boolean discardWhenAbsent) {
+    currentProfile(library)
+        .ifPresent(
+            profile -> effective.replaceOwnSecret(library, profile, secret, discardWhenAbsent));
+  }
+
+  /**
+   * Whether {@code library} holds an own secret, in its column or in the store, readable or not;
+   * never a person's.
+   */
+  public boolean holdsOwnSecret(KnowledgeLibrary library) {
+    return secrets.holdsOwnSecret(library.getId());
+  }
+
+  private Optional<ConnectionProfile> currentProfile(KnowledgeLibrary library) {
+    LibraryConnection connection = connections.findById(library.getId()).orElse(null);
+    return LibraryConnection.throughProfile(connection)
+        ? profiles.findById(connection.getProfileId())
+        : Optional.empty();
   }
 
   /**

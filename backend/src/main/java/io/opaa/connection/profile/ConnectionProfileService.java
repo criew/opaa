@@ -14,7 +14,6 @@ import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.SourceTransitions.Move;
 import io.opaa.connection.token.ConnectionSecrets;
-import io.opaa.connection.token.SecretOwner.LibraryOwned;
 import io.opaa.indexing.source.ClientCredentialsAuth;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.DefaultKey;
@@ -345,7 +344,7 @@ public class ConnectionProfileService {
         library.dropSourceCredentials();
         if (!change.discardsAll()) {
           // only the library's own secret: a person's is shared by every library on the account
-          secrets.discard(new LibraryOwned(library.getId()));
+          secrets.discardOwnSecret(library.getId());
         }
       }
       transitions.keepDefaults(move);

@@ -186,6 +186,25 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   boolean hasStoredSourceCredentials(@Param("id") UUID id);
 
   /**
+   * The column as stored - ciphertext, or legacy cleartext - without the converter, so a value the
+   * missing key cannot read can still move; {@code null} for none. Only the secret store reads it.
+   */
+  @Query(
+      value = "select source_credentials from knowledge_libraries where id = :id",
+      nativeQuery = true)
+  String findStoredSourceCredentials(@Param("id") UUID id);
+
+  /**
+   * Writes {@code stored} - as {@link #findStoredSourceCredentials} reads it - into the column
+   * without the converter; the entity attribute is the caller's part.
+   */
+  @Modifying(flushAutomatically = true)
+  @Query(
+      value = "update knowledge_libraries set source_credentials = :stored where id = :id",
+      nativeQuery = true)
+  int restoreStoredSourceCredentials(@Param("id") UUID id, @Param("stored") String stored);
+
+  /**
    * Which of {@code ids} hold credentials in the column, readable or not - one query, no decrypt.
    */
   @Query(

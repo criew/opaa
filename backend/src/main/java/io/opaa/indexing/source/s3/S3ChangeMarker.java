@@ -6,12 +6,12 @@ import java.time.Instant;
  * The change feature of an S3 object (ADR-0027, Entscheidung 4), compared before any download and
  * persisted as {@code documents.last_modified_remote}: {@code e:<ETag>|<size>}, or the fallback
  * {@code t:<LastModified as epoch millis>|<size>} when the store sent no ETag or the ETag form
- * would not fit the column. {@code LastModified} alone is never the feature - a re-upload of the
- * same content renews it without a change.
+ * would exceed {@link #MAX_LENGTH}. {@code LastModified} alone is never the feature - a re-upload
+ * of the same content renews it without a change.
  */
 final class S3ChangeMarker {
 
-  /** The width of {@code documents.last_modified_remote}. */
+  /** The longest ETag form kept; a longer one falls back to the {@code t:} form. */
   static final int MAX_LENGTH = 64;
 
   private S3ChangeMarker() {}

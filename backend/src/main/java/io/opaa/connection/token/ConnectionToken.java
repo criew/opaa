@@ -114,6 +114,28 @@ class ConnectionToken {
     return token;
   }
 
+  /** A library's own personal secret on the profile {@code profileId}. */
+  static ConnectionToken ofLibrarySecret(
+      UUID profileId, UUID libraryId, String secretCiphertext, String issuedFor, Instant now) {
+    ConnectionToken token = new ConnectionToken();
+    token.id = UUID.randomUUID();
+    token.profileId = profileId;
+    token.libraryId = libraryId;
+    token.createdAt = now;
+    token.replace(secretCiphertext, null, issuedFor, now);
+    return token;
+  }
+
+  /**
+   * The library's own personal secret goes along to the profile {@code profileId}, issued for
+   * {@code issuedFor} there.
+   */
+  void movedTo(UUID profileId, String issuedFor, Instant now) {
+    this.profileId = profileId;
+    this.issuedFor = issuedFor;
+    this.updatedAt = now;
+  }
+
   /** A library's own OAuth grant ("Quelle verbinden"). */
   static ConnectionToken ofLibraryGrant(
       UUID profileId, UUID libraryId, Ciphered grant, String issuedFor, Instant now) {
