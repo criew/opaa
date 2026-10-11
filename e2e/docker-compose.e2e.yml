@@ -38,7 +38,8 @@ services:
       OPAA_INDEXING_DROPBOX_AUTHORIZATION_ENDPOINT: http://localhost:${OPAA_DROPBOX_STUB_PORT:-18091}/oauth2/authorize
       OPAA_INDEXING_DROPBOX_TOKEN_ENDPOINT: http://dropbox-stub:8090/oauth2/token
       OPAA_INDEXING_DROPBOX_REVOCATION_ENDPOINT: http://dropbox-stub:8090/2/auth/token/revoke
-      # The redirect address of a consent: the provider sends the browser back to the frontend.
+      # Base of every absolute link the backend builds, among them the redirect address of a
+      # consent: the provider sends the browser back to the frontend of this stack.
       OPAA_PUBLIC_BASE_URL: http://localhost:${OPAA_FRONTEND_PORT}
       # test(e2e) #471 is the first scenario to trigger POST .../indexing more than once (its own
       # unchanged-feed rerun, to prove a second run creates no new documents) - the default

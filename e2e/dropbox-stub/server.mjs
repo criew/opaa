@@ -1,12 +1,18 @@
-// Minimal stand-in for Dropbox for the E2E stack: the OAuth authorization and token endpoints and
-// the few API v2 routes the connector uses against one fixed home folder. No checks beyond the
-// shape of the requests; it answers every consent as the same account. GET /__state reports how
-// often the authorization endpoint was visited, so a scenario can prove that no redirect happened.
+// Minimal stand-in for Dropbox for the E2E stack: the OAuth code flow (PKCE S256, client_secret_basic,
+// refresh token only for token_access_type=offline) and the API v2 routes the connector uses, over
+// one fixed home folder. Tokens, codes and the client must be valid, or the answer is an error.
+// GET /__state reports how often the consent page was visited, to prove that no redirect happened.
 import { createServer } from 'node:http'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 
 const PORT = Number(process.env.PORT ?? 8090)
 const ACCOUNT = 'dienstkonto@example.org'
+const BASIC = `Basic ${Buffer.from('e2e-app-key:e2e-app-secret').toString('base64')}`
+
+// code -> what its consent was bound to; issued access tokens; the one valid refresh token
+const codes = new Map()
+const accessTokens = new Set()
+const REFRESH_TOKEN = 'stub-refresh'
 
 const FOLDER = '/E2E-Ablage'
 const FILE = `${FOLDER}/dropbox-aktenvermerk.txt`
@@ -18,7 +24,6 @@ const items = [
 ]
 
 let authorizeVisits = 0
-let tokenCounter = 0
 
 function meta(item) {
   const base = {
@@ -75,6 +80,8 @@ async function readBody(req) {
 }
 
 async function rpc(route, args, res) {
+  // Dropbox names the root "" and refuses "/".
+  if (args.path === '/') return send(res, 400, { error_summary: 'path/malformed_path/..' })
   switch (route) {
     case 'users/get_current_account':
       return send(res, 200, {
@@ -124,36 +131,102 @@ function download(req, res) {
   res.end(item.content)
 }
 
-const server = createServer(async (req, res) => {
+function oauthError(res, error) {
+  send(res, 400, { error, error_description: error })
+}
+
+function authorize(url, res) {
+  authorizeVisits++
+  const redirectUri = url.searchParams.get('redirect_uri') ?? ''
+  const challenge = url.searchParams.get('code_challenge')
+  if (
+    url.searchParams.get('response_type') !== 'code' ||
+    url.searchParams.get('client_id') !== 'e2e-app-key' ||
+    url.searchParams.get('code_challenge_method') !== 'S256' ||
+    !challenge ||
+    !redirectUri
+  ) {
+    return send(res, 400, { error: 'invalid_request' })
+  }
+  const code = randomUUID()
+  codes.set(code, {
+    challenge,
+    redirectUri,
+    offline: url.searchParams.get('token_access_type') === 'offline',
+  })
+  const redirect = new URL(redirectUri)
+  redirect.searchParams.set('code', code)
+  redirect.searchParams.set('state', url.searchParams.get('state') ?? '')
+  res.writeHead(302, { Location: redirect.toString() })
+  res.end()
+}
+
+async function token(req, res) {
+  const form = new URLSearchParams(await readBody(req))
+  if (req.headers.authorization !== BASIC) return send(res, 401, { error: 'invalid_client' })
+  const grant = form.get('grant_type')
+  let offline = true
+  if (grant === 'authorization_code') {
+    const code = form.get('code') ?? ''
+    const consent = codes.get(code)
+    codes.delete(code) // a code is good once
+    const verifier = form.get('code_verifier') ?? ''
+    const challenge = createHash('sha256').update(verifier).digest('base64url')
+    if (
+      !consent ||
+      consent.challenge !== challenge ||
+      consent.redirectUri !== form.get('redirect_uri')
+    ) {
+      return oauthError(res, 'invalid_grant')
+    }
+    offline = consent.offline
+  } else if (grant === 'refresh_token') {
+    if (form.get('refresh_token') !== REFRESH_TOKEN) return oauthError(res, 'invalid_grant')
+  } else {
+    return oauthError(res, 'unsupported_grant_type')
+  }
+  const access = `stub-access-${randomUUID()}`
+  accessTokens.add(access)
+  send(res, 200, {
+    access_token: access,
+    token_type: 'bearer',
+    expires_in: 14400,
+    ...(grant === 'authorization_code' && offline ? { refresh_token: REFRESH_TOKEN } : {}),
+    scope: 'account_info.read files.metadata.read files.content.read',
+  })
+}
+
+async function handle(req, res) {
   const url = new URL(req.url ?? '/', 'http://stub')
   if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { status: 'ok' })
-  if (req.method === 'GET' && url.pathname === '/__state') return send(res, 200, { authorizeVisits })
-  if (req.method === 'GET' && url.pathname === '/oauth2/authorize') {
-    authorizeVisits++
-    const redirect = new URL(url.searchParams.get('redirect_uri') ?? '')
-    redirect.searchParams.set('code', 'stub-code')
-    redirect.searchParams.set('state', url.searchParams.get('state') ?? '')
-    res.writeHead(302, { Location: redirect.toString() })
-    return res.end()
+  if (req.method === 'GET' && url.pathname === '/__state') {
+    return send(res, 200, { authorizeVisits })
   }
-  if (req.method === 'POST' && url.pathname === '/oauth2/token') {
-    await readBody(req)
-    tokenCounter++
-    return send(res, 200, {
-      access_token: `stub-access-${tokenCounter}`,
-      token_type: 'bearer',
-      expires_in: 14400,
-      refresh_token: 'stub-refresh',
-      scope: 'account_info.read files.metadata.read files.content.read',
-    })
-  }
+  if (req.method === 'GET' && url.pathname === '/oauth2/authorize') return authorize(url, res)
+  if (req.method === 'POST' && url.pathname === '/oauth2/token') return token(req, res)
   if (req.method === 'POST' && url.pathname.startsWith('/2/')) {
+    const bearer = (req.headers.authorization ?? '').replace(/^Bearer /, '')
+    if (!accessTokens.has(bearer)) {
+      return send(res, 401, {
+        error_summary: 'invalid_access_token/..',
+        error: { '.tag': 'invalid_access_token' },
+      })
+    }
     const route = url.pathname.slice('/2/'.length)
     if (route === 'files/download') return download(req, res)
     const body = await readBody(req)
-    return rpc(route, body ? JSON.parse(body) : {}, res)
+    // routes without arguments are called with the body "null"
+    return rpc(route, (body ? JSON.parse(body) : null) ?? {}, res)
   }
   return send(res, 404, { error: 'not_found' })
+}
+
+const server = createServer((req, res) => {
+  handle(req, res).catch((error) => {
+    console.error(error)
+    if (res.headersSent) res.end()
+    else send(res, 400, { error_summary: 'bad_request/..' })
+  })
 })
 
 server.listen(PORT, () => console.log(`Dropbox stub listening on :${PORT}`))

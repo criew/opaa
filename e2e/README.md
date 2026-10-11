@@ -439,11 +439,10 @@ lassen.
   samt Datei sind Vorbedingung und laufen über die API (`fixtures/privateLibraries.ts`,
   `fixtures/nextcloud.ts`). `test.describe.serial`: Die Bibliothek aus Szenario 3 ist der Gegenstand
   von 4 und 5. `afterAll` räumt auch nach einem Fehlschlag Bibliothek, Verbindung, Space, Zugang und
-  Nextcloud-Konto ab. Szenario 6 (Dropbox, OAuth-Ersatzserver) fehlt noch: Es braucht den Konnektor
-  aus \#2154.
+  Nextcloud-Konto ab.
 
 - `tests/dropbox-source-connect.spec.ts` (#2175, Szenario 6, Teil von Epic #2147) — „Quelle
-  verbinden“ mit dem Dropbox-Konnektor gegen den Ersatzserver `dropbox-stub` (siehe unten). `dev-admin`
+  verbinden“ mit dem Dropbox-Konnektor gegen den Ersatzserver `dropbox-stub` (siehe oben). `dev-admin`
   wählt im Assistenten den Dropbox-Zugang (OAuth, Besitzart Bibliothek): „Quelle verbinden“ ohne
   die Bestätigung „Ich verbinde ein Dienstkonto, kein persönliches Konto“ nennt den Grund und leitet
   nicht weiter (der Ersatzserver zählt die Besuche der Zustimmungsseite, `GET /__state`); mit ihr

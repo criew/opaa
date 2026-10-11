@@ -14,6 +14,7 @@ import {
 } from '../fixtures/connectionProfiles'
 import { deleteLibraryCompletely, libraryIdFromCurrentUrl } from '../fixtures/libraries'
 import { createDropboxProfile } from '../fixtures/dropbox'
+import { apiAs } from '../fixtures/externalAccess'
 import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 
 // "Quelle verbinden" with the Dropbox connector against dropbox-stub: without the service account
@@ -52,6 +53,7 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
   test('1. Ohne Bestätigung keine Weiterleitung, danach Verbindung und Kontoadresse', async ({
     authenticatedPage: page,
   }) => {
+    test.setTimeout(120_000)
     await openNewLibraryWizard(page)
     await page.getByRole('radio', { name: /Dropbox/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
@@ -66,11 +68,29 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
     await expect(page.getByRole('button', { name: 'Ordner laden' })).toHaveCount(0)
 
     const visitsBefore = await authorizeVisits()
+    const startRequests: string[] = []
+    page.on('request', (request) => {
+      if (request.url().includes('/api/v1/connections/authorizations')) {
+        startRequests.push(request.method())
+      }
+    })
     await consent.getByRole('button', { name: 'Quelle verbinden' }).click()
     await expect(
       consent.getByText('Bitte bestätigen Sie, dass Sie ein Dienstkonto verbinden.'),
     ).toBeVisible()
     expect(page.url()).toContain('/libraries/new')
+    // No consent was started at OPAA, and the provider was not visited. The server refuses it too.
+    expect(startRequests).toEqual([])
+    expect(await authorizeVisits()).toBe(visitsBefore)
+    const api = await apiAs('dev-admin')
+    const refused = await api.post('/api/v1/connections/authorizations', {
+      data: { profileId, purpose: 'LIBRARY_NEW', serviceAccountConfirmed: false },
+    })
+    expect(refused.status()).toBe(400)
+    expect(((await refused.json()) as { code: string }).code).toBe(
+      'SERVICE_ACCOUNT_CONFIRMATION_REQUIRED',
+    )
+    await api.dispose()
     expect(await authorizeVisits()).toBe(visitsBefore)
 
     await consent
@@ -87,9 +107,9 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
     await page.getByRole('button', { name: 'Ordner laden' }).click()
     await page.getByRole('button', { name: `Ordner ${FOLDER} übernehmen` }).click()
     await page.getByRole('button', { name: 'Verbindung testen' }).click()
-    await expect(page.getByRole('alert').filter({ hasText: /Verbindung|erreichbar/ })).toBeVisible({
-      timeout: 15_000,
-    })
+    await expect(
+      page.getByRole('alert').filter({ hasText: 'Verbindung erfolgreich; der Ordner ist erreichbar.' }),
+    ).toBeVisible({ timeout: 15_000 })
     await page
       .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })
       .uncheck()
@@ -112,6 +132,7 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
   test('2. Der Lauf nimmt die Datei auf, und der Chat findet sie', async ({
     authenticatedPage: page,
   }) => {
+    test.setTimeout(120_000)
     await gotoLibrary(page, libraryId!)
     await page.getByRole('tab', { name: 'Quelle' }).click()
     const status = await triggerIndexingInUi(page, libraryId!)
