@@ -960,6 +960,12 @@ Ziel des Backends:
 - Mailserver
 - die Quellen der Bibliotheken und die Anbieter verbundener Konten
 
+Ist in der Oberfläche ein [Ausgangsproxy](deployment.md#ausgangsproxy) eingetragen, gehen alle
+HTTP(S)-Ziele über ihn: Identitätsanbieter, Modell-Endpunkte, Quellen und Anbieter brauchen dann
+keine eigene Regel mehr, sondern eine Regel zum Proxy. Eigene Regeln brauchen weiterhin die
+Datenbank, der Mailserver, SMB-Freigaben, der Objektspeicher der Originalablage und jedes Ziel auf
+der Ausnahmeliste des Proxys, etwa Modellserver im Cluster.
+
 ```yaml
 networkPolicy:
   egress:

@@ -361,6 +361,11 @@ public enum AuditEventType {
   CONNECTION_LOG_ACCESSED,
   /** The retention period of the connection log changed; before/after carry both values. */
   CONNECTION_LOG_RETENTION_CHANGED,
+  /**
+   * The system administration changed the house-wide outbound proxy or its exclusion list (#2496);
+   * before/after carry the proxy address and the exclusion list.
+   */
+  OUTBOUND_PROXY_CHANGED,
 
   // Lokale Konten (ADR-0033, Entscheidung 13)
   /**

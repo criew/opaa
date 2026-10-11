@@ -3,6 +3,9 @@ package io.opaa.security;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import io.opaa.outbound.OutboundProxySelector;
+import io.opaa.outbound.ProxyAddress;
+import io.opaa.outbound.ProxyExclusions;
 import java.net.InetAddress;
 import java.net.URI;
 import java.util.List;
@@ -249,6 +252,69 @@ class TargetAddressValidatorTest {
                     .validate(URI.create("http://this-host-does-not-exist.invalid.opaa-test/")))
         .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
         .hasMessageContaining("DNS-Auflösung fehlgeschlagen");
+  }
+
+  // --- through the outbound proxy ---------------------------------------
+
+  @Test
+  void anUnresolvableNamePassesWhenItsConnectionGoesThroughTheOutboundProxy() {
+    try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
+      assertThatCode(
+              () ->
+                  enabled().validate(URI.create("https://only-the-proxy-knows.invalid.opaa-test/")))
+          .doesNotThrowAnyException();
+      assertThatCode(() -> enabled().validateHost("only-the-proxy-knows.invalid.opaa-test"))
+          .doesNotThrowAnyException();
+    }
+  }
+
+  @Test
+  void anUnresolvableExcludedNameIsStillRejected() {
+    try (OutboundRoute route =
+        OutboundRoute.through("proxy.example.org:3128", "invalid.opaa-test")) {
+      assertThatThrownBy(
+              () ->
+                  enabled().validate(URI.create("https://only-the-proxy-knows.invalid.opaa-test/")))
+          .isInstanceOf(TargetAddressValidator.UnknownTargetHostException.class);
+    }
+  }
+
+  @Test
+  void aPrivateIpLiteralIsRejectedEvenThroughTheOutboundProxy() {
+    try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
+      assertThatThrownBy(() -> enabled().validate(URI.create("http://10.1.2.3/")))
+          .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
+          .hasMessageContaining("gesperrten Adressbereich");
+      assertThatThrownBy(() -> enabled().validate(URI.create("http://169.254.169.254/latest/")))
+          .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class);
+    }
+  }
+
+  @Test
+  void aResolvableNameIsCheckedUnchangedThroughTheOutboundProxy() {
+    try (OutboundRoute route = OutboundRoute.through("proxy.example.org:3128")) {
+      // "localhost" resolves locally; its loopback address stays blocked.
+      assertThatThrownBy(() -> enabled().validate(URI.create("http://localhost/")))
+          .isInstanceOf(TargetAddressValidator.TargetAddressBlockedException.class)
+          .hasMessageContaining("gesperrten Adressbereich");
+    }
+  }
+
+  /** Routes the JVM through an outbound proxy for one test and goes direct again afterwards. */
+  private record OutboundRoute() implements AutoCloseable {
+    static OutboundRoute through(String proxy, String... exclusions) {
+      OutboundProxySelector.instance()
+          .apply(
+              new OutboundProxySelector.Snapshot(
+                  ProxyAddress.parse(proxy).orElseThrow(),
+                  ProxyExclusions.of(List.of(exclusions))));
+      return new OutboundRoute();
+    }
+
+    @Override
+    public void close() {
+      OutboundProxySelector.instance().apply(OutboundProxySelector.Snapshot.direct());
+    }
   }
 
   // --- proxy host -------------------------

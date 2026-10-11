@@ -2,6 +2,7 @@ package io.opaa.indexing.source;
 
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.SourceType;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.ProxyAndCredentials;
 import java.io.IOException;
@@ -11,6 +12,7 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.net.http.HttpTimeoutException;
 import java.time.Duration;
+import java.util.Optional;
 import javax.net.ssl.SSLException;
 
 /**
@@ -108,6 +110,10 @@ public final class ConnectorChecks {
   public static String translateConnectionError(IOException e) {
     if (e instanceof TargetAddressValidator.TargetAddressBlockedException) {
       return e.getMessage();
+    }
+    Optional<String> proxyRefusal = ProxyRefusal.describe(e);
+    if (proxyRefusal.isPresent()) {
+      return proxyRefusal.get();
     }
     if (e instanceof UnknownHostException) {
       return "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).";

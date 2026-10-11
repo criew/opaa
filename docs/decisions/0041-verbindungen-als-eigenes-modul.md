@@ -1358,6 +1358,52 @@ Bibliothek aber im Token-Speicher. Jetzt hat jedes Geheimnis an einem Zugang gen
 - **Belegt** in `OwnSecretInStoreIntegrationTest` (Anlegen, Ändern, Zuordnen, Lösen, Wechsel des
   Zugangs, andere Anmeldeart) und den angepassten Einheitstests über `TestSecrets.Store`.
 
+## Nachtrag vom 11.10.2026: Globaler Ausgangsproxy (#2496, PR 1 von 3)
+
+Der Proxy wird einmal hausweit in der Oberfläche gepflegt statt je Zugang und Bibliothek
+(Maintainer-Entscheidung vom 11.10.2026, Epic #2492). PR 1 baut den globalen Weg; `source_proxy` an
+Bibliothek und Zugang bleibt bis PR 3 bestehen und überstimmt den globalen Proxy bis dahin.
+
+- **Mechanismus:** `io.opaa.outbound` (foundation, unter `security`). `OutboundProxyInstaller`
+  setzt beim Start vor jeder Bean `OutboundProxySelector` als `ProxySelector.setDefault`. Der JDK-
+  `HttpClient` ohne `.proxy()`, `HttpURLConnection`, RestClient/RestTemplate und OkHttp (Spring AI
+  baut ihn mit `proxy(null)`) fragen ihn je Verbindung. Kein Client braucht dafür eigenen Code, und
+  Änderungen wirken ohne Neustart. Nur das AWS SDK fragt keinen `ProxySelector`; der S3-Konnektor
+  übergibt ihm `proxyFor(endpoint)` beim Bau des Clients.
+- **Invariante:** Über den Proxy gehen nur `http` und `https`. Jedes andere Schema, vor allem
+  `socket://` aus `new Socket()` (SMB, SMTP, JDBC), Loopback und die Treffer der Ausnahmeliste gehen
+  direkt. `OutboundProxySelectorTest` hält das fest.
+- **Ziele:** alle HTTP(S)-Ziele des Backends, also Konnektoren, OAuth, Dienstkonto-Tokens,
+  Original-Abruf, MCP-Discovery, Modell-Anbieter, OIDC-Discovery/JWKS und Verzeichnisabgleich.
+  Interne Ziele kommen auf die Ausnahmeliste. Die S3-Originalablage ist Infrastruktur: `S3SdkClient`
+  setzt immer eine eigene `ProxyConfiguration` ohne System-Properties und Umgebungsvariablen, sie
+  geht also ohne Proxy in ihren Einstellungen direkt.
+- **Keine zweite Quelle:** JVM-Proxy-Properties und `HTTP(S)_PROXY` werden nicht gelesen. Ohne
+  Eintrag geht alles direkt.
+- **Adressprüfung:** Geprüft wird weiter das Ziel, nie der Proxy. Ein lokal nicht auflösbarer Name
+  ist kein Ablehnungsgrund, wenn die Verbindung über den Proxy geht (`isProxied`), denn der Proxy
+  löst ihn auf. IP-Literale und auflösbare Namen werden unverändert geprüft. Das gilt in
+  `TargetAddressValidator` und damit auch für `OidcAddressPolicy` und `UploadS3TargetPolicy`.
+  Ausnahmeliste und Allowlist (`OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`) bleiben getrennt: Die
+  eine entscheidet über den Weg, die andere über die Erreichbarkeit. Akzeptierte Grenze: Welche
+  Adresse der Proxy für einen Namen wählt, sieht OPAA nicht.
+- **Ausnahmeliste** im `NO_PROXY`-Stil: Hostname trifft sich und alle Subdomänen, IP-Literal sich
+  selbst, CIDR nur IP-Literale und nie über DNS. Abgewiesen werden `*`, Ports und Leerzeichen.
+- **Speicher:** Singleton `outbound_proxy_settings` (foundation). Der Selector übernimmt den Stand
+  beim Start und jede Änderung erst nach dem Commit; ein Rollback leitet nie eine Verbindung um.
+  Prozesslokaler Zustand im Sinne von [ADR-0021](0021-single-instance-betrieb.md).
+- **Verwaltung:** `GET/PUT /api/v1/admin/outbound-proxy` nur für die Systemverwaltung
+  (`OutboundProxyAdministration`), jede Änderung ist `OUTBOUND_PROXY_CHANGED` mit Vorher und
+  Nachher. Keine Proxy-Authentifizierung: Der JDK sperrt Basic für `CONNECT`, und jede
+  Client-Familie bräuchte einen eigenen Authenticator.
+- **Fehlerbild:** `ProxyRefusal` erkennt einen abgelehnten Tunnel (JDK, OkHttp, Apache) und meldet
+  ihn deutsch über `ConnectorChecks` und den Verbindungstest der Modelle.
+- **Strukturfolge:** `NumericAddress` liegt jetzt in `io.opaa.common`, weil `outbound` unter
+  `security` liegt und die Literalprüfung der Ausnahmeliste dieselbe ist.
+- **Belegt** in `OutboundProxySelectorTest`, `ProxyExclusionsTest`, `TargetAddressValidatorTest`,
+  den Routing-Tests über `RecordingHttpProxy` (Quellzugriff samt Weiterleitung und Tunnel,
+  OpenAI-Chat, S3-Konnektor) und `OutboundProxyIntegrationTest`.
+
 ## Referenzen
 
 - [connector-connections.md](../features/connector-connections.md)

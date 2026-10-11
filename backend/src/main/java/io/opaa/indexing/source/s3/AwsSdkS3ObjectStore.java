@@ -3,6 +3,7 @@ package io.opaa.indexing.source.s3;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
 import io.opaa.indexing.source.RenewableCredential;
+import io.opaa.outbound.OutboundProxySelector;
 import io.opaa.s3.S3AccessException;
 import io.opaa.s3.S3ClientSettings;
 import io.opaa.s3.S3Connection;
@@ -94,6 +95,14 @@ final class AwsSdkS3ObjectStore implements S3ObjectStore {
             properties.requestTimeout(),
             properties.maxRetries(),
             properties.retryBackoff());
+    if (!settings.hasProxy()) {
+      S3ClientSettings direct = settings;
+      settings =
+          OutboundProxySelector.instance()
+              .proxyFor(connection.endpoint())
+              .map(proxy -> direct.withProxy(proxy.host(), proxy.port()))
+              .orElse(direct);
+    }
     this.client =
         current == null
             ? S3SdkClient.open(settings, guard)

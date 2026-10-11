@@ -1,5 +1,6 @@
 package io.opaa.security;
 
+import io.opaa.outbound.OutboundProxySelector;
 import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
@@ -18,6 +19,10 @@ import org.slf4j.LoggerFactory;
  *
  * <p>DNS rebinding is an accepted limitation: the vetted address and the one the client connects to
  * come from two resolutions of the same name, and the JDK client offers no hook to pin one.
+ *
+ * <p>The target is checked, never the outbound proxy. A name that does not resolve locally passes
+ * when its connection goes through the outbound proxy ({@link OutboundProxySelector#isProxied}),
+ * because the proxy resolves it; IP literals and resolvable names are checked unchanged.
  */
 public class TargetAddressValidator {
 
@@ -96,6 +101,10 @@ public class TargetAddressValidator {
     try {
       addresses = InetAddress.getAllByName(host);
     } catch (UnknownHostException e) {
+      if (OutboundProxySelector.instance().isProxied(host)) {
+        // The outbound proxy resolves the name, so a missing local resolution is no rejection.
+        return;
+      }
       // Deliberately not surfaced as a generic "unreachable" - a DNS failure and a resolved-but-
       // blocked target are different diagnoses for whoever configured this source. Same wording
       // ConnectorChecks#translateConnectionError already uses for an ordinary

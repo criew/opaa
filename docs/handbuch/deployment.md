@@ -1596,6 +1596,47 @@ Sinn; das ist jeweils vermerkt.
 
 **Laufzeit und Speicher eines RSS-Laufs.** Die Politeness-Wartezeit (`OPAA_INDEXING_RSS_REQUEST_DELAY_MS`, Voreinstellung 1000 ms) gilt für jede Anfrage einzeln — Detailseite und jede einzelne Anlage. Mit den Voreinstellungen (200 Einträge, bis zu 10 Anlagen je Eintrag) dauert ein Lauf, der bei jedem Eintrag das Limit ausschöpft, im ungünstigsten Fall rund 200 × 11 × 1 s ≈ 37 Minuten. Jede Anlage wird beim Herunterladen direkt auf die temporäre Datei gestreamt und dabei bei `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` (Voreinstellung 20 MiB) abgeschnitten (`io.opaa.sourceaccess.BoundedDownloader#downloadBounded`); der Heap hält davon nur den Kopierpuffer. Antwortet eine Quelle mit `429`, wartet der Lauf die in `Retry-After` genannte Zeit — je Anfrage bis zu `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES` × `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER`, mit den Voreinstellungen also bis zu 6 × 2 min = 12 Minuten. Je Lauf ist die Summe dieser Wartezeiten auf `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` (Voreinstellung 15 Minuten) gedeckelt, die Zahl der Anfragen optional auf `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN`: Eine Quelle, die jede Anfrage bis zum Ende drosselt, beendet den Lauf damit nach spätestens 15 Minuten Wartezeit geordnet als „unvollständig, wird fortgesetzt", statt ihn rechnerisch um 200 × 11 × 12 min zu verlängern. Wer schneller aufgeben will, senkt die Werte; Confluence und S3 begrenzen ihre Läufe über eigene Anfragebudgets.
 
+### Ausgangsproxy
+
+Muss das Backend über einen Proxy ins Netz, trägt die Systemverwaltung ihn in der Oberfläche ein:
+**Administration → Zugänge**, Abschnitt **Ausgangsproxy**. Es gibt genau einen Proxy für das ganze Haus;
+ohne Eintrag gehen alle Verbindungen direkt hinaus. Die JVM-Eigenschaften `http.proxyHost` und die
+Umgebungsvariablen `HTTP_PROXY`/`HTTPS_PROXY` wertet OPAA nicht aus.
+
+- **Was über den Proxy geht:** jede HTTP(S)-Verbindung des Backends — Quellen der Bibliotheken samt
+  Weiterleitungen und Original-Abruf, OAuth- und Token-Endpunkte der Zugänge, Dienstkonto-Tokens,
+  MCP-Server, Chat-, Einbettungs- und Rerank-Endpunkte samt Verbindungstest, Discovery-Dokument und
+  Signaturschlüssel der Identitätsanbieter und der Verzeichnisabgleich. `http`-Ziele gehen als
+  gewöhnliche Proxy-Anfrage hinaus, `https`-Ziele als Tunnel (`CONNECT`).
+- **Was nie über den Proxy geht:** Ziele auf `localhost` und Loopback-Adressen, die Datenbank, der
+  Mailserver, SMB-Freigaben und der Objektspeicher der Originalablage.
+- **Format:** `http://host:port` oder `host:port`. Ein Proxy über `https`, SOCKS und eine Anmeldung
+  am Proxy werden nicht unterstützt; ein Proxy, der eine Anmeldung verlangt, weist jede Verbindung
+  ab. Der Proxy muss OPAA deshalb über die Adresse des Servers zulassen.
+- **Ausnahmeliste:** ein Eintrag je Zeile. Ein Hostname gilt für sich und alle Subdomänen
+  (`intranet.example.org` trifft auch `wiki.intranet.example.org`; ein vorangestellter `.` oder `*.`
+  bedeutet dasselbe), eine IP-Adresse für sich, ein Netzbereich wie `10.0.0.0/8` für IP-Adressen
+  darin. Ein Netzbereich trifft nie einen Hostnamen, auch wenn dieser in den Bereich auflöst.
+  Abgewiesen werden `*`, Ports und Leerzeichen. Interne Ziele wie ein Modellserver im eigenen Netz
+  gehören auf diese Liste.
+- **Ausnahmeliste und Zielprüfung sind getrennt.** Die Ausnahmeliste entscheidet nur über den Weg.
+  Ob ein internes Ziel überhaupt erreicht werden darf, entscheidet weiter die Zielprüfung mit
+  `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` (siehe oben). Ein internes Ziel braucht in der Regel
+  beides.
+- **Der Proxy bestimmt die Zieladresse.** Geprüft wird das Ziel, nie der Proxy. Ein Hostname, den der
+  Server selbst nicht auflösen kann, wird nicht abgelehnt, wenn die Verbindung über den Proxy geht,
+  denn der Proxy löst ihn auf. IP-Adressen und auflösbare Namen prüft OPAA unverändert. Welche
+  Adresse der Proxy für einen Namen tatsächlich wählt, sieht OPAA nicht: Wer interne Ziele hinter dem
+  Proxy ausschließen muss, sperrt sie am Proxy.
+- **Änderungen** gelten für jede danach aufgebaute Verbindung, ohne Neustart. Eine bereits offene,
+  wiederverwendete Verbindung (Keep-Alive) läuft auf ihrem bisherigen Weg weiter, bis sie schließt.
+  Jede Änderung steht als `OUTBOUND_PROXY_CHANGED` mit altem und neuem Stand im Revisionsprotokoll.
+- **Fehlerbild:** Lehnt der Proxy einen Tunnel ab, melden Verbindungstest und Lauf „Der Ausgangsproxy
+  hat die Verbindung zum Ziel abgelehnt" mit dem Status des Proxys.
+- **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen, weil auch
+  deren Signaturschlüssel über ihn geholt werden. Das lokale Konto der Systemverwaltung meldet sich
+  ohne Anbieter an und kann den Eintrag korrigieren.
+
 ### Netzwerkzugang
 
 Standardmäßig bindet das Backend an `localhost`. Um OPAA von anderen Geräten im Netzwerk zugänglich zu machen, setzen Sie:

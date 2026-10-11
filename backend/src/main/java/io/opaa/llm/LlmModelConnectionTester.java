@@ -2,6 +2,7 @@ package io.opaa.llm;
 
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.SettingsEncryptor;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import java.io.IOException;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import javax.net.ssl.SSLException;
 import org.slf4j.Logger;
@@ -285,6 +287,10 @@ public class LlmModelConnectionTester {
   }
 
   private static String translateConnectionError(IOException e) {
+    Optional<String> proxyRefusal = ProxyRefusal.describe(e);
+    if (proxyRefusal.isPresent()) {
+      return proxyRefusal.get();
+    }
     if (e instanceof UnknownHostException) {
       return "Der Host konnte nicht gefunden werden (DNS-Auflösung fehlgeschlagen).";
     }
