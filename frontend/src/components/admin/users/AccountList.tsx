@@ -79,7 +79,7 @@ function LocalStateCell({ user }: { user: LocalUserResponse }) {
  * its tooltip.
  *
  * Der Hinweis trägt ein Symbol in der Signalfarbe, der Text bleibt `text.secondary` - die
- * Signalfarbe steht in Symbol und Kante, nicht im Fließtext (Gestaltungsleitlinien 5.10).
+ * Signalfarbe steht in Symbol und Kante, nicht im Fließtext (Gestaltungsleitlinien 2.3).
  */
 function ProviderStateCell({ account }: { account: AccountResponse }) {
   const hint = providerStateHint(account)

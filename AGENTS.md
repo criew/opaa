@@ -194,7 +194,7 @@ In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z.
 
 ### Farben und Kontrast
 
-Farben im Frontend kommen nur aus den Rollen in `frontend/src/theme/tokens.ts`. Text — auch in Hinweis-, Warn- und Statusfarben — erreicht mindestens 4,5:1 gegen seine Fläche (große Schrift 3:1), im hellen und im dunklen Farbschema; Regeln und Werte stehen in den [Gestaltungsleitlinien, Abschnitt 2.4](docs/design/guidelines.md#24-kontrast).
+Text, auch in Hinweis-, Warn- und Statusfarben, erreicht im hellen und im dunklen Farbschema mindestens 4,5:1 gegen seine Fläche (große Schrift 3:1); Regeln zu Farbrollen und Kontrast stehen in den [Gestaltungsleitlinien 2.3 und 2.4](docs/design/guidelines.md#23-regeln).
 
 ### Commit-Nachrichten
 

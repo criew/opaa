@@ -37,7 +37,7 @@ const TONE_ICON: Record<ConfirmTone, typeof ErrorOutlineOutlinedIcon | null> = {
  * - **Bei einer unwiderruflichen Handlung liegt der Fokus auf „Abbrechen".** Ein Enter aus dem
  *   Reflex heraus bricht dann ab, statt zu löschen.
  *
- * Die Signalfarbe steht in der Kante und im Symbol, nie im Text (Gestaltungsleitlinien 5.10).
+ * Die Signalfarbe steht in der Kante und im Symbol, nie im Text (Gestaltungsleitlinien 2.3).
  */
 export default function ConfirmHost() {
   const request = useConfirmStore((s) => s.request)

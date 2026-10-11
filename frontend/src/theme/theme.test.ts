@@ -7,6 +7,7 @@ import {
   darkRoles,
   gray,
   lightRoles,
+  markHighlight,
   navy,
   navyRoles,
   radius,
@@ -167,6 +168,18 @@ describe('createAppTheme', () => {
       }
     },
   )
+
+  test('text keeps 4.5:1 on the search-hit marker over every surface (#2493)', () => {
+    for (const roles of [lightRoles, darkRoles]) {
+      for (const background of [roles.bg1, roles.bg2, roles.bg3]) {
+        const marker = flatten(markHighlight, background)
+        expect(
+          getContrastRatio(roles.fg1, marker),
+          `fg1 on marker over ${background}`,
+        ).toBeGreaterThanOrEqual(TEXT_CONTRAST_MINIMUM)
+      }
+    }
+  })
 
   // regression guard for #2150: MUI paints the hover of contained buttons in `dark` with
   // `contrastText`, and filled alerts in `dark` with `getContrastText(main)`. With dark text the

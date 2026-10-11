@@ -167,6 +167,13 @@ andere Rolle.
   Icon mischen) — sie verlässt sich auf die Rolle.
 - **Semantikfarben tragen Bedeutung, keine Stimmung.** Ein als nicht bestätigt gekennzeichneter Beleg
   ist keine Warnung und erhält keine Signalfarbe (siehe redesign-prompt.md §4).
+- **Signalfarbe markiert, der Satz spricht.** In Zuständen, Hinweisen und Bestätigungen steht
+  die Signalfarbe in Punkt, Symbol oder Kante; der Fließtext daneben bleibt in `fg-*`. Die
+  Bedeutung trägt der Satz, die Farbe zeigt nur, wo er hingehört. Ausnahme ist ein knapper
+  Zustand ohne eigenes Zeichen, etwa der Grund unter einer gesperrten Kachel (5.11) — dort ist
+  die Rolle selbst die Textfarbe und hält 2.4.
+- **Markierung von Suchtreffern** liegt auf dem eigenen Ton `markHighlight` (blasses Amber zu
+  25 %, in beiden Schemata gleich), nicht auf einer Signalrolle; der Text darauf bleibt `fg-1`.
 
 ### 2.4 Kontrast
 
@@ -178,11 +185,12 @@ auf jeder Stufe von `danger`, `warning` und `success`); wer andere Kombinationen
 den Kontrast im PR nach.
 
 **Hinweis-, Warn- und Statusfarben sind Textfarben.** Text in `danger`, `warning` oder `success`
-— Sperrgründe, Statuszeilen, Hinweise, Etiketten — erreicht mindestens 4,5:1 (große Schrift
-3:1) gegen seine Fläche, im hellen und im dunklen Schema. Er steht in der Rolle selbst, nie in
-einem Skalenwert, einem Alpha-Ton oder unter gesenkter Deckkraft; ein gesperrtes Element darf
-ausgegraut sein, seine Begründung nicht (5.11). `frontend/src/theme/theme.test.ts` weist die
-Rollen nach, die Barrierefreiheitsprüfung der E2E-Suite misst die Stellen (#2493).
+— Sperrgründe, Hinweise, Etiketten — erreicht mindestens 4,5:1 (große Schrift 3:1) gegen seine
+Fläche, im hellen und im dunklen Schema. Er steht in der Rolle selbst, nie in einem Skalenwert,
+einem Alpha-Ton oder unter gesenkter Deckkraft; ein gesperrtes Element darf ausgegraut sein,
+seine Begründung nicht (5.11). Wann Signalfarbe überhaupt im Text steht, regelt 2.3.
+`frontend/src/theme/theme.test.ts` weist die Rollen nach, die Barrierefreiheitsprüfung der
+E2E-Suite misst die gescannten Seiten (#2493).
 
 Der Hover-Zustand gefüllter Flächen zählt mit: Er behält die Textfarbe der Fläche, und
 deshalb wird er bei dunklem Text heller statt dunkler. Im hellen Schema tragen Gefahr, Warnung
@@ -498,8 +506,7 @@ ab, statt zu löschen.
 Anfrage lösen alle zu „nein" auf. Eine Bestätigung entsteht nur durch den Klick auf die
 benannte Handlung.
 
-Die Signalfarbe steht in Kante und Symbol, nie im Fließtext (dieselbe Regel wie bei
-`StatusLine`): Die Bedeutung trägt der Satz, die Farbe markiert nur die Stelle.
+Die Signalfarbe steht in Kante und Symbol, nie im Fließtext (2.3).
 
 **Wann überhaupt bestätigen?** Nur, wenn die Handlung nicht folgenlos rückgängig zu machen ist
 oder fremde Arbeit trifft. Eine Bestätigung, die reflexhaft weggeklickt wird, schützt nichts und

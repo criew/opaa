@@ -1,5 +1,5 @@
 import Box from '@mui/material/Box'
-import { alpha } from '@mui/material/styles'
+import { markHighlight } from '../../theme/tokens'
 import type { ChatSearchHighlight } from '../../types/api'
 
 interface HighlightedExcerptProps {
@@ -41,14 +41,14 @@ export default function HighlightedExcerpt({ text, highlights }: HighlightedExce
           <Box
             component="mark"
             key={index}
-            sx={(theme) => ({
+            sx={{
               fontWeight: 700,
               textDecorationLine: 'underline',
               textUnderlineOffset: '2px',
-              bgcolor: alpha(theme.palette.warning.main, 0.25),
+              bgcolor: markHighlight,
               color: 'inherit',
               borderRadius: '2px',
-            })}
+            }}
           >
             {segment.text}
           </Box>

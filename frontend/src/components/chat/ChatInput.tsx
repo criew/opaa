@@ -604,7 +604,7 @@ export default function ChatInput({
         {scope === 'none' && (
           <>
             {/* Die Aussage ist an sich schon eine Warnung; sie braucht keine Signalfarbe im Text
-                (Gestaltungsleitlinien 5.10). */}
+                (Gestaltungsleitlinien 2.3). */}
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
               Antwortet ohne Dokumente.
             </Typography>

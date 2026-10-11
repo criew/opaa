@@ -85,6 +85,12 @@ const successLight: SignalTones = { main: '#11774F', hover: '#0B5A3B', soft: '#0
 const successDark: SignalTones = { main: '#16B77B', hover: '#38C18F', soft: '#5BCB9F' }
 
 /**
+ * Marker behind matched words (search hits), the same pale amber in both schemes; translucent, so
+ * it takes on the surface below. fg-1 keeps >= 4.5:1 on it over bg-1..3 of either scheme.
+ */
+export const markHighlight = 'rgba(245, 184, 61, 0.25)'
+
+/**
  * Semantic roles - the vocabulary every component uses (guidelines 2.2). One value set per
  * color scheme; both schemes are equally binding.
  */
