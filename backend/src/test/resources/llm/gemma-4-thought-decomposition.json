@@ -1,0 +1,26 @@
+{
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "message": {
+        "content": "<thought>*   Current user question: \"Was kostet ein Personalausweis und wie lange dauert die Ausstellung eines Reisepasses?\" (What does an ID card cost and how long does the issuance of a passport take?)\n    *   Goal: Decompose into 1-3 independent search queries for a vector database.\n    *   Constraints: No new topics, correct typos, one query per line, no numbering/bullets/quotes/intro/outro.\n\n    *   Topic A: Cost of an ID card (\"Was kostet ein Personalausweis\").\n    *   Topic B: Duration of passport issuance (\"wie lange dauert die Ausstellung eines Reisepasses\").\n\n    *   Query 1: Kosten für einen Personalausweis\n    *   Query 2: Dauer der Ausstellung eines Reisepasses\n\n    *   Query 1: Kosten Personalausweis\n    *   Query 2: Dauer Ausstellung Reisepass\n\n    *   Is it independent? Yes.\n    *   Are there multiple topics? Yes.\n    *   Typo correction? None needed.\n    *   No intro/outro? Checked.\n\n    Kosten für einen Personalausweis\n    Dauer der Ausstellung eines Reisepasses</thought>Kosten für einen Personalausweis\nDauer der Ausstellung eines Reisepasses",
+        "extra_content": {
+          "google": {
+            "thought": true
+          }
+        },
+        "role": "assistant"
+      }
+    }
+  ],
+  "created": 1791744213,
+  "id": "z9jLaq6qKsaykdUP0_3y6A8",
+  "model": "gemma-4-26b-a4b-it",
+  "object": "chat.completion",
+  "usage": {
+    "completion_tokens": 17,
+    "prompt_tokens": 256,
+    "total_tokens": 528
+  }
+}

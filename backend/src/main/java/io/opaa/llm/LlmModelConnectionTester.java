@@ -127,6 +127,11 @@ public class LlmModelConnectionTester {
   private TestOutcome interpret(HttpResponse<String> response, boolean temperatureSent) {
     int status = response.statusCode();
     if (status == 200) {
+      if (LeadingReasoningText.startsWithBlock(answerText(response.body()))) {
+        return TestOutcome.success(
+            "Verbindung erfolgreich, Modell hat geantwortet. Die Antwort beginnt mit Denktext"
+                + " des Modells; OPAA entfernt ihn vor der Weiterverarbeitung.");
+      }
       return TestOutcome.success("Verbindung erfolgreich, Modell hat geantwortet.");
     }
     if (status == 401) {
@@ -168,6 +173,24 @@ public class LlmModelConnectionTester {
     }
     log.warn("Chat model connection test rejected with HTTP 400: {}", reason);
     return TestOutcome.failure(message.toString());
+  }
+
+  /** The probe answer's {@code choices[0].message.content}, or {@code null} when absent. */
+  private String answerText(String body) {
+    if (!StringUtils.hasText(body)) {
+      return null;
+    }
+    try {
+      return objectMapper
+          .readTree(body)
+          .path("choices")
+          .path(0)
+          .path("message")
+          .path("content")
+          .asString(null);
+    } catch (JacksonException e) {
+      return null;
+    }
   }
 
   private String providerReason(String body) {

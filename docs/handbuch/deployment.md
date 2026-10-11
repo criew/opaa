@@ -1783,6 +1783,23 @@ Hinweis, dass sie unvollständig ist beziehungsweise fehlt. Abhilfe ist eine hö
 Antwortlänge in der Modellverwaltung. Der Hinweis gilt nur für die gerade erzeugte Antwort; im
 gespeicherten Verlauf erscheint er nach dem Neuladen nicht mehr.
 
+#### Denktext im Antworttext
+
+Manche Anbieter liefern das Nachdenken eines Modells nicht getrennt, sondern am Anfang des
+Antworttexts als Block `<think>…</think>` oder `<thought>…</thought>` — etwa Gemma 4 über die
+openai-kompatible Schnittstelle von Gemini. OPAA entfernt solche Blöcke bei jedem Aufruf des aktiven
+Chat-Modells (Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion),
+bevor der Text weiterverarbeitet wird. Erkannt wird nur eine Antwort, die mit dem öffnenden Tag
+beginnt; entfernt wird nur, was ganz am Anfang steht, dieselben Zeichenfolgen weiter hinten bleiben
+Teil der Antwort. Denktext ohne öffnendes Tag (nur `…</think>` vor der Antwort) bleibt stehen; das
+kommt bei manchen selbst betriebenen Modellen vor, deren Chat-Template das öffnende Tag schon in den
+Prompt setzt. Ist ein führender Block nicht geschlossen, gilt die Antwort als leer, gleich aus
+welchem Grund das Modell abgebrochen hat, und unter ihr erscheint der Hinweis auf die fehlende
+Antwort. Ein Schalter je Modell ist dafür nicht nötig. Der Verbindungstest weist darauf hin, wenn
+die Testantwort mit einem Denkblock beginnt, etwa bei einem Modell, das über einen Server ohne
+Reasoning-Parser mit `<think>` anfängt. Gemma über die Gemini-Schnittstelle liefert auf die kurze
+Testanfrage gar keinen Text; dort erscheint der Hinweis nicht.
+
 ### Chat-Modelle in der Oberfläche anlegen
 
 Unter **Administration → Modelle → Chat-Modelle** legt ein Systemverwalter Chat-Modelle an,

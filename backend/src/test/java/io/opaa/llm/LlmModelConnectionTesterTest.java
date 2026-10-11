@@ -125,6 +125,49 @@ class LlmModelConnectionTesterTest {
   }
 
   @Test
+  void aProbeAnswerOpeningWithAReasoningBlockSucceedsWithAHint() {
+    respondWith(
+        """
+        {"choices":[{"index":0,"finish_reason":"length",\
+        "message":{"role":"assistant","content":"<think>"}}]}
+        """);
+
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "qwen3:8b", null, null, null);
+
+    assertThat(outcome.success()).isTrue();
+    assertThat(outcome.message())
+        .startsWith("Verbindung erfolgreich, Modell hat geantwortet.")
+        .contains("Denktext");
+  }
+
+  @Test
+  void aProbeAnswerWithoutAReasoningBlockCarriesNoHint() {
+    respondWith(
+        """
+        {"choices":[{"index":0,"finish_reason":"length",\
+        "message":{"role":"assistant","content":"Pong"}}]}
+        """);
+
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "phi3:mini", null, null, null);
+
+    assertThat(outcome.message()).isEqualTo("Verbindung erfolgreich, Modell hat geantwortet.");
+  }
+
+  private void respondWith(String json) {
+    server.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          byte[] body = json.getBytes(StandardCharsets.UTF_8);
+          exchange.sendResponseHeaders(200, body.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(body);
+          }
+        });
+  }
+
+  @Test
   void anUnauthorizedResponseIsDistinguishableFromUnreachable() {
     server.createContext(
         "/v1/chat/completions",
