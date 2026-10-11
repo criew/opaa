@@ -72,7 +72,7 @@ class AnswerGenerationServiceTest {
         .contains("- Bezugsjahr 2024")
         .contains("- Möchte knappe Antworten");
     // Ahead of the passages: under "Kontextdokumente:" the note would stand inside the
-    // section the "Zitiere nur Dokumente, die unten aufgeführt sind" rule governs - and in a chat
+    // section the "Zitiere nur Abschnitte, die unten aufgeführt sind" rule governs - and in a chat
     // without a knowledge base it would be the only thing there.
     assertThat(systemText.indexOf("Gesprächsnotiz"))
         .isLessThan(systemText.indexOf("Kontextdokumente:"));
@@ -257,7 +257,139 @@ class AnswerGenerationServiceTest {
     String systemText = promptCaptor.getValue().getInstructions().get(0).getText();
     assertThat(systemText).contains("【source:");
     assertThat(systemText).contains("ZITIERREGELN");
-    assertThat(systemText).contains("zitieren als: 【source: uuid-1#0 | readme.md】");
+    assertThat(systemText).contains("\nZitiermarke: 【source: uuid-1#0 | readme.md】\nContent");
+  }
+
+  /**
+   * Regression guard for #2376: a passage head in brackets with a "Quelle:" prefix and the marker
+   * inside was copied into answers as {@code [Quelle: datei.pdf | 【…】]} or whole. The head names
+   * the document and carries the marker alone on its own line, so it can be taken over verbatim.
+   */
+  @Test
+  void thePassageHeadCarriesTheMarkerOnItsOwnLineWithoutABracketedSourceLabel() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    var chunk =
+        new Document(
+            "Der Antrag ist binnen eines Monats zu stellen.",
+            Map.of("file_name", "merkblatt.pdf", "document_id", "id-merk", "chunk_index", 4));
+
+    answerGenerationService.generateAnswer(
+        "Bis wann?", List.of(chunk), "conv-head", List.of(), true);
+
+    String passages =
+        passagesOf(systemTextOf(capturedPrompt()))
+            .replace(AnswerGenerationService.CITATION_REMINDER, "");
+    assertThat(passages)
+        .startsWith(
+            "Dokument: merkblatt.pdf\n"
+                + "Zitiermarke: 【source: id-merk#4 | merkblatt.pdf】\n"
+                + "Der Antrag ist binnen eines Monats zu stellen.")
+        .doesNotContain("[Quelle", "zitieren als", "document_id", "chunk_index");
+  }
+
+  /**
+   * Regression guard for #2376: the rules spell out the forms the model actually produced instead
+   * of the marker, and show a whole head-to-sentence example.
+   */
+  @Test
+  void theCitationRulesShowAPositiveExampleAndNameTheForbiddenForms() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer("Frage?", List.of(), "conv-rules", List.of(), true);
+
+    String rules = systemTextOf(capturedPrompt());
+    rules = rules.substring(rules.indexOf("ZITIERREGELN"), rules.indexOf("Kontextdokumente:\n"));
+    assertThat(rules)
+        .contains("Zitiermarke: 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#4 | merkblatt.pdf】")
+        .contains(
+            "Der Antrag ist innerhalb eines Monats zu stellen."
+                + " 【source: 3fa85f64-5717-4562-b3fc-2c963f66afa6#4 | merkblatt.pdf】")
+        .contains("Markdown-Link")
+        .contains("[Quelle](")
+        .contains("[Quelle: merkblatt.pdf, § 24]")
+        .contains("mindestens eine Zitiermarke");
+  }
+
+  /**
+   * Regression guard for #2376: with twice as many passage heads, marker forms drifted. The marker
+   * rule is repeated after the last passage, ahead of the closing language reminder, and names no
+   * marker of its own that could be cited.
+   */
+  @Test
+  void theCitationRuleIsRepeatedAfterTheLastPassageAheadOfTheLanguageReminder() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+    var chunk =
+        new Document(
+            "Letzter Abschnitt.",
+            Map.of("file_name", "a.md", "document_id", "id-a", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "Frage?", List.of(chunk), "conv-recency", List.of(), true);
+
+    String systemText = systemTextOf(capturedPrompt());
+    assertThat(systemText)
+        .endsWith(
+            AnswerGenerationService.CITATION_REMINDER + AnswerGenerationService.LANGUAGE_REMINDER);
+    assertThat(systemText.indexOf(AnswerGenerationService.CITATION_REMINDER))
+        .isGreaterThan(systemText.indexOf("Letzter Abschnitt."));
+    assertThat(AnswerGenerationService.CITATION_REMINDER)
+        .contains("Zitiermarke")
+        .doesNotContain("【");
+  }
+
+  /**
+   * #2376: the answer rules - only what the passages carry, a gap named as missing from the
+   * documents rather than filled or denied, deviations and differing reference values named.
+   */
+  @Test
+  void theAnswerRulesKeepTheAnswerToThePassagesAndNameGapsAndDeviations() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    var chunk =
+        new Document(
+            "Inhalt.", Map.of("file_name", "a.md", "document_id", "id-a", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "Frage?", List.of(chunk), "conv-answer", List.of(), true);
+
+    String systemText = systemTextOf(capturedPrompt());
+    String answerRules =
+        systemText.substring(
+            systemText.indexOf("ANTWORTREGELN"), systemText.indexOf("ZITIERREGELN"));
+    assertThat(answerRules)
+        .contains("Allgemeinwissen")
+        .contains("in den vorliegenden Dokumenten nicht enthalten")
+        .contains("Abweichung")
+        .contains("Bezugsgröße")
+        .contains("Geltungsbereich");
+  }
+
+  /**
+   * An empty context is also a chat answered on purpose without a knowledge base, which answers
+   * from the conversation alone: neither the answer rules nor the citation reminder bind it to
+   * passages that are not there.
+   */
+  @Test
+  void withoutPassagesTheAnswerIsNotBoundToThem() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+    answerGenerationService.generateAnswer("Frage?", List.of(), "conv-empty", List.of(), true);
+
+    assertThat(systemTextOf(capturedPrompt()))
+        .contains("ZITIERREGELN (verbindlich)")
+        .doesNotContain("ANTWORTREGELN", AnswerGenerationService.CITATION_REMINDER)
+        .endsWith("Kontextdokumente:\n" + AnswerGenerationService.LANGUAGE_REMINDER);
+  }
+
+  private static String passagesOf(String systemText) {
+    return systemText.substring(
+        systemText.indexOf("Kontextdokumente:\n") + "Kontextdokumente:\n".length(),
+        systemText.lastIndexOf(AnswerGenerationService.LANGUAGE_REMINDER));
   }
 
   @Test
