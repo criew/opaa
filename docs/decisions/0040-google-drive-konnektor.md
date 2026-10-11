@@ -556,6 +556,14 @@ bleibt unverändert; ein eindeutiger Index über einen Hash des Pfads wurde verw
 eine Migration und eine geänderte Suche nach `file_path` gebraucht hätte, für Pfade, die unter
 Windows ohnehin kaum vorkommen.
 
+Nachtrag (#2482): Die Grenze gilt jetzt zentral in der Aufnahme statt im Store.
+`FilePathLimit` liegt in `io.opaa.knowledge`. `DocumentIngestService` lehnt einen längeren Pfad
+vor jedem Schreibzugriff ab (`FILE_PATH_TOO_LONG`), bei einer Dateiablage schon vor dem Download
+(`rejectionBeforeDownload`). Das gilt für jede Quelle und jeden Anhang. Die eigene Prüfung des
+SMB-Stores entfällt. Sie meldete `Exclusion.Unavailable`, und dadurch blieb der Ordner im
+Ordnergedächtnis offen. Eine Ablehnung wegen der Pfadlänge gilt jetzt dagegen als erledigt, weil sie
+erst endet, wenn die Quelle umbenennt.
+
 ## Nachtrag: SMB (#2155, 03.10.2026)
 
 Windows-Dateifreigaben sind der Vollscan-Fall des Ports: kein Änderungsprotokoll, kein

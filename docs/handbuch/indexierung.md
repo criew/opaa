@@ -993,7 +993,9 @@ Reihenfolge:
 
 ```mermaid
 flowchart TB
-    S1[1 Prüfsumme bilden<br/>Dokumentzeile suchen] --> Q{unverändert und<br/>zuletzt erfolgreich?}
+    P{Quellpfad<br/>zu lang?} -- ja --> PL[abgewiesen:<br/>Pfad zu lang]
+    P -- nein --> S1[1 Prüfsumme bilden<br/>Dokumentzeile suchen]
+    S1 --> Q{unverändert und<br/>zuletzt erfolgreich?}
     Q -- ja --> SK[übersprungen]
     Q -- nein --> S2[2 Speicherkontingent prüfen]
     S2 --> S3[3 Format erkennen<br/>und Pipeline wählen]
@@ -1377,7 +1379,7 @@ Eintrag. Die Kategorien:
 
 | Kategorie | Bedeutung |
 |---|---|
-| abgewiesen | die Quelle hat das Element zurückgewiesen (Bot-Schutz, HTTP 403/429, fremder Host) |
+| abgewiesen | das Element wurde nicht übernommen: Die Quelle hat es zurückgewiesen (Bot-Schutz, HTTP 403/429, fremder Host), ein Speicherkontingent ist erschöpft, es enthält keinen extrahierbaren Text, oder sein Quellpfad ist zu lang (Abschnitt 5, Schritt 1) |
 | nicht erreichbar | Verbindungsfehler oder Zeitüberschreitung |
 | Format nicht unterstützt | Datei- oder Inhaltstyp wird nicht indiziert |
 | Formatabweichung | indiziert, aber Endung und Inhalt passen nicht zusammen |

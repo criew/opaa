@@ -25,6 +25,7 @@ import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngest;
+import io.opaa.indexing.document.DocumentIngestOutcomes;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
@@ -704,6 +705,30 @@ class ConfluenceIndexingExecutorTest {
     assertThat(current.getValue()).contains(abschnitt);
     assertThat(reprocessed.getValue()).doesNotContain(abschnitt);
     verify(documentRepository, never()).delete(any(Document.class));
+    verify(documentIngestService, never())
+        .ingest(DocumentIngests.that().file().named("notizen.txt").match(), any());
+  }
+
+  /** A page without a row has nothing to hang its attachments on, so they are not fetched. */
+  @ParameterizedTest
+  @MethodSource("editions")
+  void aPageRejectedForItsPathLengthIsReportedAndItsAttachmentsAreNotFetched(
+      ConfluenceEdition edition) throws Exception {
+    start(edition, null, "ENG");
+    String abschnitt = pagePath(edition, "ENG", "102");
+    when(documentIngestService.ingest(
+            DocumentIngests.that().text().titled("Abschnitt 1.1").match(), any()))
+        .thenReturn(DocumentIngestResult.FILE_PATH_TOO_LONG);
+
+    executor.execute(jobId, library, IndexingRunMode.FULL);
+
+    verify(eventRepository)
+        .save(
+            argThat(
+                event(
+                    IndexingEventCategory.REJECTED,
+                    DocumentIngestOutcomes.FILE_PATH_TOO_LONG_MESSAGE,
+                    abschnitt)));
     verify(documentIngestService, never())
         .ingest(DocumentIngests.that().file().named("notizen.txt").match(), any());
   }

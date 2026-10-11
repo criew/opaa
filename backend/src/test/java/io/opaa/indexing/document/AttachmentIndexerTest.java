@@ -395,8 +395,7 @@ class AttachmentIndexerTest {
     // The attachment path counts each attachment itself, so every connector's cost carries the
     // same attachment share: a document created is processed, a confirmed-unchanged, text-free or
     // over-long-path one skipped, a refusal at either quota or a failed pipeline failed; a refusal
-    // at either
-    // quota also marks the run.
+    // at either quota also marks the run.
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
     when(access.events()).thenReturn((category, message, reference) -> {});

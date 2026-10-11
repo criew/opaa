@@ -557,17 +557,6 @@ final class SmbFileStore implements FileStore {
       exclusion =
           new Exclusion.Unavailable(
               "„" + item.name() + "“ ist ausgelagert (offline); OPAA holt die Datei nicht zurück.");
-    } else if (!FilePathLimit.fits(filePath)) {
-      exclusion =
-          new Exclusion.Unavailable(
-              "Der Pfad von „"
-                  + item.name()
-                  + "“ ist länger als "
-                  + FilePathLimit.MAX_CHARACTERS
-                  + " Zeichen oder "
-                  + FilePathLimit.MAX_BYTES
-                  + " Byte (UTF-8); die Datei wird nicht gelesen.");
-      filePath = FilePathLimit.cut(filePath);
     }
     return new FileEntry(
         container,

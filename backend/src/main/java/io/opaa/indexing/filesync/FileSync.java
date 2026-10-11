@@ -843,9 +843,10 @@ public final class FileSync implements AutoCloseable {
   /**
    * One listed entry: present from the first look, then skipped for what the listing already shows
    * (no document, an unsupported extension, unavailable, oversize), skipped without a download when
-   * the change feature is already stored, rejected without one when its listed size finds no room
-   * in a storage quota, otherwise fetched and handed to the document path. A name without an
-   * extension costs one {@link FileStore#head} whose media type decides.
+   * the change feature is already stored, rejected without one when its file path exceeds the
+   * stored identity or its listed size finds no room in a storage quota, otherwise fetched and
+   * handed to the document path. A name without an extension costs one {@link FileStore#head} whose
+   * media type decides.
    */
   private void visit(FileEntry entry, int page) throws InterruptedException {
     String filePath = entry.filePath();
@@ -909,10 +910,10 @@ public final class FileSync implements AutoCloseable {
       existing.ifPresent(document -> unsettle(entry));
       return;
     }
-    Optional<DocumentIngestResult> atQuota =
+    Optional<DocumentIngestResult> rejected =
         documentIngestService.rejectionBeforeDownload(frame.library(), filePath, entry.size());
-    if (atQuota.isPresent()) {
-      recordOutcome(entry, atQuota.get());
+    if (rejected.isPresent()) {
+      recordOutcome(entry, rejected.get());
       frame.progress().report();
       return;
     }
