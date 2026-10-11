@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '../mocks/server'
-import { mockPendingPlan } from '../mocks/groupAdminFixtures'
+import { mockDirectorySyncStatus, mockPendingPlan } from '../mocks/groupAdminFixtures'
+import { mockOidcProviders } from '../mocks/identityProviderFixtures'
 import {
   manyDirectoryProviders,
   manyDirectoryStatuses,
@@ -237,6 +238,98 @@ describe('DirectorySyncPage', () => {
 
     // Die zweite Bestätigung trägt die Kennung des neu vorgelegten Plans, nicht die alte.
     await waitFor(() => expect(confirmed).toEqual(['plan-1', 'plan-2']))
+  })
+
+  // regression guard: a plan decided elsewhere answers 404 - the panel must not wait for it
+  // forever, and the overview must drop the plan with a fresh status.
+  it('reloads the status when the opened plan is gone', async () => {
+    let statusCalls = 0
+    server.use(
+      http.get('/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan', () =>
+        HttpResponse.json({ error: 'Kein ausstehender Plan' }, { status: 404 }),
+      ),
+      http.get('/api/v1/admin/directory-sync/status', () => {
+        statusCalls++
+        return HttpResponse.json(
+          statusCalls === 1
+            ? mockDirectorySyncStatus
+            : mockDirectorySyncStatus.map((status) => ({
+                ...status,
+                lastOutcome: 'APPLIED',
+                pendingPlan: null,
+              })),
+        )
+      }),
+    )
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    await waitFor(() => expect(statusCalls).toBeGreaterThan(1))
+    await waitFor(() =>
+      expect(within(panel).queryByText(/Plan wird geladen/)).not.toBeInTheDocument(),
+    )
+    expect(within(panel).queryByRole('button', { name: 'Plan bestätigen' })).not.toBeInTheDocument()
+    const row = await rowOf('Verzeichnisdienst')
+    expect(within(row).queryByText('Entscheidung nötig')).not.toBeInTheDocument()
+  })
+
+  // regression guard: a failed plan load says so and offers another try instead of loading forever.
+  it('names a failed plan load and loads it again on request', async () => {
+    let planCalls = 0
+    server.use(
+      http.get('/api/v1/admin/oidc-providers/:providerId/directory-sync/pending-plan', () => {
+        planCalls++
+        return planCalls === 1
+          ? HttpResponse.json({ error: 'Interner Fehler' }, { status: 500 })
+          : HttpResponse.json(mockPendingPlan)
+      }),
+    )
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    expect(
+      await within(panel).findByText(/ausstehende Plan konnte nicht geladen werden/),
+    ).toBeInTheDocument()
+    await user.click(within(panel).getByRole('button', { name: 'Erneut laden' }))
+
+    expect(
+      await within(panel).findByRole('button', { name: 'Plan bestätigen' }),
+    ).toBeInTheDocument()
+    expect(planCalls).toBe(2)
+  })
+
+  // DirectorySyncService#requireRunnable: a confirmation runs the sync and is refused while it is
+  // off; discarding is no run and stays possible.
+  it('blocks confirming a plan while the sync is off, but not discarding it', async () => {
+    const provider = mockOidcProviders.find((p) => p.id === 'oidc-provider-beschaeftigte')!
+    provider.directorySyncEnabled = false
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Verzeichnisdienst')
+    await within(panel).findByRole('button', { name: 'Plan bestätigen' })
+    await user.type(within(panel).getByLabelText(/grund/i), 'Reorganisation')
+
+    expect(within(panel).getByRole('button', { name: 'Plan bestätigen' })).toBeDisabled()
+    expect(within(panel).getByRole('button', { name: 'Plan verwerfen' })).toBeEnabled()
+    expect(within(panel).getByText(/Bestätigen geht erst/)).toBeInTheDocument()
+  })
+
+  it('does not switch the sync on while the interval is invalid', async () => {
+    renderWithProviders(<DirectorySyncPage />, { withRouter: true })
+    const user = userEvent.setup()
+
+    const panel = await openPanel(user, 'Landesportal')
+    const field = within(panel).getByLabelText('Intervall in Minuten')
+    await user.clear(field)
+    await user.type(field, '3')
+    expect(within(panel).getByRole('switch', { name: 'Abgleich eingeschaltet' })).toBeDisabled()
+
+    await user.clear(field)
+    await user.type(field, '120')
+    expect(within(panel).getByRole('switch', { name: 'Abgleich eingeschaltet' })).toBeEnabled()
   })
 
   it('switches the sync on and saves the interval from the side panel', async () => {
