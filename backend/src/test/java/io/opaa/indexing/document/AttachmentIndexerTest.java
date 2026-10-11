@@ -393,8 +393,9 @@ class AttachmentIndexerTest {
   void everyOutcomeOfALocalAttachmentIsCountedExactlyOnce()
       throws IOException, InterruptedException {
     // The attachment path counts each attachment itself, so every connector's cost carries the
-    // same attachment share: a document created is processed, a confirmed-unchanged or text-free
-    // one skipped, a refusal at either quota or a failed pipeline failed; a refusal at either
+    // same attachment share: a document created is processed, a confirmed-unchanged, text-free or
+    // over-long-path one skipped, a refusal at either quota or a failed pipeline failed; a refusal
+    // at either
     // quota also marks the run.
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(ctx.targetLibrary());
@@ -413,10 +414,10 @@ class AttachmentIndexerTest {
     }
 
     verify(progress, org.mockito.Mockito.times(1)).recordAttachment(AttachmentOutcome.PROCESSED);
-    verify(progress, org.mockito.Mockito.times(2)).recordAttachment(AttachmentOutcome.SKIPPED);
+    verify(progress, org.mockito.Mockito.times(3)).recordAttachment(AttachmentOutcome.SKIPPED);
     verify(progress, org.mockito.Mockito.times(3)).recordAttachment(AttachmentOutcome.FAILED);
     verify(progress, org.mockito.Mockito.times(2)).recordQuotaReached();
-    verify(access, org.mockito.Mockito.times(6))
+    verify(access, org.mockito.Mockito.times(7))
         .recordIndexedAttachment(eq("/mail.eml/0/anlage.txt"), anyBoolean());
   }
 
