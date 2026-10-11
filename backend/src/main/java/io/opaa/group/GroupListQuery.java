@@ -35,7 +35,10 @@ public record GroupListQuery(
     /** Internal groups first, then the providers by name. */
     ORIGIN,
     MEMBER_COUNT,
-    /** What needs a decision first: dissolved, provider disabled, unmaintained, not released. */
+    /**
+     * What needs a decision first: dissolved, provider disabled, unmaintained, deactivated, not
+     * released.
+     */
     STATE,
     CREATED_AT
   }

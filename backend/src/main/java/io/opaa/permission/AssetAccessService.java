@@ -139,16 +139,18 @@ public class AssetAccessService {
    * Every asset id of {@code assetType} a <b>permission profile</b> may read: the group's own
    * non-expired grants plus every asset granted to "Alle Konten" - the group-shaped counterpart of
    * {@link #readableAssetIds}, deliberately without the direct user grants: a profile is a group,
-   * not a person (#1053, ADR-0036 Entscheidung 7). Uncached for the same reason.
+   * not a person (#1053, ADR-0036 Entscheidung 7). Uncached for the same reason. A deactivated
+   * group's own grants reach nobody (Entscheidung 14), so its profile reads "Alle Konten" alone.
    */
   public Set<UUID> readableAssetIdsForGroup(
       AssetType assetType, UUID groupId, UUID organizationId) {
     Instant now = Instant.now();
-    Set<UUID> readable =
-        new HashSet<>(
-            grantRepository.findReadableAssetIdsByGroupGrant(
-                assetType, Set.of(groupId), organizationId, now));
-    readable.addAll(allAccountsAssetIds(assetType, organizationId, now));
+    Set<UUID> readable = new HashSet<>(allAccountsAssetIds(assetType, organizationId, now));
+    if (membershipResolver.deactivatedAmong(Set.of(groupId)).isEmpty()) {
+      readable.addAll(
+          grantRepository.findReadableAssetIdsByGroupGrant(
+              assetType, Set.of(groupId), organizationId, now));
+    }
     return readable;
   }
 
@@ -162,8 +164,12 @@ public class AssetAccessService {
       AssetType assetType, Collection<UUID> groupIds, UUID organizationId) {
     Instant now = Instant.now();
     Set<UUID> allAccounts = allAccountsAssetIds(assetType, organizationId, now);
+    Set<UUID> deactivated = membershipResolver.deactivatedAmong(groupIds);
     Map<UUID, Set<UUID>> grantedByGroup = new HashMap<>();
     for (AssetGrant grant : grantRepository.findActiveGroupGrants(assetType, organizationId, now)) {
+      if (deactivated.contains(grant.getSubjectGroupId())) {
+        continue;
+      }
       grantedByGroup
           .computeIfAbsent(grant.getSubjectGroupId(), id -> new HashSet<>())
           .add(grant.getAssetId());

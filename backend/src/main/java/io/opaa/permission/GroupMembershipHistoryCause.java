@@ -43,5 +43,18 @@ public enum GroupMembershipHistoryCause {
    * group_id} carries no foreign key (ADR-0016, "Objektspalten ohne FK"), so deleting the group
    * never closes them on its own.
    */
-  GROUP_DELETED
+  GROUP_DELETED,
+
+  /**
+   * Closes an open interval because the group was deactivated ({@code GroupService#setDeactivated},
+   * ADR-0036 Entscheidung 14) - closes only, like {@link #REMOVED}. The membership row stays, but
+   * the group reaches nobody, and the Stichtagsauskunft reads reach from these intervals.
+   */
+  GROUP_DEACTIVATED,
+
+  /**
+   * Opens an interval for every member a deactivated group has at the moment it is reactivated -
+   * the counterpart of {@link #GROUP_DEACTIVATED}.
+   */
+  GROUP_REACTIVATED
 }

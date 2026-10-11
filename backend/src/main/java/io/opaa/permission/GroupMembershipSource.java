@@ -1,6 +1,7 @@
 package io.opaa.permission;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -13,7 +14,11 @@ import java.util.UUID;
  */
 public interface GroupMembershipSource {
 
-  /** The ids of the groups {@code userId} is a direct member of. */
+  /**
+   * The ids of the groups {@code userId} is a direct member of and that are in effect - a group
+   * deactivated for the time being is left out (ADR-0036, Entscheidung 14), so no rights evaluation
+   * can reach anything through it.
+   */
   Set<UUID> findGroupIdsByUserId(UUID userId);
 
   /**
@@ -21,13 +26,18 @@ public interface GroupMembershipSource {
    * {@code organizationId} (whether by bug or by a crafted request) resolves to nobody instead of
    * leaking members across the organization boundary. There is no unscoped equivalent on purpose: a
    * caller that skips the organization would reintroduce exactly the cross-tenant leak #199 closed.
+   * Empty for a group deactivated for the time being: its rights reach nobody.
    */
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(UUID groupId, UUID organizationId);
 
+  /** Which of the given groups are deactivated for the time being (ADR-0036, Entscheidung 14). */
+  Set<UUID> findDeactivatedGroupIdsIn(Collection<UUID> groupIds);
+
   /**
-   * How many of those members are active accounts at {@code now} - counted in the database, so the
-   * figure beside every group row costs no member list. Same organization scoping and same
-   * definition of "active" as {@code AccountActivityService}, which the parity test holds to.
+   * How many members of the group are active accounts at {@code now} - counted in the database, so
+   * the figure beside every group row costs no member list. Same organization scoping and same
+   * definition of "active" as {@code AccountActivityService}, which the parity test holds to. It is
+   * the group's size, not its reach: a deactivated group's members are counted too.
    */
   int countActiveMembers(UUID groupId, UUID organizationId, Instant now);
 

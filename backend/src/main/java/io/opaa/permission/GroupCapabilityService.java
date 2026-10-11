@@ -5,9 +5,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * "Handlungsfähige Gruppe" as ADR-0036 defines it, in one place: an effective group - not
- * dissolved, its provider switched on, still maintained - with at least one <b>active</b> account.
- * The measure of whether a group can act as an owner or as a space {@code ADMIN}, and the
- * difference to "wirksam", which may be empty.
+ * dissolved, its provider switched on, still maintained, not deactivated - with at least one
+ * <b>active</b> account. The measure of whether a group can act as an owner or as a space {@code
+ * ADMIN}, and the difference to "wirksam", which may be empty.
  *
  * <p>Counting active accounts rather than membership rows is the point: a group of twenty whose
  * eighteen are locked can act through two people, and one whose members are all locked can act
@@ -33,7 +33,7 @@ public class GroupCapabilityService {
 
   /** The same question for a group already resolved - saves the second lookup on a list path. */
   public boolean isCapable(GroupSubject group) {
-    if (group.dissolved() || group.providerDisabled() || group.unmaintained()) {
+    if (!isEffective(group)) {
       return false;
     }
     return membershipResolver.activeMemberCount(group.id(), group.organizationId()) > 0;
@@ -41,6 +41,9 @@ public class GroupCapabilityService {
 
   /** Whether the group is effective - it may hold and receive rights, and it may be empty. */
   public boolean isEffective(GroupSubject group) {
-    return !group.dissolved() && !group.providerDisabled() && !group.unmaintained();
+    return !group.dissolved()
+        && !group.providerDisabled()
+        && !group.unmaintained()
+        && !group.deactivated();
   }
 }

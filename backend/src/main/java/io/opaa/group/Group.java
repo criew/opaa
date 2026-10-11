@@ -121,6 +121,19 @@ public class Group {
   @Column(name = "protected", nullable = false)
   private boolean protectedGroup;
 
+  /**
+   * Whether this internal group is deactivated for the time being (ADR-0036, Entscheidung 14): it
+   * takes effect for nobody - {@link GroupMembershipResolver} leaves it out of every resolution -
+   * while its grants, space memberships, capabilities and members stay stored. Independent of
+   * {@link #releasedForUse}; never set for a group with a provider ({@code
+   * chk_groups_deactivated_internal}).
+   */
+  @Column(name = "deactivated", nullable = false)
+  private boolean deactivated;
+
+  @Column(name = "deactivated_at")
+  private Instant deactivatedAt;
+
   @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<GroupMembership> memberships = new ArrayList<>();
 
@@ -232,6 +245,18 @@ public class Group {
     this.releasedForUse = releasedForUse;
   }
 
+  /** Deactivates this internal group for the time being - see {@link #isDeactivated()}. */
+  public void deactivate(Instant at) {
+    this.deactivated = true;
+    this.deactivatedAt = at;
+  }
+
+  /** Ends a deactivation; everything the group holds takes effect again unchanged. */
+  public void liftDeactivation() {
+    this.deactivated = false;
+    this.deactivatedAt = null;
+  }
+
   /** Sets or releases the protection mark - see {@link #isProtectedGroup()}. */
   public void markProtected(boolean protectedGroup) {
     this.protectedGroup = protectedGroup;
@@ -313,6 +338,14 @@ public class Group {
 
   public boolean isProtectedGroup() {
     return protectedGroup;
+  }
+
+  public boolean isDeactivated() {
+    return deactivated;
+  }
+
+  public Instant getDeactivatedAt() {
+    return deactivatedAt;
   }
 
   public List<GroupMembership> getMemberships() {

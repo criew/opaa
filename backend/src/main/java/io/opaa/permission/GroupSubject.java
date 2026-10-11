@@ -25,6 +25,10 @@ import java.util.UUID;
  * protected group receives rights like any other - but it decides how the group is <b>named</b> to
  * somebody who is not part of it: in other people's lists it appears as "geschützte Gruppe" without
  * its name.
+ *
+ * <p>{@code deactivated} is the fourth reason a group is not effective (ADR-0036, Entscheidung 14):
+ * an internal group switched off for the time being. Its rights stay stored but reach nobody, so it
+ * must not become a new grant target either.
  */
 public record GroupSubject(
     UUID id,
@@ -34,7 +38,8 @@ public record GroupSubject(
     boolean providerDisabled,
     boolean unmaintained,
     boolean protectedGroup,
-    boolean internal) {
+    boolean internal,
+    boolean deactivated) {
 
   public GroupSubject {
     Objects.requireNonNull(id, "id must not be null");

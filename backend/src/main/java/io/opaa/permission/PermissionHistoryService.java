@@ -235,8 +235,11 @@ public class PermissionHistoryService {
    * Closes the currently open membership interval (keeping its own recorded cause unchanged) and
    * additionally writes a zero-length {@link GroupMembershipHistory#terminal} marker with {@code
    * cause} - see that factory's Javadoc for why the removal needs its own row. {@code cause} must
-   * be {@link GroupMembershipHistoryCause#REMOVED} or {@link
-   * GroupMembershipHistoryCause#DIRECTORY_SYNC_REMOVED}.
+   * be one of the closing causes: {@link GroupMembershipHistoryCause#REMOVED}, {@link
+   * GroupMembershipHistoryCause#DIRECTORY_SYNC_REMOVED}, {@link
+   * GroupMembershipHistoryCause#IDENTITY_PROVIDER_REMOVED}, {@link
+   * GroupMembershipHistoryCause#GROUP_DELETED} or {@link
+   * GroupMembershipHistoryCause#GROUP_DEACTIVATED}.
    */
   public void recordMembershipRemoved(
       UUID groupId,

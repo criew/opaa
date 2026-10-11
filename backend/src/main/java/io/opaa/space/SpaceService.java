@@ -554,6 +554,11 @@ public class SpaceService {
               + " kann sie nicht mehr Mitglied eines Space werden; bestehende Mitgliedschaften"
               + " bleiben unverändert. Nehmen Sie die entsprechende Organisationseinheit auf.");
     }
+    if (group.deactivated()) {
+      throw new ConflictException(
+          "Die Gruppe ist deaktiviert und wirkt für niemanden. Sie kann nicht Mitglied eines Space"
+              + " werden, solange sie es bleibt; bestehende Mitgliedschaften bleiben gespeichert.");
+    }
     SpaceMembership membership = SpaceMembership.ofGroup(groupId, role, space.getOrganizationId());
     space.addMembership(membership);
     return membership;

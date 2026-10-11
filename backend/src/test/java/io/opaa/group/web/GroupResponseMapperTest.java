@@ -2,6 +2,7 @@ package io.opaa.group.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.api.dto.GroupDeactivationPreviewResponse;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupResponse;
@@ -9,7 +10,9 @@ import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.api.types.GroupKind;
 import io.opaa.api.types.GroupMechanism;
 import io.opaa.api.types.GroupOrigin;
+import io.opaa.api.types.GroupState;
 import io.opaa.group.Group;
+import io.opaa.group.GroupDeactivationPreview;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupMembership;
@@ -128,6 +131,7 @@ class GroupResponseMapperTest {
                 true,
                 false,
                 false,
+                false,
                 false));
 
     assertThat(response.getId()).isEqualTo(group.getId());
@@ -167,6 +171,7 @@ class GroupResponseMapperTest {
                 true,
                 false,
                 false,
+                false,
                 false));
 
     assertThat(response.getActiveMemberCount()).isNull();
@@ -192,6 +197,7 @@ class GroupResponseMapperTest {
                 false,
                 true,
                 false,
+                false,
                 false));
 
     assertThat(response.getSelectable()).isFalse();
@@ -208,7 +214,8 @@ class GroupResponseMapperTest {
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
             new SelectableGroup(
-                group, null, List.of(), null, null, false, false, true, false, false, false));
+                group, null, List.of(), null, null, false, false, true, false, false, false,
+                false));
 
     assertThat(response.getName()).isNull();
     assertThat(response.getProtectedGroup()).isTrue();
@@ -497,6 +504,7 @@ class GroupResponseMapperTest {
                 true,
                 false,
                 false,
+                false,
                 false));
 
     assertThat(response.getProtectedGroup()).isTrue();
@@ -512,9 +520,91 @@ class GroupResponseMapperTest {
     SelectableGroupResponse response =
         GroupResponseMapper.toSelectableResponse(
             new SelectableGroup(
-                group, "Projektteam", List.of(), null, 7, false, false, true, false, false, false));
+                group,
+                "Projektteam",
+                List.of(),
+                null,
+                7,
+                false,
+                false,
+                true,
+                false,
+                false,
+                false,
+                false));
 
     assertThat(response.getResponsible()).isEmpty();
     assertThat(response.getActiveMemberCount()).isEqualTo(7);
+  }
+
+  @Test
+  void aDeactivatedGroupCarriesItsStateAndMomentInTheListAndTheDetail() {
+    Group group = Group.internal(UUID.randomUUID(), "Ruhendes Projekt", null, null);
+    group.release(true);
+    Instant since = Instant.parse("2026-10-11T08:00:00Z");
+    group.deactivate(since);
+
+    GroupListResponse listed =
+        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), null));
+    GroupResponse detail =
+        GroupResponseMapper.toResponse(new GroupDetail(group, List.of(), List.of(), null));
+
+    assertThat(listed.getDeactivated()).isTrue();
+    assertThat(listed.getDeactivatedAt()).isEqualTo(since);
+    assertThat(listed.getState()).isEqualTo(GroupState.DEACTIVATED);
+    assertThat(listed.getReleasedForUse()).as("the release stays as it was").isTrue();
+    assertThat(detail.getDeactivated()).isTrue();
+    assertThat(detail.getDeactivatedAt()).isEqualTo(since);
+
+    group.liftDeactivation();
+    GroupListResponse lifted =
+        GroupResponseMapper.toListResponse(new GroupOverview(group, List.of(), null));
+    assertThat(lifted.getDeactivated()).isFalse();
+    assertThat(lifted.getDeactivatedAt()).isNull();
+    assertThat(lifted.getState()).isEqualTo(GroupState.ACTIVE);
+  }
+
+  @Test
+  void toSelectableResponseNamesADeactivationAsTheReason() {
+    Group group = Group.internal(UUID.randomUUID(), "Ruhendes Projekt", null, null);
+
+    SelectableGroupResponse response =
+        GroupResponseMapper.toSelectableResponse(
+            new SelectableGroup(
+                group,
+                "Ruhendes Projekt",
+                List.of(),
+                null,
+                null,
+                true,
+                false,
+                false,
+                false,
+                false,
+                false,
+                true));
+
+    assertThat(response.getSelectable()).isFalse();
+    assertThat(response.getDeactivated()).isTrue();
+    assertThat(response.getDissolved()).isFalse();
+  }
+
+  @Test
+  void toDeactivationPreviewResponseCopiesEveryFigure() {
+    UUID groupId = UUID.randomUUID();
+
+    GroupDeactivationPreviewResponse response =
+        GroupResponseMapper.toDeactivationPreviewResponse(
+            new GroupDeactivationPreview(groupId, false, 4, 3, 2, 1, 5, 12, "Grund"));
+
+    assertThat(response.getGroupId()).isEqualTo(groupId);
+    assertThat(response.getDeactivated()).isFalse();
+    assertThat(response.getAssetGrants()).isEqualTo(4);
+    assertThat(response.getGrantedAssets()).isEqualTo(3);
+    assertThat(response.getSpaceMemberships()).isEqualTo(2);
+    assertThat(response.getSpaces()).isEqualTo(1);
+    assertThat(response.getCapabilities()).isEqualTo(5);
+    assertThat(response.getActiveMembers()).isEqualTo(12);
+    assertThat(response.getBlockedReason()).isEqualTo("Grund");
   }
 }

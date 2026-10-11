@@ -12,8 +12,8 @@ import java.util.List;
  * @param activeMemberCount null when {@code smallGroup} is true and null for a protected group,
  *     where the size is the actual disclosure.
  * @param selectable false for a group that may hold what it holds but must not become a new grant
- *     target or space member; {@code dissolved}, {@code providerDisabled} and {@code unmaintained}
- *     name which reason applies.
+ *     target or space member; {@code dissolved}, {@code providerDisabled}, {@code unmaintained} and
+ *     {@code deactivated} name which reason applies.
  * @param responsible whom to ask about a protected group instead of reading its member list
  *     (ADR-0036, Entscheidung 9): its stewards where it is internal. Empty for a protected provider
  *     group, for which the system administration answers, and for every unprotected group - there
@@ -30,4 +30,5 @@ public record SelectableGroup(
     boolean selectable,
     boolean dissolved,
     boolean providerDisabled,
-    boolean unmaintained) {}
+    boolean unmaintained,
+    boolean deactivated) {}

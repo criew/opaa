@@ -24,6 +24,13 @@ public interface GroupSpaceMembershipDirectory {
   /** How many spaces one group is a member of - the count behind a transfer's work limit. */
   long countSpaceMembershipsOf(UUID groupId);
 
+  /**
+   * How many spaces would lose their last capable {@code ADMIN} member if this group stopped acting
+   * - Schutzregel 1 of ADR-0036, Entscheidung 6, asked before a deactivation (Entscheidung 14). A
+   * space that has no capable {@code ADMIN} already loses none and is not counted.
+   */
+  long countSpacesRelyingOnGroupAsLastAdmin(UUID groupId);
+
   /** Every (group, space) pair among {@code groupIds}; an empty list for an empty input. */
   List<GroupSpaceMembershipRef> spaceMembershipsOf(Collection<UUID> groupIds);
 

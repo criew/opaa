@@ -40,7 +40,7 @@ hängt nur von foundation und identity ab.
 - **Web-Schicht:** `permission.web`, `asset.web` (Katalog, Grants, Herleitung, Eigentum), `group.web`
   (auch `/api/v1/me`), `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation),
   `succession.web`. Die Raumzuordnungen eines Assets bedient `space.web` (workspace).
-- **Gruppenrechte enden mit der Mitgliedschaft** (`GroupMembershipResolver`, Cache nach Commit).
+- **Gruppenrechte enden mit Mitgliedschaft oder Deaktivierung** (`GroupMembershipResolver`, Cache nach Commit).
 
 ## Verweise
 

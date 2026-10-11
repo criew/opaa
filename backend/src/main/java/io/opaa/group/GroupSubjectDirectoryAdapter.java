@@ -58,7 +58,8 @@ class GroupSubjectDirectoryAdapter implements GroupSubjectDirectory {
                   provider != null && !provider.isEnabled(),
                   unmaintained(group, provider),
                   group.isProtectedGroup(),
-                  group.isInternal());
+                  group.isInternal(),
+                  group.isDeactivated());
             });
   }
 

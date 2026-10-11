@@ -61,7 +61,8 @@ class GroupCapabilityServiceTest {
                     providerDisabled,
                     unmaintained,
                     false,
-                    true)));
+                    true,
+                    false)));
     when(memberships.activeMemberCount(eq(group), any())).thenReturn(activeMembers);
 
     assertThat(service.isCapable(group)).isEqualTo(expected);
@@ -72,7 +73,7 @@ class GroupCapabilityServiceTest {
   void anEmptyGroupIsEffectiveButCannotAct() {
     GroupSubject empty =
         new GroupSubject(
-            UUID.randomUUID(), ORGANIZATION, "Referat 52", false, false, false, false, true);
+            UUID.randomUUID(), ORGANIZATION, "Referat 52", false, false, false, false, true, false);
     when(memberships.activeMemberCount(eq(empty.id()), any())).thenReturn(0);
 
     assertThat(service.isEffective(empty)).isTrue();
