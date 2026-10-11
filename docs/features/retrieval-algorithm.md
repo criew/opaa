@@ -295,8 +295,8 @@ läuft weiter, aber nicht unbemerkt.
 
 Die Kandidatenzahl steuert `opaa.query.rerank-candidate-count`
 (`OPAA_QUERY_RERANK_CANDIDATE_COUNT`, Default `50`, Ebene-1-Wert). `0` schaltet die Stufe über ihren
-eigenen Parameter ab — dieselbe explizite Abwahl, die `max-chunks-per-document = 1` für die
-Dokument-Vervollständigung ist. Der Startwert 50 entspricht dem, was zwei Suchpfade bei
+eigenen Parameter ab, so wie `max-chunks-per-document = 1` die Dokument-Vervollständigung
+abschaltet (dort seit #2502 der Default). Der Startwert 50 entspricht dem, was zwei Suchpfade bei
 `fetch-k = 25` je Teilfrage überhaupt liefern können.
 
 **Das Fenster vergrößert die Reichweite nicht.** Was keine Suchstufe zurückgegeben hat, kann weder

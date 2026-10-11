@@ -146,10 +146,9 @@ class QueryPropertiesTest {
         .hasMessageContaining("maxSubQueries");
   }
 
-  /** {@code 1} is the documented opt-out value (#932) - it must not be rejected as "unset". */
   /**
-   * Neighbour chunks supply the document context, so the shipped default keeps one chunk per
-   * document and lets the next-ranked document take the slot instead.
+   * The shipped default switches document completion off: neighbour chunks supply the document
+   * context instead of sibling chunks taking selection slots.
    */
   @Test
   void maxChunksPerDocumentDefaultsToOneWhenUnset() {
@@ -175,6 +174,7 @@ class QueryPropertiesTest {
         .bindOrCreate("opaa.query", QueryProperties.class);
   }
 
+  /** {@code 1} is the documented opt-out value (#932) - it must not be rejected as "unset". */
   @Test
   void maxChunksPerDocumentOfOneIsAcceptedAsIs() {
     QueryProperties properties = new QueryProperties(8, 25, 1.0, 0.3, true, 3, 1, true, 50, 20, 2);

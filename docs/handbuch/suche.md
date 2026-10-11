@@ -585,10 +585,11 @@ Frage auf ein Viertel von `top-k` solcher Verdrängungen gedeckelt. Das Protokol
 beide Stufen, weil sie für die Diagnose zwei verschiedene Antworten sind.
 
 **Ab Werk zieht die Stufe nichts nach.** Der Standardwert von `max-chunks-per-document`
-(Abschnitt 10.3) lässt je Dokument nur die Chunks zu, die schon vor ihr in der Auswahl standen. Den
-Text um einen Treffer bringen die Nachbar-Chunks in den Antwortkontext (Abschnitt 6), ohne einen
-Platz der Endauswahl zu belegen; jeder Platz geht so an das nächstbeste Dokument. Die Stufe läuft
-trotzdem und vermerkt im Protokoll, dass sie keinen Chunk nachgezogen hat.
+(Abschnitt 10.3) ergänzt keine Geschwister-Chunks; die Auswahl bleibt, wie die Stufen davor sie
+gebildet haben, und kann dabei weiterhin mehrere Chunks eines Dokuments enthalten. Den Text um einen
+Treffer bringen die Nachbar-Chunks in den Antwortkontext (Abschnitt 6), ohne einen Platz der
+Endauswahl zu belegen. Die Stufe läuft trotzdem und vermerkt im Protokoll, dass sie keinen Chunk
+nachgezogen hat.
 
 Damit steht die **Endauswahl**: höchstens `top-k` Chunks aus meist mehreren Dokumenten,
 in einer Reihenfolge, die für jede Fundstelle dasselbe bedeutet, gleich über welchen Pfad sie kam.
