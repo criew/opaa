@@ -15,23 +15,24 @@ function model(overrides: Partial<DiscoveredLlmModel> = {}): DiscoveredLlmModel 
 describe('presetOf', () => {
   it('recognizes each preset by its address, with or without trailing slash', () => {
     for (const preset of ENDPOINT_PRESETS) {
-      if (preset.baseUrl === null) continue
-      expect(presetOf(preset.baseUrl)).toBe(preset.key)
-      expect(presetOf(`${preset.baseUrl}/`)).toBe(preset.key)
+      expect(presetOf(preset.baseUrl)).toBe(preset)
+      expect(presetOf(`${preset.baseUrl}/`)).toBe(preset)
     }
   })
 
-  it('names every other address a custom one and an empty address none', () => {
-    expect(presetOf('http://vllm.intern:8000/v1')).toBe('custom')
+  it('knows no preset for any other or an empty address', () => {
+    expect(presetOf('http://vllm.intern:8000/v1')).toBeNull()
+    expect(presetOf('http://host.docker.internal:11434/v1')).toBeNull()
     expect(presetOf('   ')).toBeNull()
   })
 
-  it('offers the three addresses the issue names', () => {
-    expect(ENDPOINT_PRESETS.map((preset) => preset.baseUrl)).toEqual([
-      'http://host.docker.internal:11434/v1',
-      'http://ollama:11434/v1',
-      'https://api.openai.com/v1',
-      null,
+  it('offers Ollama, OpenAI and Anthropic; only Ollama has a host to confirm', () => {
+    expect(
+      ENDPOINT_PRESETS.map((preset) => [preset.label, preset.baseUrl, preset.placeholderHost]),
+    ).toEqual([
+      ['Ollama', 'http://ollama:11434/v1', 'ollama'],
+      ['OpenAI', 'https://api.openai.com/v1', null],
+      ['Anthropic (Claude)', 'https://api.anthropic.com/v1', null],
     ])
   })
 })

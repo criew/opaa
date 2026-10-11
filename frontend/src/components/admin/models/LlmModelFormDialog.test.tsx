@@ -19,6 +19,25 @@ function recordRequests(path: string) {
   return bodies
 }
 
+/** Chooses a template from the address suggestions. */
+async function chooseTemplate(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: ReturnType<typeof within>,
+  name: RegExp,
+) {
+  await user.click(dialog.getByRole('combobox', { name: /Basis-Adresse/ }))
+  await user.click(await screen.findByRole('option', { name }))
+}
+
+/** Chooses the Ollama template, keeps its host and fetches the list. */
+async function fetchFromOllama(
+  user: ReturnType<typeof userEvent.setup>,
+  dialog: ReturnType<typeof within>,
+) {
+  await chooseTemplate(user, dialog, /^Ollama/)
+  await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
+}
+
 function renderCreate() {
   const onSaved = vi.fn()
   const onClose = vi.fn()
@@ -27,15 +46,26 @@ function renderCreate() {
 }
 
 describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
-  it('fills the address from a template and lists the models of a keyless endpoint at once', async () => {
+  it('fills the Ollama address, selects its host for overwriting and fetches only on request', async () => {
+    const discoveries = recordRequests('/api/v1/admin/models/discover')
     const user = userEvent.setup()
     const { dialog } = renderCreate()
+    const address = dialog.getByRole('combobox', { name: /Basis-Adresse/ })
 
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await chooseTemplate(user, dialog, /^Ollama/)
 
-    expect(dialog.getByLabelText('Basis-Adresse', { exact: false })).toHaveValue(
-      'http://ollama:11434/v1',
-    )
+    expect(address).toHaveValue('http://ollama:11434/v1')
+    await waitFor(() => {
+      expect(address).toHaveFocus()
+      expect([
+        (address as HTMLInputElement).selectionStart,
+        (address as HTMLInputElement).selectionEnd,
+      ]).toEqual([7, 13])
+    })
+    expect(discoveries).toHaveLength(0)
+    expect(dialog.getByText(/Host anpassen, dann „Modelle abrufen“ oder Enter/)).toBeInTheDocument()
+
+    await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
     expect(await dialog.findByText(/4 Modelle gefunden/)).toBeInTheDocument()
 
     await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
@@ -56,7 +86,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const user = userEvent.setup()
     const { dialog } = renderCreate()
 
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
     await dialog.findByText(/4 Modelle gefunden/)
     await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
     await user.click(await screen.findByRole('option', { name: /qwen3:8b/ }))
@@ -96,7 +126,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const { dialog } = renderCreate()
     const maxTokens = dialog.getByLabelText('Maximale Antwortlänge (Token)', { exact: false })
 
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
     await dialog.findByText(/2 Modelle gefunden/)
     await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
     await user.click(await screen.findByRole('option', { name: /phi3:mini/ }))
@@ -114,7 +144,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const { dialog } = renderCreate()
 
     await user.type(dialog.getByLabelText('Anzeigename', { exact: false }), 'Hausmodell')
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
     await dialog.findByText(/4 Modelle gefunden/)
     await user.click(dialog.getByRole('combobox', { name: /Modell-Kennung/ }))
     await user.click(await screen.findByRole('option', { name: /llama3\.2:3b/ }))
@@ -126,7 +156,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const user = userEvent.setup()
     const { dialog } = renderCreate()
 
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
     await dialog.findByText(/4 Modelle gefunden/)
     const field = dialog.getByRole('combobox', { name: /Modell-Kennung/ })
     await user.click(field)
@@ -158,7 +188,6 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
       baseUrl: 'https://api.openai.com/v1',
       apiKey: 'sk-test',
     })
-    expect(dialog.getByRole('radio', { name: /OpenAI/ })).toHaveAttribute('aria-checked', 'true')
   })
 
   it('does not fetch at once for a template that needs a key, and explains why', async () => {
@@ -166,7 +195,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const user = userEvent.setup()
     const { dialog } = renderCreate()
 
-    await user.click(dialog.getByRole('radio', { name: /OpenAI/ }))
+    await chooseTemplate(user, dialog, /^OpenAI/)
 
     expect(
       dialog.getByText(/Zugangsschlüssel eintragen, dann „Modelle abrufen“/),
@@ -178,7 +207,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const user = userEvent.setup()
     const { dialog, onSaved } = renderCreate()
 
-    await user.click(dialog.getByRole('radio', { name: /OpenAI/ }))
+    await chooseTemplate(user, dialog, /^OpenAI/)
     await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
 
     expect(
@@ -236,7 +265,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const user = userEvent.setup()
     const { dialog } = renderCreate()
 
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
 
     expect(await dialog.findByText(/meldet keine Modelle/)).toBeInTheDocument()
     expect(dialog.getByText(/ollama pull/)).toBeInTheDocument()
@@ -254,7 +283,7 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     const user = userEvent.setup()
     const { dialog } = renderCreate()
 
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
 
     expect(await dialog.findByText(/weicht von der gespeicherten Adresse ab/)).toBeInTheDocument()
   })
@@ -267,9 +296,8 @@ describe('LlmModelFormDialog – Modellermittlung (#2488)', () => {
     )
     const dialog = within(screen.getByRole('dialog'))
 
-    expect(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
+    expect(dialog.getByRole('combobox', { name: /Basis-Adresse/ })).toHaveValue(
+      'http://ollama:11434/v1',
     )
     await user.click(dialog.getByRole('button', { name: 'Modelle abrufen' }))
 
@@ -311,7 +339,7 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     slowTestForModelA()
     const user = userEvent.setup()
     const { dialog } = renderCreate()
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
     await dialog.findByText(/4 Modelle gefunden/)
 
     await chooseOption(user, dialog, /llama3\.2:3b/)
@@ -339,7 +367,7 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     )
     const user = userEvent.setup()
     const { dialog } = renderCreate()
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
     await dialog.findByText(/4 Modelle gefunden/)
 
     await chooseOption(user, dialog, /qwen3:8b/)
@@ -357,7 +385,7 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     slowTestForModelA()
     const user = userEvent.setup()
     const { dialog } = renderCreate()
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
+    await fetchFromOllama(user, dialog)
     await dialog.findByText(/4 Modelle gefunden/)
 
     await chooseOption(user, dialog, /llama3\.2:3b/)
@@ -403,50 +431,49 @@ describe('LlmModelFormDialog – Review-Befunde', () => {
     )
   })
 
-  it('shows "Eigene Adresse" as chosen and keeps the address', async () => {
-    const user = userEvent.setup()
-    const { dialog } = renderCreate()
-    const address = dialog.getByLabelText('Basis-Adresse', { exact: false })
-
-    await user.click(dialog.getByRole('radio', { name: /Eigene Adresse/ }))
-    expect(dialog.getByRole('radio', { name: /Eigene Adresse/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    expect(address).toHaveFocus()
-
-    await user.click(dialog.getByRole('radio', { name: /Ollama im Compose-Stack/ }))
-    await user.click(dialog.getByRole('radio', { name: /Eigene Adresse/ }))
-    expect(dialog.getByRole('radio', { name: /Eigene Adresse/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    expect(address).toHaveValue('http://ollama:11434/v1')
-  })
-
-  it('browses the templates by arrow keys without fetching and restores the typed address', async () => {
+  it('offers the templates by keyboard: arrows, Enter, Escape', async () => {
     const discoveries = recordRequests('/api/v1/admin/models/discover')
     const user = userEvent.setup()
     const { dialog } = renderCreate()
-    const address = dialog.getByLabelText('Basis-Adresse', { exact: false })
-    await user.type(address, 'http://vllm.intern:8000/v1')
-    const custom = dialog.getByRole('radio', { name: /Eigene Adresse/ })
-    expect(custom).toHaveAttribute('aria-checked', 'true')
+    const address = dialog.getByRole('combobox', { name: /Basis-Adresse/ })
 
-    custom.focus()
-    await user.keyboard('{ArrowLeft}{ArrowLeft}{ArrowLeft}')
-    expect(dialog.getByRole('radio', { name: /Ollama auf diesem Rechner/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
+    await user.click(address)
+    const listbox = await screen.findByRole('listbox')
+    expect(
+      within(listbox)
+        .getAllByRole('option')
+        .map((option) => option.textContent),
+    ).toEqual([
+      expect.stringContaining('Ollama'),
+      expect.stringContaining('OpenAI'),
+      expect.stringContaining('Anthropic (Claude)'),
+    ])
+    expect(within(listbox).getByRole('option', { name: /^Anthropic/ })).toHaveTextContent(
+      /https:\/\/api\.anthropic\.com\/v1.*Temperatur leer lassen/,
     )
-    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}')
 
-    expect(dialog.getByRole('radio', { name: /Eigene Adresse/ })).toHaveAttribute(
-      'aria-checked',
-      'true',
-    )
-    expect(address).toHaveValue('http://vllm.intern:8000/v1')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+
+    await user.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{Enter}')
+    expect(address).toHaveValue('https://api.openai.com/v1')
     expect(discoveries).toHaveLength(0)
+  })
+
+  it('narrows the templates while typing and keeps any other address as free text', async () => {
+    const discoveries = recordRequests('/api/v1/admin/models/discover')
+    const user = userEvent.setup()
+    const { dialog } = renderCreate()
+    const address = dialog.getByRole('combobox', { name: /Basis-Adresse/ })
+
+    await user.type(address, 'anthro')
+    expect(within(await screen.findByRole('listbox')).getAllByRole('option')).toHaveLength(1)
+
+    await user.clear(address)
+    await user.type(address, 'http://vllm.intern:8000/v1{Enter}')
+    expect(address).toHaveValue('http://vllm.intern:8000/v1')
+    await waitFor(() => expect(discoveries).toHaveLength(1))
+    expect(discoveries[0]).toMatchObject({ baseUrl: 'http://vllm.intern:8000/v1' })
   })
 
   it('tests without the stored key once its removal is requested', async () => {

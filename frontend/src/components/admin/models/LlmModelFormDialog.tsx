@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
@@ -9,32 +9,23 @@ import DialogTitle from '@mui/material/DialogTitle'
 import Stack from '@mui/material/Stack'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
-import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined'
-import ComputerOutlinedIcon from '@mui/icons-material/ComputerOutlined'
-import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined'
-import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined'
 import type { DiscoveredLlmModel, LlmModelResponse } from '../../../types/api'
 import { testLlmModel } from '../../../services/modelApi'
 import { useLlmModelStore } from '../../../stores/llmModelStore'
 import BusyButton from '../../a11y/BusyButton'
-import ChoiceTileGroup from '../../choice/ChoiceTileGroup'
 import SectionHead from '../../SectionHead'
+import BaseUrlField from './BaseUrlField'
 import DiscoveryStatus from './DiscoveryStatus'
 import ModelIdentifierField from './ModelIdentifierField'
 import {
   displayNameFor,
-  ENDPOINT_PRESETS,
   formatTokens,
   DEFAULT_MAX_TOKENS,
   presetOf,
   suggestedMaxTokens,
-  type EndpointPresetKey,
+  type EndpointPreset,
 } from './modelDiscovery'
 import { useModelDiscovery } from './useModelDiscovery'
-
-export const BASE_URL_HELP_TEXT =
-  'Der OpenAI-kompatible Endpunkt der Modellschnittstelle. Auch lokal betriebene Modellserver ' +
-  'bedienen diese Schnittstelle – etwa Ollama, mit angehängtem „/v1“.'
 
 export const REQUIRED_FIELDS_HINT =
   'Anzeigename, Basis-Adresse, Modell-Kennung und maximale Antwortlänge sind erforderlich.'
@@ -72,22 +63,6 @@ function draftFrom(model: LlmModelResponse | null) {
     maxTokens: String(model.maxTokens),
   }
 }
-
-const PRESET_ICONS: Record<EndpointPresetKey, ReactNode> = {
-  'ollama-host': <ComputerOutlinedIcon fontSize="small" />,
-  'ollama-compose': <DnsOutlinedIcon fontSize="small" />,
-  openai: <CloudOutlinedIcon fontSize="small" />,
-  custom: <LinkOutlinedIcon fontSize="small" />,
-}
-
-const ARROW_KEYS = ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End']
-
-const PRESET_TILES = ENDPOINT_PRESETS.map((preset) => ({
-  value: preset.key,
-  label: preset.label,
-  description: preset.description,
-  icon: PRESET_ICONS[preset.key],
-}))
 
 /**
  * Das Formular eines Chat-Modells (#759, #1621) — dasselbe für Anlegen und Bearbeiten, wie
@@ -130,15 +105,6 @@ export default function LlmModelFormDialog({
   const [suggestedName, setSuggestedName] = useState<string | null>(null)
   const [maxTokensTouched, setMaxTokensTouched] = useState(model !== null)
   const [contextLength, setContextLength] = useState<number | null>(null)
-  // „Eigene Adresse“ ist ein eigener Zustand: Auch eine leere oder einer Vorlage gleiche Adresse
-  // kann bewusst frei gewählt sein. Die zuletzt frei getippte Adresse kehrt beim Zurückwechseln
-  // wieder.
-  const [customChosen, setCustomChosen] = useState(false)
-  const customAddress = useRef(
-    model !== null && presetOf(model.baseUrl) === 'custom' ? model.baseUrl : '',
-  )
-  // Eine Wahl per Pfeiltaste blättert nur; abgerufen wird erst auf ausdrücklichen Wunsch.
-  const choosingByArrowKey = useRef(false)
   // Nur das Ergebnis des jüngsten Verbindungstests zählt, wie in useModelDiscovery.
   const latestTest = useRef(0)
   const discovery = useModelDiscovery()
@@ -147,7 +113,7 @@ export default function LlmModelFormDialog({
   const isEdit = model !== null
   const titel = isEdit ? `„${model.displayName}“ bearbeiten` : 'Chat-Modell anlegen'
   const requiredHintId = 'llm-model-form-required-hint'
-  const preset: EndpointPresetKey | null = customChosen ? 'custom' : presetOf(draft.baseUrl)
+  const preset = presetOf(draft.baseUrl)
   const typedKey = apiKeyTouched && apiKeyInput.trim() !== ''
   const temperatureFieldId = 'llm-model-form-temperature'
   // MUI vergibt der Hilfezeile eines TextField mit `id` die ID `<id>-helper-text`.
@@ -212,27 +178,25 @@ export default function LlmModelFormDialog({
     })
   }
 
-  function typeBaseUrl(baseUrl: string) {
-    if (presetOf(baseUrl) === 'custom') customAddress.current = baseUrl
-    else if (presetOf(baseUrl) !== null) setCustomChosen(false)
-    changeBaseUrl(baseUrl)
-  }
-
-  function choosePreset(key: EndpointPresetKey) {
-    const byArrowKey = choosingByArrowKey.current
-    choosingByArrowKey.current = false
-    const chosen = ENDPOINT_PRESETS.find((candidate) => candidate.key === key)!
-    if (chosen.baseUrl === null) {
-      setCustomChosen(true)
-      if (customAddress.current !== '' && customAddress.current !== draft.baseUrl) {
-        changeBaseUrl(customAddress.current)
-      }
-      if (!byArrowKey) addressRef.current?.focus()
+  /**
+   * Fills in the preset's address. A host still to be confirmed (Ollama) is selected for
+   * overwriting and nothing is fetched yet; a keyed preset fetches at once if a key is typed.
+   */
+  function choosePreset(chosen: EndpointPreset) {
+    changeBaseUrl(chosen.baseUrl)
+    const host = chosen.placeholderHost
+    if (host !== null) {
+      // After the combobox has written the chosen address into the input.
+      setTimeout(() => {
+        const input = addressRef.current
+        if (!input) return
+        const start = chosen.baseUrl.indexOf(host)
+        input.focus()
+        input.setSelectionRange(start, start + host.length)
+      }, 0)
       return
     }
-    setCustomChosen(false)
-    changeBaseUrl(chosen.baseUrl)
-    if (!byArrowKey && (chosen.keyless || typedKey)) runDiscovery(chosen.baseUrl)
+    if (chosen.needsKey && typedKey) runDiscovery(chosen.baseUrl)
   }
 
   function selectModel(selected: DiscoveredLlmModel) {
@@ -319,10 +283,12 @@ export default function LlmModelFormDialog({
 
   const idleHint =
     draft.baseUrl.trim() === ''
-      ? 'Vorlage wählen oder Adresse eintragen, dann „Modelle abrufen“. Die Kennung lässt sich auch direkt eintragen.'
-      : preset === 'openai' && !typedKey && !model?.apiKeySet
+      ? null
+      : preset?.needsKey && !typedKey && !model?.apiKeySet
         ? 'Zugangsschlüssel eintragen, dann „Modelle abrufen“.'
-        : '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'
+        : preset?.placeholderHost
+          ? 'Host anpassen, dann „Modelle abrufen“ oder Enter.'
+          : '„Modelle abrufen“ zeigt, welche Modelle der Endpunkt anbietet.'
 
   return (
     <Dialog open={open} onClose={close} maxWidth="sm" fullWidth>
@@ -338,43 +304,17 @@ export default function LlmModelFormDialog({
             <SectionHead component="h3" id="llm-model-endpoint-head">
               1 · Endpunkt
             </SectionHead>
-            <Typography id="llm-model-endpoint-question" variant="body2" sx={{ mb: 1.5 }}>
-              Wo läuft das Modell?
-            </Typography>
-            {/* Capture phase: marks an arrow key before the group turns it into a choice. */}
-            <Box
-              onKeyDownCapture={(e) => {
-                choosingByArrowKey.current = ARROW_KEYS.includes(e.key)
-              }}
-            >
-              <ChoiceTileGroup<EndpointPresetKey>
-                aria-labelledby="llm-model-endpoint-question"
-                value={preset}
-                onChange={choosePreset}
-                tiles={PRESET_TILES}
-              />
-            </Box>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={1}
-              sx={{ mt: 2.5, alignItems: { xs: 'stretch', sm: 'flex-start' } }}
+              sx={{ alignItems: { xs: 'stretch', sm: 'flex-start' } }}
             >
-              <TextField
-                label="Basis-Adresse"
-                required
+              <BaseUrlField
                 value={draft.baseUrl}
                 inputRef={addressRef}
-                onChange={(e) => typeBaseUrl(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    runDiscovery()
-                  }
-                }}
-                helperText={BASE_URL_HELP_TEXT}
-                slotProps={{ htmlInput: { spellCheck: false } }}
-                size="small"
-                fullWidth
+                onType={changeBaseUrl}
+                onChoose={choosePreset}
+                onSubmit={() => runDiscovery()}
               />
               <BusyButton
                 variant="outlined"
@@ -402,7 +342,7 @@ export default function LlmModelFormDialog({
                   ? 'Der gespeicherte Schlüssel wird beim Speichern entfernt.'
                   : isEdit
                     ? 'Leer lassen, um den gespeicherten Schlüssel unverändert zu lassen.'
-                    : preset === 'openai'
+                    : preset?.needsKey
                       ? 'Wird verschlüsselt gespeichert und nie wieder angezeigt.'
                       : 'Lokal betriebene Modellserver brauchen meist keinen.'
               }

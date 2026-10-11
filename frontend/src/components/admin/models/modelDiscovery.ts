@@ -1,45 +1,48 @@
 import type { DiscoveredLlmModel } from '../../../types/api'
 
-export type EndpointPresetKey = 'ollama-host' | 'ollama-compose' | 'openai' | 'custom'
+export type EndpointPresetKey = 'ollama' | 'openai' | 'anthropic'
 
 export interface EndpointPreset {
   key: EndpointPresetKey
   label: string
   description: string
-  /** `null` for the free address. */
-  baseUrl: string | null
-  /** Whether the endpoint answers without an access key, so the list can be fetched at once. */
-  keyless: boolean
+  /** The address the preset fills in. */
+  baseUrl: string
+  /** The address as shown in the suggestion; differs where a part is still to be confirmed. */
+  pattern: string
+  /** The part of `baseUrl` the person has to confirm or overwrite; it is selected after choosing. */
+  placeholderHost: string | null
+  /** Whether the endpoint needs an access key before it lists its models. */
+  needsKey: boolean
 }
 
 export const ENDPOINT_PRESETS: readonly EndpointPreset[] = [
   {
-    key: 'ollama-host',
-    label: 'Ollama auf diesem Rechner',
-    description: 'Ollama läuft auf dem Rechner, auf dem OPAA im Container läuft.',
-    baseUrl: 'http://host.docker.internal:11434/v1',
-    keyless: true,
-  },
-  {
-    key: 'ollama-compose',
-    label: 'Ollama im Compose-Stack',
-    description: 'Der Ollama-Dienst aus dem mitgelieferten Docker-Compose-Stack.',
+    key: 'ollama',
+    label: 'Ollama',
+    description: 'Den Host anpassen, auf dem Ollama läuft.',
     baseUrl: 'http://ollama:11434/v1',
-    keyless: true,
+    pattern: 'http://<host>:11434/v1',
+    placeholderHost: 'ollama',
+    needsKey: false,
   },
   {
     key: 'openai',
     label: 'OpenAI',
-    description: 'Modelle von OpenAI. Braucht einen Zugangsschlüssel.',
+    description: 'Braucht einen Zugangsschlüssel.',
     baseUrl: 'https://api.openai.com/v1',
-    keyless: false,
+    pattern: 'https://api.openai.com/v1',
+    placeholderHost: null,
+    needsKey: true,
   },
   {
-    key: 'custom',
-    label: 'Eigene Adresse',
-    description: 'vLLM, LiteLLM, Azure oder ein anderer Server mit derselben Schnittstelle.',
-    baseUrl: null,
-    keyless: false,
+    key: 'anthropic',
+    label: 'Anthropic (Claude)',
+    description: 'Braucht einen Zugangsschlüssel. Temperatur leer lassen.',
+    baseUrl: 'https://api.anthropic.com/v1',
+    pattern: 'https://api.anthropic.com/v1',
+    placeholderHost: null,
+    needsKey: true,
   },
 ]
 
@@ -47,11 +50,10 @@ function normalized(baseUrl: string): string {
   return baseUrl.trim().replace(/\/+$/, '')
 }
 
-/** The preset an address belongs to; any other non-empty address is a custom one. */
-export function presetOf(baseUrl: string): EndpointPresetKey | null {
+/** The preset whose address this is exactly; `null` for any other address. */
+export function presetOf(baseUrl: string): EndpointPreset | null {
   const address = normalized(baseUrl)
-  if (address === '') return null
-  return ENDPOINT_PRESETS.find((preset) => preset.baseUrl === address)?.key ?? 'custom'
+  return ENDPOINT_PRESETS.find((preset) => preset.baseUrl === address) ?? null
 }
 
 /** A display name from an identifier: without the default `:latest` tag and a vendor path. */

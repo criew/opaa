@@ -6,7 +6,7 @@ import type { DiscoveryState } from './useModelDiscovery'
 interface DiscoveryStatusProps {
   state: DiscoveryState
   /** What to do next while nothing has been fetched yet. */
-  idleHint: string
+  idleHint: string | null
 }
 
 const HAND_ENTRY = 'Die Kennung lässt sich trotzdem von Hand eintragen.'
@@ -34,6 +34,7 @@ export default function DiscoveryStatus({ state, idleHint }: DiscoveryStatusProp
     )
   }
 
+  if (state.status === 'idle' && idleHint === null) return null
   let text = idleHint
   if (state.status === 'loading') {
     text = 'Modelle werden abgerufen …'

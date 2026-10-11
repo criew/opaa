@@ -1742,21 +1742,33 @@ gespeicherten Verlauf erscheint er nach dem Neuladen nicht mehr.
 Unter **Administration → Modelle → Chat-Modelle** legt ein Systemverwalter Chat-Modelle an,
 bearbeitet, testet und aktiviert sie. Das Formular führt in drei Abschnitten:
 
-1. **Endpunkt.** Eine Vorlage füllt die Basis-Adresse:
+1. **Endpunkt.** Das Feld „Basis-Adresse“ schlägt beim Öffnen Vorlagen vor; jede andere
+   openai-kompatible Adresse (vLLM, LiteLLM, Azure …) wird einfach eingetragen.
 
-   | Vorlage | Basis-Adresse | Wann |
+   | Vorlage | Trägt ein | Hinweis |
    |---|---|---|
-   | Ollama auf diesem Rechner | `http://host.docker.internal:11434/v1` | OPAA läuft im Container, Ollama direkt auf demselben Rechner |
-   | Ollama im Compose-Stack | `http://ollama:11434/v1` | der `ollama`-Service des Compose-Stacks (nächster Abschnitt) |
-   | OpenAI | `https://api.openai.com/v1` | Modelle von OpenAI, nur mit Zugangsschlüssel |
-   | Eigene Adresse | frei | vLLM, LiteLLM, Azure und jeder andere openai-kompatible Server |
+   | Ollama | `http://ollama:11434/v1` | Der Host `ollama` ist danach markiert und wird mit dem eigenen überschrieben (siehe unten). |
+   | OpenAI | `https://api.openai.com/v1` | nur mit Zugangsschlüssel |
+   | Anthropic (Claude) | `https://api.anthropic.com/v1` | nur mit Zugangsschlüssel; das Feld Temperatur leer lassen |
 
-   Läuft das Backend ohne Container (etwa `./gradlew bootRun`), ist Ollama auf demselben Rechner
-   unter `http://localhost:11434/v1` erreichbar, also über „Eigene Adresse". Der Zugangsschlüssel
-   ist optional; er wird verschlüsselt gespeichert und nie wieder angezeigt.
+   Typische Ollama-Adressen, je nachdem, wo Ollama vom Backend aus erreichbar ist:
+
+   | Ollama läuft | Basis-Adresse |
+   |---|---|
+   | im Compose-Stack (nächster Abschnitt) | `http://ollama:11434/v1` |
+   | auf dem Docker-Host, OPAA im Container | `http://host.docker.internal:11434/v1` |
+   | im Kubernetes-Cluster | `http://ollama.<namespace>.svc.cluster.local:11434/v1` |
+   | auf demselben Rechner, Backend ohne Container (`./gradlew bootRun`) | `http://localhost:11434/v1` |
+
+   Mit eingeschalteten Ausgangs-Policies braucht das Backend im Cluster eine Ausgangsregel zu Port
+   11434 von Ollama ([Kubernetes, NetworkPolicies](kubernetes.md#networkpolicies)). Der
+   Zugangsschlüssel ist optional; er wird verschlüsselt gespeichert und nie wieder angezeigt.
+   Lehnt ein Anbieter die Modellliste mit seinem Schlüssel ab (etwa weil er sie nur in eigener
+   Form anbietet), nennt das Formular den Grund, und die Kennung wird von Hand eingetragen.
 2. **Modell.** „Modelle abrufen" (oder Enter im Adressfeld) fragt den Endpunkt nach seinen Modellen
-   (`GET {Basis-Adresse}/models`). Die beiden Ollama-Vorlagen tun das bei der Wahl sofort, weil
-   Ollama keinen Schlüssel braucht. Die Modell-Kennung ist danach eine durchsuchbare Auswahl. Erkennt
+   (`GET {Basis-Adresse}/models`). Die Vorlagen für OpenAI und Anthropic rufen sofort ab, wenn schon
+   ein Schlüssel eingetragen ist; die Ollama-Vorlage nie, weil der Host erst zu bestätigen ist. Die
+   Modell-Kennung ist danach eine durchsuchbare Auswahl. Erkennt
    OPAA hinter einer Adresse auf `/v1` ein Ollama, zeigt jede Zeile zusätzlich Parameterzahl, Größe,
    Kontextlänge und Fähigkeiten (Werkzeuge, Bilder, Denkmodus), gelesen über Ollamas eigene
    Schnittstelle (`/api/tags`, `/api/show`) auf derselben Adresse. Andere Server liefern meist nur die
