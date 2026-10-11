@@ -764,6 +764,7 @@ Verantwortliche dürfen:
 - Name und Beschreibung ändern
 - weitere Verantwortliche benennen und entlassen
 - die Gruppe **zur Verwendung freigeben** und die Freigabe zurücknehmen
+- die Gruppe vorübergehend **deaktivieren** und wieder **reaktivieren** (siehe unten)
 - die Gruppe löschen, solange sie keine Berechtigung, kein Anlegerecht und kein Eigentum mehr trägt
   und in keinem Raum Mitglied ist
 
@@ -776,13 +777,14 @@ und Zustand, sortierbar und seitenweise. Hinter dem Anbieter einer Anbietergrupp
 Info-Symbol, wie OPAA die Mitglieder erfährt: nur bei der Anmeldung der jeweiligen Person oder durch
 eigenes Auslesen im Takt des Verzeichnisabgleichs, auch ohne Anmeldung (Abschnitt 6). Eine interne Gruppe, die ihre Verantwortlichen noch
 nicht freigegeben haben, trägt den Zustand **„Nicht freigegeben“**; das Info-Symbol daneben nennt
-den Grund, ebenso bei „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Spalte
+den Grund, ebenso bei „Deaktiviert“, „Aufgelöst“, „Anbieter deaktiviert“ und „Nicht mehr gepflegt“. Die Spalte
 **Verwendung** beantwortet vor dem Aufräumen, ob an einer Gruppe etwas hängt: an wie vielen
 Bibliotheken sie Rechte hat, in wie vielen Spaces sie Mitglied ist, ob ihr Bibliotheken gehören und
 ob sie Anlegerechte trägt, etwa „2 Bibliotheken · 1 Space“. Der Tooltip schlüsselt die Angabe auf;
 „nicht verwendet“ heißt, dass die Gruppe nichts davon vermittelt. Die Handlungen
-einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Rechte übertragen** und
-**Löschen**; gelöscht werden kann nur eine interne Gruppe. **Mitglieder** zeigt die Mitglieder als
+einer Gruppe stehen im Zeilenmenü: **Bearbeiten**, **Mitglieder**, **Rechte übertragen**,
+**Deaktivieren** bzw. **Reaktivieren** und **Löschen**; deaktiviert und gelöscht werden kann nur eine
+interne Gruppe. **Mitglieder** zeigt die Mitglieder als
 alphabetische Tabelle mit dem Datum der Aufnahme und ihre Zahl im Titel, mit einem Filterfeld
 über der Tabelle; die Liste
 lädt beim Öffnen des Dialogs. Bei einer internen Gruppe lassen sich dort Personen aufnehmen und
@@ -805,6 +807,34 @@ davon trug, automatisch als freigegeben übernommen — niemand verliert eine M�
 benutzt hat. Anbietergruppen brauchen keine Freigabe; sie sind immer wählbar, solange sie wirksam
 sind.
 
+**Vorübergehend deaktivieren.** Ruht ein Projekt, wird umorganisiert oder geprüft, ob die Rechte
+einer Gruppe noch stimmen, lässt sich eine interne Gruppe **deaktivieren** — in „Meine Gruppen“ im
+Bereich **Wirkung** oder in der Gruppenverwaltung im Zeilenmenü. Das dürfen ihre Verantwortlichen und
+die Systemverwaltung, bei einer geschützten Gruppe ebenso wie bei jeder anderen.
+
+- **Solange sie deaktiviert ist, wirkt die Gruppe für niemanden.** Ihre Berechtigungen an
+  Bibliotheken, ihre Raummitgliedschaften und ihre Anlegerechte erreichen keines ihrer Mitglieder;
+  die Suche, „Warum sehe ich das?“ und das Rechteprofil der Suchdiagnose zählen die Gruppe nicht
+  mit. Das gilt sofort, ohne neue Anmeldung.
+- **Sie ist kein neues Ziel.** Wer etwas freigibt, sieht sie in der Auswahl als nicht wählbar mit
+  dem Grund „Gruppe deaktiviert“; als Eigentümerin einer neuen Bibliothek steht sie nicht zur Wahl.
+- **Gespeichert bleibt alles.** Berechtigungen, Raummitgliedschaften mit Rolle, Anlegerechte,
+  Mitglieder, Verantwortliche, Freigabe und Schutzkennzeichen bleiben stehen; **„Reaktivieren“** stellt
+  den vorherigen Stand ohne weitere Entscheidung wieder her. Mitglieder lassen sich auch während der
+  Deaktivierung aufnehmen und entfernen.
+- **Die Bestätigung beziffert die Folgen** — wie viele Freigaben an wie vielen Objekten, wie viele
+  Raummitgliedschaften und Anlegerechte und wie viele aktive Konten betroffen sind.
+- **Verweigert wird das Deaktivieren**, solange die Gruppe **einzige Eigentümerin** einer Wissens-
+  oder Prompt-Bibliothek ist oder das **letzte handlungsfähige Administrator-Mitglied** eines Raums:
+  Sonst stünde das Objekt ohne Zuständige da. Die Meldung nennt, wie viele Objekte im Weg sind; der
+  Ausweg ist „Rechte übertragen“ (Abschnitt 13.2) oder eine weitere zuständige Person.
+- Eine Frist oder Wiedervorlage gibt es nicht: Die Gruppe bleibt deaktiviert, bis jemand sie
+  reaktiviert, ihre Rechte überträgt oder sie löscht.
+
+Freigabe und Deaktivierung sind zwei verschiedene Schalter: Die zurückgenommene Freigabe nimmt eine
+Gruppe nur aus der Auswahl, ihre bestehenden Rechte wirken weiter; die Deaktivierung setzt diese
+Rechte selbst außer Kraft.
+
 **Namen interner Gruppen sind absichtlich nicht eindeutig.** Eine Ablehnung „diesen Namen gibt es
 schon" verriete jedem Inhaber des Anlegerechts, dass eine Gruppe dieses Namens existiert — genau die
 Auskunft, die Abschnitt 8 schützt. Stattdessen warnt das Formular, wenn eine für die anlegende
@@ -821,7 +851,10 @@ Nachweisprotokoll.
 der Anwendung angezeigt (ohne E-Mail) und stehen mit der handelnden verantwortlichen Person im
 Nachweisprotokoll und in der Rechtehistorie. Benennung, Entlassung und Abgabe der Verantwortung sowie
 jede Änderung an Freigabe und Schutzkennzeichen stehen im Nachweisprotokoll; eine Rechtehistorie
-führen sie nicht — Verantwortung trägt kein Leserecht. Ruft die **Systemverwaltung** die
+führen sie nicht — Verantwortung trägt kein Leserecht. Deaktivieren und Reaktivieren stehen mit
+handelnder Person und den bezifferten Folgen im Nachweisprotokoll; in der Rechtehistorie enden mit
+dem Deaktivieren die Mitgliedschaftszeiträume der Gruppe und beginnen mit dem Reaktivieren neu, so
+dass die Stichtagsauskunft für die Zwischenzeit keinen Zugriff über die Gruppe ausweist. Ruft die **Systemverwaltung** die
 Mitgliederliste einer Gruppe ab, die sie nicht selbst verantwortet, steht auch dieser Abruf im
 Nachweisprotokoll — mit der Zahl der Mitglieder, ohne die Namen. Verantwortliche erzeugen beim Lesen
 ihrer eigenen Gruppe keinen Eintrag. Auch der Bericht des Verzeichnisabgleichs nennt aufgenommene
@@ -1076,7 +1109,8 @@ bleibt immer vollständig.**
 **dass** jemand etwas getan hat. Eine Historienzeile sagt, **in welchem Zeitraum** ein Recht galt —
 sie trägt die Stichtagsauskunft und überlebt das Löschen des Gegenstands, auf den sie sich bezieht.
 
-Historisiert werden: Berechtigungen an Bibliotheken, Gruppenmitgliedschaften, die Reichweitenfelder
+Historisiert werden: Berechtigungen an Bibliotheken, Gruppenmitgliedschaften (solange eine interne
+Gruppe deaktiviert ist, ruhen ihre Zeiträume — Abschnitt 7), die Reichweitenfelder
 einer Bibliothek, Raummitgliedschaften (Person und Gruppe, mit Rolle), Eigentum, Anlegerechte und
 der Kontozustand. **Keine** Historie führen die Systemrollen, die Verantwortlichkeiten für interne
 Gruppen, die Vollmachten und die Nachfolgevorgänge — die drei Letzten tragen kein Leserecht, und
