@@ -2,7 +2,9 @@
 
 > **Status: Entwurf.** Grundlage sind die Beschlüsse des Maintainers vom 03.10.2026 in Epic
 > [#2147](https://github.com/criew/opaa/issues/2147), einschließlich der Folgebeschlüsse nach der
-> Stakeholder-Runde. Die nötigen ADR-Nachträge sind am Ende benannt.
+> Stakeholder-Runde. Die nötigen ADR-Nachträge sind am Ende benannt. Mit den Entscheidungen vom
+> 11.10.2026 entfallen der Vorfallszugriff (#2171) und die Rechtsklärung als Projektvoraussetzung
+> für Postfächer (#2170).
 
 ## Motivation
 
@@ -42,9 +44,9 @@ jede Bibliothek trägt ihre Zieladresse frei, und OPAA speichert keine OAuth-Tok
    [Token-Austausch](#token-austausch-ergebnis-des-spikes-entscheidung-offen)).
 6. **Verbundene Konten** einer Person speisen eine **private Bibliothek**: genau eine Besitzerin,
    nicht teilbar, keine Nachfolge, für die Verwaltung nur zusammengefasst sichtbar.
-7. **Verbindliche Schutzregeln:** „Sicht als“ ist ausgeschlossen, ein Vorfallszugriff braucht vier
-   Augen, Benachrichtigung und Personalrat; das Verbinden ist freiwillig; die Löschung ist
-   vollständig und nachweisbar.
+7. **Verbindliche Schutzregeln:** „Sicht als“ ist ausgeschlossen, einen Vorfallszugriff auf Inhalte
+   gibt es nicht (Vorfälle werden in der Originalquelle untersucht); das Verbinden ist freiwillig;
+   die Löschung ist vollständig und nachweisbar.
 8. **MCP-Grundlage:** Profiltyp „MCP-Server“ und Token-Speicher nach MCP-Autorisierung. Den
    MCP-Client baut ein Folge-Epic hinter [#1747](https://github.com/criew/opaa/issues/1747).
 
@@ -457,8 +459,8 @@ folgende Handlungen berühren:
 7. ein Konto deaktivieren (löst den [Lebenszyklus](#lebenszyklus-und-löschung) aus).
 
 Umbenennen, Rechte ändern, einem anderen Profil zuordnen, Läufe auslösen, Inhalte einsehen oder
-einzeln löschen kann sie nicht. Der [Vorfallszugriff](#vorfallszugriff) ist keine Handlung der
-Systemverwaltung.
+einzeln löschen kann sie nicht. Einen Zugriff auf Inhalte bei einem Vorfall gibt es auch für
+niemanden sonst (siehe [Vorfallszugriff](#vorfallszugriff)).
 
 **Was die Verwaltung sieht:** je Profil die Anzahl verbundener Konten und privater Bibliotheken,
 unterhalb der Mindestgruppengröße N nur als „weniger als N“ – auch bei null, sodass keine Antwort
@@ -493,20 +495,18 @@ diesem Epic und muss stehen, bevor Postfächer angebunden werden.
 
 ### Vorfallszugriff
 
-Der bestehende Vorfallsbereich ist eine Protokollabfrage mit Personenfilter und öffnet keine Inhalte.
-Ein Zugriff auf den **Inhalt** einer privaten Bibliothek ist deshalb eine **neue Befugnis** neben den
-Rollen, nach dem Muster der bestehenden Befugnisse: einzeln, benannt, befristet, auf eine Bibliothek
-beschränkt. Sie setzt alle vier Bedingungen voraus:
+**OPAA bietet keinen Vorfallszugriff auf den Inhalt privater Bibliotheken** (Entscheidung des
+Maintainers vom 11.10.2026, [#2171](https://github.com/criew/opaa/issues/2171), als „not planned“
+geschlossen). Der bestehende Vorfallsbereich bleibt eine Protokollabfrage mit Personenfilter und
+öffnet keine Inhalte.
 
-1. **Antrag** durch eine Person mit `AUDITOR`, mit Zweck und Zeitraum.
-2. **Bestätigung** durch eine zweite, andere Person in einer eigens benannten Rolle (etwa
-   Datenschutz). Vier Augen; die beiden Personen sind verschieden.
-3. **Benachrichtigung der Betroffenen** über Zugriff, Zeitpunkt und Grund.
-4. **Beteiligung des Personalrats**, im Vorgang dokumentiert.
-
-`SYSTEM_ADMIN` schließt diese Befugnis nicht ein und erreicht den Weg nicht. Die genaue
-Ausgestaltung der Rollen legt [#2171](https://github.com/criew/opaa/issues/2171) fest. **Bis dahin
-gibt es keinen Vorfallszugriff auf private Bibliotheken.**
+OPAA hält nur eine Kopie; das Original liegt beim Anbieter (Nextcloud, Exchange, Drive …). Ein
+Vorfall wird deshalb **in der Originalquelle** untersucht, über die dort geregelten Wege des Hauses,
+etwa eDiscovery oder den Verwaltungszugriff des Anbieters. Eine eigene Befugnis mit Antrag,
+Vier-Augen-Bestätigung, Benachrichtigung und Beteiligung des Personalrats, wie sie der Entwurf
+vorsah, entsteht nicht; der Nachtrag zu
+[ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) vom 11.10.2026 hält
+das fest.
 
 ---
 
@@ -550,7 +550,9 @@ Quellverbindungen gehören der Bibliothek und sind vom Lebenszyklus einer Person
 
 **Wiederherstellung einer Sicherung:** Nach dem Einspielen gleicht OPAA die Token ab: Token
 deaktivierter Konten werden gelöscht, abgelaufene gezählt. Wie mit Sicherungen umzugehen ist, die
-innerhalb der Löschfrist entstanden sind, klärt der Datenschutz (siehe offene Fragen).
+innerhalb der Löschfrist entstanden sind, klärt der Betreiber. Die Frage gilt für alle privaten
+Bibliotheken (Nextcloud, Drive …), nicht nur für Postfächer; das Handbuch führt sie als allgemein
+gültigen Punkt in der [Prüfliste für Postfächer](#postfächer).
 
 ---
 
@@ -580,21 +582,39 @@ gesetzt“ und den Status.
 
 ## Postfächer
 
-Indexierte Postfächer berühren Aktenführung, Aufbewahrungspflichten und Vertretungsregeln. **Vor dem
-ersten Postfach-Konnektor** wird das rechtlich geklärt; bis dahin wird kein Postfach-Konnektor
-ausgeliefert. Für Nextcloud ist diese Klärung nicht nötig.
+Indexierte Postfächer berühren Aktenführung, Aufbewahrungspflichten, Vertretungsregeln und die
+Mitbestimmung. **Das Projekt klärt diese Rechtsfragen nicht vorab** (Entscheidung des Maintainers
+vom 11.10.2026, [#2170](https://github.com/criew/opaa/issues/2170)): Sie sind in jedem Haus anders.
+Die Klärung liegt beim **Betreiber**, vor dem Anlegen des ersten Zugangs zu einem Postfach und vor
+dessen Freigabe, denn die Systemverwaltung kann auch ohne Freigabe anlegen; ein neuer Konnektor ist
+ab Werk aus
+([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
+03.10.2026).
+
+Dafür führt das Handbuch eine **Prüfliste mit Hintergrund** (Kapitel „Bibliotheken und
+Berechtigungen“, Abschnitt „Vor der Einführung“), gekennzeichnet als Vorbereitung, solange es keinen
+Postfach-Konnektor gibt. Sie nennt je Punkt, worum es geht, warum er zählt und was der Betreiber
+klären sollte, und ist keine Rechtsberatung:
+
+1. Aktenführung und E-Akte,
+2. Aufbewahrungs- und Löschpflichten gegenüber der Löschfrist privater Bibliotheken,
+3. Vertretung und Zugriff Dritter,
+4. Funktionspostfächer und Mitbestimmung (Dienstvereinbarung),
+5. Sicherungen innerhalb der Löschfrist.
 
 **Funktionspostfächer** brauchen kein verbundenes Konto. Sie werden über Client-Credentials angebunden;
-der Exchange-Admin beschränkt die App auf bestimmte Postfächer. Sie bekommen eine eigene Regelung in
-der Rechtsklärung, und das Handbuch weist darauf hin, dass ihre Anbindung mitbestimmungspflichtig sein
-kann.
+der Exchange-Admin beschränkt die App auf bestimmte Postfächer. Dass ihre Anbindung
+mitbestimmungspflichtig sein kann, steht in der Prüfliste (Punkt 4).
+
+**Konzeptprüfung vor dem Bau.** Das Postfach-Konzept
+([#2172](https://github.com/criew/opaa/issues/2172)) wird vor dem Bau erneut geprüft.
 
 ### Bedingungen für den ersten Postfach-Konnektor
 
 Ergebnis einer Stakeholder-Runde zum Postfach-Konnektor (Personalrat, Betrieb, Referatsleitung,
-Sachbearbeitung, KI-Champion, Skeptiker). Die Bedingungen gelten zusätzlich zu den Regeln für private
-Bibliotheken und sind Gegenstand der Rechtsklärung; was davon gebaut wird, steht nicht unter einem
-Schalter.
+Sachbearbeitung, KI-Champion, Skeptiker). Die Bedingungen sind **Bauanforderungen** an den ersten
+Postfach-Konnektor und gelten zusätzlich zu den Regeln für private Bibliotheken; was davon gebaut
+wird, steht nicht unter einem Schalter.
 
 | Bedingung | Gilt für | Grund |
 |---|---|---|
@@ -652,8 +672,10 @@ Nutzungsfreigabe verbindet nur die Systemverwaltung. Einzelheiten stehen im Nach
    Nutzer ist Nextcloud mit App-Passwort (lokal testbar, Dateiablage von openDesk).
 3. **OAuth-Baustein** mit Client-Credentials, „Quelle verbinden“ und der MCP-Grundlage.
 4. **Dropbox** (Quelle verbinden) und **Exchange** (verbundenes Konto, Funktionspostfächer); Exchange
-   erst nach der Rechtsklärung, dem Kontingent, dem Pilot ohne Konnektor und mit den
-   [Bedingungen für Postfächer](#bedingungen-für-den-ersten-postfach-konnektor).
+   erst nach der erneuten Prüfung des Postfach-Konzepts (#2172), dem Kontingent, dem Pilot ohne
+   Konnektor und mit den [Bedingungen für Postfächer](#bedingungen-für-den-ersten-postfach-konnektor).
+   Die Rechtsfragen klärt der Betreiber vor der Freigabe anhand der Prüfliste im Handbuch
+   ([Postfächer](#postfächer)); sie sind keine Voraussetzung des Baus.
 
 Der Spike zum Token-Austausch gegen openDesk ist abgeschlossen
 ([#2174](https://github.com/criew/opaa/issues/2174)). Der MCP-Client folgt als eigenes Epic.
@@ -665,7 +687,7 @@ Der Spike zum Token-Austausch gegen openDesk ist abgeschlossen
 | ADR | Nachtrag |
 |---|---|
 | [ADR-0025](../decisions/0025-mehrere-oidc-anbieter.md) | „OPAA speichert keine Tokens“ gilt für die Anmeldung an OPAA, nicht für Quellverbindungen und verbundene Konten |
-| [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; **Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen (Antrag `AUDITOR`, Bestätigung durch eine zweite benannte Rolle, `SYSTEM_ADMIN` nicht eingeschlossen); Leserolle des Verbindungsprotokolls |
+| [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md) | `CREATE_CONNECTOR_LIBRARY` wird je Profil bzw. je Konnektortyp erteilt; neue Konnektoren und Profile ab Werk aus; Entzug wirkt nur auf die Neuanlage (Neuverbinden ist keine), Sperre auf Läufe; **Nur-Besitzerin-Regel** für private Bibliotheken als eigene Sperre am Grant- und Fremdzugangspfad, von der Systemverwaltung nicht lockerbar; „Sicht als“ für private Bibliotheken ausgeschlossen; ~~**Vorfallszugriff auf Inhalte** als neue Befugnis neben den Rollen~~ (mit dem Nachtrag vom 11.10.2026 entfallen, #2171: kein Vorfallszugriff, Untersuchung in der Originalquelle); Leserolle des Verbindungsprotokolls |
 | [ADR-0038](../decisions/0038-steckbare-konnektoren.md) | Profilangabe (verboten, optional, Pflicht) und Anmeldearten gehören in die Konnektor-Beschreibung; das Ziel der Zugangsdaten leitet sich bei Profilen aus der Server-Adresse des Profils ab; Entscheidung 3 („genau zwei Plätze für Geheimnisse“) wird um das Client-Secret am Profil und den Token-Speicher erweitert, beide auf demselben Verschlüsselungsweg |
 
 Bedingt, nur falls der Token-Austausch zur fünften Anmeldeart wird: je ein Nachtrag zu
@@ -684,7 +706,7 @@ legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 |---|---|
 | [knowledge-sources.md](./knowledge-sources.md) | Konnektoren, Zielprüfung, Zugangsdaten; Profile ersetzen die freie Adresse, wo Profilpflicht gilt |
 | [spaces-and-assets.md](./spaces-and-assets.md) | Freigabe-Obergrenze, Nachfolge, Space-Zuordnung; private Bibliotheken als Sonderfall |
-| [access-control.md](./access-control.md) | Fähigkeiten, Gruppen, Kontodeaktivierung, Freigabe-Obergrenze (durch die Nur-Besitzerin-Regel ergänzt), „Sicht als“, Vorfallsbereich und die neue Befugnis des Vorfallszugriffs |
+| [access-control.md](./access-control.md) | Fähigkeiten, Gruppen, Kontodeaktivierung, Freigabe-Obergrenze (durch die Nur-Besitzerin-Regel ergänzt), „Sicht als“ und Vorfallsbereich (ohne Zugriff auf Inhalte privater Bibliotheken) |
 | [agents-and-tools.md](./agents-and-tools.md) | MCP-Client, Zulassungsliste, Ausgangstor (Phase 2) |
 | [external-access.md](./external-access.md) | Gegenrichtung: OPAA als MCP-Server |
 | Epic [#2146](https://github.com/criew/opaa/issues/2146) | Datei-Konnektoren: Nextcloud (#2152), SharePoint/OneDrive (#2153), Dropbox (#2154) |
@@ -694,8 +716,6 @@ legt [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md) fest.
 
 ## Offene Fragen / Zukünftige Erweiterungen
 
-- **Sicherungen innerhalb der Löschfrist:** Ob und wie gelöschte private Bibliotheken aus Sicherungen
-  entfernt oder deren Wiedereinspielung verhindert wird, klärt der Datenschutz.
 - **Werte der Fristen:** Die Abstimmung mit Personalrat und Datenschutz steht noch aus. Sie kann die
   Vorgaben innerhalb der Grenzen aus ADR-0041 (Entscheidung 7) ändern.
 - **Prompt-Injection über Postfächer hinaus:** Der Schutz aus den Bedingungen für Postfächer gilt der
