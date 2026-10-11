@@ -526,9 +526,8 @@ public enum AuditEventType {
    */
   CONNECTOR_PROFILE_OPTIONAL,
   /**
-   * The system administration marked a connection profile request ("Zugangswunsch") done or
-   * declined; {@code after} names the state, type, address and the profile serving it - never the
-   * reason or the answer text. A governance event.
+   * Retired: the system administration resolved a connection profile request. No longer written;
+   * kept so older entries of the append-only audit log stay readable.
    */
   CONNECTION_PROFILE_REQUEST_RESOLVED,
   /**

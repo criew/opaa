@@ -302,8 +302,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "listMailTemplates",
             "getMailTemplate",
             "listUsersForSelection",
-            "listConnectionProfileRequests",
-            "listMyConnectionProfileRequests",
             "listConnectionLogProfiles",
             "listDormantSourceConnections",
             "listMcpServers",

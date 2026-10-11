@@ -166,9 +166,8 @@ Formular durch die Stufen aus Abschnitt 3.1. Es fragt weder Adresse noch Zugangs
 kommt vom Zugang.
 
 1. **Zugang:** Im Assistenten steht über dem Formular die Wahl des Zugangs. „Eigene Adresse“ gibt
-   es für SharePoint nicht. Steht kein Zugang zur Verfügung, sagt der Assistent das und bietet
-   „Zugang vorschlagen“ an; die feste Adresse trägt der Vorschlag selbst ein. Ohne Zugang geht der
-   Assistent nicht weiter.
+   es für SharePoint nicht. Steht kein Zugang zur Verfügung, sagt der Assistent das und verweist
+   an die Systemverwaltung. Ohne Zugang geht der Assistent nicht weiter.
 2. **Site finden:** Unter „Adresse der Site“ die Adresse aus dem Browser eintragen, etwa
    `https://contoso.sharepoint.com/sites/team`, und „Site öffnen“ wählen. „Oder nach Sites
    suchen“ geht nur mit `Sites.Read.All`; unter `Sites.Selected` meldet das Formular, dass die

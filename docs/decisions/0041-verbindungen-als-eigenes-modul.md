@@ -1358,6 +1358,31 @@ Bibliothek aber im Token-Speicher. Jetzt hat jedes Geheimnis an einem Zugang gen
 - **Belegt** in `OwnSecretInStoreIntegrationTest` (Anlegen, Ändern, Zuordnen, Lösen, Wechsel des
   Zugangs, andere Anmeldeart) und den angepassten Einheitstests über `TestSecrets.Store`.
 
+## Nachtrag vom 11.10.2026: Zugangswunsch entfernt (#2494, Epic #2492)
+
+Maintainer-Entscheidung vom 11.10.2026: Die Systemverwaltung legt fest, was genutzt werden kann,
+und trägt Zugänge selbst ein. Wer einen fehlenden Zugang braucht, wendet sich über die Wege des
+Hauses an sie. Der Zugangswunsch aus #2221 entfällt deshalb ohne eigenen Ersatz; es bleibt der allgemeine
+Verweis auf die Systemverwaltung.
+
+- **Code:** Das Unterpaket `connection.request` entfällt samt Dienst, Ratenbegrenzung je Person
+  (`opaa.connection.profile-requests.*`) und Benachrichtigungen. `CONNECTION_PACKAGES` lautet jetzt
+  `connection.log`, `connection.token`, `connection.profile`, `connection.consent`,
+  `connection.account`, `connection.oauth`. Die Namen in den Nachträgen oben bleiben als Stand
+  ihres Tages stehen.
+- **API:** Die Pfade `/api/v1/connection-profile-requests`, `/api/v1/me/connection-profile-requests`
+  und `/api/v1/admin/connection-profile-requests` entfallen, ebenso `fulfillsRequestId` beim
+  Anlegen eines Zugangs und die Benachrichtigungsarten `CONNECTION_PROFILE_REQUESTED` und
+  `CONNECTION_PROFILE_REQUEST_RESOLVED`. Der Ereignistyp `CONNECTION_PROFILE_REQUEST_RESOLVED` bleibt
+  stillgelegt im Enum und in der Spezifikation: Er wird nicht mehr geschrieben, ältere Einträge des
+  nur anfügbaren Revisionsprotokolls (ADR-0015) bleiben so lesbar.
+- **Datenbank:** `connections/2026-10-11-drop-profile-requests.yaml` entfernt die Tabelle
+  `connection_profile_requests`, `identity/2026-10-11-drop-profile-request-notifications.yaml` die
+  gespeicherten Benachrichtigungen der beiden entfallenen Arten, die sonst nicht mehr ladbar wären
+  und die ganze Liste ihrer Empfängerin scheitern ließen.
+- **Oberfläche:** Der Assistent bietet an keiner Stelle mehr „Zugang vorschlagen“ an; die
+  Verwaltung der Zugänge hat keinen Abschnitt für Wünsche mehr.
+
 ## Nachtrag vom 11.10.2026: Globaler Ausgangsproxy (#2496, PR 1 von 3)
 
 Der Proxy wird einmal hausweit in der Oberfläche gepflegt statt je Zugang und Bibliothek

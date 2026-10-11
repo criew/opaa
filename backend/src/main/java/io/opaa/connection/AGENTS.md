@@ -5,7 +5,7 @@ Pakete (`io.opaa.*`): connection. Ergänzt `backend/AGENTS.md`.
 ## Zweck und Grenze
 
 Verbindungsprofile („Zugänge“), Zuordnung einer Bibliothek, Konnektor-Freigabe, Sperren,
-Verbindungsprotokoll, Token-Speicher, verbundene Konten, Zugangswünsche und die Anmeldung des
+Verbindungsprotokoll, Token-Speicher, verbundene Konten und die Anmeldung des
 Zugangs (ADR-0041, `docs/features/connector-connections.md`). connections hängt nur von foundation,
 identity, rights und knowledge ab; nur library hängt von connections ab. Der Kern erreicht es über
 seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `SourceStateLookup`.
@@ -13,7 +13,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 ## Invarianten und Stolpersteine
 
 - **Unterpakete, unten zuerst:** `connection.log`, `connection.token`, `connection.profile`,
-  `connection.request` (Zugangswünsche), `connection.consent` (Quelle verbinden),
+  `connection.consent` (Quelle verbinden),
   `connection.account`, `connection.oauth`; das Wurzelpaket verdrahtet den Port, `connection.web`
   darüber; keines nennt es. Nach oben nur über Ports: `LibrariesOnProfile`, `PersonAccounts`,
   `SecretIssuer`, `SourceConsentRejections` (token), `PersonConnections`, `SourceConsentEnds`.

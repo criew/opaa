@@ -1632,9 +1632,10 @@ ein Zugang noch einen eigenen Proxy, hat dieser Vorrang vor dem Ausgangsproxy.
 - **Änderungen** gelten für jede danach aufgebaute Verbindung, ohne Neustart. Eine bereits offene,
   wiederverwendete Verbindung (Keep-Alive) läuft auf ihrem bisherigen Weg weiter, bis sie schließt.
   Jede Änderung steht als `OUTBOUND_PROXY_CHANGED` mit altem und neuem Stand im Revisionsprotokoll.
-- **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung, melden
-  Verbindungstest und Lauf, dass der Ausgangsproxy die Verbindung abgelehnt oder das Ziel nicht
-  erreicht hat, mit dem Status des Proxys.
+- **Fehlerbild:** Lehnt der Proxy einen Tunnel ab oder verlangt er eine Anmeldung (Status 407),
+  nennen der Verbindungstest von Webverzeichnis und RSS-Feed sowie Verbindungstest und Modellabruf
+  der Chat-Modelle den Ausgangsproxy samt Status. Die übrigen Stellen melden einen allgemeinen
+  Verbindungsfehler oder den Status 407 als Antwort des Servers.
 - **Notanker:** Ein falscher Proxy kann die Anmeldung über Identitätsanbieter lahmlegen, weil auch
   deren Signaturschlüssel über ihn geholt werden. Das lokale Konto der Systemverwaltung meldet sich
   ohne Anbieter an und kann den Eintrag korrigieren.

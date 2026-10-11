@@ -22,8 +22,6 @@ export function notificationTarget({
     case 'EXTERNAL_ACCESS_MASS_RETRIEVAL':
     case 'GROUP_MEMBER_ADDED':
     case 'GROUP_MEMBER_REMOVED':
-    case 'CONNECTION_PROFILE_REQUESTED':
-    case 'CONNECTION_PROFILE_REQUEST_RESOLVED':
     case 'PRIVATE_LIBRARY_RELEASED':
     case 'SOURCE_FULL_SYNC_FORCED':
       return null
