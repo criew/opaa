@@ -47,17 +47,17 @@ public class AnswerGenerationService {
       """;
 
   /**
-   * Binds the answer to the passages. Only present when there are passages: an empty context is
-   * also the chat answered on purpose without a knowledge base, which answers from the conversation
-   * alone.
+   * Binds factual answers to the passages and the conversation. Only present for a message with
+   * search need and passages: an empty context is also the chat answered on purpose without a
+   * knowledge base, and a message without search need must not be answered with "not found".
    */
   private static final String ANSWER_RULES =
       """
 
 
       ANTWORTREGELN:
-      - Gib nur wieder, was die Kontextdokumente tragen. Ergänze nichts aus Allgemeinwissen \
-      oder Vermutung.
+      - Gib zu Sachfragen nur wieder, was die Kontextdokumente, der Gesprächsverlauf oder die \
+      Gesprächsnotiz tragen. Ergänze nichts aus Allgemeinwissen oder Vermutung.
       - Fehlt etwas in den Kontextdokumenten, sage, dass es in den vorliegenden Dokumenten nicht \
       enthalten ist, und nicht, dass es das nicht gibt. Fehlt ein Teil der Grundlage, benenne \
       die Lücke und lege dich nicht auf ein Ergebnis fest, das von ihr abhängt.
@@ -123,8 +123,8 @@ public class AnswerGenerationService {
 
   /**
    * Repeats the marker rule after the last passage, where a long context otherwise lets the marker
-   * form drift. Only present with passages, and it carries no marker of its own, so it cannot be
-   * cited.
+   * form drift. Present together with {@link #ANSWER_RULES}; it carries no marker of its own, so it
+   * cannot be cited.
    */
   static final String CITATION_REMINDER =
       "\n\n---\n\nBelege jede Aussage aus den Kontextdokumenten mit der Zitiermarke ihres"
@@ -159,7 +159,8 @@ public class AnswerGenerationService {
    * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
    *
    * @param searchNeeded {@code false} when the decomposition found nothing to search for in {@code
-   *     question}; {@link #NO_SEARCH_HINT} then precedes the passages.
+   *     question}; {@link #NO_SEARCH_HINT} then precedes the passages, and neither {@link
+   *     #ANSWER_RULES} nor {@link #CITATION_REMINDER} is added.
    */
   public ChatResponse generateAnswer(
       String question,
@@ -168,16 +169,16 @@ public class AnswerGenerationService {
       List<String> conversationNote,
       boolean searchNeeded) {
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(conversationNote);
-    boolean hasPassages = !relevantChunks.isEmpty();
+    boolean bindToPassages = !relevantChunks.isEmpty() && searchNeeded;
     String systemText =
         SYSTEM_PROMPT
-            + (hasPassages ? ANSWER_RULES : "")
+            + (bindToPassages ? ANSWER_RULES : "")
             + CITATION_RULES
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
             + (searchNeeded ? "" : NO_SEARCH_HINT)
             + CONTEXT_SECTION
             + formatChunks(relevantChunks)
-            + (hasPassages ? CITATION_REMINDER : "")
+            + (bindToPassages ? CITATION_REMINDER : "")
             + LANGUAGE_REMINDER;
 
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());

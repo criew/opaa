@@ -362,6 +362,7 @@ class AnswerGenerationServiceTest {
             systemText.indexOf("ANTWORTREGELN"), systemText.indexOf("ZITIERREGELN"));
     assertThat(answerRules)
         .contains("Allgemeinwissen")
+        .contains("der Gesprächsverlauf oder die Gesprächsnotiz")
         .contains("in den vorliegenden Dokumenten nicht enthalten")
         .contains("Abweichung")
         .contains("Bezugsgröße")
@@ -373,6 +374,28 @@ class AnswerGenerationServiceTest {
    * from the conversation alone: neither the answer rules nor the citation reminder bind it to
    * passages that are not there.
    */
+  @Test
+  void aMessageWithoutSearchNeedKeepsItsPassagesButIsNotToldToNameWhatTheyLack() {
+    when(chatModel.call(any(Prompt.class)))
+        .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Gern.")))));
+    var chunk =
+        new Document(
+            "Ein Personalausweis kostet 37,00 Euro.",
+            Map.of("file_name", "ausweis.md", "document_id", "id-ausweis", "chunk_index", 0));
+
+    answerGenerationService.generateAnswer(
+        "Danke, antworte bitte kürzer", List.of(chunk), "conv-no-search-rules", List.of(), false);
+
+    String systemText = systemTextOf(capturedPrompt());
+    assertThat(systemText)
+        .contains(
+            "Ein Personalausweis kostet 37,00 Euro.", "Behaupte nicht, nichts gefunden zu haben")
+        .doesNotContain(
+            "ANTWORTREGELN", AnswerGenerationService.CITATION_REMINDER, "nicht enthalten")
+        .endsWith(
+            "Ein Personalausweis kostet 37,00 Euro." + AnswerGenerationService.LANGUAGE_REMINDER);
+  }
+
   @Test
   void withoutPassagesTheAnswerIsNotBoundToThem() {
     when(chatModel.call(any(Prompt.class)))
