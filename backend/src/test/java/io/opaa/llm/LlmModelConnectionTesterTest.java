@@ -74,7 +74,7 @@ class LlmModelConnectionTesterTest {
     assertThatThrownBy(
             () ->
                 tester.test(
-                    "https://" + secret + "@modellserver.example.internal/v1", "m", null, null))
+                    "https://" + secret + "@modellserver.example.internal/v1", "m", null, null, null))
         .isInstanceOf(ValidationException.class)
         .satisfies(
             e ->
@@ -96,7 +96,7 @@ class LlmModelConnectionTesterTest {
           }
         });
 
-    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null);
+    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isTrue();
   }
@@ -110,7 +110,7 @@ class LlmModelConnectionTesterTest {
           exchange.close();
         });
 
-    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null);
+    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isFalse();
     assertThat(outcome.message()).contains("Authentifizierung").contains("401");
@@ -126,7 +126,7 @@ class LlmModelConnectionTesterTest {
         });
 
     LlmModelConnectionTester.TestOutcome outcome =
-        tester.test(baseUrl, "does-not-exist", null, null);
+        tester.test(baseUrl, "does-not-exist", null, null, null);
 
     assertThat(outcome.success()).isFalse();
     assertThat(outcome.message()).contains("Modell-Kennung").contains("404");
@@ -136,7 +136,7 @@ class LlmModelConnectionTesterTest {
   void anUnreachableAddressReportsFailureNotAnException() {
     server.stop(0);
 
-    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null);
+    LlmModelConnectionTester.TestOutcome outcome = tester.test(baseUrl, "phi3:mini", null, null, null);
 
     assertThat(outcome.success()).isFalse();
     assertThat(outcome.message()).isNotBlank();
@@ -153,9 +153,77 @@ class LlmModelConnectionTesterTest {
           exchange.close();
         });
 
-    tester.test(baseUrl, "phi3:mini", "sk-plain-test-key", null);
+    tester.test(baseUrl, "phi3:mini", "sk-plain-test-key", null, null);
 
     assertThat(receivedAuthHeader.get()).isEqualTo("Bearer sk-plain-test-key");
+  }
+
+  /** #2486: the probe sends what the chat will send, so a rejected temperature shows up here. */
+  @Test
+  void theProbeSendsTheGivenTemperatureAndNoneWithoutOne() {
+    AtomicReference<String> receivedBody = new AtomicReference<>();
+    server.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          receivedBody.set(
+              new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+          exchange.sendResponseHeaders(200, -1);
+          exchange.close();
+        });
+
+    tester.test(baseUrl, "phi3:mini", null, null, new BigDecimal("0.20"));
+    assertThat(receivedBody.get()).contains("\"temperature\":0.2");
+
+    tester.test(baseUrl, "phi3:mini", null, null, null);
+    assertThat(receivedBody.get()).doesNotContain("temperature");
+  }
+
+  /**
+   * #2486: a provider rejecting a parameter answers 400 with its own reason; the administrator sees
+   * that reason and, when it concerns the temperature, how to resolve it.
+   */
+  @Test
+  void aRejectedRequestNamesTheProvidersReason() {
+    server.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          byte[] body =
+              """
+              {"error":{"code":"invalid_request_error",\
+              "message":"`temperature` is deprecated for this model."}}
+              """
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().add("Content-Type", "application/json");
+          exchange.sendResponseHeaders(400, body.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(body);
+          }
+        });
+
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "claude-haiku-5-5", null, null, new BigDecimal("0.20"));
+
+    assertThat(outcome.success()).isFalse();
+    assertThat(outcome.message())
+        .contains("HTTP 400")
+        .contains("`temperature` is deprecated for this model.")
+        .contains("Temperatur leer");
+  }
+
+  @Test
+  void aRejectedRequestWithoutAReadableReasonStillNamesTheStatus() {
+    server.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          exchange.sendResponseHeaders(400, -1);
+          exchange.close();
+        });
+
+    LlmModelConnectionTester.TestOutcome outcome =
+        tester.test(baseUrl, "phi3:mini", null, null, null);
+
+    assertThat(outcome.success()).isFalse();
+    assertThat(outcome.message()).contains("HTTP 400").doesNotContain("Temperatur");
   }
 
   @Test
@@ -179,7 +247,7 @@ class LlmModelConnectionTesterTest {
           exchange.close();
         });
 
-    tester.test(baseUrl, "phi3:mini", null, modelId);
+    tester.test(baseUrl, "phi3:mini", null, modelId, null);
 
     assertThat(receivedAuthHeader.get()).isEqualTo("Bearer sk-stored-secret");
   }
@@ -207,7 +275,7 @@ class LlmModelConnectionTesterTest {
           exchange.close();
         });
 
-    tester.test(baseUrl, "phi3:mini", "", modelId);
+    tester.test(baseUrl, "phi3:mini", "", modelId, null);
 
     assertThat(receivedAuthHeader.get()).isEqualTo("Bearer sk-stored-secret");
   }
@@ -217,7 +285,7 @@ class LlmModelConnectionTesterTest {
     UUID unknownModelId = UUID.randomUUID();
     when(repository.findById(unknownModelId)).thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> tester.test(baseUrl, "phi3:mini", null, unknownModelId))
+    assertThatThrownBy(() -> tester.test(baseUrl, "phi3:mini", null, unknownModelId, null))
         .isInstanceOf(NotFoundException.class);
   }
 
@@ -254,7 +322,7 @@ class LlmModelConnectionTesterTest {
       // Rejected with 400 rather than silently probing the attacker's origin without a key -
       // the safer of the two options the review named, since a caller must not be able to
       // provoke a probe against a different origin merely by naming a real modelId.
-      assertThatThrownBy(() -> tester.test(attackerBaseUrl, "phi3:mini", null, modelId))
+      assertThatThrownBy(() -> tester.test(attackerBaseUrl, "phi3:mini", null, modelId, null))
           .isInstanceOf(ValidationException.class);
 
       assertThat(attackerServerWasContacted.get())

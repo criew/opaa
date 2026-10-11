@@ -235,6 +235,25 @@ class LlmModelSeederTest {
     verify(markerRepository, times(1)).save(any());
   }
 
+  /** #2486: without a configured temperature the seeded model sends none. */
+  @Test
+  void seedsWithoutTemperatureAndWithTheDefaultMaxTokensWhenNeitherIsConfigured() {
+    when(markerRepository.seedAlreadyAttempted()).thenReturn(false);
+    MockEnvironment environment =
+        new MockEnvironment()
+            .withProperty(
+                "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
+            .withProperty("spring.ai.openai.chat.model", "claude-haiku-5-5")
+            .withProperty("spring.ai.openai.chat.temperature", "");
+
+    seederWith(environment).seedIfNeeded();
+
+    ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
+    verify(repository).save(captor.capture());
+    assertThat(captor.getValue().getTemperature()).isNull();
+    assertThat(captor.getValue().getMaxTokens()).isEqualTo(8000);
+  }
+
   @Test
   void ignoresALeftoverOpaaAiChatProviderSetToOpenaiExplicitly() {
     // An existing installation that already ran OPAA_AI_CHAT_PROVIDER=openai before #762 - the

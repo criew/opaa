@@ -19,6 +19,7 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.chat.ChatSource;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.metadata.CoreMetadataField;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.query.QueryOutcome;
@@ -78,7 +79,7 @@ class QueryControllerTest {
         new QueryResult(
             "The answer",
             List.of(sourceReference("doc.md", 0.9, 2, Instant.parse("2025-01-15T10:30:00Z"), true)),
-            new QueryOutcome("gpt-4o", 500, 1200L, false, false, false, false, null),
+            new QueryOutcome("gpt-4o", 500, 1200L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
             chatId,
             null,
             null);
@@ -111,7 +112,7 @@ class QueryControllerTest {
         new QueryResult(
             "Answer",
             List.of(),
-            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null),
+            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
             chatId,
             null,
             null);
@@ -136,7 +137,7 @@ class QueryControllerTest {
             new QueryResult(
                 "Answer",
                 List.of(),
-                new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null),
+                new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -162,7 +163,7 @@ class QueryControllerTest {
         new QueryResult(
             "Answer",
             List.of(),
-            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null),
+            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
             UUID.randomUUID(),
             null,
             null);
@@ -192,7 +193,7 @@ class QueryControllerTest {
         new QueryResult(
             "Answer",
             List.of(),
-            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null),
+            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
             UUID.randomUUID(),
             null,
             null);
@@ -248,7 +249,7 @@ class QueryControllerTest {
             new QueryResult(
                 "Answer",
                 List.of(),
-                new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null),
+                new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -342,7 +343,7 @@ class QueryControllerTest {
         new QueryResult(
             "Answer",
             List.of(),
-            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null),
+            new QueryOutcome("gpt-4o", 100, 500L, false, false, false, false, null, AnswerCompleteness.COMPLETE),
             chatId,
             null,
             null);

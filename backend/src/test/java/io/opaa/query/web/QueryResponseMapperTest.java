@@ -7,6 +7,7 @@ import io.opaa.api.types.ChatNoteItemKind;
 import io.opaa.chat.ChatNotePoint;
 import io.opaa.chat.ChatSource;
 import io.opaa.chat.SearchedLibraryRef;
+import io.opaa.llm.AnswerCompleteness;
 import io.opaa.query.QueryOutcome;
 import io.opaa.query.QueryResult;
 import java.time.Instant;
@@ -36,7 +37,8 @@ class QueryResponseMapperTest {
             false,
             false,
             false,
-            List.of(new SearchedLibraryRef(libraryId, "Dienstanweisungen")));
+            List.of(new SearchedLibraryRef(libraryId, "Dienstanweisungen")),
+            AnswerCompleteness.TRUNCATED);
     QueryResult result =
         new QueryResult(
             "Die Antwort",
@@ -67,6 +69,8 @@ class QueryResponseMapperTest {
     assertThat(response.getMetadata().getAnsweredWithoutKnowledge()).isTrue();
     assertThat(response.getMetadata().getNoKnowledgeAssignedToSpace()).isFalse();
     assertThat(response.getMetadata().getNoKnowledgeAvailableInSpace()).isFalse();
+    assertThat(response.getMetadata().getAnswerTruncated()).isTrue();
+    assertThat(response.getMetadata().getAnswerEmpty()).isFalse();
     assertThat(response.getMetadata().getSearchedLibraries()).hasSize(1);
     assertThat(response.getMetadata().getSearchedLibraries().getFirst().getId())
         .isEqualTo(libraryId);
@@ -82,7 +86,7 @@ class QueryResponseMapperTest {
             List.of(
                 new ChatSource("readme.md", 1.0, 1, true),
                 new ChatSource("privat.md", 0.5, 1, false).privateSource(true)),
-            new QueryOutcome("gpt-4o", 1, 1L, false, false, false, false, List.of()),
+            new QueryOutcome("gpt-4o", 1, 1L, false, false, false, false, List.of(), AnswerCompleteness.COMPLETE),
             UUID.randomUUID(),
             null,
             null);
@@ -100,7 +104,7 @@ class QueryResponseMapperTest {
             new QueryResult(
                 "Antwort",
                 List.of(),
-                new QueryOutcome("gpt-4o", 0, 0L, false, true, false, false, List.of()),
+                new QueryOutcome("gpt-4o", 0, 0L, false, true, false, false, List.of(), AnswerCompleteness.COMPLETE),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -109,7 +113,7 @@ class QueryResponseMapperTest {
             new QueryResult(
                 "Antwort",
                 List.of(),
-                new QueryOutcome("gpt-4o", 0, 0L, false, false, true, false, List.of()),
+                new QueryOutcome("gpt-4o", 0, 0L, false, false, true, false, List.of(), AnswerCompleteness.COMPLETE),
                 UUID.randomUUID(),
                 null,
                 null));
@@ -123,7 +127,7 @@ class QueryResponseMapperTest {
                     new QueryResult(
                         "Antwort",
                         List.of(),
-                        new QueryOutcome("gpt-4o", 0, 0L, false, false, false, true, List.of()),
+                        new QueryOutcome("gpt-4o", 0, 0L, false, false, false, true, List.of(), AnswerCompleteness.COMPLETE),
                         UUID.randomUUID(),
                         null,
                         null))
@@ -134,7 +138,7 @@ class QueryResponseMapperTest {
 
   @Test
   void toResponseLeavesSearchedLibrariesNullWhenAbsent() {
-    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, false, false, null);
+    QueryOutcome metadata = new QueryOutcome("gpt-4o", 0, 0L, false, false, false, false, null, AnswerCompleteness.COMPLETE);
     QueryResult result =
         new QueryResult("Antwort", List.of(), metadata, UUID.randomUUID(), null, null);
 
@@ -145,5 +149,19 @@ class QueryResponseMapperTest {
     assertThat(response.getNoteItems())
         .as("an ephemeral query has no chat and therefore no Gespraechsnotiz - null, not empty")
         .isNull();
+  }
+
+  @Test
+  void anEmptyAnswerIsFlaggedAsEmptyNotTruncated() {
+    QueryOutcome metadata =
+        new QueryOutcome(
+            "gpt-4o", 0, 0L, false, false, false, false, List.of(), AnswerCompleteness.EMPTY);
+
+    QueryResponse response =
+        QueryResponseMapper.toResponse(
+            new QueryResult("", List.of(), metadata, UUID.randomUUID(), null, null));
+
+    assertThat(response.getMetadata().getAnswerEmpty()).isTrue();
+    assertThat(response.getMetadata().getAnswerTruncated()).isFalse();
   }
 }

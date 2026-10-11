@@ -35,6 +35,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * {@link ActiveChatModelResolver} against a real Postgres (the canonical {@link
@@ -286,6 +288,70 @@ class ActiveChatModelResolverIntegrationTest {
       assertThat(response.getResult().getOutput().getText()).isEqualTo("Antwort von Modell C");
     } finally {
       serverWithAuth.stop(0);
+    }
+  }
+
+  /**
+   * Regression guard for #2486: a model without a temperature must not receive a {@code
+   * temperature} parameter at all - some providers reject any value but their own.
+   */
+  @Test
+  void aModelWithoutTemperatureSendsNoTemperatureParameter() throws IOException {
+    JsonNode request = requestBodySentBy(null);
+
+    assertThat(request.has("temperature")).isFalse();
+    assertThat(request.get("max_tokens").asInt()).isEqualTo(2000);
+  }
+
+  @Test
+  void aModelWithTemperatureSendsIt() throws IOException {
+    JsonNode request = requestBodySentBy(new BigDecimal("0.20"));
+
+    assertThat(request.get("temperature").asDouble()).isEqualTo(0.2);
+  }
+
+  private JsonNode requestBodySentBy(BigDecimal temperature) throws IOException {
+    AtomicReference<String> receivedBody = new AtomicReference<>();
+    HttpServer capturingServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    capturingServer.createContext(
+        "/v1/chat/completions",
+        exchange -> {
+          receivedBody.set(
+              new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+          byte[] body =
+              """
+              {"id": "chatcmpl-test", "object": "chat.completion", "created": 1700000000,
+               "model": "model-t",
+               "choices": [{"index": 0, "message": {"role": "assistant", "content": "Ok"},
+                            "finish_reason": "stop"}],
+               "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}}
+              """
+                  .getBytes(StandardCharsets.UTF_8);
+          exchange.getResponseHeaders().add("Content-Type", "application/json");
+          exchange.sendResponseHeaders(200, body.length);
+          try (OutputStream out = exchange.getResponseBody()) {
+            out.write(body);
+          }
+        });
+    capturingServer.start();
+    try {
+      LlmModel model =
+          llmModelService.createModel(
+              organizationId,
+              userId,
+              "Modell T",
+              "http://127.0.0.1:" + capturingServer.getAddress().getPort() + "/v1",
+              "model-t",
+              temperature,
+              2000,
+              null);
+      llmModelService.activateModel(organizationId, userId, model.getId());
+
+      resolver.resolveChatClient().prompt().user("Hallo").call().chatResponse();
+
+      return new ObjectMapper().readTree(receivedBody.get());
+    } finally {
+      capturingServer.stop(0);
     }
   }
 
