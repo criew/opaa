@@ -1016,7 +1016,8 @@ class PrivateLibraryInvisibilityIntegrationTest {
             .library()
             .getId();
     libraries.add(shared);
-    jdbc.update("UPDATE knowledge_libraries SET source_credentials = NULL WHERE id = ?", shared);
+    // on a profile the library's own secret lies in the token store
+    jdbc.update("DELETE FROM connection_tokens WHERE library_id = ?", shared);
   }
 
   private UUID aSpace(String name, Observer observer) throws Exception {
