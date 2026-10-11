@@ -28,6 +28,13 @@ public enum DocumentIngestResult {
   NO_EXTRACTABLE_TEXT,
 
   /**
+   * The document's {@code file_path} does not fit {@link io.opaa.knowledge.FilePathLimit}: nothing
+   * was read or persisted, and a caller reports a rejection. It holds until the source renames the
+   * element, so a retry changes nothing.
+   */
+  FILE_PATH_TOO_LONG,
+
+  /**
    * A pipeline produced no chunks and did not reject the document as text-free: it either could not
    * read the source at all ({@code PARSE_FAILED}) or read it and found it empty ({@code
    * NO_CONTENT}). The row is marked {@code FAILED} either way, and a caller must report it like an

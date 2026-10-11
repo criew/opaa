@@ -2,7 +2,7 @@ package io.opaa.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import io.opaa.indexing.filesync.FilePathLimit;
+import io.opaa.knowledge.FilePathLimit;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;

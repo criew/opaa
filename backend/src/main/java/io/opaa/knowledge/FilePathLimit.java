@@ -1,12 +1,12 @@
-package io.opaa.indexing.filesync;
+package io.opaa.knowledge;
 
 import java.nio.charset.StandardCharsets;
 
 /**
  * The longest {@code documents.file_path} a document can be stored under: 2000 characters (the
  * column) and 2676 UTF-8 bytes (one entry of the unique index on {@code (library_id, file_path)}
- * for a path the database cannot compress). A store whose file path grows with the source path
- * reports a longer one as {@link Exclusion.Unavailable}, under its {@link #cut} as file path.
+ * for a path the database cannot compress). The ingest rejects a longer one before any write; a
+ * file store may already report it as unavailable, under its {@link #cut} as file path.
  */
 public final class FilePathLimit {
 

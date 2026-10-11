@@ -324,6 +324,27 @@ class SourceSyncStateRepositoryIntegrationTest {
         .isZero();
   }
 
+  /** An S3 scope key carries a prefix of up to 1024 characters, a Dropbox folder is unbounded. */
+  @Test
+  void aRevisitKeepsAContainerKeyBeyondTwoHundredFiftyFiveCharacters() {
+    SourceSyncState state = repository.save(new SourceSyncState(library.getId()));
+    String containerKey = "ablage/" + "jahrgang-2026/protokolle/".repeat(40);
+    assertThat(containerKey.length()).isGreaterThan(1000);
+
+    assertThat(
+            repository.recordRevisit(
+                UUID.randomUUID(),
+                library.getId(),
+                containerKey,
+                "jahrgang-2026",
+                Instant.parse("2026-10-11T10:00:00Z")))
+        .isOne();
+
+    assertThat(repository.findRevisits(state.getId()))
+        .extracting(SourceSyncStateRepository.Revisit::getContainerKey)
+        .containsExactly(containerKey);
+  }
+
   private void saveDocument(String filePath, String containerKey, String hierarchyPath) {
     Document document = new Document(filePath, filePath, "text/plain", 1L, SourceTypes.S3);
     document.setLibraryId(library.getId());
