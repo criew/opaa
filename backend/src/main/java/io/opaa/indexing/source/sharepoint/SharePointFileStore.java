@@ -65,12 +65,6 @@ final class SharePointFileStore implements FileStore, ChangeFeed {
   static final String LISTING_RESUMES_SUFFIX =
       " Der nächste Lauf setzt die Auflistung am zuletzt gesicherten Punkt fort.";
 
-  /**
-   * The cursor of a library Graph refused at the start of a full sync. It is never sent: reading it
-   * expires the stream, so the round proves no absence and the next run is a full sync.
-   */
-  static final String UNREACHABLE_AT_START = "~unreachable";
-
   /** Deeper chains are cut off: a cycle in the parents never ends a walk otherwise. */
   private static final int MAX_CHAIN = 500;
 
