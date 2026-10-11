@@ -355,8 +355,9 @@ function PanelContent({
               Verbundene Konten zählen die Konten von Personen auf diesem Zugang, verbundene und
               abgelaufene. Kleine Zahlen erscheinen nur als „weniger als …“, damit keine Zahl auf
               einzelne Personen schließen lässt; „nicht ausgewiesen“ steht dort, wo schon die Zahl
-              der abgelaufenen Konten das täte. „Viele abgelaufen“ erscheint, sobald die
-              ausgewiesenen Zahlen den eingestellten Schwellenwert erreichen.
+              der abgelaufenen Konten das täte. „Viele Konten abgelaufen“ erscheint als
+              Handlungsbedarf, sobald die ausgewiesenen Zahlen den eingestellten Schwellenwert
+              erreichen.
             </Typography>
           )}
         </PanelSection>

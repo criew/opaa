@@ -635,7 +635,21 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
       }
     }
 
-    // Still on „Externe KI-Werkzeuge", the last tab of the loop.
+    // Das Seitenpanel einer Quellart: Zustand, Pflicht und die Zugänge der Quellart.
+    await page.goto("/admin/connections/source-types");
+    await page.getByRole("button", { name: "Details: RSS-Feed" }).click();
+    const typePanel = page.getByRole("dialog", { name: "RSS-Feed" });
+    await expect(typePanel.getByRole("switch", { name: "Nur über Zugänge für RSS-Feed" })).toBeVisible();
+    for (const scheme of ["light", "dark"] as const) {
+      await page.emulateMedia({ colorScheme: scheme });
+      await expectNoSeriousA11yViolations(
+        page,
+        `Anbindungen, Panel einer Quellart (${scheme === "dark" ? "dunkles" : "helles"} Farbschema)`,
+      );
+    }
+
+    await page.goto("/admin/connections/external-tools");
+    await expect(page.getByRole("region", { name: "Zustand des Zugriffswegs" })).toBeVisible();
     await page.getByRole("button", { name: "Einstellungen", exact: true }).click();
     const panel = page.getByRole("dialog", { name: "Einstellungen für externe KI-Werkzeuge" });
     await expect(panel.getByRole("switch", { name: "Externe KI-Werkzeuge zulassen" })).toBeVisible();
