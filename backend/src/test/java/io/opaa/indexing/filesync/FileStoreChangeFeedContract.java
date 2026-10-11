@@ -1,6 +1,7 @@
 package io.opaa.indexing.filesync;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
@@ -12,10 +13,11 @@ import org.junit.jupiter.api.Test;
 /**
  * The contract of a store with a change log (ADR-0040, Entscheidung 6), run through the change run
  * of {@link FileSync}: a change after the start cursor appears, a stream is read to its last page
- * before its cursor moves on, an expired cursor drops the stream, a removal is a deletion finding
- * only for a reachable container, and every stream is read. A store with a change log extends it
- * besides {@link FileStoreContract}; its fixture implements {@link Fixture#changed} and {@link
- * Fixture#expireCursors}.
+ * before its cursor moves on, an expired cursor drops the stream, the placeholder start cursor of
+ * an unreachable container ({@link ChangeFeed#UNREACHABLE_AT_START}) expires without a request, a
+ * removal is a deletion finding only for a reachable container, and every stream is read. A store
+ * with a change log extends it besides {@link FileStoreContract}; its fixture implements {@link
+ * Fixture#changed} and {@link Fixture#expireCursors}.
  */
 public abstract class FileStoreChangeFeedContract extends FileStoreContract {
 
@@ -72,6 +74,35 @@ public abstract class FileStoreChangeFeedContract extends FileStoreContract {
     assertThat(run.failure()).isNull();
     assertThat(harness.state().changeCursors()).as("the expired streams are dropped").isEmpty();
     assertThat(harness.state().getFullSyncCompletedAt()).as("the next run is a full sync").isNull();
+  }
+
+  /**
+   * The placeholder a store hands out for a container unreachable at the start of a full sync is
+   * never sent to the source: reading it expires the stream without a request. A store that answers
+   * such a container otherwise has nothing to show here.
+   */
+  @Test
+  void aPlaceholderStartCursorExpiresWithoutARequest() throws Exception {
+    fixture.denyListing(0);
+    try (FileStore store = fixture.open(PAGE_SIZE)) {
+      ChangeFeed feed = store.changes().orElseThrow();
+      String feedKey = feed.feedKey(new FileContainer(fixture.containerKey(0)));
+      String placeholder;
+      try {
+        placeholder = feed.startCursor(feedKey);
+      } catch (FileAccessException e) {
+        placeholder = null;
+      }
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          ChangeFeed.UNREACHABLE_AT_START.equals(placeholder),
+          "the store hands out no placeholder for an unreachable container");
+      String cursor = placeholder;
+      int before = store.meter().requests();
+
+      assertThatThrownBy(() -> feed.read(feedKey, cursor))
+          .isInstanceOf(FileAccessException.CursorExpired.class);
+      assertThat(store.meter().requests()).as("no request reaches the source").isEqualTo(before);
+    }
   }
 
   @Test

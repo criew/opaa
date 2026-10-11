@@ -6,12 +6,20 @@ package io.opaa.indexing.filesync;
  */
 public interface ChangeFeed {
 
+  /**
+   * The start cursor of a stream whose container was unreachable when the full sync began. It is
+   * never sent to the source: reading it expires the stream, so the round proves no absence through
+   * it and the next run is a full sync.
+   */
+  String UNREACHABLE_AT_START = "~unreachable";
+
   /** The stream that reports the changes of {@code container}. */
   String feedKey(FileContainer container);
 
   /**
    * The cursor that reports every change from now on - fetched before a full sync lists anything,
-   * so no change during the listing is lost.
+   * so no change during the listing is lost. A store that can follow the full sync without a
+   * container it cannot reach answers with {@link #UNREACHABLE_AT_START} instead of failing.
    */
   String startCursor(String feedKey) throws FileAccessException, InterruptedException;
 

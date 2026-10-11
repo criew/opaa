@@ -42,13 +42,6 @@ final class DropboxFileStore implements FileStore, ChangeFeed {
    */
   static final String IDENTITY_PREFIX = "dropbox:";
 
-  /**
-   * The cursor of a folder Dropbox refused at the start of a full sync. It is never sent: reading
-   * it expires the stream, so the round proves no absence through it and the next run is a full
-   * sync.
-   */
-  static final String UNREACHABLE_AT_START = "~unreachable";
-
   static final String NOT_DOWNLOADABLE_NOTE =
       " Dateien übersprungen, die Dropbox weder herausgibt noch exportiert";
   static final String ROOT_NAME = "Dropbox";
