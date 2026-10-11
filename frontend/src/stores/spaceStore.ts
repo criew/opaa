@@ -93,6 +93,7 @@ interface SpaceState {
     name: string,
     description: string,
     chatAutoCleanup?: boolean,
+    modelInstruction?: string,
   ) => Promise<void>
   deleteSelectedSpace: (spaceId: string) => Promise<void>
   archiveSelectedSpace: (spaceId: string) => Promise<void>
@@ -310,8 +311,8 @@ export const useSpaceStore = create<SpaceState>((set, get) => ({
     await refreshMembership(spaceId)
   },
 
-  updateDetails: async (spaceId, name, description, chatAutoCleanup) => {
-    await updateSpaceDetails(spaceId, name, description, chatAutoCleanup)
+  updateDetails: async (spaceId, name, description, chatAutoCleanup, modelInstruction) => {
+    await updateSpaceDetails(spaceId, name, description, chatAutoCleanup, modelInstruction)
     await Promise.all([get().loadSpaces(), get().selectSpace(spaceId), get().loadMembers(spaceId)])
   },
 

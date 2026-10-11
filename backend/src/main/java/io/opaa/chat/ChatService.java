@@ -733,6 +733,15 @@ public class ChatService {
   }
 
   /**
+   * The current instruction of the space to the model, {@code null} while it has none. Read anew
+   * for every question, so a change reaches chats created before it from their next question on.
+   */
+  @Transactional(readOnly = true)
+  public String spaceModelInstruction(UUID spaceId) {
+    return spaceRepository.findById(spaceId).map(Space::getModelInstruction).orElse(null);
+  }
+
+  /**
    * #613 review, finding 2: the shared guard {@link #updateChat} and {@link #appendTurn} both use -
    * a chat's space always exists (fk_chats_space_organization is ON DELETE RESTRICT and composite),
    * so this never needs to reason about a missing space the way {@link #requireMembership} does.

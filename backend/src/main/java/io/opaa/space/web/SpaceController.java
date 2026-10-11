@@ -138,7 +138,10 @@ public class SpaceController {
         spaceService.updateSpace(
             spaceId,
             new SpaceUpdate(
-                request.getName(), request.getDescription(), request.getChatAutoCleanup()),
+                request.getName(),
+                request.getDescription(),
+                request.getChatAutoCleanup(),
+                request.getModelInstruction()),
             caller);
     return SpaceResponseMapper.toResponse(spaceService.detailOf(updated, caller));
   }

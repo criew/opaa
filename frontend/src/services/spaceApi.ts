@@ -109,9 +109,11 @@ export async function updateSpaceDetails(
   name: string,
   description: string,
   chatAutoCleanup?: boolean,
+  /** Left out leaves the instruction unchanged; an empty text removes it. */
+  modelInstruction?: string,
 ): Promise<SpaceResponse> {
   try {
-    const body: SpaceUpdateRequest = { name, description, chatAutoCleanup }
+    const body: SpaceUpdateRequest = { name, description, chatAutoCleanup, modelInstruction }
     const { data } = await client.put<SpaceResponse>(`/v1/spaces/${spaceId}`, body)
     return data
   } catch (err) {

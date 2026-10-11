@@ -217,6 +217,10 @@ public class QueryService {
                 // own question runs after the answer, below.
                 List<ChatNotePoint> notePoints =
                     chat.map(c -> chatNoteService.points(c.getId())).orElse(null);
+                // The space's instruction to the model goes to the answer only, never to the
+                // decomposition - a rule of form or framing has no place in a search query.
+                String spaceInstruction =
+                    chat.map(c -> chatService.spaceModelInstruction(c.getSpaceId())).orElse(null);
 
                 // Before the decomposition call in the non-empty-scope branch below, so
                 // durationMs includes its latency rather than silently excluding it.
@@ -313,7 +317,8 @@ public class QueryService {
                         relevantChunks,
                         conversationKey,
                         noteTexts(notePoints, null),
-                        searchNeeded);
+                        searchNeeded,
+                        spaceInstruction);
 
                 String answer =
                     CitationMarkerRepair.repair(ChatResponses.text(chatResponse), relevantChunks);

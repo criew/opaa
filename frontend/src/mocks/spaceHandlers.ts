@@ -224,6 +224,11 @@ export const spaceHandlers = [
     if (body.chatAutoCleanup != null) {
       space.chatAutoCleanup = { ...space.chatAutoCleanup, enabled: body.chatAutoCleanup }
     }
+    if (body.modelInstruction != null) {
+      const instruction = body.modelInstruction.trim() || null
+      space.modelInstruction = instruction
+      listEntry.modelInstruction = instruction
+    }
     listEntry.name = body.name
     listEntry.description = body.description
     return HttpResponse.json(space)

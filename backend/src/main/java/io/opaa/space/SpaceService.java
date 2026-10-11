@@ -55,6 +55,7 @@ public class SpaceService {
 
   private static final int MAX_NAME_LENGTH = 255;
   private static final int MAX_DESCRIPTION_LENGTH = 2000;
+  private static final int MAX_MODEL_INSTRUCTION_LENGTH = 1000;
 
   private final SpaceRepository spaceRepository;
   private final UserRepository userRepository;
@@ -725,20 +726,29 @@ public class SpaceService {
     if (update.chatAutoCleanup() != null) {
       space.switchChatAutoCleanup(update.chatAutoCleanup(), Instant.now());
     }
+    String previousModelInstruction = space.getModelInstruction();
+    if (update.modelInstruction() != null) {
+      changeModelInstruction(space, update.modelInstruction(), caller);
+    }
     Space updated = spaceRepository.save(space);
     boolean nameChanged = !Objects.equals(previousName, updated.getName());
     boolean descriptionChanged = !Objects.equals(previousDescription, updated.getDescription());
     boolean chatAutoCleanupChanged = previousChatAutoCleanup != updated.isChatAutoCleanupEnabled();
-    if (nameChanged || descriptionChanged || chatAutoCleanupChanged) {
+    boolean modelInstructionChanged =
+        !Objects.equals(previousModelInstruction, updated.getModelInstruction());
+    if (nameChanged || descriptionChanged || chatAutoCleanupChanged || modelInstructionChanged) {
       // before/after are limited to what the specification calls "rechtlich Erheblich": the
-      // free-text name/description is not and is never written, changedFields only names it. The
-      // chat cleanup switch (a retention setting) carries its before/after.
+      // free-text name/description/model instruction is not and is never written, changedFields
+      // only names it. The chat cleanup switch (a retention setting) carries its before/after.
       List<String> changedFields = new ArrayList<>();
       if (nameChanged) {
         changedFields.add("name");
       }
       if (descriptionChanged) {
         changedFields.add("description");
+      }
+      if (modelInstructionChanged) {
+        changedFields.add("modelInstruction");
       }
       Map<String, Object> before = new LinkedHashMap<>();
       Map<String, Object> after = new LinkedHashMap<>();
@@ -953,6 +963,29 @@ public class SpaceService {
       throw new ValidationException("name darf höchstens " + MAX_NAME_LENGTH + " Zeichen umfassen");
     }
     return trimmed;
+  }
+
+  /**
+   * Applies a requested instruction to the model: stripped, blank meaning none. Only a holder of
+   * the space role ADMIN changes it - the system administration's precedence does not reach it,
+   * since the text shapes every answer of every member. An unchanged value needs no role.
+   */
+  private void changeModelInstruction(Space space, String requested, CurrentUser caller) {
+    String stripped = requested.strip();
+    String normalized = stripped.isEmpty() ? null : stripped;
+    if (normalized != null && normalized.length() > MAX_MODEL_INSTRUCTION_LENGTH) {
+      throw new ValidationException(
+          "modelInstruction darf höchstens " + MAX_MODEL_INSTRUCTION_LENGTH + " Zeichen umfassen");
+    }
+    if (Objects.equals(normalized, space.getModelInstruction())) {
+      return;
+    }
+    if (!accessPolicy.hasAtLeast(space, caller.id(), SpaceRole.ADMIN)) {
+      throw new AccessDeniedException(
+          "Die Anweisung an das Modell legt nur ein Mitglied mit der Rolle ADMIN in diesem Space"
+              + " fest");
+    }
+    space.changeModelInstruction(normalized);
   }
 
   private void validateDescription(String description) {
