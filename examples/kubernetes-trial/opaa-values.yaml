@@ -33,3 +33,10 @@ uploads:
 ingress:
   enabled: true
   className: traefik
+
+backend:
+  # The local chat model reads at most 8192 tokens (manifests/ollama.yaml); neighbour chunks would
+  # add up to their character budget on top of the selected chunks.
+  extraEnv:
+    - name: OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS
+      value: "0"
