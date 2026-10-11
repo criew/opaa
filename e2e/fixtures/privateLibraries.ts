@@ -3,10 +3,9 @@ import { apiAs } from './externalAccess'
 import { NEXTCLOUD_SERVER_URL } from './nextcloud'
 
 /**
- * Vorbedingungen und Aufräumarbeit der Szenarien zu verbundenen Konten und privaten Bibliotheken
- * (test(e2e) #2175, Epic #2147). Was ein Szenario prüft - Konto verbinden, Bibliothek anlegen,
- * zuordnen, trennen -, läuft über die Oberfläche; Zugang, Anlegerecht, Space und Mitglied sind nur
- * Vorbedingung und laufen über die API im Namen eines Dev-Nutzers.
+ * Preconditions and cleanup for the connected-account and private-library scenarios. What a
+ * scenario asserts runs through the UI; profile, creation right, space and member are set up over
+ * the API as a dev user.
  */
 
 /** Die Konto-Kennung von `devUser`, wie `GET /api/v1/auth/me` sie nennt. */

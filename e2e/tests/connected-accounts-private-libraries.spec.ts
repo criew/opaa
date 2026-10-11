@@ -35,16 +35,10 @@ import {
 import { escapeRegExp } from '../fixtures/promptLibraries'
 import type { Page } from '@playwright/test'
 
-// Verbundene Konten und private Bibliotheken über den vollen Stack (test(e2e) #2175, Szenarien 3
-// bis 5; docs/handbuch/benutzerverwaltung.md, Abschnitt „Verbundene Konten“, und
-// bibliotheken-und-berechtigungen.md, „Private Bibliotheken“). Quelle ist die echte Nextcloud der
-// Suite - der einzige mitgelieferte Konnektor mit der Besitzart „Person“ und einem App-Passwort.
-// Handelnde: `dev-user` als Besitzerin, `dev-outsider` als anderes Mitglied desselben Space und
-// `dev-admin` als Systemverwaltung, die eine private Bibliothek nie sieht.
-//
-// `test.describe.serial`: Die Szenarien bauen aufeinander auf - die Bibliothek aus Szenario 3
-// ist der Gegenstand von 4 und 5, und das Trennen in Szenario 5 ändert den Zustand, den 3 und 4
-// voraussetzen. Handelnde und Vorbedingungen räumt `afterAll` auch nach einem Fehlschlag wieder ab.
+// Connected accounts and private libraries against the suite's real Nextcloud (the only connector
+// with ownership "person"). Actors: dev-user owns the library, dev-outsider is another member of
+// the same space, dev-admin never sees a private library. Serial: the library from scenario 3 is
+// the subject of 4 and 5; afterAll cleans up even after a failure.
 const runId = Date.now()
 const PROFILE_NAME = `E2E Nextcloud ${runId}`
 const SPACE_NAME = `E2E-Privat-Space-${runId}`
@@ -59,6 +53,8 @@ const FILE_TEXT = `Aktenvermerk ${runId}: Die Fristverlängerung für den Bauant
 const OWNER = 'dev-user'
 const OTHER_MEMBER = 'dev-outsider'
 
+const NO_KNOWLEDGE_ASSIGNED = 'Diesem Space ist kein Wissen zugeordnet.'
+const NO_KNOWLEDGE_UNREADABLE = 'derzeit kein Wissen verfügbar'
 const NOT_ALL_READABLE = 'Nicht alle zugeordneten Inhalte sind für Sie lesbar.'
 
 let account: NextcloudAccount
@@ -102,15 +98,17 @@ async function openSourceTab(page: Page): Promise<void> {
 }
 
 /** Fragt im Chat des geteilten Space mit @-Referenz auf die private Bibliothek. */
-async function askInSharedSpace(page: Page): Promise<void> {
+async function askInSharedSpace(page: Page, withReference = true): Promise<void> {
   await page.goto(`/spaces/${spaceId}/chats/new`)
   await expect(page.getByPlaceholder('Nachricht eingeben …')).toBeVisible()
-  await referenceLibrary(page, LIBRARY_NAME)
+  if (withReference) await referenceLibrary(page, LIBRARY_NAME)
   await askQuestion(page, `Was steht im Aktenvermerk ${runId} zur Fristverlängerung?`)
 }
 
-test.describe.serial('Verbundene Konten und private Bibliotheken (#2175)', () => {
+test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
   test.beforeAll(async () => {
+    // Hooks run under the test timeout; the first Nextcloud start alone may take longer.
+    test.setTimeout(300_000)
     await waitForNextcloud()
     account = await createNextcloudAccount(NEXTCLOUD_USER)
     await putTextFile(account, FOLDER, FILE_NAME, FILE_TEXT)
@@ -119,6 +117,7 @@ test.describe.serial('Verbundene Konten und private Bibliotheken (#2175)', () =>
   })
 
   test.afterAll(async () => {
+    test.setTimeout(300_000)
     await runCleanupSteps([
       [
         'private Bibliothek',
@@ -233,11 +232,21 @@ test.describe.serial('Verbundene Konten und private Bibliotheken (#2175)', () =>
       name: new RegExp(`^${escapeRegExp(LIBRARY_NAME)}`),
     })
     await expect(tile).toHaveAttribute('aria-checked', 'false')
+    // The server's answer, not the optimistic check mark, proves the association exists.
+    const associated = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'POST' &&
+        new URL(response.url()).pathname === `/api/v1/spaces/${spaceId}/assets`,
+    )
     await tile.click()
+    expect((await associated).ok()).toBe(true)
     await expect(tile).toHaveAttribute('aria-checked', 'true')
 
-    // Die Besitzerin findet den Inhalt ihrer privaten Bibliothek im Chat des Space, mit Beleg.
-    await askInSharedSpace(page)
+    // The owner finds her private content in the space chat, with a citation: by reference and,
+    // like the other member in 3d, through the default @Space-Wissen scope without one.
+    await askInSharedSpace(page, true)
+    await expectCitedSource(page, FILE_NAME)
+    await askInSharedSpace(page, false)
     await expectCitedSource(page, FILE_NAME)
   })
 
@@ -253,13 +262,13 @@ test.describe.serial('Verbundene Konten und private Bibliotheken (#2175)', () =>
     await page.getByRole('searchbox', { name: 'Suchen' }).fill(LIBRARY_NAME)
     await expect(page.getByText(LIBRARY_NAME)).toHaveCount(0)
 
-    // Im Chat des Space gibt es für dieses Mitglied nichts zu durchsuchen: Die Antwort ist die des
-    // KI-Stubs ohne Kontext, trägt keinen Beleg und nennt den Inhalt der Akte nicht. Der Wortlaut
-    // des Hinweises im Chat ist nicht Gegenstand, nur dass es einen gibt.
+    // To this member the space looks empty, notice and answer alike: nothing assigned, not
+    // "assigned but unreadable". The answer carries no citation and names nothing of the file.
     await page.goto(`/spaces/${spaceId}/chats/new`)
-    await expect(page.getByTestId('space-knowledge-notice')).toBeVisible()
+    await expect(page.getByTestId('space-knowledge-notice')).toContainText(NO_KNOWLEDGE_ASSIGNED)
     await askQuestion(page, `Was steht im Aktenvermerk ${runId} zur Fristverlängerung?`)
     await expect(page.getByTestId('message-list')).toContainText('keine Informationen')
+    await expect(page.getByTestId('message-list')).not.toContainText(NO_KNOWLEDGE_UNREADABLE)
     await expect(page.getByRole('button', { name: 'Belege anzeigen' })).toHaveCount(0)
     await expect(page.getByText(FILE_NAME)).toHaveCount(0)
     await expect(page.getByText('Fristverlängerung für den Bauantrag')).toHaveCount(0)

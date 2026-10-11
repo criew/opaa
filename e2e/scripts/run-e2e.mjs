@@ -101,7 +101,7 @@ const mailpitSmtpPort = process.env.OPAA_MAILPIT_SMTP_PORT ?? '11025'
 // comment. Only relevant for the "e2e" target; the ai-stub stand-ins of the "demo" and "local-auth"
 // targets publish no host port, and no scenario of theirs needs one.
 const aiStubPort = process.env.OPAA_AI_STUB_PORT ?? '18089'
-// test(e2e) #2175: the host-published port of the suite's own Nextcloud (docker-compose.e2e.yml),
+// The host-published port of the suite's own Nextcloud (docker-compose.e2e.yml),
 // where the scenarios create accounts and files with WebDAV. Only the "e2e" target runs one.
 const nextcloudPort = process.env.OPAA_NEXTCLOUD_PORT ?? '18090'
 const keycloakPort = '8180'
@@ -463,7 +463,7 @@ async function main() {
             // nginx-Auslieferung des Frontends leitet ausschließlich /api/ weiter - die Szenarien
             // sprechen ihn deshalb unter dem Host-Port dieses Laufs an, wie den KI-Stub darüber.
             E2E_BACKEND_BASE_URL: `http://localhost:${backendPort}`,
-            // test(e2e) #2175: WebDAV and the provisioning API of the suite's own Nextcloud.
+            // WebDAV and the provisioning API of the suite's own Nextcloud.
             E2E_NEXTCLOUD_BASE_URL: `http://localhost:${nextcloudPort}`,
           }),
       ...(isLocalAuth

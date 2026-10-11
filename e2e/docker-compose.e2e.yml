@@ -58,7 +58,7 @@ services:
       # gets no budget of its own. Raised, not disabled: the limiter stays in the request path, and
       # the global counter (100/60s) is untouched, so a runaway loop still hits a wall.
       OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "40"
-      # test(e2e) #2175: connection-profiles.spec.ts files one access request per run as
+      # connection-profiles.spec.ts files one access request per run as
       # dev-outsider. The default of 5 new requests per person and hour
       # (opaa.connection.profile-requests.max-per-hour) is reached by a retry plus a few local
       # reruns against the same stack; raised, not disabled - the limit stays in the request path.
@@ -67,7 +67,7 @@ services:
       # which would otherwise reject every HTTP_DIRECTORY/RSS_FEED fetch this suite makes - both
       # "rss-feed" and "ai-stub" resolve to a container-internal address on the Compose network's
       # own bridge, itself a private range (172.16.0.0/12 or similar, assigned by Docker). These are
-      # legitimate, operator-chosen fixture hosts for this suite, not an attacker-reachable target -
+      # legitimate, operator-chosen fixture hosts for this suite ("nextcloud" is the real connector target of the private-library scenarios), not an attacker-reachable target -
       # exactly the case opaa.indexing.target-validation.allowlist exists for, mirroring how a real
       # deployment names its own trusted internal sources.
       OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST: rss-feed,ai-stub,nextcloud
@@ -166,7 +166,7 @@ services:
       timeout: 2s
       retries: 10
 
-  # A real Nextcloud for connected-accounts-private-libraries.spec.ts (#2175): the one connector
+  # A real Nextcloud for connected-accounts-private-libraries.spec.ts: the one connector
   # that takes a personal app password, and the test connectors from src/test do not exist in the
   # stack's backend image. SQLite and the image tag mirror NextcloudFixture (backend/src/test/java/
   # io/opaa/integration/nextcloud), the Testcontainers fixture of the backend suite - this service

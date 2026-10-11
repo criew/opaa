@@ -319,12 +319,14 @@
       matchPackageNames: ['rustfs/rustfs', 'amazon/aws-cli'],
       automerge: false,
     },
-    // Das Keycloak-Image wird nie automatisch gemergt: Der Tag steckt in KeycloakFixture.IMAGE und
-    // im Compose-Stack, geprüft wird er aber nur von keycloakIntegrationTest — einer Suite, die
-    // nightly und per Label läuft und kein Required Check ist. Auto-Merge würde ein inkompatibles
-    // Image also unbeaufsichtigt auf main lassen; ein Vorschlag bleibt als PR zur Entscheidung.
+    // Keycloak- und Nextcloud-Image werden nie automatisch gemergt: Der Tag steckt in den
+    // Fixtures (KeycloakFixture, NextcloudFixture) und im Compose-Stack, geprüft wird er aber nur
+    // von keycloakIntegrationTest bzw. nextcloudIntegrationTest und der E2E-Suite — Suiten, die
+    // nightly oder per Label laufen und kein Required Check sind. Auto-Merge würde ein
+    // inkompatibles Image also unbeaufsichtigt auf main lassen; ein Vorschlag bleibt als PR zur
+    // Entscheidung.
     {
-      matchPackageNames: ['quay.io/keycloak/keycloak'],
+      matchPackageNames: ['quay.io/keycloak/keycloak', 'nextcloud'],
       automerge: false,
     },
     // Den Erprobungsaufbau unter examples/ prüft keine CI; ein Bump seiner Hilfsdienste wird lokal

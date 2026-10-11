@@ -1,15 +1,10 @@
 import { expect } from '@playwright/test'
 
 /**
- * Bausteine für die echte Nextcloud der Suite (`nextcloud` in docker-compose.e2e.yml, test(e2e)
- * #2175). Alles läuft über die Schnittstellen, die auch ein Mensch in der Nextcloud hätte - die
- * Bereitstellungsschnittstelle für Konten, WebDAV für Dateien, `getapppassword` für das
- * App-Passwort -, nie über `occ`: So braucht die Suite keinen Zugriff auf den Container, und das
- * App-Passwort entsteht auf dem Weg, den das Handbuch der Person beschreibt.
- *
- * Playwright erreicht die Nextcloud unter dem Host-Port, den scripts/run-e2e.mjs als
- * E2E_NEXTCLOUD_BASE_URL durchreicht; das Backend erreicht sie im Compose-Netz als `nextcloud`
- * (siehe NEXTCLOUD_SERVER_URL).
+ * Helpers for the suite's real Nextcloud (`nextcloud` in docker-compose.e2e.yml). Accounts, app
+ * passwords and files are created through the provisioning API, `getapppassword` and WebDAV,
+ * never `occ`. Playwright reaches it on E2E_NEXTCLOUD_BASE_URL (host port), the backend as
+ * `nextcloud` on the Compose network (NEXTCLOUD_SERVER_URL).
  */
 
 const BASE_URL = process.env.E2E_NEXTCLOUD_BASE_URL ?? 'http://localhost:18090'
