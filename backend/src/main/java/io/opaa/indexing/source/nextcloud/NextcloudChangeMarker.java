@@ -6,9 +6,9 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
 /**
- * The change feature of a Nextcloud file: {@code n:} and a hash over ETag and size, so it fits
- * {@code documents.last_modified_remote} (64 characters) whatever the ETag's length. A rename keeps
- * the ETag; the file sync notices the new place itself.
+ * The change feature of a Nextcloud file: {@code n:} and a hash over ETag and size, so it has a
+ * fixed length whatever the ETag's length. A rename keeps the ETag; the file sync notices the new
+ * place itself.
  */
 final class NextcloudChangeMarker {
 
