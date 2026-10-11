@@ -270,6 +270,91 @@ class QueryIntegrationTest {
     }
   }
 
+  /**
+   * Regression guard for #2470: another person's private library does not exist for a member, so a
+   * space holding only that library answers "no knowledge associated" - as the space's content list
+   * does - never "associated, but nothing readable for you". Its owner still searches it.
+   */
+  @Test
+  void anotherPersonsPrivateLibraryCountsAsNoKnowledgeAssignedForAFellowMember() {
+    UUID privateLibraryId = UUID.randomUUID();
+    UUID colleagueId = UUID.randomUUID();
+    UUID spaceId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "WITH shell AS (INSERT INTO assets (id, asset_type, organization_id, name, owner_type,"
+            + " owner_user_id, owner_only) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, 'Meine Ablage',"
+            + " 'USER', ?, true) RETURNING id, organization_id) INSERT INTO knowledge_libraries"
+            + " (id, organization_id, source_type) SELECT id, organization_id, 'UPLOAD' FROM shell",
+        privateLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+    jdbcTemplate.update(
+        "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
+            + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?,"
+            + " ?, 'USER', ?, 'OWNER', now(), now())",
+        UUID.randomUUID(),
+        privateLibraryId,
+        DEFAULT_ORGANIZATION_ID,
+        userId);
+    jdbcTemplate.update(
+        "INSERT INTO users (id, subject, issuer, email, display_name, created_at, system_role,"
+            + " organization_id) VALUES (?, ?, ?, ?, ?, now(), 'USER', ?)",
+        colleagueId,
+        "query-it-colleague-" + colleagueId,
+        "test-issuer",
+        "colleague@example.com",
+        "Colleague",
+        DEFAULT_ORGANIZATION_ID);
+    try {
+      jdbcTemplate.update(
+          "INSERT INTO spaces (id, name, is_default, owner_id, organization_id, created_at,"
+              + " updated_at) VALUES (?, 'Team', false, ?, ?, now(), now())",
+          spaceId,
+          userId,
+          DEFAULT_ORGANIZATION_ID);
+      insertMembership(spaceId, userId, "ADMIN");
+      insertMembership(spaceId, colleagueId, "MEMBER");
+      jdbcTemplate.update(
+          "INSERT INTO space_asset_associations (id, space_id, asset_id, organization_id,"
+              + " created_by_user_id, created_at) VALUES (?, ?, ?, ?, ?, now())",
+          UUID.randomUUID(),
+          spaceId,
+          privateLibraryId,
+          DEFAULT_ORGANIZATION_ID,
+          userId);
+      when(chatModel.call(any(Prompt.class)))
+          .thenReturn(new ChatResponse(List.of(new Generation(new AssistantMessage("Antwort")))));
+
+      QueryResult colleagueView =
+          queryService.query(
+              "Was liegt hier?",
+              insertChat(spaceId, colleagueId),
+              asCaller(colleagueId),
+              true,
+              List.of());
+      QueryResult ownerView =
+          queryService.query(
+              "Was liegt hier?", insertChat(spaceId, userId), asCaller(userId), true, List.of());
+
+      assertThat(colleagueView.metadata().noKnowledgeAssignedToSpace())
+          .as("colleague: no knowledge assigned")
+          .isTrue();
+      assertThat(colleagueView.metadata().noKnowledgeAvailableInSpace())
+          .as("colleague: no knowledge available")
+          .isFalse();
+      assertThat(ownerView.metadata().noKnowledgeAssignedToSpace()).isFalse();
+      assertThat(ownerView.metadata().noKnowledgeAvailableInSpace()).isFalse();
+    } finally {
+      jdbcTemplate.update("DELETE FROM chats WHERE space_id = ?", spaceId);
+      jdbcTemplate.update("DELETE FROM space_asset_associations WHERE space_id = ?", spaceId);
+      jdbcTemplate.update("DELETE FROM space_memberships WHERE space_id = ?", spaceId);
+      jdbcTemplate.update("DELETE FROM spaces WHERE id = ?", spaceId);
+      jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", privateLibraryId);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", privateLibraryId);
+      jdbcTemplate.update("DELETE FROM users WHERE id = ?", colleagueId);
+    }
+  }
+
   @Test
   void queryWithNoMatchingDocumentsReturnsEmptySources() {
     // No documents in vector store — similarity search returns empty
@@ -983,6 +1068,18 @@ class QueryIntegrationTest {
           member);
     }
     return insertChat(spaceId, member);
+  }
+
+  private void insertMembership(UUID spaceId, UUID memberId, String role) {
+    jdbcTemplate.update(
+        "INSERT INTO space_memberships"
+            + " (id, subject_type, user_id, space_id, role, organization_id, created_at)"
+            + " VALUES (?, 'USER', ?, ?, ?, ?, now())",
+        UUID.randomUUID(),
+        memberId,
+        spaceId,
+        role,
+        DEFAULT_ORGANIZATION_ID);
   }
 
   private void removeChatsAndSpacesOf(UUID member) {
