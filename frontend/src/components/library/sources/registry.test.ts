@@ -35,6 +35,7 @@ describe('the source registry (ADR-0038)', () => {
       'GOOGLE_DRIVE',
       'SHAREPOINT',
       'NEXTCLOUD',
+      'DROPBOX',
       'SMB',
     ])
     expect(sourceRegistration('UPLOAD')?.configuration).toBeNull()

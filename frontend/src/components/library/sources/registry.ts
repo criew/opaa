@@ -1,6 +1,7 @@
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { SourceTypeKey } from '../../../types/api'
 import { confluenceSource } from './confluenceSource'
+import { dropboxSource } from './dropboxSource'
 import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericSources'
 import { googleDriveSource } from './googleDriveSource'
 import { nextcloudSource } from './nextcloudSource'
@@ -34,6 +35,7 @@ const registrations: Record<SourceTypeKey, SourceRegistration> = {
   GOOGLE_DRIVE: googleDriveSource,
   SHAREPOINT: sharePointSource,
   NEXTCLOUD: nextcloudSource,
+  DROPBOX: dropboxSource,
   SMB: smbSource,
 }
 
