@@ -8,6 +8,7 @@ import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
 import { useAuthStore } from '../../../stores/authStore'
 import type { SourceTypeDescriptor } from '../../../types/api'
 import ConnectionProfilesTab from './ConnectionProfilesTab'
+import { openProfile, useDesktopViewport } from './connectionTestUtils'
 
 const DRIVE: SourceTypeDescriptor = {
   type: 'GOOGLE_DRIVE',
@@ -47,6 +48,8 @@ async function chooseSourceType(
 }
 
 describe('ConnectionProfilesTab, sign-in of the profile', () => {
+  useDesktopViewport()
+
   beforeEach(() => {
     useAuthStore.setState({
       mode: 'dev',
@@ -95,7 +98,7 @@ describe('ConnectionProfilesTab, sign-in of the profile', () => {
     )
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await screen.findByRole('row', { name: /Zugang Drive/ })
+    await screen.findByRole('dialog', { name: 'Zugang Drive' })
     expect(sent[0]).toMatchObject({
       authMethod: 'SERVICE_ACCOUNT_KEY',
       clientId: null,
@@ -117,17 +120,15 @@ describe('ConnectionProfilesTab, sign-in of the profile', () => {
 
     const row = await screen.findByRole('row', { name: /Zugang Nextcloud intern/ })
     expect(within(row).getByText('Anmeldung abgelehnt')).toBeVisible()
+    const panel = await openProfile(user, 'Zugang Nextcloud intern')
+    expect(within(panel).getByText('Anmeldung abgelehnt')).toBeVisible()
     await user.click(
-      within(row).getByRole('button', { name: 'Anmeldung von Zugang Nextcloud intern testen' }),
+      within(panel).getByRole('button', { name: 'Anmeldung von Zugang Nextcloud intern testen' }),
     )
 
     expect(await screen.findByText('Anmeldung erfolgreich.')).toBeVisible()
     await waitFor(() =>
-      expect(
-        within(screen.getByRole('row', { name: /Zugang Nextcloud intern/ })).queryByText(
-          'Anmeldung abgelehnt',
-        ),
-      ).not.toBeInTheDocument(),
+      expect(within(panel).queryByText('Anmeldung abgelehnt')).not.toBeInTheDocument(),
     )
   })
   it('says before the emergency shutdown that the key of the profile is deleted for good', async () => {
@@ -140,8 +141,9 @@ describe('ConnectionProfilesTab, sign-in of the profile', () => {
     }
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
+    const panel = await openProfile(user, 'Zugang Nextcloud intern')
     await user.click(
-      await screen.findByRole('button', {
+      within(panel).getByRole('button', {
         name: 'Alle Verbindungen von Zugang Nextcloud intern trennen',
       }),
     )

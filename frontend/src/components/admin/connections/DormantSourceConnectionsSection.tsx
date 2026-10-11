@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
@@ -22,15 +22,27 @@ import {
  * disconnected, locked or without profile. Private libraries never appear. Shows nothing while
  * none rests, so an installation without such a profile sees no change.
  */
-export default function DormantSourceConnectionsSection() {
+export default function DormantSourceConnectionsSection({
+  onLoaded,
+}: {
+  /** Called with the number of resting connections, for the summary above the overview. */
+  onLoaded?: (count: number) => void
+} = {}) {
   const [entries, setEntries] = useState<DormantSourceConnection[] | null>(null)
+  // Loaded once on mount; the callback of the latest render receives the count.
+  const onLoadedRef = useRef(onLoaded)
+  useEffect(() => {
+    onLoadedRef.current = onLoaded
+  })
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
     listDormantSourceConnections()
       .then((loaded) => {
-        if (active) setEntries(loaded)
+        if (!active) return
+        setEntries(loaded)
+        onLoadedRef.current?.(loaded.length)
       })
       .catch((err: unknown) => {
         if (active) {
@@ -57,10 +69,10 @@ export default function DormantSourceConnectionsSection() {
 
   return (
     <PageSection
-      title="Ruhende Quellverbindungen"
+      title="Bibliotheken mit ruhender Quelle"
       description="Bibliotheken, deren Quelle über eine eigene Zustimmung beim Anbieter verbunden ist und gerade nicht erreicht wird. Neu verbinden können die Verwaltenden der Bibliothek; private Bibliotheken stehen hier nie."
     >
-      <Table size="small" aria-label="Ruhende Quellverbindungen">
+      <Table size="small" aria-label="Bibliotheken mit ruhender Quelle">
         <TableHead>
           <TableRow>
             <TableCell>Bibliothek</TableCell>
