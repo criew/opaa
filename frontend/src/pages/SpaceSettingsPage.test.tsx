@@ -877,7 +877,8 @@ describe('SpaceSettingsPage', () => {
       expect(screen.getByText(/keine personenbezogenen Angaben/i)).toBeInTheDocument()
       expect(screen.getByText(/Zitate und Quellenangaben bleiben/i)).toBeInTheDocument()
 
-      await user.type(field, instruction)
+      await user.click(field)
+      await user.paste(instruction)
       await user.click(screen.getByRole('button', { name: /einstellungen speichern/i }))
 
       await waitFor(() => {
