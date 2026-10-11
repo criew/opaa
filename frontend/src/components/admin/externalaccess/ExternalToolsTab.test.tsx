@@ -117,6 +117,22 @@ describe('ExternalToolsTab', () => {
     await waitFor(() => expect(items[2]).toHaveTextContent(/\d+ gültige? Tokens?/))
   })
 
+  it('verweist im dritten Schritt und über der Tokenliste auf die eigenen Zugangstokens', async () => {
+    render()
+
+    const steps = await screen.findByRole('region', { name: 'So kommt ein Werkzeug an Inhalte' })
+    expect(
+      within(steps).getByRole('link', { name: 'Einstellungen → Zugangstokens' }),
+    ).toHaveAttribute('href', '/settings/tokens')
+    const tokens = screen.getByRole('region', { name: 'Zugangstokens' })
+    expect(tokens).toHaveTextContent(
+      'Zugangstokens erzeugt jede Person selbst unter Einstellungen → Zugangstokens. Hier sehen Sie den Bestand und können Tokens sperren.',
+    )
+    expect(
+      within(tokens).getByRole('link', { name: 'Einstellungen → Zugangstokens' }),
+    ).toHaveAttribute('href', '/settings/tokens')
+  })
+
   it('führt die freigegebenen Bibliotheken mit Verweis auf ihre Freigaben', async () => {
     render()
 

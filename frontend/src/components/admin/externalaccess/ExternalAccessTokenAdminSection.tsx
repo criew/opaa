@@ -32,6 +32,7 @@ import {
 import { confirmAction } from '../../../stores/confirmStore'
 import { notify } from '../../../stores/notificationStore'
 import PageSection from '../../PageSection'
+import OwnTokensLink from './OwnTokensLink'
 import StateDot from '../../StateDot'
 import type { StatusTone } from '../../StatusLine'
 import { adminTableSx, definitionListSx, listCardSx } from '../list/adminListStyles'
@@ -206,7 +207,15 @@ export default function ExternalAccessTokenAdminSection({
   }
 
   return (
-    <PageSection title="Zugangstokens" description={ADMIN_PURPOSE_HINT}>
+    <PageSection
+      title="Zugangstokens"
+      description={
+        <>
+          Zugangstokens erzeugt jede Person selbst unter <OwnTokensLink />. Hier sehen Sie den
+          Bestand und können Tokens sperren. {ADMIN_PURPOSE_HINT}
+        </>
+      }
+    >
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
