@@ -64,6 +64,36 @@ class SpaceResponseMapperTest {
   }
 
   @Test
+  void bothResponsesCarryTheInstructionOfTheSpaceAndNoneWhileItHasNone() {
+    UUID owner = UUID.randomUUID();
+    UUID organization = UUID.randomUUID();
+    Space withInstruction = new Space("Team", null, false, owner, organization);
+    withInstruction.changeModelInstruction("Fasse dich kurz.");
+    Space withoutInstruction = new Space("Team", null, false, owner, organization);
+
+    assertThat(
+            SpaceResponseMapper.toResponse(
+                    new SpaceDetail(withInstruction, SpaceRole.MEMBER, false, CLEANUP))
+                .getModelInstruction())
+        .isEqualTo("Fasse dich kurz.");
+    assertThat(
+            SpaceResponseMapper.toListResponse(
+                    new SpaceOverview(withInstruction, 0, 0, SpaceRole.MEMBER, false, null))
+                .getModelInstruction())
+        .isEqualTo("Fasse dich kurz.");
+    assertThat(
+            SpaceResponseMapper.toResponse(
+                    new SpaceDetail(withoutInstruction, SpaceRole.MEMBER, false, CLEANUP))
+                .getModelInstruction())
+        .isNull();
+    assertThat(
+            SpaceResponseMapper.toListResponse(
+                    new SpaceOverview(withoutInstruction, 0, 0, SpaceRole.MEMBER, false, null))
+                .getModelInstruction())
+        .isNull();
+  }
+
+  @Test
   void toResponseReturnsNullUserRoleForACallerWhoIsNotAMember() {
     // SpaceService#getSpace lets a system admin read a space without being a member - the
     // response must not fabricate a role they do not actually hold.

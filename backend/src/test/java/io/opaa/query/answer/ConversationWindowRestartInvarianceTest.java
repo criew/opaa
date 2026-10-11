@@ -71,8 +71,10 @@ class ConversationWindowRestartInvarianceTest {
         .thenReturn(answer(PERSISTED_ANSWER), answer("Ermäßigt."), answer("Ermäßigt."));
     String conversationId = "invariance-" + UUID.randomUUID();
 
-    answerGenerationService.generateAnswer(QUESTION, List.of(), conversationId, List.of(), true);
-    answerGenerationService.generateAnswer(FOLLOW_UP, List.of(), conversationId, List.of(), true);
+    answerGenerationService.generateAnswer(
+        QUESTION, List.of(), conversationId, List.of(), true, null);
+    answerGenerationService.generateAnswer(
+        FOLLOW_UP, List.of(), conversationId, List.of(), true, null);
 
     // The restart: the process-local cache is gone, the persisted rows - markers and all - are not.
     chatMemory.clear(conversationId);
@@ -80,7 +82,8 @@ class ConversationWindowRestartInvarianceTest {
         conversationId,
         ConversationWindowMessages.reloaded(
             List.of(new UserMessage(QUESTION), new AssistantMessage(PERSISTED_ANSWER))));
-    answerGenerationService.generateAnswer(FOLLOW_UP, List.of(), conversationId, List.of(), true);
+    answerGenerationService.generateAnswer(
+        FOLLOW_UP, List.of(), conversationId, List.of(), true, null);
 
     ArgumentCaptor<Prompt> prompts = ArgumentCaptor.forClass(Prompt.class);
     verify(chatModel, times(3)).call(prompts.capture());
