@@ -40,10 +40,10 @@ public class RssFeedState {
   @Column(name = "feed_url", nullable = false, length = 2000)
   private String feedUrl;
 
-  @Column(name = "etag", length = 500)
+  @Column(name = "etag", columnDefinition = "text")
   private String etag;
 
-  @Column(name = "last_modified", length = 200)
+  @Column(name = "last_modified", columnDefinition = "text")
   private String lastModified;
 
   @Column(name = "updated_at", nullable = false)

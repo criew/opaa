@@ -65,10 +65,11 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
 
   /**
    * Maps one item's {@link DocumentIngestResult} onto the counters and the protocol: a rejection
-   * ({@code QUOTA_EXCEEDED}, {@code PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}) and
-   * {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code PROCESSED} as processed; a
-   * rejection at either quota also counts towards {@link #quotaRejections()}. The protocol entry,
-   * if any, is the one {@link DocumentIngestOutcomes#record} writes.
+   * ({@code QUOTA_EXCEEDED}, {@code PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT}, {@code
+   * FILE_PATH_TOO_LONG}) and {@code SKIPPED} count as skipped, {@code FAILED} as failed, {@code
+   * PROCESSED} as processed; a rejection at either quota also counts towards {@link
+   * #quotaRejections()}. The protocol entry, if any, is the one {@link
+   * DocumentIngestOutcomes#record} writes.
    *
    * @return whether the item was processed
    */
@@ -89,7 +90,7 @@ public final class IndexingRunProgress implements AttachmentProgressSink {
         recordQuotaReached();
         recordSkipped();
       }
-      case SKIPPED, NO_EXTRACTABLE_TEXT -> recordSkipped();
+      case SKIPPED, NO_EXTRACTABLE_TEXT, FILE_PATH_TOO_LONG -> recordSkipped();
     }
     return false;
   }

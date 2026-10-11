@@ -17,7 +17,7 @@ public class Document {
 
   @Id private UUID id;
 
-  @Column(name = "file_name", nullable = false, length = 500)
+  @Column(name = "file_name", nullable = false, columnDefinition = "text")
   private String fileName;
 
   /**
@@ -96,7 +96,7 @@ public class Document {
    * space key - and its hierarchy path (ancestor titles, root first, " / "-joined). Both {@code
    * null} for every source type without such a notion.
    */
-  @Column(name = "source_container_key", length = 255)
+  @Column(name = "source_container_key", columnDefinition = "text")
   private String sourceContainerKey;
 
   @Column(name = "source_hierarchy_path", columnDefinition = "text")

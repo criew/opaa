@@ -3,6 +3,7 @@ package io.opaa.indexing.document;
 import io.opaa.format.DocumentService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingEventSink;
+import io.opaa.knowledge.FilePathLimit;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import java.util.function.Supplier;
@@ -15,6 +16,13 @@ public final class DocumentIngestOutcomes {
 
   public static final String FAILED_MESSAGE = "Verarbeitung fehlgeschlagen";
   public static final String ATTACHMENT_FAILED_MESSAGE = "Verarbeitung der Anlage fehlgeschlagen";
+
+  public static final String FILE_PATH_TOO_LONG_MESSAGE =
+      "Pfad oder Adresse ist länger als "
+          + FilePathLimit.MAX_CHARACTERS
+          + " Zeichen oder "
+          + FilePathLimit.MAX_BYTES
+          + " Byte (UTF-8); das Element wird nicht übernommen.";
 
   private DocumentIngestOutcomes() {}
 
@@ -34,8 +42,9 @@ public final class DocumentIngestOutcomes {
 
   /**
    * Records the entry {@code result} calls for: {@code QUOTA_EXCEEDED}, {@code
-   * PERSONAL_QUOTA_EXCEEDED} and {@code NO_EXTRACTABLE_TEXT} are rejections, {@code FAILED} an
-   * error carrying {@code failedMessage}; {@code PROCESSED} and {@code SKIPPED} record nothing.
+   * PERSONAL_QUOTA_EXCEEDED}, {@code NO_EXTRACTABLE_TEXT} and {@code FILE_PATH_TOO_LONG} are
+   * rejections, {@code FAILED} an error carrying {@code failedMessage}; {@code PROCESSED} and
+   * {@code SKIPPED} record nothing.
    */
   public static void record(
       IndexingEventSink events,
@@ -53,6 +62,11 @@ public final class DocumentIngestOutcomes {
               IndexingEventCategory.REJECTED,
               DocumentService.NO_EXTRACTABLE_TEXT_MESSAGE,
               reference);
+      case FILE_PATH_TOO_LONG ->
+          events.record(
+              IndexingEventCategory.REJECTED,
+              FILE_PATH_TOO_LONG_MESSAGE,
+              FilePathLimit.cut(reference));
       case FAILED -> events.record(IndexingEventCategory.ERROR, failedMessage, reference);
       case PROCESSED, SKIPPED -> {}
     }

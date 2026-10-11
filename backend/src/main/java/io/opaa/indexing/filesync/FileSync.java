@@ -1226,7 +1226,8 @@ public final class FileSync implements AutoCloseable {
       FileEntry entry, DocumentIngestResult result, int quotaRejectionsBefore) {
     if (result != DocumentIngestResult.PROCESSED
         && result != DocumentIngestResult.SKIPPED
-        && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT) {
+        && result != DocumentIngestResult.NO_EXTRACTABLE_TEXT
+        && result != DocumentIngestResult.FILE_PATH_TOO_LONG) {
       unsettle(entry);
     }
     boolean processed = frame.recordOutcome(result, entry.filePath());
