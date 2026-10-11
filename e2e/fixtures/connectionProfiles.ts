@@ -194,6 +194,24 @@ export function profileRow(page: Page, profileName: string): Locator {
     .filter({ hasText: profileName })
 }
 
+/** Öffnet das Seitenpanel eines Zugangs aus seiner Zeile und gibt das Panel zurück. */
+export async function openProfilePanel(page: Page, profileName: string): Promise<Locator> {
+  await profileRow(page, profileName)
+    .getByRole('button', { name: new RegExp(`^(Details|Beheben): ${profileName}$`) })
+    .click()
+  const panel = page.getByRole('dialog', { name: profileName })
+  await expect(panel).toBeVisible()
+  return panel
+}
+
+/** Öffnet das Seitenpanel einer Quellart aus ihrer Zeile und gibt das Panel zurück. */
+export async function openSourceTypePanel(page: Page, displayName: string): Promise<Locator> {
+  await page.getByRole('button', { name: `Details: ${displayName}` }).click()
+  const panel = page.getByRole('dialog', { name: displayName })
+  await expect(panel).toBeVisible()
+  return panel
+}
+
 /** Öffnet „Administration → Anbindungen → Zugänge“ und wartet auf den Zustand der Quellarten. */
 export async function gotoConnectionProfiles(page: Page): Promise<void> {
   await gotoConnectionsTab(page, '/admin/connections/access')

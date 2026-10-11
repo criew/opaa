@@ -404,7 +404,7 @@ privaten Bibliotheken belegt (unbegrenzt)“. Die Zahl gilt für alle ihre priva
 zusammen (`GET /api/v1/me/private-storage`); im Einzelnen sieht sie niemand sonst.
 
 Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt: unter **Administration →
-Anbindungen → Einstellungen**, Abschnitt „Private Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
+Anbindungen → Einstellungen**, Abschnitt „Speicher privater Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
 und „Grenze speichern“ (`PUT /api/v1/admin/private-libraries/quota`). Der Abschnitt nennt, ob die
 Vorgabe der Installation oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
 Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“; „Vorgabe wiederherstellen“ führt zur Vorgabe
@@ -958,8 +958,9 @@ Fünf Punkte dazu:
 - **Ein Entzug wirkt sofort**, ohne dass sich die betroffene Person neu anmelden muss. Unter „Neu"
   im Katalog erscheinen nur die Arten, für die die Person ein Anlegerecht hat; ohne jedes fehlt
   „Neu" ganz (Abschnitt 4, „Anlegen über ‚Neu'"). Wer einen Assistenten direkt aufruft, liest das
-  fehlende Recht beim Namen und erfährt, an wen man sich wendet; dasselbe gilt für eine Quellart
-  im Wissens-Assistenten, deren Recht fehlt.
+  fehlende Recht beim Namen und erfährt, an wen man sich wendet. Im Wissens-Assistenten erscheint
+  eine Quellart, deren Recht fehlt, gar nicht; darf die Person keine anlegen, sagt der Schritt „Art
+  des Wissens“ das und verweist an die Systemverwaltung.
 
 ### Konnektor-Freigabe: je Quellart und je Zugang
 
@@ -984,10 +985,11 @@ Quellart öffnet keinen ihrer Zugänge.
   Wird sie entzogen, laufen bestehende Bibliotheken weiter; auch das erneute Zuordnen zum
   bisherigen Zugang bleibt möglich. Läufe stoppt nur die **Sperre** einer Quellart oder eines
   Zugangs (Kapitel [Indexierung](indexierung.md), „Zugänge").
-- **Wer anlegen darf, sagt OPAA vor dem Versuch:** Im Wissens-Assistenten ist eine Quellart, die
-  die Person nicht mit eigener Adresse anlegen darf oder die gesperrt ist, als Kachel gesperrt und
-  nennt den Grund und die zuständige Stelle. Das Anlegen über einen Zugang bietet der Assistent
-  nicht an. Als Anlegerecht der Person erscheint „Konnektorbibliotheken anlegen", sobald sie es
+- **Der Assistent zeigt nur, was die Person anlegen darf:** Eine Quellart, die sie weder mit
+  eigener Adresse noch über einen nutzbaren Zugang anlegen darf oder die gesperrt ist, erscheint im
+  Wissens-Assistenten nicht; ebenso ein Zugang, der für sie nicht freigegeben oder gesperrt ist.
+  Die Systemverwaltung sieht unter „Administration → Zugänge“ weiterhin alle Quellarten und
+  Zugänge. Als Anlegerecht der Person erscheint „Konnektorbibliotheken anlegen", sobald sie es
   für mindestens eine Quellart oder einen Zugang hat.
 - **Ein gelöschter Zugang nimmt seine Freigaben mit**; ihr Entzug steht in der Rechtehistorie.
 
@@ -1005,7 +1007,9 @@ beantwortet eine Frage: **„Wer darf was anlegen?"**
 - **Ändern.** „Ändern" öffnet ein Seitenpanel mit genau einer Frage, etwa „Wer darf Spaces
   anlegen?", und drei Antworten: **Alle Konten**, **Nur bestimmte Gruppen und Personen** (mit einer
   gemeinsamen Suche für Gruppen und Personen) oder **Nur die Systemverwaltung**. Bei
-  Konnektorbibliotheken wählt man im Panel zuerst die Quelle oder den Zugang. Unter der Auswahl
+  Konnektorbibliotheken wählt man im Panel zuerst die Quelle oder den Zugang; bei einem Zugang
+  führt „Zugang ansehen“ zu seinem Panel unter Administration → Anbindungen → Zugänge, wo sich
+  dieselbe Freigabe ebenfalls festlegen lässt. Unter der Auswahl
   steht vor dem Speichern, was danach gilt („Referat 32 Ordnung und die Systemverwaltung dürfen
   Spaces anlegen."). Erst „Speichern" sendet etwas.
 - **Reihenfolge beim Einschränken.** OPAA erteilt zuerst den neu gewählten Gruppen und Personen und

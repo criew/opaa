@@ -27,7 +27,7 @@ describe('DormantSourceConnectionsSection (#2169)', () => {
 
     await waitFor(() => expect(asked).toBe(true))
     await act(() => new Promise((resolve) => setTimeout(resolve, 20)))
-    expect(screen.queryByText('Ruhende Quellverbindungen')).not.toBeInTheDocument()
+    expect(screen.queryByText('Bibliotheken mit ruhender Quelle')).not.toBeInTheDocument()
     expect(container).not.toHaveTextContent('Quellverbindung')
   })
 
@@ -59,7 +59,7 @@ describe('DormantSourceConnectionsSection (#2169)', () => {
     renderWithProviders(<DormantSourceConnectionsSection />, { withRouter: true })
 
     expect(
-      await screen.findByRole('heading', { name: 'Ruhende Quellverbindungen' }),
+      await screen.findByRole('heading', { name: 'Bibliotheken mit ruhender Quelle' }),
     ).toBeInTheDocument()
     const bauamt = screen.getByRole('row', { name: /Bauamt/ })
     expect(within(bauamt).getByRole('link', { name: 'Bauamt' })).toHaveAttribute(

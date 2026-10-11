@@ -204,8 +204,9 @@ keine Bibliothek wählbar.
 ## 6. Zugangstokens aus Sicht der Verwaltung
 
 *Administration → Anbindungen → Externe KI-Werkzeuge*, Abschnitt **„Zugangstokens“**. Die Liste ist
-eine **Bestandsliste für die
-Rechteprüfung und für Sperrentscheidungen**, mehr nicht.
+eine **Bestandsliste für die Rechteprüfung und für Sperrentscheidungen**, mehr nicht. Über ihr und
+im dritten Schritt der Einleitung steht, dass jede Person ihre Tokens selbst unter *Einstellungen →
+Zugangstokens* erzeugt, mit einem Link dorthin (Abschnitt 5).
 
 Sie zeigt Besitzer, Name, Bibliotheken, Ablauf und Zustand. Sie kennt **kein Nutzungsdatum, keine
 Nutzungszählung und keinen Filter nach Person**, sondern nur Filter über Zustand und Ablauf. Gesperrt

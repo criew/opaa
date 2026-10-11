@@ -150,6 +150,10 @@ describe('CapabilityManagementPage', () => {
         name: 'Wer darf Bibliotheken über den Zugang „Nextcloud intern“ anlegen?',
       }),
     ).toBeInTheDocument()
+    expect(within(panel).getByRole('link', { name: 'Zugang ansehen' })).toHaveAttribute(
+      'href',
+      '/admin/connections/access?profile=connection-profile-nextcloud',
+    )
     await user.click(within(panel).getByLabelText('Alle Konten'))
     await user.click(within(panel).getByRole('button', { name: 'Speichern' }))
 

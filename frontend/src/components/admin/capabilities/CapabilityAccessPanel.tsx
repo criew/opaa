@@ -1,27 +1,27 @@
 import { useEffect, useRef, useState } from 'react'
+import { Link as RouterLink } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import ButtonBase from '@mui/material/ButtonBase'
 import Drawer from '@mui/material/Drawer'
 import IconButton from '@mui/material/IconButton'
+import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
 import CloseIcon from '@mui/icons-material/Close'
 import type { CapabilityOverviewResponse } from '../../../types/api'
-import { grantCapability, revokeCapability } from '../../../services/capabilityAdminApi'
-import { confirmAction } from '../../../stores/confirmStore'
+import { connectionProfileRoute } from '../../../routes'
 import { notify } from '../../../stores/notificationStore'
-import { confirmGroupSubject } from '../../permissions/subjectSelection'
 import AccessBadge from './AccessBadge'
 import AccessEditor from './AccessEditor'
+import { applyAccess, confirmAccess } from './capabilityAccessChange'
 import {
   accessBadgeLabel,
   currentAccess,
   objectPhrase,
-  planAccessChange,
   resultSentence,
   scopeKind,
   scopeShortLabel,
@@ -101,61 +101,6 @@ function ScopeList({
       </Box>
     </Box>
   )
-}
-
-/**
- * The questions before a change is sent: the confirmation before all accounts lose the right and
- * the one before a group of an external provider gets it.
- */
-async function confirmAccess(
-  entry: CapabilityOverviewResponse,
-  target: Access,
-  phrase: string,
-): Promise<boolean> {
-  const plan = planAccessChange(entry, target)
-  if (plan.withdrawsAllAccounts) {
-    const confirmed = await confirmAction({
-      question: 'Nicht mehr für alle Konten?',
-      consequence: `${resultSentence(target, phrase)} Für alle anderen Konten gilt das sofort, auch für Personen, die gerade angemeldet sind. Die Änderung wird protokolliert.`,
-      confirmLabel: 'Einschränken',
-      tone: 'danger',
-    })
-    if (!confirmed) return false
-  }
-  for (const subject of target.subjects) {
-    const added = plan.steps.some((step) => step.kind === 'GRANT' && step.subjectId === subject.id)
-    if (added && subject.group && !(await confirmGroupSubject(subject.group))) return false
-  }
-  return true
-}
-
-/** Grants before revocations; a failure midway names how far it got. */
-async function applyAccess(entry: CapabilityOverviewResponse, target: Access): Promise<void> {
-  const plan = planAccessChange(entry, target)
-  let done = 0
-  try {
-    for (const step of plan.steps) {
-      if (step.kind === 'GRANT') {
-        await grantCapability(entry.capability, {
-          subjectType: step.subjectType,
-          ...(step.subjectId ? { subjectId: step.subjectId } : {}),
-          ...(entry.scope ? { scope: entry.scope } : {}),
-        })
-      } else {
-        await revokeCapability(entry.capability, step.grantId)
-      }
-      done += 1
-    }
-  } catch (err) {
-    const reason =
-      err instanceof Error ? err.message : 'Die Änderung konnte nicht gespeichert werden.'
-    throw new Error(
-      done === 0
-        ? reason
-        : `${reason} Ausgeführt wurden ${done} von ${plan.steps.length} Schritten; die Übersicht zeigt den Stand danach.`,
-      { cause: err },
-    )
-  }
 }
 
 interface CapabilityAccessPanelProps {
@@ -267,6 +212,15 @@ export default function CapabilityAccessPanel({
           >
             {heading}
           </Typography>
+          {entry && scopeKind(entry) === 'PROFILE' && entry.scope && (
+            <Link
+              component={RouterLink}
+              to={connectionProfileRoute(entry.scope.slice('PROFILE:'.length))}
+              sx={{ display: 'inline-block', fontSize: 13.5, mt: 0.5 }}
+            >
+              Zugang ansehen
+            </Link>
+          )}
           {scoped && !entry && (
             <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mt: 0.5 }}>
               Für jede Quelle und jeden Zugang legen Sie getrennt fest, wer solche Bibliotheken

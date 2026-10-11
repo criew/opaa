@@ -13,10 +13,10 @@
 2. Unter **Administration → Anbindungen → Zugänge** einen Zugang für Dropbox mit Anmeldeart OAuth, App key als
    Client-ID und App secret als Client-Secret anlegen (Abschnitt 2.4). Dropbox ist nur über einen
    Zugang nutzbar.
-3. Die Quellart Dropbox ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer außer
-   ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen“ für die
-   Quellart Dropbox ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
-   Abschnitt 9).
+3. Ein neuer Zugang ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Nach dem
+   Anlegen öffnet sich sein Seitenpanel; unter „Wer darf diesen Zugang nutzen?“ festlegen, wer
+   Bibliotheken über ihn anlegen darf (dasselbe Anlegerecht „Konnektorbibliotheken anlegen“ wie unter
+   Anlegerechte, [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
 4. Bibliothek anlegen: Zugang wählen, „Quelle verbinden“ und bei Dropbox mit einem **Dienstkonto**
    zustimmen, Ordner wählen, „Verbindung testen“ (Abschnitt 3). Alles aus den gewählten Ordnern ist
    für **alle** Leseberechtigten der Bibliothek sichtbar.

@@ -5,7 +5,7 @@ import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
 import ExternalAccessTokenAdminSection from './ExternalAccessTokenAdminSection'
 
 function render() {
-  return renderWithProviders(<ExternalAccessTokenAdminSection />)
+  return renderWithProviders(<ExternalAccessTokenAdminSection />, { withRouter: true })
 }
 
 /**

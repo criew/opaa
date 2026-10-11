@@ -152,10 +152,10 @@ public class ConnectorReleaseService {
   }
 
   /**
-   * The profiles a library of {@code type} may be connected through, each with the caller's say and
-   * whether she has a connected account on it. A profile for persons only is listed where she has
-   * one and {@code withPersonProfiles} holds - for her private library; never anything about
-   * another person's account.
+   * The profiles a library of {@code type} may be connected through now - released to the caller
+   * and neither the profile nor the type locked - each with whether she has a connected account on
+   * it. A profile for persons only is listed where she has one and {@code withPersonProfiles} holds
+   * - for her private library; never anything about another person's account.
    */
   public List<ProfileOption> profileOptions(
       CurrentUser caller, SourceType type, boolean withPersonProfiles) {
@@ -167,22 +167,9 @@ public class ConnectorReleaseService {
             profile ->
                 profile.getOwnership().admitsLibraries()
                     || (withPersonProfiles && ownAccounts.contains(profile.getId())))
-        .map(
-            profile -> {
-              boolean ownAccount = ownAccounts.contains(profile.getId());
-              Optional<String> lock = locks.creationLock(type, profile);
-              if (lock.isPresent()) {
-                return new ProfileOption(profile, false, lock.get(), ownAccount);
-              }
-              boolean released = held.covers(ConnectorScope.ofProfile(profile.getId()));
-              return new ProfileOption(
-                  profile,
-                  released,
-                  released
-                      ? null
-                      : CapabilityService.missingInScope(RELEASE, profileLabel(profile)),
-                  ownAccount);
-            })
+        .filter(profile -> locks.creationLock(type, profile).isEmpty())
+        .filter(profile -> held.covers(ConnectorScope.ofProfile(profile.getId())))
+        .map(profile -> new ProfileOption(profile, ownAccounts.contains(profile.getId())))
         .toList();
   }
 
@@ -256,9 +243,7 @@ public class ConnectorReleaseService {
       String notice) {}
 
   /**
-   * One selectable profile, whether the caller may create a library through it now, and whether she
-   * has a connected account of her own on it.
+   * One profile the caller may create a library through now, and whether she has an account on it.
    */
-  public record ProfileOption(
-      ConnectionProfile profile, boolean creatable, String notice, boolean ownAccount) {}
+  public record ProfileOption(ConnectionProfile profile, boolean ownAccount) {}
 }

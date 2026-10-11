@@ -465,6 +465,9 @@ Entscheidung 1 widerspräche.
 >      Frontend bleibt damit gültig.
 >    - Ob die Person bei einem bestimmten Typ oder Zugang anlegen darf, liefern
 >      `GET /api/v1/source-types` und die Liste der Zugänge je Eintrag, samt Hinweis statt totem Weg.
+>      Seit dem 11.10.2026 (#2495) liefert die Liste der Zugänge nur noch nutzbare Zugänge, und der
+>      Assistent blendet Quellarten ohne nutzbaren Weg aus; siehe ADR-0041, Nachtrag vom
+>      11.10.2026 „Assistent zeigt nur Nutzbares“.
 >    - Die Spezifikation ändert sich zuerst (ADR-0006). Der Zuschnitt steht in ADR-0041,
 >      Entscheidung 8.
 >    - **Präzisierung der Begriffe:** Der Geltungsbereich wählt einen Anlegepfad und ist kein

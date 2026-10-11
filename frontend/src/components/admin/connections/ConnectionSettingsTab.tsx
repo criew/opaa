@@ -12,7 +12,9 @@ export default function ConnectionSettingsTab() {
   return (
     <>
       <Typography sx={{ fontSize: 13.5, color: 'text.secondary', mb: 2.5, maxWidth: 760 }}>
-        Diese Werte gelten für die ganze Installation, nicht für einen einzelnen Zugang.
+        Diese Werte gelten für die ganze Installation, nicht für einen einzelnen Zugang: wie OPAA
+        nach außen verbindet, wie viel Speicher private Bibliotheken belegen dürfen und wie lange
+        das Verbindungsprotokoll aufbewahrt wird.
       </Typography>
       <OutboundProxySection />
       <PrivateStorageSection />
