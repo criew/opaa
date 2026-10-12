@@ -5,8 +5,37 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-11T06:09:26Z</updated>
+  <updated>2026-10-12T06:17:40Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Sonntag, 11. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-11.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-11.html</id>
+    <updated>2026-10-12T06:17:40Z</updated>
+    <summary type="text">feat: Datei-Konnektoren für Cloud- und Netzablagen (Google Drive, Nextcloud, SharePoint/OneDrive, SMB, Dropbox):
+— Dropbox-Konnektor fertiggestellt und gemergt
+— Überlange Quellwerte speichern oder sauber ablehnen
+— Platzhalter-Cursor bei nicht erreichbarem Container getestet
+feat: Verbindungen vereinfachen — Verwaltung legt fest, Personen sehen nur Nutzbares:
+— Assistent zeigt nur nutzbare Quellarten und Zugänge
+— Zugangswunsch vollständig entfernt
+— Kontrast von Hinweis- und Statusfarben nach WCAG AA korrigiert
+feat: OAuth-Verbindungen und mehrstufige Konnektoren — Quellen-Freigabe, persönliche Konten, Konnektor-Steuerung:
+— E2E-Szenario Quelle verbinden mit Dropbox-Konnektor
+— Geheimnis einer Bibliothek im Token-Speicher ablegen
+— Dokumentation zu Postfächern und Vorfallszugriff
+feat: UI-Redesign der Admin-Seiten:
+— Zugänge, Quellarten und Einstellungen als Übersicht mit Seitenpanel
+— Verzeichnisabgleich als Übersicht mit Seitenpanel überarbeitet
+feat(deploy): Kubernetes-Deployment mit Helm-Chart (Single-Instance):
+— Release-Version im Dialog Info zu OPAA anzeigen
+— Release-Tags per Ruleset auf Maintainer beschränken
+Sonstiges:
+— Antwort-Prompt schärfen und Zitierformat absichern
+— Führenden Denktext von Reasoning-Modellen entfernen
+— Nachbar-Chunks der Endauswahl in Antwortkontext laden
+— Verfügbare Modelle am Endpunkt ermitteln und vorschlagen</summary>
+  </entry>
   <entry>
     <title>Tagesreport Samstag, 10. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-10.html"/>
@@ -835,30 +864,5 @@ Sonstiges:
 — Suchqualitäts-Regression durch Embedding-Metadaten behoben
 — Deutsche MUI-Lokalisierung global eingebunden
 — Frontend-Build und E2E-Suite auf pnpm migriert</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Samstag, 22. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-22.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-22.html</id>
-    <updated>2026-08-23T02:08:52Z</updated>
-    <summary type="text">feat(models): Verwaltete Chat-Modelle in der Administrationsoberfläche (Stufe 1):
-— Nativen Ollama-Starter entfernt, Embedding über OpenAI-kompatible Schicht
-— Administrationsseite Modellverwaltung mit Einbettungsübersicht umgesetzt
-— Admin-API für Chat-Modelle mit CRUD, Aktivierung und Verbindungstest
-— Datenmodell für verwaltete Chat-Modelle mit verschlüsselten Zugangsdaten
-feat: Deeplinks auf Originaldokumente &amp; stabile Anmeldung:
-— Deeplinks auf Originaldokumente in Fundstellen und Belegfenster
-— Deeplink auf Originaldokument in der Wissensbibliothek
-— Download-Endpunkt für Originaldokumente implementiert
-— Silent-Token-Renew und 401-Retry statt Sofort-Logout
-Epic: Suchqualität messbar machen — Eval-Korpus und Retrieval-Regression:
-— Eval-Domäne Sehenswürdigkeiten mit erweiterten Metriken
-feat: Demo-Instanz mit Verwaltungskorpus einer fiktiven Stadt:
-— Demo-Instanz Rheinfurt ausgerollt
-Sonstiges:
-— Stufe 1 der Modellverwaltung in LLM-Spezifikation dokumentiert
-— Chat-Seite: Positionierungskontext gegen äußere Scrollbar behoben
-— Content-Endpunkt streamt Remote-Originale serverseitig durch
-— Ollama-Embedding-Aufrufe je Dokument moderat parallelisiert</summary>
   </entry>
 </feed>
