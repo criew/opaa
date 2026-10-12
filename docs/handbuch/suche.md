@@ -441,6 +441,24 @@ hohem Gewicht gesucht. Es sind dieselben Muster, mit denen die Indexierung die K
 sodass „§ 12 Abs. 3" in Frage und Dokument dieselbe Kennung ergibt. So bleibt „§ 34" von „§ 35"
 unterscheidbar, was die Vektorsuche nicht leistet.
 
+Die Liste der Kennungen ist bewusst geschlossen; eine falsch erkannte Kennung erzeugt Rauschen,
+eine nicht erkannte einen verpassten Treffer:
+
+| Kennung | Beispiele | Was gespeichert wird |
+|---|---|---|
+| Paragrafen | `§ 34`, `§§ 34, 35 BauGB`, `§ 3 Abs. 2 VGS` | je Nummer die nackte Form, dazu die Form mit Absatz und mit Gesetzeskürzel |
+| Aktenzeichen nach Gerichtsmuster | `4 K 1023/24.NW`, `12 A 45/2023` | die ganze Kennung |
+| Aktenzeichen mit Schlüsselwort | `Az. 12/2024`, `Aktenzeichen: 45-2/2023` | die Kennung hinter dem Schlüsselwort |
+| Strukturierte Verwaltungsnummern | `BAU-DA-2/2024`, `KAE-07`, `SOZ-DA-1/2023` | die ganze Kennung, auch ohne Schlüsselwort |
+| Drucksachen- und Erlassnummern | `Drucksache 19/1234`, `Drs. 19/1234`, `Erlass Nr. 12/2024` | die Nummer; ein bloßes `Nr. 5` gilt als Aufzählung, nicht als Kennung |
+| E-Mail-Adressen | `max.mustermann@example.org` | die Adresse; Umlaute in Adressen werden nicht erfasst |
+
+Eine Kennung gilt nur als solche, wenn sie mindestens eine Ziffer und ein Trennzeichen enthält.
+„Aktenzeichen der Satzung" erzeugt deshalb nichts. Dieselben Muster laufen auf der Frageseite,
+sodass ein Dokument, das „Dienstanweisung mit dem Aktenzeichen BAU-DA-2/2024" schreibt, und eine
+Frage nach „BAU-DA-2/2024" dieselbe Kennung erzeugen. Je Chunk werden höchstens 64 Kennungen
+gespeichert.
+
 Als **technischer Feldname** gilt ein Wort in einer dieser Formen:
 
 | Form | Beispiele |

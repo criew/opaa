@@ -554,7 +554,7 @@ Formaterkennung: Der Hauptinhalt einer Feed-Detailseite geht als HTML direkt an 
 [Confluence-Pipeline](formate/confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
 Office-Formate von Microsoft und OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen das
 genau sind, welche Pipeline sie bedient und welche Formate bewusst nicht aufgenommen werden,
-steht in der [Formatübersicht](#anhang-formatübersicht) am Ende dieses Kapitels.
+steht in der [Formatübersicht](formate/README.md) am Ende dieses Kapitels.
 
 ### Schritt 4: Parsen und Chunken
 
@@ -608,7 +608,7 @@ Was alle Pipelines gemeinsam haben:
   beiden Chunks vollständig vorkommt.
 
 > Die einzelnen Format-Pipelines, ihre Struktur-Regeln, Metadaten und Grenzwerte haben je ein
-> eigenes Kapitel; die Liste steht in der [Formatübersicht](#anhang-formatübersicht).
+> eigenes Kapitel; die Liste steht in der [Formatübersicht](formate/README.md).
 
 ### Schritt 5: Metadaten anreichern
 
@@ -658,20 +658,7 @@ werden. So trifft die Suche „§ 12 Abs. 3" exakt und nicht nur ungefähr. Die 
 Kennungen ist bewusst geschlossen; eine falsch erkannte Kennung erzeugt Rauschen, eine nicht
 erkannte einen verpassten Treffer:
 
-| Kennung | Beispiele | Was gespeichert wird |
-|---|---|---|
-| Paragrafen | `§ 34`, `§§ 34, 35 BauGB`, `§ 3 Abs. 2 VGS` | je Nummer die nackte Form, dazu die Form mit Absatz und mit Gesetzeskürzel |
-| Aktenzeichen nach Gerichtsmuster | `4 K 1023/24.NW`, `12 A 45/2023` | die ganze Kennung |
-| Aktenzeichen mit Schlüsselwort | `Az. 12/2024`, `Aktenzeichen: 45-2/2023` | die Kennung hinter dem Schlüsselwort |
-| Strukturierte Verwaltungsnummern | `BAU-DA-2/2024`, `KAE-07`, `SOZ-DA-1/2023` | die ganze Kennung, auch ohne Schlüsselwort |
-| Drucksachen- und Erlassnummern | `Drucksache 19/1234`, `Drs. 19/1234`, `Erlass Nr. 12/2024` | die Nummer; ein bloßes `Nr. 5` gilt als Aufzählung, nicht als Kennung |
-| E-Mail-Adressen | `max.mustermann@example.org` | die Adresse; Umlaute in Adressen werden nicht erfasst |
-
-Eine Kennung gilt nur als solche, wenn sie mindestens eine Ziffer und ein Trennzeichen enthält.
-„Aktenzeichen der Satzung" erzeugt deshalb nichts. Dieselben Muster laufen auf der Frageseite,
-sodass ein Dokument, das „Dienstanweisung mit dem Aktenzeichen BAU-DA-2/2024" schreibt, und eine
-Frage nach „BAU-DA-2/2024" dieselbe Kennung erzeugen. Je Chunk werden höchstens 64 Kennungen
-gespeichert.
+Welche Kennungen erkannt werden, steht im Kapitel [Suche](suche.md), Stufe 5.
 
 ### Schritt 8: Dokument markieren
 
@@ -969,49 +956,7 @@ Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
   [Google Drive](konnektoren/google-drive.md), [SharePoint](konnektoren/sharepoint.md),
   [Nextcloud](konnektoren/nextcloud.md), [Dropbox](konnektoren/dropbox.md),
   [Windows-Dateifreigabe (SMB)](konnektoren/smb.md)
-- Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
+- Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](formate/README.md)
 - Wie der Index abgefragt wird, von der Frage bis zur belegten Antwort: [Suche](suche.md)
 - Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)
 - Installation, Umgebungsvariablen und Update-Verhalten des Index: [Deployment](deployment.md)
-
-## Anhang: Formatübersicht
-
-Zugelassen wird nach **Inhalt**, nicht nach Endung. Die Spalte „Zulassung" nennt, wie streng die
-Inhaltsprüfung ist: *strikt* heißt fester Byte-Signatur-Abgleich; *text-tolerant* heißt, der Inhalt
-muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
-
-| Endung | Pipeline | Zulassung | Erkannte Struktur | Kapitel |
-|---|---|---|---|---|
-| `.pdf` | `pdf` | strikt | Lesezeichen-Gliederung, sonst Seiten | [PDF](formate/pdf.md) |
-| `.docx` | `docx` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [Word](formate/docx.md) |
-| `.doc` | `tika-fallback` | strikt | keine, Token-Fenster | [Auffang-Pipeline](formate/fallback.md) |
-| `.pptx` | `pptx` | strikt | eine Folie je Chunk, Titel, Notizen | [PowerPoint](formate/pptx.md) |
-| `.xlsx` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](formate/tabular.md) |
-| `.csv` | `tabular` | text-tolerant | Kopfzeile, Zeilengruppen | [Tabellen](formate/tabular.md) |
-| `.ods` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](formate/tabular.md) |
-| `.odt` | `odt` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [OpenDocument Text](formate/odt.md) |
-| `.odp` | `odp` | strikt | eine Folie je Chunk, Titel, Notizen, Masterfolie | [OpenDocument Präsentation](formate/odp.md) |
-| `.html` | `html` | strikt | Überschriften h1 bis h3, Hauptinhalt ohne Navigation, Tabellen, Listen | [HTML](formate/html.md) |
-| `.md` | `markdown` | text-tolerant | Überschriften bis Ebene 3, Frontmatter | [Markdown](formate/markdown.md) |
-| `.txt` | `tika-fallback` | text-tolerant | keine, Token-Fenster | [Auffang-Pipeline](formate/fallback.md) |
-| `.eml` | `email` | text-tolerant | Kopfdaten, Nachrichtentext, Thread-Segmente, Anhänge | [E-Mail](formate/mail.md) |
-| `.msg` | `email` | strikt | wie `.eml` | [E-Mail](formate/mail.md) |
-| Feed-Detailseite | `html` | entfällt | wie `.html`; der Konnektor übergibt die Inhaltsbereiche als HTML | [HTML](formate/html.md) |
-| Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](formate/confluence.md) |
-
-### Bewusst nicht zugelassen
-
-| Format | Grund |
-|---|---|
-| Eingescannte PDFs ohne Textebene | werden erkannt und mit klarer Meldung abgewiesen, statt mit null Chunks als „indiziert" zu gelten. Texterkennung (OCR) ist ein eigenes Vorhaben. |
-| Bilder und Einzelscans (TIFF, PNG, JPEG) | gehören zum selben OCR-Vorhaben |
-| Ältere Office-Binärformate außer `.doc` (`.xls`, `.ppt`, `.vsd`, `.pub`) | keine geeignete Leselogik; nur `.doc` wird über die Auffang-Pipeline verarbeitet |
-| RTF | nie aufgenommen, kein Bedarf gemeldet |
-| Archive (ZIP) | ein Container ist kein Dokument; eingebettete Dokumente laufen über den Anhangsweg, den heute Mails und Feed-Seiten nutzen |
-| Fach-XML (LegalDocML.de, XJustiz, XÖV) | lohnt sich erst mit einem konkreten Quellanschluss; ein Parser ohne Bestand kann sich nicht bewähren |
-| Generisches XML und JSON | wären nur als Klartext verarbeitbar und würden die Textzulassung aufweichen |
-| Quellcode | für einen Verwaltungsbestand ohne Nutzungsfall |
-| Flat-XML-OpenDocument (`.fodt`, `.fodp`) | die OpenDocument-Leser setzen den ZIP-Container voraus |
-
-Abgewiesene Dateien werden gezählt und im Laufprotokoll namentlich als „Format nicht unterstützt"
-geführt; bei der Löscherkennung gelten sie als vorhanden.
