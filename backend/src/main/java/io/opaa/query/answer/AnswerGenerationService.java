@@ -141,6 +141,15 @@ public class AnswerGenerationService {
       "\n\n---\n\nAntworte auf Deutsch; gib fremdsprachige Inhalte der Kontextdokumente auf Deutsch"
           + " wieder.";
 
+  /**
+   * Replaces {@link #LANGUAGE_REMINDER} while a space instruction is part of the prompt: language
+   * is no citation rule, so the space may set another one, and the reminder must not contradict it.
+   */
+  static final String SPACE_LANGUAGE_REMINDER =
+      "\n\n---\n\nAntworte auf Deutsch, sofern die Anweisung dieses Space keine andere"
+          + " Antwortsprache vorgibt; gib fremdsprachige Inhalte der Kontextdokumente in der"
+          + " Antwortsprache wieder.";
+
   private final ActiveChatModelResolver activeChatModelResolver;
   private final ChatMemory chatMemory;
 
@@ -158,28 +167,37 @@ public class AnswerGenerationService {
    * (docs/features/llm-integration.md, "Übergabe der Passagen"); without a point there is no block.
    * See {@link #CONTEXT_SECTION} for why it must not follow the passages.
    *
+   * <p>The instruction of the chat's space comes first after the fixed rules, as its own block
+   * ({@link SpaceInstructionBlock}), so the note - the current wishes of the asking person -
+   * follows the standing rule of the space. Without an instruction the prompt is exactly the one
+   * without this parameter.
+   *
    * @param searchNeeded {@code false} when the decomposition found nothing to search for in {@code
    *     question}; {@link #NO_SEARCH_HINT} then precedes the passages, and neither {@link
    *     #ANSWER_RULES} nor {@link #CITATION_REMINDER} is added.
+   * @param spaceInstruction the space's instruction to the model; {@code null} or blank for none.
    */
   public ChatResponse generateAnswer(
       String question,
       List<Document> relevantChunks,
       String conversationId,
       List<String> conversationNote,
-      boolean searchNeeded) {
+      boolean searchNeeded,
+      String spaceInstruction) {
+    String spaceBlock = SpaceInstructionBlock.render(spaceInstruction);
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(conversationNote);
     boolean bindToPassages = !relevantChunks.isEmpty() && searchNeeded;
     String systemText =
         SYSTEM_PROMPT
             + (bindToPassages ? ANSWER_RULES : "")
             + CITATION_RULES
+            + (spaceBlock == null ? "" : "\n\n" + spaceBlock)
             + (noteBlock == null ? "" : "\n\n" + noteBlock.modelText())
             + (searchNeeded ? "" : NO_SEARCH_HINT)
             + CONTEXT_SECTION
             + formatChunks(relevantChunks)
             + (bindToPassages ? CITATION_REMINDER : "")
-            + LANGUAGE_REMINDER;
+            + (spaceBlock == null ? LANGUAGE_REMINDER : SPACE_LANGUAGE_REMINDER);
 
     log.debug("Sending prompt to LLM with {} context chunks", relevantChunks.size());
 

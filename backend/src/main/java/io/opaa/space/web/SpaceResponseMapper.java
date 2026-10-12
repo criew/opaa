@@ -72,6 +72,7 @@ final class SpaceResponseMapper {
             space.getCreatedAt(),
             space.getUpdatedAt())
         .description(space.getDescription())
+        .modelInstruction(space.getModelInstruction())
         .userRole(detail.userRole())
         .successionOpen(detail.successionOpen())
         .lastTransfer(PermissionTransferResponseMapper.toResponse(lastTransfer))
@@ -95,7 +96,8 @@ final class SpaceResponseMapper {
         .succession(SuccessionStateResponseMapper.toStateResponse(overview.succession()))
         .libraryCount(overview.libraryCount())
         .chatCount(overview.chatCount())
-        .chatAutoCleanup(toChatAutoCleanup(space, overview.chatAutoCleanup()));
+        .chatAutoCleanup(toChatAutoCleanup(space, overview.chatAutoCleanup()))
+        .modelInstruction(space.getModelInstruction());
   }
 
   private static ChatAutoCleanupResponse toChatAutoCleanup(

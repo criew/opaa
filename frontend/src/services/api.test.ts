@@ -59,6 +59,24 @@ describe('api service', () => {
 
       expect(capturedBody).toStrictEqual({ name: 'Renamed', description: 'A new description' })
     })
+
+    it('sends the instruction to the model only when one is given', async () => {
+      let capturedBody: unknown = null
+      server.use(
+        http.put('/api/v1/spaces/:spaceId', async ({ request }) => {
+          capturedBody = await request.json()
+          return HttpResponse.json({ id: 'space-1' })
+        }),
+      )
+
+      await updateSpaceDetails('space-1', 'Renamed', '', undefined, 'Fasse dich kurz.')
+
+      expect(capturedBody).toStrictEqual({
+        name: 'Renamed',
+        description: '',
+        modelInstruction: 'Fasse dich kurz.',
+      })
+    })
   })
 
   describe('createSpace', () => {

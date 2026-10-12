@@ -12,6 +12,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import MessageList from '../components/chat/MessageList'
 import ChatInput from '../components/chat/ChatInput'
 import ConversationNote from '../components/chat/ConversationNote'
+import SpaceInstruction from '../components/chat/SpaceInstruction'
 import { isConversationNoteVisible } from '../components/chat/conversationNoteVisibility'
 import { deletionDueLabel } from '../components/chat/deletionDueLabel'
 import { useChatStore } from '../stores/chatStore'
@@ -63,6 +64,10 @@ export default function ChatPage() {
   // remove buttons do not. Same lookup as ChatList's "Neuer Chat" guard.
   const isArchivedSpace = useSpaceStore(
     (s) => s.spaces.find((space) => space.id === spaceId)?.archived ?? false,
+  )
+  // Every member sees that an instruction of the space takes part in the answers, before asking.
+  const spaceInstruction = useSpaceStore(
+    (s) => s.spaces.find((space) => space.id === spaceId)?.modelInstruction ?? null,
   )
   // A round is completed once its answer is in - the question of a round in flight does not count.
   const completedRounds = useMemo(
@@ -222,7 +227,7 @@ export default function ChatPage() {
         documentTitle={chatTitle ?? undefined}
         visuallyHidden
       />
-      {(chatTitle || noteVisible || isArchivedChat) && (
+      {(chatTitle || noteVisible || isArchivedChat || spaceInstruction) && (
         // Mockup 1a's header bar (#658), and the Gesprächsnotiz's place (#1488). Wrapping flex
         // row: title and button share the first line, the note panel takes the next one.
         <Box
@@ -332,6 +337,7 @@ export default function ChatPage() {
               </Button>
             </Box>
           )}
+          {spaceInstruction && <SpaceInstruction key={spaceId} text={spaceInstruction} />}
           <ConversationNote
             // Expanding is per chat and per session: switching chats starts collapsed again.
             key={storeChatId ?? 'new'}

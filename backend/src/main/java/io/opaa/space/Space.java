@@ -58,6 +58,13 @@ public class Space {
   @Column(name = "chat_auto_cleanup_enabled_at")
   private Instant chatAutoCleanupEnabledAt;
 
+  /**
+   * The space's instruction to the model, part of every answer in it; {@code null} while it has
+   * none, never blank (database check {@code chk_spaces_model_instruction_not_blank}).
+   */
+  @Column(name = "model_instruction", length = 1000)
+  private String modelInstruction;
+
   @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<SpaceMembership> memberships = new ArrayList<>();
 
@@ -120,6 +127,16 @@ public class Space {
   /** When the automatic chat cleanup was switched on, {@code null} while it is off. */
   public Instant getChatAutoCleanupEnabledAt() {
     return chatAutoCleanupEnabledAt;
+  }
+
+  /** Sets the instruction to the model; {@code null} removes it. */
+  public void changeModelInstruction(String modelInstruction) {
+    this.modelInstruction = modelInstruction;
+  }
+
+  /** The instruction to the model, {@code null} while the space has none. */
+  public String getModelInstruction() {
+    return modelInstruction;
   }
 
   public void transferOwnershipTo(UUID newOwnerId) {

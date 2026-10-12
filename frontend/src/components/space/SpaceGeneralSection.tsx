@@ -11,20 +11,22 @@ import { confirmAction } from '../../stores/confirmStore'
 import { useSpaceStore } from '../../stores/spaceStore'
 import FieldLabel from '../wizard/FieldLabel'
 import ChatAutoCleanupField from './ChatAutoCleanupField'
+import ModelInstructionField from './ModelInstructionField'
 import SectionHead from '../SectionHead'
 
 interface SpaceGeneralSectionProps {
   spaceId: string
   space: SpaceResponse
-  /** Nur ein Administrator ändert Name, Beschreibung und die Chat-Bereinigung. */
+  /** Nur ein Administrator ändert Name, Beschreibung, Chat-Bereinigung und Anweisung. */
   canManage: boolean
   /** Archivieren und Löschen bleiben dem Eigentümer vorbehalten. */
   isOwner: boolean
 }
 
 /**
- * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung und der Schalter der
- * automatischen Chat-Bereinigung, den jedes Mitglied sieht, und am Ende der abgesetzte
+ * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung, der Schalter der
+ * automatischen Chat-Bereinigung und die Anweisung an das Modell, die jedes Mitglied sieht, und am
+ * Ende der abgesetzte
  * Gefahrenbereich mit Archivieren und Löschen (#1917).
  */
 export default function SpaceGeneralSection({
@@ -43,7 +45,8 @@ export default function SpaceGeneralSection({
     name: string
     description: string
     chatAutoCleanup: boolean
-  }>({ spaceId: null, name: '', description: '', chatAutoCleanup: false })
+    modelInstruction: string
+  }>({ spaceId: null, name: '', description: '', chatAutoCleanup: false, modelInstruction: '' })
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
@@ -55,7 +58,10 @@ export default function SpaceGeneralSection({
   const description = draft.spaceId === spaceId ? draft.description : (space.description ?? '')
   const chatAutoCleanup =
     draft.spaceId === spaceId ? draft.chatAutoCleanup : space.chatAutoCleanup.enabled
-  const current = { spaceId, name, description, chatAutoCleanup }
+  const savedModelInstruction = space.modelInstruction ?? ''
+  const modelInstruction =
+    draft.spaceId === spaceId ? draft.modelInstruction : savedModelInstruction
+  const current = { spaceId, name, description, chatAutoCleanup, modelInstruction }
 
   async function archive() {
     setLocalError(null)
@@ -127,6 +133,12 @@ export default function SpaceGeneralSection({
             archiveAfterDays={space.chatAutoCleanup.archiveAfterDays}
             deleteAfterDays={space.chatAutoCleanup.deleteAfterDays}
           />
+          <ModelInstructionField
+            id="space-model-instruction"
+            value={modelInstruction}
+            onChange={(value) => setDraft({ ...current, modelInstruction: value })}
+            canChange={canManage}
+          />
           {canManage && (
             <Box>
               <Button
@@ -134,8 +146,9 @@ export default function SpaceGeneralSection({
                 onClick={async () => {
                   setLocalError(null)
                   try {
-                    // Der Schalter geht nur mit, wenn er umgelegt wurde: Ein bloßes Umbenennen
-                    // setzt so keinen Stand zurück, den inzwischen jemand anderes geändert hat.
+                    // Schalter und Anweisung gehen nur mit, wenn sie geändert wurden: Ein bloßes
+                    // Umbenennen setzt so keinen Stand zurück, den inzwischen jemand anderes
+                    // geändert hat.
                     await updateDetails(
                       spaceId,
                       name,
@@ -144,6 +157,7 @@ export default function SpaceGeneralSection({
                         !(space.isDefault && !isOwner)
                         ? chatAutoCleanup
                         : undefined,
+                      modelInstruction !== savedModelInstruction ? modelInstruction : undefined,
                     )
                     setSuccessMessage('Space aktualisiert')
                   } catch (err) {

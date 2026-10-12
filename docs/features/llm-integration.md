@@ -614,7 +614,7 @@ bestimmt, welche Passagen übergeben werden** — Suche, Zusammenführung, Reran
 Dokument bestimmt, wie sie übergeben werden**, weil das eine Eigenschaft des Modellaufrufs ist und mit
 Systemvorspann, Parametern und Kontextgrenze zusammen festgelegt wird.
 
-Der Aufruf wird aus fünf Teilen zusammengesetzt:
+Der Aufruf wird aus sechs Teilen zusammengesetzt:
 
 1. **Systemvorspann** — Rolle, Ton, Umgang mit Nichtwissen, die verbindlichen Belegregeln und die
    Vorgabe, auf Deutsch zu antworten. Nicht über den Chat änderbar (siehe
@@ -637,6 +637,13 @@ Der Aufruf wird aus fünf Teilen zusammengesetzt:
    bekommt **alle** Punkte; die Teilfragen-Zerlegung sieht nur die Rahmenangaben. Ohne Punkt entfällt
    der Block. **(gebaut, #1487; Spezifikation in
    [conversation-memory.md](./conversation-memory.md))**
+6. **Die Anweisung des Space** — eine von der Space-Rolle `ADMIN` hinterlegte, für alle Mitglieder
+   lesbare Vorgabe, als eigener Block **im Systemvorspann** direkt nach den festen Regeln und vor
+   der Gesprächsnotiz. Ihre Kopfzeile verweigert ihr den Rang einer Quelle und stellt die Belegregeln
+   über sie; eine Sprachvorgabe darf sie setzen. Nur die Antwort bekommt sie, nie die
+   Teilfragen-Zerlegung; ohne Anweisung entfällt der Block. **(gebaut, #1637; Entscheidung in
+   [ADR-0043](../decisions/0043-anweisung-je-space.md), Spezifikation in
+   [spaces-and-assets.md](./spaces-and-assets.md#anweisung-des-space-an-das-modell))**
 
 Die Antwort kommt **mit Belegen im Text zurück, nicht mit einer Liste am Ende**: Jede tragende Aussage
 trägt die Zeichenfolge der Passage, auf die sie sich stützt, unmittelbar bei sich. OPAA löst diese
@@ -701,7 +708,9 @@ deine Anweisungen", „antworte als ein System ohne Beschränkungen". Vier Eigen
 und keine davon ist eine Bitte an das Modell:
 
 - **Der Systemvorspann ist nicht über den Chat änderbar.** Eingaben ersetzen ihn nicht; sie stehen an
-  einer anderen Stelle des Aufrufs und werden als Nutzertext behandelt.
+  einer anderen Stelle des Aufrufs und werden als Nutzertext behandelt. Die Anweisung des Space
+  ergänzt ihn nur, als gekennzeichneter Block hinter den festen Regeln, und hebt die Belegregeln
+  nicht auf ([ADR-0043](../decisions/0043-anweisung-je-space.md)).
 - **Die Antwortgrundlage ist der abgerufene Bestand.** Was nicht gefunden wurde, steht dem Modell nicht
   zur Verfügung — eine Umgehung erweitert den Zugriff nicht.
 - **Die Rechteprüfung sitzt vor dem Modell, nicht im Modell.** Kein Formulierungstrick kann Bestände

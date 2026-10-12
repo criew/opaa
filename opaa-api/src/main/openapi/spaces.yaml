@@ -103,7 +103,9 @@ paths:
     put:
       operationId: updateSpace
       tags: [space]
-      summary: Update space name and description (admin or owner only)
+      summary: >
+        Update space name, description, chat cleanup and instruction to the model (admin or owner
+        only; the instruction only with the space role ADMIN)
       requestBody:
         required: true
         content:
@@ -517,6 +519,18 @@ components:
             Switches the automatic archiving and deletion of inactive chats on or off.
             Omitted or null leaves the current setting unchanged. Switching it on starts both
             periods anew; nothing is archived or deleted retroactively.
+        modelInstruction:
+          type: string
+          nullable: true
+          maxLength: 1000
+          description: >
+            The space's instruction to the model, part of the answer stage of every chat in this
+            space from the next question on, older chats included. Omitted or null leaves it
+            unchanged; an empty or blank text removes it. Surrounding whitespace is stripped.
+            Changing it requires the space role ADMIN - the system administration's precedence
+            does not reach it - and is audited as SPACE_CHANGED naming the field, never the text.
+            It cannot lift the citation rules of the answer; it may set the answer language.
+          example: Nenne bei Fristen immer die Rechtsgrundlage.
 
     SpaceListResponse:
       type: object
@@ -591,6 +605,12 @@ components:
             installation-wide periods - so every member can be told where the chats are listed.
           allOf:
             - $ref: "#/components/schemas/ChatAutoCleanupResponse"
+        modelInstruction:
+          type: string
+          nullable: true
+          description: >
+            Same value as SpaceResponse.modelInstruction - carried here so a chat can show that an
+            instruction of its space takes part in every answer, and what it says.
         createdAt:
           type: string
           format: date-time
@@ -759,6 +779,13 @@ components:
             - $ref: "#/components/schemas/SuccessionStateResponse"
         chatAutoCleanup:
           $ref: "#/components/schemas/ChatAutoCleanupResponse"
+        modelInstruction:
+          type: string
+          nullable: true
+          description: >
+            The space's instruction to the model, null while it has none. Readable by every member,
+            so whoever asks in the space can see that it takes part in every answer.
+          example: Nenne bei Fristen immer die Rechtsgrundlage.
         createdAt:
           type: string
           format: date-time

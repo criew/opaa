@@ -666,7 +666,7 @@ Ein Space wird **nicht automatisch für jede Organisationseinheit angelegt**. Vi
 |---|---|
 | `MEMBER` | Space betreten; Chats anlegen und führen; **alle geteilten** Chats und Artefakte des Space lesen; die zugeordneten Assets sehen und im Chat nutzen — gefiltert auf den eigenen Zugriff |
 | `CURATOR` | zusätzlich Assets zuordnen und Zuordnungen lösen, Inhalte ordnen |
-| `ADMIN` | zusätzlich Mitglieder und Rollen verwalten, Einstellungen und Policy-Obergrenze setzen, geteilte Inhalte **zurückziehen** (nicht löschen) |
+| `ADMIN` | zusätzlich Mitglieder und Rollen verwalten, Einstellungen und Policy-Obergrenze setzen, die [Anweisung des Space an das Modell](#anweisung-des-space-an-das-modell) setzen und ändern, geteilte Inhalte **zurückziehen** (nicht löschen) |
 
 Dazu trägt jeder Space eine `ownerId` als **Attribut** — den fachlich Verantwortlichen, der im Verzeichnis ausgewiesen wird. Einen Space löschen oder die Verantwortung übertragen darf nur der Verantwortliche selbst oder ein System-Admin.
 
@@ -679,6 +679,20 @@ Warum drei statt der bisherigen vier Rollen:
 **Grenze der Admin-Rechte:** Ein Space-Admin kann geteilte Inhalte aus dem Space entfernen, aber nicht beseitigen (siehe [Chats sind vor fremder Löschung geschützt](#chats-sind-vor-fremder-löschung-geschützt)). Er kann die privaten Inhalte anderer Mitglieder **nicht sehen** — auch nicht als Admin.
 
 **Die Mitgliederliste ist nicht jedem Mitglied zugänglich.** Wer namentlich in einem Space steht, ist selbst eine Information — welcher Sachbearbeiter an einem „Disziplinarverfahren" oder einer „Umstrukturierung Abteilung 3" mitarbeitet, sagt etwas über die betroffenen Personen aus. Deshalb sehen `ADMIN`, der Eigentümer und System-Admins die vollständige Liste mit Kennungen und Anzeigenamen; `MEMBER` und `CURATOR` erhalten nur die aggregierte Zählung je Rolle (`roleCounts`), die „wie groß ist dieser Raum" beantwortet, ohne jemanden zu benennen. In der Oberfläche öffnen auch sie die Space-Einstellungen ([#2207](https://github.com/criew/opaa/issues/2207)): Stammdaten und Inhalte schreibgeschützt, im Reiter „Mitglieder" statt der Liste nur die Zählung, etwa „10 Personen und 2 Gruppen" und darunter „Rollen: 2 Administratoren, 1 Kurator, 9 Mitglieder". Dafür trägt `SpaceResponse` neben `roleCounts` die Zählung je Art (`memberships`: Personen- und Gruppenzeilen) — Zahlen, keine Namen, keine Kennungen; eine Gruppe zählt einmal. Die Eigentümer-Berechtigung wird dabei **eigenständig** geprüft, nicht über die Rolle abgeleitet: Eine Verantwortungsübertragung (siehe unten) ändert nur `ownerId`, nie die eigene Mitgliedschaftsrolle des neuen Eigentümers — ein Eigentümer mit der Rolle `MEMBER` ist deshalb ein regulärer, vorgesehener Zustand, keine Ausnahme.
+
+### Anweisung des Space an das Modell
+
+Ein Space trägt optional eine **Anweisung an das Modell** (`spaces.model_instruction`, höchstens 1000 Zeichen), die in jedem Gespräch dieses Space in der Antwortstufe mitwirkt — etwa „Wir sind ein Landkreis, keine kreisfreie Stadt", „Nenne bei Fristen immer die Rechtsgrundlage" oder „Fasse dich kurz". Abwägung und Entscheidungen: [ADR-0043](../decisions/0043-anweisung-je-space.md).
+
+- **Setzen und ändern nur mit der Space-Rolle `ADMIN`** (direkt, über eine Gruppe oder als Eigentümer). Die Anweisung wirkt auf jede Antwort jedes Mitglieds — eine Leitungs-, keine Kuratierungsentscheidung. Der Vorrang der Systemverwaltung reicht nicht hinein: Ohne die Rolle ändert sie Name und Beschreibung, aber nicht die Anweisung.
+- **Lesen dürfen alle Mitglieder**, und die Oberfläche zeigt es ihnen: in den Stammdaten der Space-Einstellungen schreibgeschützt und in der Kopfzeile jedes Chats als Schaltfläche „Anweisung des Space", die den Text aufklappt — schon vor der ersten Frage. Ein unsichtbarer Text, der Antworten steuert, wäre gegenüber den Mitgliedern nicht vertretbar.
+- **Auch im persönlichen Space**; dort ist sie eine persönliche Daueranweisung der Person selbst.
+- **Leer heißt: kein Block.** Ein leerer oder nur aus Leerraum bestehender Text entfernt die Anweisung (`null`); umgebender Leerraum wird abgeschnitten.
+- **Wirkung ab der nächsten Frage, in jedem Chat des Space** — auch in Chats, die vor der Änderung entstanden sind. Die Anweisung wird je Frage gelesen, nicht je Gespräch eingefroren.
+- **Nur die Antwortstufe.** Die Teilfragen-Zerlegung bekommt sie nie.
+- **Rang im Prompt:** feste Regeln → Anweisung des Space → [Gesprächsnotiz](conversation-memory.md#wie-die-notiz-ins-modell-kommt) → Kontextdokumente. Die Kopfzeile des Blocks verweigert ihm den Rang einer Quelle, stellt die Zitierregeln über ihn (Zitierpflicht, Zitatformat, Verbot erfundener Quellen) und lässt ihm die Sprache: Eine Sprachvorgabe darin geht der festen Vorgabe „Deutsch" vor. Ein abweichender Wunsch der fragenden Person aus dem Gespräch geht der Anweisung vor.
+- **Nachweis:** Jede Änderung ist ein `SPACE_CHANGED`-Eintrag, der in `changedFields` nur `modelInstruction` nennt — der Text selbst gelangt nicht ins Protokoll.
+- **Hilfetext im Feld:** was hineingehört (Rolle, fachlicher Rahmen, Sprache, Form) und was nicht (keine personenbezogenen Angaben; Zitate und Quellenangaben bleiben in jedem Fall erhalten).
 
 ### Assets in einen Space assoziieren
 
