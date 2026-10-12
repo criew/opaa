@@ -85,12 +85,12 @@ Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
 | `HTTP_DIRECTORY` | Der Lauf spiegelt den gecrawlten Verzeichnisbaum: der URL-Pfad unterhalb der Start-URL, je Segment prozentdekodiert. Wie beim Dateisystem entstehen Ordner nur entlang gefundener Dateien; aufgeräumt wird nur nach einem vollständigen Crawl. | nein, die Quelle ist führend |
 | `RSS_FEED` | keine Ordner; ein Feed hat keine Struktur | entfällt |
 | `CONFLUENCE` | keine Ordner. Space und Gliederungspfad einer Seite stehen am Dokument und erscheinen in Zitat, Protokoll und Chunk-Kontext, nicht als Ordner. | entfällt |
-| `S3` | Der Lauf spiegelt die Schlüsselpräfixe der Geltungsbereiche: bei einem Bereich ist dessen Präfix die Wurzel, bei mehreren beginnt jede Kette mit dem Bucket und seinen Präfixsegmenten. Ordner entstehen nur entlang gefundener Objekte; ein Ordnermarker (`…/`) allein erzeugt keinen. Siehe [Konnektor S3](konnektor-s3.md), Abschnitt 10. | nein |
-| `GOOGLE_DRIVE` | Der Lauf spiegelt die Ordnerkette bis zum Bereich; bei mehreren Bereichen beginnt jede Kette mit dem Namen der Ablage bzw. des Ordners. Siehe [Konnektor Google Drive](konnektor-google-drive.md), Abschnitt 6. | nein |
-| `SHAREPOINT` | Der Lauf spiegelt die Ordnerkette ab der Wurzel der Dokumentbibliothek; bei mehreren Dokumentbibliotheken beginnt jede Kette mit deren Namen. Siehe [Konnektor SharePoint](konnektor-sharepoint.md), Abschnitt 6. | nein |
-| `NEXTCLOUD` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinen Pfadsegmenten. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Nextcloud](konnektor-nextcloud.md), Abschnitt 5. | nein |
-| `SMB` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner der Freigabe, wie bei Nextcloud. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Windows-Dateifreigabe](konnektor-smb.md), Abschnitt 5. | nein |
-| `DROPBOX` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinem Namen. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Dropbox](konnektor-dropbox.md), Abschnitt 6. | nein |
+| `S3` | Der Lauf spiegelt die Schlüsselpräfixe der Geltungsbereiche: bei einem Bereich ist dessen Präfix die Wurzel, bei mehreren beginnt jede Kette mit dem Bucket und seinen Präfixsegmenten. Ordner entstehen nur entlang gefundener Objekte; ein Ordnermarker (`…/`) allein erzeugt keinen. Siehe [Konnektor S3](konnektoren/s3.md), Abschnitt 10. | nein |
+| `GOOGLE_DRIVE` | Der Lauf spiegelt die Ordnerkette bis zum Bereich; bei mehreren Bereichen beginnt jede Kette mit dem Namen der Ablage bzw. des Ordners. Siehe [Konnektor Google Drive](konnektoren/google-drive.md), Abschnitt 6. | nein |
+| `SHAREPOINT` | Der Lauf spiegelt die Ordnerkette ab der Wurzel der Dokumentbibliothek; bei mehreren Dokumentbibliotheken beginnt jede Kette mit deren Namen. Siehe [Konnektor SharePoint](konnektoren/sharepoint.md), Abschnitt 6. | nein |
+| `NEXTCLOUD` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinen Pfadsegmenten. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Nextcloud](konnektoren/nextcloud.md), Abschnitt 5. | nein |
+| `SMB` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner der Freigabe, wie bei Nextcloud. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Windows-Dateifreigabe](konnektoren/smb.md), Abschnitt 5. | nein |
+| `DROPBOX` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinem Namen. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Dropbox](konnektoren/dropbox.md), Abschnitt 6. | nein |
 
 Das Löschen eines Ordners in einer Upload-Bibliothek löscht die enthaltenen Dokumente samt
 Chunks und Dateien, nach einer Bestätigung, die deren Anzahl nennt.
@@ -280,10 +280,10 @@ der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts. Unvollständi
 ein Element oder einen Anhang an einem Speicherkontingent abgelehnt hat; er trägt die Kategorie
 `QUOTA_EXHAUSTED`, gleicht aber ab (Abschnitt 5, Schritt 2). Bei den Dateiablagen Nextcloud,
 SMB und SharePoint setzt der nächste Lauf an der gemerkten Stelle der Auflistung fort; ein
-Vollabgleich darf sich so über mehrere Läufe erstrecken ([Nextcloud](konnektor-nextcloud.md),
-Abschnitt 3.1; [SMB](konnektor-smb.md), Abschnitt 3.1; [SharePoint](konnektor-sharepoint.md),
+Vollabgleich darf sich so über mehrere Läufe erstrecken ([Nextcloud](konnektoren/nextcloud.md),
+Abschnitt 3.1; [SMB](konnektoren/smb.md), Abschnitt 3.1; [SharePoint](konnektoren/sharepoint.md),
 Abschnitt 4.1). Bei Dropbox listet der nächste Lauf zuerst die Ordner, die der Vollabgleich noch
-nicht gelistet hat ([Dropbox](konnektor-dropbox.md), Abschnitt 4).
+nicht gelistet hat ([Dropbox](konnektoren/dropbox.md), Abschnitt 4).
 
 ### 3.3 Wiederanlauf nach Störungen
 
@@ -398,12 +398,12 @@ Fehlermeldung. Deshalb lauten die Meldungen eines Laufabbruchs bei allen Konnekt
 genannten Dinge mit.
 
 > Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
-> [Verzeichnis im Dateisystem](konnektor-filesystem.md),
-> [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
-> [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md),
-> [Google Drive](konnektor-google-drive.md), [SharePoint](konnektor-sharepoint.md),
-> [Nextcloud](konnektor-nextcloud.md), [Dropbox](konnektor-dropbox.md) und
-> [Windows-Dateifreigabe (SMB)](konnektor-smb.md).
+> [Verzeichnis im Dateisystem](konnektoren/filesystem.md),
+> [Webverzeichnis](konnektoren/http-directory.md), [Feed](konnektoren/rss-feed.md),
+> [Confluence](konnektoren/confluence.md), [S3-Objektspeicher](konnektoren/s3.md),
+> [Google Drive](konnektoren/google-drive.md), [SharePoint](konnektoren/sharepoint.md),
+> [Nextcloud](konnektoren/nextcloud.md), [Dropbox](konnektoren/dropbox.md) und
+> [Windows-Dateifreigabe (SMB)](konnektoren/smb.md).
 
 ### Zugänge
 
@@ -683,8 +683,8 @@ Konnektoren melden:
 
 Das persönliche Geheimnis gehört der Bibliothek: Ihre Verwaltenden tragen es ein, der Zugang legt
 nur Server, Anmeldeart, Zertifikatsprüfung und Vorgaben fest. Den Dienstkonto-Schlüssel von
-Google Drive trägt dagegen der Zugang (Kapitel [Google Drive](konnektor-google-drive.md),
-Abschnitt 2.5), ebenso das Client-Secret von SharePoint (Kapitel [SharePoint](konnektor-sharepoint.md),
+Google Drive trägt dagegen der Zugang (Kapitel [Google Drive](konnektoren/google-drive.md),
+Abschnitt 2.5), ebenso das Client-Secret von SharePoint (Kapitel [SharePoint](konnektoren/sharepoint.md),
 Abschnitt 2.5). Bei „ohne Anmeldung“ erreicht
 ein Lauf die Quelle ohne Zugangsdaten. Was die einzelnen Quellarten auf einem Zugang beachten,
 steht in ihren Kapiteln.
@@ -797,7 +797,7 @@ Bibliothek ihre Quelle mit einer **eigenen Zustimmung beim Anbieter**: Eine verw
 meldet sich dort einmal mit einem **Dienstkonto** an und stimmt zu; die Zustimmung gehört danach der
 Bibliothek, nicht der Person, und die Läufe erneuern das Zugriffstoken selbst. Unter den
 mitgelieferten Konnektoren meldet diese Anmeldeart für Bibliotheken nur
-[Dropbox](konnektor-dropbox.md) (siehe die Tabelle unter „Welcher Konnektor Zugänge kennt“); ohne
+[Dropbox](konnektoren/dropbox.md) (siehe die Tabelle unter „Welcher Konnektor Zugänge kennt“); ohne
 einen solchen Zugang erscheint nichts von diesem Abschnitt in der Oberfläche.
 
 **Im Wissens-Assistenten** steht nach der Wahl eines solchen Zugangs im Schritt „Quelle“ über dem
@@ -1103,8 +1103,8 @@ erkanntes Format behält den roh erkannten Typ. Anhand des erkannten Formats wir
 genau eine zuständige Pipeline; für alles Unbekannte oder Strukturlose gibt es eine
 Auffang-Pipeline auf Basis von Apache Tika. Zwei Inhalte waren nie eine Datei und überspringen die
 Formaterkennung: Der Hauptinhalt einer Feed-Detailseite geht als HTML direkt an die
-[HTML-Pipeline](format-html.md), der Körper einer Confluence-Seite direkt an die
-[Confluence-Pipeline](format-confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
+[HTML-Pipeline](formate/html.md), der Körper einer Confluence-Seite direkt an die
+[Confluence-Pipeline](formate/confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
 Office-Formate von Microsoft und OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen das
 genau sind, welche Pipeline sie bedient und welche Formate bewusst nicht aufgenommen werden,
 steht in der [Formatübersicht](#anhang-formatübersicht) am Ende dieses Kapitels.
@@ -1307,7 +1307,7 @@ genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
 | S3-Schlüssel außerhalb der Ein-/Ausschlussmuster oder eines abgewählten Geltungsbereichs | nicht mehr Teil des Bestands, wird am Ende des vollständigen Laufs entfernt |
 | Datei im Verzeichnis-Konnektor, die ein Ausschlussmuster oder ein Standardausschluss (versteckt, Systemordner) trifft | nicht mehr Teil der Quelle, wird am Ende des vollständigen Laufs entfernt |
 | Quelle nicht erreichbar, Teil der Quelle nicht lesbar | Lauf `FAILED` bzw. Aufzählung unvollständig, **nichts** wird entfernt |
-| Verzeichnis-Konnektor: Unterverzeichnis oder Datei unterhalb des Verzeichnispfads nicht lesbar | nur der Bestand in diesem Teilbaum bleibt stehen, außerhalb wird normal entfernt ([Dateisystem-Konnektor](konnektor-filesystem.md), Abschnitt 9) |
+| Verzeichnis-Konnektor: Unterverzeichnis oder Datei unterhalb des Verzeichnispfads nicht lesbar | nur der Bestand in diesem Teilbaum bleibt stehen, außerhalb wird normal entfernt ([Dateisystem-Konnektor](konnektoren/filesystem.md), Abschnitt 9) |
 
 Die letzte Zeile ist die wichtigste Sicherung: Ein Lauf, der null Dateien sieht, kann eine leere
 Quelle oder ein nicht eingebundenes Netzlaufwerk bedeuten. Deshalb löscht ein leeres Ergebnis nie,
@@ -1322,7 +1322,7 @@ Einzige Ausnahme ist der Verzeichnis-Konnektor: Kann er unterhalb des lesbaren V
 Unterverzeichnis oder eine Datei nicht lesen, schont er nur die bekannten Dokumente in diesem
 Teilbaum und bereinigt den Rest wie nach einer vollständigen Aufzählung. Hat er außer solchen
 Bereichen nichts gefunden, löscht er nichts. Einzelheiten stehen im Kapitel
-[Dateisystem-Konnektor](konnektor-filesystem.md), Abschnitt 9.
+[Dateisystem-Konnektor](konnektoren/filesystem.md), Abschnitt 9.
 
 Für S3 ist das Änderungsmerkmal vor dem Download die Kombination aus ETag und Größe des
 Objekts (`e:<ETag>|<Größe>` in `last_modified_remote`), nicht der Zeitstempel: Ein erneuter
@@ -1495,12 +1495,12 @@ Die wichtigsten Schlüssel unter `opaa.indexing.*`:
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
 | `rss.*`, `crawl.*`, `confluence.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
-| `s3.*` | siehe [S3-Objektspeicher, Abschnitt 15](konnektor-s3.md#15-konfiguration) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende, `download-concurrency` als Obergrenze gleichzeitiger Downloads und `events.*` für den Ereigniseingang) | Grenzwerte des S3-Konnektors |
-| `google-drive.*` | siehe [Google Drive, Abschnitt 12](konnektor-google-drive.md#12-konfiguration) (`OPAA_INDEXING_GOOGLE_DRIVE_*`) | Grenzwerte des Google-Drive-Konnektors |
-| `sharepoint.*` | siehe [SharePoint, Abschnitt 12](konnektor-sharepoint.md#12-konfiguration) (`OPAA_INDEXING_SHAREPOINT_*`, darunter `full-sync-interval` als Fenster für Ordneränderungen) | Grenzwerte des SharePoint-Konnektors |
-| `nextcloud.*` | siehe [Nextcloud, Abschnitt 8](konnektor-nextcloud.md#8-konfiguration) (`OPAA_INDEXING_NEXTCLOUD_*`, darunter `full-descent-interval` als Höchstalter der gemerkten Ordner-Prüfsummen) | Grenzwerte des Nextcloud-Konnektors |
-| `smb.*` | siehe [Windows-Dateifreigabe, Abschnitt 8](konnektor-smb.md#8-konfiguration) (`OPAA_INDEXING_SMB_*`) | Grenzwerte des SMB-Konnektors |
-| `dropbox.*` | siehe [Dropbox, Abschnitt 12](konnektor-dropbox.md#12-konfiguration) (`OPAA_INDEXING_DROPBOX_*`) | Adressen und Grenzwerte des Dropbox-Konnektors |
+| `s3.*` | siehe [S3-Objektspeicher, Abschnitt 15](konnektoren/s3.md#15-konfiguration) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende, `download-concurrency` als Obergrenze gleichzeitiger Downloads und `events.*` für den Ereigniseingang) | Grenzwerte des S3-Konnektors |
+| `google-drive.*` | siehe [Google Drive, Abschnitt 12](konnektoren/google-drive.md#12-konfiguration) (`OPAA_INDEXING_GOOGLE_DRIVE_*`) | Grenzwerte des Google-Drive-Konnektors |
+| `sharepoint.*` | siehe [SharePoint, Abschnitt 12](konnektoren/sharepoint.md#12-konfiguration) (`OPAA_INDEXING_SHAREPOINT_*`, darunter `full-sync-interval` als Fenster für Ordneränderungen) | Grenzwerte des SharePoint-Konnektors |
+| `nextcloud.*` | siehe [Nextcloud, Abschnitt 8](konnektoren/nextcloud.md#8-konfiguration) (`OPAA_INDEXING_NEXTCLOUD_*`, darunter `full-descent-interval` als Höchstalter der gemerkten Ordner-Prüfsummen) | Grenzwerte des Nextcloud-Konnektors |
+| `smb.*` | siehe [Windows-Dateifreigabe, Abschnitt 8](konnektoren/smb.md#8-konfiguration) (`OPAA_INDEXING_SMB_*`) | Grenzwerte des SMB-Konnektors |
+| `dropbox.*` | siehe [Dropbox, Abschnitt 12](konnektoren/dropbox.md#12-konfiguration) (`OPAA_INDEXING_DROPBOX_*`) | Adressen und Grenzwerte des Dropbox-Konnektors |
 
 ### 10.4 Was nicht gebaut ist
 
@@ -1516,12 +1516,12 @@ Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
 
 ## 11. Weiterführende Kapitel
 
-- Konnektoren je Quellentyp: [Verzeichnis im Dateisystem](konnektor-filesystem.md),
-  [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md),
-  [Confluence](konnektor-confluence.md), [S3-Objektspeicher](konnektor-s3.md),
-  [Google Drive](konnektor-google-drive.md), [SharePoint](konnektor-sharepoint.md),
-  [Nextcloud](konnektor-nextcloud.md), [Dropbox](konnektor-dropbox.md),
-  [Windows-Dateifreigabe (SMB)](konnektor-smb.md)
+- Konnektoren je Quellentyp: [Verzeichnis im Dateisystem](konnektoren/filesystem.md),
+  [Webverzeichnis](konnektoren/http-directory.md), [Feed](konnektoren/rss-feed.md),
+  [Confluence](konnektoren/confluence.md), [S3-Objektspeicher](konnektoren/s3.md),
+  [Google Drive](konnektoren/google-drive.md), [SharePoint](konnektoren/sharepoint.md),
+  [Nextcloud](konnektoren/nextcloud.md), [Dropbox](konnektoren/dropbox.md),
+  [Windows-Dateifreigabe (SMB)](konnektoren/smb.md)
 - Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](#anhang-formatübersicht)
 - Wie der Index abgefragt wird, von der Frage bis zur belegten Antwort: [Suche](suche.md)
 - Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)
@@ -1535,22 +1535,22 @@ muss nur als Text erkennbar sein und die Datei muss die Endung selbst tragen.
 
 | Endung | Pipeline | Zulassung | Erkannte Struktur | Kapitel |
 |---|---|---|---|---|
-| `.pdf` | `pdf` | strikt | Lesezeichen-Gliederung, sonst Seiten | [PDF](format-pdf.md) |
-| `.docx` | `docx` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [Word](format-docx.md) |
-| `.doc` | `tika-fallback` | strikt | keine, Token-Fenster | [Auffang-Pipeline](format-fallback.md) |
-| `.pptx` | `pptx` | strikt | eine Folie je Chunk, Titel, Notizen | [PowerPoint](format-pptx.md) |
-| `.xlsx` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](format-tabular.md) |
-| `.csv` | `tabular` | text-tolerant | Kopfzeile, Zeilengruppen | [Tabellen](format-tabular.md) |
-| `.ods` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](format-tabular.md) |
-| `.odt` | `odt` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [OpenDocument Text](format-odt.md) |
-| `.odp` | `odp` | strikt | eine Folie je Chunk, Titel, Notizen, Masterfolie | [OpenDocument Präsentation](format-odp.md) |
-| `.html` | `html` | strikt | Überschriften h1 bis h3, Hauptinhalt ohne Navigation, Tabellen, Listen | [HTML](format-html.md) |
-| `.md` | `markdown` | text-tolerant | Überschriften bis Ebene 3, Frontmatter | [Markdown](format-markdown.md) |
-| `.txt` | `tika-fallback` | text-tolerant | keine, Token-Fenster | [Auffang-Pipeline](format-fallback.md) |
-| `.eml` | `email` | text-tolerant | Kopfdaten, Nachrichtentext, Thread-Segmente, Anhänge | [E-Mail](format-mail.md) |
-| `.msg` | `email` | strikt | wie `.eml` | [E-Mail](format-mail.md) |
-| Feed-Detailseite | `html` | entfällt | wie `.html`; der Konnektor übergibt die Inhaltsbereiche als HTML | [HTML](format-html.md) |
-| Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](format-confluence.md) |
+| `.pdf` | `pdf` | strikt | Lesezeichen-Gliederung, sonst Seiten | [PDF](formate/pdf.md) |
+| `.docx` | `docx` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [Word](formate/docx.md) |
+| `.doc` | `tika-fallback` | strikt | keine, Token-Fenster | [Auffang-Pipeline](formate/fallback.md) |
+| `.pptx` | `pptx` | strikt | eine Folie je Chunk, Titel, Notizen | [PowerPoint](formate/pptx.md) |
+| `.xlsx` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](formate/tabular.md) |
+| `.csv` | `tabular` | text-tolerant | Kopfzeile, Zeilengruppen | [Tabellen](formate/tabular.md) |
+| `.ods` | `tabular` | strikt | Blätter, Kopfzeile, Zeilengruppen | [Tabellen](formate/tabular.md) |
+| `.odt` | `odt` | strikt | Überschriften bis Ebene 3, Tabellen, Kopf- und Fußzeilen | [OpenDocument Text](formate/odt.md) |
+| `.odp` | `odp` | strikt | eine Folie je Chunk, Titel, Notizen, Masterfolie | [OpenDocument Präsentation](formate/odp.md) |
+| `.html` | `html` | strikt | Überschriften h1 bis h3, Hauptinhalt ohne Navigation, Tabellen, Listen | [HTML](formate/html.md) |
+| `.md` | `markdown` | text-tolerant | Überschriften bis Ebene 3, Frontmatter | [Markdown](formate/markdown.md) |
+| `.txt` | `tika-fallback` | text-tolerant | keine, Token-Fenster | [Auffang-Pipeline](formate/fallback.md) |
+| `.eml` | `email` | text-tolerant | Kopfdaten, Nachrichtentext, Thread-Segmente, Anhänge | [E-Mail](formate/mail.md) |
+| `.msg` | `email` | strikt | wie `.eml` | [E-Mail](formate/mail.md) |
+| Feed-Detailseite | `html` | entfällt | wie `.html`; der Konnektor übergibt die Inhaltsbereiche als HTML | [HTML](formate/html.md) |
+| Confluence-Seite | `confluence` | entfällt | Überschriften h1 bis h3, Tabellen, Listen, Makros nach Regelwerk | [Confluence-Seite](formate/confluence.md) |
 
 ### Bewusst nicht zugelassen
 

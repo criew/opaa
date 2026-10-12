@@ -2,8 +2,8 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Confluence Cloud und Confluence Data
 > Center. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](indexierung.md); die Aufbereitung des Seiteninhalts im Kapitel
-> [Confluence-Seite](format-confluence.md).
+> [Indexierung](../indexierung.md); die Aufbereitung des Seiteninhalts im Kapitel
+> [Confluence-Seite](../formate/confluence.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
@@ -67,7 +67,7 @@ selben Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufproto
 | Edition (`sourceSettings.edition`) | Pflicht, `CLOUD` oder `DATA_CENTER`. Wird beim Anlegen erkannt und ist danach unveränderlich; eine migrierte Instanz wird als neue Bibliothek angelegt. |
 | Zugangsdaten (`sourceCredentials`) | Pflicht. Cloud: `<E-Mail>:<API-Token>`; Data Center: Personal Access Token. Verschlüsselt gespeichert, in keiner API-Antwort sichtbar. |
 | Space-Auswahl (`sourceSettings.spaces`) | Pflicht, mindestens ein Space, höchstens 500. Später änderbar; jede Änderung erzwingt beim nächsten Lauf einen Vollabgleich. |
-| Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional, nur für Testinstanzen. Ein eigenes Zertifikat der Behörden-CA gehört in den Truststore des Backend-Containers (siehe [Deployment](deployment.md)). |
+| Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional, nur für Testinstanzen. Ein eigenes Zertifikat der Behörden-CA gehört in den Truststore des Backend-Containers (siehe [Deployment](../deployment.md)). |
 | Vollabgleich-Rhythmus (`sourceSettings.fullSyncIntervalDays`) | optional, 1 bis 365 Tage, im Zeitplan-Dialog („Vollabgleich alle … Tage"); leer bedeutet die instanzweite Vorgabe (Standard sieben Tage). |
 | Webhook-Geheimnis | optional, in OPAA erzeugt (Abschnitt 8). |
 
@@ -77,7 +77,7 @@ Format der erkannten Edition, „Verbindung testen", Spaces auswählen. Die Ausw
 lesen darf. Über der Auswahl steht der Hinweis, den auch dieses Kapitel wiederholt: Alles, was aus
 den gewählten Spaces indiziert wird, sehen alle Leseberechtigten der Bibliothek.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Ein Zugang für
+**Über einen Zugang** (siehe [Indexierung, Zugänge](../indexierung.md#zugänge)): Ein Zugang für
 Confluence meldet sich mit einem persönlichen Geheimnis an, das der Bibliothek gehört; ihre
 Verwaltenden tragen das Token wie oben ein. Die Adresse ist mit der Server-Adresse des Zugangs
 vorbelegt und muss darunter liegen. Der Zugang darf die **Edition** vorgeben: Dann steht sie nur
@@ -150,7 +150,7 @@ Webhook-Zustand sehen nur Verwaltende (Rolle MANAGER oder Eigentümer), ebenso d
 ### 4.1 Zieladressprüfung
 
 Alle Abrufe, Indizierungsläufe **und** der Verbindungstest, durchlaufen dieselbe Zieladressprüfung
-wie beim [Webverzeichnis](konnektor-http-directory.md#41-zieladressprüfung): Ziele in lokalen,
+wie beim [Webverzeichnis](http-directory.md#41-zieladressprüfung): Ziele in lokalen,
 privaten oder nicht routbaren Adressbereichen werden abgelehnt, auch nach einer Weiterleitung. Ein
 selbst betriebenes Data Center steht praktisch immer in einem solchen Bereich.
 
@@ -290,7 +290,7 @@ OPAA). Er ist einer der wenigen Pfade unter `/api/v1`, die ohne Anmeldung erreic
 derselbe typneutrale Push-Eingang (`push`), den auch S3-Ereignisse nutzen - der einzige schreibende unter
 ihnen; die Nachricht weist sich
 mit dem Geheimnis aus. Der vorgelagerte Proxy **muss**
-`X-Forwarded-For` autoritativ setzen (siehe [Deployment](deployment.md)), sonst greift die
+`X-Forwarded-For` autoritativ setzen (siehe [Deployment](../deployment.md)), sonst greift die
 Ratenbegrenzung je Client nicht.
 
 ### 8.2 Data Center (nativ, signiert)
@@ -342,7 +342,7 @@ Eine site-weite Regel genügt für mehrere Spaces: Seiten außerhalb der Auswahl
   **verworfen**: Der nächste geplante Lauf deckt dieselben Seiten ab. Ein Verwerfen kostet
   Aktualität, nie Korrektheit.
 - Sammeln, Stapelgrenze und Warten sind der gemeinsame Ereigniseingang aller Push-Wege; der
-  [S3-Ereignisweg](konnektor-s3.md) nutzt dieselben Werte.
+  [S3-Ereignisweg](s3.md) nutzt dieselben Werte.
 - Der **Anker des inkrementellen Abgleichs bewegt sich nicht**; der nächste inkrementelle Lauf liest
   die gemeldeten Seiten noch einmal, je ein Auflistungseintrag.
 - **Kein Replay-Schutz:** Eine mitgeschnittene, gültig signierte Nachricht lässt sich wieder
@@ -351,12 +351,12 @@ Eine site-weite Regel genügt für mehrere Spaces: Seiten außerhalb der Auswahl
 - Jede nicht authentifizierte Anfrage (unbekannte Bibliothek, Bibliothek eines anderen Quellentyps,
   kein Geheimnis, falsche Signatur) erhält dieselbe Antwort 401; der Körper ist auf 256 KiB begrenzt
   (413 darüber). Der Eingang ist je Client-Adresse und Bibliothek sowie global ratenbegrenzt (siehe
-  [Deployment](deployment.md)).
+  [Deployment](../deployment.md)).
 
 ## 9. Anhänge
 
 Anhänge einer Seite werden je Seite aufgelistet und einzeln über den gemeinsamen Anhangsweg
-verarbeitet (siehe [Indexierung](indexierung.md#6-anhänge-ein-dokument-in-einem-dokument)). Jeder
+verarbeitet (siehe [Indexierung](../indexierung.md#6-anhänge-ein-dokument-in-einem-dokument)). Jeder
 Anhang ist ein eigenes Dokument mit der Seite als Elterndokument und trägt Space und Gliederungspfad
 der Seite, ergänzt um deren Titel. Ein unveränderter Anhang (gleiche Version) wird vor dem Download
 übersprungen. Ein nicht unterstütztes Format wird als „Format nicht unterstützt" protokolliert und
@@ -487,7 +487,7 @@ gültige Adresse zeigt der Dialog „Webhook einrichten“ nach dem Erzeugen des
 - **Anhänge nur mit dem Vollabgleich vollständig.** Ein neuer oder geänderter Anhang an einer sonst
   unveränderten Seite bewegt deren Änderungszeit nicht; der inkrementelle Lauf sieht ihn nicht, der
   Webhook nur, wenn Confluence das Anhangs-Ereignis meldet.
-- **Makros:** Zur Laufzeit erzeugte Inhalte fallen weg (siehe [Confluence-Seite](format-confluence.md)).
+- **Makros:** Zur Laufzeit erzeugte Inhalte fallen weg (siehe [Confluence-Seite](../formate/confluence.md)).
 - **Ratenbudget der Instanz ist geteilt** zwischen allen Bibliotheken gegen dieselbe Instanz mit
   demselben Dienstkonto; eine instanzweite Koordination der Läufe gibt es nicht.
 - **Webhooks:** kein Replay-Schutz, keine Bestätigung an Confluence über das Ergebnis, Cloud nur
@@ -497,7 +497,7 @@ gültige Adresse zeigt der Dialog „Webhook einrichten“ nach dem Erzeugen des
 
 Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen als
 `OPAA_INDEXING_CONFLUENCE_*`; die vollständige Tabelle mit Erläuterungen steht im
-[Deployment](deployment.md).
+[Deployment](../deployment.md).
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -528,7 +528,7 @@ und die Zieladressprüfung wie in den anderen Kapiteln.
 
 ## 16. Zeitplan
 
-Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](indexierung.md#31-auslöser) beschrieben.
+Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](../indexierung.md#31-auslöser) beschrieben.
 Für Confluence ist ein täglicher Zeitplan üblich: Ein inkrementeller Lauf kostet wenige Anfragen;
 der Vollabgleich läuft nach seinem eigenen Rhythmus mit. Wer Webhooks eingerichtet hat, kann den
 Zeitplan seltener wählen; der Vollabgleich bleibt trotzdem nötig.

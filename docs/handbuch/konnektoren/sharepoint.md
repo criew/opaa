@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für SharePoint. Er liest
 > Dokumentbibliotheken von SharePoint Online über Microsoft Graph und hält sie über das
 > Änderungsprotokoll von Graph aktuell. Der gemeinsame Ablauf eines Indexierungslaufs und die
-> Dokumentstrecke stehen im Kapitel [Indexierung](indexierung.md).
+> Dokumentstrecke stehen im Kapitel [Indexierung](../indexierung.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
@@ -16,7 +16,7 @@
 4. Ein neuer Zugang ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Nach dem
    Anlegen öffnet sich sein Seitenpanel; unter „Wer darf diesen Zugang nutzen?“ festlegen, wer
    Bibliotheken über ihn anlegen darf (dasselbe Anlegerecht „Konnektorbibliotheken anlegen“ wie unter
-   Anlegerechte, [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   Anlegerechte, [Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md), Abschnitt 9).
 5. Bibliothek anlegen: Zugang wählen, die Site über ihre Adresse öffnen, Dokumentbibliotheken und
    bei Bedarf Ordner wählen, „Verbindung testen“ (Abschnitt 3.2). Alles aus den gewählten
    Dokumentbibliotheken ist für **alle** Leseberechtigten der Bibliothek sichtbar.
@@ -262,7 +262,7 @@ bewusst kurz, weil eine Auflistung wenig kostet.
 
 Die Ordnerkette ab der Wurzel der Dokumentbibliothek wird als Ordner der Bibliothek gespiegelt. Bei
 mehreren Dokumentbibliotheken steht ihr Name vorn. Namen, die keine Ordnerzeile tragen kann, und zu
-tiefe Ketten folgen den Regeln des Kapitels [Indexierung](indexierung.md).
+tiefe Ketten folgen den Regeln des Kapitels [Indexierung](../indexierung.md).
 
 ## 7. Übersprungene Dateien
 
@@ -271,7 +271,7 @@ tiefe Ketten folgen den Regeln des Kapitels [Indexierung](indexierung.md).
 - **Dateien, die Microsoft als Schadsoftware kennzeichnet:** übersprungen mit einem Eintrag je
   Datei, kein Download; ein vorhandenes Dokument behält seinen Stand.
 - Dateien in nicht unterstützten Formaten und über der Größengrenze wie bei jedem Konnektor
-  ([Indexierung](indexierung.md)).
+  ([Indexierung](../indexierung.md)).
 
 ## 8. Änderungserkennung
 

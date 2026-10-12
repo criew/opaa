@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Google Drive. Er liest geteilte
 > Ablagen und Ordner eines Google-Workspace-Mandanten und hält sie über das Änderungsprotokoll von
 > Drive aktuell. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im
-> Kapitel [Indexierung](indexierung.md).
+> Kapitel [Indexierung](../indexierung.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
@@ -15,7 +15,7 @@
    „Meine Ablage" eines Kontos nötig (Abschnitt 2.4).
 3. Die Quellart Google Drive ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer
    außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen"
-   für die Quellart Google Drive ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+   für die Quellart Google Drive ([Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md),
    Abschnitt 9).
 4. Bibliothek anlegen: Schlüsseldatei hochladen oder einen Zugang wählen (Abschnitt 2.5), Bereiche
    aus der Auflistung wählen, „Verbindung testen". Alles aus allen Bereichen ist für **alle**
@@ -102,7 +102,7 @@ Ein Schlüssel mit Delegation kann **jedes** Konto der Domäne lesen. Deshalb gi
 
 ### 2.5 Über einen Zugang
 
-Ein Zugang (Verbindungsprofil, [Indexierung](indexierung.md), Abschnitt „Zugänge") trägt den
+Ein Zugang (Verbindungsprofil, [Indexierung](../indexierung.md), Abschnitt „Zugänge") trägt den
 Schlüssel und das imitierte Konto für alle Bibliotheken darauf. Die Bibliothek trägt dann weder
 Schlüssel noch imitiertes Konto, nur ihre Bereiche.
 
@@ -137,7 +137,7 @@ Schlüssel noch imitiertes Konto, nur ihre Bereiche.
   Systemverwaltung kann ihn neu hinterlegen. Bei Google bleibt er gültig: Widerrufen wird er in der
   Cloud Console beim Dienstkonto („Schlüssel" → löschen).
 - **Profilpflicht:** Die Systemverwaltung kann für Google Drive einschalten, dass Bibliotheken nur
-  noch über Zugänge entstehen ([Indexierung](indexierung.md), Abschnitt „Zugänge").
+  noch über Zugänge entstehen ([Indexierung](../indexierung.md), Abschnitt „Zugänge").
 
 ## 3. Quellkonfiguration
 
@@ -204,7 +204,7 @@ ihn.
 
 Die Ordnerkette bis zum Bereich wird als Ordner der Bibliothek gespiegelt. Bei mehreren Bereichen
 steht der Name der Ablage bzw. des Ordners vorn. Namen, die keine Ordnerzeile tragen kann, und zu
-tiefe Ketten folgen den Regeln des Kapitels [Indexierung](indexierung.md).
+tiefe Ketten folgen den Regeln des Kapitels [Indexierung](../indexierung.md).
 
 ## 7. Google-Formate
 

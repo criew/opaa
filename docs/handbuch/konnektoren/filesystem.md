@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Verzeichnisse auf dem Server. Der
 > gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](indexierung.md); hier geht es nur um das, was dieser Konnektor anders macht als
+> [Indexierung](../indexierung.md); hier geht es nur um das, was dieser Konnektor anders macht als
 > die anderen.
 
 ## 1. Wofür er gedacht ist
@@ -74,7 +74,7 @@ tatsächlich.** Für jedes freigegebene Verzeichnis muss die Kennung 65532 es be
 Dateien lesen (`r`) dürfen: über die Rechte für „andere" (`chmod -R o+rX`), über eine gemeinsame
 Gruppe oder, auf einem Netzlaufwerk, über die Mount-Optionen (`uid=65532,gid=65532`). Ein `chown`
 auf den Korpus ist der falsche Weg, wenn ihn ein Fachverfahren befüllt — das nähme dem Schreiber die
-Rechte; Einzelheiten im [Deployment-Kapitel](deployment.md), Abschnitt „Nicht-root-Betrieb des
+Rechte; Einzelheiten im [Deployment-Kapitel](../deployment.md), Abschnitt „Nicht-root-Betrieb des
 Backend-Containers". Ein Netzlaufwerk sollte schreibgeschützt eingebunden werden.
 
 Ein **Unterverzeichnis**, das der Prozess nicht betreten darf, wird übersprungen, statt den Lauf
@@ -236,7 +236,7 @@ Verzeichnispfad selbst nicht lesbar, scheitert der Lauf (Abschnitt 5).
 | entfernt | In der Quelle nicht mehr gefunden, entfernt | Löscherkennung |
 | Zeitplan übersprungen | Geplanter Lauf übersprungen: Indizierung läuft bereits | Zeitplan trifft laufenden Lauf |
 
-Anhänge erzeugen zusätzlich die im Kapitel [Indexierung](indexierung.md) beschriebenen
+Anhänge erzeugen zusätzlich die im Kapitel [Indexierung](../indexierung.md) beschriebenen
 Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeitung fehlgeschlagen).
 
 ## 11. Grenzfälle
@@ -264,7 +264,7 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 | `opaa.library.quota-bytes` | `OPAA_LIBRARY_QUOTA_BYTES` | 10 GiB | Speicherkontingent je Bibliothek, 0 oder negativ hebt es auf. |
 
 Chunking- und Embedding-Einstellungen gelten für alle Quellen und stehen im Kapitel
-[Indexierung](indexierung.md); die Grenzen für Mail-Anhänge im Kapitel [E-Mail](format-mail.md).
+[Indexierung](../indexierung.md); die Grenzen für Mail-Anhänge im Kapitel [E-Mail](../formate/mail.md).
 
 ## 13. Nicht gebaut
 

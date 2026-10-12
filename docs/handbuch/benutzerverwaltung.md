@@ -424,7 +424,7 @@ Person; deren Inhalt ist, was sie beim Anbieter selbst sehen darf. Einen Zugang,
 Konten verbinden können, legt die Systemverwaltung mit der Besitzart „Person“ oder „Bibliothek und
 Person“ an und gibt ihn frei ([Indexierung](indexierung.md), „Zugänge“). Von den mitgelieferten
 Konnektoren lässt **Nextcloud** die Besitzart „Person“ zu; die Person verbindet dort ein eigenes
-App-Passwort ([Konnektor Nextcloud](konnektor-nextcloud.md), „Verbundenes Konto“).
+App-Passwort ([Konnektor Nextcloud](konnektoren/nextcloud.md), „Verbundenes Konto“).
 
 **Das Verbinden ist freiwillig.** Niemand muss ein Konto verbinden, und ein Verzicht hat keine
 Nachteile: Nichts in OPAA setzt ein verbundenes Konto voraus oder fordert dazu auf. Auch diese Seite

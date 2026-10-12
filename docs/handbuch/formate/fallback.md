@@ -1,7 +1,7 @@
 # Format: Auffang-Pipeline (TXT, DOC)
 
 > **Entwurf.** Pipeline `tika-fallback`, Version 1. Der gemeinsame Rahmen aller
-> Format-Pipelines steht im Kapitel [Indexierung](indexierung.md), Abschnitt 5.
+> Format-Pipelines steht im Kapitel [Indexierung](../indexierung.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
 
@@ -15,8 +15,8 @@ Pipeline registriert ist:
 | Dateien, deren Format nicht lesbar war | Rückfall mit Vermerk am Chunk, dass die Formaterkennung gescheitert ist |
 
 Inhalte, die nie eine Datei waren, laufen **nicht** hier: Die Detailseiten des
-[Feed-Konnektors](konnektor-rss-feed.md) gehen an die [HTML-Pipeline](format-html.md), die
-Seiten des Confluence-Konnektors an die [Confluence-Pipeline](format-confluence.md).
+[Feed-Konnektors](../konnektoren/rss-feed.md) gehen an die [HTML-Pipeline](html.md), die
+Seiten des Confluence-Konnektors an die [Confluence-Pipeline](confluence.md).
 
 ## 2. Was gelesen wird
 
@@ -39,7 +39,7 @@ voran, damit ein Satz an der Schnittkante in beiden Chunks vollständig steht. S
 Pipeline mit Überlappung; die strukturbewussten Pipelines schneiden an Abschnittsgrenzen und
 brauchen sie nicht.
 
-Die beiden Schlüssel gelten **nur** hier und für den Rückfall in der [Mail-Pipeline](format-mail.md).
+Die beiden Schlüssel gelten **nur** hier und für den Rückfall in der [Mail-Pipeline](mail.md).
 Alle anderen Pipelines haben feste, projektseitig gesetzte Größen.
 
 ## 4. Metadaten am Chunk
@@ -57,7 +57,7 @@ Die Ortsangabe beschreibt den Beginn des Chunks vor der Überlappung. Die Seiten
 vor dem Speichern und Embedden wieder entfernt.
 
 **Dokumenteigenschaften:** nur die erste Textzeile als Titelzeile. Für `.txt` und `.doc` stehen
-dem [Metadatenschema](metadaten.md) sonst nur Dateiname und Struktur zur Verfügung.
+dem [Metadatenschema](../metadaten.md) sonst nur Dateiname und Struktur zur Verfügung.
 
 ## 5. Scans und Fehler
 

@@ -164,7 +164,7 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`handbuch/suche.md`](./handbuch/suche.md)** — die Abfragestrecke: Suchbereich und Rechtefilter,
   Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung,
   Diagnosewerkzeug, Konfiguration
-- **[`handbuch/konnektor-confluence.md`](./handbuch/konnektor-confluence.md)** — der Confluence-Konnektor:
+- **[`handbuch/konnektor-confluence.md`](handbuch/konnektoren/confluence.md)** — der Confluence-Konnektor:
   Einrichtung je Edition, Zielprüfung, Betriebsarten und Löschsemantik, Webhooks, Ratenbegrenzung und
   Anfragebudget, Kennzahlen, Grenzen, Fehlerbehebung
 - **[`handbuch/metadaten.md`](./handbuch/metadaten.md)** — die Kernfelder Titel, Dokumentart und

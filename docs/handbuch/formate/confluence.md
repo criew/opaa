@@ -1,8 +1,8 @@
 # Format: Confluence-Seite
 
 > **Entwurf.** Pipeline `confluence`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines
-> steht im Kapitel [Indexierung](indexierung.md), Abschnitt 5; wie die Seiten in die Bibliothek
-> gelangen, im Kapitel [Confluence](konnektor-confluence.md).
+> steht im Kapitel [Indexierung](../indexierung.md), Abschnitt 5; wie die Seiten in die Bibliothek
+> gelangen, im Kapitel [Confluence](../konnektoren/confluence.md).
 
 ## 1. Wann sie läuft
 
@@ -19,7 +19,7 @@ HTML-Pipeline).
 
 Der Seitenkörper wird mit einem XML-Parser gelesen, damit die Makro-Elemente erhalten bleiben. Das
 XHTML selbst (Blöcke, Überschriften, Tabellen, Listen) liest derselbe Ereignisleser wie bei
-[HTML](format-html.md); die Makro-Elemente kommen als Confluence-eigene Erweiterung hinzu. Die
+[HTML](html.md); die Makro-Elemente kommen als Confluence-eigene Erweiterung hinzu. Die
 Kernfrage ist nicht Boilerplate wie bei HTML, sondern **welcher Makro-Inhalt Seiteninhalt ist** und
 welcher erst beim Anzeigen aus anderen Quellen zusammengesetzt wird. Die Trennlinie ist, wo der
 Inhalt lebt:
@@ -71,7 +71,7 @@ flowchart TB
 Die Chunk-Größen sind fest: rund 4.000 Zeichen je Chunk, größere Abschnitte werden ohne
 Textverlust geteilt, Abschnitte unter 200 Zeichen unter derselben übergeordneten Überschrift
 zusammengelegt, dieselben Regeln wie bei den anderen überschriftengetriebenen Pipelines
-(Kapitel [Indexierung](indexierung.md), Schritt 4).
+(Kapitel [Indexierung](../indexierung.md), Schritt 4).
 
 ## 4. Metadaten am Chunk
 
@@ -86,7 +86,7 @@ Space und Gliederungspfad stehen nicht im Seitenkörper; der Konnektor kennt sie
 das Dokument und an jeden Chunk. Der **Kontexttitel** für das Embedding ist der Ort der Seite im
 Space, Gliederungspfad plus Titel („Handbuch / Kapitel 1 / Abschnitt 1.1"), nicht nur der Titel.
 
-**Dokumenteigenschaften** für das [Metadatenschema](metadaten.md): der Seitentitel als Titel und der
+**Dokumenteigenschaften** für das [Metadatenschema](../metadaten.md): der Seitentitel als Titel und der
 Zeitpunkt der aktuellen Seitenversion als Änderungsdatum — daraus wird **Datum/Stand** ermittelt.
 Der Seitentitel gilt dabei **nicht** als Dateiname: Weder seine Wörter liefern die Dokumentart noch
 eine Jahreszahl darin den Stand — „Gebührensatzung 2024" ist die Überschrift einer Wiki-Seite über

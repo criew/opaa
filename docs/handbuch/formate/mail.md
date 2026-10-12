@@ -1,7 +1,7 @@
 # Format: E-Mail (EML, MSG)
 
 > **Entwurf.** Pipeline `email`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
-> im Kapitel [Indexierung](indexierung.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 6.
+> im Kapitel [Indexierung](../indexierung.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 6.
 
 ## 1. Zulassung
 
@@ -77,7 +77,7 @@ Am Chunk trägt die Mail-Pipeline nur die Ortsangabe wie jede andere Pipeline:
 
 Die Kopfdaten selbst sind **Werte des Metadatenschemas am Dokument**, keine
 mail-eigenen Chunk-Schlüssel — dieselbe Mechanik wie bei den Kernfeldern, mit Herkunft
-„deterministisch" und Extraktionsversion (siehe [Metadaten](metadaten.md), Abschnitt 2a):
+„deterministisch" und Extraktionsversion (siehe [Metadaten](../metadaten.md), Abschnitt 2a):
 
 | Feld | Inhalt | Filterbar |
 |---|---|---|
@@ -144,7 +144,7 @@ Schlüssel unter `opaa.indexing.mail.*`:
 | `max-attachment-bytes` | 50 MiB | je Anhang |
 
 Die Verschachtelungstiefe für Mail-in-Mail ist kein eigener Mail-Schlüssel, sondern
-die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Indexierung](indexierung.md)) - dieselbe
+die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Indexierung](../indexierung.md)) - dieselbe
 Grenze gilt für jede Anhangskette, unabhängig vom Konnektor.
 
 Die Anhangsgrenzen oben schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang
