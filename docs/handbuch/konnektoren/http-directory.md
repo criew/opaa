@@ -120,14 +120,14 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 - **Drosselung.** Nur bei HTTP 429 wartet der Lauf die in `Retry-After` genannte Zeit und wiederholt;
   jeder andere Fehlschlag ist für diesen Lauf endgültig.
 
-| Grenze | Standard | Bei Überschreitung |
+| Grenze | Parameter oder fester Wert | Bei Überschreitung |
 |---|---|---|
-| Verzeichnistiefe | 10, Wurzel ist 0 | Crawl abgeschnitten |
-| Einträge (Dateien und besuchte Verzeichnisse) | 50.000 | Crawl abgeschnitten |
-| Datei | 100 MiB | Datei abgewiesen; geprüft an `Content-Length` und während des Downloads |
+| Verzeichnistiefe | `opaa.indexing.crawl.max-depth`, Wurzel ist 0 | Crawl abgeschnitten |
+| Einträge (Dateien und besuchte Verzeichnisse) | `opaa.indexing.crawl.max-entries` | Crawl abgeschnitten |
+| Datei | `opaa.indexing.crawl.max-file-size-bytes` | Datei abgewiesen; geprüft an `Content-Length` und während des Downloads |
 | Verzeichnisseite | 8 MiB, fest | Unterverzeichnis nicht abrufbar; an der Wurzel scheitert der Lauf |
-| Anfragen je Lauf | unbegrenzt | „unvollständig, wird fortgesetzt" |
-| Summe der 429-Wartezeiten je Lauf | 15 Minuten | „unvollständig, wird fortgesetzt" |
+| Anfragen je Lauf | `opaa.indexing.http.request-budget-per-run` | „unvollständig, wird fortgesetzt" |
+| Summe der 429-Wartezeiten je Lauf | `opaa.indexing.http.max-rate-limit-wait-per-run` | „unvollständig, wird fortgesetzt" |
 
 Zeitlimits: 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei. Grenzen gegen
 komprimierte Inhalte liegen in den Formaten. DNS-Rebinding bleibt eine bekannte Restlücke.

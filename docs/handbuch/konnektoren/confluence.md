@@ -105,8 +105,9 @@ Kontingent etwas ablehnte, ist der nächste Lauf wieder ein Vollabgleich, denn k
 Lauf fände die abgelehnte Seite.
 
 **Größe und Zeitplan.** Eine Seite kostet etwa zwei Anfragen (Inhalt, Anhangsliste) plus ihre
-Anhänge und einen Anteil der Auflistung; das Standardbudget deckt rund 20.000 Seiten je Lauf. Ein
-erster Vollabgleich über 100.000 Seiten braucht also etwa fünf Läufe. Ein täglicher Zeitplan ist
+Anhänge und einen Anteil der Auflistung; ein Lauf schafft also rund halb so viele Seiten, wie
+`request-budget-per-run` Anfragen erlaubt. Ein großer erster Vollabgleich braucht entsprechend
+mehrere Läufe. Ein täglicher Zeitplan ist
 üblich; der Vollabgleich läuft in seinem eigenen Rhythmus mit und bleibt auch mit Webhooks nötig,
 weil nur er Löschungen nachvollzieht. Sein Rhythmus ist verlängerbar, nicht abschaltbar.
 
@@ -117,7 +118,9 @@ falsch, nur später.
 
 **Einrichten.** Unter Quelle → Anbindung, Zeile „Webhook", **„Webhook einrichten"**. OPAA zeigt das
 Geheimnis **einmal**, zusammen mit der Adresse des Eingangs
-`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`. „Geheimnis neu erzeugen" rotiert,
+`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`. „Geheimnis neu erzeugen" rotiert: Das
+alte Geheimnis gilt sofort nicht mehr, und das neue muss in Confluence nachgetragen werden — sonst
+gehen Benachrichtigungen still verloren, und nur der Vollabgleich fängt die Änderungen auf.
 „Webhook entfernen" schließt den Eingang. Der Eingang muss von Confluence aus erreichbar sein, über
 TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen ([Deployment](../deployment.md)), sonst
 greift die Ratenbegrenzung je Client nicht.
@@ -195,23 +198,23 @@ Eine Seite ohne Text bekommt kein eigenes Dokument; ihre Anhänge werden trotzde
   Site, das sich alle Bibliotheken mit demselben Dienstkonto teilen; Data Center bremst ab Werk
   nicht. Andere Fehler, etwa 503 im Wartungsfenster, werden nicht wiederholt.
 
-| Grenze | Standard | Bei Überschreitung |
+| Grenze | Parameter oder fester Wert | Bei Überschreitung |
 |---|---|---|
-| JSON-Antwort | 10 MiB | Anfrage scheitert |
-| Anhang | 20 MiB | dieser Anhang entfällt |
-| Seiten je Auflistung | 500 (bei Seitengröße 100 also 50.000 Einträge) | Auflistung bricht mit Fehler ab; der Vollabgleich bereinigt nichts |
-| Anfragen je Lauf | 50.000 | „unvollständig, wird fortgesetzt" |
-| Spaces je Bibliothek | 500 | wird beim Anlegen abgewiesen |
+| JSON-Antwort | `max-response-bytes` | Anfrage scheitert |
+| Anhang | `max-attachment-size-bytes` | dieser Anhang entfällt |
+| Seiten je Auflistung | `max-listing-pages` (mal `page-size` Einträge) | Auflistung bricht mit Fehler ab; der Vollabgleich bereinigt nichts |
+| Anfragen je Lauf | `request-budget-per-run` | „unvollständig, wird fortgesetzt" |
+| Spaces je Bibliothek | 500, fest | wird beim Anlegen abgewiesen |
 
-Zeitlimits: 30 s je JSON-Anfrage und Verbindungsaufbau, 10 s je Sonde der Editionserkennung, 120 s
-bis zur Antwort eines Anhangs. Makros, deren Inhalt erst zur Laufzeit entsteht, fallen weg.
+Zeitlimits: `request-timeout` je JSON-Anfrage, `detection-timeout` je Sonde der Editionserkennung,
+fest 30 s Verbindungsaufbau und 120 s bis zur Antwort eines Anhangs. Makros, deren Inhalt erst zur Laufzeit entsteht, fallen weg.
 
 ## 10. Protokoll und Fehlerbilder
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
 | Verbindungstest: Ziel abgewiesen | Zieladressprüfung blockt die private Adresse | Hostnamen freigeben |
-| „Edition erkennen" findet kein Confluence | Kontextpfad fehlt, die Instanz liegt hinter einer Anmeldung ohne REST-Zugang, oder der [Ausgangsproxy](../deployment.md#ausgangsproxy) fehlt | Adresse mit Kontextpfad; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
+| „Edition erkennen" findet kein Confluence | Kontextpfad fehlt, oder die Instanz liegt hinter einer Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
 | Data Center: Token „nicht angenommen", obwohl es im Browser geht | Token ungültig oder abgelaufen, oder das Konto darf REST nicht nutzen | neues Token, Rechte prüfen |
 | Verbindungstest gut, Space-Auswahl leer | Konto hat auf keinen Space „Ansehen" | Space-Rechte setzen |
 | „Seite „…" (Space …) ist für das hinterlegte Dienstkonto nicht lesbar oder nicht mehr vorhanden …" | 404 oder 403 beim Einzelabruf; der Stand bleibt | Rechte prüfen |

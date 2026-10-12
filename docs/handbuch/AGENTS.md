@@ -45,7 +45,9 @@ an. Ein Abschnitt, der für den Konnektor nicht zutrifft, entfällt; die Nummern
 Was mehrere Konnektoren teilen — Abgleichstand, Zieladressprüfung, der Abgleich der Dateiablagen —
 steht nur in `konnektoren/README.md`; das Kapitel verweist und nennt nur seine Abweichung.
 **Keine API-Feldnamen** wie `sourceCredentials`: Der Betrieb sieht nur die Oberfläche. Parameternamen
-der Konfiguration bleiben erlaubt.
+der Konfiguration bleiben erlaubt. **Werte nur einmal:** „Grenzen und Schutzmechanismen" nennt die
+Grenze und ihren Parameter, den Standardwert nur „Konfiguration"; feste, nicht konfigurierbare
+Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards aus.
 
 ## Verweise
 
