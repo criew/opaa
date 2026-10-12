@@ -80,9 +80,9 @@ der Zugriff fehlt.
 Angelegt wird über **„Neu"** im Katalog: Nach der Wahl der Art „Prompts" öffnet „Weiter" einen
 Assistenten mit drei Schritten ([Katalog](katalog.md), Abschnitt 4). Er verwendet dieselben
 Formularbausteine wie der Assistent einer Wissensbibliothek, schneidet sie aber anders zu: Es gibt
-keine Schritte „Art des Wissens" und „Quelle" — eine Prompt-Bibliothek bindet kein Wissen und hat
-keine Quelle —, und Eigentümer und Rechte stehen in zwei eigenen Schritten statt zusammen in einem
-Schritt „Freigaben":
+keine Schritte „Quellart" und „Quelle einrichten" — eine Prompt-Bibliothek bindet kein Wissen und
+hat keine Quelle —, und Eigentümer und Rechte stehen in zwei eigenen Schritten statt zusammen in
+einem Schritt „Freigaben":
 
 1. **Stammdaten** — Name und, optional, Beschreibung.
 2. **Eigentümer** — „Mein Konto" oder „Eine Gruppe". Angeboten werden nur Gruppen, in denen die

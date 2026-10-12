@@ -507,8 +507,8 @@ Fünf Punkte dazu:
   im Katalog erscheinen nur die Arten, für die die Person ein Anlegerecht hat; ohne jedes fehlt
   „Neu" ganz (Abschnitt 4, „Anlegen über ‚Neu'"). Wer einen Assistenten direkt aufruft, liest das
   fehlende Recht beim Namen und erfährt, an wen man sich wendet. Im Wissens-Assistenten erscheint
-  eine Quellart, deren Recht fehlt, gar nicht; darf die Person keine anlegen, sagt der Schritt „Art
-  des Wissens“ das und verweist an die Systemverwaltung.
+  eine Quellart, deren Recht fehlt, gar nicht; darf die Person keine anlegen, sagt der Schritt
+  „Quellart“ das und verweist an die Systemverwaltung.
 
 ### Konnektor-Freigabe: je Quellart und je Zugang
 

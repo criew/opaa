@@ -275,8 +275,8 @@ export async function createLibraryWithDocuments(
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
   await openNewLibraryWizard(page)
-  // #1942: Schrittfolge „Art des Wissens · Name & Beschreibung · Freigaben" - Upload ist
-  // vorausgewählt und hat keinen Schritt „Quelle".
+  // #1942: Schrittfolge „Quellart · Name & Beschreibung · Freigaben" - Upload ist
+  // vorausgewählt und hat keinen Schritt „Quelle einrichten".
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(libraryName)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
