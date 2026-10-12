@@ -116,25 +116,10 @@ Unter **Administration → Anbindungen** kann die Systemverwaltung zweierlei:
 
 Sperren, Entsperren und das Umschalten stehen im Revisionsprotokoll.
 
-## 7. Wenn eine Bibliothek nicht mehr aktualisiert wird
+Kann eine Wissensbibliothek ihre Quelle nicht erreichen, nennt ihr Reiter „Quelle" den Grund und
+wer ihn beheben kann ([Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 6.4).
 
-Kann ein Lauf seine Quelle nicht erreichen, endet er vor dem ersten Dokument mit einer Meldung, die
-die zuständige Stelle nennt. Der Bestand bleibt durchsuchbar, und im Reiter „Quelle" bietet der
-Hinweis den Verwaltenden die Aktion an, die ihn aufhebt.
-
-**Tabelle 7.1: Meldungen und wer sie beheben kann**
-
-| Meldung | Ursache | Zuständig |
-|---|---|---|
-| „Zugang entfernt" | Der Zugang wurde gelöscht | Verwaltende der Bibliothek: anderen Zugang zuordnen |
-| „Verbindung getrennt" | Die Zugangsdaten fehlen, etwa nach einer Adressänderung oder der Notabschaltung | Verwaltende der Bibliothek: neu eintragen; meldet sich der Zugang selbst an, die Systemverwaltung |
-| „Abgelaufen: Der Anbieter hat die Anmeldung des Zugangs … abgelehnt" | Client-Secret oder Schlüssel des Zugangs wurde abgewiesen | Systemverwaltung: neu eintragen oder „Anmeldung testen" |
-| „Nicht verbunden" bzw. „Abgelaufen: Die Verbindung der Quelle …" | Die Quelle wurde noch nicht verbunden, getrennt, oder der Anbieter nimmt die Zustimmung nicht mehr an | Verwaltende der Bibliothek: Quelle neu verbinden |
-| „Die Adresse der Bibliothek liegt nicht unter …" | Die Adresse passt nicht mehr zum Zugang | Verwaltende der Bibliothek |
-| „Gesperrt – Inhalt wird nicht mehr aktualisiert" | Zugang oder Quellart ist gesperrt | Systemverwaltung |
-| „… ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene Adresse" | „Nur über Zugänge" ist eingeschaltet, und der Bestand wurde gesperrt | Verwaltende der Bibliothek: einem Zugang zuordnen |
-
-## 8. Sicherheit und Nachweis
+## 7. Sicherheit und Nachweis
 
 - Client-Secrets, Schlüssel, Zugangsdaten und Token liegen verschlüsselt. Keine Antwort, kein
   Protokoll und kein Revisionseintrag enthält sie; angezeigt wird nur, ob eines hinterlegt ist.
@@ -145,9 +130,9 @@ Hinweis den Verwaltenden die Aktion an, die ihn aufhebt.
   Revisionsprotokoll. Das Verbindungsprotokoll hält fest, wann Konten und Quellen verbunden und
   getrennt wurden ([Berechtigungen](berechtigungen.md), Abschnitt 12).
 
-## 9. Konfiguration
+## 8. Konfiguration
 
-**Tabelle 9.1: Konfigurationsschlüssel der Zugänge**
+**Tabelle 8.1: Konfigurationsschlüssel der Zugänge**
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -160,5 +145,4 @@ Die Aufbewahrungsfrist des Verbindungsprotokolls stellt die Systemverwaltung unt
 
 - [Tabelle 3.1: Angaben eines Zugangs](#3-was-ein-zugang-festlegt)
 - [Tabelle 5.1: Typische Anlässe, einen Zugang zu ändern](#5-einen-zugang-pflegen)
-- [Tabelle 7.1: Meldungen und wer sie beheben kann](#7-wenn-eine-bibliothek-nicht-mehr-aktualisiert-wird)
-- [Tabelle 9.1: Konfigurationsschlüssel der Zugänge](#9-konfiguration)
+- [Tabelle 8.1: Konfigurationsschlüssel der Zugänge](#8-konfiguration)
