@@ -85,8 +85,9 @@ Dateiserver — gibt der Betrieb frei, indem er ihren Hostnamen in
 OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=wiki.behoerde.example,minio.intern.example
 ```
 
-Ein fehlender Eintrag zeigt sich beim Speichern und im Verbindungstest als abgewiesenes Ziel, nicht
-als Anmeldefehler; die Meldung nennt die Einstellung. Die Prüfung lässt sich mit
+Die Liste liest das Backend beim Start; eine Änderung wirkt erst nach einem Neustart. Ein fehlender
+Eintrag zeigt sich beim Speichern und im Verbindungstest als abgewiesenes Ziel, nicht als
+Anmeldefehler; die Meldung nennt die Einstellung. Die Prüfung lässt sich mit
 `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` ganz abschalten, die Schemaprüfung bleibt dann. Eine
 Restlücke bleibt: DNS-Rebinding, bei dem ein Name zwischen Prüfung und Verbindung auf eine andere
 Adresse wechselt.
