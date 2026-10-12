@@ -1,7 +1,7 @@
 # Format: Tabellen (XLSX, CSV, ODS)
 
 > **Entwurf.** Pipeline `tabular`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht
-> im Kapitel [Indexierung](indexierung.md), Abschnitt 5.
+> im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
 
 ## 1. Zulassung
 

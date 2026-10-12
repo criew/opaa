@@ -88,8 +88,8 @@ PRESERVED_FILES = {
     ),
 }
 
-HANDBOOK_FORMAT_CHAPTER = REPO_ROOT / "docs" / "handbuch" / "indexierung.md"
-_HANDBOOK_SECTION = "## Anhang: Formatübersicht"
+HANDBOOK_FORMAT_CHAPTER = REPO_ROOT / "docs" / "handbuch" / "formate" / "README.md"
+_HANDBOOK_SECTION = "## Zugelassene Formate"
 _HANDBOOK_EXTENSION_ROW = re.compile(r"^\|\s*`(\.[a-z0-9]+)`\s*\|")
 # The Formatübersicht lists at least the formats of #1058/#1057/#1059/#1189; a parse finding fewer
 # than this read the wrong thing rather than a genuinely shrunken table.
@@ -97,7 +97,7 @@ _MINIMUM_ADMITTED_EXTENSIONS = 10
 
 
 def admitted_extensions() -> list[str]:
-    """Every extension the Formatübersicht of docs/handbuch/indexierung.md admits, read from that
+    """Every extension the format overview docs/handbuch/formate/README.md admits, read from that
     table rather than copied here - a fifteenth format must never leave SOURCE.md claiming full
     coverage. Rows without an extension in the first column (Feed-Detailseite, Confluence-Seite)
     are no file extension and are skipped.

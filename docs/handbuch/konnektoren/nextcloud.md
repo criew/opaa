@@ -2,19 +2,19 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Nextcloud, auch als Dateiablage von
 > openDesk. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](indexierung.md).
+> [Wissensbibliotheken](../wissensbibliotheken.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
 1. Nextcloud im privaten Netz? Ihren Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
-   eintragen ([Deployment](deployment.md)).
+   eintragen ([Deployment](../deployment.md)).
 2. In der Nextcloud einen **technischen Nutzer** anlegen. Die gewünschten Ordner mit ihm teilen
    (Lesen genügt) oder ihn in die Gruppe eines Gruppenordners aufnehmen. Für ihn ein
    **App-Passwort** erzeugen.
 3. Die Quellart Nextcloud ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer
    außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen"
    für die Quellart Nextcloud oder für einen Zugang
-   ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   ([Berechtigungen](../berechtigungen.md), Abschnitt 9).
 4. Bibliothek anlegen: Adresse, Benutzername, App-Passwort, Ordner („Ordner laden“ hilft),
    „Verbindung testen“. Alles aus diesen Ordnern ist für **alle** Leseberechtigten der Bibliothek
    sichtbar.
@@ -74,7 +74,7 @@ oder „Gruppenordner“. Ein Klick übernimmt den Ordner. **„Verbindung teste
 prüft jeden Ordner. Gemeldet wird, welcher Ordner für den Nutzer nicht lesbar ist oder ob die
 Zugangsdaten abgelehnt wurden.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Ein Zugang für
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Ein Zugang für
 Nextcloud gibt Server-Adresse, Proxy und Zertifikatsprüfung vor und meldet sich mit einem
 persönlichen Geheimnis an. Bei der Besitzart „Bibliothek“ gehört es der Bibliothek: Benutzername
 und App-Passwort des technischen Nutzers tragen ihre Verwaltenden wie oben ein. Bei der Besitzart
@@ -99,7 +99,7 @@ Ordner wählt jede Bibliothek selbst.
 Über einen Zugang mit der Besitzart „Person“ (oder „Bibliothek und Person“) bindet eine Person ihre
 **eigene** Nextcloud an, ohne technischen Nutzer. Daraus entsteht eine **private Bibliothek**: Sie
 liest, was das Konto der Person in der Nextcloud sieht, und außer ihr liest sie niemand
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
+([Private Bibliotheken](../private-bibliotheken.md)).
 
 1. **App-Passwort anlegen.** In der eigenen Nextcloud unter *Persönliche Einstellungen › Sicherheit
    › Geräte & Sitzungen* einen Namen wie „OPAA“ eingeben und „Neues App-Passwort erstellen“ wählen.
@@ -108,7 +108,7 @@ liest, was das Konto der Person in der Nextcloud sieht, und außer ihr liest sie
    widerrufen.
 2. **Konto verbinden.** In OPAA unter *Einstellungen › Verbundene Konten* beim Zugang „Verbinden“
    wählen, Benutzername und App-Passwort eintragen. OPAA meldet sich damit an und speichert es nur,
-   wenn die Anmeldung gelingt ([Benutzerverwaltung](benutzerverwaltung.md), „Verbundene Konten“).
+   wenn die Anmeldung gelingt ([Benutzerverwaltung](../benutzerverwaltung.md), „Verbundene Konten“).
 3. **Private Bibliothek anlegen.** Im Assistenten im Schritt „Quelle“ unter **„Über mein
    verbundenes Konto“** den Zugang wählen, dann die Ordner wie oben; „Ordner laden“ zeigt die
    Ordner im Stamm des eigenen Kontos. Ein Feld für Zugangsdaten gibt es nicht.
@@ -236,7 +236,7 @@ Eine Ratenbegrenzung (`429`) wartet OPAA ab und wiederholt, wie bei den anderen 
 ## 8. Konfiguration
 
 Instanzweit unter `opaa.indexing.nextcloud.*`, als Umgebungsvariablen `OPAA_INDEXING_NEXTCLOUD_*`
-(Liste im Kapitel [Deployment](deployment.md)):
+(Liste im Kapitel [Deployment](../deployment.md)):
 
 | Eigenschaft | Standard | Wirkung |
 |---|---|---|

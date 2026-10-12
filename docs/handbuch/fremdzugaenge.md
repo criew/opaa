@@ -114,7 +114,7 @@ und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem Pan
 
 ## 4. Die Freigabe einer Wissensbibliothek
 
-Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Raum. Jede Bibliothek trägt im Reiter
+Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Space. Jede Bibliothek trägt im Reiter
 **„Freigaben"** ihrer Detailseite, Abschnitt **„Externer Zugang"**, das Merkmal „über Fremdzugänge
 nutzbar", Standard **aus**. Setzen darf es, wer die Bibliothek verwaltet (Verwalter-Rolle), sowie
 die Systemverwaltung. Eine zusätzliche
@@ -727,4 +727,4 @@ erinnert zu werden.
 - Anmeldeverfahren, Umgebungsvariablen, Reverse Proxy, Rücksicherung: [Deployment](deployment.md)
 - Konten sperren, übergeben und löschen — und was das mit Tokens macht:
   [Benutzerverwaltung](benutzerverwaltung.md)
-- Welche Bestände es überhaupt gibt und wie sie entstehen: [Indexierung](indexierung.md)
+- Welche Bestände es überhaupt gibt und wie sie entstehen: [Wissensbibliotheken](wissensbibliotheken.md)

@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Dropbox. Er liest Ordner einer Dropbox,
 > auch den Team-Bereich eines Dropbox-Teams, über die Dropbox-API und hält sie über das
 > Änderungsprotokoll von Dropbox aktuell. Der gemeinsame Ablauf eines Indexierungslaufs, die
-> Dokumentstrecke und „Quelle verbinden“ stehen im Kapitel [Indexierung](indexierung.md).
+> Dokumentstrecke und „Quelle verbinden“ stehen im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
@@ -16,7 +16,7 @@
 3. Ein neuer Zugang ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Nach dem
    Anlegen öffnet sich sein Seitenpanel; unter „Wer darf diesen Zugang nutzen?“ festlegen, wer
    Bibliotheken über ihn anlegen darf (dasselbe Anlegerecht „Konnektorbibliotheken anlegen“ wie unter
-   Anlegerechte, [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   Anlegerechte, [Berechtigungen](../berechtigungen.md), Abschnitt 9).
 4. Bibliothek anlegen: Zugang wählen, „Quelle verbinden“ und bei Dropbox mit einem **Dienstkonto**
    zustimmen, Ordner wählen, „Verbindung testen“ (Abschnitt 3). Alles aus den gewählten Ordnern ist
    für **alle** Leseberechtigten der Bibliothek sichtbar.
@@ -46,7 +46,7 @@ und Verschieben machen aus der Datei deshalb ein neues Dokument; das alte wird e
 `dropbox:<pfad>` länger als die Identität eines Dokuments fassen kann, wird die Datei nicht
 geladen. Sie erscheint bei jedem Vollabgleich und nach jeder Änderung der Datei als abgewiesen im
 Protokoll (Kapitel
-[Indexierung](indexierung.md), „Schritt 1: Prüfsumme und Identität“).
+[Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1).
 
 ## 2. Einrichtung bei Dropbox
 
@@ -63,7 +63,7 @@ Bibliothek, nicht der Person, die sie erteilt hat.
    braucht OPAA nicht.
 3. Unter „Settings“ bei „Redirect URIs“ die Rücksprungadresse eintragen:
    `<öffentliche Adresse von OPAA>/connections/callback`. Die öffentliche Adresse ist die aus
-   `OPAA_PUBLIC_BASE_URL` ([Deployment](deployment.md)).
+   `OPAA_PUBLIC_BASE_URL` ([Deployment](../deployment.md)).
 4. „App key“ und „App secret“ notieren.
 
 Eine App im Entwicklungsmodus genügt für wenige Konten. Für mehr Konten gibt Dropbox die App nach
@@ -104,7 +104,7 @@ ausscheidet. OPAA nennt das Konto nach der Zustimmung mit seiner E-Mail-Adresse 
 
 Die Bibliothek trägt kein Secret, nur ihre Zustimmung und ihre Ordner. Was eine geänderte
 Registrierung, die Notabschaltung und das Löschen des Zugangs mit den Zustimmungen tun, steht im
-Kapitel [Indexierung](indexierung.md), Abschnitt „Zugänge“.
+Kapitel [Zugänge](../zugaenge.md).
 
 ## 3. Quellkonfiguration
 
@@ -143,8 +143,8 @@ weder Adresse noch Zugangsdaten ab.
 
 1. **Zugang:** Im Assistenten steht über dem Formular die Wahl des Zugangs. „Eigene Adresse“ gibt
    es für Dropbox nicht.
-2. **Quelle verbinden:** wie im Kapitel [Indexierung](indexierung.md), Abschnitt „Quelle
-   verbinden“. Erst danach laden Ordnerauswahl und Verbindungstest etwas.
+2. **Quelle verbinden:** wie im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md),
+   Abschnitt 3.3, „Quelle verbinden“. Erst danach laden Ordnerauswahl und Verbindungstest etwas.
 3. **Team-Bereich lesen:** Schalter; aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **Ordner:** ein Pfad je Zeile. „Ordner anzeigen unter“ nennt den Pfad, dessen Unterordner „Ordner
    laden“ als Vorschläge zeigt; ein Klick übernimmt einen Vorschlag als Zeile.
@@ -195,7 +195,7 @@ Ob ein gemeldeter gelöschter Pfad eine Datei oder ein Ordner war, fragt OPAA be
 Die Ordner unterhalb jedes gewählten Ordners werden als Ordner der Bibliothek gespiegelt; der
 gewählte Ordner selbst ist die Wurzel. Bei mehreren Ordnern steht vorn der Name des gewählten
 Ordners, bei `/` „Dropbox“. Namen, die keine Ordnerzeile tragen kann, und zu tiefe Ketten folgen den
-Regeln des Kapitels [Indexierung](indexierung.md).
+Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 7. Übersprungene Dateien
 
@@ -203,7 +203,7 @@ Regeln des Kapitels [Indexierung](indexierung.md).
   kein Dokument, ein Sammelhinweis je Lauf, kein Download.
 - **Paper-Dokumente** werden als Markdown exportiert, nicht übersprungen.
 - Dateien in nicht unterstützten Formaten und über der Größengrenze wie bei jedem Konnektor
-  ([Indexierung](indexierung.md)).
+  ([Wissensbibliotheken](../wissensbibliotheken.md)).
 
 ## 8. Änderungserkennung
 

@@ -1,5 +1,5 @@
 """Data and rendering for the "Ratsinformationen Stadt Rheinfurt" library (S3 connector, see
-docs/features/demo-instance.md and docs/handbuch/konnektor-s3.md).
+docs/features/demo-instance.md and docs/handbuch/konnektoren/s3.md).
 
 Council minutes (Niederschriften, .md) and decision papers (Beschlussvorlagen, .txt) of the
 Stadtrat, the Hauptausschuss and the Bauausschuss, laid out under one key prefix per year and one
@@ -9,7 +9,7 @@ keeps in an object store. The keys are what the demo's object store bucket is se
 
 A Beschlussvorlage with Anlagen is stored as the council information system's dispatch mail
 (.eml) instead: the Vorlage text is the mail body and every Anlage a PDF attachment. In an S3
-library only mail objects carry attachments (konnektor-s3.md, "Anhänge"), so this is the one
+library only mail objects carry attachments (konnektoren/s3.md, "Anhänge"), so this is the one
 shape in which the Anlagen appear as attachments of their Vorlage.
 
 The council decisions here (budgets, the digitalisation strategy, the mobile citizen office, the

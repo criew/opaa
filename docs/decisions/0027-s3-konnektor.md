@@ -825,6 +825,6 @@ abweicht: Bucket und Schlüssel sind die Identität, der Endpoint ist der Weg.
   Beschleuniger, `TargetAddressValidator`-Allowlist
 - [ADR-0024](0024-metadatenschema-kernfelder.md) — Kernfelder; Objektmetadaten als Zielbild
 - `docs/features/knowledge-sources.md` — Konnektor-Vertrag, Lebenszyklus, Ordner
-- `docs/handbuch/indexierung.md` §4, §7, §10.3; `docs/handbuch/konnektor-confluence.md` als Vorbild
-  für `konnektor-s3.md`
+- `docs/handbuch/konnektoren/README.md`, `docs/handbuch/wissensbibliotheken.md` §4.4 und §7.5;
+  `docs/handbuch/konnektoren/confluence.md` als Vorbild für `docs/handbuch/konnektoren/s3.md`
 - Epic #1293 — E2E-Testkonzept für Konnektoren mit aufwändigen Quellsystemen

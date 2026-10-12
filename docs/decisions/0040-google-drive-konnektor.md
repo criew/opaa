@@ -1034,7 +1034,7 @@ nichts. Folge-Issue: [#2413](https://github.com/criew/opaa/issues/2413), es gilt
 ## Nachtrag: SharePoint-Konnektor gebaut (#2153, Schnitt S1, 09.10.2026)
 
 Gebaut wie im Nachtrag „SharePoint (#2153)“, Paket `indexing.source.sharepoint`, ohne neue
-Modulkante (connectors → foundation für `io.opaa.msgraph`). Handbuch: `konnektor-sharepoint.md`.
+Modulkante (connectors → foundation für `io.opaa.msgraph`). Handbuch: `konnektoren/sharepoint.md`.
 Abweichungen und Festlegungen, die der Plan offenließ:
 
 1. **Keine Anforderungslücke am Typ.** `withRequirementGap` gilt nur für Typen, deren Profilpflicht

@@ -1,7 +1,7 @@
 """Data and rendering for the "Formattest auf S3" library (#1519, #1520).
 
-One document per file extension OPAA admits (docs/handbuch/indexierung.md, "Anhang:
-Formatübersicht"), so the demo can show that every supported format really is read rather than
+One document per file extension OPAA admits (docs/handbuch/formate/README.md, "Zugelassene
+Formate"), so the demo can show that every supported format really is read rather than
 merely listed. Each generated document names its own format in its text, which is what makes a chat
 answer attributable to the format it came from; the content is ordinary Rheinfurt administration
 around document formats and long-term archiving, not filler.

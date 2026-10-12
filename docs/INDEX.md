@@ -152,23 +152,21 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 ### Handbuch — das gebaute Produkt benutzen
 
-- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: Zielgruppen, Funktionsübersicht,
-  Kapitel, Lesewege nach Anlass, Glossar, Konventionen
-- **[`handbuch/deployment.md`](./handbuch/deployment.md)** — Installation und Betrieb der vorhandenen
-  Software: Docker Compose, Umgebungsvariablen, Härtung
-- **[`handbuch/kubernetes.md`](./handbuch/kubernetes.md)** — Betrieb unter Kubernetes mit dem Helm-Chart:
-  Installation, Wertereferenz, Netz und Sicherheit, Aktualisierung und Rückweg, Überwachung, Fehlersuche
-- **[`handbuch/indexierung.md`](./handbuch/indexierung.md)** — die Aufnahmestrecke: Läufe, Betriebsarten,
-  Dokumentstrecke, Anhänge, Löscherkennung, Protokoll, Pipeline-Versionen; mit je einem Kapitel pro
-  Konnektor (`konnektor-*.md`) und Format-Pipeline (`format-*.md`)
-- **[`handbuch/suche.md`](./handbuch/suche.md)** — die Abfragestrecke: Suchbereich und Rechtefilter,
-  Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung,
-  Diagnosewerkzeug, Konfiguration
-- **[`handbuch/konnektor-confluence.md`](./handbuch/konnektor-confluence.md)** — der Confluence-Konnektor:
-  Einrichtung je Edition, Zielprüfung, Betriebsarten und Löschsemantik, Webhooks, Ratenbegrenzung und
-  Anfragebudget, Kennzahlen, Grenzen, Fehlerbehebung
-- **[`handbuch/metadaten.md`](./handbuch/metadaten.md)** — die Kernfelder Titel, Dokumentart und
-  Datum/Stand: Ermittlung, Bestandslauf, manuelle Pflege, Filter und Beleg
+- **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: was OPAA ist, der Kapitelbaum,
+  Lesewege nach Anlass, Glossar. Die Kapitel im Einzelnen:
+  - Betrieb: [`deployment.md`](./handbuch/deployment.md) (Docker Compose, Umgebungsvariablen,
+    Härtung, Modelle, Authentifizierung), [`kubernetes.md`](./handbuch/kubernetes.md) (Helm-Chart)
+  - Konten und Rechte: [`benutzerverwaltung.md`](./handbuch/benutzerverwaltung.md),
+    [`berechtigungen.md`](./handbuch/berechtigungen.md)
+  - Arbeiten in Spaces: [`spaces.md`](./handbuch/spaces.md), [`suche.md`](./handbuch/suche.md)
+    (Suchstrecke, Antwort, Belege, Diagnose), [`fremdzugaenge.md`](./handbuch/fremdzugaenge.md)
+  - Arbeitsmittel: [`katalog.md`](./handbuch/katalog.md),
+    [`wissensbibliotheken.md`](./handbuch/wissensbibliotheken.md) mit
+    [`konnektoren/`](./handbuch/konnektoren/README.md), [`formate/`](./handbuch/formate/README.md),
+    [`metadaten.md`](./handbuch/metadaten.md) und
+    [`private-bibliotheken.md`](./handbuch/private-bibliotheken.md);
+    [`prompt-bibliotheken.md`](./handbuch/prompt-bibliotheken.md); [`zugaenge.md`](./handbuch/zugaenge.md)
+  - Regeln für Schreibende: [`handbuch/AGENTS.md`](./handbuch/AGENTS.md)
 - **[`sbom.md`](./sbom.md)** — Software Bill of Materials: Image-Attestierungen und
   CycloneDX-CI-Artefakte für Backend und Frontend
 - **[`cve-scanning.md`](./cve-scanning.md)** — CVE-Erkennung: Dependency Graph, Dependabot-Alerts,

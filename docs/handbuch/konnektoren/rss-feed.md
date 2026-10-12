@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für RSS-Feeds. Der gemeinsame Ablauf
 > eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](indexierung.md).
+> [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 1. Wofür er gedacht ist
 
@@ -46,13 +46,13 @@ Die Felder sind dieselben wie beim Webverzeichnis:
 | Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional |
 
 Speicherung und Sichtbarkeit der Zugangsdaten sowie das Verhalten beim Ändern der URL sind im
-Kapitel [Webverzeichnis](konnektor-http-directory.md#2-quellkonfiguration) beschrieben.
+Kapitel [Webverzeichnis](http-directory.md#2-quellkonfiguration) beschrieben.
 
 Die Oberfläche weist beim Anlegen darauf hin, dass OPAA neben dem Feed auch die verlinkten
 Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen das sind.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): wie beim
-[Webverzeichnis](konnektor-http-directory.md#2-quellkonfiguration) **ohne Anmeldung** oder mit
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): wie beim
+[Webverzeichnis](http-directory.md#2-quellkonfiguration) **ohne Anmeldung** oder mit
 einem **persönlichen Geheimnis** der Bibliothek; die Feed-Adresse liegt unter der Server-Adresse
 des Zugangs. Zugangsdaten und eine ausgesetzte Zertifikatsprüfung gelten nur für den Ursprung des
 Feeds: Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA
@@ -78,7 +78,7 @@ fremde Server nicht belasten.
 ## 4. Schutzmechanismen
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jeder Weiterleitung, wie im
-  Kapitel [Webverzeichnis](konnektor-http-directory.md#41-zieladressprüfung).
+  Kapitel [Webverzeichnis](http-directory.md#41-zieladressprüfung).
 - **Schema- und Syntaxprüfung je Eintrag**, bevor irgendetwas geladen wird. Ein Eintrag mit
   `ftp://`-Link oder kaputter URL wird abgewiesen, ohne den Lauf zu beeinträchtigen.
 - **Kein Verlassen des Ursprungs** bei Detailseiten und Anlagen. Ein Feed kann nicht dazu
@@ -117,7 +117,7 @@ entfällt. Bei mehreren Links gewinnt der erste. Ein nicht lesbares `pubDate` gi
 nicht als Fehler; zweistellige Jahre und die üblichen Zeitzonenkürzel werden verstanden.
 
 Die **Detailseite** wird geladen und nach denselben Regeln reduziert, die die
-[HTML-Pipeline](format-html.md) auf eine Datei anwendet:
+[HTML-Pipeline](../formate/html.md) auf eine Datei anwendet:
 
 1. Elemente, die nie Inhalt sind, werden in der ganzen Seite entfernt: Navigation und
    Seitenleisten (`nav`, `aside`, die Rollen navigation und complementary), die Klassen `nav`,
@@ -156,7 +156,7 @@ Drei Stufen, von billig nach teuer:
 
 Bestehende Einträge, die noch mit der Auffang-Pipeline geschnitten wurden, behalten diese Chunks
 bis zur nächsten `pubDate`-Änderung; der Pipeline-Nachzug für `html` (Kapitel
-[Indexierung](indexierung.md), Abschnitt 9) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
+[Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.2) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
 `.html` endet.
 
 **Zurückstellung.** Der Feed-Zustand aus Stufe 1 wird nur gespeichert, wenn der Lauf
@@ -165,7 +165,8 @@ in diesem Lauf nicht verarbeitet werden konnte, obwohl es beim nächsten Mal kla
 nicht erreichbare Detailseite, eine Abweisung mit 403 oder 429, ein abgeschnittener Feed, eine
 verlorene Anlage. Ohne gespeicherten Zustand liefert der Server beim nächsten Lauf den Feed
 erneut vollständig, und die zurückgestellten Einträge bekommen eine zweite Chance. Das ersetzt
-Wiederholungsversuche innerhalb des Laufs.
+Wiederholungsversuche innerhalb des Laufs. Ebenso wenig speichert ein Lauf den Feed-Zustand, der
+einen Eintrag oder eine Anlage am Speicherkontingent abgelehnt hat.
 
 **Nachholen von Anlagen.** Ein unveränderter Eintrag, zu dem noch keine Anlagen-Dokumente
 existieren, lädt seine Detailseite trotzdem einmal, ausschließlich um Anlagen zu finden. Der
@@ -284,7 +285,7 @@ Alle Schlüssel unter `opaa.indexing.rss.*`, Umgebungsvariablen als `OPAA_INDEXI
 
 `User-Agent`, 429-Wartezeit und die Grenzen je Lauf kommen aus dem gemeinsamen Block
 `opaa.indexing.http.*` (`user-agent`, `max-rate-limit-retries`, `max-retry-after`,
-`request-budget-per-run`, `max-rate-limit-wait-per-run`; siehe [Deployment](deployment.md)).
+`request-budget-per-run`, `max-rate-limit-wait-per-run`; siehe [Deployment](../deployment.md)).
 Nicht konfigurierbar: Timeouts. Verschachtelungstiefe der Anlagen, Zieladressprüfung,
 Thread-Pool, Kontingent und Chunking wie in den anderen Kapiteln.
 
@@ -293,7 +294,7 @@ Anlage; die Grenzen sind entsprechend zu wählen.
 
 ## 13. Zeitplan
 
-Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](indexierung.md#31-auslöser)
+Der Zeitplan je Bibliothek ist im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md#42-zeitplan)
 beschrieben. Für Feeds ist ein stündlicher Zeitplan üblich: Ein unveränderter Feed kostet dank
 bedingtem GET nur eine Anfrage.
 

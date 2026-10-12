@@ -226,7 +226,7 @@ Wiedervorlage bleibt das Notanker-Konto außen vor, weil es unbefristet bleiben 
 
 ## 7. Rollen
 
-Die Rolle entscheidet, was ein Konto in der ganzen Anwendung darf; die Rechte an einzelnen Räumen und
+Die Rolle entscheidet, was ein Konto in der ganzen Anwendung darf; die Rechte an einzelnen Spaces und
 Bibliotheken werden dort vergeben, nicht hier.
 
 | Rolle | Bedeutung |
@@ -248,19 +248,19 @@ gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Deployment](dep
 ### Anlegerechte
 
 Neben der Rolle steht eine zweite installationsweite Entscheidung: **wer etwas anlegen darf** —
-Räume, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen, Prompt-Bibliotheken. Diese
+Spaces, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen, Prompt-Bibliotheken. Diese
 **Anlegerechte** gelten für alle Konten der Installation, gleich ob lokal oder aus einem
 Identitätsanbieter, und werden an eine Person, eine Gruppe oder an **„Alle Konten"** vergeben; die
 Systemverwaltung hat jedes ohnehin, die Rolle **Revision** verleiht keines.
 
 Der ausgelieferte Zustand, die Empfehlung für den Einstieg und die Verwaltung unter
 **Administration → Anlegerechte** stehen im Kapitel
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9.
+[Berechtigungen](berechtigungen.md), Abschnitt 9.
 
 ### Gruppen, Freigaben und Zuständigkeiten
 
 Drei Gegenstände, die an dieser Verwaltung angrenzen, aber nicht auf lokale Konten begrenzt sind,
-stehen im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md):
+stehen im Kapitel [Berechtigungen](berechtigungen.md):
 
 | Gegenstand | Wo es steht |
 |---|---|
@@ -275,12 +275,12 @@ stehen im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigun
 Sie entzieht den Zugang sofort und lässt nachvollziehbar, dass es dieses Konto gab.
 
 Gelöscht werden kann ein lokales Konto nur, wenn **nichts mehr darauf verweist**. Das ist mehr als
-Besitz: Neben einer eigenen Bibliothek, einem Raum außer dem persönlichen und einem Chat sperren
-auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
+Besitz: Neben einer eigenen Bibliothek, einem Space außer dem persönlichen und einem Chat sperren
+auch Rechtevergaben, Space-Zuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
 **Verantwortung für eine interne Gruppe** sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
 Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Eine noch getragene
 Verantwortung wird vorher abgegeben
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 7).
+([Berechtigungen](berechtigungen.md), Abschnitt 7).
 
 Eine Ausnahme ist die Befugnis „Sicht als" ([Suche](suche.md), Abschnitt 8.3): Sie hält keine
 Löschung auf. Hat das Konto solche Befugnisse erteilt, **entzieht OPAA jede noch gültige davon beim
@@ -318,7 +318,7 @@ zurücknehmen — nur in diese Richtung: „Entsperren" im Zeilenmenü, „Kein 
 ## 9. Ein Konto an einen Identitätsanbieter übergeben
 
 Stellt eine Installation, die mit lokalen Konten angefangen hat, später auf einen Identitätsanbieter
-um, soll niemand von vorn beginnen: Räume, Mitgliedschaften und Rolle hängen am Konto, nicht am
+um, soll niemand von vorn beginnen: Spaces, Mitgliedschaften und Rolle hängen am Konto, nicht am
 Passwort. Dafür gibt es die **Übergabe** — den einzigen Weg, auf dem ein Konto seine Identität
 wechselt.
 
@@ -338,8 +338,8 @@ Person, sie wird nirgends eingegeben.
    Nachricht nicht hinaus, zeigt OPAA den Link genau einmal zur Übergabe von Hand an — mit demselben
    Rückfall wie bei der Einladung (Abschnitt 2). Bis hierher ändert sich am Konto nichts: Es bleibt
    mit Passwort benutzbar.
-3. Der Link führt auf eine Seite, die zeigt, **was mitgeht**: der persönliche Raum, die Zahl der
-   Raum- und Gruppenmitgliedschaften und die Rolle, dazu der Anlass und der Name des Anbieters. Die
+3. Der Link führt auf eine Seite, die zeigt, **was mitgeht**: der persönliche Space, die Zahl der
+   Space- und Gruppenmitgliedschaften und die Rolle, dazu der Anlass und der Name des Anbieters. Die
    Seite nennt auch, was danach gilt: Anmeldung nur noch über den Anbieter, das bisherige Passwort
    verfällt, einen Rückweg gibt es nicht.
 4. Ein Klick führt zur Anmeldung beim Anbieter. Danach ist die Übergabe vollzogen: Das Konto gehört
@@ -422,9 +422,9 @@ einen Zugang, etwa ein App-Passwort für eine Nextcloud. Das gilt für jedes Kon
 einem Identitätsanbieter. OPAA nutzt ein verbundenes Konto nur für die privaten Bibliotheken der
 Person; deren Inhalt ist, was sie beim Anbieter selbst sehen darf. Einen Zugang, auf dem Personen
 Konten verbinden können, legt die Systemverwaltung mit der Besitzart „Person“ oder „Bibliothek und
-Person“ an und gibt ihn frei ([Indexierung](indexierung.md), „Zugänge“). Von den mitgelieferten
+Person“ an und gibt ihn frei ([Zugänge](zugaenge.md)). Von den mitgelieferten
 Konnektoren lässt **Nextcloud** die Besitzart „Person“ zu; die Person verbindet dort ein eigenes
-App-Passwort ([Konnektor Nextcloud](konnektor-nextcloud.md), „Verbundenes Konto“).
+App-Passwort ([Konnektor Nextcloud](konnektoren/nextcloud.md), „Verbundenes Konto“).
 
 **Das Verbinden ist freiwillig.** Niemand muss ein Konto verbinden, und ein Verzicht hat keine
 Nachteile: Nichts in OPAA setzt ein verbundenes Konto voraus oder fordert dazu auf. Auch diese Seite
@@ -521,10 +521,10 @@ Warnung im Betriebslog.
 Den eigenen Kontonamen beim Anbieter und die Inhalte der privaten Bibliotheken sieht nur die Person
 selbst. Die Systemverwaltung sieht **keine Liste der Personen**, nur je Zugang die Zahl der
 verbundenen und der abgelaufenen Konten, und kleine Zahlen nur gerundet
-([Indexierung](indexierung.md), „Zugänge“). **Dass** eine Person verbunden, neu verbunden oder
+([Zugänge](zugaenge.md)). **Dass** eine Person verbunden, neu verbunden oder
 getrennt hat und wann, steht dagegen im Verbindungsprotokoll, das die Revision liest — unter einem
 Pseudonym statt des Namens, das sich wie im Nachweisprotokoll in einer Vorfallsklärung einer Person
-zuordnen lässt ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
+zuordnen lässt ([Berechtigungen](berechtigungen.md), Abschnitt 12).
 Der Dialog zum Verbinden sagt das vor dem Absenden.
 
 **Kein Vorfallszugriff auf Inhalte.** Auch bei einem Sicherheitsvorfall öffnet OPAA den Inhalt einer
@@ -563,7 +563,7 @@ dort geregelten Wege des Hauses, etwa eDiscovery oder den Verwaltungszugriff bei
 Eine private Bibliothek wird auf zwei Wegen gelöscht, beide gleich vollständig:
 
 - **Sofort löschen** durch die Besitzerin selbst, jederzeit, im Menü „⋯“ der Detailseite
-  ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private
+  ([Berechtigungen](berechtigungen.md), „Private
   Bibliotheken“). Niemand sonst kann es, auch nicht die Systemverwaltung; für alle anderen gibt es
   die Bibliothek nicht.
 - **Nach Ablauf der Löschfrist** durch den täglichen Löschlauf, wenn das Konto der Besitzerin so
@@ -573,7 +573,7 @@ Eine private Bibliothek wird auf zwei Wegen gelöscht, beide gleich vollständig
 
 Gelöscht werden die Dokumente, ihre Abschnitte im Vektor- und im Volltextindex, abgelegte
 Originale, Ordner, Metadatenwerte und -felder, die Läufe samt Laufprotokoll, der Abgleichstand, die
-Zuordnungen zu Räumen und die Benachrichtigungen zur Bibliothek. In Chats, die aus ihr zitiert
+Zuordnungen zu Spaces und die Benachrichtigungen zur Bibliothek. In Chats, die aus ihr zitiert
 haben, heißt die Quelle danach „Quelle entfernt“: Dateiname und Link sind weg, der Text der Antwort
 bleibt im Chat der Besitzerin. Eine getrennte Verbindung, die nur noch wegen dieser Bibliothek
 bestand, verschwindet mit.

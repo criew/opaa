@@ -1,14 +1,14 @@
 # Format: HTML
 
 > **Entwurf.** Pipeline `html`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Indexierung](indexierung.md), Abschnitt 5.
+> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
 
 | Inhalt | Prüfung |
 |---|---|
 | `.html`-Datei | strikt: Inhalt wird als HTML oder XHTML erkannt |
-| Feed-Detailseite | keine Formaterkennung: Der [Feed-Konnektor](konnektor-rss-feed.md) reduziert die Seite auf ihre Inhaltsbereiche (nach den Regeln in Abschnitt 3) und übergibt deren HTML direkt an diese Pipeline |
+| Feed-Detailseite | keine Formaterkennung: Der [Feed-Konnektor](../konnektoren/rss-feed.md) reduziert die Seite auf ihre Inhaltsbereiche (nach den Regeln in Abschnitt 3) und übergibt deren HTML direkt an diese Pipeline |
 
 Eine Textdatei mit HTML-artigem Inhalt, die `.md`, `.txt`, `.csv` oder `.eml` heißt, landet
 **nicht** hier: Die Textzulassung dieser Endungen hat Vorrang, weil HTML in der
@@ -20,7 +20,7 @@ Die Datei wird mit Jsoup geparst; der Zeichensatz wird aus BOM oder `<meta chars
 sonst UTF-8. Bei einer Feed-Detailseite hat der Konnektor die Kodierung bereits aufgelöst.
 
 Die Struktur (Blöcke, Überschriften, Tabellen, Listen) liest derselbe XHTML-Ereignisleser, den
-auch die [Confluence-Pipeline](format-confluence.md) verwendet; dort kommen nur die Makroregeln
+auch die [Confluence-Pipeline](confluence.md) verwendet; dort kommen nur die Makroregeln
 hinzu.
 
 ## 3. Struktur und Chunks
@@ -40,7 +40,7 @@ Treffer, wird der ganze `body` genommen.
 **Schneiden:** an den Überschriften h1 bis h3, über die DOM-Struktur, sodass verschachtelte
 Abschnitte korrekt erkannt werden. h4 bis h6 bleiben im Abschnitt. Absätze, Zitate und ähnliche
 Blöcke sind die Trennstellen für das Zusammenlegen und Teilen; ein einzelner zu langer Block wird
-in sich an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](indexierung.md), Schritt 4). Zielgröße rund 4.000
+in sich an Zeilen- und Satzgrenzen geteilt (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1). Zielgröße rund 4.000
 Zeichen, keine Überlappung. Aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
 derselben übergeordneten Überschrift zusammengelegt. Text vor der ersten Überschrift wird ein eigener Chunk
 ohne Pfad.
@@ -84,7 +84,7 @@ Seitengrößengrenze.
 
 ## 7. Nicht verarbeitet
 
-- Kopfzeilenwiederholung in Tabellen wie bei [Tabellen](format-tabular.md); eine Tabelle wird
+- Kopfzeilenwiederholung in Tabellen wie bei [Tabellen](tabular.md); eine Tabelle wird
   zeilenweise übernommen
 - Linkziele, Alternativtexte, eingebettete Frames
 - Strukturierte Daten (JSON-LD, Microdata) und `<meta>`-Angaben außer dem Titel

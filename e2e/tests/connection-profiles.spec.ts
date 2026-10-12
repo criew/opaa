@@ -30,7 +30,7 @@ import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 import type { Page } from '@playwright/test'
 
 // Zugänge, Freigabe und Profilpflicht über den vollen Stack (test(e2e) #2175, Szenarien 1 und 2;
-// docs/handbuch/indexierung.md, Abschnitt „Zugänge“). Quellart ist RSS-Feed gegen den suite-eigenen
+// docs/handbuch/zugaenge.md). Quellart ist RSS-Feed gegen den suite-eigenen
 // `rss-feed`-Dienst - die einzige Quelle dieses Stacks, die ohne Anmeldung einen Lauf mit Inhalt
 // liefert. Handelnde: `dev-admin` als Systemverwaltung, `dev-user` als Mitglied der Gruppe, der der
 // Zugang freigegeben wird, und `dev-outsider` als Person außerhalb.
@@ -147,8 +147,8 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     await expect(profilePanel).toContainText('RSS-Feed')
     await expect(profilePanel).toContainText(SERVER_URL)
     await expect(profilePanel).toContainText('Ohne Anmeldung')
-    // Freigabe = Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang (Handbuch: „Wer einen
-    // Zugang nutzen darf“). Ein neuer Zugang ist für niemanden außer der Systemverwaltung frei.
+    // Freigabe = Anlegerecht „Konnektorbibliotheken anlegen“ für den Zugang (Handbuch: zugaenge.md,
+    // „Einen Zugang einrichten“). Ein neuer Zugang ist für niemanden außer der Systemverwaltung frei.
     await expect(profilePanel).toContainText('Noch für niemanden freigegeben')
     await profilePanel.getByRole('button', { name: 'Festlegen, wer ihn nutzen darf' }).click()
     await profilePanel.getByLabel('Nur bestimmte Gruppen und Personen').click()

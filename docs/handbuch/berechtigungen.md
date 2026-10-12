@@ -1,9 +1,11 @@
-# Bibliotheken und Berechtigungen
+# Berechtigungen
 
 > **Entwurf.** Dieses Kapitel beschreibt, wer in einer OPAA-Installation was lesen, ändern,
 > freigeben und anlegen darf — und wie sich das nachweisen lässt. Es ist der eine Ort für das
 > Berechtigungsmodell: Subjekte, Rollen, Gruppen, Anlegerechte, Vollmachten, Lebenszyklus und
-> Rechtehistorie. Die Einrichtung des Anmeldewegs und des Verzeichnisabgleichs steht im Kapitel
+> Rechtehistorie. Die Regeln gelten für jede Art von **Arbeitsmittel** gleich, ob
+> Wissensbibliothek oder Prompt-Bibliothek; wie Arbeitsmittel gefunden, angelegt und einem Space
+> zugeordnet werden, beschreibt das Kapitel [Katalog](katalog.md). Die Einrichtung des Anmeldewegs und des Verzeichnisabgleichs steht im Kapitel
 > [Deployment](deployment.md), die Verwaltung lokaler Konten in der
 > [Benutzerverwaltung](benutzerverwaltung.md), der Rechtefilter der Suche im Kapitel
 > [Suche](suche.md).
@@ -12,16 +14,16 @@
 
 | Objekt | Was es ist | Was es an Rechten trägt |
 |---|---|---|
-| **Organisation** | Das Haus. Heute genau eine je Installation | Die Grenze jeder Berechtigung: Gruppen, Konten, Bibliotheken und Räume gehören ihr, und nichts wirkt darüber hinaus |
-| **Wissensbibliothek** | Verwaltungseinheit für Dokumente mit genau einer Quelle | Eigene Rollen, einen Eigentümer |
-| **Raum** (Space) | Arbeitsbereich, in dem Chats liegen und Bibliotheken bereitgestellt werden | Eigene Rollen, eigene Mitgliedschaften, einen Eigentümer |
+| **Organisation** | Das Haus. Heute genau eine je Installation | Die Grenze jeder Berechtigung: Gruppen, Konten, Arbeitsmittel und Spaces gehören ihr, und nichts wirkt darüber hinaus |
+| **Arbeitsmittel** | Etwas, das angelegt, geteilt und einem Space zugeordnet wird: eine [Wissensbibliothek](wissensbibliotheken.md) oder eine [Prompt-Bibliothek](prompt-bibliotheken.md) | Eigene Rollen, einen Eigentümer |
+| **Space** | Arbeitsbereich, in dem Chats liegen und Arbeitsmittel bereitgestellt werden | Eigene Rollen, eigene Mitgliedschaften, einen Eigentümer |
 | **Gruppe** | Eine benannte Menge von Konten | Kein Recht an sich selbst — sie ist das *Subjekt*, dem Rollen, Anlegerechte und Eigentum erteilt werden |
 
 Zwei Sätze gelten in allen folgenden Abschnitten:
 
-- **Ein Raum enthält genau, was ihm zugeordnet ist, und erweitert keine Leserechte.** Der Chat
-  eines Raums sucht nur in den zugeordneten Bibliotheken und bietet nur die zugeordneten Prompts
-  an — und davon nur, was die Person ohnehin lesen darf. Die Zuordnung legt fest, was im Raum zur
+- **Ein Space enthält genau, was ihm zugeordnet ist, und erweitert keine Leserechte.** Der Chat
+  eines Space sucht nur in den zugeordneten Bibliotheken und bietet nur die zugeordneten Prompts
+  an — und davon nur, was die Person ohnehin lesen darf. Die Zuordnung legt fest, was im Space zur
   Verfügung steht; ein Leserecht öffnet sie nicht.
 - **Rechte wirken in der Suche, nicht dahinter.** Jede Suchabfrage trägt den Filter auf die
   lesbaren Bibliotheken in sich. Es gibt keinen Administrator-Durchgriff auf Inhalte
@@ -31,13 +33,13 @@ Zwei Sätze gelten in allen folgenden Abschnitten:
 flowchart TB
     P[Person] --> M[Mitgliedschaft]
     M --> G[Gruppe<br/>intern oder von einem Anbieter]
-    P --> DG[Rolle an einer Bibliothek]
-    G --> GG[Rolle an einer Bibliothek]
-    P --> SM[Mitgliedschaft in einem Raum]
-    G --> SG[Mitgliedschaft in einem Raum]
-    DG --> B[Wissensbibliothek]
+    P --> DG[Rolle an einem Arbeitsmittel]
+    G --> GG[Rolle an einem Arbeitsmittel]
+    P --> SM[Mitgliedschaft in einem Space]
+    G --> SG[Mitgliedschaft in einem Space]
+    DG --> B[Arbeitsmittel]
     GG --> B
-    SM --> S[Raum]
+    SM --> S[Space]
     SG --> S
     B -. bereitgestellt .-> S
     A["Alle Konten"] --> C[Anlegerecht]
@@ -52,8 +54,8 @@ austauschbar, und keiner von ihnen ist eine schwächere Fassung eines anderen.
 
 | Begriff | Bedeutung | Gebunden an |
 |---|---|---|
-| **Rolle** | Gestufte Berechtigung an **einem Objekt** — „Leserin dieser Bibliothek", „Administrator in diesem Raum" | Person **oder** Gruppe; unbefristet oder mit Ablaufdatum |
-| **Anlegerecht** | Installationsweites Recht, etwas **anzulegen** (Räume, Bibliotheken, interne Gruppen). Ohne Gegenstand, unbefristet, **öffnet nie einen Inhalt** | Person, Gruppe oder **„Alle Konten"** |
+| **Rolle** | Gestufte Berechtigung an **einem Objekt** — „Leserin dieser Wissensbibliothek", „Administrator in diesem Space" | Person **oder** Gruppe; unbefristet oder mit Ablaufdatum |
+| **Anlegerecht** | Installationsweites Recht, etwas **anzulegen** (Spaces, Arbeitsmittel, interne Gruppen). Ohne Gegenstand, unbefristet, **öffnet nie einen Inhalt** | Person, Gruppe oder **„Alle Konten"** |
 | **Vollmacht** | Befristete, begründungspflichtige Erlaubnis mit Gegenstand: „Sicht als" in der Suchdiagnose und der Geltungsbereich einer anlassbezogenen Klärung im Nachweisprotokoll | **genau eine Person**, nie eine Gruppe |
 | **Systemrolle** | Systemverwaltung und Revision — die beiden installationsweiten Rollen aus der [Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 7 | genau ein Konto |
 
@@ -62,18 +64,18 @@ Dazu zwei Maße, die im Text gebraucht werden und in keiner Oberfläche als Wort
 - **Wirksam** ist eine Gruppe, der ein Recht **erteilt** werden darf: nicht aufgelöst, ihr Anbieter
   eingeschaltet, ihre Mitgliedschaft noch gepflegt. Eine wirksame Gruppe **darf leer sein**.
 - **Handlungsfähig** ist eine wirksame Gruppe mit mindestens einem **aktiven** Konto. Das ist das
-  Maß dafür, ob sie als Eigentümerin oder als Raumadministratorin **handeln** kann (Abschnitt 13).
+  Maß dafür, ob sie als Eigentümerin oder als Space-Administratorin **handeln** kann (Abschnitt 13).
 
 ## 3. Wem ein Recht gegeben werden kann
 
-| Subjekt | Rolle an Bibliothek oder Raum | Anlegerecht | Eigentum | Vollmacht |
+| Subjekt | Rolle an Arbeitsmittel oder Space | Anlegerecht | Eigentum | Vollmacht |
 |---|---|---|---|---|
-| **Person** | ja | ja | Bibliothek und Raum | ja |
-| **Gruppe** | ja | ja | Bibliothek (kein Raum) | nein |
+| **Person** | ja | ja | Arbeitsmittel und Space | ja |
+| **Gruppe** | ja | ja | Arbeitsmittel (kein Space) | nein |
 | **„Alle Konten"** | ja — als Empfänger wie jeder andere | — (dort heißt dieselbe Art „Alle Konten") | nein | nein |
 
-**Gruppen werden nicht in Personen aufgelöst.** Wer eine Bibliothek an „Referat 50" freigibt, gibt
-sie an die Gruppe frei: Wer dort morgen Mitglied wird, liest sie ab dann, wer heute ausscheidet,
+**Gruppen werden nicht in Personen aufgelöst.** Wer ein Arbeitsmittel an „Referat 50" freigibt, gibt
+es an die Gruppe frei: Wer dort morgen Mitglied wird, liest sie ab dann, wer heute ausscheidet,
 verliert sie mit der Mitgliedschaft. Das ist gewollt und der Grund, warum Freigaben an Gruppen
 gepflegt bleiben, ohne dass jemand sie anfasst — und der Grund, warum die Zeile einer Gruppe
 ihre heutige Größe nennt (Abschnitt 8).
@@ -83,89 +85,61 @@ eine übergeordnete Einheit aus dem Verzeichnis ist eine Anzeige- und Gliederung
 **vererbt keine Mitgliedschaft**. Eine Abteilung, die im Verzeichnis nur Untergruppen hat, ist in
 OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 
-## 4. Rollen an einer Wissensbibliothek
+## 4. Rollen an einem Arbeitsmittel
 
-Die Bibliotheken, die eine Person lesen darf, findet sie im **Katalog**, dem einen Punkt der
-Hauptnavigation für jede Art von Bestand; die [Prompt-Bibliotheken](prompt-bibliotheken.md) stehen
-dort neben den Wissensbibliotheken. Rollen, Herleitung und „Nachfolge offen" gelten für beide Arten
-gleich, und beide Detailseiten sind gleich aufgebaut.
+Jedes Arbeitsmittel trägt eigene Rollen und einen Eigentümer. Die Rollen sind für alle Arten gleich
+gestuft; was „Inhalt pflegen" heißt, hängt von der Art ab.
 
-**Der Kopf der Detailseite.** In der ersten Zeile stehen die Art als Etikett („Wissen" bzw.
-„Prompts"), das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist, bei einer
-Wissensbibliothek die Quellart und dann die eigene Rolle, für die Systemverwaltung ohne eigene
-Berechtigung zusätzlich „administrativ"; rechts davon der **Stern** für den
-eigenen Favoriten — er wirkt wie der Stern einer Kachel im Katalog — und das Menü **„⋯"** mit
-„In Space verwenden" und, abgesetzt, „Löschen" für den Eigentümer. Darunter stehen Name und
-Beschreibung; wer die Bibliothek verwaltet, ändert beide über den Stift daneben. Die Kennzahlen
-darunter nennen den Umfang (Dokumente bzw. Prompts), in wie vielen Räumen die Bibliothek
-bereitsteht, die zuständige Stelle und „Aktualisiert am". Ein „Zurück" gibt es nicht; der Weg
-zurück führt über den Katalog in der Hauptnavigation.
+| Rolle | Darf | Bei einer Wissensbibliothek zusätzlich |
+|---|---|---|
+| **Leser** (`VIEWER`) | das Arbeitsmittel und seinen Inhalt lesen und nutzen | durchsuchen, Treffer und Dokumentliste sehen |
+| **Bearbeiter** (`EDITOR`) | zusätzlich den Inhalt pflegen, bei einer Prompt-Bibliothek etwa Prompts anlegen, ändern und löschen | Dokumente hochladen und löschen, Ordner pflegen, einen Lauf anstoßen, Metadaten pflegen |
+| **Verwalter** (`MANAGER`) | zusätzlich Name und Beschreibung ändern, Rechte vergeben und entziehen, auch an alle Konten | die Quellverbindung sehen und ändern, die Bibliothek für [Fremdzugänge](fremdzugaenge.md) freigeben |
+| **Eigentümer** (`OWNER`) | zusätzlich das Arbeitsmittel löschen und das Eigentum übertragen | — |
 
-**Die Reiter.** Eine Wissensbibliothek hat „Dokumente", „Quelle" (nur bei einer
-Konnektorbibliothek), „Metadaten", „Freigaben" und „Zuordnungen", eine Prompt-Bibliothek
-„Prompts", „Freigaben" und „Zuordnungen". Jede Rolle sieht jeden Reiter; wer nur liest, sieht ihn
-schreibgeschützt. **„Berechtigungen"** steht als Liste auf der Seite, nicht hinter einem Knopf
-„Rechte verwalten".
+Die Rollen sind gestuft: Wer Verwalter ist, darf alles, was ein Bearbeiter darf. Die
+**Quellverbindung** einer Wissensbibliothek — interner Serverpfad, Quelladresse, Zugangsdaten —
+bleibt einem Bearbeiter verborgen und wird erst ab der Verwalterrolle sichtbar; sie ist
+Infrastrukturangabe, nicht Konfiguration. **Verwalten ist nicht Lesen:** Die Systemverwaltung kann
+jedes Arbeitsmittel verwalten, liest seinen Inhalt aber nur mit einer eigenen Rolle, einer Rolle
+über eine Gruppe oder einer Freigabe an „Alle Konten".
 
-Der Reiter **„Freigaben"** einer Wissensbibliothek führt sie in dieser Reihenfolge:
+**Der Reiter „Freigaben"** der Detailansicht ([Katalog](katalog.md), Abschnitt 5) führt die Rechte
+eines Arbeitsmittels in dieser Reihenfolge:
 
 | Abschnitt | Inhalt |
 |---|---|
-| **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt eine Bibliothek mit offener Nachfolge wieder eine handlungsfähige Stelle, ohne das Konto der ausgeschiedenen Person. Jede Übergabe steht mit Namen im Nachweisprotokoll |
-| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben". Für „Alle Konten" stehen dabei nur **Leser** und **Bearbeiter** zur Wahl — in der Liste wie im Formular; für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
-| **Externer Zugang** | die Freigabe für Fremdzugänge |
-| **Diagnosesperre** | ob die Bibliothek in einer fremden Suchdiagnose auftauchen darf |
-| **Warum sehe ich diese Wissensbibliothek?** | die eigene Herleitung |
+| **Eigentümer** | die zuständige Stelle mit Namen; über „Eigentum übergeben" reicht der Eigentümer sie an eine Person oder eine Gruppe weiter — mit Rückfrage, und die Eigentümerrolle geht mit. Auch die **Systemverwaltung** kann übergeben: So bekommt ein Arbeitsmittel mit offener Nachfolge wieder eine handlungsfähige Stelle. Jede Übergabe steht mit Namen im Nachweisprotokoll |
+| **Berechtigungen** | Personen, Gruppen und „Alle Konten" mit Rolle, Befristung und Entzug, dazu das Formular „Freigeben". Für „Alle Konten" stehen nur **Leser** und **Bearbeiter** zur Wahl; bei einer Konnektorbibliothek für die Systemverwaltung darunter die Obergrenze „Freigabe an Alle erlaubt" |
+| **Externer Zugang** | nur bei einer Wissensbibliothek: die Freigabe für Fremdzugänge |
+| **Diagnosesperre** | nur bei einer Wissensbibliothek: ob sie in einer fremden Suchdiagnose auftauchen darf |
+| **Warum sehe ich das?** | die eigene Herleitung (Abschnitt 11) |
 
-Jeder Abschnitt speichert für sich; einen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg gibt
-es nicht. Eine lesende Rolle sieht Eigentümer, Diagnosesperre und die Herleitung —
-schreibgeschützt.
-
-**Der Reiter „Zuordnungen": wer welchen Space erfährt.** Oben steht „In Space verwenden" mit
-derselben Auswahl wie im Katalog, darunter die Liste der Spaces, in denen der Bestand bereitsteht.
-Sie sehen alle Leseberechtigten — aber nur so weit, wie der Space selbst sichtbar ist. Ab der
-Verwalterrolle steht jede Zuordnung mit Namen da, samt „zugeordnet von", Datum und dem Hinweis
-„nicht alle Mitglieder lesen". Wer nur liest oder bearbeitet, sieht die Namen der Spaces, die
-ohnehin im Space-Verzeichnis stehen oder in denen er Mitglied ist; private Spaces, zu denen er
-nicht gehört, erscheinen nur als Zahl — „+ 2 weitere Spaces, die Sie nicht sehen dürfen". Ein
-privater Space verspricht, dass nur seine Mitglieder von ihm wissen, und dieses Versprechen gilt
-auch hier. **Lösen** lässt sich eine Zuordnung über „⋯" ihrer Zeile, „Aus Space lösen" — von der
-Verwaltung der Bibliothek und von jedem, der den Space kuratiert oder administriert.
-
-| Rolle | Darf |
-|---|---|
-| **Leser** (`VIEWER`) | Die Bibliothek durchsuchen, Treffer und Dokumentenliste sehen |
-| **Bearbeiter** (`EDITOR`) | Zusätzlich Dokumente hochladen und löschen, Ordner anlegen, umbenennen und löschen, einen Indexierungslauf anstoßen, Metadaten pflegen |
-| **Verwalter** (`MANAGER`) | Zusätzlich Rechte vergeben und entziehen — auch an alle Konten —, die Quellverbindung sehen und ändern, die Bibliothek für [Fremdzugänge](fremdzugaenge.md) freigeben |
-| **Eigentümer** (`OWNER`) | Zusätzlich löschen und das Eigentum übertragen |
-
-Die Rollen sind gestuft: Wer Verwalter ist, darf alles, was ein Bearbeiter darf. Die
-**Quellverbindung** einer Bibliothek — interner Serverpfad, Quelladresse, Zugangsdaten — bleibt
-einem Bearbeiter verborgen und wird erst ab der Verwalterrolle sichtbar; sie ist
-Infrastrukturangabe, nicht Konfiguration.
+Jeder Abschnitt speichert für sich. Eine lesende Rolle sieht Eigentümer, Diagnosesperre und die
+Herleitung schreibgeschützt.
 
 **Ein Recht kann befristet sein.** Jede Rolle wird mit oder ohne Ablaufdatum erteilt; mit dem
 Ablauf endet sie, ohne dass jemand eingreift, und das Erlöschen steht im Nachweisprotokoll.
 
-**Eigentum.** Eine Bibliothek gehört einer **Person** oder einer **Gruppe**. Wer sie anlegt, wählt
-das: Als persönliche Bibliothek erhält die anlegende Person die Eigentümerrolle, bei einer Gruppe
+**Eigentum.** Ein Arbeitsmittel gehört einer **Person** oder einer **Gruppe**. Wer es anlegt, wählt
+das: Als persönliches Arbeitsmittel erhält die anlegende Person die Eigentümerrolle, bei einer Gruppe
 als Eigentümerin erhält die Gruppe die Verwalterrolle — die anlegende Person muss Mitglied dieser
 Gruppe sein. **Gruppeneigentum ist die haltbarere Wahl**: Es übersteht den Weggang einzelner
 Personen, und genau dafür ist Abschnitt 13 sonst zuständig.
 
-Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Schritt „Freigaben" des Assistenten
-sucht Personen und Gruppen im selben Suchfeld „Person oder Gruppe suchen" wie der Abschnitt
-„Berechtigungen" an einer bestehenden Bibliothek — mit denselben Regeln für geschützte Gruppen
+Weitere Rollen lassen sich schon beim Anlegen vergeben. Der Assistent jeder Art sucht Personen und
+Gruppen im selben Suchfeld „Person oder Gruppe suchen" wie der Abschnitt „Berechtigungen" an einem
+bestehenden Arbeitsmittel — mit denselben Regeln für geschützte Gruppen
 (Abschnitt 8) und derselben Rückfrage vor einer Freigabe an die Gruppe eines externen Anbieters.
 Die Treffer stehen gemischt, die passendsten zuerst; eine Gruppe trägt „Gruppe" im Namen der
 Zeile. Suche, Rolle und „Vormerken" stehen in einer Zeile. Den Empfänger **„Alle Konten"**
 bietet der Assistent nicht an: Ein Bestand, den es noch nicht gibt, hat keine Reichweite zu weiten,
-und die Obergrenze, die über eine solche Freigabe entscheidet, gehört der angelegten Bibliothek.
+und die Obergrenze, die über eine solche Freigabe entscheidet, gehört dem angelegten Arbeitsmittel.
 
 ### Reichweite: „Alle Konten"
 
-**Es gibt keine getrennte Verteilungsstufe mehr.** Wie weit eine Bibliothek reicht, ergibt sich
-allein aus ihrer Rechteliste. Wer sie dem ganzen Haus öffnen will, erteilt ein Recht an den
+**Es gibt keine getrennte Verteilungsstufe mehr.** Wie weit ein Arbeitsmittel reicht, ergibt sich
+allein aus ihrer Rechteliste. Wer es dem ganzen Haus öffnen will, erteilt ein Recht an den
 Empfänger **„Alle Konten"** — als eigener Eintrag im Suchfeld des Abschnitts „Berechtigungen",
 mit demselben Ablaufdatum
 wie bei einer Person oder einer Gruppe, aber **höchstens mit der Rolle „Bearbeiter"**: Verwaltung
@@ -178,97 +152,17 @@ In den Übersichten steht die Reichweite als **abgeleitete Kennzeichnung**: „A
 Personen" oder „nur Sie". Sie ist keine Einstellung, sondern die Zusammenfassung dessen, was in der
 Rechteliste steht.
 
-**Sichtbar ist nur, was lesbar ist.** Eine Bibliothek, die eine Person nicht lesen darf, erscheint
+**Sichtbar ist nur, was lesbar ist.** Ein Arbeitsmittel, das eine Person nicht lesen darf, erscheint
 für sie nirgends — weder in der Übersicht noch im Katalog noch in der Suche, auch nicht mit Namen
-oder Beschreibung. Wer einen Bestand für andere sichtbar machen will, gibt ihn frei.
+oder Beschreibung. Wer ein Arbeitsmittel für andere sichtbar machen will, gibt es frei.
 
 Die Freigabe an alle Konten wird **historisiert** wie jede erteilte Rolle: Zu jedem Stichtag
-innerhalb der Aufbewahrungsfrist ist belegbar, wie weit eine Bibliothek gereicht hat (Abschnitt 12).
+innerhalb der Aufbewahrungsfrist ist belegbar, wie weit ein Arbeitsmittel gereicht hat (Abschnitt 12).
 Die Freigabe für [Fremdzugänge](fremdzugaenge.md) ist ein weiteres Reichweitenfeld und wird
 ebenso historisiert.
 
-### Der Katalog
-
-Der **Katalog** ist der eine Punkt der Hauptnavigation für Bestände jeder Art. Er zeigt Wissens- und
-Prompt-Bibliotheken gemischt: genau die, die die Person lesen darf — über eine eigene Rolle, eine
-Rolle über eine Gruppe oder die Freigabe an „Alle Konten". Unter der Überschrift steht „Alles, was
-Sie nutzen dürfen. Ihre Favoriten stehen oben." Die Adressen `/libraries` und `/prompts` führen auf
-den Katalog, eingegrenzt auf die jeweilige Art.
-
-| Element | Inhalt |
-|---|---|
-| **Suche** | Über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung; der Suchtext ist begrenzt |
-| **Filterzeile** | In einer Zeile, die auf schmalen Bildschirmen umbricht: Suche, dann die Art („Alle", „Wissen" oder „Prompts"), dann abgesetzt der Schalter „Favoriten" für die eigenen Favoriten. Die Filter wirken zusammen; Art und „Favoriten" stehen in der Adresse der Seite |
-| **Reihenfolge** | Fest: die eigenen Favoriten zuerst, dann nach Name von A bis Z. Eine Sortierauswahl gibt es nicht |
-| **Eintrag** | Eine Kachel: die Art als Etikett mit Symbol („Wissen" oder „Prompts"), direkt daneben das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist; Stern für den eigenen Favoriten und „⋯" für weitere Aktionen; Name, Beschreibung, Umfang (Dokumente bzw. Prompts), in wie vielen Räumen sie bereitsteht, zuständige Stelle mit Personen- oder Gruppensymbol und „Aktualisiert am" oder der Zustand. Jede Kachel führt zur Detailseite der Bibliothek; eine Tabellenansicht gibt es nicht |
-| **In Space verwenden** | Im Menü „⋯" jeder Kachel und auf der Detailseite (Menü „⋯" und Reiter „Zuordnungen"): ordnet die Bibliothek einem Raum zu (Abschnitt 5, „Zuordnen aus dem Katalog") |
-| **Seiten** | Die Einträge kommen seitenweise; über „Weitere laden" steht, wie viele von wie vielen angezeigt sind, und der Knopf hängt die nächste Seite an |
-| **Neu** | Oben rechts, nur wenn die Person mindestens ein Anlegerecht für eine Art hat (siehe unten, „Anlegen über ‚Neu'") |
-
-**Freigabe an alle.** Das Welt-Symbol heißt: an „Alle Konten" freigegeben; beim Darüberfahren und
-für Screenreader lautet es „Für alle Konten freigegeben". Eine Bibliothek, die nur über Freigaben an
-Personen oder Gruppen erreichbar ist, trägt kein Symbol. Das Symbol wird aus der Rechteliste
-abgeleitet und ist keine eigene Einstellung. Die eigene Rolle steht nicht auf der Kachel, sondern
-auf der Detailseite.
-
-**Aktualisiert und Zustand.** Ist eine Bibliothek bereit, nennt die Kachel „Aktualisiert am" mit
-Datum, ohne farbigen Punkt: bei einer Konnektorbibliothek das Datum des letzten erfolgreichen Laufs,
-sonst das Datum der letzten Änderung an Stammdaten oder Inhalt. Sonst nennt sie den Zustand in
-Worten, mit einem farbigen Punkt davor:
-„Wird aktualisiert", „Aktualisierung fehlgeschlagen" oder „Noch kein Inhalt". Ist die Nachfolge
-offen, steht zusätzlich die Zeile „Nachfolge offen", ebenfalls mit Punkt; der Adressat steht als
-zuständige Stelle, und der Stand der Indexierung bleibt sichtbar. Als Änderung zählt, was Stammdaten oder Inhalt ändert; Freigaben zählen nicht.
-
-Eine Bibliothek ohne Leserecht steht nicht im Katalog; auch die Suche über Name oder Beschreibung
-findet sie nicht, und ihre Adresse antwortet „nicht gefunden" wie bei einer unbekannten Bibliothek.
-Zuständig ist der Eigentümer — bei einer Gruppe ihr Name, bei einer Person ihr Anzeigename. Eine
-geschützte Gruppe und eine Person ohne Anzeigenamen bleiben unbenannt, eine E-Mail-Adresse erscheint
-nie. Ist die Nachfolge offen (Abschnitt 13.3), nennt der Eintrag deren Adressaten.
-
-Die Systemverwaltung sieht im Katalog nicht mehr als andere: **Verwalten ist nicht Lesen.** Eine
-Bibliothek, die sie nur verwaltet, erscheint dort nicht. Der Katalog zeigt nie etwas aus einer
-anderen Organisation, und ein Eintrag enthält Beschreibungen, nie Inhalte: keine Dokumente, keine
-Prompts.
-
-#### Favoriten
-
-Jede Person kann jede Bibliothek, die sie im Katalog sieht, mit dem **Stern** auf der Kachel als
-**Favorit** markieren und mit einem zweiten Druck wieder entfernen. Favoriten stehen im Katalog
-oben; der Filter „Favoriten" zeigt nur sie. Der Stern ist ein eigenes Bedienelement neben dem Link
-der Kachel: Er ist mit der Tabulatortaste erreichbar, Enter und Leertaste schalten ihn um, und ein
-Bildschirmleser liest vor, was der nächste Druck bewirkt („… als Favorit markieren" oder „… aus den
-Favoriten entfernen"). Nach dem Umschalten bleibt die Kachel bis zum nächsten Laden an ihrem Platz.
-
-Favoriten sind eine rein persönliche Ordnung und ändern keine Rechte:
-
-- **Nur die Person selbst sieht sie.** Weder die Systemverwaltung noch die Verantwortlichen einer
-  Bibliothek oder eines Raums erfahren, wer was markiert hat; es gibt keine Zahl der Favoriten je
-  Bibliothek.
-- **Kein Nachweis.** Setzen und Entfernen erscheinen weder im Nachweisprotokoll noch in einer
-  Historie und in keinem Bericht oder Export.
-- **Nur Lesbares.** Markieren lässt sich nur, was die Person lesen darf. Verliert sie das
-  Leserecht, verschwindet der Favorit aus dem Katalog; entfernen kann sie ihre Markierung trotzdem
-  jederzeit.
-- **Mit dem Konto gelöscht.** Wird das Konto gelöscht, gehen seine Favoriten mit, und sie halten
-  die Löschung nicht auf. Wird eine Bibliothek gelöscht, verschwinden die Favoriten daran ebenso.
-
-#### Anlegen über „Neu"
-
-Neue Bestände entstehen über **„Neu"** im Katalog. Der erste Schritt fragt „Was möchten Sie
-anlegen?" und bietet jede Art als Kachel mit Symbol und einem Satz dazu an — **nur die Arten, für
-die die Person ein Anlegerecht hat** (Abschnitt 9). Für Wissen genügt eines der beiden Rechte
-„Bibliotheken für Uploads anlegen" oder „Konnektorbibliotheken anlegen", für Prompts das Recht
-„Prompt-Bibliotheken anlegen". Hat sie für keine Art ein Recht, fehlt „Neu" im Katalog; wer die
-Seite dennoch erreicht, liest dort, dass ein Anlegerecht fehlt.
-
-„Weiter" führt in den Assistenten der gewählten Art: für Wissen in den Assistenten aus
-[Indexierung](indexierung.md), Abschnitt „Eine Bibliothek anlegen", für Prompts in den aus
-[Prompt-Bibliotheken](prompt-bibliotheken.md), Abschnitt „Anlegen". „Abbrechen" in einem der
-Assistenten führt zurück in den Katalog.
-
-Die Kacheln sind eine Auswahlgruppe: Die Pfeiltasten wechseln die Wahl, Leertaste und Enter
-wählen, und ein Bildschirmleser sagt die Gruppe mit ihrer Frage an. Die gewählte Kachel trägt einen
-Rahmen und ein Häkchen.
+Wie Arbeitsmittel im Katalog erscheinen, als Favorit markiert und angelegt werden, beschreibt das
+Kapitel [Katalog](katalog.md).
 
 ### Freigabe-Obergrenze für Konnektorbibliotheken
 
@@ -312,371 +206,18 @@ Grenze.
 
 ### Private Bibliotheken
 
-Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzerin auf einem Zugang
-für Personen (Kapitel [Indexierung](indexierung.md), „Zugänge“). Ihr Inhalt ist, was die Person
-beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich mit einem Konnektor,
-der die Besitzart „Person“ anbietet; von den mitgelieferten ist das Nextcloud
-([Konnektor Nextcloud](konnektor-nextcloud.md), „Verbundenes Konto“).
+Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzerin, und außer ihr
+liest sie niemand — auch nicht die Systemverwaltung. Rechte an andere, Übertragung, Nachfolge und
+„Sicht als" gibt es für sie nicht. Alles Weitere steht im Kapitel
+[Private Bibliotheken](private-bibliotheken.md).
 
-**Anlegen.** Die Person wählt beim Anlegen ausdrücklich „privat“; bei einem Zugang, der Bibliotheken
-und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Im Assistenten steht
-dafür im Schritt „Quelle“ unter den Zugängen die Gruppe **„Über mein verbundenes Konto“** mit dem
-Hinweis „Nur Sie sehen diese Bibliothek“. Sie erscheint nur für Zugänge, auf denen die Person
-bereits ein verbundenes Konto hat; ohne ein solches Konto gibt es weder die Gruppe noch einen
-Hinweis darauf. Ein Zugang, der Bibliotheken und Personen zulässt, steht dort zweimal: in den
-Zugängen als teilbare Bibliothek, in der Gruppe als private. Ein Zugang nur für Personen steht nur in
-der Gruppe; über ihn ist auch die Quellart wählbar, wenn es sonst keinen Weg zu ihr gibt. Für die
-private gibt es kein Feld für Zugangsdaten, und der Schritt „Freigaben“ entfällt. Vorausgesetzt
-sind:
+## 5. Rollen in einem Space
 
-- ein verbundenes Konto der Person auf dem Zugang und das Anlegerecht für den Zugang (Abschnitt 9);
-- keine eigenen Zugangsdaten — die Bibliothek meldet sich mit dem verbundenen Konto an;
-- dasselbe Ziel wie das Konto: eine Adresse unter der Server-Adresse des Zugangs und keine eigene
-  Bindung, etwa eine andere Freigabe eines Dateiservers. Eine abweichende wird abgewiesen.
-
-Verbindungstest und Auflistung vor dem Anlegen laufen ebenso über das verbundene Konto.
-
-**Erkennbar** ist eine private Bibliothek an der Marke **„Privat“** (Schloss und Wort) auf ihrer
-Kachel im Katalog und im Kopf ihrer Detailseite. Im Reiter „Freigaben“ stehen nur Eigentümerin,
-Diagnosesperre und ein Hinweis, warum es nicht mehr gibt; Berechtigungen, Externer Zugang,
-Obergrenze, Herleitung und „Eigentum übergeben“ fehlen. Im Reiter „Quelle“ fehlt „Zugang lösen“,
-und „Zugang wechseln“ bietet nur Zugänge an, auf denen die Besitzerin ein verbundenes Konto hat,
-auch solche nur für Personen.
-
-**Im Chat** trägt ein Beleg aus einer privaten Bibliothek im Belegfenster den Zusatz **„Private
-Quelle“**, auch wenn die Antwort ihn nicht zitiert. Stand eine solche Quelle im Kontext der Antwort,
-steht darunter die Zeile **„Private Quellen im Kontext“**. Beides sieht nur die Besitzerin, denn nur
-sie liest ihre privaten Bibliotheken; die Kennzeichnung wird mit der Antwort gespeichert und bleibt
-auch, wenn die Bibliothek später gelöscht und ihr Beleg zu „Quelle entfernt“ wird.
-
-**Was nicht geht — auch nicht für die Systemverwaltung:** Rechte an Personen, Gruppen oder „Alle
-Konten“, Übertragung, Fremdzugangsfreigabe, eine Freigabe-Obergrenze, Nachfolge und „Sicht als“. Die
-Diagnosesperre ist bei einer privaten Bibliothek fest gesetzt und lässt sich nicht lösen. Vom Zugang
-lösen lässt sie sich nicht; einem anderen Zugang ordnet sie nur ihre Besitzerin zu, und nur einem
-Zugang für Personen, auf dem sie ein verbundenes Konto hat. Für alle anderen gibt es die Bibliothek
-nicht: Jede Anfrage, die sie nennt, beantwortet OPAA wie die nach einer unbekannten.
-
-**Wenn sie ruht**, trägt sie einen Hinweis, der die zuständige Stelle nennt; der Bestand bleibt
-durchsuchbar:
-
-| Hinweis | Ursache | Zuständig |
-|---|---|---|
-| „Verbindung getrennt“ | Die Besitzerin hat ihr Konto getrennt, oder es wurde getrennt (Notabschaltung, Adressänderung) | Besitzerin: Konto unter „Verbundene Konten“ neu verbinden |
-| „Abgelaufen“ | Der Anbieter hat die Anmeldung abgelehnt | Besitzerin: neu verbinden |
-| „Ruhend“ | Das Konto der Besitzerin wird derzeit nicht genutzt | Besitzerin bzw. Systemverwaltung |
-| „Konto deaktiviert“ | Das Konto der Besitzerin ist deaktiviert; der Hinweis nennt den Tag, ab dem die Bibliothek gelöscht wird, wenn es deaktiviert bleibt | Systemverwaltung |
-| „Ziel weicht ab“ | Die Bibliothek erreicht ein anderes Ziel als das, für das das Konto gilt | Besitzerin: neu verbinden, sonst neu anlegen |
-| „Zugang nicht mehr nutzbar“ | Der Zugang wurde gelöscht, lässt keine Personen mehr zu oder sein Konnektor lehnte eine Änderung für die Bibliothek ab | Besitzerin: anderem Zugang zuordnen; gibt es keinen, die Systemverwaltung |
-
-Der Hinweis steht im Reiter „Quelle“. Bei „Verbindung getrennt“ und „Abgelaufen“ führt er die
-Besitzerin mit „Konto verbinden“ bzw. „Konto neu verbinden“ zu „Verbundene Konten“, bei „Zugang
-nicht mehr nutzbar“ bietet er „Zugang zuordnen“ an. Ein Lauf, der daran scheitert, speichert den
-Grund als Kategorie ohne Inhaltsbezug.
-
-**Speicherkontingent der Person.** Alle privaten Bibliotheken einer Person teilen sich ein
-Kontingent; eine weitere private Bibliothek schafft keinen zusätzlichen Platz. Das Kontingent je
-Bibliothek gilt daneben unverändert. Gezählt wird, was tatsächlich gespeichert ist. Passt eine
-Datei nicht mehr in das Kontingent, wird sie wie am Kontingent der Bibliothek übersprungen: Der Lauf
-nimmt sie nicht auf, läuft aber weiter, übernimmt Löschungen in der Quelle und endet als
-unvollständig mit der Kategorie `QUOTA_EXHAUSTED`. Eine übersprungene Datei gilt nicht als gelöscht;
-war sie schon aufgenommen und passt nur ihre neue Fassung nicht, bleibt die bisherige Fassung
-durchsuchbar. Dieselbe Kategorie trägt ein Lauf, der am Kontingent der Bibliothek selbst endete;
-dieses wird zuerst geprüft. Im Reiter „Quelle“ trägt der Lauf deshalb unter „Läufe“ die neutrale
-Marke „unvollständig: Speicherkontingent erschöpft, Dateien übersprungen“ und aufgeklappt einen
-Hinweis, der beide Ursachen und beide Wege nennt: Platz in dieser Bibliothek schaffen oder ihr
-Kontingent erhöhen lassen, das der Betrieb festlegt, oder die privaten Bibliotheken insgesamt
-verkleinern oder die persönliche Grenze von der Systemverwaltung erhöhen lassen. Welches Kontingent
-erschöpft war, nennt das Laufprotokoll an jeder übersprungenen Datei, mit Verbrauch und Grenze.
-Endete der letzte Lauf so, steht derselbe Hinweis auch im Kopf der Detailseite. Platz schaffen Dateien, die
-in der Quelle gelöscht werden oder durch eine eingegrenzte Quelle herausfallen, das Löschen einer
-ganzen privaten Bibliothek oder eine höhere Grenze der Systemverwaltung. Frei wird der Platz erst,
-wenn der Abgleich die Löschung übernimmt: bei einem Vollabgleich am Ende des Laufs, bei einer Runde
-über mehrere Läufe am Ende des Laufs, der die Runde abschließt, bei einem Änderungslauf am Ende dieses
-Laufs. Eine übersprungene Datei – auch ein Anhang – versucht jeder weitere Lauf erneut: Änderungsstand,
-Confluence-Anker und Feed-Zustand rücken nicht über sie hinweg, und ein Dokument mit übersprungenem
-Anhang wird ohne Änderungsmerkmal gespeichert und im nächsten Lauf erneut gelesen. Sobald Platz ist,
-nimmt der nächste Lauf, der sie erreicht, sie auf; bis dahin endet jeder solche Lauf unvollständig,
-und der Hinweis bleibt stehen.
-
-Ihren **eigenen Verbrauch** sieht die Besitzerin im Kopf der Detailseite jeder ihrer privaten
-Bibliotheken: „… von … in Ihren privaten Bibliotheken belegt“, bei unbegrenzter Grenze „… in Ihren
-privaten Bibliotheken belegt (unbegrenzt)“. Die Zahl gilt für alle ihre privaten Bibliotheken
-zusammen (`GET /api/v1/me/private-storage`); im Einzelnen sieht sie niemand sonst.
-
-Die Grenze ist ein **hausweiter Wert**, den nur die Systemverwaltung setzt: unter **Administration →
-Anbindungen → Einstellungen**, Abschnitt „Speicher privater Bibliotheken“, im Feld „Grenze je Person (GB)“ oder mit „Unbegrenzt“
-und „Grenze speichern“ (`PUT /api/v1/admin/private-libraries/quota`). Der Abschnitt nennt, ob die
-Vorgabe der Installation oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
-Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“; „Vorgabe wiederherstellen“ führt zur Vorgabe
-`OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` zurück (Variablentabelle im Kapitel
-[Deployment](deployment.md)). `0` bedeutet unbegrenzt. Vor dem Speichern fragt OPAA nach. Eine
-Änderung wirkt ab dem nächsten aufgenommenen Dokument und löscht nichts. Jede Änderung steht im
-Revisionsprotokoll (`PRIVATE_STORAGE_QUOTA_CHANGED`).
-
-Darunter steht die **Übersicht der Verwaltung** (`GET /api/v1/admin/private-libraries/summary`). Sie
-zeigt für die eigene Organisation nur Summen: die Zahl der Besitzerinnen, den belegten Speicher
-insgesamt, eine Tabelle „Belegter Speicher je Zugang“ für Zugänge für Personen und eine Tabelle
-der Laufabbrüche je Ursache im Zeitfenster. Die Ursache „Speicherkontingent erschöpft“ umfasst
-beide Kontingente: Läufe privater Bibliotheken, die an der persönlichen Grenze endeten, und solche,
-die am Kontingent ihrer Bibliothek endeten. Sie zeigt deshalb auch dann Läufe, wenn die persönliche
-Grenze auf „Unbegrenzt“ steht. Jede dieser Zahlen ruht auf Personen und folgt der
-Mindestgruppengröße: Die Gesamtzahlen erscheinen erst ab N Besitzerinnen, sonst als „weniger als
-N“. Eine Zahl je Zugang oder je Kategorie ist exakt nur, wenn ihre Besitzerinnen und die aller
-übrigen privaten Bibliotheken je mindestens N sind, und nur, solange das, was die exakten Zahlen je
-Zugang zusammen übrig lassen, auf mindestens N Personen ruht — ein leerer Rest gilt als wenige —;
-sonst steht dort „nicht ausgewiesen“. Ein Speicherwert unter der Mindestgruppengröße erscheint als
-„nicht ausgewiesen (weniger als N Personen)“. Die Oberfläche zeigt jede Zahl so, wie der Server sie
-liefert, und rechnet nichts zusammen. Einen Weg zum Verbrauch einer einzelnen Person gibt es für die
-Verwaltung nicht.
-
-**Was die Verwaltung sieht:** nur Zusammenfassungen. Indexstatus und Pipeline-Stand zeigen private
-Bibliotheken als eine Zeile ohne Namen und Kennung; jede Zahl über sie richtet sich nach der Zahl
-ihrer Besitzerinnen und steht unterhalb der Mindestgruppengröße nur als „weniger als N“, ohne
-Summen. Eine Teilzahl, etwa die abgelehnten privaten Bibliotheken eines Zugangs, nennt OPAA nur
-exakt, wenn sowohl ihre Besitzerinnen als auch die Besitzerinnen aller übrigen privaten Bibliotheken
-mindestens N sind — je Organisation, falls ein Zugang Bibliotheken mehrerer trägt; ein leerer Rest
-gilt als wenige —; sonst entfällt sie. Die Speicherbereiche der Bereinigung, die Prüfung
-chunk-armer Dokumente, die Zahlen am Zugang und die Zahl der diagnosegesperrten
-Bibliotheken zählen sie nicht mit. Der Neuaufbau nach einem Pipeline-Wechsel bezieht sie ein, nennt
-sie aber in keiner Zahl seiner Antwort: Jeder Aufruf merkt alle ihre veralteten Dokumente auf einmal
-für den nächsten Lauf der Bibliothek vor, der sie mit dem verbundenen Konto der Besitzerin neu
-einliest.
-Einträge im Revisionsprotokoll nennen weder Dateinamen noch Pfade noch Metadatenwerte. Lehnt der Konnektor eine Änderung des Zugangs für eine private
-Bibliothek ab, erfährt die Verwaltung nur die Anzahl, ohne Bibliothek und Grund, und die Änderung
-gilt trotzdem; die Besitzerin erhält eine Benachrichtigung. Ist ihr Konto gerade nicht nutzbar
-(ruhend, deaktiviert), wird der Konnektor für ihre Bibliothek nicht gefragt, und sie bleibt am
-Zugang. Verwirft eine Änderung den Abgleichstand des Zugangs, zählt OPAA private Bibliotheken
-dabei nicht mit und wartet nicht auf ihre laufenden Indexierungen; ihr Abgleichstand wird ebenso
-verworfen, und die Besitzerin wird benachrichtigt. Schreibt ein laufender Lauf den Stand mit den
-alten Einstellungen weiter, verwirft ihn der nächste Lauf selbst. Die Space-Zuordnung einer privaten Bibliothek sehen andere Mitglieder nicht, auch
-nicht in Zählern und Hinweisen oder beim Löschen des Space. Im Revisionsprotokoll und in der
-Stichtagsauskunft heißt sie „Private Bibliothek“ und ist nur an ihrer Kennung zu erkennen.
-
-**Löschen.** Löscht die Besitzerin ihre private Bibliothek, wird sie mit allem gelöscht, was von ihr
-irgendwo liegt, und das Revisionsprotokoll hält es ohne Namen fest; dasselbe tut der tägliche
-Löschlauf, wenn ihr Konto länger als die Löschfrist ausdrücklich deaktiviert ist ([Benutzerverwaltung](benutzerverwaltung.md),
-„Private Bibliotheken löschen“). Eine laufende Indexierung hält das Löschen nicht auf. Die
-Indexübersicht nennt die Zahl der zur Löschung anstehenden privaten Bibliotheken nach denselben
-Regeln wie jede Teilzahl.
-
-In der Oberfläche heißt die Aktion **„Sofort löschen“** und steht im Menü „⋯“ im Kopf der
-Detailseite. Die Rückfrage nennt, was gelöscht wird (Dokumente, Index, Originale, Ordner, Metadaten,
-Läufe und die Zuordnungen zu Spaces), dass Belege in ihren Chats danach „Quelle entfernt“ heißen, der Text der Antworten aber
-stehen bleibt, dass die Dateien beim Anbieter unverändert bleiben und dass sich das nicht rückgängig
-machen lässt; der Fokus liegt zunächst auf „Abbrechen“. Ist die Bibliothek gelöscht, führt die Seite
-zurück in den Katalog und bestätigt es. Solange die Anfrage läuft, ist „Sofort löschen“ gesperrt.
-Läuft gerade eine Indexierung, meldet OPAA, dass die Bibliothek zur Löschung vorgemerkt ist, und die
-Seite bleibt stehen: Die
-Bibliothek trägt im Kopf die Marke **„Wird gelöscht“** und den Hinweis „Wird gelöscht – vorgemerkt
-am …“, ohne einen Zeitpunkt für den Abschluss zu versprechen. Bis dahin bietet die Seite weder
-„Jetzt indizieren“ noch ein erneutes Löschen, kein Bearbeiten von Name, Quelle, Zugang, Zeitplan,
-Metadatenfeldern oder Zuordnungen und kein Hochladen oder Löschen von Dokumenten. Ein Dokument
-lässt sich nicht mehr öffnen; der Versuch meldet „Die Bibliothek wird gelöscht – ihre Dokumente
-lassen sich nicht mehr öffnen.“ Die Katalogkachel trägt jetzt ebenfalls „Wird gelöscht“.
-
-### Ordner, Speicherkontingent, Löschen
-
-- **Ordner sind keine Rechtegrenze.** Sie gliedern eine Bibliothek für die Navigation;
-  Berechtigungen hängen immer an der Bibliothek, und die Suche durchsucht stets den ganzen Bestand.
-  Wer Ordner anlegt und wer sie pflegt, hängt am Quellentyp — in einer Upload-Bibliothek legt sie
-  ein Bearbeiter selbst an, bei allen übrigen Quellentypen spiegelt der Lauf die Quelle
-  ([Indexierung](indexierung.md), Abschnitt 2).
-- **Das Löschen eines Ordners löscht die enthaltenen Dokumente** samt Chunks und Originaldateien,
-  nach einer Bestätigung, die ihre Anzahl nennt. Ein einzelnes Dokument löscht ebenfalls ein
-  Bearbeiter; ein Dokument, das die Quelle weiterhin liefert, kommt mit dem nächsten Lauf wieder —
-  wer einen Bestand dauerhaft aus dem Index halten will, ändert die Quellkonfiguration der
-  Bibliothek, nicht das einzelne Dokument.
-- **Jede Bibliothek hat ein Speicherkontingent** (`OPAA_LIBRARY_QUOTA_BYTES`, Variablentabelle im
-  Kapitel [Deployment](deployment.md)). Es wirkt am Upload und an den Konnektorpfaden gleich: Was
-  darüber liegt, wird abgelehnt beziehungsweise im Laufprotokoll als übersprungen vermerkt. Für
-  private Bibliotheken gilt zusätzlich das Kontingent der Person (Abschnitt „Private
-  Bibliotheken“).
-
-## 5. Rollen in einem Raum
-
-| Rolle | Darf |
-|---|---|
-| **Mitglied** | Den Raum betreten, Chats anlegen und führen, geteilte Chats lesen, die bereitgestellten Bibliotheken sehen — gefiltert auf den eigenen Zugriff |
-| **Kurator** | Zusätzlich Bibliotheken bereitstellen und lösen, Inhalte ordnen |
-| **Administrator** | Zusätzlich Mitglieder und Rollen verwalten, Einstellungen setzen, geteilte Inhalte zurückziehen |
-
-Daneben steht der **Eigentümer** als eigenes Merkmal: Er allein — und die Systemverwaltung — darf
-den Raum löschen. **Ein Raum gehört immer einer natürlichen Person.**
-
-**Auch eine Gruppe wird Mitglied eines Raums, mit Rolle.** Ihre Mitglieder tragen diese Rolle ohne
-eigene Zeile und verlieren sie im Moment, in dem sie die Gruppe verlassen. Hält jemand mehrere Wege
-in denselben Raum — direkt und über zwei Gruppen —, gilt die stärkste Rolle.
-
-Drei Regeln halten einen Raum handlungsfähig:
-
-- **Er verliert nie sein letztes handlungsfähiges Administrator-Mitglied durch eine
-  Verwaltungshandlung.** Entfernen oder Herabstufen wird abgelehnt und nennt den Grund. **Eine
-  Gruppe zählt dabei als Administrator, solange sie handlungsfähig ist.**
-- **Den Eigentümerwechsel darf jedes handlungsfähige Administrator-Mitglied vollziehen**, das eine
-  natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
-- **Ein archivierter Raum nimmt keine neuen Mitglieder auf.**
-
-### Zuordnung: was ein Raum enthält
-
-**Ein Raum enthält genau, was ihm zugeordnet ist** — für jede Art von Bestand. Die Chats des Raums
-suchen nur in den zugeordneten Wissensbibliotheken, auch über `@`-Bezüge, und bieten nur die
-Prompts der zugeordneten Prompt-Bibliotheken an. Was eine Person lesen darf, aber dem Raum nicht
-zugeordnet ist, steht dort nicht zur Verfügung. Ein Raum ohne zugeordnetes Wissen durchsucht nichts;
-das gilt auch für den persönlichen Standard-Raum, der zunächst leer ist. Der Chat und die Seite des
-Raums sagen das mit „Diesem Space ist kein Wissen zugeordnet."; Kuratoren und Administratoren
-führt „Wissen zuordnen" direkt in den Reiter „Inhalte" der Einstellungen. Die Durchsetzung liegt im
-Backend, nicht nur in der Oberfläche: Einen `@`-Bezug auf eine nicht zugeordnete Bibliothek und
-einen Prompt aus einer nicht zugeordneten Prompt-Bibliothek lehnt es ab.
-
-**Eine Bibliothek in einem Raum bereitzustellen ist eine Handlung im Raum.** Sie setzt die
-Kuratorenrolle **im Raum** und mindestens die Leserrolle **an der Bibliothek** voraus: Wer etwas
-bereitstellt, muss es selbst lesen dürfen. Die Bereitstellung **verschafft niemandem ein
-Leserecht** — sie legt fest, worin die Chats dieses Raums suchen. Sind im Raum
-Mitglieder ohne Leserecht an dieser Bibliothek, wird die Eigentümerin der Bibliothek darüber
-benachrichtigt; eine Zustimmung braucht es nicht, die Bereitstellung wirkt sofort. Das gilt für jede
-Art von Bestand. Entstehen beim Anlegen eines Raums mehrere solche Bereitstellungen, erhält jede
-Eigentümerin **eine** Benachrichtigung, die alle ihre Bestände nennt.
-
-**Was eine Person nicht lesen darf, sieht sie auch in der Zuordnungsliste nicht** — in keiner
-Rolle, auch nicht als Kurator, Administrator oder Systemverwaltung. Die Liste nennt weder Namen
-noch Anzahl solcher Bereitstellungen. Sind nicht alle Zuordnungen lesbar, steht im Reiter
-„Inhalte" der Einstellungen der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
-lesbar."; ist nur Nicht-Lesbares zugeordnet, steht allein dieser Hinweis da. Lösen kann eine
-Bereitstellung im Raum nur, wer die Bibliothek lesen darf; jeder andere Versuch wird wie bei einer
-unbekannten Bibliothek mit „nicht gefunden" beantwortet. Eine Bereitstellung, die man nicht lesen
-darf, löst die Verwaltung der Bibliothek von deren Seite aus, Reiter „Zuordnungen".
-
-Die Mitgliederliste eines Raums sehen **nur** seine Administratoren, sein Eigentümer und die
-Systemverwaltung. Mitglieder und Kuratoren sehen ausschließlich, wie viele Mitglieder je Rolle es
-gibt. Ein Raum ist nur für seine Mitglieder auffindbar; ein Verzeichnis der Räume gibt es
-nicht, und eine Einstellung zur Sichtbarkeit eines Raums deshalb auch nicht.
-
-**In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Das Zahnrad sieht jedes Mitglied; wer den Raum nicht verwalten darf, liest dort nur.
-Die Seite hat drei Reiter, und keine Überschrift im Reiter wiederholt seinen Namen:
-
-| Reiter | Inhalt |
-|---|---|
-| **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation ([Suche](suche.md), Abschnitt 2), die **Anweisung an das Modell** ([Suche](suche.md), Abschnitt 6) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
-| **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — für Administratoren als Auswahl, beim Eigentümer als schreibgeschützte Auswahl „Eigentümer" mit Schloss statt Pfeil und dem Hinweis, dass der Eigentümer über „Zum Eigentümer machen" bei einem anderen Mitglied wechselt — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
-| **Inhalte** | Eine Kachelliste aller Arten von Bestand — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
-
-**Im Reiter „Mitglieder" meldet sich jede Änderung kurz.** Hinzufügen, Entfernen, Rollenwechsel und
-Übertragung bestätigt je eine Meldung, die von selbst verschwindet („Gruppe Meldewesen
-hinzugefügt", „Rolle von Thomas Klein: Kurator"). Die Liste aktualisiert sich dabei ohne neues
-Laden. Ein Fehler bleibt stehen, bis er geschlossen wird.
-
-**Im Reiter „Inhalte" wirkt ein Häkchen sofort.** Anhaken ordnet zu und bestätigt das kurz; Abhaken
-löst die Zuordnung, und die Meldung dazu bietet „Rückgängig" an. Schlägt die Änderung fehl, springt
-das Häkchen zurück, und eine Fehlermeldung nennt den Grund. Beim Öffnen ist der Filter „Nur
-zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen darf und deshalb
-zuordnen könnte. In beiden Ansichten sind es dieselben Kacheln wie im Katalog, in derselben
-Reihenfolge: Favoriten zuerst, dann nach Name. Darüber stehen dieselben Filter wie im Katalog:
-Suche, Typ und Favoriten. Wer
-weder Kurator noch Administrator noch Eigentümer des Raums ist, sieht die zugeordneten Inhalte, die
-er lesen darf, nur lesend.
-
-**Die ersten beiden Reiter gehören den Administratoren.** Kuratoren und Mitglieder öffnen dieselbe
-Seite und sehen die Stammdaten nur lesend. Im Reiter „Mitglieder" steht für sie keine Liste und
-kein Name, nur die Größe des Raums: wie viele Personen und Gruppen aufgenommen sind („10 Personen
-und 2 Gruppen") und wie sich die Rollen darauf verteilen („Rollen: 2 Administratoren, 1 Kurator,
-9 Mitglieder"). Eine Gruppe zählt dabei einmal, gleich wie viele Konten sie hat. Die Arbeit eines Kurators
-liegt im Reiter „Inhalte".
-Den Schalter der Chat-Bereinigung im eigenen Standard-Raum legt nur dessen Eigentümer um, auch die
-Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertragen: Der Knopf „Zum
-Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
-Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
-archivieren noch löschen.
-
-**Die Anweisung an das Modell setzt und ändert nur, wer im Raum die Rolle Administrator hat** —
-direkt, über eine Gruppe oder als Eigentümer. Kuratoren und Mitglieder lesen sie in den Stammdaten,
-und die Systemverwaltung ändert sie ohne diese Rolle nicht; Name und Beschreibung ändert sie
-weiterhin. Im eigenen Standard-Raum ist die Person selbst Administrator und hinterlegt dort eine
-persönliche Daueranweisung. Ein leeres Feld entfernt die Anweisung. Jede Änderung steht im
-Revisionsprotokoll als Änderung des Raums mit dem Feldnamen, der Text selbst nicht.
-
-### Einen Raum anlegen: der Space-Assistent
-
-„Neuer Space" führt durch vier Schritte: **Grunddaten**, **Mitglieder**, **Inhalte** und
-**Zusammenfassung**. Nur der Name ist Pflicht; die Schritte „Mitglieder" und „Inhalte" lassen sich
-mit „Weiter" überspringen.
-
-Die **Grunddaten** sind Name, Beschreibung und der Schalter der automatischen Chat-Bereinigung. Der
-Schalter nennt die Fristen, die der Betrieb festgelegt hat; was sie bewirken, steht in
-[Suche](suche.md), Abschnitt 2. Jeder Raum ist nur für seine Mitglieder sichtbar.
-
-Im Schritt **Mitglieder** nimmt der Assistent Personen **und** Gruppen auf, über dasselbe Suchfeld
-wie der Reiter „Mitglieder" der Einstellungen: Suche, Rolle und „Vormerken" in einer Zeile, mit
-denselben Angaben zu Gruppengröße und denselben Regeln für geschützte Gruppen (Abschnitt 8). Eine
-Gruppe gibt ihre Rolle an alle ihre Mitglieder weiter.
-
-Die **Zusammenfassung** nennt Mitglieder und Inhalte je mit einem kleinen Symbol; Gruppen tragen
-zusätzlich „Gruppe", Inhalte ihre Art im Text. Die Chat-Bereinigung erscheint nur, wenn der Schalter
-an ist, als Satz mit beiden Fristen.
-
-Im Schritt **Inhalte** stehen alle Bestände als Kacheln, die die Person lesen darf — dieselbe Menge
-wie im Katalog, in derselben Reihenfolge. Mehrere Kacheln lassen sich zugleich wählen. Darüber
-steht dieselbe Filterzeile wie im Katalog: Suche über Name und Beschreibung, Art („Alle", „Wissen",
-„Prompts") und „Favoriten". Über „Weitere laden" steht, wie viele von wie vielen angezeigt sind. Eine Wahl bleibt bestehen,
-wenn Filter oder Suche ihre Kachel ausblenden; die Zeile unter den Kacheln nennt alles Gewählte.
-Die Kacheln sind dieselben wie im Katalog — Art, Welt-Symbol, Stern, Name, Beschreibung, Umfang,
-zuständige Stelle und „Aktualisiert am" —, nur ohne „⋯". Eine gewählte Kachel trägt links oben ein
-Häkchen und einen hervorgehobenen Rahmen. Ein Klick auf die Kachel wählt sie oder hebt die Wahl
-auf; ein Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wahl nicht. Jede Kachel
-ist ein Kontrollkästchen mit eigenem Tabstopp, der Stern ein eigener Tabstopp daneben: Leertaste und
-Enter wählen oder heben die Wahl auf.
-
-„Space anlegen" legt den Raum samt vorgemerkten Mitgliedern und allen Zuordnungen in einem Schritt
-an. Lässt sich ein Mitglied nicht aufnehmen oder ein gewählter Bestand nicht zuordnen, entsteht kein
-Raum; der Assistent bleibt mit allen Eingaben offen und nennt den Grund. Die Aufnahme jedes
-Mitglieds steht wie beim späteren Hinzufügen im Nachweisprotokoll. Ist kein Wissen gewählt, sagt die Zusammenfassung „Kein
-Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen."
-
-Dieselbe Kachelauswahl steht im Reiter „Inhalte" der Einstellungen. Dort ist das Häkchen die
-Zuordnung selbst und wirkt sofort (Abschnitt „Zuordnung: was ein Raum enthält"); eine Zeile mit
-allem Gewählten und einen Knopf „Zuordnen" gibt es dort nicht.
-
-### Zuordnen aus dem Katalog: „In Space verwenden"
-
-Im Menü „⋯" jeder Kachel des Katalogs, im Menü „⋯" im Kopf der Detailseite einer Bibliothek und
-oben in ihrem Reiter „Zuordnungen" steht **„In Space verwenden"**. Es öffnet die Liste der Räume, in denen die Person Kurator oder Administrator ist;
-archivierte Räume fehlen, Räume mit dieser Bibliothek sind als „Bereits zugeordnet" gesperrt. Ein
-Klick auf einen Raum ordnet zu — vom Katalog aus sind es drei Klicks: „⋯", „In Space verwenden",
-der Raum. „Neuen Space damit anlegen" öffnet den Space-Assistenten mit der Bibliothek als bereits
-gewählter Kachel.
-
-### Die Space-Übersicht
-
-Die Übersicht führt alle Räume auf, in denen Sie Mitglied sind — in der Oberfläche heißen sie
-„Spaces". Die Überschrift nennt ihre Anzahl, oben rechts steht „Neuer Space". Ein Suchfeld filtert
-über Name und Beschreibung. Die Räume stehen als Kacheln; eine Tabellenansicht gibt es nicht.
-
-Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats, darunter Ihre eigene Rolle und die
-Mitglieder als Badges. Die Mitgliederangabe ist wie die Reichweite einer Bibliothek formuliert:
-„2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das einzige Mitglied ist — gleich,
-ob es der Standard-Raum ist oder nicht. Eine Gruppe zählt als eine Mitgliedschaft, wie viele Personen
-sie auch umfasst; ihre Größe wird hier nicht genannt. Ein archivierter Space ist als solcher
-gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat. Das Space-Menü der
-Seitenleiste nennt unter jedem Namen dieselbe Mitgliederangabe.
-
-### Einstieg und Space-Wechsel
-
-Nach der Anmeldung öffnet OPAA einen **leeren Chat im zuletzt genutzten Space** — nicht den letzten
-Chat, und nicht mehr grundsätzlich den persönlichen Space. Ist der gemerkte Space nicht mehr
-zugänglich, weil er archiviert wurde, die Mitgliedschaft entzogen ist oder der Rechner zuletzt von
-jemand anderem benutzt wurde, führt der Einstieg in den persönlichen Space.
-
-Das Space-Menü am Kopf der Seitenleiste führt aus demselben Grund **höchstens fünf Spaces**, den
-zuletzt genutzten zuoberst; darunter stehen unverändert „Alle Spaces anzeigen" und „Neuen Space
-anlegen". Wer in vielen Spaces Mitglied ist, findet den vollständigen Bestand samt Suchfeld in der
-Übersicht — das Menü ist der schnelle Weg zurück, nicht das Verzeichnis.
-
-Die Nutzungsreihenfolge merkt sich der Browser, nicht der Server: Sie gilt je Gerät und je Browser
-und wandert nicht mit. Gemerkt werden nur Space-Kennungen, und die Liste wird bei jedem Öffnen gegen
-die Spaces abgeglichen, die der Dienst dem angemeldeten Konto ausliefert. Melden sich zwei Personen
-nacheinander am selben Rechner an, wirkt die Reihenfolge deshalb genau in den Spaces weiter, in
-denen beide Mitglied sind — alles andere fällt heraus. Wer das nicht möchte, meldet sich in einem
-privaten Fenster an oder löscht die Browserdaten; ein Recht verschafft die Liste ohnehin nicht.
+Ein Space hat eigene Rollen — **Mitglied**, **Kurator**, **Administrator** — und einen
+**Eigentümer**, der immer eine natürliche Person ist. Auch eine Gruppe wird Mitglied eines Space,
+mit Rolle. Ein Space enthält genau die Arbeitsmittel, die ihm zugeordnet sind, und erweitert keine
+Leserechte (Abschnitt 1). Rollen, Zuordnung, Einstellungen und das Anlegen eines Space beschreibt das
+Kapitel [Spaces](spaces.md).
 
 ## 6. Woher Gruppen kommen
 
@@ -773,7 +314,7 @@ Verantwortliche dürfen:
 - die Gruppe **zur Verwendung freigeben** und die Freigabe zurücknehmen
 - die Gruppe vorübergehend **deaktivieren** und wieder **reaktivieren** (siehe unten)
 - die Gruppe löschen, solange sie keine Berechtigung, kein Anlegerecht und kein Eigentum mehr trägt
-  und in keinem Raum Mitglied ist
+  und in keinem Space Mitglied ist
 
 **Wer nicht verantwortlich ist, sieht die Gruppe unter „Meine Gruppen" nicht** und bekommt auf jeden
 Pflegeversuch dieselbe Antwort wie für eine Gruppe, die es nicht gibt. Die Systemverwaltung darf
@@ -806,10 +347,10 @@ Person entlassen — die Gruppe steht dann ohne Verantwortliche da, bis eine neu
 erscheint so lange in der Betriebsliste (Abschnitt 13).
 
 **Freigabe zur Verwendung.** Eine neu angelegte interne Gruppe ist für andere zunächst **nicht**
-wählbar: Wer eine Bibliothek freigibt, findet sie weder in der Auswahl noch über ihre Kennung. Erst
+wählbar: Wer ein Arbeitsmittel freigibt, findet sie weder in der Auswahl noch über ihre Kennung. Erst
 die Freigabe durch die Verantwortlichen macht sie zu einem möglichen Empfänger. Das gilt für jeden
-Weg, auf dem eine Gruppe zum Zuge kommt: Berechtigung auf eine Bibliothek, Anlegerecht, Eigentum und
-Aufnahme als Mitglied eines Raums. Bei der Umstellung wurde jede interne Gruppe, die bereits eines
+Weg, auf dem eine Gruppe zum Zuge kommt: Berechtigung auf ein Arbeitsmittel, Anlegerecht, Eigentum und
+Aufnahme als Mitglied eines Space. Bei der Umstellung wurde jede interne Gruppe, die bereits eines
 davon trug, automatisch als freigegeben übernommen — niemand verliert eine Möglichkeit, die er
 benutzt hat. Anbietergruppen brauchen keine Freigabe; sie sind immer wählbar, solange sie wirksam
 sind.
@@ -820,19 +361,19 @@ Bereich **Wirkung** oder in der Gruppenverwaltung im Zeilenmenü. Das dürfen ih
 die Systemverwaltung, bei einer geschützten Gruppe ebenso wie bei jeder anderen.
 
 - **Solange sie deaktiviert ist, wirkt die Gruppe für niemanden.** Ihre Berechtigungen an
-  Bibliotheken, ihre Raummitgliedschaften und ihre Anlegerechte erreichen keines ihrer Mitglieder;
+  Arbeitsmitteln, ihre Space-Mitgliedschaften und ihre Anlegerechte erreichen keines ihrer Mitglieder;
   die Suche, „Warum sehe ich das?“ und das Rechteprofil der Suchdiagnose zählen die Gruppe nicht
   mit. Das gilt sofort, ohne neue Anmeldung.
 - **Sie ist kein neues Ziel.** Wer etwas freigibt, sieht sie in der Auswahl als nicht wählbar mit
-  dem Grund „Gruppe deaktiviert“; als Eigentümerin einer neuen Bibliothek steht sie nicht zur Wahl.
-- **Gespeichert bleibt alles.** Berechtigungen, Raummitgliedschaften mit Rolle, Anlegerechte,
+  dem Grund „Gruppe deaktiviert“; als Eigentümerin eines neuen Arbeitsmittels steht sie nicht zur Wahl.
+- **Gespeichert bleibt alles.** Berechtigungen, Space-Mitgliedschaften mit Rolle, Anlegerechte,
   Mitglieder, Verantwortliche, Freigabe und Schutzkennzeichen bleiben stehen; **„Reaktivieren“** stellt
   den vorherigen Stand ohne weitere Entscheidung wieder her. Mitglieder lassen sich auch während der
   Deaktivierung aufnehmen und entfernen.
 - **Die Bestätigung beziffert die Folgen** — wie viele Freigaben an wie vielen Objekten, wie viele
-  Raummitgliedschaften und Anlegerechte und wie viele aktive Konten betroffen sind.
+  Space-Mitgliedschaften und Anlegerechte und wie viele aktive Konten betroffen sind.
 - **Verweigert wird das Deaktivieren**, solange die Gruppe **einzige Eigentümerin** einer Wissens-
-  oder Prompt-Bibliothek ist oder das **letzte handlungsfähige Administrator-Mitglied** eines Raums:
+  oder Prompt-Bibliothek ist oder das **letzte handlungsfähige Administrator-Mitglied** eines Space:
   Sonst stünde das Objekt ohne Zuständige da. Die Meldung nennt, wie viele Objekte im Weg sind; der
   Ausweg ist „Rechte übertragen“ (Abschnitt 13.2) oder eine weitere zuständige Person.
 - Eine Frist oder Wiedervorlage gibt es nicht: Die Gruppe bleibt deaktiviert, bis jemand sie
@@ -883,7 +424,7 @@ eingibt.
 |---|---|---|---|
 | **Verantwortliche** einer internen Gruppe | ja | ja | ja |
 | **Systemverwaltung** | ja | ja | ja — **der Abruf ist ein Nachweiseintrag** |
-| **Wer ein Recht erteilt** (Verwalter einer Bibliothek, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**: in der Auswahl unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, an der Zeile einer bestehenden Freigabe oder Mitgliedschaft immer die Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält, auch bei kleinen Gruppen — **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
+| **Wer ein Recht erteilt** (Verwalter eines Arbeitsmittels, Administrator eines Space) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**: in der Auswahl unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, an der Zeile einer bestehenden Freigabe oder Mitgliedschaft immer die Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält, auch bei kleinen Gruppen — **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
 | **Mitglied** der Gruppe | seine eigenen Gruppen | ja | nein |
 | **Alle übrigen** | nichts | — | — |
 
@@ -895,28 +436,28 @@ Vier Eigenschaften gehören dazu:
 - **„Erreicht derzeit niemanden."** Eine leere, aber wirksame Gruppe bleibt wählbar — sonst
   scheiterte „Gruppe anlegen, freigeben, Mitglieder aufnehmen" am ersten Schritt. Die Auswahl sagt
   es dazu, und die Betriebsliste führt die Folge (Abschnitt 13).
-- **Die heutige Größe an der Zeile.** Die Freigabeliste einer Bibliothek und die Mitgliederliste
-  eines Raums nennen bei einer Gruppe die Zahl ihrer aktiven Konten von heute („Gruppe · …
+- **Die heutige Größe an der Zeile.** Die Freigabeliste eines Arbeitsmittels und die Mitgliederliste
+  eines Space nennen bei einer Gruppe die Zahl ihrer aktiven Konten von heute („Gruppe · …
   Mitglieder"), ohne Mindestgruppengröße: Wer die Zeile sieht, verwaltet das Recht und darf die
   Mitglieder ohnehin aufklappen. Eine Zahl vom Tag der Erteilung wird nicht festgehalten; wer seit
   wann über welche Gruppe Zugriff hat, beantworten Rechtehistorie, Nachweisprotokoll und die
   Herleitung (Abschnitte 11 und 12).
 - **Geschützte Gruppen sind über die Suche nicht auffindbar.** In der Auswahl erscheinen sie nur bei
   Eingabe ihrer **vollständigen** Bezeichnung; wer ihre Kennung eingibt, erhält sie zur Bestätigung
-  **ohne** Namen. In fremden Listen — Mitgliederliste eines Raums, Freigabeliste einer Bibliothek,
+  **ohne** Namen. In fremden Listen — Mitgliederliste eines Space, Freigabeliste eines Arbeitsmittels,
   Liste der Anlegerechte — steht „Geschützte Gruppe"
   statt der Bezeichnung. Die Zeile bleibt, damit eine Mitgliedschaft beendet werden kann, die
   niemand sieht; die Größe entfällt dort ganz.
 
-**Wer ein Recht gibt, sieht, an wen.** An der Zeile einer Gruppe steht in der Freigabeliste einer
-Bibliothek „Mitglieder anzeigen", in der Mitgliederliste eines Raums im Menü „⋯" der Eintrag
+**Wer ein Recht gibt, sieht, an wen.** An der Zeile einer Gruppe steht in der Freigabeliste eines
+Arbeitsmittels „Mitglieder anzeigen", in der Mitgliederliste eines Space im Menü „⋯" der Eintrag
 „Mitglieder der Gruppe anzeigen". Die Liste wird
 **erst auf ausdrücklichen Wunsch** geladen, zeigt die **aktiven Konten** mit Namen und sagt dazu,
 wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Die Größe der Gruppe
 begrenzt dabei nichts, auch eine kleine Gruppe zeigt ihre Namen. Vier Grenzen gelten:
 
 - **Nur am eigenen Objekt, und nur solange die Gruppe dort ein Recht hält.** Wer die Freigabe
-  entzieht oder die Mitgliedschaft im Raum beendet, sieht die Mitglieder nicht mehr; eine
+  entzieht oder die Mitgliedschaft im Space beendet, sieht die Mitglieder nicht mehr; eine
   abgelaufene Freigabe hält nichts. Eine Abfrage „wer ist in dieser Gruppe" ohne Objekt gibt es
   nicht.
 - **Nur bei Gruppen, die zur Verwendung freigegeben sind** — Anbietergruppen sind es immer. Nehmen
@@ -927,7 +468,7 @@ begrenzt dabei nichts, auch eine kleine Gruppe zeigt ihre Namen. Vier Grenzen ge
   eines Identitätsanbieters gibt die Systemverwaltung Auskunft.
 
 **Der Abruf durch die Systemverwaltung steht im Nachweisprotokoll, auch hier.** Wer über seine
-Systemrolle an die Liste kommt — und eine Systemrolle trägt an jeder Bibliothek und in jedem Raum —,
+Systemrolle an die Liste kommt — und eine Systemrolle trägt an jedem Arbeitsmittel und in jedem Space —,
 hinterlässt denselben Eintrag wie beim Abruf über die Gruppenverwaltung (Abschnitt 7), mit der Zahl
 der Mitglieder und ohne die Namen. Wer die Gruppe an seinem eigenen Objekt berechtigt hat und keine
 Systemrolle trägt, erzeugt keinen Eintrag: Er liest, wen er selbst hereingeholt hat; wer das war und
@@ -940,7 +481,7 @@ gleich ob lokal oder aus einem Identitätsanbieter, und werden an eine Person, e
 
 | Anlegerecht | Ausgeliefert an |
 |---|---|
-| **Spaces anlegen** (Räume) | Alle Konten |
+| **Spaces anlegen** | Alle Konten |
 | **Bibliotheken für Uploads anlegen** | Alle Konten |
 | **Konnektorbibliotheken anlegen** | je Quellart und je Zugang (unten); die mitgelieferten Quellarten an Alle Konten |
 | **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
@@ -948,7 +489,7 @@ gleich ob lokal oder aus einem Identitätsanbieter, und werden an eine Person, e
 
 Fünf Punkte dazu:
 
-- **Der ausgelieferte Zustand ändert nichts.** Wer bisher Räume und Bibliotheken anlegen konnte, kann
+- **Der ausgelieferte Zustand ändert nichts.** Wer bisher Spaces und Bibliotheken anlegen konnte, kann
   es weiterhin. Einschränken heißt: „Alle Konten" das Recht entziehen und es einer benannten Gruppe
   geben.
 - **Konnektorbibliotheken sind der erste Kandidat für eine Einschränkung.** Sie erreichen Serverpfade
@@ -972,7 +513,7 @@ Fünf Punkte dazu:
 ### Konnektor-Freigabe: je Quellart und je Zugang
 
 „Konnektorbibliotheken anlegen" wird nicht als Ganzes erteilt, sondern **für eine Quellart** oder
-**für einen Zugang** (Kapitel [Indexierung](indexierung.md), „Zugänge"):
+**für einen Zugang** (Kapitel [Zugänge](zugaenge.md)):
 
 | Neue Bibliothek | Das Recht muss gelten für |
 |---|---|
@@ -991,7 +532,7 @@ Quellart öffnet keinen ihrer Zugänge.
   die Freigabe der Quellart), und vor dem Anlegen die Verbindung testen oder die Quelle auflisten.
   Wird sie entzogen, laufen bestehende Bibliotheken weiter; auch das erneute Zuordnen zum
   bisherigen Zugang bleibt möglich. Läufe stoppt nur die **Sperre** einer Quellart oder eines
-  Zugangs (Kapitel [Indexierung](indexierung.md), „Zugänge").
+  Zugangs (Kapitel [Zugänge](zugaenge.md)).
 - **Der Assistent zeigt nur, was die Person anlegen darf:** Eine Quellart, die sie weder mit
   eigener Adresse noch über einen nutzbaren Zugang anlegen darf oder die gesperrt ist, erscheint im
   Wissens-Assistenten nicht; ebenso ein Zugang, der für sie nicht freigegeben oder gesperrt ist.
@@ -1039,9 +580,9 @@ in der Rechtehistorie festgehalten.
 ## 10. Systemrollen und Vollmachten
 
 **Die Systemverwaltung liest in der Suche nichts, was ihr nicht freigegeben ist — verwaltet aber
-jede Bibliothek.** Beide Sätze gelten gleichzeitig, und sie widersprechen sich nicht: Der
-Rechtefilter der Suche kennt keine Ausnahme für die Systemrolle, die Bibliotheksverwaltung dagegen
-führt sie an jeder Bibliothek als Eigentümerin. Kein Anlegerecht und keine Vollmacht ändert das
+jedes Arbeitsmittel.** Beide Sätze gelten gleichzeitig, und sie widersprechen sich nicht: Der
+Rechtefilter der Suche kennt keine Ausnahme für die Systemrolle, die Verwaltung der Arbeitsmittel
+dagegen führt sie an jedem als Eigentümerin. Kein Anlegerecht und keine Vollmacht ändert das
 Erste.
 
 **Auch der einzelne Inhalt bleibt zu.** Die Systemverwaltung sieht die Dokumentenliste jeder
@@ -1077,9 +618,9 @@ Nachweisprotokoll.
 
 ## 11. „Warum sehe ich das?" — die Herleitung
 
-Für jede Bibliothek und jeden Raum, den eine Person sieht, zeigt die Oberfläche ihr **den eigenen
+Für jedes Arbeitsmittel und jeden Space, die eine Person sieht, zeigt die Oberfläche ihr **den eigenen
 Weg** zur wirksamen Rolle — ohne Vollmacht, ohne Protokolleintrag, und **ohne die Mitglieder einer
-Gruppe offenzulegen**. Die Herleitung steht auf der Detailseite der Bibliothek und am Raum.
+Gruppe offenzulegen**. Die Herleitung steht auf der Detailseite des Arbeitsmittels und am Space.
 
 **Aufbau.** Der erste Satz nennt die wirksame Rolle: „Thomas Klein ist Kurator in diesem Space."
 bzw. „Maria Weber darf diese Bibliothek lesen." Gibt es nur einen Weg, folgt seine Herkunft im
@@ -1093,7 +634,7 @@ Maria Weber ist Administrator in diesem Space.
 Es gilt die höhere Rolle.
 ```
 
-Space und Bibliothek zeigen die Herleitung gleich; „Schließen" klappt sie wieder zu. Der Zeitpunkt
+Space und Arbeitsmittel zeigen die Herleitung gleich; „Schließen" klappt sie wieder zu. Der Zeitpunkt
 eines Wegs steht nur als Tooltip an seiner Zeile. Herkunft und Mechanismus einer Gruppe nennt die
 Herleitung nicht; wer verwaltet, sieht die Mitglieder über „Mitglieder der Gruppe anzeigen".
 
@@ -1105,13 +646,13 @@ Herleitung nicht; wer verwaltet, sieht die Mitglieder über „Mitglieder der Gr
 | Eigene Mitgliedschaft | „direkt aufgenommen" |
 | Mitgliedschaft über eine Gruppe | „über die Gruppe …" mit dem Gruppennamen |
 | Eigentum | „als Eigentümer" |
-| Systemverwaltung | Am Raum „über die Systemverwaltung", **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist. An einer Bibliothek ein eigener Satz: „… verwaltet diese Bibliothek über die Systemverwaltung (ohne Leserecht am Inhalt)." Verwalten ist nicht Lesen (Abschnitt 4); die wirksame Rolle im ersten Satz und „Es gilt die höhere Rolle." ergeben sich deshalb nur aus den übrigen Wegen |
+| Systemverwaltung | Am Space „über die Systemverwaltung", **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist. An einer Bibliothek ein eigener Satz: „… verwaltet diese Bibliothek über die Systemverwaltung (ohne Leserecht am Inhalt)." Verwalten ist nicht Lesen (Abschnitt 4); die wirksame Rolle im ersten Satz und „Es gilt die höhere Rolle." ergeben sich deshalb nur aus den übrigen Wegen |
 
 **Gegenüber anderen ist die Herleitung enger.** Für einen anderen Menschen gibt sie ein
-Administrator oder der Eigentümer eines Raums ab — dieselben Personen, die die Mitgliederliste
+Administrator oder der Eigentümer eines Space ab — dieselben Personen, die die Mitgliederliste
 ohnehin sehen. Führt ein Weg dabei über eine **geschützte Gruppe**, nennt die Antwort nur die
 wirksame Rolle und sagt, dass ein Weg nicht benannt wird: Stünde dort „Rolle über eine geschützte
-Gruppe" und wirkte im Raum genau eine solche Gruppe, wäre sie benannt. **Die eigene Herleitung
+Gruppe" und wirkte im Space genau eine solche Gruppe, wäre sie benannt. **Die eigene Herleitung
 bleibt immer vollständig.**
 
 ## 12. Nachweis: Rechtehistorie und Stichtagsauskunft
@@ -1120,9 +661,9 @@ bleibt immer vollständig.**
 **dass** jemand etwas getan hat. Eine Historienzeile sagt, **in welchem Zeitraum** ein Recht galt —
 sie trägt die Stichtagsauskunft und überlebt das Löschen des Gegenstands, auf den sie sich bezieht.
 
-Historisiert werden: Berechtigungen an Bibliotheken, Gruppenmitgliedschaften (solange eine interne
+Historisiert werden: Berechtigungen an Arbeitsmitteln, Gruppenmitgliedschaften (solange eine interne
 Gruppe deaktiviert ist, ruhen ihre Zeiträume — Abschnitt 7), die Reichweitenfelder
-einer Bibliothek, Raummitgliedschaften (Person und Gruppe, mit Rolle), Eigentum, Anlegerechte und
+eines Arbeitsmittels, Space-Mitgliedschaften (Person und Gruppe, mit Rolle), Eigentum, Anlegerechte und
 der Kontozustand. **Keine** Historie führen die Systemrollen, die Verantwortlichkeiten für interne
 Gruppen, die Vollmachten und die Nachfolgevorgänge — die drei Letzten tragen kein Leserecht, und
 was mit einer Systemrolle geschah, steht allein im Nachweisprotokoll.
@@ -1131,8 +672,8 @@ was mit einer Systemrolle geschah, steht allein im Nachweisprotokoll.
 Stichtagsauskunft** offen. Sie beantwortet eine Frage: „Wer durfte dieses Objekt an diesen Tagen
 lesen?" Fünf Schutzregeln gehören dazu:
 
-- **Genau ein benanntes Objekt je Abfrage** — eine Bibliothek oder ein Raum, über Objektart und
-  Kennung. Es gibt keine Sammelabfrage über einen Raum, eine Organisationseinheit oder einen Filter:
+- **Genau ein benanntes Objekt je Abfrage** — ein Arbeitsmittel oder ein Space, über Objektart und
+  Kennung. Es gibt keine Sammelabfrage über einen Space, eine Organisationseinheit oder einen Filter:
   Sonst setzte die Revision aus dreißig Objektabfragen desselben Referats das Rechteprofil jeder
   Person darin zusammen.
 - **Zeitfenster und Seitengrenze sind Pflicht**, mit denselben Grenzen wie jeder andere Zugang zum
@@ -1145,13 +686,13 @@ lesen?" Fünf Schutzregeln gehören dazu:
   weist die Auskunft das aus: Dort heißt leer „nicht mehr vorgehalten", nicht „kein Zugriff".
   Ebenso nennt jede Antwort die vier Rechtequellen, die sie **nicht** abdeckt: Systemrolle,
   Eigentum, Anlegerechte und Kontozustand. Die Systemrolle wiegt am schwersten — eine
-  Systemverwaltung verwaltet jede Bibliothek ihrer Organisation, ohne dass ein Zeitraum das belegt.
+  Systemverwaltung verwaltet jedes Arbeitsmittel ihrer Organisation, ohne dass ein Zeitraum das belegt.
   Zusammengerechnet werden heute Berechtigungen, Gruppenmitgliedschaften, Reichweitenfelder und
-  Raummitgliedschaften.
+  Space-Mitgliedschaften.
 - **Es gibt keinen Personen-Einstieg.** „Worauf hatte Person X am 3. März Zugriff" ist nicht
   gebaut und bleibt es, bis die Pseudonymisierung der Historie vorliegt (#391/#395).
 
-Eine private Bibliothek (Abschnitt 4, „Private Bibliotheken“) nennen Stichtagsauskunft und
+Eine [private Bibliothek](private-bibliotheken.md) nennen Stichtagsauskunft und
 Nachweisprotokoll nie mit ihrem Namen, sondern „Private Bibliothek“ mit ihrer Kennung — auch in den
 Einträgen, die beim Anlegen, Ändern und Löschen entstehen.
 
@@ -1228,7 +769,7 @@ Systemverwaltung das Protokoll dort nicht.
 Läuft der Verzeichnisabgleich, übernimmt derselbe Lauf auch den **Kontostatus**: Ein Konto, das das
 Verzeichnis als gesperrt meldet oder gar nicht mehr meldet, verliert beim nächsten Lauf seinen
 Zugang — nicht erst mit dem Ablauf seines Tokens. Es ist **gesperrt, nicht gelöscht**:
-Mitgliedschaften, Räume, Rollen und Eigentum bleiben stehen, die Sperre ist über das Verzeichnis
+Mitgliedschaften, Spaces, Rollen und Eigentum bleiben stehen, die Sperre ist über das Verzeichnis
 rückholbar, und **die betroffene Person erhält bei der nächsten Anmeldung Grund und Ansprechstelle**
 statt einer wortlosen Abweisung. Sperren zählen in dieselbe Plausibilitätsschwelle und denselben
 Bestätigungsweg wie Mitgliedschaftsentzüge. Die Einzelheiten stehen im Kapitel
@@ -1248,17 +789,17 @@ die Übertragung.
 
 | Umfang | Gruppe → Gruppe | Gruppe → Person | Person → Person |
 |---|---|---|---|
-| Berechtigungen an Bibliotheken | ja | — | — |
-| Mitgliedschaften in Räumen | ja | — | — |
+| Berechtigungen an Arbeitsmitteln | ja | — | — |
+| Mitgliedschaften in Spaces | ja | — | — |
 | Anlegerechte | ja | — | — |
-| Eigentum an Bibliotheken | ja | ja | ja |
-| Eigentum an Räumen | — | — | ja |
+| Eigentum an Arbeitsmitteln | ja | ja | ja |
+| Eigentum an Spaces | — | — | ja |
 | Verantwortung für interne Gruppen | — | — | ja |
 
-**Ein Raum gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
-Personen; eine Gruppe besitzt keinen Raum und wird auch keiner. **Der persönliche Raum ist von der
+**Ein Space gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
+Personen; eine Gruppe besitzt keinen Space und wird auch keiner. **Der persönliche Space ist von der
 Übertragung ausgenommen** — über sein Eigentum entscheidet niemand, er erscheint auch in keiner
-Vorschau. Übernimmt eine Person einen Raum,
+Vorschau. Übernimmt eine Person einen Space,
 wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
 die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
 soll.
@@ -1268,11 +809,11 @@ werden hier weder übertragen noch aufgezählt — sie enden mit ihrem Konto. Ei
 Frau Vogt darf" gibt es bewusst nicht.
 
 **Wer das darf.** Die Systemverwaltung für das ganze Haus. Ihre eigene Verantwortung und ihr eigenes
-Eigentum gibt jede Person selbst ab, aus „Meine Gruppen". Wer eine Bibliothek verwaltet, ändert deren
+Eigentum gibt jede Person selbst ab, aus „Meine Gruppen". Wer ein Arbeitsmittel verwaltet, ändert dessen
 Berechtigungen weiterhin einzeln.
 
 **Ablauf.** Zuerst die **Vorschau**: Sie nennt in einem Satz, was bewegt würde („12 Berechtigungen an
-7 Objekten, Mitglied in 2 Räumen, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**,
+7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**,
 gegen dieselbe Lage, die die Vorschau gezeigt hat: Hat sich an den betroffenen Zeilen inzwischen
 etwas geändert oder ist die Vorschau zu alt, wird nichts angewendet, und OPAA verlangt eine neue
 Vorschau. Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie
@@ -1294,10 +835,10 @@ dort, wo das des Ziels beginnt, und beide tragen dieselbe Vorgangsnummer.
 **Danach lässt sich ein Anbieter löschen, dessen Gruppen noch Rechte trugen.** Das ist der vorgesehene
 Weg aus der Ablehnung „Diese Gruppen wirken noch"; die Rechte werden umgezogen, nicht entfernt.
 
-**Mit dem Eigentum geht die Rolle mit.** Wer eine Bibliothek übernimmt, darf sie danach auch
-verwalten; die vorherige Eigentümerin verliert ihre Rolle an dieser Bibliothek. Bei einer Gruppe als
+**Mit dem Eigentum geht die Rolle mit.** Wer ein Arbeitsmittel übernimmt, darf es danach auch
+verwalten; die vorherige Eigentümerin verliert ihre Rolle daran. Bei einer Gruppe als
 neuer Eigentümerin ist es die Verwalterrolle, bei einer Person die Eigentümerrolle — dieselben
-Rollen, die beim Anlegen einer Bibliothek vergeben werden.
+Rollen, die beim Anlegen eines Arbeitsmittels vergeben werden.
 
 **Es gibt eine Obergrenze.** Eine Übertragung bewegt höchstens so viele Zeilen, wie die
 Konfigurationstabelle in Abschnitt 15 nennt. Darüber wird sie abgelehnt, mit der Zahl und dem
@@ -1325,12 +866,12 @@ ist, ist er vorbei.
 **Was der Zustand bedeutet — und was nicht.** Das Objekt bleibt nutzbar, alle bestehenden Rechte
 bleiben, **nichts wird gelöscht**. Eingefroren ist allein die **Reichweite**: keine neuen oder
 größeren Berechtigungen, keine größere Sichtbarkeit, keine neue oder verlängerte Freigabe für
-Fremdzugänge, keine neue Bereitstellung in einem Raum, keine neuen Raummitglieder. Der Versuch wird
+Fremdzugänge, keine neue Bereitstellung in einem Space, keine neuen Space-Mitglieder. Der Versuch wird
 mit einer Meldung abgelehnt, die auch sagt, wer zuständig ist.
 
 **Alles, was Reichweite wegnimmt, bleibt möglich** — und zwar dieselben Wege wie sonst: eine
 Berechtigung herabstufen oder entziehen, eine Befristung vorziehen, eine Freigabe verkürzen oder
-zurücknehmen, ein Raummitglied entfernen, das Objekt umbenennen, einschränken, lesen, durchsuchen
+zurücknehmen, ein Space-Mitglied entfernen, das Objekt umbenennen, einschränken, lesen, durchsuchen
 und indexieren.
 
 **Jedes betroffene Objekt führt Zustand und Zuständigkeit mit** — „Nachfolge offen — zuständig: die
@@ -1349,7 +890,7 @@ zeigt, wie viele Einträge er enthält; gezählt wird nur nach Art des Eintrags,
 
 | Reiter | Was darin steht | Nächster Schritt |
 |---|---|---|
-| Inhalte ohne Verantwortliche | Bibliotheken, Räume und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr handeln kann | „Nachfolge bestimmen“; bei einer internen Gruppe ohne Verantwortliche und bei einem Objekt einer internen Gruppe „Zur Gruppenverwaltung“ |
+| Inhalte ohne Verantwortliche | Arbeitsmittel, Spaces und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr handeln kann | „Nachfolge bestimmen“; bei einer internen Gruppe ohne Verantwortliche und bei einem Objekt einer internen Gruppe „Zur Gruppenverwaltung“ |
 | Gruppen ohne aktive Mitglieder | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Rechte erreichen niemanden | „Rechte übergeben“ an eine andere Gruppe |
 | Leere Gruppen | interne Gruppen, die weder aktive Mitglieder noch Rechte haben | in der Gruppenverwaltung auflösen |
 
@@ -1376,7 +917,7 @@ sonst begänne sein Alter von vorn.
 Problem („Wem die Bibliothek gehört, kann nicht mehr handeln.“), seit wann der Eintrag
 offen ist („offen seit 12 Tagen“, vor dem ersten Feststellungslauf „gerade erkannt“) und wer
 zuständig ist. Die bisherige Eigentümerin und Hinweise, wo eine Nachfolge zu suchen ist, stehen als
-Text daneben. Der Name des Objekts führt in die Bibliothek beziehungsweise in den Raum. Jede Zeile
+Text daneben. Der Name des Objekts führt in das Arbeitsmittel beziehungsweise in den Space. Jede Zeile
 hat **genau einen** hervorgehobenen nächsten Schritt:
 
 - **„Nachfolge bestimmen“** bei einem Objekt einer Person: Übergabe von Person zu Person, Umfang
@@ -1393,7 +934,7 @@ und ausdrücklicher Bestätigung. Eine Zeile, die der Feststellungslauf noch nic
 („gerade erkannt“), steht bereits in der Liste; ihr Alter zählt ab dem ersten Lauf. Wann der Lauf
 hinsieht, steht in Abschnitt 15.
 
-**Der kleine Weg für ein einzelnes Objekt.** Geht es nur um eine Bibliothek und nicht um den ganzen
+**Der kleine Weg für ein einzelnes Objekt.** Geht es nur um ein Arbeitsmittel und nicht um den ganzen
 Bestand einer Person, genügt im Reiter „Freigaben" der Abschnitt „Eigentümer" mit „Eigentum
 übergeben" (Abschnitt 4). Auch das beendet den Zustand „Nachfolge offen" dieses Objekts und wird am
 Vorgang vermerkt; auch das darf die Systemverwaltung. Der Unterschied zum Übertragungsdialog ist
@@ -1407,12 +948,12 @@ Umgebungsvariable (Abschnitt 15). Ein offener Vorgang wird nie gelöscht, gleich
 ## 14. Diagnose im Gruppenkontext
 
 Die Suchdiagnose läuft im **Rechteprofil** einer Gruppe: Ein Profil *ist* eine Gruppe samt der
-Bibliotheken, die sie lesen darf. Zusätzlich lässt sich ein **Raum** dazuwählen; dann sucht die
-Diagnose in der Schnittmenge aus den Bibliotheken des Raums und den für die Gruppe lesbaren. Diese
-Kombination ist nur zulässig, wenn mindestens so viele **aktive** Konten der Gruppe den Raum auf
+Bibliotheken, die sie lesen darf. Zusätzlich lässt sich ein **Space** dazuwählen; dann sucht die
+Diagnose in der Schnittmenge aus den Bibliotheken des Space und den für die Gruppe lesbaren. Diese
+Kombination ist nur zulässig, wenn mindestens so viele **aktive** Konten der Gruppe den Space auf
 irgendeinem Weg erreichen, wie die Mindestgruppengröße verlangt — geprüft im Moment des Laufs, nicht
 bei der Auswahl. Sonst antwortet die Seite mit einem Hinweis auf den Personenkontext mit Vollmacht.
-Jeder Lauf mit Raumkontext erzeugt **einen** Protokolleintrag.
+Jeder Lauf mit Space-Kontext erzeugt **einen** Protokolleintrag.
 
 Die Diagnose bleibt der Systemverwaltung vorbehalten; kein Anlegerecht öffnet sie. Sie ist **kein**
 Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft (Abschnitt 12), und beide
@@ -1428,7 +969,7 @@ eingebaut.
 
 | Größe | Vorgabe | Grenzen | Wirkung |
 |---|---|---|---|
-| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann die Auswahl eines Empfängers eine Gruppengröße als Zahl nennt statt „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Raumkontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
+| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann die Auswahl eines Empfängers eine Gruppengröße als Zahl nennt statt „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Space-Kontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
 | Abgleichintervall je Anbieter | **360 Minuten** (6 Stunden) | 5 Minuten bis 1 Woche | Wie oft der Verzeichnisabgleich eines Anbieters fällig ist; Einstellung der Anbieterzeile, nicht der Umgebung |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | **0,3** (30 %) | größer als 0, höchstens 1 | Plausibilitätsschwelle: Ein Lauf, der mehr als diesen Anteil der Mitgliedschaften entziehen oder Konten sperren würde, schreibt nichts und legt seinen Plan zur Bestätigung vor |
 | `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | **12 Monate** | frei nach oben; ein Wert **≤ 0 fällt still auf 12 zurück** (kein Startabbruch, anders als bei der Mindestgruppengröße) | Ab welchem Alter ein Eintrag der Betriebsliste als „lange offen“ hervorgehoben wird. Hebt hervor, löst nichts aus |
@@ -1498,8 +1039,8 @@ noch nicht fest; wo die Punkte einen Mechanismus nennen, beschreiben sie das bis
 
 **3. Vertretung und Zugriff Dritter**
 
-- *Worum es geht:* Eine private Bibliothek liest nur ihre Besitzerin (Abschnitt 4, „Private
-  Bibliotheken“): keine Freigabe, keine Nachfolge, kein „Sicht als“, kein Vorfallszugriff. Eine
+- *Worum es geht:* Eine private Bibliothek liest nur ihre Besitzerin
+  ([Private Bibliotheken](private-bibliotheken.md)): keine Freigabe, keine Nachfolge, kein „Sicht als“, kein Vorfallszugriff. Eine
   Vertretung kann deshalb nicht über OPAA in die Bibliothek der Abwesenden sehen. Der Inhalt ist,
   was das Konto beim Anbieter sieht; was das bei Vertretungsrechten im Mailsystem einschließt,
   hängt vom künftigen Konnektor ab.
@@ -1543,11 +1084,11 @@ Postfächer.
 - **Keinen Vorfallszugriff auf den Inhalt privater Bibliotheken.** Die anlassbezogene Klärung
   (Abschnitt 10) filtert nur das Nachweisprotokoll; den Inhalt untersucht das Haus in der
   Originalquelle ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12).
-- **Keinen Rückgriff auf alles Lesbare im Chat.** Ein Raum ohne Zuordnung sucht nichts; es gibt
-  keinen Schalter, der einen Raum auf alle lesbaren Bibliotheken öffnet (Abschnitt 5).
+- **Keinen Rückgriff auf alles Lesbare im Chat.** Ein Space ohne Zuordnung sucht nichts; es gibt
+  keinen Schalter, der einen Space auf alle lesbaren Bibliotheken öffnet (Abschnitt 5).
 - **Keine Gruppenschachtelung** und keine vererbte Mitgliedschaft (Abschnitt 3).
-- **Keine Gruppe als Verantwortliche einer Gruppe** und keine Gruppe als Raumeigentümerin.
-- **Keine freien Rollen.** Die vier Bibliotheks- und die drei Raumrollen sind fest; wer ein Bündel
+- **Keine Gruppe als Verantwortliche einer Gruppe** und keine Gruppe als Space-Eigentümerin.
+- **Keine freien Rollen.** Die vier Rollen an Arbeitsmitteln und die drei Space-Rollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
 - **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
   Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.
@@ -1570,6 +1111,7 @@ Postfächer.
 - Lokale Konten, Systemrollen und ihre Fristen: [Benutzerverwaltung](benutzerverwaltung.md)
 - Rechtefilter, Suchdiagnose, Diagnosesperre und die Aufbewahrung der Rechtehistorie:
   [Suche](suche.md)
-- Bibliothek, Quelle, Lauf, Ordner und Dokument: [Indexierung](indexierung.md)
+- Arbeitsmittel finden, anlegen und zuordnen: [Katalog](katalog.md)
+- Rollen, Zuordnung und Einstellungen eines Space: [Spaces](spaces.md)
 - Der lesende Kanal für fremde KI-Werkzeuge und seine Freigabe je Bibliothek:
   [Fremdzugänge](fremdzugaenge.md)

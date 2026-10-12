@@ -610,7 +610,7 @@ Viele Häuser und Rechenzentren legen Ablagen inzwischen in S3-kompatiblen Objek
 AWS S3, MinIO, Ceph RGW, Hetzner Object Storage und weitere Dienste, die die S3-API sprechen. Der
 Dateisystem-Konnektor erreicht sie nur über einen Mount, der Webverzeichnis-Konnektor gar nicht.
 Der Quellentyp `S3` (Epic #1291, [ADR-0027](../decisions/0027-s3-konnektor.md)) liest sie direkt;
-das Betriebshandbuch dazu ist [Konnektor: S3-Objektspeicher](../handbuch/konnektor-s3.md).
+das Betriebshandbuch dazu ist [Konnektor: S3-Objektspeicher](../handbuch/konnektoren/s3.md).
 
 **Konfigurationsmodell — erstmals ein typisiertes Bündel (ADR-0027, Entscheidung 1).** Eine
 S3-Bibliothek trägt in den bestehenden Spalten, was typübergreifend Regeln hat: den Endpoint als
@@ -1067,7 +1067,7 @@ Link, dessen Segment erst nach der Dekodierung `.`, `..` oder einen Pfadtrenner 
 er wird bereits von der Unterbaum-Prüfung des Crawlers verworfen und deshalb nie angefragt, gleich ob
 es sich um einen relativen Link oder um einen bereits absoluten, gleichursprünglichen Link handelt
 (#1287, #1300, siehe
-[Konnektor-Handbuch](../handbuch/konnektor-http-directory.md#43-bleiben-im-verzeichnis)). Auch
+[Konnektor-Handbuch](../handbuch/konnektoren/http-directory.md#43-bleiben-im-verzeichnis)). Auch
 hier entstehen Ordner nur entlang tatsächlich gefundener Dateien, antworten die Folder-CRUD-Endpoints
 mit `409` und bekommt ein bereits vor #1277 indiziertes Dokument seine `folder_id` beim nächsten Lauf
 nachgetragen, ohne neu indiziert zu werden. Aufgeräumt wird nur am Ende eines **vollständigen** Laufs:

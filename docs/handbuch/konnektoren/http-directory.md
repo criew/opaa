@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für per HTTP erreichbare
 > Verzeichnislisten. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke
-> stehen im Kapitel [Indexierung](indexierung.md).
+> stehen im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 1. Wofür er gedacht ist
 
@@ -55,7 +55,7 @@ zwischen „nicht erreichbar", „erreichbar, aber keine erkennbare Verzeichnisl
 **Sichtbarkeit:** URL, Proxy und der Hinweis auf hinterlegte Zugangsdaten sind nur für
 Verwaltende sichtbar; das Laufprotokoll ebenso, weil es die URLs enthält.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Ein Zugang für
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Ein Zugang für
 Webverzeichnisse meldet sich entweder **ohne Anmeldung** an, dann erreicht jeder Lauf den Server
 ohne Zugangsdaten und das Formular fragt keine ab, oder mit einem **persönlichen Geheimnis**
 (Benutzername und Passwort), das die Verwaltenden der Bibliothek eintragen. Die Adresse ist mit der
@@ -300,7 +300,7 @@ Unauthorized, check credentials" oder „HTTP 503 for URL …".
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | | | Schlüssel für gespeicherte Zugangsdaten |
 
 Nicht konfigurierbar: Verzeichnisseiten-Grenze 8 MiB, Timeouts, Anzahl Weiterleitungen.
-Thread-Pool, Kontingent, Mail-Grenzen und Chunking wie im Kapitel [Indexierung](indexierung.md).
+Thread-Pool, Kontingent, Mail-Grenzen und Chunking wie im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 13. Nicht gebaut
 

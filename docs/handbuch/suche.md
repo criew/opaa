@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt die Abfragestrecke (Query-Pipeline) konzeptionell: was
 > zwischen dem Absenden einer Frage und der Anzeige einer Antwort mit Belegen passiert, welche
 > Stellschrauben es gibt und wie der Betrieb einer schlechten Antwort auf den Grund geht. Wie die
-> Dokumente vorher in den Index gelangen, steht im Kapitel [Indexierung](indexierung.md).
+> Dokumente vorher in den Index gelangen, steht im Kapitel [Wissensbibliotheken](wissensbibliotheken.md).
 
 ## 1. Überblick in einem Bild
 
@@ -57,7 +57,7 @@ Drei Dinge sind aus Betriebssicht wichtig, bevor es ins Detail geht:
 Vier Begriffe tragen das Kapitel.
 
 Eine **Frage** ist die einzelne Eingabe einer Person. Sie kommt fast immer aus einem **Chat**: einer
-gespeicherten Unterhaltung in einem Raum, die ihren Suchbereich, ihren Filter und ihren Verlauf
+gespeicherten Unterhaltung in einem Space, die ihren Suchbereich, ihren Filter und ihren Verlauf
 kennt.
 
 Der Verlauf heißt **Gesprächsfenster**: die letzten 20 Nachrichten des Chats (zehn Runden aus Frage
@@ -109,84 +109,13 @@ Zwei Punkte sind betrieblich wichtig:
   Grund (Abschnitt 10.2). Ist der Space beim Schreiben des Ergebnisses inzwischen archiviert, wird
   das Ergebnis verworfen — ein archivierter Space nimmt keine Änderung an einem Chat an.
 
-Das **Chat-Archiv** ist eine persönliche Ablage: Wer einen Chat archiviert, nimmt ihn nur aus der
-eigenen Chatliste und findet ihn auf der Seite „Chats" des Raums im Reiter „Archiv" wieder. Der Chat
-selbst ändert sich dabei nicht — Titel, letzte Aktivität, Verlauf, Suchbereich und Filter bleiben,
-und niemand sonst sieht, ob eine Person einen Chat archiviert hat. Ein archivierter Chat bleibt
-lesbar und fortsetzbar; eine eigene neue Frage darin holt ihn automatisch zurück. Archivieren löst
-eine Anheftung. Ein **archivierter Chat** ist etwas anderes als ein **archivierter Space**: Der
-Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem archivierten Chat; das
-Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
-
-**Automatisches Archivieren und Löschen.** Je Space gibt es den Schalter „Inaktive Chats nach …
-Tagen archivieren und nach weiteren … Tagen löschen", ab Werk aus; er nennt die Fristen der
-Installation. Gesetzt wird er beim Anlegen des Space im
-Assistenten oder später in den Einstellungen des Space im Reiter „Stammdaten"; umlegen darf ihn,
-wer die Stammdaten ändern darf. Im persönlichen Standard-Space legt ihn nur die Person selbst um,
-auch die Systemverwaltung nicht; ein Standard-Space lässt sich dafür auch nicht übertragen. Ist er an, nennt die Seite „Chats" allen Mitgliedern die Fristen
-in einem kurzen Hinweis. Für alle Chats des Space gilt dann:
-
-- Ein Chat, dessen letzte Aktivität länger als die Archivfrist zurückliegt, wandert in das
-  Chat-Archiv seines Autors. Aktivität ist allein der vorhandene Zeitstempel der letzten Änderung
-  des Chats, also vor allem die letzte Frage, und der Zeitpunkt, zu dem die Person den Chat aus dem
-  Archiv zurückgeholt hat; weitere Daten über die Person werden dafür weder erhoben noch
-  gespeichert.
-- Ein Chat, der länger als die Löschfrist im Archiv liegt, wird gelöscht — auf demselben Weg, auf
-  dem sein Autor ihn löschen würde, mit Verlauf und Gesprächsnotiz. Das gilt auch für Chats, die
-  die Person selbst archiviert hat.
-- **Angeheftete Chats** sind ausgenommen. Anheften, eine neue Frage oder das Zurückholen aus dem
-  Archiv holt einen archivierten Chat zurück und lässt die Archivfrist neu beginnen; Zurückholen
-  genügt also, um einen Chat für eine weitere Archivfrist zu behalten. Dafür wird der Zeitpunkt
-  des Zurückholens an der persönlichen Archiv-Markierung gespeichert, nur solange die Bereinigung
-  an ist und höchstens eine Archivfrist lang. Wer einen Chat dauerhaft behalten will,
-  heftet ihn an.
-- **Keine Rückwirkung:** Beide Fristen beginnen frühestens mit dem Einschalten. Ein Chat, der
-  schon lange ruht oder lange im Archiv liegt, verschwindet nicht am Tag danach. Ausschalten hält
-  den Automatismus an; erneutes Einschalten beginnt die Fristen von vorn.
-- Ein archivierter Chat zeigt im Reiter „Archiv" und in seiner Kopfzeile, an welchem Tag er
-  gelöscht wird. Eine gesonderte Benachrichtigung gibt es nicht.
-- Der Lauf findet einmal täglich nachts statt. Er schreibt nur Gesamtzahlen ins Anwendungslog, nie
-  einen Chat, einen Space oder eine Person; im Protokoll steht allein das Umlegen des Schalters mit
-  altem und neuem Wert, handelnder Person und Zeitpunkt.
-
-Die Fristen sind systemweit fest und nur vom Betrieb einstellbar, mit einer Untergrenze, die keine
-Konfiguration unterschreiten kann (Abschnitt 10.3).
-
-Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
-verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ein, „Weniger" klappt
-wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
-„Neu" öffnet die Chatsuche (Abschnitt 7.2), die auch archivierte Chats findet. Jeder Eintrag hat ein
-Menü mit Umbenennen, Anheften, Archivieren und Löschen; der Titel des offenen Chats lässt sich
-zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft).
-
-Die **Seitenleiste** lässt sich auf dem Desktop am rechten Rand breiter oder schmaler ziehen; mit
-dem Griff im Fokus geht das auch mit den Pfeiltasten, Pos1 und Ende. Ein Doppelklick auf den Griff
-stellt die Standardbreite wieder her. Die gewählte Breite merkt sich der Browser, sie gilt also je
-Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleiste als
-Überlagerung in fester Breite.
-
-Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
-für Aktionen". Solange der Suchbereich des Space noch ermittelt wird, steht dort stattdessen
-„Suchbereich wird ermittelt …".
-
-Während eine Antwort entsteht, bleibt das Eingabefeld bedienbar: Die nächste Frage lässt sich schon
-schreiben, auch ein Prompt per `/` lässt sich einsetzen. Senden geht erst, wenn die Antwort da ist.
-Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; der
-Hinweis unter dem Feld nennt deshalb nur „/ für Aktionen". Die laufende Antwort behält den
-Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab, steht sie wieder
-im Eingabefeld, vor dem schon geschriebenen Text.
-
-Ein per `/` eingesetzter Prompt gehört zu seinem Raum: Wechselt der Chat in einen anderen Raum,
-entfällt der Chip „Prompt: <Titel>", der Text bleibt stehen.
-
-Ein Raum enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
+Ein Space enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
 Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an. Was die Person
-lesen darf, aber dem Raum nicht zugeordnet ist, bleibt im Chat dieses Raums außen vor. Das gilt
-ohne Ausnahme, auch für den persönlichen Raum „Privater Bereich". Eine Frage braucht immer einen
-Raum: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
-ohne Belege. Ohne Raum suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
-Administratoren des Raums (siehe [Bibliotheken und Berechtigungen, „Zuordnung: was ein Raum
-enthält"](bibliotheken-und-berechtigungen.md#zuordnung-was-ein-raum-enthält)).
+lesen darf, aber dem Space nicht zugeordnet ist, bleibt im Chat dieses Space außen vor. Das gilt
+ohne Ausnahme, auch für den persönlichen Space „Privater Bereich". Eine Frage braucht immer einen
+Space: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
+ohne Belege. Ohne Space suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
+Administratoren des Space ([Spaces](spaces.md), Abschnitt 3).
 
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
@@ -194,11 +123,11 @@ steht."
 
 | Leiste | Suchbereich |
 |---|---|
-| `@Space-Wissen` (Standard) | die dem Raum zugeordneten Bibliotheken, geschnitten mit den Leserechten |
+| `@Space-Wissen` (Standard) | die dem Space zugeordneten Bibliotheken, geschnitten mit den Leserechten |
 | eine oder mehrere Bibliotheken | genau diese, geschnitten mit den Leserechten; zur Auswahl stehen nur zugeordnete Bibliotheken, die die Person lesen darf |
 | leer | bewusst ohne Wissensbasis: keine Suche, das Modell antwortet aus dem Gespräch allein |
 
-Eine Bibliothek, die dem Raum nicht zugeordnet ist, lässt sich nicht als Chip setzen; das Backend
+Eine Bibliothek, die dem Space nicht zugeordnet ist, lässt sich nicht als Chip setzen; das Backend
 lehnt einen solchen Bezug ab. Wird eine Zuordnung später gelöst oder ein Leserecht entzogen, bleibt
 ihr Chip als „Nicht verfügbare Bibliothek" stehen, durchsucht wird sie nicht mehr.
 
@@ -208,44 +137,19 @@ Grund ab:
 
 | Grund für den leeren Suchbereich | Hinweis über dem Eingabefeld | Hinweis an der Antwort |
 |---|---|---|
-| dem Raum ist kein Wissen zugeordnet | „Diesem Space ist kein Wissen zugeordnet." Kuratoren und Administratoren sehen dazu „Wissen zuordnen", das in die Einstellungen des Raums führt; alle anderen den Hinweis, wer zuordnen kann | „Diesem Space ist kein Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente." |
-| der Raum ordnet nur Bibliotheken zu, die die Person nicht lesen darf | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." | derselbe Satz |
+| dem Space ist kein Wissen zugeordnet | „Diesem Space ist kein Wissen zugeordnet." Kuratoren und Administratoren sehen dazu „Wissen zuordnen", das in die Einstellungen des Space führt; alle anderen den Hinweis, wer zuordnen kann | „Diesem Space ist kein Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente." |
+| der Space ordnet nur Bibliotheken zu, die die Person nicht lesen darf | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." | derselbe Satz |
 | Leiste bewusst geleert | — | „Diese Antwort wurde ohne Wissensbasis erstellt." |
 
-Beide Raum-Hinweise nennen keine Zahl: Wie viele zugeordnete Bibliotheken die Person nicht lesen
+Beide Space-Hinweise nennen keine Zahl: Wie viele zugeordnete Bibliotheken die Person nicht lesen
 darf, verrät die Oberfläche nicht. Die private Bibliothek einer anderen Person zählt dabei als nicht
-zugeordnet: Ordnet der Raum nur sie zu, sehen alle anderen Mitglieder den Hinweis, dass dem
-Raum kein Wissen zugeordnet ist. Dieselben zwei Hinweise stehen auch auf der Seite des Raums.
+zugeordnet: Ordnet der Space nur sie zu, sehen alle anderen Mitglieder den Hinweis, dass dem
+Space kein Wissen zugeordnet ist. Dieselben zwei Hinweise stehen auch auf der Seite des Space.
 
-**Prompts einsetzen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl der Prompts:
-die Prompts aller Prompt-Bibliotheken, die dem Raum zugeordnet sind und die die Person lesen darf,
-gruppiert nach Bibliothek. Ist dem Raum keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
-„Diesem Space sind keine Prompts zugeordnet". Weitertippen sucht in Befehlsname, Titel und Beschreibung — `/zusam` findet `/zusammenfassung`;
-Pfeiltasten wählen, Enter setzt ein, Escape schließt die Auswahl. Ein `/` mitten im Satz ist
-gewöhnlicher Text.
-
-| Prompt | Was beim Einsetzen geschieht |
-|---|---|
-| ohne Variablen | Der Text steht sofort im Eingabefeld |
-| mit Variablen | Ein Formular fragt die Werte ab: Pflichtfelder sperren „Einsetzen", Vorbelegungen sind eingetragen, ein Datum ohne Vorbelegung steht auf dem heutigen Tag. Abbrechen lässt das Eingabefeld unverändert |
-
-`{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt der Browser selbst: das heutige Datum und der Name der
-angemeldeten Person. Daten stehen im eingesetzten Text als `TT.MM.JJJJ`.
-
-Der eingesetzte Text bleibt bearbeitbar und wird erst mit Enter oder der Senden-Schaltfläche
-gesendet. Ein Chip „Prompt: <Titel>" in der Leiste über dem Eingabefeld markiert, dass die Frage
-aus einem Prompt entstanden ist; wer ihn entfernt oder das Eingabefeld leert, sendet ohne diese
-Kennzeichnung. Im Verlauf steht an der Frage „Prompt: <Titel>" — der Titel zum Zeitpunkt des
-Sendens, auch wenn der Prompt später umbenannt, gelöscht oder nicht mehr lesbar ist.
-
-Für Suche und Antwort macht ein Prompt keinen Unterschied: Sie sehen die fertige Frage wie jede
-getippte. Das Backend prüft nur, ob die Person den Prompt noch lesen darf und ob seine Bibliothek
-dem Raum des Chats zugeordnet ist. Ist das Recht inzwischen entzogen, die Zuordnung gelöst oder der
-Prompt gelöscht, lehnt es die Frage ab („Dieser Prompt steht Ihnen hier nicht zur Verfügung …"),
-bevor ein Modell gerufen wird, und speichert nichts. Die Frage verschwindet dann aus
-dem Verlauf und steht wieder im Eingabefeld, diesmal ohne Chip; erneut gesendet geht sie ohne
-Prompt-Kennzeichnung durch. Die Verwendung eines Prompts wird nicht protokolliert, und es gibt keine
-Auswertung, wer welchen Prompt wie oft verwendet hat.
+Wie Prompts im Chat eingesetzt werden, beschreibt das Kapitel
+[Prompt-Bibliotheken](prompt-bibliotheken.md), Abschnitt 6; für Suche und Antwort macht ein Prompt
+keinen Unterschied. Wie Chats geführt, archiviert und bereinigt werden, beschreibt das Kapitel
+[Spaces](spaces.md), Abschnitt 7.
 
 Ein **Chunk** ist ein Textstück aus dem Index, wie die Indexierung es zugeschnitten hat, samt seinen
 Metadaten: Dokument, Bibliothek, laufende Nummer, Ortsangabe („S. 3 · Abschn. Fristen") und die
@@ -254,7 +158,7 @@ wieder auf, wenn die Fundstellen zusammengefasst werden (Abschnitt 7).
 
 ```mermaid
 flowchart TB
-    R[Raum] --> C[Chat<br/>Suchbereich, Filter, Verlauf]
+    R[Space] --> C[Chat<br/>Suchbereich, Filter, Verlauf]
     C --> Q[Frage]
     Q --> P[Pipeline-Lauf<br/>mit Erklärprotokoll]
     P --> K[ausgewählte Chunks]
@@ -441,6 +345,24 @@ hohem Gewicht gesucht. Es sind dieselben Muster, mit denen die Indexierung die K
 sodass „§ 12 Abs. 3" in Frage und Dokument dieselbe Kennung ergibt. So bleibt „§ 34" von „§ 35"
 unterscheidbar, was die Vektorsuche nicht leistet.
 
+Die Liste der Kennungen ist bewusst geschlossen; eine falsch erkannte Kennung erzeugt Rauschen,
+eine nicht erkannte einen verpassten Treffer:
+
+| Kennung | Beispiele | Was gespeichert wird |
+|---|---|---|
+| Paragrafen | `§ 34`, `§§ 34, 35 BauGB`, `§ 3 Abs. 2 VGS` | je Nummer die nackte Form, dazu die Form mit Absatz und mit Gesetzeskürzel |
+| Aktenzeichen nach Gerichtsmuster | `4 K 1023/24.NW`, `12 A 45/2023` | die ganze Kennung |
+| Aktenzeichen mit Schlüsselwort | `Az. 12/2024`, `Aktenzeichen: 45-2/2023` | die Kennung hinter dem Schlüsselwort |
+| Strukturierte Verwaltungsnummern | `BAU-DA-2/2024`, `KAE-07`, `SOZ-DA-1/2023` | die ganze Kennung, auch ohne Schlüsselwort |
+| Drucksachen- und Erlassnummern | `Drucksache 19/1234`, `Drs. 19/1234`, `Erlass Nr. 12/2024` | die Nummer; ein bloßes `Nr. 5` gilt als Aufzählung, nicht als Kennung |
+| E-Mail-Adressen | `max.mustermann@example.org` | die Adresse; Umlaute in Adressen werden nicht erfasst |
+
+Eine Kennung gilt nur als solche, wenn sie mindestens eine Ziffer und ein Trennzeichen enthält.
+„Aktenzeichen der Satzung" erzeugt deshalb nichts. Dieselben Muster laufen auf der Frageseite,
+sodass ein Dokument, das „Dienstanweisung mit dem Aktenzeichen BAU-DA-2/2024" schreibt, und eine
+Frage nach „BAU-DA-2/2024" dieselbe Kennung erzeugen. Je Chunk werden höchstens 64 Kennungen
+gespeichert.
+
 Als **technischer Feldname** gilt ein Wort in einer dieser Formen:
 
 | Form | Beispiele |
@@ -469,11 +391,11 @@ Grenze. Dann fehlen die späteren Feldnamen, und Überschriften oder Abkürzunge
 weiter vorn im Abschnitt belegen Plätze vor ihnen.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
-in einer Transaktion (Kapitel [Indexierung](indexierung.md), Schritt 7); auf diesem Weg entsteht
+in einer Transaktion (Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 5.6); auf diesem Weg entsteht
 kein Chunk, den nur ein Pfad kennt. Was sich unterscheiden kann, ist allein die **Fassung** des
 Volltexts: Ändert ein Software-Update die Volltextzerlegung (etwa neue Kennungsmuster), tragen
 ältere Chunks die neuen Bestandteile erst nach dem Nachzug (Kapitel
-[Indexierung](indexierung.md), Abschnitt 9). Sie werden bis dahin gefunden, nur nicht über das
+[Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 7.2). Sie werden bis dahin gefunden, nur nicht über das
 Neue. Diesen Rückstand zeigt die Administrationsseite je Bibliothek (Abschnitt 8.1).
 
 Zwei bekannte Grenzen des Pfads:
@@ -626,7 +548,7 @@ Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten]
 ## 6. Antwort erzeugen
 
 Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname und Zitiermarke; Dokument-ID und
-Chunk-Nummer stehen nur in der Marke) zusammen mit der **Anweisung des Raums**, sofern er eine
+Chunk-Nummer stehen nur in der Marke) zusammen mit der **Anweisung des Space**, sofern er eine
 trägt (siehe unten), der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
 das **systemweit aktive Chat-Modell**. Die Notiz steht als eigener Block vor dem Verlauf und
 enthält hier **alle** Punkte, auch die Wünsche zur Antwortform, die die Suche nie sieht
@@ -681,14 +603,14 @@ Quellenangabe werden nicht als Beleg erkannt. Zusammen mit den Antwortregeln ste
 Abschnitt eine kurze Erinnerung an die Zitierregel. Das Zitatformat ist fest, weil Belegprüfung und
 Fundstellen darauf aufbauen. Dasselbe gilt für die Anweisung der Teilfragen-Zerlegung (Stufe 3).
 
-**Ergänzen lässt sie sich je Raum.** Ein Raum trägt optional eine **Anweisung an das Modell** von
+**Ergänzen lässt sie sich je Space.** Ein Space trägt optional eine **Anweisung an das Modell** von
 höchstens 1000 Zeichen, etwa „Wir sind ein Landkreis, keine kreisfreie Stadt" oder „Nenne bei
-Fristen immer die Rechtsgrundlage". Sie wirkt in jedem Chat des Raums, auch in Chats von vor der
+Fristen immer die Rechtsgrundlage". Sie wirkt in jedem Chat des Space, auch in Chats von vor der
 Änderung, ab der nächsten Frage und nur in der Antwort, nie in der Teilfragen-Zerlegung. Im Prompt
 steht sie als eigener Block direkt nach den Zitierregeln und vor der Gesprächsnotiz. Seine
 Kopfzeile sagt dem Modell, was der Block ist und was nicht:
 
-- eine Vorgabe des Raums, kein Beleg und keine Quelle;
+- eine Vorgabe des Space, kein Beleg und keine Quelle;
 - sie darf Sprache, Tonfall, Form und fachlichen Rahmen festlegen, und eine Sprachvorgabe darin geht
   der Vorgabe Deutsch vor; die wiederholte Sprachzeile nach dem letzten Chunk lässt die Sprache dann
   der Anweisung;
@@ -697,9 +619,9 @@ Kopfzeile sagt dem Modell, was der Block ist und was nicht:
 - ein abweichender Wunsch der fragenden Person in diesem Gespräch geht ihr vor.
 
 Belegprüfung und Fundstellen (Abschnitt 7) kennen die Anweisung nicht und arbeiten mit ihr genau wie
-ohne sie. Ohne Anweisung entfällt der Block, und der Prompt ist zeichengleich zu dem eines Raums, der
+ohne sie. Ohne Anweisung entfällt der Block, und der Prompt ist zeichengleich zu dem eines Space, der
 nie eine hatte. Wer sie setzen darf und wo sie in der Oberfläche steht, steht in
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 5. Im Chat zeigt
+[Spaces](spaces.md), Abschnitt 4. Im Chat zeigt
 die Kopfzeile jedem Mitglied schon vor der ersten Frage die Schaltfläche „Anweisung des Space", die
 den Text aufklappt. Eine Anweisung je Bibliothek, je Chat oder je Person gibt es nicht; konfigurierbar
 ist außerdem, welches Modell die Anweisung bekommt.
@@ -782,7 +704,7 @@ des ersten Auftretens im Antwortkontext:
 | Titel · Dokumentart · Datum/Stand | die Kernfelder des Dokuments, dazu die Belegfelder der Bibliothek; ein abgeleiteter Wert ist als „(abgeleitet)" gekennzeichnet |
 | „ohne Angabe" | unter aktivem Filter: das Dokument wurde nur durch die Leerwert-Regel gefunden |
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
-| „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Indexierung](indexierung.md), „Zugänge" |
+| „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Zugänge](zugaenge.md) |
 
 Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
 Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Fährt man mit der Maus über eine
@@ -806,7 +728,7 @@ markiert werden muss.
 unter der Antwort die Zeile „Private Quellen im Kontext“. Beides sieht nur die Besitzerin, denn nur
 sie liest ihre privaten Bibliotheken. Die Kennzeichnung wird mit der Antwort gespeichert; wird die
 Bibliothek später gelöscht, heißt der Beleg „Quelle entfernt“. Siehe Kapitel
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt „Private Bibliotheken“.
+[Private Bibliotheken](private-bibliotheken.md).
 
 ### 7.1 Suchen ohne Antwort
 
@@ -938,7 +860,7 @@ aber nichts ein. Die einzigen Eingriffe dort sind die beiden Chargenläufe der M
   und nicht erst an schlechten Antworten spürbar. Private Bibliotheken stehen nicht einzeln da,
   sondern als eine Zeile ohne Namen; unterhalb der Mindestgruppengröße nennt sie nur „weniger als N“
   Bibliotheken und keine Summen (Kapitel
-  [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
+  [Private Bibliotheken](private-bibliotheken.md)).
 - **Stand der Kernfelder und des Kontextpräfix** je Bibliothek, mit Start, Anhalten und
   Wiederaufnahme der Chargenläufe (Kapitel [Metadaten](metadaten.md)).
 
@@ -959,7 +881,7 @@ rekonstruiert.
 
 Die Diagnose bleibt Systemadministratoren vorbehalten; keine Anlegerecht-Vergabe öffnet sie. Sie ist
 kein Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft der Revision
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
+([Berechtigungen](berechtigungen.md), Abschnitt 12).
 
 Die Oberfläche zeigt jede Stufe unter ihrer deutschen Bezeichnung. Referenz zwischen Handbuch,
 Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische Name
@@ -996,7 +918,7 @@ am Dokument vermerkten gegenüber. Weichen beide ab, ist das selbst der Befund. 
 nie ausgeliefert. **Beides braucht ein Leserecht auf die Bibliothek des Dokuments** — ein Chunk ist
 der Text des Dokuments, und die Systemrolle allein öffnet ihn nicht; ohne Leserecht nennt die
 Ansicht den Grund, statt den Text zu zeigen ([Bibliotheken und
-Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 10).
+Berechtigungen](berechtigungen.md), Abschnitt 10).
 
 ### 8.3 Diagnosesperre und Nachweis
 
@@ -1051,7 +973,7 @@ Nachweisprotokoll festgehalten.
 
 Gesetzt wird die Frist über `GET`/`PUT /api/v1/admin/permission-history/retention`; eine
 Bedienoberfläche dafür gibt es noch nicht. Wer die Zeiträume liest und unter welchen Schutzregeln,
-steht im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+steht im Kapitel [Berechtigungen](berechtigungen.md),
 Abschnitt 12.
 
 ## 9. Typische Befunde
@@ -1064,7 +986,7 @@ Abschnitt 12.
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
 | Reranking „nicht verfügbar" | Modellrollen, Stufe „Reranking" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking weiter |
-| Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Indexierung](indexierung.md), Abschnitt 9) |
+| Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 7.2) |
 | Rückfall der Zerlegung | Log-Warnung, Metrik `opaa.query.decomposition.fallback` | das Chat-Modell folgt dem Zerlegungsformat nicht; die Frage wurde wörtlich gesucht |
 | Sachfrage als „nichts zu suchen" eingestuft | Stufe „Teilfragen" („nichts zu suchen"), Metrik `opaa.query.decomposition.no-search` | das Chat-Modell hat eine Folgefrage für eine Nachricht ohne Suchbedarf gehalten; gesucht wurde mit der einzelnen Rückfall-Suchanfrage statt mit einer aufgelösten Teilfrage |
 | Bemerkung mit Quellen beantwortet | Fundstellen, „Durchsucht wurden"-Zeile unter einer Antwort auf einen Dank oder Formwunsch | beabsichtigt: auch eine Nachricht ohne Suchbedarf wird gesucht |
@@ -1167,7 +1089,7 @@ die Notiz Chatinhalt ist und kein Suchparameter:
 |---|---|---|
 | `opaa.chat.note.max-items` | 10 | Höchstzahl der Notizpunkte je Chat (1 bis 50); beim Anhängen darüber hinaus fällt der älteste Punkt weg (`OPAA_CHAT_NOTE_MAX_ITEMS`) |
 
-Die Fristen der automatischen Chat-Bereinigung (Abschnitt 2) stehen unter `opaa.chat.auto-cleanup.*`.
+Die Fristen der automatischen Chat-Bereinigung ([Spaces](spaces.md), Abschnitt 7) stehen unter `opaa.chat.auto-cleanup.*`.
 Ein Wert unter der Untergrenze bricht den Start mit einer Meldung im Log ab:
 
 | Schlüssel | Standard | Wirkung |
@@ -1194,16 +1116,16 @@ entsprechen.
 - **Eine modellgestützte Belegprüfung** (Stufe 2). Die Belegprüfung bleibt deterministisch.
 - **Eine Gewichtung zwischen den Suchpfaden.** Die Fusion behandelt beide gleich; das entspricht
   dem Default der gängigen Suchsysteme.
-- **Ein einstellbarer Systemprompt** für Antwort oder Zerlegung, etwa je Installation, Raum oder
+- **Ein einstellbarer Systemprompt** für Antwort oder Zerlegung, etwa je Installation, Space oder
   Bibliothek.
 - **Eine Kürzung der Endauswahl nach Tokens**, etwa passend zum Kontextfenster des aktiven
   Chat-Modells. `top-k` ist eine Zahl von Chunks, unabhängig von ihrer Länge und vom Modell.
 
 ## 11. Weiterführende Kapitel
 
-- Wie die Chunks entstehen, die hier gesucht werden: [Indexierung](indexierung.md)
+- Wie die Chunks entstehen, die hier gesucht werden: [Wissensbibliotheken](wissensbibliotheken.md)
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
 - Umgebungsvariablen, Reranking einschalten, Grenze des Volltextpfads:
   [Deployment](deployment.md)
 - Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
-- Prompts anlegen, pflegen und im Chat verwenden: [Prompt-Bibliotheken](prompt-bibliotheken.md)
+- Spaces, Chats und was ihnen zugeordnet ist: [Spaces](spaces.md)

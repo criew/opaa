@@ -8,163 +8,139 @@ läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 
 | Rolle | Typische Aufgaben | Einstieg |
 |---|---|---|
-| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Deployment](deployment.md), unter Kubernetes zusätzlich [Kubernetes](kubernetes.md), danach [Indexierung](indexierung.md) und [Suche](suche.md) |
-| **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Indexierung](indexierung.md), die Konnektor-Kapitel, [Metadaten](metadaten.md), [Suche](suche.md) Abschnitt 8 |
+| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Deployment](deployment.md), unter Kubernetes zusätzlich [Kubernetes](kubernetes.md), danach [Wissensbibliotheken](wissensbibliotheken.md) und [Suche](suche.md) |
+| **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](wissensbibliotheken.md), die Konnektor-Kapitel, [Metadaten](metadaten.md), [Suche](suche.md) Abschnitt 8 |
 
 Nicht Zielgruppe sind Entwickler (Spezifikationen und Entscheidungen liegen im Repository unter
 `docs/features/` und `docs/decisions/`) und Endnutzende (die Oberfläche erklärt sich an Ort und
 Stelle). Wer das Handbuch liest, braucht das Repository nicht.
 
-## 2. Was OPAA aus Betriebssicht ist
+## 2. Was OPAA ist
 
-OPAA nimmt Dokumente aus angeschlossenen Quellen in einen Index auf und beantwortet Fragen dazu mit
-Fundstellen. Beides läuft in **einem Backend-Prozess** gegen **eine PostgreSQL-Datenbank**; nach
-außen ruft das Backend nur die konfigurierten Modelle und die Quellen.
+OPAA ist ein Assistent, der Fragen aus dem Wissen der Organisation beantwortet und jede Antwort
+belegt. Gearbeitet wird in **Spaces**: In ihren Chats stellen Menschen Fragen, und der Space legt
+fest, welche **Arbeitsmittel** dabei zur Verfügung stehen — Wissensbibliotheken, in denen gesucht
+wird, und Prompt-Bibliotheken mit wiederkehrenden Formulierungshilfen. Wissensbibliotheken binden
+Quellen der Organisation an oder nehmen hochgeladene Dokumente auf und halten sie durchsuchbar.
+Wer was sehen und pflegen darf, regeln Konten, Gruppen und Rollen.
 
 ```mermaid
 flowchart LR
-    subgraph Quellen
-        Q1[Dateisystem]
-        Q2[Webverzeichnis]
-        Q3[Feed]
-        Q4[Confluence]
-        Q5[S3]
-        Q7[Google Drive]
-        Q10[SharePoint]
-        Q8[Nextcloud]
-        Q9[Dateifreigabe SMB]
-        Q11[Dropbox]
-        Q6[Upload]
+    subgraph Arbeitsmittel
+        W[Wissensbibliotheken]
+        P[Prompt-Bibliotheken]
     end
-    Q1 --> I[Indexierung<br/>Aufzählen, Parsen, Chunken, Embedden]
-    Q2 --> I
-    Q3 --> I
-    Q4 --> I
-    Q5 --> I
-    Q7 --> I
-    Q10 --> I
-    Q8 --> I
-    Q9 --> I
-    Q11 --> I
-    Q6 --> I
-    I --> DB[(PostgreSQL<br/>Vektoren, Volltext, Metadaten)]
-    DB --> S[Suche<br/>Rechtefilter, zwei Pfade, Fusion]
-    F[Frage im Chat] --> S
-    S --> A[Antwort mit Fundstellen]
-    I -. Embedding-Modell .-> M[(Modelle)]
-    S -. Chat-, Embedding-,<br/>Rerank-Modell .-> M
+    Q[Quellen der Organisation<br/>über Konnektoren und Zugänge] --> W
+    U[Upload] --> W
+    W --> S[Space<br/>Chats, Mitglieder]
+    P --> S
+    S --> A[Antwort mit Belegen]
+    R[Konten, Gruppen, Rollen] -.-> W
+    R -.-> P
+    R -.-> S
 ```
 
-Drei Eigenschaften prägen alles Weitere:
+Technisch läuft alles in **einem Backend-Prozess** gegen **eine PostgreSQL-Datenbank**; nach außen
+ruft das Backend nur die konfigurierten Modelle und die Quellen. Drei Eigenschaften prägen den
+Betrieb:
 
-- **Die Datenbank ist die einzige Wahrheit.** Dokumentzeilen, Chunks samt Vektoren, Volltext,
-  Metadaten, Protokolle, Chats: alles liegt in PostgreSQL. Daneben steht genau ein zweiter Bestand,
-  den die Datenbank nicht enthält: die Originale der hochgeladenen Dokumente. Eine Sicherung der
-  Installation umfasst deshalb beides — die Datenbank und die
-  [Originalablage](deployment.md#originalablage).
+- **Die Datenbank ist die einzige Wahrheit.** Dokumente, Chunks samt Vektoren, Volltext,
+  Metadaten, Protokolle, Chats: alles liegt in PostgreSQL. Daneben steht genau ein zweiter Bestand:
+  die Originale der hochgeladenen Dokumente. Eine Sicherung umfasst deshalb beides — die Datenbank
+  und die [Originalablage](deployment.md#originalablage).
 - **Genau eine Backend-Instanz.** Zeitpläne, Wiederanlauf und Thread-Pools sind prozesslokal.
   Skalierung ist eine Frage der Hardware dieser einen Instanz.
 - **Rechte wirken in der Suche, nicht dahinter.** Jede Suchabfrage trägt den Filter auf die
   lesbaren Bibliotheken in sich; ein fremder Chunk wird nie geladen. Es gibt keinen
   Administrator-Durchgriff.
 
-## 3. Funktionen im Überblick
+## 3. Aufbau des Handbuchs
 
-| Funktion | Ein Satz | Kapitel |
-|---|---|---|
-| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner, Dropbox-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 2 bis 4 |
-| Formate verarbeiten | PDF, Office, OpenDocument, Tabellen, HTML, Markdown, E-Mail samt Anhängen; Zulassung nach Inhalt, nicht nach Endung | [Indexierung](indexierung.md), Formatübersicht |
-| Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Indexierung](indexierung.md), Abschnitte 6 und 7 |
-| Metadaten | Titel, Dokumentart, Datum/Stand je Dokument, dazu Bibliotheks- und Formatfelder; Filter, Kontextpräfix, Beleg | [Metadaten](metadaten.md) |
-| Suche und Antwort | Rechtefilter, Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung | [Suche](suche.md) |
-| Diagnose | Testfrage im gewählten Rechtekontext, jede Stufe einzeln, „Dokument verfolgen" | [Suche](suche.md), Abschnitt 8 |
-| Modelle | Chat-, Embedding- und Rerank-Rolle, Endpunkte, Zugangsdaten | [Deployment](deployment.md), Abschnitte „LLM-Anbieter" und „Reranking einschalten" |
-| Authentifizierung | Entwicklungsmodus, OIDC mit einem oder mehreren Anbietern, lokale Konten mit Passwort | [Deployment](deployment.md), Abschnitt „Authentifizierung" |
-| Konten verwalten | Lokale Konten anlegen, einladen, sperren, zurücksetzen, befristen; Rollen und Anlegerechte; Selbstregistrierung | [Benutzerverwaltung](benutzerverwaltung.md) |
-| Rechte vergeben und nachweisen | Rollen an Bibliotheken und Räumen, Gruppen als Empfänger, Anlegerechte, Vollmachten, Herleitung „warum sehe ich das", Rechtehistorie und Stichtagsauskunft, Übertragung, „Nachfolge offen" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) |
-| Prompt-Bibliotheken | Wiederkehrende Formulierungshilfen als benannte Prompts mit Variablen anlegen, pflegen, an Personen und Gruppen freigeben, Räumen zuordnen und im Chat einsetzen | [Prompt-Bibliotheken](prompt-bibliotheken.md) |
-| Katalog | Wissens- und Prompt-Bibliotheken finden: genau die lesbaren, mit Freigabe an alle, Aktualisierung und zuständiger Stelle; Suche, Filter nach Art und Favoriten, feste Reihenfolge Favoriten zuerst, dann Name | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
-| Fremdzugänge | Freigegebene Bibliotheken für fremde KI-Werkzeuge erreichbar machen: Schalter, Freigabe je Bibliothek, persönliche Zugangstokens, MCP-Server, Kontingent und Abflussalarm | [Fremdzugänge](fremdzugaenge.md) |
-| E-Mail-Versand | SMTP als Verwaltungseinstellung, öffentliche Basis-URL aus der Umgebung, zwölf überschreibbare Vorlagen, Testversand | [Deployment](deployment.md), Abschnitt „E-Mail-Versand (SMTP)" |
-| Installation und Update | Docker Compose oder Kubernetes mit dem Helm-Chart, Umgebungsvariablen, Härtung, Update-Verhalten des Index, Rückweg über die Datenbanksicherung | [Deployment](deployment.md), [Kubernetes](kubernetes.md) |
+Die Kapitel bilden einen Baum. Ein Kapitel verweist auf die Kapitel darunter; nach oben und zur
+Seite nur dort, wo ein Begriff von dort gebraucht wird. Berechtigungen und die Variablenliste im
+Deployment sind Nachschlagekapitel, auf die alle verweisen dürfen.
 
-## 4. Kapitel
+- **Betrieb**
+  - [Deployment](deployment.md) — Installation, Update und Folgen für den Index, alle
+    Umgebungsvariablen, Härtung, Modelle, Authentifizierung samt Erststart und Notfallprozedur,
+    E-Mail-Versand, Originalablage, Fehlerbehebung
+    - [Kubernetes](kubernetes.md) — Entwurf: Betrieb mit dem Helm-Chart
+- **Konten und Rechte**
+  - [Benutzerverwaltung](benutzerverwaltung.md) — lokale Konten, Rollen und Anlegerechte,
+    Selbstregistrierung, verbundene Konten
+  - [Berechtigungen](berechtigungen.md) — Rollen, Reichweite, Gruppen, Anlegerechte, Vollmachten,
+    Herleitung, Rechtehistorie, Lebenszyklus
+- **Arbeiten in Spaces**
+  - [Spaces](spaces.md) — was ein Space enthält, Mitglieder und Rollen, Arbeitsmittel zuordnen,
+    Einstellungen, anlegen, Chats
+  - [Suche](suche.md) — wie eine Frage beantwortet wird: Suchbereich, Suchstrecke, Antwort, Belege,
+    Diagnose
+  - [Fremdzugänge](fremdzugaenge.md) — freigegebenes Wissen in fremden KI-Werkzeugen nutzen
+- **Arbeitsmittel**
+  - [Katalog](katalog.md) — was für jede Art gilt: finden, favorisieren, anlegen, Detailansicht,
+    in einem Space verwenden
+  - [Wissensbibliotheken](wissensbibliotheken.md) — Quelle anbinden oder hochladen, aktuell halten,
+    wie ein Dokument gelesen wird
+    - [Konnektoren](konnektoren/README.md) — alle Quellen im Überblick, je Konnektor ein Kapitel
+    - [Formate](formate/README.md) — zugelassene Formate, je Format ein Kapitel
+    - [Metadaten](metadaten.md) — Kernfelder, Bibliotheksfelder, Wirkung in Filter und Beleg
+    - [Private Bibliotheken](private-bibliotheken.md) — Bibliotheken aus dem verbundenen Konto
+      einer Person
+  - [Prompt-Bibliotheken](prompt-bibliotheken.md) — Prompts anlegen, pflegen, im Chat einsetzen
+  - [Zugänge](zugaenge.md) — technische Zugänge der Systemverwaltung zu Quellen
 
-### Vorhanden
+**In Vorbereitung** (Epic #1282; bis dahin steht der Inhalt verstreut in
+[Deployment](deployment.md) oder nur im Repository): **Modelle** (Modellrollen, verwaltete Modelle,
+Endpunkte, Fehlerbilder), **Authentifizierung** (Auth-Modi, Keycloak und Härtung des Realms an einer
+Stelle) und **Betrieb** (Sicherung und Wiederherstellung, Update-Ablauf, Logs und Metriken,
+Grenzwerte auf einer Seite).
 
-| Kapitel | Inhalt |
-|---|---|
-| [Deployment](deployment.md) | Installation aus Images, Update-Ablauf und Folgen für den Index, alle Umgebungsvariablen, Härtung, Modellanbieter, Authentifizierung samt Erststart und Notfallprozedur, E-Mail-Versand, Originalablage der Uploads, Fehlerbehebung |
-| [Kubernetes](kubernetes.md) | Entwurf: Betrieb mit dem Helm-Chart; Abgrenzung zu Compose, Voraussetzungen, Installation Schritt für Schritt, Erprobung mit dem Beispiel-Setup, Geheimnisse, Wertereferenz mit Zuordnung zu den Umgebungsvariablen, Anbindungen, Eingang, Proxy-Kette, NetworkPolicies, Pod Security, Aktualisierung und Rückweg, Sicherung, Betriebsüberwachung, Fehlersuche |
-| [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen und Anlegerechte, Löschen gegen Sperren, Übergabe an einen Identitätsanbieter, Selbstregistrierung, Selbstbedienung, verbundene Konten, Regeln und Fristen |
-| [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) | Das Berechtigungsmodell an einer Stelle: Subjekte, die Begriffe Rolle / Anlegerecht / Vollmacht / Systemrolle, Rollen an Bibliothek und Raum, Reichweite („Alle Konten"), der Katalog, Freigabe-Obergrenze für Konnektorbibliotheken, Gruppenherkunft und -mechanismus, interne Gruppen und ihre Verantwortlichen, was wer sieht, die Herleitung „warum sehe ich das", Anlegerechte, Systemrollen und Vollmachten, Rechtehistorie und Stichtagsauskunft, Kontosperre aus dem Verzeichnis, Übertragung, „Nachfolge offen", Diagnose im Gruppenkontext, Konfiguration, Vorbereitung der Einführung samt Prüfliste vor einem Postfach-Konnektor |
-| [Prompt-Bibliotheken](prompt-bibliotheken.md) | Prompt-Bibliothek und Prompt, Befehl und Variablen, Rollen, Anlegen mit Gruppeneigentum, Detailseite mit dem gemeinsamen Freigabeabschnitt, Zuordnung zu Räumen, Finden im Katalog, Prompts pflegen mit Prüfung und Vorschau, Einsetzen im Chat, „Nachfolge offen", Protokoll |
-| [Indexierung](indexierung.md) | Aufnahmestrecke: Bibliothek, Quelle, Lauf, Dokument; Zeitplan; Dokumentstrecke Schritt für Schritt; Anhänge; Löscherkennung; Protokoll; Pipeline-Versionen und Nachzug; Formatübersicht |
-| [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Aufbewahrung der Rechtehistorie, Konfiguration |
-| [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
-| [Fremdzugänge](fremdzugaenge.md) | Der Kanal für fremde KI-Werkzeuge: vor dem Einschalten, Schalter und Netzbereich, Freigabe einer Bibliothek, Zugangstokens aus Personen- und Verwaltungssicht, MCP-Server, Einrichtung in Claude Code, Cursor, VS Code und OpenCode, Kontingent und Abflussalarm, Protokollierung, Störungssuche, Prüfliste nach einer Wiederherstellung |
-| Konnektoren: [Dateisystem](konnektor-filesystem.md), [Webverzeichnis](konnektor-http-directory.md), [Feed](konnektor-rss-feed.md), [Confluence](konnektor-confluence.md), [S3](konnektor-s3.md), [Google Drive](konnektor-google-drive.md), [SharePoint](konnektor-sharepoint.md), [Nextcloud](konnektor-nextcloud.md), [Dropbox](konnektor-dropbox.md), [Windows-Dateifreigabe (SMB)](konnektor-smb.md) | je Quellentyp: Einrichtung, Schutzmechanismen, Betriebsarten, Löschsemantik, Grenzwerte, Fehlerbilder |
-| Formate: [PDF](format-pdf.md), [Word](format-docx.md), [PowerPoint](format-pptx.md), [Tabellen](format-tabular.md), [OpenDocument Text](format-odt.md), [OpenDocument Präsentation](format-odp.md), [HTML](format-html.md), [Markdown](format-markdown.md), [E-Mail](format-mail.md), [Confluence-Seite](format-confluence.md), [Auffang-Pipeline](format-fallback.md) | je Format: Zulassung, erkannte Struktur, Zuschnitt, Metadaten, Grenzen |
-
-### In Vorbereitung
-
-Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhalt verstreut in
-[Deployment](deployment.md) oder nur im Repository.
-
-| Kapitel | Vorgesehener Inhalt |
-|---|---|
-| Modelle | Chat-, Embedding- und Rerank-Modellrolle, verwaltete Modelle, Endpunkte, Fehlerbilder |
-| Authentifizierung | Auth-Modi, Keycloak-Anbindung und Härtung des Realms an einer Stelle; heute im Deployment-Kapitel, die lokalen Konten in [Benutzerverwaltung](benutzerverwaltung.md) |
-| Betrieb | Backup und Wiederherstellung, Update-Ablauf, Log- und Metrik-Übersicht, Single-Instance-Annahme, Grenzwerte auf einer Seite |
-
-## 5. Lesewege nach Anlass
+## 4. Lesewege nach Anlass
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitt 2 |
-| OPAA unter Kubernetes ausprobieren oder vorführen | [Kubernetes](kubernetes.md) „Erprobung mit dem Beispiel-Setup“ |
-| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md) „Voraussetzungen" und „Installation" → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Kubernetes](kubernetes.md) „Netz und Sicherheit" → [Indexierung](indexierung.md) Abschnitt 2 |
-| Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md) „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen sollen |
-| Rechte einer Bibliothek oder eines Raums vergeben | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 2 bis 5 → Abschnitte 6 bis 8 (Gruppen) |
-| Eine Person scheidet aus, ein Referat wird aufgelöst | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 13 → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitte 4 und 8 |
-| „Wer durfte das am 3. März lesen?" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 12 → [Suche](suche.md) Abschnitt 8.4 (Aufbewahrung) |
-| Niemand kommt mehr herein | [Deployment](deployment.md) „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 4 |
-| Neue Quelle anschließen | das Konnektor-Kapitel des Quellentyps → [Indexierung](indexierung.md) Abschnitte 3 und 7 (Zeitplan, Löscherkennung) |
-| Dokumente fehlen oder sind veraltet | [Indexierung](indexierung.md) Abschnitte 7 bis 9 → Laufprotokoll der Bibliothek → Format-Kapitel des Dokuments |
-| Eine Antwort ist schlecht | [Suche](suche.md) Abschnitte 8 und 9 → Diagnosewerkzeug → je nach Befund [Indexierung](indexierung.md) oder [Metadaten](metadaten.md) |
-| Filter oder Beleg zeigen falsche Werte | [Metadaten](metadaten.md) Abschnitte 4, 7 und 8 |
-| Update steht an | [Deployment](deployment.md) „Aktualisierung" und „Was ein Update mit dem Index macht" → [Indexierung](indexierung.md) Abschnitt 9 (Nachzug) |
-| Update unter Kubernetes steht an | [Kubernetes](kubernetes.md) „Aktualisierung und Rückweg" → [Deployment](deployment.md) „Was ein Update mit dem Index macht" |
-| Reranking einschalten | [Deployment](deployment.md) „Reranking einschalten" → [Suche](suche.md) Stufe 8 |
-| Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 (anlegen mit Gruppeneigentum, freigeben, einem Raum zuordnen) → Abschnitt 5 (Prompts pflegen) → [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 6 bis 8 (Gruppen) |
-| Herausfinden, ob es etwas schon gibt, und wer zuständig ist | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 4 („Reichweite" und „Der Katalog") → [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 („Im Katalog finden") → Abschnitt 6 (im Chat einsetzen) |
-| Ein fremdes KI-Werkzeug anschließen | [Fremdzugänge](fremdzugaenge.md) Abschnitte 2 bis 5 (einschalten, freigeben, Token) → Abschnitt 9 (Einrichtung im Client) → bei Störungen Abschnitt 13 |
-| Postfächer anbinden wollen (Vorbereitung) | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 16, „Prüfliste vor einem Postfach-Konnektor“ → Abschnitt 4, „Private Bibliotheken“ → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 12 |
-| Originalablage wählen, sichern oder umstellen | [Deployment](deployment.md) „Originalablage" → Variablenliste desselben Kapitels |
+| Erste Installation | [Deployment](deployment.md): Schnellstart, „Erststart und Systemverwalter-Konto", Härtung → [Wissensbibliotheken](wissensbibliotheken.md) |
+| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Deployment](deployment.md): „Erststart und Systemverwalter-Konto" |
+| OPAA unter Kubernetes vorführen | [Kubernetes](kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
+| Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md): „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen |
+| Niemand kommt mehr herein | [Deployment](deployment.md): „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) |
+| Einen Space für ein Team einrichten | [Spaces](spaces.md) → [Katalog](katalog.md) |
+| Rechte vergeben, Gruppen nutzen | [Berechtigungen](berechtigungen.md) |
+| Eine Person scheidet aus, ein Referat wird aufgelöst | [Berechtigungen](berechtigungen.md): „Lebenszyklus" → [Benutzerverwaltung](benutzerverwaltung.md) |
+| „Wer durfte das am 3. März lesen?" | [Berechtigungen](berechtigungen.md): „Nachweis: Rechtehistorie und Stichtagsauskunft" |
+| Eine neue Quelle anschließen | [Konnektoren](konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge](zugaenge.md) |
+| Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](wissensbibliotheken.md): „Protokoll und Fehler" → Laufprotokoll der Bibliothek → Kapitel des Formats |
+| Eine Antwort ist schlecht | [Suche](suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](wissensbibliotheken.md) oder [Metadaten](metadaten.md) |
+| Ein Update steht an | [Deployment](deployment.md): „Aktualisierung" und „Was ein Update mit dem Index macht" |
+| Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) → [Spaces](spaces.md) |
+| Ein fremdes KI-Werkzeug anschließen | [Fremdzugänge](fremdzugaenge.md) |
+| Postfächer anbinden wollen | [Berechtigungen](berechtigungen.md): „Prüfliste vor einem Postfach-Konnektor" → [Private Bibliotheken](private-bibliotheken.md) |
+| Originalablage wählen, sichern oder umstellen | [Deployment](deployment.md): „Originalablage" |
 
-## 6. Glossar
+## 5. Glossar
 
 Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 
 | Begriff | Bedeutung |
 |---|---|
 | **Wissensbibliothek** (Bibliothek) | Verwaltungseinheit für Dokumente: gehört zu einer Organisation, trägt Berechtigungen und genau eine Quelle |
-| **Prompt-Bibliothek** | Verwaltungseinheit für Prompts: gehört zu einer Organisation, trägt Berechtigungen wie eine Wissensbibliothek, bindet aber kein Wissen und ändert keinen Suchbereich; einem Raum zugeordnet, bietet sie dessen Chat ihre Prompts an |
-| **Katalog** | Der eine Einstieg der Hauptnavigation für Bestände jeder Art, nur als Kacheln: genau die Wissens- und Prompt-Bibliotheken, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neu" beginnt dort das Anlegen mit der Wahl der Art |
+| **Prompt-Bibliothek** | Verwaltungseinheit für Prompts: gehört zu einer Organisation, trägt Berechtigungen wie eine Wissensbibliothek, bindet aber kein Wissen und ändert keinen Suchbereich; einem Space zugeordnet, bietet sie dessen Chat ihre Prompts an |
+| **Arbeitsmittel** | Was angelegt, geteilt und einem Space zugeordnet wird, mit eigenen Rollen und einem Eigentümer: heute Wissens- und Prompt-Bibliotheken |
+| **Katalog** | Der eine Einstieg der Hauptnavigation für Arbeitsmittel jeder Art, nur als Kacheln: genau die, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neu" beginnt dort das Anlegen mit der Wahl der Art |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
 | **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
-| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3, Google Drive, SharePoint, Nextcloud, Dropbox, Windows-Dateifreigabe) |
+| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder eine angebundene Quelle mit Konnektor, etwa Confluence oder ein Webverzeichnis ([Konnektoren](konnektoren/README.md)) |
 | **Konnektor** | Der Teil der Indexierung, der die Eigenheiten eines Quellentyps kennt: Aufzählen, Abrufen, Betriebsarten |
 | **Indexierungslauf** (Lauf) | Ein Durchgang über die Quelle einer Bibliothek mit Status, Zählern und Protokoll |
 | **Betriebsart** | Ob ein Lauf die Quelle vollständig auflistet (und Verschwundenes entfernen darf) oder nur ergänzt |
-| **Dokument** | Eine Zeile in der Dokumenttabelle, eindeutig über Bibliothek und Quellpfad; Anhänge sind eigene Dokumente mit Verweis auf das Elterndokument |
+| **Dokument** | Eine Datei, Seite oder ein Eintrag der Quelle, so wie OPAA ihn kennt; identifiziert über Bibliothek und Ort in der Quelle. Anhänge sind eigene Dokumente mit Verweis auf das Elterndokument |
 | **Chunk** | Ein Textstück eines Dokuments mit Vektor, Volltext und Metadaten; die Einheit, auf der die Suche arbeitet |
 | **Originalablage** | Der Ort, an dem die Originale hochgeladener Dokumente liegen: ein Verzeichnis (auch ein dorthin eingehängtes Netzlaufwerk) oder ein Objektspeicher; Dokumente aus einem Konnektor bleiben bei ihrer Quelle |
 | **Format-Pipeline** | Die Verarbeitung eines Dateiformats: Parsen und Zuschnitt in Chunks, mit Kennung und Versionsnummer |
 | **Nachzug** | Neuverarbeitung von Dokumenten, deren Chunks mit einer älteren Pipeline-Version oder Volltextfassung entstanden sind; von einem Systemadministrator angestoßen |
 | **Kernfelder** | Titel, Dokumentart und Datum/Stand je Dokument |
 | **Kontextpräfix** | Text, der jedem Chunk beim Einbetten und im Volltextindex vorangestellt wird (Titel, ausgewählte Felder, Gliederungspfad), ohne den gespeicherten Text zu ändern |
-| **Raum** (Space) | Arbeitsbereich, in dem Chats liegen; enthält genau die ihm zugeordneten Bibliotheken und Prompt-Bibliotheken — ohne Zuordnung sucht sein Chat nichts |
+| **Space** | Arbeitsbereich, in dem Chats liegen; enthält genau die ihm zugeordneten Bibliotheken und Prompt-Bibliotheken — ohne Zuordnung sucht sein Chat nichts |
 | **Suchbereich** | Die Bibliotheken, in denen eine Frage sucht; steht in der Chip-Leiste des Chats (Standard `@Space-Wissen`) und ist nie weiter als Zuordnung und Leserechte |
 | **Fundstelle** (Beleg) | Eine Quellenangabe unter einer Antwort, eine je Dokument, mit Rang, Ortsangabe und Kernfeldern |
 | **Ortsangabe** | Die Stelle eines Chunks im Dokument, etwa „S. 3 · Abschn. Fristen" |
@@ -173,12 +149,12 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |
 | **Lokales Konto** | Ein Konto, das OPAA selbst führt: Anmeldung mit E-Mail-Adresse und Passwort, verwaltet unter Administration → Benutzer; Gegenstück zu einem Konto aus einem Identitätsanbieter |
 | **Notanker-Konto** | Das eine lokale Systemverwalterkonto, das OPAA beim Erststart anlegt; Notfallzugangsmittel, kein Arbeitskonto |
-| **Rolle** | Gestufte Berechtigung an genau einem Objekt — an einer Bibliothek Leser, Bearbeiter, Verwalter, Eigentümer; in einem Raum Mitglied, Kurator, Administrator. Für eine Person oder eine Gruppe, unbefristet oder mit Ablaufdatum |
+| **Rolle** | Gestufte Berechtigung an genau einem Objekt — an einer Bibliothek Leser, Bearbeiter, Verwalter, Eigentümer; in einem Space Mitglied, Kurator, Administrator. Für eine Person oder eine Gruppe, unbefristet oder mit Ablaufdatum |
 | **Anlegerecht** | Ein installationsweites Recht, etwas anzulegen (Spaces, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen, Prompt-Bibliotheken); vergeben an eine Person, eine Gruppe oder „Alle Konten", ohne Gegenstand und ohne Lesewirkung |
 | **Vollmacht** | Eine befristete, begründungspflichtige Erlaubnis mit Gegenstand, an genau eine Person gebunden und an keine Gruppe vergebbar: „Sicht als" in der Suchdiagnose und der Geltungsbereich einer anlassbezogenen Klärung im Nachweisprotokoll |
 | **Interne Gruppe** | Eine Gruppe, die in OPAA selbst entsteht und von benannten Verantwortlichen gepflegt wird; für andere erst wählbar, nachdem diese sie zur Verwendung freigegeben haben |
 | **Geschützte Gruppe** | Eine Gruppe der Personalvertretung, der Schwerbehindertenvertretung, der Gleichstellung oder der Personalvorgänge: über die Suche nicht auffindbar, in fremden Listen ohne Namen, ohne Größenangabe. Über das Kennzeichen entscheidet die Systemverwaltung |
-| **Wirksame Gruppe** | Eine Gruppe, der ein Recht erteilt werden darf: nicht aufgelöst, ihr Anbieter eingeschaltet, ihre Mitgliedschaft noch gepflegt. Sie darf leer sein; hat sie mindestens ein **aktives** Konto, ist sie zusätzlich **handlungsfähig** und kann Eigentümerin oder Raumadministratorin sein |
+| **Wirksame Gruppe** | Eine Gruppe, der ein Recht erteilt werden darf: nicht aufgelöst, ihr Anbieter eingeschaltet, ihre Mitgliedschaft noch gepflegt. Sie darf leer sein; hat sie mindestens ein **aktives** Konto, ist sie zusätzlich **handlungsfähig** und kann Eigentümerin oder Space-Administratorin sein |
 | **Nachfolge offen** | Der abgeleitete Zustand eines Objekts ohne handlungsfähige Verantwortliche: nutzbar wie bisher, alle Rechte bleiben, allein die Reichweite ist eingefroren |
 | **Rechtehistorie** | Die Zeiträume, in denen ein Recht galt — die Grundlage der Stichtagsauskunft; getrennt vom Nachweisprotokoll, das Handlungen festhält |
 | **Anlagegrund** | Pflichtangabe zu jedem lokalen Konto: der dienstliche Anlass und der Grund seiner Befristung; die betroffene Person kann ihn lesen |
@@ -188,18 +164,6 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Fremdzugangsfreigabe** | Das befristete Merkmal einer Wissensbibliothek „darf über Fremdzugänge genutzt werden"; wird wie die übrigen Reichweitenfelder historisiert |
 | **Effektive Sicht** | Was ein Zugangstoken bei einem Aufruf sieht: die Schnittmenge aus Rechten der Person, gültiger Freigabe, Tokenauswahl und Installationsschalter, je Aufruf neu ausgewertet |
 
-## 7. Konventionen
+## 6. Für Schreibende
 
-- **Deutsch, Ist-Stand, keine Entstehungsgeschichte.** Warum etwas so gebaut ist, steht in den
-  Spezifikationen und Entscheidungen im Repository, nicht hier.
-- **Verweise nur innerhalb des Handbuchs.** Die einzige Ausnahme ist dieser Hinweis auf das
-  Repository.
-- **Ticketverweise nur für ausdrücklich noch nicht Gebautes**, etwa in „Was nicht gebaut ist".
-- **Konfigurierbare Werte stehen nur in den Konfigurationstabellen** der Kapitel und in der
-  Variablenliste des Deployment-Kapitels. Fließtext und Diagramme nennen Parameternamen oder
-  bleiben neutral, damit ein geänderter Default nicht an fünf Stellen veraltet.
-- **Grafiken sind Mermaid**, damit sie ohne Werkzeug im Repository gerendert werden.
-- **Entwurf** am Kapitelanfang bedeutet: geschrieben und gegen den Code geprüft, aber noch nicht
-  vom Maintainer abgenommen. Der Hinweis fällt mit der Abnahme weg.
-- **Kapitel werden mit dem Code gepflegt.** Wer ein Verhalten ändert, das ein Kapitel beschreibt,
-  ändert das Kapitel im selben Pull Request.
+Wie Kapitel aufgebaut, verknüpft und geschrieben werden, steht in [AGENTS.md](AGENTS.md).

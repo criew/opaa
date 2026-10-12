@@ -2,19 +2,19 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Windows-Dateifreigaben und andere
 > SMB-Server (etwa Samba oder ein NAS). Der gemeinsame Ablauf eines Indexierungslaufs und die
-> Dokumentstrecke stehen im Kapitel [Indexierung](indexierung.md).
+> Dokumentstrecke stehen im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
 1. Dateiserver im privaten Netz? Seinen Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
-   eintragen ([Deployment](deployment.md)). OPAA braucht Port 445 zum Server.
+   eintragen ([Deployment](../deployment.md)). OPAA braucht Port 445 zum Server.
 2. Ein **Dienstkonto** anlegen, das sich mit **NTLM** am Server anmelden darf, und ihm
    **Leserecht auf alles** in den gewünschten Ordnern geben (Abschnitt 2.1). Kerberos allein
    genügt nicht.
 3. Die Quellart ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer außer ihr
    Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen" für die
    Quellart SMB oder für einen Zugang
-   ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   ([Berechtigungen](../berechtigungen.md), Abschnitt 9).
 4. Bibliothek anlegen: Adresse `smb://server/freigabe` oder einen Zugang mit der Freigabe darunter
    (Abschnitt 2), Dienstkonto, Passwort, Ordner („Ordner laden“ hilft), „Verbindung testen“.
    Alles aus diesen Ordnern ist für **alle** Leseberechtigten der Bibliothek sichtbar.
@@ -64,7 +64,7 @@ Abschnitt **„Umfang“** und sind für jeden Leseberechtigten sichtbar.
 
 Proxy und „Zertifikatsprüfung aussetzen“ gibt es bei SMB nicht; die API lehnt sie ab.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](indexierung.md#zugänge)): Die Server-Adresse
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Die Server-Adresse
 eines Zugangs für SMB ist `smb://server[:port]`; jede Bibliothek nennt ihre Freigabe in der eigenen
 Adresse darunter. Nennt die Server-Adresse schon eine Freigabe (`smb://server/freigabe`), liegen
 alle Bibliotheken des Zugangs auf dieser Freigabe. Proxy oder ausgesetzte Zertifikatsprüfung weist OPAA schon beim
@@ -176,7 +176,7 @@ wirklich weg.
 - Ein Name mit `/`, `\`, `:` oder Steuerzeichen, den nur ein Nicht-Windows-Server liefern kann,
   wird nicht gelesen und gezählt im Protokoll genannt.
 - Ein Pfad, der länger als 2000 Zeichen oder 2676 Byte (UTF-8) ist, wird wie bei jeder Quelle
-  nicht gelesen (Kapitel [Indexierung](indexierung.md), „Schritt 1: Prüfsumme und Identität“): Die
+  nicht gelesen (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1): Die
   Datei erscheint in jedem Lauf als abgewiesen im Protokoll, ohne Download und ohne Fehler.
   Gezählt wird der ganze Pfad ab `smb://`. Lateinische Buchstaben ohne Akzent belegen ein Byte,
   Umlaute, Kyrillisch und Griechisch zwei, chinesische, japanische und koreanische Zeichen drei.
@@ -222,7 +222,7 @@ ein Browser öffnen könnte, gibt es nicht: `smb://`-Adressen öffnet kein Brows
 ## 8. Konfiguration
 
 Instanzweit unter `opaa.indexing.smb.*`, als Umgebungsvariablen `OPAA_INDEXING_SMB_*` (Liste im
-Kapitel [Deployment](deployment.md)):
+Kapitel [Deployment](../deployment.md)):
 
 | Eigenschaft | Standard | Wirkung |
 |---|---|---|

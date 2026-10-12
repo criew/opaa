@@ -45,7 +45,7 @@ hängt nur von foundation und identity ab.
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0016, 0032, 0036, 0037
-- Handbuch: `docs/handbuch/bibliotheken-und-berechtigungen.md`, Abschnitte 3–13
+- Handbuch: `docs/handbuch/berechtigungen.md`, Abschnitte 3–13
 - Strukturtests: `PermissionPackageBoundaryTest` (Kanten zwischen Fachpaketen, die die Schichtung
   zuließe), `AssetTypeFormatParityTest`, `GrantTableRawSqlGuardTest`
 

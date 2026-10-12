@@ -1,8 +1,8 @@
 # Format: OpenDocument Präsentation (ODP)
 
 > **Entwurf.** Pipeline `odp`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Indexierung](indexierung.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
-> [PowerPoint](format-pptx.md); hier stehen die Unterschiede.
+> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
+> [PowerPoint](pptx.md); hier stehen die Unterschiede.
 
 ## 1. Zulassung
 
@@ -14,7 +14,7 @@ Flat-XML (`.fodp`) ist nicht zugelassen.
 
 ## 2. Was gelesen wird
 
-Derselbe gehärtete XML-Leser wie bei [ODT](format-odt.md): der Inhalt für die Folien, die
+Derselbe gehärtete XML-Leser wie bei [ODT](odt.md): der Inhalt für die Folien, die
 Formatvorlagen für die Masterfolien.
 
 ## 3. Struktur und Chunks
@@ -33,7 +33,7 @@ Absätze aller Masterseiten, dedupliziert, als **ein** führender Chunk mit der 
 steht, wird so einmal gefunden.
 
 Eine Folie mit mehr als rund 4.000 Zeichen wird in mehrere Chunks geteilt, jeder beginnt mit dem
-Folientitel und trägt die Ortsangabe der Folie (Kapitel [Indexierung](indexierung.md), Schritt 4); keine Zielgröße, keine Zusammenlegung, keine
+Folientitel und trägt die Ortsangabe der Folie (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1); keine Zielgröße, keine Zusammenlegung, keine
 Überlappung.
 
 ## 4. Metadaten am Chunk
@@ -59,7 +59,7 @@ textlos.
 
 ## 6. Grenzwerte
 
-Wie bei [ODT](format-odt.md) unter `opaa.indexing.odf.*`, mit `max-odp-slides` (Standard 5.000)
+Wie bei [ODT](odt.md) unter `opaa.indexing.odf.*`, mit `max-odp-slides` (Standard 5.000)
 an Stelle der Absatzgrenze.
 
 ## 7. Nicht verarbeitet

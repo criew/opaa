@@ -251,7 +251,7 @@ Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
   ist der **eine** S3-kompatible Objektspeicher der Demo — mit drei Buckets (#1383, #1520,
   [ADR-0027](../docs/decisions/0027-s3-konnektor.md),
   [ADR-0030](../docs/decisions/0030-originalablage-der-uploads.md), Handbuch
-  [`konnektor-s3.md`](../docs/handbuch/konnektor-s3.md)):
+  [`konnektoren/s3.md`](../docs/handbuch/konnektoren/s3.md)):
 
   | Bucket | Rolle | Inhalt |
   |---|---|---|

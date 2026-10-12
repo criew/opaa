@@ -700,7 +700,7 @@ filesystemSources:
 `volume` nimmt jede Volume-Quelle von Kubernetes an, etwa einen `persistentVolumeClaim`. Das Backend
 muss die Dateien unter seiner Kennung lesen dürfen. Einhängepfade unter `/tmp`, `/app`, `/etc/opaa` und
 `/opt/java` lehnt der Chart ab. Einrichtung und Verhalten der Quelle stehen im Kapitel
-[Dateisystem](konnektor-filesystem.md).
+[Dateisystem](konnektoren/filesystem.md).
 
 ### Eigene Zertifizierungsstelle
 

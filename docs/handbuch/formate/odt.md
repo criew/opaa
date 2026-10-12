@@ -1,8 +1,8 @@
 # Format: OpenDocument Text (ODT)
 
 > **Entwurf.** Pipeline `odt`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Indexierung](indexierung.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem
-> von [Word](format-docx.md); hier stehen die Unterschiede.
+> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem
+> von [Word](docx.md); hier stehen die Unterschiede.
 
 ## 1. Zulassung
 
@@ -24,7 +24,7 @@ für Kopf- und Fußzeilen.
 - **Überschriften** kommen direkt aus der Gliederungsebene des Überschriftenelements.
   Geschnitten wird an den Ebenen 1 bis 3, Zielgröße rund 4.000 Zeichen, größere Abschnitte werden
   ohne Textverlust geteilt, Abschnitte unter 200 Zeichen unter derselben übergeordneten Überschrift
-  zusammengelegt (Kapitel [Indexierung](indexierung.md), Schritt 4), keine Überlappung, Überschriftenzeile
+  zusammengelegt (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1), keine Überlappung, Überschriftenzeile
   am Anfang jedes Chunks.
 - **Tabellen** werden zeilenweise mit ` | ` zwischen den Zellen zu einem Absatzblock.
 - **Kopf- und Fußzeilen** aller Varianten (Standard, linke Seite, erste Seite) werden
@@ -58,7 +58,7 @@ Scan.
 
 ## 6. Grenzwerte
 
-Schlüssel unter `opaa.indexing.odf.*` (gelten auch für [ODP](format-odp.md)):
+Schlüssel unter `opaa.indexing.odf.*` (gelten auch für [ODP](odp.md)):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|

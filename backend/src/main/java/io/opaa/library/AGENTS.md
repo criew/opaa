@@ -44,8 +44,8 @@ Zugang, Prüfung ihrer Adresse) und besitzt keine eigene Tabelle.
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0018, 0030, 0036, 0037, 0038
-- Handbuch: `docs/handbuch/bibliotheken-und-berechtigungen.md`, Abschnitt 4;
-  `docs/handbuch/indexierung.md`, Abschnitt 2; `docs/handbuch/fremdzugaenge.md`, Abschnitt 4
+- Handbuch: `berechtigungen.md` §4, `private-bibliotheken.md`, `wissensbibliotheken.md` §3–4,
+  `fremdzugaenge.md` §4 (alle unter `docs/handbuch/`)
 - Strukturtests: `PermissionPackageBoundaryTest`, `ModularArchitectureTest`; jede neue Operation
   mit Bibliotheks-, Asset-, Dokument- oder Chunk-Kennung braucht einen Eintrag in
   `PrivateLibraryInvisibilityIntegrationTest`

@@ -453,7 +453,7 @@ class TabularDocumentFormatTest {
 
   @Test
   void everyPartOfASplitRowRepeatsTheContextLineAndTheHeaderRow() throws IOException {
-    // format-tabular.md: every chunk opens with the context line and the header row, so a search
+    // formate/tabular.md: every chunk opens with the context line and the header row, so a search
     // for a column name also hits the later parts.
     Path file = tempDir.resolve("riesig.csv");
     Files.writeString(
