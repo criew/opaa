@@ -86,7 +86,7 @@ function next(user: User) {
   return user.click(screen.getByRole('button', { name: 'Weiter' }))
 }
 
-/** Chooses Nextcloud, goes on to „Quelle" and picks the profile named `name`. */
+/** Chooses Nextcloud, goes on to „Quelle einrichten" and picks the profile named `name`. */
 async function chooseProfile(user: User, name: RegExp) {
   await user.click(await screen.findByRole('radio', { name: /Nextcloud/ }))
   await next(user)
@@ -226,7 +226,9 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     const user = userEvent.setup()
     renderWizard()
 
-    const heading = await screen.findByRole('heading', { name: 'Woher kommen die Dokumente?' })
+    const heading = await screen.findByRole('heading', {
+      name: 'Quelle einrichten',
+    })
     await waitFor(() => expect(heading).toHaveFocus())
     expect(await screen.findByText(/Verbunden als „svc@bauamt\.example“/)).toBeVisible()
     expect(screen.getByText(/60 Minuten/)).toBeVisible()
@@ -328,7 +330,7 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
         'Die Zustimmung beim Anbieter ist abgelaufen oder schon verwendet. Bitte verbinden Sie die Quelle erneut.',
       ),
     ).toBeVisible()
-    expect(screen.getByRole('heading', { name: 'Woher kommen die Dokumente?' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Quelle einrichten' })).toBeInTheDocument()
     expect(screen.queryByText(/Verbunden als/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Quelle verbinden' })).toBeInTheDocument()
   }, 20000)

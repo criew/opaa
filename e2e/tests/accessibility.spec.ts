@@ -275,7 +275,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await page.getByRole("radio", { name: /^Wissen/ }).click();
     await page.getByRole("button", { name: "Weiter", exact: true }).click();
     await expect(
-      page.getByRole("radiogroup", { name: "Art des Wissens wählen" }),
+      page.getByRole("radiogroup", { name: "Quellart wählen" }),
     ).toBeVisible();
 
     await page.emulateMedia({ colorScheme: "light" });
@@ -284,9 +284,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
   });
 
-  // #2493: der Schritt „Quelle" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
+  // #2493: der Schritt „Quelle einrichten" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
   // frisch angelegten, wählbaren Zugang.
-  test("Wissens-Assistent: Schritt Quelle mit Zugangswahl in beiden Farbschemata", async ({
+  test("Wissens-Assistent: Schritt Quelle einrichten mit Zugangswahl in beiden Farbschemata", async ({
     authenticatedPage: page,
   }) => {
     const profileName = `A11y Zugang ${Date.now()}`;

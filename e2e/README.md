@@ -296,7 +296,7 @@ lassen.
 - `tests/accessibility.spec.ts` (#586) — automatisierte Barrierefreiheitsprüfung mit axe-core
   (`@axe-core/playwright`, Helfer in `fixtures/a11y.ts`): Anmeldeseite, Chat in beiden
   Farbschemata, Space-Seite, Kachelauswahl (Typwahl unter „Neu“ und Quellart im Wissens-Assistenten), der
-  Schritt „Quelle“ des Wissens-Assistenten mit Zugangswahl, eine gesperrte Kachel mit Grund in der
+  Schritt „Quelle einrichten“ des Wissens-Assistenten mit Zugangswahl, eine gesperrte Kachel mit Grund in der
   Warnfarbe (Quellart ohne Zugänge im Dialog „Zugang anlegen“, #2493), Katalog, Verwaltungsbereich (Gruppen) und
   Benutzer-Einstellungen werden im Ausgangszustand gegen WCAG 2.1 A/AA geprüft. Verstöße der Stufen „serious" und „critical"
   lassen den Test fehlschlagen; „minor"/„moderate" landen als Annotation im Playwright-Report.
@@ -383,7 +383,7 @@ lassen.
   durchgehende Pfad **Anlegen über den Assistenten → Detailansicht → Reiter „Freigaben"**, je
   einmal für eine Upload- und eine Konnektorbibliothek (Webverzeichnis gegen den suite-eigenen
   `rss-feed`-Dienst, ohne Sofortstart — geprüft wird der Weg, nicht ein Lauf). Der Assistent führt
-  durch **Art des Wissens · Quelle · Name & Beschreibung · Freigaben**; eine Upload-Bibliothek hat
+  durch **Quellart · Quelle einrichten · Name & Beschreibung · Freigaben**; eine Upload-Bibliothek hat
   drei Schritte, und der Name einer Konnektorbibliothek kommt vorbelegt aus der Quelle (hier ihr
   Hostname). Die fertige Bibliothek zeigt die vier Reiter (ohne „Quelle" beim Upload), und im
   Reiter „Freigaben" laufen die Freigabewege durch: eine Person und „Alle Konten" mit der

@@ -104,7 +104,7 @@ type User = ReturnType<typeof userEvent.setup>
 /** Renders the wizard and waits for its tiles, which follow GET /source-types (ADR-0038). */
 async function renderPage() {
   const rendered = renderWithProviders(<LibraryCreatePage />, { withRouter: true })
-  await screen.findByRole('radiogroup', { name: 'Art des Wissens wählen' })
+  await screen.findByRole('radiogroup', { name: 'Quellart wählen' })
   return rendered
 }
 
@@ -112,7 +112,7 @@ function next(user: User) {
   return user.click(screen.getByRole('button', { name: 'Weiter' }))
 }
 
-/** Schritt 1 „Art des Wissens": Kachel wählen und weiter - danach steht „Quelle" (oder „Name"). */
+/** Step 1 „Quellart": choose a tile and go on - then „Quelle einrichten" (or „Name") follows. */
 async function chooseType(user: User, label: RegExp) {
   await user.click(screen.getByRole('radio', { name: label }))
   await next(user)
@@ -195,19 +195,19 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
   })
 
-  // #1942: Jeder Schritt trägt den Namen des Reiters, den er in der Detailansicht bekommt - und
-  // eine Upload-Bibliothek hat keine Quelle, also auch keinen Schritt dafür.
-  it('names the steps after the tabs and drops "Quelle" for an upload library', async () => {
+  // The steps are named after what one does in them; an upload library has no source and so no
+  // step „Quelle einrichten".
+  it('names the steps and drops "Quelle einrichten" for an upload library', async () => {
     const user = userEvent.setup()
     await renderPage()
 
-    expect(screen.getByText('1 · Art des Wissens')).toBeInTheDocument()
+    expect(screen.getByText('1 · Quellart')).toBeInTheDocument()
     expect(screen.getByText('2 · Name & Beschreibung')).toBeInTheDocument()
     expect(screen.getByText('3 · Freigaben')).toBeInTheDocument()
-    expect(screen.queryByText(/· Quelle/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/· Quelle einrichten/)).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('radio', { name: /Confluence/ }))
-    expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
+    expect(screen.getByText('2 · Quelle einrichten')).toBeInTheDocument()
     expect(screen.getByText('3 · Name & Beschreibung')).toBeInTheDocument()
     expect(screen.getByText('4 · Freigaben')).toBeInTheDocument()
   })
@@ -296,7 +296,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
       await renderPage()
 
-      // Die erste erlaubte Kachel rückt nach; die Schrittleiste führt damit wieder „Quelle".
+      // Die erste erlaubte Kachel rückt nach; die Schrittleiste führt damit wieder „Quelle einrichten".
       await waitFor(() =>
         expect(screen.getByRole('radio', { name: /Dateisystem/ })).toHaveAttribute(
           'aria-checked',
@@ -304,7 +304,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         ),
       )
       expect(screen.queryByRole('radio', { name: /Upload/ })).not.toBeInTheDocument()
-      expect(screen.getByText('2 · Quelle')).toBeInTheDocument()
+      expect(screen.getByText('2 · Quelle einrichten')).toBeInTheDocument()
       // no hint above the wizard: it would concern the chosen type, and that one is allowed now
       expect(document.getElementById('library-create-capability-hint')).toBeNull()
     })
@@ -991,7 +991,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     const user = userEvent.setup()
     await renderPage()
 
-    const radiogroup = screen.getByRole('radiogroup', { name: 'Art des Wissens wählen' })
+    const radiogroup = screen.getByRole('radiogroup', { name: 'Quellart wählen' })
     expect(radiogroup).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Upload/ })).toHaveAttribute('aria-checked', 'true')
 
