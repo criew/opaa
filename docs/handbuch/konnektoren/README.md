@@ -9,9 +9,10 @@ was die Systemverwaltung dafür vorgibt, beschreibt das Kapitel [Zugänge](../zu
 
 Die Konnektoren sind verschieden, folgen aber wenigen gemeinsamen Mustern: Jeder liefert dasselbe
 an die Aufnahmestrecke (Abschnitt 1), und die Dateiablagen gleichen ihre Quelle auf demselben Weg
-ab (Abschnitt 2). Was jeder einzelne liest und wie er abgleicht, zeigt Abschnitt 3; die Kapitel der
-Konnektoren beschreiben Einrichtung, Schutzmechanismen, Ordner, Löscherkennung, Grenzwerte und
-Fehlerbilder.
+ab (Abschnitt 2). Was jeder einzelne liest, über welche Schnittstelle und wie er abgleicht, zeigt
+Abschnitt 3. Die Kapitel der Konnektoren sind gleich gegliedert: was der Konnektor ist, Einrichtung,
+Quellkonfiguration, Betriebsarten, Löscherkennung, Ordner, Anhänge, Grenzen, Fehlerbilder,
+Konfiguration.
 
 ## 1. Was jeder Konnektor leistet
 
@@ -59,6 +60,36 @@ nicht.
   Bei den Dateiablagen endet er meist als **fehlgeschlagen** mit „Die Quelle der Bibliothek wurde
   während des Laufs geändert …", bei Confluence als **unvollständig**. Der nächste Lauf gleicht
   unter den neuen Einstellungen ab.
+
+### 1.2 Zieladressprüfung
+
+Ein Konnektor, der über das Netz liest, könnte auf interne Ziele umgelenkt werden: auf die
+Metadaten-Adresse eines Cloud-Servers, auf eine Verwaltungsoberfläche im Hausnetz. Deshalb prüft
+jeder dieser Konnektoren vor jeder Verbindung und nach jeder Weiterleitung die Zieladresse.
+Abgelehnt werden
+
+- andere Schemata als die des Konnektors (bei den HTTP-Konnektoren alles außer `http` und `https`),
+- Adressen in lokalen, privaten oder nicht routbaren Bereichen: Loopback, Link-Local samt
+  169.254.169.254, private Netze, Carrier-Grade NAT, Multicast, reservierte Bereiche und ihre
+  IPv6-Entsprechungen,
+- Hostnamen, die sich nicht auflösen lassen, außer die Verbindung geht über den
+  [Ausgangsproxy](../deployment.md#ausgangsproxy), der den Namen dann selbst auflöst.
+
+Geprüft wird jede aufgelöste Adresse des Ziels, nie der Ausgangsproxy; dessen Ausnahmeliste ist keine
+Freigabe. Eine Quelle im Hausnetz — ein Confluence Data Center, ein MinIO, eine Nextcloud, ein
+Dateiserver — gibt der Betrieb frei, indem er ihren Hostnamen in
+`OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` einträgt:
+
+```env
+# exakte Hostnamen ohne Schema und Port, kommagetrennt; kein Vergleich auf Endungen
+OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=wiki.behoerde.example,minio.intern.example
+```
+
+Ein fehlender Eintrag zeigt sich beim Speichern und im Verbindungstest als abgewiesenes Ziel, nicht
+als Anmeldefehler; die Meldung nennt die Einstellung. Die Prüfung lässt sich mit
+`OPAA_INDEXING_TARGET_VALIDATION_ENABLED` ganz abschalten, die Schemaprüfung bleibt dann. Eine
+Restlücke bleibt: DNS-Rebinding, bei dem ein Name zwischen Prüfung und Verbindung auf eine andere
+Adresse wechselt.
 
 ## 2. Dateiablagen
 
@@ -143,32 +174,20 @@ Wann eine abgelehnte Datei erneut geprüft wird:
 
 ## 3. Die Konnektoren im Überblick
 
-| Konnektor | Liest | Zugänge |
-|---|---|---|
-| [Verzeichnis im Dateisystem](filesystem.md) | ein Verzeichnis, das dem Backend als lokaler Pfad sichtbar ist, etwa ein eingebundenes Netzlaufwerk | keine |
-| [Webverzeichnis](http-directory.md) | eine automatisch erzeugte Verzeichnisliste eines Webservers („Index of /…") | möglich |
-| [Feed](rss-feed.md) | einen RSS-Feed, die verlinkten Detailseiten und deren Anlagen | möglich |
-| [Confluence](confluence.md) | Seiten und Anhänge ausgewählter Spaces (Cloud oder Data Center) | möglich |
-| [S3-Objektspeicher](s3.md) | Objekte in Buckets, wahlweise auf Präfixe eingegrenzt | möglich |
-| [Google Drive](google-drive.md) | geteilte Ablagen, Ordner oder „Meine Ablage" über ein Dienstkonto | möglich, Schlüssel am Zugang |
-| [SharePoint](sharepoint.md) | Dokumentbibliotheken von SharePoint Online | Pflicht |
-| [Nextcloud](nextcloud.md) | Ordner eines Nextcloud-Nutzers, samt Freigaben und Gruppenordnern | möglich |
-| [Dropbox](dropbox.md) | Ordner eines Dropbox-Kontos oder Team-Bereichs | Pflicht |
-| [Windows-Dateifreigabe (SMB)](smb.md) | Ordner einer Freigabe auf einem Windows- oder Samba-Server | möglich |
-
-| Konnektor | Betriebsarten | Entfernt Verschwundenes | Ordner in der Bibliothek |
-|---|---|---|---|
-| Verzeichnis im Dateisystem | vollständig | nach einem vollständigen Lauf | ja, aus der Verzeichnisstruktur |
-| Webverzeichnis | vollständig | nach einem Crawl, der weder abgeschnitten noch unvollständig war | ja, aus dem URL-Pfad |
-| Feed | ergänzend | nie | nein |
-| Confluence | Vollabgleich, inkrementell, per Webhook | Vollabgleich über alle Spaces; Papierkorb und Umzug sofort | nein, Space und Gliederungspfad stehen am Dokument |
-| S3-Objektspeicher | Vollabgleich, Ereignislauf | Vollabgleich über alle Geltungsbereiche; Ereignislauf nur auf Befund des Speichers | ja, aus den Schlüsselpräfixen |
-| Google Drive | Vollabgleich, Änderungslauf | Vollabgleich in einem Lauf; Änderungslauf, wenn das Änderungsprotokoll die Löschung meldet | ja |
-| SharePoint | Vollabgleich, Änderungslauf | Vollabgleich, über mehrere Läufe abgeschlossen durch das Änderungsprotokoll; Änderungslauf wie Google Drive | ja |
-| Nextcloud | Vollabgleich | Vollabgleich, der alle Ordner in einem Lauf gelistet oder bestätigt hat | ja |
-| Dropbox | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf wie Google Drive | ja |
-| Windows-Dateifreigabe (SMB) | Vollabgleich | Vollabgleich, auch über mehrere Läufe, sobald alle Ordner eines Bereichs gelistet sind | ja |
+| Konnektor | Liest | Schnittstelle | Zugang | Laufarten | Entfernt Verschwundenes | Ordner |
+|---|---|---|---|---|---|---|
+| [Verzeichnis im Dateisystem](filesystem.md) | ein Verzeichnis, das dem Backend als lokaler Pfad sichtbar ist, etwa ein eingebundenes Netzlaufwerk | lokales Dateisystem | nicht möglich | Vollabgleich | nach einem vollständigen Lauf | ja, aus der Verzeichnisstruktur |
+| [Webverzeichnis](http-directory.md) | eine automatisch erzeugte Verzeichnisliste eines Webservers („Index of /…") | HTTP(S), Verzeichnislisten von Apache und nginx | möglich | Vollabgleich | nach einem vollständigen Crawl | ja, aus dem URL-Pfad |
+| [Feed](rss-feed.md) | einen RSS-Feed, die verlinkten Detailseiten und deren Anlagen | RSS 2.0 über HTTP(S) | möglich | ergänzend | nie | nein |
+| [Confluence](confluence.md) | Seiten und Anhänge ausgewählter Spaces (Cloud oder Data Center) | Confluence-REST-API: Cloud v2, Data Center v1 | möglich | Vollabgleich, inkrementell, per Webhook | Vollabgleich; Papierkorb und Umzug sofort | nein, Space und Gliederungspfad am Dokument |
+| [S3-Objektspeicher](s3.md) | Objekte in Buckets, wahlweise auf Präfixe eingegrenzt | S3-API mit Signature v4 | möglich | Vollabgleich, Ereignislauf | Vollabgleich in einem Lauf; Ereignislauf nur auf Befund des Speichers | ja, aus den Schlüsselpräfixen |
+| [Google Drive](google-drive.md) | geteilte Ablagen, Ordner oder „Meine Ablage" über ein Dienstkonto | Google Drive API v3 | möglich | Vollabgleich, Änderungslauf | Vollabgleich in einem Lauf, Änderungslauf | ja |
+| [SharePoint](sharepoint.md) | Dokumentbibliotheken von SharePoint Online | Microsoft Graph v1.0 | Pflicht | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
+| [Nextcloud](nextcloud.md) | Ordner eines Nextcloud-Nutzers, samt Freigaben und Gruppenordnern | WebDAV | möglich | Vollabgleich | Vollabgleich in einem Lauf | ja |
+| [Dropbox](dropbox.md) | Ordner eines Dropbox-Kontos oder Team-Bereichs | Dropbox API v2 | Pflicht | Vollabgleich, Änderungslauf | Vollabgleich, auch über mehrere Läufe; Änderungslauf | ja |
+| [Windows-Dateifreigabe (SMB)](smb.md) | Ordner einer Freigabe auf einem Windows- oder Samba-Server | SMB 2 und 3 | möglich | Vollabgleich | Vollabgleich, auch über mehrere Läufe | ja |
 
 Ein *vollständiger* Lauf sieht die ganze Quelle und darf deshalb entfernen, was fehlt; ein
 *ergänzender* sieht nur einen Ausschnitt — die jüngsten Feed-Einträge, die zuletzt geänderten
-Seiten — und entfernt nie etwas, nur weil es fehlt.
+Seiten — und entfernt nie etwas, nur weil es fehlt. Die Regeln im Einzelnen stehen im Abschnitt
+„Löscherkennung" jedes Kapitels, für die Dateiablagen in Abschnitt 2.3.
