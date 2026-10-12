@@ -25,10 +25,10 @@ Die Prompt-Bibliotheken, die eine Person lesen darf, stehen im [Katalog](katalog
 
 ```mermaid
 flowchart LR
-    P[Person] --> R[Rolle an der Prompt-Bibliothek]
+    P[Person] --> R[Rolle]
     G[Gruppe] --> R
-    R --> B[Prompt-Bibliothek]
-    B --> PR1[Prompt /anhoerung]
+    R --> B[Prompt-<br/>Bibliothek]
+    B --> PR1[Prompt<br/>/anhoerung]
     B --> PR2[Prompt /vermerk]
     B -. bereitgestellt .-> S[Space]
 ```

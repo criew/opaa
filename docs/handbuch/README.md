@@ -27,15 +27,15 @@ Wer was sehen und pflegen darf, regeln Konten, Gruppen und Rollen.
 ```mermaid
 flowchart LR
     subgraph Arbeitsmittel
-        W[Wissensbibliotheken]
-        P[Prompt-Bibliotheken]
+        W[Wissens-<br/>bibliotheken]
+        P[Prompt-<br/>Bibliotheken]
     end
-    Q[Quellen der Organisation<br/>über Konnektoren und Zugänge] --> W
+    Q[Quellen der<br/>Organisation] --> W
     U[Upload] --> W
-    W --> S[Space<br/>Chats, Mitglieder]
+    W --> S[Space mit<br/>Chats und<br/>Mitgliedern]
     P --> S
-    S --> A[Antwort mit Belegen]
-    R[Konten, Gruppen, Rollen] -.-> W
+    S --> A[Antwort mit<br/>Belegen]
+    R[Konten,<br/>Gruppen, Rollen] -.-> W
     R -.-> P
     R -.-> S
 ```

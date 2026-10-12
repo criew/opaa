@@ -32,11 +32,11 @@ Zwei Sätze gelten in allen folgenden Abschnitten:
 ```mermaid
 flowchart TB
     P[Person] --> M[Mitgliedschaft]
-    M --> G[Gruppe<br/>intern oder von einem Anbieter]
-    P --> DG[Rolle an einem Arbeitsmittel]
-    G --> GG[Rolle an einem Arbeitsmittel]
-    P --> SM[Mitgliedschaft in einem Space]
-    G --> SG[Mitgliedschaft in einem Space]
+    M --> G[Gruppe<br/>intern oder von<br/>einem Anbieter]
+    P --> DG[Rolle an einem<br/>Arbeitsmittel]
+    G --> GG[Rolle an einem<br/>Arbeitsmittel]
+    P --> SM[Mitgliedschaft<br/>in einem Space]
+    G --> SG[Mitgliedschaft<br/>in einem Space]
     DG --> B[Arbeitsmittel]
     GG --> B
     SM --> S[Space]
