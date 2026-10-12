@@ -20,7 +20,8 @@ import org.mockito.ArgumentCaptor;
  * The paths a real store cannot easily produce (ADR-0027, #1376): the caller's own mistakes as a
  * 400 (no settings, an address that is no endpoint, a proxy without port), a missing or malformed
  * key as a result, a blocked or unreachable endpoint as a result with the access layer's message,
- * the TLS hint, and the {@code NotPermitted} fallback of the bucket listing.
+ * an untrusted certificate with the hint to add the own authority, and the {@code NotPermitted}
+ * fallback of the bucket listing.
  */
 class S3ConnectionServiceTest {
 
@@ -39,28 +40,26 @@ class S3ConnectionServiceTest {
 
   @Test
   void aCallerMistakeIsA400() {
-    assertThatThrownBy(() -> service.probe("https://s3.example.org", "ak:sk", false, null))
+    assertThatThrownBy(() -> service.probe("https://s3.example.org", "ak:sk", null))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceSettings");
-    assertThatThrownBy(() -> service.probe("s3.example.org", "ak:sk", false, SETTINGS))
+    assertThatThrownBy(() -> service.probe("s3.example.org", "ak:sk", SETTINGS))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("http://");
-    assertThatThrownBy(
-            () -> service.listBuckets("https://s3.example.org", "nur-key", false, null, true))
+    assertThatThrownBy(() -> service.listBuckets("https://s3.example.org", "nur-key", null, true))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("accessKey:secretKey");
   }
 
   @Test
   void aMissingOrMalformedKeyIsAResultNotAnException() throws Exception {
-    S3ConnectionService.Probe missing =
-        service.probe("https://s3.example.org", null, false, SETTINGS);
+    S3ConnectionService.Probe missing = service.probe("https://s3.example.org", null, SETTINGS);
     assertThat(missing.reachable()).isFalse();
     assertThat(missing.credentialsVerified()).isFalse();
     assertThat(missing.message()).contains("Zugangsdaten erforderlich");
 
     S3ConnectionService.Probe malformed =
-        service.probe("https://s3.example.org", "nur-access-key", false, SETTINGS);
+        service.probe("https://s3.example.org", "nur-access-key", SETTINGS);
     assertThat(malformed.reachable()).isFalse();
     assertThat(malformed.message()).contains("accessKey:secretKey");
   }
@@ -72,8 +71,7 @@ class S3ConnectionServiceTest {
             new S3AccessException.TargetBlocked(
                 "Die Zieladresse 10.0.0.5 ist gesperrt.", TargetAddressValidator.ALLOWLIST_HINT));
 
-    S3ConnectionService.Probe probe =
-        service.probe("http://10.0.0.5:9000", "ak:sk", false, SETTINGS);
+    S3ConnectionService.Probe probe = service.probe("http://10.0.0.5:9000", "ak:sk", SETTINGS);
 
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.credentialsVerified()).isFalse();
@@ -84,25 +82,24 @@ class S3ConnectionServiceTest {
   }
 
   @Test
-  void theTlsDiagnosisNamesTheSwitchAsTheLastOption() throws Exception {
-    when(factory.createForProbe(any(), anyCollection())).thenThrow(new S3AccessException.Tls());
+  void anUntrustedCertificateNamesTheOwnAuthority() throws Exception {
+    when(factory.createForProbe(any(), anyCollection())).thenThrow(new S3AccessException.Tls(true));
 
-    S3ConnectionService.Probe probe =
-        service.probe("https://minio.intern:9000", "ak:sk", false, SETTINGS);
+    S3ConnectionService.Probe probe = service.probe("https://minio.intern:9000", "ak:sk", SETTINGS);
 
     assertThat(probe.message())
         .contains("TLS-Verbindung")
-        .contains("als letzte Option die TLS-Prüfung ausgesetzt");
+        .contains(io.opaa.sourceaccess.UntrustedCertificate.MESSAGE);
   }
 
   @Test
-  void theConnectionCarriesEndpointRegionStyleProxyAndTlsAndTheScopes() throws Exception {
+  void theConnectionCarriesEndpointRegionStyleAndTheScopes() throws Exception {
     FakeS3ObjectStore store =
         new FakeS3ObjectStore().put("dokumente", "2025/a.pdf", "A", "application/pdf");
     when(factory.createForProbe(any(), anyCollection())).thenReturn(store);
 
     S3ConnectionService.Probe probe =
-        service.probe("HTTPS://Minio.Intern:9000/", "ak:sk:token", true, SETTINGS);
+        service.probe("HTTPS://Minio.Intern:9000/", "ak:sk:token", SETTINGS);
 
     ArgumentCaptor<S3Connection> connection = ArgumentCaptor.forClass(S3Connection.class);
     ArgumentCaptor<java.util.Collection<S3Scope>> scopes =
@@ -111,7 +108,6 @@ class S3ConnectionServiceTest {
     assertThat(connection.getValue().endpoint().toString()).isEqualTo("https://minio.intern:9000");
     assertThat(connection.getValue().region()).isEqualTo("eu-central-1");
     assertThat(connection.getValue().pathStyle()).isTrue();
-    assertThat(connection.getValue().insecureSsl()).isTrue();
     assertThat(connection.getValue().credentials().hasSessionToken()).isTrue();
     assertThat(scopes.getValue()).containsExactly(S3Scope.of("dokumente", "2025/"));
     assertThat(probe.reachable()).isTrue();
@@ -125,8 +121,7 @@ class S3ConnectionServiceTest {
     when(factory.createForProbe(any(), anyCollection()))
         .thenReturn(new FakeS3ObjectStore().bucket("dokumente"));
 
-    S3ConnectionService.Probe probe =
-        service.probe("https://s3.example.org", "ak:sk", false, SETTINGS);
+    S3ConnectionService.Probe probe = service.probe("https://s3.example.org", "ak:sk", SETTINGS);
 
     assertThat(probe.reachable()).isTrue();
     assertThat(probe.scopes().get(0).readAllowed()).isNull();
@@ -152,8 +147,7 @@ class S3ConnectionServiceTest {
                         "dokumente", "2025/Zugangsdaten abgelehnt.pdf"));
     when(factory.createForProbe(any(), anyCollection())).thenReturn(store);
 
-    S3ConnectionService.Probe probe =
-        service.probe("https://s3.example.org", "ak:sk", false, SETTINGS);
+    S3ConnectionService.Probe probe = service.probe("https://s3.example.org", "ak:sk", SETTINGS);
 
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.credentialsVerified()).isTrue();
@@ -162,8 +156,7 @@ class S3ConnectionServiceTest {
     // a missing bucket presupposes an accepted signature: verified, not reachable
     when(factory.createForProbe(any(), anyCollection()))
         .thenReturn(new FakeS3ObjectStore().bucket("anderer"));
-    S3ConnectionService.Probe missing =
-        service.probe("https://s3.example.org", "ak:sk", false, SETTINGS);
+    S3ConnectionService.Probe missing = service.probe("https://s3.example.org", "ak:sk", SETTINGS);
     assertThat(missing.reachable()).isFalse();
     assertThat(missing.credentialsVerified()).isTrue();
     assertThat(missing.scopes().get(0).bucketReachable()).isFalse();
@@ -179,8 +172,7 @@ class S3ConnectionServiceTest {
                 .bucket("dokumente")
                 .failBucket(
                     "archiv", () -> new S3AccessException.Authentication("InvalidAccessKeyId")));
-    S3ConnectionService.Probe refused =
-        service.probe("https://s3.example.org", "ak:sk", false, two);
+    S3ConnectionService.Probe refused = service.probe("https://s3.example.org", "ak:sk", two);
     assertThat(refused.reachable()).isFalse();
     assertThat(refused.credentialsVerified()).isFalse();
     assertThat(refused.message()).contains("Zugangsdaten abgelehnt");
@@ -195,8 +187,7 @@ class S3ConnectionServiceTest {
                 .failBucket(
                     "dokumente", () -> new S3AccessException.WrongRegionOrStyle("dokumente")));
 
-    S3ConnectionService.Probe probe =
-        service.probe("https://s3.example.org", "ak:sk", false, SETTINGS);
+    S3ConnectionService.Probe probe = service.probe("https://s3.example.org", "ak:sk", SETTINGS);
 
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.credentialsVerified()).isTrue();
@@ -218,7 +209,7 @@ class S3ConnectionServiceTest {
         new S3SourceSettings(
             null, true, List.of(S3Scope.of("dokumente", ""), S3Scope.of("archiv", "")), null, null);
 
-    S3ConnectionService.Probe probe = bounded.probe("https://s3.example.org", "ak:sk", false, two);
+    S3ConnectionService.Probe probe = bounded.probe("https://s3.example.org", "ak:sk", two);
 
     assertThat(probe.reachable()).isFalse();
     assertThat(probe.scopes().get(0).passed()).isTrue();
@@ -232,8 +223,7 @@ class S3ConnectionServiceTest {
     when(factory.createForProbe(any(), anyCollection()))
         .thenReturn(new FakeS3ObjectStore().bucket("dokumente").bucketListingPermitted(false));
 
-    S3BucketListResult result =
-        service.listBuckets("https://s3.example.org", "ak:sk", false, null, false);
+    S3BucketListResult result = service.listBuckets("https://s3.example.org", "ak:sk", null, false);
 
     assertThat(result.permitted()).isFalse();
     assertThat(result.buckets()).isEmpty();
@@ -242,7 +232,7 @@ class S3ConnectionServiceTest {
     when(factory.createForProbe(any(), anyCollection()))
         .thenReturn(new FakeS3ObjectStore().bucket("dokumente").bucket("satzungen"));
     S3BucketListResult listed =
-        service.listBuckets("https://s3.example.org", "ak:sk", false, "eu-west-1", false);
+        service.listBuckets("https://s3.example.org", "ak:sk", "eu-west-1", false);
     assertThat(listed.permitted()).isTrue();
     assertThat(listed.buckets()).containsExactly("dokumente", "satzungen");
     assertThat(listed.message()).isNull();

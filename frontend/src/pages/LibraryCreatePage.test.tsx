@@ -529,7 +529,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
             sourceType: 'S3',
             sourceUrl: 'https://minio.intern.example:9000',
             sourceCredentials: 'AKIAEXAMPLE:geheim',
-            sourceInsecureSsl: false,
             sourceSettings: {
               region: 'us-east-1',
               pathStyle: true,
@@ -647,7 +646,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(mockTestLibrarySource).toHaveBeenCalledWith({
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://site.atlassian.net/wiki',
-        sourceInsecureSsl: false,
       })
       expect(await screen.findByTestId('library-create-confluence-edition')).toHaveTextContent(
         'Confluence Cloud',
@@ -713,7 +711,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(mockTestLibrarySource).toHaveBeenLastCalledWith({
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
-        sourceInsecureSsl: false,
         sourceSettings: { edition: 'DATA_CENTER' },
         sourceCredentials: 'pat-geheim',
         libraryId: undefined,
@@ -743,7 +740,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
         sourceType: 'CONFLUENCE',
         sourceUrl: 'https://wiki.behoerde.example/confluence',
         sourceCredentials: 'pat-geheim',
-        sourceInsecureSsl: false,
         sourceSettings: { edition: 'DATA_CENTER', spaces: [{ key: 'BAU', name: 'Bauamt' }] },
         schedule: { frequency: 'DISABLED', hour: null, minute: null, weekday: undefined },
       })
@@ -1244,11 +1240,10 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.getByRole('button', { name: 'Edition erkennen' })).toBeEnabled()
     }, 25000)
 
-    it('shows the certificate check of the chosen profile read-only and sends none', async () => {
+    it('offers no certificate switch under the chosen profile and sends none', async () => {
       mockListConnectionProfileOptions.mockResolvedValue([
         {
           ...profile,
-          sourceInsecureSsl: true,
         },
       ])
       const user = userEvent.setup()
@@ -1256,8 +1251,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await chooseType(user, /Nextcloud/)
       await user.click(await screen.findByRole('radio', { name: /Nextcloud intern/ }))
 
-      expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeChecked()
-      expect(screen.getByRole('switch', { name: /Zertifikatsprüfung/ })).toBeDisabled()
+      expect(screen.queryByRole('switch', { name: /Zertifikatsprüfung/ })).not.toBeInTheDocument()
       await user.type(screen.getByLabelText(/Technischer Nutzer/), 'svc-opaa')
       await user.type(screen.getByLabelText(/App-Passwort/), 'geheim')
       await next(user)
@@ -1267,7 +1261,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       const request = mockCreateNewLibrary.mock.calls[0][0]
       expect(request.connectionProfileId).toBe('profile-intern')
-      expect(request.sourceInsecureSsl).toBe(false)
+      expect(request).not.toHaveProperty('sourceInsecureSsl')
     }, 30000)
 
     it('sends no profile for the own address', async () => {
@@ -1451,7 +1445,6 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       authMethod: 'PERSONAL_SECRET' as const,
       ownership: 'BOTH' as const,
       ownAccount: false,
-      sourceInsecureSsl: false,
       connectorDefaults: null,
     }
     const ownProfile = { ...profile, ownAccount: true }

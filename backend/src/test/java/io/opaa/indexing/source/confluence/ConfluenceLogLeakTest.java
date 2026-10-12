@@ -74,8 +74,7 @@ class ConfluenceLogLeakTest {
               TargetAddressValidator.disabled(),
               duration -> {});
       ConfluenceClient client =
-          factory.create(
-              new ConfluenceConnection(URI.create(server.baseUrl()), edition, good, false));
+          factory.create(new ConfluenceConnection(URI.create(server.baseUrl()), edition, good));
 
       server.throttleNext(1, "1");
       client.listSpaces();
@@ -87,8 +86,7 @@ class ConfluenceLogLeakTest {
               ? new ConfluenceCredentials.CloudApiToken(EMAIL, TOKEN + "-falsch")
               : new ConfluenceCredentials.DataCenterPersonalAccessToken(TOKEN + "-falsch");
       ConfluenceClient wrongClient =
-          factory.create(
-              new ConfluenceConnection(URI.create(server.baseUrl()), edition, wrong, false));
+          factory.create(new ConfluenceConnection(URI.create(server.baseUrl()), edition, wrong));
       assertThatThrownBy(wrongClient::verifyCredentials)
           .isInstanceOf(ConfluenceAccessException.class);
       server.close();

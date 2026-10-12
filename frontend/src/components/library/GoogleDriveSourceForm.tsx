@@ -117,7 +117,6 @@ export default function GoogleDriveSourceForm({
   const connectionRequest = () => ({
     sourceUrl: GOOGLE_DRIVE_API,
     sourceCredentials: values.keyFile || undefined,
-    sourceInsecureSsl: false,
   })
 
   const onKeyFile = async (file: File | undefined) => {

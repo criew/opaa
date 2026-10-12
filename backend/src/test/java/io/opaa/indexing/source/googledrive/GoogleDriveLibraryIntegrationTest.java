@@ -112,12 +112,11 @@ class GoogleDriveLibraryIntegrationTest {
   }
 
   @Test
-  void anotherAddressAndASwitchedOffCertificateCheckAreRefused() throws Exception {
+  void anotherAddressIsRefused() throws Exception {
     String body =
         """
         {"name": "Drive", "sourceType": "GOOGLE_DRIVE", "sourceCredentials": %s,
-         "sourceUrl": "%s", "sourceInsecureSsl": %s,
-         "sourceSettings": {"scopes": [{"drive": "d1"}]}}
+         "sourceUrl": "%s", "sourceSettings": {"scopes": [{"drive": "d1"}]}}
         """;
 
     mockMvc
@@ -125,14 +124,7 @@ class GoogleDriveLibraryIntegrationTest {
             as(post("/api/v1/libraries"))
                 .content(
                     body.formatted(
-                        JSON.writeValueAsString(key.json()), "https://evil.example.org", false)))
-        .andExpect(status().isBadRequest());
-    mockMvc
-        .perform(
-            as(post("/api/v1/libraries"))
-                .content(
-                    body.formatted(
-                        JSON.writeValueAsString(key.json()), "https://www.googleapis.com", true)))
+                        JSON.writeValueAsString(key.json()), "https://evil.example.org")))
         .andExpect(status().isBadRequest());
   }
 

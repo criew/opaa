@@ -2,7 +2,6 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { mockSourceTypes } from '../../../mocks/libraryFixtures'
 import { server } from '../../../mocks/server'
 
 import { mockConnectionProfiles } from '../../../mocks/connectionProfileFixtures'
@@ -456,7 +455,7 @@ describe('ConnectionProfilesTab', () => {
     expect(sent[0].connectorSettings).toEqual({ edition: 'EXTERN', pathStyle: false })
   }, 20000)
 
-  it('sends the certificate switch of the profile', async () => {
+  it('offers no switch to skip the certificate check and sends none', async () => {
     const user = userEvent.setup()
     const sent = capturePosts()
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
@@ -464,38 +463,15 @@ describe('ConnectionProfilesTab', () => {
     await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
     const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
     await chooseSourceType(user, dialog, /Nextcloud/)
-    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang mit TLS-Schalter')
+    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang ohne Schalter')
     await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'https://cloud.example.org')
     await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
     await user.click(await screen.findByRole('option', { name: 'Ohne Anmeldung' }))
-    await user.click(within(dialog).getByLabelText('Zertifikatsprüfung aussetzen'))
+    expect(within(dialog).queryByLabelText(/Zertifikatsprüfung/)).not.toBeInTheDocument()
     await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
 
-    await screen.findByRole('dialog', { name: 'Zugang mit TLS-Schalter' })
-    expect(sent[0]).toMatchObject({
-      sourceInsecureSsl: true,
-    })
-  }, 20000)
-
-  it('offers no certificate switch for a file server and sends none', async () => {
-    const smb = mockSourceTypes.find((type) => type.type === 'SMB')!
-    server.use(http.get('/api/v1/source-types', () => HttpResponse.json([NEXTCLOUD, smb])))
-    const user = userEvent.setup()
-    const sent = capturePosts()
-    renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
-
-    await user.click(await screen.findByRole('button', { name: 'Neuer Zugang' }))
-    const dialog = await screen.findByRole('dialog', { name: 'Zugang anlegen' })
-    await chooseSourceType(user, dialog, /Windows-Dateifreigabe/)
-    expect(within(dialog).queryByLabelText('Zertifikatsprüfung aussetzen')).not.toBeInTheDocument()
-    await user.type(within(dialog).getByLabelText(/^Name/), 'Zugang Dateiserver')
-    await user.type(within(dialog).getByLabelText(/^Server-Adresse/), 'smb://dateiserver.example')
-    await user.click(within(dialog).getByLabelText(/^Anmeldeart/))
-    await user.click(await screen.findByRole('option', { name: 'Persönliches Geheimnis' }))
-    await user.click(within(dialog).getByRole('button', { name: 'Anlegen' }))
-
-    await screen.findByRole('dialog', { name: 'Zugang Dateiserver' })
-    expect(sent[0]).toMatchObject({ sourceInsecureSsl: false })
+    await screen.findByRole('dialog', { name: 'Zugang ohne Schalter' })
+    expect(sent[0]).not.toHaveProperty('sourceInsecureSsl')
   }, 20000)
 
   it('offers only the ownerships the chosen sign-in admits', async () => {

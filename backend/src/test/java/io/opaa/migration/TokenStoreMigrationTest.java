@@ -160,13 +160,13 @@ class TokenStoreMigrationTest extends AbstractBaselineTest {
     UUID id = UUID.randomUUID();
     execute(
         "INSERT INTO connection_profiles (id, name, source_type, server_url, auth_method,"
-            + " ownership, source_insecure_ssl, created_at, updated_at, version) VALUES ('"
+            + " ownership, created_at, updated_at, version) VALUES ('"
             + id
             + "', 'Zugang "
             + id
             + "', 'PERSON_PROBE', 'https://person.example.org', 'PERSONAL_SECRET', '"
             + ownership
-            + "', false, now(), now(), 0)");
+            + "', now(), now(), 0)");
     return id;
   }
 

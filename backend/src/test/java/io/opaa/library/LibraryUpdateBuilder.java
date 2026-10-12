@@ -20,7 +20,6 @@ public final class LibraryUpdateBuilder {
   private String sourcePath;
   private URI sourceUrl;
   private String sourceCredentials;
-  private Boolean sourceInsecureSsl;
   private LibraryScheduleUpdate schedule;
   private ConfluenceEdition confluenceEdition;
   private List<ConfluenceSpaceSelection> confluenceSpaces;
@@ -60,11 +59,6 @@ public final class LibraryUpdateBuilder {
     return this;
   }
 
-  public LibraryUpdateBuilder sourceInsecureSsl(Boolean sourceInsecureSsl) {
-    this.sourceInsecureSsl = sourceInsecureSsl;
-    return this;
-  }
-
   public LibraryUpdateBuilder schedule(LibraryScheduleUpdate schedule) {
     this.schedule = schedule;
     return this;
@@ -98,7 +92,6 @@ public final class LibraryUpdateBuilder {
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         schedule,
         TestSourceSettings.of(
             confluenceEdition, confluenceSpaces, confluenceFullSyncIntervalDays, s3Settings));

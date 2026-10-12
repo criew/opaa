@@ -92,12 +92,10 @@ class AttachmentIndexerTest {
             SourceTypes.RSS_FEED,
             null,
             null,
-            null,
-            false);
+            null);
     HttpClient httpClient = HttpClient.newHttpClient();
     ctx =
         new RssFeedRunContext(
-            httpClient,
             httpClient,
             library,
             null,
@@ -170,8 +168,7 @@ class AttachmentIndexerTest {
             SourceTypes.FILESYSTEM,
             tempDir.toString(),
             null,
-            null,
-            false);
+            null);
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(filesystemLibrary);
     when(access.events()).thenReturn((category, message, reference) -> {});
@@ -225,8 +222,7 @@ class AttachmentIndexerTest {
             SourceTypes.FILESYSTEM,
             tempDir.toString(),
             null,
-            null,
-            false);
+            null);
     AttachmentAccess mailAccess = mock(AttachmentAccess.class);
     when(mailAccess.targetLibrary()).thenReturn(filesystemLibrary);
     when(mailAccess.events()).thenReturn((category, message, reference) -> {});
@@ -337,8 +333,7 @@ class AttachmentIndexerTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example",
-            null,
-            false);
+            null);
     SourceDocumentContext pageContext = new SourceDocumentContext("ENG", "Handbuch / Kapitel 1");
     AttachmentAccess access = mock(AttachmentAccess.class);
     when(access.targetLibrary()).thenReturn(confluenceLibrary);

@@ -180,7 +180,6 @@ class ExternalAccessTokenIntegrationTest {
                 null,
                 null,
                 null,
-                null,
                 null),
             CurrentUser.of(user.getId(), user.getOrganizationId(), user.getSystemRole(), name))
         .library()

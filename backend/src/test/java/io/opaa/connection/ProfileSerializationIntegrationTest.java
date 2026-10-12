@@ -45,6 +45,9 @@ class ProfileSerializationIntegrationTest {
 
   private static final String ADMIN = "/api/v1/admin/connection-profiles";
 
+  /** The edition every profile here changes to; it is created with {@code DC}. */
+  private static final String NEW_EDITION = "CLOUD";
+
   @Autowired private MockMvc mockMvc;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private OwnLibraryFixtures libraryFixtures;
@@ -84,14 +87,14 @@ class ProfileSerializationIntegrationTest {
     connecting.awaitReached();
     probe.changeChecks();
     probe.validations();
-    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeEdition(profile)));
     waitUntilFinishedOrBlocked(change);
     connecting.release();
 
     assertThat(connect.get(30, TimeUnit.SECONDS)).isEqualTo(200);
     assertThat(change.get(30, TimeUnit.SECONDS)).isEqualTo(200);
     assertThat(connectedTo(library)).isEqualTo(profile);
-    assertThat(checkedWithTlsSwitch(url)).isTrue();
+    assertThat(checkedWithNewEdition(url)).isTrue();
   }
 
   @Test
@@ -102,7 +105,7 @@ class ProfileSerializationIntegrationTest {
     String url = "https://probe.example.org/waehrenddessen";
     UUID library = createOwnLibrary(url);
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeEdition(profile)));
     changing.awaitReached();
     Future<Integer> connect = executor.submit(() -> statusOf(connect(library, profile)));
     waitUntilFinishedOrBlocked(connect);
@@ -111,8 +114,8 @@ class ProfileSerializationIntegrationTest {
     assertThat(change.get(30, TimeUnit.SECONDS)).isEqualTo(200);
     assertThat(connect.get(30, TimeUnit.SECONDS)).isIn(200, 409);
     if (profile.equals(connectedTo(library))) {
-      assertThat(checkedWithTlsSwitch(url))
-          .as("connected without a check under the new TLS switch")
+      assertThat(checkedWithNewEdition(url))
+          .as("connected without a check under the new edition")
           .isTrue();
     }
   }
@@ -125,7 +128,7 @@ class ProfileSerializationIntegrationTest {
     String name = "Neu " + UUID.randomUUID();
     String url = "https://probe.example.org/neu";
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeEdition(profile)));
     changing.awaitReached();
     Future<Integer> create =
         executor.submit(
@@ -147,8 +150,8 @@ class ProfileSerializationIntegrationTest {
         jdbc.queryForList("SELECT id FROM assets WHERE name = ?", UUID.class, name);
     libraries.addAll(created);
     if (!created.isEmpty()) {
-      assertThat(checkedWithTlsSwitch(url))
-          .as("created without a check under the new TLS switch")
+      assertThat(checkedWithNewEdition(url))
+          .as("created without a check under the new edition")
           .isTrue();
     }
   }
@@ -159,7 +162,7 @@ class ProfileSerializationIntegrationTest {
     Pause changing = probe.pauseSourceChange(createLibrary(profile, "vorhanden"));
     UUID library = createLibrary(profile, "loesen");
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeEdition(profile)));
     changing.awaitReached();
     Future<Integer> release =
         executor.submit(
@@ -176,11 +179,11 @@ class ProfileSerializationIntegrationTest {
     if (connectedTo(library) == null) {
       assertThat(
               jdbc.queryForObject(
-                  "SELECT source_insecure_ssl FROM knowledge_libraries WHERE id = ?",
-                  Boolean.class,
+                  "SELECT source_settings ->> 'edition' FROM knowledge_libraries WHERE id = ?",
+                  String.class,
                   library))
-          .as("released with the TLS switch the profile no longer sets")
-          .isTrue();
+          .as("released with the edition the profile sets now")
+          .isEqualTo(NEW_EDITION);
     }
   }
 
@@ -192,7 +195,7 @@ class ProfileSerializationIntegrationTest {
     String url = "https://probe.example.org/alt";
     UUID library = createLibrary(profile, "alt");
 
-    Future<Integer> change = executor.submit(() -> statusOf(changeTlsSwitch(profile)));
+    Future<Integer> change = executor.submit(() -> statusOf(changeEdition(profile)));
     changing.awaitReached();
     Future<Integer> update =
         executor.submit(
@@ -218,19 +221,23 @@ class ProfileSerializationIntegrationTest {
                   .anyMatch(
                       requested ->
                           url.equals(requested.sourceUrl())
-                              && requested.sourceInsecureSsl()
                               && requested.connectorSettings() != null
+                              && NEW_EDITION.equals(requested.connectorSettings().get("edition"))
                               && "neu".equals(requested.connectorSettings().get("topic"))))
-          .as("changed without a check under the new TLS switch")
+          .as("changed without a check under the new edition")
           .isTrue();
     }
   }
 
-  /** Whether the connector checked a configuration at {@code url} with the new TLS switch. */
-  private boolean checkedWithTlsSwitch(String url) {
+  /** Whether the connector checked a configuration at {@code url} with the new edition. */
+  private boolean checkedWithNewEdition(String url) {
     return Stream.concat(
             probe.validations().stream(), probe.changeChecks().stream().map(ChangeCheck::requested))
-        .anyMatch(settings -> url.equals(settings.sourceUrl()) && settings.sourceInsecureSsl());
+        .anyMatch(
+            settings ->
+                url.equals(settings.sourceUrl())
+                    && settings.connectorSettings() != null
+                    && NEW_EDITION.equals(settings.connectorSettings().get("edition")));
   }
 
   private UUID connectedTo(UUID library) {
@@ -265,7 +272,7 @@ class ProfileSerializationIntegrationTest {
         .content("{\"profileId\": \"" + profile + "\"}");
   }
 
-  private MockHttpServletRequestBuilder changeTlsSwitch(UUID profile) throws Exception {
+  private MockHttpServletRequestBuilder changeEdition(UUID profile) throws Exception {
     String name =
         JsonPath.read(
             mockMvc
@@ -278,10 +285,9 @@ class ProfileSerializationIntegrationTest {
         .content(
             """
             {"name": "%s", "serverUrl": "https://probe.example.org", "authMethod": "NONE",
-             "ownership": "LIBRARY", "connectorSettings": {"edition": "DC"},
-             "sourceInsecureSsl": true}
+             "ownership": "LIBRARY", "connectorSettings": {"edition": "%s"}}
             """
-                .formatted(name));
+                .formatted(name, NEW_EDITION));
   }
 
   private UUID createProfile() throws Exception {

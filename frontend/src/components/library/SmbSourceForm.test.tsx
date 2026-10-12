@@ -85,7 +85,6 @@ describe('SmbSourceForm', () => {
       expect.objectContaining({
         sourceUrl: STORED,
         sourceCredentials: 'RATHAUS\\svc-opaa:geheim',
-        sourceInsecureSsl: false,
       }),
     )
     expect(latest?.folders).toBe('/Bauamt')

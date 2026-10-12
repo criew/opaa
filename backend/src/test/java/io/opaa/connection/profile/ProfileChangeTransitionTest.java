@@ -112,7 +112,7 @@ class ProfileChangeTransitionTest {
     KnowledgeLibrary first = library("/a", "Wetter");
     KnowledgeLibrary second = library("/b", "Verkehr");
 
-    service.update(ADMIN, profile.getId(), values("DC", false), null, false);
+    service.update(ADMIN, profile.getId(), values("DC"), null, false);
 
     List<ProfileProbeSourceConnector.ChangeCheck> checks = probe.changeChecks();
     assertThat(checks).hasSize(2);
@@ -137,8 +137,7 @@ class ProfileChangeTransitionTest {
     library("/b", "Verkehr");
     KnowledgeLibrary third = library("/c", ProfileProbeSourceConnector.CLOUD_ONLY_TOPIC);
 
-    assertThatThrownBy(
-            () -> service.update(ADMIN, profile.getId(), values("DC", false), null, false))
+    assertThatThrownBy(() -> service.update(ADMIN, profile.getId(), values("DC"), null, false))
         .isInstanceOfSatisfying(
             ValidationException.class,
             refused -> {
@@ -164,7 +163,7 @@ class ProfileChangeTransitionTest {
     KnowledgeLibrary refused = library("/b", ProfileProbeSourceConnector.CLOUD_ONLY_TOPIC);
 
     ConnectionProfileService.ProfileImpact impact =
-        service.preview(profile.getId(), values("DC", false), null);
+        service.preview(profile.getId(), values("DC"), null);
 
     assertThat(impact.connections()).isEqualTo(2);
     assertThat(impact.rejections())
@@ -186,9 +185,9 @@ class ProfileChangeTransitionTest {
     library("/same", "Wetter");
     library("/other", "Wetter");
 
-    Answers answers = service.check(profile.getId(), values("DC", false), null, false);
+    Answers answers = service.check(profile.getId(), values("DC"), null, false);
     assertThat(probe.changeChecks()).hasSize(2);
-    service.update(ADMIN, profile.getId(), values("DC", false), null, false, answers);
+    service.update(ADMIN, profile.getId(), values("DC"), null, false, answers);
 
     assertThat(probe.changeChecks()).as("the write reuses the answers").isEmpty();
     assertThat(probe.sourceChanges()).hasSize(3);
@@ -197,10 +196,21 @@ class ProfileChangeTransitionTest {
   /** The connector names the category: an unreachable target is CONNECTION, not SETTINGS. */
   @Test
   void aTargetTheConnectorCannotReachIsRefusedAsAConnection() {
+    ReflectionTestUtils.setField(profile, "authMethod", ConnectionAuthMethod.NONE);
     library("/a", ProfileProbeSourceConnector.UNREACHABLE_TOPIC);
+    ConnectionProfileValues moved =
+        new ConnectionProfileValues(
+            "Zugang Probe",
+            "https://neu.example.org",
+            ConnectionAuthMethod.NONE,
+            ConnectionOwnership.LIBRARY,
+            null,
+            null,
+            null,
+            null,
+            ConnectorData.of(Map.of("edition", "CLOUD")));
 
-    ConnectionProfileService.ProfileImpact impact =
-        service.preview(profile.getId(), values("CLOUD", true), null);
+    ConnectionProfileService.ProfileImpact impact = service.preview(profile.getId(), moved, null);
 
     assertThat(impact.rejections())
         .singleElement()
@@ -223,28 +233,12 @@ class ProfileChangeTransitionTest {
             null,
             null,
             null,
-            ConnectorData.of(Map.of("edition", "CLOUD")),
-            false);
+            ConnectorData.of(Map.of("edition", "CLOUD")));
 
     assertThatThrownBy(() -> service.check(profile.getId(), moved, null, false))
         .isInstanceOf(ConflictException.class);
 
     assertThat(probe.changeChecks()).isEmpty();
-  }
-
-  @Test
-  void aNewTlsSwitchIsAnEffectiveChangeCheckedAsAConnectionAndAudited() {
-    KnowledgeLibrary library = library("/a", "Wetter");
-
-    service.update(ADMIN, profile.getId(), values("CLOUD", true), null, false);
-
-    ProfileProbeSourceConnector.ChangeCheck check = probe.changeChecks().getFirst();
-    assertThat(check.replacesConnection()).isTrue();
-    assertThat(check.requested().sourceCredentials()).isEqualTo("nutzer:geheim");
-    assertThat(probe.sourceChanges())
-        .singleElement()
-        .satisfies(change -> assertThat(change.addressChanged()).isFalse());
-    assertThat(sourceUpdates().get(library.getId())).containsExactly("sourceInsecureSsl");
   }
 
   /**
@@ -265,8 +259,7 @@ class ProfileChangeTransitionTest {
             null,
             null,
             null,
-            null,
-            false);
+            null);
 
     service.update(ADMIN, profile.getId(), withoutDefaults, null, false);
 
@@ -293,8 +286,7 @@ class ProfileChangeTransitionTest {
             null,
             null,
             null,
-            ConnectorData.of(Map.of("edition", "CLOUD")),
-            false);
+            ConnectorData.of(Map.of("edition", "CLOUD")));
     service.update(ADMIN, profile.getId(), renamed, null, false);
 
     verify(libraries, never()).findById(any());
@@ -316,8 +308,7 @@ class ProfileChangeTransitionTest {
             null,
             null,
             null,
-            ConnectorData.of(Map.of("edition", "CLOUD")),
-            false);
+            ConnectorData.of(Map.of("edition", "CLOUD")));
 
     service.update(ADMIN, profile.getId(), moved, null, true);
 
@@ -332,7 +323,7 @@ class ProfileChangeTransitionTest {
         .containsExactlyInAnyOrder("sourceUrl", "sourceCredentials");
   }
 
-  private ConnectionProfileValues values(String edition, boolean insecureSsl) {
+  private ConnectionProfileValues values(String edition) {
     return new ConnectionProfileValues(
         "Zugang Probe",
         SERVER,
@@ -342,8 +333,7 @@ class ProfileChangeTransitionTest {
         null,
         null,
         null,
-        ConnectorData.of(Map.of("edition", edition)),
-        insecureSsl);
+        ConnectorData.of(Map.of("edition", edition)));
   }
 
   /**
@@ -360,8 +350,7 @@ class ProfileChangeTransitionTest {
             ProfileProbeSourceConnector.TYPE,
             null,
             SERVER + path,
-            "nutzer:geheim",
-            false);
+            "nutzer:geheim");
     library.updateSourceSettings("{\"topic\":\"" + topic + "\"}");
     rows.put(library.getId(), library);
     connected.add(new LibraryConnection(library.getId(), profile.getId(), NOW));

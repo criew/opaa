@@ -111,8 +111,7 @@ class ConfluenceIndexingExecutorVisitPageTest {
             SourceTypes.CONFLUENCE,
             null,
             BASE,
-            "token",
-            false);
+            "token");
     ConfluenceTestSettings.configure(
         library,
         ConfluenceEdition.CLOUD,

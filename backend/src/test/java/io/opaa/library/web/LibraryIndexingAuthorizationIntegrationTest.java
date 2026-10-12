@@ -139,8 +139,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     ownLibraryIds.add(library.getId());
     return library;
   }
@@ -312,8 +311,7 @@ class LibraryIndexingAuthorizationIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     ownLibraryIds.add(library.getId());
     return library;
   }

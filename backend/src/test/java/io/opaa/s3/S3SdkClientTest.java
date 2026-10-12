@@ -28,7 +28,6 @@ class S3SdkClientTest {
         AwsBasicCredentials.create("AKIA", "geheim:mit:doppelpunkt"),
         null,
         0,
-        false,
         Duration.ofSeconds(9),
         maxRetries,
         Duration.ofMillis(100));
@@ -78,7 +77,6 @@ class S3SdkClientTest {
                     AwsBasicCredentials.create("AKIA", "geheim"),
                     "proxy",
                     0,
-                    false,
                     Duration.ofSeconds(1),
                     1,
                     Duration.ofMillis(1)))
@@ -96,7 +94,6 @@ class S3SdkClientTest {
                     AwsBasicCredentials.create("AKIA", "geheim"),
                     null,
                     0,
-                    false,
                     Duration.ofSeconds(1),
                     1,
                     Duration.ofMillis(1))
@@ -111,8 +108,7 @@ class S3SdkClientTest {
             URI.create("https://s3.example"),
             "eu-west-1",
             false,
-            new S3Credentials("AKIA", "geheim", "token"),
-            true);
+            new S3Credentials("AKIA", "geheim", "token"));
 
     S3ClientSettings settings =
         S3ClientSettings.of(connection, Duration.ofSeconds(11), 4, Duration.ofMillis(250));
@@ -125,7 +121,6 @@ class S3SdkClientTest {
     assertThat(settings.credentials())
         .isInstanceOf(software.amazon.awssdk.auth.credentials.AwsSessionCredentials.class);
     assertThat(settings.hasProxy()).isFalse();
-    assertThat(settings.insecureSsl()).isTrue();
     assertThat(settings.requestTimeout()).isEqualTo(Duration.ofSeconds(11));
     assertThat(settings.maxRetries()).isEqualTo(4);
     assertThat(settings.retryBackoff()).isEqualTo(Duration.ofMillis(250));

@@ -144,8 +144,7 @@ class DocumentIndexingIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
   }
@@ -338,8 +337,7 @@ class DocumentIndexingIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     UUID otherLibraryId = otherLibrary.getId();
     grantOwner(otherLibraryId, userId);
     IndexingJob otherLibraryJob =
@@ -765,8 +763,7 @@ class DocumentIndexingIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     UUID otherLibraryId = otherLibrary.getId();
     grantOwner(otherLibraryId, userId);
 
@@ -1016,8 +1013,7 @@ class DocumentIndexingIntegrationTest {
                     .toAbsolutePath()
                     .toString(),
                 null,
-                null,
-                false));
+                null));
     grantOwner(outsideAllowlistLibrary.getId(), userId);
 
     IndexingJob job =
@@ -1175,8 +1171,7 @@ class DocumentIndexingIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 libraryDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     grantOwner(library.getId(), ownerId, organizationId);
     return library;
   }

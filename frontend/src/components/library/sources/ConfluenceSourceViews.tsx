@@ -56,7 +56,7 @@ export function ConfluenceStoredView({
       <Typography variant="body2">
         <strong>Adresse:</strong> {library.sourceUrl ?? '—'}
       </Typography>
-      <RemoteConnectionLines library={library} />
+      <RemoteConnectionLines />
       <ConfluenceWebhookSection libraryId={libraryId} secretSet={library.pushSecretSet} />
     </>
   )

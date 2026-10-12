@@ -57,26 +57,20 @@ class ConfluenceDataCenterAccessTest {
         new ConfluenceConnection(
             URI.create(confluence.baseUrl()),
             ConfluenceEdition.DATA_CENTER,
-            new ConfluenceCredentials.DataCenterPersonalAccessToken(token),
-            false));
+            new ConfluenceCredentials.DataCenterPersonalAccessToken(token)));
   }
 
   @Test
   void detectsDataCenterWithoutCredentialsAndVerifiesTheToken() throws Exception {
     ConfluenceEditionDetector.Detected detected =
-        factory.editionDetector().detect(confluence.baseUrl() + "/", false);
+        factory.editionDetector().detect(confluence.baseUrl() + "/");
 
     assertThat(detected.edition()).isEqualTo(ConfluenceEdition.DATA_CENTER);
     assertThat(detected.baseUrl().toString()).isEqualTo(confluence.baseUrl());
     assertThat(
-            factory
-                .editionDetector()
-                .confirms(confluence.baseUrl(), false, ConfluenceEdition.DATA_CENTER))
+            factory.editionDetector().confirms(confluence.baseUrl(), ConfluenceEdition.DATA_CENTER))
         .isTrue();
-    assertThat(
-            factory
-                .editionDetector()
-                .confirms(confluence.baseUrl(), false, ConfluenceEdition.CLOUD))
+    assertThat(factory.editionDetector().confirms(confluence.baseUrl(), ConfluenceEdition.CLOUD))
         .isFalse();
 
     client(confluence.adminToken()).verifyCredentials();

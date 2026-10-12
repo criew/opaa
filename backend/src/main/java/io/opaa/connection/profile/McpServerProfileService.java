@@ -249,7 +249,6 @@ public class McpServerProfileService {
             null,
             scopesOf(checked, metadata),
             null,
-            false,
             metadata.endpoints()),
         ciphertext,
         now);

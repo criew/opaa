@@ -95,8 +95,7 @@ class StaleDocumentCleanupIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 classTempDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     targetLibraryId = library.getId();
     grantOwner(targetLibraryId, userId);
   }

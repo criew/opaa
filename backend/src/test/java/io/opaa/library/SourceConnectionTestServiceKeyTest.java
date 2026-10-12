@@ -116,7 +116,6 @@ class SourceConnectionTestServiceKeyTest {
                 ProbeKeySourceConnector.TYPE,
                 null,
                 null,
-                null,
                 ConnectorData.of(Map.of("subject", "chef@example.org")),
                 libraryId),
             caller);
@@ -133,7 +132,6 @@ class SourceConnectionTestServiceKeyTest {
         null,
         null,
         credentials,
-        null,
         libraryId,
         settings == null ? null : ConnectorData.of(settings));
   }
@@ -148,8 +146,7 @@ class SourceConnectionTestServiceKeyTest {
             ProbeKeySourceConnector.TYPE,
             null,
             ProbeKeySourceConnector.ADDRESS,
-            ServiceAccountKey.parse(key.json()).storedForm(),
-            false);
+            ServiceAccountKey.parse(key.json()).storedForm());
     library.updateSourceSettings(ConnectorData.of(Map.of("subject", subject)).toJson());
     UUID id = UUID.randomUUID();
     ReflectionTestUtils.setField(library, "id", id);

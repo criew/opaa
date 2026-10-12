@@ -68,7 +68,6 @@ export interface S3SourceValues {
   sourceUrl: string
   region: string
   pathStyle: boolean
-  sourceInsecureSsl: boolean
   accessKey: string
   secretKey: string
   sessionToken: string
@@ -129,7 +128,6 @@ export const EMPTY_S3_VALUES: S3SourceValues = {
   sourceUrl: '',
   region: 'us-east-1',
   pathStyle: true,
-  sourceInsecureSsl: false,
   accessKey: '',
   secretKey: '',
   sessionToken: '',
@@ -256,7 +254,6 @@ function hostnameOf(url: string): string {
 /** The form values an existing library's stored configuration reads back into. */
 export function s3ValuesFromSettings(
   sourceUrl: string | null | undefined,
-  sourceInsecureSsl: boolean | null | undefined,
   settings: S3Settings | null | undefined,
 ): S3SourceValues {
   const url = sourceUrl ?? ''
@@ -274,7 +271,6 @@ export function s3ValuesFromSettings(
     sourceUrl: url,
     region: settings?.region ?? '',
     pathStyle: settings?.pathStyle ?? true,
-    sourceInsecureSsl: Boolean(sourceInsecureSsl),
     scopes:
       settings?.scopes && settings.scopes.length > 0
         ? settings.scopes.map((scope) => ({ bucket: scope.bucket, prefix: scope.prefix ?? '' }))

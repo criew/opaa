@@ -497,7 +497,7 @@ class AssetCatalogFilterIntegrationTest {
         knowledgeLibraryRepository
             .save(
                 KnowledgeLibrary.ownedByUser(
-                    organization, name, null, ownerId, sourceType, null, null, null, false))
+                    organization, name, null, ownerId, sourceType, null, null, null))
             .getId();
     grantRepository.save(
         AssetGrant.forUser(

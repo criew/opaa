@@ -22,7 +22,7 @@ class S3ClientFactoryTest {
   private static final S3Credentials CREDENTIALS = S3Credentials.parse("AKIA:geheim");
 
   private static S3Connection connection(String endpoint, boolean pathStyle) {
-    return new S3Connection(URI.create(endpoint), "us-east-1", pathStyle, CREDENTIALS, false);
+    return new S3Connection(URI.create(endpoint), "us-east-1", pathStyle, CREDENTIALS);
   }
 
   @Test

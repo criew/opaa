@@ -9,7 +9,6 @@ import Checkbox from '@mui/material/Checkbox'
 import FormControlLabel from '@mui/material/FormControlLabel'
 import MenuItem from '@mui/material/MenuItem'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type {
@@ -58,7 +57,6 @@ interface Draft {
   tokenEndpoint: string
   revocationEndpoint: string
   clientSecretExpiresOn: string
-  sourceInsecureSsl: boolean
   /** One entry per declared profile default; an empty string sets nothing. */
   defaults: Record<string, string>
 }
@@ -76,7 +74,6 @@ function draftFrom(profile: ConnectionProfileResponse | null): Draft {
     tokenEndpoint: profile?.tokenEndpoint ?? '',
     revocationEndpoint: profile?.revocationEndpoint ?? '',
     clientSecretExpiresOn: profile?.clientSecretExpiresOn ?? '',
-    sourceInsecureSsl: profile?.sourceInsecureSsl ?? false,
     defaults: Object.fromEntries(
       Object.entries(profile?.connectorSettings ?? {}).map(([key, value]) => [
         key,
@@ -227,11 +224,6 @@ export default function ConnectionProfileFormDialog({
   const defaultKeys = descriptor?.profileDefaults ?? []
   const fixedAddress = descriptor?.serverAddress.fixed ?? null
   const schemes = descriptor?.serverAddress.schemes ?? ['https', 'http']
-  // the certificate check reaches only an http(s) server; another scheme (smb) takes none
-  const takesTransport =
-    fixedAddress !== null
-      ? /^https?:/i.test(fixedAddress)
-      : schemes.some((scheme) => scheme === 'http' || scheme === 'https')
   const usesRegistration = method !== null && WITH_REGISTRATION.includes(method)
   const usesScopes = method !== null && WITH_SCOPES.includes(method)
   // a service account key names its client id itself
@@ -313,7 +305,6 @@ export default function ConnectionProfileFormDialog({
           ? secret.trim()
           : undefined,
       connectorSettings: connectorDefaults(defaultKeys, draft.defaults),
-      sourceInsecureSsl: takesTransport && draft.sourceInsecureSsl,
     }
   }
 
@@ -604,17 +595,6 @@ export default function ConnectionProfileFormDialog({
                     </Alert>
                   )}
                 </>
-              )}
-              {takesTransport && (
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={draft.sourceInsecureSsl}
-                      onChange={(e) => setDraft({ ...draft, sourceInsecureSsl: e.target.checked })}
-                    />
-                  }
-                  label="Zertifikatsprüfung aussetzen"
-                />
               )}
               {defaultKeys.length > 0 && (
                 <>

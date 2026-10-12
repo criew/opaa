@@ -73,8 +73,7 @@ class ConfluencePageIndexingIntegrationTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.behoerde.example/confluence",
-            "enc:v1:token",
-            false);
+            "enc:v1:token");
     ConfluenceTestSettings.configure(
         library,
         io.opaa.indexing.source.confluence.ConfluenceEdition.DATA_CENTER,

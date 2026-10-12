@@ -162,7 +162,7 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     return requested;
   }
 
-  /** Path, address and TLS switch of a request; returns the fixed address. */
+  /** Path and address of a request; returns the fixed address. */
   private String checkConnection(SourceSettings requested) {
     if (blankToNull(requested.sourcePath()) != null) {
       throw new ValidationException("sourcePath ist für sourceType " + TYPE + " nicht zulässig");
@@ -171,10 +171,6 @@ public class GoogleDriveSourceConnector implements SourceConnector, SourceBrowse
     if (!url.equals(apiBase.toString())) {
       throw new ValidationException(
           "sourceUrl ist für sourceType " + TYPE + " fest " + apiBase + " und nicht änderbar");
-    }
-    if (requested.sourceInsecureSsl()) {
-      throw new ValidationException(
-          "Die Zertifikatsprüfung lässt sich für sourceType " + TYPE + " nicht abschalten");
     }
     return url;
   }

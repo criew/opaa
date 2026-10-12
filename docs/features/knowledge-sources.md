@@ -208,7 +208,7 @@ erreichbar (`HeadBucket`), Auflisten erlaubt (`ListObjectsV2` mit Präfix), Lese
 auf das erste Objekt) — und zählt die Objekte der ersten Auflistungsseite („mindestens 1000“, wenn sie
 voll ist); die Meldung nennt das fehlende Recht (`s3:ListBucket`, `s3:GetObject`), einen Verweis auf
 eine andere Region oder einen anderen Adressstil, abgelehnte Zugangsdaten oder einen gesperrten Host,
-und nennt beim Zertifikatsfehler das Aussetzen der TLS-Prüfung nur als letzte Option. Eine eigene
+und nennt beim Zertifikatsfehler das Ergänzen der eigenen Zertifizierungsstelle (#2537). Eine eigene
 Auflistung (`POST /api/v1/source-types/S3/browse`) nennt die Buckets, die der Schlüssel sehen darf —
 ein Schlüssel ohne `s3:ListAllMyBuckets` bekommt keine Fehlermeldung, sondern den Hinweis, den
 Bucket-Namen von Hand einzutragen; beide Sonden teilen den Rate-Limit-Topf `source-test` und die
@@ -229,12 +229,9 @@ bestehenden `MANAGER`-Schranke der Bibliothek.
 gespeicherte, passwortgeschützte Quelle nach, muss der Aufrufer das Passwort nicht erneut eintippen —
 fehlt `sourceCredentials` in der Anfrage und benennt `sourceUrl` weiterhin denselben Ursprung wie die
 gespeicherte Bibliothek, greift `SourceConnectionTestService` auf das gespeicherte Zugangsdatum
-zurück. Dabei erzwingt er zugleich das gespeicherte `sourceInsecureSsl` der Bibliothek und ignoriert
-einen davon abweichenden Wert der Anfrage (#617): Der Ursprungs-Abgleich sichert nur das **Ziel**,
-nicht den **Weg** — ohne diese Erzwingung könnte ein Berechtigter, der das Passwort selbst nicht kennt
-(aber genug Rechte für den Fallback hat), es mit abgeschalteter Zertifikatsprüfung mitlesen. Einen
-eigenen Proxy trägt die Anfrage seit #2496 nicht mehr; alle Verbindungen gehen über den hausweiten
-Ausgangsproxy.
+zurück. Den **Weg** sichert, dass jede Verbindung das Zertifikat prüft; eine Zertifikatsprüfung, die
+eine Anfrage aussetzen könnte, gibt es seit #2537 nicht mehr. Einen eigenen Proxy trägt die Anfrage
+seit #2496 nicht mehr; alle Verbindungen gehen über den hausweiten Ausgangsproxy.
 
 Eine eigene Konnektor-Tabelle mit mehreren Quellen je Konnektor — das frühere Zielbild dieses
 Abschnitts, mit Konnektoren wie „Netzlaufwerk Kämmerei" oder „Intranet-Wiki", die mehrere Pfade auf
@@ -462,8 +459,8 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    Auflistung) oder der insgesamt fehlgeschlagen ist.
 
 **Was der Weg heute kann:** rekursives Durchlaufen, einfache Anmeldung mit Benutzername und Kennwort,
-Zugriff über den hausweiten Ausgangsproxy (#2496), auf Wunsch das Aussetzen der Zertifikatsprüfung für
-Bestände hinter selbstsignierten Zertifikaten, und ein Parser, der die gängigen
+Zugriff über den hausweiten Ausgangsproxy (#2496), immer mit Zertifikatsprüfung (#2537; eine eigene
+Zertifizierungsstelle ergänzt der Betrieb im Truststore), und ein Parser, der die gängigen
 Verzeichnislistenlayouts versteht (#550): Apache `mod_autoindex` mit `IndexOptions HTMLTable`
 (eine `<table>`-Auflistung), Apache `mod_autoindex` ohne `HTMLTable` (eine `<pre>`-Auflistung mit
 Symbolen), nginx' `autoindex on` (eine `<pre>`-Auflistung ohne Symbole) sowie die schlichte
@@ -601,8 +598,8 @@ durch](#selbst-aktualisierende-wissensblöcke) unten und
 gespeicherte Konfiguration (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md));
 Auslösen darf, wer an der Bibliothek mindestens `EDITOR` ist, wie bei jedem lauf-basierten Typ.
 Zeitplan (#485) und Zielprüfung (#267) gelten wie bei der Verzeichnisliste; die Zielprüfung greift
-hier zusätzlich auf jede Detailseite und jede Anlage, und für fremde Ursprünge werden weder
-Zugangsdaten noch eine ausgesetzte Zertifikatsprüfung angewendet.
+hier zusätzlich auf jede Detailseite und jede Anlage, und für fremde Ursprünge werden keine
+Zugangsdaten angewendet.
 
 ### S3-Objektspeicher (gebaut)
 
@@ -615,8 +612,8 @@ das Betriebshandbuch dazu ist [Konnektor: S3-Objektspeicher](../handbuch/konnekt
 **Konfigurationsmodell — erstmals ein typisiertes Bündel (ADR-0027, Entscheidung 1).** Eine
 S3-Bibliothek trägt in den bestehenden Spalten, was typübergreifend Regeln hat: den Endpoint als
 `sourceUrl` (ohne Pfad; Bucket und Präfix gehören nicht hinein), die Zugangsdaten verschlüsselt als
-`accessKey:secretKey[:sessionToken]` (Access und Secret Key ohne Doppelpunkt, sonst `400`),
-TLS-Schalter und Zeitplan. Alles Typspezifische — Region, Adressstil (Path-Style oder
+`accessKey:secretKey[:sessionToken]` (Access und Secret Key ohne Doppelpunkt, sonst `400`)
+und den Zeitplan. Alles Typspezifische — Region, Adressstil (Path-Style oder
 Virtual-Host), Ein-/Ausschlussmuster auf den Objektschlüssel und die Geltungsbereiche — lebt in
 **einem** validierten JSON-Feld `source_settings` (`S3SourceSettings`), nicht in weiteren Spalten
 und keiner Kindtabelle; für jeden anderen Quellentyp bleibt das Feld `NULL`. Der Wizard bietet
@@ -1231,7 +1228,7 @@ Idee wieder aufgemacht werden.
   [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md).
 - **Die Konfiguration eines erreichbaren Webverzeichnisses (und jedes anderen lauf-basierten
   Typs) lebt an der Bibliothek, nicht im einzelnen Anstoß-Request.** Verzeichnispfad bzw. Adresse,
-  Zugangsdaten und das Aussetzen der Zertifikatsprüfung sind Teil der Bibliothekskonfiguration
+  und Zugangsdaten sind Teil der Bibliothekskonfiguration
   und überleben den einzelnen Lauf. Damit ist auch geklärt, dass diese Felder **nicht** in ein
   gesondertes Konnektor-Objekt gehören, sondern an das Objekt, das ohnehin schon existiert — die
   Bibliothek. Entschieden mit ADR-0018.

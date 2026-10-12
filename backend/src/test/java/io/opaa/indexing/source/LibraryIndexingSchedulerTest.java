@@ -77,8 +77,7 @@ class LibraryIndexingSchedulerTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.org/docs/",
-            null,
-            false);
+            null);
     library.updateSchedule(true, LibraryScheduleCodec.toCron(ScheduleFrequency.DAILY, 3, 0, null));
     return library;
   }

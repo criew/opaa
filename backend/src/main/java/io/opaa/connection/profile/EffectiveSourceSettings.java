@@ -36,9 +36,9 @@ import org.springframework.stereotype.Component;
 
 /**
  * The one composition of a source configuration, for a stored library and for a draft alike: its
- * own fields, under a profile the profile's TLS switch and defaults over them, and the secret its
- * {@link SecretOwner} holds as the profile's sign-in method allows - for the profile's own sign-in
- * its access token. Without a profile the own fields and secret stand; a service account key is
+ * own fields, under a profile the profile's defaults over them, and the secret its {@link
+ * SecretOwner} holds as the profile's sign-in method allows - for the profile's own sign-in its
+ * access token. Without a profile the own fields and secret stand; a service account key is
  * exchanged by the core (ADR-0040), never handed to a connector.
  */
 @Component
@@ -104,10 +104,9 @@ public class EffectiveSourceSettings {
   /**
    * The configuration a probe or a new library reaches the source with, before anything is saved.
    * The stored secret of the draft's library stands in for an omitted one only while its {@link
-   * SecretTarget} stays the same; without a profile the library's own TLS switch then travels with
-   * it. An uploaded service account key, and under a profile with its own sign-in the profile's
-   * registration, reaches the connector as its access token. A stored library's blocks do not
-   * refuse a draft.
+   * SecretTarget} stays the same. An uploaded service account key, and under a profile with its own
+   * sign-in the profile's registration, reaches the connector as its access token. A stored
+   * library's blocks do not refuse a draft.
    *
    * @throws ValidationException (German 400) for a value the draft's profile sets otherwise or an
    *     address outside it
@@ -146,9 +145,6 @@ public class EffectiveSourceSettings {
         library != null
             && requested.sourceCredentials() == null
             && keepsStoredSecret(connector, library, frame, url, requested.connectorSettings());
-    if (frame.isEmpty() && keepsStored) {
-      own = own.withTransport(Own.of(library).transport());
-    }
     Secret secret;
     if (frame.isPresent()) {
       secret =
@@ -207,15 +203,14 @@ public class EffectiveSourceSettings {
   }
 
   /**
-   * Connecting {@code library} through {@code profile} adopts the profile's frame: its own TLS
-   * switch and values under bound keys go. Its own secret moves into the store, issued for its
-   * target under the profile, or goes where the profile takes none.
+   * Connecting {@code library} through {@code profile} adopts the profile's frame: its own values
+   * under bound keys go. Its own secret moves into the store, issued for its target under the
+   * profile, or goes where the profile takes none.
    */
   public void adoptFrame(KnowledgeLibrary library, ConnectionProfile profile) {
     ProfileFrame frame = frame(profile);
     ConnectorData own = frame.ownSettings(ConnectorData.storedIn(library));
     library.updateSourceSettings(own == null ? null : own.toJson());
-    library.dropTransport();
     if (!frame.takesSecret()) {
       secrets.discardOwnSecret(library.getId());
     } else {
@@ -238,15 +233,13 @@ public class EffectiveSourceSettings {
 
   /**
    * Releasing {@code library} from {@code profile} makes the profile's frame its own: the defaults
-   * join its connector settings, the TLS switch becomes the library's, and its own secret moves
-   * from the store into its column, so the configuration it runs with stays the same.
+   * join its connector settings, and its own secret moves from the store into its column, so the
+   * configuration it runs with stays the same.
    */
   public void releaseFrame(KnowledgeLibrary library, ConnectionProfile profile) {
     ProfileFrame frame = frame(profile);
     ConnectorData settings = frame.over(ConnectorData.storedIn(library));
     library.updateSourceSettings(settings == null ? null : settings.toJson());
-    TransportRules transport = frame.serverTransport();
-    library.replaceTransport(transport.insecureSsl());
     secrets.carryOver(library.getId(), new LibraryOwned(library.getId()), null);
   }
 
@@ -500,11 +493,7 @@ public class EffectiveSourceSettings {
     SourceSettings before = compose(stored, currentFrame(library), null);
     SourceSettings after =
         compose(
-            new Own(
-                stored.path(),
-                url,
-                stored.transport(),
-                requested != null ? requested : stored.settings()),
+            new Own(stored.path(), url, requested != null ? requested : stored.settings()),
             frame,
             null);
     return SecretTarget.of(connector, before).admits(SecretTarget.of(connector, after));
@@ -522,10 +511,7 @@ public class EffectiveSourceSettings {
     }
     return SecretTarget.of(
             registry.getObject().connector(profile.getSourceType()),
-            compose(
-                new Own(null, profile.getServerUrl(), new TransportRules(false), null),
-                Optional.of(frame(profile)),
-                null))
+            compose(new Own(null, profile.getServerUrl(), null), Optional.of(frame(profile)), null))
         .key();
   }
 
@@ -544,10 +530,7 @@ public class EffectiveSourceSettings {
    */
   public SourceSettings withAccessToken(
       ConnectionProfile profile, KnowledgeLibrary library, Secret access) {
-    Own own =
-        library == null
-            ? new Own(null, profile.getServerUrl(), new TransportRules(false), null)
-            : Own.of(library);
+    Own own = library == null ? new Own(null, profile.getServerUrl(), null) : Own.of(library);
     return compose(own, Optional.of(frame(profile)), access);
   }
 
@@ -592,7 +575,7 @@ public class EffectiveSourceSettings {
       ConnectorData kept) {
     Own own = Own.of(library);
     return compose(
-        new Own(own.path(), address, own.transport(), joined(own.settings(), kept)),
+        new Own(own.path(), address, joined(own.settings(), kept)),
         profile.map(this::frame),
         secret);
   }
@@ -712,42 +695,26 @@ public class EffectiveSourceSettings {
     return url;
   }
 
-  /**
-   * Own fields, the profile's frame over them and {@code secret}: the one composition. Under a
-   * profile only its transport reaches the address; it is the address's, not any other target's.
-   */
+  /** Own fields, the profile's frame over them and {@code secret}: the one composition. */
   private static SourceSettings compose(Own own, Optional<ProfileFrame> frame, Secret secret) {
-    TransportRules toAddress = frame.map(ProfileFrame::serverTransport).orElse(own.transport());
     return new SourceSettings(
             own.path(),
             own.url(),
             null,
-            toAddress.insecureSsl(),
             frame.map(found -> found.over(own.settings())).orElse(own.settings()))
         .withCredentials(secret);
   }
 
   /** The fields a library or a draft brings itself, before a profile frames them. */
-  private record Own(String path, String url, TransportRules transport, ConnectorData settings) {
+  private record Own(String path, String url, ConnectorData settings) {
 
     static Own of(KnowledgeLibrary library) {
       return new Own(
-          library.getSourcePath(),
-          library.getSourceUrl(),
-          new TransportRules(library.isSourceInsecureSsl()),
-          ConnectorData.storedIn(library));
+          library.getSourcePath(), library.getSourceUrl(), ConnectorData.storedIn(library));
     }
 
     static Own of(SourceSettings requested) {
-      return new Own(
-          requested.sourcePath(),
-          requested.sourceUrl(),
-          new TransportRules(requested.sourceInsecureSsl()),
-          requested.connectorSettings());
-    }
-
-    Own withTransport(TransportRules rules) {
-      return new Own(path, url, rules, settings);
+      return new Own(requested.sourcePath(), requested.sourceUrl(), requested.connectorSettings());
     }
   }
 }

@@ -66,8 +66,7 @@ class LibraryMetadataExtractionServiceIntegrationTest {
                 SourceType.UPLOAD,
                 null,
                 null,
-                null,
-                false));
+                null));
     grantRepository.save(
         AssetGrant.forUser(
             KnowledgeLibrary.ASSET_TYPE,

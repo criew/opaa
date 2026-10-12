@@ -650,7 +650,6 @@ class PrivateLibraryErasureIntegrationTest {
                 null,
                 null,
                 null,
-                null,
                 profile),
             ownerCaller);
     libraries.add(id);

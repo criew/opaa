@@ -114,7 +114,6 @@ flowchart LR
 | Server-Adresse | wo die Quelle liegt, sofern die Quellart eine braucht; die Adresse jeder Wissensbibliothek auf dem Zugang liegt darunter |
 | Anmeldeart | wie sich OPAA bei der Quelle anmeldet, je nach Quellart etwa ohne Anmeldung, mit Benutzername und Passwort oder Token, mit einer App-Registrierung oder über eine Zustimmung beim Anbieter (OAuth) |
 | Für wen er da ist | für geteilte Wissensbibliotheken, für persönliche Konten, aus denen private Bibliotheken entstehen, oder für beides (in der Oberfläche „Besitzart") |
-| Zertifikatsprüfung | ob sie ausgesetzt ist, für alle Wissensbibliotheken auf dem Zugang; nur bei einer Server-Adresse mit `http://` oder `https://` |
 | Vorgaben | Einstellungen, die der Zugang für alle Wissensbibliotheken darauf festlegt, damit sie niemand selbst eintragen muss — etwa die Confluence-Edition. Sie erscheinen dort nur lesbar |
 | Wer ihn nutzen darf | alle Konten oder bestimmte Gruppen und Personen. Ein neuer Zugang ist zunächst nur für die Systemverwaltung freigegeben, damit sie ihn prüfen kann, bevor andere ihn wählen |
 

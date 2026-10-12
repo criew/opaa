@@ -381,7 +381,6 @@ public class S3SourceConnector
           connectionService.probe(
               settings.sourceUrl(),
               blankToNull(settings.sourceCredentials()),
-              settings.sourceInsecureSsl(),
               probed == null ? null : settingsOf(probed));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -430,9 +429,7 @@ public class S3SourceConnector
             : stored != null && stored.pathStyle();
     S3BucketListResult result;
     try {
-      result =
-          connectionService.listBuckets(
-              settings.sourceUrl(), credentials, settings.sourceInsecureSsl(), region, pathStyle);
+      result = connectionService.listBuckets(settings.sourceUrl(), credentials, region, pathStyle);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Bucket-Auflistung wurde unterbrochen.");

@@ -39,7 +39,7 @@ export function NextcloudStoredView({
       <Typography variant="body2">
         <strong>Adresse:</strong> {library.sourceUrl ?? '—'}
       </Typography>
-      <RemoteConnectionLines library={library} />
+      <RemoteConnectionLines />
     </>
   )
 }

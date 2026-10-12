@@ -109,8 +109,7 @@ class AsyncIndexingExecutorTest {
             SourceTypes.FILESYSTEM,
             documentDir.toAbsolutePath().toString(),
             null,
-            null,
-            false);
+            null);
 
     executor =
         new AsyncIndexingExecutor(
@@ -458,8 +457,7 @@ class AsyncIndexingExecutorTest {
             SourceTypes.FILESYSTEM,
             hiddenRoot.toAbsolutePath().toString(),
             null,
-            null,
-            false);
+            null);
     when(documentIngestService.ingest(
             DocumentIngests.that().file().file(file).in(hiddenLibrary).inFolder(null).match(),
             any()))

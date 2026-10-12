@@ -20,7 +20,6 @@ import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
  * @param pathStyle {@code endpoint/bucket/key} when {@code true}, {@code bucket.endpoint/key}
  *     otherwise
  * @param proxyHost {@code null} without a proxy; {@code proxyPort} is ignored then
- * @param insecureSsl trust every certificate, for a self-signed endpoint
  * @param requestTimeout one value for connection, socket and per-attempt timeout
  * @param maxRetries retries after a throttled or transiently failed attempt; {@code 0} turns
  *     retries off
@@ -33,7 +32,6 @@ public record S3ClientSettings(
     AwsCredentials credentials,
     String proxyHost,
     int proxyPort,
-    boolean insecureSsl,
     Duration requestTimeout,
     int maxRetries,
     Duration retryBackoff) {
@@ -77,7 +75,6 @@ public record S3ClientSettings(
         aws(connection.credentials()),
         null,
         0,
-        connection.insecureSsl(),
         requestTimeout,
         maxRetries,
         retryBackoff);
@@ -110,7 +107,6 @@ public record S3ClientSettings(
         credentials,
         host,
         port,
-        insecureSsl,
         requestTimeout,
         maxRetries,
         retryBackoff);
@@ -127,8 +123,6 @@ public record S3ClientSettings(
         + pathStyle
         + ", proxy="
         + (proxyHost == null ? "none" : proxyHost + ":" + proxyPort)
-        + ", insecureSsl="
-        + insecureSsl
         + ", requestTimeout="
         + requestTimeout
         + ", maxRetries="

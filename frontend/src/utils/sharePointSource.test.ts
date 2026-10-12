@@ -63,7 +63,6 @@ describe('sharePointSource (ADR-0040, Nachtrag „SharePoint“)', () => {
       }),
     ).toEqual({
       sourceUrl: 'https://graph.microsoft.com',
-      sourceInsecureSsl: false,
       sourceSettings: {
         libraries: [
           {

@@ -302,7 +302,6 @@ class PrivateLibraryDeletionRunIntegrationTest {
                 null,
                 null,
                 null,
-                null,
                 profile),
             caller));
   }

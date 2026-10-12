@@ -1,5 +1,6 @@
 package io.opaa.s3;
 
+import io.opaa.sourceaccess.UntrustedCertificate;
 import java.io.IOException;
 
 /**
@@ -147,11 +148,18 @@ public class S3AccessException extends IOException {
     }
   }
 
+  /** A failed TLS handshake; an untrusted certificate is named with its remedy. */
   public static final class Tls extends S3AccessException {
     public Tls() {
+      this(false);
+    }
+
+    public Tls(boolean untrustedCertificate) {
       super(
-          "Die TLS-Verbindung zum Objektspeicher ist fehlgeschlagen (Zertifikat nicht"
-              + " vertrauenswürdig oder Protokollfehler).");
+          untrustedCertificate
+              ? "Die TLS-Verbindung zum Objektspeicher ist fehlgeschlagen. "
+                  + UntrustedCertificate.MESSAGE
+              : "Die TLS-Verbindung zum Objektspeicher ist fehlgeschlagen (Protokollfehler).");
     }
   }
 

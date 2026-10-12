@@ -108,8 +108,7 @@ class ModelMetadataExtractionIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,
-                null,
-                false));
+                null));
   }
 
   @Test

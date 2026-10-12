@@ -62,8 +62,7 @@ class SourceSyncStateRepositoryIntegrationTest {
                 SourceTypes.S3,
                 null,
                 "https://ablage.example",
-                null,
-                false));
+                null));
   }
 
   @AfterEach

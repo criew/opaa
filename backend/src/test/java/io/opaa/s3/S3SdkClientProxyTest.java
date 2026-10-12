@@ -30,7 +30,6 @@ class S3SdkClientProxyTest {
               AwsBasicCredentials.create("AKIA", "geheim"),
               null,
               0,
-              false,
               Duration.ofSeconds(5),
               0,
               Duration.ofMillis(1));

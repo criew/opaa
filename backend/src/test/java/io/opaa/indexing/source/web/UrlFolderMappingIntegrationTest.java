@@ -125,8 +125,7 @@ class UrlFolderMappingIntegrationTest {
                 SourceTypes.HTTP_DIRECTORY,
                 null,
                 baseUrl + "/dokumente/",
-                null,
-                false));
+                null));
   }
 
   @AfterEach

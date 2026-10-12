@@ -51,7 +51,6 @@ flowchart LR
 |---|---|
 | „Adresse der Nextcloud" | `http(s)://host[:port][/pfad]`; eine eingefügte WebDAV-Adresse wird auf die Instanzadresse gekürzt |
 | „Technischer Nutzer", „App-Passwort" | Benutzername ohne Doppelpunkt und App-Passwort; gehen nur an diese Adresse, eine geänderte Adresse verlangt sie neu |
-| „Zertifikatsprüfung aussetzen" | nur für ein bekanntes, selbstsigniertes Zertifikat im Hausnetz |
 | „Ordner" | ein bis fünfzig Pfade, wie der Nutzer sie sieht, etwa `/Projekte`; `/` liest alles. Ordner dürfen sich nicht überschneiden; kein Komma, kein `.` oder `..` |
 
 **„Ordner laden"** zeigt die Ordner im Stamm des Nutzers mit dem Zusatz „Freigabe" oder
@@ -59,7 +58,7 @@ flowchart LR
 unter „Umfang" für alle Leseberechtigten. Eine geänderte Ordnerliste lässt den nächsten Lauf alles
 listen.
 
-**Über einen Zugang:** Er gibt Server-Adresse und Zertifikatsprüfung vor. Bei der Besitzart
+**Über einen Zugang:** Er gibt die Server-Adresse vor. Bei der Besitzart
 „Bibliothek" tragen die Verwaltenden Benutzername und App-Passwort des technischen Nutzers ein;
 Vorgaben für weitere Einstellungen gibt es nicht.
 
@@ -153,6 +152,7 @@ Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Gre
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
+| „TLS-Verbindung zu … fehlgeschlagen. Das Zertifikat des Servers wird nicht anerkannt …" | Zertifikat einer hauseigenen Zertifizierungsstelle oder auf einen anderen Namen | Zertifizierungsstelle ergänzen ([Zertifikatsprüfung](README.md#13-zertifikatsprüfung)) |
 | „Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401)." | Zugangsdaten falsch oder widerrufen; der Bestand bleibt. Bei einer privaten Bibliothek gilt die Verbindung als abgelaufen | neues App-Passwort eintragen bzw. neu verbinden |
 | „Geltungsbereich „/…": Nextcloud kennt den Ordner „/…" nicht (HTTP 404)." | Ordner gelöscht, umbenannt oder Freigabe entzogen; nichts wird entfernt. Ein umbenannter Unterordner ist im nächsten Lauf unter neuem Namen da | konfigurierten Ordner anpassen oder Freigabe wiederherstellen |
 | „Nextcloud nannte für … eine Adresse außerhalb der Instanz" | keine Zugangsdaten dorthin; die Datei behält ihre Fassung, ein Ordner macht seinen Bereich unvollständig | Proxy oder Umschreibregeln prüfen |

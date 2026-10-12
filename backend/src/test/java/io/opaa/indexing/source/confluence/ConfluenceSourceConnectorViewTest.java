@@ -31,8 +31,7 @@ class ConfluenceSourceConnectorViewTest {
         SourceTypes.CONFLUENCE,
         null,
         "https://wiki.example.org",
-        "pat",
-        false);
+        "pat");
   }
 
   @Test

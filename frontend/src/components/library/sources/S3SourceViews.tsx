@@ -63,7 +63,7 @@ export function S3StoredView({
           <strong>Ausschlussmuster:</strong> {settings?.excludePatterns?.join(', ')}
         </Typography>
       )}
-      <RemoteConnectionLines library={library} />
+      <RemoteConnectionLines />
       <S3EventSection
         libraryId={libraryId}
         tokenSet={library.pushSecretSet}

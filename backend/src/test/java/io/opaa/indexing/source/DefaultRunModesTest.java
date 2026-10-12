@@ -32,8 +32,7 @@ class DefaultRunModesTest {
           SourceTypes.CONFLUENCE,
           null,
           "https://wiki.example.org",
-          null,
-          false);
+          null);
   private final SourceIndexingExecutor incremental =
       executor(
           Map.of(

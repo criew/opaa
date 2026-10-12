@@ -71,7 +71,7 @@ Verfügung, verweist der Assistent an die Systemverwaltung.
 Unter „Umfang" stehen die Dokumentbibliotheken für alle Leseberechtigten, jeweils mit „ganze
 Dokumentbibliothek" oder den Ordnern. Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle …
 Tage". Eine andere Auswahl lässt den nächsten Lauf vollständig abgleichen; ein geänderter Anzeigename
-nicht. „Zertifikatsprüfung aussetzen" gibt es nicht.
+nicht.
 
 Weist Entra die App ab (Secret abgelaufen, falsch, Zustimmung fehlt), zeigen alle Bibliotheken des
 Zugangs „Abgelaufen" mit der Systemverwaltung als zuständig, bis ein neues Secret oder „Anmeldung

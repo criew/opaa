@@ -14,12 +14,7 @@ export interface SourceConnection {
   authMethod: ConnectionAuthMethod
   /** The connector settings the profile fixes for every library on it, by settings key. */
   defaults: Record<string, unknown>
-  /** Whether the certificate check is skipped for every library on the profile. */
-  insecureSsl?: boolean
 }
-
-/** The fields a profile sets for every library on it besides its defaults - never sent by one. */
-const TRANSPORT_FIELDS = ['sourceInsecureSsl'] as const
 
 export function sourceConnectionOf(option: ConnectionProfileOption): SourceConnection {
   return {
@@ -28,7 +23,6 @@ export function sourceConnectionOf(option: ConnectionProfileOption): SourceConne
     serverUrl: option.serverUrl,
     authMethod: option.authMethod,
     defaults: option.connectorDefaults ?? {},
-    insecureSsl: option.sourceInsecureSsl,
   }
 }
 
@@ -44,13 +38,12 @@ export function sourceConnectionOfRef(ref: ConnectionProfileRef): SourceConnecti
     serverUrl: ref.serverUrl,
     authMethod: ref.authMethod,
     defaults: ref.connectorDefaults ?? {},
-    insecureSsl: Boolean(ref.sourceInsecureSsl),
   }
 }
 
-/** Whether `key` is a field the profile sets: one of its defaults or its TLS switch. */
+/** Whether `key` is a field the profile sets: one of its defaults. */
 function setByProfile(key: string, connection: SourceConnection): boolean {
-  return key in connection.defaults || (TRANSPORT_FIELDS as readonly string[]).includes(key)
+  return key in connection.defaults
 }
 
 /**
@@ -83,9 +76,9 @@ export interface ProbeScope {
   pendingConnectionId?: string
 }
 
-/** The fields of a create, update, test or listing request that a profile may set. */
+/** The fields of a create, update, test or listing request that a profile frames. */
 export interface FramedRequest {
-  sourceInsecureSsl?: boolean | null
+  sourceUrl?: string | null
   sourceCredentials?: string | null
   sourceSettings?: Record<string, unknown> | null
   query?: Record<string, unknown> | null
@@ -94,8 +87,8 @@ export interface FramedRequest {
 /**
  * What every source form derives from its context, by the same rules: with a profile the address
  * starts at the profile's server address, the secret field exists only for a sign-in that takes
- * one, and a setting the profile sets - a default, the TLS switch - is shown read-only
- * with the profile's value and never sent.
+ * one, and a setting the profile sets - a default - is shown read-only with the profile's value and
+ * never sent.
  */
 export interface ConnectionFields {
   connection: SourceConnection | null
@@ -106,8 +99,6 @@ export interface ConnectionFields {
   isFixed: (key: string) => boolean
   /** The hint under a fixed field; null without a profile. */
   fixedHint: string | null
-  /** The hint at the TLS switch; null without a profile. */
-  transportHint: string | null
   /** The hint under the address field; null without a profile. */
   addressHint: string | null
 }
@@ -137,7 +128,6 @@ export function connectionFields(context: SourceFormContext): ConnectionFields {
     asksSecret,
     isFixed: (key) => connection !== null && setByProfile(key, connection),
     fixedHint: connection && `Vom Zugang „${connection.name}“ vorgegeben.`,
-    transportHint: connection && `Die Zertifikatsprüfung gibt der Zugang „${connection.name}“ vor.`,
     addressHint:
       connection &&
       `Liegt unter der Server-Adresse des Zugangs „${connection.name}“: ${connection.serverUrl}`,
@@ -146,8 +136,8 @@ export function connectionFields(context: SourceFormContext): ConnectionFields {
 
 /**
  * `values` as a form under `connection` shows them: an empty address takes the profile's server
- * address, and every field named like a fixed setting and the TLS switch take the profile's
- * value. Without a profile the values are returned as they are.
+ * address, and every field named like a fixed setting takes the profile's value. Without a profile
+ * the values are returned as they are.
  */
 export function withConnection<V>(values: V, connection: SourceConnection | null | undefined): V {
   if (!connection || values === null || typeof values !== 'object') return values
@@ -156,7 +146,6 @@ export function withConnection<V>(values: V, connection: SourceConnection | null
   for (const [key, value] of Object.entries(connection.defaults)) {
     if (key in shown) shown[key] = value
   }
-  if ('sourceInsecureSsl' in shown) shown.sourceInsecureSsl = Boolean(connection.insecureSsl)
   return shown as V
 }
 
@@ -209,7 +198,7 @@ export function switchConnection<V>(
   const reset: Record<string, unknown> = { ...(values as Record<string, unknown>) }
   const blank = empty as Record<string, unknown>
   if (previous) {
-    for (const key of [...Object.keys(previous.defaults), ...TRANSPORT_FIELDS]) {
+    for (const key of Object.keys(previous.defaults)) {
       if (key in reset) reset[key] = blank[key]
     }
   }
@@ -247,9 +236,9 @@ function withoutDefaults(
 }
 
 /**
- * `request` as it may be sent under `connection`: no value for a setting the profile sets, the
- * certificate check on, and a secret only where the sign-in takes one. The profile's
- * values apply on the server, so one changed there meanwhile cannot make the request differ.
+ * `request` as it may be sent under `connection`: no value for a setting the profile sets, and a
+ * secret only where the sign-in takes one. The profile's values apply on the server, so one changed
+ * there meanwhile cannot make the request differ.
  */
 export function framedBy<R extends FramedRequest>(
   request: R,
@@ -257,10 +246,7 @@ export function framedBy<R extends FramedRequest>(
   asksSecret: boolean,
 ): R {
   if (!connection) return asksSecret ? request : { ...request, sourceCredentials: undefined }
-  const framed: Record<string, unknown> = {
-    ...(request as Record<string, unknown>),
-    sourceInsecureSsl: false,
-  }
+  const framed: Record<string, unknown> = { ...(request as Record<string, unknown>) }
   if (!asksSecret) framed.sourceCredentials = undefined
   if (request.sourceSettings) {
     framed.sourceSettings = withoutDefaults(request.sourceSettings, connection)

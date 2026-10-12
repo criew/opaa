@@ -98,16 +98,6 @@ class GoogleDriveSourceConnectorTest {
   }
 
   @Test
-  void certificateValidationCannotBeTurnedOff() {
-    SourceSettings insecure =
-        new SourceSettings(null, null, null, true, scopes(Map.of("drive", "d1")));
-
-    assertThatThrownBy(() -> connector.validate(insecure))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("Zertifikatsprüfung");
-  }
-
-  @Test
   void settingsAreCheckedAndMyDriveNeedsAnImitatedAccount() {
     assertThatThrownBy(() -> connector.readSettings(ConnectorData.of(Map.of("scopes", List.of()))))
         .isInstanceOf(ValidationException.class);
@@ -141,8 +131,7 @@ class GoogleDriveSourceConnectorTest {
         .isEqualTo("fach@example.org");
     assertThat(connector.credentialBinding(withSubject("andere@example.org")))
         .isNotEqualTo(connector.credentialBinding(withSubject("fach@example.org")));
-    assertThat(connector.credentialBinding(new SourceSettings(null, null, null, false, null)))
-        .isNull();
+    assertThat(connector.credentialBinding(new SourceSettings(null, null, null, null))).isNull();
   }
 
   private static SourceSettings withSubject(String subject) {
@@ -150,7 +139,6 @@ class GoogleDriveSourceConnectorTest {
         null,
         null,
         null,
-        false,
         ConnectorData.of(Map.of("scopes", List.of(Map.of("drive", "d1")), "subject", subject)));
   }
 
@@ -161,7 +149,6 @@ class GoogleDriveSourceConnectorTest {
             null,
             server.base().toString(),
             FakeDriveServer.TOKEN,
-            false,
             scopes(Map.of("drive", "drive0"), Map.of("folder", "fehlt")));
 
     SourceConnectionTestResult result = connector.testConnection(settings, null);
@@ -178,7 +165,6 @@ class GoogleDriveSourceConnectorTest {
             null,
             server.base().toString(),
             FakeDriveServer.TOKEN,
-            false,
             scopes(Map.of("drive", "drive0")));
 
     assertThat(connector.testConnection(settings, null).message())
@@ -193,7 +179,6 @@ class GoogleDriveSourceConnectorTest {
             null,
             server.base().toString(),
             FakeDriveServer.TOKEN,
-            false,
             scopes(Map.of("drive", "drive0")));
 
     SourceConnectionTestResult result = connector.testConnection(settings, null);
@@ -208,8 +193,7 @@ class GoogleDriveSourceConnectorTest {
     SourceListing listing =
         connector.browse(
             new SourceBrowser.Query(
-                new SourceSettings(
-                    null, server.base().toString(), FakeDriveServer.TOKEN, false, null),
+                new SourceSettings(null, server.base().toString(), FakeDriveServer.TOKEN, null),
                 null));
 
     assertThat(listing.complete()).isTrue();
@@ -224,7 +208,7 @@ class GoogleDriveSourceConnectorTest {
     server.file("doc", "Protokoll", "application/vnd.google-apps.document", "folder1", null, "D");
     server.file("bin", "Plan.txt", "text/plain", "folder1", null, "Ein Plan.");
     SourceSettings settings =
-        new SourceSettings(null, server.base().toString(), FakeDriveServer.TOKEN, false, null);
+        new SourceSettings(null, server.base().toString(), FakeDriveServer.TOKEN, null);
 
     Optional<DocumentContent> doc =
         connector.openOriginal(document("doc", "Protokoll.docx"), library(), settings);
@@ -264,7 +248,7 @@ class GoogleDriveSourceConnectorTest {
   }
 
   private static SourceSettings request(String url, ConnectorData settings) {
-    return new SourceSettings(null, url, null, false, settings);
+    return new SourceSettings(null, url, null, settings);
   }
 
   @SafeVarargs

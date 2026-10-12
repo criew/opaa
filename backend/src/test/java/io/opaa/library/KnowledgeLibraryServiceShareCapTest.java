@@ -181,8 +181,7 @@ class KnowledgeLibraryServiceShareCapTest {
             SourceTypes.FILESYSTEM,
             "/data/dokumente",
             null,
-            null,
-            false);
+            null);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     return library;
   }

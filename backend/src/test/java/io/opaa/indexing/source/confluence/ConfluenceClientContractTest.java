@@ -97,7 +97,7 @@ class ConfluenceClientContractTest {
 
   private ConfluenceConnection connection(
       ConfluenceEdition edition, ConfluenceCredentials credentials) {
-    return new ConfluenceConnection(URI.create(server.baseUrl()), edition, credentials, false);
+    return new ConfluenceConnection(URI.create(server.baseUrl()), edition, credentials);
   }
 
   private ConfluenceClientFactory factory(

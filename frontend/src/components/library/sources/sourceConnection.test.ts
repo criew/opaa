@@ -140,7 +140,6 @@ describe('withoutFixed and payloadUnder', () => {
     const payload = {
       sourceUrl: 'https://a.example',
       sourceCredentials: 'u:p',
-      sourceInsecureSsl: false,
     }
     const anonymous = connectionFields(
       context({ connection: { ...S3_PROFILE, authMethod: 'NONE' } }),
@@ -152,34 +151,29 @@ describe('withoutFixed and payloadUnder', () => {
 })
 
 describe('nothing a profile sets is sent', () => {
-  const FRAMED: SourceConnection = {
-    ...S3_PROFILE,
-    insecureSsl: true,
-  }
+  const FRAMED: SourceConnection = S3_PROFILE
 
-  it('shows the certificate switch of the profile and keeps it out of a change', () => {
-    const shown = withConnection({ sourceUrl: '', sourceInsecureSsl: false }, FRAMED)
-    expect(shown).toMatchObject({ sourceInsecureSsl: true })
+  it('shows a default of the profile and keeps it out of a change', () => {
+    const shown = withConnection({ sourceUrl: '', region: '' }, FRAMED)
+    expect(shown).toMatchObject({ sourceUrl: FRAMED.serverUrl, region: 'eu-rz-1' })
 
     const fields = connectionFields(context({ connection: FRAMED }))
-    expect(fields.isFixed('sourceInsecureSsl')).toBe(true)
-    expect(withoutFixed({ sourceInsecureSsl: false, prefix: 'a' }, FRAMED)).toEqual({
+    expect(fields.isFixed('region')).toBe(true)
+    expect(withoutFixed({ region: 'eu', prefix: 'a' }, FRAMED)).toEqual({
       prefix: 'a',
     })
   })
 
-  it('drops defaults and the skipped certificate check from a create or update', () => {
+  it('drops defaults from a create or update', () => {
     const payload = payloadUnder(
       {
         sourceUrl: 'https://s3.rz.example',
-        sourceInsecureSsl: true,
         sourceCredentials: 'key:secret',
         sourceSettings: { region: 'eu-rz-1', pathStyle: true, scopes: [{ bucket: 'b' }] },
       },
       connectionFields(context({ connection: FRAMED })),
     )
 
-    expect(payload.sourceInsecureSsl).toBe(false)
     expect(payload.sourceSettings).toEqual({ scopes: [{ bucket: 'b' }] })
     expect(payload.sourceCredentials).toBe('key:secret')
   })
@@ -188,14 +182,12 @@ describe('nothing a profile sets is sent', () => {
     const probe = connectionFields(context({ connection: FRAMED })).probeRequest({
       sourceType: 'S3' as const,
       sourceUrl: 'https://s3.rz.example',
-      sourceInsecureSsl: true,
       query: { region: 'eu-rz-1', pathStyle: true },
     })
 
     expect(probe).toEqual({
       sourceType: 'S3',
       sourceUrl: 'https://s3.rz.example',
-      sourceInsecureSsl: false,
       query: {},
       connectionProfileId: 'profile-s3',
     })
@@ -205,7 +197,6 @@ describe('nothing a profile sets is sent', () => {
     const request = {
       sourceType: 'S3' as const,
       sourceUrl: 'https://s3.example',
-      sourceInsecureSsl: true,
       sourceSettings: { region: 'eu' },
     }
     expect(connectionFields(context()).probeRequest(request)).toEqual(request)
@@ -220,14 +211,12 @@ describe('nothing a profile sets is sent', () => {
       const connection: SourceConnection = { ...FRAMED, defaults: { ...sample.sourceSettings } }
       const values = {
         ...(configuration.empty as object),
-        sourceInsecureSsl: true,
       }
       const payload = payloadUnder(
         configuration.toPayload(values),
         connectionFields(context({ sourceType, connection })),
       )
 
-      expect(payload.sourceInsecureSsl).toBe(false)
       expect(Object.keys(payload.sourceSettings ?? {})).toEqual([])
     },
   )
@@ -296,7 +285,6 @@ describe('sourceConnectionOfRef', () => {
         serverUrl: 'https://s3.example',
         authMethod: 'PERSONAL_SECRET',
         connectorDefaults: { region: 'eu' },
-        sourceInsecureSsl: true,
       }),
     ).toEqual({
       profileId: 'p',
@@ -304,7 +292,6 @@ describe('sourceConnectionOfRef', () => {
       serverUrl: 'https://s3.example',
       authMethod: 'PERSONAL_SECRET',
       defaults: { region: 'eu' },
-      insecureSsl: true,
     })
   })
 
@@ -324,7 +311,6 @@ describe('sourceConnectionOf', () => {
         authMethod: 'NONE',
         ownership: 'LIBRARY',
         ownAccount: false,
-        sourceInsecureSsl: false,
       }),
     ).toEqual({
       profileId: 'p',
@@ -332,7 +318,6 @@ describe('sourceConnectionOf', () => {
       serverUrl: 'https://s3.example',
       authMethod: 'NONE',
       defaults: {},
-      insecureSsl: false,
     })
   })
 })

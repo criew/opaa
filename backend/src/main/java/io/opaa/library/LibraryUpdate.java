@@ -24,6 +24,5 @@ public record LibraryUpdate(
     String sourcePath,
     URI sourceUrl,
     String sourceCredentials,
-    Boolean sourceInsecureSsl,
     LibraryScheduleUpdate schedule,
     ConnectorData sourceSettings) {}

@@ -33,9 +33,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.ObjectProvider;
 
 /**
- * The draft of a library on a profile: composed like the run, with the profile's defaults, TLS
- * switch and sign-in; a value the profile sets otherwise is refused, and the library keeps only its
- * own part.
+ * The draft of a library on a profile: composed like the run, with the profile's defaults and
+ * sign-in; a value the profile sets otherwise is refused, and the library keeps only its own part.
  */
 class EffectiveSourceSettingsDraftTest {
 
@@ -100,7 +99,7 @@ class EffectiveSourceSettingsDraftTest {
   @Test
   void runChangeAndDraftComposeTheSame() {
     ConnectionProfile profile =
-        profile(ConnectionAuthMethod.PERSONAL_SECRET, "{\"edition\": \"DC\"}", true);
+        profile(ConnectionAuthMethod.PERSONAL_SECRET, "{\"edition\": \"DC\"}");
     KnowledgeLibrary library =
         library(SERVER + "/ablage", "nutzer:geheim", "{\"topic\": \"Wetter\"}");
     connect(library, profile);
@@ -114,7 +113,6 @@ class EffectiveSourceSettingsDraftTest {
 
     assertThat(run.connectorSettings().asMap())
         .isEqualTo(Map.of("edition", "DC", "topic", "Wetter"));
-    assertThat(run.sourceInsecureSsl()).isTrue();
     assertThat(run.sourceCredentials()).isEqualTo("nutzer:geheim");
     assertThat(change).isEqualTo(run);
     assertThat(onItsProfile).isEqualTo(run);
@@ -127,14 +125,14 @@ class EffectiveSourceSettingsDraftTest {
   @Test
   void aDraftNeedNotSendWhatTheProfileSets() {
     ConnectionProfile profile =
-        profile(ConnectionAuthMethod.PERSONAL_SECRET, "{\"edition\": \"DC\"}", false);
+        profile(ConnectionAuthMethod.PERSONAL_SECRET, "{\"edition\": \"DC\"}");
 
     SourceSettings draft =
         effective.ofDraft(
             draft(
                 profile.getId(),
                 null,
-                new SourceSettings(null, null, "a:b", false, settings("{\"topic\": \"x\"}"))));
+                new SourceSettings(null, null, "a:b", settings("{\"topic\": \"x\"}"))));
 
     assertThat(draft.sourceUrl()).isEqualTo(SERVER);
     assertThat(draft.connectorSettings().asMap()).isEqualTo(Map.of("edition", "DC", "topic", "x"));
@@ -143,7 +141,7 @@ class EffectiveSourceSettingsDraftTest {
 
   @Test
   void aValueTheProfileSetsOtherwiseIsRefused() {
-    UUID profileId = profile(ConnectionAuthMethod.NONE, "{\"edition\": \"DC\"}", false).getId();
+    UUID profileId = profile(ConnectionAuthMethod.NONE, "{\"edition\": \"DC\"}").getId();
 
     assertThatThrownBy(
             () ->
@@ -152,22 +150,16 @@ class EffectiveSourceSettingsDraftTest {
                         profileId,
                         null,
                         new SourceSettings(
-                            null, null, null, false, settings("{\"edition\": \"CLOUD\"}")))))
+                            null, null, null, settings("{\"edition\": \"CLOUD\"}")))))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("sourceSettings.edition");
-    assertThatThrownBy(
-            () ->
-                effective.ofDraft(
-                    draft(profileId, null, new SourceSettings(null, null, null, true, null))))
-        .isInstanceOf(ValidationException.class)
-        .hasMessageContaining("Zertifikatsprüfung");
     assertThatThrownBy(
             () ->
                 effective.ofDraft(
                     draft(
                         profileId,
                         null,
-                        new SourceSettings(null, "https://fremd.example.org", null, false, null))))
+                        new SourceSettings(null, "https://fremd.example.org", null, null))))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Server-Adresse des Zugangs");
     SourceSettings repeated =
@@ -175,29 +167,28 @@ class EffectiveSourceSettingsDraftTest {
             draft(
                 profileId,
                 null,
-                new SourceSettings(null, null, null, false, settings("{\"edition\": \"DC\"}"))));
+                new SourceSettings(null, null, null, settings("{\"edition\": \"DC\"}"))));
     assertThat(repeated.connectorSettings().asMap()).isEqualTo(Map.of("edition", "DC"));
   }
 
   /** Rule 1: the library stores only its own part. */
   @Test
   void theLibraryKeepsOnlyItsOwnPart() {
-    UUID profileId = profile(ConnectionAuthMethod.NONE, "{\"edition\": \"DC\"}", true).getId();
+    UUID profileId = profile(ConnectionAuthMethod.NONE, "{\"edition\": \"DC\"}").getId();
     SourceSettings validated =
         new SourceSettings(
-            null, SERVER + "/a", null, true, settings("{\"edition\": \"DC\", \"topic\": \"t\"}"));
+            null, SERVER + "/a", null, settings("{\"edition\": \"DC\", \"topic\": \"t\"}"));
 
     SourceSettings own = effective.ownPart(draft(profileId, null, validated), validated);
 
-    assertThat(own.sourceInsecureSsl()).isFalse();
     assertThat(own.connectorSettings().asMap()).isEqualTo(Map.of("topic", "t"));
     assertThat(own.sourceUrl()).isEqualTo(SERVER + "/a");
   }
 
   @Test
   void theSignInOfTheProfileDecidesTheSecret() {
-    UUID profileId = profile(ConnectionAuthMethod.NONE, null, false).getId();
-    SourceSettings sent = new SourceSettings(null, null, "a:b", false, null);
+    UUID profileId = profile(ConnectionAuthMethod.NONE, null).getId();
+    SourceSettings sent = new SourceSettings(null, null, "a:b", null);
 
     assertThatThrownBy(() -> effective.ofDraft(draft(profileId, null, sent)))
         .isInstanceOf(ValidationException.class)
@@ -207,11 +198,11 @@ class EffectiveSourceSettingsDraftTest {
 
   @Test
   void theStoredSecretFollowsADraftOnlyOnItsOrigin() {
-    ConnectionProfile current = profile(ConnectionAuthMethod.PERSONAL_SECRET, null, false);
+    ConnectionProfile current = profile(ConnectionAuthMethod.PERSONAL_SECRET, null);
     ConnectionProfile sameOrigin =
-        profile(ConnectionAuthMethod.PERSONAL_SECRET, null, false, SERVER + "/ablage");
+        profile(ConnectionAuthMethod.PERSONAL_SECRET, null, SERVER + "/ablage");
     ConnectionProfile otherOrigin =
-        profile(ConnectionAuthMethod.PERSONAL_SECRET, null, false, "https://neu.example.org");
+        profile(ConnectionAuthMethod.PERSONAL_SECRET, null, "https://neu.example.org");
     KnowledgeLibrary library = library(SERVER + "/ablage/x", "nutzer:geheim", null);
     connect(library, current);
 
@@ -220,13 +211,13 @@ class EffectiveSourceSettingsDraftTest {
             draft(
                 sameOrigin.getId(),
                 library,
-                new SourceSettings(null, SERVER + "/ablage/x", null, false, null)));
+                new SourceSettings(null, SERVER + "/ablage/x", null, null)));
     SourceSettings moved =
         effective.ofDraft(
             draft(
                 otherOrigin.getId(),
                 library,
-                new SourceSettings(null, "https://neu.example.org/x", null, false, null)));
+                new SourceSettings(null, "https://neu.example.org/x", null, null)));
 
     assertThat(kept.sourceCredentials()).isEqualTo("nutzer:geheim");
     assertThat(moved.sourceCredentials()).isNull();
@@ -235,29 +226,25 @@ class EffectiveSourceSettingsDraftTest {
   /** A locked or removed profile of the stored library does not refuse a draft on another one. */
   @Test
   void theStoredBlockDoesNotRefuseADraftOnAnotherProfile() {
-    ConnectionProfile locked = profile(ConnectionAuthMethod.NONE, null, false);
+    ConnectionProfile locked = profile(ConnectionAuthMethod.NONE, null);
     locked.lockedSince(NOW, NOW);
-    ConnectionProfile replacement = profile(ConnectionAuthMethod.NONE, null, false);
+    ConnectionProfile replacement = profile(ConnectionAuthMethod.NONE, null);
     KnowledgeLibrary library = library(SERVER + "/x", null, null);
     connect(library, locked);
 
     SourceSettings draft =
         effective.ofDraft(
             draft(
-                replacement.getId(),
-                library,
-                new SourceSettings(null, SERVER + "/x", null, false, null)));
+                replacement.getId(), library, new SourceSettings(null, SERVER + "/x", null, null)));
 
     assertThat(draft.sourceUrl()).isEqualTo(SERVER + "/x");
   }
 
-  private ConnectionProfile profile(
-      ConnectionAuthMethod method, String defaults, boolean insecureSsl) {
-    return profile(method, defaults, insecureSsl, SERVER);
+  private ConnectionProfile profile(ConnectionAuthMethod method, String defaults) {
+    return profile(method, defaults, SERVER);
   }
 
-  private ConnectionProfile profile(
-      ConnectionAuthMethod method, String defaults, boolean insecureSsl, String server) {
+  private ConnectionProfile profile(ConnectionAuthMethod method, String defaults, String server) {
     ConnectionProfile profile = new ConnectionProfile(ProfileProbeSourceConnector.TYPE, NOW);
     profile.replace(
         new ConnectionProfileValues(
@@ -269,8 +256,7 @@ class EffectiveSourceSettingsDraftTest {
             null,
             null,
             null,
-            settings(defaults),
-            insecureSsl),
+            settings(defaults)),
         null,
         NOW);
     profileRows.put(profile.getId(), profile);
@@ -287,8 +273,7 @@ class EffectiveSourceSettingsDraftTest {
             ProfileProbeSourceConnector.TYPE,
             null,
             url,
-            secret,
-            false);
+            secret);
     if (settings != null) {
       library.updateSourceSettings(settings);
     }
@@ -314,11 +299,7 @@ class EffectiveSourceSettingsDraftTest {
   /** The library's own fields as a draft sends them back, without its secret. */
   private static SourceSettings ownOf(KnowledgeLibrary library) {
     return new SourceSettings(
-        library.getSourcePath(),
-        library.getSourceUrl(),
-        null,
-        library.isSourceInsecureSsl(),
-        ConnectorData.storedIn(library));
+        library.getSourcePath(), library.getSourceUrl(), null, ConnectorData.storedIn(library));
   }
 
   private static ConnectorData settings(String json) {

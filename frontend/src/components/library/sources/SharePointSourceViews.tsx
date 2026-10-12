@@ -37,14 +37,14 @@ export function SharePointScopeView({ library }: { library: StoredLibrarySource 
   )
 }
 
-export function SharePointStoredView({ library }: { library: StoredLibrarySource }) {
+export function SharePointStoredView() {
   return (
     <>
       <Typography variant="body2">
         <strong>Anmeldung:</strong> über den Zugang (App-Registrierung in Microsoft Entra); die
         Bibliothek trägt keine eigenen Zugangsdaten
       </Typography>
-      <RemoteConnectionLines library={library} />
+      <RemoteConnectionLines />
     </>
   )
 }

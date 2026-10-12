@@ -342,8 +342,7 @@ class SourceConnectorRegistryTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.org",
-            null,
-            false);
+            null);
     library.updateSourceSettings("{\"root\": \"/intern/pfad\"}");
     SourceConnector connector =
         plain(SourceConnectorDescriptor.remoteRun(SourceTypes.HTTP_DIRECTORY, "Webverzeichnis"));

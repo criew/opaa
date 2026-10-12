@@ -127,9 +127,9 @@ public final class S3TestFixture {
     return new S3Credentials(ROOT_ACCESS_KEY, ROOT_SECRET_KEY, null);
   }
 
-  /** A path-style connection without proxy or relaxed TLS for {@code credentials}. */
+  /** A path-style connection without proxy for {@code credentials}. */
   public S3Connection connection(S3Credentials credentials) {
-    return new S3Connection(endpoint(), REGION, true, credentials, false);
+    return new S3Connection(endpoint(), REGION, true, credentials);
   }
 
   /** The SDK client with root credentials, for seeding and assertions. */

@@ -13,6 +13,7 @@ import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.sourceaccess.SourceRequestMeter;
+import io.opaa.sourceaccess.UntrustedCertificate;
 import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
@@ -400,6 +401,9 @@ public class IndexingRunTemplate {
     Optional<String> proxyRefusal = ProxyRefusal.describe(e);
     if (proxyRefusal.isPresent()) {
       return proxyRefusal.get();
+    }
+    if (UntrustedCertificate.causes(e)) {
+      return UntrustedCertificate.MESSAGE;
     }
     return e.getMessage() != null
         ? e.getMessage()

@@ -31,9 +31,8 @@ flowchart LR
 
 1. Selbst betriebene Instanz im privaten Netz: ihren Hostnamen für die
    [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben. Ein eigenes Zertifikat der
-   Behörden-CA gehört in den Truststore des Backend-Containers
-   ([Eigene interne CA ergänzen](../docker-compose.md#eigene-interne-ca-ergänzen), unter Kubernetes
-   [Eigene Zertifizierungsstelle](../kubernetes.md#eigene-zertifizierungsstelle)).
+   Behörden-CA gehört in den Truststore von OPAA
+   ([Zertifikatsprüfung](README.md#13-zertifikatsprüfung)).
 2. **Ein Dienstkonto je Leserkreis**, kein persönliches Konto — ein persönliches Token trägt die
    Rechte einer Person und verfällt mit ihrem Austritt. Das Token bestimmt die Obergrenze dessen,
    was in die Bibliothek gelangen kann; die Space-Auswahl grenzt darunter ein.
@@ -61,13 +60,12 @@ Das Formular „Verbindung zu Confluence" führt in dieser Reihenfolge:
    Token lesen darf. Darüber steht: „Wer diese Bibliothek lesen darf, sieht alles aus allen
    ausgewählten Spaces."
 
-„Zertifikatsprüfung aussetzen" ist nur für Testinstanzen gedacht. Den Vollabgleich-Rhythmus setzt
-„Vollabgleich alle … Tage" im Zeitplan (1 bis 365, leer die Vorgabe der Installation). Edition und
+Den Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage" im Zeitplan (1 bis 365, leer die Vorgabe der Installation). Edition und
 Spaces sieht jede Leseberechtigung; Adresse, Webhook-Zustand und Laufprotokoll nur Verwaltende.
 
 **Über einen Zugang:** Die Adresse liegt unter der Server-Adresse des Zugangs. Gibt der Zugang die
-Edition vor, steht sie nur lesbar da, und „Edition erkennen" entfällt; die Prüfung gegen die Instanz
-läuft mit der Zertifikatsprüfung des Zugangs. Solange Bibliotheken auf einem Zugang liegen, lässt
+Edition vor, steht sie nur lesbar da, und „Edition erkennen" entfällt. Solange Bibliotheken auf
+einem Zugang liegen, lässt
 sich seine Edition nicht ändern und keine Bibliothek der anderen Edition zuordnen. Wer eine
 Bibliothek vom Zugang löst, behält dessen Edition.
 
@@ -223,7 +221,8 @@ fest 30 s Verbindungsaufbau und 120 s bis zur Antwort eines Anhangs. Makros, der
 | „Space … ist für das hinterlegte Dienstkonto nicht lesbar …" | ganzer Space nicht auflistbar; kein Vollabgleich bereinigt | Rechte prüfen oder Space abwählen |
 | „… liegt in einem nicht ausgewählten Space …" | verschoben oder per Webhook außerhalb gemeldet | nichts |
 | „Anhänge nicht auflistbar: …" | Auflistung unvollständig | Instanz prüfen |
-| Meldung der Zugriffsschicht (Zeitüberschreitung, TLS, HTTP-Status) | Seite fehlgeschlagen, Anker rückt nicht vor | Instanz und Freigabe prüfen |
+| „TLS-Verbindung zu … fehlgeschlagen. Das Zertifikat des Servers wird nicht anerkannt …" | Zertifikat einer hauseigenen Zertifizierungsstelle oder auf einen anderen Namen | Zertifizierungsstelle ergänzen ([Zertifikatsprüfung](README.md#13-zertifikatsprüfung)) |
+| Meldung der Zugriffsschicht (Zeitüberschreitung, HTTP-Status) | Seite fehlgeschlagen, Anker rückt nicht vor | Instanz und Freigabe prüfen |
 | „In Confluence im Papierkorb, entfernt" / „In Confluence in einen anderen Space verschoben, alter Stand entfernt" / „In der Quelle nicht mehr gefunden, entfernt" | positiver Befund | nichts |
 | „Die Quelle hat den Lauf n-mal gedrosselt …" (Ratenbegrenzung) | eine Zeile je Lauf | bei Häufung Zeitpläne entzerren |
 | „Anfragebudget von … Anfragen erschöpft …" | der nächste Lauf setzt fort | bei Dauerzustand Budget anheben |

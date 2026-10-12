@@ -11,6 +11,7 @@ import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import io.opaa.sourceaccess.UntrustedCertificate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
@@ -78,7 +79,7 @@ final class NextcloudDav implements AutoCloseable {
       long maxResponseBytes) {
     this.connection = connection;
     this.authorization = authorization;
-    this.httpClient = SourceHttpClientFactory.buildHttpClient(connection.insecureSsl());
+    this.httpClient = SourceHttpClientFactory.buildHttpClient();
     this.targetAddressValidator = targetAddressValidator;
     this.requestPolicy = requestPolicy;
     this.budget = budget;
@@ -298,9 +299,13 @@ final class NextcloudDav implements AutoCloseable {
       return new NextcloudAccessException.Unreachable(
           "Nextcloud unter " + host + " ist nicht erreichbar.");
     }
+    if (UntrustedCertificate.causes(e)) {
+      return new NextcloudAccessException.Unreachable(
+          "TLS-Verbindung zu " + host + " fehlgeschlagen. " + UntrustedCertificate.MESSAGE);
+    }
     if (e instanceof SSLException) {
       return new NextcloudAccessException.Unreachable(
-          "TLS-Verbindung zu " + host + " fehlgeschlagen (Zertifikat nicht vertrauenswürdig?).");
+          "TLS-Verbindung zu " + host + " fehlgeschlagen.");
     }
     return new NextcloudAccessException(
         "Nextcloud unter "

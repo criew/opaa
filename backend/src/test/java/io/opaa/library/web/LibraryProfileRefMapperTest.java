@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 
 /**
  * The profile of a library: its managers read what it sets for the library - address, sign-in,
- * defaults, proxy, TLS switch - every other reader its name only.
+ * defaults - every other reader its name only.
  */
 class LibraryProfileRefMapperTest {
 
@@ -29,15 +29,13 @@ class LibraryProfileRefMapperTest {
                 new LibraryProfileState.Frame(
                     "https://probe.example.org",
                     ConnectionAuthMethod.PERSONAL_SECRET,
-                    ConnectorData.of(Map.of("edition", "DC")),
-                    true)));
+                    ConnectorData.of(Map.of("edition", "DC")))));
 
     assertThat(ref.getId()).isEqualTo(ID);
     assertThat(ref.getName()).isEqualTo("Zugang");
     assertThat(ref.getServerUrl()).isEqualTo("https://probe.example.org");
     assertThat(ref.getAuthMethod()).isEqualTo(ConnectionAuthMethod.PERSONAL_SECRET);
     assertThat(ref.getConnectorDefaults()).isEqualTo(Map.of("edition", "DC"));
-    assertThat(ref.getSourceInsecureSsl()).isTrue();
   }
 
   @Test
@@ -49,6 +47,5 @@ class LibraryProfileRefMapperTest {
     assertThat(ref.getServerUrl()).isNull();
     assertThat(ref.getAuthMethod()).isNull();
     assertThat(ref.getConnectorDefaults()).isNull();
-    assertThat(ref.getSourceInsecureSsl()).isNull();
   }
 }

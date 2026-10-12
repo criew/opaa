@@ -9,10 +9,6 @@ public class KnowledgeLibrary {
     return null;
   }
 
-  public boolean isSourceInsecureSsl() {
-    return false;
-  }
-
   public String getSourceSettings() {
     return null;
   }

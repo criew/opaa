@@ -33,12 +33,12 @@ class SourceConsentMigrationTest extends AbstractBaselineTest {
     profile = UUID.randomUUID();
     execute(
         "INSERT INTO connection_profiles (id, name, source_type, server_url, auth_method,"
-            + " ownership, source_insecure_ssl, created_at, updated_at, version) VALUES ('"
+            + " ownership, created_at, updated_at, version) VALUES ('"
             + profile
             + "', 'Zugang "
             + profile
-            + "', 'CONSENT_PROBE', 'https://consent.example.org', 'OAUTH', 'BOTH', false, now(),"
-            + " now(), 0)");
+            + "', 'CONSENT_PROBE', 'https://consent.example.org', 'OAUTH', 'BOTH', now(), now(),"
+            + " 0)");
     library = insertLibrary("CONSENT_PROBE", "https://consent.example.org/bauamt");
     execute(
         "INSERT INTO library_connections (library_id, profile_id, created_at, updated_at, version)"

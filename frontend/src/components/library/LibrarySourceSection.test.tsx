@@ -75,7 +75,6 @@ describe('LibrarySourceSection - Zugang zuordnen, wechseln, lösen (#2162)', () 
     authMethod: 'PERSONAL_SECRET',
     ownership: 'LIBRARY',
     ownAccount: false,
-    sourceInsecureSsl: false,
   }
   const neu: ConnectionProfileOption = {
     ...intern,

@@ -91,8 +91,7 @@ class AwsSdkS3ObjectStoreTest {
         sessionToken
             ? new S3Credentials(ACCESS_KEY, SECRET_KEY, SESSION_TOKEN)
             : new S3Credentials(ACCESS_KEY, SECRET_KEY, null);
-    S3Connection connection =
-        new S3Connection(endpoint, "us-east-1", pathStyle, credentials, false);
+    S3Connection connection = new S3Connection(endpoint, "us-east-1", pathStyle, credentials);
     S3ClientFactory factory =
         new S3ClientFactory(properties, TargetAddressValidator.disabled(), observer);
     S3ObjectStore store =
@@ -233,8 +232,7 @@ class AwsSdkS3ObjectStoreTest {
             URI.create(server.endpoint()),
             "us-east-1",
             true,
-            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            false);
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null));
     S3ObjectStore store =
         new S3ClientFactory(properties(1000, 1, 0), TargetAddressValidator.disabled())
             .createForRun(connection, List.of(), current);
@@ -363,8 +361,7 @@ class AwsSdkS3ObjectStoreTest {
             URI.create(server.endpoint()),
             "us-east-1",
             true,
-            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            false);
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null));
     try (S3ObjectStore store =
         new AwsSdkS3ObjectStore(
             connection,
@@ -386,8 +383,7 @@ class AwsSdkS3ObjectStoreTest {
             URI.create("http://gibtsnicht.invalid:1"),
             "us-east-1",
             true,
-            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            false);
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null));
     try (S3ObjectStore store =
         new AwsSdkS3ObjectStore(
             unresolvable,
@@ -414,8 +410,7 @@ class AwsSdkS3ObjectStoreTest {
             URI.create("http://s3.beispiel.test"),
             "us-east-1",
             true,
-            new S3Credentials(ACCESS_KEY, SECRET_KEY, null),
-            false);
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, null));
     S3ClientFactory factory =
         new S3ClientFactory(properties(1000, 1, 0), TargetAddressValidator.disabled());
     try (OutboundProxyRoute route = OutboundProxyRoute.through("127.0.0.1:" + stubPort);

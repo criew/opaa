@@ -27,8 +27,7 @@ class SourceChangeGateTest {
           SourceTypes.RSS_FEED,
           null,
           "https://neu.example.org/feed",
-          null,
-          false);
+          null);
 
   private static SourceConnectorRegistry registryOf(SourceConnector connector) {
     SourceConnectorRegistry registry = mock(SourceConnectorRegistry.class);
@@ -78,10 +77,6 @@ class SourceChangeGateTest {
 
   private static SourceSettings settings(String url, String selection) {
     return new SourceSettings(
-        null,
-        url,
-        null,
-        false,
-        selection == null ? null : ConnectorData.of(Map.of("auswahl", selection)));
+        null, url, null, selection == null ? null : ConnectorData.of(Map.of("auswahl", selection)));
   }
 }

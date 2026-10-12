@@ -45,7 +45,6 @@ public final class ConnectionProfileResponseMapper {
         request.getTenant(),
         request.getScopes(),
         toSettings(request.getConnectorSettings()),
-        Boolean.TRUE.equals(request.getSourceInsecureSsl()),
         new ProfileEndpoints(
             request.getAuthorizationEndpoint(),
             request.getTokenEndpoint(),
@@ -63,7 +62,6 @@ public final class ConnectionProfileResponseMapper {
         request.getTenant(),
         request.getScopes(),
         toSettings(request.getConnectorSettings()),
-        Boolean.TRUE.equals(request.getSourceInsecureSsl()),
         new ProfileEndpoints(
             request.getAuthorizationEndpoint(),
             request.getTokenEndpoint(),
@@ -105,7 +103,6 @@ public final class ConnectionProfileResponseMapper {
         .tokenEndpoint(profile.getEndpoints().token())
         .revocationEndpoint(profile.getEndpoints().revocation())
         .connectorSettings(settings == null ? null : settings.asMap())
-        .sourceInsecureSsl(profile.isSourceInsecureSsl())
         .connectionCount(connectionCount)
         .connectedAccountCount(toCount(accounts.total()))
         .expiredConnectionCount(accounts.expired() == null ? null : toCount(accounts.expired()))
@@ -129,8 +126,7 @@ public final class ConnectionProfileResponseMapper {
         .serverUrl(profile.getServerUrl())
         .authMethod(profile.getAuthMethod())
         .ownership(profile.getOwnership())
-        .ownAccount(option.ownAccount())
-        .sourceInsecureSsl(profile.isSourceInsecureSsl());
+        .ownAccount(option.ownAccount());
   }
 
   static ConnectionProfileSignInTestResponse toResponse(SignInTest test) {

@@ -167,7 +167,6 @@ export function googleDrivePayloadOf(values: GoogleDriveSourceValues): LibrarySo
   return {
     sourceUrl: GOOGLE_DRIVE_API,
     sourceCredentials: values.keyFile || undefined,
-    sourceInsecureSsl: false,
     sourceSettings: googleDriveSettingsOf(values),
   }
 }

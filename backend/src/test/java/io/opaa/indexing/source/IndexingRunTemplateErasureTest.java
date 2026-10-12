@@ -59,8 +59,7 @@ class IndexingRunTemplateErasureTest {
           SourceTypes.FILESYSTEM,
           "/srv/dokumente",
           null,
-          null,
-          false);
+          null);
 
   IndexingRunTemplateErasureTest() {
     when(executor.sourceType()).thenReturn(SourceTypes.FILESYSTEM);

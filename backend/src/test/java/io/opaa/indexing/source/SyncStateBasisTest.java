@@ -30,8 +30,7 @@ class SyncStateBasisTest {
           SourceTypes.S3,
           null,
           "https://speicher.example.org",
-          null,
-          false);
+          null);
 
   private static SourceConnectorRegistry registryOf(SourceConnector connector) {
     SourceConnectorRegistry registry = mock(SourceConnectorRegistry.class);
@@ -63,8 +62,7 @@ class SyncStateBasisTest {
     assertThat(basis.of(library, settings("https://anders.example.org", "a", 7)))
         .isNotEqualTo(basis.of(library, first));
     assertThat(
-            basis.of(
-                library, new SourceSettings("/anderer/pfad", first.sourceUrl(), null, false, null)))
+            basis.of(library, new SourceSettings("/anderer/pfad", first.sourceUrl(), null, null)))
         .isNotEqualTo(basis.of(library, first));
   }
 
@@ -79,14 +77,14 @@ class SyncStateBasisTest {
 
     assertThat(
             SyncStateBasis.WHOLE_SETTINGS.of(
-                library, new SourceSettings(null, "u", null, false, ConnectorData.of(ab))))
+                library, new SourceSettings(null, "u", null, ConnectorData.of(ab))))
         .isEqualTo(
             SyncStateBasis.WHOLE_SETTINGS.of(
-                library, new SourceSettings(null, "u", null, false, ConnectorData.of(ba))));
+                library, new SourceSettings(null, "u", null, ConnectorData.of(ba))));
   }
 
   @Test
-  void withoutAConnectorEverySettingCountsButNotTheSecretOrTheTransport() {
+  void withoutAConnectorEverySettingCountsButNotTheSecret() {
     SourceSettings weekly = settings("https://speicher.example.org", "a", 7);
 
     assertThat(SyncStateBasis.WHOLE_SETTINGS.of(library, weekly))
@@ -96,8 +94,7 @@ class SyncStateBasisTest {
     assertThat(
             SyncStateBasis.WHOLE_SETTINGS.of(
                 library,
-                new SourceSettings(
-                    null, weekly.sourceUrl(), "geheim", true, weekly.connectorSettings())))
+                new SourceSettings(null, weekly.sourceUrl(), "geheim", weekly.connectorSettings())))
         .isEqualTo(SyncStateBasis.WHOLE_SETTINGS.of(library, weekly));
   }
 
@@ -106,7 +103,6 @@ class SyncStateBasisTest {
         null,
         url,
         null,
-        false,
         ConnectorData.of(Map.of("auswahl", selection, "fullSyncIntervalDays", intervalDays)));
   }
 }

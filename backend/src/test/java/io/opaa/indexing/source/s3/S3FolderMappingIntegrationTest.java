@@ -110,8 +110,7 @@ class S3FolderMappingIntegrationTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            "AKIAEXAMPLE:geheim",
-            false);
+            "AKIAEXAMPLE:geheim");
     S3TestSettings.configure(fresh, new S3SourceSettings(null, true, scopes, null, null));
     KnowledgeLibrary saved = libraryRepository.save(fresh);
     createdLibraries.add(saved);

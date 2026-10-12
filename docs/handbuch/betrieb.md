@@ -447,8 +447,8 @@ zwei Schranken, unabhängig davon, wer die Bibliothek anlegt:
 
 Dazu kommen feste Regeln: Nur `http` und `https`; einer Weiterleitung folgt OPAA nur auf demselben
 Origin, nie auf einen fremden Host und nie von `https` auf `http` (von `http` auf `https` auf demselben
-Host schon). Eine Zertifikatsprüfung, die eine Bibliothek abschaltet, gilt beim Webverzeichnis für den
-ganzen Abruf, beim Feed nur für den Origin des Feeds. Einen eigenen Proxy trägt keine Bibliothek; alle
+Host schon). Das Zertifikat jeder Quelle wird geprüft; abschalten lässt sich das nicht. Einen eigenen
+Proxy trägt keine Bibliothek; alle
 Verbindungen nehmen den [Ausgangsproxy](#ausgangsproxy). Fehlermeldungen eines Laufs nennen bei einer
 abgelehnten Weiterleitung nur Schema und Host des Ziels, nie die ganze Adresse.
 

@@ -2,26 +2,15 @@ package io.opaa.sourceaccess;
 
 import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.security.cert.X509Certificate;
 import java.time.Duration;
 import java.util.Base64;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Builds the {@link HttpClient} and {@code Authorization} header shared by every source-access
- * caller (crawling, downloads, RSS fetches, the source connection test) - one place for TLS
+ * caller (crawling, downloads, RSS fetches, the source connection test) - one place for the client
  * configuration instead of a copy per caller.
  */
 public final class SourceHttpClientFactory {
-
-  private static final Logger log = LoggerFactory.getLogger(SourceHttpClientFactory.class);
 
   private SourceHttpClientFactory() {}
 
@@ -36,38 +25,14 @@ public final class SourceHttpClientFactory {
    * RedirectFollowingFetcher.RedirectPolicy}.
    *
    * <p>The client asks the JVM's default {@code ProxySelector}, which is the outbound proxy ({@code
-   * io.opaa.outbound.OutboundProxySelector}).
+   * io.opaa.outbound.OutboundProxySelector}). The server certificate is always checked against the
+   * JVM's truststore; there is no way to skip it (see {@link UntrustedCertificate}).
    */
-  public static HttpClient buildHttpClient(boolean insecureSsl) {
-    HttpClient.Builder builder =
-        HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NEVER)
-            .connectTimeout(Duration.ofSeconds(30));
-
-    if (insecureSsl) {
-      try {
-        SSLContext sslContext = SSLContext.getInstance("TLS");
-        sslContext.init(
-            null,
-            new TrustManager[] {
-              new X509TrustManager() {
-                public X509Certificate[] getAcceptedIssuers() {
-                  return new X509Certificate[0];
-                }
-
-                public void checkClientTrusted(X509Certificate[] c, String a) {}
-
-                public void checkServerTrusted(X509Certificate[] c, String a) {}
-              }
-            },
-            new SecureRandom());
-        builder.sslContext(sslContext);
-      } catch (NoSuchAlgorithmException | KeyManagementException e) {
-        log.warn("Failed to create insecure SSL context: {}", e.getMessage());
-      }
-    }
-
-    return builder.build();
+  public static HttpClient buildHttpClient() {
+    return HttpClient.newBuilder()
+        .followRedirects(HttpClient.Redirect.NEVER)
+        .connectTimeout(Duration.ofSeconds(30))
+        .build();
   }
 
   public static String buildAuthHeader(String username, String password) {

@@ -108,12 +108,12 @@ public class AutoindexCrawlerService {
   public record RedirectedOutside(String url, String targetOrigin) {}
 
   /**
-   * {@link #crawl(String, String, String, boolean, RateLimitListener)} without a listener - for a
-   * caller with no run to count on.
+   * {@link #crawl(String, String, String, RateLimitListener)} without a listener - for a caller
+   * with no run to count on.
    */
-  public CrawlResult crawl(String baseUrl, String username, String password, boolean insecureSsl)
+  public CrawlResult crawl(String baseUrl, String username, String password)
       throws IOException, InterruptedException {
-    return crawl(baseUrl, username, password, insecureSsl, RateLimitListener.NONE);
+    return crawl(baseUrl, username, password, RateLimitListener.NONE);
   }
 
   /**
@@ -122,31 +122,24 @@ public class AutoindexCrawlerService {
    * {@code 429}; what it throws ends the crawl.
    */
   public CrawlResult crawl(
-      String baseUrl,
-      String username,
-      String password,
-      boolean insecureSsl,
-      RateLimitListener rateLimitListener)
+      String baseUrl, String username, String password, RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
     String authHeader = SourceHttpClientFactory.buildAuthHeader(username, password);
-    return crawl(baseUrl, RenewableCredential.fixed(authHeader), insecureSsl, rateLimitListener);
+    return crawl(baseUrl, RenewableCredential.fixed(authHeader), rateLimitListener);
   }
 
   /**
-   * As {@link #crawl(String, String, String, boolean, RateLimitListener)}, asking {@code
-   * authHeader} before every directory page; what it throws ends the crawl. A {@code 401} on the
-   * start page to the header sent is retried once when {@code authHeader} was renewed, and
-   * otherwise ends the crawl as {@link SourceCredentialsRejectedException}; without a header sent
-   * it stays the page's failure. A {@code 401} below the start page leaves that subtree out.
+   * As {@link #crawl(String, String, String, RateLimitListener)}, asking {@code authHeader} before
+   * every directory page; what it throws ends the crawl. A {@code 401} on the start page to the
+   * header sent is retried once when {@code authHeader} was renewed, and otherwise ends the crawl
+   * as {@link SourceCredentialsRejectedException}; without a header sent it stays the page's
+   * failure. A {@code 401} below the start page leaves that subtree out.
    */
   public CrawlResult crawl(
-      String baseUrl,
-      RenewableCredential<String> authHeader,
-      boolean insecureSsl,
-      RateLimitListener rateLimitListener)
+      String baseUrl, RenewableCredential<String> authHeader, RateLimitListener rateLimitListener)
       throws IOException, InterruptedException {
 
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient(insecureSsl);
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
 
     List<CrawledFileEntry> results = new ArrayList<>();
     List<String> rejectedLinks = new ArrayList<>();

@@ -487,7 +487,7 @@ Begründung:
 - **Ein Weg zum Anbieter:** `connection.oauth.OAuthClient` stellt Autorisierungsanfrage,
   Code-Tausch, Erneuerung und Widerruf; auch die Client-Credentials laufen darüber. Nur er ruft in
   connections `SourceFormPost` (Zielprüfung, keine Weiterleitung, Größengrenze), immer mit
-  Zertifikatsprüfung und (bis #2496) dem Proxy des Zugangs (ArchUnit
+  Zertifikatsprüfung (bis #2537) und (bis #2496) dem Proxy des Zugangs (ArchUnit
   `theAuthorizationServerIsReachedOnlyThroughTheOAuthClient` mit Fixture).
 - **Port `SecretIssuer` neu geschnitten:** `renew` liefert `Issued` (Zugriffstoken mit Ablauf,
   rotierter Refresh-Token mit Ablauf oder `null`), `revocation` bekommt einen Schnappschuss beider
@@ -1487,6 +1487,28 @@ Mit dem hausweiten Ausgangsproxy entfällt der Proxy an Bibliothek und Zugang er
   Anlagen eines Laufs. Ausnahme ist S3: Apache HttpClient 5 reicht die Antwort des Proxys auf
   `CONNECT` als Antwort des Ziels durch. Erkennbar ist dort nur `407`; ein abgelehnter Tunnel
   (`403`, `502`) erscheint als Antwort des Objektspeichers.
+
+## Nachtrag vom 12.10.2026: Zertifikatsprüfung nicht aussetzbar (#2537)
+
+Entscheidung des Maintainers: Die Zertifikatsprüfung ist nicht aussetzbar, für keine Quellart,
+Bibliothek oder Zugang. Der TLS-Schalter des Rahmens (`TransportRules`) entfällt ersatzlos; der
+Rahmen eines Zugangs besteht nur noch aus Server-Adresse, Anmeldung und Vorgaben.
+
+- **Datenbank:** `knowledge/2026-10-12-drop-library-source-insecure-ssl.yaml` entfernt
+  `knowledge_libraries.source_insecure_ssl` und legt `chk_knowledge_libraries_upload_without_source`
+  ohne die Spalte neu an; `connections/2026-10-12-drop-profile-source-insecure-ssl.yaml` entfernt
+  `connection_profiles.source_insecure_ssl`. Belegt in `DropSourceInsecureSslMigrationTest`.
+- **API und Oberfläche:** `sourceInsecureSsl` entfällt in allen Schemas der Bibliothek, des
+  Verbindungstests, der Auflistung und des Zugangs, ebenso die Schalter in den Formularen.
+- **Backend:** `SourceHttpClientFactory.buildHttpClient()` baut jeden Client mit dem Truststore der
+  JVM, der vertrauende `X509TrustManager` ist entfernt; `S3SdkClient` setzt
+  `TRUST_ALL_CERTIFICATES` nicht mehr. `SourceSettings`, `S3Connection`, `S3ClientSettings`,
+  `ConfluenceConnection`, `NextcloudConnection`, `UrlIndexingRequest` und `RssFeedRunContext`
+  tragen keinen Schalter mehr. Fingerabdruck, Bindung der Geheimnisse und Revisionseintrag des
+  Zugangs nennen ihn nicht mehr.
+- **Fehlerbild:** `UntrustedCertificate` erkennt ein abgelehntes Zertifikat an der Ursachenkette;
+  Verbindungstest, Lauf, Confluence, Nextcloud und S3 melden dann, dass der Betrieb die eigene
+  Zertifizierungsstelle ergänzen muss.
 
 ## Referenzen
 

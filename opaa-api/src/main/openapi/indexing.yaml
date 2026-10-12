@@ -353,7 +353,7 @@ paths:
       description: >
         ADR-0018: a library carries at most one quellentyp and quellkonfiguration, so the
         trigger no longer takes any request body - it reads sourceType/sourcePath/sourceUrl/
-        sourceCredentials/sourceInsecureSsl from the library itself and resolves
+        sourceCredentials from the library itself and resolves
         the matching executor through the registry (ADR-0017, decision 3). EDITOR role or
         above on the library is required (the former SYSTEM_ADMIN requirement is gone -
         ADR-0018, Entscheidung 2). A library whose sourceType is UPLOAD has no run at all

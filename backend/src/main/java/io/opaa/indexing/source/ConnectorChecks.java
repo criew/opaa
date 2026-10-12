@@ -5,6 +5,7 @@ import io.opaa.knowledge.SourceType;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BasicCredentials;
+import io.opaa.sourceaccess.UntrustedCertificate;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -125,9 +126,11 @@ public final class ConnectorChecks {
     if (e instanceof HttpTimeoutException || e instanceof SocketTimeoutException) {
       return "Die Verbindung ist in ein Zeitlimit gelaufen.";
     }
+    if (UntrustedCertificate.causes(e)) {
+      return UntrustedCertificate.MESSAGE;
+    }
     if (e instanceof SSLException) {
-      return "Das Zertifikat des Servers konnte nicht geprüft werden. Bei einem bekannten,"
-          + " selbstsignierten Zertifikat kann die Zertifikatsprüfung ausgesetzt werden.";
+      return "Die TLS-Verbindung zum Server ist fehlgeschlagen.";
     }
     return "Die Adresse ist nicht erreichbar.";
   }

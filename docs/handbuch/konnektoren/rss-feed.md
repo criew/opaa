@@ -17,8 +17,8 @@ flowchart LR
 ```
 
 - **Anmeldung:** keine oder HTTP Basic, eigene Zugangsdaten der Bibliothek
-  ([Zugänge](../zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten und eine
-  ausgesetzte Zertifikatsprüfung gelten **nur für den Ursprung des Feeds**. Ein Zugang ist möglich.
+  ([Zugänge](../zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten gelten **nur für
+  den Ursprung des Feeds**. Ein Zugang ist möglich.
 - **Liest:** je Eintrag `title`, `link`, `description` und `pubDate`, die Detailseite und ihre
   Anlagen. Erweiterungen in fremden Namensräumen (`content:encoded`, `media:*`) werden
   ignoriert. Ein Eintrag ohne Link entfällt, von mehreren Links zählt der erste; ein nicht lesbares
@@ -41,13 +41,13 @@ flowchart LR
 ## 3. Quellkonfiguration
 
 Die Angaben sind dieselben wie beim [Webverzeichnis](http-directory.md#3-quellkonfiguration):
-„Adresse (URL)" des Feeds, optionale Anmeldedaten `benutzer:passwort` und „Zertifikatsprüfung
-aussetzen". Dort steht auch, wann gespeicherte Zugangsdaten beim Bearbeiten erhalten bleiben. Die
+„Adresse (URL)" des Feeds und optionale Anmeldedaten `benutzer:passwort`. Dort steht auch, wann
+gespeicherte Zugangsdaten beim Bearbeiten erhalten bleiben. Die
 Oberfläche weist beim Anlegen darauf hin, dass OPAA auch die verlinkten Detailseiten abruft.
 
 **Über einen Zugang:** wie beim Webverzeichnis; die Feed-Adresse liegt unter der Server-Adresse des
 Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter ab, aber ohne
-Zugangsdaten und mit Zertifikatsprüfung.
+Zugangsdaten.
 
 ## 4. Betriebsarten und Änderungserkennung
 
@@ -120,8 +120,8 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jeder Weiterleitung
   ([Konnektoren](README.md#12-zieladressprüfung)).
-- **Fremde Server:** Eine Detailseite auf einem anderen Server holt OPAA ohne Zugangsdaten und mit
-  Zertifikatsprüfung. Eine Weiterleitung, die den Ursprung der Detailseite oder Anlage verlässt, wird
+- **Fremde Server:** Eine Detailseite auf einem anderen Server holt OPAA ohne Zugangsdaten. Eine
+  Weiterleitung, die den Ursprung der Detailseite oder Anlage verlässt, wird
   abgelehnt, bevor das fremde Ziel kontaktiert wird. Anlagen zählen nur auf dem Ursprung der
   Detailseite (Abschnitt 6). Beim Feed selbst werden bis zu fünf Weiterleitungen gefolgt, auf einen
   fremden Ursprung ohne Zugangsdaten.
@@ -148,6 +148,7 @@ liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
+| „Das Zertifikat des Servers wird nicht anerkannt …" | Zertifikat einer hauseigenen Zertifizierungsstelle oder auf einen anderen Namen | Zertifizierungsstelle ergänzen ([Zertifikatsprüfung](README.md#13-zertifikatsprüfung)) |
 | „Verknüpfung mit nicht unterstütztem Schema abgelehnt" / „… mit ungültiger URL abgelehnt" | Link des Eintrags ist nicht http/https oder kaputt | beim Feed-Betreiber melden |
 | „Vom Quellserver abgewiesen (HTTP 403 / 429)" | Bot-Schutz oder Ratenbegrenzung der Detailseite; zurückgestellt | Wartezeit erhöhen, nächster Lauf versucht es erneut |
 | „Weiterleitung auf einen fremden Host abgelehnt" / „Weiterleitung von https auf http abgelehnt" / „Weiterleitung der Detailseite ungültig" | Weiterleitung verlässt den Ursprung oder ist unbrauchbar | nichts |

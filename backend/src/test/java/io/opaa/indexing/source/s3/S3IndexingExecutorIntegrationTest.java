@@ -145,8 +145,7 @@ class S3IndexingExecutorIntegrationTest {
             SourceTypes.S3,
             null,
             store.endpoint().toString(),
-            credentials.accessKey() + ":" + credentials.secretKey(),
-            false);
+            credentials.accessKey() + ":" + credentials.secretKey());
     S3TestSettings.configure(
         library, new S3SourceSettings(S3TestFixture.REGION, true, scopes, null, null));
     return library;

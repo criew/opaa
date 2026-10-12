@@ -250,8 +250,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
                     io.opaa.knowledge.SourceType.UPLOAD,
                     null,
                     null,
-                    null,
-                    false))
+                    null))
             .getId();
     grant(privateLibrary, owner, AssetRole.OWNER);
     UUID unreadable = createLibrary(owner);

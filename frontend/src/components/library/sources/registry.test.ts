@@ -9,7 +9,6 @@ const generic = {
   sourcePath: ' /data/dokumente ',
   sourceUrl: ' https://docs.example/ ',
   sourceCredentials: ' user:pw ',
-  sourceInsecureSsl: true,
 }
 
 function configurationOf(type: string): SourceConfiguration<unknown> {
@@ -83,7 +82,6 @@ describe('the source registry (ADR-0038)', () => {
       const values = sharePoint.fromLibrary(library)
       expect(sharePoint.toPayload(values)).toEqual({
         sourceUrl: 'https://graph.microsoft.com',
-        sourceInsecureSsl: false,
         sourceSettings: library.sourceSettings,
       })
       expect(sharePoint.validate(values, context('SHAREPOINT'))).toBe(
@@ -123,13 +121,11 @@ describe('the source registry (ADR-0038)', () => {
       }),
     ).toEqual({
       sourcePath: '/data/dokumente',
-      sourceInsecureSsl: false,
       sourceSettings: { excludePatterns: ['Archiv/**', '**/*.tmp'] },
     })
     expect(configurationOf('HTTP_DIRECTORY').toPayload(generic)).toEqual({
       sourceUrl: 'https://docs.example/',
       sourceCredentials: 'user:pw',
-      sourceInsecureSsl: true,
     })
   })
 
@@ -171,7 +167,6 @@ describe('the source registry (ADR-0038)', () => {
     ).toEqual({
       sourceUrl: 'https://behoerde.atlassian.net',
       sourceCredentials: 'dienst@behoerde.example:tok',
-      sourceInsecureSsl: false,
       sourceSettings: {
         edition: 'CLOUD',
         spaces: [
@@ -221,7 +216,6 @@ describe('the source registry (ADR-0038)', () => {
       expect(configurationOf('S3').toPayload(s3)).toEqual({
         sourceUrl: 'https://minio.intern.example:9000',
         sourceCredentials: 'AKIAEXAMPLE:geheim',
-        sourceInsecureSsl: false,
         sourceSettings: {
           region: 'us-east-1',
           pathStyle: true,

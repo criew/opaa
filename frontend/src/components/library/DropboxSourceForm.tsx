@@ -82,7 +82,6 @@ export default function DropboxSourceForm({
         connection.probeRequest({
           sourceType: 'DROPBOX',
           sourceUrl: serverUrl,
-          sourceInsecureSsl: false,
           sourceSettings: dropboxSettingsFrom(values),
         }),
       )
@@ -111,7 +110,6 @@ export default function DropboxSourceForm({
         'DROPBOX',
         connection.probeRequest({
           sourceUrl: serverUrl,
-          sourceInsecureSsl: false,
           query: { path: browsePath.trim() || '/', teamSpace: values.teamSpace },
         }),
       )

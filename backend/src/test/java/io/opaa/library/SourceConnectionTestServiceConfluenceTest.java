@@ -3,7 +3,6 @@ package io.opaa.library;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -43,8 +42,8 @@ import org.junit.jupiter.api.Test;
 /**
  * The Confluence paths of {@link SourceConnectionTestService} (#1134): the connection test
  * delegates to {@link ConfluenceConnectionService} with the effective (possibly stored)
- * credentials, and the space listing applies the same MANAGER bar, same-origin fallback and TLS
- * forcing as the test - through the same code, so this class pins the contract of that sharing.
+ * credentials, and the space listing applies the same MANAGER bar and same-origin fallback as the
+ * test - through the same code, so this class pins the contract of that sharing.
  */
 class SourceConnectionTestServiceConfluenceTest {
 
@@ -87,8 +86,7 @@ class SourceConnectionTestServiceConfluenceTest {
             SourceTypes.CONFLUENCE,
             null,
             url,
-            "stored-pat",
-            true);
+            "stored-pat");
     ConfluenceTestSettings.configure(
         library, ConfluenceEdition.DATA_CENTER, List.of(new ConfluenceSpaceSelection("ENG", null)));
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
@@ -98,7 +96,7 @@ class SourceConnectionTestServiceConfluenceTest {
   @Test
   void connectionTestDelegatesTheEffectiveRequestToTheConfluenceService() throws Exception {
     when(confluenceConnectionService.probe(
-            "https://wiki.example.org", "pat", false, ConfluenceEdition.DATA_CENTER))
+            "https://wiki.example.org", "pat", ConfluenceEdition.DATA_CENTER))
         .thenReturn(
             new ConfluenceConnectionService.Probe(
                 true, "Zugangsdaten gültig.", ConfluenceEdition.DATA_CENTER, true, null));
@@ -110,7 +108,6 @@ class SourceConnectionTestServiceConfluenceTest {
                 null,
                 URI.create("https://wiki.example.org"),
                 "pat",
-                false,
                 null,
                 TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null)),
             caller);
@@ -130,7 +127,6 @@ class SourceConnectionTestServiceConfluenceTest {
                         SourceTypes.CONFLUENCE,
                         "/srv/docs",
                         URI.create("https://wiki.example.org"),
-                        null,
                         null,
                         null,
                         null),
@@ -153,7 +149,6 @@ class SourceConnectionTestServiceConfluenceTest {
                         SourceTypes.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
                         "pat",
-                        null,
                         TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         null),
                     caller))
@@ -169,7 +164,6 @@ class SourceConnectionTestServiceConfluenceTest {
                         SourceTypes.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
                         null,
-                        null,
                         TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         null),
                     caller))
@@ -183,30 +177,27 @@ class SourceConnectionTestServiceConfluenceTest {
     KnowledgeLibrary library = confluenceLibrary(libraryId, "https://wiki.example.org/confluence");
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);
-    when(confluenceConnectionService.listSpaces(anyString(), any(), anyString(), anyBoolean()))
+    when(confluenceConnectionService.listSpaces(anyString(), any(), anyString()))
         .thenReturn(List.of(new ConfluenceSpace("1", "ENG", "Engineering")));
 
-    // same origin, other path; the caller asks to skip TLS checks
+    // same origin, other path
     SourceListing spaces =
         service.browse(
             new SourceBrowseRequest(
                 SourceTypes.CONFLUENCE,
                 URI.create("https://wiki.example.org/other"),
                 null,
-                false,
                 TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                 libraryId),
             caller);
 
     assertThat(spaces.entries()).extracting(SourceListing.Entry::key).containsExactly("ENG");
-    // stored token, stored TLS setting - never the caller's (#617 rule shared with
-    // the connection test)
+    // stored token - never the caller's (#617 rule shared with the connection test)
     verify(confluenceConnectionService)
         .listSpaces(
             eq("https://wiki.example.org/other"),
             eq(ConfluenceEdition.DATA_CENTER),
-            eq("stored-pat"),
-            eq(true));
+            eq("stored-pat"));
   }
 
   @Test
@@ -222,7 +213,6 @@ class SourceConnectionTestServiceConfluenceTest {
                     new SourceBrowseRequest(
                         SourceTypes.CONFLUENCE,
                         URI.create("https://other.example.org/confluence"),
-                        null,
                         null,
                         TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         libraryId),
@@ -242,14 +232,12 @@ class SourceConnectionTestServiceConfluenceTest {
             SourceTypes.CONFLUENCE,
             URI.create("https://wiki.example.org"),
             null,
-            null,
             TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
             libraryId);
 
     assertThatThrownBy(() -> service.browse(listing, caller))
         .isInstanceOf(AccessDeniedException.class);
-    verify(confluenceConnectionService, never())
-        .listSpaces(anyString(), any(), anyString(), anyBoolean());
+    verify(confluenceConnectionService, never()).listSpaces(anyString(), any(), anyString());
 
     UUID rssId = UUID.randomUUID();
     KnowledgeLibrary rss =
@@ -261,8 +249,7 @@ class SourceConnectionTestServiceConfluenceTest {
             SourceTypes.RSS_FEED,
             null,
             "https://wiki.example.org/feed.xml",
-            "user:pw",
-            false);
+            "user:pw");
     when(libraryRepository.findById(rssId)).thenReturn(Optional.of(rss));
     when(libraryAccessService.requireRole(rss, currentUserId, false, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);
@@ -273,13 +260,11 @@ class SourceConnectionTestServiceConfluenceTest {
                         SourceTypes.CONFLUENCE,
                         URI.create("https://wiki.example.org"),
                         null,
-                        null,
                         TestConnectorSettings.of(ConfluenceEdition.DATA_CENTER, null),
                         rssId),
                     caller))
         .isInstanceOf(ValidationException.class)
         .hasMessageContaining("keine Confluence-Bibliothek");
-    verify(confluenceConnectionService, never())
-        .listSpaces(anyString(), any(), anyString(), anyBoolean());
+    verify(confluenceConnectionService, never()).listSpaces(anyString(), any(), anyString());
   }
 }

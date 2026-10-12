@@ -54,7 +54,7 @@ final class DropboxApiFactory {
         properties.contentBase(),
         token,
         renewedAfterRejection,
-        SourceHttpClientFactory.buildHttpClient(false),
+        SourceHttpClientFactory.buildHttpClient(),
         targetAddressValidator,
         properties.requestTimeout(),
         properties.downloadTimeout(),

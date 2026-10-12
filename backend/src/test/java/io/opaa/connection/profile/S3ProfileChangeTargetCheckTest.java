@@ -154,8 +154,7 @@ class S3ProfileChangeTargetCheckTest {
         null,
         null,
         null,
-        ConnectorData.of(Map.of("region", region, "pathStyle", true)),
-        false);
+        ConnectorData.of(Map.of("region", region, "pathStyle", true)));
   }
 
   /** A library on the profile reading {@code bucket}, with a stored key of its own. */
@@ -169,8 +168,7 @@ class S3ProfileChangeTargetCheckTest {
             SourceTypes.S3,
             null,
             SERVER,
-            "zugriff:geheim",
-            false);
+            "zugriff:geheim");
     library.updateSourceSettings("{\"scopes\":[{\"bucket\":\"" + bucket + "\"}]}");
     rows.put(library.getId(), library);
     connected.add(new LibraryConnection(library.getId(), profile.getId(), NOW));

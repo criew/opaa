@@ -54,7 +54,6 @@ class SmbLinkLoopTest {
             null,
             samba.url(SambaFixture.LINK_SHARE),
             samba.credentials(),
-            false,
             ConnectorData.of(Map.of("folders", List.of("/a/unten", "/echt"))));
 
     FileSyncHarness.Run run;

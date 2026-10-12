@@ -306,8 +306,7 @@ class OwnerOnlyLibraryIntegrationTest {
             SourceType.UPLOAD,
             null,
             null,
-            null,
-            false),
+            null),
         owner);
   }
 

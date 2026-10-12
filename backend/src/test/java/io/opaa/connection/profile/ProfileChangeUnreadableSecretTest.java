@@ -90,8 +90,7 @@ class ProfileChangeUnreadableSecretTest {
             ProfileProbeSourceConnector.TYPE,
             null,
             SERVER + "/a",
-            null,
-            false);
+            null);
     rows.put(library.getId(), library);
     wiring.store.holdUnreadable(profile.getId(), library.getId(), SERVER + " CLOUD");
     LibraryConnection connection = new LibraryConnection(library.getId(), profile.getId(), NOW);
@@ -107,8 +106,7 @@ class ProfileChangeUnreadableSecretTest {
             null,
             null,
             null,
-            ConnectorData.of(Map.of("edition", "DC")),
-            false);
+            ConnectorData.of(Map.of("edition", "DC")));
     CurrentUser admin =
         CurrentUser.of(UUID.randomUUID(), UUID.randomUUID(), SystemRole.SYSTEM_ADMIN, "Admin");
 

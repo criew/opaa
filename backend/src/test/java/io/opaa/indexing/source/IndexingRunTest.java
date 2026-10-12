@@ -45,8 +45,7 @@ class IndexingRunTest {
           SourceTypes.HTTP_DIRECTORY,
           null,
           "https://host/",
-          null,
-          false);
+          null);
   private final IndexingRun run =
       new IndexingRun(
           jobId,

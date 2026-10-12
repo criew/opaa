@@ -9,12 +9,12 @@ import java.util.Locale;
 
 /**
  * How one library reaches its Nextcloud: the instance address, the technical user with its app
- * password (Basic Auth) and TLS switch. Every request goes to {@link #baseUrl()}'s origin; {@link
- * #toString()} never names the password.
+ * password (Basic Auth). Every request goes to {@link #baseUrl()}'s origin; {@link #toString()}
+ * never names the password.
  *
  * @param baseUrl the instance address without a trailing slash, possibly with a context path
  */
-record NextcloudConnection(URI baseUrl, String username, String password, boolean insecureSsl) {
+record NextcloudConnection(URI baseUrl, String username, String password) {
 
   static final String CREDENTIALS_FORMAT =
       "sourceCredentials müssen dem Format Benutzername:App-Passwort entsprechen";
@@ -30,8 +30,7 @@ record NextcloudConnection(URI baseUrl, String username, String password, boolea
     if (parsed.username() == null || parsed.password() == null || parsed.password().isEmpty()) {
       throw new InvalidNextcloudConfigurationException(CREDENTIALS_FORMAT);
     }
-    return new NextcloudConnection(
-        baseUrl, parsed.username(), parsed.password(), source.sourceInsecureSsl());
+    return new NextcloudConnection(baseUrl, parsed.username(), parsed.password());
   }
 
   /**
@@ -131,13 +130,7 @@ record NextcloudConnection(URI baseUrl, String username, String password, boolea
 
   @Override
   public String toString() {
-    return "NextcloudConnection[baseUrl="
-        + baseUrl
-        + ", username="
-        + username
-        + ", insecureSsl="
-        + insecureSsl
-        + "]";
+    return "NextcloudConnection[baseUrl=" + baseUrl + ", username=" + username + "]";
   }
 
   /** The configuration cannot be turned into a connection; the message is user-facing. */

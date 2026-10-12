@@ -632,7 +632,7 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(
             violation ->
                 assertThat(violation)
-                    .contains("filesync.FileSyncRun", "KnowledgeLibrary.isSourceInsecureSsl"))
+                    .contains("filesync.FileSyncRun", "KnowledgeLibrary.getSourceSettings"))
         .anySatisfy(
             violation -> assertThat(violation).contains("web.WebRun", "SourceConnectionResolver"))
         .anySatisfy(

@@ -1009,7 +1009,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
                     "geteilt:" + PASSWORD,
                     null,
                     null,
-                    null,
                     profile),
                 CurrentUser.of(colleague, Organization.DEFAULT_ID, SystemRole.USER, "Kollegin"))
             .library()
@@ -1186,7 +1185,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
     String name = "Personalakte " + suffix;
     libraryService.updateLibrary(
         library,
-        new LibraryUpdate(name, "Notiz " + suffix, null, null, null, null, null, null, null),
+        new LibraryUpdate(name, "Notiz " + suffix, null, null, null, null, null, null),
         ownerCaller);
     UUID document = UUID.randomUUID();
     String fileName = "gehaltsabrechnung-" + suffix + ".pdf";
@@ -1338,7 +1337,6 @@ class PrivateLibraryInvisibilityIntegrationTest {
                 PersonProbeSourceConnector.TYPE,
                 null,
                 URI.create(SERVER + "/ablage"),
-                null,
                 null,
                 null,
                 null,

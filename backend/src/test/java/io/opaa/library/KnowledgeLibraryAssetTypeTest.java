@@ -52,8 +52,7 @@ class KnowledgeLibraryAssetTypeTest {
             SourceTypes.FILESYSTEM,
             "/data/dokumente",
             null,
-            null,
-            false);
+            null);
     library.updateShareCap(false);
     return library;
   }

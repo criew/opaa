@@ -1,7 +1,5 @@
 import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { SourceTypeKey } from '../../types/api'
@@ -26,8 +24,8 @@ interface UrlSourceFormProps {
 }
 
 /**
- * The one Adress-Formular of a HTTP_DIRECTORY or RSS_FEED library (#1940): address,
- * credentials and the certificate switch - used by the Anlage-Assistent and by the Bearbeiten-Weg
+ * The one Adress-Formular of a HTTP_DIRECTORY or RSS_FEED library (#1940): address and
+ * credentials - used by the Anlage-Assistent and by the Bearbeiten-Weg
  * of the Reiter „Quelle" alike. The credentials field is write-only in both modes (ADR-0018); in
  * edit mode its hint says what leaving it blank means, including the case where a changed host
  * discards the stored value (#542).
@@ -109,22 +107,6 @@ export default function UrlSourceForm({
               slotProps={{ htmlInput: { maxLength: 500 } }}
             />
           </Box>
-        )}
-        <FormControlLabel
-          sx={{ gridColumn: '1 / -1' }}
-          control={
-            <Switch
-              checked={values.sourceInsecureSsl}
-              disabled={connection.isFixed('sourceInsecureSsl')}
-              onChange={(e) => onChange({ sourceInsecureSsl: e.target.checked })}
-            />
-          }
-          label="Zertifikatsprüfung aussetzen"
-        />
-        {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
-          <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
-            {connection.transportHint}
-          </Typography>
         )}
       </Box>
     </Box>

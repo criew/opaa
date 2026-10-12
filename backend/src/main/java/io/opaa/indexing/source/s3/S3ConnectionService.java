@@ -24,18 +24,13 @@ import org.springframework.stereotype.Service;
  * S3ClientFactory#createForProbe} (short timeout, one retry) and the whole test stops after {@link
  * #PROBE_DEADLINE}, reporting the remaining scopes as not probed - so a caller cannot bind a
  * request thread for long against a store that swallows packets. Messages come from the access
- * layer and are German and credential-free by its contract; the TLS diagnosis alone gains the hint
- * that the certificate check can be suspended, named as the last option.
+ * layer and are German and credential-free by its contract.
  */
 @Service
 public class S3ConnectionService {
 
   /** After this much of one test the remaining scopes are reported as not probed. */
   static final Duration PROBE_DEADLINE = Duration.ofSeconds(30);
-
-  static final String TLS_HINT =
-      " Bei einem bekannten, selbstsignierten Zertifikat kann als letzte Option die TLS-Prüfung"
-          + " ausgesetzt werden.";
 
   static final String BUCKETS_NOT_LISTABLE =
       "Die Bucket-Liste ist mit diesen Zugangsdaten nicht lesbar (s3:ListAllMyBuckets fehlt) - der"
@@ -77,8 +72,7 @@ public class S3ConnectionService {
    * form; a missing or malformed value is a result, not an exception, because the wizard reaches
    * this before the key is complete.
    */
-  public Probe probe(
-      String rawUrl, String credentials, boolean insecureSsl, S3SourceSettings settings)
+  public Probe probe(String rawUrl, String credentials, S3SourceSettings settings)
       throws InterruptedException {
     if (settings == null) {
       throw new ValidationException("sourceSettings sind für den Verbindungstest erforderlich");
@@ -100,8 +94,7 @@ public class S3ConnectionService {
       return new Probe(false, e.getMessage(), false, List.of(), null);
     }
     S3Connection connection =
-        new S3Connection(
-            endpoint, settings.effectiveRegion(), settings.pathStyle(), parsed, insecureSsl);
+        new S3Connection(endpoint, settings.effectiveRegion(), settings.pathStyle(), parsed);
     Instant deadline = clock.instant().plus(PROBE_DEADLINE);
     try (S3ObjectStore store = clientFactory.createForProbe(connection, settings.scopes())) {
       List<ScopeFinding> findings = new ArrayList<>();
@@ -114,7 +107,7 @@ public class S3ConnectionService {
       }
       return summarize(findings);
     } catch (S3AccessException e) {
-      return new Probe(false, withTlsHint(e), false, List.of(), null);
+      return new Probe(false, e.getMessage(), false, List.of(), null);
     }
   }
 
@@ -124,7 +117,7 @@ public class S3ConnectionService {
    * caller's 400 with the access layer's message.
    */
   public S3BucketListResult listBuckets(
-      String rawUrl, String credentials, boolean insecureSsl, String region, boolean pathStyle)
+      String rawUrl, String credentials, String region, boolean pathStyle)
       throws InterruptedException {
     URI endpoint = normalizeEndpoint(rawUrl);
     S3Credentials parsed;
@@ -133,7 +126,7 @@ public class S3ConnectionService {
     } catch (S3Credentials.InvalidCredentialsFormatException e) {
       throw new ValidationException(e.getMessage());
     }
-    S3Connection connection = new S3Connection(endpoint, region, pathStyle, parsed, insecureSsl);
+    S3Connection connection = new S3Connection(endpoint, region, pathStyle, parsed);
     try (S3ObjectStore store = clientFactory.createForProbe(connection, List.of())) {
       return switch (store.listBuckets()) {
         case S3BucketListing.Listed listed -> new S3BucketListResult(true, listed.names(), null);
@@ -141,7 +134,7 @@ public class S3ConnectionService {
             new S3BucketListResult(false, List.of(), BUCKETS_NOT_LISTABLE);
       };
     } catch (S3AccessException e) {
-      throw new ValidationException(withTlsHint(e));
+      throw new ValidationException(e.getMessage());
     }
   }
 
@@ -187,7 +180,7 @@ public class S3ConnectionService {
           check.readAllowed(),
           check.objectCount(),
           check.objectCountIsLowerBound(),
-          check.failure() == null ? null : withTlsHint(check.failure()));
+          check.failure() == null ? null : check.failure().getMessage());
     }
   }
 
@@ -253,10 +246,6 @@ public class S3ConnectionService {
 
   private static String key(S3ScopeCheck check) {
     return check.prefix().isEmpty() ? check.bucket() : check.bucket() + "/" + check.prefix();
-  }
-
-  private static String withTlsHint(S3AccessException e) {
-    return e instanceof S3AccessException.Tls ? e.getMessage() + TLS_HINT : e.getMessage();
   }
 
   private static URI normalizeEndpoint(String rawUrl) {

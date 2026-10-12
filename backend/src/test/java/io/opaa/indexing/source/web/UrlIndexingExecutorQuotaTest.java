@@ -2,7 +2,6 @@ package io.opaa.indexing.source.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -91,13 +90,12 @@ class UrlIndexingExecutorQuotaTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.com/docs/",
-            null,
-            false);
+            null);
 
     var entry =
         new AutoindexCrawlerService.CrawledFileEntry(
             "over-quota.txt", ENTRY_URL, null, "1", "FILE", 0);
-    when(crawlerService.crawl(anyString(), any(RenewableCredential.class), anyBoolean(), any()))
+    when(crawlerService.crawl(anyString(), any(RenewableCredential.class), any()))
         .thenReturn(
             new AutoindexCrawlerService.CrawlResult(
                 List.of(entry), false, false, false, List.of(), List.of()));

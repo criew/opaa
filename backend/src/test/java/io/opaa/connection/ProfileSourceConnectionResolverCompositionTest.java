@@ -148,8 +148,7 @@ class ProfileSourceConnectionResolverCompositionTest {
             type,
             null,
             "https://ablage.example.org/akten",
-            secret,
-            false);
+            secret);
     rows.put(library.getId(), library);
     return library;
   }

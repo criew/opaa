@@ -60,8 +60,7 @@ class ScanJournalIntegrationTest {
                 SourceTypes.S3,
                 null,
                 "https://ablage.example",
-                null,
-                false));
+                null));
     Document document = new Document("a.txt", "a.txt", "text/plain", 1L, SourceTypes.S3);
     document.setLibraryId(library.getId());
     document.setOrganizationId(Organization.DEFAULT_ID);

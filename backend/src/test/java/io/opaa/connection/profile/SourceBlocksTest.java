@@ -276,8 +276,7 @@ class SourceBlocksTest {
             SourceTypes.FILESYSTEM,
             "/srv/akten",
             null,
-            null,
-            false);
+            null);
     rows.put(files.getId(), files);
     ConnectorTypePolicy stale = new ConnectorTypePolicy(SourceTypes.FILESYSTEM, NOW);
     stale.requireProfiles(OwnAddressStock.LOCKED, NOW);
@@ -613,8 +612,7 @@ class SourceBlocksTest {
             null,
             null,
             null,
-            null,
-            false),
+            null),
         "enc:v1:schluessel",
         NOW);
     profileRows.add(keyProfile);
@@ -629,8 +627,7 @@ class SourceBlocksTest {
             SourceTypes.RSS_FEED,
             null,
             SERVER + "/b.xml",
-            null,
-            false);
+            null);
     rows.put(shared.getId(), shared);
     connectionRows.add(new LibraryConnection(shared.getId(), keyProfile.getId(), NOW));
 
@@ -690,8 +687,7 @@ class SourceBlocksTest {
             facts.contains(Fact.OUTSIDE)
                 ? "https://elsewhere.example.org/a.xml"
                 : SERVER + "/a.xml",
-            null,
-            false);
+            null);
     rows.put(library.getId(), library);
     if (facts.contains(Fact.TYPE_LOCK)) {
       policyOf(SourceTypes.RSS_FEED).lockedSince(NOW, NOW);
@@ -707,8 +703,7 @@ class SourceBlocksTest {
             null,
             null,
             null,
-            null,
-            false),
+            null),
         null,
         NOW);
     if (facts.contains(Fact.PROFILE_LOCK)) {
@@ -742,8 +737,7 @@ class SourceBlocksTest {
             facts.contains(Fact.OUTSIDE)
                 ? "https://elsewhere.example.org/a.xml"
                 : SERVER + "/a.xml",
-            facts.contains(Fact.NO_SECRET) ? null : "nutzer:geheim",
-            false);
+            facts.contains(Fact.NO_SECRET) ? null : "nutzer:geheim");
     rows.put(library.getId(), library);
     if (facts.contains(Fact.TYPE_LOCK)) {
       policyOf(type).lockedSince(NOW, NOW);
@@ -760,16 +754,7 @@ class SourceBlocksTest {
       ConnectionProfile profile = new ConnectionProfile(type, NOW);
       profile.replace(
           new ConnectionProfileValues(
-              "Feeds",
-              SERVER,
-              method,
-              ConnectionOwnership.LIBRARY,
-              null,
-              null,
-              null,
-              null,
-              null,
-              false),
+              "Feeds", SERVER, method, ConnectionOwnership.LIBRARY, null, null, null, null, null),
           null,
           NOW);
       if (facts.contains(Fact.PROFILE_LOCK)) {

@@ -263,8 +263,7 @@ public abstract class RunSecretContract {
                 type(),
                 settings.sourcePath(),
                 settings.sourceUrl(),
-                null,
-                settings.sourceInsecureSsl())
+                null)
             : KnowledgeLibrary.ownedByUser(
                 UUID.randomUUID(),
                 "Ablage",
@@ -273,8 +272,7 @@ public abstract class RunSecretContract {
                 type(),
                 settings.sourcePath(),
                 settings.sourceUrl(),
-                settings.sourceCredentials(),
-                settings.sourceInsecureSsl());
+                settings.sourceCredentials());
     if (settings.connectorSettings() != null) {
       library.updateSourceSettings(settings.connectorSettings().toJson());
     }

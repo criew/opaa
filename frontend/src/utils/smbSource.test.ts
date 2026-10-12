@@ -59,7 +59,7 @@ describe('smbSource', () => {
     expect(smbCredentialsOf(values({ password: '' }))).toBeUndefined()
   })
 
-  it('sends address, credentials and folders, never a certificate switch', () => {
+  it('sends address, credentials and folders', () => {
     const configuration = sourceRegistration('SMB')?.configuration
     expect(configuration).toBeTruthy()
     expect(
@@ -67,7 +67,6 @@ describe('smbSource', () => {
     ).toEqual({
       sourceUrl: 'smb://dateiserver/Daten',
       sourceCredentials: 'RATHAUS\\svc-opaa:geheim',
-      sourceInsecureSsl: false,
       sourceSettings: { folders: ['/'] },
     })
     expect(configuration!.nameFromSource(values({ folders: '/Bauamt/Akten' }))).toBe('Akten')

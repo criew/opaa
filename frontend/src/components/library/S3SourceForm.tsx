@@ -109,8 +109,7 @@ export default function S3SourceForm({
   const [bucketOptions, setBucketOptions] = useState<string[]>([])
   const [bucketsMessage, setBucketsMessage] = useState<Message | null>(null)
   const [advancedOpen, setAdvancedOpen] = useState(
-    () =>
-      values.includePatterns !== '' || values.excludePatterns !== '' || values.sourceInsecureSsl,
+    () => values.includePatterns !== '' || values.excludePatterns !== '',
   )
   // two counters: the listing only depends on connection and key, so editing a scope or a
   // pattern must not discard a bucket listing that is still in flight
@@ -200,7 +199,6 @@ export default function S3SourceForm({
   function connectionPayload() {
     return {
       sourceUrl: values.sourceUrl.trim(),
-      sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: s3CredentialsOf(values),
     }
   }
@@ -626,29 +624,6 @@ export default function S3SourceForm({
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
               />
             </Box>
-            <FormControlLabel
-              sx={{ alignSelf: 'end' }}
-              control={
-                <Switch
-                  checked={values.sourceInsecureSsl}
-                  disabled={connection.isFixed('sourceInsecureSsl')}
-                  onChange={(e) => changeConnection({ sourceInsecureSsl: e.target.checked })}
-                />
-              }
-              label="TLS-Prüfung aussetzen"
-            />
-            {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
-              <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
-                {connection.transportHint}
-              </Typography>
-            )}
-            {values.sourceInsecureSsl && (
-              <Alert severity="warning" sx={{ gridColumn: '1 / -1' }}>
-                Ohne Zertifikatsprüfung kann sich jeder Server als der Objektspeicher ausgeben und
-                den Schlüssel mitlesen. Nur für ein bekanntes, selbstsigniertes Zertifikat im
-                Hausnetz - als letzte Option.
-              </Alert>
-            )}
           </Box>
         </AccordionDetails>
       </Accordion>

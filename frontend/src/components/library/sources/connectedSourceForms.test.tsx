@@ -235,7 +235,7 @@ describe('source forms under a connection profile', () => {
     },
   )
 
-  it('shows the certificate check of the profile read-only and tests without it', async () => {
+  it('offers no way to skip the certificate check and tests through the profile', async () => {
     const user = userEvent.setup()
     renderWithProviders(
       <Connected
@@ -246,18 +246,16 @@ describe('source forms under a connection profile', () => {
           serverUrl: 'https://intranet.example',
           authMethod: 'NONE',
           defaults: {},
-          insecureSsl: true,
         }}
       />,
     )
 
-    expect(screen.getByText('Die Zertifikatsprüfung gibt der Zugang „Intranet“ vor.')).toBeVisible()
-    expect(screen.getByRole('switch', { name: 'Zertifikatsprüfung aussetzen' })).toBeDisabled()
+    expect(screen.queryByRole('switch', { name: /Zertifikatsprüfung/ })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
 
     await waitFor(() => expect(mockTestLibrarySource).toHaveBeenCalledTimes(1))
     const [request] = mockTestLibrarySource.mock.calls[0]
-    expect(request.sourceInsecureSsl).toBe(false)
+    expect(request).not.toHaveProperty('sourceInsecureSsl')
     expect(request.connectionProfileId).toBe('profile-intranet')
   })
 
@@ -288,7 +286,7 @@ describe('source forms under a connection profile', () => {
     await waitFor(() => expect(mockBrowseSource).toHaveBeenCalledTimes(1))
     const [test] = mockTestLibrarySource.mock.calls[0]
     expect(test.sourceSettings).toEqual({})
-    expect(test.sourceInsecureSsl).toBe(false)
+    expect(test).not.toHaveProperty('sourceInsecureSsl')
     const [, listing] = mockBrowseSource.mock.calls[0]
     expect(listing.query).toEqual({})
     expect(listing.connectionProfileId).toBe('profile-wiki')

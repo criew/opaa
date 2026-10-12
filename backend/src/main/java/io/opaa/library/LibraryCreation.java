@@ -31,7 +31,6 @@ public record LibraryCreation(
     String sourcePath,
     URI sourceUrl,
     String sourceCredentials,
-    Boolean sourceInsecureSsl,
     ConnectorData sourceSettings,
     LibraryScheduleUpdate schedule,
     UUID connectionProfileId,
@@ -53,7 +52,6 @@ public record LibraryCreation(
       String sourcePath,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       ConnectorData sourceSettings,
       LibraryScheduleUpdate schedule,
       UUID connectionProfileId) {
@@ -66,7 +64,6 @@ public record LibraryCreation(
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         sourceSettings,
         schedule,
         connectionProfileId,
@@ -83,7 +80,6 @@ public record LibraryCreation(
       String sourcePath,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       ConnectorData sourceSettings,
       LibraryScheduleUpdate schedule) {
     this(
@@ -95,7 +91,6 @@ public record LibraryCreation(
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         sourceSettings,
         schedule,
         null);
@@ -112,7 +107,6 @@ public record LibraryCreation(
         sourcePath,
         url,
         sourceCredentials,
-        sourceInsecureSsl,
         sourceSettings,
         schedule,
         connectionProfileId,

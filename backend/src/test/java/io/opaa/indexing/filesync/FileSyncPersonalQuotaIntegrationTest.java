@@ -108,8 +108,7 @@ class FileSyncPersonalQuotaIntegrationTest {
                           TYPE,
                           null,
                           "https://ablage.example",
-                          null,
-                          false));
+                          null));
               shellService.registerCreated(
                   stored, ownerId, Map.of("name", stored.getName(), "sourceType", TYPE.toString()));
               return stored;

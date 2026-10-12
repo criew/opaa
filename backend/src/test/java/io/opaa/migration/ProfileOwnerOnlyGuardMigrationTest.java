@@ -31,10 +31,10 @@ class ProfileOwnerOnlyGuardMigrationTest extends AbstractBaselineTest {
     profile = UUID.randomUUID();
     execute(
         "INSERT INTO connection_profiles (id, name, source_type, server_url, auth_method,"
-            + " ownership, source_insecure_ssl, created_at, updated_at, version) VALUES ('"
+            + " ownership, created_at, updated_at, version) VALUES ('"
             + profile
             + "', 'Zugang Personen', 'PERSON_PROBE', 'https://person.example.org',"
-            + " 'PERSONAL_SECRET', 'BOTH', false, now(), now(), 0)");
+            + " 'PERSONAL_SECRET', 'BOTH', now(), now(), 0)");
     execute(
         "INSERT INTO connected_accounts (id, organization_id, user_id, profile_id, state,"
             + " connected_at, version) VALUES (gen_random_uuid(), '"

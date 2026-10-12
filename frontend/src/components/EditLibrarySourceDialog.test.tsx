@@ -63,7 +63,6 @@ const filesystemLibrary = {
   sourceType: 'FILESYSTEM' as const,
   sourcePath: '/data/dokumente',
   sourceUrl: null,
-  sourceInsecureSsl: null,
 }
 
 const httpDirectoryLibrary = {
@@ -72,7 +71,6 @@ const httpDirectoryLibrary = {
   sourceType: 'HTTP_DIRECTORY' as const,
   sourcePath: null,
   sourceUrl: 'https://old.example.com/documents/',
-  sourceInsecureSsl: true,
   sourceCredentialsSet: true,
 }
 
@@ -163,7 +161,6 @@ describe('EditLibrarySourceDialog', () => {
         sourcePath: '/data/neu',
         sourceUrl: undefined,
         sourceCredentials: undefined,
-        sourceInsecureSsl: false,
         sourceSettings: { excludePatterns: [] },
       } satisfies LibraryUpdateRequest)
     })
@@ -198,7 +195,7 @@ describe('EditLibrarySourceDialog', () => {
     })
   })
 
-  it('prefills URL and SSL switch for an HTTP_DIRECTORY library, leaving credentials blank', async () => {
+  it('prefills the URL for an HTTP_DIRECTORY library, leaving credentials blank', async () => {
     renderWithProviders(
       <EditLibrarySourceDialog
         open
@@ -211,7 +208,7 @@ describe('EditLibrarySourceDialog', () => {
     expect(await screen.findByLabelText(/adresse \(url\)/i)).toHaveValue(
       'https://old.example.com/documents/',
     )
-    expect(screen.getByRole('switch', { name: /zertifikatsprüfung aussetzen/i })).toBeChecked()
+    expect(screen.queryByRole('switch', { name: /zertifikatsprüfung/i })).not.toBeInTheDocument()
     expect(screen.getByLabelText(/neue zugangsdaten/i)).toHaveValue('')
   })
 
@@ -526,7 +523,6 @@ describe('EditLibrarySourceDialog', () => {
       sourceType: 'S3' as const,
       sourcePath: null,
       sourceUrl: 'https://minio.intern.example:9000',
-      sourceInsecureSsl: false,
       sourceCredentialsSet: true,
       sourceSettings: {
         region: 'us-east-1',
@@ -613,7 +609,6 @@ describe('EditLibrarySourceDialog', () => {
       sourceType: 'CONFLUENCE' as const,
       sourcePath: null,
       sourceUrl: 'https://wiki.behoerde.example/confluence',
-      sourceInsecureSsl: false,
       sourceCredentialsSet: true,
       sourceSettings: { edition: 'DATA_CENTER' as const, spaces: [{ key: 'BAU', name: 'Bauamt' }] },
     }
@@ -755,24 +750,6 @@ describe('EditLibrarySourceDialog', () => {
       ).toBeInTheDocument()
       expect(mockUpdateLibrary).not.toHaveBeenCalled()
     }, 15000)
-
-    it('keeps the curated selection when the TLS switch changes and only withdraws the verification', async () => {
-      const user = userEvent.setup()
-      renderWithProviders(
-        <EditLibrarySourceDialog
-          open
-          onClose={() => {}}
-          libraryId="lib-wiki"
-          library={confluenceLibrary}
-        />,
-      )
-      await screen.findByLabelText(/Spaces suchen und auswählen/)
-
-      await user.click(screen.getByRole('switch', { name: /Zertifikatsprüfung aussetzen/ }))
-
-      expect(screen.queryByLabelText(/Spaces suchen und auswählen/)).not.toBeInTheDocument()
-      expect(screen.getByText(/Die bisherige Auswahl \(BAU\) bleibt bestehen/)).toBeInTheDocument()
-    }, 15000)
   })
 
   describe('library on a connection profile (#2162)', () => {
@@ -782,7 +759,6 @@ describe('EditLibrarySourceDialog', () => {
       serverUrl: 'https://s3.rz.example',
       authMethod: 'PERSONAL_SECRET' as const,
       connectorDefaults: { region: 'eu-rz-1', pathStyle: true },
-      sourceInsecureSsl: true,
     }
     const profiledS3Library = {
       name: 'Protokolle',
@@ -790,7 +766,6 @@ describe('EditLibrarySourceDialog', () => {
       sourceType: 'S3' as const,
       sourcePath: null,
       sourceUrl: 'https://s3.rz.example',
-      sourceInsecureSsl: false,
       sourceCredentialsSet: true,
       sourceSettings: { scopes: [{ bucket: 'protokolle', prefix: null }] },
       connectionProfile: profileRef,
@@ -820,7 +795,6 @@ describe('EditLibrarySourceDialog', () => {
       const region = await screen.findByLabelText(/^Region/)
       expect(region).toHaveValue('eu-rz-1')
       expect(region).toHaveAttribute('readonly')
-      expect(screen.getByRole('switch', { name: /TLS-Prüfung aussetzen/ })).toBeDisabled()
       await user.click(screen.getByRole('button', { name: 'Speichern' }))
 
       await waitFor(() => expect(mockUpdateLibrary).toHaveBeenCalledTimes(1))
@@ -829,7 +803,7 @@ describe('EditLibrarySourceDialog', () => {
       expect(request.sourceSettings).not.toHaveProperty('region')
       expect(request.sourceSettings).not.toHaveProperty('pathStyle')
       expect(request.sourceSettings).toMatchObject({ scopes: [{ bucket: 'protokolle' }] })
-      expect(request.sourceInsecureSsl).toBe(false)
+      expect(request).not.toHaveProperty('sourceInsecureSsl')
       expect(asked).toHaveLength(0)
       server.events.removeAllListeners()
     }, 15000)
@@ -847,7 +821,6 @@ describe('EditLibrarySourceDialog', () => {
             sourceType: 'SHAREPOINT',
             sourcePath: null,
             sourceUrl: 'https://graph.microsoft.com',
-            sourceInsecureSsl: false,
             sourceCredentialsSet: false,
             sourceSettings: {
               libraries: [
@@ -866,7 +839,6 @@ describe('EditLibrarySourceDialog', () => {
               serverUrl: 'https://graph.microsoft.com',
               authMethod: 'CLIENT_CREDENTIALS',
               connectorDefaults: null,
-              sourceInsecureSsl: false,
             },
           }}
         />,

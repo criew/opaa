@@ -132,7 +132,6 @@ public class S3UploadedOriginalStore implements UploadedOriginalStore, AutoClose
                 AwsBasicCredentials.create(properties.accessKey(), properties.secretKey()),
                 null,
                 0,
-                false,
                 requestTimeout,
                 maxRetries,
                 retryBackoff),

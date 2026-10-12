@@ -634,7 +634,6 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: 'Rechtsquellen Soziales (neu)',
         description: 'Aktualisierte Beschreibung',
-        sourceInsecureSsl: null,
       } satisfies LibraryUpdateRequest)
     })
   }, 15000)
@@ -1502,7 +1501,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByTestId('confluence-incomplete-listing-warning')).not.toBeInTheDocument()
   })
 
-  // #507: the backend now only serves sourcePath/sourceUrl/sourceInsecureSsl/
+  // #507: the backend now only serves sourcePath/sourceUrl/
   // sourceCredentialsSet to a caller with at least MANAGER - a VIEWER's library object simply
   // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to
   // prove the frontend itself withholds the display rather than merely reflecting an already
@@ -1554,7 +1553,6 @@ describe('LibraryDetailPage', () => {
         sourcePath: '/data/umgezogen',
         sourceUrl: undefined,
         sourceCredentials: undefined,
-        sourceInsecureSsl: false,
         sourceSettings: { excludePatterns: [] },
       } satisfies LibraryUpdateRequest)
     })
@@ -1620,7 +1618,6 @@ describe('LibraryDetailPage', () => {
       expect(mockUpdateLibrary).toHaveBeenCalledWith('library-team', {
         name: ownerLibrary.name,
         description: ownerLibrary.description,
-        sourceInsecureSsl: null,
         schedule: {
           frequency: 'HOURLY',
           hour: null,
@@ -3826,7 +3823,6 @@ describe('LibraryDetailPage', () => {
         detailsOf(connectorLibrary, {
           sourceType: 'HTTP_DIRECTORY',
           sourceUrl: 'https://files.example.com/dokumente/',
-          sourceInsecureSsl: false,
         }),
       )
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })

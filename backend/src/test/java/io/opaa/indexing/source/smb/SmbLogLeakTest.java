@@ -83,8 +83,7 @@ class SmbLogLeakTest {
     texts.add(
         connector
             .testConnection(
-                new SourceSettings(null, samba.url("fehlt"), samba.credentials(), false, null),
-                null)
+                new SourceSettings(null, samba.url("fehlt"), samba.credentials(), null), null)
             .message());
     try {
       connector.browse(new SourceBrowser.Query(settings(wrong), null));

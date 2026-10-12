@@ -393,13 +393,10 @@ public class SmbSourceConnector implements SourceConnector, SourceBrowser, Origi
         address, credentials, targetAddressValidator, RequestBudget.unbounded(), PROBE_TIMEOUT);
   }
 
-  /** The HTTP-only fields have no meaning for a share and are refused rather than ignored. */
+  /** A path has no meaning for a share and is refused rather than ignored. */
   private static void requireNoHttpOptions(SourceSettings settings) {
     if (blankToNull(settings.sourcePath()) != null) {
       throw new ValidationException("sourcePath ist für sourceType SMB nicht zulässig");
-    }
-    if (settings.sourceInsecureSsl()) {
-      throw new ValidationException("sourceInsecureSsl ist für sourceType SMB nicht zulässig");
     }
   }
 

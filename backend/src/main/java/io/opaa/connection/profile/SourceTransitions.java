@@ -204,9 +204,6 @@ public class SourceTransitions {
     if (!Objects.equals(before.sourceUrl(), after.sourceUrl())) {
       changed.add("sourceUrl");
     }
-    if (before.sourceInsecureSsl() != after.sourceInsecureSsl()) {
-      changed.add("sourceInsecureSsl");
-    }
     if (move.discardsSecret()) {
       changed.add("sourceCredentials");
     }
@@ -258,19 +255,17 @@ public class SourceTransitions {
       ConnectorData keptDefaults,
       boolean unchecked) {
 
-    /** Whether address, transport or connector settings change; the secret does not count. */
+    /** Whether address or connector settings change; the secret does not count. */
     public boolean changesConfiguration() {
       return !before.withoutCredentials().equals(after.withoutCredentials());
     }
 
     /**
-     * Whether the connector checks the connection anew: address or transport change, and the
-     * library still has what it signs in with. Otherwise it checks its settings only.
+     * Whether the connector checks the connection anew: the address changes, and the library still
+     * has what it signs in with. Otherwise it checks its settings only.
      */
     boolean replacesConnection() {
-      boolean connectionChanged =
-          !Objects.equals(before.sourceUrl(), after.sourceUrl())
-              || before.sourceInsecureSsl() != after.sourceInsecureSsl();
+      boolean connectionChanged = !Objects.equals(before.sourceUrl(), after.sourceUrl());
       return connectionChanged && (after.sourceCredentials() != null || !takesSecret);
     }
   }

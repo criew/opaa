@@ -54,7 +54,7 @@ final class DriveApiFactory {
         URI.create(settings.sourceUrl()),
         token,
         renewedAfterRejection,
-        SourceHttpClientFactory.buildHttpClient(false),
+        SourceHttpClientFactory.buildHttpClient(),
         targetAddressValidator,
         properties.requestTimeout(),
         properties.downloadTimeout(),

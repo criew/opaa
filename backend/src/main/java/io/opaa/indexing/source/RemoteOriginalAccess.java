@@ -56,7 +56,7 @@ public class RemoteOriginalAccess implements OriginalAccess {
     HttpClient httpClient = null;
     try {
       BasicCredentials config = BasicCredentials.parse(settings.sourceCredentials());
-      httpClient = SourceHttpClientFactory.buildHttpClient(settings.sourceInsecureSsl());
+      httpClient = SourceHttpClientFactory.buildHttpClient();
       String authHeader =
           SourceHttpClientFactory.buildAuthHeader(config.username(), config.password());
 

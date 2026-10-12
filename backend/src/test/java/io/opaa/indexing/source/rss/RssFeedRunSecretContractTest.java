@@ -179,11 +179,7 @@ class RssFeedRunSecretContractTest extends RunSecretContract {
   @Override
   protected SourceSettings settings() {
     return new SourceSettings(
-        null,
-        "http://127.0.0.1:" + server.getAddress().getPort() + "/feed.xml",
-        secret,
-        false,
-        null);
+        null, "http://127.0.0.1:" + server.getAddress().getPort() + "/feed.xml", secret, null);
   }
 
   @Override

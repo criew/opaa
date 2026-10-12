@@ -126,8 +126,7 @@ public class ConfluenceSourceConnector
 
   /**
    * The edition must be the instance's (Entscheidung 2): after the static checks one
-   * credential-free probe with the effective TLS switch, so the invariant never depends on what the
-   * client sent.
+   * credential-free probe, so the invariant never depends on what the client sent.
    */
   @Override
   public SourceSettings validate(SourceSettings requested) {
@@ -138,7 +137,7 @@ public class ConfluenceSourceConnector
     if (spaces.isEmpty()) {
       throw new ValidationException(SPACES_REQUIRED);
     }
-    connectionService.requireEdition(normalizedUrl, requested.sourceInsecureSsl(), own.edition());
+    connectionService.requireEdition(normalizedUrl, own.edition());
     return requested
         .withSourceUrl(normalizedUrl)
         .withConnectorSettings(
@@ -365,7 +364,6 @@ public class ConfluenceSourceConnector
           connectionService.probe(
               settings.sourceUrl(),
               blankToNull(settings.sourceCredentials()),
-              settings.sourceInsecureSsl(),
               ConfluenceSourceSettings.read(settings.connectorSettings()).edition());
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -400,8 +398,7 @@ public class ConfluenceSourceConnector
           connectionService.listSpaces(
               settings.sourceUrl(),
               ConfluenceSourceSettings.read(settings.connectorSettings()).edition(),
-              credentials,
-              settings.sourceInsecureSsl());
+              credentials);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new ValidationException("Die Space-Auflistung wurde unterbrochen.");

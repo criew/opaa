@@ -95,8 +95,7 @@ class IndexingJobRecoveryIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 documentDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     ownLibraryIds.add(library.getId());
     grantRepository.save(
         AssetGrant.forUser(

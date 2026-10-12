@@ -69,8 +69,7 @@ Das Formular fragt weder Adresse noch Zugangsdaten ab. „Eigene Adresse" gibt e
 
 Unter „Umfang" stehen die Ordner für alle Leseberechtigten, beim Team-Bereich mit „im Team-Bereich".
 Den eigenen Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". Eine geänderte Ordnerliste oder
-ein umgeschalteter Team-Bereich lassen den nächsten Lauf vollständig abgleichen. „Zertifikatsprüfung
-aussetzen" gibt es nicht.
+ein umgeschalteter Team-Bereich lassen den nächsten Lauf vollständig abgleichen.
 
 ## 4. Betriebsarten und Änderungserkennung
 

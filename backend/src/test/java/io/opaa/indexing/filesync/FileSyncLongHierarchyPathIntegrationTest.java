@@ -96,8 +96,7 @@ class FileSyncLongHierarchyPathIntegrationTest {
                 TYPE,
                 null,
                 "https://ablage.example",
-                null,
-                false));
+                null));
   }
 
   @AfterEach

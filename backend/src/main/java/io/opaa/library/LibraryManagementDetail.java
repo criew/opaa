@@ -30,7 +30,6 @@ import io.opaa.indexing.source.ConnectorData;
 public record LibraryManagementDetail(
     String sourcePath,
     String sourceUrl,
-    Boolean sourceInsecureSsl,
     Boolean sourceCredentialsSet,
     Boolean pushSecretSet,
     ConnectorData connectorSettings,
@@ -44,5 +43,5 @@ public record LibraryManagementDetail(
 
   public static final LibraryManagementDetail EMPTY =
       new LibraryManagementDetail(
-          null, null, null, null, null, null, null, null, null, null, null, null, null);
+          null, null, null, null, null, null, null, null, null, null, null, null);
 }

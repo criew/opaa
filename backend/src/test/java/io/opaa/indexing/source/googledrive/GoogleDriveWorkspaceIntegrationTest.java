@@ -175,11 +175,7 @@ class GoogleDriveWorkspaceIntegrationTest {
 
   private SourceSettings settings() {
     return new SourceSettings(
-        null,
-        GoogleDriveSourceConnector.API_BASE.toString(),
-        token,
-        false,
-        driveSettings().toData());
+        null, GoogleDriveSourceConnector.API_BASE.toString(), token, driveSettings().toData());
   }
 
   private static GoogleDriveSettings driveSettings() {

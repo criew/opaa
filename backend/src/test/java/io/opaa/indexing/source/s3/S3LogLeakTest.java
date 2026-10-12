@@ -124,8 +124,7 @@ class S3LogLeakTest {
             URI.create(server.endpoint()),
             "us-east-1",
             true,
-            new S3Credentials(ACCESS_KEY, SECRET_KEY, SESSION_TOKEN),
-            false);
+            new S3Credentials(ACCESS_KEY, SECRET_KEY, SESSION_TOKEN));
 
     try (S3ObjectStore store = factory.create(connection, List.of(S3Scope.of("docs", "")))) {
       store.listObjects(S3Scope.of("docs", ""), null);

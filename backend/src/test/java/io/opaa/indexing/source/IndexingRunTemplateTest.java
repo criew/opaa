@@ -84,8 +84,7 @@ class IndexingRunTemplateTest {
           SourceTypes.FILESYSTEM,
           "/srv/dokumente",
           null,
-          null,
-          false);
+          null);
 
   private static SourceIndexingExecutor executor(
       SourceType type, Map<IndexingRunMode, VanishedDocumentPolicy> modes) {
@@ -126,7 +125,7 @@ class IndexingRunTemplateTest {
     MutableClock clock = new MutableClock(Instant.parse("2026-10-04T12:00:00Z"));
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings(null, "https://quelle.example", "alt", false, null));
+        .thenReturn(new SourceSettings(null, "https://quelle.example", "alt", null));
     when(resolver.currentSecret(library))
         .thenReturn(Secret.personal("erstes"), Secret.personal("erneuert"));
     AtomicReference<SourceSettings> settings = new AtomicReference<>();
@@ -317,7 +316,7 @@ class IndexingRunTemplateTest {
   void aBlockDuringTheRunFailsTheJobWithItsNotice() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings("/srv/dokumente", null, null, false, null));
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null));
     when(resolver.currentSecret(library))
         .thenThrow(
             new SourceConnectionBlockedException(
@@ -349,7 +348,7 @@ class IndexingRunTemplateTest {
   void rejectedCredentialsFailTheJobWithTheSourcesMessageAndTellThePort() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings("/srv/dokumente", null, null, false, null));
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null));
 
     templateWith(resolver)
         .run(
@@ -546,7 +545,7 @@ class IndexingRunTemplateTest {
   }
 
   private static SourceSettings fileSettings(String path) {
-    return new SourceSettings(path, null, null, false, null);
+    return new SourceSettings(path, null, null, null);
   }
 
   @Test

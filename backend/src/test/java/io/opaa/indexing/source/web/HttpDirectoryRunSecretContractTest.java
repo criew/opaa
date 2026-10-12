@@ -134,7 +134,7 @@ class HttpDirectoryRunSecretContractTest extends RunSecretContract {
   @Override
   protected SourceSettings settings() {
     return new SourceSettings(
-        null, "http://127.0.0.1:" + server.getAddress().getPort() + "/files/", secret, false, null);
+        null, "http://127.0.0.1:" + server.getAddress().getPort() + "/files/", secret, null);
   }
 
   @Override

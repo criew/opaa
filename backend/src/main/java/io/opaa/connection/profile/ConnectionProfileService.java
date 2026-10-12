@@ -748,10 +748,6 @@ public class ConnectionProfileService {
     }
     ProfileEndpoints endpoints = endpointsOf(signIn, values.endpoints());
     ConnectorData settings = declaration.defaults().read(values.connectorSettings());
-    if (values.sourceInsecureSsl() && !reachedOverHttp(serverUrl)) {
-      throw new ValidationException(
-          "Die Zertifikatsprüfung gilt nur für eine Server-Adresse mit http:// oder https://");
-    }
     return new ConnectionProfileValues(
         name,
         serverUrl,
@@ -762,7 +758,6 @@ public class ConnectionProfileService {
         tenant,
         scopes,
         settings,
-        values.sourceInsecureSsl(),
         endpoints);
   }
 
@@ -821,13 +816,6 @@ public class ConnectionProfileService {
     return trimmed;
   }
 
-  /**
-   * Whether the normalised {@code serverUrl} is reached over HTTP, where the TLS switch applies.
-   */
-  private static boolean reachedOverHttp(String serverUrl) {
-    return serverUrl.startsWith("https://") || serverUrl.startsWith("http://");
-  }
-
   private static void requireSecretFits(ConnectionAuthMethod method, String secret) {
     if (blankToNull(secret) != null && !method.usesAppRegistration()) {
       throw new ValidationException(
@@ -854,7 +842,6 @@ public class ConnectionProfileService {
     state.put("tenantSet", profile.getTenant() != null);
     state.put("scopesSet", profile.getScopes() != null);
     state.put("connectorSettingsSet", profile.getConnectorSettings() != null);
-    state.put("sourceInsecureSsl", profile.isSourceInsecureSsl());
     ProfileEndpoints endpoints = profile.getEndpoints();
     if (!endpoints.equals(ProfileEndpoints.NONE)) {
       state.put("authorizationEndpoint", Objects.toString(endpoints.authorization(), ""));

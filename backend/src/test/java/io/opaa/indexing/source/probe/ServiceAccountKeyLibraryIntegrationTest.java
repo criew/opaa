@@ -119,9 +119,10 @@ class ServiceAccountKeyLibraryIntegrationTest {
                 as(put("/api/v1/libraries/" + libraryId))
                     .content(
                         """
-                        {"name": "Dienstkonto", "sourceInsecureSsl": true,
+                        {"name": "Dienstkonto", "sourceUrl": "%s",
                          "sourceSettings": {"subject": "fach-b@example.org"}}
-                        """))
+                        """
+                            .formatted(ProbeKeySourceConnector.ADDRESS)))
             .andExpect(status().isBadRequest())
             .andReturn()
             .getResponse()

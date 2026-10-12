@@ -93,8 +93,7 @@ class PrivateLibraryReleaseCountTest {
                     PersonProbeSourceConnector.TYPE,
                     null,
                     "https://person.example.org/privat",
-                    null,
-                    false))
+                    null))
         .toList();
   }
 }

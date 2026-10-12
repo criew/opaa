@@ -53,8 +53,7 @@ class S3OriginalAccessIntegrationTest {
             SourceTypes.S3,
             null,
             endpoint,
-            credentials.accessKey() + ":" + credentials.secretKey(),
-            false);
+            credentials.accessKey() + ":" + credentials.secretKey());
     S3TestSettings.configure(
         library, new S3SourceSettings(S3TestFixture.REGION, true, List.of(scopes), null, null));
     return library;

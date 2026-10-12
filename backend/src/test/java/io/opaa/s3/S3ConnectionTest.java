@@ -44,7 +44,7 @@ class S3ConnectionTest {
   @Test
   void defaultsTheRegionAndNeverPrintsTheCredentials() {
     S3Connection connection =
-        new S3Connection(URI.create("https://minio.intern:9000"), " ", true, CREDENTIALS, false);
+        new S3Connection(URI.create("https://minio.intern:9000"), " ", true, CREDENTIALS);
 
     assertThat(connection.region()).isEqualTo(S3Connection.DEFAULT_REGION);
     assertThat(connection.toString()).doesNotContain("geheim").contains("minio.intern:9000");
@@ -53,9 +53,7 @@ class S3ConnectionTest {
   @Test
   void requiresCredentials() {
     assertThatThrownBy(
-            () ->
-                new S3Connection(
-                    URI.create("https://minio.intern"), "us-east-1", true, null, false))
+            () -> new S3Connection(URI.create("https://minio.intern"), "us-east-1", true, null))
         .isInstanceOf(IllegalArgumentException.class);
   }
 }

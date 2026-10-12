@@ -92,7 +92,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
             TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> service.crawl(baseUrl + "/", null, null, false))
+            () -> service.crawl(baseUrl + "/", (String) null, null))
         .isInstanceOf(IOException.class)
         .hasMessageContaining("Verzeichnisseite überschreitet die zulässige Größe");
   }
@@ -112,7 +112,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
         new AutoindexCrawlerService(
             TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
 
-    AutoindexCrawlerService.CrawlResult result = service.crawl(baseUrl + "/", null, null, false);
+    AutoindexCrawlerService.CrawlResult result = service.crawl(baseUrl + "/", (String) null, null);
 
     assertThat(result.incomplete()).isTrue();
     assertThat(result.entries())
@@ -142,7 +142,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
-            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/a/", null, null, false));
+            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/a/", (String) null, null));
 
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
@@ -174,7 +174,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
-            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/", null, null, false));
+            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/", (String) null, null));
 
     // One file discovered per visited directory level (0..maxDepth), then truncated.
     assertThat(result.entries()).hasSize(maxDepth + 1);
@@ -226,7 +226,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
-            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/", null, null, false));
+            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/", (String) null, null));
 
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)
@@ -260,7 +260,7 @@ class AutoindexCrawlerServiceCrawlLimitsTest {
 
     AutoindexCrawlerService.CrawlResult result =
         assertTimeoutPreemptively(
-            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/", null, null, false));
+            Duration.ofSeconds(10), () -> service.crawl(baseUrl + "/", (String) null, null));
 
     assertThat(result.entries())
         .extracting(AutoindexCrawlerService.CrawledFileEntry::name)

@@ -25,15 +25,11 @@ public record LibraryProfileState(UUID id, String name, boolean removed, Frame f
             ? new Frame(
                 profile.getServerUrl(),
                 profile.getAuthMethod(),
-                ConnectorData.fromJson(profile.getConnectorSettings()),
-                profile.isSourceInsecureSsl())
+                ConnectorData.fromJson(profile.getConnectorSettings()))
             : null);
   }
 
   /** What the profile sets for every library on it, as its managers need it to edit the source. */
   public record Frame(
-      String serverUrl,
-      ConnectionAuthMethod authMethod,
-      ConnectorData connectorDefaults,
-      boolean sourceInsecureSsl) {}
+      String serverUrl, ConnectionAuthMethod authMethod, ConnectorData connectorDefaults) {}
 }

@@ -135,8 +135,7 @@ class GoogleDriveServiceAccountRejectionTest {
             GoogleDriveSourceConnector.TYPE,
             null,
             drive.base().toString(),
-            ServiceAccountKey.parse(new ServiceAccountKeyFixture().json()).storedForm(),
-            false);
+            ServiceAccountKey.parse(new ServiceAccountKeyFixture().json()).storedForm());
     library.updateSourceSettings(
         ConnectorData.of(Map.of("scopes", List.of(Map.of("drive", "drive0")))).toJson());
     return library;
