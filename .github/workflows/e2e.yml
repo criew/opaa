@@ -84,7 +84,7 @@ jobs:
       # ships both, but not pinned without this step; matches ci.yml's own setup-python use).
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.14'
+          python-version: '3.15'
 
       - name: Install E2E dependencies
         working-directory: e2e
