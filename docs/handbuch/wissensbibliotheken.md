@@ -396,7 +396,7 @@ Hinweis den Verwaltenden die Aktion an, die ihn aufhebt.
 | „Nicht verbunden" bzw. „Abgelaufen: Die Verbindung der Quelle …" | Die Quelle wurde noch nicht verbunden, getrennt, oder der Anbieter nimmt die Zustimmung nicht mehr an | Verwaltende der Bibliothek: Quelle neu verbinden |
 | „Die Adresse der Bibliothek liegt nicht unter …" | Die Adresse passt nicht mehr zum Zugang | Verwaltende der Bibliothek |
 | „Gesperrt – Inhalt wird nicht mehr aktualisiert" | Zugang oder Quellart ist gesperrt | Systemverwaltung |
-| „… ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene Adresse" | „[Nur über Zugänge](zugaenge.md#6-sperren-und-nur-über-zugänge)" ist eingeschaltet, und der Bestand wurde gesperrt | Verwaltende der Bibliothek: einem Zugang zuordnen |
+| „… ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene Adresse" | „[Nur über Zugänge](zugaenge.md#7-sperren-und-nur-über-zugänge)" ist eingeschaltet, und der Bestand wurde gesperrt | Verwaltende der Bibliothek: einem Zugang zuordnen |
 
 Einzelne Dokumente, die nicht aufgenommen wurden, nennt das Laufprotokoll mit Grund (Abschnitt 6.2).
 
