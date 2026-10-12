@@ -35,9 +35,78 @@ Ob eine Quellart Zugänge kennt, legt ihr Konnektor fest. Es gibt drei Fälle:
 
 Was für eine Quellart gilt, steht in ihrem Kapitel; die Übersicht der
 [Konnektoren](konnektoren/README.md) fasst es zusammen. Wo ein Zugang möglich ist, kann die
-Systemverwaltung ihn zur Pflicht machen: **„Nur über Zugänge"** (Abschnitt 6).
+Systemverwaltung ihn zur Pflicht machen: **„Nur über Zugänge"** (Abschnitt 7).
 
-## 3. Was ein Zugang festlegt
+## 3. Wie sich OPAA bei einer Quelle anmeldet
+
+Die Konnektoren melden sich auf vier wiederkehrende Arten an. Sie unterscheiden sich darin, wer das
+Geheimnis hält und wessen Rechte beim Anbieter gelten. Welchem Muster ein Konnektor folgt, steht am
+Anfang seines Kapitels. Gemeinsam ist allen: Geheimnisse liegen verschlüsselt, erscheinen in keiner
+Antwort und keinem Protokoll und gehen nur an die Adresse, für die sie eingetragen wurden.
+
+### 3.1 Eigene Zugangsdaten der Bibliothek
+
+Die Bibliothek trägt ein Token, ein Passwort oder einen Schlüssel eines **Dienstkontos** beim
+Anbieter, etwa bei Confluence, Nextcloud, einer Windows-Dateifreigabe oder einem S3-Speicher. Wer die
+Bibliothek verwaltet, trägt es ein. Über einen Zugang ändert sich nur, dass Adresse und Vorgaben vom
+Zugang kommen; das Geheimnis bleibt bei der Bibliothek („persönliches Geheimnis"). Manche Quellen,
+etwa ein öffentliches Webverzeichnis, brauchen gar keine Anmeldung.
+
+```mermaid
+flowchart LR
+    B[Wissens-<br/>bibliothek<br/>hält das<br/>Geheimnis] -.-> Z[Zugang:<br/>Adresse,<br/>Vorgaben]
+    B -->|Token,<br/>Passwort,<br/>Schlüssel| Q[Quelle beim<br/>Anbieter]
+    Q --> K[Dienstkonto<br/>mit Leserecht]
+```
+
+### 3.2 Der Zugang meldet sich selbst an
+
+Die Systemverwaltung hinterlegt am Zugang einen **Dienstkonto-Schlüssel** oder eine
+**App-Registrierung** mit Client-ID und Client-Secret, etwa für Google Drive oder SharePoint. OPAA
+holt damit beim Anbieter ein kurzlebiges Zugriffstoken; die Bibliothek trägt kein Geheimnis, nur
+ihre Auswahl. Was gelesen werden darf, legt der Anbieter fest (Freigaben an das Dienstkonto, an die
+App freigegebene Sites). Ist der Schlüssel abgelehnt, zeigen alle Bibliotheken des Zugangs
+„Abgelaufen", zuständig ist die Systemverwaltung.
+
+```mermaid
+flowchart LR
+    B[Wissens-<br/>bibliothek<br/>nur Auswahl] --> Z[Zugang:<br/>Schlüssel<br/>oder Secret]
+    Z -->|Anmeldung| T[Token-Dienst<br/>des Anbieters]
+    T -->|Zugriffstoken| A[Schnittstelle<br/>des Anbieters]
+```
+
+### 3.3 Zustimmung beim Anbieter für die Bibliothek
+
+Der Zugang trägt eine App-Registrierung; die Bibliothek bekommt ihr Recht aber erst durch eine
+**Zustimmung beim Anbieter** (OAuth), etwa bei Dropbox. Wer die Bibliothek anlegt, wählt „Quelle
+verbinden" und meldet sich beim Anbieter mit einem **Funktionskonto** an, nicht mit dem eigenen
+Konto. Die Zustimmung gehört danach der Bibliothek, nicht der Person; sie bleibt, wenn die Person
+ausscheidet. Trennen und „Alle Verbindungen trennen" ziehen sie auch beim Anbieter zurück.
+
+```mermaid
+flowchart LR
+    V[Verwaltende<br/>Person] -->|Quelle<br/>verbinden| A[Anbieter:<br/>Anmeldung als<br/>Funktions-<br/>konto]
+    A -->|Zustimmung| B[Wissens-<br/>bibliothek<br/>hält die<br/>Zustimmung]
+    Z[Zugang<br/>App-Regis-<br/>trierung] -.-> A
+    B -->|Zugriffstoken| S[Schnittstelle<br/>des Anbieters]
+```
+
+### 3.4 Verbundenes Konto einer Person
+
+Ein Zugang mit der Besitzart „Person" lässt jede freigegebene Person ihr **eigenes Konto**
+verbinden, etwa Nextcloud mit einem App-Passwort, unter **Einstellungen → Verbundene Konten**.
+Daraus speist sie eine [private Bibliothek](private-bibliotheken.md): Sie liest, was ihr Konto beim
+Anbieter sieht, und außer ihr liest sie niemand. Lehnt der Anbieter das Konto ab, gilt die
+Verbindung als abgelaufen, und die Person wird benachrichtigt.
+
+```mermaid
+flowchart LR
+    P[Person] -->|verbindet<br/>eigenes Konto| Z[Zugang:<br/>Besitzart<br/>Person]
+    Z --> B[Private<br/>Bibliothek]
+    B -->|Rechte der<br/>Person| Q[Quelle beim<br/>Anbieter]
+```
+
+## 4. Was ein Zugang festlegt
 
 | Angabe | Bedeutung |
 |---|---|
@@ -45,10 +114,11 @@ Systemverwaltung ihn zur Pflicht machen: **„Nur über Zugänge"** (Abschnitt 6
 | Server-Adresse | wo die Quelle liegt, sofern die Quellart eine braucht; die Adresse jeder Wissensbibliothek auf dem Zugang liegt darunter |
 | Anmeldeart | wie sich OPAA bei der Quelle anmeldet, je nach Quellart etwa ohne Anmeldung, mit Benutzername und Passwort oder Token, mit einer App-Registrierung oder über eine Zustimmung beim Anbieter (OAuth) |
 | Für wen er da ist | für geteilte Wissensbibliotheken, für persönliche Konten, aus denen private Bibliotheken entstehen, oder für beides (in der Oberfläche „Besitzart") |
+| Zertifikatsprüfung | ob sie ausgesetzt ist, für alle Wissensbibliotheken auf dem Zugang; nur bei einer Server-Adresse mit `http://` oder `https://` |
 | Vorgaben | Einstellungen, die der Zugang für alle Wissensbibliotheken darauf festlegt, damit sie niemand selbst eintragen muss — etwa die Confluence-Edition. Sie erscheinen dort nur lesbar |
 | Wer ihn nutzen darf | alle Konten oder bestimmte Gruppen und Personen. Ein neuer Zugang ist zunächst nur für die Systemverwaltung freigegeben, damit sie ihn prüfen kann, bevor andere ihn wählen |
 
-## 4. Einen Zugang einrichten
+## 5. Einen Zugang einrichten
 
 Zugänge pflegt die Systemverwaltung unter **Administration → Anbindungen → Zugänge**.
 
@@ -75,7 +145,7 @@ vor Ablauf eines Client-Secrets erhält die Systemverwaltung zusätzlich eine Be
 Zahlen über verbundene Konten von Personen zeigt OPAA nur gerundet: unterhalb der
 Mindestgruppengröße heißt es „weniger als N", damit sich nicht auf einzelne Personen schließen lässt.
 
-## 5. Einen Zugang pflegen
+## 6. Einen Zugang pflegen
 
 Wie eine Wissensbibliothek einen Zugang wählt oder später wechselt, beschreibt das Kapitel
 [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 3. Am Zugang selbst ändert die
@@ -96,7 +166,7 @@ viele es sind und ob Verbindungen neu hergestellt werden müssen. Verträgt eine
 Änderung nicht, wird nichts gespeichert. Private Bibliotheken halten keine Änderung auf: Sie werden
 dann vom Zugang gelöst, ruhen, und ihre Besitzerin wird benachrichtigt.
 
-## 6. Sperren und „Nur über Zugänge"
+## 7. Sperren und „Nur über Zugänge"
 
 Unter **Administration → Anbindungen** kann die Systemverwaltung zweierlei:
 
@@ -115,7 +185,7 @@ Sperren, Entsperren und das Umschalten stehen im Revisionsprotokoll.
 Kann eine Wissensbibliothek ihre Quelle nicht erreichen, nennt ihr Reiter „Quelle" den Grund und
 wer ihn beheben kann ([Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 6.4).
 
-## 7. Sicherheit und Nachweis
+## 8. Sicherheit und Nachweis
 
 - Client-Secrets, Schlüssel, Zugangsdaten und Token liegen verschlüsselt. Keine Antwort, kein
   Protokoll und kein Revisionseintrag enthält sie; angezeigt wird nur, ob eines hinterlegt ist.
@@ -126,7 +196,7 @@ wer ihn beheben kann ([Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 6
   Revisionsprotokoll. Das Verbindungsprotokoll hält fest, wann Konten und Quellen verbunden und
   getrennt wurden ([Berechtigungen](berechtigungen.md), Abschnitt 12).
 
-## 8. Konfiguration
+## 9. Konfiguration
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
