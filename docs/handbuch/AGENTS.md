@@ -15,6 +15,38 @@ nicht Entwickler; das Handbuch beschreibt den gebauten Ist-Stand.
   `konnektoren/README.md` und `formate/README.md`. Andere Kapitel nennen wenige Beispiele und
   verweisen dorthin, damit ein neuer Typ nur an einer Stelle nachzutragen ist.
 
+## Aufbau der Konnektor-Kapitel
+
+Jedes Kapitel unter `konnektoren/` hat dieselben Abschnitte in dieser Reihenfolge, nummeriert von 1
+an. Ein Abschnitt, der für den Konnektor nicht zutrifft, entfällt; die Nummern folgen lückenlos.
+
+1. **Was der Konnektor ist** — welches System, über welche Schnittstelle (mit Version, wo bekannt),
+   wie er sich anmeldet und ob ein Zugang nicht möglich, möglich oder Pflicht ist, was er liest und
+   was nicht, woran ein Dokument hängt (Identität, Beleg-Link, „Original öffnen") und dass Rechte
+   nicht übernommen werden. **Pflicht ist ein Verbindungsbild** als Mermaid mit höchstens sechs
+   Knoten (Wissensbibliothek → Zugang → Schnittstelle → System) und ein Satz, welchem Anmeldemuster
+   aus `zugaenge.md`, „Wie sich OPAA bei einer Quelle anmeldet", er folgt. Das Muster wird nur
+   verwiesen; ausgeführt wird nur das Konnektor-Eigene.
+2. **Einrichtung** — was beim Anbieter und im Haus vorzubereiten ist, als kurze Schrittfolge.
+3. **Quellkonfiguration** — die Angaben im Formular, mit den Beschriftungen der Oberfläche,
+   Verbindungstest, Besonderheiten über einen Zugang.
+4. **Betriebsarten und Änderungserkennung** — Laufarten, woran Unverändertes erkannt wird,
+   Fortsetzung über mehrere Läufe, Hinweis zum Zeitplan.
+5. **Benachrichtigungen** — nur, wo die Quelle Änderungen an OPAA melden kann.
+6. **Löscherkennung**
+7. **Ordner**
+8. **Anhänge**
+9. **Grenzen und Schutzmechanismen** — Zieladressprüfung, Größen- und Mengengrenzen, Drosselung,
+   besondere Dateien, bekannte Einschränkungen.
+10. **Protokoll und Fehlerbilder** — eine Tabelle Meldung, Bedeutung, Abhilfe.
+11. **Konfiguration**
+12. **Nicht gebaut**
+
+Was mehrere Konnektoren teilen — Abgleichstand, Zieladressprüfung, der Abgleich der Dateiablagen —
+steht nur in `konnektoren/README.md`; das Kapitel verweist und nennt nur seine Abweichung.
+**Keine API-Feldnamen** wie `sourceCredentials`: Der Betrieb sieht nur die Oberfläche. Parameternamen
+der Konfiguration bleiben erlaubt.
+
 ## Verweise
 
 1. Nach unten frei: ein Kapitel auf seine Kinder.
