@@ -54,6 +54,11 @@ export const BOOTSTRAP_LOCK_DELETE_TOOLTIP =
   'Das Notanker-Konto der Systemverwaltung kann weder gesperrt noch gelöscht werden – es ist der ' +
   'Weg zurück in eine Installation ohne funktionierenden Identitätsanbieter.'
 
+export const BOOTSTRAP_PASSWORD_TOOLTIP =
+  'Das Passwort des Notanker-Kontos der Systemverwaltung wird nicht von der Verwaltung ' +
+  'zurückgesetzt – sonst wäre das versiegelt hinterlegte Passwort unbemerkt wertlos. Das Konto ' +
+  'ändert sein Passwort selbst.'
+
 interface LocalUserRowMenuProps {
   user: LocalUserResponse
   /** The caller's own row: locking and deleting it is refused by the backend anyway (409). */
@@ -197,10 +202,12 @@ export default function LocalUserRowMenu({
 
   const lockDisabled = isSelf || user.bootstrap
   const handoverDisabled = user.bootstrap
+  const passwordDisabled = user.bootstrap
   const deleteDisabled = isSelf || user.bootstrap
   const disabledReason = isSelf ? SELF_ACTION_TOOLTIP : BOOTSTRAP_LOCK_DELETE_TOOLTIP
   const reasonId = `local-user-${user.id}-menu-reason`
   const handoverReasonId = `local-user-${user.id}-handover-reason`
+  const passwordReasonId = `local-user-${user.id}-password-reason`
 
   return (
     <>
@@ -257,18 +264,40 @@ export default function LocalUserRowMenu({
             Sperren
           </MenuItem>
         )}
-        <MenuItem onClick={() => void resetPassword()}>
+        <MenuItem
+          onClick={() => void resetPassword()}
+          disabled={passwordDisabled}
+          title={passwordDisabled ? BOOTSTRAP_PASSWORD_TOOLTIP : undefined}
+          aria-describedby={passwordDisabled ? passwordReasonId : undefined}
+        >
           <ListItemIcon>
             <MailOutlinedIcon fontSize="small" />
           </ListItemIcon>
           Rücksetz-Link per E-Mail
         </MenuItem>
-        <MenuItem onClick={() => void generatePassword()}>
+        <MenuItem
+          onClick={() => void generatePassword()}
+          disabled={passwordDisabled}
+          title={passwordDisabled ? BOOTSTRAP_PASSWORD_TOOLTIP : undefined}
+          aria-describedby={passwordDisabled ? passwordReasonId : undefined}
+        >
           <ListItemIcon>
             <KeyOutlinedIcon fontSize="small" />
           </ListItemIcon>
           Passwort erzeugen
         </MenuItem>
+        {passwordDisabled && (
+          <Box
+            component="li"
+            role="presentation"
+            id={passwordReasonId}
+            sx={{ px: 2, py: 1, maxWidth: 320 }}
+          >
+            <Typography component="span" sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+              {BOOTSTRAP_PASSWORD_TOOLTIP}
+            </Typography>
+          </Box>
+        )}
         <MenuItem
           onClick={() => {
             close()

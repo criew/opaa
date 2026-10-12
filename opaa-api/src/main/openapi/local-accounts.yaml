@@ -330,6 +330,8 @@ paths:
         invitation is sent again instead (SET_PASSWORD link, LOCAL_ACCOUNT_INVITATION). Link
         fallback and delivery-path audit exactly as for the invitation
         (LOCAL_USER_PASSWORD_RESET_REQUESTED, or LOCAL_USER_INVITED for the resent invitation).
+        Refused with 409 for the bootstrap account (BOOTSTRAP_ACCOUNT): its sealed password is
+        renewed only by the restart with OPAA_LOCAL_ADMIN_RESET=force.
       parameters:
         - name: id
           in: path
@@ -348,6 +350,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/local-users/{id}/password:
     post:
@@ -359,7 +363,10 @@ paths:
         ADMIN_RESET, or INITIAL for an account that had no password yet), resets the failed-login
         counter and lifts a failed-login lockout, ends every session of the account and audits
         LOCAL_USER_PASSWORD_GENERATED. The response carries the password exactly once; it is
-        never stored in clear text and never returned again.
+        never stored in clear text and never returned again. Refused with 409 for the bootstrap
+        account (BOOTSTRAP_ACCOUNT), also when it is the caller: its sealed password is renewed only
+        by the restart with OPAA_LOCAL_ADMIN_RESET=force, and the account changes its own password
+        through the self-service change-password call.
       parameters:
         - name: id
           in: path
@@ -378,6 +385,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
 
   /api/v1/admin/local-users/{id}/handover:
     post:

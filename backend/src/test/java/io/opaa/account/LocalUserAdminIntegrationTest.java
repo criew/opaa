@@ -823,6 +823,71 @@ class LocalUserAdminIntegrationTest {
         .andExpect(jsonPath("$.systemRole").value("SYSTEM_ADMIN"));
   }
 
+  /**
+   * Regression guard for #1988: the administration can neither generate a password for the
+   * bootstrap account nor send it a reset link - the sealed password stays the one that works, its
+   * sessions run on, nothing is mailed. The account still changes its own password itself.
+   */
+  @Test
+  void theBootstrapAccountRefusesAGeneratedPasswordAndAResetLinkButChangesItsOwn()
+      throws Exception {
+    LocalAccount bootstrap =
+        fixtures.activeAdmin("notanker-" + UUID.randomUUID() + "@stadt.example");
+    LocalCredentials row = fixtures.credentialsOf(bootstrap);
+    row.markBootstrap();
+    fixtures.save(row);
+    String path = LOCAL_USERS + "/" + bootstrap.id();
+    MvcResult session = login(bootstrap.email(), LocalAccountFixtures.PASSWORD, 200);
+    LocalCredentials before = credentials.findById(bootstrap.id()).orElseThrow();
+
+    asAdmin(post(path + "/password"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"))
+        .andExpect(jsonPath("$.password").doesNotExist());
+    asAdmin(post(path + "/password-reset"))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+    // the bootstrap account is refused as its own administrator, too
+    mockMvc
+        .perform(post(path + "/password").header(HttpHeaders.AUTHORIZATION, bearer(session)))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.code").value("BOOTSTRAP_ACCOUNT"));
+
+    LocalCredentials after = credentials.findById(bootstrap.id()).orElseThrow();
+    assertThat(after.getPasswordHash()).isEqualTo(before.getPasswordHash());
+    assertThat(after.isPasswordChangeRequired()).isFalse();
+    assertThat(after.getPasswordInvalidatedBefore())
+        .isEqualTo(before.getPasswordInvalidatedBefore());
+    mockMvc
+        .perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(session)))
+        .andExpect(status().isOk());
+    // the sign-in itself mails the other administrators; nothing goes to the account's address
+    for (MimeMessage message : greenMail.getReceivedMessages()) {
+      assertThat(String.valueOf(List.of(message.getAllRecipients())))
+          .doesNotContain(bootstrap.email());
+    }
+    assertThat(auditRows("LOCAL_USER_%", bootstrap.id())).isEmpty();
+    assertThat(auditRows("LOCAL_SESSION_REVOKED", bootstrap.id())).isEmpty();
+
+    // changing the own password is not an administrative act and stays open
+    String newPassword = "notanker-neu-versiegelt-2026";
+    mockMvc
+        .perform(
+            post("/api/v1/auth/local/change-password")
+                .header(HttpHeaders.AUTHORIZATION, bearer(session))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    "{\"currentPassword\":\""
+                        + LocalAccountFixtures.PASSWORD
+                        + "\",\"newPassword\":\""
+                        + newPassword
+                        + "\"}"))
+        .andExpect(status().isOk());
+    login(bootstrap.email(), LocalAccountFixtures.PASSWORD, 401);
+    login(bootstrap.email(), newPassword, 200);
+    assertThat(credentials.findById(bootstrap.id()).orElseThrow().isBootstrap()).isTrue();
+  }
+
   /** Favorites are personal order, not content: they go with the account (ADR-0039, #2095). */
   @Test
   void deletionRemovesTheAccountsFavoritesAndIsNotBlockedByThem() throws Exception {

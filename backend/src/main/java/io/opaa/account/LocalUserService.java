@@ -401,6 +401,12 @@ public class LocalUserService {
     Instant now = clock.instant();
     LocalUserOverview current = load(actor.organizationId(), userId);
     LocalCredentials row = current.credentials();
+    if (row.isBootstrap()) {
+      throw new ConflictException(
+          "Für das Notanker-Konto der Systemverwaltung kann kein Link zum Zurücksetzen"
+              + " verschickt werden.",
+          LocalCredentials.BOOTSTRAP_ACCOUNT);
+    }
     LocalAuthSettings.Values policy = settings();
     boolean invitation = row.getPasswordHash() == null;
     IssuedActionToken token =
@@ -421,12 +427,21 @@ public class LocalUserService {
     return new ResetLinkIssued(current.user(), token, invitation);
   }
 
-  /** Returns the generated password - the one time it exists in clear text. */
+  /**
+   * Returns the generated password - the one time it exists in clear text. Neither this nor {@link
+   * #issueResetLink} touches the bootstrap account (409 {@code BOOTSTRAP_ACCOUNT}): its sealed
+   * password is renewed only by {@code OPAA_LOCAL_ADMIN_RESET=force} or by the account itself.
+   */
   @Transactional
   public String generatePassword(CurrentUser actor, UUID userId) {
     Instant now = clock.instant();
     LocalUserOverview current = load(actor.organizationId(), userId);
     LocalCredentials row = current.credentials();
+    if (row.isBootstrap()) {
+      throw new ConflictException(
+          "Für das Notanker-Konto der Systemverwaltung kann kein neues Passwort erzeugt werden.",
+          LocalCredentials.BOOTSTRAP_ACCOUNT);
+    }
     boolean first = row.getPasswordHash() == null;
     String password = passwordGenerator.generate();
     row.setPasswordHash(passwordEncoder.encode(password), now);

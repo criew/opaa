@@ -374,6 +374,12 @@ export const localUserHandlers = [
   http.post('/api/v1/admin/local-users/:id/password-reset', ({ params }) => {
     const user = find(String(params.id))
     if (!user) return notFound()
+    if (user.bootstrap) {
+      return conflict(
+        'BOOTSTRAP_ACCOUNT',
+        'Für das Notanker-Konto der Systemverwaltung kann kein Link zum Zurücksetzen verschickt werden.',
+      )
+    }
     const sent = mailGoesOut(user.email)
     return HttpResponse.json({
       emailSent: sent,
@@ -433,6 +439,12 @@ export const localUserHandlers = [
   http.post('/api/v1/admin/local-users/:id/password', ({ params }) => {
     const user = find(String(params.id))
     if (!user) return notFound()
+    if (user.bootstrap) {
+      return conflict(
+        'BOOTSTRAP_ACCOUNT',
+        'Für das Notanker-Konto der Systemverwaltung kann kein neues Passwort erzeugt werden.',
+      )
+    }
     replace({ ...user, passwordChangeRequired: true, passwordChangeReason: 'ADMIN_RESET' })
     return HttpResponse.json({ password: 'Mock-Ersatz-Passwort-4T8' })
   }),
