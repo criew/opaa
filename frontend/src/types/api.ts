@@ -73,6 +73,8 @@ export type SelectableGroupResponse = components['schemas']['SelectableGroupResp
 export type GroupMemberDisclosureResponse = components['schemas']['GroupMemberDisclosureResponse']
 export type DisclosedGroupMemberResponse = components['schemas']['DisclosedGroupMemberResponse']
 export type GroupEffectsResponse = components['schemas']['GroupEffectsResponse']
+export type GroupDeactivationPreviewResponse =
+  components['schemas']['GroupDeactivationPreviewResponse']
 
 export type AccessPathGroup = components['schemas']['AccessPathGroup']
 export type AccessPathResponse = components['schemas']['AccessPathResponse']

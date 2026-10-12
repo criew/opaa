@@ -1309,6 +1309,22 @@ bewusste Handlung. Drei Festlegungen dazu:
    angelegte interne Gruppe erst nach deren Freigabe als Empfänger wählen. Die Rücknahme der
    Freigabe nimmt die Gruppe aus jeder Auswahl; bestehende Berechtigungen bleiben unberührt.
 
+**Vorübergehend deaktivieren (#1987, ADR-0036 Entscheidung 14).** Unabhängig von der Freigabe lässt
+sich eine interne Gruppe deaktivieren und wieder reaktivieren — von ihren Verantwortlichen und der
+Systemverwaltung, auch bei einer geschützten Gruppe:
+
+- **Während deaktiviert wirkt sie für niemanden.** `GroupMembershipResolver` blendet sie an einer
+  Stelle aus; damit fallen Berechtigungen auf Objekte, Space-Mitgliedschaften, Anlegerechte, die
+  Herleitung und das Rechteprofil der Suchdiagnose weg, sofort und ohne Neuanmeldung.
+- **Sie ist keine wirksame Gruppe** und damit kein neues Ziel; die Auswahl nennt den Grund.
+- **Gespeichert bleibt alles**; das Reaktivieren stellt den vorherigen Stand ohne weitere
+  Entscheidung wieder her.
+- **Verweigert (`409`)**, solange die Gruppe einzige Eigentümerin eines Assets oder das letzte
+  handlungsfähige `ADMIN`-Mitglied eines Space ist — mit Bezifferung der betroffenen Objekte.
+- **Protokoll und Historie:** `GROUP_DEACTIVATED`/`GROUP_REACTIVATED` mit den bezifferten Folgen;
+  die Mitgliedschaftsintervalle der Gruppe enden mit dem Deaktivieren und beginnen mit dem
+  Reaktivieren neu, damit die Stichtagsauskunft stimmt. Keine Frist, keine Wiedervorlage.
+
 **Geschützte Gruppen.** Für die Gruppen der Personalvertretung, der Schwerbehindertenvertretung, der
 Gleichstellung und für Personalvorgänge gilt dieselbe Sonderstellung wie für die entsprechenden
 Bibliotheken ([hybrid-retrieval.md](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke

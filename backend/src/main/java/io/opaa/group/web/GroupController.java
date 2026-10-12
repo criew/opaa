@@ -2,6 +2,8 @@ package io.opaa.group.web;
 
 import io.opaa.api.dto.GroupAddMemberRequest;
 import io.opaa.api.dto.GroupAppointStewardRequest;
+import io.opaa.api.dto.GroupDeactivationPreviewResponse;
+import io.opaa.api.dto.GroupDeactivationRequest;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupProtectionRequest;
 import io.opaa.api.dto.GroupReleaseRequest;
@@ -170,6 +172,22 @@ public class GroupController {
       @Caller CurrentUser caller) {
     return GroupResponseMapper.toResponse(
         groupService.setRelease(groupId, request.getReleasedForUse(), caller));
+  }
+
+  @GetMapping("/{groupId}/deactivation")
+  public GroupDeactivationPreviewResponse getDeactivationPreview(
+      @PathVariable UUID groupId, @Caller CurrentUser caller) {
+    return GroupResponseMapper.toDeactivationPreviewResponse(
+        groupService.deactivationPreview(groupId, caller));
+  }
+
+  @PutMapping("/{groupId}/deactivation")
+  public GroupResponse setDeactivation(
+      @PathVariable UUID groupId,
+      @Valid @RequestBody GroupDeactivationRequest request,
+      @Caller CurrentUser caller) {
+    return GroupResponseMapper.toResponse(
+        groupService.setDeactivated(groupId, request.getDeactivated(), caller));
   }
 
   @PutMapping("/{groupId}/protection")

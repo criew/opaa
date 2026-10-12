@@ -88,6 +88,33 @@ class AssetShellOwnershipDirectory implements AssetOwnershipDirectory {
   }
 
   @Override
+  public String ownedAssetSummary(UUID groupId, UUID organizationId) {
+    Map<AssetType, Long> byType =
+        assetRepository.findByOwnerGroupIdAndOrganizationId(groupId, organizationId).stream()
+            .collect(Collectors.groupingBy(Asset::getAssetType, Collectors.counting()));
+    List<String> parts =
+        byType.entrySet().stream()
+            .map(entry -> countedLabel(entry.getKey(), entry.getValue()))
+            .sorted()
+            .toList();
+    if (parts.size() <= 1) {
+      return String.join("", parts);
+    }
+    return String.join(", ", parts.subList(0, parts.size() - 1))
+        + " und "
+        + parts.get(parts.size() - 1);
+  }
+
+  private String countedLabel(AssetType assetType, long count) {
+    return assetTypes
+        .find(assetType)
+        .map(
+            definition ->
+                count == 1 ? "1 " + definition.singular() : count + " " + definition.plural())
+        .orElse(count == 1 ? "1 Objekt" : count + " Objekten");
+  }
+
+  @Override
   public long countAssetsOwnedBy(PermissionSubject owner) {
     return owner.type() == PermissionSubjectType.GROUP
         ? assetRepository.countByOwnerGroupIdAndOrganizationId(owner.id(), owner.organizationId())

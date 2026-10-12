@@ -90,6 +90,7 @@ const group: SelectableGroupResponse = {
   protectedGroup: false,
   selectable: true,
   dissolved: false,
+  deactivated: false,
   providerDisabled: false,
   unmaintained: false,
 }

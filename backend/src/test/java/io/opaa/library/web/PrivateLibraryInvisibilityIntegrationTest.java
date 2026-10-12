@@ -255,6 +255,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
             "getGroup",
             "listGroupMembers",
             "listGroupStewards",
+            "getGroupDeactivationPreview",
             "listLibraries",
             "getLibrary",
             "listLibraryDocuments",

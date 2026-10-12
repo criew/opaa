@@ -106,6 +106,14 @@ public enum AuditEventType {
    */
   GROUP_PROTECTION_CHANGED,
   /**
+   * An internal group was deactivated for the time being (ADR-0036, Entscheidung 14): it takes
+   * effect for nobody until it is reactivated, while its grants, space memberships and creation
+   * rights stay stored. Carries the counted consequences, never a member's name.
+   */
+  GROUP_DEACTIVATED,
+  /** The reverse of {@link #GROUP_DEACTIVATED}: the stored state takes effect again. */
+  GROUP_REACTIVATED,
+  /**
    * A system administrator who is no steward of the group read its member list (ADR-0036,
    * Entscheidung 9: "der Abruf ist ein Audit-Ereignis"; Personalrat A6). The administration may see
    * who is in a group, and that it looked is on the record; a steward reading their own group's

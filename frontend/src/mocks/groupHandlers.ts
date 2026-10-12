@@ -1,6 +1,12 @@
 import { http, HttpResponse } from 'msw'
 import { mockUsers } from './userFixtures'
-import { mockGroups, mockGroupDetails, mockMyGroups, mockSelectableGroups } from './groupFixtures'
+import {
+  mockDeactivationPreview,
+  mockGroups,
+  mockGroupDetails,
+  mockMyGroups,
+  mockSelectableGroups,
+} from './groupFixtures'
 
 export const groupHandlers = [
   http.get('/api/v1/admin/groups', () => {
@@ -34,6 +40,7 @@ export const groupHandlers = [
       memberCount: 0,
       // As in the service: the named stewards, or the creating account where none are named.
       dissolved: false,
+      deactivated: false,
       releasedForUse: body.releasedForUse ?? false,
       protectedGroup: body.protectedGroup ?? false,
       stewards: (body.stewardIds?.length ? body.stewardIds : ['mock-user-id']).map((userId) => ({
@@ -232,6 +239,47 @@ export const groupHandlers = [
     if (listEntry.kind === 'AD_HOC' && !listEntry.dissolved) {
       listEntry.state = body.releasedForUse ? 'ACTIVE' : 'NOT_RELEASED'
     }
+    return HttpResponse.json(group)
+  }),
+
+  http.get('/api/v1/groups/:groupId/deactivation', ({ params }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    if (!group) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    if (group.kind !== 'AD_HOC') {
+      return HttpResponse.json(
+        { error: 'Nur interne Gruppen lassen sich hier deaktivieren' },
+        { status: 400 },
+      )
+    }
+    return HttpResponse.json(mockDeactivationPreview(groupId, group.deactivated))
+  }),
+
+  http.put('/api/v1/groups/:groupId/deactivation', async ({ params, request }) => {
+    const groupId = String(params.groupId)
+    const group = mockGroupDetails[groupId]
+    const listEntry = mockGroups.find((item) => item.id === groupId)
+    if (!group || !listEntry) {
+      return HttpResponse.json({ error: 'Gruppe nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as { deactivated: boolean }
+    const blockedReason = mockDeactivationPreview(groupId, group.deactivated).blockedReason
+    if (body.deactivated && !group.deactivated && blockedReason) {
+      return HttpResponse.json({ error: blockedReason }, { status: 409 })
+    }
+    const since = body.deactivated ? new Date().toISOString() : null
+    group.deactivated = body.deactivated
+    group.deactivatedAt = since
+    listEntry.deactivated = body.deactivated
+    listEntry.deactivatedAt = since
+    // the state follows the switch, as the server derives it (GroupStates)
+    listEntry.state = body.deactivated
+      ? 'DEACTIVATED'
+      : listEntry.releasedForUse
+        ? 'ACTIVE'
+        : 'NOT_RELEASED'
     return HttpResponse.json(group)
   }),
 

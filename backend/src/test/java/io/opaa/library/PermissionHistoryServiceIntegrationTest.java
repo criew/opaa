@@ -873,6 +873,8 @@ class PermissionHistoryServiceIntegrationTest {
     paths.put("GroupService#addMember", this::groupMemberAdded);
     paths.put("GroupService#removeMember", this::groupMemberRemoved);
     paths.put("GroupService#deleteGroup", this::groupDeleted);
+    paths.put("GroupService#setDeactivated (deactivated)", this::groupDeactivated);
+    paths.put("GroupService#setDeactivated (reactivated)", this::groupReactivated);
     paths.put("TokenGroupSynchronizer#apply (membership added)", this::tokenGroupMembershipAdded);
     paths.put(
         "TokenGroupSynchronizer#apply (membership removed)", this::tokenGroupMembershipRemoved);
@@ -1086,7 +1088,9 @@ class PermissionHistoryServiceIntegrationTest {
    * only reads the grants and groups of a library to check who may answer for its source consent
    * and to tell them; it writes nothing. {@code McpServerProfileService} (#2173) only reads a group
    * to check that the group answering for an MCP server exists in the caller's organization; it
-   * writes no grant or membership.
+   * writes no grant or membership. {@code GroupDeactivation} (#1987) is the writer behind {@code
+   * GroupService#setDeactivated}: it switches a group off or on and cuts its membership intervals,
+   * and is covered by {@link #readabilityWritePaths} through that method.
    */
   private static final Set<String> BEANS_REACHING_THE_RIGHTS_TABLES =
       Set.of(
@@ -1106,6 +1110,7 @@ class PermissionHistoryServiceIntegrationTest {
           "DirectorySyncPlanExecutor",
           "ForeignDiagnosticContextService",
           "GroupCapabilityService",
+          "GroupDeactivation",
           "GroupEffectReader",
           "GroupEffectsService",
           "GroupListService",
@@ -1164,6 +1169,9 @@ class PermissionHistoryServiceIntegrationTest {
           "GroupService#dismissSteward",
           "GroupService#setRelease",
           "GroupService#setProtection",
+          // #1987: the preview of a deactivation only counts; the switch itself is a write path
+          // covered above.
+          "GroupService#deactivationPreview",
           // #1834: the preview only counts and writes its own audit entry, and markOf reads the
           // note an object carries - neither moves a library into or out of anybody's set.
           "PermissionTransferService#preview",
@@ -1334,6 +1342,47 @@ class PermissionHistoryServiceIntegrationTest {
         currentUserOf(owner));
 
     groupService.addMember(group.getId(), member, currentUserOf(owner));
+
+    return new ReadabilityChange(member, libraryId, true);
+  }
+
+  /**
+   * ADR-0036, Entscheidung 14: a deactivated group reaches nobody, so its member loses the library
+   * in the live formula - and the reconstruction must agree, which it can only through the
+   * membership intervals the deactivation closes.
+   */
+  private ReadabilityChange groupDeactivated() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID member = createUser();
+    Group group = createAdHocGroup("Referat", owner);
+    grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
+        libraryId,
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+    groupService.addMember(group.getId(), member, currentUserOf(owner));
+
+    groupService.setDeactivated(group.getId(), true, currentUserOf(owner));
+
+    return new ReadabilityChange(member, libraryId, false);
+  }
+
+  /** The reverse: the reactivation reopens the intervals, the library is readable again. */
+  private ReadabilityChange groupReactivated() {
+    UUID owner = createUser();
+    UUID libraryId = createLibrary(owner);
+    UUID member = createUser();
+    Group group = createAdHocGroup("Referat", owner);
+    grantService.upsertGrant(
+        KnowledgeLibrary.ASSET_TYPE,
+        libraryId,
+        new AssetGrantUpsert(AssetGrantSubjectType.GROUP, group.getId(), AssetRole.VIEWER),
+        currentUserOf(owner));
+    groupService.addMember(group.getId(), member, currentUserOf(owner));
+    groupService.setDeactivated(group.getId(), true, currentUserOf(owner));
+
+    groupService.setDeactivated(group.getId(), false, currentUserOf(owner));
 
     return new ReadabilityChange(member, libraryId, true);
   }

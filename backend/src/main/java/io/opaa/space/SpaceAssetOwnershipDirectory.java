@@ -66,6 +66,12 @@ class SpaceAssetOwnershipDirectory implements AssetOwnershipDirectory {
     return "Die Gruppe besitzt noch Spaces und kann nicht gelöscht werden";
   }
 
+  /** A space is owned by a natural person, never by a group. */
+  @Override
+  public String ownedAssetSummary(UUID groupId, UUID organizationId) {
+    return "";
+  }
+
   @Override
   public long countAssetsOwnedBy(PermissionSubject owner) {
     return ownedSpaceIds(owner).size();

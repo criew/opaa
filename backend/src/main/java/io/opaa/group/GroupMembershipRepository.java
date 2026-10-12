@@ -3,6 +3,7 @@ package io.opaa.group;
 import io.opaa.auth.ActiveAccountSql;
 import io.opaa.permission.GroupMembershipSource;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -28,15 +29,30 @@ public interface GroupMembershipRepository
   long countByUserId(UUID userId);
 
   @Override
-  @Query("select m.group.id from GroupMembership m where m.userId = :userId")
+  @Query(
+      "select m.group.id from GroupMembership m"
+          + " where m.userId = :userId and m.group.deactivated = false")
   Set<UUID> findGroupIdsByUserId(@Param("userId") UUID userId);
+
+  /**
+   * Every group the user is a member of, deactivated ones included - what the administration of a
+   * group shows its members ("Meine Gruppen", the selection's own groups), never what a rights
+   * evaluation reads: that one asks {@link #findGroupIdsByUserId}.
+   */
+  @Query("select m.group.id from GroupMembership m where m.userId = :userId")
+  Set<UUID> findGroupIdsOfMember(@Param("userId") UUID userId);
 
   @Override
   @Query(
-      "select m.userId from GroupMembership m "
-          + "where m.group.id = :groupId and m.organizationId = :organizationId")
+      "select m.userId from GroupMembership m"
+          + " where m.group.id = :groupId and m.organizationId = :organizationId"
+          + " and m.group.deactivated = false")
   Set<UUID> findUserIdsByGroupIdAndOrganizationId(
       @Param("groupId") UUID groupId, @Param("organizationId") UUID organizationId);
+
+  @Override
+  @Query("select g.id from Group g where g.id in :groupIds and g.deactivated = true")
+  Set<UUID> findDeactivatedGroupIdsIn(@Param("groupIds") Collection<UUID> groupIds);
 
   /**
    * One counting query instead of the member ids plus their accounts (#1820): the figure sits on

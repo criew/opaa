@@ -29,6 +29,7 @@ const STATE_ORDER: GroupState[] = [
   'DISSOLVED',
   'PROVIDER_DISABLED',
   'UNMAINTAINED',
+  'DEACTIVATED',
   'NOT_RELEASED',
   'ACTIVE',
 ]

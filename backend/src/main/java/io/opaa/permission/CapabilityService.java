@@ -455,6 +455,11 @@ public class CapabilityService {
           "Der Identitätsanbieter dieser Gruppe ist deaktiviert. Sie kann kein neues Anlegerecht"
               + " erhalten, solange er es bleibt; bestehende Rechte bleiben unverändert.");
     }
+    if (group.deactivated()) {
+      throw new ValidationException(
+          "Die Gruppe ist deaktiviert und kann kein neues Anlegerecht erhalten, solange sie es"
+              + " bleibt; bestehende Rechte bleiben gespeichert.");
+    }
   }
 
   /**

@@ -52,6 +52,7 @@ const fromDirectory: SelectableGroupResponse = {
   protectedGroup: false,
   selectable: true,
   dissolved: false,
+  deactivated: false,
   providerDisabled: false,
   unmaintained: false,
 }
@@ -88,6 +89,7 @@ const dissolved: SelectableGroupResponse = {
   name: 'Referat 52',
   selectable: false,
   dissolved: true,
+  deactivated: false,
 }
 
 /** Die Entprellung der beiden Suchen liegt bei 300 ms; hier wird sicher darueber hinaus gewartet. */

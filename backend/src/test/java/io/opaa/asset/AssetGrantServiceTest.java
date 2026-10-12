@@ -125,7 +125,15 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject group =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Projektteam", false, false, false, false, true);
+            UUID.randomUUID(),
+            organizationId,
+            "Projektteam",
+            false,
+            false,
+            false,
+            false,
+            true,
+            false);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
     when(groupDirectory.isSelectableBy(group.id(), managerId, false)).thenReturn(false);
 
@@ -271,7 +279,7 @@ class AssetGrantServiceTest {
     UUID foreignGroupId = UUID.randomUUID();
     GroupSubject foreignGroup =
         new GroupSubject(
-            foreignGroupId, UUID.randomUUID(), "Fremd", false, false, false, false, true);
+            foreignGroupId, UUID.randomUUID(), "Fremd", false, false, false, false, true, false);
     when(groupDirectory.find(foreignGroupId)).thenReturn(Optional.of(foreignGroup));
 
     AssetGrantUpsert request =
@@ -435,7 +443,15 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject dissolvedGroup =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Aufgeloest", true, false, false, false, true);
+            UUID.randomUUID(),
+            organizationId,
+            "Aufgeloest",
+            true,
+            false,
+            false,
+            false,
+            true,
+            false);
     when(groupDirectory.find(dissolvedGroup.id())).thenReturn(Optional.of(dissolvedGroup));
 
     AssetGrantUpsert request =
@@ -470,7 +486,15 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject group =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Referat 12", false, false, true, false, true);
+            UUID.randomUUID(),
+            organizationId,
+            "Referat 12",
+            false,
+            false,
+            true,
+            false,
+            true,
+            false);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
 
     AssetGrantUpsert request =
@@ -498,7 +522,15 @@ class AssetGrantServiceTest {
         .thenReturn(AssetRole.OWNER);
     GroupSubject group =
         new GroupSubject(
-            UUID.randomUUID(), organizationId, "Fachbereich 3", false, true, false, false, true);
+            UUID.randomUUID(),
+            organizationId,
+            "Fachbereich 3",
+            false,
+            true,
+            false,
+            false,
+            true,
+            false);
     when(groupDirectory.find(group.id())).thenReturn(Optional.of(group));
 
     AssetGrantUpsert request =

@@ -43,7 +43,8 @@ const SORT_DESCRIPTION: Record<GroupSortField, string> = {
   kind: 'Art: Ad-hoc-Gruppe, aus dem Anbieter, Organisationseinheit',
   origin: 'Herkunft, interne Gruppen zuerst',
   memberCount: 'Zahl der Mitglieder',
-  state: 'Zustand: aufgelöst, Anbieter deaktiviert, nicht mehr gepflegt, nicht freigegeben, aktiv',
+  state:
+    'Zustand: aufgelöst, Anbieter deaktiviert, nicht mehr gepflegt, deaktiviert, nicht freigegeben, aktiv',
   createdAt: 'Anlagedatum',
 }
 
@@ -64,6 +65,7 @@ export interface GroupRowHandlers {
   onMembers: (group: GroupListResponse) => void
   onTransfer: (group: GroupListResponse) => void
   onDeleted: () => void
+  onChanged: () => void
 }
 
 interface RowProps extends GroupRowHandlers {

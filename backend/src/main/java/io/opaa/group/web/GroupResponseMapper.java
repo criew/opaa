@@ -1,5 +1,6 @@
 package io.opaa.group.web;
 
+import io.opaa.api.dto.GroupDeactivationPreviewResponse;
 import io.opaa.api.dto.GroupListResponse;
 import io.opaa.api.dto.GroupMemberResponse;
 import io.opaa.api.dto.GroupPageResponse;
@@ -9,6 +10,7 @@ import io.opaa.api.dto.GroupStewardResponse;
 import io.opaa.api.dto.SelectableGroupResponse;
 import io.opaa.api.types.GroupOrigin;
 import io.opaa.group.Group;
+import io.opaa.group.GroupDeactivationPreview;
 import io.opaa.group.GroupDetail;
 import io.opaa.group.GroupMemberView;
 import io.opaa.group.GroupOverview;
@@ -40,11 +42,13 @@ final class GroupResponseMapper {
             GroupStates.stateOf(group, overview.provider()),
             group.getMemberships().size(),
             group.isDissolved(),
+            group.isDeactivated(),
             group.isSelectableAsSubject(),
             group.isProtectedGroup(),
             toStewardResponses(overview.stewards()),
             group.getCreatedAt(),
             group.getUpdatedAt())
+        .deactivatedAt(group.getDeactivatedAt())
         .description(group.getDescription())
         .externalId(group.getExternalId())
         .provider(toProviderResponse(overview.provider()))
@@ -72,7 +76,8 @@ final class GroupResponseMapper {
             selectable.selectable(),
             selectable.dissolved(),
             selectable.providerDisabled(),
-            selectable.unmaintained())
+            selectable.unmaintained(),
+            selectable.deactivated())
         .name(selectable.name())
         .provider(toProviderResponse(selectable.provider()))
         .sourcePath(group.getSourcePath())
@@ -96,16 +101,32 @@ final class GroupResponseMapper {
             members == null ? group.getMemberships().size() : members.size(),
             members,
             group.isDissolved(),
+            group.isDeactivated(),
             group.isSelectableAsSubject(),
             group.isProtectedGroup(),
             toStewardResponses(detail.stewards()),
             group.getCreatedAt(),
             group.getUpdatedAt())
+        .deactivatedAt(group.getDeactivatedAt())
         .description(group.getDescription())
         .externalId(group.getExternalId())
         .provider(toProviderResponse(detail.provider()))
         .sourcePath(group.getSourcePath())
         .parentGroupId(group.getParentGroupId());
+  }
+
+  static GroupDeactivationPreviewResponse toDeactivationPreviewResponse(
+      GroupDeactivationPreview preview) {
+    return new GroupDeactivationPreviewResponse(
+            preview.groupId(),
+            preview.deactivated(),
+            Math.toIntExact(preview.assetGrants()),
+            Math.toIntExact(preview.grantedAssets()),
+            Math.toIntExact(preview.spaceMemberships()),
+            Math.toIntExact(preview.spaces()),
+            Math.toIntExact(preview.capabilities()),
+            preview.activeMembers())
+        .blockedReason(preview.blockedReason());
   }
 
   static GroupMemberResponse toMemberResponse(GroupMemberView view) {

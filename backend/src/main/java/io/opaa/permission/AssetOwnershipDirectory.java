@@ -28,6 +28,13 @@ public interface AssetOwnershipDirectory {
   String ownedAssetConflictMessage(UUID groupId);
 
   /**
+   * The assets of this directory the group owns, counted per type in German ("2 Bibliotheken und 1
+   * Prompt-Bibliothek"), or an empty string when it owns none - what a refused deactivation quotes
+   * (ADR-0036, Entscheidung 14).
+   */
+  String ownedAssetSummary(UUID groupId, UUID organizationId);
+
+  /**
    * How many assets the subject owns - a plain count, so the work limit of a transfer can be
    * decided before anything is loaded.
    */

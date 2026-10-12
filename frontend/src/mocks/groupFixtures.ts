@@ -1,4 +1,9 @@
-import type { GroupListResponse, SelectableGroupResponse, GroupResponse } from '../types/api'
+import type {
+  GroupDeactivationPreviewResponse,
+  GroupListResponse,
+  GroupResponse,
+  SelectableGroupResponse,
+} from '../types/api'
 
 export const mockGroups: GroupListResponse[] = [
   {
@@ -14,6 +19,7 @@ export const mockGroups: GroupListResponse[] = [
     parentGroupId: null,
     memberCount: 2,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: false,
     stewards: [
@@ -41,6 +47,7 @@ export const mockGroups: GroupListResponse[] = [
     parentGroupId: null,
     memberCount: 1,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: false,
     stewards: [],
@@ -68,6 +75,7 @@ export const mockGroups: GroupListResponse[] = [
     parentGroupId: null,
     memberCount: 3,
     dissolved: true,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: false,
     stewards: [],
@@ -87,6 +95,7 @@ export const mockGroups: GroupListResponse[] = [
     parentGroupId: null,
     memberCount: 0,
     dissolved: false,
+    deactivated: false,
     releasedForUse: false,
     protectedGroup: true,
     stewards: [
@@ -118,6 +127,7 @@ export const mockGroups: GroupListResponse[] = [
     parentGroupId: null,
     memberCount: 1,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: true,
     stewards: [],
@@ -145,6 +155,7 @@ export const mockGroups: GroupListResponse[] = [
     parentGroupId: null,
     memberCount: 1,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: false,
     stewards: [],
@@ -178,6 +189,7 @@ export const mockSelectableGroups: SelectableGroupResponse[] = [
     protectedGroup: false,
     selectable: true,
     dissolved: false,
+    deactivated: false,
     providerDisabled: false,
     unmaintained: false,
   },
@@ -199,6 +211,7 @@ export const mockSelectableGroups: SelectableGroupResponse[] = [
     protectedGroup: false,
     selectable: true,
     dissolved: false,
+    deactivated: false,
     providerDisabled: false,
     unmaintained: false,
   },
@@ -214,6 +227,7 @@ export const mockSelectableGroups: SelectableGroupResponse[] = [
     protectedGroup: false,
     selectable: true,
     dissolved: false,
+    deactivated: false,
     providerDisabled: false,
     unmaintained: false,
   },
@@ -235,6 +249,7 @@ export const mockSelectableGroups: SelectableGroupResponse[] = [
     protectedGroup: false,
     selectable: false,
     dissolved: true,
+    deactivated: false,
     providerDisabled: false,
     unmaintained: false,
   },
@@ -250,6 +265,7 @@ export const mockSelectableGroups: SelectableGroupResponse[] = [
     protectedGroup: true,
     selectable: true,
     dissolved: false,
+    deactivated: false,
     providerDisabled: false,
     unmaintained: false,
   },
@@ -271,6 +287,7 @@ export const mockGroupDetails: Record<string, MockGroupDetail> = {
     parentGroupId: null,
     memberCount: 2,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: false,
     stewards: [
@@ -309,6 +326,7 @@ export const mockGroupDetails: Record<string, MockGroupDetail> = {
     parentGroupId: null,
     memberCount: 1,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: false,
     stewards: [],
@@ -342,6 +360,7 @@ export const mockGroupDetails: Record<string, MockGroupDetail> = {
     parentGroupId: null,
     memberCount: 1,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: true,
     stewards: [],
@@ -372,6 +391,7 @@ export const mockGroupDetails: Record<string, MockGroupDetail> = {
     parentGroupId: null,
     memberCount: 0,
     dissolved: false,
+    deactivated: false,
     releasedForUse: false,
     protectedGroup: true,
     stewards: [
@@ -399,6 +419,7 @@ export const mockGroupDetails: Record<string, MockGroupDetail> = {
     parentGroupId: null,
     memberCount: 1,
     dissolved: false,
+    deactivated: false,
     releasedForUse: true,
     protectedGroup: false,
     stewards: [],
@@ -435,3 +456,25 @@ export const mockMyGroups: GroupListResponse[] = mockGroups.filter((group) =>
 export const mockMyStewardedGroups: GroupListResponse[] = mockGroups.filter((group) =>
   group.stewards.some((steward) => steward.userId === 'mock-user-id'),
 )
+
+/**
+ * Die gezählten Folgen einer Deaktivierung, wie das Backend sie liefert. „Projektbeteiligte Phoenix“
+ * trägt Freigaben und eine Space-Mitgliedschaft; jede andere interne Gruppe nichts.
+ */
+export function mockDeactivationPreview(
+  groupId: string,
+  deactivated: boolean,
+): GroupDeactivationPreviewResponse {
+  const carries = groupId === 'group-phoenix'
+  return {
+    groupId,
+    deactivated,
+    assetGrants: carries ? 3 : 0,
+    grantedAssets: carries ? 2 : 0,
+    spaceMemberships: carries ? 1 : 0,
+    spaces: carries ? 1 : 0,
+    capabilities: 0,
+    activeMembers: mockGroupDetails[groupId]?.members.length ?? 0,
+    blockedReason: null,
+  }
+}

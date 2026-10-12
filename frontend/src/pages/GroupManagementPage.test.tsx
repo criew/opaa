@@ -6,6 +6,7 @@ import GroupManagementPage from './GroupManagementPage'
 import { useGroupStore } from '../stores/groupStore'
 import { useAuthStore } from '../stores/authStore'
 import { useGroupAdminListStore } from '../stores/groupAdminListStore'
+import { useNotificationStore } from '../stores/notificationStore'
 import type { GroupListResponse, GroupResponse } from '../types/api'
 import type { GroupListQuery } from '../services/groupAdminApi'
 
@@ -20,6 +21,8 @@ const {
   mockDeleteGroup,
   mockRemoveGroupMember,
   mockSetGroupProtection,
+  mockSetGroupDeactivation,
+  deactivationPreview,
 } = vi.hoisted(() => ({
   mockListGroupPage: vi.fn(),
   mockListGroupMembers: vi.fn(),
@@ -33,6 +36,9 @@ const {
   mockDeleteGroup: vi.fn(async () => undefined),
   mockRemoveGroupMember: vi.fn(async () => undefined),
   mockSetGroupProtection: vi.fn(async () => ({}) as GroupResponse),
+  mockSetGroupDeactivation: vi.fn(async () => ({}) as GroupResponse),
+  /** What the server counts for the next confirmation of a deactivation. */
+  deactivationPreview: { blockedReason: null as string | null },
 }))
 
 vi.mock('../services/groupAdminApi', async () => {
@@ -84,6 +90,18 @@ vi.mock('../services/groupApi', async () => {
     deleteGroup: mockDeleteGroup,
     removeGroupMember: mockRemoveGroupMember,
     setGroupProtection: mockSetGroupProtection,
+    setGroupDeactivation: mockSetGroupDeactivation,
+    getGroupDeactivationPreview: vi.fn(async (groupId: string) => ({
+      groupId,
+      deactivated: listed.groups.find((group) => group.id === groupId)?.deactivated ?? false,
+      assetGrants: 3,
+      grantedAssets: 2,
+      spaceMemberships: 1,
+      spaces: 1,
+      capabilities: 0,
+      activeMembers: 12,
+      blockedReason: deactivationPreview.blockedReason,
+    })),
   }
 })
 
@@ -100,6 +118,7 @@ const adHocGroup: GroupListResponse = {
   parentGroupId: null,
   memberCount: 1,
   dissolved: false,
+  deactivated: false,
   releasedForUse: false,
   protectedGroup: false,
   stewards: [{ userId: 'mock-user-id', displayName: 'Admin', appointedAt: '2026-03-01T10:00:00Z' }],
@@ -126,6 +145,7 @@ const orgUnitGroup: GroupListResponse = {
   parentGroupId: null,
   memberCount: 1,
   dissolved: false,
+  deactivated: false,
   releasedForUse: true,
   protectedGroup: false,
   stewards: [],
@@ -184,6 +204,8 @@ describe('GroupManagementPage', () => {
     for (const key of Object.keys(mockFetchedDetails)) delete mockFetchedDetails[key]
     useGroupStore.getState().reset()
     useGroupAdminListStore.getState().reset()
+    useNotificationStore.getState().reset()
+    deactivationPreview.blockedReason = null
   })
 
   // #1978: die Gruppen als Tabelle wie die Konten - Herkunft, Mitglieder, Zustand; eine eigene
@@ -488,5 +510,86 @@ describe('GroupManagementPage', () => {
     expect(
       within(table).getByRole('img', { name: /^Grund: Aufgelöst — die Quelle meldet/ }),
     ).toBeInTheDocument()
+  })
+
+  // #1987: Deaktivieren im Zeilenmenü, mit einer Bestätigung, die die Folgen beziffert
+  it('deactivates an internal group after a confirmation that counts the consequences', async () => {
+    serve([adHocGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Deaktivieren' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: '„Projektbeteiligte Phoenix“ deaktivieren?',
+    })
+    expect(dialog).toHaveTextContent(
+      '3 Freigaben an 2 Objekten und 1 Space-Mitgliedschaft in 1 Space ruhen für 12 aktive Konten.',
+    )
+    expect(dialog).toHaveTextContent('Gespeichert bleibt alles')
+    await user.click(within(dialog).getByRole('button', { name: 'Deaktivieren' }))
+
+    await waitFor(() =>
+      expect(mockSetGroupDeactivation).toHaveBeenCalledWith('group-phoenix', true),
+    )
+  })
+
+  it('names the reason instead of asking when the group may not be deactivated', async () => {
+    deactivationPreview.blockedReason =
+      'Die Gruppe kann nicht deaktiviert werden. Die Gruppe ist einzige Eigentümerin von 1 Bibliothek.'
+    serve([adHocGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Deaktivieren' }))
+
+    await waitFor(() =>
+      expect(useNotificationStore.getState().queue.at(-1)?.message).toMatch(
+        /einzige Eigentümerin von 1 Bibliothek/,
+      ),
+    )
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(mockSetGroupDeactivation).not.toHaveBeenCalled()
+  })
+
+  it('marks a deactivated group, names the reason and offers its reactivation', async () => {
+    serve([
+      {
+        ...adHocGroup,
+        deactivated: true,
+        deactivatedAt: '2026-10-11T08:00:00Z',
+        state: 'DEACTIVATED',
+      },
+    ])
+    renderPage()
+    const user = userEvent.setup()
+
+    const table = await screen.findByRole('table', { name: 'Gruppen' })
+    expect(within(table).getByText('Deaktiviert')).toBeInTheDocument()
+    expect(
+      within(table).getByRole('img', { name: /^Grund: Deaktiviert — die Gruppe wirkt/ }),
+    ).toBeInTheDocument()
+
+    const menu = await openRowMenu(user, 'Projektbeteiligte Phoenix')
+    await user.click(within(menu).getByRole('menuitem', { name: 'Reaktivieren' }))
+    const dialog = await screen.findByRole('dialog', {
+      name: '„Projektbeteiligte Phoenix“ reaktivieren?',
+    })
+    expect(dialog).toHaveTextContent('gelten wieder für 12 aktive Konten')
+    await user.click(within(dialog).getByRole('button', { name: 'Reaktivieren' }))
+
+    await waitFor(() =>
+      expect(mockSetGroupDeactivation).toHaveBeenCalledWith('group-phoenix', false),
+    )
+  })
+
+  it('offers no deactivation of a provider group', async () => {
+    serve([orgUnitGroup])
+    renderPage()
+    const user = userEvent.setup()
+
+    const menu = await openRowMenu(user, 'Referat 50')
+    expect(within(menu).queryByRole('menuitem', { name: 'Deaktivieren' })).not.toBeInTheDocument()
   })
 })

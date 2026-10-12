@@ -30,6 +30,7 @@ public class GroupListService {
           GroupState.DISSOLVED,
           GroupState.PROVIDER_DISABLED,
           GroupState.UNMAINTAINED,
+          GroupState.DEACTIVATED,
           GroupState.NOT_RELEASED,
           GroupState.ACTIVE);
 

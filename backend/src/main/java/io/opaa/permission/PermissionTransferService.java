@@ -723,6 +723,10 @@ public class PermissionTransferService {
               + " Verzeichnisabgleich gepflegt wird. Ihre Mitgliedschaft ist eingefroren; übertragen"
               + " Sie auf die entsprechende Organisationseinheit.");
     }
+    if (group.deactivated()) {
+      throw new ValidationException(
+          "Die Zielgruppe ist deaktiviert und kann keine Rechte übernehmen, solange sie es bleibt.");
+    }
     return group;
   }
 

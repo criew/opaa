@@ -102,6 +102,7 @@ public class GroupService {
   public static final String PROTECTION_ADMIN_ONLY = "PROTECTION_ADMIN_ONLY";
 
   private final GroupRepository groupRepository;
+  private final GroupMembershipRepository membershipRepository;
   private final GroupStewardRepository stewardRepository;
   private final UserRepository userRepository;
   private final OidcProviderRepository providerRepository;
@@ -116,9 +117,11 @@ public class GroupService {
   private final PermissionHistoryService permissionHistoryService;
   private final NotificationService notificationService;
   private final AuditEventRecorder auditEventRecorder;
+  private final GroupDeactivation deactivation;
 
   public GroupService(
       GroupRepository groupRepository,
+      GroupMembershipRepository membershipRepository,
       GroupStewardRepository stewardRepository,
       UserRepository userRepository,
       OidcProviderRepository providerRepository,
@@ -132,8 +135,10 @@ public class GroupService {
       CapabilityService capabilityService,
       PermissionHistoryService permissionHistoryService,
       NotificationService notificationService,
-      AuditEventRecorder auditEventRecorder) {
+      AuditEventRecorder auditEventRecorder,
+      GroupDeactivation deactivation) {
     this.groupRepository = groupRepository;
+    this.membershipRepository = membershipRepository;
     this.stewardRepository = stewardRepository;
     this.userRepository = userRepository;
     this.providerRepository = providerRepository;
@@ -148,6 +153,7 @@ public class GroupService {
     this.permissionHistoryService = permissionHistoryService;
     this.notificationService = notificationService;
     this.auditEventRecorder = auditEventRecorder;
+    this.deactivation = deactivation;
   }
 
   /**
@@ -239,7 +245,7 @@ public class GroupService {
    * it.
    */
   public List<GroupOverview> listMyGroups(CurrentUser caller) {
-    Set<UUID> groupIds = membershipResolver.groupIdsForUser(caller.id());
+    Set<UUID> groupIds = membershipRepository.findGroupIdsOfMember(caller.id());
     if (groupIds.isEmpty()) {
       return List.of();
     }
@@ -258,8 +264,9 @@ public class GroupService {
    *
    * <p>A protected group is not findable by a substring: it appears only when the query is its
    * complete name, and then without any size. An ineffective group - dissolved, provider switched
-   * off, or a token group its provider no longer maintains - is returned as not selectable with the
-   * reason instead of being dropped, so the selection can say why.
+   * off, a token group its provider no longer maintains, or a deactivated internal group - is
+   * returned as not selectable with the reason instead of being dropped, so the selection can say
+   * why. "Own" groups are the ones the caller is a member of, deactivated ones included.
    *
    * <p>This list applies the same rule the write paths apply ({@code
    * GroupSubjectDirectory#isSelectableBy}); it is the convenience, never the enforcement.
@@ -269,7 +276,7 @@ public class GroupService {
     if (text.length() < MIN_SEARCH_QUERY_LENGTH) {
       return List.of();
     }
-    Set<UUID> ownGroupIds = membershipResolver.groupIdsForUser(caller.id());
+    Set<UUID> ownGroupIds = membershipRepository.findGroupIdsOfMember(caller.id());
     Set<UUID> stewardedGroupIds = stewardRepository.findGroupIdsByUserId(caller.id());
     Map<UUID, GroupProviderView> providers = new HashMap<>();
     List<SelectableGroup> found = new ArrayList<>();
@@ -311,7 +318,7 @@ public class GroupService {
     if (group == null || !group.getOrganizationId().equals(caller.organizationId())) {
       return Optional.empty();
     }
-    Set<UUID> ownGroupIds = membershipResolver.groupIdsForUser(caller.id());
+    Set<UUID> ownGroupIds = membershipRepository.findGroupIdsOfMember(caller.id());
     Set<UUID> stewardedGroupIds = stewardRepository.findGroupIdsByUserId(caller.id());
     if (!isVisibleInSelection(group, caller, ownGroupIds, stewardedGroupIds)) {
       return Optional.empty();
@@ -364,7 +371,8 @@ public class GroupService {
       Group group, GroupProviderView provider, String publishedName) {
     boolean providerDisabled = provider != null && !provider.enabled();
     boolean unmaintained = GroupStates.unmaintained(group, provider);
-    boolean selectable = !group.isDissolved() && !providerDisabled && !unmaintained;
+    boolean selectable =
+        !group.isDissolved() && !providerDisabled && !unmaintained && !group.isDeactivated();
     if (group.isProtectedGroup()) {
       // Whom to ask instead of reading the member list (ADR-0036, Entscheidung 9): the stewards of
       // an internal group; for a provider group the system administration answers.
@@ -379,7 +387,8 @@ public class GroupService {
           selectable,
           group.isDissolved(),
           providerDisabled,
-          unmaintained);
+          unmaintained,
+          group.isDeactivated());
     }
     int active = membershipResolver.activeMemberCount(group.getId(), group.getOrganizationId());
     boolean small = active < groupSizeProperties.minimumGroupSize();
@@ -394,7 +403,8 @@ public class GroupService {
         selectable,
         group.isDissolved(),
         providerDisabled,
-        unmaintained);
+        unmaintained,
+        group.isDeactivated());
   }
 
   /**
@@ -576,6 +586,37 @@ public class GroupService {
       group.release(releasedForUse);
       groupRepository.save(group);
       recordReachEvent(AuditEventType.GROUP_RELEASE_CHANGED, group, "releasedForUse", caller);
+    }
+    return toGroupDetail(group, caller);
+  }
+
+  /**
+   * The counted consequences of deactivating (or reactivating) an internal group, for its stewards
+   * and the system administration - the figures its confirmation names (ADR-0036, Entscheidung 14).
+   * Counts only, so reading them is no member lookup and no audit event.
+   */
+  public GroupDeactivationPreview deactivationPreview(UUID groupId, CurrentUser caller) {
+    Group group = requireMaintainable(groupId, caller);
+    rejectOrgUnit(group);
+    return deactivation.preview(group, caller);
+  }
+
+  /**
+   * Deactivates an internal group for the time being or reactivates it (ADR-0036, Entscheidung 14).
+   * Its stewards and the system administration decide it - for a protected group as for any other;
+   * anybody else gets the answer of an unknown group. Asking for the state the group already has
+   * changes nothing and records nothing.
+   */
+  @Transactional
+  public GroupDetail setDeactivated(UUID groupId, boolean deactivated, CurrentUser caller) {
+    Group group = requireMaintainable(groupId, caller);
+    rejectOrgUnit(group);
+    if (group.isDeactivated() != deactivated) {
+      if (deactivated) {
+        deactivation.deactivate(group, caller);
+      } else {
+        deactivation.reactivate(group, caller);
+      }
     }
     return toGroupDetail(group, caller);
   }
@@ -770,12 +811,16 @@ public class GroupService {
     GroupMembership membership = new GroupMembership(memberUserId, group.getOrganizationId());
     group.addMembership(membership);
     groupRepository.save(group);
-    permissionHistoryService.recordMembershipAdded(
-        group.getId(),
-        group.getOrganizationId(),
-        memberUserId,
-        GroupMembershipHistoryCause.ADDED,
-        caller.id());
+    // A deactivated group reaches nobody, so its new member's interval starts with the
+    // reactivation (ADR-0036, Entscheidung 14); the audit event below records the admission now.
+    if (!group.isDeactivated()) {
+      permissionHistoryService.recordMembershipAdded(
+          group.getId(),
+          group.getOrganizationId(),
+          memberUserId,
+          GroupMembershipHistoryCause.ADDED,
+          caller.id());
+    }
     auditEventRecorder.recordUserActionOnSubject(
         AuditEvent.builder()
             .organizationId(group.getOrganizationId())
@@ -876,7 +921,7 @@ public class GroupService {
    * <p>Falls back to running immediately when no transaction is active (e.g. called directly in a
    * test), so the invalidation is never silently dropped.
    */
-  private void invalidateAfterCommit(Runnable invalidation) {
+  static void invalidateAfterCommit(Runnable invalidation) {
     if (!TransactionSynchronizationManager.isSynchronizationActive()) {
       invalidation.run();
       return;

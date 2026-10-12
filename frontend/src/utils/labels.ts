@@ -422,11 +422,13 @@ export function groupNotSelectableReason(group: {
   dissolved: boolean
   providerDisabled: boolean
   unmaintained: boolean
+  deactivated: boolean
 }): string | null {
   if (group.selectable) return null
   if (group.dissolved) return 'aufgelöst — bestehende Rechte bleiben'
   if (group.providerDisabled) return 'Anbieter deaktiviert — bestehende Rechte bleiben'
   if (group.unmaintained) return 'Mitgliedschaft eingefroren — bestehende Rechte bleiben'
+  if (group.deactivated) return 'Gruppe deaktiviert — bestehende Rechte ruhen'
   return 'derzeit nicht wählbar'
 }
 

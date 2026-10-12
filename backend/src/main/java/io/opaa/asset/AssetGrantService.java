@@ -85,6 +85,11 @@ public class AssetGrantService {
    */
   private static final AssetRole HIGHEST_ROLE_FOR_ALL_ACCOUNTS = AssetRole.EDITOR;
 
+  /** Why a deactivated group receives no new grant (ADR-0036, Entscheidung 14). */
+  private static final String DEACTIVATED_GROUP_GRANT_MESSAGE =
+      "Die Gruppe ist deaktiviert und wirkt für niemanden. Sie kann keine neuen Berechtigungen"
+          + " erhalten, solange sie es bleibt; bestehende Berechtigungen bleiben gespeichert.";
+
   private final AssetGrantRepository grantRepository;
   private final UserRepository userRepository;
   private final GroupSubjectDirectory groupDirectory;
@@ -557,6 +562,9 @@ public class AssetGrantService {
             .find(groupId)
             .filter(found -> found.organizationId().equals(caller.organizationId()))
             .orElseThrow(() -> new NotFoundException("Gruppe nicht gefunden"));
+    if (group.deactivated()) {
+      throw new ValidationException(DEACTIVATED_GROUP_GRANT_MESSAGE);
+    }
     if (!groupMemberships.groupIdsForUser(caller.id()).contains(group.id())) {
       throw new AccessDeniedException(
           "Nur Mitglieder der Gruppe können eine "
@@ -604,6 +612,9 @@ public class AssetGrantService {
               + " kann sie keine neuen Berechtigungen mehr erhalten; bestehende bleiben"
               + " unverändert. Vergeben Sie das Recht an die entsprechende"
               + " Organisationseinheit.");
+    }
+    if (group.deactivated()) {
+      throw new ValidationException(DEACTIVATED_GROUP_GRANT_MESSAGE);
     }
   }
 

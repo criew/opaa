@@ -256,12 +256,20 @@ class DiagnosticImpersonationGrantServiceTest {
 
   private GroupSubject providerScope() {
     return new GroupSubject(
-        scopeGroupId, ORGANIZATION_ID, "Amt für Personal", false, false, false, false, false);
+        scopeGroupId,
+        ORGANIZATION_ID,
+        "Amt für Personal",
+        false,
+        false,
+        false,
+        false,
+        false,
+        false);
   }
 
   private GroupSubject internalScope() {
     return new GroupSubject(
-        scopeGroupId, ORGANIZATION_ID, "Projektteam", false, false, false, false, true);
+        scopeGroupId, ORGANIZATION_ID, "Projektteam", false, false, false, false, true, false);
   }
 
   private CurrentUser admin() {

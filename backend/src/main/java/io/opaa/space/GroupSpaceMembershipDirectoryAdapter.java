@@ -23,14 +23,17 @@ class GroupSpaceMembershipDirectoryAdapter implements GroupSpaceMembershipDirect
   private final SpaceMembershipRepository membershipRepository;
   private final SpaceRepository spaceRepository;
   private final SpaceMembershipHistoryService membershipHistory;
+  private final SpaceAccessPolicy accessPolicy;
 
   GroupSpaceMembershipDirectoryAdapter(
       SpaceMembershipRepository membershipRepository,
       SpaceRepository spaceRepository,
-      SpaceMembershipHistoryService membershipHistory) {
+      SpaceMembershipHistoryService membershipHistory,
+      SpaceAccessPolicy accessPolicy) {
     this.membershipRepository = membershipRepository;
     this.spaceRepository = spaceRepository;
     this.membershipHistory = membershipHistory;
+    this.accessPolicy = accessPolicy;
   }
 
   @Override
@@ -41,6 +44,28 @@ class GroupSpaceMembershipDirectoryAdapter implements GroupSpaceMembershipDirect
   @Override
   public long countSpaceMembershipsOf(UUID groupId) {
     return membershipRepository.countByGroupId(groupId);
+  }
+
+  /**
+   * Asked while the group still acts: the space counts when it has a capable {@code ADMIN} now and
+   * would have none once this group's row no longer qualifies - the same test {@code
+   * SpaceService#removeMember} applies to the removal of that row.
+   */
+  @Override
+  public long countSpacesRelyingOnGroupAsLastAdmin(UUID groupId) {
+    long relying = 0;
+    for (GroupSpaceMembershipRef ref : spaceMembershipsOf(List.of(groupId))) {
+      Space space = spaceRepository.findByIdWithMemberships(ref.spaceId()).orElse(null);
+      SpaceMembership membership = space == null ? null : groupMembership(space, groupId);
+      if (membership == null || membership.getRole() != SpaceRole.ADMIN) {
+        continue;
+      }
+      if (accessPolicy.hasCapableAdmin(space)
+          && !accessPolicy.hasCapableAdminAfter(space, membership, null)) {
+        relying++;
+      }
+    }
+    return relying;
   }
 
   @Override

@@ -18,10 +18,10 @@ import org.springframework.stereotype.Component;
  * {@code io.opaa.group}, so the derivation lives with the permission model and not with the group
  * administration (ADR-0036, Entscheidung 12). This resolution sits on the hot path of every
  * permission check, so it is cached; the cache is invalidated only after the enclosing transaction
- * commits (or rolls back), which {@code GroupService} does on every add, remove and group deletion
- * via its {@code invalidateAfterCommit} helper - not inline, because an inline invalidation can
- * race a concurrent reader into repopulating the cache with the pre-commit state (see {@code
- * GroupService#invalidateAfterCommit} for the sequence).
+ * commits (or rolls back), which {@code GroupService} does on every add, remove, group deletion,
+ * deactivation and reactivation via its {@code invalidateAfterCommit} helper - not inline, because
+ * an inline invalidation can race a concurrent reader into repopulating the cache with the
+ * pre-commit state (see {@code GroupService#invalidateAfterCommit} for the sequence).
  *
  * <p>Follows the same direct-Caffeine-cache pattern as {@link io.opaa.ratelimit.RateLimitService}
  * rather than the Spring Cache abstraction, to avoid introducing a second caching mechanism into
@@ -59,9 +59,18 @@ public class GroupMembershipResolver {
         Caffeine.newBuilder().maximumSize(50_000).expireAfterWrite(Duration.ofMinutes(10)).build();
   }
 
-  /** The set of group ids the given user is a direct member of. Cached until invalidated. */
+  /**
+   * The set of group ids the given user is a direct member of, without the groups deactivated for
+   * the time being (ADR-0036, Entscheidung 14) - this method is where a deactivated group stops
+   * taking effect for every rights evaluation at once. Cached until invalidated.
+   */
   public Set<UUID> groupIdsForUser(UUID userId) {
     return groupIdsByUser.get(userId, membershipSource::findGroupIdsByUserId);
+  }
+
+  /** Which of the given groups are deactivated for the time being; empty input, empty answer. */
+  public Set<UUID> deactivatedAmong(Collection<UUID> groupIds) {
+    return groupIds.isEmpty() ? Set.of() : membershipSource.findDeactivatedGroupIdsIn(groupIds);
   }
 
   /**
@@ -71,10 +80,11 @@ public class GroupMembershipResolver {
    * GroupMembershipSource#findUserIdsByGroupIdAndOrganizationId} - membership is never inherited
    * downward beyond what is recorded there (see #237, #208). For a {@code USER} subject it is that
    * one user, but only if the user actually belongs to the given organization; otherwise the empty
-   * set. This is the one place every future caller (#202) goes through, so it is deliberately not
-   * left to each caller to re-check the boundary for the {@code USER} case - the extra lookup costs
-   * one indexed hit on the hot path, which is cheaper than repeating the organization-boundary bug
-   * class that #199 had to fix in review.
+   * set. A deactivated group reaches nobody (ADR-0036, Entscheidung 14). This is the one place
+   * every future caller (#202) goes through, so it is deliberately not left to each caller to
+   * re-check the boundary for the {@code USER} case - the extra lookup costs one indexed hit on the
+   * hot path, which is cheaper than repeating the organization-boundary bug class that #199 had to
+   * fix in review.
    */
   public Set<UUID> resolveUserIds(PermissionSubject subject) {
     return switch (subject.type()) {
@@ -105,10 +115,10 @@ public class GroupMembershipResolver {
   }
 
   /**
-   * The active accounts of a group by id - {@link #activeMemberCount}'s sibling for a caller that
+   * The active accounts a group reaches - {@link #activeMemberCount}'s sibling for a caller that
    * has to intersect them with something else (#1835: the Mindestgruppengröße counts the members
    * who also reach one space). Same definition of "active", by construction: the count is this
-   * set's size.
+   * set's size, except for a deactivated group, which reaches nobody while it still has members.
    */
   public Set<UUID> activeMemberIds(UUID groupId, UUID organizationId) {
     return accountActivity.activeAmong(

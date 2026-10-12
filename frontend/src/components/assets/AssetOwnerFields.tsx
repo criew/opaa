@@ -61,7 +61,10 @@ export default function AssetOwnerFields({
           <Autocomplete
             options={groups}
             size="small"
-            getOptionLabel={(option) => option.name}
+            getOptionLabel={(option) =>
+              option.deactivated ? `${option.name} (deaktiviert)` : option.name
+            }
+            getOptionDisabled={(option) => option.deactivated}
             noOptionsText="Keine Treffer"
             value={selectedGroup}
             onChange={(_e, value) => onSelectedGroupChange(value)}
