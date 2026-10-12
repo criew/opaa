@@ -54,8 +54,8 @@ etwa ein öffentliches Webverzeichnis, brauchen gar keine Anmeldung.
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek<br/>hält das Geheimnis] -.-> Z[Zugang<br/>Adresse, Vorgaben]
-    B -->|Token, Passwort, Schlüssel| Q[Quelle beim Anbieter]
+    B[Wissens-<br/>bibliothek<br/>hält das<br/>Geheimnis] -.-> Z[Zugang:<br/>Adresse,<br/>Vorgaben]
+    B -->|Token,<br/>Passwort,<br/>Schlüssel| Q[Quelle beim<br/>Anbieter]
     Q --> K[Dienstkonto<br/>mit Leserecht]
 ```
 
@@ -70,7 +70,7 @@ App freigegebene Sites). Ist der Schlüssel abgelehnt, zeigen alle Bibliotheken 
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek<br/>nur Auswahl] --> Z[Zugang<br/>Schlüssel oder Secret]
+    B[Wissens-<br/>bibliothek<br/>nur Auswahl] --> Z[Zugang:<br/>Schlüssel<br/>oder Secret]
     Z -->|Anmeldung| T[Token-Dienst<br/>des Anbieters]
     T -->|Zugriffstoken| A[Schnittstelle<br/>des Anbieters]
 ```
@@ -85,9 +85,9 @@ ausscheidet. Trennen und „Alle Verbindungen trennen" ziehen sie auch beim Anbi
 
 ```mermaid
 flowchart LR
-    V[Verwaltende Person] -->|Quelle verbinden| A[Anbieter:<br/>Anmeldung als Funktionskonto]
-    A -->|Zustimmung| B[Wissensbibliothek<br/>hält die Zustimmung]
-    Z[Zugang<br/>App-Registrierung] -.-> A
+    V[Verwaltende<br/>Person] -->|Quelle<br/>verbinden| A[Anbieter:<br/>Anmeldung als<br/>Funktions-<br/>konto]
+    A -->|Zustimmung| B[Wissens-<br/>bibliothek<br/>hält die<br/>Zustimmung]
+    Z[Zugang<br/>App-Regis-<br/>trierung] -.-> A
     B -->|Zugriffstoken| S[Schnittstelle<br/>des Anbieters]
 ```
 
@@ -101,9 +101,9 @@ Verbindung als abgelaufen, und die Person wird benachrichtigt.
 
 ```mermaid
 flowchart LR
-    P[Person] -->|verbindet eigenes Konto| Z[Zugang<br/>Besitzart Person]
-    Z --> B[Private Bibliothek]
-    B -->|Rechte der Person| Q[Quelle beim Anbieter]
+    P[Person] -->|verbindet<br/>eigenes Konto| Z[Zugang:<br/>Besitzart<br/>Person]
+    Z --> B[Private<br/>Bibliothek]
+    B -->|Rechte der<br/>Person| Q[Quelle beim<br/>Anbieter]
 ```
 
 ## 4. Was ein Zugang festlegt
@@ -114,6 +114,7 @@ flowchart LR
 | Server-Adresse | wo die Quelle liegt, sofern die Quellart eine braucht; die Adresse jeder Wissensbibliothek auf dem Zugang liegt darunter |
 | Anmeldeart | wie sich OPAA bei der Quelle anmeldet, je nach Quellart etwa ohne Anmeldung, mit Benutzername und Passwort oder Token, mit einer App-Registrierung oder über eine Zustimmung beim Anbieter (OAuth) |
 | Für wen er da ist | für geteilte Wissensbibliotheken, für persönliche Konten, aus denen private Bibliotheken entstehen, oder für beides (in der Oberfläche „Besitzart") |
+| Zertifikatsprüfung | ob sie ausgesetzt ist, für alle Wissensbibliotheken auf dem Zugang; nur bei einer Server-Adresse mit `http://` oder `https://` |
 | Vorgaben | Einstellungen, die der Zugang für alle Wissensbibliotheken darauf festlegt, damit sie niemand selbst eintragen muss — etwa die Confluence-Edition. Sie erscheinen dort nur lesbar |
 | Wer ihn nutzen darf | alle Konten oder bestimmte Gruppen und Personen. Ein neuer Zugang ist zunächst nur für die Systemverwaltung freigegeben, damit sie ihn prüfen kann, bevor andere ihn wählen |
 

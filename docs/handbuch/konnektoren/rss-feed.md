@@ -10,7 +10,7 @@ auf ihren Hauptinhalt und holt die dort verlinkten Anlagen als eigene Dokumente.
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek] -.-> Z[Zugang<br/>optional]
+    B[Wissens-<br/>bibliothek] -.-> Z[Zugang<br/>optional]
     B -->|bedingter GET| F[Feed]
     F --> D[Detailseiten]
     D --> A[Anlagen]
@@ -59,7 +59,7 @@ flowchart LR
     F[Feed abrufen,<br/>bedingter GET] -->|304| E[Lauf endet]
     F -->|200| I{pubDate neu?}
     I -- nein --> S[übersprungen]
-    I -- ja --> W[Detailseite laden,<br/>Hauptinhalt wählen]
+    I -- ja --> W[Detailseite<br/>laden, Haupt-<br/>inhalt wählen]
     W --> A[Anlagen laden]
 ```
 

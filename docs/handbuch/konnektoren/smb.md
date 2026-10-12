@@ -10,9 +10,9 @@ was alle Dateiablagen teilen, steht dort.
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek<br/>mit Dienstkonto] -.-> Z[Zugang<br/>optional]
-    B -->|SMB 2/3, NTLMv2,<br/>Port 445| S[Dateiserver]
-    S --> F[Freigabe und Ordner]
+    B[Wissens-<br/>bibliothek<br/>mit Dienstkonto] -.-> Z[Zugang<br/>optional]
+    B -->|SMB 2/3,<br/>NTLMv2,<br/>Port 445| S[Dateiserver]
+    S --> F[Freigabe<br/>und Ordner]
 ```
 
 - **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../zugaenge.md), „Eigene
@@ -73,10 +73,10 @@ wenn darin direkt etwas angelegt, gelöscht oder umbenannt wird.
 ```mermaid
 flowchart LR
     A[Anmeldung,<br/>Freigabe öffnen] --> B[alle Ordner<br/>auflisten]
-    B --> C{Änderungszeit und<br/>Größe gleich?}
+    B --> C{Änderungszeit<br/>und Größe<br/>gleich?}
     C -- ja --> S[übersprungen]
     C -- nein --> F[laden]
-    B --> L[Verknüpfungen:<br/>gezählt, nicht verfolgt]
+    B --> L[Verknüpfungen:<br/>gezählt, nicht<br/>verfolgt]
 ```
 
 **Über mehrere Läufe.** Reicht das Budget nicht, endet der Lauf als „unvollständig, wird

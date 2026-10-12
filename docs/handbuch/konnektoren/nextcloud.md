@@ -10,9 +10,9 @@ Dateiablagen teilen, steht dort.
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek] -.-> Z[Zugang<br/>optional]
+    B[Wissens-<br/>bibliothek] -.-> Z[Zugang<br/>optional]
     B -->|WebDAV,<br/>App-Passwort| N[Nextcloud]
-    N --> T[technischer Nutzer<br/>oder eigenes Konto]
+    N --> T[technischer<br/>Nutzer oder<br/>eigenes Konto]
 ```
 
 - **Anmeldung:** Benutzername und App-Passwort als HTTP Basic. Für eine geteilte Bibliothek sind
@@ -90,9 +90,9 @@ steigt aber nur in Ordner ab, deren Prüfsumme sich geändert hat.
 
 ```mermaid
 flowchart LR
-    B[je Ordner<br/>PROPFIND Tiefe 1] --> C{Ordner-Prüfsumme<br/>wie zuletzt?}
-    C -- ja --> K[gilt samt Inhalt<br/>als vorhanden]
-    C -- nein --> D{Datei unverändert<br/>und am selben Ort?}
+    B[je Ordner<br/>PROPFIND,<br/>Tiefe 1] --> C{Prüfsumme<br/>des Ordners<br/>wie zuletzt?}
+    C -- ja --> K[gilt samt<br/>Inhalt als<br/>vorhanden]
+    C -- nein --> D{Datei<br/>unverändert,<br/>selber Ort?}
     D -- ja --> S[übersprungen]
     D -- nein --> F[laden]
 ```

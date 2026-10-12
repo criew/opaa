@@ -9,9 +9,9 @@ gibt es nicht; gelesen wird über das Dateisystem des Containers, mit den Rechte
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek] --> P[Verzeichnispfad<br/>im Container]
-    P --> M[Mount oder Volume]
-    M --> N[(Netzlaufwerk,<br/>Ablageverzeichnis)]
+    B[Wissens-<br/>bibliothek] --> P[Verzeichnispfad<br/>im Container]
+    P --> M[Mount oder<br/>Volume]
+    M --> N[(Netzlaufwerk,<br/>Ablage-<br/>verzeichnis)]
 ```
 
 - **Anmeldung:** keine. Es gilt das, was die Kennung des Backend-Prozesses lesen darf. Ein

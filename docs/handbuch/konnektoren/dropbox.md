@@ -10,7 +10,7 @@ teilen, steht dort.
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek<br/>Zustimmung] --> Z[Zugang<br/>Dropbox-App]
+    B[Wissens-<br/>bibliothek<br/>Zustimmung] --> Z[Zugang<br/>Dropbox-App]
     V[Verwaltende<br/>Person] -->|Quelle<br/>verbinden| D[Dropbox:<br/>Funktions-<br/>konto]
     D --> B
     B -->|API v2| A[Dropbox-<br/>Ordner]
@@ -59,7 +59,7 @@ Das Formular fragt weder Adresse noch Zugangsdaten ab. „Eigene Adresse" gibt e
 
 1. **Zugang** wählen.
 2. **„Quelle verbinden"** und bei Dropbox mit dem Funktionskonto zustimmen
-   ([Wissensbibliotheken](../wissensbibliotheken.md), „Quelle verbinden"). OPAA nennt danach das Konto
+   ([Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 3.3). OPAA nennt danach das Konto
    („Verbunden als …"). Erst dann laden Ordnerauswahl und Test etwas.
 3. **„Team-Bereich lesen"**: aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **„Ordner"**: ein Pfad je Zeile, wie `/Projekte`; kein Ordner darf in einem anderen liegen.

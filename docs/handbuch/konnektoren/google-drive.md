@@ -8,10 +8,10 @@ Der Konnektor liest **geteilte Ablagen und Ordner eines Google-Workspace-Mandant
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek<br/>Bereiche] --> Z[Zugang oder Bibliothek<br/>Dienstkonto-Schlüssel]
-    Z -->|signierte Anmeldung| T[Google<br/>Token-Dienst]
+    B[Wissens-<br/>bibliothek<br/>Bereiche] --> Z[Zugang oder<br/>Bibliothek:<br/>Dienstkonto-<br/>Schlüssel]
+    Z -->|signierte<br/>Anmeldung| T[Google<br/>Token-Dienst]
     T --> A[Drive API v3]
-    A --> D[geteilte Ablagen,<br/>freigegebene Ordner]
+    A --> D[geteilte<br/>Ablagen,<br/>freigegebene<br/>Ordner]
 ```
 
 - **Anmeldung:** mit einem **Dienstkonto-Schlüssel**. Über einen Zugang meldet sich der Zugang

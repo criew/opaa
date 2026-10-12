@@ -11,9 +11,9 @@ Web-Crawler: Er folgt nur Links aus Verzeichnislisten und bleibt unterhalb der S
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek] -.-> Z[Zugang<br/>optional]
-    B -->|HTTP GET,<br/>optional Basic Auth| W[Webserver]
-    W --> L[Verzeichnisliste<br/>und Dateien]
+    B[Wissens-<br/>bibliothek] -.-> Z[Zugang<br/>optional]
+    B -->|HTTP GET,<br/>optional<br/>Basic Auth| W[Webserver]
+    W --> L[Verzeichnis-<br/>liste und<br/>Dateien]
 ```
 
 - **Anmeldung:** keine oder HTTP Basic mit Benutzername und Passwort, eigene Zugangsdaten der
@@ -61,7 +61,7 @@ fehlen sie.
 
 ```mermaid
 flowchart LR
-    P[Verzeichnisseite<br/>laden] -->|Unterverzeichnis| P
+    P[Verzeichnis-<br/>seite laden] -->|Unter-<br/>verzeichnis| P
     P -->|Datei| E{Datum bekannt<br/>und gleich?}
     E -- ja --> S[übersprungen]
     E -- nein --> H[Anfang laden,<br/>Format erkennen]

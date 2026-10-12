@@ -9,8 +9,8 @@ Aufbereitung des Seiteninhalts beschreibt das Kapitel [Confluence-Seite](../form
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek<br/>mit Token] -.-> Z[Zugang<br/>optional]
-    B -->|REST-API| C[Confluence<br/>Cloud oder Data Center]
+    B[Wissens-<br/>bibliothek<br/>mit Token] -.-> Z[Zugang<br/>optional]
+    B -->|REST-API| C[Confluence<br/>Cloud oder<br/>Data Center]
     C --> K[Dienstkonto<br/>mit Leserecht]
     C -.->|Webhook| B
 ```
@@ -79,10 +79,10 @@ Bibliothek vom Zugang löst, behält dessen Edition.
 
 ```mermaid
 flowchart LR
-    B{Laufart} -- Vollabgleich --> L[je Space alle Seiten<br/>auflisten]
+    B{Laufart} -- Vollabgleich --> L[je Space<br/>alle Seiten<br/>auflisten]
     B -- inkrementell --> S[Änderungssuche<br/>seit dem Anker]
-    B -- Webhook --> W[gemeldete Seiten]
-    L --> V{Version bekannt?}
+    B -- Webhook --> W[gemeldete<br/>Seiten]
+    L --> V{Version<br/>bekannt?}
     S --> V
     W --> V
     V -- nein --> P[Seite holen,<br/>Anhänge prüfen]

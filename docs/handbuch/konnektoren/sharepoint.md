@@ -9,7 +9,7 @@ ist eine der [Dateiablagen](README.md#2-dateiablagen); was alle Dateiablagen tei
 
 ```mermaid
 flowchart LR
-    B[Wissensbibliothek<br/>Dokument-<br/>bibliotheken] --> Z[Zugang<br/>App-Registrierung]
+    B[Wissens-<br/>bibliothek<br/>Dokument-<br/>bibliotheken] --> Z[Zugang<br/>App-Regis-<br/>trierung]
     Z -->|Client-<br/>Credentials| E[Microsoft<br/>Entra]
     E --> G[Microsoft<br/>Graph v1.0]
     G --> S[freigegebene<br/>Sites]
