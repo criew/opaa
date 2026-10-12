@@ -1,548 +1,270 @@
-# Konnektor: Confluence (CONFLUENCE)
+# Konnektor: Confluence
 
-> **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Confluence Cloud und Confluence Data
-> Center. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Wissensbibliotheken](../wissensbibliotheken.md); die Aufbereitung des Seiteninhalts im Kapitel
-> [Confluence-Seite](../formate/confluence.md).
+## 1. Was der Konnektor ist
 
-**Kurzfassung für den eiligen Betrieb**
-
-1. Selbst betriebene Instanz im privaten Netz? Hostnamen in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`
-   eintragen (Abschnitt 4.1).
-2. Ein Dienstkonto je Leserkreis; Token (Cloud: E-Mail plus API-Token, Data Center: Personal Access
-   Token) nur mit Leserecht auf die gewünschten Spaces.
-3. Bibliothek anlegen: Adresse eingeben, „Edition erkennen", Zugangsdaten, „Verbindung testen",
-   Spaces auswählen. Alles aus den gewählten Spaces ist für **alle** Leseberechtigten der Bibliothek
-   sichtbar.
-4. Zeitplan setzen. Der Konnektor läuft inkrementell und regelmäßig als Vollabgleich; nur der
-   Vollabgleich entfernt, was in Confluence nicht mehr existiert.
-5. Optional Webhook einrichten (Geheimnis in OPAA erzeugen, in Confluence hinterlegen).
-6. Im Laufprotokoll auf „nicht lesbar", „Ratenbegrenzung" und „unvollständig, wird fortgesetzt"
-   achten.
-
-## 1. Wofür er gedacht ist
-
-Eine Confluence-Bibliothek zeigt auf **eine** Instanz (Cloud oder Data Center), mit **einem** Token
-und einer **Auswahl von Spaces** (bis zu 500). Indiziert werden die **aktuellen Seiten** dieser Spaces
-und ihre **Anhänge** in den unterstützten Dateiformaten. Nicht indiziert werden Blogbeiträge,
-Kommentare, Whiteboards, Datenbanken, archivierte Seiten und der Papierkorb.
-
-Anders als die drei anderen Konnektoren liest er kein Verzeichnis und keine Liste, sondern spricht
-mit einer Anwendung, die eigene Rechte, eigene Versionsnummern und eine eigene Ratenbegrenzung hat.
-Das prägt drei Dinge: Es gibt zwei **Betriebsarten** (Vollabgleich und inkrementell), ein
-**Anfragebudget** je Lauf und einen **Webhook-Eingang** für Änderungen in Sekunden statt Stunden.
-
-Jedes Dokument trägt Space, Gliederungspfad (die Titel der übergeordneten Seiten), Seitentitel,
-Versionsnummer und die titelfreie Confluence-Adresse; die Fundstelle im Chat verlinkt auf die Seite
-bzw. den Anhang in Confluence.
-
-**Rechte werden nicht abgebildet.** Was das Token lesen darf und in der Auswahl liegt, sehen alle
-Leseberechtigten der Bibliothek. Abschnitt 14 sagt, was daraus für den Zuschnitt folgt.
+Der Konnektor liest **Seiten und Anhänge ausgewählter Spaces** einer Confluence-Instanz, Cloud oder
+Data Center. Er spricht die **Confluence-REST-API**: bei Cloud die Version 2 (`/wiki/api/v2`) und für
+die Änderungssuche die CQL-Suche der Version 1, bei Data Center die Version 1 (`/rest/api`). Die
+Aufbereitung des Seiteninhalts beschreibt das Kapitel [Confluence-Seite](../formate/confluence.md).
 
 ```mermaid
 flowchart LR
-    A[Zugangsdaten prüfen] --> B{Betriebsart}
-    B -- Vollabgleich --> L[je Space alle Seiten<br/>auflisten: ID, Titel, Version]
-    B -- inkrementell --> S[Änderungssuche seit<br/>dem Anker, mit Überlappung]
-    B -- Webhook --> W[nur gemeldete Seiten]
-    L --> V{Version bekannt<br/>und indiziert?}
+    B[Wissensbibliothek<br/>mit Token] -.-> Z[Zugang<br/>optional]
+    B -->|REST-API| C[Confluence<br/>Cloud oder Data Center]
+    C --> K[Dienstkonto<br/>mit Leserecht]
+    C -.->|Webhook| B
+```
+
+- **Anmeldung:** eigene Zugangsdaten der Bibliothek ([Zugänge](../zugaenge.md), „Eigene
+  Zugangsdaten der Bibliothek"): bei Cloud E-Mail-Adresse und API-Token als HTTP Basic, bei Data
+  Center ein Personal Access Token als `Bearer`. Ein Zugang ist möglich und darf die Edition
+  vorgeben.
+- **Liest:** die aktuellen Seiten der gewählten Spaces (bis zu 500) und ihre Anhänge in
+  unterstützten Formaten. **Nicht** gelesen werden Blogbeiträge, Kommentare, Whiteboards,
+  Datenbanken, archivierte Seiten und der Papierkorb.
+- **Dokument:** Jede Seite trägt Space, Gliederungspfad (die Titel der übergeordneten Seiten), Titel
+  und Version; die Fundstelle im Chat verlinkt auf die Seite bzw. den Anhang in Confluence.
+- **Rechte** aus Confluence übernimmt OPAA nicht: Was das Token in den gewählten Spaces lesen darf,
+  sehen alle Leseberechtigten der Bibliothek.
+
+## 2. Einrichtung
+
+1. Selbst betriebene Instanz im privaten Netz: ihren Hostnamen für die
+   [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben. Ein eigenes Zertifikat der
+   Behörden-CA gehört in den Truststore des Backend-Containers ([Deployment](../deployment.md)).
+2. **Ein Dienstkonto je Leserkreis**, kein persönliches Konto — ein persönliches Token trägt die
+   Rechte einer Person und verfällt mit ihrem Austritt. Das Token bestimmt die Obergrenze dessen,
+   was in die Bibliothek gelangen kann; die Space-Auswahl grenzt darunter ein.
+   - **Cloud:** eine Confluence-Lizenz und „Ansehen" auf jedem Space; ein klassisches, nicht
+     bereichsbeschränktes API-Token des Atlassian-Kontos.
+   - **Data Center:** „Ansehen" auf jedem Space und ein Personal Access Token (Profil, Personal
+     Access Tokens) mit Ablaufdatum im Betriebskalender. Das Konto muss sich per REST anmelden
+     dürfen.
+3. Optional einen Zugang mit Adresse und Edition anlegen, wenn mehrere Bibliotheken dieselbe Instanz
+   lesen. Das Token tragen auch dann die einzelnen Bibliotheken; wer es rotiert, aktualisiert jede.
+
+## 3. Quellkonfiguration
+
+Das Formular „Verbindung zu Confluence" führt in dieser Reihenfolge:
+
+1. **„Adresse der Confluence-Instanz"** — Cloud mit oder ohne `/wiki`, Data Center mit Kontextpfad,
+   etwa `https://wiki.behoerde.example/confluence`.
+2. **„Edition erkennen"** — OPAA erkennt Cloud oder Data Center ohne Zugangsdaten am
+   Antwortverhalten der Instanz, auch hinter eigener Domain. Die Edition ist danach unveränderlich;
+   eine migrierte Instanz bekommt eine neue Bibliothek.
+3. **Zugangsdaten** im Format der Edition: „E-Mail-Adresse" und „API-Token" bzw. „Personal Access
+   Token". Beim Bearbeiten bleibt ein leeres Feld beim hinterlegten Token; eine Adresse auf einem
+   anderen Server verlangt ein neues.
+4. **„Verbindung testen"**, dann **„Spaces suchen und auswählen"**: Die Auswahl zeigt nur, was das
+   Token lesen darf. Darüber steht: „Wer diese Bibliothek lesen darf, sieht alles aus allen
+   ausgewählten Spaces."
+
+„Zertifikatsprüfung aussetzen" ist nur für Testinstanzen gedacht. Den Vollabgleich-Rhythmus setzt
+„Vollabgleich alle … Tage" im Zeitplan (1 bis 365, leer die Vorgabe der Installation). Edition und
+Spaces sieht jede Leseberechtigung; Adresse, Webhook-Zustand und Laufprotokoll nur Verwaltende.
+
+**Über einen Zugang:** Die Adresse liegt unter der Server-Adresse des Zugangs. Gibt der Zugang die
+Edition vor, steht sie nur lesbar da, und „Edition erkennen" entfällt; die Prüfung gegen die Instanz
+läuft mit der Zertifikatsprüfung des Zugangs. Solange Bibliotheken auf einem Zugang liegen, lässt
+sich seine Edition nicht ändern und keine Bibliothek der anderen Edition zuordnen. Wer eine
+Bibliothek vom Zugang löst, behält dessen Edition.
+
+## 4. Betriebsarten und Änderungserkennung
+
+| Laufart | Was passiert | Wann |
+|---|---|---|
+| **Vollabgleich** | alle gewählten Spaces vollständig auflisten, Neues und Geändertes holen, am Ende entfernen, was fehlt | erster Lauf; nach einer Änderung der Space-Auswahl oder der Adresse; nach einem unterbrochenen Vollabgleich; im Vollabgleich-Rhythmus; „Vollabgleich starten" |
+| **Inkrementell** | per Änderungssuche nur die seit dem Anker geänderten Seiten holen; nie wegen Abwesenheit entfernen | jeder andere Lauf und „Jetzt indizieren" |
+| **per Webhook** | nur die gemeldeten Seiten holen (Abschnitt 5) | Sekunden nach einer Benachrichtigung |
+
+```mermaid
+flowchart LR
+    B{Laufart} -- Vollabgleich --> L[je Space alle Seiten<br/>auflisten]
+    B -- inkrementell --> S[Änderungssuche<br/>seit dem Anker]
+    B -- Webhook --> W[gemeldete Seiten]
+    L --> V{Version bekannt?}
     S --> V
     W --> V
-    V -- ja --> SK[übersprungen,<br/>Anhänge trotzdem geprüft]
-    V -- nein --> P[Seite holen, Text durch<br/>die Dokumentstrecke]
-    P --> AT[Anhänge auflisten,<br/>je Anhang eigenes Dokument]
-    L --> R[nur Vollabgleich:<br/>Löscherkennung, wenn alle<br/>Spaces vollständig gelistet]
+    V -- nein --> P[Seite holen,<br/>Anhänge prüfen]
 ```
 
-## 2. Quellkonfiguration
-
-Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abschnitt
-**„Anbindung"**; beim Anlegen im gleichnamigen Schritt des Assistenten. Die ausgewählten Spaces
-stehen darüber im Abschnitt **„Umfang"** und sind dort für jeden Leseberechtigten sichtbar; im
-selben Reiter folgen der **„Zeitplan"** und, als **„Läufe"**, das Laufprotokoll.
-
-| Feld der Bibliothek | Regel |
-|---|---|
-| Adresse (`sourceUrl`) | Pflicht. Cloud mit oder ohne `/wiki`; Data Center einschließlich Kontextpfad, etwa `https://wiki.behoerde.example/confluence`. |
-| Edition (`sourceSettings.edition`) | Pflicht, `CLOUD` oder `DATA_CENTER`. Wird beim Anlegen erkannt und ist danach unveränderlich; eine migrierte Instanz wird als neue Bibliothek angelegt. |
-| Zugangsdaten (`sourceCredentials`) | Pflicht. Cloud: `<E-Mail>:<API-Token>`; Data Center: Personal Access Token. Verschlüsselt gespeichert, in keiner API-Antwort sichtbar. |
-| Space-Auswahl (`sourceSettings.spaces`) | Pflicht, mindestens ein Space, höchstens 500. Später änderbar; jede Änderung erzwingt beim nächsten Lauf einen Vollabgleich. |
-| Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional, nur für Testinstanzen. Ein eigenes Zertifikat der Behörden-CA gehört in den Truststore des Backend-Containers (siehe [Deployment](../deployment.md)). |
-| Vollabgleich-Rhythmus (`sourceSettings.fullSyncIntervalDays`) | optional, 1 bis 365 Tage, im Zeitplan-Dialog („Vollabgleich alle … Tage"); leer bedeutet die instanzweite Vorgabe (Standard sieben Tage). |
-| Webhook-Geheimnis | optional, in OPAA erzeugt (Abschnitt 8). |
-
-**Das gestufte Quellformular** — im Schritt „Quelle" des Assistenten wie hinter „Bearbeiten" im
-Abschnitt „Anbindung". Die Reihenfolge ist Adresse eingeben, „Edition erkennen", Zugangsdaten im
-Format der erkannten Edition, „Verbindung testen", Spaces auswählen. Die Auswahl zeigt nur, was das Token
-lesen darf. Über der Auswahl steht der Hinweis, den auch dieses Kapitel wiederholt: Alles, was aus
-den gewählten Spaces indiziert wird, sehen alle Leseberechtigten der Bibliothek.
-
-**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Ein Zugang für
-Confluence meldet sich mit einem persönlichen Geheimnis an, das der Bibliothek gehört; ihre
-Verwaltenden tragen das Token wie oben ein. Die Adresse ist mit der Server-Adresse des Zugangs
-vorbelegt und muss darunter liegen. Der Zugang darf die **Edition** vorgeben: Dann steht sie nur
-lesbar da, „Edition erkennen“ entfällt, die Bibliothek muss sie nicht mitschicken, und eine
-abweichende Edition weist OPAA ab. Die Prüfung der Edition gegen die Instanz beim Anlegen läuft
-über Proxy und Zertifikatsprüfung des Zugangs. Weil die Edition einer Bibliothek feststeht, lehnt
-OPAA ab, die vorgegebene Edition eines Zugangs zu ändern, solange Bibliotheken auf ihm liegen,
-ebenso das Zuordnen einer Bibliothek der anderen Edition; die Vorschau der Auswirkungen nennt den
-Grund. Wer eine Bibliothek vom Zugang löst, behält dessen Edition als ihre eigene.
-
-**Sichtbarkeit.** Jede Leseberechtigung sieht Edition und ausgewählte Spaces. Adresse, Proxy und
-Webhook-Zustand sehen nur Verwaltende (Rolle MANAGER oder Eigentümer), ebenso das Laufprotokoll.
-
-### 2.1 Confluence Cloud
-
-- **Token-Art:** E-Mail-Adresse des Kontos plus **API-Token** (Atlassian-Konto, Sicherheit,
-  API-Token; ein klassisches, nicht bereichsbeschränktes Token). OPAA sendet beides als HTTP Basic.
-- **Minimale Berechtigungen:** eine Confluence-Lizenz auf der Site und **Ansehen** auf jedem Space
-  der Auswahl. Kein Site-Admin, kein Space-Admin.
-- **Erkennung:** OPAA erkennt die Edition ohne Zugangsdaten am Antwortverhalten der Instanz, nicht
-  am Hostnamen; eine Cloud-Site hinter eigener Domain wird ebenso erkannt.
-- **Ratenbegrenzung:** Cloud rechnet mit einem Punktebudget je Site und antwortet mit HTTP 429;
-  OPAA wartet (Abschnitt 4.3). Zwei Bibliotheken gegen dieselbe Site mit demselben Dienstkonto
-  teilen sich dieses Budget.
-
-### 2.2 Confluence Data Center
-
-- **Token-Art:** **Personal Access Token** des Kontos (Profil, Personal Access Tokens), gesendet als
-  `Bearer`. Ein Ablaufdatum setzen und im Betriebskalender führen: Ein abgelaufenes Token macht die
-  Bibliothek nicht kaputt, aber jeder Lauf schlägt sichtbar fehl.
-- **Minimale Berechtigungen:** **Ansehen** auf jedem Space der Auswahl; das Konto muss sich per REST
-  anmelden dürfen (kein reines UI-Konto hinter einem SSO, das keine Tokens zulässt).
-- **Besonderheit:** Data Center **weist ein ungültiges Token nicht ab**, sondern beantwortet
-  Anfragen anonym mit dem, was anonym sichtbar ist, oft nichts. OPAA prüft deshalb vor jedem Lauf
-  und im Verbindungstest, als wer die Instanz das Token sieht; ein anonym beantwortetes Token wird
-  als „nicht angenommen" gemeldet, nie als leere Instanz.
-- **Kontextpfad:** Eine Instanz unter `https://wiki.behoerde.example/confluence` wird mit genau
-  dieser Adresse eingetragen.
-
-### 2.3 Dienstkonten-Zuschnitt
-
-- **Ein Dienstkonto je Leserkreis, nicht je Bibliothek.** Das Token bestimmt die Obergrenze dessen,
-  was in die Bibliothek gelangen kann; die Space-Auswahl grenzt darunter ein. Ein Konto, das alles
-  lesen darf, mit einer schmalen Auswahl zu kombinieren, funktioniert, aber ein Fehlgriff in der
-  Auswahl legt dann Inhalte offen, die ein schmaleres Konto gar nicht hätte liefern können.
-- **Kein persönliches Konto.** Ein persönliches Token trägt die Rechte einer Person und verfällt mit
-  ihrem Austritt; die Bibliothek fällt dann aus.
-- **Token je Bibliothek.** OPAA kennt keine geteilte Verbindung; wer ein Token rotiert, das in fünf
-  Bibliotheken steht, rotiert es fünfmal (Bibliothek, Reiter „Quelle", Anbindung, Bearbeiten). Ein
-  Rotationskalender mit Bibliotheksliste je Token erspart die Suche.
-- **Webhook-Geheimnis** ebenfalls je Bibliothek (Abschnitt 8); es ist ein zweites Geheimnis, kein
-  Ersatz für das Token.
-
-## 3. Zugriff
-
-| Eigenschaft | Verhalten |
-|---|---|
-| Zugriffsschicht | je Edition ein eigener Adapter: Cloud über `/wiki/api/v2` (Cursor-Paginierung) und die v1-Suche für CQL; Data Center über `/rest/api` (Offset-Paginierung). Läufe, Verbindungstest und Space-Liste sehen dieselbe Schnittstelle. |
-| Authentifizierung | Cloud HTTP Basic, Data Center Bearer; die Zugangsdaten erreichen nie eine Fehlermeldung oder ein Protokoll |
-| Zugangsdaten vor dem ersten Lauf | jeder Lauf prüft zuerst, ob die Instanz das Token annimmt (Cloud: Space-Liste, Data Center: angemeldetes Konto); eine anonym beantwortete Anfrage beendet den Lauf, bevor irgendetwas aufgelistet wird |
-| User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0` |
-| Timeouts | 30 s je JSON-Anfrage, 10 s je Sonde der Editionserkennung, 120 s je Anhangs-Download, 30 s Verbindungsaufbau |
-| Paginierung | folgt dem `next`-Link der Instanz bis zum Ende; höchstens 500 Seiten je Auflistung (Standard), danach Abbruch mit sichtbarem Fehler, nie stilles Abschneiden |
-| Weiterleitungen | JSON-Aufrufe: ein fremder Ursprung wird abgelehnt. Anhangs-Downloads: eine Weiterleitung auf einen fremden Host (Cloud liefert Anhänge von einem vorsignierten Medien-Host) wird gefolgt, aber ohne Zugangsdaten. Ein `next`-Link oder Download-Link, der die Instanz verlässt, wird abgelehnt. |
-| Wiederholung | nur bei HTTP 429 (Abschnitt 4.3); andere Fehlerstatus, etwa 503 im Wartungsfenster, werden nicht wiederholt |
-| Wartezeit zwischen Anfragen | keine; das Anfragebudget und die Ratenbegrenzung der Instanz begrenzen den Lauf |
-
-## 4. Schutzmechanismen
-
-### 4.1 Zieladressprüfung
-
-Alle Abrufe, Indizierungsläufe **und** der Verbindungstest, durchlaufen dieselbe Zieladressprüfung
-wie beim [Webverzeichnis](http-directory.md#41-zieladressprüfung): Ziele in lokalen,
-privaten oder nicht routbaren Adressbereichen werden abgelehnt, auch nach einer Weiterleitung. Ein
-selbst betriebenes Data Center steht praktisch immer in einem solchen Bereich.
-
-Die Prüfung **nicht abschalten**, sondern den Hostnamen der Instanz ausnehmen:
-
-```env
-# .env / .env.docker: exakter Hostname, ohne Schema und Pfad, kommagetrennt bei mehreren
-OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=wiki.behoerde.example
-```
-
-Der Eintrag gilt für alle Bibliotheken gegen diese Adresse. Ein fehlender Eintrag zeigt sich beim
-Verbindungstest als abgewiesenes Ziel, nicht als Token-Fehler; die Meldung nennt die Einstellung.
-**Auch der Proxy-Hostname unterliegt der Prüfung**; ein interner Proxy muss ebenfalls in der Liste
-stehen.
-
-### 4.2 Größen- und Mengengrenzen
-
-| Grenze | Standard | Bei Überschreitung |
-|---|---|---|
-| JSON-Antwort | 10 MiB | Anfrage scheitert |
-| Anhang | 20 MiB | nur dieser Anhang entfällt, Protokolleintrag „Anhang überschreitet die Größengrenze" |
-| Seiten je Auflistung | 500 (bei Seitengröße 100 also 50.000 Einträge) | Auflistung wird abgebrochen und als Fehler gemeldet; ein Vollabgleich gilt dann als unvollständig und bereinigt nichts |
-| Anfragen je Lauf | 50.000 | Lauf endet geordnet als „unvollständig, wird fortgesetzt" (Abschnitt 6.3) |
-| Spaces je Bibliothek | 500 | wird beim Anlegen abgewiesen |
-
-### 4.3 Ratenbegrenzung der Instanz (HTTP 429)
-
-Antwortet Confluence mit 429, **wartet** der Lauf die in `Retry-After` genannte Zeit (gedeckelt
-auf zwei Minuten; ohne den Header fünf Sekunden) und wiederholt die Anfrage, bis zu sechsmal in
-Folge. Danach bricht der Lauf mit einer klaren Meldung ab. Ein gebremster Lauf ist **kein Fehler**:
-Das Protokoll enthält eine Zeile der Kategorie „Ratenbegrenzung" mit Anzahl und Gesamtwartezeit,
-egal wie der Lauf endet. Cloud bremst nach einem Punktebudget je Site; mehrere Bibliotheken gegen
-dieselbe Site bremsen einander. Data Center bremst im Auslieferungszustand nicht; dort ist das
-Anfragebudget die einzige Grenze.
-
-## 5. Betriebsarten
-
-Ein Confluence-Lauf hat, anders als bei den übrigen Konnektoren, eine **Betriebsart**. Sie steht am
-Lauf und entscheidet, ob der Lauf löschen darf.
-
-| Betriebsart | Was passiert | Wann |
-|---|---|---|
-| **Vollabgleich** (`FULL`) | Alle gewählten Spaces vollständig auflisten, Neues und Geändertes holen, am Ende entfernen, was in der Auflistung fehlt | erster Lauf; nach jeder Änderung der Space-Auswahl oder der Adresse; nach einem unterbrochenen Vollabgleich; sobald der letzte Vollabgleich älter ist als der Rhythmus; manuell über „Vollabgleich starten" |
-| **Inkrementell** (`INCREMENTAL`) | Per Änderungssuche nur die seit dem Anker geänderten Seiten holen; nie wegen Abwesenheit löschen | jeder andere geplante Lauf und „Jetzt indizieren" |
-| **Webhook** (Auslöser „per Webhook") | Nur die gemeldeten Seiten gezielt holen; bei einem übergroßen Stapel die Betriebsart, die der Zustand vorgibt | wenige Sekunden nach einer Benachrichtigung (Abschnitt 8) |
-
-„Jetzt indizieren" folgt dem Zustand der Bibliothek; „Vollabgleich starten" erzwingt den
-Vollabgleich. Der Vollabgleich bleibt nötig, weil nur er Löschungen nachvollzieht; sein Rhythmus ist
-verlängerbar, nicht abschaltbar. Eine Bibliothek über einem Space mit 50.000 Seiten darf seltener
-vollständig abgleichen als eine über einem Team-Space.
-
-**Anker des inkrementellen Abgleichs.** Der Anker ist der Startzeitpunkt des letzten erfolgreichen
-Laufs, nicht sein Ende, damit Änderungen während des Laufs nicht verloren gehen. Das Suchfenster
-geht mit einer Überlappung nach hinten (Standard zehn Minuten) als relative Angabe an die Instanz,
-die es in ihrer eigenen Uhr auswertet; Uhrenversatz und die Minutengenauigkeit der Suche werden so
-abgefangen. Eine erneut gefundene, unveränderte Seite kostet nur einen Auflistungseintrag. Der Anker
-rückt nur vor, wenn der Lauf keine Seite als fehlgeschlagen gezählt hat.
-
-## 6. Aufzählung und Wiederaufnahme
-
-### 6.1 Vollabgleich
-
-Je Space werden alle aktuellen Seiten aufgelistet, nur Kennung, Titel, Version und Elternseite, nie
-der Inhalt. Eine Seite, deren Version dem gespeicherten Wert entspricht und die zuletzt erfolgreich
-indiziert wurde, wird ohne Abruf übersprungen; ihre Anhangsliste wird trotzdem geholt, weil Anhänge
-die Versionsnummer einer Seite nicht erhöhen. Alle anderen Seiten werden einzeln geholt.
-
-Ein Space, den das Token nicht auflisten darf (HTTP 403 oder 404), macht die Auflistung
-**unvollständig**: Er wird im Protokoll benannt, sein Bestand bleibt unverändert, und der Lauf
-bereinigt am Ende nichts. Derselbe Befund bleibt an der Bibliothek dauerhaft sichtbar, bis ein
-späterer Vollabgleich ihn aufhebt.
-
-### 6.2 Inkrementell
-
-Die Änderungssuche liefert die seit dem Anker geänderten Seiten der gewählten Spaces mit Version und
-Space. Eine Seite, die in einen nicht gewählten Space verschoben wurde, wird protokolliert und
-liegen gelassen; ihr bisheriger Stand bleibt bis zum nächsten Vollabgleich. Eine Seite, die zwischen
-zwei gewählten Spaces umgezogen ist, bekommt bei Cloud eine neue Adresse: Das Dokument unter der
-alten Adresse wird entfernt, weil die Instanz selbst sagt, wo die Seite jetzt liegt.
-
-### 6.3 Anfragebudget und Wiederaufnahme
-
-Das Anfragebudget (Standard 50.000, Wiederholungen nach 429 und Anhangs-Downloads eingerechnet)
-begrenzt die Dauer eines einzelnen Laufs. Ist es erschöpft, endet der Lauf **geordnet**: Status
-„abgeschlossen" mit dem Chip **„unvollständig, wird fortgesetzt"** und einem Protokolleintrag
-„Anfragebudget erschöpft", der nennt, wo der nächste Lauf ansetzt.
-
-- **Vollabgleich:** Der Fortschritt je Space ist gespeichert, auch über einen Neustart hinweg; der
-  nächste Lauf beginnt mit den offenen Spaces. Ein angebrochener Space wird erneut aufgelistet; eine
-  bereits in der aufgelisteten Version gespeicherte Seite kostet dabei keinen Abruf und auch keine
-  Anhangsliste. So konvergiert die Kette der Wiederaufnahmeläufe. Ein unvollständiger Vollabgleich
-  **bereinigt nichts**. Hat ein Lauf trotz erschöpftem Budget keine Seite neu aufgenommen, steht
-  das als Fehler im Protokoll („reicht für diese Bibliothek nicht aus"): Budget anheben oder Auswahl
-  aufteilen.
-- **Inkrementell:** Der Anker bleibt stehen; der nächste Lauf durchsucht dasselbe Fenster erneut.
-- **Webhook-Lauf:** Die übrigen gemeldeten Seiten nimmt der nächste Lauf auf.
-
-**Speicherkontingent.** Lehnt das Kontingent eine Seite oder einen Anhang ab, rückt ein
-inkrementeller Lauf seinen Anker nicht vor. Nach einem Vollabgleich mit Ablehnung ist der nächste
-Lauf wieder ein Vollabgleich, denn die abgelehnte Seite ist älter als der Anker, und kein
-inkrementeller Lauf fände sie. Das gilt auch, wenn sich der Vollabgleich über mehrere Läufe
-erstreckt und die Ablehnung in einem früheren davon lag.
-
-**Faustregel zur Größe.** Eine Seite kostet etwa zwei Anfragen (Inhalt, Anhangsliste) plus ihre
-Anhangs-Downloads und einen Anteil der Auflistung (100 Seiten je Anfrage). 50.000 Anfragen decken
-damit rund 20.000 Seiten je Lauf. Eine Auswahl von 100.000 Seiten braucht für den ersten
-Vollabgleich also etwa fünf Läufe, bei täglichem Zeitplan eine Arbeitswoche; danach sind
-inkrementelle Läufe klein. Das Budget muss die Auflistung eines Spaces plus eine Handvoll Seiten
-übersteigen, sonst kommt kein Lauf voran. Verbindungstest und Editionserkennung zählen nicht
-dagegen; `0` schaltet das Budget ab.
-
-## 7. Änderungserkennung
-
-Drei Stufen, von billig nach teuer:
-
-1. **Versionsnummer.** Seiten und Anhänge tragen in Confluence eine Version. Ist sie unverändert und
-   war das Dokument zuletzt erfolgreich indiziert, entfällt der Abruf.
-2. **Prüfsumme** über den Seiteninhalt bzw. die Anhangsbytes, wie bei jeder Quelle. Eine Seite mit
-   neuer Version, aber unverändertem Inhalt (Titeländerung, Umzug, umbenannte Elternseite) behält
-   ihre Chunks; Titel, Gliederungspfad und Versionsmarke werden trotzdem aktualisiert.
-3. **Änderungssuche** (nur inkrementell), siehe Abschnitt 5.
-
-## 8. Webhooks
-
-Webhooks verkürzen die Zeit bis zur Aufnahme einer Änderung von „nächster geplanter Lauf" auf
-wenige Sekunden. Sie ersetzen weder Zeitplan noch Vollabgleich: **Ohne Webhook ist nichts falsch,
-nur später.**
-
-### 8.1 Geheimnis in OPAA erzeugen
-
-Bibliothek, Reiter „Quelle", Abschnitt **Anbindung** (Verwaltende), Zeile **Webhook**,
-**„Webhook einrichten"**. OPAA
-zeigt das Geheimnis **genau einmal** zusammen mit der Adresse des Eingangs
-(`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`). Beides jetzt in
-Confluence hinterlegen; danach ist das Geheimnis nur noch als „eingerichtet" sichtbar. „Geheimnis
-neu erzeugen" rotiert (das alte gilt sofort nicht mehr), „Webhook entfernen" schließt den Eingang.
-Beide Aktionen fragen nach, denn Confluence merkt nichts davon, wenn OPAA seine Nachrichten abweist.
-Jede Änderung steht im Audit-Protokoll mit dem Feldnamen `confluenceWebhookSecret`, nie mit dem
-Wert.
-
-Der Eingang muss für die Instanz erreichbar sein (Firewall- oder Proxy-Regel von Confluence zu
-OPAA). Er ist einer der wenigen Pfade unter `/api/v1`, die ohne Anmeldung erreichbar sind, und
-derselbe typneutrale Push-Eingang (`push`), den auch S3-Ereignisse nutzen - der einzige schreibende unter
-ihnen; die Nachricht weist sich
-mit dem Geheimnis aus. Der vorgelagerte Proxy **muss**
-`X-Forwarded-For` autoritativ setzen (siehe [Deployment](../deployment.md)), sonst greift die
-Ratenbegrenzung je Client nicht.
-
-### 8.2 Data Center (nativ, signiert)
-
-1. Confluence-Administration, Webhooks, Webhook erstellen.
-2. **URL:** die von OPAA angezeigte Adresse.
-3. **Secret:** das von OPAA angezeigte Geheimnis. Confluence signiert damit jede Nachricht
-   (`X-Hub-Signature: sha256=<HMAC-SHA256 über den Rohkörper>`); OPAA prüft die Signatur.
-4. **Ereignisse:** Seite erstellt, aktualisiert, entfernt, in den Papierkorb verschoben,
-   wiederhergestellt; Anhang erstellt, aktualisiert, entfernt. Andere Ereignisse darf man mitsenden;
-   OPAA ignoriert alles ohne Seitenkennung.
-5. **Aktiv** setzen und speichern.
-
-Probe: In einem gewählten Space eine Seite bearbeiten; wenige Sekunden später erscheint in der
-Laufhistorie ein Lauf „per Webhook" mit genau dieser Seite. Ohne Lauf: Abschnitt 13.
-
-### 8.3 Cloud (über eine Automation-Regel)
-
-Umfang und Kontingent der Automation hängen vom Atlassian-Tarif ab; vor der Einrichtung im eigenen
-Tarif prüfen. Cloud bietet keine frei konfigurierbaren Webhooks ohne App; der Weg ist eine
-**Automation-Regel** (Space-Einstellungen, Automation, oder global):
-
-1. **Auslöser:** „Seite veröffentlicht" und „Seite aktualisiert" (nach Bedarf auch „Seite
-   archiviert/gelöscht"; OPAA entscheidet ohnehin am Abruf).
-2. **Aktion:** „Web-Anfrage senden" mit der Adresse aus OPAA, Methode `POST`, Body als
-   benutzerdefinierte Daten:
-   ```json
-   {"pageId": "{{page.id}}"}
-   ```
-3. **Header:** `X-OPAA-Webhook-Secret` mit dem Geheimnis aus OPAA. Cloud-Regeln können nicht
-   signieren; der Header trägt das Geheimnis selbst, deshalb nur über TLS.
-4. Regel aktivieren; ein Test über „Regel ausführen" genügt als Probe.
-
-Eine site-weite Regel genügt für mehrere Spaces: Seiten außerhalb der Auswahl protokolliert OPAA als
-„liegt in einem nicht ausgewählten Space" und lässt sie liegen.
-
-### 8.4 Was eine Nachricht auslöst
-
-- Aus dem Körper werden **nur Seitenkennungen** gelesen (`page.id`, `content.id`,
-  `attachment.pageId`, `attachment.container.id`, `pageId`, `pageIds`); die Ereignisart wird nicht
-  ausgewertet. Was mit der Seite geschah, sagt der Abruf: geändert, dann neu indiziert; von der
-  Instanz als im Papierkorb ausgewiesen, dann entfernt; 404 oder 403, dann unverändert.
-- Nachrichten werden je Bibliothek **gesammelt** (`opaa.indexing.events.debounce`, Standard fünf
-  Sekunden) und in **einem** kurzen Lauf geholt. Mehr als `opaa.indexing.events.max-pending-keys`
-  (500) Seiten in einem Stapel ergeben statt Einzelabrufen einen gewöhnlichen Lauf in der
-  Betriebsart, die der Zustand vorgibt.
-- Läuft für die Bibliothek gerade ein Lauf, wartet der Stapel bis zu
-  `opaa.indexing.events.max-deferrals` (120) Sammelzeiten — zehn Minuten — und wird dann
-  **verworfen**: Der nächste geplante Lauf deckt dieselben Seiten ab. Ein Verwerfen kostet
-  Aktualität, nie Korrektheit.
-- Sammeln, Stapelgrenze und Warten sind der gemeinsame Ereigniseingang aller Push-Wege; der
-  [S3-Ereignisweg](s3.md) nutzt dieselben Werte.
-- Der **Anker des inkrementellen Abgleichs bewegt sich nicht**; der nächste inkrementelle Lauf liest
-  die gemeldeten Seiten noch einmal, je ein Auflistungseintrag.
-- **Kein Replay-Schutz:** Eine mitgeschnittene, gültig signierte Nachricht lässt sich wieder
-  einspielen und kostet je einen gezielten Lauf innerhalb der Ratenbegrenzung; für den Index ist das
-  folgenlos.
-- Jede nicht authentifizierte Anfrage (unbekannte Bibliothek, Bibliothek eines anderen Quellentyps,
-  kein Geheimnis, falsche Signatur) erhält dieselbe Antwort 401; der Körper ist auf 256 KiB begrenzt
-  (413 darüber). Der Eingang ist je Client-Adresse und Bibliothek sowie global ratenbegrenzt (siehe
-  [Deployment](../deployment.md)).
-
-## 9. Anhänge
-
-Anhänge einer Seite werden je Seite aufgelistet und einzeln über den gemeinsamen Anhangsweg
-verarbeitet (siehe [Wissensbibliotheken](../wissensbibliotheken.md#57-anhänge)). Jeder
-Anhang ist ein eigenes Dokument mit der Seite als Elterndokument und trägt Space und Gliederungspfad
-der Seite, ergänzt um deren Titel. Ein unveränderter Anhang (gleiche Version) wird vor dem Download
-übersprungen. Ein nicht unterstütztes Format wird als „Format nicht unterstützt" protokolliert und
-gilt bei der Löscherkennung als vorhanden.
-
-Anhänge werden auch für Seiten geprüft, die selbst unverändert übersprungen wurden, mit einer
-Ausnahme: In einem wiederaufgenommenen Vollabgleich kostet ein bereits abgearbeiteter Space nichts
-mehr; neue Anhänge an unveränderten Seiten kommen dann mit dem nächsten vollständigen Vollabgleich.
-Eine Seite ohne Text (etwa nur Formulare) bekommt keine eigene Dokumentzeile; ihre Anhänge werden
-trotzdem indiziert.
-
-## 10. Ordner
-
-Keine Ordnerspiegelung. Die Gliederung der Seiten liegt am Dokument als Space und Gliederungspfad
-und wird in Zitat, Protokoll und Chunk-Kontext verwendet; eine Navigation entlang der
-Seitenhierarchie gibt es in der Bibliothek nicht.
-
-## 11. Löscherkennung
-
-**Ein Dokument wird nur entfernt, wenn die Instanz selbst den Befund liefert.** Konkret:
-
-- Der **Vollabgleich** entfernt am Ende, was in der vollständigen Auflistung fehlt, aber nur, wenn
-  die Auflistung vollständig war. Konnte ein Space oder eine Anhangsliste nicht gelesen werden,
-  bleibt der gesamte Bestand stehen, und das Protokoll sagt es.
-- Eine Seite, die die Instanz beim Einzelabruf **als im Papierkorb** ausweist, wird mitsamt Anhängen
-  entfernt, in jeder Betriebsart.
-- Ein **404 oder 403** beim Einzelabruf entfernt **nichts**: Der bisherige Stand bleibt, bis der
-  nächste Vollabgleich über die Auflistung entscheidet. Ein Rechteentzug oder ein Token-Fehler leert
-  den Index nie stillschweigend.
-- Ein **Webhook** ist ein Anlass zur Prüfung, kein Befund.
-- Der **inkrementelle Lauf** bereinigt nie durch Abwesenheit.
-
-Ein entzogenes Leserecht wirkt also **verzögert**: Der Bestand eines nicht mehr lesbaren Spaces
-bleibt sichtbar, bis eine Verwalterin den Space aus der Auswahl nimmt oder das Recht zurückkommt und
-der Vollabgleich entscheidet. Wer den Bestand eines Spaces aus OPAA entfernen will, geht in drei
-Schritten vor: den Space aus der Auswahl nehmen (das löscht nur den Synchronisationszustand, noch
-kein Dokument), dann „Vollabgleich starten", und prüfen, dass dieser Lauf vollständig aufgelistet hat.
-**Sofort** wirkt nur das Löschen der Dokumente bzw. der Bibliothek.
-
-## 12. Protokoll und Kennzahlen
-
-### 12.1 Protokolleinträge dieses Konnektors
-
-| Kategorie | Meldung | Situation und Abhilfe |
-|---|---|---|
-| abgewiesen | Seite „…" (Space …) ist für das hinterlegte Dienstkonto nicht lesbar oder nicht mehr vorhanden, übersprungen; der bereits indizierte Stand bleibt erhalten | 404 oder 403 beim Einzelabruf. Nichts, wenn gewollt; sonst Rechte des Dienstkontos prüfen |
-| abgewiesen | Space … ist für das hinterlegte Dienstkonto nicht lesbar; sein Bestand bleibt bis zur nächsten vollständigen Auflistung unverändert | ganzer Space nicht auflistbar. Rechte prüfen oder Space aus der Auswahl nehmen; solange das steht, bereinigt kein Vollabgleich |
-| abgewiesen | … liegt in einem nicht ausgewählten Space; der bisherige Stand bleibt bis zum nächsten Vollabgleich | verschoben oder per Webhook außerhalb der Auswahl gemeldet |
-| nicht erreichbar | Meldung der Zugriffsschicht (Zeitüberschreitung, Verbindung abgelehnt, TLS, HTTP-Status) | Instanz, Proxy, Allowlist prüfen; die Seite zählt als fehlgeschlagen, der Anker rückt nicht vor |
-| nicht erreichbar | Anhänge nicht auflistbar: … | die Auflistung gilt als unvollständig, kein Vollabgleich bereinigt |
-| in der Quelle entfernt | In der Quelle nicht mehr gefunden, entfernt / In Confluence im Papierkorb, entfernt / In Confluence in einen anderen Space verschoben, alter Stand entfernt | positiver Befund |
-| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, bei jedem Netzkonnektor gleich formuliert; bei Häufung Zeitpläne entzerren |
-| Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, … | der nächste Lauf setzt fort; bei Dauerzustand Abschnitt 6.3 |
-| Fehler | Das Anfragebudget von … Anfragen reicht für diese Bibliothek nicht aus … | Budget anheben oder Auswahl aufteilen |
-| Fehler | Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach | Datenbankfehler beim Bereinigen; der Vollabgleich gilt als nicht abgeschlossen |
-| Format nicht unterstützt | Kein Inhalt extrahierbar | Seite ohne Text |
-| Format nicht unterstützt / Formatabweichung / abgewiesen / Fehler (Anhang) | wie im gemeinsamen Anhangsweg, dazu „Anhang überschreitet die Größengrenze" | erwartbar bei Bildern; Fehler bei Häufung im Backend-Log nachsehen |
-| abgewiesen | Speicherkontingent-Meldung / kein extrahierbarer Text | wie bei jeder Quelle |
-
-Scheitert der Lauf als Ganzes, nennt die Fehlermeldung die Ursache: Token nicht angenommen (Data
-Center: „anonym"), Edition passt nicht zur Adresse, Auflistung über der Seitengrenze, Ratenbegrenzung
-nach sechs Wartezyklen, „Ein inkrementeller Abgleich braucht einen abgeschlossenen Vollabgleich",
-Konfiguration ohne Edition, „Die Bibliothek wurde während des Laufs gelöscht."
-
-### 12.2 Kennzahlen lesen
-
-Jeder Lauf zeigt in der Laufhistorie Status, Zeitpunkt, Auslöser („manuell gestartet", „per
-Zeitplan", „per Webhook"), Zähler (verarbeitet, übersprungen, fehlgeschlagen), Betriebsart, ggf.
-„unvollständig, wird fortgesetzt" und die Zahl der Protokolleinträge; aufgeklappt eine
-**Kennzahlenzeile**:
-
-> 1842 Anfragen an die Quelle · 3-mal gedrosselt (95 s gewartet) · Anhänge: 120 indiziert, 800
-> übersprungen, 2 fehlgeschlagen · Dauer 42 min 10 s
-
-- **Anfragen geteilt durch Dauer** ist der Durchsatz. Sinkt er bei gleichbleibender Instanz, wird
-  gebremst oder das Netz ist der Engpass.
-- **Anfragen gegen das Budget:** Liegt ein Vollabgleich regelmäßig nah am Budget und endet
-  unvollständig, ist die Auswahl für einen Lauf zu groß.
-- **Übersprungene Anhänge** sind normal (unverändert, nicht unterstütztes Format); **fehlgeschlagene**
-  nennt das Protokoll einzeln.
-- **Drosselungen** auf Cloud: häufig und lang bedeutet Läufe verschiedener Bibliotheken gegen
-  dieselbe Site zeitlich entzerren.
-
-Eine entsprechende Zeile steht je Lauf im Backend-Log (`Confluence run … requests, … throttles
-(… s waited), … attachments indexed, … s elapsed, incomplete=…`) für Auswertungen über viele Läufe.
-
-## 13. Fehlerbehebung
-
-| Symptom | Wahrscheinliche Ursache | Prüfung / Abhilfe |
-|---|---|---|
-| Verbindungstest: Ziel abgewiesen, obwohl die Instanz erreichbar ist | Zieladressprüfung blockt die private Adresse | Hostname in `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST`, Backend neu starten |
-| „Edition erkennen" findet kein Confluence | falscher Pfad (Kontextpfad fehlt), Proxy nötig, Instanz hinter Anmeldung ohne REST-Zugang | Adresse mit Kontextpfad; Proxy eintragen (und seinen Hostnamen in die Allowlist aufnehmen); `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
-| Data Center: Verbindungstest meldet Token „nicht angenommen", obwohl es im Browser geht | Token ungültig oder abgelaufen, oder das Konto darf REST nicht nutzen; Data Center antwortet anonym | neues Token; Rechte des Kontos prüfen |
-| Verbindungstest gut, aber Space-Auswahl leer | Konto hat auf keinen Space „Ansehen" | Space-Rechte des Dienstkontos setzen |
-| Läufe enden ständig „unvollständig, wird fortgesetzt", Bestand wächst aber | sehr große Auswahl, erster Vollabgleich braucht mehrere Läufe | normal; abwarten oder Budget anheben |
-| Läufe enden unvollständig **mit** Fehler „reicht für diese Bibliothek nicht aus" | Budget kleiner als die Auflistung eines Spaces plus einige Seiten | Budget anheben oder Auswahl aufteilen |
-| Läufe brechen mit Ratenbegrenzung ab | mehr als sechs aufeinanderfolgende 429; Cloud-Punktebudget durch parallele Läufe erschöpft | Zeitpläne entzerren; Wiederholungen oder Wartezeit anheben |
-| Webhook: kein Lauf nach einer Änderung | Eingang von Confluence aus nicht erreichbar; Geheimnis falsch (Confluence erhält 401); Ereignis ohne Seitenkennung; Stapel wartet auf laufenden Lauf | Backend-Log „Rejected Confluence webhook … not authenticated", dann Geheimnis neu erzeugen und in Confluence eintragen; Erreichbarkeit vom Confluence-Host prüfen; Laufhistorie auf laufenden Lauf prüfen |
-| Webhook: 413 | Nachricht größer als 256 KiB | Body der Automation-Regel auf die Seitenkennung beschränken |
-| Webhook: 429 | Ratenbegrenzung je Client-Adresse und Bibliothek | `OPAA_RATE_LIMIT_WEBHOOK_*` anheben; `X-Forwarded-For` am Proxy prüfen |
-| Ein gelöschter Space ist noch im Index | Space noch in der Auswahl, Auflistung nicht lesbar, kein Vollabgleich bereinigt | Space aus der Auswahl nehmen (erzwingt Vollabgleich) |
-| Nach Token-Rotation läuft nichts mehr | altes Token in weiteren Bibliotheken | jede Bibliothek gegen diese Instanz einzeln aktualisieren |
-
-Signatur eines Webhook-Tests von Hand (Data-Center-Format):
+**Unverändertes erkennen.** Ist die Version einer Seite oder eines Anhangs unverändert und war das
+Dokument zuletzt erfolgreich indiziert, entfällt der Abruf. Bei neuer Version, aber gleichem Inhalt
+(Titeländerung, Umzug) bleiben die Chunks; Titel und Gliederungspfad werden aktualisiert.
+
+**Anker des inkrementellen Laufs** ist der Start des letzten erfolgreichen Laufs. Das Suchfenster
+reicht um `incremental-overlap` weiter zurück und wird in der Uhr der Instanz ausgewertet; so fallen
+Uhrenversatz und die Minutengenauigkeit der Suche nicht ins Gewicht. Der Anker rückt nur vor, wenn
+keine Seite fehlschlug und das Kontingent nichts abgelehnt hat. Eine Seite, die in einen nicht
+gewählten Space verschoben wurde, bleibt bis zum nächsten Vollabgleich stehen.
+
+**Über mehrere Läufe.** Ist das Anfragebudget erschöpft, endet der Lauf als „unvollständig, wird
+fortgesetzt". Ein Vollabgleich merkt sich den Fortschritt je Space und setzt mit den offenen fort;
+ein inkrementeller Lauf durchsucht dasselbe Fenster erneut. Nach einem Vollabgleich, in dem das
+Kontingent etwas ablehnte, ist der nächste Lauf wieder ein Vollabgleich, denn kein inkrementeller
+Lauf fände die abgelehnte Seite.
+
+**Größe und Zeitplan.** Eine Seite kostet etwa zwei Anfragen (Inhalt, Anhangsliste) plus ihre
+Anhänge und einen Anteil der Auflistung; das Standardbudget deckt rund 20.000 Seiten je Lauf. Ein
+erster Vollabgleich über 100.000 Seiten braucht also etwa fünf Läufe. Ein täglicher Zeitplan ist
+üblich; der Vollabgleich läuft in seinem eigenen Rhythmus mit und bleibt auch mit Webhooks nötig,
+weil nur er Löschungen nachvollzieht. Sein Rhythmus ist verlängerbar, nicht abschaltbar.
+
+## 5. Benachrichtigungen
+
+Ein Webhook verkürzt die Zeit bis zur Aufnahme einer Änderung auf Sekunden. Ohne ihn ist nichts
+falsch, nur später.
+
+**Einrichten.** Unter Quelle → Anbindung, Zeile „Webhook", **„Webhook einrichten"**. OPAA zeigt das
+Geheimnis **einmal**, zusammen mit der Adresse des Eingangs
+`https://<opaa-host>/api/v1/libraries/<Bibliotheks-ID>/push`. „Geheimnis neu erzeugen" rotiert,
+„Webhook entfernen" schließt den Eingang. Der Eingang muss von Confluence aus erreichbar sein, über
+TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen ([Deployment](../deployment.md)), sonst
+greift die Ratenbegrenzung je Client nicht.
+
+- **Data Center:** Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus OPAA.
+  Confluence signiert jede Nachricht (`X-Hub-Signature`), OPAA prüft sie. Ereignisse: Seite
+  erstellt, aktualisiert, entfernt, in den Papierkorb verschoben, wiederhergestellt; Anhang
+  erstellt, aktualisiert, entfernt.
+- **Cloud:** ohne App über eine **Automation-Regel** (Umfang je nach Atlassian-Tarif). Auslöser
+  „Seite veröffentlicht" und „Seite aktualisiert", Aktion „Web-Anfrage senden" mit `POST`, Body
+  `{"pageId": "{{page.id}}"}` und der Kopfzeile `X-OPAA-Webhook-Secret` mit dem Geheimnis. Eine
+  site-weite Regel genügt; Seiten außerhalb der Auswahl lässt OPAA liegen.
+
+**Was eine Nachricht auslöst.** OPAA liest nur Seitenkennungen; was mit der Seite geschah, sagt der
+Abruf. Nachrichten werden je Bibliothek gesammelt (`opaa.indexing.events.debounce`) und in **einem**
+kurzen Lauf geholt; mehr als `max-pending-keys` Seiten ergeben einen gewöhnlichen Lauf. Läuft gerade
+ein Lauf, wartet der Stapel bis zu `max-deferrals` Sammelzeiten und wird dann verworfen — der
+nächste Lauf deckt dieselben Seiten ab. Der Anker bewegt sich durch einen Webhook-Lauf nicht. Jede
+nicht authentifizierte Anfrage erhält `401`, ein Körper über 256 KiB `413`; der Eingang ist je
+Client und Bibliothek sowie insgesamt ratenbegrenzt. Einen Schutz gegen wieder eingespielte
+Nachrichten gibt es nicht; für den Index ist das folgenlos.
+
+Probe von Hand (Data-Center-Format):
 
 ```bash
 BODY='{"event":"page_updated","page":{"id":"102"}}'
 SIG=$(printf '%s' "$BODY" | openssl dgst -sha256 -hmac "<geheimnis>" | sed 's/^.* //')
 curl -i -X POST "https://<opaa-host>/api/v1/libraries/<id>/push" \
   -H "Content-Type: application/json" -H "X-Hub-Signature: sha256=$SIG" --data "$BODY"
-# 202 Accepted = angenommen; 401 = Geheimnis/Signatur falsch oder Bibliothek ohne Webhook
+# 202 = angenommen; 401 = Geheimnis oder Signatur falsch, oder kein Webhook eingerichtet
 ```
 
-Die Eingangsadresse ist `…/libraries/<id>/push`. Die früheren Adressen `…/confluence-webhook`
-und `…/confluence-webhook-secret` gibt es nicht mehr; eine Confluence-Instanz, die noch an
-`…/confluence-webhook` sendet, bekommt ebenfalls `401` und liefert keine Änderungen mehr. Die
-gültige Adresse zeigt der Dialog „Webhook einrichten“ nach dem Erzeugen des Geheimnisses.
+## 6. Löscherkennung
 
-## 14. Grenzen des Konnektors
+Ein Dokument wird nur entfernt, wenn die Instanz selbst den Befund liefert:
 
-- **Freigabefolge der gemeinsamen Bibliothek.** Alles Indizierte ist für jede Leseberechtigung der
-  Bibliothek sichtbar, unabhängig von ihren Confluence-Rechten. Der Zuschnitt (Dienstkonto, Auswahl,
-  Leserkreis der Bibliothek) ist die einzige Steuerung.
-- **Keine Rechteabbildung.** Confluence-Gruppen oder Space-Berechtigungen werden nicht auf
-  OPAA-Rechte abgebildet; ein Rechteentzug wirkt verzögert (Abschnitt 11).
-- **Nur Seiten und Anhänge.** Keine Blogbeiträge, Kommentare, Whiteboards, Datenbanken, keine
-  weiteren Atlassian-Produkte; archivierte Seiten gelten als nicht vorhanden.
-- **Anhänge nur mit dem Vollabgleich vollständig.** Ein neuer oder geänderter Anhang an einer sonst
-  unveränderten Seite bewegt deren Änderungszeit nicht; der inkrementelle Lauf sieht ihn nicht, der
-  Webhook nur, wenn Confluence das Anhangs-Ereignis meldet.
-- **Makros:** Zur Laufzeit erzeugte Inhalte fallen weg (siehe [Confluence-Seite](../formate/confluence.md)).
-- **Ratenbudget der Instanz ist geteilt** zwischen allen Bibliotheken gegen dieselbe Instanz mit
-  demselben Dienstkonto; eine instanzweite Koordination der Läufe gibt es nicht.
-- **Webhooks:** kein Replay-Schutz, keine Bestätigung an Confluence über das Ergebnis, Cloud nur
-  über Automation-Regeln.
+- Der **Vollabgleich** entfernt, was in seiner Auflistung fehlt, aber nur, wenn sie vollständig war.
+  Ein Space oder eine Anhangsliste, die das Token nicht lesen kann, hält den ganzen Bestand.
+- Eine Seite, die die Instanz beim Abruf **im Papierkorb** ausweist, wird samt Anhängen sofort
+  entfernt, in jeder Laufart; ebenso der alte Stand einer Seite, die bei Cloud zwischen zwei
+  gewählten Spaces umgezogen ist.
+- **404 oder 403** beim Einzelabruf entfernen nichts. Ein Rechteentzug oder ein Token-Fehler leert
+  den Index nie.
+- Inkrementeller Lauf und Webhook entfernen nie wegen Abwesenheit.
 
-## 15. Konfiguration
+Wer den Bestand eines Spaces aus OPAA entfernen will, nimmt ihn aus der Auswahl, startet
+„Vollabgleich starten" und prüft, dass dieser Lauf vollständig aufgelistet hat. Sofort wirkt nur das
+Löschen der Dokumente oder der Bibliothek.
 
-Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen als
-`OPAA_INDEXING_CONFLUENCE_*`; die vollständige Tabelle mit Erläuterungen steht im
-[Deployment](../deployment.md).
+## 7. Ordner
+
+Keine Ordner. Space und Gliederungspfad stehen am Dokument und erscheinen in Zitat und Protokoll.
+
+## 8. Anhänge
+
+Die Anhänge einer Seite werden je Seite aufgelistet und als eigene Dokumente mit der Seite als
+Elterndokument verarbeitet; sie tragen Space und Gliederungspfad der Seite samt deren Titel. Ein
+Anhang mit unveränderter Version wird nicht geladen. Die Anhangsliste wird auch für unveränderte
+Seiten geholt, weil ein neuer Anhang die Version der Seite nicht erhöht — außer in einem
+fortgesetzten Vollabgleich für schon erledigte Spaces. Der inkrementelle Lauf sieht einen neuen
+Anhang an einer sonst unveränderten Seite nicht, der Webhook nur, wenn Confluence das Ereignis meldet.
+Eine Seite ohne Text bekommt kein eigenes Dokument; ihre Anhänge werden trotzdem indiziert.
+
+## 9. Grenzen und Schutzmechanismen
+
+- **Zieladressprüfung** für Läufe, Verbindungstest und jede Weiterleitung
+  ([Konnektoren](README.md#12-zieladressprüfung)).
+- **Weiterleitungen:** Ein JSON-Aufruf, der die Instanz verlässt, wird abgelehnt. Einem Anhang auf
+  einem fremden Medien-Host (Cloud) wird gefolgt, aber ohne Zugangsdaten.
+- **Anonyme Antworten von Data Center.** Data Center weist ein ungültiges Token nicht ab, sondern
+  antwortet anonym. Deshalb prüft jeder Lauf und jeder Verbindungstest zuerst, als wer die Instanz
+  das Token sieht; ein anonym beantwortetes Token gilt als „nicht angenommen", nie als leere Instanz.
+- **Drosselung:** Antwortet Confluence mit 429, wartet der Lauf die Zeit aus `Retry-After` und
+  wiederholt, bis zu `max-rate-limit-retries`-mal in Folge. Cloud rechnet mit einem Punktebudget je
+  Site, das sich alle Bibliotheken mit demselben Dienstkonto teilen; Data Center bremst ab Werk
+  nicht. Andere Fehler, etwa 503 im Wartungsfenster, werden nicht wiederholt.
+
+| Grenze | Standard | Bei Überschreitung |
+|---|---|---|
+| JSON-Antwort | 10 MiB | Anfrage scheitert |
+| Anhang | 20 MiB | dieser Anhang entfällt |
+| Seiten je Auflistung | 500 (bei Seitengröße 100 also 50.000 Einträge) | Auflistung bricht mit Fehler ab; der Vollabgleich bereinigt nichts |
+| Anfragen je Lauf | 50.000 | „unvollständig, wird fortgesetzt" |
+| Spaces je Bibliothek | 500 | wird beim Anlegen abgewiesen |
+
+Zeitlimits: 30 s je JSON-Anfrage und Verbindungsaufbau, 10 s je Sonde der Editionserkennung, 120 s
+bis zur Antwort eines Anhangs. Makros, deren Inhalt erst zur Laufzeit entsteht, fallen weg.
+
+## 10. Protokoll und Fehlerbilder
+
+| Meldung | Bedeutung | Abhilfe |
+|---|---|---|
+| Verbindungstest: Ziel abgewiesen | Zieladressprüfung blockt die private Adresse | Hostnamen freigeben |
+| „Edition erkennen" findet kein Confluence | Kontextpfad fehlt, die Instanz liegt hinter einer Anmeldung ohne REST-Zugang, oder der [Ausgangsproxy](../deployment.md#ausgangsproxy) fehlt | Adresse mit Kontextpfad; `curl <adresse>/rest/api/space?limit=1` aus dem Backend-Netz |
+| Data Center: Token „nicht angenommen", obwohl es im Browser geht | Token ungültig oder abgelaufen, oder das Konto darf REST nicht nutzen | neues Token, Rechte prüfen |
+| Verbindungstest gut, Space-Auswahl leer | Konto hat auf keinen Space „Ansehen" | Space-Rechte setzen |
+| „Seite „…" (Space …) ist für das hinterlegte Dienstkonto nicht lesbar oder nicht mehr vorhanden …" | 404 oder 403 beim Einzelabruf; der Stand bleibt | Rechte prüfen |
+| „Space … ist für das hinterlegte Dienstkonto nicht lesbar …" | ganzer Space nicht auflistbar; kein Vollabgleich bereinigt | Rechte prüfen oder Space abwählen |
+| „… liegt in einem nicht ausgewählten Space …" | verschoben oder per Webhook außerhalb gemeldet | nichts |
+| „Anhänge nicht auflistbar: …" | Auflistung unvollständig | Instanz prüfen |
+| Meldung der Zugriffsschicht (Zeitüberschreitung, TLS, HTTP-Status) | Seite fehlgeschlagen, Anker rückt nicht vor | Instanz und Freigabe prüfen |
+| „In Confluence im Papierkorb, entfernt" / „In Confluence in einen anderen Space verschoben, alter Stand entfernt" / „In der Quelle nicht mehr gefunden, entfernt" | positiver Befund | nichts |
+| „Die Quelle hat den Lauf n-mal gedrosselt …" (Ratenbegrenzung) | eine Zeile je Lauf | bei Häufung Zeitpläne entzerren |
+| „Anfragebudget von … Anfragen erschöpft …" | der nächste Lauf setzt fort | bei Dauerzustand Budget anheben |
+| „Das Anfragebudget von … Anfragen reicht für diese Bibliothek nicht aus …" | kein Lauf kommt voran | Budget anheben oder Auswahl aufteilen |
+| „Abgleich des Bestands fehlgeschlagen; der nächste Lauf holt ihn nach" | Fehler beim Bereinigen | nichts |
+| Lauf fehlgeschlagen | Token nicht angenommen, Edition passt nicht, Auflistung über der Seitengrenze, Drosselung nach allen Wiederholungen, „Ein inkrementeller Abgleich braucht einen abgeschlossenen Vollabgleich" | Ursache laut Meldung beheben |
+| Webhook: kein Lauf nach einer Änderung | Eingang nicht erreichbar, Geheimnis falsch (Backend-Log „Rejected Confluence webhook … not authenticated"), keine Seitenkennung, Stapel wartet | Geheimnis neu erzeugen und eintragen, Erreichbarkeit prüfen |
+| Webhook: `413` / `429` | Nachricht über 256 KiB / Ratenbegrenzung | Body auf die Seitenkennung beschränken / `OPAA_RATE_LIMIT_WEBHOOK_*` anheben |
+
+Die Laufhistorie zeigt aufgeklappt eine Kennzahlenzeile, etwa „1842 Anfragen an die Quelle · 3-mal
+gedrosselt (95 s gewartet) · Anhänge: 120 indiziert, 800 übersprungen, 2 fehlgeschlagen · Dauer 42 min
+10 s". Liegt ein Vollabgleich regelmäßig nah am Budget, ist die Auswahl für einen Lauf zu groß.
+
+## 11. Konfiguration
+
+Alle Schlüssel unter `opaa.indexing.confluence.*`, Umgebungsvariablen `OPAA_INDEXING_CONFLUENCE_*`.
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `page-size` | 100 | Seitengröße jeder Auflistung; Cloud kappt bei 250, Data Center bei 200 |
 | `request-timeout` | 30s | Zeitlimit je JSON-Anfrage |
 | `detection-timeout` | 10s | Zeitlimit je Sonde der Editionserkennung |
-| `max-rate-limit-retries` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet (Confluence-eigener Wert; der `User-Agent` kommt aus `opaa.indexing.http.user-agent`) |
-| `max-retry-after` | 2m | Obergrenze einer einzelnen Wartezeit aus `Retry-After` |
+| `max-rate-limit-retries` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
+| `max-retry-after` | 2m | Obergrenze einer Wartezeit aus `Retry-After`; ohne Header fünf Sekunden |
 | `max-response-bytes` | 10485760 (10 MiB) | Obergrenze je JSON-Antwort |
 | `max-attachment-size-bytes` | 20971520 (20 MiB) | Obergrenze je Anhang |
-| `max-listing-pages` | 500 | Seiten je Auflistung, bevor sie als unbegrenzt abgebrochen wird |
-| `full-sync-interval` | 7d | instanzweite Vorgabe für den Vollabgleich-Rhythmus; je Bibliothek überschreibbar |
+| `max-listing-pages` | 500 | Seiten je Auflistung, bevor sie abgebrochen wird |
+| `full-sync-interval` | 7d | Vorgabe für den Vollabgleich-Rhythmus; je Bibliothek überschreibbar |
 | `incremental-overlap` | 10m | Überlappung des Änderungsfensters nach hinten |
 | `request-budget-per-run` | 50000 | Anfragen je Lauf; `0` schaltet das Budget ab |
 
-Der Webhook-Eingang selbst wird nicht hier, sondern über den gemeinsamen Ereigniseingang aller
-Push-Wege konfiguriert (`opaa.indexing.events.*`, Umgebungsvariablen `OPAA_INDEXING_EVENTS_*`):
+Der Webhook-Eingang teilt sich die Werte mit den S3-Ereignissen (`opaa.indexing.events.*`):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `events.debounce` | 5s | Sammelzeit je Bibliothek |
-| `events.max-pending-keys` | 500 | über dieser Stapelgröße ein gewöhnlicher Lauf statt Einzelabrufen |
-| `events.max-deferrals` | 120 | Wartezyklen, bevor ein Stapel verworfen wird |
+| `events.max-pending-keys` | 500 | darüber ein gewöhnlicher Lauf statt Einzelabrufen |
+| `events.max-deferrals` | 120 | Wartezyklen, bevor ein Stapel verworfen wird (zehn Minuten) |
 
-Dazu die Ratenbegrenzung des Webhook-Eingangs (`OPAA_RATE_LIMIT_WEBHOOK_MAX_REQUESTS` je
-Client-Adresse und Bibliothek, `OPAA_RATE_LIMIT_WEBHOOK_GLOBAL_MAX_REQUESTS`, Fenster in Sekunden)
-und die Zieladressprüfung wie in den anderen Kapiteln.
+Dazu die Ratenbegrenzung des Eingangs (`OPAA_RATE_LIMIT_WEBHOOK_*`, [Deployment](../deployment.md));
+der `User-Agent` kommt aus `opaa.indexing.http.user-agent`.
 
-## 16. Zeitplan
-
-Der Zeitplan je Bibliothek ist im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md#42-zeitplan) beschrieben.
-Für Confluence ist ein täglicher Zeitplan üblich: Ein inkrementeller Lauf kostet wenige Anfragen;
-der Vollabgleich läuft nach seinem eigenen Rhythmus mit. Wer Webhooks eingerichtet hat, kann den
-Zeitplan seltener wählen; der Vollabgleich bleibt trotzdem nötig.
-
-## 17. Nicht gebaut
+## 12. Nicht gebaut
 
 - Abbildung von Confluence-Rechten auf OPAA-Rechte
 - Blogbeiträge, Kommentare, Whiteboards, Datenbanken
 - Ordner entlang der Seitenhierarchie
-- Replay-Schutz und Ergebnisrückmeldung für Webhooks
+- Schutz gegen wieder eingespielte Nachrichten und Ergebnisrückmeldung für Webhooks
 - Koordination des Ratenbudgets über mehrere Bibliotheken derselben Instanz
