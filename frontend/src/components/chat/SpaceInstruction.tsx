@@ -37,7 +37,8 @@ export default function SpaceInstruction({ text }: SpaceInstructionProps) {
         onKeyDown={handleEscape}
         aria-expanded={open}
         aria-controls={open ? panelId : undefined}
-        sx={{ flexShrink: 0 }}
+        // Always the right end of the header row, whether or not the chat has a title yet.
+        sx={{ flexShrink: 0, ml: 'auto' }}
       >
         Anweisung des Space
       </Button>

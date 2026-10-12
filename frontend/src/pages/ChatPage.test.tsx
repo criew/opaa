@@ -353,6 +353,15 @@ describe('ChatPage', () => {
       expect(toggle).toHaveAttribute('aria-expanded', 'true')
     })
 
+    it('keeps the instruction button at the right end of the header while a new chat has no title yet', async () => {
+      setSpaceWithInstruction(instruction)
+      renderWithProviders(<ChatPage />, { withRouter: true })
+
+      const toggle = await screen.findByRole('button', { name: 'Anweisung des Space' })
+      expect(screen.queryByRole('button', { name: /umbenennen/ })).not.toBeInTheDocument()
+      expect(getComputedStyle(toggle).marginLeft).toBe('auto')
+    })
+
     it('shows nothing of the kind in a space without an instruction', async () => {
       setSpaceWithInstruction(null)
       renderWithProviders(<ChatPage />, { withRouter: true })
