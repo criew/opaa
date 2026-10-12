@@ -48,7 +48,7 @@ seine Ports `SourceConnectionResolver` (`ProfileSourceConnectionResolver`) und `
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0025, 0036, 0038, 0041; Handbuch: `docs/handbuch/wissensbibliotheken.md`, „Zugänge“; `berechtigungen.md`, 12
+- ADRs (`docs/decisions/`): 0025, 0036, 0038, 0041; Handbuch: `docs/handbuch/zugaenge.md`; `berechtigungen.md`, 12
 - Strukturtests: `ModularArchitectureTest`, `ConnectionLogStructureTest`
 
 ## Tests bei Änderungen

@@ -45,7 +45,7 @@ von foundation, format und knowledge ab.
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0017, 0018, 0023, 0027, 0038, 0040, 0041 (Entscheidung 3a: Lauf-SPI)
-- Handbuch: `docs/handbuch/wissensbibliotheken.md`, Abschnitt 4; `docs/handbuch/konnektor-*.md`
+- Handbuch: `docs/handbuch/konnektoren/README.md` und `docs/handbuch/konnektoren/*.md`
 - Strukturtests: `ModularArchitectureTest` (`connectorsDoNotKnowEachOther`,
   `noOneOutsideAConnectorKnowsIt`, `connectorsTakeTheirSourceConfigurationFromTheCore`)
 

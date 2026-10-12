@@ -40,7 +40,7 @@ und kennt weder indexing noch knowledge noch library.
 
 - ADRs (`docs/decisions/`): 0022, 0024, 0028
 - Feature-Spezifikation: `docs/features/ingestion-pipelines.md`
-- Handbuch: `docs/handbuch/format-*.md`
+- Handbuch: `docs/handbuch/formate/*.md` (Übersicht in `formate/README.md`)
 - Strukturtests: `DocumentFormatParityTest`, `ModularArchitectureTest`
 
 ## Tests bei Änderungen
