@@ -5,11 +5,9 @@ databaseChangeLog:
       comment: "A library carries no proxy of its own: every connection takes the house-wide outbound proxy. Dropping source_proxy would drop chk_knowledge_libraries_upload_without_source with it, so the check is recreated without the column."
       # The recreated check names no source_insecure_ssl, so the file holds in either order with
       # knowledge/2026-10-12-drop-library-source-insecure-ssl.yaml. An installation that ran the
-      # earlier wording (whose check still named that column) keeps its stored checksum as valid;
-      # the second entry is the current wording's own checksum.
+      # earlier wording keeps its stored checksum as valid.
       validCheckSum:
         - 9:3ddd6e925cb1750197f0d897d126533d
-        - 9:e8034ac7421929413949ccdb70247c5b
       changes:
         - sql:
             sql: |

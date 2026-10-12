@@ -1,6 +1,7 @@
 package io.opaa.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 import java.util.UUID;
@@ -10,7 +11,8 @@ import org.junit.jupiter.api.Test;
  * {@code knowledge/2026-10-11-drop-library-source-proxy.yaml} was reworded so its recreated upload
  * check no longer names {@code source_insecure_ssl}. An installation that ran the earlier wording
  * holds that version's checksum; starting the master on it must accept the stored checksum, not
- * re-run the file, and end with the TLS column and the earlier clause gone.
+ * re-run the file, and end with the TLS column and the earlier clause gone; any other stored
+ * checksum still stops the start.
  */
 class ProxyCheckRewordingMigrationTest extends AbstractBaselineTest {
 
@@ -24,6 +26,9 @@ class ProxyCheckRewordingMigrationTest extends AbstractBaselineTest {
   /** The checksum Liquibase 5 stored for the file's wording before the rewording. */
   private static final String EARLIER_CHECKSUM = "9:3ddd6e925cb1750197f0d897d126533d";
 
+  /** The checksum of the reworded file. */
+  private static final String REWORDED_CHECKSUM = "9:e8034ac7421929413949ccdb70247c5b";
+
   private static final String EARLIER_CHECK =
       "CHECK ((((source_type)::text <> 'UPLOAD'::text) OR ((source_path IS NULL) AND (source_url IS"
           + " NULL) AND (source_credentials IS NULL) AND (source_insecure_ssl = false) AND"
@@ -36,7 +41,7 @@ class ProxyCheckRewordingMigrationTest extends AbstractBaselineTest {
 
   @Test
   void anInstallationThatRanTheEarlierWordingStartsWithoutAChecksumFailure() throws Exception {
-    ranTheEarlierWording();
+    ranTheEarlierWording(EARLIER_CHECKSUM);
     UUID library = insertLibrary("HTTP_DIRECTORY", "https://intern.example.org/dokumente/");
 
     applyChangelog(connection, MasterChangelog.PATH);
@@ -60,24 +65,33 @@ class ProxyCheckRewordingMigrationTest extends AbstractBaselineTest {
     assertThat(countWhere("knowledge_libraries", "id = " + quoted(library))).isEqualTo(1);
   }
 
-  /** A fresh installation takes the reworded file and ends with the same check. */
+  /** An installation without the file takes the reworded one and stores its own checksum. */
   @Test
-  void aFreshInstallationTakesTheRewordedFile() throws Exception {
+  void anInstallationWithoutTheFileTakesTheRewordedOne() throws Exception {
     applyChangelog(connection, MasterChangelog.PATH);
 
     assertThat(
             countWhere(
                 "databasechangelog",
-                "id = 'knowledge-2026-10-11-drop-library-source-proxy' AND md5sum <> '"
-                    + EARLIER_CHECKSUM
+                "id = 'knowledge-2026-10-11-drop-library-source-proxy' AND md5sum = '"
+                    + REWORDED_CHECKSUM
                     + "'"))
         .isEqualTo(1);
     assertThat(columnExists("source_insecure_ssl")).isFalse();
     assertThat(uploadCheck()).doesNotContain("source_insecure_ssl");
   }
 
+  /** Only the earlier wording's checksum is admitted: any other stored one stops the start. */
+  @Test
+  void aForeignStoredChecksumStopsTheStart() throws Exception {
+    ranTheEarlierWording("9:00000000000000000000000000000000");
+
+    assertThatThrownBy(() -> applyChangelog(connection, MasterChangelog.PATH))
+        .hasStackTraceContaining("knowledge-2026-10-11-drop-library-source-proxy");
+  }
+
   /** The earlier wording's effect and its changelog row, as an installation from main holds it. */
-  private void ranTheEarlierWording() throws Exception {
+  private void ranTheEarlierWording(String storedChecksum) throws Exception {
     execute(
         "ALTER TABLE knowledge_libraries DROP CONSTRAINT"
             + " chk_knowledge_libraries_upload_without_source");
@@ -93,7 +107,7 @@ class ProxyCheckRewordingMigrationTest extends AbstractBaselineTest {
             + PROXY_FILE
             + "', now(), (SELECT coalesce(max(orderexecuted), 0) + 1 FROM databasechangelog),"
             + " 'EXECUTED', '"
-            + EARLIER_CHECKSUM
+            + storedChecksum
             + "')");
     assertThat(uploadCheck()).contains("source_insecure_ssl");
   }
