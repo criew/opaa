@@ -143,8 +143,8 @@ weder Adresse noch Zugangsdaten ab.
 
 1. **Zugang:** Im Assistenten steht über dem Formular die Wahl des Zugangs. „Eigene Adresse“ gibt
    es für Dropbox nicht.
-2. **Quelle verbinden:** wie im Kapitel [Zugänge](../zugaenge.md), Abschnitt 5,
-   „Quelle verbinden“. Erst danach laden Ordnerauswahl und Verbindungstest etwas.
+2. **Quelle verbinden:** wie im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md),
+   Abschnitt 3.3, „Quelle verbinden“. Erst danach laden Ordnerauswahl und Verbindungstest etwas.
 3. **Team-Bereich lesen:** Schalter; aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **Ordner:** ein Pfad je Zeile. „Ordner anzeigen unter“ nennt den Pfad, dessen Unterordner „Ordner
    laden“ als Vorschläge zeigt; ein Klick übernimmt einen Vorschlag als Zeile.

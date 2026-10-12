@@ -35,7 +35,7 @@ Ob eine Quellart Zugänge kennt, legt ihr Konnektor fest. Es gibt drei Fälle:
 
 Was für eine Quellart gilt, steht in ihrem Kapitel; die Übersicht der
 [Konnektoren](konnektoren/README.md) fasst es zusammen. Wo ein Zugang möglich ist, kann die
-Systemverwaltung ihn zur Pflicht machen: **„Nur über Zugänge"** (Abschnitt 7).
+Systemverwaltung ihn zur Pflicht machen: **„Nur über Zugänge"** (Abschnitt 6).
 
 ## 3. Was ein Zugang festlegt
 
@@ -77,57 +77,30 @@ vor Ablauf eines Client-Secrets erhält die Systemverwaltung zusätzlich eine Be
 Zahlen über verbundene Konten von Personen zeigt OPAA nur gerundet: unterhalb der
 Mindestgruppengröße heißt es „weniger als N", damit sich nicht auf einzelne Personen schließen lässt.
 
-## 5. Eine Bibliothek über einen Zugang anlegen
+## 5. Einen Zugang pflegen
 
-Im Assistenten wählt die Person im Schritt „Quelle" zuerst den **Zugang** — oder „Eigene Adresse",
-wenn das für die Quellart erlaubt ist. Angeboten werden nur Zugänge, die sie nutzen darf und die nicht
-gesperrt sind. Danach ist die Adresse vorbelegt, Vorgaben stehen nur lesbar da, und je nach
-Anmeldeart trägt sie eigene Zugangsdaten ein oder keine.
+Wie eine Wissensbibliothek einen Zugang wählt oder später wechselt, beschreibt das Kapitel
+[Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 3. Am Zugang selbst ändert die
+Systemverwaltung selten etwas — meist aus einem dieser Anlässe:
 
-**Quelle verbinden.** Meldet sich ein Zugang über eine Zustimmung beim Anbieter an, etwa bei
-[Dropbox](konnektoren/dropbox.md), verbindet die Bibliothek ihre
-Quelle selbst: Eine verwaltende Person bestätigt, dass sie ein **Dienstkonto** verbindet, kein
-persönliches, meldet sich beim Anbieter damit an und stimmt zu. Die Zustimmung gehört danach der
-Bibliothek, nicht der Person; sie bleibt auch bestehen, wenn die Person ausscheidet. Für die
-Verbindung ist eine verantwortliche Person oder Gruppe benannt; sie erhält die Benachrichtigungen,
-wenn die Zustimmung abläuft oder endet, und kann neu verbinden oder trennen.
+**Tabelle 5.1: Typische Anlässe, einen Zugang zu ändern**
 
-**An der fertigen Bibliothek** steht der Zugang im Reiter „Quelle". Wer die Bibliothek verwaltet,
-kann ihn ändern:
+| Anlass | Was die Systemverwaltung tut | Folge für die Wissensbibliotheken auf dem Zugang |
+|---|---|---|
+| Das Client-Secret läuft ab, ein Schlüssel wird erneuert | das neue Secret oder den neuen Schlüssel eintragen | keine; sie laufen weiter |
+| Andere sollen den Zugang nutzen dürfen | die Freigabe anpassen | keine; die Freigabe gilt nur für neue Wissensbibliotheken |
+| Die Quelle zieht auf einen neuen Server um | die Server-Adresse ändern | Sie folgen der neuen Adresse. Ihre Zugangsdaten sind neu einzutragen, weil OPAA Geheimnisse nie an eine neue Adresse schickt |
+| Die App wurde beim Anbieter neu registriert | Client-ID und Secret ändern | Alle Verbindungen müssen neu hergestellt werden |
+| Eine Vorgabe ändert sich, etwa die Confluence-Edition nach einer Migration | die Vorgabe ändern | Sie laufen mit dem neuen Wert weiter |
+| Verdacht, dass Zugangsdaten in falsche Hände geraten sind | **„Alle Verbindungen trennen"** | Alle Zugangsdaten und Zustimmungen werden sofort verworfen, Zustimmungen auch beim Anbieter zurückgezogen. Ein Schlüssel oder Secret beim Anbieter selbst widerruft die Verwaltung dort |
+| Die Quelle wird nicht mehr angebunden | den Zugang löschen | Ihr Bestand bleibt durchsuchbar, mit dem Hinweis „Zugang entfernt" |
 
-**Tabelle 5.1: Zugang einer Bibliothek ändern**
+Bevor eine Änderung gespeichert wird, die Wissensbibliotheken betrifft, zeigt eine **Vorschau**, wie
+viele es sind und ob Verbindungen neu hergestellt werden müssen. Verträgt eine Wissensbibliothek die
+Änderung nicht, wird nichts gespeichert. Private Bibliotheken halten keine Änderung auf: Sie werden
+dann vom Zugang gelöst, ruhen, und ihre Besitzerin wird benachrichtigt.
 
-| Aktion | Wirkung |
-|---|---|
-| „Zugang zuordnen" | eine Bibliothek mit eigener Adresse auf einen Zugang umstellen; ihre Adresse muss unter dessen Server-Adresse liegen |
-| „Zugang wechseln" | auf einen anderen Zugang derselben Quellart umstellen; ändert sich der Server, sind die Zugangsdaten neu einzutragen |
-| „Zugang lösen" | die Bibliothek läuft mit Adresse, Zugangsdaten und den bisherigen Vorgaben als eigenen Einstellungen weiter; nicht möglich, wenn die Quellart nur über Zugänge nutzbar ist |
-
-Vor dem Zuordnen und Wechseln prüft der Dialog die Verbindung; scheitert die Prüfung, lässt sich
-trotzdem zuordnen, und die Bibliothek läuft, sobald die Verbindung steht.
-
-## 6. Einen Zugang ändern
-
-Was eine Änderung am Zugang für die Bibliotheken darauf bedeutet, zeigt die **Vorschau**, bevor
-etwas gespeichert wird: wie viele Bibliotheken betroffen sind, ob eine davon die Änderung nicht
-verträgt und ob Verbindungen neu hergestellt werden müssen. Lehnt der Konnektor die Änderung für
-eine Bibliothek ab, wird nichts gespeichert.
-
-**Tabelle 6.1: Was eine Änderung am Zugang auslöst**
-
-| Änderung | Folge für die Bibliotheken auf dem Zugang |
-|---|---|
-| Name | keine |
-| Vorgaben | Sie laufen weiter. Fällt eine Vorgabe weg, behält jede Bibliothek den bisherigen Wert als eigene Einstellung |
-| neues Client-Secret oder neuer Schlüssel desselben Kontos | keine; eine abgelehnte Anmeldung ist damit aufgehoben |
-| Server-Adresse, Anmeldeart, Client-ID, Mandant, Scopes oder ein Endpunkt | Alle Zugangsdaten und Zustimmungen auf dem Zugang werden verworfen; die Bibliotheken müssen neu verbunden werden. OPAA fragt vorher nach und nennt die Zahl |
-| **„Alle Verbindungen trennen"** (Notabschaltung) | Alle Zugangsdaten und Zustimmungen werden sofort verworfen; Zustimmungen zieht OPAA auch beim Anbieter zurück. Ein Schlüssel oder Client-Secret beim Anbieter selbst bleibt gültig, bis die Verwaltung ihn dort widerruft |
-| Zugang löschen | Die Bibliotheken bleiben mit ihrem Bestand stehen und tragen den Hinweis „Zugang entfernt", bis sie einem anderen Zugang zugeordnet werden |
-
-Private Bibliotheken halten keine Änderung auf: Verträgt eine die Änderung nicht, wird sie vom
-Zugang gelöst, ruht und ihre Besitzerin wird benachrichtigt.
-
-## 7. Sperren und „Nur über Zugänge"
+## 6. Sperren und „Nur über Zugänge"
 
 Unter **Administration → Anbindungen** kann die Systemverwaltung zweierlei:
 
@@ -143,13 +116,13 @@ Unter **Administration → Anbindungen** kann die Systemverwaltung zweierlei:
 
 Sperren, Entsperren und das Umschalten stehen im Revisionsprotokoll.
 
-## 8. Wenn eine Bibliothek nicht mehr aktualisiert wird
+## 7. Wenn eine Bibliothek nicht mehr aktualisiert wird
 
 Kann ein Lauf seine Quelle nicht erreichen, endet er vor dem ersten Dokument mit einer Meldung, die
 die zuständige Stelle nennt. Der Bestand bleibt durchsuchbar, und im Reiter „Quelle" bietet der
 Hinweis den Verwaltenden die Aktion an, die ihn aufhebt.
 
-**Tabelle 8.1: Meldungen und wer sie beheben kann**
+**Tabelle 7.1: Meldungen und wer sie beheben kann**
 
 | Meldung | Ursache | Zuständig |
 |---|---|---|
@@ -161,7 +134,7 @@ Hinweis den Verwaltenden die Aktion an, die ihn aufhebt.
 | „Gesperrt – Inhalt wird nicht mehr aktualisiert" | Zugang oder Quellart ist gesperrt | Systemverwaltung |
 | „… ist nur noch über Zugänge nutzbar, und diese Bibliothek hat eine eigene Adresse" | „Nur über Zugänge" ist eingeschaltet, und der Bestand wurde gesperrt | Verwaltende der Bibliothek: einem Zugang zuordnen |
 
-## 9. Sicherheit und Nachweis
+## 8. Sicherheit und Nachweis
 
 - Client-Secrets, Schlüssel, Zugangsdaten und Token liegen verschlüsselt. Keine Antwort, kein
   Protokoll und kein Revisionseintrag enthält sie; angezeigt wird nur, ob eines hinterlegt ist.
@@ -172,9 +145,9 @@ Hinweis den Verwaltenden die Aktion an, die ihn aufhebt.
   Revisionsprotokoll. Das Verbindungsprotokoll hält fest, wann Konten und Quellen verbunden und
   getrennt wurden ([Berechtigungen](berechtigungen.md), Abschnitt 12).
 
-## 10. Konfiguration
+## 9. Konfiguration
 
-**Tabelle 10.1: Konfigurationsschlüssel der Zugänge**
+**Tabelle 9.1: Konfigurationsschlüssel der Zugänge**
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -186,7 +159,6 @@ Die Aufbewahrungsfrist des Verbindungsprotokolls stellt die Systemverwaltung unt
 ## Tabellenverzeichnis
 
 - [Tabelle 3.1: Angaben eines Zugangs](#3-was-ein-zugang-festlegt)
-- [Tabelle 5.1: Zugang einer Bibliothek ändern](#5-eine-bibliothek-über-einen-zugang-anlegen)
-- [Tabelle 6.1: Was eine Änderung am Zugang auslöst](#6-einen-zugang-ändern)
-- [Tabelle 8.1: Meldungen und wer sie beheben kann](#8-wenn-eine-bibliothek-nicht-mehr-aktualisiert-wird)
-- [Tabelle 10.1: Konfigurationsschlüssel der Zugänge](#10-konfiguration)
+- [Tabelle 5.1: Typische Anlässe, einen Zugang zu ändern](#5-einen-zugang-pflegen)
+- [Tabelle 7.1: Meldungen und wer sie beheben kann](#7-wenn-eine-bibliothek-nicht-mehr-aktualisiert-wird)
+- [Tabelle 9.1: Konfigurationsschlüssel der Zugänge](#9-konfiguration)
