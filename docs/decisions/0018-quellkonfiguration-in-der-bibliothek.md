@@ -191,7 +191,7 @@ nachzuholen; #267 bleibt davon unabhängig nötig.
 > **Nachtrag (2026-08-21, #267):** Umgesetzt wurde die analoge Absicherung für `HTTP_DIRECTORY`/
 > `RSS_FEED`: `TargetAddressValidator` lehnt eine aufgelöste Adresse im Loopback-, Link-Local-,
 > privaten oder anderweitig nicht routbaren Bereich ab (`opaa.indexing.target-validation`, siehe
-> [deployment.md](../handbuch/deployment.md)), konfigurierbar und standardmäßig aktiv — mit derselben
+> [betrieb.md](../handbuch/betrieb.md#zielprüfung-abrufe-des-servers)), konfigurierbar und standardmäßig aktiv — mit derselben
 > Grundhaltung wie die Pfad-Allowlist: die Sicherung greift unabhängig davon, wer die Bibliothek
 > anlegt, nicht über eine zusätzliche Rolle. Damit ist dieser Abschnitt kein offener Blocker mehr.
 

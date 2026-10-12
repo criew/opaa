@@ -260,7 +260,7 @@ Die Notizen jedes Release enthalten den Abschnitt **Vorbereitung für Bestandsin
 
 Darunter verlinken die Notizen in beiden Fällen den Ablauf der Aktualisierung im Handbuch im Stand
 des Tags: für Kubernetes [Aktualisierung und Rückweg](handbuch/kubernetes.md#aktualisierung-und-rückweg),
-für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](handbuch/deployment.md#vorbereitungsschritte-für-bestandsinstallationen).
+für Docker Compose [Vorbereitungsschritte für Bestandsinstallationen](handbuch/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen).
 
 Die Datei nennt, was eine Bestandsinstallation **vor** dem Update erledigen muss, getrennt nach
 Kubernetes und Docker Compose, und verweist für Einzelheiten auf das Kapitel des Handbuchs. Was

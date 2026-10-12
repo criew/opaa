@@ -537,7 +537,7 @@ Begründung:
   Rotation, Widerruf gegen ein echtes Keycloak, nur in `keycloakIntegrationTest`).
 - **Offen für O2 und Folgearbeit:** Callback-Seite und „Verbinden“ auf der Kontoseite, Anzeige der
   Endpunkte im Zugangsformular samt Meldung in `SourceTypeSignIn`, Ablaufwarnung 14 Tage vorher,
-  Zahl abgelaufener Verbindungen mit Schwellenwert, Handbuch (`zugaenge.md`, `deployment.md`).
+  Zahl abgelaufener Verbindungen mit Schwellenwert, Handbuch (`zugaenge.md`, `konfiguration.md`).
   Die Kontoadresse nach der Zustimmung (`SourceConnector#connectedAccount`) gehört zu „Quelle
   verbinden“ (#2169).
 - **Restrisiko Mix-up (RFC 9207):** Der Rücksprung prüft `iss` nicht. Ein bösartiger

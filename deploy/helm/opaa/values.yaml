@@ -253,7 +253,7 @@ backend:
   # path besides the storage.
   javaToolOptions: ""
 
-  # Recommendation of docs/handbuch/deployment.md ("Speicher und Container-Grenzen").
+  # Recommendation of docs/handbuch/betrieb.md ("Speicher und Container-Grenzen").
   resources:
     requests:
       cpu: 500m

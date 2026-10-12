@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
  * no longer be decrypted (key lost, key rotated without re-encrypting existing rows, corrupted
  * value) must not take the whole read down with a {@code 503}, since that would also break the one
  * repair path ({@code PATCH /api/v1/libraries/{id}} setting new credentials) documented in {@code
- * docs/handbuch/deployment.md}, which loads the same row first. This converter therefore catches
+ * docs/handbuch/betrieb.md}, which loads the same row first. This converter therefore catches
  * {@link CredentialsEncryptionKeyMissingException} on read and treats the field as absent (logs a
  * warning with no library id - the converter is not given the owning entity's identity - and,
  * deliberately, no part of the stored or decrypted value). {@link #convertToDatabaseColumn} keeps

@@ -150,7 +150,7 @@ public class DatabaseSchemaGuard implements BeanFactoryPostProcessor, Environmen
           """
           %s (OPAA_DB_SCHEMA) must be a plain lower-case PostgreSQL identifier - letters a-z, \
           digits and underscores, not starting with a digit, at most 63 characters, and no reserved           keyword. Configured: \
-          "%s". See docs/handbuch/deployment.md."""
+          "%s". See docs/handbuch/datenbank.md."""
               .formatted(SCHEMA_PROPERTY, schema));
     }
     String vectorStoreSchema = environment.getProperty(VECTOR_STORE_SCHEMA_PROPERTY, schema);

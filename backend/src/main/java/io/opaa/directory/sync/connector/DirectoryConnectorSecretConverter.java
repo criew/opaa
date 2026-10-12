@@ -20,8 +20,8 @@ import org.slf4j.LoggerFactory;
  * list ({@code GET /api/v1/admin/oidc-providers} maps every row), the delete and the re-store as
  * soon as one value cannot be decrypted (a rotated {@code OPAA_CREDENTIALS_ENCRYPTION_KEY}, a
  * restored backup) - and those last two are exactly the two repair paths {@code
- * docs/handbuch/deployment.md} points an operator at. A read failure therefore yields {@code null}
- * and a warning without any part of the value.
+ * docs/handbuch/authentifizierung.md} points an operator at. A read failure therefore yields {@code
+ * null} and a warning without any part of the value.
  *
  * <p><b>The two callers that need the secret check for {@code null} themselves</b> and say so:
  * {@link ProviderDirectoryClient} reports the directory as unreachable (so a run revokes nothing),

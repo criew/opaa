@@ -133,7 +133,7 @@ Abfrage bleibt unprotokolliert.
 ### J · Betrieb & Deployment
 
 **[`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md)** ·
-ergänzend **[`handbuch/deployment.md`](./handbuch/deployment.md)** und
+ergänzend **[`handbuch/betrieb.md`](./handbuch/betrieb.md)** und
 **[`handbuch/kubernetes.md`](./handbuch/kubernetes.md)**
 
 Docker Compose · Kubernetes mit Hochverfügbarkeit · Betrieb ohne Netzanbindung · mandantenfähiger Betrieb
@@ -154,8 +154,10 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 
 - **[`handbuch/README.md`](./handbuch/README.md)** — Einstieg: was OPAA ist, der Kapitelbaum,
   Lesewege nach Anlass, Glossar. Die Kapitel im Einzelnen:
-  - Betrieb: [`deployment.md`](./handbuch/deployment.md) (Docker Compose, Umgebungsvariablen,
-    Härtung, Modelle, Authentifizierung), [`kubernetes.md`](./handbuch/kubernetes.md) (Helm-Chart)
+  - Betrieb: [`betrieb.md`](./handbuch/betrieb.md) (Bausteine, Härtung, Sicherung, Aktualisierung),
+    [`docker-compose.md`](./handbuch/docker-compose.md), [`kubernetes.md`](./handbuch/kubernetes.md) (Helm-Chart),
+    [`konfiguration.md`](./handbuch/konfiguration.md) (Umgebungsvariablen, Grenzwerte),
+    [`modelle.md`](./handbuch/modelle.md), [`authentifizierung.md`](./handbuch/authentifizierung.md)
   - Konten und Rechte: [`benutzerverwaltung.md`](./handbuch/benutzerverwaltung.md),
     [`berechtigungen.md`](./handbuch/berechtigungen.md)
   - Arbeiten in Spaces: [`spaces.md`](./handbuch/spaces.md), [`suche.md`](./handbuch/suche.md)

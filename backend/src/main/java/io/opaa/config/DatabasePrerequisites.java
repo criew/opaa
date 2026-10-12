@@ -13,7 +13,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
  */
 final class DatabasePrerequisites {
 
-  static final String HANDBOOK = "See docs/handbuch/deployment.md, section \"Datenbank\".";
+  static final String HANDBOOK =
+      "See docs/handbuch/datenbank.md, section \"Voraussetzungen einer eigenen PostgreSQL\".";
 
   /** What the server reports about the extension. */
   record Facts(boolean vectorInstalled, boolean vectorAvailable) {}

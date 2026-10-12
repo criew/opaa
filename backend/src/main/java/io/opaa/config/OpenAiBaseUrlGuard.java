@@ -55,7 +55,7 @@ public class OpenAiBaseUrlGuard {
           (https://user:secret@host/v1). Configure the address without them and supply the access \
           key via OPAA_OPENAI_API_KEY or %s instead - a base URL is written to log files and \
           status output and is not treated as a secret anywhere. \
-          See docs/handbuch/deployment.md."""
+          See docs/handbuch/modelle.md."""
               .formatted(function, specificVariable.replace("_BASE_URL", "_API_KEY")));
     }
     if (StringUtils.hasText(baseUrl)) {
@@ -67,7 +67,7 @@ public class OpenAiBaseUrlGuard {
         not of a target: locally operated model servers speak it too, and application.yml's own \
         default already points at one (Ollama). This means the configured value is explicitly \
         blank rather than missing - check OPAA_OPENAI_BASE_URL (applies to chat and embedding) and \
-        %s (applies to %s only) for an empty override. See docs/handbuch/deployment.md."""
+        %s (applies to %s only) for an empty override. See docs/handbuch/modelle.md."""
             .formatted(function, specificVariable, function));
   }
 }

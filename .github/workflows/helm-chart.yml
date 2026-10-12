@@ -60,7 +60,7 @@ jobs:
               - 'docs/releases.md'
               - 'docs/upgrade-notes/**'
               - 'docs/handbuch/kubernetes.md'
-              - 'docs/handbuch/deployment.md'
+              - 'docs/handbuch/docker-compose.md'
             # The chart relies on the images' contract: user, port, writable paths, entrypoint.
             install:
               - 'deploy/helm/**'
