@@ -78,6 +78,36 @@ class S3FailureTranslatorTest {
         .hasMessageContaining("Status 403");
   }
 
+  /**
+   * Apache HttpClient 5 refuses a certificate for another name with an {@code
+   * SSLPeerUnverifiedException} that carries no {@code CertificateException}; it still reads as an
+   * untrusted certificate, a bare TLS failure as a protocol error.
+   */
+  @Test
+  void aCertificateForAnotherNameReadsAsUntrustedAndABareTlsFailureAsAProtocolError() {
+    SdkClientException wrongName =
+        SdkClientException.builder()
+            .message("Unable to execute HTTP request")
+            .cause(
+                new javax.net.ssl.SSLPeerUnverifiedException(
+                    "Certificate for <minio.intern> doesn't match any of the subject alternative"
+                        + " names: [other.intern]"))
+            .build();
+    assertThat(translator.translate(S3Operation.LIST_BUCKETS, null, null, wrongName))
+        .isInstanceOf(S3AccessException.Tls.class)
+        .hasMessageContaining(io.opaa.sourceaccess.UntrustedCertificate.MESSAGE);
+
+    SdkClientException bareTls =
+        SdkClientException.builder()
+            .message("Unable to execute HTTP request")
+            .cause(new javax.net.ssl.SSLException("Unsupported or unrecognized SSL message"))
+            .build();
+    assertThat(translator.translate(S3Operation.LIST_BUCKETS, null, null, bareTls))
+        .isInstanceOf(S3AccessException.Tls.class)
+        .hasMessageContaining("Protokollfehler")
+        .hasMessageNotContaining(io.opaa.sourceaccess.UntrustedCertificate.MESSAGE);
+  }
+
   @Test
   void aNotFoundAnswerNamesWhatIsMissingForTheOperation() {
     assertThat(translator.translate(S3Operation.PUT_OBJECT, "b", "k", service(404, null)))

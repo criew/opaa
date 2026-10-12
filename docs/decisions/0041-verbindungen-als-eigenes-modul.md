@@ -487,7 +487,7 @@ Begründung:
 - **Ein Weg zum Anbieter:** `connection.oauth.OAuthClient` stellt Autorisierungsanfrage,
   Code-Tausch, Erneuerung und Widerruf; auch die Client-Credentials laufen darüber. Nur er ruft in
   connections `SourceFormPost` (Zielprüfung, keine Weiterleitung, Größengrenze), immer mit
-  Zertifikatsprüfung (bis #2537) und (bis #2496) dem Proxy des Zugangs (ArchUnit
+  Zertifikatsprüfung und (bis #2496) dem Proxy des Zugangs (ArchUnit
   `theAuthorizationServerIsReachedOnlyThroughTheOAuthClient` mit Fixture).
 - **Port `SecretIssuer` neu geschnitten:** `renew` liefert `Issued` (Zugriffstoken mit Ablauf,
   rotierter Refresh-Token mit Ablauf oder `null`), `revocation` bekommt einen Schnappschuss beider

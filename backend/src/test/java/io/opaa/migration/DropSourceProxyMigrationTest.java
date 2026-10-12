@@ -18,13 +18,9 @@ class DropSourceProxyMigrationTest extends AbstractBaselineTest {
   private static final String PROFILE_FILE =
       "db/changelog/connections/2026-10-11-drop-profile-source-proxy.yaml";
 
-  /** Drops the TLS column the recreated upload check names and therefore depends on this file. */
-  private static final String DROP_INSECURE_SSL =
-      "db/changelog/knowledge/2026-10-12-drop-library-source-insecure-ssl.yaml";
-
   @Override
   protected List<String> baseFixtureChangelogs() {
-    return MasterChangelog.filesExcept(LIBRARY_FILE, PROFILE_FILE, DROP_INSECURE_SSL);
+    return MasterChangelog.filesExcept(LIBRARY_FILE, PROFILE_FILE);
   }
 
   @Test
@@ -66,9 +62,6 @@ class DropSourceProxyMigrationTest extends AbstractBaselineTest {
         "chk_knowledge_libraries_upload_without_source");
     assertRejected(
         "UPDATE knowledge_libraries SET source_url = 'https://x.example'" + where,
-        "chk_knowledge_libraries_upload_without_source");
-    assertRejected(
-        "UPDATE knowledge_libraries SET source_insecure_ssl = true" + where,
         "chk_knowledge_libraries_upload_without_source");
     assertRejected(
         "UPDATE knowledge_libraries SET source_settings = '{}'" + where,

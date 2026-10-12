@@ -398,6 +398,59 @@ class IndexingRunTemplateTest {
   }
 
   @Test
+  void aTlsFailureWithoutACertificateCauseKeepsItsOwnMessage() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          throw new javax.net.ssl.SSLHandshakeException("Remote host terminated the handshake");
+        });
+
+    verify(jobService).failJob(jobId, "Remote host terminated the handshake");
+  }
+
+  @Test
+  void aConnectorMessageNamingTheCertificateWithItsHostStays() {
+    String own =
+        "TLS-Verbindung zu wiki.example.org fehlgeschlagen. "
+            + io.opaa.sourceaccess.UntrustedCertificate.MESSAGE;
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          throw new java.io.IOException(own, untrustedHandshake());
+        });
+
+    verify(jobService).failJob(jobId, own);
+  }
+
+  @Test
+  void anUntrustedHandshakeWithoutOwnWordingGetsTheGeneralMessage() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          throw new java.io.IOException("handshake failed", untrustedHandshake());
+        });
+
+    verify(jobService).failJob(jobId, io.opaa.sourceaccess.UntrustedCertificate.MESSAGE);
+  }
+
+  /** A handshake the JDK refused for the certificate chain, as its exceptions nest. */
+  private static javax.net.ssl.SSLHandshakeException untrustedHandshake() {
+    javax.net.ssl.SSLHandshakeException handshake =
+        new javax.net.ssl.SSLHandshakeException("PKIX path building failed");
+    handshake.initCause(new java.security.cert.CertificateException("unknown issuer"));
+    return handshake;
+  }
+
+  @Test
   void anExceptionWithoutAMessageStillFailsTheJob() {
     // A ConnectException from the JDK's networking stack can carry no message at all - the run
     // failed regardless, and must never end COMPLETED for lack of a text.

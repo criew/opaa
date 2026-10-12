@@ -402,7 +402,9 @@ public class IndexingRunTemplate {
     if (proxyRefusal.isPresent()) {
       return proxyRefusal.get();
     }
-    if (UntrustedCertificate.causes(e)) {
+    // a connector message that already names the certificate (with its host) stays
+    if (UntrustedCertificate.causes(e)
+        && (e.getMessage() == null || !e.getMessage().contains(UntrustedCertificate.MESSAGE))) {
       return UntrustedCertificate.MESSAGE;
     }
     return e.getMessage() != null

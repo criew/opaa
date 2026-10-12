@@ -12,8 +12,11 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.cert.CertificateException;
 import java.time.Duration;
+import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLHandshakeException;
+import javax.net.ssl.SSLPeerUnverifiedException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +68,62 @@ class UntrustedCertificateTest {
     assertThat(failure).isInstanceOf(SSLHandshakeException.class);
     assertThat(UntrustedCertificate.causes(failure)).isTrue();
     assertThat(UntrustedCertificate.describe(failure)).contains(UntrustedCertificate.MESSAGE);
+  }
+
+  /**
+   * A certificate the JVM trusts but issued for another name: the loopback certificate covers
+   * {@code 127.0.0.1} and {@code localhost}, not {@code 127.0.0.2}.
+   */
+  @Test
+  void aTrustedCertificateForAnotherNameIsRefusedToo() throws IOException {
+    HttpsServer anyAddress = HttpsServer.create(new InetSocketAddress(0), 0);
+    anyAddress.setHttpsConfigurator(new HttpsConfigurator(LoopbackTls.serverContext()));
+    anyAddress.start();
+    LoopbackTls.trustInThisJvm();
+    try {
+      IOException failure =
+          catchThrowableOfType(
+              IOException.class,
+              () ->
+                  SourceHttpClientFactory.buildHttpClient()
+                      .send(
+                          HttpRequest.newBuilder(
+                                  URI.create(
+                                      "https://127.0.0.2:"
+                                          + anyAddress.getAddress().getPort()
+                                          + "/"))
+                              .timeout(Duration.ofSeconds(10))
+                              .build(),
+                          HttpResponse.BodyHandlers.discarding()));
+
+      assertThat(failure).isInstanceOf(SSLHandshakeException.class);
+      assertThat(UntrustedCertificate.describe(failure)).contains(UntrustedCertificate.MESSAGE);
+    } finally {
+      LoopbackTls.restore();
+      anyAddress.stop(0);
+    }
+  }
+
+  /** Apache HttpClient 5 reports another name without a {@code CertificateException} cause. */
+  @Test
+  void aPeerNotVerifiedForItsNameIsAnUntrustedCertificate() {
+    assertThat(
+            UntrustedCertificate.causes(
+                new IOException(
+                    new SSLPeerUnverifiedException(
+                        "Certificate for <s3.intern> doesn't match any of the subject alternative"
+                            + " names: [other.intern]"))))
+        .isTrue();
+  }
+
+  /** Only a TLS failure counts: a certificate problem elsewhere is not the server's certificate. */
+  @Test
+  void aCertificateProblemOutsideATlsHandshakeDoesNotCount() {
+    assertThat(
+            UntrustedCertificate.causes(
+                new IOException(new CertificateException("unreadable PEM in a key file"))))
+        .isFalse();
+    assertThat(UntrustedCertificate.causes(new SSLException("Unsupported SSL message"))).isFalse();
   }
 
   @Test
