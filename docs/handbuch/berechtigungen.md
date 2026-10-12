@@ -1,14 +1,14 @@
 # Berechtigungen
 
-> **Entwurf.** Dieses Kapitel beschreibt, wer in einer OPAA-Installation was lesen, ändern,
-> freigeben und anlegen darf — und wie sich das nachweisen lässt. Es ist der eine Ort für das
-> Berechtigungsmodell: Subjekte, Rollen, Gruppen, Anlegerechte, Vollmachten, Lebenszyklus und
-> Rechtehistorie. Die Regeln gelten für jede Art von **Arbeitsmittel** gleich, ob
-> Wissensbibliothek oder Prompt-Bibliothek; wie Arbeitsmittel gefunden, angelegt und einem Space
-> zugeordnet werden, beschreibt das Kapitel [Katalog](katalog.md). Die Einrichtung des Anmeldewegs und des Verzeichnisabgleichs steht im Kapitel
-> [Authentifizierung](authentifizierung.md), die Verwaltung lokaler Konten in der
-> [Benutzerverwaltung](benutzerverwaltung.md), der Rechtefilter der Suche im Kapitel
-> [Suche](suche.md).
+Dieses Kapitel beschreibt, wer in einer OPAA-Installation was lesen, ändern,
+freigeben und anlegen darf — und wie sich das nachweisen lässt. Es ist der eine Ort für das
+Berechtigungsmodell: Subjekte, Rollen, Gruppen, Anlegerechte, Vollmachten, Lebenszyklus und
+Rechtehistorie. Die Regeln gelten für jede Art von **Arbeitsmittel** gleich, ob
+Wissensbibliothek oder Prompt-Bibliothek; wie Arbeitsmittel gefunden, angelegt und einem Space
+zugeordnet werden, beschreibt das Kapitel [Katalog](katalog.md). Die Einrichtung des Anmeldewegs und des Verzeichnisabgleichs steht im Kapitel
+[Authentifizierung](authentifizierung.md), die Verwaltung lokaler Konten in der
+[Benutzerverwaltung](benutzerverwaltung.md), der Rechtefilter der Suche im Kapitel
+[Suche](suche.md).
 
 ## 1. Der Aufbau in vier Objekten
 

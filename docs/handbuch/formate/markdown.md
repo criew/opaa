@@ -1,7 +1,7 @@
 # Format: Markdown
 
-> **Entwurf.** Pipeline `markdown`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines
-> steht im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
+Pipeline `markdown`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines
+steht im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
 
 ## 1. Zulassung
 

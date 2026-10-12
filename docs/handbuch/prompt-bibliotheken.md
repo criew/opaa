@@ -1,11 +1,11 @@
 # Prompt-Bibliotheken
 
-> **Entwurf.** Dieses Kapitel beschreibt, wie Prompt-Bibliotheken angelegt, gefüllt und freigegeben
-> werden: wiederkehrende Formulierungshilfen — Anhörung, Vermerk, Ablehnung nach Hausstandard —, die
-> einmal benannt und beschrieben werden und dann allen zur Verfügung stehen, denen sie freigegeben
-> sind. Prompt-Bibliotheken sind Arbeitsmittel: Finden, Anlegen, Teilen und Zuordnen beschreibt das
-> Kapitel [Katalog](katalog.md), das Berechtigungsmodell das Kapitel
-> [Berechtigungen](berechtigungen.md); hier steht, was für Prompt-Bibliotheken eigens gilt.
+Dieses Kapitel beschreibt, wie Prompt-Bibliotheken angelegt, gefüllt und freigegeben
+werden: wiederkehrende Formulierungshilfen — Anhörung, Vermerk, Ablehnung nach Hausstandard —, die
+einmal benannt und beschrieben werden und dann allen zur Verfügung stehen, denen sie freigegeben
+sind. Prompt-Bibliotheken sind Arbeitsmittel: Finden, Anlegen, Teilen und Zuordnen beschreibt das
+Kapitel [Katalog](katalog.md), das Berechtigungsmodell das Kapitel
+[Berechtigungen](berechtigungen.md); hier steht, was für Prompt-Bibliotheken eigens gilt.
 
 ## 1. Der Aufbau: Prompt-Bibliothek und Prompt
 

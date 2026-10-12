@@ -1,7 +1,7 @@
 # Format: E-Mail (EML, MSG)
 
-> **Entwurf.** Pipeline `email`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
-> im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.7.
+Pipeline `email`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
+im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.7.
 
 ## 1. Zulassung
 

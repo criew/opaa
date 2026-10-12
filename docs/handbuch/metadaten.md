@@ -1,10 +1,10 @@
 # Metadaten: Titel, Dokumentart und Datum/Stand je Dokument
 
-> **Entwurf.** Dieses Kapitel beschreibt die drei Kernfelder, die jedes Dokument trägt, die
-> Formatfelder und die Felder, die eine Bibliothek selbst definiert — woher ihre Werte kommen, wie
-> sie gepflegt werden und was sie in Suche, Kontextpräfix und Beleg bewirken. Die
-> Struktur-Metadaten je Chunk (Ortsangabe, Space und Gliederungspfad) sind etwas
-> anderes und stehen im Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 5.5.
+Dieses Kapitel beschreibt die drei Kernfelder, die jedes Dokument trägt, die
+Formatfelder und die Felder, die eine Bibliothek selbst definiert — woher ihre Werte kommen, wie
+sie gepflegt werden und was sie in Suche, Kontextpräfix und Beleg bewirken. Die
+Struktur-Metadaten je Chunk (Ortsangabe, Space und Gliederungspfad) sind etwas
+anderes und stehen im Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 5.5.
 
 ## 1. Wofür Metadaten hier gedacht sind
 

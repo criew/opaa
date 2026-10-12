@@ -1,9 +1,9 @@
 # Suche: Von der Frage zur belegten Antwort
 
-> **Entwurf.** Dieses Kapitel beschreibt die Abfragestrecke (Query-Pipeline) konzeptionell: was
-> zwischen dem Absenden einer Frage und der Anzeige einer Antwort mit Belegen passiert, welche
-> Stellschrauben es gibt und wie der Betrieb einer schlechten Antwort auf den Grund geht. Wie die
-> Dokumente vorher in den Index gelangen, steht im Kapitel [Wissensbibliotheken](wissensbibliotheken.md).
+Dieses Kapitel beschreibt die Abfragestrecke (Query-Pipeline) konzeptionell: was
+zwischen dem Absenden einer Frage und der Anzeige einer Antwort mit Belegen passiert, welche
+Stellschrauben es gibt und wie der Betrieb einer schlechten Antwort auf den Grund geht. Wie die
+Dokumente vorher in den Index gelangen, steht im Kapitel [Wissensbibliotheken](wissensbibliotheken.md).
 
 ## 1. Überblick in einem Bild
 

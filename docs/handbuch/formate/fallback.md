@@ -1,7 +1,7 @@
 # Format: Auffang-Pipeline (TXT, DOC)
 
-> **Entwurf.** Pipeline `tika-fallback`, Version 1. Der gemeinsame Rahmen aller
-> Format-Pipelines steht im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
+Pipeline `tika-fallback`, Version 1. Der gemeinsame Rahmen aller
+Format-Pipelines steht im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
 

@@ -1,8 +1,8 @@
 # Format: OpenDocument Text (ODT)
 
-> **Entwurf.** Pipeline `odt`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem
-> von [Word](docx.md); hier stehen die Unterschiede.
+Pipeline `odt`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem
+von [Word](docx.md); hier stehen die Unterschiede.
 
 ## 1. Zulassung
 

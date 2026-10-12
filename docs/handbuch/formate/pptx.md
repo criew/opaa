@@ -1,7 +1,7 @@
 # Format: PowerPoint (PPTX)
 
-> **Entwurf.** Pipeline `pptx`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
+Pipeline `pptx`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
 
 ## 1. Zulassung
 
