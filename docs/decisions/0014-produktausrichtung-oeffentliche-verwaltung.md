@@ -177,7 +177,7 @@ Nachtrag hat denselben Aufbau: Datum, Punkt, Entscheidung, Begründung, Verweis.
   dieser Fall soll nicht mehr möglich sein.
 - **Verweis:** [#353](https://github.com/criew/opaa/issues/353) ·
   [features/llm-integration.md](../features/llm-integration.md#was-heute-gilt-und-was-nicht-gebaut) ·
-  [deployment.md](../handbuch/deployment.md#llm-anbieter)
+  [modelle.md](../handbuch/modelle.md#llm-anbieter)
 
 ### 14.08.2026 — Assistent für Bürgerinnen und Bürger und öffentliches Widget
 

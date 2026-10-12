@@ -56,14 +56,14 @@ public class OidcProviderSeeder {
       "Kein Identitätsanbieter übernommen ({}): Bis ein Anbieter existiert, ist keine Anmeldung"
           + " möglich. OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
           + " OPAA_OIDC_JWK_SET_URI) setzen und neu starten - die Übernahme wird dann"
-          + " nachgeholt. Siehe docs/handbuch/deployment.md.";
+          + " nachgeholt. Siehe docs/handbuch/authentifizierung.md.";
   private static final String NO_SIGN_IN_AT_ALL_MESSAGE =
       "Kein Identitätsanbieter übernommen ({}) und kein anmeldefähiges lokales"
           + " Systemverwalterkonto: Bis eines von beiden existiert, ist keine Anmeldung möglich."
           + " Entweder OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
           + " OPAA_OIDC_JWK_SET_URI) setzen, oder für das lokale Notanker-Konto"
           + " OPAA_INITIAL_ADMIN_EMAIL setzen bzw. es mit OPAA_LOCAL_ADMIN_RESET=force"
-          + " wiederherstellen, und neu starten. Siehe docs/handbuch/deployment.md.";
+          + " wiederherstellen, und neu starten. Siehe docs/handbuch/authentifizierung.md.";
 
   private final OidcProviderRepository repository;
   private final OidcProviderSeedMarkerRepository markerRepository;
@@ -231,7 +231,7 @@ public class OidcProviderSeeder {
           "Kein Identitätsanbieter übernommen ({}): Anmeldung bis dahin nur mit lokalen Konten."
               + " OPAA_OIDC_ISSUER_URI und OPAA_OIDC_CLIENT_ID (und bei Bedarf"
               + " OPAA_OIDC_JWK_SET_URI) korrigieren und neu starten - die Übernahme wird dann"
-              + " nachgeholt. Siehe docs/handbuch/deployment.md.",
+              + " nachgeholt. Siehe docs/handbuch/authentifizierung.md.",
           problem);
     }
   }

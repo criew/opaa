@@ -1,18 +1,17 @@
 # Kubernetes
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den Helm-Chart geprüft, aber noch nicht
-> abgenommen.
-
 OPAA lässt sich unter Kubernetes mit dem Helm-Chart des Projekts betreiben. Der Chart startet
-dieselben Images wie der Compose-Stapel aus dem Kapitel [Deployment](deployment.md): ein Backend und
+dieselben Images wie der Compose-Stapel ([Docker Compose](docker-compose.md)): ein Backend und
 ein Frontend. Datenbank, Modelle, Objektspeicher und Identitätsanbieter betreibt das Haus selbst; der
 Chart bindet sie an.
 
 Dieses Kapitel beschreibt, was unter Kubernetes anders ist und welcher Wert des Charts welche
-Einstellung setzt. Was für beide Betriebswege gleich gilt, steht weiterhin im Kapitel
-[Deployment](deployment.md), und dieses Kapitel verweist an der jeweiligen Stelle dorthin: die Bedeutung
-der Umgebungsvariablen, die Authentifizierung, der Erststart, die Originalablage, die Voraussetzungen
-der Datenbank und was ein Update mit dem Index macht.
+Einstellung setzt. Was für beide Betriebswege gleich gilt — Laufzeitimages, Bereitschaft, Härtung,
+Sicherung, Logs und Metriken, was ein Update mit dem Index macht —, steht in der
+[Betriebsübersicht](betrieb.md); die Bedeutung der Umgebungsvariablen in der
+[Konfiguration](konfiguration.md), Anmeldung und Erststart unter
+[Authentifizierung](authentifizierung.md), Datenbank und Originalablage in ihren Kapiteln. Dieses
+Kapitel verweist an der jeweiligen Stelle dorthin.
 
 ## Kubernetes oder Compose
 
@@ -31,7 +30,7 @@ durch:
 Kubernetes bringt damit keine Hochverfügbarkeit des Backends. Es bringt die vorhandene Plattform des
 Hauses: Eingang und Zertifikate, Geheimnisverwaltung, Überwachung, Netztrennung und GitOps.
 
-| Thema | Compose ([Deployment](deployment.md)) | Kubernetes (dieses Kapitel) |
+| Thema | Compose ([Docker Compose](docker-compose.md)) | Kubernetes (dieses Kapitel) |
 |---|---|---|
 | Konfiguration | `.env.docker` | Werte-Datei des Charts und ein Secret; weitere Variablen über `backend.extraEnv` |
 | Betriebsmodus | `SPRING_PROFILES_ACTIVE` frei wählbar | fest `oidc`; der Entwicklungsmodus ist nicht vorgesehen |
@@ -64,13 +63,13 @@ dieses Kapitels verwenden den Release-Namen `opaa` und den Namespace `opaa`.
 
 ```mermaid
 flowchart LR
-    B[Browser] -->|HTTPS| C[Ingress- oder<br/>Gateway-Controller]
+    B[Browser] -->|HTTPS| C[Ingress- oder<br/>Gateway-<br/>Controller]
     C --> F[opaa-frontend<br/>nginx]
     F -->|/api/, /mcp| BE[opaa-backend]
     BE --> DB[(PostgreSQL<br/>mit pgvector)]
-    BE --> O[(Objektspeicher<br/>oder Volume)]
-    BE --> M[Modell-Endpunkte]
-    BE --> I[Identitätsanbieter]
+    BE --> O[(Objekt-<br/>speicher oder<br/>Volume)]
+    BE --> M[Modell-<br/>Endpunkte]
+    BE --> I[Identitäts-<br/>anbieter]
     P[Prometheus] -.->|Management-Port| BE
 ```
 
@@ -84,9 +83,9 @@ flowchart LR
 | Namespace | Pod Security Admission auf `restricted` ist möglich und empfohlen; der Chart braucht keine Ausnahme |
 | Netzwerkschicht | setzt NetworkPolicies durch, sobald `trustedProxyCidrs` gesetzt wird (siehe [Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)) |
 | Eingang | ein Ingress-Controller oder eine Gateway-API-Implementierung mit einem Gateway; ein DNS-Name und ein Zertifikat, etwa über cert-manager |
-| Datenbank | PostgreSQL mit pgvector 0.8.0 oder neuer, vom Cluster aus erreichbar, mit einer Datenbank und einem Konto für OPAA; Vorbereitung siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql) |
+| Datenbank | PostgreSQL mit pgvector 0.8.0 oder neuer, vom Cluster aus erreichbar, mit einer Datenbank und einem Konto für OPAA; Vorbereitung siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql) |
 | Originalablage | ein vorher angelegter Bucket in einem S3-kompatiblen Objektspeicher mit Zugangs- und Geheimschlüssel, oder eine StorageClass für ein Volume mit `ReadWriteOnce` |
-| Modelle | ein OpenAI-kompatibler Endpunkt für die Einbettung und einer für den Chat, wahlweise im Cluster; optional ein Rerank-Endpunkt (siehe [LLM-Anbieter](deployment.md#llm-anbieter)) |
+| Modelle | ein OpenAI-kompatibler Endpunkt für die Einbettung und einer für den Chat, wahlweise im Cluster; optional ein Rerank-Endpunkt (siehe [LLM-Anbieter](modelle.md#llm-anbieter)) |
 | Identitätsanbieter | optional ein OIDC-Anbieter mit einem öffentlichen Client; ohne ihn melden sich Personen mit lokalen Konten an |
 | Mailserver | optional; wird nach der Installation in der Oberfläche eingerichtet |
 | Postfach | eine zustellbare Adresse für das erste Systemverwalter-Konto, am besten ein Funktionspostfach der IT |
@@ -112,9 +111,9 @@ braucht dann kein `--create-namespace`.
 
 Ein Datenbankverwalter legt die Erweiterung `vector` und gegebenenfalls die Rolle
 `opaa_audit_owner` an, bevor OPAA zum ersten Mal startet. Die Befehle stehen unter
-[Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql).
+[Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql).
 Soll OPAA in einem eigenen Schema liegen, muss es ebenfalls vorher existieren
-([Eigenes Datenbankschema](deployment.md#eigenes-datenbankschema)).
+([Eigenes Datenbankschema](datenbank.md#eigenes-datenbankschema)).
 
 Mit der [Erprobungsdatenbank](#datenbank) entfällt dieser Schritt: Ihr Konto ist Superuser und legt
 Erweiterung und Rolle bei der Migration selbst an.
@@ -297,11 +296,11 @@ kubectl -n opaa logs deploy/opaa-backend | grep -A5 NOTANKER
 Mit `backend.logFormat` ist der Block ein einziges JSON-Ereignis; dann im Log-Sammler nach `NOTANKER`
 suchen. Die Anmeldung läuft über `<publicBaseUrl>/login/system`. Was danach zu tun ist (Passwort
 wechseln, persönliche Verwalterkonten anlegen, Notanker versiegeln), steht unter
-[Erststart und Systemverwalter-Konto](deployment.md#erststart-und-systemverwalter-konto).
+[Erststart und Systemverwalter-Konto](authentifizierung.md#erststart-und-systemverwalter-konto).
 
 ### 8. Nach der Ersteinrichtung
 
-- **In der Oberfläche einrichten:** Mailserver ([E-Mail-Versand](deployment.md#e-mail-versand-smtp)),
+- **In der Oberfläche einrichten:** Mailserver ([E-Mail-Versand](e-mail.md)),
   weitere Identitätsanbieter, weitere Chat-Modelle, Verzeichnisabgleich und Fremdzugänge.
 - **Client-Adresse richtigstellen:** `trustedProxyCidrs` und die Eingangs-Policy des Frontends setzen
   (siehe [Proxy-Kette und Client-Adresse](#proxy-kette-und-client-adresse)). Bis dahin teilen sich
@@ -421,7 +420,7 @@ examples/kubernetes-trial/trial.sh down
 - **Bucket vorab.** OPAA legt keinen Bucket an; im Beispiel-Setup tut das ein Job beim Aufbau.
 - **Mailserver in der Oberfläche.** Er ist kein Wert des Charts; das Beispiel-Setup trägt ihn über die
   Schnittstelle ein, wie es die Systemverwaltung in der Oberfläche täte
-  ([E-Mail-Versand](deployment.md#e-mail-versand-smtp)).
+  ([E-Mail-Versand](e-mail.md)).
 
 ## Geheimnisse
 
@@ -457,7 +456,7 @@ nennt den Schlüssel. Ein optionaler Schlüssel darf fehlen.
 **Der Chart erzeugt keine Schlüssel.** Ein bei der Installation zufällig erzeugter Schlüssel ginge mit
 `helm template`, in GitOps-Werkzeugen oder bei einer Neuinstallation verloren. Geht einer der beiden
 Verschlüsselungsschlüssel verloren, sind die damit gespeicherten Geheimnisse unlesbar (siehe
-[Zugangsdaten-Verschlüsselung](deployment.md#zugangsdaten-verschlüsselung)). Deshalb gehört eine
+[Zugangsdaten-Verschlüsselung](betrieb.md#zugangsdaten-verschlüsselung)). Deshalb gehört eine
 Kopie außerhalb des Clusters zur Sicherung.
 
 **Ein geänderter Schlüssel wirkt erst nach einem Neustart.** Bei einem vorhandenen Secret startet
@@ -477,7 +476,7 @@ OPAA kennt drei Arten von Konfiguration. Der Chart behandelt sie unterschiedlich
 
 Die folgenden Tabellen nennen jeden Wert des Charts mit seiner Vorgabe und der Umgebungsvariablen, die
 er setzt. Bedeutung und Wertebereich der Variablen stehen in der
-[Variablenliste](deployment.md#alle-umgebungsvariablen) des Deployment-Kapitels. `values.schema.json`
+[Variablenliste](konfiguration.md#alle-umgebungsvariablen) der Konfiguration. `values.schema.json`
 prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 ### Allgemein
@@ -562,7 +561,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `backend.terminationGracePeriodSeconds` | `75` | — | muss größer sein als `shutdownTimeoutSeconds`, sonst bricht das Rendern ab |
 | `backend.maxRamPercentage` | `70` | `JAVA_TOOL_OPTIONS` | Heap-Anteil an der Speichergrenze; wirkt nur mit `resources.limits.memory` |
 | `backend.javaToolOptions` | leer | `JAVA_TOOL_OPTIONS` | weitere JVM-Optionen; Dateiziele gehören unter `/tmp` |
-| `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](deployment.md#speicher-und-container-grenzen) |
+| `backend.resources` | 500m CPU und 1Gi angefordert, 2Gi Grenze | — | siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen) |
 | `backend.initResources` | 50m CPU und 128Mi angefordert, 256Mi Grenze | — | Init-Container des Backends: der Truststore mit `extraCACertificates` und das Warten auf die Erprobungsdatenbank |
 | `backend.startupProbe` | alle `10` s, Zeitgrenze `5` s, `60` Fehlversuche | — | gibt dem ersten Start und der Migration Zeit (`periodSeconds` mal `failureThreshold`) |
 | `backend.livenessProbe` | alle `20` s, Zeitgrenze `5` s, `3` Fehlversuche | — | Lebendigkeit |
@@ -623,8 +622,8 @@ Die Werte unter `metrics` beschreibt der Abschnitt [Betriebsüberwachung](#betri
 
 OPAA braucht genau eine PostgreSQL-Datenbank mit pgvector. Für den Betrieb ist das die Datenbank des
 Rechenzentrums oder ein Operator im Cluster, etwa CloudNativePG. Die Vorbereitung durch den
-Datenbankverwalter und die Wahl eines eigenen Schemas stehen im Deployment-Kapitel unter
-[Datenbank](deployment.md#datenbank).
+Datenbankverwalter und die Wahl eines eigenen Schemas stehen im Kapitel
+[Datenbank](datenbank.md).
 
 Den Verbindungs-URL baut der Chart aus `database.host`, `database.port`, `database.name` und
 `database.sslMode`. Mit `verify-ca` oder `verify-full` prüft das Backend das Serverzertifikat gegen die
@@ -646,7 +645,7 @@ Datenbank gehört deshalb dorthin.
 
 Die Originale hochgeladener Dokumente liegen entweder im Objektspeicher oder auf einem Volume. Was
 die Originalablage ist und wie sich beide Wege unterscheiden, steht unter
-[Originalablage](deployment.md#originalablage).
+[Originalablage](originalablage.md).
 
 **Objektspeicher** (`uploads.store: s3`, Vorgabe). Der Bucket muss vorher existieren. Der konfigurierte
 Endpunkt passiert die Adressprüfung immer, auch mit einer internen Adresse. Ist der Speicher nicht
@@ -677,7 +676,7 @@ Knoten bereit ist. Das folgt aus der einen Backend-Instanz (siehe
 es hielte die Wartung des Knotens nur an.
 
 Wie eine laufende Installation vom Volume auf den Objektspeicher wechselt, steht unter
-[Eine laufende Installation auf den Objektspeicher umstellen](deployment.md#eine-laufende-installation-auf-den-objektspeicher-umstellen).
+[Eine laufende Installation auf den Objektspeicher umstellen](originalablage.md#eine-laufende-installation-auf-den-objektspeicher-umstellen).
 Unter Kubernetes kopiert ein eigener Pod mit Zugriff auf den Claim die Dateien, weil das
 Backend-Image weder Shell noch `tar` enthält.
 
@@ -720,7 +719,7 @@ Ein Init-Container schreibt bei jedem Start die öffentlichen CAs der Java-Laufz
 PEM-Zertifikat aus jedem Schlüssel der ConfigMap in einen neuen Truststore. Ein Bündel, etwa aus
 trust-manager, funktioniert ebenso. Weil der Truststore bei jedem Start neu entsteht, bringen neue
 Images ihre aktualisierten öffentlichen CAs mit. Der Handgriff aus
-[Eigene interne CA ergänzen](deployment.md#eigene-interne-ca-ergänzen) entfällt unter Kubernetes.
+[Eigene interne CA ergänzen](docker-compose.md#eigene-interne-ca-ergänzen) entfällt unter Kubernetes.
 
 ### Identitätsanbieter
 
@@ -789,7 +788,7 @@ und nennt die Adresse des Discovery-Dokuments.
 
 Stellt eine hauseigene CA das Zertifikat des Anbieters aus, gehört sie nach `extraCACertificates`.
 Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht unter
-[OIDC (Keycloak)](deployment.md#oidc-keycloak).
+[OIDC (Keycloak)](authentifizierung.md#oidc-keycloak).
 
 ### Was der Chart setzt und was die Oberfläche pflegt
 
@@ -797,7 +796,7 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 |---|---|---|
 | Datenbank, Originalablage, Einbettung, Reranking, Proxy-Kette, CSP-Ergänzungen, Zeitgrenzen | Bereitstellungswerte | Werte; wirken bei jedem `helm upgrade` |
 | erster Identitätsanbieter | Startwert | `bootstrap.oidc`; danach Administration → Benutzer → Anbieter |
-| erstes Chat-Modell samt Schlüssel | Startwert | `bootstrap.chatModel` und `OPAA_OPENAI_CHAT_API_KEY`; danach die Modellverwaltung ([LLM-Anbieter](deployment.md#llm-anbieter)) |
+| erstes Chat-Modell samt Schlüssel | Startwert | `bootstrap.chatModel` und `OPAA_OPENAI_CHAT_API_KEY`; danach die Modellverwaltung ([LLM-Anbieter](modelle.md#llm-anbieter)) |
 | erster Systemverwalter | Startwert | `bootstrap.initialAdmin.email` und `OPAA_INITIAL_ADMIN_PASSWORD`; danach [Benutzerverwaltung](benutzerverwaltung.md) |
 | Mailserver, weitere Anbieter, Verzeichnisabgleich, Fremdzugänge | Verwaltungseinstellungen | keine Werte; nur in der Oberfläche |
 
@@ -805,11 +804,11 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 Datenbank; ein GitOps-Werkzeug kann Anbieter, Modelle und Mailserver nicht nachführen. Der
 Einbettungs-Endpunkt ist dagegen ein Bereitstellungswert: Ein Wechsel des Modells oder von
 `embedding.dimensions` verlangt eine Neuindizierung (siehe
-[Was ein Update mit dem Index macht](deployment.md#was-ein-update-mit-dem-index-macht)).
+[Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht)).
 
 **Notfallzugang.** Kommt niemand mehr herein, stellt `OPAA_LOCAL_ADMIN_RESET=force` beim nächsten
 Start einen anmeldefähigen lokalen Systemverwalter her (siehe
-[Notfallprozedur: wieder hereinkommen](deployment.md#notfallprozedur-wieder-hereinkommen)). Die
+[Notfallprozedur: wieder hereinkommen](authentifizierung.md#notfallprozedur-wieder-hereinkommen)). Die
 Variable wirkt bei **jedem** Start, solange sie gesetzt ist, und gehört deshalb nicht in die
 Werte-Datei. Einmalig setzen und nach dem Neustart entfernen:
 
@@ -933,7 +932,7 @@ kann:
   deshalb einen `podSelector`.
 
 Ob die Kette stimmt, zeigt der Diagnose-Endpunkt aus
-[Diagnose ohne Shell](deployment.md#diagnose-ohne-shell), aufgerufen über `publicBaseUrl`: Steht unter
+[Diagnose ohne Shell](betrieb.md#diagnose-ohne-shell), aufgerufen über `publicBaseUrl`: Steht unter
 `clientAddress` die Adresse des eigenen Rechners, ist die Kette richtig.
 
 **Leer** (Vorgabe) sieht das Backend den Frontend-Pod als Client. Die Grenzen wirken dann zu streng,
@@ -960,7 +959,7 @@ Ziel des Backends:
 - Mailserver
 - die Quellen der Bibliotheken und die Anbieter verbundener Konten
 
-Ist in der Oberfläche ein [Ausgangsproxy](deployment.md#ausgangsproxy) eingetragen, gehen alle
+Ist in der Oberfläche ein [Ausgangsproxy](betrieb.md#ausgangsproxy) eingetragen, gehen alle
 HTTP(S)-Ziele über ihn: Identitätsanbieter, Modell-Endpunkte, Quellen und Anbieter brauchen dann
 keine eigene Regel mehr, sondern eine Regel zum Proxy. Eigene Regeln brauchen weiterhin die
 Datenbank, der Mailserver, SMB-Freigaben, der Objektspeicher der Originalablage und jedes Ziel auf
@@ -1006,7 +1005,7 @@ eigene, ohne dass der Chart angepasst wird. Ausnahme ist die Erprobungsdatenbank
 [Datenbank](#datenbank)).
 
 Was das Backend unter `/tmp` schreibt und wie groß das Verzeichnis sein sollte, steht unter
-[Nur lesbares Dateisystem](deployment.md#nur-lesbares-dateisystem). Überschreitet es
+[Nur lesbares Dateisystem](betrieb.md#nur-lesbares-dateisystem). Überschreitet es
 `backend.tmp.sizeLimit`, verdrängt das Kubelet den Pod. Mit `medium: Memory` zählt das Verzeichnis
 gegen die Speichergrenze.
 
@@ -1041,7 +1040,7 @@ Proben und Metriken laufen über den Management-Port (siehe
 
 Wegen der Strategie `Recreate` endet zuerst der alte Backend-Pod. Er lässt laufende Anfragen bis
 `backend.shutdownTimeoutSeconds` auslaufen; laufende Indexierungen brechen ab und werden beim nächsten
-Start als abgebrochen erkannt (siehe [Sanftes Herunterfahren](deployment.md#sanftes-herunterfahren)).
+Start als abgebrochen erkannt (siehe [Sanftes Herunterfahren](betrieb.md#sanftes-herunterfahren)).
 Dann startet der neue Pod, migriert das Schema und meldet sich bereit. Bis dahin antwortet OPAA nicht.
 
 Zur Unterbrechung gehört auch das Laden des neuen Backend-Images, einige hundert MB. Der Knoten lädt
@@ -1087,7 +1086,7 @@ Hinweise zum Aufruf:
   `kubectl -n opaa rollout restart deploy/opaa-backend deploy/opaa-frontend`.
 
 Ob die Aktualisierung den Index berührt, steht unter
-[Was ein Update mit dem Index macht](deployment.md#was-ein-update-mit-dem-index-macht).
+[Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht).
 
 ### Rückweg
 
@@ -1136,12 +1135,12 @@ Sichern und Zurückspielen der Erprobungsdatenbank stehen unter
   4. `helm rollback opaa <Revision> -n opaa` auf die Revision vor dem Upgrade.
   5. Prüfen, dass das Backend wieder mit einer Instanz läuft (`kubectl -n opaa get deploy`), sonst
      `kubectl -n opaa scale deploy/opaa-backend --replicas=1`.
-  6. Die übrige [Nacharbeit nach einer Rücksicherung der Datenbank](deployment.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
+  6. Die übrige [Nacharbeit nach einer Rücksicherung der Datenbank](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
      erledigen: die Sperren und Rücksetzungen der Zwischenzeit erneut vornehmen.
 
   Alles, was seit der Sicherung entstanden ist, ist danach verloren: Uploads, Chats, Rechteänderungen.
   Originale, die in dieser Zeit hochgeladen wurden, bleiben als verwaiste Originale liegen (siehe
-  [Verwaiste Originale aufräumen](deployment.md#verwaiste-originale-aufräumen)).
+  [Verwaiste Originale aufräumen](originalablage.md#verwaiste-originale-aufräumen)).
 
 Ein Upgrade, dessen neuer Pod nie bereit wurde, kann trotzdem einen Teil der Migration ausgeführt
 haben. Auch dann gilt die Zahl der Zeilen als Signal. Wurde der Pod mitten in der Migration beendet,
@@ -1163,8 +1162,8 @@ nicht; wer sie vor einem Upgrade von Hand sichern will, folgt
 
 **Reihenfolge.** Erst die Datenbank sichern, dann die Originale; wiederherstellen umgekehrt, erst die
 Originale, dann die Datenbank. Die Begründung steht unter
-[Sicherung und Wiederherstellung](deployment.md#sicherung-und-wiederherstellung) im Abschnitt
-Originalablage des Deployment-Kapitels. Einen genau zusammenpassenden Stand ergibt eine Sicherung bei
+[Sicherung und Wiederherstellung](originalablage.md#sicherung-und-wiederherstellung) im Kapitel
+Originalablage. Einen genau zusammenpassenden Stand ergibt eine Sicherung bei
 angehaltenem Backend (`backend.replicas: 0` oder `kubectl scale`).
 
 **Originale auf einem Volume kopieren.** Das Backend-Image hat weder Shell noch `tar`. Die Kopie
@@ -1251,7 +1250,7 @@ müssen dort deshalb unverändert liegen. Wer External Secrets, Sealed Secrets o
 
 **Was eine Datenbanksicherung nicht enthält.** `pg_dump` sichert eine Datenbank, nicht die Rollen der
 PostgreSQL-Instanz. Auf dem Ziel müssen die Erweiterung `vector` und die Rolle `opaa_audit_owner`
-vorher existieren (siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql));
+vorher existieren (siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql));
 sonst bricht die Wiederherstellung mit `role "opaa_audit_owner" does not exist` ab. Wiederhergestellt
 wird mit einem Konto, das Eigentümer setzen darf, damit die Protokolltabellen `opaa_audit_owner`
 gehören.
@@ -1277,7 +1276,7 @@ Installation zurückspielen; Schritt 2 entfällt dann, der Chart wird gleich mit
 installiert, sobald auch die Datenbank zurückgespielt ist.
 
 **Nach jeder Rücksicherung der Datenbank** gehört die
-[Nacharbeit nach einer Rücksicherung der Datenbank](deployment.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
+[Nacharbeit nach einer Rücksicherung der Datenbank](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)
 dazu: `OPAA_AUTH_JWT_SECRET` im Secret ersetzen, bevor das Backend auf der zurückgespielten Datenbank
 startet, und die Sperren der Zwischenzeit erneut setzen. `OPAA_CREDENTIALS_ENCRYPTION_KEY` und
 `OPAA_SETTINGS_ENCRYPTION_KEY` bleiben dieselben, sonst sind die gespeicherten Geheimnisse unlesbar. Sind Fremdzugänge in Betrieb, folgt die Prüfliste aus
@@ -1349,19 +1348,8 @@ Seine Pods tragen `app.kubernetes.io/name: prometheus`, die Vorgabe von `metrics
 sie also durch. Ist der Prometheus anders beschriftet, gehört sein Selektor nach `metrics.scrapeFrom`.
 Fehlen dort die passenden Labels, sieht man das am Alarm `OpaaBackendMetricsMissing`.
 
-Die wichtigsten Metriken:
-
-| Metrik | Bedeutung |
-|---|---|
-| `up` | ob Prometheus das Backend erreicht |
-| `http_server_requests_seconds_*` | Anfragen an das Backend nach Pfad, Methode und Status |
-| `opaa_query_duration_seconds_*`, `opaa_query_count_total` | Dauer und Anzahl der Fragen im Chat |
-| `opaa_chat_search_duration_seconds_*` | Dauer der Suche über Chats |
-| `opaa_indexing_documents_total` | verarbeitete Dokumente der Indexierung, nach Ergebnis |
-| `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten nach Fehlversuchen |
-| `executor_active_threads{name="indexingTaskExecutor"}` | laufende Indexierungsläufe |
-| `hikaricp_connections_*` | Verbindungspool zur Datenbank |
-| `jvm_memory_used_bytes`, `jvm_memory_max_bytes` | Speicher der JVM |
+Welche Metriken das Backend liefert, steht unter
+[Logs und Metriken](betrieb.md#logs-und-metriken).
 
 ### Alarme
 
@@ -1425,7 +1413,7 @@ kubectl -n opaa get events --sort-by=.lastTimestamp
 Backend-Image hat keine Shell und kein `tar`; `kubectl exec … sh` und `kubectl cp` funktionieren
 deshalb nicht. Einen Thread-Dump schreibt
 `kubectl -n opaa exec deploy/opaa-backend -- /opt/java/openjdk/bin/jcmd 1 Thread.print`. Die
-Actuator-Pfade aus [Diagnose ohne Shell](deployment.md#diagnose-ohne-shell) sind über eine
+Actuator-Pfade aus [Diagnose ohne Shell](betrieb.md#diagnose-ohne-shell) sind über eine
 Portweiterleitung auf den Management-Port erreichbar:
 
 ```bash
@@ -1446,11 +1434,11 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Backend-Pod bleibt nach einer Knotenwartung im Zustand `Pending`, das Ereignis nennt `didn't match PersistentVolume's node affinity` | Die Originalablage liegt auf einem knotengebundenen Volume, und dessen Knoten ist gesperrt oder fort. Nach einer Wartung hilft `kubectl uncordon` auf diesen Knoten; ist er dauerhaft ausgefallen, hilft nur die Abhilfe unter [Originalablage](#originalablage), Netzspeicher oder Objektspeicher, mit den Originalen aus der Sicherung |
 | Backend startet wiederholt neu, das Protokoll zeigt eine laufende Migration | Die Migration braucht länger, als die Startup-Probe erlaubt. `backend.startupProbe.failureThreshold` anheben |
 | Backend wird nie bereit, das Protokoll zeigt `Waiting for changelog lock` | Ein früherer Start wurde mitten in der Migration beendet, etwa von der Startup-Probe, und die Sperre in `databasechangeloglock` ist stehen geblieben. Backend anhalten (`kubectl -n opaa scale deploy/opaa-backend --replicas=0`), in der Datenbank `UPDATE databasechangeloglock SET locked = false, lockgranted = null, lockedby = null WHERE id = 1;` ausführen, mit einem eigenen Schema vorangestellt, und das Backend wieder auf eine Instanz setzen. Vorher die Startup-Probe großzügiger stellen, sonst wiederholt sich der Abbruch |
-| `APPLICATION FAILED TO START` mit dem Hinweis auf pgvector | pgvector ist auf dem Datenbankserver nicht installiert (siehe [Voraussetzungen einer eigenen PostgreSQL](deployment.md#voraussetzungen-einer-eigenen-postgresql)) |
+| `APPLICATION FAILED TO START` mit dem Hinweis auf pgvector | pgvector ist auf dem Datenbankserver nicht installiert (siehe [Voraussetzungen einer eigenen PostgreSQL](datenbank.md#voraussetzungen-einer-eigenen-postgresql)) |
 | Migration bricht mit `permission denied to create extension "vector"` oder `permission denied to grant role` ab | Die Vorbereitung der Datenbank fehlt, siehe derselbe Abschnitt |
 | Backend erreicht die Datenbank nicht | Mit Egress-Policies fehlt die Regel zur Datenbank; sonst Hostname, Port oder `database.sslMode`. Bei `verify-*` und einer hauseigenen CA fehlt `extraCACertificates` |
 | Backend startet nicht und nennt `OPAA_AUTH_JWT_SECRET` | Das Geheimnis im vorhandenen Secret ist zu kurz oder ein Platzhalter |
-| Pod im Zustand `OOMKilled` | Die Speichergrenze ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](deployment.md#speicher-und-container-grenzen)) |
+| Pod im Zustand `OOMKilled` | Die Speichergrenze ist zu klein; `backend.resources.limits.memory` anheben, nicht den Heap-Anteil (siehe [Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)) |
 | Pod verdrängt, das Ereignis nennt `ephemeral-storage` | `/tmp` ist über `backend.tmp.sizeLimit` gewachsen, etwa bei vielen großen Uploads |
 | `helm test` schlägt fehl | Das Backend ist nicht bereit, oder eine eigene Änderung an den NetworkPolicies trennt Frontend und Backend |
 
@@ -1458,7 +1446,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 
 | Bild | Wahrscheinliche Ursache |
 |---|---|
-| Kein Einmalpasswort im Protokoll | `OPAA_INITIAL_ADMIN_PASSWORD` steht im Secret, die Adresse wurde abgelehnt, oder der Pod ist seit dem ersten Start mehrmals neu gestartet und das Protokoll ist weg. Weiter unter [Kein Einmalpasswort im Log zu finden](deployment.md#kein-einmalpasswort-im-log-zu-finden) und mit dem [Notfallzugang](#was-der-chart-setzt-und-was-die-oberfläche-pflegt) |
+| Kein Einmalpasswort im Protokoll | `OPAA_INITIAL_ADMIN_PASSWORD` steht im Secret, die Adresse wurde abgelehnt, oder der Pod ist seit dem ersten Start mehrmals neu gestartet und das Protokoll ist weg. Weiter unter [Kein Einmalpasswort im Log zu finden](authentifizierung.md#kein-einmalpasswort-im-log-zu-finden) und mit dem [Notfallzugang](#was-der-chart-setzt-und-was-die-oberfläche-pflegt) |
 | „Die Anmeldung bei … konnte nicht gestartet werden“, oder nach der Anmeldung beim Anbieter eine technische Fehlermeldung auf `/auth/callback` | Die Content-Security-Policy blockiert den Issuer oder den `token_endpoint`; der Origin fehlt in `frontend.cspConnectSrcExtra`. Die Browser-Konsole nennt die blockierte Adresse, siehe [Identitätsanbieter](#identitätsanbieter) |
 | Anmeldeschleife oder Fehler beim Anbieter nach der Rückkehr | Die Weiterleitungs-URI beim Anbieter ist nicht `<publicBaseUrl>/auth/callback`, oder `publicBaseUrl` stimmt nicht mit der Adresse im Browser überein |
 | Anmeldung gelingt beim Anbieter, OPAA antwortet `401` | Der Issuer im Token ist nicht `bootstrap.oidc.issuerUri`, das Backend erreicht die Signaturschlüssel nicht (dann `bootstrap.oidc.jwkSetUri` setzen oder die Egress-Regel ergänzen), oder die Client-ID passt nicht. Den Grund nennt der Header `WWW-Authenticate` |
@@ -1481,7 +1469,7 @@ curl -s http://localhost:8081/actuator/health/readiness
 | Bild | Wahrscheinliche Ursache |
 |---|---|
 | Jeder Upload endet mit „Interner Serverfehler", das Protokoll nennt `AccessDeniedException: /app/uploads/…` | Das Volume ist für das Backend nicht beschreibbar; `uploads.persistence.fsGroup` setzen |
-| Uploads antworten „Dienst nicht verfügbar" | Objektspeicher nicht erreichbar, Bucket fehlt oder fehlendes Schreibrecht; mit Egress-Policies auch eine fehlende Regel. Weiter unter [Wenn etwas nicht stimmt](deployment.md#wenn-etwas-nicht-stimmt) |
+| Uploads antworten „Dienst nicht verfügbar" | Objektspeicher nicht erreichbar, Bucket fehlt oder fehlendes Schreibrecht; mit Egress-Policies auch eine fehlende Regel. Weiter unter [Wenn etwas nicht stimmt](originalablage.md#wenn-etwas-nicht-stimmt) |
 | Eine Quelle mit interner Adresse wird abgelehnt | Ihr Hostname fehlt in `targetValidation.indexingAllowlist` |
 | Eine Dateisystem-Bibliothek findet ihr Verzeichnis nicht | Der Pfad liegt nicht unter einem `mountPath` aus `filesystemSources` |
 

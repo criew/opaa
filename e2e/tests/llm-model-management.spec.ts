@@ -24,7 +24,7 @@ import type { Locator, Page } from '@playwright/test'
  *
  * Kein echter Ollama-Server im Compose-Stack der Suite (anders als die Ausgangsannahme des
  * Issues): docker-compose.yml/e2e/docker-compose.e2e.yml starten keinen `ollama`-Dienst (siehe
- * deployment.md, "OPAA_OLLAMA_BASE_URL" - der Compose-Stack enthält keinen ollama-Service, ein
+ * konfiguration.md, "OPAA_OLLAMA_BASE_URL" - der Compose-Stack enthält keinen ollama-Service, ein
  * erreichbarer Server wird nur für einen echten Betrieb vorausgesetzt). Der positive
  * Verbindungstest zielt deshalb auf `ai-stub` - denselben OpenAI-kompatiblen Ersatz, den auch das
  * beim Seed übernommene Modell schon verwendet (siehe oben) - statt auf eine in dieser Suite gar

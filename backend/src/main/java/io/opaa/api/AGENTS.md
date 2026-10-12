@@ -42,7 +42,7 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0005, 0006
-- Handbuch: `docs/handbuch/deployment.md`, „Konfiguration" und „Datenbank"
+- Handbuch: `docs/handbuch/konfiguration.md`, `docs/handbuch/datenbank.md`
 - Strukturtests: `TransportStatusCodeSpecificationTest`, `DatabaseSchemaGuardTest`,
   `DatabasePrerequisitesTest`,
   `OpenAiBaseUrlGuardTest`, `ModularArchitectureTest`

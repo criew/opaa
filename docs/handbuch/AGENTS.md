@@ -53,7 +53,7 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
 
 1. Nach unten frei: ein Kapitel auf seine Kinder.
 2. Nach oben einmal in der Einleitung, sonst nur, wo ein Begriff von dort gebraucht wird.
-3. `berechtigungen.md` und die Variablenliste in `deployment.md` sind Nachschlagekapitel: Alle
+3. `berechtigungen.md` und `konfiguration.md` (Variablenliste) sind Nachschlagekapitel: Alle
    dürfen auf sie verweisen; sie selbst verweisen zurück nur in „Weiterführende Kapitel" und dort,
    wo eine Zeile ihre Bedeutung erklärt.
 4. Geschwister nur bei echtem Bedarf.
@@ -81,7 +81,7 @@ Grenzen stehen mit Wert. Faustregeln kommen ohne den Zahlenwert eines Standards 
 - **Verweise nur innerhalb des Handbuchs.** Ausnahme ist der Hinweis auf das Repository im README.
 - **Ticketverweise nur für ausdrücklich noch nicht Gebautes**, etwa in „Was nicht gebaut ist".
 - **Konfigurierbare Werte stehen nur in Konfigurationstabellen** der Kapitel und in der
-  Variablenliste des Deployment-Kapitels; Fließtext nennt Parameternamen.
+  Variablenliste in `konfiguration.md`; Fließtext nennt Parameternamen.
 - **Grafiken sind Mermaid**, mit kurzen Knoten: höchstens etwa 15 Zeichen je Zeile, mit `<br/>`
   umbrechen. Sonst schneidet GitHub die Beschriftung ab. In den Knoten steht das Stichwort, die
   Erläuterung im Text darunter.

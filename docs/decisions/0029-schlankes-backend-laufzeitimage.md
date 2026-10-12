@@ -97,7 +97,7 @@ Layer-Cache.
 
 - **Kein Shell-Zugang mehr.** `docker exec … sh` funktioniert nicht. Diagnose läuft über Logs,
   `/actuator`, `jcmd`, `docker kill -s QUIT` und `docker cp`; die Betriebsanleitung beschreibt das
-  ([`docs/handbuch/deployment.md`](../handbuch/deployment.md)).
+  ([`docs/handbuch/betrieb.md`](../handbuch/betrieb.md#backend-laufzeitimage)).
 - **Ein fehlendes jlink-Modul fällt erst zur Laufzeit auf.** Der Build bleibt grün, ein
   Codepfad wirft `ClassNotFoundException` oder `ServiceConfigurationError`. Absicherung ist die
   E2E- und `demo-smoke`-Suite, die alle Formate und Konnektoren durchläuft — nicht der Build.

@@ -4,8 +4,8 @@
 > OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werden dort verwaltet, wo
 > sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
 > Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
-> Einrichtung des Anmeldewegs, Erststart, Umgebungsvariablen und E-Mail-Versand stehen im Kapitel
-> [Deployment](deployment.md); hier geht es um die täglichen Abläufe.
+> Einrichtung des Anmeldewegs und Erststart stehen im Kapitel [Authentifizierung](authentifizierung.md),
+> der E-Mail-Versand unter [E-Mail-Versand](e-mail.md); hier geht es um die täglichen Abläufe.
 > Abschnitt 12, „Verbundene Konten“, gilt für jedes Konto, auch für Konten eines
 > Identitätsanbieters.
 
@@ -20,7 +20,7 @@ brauchen sie:
   hereinkommt, ist immer ein lokales Konto. Es bleibt anmeldefähig, auch wenn die Verwaltung
   regulärer lokaler Konten aus ist.
 
-Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Deployment](deployment.md) die Verwaltung im
+Läuft ein Identitätsanbieter, empfiehlt das Kapitel [Authentifizierung](authentifizierung.md#lokale-benutzerverwaltung) die Verwaltung im
 Regelbetrieb **aus** zu lassen: Lokale Konten laufen an den Ein- und Austrittsprozessen des Hauses
 vorbei, und jedes von ihnen ist ein Zugang, den niemand automatisch entzieht. Die Gegenmittel dazu
 stehen in Abschnitt 6.
@@ -85,7 +85,7 @@ Zwei Dinge sind dabei wichtig:
   unterscheidbar.
 - **Ohne öffentliche Adresse der Installation ist der Link ein Pfad.** Er beginnt dann mit `/` und
   braucht die Adresse der Installation davor. Das Fenster sagt das; wie die Adresse gesetzt wird,
-  steht im Kapitel [Deployment](deployment.md).
+  steht im Kapitel [E-Mail-Versand](e-mail.md).
 
 Ein Link ist **einmal** einlösbar, und ein neuer macht einen älteren ungültig. Die Seite, auf die er
 führt, entfernt ihn sofort aus der Adresszeile — ein Neuladen hilft deshalb nicht weiter, die Person
@@ -243,7 +243,7 @@ derselbe Schutz: Dem letzten anmeldefähigen Systemverwalter lässt sich die Rol
 
 Systemverwalterkonten sind **persönliche** Konten, je Person eines — keine Sammelkonten. Das
 Notanker-Konto, das der Erststart anlegt, ist davon ausgenommen und kein Arbeitskonto; wofür es
-gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Deployment](deployment.md).
+gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto).
 
 ### Anlegerechte
 
@@ -307,7 +307,7 @@ erfährt. Die Oberfläche bietet diese Handlungen an ihm gar nicht erst an: „S
 Grund, im Bearbeiten-Dialog sind Rolle und Ablaufdatum nicht änderbar. Name, Adresse und
 Anlagegrund lassen sich wie bei jedem Konto pflegen. Sein Passwort ändert das Konto nach der
 Anmeldung selbst; ohne Anmeldung setzt es nur die Notfallprozedur aus dem Kapitel
-[Deployment](deployment.md) neu. Von der
+[Authentifizierung](authentifizierung.md#notfallprozedur-wieder-hereinkommen) neu. Von der
 Sperre nach Inaktivität ist es ausgenommen; neu treffen kann es nur noch die Fehlversuch-Sperre nach
 fünf falschen Passwörtern (15 Minuten).
 
@@ -356,14 +356,14 @@ Person, sie wird nirgends eingegeben.
 | Die Person meldet sich bei einem anderen Anbieter an | Abgelehnt. Die Übergabe gilt für den Anbieter, den der Anstoß genannt hat. |
 | Das Konto ist inzwischen gesperrt oder abgelaufen | Abgelehnt, mit derselben Antwort wie ein ungültiger Link. Eine Übergabe hebt weder eine Sperre noch ein Ablaufdatum auf: Wer zwischen Anstoß und Einlösung ausscheidet, kommt über den Link nicht zurück herein. Eine Sperre nach Fehlversuchen ist davon ausgenommen — sie endet von selbst. |
 | Die Systemverwaltung hat das Konto inzwischen geändert | Ein Adresswechsel, eine Sperre und ein erzeugtes Passwort schließen den offenen Übergabe-Link — wie sie einen Einladungs- oder Rücksetzlink schließen. Die Übergabe wird dann neu angestoßen. |
-| Der Identitätsanbieter wurde gelöscht | Mit der Anbieterzeile verschwinden alle für sie vorbereiteten Übergaben. Die Links laufen ins Leere und werden nach dem Anlegen des neuen Anbieters neu angestoßen. Zu löschen ist ein Anbieter allerdings nur, solange keine seiner Gruppen noch eine Berechtigung trägt oder Eigentümerin eines Objekts ist — sonst antwortet OPAA mit 409 und nennt die Zahlen (siehe [Deployment](deployment.md#oidc-keycloak)). |
+| Der Identitätsanbieter wurde gelöscht | Mit der Anbieterzeile verschwinden alle für sie vorbereiteten Übergaben. Die Links laufen ins Leere und werden nach dem Anlegen des neuen Anbieters neu angestoßen. Zu löschen ist ein Anbieter allerdings nur, solange keine seiner Gruppen noch eine Berechtigung trägt oder Eigentümerin eines Objekts ist — sonst antwortet OPAA mit 409 und nennt die Zahlen (siehe [Deployment](authentifizierung.md#oidc-keycloak)). |
 | Der Link ist abgelaufen, verbraucht oder unbekannt | Dieselbe Antwort für alle drei: Der Link ist nicht mehr gültig. Die Systemverwaltung stößt die Übergabe dann erneut an. |
 
 > **Bei einer Sammelumstellung an die Grenze denken.** Vorschau und Einlösung teilen sich ein
 > Anfragebudget je Client-Adresse — und eine Behörde sitzt in der Regel mit allen Arbeitsplätzen
 > hinter einer Adresse, je Person fallen zwei Aufrufe an. Wer eine ganze Abteilung an einem
 > Vormittag umstellt, hebt das Budget vorübergehend an; die Vorgabe und die beiden Variablen stehen
-> in der Variablentabelle des Kapitels [Deployment](deployment.md). Eine überschrittene Grenze ist
+> in der [Konfiguration](konfiguration.md#alle-umgebungsvariablen). Eine überschrittene Grenze ist
 > keine verbrauchte Übergabe: Der Link bleibt gültig, die Person versucht es nach der genannten
 > Wartezeit erneut.
 
@@ -395,7 +395,7 @@ Drei Eigenschaften, die im Alltag auffallen:
   und die Person regulär **einladen**.
 
 Das Einschalten der Selbstregistrierung ist ein Punkt, der vor der Inbetriebnahme mit der
-Personalvertretung zu klären ist; das Kapitel [Deployment](deployment.md) führt die Punkte auf.
+Personalvertretung zu klären ist; das Kapitel [Authentifizierung](authentifizierung.md#lokale-benutzerverwaltung) führt die Punkte auf.
 
 ## 11. Was Nutzende selbst können
 
@@ -472,7 +472,7 @@ der zuletzt eingegebene Benutzername vorbelegt.
 | „Dieser Zugang ist für Sie nicht freigegeben …“ | Ein neues Konto auf einem Zugang ohne Freigabe |
 | „Der Zugang ist gesperrt …“ | Zugang oder Quellart sind gesperrt; Trennen geht weiterhin |
 | „Der Zugang … wurde geändert, während Sie sich angemeldet haben …“ | Die Systemverwaltung hat den Zugang während der Anmeldung geändert oder entfernt; nichts wurde gespeichert, erneut verbinden |
-| „… keine Zugangsdaten speichern kann …“ | Der Installation fehlt der Schlüssel für Zugangsdaten ([Deployment](deployment.md#zugangsdaten-verschlüsselung)); zuständig ist die Systemverwaltung |
+| „… keine Zugangsdaten speichern kann …“ | Der Installation fehlt der Schlüssel für Zugangsdaten ([Deployment](betrieb.md#zugangsdaten-verschlüsselung)); zuständig ist die Systemverwaltung |
 
 **Anmeldung beim Anbieter (OAuth).** Bei einem Zugang dieser Anmeldeart gibt es kein Formular:
 „Verbinden“ bzw. „Neu verbinden“ fragt nach, sagt, dass es zum Anbieter weitergeht und was im
@@ -536,7 +536,7 @@ dort geregelten Wege des Hauses, etwa eDiscovery oder den Verwaltungszugriff bei
 ### Lange Abwesenheit oder Versetzung
 
 - **Abwesenheit** beendet nichts. Nach der Inaktivitätsschwelle ohne Anmeldung
-  (`OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS`, [Deployment](deployment.md)) ruhen die Verbindungen
+  (`OPAA_CONNECTION_INACTIVITY_THRESHOLD_DAYS`, [Konfiguration](konfiguration.md)) ruhen die Verbindungen
   einer Person; es wird nichts gelöscht, und mit der nächsten Anmeldung geht es ohne Neuverbinden
   weiter. Das gilt auch für ein lokales Konto, das wegen Inaktivität gesperrt ist (Abschnitt 4):
   Zugangsdaten und Inhalte bleiben, die privaten Bibliotheken ruhen ohne Löschfrist. Nach dem
@@ -544,7 +544,7 @@ dort geregelten Wege des Hauses, etwa eDiscovery oder den Verwaltungszugriff bei
 - **Deaktivierung** dagegen beendet alle Verbindungen des Kontos und löscht ihre Zugangsdaten:
   von der Verwaltung gesperrt, abgelaufen, im Verzeichnis gesperrt oder der Anbieter gelöscht. Die
   privaten Bibliotheken der Person ruhen sofort, und eine **Löschfrist**
-  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Deployment](deployment.md)) beginnt. Der
+  (`OPAA_CONNECTION_PRIVATE_LIBRARY_DELETION_DAYS`, [Konfiguration](konfiguration.md)) beginnt. Der
   Sperrdialog und das Feld „Ablaufdatum“ nennen diese Folge, ohne zu sagen, ob die Person
   überhaupt ein Konto verbunden hat. Die Frist läuft ab der aktuellen Sperre; wird ein Konto
   entsperrt und erneut gesperrt, beginnt sie neu. Der Hinweis an der
@@ -651,7 +651,7 @@ nicht. Die Eingabemasken zeigen die Regel an und bieten „Sicheres Passwort erz
 
 - **Keinen zweiten Faktor.** Lokale Konten melden sich mit Adresse und Passwort an. Für lokale
   Systemverwalterkonten lässt sich stattdessen der Zugang auf bestimmte Netze begrenzen; das Kapitel
-  [Deployment](deployment.md) beschreibt, wie.
+  [Authentifizierung](authentifizierung.md#lokale-benutzerverwaltung) beschreibt, wie.
 - **Keine Verwaltung des Lebenszyklus der Konten eines Identitätsanbieters.** Sperren, Befristen
   und Löschen erfolgen beim Anbieter; hier sind diese Konten mit Herkunft und Rolle sichtbar, und
   nur die Rolle lässt sich ändern.

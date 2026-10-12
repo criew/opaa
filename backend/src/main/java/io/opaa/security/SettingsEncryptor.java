@@ -119,20 +119,20 @@ public class SettingsEncryptor {
       throw new IllegalStateException(
           "OPAA_SETTINGS_ENCRYPTION_KEY ist nicht gesetzt. Diese Umgebungsvariable ist"
               + " erforderlich, sobald ein Zugangsschlüssel für ein Chat-Modell verschlüsselt oder"
-              + " entschlüsselt werden soll. Siehe docs/handbuch/deployment.md.");
+              + " entschlüsselt werden soll. Siehe docs/handbuch/modelle.md.");
     }
     byte[] keyBytes;
     try {
       keyBytes = Base64.getDecoder().decode(base64Key);
     } catch (IllegalArgumentException e) {
       throw new IllegalStateException(
-          "OPAA_SETTINGS_ENCRYPTION_KEY ist kein gültiger Base64-Wert. Siehe docs/handbuch/deployment.md.",
+          "OPAA_SETTINGS_ENCRYPTION_KEY ist kein gültiger Base64-Wert. Siehe docs/handbuch/modelle.md.",
           e);
     }
     if (keyBytes.length != REQUIRED_KEY_LENGTH_BYTES) {
       throw new IllegalStateException(
           "OPAA_SETTINGS_ENCRYPTION_KEY muss ein Base64-kodierter 256-Bit-Schlüssel (32 Byte) sein."
-              + " Siehe docs/handbuch/deployment.md.");
+              + " Siehe docs/handbuch/modelle.md.");
     }
     return new SecretKeySpec(keyBytes, KEY_ALGORITHM);
   }

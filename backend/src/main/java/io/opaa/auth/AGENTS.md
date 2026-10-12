@@ -43,8 +43,8 @@ von foundation ab.
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0005, 0015, 0019, 0025, 0033
-- Handbuch: `docs/handbuch/benutzerverwaltung.md`; `docs/handbuch/deployment.md`,
-  „Authentifizierung", „Branding", „E-Mail-Versand (SMTP)"
+- Handbuch: `docs/handbuch/benutzerverwaltung.md`; `docs/handbuch/authentifizierung.md`,
+  `docs/handbuch/branding.md`, `docs/handbuch/e-mail.md`
 - Strukturtests: `AuditFunnelStructureTest`, `AuthProfileGuardTest`, `LocalAuthSecretGuardTest`
 
 ## Tests bei Änderungen

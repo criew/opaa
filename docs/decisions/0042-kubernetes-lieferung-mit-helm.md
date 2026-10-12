@@ -11,7 +11,7 @@ Frage in [deployment-infrastructure.md](../features/deployment-infrastructure.md
 ## Kontext
 
 Der einzige beschriebene Betriebsweg ist heute der Compose-Stapel
-([deployment.md](../handbuch/deployment.md)). Häuser mit einer vorhandenen Kubernetes-Plattform
+([docker-compose.md](../handbuch/docker-compose.md)). Häuser mit einer vorhandenen Kubernetes-Plattform
 müssen sich Manifeste selbst erarbeiten. Sie bilden dafür die Umgebungsvariablen aus dem Handbuch
 nach und finden erst im Betrieb heraus, was das Backend voraussetzt:
 

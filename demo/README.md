@@ -133,7 +133,7 @@ Herkunft und Zwang jeder einzelnen Variable:
   zwingend: Die Zielprüfung ausgehender Abrufe (`opaa.indexing.target-validation`, #267,
   standardmäßig aktiv) lehnt Compose-interne Adressen in privaten Bereichen ab — ohne diesen Eintrag
   würde jede Indizierung der beiden Demo-Webserver und des Demo-Objektspeichers `objectstore` (#1383) mit
-  „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt (siehe [`../docs/handbuch/deployment.md`, „Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar)).
+  „Zieladresse liegt in einem gesperrten Adressbereich" abgelehnt (siehe [`../docs/handbuch/betrieb.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers)).
   Der Eintrag steht bewusst **nicht** in `docker-compose.yml`: Der Backend-Service dort läuft immer,
   mit oder ohne `demo`-Profil, und ein dort fest eingetragener Wert würde jede eigene Belegung dieser
   Variablen aus einer Betreiber-`.env.docker` überschreiben (Vorrang von `environment:` vor
@@ -142,7 +142,7 @@ Herkunft und Zwang jeder einzelnen Variable:
 - `OPAA_CREDENTIALS_ENCRYPTION_KEY` ist seit #1383 zwingend: Die `S3`-Bibliothek „Ratsinformationen
   Stadt Rheinfurt" ist die erste Demo-Bibliothek mit Zugangsdaten (dem Root-Schlüssel des
   `objectstore`-Containers), und Zugangsdaten werden nur verschlüsselt gespeichert (#483,
-  [`../docs/handbuch/deployment.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/deployment.md#zugangsdaten-verschlüsselung)).
+  [`../docs/handbuch/betrieb.md`, „Zugangsdaten-Verschlüsselung"](../docs/handbuch/betrieb.md#zugangsdaten-verschlüsselung)).
   Ohne Schlüssel bricht der Seed beim Anlegen dieser Bibliothek mit `503` ab. Der Demo-Stack läuft
   mit `docker,oidc`, nicht mit `dev` — der nur dort hinterlegte Entwicklungsschlüssel greift also
   nicht; einen eigenen Wert mit `openssl rand -base64 32` erzeugen (der Demo-Smoke-Lauf setzt in
@@ -162,17 +162,17 @@ Herkunft und Zwang jeder einzelnen Variable:
   Frontend-Container liest die Variable beim Start (`frontend/nginx.conf`, `envsubst`-Template); ein
   Rebuild ist dafür nicht nötig, ein Neustart des `frontend`-Containers genügt. Ohne diese Zeile
   bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
-  Nicht-Demo-Installation, siehe [`../docs/handbuch/deployment.md`](../docs/handbuch/deployment.md),
+  Nicht-Demo-Installation, siehe [`../docs/handbuch/konfiguration.md`](../docs/handbuch/konfiguration.md#alle-umgebungsvariablen),
   Variablentabelle.
 - `OPAA_PGVECTOR_DIMENSIONS=768` steht seit #720 bereits so in `.env.docker.example` (nicht mehr auf
   dem Anwendungs-Default 1536) — die Zeile oben ist deshalb kein Abweichen mehr von der Vorlage,
   sondern nur zur Klarheit wiederholt: Voreingestellt bleiben lokal betriebene Modelle über die
   openai-kompatible Schicht, mit dem Embedding-Modell `nomic-embed-text`, das 768 Dimensionen liefert
-  (siehe [`../docs/handbuch/deployment.md`, „Alle Umgebungsvariablen"](../docs/handbuch/deployment.md#alle-umgebungsvariablen)
+  (siehe [`../docs/handbuch/konfiguration.md`, „Alle Umgebungsvariablen"](../docs/handbuch/konfiguration.md#alle-umgebungsvariablen)
   für dieselbe Kopplung). Der Wert muss zum jeweils verwendeten Embedding-Modell passen; eine
   nachträgliche Änderung an einer bereits laufenden Instanz erfordert `docker compose down -v` und
-  eine vollständige Neuindizierung (siehe [`../docs/handbuch/deployment.md`, „Was ein Update mit dem
-  Index macht"](../docs/handbuch/deployment.md#was-ein-update-mit-dem-index-macht)).
+  eine vollständige Neuindizierung (siehe [`../docs/handbuch/betrieb.md`, „Was ein Update mit dem
+  Index macht"](../docs/handbuch/betrieb.md#was-ein-update-mit-dem-index-macht)).
 - `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30` hebt die Standard-Warteschlange von
   `uploadTaskExecutor` (Default 20, `opaa.upload.thread-pool`) an: Der Seed lädt die 27 Dokumente der
   Bibliothek „Interne Dienstanweisungen Meldewesen" sequentiell und ohne Pause hoch, und mit lokal
@@ -210,7 +210,7 @@ docker compose --profile demo up
 
 Ohne einen extern erreichbaren Ollama-Server (weder auf dem Host noch im eigenen Netz) zusätzlich
 das Compose-Profil `ollama` aktivieren (#720, siehe
-[`../docs/handbuch/deployment.md`, „Lokal betriebenes Ollama im Compose-Stack"](../docs/handbuch/deployment.md#lokal-betriebenes-ollama-im-compose-stack)):
+[`../docs/handbuch/docker-compose.md`, „Lokal betriebenes Ollama im Compose-Stack"](../docs/handbuch/docker-compose.md#lokal-betriebenes-ollama-im-compose-stack)):
 
 ```bash
 docker compose --profile demo --profile ollama up
@@ -376,7 +376,7 @@ unten, dann das Vorführ-Drehbuch abspielen:
 ### Nutzerkonten
 
 Alle Passwörter sind offene **Demo-Werte, keine Secrets** — vor jedem erreichbaren Deployment gemäß
-[`../docs/handbuch/deployment.md`, „Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments)
+[`../docs/handbuch/betrieb.md`, „Härtung für erreichbare Deployments"](../docs/handbuch/betrieb.md#härtung-für-erreichbare-deployments)
 zu ersetzen. Der Ist-Zustand auf der öffentlichen Instanz opaa.ewerlin.com weicht davon für
 `demo-admin` bewusst ab — siehe „Öffentliche Instanz betreiben" unten.
 
@@ -907,7 +907,7 @@ Seed-Läufe dieselbe IP teilen.
 `opaa-seed` (`keycloak/realm-export.json`, Resource Owner Password Grant, kein Client-Secret) an —
 bewusst getrennt vom `opaa-frontend`-Client, dessen `directAccessGrantsEnabled` aus gutem Grund
 `false` bleibt. **Dieser Client gehört vor jedem erreichbaren Deployment entfernt oder deaktiviert**
-(`../docs/handbuch/deployment.md`, Härtungstabelle, Punkt 6) — er ist ein passwortbasierter Tokenweg
+([`../docs/handbuch/authentifizierung.md`](../docs/handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak), Client `opaa-seed`) — er ist ein passwortbasierter Tokenweg
 ohne Secret gegen jedes Realm-Konto und darf nicht dauerhaft scharf bleiben.
 
 Der Client trägt dafür einen Audience-Mapper (`oidc-audience-mapper`,
@@ -921,8 +921,8 @@ ist nur der Bootstrap-Wert des ersten Starts, danach führt die Datenbank. Laute
 `opaa-frontend`, muss der Mapper auf denselben Wert zeigen. Ein
 Keycloak, dessen Realm bereits importiert ist (eigenes Volume oder bestehende Datenbank), liest den
 Export nicht erneut — dort wird der Mapper per `kcadm` nachgezogen
-([„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),
-Absatz „Änderungen am Realm auf einer bereits laufenden Instanz").
+([„Härtung des mitgelieferten Keycloak"](../docs/handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak),
+Absatz „Änderungen am Realm einer laufenden Instanz").
 
 Schlägt ein Seed-Lauf an dieser Stelle fehl, benennt `seed.py` die Ablehnung als solche und gibt den
 `WWW-Authenticate`-Header des Backends aus — „nicht erreichbar" meldet es nur, wenn tatsächlich
@@ -1027,7 +1027,7 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   oben dokumentierten Demo-Passwort ab; die vier Fach-Demokonten behalten dieses dokumentierte
   Passwort unverändert — sie sind für das Drehbuch vorführnotwendige `USER`-Konten ohne
   Systemrolle, ihr offenes Demo-Passwort ist ein akzeptiertes Restrisiko. Das je Konto greifende
-  Rate Limiting (siehe [„Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar))
+  Rate Limiting (siehe [„Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers))
   und das monatliche Ausgabenlimit in der Anthropic-Console (siehe „Modellkonfiguration der
   Instanz" unten) begrenzen, was ein Fachkonto an Last und Kosten erzeugen kann.
   **Seit #2103 besitzen und verwalten Fachkonten aber selbst Demo-Wissen** (siehe „Eigentum,
@@ -1050,7 +1050,7 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   Pfad **`/idp`** eingehängt — ausdrücklich **nicht** unter `/auth`, weil das Frontend
   `/auth/callback` selbst als OIDC-Redirect verwendet und die beiden sich sonst überlagern. Dieser
   Host-nginx braucht **zusätzlich** zum `client_max_body_size` im Frontend-Container-nginx (siehe
-  `OPAA_UPLOAD_MAX_FILE_SIZE` in [`../docs/handbuch/deployment.md`](../docs/handbuch/deployment.md))
+  `OPAA_UPLOAD_MAX_FILE_SIZE` in [`../docs/handbuch/konfiguration.md`](../docs/handbuch/konfiguration.md#alle-umgebungsvariablen))
   ein ausreichendes eigenes `client_max_body_size` — sein Default liegt ebenfalls bei nur 1 MB und
   würde Uploads sonst schon vor dem Frontend-Container abweisen. Zusätzlich zu
   `postgres`/`backend`/`frontend`/`keycloak` laufen in der Instanz-Compose die beiden schlanken
@@ -1063,7 +1063,7 @@ Demo-Konten) und mit dem Rheinfurt-Korpus samt Seed-Profil `demo` befüllt.
   Betreiber-Entscheidung nach dem Merge.
 - **Betriebsart:** Die Instanz läuft ausschließlich aus vorgebauten GHCR-Images
   (`ghcr.io/criew/opaa-backend:main`, `ghcr.io/criew/opaa-frontend:main`, siehe
-  [`../docs/handbuch/deployment.md`, „Deployment aus vorgebauten Images"](../docs/handbuch/deployment.md#deployment-aus-vorgebauten-images-ghcr)).
+  [`../docs/handbuch/betrieb.md`, „Images und Versionen"](../docs/handbuch/betrieb.md#images-und-versionen)).
   Auf dem Server gibt es **keinen Repository-Checkout** und keinen Build — nur eine
   `docker-compose.yml`, die `image:` statt `build:` verwendet.
 - **Daten:** Es dürfen dort **keine personenbezogenen, vertraulichen oder produktiven
@@ -1079,7 +1079,7 @@ ausdrücklich benannt wird:
 
 | | Anbieter | Modell | Anmerkung |
 |---|---|---|---|
-| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — der einzige Anbindungsweg für beide Funktionen (siehe [„LLM-Anbieter"](../docs/handbuch/deployment.md#llm-anbieter)). `OPAA_OPENAI_CHAT_BASE_URL=https://api.anthropic.com/v1`, ein eigener `OPAA_OPENAI_CHAT_API_KEY` und `OPAA_OPENAI_CHAT_MODEL=claude-haiku-4-5` zeigen auf Anthropic; das gemeinsame `OPAA_OPENAI_BASE_URL` ist auf dieser Instanz **nicht** gesetzt. |
+| **Chat** | Anthropic | `claude-haiku-4-5` | Angebunden über Anthropics **OpenAI-kompatible Schicht** — der einzige Anbindungsweg für beide Funktionen (siehe [„LLM-Anbieter"](../docs/handbuch/modelle.md#llm-anbieter)). `OPAA_OPENAI_CHAT_BASE_URL=https://api.anthropic.com/v1`, ein eigener `OPAA_OPENAI_CHAT_API_KEY` und `OPAA_OPENAI_CHAT_MODEL=claude-haiku-4-5` zeigen auf Anthropic; das gemeinsame `OPAA_OPENAI_BASE_URL` ist auf dieser Instanz **nicht** gesetzt. |
 | **Embedding** | Ollama, auf dem Host der VPS (nicht im Compose-Netz) | `nomic-embed-text` | Läuft über denselben Anbindungsweg, aber **nicht** über den Anwendungs-Default: `OPAA_OPENAI_EMBEDDING_BASE_URL=http://host.docker.internal:11434/v1` (Ollama läuft auf dem Host, nicht als Compose-Service `ollama`) und `OPAA_OPENAI_EMBEDDING_MODEL=nomic-embed-text` sind explizit gesetzt. 768 Dimensionen, entsprechend `OPAA_PGVECTOR_DIMENSIONS=768`. |
 
 Zwei Punkte dazu:
@@ -1130,7 +1130,7 @@ nutzen" oben — der Korpus-Container mountet `demo/corpus/`, `demo-presse` moun
    akzeptiert, steht in der Instanz-Konfiguration
    `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST=demo-corpus,presse.stadt-rheinfurt.example` — ohne
    diesen Eintrag lehnt die Zielprüfung (#267, siehe
-   [„Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar))
+   [„Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers))
    beide internen Hostnamen ab.
 4. Die Indizierung löst aus, wer mindestens `EDITOR` auf der Zielbibliothek hält (ADR-0018;
    `SYSTEM_ADMIN` ist dafür seit #478 nicht mehr erforderlich), über den **Admin-Bereich der
@@ -1173,8 +1173,8 @@ und Seed: „Realm-Änderungen in ein bestehendes Keycloak übertragen" oben. L�
 Arbeitsstation, wird der Wert von dort übergeben.
 
 Voraussetzung dafür ist der Keycloak-Client `opaa-seed` — siehe
-[„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),
-Punkt 6. Auf der Instanz ist er im Normalbetrieb **deaktiviert**, sowohl in der Realm-Anpassung beim
+[„Härtung des mitgelieferten Keycloak"](../docs/handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak),
+Client `opaa-seed`. Auf der Instanz ist er im Normalbetrieb **deaktiviert**, sowohl in der Realm-Anpassung beim
 Import als auch nachträglich per `kcadm`. Für einen Seed-Lauf wird er ausschließlich für dessen Dauer
 aktiviert und unmittelbar danach wieder deaktiviert — kein dauerhaft scharfer, passwortbasierter
 Tokenweg ohne Client-Secret auf einer erreichbaren Instanz.
@@ -1211,17 +1211,17 @@ fachliche Vorführkonten ohne administrative Rechte.
 **Entwicklungs-Nutzer `testuser`:** Der Realm-Import bringt neben den fünf Demo-Nutzern auch den in
 `keycloak/realm-export.json` mitgelieferten Entwicklungs-Nutzer `testuser`/`testpass` auf die Instanz.
 Er ist auf opaa.ewerlin.com per `kcadm` deaktiviert (`enabled: false`) — siehe
-[„Härtung für erreichbare Deployments"](../docs/handbuch/deployment.md#härtung-für-erreichbare-deployments),
-Punkt 1.
+[„Härtung des mitgelieferten Keycloak"](../docs/handbuch/authentifizierung.md#härtung-des-mitgelieferten-keycloak),
+Realm-Benutzer.
 
 #### Aktualisierung der Instanz
 
 Der Workflow [`publish-images.yml`](../.github/workflows/publish-images.yml) baut bei jedem Push auf
 `main` neue Images (siehe
-[„Deployment aus vorgebauten Images"](../docs/handbuch/deployment.md#deployment-aus-vorgebauten-images-ghcr)).
+[„Images und Versionen"](../docs/handbuch/betrieb.md#images-und-versionen)).
 Auf dem Server liegt ein **Deployment-Skript**, das die aktuellen Images zieht und den Stack auf den
-neuen Stand bringt (Mechanik: [„Aktualisierung auf einen neuen `main`-Stand" in
-deployment.md](../docs/handbuch/deployment.md#aktualisierung-auf-einen-neuen-main-stand)). Es kennt
+neuen Stand bringt (Mechanik: [„Aktualisierung auf einen neuen Stand" in
+docker-compose.md](../docs/handbuch/docker-compose.md#aktualisierung-auf-einen-neuen-stand)). Es kennt
 zusätzlich einen Schalter, der auch die Volumes verwirft — damit ist die Datenbank und mit ihr der
 gesamte Index weg. Dieser Schalter ist deshalb kein Aktualisierungs-, sondern ein
 Neuaufsetzschritt; danach ist zwingend eine vollständige Neuindizierung nötig.
@@ -1248,7 +1248,7 @@ sind auf der Instanz ohnehin getrennte Anbieter.
 
 Der Indizierungsendpunkt (`POST /api/v1/libraries/{libraryId}/indexing`) ist auf der Testinstanz aus
 dem Internet erreichbar — die allgemeine Härtung dazu steht in
-[`../docs/handbuch/deployment.md`, „Sicherheitshinweis"](../docs/handbuch/deployment.md#sicherheitshinweis-post-apiv1librarieslibraryidindexing-ist-von-außen-erreichbar)
+[`../docs/handbuch/betrieb.md`, „Zielprüfung: Abrufe des Servers"](../docs/handbuch/betrieb.md#zielprüfung-abrufe-des-servers)
 und gilt hier unverändert. Zusätzlich zur dortigen Zielprüfung greift auf dieser Instanz das reguläre
 Rate Limiting mit einem eigenen, engen Kontingent für diesen Pfad (`OPAA_RATE_LIMIT_INDEXING_*`,
 standardmäßig eine Anfrage pro IP und Minute).
@@ -1259,7 +1259,7 @@ standardmäßig eine Anfrage pro IP und Minute).
   Bibliotheken, Formate, Quellen und Lizenzen, Rechtemodell
 - [`docs/market/demo-drehbuch.md`](../docs/market/demo-drehbuch.md) — das ausformulierte
   Vorführ-Drehbuch mit acht Fragen und acht Vorführschritten
-- [`docs/handbuch/deployment.md`](../docs/handbuch/deployment.md), Abschnitt „Härtung für erreichbare
+- [`docs/handbuch/betrieb.md`](../docs/handbuch/betrieb.md#härtung-für-erreichbare-deployments), Abschnitt „Härtung für erreichbare
   Deployments" — zwingend vor jedem über `localhost` hinaus erreichbaren Rollout dieser Demo,
   einschließlich des dort separat behandelten `opaa-seed`-Clients
 - Smoke-Test gegen das `demo`-Profil — #232 (`e2e/demo-smoke/`, `pnpm run test:demo-smoke` in `e2e/`,

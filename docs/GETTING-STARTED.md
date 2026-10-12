@@ -56,7 +56,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
    **Retrieval und Belegbarkeit**
 2. [VISION.md](./VISION.md) — Abschnitt „Systemüberblick"
 3. [`features/deployment-infrastructure.md`](./features/deployment-infrastructure.md) — **vertieft**;
-   ergänzend [deployment.md](./handbuch/deployment.md) und [kubernetes.md](./handbuch/kubernetes.md) für
+   ergänzend [betrieb.md](./handbuch/betrieb.md) mit [docker-compose.md](./handbuch/docker-compose.md) und [kubernetes.md](./handbuch/kubernetes.md) für
    die vorhandene Installation
 4. [`features/llm-integration.md`](./features/llm-integration.md) — Modellverwaltung, Modell-Policy als
    Obergrenze, lokal betriebene Modelle
@@ -217,7 +217,7 @@ Mitarbeit
 └── docs/AGENT-ORGANIZATION.md — Rollen und Workflow
 
 Handbuch (docs/handbuch/) — das gebaute Produkt benutzen
-└── deployment.md          — Installation und Betrieb
+└── betrieb.md             — Betrieb: Bausteine, Docker Compose, Kubernetes, Konfiguration
 
 Demo und Vorführung
 ├── demo/README.md         — Demo-Instanz: Installation, Konten, öffentliche Instanz

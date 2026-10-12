@@ -82,7 +82,7 @@ Changeset liest sich als SQL genau so, wie PostgreSQL es ausführt.
 ## Konsequenzen
 
 - OPAA lässt sich in ein beliebiges, vorab angelegtes Schema installieren, auch neben anderen
-  Anwendungen in einer gemeinsam genutzten Datenbank (Handbuch: `deployment.md`, „Eigenes
+  Anwendungen in einer gemeinsam genutzten Datenbank (Handbuch: `datenbank.md`, „Eigenes
   Datenbankschema").
 - Die Checksummen aller Changesets haben sich geändert. Bestehende Installationen werden neu
   aufgesetzt — ein bewusster Einmalvorgang vor Produktionsbetrieb, wie bei den Baselines #904 und

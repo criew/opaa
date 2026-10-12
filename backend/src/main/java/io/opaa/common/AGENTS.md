@@ -43,7 +43,7 @@ foundation hängt von keinem anderen Modul ab.
 
 - ADRs (`docs/decisions/`): 0018 (Entscheidung 4), 0021, 0027 (Entscheidung 8, 9), 0030
   (Entscheidung 8), 0033 (Entscheidung 6, 9)
-- Handbuch: `docs/handbuch/deployment.md`, „Härtung für erreichbare Deployments" und „Konfiguration"
+- Handbuch: `docs/handbuch/betrieb.md`, „Härtung für erreichbare Deployments"; `docs/handbuch/konfiguration.md`
 - Strukturtests: `SourceAccessDependencyStructureTest`, `TrustedProxyStartupGuardTest`,
   `S3RequestGuardTest`
 

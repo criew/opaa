@@ -40,7 +40,7 @@ RUN "$JAVA_HOME/bin/jlink" \
 # (io.opaa.knowledge.FilesystemUploadedOriginalStore); /app/documents is read-only in practice but is
 # created here so both mount points exist with the same owner. A *named volume* mounted onto either
 # of them inherits that ownership from the image, a bind mount does not - the host directory's own
-# owner governs there (docs/handbuch/deployment.md, "Nicht-root-Betrieb des Backend-Containers").
+# owner governs there (docs/handbuch/docker-compose.md, "Nicht-root-Betrieb des Backend-Containers").
 FROM eclipse-temurin:21-jdk AS appdirs
 RUN mkdir -p /skel/app/documents /skel/app/uploads && chown -R 65532:65532 /skel/app
 

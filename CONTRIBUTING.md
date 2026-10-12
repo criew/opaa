@@ -14,9 +14,9 @@ OPAA verwendet ein duales Lizenzmodell: Der Kern ist quelloffen, und kommerziell
 
 Ihre Unterschrift wird automatisch erfasst. Sie müssen nur einmal unterzeichnen.
 
-**KI-Agenten-Betreiber:** Wenn Sie einen KI-Coding-Agenten einsetzen, unterzeichnen Sie (der Mensch) die CLA. Siehe [CLA.md § 8](./CLA.md#8-ai-agent-contributions) für Details.
+**KI-Agenten-Betreiber:** Wenn Sie einen KI-Coding-Agenten einsetzen, unterzeichnen Sie (der Mensch) die CLA. Siehe [CLA.md § 8](./CLA.md#8-ki-agenten-beiträge) für Details.
 
-**Unternehmensbeitragende:** Wenn Sie im Namen eines Arbeitgebers beitragen, lesen Sie bitte auch [CLA.md § 5](./CLA.md#5-corporate-contributors).
+**Unternehmensbeitragende:** Wenn Sie im Namen eines Arbeitgebers beitragen, lesen Sie bitte auch [CLA.md § 5](./CLA.md#5-unternehmensbeitragende).
 
 ## Erste Schritte
 

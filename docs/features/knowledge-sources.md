@@ -217,7 +217,7 @@ Zielprüfung mit dem Verbindungstest. Für die
 ersetzt weder die Ziel- noch die Formatprüfung des eigentlichen Laufs. Er nutzt für `HTTP_DIRECTORY`
 und `RSS_FEED` dieselben ausgehenden Verbindungen wie ein Lauf und unterliegt deshalb **derselben
 Zielprüfung (gebaut, #267)** — konfigurierbar über `opaa.indexing.target-validation`, siehe
-[deployment.md](../handbuch/deployment.md). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
+[betrieb.md](../handbuch/betrieb.md#zielprüfung-abrufe-des-servers). Er ist zusätzlich rate-limitiert (`opaa.rate-limit.source-test`),
 damit er nicht als schneller interner Portscanner missbraucht werden kann. Ohne Bezug zu einer
 bestehenden Bibliothek verlangt die Quellprobe wie die beiden Auswahl-Endpunkte
 (`source-types/{sourceType}/browse`) das Anlegerecht `CREATE_CONNECTOR_LIBRARY` (gebaut, #1856,
@@ -421,7 +421,7 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
 1. Die Verzeichnisliste unter der angegebenen Adresse wird abgerufen und **rekursiv** durch die
    Unterverzeichnisse verfolgt — begrenzt durch eine maximale Rekursionstiefe und eine Obergrenze
    für die Gesamtzahl gecrawlter Einträge (`OPAA_INDEXING_CRAWL_MAX_DEPTH`,
-   `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)),
+   `OPAA_INDEXING_CRAWL_MAX_ENTRIES`, siehe [Umgebungsvariablen](../handbuch/konfiguration.md#alle-umgebungsvariablen)),
    damit ein Zyklus auf dem Zielserver (z. B. eine Symlink-Schleife) nicht zu endloser Rekursion
    führt (#836). Ein durch eines dieser Limits abgeschnittener Lauf wird als solcher protokolliert,
    nicht als Fehler behandelt. Die Verzeichnisseite selbst wird dabei nur bis zu einer festen
@@ -435,7 +435,7 @@ gewöhnlichen Konnektor nur darin, **woraus** die Liste der abzuholenden Dateien
    Dokument neu geladen und wandert dorthin.
 4. Geladen wird in einen temporären Bereich — **gedeckelt auf eine konfigurierbare Bytegrenze je
    Eintrag** (`OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES`, Vorgabe 100 MiB, siehe
-   [Umgebungsvariablen](../handbuch/deployment.md#alle-umgebungsvariablen)). Der Deckel greift
+   [Umgebungsvariablen](../handbuch/konfiguration.md#alle-umgebungsvariablen)). Der Deckel greift
    während des Übertragens, nicht danach: Ein Eintrag darüber wird abgebrochen, bevor die
    überschüssigen Bytes auf der Platte landen, als Ablehnung im Protokoll des Laufs vermerkt und
    als übersprungen gezählt; der Lauf selbst geht weiter (#1236). Das gilt auch für den

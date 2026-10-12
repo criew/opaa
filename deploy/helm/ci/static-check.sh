@@ -125,7 +125,7 @@ for expected in "kubectl create namespace opaa" "pod-security.kubernetes.io/enfo
   "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#installation" \
   "**Vorbereitung für Bestandsinstallationen**" "Keine Vorbereitung nötig." \
   "blob/v1.2.3-rc.1/docs/handbuch/kubernetes.md#aktualisierung-und-rückweg" \
-  "blob/v1.2.3-rc.1/docs/handbuch/deployment.md#vorbereitungsschritte-für-bestandsinstallationen"; do
+  "blob/v1.2.3-rc.1/docs/handbuch/docker-compose.md#vorbereitungsschritte-für-bestandsinstallationen"; do
   if [[ "$release_notes" != *"$expected"* ]]; then
     echo "The release notes do not contain '$expected':" >&2
     echo "$release_notes" >&2

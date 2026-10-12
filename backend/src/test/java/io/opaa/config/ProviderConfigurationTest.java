@@ -21,10 +21,11 @@ import org.springframework.core.env.Environment;
  * decide whether {@code spring.ai.openai.chat.base-url} must be set - that guard is unrelated to
  * autoconfiguration and still matters because {@code io.opaa.llm.LlmModelSeeder} reads {@code
  * spring.ai.openai.chat.*} directly for the one-time takeover into {@code llm_models} on first
- * start (docs/handbuch/deployment.md, section "LLM-Anbieter"). {@code @MockitoBean private
- * ChatModel} bean of the shared test configuration therefore no longer replaces a bean the excluded
- * autoconfiguration would have produced; it exists only so a test's {@code Environment} assertions
- * do not need a real, reachable chat endpoint to load the application context.
+ * start (docs/handbuch/modelle.md, section "Chat-Modelle in der Oberfläche anlegen").
+ * {@code @MockitoBean private ChatModel} bean of the shared test configuration therefore no longer
+ * replaces a bean the excluded autoconfiguration would have produced; it exists only so a test's
+ * {@code Environment} assertions do not need a real, reachable chat endpoint to load the
+ * application context.
  */
 @OpaaIntegrationTest
 class ProviderConfigurationTest {

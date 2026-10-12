@@ -110,7 +110,7 @@ nicht. Eine Einschränkung je Token gibt es bewusst nicht.
 > wird die Adresse aus der Trusted-Proxy-Auflösung: `X-Forwarded-For` zählt nur, wenn die Verbindung
 > selbst aus einem dort eingetragenen Netz kommt. Ist die Liste leer, prüft die Netzbeschränkung die
 > Adresse des Proxys — die im Hausnetz liegt und damit **jeden** Aufrufer durchlässt. Siehe
-> [Deployment](deployment.md#alle-umgebungsvariablen).
+> [Deployment](konfiguration.md#alle-umgebungsvariablen).
 
 **Der Einleitungstext** wird im selben Panel gepflegt; ein Vorgabetext ist gesetzt und für die
 meisten Häuser ausreichend. Er sagt dem fremden Modell, wann es den Kanal in Betracht ziehen soll
@@ -132,7 +132,7 @@ wer den Bestand verantwortet.
 
 - Ein täglicher Lauf verschickt die **Wiedervorlage per Mail** und lässt danach die fälligen
   Freigaben erlöschen. Der Vorlauf steht in Abschnitt 15; ohne eingerichteten Mailversand
-  ([Deployment](deployment.md#e-mail-versand-smtp)) erlischt die Freigabe trotzdem, nur
+  ([Deployment](e-mail.md)) erlischt die Freigabe trotzdem, nur
   unangekündigt. **Empfänger ist genau eine Person: wer die Freigabe zuletzt gesetzt hat.** Ist
   dieses Konto entfallen, tritt die Eigentümerin der Bibliothek an ihre Stelle — gehört die
   Bibliothek jedoch einer Gruppe, unterbleibt die Wiedervorlage und wird nur im Anwendungslog
@@ -626,7 +626,7 @@ beantworten sich gleich, damit der Kanal nie bestätigt, dass ein Token existier
 | `429` mit Wartehinweis (REST) — oder am MCP-Endpunkt eine Fehlerantwort mit dem Code `-32000` bzw. ein Werkzeugergebnis mit dem Wort „Kontingent" | Kontingent des Tokens erschöpft — meist ein Skript in einer Schleife. **Am MCP-Endpunkt ist das keine `429`**: Die Ablehnung kommt als Protokollfehler bzw. als Fehlerergebnis des Werkzeugs zurück, damit das fremde Modell damit umgehen kann. Schon das Verbinden zählt (Abschnitt 10) — ein Client, der sich in Schleife neu verbindet, kann das Kontingent allein damit ausschöpfen | Werkzeug drosseln; notfalls das Kontingent der Installation anheben (Abschnitt 15) |
 | `403` bei einem Aufruf, der bis gestern lief | Ein Proxy hängt der Adresse etwas an (`/mcp;x=1`); solche Pfade weist die Anwendung ab, bevor sie den Endpunkt erreichen | Proxy-Regel bereinigen. Eine prozentkodierte Schreibweise (`/%6Dcp`) ist dagegen unschädlich — sie wird wie `/mcp` behandelt |
 | Der Client meldet „MCP server failed" o. ä., **alle** Fremdzugänge des Hauses zugleich | **Fassungsbruch** nach einem Client- oder Server-Update — siehe unten |
-| Die Antwort ist **HTML** statt JSON — etwa eine Seite der Anwendung oder `405` mit HTML-Rumpf | Ein vorgelagerter Reverse-Proxy reicht `/mcp` nicht an OPAA durch, sondern beantwortet den Pfad mit der Auslieferung der Oberfläche. Der Endpunkt selbst antwortet immer als JSON | Die Proxy-Regel um `/mcp` ergänzen — sie muss den Pfad genauso weiterreichen wie `/` ([Deployment](deployment.md#netzwerkzugang)) |
+| Die Antwort ist **HTML** statt JSON — etwa eine Seite der Anwendung oder `405` mit HTML-Rumpf | Ein vorgelagerter Reverse-Proxy reicht `/mcp` nicht an OPAA durch, sondern beantwortet den Pfad mit der Auslieferung der Oberfläche. Der Endpunkt selbst antwortet immer als JSON | Die Proxy-Regel um `/mcp` ergänzen — sie muss den Pfad genauso weiterreichen wie `/` ([Deployment](betrieb.md#netzwerkzugang)) |
 | Der Client startet einen Anmelde- oder OAuth-Ablauf statt die Ursache zu zeigen | Der Client hat auf `401` mit einer OAuth-Erkennung reagiert | Im Client OAuth abschalten (bei OpenCode `"oauth": false`, Abschnitt 9) und die eigentliche Ursache aus der `reason`-Angabe lesen |
 | Es lässt sich kein neues Token anlegen, keine Bibliothek ist wählbar | Kanal geschlossen, oder es ist keine der lesbaren Bibliotheken freigegeben | Abschnitt 3 bzw. 4 |
 
@@ -659,7 +659,7 @@ Arbeitsplatz.
 Schalter, Freigaben und Tokens sind Zeilen in der Datenbank. Eine Rücksicherung rollt sie
 **gemeinsam** zurück — einschließlich eines Notaus und gesperrter Tokens — und das Protokoll, das
 beides belegen würde, gleich mit. Nach jeder Wiederherstellung deshalb, zusätzlich zur allgemeinen
-Nacharbeit ([Deployment](deployment.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)):
+Nacharbeit ([Deployment](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)):
 
 1. **Schalterzustand prüfen.** *Administration → Anbindungen → Externe KI-Werkzeuge*: Steht der
    Schalter so, wie er zuletzt stand? Der Reiter zeigt Zeitpunkt und handelnde Person der letzten
@@ -699,7 +699,7 @@ Eine leere Netzbereichsliste weist **jeden** Aufruf ab: Die Prüfung versagt ges
 Namensauflösung findet dabei nicht statt.
 
 **Umgebungsvariablen**, gesetzt beim Start des Backends (siehe
-[Deployment](deployment.md#alle-umgebungsvariablen)):
+[Deployment](konfiguration.md#alle-umgebungsvariablen)):
 
 | Variable | Standard | Wirkung |
 |---|---|---|
@@ -729,7 +729,7 @@ erinnert zu werden.
 ## 16. Weiterführende Kapitel
 
 - Der Such- und Abrufweg, den die Werkzeuge benutzen: [Suche](suche.md), Abschnitte 7.1 und 10.3
-- Anmeldeverfahren, Umgebungsvariablen, Reverse Proxy, Rücksicherung: [Deployment](deployment.md)
+- Anmeldeverfahren: [Authentifizierung](authentifizierung.md); Umgebungsvariablen: [Konfiguration](konfiguration.md); Reverse Proxy und Rücksicherung: [Betriebsübersicht](betrieb.md)
 - Konten sperren, übergeben und löschen — und was das mit Tokens macht:
   [Benutzerverwaltung](benutzerverwaltung.md)
 - Welche Bestände es überhaupt gibt und wie sie entstehen: [Wissensbibliotheken](wissensbibliotheken.md)
