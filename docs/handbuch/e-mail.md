@@ -1,8 +1,15 @@
 # E-Mail-Versand (SMTP)
 
+> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
+> abgenommen.
+
 OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
 Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang
 scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur Weitergabe angezeigt.
+Wozu Mails gebraucht werden, beschreibt die [Benutzerverwaltung](benutzerverwaltung.md); der
+Mailserver ist einer der optionalen Bausteine der [Betriebsübersicht](betrieb.md). Für Erprobung und
+Entwicklung bringt der Compose-Stapel einen Mailserver zum Abfangen mit
+([Mailpit](docker-compose.md#mailpit-im-lokalen-stapel)).
 
 Zwei Dinge werden getrennt gehalten:
 
@@ -36,9 +43,8 @@ Zwei Dinge werden getrennt gehalten:
 | Benutzername, Passwort | Leerer Benutzername bedeutet: Verbindung ohne Anmeldung. Das Passwort wird verschlüsselt gespeichert und in Antworten als `***` angezeigt; wer `***` zurückschickt, lässt es unverändert, ein leeres Feld löscht es |
 | Absenderadresse, Absendername | Stehen als Absender in jeder Nachricht |
 
-Verschlüsselungsschlüssel: Das SMTP-Passwort wird mit demselben Schlüssel geschützt wie die
-Zugangsschlüssel verwalteter Chat-Modelle (siehe
-[„Verschlüsselung der Zugangsschlüssel verwalteter Chat-Modelle"](#verschlüsselung-der-zugangsschlüssel-verwalteter-chat-modelle)).
+Das SMTP-Passwort schützt `OPAA_SETTINGS_ENCRYPTION_KEY`, derselbe Schlüssel wie die Zugangsschlüssel
+der Chat-Modelle ([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)).
 Ohne gültigen Schlüssel schlägt das Speichern eines Passworts fehl; der Start bricht nicht ab.
 
 ## Vorlagen

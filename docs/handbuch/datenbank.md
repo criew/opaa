@@ -1,5 +1,30 @@
 # Datenbank
 
+> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
+> abgenommen.
+
+PostgreSQL ist die einzige Wahrheit einer Installation: Dokumente, Chunks samt Vektoren, Volltext,
+Metadaten, Konten, Rechte, Chats und Protokolle liegen in einer Datenbank. Daneben steht nur die
+[Originalablage](originalablage.md). Dieses Kapitel beschreibt, was eine Datenbank für OPAA mitbringen
+muss; wie sie im Compose-Stapel läuft, steht unter [Docker Compose](docker-compose.md#datenbank-im-stapel),
+wie sie gesichert wird, unter [Sicherung und Wiederherstellung](betrieb.md#sicherung-und-wiederherstellung).
+
+## Vektorspeicher: pgvector
+
+OPAA speichert Vektoren in PostgreSQL mit der Erweiterung pgvector; das ist der einzige unterstützte
+Vektorspeicher, ein Wechsel ist nicht vorgesehen. Metadaten und Vektorindex liegen damit in derselben
+Datenbank: ein Sicherungslauf, eine Wiederherstellung, ein Nachweispfad. Bekannte Grenze: pgvector
+stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen.
+
+- **pgvector 0.8.0 oder neuer.** Das Image `pgvector/pgvector:pg18` bringt eine passende Fassung mit;
+  bei einer älteren Erweiterung bricht der Start mit einer Meldung ab. Wer die Datenbank selbst
+  betreibt und pgvector aktualisiert, führt danach `ALTER EXTENSION vector UPDATE;` aus.
+- **Die Vektortabelle** entsteht beim ersten Start, wenn sie fehlt, mit der Dimension aus
+  `OPAA_PGVECTOR_DIMENSIONS` ([Modelle](modelle.md#embedding)).
+- **Eine neue PostgreSQL-Hauptversion** (etwa ein Image-Tag `pg18` → höher) ist ein eigener
+  Migrationsvorgang der Datenbank mit Sicherung und Wiederherstellung, kein Image-Update: Das
+  Datenverzeichnis ist nicht aufwärtskompatibel.
+
 ## Voraussetzungen einer eigenen PostgreSQL
 
 Der mitgelieferte Compose-Stapel startet PostgreSQL mit einem Superuser-Konto; dort ist nichts
@@ -39,7 +64,7 @@ Description:
 The PostgreSQL server has the pgvector extension not installed; the schema migration of OPAA needs it (CREATE EXTENSION vector).
 
 Action:
-Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/deployment.md, section "Datenbank".
+Install pgvector 0.8.0 or later on the database server - e.g. the image pgvector/pgvector or the package postgresql-<version>-pgvector - and start OPAA again. See docs/handbuch/datenbank.md, section "Voraussetzungen einer eigenen PostgreSQL".
 ```
 
 ## Eigenes Datenbankschema
@@ -82,43 +107,31 @@ Voraussetzungen:
 
 ## Volltextsuche (lexikalischer Suchpfad)
 
-Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL — `tsvector` mit der
-`german`-Konfiguration und einem GIN-Index auf der Tabelle `chunk_full_text`. Es gibt **kein zweites
-System**: derselbe Sicherungslauf, dieselbe Wiederherstellung, derselbe Verschlüsselungsnachweis. Der
-Pfad findet, woran eine Vektorsuche strukturell scheitert — Paragrafenverweise, Aktenzeichen,
-Erlassnummern, seltene Fachbegriffe.
-
-> **Stand:** Der Pfad ist gebaut und **wirkt auf die Antwort**. Je Teilfrage liefert er
-> eine zweite Trefferliste, die zusammen mit der Liste der Vektorsuche rangbasiert fusioniert wird
-> (Reciprocal Rank Fusion). Ein Chunk, den beide Pfade finden, ist dabei **ein** Treffer mit zwei
-> Beiträgen, kein doppelter. Scheitert die Volltextabfrage, scheitert die Frage — genau wie bei
-> einem Ausfall der Vektorsuche: Eine halbe hybride Suche ist eine schlechtere Antwort, die sich
-> sonst als normale ausgäbe.
+Neben der Vektorsuche läuft eine klassische Volltextsuche direkt in PostgreSQL, mit der
+`german`-Konfiguration und einem GIN-Index. Es gibt **kein zweites System**: derselbe Sicherungslauf,
+dieselbe Wiederherstellung, derselbe Verschlüsselungsnachweis. Der Pfad findet, woran eine
+Vektorsuche strukturell scheitert — Paragrafenverweise, Aktenzeichen, Erlassnummern, seltene
+Fachbegriffe. Wie seine Treffer mit denen der Vektorsuche zusammengeführt werden, steht im Kapitel
+[Suche](suche.md#stufe-5-volltextsuche); scheitert die Volltextabfrage, scheitert die Frage, statt
+still eine halbe Suche zu liefern.
 
 ### Was zu tun ist
 
-Im laufenden Betrieb nichts. Jeder indexierte Chunk bekommt seinen Volltexteintrag in derselben
-Transaktion wie den Vektor; auf diesem Weg entsteht kein Abschnitt, der vektorisiert, aber nicht
-volltextindiziert ist.
+Im laufenden Betrieb nichts. Jeder Chunk bekommt seinen Volltexteintrag in derselben Transaktion wie
+seinen Vektor.
 
-**Ändert ein Update die Art, wie der Volltextindex gebildet wird**, liegen die betroffenen Zeilen in
-einer älteren Fassung, und die Seite „Suche & Indexierung" weist die betroffenen Bibliotheken mit
-**Nachzug ausstehend** aus. Der lexikalische Pfad findet diese Zeilen weiterhin — ihnen fehlen nur
-die Lexeme, die die neue Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen
-Hintergrundlauf, der das von selbst nachzieht, gibt es nicht — **nötig ist dann der Pipeline-Nachzug**
-über die Admin-API
-(`POST /api/v1/admin/indexing/pipeline-reindex`, siehe [Wissensbibliotheken](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug));
-eine Oberfläche dafür gibt es noch nicht. Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
-an der Aufbereitung des Dokuments sonst nichts geändert hat.
+**Ändert ein Update die Bildung des Volltextindex**, liegen die betroffenen Einträge in einer älteren
+Fassung, und die Seite „Suche & Indexierung" weist die Bibliotheken mit **Nachzug ausstehend** aus.
+Der Pfad findet diese Einträge weiter, ihnen fehlen nur die Lexeme der neuen Fassung. Nachgezogen wird
+über den [Pipeline-Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug)
+(`POST /api/v1/admin/indexing/pipeline-reindex`, eine Oberfläche dafür gibt es noch nicht); er erfasst
+solche Abschnitte auch dann, wenn sich an der Aufbereitung des Dokuments sonst nichts geändert hat.
+Ein Update, das ihn nötig macht, nennen die Notizen des Release.
 
-**Was das kostet:** Der Nachzug liest jedes betroffene Dokument neu ein, zerlegt es erneut in
-Abschnitte und **bettet diese neu ein** — er verursacht also Aufrufe beim Einbettungsmodell und ist
-in derselben Größenordnung teuer wie eine Neuindizierung dieser Dokumente. Er ist damit teurer als
-das reine Neuschreiben der Volltextspalte wäre, aber der einzige Weg, der dieselben Abschnitte
-in der neuen Fassung wiederherstellt. Der Lauf ist stapelweise, unterbrechbar und wiederaufnehmbar; bis er
-durch ist, sucht der lexikalische Pfad in den betroffenen Beständen mit den Lexemen der alten
-Fassung weiter. Ein Update, das
-diesen Nachzug nötig macht, wird in den Release-Hinweisen ausdrücklich genannt.
+**Was das kostet:** Der Nachzug liest jedes betroffene Dokument neu ein, zerlegt es und **bettet es
+neu ein** — in derselben Größenordnung teuer wie eine Neuindizierung dieser Dokumente. Er läuft
+stapelweise, ist unterbrechbar und wiederaufnehmbar; bis er durch ist, sucht der Pfad mit den Lexemen
+der alten Fassung.
 
 ### Bekannte Grenze: `ts_rank` ist kein BM25
 

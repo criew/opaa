@@ -1,24 +1,14 @@
 # Docker Compose
 
-## Images aus GHCR
+> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
+> abgenommen.
 
-Auf dem Zielsystem wird kein Repository-Checkout benötigt — es genügt eine `docker-compose.yml`, die `image:` statt `build:` verwendet:
-
-```yaml
-services:
-  backend:
-    image: ghcr.io/criew/opaa-backend:0.1.0   # oder :main für den Entwicklungsstand
-  frontend:
-    image: ghcr.io/criew/opaa-frontend:0.1.0
-```
-
-Backend und Frontend immer mit **derselben** Version betreiben.
-
-Aktualisieren auf den neuesten Stand des gewählten Tags:
-
-```bash
-docker compose pull && docker compose up -d
-```
+Der Compose-Stapel des Repositorys (`docker-compose.yml`) startet OPAA auf einem einzelnen Rechner:
+Frontend, Backend und PostgreSQL, dazu über Compose-Profile Keycloak, Ollama, einen Objektspeicher
+und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine Installationen
+gedacht; seine Vorgaben sind bequem und **nicht** gehärtet. Was für jeden Betriebsweg gilt — Images,
+Bereitschaft, Härtung, Schlüssel, Sicherung —, steht in der [Betriebsübersicht](betrieb.md), die
+Bedeutung jeder Variable in der [Konfiguration](konfiguration.md).
 
 ## Schnellstart
 
@@ -34,87 +24,107 @@ chmod -R o+rX documents               # Leserecht: Eigentum bleibt, wo es ist
 
 Der zweite Schritt ist Pflicht: Das Backend läuft im Container unter der Kennung `65532`, ein
 Verzeichnis, das Docker selbst für einen fehlenden Bind-Mount anlegt, gehört dagegen `root` — der
-erste Upload schlägt dann fehl. Warum der Korpus nur Leserecht bekommt und nicht das Eigentum, der
-Weg ohne `sudo` und die Lage auf einem Netzlaufwerk stehen unter [„Nicht-root-Betrieb des
-Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+erste Upload schlägt dann fehl. Warum der Korpus nur Leserecht bekommt, der Weg ohne `sudo` und die
+Lage auf einem Netzlaufwerk stehen unter
+[„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
-`.env.docker` bearbeiten. Voreingestellt sind lokal betriebene Modelle über die openai-kompatible
-Schicht (der einzige Anbindungsweg) — dafür ist keine weitere Angabe in `.env.docker`
-selbst nötig. Zwei sich gegenseitig ausschließende Wege stehen für den lokal betriebenen
-Ollama-Server zur Wahl, den `OPAA_OPENAI_BASE_URL` standardmäßig voraussetzt (siehe
-[„LLM-Anbieter"](#llm-anbieter) und [„Lokal betriebenes Ollama im
-Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack) unten für Details zu beiden):
+Voreingestellt sind lokal betriebene Modelle über einen Ollama-Server; in `.env.docker` ist dafür
+nichts weiter einzutragen. Für Ollama gibt es zwei Wege, die sich gegenseitig ausschließen:
 
-**Weg A — Ollama als Teil dieses Stacks (Compose-Profil `ollama`).** Keine weitere Konfiguration
-nötig — `OPAA_OPENAI_BASE_URL` zeigt bereits auf `http://ollama:11434/v1`. Empfohlen für den
-allerersten Start: zunächst nur den Init-Schritt abwarten (er lädt mehrere GiB Modelldaten herunter,
-siehe „Ressourcen- und Downloadhinweis" unten), bevor der restliche Stack hochfährt — ein Dokument,
-das währenddessen bereits hochgeladen wird, würde sonst mit Status `FAILED` enden, weil das
-Chat-/Embedding-Modell noch fehlt:
+**Weg A — Ollama als Teil des Stapels (Profil `ollama`).** Die Modelladresse zeigt bereits auf
+`http://ollama:11434/v1`. Beim allerersten Start zuerst den Download der Modelle abwarten (mehrere GiB,
+siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack)) —
+ein Dokument, das währenddessen hochgeladen wird, endet sonst mit `FAILED`:
 
 ```bash
 docker compose --profile ollama up ollama-pull   # wartet, bis beide Modelle vorliegen
-docker compose --profile ollama up --build       # danach den vollständigen Stack starten
+docker compose --profile ollama up --build       # danach den vollständigen Stapel starten
 ```
 
-Wer dieses Warten nicht braucht (z. B. weil ohnehin erst später indiziert wird), startet stattdessen
-direkt mit `docker compose --profile ollama up --build` — der Stack läuft dann bereits, während
-`ollama-pull` im Hintergrund noch lädt.
+Wer nicht warten muss, startet gleich mit `docker compose --profile ollama up --build`; `ollama-pull`
+lädt dann im Hintergrund.
 
-**Weg B — externer Ollama-Server** (auf dem Host oder in einem anderen Netz), ohne das
-Compose-Profil. Läuft Ollama auf dem Host, in `.env.docker` setzen:
+**Weg B — ein vorhandener Ollama-Server**, auf dem Host oder in einem anderen Netz. Läuft er auf dem
+Host, in `.env.docker` setzen und ohne Profil starten:
 
 ```env
 OPAA_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
 ```
 
-und danach starten:
-
 ```bash
 docker compose up --build
 ```
 
-Ohne einen erreichbaren externen Server unter der konfigurierten Adresse startet der Stack zwar,
-aber Indizierung und Fragen schlagen fehl.
-
-```bash
-# 3. Anwendung öffnen
-# Frontend: http://localhost:3000
-# Backend-API: http://localhost:8081/api
-```
+Ohne erreichbaren Server startet der Stapel, aber Indexierung und Fragen schlagen fehl. Danach ist
+die Oberfläche unter `http://localhost:3000` erreichbar, die API unter `http://localhost:8081/api`.
+Wie der erste Systemverwalter hereinkommt, steht unter
+[Authentifizierung](authentifizierung.md#erststart-und-systemverwalter-konto).
 
 ## Services
 
 | Service     | Host-Port | Container-Port | Beschreibung                                          |
 |-------------|-----------|-----------------|--------------------------------------------------------|
-| frontend    | 3000      | 8080            | React-App über Nginx bereitgestellt                    |
+| frontend    | 3000      | 8080            | React-App über nginx bereitgestellt                    |
 | backend     | 8081      | 8080            | Spring Boot API                                         |
 | postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
-| ollama      | —         | 11434           | Lokal betriebener Ollama-Server (nur `ollama`-Profil; kein Host-Port, siehe unten) |
-| ollama-pull | —         | —               | Einmaliger Init-Schritt, zieht `nomic-embed-text`/`phi3:mini` (nur `ollama`-Profil) |
-| upload-store | 8095 (API), 8096 (Konsole unter `/rustfs/console/`) | 9000, 9001 | Objektspeicher der Originalablage (nur `upload-s3`-Profil; an `127.0.0.1` gebunden, siehe [Originalablage](#originalablage)) |
-| upload-store-init | —    | —               | Einmaliger Init-Schritt, legt den Bucket der Originalablage an (nur `upload-s3`-Profil) |
+| ollama      | —         | 11434           | Ollama-Server (nur `ollama`-Profil; kein Host-Port) |
+| ollama-pull | —         | —               | einmaliger Init-Schritt, zieht `nomic-embed-text`/`phi3:mini` (nur `ollama`-Profil) |
+| upload-store | 8095 (API), 8096 (Konsole unter `/rustfs/console/`) | 9000, 9001 | Objektspeicher der Originalablage (nur `upload-s3`-Profil; an `127.0.0.1` gebunden) |
+| upload-store-init | —    | —               | einmaliger Init-Schritt, legt den Bucket der Originalablage an (nur `upload-s3`-Profil) |
+| mailpit | 1025 (SMTP), 8025 (Weboberfläche) | 1025, 8025 | Mailserver, der alles annimmt und nichts zustellt (nur `mail`-Profil) |
 
-## Konfiguration
+Die Profile `demo` (Demo-Instanz „Stadt Rheinfurt" mit eigenen Quellen) und `oidc` (gebündeltes
+Keycloak) ergänzen weitere Dienste. Alle Befehle dieses Kapitels sprechen den **Servicenamen** an
+(`backend`, `frontend`, `postgres`), nicht einen Containernamen: Wie die Container heißen, hängt vom
+Namen des Compose-Projekts ab, ohne eigene Angabe dem Namen des Verzeichnisses mit der
+`docker-compose.yml`. `docker compose logs backend` funktioniert in jedem Stapel, `docker logs <name>`
+nur in einem.
 
-Alle Konfigurationen erfolgen über Umgebungsvariablen in `.env.docker`. Docker Compose lädt diese Datei über die `env_file`-Direktive. Alle verfügbaren Optionen mit Beschreibungen finden Sie in `.env.docker.example`.
+## Images aus GHCR
 
-> **Zwei getrennte Vorlagen, zwei Zwecke.** `.env.example` ist auf `./gradlew bootRun` auf dem Host zugeschnitten (Datenbank auf `localhost`, CORS auf den Vite-Dev-Server `:5173`, kein `SPRING_PROFILES_ACTIVE`, weil `bootRun` es üblicherweise direkt in der Shell setzt). `.env.docker.example` ist die Vorlage für den Compose-Stack: `SPRING_PROFILES_ACTIVE=docker,dev` gesetzt, `OPAA_DB_URL` auskommentiert (der `docker`-Profil-Default liefert bereits den richtigen Hostnamen `postgres`), `OPAA_CORS_ALLOWED_ORIGINS` auf den Frontend-Host-Port `:3000` statt `:5173` und die leer gesetzten `OPAA_OPENAI_*`-Zeilen auskommentiert (ein leer gesetzter Wert überschreibt sonst den Anwendungs-Default, siehe Hinweis in der Variablen-Tabelle unten). Wer beide Kopien unverändert nebeneinander nutzt — `.env` für `bootRun`, `.env.docker` für Compose — bekommt in beiden Fällen einen startfähigen Stand, ohne die jeweils andere Vorlage von Hand nachzubessern.
+Auf einem Zielsystem, auf dem nicht gebaut werden soll, genügt eine `docker-compose.yml`, die
+`image:` statt `build:` verwendet; ein Checkout des Repositorys ist nicht nötig. Welcher Tag welchen
+Stand bedeutet, steht unter [Images und Versionen](betrieb.md#images-und-versionen).
 
-> **Wichtig:** Docker Compose lädt automatisch eine `.env`-Datei (falls vorhanden) für die Variablen-Interpolation in `docker-compose.yml` selbst. Um Konflikte mit lokalen Entwicklungseinstellungen zu vermeiden, verwenden Docker-Compose-Services `.env.docker` als ihre `env_file`. Wenn Sie eine `.env`-Datei für die lokale Entwicklung haben, stellen Sie sicher, dass die Docker-relevanten Variablen (Ports, DB-Anmeldeinformationen) nicht kollidieren.
+```yaml
+services:
+  backend:
+    image: ghcr.io/criew/opaa-backend:0.1.0   # oder :main für den Entwicklungsstand
+  frontend:
+    image: ghcr.io/criew/opaa-frontend:0.1.0
+```
+
+Eine eigene Compose-Datei bildet den Host-Port des Frontends auf den Containerport `8080` ab, nicht
+auf `80`.
+
+## Konfiguration mit `.env.docker`
+
+Die Dienste lesen ihre Umgebung aus `.env.docker` (`env_file`); alle Optionen mit Beschreibung stehen
+in `.env.docker.example`, die Bedeutung jeder Variable in der [Konfiguration](konfiguration.md).
+
+- **Zwei Vorlagen, zwei Zwecke.** `.env.example` ist auf `./gradlew bootRun` auf dem Host
+  zugeschnitten (Datenbank auf `localhost`, CORS auf den Vite-Dev-Server `:5173`).
+  `.env.docker.example` ist die Vorlage für den Stapel: `SPRING_PROFILES_ACTIVE=docker,dev`, die
+  Datenbankadresse aus dem Profil `docker` (Hostname `postgres`), CORS auf den Frontend-Port `:3000`.
+  Wer beide unverändert nebeneinander nutzt, bekommt in beiden Fällen einen startfähigen Stand.
+- **`.env` und `.env.docker` sind verschieden.** Docker Compose liest eine `.env` im
+  Projektverzeichnis von selbst, aber nur für die Platzhalter in `docker-compose.yml` selbst — Ports,
+  Bind-Mounts, die Auswahl der `env_file`, die Zugangsdaten mitgelieferter Dienste. Solche Werte
+  wirken nur aus der Shell-Umgebung oder einer `.env`, nie aus `.env.docker`; die
+  [Konfiguration](konfiguration.md#alle-umgebungsvariablen) kennzeichnet sie. Wer eine `.env` für die
+  lokale Entwicklung hat, achtet darauf, dass Ports und Datenbankzugang nicht kollidieren.
+- **Änderungen wirken erst mit neuem Container:** `docker compose up -d <service>`, nicht `restart` —
+  `restart` verwendet den vorhandenen Container samt alter Umgebung erneut.
 
 ### Docker-spezifische Variablen
 
-Diese Variablen sind wichtig, wenn mit Docker Compose ausgeführt wird, und sollten in `.env.docker` gesetzt werden:
-
 | Variable | Erforderlicher Wert | Warum |
 |----------|---------------------|-------|
-| `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert Docker-spezifische Konfiguration (DB-URL, openai-kompatible Basis-Adresse) und den Auth-Modus; ohne `oidc` oder `dev` startet das Backend nicht |
-| `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Backend muss an alle Schnittstellen binden, um von anderen Containern erreichbar zu sein. `0.0.0.0` bindet unter Java IPv4 und, wo vorhanden, IPv6; `::` dagegen verhindert den Start in einem Container ohne IPv6 |
-| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | Muss mit dem Host-Port des Frontends übereinstimmen |
-| `OPAA_DB_USERNAME` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
-| `OPAA_DB_PASSWORD` | `opaa` | Muss zwischen Backend- und postgres-Services übereinstimmen |
+| `SPRING_PROFILES_ACTIVE` | `docker,oidc` (Betrieb) oder `docker,dev` (Entwicklung) | Aktiviert die Docker-spezifische Konfiguration (Datenbankadresse, Modelladresse) und den Betriebsmodus; ohne `oidc` oder `dev` startet das Backend nicht |
+| `OPAA_SERVER_ADDRESS` | `0.0.0.0` | Das Backend muss an alle Schnittstellen binden, damit der nginx des Frontend-Containers es erreicht. `0.0.0.0` bindet IPv4 und, wo vorhanden, IPv6; `::` verhindert den Start in einem Container ohne IPv6 |
+| `OPAA_CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | muss mit dem Host-Port des Frontends übereinstimmen |
+| `OPAA_DB_USERNAME`, `OPAA_DB_PASSWORD` | `opaa`, `opaa` | müssen zwischen Backend und `postgres` übereinstimmen |
 
 ### Minimale `.env.docker`
 
@@ -127,229 +137,144 @@ OPAA_DB_PASSWORD=opaa
 OPAA_PGVECTOR_DIMENSIONS=768
 ```
 
-Chat und Einbettung laufen damit über die openai-kompatible Schicht gegen einen lokal betriebenen
-Ollama-Server (`OPAA_OPENAI_BASE_URL` ist im Profil `docker` auf `http://ollama:11434/v1`
-vorbelegt). `OPAA_PGVECTOR_DIMENSIONS=768` gehört zwingend dazu (siehe die Zeile zu dieser Variable
-in [„Alle Umgebungsvariablen"](#alle-umgebungsvariablen) unten) - ohne sie bricht die erste
-Einbettung mit einem Dimensionsfehler ab, weil der Embedding-Default `nomic-embed-text` mit 768
-Dimensionen einbettet, nicht mit dem Anwendungs-Default 1536. Für einen anderen Anbieter kommen
-`OPAA_OPENAI_BASE_URL` und `OPAA_OPENAI_API_KEY` hinzu (überschreiben die Voreinstellung) - dann
-richtet sich `OPAA_PGVECTOR_DIMENSIONS` nach dessen Embedding-Modell statt nach `nomic-embed-text`.
+`OPAA_PGVECTOR_DIMENSIONS=768` gehört zwingend dazu, weil das voreingestellte Embedding-Modell
+`nomic-embed-text` mit 768 Dimensionen einbettet, nicht mit der Anwendungsvorgabe 1536; ohne sie
+bricht die erste Einbettung mit einem Dimensionsfehler ab. Für einen anderen Modellanbieter kommen
+`OPAA_OPENAI_BASE_URL` und `OPAA_OPENAI_API_KEY` hinzu, und die Dimension richtet sich nach dessen
+Embedding-Modell ([Modelle](modelle.md)).
 
 ## Dokumente
 
-Dokumente im `./documents`-Verzeichnis ablegen (oder `OPAA_INDEXING_DOCUMENT_PATH_HOST` in `.env.docker` ändern). Das Verzeichnis wird in den Backend-Container unter `/app/documents` gemountet.
+Dokumente für eine Dateisystem-Bibliothek liegen im Verzeichnis `./documents` (oder dem Pfad aus
+`OPAA_INDEXING_DOCUMENT_PATH_HOST`). Es wird im Backend-Container unter `/app/documents` eingehängt.
 
-## Datenbank
+## Datenbank im Stapel
 
-PostgreSQL-Daten werden in einem Docker-Volume (`opaa-postgres-data`) gespeichert. Daten überleben `docker compose down`- und `docker compose up`-Zyklen.
-
-Datenbank zurücksetzen:
+Die Daten von PostgreSQL liegen im benannten Volume `opaa-postgres-data` und überleben
+`docker compose down` und `up`. Zurückgesetzt wird die Datenbank mit:
 
 ```bash
 docker compose down -v
 ```
 
-> **Hinweis:** `docker compose down -v` muss ausgeführt werden, wenn `OPAA_DB_USERNAME` oder `OPAA_DB_PASSWORD` geändert wird, weil PostgreSQL den initialen Benutzer nur beim ersten Start erstellt. Ohne Volume-Entfernung werden Anmeldeinformationsänderungen ignoriert.
-
-> **Mit aktivem Compose-Profil `ollama` löscht `docker compose down -v` zusätzlich das
-> benannte Volume `opaa-ollama-data`** — die dort gespeicherten Modelle (`nomic-embed-text`,
-> `phi3:mini`, zusammen rund 2,5 GB). Ein danach erneut gestarteter Stack lädt beide Modelle über
-> `ollama-pull` vollständig neu herunter, siehe [„Lokal betriebenes Ollama im Compose-Stack"](#lokal-betriebenes-ollama-im-compose-stack).
-
-> **Nach einer Rücksicherung aus einem Dump sind zwei Schritte nachzuholen**, sobald lokale Konten im
-> Einsatz sind: das Signaturgeheimnis rotieren und die Sperren der Zwischenzeit erneut setzen. Warum
-> und in welcher Reihenfolge, steht unter
-> [„Nacharbeit nach einer Rücksicherung der Datenbank"](#nacharbeit-nach-einer-rücksicherung-der-datenbank).
+- **Konto vor dem ersten Start festlegen.** PostgreSQL legt das Konto aus `OPAA_DB_USERNAME` und
+  `OPAA_DB_PASSWORD` nur beim ersten Start an; eine spätere Änderung wird ignoriert, bis das Volume
+  verworfen ist.
+- **`down -v` verwirft alle Volumes des Stapels**, mit dem Profil `ollama` auch `opaa-ollama-data`
+  mit den heruntergeladenen Modellen (rund 2,5 GB, die `ollama-pull` danach neu lädt) und mit
+  `upload-s3` den Objektspeicher samt allen Originalen. Wer nur die Datenbank verwerfen will, nimmt
+  `docker volume rm <projekt>_opaa-postgres-data` bei angehaltenem Stapel.
+- **Eine eigene PostgreSQL** statt des Dienstes `postgres` braucht pgvector und einige Vorbereitung
+  ([Datenbank](datenbank.md)).
 
 ## Lokal betriebenes Ollama im Compose-Stack
 
-Der Compose-Stack (`docker-compose.yml`) enthält einen optionalen `ollama`-Service unter dem
-eigenen Compose-Profil **`ollama`** — er startet nur, wenn er ausdrücklich angefordert wird, damit
-der unveränderte Stack (kein Profil oder nur `oidc`/`demo`) keinen zusätzlichen Download und keinen
-zusätzlichen, ressourcenhungrigen Container voraussetzt:
+Das Profil `ollama` startet einen Ollama-Server im Stapel. Es ist nicht voreingestellt: Image und
+Modelle sind groß, und wer einen Ollama-Server schon betreibt, braucht keinen zweiten.
 
 ```bash
 docker compose --profile ollama up --build
 ```
 
-Das startet zusätzlich zu den üblichen Services zwei weitere:
+- **`ollama`** ist der Server, mit dem Volume `opaa-ollama-data` für die Modelle. Er veröffentlicht
+  keinen Host-Port; Backend und Init-Schritt erreichen ihn im Compose-Netz unter dem Namen `ollama`,
+  auf den die Modelladresse im Profil `docker` bereits zeigt. Der auskommentierte `ports`-Eintrag
+  bindet, falls aktiviert, nur an `127.0.0.1`.
+- **`ollama-pull`** zieht einmalig `nomic-embed-text` (Einbettung) und `phi3:mini` (Chat) und beendet
+  sich. Beide sind nötig: `phi3:mini` wird beim ersten Start zum aktiven Chat-Modell
+  ([Modelle](modelle.md#llm-anbieter)), ohne es scheitert die erste Frage. Bei einem erneuten Start
+  lädt der Schritt nichts doppelt herunter.
 
-- **`ollama`** — der eigentliche Ollama-Server, mit einem benannten Volume (`opaa-ollama-data`) für
-  die heruntergeladenen Modelle. Nicht auf einen Host-Port veröffentlicht: Backend und der
-  Init-Schritt unten erreichen ihn ausschließlich über das Compose-Netz unter seinem Servicenamen
-  (`ollama`) — genau der Hostname, auf den `OPAA_OPENAI_BASE_URL` im Spring-Profil `docker` bereits
-  standardmäßig zeigt (siehe oben). Es sind deshalb **keine** Umgebungsvariablen-Änderungen nötig,
-  um dieses Profil zu nutzen.
-- **`ollama-pull`** — ein einmaliger Init-Schritt, der `nomic-embed-text` (Embedding-Default,
-  `OPAA_OPENAI_EMBEDDING_MODEL`) und `phi3:mini` (Chat-Default, `OPAA_OPENAI_CHAT_MODEL`) zieht,
-  sobald `ollama` bereit ist, und danach beendet wird. Beide Modelle sind nötig, nicht nur das
-  Embedding-Modell: `io.opaa.llm.LlmModelSeeder` übernimmt `phi3:mini` beim allerersten
-  Backend-Start als aktives, verwaltetes Chat-Modell (siehe [„LLM-Anbieter"](#llm-anbieter) oben) —
-  ohne es schlägt die erste Chat-Anfrage fehl, obwohl `ollama` selbst bereits läuft. Der Pull-Schritt
-  ist **idempotent**: `ollama pull` vergleicht gegen das, was `ollama` bereits im Volume
-  `opaa-ollama-data` gespeichert hat, und lädt bei einem erneuten Start desselben Stacks nichts noch
-  einmal herunter.
+**Platz und Zeit.** Die Modelle laden beim ersten Start rund 2,5 GiB herunter (`phi3:mini` rund
+2,2 GiB, `nomic-embed-text` rund 274 MiB, komprimiert), das Image selbst ist mit rund 3,4 GB (amd64)
+noch größer. Den Fortschritt zeigt `docker compose logs -f ollama-pull`. Der Stapel ist nutzbar,
+sobald `ollama` gesund ist; bis beide Modelle vorliegen, können Indexierung und Fragen scheitern.
 
-**Ressourcen- und Downloadhinweis:** Beide Modelle zusammen laden beim allerersten Start mehrere
-Gigabyte herunter (`phi3:mini` rund 2,2 GiB, `nomic-embed-text` rund 274 MiB, jeweils komprimiert)
-und benötigen anschließend entsprechend Plattenplatz im Volume sowie Arbeitsspeicher/CPU (oder GPU)
-für den laufenden Ollama-Server. Mit `docker compose logs -f ollama-pull` lässt sich der
-Download-Fortschritt verfolgen; der Stack selbst ist bereits nutzbar, sobald `ollama` gesund ist
-(`ollama` beantwortet dann `ollama list`), auch während `ollama-pull` noch lädt — die erste
-Indizierung/Chat-Anfrage kann in diesem Fenster aber noch fehlschlagen, bis beide Modelle vorliegen.
+**Fehlgeschlagener Download.** Scheitert `ollama-pull` (Registry nicht erreichbar, Platte voll),
+laufen Backend und Frontend unauffällig weiter, nur Indexierung und Chat schlagen fehl. Die Ursache
+steht in `docker compose logs ollama-pull` — der erste Blick bei einem unerklärten `FAILED` direkt
+nach dem Start.
 
-**Nur mit Registry-Zugriff, auch bei bereits vorhandenen Modellen:** `ollama pull` prüft bei jedem
-Aufruf gegen die Ollama-Registry im Internet, ob die lokal gespeicherten Layer noch aktuell sind —
-das macht den Schritt idempotent (siehe oben), setzt aber Netzzugang zu dieser Registry voraus. In
-einem abgeschotteten Netz ohne diesen Zugang **exitet `ollama-pull` mit einem Fehler, obwohl beide
-Modelle bereits im Volume liegen**. Betroffen ist jeder erneute Start, nicht nur der erste. Für einen
-solchen Betrieb entweder das `command` in `docker-compose.yml` um einen vorangestellten
-`ollama list | grep -q ... ||`-Kurzschluss ergänzen (überspringt den Netzzugriff, wenn beide Modelle
-bereits vorhanden sind) oder `ollama-pull` bei einem erneuten Start ganz weglassen
-(`docker compose --profile ollama up ollama backend frontend postgres`, ohne `ollama-pull` in der
-Serviceliste).
+**Ohne Internet.** `ollama pull` prüft bei jedem Aufruf gegen die Registry im Internet und scheitert
+ohne Zugang, auch wenn beide Modelle schon im Volume liegen. In einem abgeschotteten Netz entweder
+das `command` in `docker-compose.yml` um einen vorangestellten `ollama list | grep -q ... ||` ergänzen
+oder `ollama-pull` beim erneuten Start weglassen
+(`docker compose --profile ollama up ollama backend frontend postgres`).
 
-**Ein fehlgeschlagener `ollama-pull` bleibt sonst unauffällig:** Exitet der Init-Schritt mit einem
-Fehler (Registry nicht erreichbar wie oben, Plattenplatz erschöpft, o. ä.), laufen `backend` und
-`frontend` trotzdem unbeeindruckt weiter — der Stack wirkt oberflächlich normal gestartet, nur
-Indizierung/Chat schlagen dann fehl, weil ein oder beide Modelle fehlen. Ursache und Fehlermeldung
-stehen in `docker compose logs ollama-pull`; das ist der erste Blick bei einer sonst unerklärten
-`FAILED`-Indizierung direkt nach `docker compose --profile ollama up`.
+**GPU.** Ohne Ergänzung nutzt `ollama` nur die CPU. Eine NVIDIA-GPU mit installiertem Container-Toolkit
+reicht ein eigener `deploy.resources.reservations.devices`-Eintrag am Dienst `ollama` durch.
 
-**GPU-Nutzung:** Ohne eigene Ergänzung nutzt `ollama` ausschließlich die CPU — `docker-compose.yml`
-enthält keinen `deploy.resources.reservations.devices`-Eintrag für eine GPU. Wer eine NVIDIA-GPU
-mit installiertem Container-Toolkit durchreichen will, ergänzt einen solchen Eintrag am
-`ollama`-Service selbst (analog zum auskommentierten `ports`-Eintrag dort) - nicht Teil dieser
-Voreinstellung, weil sie ein GPU-fähiges Docker-Setup auf dem Host voraussetzt, das nicht jede
-Installation hat.
-
-**Abwägung Imagegröße/Ressourcen vs. „ein Befehl, alles läuft":** Das `ollama`-Image selbst ist mit
-rund 3,4 GB (amd64) bereits größer als beide Modelle zusammen (rund 2,5 GB, siehe oben) — Image und
-Modelle zusammen machen den gesamten zusätzlichen Umfang dieses Profils aus, nicht nur Letztere. Wer
-keinen lokal betriebenen Ollama-Server braucht oder bereits einen extern betreibt, bleibt beim
-unveränderten Standard (kein Profil) und spart sich Download und laufenden Container vollständig —
-deshalb ist `ollama` ein eigenes, nicht standardmäßig aktives Profil und keine Voreinstellung.
-
-**Alternative: externer Ollama-Server statt des Compose-Profils.** Läuft Ollama bereits auf dem
-Host oder in einem anderen Netz, ist das Profil `ollama` nicht nötig — stattdessen die Zieladresse
-auf den externen Server umbiegen, z. B. bei einer Installation auf dem Host selbst:
-
-```env
-OPAA_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
-```
-
-(`docker-compose.yml` setzt den dafür nötigen `extra_hosts`-Eintrag für den `backend`-Service
-bereits.) Beide Wege sind gleichwertig — das Compose-Profil ist der bequemere Einstieg ohne
-Ersteinrichtung außerhalb des Stacks, ein externer Ollama-Server eignet sich besser, wenn er von
-mehreren Stacks/Installationen gemeinsam genutzt werden soll oder bereits vorhanden ist.
-
-Kein Port-Expose über `127.0.0.1` hinaus: `ollama` veröffentlicht standardmäßig **keinen** Port; der
-in `docker-compose.yml` auskommentierte `ports`-Eintrag für den direkten Host-Zugriff bindet, falls
-aktiviert, ebenfalls nur auf `127.0.0.1` (siehe die dortigen Kommentare und [„Härtung für erreichbare
-Deployments"](#härtung-für-erreichbare-deployments), Punkt 5).
+**Ein vorhandener Server statt des Profils** ist gleichwertig (Weg B im [Schnellstart](#schnellstart));
+`docker-compose.yml` setzt den nötigen `extra_hosts`-Eintrag für `host.docker.internal` bereits. Er
+eignet sich, wenn ihn mehrere Installationen nutzen sollen.
 
 ## Der mitgelieferte Objektspeicher im Compose-Stapel
 
-Der Stapel bringt einen Objektspeicher für die Originalablage mit, hinter dem eigenen Compose-Profil
-`upload-s3`. Ohne dieses Profil existieren die beiden Dienste nicht und der Stapel verhält sich
-unverändert.
+Das Profil `upload-s3` bringt einen Objektspeicher für die [Originalablage](originalablage.md) mit.
+Ohne das Profil existieren die beiden Dienste nicht.
 
 ```bash
 docker compose --profile upload-s3 up -d upload-store upload-store-init
 ```
 
-- `upload-store` hält die Originale und hat ein **eigenes benanntes Volume**. Ohne dieses Volume
-  wäre der Bestand beim Neuaufsetzen weg, während die Dokumentzeilen in der Datenbank bestehen
-  bleiben und auf nicht mehr vorhandene Objekte zeigen — derselbe Fallstrick wie beim
-  Verzeichnisweg ohne eingehängtes Verzeichnis. `docker compose down -v` löscht dieses Volume
-  mitsamt allen Originalen; für den regulären Stopp genügt `docker compose down`.
-- `upload-store-init` läuft einmal, legt den Bucket an und beendet sich. Er schreibt keine Objekte;
-  der Inhalt des Buckets gehört ab da allein der Anwendung.
-- Das Backend hängt **nicht** von beiden ab: Eine Installation, die beim Verzeichnisweg bleibt,
-  behält ihre Startreihenfolge, und ein kurz nicht erreichbarer Speicher hält den Start nicht auf.
+- `upload-store` hält die Originale im eigenen Volume `opaa-upload-store-data`. `docker compose down -v`
+  löscht es samt allen Originalen; für den regulären Stopp genügt `docker compose down`.
+- `upload-store-init` legt einmal den Bucket an und beendet sich; den Inhalt schreibt allein die
+  Anwendung.
+- Das Backend hängt von keinem der beiden ab: Ein kurz nicht erreichbarer Speicher hält den Start
+  nicht auf.
 
-Dieser Dienst ist nicht der Objektspeicher des Demo-Profils. Jener füllt einen Korpus-Bucket, aus
-dem eine Bibliothek als **Quelle** liest, und wird bei jedem Start neu befüllt; er hat deshalb
-bewusst kein Volume. Beide Profile lassen sich nebeneinander betreiben.
+In `.env.docker` gehören dann `OPAA_UPLOAD_STORE`, `OPAA_UPLOAD_S3_ENDPOINT`, `OPAA_UPLOAD_S3_BUCKET`,
+`OPAA_UPLOAD_S3_ACCESS_KEY` und `OPAA_UPLOAD_S3_SECRET_KEY`; `.env.docker.example` trägt sie
+auskommentiert mit den Werten, die der Dienst voreingestellt hat. Die Zugangsdaten des Dienstes
+**selbst** (`OPAA_UPLOAD_STORE_ROOT_USER`, `OPAA_UPLOAD_STORE_ROOT_PASSWORD`,
+`OPAA_UPLOAD_STORE_BUCKET`) liest Compose nur aus der Shell-Umgebung oder einer `.env`. Wer sie
+ändert, ändert sie auf beiden Seiten, sonst weist der Speicher jeden Zugriff zurück. Der Endpunkt
+zeigt auf den Servicenamen und passiert die Zielprüfung der Originalablage ohne eigenen Eintrag.
 
-In `.env.docker` gehören dann die fünf Werte, mit denen das Backend den Dienst anspricht — Ablage,
-Endpunkt, Bucket und die beiden Zugangsschlüssel (`OPAA_UPLOAD_STORE`, `OPAA_UPLOAD_S3_ENDPOINT`,
-`OPAA_UPLOAD_S3_BUCKET`, `OPAA_UPLOAD_S3_ACCESS_KEY`, `OPAA_UPLOAD_S3_SECRET_KEY`); die Vorlage
-`.env.docker.example` trägt sie auskommentiert und mit genau den Werten, die der Dienst selbst
-voreingestellt hat. Die Zugangsdaten des Dienstes **selbst** setzt Docker Compose ein und liest sie
-deshalb nie aus `.env.docker`, sondern nur aus der Prozessumgebung oder einer `.env`-Datei
-(`OPAA_UPLOAD_STORE_ROOT_USER`, `OPAA_UPLOAD_STORE_ROOT_PASSWORD`, `OPAA_UPLOAD_STORE_BUCKET`, siehe
-[Alle Umgebungsvariablen](#alle-umgebungsvariablen)). Wer sie ändert, ändert sie auf beiden Seiten —
-sonst weist der Speicher jeden Zugriff zurück.
-
-Der Endpunkt zeigt auf den Servicenamen im Compose-Netzwerk. Er passiert die Zieladressprüfung der
-Originalablage immer, weil er aus der Betriebskonfiguration stammt; ein Eintrag in einer Freigabeliste
-ist dafür nicht nötig, und die Freigabeliste der Konnektoren ist davon unberührt.
+Dieser Dienst ist nicht der Objektspeicher des Profils `demo`: Jener füllt einen Korpus-Bucket, aus
+dem eine Bibliothek als **Quelle** liest, wird bei jedem Start neu befüllt und hat kein Volume. Beide
+Profile laufen nebeneinander.
 
 ## Mailpit im lokalen Stapel
 
-Für Demonstration, Entwicklung und die E2E-Suite liegt dem Compose-Stapel ein Mailserver bei, der
-alles annimmt und nichts zustellt:
+Für Erprobung und Entwicklung liegt ein Mailserver bei, der alles annimmt und nichts zustellt:
 
 ```bash
 docker compose --profile mail up -d mailpit
 ```
 
-Die abgefangenen Nachrichten liegen danach unter `http://localhost:8025`. In der Verwaltung
-einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`, keine Zugangsdaten. Ohne das
-Profil `mail` existiert der Dienst nicht, und der Stapel verhält sich unverändert.
+Die abgefangenen Nachrichten liegen unter `http://localhost:8025`. Unter „Administration → E-Mail →
+SMTP-Zugang" einzutragen: Server `mailpit`, Port `1025`, Verschlüsselung `NONE`, keine Zugangsdaten
+([E-Mail-Versand](e-mail.md)).
 
 ## Nicht-root-Betrieb des Backend-Containers
 
-Das Backend läuft im Container als Benutzer und Gruppe `65532` — nicht als `root`. Es lauscht auf
-Port 8080, also oberhalb des privilegierten Bereichs, und schreibt nach `/app/uploads`, nach `/tmp`
-und in ein etwaig konfiguriertes Temp-Verzeichnis; gelesen wird außerdem, was eingehängt ist.
+Das Backend läuft als Benutzer und Gruppe `65532`. Bei einem Bind-Mount gilt der Eigentümer des
+**Host**-Verzeichnisses; Docker ändert daran beim Einhängen nichts. Daraus folgen drei Anforderungen:
 
-Bei einem Bind-Mount gilt der Eigentümer des **Host**-Verzeichnisses, nicht der des Verzeichnisses
-im Image — Docker ändert daran beim Einhängen nichts. Daraus folgen drei Betriebsanforderungen, eine
-für jede Art von eingehängtem Verzeichnis:
+1. **`/app/uploads` muss für `65532` beschreibbar sein**, solange die Originale im Dateisystem liegen
+   (`OPAA_UPLOAD_STORE` nicht auf `s3`) — am einfachsten, indem das Host-Verzeichnis dieser Kennung
+   gehört.
+2. **Ein eigenes Temp-Verzeichnis muss für `65532` beschreibbar sein.** Ohne Angabe zeigen
+   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` und `OPAA_INDEXING_S3_TEMP_DIRECTORY` auf `/tmp`; wer sie auf ein
+   großes eingehängtes Volume legt, übergibt es. Sonst scheitert jeder Upload beim Anlegen der
+   Arbeitsdatei, auch mit `OPAA_UPLOAD_STORE=s3`.
+3. **Jedes weitere eingehängte Verzeichnis muss für `65532` les- und betretbar sein**: `/app/documents`
+   und jedes über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis. Eine eng gesetzte
+   Freigabe (`root:root 0700`, ein CIFS-Mount mit `uid=0,file_mode=0600`) ist es nicht
+   ([Konnektor Dateisystem](konnektoren/filesystem.md)).
 
-1. **`/app/uploads` muss für `65532` beschreibbar sein** — am einfachsten, indem das
-   Host-Verzeichnis dieser Kennung gehört. Gilt, solange die Originale im Dateisystem liegen
-   (`OPAA_UPLOAD_STORE` nicht auf `s3`).
-2. **Ein konfiguriertes Temp-Verzeichnis muss für `65532` beschreibbar sein.** Betrifft
-   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` und `OPAA_INDEXING_S3_TEMP_DIRECTORY`: Beide zeigen ohne Angabe
-   auf `/tmp` im Container, das im Image für alle beschreibbar ist — wer sie aber, wie in der
-   Variablentabelle empfohlen, auf ein großes eingehängtes Volume legt, muss dieses Volume
-   übergeben. Sonst scheitert jeder Upload beim Anlegen der Arbeitsdatei, auch mit
-   `OPAA_UPLOAD_STORE=s3`.
-3. **Jedes weitere eingehängte Verzeichnis muss für `65532` les- und betretbar sein.** Das ist die
-   Anforderung, die am leichtesten übersehen wird: Als `root` lief der Prozess an jeder
-   Leseberechtigung vorbei. Betroffen sind `/app/documents` und jedes über
-   `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis einer FILESYSTEM-Bibliothek. Eine
-   gehärtete Freigabe (`root:root 0700`, oder ein CIFS-Mount mit `uid=0,file_mode=0600`) war als
-   `root` lesbar und ist es jetzt nicht mehr — siehe [Konnektor
-   Dateisystem](konnektoren/filesystem.md), Abschnitt 3.
-
-Der häufigste Fall ist der erste. Legt Docker das Verzeichnis beim Start selbst an, weil es fehlt,
-gehört es `root`, und der erste Upload endet mit `500` und dieser Meldung im Protokoll:
+Der häufigste Fall ist der erste: Legt Docker das fehlende Verzeichnis selbst an, gehört es `root`,
+der Start meldet `UP`, und erst der erste Upload endet mit `500` und dieser Meldung:
 
 ```text
 java.io.UncheckedIOException: Datei konnte nicht gespeichert werden
 Caused by: java.nio.file.AccessDeniedException: /app/uploads/<Organisations-ID>
 ```
 
-Der Fehler tritt erst beim ersten Upload auf, nicht beim Start: Der Container läuft, die
-Zustandsübersicht meldet `UP`.
-
-**Neue Installation.** Vor dem ersten `docker compose up` (Schritt 2 im
-[Schnellstart](#schnellstart)):
-
-```bash
-mkdir -p documents uploads
-sudo chown -R 65532:65532 uploads     # Schreibrecht: Eigentum abgeben
-chmod -R o+rX documents               # Leserecht: Eigentum bleibt, wo es ist
-```
-
-**Bestehende Installation.** Dieselben beiden Zeilen ohne `mkdir`, im Verzeichnis mit der
-`docker-compose.yml` — sie ändern Rechte und Eigentümer, keine Inhalte, und sind damit ohne
-Datenverlust ausführbar:
+**Neue Installation:** Schritt 2 im [Schnellstart](#schnellstart). **Bestehende Installation:**
+dieselben Zeilen ohne `mkdir`; sie ändern Rechte und Eigentümer, keine Inhalte.
 
 ```bash
 docker compose down
@@ -358,19 +283,15 @@ chmod -R o+rX documents
 docker compose pull && docker compose up -d
 ```
 
-**Warum `documents` nicht mit übereignet wird.** Der Korpus wird von OPAA nur gelesen, aber
-typischerweise von jemand anderem befüllt — einem Fachverfahren, einem Sync-Dienst, einer Freigabe.
-Ein `chown` auf `65532` nähme genau diesem Schreiber die Rechte. Gebraucht wird Lese- und
-Betretungsrecht für „andere", und das ist bei den üblichen `0755` bereits da; `chmod -R o+rX` oben
-ist nur für einen enger gesetzten Korpus nötig und lässt das `x`-Bit dabei den Verzeichnissen
-vorbehalten. Wo auch das nicht in Frage kommt, ist eine gemeinsame Gruppe oder der `user:`-Ausweg
-unten der Weg. Dasselbe gilt für jedes über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene
-Verzeichnis.
+**Warum `documents` nicht übereignet wird.** Den Korpus befüllt typischerweise jemand anderes — ein
+Fachverfahren, ein Sync-Dienst, eine Freigabe. Ein `chown` nähme diesem Schreiber die Rechte. Gebraucht
+wird Lese- und Betretungsrecht für „andere", bei den üblichen `0755` bereits vorhanden; `chmod -R o+rX`
+ist nur für einen enger gesetzten Korpus nötig. Sonst helfen eine gemeinsame Gruppe oder der
+`user:`-Weg unten. Dasselbe gilt für jedes freigegebene Verzeichnis einer Dateisystem-Bibliothek.
 
-**Ohne `sudo`, mit eigener Kennung.** Wer die Verzeichnisse nicht abgeben kann oder darf — etwa auf
-einem Host mit einem Dienstkonto, dem die Daten gehören sollen, oder auf einem Netzlaufwerk, auf dem
-`chown` nicht wirkt —, lässt den Container stattdessen unter genau dieser Kennung laufen. In der
-`docker-compose.yml` steht die Zeile beim Backend-Service bereits auskommentiert:
+**Ohne `sudo`, mit eigener Kennung.** Wer die Verzeichnisse nicht abgeben kann — etwa weil sie einem
+Dienstkonto gehören sollen —, lässt den Container unter dieser Kennung laufen; die Zeile steht in der
+`docker-compose.yml` auskommentiert:
 
 ```yaml
 services:
@@ -378,38 +299,33 @@ services:
     user: "1000:1000" # die eigene uid:gid, `id -u`/`id -g`
 ```
 
-Das ist die Ausweichmöglichkeit, nicht der empfohlene Weg: Die Kennung muss dann bei jedem
-Umzug und in jeder abgeleiteten Compose-Datei mitgepflegt werden, während `65532` eine feste
-Eigenschaft des Images ist. `root` (`user: "0:0"`) erfüllt denselben Zweck und gibt den
-Sicherheitsgewinn wieder auf. Bei einem **CIFS/SMB-Mount** ist dieser Weg oder die Mount-Option
-`uid=65532,gid=65532` sogar der einzige: Die Rechte eines solchen Einhängepunkts stehen in den
-Mount-Optionen, ein `chown` darauf läuft ins Leere.
+Das ist der Ausweg, nicht der empfohlene Weg: Die Kennung ist bei jedem Umzug und in jeder
+abgeleiteten Compose-Datei mitzupflegen. `user: "0:0"` erfüllt denselben Zweck und gibt den
+Sicherheitsgewinn auf. Bei einem **CIFS/SMB-Mount** ist dieser Weg oder die Mount-Option
+`uid=65532,gid=65532` der einzige, weil `chown` dort ins Leere läuft.
 
-**Benannte Volumes brauchen nichts davon — und vertragen sich nicht mit `user:`.** Wer statt eines
-Bind-Mounts ein benanntes Volume auf `/app/uploads` legt, muss nichts tun: Docker übernimmt beim
-ersten Einhängen eines leeren Volumes die Eigentümerverhältnisse des Verzeichnisses aus dem Image,
-und das gehört bereits `65532`. Genau deshalb schließen sich die beiden Wege aus: Ein so
-übernommenes Volume gehört `65532` und ist für einen Container mit `user: "1000:1000"` dann gerade
-**nicht** beschreibbar — wer `user:` setzt, bleibt beim Bind-Mount. Beim Objektspeicher
-(`OPAA_UPLOAD_STORE=s3`, siehe [Originalablage](#originalablage)) entfällt Anforderung 1 ganz; die
-Anforderungen 2 und 3 bleiben, sobald ein eigenes Temp-Verzeichnis oder eine FILESYSTEM-Bibliothek
-im Spiel ist.
+**Benannte Volumes brauchen nichts davon — und vertragen sich nicht mit `user:`.** Ein leeres
+benanntes Volume übernimmt beim ersten Einhängen die Eigentümer aus dem Image, also `65532`; genau
+deshalb ist es für einen Container mit `user: "1000:1000"` nicht beschreibbar. Wer `user:` setzt,
+bleibt beim Bind-Mount. Mit `OPAA_UPLOAD_STORE=s3` entfällt Anforderung 1.
 
-`docker cp` bleibt in beiden Richtungen nutzbar (siehe [„Diagnose ohne
-Shell"](#diagnose-ohne-shell)): Es läuft über den Docker-Daemon und nicht unter der Kennung des
-Containers. Ebenso unberührt sind Thread- und Heap-Dump nach `/tmp` — das Verzeichnis ist im Image
-für alle beschreibbar — und ein `docker exec` auf `jcmd`, das ohne `--user` unter derselben Kennung
-`65532` läuft wie der Prozess und sich deshalb an ihn anhängen darf.
+**Beschreibbare Pfade im Stapel.** Das Backend läuft mit `read_only: true` und `no-new-privileges`;
+`/tmp` ist das benannte Volume `opaa-backend-tmp` (warum, siehe
+[Nur lesbares Dateisystem](betrieb.md#nur-lesbares-dateisystem)). Es überlebt `docker compose down`.
+Was ein harter Abbruch, ein Heap-Dump oder ein JFR-Mitschnitt dort hinterlässt, wird bei angehaltenem
+Backend entfernt:
+
+```bash
+docker compose stop backend && docker compose rm -f backend
+docker volume rm <projekt>_opaa-backend-tmp
+docker compose up -d backend
+```
 
 ## Eigene interne CA ergänzen
 
-> **Wichtig:** `-Djavax.net.ssl.trustStore=…` **ersetzt** den mitgelieferten Truststore, es ergänzt
-> ihn nicht. Wer nur seine interne CA in einen frischen Store legt und darauf zeigt, verliert
-> sämtliche öffentlichen CAs — HTTPS zu LLM-Anbietern, S3 und einem OIDC-Anbieter mit öffentlichem
-> Zertifikat scheitert dann mit `PKIX path building failed`, ohne erkennbaren Zusammenhang zur
-> Änderung.
-
-Richtig ist, den mitgelieferten Store zu kopieren, zu ergänzen und zurückzumounten:
+`-Djavax.net.ssl.trustStore=…` **ersetzt** den mitgelieferten Truststore, statt ihn zu ergänzen (siehe
+[Backend-Laufzeitimage](betrieb.md#backend-laufzeitimage)). Richtig ist, den mitgelieferten Store zu
+kopieren, zu ergänzen und an seinen Platz zurückzumounten:
 
 ```bash
 # 1. Mitgelieferten Truststore herausholen (funktioniert ohne Shell im Container)
@@ -429,15 +345,15 @@ services:
       - ./cacerts:/opt/java/openjdk/lib/security/cacerts:ro
 ```
 
-Die Kopie muss für die Kennung `65532` **lesbar** sein, unter der das Backend läuft — bei einer
-restriktiven `umask` beim Erzeugen (etwa `077`) ist sie es nicht, und der Start bricht mit einer
-Meldung über den Truststore ab. Ein `chmod 644 ./cacerts` genügt; siehe [„Nicht-root-Betrieb des
-Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+Die Kopie muss für `65532` **lesbar** sein; bei einer restriktiven `umask` (etwa `077`) ist sie es
+nicht, und der Start bricht mit einer Meldung über den Truststore ab — `chmod 644 ./cacerts` genügt.
+Nach einem Image-Update mit neuen öffentlichen Wurzelzertifikaten ist der Schritt zu wiederholen:
+Die gemountete Kopie überdeckt den Stand des Images.
 
-Der Schritt ist nach einem Image-Update zu wiederholen, sobald die Laufzeit neue öffentliche
-Wurzelzertifikate mitbringt: Die gemountete Kopie überdeckt den Stand des Images.
+## Diagnose im Container
 
-## Diagnose ohne Shell
+Was die Actuator-Pfade zeigen, steht unter [Diagnose ohne Shell](betrieb.md#diagnose-ohne-shell).
+Für den Container selbst:
 
 ```bash
 docker compose logs -f backend                       # Logs
@@ -445,11 +361,10 @@ docker cp <container>:/app/uploads ./uploads-kopie   # Dateien aus dem Container
 docker run --rm -it --network container:<container> nicolaka/netshoot   # Netzwerkdiagnose im selben Netz
 ```
 
-> **`docker cp … /app/uploads` gilt nur für die Dateisystem-Ablage.** Mit `OPAA_UPLOAD_STORE=s3`
-> liegen die hochgeladenen Originale im Objektspeicher; das Verzeichnis im Container ist dann leer
-> oder trägt nur noch einen Altbestand aus der Zeit davor, und der Befehl kopiert genau das, ohne
-> Hinweis. Wie ein Original in diesem Fall greifbar wird, steht unter
-> [Originalablage](#originalablage).
+`docker cp … /app/uploads` gilt nur für die Ablage im Dateisystem; mit `OPAA_UPLOAD_STORE=s3` ist das
+Verzeichnis leer oder trägt einen Altbestand, und der Befehl kopiert genau das, ohne Hinweis
+([Originalablage](originalablage.md#was-im-objektspeicher-liegt)). `docker cp` läuft über den
+Docker-Daemon, nicht unter der Kennung des Containers.
 
 Thread- und Heap-Dump ohne Shell:
 
@@ -461,182 +376,145 @@ docker run --rm -v <projekt>_opaa-backend-tmp:/t busybox rm -f /t/heap.hprof   #
 docker kill -s QUIT <container>   # Alternative: Thread-Dump ins Log, braucht nichts im Image
 ```
 
-Der Dump muss mit absolutem Pfad unter `/tmp` liegen, weil das übrige Dateisystem nur lesbar ist.
-Er enthält Geheimnisse und Inhalte und bleibt im Volume `opaa-backend-tmp` liegen, bis er entfernt
-wird; deshalb die dritte Zeile.
-
-`docker kill -s QUIT` beendet den Container **nicht** — die JVM behandelt `SIGQUIT` als Aufforderung,
-einen Thread-Dump auf die Standardausgabe zu schreiben, er landet also in `docker compose logs`.
-
-Ein `docker compose logs backend` beantwortet die überwiegende Mehrheit der Fälle, in denen früher
-eine Shell benutzt wurde. Für alles Weitere lässt sich ein Werkzeug-Container in denselben Netzwerk-
-oder PID-Namensraum hängen (`--network container:…`, `--pid container:…`), ohne dass das
-Laufzeitimage selbst Werkzeuge mitbringen muss.
+Der Dump liegt mit absolutem Pfad unter `/tmp`, weil das übrige Dateisystem nur lesbar ist; er
+enthält Geheimnisse und Inhalte und bleibt im Volume, bis er entfernt wird — deshalb die vierte Zeile.
+`docker exec` auf `jcmd` läuft ohne `--user` unter derselben Kennung wie der Prozess und darf sich
+deshalb an ihn hängen. `docker kill -s QUIT` beendet den Container **nicht**: Die JVM schreibt
+daraufhin einen Thread-Dump in `docker compose logs`. Für alles Weitere lässt sich ein
+Werkzeug-Container in denselben Netzwerk- oder PID-Namensraum hängen (`--network container:…`,
+`--pid container:…`).
 
 ## Härtung des Compose-Stapels
 
-Der mitgelieferte Compose-Stack (`docker-compose.yml`, `keycloak/realm-export.json`) ist ausdrücklich für
-die **lokale Entwicklung** gebaut, wie der Warnhinweis am Kopf von `docker-compose.yml` sagt. Seine
-Vorgabewerte sind dafür richtig gewählt — bequem, ohne Ersteinrichtung nutzbar, mit einem funktionierenden
-OIDC-Realm ab dem ersten Start. Für eine **öffentlich oder auch nur aus einem größeren Netz erreichbare
-Instanz** ist jeder dieser Vorgabewerte ein Problem, und der Warnhinweis allein sagt nicht, was konkret zu
-tun ist. Dieser Abschnitt schließt genau diese Lücke — die Doku, nicht der Betrieb. Die öffentliche
-Demo-Instanz des Projekts ist ein so gehärtetes Beispiel: alle Container-Ports auf `127.0.0.1`, ein
-TLS-terminierender nginx auf dem Host davor, Keycloak unter dem Unterpfad `/idp`, der Entwicklungsnutzer
-`testuser` deaktiviert, das Passwort des Administrationskontos nach jedem Seed-Lauf rotiert, der
-Client `opaa-seed` nur für die Dauer eines Seed-Laufs aktiviert und das Dienstkonto `opaa-directory`
-des Verzeichnisabgleichs mit einem eigenen, zufällig erzeugten Geheimnis statt des Vorgabewerts.
+Die Vorgaben des Stapels (`docker-compose.yml`, `keycloak/realm-export.json`) sind für die lokale
+Entwicklung gewählt: ohne Ersteinrichtung nutzbar, mit funktionierendem Keycloak-Realm ab dem ersten
+Start. Für eine erreichbare Installation ist jede davon ein Problem. Was allgemein gilt, steht unter
+[Härtung](betrieb.md#härtung-für-erreichbare-deployments), was den mitgelieferten Keycloak betrifft,
+unter [Authentifizierung](authentifizierung.md#härtung-des-mitgelieferten-keycloak). Für den Stapel
+selbst:
 
-Die folgende Liste geht die neun tatsächlich im Repository liegenden Vorgabewerte durch. Wo eine
-Gegenmaßnahme **zwingend** ist, steht das dabei; alles andere ist eine Empfehlung, deren Unterlassung
-begründet werden sollte, kein hartes Muss.
+| Vorgabe | Risiko bei erreichbarem Betrieb | Gegenmaßnahme |
+|---|---|---|
+| `postgres` und `backend` binden an `127.0.0.1`, `frontend` und `keycloak` an allen Schnittstellen | Loopback schützt vor dem Netz, nicht vor anderen Prozessen und Konten desselben Hosts; über den Backend-Port ließe sich `X-Forwarded-For` am Frontend vorbei setzen. Die beiden anderen Ports sind ohne Firewall aus dem Netz erreichbar, bei `keycloak` samt Admin-Konsole | Hinter einem Reverse-Proxy alle Ports an `127.0.0.1:` binden — für `keycloak` **zwingend**, für `frontend` empfohlen. Die `ports:`-Zuordnung von `postgres` ganz entfernen; das Backend erreicht die Datenbank im Compose-Netz. Für die lokale Entwicklung bleiben die Bindungen sinnvoll |
+| Zugangsdaten des mitgelieferten Objektspeichers (`opaa-uploads`/`OpaaUploads!2026`, Profil `upload-s3`) | Die Originale aller hochgeladenen Dokumente sind mit Zugangsdaten geschützt, die im Repository stehen | **Zwingend** außerhalb einer Erprobung: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Shell-Umgebung, dieselben als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker`. Im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit Verschlüsselung ruhender Daten und Versionierung der Regelfall |
+| `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` leer | Alle Clients teilen hinter dem Frontend-nginx einen Zähler | die feste Adresse des Frontend-Containers als `/32` eintragen, wie in `.env.docker.example` ([Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse)) |
 
-| # | Fundstelle | Vorgabewert | Risiko bei erreichbarem Betrieb | Gegenmaßnahme |
-|---|---|---|---|---|
-| 5 | `docker-compose.yml:20`, `43`, `59`, `77` | `postgres` und `backend` (8081) binden auf `127.0.0.1`; `frontend` (3000) und `keycloak` (8180) veröffentlichen ihre Ports ohne Adressangabe und binden damit auf allen Schnittstellen | Auf `127.0.0.1` gebunden schützt vor Zugriff aus dem Netz, aber nicht vor jedem anderen Prozess und Nutzerkonto auf demselben Host (beim Backend-Port wäre eine direkte Verbindung aus dem Netz zudem der Weg, `X-Forwarded-For` am Frontend-nginx vorbei zu setzen). Die übrigen zwei Ports sind dagegen aus dem Netz erreichbar, sobald keine Firewall davorsteht — bei `keycloak` ist das der konkrete Ausnutzungsweg zu Punkt 3: Die Admin-Konsole wäre netzweit ansprechbar, unabhängig davon, ob ein vorgelagerter Reverse-Proxy nur bestimmte Pfade durchreicht | Hinter einem Reverse-Proxy alle Ports auf `127.0.0.1:` binden, so wie es `postgres` und `backend` bereits vormachen — für `keycloak` **zwingend** (sonst bleibt die Admin-Konsole trotz Proxy direkt aus dem Netz erreichbar), für `frontend` **empfohlen** (der Reverse-Proxy ist dann der einzige Weg). Für `postgres` **empfohlen**, die `ports:`-Zuordnung für den erreichbaren Betrieb ganz zu entfernen statt sie nur auf Loopback zu binden — Backend und `postgres` erreichen sich ohnehin über das interne Compose-Netz (Servicename `postgres`), ein Host-Port wird dafür nicht gebraucht. Für lokale Entwicklung (Anschluss mit einem Datenbank-Client vom Host aus, direkter Aufruf der Admin-Konsole) bleiben die bisherigen Bindungen dagegen sinnvoll — deshalb sind sie dort nicht als Fehler markiert |
-| 7 | `docker-compose.yml` (Service `upload-store`, nur Compose-Profil `upload-s3`) | Root-Zugangsdaten des mitgelieferten Objektspeichers der Originalablage als Compose-Vorgabe (`opaa-uploads`/`OpaaUploads!2026`), dieselben Werte auskommentiert in `.env.docker.example` | Wer das Profil in einem erreichbaren Betrieb nutzt und die Vorgabe behält, schützt die Originale **aller** hochgeladenen Dokumente mit Zugangsdaten, die im Repository stehen. Die S3-API ist zwar nur an `127.0.0.1` gebunden — das schützt vor dem Netz, aber nicht vor anderen Prozessen und Konten auf demselben Host | **Zwingend**, sobald das Profil außerhalb einer Erprobung läuft: eigene Werte über `OPAA_UPLOAD_STORE_ROOT_USER`/`OPAA_UPLOAD_STORE_ROOT_PASSWORD` in `.env` oder der Prozessumgebung setzen (nicht in `.env.docker`, siehe Punkt 3) und dieselben Werte als `OPAA_UPLOAD_S3_ACCESS_KEY`/`OPAA_UPLOAD_S3_SECRET_KEY` in `.env.docker` eintragen. Der mitgelieferte Dienst ist als Erprobungs- und Umstellungsziel gedacht; im erreichbaren Betrieb ist ein hauseigener Objektspeicher mit eigenen Zugangsdaten, Verschlüsselung ruhender Daten und Versionierung der Regelfall (siehe [„Originalablage"](#originalablage)) |
+Eine eigene `docker-compose.prod.yml` gibt es nicht. Mehrere Maßnahmen verlangen eine Änderung am
+Realm-Export, einen Schritt nach der Ersteinrichtung oder eine externe Datenbank für Keycloak — eine
+zweite Compose-Datei würde nur die Port-Bindungen automatisieren.
 
-**Es gibt keine separate `docker-compose.prod.yml`.** Mehrere der Fundstellen verlangen eine
-Änderung an `keycloak/realm-export.json` (kein Compose-Override kann Inhalte einer importierten
-JSON-Datei patchen, ohne selbst wieder ein Geheimnis oder einen Generierungsschritt einzuführen), einen
-echten Bootstrap-Vorgang (Passwort **nach** der Ersteinrichtung ändern) bzw. eine externe, persistente
-Datenbank für Keycloak (eine Betriebsentscheidung, keine Compose-Konstante). Eine zweite Compose-Datei
-würde nur die Port-Bindungen automatisieren und für den Rest auf genau diese Anleitung verweisen.
+Ein gehärtetes Beispiel ist die öffentliche Demo-Instanz des Projekts: alle Ports an `127.0.0.1`, ein
+TLS-terminierender nginx auf dem Host, Keycloak unter dem Unterpfad `/idp`, der Entwicklungsnutzer
+`testuser` deaktiviert, das Passwort des Keycloak-Administrators nach jedem Befüllen rotiert, der
+Client `opaa-seed` nur für die Dauer des Befüllens aktiviert und der Verzeichniszugang mit eigenem
+Geheimnis.
 
-## Aktualisierung auf einen neuen `main`-Stand
+## Sicherung und Wiederherstellung
 
-Die CI baut bei jedem Push auf `main` — und unabhängig davon einmal wöchentlich montags — neue
-`ghcr.io/criew/opaa-backend`- und `ghcr.io/criew/opaa-frontend`-Images und veröffentlicht sie mit den
-Tags `main` und `sha-<commit>` in der GHCR-Registry (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr) oben).
-Der wöchentliche Lauf ändert den Code nicht, wohl aber den Digest: Er zieht die inzwischen
-veröffentlichten OS-Sicherheitsupdates nach. Ein `docker compose pull` bringt deshalb auch dann einen
-neuen Stand, wenn seit dem letzten Mal nichts committet wurde.
-
-Ein Deployment-Skript, das genau das tut — die aktuellen Images ziehen und den Stack auf den neuen
-Stand bringen —, ist eine naheliegende Automatisierung für eine erreichbare Instanz; die öffentliche
-Demo-Instanz des Projekts läuft so, mit einem täglichen Cron-Aufruf und rotiertem Protokoll.
-Ein solcher Wrapper sollte einen Schalter, der zusätzlich die Volumes verwirft, klar von der
-regulären Aktualisierung trennen — damit ist die Datenbank und mit ihr der gesamte Index weg, das ist
-also kein Aktualisierungs-, sondern ein Neuaufsetzschritt; danach ist zwingend eine vollständige
-Neuindizierung nötig.
-
-### Vorbereitungsschritte für Bestandsinstallationen
-
-Welche Schritte ein Release verlangt, nennen seine Notizen im Abschnitt „Vorbereitung für
-Bestandsinstallationen“ (siehe [Deployment aus vorgebauten Images](#deployment-aus-vorgebauten-images-ghcr));
-für Einzelheiten verweisen sie auf dieses Kapitel. Den Ablauf unter Kubernetes beschreibt das
-Kapitel [Kubernetes](kubernetes.md#aktualisierung-und-rückweg).
-
-**Ein Update auf einen Stand mit lokaler Benutzerverwaltung verlangt eine Vorbereitung.** Die
-Punkte 1 bis 4 werden einmalig in der `.env.docker` erledigt; ohne sie startet das Backend nicht
-mehr. Punkt 5 betrifft nicht die Konfiguration, sondern die Eigentumsverhältnisse auf dem Host —
-ohne ihn startet das Backend zwar, aber der erste Upload schlägt fehl. Punkt 6 betrifft die
-Compose-Datei selbst — ohne ihn ist die Oberfläche nicht mehr erreichbar. Alle Schritte gehören
-**vor** das `docker compose up -d`:
-
-1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Das Wurzelgeheimnis des anwendungseigenen
-   Ausstellers. Im Betriebsmodus `oidc` bricht der Start ohne es ab, ebenso bei weniger als 32
-   Zeichen oder einem erkannten Platzhalter (`change_me`, `secret`, …). Erzeugen mit:
-
-   ```bash
-   openssl rand -base64 48
-   ```
-
-   Der Wert gehört zu den Geheimnissen der Installation: Eine Rotation beendet alle lokalen
-   Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks.
-
-2. **`OPAA_INITIAL_ADMIN_EMAIL` auf ein zustellbares Postfach setzen — Pflicht, sobald ein
-   Systemverwalterkonto gebraucht wird.** Der frühere Vorgabewert `admin@opaa.local` wird abgelehnt;
-   OPAA legt dann kein Konto an und sagt das im Log. Am besten ein Funktionspostfach der IT. Siehe
-   [„Erststart und Systemverwalter-Konto"](#erststart-und-systemverwalter-konto) unten — auf einer
-   Bestandsinstallation entsteht das Konto **ohne** Passwort und wird bei Bedarf über die
-   Notfallprozedur aktiviert.
-
-3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen — dringend empfohlen, sobald ein Reverse-Proxy vor
-   dem Backend steht**, und der nginx des Frontend-Containers ist bereits einer. Eingetragen wird die
-   **feste Adresse des Frontend-Containers als `/32`**, nicht das ganze Compose-Netz;
-   `.env.docker.example` zeigt den Wert. Ohne ihn teilen alle Clients einen Zähler: Die Anmeldegrenze
-   gilt dann für das ganze Haus, und die Netzbeschränkung lokaler Systemverwalter sieht nur den Proxy.
-   Der Start schreibt bei leerem Wert eine Warnung mit genau dieser Folge ins Log. Einzelheiten unter
-   [„Härtung für erreichbare Deployments"](#härtung-für-erreichbare-deployments).
-
-4. **`OPAA_PUBLIC_BASE_URL` setzen — empfohlen, Pflicht für Einladungen per Mail.** Die öffentliche
-   Adresse der Installation; sie steht in jedem Link einer Mail. Ohne sie lassen sich „Passwort
-   vergessen" und Selbstregistrierung nicht einschalten, und Einladungslinks werden zur Übergabe
-   angezeigt statt versendet. Siehe [„E-Mail-Versand (SMTP)"](#e-mail-versand-smtp). Ein Zugang mit
-   der Anmeldeart OAuth braucht sie ebenfalls: Der Anbieter schickt die Person nach der Zustimmung an
-   `{OPAA_PUBLIC_BASE_URL}/connections/callback` zurück (siehe [„Netzwerkzugang"](#netzwerkzugang)).
-
-5. **`uploads/` der Kennung `65532` übergeben — Pflicht, solange die Originale im Dateisystem
-   liegen** (`OPAA_UPLOAD_STORE` nicht auf `s3`). Das Backend läuft im Container nicht mehr als
-   `root`; ein Verzeichnis, das bisher `root` gehörte, ist für es dann nicht mehr beschreibbar, und
-   der erste Upload nach dem Update endet mit `500`. Der Schritt ändert nur Eigentümer, keine
-   Inhalte:
-
-   ```bash
-   sudo chown -R 65532:65532 uploads
-   ```
-
-   **Ebenfalls prüfen, weil `root` bisher jede Leseberechtigung umging:** ob `documents/`, jedes
-   über `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis und ein eigenes
-   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` für `65532` zugänglich sind. Ein eigenes
-   `OPAA_UPLOAD_S3_TEMP_DIRECTORY` oder `OPAA_INDEXING_S3_TEMP_DIRECTORY` muss zudem auf einem
-   eingehängten Volume oder unter `/tmp` liegen: Das übrige Dateisystem des Containers ist nur lesbar.
-   Ein Verstoß zeigt sich erst beim ersten Upload bzw. beim ersten Lauf einer S3-Bibliothek, nicht
-   beim Start. Einzelheiten, der Weg ohne `sudo`,
-   die Lage auf einem Netzlaufwerk und die Fehlermeldungen, an denen man es erkennt, stehen unter
-   [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
-
-6. **Containerport des Frontends von `80` auf `8080` umstellen — Pflicht für jede eigene
-   Compose-Datei.** Der Frontend-Container läuft nicht mehr als `root` und lauscht deshalb auf
-   `8080`. Eine Compose-Datei, die nicht aus diesem Repository stammt, etwa nach
-   [„Deployment aus vorgebauten Images"](#deployment-aus-vorgebauten-images-ghcr), bildet noch auf
-   `80` ab. Nach dem nächsten Pull antwortet der Host-Port dann nicht mehr, und ein vorgeschalteter
-   Proxy meldet `502`. Umzustellen sind:
-
-   - die Port-Abbildung des Dienstes `frontend`, etwa `"127.0.0.1:3000:80"` zu
-     `"127.0.0.1:3000:8080"`,
-   - ein eigener Proxy, der den Container im Docker-Netz direkt anspricht, von `frontend:80` auf
-     `frontend:8080`.
-
-   Einzelheiten stehen unter [„Frontend-Laufzeitimage"](#frontend-laufzeitimage).
-
-Was sich **nicht** ändert: Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind. Wer
-bisher einen Identitätsanbieter betreibt, betreibt ihn unverändert weiter; die lokale
-Benutzerverwaltung bleibt ausgeschaltet, bis sie jemand einschaltet. Die eine inhaltliche Änderung am
-Bestand: **`OPAA_INITIAL_ADMIN_EMAIL` macht kein Konto eines Identitätsanbieters mehr zum
-Systemverwalter** — bereits vergebene Rollen bleiben, die Regel griff nur beim Anlegen eines Kontos.
-
-Ohne ein solches Skript entspricht der Ablauf diesen Schritten, ausgeführt im Verzeichnis mit der `docker-compose.yml`:
+Was zu sichern ist und in welcher Reihenfolge, steht unter
+[Sicherung und Wiederherstellung](betrieb.md#sicherung-und-wiederherstellung). Im Stapel, bei
+angehaltenem Backend (`docker compose stop backend`):
 
 ```bash
-docker compose pull          # neue Images aus GHCR holen
+# Datenbank sichern
+docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > opaa-db.dump
+
+# Originale sichern (Ablage im Dateisystem)
+tar -C uploads -cf opaa-uploads.tar .
+```
+
+Dazu `.env.docker`, eine `.env` und eine eigene `docker-compose.yml`. Mit dem mitgelieferten
+Objektspeicher sichert man den Bucket über dessen Werkzeuge, etwa `mc mirror`
+([Originalablage](originalablage.md#eine-laufende-installation-auf-den-objektspeicher-umstellen)).
+
+Zurückspielen in umgekehrter Reihenfolge, das Backend bleibt bis zum Schluss angehalten:
+
+```bash
+# Originale zurückspielen und das Eigentum zurückgeben
+tar -C uploads -xf opaa-uploads.tar
+sudo chown -R 65532:65532 uploads
+
+# Datenbank leeren, neu anlegen, Sicherung einspielen
+docker compose exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" &&
+  createdb -U "$POSTGRES_USER" "$POSTGRES_DB" &&
+  pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --exit-on-error' < opaa-db.dump
+```
+
+Danach `OPAA_AUTH_JWT_SECRET` in `.env.docker` ersetzen und erst dann `docker compose up -d backend`
+([Nacharbeit nach einer Rücksicherung](authentifizierung.md#nacharbeit-nach-einer-rücksicherung-der-datenbank)).
+
+## Aktualisierung auf einen neuen Stand
+
+Im Verzeichnis mit der `docker-compose.yml`:
+
+```bash
+docker compose pull          # neue Images holen
 docker compose up -d         # Container mit den neuen Images neu erstellen
 docker image prune -f        # optional: verdrängte Images aufräumen
 ```
 
-`docker compose up -d` ersetzt nur die Container, deren Image sich geändert hat; die übrigen laufen weiter. Ein `docker compose restart` genügt **nicht** — es verwendet den vorhandenen Container samt altem Image erneut.
-
-Zustand danach prüfen:
+`up -d` ersetzt nur die Container, deren Image sich geändert hat. `docker compose restart` genügt
+**nicht**: Es startet den vorhandenen Container samt altem Image. Zustand danach:
 
 ```bash
 docker compose ps
 docker compose logs -f backend
 ```
 
-> **Service- statt Containernamen verwenden.** Alle Befehle oben sprechen den **Servicenamen** aus der Compose-Datei an (`backend`, `frontend`, `postgres`), nicht einen Containernamen. Das ist der robustere Weg: Wie die Container tatsächlich heißen, hängt davon ab, ob die jeweilige Compose-Datei `container_name` setzt und wie das Compose-Projekt heißt — beides unterscheidet sich zwischen der Testinstanz, lokalen Entwicklungsstacks und der E2E-Suite. `docker compose logs backend` funktioniert in allen dreien, `docker logs <name>` nur in einem.
+Der Stand `main` bekommt bei jedem Push und wöchentlich neue Images; ein `pull` bringt deshalb auch
+ohne neuen Commit einen neuen Stand mit Sicherheitsupdates ([Images und Versionen](betrieb.md#images-und-versionen)).
+Ein Skript, das genau diese Schritte regelmäßig ausführt, ist eine naheliegende Automatisierung; so
+läuft die öffentliche Demo-Instanz, täglich per Cron. Ein solches Skript trennt einen Schalter, der
+zusätzlich die Volumes verwirft, klar vom regulären Lauf: Das ist kein Update, sondern ein
+Neuaufsetzen mit vollständiger Neuindizierung.
 
-### Migrationen aus älteren Ständen
+Was ein Update mit dem Index macht, steht unter
+[Aktualisierung](betrieb.md#was-ein-update-mit-dem-index-macht).
 
-**Neu aufsetzen: Datenbank-Baseline je Modul (seit Ende September 2026).** OPAA legt sein Schema mit
-Liquibase an und verzeichnet in der Tabelle `databasechangelog`, welche Changesets gelaufen sind. Die
-Historie ist zu einer neuen Baseline zusammengefasst, und die Changesets liegen in einem Verzeichnis
-je Modul (`db/changelog/foundation/` bis `db/changelog/external/`). Zu einer Datenbank, die vor diesem
-Stand angelegt wurde, passt diese Liste nicht mehr: Liquibase spielte die Baseline in eine Datenbank
-ein, deren Tabellen schon existieren, und das Backend startet nicht. Das gilt auch für eine
-Installation, die erst mit der zusammengefassten Baseline angelegt wurde, solange diese noch in einer
-einzigen Datei lag. **Eine solche Installation lässt sich nicht aktualisieren, sondern nur neu
-aufsetzen.** Ob sie betroffen ist, zeigt vor dem Update:
+### Vorbereitungsschritte für Bestandsinstallationen
+
+Welche Schritte ein Release verlangt, nennen seine Notizen im Abschnitt „Vorbereitung für
+Bestandsinstallationen"; für Einzelheiten verweisen sie hierher. Eine `.env.docker` oder eine eigene
+Compose-Datei aus einem älteren Stand braucht diese Punkte, alle **vor** dem `docker compose up -d`.
+Ohne Punkt 1 startet das Backend nicht, ohne Punkt 2 entsteht kein Systemverwalterkonto, ohne
+Punkt 5 scheitert der erste Upload, ohne Punkt 6 ist die Oberfläche nicht erreichbar:
+
+1. **`OPAA_AUTH_JWT_SECRET` setzen — Pflicht.** Im Betriebsmodus `oidc` bricht der Start ohne es ab,
+   ebenso bei weniger als 32 Zeichen oder einem Platzhalter. Erzeugen mit `openssl rand -base64 48`
+   ([Schlüssel und Geheimnisse](betrieb.md#schlüssel-und-geheimnisse)).
+2. **`OPAA_INITIAL_ADMIN_EMAIL` auf ein zustellbares Postfach setzen**, am besten ein
+   Funktionspostfach der IT. Der frühere Vorgabewert `admin@opaa.local` wird abgelehnt; OPAA legt dann
+   kein Systemverwalterkonto an und sagt das im Log
+   ([Erststart](authentifizierung.md#erststart-und-systemverwalter-konto)).
+3. **`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` setzen**, sobald ein Proxy vor dem Backend steht — und der
+   nginx des Frontend-Containers ist einer. Eingetragen wird seine feste Adresse als `/32`; ohne sie
+   gilt die Anmeldegrenze für das ganze Haus ([Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse)).
+4. **`OPAA_PUBLIC_BASE_URL` setzen** — empfohlen, Pflicht für Einladungen per Mail und für Zugänge
+   mit Anmeldeart OAuth: Sie steht in jedem Link einer Mail und bildet die Rücksprungadresse
+   `{OPAA_PUBLIC_BASE_URL}/connections/callback` ([E-Mail-Versand](e-mail.md)).
+5. **`uploads/` der Kennung `65532` übergeben**, solange die Originale im Dateisystem liegen:
+   `sudo chown -R 65532:65532 uploads`. Ebenfalls prüfen: ob `documents/`, jedes über
+   `OPAA_INDEXING_FILESYSTEM_ALLOWLIST` freigegebene Verzeichnis und ein eigenes Temp-Verzeichnis für
+   `65532` zugänglich sind; ein eigenes Temp-Verzeichnis liegt auf einem eingehängten Volume oder unter
+   `/tmp`. Ein Verstoß zeigt sich erst beim ersten Upload bzw. Lauf
+   ([Nicht-root-Betrieb](#nicht-root-betrieb-des-backend-containers)).
+6. **Containerport des Frontends auf `8080`** in jeder eigenen Compose-Datei: die Port-Abbildung des
+   Dienstes `frontend` (etwa `"127.0.0.1:3000:8080"`) und ein eigener Proxy im Docker-Netz
+   (`frontend:8080`). Bildet sie noch auf `80` ab, antwortet der Host-Port nicht, und ein
+   vorgeschalteter Proxy meldet `502`. Die `docker-compose.yml` des Repositorys tut das bereits.
+
+Bestehende Konten, Rollen, Rechte und der Index bleiben, wie sie sind; ein Identitätsanbieter läuft
+unverändert weiter, und die lokale Benutzerverwaltung bleibt aus, bis sie jemand einschaltet. Die
+Ausnahme: `OPAA_INITIAL_ADMIN_EMAIL` macht kein Konto eines Identitätsanbieters mehr zum
+Systemverwalter; bereits vergebene Rollen bleiben.
+
+### Neu aufsetzen statt aktualisieren
+
+Fassen die Notizen eines Release die Schemahistorie zu einer neuen Baseline zusammen, lässt sich eine
+ältere Datenbank nicht aktualisieren, sondern nur neu aufsetzen. So ist es beim Stand von Ende
+September 2026: Die Baseline liegt seitdem je Modul (`db/changelog/foundation/` bis
+`db/changelog/external/`), und eine Datenbank von vorher startet nicht. Ob eine Installation betroffen
+ist, zeigt vor dem Update:
 
 ```bash
 docker compose exec postgres psql -U opaa -d opaa -tAc \
@@ -645,69 +523,69 @@ docker compose exec postgres psql -U opaa -d opaa -tAc \
 ```
 
 `1` heißt: nicht betroffen. `0` heißt: neu aufsetzen. Die Abfrage prüft Kennung, Autor **und** Datei,
-weil Liquibase ein Changeset an genau diesen drei Werten wiedererkennt: Liegt dasselbe Changeset
-später in einer anderen Datei, gilt es für Liquibase als neu, und eine Prüfung nur der Kennung meldete
-eine betroffene Installation als nicht betroffen. Ändert ein Stand die Ablage der Baseline, ändert er
-diese Abfrage mit. Neu aufsetzen geht so:
+weil die Migration einen Schritt an genau diesen drei Werten wiedererkennt. Neu aufsetzen:
 
 1. **Was in der Datenbank liegt, geht verloren** — Konten, Anbieter, Gruppen, Bibliotheken samt
    Konfiguration und Rechten, Chats, Nachweisprotokoll und Rechtehistorie. Ein Dump des alten Stands
    lässt sich nicht in den neuen einspielen; wer Inhalte nachschlagen will, zieht ihn trotzdem vorher.
-   Die Konfiguration in `.env.docker` und der Korpus im Dateisystem bleiben.
-2. Stapel anhalten und **nur** das Datenbank-Volume verwerfen:
+   `.env.docker` und der Korpus bleiben.
+2. Stapel anhalten und **nur** das Datenbank-Volume verwerfen, nicht alle mit `down -v`:
 
    ```bash
    docker compose down
    docker volume rm <projekt>_opaa-postgres-data
    ```
 
-   `<projekt>` ist der Name des Compose-Projekts, ohne eigene Angabe der Name des Verzeichnisses mit
-   der `docker-compose.yml`; `docker volume ls | grep opaa-postgres-data` zeigt den genauen Namen.
-   **Nicht** `docker compose down -v`: Das verwirft alle Volumes des Stapels, auch
-   `<projekt>_opaa-ollama-data` mit den heruntergeladenen Modellen. Das Volume
-   `<projekt>_opaa-backend-tmp` mit Arbeitsdateien des alten Stands kann im selben Zug mit
-   `docker volume rm` verworfen werden.
-3. Die abgelegten Originale der alten Bibliotheken entfernen — das Verzeichnis `uploads/` bei
-   Ablage im Dateisystem, den Inhalt des Buckets bei Ablage im Objektspeicher; beim mitgelieferten
-   Objektspeicher genügt `docker volume rm <projekt>_opaa-upload-store-data` (vorher mit
-   `docker compose --profile upload-s3 down` auch dessen Container anhalten). Sonst bleiben
-   Originale liegen, auf die keine Zeile mehr zeigt (siehe
-   [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen)).
-4. `docker compose pull && docker compose up -d`. Der erste Start legt das Schema neu an, übernimmt
-   den Anbieter aus `OPAA_OIDC_*` und legt das Konto der Systemverwaltung an (siehe
-   [„Erststart und Systemverwalter-Konto"](#erststart-und-systemverwalter-konto)).
+   `docker volume ls | grep opaa-postgres-data` zeigt den genauen Namen. Das Volume
+   `<projekt>_opaa-backend-tmp` kann im selben Zug verworfen werden.
+3. Die Originale der alten Bibliotheken entfernen — `uploads/` bei Ablage im Dateisystem, den Inhalt
+   des Buckets beim Objektspeicher; beim mitgelieferten genügt nach
+   `docker compose --profile upload-s3 down` ein `docker volume rm <projekt>_opaa-upload-store-data`.
+   Sonst bleiben Originale liegen, auf die nichts mehr zeigt.
+4. `docker compose pull && docker compose up -d`. Der erste Start legt das Schema an, übernimmt den
+   Anbieter aus `OPAA_OIDC_*` und legt das Konto der Systemverwaltung an.
 5. Bibliotheken neu anlegen und indizieren.
+
+Variablen, die seit älteren Ständen entfallen sind, nennt die
+[Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen); eine übernommene `.env.docker`
+wird daraufhin geprüft.
 
 ## Fehlerbehebung
 
-### Backend gibt leere Antworten oder "Connection refused" zurück
+### Backend gibt leere Antworten oder „Connection refused" zurück
 
-Das Backend bindet standardmäßig an `localhost`, was nur von innerhalb des Containers erreichbar ist. `OPAA_SERVER_ADDRESS=0.0.0.0` in `.env.docker` setzen.
+Das Backend bindet ohne Angabe an `localhost`, was nur innerhalb des Containers erreichbar ist.
+`OPAA_SERVER_ADDRESS=0.0.0.0` in `.env.docker` setzen.
 
 ### POST-Anfragen geben 403 Forbidden zurück
 
-CORS ist wahrscheinlich falsch konfiguriert. Sicherstellen, dass `OPAA_CORS_ALLOWED_ORIGINS` mit der Frontend-URL übereinstimmt (z. B. `http://localhost:3000`). GET-Anfragen können funktionieren, weil sie keinen CORS-Preflight auslösen, während POST-Anfragen mit `Content-Type: application/json` dies tun.
+CORS passt nicht: `OPAA_CORS_ALLOWED_ORIGINS` muss die Adresse des Frontends nennen (etwa
+`http://localhost:3000`). GET-Anfragen funktionieren trotzdem, weil sie keinen CORS-Preflight auslösen.
 
-### PostgreSQL: "Passwort-Authentifizierung für Benutzer fehlgeschlagen"
+### PostgreSQL: „Passwort-Authentifizierung für Benutzer fehlgeschlagen"
 
-Betrifft die **Datenbank**, nicht ein Benutzerkonto von OPAA: Das PostgreSQL-Volume enthält noch Daten von einer früheren Initialisierung mit anderen Anmeldeinformationen. `docker compose down -v` ausführen, um das Volume zu entfernen und neu zu starten.
+Betrifft die **Datenbank**, kein Konto von OPAA: Das Volume stammt aus einer früheren Initialisierung
+mit anderen Zugangsdaten ([Datenbank im Stapel](#datenbank-im-stapel)).
 
-### `docker exec` in den Backend-Container schlägt mit "executable file not found" fehl
+### `docker exec` in den Backend-Container schlägt mit „executable file not found" fehl
 
-Das Backend-Laufzeitimage enthält keine Shell (siehe [Backend-Laufzeitimage](#backend-laufzeitimage)).
-Statt `docker exec … sh` die dort beschriebenen Wege nutzen: Logs, `/actuator`, `docker cp` oder einen
-Werkzeug-Container im selben Netzwerk-Namensraum.
+Das Image enthält keine Shell; die Wege ohne Shell stehen unter
+[Diagnose im Container](#diagnose-im-container).
 
 ### Jeder Upload endet mit „Interner Serverfehler" und `AccessDeniedException: /app/uploads/…`
 
-Das Host-Verzeichnis hinter `/app/uploads` gehört nicht der Kennung `65532`, unter der das Backend
-im Container läuft — meist, weil Docker es beim ersten Start selbst angelegt hat. Behebung mit
-`chown` oder einem `user:`-Eintrag, beides unter [„Nicht-root-Betrieb des
-Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
+Das Host-Verzeichnis gehört nicht der Kennung `65532` — meist, weil Docker es selbst angelegt hat.
+Behebung unter [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers).
 
 ### Umgebungsvariablen-Änderungen treten nicht in Kraft
 
-Nach dem Ändern von `.env.docker` `docker compose up -d <service>` (nicht `restart`) verwenden, um den Container mit der neuen Umgebung neu zu erstellen. `restart` verwendet den vorhandenen Container erneut und ignoriert `.env.docker`-Änderungen.
+`docker compose up -d <service>` statt `restart` verwenden; `restart` behält die alte Umgebung.
+
+### Der Container meldet `137`
+
+`docker inspect --format '{{.State.OOMKilled}}' <container>` zeigt, ob die Speichergrenze der Grund
+war ([Speicher und Container-Grenzen](betrieb.md#speicher-und-container-grenzen)); sonst lief die
+Stopp-Frist `OPAA_STOP_GRACE_PERIOD` ab.
 
 ## Stoppen
 

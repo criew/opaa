@@ -1,6 +1,6 @@
 # Originalablage
 
-> **Entwurf.** Dieser Abschnitt ist geschrieben und gegen den gebauten Stand geprüft, aber noch
+> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch
 > nicht abgenommen.
 
 Ein hochgeladenes Dokument wird nicht nur indiziert — sein **Original** bleibt greifbar, damit aus
@@ -18,12 +18,16 @@ das ein Dateipfad, beim Objektspeicher eine Adresse der Form `s3://<Bucket>/<Sch
 Verweis und die Bytes sind zwei Dinge: Wer das eine ohne das andere umzieht, hat eine Installation,
 die auf nicht vorhandene Originale zeigt.
 
+Welche Rolle die Originalablage neben der Datenbank spielt, steht in der
+[Betriebsübersicht](betrieb.md); einen Objektspeicher zum Erproben bringt der
+[Compose-Stapel](docker-compose.md#der-mitgelieferte-objektspeicher-im-compose-stapel) mit.
+
 ## Die drei Wege
 
 | Weg | Wofür | Was der Betrieb tut | Grenzen |
 |---|---|---|---|
 | **Verzeichnis** | kleine Installationen, Erprobung, Betrieb ohne Netzanbindung | Ein Verzeichnis bereitstellen und einhängen (`OPAA_UPLOAD_STORAGE_PATH_HOST` auf `/app/uploads`) | Wächst mit dem Volume des Wirtsystems; ohne eingehängtes Verzeichnis ist der Bestand beim Neuaufsetzen des Containers weg |
-| **Netzlaufwerk** | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren | Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt". **`chown` wirkt auf einem CIFS/SMB-Mount nicht** — das Schreibrecht der Kennung 65532 kommt dort aus den Mount-Optionen (`uid=65532,gid=65532`) oder über den `user:`-Eintrag, siehe [„Nicht-root-Betrieb des Backend-Containers"](#nicht-root-betrieb-des-backend-containers) |
+| **Netzlaufwerk** | Häuser, deren Bestände ohnehin auf einem Dateiserver liegen | Die Freigabe (SMB/NFS) auf genau dieses Verzeichnis einhängen; in OPAA nichts weiter zu konfigurieren | Rechte des Dienstkontos auf der Freigabe; ein Verbindungsabbruch erscheint als Ein-/Ausgabefehler, nicht als „Datei fehlt". **`chown` wirkt auf einem CIFS/SMB-Mount nicht** — das Schreibrecht der Kennung 65532 kommt dort aus den Mount-Optionen (`uid=65532,gid=65532`) oder über den `user:`-Eintrag, siehe [„Nicht-root-Betrieb des Backend-Containers"](docker-compose.md#nicht-root-betrieb-des-backend-containers) |
 | **Objektspeicher** | Rechenzentrumsbetrieb, große Bestände, Verschlüsselung und Versionierung aus dem Speicher | `OPAA_UPLOAD_STORE=s3` und die `OPAA_UPLOAD_S3_*`-Variablen setzen; Bucket vorher anlegen | Keine Bereichsanfragen beim Download (kein Fortsetzen eines abgebrochenen Downloads); zusätzlicher Platzbedarf für Zwischendateien; ein zweites Sicherungsziel |
 
 Die ersten beiden Wege sind für die Anwendung **derselbe** Weg: Sie sieht ein Verzeichnis und weiß
@@ -102,7 +106,7 @@ docker compose exec postgres psql -U opaa -d opaa \
 ```
 
 `file_path` nennt Bucket und Schlüssel. Damit lässt sich das Objekt in der Konsole des
-Objektspeichers ansehen (Host-Port siehe [Services](#services), Pfad `/rustfs/console/`) oder mit dem
+Objektspeichers ansehen (Host-Port siehe [Services](docker-compose.md#services), Pfad `/rustfs/console/`) oder mit dem
 Kommandozeilenwerkzeug des Speichers herausholen, etwa `aws s3 cp`. Der Weg über die Oberfläche
 bleibt der einfachere: Die Fundstelle unter einer Antwort führt zum Dokument, und dessen Original
 lädt sich dort herunter.
@@ -162,7 +166,7 @@ eingespielt wird — ein als `root` entpacktes Archiv, ein `rsync` von einem Sic
 `docker cp` —, gehört anschließend dem einspielenden Konto und nicht mehr `65532`. Das Backend
 startet dann zwar und liefert jedes Original aus, aber der nächste Upload scheitert. Ein
 abschließendes `sudo chown -R 65532:65532 uploads` schließt das ab (siehe [„Nicht-root-Betrieb des
-Backend-Containers"](#nicht-root-betrieb-des-backend-containers)).
+Backend-Containers"](docker-compose.md#nicht-root-betrieb-des-backend-containers)).
 
 Zu sichern ist außerdem die Konfiguration. Ein Verweis in der Datenbank nennt Bucket und Schlüssel,
 aber nicht, an welchem Endpunkt dieser Bucket liegt; ohne die `OPAA_UPLOAD_S3_*`-Werte ist nach
@@ -230,12 +234,9 @@ Drei Dinge sind im Betrieb wichtig:
   Bericht erneut abrufen, bis `truncated` auf `false` steht.
 - **Nach einer Umstellung der Ablage meldet der erste Bericht alles.** Wurden die Bytes umgezogen,
   aber die Verweise nicht umgeschrieben, gilt der gesamte Bestand als verwaist — erkennbar an
-  `referencedCount: 0`. Das ist das Signal, die Umstellung zu prüfen — nicht, zu löschen. Zwei
-  Vorgänge können in diesen Zustand führen, und beide sind gemeint:
-  [„Eine laufende Installation auf den Objektspeicher umstellen"](#eine-laufende-installation-auf-den-objektspeicher-umstellen)
-  für den ganzen Bestand und der
-  [Einmalschritt](#einmalschritt-einen-vor-dem-11092026-angelegten-bestand-einsortieren) für eine
-  einzelne Bibliothek, deren Bytes verschoben, deren Verweise aber noch nicht umgeschrieben wurden.
+  `referencedCount: 0`. Das ist das Signal, die
+  [Umstellung](#eine-laufende-installation-auf-den-objektspeicher-umstellen) zu prüfen — nicht, zu
+  löschen.
 
 Was der Lauf **nicht** sieht: alles, was tiefer liegt als die Ebene der Bibliothek. Die Ablage legt
 dort nie etwas an; was ein anderer Schreiber unter demselben Präfix abgelegt hat, wird deshalb weder
@@ -249,7 +250,7 @@ Schlägt das Löschen eines Originals fehl und wird die Bibliothek danach entfer
 zurück, die über keine Bibliothek mehr ansprechbar sind. Der zweite Lauf setzt deshalb nicht an der
 Bibliothek an, sondern an der Ablage: Er sieht auf der Ebene **unter der eigenen Organisation** nach
 und meldet jeden Bibliotheks-Ordner, zu dem es keine Bibliothekszeile mehr gibt. Die Organisation
-kommt vom Aufrufer und steht seit dem 11.09.2026 im Schlüssel selbst — deshalb braucht dieser Lauf
+kommt vom Aufrufer und steht im Schlüssel selbst — deshalb braucht dieser Lauf
 keine einzige Datenbankzeile, um die Mandantengrenze zu ziehen.
 
 ```bash
@@ -300,122 +301,8 @@ Vier Dinge unterscheiden diesen Lauf vom ersten:
 - **Die oberste Ebene erreicht er nicht.** Ein Eintrag direkt unter dem Upload-Pfad beziehungsweise
   dem Schlüsselpräfix ist eine Organisation; zu welcher Organisation ein Eintrag gehörte, der keine
   ist, steht nirgends mehr, und ein Lauf innerhalb einer Organisation darf ihn deshalb weder melden
-  noch löschen. Solche Einträge gibt es nur in einem vor dem 11.09.2026 angelegten Bestand — sie
-  finden sich im Abgleich mit `SELECT id FROM organizations;` und werden von Hand entfernt.
-
-## Einmalschritt: einen vor dem 11.09.2026 angelegten Bestand einsortieren
-
-Bis zu diesem Stand lag ein Original eine Ebene höher — `<Pfad>/<Bibliotheks-ID>/…` auf der Platte,
-`<Präfix><Bibliotheks-ID>/…` im Bucket. Seit dem Update steht die Organisations-ID davor. **Die
-Anwendung zieht einen vorhandenen Bestand nicht selbst nach**: Sie sucht jedes Original nur noch am
-neuen Ort, und ein Verweis in der alten Form antwortet mit „nicht gefunden". Wer eine Installation
-mit Bestand aktualisiert, führt den Schritt unten einmal aus; eine frisch aufgesetzte Installation
-braucht ihn nicht, und die Demo baut sich ohnehin bei jedem Lauf neu auf.
-
-Anders als die Umstellung zwischen den beiden Ablagen (nächster Abschnitt) ist das **keine reine
-Präfixersetzung**: Welche Organisation vor eine Bibliothek gehört, steht nur in der Datenbank. Der
-Schritt läuft deshalb je Bibliothek — eine Abfrage nennt die Paare, dann ein Verschiebebefehl und
-ein `UPDATE` je Paar. Vorher: Backend stoppen (`docker compose stop backend`) und einen
-Datenbank-Dump ziehen.
-
-> **Schritt 2 und Schritt 3 gehören zusammen.** Wer die Bytes verschiebt und die Verweise nicht
-> umschreibt, hinterlässt eine Bibliothek, deren Objekte am neuen Ort liegen, während ihre Zeilen
-> noch auf den alten zeigen — der Bericht über verwaiste Originale meldet dann ihren **gesamten
-> Bestand** als verwaist (`referencedCount: 0`), und über den Löschendpunkt wäre er entfernbar.
-> Beide Schritte je Paar unmittelbar nacheinander ausführen, nicht erst alle Verschiebungen und
-> danach alle `UPDATE`s. Siehe [„Verwaiste Originale aufräumen"](#verwaiste-originale-aufräumen).
-
-**1. Die Paare abfragen.** Jede Zeile der Antwort ist ein Paar `<Organisations-ID>
-<Bibliotheks-ID>`.
-
-```bash
-docker compose exec postgres psql -U opaa -d opaa -t -A -F' ' -c \
-  "SELECT organization_id, id FROM knowledge_libraries;"
-```
-
-**Bewusst alle Bibliotheken, nicht nur die mit hochgeladenen Dokumenten.** Eine Bibliothek ohne
-Upload-Zeilen kann trotzdem Bytes in der Ablage haben — ein verwaistes Original aus einem
-fehlgeschlagenen Löschen zum Beispiel. Bliebe ihr Ordner auf der alten Ebene liegen, sähe danach
-keine Stelle mehr hin: Der Bericht über verwaiste Originale listet nur noch unterhalb der
-Organisation, und die Probe in Schritt 4 zählt Datenbankzeilen. Aus einem verwaisten Original würde
-ein unsichtbares. Ein Verschiebebefehl auf ein nicht vorhandenes Verzeichnis ist dagegen ein
-harmloser Fehlschlag: Er meldet „nicht gefunden" und ändert nichts.
-
-**2. Bytes verschieben, je Paar.** Auf dem Verzeichnisweg vom Host aus, im Verzeichnis des
-Bind-Mounts (`./uploads`, oder der über `OPAA_UPLOAD_STORAGE_PATH_HOST` verlegte Pfad):
-
-```bash
-mkdir -p ./uploads/<Organisations-ID>
-mv ./uploads/<Bibliotheks-ID> ./uploads/<Organisations-ID>/
-```
-
-Im Objektspeicher dasselbe mit dem Kommandozeilenwerkzeug des Speichers; `<präfix>` ist der Wert aus
-`OPAA_UPLOAD_S3_KEY_PREFIX` und entfällt, wenn keiner gesetzt ist:
-
-```bash
-mc mv --recursive <alias>/<bucket>/<präfix><Bibliotheks-ID>/ \
-                  <alias>/<bucket>/<präfix><Organisations-ID>/<Bibliotheks-ID>/
-```
-
-Mit dem mitgelieferten Dienst läuft derselbe Befehl im Wegwerf-Container aus Schritt 3 des nächsten
-Abschnitts, mit `aws` heißt er `aws s3 mv --recursive s3://…`.
-
-**3. Verweise umschreiben, je Paar.** Eine Präfixersetzung **innerhalb** des Paares — dadurch
-wandern die zusammengesetzten Verweise der Anhangzeilen ohne Sonderfall mit. Auf dem
-Verzeichnisweg (`/app/uploads/` ist der containerinterne Pfad, außerhalb von Containern der dort
-konfigurierte absolute):
-
-```bash
-docker compose exec postgres psql -U opaa -d opaa -c \
-  "UPDATE documents
-      SET file_path = replace(file_path,
-                              '/app/uploads/<Bibliotheks-ID>/',
-                              '/app/uploads/<Organisations-ID>/<Bibliotheks-ID>/')
-    WHERE source_type = 'UPLOAD' AND library_id = '<Bibliotheks-ID>'
-      AND file_path LIKE '/app/uploads/<Bibliotheks-ID>/%';"
-```
-
-Im Objektspeicher mit `s3://<bucket>/<präfix>` statt `/app/uploads/` auf beiden Seiten und
-entsprechend im `LIKE`.
-
-**4. Probe, zweimal — einmal die Verweise, einmal die Bytes.** Die Zahl muss `0` sein; sie zählt
-jeden Verweis, der nicht unter seiner eigenen Organisation und Bibliothek liegt. Bewusst ohne
-führenden Schrägstrich vor der Organisations-ID, damit die Abfrage auch mit einem Schlüsselpräfix
-ohne abschließendes `/` (etwa `inst1-`) richtig zählt:
-
-```bash
-docker compose exec postgres psql -U opaa -d opaa -c \
-  "SELECT count(*) FROM documents
-    WHERE source_type = 'UPLOAD'
-      AND file_path NOT LIKE '%' || organization_id || '/' || library_id || '/%';"
-```
-
-Die zweite Probe gilt der Ablage selbst, denn die erste sähe einen Lauf mit umgeschriebenen
-Verweisen und nicht verschobenen Bytes für in Ordnung an. Auf oberster Ebene darf danach **kein
-Eintrag mehr eine Bibliotheks-ID sein**:
-
-```bash
-ls ./uploads                                  # Verzeichnisweg: nur Organisations-Ordner
-mc ls --recursive <alias>/<bucket>/<präfix>   # Objektspeicher: jeder Schlüssel zwei Ebenen tief
-```
-
-Ein auf oberster Ebene verbliebener UUID-Ordner ist der Rest einer Bibliothek, die es in der
-Datenbank nicht mehr gibt — Schritt 1 hat ihn deshalb nicht genannt. Nach dem Lauf sind
-Organisations-Ordner und solche Reste beide UUIDs und von außen nicht mehr zu unterscheiden; wer sie
-auseinanderhalten will, gleicht sie gegen `SELECT id FROM organizations;` ab. Ihre Behandlung ist
-nicht Teil dieses Schritts: Zu welcher Organisation ein solcher Rest gehörte, steht nirgends mehr,
-und der Aufräumlauf ohne Bibliotheksbezug sieht deshalb nur unterhalb der Organisationen nach. Wie
-solche Reste erkannt und entfernt werden, steht unter
-[„Originale gelöschter Bibliotheken"](#originale-gelöschter-bibliotheken).
-
-Danach das Backend starten und ein Original in der Oberfläche herunterladen — am besten eine E-Mail
-mit Anhang und den Anhang gleich mit, weil daran sichtbar wird, dass auch die zusammengesetzten
-Verweise noch stimmen. Dieser Prüfschritt braucht ein Konto mit **Leserecht auf die betroffene
-Bibliothek**: Die Systemrolle allein öffnet kein Original, sie verwaltet nur
-([Berechtigungen](berechtigungen.md), Abschnitt 10). Bleibt ein Paar **ganz** unbearbeitet, ist das der harmlose Fall: Der Bericht
-über verwaiste Originale meldet für diese Bibliothek nichts und jedes ihrer Originale antwortet mit
-„nicht gefunden"; das Nachholen beider Befehle für dieses Paar behebt es. Der riskante Fall ist die
-halb ausgeführte Bibliothek aus dem Kasten oben.
+  noch löschen. Ein solcher Eintrag stammt nicht von OPAA; er findet sich im Abgleich mit
+  `SELECT id FROM organizations;` und wird von Hand entfernt.
 
 ## Eine laufende Installation auf den Objektspeicher umstellen
 
@@ -501,7 +388,7 @@ docker compose exec postgres psql -U opaa -d opaa -c \
 
 Endpunkt, Bucket und im Störungsfall der Grund erscheinen dabei nur einem angemeldeten Aufrufer —
 in einem OIDC-Deployment antwortet ein anonymes `curl` nur mit dem Status, wie unter
-[„Diagnose ohne Shell"](#diagnose-ohne-shell) beschrieben.
+[„Diagnose ohne Shell"](betrieb.md#diagnose-ohne-shell) beschrieben.
 
 Die dritte ist die eigentliche: In der Oberfläche ein Dokument öffnen und sein Original
 herunterladen — am besten eine E-Mail mit Anhang und den Anhang gleich mit, weil daran sichtbar
@@ -537,7 +424,7 @@ als `root`, und alle zurückgespielten Organisations- und Bibliotheksordner geh�
 Ohne sie sieht alles richtig aus — der Start ist grün, jedes Original lässt sich herunterladen (die
 Dateien sind `0644`) —, aber der erste Upload in eine **bestehende** Bibliothek und jedes Löschen
 eines Originals scheitern mit `AccessDeniedException` (siehe [„Nicht-root-Betrieb des
-Backend-Containers"](#nicht-root-betrieb-des-backend-containers)).
+Backend-Containers"](docker-compose.md#nicht-root-betrieb-des-backend-containers)).
 
 Drei Unterschiede zum Hinweg:
 
@@ -562,7 +449,6 @@ Drei Unterschiede zum Hinweg:
 | Bild | Wahrscheinliche Ursache |
 |---|---|
 | Alle Originale antworten mit „nicht gefunden", die Suche funktioniert | Die Verweise wurden nicht umgeschrieben, oder Bucket bzw. Schlüsselpräfix in der Konfiguration passen nicht zu dem, was in den Verweisen steht. Nach einem Rückweg mit Schlüsselpräfix kommt eine dritte Ursache dazu: Die Dateien liegen dann eine Ebene zu tief, unter einem Ordner mit dem Namen des Präfixes |
-| Nach einem Update antworten die Originale einer Bibliothek mit „nicht gefunden", ihr Bericht über verwaiste Originale ist leer | Für diese Bibliothek fehlt der [Einmalschritt](#einmalschritt-einen-vor-dem-11092026-angelegten-bestand-einsortieren): Ihre Dateien bzw. Objekte liegen noch ohne Organisationsebene, also weder dort, wo der Abruf sucht, noch dort, wo der Bericht listet |
 | Einzelne Originale fehlen, andere nicht | Die Kopie war unvollständig — Kopierschritt wiederholen, er überträgt nur, was fehlt |
 | Jeder Abruf antwortet mit „Dienst nicht verfügbar", die Gesundheitsgruppe steht auf `DOWN` | Der Objektspeicher ist nicht erreichbar; die Gruppe nennt den Grund |
 | Der Start bricht mit einer Meldung über eine fehlende Variable ab | `OPAA_UPLOAD_STORE=s3` ohne Endpunkt, Bucket oder Zugangsschlüssel |
