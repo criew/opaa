@@ -156,7 +156,7 @@ Drei Stufen, von billig nach teuer:
 
 Bestehende Einträge, die noch mit der Auffang-Pipeline geschnitten wurden, behalten diese Chunks
 bis zur nächsten `pubDate`-Änderung; der Pipeline-Nachzug für `html` (Kapitel
-[Indexierung](../indexierung.md), Abschnitt 9) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
+[Indexierung](../indexierung.md), Abschnitt 7.2) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
 `.html` endet.
 
 **Zurückstellung.** Der Feed-Zustand aus Stufe 1 wird nur gespeichert, wenn der Lauf
@@ -165,7 +165,8 @@ in diesem Lauf nicht verarbeitet werden konnte, obwohl es beim nächsten Mal kla
 nicht erreichbare Detailseite, eine Abweisung mit 403 oder 429, ein abgeschnittener Feed, eine
 verlorene Anlage. Ohne gespeicherten Zustand liefert der Server beim nächsten Lauf den Feed
 erneut vollständig, und die zurückgestellten Einträge bekommen eine zweite Chance. Das ersetzt
-Wiederholungsversuche innerhalb des Laufs.
+Wiederholungsversuche innerhalb des Laufs. Ebenso wenig speichert ein Lauf den Feed-Zustand, der
+einen Eintrag oder eine Anlage am Speicherkontingent abgelehnt hat.
 
 **Nachholen von Anlagen.** Ein unveränderter Eintrag, zu dem noch keine Anlagen-Dokumente
 existieren, lädt seine Detailseite trotzdem einmal, ausschließlich um Anlagen zu finden. Der
@@ -293,7 +294,7 @@ Anlage; die Grenzen sind entsprechend zu wählen.
 
 ## 13. Zeitplan
 
-Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](../indexierung.md#31-auslöser)
+Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](../indexierung.md#42-zeitplan)
 beschrieben. Für Feeds ist ein stündlicher Zeitplan üblich: Ein unveränderter Feed kostet dank
 bedingtem GET nur eine Anfrage.
 

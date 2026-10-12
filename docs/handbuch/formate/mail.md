@@ -1,7 +1,7 @@
 # Format: E-Mail (EML, MSG)
 
 > **Entwurf.** Pipeline `email`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
-> im Kapitel [Indexierung](../indexierung.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 6.
+> im Kapitel [Indexierung](../indexierung.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.9.
 
 ## 1. Zulassung
 
@@ -116,6 +116,16 @@ wird ein eigenes Dokument mit eigener Pipeline: Ein PDF-Anhang trägt `pipeline_
 **Speicherkontingent.** Die Mail meldet als eigene Größe nur Kopfblock plus Nachrichtentext.
 Sonst stünden die Anhänge, die in der Rohdatei base64-kodiert stecken, doppelt in der Bilanz:
 einmal in der Mail, einmal als eigenes Dokument.
+
+Lehnt das Kontingent einen Anhang ab, wird die Mail ohne Prüfsumme und Änderungsmerkmal gespeichert,
+und der nächste Lauf liest sie erneut. Gemessen wird sie dann an dem, was von ihr schon gespeichert
+ist: ihre eigene Zeile samt der Anhänge, die aus ihr stammen. Die gespeicherten Anhänge zählen dabei
+nicht noch einmal mit ihrer vollen Größe, wohl aber mit dem Aufschlag ihrer Kodierung — base64 ist
+rund ein Drittel größer als gespeichert. Platz braucht das Wiederlesen also für die fehlenden
+Anhänge in kodierter Form und für den Kodierungsaufschlag der schon gespeicherten. Beispiel: Eine
+Mail mit neun gespeicherten und einem fehlenden Anhang zu je 1 MB braucht rund 0,37 MB je
+gespeichertem Anhang und 1,37 MB für den fehlenden, zusammen etwa 4,7 MB freien Platz. Solange der
+nicht frei ist, endet jeder Lauf, der die Mail erreicht, als unvollständig.
 
 **Gezielte Extraktion.** Der Pipeline-Nachzug kann einen einzelnen Anhang anhand seiner
 Position erneut aus der Mail holen. Anhänge, die im normalen Lauf gar nicht gemeldet würden

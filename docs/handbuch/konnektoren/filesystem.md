@@ -10,8 +10,7 @@
 Der Dateisystemkonnektor liest ein Verzeichnis, das dem Backend-Prozess als lokaler Pfad
 sichtbar ist. Typische Fälle sind ein eingebundenes Netzlaufwerk (SMB/NFS-Mount im Container),
 ein Ablageverzeichnis, das ein Fachverfahren befüllt, oder ein per Docker-Volume
-durchgereichter Ordner. Er ist der einzige Konnektor, der die Ordnerstruktur der Quelle in die
-Bibliothek spiegelt.
+durchgereichter Ordner. Die Verzeichnisstruktur der Quelle erscheint als Ordner der Bibliothek.
 
 ```mermaid
 flowchart LR

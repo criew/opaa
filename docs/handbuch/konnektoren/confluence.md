@@ -248,6 +248,12 @@ begrenzt die Dauer eines einzelnen Laufs. Ist es erschöpft, endet der Lauf **ge
 - **Inkrementell:** Der Anker bleibt stehen; der nächste Lauf durchsucht dasselbe Fenster erneut.
 - **Webhook-Lauf:** Die übrigen gemeldeten Seiten nimmt der nächste Lauf auf.
 
+**Speicherkontingent.** Lehnt das Kontingent eine Seite oder einen Anhang ab, rückt ein
+inkrementeller Lauf seinen Anker nicht vor. Nach einem Vollabgleich mit Ablehnung ist der nächste
+Lauf wieder ein Vollabgleich, denn die abgelehnte Seite ist älter als der Anker, und kein
+inkrementeller Lauf fände sie. Das gilt auch, wenn sich der Vollabgleich über mehrere Läufe
+erstreckt und die Ablehnung in einem früheren davon lag.
+
 **Faustregel zur Größe.** Eine Seite kostet etwa zwei Anfragen (Inhalt, Anhangsliste) plus ihre
 Anhangs-Downloads und einen Anteil der Auflistung (100 Seiten je Anfrage). 50.000 Anfragen decken
 damit rund 20.000 Seiten je Lauf. Eine Auswahl von 100.000 Seiten braucht für den ersten
@@ -356,7 +362,7 @@ Eine site-weite Regel genügt für mehrere Spaces: Seiten außerhalb der Auswahl
 ## 9. Anhänge
 
 Anhänge einer Seite werden je Seite aufgelistet und einzeln über den gemeinsamen Anhangsweg
-verarbeitet (siehe [Indexierung](../indexierung.md#6-anhänge-ein-dokument-in-einem-dokument)). Jeder
+verarbeitet (siehe [Indexierung](../indexierung.md#59-anhänge)). Jeder
 Anhang ist ein eigenes Dokument mit der Seite als Elterndokument und trägt Space und Gliederungspfad
 der Seite, ergänzt um deren Titel. Ein unveränderter Anhang (gleiche Version) wird vor dem Download
 übersprungen. Ein nicht unterstütztes Format wird als „Format nicht unterstützt" protokolliert und
@@ -528,7 +534,7 @@ und die Zieladressprüfung wie in den anderen Kapiteln.
 
 ## 16. Zeitplan
 
-Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](../indexierung.md#31-auslöser) beschrieben.
+Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](../indexierung.md#42-zeitplan) beschrieben.
 Für Confluence ist ein täglicher Zeitplan üblich: Ein inkrementeller Lauf kostet wenige Anfragen;
 der Vollabgleich läuft nach seinem eigenen Rhythmus mit. Wer Webhooks eingerichtet hat, kann den
 Zeitplan seltener wählen; der Vollabgleich bleibt trotzdem nötig.
