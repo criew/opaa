@@ -74,7 +74,7 @@ oder „Gruppenordner“. Ein Klick übernimmt den Ordner. **„Verbindung teste
 prüft jeden Ordner. Gemeldet wird, welcher Ordner für den Nutzer nicht lesbar ist oder ob die
 Zugangsdaten abgelehnt wurden.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](../indexierung.md#zugänge)): Ein Zugang für
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Ein Zugang für
 Nextcloud gibt Server-Adresse, Proxy und Zertifikatsprüfung vor und meldet sich mit einem
 persönlichen Geheimnis an. Bei der Besitzart „Bibliothek“ gehört es der Bibliothek: Benutzername
 und App-Passwort des technischen Nutzers tragen ihre Verwaltenden wie oben ein. Bei der Besitzart

@@ -55,7 +55,7 @@ zwischen „nicht erreichbar", „erreichbar, aber keine erkennbare Verzeichnisl
 **Sichtbarkeit:** URL, Proxy und der Hinweis auf hinterlegte Zugangsdaten sind nur für
 Verwaltende sichtbar; das Laufprotokoll ebenso, weil es die URLs enthält.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](../indexierung.md#zugänge)): Ein Zugang für
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Ein Zugang für
 Webverzeichnisse meldet sich entweder **ohne Anmeldung** an, dann erreicht jeder Lauf den Server
 ohne Zugangsdaten und das Formular fragt keine ab, oder mit einem **persönlichen Geheimnis**
 (Benutzername und Passwort), das die Verwaltenden der Bibliothek eintragen. Die Adresse ist mit der

@@ -51,7 +51,7 @@ Kapitel [Webverzeichnis](http-directory.md#2-quellkonfiguration) beschrieben.
 Die Oberfläche weist beim Anlegen darauf hin, dass OPAA neben dem Feed auch die verlinkten
 Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen das sind.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](../indexierung.md#zugänge)): wie beim
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): wie beim
 [Webverzeichnis](http-directory.md#2-quellkonfiguration) **ohne Anmeldung** oder mit
 einem **persönlichen Geheimnis** der Bibliothek; die Feed-Adresse liegt unter der Server-Adresse
 des Zugangs. Zugangsdaten und eine ausgesetzte Zertifikatsprüfung gelten nur für den Ursprung des

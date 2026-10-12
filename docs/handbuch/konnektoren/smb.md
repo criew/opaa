@@ -64,7 +64,7 @@ Abschnitt **„Umfang“** und sind für jeden Leseberechtigten sichtbar.
 
 Proxy und „Zertifikatsprüfung aussetzen“ gibt es bei SMB nicht; die API lehnt sie ab.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](../indexierung.md#zugänge)): Die Server-Adresse
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Die Server-Adresse
 eines Zugangs für SMB ist `smb://server[:port]`; jede Bibliothek nennt ihre Freigabe in der eigenen
 Adresse darunter. Nennt die Server-Adresse schon eine Freigabe (`smb://server/freigabe`), liegen
 alle Bibliotheken des Zugangs auf dieser Freigabe. Proxy oder ausgesetzte Zertifikatsprüfung weist OPAA schon beim

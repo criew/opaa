@@ -77,7 +77,7 @@ Format der erkannten Edition, „Verbindung testen", Spaces auswählen. Die Ausw
 lesen darf. Über der Auswahl steht der Hinweis, den auch dieses Kapitel wiederholt: Alles, was aus
 den gewählten Spaces indiziert wird, sehen alle Leseberechtigten der Bibliothek.
 
-**Über einen Zugang** (siehe [Indexierung, Zugänge](../indexierung.md#zugänge)): Ein Zugang für
+**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Ein Zugang für
 Confluence meldet sich mit einem persönlichen Geheimnis an, das der Bibliothek gehört; ihre
 Verwaltenden tragen das Token wie oben ein. Die Adresse ist mit der Server-Adresse des Zugangs
 vorbelegt und muss darunter liegen. Der Zugang darf die **Edition** vorgeben: Dann steht sie nur
