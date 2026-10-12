@@ -393,7 +393,7 @@ feste Grenzen stehen hier mit ihrem Wert.
 | Lokale Konten | Fehlversuche bis zur Sperre, Sperrdauer, Lebensdauer von Token und Sitzung | `OPAA_AUTH_LOCAL_*`; Passwortregeln und Fristen in der Oberfläche ([Benutzerverwaltung](benutzerverwaltung.md#13-regeln-und-fristen)) |
 | Verzeichnisabgleich | Gruppen, Mitglieder je Gruppe, Konten, Plausibilitätsschwelle, Zeitgrenzen | `OPAA_DIRECTORY_SYNC_*`; Intervall in der Oberfläche, 5 bis 10080 Minuten ([Authentifizierung](authentifizierung.md#verzeichnisabgleich-je-anbieter)) |
 | Rechte und Nachweis | Mindestgruppengröße, Alterung „Nachfolge offen", Aufbewahrung der Rechtehistorie | `OPAA_MINIMUM_GROUP_SIZE`, `OPAA_SUCCESSION_*`; Aufbewahrung in der Oberfläche, 12 bis 120 Monate ([Berechtigungen](berechtigungen.md#15-konfiguration)) |
-| Verbundene Konten und Zugänge | Warnschwelle abgelaufener Konten, Inaktivität, Löschfrist privater Bibliotheken | `OPAA_CONNECTION_*` ([Zugänge](zugaenge.md#8-konfiguration)) |
+| Verbundene Konten und Zugänge | Warnschwelle abgelaufener Konten, Inaktivität, Löschfrist privater Bibliotheken | `OPAA_CONNECTION_*` ([Zugänge](zugaenge.md#9-konfiguration)) |
 | Chats | Archivieren und Löschen nach Tagen | `OPAA_CHAT_AUTO_CLEANUP_*` |
 | Branding | Größe und Abmessungen der Bilder | fest ([Branding](branding.md#die-drei-bilder)) |
 | Laufzeit | Wartezeit des Frontends auf das Backend, Zeitfenster beim Herunterfahren, Zeitgrenzen des Mailversands | `OPAA_BACKEND_READ_TIMEOUT`, `OPAA_SHUTDOWN_TIMEOUT`, `OPAA_MAIL_*_TIMEOUT`; `/tmp` des Frontends unter Compose fest 512 MiB |

@@ -73,7 +73,7 @@ Abgelehnt werden
   169.254.169.254, private Netze, Carrier-Grade NAT, Multicast, reservierte Bereiche und ihre
   IPv6-Entsprechungen,
 - Hostnamen, die sich nicht auflösen lassen, außer die Verbindung geht über den
-  [Ausgangsproxy](../deployment.md#ausgangsproxy), der den Namen dann selbst auflöst.
+  [Ausgangsproxy](../betrieb.md#ausgangsproxy), der den Namen dann selbst auflöst.
 
 Geprüft wird jede aufgelöste Adresse des Ziels, nie der Ausgangsproxy; dessen Ausnahmeliste ist keine
 Freigabe. Eine Quelle im Hausnetz — ein Confluence Data Center, ein MinIO, eine Nextcloud, ein

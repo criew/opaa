@@ -38,7 +38,7 @@ flowchart LR
    Dropbox" („App folder" sähe nur einen eigenen Ordner). Unter „Permissions" die drei
    Berechtigungen oben setzen; schreibende braucht OPAA nicht. Unter „Settings" bei „Redirect URIs"
    `<öffentliche Adresse von OPAA>/connections/callback` eintragen (`OPAA_PUBLIC_BASE_URL`,
-   [Deployment](../deployment.md)). „App key" und „App secret" notieren. Für mehr als wenige Konten
+   [Konfiguration](../konfiguration.md#alle-umgebungsvariablen)). „App key" und „App secret" notieren. Für mehr als wenige Konten
    gibt Dropbox die App nach einem Antrag für den Produktivbetrieb frei.
 2. **Zugang.** Unter **Administration → Anbindungen → Zugänge** einen Zugang für Dropbox mit der
    Anmeldeart OAuth und der Besitzart Bibliothek anlegen: App key als „Client-ID", App secret als

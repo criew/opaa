@@ -33,8 +33,8 @@ flowchart LR
    unter dieser Kennung. Sie muss jedes Verzeichnis betreten (`x`) und jede Datei lesen (`r`)
    dürfen: über die Rechte für „andere" (`chmod -R o+rX`), eine gemeinsame Gruppe oder auf einem
    Netzlaufwerk über die Mount-Optionen (`uid=65532,gid=65532`). Ein `chown` ist der falsche Weg,
-   wenn ein Fachverfahren das Verzeichnis befüllt: Es nähme dem Schreiber die Rechte. Einzelheiten im
-   [Deployment](../deployment.md), Abschnitt „Nicht-root-Betrieb des Backend-Containers".
+   wenn ein Fachverfahren das Verzeichnis befüllt: Es nähme dem Schreiber die Rechte. Einzelheiten unter
+   [Nicht-root-Betrieb des Backend-Containers](../docker-compose.md#nicht-root-betrieb-des-backend-containers).
 4. **Freigegebene Verzeichnisse vor Endnutzenden schützen.** Die Freigabeprüfung löst symbolische
    Links nicht auf; ein Link nach außen würde beim Lesen verfolgt (Abschnitt 8).
 5. Den Bibliotheksverwaltenden die freigegebenen Verzeichnisse nennen; die Oberfläche zeigt sie nicht.
