@@ -102,7 +102,7 @@ Ein Schlüssel mit Delegation kann **jedes** Konto der Domäne lesen. Deshalb gi
 
 ### 2.5 Über einen Zugang
 
-Ein Zugang (Verbindungsprofil, [Indexierung](../indexierung.md), Abschnitt „Zugänge") trägt den
+Ein Zugang (Verbindungsprofil, [Zugänge](../zugaenge.md)) trägt den
 Schlüssel und das imitierte Konto für alle Bibliotheken darauf. Die Bibliothek trägt dann weder
 Schlüssel noch imitiertes Konto, nur ihre Bereiche.
 
@@ -137,7 +137,7 @@ Schlüssel noch imitiertes Konto, nur ihre Bereiche.
   Systemverwaltung kann ihn neu hinterlegen. Bei Google bleibt er gültig: Widerrufen wird er in der
   Cloud Console beim Dienstkonto („Schlüssel" → löschen).
 - **Profilpflicht:** Die Systemverwaltung kann für Google Drive einschalten, dass Bibliotheken nur
-  noch über Zugänge entstehen ([Indexierung](../indexierung.md), Abschnitt „Zugänge").
+  noch über Zugänge entstehen ([Zugänge](../zugaenge.md)).
 
 ## 3. Quellkonfiguration
 

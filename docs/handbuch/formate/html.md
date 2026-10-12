@@ -40,7 +40,7 @@ Treffer, wird der ganze `body` genommen.
 **Schneiden:** an den Überschriften h1 bis h3, über die DOM-Struktur, sodass verschachtelte
 Abschnitte korrekt erkannt werden. h4 bis h6 bleiben im Abschnitt. Absätze, Zitate und ähnliche
 Blöcke sind die Trennstellen für das Zusammenlegen und Teilen; ein einzelner zu langer Block wird
-in sich an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](../indexierung.md), Schritt 4). Zielgröße rund 4.000
+in sich an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](../indexierung.md), Abschnitt 7.1). Zielgröße rund 4.000
 Zeichen, keine Überlappung. Aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
 derselben übergeordneten Überschrift zusammengelegt. Text vor der ersten Überschrift wird ein eigener Chunk
 ohne Pfad.

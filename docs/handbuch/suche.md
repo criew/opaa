@@ -487,11 +487,11 @@ Grenze. Dann fehlen die späteren Feldnamen, und Überschriften oder Abkürzunge
 weiter vorn im Abschnitt belegen Plätze vor ihnen.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
-in einer Transaktion (Kapitel [Indexierung](indexierung.md), Schritt 7); auf diesem Weg entsteht
+in einer Transaktion (Kapitel [Indexierung](indexierung.md), Abschnitt 5.7); auf diesem Weg entsteht
 kein Chunk, den nur ein Pfad kennt. Was sich unterscheiden kann, ist allein die **Fassung** des
 Volltexts: Ändert ein Software-Update die Volltextzerlegung (etwa neue Kennungsmuster), tragen
 ältere Chunks die neuen Bestandteile erst nach dem Nachzug (Kapitel
-[Indexierung](indexierung.md), Abschnitt 9). Sie werden bis dahin gefunden, nur nicht über das
+[Indexierung](indexierung.md), Abschnitt 7.2). Sie werden bis dahin gefunden, nur nicht über das
 Neue. Diesen Rückstand zeigt die Administrationsseite je Bibliothek (Abschnitt 8.1).
 
 Zwei bekannte Grenzen des Pfads:
@@ -800,7 +800,7 @@ des ersten Auftretens im Antwortkontext:
 | Titel · Dokumentart · Datum/Stand | die Kernfelder des Dokuments, dazu die Belegfelder der Bibliothek; ein abgeleiteter Wert ist als „(abgeleitet)" gekennzeichnet |
 | „ohne Angabe" | unter aktivem Filter: das Dokument wurde nur durch die Leerwert-Regel gefunden |
 | Quelle | Quellentyp und Link zum Dokument bzw. zur Seite in der Quelle, Indexierungszeitpunkt |
-| „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Indexierung](indexierung.md), „Zugänge" |
+| „Stand vom …" | die Bibliothek des Dokuments wurde beim Antworten nicht aktualisiert: gesperrt, Verbindung getrennt oder Zugang entfernt. Das Datum ist ihr letzter erfolgreicher Lauf, nicht der Indexierungszeitpunkt des Dokuments; dazu stehen der Grund und die zuständige Stelle (Systemverwaltung bei einer Sperre, sonst die Verwaltenden der Bibliothek). Siehe Kapitel [Zugänge](zugaenge.md) |
 
 Die Fundstellen stehen im Belegfenster; unter der Antwort steht nur „Belege anzeigen" mit der
 Zahl der zitierten Stellen und der weiteren geprüften, nicht zitierten Dokumente. Fährt man mit der Maus über eine
@@ -1082,7 +1082,7 @@ Abschnitt 12.
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
 | Reranking „nicht verfügbar" | Modellrollen, Stufe „Reranking" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking weiter |
-| Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Indexierung](indexierung.md), Abschnitt 9) |
+| Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Indexierung](indexierung.md), Abschnitt 7.2) |
 | Rückfall der Zerlegung | Log-Warnung, Metrik `opaa.query.decomposition.fallback` | das Chat-Modell folgt dem Zerlegungsformat nicht; die Frage wurde wörtlich gesucht |
 | Sachfrage als „nichts zu suchen" eingestuft | Stufe „Teilfragen" („nichts zu suchen"), Metrik `opaa.query.decomposition.no-search` | das Chat-Modell hat eine Folgefrage für eine Nachricht ohne Suchbedarf gehalten; gesucht wurde mit der einzelnen Rückfall-Suchanfrage statt mit einer aufgelösten Teilfrage |
 | Bemerkung mit Quellen beantwortet | Fundstellen, „Durchsucht wurden"-Zeile unter einer Antwort auf einen Dank oder Formwunsch | beabsichtigt: auch eine Nachricht ohne Suchbedarf wird gesucht |

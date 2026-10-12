@@ -72,9 +72,9 @@ Drei Eigenschaften prägen alles Weitere:
 
 | Funktion | Ein Satz | Kapitel |
 |---|---|---|
-| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner, Dropbox-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 2 bis 4 |
+| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner, Dropbox-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 1 bis 4; [Konnektoren](konnektoren/README.md) |
 | Formate verarbeiten | PDF, Office, OpenDocument, Tabellen, HTML, Markdown, E-Mail samt Anhängen; Zulassung nach Inhalt, nicht nach Endung | [Indexierung](indexierung.md), Formatübersicht |
-| Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Indexierung](indexierung.md), Abschnitte 6 und 7 |
+| Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Indexierung](indexierung.md), Abschnitte 4.4 und 5.9 |
 | Metadaten | Titel, Dokumentart, Datum/Stand je Dokument, dazu Bibliotheks- und Formatfelder; Filter, Kontextpräfix, Beleg | [Metadaten](metadaten.md) |
 | Suche und Antwort | Rechtefilter, Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung | [Suche](suche.md) |
 | Diagnose | Testfrage im gewählten Rechtekontext, jede Stufe einzeln, „Dokument verfolgen" | [Suche](suche.md), Abschnitt 8 |
@@ -99,13 +99,13 @@ Drei Eigenschaften prägen alles Weitere:
 | [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen und Anlegerechte, Löschen gegen Sperren, Übergabe an einen Identitätsanbieter, Selbstregistrierung, Selbstbedienung, verbundene Konten, Regeln und Fristen |
 | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) | Das Berechtigungsmodell an einer Stelle: Subjekte, die Begriffe Rolle / Anlegerecht / Vollmacht / Systemrolle, Rollen an Bibliothek und Raum, Reichweite („Alle Konten"), der Katalog, Freigabe-Obergrenze für Konnektorbibliotheken, Gruppenherkunft und -mechanismus, interne Gruppen und ihre Verantwortlichen, was wer sieht, die Herleitung „warum sehe ich das", Anlegerechte, Systemrollen und Vollmachten, Rechtehistorie und Stichtagsauskunft, Kontosperre aus dem Verzeichnis, Übertragung, „Nachfolge offen", Diagnose im Gruppenkontext, Konfiguration, Vorbereitung der Einführung samt Prüfliste vor einem Postfach-Konnektor |
 | [Prompt-Bibliotheken](prompt-bibliotheken.md) | Prompt-Bibliothek und Prompt, Befehl und Variablen, Rollen, Anlegen mit Gruppeneigentum, Detailseite mit dem gemeinsamen Freigabeabschnitt, Zuordnung zu Räumen, Finden im Katalog, Prompts pflegen mit Prüfung und Vorschau, Einsetzen im Chat, „Nachfolge offen", Protokoll |
-| [Indexierung](indexierung.md) | Aufnahmestrecke: Bibliothek, Quelle, Lauf, Dokument; Zeitplan; Dokumentstrecke Schritt für Schritt; Anhänge; Löscherkennung; Protokoll; Pipeline-Versionen und Nachzug; Formatübersicht |
+| [Indexierung](indexierung.md) | Einstieg in die Aufnahmestrecke: Upload und angebundene Quellen, Grundbegriffe, Wissensbibliotheken finden, ansehen und anlegen, Zeitplan, Änderungen und Löschungen, Dokumentstrecke, Anhänge, Protokoll; Betrieb mit Grenzen, Nachzug und Konfiguration |
 | [Zugänge](zugaenge.md) | Zugänge der Systemverwaltung zu Konnektoren: anlegen, Anmeldearten und OAuth, Vorschau einer Änderung, zuordnen, wechseln, lösen; Quelle verbinden; Sperre einer Quellart oder eines Zugangs; Profilpflicht |
 | [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Aufbewahrung der Rechtehistorie, Konfiguration |
 | [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
 | [Fremdzugänge](fremdzugaenge.md) | Der Kanal für fremde KI-Werkzeuge: vor dem Einschalten, Schalter und Netzbereich, Freigabe einer Bibliothek, Zugangstokens aus Personen- und Verwaltungssicht, MCP-Server, Einrichtung in Claude Code, Cursor, VS Code und OpenCode, Kontingent und Abflussalarm, Protokollierung, Störungssuche, Prüfliste nach einer Wiederherstellung |
-| Konnektoren: [Dateisystem](konnektoren/filesystem.md), [Webverzeichnis](konnektoren/http-directory.md), [Feed](konnektoren/rss-feed.md), [Confluence](konnektoren/confluence.md), [S3](konnektoren/s3.md), [Google Drive](konnektoren/google-drive.md), [SharePoint](konnektoren/sharepoint.md), [Nextcloud](konnektoren/nextcloud.md), [Dropbox](konnektoren/dropbox.md), [Windows-Dateifreigabe (SMB)](konnektoren/smb.md) | je Quellentyp: Einrichtung, Schutzmechanismen, Betriebsarten, Löschsemantik, Grenzwerte, Fehlerbilder |
-| Formate: [PDF](formate/pdf.md), [Word](formate/docx.md), [PowerPoint](formate/pptx.md), [Tabellen](formate/tabular.md), [OpenDocument Text](formate/odt.md), [OpenDocument Präsentation](formate/odp.md), [HTML](formate/html.md), [Markdown](formate/markdown.md), [E-Mail](formate/mail.md), [Confluence-Seite](formate/confluence.md), [Auffang-Pipeline](formate/fallback.md) | je Format: Zulassung, erkannte Struktur, Zuschnitt, Metadaten, Grenzen |
+| [Konnektoren](konnektoren/README.md) | Übersicht aller Quellen, was jeder Konnektor liefert, Abgleichstand und Einstellungen; der gemeinsame [Abgleich der Dateiablagen](konnektoren/datei-abgleich.md); je Konnektor ein Kapitel mit Einrichtung, Schutzmechanismen, Betriebsarten, Löschsemantik, Grenzwerten und Fehlerbildern |
+| [Formate](formate/README.md) | Übersicht der zugelassenen und bewusst nicht zugelassenen Formate; je Format ein Kapitel mit Zulassung, erkannter Struktur, Zuschnitt, Metadaten und Grenzen |
 
 ### In Vorbereitung
 
@@ -122,19 +122,19 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitt 2 |
+| Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitte 2 und 3 |
 | OPAA unter Kubernetes ausprobieren oder vorführen | [Kubernetes](kubernetes.md) „Erprobung mit dem Beispiel-Setup“ |
-| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md) „Voraussetzungen" und „Installation" → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Kubernetes](kubernetes.md) „Netz und Sicherheit" → [Indexierung](indexierung.md) Abschnitt 2 |
+| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md) „Voraussetzungen" und „Installation" → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Kubernetes](kubernetes.md) „Netz und Sicherheit" → [Indexierung](indexierung.md) Abschnitte 2 und 3 |
 | Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md) „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen sollen |
 | Rechte einer Bibliothek oder eines Raums vergeben | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 2 bis 5 → Abschnitte 6 bis 8 (Gruppen) |
 | Eine Person scheidet aus, ein Referat wird aufgelöst | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 13 → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitte 4 und 8 |
 | „Wer durfte das am 3. März lesen?" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 12 → [Suche](suche.md) Abschnitt 8.4 (Aufbewahrung) |
 | Niemand kommt mehr herein | [Deployment](deployment.md) „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 4 |
-| Neue Quelle anschließen | das Konnektor-Kapitel des Quellentyps → [Indexierung](indexierung.md) Abschnitte 3 und 7 (Zeitplan, Löscherkennung) |
-| Dokumente fehlen oder sind veraltet | [Indexierung](indexierung.md) Abschnitte 7 bis 9 → Laufprotokoll der Bibliothek → Format-Kapitel des Dokuments |
+| Neue Quelle anschließen | das Konnektor-Kapitel des Quellentyps → [Indexierung](indexierung.md) Abschnitt 4 (Zeitplan, Löscherkennung) |
+| Dokumente fehlen oder sind veraltet | [Indexierung](indexierung.md) Abschnitte 4.4, 6 und 7.2 → Laufprotokoll der Bibliothek → Format-Kapitel des Dokuments |
 | Eine Antwort ist schlecht | [Suche](suche.md) Abschnitte 8 und 9 → Diagnosewerkzeug → je nach Befund [Indexierung](indexierung.md) oder [Metadaten](metadaten.md) |
 | Filter oder Beleg zeigen falsche Werte | [Metadaten](metadaten.md) Abschnitte 4, 7 und 8 |
-| Update steht an | [Deployment](deployment.md) „Aktualisierung" und „Was ein Update mit dem Index macht" → [Indexierung](indexierung.md) Abschnitt 9 (Nachzug) |
+| Update steht an | [Deployment](deployment.md) „Aktualisierung" und „Was ein Update mit dem Index macht" → [Indexierung](indexierung.md) Abschnitt 7.2 (Nachzug) |
 | Update unter Kubernetes steht an | [Kubernetes](kubernetes.md) „Aktualisierung und Rückweg" → [Deployment](deployment.md) „Was ein Update mit dem Index macht" |
 | Reranking einschalten | [Deployment](deployment.md) „Reranking einschalten" → [Suche](suche.md) Stufe 8 |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 (anlegen mit Gruppeneigentum, freigeben, einem Raum zuordnen) → Abschnitt 5 (Prompts pflegen) → [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 6 bis 8 (Gruppen) |
@@ -154,11 +154,11 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Katalog** | Der eine Einstieg der Hauptnavigation für Bestände jeder Art, nur als Kacheln: genau die Wissens- und Prompt-Bibliotheken, die die Person lesen darf; was sie nicht lesen darf, erscheint dort nicht. Über „Neu" beginnt dort das Anlegen mit der Wahl der Art |
 | **Prompt** | Eine benannte, wiederverwendbare Anweisung in genau einer Prompt-Bibliothek, mit Titel, Befehl (`/name`), Text und Variablen |
 | **Variable** | Eine Stelle im Text eines Prompts, geschrieben als `{{name}}`, die beim Einsetzen gefüllt wird; `{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt OPAA selbst |
-| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder ein Quellentyp mit Konnektor (Dateisystem, Webverzeichnis, Feed, Confluence, S3, Google Drive, SharePoint, Nextcloud, Dropbox, Windows-Dateifreigabe) |
+| **Quelle** | Woher eine Bibliothek ihre Dokumente bezieht: Upload oder eine angebundene Quelle mit Konnektor, etwa Confluence oder ein Webverzeichnis ([Konnektoren](konnektoren/README.md)) |
 | **Konnektor** | Der Teil der Indexierung, der die Eigenheiten eines Quellentyps kennt: Aufzählen, Abrufen, Betriebsarten |
 | **Indexierungslauf** (Lauf) | Ein Durchgang über die Quelle einer Bibliothek mit Status, Zählern und Protokoll |
 | **Betriebsart** | Ob ein Lauf die Quelle vollständig auflistet (und Verschwundenes entfernen darf) oder nur ergänzt |
-| **Dokument** | Eine Zeile in der Dokumenttabelle, eindeutig über Bibliothek und Quellpfad; Anhänge sind eigene Dokumente mit Verweis auf das Elterndokument |
+| **Dokument** | Eine Datei, Seite oder ein Eintrag der Quelle, so wie OPAA ihn kennt; identifiziert über Bibliothek und Ort in der Quelle. Anhänge sind eigene Dokumente mit Verweis auf das Elterndokument |
 | **Chunk** | Ein Textstück eines Dokuments mit Vektor, Volltext und Metadaten; die Einheit, auf der die Suche arbeitet |
 | **Originalablage** | Der Ort, an dem die Originale hochgeladener Dokumente liegen: ein Verzeichnis (auch ein dorthin eingehängtes Netzlaufwerk) oder ein Objektspeicher; Dokumente aus einem Konnektor bleiben bei ihrer Quelle |
 | **Format-Pipeline** | Die Verarbeitung eines Dateiformats: Parsen und Zuschnitt in Chunks, mit Kennung und Versionsnummer |
@@ -200,6 +200,11 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
   Variablenliste des Deployment-Kapitels. Fließtext und Diagramme nennen Parameternamen oder
   bleiben neutral, damit ein geänderter Default nicht an fünf Stellen veraltet.
 - **Grafiken sind Mermaid**, damit sie ohne Werkzeug im Repository gerendert werden.
+- **Tabellen und Abbildungen tragen Nummer und Titel** in einer fetten Zeile darüber:
+  „**Tabelle 4.2: Stufen des Zeitplans**". Die Nummer setzt sich aus der Nummer des
+  Hauptabschnitts und einer laufenden Nummer darin zusammen; Tabellen und Abbildungen werden
+  getrennt gezählt. Am Ende des Kapitels steht ein Verzeichnis mit Verweis auf den jeweiligen
+  Abschnitt. Ältere Kapitel werden bei ihrer nächsten Überarbeitung umgestellt.
 - **Entwurf** am Kapitelanfang bedeutet: geschrieben und gegen den Code geprüft, aber noch nicht
   vom Maintainer abgenommen. Der Hinweis fällt mit der Abnahme weg.
 - **Kapitel werden mit dem Code gepflegt.** Wer ein Verhalten ändert, das ein Kapitel beschreibt,

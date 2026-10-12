@@ -1,19 +1,33 @@
 # Indexierung: Vom Dokument zum durchsuchbaren Index
 
-> **Entwurf.** Dieses Kapitel beschreibt die Aufnahmestrecke (Ingestion-Pipeline) konzeptionell,
-> von der Übersicht bis zu den einzelnen Verarbeitungsschritten. Die Konnektoren je Quellentyp
-> und die Format-Pipelines je Dokumenttyp bekommen eigene Kapitel; hier werden sie nur als
-> Übergabepunkte beschrieben.
+Dieses Kapitel erklärt, wie Dokumente in OPAA durchsuchbar werden: woher sie kommen, wie sie aktuell
+bleiben und was mit jedem Dokument geschieht. Es bleibt bei dem, was für alle Quellen gilt. Die
+Eigenheiten einer Quelle stehen in den Kapiteln der [Konnektoren](konnektoren/README.md), die
+eines Dateiformats in den Kapiteln der [Formate](formate/README.md), die Anmeldung an einer Quelle
+im Kapitel [Zugänge](zugaenge.md). Abschnitt 7 bündelt, was der Betrieb über die Aufnahmestrecke
+wissen muss.
 
-## 1. Überblick in einem Bild
+## 1. Worum es geht
 
-OPAA beantwortet Fragen aus Dokumenten, die zuvor in einen Index aufgenommen wurden. „Index"
-bedeutet hier zweierlei: eine **Vektorablage**, in der Textstücke als Zahlenvektoren liegen und
-über Bedeutungsähnlichkeit gefunden werden, und ein **Volltextindex**, der exakte Wörter,
-Aktenzeichen und Paragrafen trifft. Beide werden im selben Arbeitsgang befüllt.
+OPAA beantwortet Fragen aus Dokumenten, die zuvor in einen **Index** aufgenommen wurden. Der Index
+ist zweierlei: eine **Vektorablage**, die Textstücke nach ihrer Bedeutung findet, und ein
+**Volltextindex**, der exakte Wörter, Aktenzeichen und Paragrafen trifft. Beide werden im selben
+Arbeitsgang befüllt.
 
-Der Weg dorthin ist für jedes Dokument gleich, unabhängig davon, woher es kommt und welches
-Format es hat:
+Dokumente gelangen auf zwei Wegen hinein:
+
+- **Upload.** Eine Person lädt Dateien über die Oberfläche hoch. Jede Datei wird sofort verarbeitet;
+  das Original bewahrt OPAA selbst auf.
+- **Angebundene Quelle.** Die meisten Dokumente einer Organisation liegen schon irgendwo: auf einem
+  Netzlaufwerk, in einem Wiki wie Confluence, in einem Cloud-Speicher, in einem Webverzeichnis. Ein
+  **Konnektor** bindet ein solches System an, liest es regelmäßig und hält die Bibliothek mit ihm
+  in Einklang. Die Dokumente bleiben in ihrer Quelle; OPAA macht sie durchsuchbar. Wie ein
+  Konnektor das System liest, hängt von dessen Technik ab — welche es gibt und was sie können,
+  zeigt die [Übersicht der Konnektoren](konnektoren/README.md).
+
+Der Weg in den Index ist für jedes Dokument gleich, unabhängig von Herkunft und Format:
+
+**Abbildung 1.1: Der Weg eines Dokuments in den Index**
 
 ```mermaid
 flowchart LR
@@ -25,204 +39,171 @@ flowchart LR
     E --> S[(Vektor- und<br/>Volltextindex)]
 ```
 
+**Tabelle 1.1: Die Schritte im Überblick**
+
 | Schritt | Frage, die er beantwortet |
 |---|---|
-| Aufzählen | Welche Dateien gibt es in der Quelle gerade? |
+| Aufzählen | Welche Dokumente enthält die Quelle gerade? |
 | Zulassen | Ist das ein Format, das OPAA verarbeiten kann? |
-| Parsen | Welcher Text steckt in der Datei, und welche Struktur hat er? |
+| Parsen | Welcher Text steckt im Dokument, und wie ist er gegliedert? |
 | Chunken | In welche Stücke wird der Text zerlegt, damit die Suche sie einzeln treffen kann? |
-| Embedden | Wie sieht jedes Stück als Vektor aus? |
-| Indexieren | Wo liegt das Stück, und mit welchen Metadaten ist es wiederfindbar? |
+| Embedden | Wie sieht jedes Stück als Bedeutungsvektor aus? |
+| Indexieren | Wo liegt das Stück, und mit welchen Merkmalen ist es wiederzufinden? |
 
-Zwei Dinge sind aus Betriebssicht wichtig, bevor es ins Detail geht:
+## 2. Grundbegriffe
 
-- **Alles läuft im Backend-Prozess.** Es gibt keine separate Worker-Komponente. Die Pipeline
-  ruft nur nach außen, um Einbettungen zu berechnen (Embedding-Modell) und um Dateien aus der
-  Quelle zu lesen.
-- **Die Datenbank ist die einzige Wahrheit.** Alles, was die Pipeline erzeugt, liegt in
-  PostgreSQL: Dokumentzeilen, Chunks samt Vektoren, Volltext, Laufprotokolle. Ein Backup der
-  Datenbank ist ein Backup des Index.
+Eine **Wissensbibliothek** ist die Einheit, in der Dokumente verwaltet werden. Sie trägt
+Berechtigungen und genau eine **Quelle**: entweder Upload oder eine angebundene Quelle mit ihrem
+Konnektor. Ob und wie eine angebundene Quelle über einen von der Systemverwaltung vorgegebenen
+Zugang läuft, beschreibt das Kapitel [Zugänge](zugaenge.md).
 
-## 2. Bibliothek, Quelle, Lauf, Dokument
+Ein **Indexierungslauf** (kurz Lauf) ist ein Durchgang über eine angebundene Quelle, mit Start,
+Ende, Ergebnis, Zählern und Protokoll. Ein **vollständiger** Lauf sieht die ganze Quelle und darf
+deshalb entfernen, was es dort nicht mehr gibt. Ein **ergänzender** Lauf sieht nur einen Ausschnitt
+— die jüngsten Einträge eines Feeds, die zuletzt geänderten Seiten — und entfernt nie etwas, nur
+weil es fehlt. Welche Laufarten eine Quelle kennt, legt ihr Konnektor fest. Uploads haben keine
+Läufe.
 
-Vier Begriffe tragen das ganze Kapitel.
+Ein **Dokument** ist eine Datei, eine Seite oder ein Eintrag der Quelle, so wie OPAA es kennt: mit
+seinem Ort in der Quelle, seinem Verarbeitungsstand und den Textstücken (**Chunks**), in die es
+zerlegt wurde. Sein Ort in der Quelle ist zugleich seine Identität.
 
-Eine **Wissensbibliothek** ist die Verwaltungseinheit. Sie gehört zu einer Organisation, trägt
-Berechtigungen und genau **eine Quelle**. Der Typ der Quelle entscheidet, wie Dokumente in die
-Bibliothek gelangen:
+Ein **Anhang** ist ein Dokument in einem Dokument: die Anlage einer E-Mail, die angehängte Datei
+einer Confluence-Seite, die verlinkte Anlage eines Feed-Eintrags. OPAA nimmt jeden Anhang als
+eigenes Dokument auf, mit Verweis auf das Dokument, aus dem er stammt (Abschnitt 5.9).
 
-| Quellentyp | Wie Dokumente hereinkommen | Lauf-basiert? |
-|---|---|---|
-| `UPLOAD` | Eine Person lädt Dateien über die Oberfläche hoch | nein, jede Datei wird sofort einzeln verarbeitet |
-| `FILESYSTEM` | Ein Verzeichnis auf dem Server bzw. ein eingebundenes Netzlaufwerk wird gelesen | ja |
-| `HTTP_DIRECTORY` | Ein Webverzeichnis (Apache-Autoindex) wird gecrawlt | ja |
-| `RSS_FEED` | Ein Feed und die verlinkten Detailseiten werden gelesen | ja |
-| `CONFLUENCE` | Die Seiten und Anhänge ausgewählter Spaces einer Confluence-Instanz (Cloud oder Data Center) werden über deren API gelesen | ja, in zwei Betriebsarten |
+Ein **Ordner** gliedert die Dokumente einer Bibliothek. Ordner dienen nur der Ablage: Berechtigungen
+hängen immer an der Bibliothek, und die Suche durchsucht stets den ganzen Bestand und nennt zum
+Treffer den Ordnerpfad. In einer Upload-Bibliothek legen die Nutzenden Ordner selbst an, benennen
+sie um und löschen sie; ein hochgeladener Ordner bringt seine Unterstruktur mit, und das Löschen
+eines Ordners löscht nach einer Rückfrage mit der Anzahl auch die Dokumente darin. Bei vielen
+angebundenen Quellen spiegelt der Lauf die Ordner der Quelle; dort sind sie nicht bearbeitbar, die
+Quelle ist führend. Woher die Ordner bei einer Quelle kommen, steht in ihrem Kapitel.
 
-Ein **Indexierungslauf** ist ein Durchgang über die Quelle einer lauf-basierten Bibliothek. Er
-hat einen Start, ein Ende, einen Status, Zähler, ein Protokoll und eine **Betriebsart**: Ein
-*vollständig auflistender* Lauf sieht die ganze Quelle und darf am Ende Verschwundenes entfernen;
-ein *ergänzender* Lauf sieht nur ein Fenster (die jüngsten Feed-Einträge, die seit dem letzten Lauf
-geänderten Seiten) und entfernt nie etwas wegen Abwesenheit. Welche Betriebsarten ein Quellentyp
-kennt, legt sein Konnektor fest (Abschnitt 4). Uploads haben keinen Lauf: die Datei wird
-verarbeitet, das Ergebnis steht am Dokument.
-
-Ein **Dokument** ist eine Zeile in der Dokumenttabelle, eindeutig über das Paar aus Bibliothek
-und Quellpfad. Es trägt Prüfsumme, Status, Chunk-Anzahl und Fehlermeldung. Steckt in einem
-Dokument ein weiteres, etwa ein Anhang in einer E-Mail oder eine verlinkte Anlage auf einer
-Feed-Seite, wird dieses zu einem eigenen Dokument mit Verweis auf sein Elterndokument (siehe
-Abschnitt 6).
-
-Ein **Ordner** gliedert die Dokumente einer Bibliothek für die Navigation. Ordner sind reine
-Ablagestruktur: Sie sind keine Rechtegrenze, Berechtigungen hängen immer an der Bibliothek, und
-die Suche kennt keine Ordner, sie durchsucht stets den ganzen Bestand und zeigt zum Treffer den
-Ordnerpfad an. Wer Ordner anlegt, hängt vom Quellentyp ab:
-
-| Quellentyp | Woher die Ordner kommen | Bearbeitbar? |
-|---|---|---|
-| `UPLOAD` | Nutzende legen sie an, auch leer, benennen sie um und löschen sie. Ein per Drag & Drop hochgeladener Ordner bringt seine Unterstruktur mit. | ja |
-| `FILESYSTEM` | Der Lauf spiegelt die Verzeichnisstruktur der Quelle. Ordner entstehen nur entlang gefundener Dateien; ein Verzeichnis, das keine Dokumente mehr hält, verschwindet am Ende des Laufs. | nein, die Quelle ist führend |
-| `HTTP_DIRECTORY` | Der Lauf spiegelt den gecrawlten Verzeichnisbaum: der URL-Pfad unterhalb der Start-URL, je Segment prozentdekodiert. Wie beim Dateisystem entstehen Ordner nur entlang gefundener Dateien; aufgeräumt wird nur nach einem vollständigen Crawl. | nein, die Quelle ist führend |
-| `RSS_FEED` | keine Ordner; ein Feed hat keine Struktur | entfällt |
-| `CONFLUENCE` | keine Ordner. Space und Gliederungspfad einer Seite stehen am Dokument und erscheinen in Zitat, Protokoll und Chunk-Kontext, nicht als Ordner. | entfällt |
-| `S3` | Der Lauf spiegelt die Schlüsselpräfixe der Geltungsbereiche: bei einem Bereich ist dessen Präfix die Wurzel, bei mehreren beginnt jede Kette mit dem Bucket und seinen Präfixsegmenten. Ordner entstehen nur entlang gefundener Objekte; ein Ordnermarker (`…/`) allein erzeugt keinen. Siehe [Konnektor S3](konnektoren/s3.md), Abschnitt 10. | nein |
-| `GOOGLE_DRIVE` | Der Lauf spiegelt die Ordnerkette bis zum Bereich; bei mehreren Bereichen beginnt jede Kette mit dem Namen der Ablage bzw. des Ordners. Siehe [Konnektor Google Drive](konnektoren/google-drive.md), Abschnitt 6. | nein |
-| `SHAREPOINT` | Der Lauf spiegelt die Ordnerkette ab der Wurzel der Dokumentbibliothek; bei mehreren Dokumentbibliotheken beginnt jede Kette mit deren Namen. Siehe [Konnektor SharePoint](konnektoren/sharepoint.md), Abschnitt 6. | nein |
-| `NEXTCLOUD` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinen Pfadsegmenten. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Nextcloud](konnektoren/nextcloud.md), Abschnitt 5. | nein |
-| `SMB` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner der Freigabe, wie bei Nextcloud. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Windows-Dateifreigabe](konnektoren/smb.md), Abschnitt 5. | nein |
-| `DROPBOX` | Der Lauf spiegelt die Ordner unterhalb der konfigurierten Ordner: bei einem Ordner ist er die Wurzel, bei mehreren beginnt jede Kette mit seinem Namen. Ordner entstehen nur entlang gefundener Dateien. Siehe [Konnektor Dropbox](konnektoren/dropbox.md), Abschnitt 6. | nein |
-
-Das Löschen eines Ordners in einer Upload-Bibliothek löscht die enthaltenen Dokumente samt
-Chunks und Dateien, nach einer Bestätigung, die deren Anzahl nennt.
+**Abbildung 2.1: Die Begriffe und ihr Zusammenhang**
 
 ```mermaid
 flowchart TB
-    O[Organisation] --> B[Wissensbibliothek<br/>Quellentyp + Quellkonfiguration]
-    B --> L[Indexierungslauf<br/>Status, Zähler, Protokoll]
-    B --> F[Ordner<br/>nur Navigation]
+    B[Wissensbibliothek<br/>Quelle + Einstellungen] --> L[Indexierungslauf<br/>Ergebnis, Zähler, Protokoll]
+    B --> F[Ordner<br/>nur Ablage]
     F --> D
-    B --> D[Dokument<br/>Pfad, Prüfsumme, Status]
+    B --> D[Dokument<br/>Ort, Stand]
     D --> D2[Anhang als<br/>eigenes Dokument]
     D --> K[Chunks<br/>Text, Vektor, Metadaten]
 ```
 
-### Bibliotheken im Katalog finden
+## 3. Mit Wissensbibliotheken arbeiten
 
-Die Bibliotheken, die Sie lesen dürfen, stehen im **Katalog** der Hauptnavigation, zusammen mit den
-Prompt-Bibliotheken; der Filter „Wissen" grenzt ihn auf Wissensbibliotheken ein. Eine Kachel nennt
-Name, Beschreibung, ob sie an „Alle Konten" freigegeben ist, die Anzahl der Dokumente, in wie vielen
-Räumen die Bibliothek bereitsteht, die zuständige Stelle und „Aktualisiert am" oder den Zustand,
-gegebenenfalls mit „Nachfolge offen". Suche, Filter, Reihenfolge und Seiten beschreibt
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4, „Der Katalog".
+### 3.1 Im Katalog finden
 
-**Was die Kachel über Läufe sagt.** Eine Konnektorbibliothek richtet sich nach ihrem jüngsten Lauf:
-„Wird aktualisiert", solange er läuft, „Aktualisierung fehlgeschlagen", wenn er gescheitert ist, und
-sonst „Aktualisiert am" mit dem Datum des letzten erfolgreichen Laufs; ohne jeden Lauf steht dort „Noch kein
-Inhalt". Eine Upload-Bibliothek hat keine Läufe und richtet sich nach ihren Dokumenten, die erste
-zutreffende Regel gilt: eines noch in Verarbeitung, eines gescheitert, eines indexiert, keines. Den
-Fortschritt eines Laufs und warum er gescheitert ist, zeigt erst die Detailansicht: Kopf, Reiter
-„Quelle" und das Laufprotokoll (Abschnitt 8.2).
+Die Bibliotheken, die eine Person lesen darf, stehen im **Katalog** der Hauptnavigation; der Filter
+„Wissen" grenzt ihn auf Wissensbibliotheken ein. Suche, Filter und Reihenfolge des Katalogs
+beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4.
 
-### Die Detailansicht einer Bibliothek
+Eine Kachel nennt Name, Beschreibung, eine Freigabe an „Alle Konten", die Zahl der Dokumente, in
+wie vielen Räumen die Bibliothek bereitsteht, die zuständige Stelle und ihren Zustand:
 
-Ein Klick auf eine Kachel im Katalog führt auf die Detailansicht. Sie besteht aus einem **Kopf**
-und fünf **Reitern**; einen Weg „zurück zur Übersicht" gibt es nicht, der Einstieg ist die
-Hauptnavigation.
+**Tabelle 3.1: Zustand einer Wissensbibliothek auf der Kachel**
 
-**Der Kopf** ist derselbe wie bei einer Prompt-Bibliothek
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4) und trägt, von
-oben nach unten:
+| Bibliothek | Zustand |
+|---|---|
+| mit angebundener Quelle | nach ihrem jüngsten Lauf: „Wird aktualisiert", „Aktualisierung fehlgeschlagen" oder „Aktualisiert am" mit dem Datum des letzten erfolgreichen Laufs; ohne Lauf „Noch kein Inhalt" |
+| Upload | nach ihren Dokumenten, die erste zutreffende Regel gilt: eines in Verarbeitung, eines gescheitert, eines indexiert, keines |
+
+Dazu kommen Hinweise wie „Nachfolge offen" oder eine Sperre. Fortschritt und Gründe eines Laufs
+zeigt erst die Detailansicht.
+
+### 3.2 Die Detailansicht
+
+Ein Klick auf die Kachel öffnet die Detailansicht. Oben steht der **Kopf**: das Etikett „Wissen",
+der Quellentyp, die eigene Rolle, Name und Beschreibung, die Kennzahlen und die Aktionen. Darunter
+sagt eine Zeile, was die eigene Rolle erlaubt, wo das die Bedienung erklärt („Sie haben in dieser
+Bibliothek nur Leserechte").
+
+**Tabelle 3.2: Der Kopf der Detailansicht**
 
 | Element | Inhalt |
 |---|---|
-| **Kopfzeile** | das Etikett „Wissen", das Welt-Symbol, wenn die Bibliothek an „Alle Konten" freigegeben ist, dann drei Abzeichen: der Quellentyp, die eigene Rolle und — für eine Systemverwaltung ohne eigene Berechtigung — „administrativ". Der Quellentyp steht genau hier und sonst nirgends auf der Seite. Rechts stehen die Aktionen (siehe unten), der Stern für den eigenen Favoriten und das Menü „⋯" |
-| **Überschrift** | der Name der Bibliothek |
-| **Beschreibung** | unter dem Namen; beide ändert, wer mindestens Verwalter ist, über den Stift „Name und Beschreibung bearbeiten" — ein eigener Bearbeitungsmodus mit „Speichern" und „Abbrechen", kein Klick in den Text |
-| **Nachfolge** | steht die Nachfolge offen, sagt es eine Zeile darunter ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 13) |
-| **Kennzahlen** | Anzahl der Dokumente; belegtes Speicherkontingent ab der Verwalterrolle; der letzte Lauf mit Ausgang, Zählern und Datum ab der Bearbeiterrolle, sobald eine Konnektorbibliothek einen hatte; in wie vielen Räumen die Bibliothek bereitsteht; die zuständige Stelle mit Personen- oder Gruppensymbol; „Aktualisiert am" |
-| **Umfang** | bei Confluence und S3 eine Kurzzeile („3 Spaces · Data Center · Details") mit Sprung in den Reiter „Quelle"; die Warnung über einen unvollständig gelesenen Umfang bleibt dagegen im Kopf, weil sie den Bestand betrifft, den jede Ansicht zeigt |
-| **Aktionen** | „Jetzt indizieren" (ab der Bearbeiterrolle, bei einer Konnektorbibliothek), bei Confluence zusätzlich „Vollabgleich starten". Das Menü „⋯" führt für jede lesende Rolle „In Space verwenden" und, abgesetzt, für den **Eigentümer** (sowie die Systemverwaltung) den einzigen folgenschweren Punkt der Seite: „Löschen" |
+| Kopfzeile | Etikett „Wissen", Welt-Symbol bei Freigabe an „Alle Konten", Quellentyp, eigene Rolle — für eine Systemverwaltung ohne eigene Berechtigung „administrativ" —, Favoritenstern, Menü „⋯" |
+| Name und Beschreibung | ändert, wer mindestens Verwalter ist, über den Stift „Name und Beschreibung bearbeiten" |
+| Nachfolge | eine Zeile, wenn die Nachfolge offen ist ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 13) |
+| Kennzahlen | Dokumente; belegtes Speicherkontingent ab Verwalter; der letzte Lauf mit Ausgang und Zählern ab Bearbeiter; Räume; zuständige Stelle; „Aktualisiert am" |
+| Umfang | bei Quellen mit Auswahl (etwa Spaces, Buckets) eine Kurzzeile mit Sprung in den Reiter „Quelle"; eine Warnung über einen unvollständig gelesenen Umfang bleibt im Kopf |
+| Aktionen | „Jetzt indizieren" ab Bearbeiter bei einer angebundenen Quelle, wo es ihn gibt „Vollabgleich starten"; im Menü „⋯" „In Space verwenden" für jede lesende Rolle und „Löschen" für den Eigentümer und die Systemverwaltung |
 
-Darunter steht eine Zeile zur eigenen Rolle, wo sie die Bedienung erklärt: „Sie haben in dieser
-Bibliothek nur Leserechte" beziehungsweise „Sie können Dokumente dieser Bibliothek pflegen, ihre
-Einstellungen aber nicht ändern" — nie beide, und nie zweimal.
+Darunter liegen fünf **Reiter**. Jeder trägt eine eigene Adresse (`?tab=`) und lässt sich verlinken;
+ein Reiterwechsel legt keinen Schritt in der Browser-Historie an. Alle Reiter stehen jeder Rolle
+offen; was eine Rolle nicht abrufen darf, fehlt innerhalb des Reiters.
 
-**Die Reiter** heißen **Dokumente · Quelle · Metadaten · Freigaben · Zuordnungen**; eine Upload-Bibliothek hat
-keinen Reiter „Quelle". Jeder Reiter trägt seine eigene Adresse (`?tab=`), lässt sich also
-verlinken und in einem neuen Browser-Tab öffnen, legt aber keinen eigenen Schritt in der
-Browser-Historie an: Ein „Zurück" verlässt die Seite, egal wie viele Reiter dazwischen lagen. Alle
-Reiter stehen jeder Rolle offen; was eine Rolle nicht abrufen darf, fehlt innerhalb des Reiters,
-nicht der Reiter selbst.
+**Tabelle 3.3: Die Reiter der Detailansicht**
 
 | Reiter | Inhalt |
 |---|---|
-| **Dokumente** | der Bestand der Bibliothek, für jeden Quellentyp dieselbe Liste (siehe unten) |
-| **Quelle** | Umfang · Anbindung · Zeitplan · Läufe (siehe unten); entfällt bei einer Upload-Bibliothek |
-| **Metadaten** | „Metadatenfelder" — die eigenen Felder dieser Bibliothek samt Wertelisten — und, ab der Verwalterrolle, „Modellgestützte Extraktion". Beides beschreibt das Kapitel [Metadaten](metadaten.md) |
-| **Freigaben** | Eigentümer, Berechtigungen, externer Zugang, Diagnosesperre und die Herleitung „Warum sehe ich diese Wissensbibliothek?" — die fünf Abschnitte beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
-| **Zuordnungen** | „In Space verwenden" und die Räume, in denen die Bibliothek als Datenquelle bereitsteht, mit „Aus Space lösen" im Menü „⋯" jeder Zeile — beschrieben in [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4 |
+| Dokumente | der Bestand der Bibliothek (siehe unten) |
+| Quelle | Umfang, Anbindung, Zeitplan und Läufe (siehe unten); fehlt bei einer Upload-Bibliothek |
+| Metadaten | die Metadatenfelder der Bibliothek und, ab Verwalter, die modellgestützte Extraktion ([Metadaten](metadaten.md)) |
+| Freigaben | Eigentümer, Berechtigungen, externer Zugang, Diagnosesperre und „Warum sehe ich diese Wissensbibliothek?" ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4) |
+| Zuordnungen | die Räume, in denen die Bibliothek bereitsteht, mit „In Space verwenden" und „Aus Space lösen" |
 
-Der Reiter **„Quelle"** hat vier Abschnitte in dieser Reihenfolge:
+**Tabelle 3.4: Der Reiter „Quelle"**
 
 | Abschnitt | Inhalt | Sichtbar für |
 |---|---|---|
-| **Umfang** | Welchen Ausschnitt der Quelle diese Bibliothek spiegelt — bei Confluence die ausgewählten Spaces und die erkannte Edition, bei S3 die Geltungsbereiche (Bucket, wahlweise mit Präfix), jeweils mit einem Satz dazu, was ein Geltungsbereich ist und wer den daraus indizierten Bestand lesen kann. Entfällt bei den übrigen Konnektoren | alle Leseberechtigten |
-| **Anbindung** | Quelladresse und Verbindungsparameter, „Bearbeiten", „Verbindung testen" gegen die gespeicherte Konfiguration sowie — je nach Typ — Webhook (Confluence) oder Ereignisse (S3) | ab MANAGER |
-| **Zeitplan** | Rhythmus, nächster Termin, bei Confluence zusätzlich der Vollabgleich-Rhythmus; eine Warnung, wenn die letzten geplanten Läufe gescheitert sind | ab MANAGER |
-| **Läufe** | das Laufprotokoll (Abschnitt 8.2) | ab MANAGER |
+| Umfang | welchen Ausschnitt der Quelle die Bibliothek spiegelt, etwa die gewählten Spaces oder Buckets; nur bei Quellen mit Auswahl | alle Leseberechtigten |
+| Anbindung | Adresse und Einstellungen der Quelle, der Zugang, „Bearbeiten" und „Verbindung testen" gegen die gespeicherte Einstellung, je nach Quelle Webhook oder Ereignisse | ab Verwalter |
+| Zeitplan | Rhythmus und nächster Termin; eine Warnung, wenn die letzten geplanten Läufe gescheitert sind | ab Verwalter |
+| Läufe | das Laufprotokoll (Abschnitt 6.2) | ab Verwalter |
 
-Wer darunter bleibt, sieht im Reiter „Quelle" den Umfang und einen Satz dazu, wem der Rest
-vorbehalten ist — der Reiter selbst bleibt sichtbar. Der Verbindungstest im Abschnitt „Anbindung"
-prüft die **gespeicherte** Konfiguration, ohne dass jemand sie dafür öffnen muss; bei Confluence
-und S3 liegt er im jeweiligen Formular hinter „Bearbeiten", weil er dort die Zugangsdaten und die
-erkannte Edition braucht, die die Leseansicht nicht trägt.
+Wer darunter bleibt, sieht den Umfang und einen Satz dazu, wem der Rest vorbehalten ist. Hinweise
+auf eine Sperre oder eine getrennte Verbindung stehen für alle Leseberechtigten im Reiter „Quelle";
+den Verwaltenden bieten sie die Aktion an, die sie aufhebt ([Zugänge](zugaenge.md)).
 
-Der Reiter **„Dokumente"** zeigt für jeden Quellentyp dieselbe Liste: Suche, Seitengröße, Auswahl
-und Blättern sind überall gleich; typabhängig sind nur die Zusatzzeilen einer Dokumentzeile
-(Space bzw. Bucket, Herkunft, Anhänge) und die Aktionen. Steht ein Ordner offen, liegt sein Pfad
-unmittelbar über dem Suchfeld. Ordnerzeilen sind nicht auswählbar; das ist an ihrem abgeblendeten
-Auswahlkästchen zu sehen. „Alle auf dieser Seite auswählen" steht auch auf der obersten Ebene.
-Für die Auswahl bietet die Leiste alle Aktionen an, die für **alle** ausgewählten Dokumente
-zulässig sind: „Feld setzen" (siehe [Metadaten](metadaten.md)) und — nur in einer
-Upload-Bibliothek — „Löschen". Das Sammellöschen fragt einmal nach und meldet danach, wie viele
-Dokumente gelöscht wurden; blieb eines stehen (etwa weil es zwischenzeitlich schon weg war),
-nennt die Meldung den Grund. In einer Konnektorbibliothek gibt es weder das Einzel- noch das
-Sammellöschen — ein gelöschtes Dokument käme mit dem nächsten Lauf zurück.
+Der Reiter **„Dokumente"** zeigt für jede Quelle dieselbe Liste mit Suche, Ordnern, Auswahl und
+Blättern; je nach Quelle kommen Zusatzzeilen hinzu (Space, Bucket, Herkunft, Anhänge). Für eine
+Auswahl bietet die Leiste die Aktionen an, die für alle ausgewählten Dokumente zulässig sind:
+„Feld setzen" ([Metadaten](metadaten.md)) und, nur bei einer Upload-Bibliothek, „Löschen". Das
+Sammellöschen fragt einmal nach und meldet danach, wie viele Dokumente gelöscht wurden, und warum
+eines stehen blieb. In einer Bibliothek mit angebundener Quelle lassen sich Dokumente nicht
+löschen — der nächste Lauf brächte sie zurück.
 
-### Eine Bibliothek anlegen
+### 3.3 Eine Wissensbibliothek anlegen
 
-Angelegt wird über **„Neu"** im Katalog: Nach der Wahl der Art „Wissen" führt „Weiter" in einen
-Assistenten ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4,
-„Anlegen über ‚Neu'"). Seine Schritte tragen dieselben Namen und dieselben
-Formulare wie der Kopf und die Reiter der fertigen Bibliothek — was hier eingestellt wird, steht
-später an derselben Stelle wieder:
+Angelegt wird über **„Neu"** im Katalog: Nach der Wahl der Art „Wissen" führt ein Assistent durch
+die Einrichtung. Seine Schritte heißen wie Kopf und Reiter der fertigen Bibliothek; was hier
+eingestellt wird, steht später an derselben Stelle.
+
+**Tabelle 3.5: Die Schritte des Assistenten**
 
 | Schritt | Inhalt |
 |---|---|
-| **1. Art des Wissens** | je Quellentyp eine Kachel mit Symbol und einem Satz dazu. Eine Kachel erscheint nur für eine Art, die die Person anlegen darf: Upload nur mit dem Recht „Bibliotheken für Uploads anlegen", eine Konnektor-Quellart nur, wenn die Person sie auf mindestens einem Weg anlegen darf: mit eigener Adresse oder über einen nutzbaren Zugang. Fehlt die Freigabe oder ist die Quellart gesperrt, fehlt die Kachel. Eine Quellart, die für die Person nur über einen Zugang freigegeben ist, bleibt wählbar. Darf die Person gar keine Art anlegen, zeigt der Schritt keine Kachel, nur den Hinweis, dass sie derzeit keine Bibliothek anlegen darf, mit dem Verweis an die Systemverwaltung. Zwischen den Kacheln führen die Pfeiltasten |
-| **2. Quelle** | bei einer Quellart mit Zugängen zuerst die Wahl des **Zugangs** (siehe [Zugänge](zugaenge.md)), darunter Anbindung und Verbindungstest wie im gleichnamigen Reiter, dazu der **Zeitplan** und der Schalter „Erste Indizierung sofort nach dem Anlegen starten". Beide gelten für **jeden** Konnektortyp. Bei einer Upload-Bibliothek entfällt der Schritt, der Assistent hat dann drei |
-| **3. Name & Beschreibung** | der Name ist vorbelegt, wo die Quelle ihn hergibt — der einzelne Confluence-Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname — und bleibt überschreibbar |
-| **4. Freigaben** | Eigentümer („Mein Konto" oder eine Gruppe, in der die anlegende Person Mitglied ist) und vorgemerkte Freigaben an Personen und Gruppen. Eine Freigabe an „Alle Konten" gibt es hier nicht: Sie wird an der fertigen Bibliothek erteilt, wo auch die Obergrenze dafür gilt |
+| 1. Art des Wissens | je Quelle eine Kachel. Es erscheinen nur Arten, die die Person anlegen darf: Upload mit dem Recht „Bibliotheken für Uploads anlegen", eine angebundene Quelle, wenn sie für die Person freigegeben und nicht gesperrt ist, mit eigener Adresse oder über einen nutzbaren Zugang. Darf sie keine Art anlegen, verweist der Schritt an die Systemverwaltung |
+| 2. Quelle | gegebenenfalls die Wahl des Zugangs, dann Anbindung und Verbindungstest, der Zeitplan und „Erste Indizierung sofort nach dem Anlegen starten"; entfällt bei Upload |
+| 3. Name & Beschreibung | der Name ist vorbelegt, wo die Quelle ihn hergibt (ein einzelner Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname) |
+| 4. Freigaben | Eigentümer („Mein Konto" oder eine eigene Gruppe) und vorgemerkte Freigaben an Personen und Gruppen; eine Freigabe an „Alle Konten" wird erst an der fertigen Bibliothek erteilt |
 
-Nach „Bibliothek anlegen" führt der Assistent auf die Detailseite. Konnte eine vorgemerkte Freigabe
-nicht erteilt werden, ist die Bibliothek trotzdem angelegt; ein Hinweis nennt die betroffenen
-Empfänger, und die Rolle lässt sich im Reiter „Freigaben" nachtragen.
+Nach „Bibliothek anlegen" öffnet sich die Detailansicht. Konnte eine vorgemerkte Freigabe nicht
+erteilt werden, ist die Bibliothek trotzdem angelegt, und ein Hinweis nennt die Empfänger.
 
-## 3. Wie ein Lauf entsteht und endet
+## 4. Wie der Bestand aktuell bleibt
 
-### 3.1 Auslöser
+### 4.1 Auslöser
+
+**Tabelle 4.1: Wodurch ein Lauf entsteht**
 
 | Auslöser | Beschreibung |
 |---|---|
-| **Manuell** | „Jetzt indizieren" an der Bibliothek, in der Betriebsart, die der Konnektor für den Zustand der Bibliothek vorsieht. Genügt die Rolle EDITOR an der Bibliothek. Bei Confluence gibt es zusätzlich „Vollabgleich starten". |
-| **Zeitplan** | Je Bibliothek einstellbar, Details unten. |
-| **Webhook / Ereignis** | Confluence: Die Instanz meldet geänderte Seiten, OPAA holt wenige Sekunden später genau diese Seiten in einem kurzen Lauf „per Webhook". S3: Der Objektspeicher meldet erzeugte oder gelöschte Objekte (MinIO-Webhook, Ceph-Topic, EventBridge), OPAA prüft die gemeldeten Schlüssel wenige Sekunden später einzeln in einem **Ereignislauf** — ein bestätigtes `404` entfernt das Dokument samt Anhängen, sonst gilt der Stand des Speichers. Ersetzt weder Zeitplan noch Vollabgleich. |
-| **Upload** | Kein Lauf. Jede Datei geht sofort einzeln durch die Dokumentstrecke, auf einem eigenen Thread-Pool, damit ein Upload nie hinter einem langen Verzeichnislauf wartet. Wo das hochgeladene Original danach liegt, entscheidet der Betrieb: [Originalablage](deployment.md#originalablage). |
-| **Nachzug (Admin)** | Kein regulärer Lauf. Ein Systemadministrator stößt die Neuverarbeitung von Dokumenten an, die mit einer älteren Pipeline-Version erzeugt wurden (Abschnitt 9), oder den Bestandslauf der Kernfelder (Kapitel [Metadaten](metadaten.md)). |
+| Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten" |
+| Zeitplan | je Bibliothek einstellbar (Abschnitt 4.2) |
+| Ereignis der Quelle | manche Quellen melden Änderungen selbst, etwa Confluence per Webhook oder ein Objektspeicher per Benachrichtigung; OPAA holt kurz darauf genau die gemeldeten Dokumente. Ersetzt weder Zeitplan noch Vollabgleich |
+| Upload | kein Lauf: Jede Datei wird sofort einzeln verarbeitet, getrennt von laufenden Läufen. Wo das Original liegt, entscheidet der Betrieb ([Originalablage](deployment.md#originalablage)) |
+| Nachzug | kein regulärer Lauf: Die Systemverwaltung lässt Dokumente neu verarbeiten, die mit einem älteren Verfahren entstanden sind (Abschnitt 7.2) |
 
-**Zeitplan je Bibliothek.** Jede lauf-basierte Bibliothek kann einen Zeitplan tragen; für
-Upload-Bibliotheken wird er abgewiesen. Verwaltende setzen ihn im Reiter „Quelle" der Bibliothek,
-Abschnitt „Zeitplan" — beim Anlegen im gleichnamigen Schritt des Assistenten:
+### 4.2 Zeitplan
+
+Jede Bibliothek mit angebundener Quelle kann einen Zeitplan tragen. Verwaltende setzen ihn im
+Reiter „Quelle", beim Anlegen im Assistenten.
+
+**Tabelle 4.2: Stufen des Zeitplans**
 
 | Stufe | Einstellungen |
 |---|---|
@@ -231,463 +212,203 @@ Abschnitt „Zeitplan" — beim Anlegen im gleichnamigen Schritt des Assistenten
 | täglich | Uhrzeit |
 | wöchentlich | Wochentag und Uhrzeit |
 
-Die Uhrzeit gilt in der Zeitzone des Servers. Freie Cron-Ausdrücke gibt es in der Oberfläche
-bewusst nicht. Ein minütlicher Takt im Backend prüft, welche Bibliotheken seit dem letzten Takt
-fällig geworden sind. Daraus folgen drei Regeln:
+Die Uhrzeit gilt in der Zeitzone des Servers. Drei Regeln:
 
 - **Verpasste Termine werden nicht nachgeholt.** War das Backend zum Termin nicht in Betrieb,
-  läuft die Bibliothek erst zum nächsten Termin wieder. Wer nach einer längeren Wartung einen
-  aktuellen Stand braucht, stößt manuell an.
-- **Ein fälliger Termin trifft auf einen laufenden Lauf:** Es entsteht kein zweiter Lauf,
-  sondern der Protokolleintrag „Geplanter Lauf übersprungen: Indizierung läuft bereits" am
-  laufenden. Ein Erstlauf, der länger dauert als das Intervall, verschluckt so die Termine bis
-  zu seinem Ende.
-- **Ein fehlgeschlagener geplanter Lauf schaltet den Zeitplan nicht ab.** Scheitern zwei
-  geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbanner; manuelle Läufe zählen dabei
-  nicht mit.
+  läuft die Bibliothek erst zum nächsten Termin. Nach einer längeren Wartung lässt sich manuell
+  anstoßen.
+- **Läuft noch ein Lauf, entsteht kein zweiter.** Der laufende vermerkt „Geplanter Lauf
+  übersprungen: Indizierung läuft bereits". Ein Erstlauf, der länger dauert als das Intervall,
+  verschluckt so die Termine bis zu seinem Ende.
+- **Ein gescheiterter Lauf schaltet den Zeitplan nicht ab.** Scheitern zwei geplante Läufe
+  hintereinander, zeigt die Bibliothek ein Warnbanner; manuelle Läufe zählen nicht mit.
 
-Welche Stufe sinnvoll ist, hängt von der Quelle ab. Ein Feed kostet unverändert nur eine
-Anfrage je Lauf und verträgt stündlich; ein großes Netzlaufwerk liest bei jedem Lauf alle Dateien
-und ist eher täglich oder wöchentlich fällig. Eine Confluence-Bibliothek läuft täglich inkrementell
-und nach ihrem eigenen Rhythmus (Standard sieben Tage, je Bibliothek im Zeitplan-Dialog
-einstellbar) als Vollabgleich.
+Welche Stufe passt, hängt von der Quelle ab: Ein unveränderter Feed kostet je Lauf eine Anfrage und
+verträgt stündlich, ein großes Netzlaufwerk eher täglich oder wöchentlich. Quellen mit
+Vollabgleich-Rhythmus stellen diesen im Zeitplan zusätzlich ein.
 
-### 3.2 Zustände eines Laufs
+### 4.3 Zustände eines Laufs
 
-Ein Lauf kennt drei Zustände und kehrt aus einem Endzustand nie zurück:
+**Abbildung 4.1: Zustände eines Laufs**
 
 ```mermaid
 stateDiagram-v2
     [*] --> RUNNING: Auslöser
     RUNNING --> COMPLETED: alle Elemente verarbeitet
-    RUNNING --> FAILED: Quelle nicht erreichbar, Pfad außerhalb der Freigabe,<br/>Warteschlange voll, Neustart, Zeitüberschreitung
+    RUNNING --> FAILED: Quelle nicht erreichbar, Warteschlange voll,<br/>Neustart, Zeitüberschreitung
     COMPLETED --> [*]
     FAILED --> [*]
 ```
 
-Pro Bibliothek gibt es **höchstens einen laufenden Lauf**. Das sichert ein eindeutiger Index in
-der Datenbank, nicht eine Prüfung im Anwendungscode. Wird eine Bibliothek fällig, während ihr
-Lauf noch läuft, entsteht kein zweiter Lauf, sondern ein Protokolleintrag „Zeitplan
-übersprungen" am laufenden.
+Je Bibliothek läuft **höchstens ein Lauf**. Ein einzelnes Dokument, das nicht verarbeitet werden
+kann, bricht den Lauf nicht ab; es wird gezählt, protokolliert und übersprungen. „Fehlgeschlagen"
+heißt, dass der Lauf als Ganzes nicht zu Ende kam.
 
-Ein einzelnes Dokument, das nicht verarbeitet werden kann, bricht den Lauf **nicht** ab. Es
-wird gezählt, protokolliert und übersprungen. `FAILED` bedeutet, dass der Lauf als Ganzes nicht
-zu Ende geführt werden konnte.
+Ein Lauf kann abgeschlossen und trotzdem **unvollständig** sein: wenn er sein Anfragebudget
+verbraucht hat oder ein Dokument am Speicherkontingent abgelehnt wurde. Er endet dann geordnet, und
+der nächste Lauf setzt fort; ein unvollständiger Lauf entfernt nichts wegen Abwesenheit. Wie die
+Dateiablagen einen Abgleich über mehrere Läufe fortsetzen, beschreibt
+[Abgleich der Dateiablagen](konnektoren/datei-abgleich.md).
 
-Ein Lauf kann `COMPLETED` und trotzdem **unvollständig** sein: Ein Confluence-Lauf, der sein
-Anfragebudget verbraucht hat, endet geordnet mit dem Kennzeichen „unvollständig, wird fortgesetzt";
-der nächste Lauf setzt dort an. Ein solcher Lauf entfernt nichts. Unvollständig endet auch ein Lauf, der
-ein Element oder einen Anhang an einem Speicherkontingent abgelehnt hat; er trägt die Kategorie
-`QUOTA_EXHAUSTED`, gleicht aber ab (Abschnitt 5, Schritt 2). Bei den Dateiablagen Nextcloud,
-SMB und SharePoint setzt der nächste Lauf an der gemerkten Stelle der Auflistung fort; ein
-Vollabgleich darf sich so über mehrere Läufe erstrecken ([Nextcloud](konnektoren/nextcloud.md),
-Abschnitt 3.1; [SMB](konnektoren/smb.md), Abschnitt 3.1; [SharePoint](konnektoren/sharepoint.md),
-Abschnitt 4.1). Bei Dropbox listet der nächste Lauf zuerst die Ordner, die der Vollabgleich noch
-nicht gelistet hat ([Dropbox](konnektoren/dropbox.md), Abschnitt 4).
+### 4.4 Änderungen und Löschungen
 
-### 3.3 Wiederanlauf nach Störungen
+**Tabelle 4.3: Was eine Änderung in der Quelle bewirkt**
 
-Weil ein hängender Lauf seine Bibliothek dauerhaft blockieren würde, gibt es zwei Aufräumer:
+| In der Quelle | In OPAA |
+|---|---|
+| unverändert | übersprungen, nichts wird neu verarbeitet |
+| geändert | neu verarbeitet; das Dokument behält seine Identität, Verweise aus Chats bleiben gültig |
+| umbenannt oder verschoben | je nach Quelle: ein neues Dokument, und das alte gilt als entfernt, oder dasselbe Dokument an neuem Ort — das Kapitel der Quelle sagt, was gilt |
+| verschwunden | entfernt nach einem vollständigen, erfolgreichen Lauf, oder sofort, wenn die Quelle die Löschung selbst meldet |
+| nicht erreichbar oder nicht lesbar | **nichts** wird entfernt |
 
-- **Beim Start des Backends** werden alle Läufe, die noch als laufend markiert sind, mit der
-  Meldung „Durch Neustart abgebrochen" beendet. Das setzt voraus, dass genau eine
-  Backend-Instanz läuft (siehe Abschnitt 10).
-- **Alle 15 Minuten** werden Läufe beendet, die länger als die konfigurierte Frist (Standard
-  vier Stunden) keinen Fortschritt gemeldet haben. Maßgeblich ist der letzte Fortschritt, nicht
-  der Start: ein großer Erstlauf darf länger als vier Stunden dauern, solange er arbeitet.
+Die wichtigste Sicherung ist die letzte Zeile: Ein Lauf, der null Dokumente sieht, kann eine leere
+Quelle bedeuten oder ein nicht eingebundenes Netzlaufwerk. Deshalb entfernt OPAA nur, wenn der
+Konnektor die Quelle **vollständig** aufgezählt hat. Ein abgebrochener Lauf, ein Bereich, den die
+Zugangsdaten nicht lesen dürfen, ein erschöpftes Anfragebudget: all das lässt den Bestand stehen.
+Ein entzogenes Recht ist kein Löschbefund, und eine Datei, die OPAA abweist (etwa wegen ihres
+Formats), gilt als vorhanden. Ergänzende Läufe entfernen nie wegen Abwesenheit — ein Feed zeigt nur
+seine jüngsten Einträge, ältere sind damit nicht verschwunden.
 
-Ein abgebrochener Lauf lässt den bisherigen Bestand weitgehend stehen. Dokumente, die der Lauf
-bereits fertig verarbeitet hat, bleiben indiziert; Dokumente, die er noch nicht erreicht hat,
-bleiben auf dem alten Stand. Nur das eine Dokument, das gerade in Arbeit war, kann ohne Chunks
-zurückbleiben, und auch das nur noch, wenn der Abbruch genau zwischen dem Entfernen der alten
-Chunks und dem Schreiben der neuen fiel, also im Zeitfenster des Embedding-Aufrufs (Abschnitt 5,
-Schritt 6a). Es steht dann nicht auf „indiziert" und
-wird im nächsten Lauf erneut verarbeitet, unabhängig von der Prüfsumme.
+Wann genau eine Quelle löscht, steht in ihrem Kapitel; die Übersicht zeigt die
+[Konnektoren](konnektoren/README.md), Tabelle 1.2.
 
-Ein S3-Vollabgleich, der durch das Anfragebudget oder eine Störung endete, hinterlässt je
-Bibliothek einen Wiederaufnahmezustand: welche Geltungsbereiche er bereits vollständig gelistet
-hatte. Der nächste Lauf listet **alle** Bereiche erneut — die unvollendeten zuerst — und spart nur
-die Downloads, denn ein Objekt, dessen Änderungsmerkmal bereits gespeichert ist, kostet keinen
-Abruf; erst ein Lauf, der jeden Bereich bis zur letzten Seite gelistet und den Bestand abgeglichen
-hat, schließt den Zustand. Eine Änderung des Endpoints oder der Geltungsbereiche verwirft ihn.
+### 4.5 Wiederanlauf nach Störungen
 
-**Abgleichstand und Einstellungen.** Jeder Abgleichstand (Wiederaufnahmezustand, Fortsetzungsstelle
-einer Runde, Änderungszeiger, Anker des inkrementellen Laufs, gemerkte Ordner) gilt nur für die
-Quelleinstellungen, unter denen er entstand: Adresse, Pfad und die Einstellungen, die der Konnektor
-als auswahlbestimmend vergleicht, etwa Ordner, Spaces, Geltungsbereiche, Filter oder das imitierte
-Konto, dazu das Konto, als das die Quelle verbunden ist. Vorgaben des Zugangs zählen mit. Die
-Zertifikatsprüfung und der Vollabgleich-Rhythmus gehören nicht dazu.
+Ein hängender Lauf würde seine Bibliothek dauerhaft blockieren. Zwei Aufräumer verhindern das:
 
-- Ein Lauf, für den niemand eine Betriebsart gewählt hat (Zeitplan, „Jetzt indizieren“, ein
-  übergelaufener Ereignisstapel), ist ein Vollabgleich, sobald der gespeicherte Stand zu anderen
-  Einstellungen gehört.
-- Findet ein Lauf einen Stand anderer Einstellungen vor, verwirft er ihn, vermerkt das im Protokoll
-  und gleicht vollständig neu ab. Ein ausdrücklich inkrementell gestarteter Lauf sucht dann nichts;
-  der nächste Lauf ist ein Vollabgleich. Ein Stand, der vor dieser Prüfung entstand, nennt seine
-  Einstellungen nicht; er wird einmal verworfen, mit eigenem Protokollvermerk.
-- Das gilt auch, wenn ein Lauf, der vor der Änderung begann, den alten Stand danach noch einmal
-  geschrieben hat, und auch nach einem Neustart.
-- Ändern sich die Einstellungen, während ein Lauf läuft, entfernt dieser Lauf nichts als
-  verschwunden, weder am Ende der Auflistung noch aus dem Änderungsprotokoll. Bei den Dateiablagen
-  endet er meist als **fehlgeschlagen** mit „Die Quelle der Bibliothek wurde während des Laufs
-  geändert …“, weil die Änderung den Stand verworfen hat und der Lauf ihn nicht neu anlegt. Sichert
-  er danach nichts mehr, und bei Confluence, gilt er als **unvollständig** mit einem
-  Protokollvermerk. Lassen sich die Einstellungen vor dem Abgleich nicht erneut lesen, vermerkt das
-  Protokoll das eigens, und der Lauf entfernt ebenfalls nichts. In jedem Fall gleicht der nächste
-  Lauf unter den neuen Einstellungen ab.
+- **Beim Start des Backends** werden alle noch laufenden Läufe mit „Durch Neustart abgebrochen"
+  beendet (Abschnitt 7.3).
+- **Regelmäßig** werden Läufe beendet, die länger als eine Frist (`stale-job-timeout`) keinen
+  Fortschritt gemeldet haben. Maßgeblich ist der letzte Fortschritt, nicht der Start: Ein großer
+  Erstlauf darf lange dauern, solange er arbeitet.
 
-## 4. Die Quellen: der Übergabepunkt an die Konnektoren
+Ein abgebrochener Lauf lässt den Bestand stehen. Was er fertig verarbeitet hat, bleibt indiziert;
+was er nicht erreicht hat, bleibt auf dem alten Stand. Das eine Dokument, das gerade in Arbeit war,
+verarbeitet der nächste Lauf erneut.
 
-Jeder lauf-basierte Quellentyp hat einen eigenen **Konnektor** (im Code: Executor). Der
-Konnektor kennt die Eigenheiten seiner Quelle, die Dokumentstrecke dahinter kennt sie nicht.
-Was ein Konnektor liefern muss, ist für alle gleich:
+## 5. Was mit jedem Dokument passiert
 
-1. eine **Aufzählung** der aktuell vorhandenen Elemente (Dateien, URLs, Feed-Einträge, Seiten)
-   samt der Aussage, ob sie **vollständig** ist. Nur eine vollständige Aufzählung darf am Ende als
-   Grundlage dienen, um verschwundene Dokumente zu erkennen (Abschnitt 7),
-2. für jedes Element den **Inhalt** als Datei oder als bereits extrahierten Text,
-3. die Erklärung seiner **Betriebsarten**: welche es gibt und ob sie vollständig auflisten oder
-   nur ergänzen.
+Jedes Dokument, gleich welcher Herkunft, durchläuft dieselben Schritte:
 
-| Konnektor | Betriebsarten | Löscht durch Abwesenheit |
-|---|---|---|
-| FILESYSTEM | vollständig | ja, nach vollständigem Lauf |
-| HTTP_DIRECTORY | vollständig | ja, wenn der Crawl weder abgeschnitten noch unvollständig war |
-| RSS_FEED | ergänzend | nie |
-| CONFLUENCE | Vollabgleich (vollständig), inkrementell (ergänzend) | nur der Vollabgleich, und nur bei vollständiger Auflistung aller Spaces |
-| S3 | Vollabgleich (vollständig), Ereignislauf (ergänzend, nur per Benachrichtigung) | nur der Vollabgleich, und nur bei vollständiger Auflistung aller Geltungsbereiche; ein Bereich, der nicht gelistet werden darf oder dessen Bucket fehlt, lässt den Bestand stehen. Der Ereignislauf löscht nur auf Befund des Speichers (`404`) |
-
-```mermaid
-flowchart LR
-    subgraph Konnektoren
-        F[FILESYSTEM<br/>Verzeichnisbaum lesen]
-        H[HTTP_DIRECTORY<br/>Autoindex crawlen]
-        R[RSS_FEED<br/>Feed + Detailseiten]
-        C[CONFLUENCE<br/>Spaces, Seiten, Anhänge]
-        S[S3<br/>Buckets, Präfixe, Objekte]
-    end
-    F --> DS
-    H --> DS
-    R --> DS
-    C --> DS
-    S --> DS
-    U[Upload] --> DS
-    DS[Dokumentstrecke<br/>je Element identisch]
-```
-
-Zwei Dinge liegen in der Verantwortung des Konnektors, bevor die Dokumentstrecke überhaupt
-beginnt:
-
-- **Schutz der Umgebung.** Jeder Quellentyp bringt eigene Risiken mit: ein Dateisystemkonnektor
-  könnte beliebige Serverpfade lesen, ein Netzkonnektor könnte auf interne Adressen umgeleitet
-  werden oder unbegrenzt große Antworten laden. Jeder Konnektor hat deshalb eigene
-  Freigabe- und Grenzmechanismen, die der Betrieb konfiguriert. Ein Verstoß beendet den Lauf
-  oder das betroffene Element mit einem Protokolleintrag, nie mit einem stillen Weiterlaufen.
-- **Früherkennung von Unverändertem.** Je nach Quelle kann der Konnektor schon aus der
-  Aufzählung erkennen, dass sich ein Element nicht geändert hat, etwa über ein Änderungsdatum
-  oder eine bedingte HTTP-Anfrage, und sich den Download sparen. Das ist eine Optimierung; die
-  verbindliche Entscheidung trifft immer die Prüfsumme in der Dokumentstrecke.
-
-Alles Übrige ist nicht Sache des Konnektors, sondern eines **gemeinsamen Laufrahmens**, in dem
-jeder Konnektor läuft: das Anlegen von Zählern und Protokoll, die Prüfung der Betriebsart, die
-Zuordnung jedes Elementergebnisses zu Zähler und Protokolleintrag (Abschnitt 8.1), die Buchführung
-über Anhänge, die Bereinigung verschwundener Dokumente nach vollständiger Aufzählung (Abschnitt 7),
-die Kennzahlen des Laufs (Abschnitt 8.3) und die Übersetzung von Abbrüchen in eine verständliche
-Fehlermeldung. Deshalb lauten die Meldungen eines Laufabbruchs bei allen Konnektoren gleich, etwa
-„Lauf unterbrochen" oder „Die Bibliothek wurde während des Laufs gelöscht.", und ein neuer Konnektor bringt nur die drei oben
-genannten Dinge mit.
-
-> Welche Mechanismen und Grenzwerte das je Quelle konkret sind, steht in den Kapiteln
-> [Verzeichnis im Dateisystem](konnektoren/filesystem.md),
-> [Webverzeichnis](konnektoren/http-directory.md), [Feed](konnektoren/rss-feed.md),
-> [Confluence](konnektoren/confluence.md), [S3-Objektspeicher](konnektoren/s3.md),
-> [Google Drive](konnektoren/google-drive.md), [SharePoint](konnektoren/sharepoint.md),
-> [Nextcloud](konnektoren/nextcloud.md), [Dropbox](konnektoren/dropbox.md) und
-> [Windows-Dateifreigabe (SMB)](konnektoren/smb.md).
-
-### Zugänge
-
-Zugänge, das Verbinden einer Quelle, die Sperre einer Quellart oder eines Zugangs und die
-Profilpflicht beschreibt das Kapitel [Zugänge](zugaenge.md).
-
-## 5. Die Dokumentstrecke: was mit jedem Element passiert
-
-Das ist der Kern. Jedes Element, gleich welcher Herkunft, durchläuft diese Schritte in dieser
-Reihenfolge:
+**Abbildung 5.1: Die Dokumentstrecke**
 
 ```mermaid
 flowchart TB
-    P{Quellpfad<br/>zu lang?} -- ja --> PL[abgewiesen:<br/>Pfad zu lang]
-    P -- nein --> S1[1 Prüfsumme bilden<br/>Dokumentzeile suchen]
-    S1 --> Q{unverändert und<br/>zuletzt erfolgreich?}
+    S1[1 Prüfsumme bilden,<br/>Dokument suchen] --> Q{unverändert und<br/>zuletzt erfolgreich?}
     Q -- ja --> SK[übersprungen]
     Q -- nein --> S2[2 Speicherkontingent prüfen]
-    S2 --> S3[3 Format erkennen<br/>und Pipeline wählen]
-    S3 --> S4[4 Parsen und Chunken<br/>in der Format-Pipeline]
+    S2 --> S3[3 Format erkennen,<br/>Pipeline wählen]
+    S3 --> S4[4 Parsen und Chunken]
     S4 --> R{Ergebnis}
-    R -- Parsen gescheitert --> FP[fehlgeschlagen,<br/>alte Chunks bleiben]
-    R -- gelesen, aber leer --> FA[fehlgeschlagen,<br/>alte Chunks entfernt]
-    R -- kein Text<br/>z. B. Scan-PDF --> NT[abgewiesen: kein extrahierbarer<br/>Text, alte Chunks entfernt]
+    R -- nicht lesbar --> FP[fehlgeschlagen,<br/>alter Stand bleibt]
+    R -- leer oder<br/>kein Text --> FA[abgewiesen bzw. fehlgeschlagen,<br/>alter Stand entfernt]
     R -- Chunks --> S5[5 Metadaten anreichern]
-    S5 --> S6b[6a alte Chunks entfernen<br/>bei geändertem Dokument]
-    S6b --> S6[6 Embedden]
-    S6 --> S7[7 Vektor + Volltext schreiben<br/>eine Transaktion]
-    S7 --> S8[8 Dokument als indiziert markieren]
+    S5 --> S6[6 Embedden]
+    S6 --> S7[7 Vektor und Volltext schreiben]
+    S7 --> S8[8 als indiziert markieren]
     S4 -. gefundene Anhänge .-> AT[Anhänge als eigene<br/>Dokumente durch dieselbe Strecke]
 ```
 
-Schritt 6a steht bewusst im Bild: Die alten Chunks werden erst entfernt, wenn die neue Fassung
-geparst und gechunkt vorliegt, nicht schon vor dem Parsen.
+### 5.1 Prüfsumme und Identität
 
-### Schritt 1: Prüfsumme und Identität
+Über den Inhalt wird eine Prüfsumme gebildet und das Dokument über seinen Ort in der Quelle
+gesucht. Ist der Inhalt unverändert und war das Dokument zuletzt erfolgreich indiziert, ist der Fall
+erledigt: **übersprungen**. Das ist der Normalfall jedes Folgelaufs und der Grund, warum Folgeläufe
+schnell sind. Titel, Ort und Ordner werden dabei trotzdem aktualisiert.
 
-Über den Inhalt wird eine SHA-256-Prüfsumme gebildet. Dann wird die Dokumentzeile über das Paar
-aus Bibliothek und Quellpfad gesucht. Ist die Prüfsumme unverändert und stand das Dokument zuletzt
-auf „indiziert", ist der Fall erledigt: **übersprungen**, keine Chunks angefasst. Das ist der
-Normalfall in jedem Folgelauf und der Grund, warum Folgeläufe schnell sind. Was die Quelle sonst
-über das Element sagt — Titel, Ort in der Quelle, Änderungsmarke, Ordner — wird dabei trotzdem auf
-den aktuellen Stand gebracht: So überspringt der nächste Lauf das Element schon vor dem Abruf, und
-Dokumentliste wie Zitat zeigen den aktuellen Titel.
+Hat sich der Inhalt geändert, behält das Dokument seine Identität; nur seine Chunks werden
+ausgetauscht, und zwar erst, wenn die neue Fassung gelesen und zerlegt vorliegt. Scheitert das
+Lesen, bleibt der alte Stand durchsuchbar.
 
-Der Quellpfad ist die Identität des Dokuments und deshalb begrenzt: auf 2000 Zeichen und
-2676 Byte (UTF-8). Gezählt wird der ganze Pfad bzw. die ganze Adresse, wie sie die Quelle bildet,
-bei einem Anhang samt dem Pfad des Dokuments, aus dem er stammt. Ein längerer Pfad bricht den Lauf
-nicht ab: Das Element erscheint im Laufprotokoll als **abgewiesen** mit dem Grund „Pfad oder
-Adresse ist länger als …", wird als übersprungen gezählt und nicht gespeichert. Eine Dateiablage
-lädt es dafür gar nicht erst herunter. Name, Ort in der Quelle und Änderungsmarke eines Elements
-sind dagegen nicht begrenzt und werden so gespeichert, wie die Quelle sie liefert.
+Der Ort in der Quelle ist auf eine Länge begrenzt (Abschnitt 7.1). Ein längerer wird nicht
+gespeichert und erscheint im Protokoll als abgewiesen; der Lauf geht weiter.
 
-Hat sich der Inhalt geändert, bleibt die Dokumentzeile mit ihrer ID bestehen. Nur die Chunks
-werden ausgetauscht. Dadurch überleben Verweise auf das Dokument, etwa aus Chat-Zitaten oder von
-Anhängen, eine Aktualisierung.
+### 5.2 Speicherkontingent
 
-**Wann die alten Chunks verschwinden:** erst, wenn die neue Fassung tatsächlich geparst und
-gechunkt vorliegt (Schritt 6a im Bild). Scheitert das Parsen der neuen Fassung, bleibt der alte Stand durchsuchbar; das
-Dokument steht auf „fehlgeschlagen", behält aber seine Chunks und seine bisherige Chunk-Anzahl.
-Nur eine neue Fassung, die gelesen werden konnte und leer oder ohne extrahierbaren Text ist,
-entfernt die alten Chunks — dann ist „leer" eine Aussage über den neuen Inhalt, und die
-Chunk-Anzahl der Dokumentzeile steht auf 0. An der Chunk-Anzahl einer fehlgeschlagenen
-Dokumentzeile ist damit ablesbar, ob sie noch Chunks hat oder nicht — maßgeblich ist, ob gelöscht
-wurde, nicht der Grund des Fehlschlags: Auch ein Fehler beim Embedden oder Schreiben, also nach dem
-Löschen, hinterlässt eine 0.
+Jede Bibliothek hat ein Speicherkontingent; eine private Bibliothek zusätzlich das Kontingent ihrer
+Besitzerin über alle ihre privaten Bibliotheken ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+„Private Bibliotheken"). Geprüft wird der Zuwachs: Bei einer geänderten Datei zählt nur die
+Größendifferenz.
 
-### Schritt 2: Speicherkontingent
+Überschreitet ein Dokument ein Kontingent, wird es abgelehnt, und das Protokoll nennt den Grund.
+Der Lauf geht weiter und endet als unvollständig. Das abgelehnte Dokument gilt als vorhanden: Eine
+bereits aufgenommene Fassung bleibt stehen, und ein späterer Lauf versucht es erneut. Löschungen in
+der Quelle werden dagegen übernommen — oft sind es gerade sie, die Platz schaffen. Solange ein
+Dokument nicht passt, endet jeder Lauf, der es erreicht, wieder als unvollständig.
 
-Jede Bibliothek hat ein Kontingent. Geprüft wird das **Delta**: Bei einer geänderten Datei
-zählt nur die Größendifferenz, nicht die volle Größe. Überschreitet das Element das Kontingent,
-wird es mit dem Ergebnis „Kontingent überschritten" abgelehnt, und das Laufprotokoll nennt am
-Element den Grund.
+Dateiablagen prüfen das Kontingent schon vor dem Download
+([Abgleich der Dateiablagen](konnektoren/datei-abgleich.md), Abschnitt 4). Was bei Confluence, beim
+Feed und bei E-Mails mit Anhängen eigens gilt, steht in deren Kapiteln.
 
-Eine private Bibliothek unterliegt zusätzlich dem **Kontingent ihrer Besitzerin** über alle ihre
-privaten Bibliotheken zusammen (Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
-„Private Bibliotheken"). Überschreitet das Element dieses Kontingent, wird es genauso abgelehnt.
-Prüfung und Speichern der Dokumentzeile laufen für alle privaten Bibliotheken einer Person
-nacheinander, sodass auch gleichzeitige Läufe das Kontingent nicht überschreiten.
+### 5.3 Format erkennen
 
-**Eine Ablehnung wirkt an beiden Kontingenten gleich.** Der Lauf geht weiter, gleicht ab und endet
-als unvollständig mit der Kategorie `QUOTA_EXHAUSTED`, auch wenn nur ein Anhang abgelehnt wurde.
-Das abgelehnte Element gilt als vorhanden: Eine bereits aufgenommene Fassung bleibt stehen. Die
-Ablehnung hält jede Fortschrittsmarke am Element, damit ein späterer Lauf es erneut versucht:
+Die Formaterkennung schaut in den **Inhalt**, nicht auf die Dateiendung: Eine als `.pdf` benannte
+Word-Datei wird als Word-Datei verarbeitet, mit dem Protokollvermerk „Formatabweichung". Für jedes
+Format gibt es genau eine **Format-Pipeline**, für Unbekanntes und Strukturloses eine
+Auffang-Pipeline. Zugelassen sind grob Text und Markdown, PDF, die Office-Formate von Microsoft und
+OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen genau, welche Pipeline sie bedient und was
+bewusst nicht aufgenommen wird, steht in der Übersicht der [Formate](formate/README.md).
 
-- Eine Dateiablage hält Änderungsstand und Ordnergedächtnis (siehe unten).
-- Ein inkrementeller Confluence-Lauf rückt seinen Anker nicht vor. Nach einem Confluence-Vollabgleich
-  mit Ablehnung ist der nächste Lauf wieder ein Vollabgleich, denn die abgelehnte Seite oder ihr
-  Anhang ist älter als der Anker, und kein inkrementeller Lauf fände sie. Das gilt auch, wenn sich
-  der Vollabgleich über mehrere Läufe erstreckt und die Ablehnung in einem früheren davon lag.
-- Ein RSS-Lauf speichert den Feed-Zustand nicht, der nächste Abruf liefert den Feed also vollständig.
-- Ein Dokument, dessen Anhang abgelehnt wurde, etwa eine Mail mit Anlagen, wird ohne Prüfsumme und
-  Änderungsmerkmal gespeichert, und der nächste Lauf liest es erneut. Gemessen wird es dann an dem,
-  was von ihm schon gespeichert ist, also an seiner eigenen Zeile samt der Anhänge, die aus ihm
-  stammen. Die gespeicherten Anhänge zählen dabei nicht noch einmal mit ihrer vollen Größe, wohl
-  aber mit dem Aufschlag ihrer Kodierung: In einer Mail stecken Anhänge meist base64-kodiert, also
-  rund ein Drittel größer als gespeichert. Platz braucht das Wiederlesen deshalb für die fehlenden
-  Anhänge in kodierter Form und für den Kodierungsaufschlag der schon gespeicherten. Beispiel: Eine
-  Mail mit neun gespeicherten und einem fehlenden Anhang zu je 1 MB braucht rund 0,37 MB je
-  gespeichertem Anhang und 1,37 MB für den fehlenden, zusammen etwa 4,7 MB freien Platz. Solange
-  der nicht frei ist, endet jeder Lauf, der die Mail erreicht, wieder als unvollständig.
+### 5.4 Parsen und Chunken
 
-Gehalten wird nur die Marke am Element, nie der Abschluss einer Runde und nie die Entfernungen:
-Löschungen in der Quelle werden übernommen, und oft sind es gerade diese, die den Platz freimachen.
-Solange ein Element nicht passt, endet jeder Lauf, der es erreicht, wieder als unvollständig.
+Die Format-Pipeline liest den Text und zerlegt ihn entlang seiner Gliederung: nach Überschriften,
+Seiten, Folien oder Zeilengruppen. Nur wer das Format kennt, weiß, wo diese Grenzen liegen.
 
-Bei einer **Dateiablage** (Nextcloud, SharePoint, SMB, S3, Google Drive, Dropbox) wird ein
-Kontingent schon **vor dem Download** befragt, mit der Größe aus der Auflistung. Kündigt sie gegenüber dem
-gespeicherten Stand Wachstum an, das eines der beiden Kontingente überschreitet, wird die Datei
-gar nicht erst geladen und genauso abgelehnt wie nach dem Download: derselbe Protokolleintrag,
-dieselbe Kategorie `QUOTA_EXHAUSTED`, die Datei gilt als vorhanden. Ohne bekannte Größe, bei
-gleicher oder kleinerer Größe wird geladen. Die Vorprüfung ist nur beratend, denn die gelistete
-Größe kann von der geladenen abweichen: Maßgeblich bleibt die Prüfung mit der tatsächlichen Größe
-vor dem Speichern. Weil eine falsche Listengröße eine Datei auch zu Unrecht zurückhalten kann, hält
-in einer Dateiablage jede Ablehnung an einem der beiden Kontingente, auch die eines Anhangs,
-Änderungsstand und Ordnergedächtnis. Sobald Platz für die gelistete Größe frei ist, wird die Datei
-geladen und mit ihrer echten Größe gezählt.
-
-Wann eine Dateiablage die Datei erneut prüft:
-
-- Nextcloud, SMB und S3 kennen nur den Vollabgleich; der nächste prüft die Datei erneut.
-- Bei Google Drive, SharePoint und Dropbox prüft eine Datei, die das Änderungsprotokoll meldet,
-  schon der nächste Änderungslauf erneut. Eine Datei, die in der Auflistung eines Vollabgleichs abgelehnt
-  wurde, meldet das Änderungsprotokoll danach nicht wieder. Deshalb ist der nächste Lauf nach einem
-  solchen Vollabgleich wieder ein Vollabgleich, auch wenn sich dieser über mehrere Läufe erstreckt
-  hat. Solange die Bibliothek voll bleibt, tritt so an die Stelle jedes Änderungslaufs ein
-  Vollabgleich; unveränderte Dateien lädt auch er nicht erneut.
-- Ein Vollabgleich über mehrere Läufe endet trotz einer Ablehnung, und die Löschungen, die das
-  Änderungsprotokoll meldet, werden übernommen. Wurde die Datei erst beim Lesen des Protokolls am
-  Ende der Runde abgelehnt, liest der nächste Änderungslauf das Protokoll ab dem Stand, an dem der
-  Vollabgleich begann, und trifft sie erneut.
-
-### Schritt 3: Format erkennen und Pipeline wählen
-
-Die Formaterkennung schaut in den **Inhalt** (Magic Bytes), nicht auf die Dateiendung. Eine als
-`.pdf` benannte Word-Datei wird als Word-Datei verarbeitet. Stimmen Endung und Inhalt nicht
-überein, wird das Dokument trotzdem indiziert, aber ein Protokolleintrag „Formatabweichung"
-gesetzt, damit der Fall auffällt.
-
-Als Inhaltstyp des Dokuments wird der kanonische Medientyp des erkannten Formats gespeichert (etwa
-`text/markdown` für Markdown, auch wenn die Byte-Erkennung nur „Text" sagt); nur ein Dokument ohne
-erkanntes Format behält den roh erkannten Typ. Anhand des erkannten Formats wird eine
-**Format-Pipeline** gewählt. Für jedes Format gibt es
-genau eine zuständige Pipeline; für alles Unbekannte oder Strukturlose gibt es eine
-Auffang-Pipeline auf Basis von Apache Tika. Zwei Inhalte waren nie eine Datei und überspringen die
-Formaterkennung: Der Hauptinhalt einer Feed-Detailseite geht als HTML direkt an die
-[HTML-Pipeline](formate/html.md), der Körper einer Confluence-Seite direkt an die
-[Confluence-Pipeline](formate/confluence.md). Zugelassen sind grob: Text und Markdown, PDF, die
-Office-Formate von Microsoft und OpenDocument, Tabellen, HTML und E-Mails. Welche Endungen das
-genau sind, welche Pipeline sie bedient und welche Formate bewusst nicht aufgenommen werden,
-steht in der [Formatübersicht](formate/README.md) am Ende dieses Kapitels.
-
-### Schritt 4: Parsen und Chunken
-
-Beide Schritte liegen **innerhalb** der Format-Pipeline, weil sie zusammengehören: Nur wer das
-Format kennt, weiß, wo Überschriften, Tabellen, Folien oder Mail-Kopfzeilen sind, und nur dann
-kann der Zuschnitt entlang dieser Struktur erfolgen.
-
-Was alle Pipelines gemeinsam haben:
-
-- Sie liefern eine Liste von **Chunks** mit Text und Strukturkontext, oder eines von drei
-  Nicht-Ergebnissen: „Parsen gescheitert" (die Quelle war nicht lesbar — beschädigte Datei,
-  abgewiesene Schutzgrenze; zählt als Fehler), „kein Inhalt" (die Quelle war lesbar und ist leer;
-  zählt ebenfalls als Fehler) und „kein extrahierbarer Text" (typisch für eingescannte PDFs ohne
-  Textebene, zählt als Ablehnung, nicht als Fehler). Die Unterscheidung der ersten beiden
-  entscheidet, ob die alten Chunks eines geänderten Dokuments stehen bleiben (Schritt 1).
 - Jeder Chunk trägt eine **Ortsangabe**, etwa „S. 3 · Abschn. Fristen › Verlängerung", die später
-  im Zitat erscheint. Die Seitenzahl überlebt die Textextraktion nur, weil Seitenwechsel als
-  Marker in den Text geschrieben und vor dem Embedden wieder entfernt werden.
-- Jede Pipeline hat eine **Kennung und eine Versionsnummer**, die an jedem erzeugten Chunk
-  gespeichert wird (Abschnitt 9).
-- **Kein Text geht wegen seiner Länge verloren.** Ein Abschnitt ohne Zwischenüberschrift, der über
-  die Zielgröße hinausgeht, wird in mehrere Chunks geteilt, nicht gekürzt. Geteilt wird an der
-  gröbsten Grenze, die sich anbietet: zuerst an Leerzeilen, dann an Zeilenumbrüchen, dann an
-  Satzenden, zuletzt an Leerzeichen. Nur eine Zeichenfolge ganz ohne solche Grenze wird hart
-  geschnitten. Jedes Teilstück beginnt mit der Überschriftenzeile seines Abschnitts und trägt
-  dessen Ortsangabe.
-- Alle Format-Pipelines zielen auf rund **4.000 Zeichen** je Chunk: die überschriftengetriebenen
-  (PDF mit Gliederung, Word, OpenDocument Text, HTML, Markdown, Confluence) je Abschnitt, die
-  übrigen je Seite, Folie oder Zeilengruppe. Eine längere Seite oder Folie wird ebenso geteilt;
-  jedes Teilstück behält deren Ortsangabe („S. 4", „Folie 3", „Zeile 12") und wiederholt den
-  Folientitel bzw. bei Tabellen Kontext- und Kopfzeile. Ein Chunk liegt damit bei grob 1.000
-  Tokens und passt auch in kleine Kontextfenster wie das von `nomic-embed-text`. Nur wenn schon
-  die Überschriftenzeile oder der Folientitel selbst zu lang ist, greift als letzte Grenze
-  **8.000 Zeichen**; auch die bleiben selbst bei zahlenlastigem Text deutlich unter der
-  Eingabegrenze, die OPAA beim Embedden prüft (Schritt 6).
-- **Kleinstabschnitte werden zusammengefasst.** Bei den überschriftengetriebenen Pipelines gilt ein
-  Abschnitt, der samt eigener Überschrift kürzer als **200 Zeichen** ist, als Kleinstabschnitt —
-  etwa ein Haushaltstitel mit einer einzigen Zeile. Aufeinanderfolgende Kleinstabschnitte direkt
-  unter derselben übergeordneten Überschrift werden zu einem Chunk von höchstens rund 4.000 Zeichen
-  zusammengelegt; eine kurze Einleitung dieser Überschrift selbst kommt mit. Text unter einer
-  Überschrift ohne Titel wird nicht zusammengelegt. Der Chunk beginnt mit dem gemeinsamen Überschriftenpfad, der auch seine
-  Ortsangabe ist; vor dem Text jedes zusammengelegten Abschnitts steht dessen eigene Überschrift.
-  Über die Grenze der übergeordneten Überschrift hinweg wird nie zusammengelegt, Abschnitte ganz
-  ohne gemeinsame Überschrift bleiben getrennt. Ein Abschnitt ab 200 Zeichen bleibt immer ein
-  eigener Chunk: Ein einzelner Paragraf soll gezielt auffindbar bleiben. Seiten, Folien und
-  Zeilengruppen werden nicht zusammengelegt.
-- Die Chunk-Größen sind je Pipeline **projektseitig festgelegt**, nicht über einen
-  Admin-Regler. Die konfigurierbaren Werte für Chunk-Größe und Überlappung gelten nur noch für
-  die Auffang-Pipeline und strukturlose Texte. Dort wird nach Tokens geschnitten, standardmäßig
-  1000 Tokens mit 100 Tokens Überlappung zum Vorgänger, damit ein Satz an der Schnittkante in
-  beiden Chunks vollständig vorkommt.
+  im Zitat erscheint.
+- **Kein Text geht wegen seiner Länge verloren.** Ein zu langer Abschnitt wird geteilt, nie gekürzt;
+  jedes Teilstück behält Überschrift und Ortsangabe.
+- **Kleinstabschnitte werden zusammengefasst**, etwa viele einzeilige Haushaltstitel unter einer
+  gemeinsamen Überschrift. Ein Abschnitt normaler Länge bleibt dagegen ein eigener Chunk, damit
+  ein einzelner Paragraf gezielt auffindbar bleibt.
+- Das Ergebnis ist entweder eine Liste von Chunks oder einer von drei Befunden: **nicht lesbar**
+  (beschädigte Datei; der alte Stand bleibt), **leer** (der alte Stand wird entfernt) oder **kein
+  extrahierbarer Text**, typisch für eingescannte PDFs (abgewiesen, der alte Stand wird entfernt).
 
-> Die einzelnen Format-Pipelines, ihre Struktur-Regeln, Metadaten und Grenzwerte haben je ein
-> eigenes Kapitel; die Liste steht in der [Formatübersicht](formate/README.md).
+Die Zielgrößen und Grenzen stehen in Abschnitt 7.1, die Regeln je Format in dessen Kapitel.
 
-### Schritt 5: Metadaten anreichern
+### 5.5 Metadaten anreichern
 
-Vor dem Speichern bekommt jeder Chunk seinen Rahmen: Dokument, Bibliothek, Organisation,
-laufende Nummer im Dokument, Dateiname, Pipeline-Kennung und -Version, sowie die
-Struktur-Metadaten aus der Pipeline (Ortsangabe, bei Mails die Kopfdaten). Der Container und der
-Gliederungspfad der Quelle (bei Confluence Space und Seitenhierarchie, bei S3 Bucket und
-Präfixpfad) kommen dagegen vom Dokument selbst, nicht von der Pipeline: Sie stehen auf jedem Chunk
-eines Dokuments mit diesen Angaben, auch wenn ein Confluence-Anhang über eine andere Pipeline läuft
-als die Confluence-Seite selbst. Diese Metadaten sind das, worüber die Suche später filtert, etwa
-auf die Bibliotheken, die eine Person sehen darf.
+Jeder Chunk bekommt seinen Rahmen: Dokument, Bibliothek, Dateiname, Ortsangabe und die Merkmale aus
+der Quelle, etwa Space und Gliederungspfad einer Confluence-Seite. Darüber filtert die Suche später,
+zum Beispiel auf die Bibliotheken, die eine Person sehen darf. Hier werden auch die **Kernfelder**
+ermittelt — Titel, Dokumentart, Datum ([Metadaten](metadaten.md)).
 
-An derselben Stelle werden die **Kernfelder** des Dokuments ermittelt (Titel, Dokumentart,
-Datum/Stand) und die filterbaren davon an jeden Chunk geschrieben. Woher sie kommen und was sie
-bewirken, steht im Kapitel [Metadaten](metadaten.md).
+Für Embedding und Volltext, nicht für den gespeicherten Text, bekommt jeder Chunk einen
+**Kontextpräfix**: den Titel des Dokuments, ausgewählte Feldwerte und seinen Gliederungspfad. Ein
+Chunk aus `2024-03_Dienstanweisung_Homeoffice.pdf` wird als „Dienstanweisung Homeoffice › …"
+eingebettet. So trägt auch ein Detail-Chunk — eine Gebührenzeile, ein einzelner Paragraf — Signal
+darüber, wovon das Dokument handelt.
 
-Zusätzlich wird für Embedding und Volltextindex, nicht für den gespeicherten Text, ein
-**Kontextpräfix** vorangestellt: der Titel des Dokuments (Kapitel [Metadaten](metadaten.md),
-Abschnitt 9), sofern das Dokument in mehr als einen Chunk zerfällt, dazu präfixwirksame Feldwerte
-und der Gliederungspfad des Chunks. Ein Chunk aus `2024-03_Dienstanweisung_Homeoffice.pdf` wird
-als „Dienstanweisung Homeoffice › …" eingebettet und volltextindiziert. Der Präfix gleicht aus,
-dass ein Detail-Chunk (eine Gebührenzeile, ein einzelner Paragraf) sonst kaum Signal trägt, wovon
-das Dokument handelt. Das Zitat bleibt unverändert.
+### 5.6 Embedden
 
-### Schritt 6: Embedden
+Die Chunks gehen paketweise an das Embedding-Modell. Das ist der einzige Aufruf nach außen, der
+nicht der Quelle gilt. Ist ein einzelner Chunk zu lang für das Modell — praktisch nur bei Text mit
+sehr vielen Tokens je Zeichen, etwa in nicht lateinischen Schriften —, wird von dem Dokument nichts
+eingebettet; seine Fehlermeldung nennt die Stelle („Ein Textabschnitt ist zu lang für das
+Embedding-Modell (S. 4)").
 
-Die Chunks gehen in Paketen (Standard 50) an das konfigurierte Embedding-Modell. Bei großen
-Dokumenten laufen mehrere Pakete parallel (Standard drei). Dieser Schritt ist der einzige
-Netzaufruf der Strecke außerhalb der Quelle und bewusst **außerhalb jeder
-Datenbanktransaktion**, damit keine Datenbankverbindung während eines Modell-Roundtrips
-blockiert bleibt.
+### 5.7 Vektor und Volltext schreiben
 
-Vor dem Aufruf zählt OPAA die Tokens jedes Chunks. Die Eingabegrenze liegt bei 8.191 Tokens
-abzüglich 10 % Reserve, also rund 7.400 Tokens. Überschreitet ein einzelner Chunk sie trotz der
-Größengrenzen aus Schritt 4, praktisch nur bei Text mit sehr vielen Tokens je Zeichen wie
-nicht-lateinischen Schriften, wird von dem Dokument nichts eingebettet. Es endet als
-**fehlgeschlagen**, und seine Fehlermeldung nennt die Ortsangabe des Chunks, etwa „Die Datei
-konnte nicht verarbeitet werden: Ein Textabschnitt ist zu lang für das Embedding-Modell (S. 4)".
-Hat der Chunk keine Ortsangabe, steht dort seine laufende Nummer im Dokument („Teil 5").
+Vektor und Volltext eines Chunks werden gemeinsam geschrieben; es gibt keinen Chunk, den nur eine
+der beiden Suchen kennt. Der Volltext wird mit deutscher Wortstammbildung aufgebaut und um erkannte
+**Kennungen** wie Paragrafen und Aktenzeichen ergänzt, damit „§ 12 Abs. 3" exakt trifft. Welche
+Kennungen erkannt werden, steht im Kapitel [Suche](suche.md), Stufe 5.
 
-### Schritt 7: Vektor und Volltext schreiben
+### 5.8 Als indiziert markieren
 
-In **einer** Transaktion werden die Chunks mit ihren Vektoren in die Vektortabelle und
-gleichzeitig in den Volltextindex geschrieben. Der Volltext wird mit deutscher Wortstammbildung
-aufgebaut und um erkannte **Kennungen** ergänzt, die unzerlegt und mit hohem Gewicht abgelegt
-werden. So trifft die Suche „§ 12 Abs. 3" exakt und nicht nur ungefähr. Die Liste der
-Kennungen ist bewusst geschlossen; eine falsch erkannte Kennung erzeugt Rauschen, eine nicht
-erkannte einen verpassten Treffer:
+Zuletzt wird das Dokument mit Chunk-Anzahl und Prüfsumme als „indiziert" markiert. Wurde es
+währenddessen gelöscht, werden die gerade geschriebenen Chunks wieder entfernt.
 
-Welche Kennungen erkannt werden, steht im Kapitel [Suche](suche.md), Stufe 5.
+### 5.9 Anhänge
 
-### Schritt 8: Dokument markieren
+Anhänge entstehen auf zwei Arten und münden in denselben Weg: **aus dem Format**, wie die Anlagen
+einer E-Mail — gleich, woher die Mail kommt —, oder **aus der Quelle**, wie die angehängten Dateien
+einer Confluence-Seite. Wer einen Anhang findet, meldet ihn nur; verarbeitet wird er wie jedes
+andere Dokument, mit eigener Prüfsumme, eigener Pipeline und eigenem Protokolleintrag.
 
-Zuletzt wird die Dokumentzeile auf „indiziert" gesetzt, mit Chunk-Anzahl, Prüfsumme und
-Zeitstempel. Das geschieht als bedingte Aktualisierung: Wurde das Dokument währenddessen
-gelöscht, werden die gerade geschriebenen Chunks wieder entfernt, statt eine Leiche
-zurückzulassen.
-
-> **Restfenster:** Das Entfernen der alten Chunks (Schritt 6a) und das Schreiben der neuen
-> (Schritt 7) liegen nicht in einer gemeinsamen Transaktion — dazwischen liegt der
-> Embedding-Aufruf. Stürzt der Prozess genau darin ab, hat das Dokument kurzzeitig keine Chunks,
-> während seine Zeile noch „indiziert" mit der alten Chunk-Anzahl zeigt. Der nächste Lauf
-> verarbeitet es erneut (Abschnitt 3.3). Alte und neue Chunks liegen nie gleichzeitig vor.
-
-## 6. Anhänge: ein Dokument in einem Dokument
-
-Manche Dokumente enthalten oder verlinken weitere Dokumente, und die sind oft der eigentliche
-Inhalt. Anhänge entstehen auf zwei Arten, und beide münden in denselben Mechanismus:
-
-- **Aus dem Format:** Ein Dokument enthält andere Dokumente, wie eine E-Mail ihre Dateianhänge.
-  Das ist unabhängig von der Quelle; die Format-Pipeline meldet die Anhänge, gleich ob die Mail
-  hochgeladen, aus einem Verzeichnis gelesen oder von einem Server geladen wurde.
-- **Aus der Quelle:** Ein Quellsystem verknüpft mit einem Element weitere Dateien, wie eine
-  Feed-Detailseite ihre verlinkten Anlagen oder eine Confluence-Seite ihre angehängten Dateien.
-  Hier meldet der Konnektor die Anhänge; bei Confluence trägt jeder Anhang Space und
-  Gliederungspfad seiner Seite.
-
-OPAA behandelt jeden Anhang als **eigenes Dokument**: mit eigener Prüfsumme, eigener Pipeline,
-eigener Chunk-Anzahl und einem Verweis auf das Elterndokument. Das Beispiel zeigt eine Mail:
+**Abbildung 5.2: Eine E-Mail mit Anhängen**
 
 ```mermaid
 flowchart LR
@@ -699,264 +420,226 @@ flowchart LR
     A2 -.->|Mail in Mail:<br/>Kette geht weiter| A3[vorgang.eml/1/antwort.eml/0/…]
 ```
 
-Konsequenzen für den Betrieb:
+- Der Ort eines Anhangs enthält den Ort seines Elterndokuments und seine Position darin; zwei
+  gleichnamige Anhänge kollidieren nicht.
+- Anhänge können selbst Anhänge haben (Mail in Mail). Die Tiefe ist begrenzt
+  (`attachments.max-depth`); was darüber liegt, wird übersprungen und protokolliert.
+- Das Kontingent zählt Anhänge nur einmal: Eine Mail zählt nur Kopf und Text, ihre Anhänge zählen
+  als eigene Dokumente.
+- Wird das Elterndokument neu verarbeitet und meldet einen früheren Anhang nicht mehr, wird dieser
+  entfernt. Bleibt das Elterndokument unverändert, bleiben auch seine Anhänge.
+- Beim Löschen werden Anhänge vor ihrem Elterndokument entfernt.
+- In der Dokumentliste steht ein Anhang unter seinem Elterndokument. Dokumentzahlen in Liste,
+  Ordnern, Kachel und Kennzahlen zählen nur die oberste Ebene; Laufzähler und Bestandszahlen der
+  Suchverwaltung zählen Anhänge mit.
 
-- Der Quellpfad eines Anhangs enthält den Elternpfad und seine laufende Nummer im Elternteil.
-  Zwei gleichnamige Anhänge desselben Elterndokuments kollidieren nicht.
-- Anhänge können selbst Anhänge haben (Mail in Mail, eine Mail als Anlage einer Feed-Seite).
-  Die Verschachtelungstiefe ist begrenzt, Standard fünf Ebenen. Was darüber liegt, wird
-  übersprungen und protokolliert.
-- Das Kontingent zählt Anhangsbytes nur einmal: Enthält ein Dokument seine Anhänge physisch,
-  wie eine Mail, wird seine eigene Größe auf den Anteil ohne Anhänge reduziert. Wird es erneut
-  gelesen, zählen die schon gespeicherten Anhänge nicht noch einmal (Abschnitt 5, Schritt 2).
-- Wer Anhänge findet, **meldet** sie nur; verarbeitet werden sie von der Dokumentstrecke über
-  dieselben Schritte wie jedes andere Dokument. Damit gelten Kontingent, Formatzulassung und
-  Protokoll auch für Anhänge.
-- Wird ein Elterndokument neu verarbeitet und ein früher bekannter Anhang nicht mehr gemeldet,
-  gilt er als entfernt und wird gelöscht. Wird das Elterndokument als unverändert übersprungen,
-  bleiben seine Anhänge unangetastet.
-- In der Dokumentliste einer Bibliothek steht ein Anhang nur unter seinem Elterndokument, auch
-  wenn er wie bei `S3` und `HTTP_DIRECTORY` im Ordner seines Elterndokuments liegt. Die
-  Dokumentzahlen der Dokumentliste, der Ordner sowie Kachel und Kennzahl der Bibliothek zählen nur
-  Dokumente der obersten Ebene. Die Laufzähler (Abschnitt 8.1) und die Bestandszahlen der
-  Suchverwaltung zählen Anhänge dagegen mit.
+## 6. Protokoll und Fehler
 
-Die Dokumentstrecke weiß nicht, woher ein Anhang stammt. Jeder Konnektor, der Anhänge
-liefert, und jede Format-Pipeline, die welche findet, nutzt denselben Weg; die Grenzwerte für
-Anzahl und Größe je Elternteil setzt die jeweilige Quelle bzw. das Format (ersatzweise
-`opaa.indexing.attachments.max-per-parent`/`max-size-bytes`, derzeit von keinem Konnektor
-genutzt); die Tiefe ist allgemein (`opaa.indexing.attachments.max-depth`).
+### 6.1 Ergebnis je Dokument
 
-## 7. Änderungen und Löschungen erkennen
+Jedes Dokument eines Laufs endet in genau einem von fünf Ergebnissen: **verarbeitet**,
+**übersprungen**, **Kontingent überschritten**, **kein extrahierbarer Text** oder
+**fehlgeschlagen**. Daraus ergeben sich die Zähler des Laufs; Anhänge zählen mit.
 
-| Situation in der Quelle | Verhalten |
-|---|---|
-| Datei unverändert | übersprungen, Chunks bleiben |
-| Datei geändert | alte Chunks entfernt, neue erzeugt, Dokument-ID bleibt |
-| Datei umbenannt oder verschoben | neuer Pfad ist ein neues Dokument, alter Pfad gilt als entfernt |
-| Datei verschwunden | Dokument samt Chunks wird am Ende eines **vollständig auflistenden, erfolgreichen** Laufs entfernt |
-| Quelle meldet die Löschung selbst (Confluence: Seite im Papierkorb, Seite in einen anderen Space verschoben; S3: Objekt zwischen Auflistung und Abruf verschwunden oder im Ereignislauf per `HeadObject` als `404` bestätigt) | Dokument samt Anhängen wird sofort entfernt (Confluence in jeder Betriebsart, S3 im Ereignislauf) bzw. am Ende des vollständigen Laufs (S3-Vollabgleich) |
-| S3-Objekt mit neuem ETag, aber gleichem Inhalt (erneuter Upload, Multipart, Verschlüsselungswechsel) | heruntergeladen, Prüfsumme gleich: Merkmal nachgetragen, Dokument-ID und Chunks bleiben |
-| S3-Objekt übersprungen (Ordnermarker, Archivklasse, nicht unterstütztes Format, zu groß, nicht lesbar) | gilt als gesehen, nichts wird entfernt; das Protokoll nennt es |
-| S3-Schlüssel außerhalb der Ein-/Ausschlussmuster oder eines abgewählten Geltungsbereichs | nicht mehr Teil des Bestands, wird am Ende des vollständigen Laufs entfernt |
-| Datei im Verzeichnis-Konnektor, die ein Ausschlussmuster oder ein Standardausschluss (versteckt, Systemordner) trifft | nicht mehr Teil der Quelle, wird am Ende des vollständigen Laufs entfernt |
-| Quelle nicht erreichbar, Teil der Quelle nicht lesbar | Lauf `FAILED` bzw. Aufzählung unvollständig, **nichts** wird entfernt |
-| Verzeichnis-Konnektor: Unterverzeichnis oder Datei unterhalb des Verzeichnispfads nicht lesbar | nur der Bestand in diesem Teilbaum bleibt stehen, außerhalb wird normal entfernt ([Dateisystem-Konnektor](konnektoren/filesystem.md), Abschnitt 9) |
+### 6.2 Laufprotokoll
 
-Die letzte Zeile ist die wichtigste Sicherung: Ein Lauf, der null Dateien sieht, kann eine leere
-Quelle oder ein nicht eingebundenes Netzlaufwerk bedeuten. Deshalb löscht ein leeres Ergebnis nie,
-und die Bereinigung läuft nur, wenn der Konnektor die Quelle vollständig aufgezählt hat. Ein
-abgebrochener Crawl bereinigt nicht; ein Confluence-Space, den das Dienstkonto nicht lesen darf,
-lässt den ganzen Bestand stehen, ebenso ein S3-Geltungsbereich, den die Zugangsdaten nicht
-auflisten dürfen oder dessen Bucket fehlt. Ein entzogenes Recht ist kein Löschbefund. Ein
-S3-Lauf, dessen Anfragebudget erschöpft ist, endet unvollständig und bereinigt ebenfalls nicht;
-der nächste Lauf listet alle Geltungsbereiche erneut und lädt nur, was noch fehlt.
+Jeder Lauf führt ein Protokoll mit einer lesbaren Begründung je Eintrag.
 
-Einzige Ausnahme ist der Verzeichnis-Konnektor: Kann er unterhalb des lesbaren Verzeichnispfads ein
-Unterverzeichnis oder eine Datei nicht lesen, schont er nur die bekannten Dokumente in diesem
-Teilbaum und bereinigt den Rest wie nach einer vollständigen Aufzählung. Hat er außer solchen
-Bereichen nichts gefunden, löscht er nichts. Einzelheiten stehen im Kapitel
-[Dateisystem-Konnektor](konnektoren/filesystem.md), Abschnitt 9.
-
-Für S3 ist das Änderungsmerkmal vor dem Download die Kombination aus ETag und Größe des
-Objekts (`e:<ETag>|<Größe>` in `last_modified_remote`), nicht der Zeitstempel: Ein erneuter
-Upload desselben Inhalts setzt `LastModified` neu, ändert aber nichts. Stimmt das Merkmal, wird
-das Objekt nicht geladen; weicht es ab, entscheidet nach dem Download die Prüfsumme.
-
-Auch abgewiesene Dateien, etwa nicht unterstützte Formate, gelten dabei als „gesehen". Unlesbar
-ist nicht dasselbe wie verschwunden.
-
-Die Bereinigung wirkt je Bibliothek und Quellentyp und nur in vollständig auflistenden
-Betriebsarten (Abschnitt 4). Feeds bereinigen **nie** durch Abwesenheit, weil ein Feed nur die
-jüngsten Einträge zeigt und ältere Meldungen nicht verschwunden sind, nur nicht mehr gelistet; ein
-inkrementeller Confluence-Lauf ebenso wenig, weil er nur Geändertes sieht.
-
-Beim Löschen werden Anhänge vor ihren Elterndokumenten entfernt, damit die Verweise in der
-Datenbank konsistent bleiben.
-
-## 8. Fehlerbehandlung und Protokoll
-
-### 8.1 Ergebnis je Element
-
-Jedes Element endet in genau einem von fünf Ergebnissen: **verarbeitet**, **übersprungen**,
-**Kontingent überschritten**, **kein extrahierbarer Text** oder **fehlgeschlagen**. Die ersten
-drei Zähler eines Laufs (verarbeitet, übersprungen, fehlgeschlagen) ergeben sich daraus;
-Anhänge erhöhen zusätzlich den Zähler der indizierten Dokumente.
-
-### 8.2 Laufprotokoll
-
-Jeder Lauf führt eine Ereignisliste mit einer deutschen, für Menschen lesbaren Begründung je
-Eintrag. Die Kategorien:
+**Tabelle 6.1: Kategorien des Laufprotokolls**
 
 | Kategorie | Bedeutung |
 |---|---|
-| abgewiesen | das Element wurde nicht übernommen: Die Quelle hat es zurückgewiesen (Bot-Schutz, HTTP 403/429, fremder Host), ein Speicherkontingent ist erschöpft, es enthält keinen extrahierbaren Text, oder sein Quellpfad ist zu lang (Abschnitt 5, Schritt 1) |
+| abgewiesen | nicht übernommen: Die Quelle hat es zurückgewiesen, ein Kontingent ist erschöpft, es enthält keinen extrahierbaren Text, oder sein Ort ist zu lang |
 | nicht erreichbar | Verbindungsfehler oder Zeitüberschreitung |
-| Format nicht unterstützt | Datei- oder Inhaltstyp wird nicht indiziert |
+| Format nicht unterstützt | das Format wird nicht indiziert |
 | Formatabweichung | indiziert, aber Endung und Inhalt passen nicht zusammen |
-| Allowlist | Quellpfad liegt außerhalb der Freigabe |
+| Allowlist | der Ort liegt außerhalb der Freigabe |
 | Zeitplan übersprungen | fällig, aber ein Lauf lief bereits |
-| in der Quelle entfernt | Dokument wurde gelöscht, wegen Abwesenheit oder auf Befund der Quelle |
-| Ratenbegrenzung | die Quelle hat den Lauf gebremst (HTTP 429, bei S3 auch 503); eine Zeile je Lauf mit Anzahl und Wartezeit, bei jedem Netzkonnektor gleich formuliert: „Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen" |
-| Anfragebudget erschöpft | der Lauf endete geordnet unvollständig, weil sein Anfragebudget verbraucht oder der Deckel seiner 429-Wartezeit erreicht ist; die Zeile nennt, wo der nächste Lauf fortsetzt |
-| Kennzahlen | die Zahlen des Laufs (Anfragen, geladene Bytes, gelistete / übersprungene / verarbeitete Objekte, Dauer je Geltungsbereich); eine Zeile je Lauf bei Konnektoren, die sie zählen (S3) |
+| in der Quelle entfernt | wegen Abwesenheit oder auf Befund der Quelle gelöscht |
+| Ratenbegrenzung | die Quelle hat den Lauf gebremst; eine Zeile je Lauf mit Anzahl und Wartezeit |
+| Anfragebudget erschöpft | der Lauf endete geordnet unvollständig; die Zeile nennt, wo der nächste fortsetzt |
+| Kennzahlen | Anfragen, geladene Bytes, gelistete und verarbeitete Objekte, Dauer; bei Konnektoren, die sie zählen |
 | Fehler | Verarbeitung begonnen, unerwartet gescheitert |
 
-Drei Betriebsregeln dazu:
+- Je Lauf werden höchstens 500 Einträge gespeichert, darüber hinaus nur gezählt („… und N
+  weitere"). Notizen über den Lauf als Ganzes zählen nicht gegen diese Grenze.
+- Je Bibliothek bleiben die letzten zehn Läufe samt Protokoll erhalten.
+- Ein Fehler beim Schreiben des Protokolls bricht den Lauf nie ab.
 
-- Je Lauf werden **höchstens 500 Ereignisse** gespeichert. Darüber hinaus wird nur gezählt
-  („… und N weitere"), damit ein Lauf mit zehntausend Abweisungen nicht am Protokoll erstickt.
-  Notizen über den Lauf als Ganzes (Kennzahlen, Anfragebudget, Ratenbegrenzung, Sammelnotizen)
-  zählen nicht gegen diese Grenze, damit sie auch am Ende eines vollen Protokolls stehen.
-- Je Bibliothek bleiben die **letzten zehn Läufe** samt Protokoll erhalten; ältere werden beim
-  Start eines neuen Laufs entfernt.
-- Ein Fehler beim Schreiben des Protokolls bricht den Lauf nie ab. Sonst bliebe der Lauf für
-  immer auf „laufend" und die Bibliothek gesperrt.
+### 6.3 Wer was sieht
 
-### 8.3 Wer was sieht
+Den **Laufstatus** — letzter Lauf, Zähler — sieht jede leseberechtigte Person. Das **Protokoll** und
+die Fehlermeldung eines gescheiterten Laufs sieht erst, wer die Bibliothek verwaltet, weil sie
+interne Pfade und Adressen der Quelle enthalten.
 
-Der **Laufstatus** (letzter Lauf, Zähler) ist für jede Leseberechtigung sichtbar. Das
-**Protokoll** und die Fehlermeldung eines gescheiterten Laufs erfordern mindestens die Rolle
-MANAGER an der Bibliothek, weil sie interne Pfade und URLs der Quellkonfiguration enthalten.
+Ein Lauf, der geordnet unvollständig endete, trägt das Kennzeichen „unvollständig, wird
+fortgesetzt". Hat er Dokumente am Speicherkontingent abgelehnt, heißt es „unvollständig:
+Speicherkontingent erschöpft, Dateien übersprungen", und aufgeklappt steht, was Platz schafft:
+Dateien in der Quelle löschen, die Quelle eingrenzen oder ein höheres Kontingent. Bei einer privaten
+Bibliothek kann das eigene oder das gemeinsame Kontingent der Besitzerin erschöpft sein; welches,
+nennt das Protokoll je Datei.
 
-Scheitern zwei geplante Läufe hintereinander, zeigt die Bibliothek ein Warnbanner. Manuelle
-Versuche zählen dafür nicht mit, damit ein Testlauf den Befund nicht überschreibt.
+Die Systemverwaltung sieht zusätzlich systemweit die Dokumente ohne einen einzigen Chunk — der
+typische Befund für eingescannte PDFs — und den Stand der Pipeline-Versionen je Bibliothek
+(Abschnitt 7.2).
 
-Jeder Lauf zeigt zusätzlich eine Kennzahlenzeile mit Anhängen (indiziert, übersprungen,
-fehlgeschlagen) und Dauer. Anfragen an die Quelle und Drosselungen zählt jeder Netzkonnektor
-(RSS-Feed, Webverzeichnis, Confluence, S3) auf demselben Zähler des Laufrahmens; geladene Bytes
-zählt S3. Das Kennzeichen „unvollständig, wird fortgesetzt" trägt jeder Lauf, der an seinem
-Anfragebudget oder am Deckel seiner 429-Wartezeit geordnet endete; bei Confluence und S3 kommen die
-dauerhaft sichtbare Warnung einer unvollständigen Auflistung und die Betriebsart hinzu (Confluence:
-Vollabgleich, inkrementell; S3: Vollabgleich, Ereignislauf). Ein Lauf, der an einem Speicherkontingent
-Elemente übersprungen hat, trägt stattdessen „unvollständig: Speicherkontingent erschöpft, Dateien
-übersprungen“ und aufgeklappt den Hinweis, was Platz schafft: Dateien in der Quelle löschen, die
-Quelle eingrenzen oder ein höheres Kontingent je Bibliothek, das der Betrieb festlegt. Bei einer
-privaten Bibliothek kann der Lauf an ihrem eigenen Kontingent oder am gemeinsamen Kontingent der
-privaten Bibliotheken ihrer Besitzerin geendet haben. Marke und Hinweis nennen deshalb kein
-bestimmtes Kontingent, der Hinweis beschreibt beide Wege, und das Laufprotokoll nennt an jeder
-übersprungenen Datei, welches erschöpft war (Kapitel
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
+## 7. Betrieb
 
-Systemweit sieht ein Systemadministrator zusätzlich eine Liste der Dokumente **ohne einen
-einzigen Chunk**, der typische Befund für eingescannte PDFs, sowie den Pipeline-Versionsstand je
-Bibliothek (Abschnitt 9).
+### 7.1 Grenzen und Zuschnitt im Einzelnen
 
-## 9. Pipeline-Versionen und Nachzug
+**Tabelle 7.1: Feste Grenzen der Dokumentstrecke**
+
+| Grenze | Wert | Wirkung |
+|---|---|---|
+| Ort in der Quelle | 2000 Zeichen und 2676 Byte (UTF-8), bei einem Anhang samt Ort des Elterndokuments | darüber abgewiesen, gezählt als übersprungen, nicht gespeichert; eine Dateiablage lädt die Datei gar nicht erst |
+| Zielgröße eines Chunks | rund 4.000 Zeichen, etwa 1.000 Tokens | je Abschnitt bei überschriftengetriebenen Formaten, je Seite, Folie oder Zeilengruppe bei den übrigen |
+| Höchstgröße eines Chunks | 8.000 Zeichen | greift nur, wenn schon die Überschrift oder der Folientitel zu lang ist |
+| Kleinstabschnitt | unter 200 Zeichen samt Überschrift | wird mit benachbarten Kleinstabschnitten derselben übergeordneten Überschrift zu höchstens rund 4.000 Zeichen zusammengelegt |
+| Eingabegrenze des Embedding-Modells | 8.191 Tokens abzüglich 10 % Reserve | ein Chunk darüber lässt das ganze Dokument scheitern |
+| Kennungen je Chunk | 64 | weitere werden nicht gespeichert |
+| Protokolleinträge je Lauf | 500 | weitere nur gezählt |
+| aufbewahrte Läufe je Bibliothek | 10 | ältere werden beim Start eines neuen entfernt |
+
+Ein zu langer Abschnitt wird an der gröbsten Grenze geteilt, die sich anbietet: an Leerzeilen, dann
+Zeilenumbrüchen, dann Satzenden, zuletzt Leerzeichen; nur eine Zeichenfolge ganz ohne solche Grenze
+wird hart geschnitten. Die Chunk-Größen sind je Pipeline fest; die einstellbaren Werte
+`chunk-size` und `chunk-overlap` gelten nur für die Auffang-Pipeline und strukturlose Texte, die
+nach Tokens mit Überlappung zum Vorgänger geschnitten werden. Seitenzahlen überleben die
+Textextraktion als Marker, die vor dem Embedden entfernt werden.
+
+An der Chunk-Anzahl eines fehlgeschlagenen Dokuments ist ablesbar, ob es noch Chunks hat: Scheitert
+das Lesen, behält es Chunks und Anzahl; scheitert etwas nach dem Entfernen der alten Chunks — beim
+Embedden oder Schreiben —, steht dort 0.
+
+**Restfenster.** Das Entfernen der alten Chunks und das Schreiben der neuen liegen nicht in einer
+gemeinsamen Transaktion; dazwischen liegt der Embedding-Aufruf, der bewusst außerhalb jeder
+Datenbanktransaktion läuft. Stürzt der Prozess genau darin ab, hat das Dokument kurz keine Chunks,
+während es noch als „indiziert" mit der alten Anzahl erscheint. Der nächste Lauf verarbeitet es
+erneut, unabhängig von der Prüfsumme. Alte und neue Chunks liegen nie gleichzeitig vor.
+
+Die Grenzwerte für Zahl und Größe der Anhänge je Elterndokument setzt die jeweilige Quelle bzw. das
+Format; die Tiefe gilt allgemein.
+
+### 7.2 Pipeline-Versionen und Nachzug
 
 Jede Format-Pipeline hat eine Versionsnummer, und jeder Chunk speichert, mit welcher Pipeline und
-Version er entstanden ist. Die Version steigt nur, wenn sich der Zuschnitt oder die erzeugten
-Struktur-Metadaten ändern, nie bei einer Korrektur ohne Wirkung auf den Bestand.
+Version er entstand. Die Version steigt nur, wenn sich Zuschnitt oder erzeugte Metadaten ändern.
+So lässt sich jederzeit sagen, welcher Teil des Bestands nach einem Update noch mit einem älteren
+Verfahren im Index liegt.
 
-Damit lässt sich jederzeit beantworten, welcher Teil des Bestands nach einem Software-Update
-noch mit einem älteren Verfahren im Index liegt. Der Nachzug läuft **nicht von selbst**. Ein
-Systemadministrator stößt ihn über die Admin-API an; eine Oberfläche dafür gibt es noch nicht:
+Der **Nachzug** läuft nicht von selbst. Die Systemverwaltung stößt ihn über die Admin-API an; eine
+Oberfläche gibt es noch nicht.
+
+**Tabelle 7.2: Admin-API des Nachzugs**
 
 | Aufruf | Zweck |
 |---|---|
-| `GET /api/v1/admin/indexing/pipeline-versions` | Versionsstand je Bibliothek: wie viele Chunks liegen unter der aktuellen Version, ist die Bibliothek vollständig |
-| `POST /api/v1/admin/indexing/pipeline-reindex` | ein Paket nachziehen; Parameter `belowVersion` (welche Version als veraltet gilt) und `batchSize` (1 bis 100, Standard 10) |
+| `GET /api/v1/admin/indexing/pipeline-versions` | Versionsstand je Bibliothek: wie viele Chunks unter der aktuellen Version liegen |
+| `POST /api/v1/admin/indexing/pipeline-reindex` | ein Paket nachziehen; `belowVersion` (welche Version als veraltet gilt), `batchSize` (1 bis 100, Standard 10) |
 | `GET /api/v1/admin/indexing/low-chunk-documents` | Dokumente ohne Chunks, der typische Scan-Befund |
 
-Jeder Aufruf des Nachzugs wird auditiert. Er verarbeitet ein Paket und kehrt zurück; für einen
-großen Bestand wird er wiederholt aufgerufen, bis der Versionsstand keine Rückstände mehr zeigt.
+**Abbildung 7.1: Ablauf des Nachzugs**
 
 ```mermaid
 flowchart LR
-    U[Software-Update mit<br/>höherer Pipeline-Version] --> V[Versionsstand je Bibliothek<br/>zeigt Rückstand]
-    V --> A[Admin stößt Nachzug an<br/>in Paketen von 1 bis 100]
-    A --> L{Quelldatei lokal<br/>erreichbar?}
-    L -- ja: FILESYSTEM, UPLOAD --> N[sofort neu verarbeitet,<br/>gleiche Dokument-ID]
-    L -- nein: Web, Feed, Confluence --> M[für nächsten Lauf vorgemerkt]
+    U[Update mit höherer<br/>Pipeline-Version] --> V[Versionsstand zeigt<br/>Rückstand]
+    V --> A[Systemverwaltung stößt<br/>Nachzug an, paketweise]
+    A --> L{Original lokal<br/>erreichbar?}
+    L -- ja: Upload, Dateisystem --> N[sofort neu verarbeitet,<br/>gleiche Identität]
+    L -- nein: übrige Quellen --> M[für den nächsten<br/>Lauf vorgemerkt]
 ```
 
-Der Nachzug ist unterbrechbar und wiederaufnehmbar, weil er keine eigene Cursor-Tabelle führt:
-Die Restmenge wird jedes Mal aus den Chunk-Metadaten neu abgeleitet. Alte Chunks werden erst
-gelöscht, wenn die neuen vorliegen. Verwaiste Chunks ohne Dokumentzeile werden dabei mit
-aufgeräumt.
+- Jeder Aufruf wird auditiert, verarbeitet ein Paket und kehrt zurück; für einen großen Bestand
+  wird er wiederholt, bis kein Rückstand mehr bleibt.
+- Der Nachzug ist unterbrechbar: Die Restmenge wird jedes Mal neu ermittelt. Alte Chunks werden erst
+  gelöscht, wenn die neuen vorliegen; verwaiste Chunks ohne Dokument werden mit aufgeräumt.
+- Ein Fehlschlag kostet nur das betroffene Dokument. Es behält seine Chunks und steht beim nächsten
+  Aufruf wieder in der Restmenge.
+- **Ausnahme:** Antwortet der Speicher der hochgeladenen Originale gar nicht, endet das Paket nach
+  diesem einen Dokument, statt den Speicher reihum zu befragen. Bis er wieder antwortet, endet jeder
+  Aufruf an demselben Dokument, und auch Dokumente dahinter aus anderen Quellen kommen nicht an die
+  Reihe.
+- Für einen Anhang, der nur in der Quelle erreichbar ist, wird die ganze Kette seiner
+  Elterndokumente vorgemerkt.
 
-**Ein Fehlschlag kostet nur das betroffene Dokument**, nicht das Paket — auch wenn schon seine
-Quelldatei nicht zu beschaffen ist. Das Dokument wird als übersprungen gezählt, behält seine
-bisherigen Chunks, die übrigen Dokumente des Pakets werden weiter verarbeitet, und beim nächsten
-Aufruf steht es wieder in der Restmenge.
+### 7.3 Genau eine Backend-Instanz
 
-**Eine Ausnahme:** Antwortet der Objektspeicher der hochgeladenen Originale gar nicht, endet das
-Paket nach diesem einen Dokument. Jeder weitere Kandidat aus derselben Ablage liefe in dieselbe
-Wartezeit; der Aufruf meldet deshalb das eine übersprungene Dokument und die bis dahin erledigte
-Arbeit ganz regulär zurück, statt den Speicher reihum zu befragen. Die dahinter liegenden
-Dokumente bleiben unberührt und kommen an die Reihe, sobald der Speicher wieder antwortet — bis
-dahin endet jeder Aufruf an demselben Dokument, und auch die dahinter liegenden Dokumente aus
-anderen Quellen (etwa `FILESYSTEM`) werden nicht erreicht.
+Die Aufnahmestrecke setzt eine **einzelne Backend-Instanz** voraus: Zeitplan, Wiederanlauf,
+Thread-Pools und Fortschrittsmeldung leben im Prozess. Eine zweite Instanz würde beim Start die
+Läufe der ersten als „durch Neustart abgebrochen" beenden. Skalieren heißt, dieser einen Instanz
+mehr Hardware zu geben. Die Aufnahmestrecke braucht keine eigene Worker-Komponente; alles, was sie
+erzeugt — Dokumente, Chunks samt Vektoren, Volltext, Protokolle —, liegt in PostgreSQL, und eine
+Sicherung der Datenbank ist eine Sicherung des Index.
 
-Für Anhänge, die nur remote erreichbar sind, wird die ganze Elternkette vorgemerkt, weil der
-Anhang nur aus der Elterndatei heraus neu extrahiert werden kann.
+### 7.4 Nebenläufigkeit
 
-## 10. Betriebliche Rahmenbedingungen
-
-### 10.1 Genau eine Backend-Instanz
-
-Die Pipeline setzt eine **einzelne Backend-Instanz** voraus. Zeitplan,
-Wiederanlauf, Thread-Pools und Fortschrittsheartbeat sind prozesslokal. Eine zweite Instanz
-würde beim Start die legitimen Läufe der ersten als „durch Neustart abgebrochen" beenden.
-Skalierung ist eine Frage von Hardware für diese eine Instanz, nicht von Replikaten.
-
-### 10.2 Nebenläufigkeit
+**Tabelle 7.3: Thread-Pools der Aufnahmestrecke**
 
 | Pool | Aufgabe | Standard |
 |---|---|---|
-| Lauf-Pool | ein Slot je Konnektor-Lauf; Läufe verschiedener Bibliotheken laufen parallel | 2 bis 4 Threads, 20 Wartende |
+| Lauf-Pool | ein Platz je Lauf; Läufe verschiedener Bibliotheken laufen parallel | 2 bis 4 Threads, 20 Wartende |
 | Embedding-Pool | parallele Pakete eines großen Dokuments | 3 Threads |
 | Upload-Pool | Einzeldateien aus Uploads, getrennt vom Lauf-Pool | eigene Konfiguration |
 
-Ist der Lauf-Pool samt Warteschlange voll, wird ein neuer Lauf sofort mit `FAILED` beendet und
-die Anfrage mit HTTP 503 beantwortet, statt endlos zu warten.
+Sind Lauf-Pool und Warteschlange voll, wird ein neuer Lauf sofort als fehlgeschlagen beendet und
+die Anfrage mit HTTP 503 beantwortet.
 
-### 10.3 Konfiguration
+### 7.5 Konfiguration
 
-Die wichtigsten Schlüssel unter `opaa.indexing.*`:
+**Tabelle 7.4: Schlüssel unter `opaa.indexing.*`**
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
-| `filesystem.allowlist` | leer | freigegebene Basisverzeichnisse; leer schaltet `FILESYSTEM` ab |
-| `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen (Mail-in-Mail, Feed-Anlage) - ein Wert für jeden Konnektor |
-| `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für künftige Konnektoren ohne eigene Werte, derzeit ohne Wirkung: RSS und Mail bringen eigene Grenzen mit, Confluence lädt mit eigener Größengrenze und übergibt je Aufruf einen Anhang |
-| `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von RSS- und Webverzeichnis-Konnektor; Confluence hat eigene 429-Werte |
-| `http.request-budget-per-run` / `http.max-rate-limit-wait-per-run` | 0 (unbegrenzt) / 15m | Anfragen je Lauf und Summe der 429-Wartezeiten je Lauf beim RSS- und Webverzeichnis-Konnektor; beim Erreichen endet der Lauf geordnet als „unvollständig, wird fortgesetzt". Confluence und S3 haben eigene Budgets |
+| `filesystem.allowlist` | leer | freigegebene Basisverzeichnisse; leer schaltet den Dateisystem-Konnektor ab |
+| `attachments.max-depth` | 5 | Verschachtelungstiefe von Anhängen, für jede Quelle |
+| `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für Konnektoren ohne eigene Werte, derzeit ohne Wirkung |
+| `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von Feed und Webverzeichnis |
+| `http.request-budget-per-run` / `http.max-rate-limit-wait-per-run` | 0 (unbegrenzt) / 15m | Anfragen und Summe der 429-Wartezeiten je Lauf bei Feed und Webverzeichnis |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |
 | `embedding-concurrency` | 3 | parallele Embedding-Pakete je Dokument |
 | `stale-job-timeout` | 4h | Frist ohne Fortschritt, bis ein Lauf als verwaist gilt |
 | `thread-pool.*` | 2 / 4 / 20 | Lauf-Pool |
 | `target-validation.*` | aktiv | Zieladressprüfung für Netzquellen |
-| `rss.*`, `crawl.*`, `confluence.*`, `mail.*`, `tabular.*`, `odf.*` | siehe Konnektor- und Format-Kapitel | Grenzwerte je Quelle und Format |
-| `s3.*` | siehe [S3-Objektspeicher, Abschnitt 15](konnektoren/s3.md#15-konfiguration) (`OPAA_INDEXING_S3_*`, darunter `max-objects-per-run` als sichtbare Notbremse, `request-budget-per-run` als geordnetes Laufende, `download-concurrency` als Obergrenze gleichzeitiger Downloads und `events.*` für den Ereigniseingang) | Grenzwerte des S3-Konnektors |
-| `google-drive.*` | siehe [Google Drive, Abschnitt 12](konnektoren/google-drive.md#12-konfiguration) (`OPAA_INDEXING_GOOGLE_DRIVE_*`) | Grenzwerte des Google-Drive-Konnektors |
-| `sharepoint.*` | siehe [SharePoint, Abschnitt 12](konnektoren/sharepoint.md#12-konfiguration) (`OPAA_INDEXING_SHAREPOINT_*`, darunter `full-sync-interval` als Fenster für Ordneränderungen) | Grenzwerte des SharePoint-Konnektors |
-| `nextcloud.*` | siehe [Nextcloud, Abschnitt 8](konnektoren/nextcloud.md#8-konfiguration) (`OPAA_INDEXING_NEXTCLOUD_*`, darunter `full-descent-interval` als Höchstalter der gemerkten Ordner-Prüfsummen) | Grenzwerte des Nextcloud-Konnektors |
-| `smb.*` | siehe [Windows-Dateifreigabe, Abschnitt 8](konnektoren/smb.md#8-konfiguration) (`OPAA_INDEXING_SMB_*`) | Grenzwerte des SMB-Konnektors |
-| `dropbox.*` | siehe [Dropbox, Abschnitt 12](konnektoren/dropbox.md#12-konfiguration) (`OPAA_INDEXING_DROPBOX_*`) | Adressen und Grenzwerte des Dropbox-Konnektors |
+| je Konnektor und Format, etwa `confluence.*`, `s3.*`, `nextcloud.*`, `mail.*` | siehe dort | Grenzwerte der Quelle bzw. des Formats, jeweils im Abschnitt „Konfiguration" ihres Kapitels |
 
-### 10.4 Was nicht gebaut ist
+### 7.6 Was nicht gebaut ist
 
-- **OCR** für eingescannte Dokumente. Heute wird ein Scan erkannt und als „kein extrahierbarer
-  Text" abgewiesen. Texterkennung ist als eigenes Vorhaben vorgesehen und setzt eine
+- **Texterkennung (OCR)** für eingescannte Dokumente. Ein Scan wird erkannt und als „kein
+  extrahierbarer Text" abgewiesen. Texterkennung ist ein eigenes Vorhaben und setzt die
   Voruntersuchung eines externen Konvertierungsdienstes (Docling) voraus.
-- **Automatischer Nachzug** nach einem Pipeline-Update. Ob er selbsttätig oder auf
-  Betreiberentscheidung läuft, ist bewusst offen.
+- **Automatischer Nachzug** nach einem Pipeline-Update; ob er selbsttätig oder auf Entscheidung des
+  Betriebs läuft, ist offen.
 
-Weitere Systemkonnektoren, etwa für Dokumentenmanagementsysteme, werden laufend ergänzt. Der
-Rahmen dafür (eine Registrierung je Quellentyp, der gemeinsame Anhangsweg, die Löschsemantik je
-Betriebsart) ist Teil dieser Pipeline und wächst nicht je Konnektor.
+## 8. Weiterführende Kapitel
 
-## 11. Weiterführende Kapitel
+- [Konnektoren](konnektoren/README.md): alle Quellen im Überblick und je ein Kapitel pro Konnektor;
+  der gemeinsame [Abgleich der Dateiablagen](konnektoren/datei-abgleich.md)
+- [Zugänge](zugaenge.md): wie sich Quellen anmelden und was die Systemverwaltung vorgibt
+- [Formate](formate/README.md): zugelassene Formate und je ein Kapitel pro Format-Pipeline
+- [Suche](suche.md): wie der Index abgefragt wird, von der Frage bis zur belegten Antwort
+- [Metadaten](metadaten.md): Kernfelder, ihre Ermittlung und Wirkung in der Suche
+- [Deployment](deployment.md): Installation, Umgebungsvariablen und was ein Update mit dem Index macht
 
-- Konnektoren je Quellentyp: [Verzeichnis im Dateisystem](konnektoren/filesystem.md),
-  [Webverzeichnis](konnektoren/http-directory.md), [Feed](konnektoren/rss-feed.md),
-  [Confluence](konnektoren/confluence.md), [S3-Objektspeicher](konnektoren/s3.md),
-  [Google Drive](konnektoren/google-drive.md), [SharePoint](konnektoren/sharepoint.md),
-  [Nextcloud](konnektoren/nextcloud.md), [Dropbox](konnektoren/dropbox.md),
-  [Windows-Dateifreigabe (SMB)](konnektoren/smb.md)
-- Format-Pipelines je Dokumenttyp: siehe [Formatübersicht](formate/README.md)
-- Wie der Index abgefragt wird, von der Frage bis zur belegten Antwort: [Suche](suche.md)
-- Kernfelder je Dokument, ihre Ermittlung, Pflege und Wirkung in der Suche: [Metadaten](metadaten.md)
-- Installation, Umgebungsvariablen und Update-Verhalten des Index: [Deployment](deployment.md)
+## Verzeichnis der Tabellen und Abbildungen
+
+- [Abbildung 1.1: Der Weg eines Dokuments in den Index](#1-worum-es-geht)
+- [Tabelle 1.1: Die Schritte im Überblick](#1-worum-es-geht)
+- [Abbildung 2.1: Die Begriffe und ihr Zusammenhang](#2-grundbegriffe)
+- [Tabelle 3.1: Zustand einer Wissensbibliothek auf der Kachel](#31-im-katalog-finden)
+- [Tabelle 3.2: Der Kopf der Detailansicht](#32-die-detailansicht)
+- [Tabelle 3.3: Die Reiter der Detailansicht](#32-die-detailansicht)
+- [Tabelle 3.4: Der Reiter „Quelle"](#32-die-detailansicht)
+- [Tabelle 3.5: Die Schritte des Assistenten](#33-eine-wissensbibliothek-anlegen)
+- [Tabelle 4.1: Wodurch ein Lauf entsteht](#41-auslöser)
+- [Tabelle 4.2: Stufen des Zeitplans](#42-zeitplan)
+- [Abbildung 4.1: Zustände eines Laufs](#43-zustände-eines-laufs)
+- [Tabelle 4.3: Was eine Änderung in der Quelle bewirkt](#44-änderungen-und-löschungen)
+- [Abbildung 5.1: Die Dokumentstrecke](#5-was-mit-jedem-dokument-passiert)
+- [Abbildung 5.2: Eine E-Mail mit Anhängen](#59-anhänge)
+- [Tabelle 6.1: Kategorien des Laufprotokolls](#62-laufprotokoll)
+- [Tabelle 7.1: Feste Grenzen der Dokumentstrecke](#71-grenzen-und-zuschnitt-im-einzelnen)
+- [Tabelle 7.2: Admin-API des Nachzugs](#72-pipeline-versionen-und-nachzug)
+- [Abbildung 7.1: Ablauf des Nachzugs](#72-pipeline-versionen-und-nachzug)
+- [Tabelle 7.3: Thread-Pools der Aufnahmestrecke](#74-nebenläufigkeit)
+- [Tabelle 7.4: Schlüssel unter `opaa.indexing.*`](#75-konfiguration)

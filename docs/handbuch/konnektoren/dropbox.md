@@ -46,7 +46,7 @@ und Verschieben machen aus der Datei deshalb ein neues Dokument; das alte wird e
 `dropbox:<pfad>` länger als die Identität eines Dokuments fassen kann, wird die Datei nicht
 geladen. Sie erscheint bei jedem Vollabgleich und nach jeder Änderung der Datei als abgewiesen im
 Protokoll (Kapitel
-[Indexierung](../indexierung.md), „Schritt 1: Prüfsumme und Identität“).
+[Indexierung](../indexierung.md), Abschnitt 7.1).
 
 ## 2. Einrichtung bei Dropbox
 
@@ -104,7 +104,7 @@ ausscheidet. OPAA nennt das Konto nach der Zustimmung mit seiner E-Mail-Adresse 
 
 Die Bibliothek trägt kein Secret, nur ihre Zustimmung und ihre Ordner. Was eine geänderte
 Registrierung, die Notabschaltung und das Löschen des Zugangs mit den Zustimmungen tun, steht im
-Kapitel [Indexierung](../indexierung.md), Abschnitt „Zugänge“.
+Kapitel [Zugänge](../zugaenge.md).
 
 ## 3. Quellkonfiguration
 
@@ -143,7 +143,7 @@ weder Adresse noch Zugangsdaten ab.
 
 1. **Zugang:** Im Assistenten steht über dem Formular die Wahl des Zugangs. „Eigene Adresse“ gibt
    es für Dropbox nicht.
-2. **Quelle verbinden:** wie im Kapitel [Indexierung](../indexierung.md), Abschnitt „Quelle
+2. **Quelle verbinden:** wie im Kapitel [Zugänge](../zugaenge.md), Abschnitt „Quelle
    verbinden“. Erst danach laden Ordnerauswahl und Verbindungstest etwas.
 3. **Team-Bereich lesen:** Schalter; aus liest die Ordner des Kontos, an die des Team-Bereichs.
 4. **Ordner:** ein Pfad je Zeile. „Ordner anzeigen unter“ nennt den Pfad, dessen Unterordner „Ordner

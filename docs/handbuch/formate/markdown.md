@@ -32,7 +32,7 @@ einer eigenen, kleinen Zustandsmaschine.
 
 Zielgröße rund 4.000 Zeichen, größere Abschnitte werden ohne Textverlust geteilt, Abschnitte unter
 200 Zeichen unter derselben übergeordneten Überschrift zusammengelegt
-(Kapitel [Indexierung](../indexierung.md), Schritt 4), keine Überlappung, Überschriftenzeile am Anfang jedes Chunks.
+(Kapitel [Indexierung](../indexierung.md), Abschnitt 7.1), keine Überlappung, Überschriftenzeile am Anfang jedes Chunks.
 
 ## 4. Metadaten am Chunk
 

@@ -45,8 +45,8 @@ dieser Überschriften in Abschnitte geschnitten:
 
 - Zielgröße rund 4.000 Zeichen; aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
   derselben übergeordneten Überschrift bis dahin zusammengelegt (Kapitel
-  [Indexierung](../indexierung.md), Schritt 4), größere geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
-  wird an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](../indexierung.md), Schritt 4).
+  [Indexierung](../indexierung.md), Abschnitt 7.1), größere geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
+  wird an Zeilen- und Satzgrenzen geteilt (Kapitel [Indexierung](../indexierung.md), Abschnitt 7.1).
 - Die Überschriftenzeile steht am Anfang jedes Chunks, auch bei jedem Teilstück eines geteilten
   Abschnitts, und jedes Teilstück trägt die Ortsangabe des Abschnitts.
 - Zeigen mehrere Lesezeichen auf dieselbe Seite, wird der Seitentext anhand der

@@ -33,7 +33,7 @@ Absätze aller Masterseiten, dedupliziert, als **ein** führender Chunk mit der 
 steht, wird so einmal gefunden.
 
 Eine Folie mit mehr als rund 4.000 Zeichen wird in mehrere Chunks geteilt, jeder beginnt mit dem
-Folientitel und trägt die Ortsangabe der Folie (Kapitel [Indexierung](../indexierung.md), Schritt 4); keine Zielgröße, keine Zusammenlegung, keine
+Folientitel und trägt die Ortsangabe der Folie (Kapitel [Indexierung](../indexierung.md), Abschnitt 7.1); keine Zielgröße, keine Zusammenlegung, keine
 Überlappung.
 
 ## 4. Metadaten am Chunk

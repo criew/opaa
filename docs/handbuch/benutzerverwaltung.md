@@ -422,7 +422,7 @@ einen Zugang, etwa ein App-Passwort für eine Nextcloud. Das gilt für jedes Kon
 einem Identitätsanbieter. OPAA nutzt ein verbundenes Konto nur für die privaten Bibliotheken der
 Person; deren Inhalt ist, was sie beim Anbieter selbst sehen darf. Einen Zugang, auf dem Personen
 Konten verbinden können, legt die Systemverwaltung mit der Besitzart „Person“ oder „Bibliothek und
-Person“ an und gibt ihn frei ([Indexierung](indexierung.md), „Zugänge“). Von den mitgelieferten
+Person“ an und gibt ihn frei ([Zugänge](zugaenge.md)). Von den mitgelieferten
 Konnektoren lässt **Nextcloud** die Besitzart „Person“ zu; die Person verbindet dort ein eigenes
 App-Passwort ([Konnektor Nextcloud](konnektoren/nextcloud.md), „Verbundenes Konto“).
 
@@ -521,7 +521,7 @@ Warnung im Betriebslog.
 Den eigenen Kontonamen beim Anbieter und die Inhalte der privaten Bibliotheken sieht nur die Person
 selbst. Die Systemverwaltung sieht **keine Liste der Personen**, nur je Zugang die Zahl der
 verbundenen und der abgelaufenen Konten, und kleine Zahlen nur gerundet
-([Indexierung](indexierung.md), „Zugänge“). **Dass** eine Person verbunden, neu verbunden oder
+([Zugänge](zugaenge.md)). **Dass** eine Person verbunden, neu verbunden oder
 getrennt hat und wann, steht dagegen im Verbindungsprotokoll, das die Revision liest — unter einem
 Pseudonym statt des Namens, das sich wie im Nachweisprotokoll in einer Vorfallsklärung einer Person
 zuordnen lässt ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).

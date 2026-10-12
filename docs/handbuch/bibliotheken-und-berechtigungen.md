@@ -262,7 +262,7 @@ die die Person ein Anlegerecht hat** (Abschnitt 9). Für Wissen genügt eines de
 Seite dennoch erreicht, liest dort, dass ein Anlegerecht fehlt.
 
 „Weiter" führt in den Assistenten der gewählten Art: für Wissen in den Assistenten aus
-[Indexierung](indexierung.md), Abschnitt „Eine Bibliothek anlegen", für Prompts in den aus
+[Indexierung](indexierung.md), Abschnitt 3.3, für Prompts in den aus
 [Prompt-Bibliotheken](prompt-bibliotheken.md), Abschnitt „Anlegen". „Abbrechen" in einem der
 Assistenten führt zurück in den Katalog.
 
@@ -313,7 +313,7 @@ Grenze.
 ### Private Bibliotheken
 
 Eine **private Bibliothek** speist sich aus dem verbundenen Konto ihrer Besitzerin auf einem Zugang
-für Personen (Kapitel [Indexierung](indexierung.md), „Zugänge“). Ihr Inhalt ist, was die Person
+für Personen (Kapitel [Zugänge](zugaenge.md)). Ihr Inhalt ist, was die Person
 beim Anbieter selbst sieht, und außer ihr liest ihn niemand. Anlegen lässt sie sich mit einem Konnektor,
 der die Besitzart „Person“ anbietet; von den mitgelieferten ist das Nextcloud
 ([Konnektor Nextcloud](konnektoren/nextcloud.md), „Verbundenes Konto“).
@@ -972,7 +972,7 @@ Fünf Punkte dazu:
 ### Konnektor-Freigabe: je Quellart und je Zugang
 
 „Konnektorbibliotheken anlegen" wird nicht als Ganzes erteilt, sondern **für eine Quellart** oder
-**für einen Zugang** (Kapitel [Indexierung](indexierung.md), „Zugänge"):
+**für einen Zugang** (Kapitel [Zugänge](zugaenge.md)):
 
 | Neue Bibliothek | Das Recht muss gelten für |
 |---|---|
@@ -991,7 +991,7 @@ Quellart öffnet keinen ihrer Zugänge.
   die Freigabe der Quellart), und vor dem Anlegen die Verbindung testen oder die Quelle auflisten.
   Wird sie entzogen, laufen bestehende Bibliotheken weiter; auch das erneute Zuordnen zum
   bisherigen Zugang bleibt möglich. Läufe stoppt nur die **Sperre** einer Quellart oder eines
-  Zugangs (Kapitel [Indexierung](indexierung.md), „Zugänge").
+  Zugangs (Kapitel [Zugänge](zugaenge.md)).
 - **Der Assistent zeigt nur, was die Person anlegen darf:** Eine Quellart, die sie weder mit
   eigener Adresse noch über einen nutzbaren Zugang anlegen darf oder die gesperrt ist, erscheint im
   Wissens-Assistenten nicht; ebenso ein Zugang, der für sie nicht freigegeben oder gesperrt ist.
