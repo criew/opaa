@@ -1,7 +1,7 @@
 # Format: HTML
 
-> **Entwurf.** Pipeline `html`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
+Pipeline `html`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
 
 ## 1. Wann sie läuft
 

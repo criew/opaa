@@ -1,13 +1,13 @@
 # Benutzerverwaltung
 
-> **Entwurf.** Dieses Kapitel beschreibt die Verwaltung **lokaler Konten** — derjenigen Konten, die
-> OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werden dort verwaltet, wo
-> sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
-> Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
-> Einrichtung des Anmeldewegs und Erststart stehen im Kapitel [Authentifizierung](authentifizierung.md),
-> der E-Mail-Versand unter [E-Mail-Versand](e-mail.md); hier geht es um die täglichen Abläufe.
-> Abschnitt 12, „Verbundene Konten“, gilt für jedes Konto, auch für Konten eines
-> Identitätsanbieters.
+Dieses Kapitel beschreibt die Verwaltung **lokaler Konten** — derjenigen Konten, die
+OPAA selbst führt. Konten, die über einen Identitätsanbieter entstehen, werden dort verwaltet, wo
+sie herkommen; in der Kontenliste stehen sie mit ihrer Herkunft und ihrer Rolle, aber ohne
+Zustand und Ablauf — was sich an ihnen ändern lässt, sagen die Abschnitte 6 und 7.
+Einrichtung des Anmeldewegs und Erststart stehen im Kapitel [Authentifizierung](authentifizierung.md),
+der E-Mail-Versand unter [E-Mail-Versand](e-mail.md); hier geht es um die täglichen Abläufe.
+Abschnitt 12, „Verbundene Konten“, gilt für jedes Konto, auch für Konten eines
+Identitätsanbieters.
 
 ## 1. Wann diese Verwaltung gebraucht wird
 

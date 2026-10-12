@@ -1,8 +1,8 @@
 # Format: OpenDocument Präsentation (ODP)
 
-> **Entwurf.** Pipeline `odp`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
-> [PowerPoint](pptx.md); hier stehen die Unterschiede.
+Pipeline `odp`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
+[PowerPoint](pptx.md); hier stehen die Unterschiede.
 
 ## 1. Zulassung
 

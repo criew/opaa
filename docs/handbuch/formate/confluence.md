@@ -1,8 +1,8 @@
 # Format: Confluence-Seite
 
-> **Entwurf.** Pipeline `confluence`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines
-> steht im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5; wie die Seiten in die Bibliothek
-> gelangen, im Kapitel [Confluence](../konnektoren/confluence.md).
+Pipeline `confluence`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines
+steht im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5; wie die Seiten in die Bibliothek
+gelangen, im Kapitel [Confluence](../konnektoren/confluence.md).
 
 ## 1. Wann sie läuft
 

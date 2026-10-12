@@ -1,8 +1,8 @@
 # Format: Word (DOCX)
 
-> **Entwurf.** Pipeline `docx`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das ältere Binärformat `.doc` läuft über die
-> [Auffang-Pipeline](fallback.md).
+Pipeline `docx`, Version 5. Der gemeinsame Rahmen aller Format-Pipelines steht im
+Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das ältere Binärformat `.doc` läuft über die
+[Auffang-Pipeline](fallback.md).
 
 ## 1. Zulassung
 
