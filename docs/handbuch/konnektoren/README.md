@@ -3,7 +3,7 @@
 Ein **Konnektor** bindet ein System an, in dem die Organisation Dokumente ablegt: ein
 Netzlaufwerk, einen Cloud-Speicher, ein Wiki, einen Feed. Er weiß, wie dieses System aufgezählt und
 gelesen wird; alles Weitere — Format erkennen, zerlegen, einbetten, durchsuchbar machen — ist für
-jede Quelle gleich und steht im Kapitel [Indexierung](../indexierung.md). Wie sich ein Konnektor
+jede Quelle gleich und steht im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md). Wie sich ein Konnektor
 beim System anmeldet und wie die Systemverwaltung das vorgibt, beschreibt das Kapitel
 [Zugänge](../zugaenge.md).
 

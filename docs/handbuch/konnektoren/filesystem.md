@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Verzeichnisse auf dem Server. Der
 > gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](../indexierung.md); hier geht es nur um das, was dieser Konnektor anders macht als
+> [Wissensbibliotheken](../wissensbibliotheken.md); hier geht es nur um das, was dieser Konnektor anders macht als
 > die anderen.
 
 ## 1. Wofür er gedacht ist
@@ -235,7 +235,7 @@ Verzeichnispfad selbst nicht lesbar, scheitert der Lauf (Abschnitt 5).
 | entfernt | In der Quelle nicht mehr gefunden, entfernt | Löscherkennung |
 | Zeitplan übersprungen | Geplanter Lauf übersprungen: Indizierung läuft bereits | Zeitplan trifft laufenden Lauf |
 
-Anhänge erzeugen zusätzlich die im Kapitel [Indexierung](../indexierung.md) beschriebenen
+Anhänge erzeugen zusätzlich die im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md) beschriebenen
 Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeitung fehlgeschlagen).
 
 ## 11. Grenzfälle
@@ -263,7 +263,7 @@ Anhangs-Einträge (nicht unterstützt, Formatabweichung, nicht lesbar, Verarbeit
 | `opaa.library.quota-bytes` | `OPAA_LIBRARY_QUOTA_BYTES` | 10 GiB | Speicherkontingent je Bibliothek, 0 oder negativ hebt es auf. |
 
 Chunking- und Embedding-Einstellungen gelten für alle Quellen und stehen im Kapitel
-[Indexierung](../indexierung.md); die Grenzen für Mail-Anhänge im Kapitel [E-Mail](../formate/mail.md).
+[Wissensbibliotheken](../wissensbibliotheken.md); die Grenzen für Mail-Anhänge im Kapitel [E-Mail](../formate/mail.md).
 
 ## 13. Nicht gebaut
 

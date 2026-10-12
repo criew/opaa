@@ -1,7 +1,7 @@
 # Format: E-Mail (EML, MSG)
 
 > **Entwurf.** Pipeline `email`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht
-> im Kapitel [Indexierung](../indexierung.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.9.
+> im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5; der Anhangsweg dort in Abschnitt 5.9.
 
 ## 1. Zulassung
 
@@ -154,7 +154,7 @@ Schlüssel unter `opaa.indexing.mail.*`:
 | `max-attachment-bytes` | 50 MiB | je Anhang |
 
 Die Verschachtelungstiefe für Mail-in-Mail ist kein eigener Mail-Schlüssel, sondern
-die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Indexierung](../indexierung.md)) - dieselbe
+die allgemeine `opaa.indexing.attachments.max-depth` (siehe [Wissensbibliotheken](../wissensbibliotheken.md)) - dieselbe
 Grenze gilt für jede Anhangskette, unabhängig vom Konnektor.
 
 Die Anhangsgrenzen oben schützen Platte und nachgelagerte Verarbeitung, nicht den Parse-Vorgang

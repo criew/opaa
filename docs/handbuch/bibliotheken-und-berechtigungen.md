@@ -262,7 +262,7 @@ die die Person ein Anlegerecht hat** (Abschnitt 9). Für Wissen genügt eines de
 Seite dennoch erreicht, liest dort, dass ein Anlegerecht fehlt.
 
 „Weiter" führt in den Assistenten der gewählten Art: für Wissen in den Assistenten aus
-[Indexierung](indexierung.md), Abschnitt 3.3, für Prompts in den aus
+[Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 3.3, für Prompts in den aus
 [Prompt-Bibliotheken](prompt-bibliotheken.md), Abschnitt „Anlegen". „Abbrechen" in einem der
 Assistenten führt zurück in den Katalog.
 
@@ -480,7 +480,7 @@ lassen sich nicht mehr öffnen.“ Die Katalogkachel trägt jetzt ebenfalls „W
   Berechtigungen hängen immer an der Bibliothek, und die Suche durchsucht stets den ganzen Bestand.
   Wer Ordner anlegt und wer sie pflegt, hängt am Quellentyp — in einer Upload-Bibliothek legt sie
   ein Bearbeiter selbst an, bei allen übrigen Quellentypen spiegelt der Lauf die Quelle
-  ([Indexierung](indexierung.md), Abschnitt 2).
+  ([Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 2).
 - **Das Löschen eines Ordners löscht die enthaltenen Dokumente** samt Chunks und Originaldateien,
   nach einer Bestätigung, die ihre Anzahl nennt. Ein einzelnes Dokument löscht ebenfalls ein
   Bearbeiter; ein Dokument, das die Quelle weiterhin liefert, kommt mit dem nächsten Lauf wieder —
@@ -1570,6 +1570,6 @@ Postfächer.
 - Lokale Konten, Systemrollen und ihre Fristen: [Benutzerverwaltung](benutzerverwaltung.md)
 - Rechtefilter, Suchdiagnose, Diagnosesperre und die Aufbewahrung der Rechtehistorie:
   [Suche](suche.md)
-- Bibliothek, Quelle, Lauf, Ordner und Dokument: [Indexierung](indexierung.md)
+- Bibliothek, Quelle, Lauf, Ordner und Dokument: [Wissensbibliotheken](wissensbibliotheken.md)
 - Der lesende Kanal für fremde KI-Werkzeuge und seine Freigabe je Bibliothek:
   [Fremdzugänge](fremdzugaenge.md)

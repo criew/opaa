@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Dropbox. Er liest Ordner einer Dropbox,
 > auch den Team-Bereich eines Dropbox-Teams, über die Dropbox-API und hält sie über das
 > Änderungsprotokoll von Dropbox aktuell. Der gemeinsame Ablauf eines Indexierungslaufs, die
-> Dokumentstrecke und „Quelle verbinden“ stehen im Kapitel [Indexierung](../indexierung.md).
+> Dokumentstrecke und „Quelle verbinden“ stehen im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
@@ -46,7 +46,7 @@ und Verschieben machen aus der Datei deshalb ein neues Dokument; das alte wird e
 `dropbox:<pfad>` länger als die Identität eines Dokuments fassen kann, wird die Datei nicht
 geladen. Sie erscheint bei jedem Vollabgleich und nach jeder Änderung der Datei als abgewiesen im
 Protokoll (Kapitel
-[Indexierung](../indexierung.md), Abschnitt 7.1).
+[Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1).
 
 ## 2. Einrichtung bei Dropbox
 
@@ -195,7 +195,7 @@ Ob ein gemeldeter gelöschter Pfad eine Datei oder ein Ordner war, fragt OPAA be
 Die Ordner unterhalb jedes gewählten Ordners werden als Ordner der Bibliothek gespiegelt; der
 gewählte Ordner selbst ist die Wurzel. Bei mehreren Ordnern steht vorn der Name des gewählten
 Ordners, bei `/` „Dropbox“. Namen, die keine Ordnerzeile tragen kann, und zu tiefe Ketten folgen den
-Regeln des Kapitels [Indexierung](../indexierung.md).
+Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 7. Übersprungene Dateien
 
@@ -203,7 +203,7 @@ Regeln des Kapitels [Indexierung](../indexierung.md).
   kein Dokument, ein Sammelhinweis je Lauf, kein Download.
 - **Paper-Dokumente** werden als Markdown exportiert, nicht übersprungen.
 - Dateien in nicht unterstützten Formaten und über der Größengrenze wie bei jedem Konnektor
-  ([Indexierung](../indexierung.md)).
+  ([Wissensbibliotheken](../wissensbibliotheken.md)).
 
 ## 8. Änderungserkennung
 

@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Nextcloud, auch als Dateiablage von
 > openDesk. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](../indexierung.md).
+> [Wissensbibliotheken](../wissensbibliotheken.md).
 
 **Kurzfassung für den eiligen Betrieb**
 

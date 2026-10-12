@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für RSS-Feeds. Der gemeinsame Ablauf
 > eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](../indexierung.md).
+> [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 1. Wofür er gedacht ist
 
@@ -156,7 +156,7 @@ Drei Stufen, von billig nach teuer:
 
 Bestehende Einträge, die noch mit der Auffang-Pipeline geschnitten wurden, behalten diese Chunks
 bis zur nächsten `pubDate`-Änderung; der Pipeline-Nachzug für `html` (Kapitel
-[Indexierung](../indexierung.md), Abschnitt 7.2) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
+[Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.2) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
 `.html` endet.
 
 **Zurückstellung.** Der Feed-Zustand aus Stufe 1 wird nur gespeichert, wenn der Lauf
@@ -294,7 +294,7 @@ Anlage; die Grenzen sind entsprechend zu wählen.
 
 ## 13. Zeitplan
 
-Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](../indexierung.md#42-zeitplan)
+Der Zeitplan je Bibliothek ist im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md#42-zeitplan)
 beschrieben. Für Feeds ist ein stündlicher Zeitplan üblich: Ein unveränderter Feed kostet dank
 bedingtem GET nur eine Anfrage.
 

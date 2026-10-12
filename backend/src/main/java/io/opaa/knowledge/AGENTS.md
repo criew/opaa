@@ -42,7 +42,7 @@ identity und rights ab.
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0017, 0018, 0020, 0022, 0024, 0026, 0028, 0030, 0040
-- Handbuch: `docs/handbuch/indexierung.md`, `docs/handbuch/metadaten.md`
+- Handbuch: `docs/handbuch/wissensbibliotheken.md`, `docs/handbuch/metadaten.md`
 - Strukturtests: `ModularArchitectureTest`
 
 ## Tests bei Änderungen

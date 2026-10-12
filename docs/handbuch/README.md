@@ -8,8 +8,8 @@ läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 
 | Rolle | Typische Aufgaben | Einstieg |
 |---|---|---|
-| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Deployment](deployment.md), unter Kubernetes zusätzlich [Kubernetes](kubernetes.md), danach [Indexierung](indexierung.md) und [Suche](suche.md) |
-| **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Indexierung](indexierung.md), die Konnektor-Kapitel, [Metadaten](metadaten.md), [Suche](suche.md) Abschnitt 8 |
+| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Deployment](deployment.md), unter Kubernetes zusätzlich [Kubernetes](kubernetes.md), danach [Wissensbibliotheken](wissensbibliotheken.md) und [Suche](suche.md) |
+| **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](wissensbibliotheken.md), die Konnektor-Kapitel, [Metadaten](metadaten.md), [Suche](suche.md) Abschnitt 8 |
 
 Nicht Zielgruppe sind Entwickler (Spezifikationen und Entscheidungen liegen im Repository unter
 `docs/features/` und `docs/decisions/`) und Endnutzende (die Oberfläche erklärt sich an Ort und
@@ -72,9 +72,9 @@ Drei Eigenschaften prägen alles Weitere:
 
 | Funktion | Ein Satz | Kapitel |
 |---|---|---|
-| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner, Dropbox-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Indexierung](indexierung.md), Abschnitte 1 bis 4; [Konnektoren](konnektoren/README.md) |
-| Formate verarbeiten | PDF, Office, OpenDocument, Tabellen, HTML, Markdown, E-Mail samt Anhängen; Zulassung nach Inhalt, nicht nach Endung | [Indexierung](indexierung.md), Formatübersicht |
-| Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Indexierung](indexierung.md), Abschnitte 4.4 und 5.9 |
+| Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner, Dropbox-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Wissensbibliotheken](wissensbibliotheken.md), Abschnitte 1 bis 4; [Konnektoren](konnektoren/README.md) |
+| Formate verarbeiten | PDF, Office, OpenDocument, Tabellen, HTML, Markdown, E-Mail samt Anhängen; Zulassung nach Inhalt, nicht nach Endung | [Wissensbibliotheken](wissensbibliotheken.md), Formatübersicht |
+| Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Wissensbibliotheken](wissensbibliotheken.md), Abschnitte 4.4 und 5.9 |
 | Metadaten | Titel, Dokumentart, Datum/Stand je Dokument, dazu Bibliotheks- und Formatfelder; Filter, Kontextpräfix, Beleg | [Metadaten](metadaten.md) |
 | Suche und Antwort | Rechtefilter, Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung | [Suche](suche.md) |
 | Diagnose | Testfrage im gewählten Rechtekontext, jede Stufe einzeln, „Dokument verfolgen" | [Suche](suche.md), Abschnitt 8 |
@@ -99,7 +99,7 @@ Drei Eigenschaften prägen alles Weitere:
 | [Benutzerverwaltung](benutzerverwaltung.md) | Lokale Konten: anlegen und einladen, Link-Übergabe ohne Mailserver, Sperren und Entsperren, Zurücksetzen, Anlagegrund und Ablaufdatum, Auflagenprüfung, Rollen und Anlegerechte, Löschen gegen Sperren, Übergabe an einen Identitätsanbieter, Selbstregistrierung, Selbstbedienung, verbundene Konten, Regeln und Fristen |
 | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) | Das Berechtigungsmodell an einer Stelle: Subjekte, die Begriffe Rolle / Anlegerecht / Vollmacht / Systemrolle, Rollen an Bibliothek und Raum, Reichweite („Alle Konten"), der Katalog, Freigabe-Obergrenze für Konnektorbibliotheken, Gruppenherkunft und -mechanismus, interne Gruppen und ihre Verantwortlichen, was wer sieht, die Herleitung „warum sehe ich das", Anlegerechte, Systemrollen und Vollmachten, Rechtehistorie und Stichtagsauskunft, Kontosperre aus dem Verzeichnis, Übertragung, „Nachfolge offen", Diagnose im Gruppenkontext, Konfiguration, Vorbereitung der Einführung samt Prüfliste vor einem Postfach-Konnektor |
 | [Prompt-Bibliotheken](prompt-bibliotheken.md) | Prompt-Bibliothek und Prompt, Befehl und Variablen, Rollen, Anlegen mit Gruppeneigentum, Detailseite mit dem gemeinsamen Freigabeabschnitt, Zuordnung zu Räumen, Finden im Katalog, Prompts pflegen mit Prüfung und Vorschau, Einsetzen im Chat, „Nachfolge offen", Protokoll |
-| [Indexierung](indexierung.md) | Einstieg in die Aufnahmestrecke: Upload und angebundene Quellen, Grundbegriffe, Wissensbibliotheken finden, ansehen und anlegen, Zeitplan, Änderungen und Löschungen, Dokumentstrecke, Anhänge, Protokoll; Betrieb mit Grenzen, Nachzug und Konfiguration |
+| [Wissensbibliotheken](wissensbibliotheken.md) | Einstieg in die Aufnahmestrecke: Upload und angebundene Quellen, Grundbegriffe, Wissensbibliotheken finden, ansehen und anlegen, Zeitplan, Änderungen und Löschungen, Dokumentstrecke, Anhänge, Protokoll; Betrieb mit Grenzen, Nachzug und Konfiguration |
 | [Zugänge](zugaenge.md) | Zugänge der Systemverwaltung zu Konnektoren: anlegen, Anmeldearten und OAuth, Vorschau einer Änderung, zuordnen, wechseln, lösen; Quelle verbinden; Sperre einer Quellart oder eines Zugangs; Profilpflicht |
 | [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Aufbewahrung der Rechtehistorie, Konfiguration |
 | [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
@@ -122,19 +122,19 @@ Diese Kapitel sind im Epic #1282 vorgesehen; bis dahin steht der jeweilige Inhal
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Indexierung](indexierung.md) Abschnitte 2 und 3 |
+| Erste Installation | [Deployment](deployment.md) Schnellstart und Konfiguration → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Deployment](deployment.md) Härtung → [Wissensbibliotheken](wissensbibliotheken.md) Abschnitte 2 und 3 |
 | OPAA unter Kubernetes ausprobieren oder vorführen | [Kubernetes](kubernetes.md) „Erprobung mit dem Beispiel-Setup“ |
-| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md) „Voraussetzungen" und „Installation" → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Kubernetes](kubernetes.md) „Netz und Sicherheit" → [Indexierung](indexierung.md) Abschnitte 2 und 3 |
+| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md) „Voraussetzungen" und „Installation" → [Deployment](deployment.md) „Erststart und Systemverwalter-Konto" → [Kubernetes](kubernetes.md) „Netz und Sicherheit" → [Wissensbibliotheken](wissensbibliotheken.md) Abschnitte 2 und 3 |
 | Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md) „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen sollen |
 | Rechte einer Bibliothek oder eines Raums vergeben | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 2 bis 5 → Abschnitte 6 bis 8 (Gruppen) |
 | Eine Person scheidet aus, ein Referat wird aufgelöst | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 13 → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitte 4 und 8 |
 | „Wer durfte das am 3. März lesen?" | [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitt 12 → [Suche](suche.md) Abschnitt 8.4 (Aufbewahrung) |
 | Niemand kommt mehr herein | [Deployment](deployment.md) „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) Abschnitt 4 |
-| Neue Quelle anschließen | das Konnektor-Kapitel des Quellentyps → [Indexierung](indexierung.md) Abschnitt 4 (Zeitplan, Löscherkennung) |
-| Dokumente fehlen oder sind veraltet | [Indexierung](indexierung.md) Abschnitte 4.4, 6 und 7.2 → Laufprotokoll der Bibliothek → Format-Kapitel des Dokuments |
-| Eine Antwort ist schlecht | [Suche](suche.md) Abschnitte 8 und 9 → Diagnosewerkzeug → je nach Befund [Indexierung](indexierung.md) oder [Metadaten](metadaten.md) |
+| Neue Quelle anschließen | das Konnektor-Kapitel des Quellentyps → [Wissensbibliotheken](wissensbibliotheken.md) Abschnitt 4 (Zeitplan, Löscherkennung) |
+| Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](wissensbibliotheken.md) Abschnitte 4.4, 6 und 7.2 → Laufprotokoll der Bibliothek → Format-Kapitel des Dokuments |
+| Eine Antwort ist schlecht | [Suche](suche.md) Abschnitte 8 und 9 → Diagnosewerkzeug → je nach Befund [Wissensbibliotheken](wissensbibliotheken.md) oder [Metadaten](metadaten.md) |
 | Filter oder Beleg zeigen falsche Werte | [Metadaten](metadaten.md) Abschnitte 4, 7 und 8 |
-| Update steht an | [Deployment](deployment.md) „Aktualisierung" und „Was ein Update mit dem Index macht" → [Indexierung](indexierung.md) Abschnitt 7.2 (Nachzug) |
+| Update steht an | [Deployment](deployment.md) „Aktualisierung" und „Was ein Update mit dem Index macht" → [Wissensbibliotheken](wissensbibliotheken.md) Abschnitt 7.2 (Nachzug) |
 | Update unter Kubernetes steht an | [Kubernetes](kubernetes.md) „Aktualisierung und Rückweg" → [Deployment](deployment.md) „Was ein Update mit dem Index macht" |
 | Reranking einschalten | [Deployment](deployment.md) „Reranking einschalten" → [Suche](suche.md) Stufe 8 |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) Abschnitt 4 (anlegen mit Gruppeneigentum, freigeben, einem Raum zuordnen) → Abschnitt 5 (Prompts pflegen) → [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md) Abschnitte 6 bis 8 (Gruppen) |

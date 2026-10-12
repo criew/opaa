@@ -30,7 +30,7 @@ import { assignLibraryToDefaultSpace } from '../fixtures/spaces'
 import type { Page } from '@playwright/test'
 
 // Zugänge, Freigabe und Profilpflicht über den vollen Stack (test(e2e) #2175, Szenarien 1 und 2;
-// docs/handbuch/indexierung.md, Abschnitt „Zugänge“). Quellart ist RSS-Feed gegen den suite-eigenen
+// docs/handbuch/wissensbibliotheken.md, Abschnitt „Zugänge“). Quellart ist RSS-Feed gegen den suite-eigenen
 // `rss-feed`-Dienst - die einzige Quelle dieses Stacks, die ohne Anmeldung einen Lauf mit Inhalt
 // liefert. Handelnde: `dev-admin` als Systemverwaltung, `dev-user` als Mitglied der Gruppe, der der
 // Zugang freigegeben wird, und `dev-outsider` als Person außerhalb.

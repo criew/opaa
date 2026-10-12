@@ -727,4 +727,4 @@ erinnert zu werden.
 - Anmeldeverfahren, Umgebungsvariablen, Reverse Proxy, Rücksicherung: [Deployment](deployment.md)
 - Konten sperren, übergeben und löschen — und was das mit Tokens macht:
   [Benutzerverwaltung](benutzerverwaltung.md)
-- Welche Bestände es überhaupt gibt und wie sie entstehen: [Indexierung](indexierung.md)
+- Welche Bestände es überhaupt gibt und wie sie entstehen: [Wissensbibliotheken](wissensbibliotheken.md)

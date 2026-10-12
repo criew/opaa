@@ -1,7 +1,7 @@
 # Format: PowerPoint (PPTX)
 
 > **Entwurf.** Pipeline `pptx`, Version 3. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Indexierung](../indexierung.md), Abschnitt 5.
+> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5.
 
 ## 1. Zulassung
 
@@ -30,7 +30,7 @@ Aufbau eines Chunks:
 Ausgefiltert werden Foliennummer, Datum, Kopf- und Fußzeilenplatzhalter. Eine Folie mit mehr als
 rund 4.000 Zeichen wird in mehrere Chunks geteilt, jeder beginnt mit dem Folientitel und trägt die
 Ortsangabe der Folie
-(Kapitel [Indexierung](../indexierung.md), Abschnitt 7.1); eine Zielgröße gibt es bei Folien nicht.
+(Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1); eine Zielgröße gibt es bei Folien nicht.
 
 ## 4. Metadaten am Chunk
 

@@ -158,7 +158,7 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   Software: Docker Compose, Umgebungsvariablen, Härtung
 - **[`handbuch/kubernetes.md`](./handbuch/kubernetes.md)** — Betrieb unter Kubernetes mit dem Helm-Chart:
   Installation, Wertereferenz, Netz und Sicherheit, Aktualisierung und Rückweg, Überwachung, Fehlersuche
-- **[`handbuch/indexierung.md`](./handbuch/indexierung.md)** — die Aufnahmestrecke: Läufe, Betriebsarten,
+- **[`handbuch/wissensbibliotheken.md`](./handbuch/wissensbibliotheken.md)** — die Aufnahmestrecke: Läufe, Betriebsarten,
   Dokumentstrecke, Anhänge, Löscherkennung, Protokoll, Pipeline-Versionen; dazu die Ordner
   `handbuch/konnektoren/` und `handbuch/formate/` mit je einer Übersicht und einem Kapitel pro
   Konnektor bzw. Format-Pipeline sowie `handbuch/zugaenge.md` zu Zugängen und Quellverbindungen

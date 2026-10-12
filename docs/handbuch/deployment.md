@@ -288,7 +288,7 @@ Embedding-Modells beide Werte gemeinsam ändern und die Datenbank zurücksetzen.
 > Pipelines den Zuschnitt für `.pdf` (`pdf`), `.docx` (`docx`), `.pptx` (`pptx`),
 > `.xlsx`/`.csv`/`.ods` (`tabular`), `.html` (`html`), `.eml`/`.msg` (`email`) sowie `.odt` (`odt`)
 > und `.odp` (`odp`) — jede mit ihrer eigenen `pipeline_id`/`pipeline_version` am Chunk (siehe
-> [Indexierung](indexierung.md), Abschnitt zu Pipeline-Versionen und Nachzug).
+> [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt zu Pipeline-Versionen und Nachzug).
 > `.md`, `.txt`, `.doc` sowie jedes Format ohne eigene Pipeline laufen unverändert über
 > `TikaFallbackFormat` weiter — für sie ändert sich am bestehenden Bestand nichts. Für `.odt`/`.odp`
 > ändert sich der Bestand dagegen genauso wie für die anderen sechs Formate: Wer diese Anleitung
@@ -3441,7 +3441,7 @@ einer älteren Fassung, und die Seite „Suche & Indexierung" weist die betroffe
 die Lexeme, die die neue Fassung hinzufügt, bis der Nachzug sie neu schreibt (ADR-0028). Einen
 Hintergrundlauf, der das von selbst nachzieht, gibt es nicht — **nötig ist dann der Pipeline-Nachzug**
 über die Admin-API
-(`POST /api/v1/admin/indexing/pipeline-reindex`, siehe [Indexierung](indexierung.md#72-pipeline-versionen-und-nachzug));
+(`POST /api/v1/admin/indexing/pipeline-reindex`, siehe [Wissensbibliotheken](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug));
 eine Oberfläche dafür gibt es noch nicht. Er erfasst solche Abschnitte ausdrücklich, auch wenn sich
 an der Aufbereitung des Dokuments sonst nichts geändert hat.
 

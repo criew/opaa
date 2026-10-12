@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt die Abfragestrecke (Query-Pipeline) konzeptionell: was
 > zwischen dem Absenden einer Frage und der Anzeige einer Antwort mit Belegen passiert, welche
 > Stellschrauben es gibt und wie der Betrieb einer schlechten Antwort auf den Grund geht. Wie die
-> Dokumente vorher in den Index gelangen, steht im Kapitel [Indexierung](indexierung.md).
+> Dokumente vorher in den Index gelangen, steht im Kapitel [Wissensbibliotheken](wissensbibliotheken.md).
 
 ## 1. Überblick in einem Bild
 
@@ -487,11 +487,11 @@ Grenze. Dann fehlen die späteren Feldnamen, und Überschriften oder Abkürzunge
 weiter vorn im Abschnitt belegen Plätze vor ihnen.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
-in einer Transaktion (Kapitel [Indexierung](indexierung.md), Abschnitt 5.7); auf diesem Weg entsteht
+in einer Transaktion (Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 5.7); auf diesem Weg entsteht
 kein Chunk, den nur ein Pfad kennt. Was sich unterscheiden kann, ist allein die **Fassung** des
 Volltexts: Ändert ein Software-Update die Volltextzerlegung (etwa neue Kennungsmuster), tragen
 ältere Chunks die neuen Bestandteile erst nach dem Nachzug (Kapitel
-[Indexierung](indexierung.md), Abschnitt 7.2). Sie werden bis dahin gefunden, nur nicht über das
+[Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 7.2). Sie werden bis dahin gefunden, nur nicht über das
 Neue. Diesen Rückstand zeigt die Administrationsseite je Bibliothek (Abschnitt 8.1).
 
 Zwei bekannte Grenzen des Pfads:
@@ -1082,7 +1082,7 @@ Abschnitt 12.
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
 | Reranking „nicht verfügbar" | Modellrollen, Stufe „Reranking" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking weiter |
-| Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Indexierung](indexierung.md), Abschnitt 7.2) |
+| Bibliotheken mit Volltext-Rückstand | Indexstatus („Nachzug ausstehend"), Suchpfade | Nachzug nach einem Update noch nicht gelaufen (Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 7.2) |
 | Rückfall der Zerlegung | Log-Warnung, Metrik `opaa.query.decomposition.fallback` | das Chat-Modell folgt dem Zerlegungsformat nicht; die Frage wurde wörtlich gesucht |
 | Sachfrage als „nichts zu suchen" eingestuft | Stufe „Teilfragen" („nichts zu suchen"), Metrik `opaa.query.decomposition.no-search` | das Chat-Modell hat eine Folgefrage für eine Nachricht ohne Suchbedarf gehalten; gesucht wurde mit der einzelnen Rückfall-Suchanfrage statt mit einer aufgelösten Teilfrage |
 | Bemerkung mit Quellen beantwortet | Fundstellen, „Durchsucht wurden"-Zeile unter einer Antwort auf einen Dank oder Formwunsch | beabsichtigt: auch eine Nachricht ohne Suchbedarf wird gesucht |
@@ -1219,7 +1219,7 @@ entsprechen.
 
 ## 11. Weiterführende Kapitel
 
-- Wie die Chunks entstehen, die hier gesucht werden: [Indexierung](indexierung.md)
+- Wie die Chunks entstehen, die hier gesucht werden: [Wissensbibliotheken](wissensbibliotheken.md)
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
 - Umgebungsvariablen, Reranking einschalten, Grenze des Volltextpfads:
   [Deployment](deployment.md)

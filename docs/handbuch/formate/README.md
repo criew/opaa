@@ -2,9 +2,9 @@
 
 Welche Dateiformate OPAA aufnimmt, welche Format-Pipeline sie verarbeitet und welche Formate
 bewusst nicht zugelassen sind. Wie ein Dokument die Aufnahmestrecke durchläuft, beschreibt das
-Kapitel [Indexierung](../indexierung.md).
+Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
-## Übersicht
+## Zugelassene Formate
 
 Zugelassen wird nach **Inhalt**, nicht nach Endung. Die Spalte „Zulassung" nennt, wie streng die
 Inhaltsprüfung ist: *strikt* heißt fester Byte-Signatur-Abgleich; *text-tolerant* heißt, der Inhalt

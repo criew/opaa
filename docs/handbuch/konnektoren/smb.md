@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Windows-Dateifreigaben und andere
 > SMB-Server (etwa Samba oder ein NAS). Der gemeinsame Ablauf eines Indexierungslaufs und die
-> Dokumentstrecke stehen im Kapitel [Indexierung](../indexierung.md).
+> Dokumentstrecke stehen im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
@@ -176,7 +176,7 @@ wirklich weg.
 - Ein Name mit `/`, `\`, `:` oder Steuerzeichen, den nur ein Nicht-Windows-Server liefern kann,
   wird nicht gelesen und gezählt im Protokoll genannt.
 - Ein Pfad, der länger als 2000 Zeichen oder 2676 Byte (UTF-8) ist, wird wie bei jeder Quelle
-  nicht gelesen (Kapitel [Indexierung](../indexierung.md), Abschnitt 7.1): Die
+  nicht gelesen (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1): Die
   Datei erscheint in jedem Lauf als abgewiesen im Protokoll, ohne Download und ohne Fehler.
   Gezählt wird der ganze Pfad ab `smb://`. Lateinische Buchstaben ohne Akzent belegen ein Byte,
   Umlaute, Kyrillisch und Griechisch zwei, chinesische, japanische und koreanische Zeichen drei.

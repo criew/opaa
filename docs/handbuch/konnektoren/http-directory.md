@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für per HTTP erreichbare
 > Verzeichnislisten. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke
-> stehen im Kapitel [Indexierung](../indexierung.md).
+> stehen im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 1. Wofür er gedacht ist
 
@@ -300,7 +300,7 @@ Unauthorized, check credentials" oder „HTTP 503 for URL …".
 | `OPAA_CREDENTIALS_ENCRYPTION_KEY` | | | Schlüssel für gespeicherte Zugangsdaten |
 
 Nicht konfigurierbar: Verzeichnisseiten-Grenze 8 MiB, Timeouts, Anzahl Weiterleitungen.
-Thread-Pool, Kontingent, Mail-Grenzen und Chunking wie im Kapitel [Indexierung](../indexierung.md).
+Thread-Pool, Kontingent, Mail-Grenzen und Chunking wie im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 13. Nicht gebaut
 

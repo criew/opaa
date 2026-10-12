@@ -1,7 +1,7 @@
 # Format: OpenDocument Präsentation (ODP)
 
 > **Entwurf.** Pipeline `odp`, Version 4. Der gemeinsame Rahmen aller Format-Pipelines steht im
-> Kapitel [Indexierung](../indexierung.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
+> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 5. Das Verhalten entspricht weitgehend dem von
 > [PowerPoint](pptx.md); hier stehen die Unterschiede.
 
 ## 1. Zulassung
@@ -33,7 +33,7 @@ Absätze aller Masterseiten, dedupliziert, als **ein** führender Chunk mit der 
 steht, wird so einmal gefunden.
 
 Eine Folie mit mehr als rund 4.000 Zeichen wird in mehrere Chunks geteilt, jeder beginnt mit dem
-Folientitel und trägt die Ortsangabe der Folie (Kapitel [Indexierung](../indexierung.md), Abschnitt 7.1); keine Zielgröße, keine Zusammenlegung, keine
+Folientitel und trägt die Ortsangabe der Folie (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1); keine Zielgröße, keine Zusammenlegung, keine
 Überlappung.
 
 ## 4. Metadaten am Chunk

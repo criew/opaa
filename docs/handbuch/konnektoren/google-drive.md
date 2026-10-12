@@ -3,7 +3,7 @@
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Google Drive. Er liest geteilte
 > Ablagen und Ordner eines Google-Workspace-Mandanten und hält sie über das Änderungsprotokoll von
 > Drive aktuell. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im
-> Kapitel [Indexierung](../indexierung.md).
+> Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
 
 **Kurzfassung für den eiligen Betrieb**
 
@@ -204,7 +204,7 @@ ihn.
 
 Die Ordnerkette bis zum Bereich wird als Ordner der Bibliothek gespiegelt. Bei mehreren Bereichen
 steht der Name der Ablage bzw. des Ordners vorn. Namen, die keine Ordnerzeile tragen kann, und zu
-tiefe Ketten folgen den Regeln des Kapitels [Indexierung](../indexierung.md).
+tiefe Ketten folgen den Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
 
 ## 7. Google-Formate
 

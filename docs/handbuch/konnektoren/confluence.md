@@ -2,7 +2,7 @@
 
 > **Entwurf.** Dieses Kapitel beschreibt den Konnektor für Confluence Cloud und Confluence Data
 > Center. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Indexierung](../indexierung.md); die Aufbereitung des Seiteninhalts im Kapitel
+> [Wissensbibliotheken](../wissensbibliotheken.md); die Aufbereitung des Seiteninhalts im Kapitel
 > [Confluence-Seite](../formate/confluence.md).
 
 **Kurzfassung für den eiligen Betrieb**
@@ -362,7 +362,7 @@ Eine site-weite Regel genügt für mehrere Spaces: Seiten außerhalb der Auswahl
 ## 9. Anhänge
 
 Anhänge einer Seite werden je Seite aufgelistet und einzeln über den gemeinsamen Anhangsweg
-verarbeitet (siehe [Indexierung](../indexierung.md#59-anhänge)). Jeder
+verarbeitet (siehe [Wissensbibliotheken](../wissensbibliotheken.md#59-anhänge)). Jeder
 Anhang ist ein eigenes Dokument mit der Seite als Elterndokument und trägt Space und Gliederungspfad
 der Seite, ergänzt um deren Titel. Ein unveränderter Anhang (gleiche Version) wird vor dem Download
 übersprungen. Ein nicht unterstütztes Format wird als „Format nicht unterstützt" protokolliert und
@@ -534,7 +534,7 @@ und die Zieladressprüfung wie in den anderen Kapiteln.
 
 ## 16. Zeitplan
 
-Der Zeitplan je Bibliothek ist im Kapitel [Indexierung](../indexierung.md#42-zeitplan) beschrieben.
+Der Zeitplan je Bibliothek ist im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md#42-zeitplan) beschrieben.
 Für Confluence ist ein täglicher Zeitplan üblich: Ein inkrementeller Lauf kostet wenige Anfragen;
 der Vollabgleich läuft nach seinem eigenen Rhythmus mit. Wer Webhooks eingerichtet hat, kann den
 Zeitplan seltener wählen; der Vollabgleich bleibt trotzdem nötig.

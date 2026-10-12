@@ -153,7 +153,7 @@ neben dem jeweiligen Pfad in `PRESERVED_FILES` — Pfad und Herkunft können nic
 
 **Die Lückenliste pflegt sich selbst.** `render_formate_gaps` vergleicht die tatsächlich vorhandenen
 Dateien mit der Endungsliste, die `admitted_extensions()` **aus der Formatübersicht des Handbuchs
-liest** (`docs/handbuch/indexierung.md`, Abschnitt „Anhang: Formatübersicht") statt sie ein drittes
+liest** (`docs/handbuch/formate/README.md`, Abschnitt „Zugelassene Formate") statt sie ein drittes
 Mal zu kopieren — kommt dort eine fünfzehnte Endung dazu, erscheint sie ohne Zutun als Lücke in
 `corpus/SOURCE.md`. Lässt sich das Kapitel, der Abschnitt oder die Tabelle nicht lesen, bricht der
 Lauf ab, statt stillschweigend vollständige Abdeckung zu behaupten. Geschrieben wird dann entweder
