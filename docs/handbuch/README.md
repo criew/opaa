@@ -164,18 +164,6 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Fremdzugangsfreigabe** | Das befristete Merkmal einer Wissensbibliothek „darf über Fremdzugänge genutzt werden"; wird wie die übrigen Reichweitenfelder historisiert |
 | **Effektive Sicht** | Was ein Zugangstoken bei einem Aufruf sieht: die Schnittmenge aus Rechten der Person, gültiger Freigabe, Tokenauswahl und Installationsschalter, je Aufruf neu ausgewertet |
 
-## 6. Konventionen
+## 6. Für Schreibende
 
-- **Deutsch, Ist-Stand, keine Entstehungsgeschichte.** Warum etwas so gebaut ist, steht in den
-  Spezifikationen und Entscheidungen im Repository, nicht hier.
-- **Verweise nur innerhalb des Handbuchs.** Die einzige Ausnahme ist dieser Hinweis auf das
-  Repository.
-- **Ticketverweise nur für ausdrücklich noch nicht Gebautes**, etwa in „Was nicht gebaut ist".
-- **Konfigurierbare Werte stehen nur in den Konfigurationstabellen** der Kapitel und in der
-  Variablenliste des Deployment-Kapitels. Fließtext und Diagramme nennen Parameternamen oder
-  bleiben neutral, damit ein geänderter Default nicht an fünf Stellen veraltet.
-- **Grafiken sind Mermaid**, damit sie ohne Werkzeug im Repository gerendert werden.
-- **Entwurf** am Kapitelanfang bedeutet: geschrieben und gegen den Code geprüft, aber noch nicht
-  vom Maintainer abgenommen. Der Hinweis fällt mit der Abnahme weg.
-- **Kapitel werden mit dem Code gepflegt.** Wer ein Verhalten ändert, das ein Kapitel beschreibt,
-  ändert das Kapitel im selben Pull Request.
+Wie Kapitel aufgebaut, verknüpft und geschrieben werden, steht in [AGENTS.md](AGENTS.md).
