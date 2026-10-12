@@ -39,8 +39,6 @@ Systemverwaltung ihn zur Pflicht machen: **„Nur über Zugänge"** (Abschnitt 6
 
 ## 3. Was ein Zugang festlegt
 
-**Tabelle 3.1: Angaben eines Zugangs**
-
 | Angabe | Bedeutung |
 |---|---|
 | Name und Quellart | etwa „Confluence Intranet" |
@@ -82,8 +80,6 @@ Mindestgruppengröße heißt es „weniger als N", damit sich nicht auf einzelne
 Wie eine Wissensbibliothek einen Zugang wählt oder später wechselt, beschreibt das Kapitel
 [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 3. Am Zugang selbst ändert die
 Systemverwaltung selten etwas — meist aus einem dieser Anlässe:
-
-**Tabelle 5.1: Typische Anlässe, einen Zugang zu ändern**
 
 | Anlass | Was die Systemverwaltung tut | Folge für die Wissensbibliotheken auf dem Zugang |
 |---|---|---|
@@ -132,17 +128,9 @@ wer ihn beheben kann ([Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 6
 
 ## 8. Konfiguration
 
-**Tabelle 8.1: Konfigurationsschlüssel der Zugänge**
-
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `opaa.connection.expired-connections.warning-threshold` | 10 | ab wie vielen abgelaufenen verbundenen Konten auf einem Zugang die Übersicht „Viele Konten abgelaufen" zeigt; mindestens 1 |
 
 Die Aufbewahrungsfrist des Verbindungsprotokolls stellt die Systemverwaltung unter
 **Administration → Anbindungen → Einstellungen** ein.
-
-## Tabellenverzeichnis
-
-- [Tabelle 3.1: Angaben eines Zugangs](#3-was-ein-zugang-festlegt)
-- [Tabelle 5.1: Typische Anlässe, einen Zugang zu ändern](#5-einen-zugang-pflegen)
-- [Tabelle 8.1: Konfigurationsschlüssel der Zugänge](#8-konfiguration)

@@ -31,8 +31,6 @@ Damit das Wissen durchsuchbar wird, nimmt OPAA jedes Dokument in einen **Index**
 exakte Wörter, Aktenzeichen und Paragrafen trifft. Der Weg dorthin ist für jedes Dokument gleich,
 unabhängig von Herkunft und Format:
 
-**Abbildung 1.1: Der Weg eines Dokuments in den Index**
-
 ```mermaid
 flowchart LR
     Q[Quelle] --> A[Aufzählen]
@@ -42,8 +40,6 @@ flowchart LR
     C --> E[Embedden]
     E --> S[(Vektor- und<br/>Volltextindex)]
 ```
-
-**Tabelle 1.1: Die Schritte im Überblick**
 
 | Schritt | Frage, die er beantwortet |
 |---|---|
@@ -76,8 +72,6 @@ einer Confluence-Seite. OPAA nimmt es als eigenes Dokument auf (Abschnitt 5.7).
 Quelle abgelegt sind; beim Upload wird sie von Hand gepflegt. Ordner ordnen nur: Rechte gelten für
 die ganze Bibliothek, und die Suche durchsucht immer den ganzen Bestand.
 
-**Abbildung 2.1: Die Begriffe und ihr Zusammenhang**
-
 ```mermaid
 flowchart TB
     B[Wissensbibliothek<br/>Quelle + Einstellungen] --> L[Lauf<br/>Ergebnis, Zähler, Protokoll]
@@ -102,8 +96,6 @@ wird, dass das zuletzt gescheitert ist oder dass sie noch keinen Inhalt hat.
 Die Detailansicht einer Wissensbibliothek ist aufgebaut wie die jeder Art im Katalog
 ([Katalog](katalog.md)). Sie zeigt in ihren Reitern:
 
-**Tabelle 3.1: Was die Detailansicht zeigt**
-
 | Reiter | Inhalt |
 |---|---|
 | Dokumente | die Dokumente der Bibliothek, nach Ordnern gegliedert und durchsuchbar |
@@ -123,8 +115,6 @@ der nächste Lauf brächte sie zurück.
 
 Angelegt wird über **„Neu"** im Katalog mit der Art „Wissen". Ein Assistent führt durch vier
 Schritte:
-
-**Tabelle 3.2: Die Schritte des Assistenten**
 
 | Schritt | Inhalt |
 |---|---|
@@ -149,8 +139,6 @@ Anbieter die Erlaubnis beendet, und kann neu verbinden.
 
 ### 4.1 Auslöser
 
-**Tabelle 4.1: Wodurch ein Lauf entsteht**
-
 | Auslöser | Beschreibung |
 |---|---|
 | Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten" |
@@ -162,8 +150,6 @@ Anbieter die Erlaubnis beendet, und kann neu verbinden.
 
 Jede Bibliothek mit angebundener Quelle kann einen Zeitplan tragen. Verwaltende setzen ihn im
 Reiter „Quelle", beim Anlegen im Assistenten.
-
-**Tabelle 4.2: Stufen des Zeitplans**
 
 | Stufe | Einstellungen |
 |---|---|
@@ -189,8 +175,6 @@ Vollabgleich-Rhythmus stellen diesen im Zeitplan zusätzlich ein.
 
 ### 4.3 Zustände eines Laufs
 
-**Abbildung 4.1: Zustände eines Laufs**
-
 ```mermaid
 stateDiagram-v2
     [*] --> RUNNING: Auslöser
@@ -211,8 +195,6 @@ Dateiablagen einen Abgleich über mehrere Läufe fortsetzen, beschreibt die Übe
 [Konnektoren](konnektoren/README.md#2-dateiablagen).
 
 ### 4.4 Änderungen und Löschungen
-
-**Tabelle 4.3: Was eine Änderung in der Quelle bewirkt**
 
 | In der Quelle | In OPAA |
 |---|---|
@@ -243,8 +225,6 @@ verarbeitet der nächste Lauf erneut.
 ## 5. Was mit jedem Dokument passiert
 
 Jedes Dokument, gleich welcher Herkunft, durchläuft dieselben Schritte:
-
-**Abbildung 5.1: Die Dokumentstrecke**
 
 ```mermaid
 flowchart TB
@@ -340,8 +320,6 @@ einer E-Mail — gleich, woher die Mail kommt —, oder **aus der Quelle**, wie 
 einer Confluence-Seite. Wer einen Anhang findet, meldet ihn nur; verarbeitet wird er wie jedes
 andere Dokument, mit eigener Prüfsumme, eigener Pipeline und eigenem Protokolleintrag.
 
-**Abbildung 5.2: Eine E-Mail mit Anhängen**
-
 ```mermaid
 flowchart LR
     M[Mail: vorgang.eml] -->|Kopf + Text| MC[Chunks der Mail]
@@ -377,8 +355,6 @@ Jedes Dokument eines Laufs endet in genau einem von fünf Ergebnissen: **verarbe
 
 Jeder Lauf führt ein Protokoll mit einer lesbaren Begründung je Eintrag.
 
-**Tabelle 6.1: Kategorien des Laufprotokolls**
-
 | Kategorie | Bedeutung |
 |---|---|
 | abgewiesen | nicht übernommen: Die Quelle hat es zurückgewiesen, ein Kontingent ist erschöpft, es enthält keinen extrahierbaren Text, oder sein Ort ist zu lang |
@@ -412,8 +388,6 @@ Kann ein Lauf seine Quelle nicht erreichen, endet er vor dem ersten Dokument mit
 die zuständige Stelle nennt. Der Bestand bleibt durchsuchbar, und im Reiter „Quelle" bietet der
 Hinweis den Verwaltenden die Aktion an, die ihn aufhebt.
 
-**Tabelle 6.2: Wenn die Quelle nicht erreicht wird**
-
 | Meldung | Ursache | Zuständig |
 |---|---|---|
 | „Zugang entfernt" | Der Zugang wurde gelöscht | Verwaltende der Bibliothek: anderen Zugang zuordnen |
@@ -429,8 +403,6 @@ Einzelne Dokumente, die nicht aufgenommen wurden, nennt das Laufprotokoll mit Gr
 ## 7. Betrieb
 
 ### 7.1 Grenzen und Zuschnitt im Einzelnen
-
-**Tabelle 7.1: Feste Grenzen der Dokumentstrecke**
 
 | Grenze | Wert | Wirkung |
 |---|---|---|
@@ -473,15 +445,11 @@ Verfahren im Index liegt.
 Der **Nachzug** läuft nicht von selbst. Die Systemverwaltung stößt ihn über die Admin-API an; eine
 Oberfläche gibt es noch nicht.
 
-**Tabelle 7.2: Admin-API des Nachzugs**
-
 | Aufruf | Zweck |
 |---|---|
 | `GET /api/v1/admin/indexing/pipeline-versions` | Versionsstand je Bibliothek: wie viele Chunks unter der aktuellen Version liegen |
 | `POST /api/v1/admin/indexing/pipeline-reindex` | ein Paket nachziehen; `belowVersion` (welche Version als veraltet gilt), `batchSize` (1 bis 100, Standard 10) |
 | `GET /api/v1/admin/indexing/low-chunk-documents` | Dokumente ohne Chunks, der typische Scan-Befund |
-
-**Abbildung 7.1: Ablauf des Nachzugs**
 
 ```mermaid
 flowchart LR
@@ -516,8 +484,6 @@ Sicherung der Datenbank ist eine Sicherung des Index.
 
 ### 7.4 Nebenläufigkeit
 
-**Tabelle 7.3: Thread-Pools der Aufnahmestrecke**
-
 | Pool | Aufgabe | Standard |
 |---|---|---|
 | Lauf-Pool | ein Platz je Lauf; Läufe verschiedener Bibliotheken laufen parallel | 2 bis 4 Threads, 20 Wartende |
@@ -528,8 +494,6 @@ Sind Lauf-Pool und Warteschlange voll, wird ein neuer Lauf sofort als fehlgeschl
 die Anfrage mit HTTP 503 beantwortet.
 
 ### 7.5 Konfiguration
-
-**Tabelle 7.4: Schlüssel unter `opaa.indexing.*`**
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -563,24 +527,3 @@ die Anfrage mit HTTP 503 beantwortet.
 - [Suche](suche.md): wie der Index abgefragt wird, von der Frage bis zur belegten Antwort
 - [Metadaten](metadaten.md): Kernfelder, ihre Ermittlung und Wirkung in der Suche
 - [Deployment](deployment.md): Installation, Umgebungsvariablen und was ein Update mit dem Index macht
-
-## Verzeichnis der Tabellen und Abbildungen
-
-- [Abbildung 1.1: Der Weg eines Dokuments in den Index](#1-woher-das-wissen-kommt)
-- [Tabelle 1.1: Die Schritte im Überblick](#1-woher-das-wissen-kommt)
-- [Abbildung 2.1: Die Begriffe und ihr Zusammenhang](#2-grundbegriffe)
-- [Tabelle 3.1: Was die Detailansicht zeigt](#32-die-detailansicht)
-- [Tabelle 3.2: Die Schritte des Assistenten](#33-eine-wissensbibliothek-anlegen)
-- [Tabelle 4.1: Wodurch ein Lauf entsteht](#41-auslöser)
-- [Tabelle 4.2: Stufen des Zeitplans](#42-zeitplan)
-- [Abbildung 4.1: Zustände eines Laufs](#43-zustände-eines-laufs)
-- [Tabelle 4.3: Was eine Änderung in der Quelle bewirkt](#44-änderungen-und-löschungen)
-- [Abbildung 5.1: Die Dokumentstrecke](#5-was-mit-jedem-dokument-passiert)
-- [Abbildung 5.2: Eine E-Mail mit Anhängen](#57-anhänge)
-- [Tabelle 6.1: Kategorien des Laufprotokolls](#62-laufprotokoll)
-- [Tabelle 6.2: Wenn die Quelle nicht erreicht wird](#64-wenn-eine-bibliothek-nicht-mehr-aktualisiert-wird)
-- [Tabelle 7.1: Feste Grenzen der Dokumentstrecke](#71-grenzen-und-zuschnitt-im-einzelnen)
-- [Tabelle 7.2: Admin-API des Nachzugs](#72-pipeline-versionen-und-nachzug)
-- [Abbildung 7.1: Ablauf des Nachzugs](#72-pipeline-versionen-und-nachzug)
-- [Tabelle 7.3: Thread-Pools der Aufnahmestrecke](#74-nebenläufigkeit)
-- [Tabelle 7.4: Schlüssel unter `opaa.indexing.*`](#75-konfiguration)

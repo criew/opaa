@@ -90,8 +90,6 @@ OPAA eine **leere** Gruppe — eine Freigabe an sie erreicht niemanden.
 Jedes Arbeitsmittel trägt eigene Rollen und einen Eigentümer. Die Rollen sind für alle Arten gleich
 gestuft; was „Inhalt pflegen" heißt, hängt von der Art ab.
 
-**Tabelle 4.1: Rollen an einem Arbeitsmittel**
-
 | Rolle | Darf | Bei einer Wissensbibliothek zusätzlich |
 |---|---|---|
 | **Leser** (`VIEWER`) | das Arbeitsmittel und seinen Inhalt lesen und nutzen | durchsuchen, Treffer und Dokumentliste sehen |
@@ -108,8 +106,6 @@ jedes Arbeitsmittel verwalten, liest seinen Inhalt aber nur mit einer eigenen Ro
 
 **Der Reiter „Freigaben"** der Detailansicht ([Katalog](katalog.md), Abschnitt 5) führt die Rechte
 eines Arbeitsmittels in dieser Reihenfolge:
-
-**Tabelle 4.2: Der Reiter „Freigaben"**
 
 | Abschnitt | Inhalt |
 |---|---|

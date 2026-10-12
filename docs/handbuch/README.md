@@ -203,11 +203,6 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
   Variablenliste des Deployment-Kapitels. Fließtext und Diagramme nennen Parameternamen oder
   bleiben neutral, damit ein geänderter Default nicht an fünf Stellen veraltet.
 - **Grafiken sind Mermaid**, damit sie ohne Werkzeug im Repository gerendert werden.
-- **Tabellen und Abbildungen tragen Nummer und Titel** in einer fetten Zeile darüber:
-  „**Tabelle 4.2: Stufen des Zeitplans**". Die Nummer setzt sich aus der Nummer des
-  Hauptabschnitts und einer laufenden Nummer darin zusammen; Tabellen und Abbildungen werden
-  getrennt gezählt. Am Ende des Kapitels steht ein Verzeichnis mit Verweis auf den jeweiligen
-  Abschnitt. Ältere Kapitel werden bei ihrer nächsten Überarbeitung umgestellt.
 - **Entwurf** am Kapitelanfang bedeutet: geschrieben und gegen den Code geprüft, aber noch nicht
   vom Maintainer abgenommen. Der Hinweis fällt mit der Abnahme weg.
 - **Kapitel werden mit dem Code gepflegt.** Wer ein Verhalten ändert, das ein Kapitel beschreibt,

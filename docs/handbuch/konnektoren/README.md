@@ -78,8 +78,6 @@ lädt nur, was sich geändert hat. Der Vollabgleich merkt sich diesen Stand **vo
 Auflistung, damit nichts verloren geht, was sich währenddessen ändert. S3, Nextcloud und SMB kennen
 nur den Vollabgleich; Nextcloud spart sich dabei unveränderte Ordner.
 
-**Tabelle 2.1: Laufarten der Dateiablagen**
-
 | Ablage | Vollabgleich | Änderungslauf |
 |---|---|---|
 | S3 | ja | nein; Ereignisse des Speichers lösen einen Ereignislauf aus |
@@ -105,8 +103,6 @@ Vollabgleich, der in **einem** Lauf alles gelistet hat, weist das für jede Abla
 sich über mehrere Läufe, kann eine Datei zwischen zwei Läufen aus einem noch nicht gelisteten in
 einen schon gelisteten Bereich gewandert sein. Ob er dann trotzdem entfernen darf, hängt von der
 Ablage ab:
-
-**Tabelle 2.2: Löschnachweis eines Vollabgleichs über mehrere Läufe**
 
 | Nachweis | Ablagen | Regel |
 |---|---|---|
@@ -147,8 +143,6 @@ Wann eine abgelehnte Datei erneut geprüft wird:
 
 ## 3. Die Konnektoren im Überblick
 
-**Tabelle 3.1: Was die Konnektoren lesen**
-
 | Konnektor | Liest | Zugänge |
 |---|---|---|
 | [Verzeichnis im Dateisystem](filesystem.md) | ein Verzeichnis, das dem Backend als lokaler Pfad sichtbar ist, etwa ein eingebundenes Netzlaufwerk | keine |
@@ -161,8 +155,6 @@ Wann eine abgelehnte Datei erneut geprüft wird:
 | [Nextcloud](nextcloud.md) | Ordner eines Nextcloud-Nutzers, samt Freigaben und Gruppenordnern | möglich |
 | [Dropbox](dropbox.md) | Ordner eines Dropbox-Kontos oder Team-Bereichs | Pflicht |
 | [Windows-Dateifreigabe (SMB)](smb.md) | Ordner einer Freigabe auf einem Windows- oder Samba-Server | möglich |
-
-**Tabelle 3.2: Wie die Konnektoren abgleichen**
 
 | Konnektor | Betriebsarten | Entfernt Verschwundenes | Ordner in der Bibliothek |
 |---|---|---|---|
@@ -180,10 +172,3 @@ Wann eine abgelehnte Datei erneut geprüft wird:
 Ein *vollständiger* Lauf sieht die ganze Quelle und darf deshalb entfernen, was fehlt; ein
 *ergänzender* sieht nur einen Ausschnitt — die jüngsten Feed-Einträge, die zuletzt geänderten
 Seiten — und entfernt nie etwas, nur weil es fehlt.
-
-## Tabellenverzeichnis
-
-- [Tabelle 2.1: Laufarten der Dateiablagen](#21-vollabgleich-und-änderungslauf)
-- [Tabelle 2.2: Löschnachweis eines Vollabgleichs über mehrere Läufe](#23-wann-eine-gelöschte-datei-als-nachgewiesen-gilt)
-- [Tabelle 3.1: Was die Konnektoren lesen](#3-die-konnektoren-im-überblick)
-- [Tabelle 3.2: Wie die Konnektoren abgleichen](#3-die-konnektoren-im-überblick)

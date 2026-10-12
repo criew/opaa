@@ -17,8 +17,6 @@ antwortet „nicht gefunden" wie bei einem unbekannten Arbeitsmittel. Das gilt a
 Systemverwaltung: **Verwalten ist nicht Lesen.** Ein Eintrag enthält Name und Beschreibung, nie
 Inhalte wie Dokumente oder Prompts.
 
-**Tabelle 1.1: Bedienelemente des Katalogs**
-
 | Element | Inhalt |
 |---|---|
 | Suche | über Name und Beschreibung, ohne Rücksicht auf Groß- und Kleinschreibung |
@@ -80,8 +78,6 @@ Darunter liegen die **Reiter**. Die ersten zeigen den Inhalt der Art, etwa die D
 Wissensbibliothek oder die Prompts einer Prompt-Bibliothek; jede Art beschreibt sie in ihrem
 Kapitel. Zwei Reiter haben alle Arten:
 
-**Tabelle 5.1: Reiter, die jede Art hat**
-
 | Reiter | Inhalt |
 |---|---|
 | Freigaben | Eigentümer, wer welche Rolle hat, und die Herleitung „Warum sehe ich das?" ([Berechtigungen](berechtigungen.md), Abschnitt 4) |
@@ -104,8 +100,3 @@ erscheinen nur als Zahl („+ 2 weitere Spaces, die Sie nicht sehen dürfen"). W
 jede Zuordnung mit Namen, wer sie wann angelegt hat und ob nicht alle Mitglieder des Space lesen
 dürfen. Gelöst wird eine Zuordnung über „Aus Space lösen" im Menü ihrer Zeile — von der Verwaltung
 des Arbeitsmittels und von jedem, der den Space kuratiert oder administriert.
-
-## Tabellenverzeichnis
-
-- [Tabelle 1.1: Bedienelemente des Katalogs](#1-was-im-katalog-steht)
-- [Tabelle 5.1: Reiter, die jede Art hat](#5-die-detailansicht)
