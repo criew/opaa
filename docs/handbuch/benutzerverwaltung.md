@@ -255,12 +255,12 @@ Systemverwaltung hat jedes ohnehin, die Rolle **Revision** verleiht keines.
 
 Der ausgelieferte Zustand, die Empfehlung für den Einstieg und die Verwaltung unter
 **Administration → Anlegerechte** stehen im Kapitel
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9.
+[Berechtigungen](berechtigungen.md), Abschnitt 9.
 
 ### Gruppen, Freigaben und Zuständigkeiten
 
 Drei Gegenstände, die an dieser Verwaltung angrenzen, aber nicht auf lokale Konten begrenzt sind,
-stehen im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md):
+stehen im Kapitel [Berechtigungen](berechtigungen.md):
 
 | Gegenstand | Wo es steht |
 |---|---|
@@ -280,7 +280,7 @@ auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Kl�
 **Verantwortung für eine interne Gruppe** sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
 Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Eine noch getragene
 Verantwortung wird vorher abgegeben
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 7).
+([Berechtigungen](berechtigungen.md), Abschnitt 7).
 
 Eine Ausnahme ist die Befugnis „Sicht als" ([Suche](suche.md), Abschnitt 8.3): Sie hält keine
 Löschung auf. Hat das Konto solche Befugnisse erteilt, **entzieht OPAA jede noch gültige davon beim
@@ -524,7 +524,7 @@ verbundenen und der abgelaufenen Konten, und kleine Zahlen nur gerundet
 ([Zugänge](zugaenge.md)). **Dass** eine Person verbunden, neu verbunden oder
 getrennt hat und wann, steht dagegen im Verbindungsprotokoll, das die Revision liest — unter einem
 Pseudonym statt des Namens, das sich wie im Nachweisprotokoll in einer Vorfallsklärung einer Person
-zuordnen lässt ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
+zuordnen lässt ([Berechtigungen](berechtigungen.md), Abschnitt 12).
 Der Dialog zum Verbinden sagt das vor dem Absenden.
 
 **Kein Vorfallszugriff auf Inhalte.** Auch bei einem Sicherheitsvorfall öffnet OPAA den Inhalt einer
@@ -563,7 +563,7 @@ dort geregelten Wege des Hauses, etwa eDiscovery oder den Verwaltungszugriff bei
 Eine private Bibliothek wird auf zwei Wegen gelöscht, beide gleich vollständig:
 
 - **Sofort löschen** durch die Besitzerin selbst, jederzeit, im Menü „⋯“ der Detailseite
-  ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private
+  ([Berechtigungen](berechtigungen.md), „Private
   Bibliotheken“). Niemand sonst kann es, auch nicht die Systemverwaltung; für alle anderen gibt es
   die Bibliothek nicht.
 - **Nach Ablauf der Löschfrist** durch den täglichen Löschlauf, wenn das Konto der Besitzerin so

@@ -15,7 +15,7 @@
    „Meine Ablage" eines Kontos nötig (Abschnitt 2.4).
 3. Die Quellart Google Drive ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer
    außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen"
-   für die Quellart Google Drive ([Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md),
+   für die Quellart Google Drive ([Berechtigungen](../berechtigungen.md),
    Abschnitt 9).
 4. Bibliothek anlegen: Schlüsseldatei hochladen oder einen Zugang wählen (Abschnitt 2.5), Bereiche
    aus der Auflistung wählen, „Verbindung testen". Alles aus allen Bereichen ist für **alle**

@@ -144,7 +144,7 @@ nennen vor der Bestätigung die Zahl der betroffenen Verbindungen und, in dersel
 verbundenen Konten; eine Änderung, die Geheimnisse verwirft, nennt vorher die Zahl der Betroffenen.
 Im Reiter **Einstellungen** stellt die
 Systemverwaltung im Abschnitt **„Verbindungsprotokoll“** dessen Aufbewahrungsfrist ein
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12). Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
+([Berechtigungen](berechtigungen.md), Abschnitt 12). Solange die Angaben der Quellart beim Bearbeiten eines Zugangs noch geladen
 werden, sagt das Formular das und lässt noch nicht speichern.
 
 **Vorschau beim Bearbeiten.** Ändert eine Bearbeitung, was für die Bibliotheken auf dem Zugang gilt
@@ -343,7 +343,7 @@ der Konnektor verwirft den Abgleichstand, den sie ungültig macht; der nächste 
 neu ab. Ein reines Umbenennen fragt keinen Konnektor.
 
 **Private Bibliotheken auf dem Zugang** (Kapitel
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“)
+[Private Bibliotheken](private-bibliotheken.md))
 zählen in keiner Zahl dieses Abschnitts mit, haben kein Veto und halten keine Änderung auf, auch
 nicht mit einer laufenden Indexierung. Lehnt der Konnektor eine Änderung
 für eine private Bibliothek ab oder lässt der Zugang danach keine Personen mehr zu, löst OPAA sie
@@ -378,7 +378,7 @@ Umbenennen und das Korrigieren von Adresse oder Geheimnis bleiben in all diesen 
 
 **Wer einen Zugang nutzen darf**, regelt das Anlegerecht „Konnektorbibliotheken anlegen", erteilt je
 Zugang; eine Bibliothek mit eigener Adresse braucht es für ihre Quellart (Kapitel
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 9). Ein neu
+[Berechtigungen](berechtigungen.md), Abschnitt 9). Ein neu
 angelegter Zugang ist für niemanden außer der Systemverwaltung freigegeben. Die Systemverwaltung
 legt die Freigabe im Seitenpanel des Zugangs unter **„Wer darf diesen Zugang nutzen?“** fest, mit
 denselben drei Antworten wie unter Anlegerechte (nur die Systemverwaltung, alle Konten, bestimmte

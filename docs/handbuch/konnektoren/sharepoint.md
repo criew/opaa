@@ -16,7 +16,7 @@
 4. Ein neuer Zugang ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Nach dem
    Anlegen öffnet sich sein Seitenpanel; unter „Wer darf diesen Zugang nutzen?“ festlegen, wer
    Bibliotheken über ihn anlegen darf (dasselbe Anlegerecht „Konnektorbibliotheken anlegen“ wie unter
-   Anlegerechte, [Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   Anlegerechte, [Berechtigungen](../berechtigungen.md), Abschnitt 9).
 5. Bibliothek anlegen: Zugang wählen, die Site über ihre Adresse öffnen, Dokumentbibliotheken und
    bei Bedarf Ordner wählen, „Verbindung testen“ (Abschnitt 3.2). Alles aus den gewählten
    Dokumentbibliotheken ist für **alle** Leseberechtigten der Bibliothek sichtbar.

@@ -14,7 +14,7 @@
 3. Die Quellart ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer außer ihr
    Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen" für die
    Quellart SMB oder für einen Zugang
-   ([Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   ([Berechtigungen](../berechtigungen.md), Abschnitt 9).
 4. Bibliothek anlegen: Adresse `smb://server/freigabe` oder einen Zugang mit der Freigabe darunter
    (Abschnitt 2), Dienstkonto, Passwort, Ordner („Ordner laden“ hilft), „Verbindung testen“.
    Alles aus diesen Ordnern ist für **alle** Leseberechtigten der Bibliothek sichtbar.

@@ -16,7 +16,7 @@
 3. Ein neuer Zugang ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Nach dem
    Anlegen öffnet sich sein Seitenpanel; unter „Wer darf diesen Zugang nutzen?“ festlegen, wer
    Bibliotheken über ihn anlegen darf (dasselbe Anlegerecht „Konnektorbibliotheken anlegen“ wie unter
-   Anlegerechte, [Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   Anlegerechte, [Berechtigungen](../berechtigungen.md), Abschnitt 9).
 4. Bibliothek anlegen: Zugang wählen, „Quelle verbinden“ und bei Dropbox mit einem **Dienstkonto**
    zustimmen, Ordner wählen, „Verbindung testen“ (Abschnitt 3). Alles aus den gewählten Ordnern ist
    für **alle** Leseberechtigten der Bibliothek sichtbar.

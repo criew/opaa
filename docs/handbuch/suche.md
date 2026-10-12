@@ -186,7 +186,7 @@ ohne Ausnahme, auch für den persönlichen Raum „Privater Bereich". Eine Frage
 Raum: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
 ohne Belege. Ohne Raum suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
 Administratoren des Raums (siehe [Bibliotheken und Berechtigungen, „Zuordnung: was ein Raum
-enthält"](bibliotheken-und-berechtigungen.md#zuordnung-was-ein-raum-enthält)).
+enthält"](berechtigungen.md#zuordnung-was-ein-raum-enthält)).
 
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
@@ -717,7 +717,7 @@ Kopfzeile sagt dem Modell, was der Block ist und was nicht:
 Belegprüfung und Fundstellen (Abschnitt 7) kennen die Anweisung nicht und arbeiten mit ihr genau wie
 ohne sie. Ohne Anweisung entfällt der Block, und der Prompt ist zeichengleich zu dem eines Raums, der
 nie eine hatte. Wer sie setzen darf und wo sie in der Oberfläche steht, steht in
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 5. Im Chat zeigt
+[Berechtigungen](berechtigungen.md), Abschnitt 5. Im Chat zeigt
 die Kopfzeile jedem Mitglied schon vor der ersten Frage die Schaltfläche „Anweisung des Space", die
 den Text aufklappt. Eine Anweisung je Bibliothek, je Chat oder je Person gibt es nicht; konfigurierbar
 ist außerdem, welches Modell die Anweisung bekommt.
@@ -824,7 +824,7 @@ markiert werden muss.
 unter der Antwort die Zeile „Private Quellen im Kontext“. Beides sieht nur die Besitzerin, denn nur
 sie liest ihre privaten Bibliotheken. Die Kennzeichnung wird mit der Antwort gespeichert; wird die
 Bibliothek später gelöscht, heißt der Beleg „Quelle entfernt“. Siehe Kapitel
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt „Private Bibliotheken“.
+[Private Bibliotheken](private-bibliotheken.md).
 
 ### 7.1 Suchen ohne Antwort
 
@@ -956,7 +956,7 @@ aber nichts ein. Die einzigen Eingriffe dort sind die beiden Chargenläufe der M
   und nicht erst an schlechten Antworten spürbar. Private Bibliotheken stehen nicht einzeln da,
   sondern als eine Zeile ohne Namen; unterhalb der Mindestgruppengröße nennt sie nur „weniger als N“
   Bibliotheken und keine Summen (Kapitel
-  [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
+  [Private Bibliotheken](private-bibliotheken.md)).
 - **Stand der Kernfelder und des Kontextpräfix** je Bibliothek, mit Start, Anhalten und
   Wiederaufnahme der Chargenläufe (Kapitel [Metadaten](metadaten.md)).
 
@@ -977,7 +977,7 @@ rekonstruiert.
 
 Die Diagnose bleibt Systemadministratoren vorbehalten; keine Anlegerecht-Vergabe öffnet sie. Sie ist
 kein Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft der Revision
-([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 12).
+([Berechtigungen](berechtigungen.md), Abschnitt 12).
 
 Die Oberfläche zeigt jede Stufe unter ihrer deutschen Bezeichnung. Referenz zwischen Handbuch,
 Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische Name
@@ -1014,7 +1014,7 @@ am Dokument vermerkten gegenüber. Weichen beide ab, ist das selbst der Befund. 
 nie ausgeliefert. **Beides braucht ein Leserecht auf die Bibliothek des Dokuments** — ein Chunk ist
 der Text des Dokuments, und die Systemrolle allein öffnet ihn nicht; ohne Leserecht nennt die
 Ansicht den Grund, statt den Text zu zeigen ([Bibliotheken und
-Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 10).
+Berechtigungen](berechtigungen.md), Abschnitt 10).
 
 ### 8.3 Diagnosesperre und Nachweis
 
@@ -1069,7 +1069,7 @@ Nachweisprotokoll festgehalten.
 
 Gesetzt wird die Frist über `GET`/`PUT /api/v1/admin/permission-history/retention`; eine
 Bedienoberfläche dafür gibt es noch nicht. Wer die Zeiträume liest und unter welchen Schutzregeln,
-steht im Kapitel [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
+steht im Kapitel [Berechtigungen](berechtigungen.md),
 Abschnitt 12.
 
 ## 9. Typische Befunde

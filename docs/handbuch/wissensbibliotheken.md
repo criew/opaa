@@ -8,7 +8,7 @@ Dokumente in einen durchsuchbaren Index aufnimmt und aktuell hält.
 Wissensbibliotheken stehen neben anderen Arten im [Katalog](katalog.md), etwa den
 [Prompt-Bibliotheken](prompt-bibliotheken.md). Was für alle Arten gleich ist — finden, anlegen,
 teilen, favorisieren, einem Space zuordnen —, beschreiben die Kapitel [Katalog](katalog.md) und
-[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md). Dieses Kapitel beschreibt,
+[Berechtigungen](berechtigungen.md). Dieses Kapitel beschreibt,
 was das Wissen besonders macht: woher es kommt, wie es aktuell bleibt und wie OPAA ein Dokument
 liest. Tiefer gehen die Kapitel der [Konnektoren](konnektoren/README.md), der
 [Formate](formate/README.md) und der [Zugänge](zugaenge.md); Abschnitt 7 bündelt, was der Betrieb
@@ -109,7 +109,7 @@ Die Detailansicht einer Wissensbibliothek ist aufgebaut wie die jeder Art im Kat
 | Dokumente | die Dokumente der Bibliothek, nach Ordnern gegliedert und durchsuchbar |
 | Quelle | woher die Dokumente kommen: der Umfang der Quelle, ihre Anbindung, der Zeitplan und die Läufe; fehlt beim Upload |
 | Metadaten | die Felder, mit denen die Bibliothek ihre Dokumente beschreibt ([Metadaten](metadaten.md)) |
-| Freigaben | wer die Bibliothek sehen und pflegen darf ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md)) |
+| Freigaben | wer die Bibliothek sehen und pflegen darf ([Berechtigungen](berechtigungen.md)) |
 | Zuordnungen | in welchen Spaces sie verwendet wird |
 
 Was man dort tun kann, hängt von der eigenen Rolle ab. **Wer liest**, sieht die Dokumente, den
@@ -128,8 +128,8 @@ Schritte:
 
 | Schritt | Inhalt |
 |---|---|
-| 1. Art des Wissens | welche Quelle angebunden werden soll, oder Upload; angeboten wird nur, was die Person anlegen darf |
-| 2. Quelle | die Anbindung, gegebenenfalls über einen Zugang, mit Verbindungstest, dazu der Zeitplan und ob die erste Indizierung sofort startet; entfällt beim Upload |
+| 1. Art des Wissens | die Quellart wählen, etwa Confluence oder Upload; angeboten wird nur, was die Person anlegen darf |
+| 2. Quelle | die gewählte Quelle einrichten: gegebenenfalls den Zugang wählen, Adresse und Umfang eintragen, die Verbindung testen, dazu Zeitplan und ob die erste Indizierung sofort startet; entfällt beim Upload |
 | 3. Name & Beschreibung | vorbelegt, wo die Quelle einen Namen hergibt |
 | 4. Freigaben | Eigentümer und erste Freigaben an Personen und Gruppen |
 
@@ -260,8 +260,7 @@ der alte Stand durchsuchbar.
 ### 5.2 Speicherkontingent
 
 Jede Bibliothek hat ein Speicherkontingent; eine private Bibliothek zusätzlich das Kontingent ihrer
-Besitzerin über alle ihre privaten Bibliotheken ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md),
-„Private Bibliotheken"). Geprüft wird der Zuwachs: Bei einer geänderten Datei zählt nur die
+Besitzerin über alle ihre privaten Bibliotheken ([Private Bibliotheken](private-bibliotheken.md)). Geprüft wird der Zuwachs: Bei einer geänderten Datei zählt nur die
 Größendifferenz.
 
 Überschreitet ein Dokument ein Kontingent, wird es abgelehnt, und das Protokoll nennt den Grund.

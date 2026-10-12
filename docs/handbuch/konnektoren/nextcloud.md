@@ -14,7 +14,7 @@
 3. Die Quellart Nextcloud ist ab Werk für niemanden außer der Systemverwaltung freigegeben. Wer
    außer ihr Bibliotheken anlegen soll, bekommt das Anlegerecht „Konnektorbibliotheken anlegen"
    für die Quellart Nextcloud oder für einen Zugang
-   ([Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md), Abschnitt 9).
+   ([Berechtigungen](../berechtigungen.md), Abschnitt 9).
 4. Bibliothek anlegen: Adresse, Benutzername, App-Passwort, Ordner („Ordner laden“ hilft),
    „Verbindung testen“. Alles aus diesen Ordnern ist für **alle** Leseberechtigten der Bibliothek
    sichtbar.
@@ -99,7 +99,7 @@ Ordner wählt jede Bibliothek selbst.
 Über einen Zugang mit der Besitzart „Person“ (oder „Bibliothek und Person“) bindet eine Person ihre
 **eigene** Nextcloud an, ohne technischen Nutzer. Daraus entsteht eine **private Bibliothek**: Sie
 liest, was das Konto der Person in der Nextcloud sieht, und außer ihr liest sie niemand
-([Bibliotheken und Berechtigungen](../bibliotheken-und-berechtigungen.md), „Private Bibliotheken“).
+([Private Bibliotheken](../private-bibliotheken.md)).
 
 1. **App-Passwort anlegen.** In der eigenen Nextcloud unter *Persönliche Einstellungen › Sicherheit
    › Geräte & Sitzungen* einen Namen wie „OPAA“ eingeben und „Neues App-Passwort erstellen“ wählen.
