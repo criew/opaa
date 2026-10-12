@@ -14,16 +14,16 @@
 
 | Objekt | Was es ist | Was es an Rechten trägt |
 |---|---|---|
-| **Organisation** | Das Haus. Heute genau eine je Installation | Die Grenze jeder Berechtigung: Gruppen, Konten, Arbeitsmittel und Räume gehören ihr, und nichts wirkt darüber hinaus |
-| **Arbeitsmittel** | Etwas, das angelegt, geteilt und einem Raum zugeordnet wird: eine [Wissensbibliothek](wissensbibliotheken.md) oder eine [Prompt-Bibliothek](prompt-bibliotheken.md) | Eigene Rollen, einen Eigentümer |
-| **Raum** (Space) | Arbeitsbereich, in dem Chats liegen und Arbeitsmittel bereitgestellt werden | Eigene Rollen, eigene Mitgliedschaften, einen Eigentümer |
+| **Organisation** | Das Haus. Heute genau eine je Installation | Die Grenze jeder Berechtigung: Gruppen, Konten, Arbeitsmittel und Spaces gehören ihr, und nichts wirkt darüber hinaus |
+| **Arbeitsmittel** | Etwas, das angelegt, geteilt und einem Space zugeordnet wird: eine [Wissensbibliothek](wissensbibliotheken.md) oder eine [Prompt-Bibliothek](prompt-bibliotheken.md) | Eigene Rollen, einen Eigentümer |
+| **Space** | Arbeitsbereich, in dem Chats liegen und Arbeitsmittel bereitgestellt werden | Eigene Rollen, eigene Mitgliedschaften, einen Eigentümer |
 | **Gruppe** | Eine benannte Menge von Konten | Kein Recht an sich selbst — sie ist das *Subjekt*, dem Rollen, Anlegerechte und Eigentum erteilt werden |
 
 Zwei Sätze gelten in allen folgenden Abschnitten:
 
-- **Ein Raum enthält genau, was ihm zugeordnet ist, und erweitert keine Leserechte.** Der Chat
-  eines Raums sucht nur in den zugeordneten Bibliotheken und bietet nur die zugeordneten Prompts
-  an — und davon nur, was die Person ohnehin lesen darf. Die Zuordnung legt fest, was im Raum zur
+- **Ein Space enthält genau, was ihm zugeordnet ist, und erweitert keine Leserechte.** Der Chat
+  eines Space sucht nur in den zugeordneten Bibliotheken und bietet nur die zugeordneten Prompts
+  an — und davon nur, was die Person ohnehin lesen darf. Die Zuordnung legt fest, was im Space zur
   Verfügung steht; ein Leserecht öffnet sie nicht.
 - **Rechte wirken in der Suche, nicht dahinter.** Jede Suchabfrage trägt den Filter auf die
   lesbaren Bibliotheken in sich. Es gibt keinen Administrator-Durchgriff auf Inhalte
@@ -35,11 +35,11 @@ flowchart TB
     M --> G[Gruppe<br/>intern oder von einem Anbieter]
     P --> DG[Rolle an einem Arbeitsmittel]
     G --> GG[Rolle an einem Arbeitsmittel]
-    P --> SM[Mitgliedschaft in einem Raum]
-    G --> SG[Mitgliedschaft in einem Raum]
+    P --> SM[Mitgliedschaft in einem Space]
+    G --> SG[Mitgliedschaft in einem Space]
     DG --> B[Arbeitsmittel]
     GG --> B
-    SM --> S[Raum]
+    SM --> S[Space]
     SG --> S
     B -. bereitgestellt .-> S
     A["Alle Konten"] --> C[Anlegerecht]
@@ -54,8 +54,8 @@ austauschbar, und keiner von ihnen ist eine schwächere Fassung eines anderen.
 
 | Begriff | Bedeutung | Gebunden an |
 |---|---|---|
-| **Rolle** | Gestufte Berechtigung an **einem Objekt** — „Leserin dieser Wissensbibliothek", „Administrator in diesem Raum" | Person **oder** Gruppe; unbefristet oder mit Ablaufdatum |
-| **Anlegerecht** | Installationsweites Recht, etwas **anzulegen** (Räume, Arbeitsmittel, interne Gruppen). Ohne Gegenstand, unbefristet, **öffnet nie einen Inhalt** | Person, Gruppe oder **„Alle Konten"** |
+| **Rolle** | Gestufte Berechtigung an **einem Objekt** — „Leserin dieser Wissensbibliothek", „Administrator in diesem Space" | Person **oder** Gruppe; unbefristet oder mit Ablaufdatum |
+| **Anlegerecht** | Installationsweites Recht, etwas **anzulegen** (Spaces, Arbeitsmittel, interne Gruppen). Ohne Gegenstand, unbefristet, **öffnet nie einen Inhalt** | Person, Gruppe oder **„Alle Konten"** |
 | **Vollmacht** | Befristete, begründungspflichtige Erlaubnis mit Gegenstand: „Sicht als" in der Suchdiagnose und der Geltungsbereich einer anlassbezogenen Klärung im Nachweisprotokoll | **genau eine Person**, nie eine Gruppe |
 | **Systemrolle** | Systemverwaltung und Revision — die beiden installationsweiten Rollen aus der [Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 7 | genau ein Konto |
 
@@ -64,14 +64,14 @@ Dazu zwei Maße, die im Text gebraucht werden und in keiner Oberfläche als Wort
 - **Wirksam** ist eine Gruppe, der ein Recht **erteilt** werden darf: nicht aufgelöst, ihr Anbieter
   eingeschaltet, ihre Mitgliedschaft noch gepflegt. Eine wirksame Gruppe **darf leer sein**.
 - **Handlungsfähig** ist eine wirksame Gruppe mit mindestens einem **aktiven** Konto. Das ist das
-  Maß dafür, ob sie als Eigentümerin oder als Raumadministratorin **handeln** kann (Abschnitt 13).
+  Maß dafür, ob sie als Eigentümerin oder als Space-Administratorin **handeln** kann (Abschnitt 13).
 
 ## 3. Wem ein Recht gegeben werden kann
 
-| Subjekt | Rolle an Arbeitsmittel oder Raum | Anlegerecht | Eigentum | Vollmacht |
+| Subjekt | Rolle an Arbeitsmittel oder Space | Anlegerecht | Eigentum | Vollmacht |
 |---|---|---|---|---|
-| **Person** | ja | ja | Arbeitsmittel und Raum | ja |
-| **Gruppe** | ja | ja | Arbeitsmittel (kein Raum) | nein |
+| **Person** | ja | ja | Arbeitsmittel und Space | ja |
+| **Gruppe** | ja | ja | Arbeitsmittel (kein Space) | nein |
 | **„Alle Konten"** | ja — als Empfänger wie jeder andere | — (dort heißt dieselbe Art „Alle Konten") | nein | nein |
 
 **Gruppen werden nicht in Personen aufgelöst.** Wer ein Arbeitsmittel an „Referat 50" freigibt, gibt
@@ -215,49 +215,49 @@ liest sie niemand — auch nicht die Systemverwaltung. Rechte an andere, Übertr
 „Sicht als" gibt es für sie nicht. Alles Weitere steht im Kapitel
 [Private Bibliotheken](private-bibliotheken.md).
 
-## 5. Rollen in einem Raum
+## 5. Rollen in einem Space
 
 | Rolle | Darf |
 |---|---|
-| **Mitglied** | Den Raum betreten, Chats anlegen und führen, geteilte Chats lesen, die bereitgestellten Arbeitsmittel sehen — gefiltert auf den eigenen Zugriff |
+| **Mitglied** | Den Space betreten, Chats anlegen und führen, geteilte Chats lesen, die bereitgestellten Arbeitsmittel sehen — gefiltert auf den eigenen Zugriff |
 | **Kurator** | Zusätzlich Arbeitsmittel bereitstellen und lösen, Inhalte ordnen |
 | **Administrator** | Zusätzlich Mitglieder und Rollen verwalten, Einstellungen setzen, geteilte Inhalte zurückziehen |
 
 Daneben steht der **Eigentümer** als eigenes Merkmal: Er allein — und die Systemverwaltung — darf
-den Raum löschen. **Ein Raum gehört immer einer natürlichen Person.**
+den Space löschen. **Ein Space gehört immer einer natürlichen Person.**
 
-**Auch eine Gruppe wird Mitglied eines Raums, mit Rolle.** Ihre Mitglieder tragen diese Rolle ohne
+**Auch eine Gruppe wird Mitglied eines Space, mit Rolle.** Ihre Mitglieder tragen diese Rolle ohne
 eigene Zeile und verlieren sie im Moment, in dem sie die Gruppe verlassen. Hält jemand mehrere Wege
-in denselben Raum — direkt und über zwei Gruppen —, gilt die stärkste Rolle.
+in denselben Space — direkt und über zwei Gruppen —, gilt die stärkste Rolle.
 
-Drei Regeln halten einen Raum handlungsfähig:
+Drei Regeln halten einen Space handlungsfähig:
 
 - **Er verliert nie sein letztes handlungsfähiges Administrator-Mitglied durch eine
   Verwaltungshandlung.** Entfernen oder Herabstufen wird abgelehnt und nennt den Grund. **Eine
   Gruppe zählt dabei als Administrator, solange sie handlungsfähig ist.**
 - **Den Eigentümerwechsel darf jedes handlungsfähige Administrator-Mitglied vollziehen**, das eine
   natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
-- **Ein archivierter Raum nimmt keine neuen Mitglieder auf.**
+- **Ein archivierter Space nimmt keine neuen Mitglieder auf.**
 
-### Zuordnung: was ein Raum enthält
+### Zuordnung: was ein Space enthält
 
-**Ein Raum enthält genau, was ihm zugeordnet ist** — für jede Art von Arbeitsmittel. Die Chats des Raums
+**Ein Space enthält genau, was ihm zugeordnet ist** — für jede Art von Arbeitsmittel. Die Chats des Space
 suchen nur in den zugeordneten Wissensbibliotheken, auch über `@`-Bezüge, und bieten nur die
-Prompts der zugeordneten Prompt-Bibliotheken an. Was eine Person lesen darf, aber dem Raum nicht
-zugeordnet ist, steht dort nicht zur Verfügung. Ein Raum ohne zugeordnetes Wissen durchsucht nichts;
-das gilt auch für den persönlichen Standard-Raum, der zunächst leer ist. Der Chat und die Seite des
-Raums sagen das mit „Diesem Space ist kein Wissen zugeordnet."; Kuratoren und Administratoren
+Prompts der zugeordneten Prompt-Bibliotheken an. Was eine Person lesen darf, aber dem Space nicht
+zugeordnet ist, steht dort nicht zur Verfügung. Ein Space ohne zugeordnetes Wissen durchsucht nichts;
+das gilt auch für den persönlichen Standard-Space, der zunächst leer ist. Der Chat und die Seite des
+Space sagen das mit „Diesem Space ist kein Wissen zugeordnet."; Kuratoren und Administratoren
 führt „Wissen zuordnen" direkt in den Reiter „Inhalte" der Einstellungen. Die Durchsetzung liegt im
 Backend, nicht nur in der Oberfläche: Einen `@`-Bezug auf eine nicht zugeordnete Bibliothek und
 einen Prompt aus einer nicht zugeordneten Prompt-Bibliothek lehnt es ab.
 
-**Ein Arbeitsmittel in einem Raum bereitzustellen ist eine Handlung im Raum.** Sie setzt die
-Kuratorenrolle **im Raum** und mindestens die Leserrolle **am Arbeitsmittel** voraus: Wer etwas
+**Ein Arbeitsmittel in einem Space bereitzustellen ist eine Handlung im Space.** Sie setzt die
+Kuratorenrolle **im Space** und mindestens die Leserrolle **am Arbeitsmittel** voraus: Wer etwas
 bereitstellt, muss es selbst lesen dürfen. Die Bereitstellung **verschafft niemandem ein
-Leserecht** — sie legt fest, worin die Chats dieses Raums suchen. Sind im Raum
+Leserecht** — sie legt fest, worin die Chats dieses Space suchen. Sind im Space
 Mitglieder ohne Leserecht an diesem Arbeitsmittel, wird seine Eigentümerin darüber
 benachrichtigt; eine Zustimmung braucht es nicht, die Bereitstellung wirkt sofort. Das gilt für jede
-Art von Arbeitsmittel. Entstehen beim Anlegen eines Raums mehrere solche Bereitstellungen, erhält jede
+Art von Arbeitsmittel. Entstehen beim Anlegen eines Space mehrere solche Bereitstellungen, erhält jede
 Eigentümerin **eine** Benachrichtigung, die alle ihre Arbeitsmittel nennt.
 
 **Was eine Person nicht lesen darf, sieht sie auch in der Zuordnungsliste nicht** — in keiner
@@ -265,24 +265,24 @@ Rolle, auch nicht als Kurator, Administrator oder Systemverwaltung. Die Liste ne
 noch Anzahl solcher Bereitstellungen. Sind nicht alle Zuordnungen lesbar, steht im Reiter
 „Inhalte" der Einstellungen der Hinweis „Nicht alle zugeordneten Inhalte sind für Sie
 lesbar."; ist nur Nicht-Lesbares zugeordnet, steht allein dieser Hinweis da. Lösen kann eine
-Bereitstellung im Raum nur, wer das Arbeitsmittel lesen darf; jeder andere Versuch wird wie bei
+Bereitstellung im Space nur, wer das Arbeitsmittel lesen darf; jeder andere Versuch wird wie bei
 einem unbekannten mit „nicht gefunden" beantwortet. Eine Bereitstellung, die man nicht lesen
 darf, löst die Verwaltung des Arbeitsmittels von dessen Seite aus, Reiter „Zuordnungen".
 
-Die Mitgliederliste eines Raums sehen **nur** seine Administratoren, sein Eigentümer und die
+Die Mitgliederliste eines Space sehen **nur** seine Administratoren, sein Eigentümer und die
 Systemverwaltung. Mitglieder und Kuratoren sehen ausschließlich, wie viele Mitglieder je Rolle es
-gibt. Ein Raum ist nur für seine Mitglieder auffindbar; ein Verzeichnis der Räume gibt es
-nicht, und eine Einstellung zur Sichtbarkeit eines Raums deshalb auch nicht.
+gibt. Ein Space ist nur für seine Mitglieder auffindbar; ein Verzeichnis der Spaces gibt es
+nicht, und eine Einstellung zur Sichtbarkeit eines Space deshalb auch nicht.
 
-**In der Oberfläche liegt all das auf einer Seite je Raum:** dem Zahnrad „Einstellungen" am Fuß der
-Seitenleiste. Das Zahnrad sieht jedes Mitglied; wer den Raum nicht verwalten darf, liest dort nur.
+**In der Oberfläche liegt all das auf einer Seite je Space:** dem Zahnrad „Einstellungen" am Fuß der
+Seitenleiste. Das Zahnrad sieht jedes Mitglied; wer den Space nicht verwalten darf, liest dort nur.
 Die Seite hat drei Reiter, und keine Überschrift im Reiter wiederholt seinen Namen:
 
 | Reiter | Inhalt |
 |---|---|
 | **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation ([Suche](suche.md), Abschnitt 2), die **Anweisung an das Modell** ([Suche](suche.md), Abschnitt 6) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — für Administratoren als Auswahl, beim Eigentümer als schreibgeschützte Auswahl „Eigentümer" mit Schloss statt Pfeil und dem Hinweis, dass der Eigentümer über „Zum Eigentümer machen" bei einem anderen Mitglied wechselt — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
-| **Inhalte** | Eine Kachelliste aller Arbeitsmittel — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Raum zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Raums |
+| **Inhalte** | Eine Kachelliste aller Arbeitsmittel — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Space zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Space |
 
 **Im Reiter „Mitglieder" meldet sich jede Änderung kurz.** Hinzufügen, Entfernen, Rollenwechsel und
 Übertragung bestätigt je eine Meldung, die von selbst verschwindet („Gruppe Meldewesen
@@ -296,29 +296,29 @@ zugeordnete" eingeschaltet; ausgeschaltet zeigt die Liste alles, was man lesen d
 zuordnen könnte. In beiden Ansichten sind es dieselben Kacheln wie im Katalog, in derselben
 Reihenfolge: Favoriten zuerst, dann nach Name. Darüber stehen dieselben Filter wie im Katalog:
 Suche, Typ und Favoriten. Wer
-weder Kurator noch Administrator noch Eigentümer des Raums ist, sieht die zugeordneten Inhalte, die
+weder Kurator noch Administrator noch Eigentümer des Space ist, sieht die zugeordneten Inhalte, die
 er lesen darf, nur lesend.
 
 **Die ersten beiden Reiter gehören den Administratoren.** Kuratoren und Mitglieder öffnen dieselbe
 Seite und sehen die Stammdaten nur lesend. Im Reiter „Mitglieder" steht für sie keine Liste und
-kein Name, nur die Größe des Raums: wie viele Personen und Gruppen aufgenommen sind („10 Personen
+kein Name, nur die Größe des Space: wie viele Personen und Gruppen aufgenommen sind („10 Personen
 und 2 Gruppen") und wie sich die Rollen darauf verteilen („Rollen: 2 Administratoren, 1 Kurator,
 9 Mitglieder"). Eine Gruppe zählt dabei einmal, gleich wie viele Konten sie hat. Die Arbeit eines Kurators
 liegt im Reiter „Inhalte".
-Den Schalter der Chat-Bereinigung im eigenen Standard-Raum legt nur dessen Eigentümer um, auch die
-Systemverwaltung nicht. Deshalb lässt sich ein Standard-Raum auch nicht übertragen: Der Knopf „Zum
+Den Schalter der Chat-Bereinigung im eigenen Standard-Space legt nur dessen Eigentümer um, auch die
+Systemverwaltung nicht. Deshalb lässt sich ein Standard-Space auch nicht übertragen: Der Knopf „Zum
 Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
-Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Raum: Der lässt sich weder
+Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
 archivieren noch löschen.
 
-**Die Anweisung an das Modell setzt und ändert nur, wer im Raum die Rolle Administrator hat** —
+**Die Anweisung an das Modell setzt und ändert nur, wer im Space die Rolle Administrator hat** —
 direkt, über eine Gruppe oder als Eigentümer. Kuratoren und Mitglieder lesen sie in den Stammdaten,
 und die Systemverwaltung ändert sie ohne diese Rolle nicht; Name und Beschreibung ändert sie
-weiterhin. Im eigenen Standard-Raum ist die Person selbst Administrator und hinterlegt dort eine
+weiterhin. Im eigenen Standard-Space ist die Person selbst Administrator und hinterlegt dort eine
 persönliche Daueranweisung. Ein leeres Feld entfernt die Anweisung. Jede Änderung steht im
-Revisionsprotokoll als Änderung des Raums mit dem Feldnamen, der Text selbst nicht.
+Revisionsprotokoll als Änderung des Space mit dem Feldnamen, der Text selbst nicht.
 
-### Einen Raum anlegen: der Space-Assistent
+### Einen Space anlegen: der Space-Assistent
 
 „Neuer Space" führt durch vier Schritte: **Grunddaten**, **Mitglieder**, **Inhalte** und
 **Zusammenfassung**. Nur der Name ist Pflicht; die Schritte „Mitglieder" und „Inhalte" lassen sich
@@ -326,7 +326,7 @@ mit „Weiter" überspringen.
 
 Die **Grunddaten** sind Name, Beschreibung und der Schalter der automatischen Chat-Bereinigung. Der
 Schalter nennt die Fristen, die der Betrieb festgelegt hat; was sie bewirken, steht in
-[Suche](suche.md), Abschnitt 2. Jeder Raum ist nur für seine Mitglieder sichtbar.
+[Suche](suche.md), Abschnitt 2. Jeder Space ist nur für seine Mitglieder sichtbar.
 
 Im Schritt **Mitglieder** nimmt der Assistent Personen **und** Gruppen auf, über dasselbe Suchfeld
 wie der Reiter „Mitglieder" der Einstellungen: Suche, Rolle und „Vormerken" in einer Zeile, mit
@@ -349,31 +349,30 @@ auf; ein Klick auf den Stern setzt nur den eigenen Favoriten und ändert die Wah
 ist ein Kontrollkästchen mit eigenem Tabstopp, der Stern ein eigener Tabstopp daneben: Leertaste und
 Enter wählen oder heben die Wahl auf.
 
-„Space anlegen" legt den Raum samt vorgemerkten Mitgliedern und allen Zuordnungen in einem Schritt
+„Space anlegen" legt den Space samt vorgemerkten Mitgliedern und allen Zuordnungen in einem Schritt
 an. Lässt sich ein Mitglied nicht aufnehmen oder ein gewählter Bestand nicht zuordnen, entsteht kein
-Raum; der Assistent bleibt mit allen Eingaben offen und nennt den Grund. Die Aufnahme jedes
+Space; der Assistent bleibt mit allen Eingaben offen und nennt den Grund. Die Aufnahme jedes
 Mitglieds steht wie beim späteren Hinzufügen im Nachweisprotokoll. Ist kein Wissen gewählt, sagt die Zusammenfassung „Kein
 Wissen zugeordnet — der Space durchsucht kein Wissen, bis Sie etwas zuordnen."
 
 Dieselbe Kachelauswahl steht im Reiter „Inhalte" der Einstellungen. Dort ist das Häkchen die
-Zuordnung selbst und wirkt sofort (Abschnitt „Zuordnung: was ein Raum enthält"); eine Zeile mit
+Zuordnung selbst und wirkt sofort (Abschnitt „Zuordnung: was ein Space enthält"); eine Zeile mit
 allem Gewählten und einen Knopf „Zuordnen" gibt es dort nicht.
 
 ### Zuordnen aus dem Katalog
 
-Wie ein Arbeitsmittel direkt aus dem Katalog einem Raum zugeordnet wird, beschreibt das Kapitel
+Wie ein Arbeitsmittel direkt aus dem Katalog einem Space zugeordnet wird, beschreibt das Kapitel
 [Katalog](katalog.md), Abschnitt 6.
 
 ### Die Space-Übersicht
 
-Die Übersicht führt alle Räume auf, in denen Sie Mitglied sind — in der Oberfläche heißen sie
-„Spaces". Die Überschrift nennt ihre Anzahl, oben rechts steht „Neuer Space". Ein Suchfeld filtert
-über Name und Beschreibung. Die Räume stehen als Kacheln; eine Tabellenansicht gibt es nicht.
+Die Übersicht führt alle Spaces auf, in denen Sie Mitglied sind. Die Überschrift nennt ihre Anzahl, oben rechts steht „Neuer Space". Ein Suchfeld filtert
+über Name und Beschreibung. Die Spaces stehen als Kacheln; eine Tabellenansicht gibt es nicht.
 
 Eine Kachel zeigt Name, Beschreibung und die Anzahl der Chats, darunter Ihre eigene Rolle und die
 Mitglieder als Badges. Die Mitgliederangabe ist wie die Reichweite eines Arbeitsmittels formuliert:
 „2 Gruppen, 3 Personen", oder „nur Sie", wenn Ihr eigenes Konto das einzige Mitglied ist — gleich,
-ob es der Standard-Raum ist oder nicht. Eine Gruppe zählt als eine Mitgliedschaft, wie viele Personen
+ob es der Standard-Space ist oder nicht. Eine Gruppe zählt als eine Mitgliedschaft, wie viele Personen
 sie auch umfasst; ihre Größe wird hier nicht genannt. Ein archivierter Space ist als solcher
 gekennzeichnet und führt auf seine Übersicht statt in einen neuen Chat. Das Space-Menü der
 Seitenleiste nennt unter jedem Namen dieselbe Mitgliederangabe.
@@ -492,7 +491,7 @@ Verantwortliche dürfen:
 - die Gruppe **zur Verwendung freigeben** und die Freigabe zurücknehmen
 - die Gruppe vorübergehend **deaktivieren** und wieder **reaktivieren** (siehe unten)
 - die Gruppe löschen, solange sie keine Berechtigung, kein Anlegerecht und kein Eigentum mehr trägt
-  und in keinem Raum Mitglied ist
+  und in keinem Space Mitglied ist
 
 **Wer nicht verantwortlich ist, sieht die Gruppe unter „Meine Gruppen" nicht** und bekommt auf jeden
 Pflegeversuch dieselbe Antwort wie für eine Gruppe, die es nicht gibt. Die Systemverwaltung darf
@@ -528,7 +527,7 @@ erscheint so lange in der Betriebsliste (Abschnitt 13).
 wählbar: Wer ein Arbeitsmittel freigibt, findet sie weder in der Auswahl noch über ihre Kennung. Erst
 die Freigabe durch die Verantwortlichen macht sie zu einem möglichen Empfänger. Das gilt für jeden
 Weg, auf dem eine Gruppe zum Zuge kommt: Berechtigung auf ein Arbeitsmittel, Anlegerecht, Eigentum und
-Aufnahme als Mitglied eines Raums. Bei der Umstellung wurde jede interne Gruppe, die bereits eines
+Aufnahme als Mitglied eines Space. Bei der Umstellung wurde jede interne Gruppe, die bereits eines
 davon trug, automatisch als freigegeben übernommen — niemand verliert eine Möglichkeit, die er
 benutzt hat. Anbietergruppen brauchen keine Freigabe; sie sind immer wählbar, solange sie wirksam
 sind.
@@ -539,19 +538,19 @@ Bereich **Wirkung** oder in der Gruppenverwaltung im Zeilenmenü. Das dürfen ih
 die Systemverwaltung, bei einer geschützten Gruppe ebenso wie bei jeder anderen.
 
 - **Solange sie deaktiviert ist, wirkt die Gruppe für niemanden.** Ihre Berechtigungen an
-  Arbeitsmitteln, ihre Raummitgliedschaften und ihre Anlegerechte erreichen keines ihrer Mitglieder;
+  Arbeitsmitteln, ihre Space-Mitgliedschaften und ihre Anlegerechte erreichen keines ihrer Mitglieder;
   die Suche, „Warum sehe ich das?“ und das Rechteprofil der Suchdiagnose zählen die Gruppe nicht
   mit. Das gilt sofort, ohne neue Anmeldung.
 - **Sie ist kein neues Ziel.** Wer etwas freigibt, sieht sie in der Auswahl als nicht wählbar mit
   dem Grund „Gruppe deaktiviert“; als Eigentümerin eines neuen Arbeitsmittels steht sie nicht zur Wahl.
-- **Gespeichert bleibt alles.** Berechtigungen, Raummitgliedschaften mit Rolle, Anlegerechte,
+- **Gespeichert bleibt alles.** Berechtigungen, Space-Mitgliedschaften mit Rolle, Anlegerechte,
   Mitglieder, Verantwortliche, Freigabe und Schutzkennzeichen bleiben stehen; **„Reaktivieren“** stellt
   den vorherigen Stand ohne weitere Entscheidung wieder her. Mitglieder lassen sich auch während der
   Deaktivierung aufnehmen und entfernen.
 - **Die Bestätigung beziffert die Folgen** — wie viele Freigaben an wie vielen Objekten, wie viele
-  Raummitgliedschaften und Anlegerechte und wie viele aktive Konten betroffen sind.
+  Space-Mitgliedschaften und Anlegerechte und wie viele aktive Konten betroffen sind.
 - **Verweigert wird das Deaktivieren**, solange die Gruppe **einzige Eigentümerin** einer Wissens-
-  oder Prompt-Bibliothek ist oder das **letzte handlungsfähige Administrator-Mitglied** eines Raums:
+  oder Prompt-Bibliothek ist oder das **letzte handlungsfähige Administrator-Mitglied** eines Space:
   Sonst stünde das Objekt ohne Zuständige da. Die Meldung nennt, wie viele Objekte im Weg sind; der
   Ausweg ist „Rechte übertragen“ (Abschnitt 13.2) oder eine weitere zuständige Person.
 - Eine Frist oder Wiedervorlage gibt es nicht: Die Gruppe bleibt deaktiviert, bis jemand sie
@@ -602,7 +601,7 @@ eingibt.
 |---|---|---|---|
 | **Verantwortliche** einer internen Gruppe | ja | ja | ja |
 | **Systemverwaltung** | ja | ja | ja — **der Abruf ist ein Nachweiseintrag** |
-| **Wer ein Recht erteilt** (Verwalter eines Arbeitsmittels, Administrator eines Raums) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**: in der Auswahl unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, an der Zeile einer bestehenden Freigabe oder Mitgliedschaft immer die Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält, auch bei kleinen Gruppen — **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
+| **Wer ein Recht erteilt** (Verwalter eines Arbeitsmittels, Administrator eines Space) | ja, bei internen Gruppen nur nach Freigabe zur Verwendung | Zahl **aktiver Konten**: in der Auswahl unterhalb der Mindestgruppengröße „kleine Gruppe" statt einer Zahl, an der Zeile einer bestehenden Freigabe oder Mitgliedschaft immer die Zahl | ja, solange die Gruppe an **seinem** Objekt ein Recht hält, auch bei kleinen Gruppen — **nicht** bei geschützten Gruppen; dort tritt an ihre Stelle, wen man fragen kann |
 | **Mitglied** der Gruppe | seine eigenen Gruppen | ja | nein |
 | **Alle übrigen** | nichts | — | — |
 
@@ -615,27 +614,27 @@ Vier Eigenschaften gehören dazu:
   scheiterte „Gruppe anlegen, freigeben, Mitglieder aufnehmen" am ersten Schritt. Die Auswahl sagt
   es dazu, und die Betriebsliste führt die Folge (Abschnitt 13).
 - **Die heutige Größe an der Zeile.** Die Freigabeliste eines Arbeitsmittels und die Mitgliederliste
-  eines Raums nennen bei einer Gruppe die Zahl ihrer aktiven Konten von heute („Gruppe · …
+  eines Space nennen bei einer Gruppe die Zahl ihrer aktiven Konten von heute („Gruppe · …
   Mitglieder"), ohne Mindestgruppengröße: Wer die Zeile sieht, verwaltet das Recht und darf die
   Mitglieder ohnehin aufklappen. Eine Zahl vom Tag der Erteilung wird nicht festgehalten; wer seit
   wann über welche Gruppe Zugriff hat, beantworten Rechtehistorie, Nachweisprotokoll und die
   Herleitung (Abschnitte 11 und 12).
 - **Geschützte Gruppen sind über die Suche nicht auffindbar.** In der Auswahl erscheinen sie nur bei
   Eingabe ihrer **vollständigen** Bezeichnung; wer ihre Kennung eingibt, erhält sie zur Bestätigung
-  **ohne** Namen. In fremden Listen — Mitgliederliste eines Raums, Freigabeliste eines Arbeitsmittels,
+  **ohne** Namen. In fremden Listen — Mitgliederliste eines Space, Freigabeliste eines Arbeitsmittels,
   Liste der Anlegerechte — steht „Geschützte Gruppe"
   statt der Bezeichnung. Die Zeile bleibt, damit eine Mitgliedschaft beendet werden kann, die
   niemand sieht; die Größe entfällt dort ganz.
 
 **Wer ein Recht gibt, sieht, an wen.** An der Zeile einer Gruppe steht in der Freigabeliste eines
-Arbeitsmittels „Mitglieder anzeigen", in der Mitgliederliste eines Raums im Menü „⋯" der Eintrag
+Arbeitsmittels „Mitglieder anzeigen", in der Mitgliederliste eines Space im Menü „⋯" der Eintrag
 „Mitglieder der Gruppe anzeigen". Die Liste wird
 **erst auf ausdrücklichen Wunsch** geladen, zeigt die **aktiven Konten** mit Namen und sagt dazu,
 wie viele es insgesamt sind; bei langen Listen wird seitenweise nachgeladen. Die Größe der Gruppe
 begrenzt dabei nichts, auch eine kleine Gruppe zeigt ihre Namen. Vier Grenzen gelten:
 
 - **Nur am eigenen Objekt, und nur solange die Gruppe dort ein Recht hält.** Wer die Freigabe
-  entzieht oder die Mitgliedschaft im Raum beendet, sieht die Mitglieder nicht mehr; eine
+  entzieht oder die Mitgliedschaft im Space beendet, sieht die Mitglieder nicht mehr; eine
   abgelaufene Freigabe hält nichts. Eine Abfrage „wer ist in dieser Gruppe" ohne Objekt gibt es
   nicht.
 - **Nur bei Gruppen, die zur Verwendung freigegeben sind** — Anbietergruppen sind es immer. Nehmen
@@ -646,7 +645,7 @@ begrenzt dabei nichts, auch eine kleine Gruppe zeigt ihre Namen. Vier Grenzen ge
   eines Identitätsanbieters gibt die Systemverwaltung Auskunft.
 
 **Der Abruf durch die Systemverwaltung steht im Nachweisprotokoll, auch hier.** Wer über seine
-Systemrolle an die Liste kommt — und eine Systemrolle trägt an jedem Arbeitsmittel und in jedem Raum —,
+Systemrolle an die Liste kommt — und eine Systemrolle trägt an jedem Arbeitsmittel und in jedem Space —,
 hinterlässt denselben Eintrag wie beim Abruf über die Gruppenverwaltung (Abschnitt 7), mit der Zahl
 der Mitglieder und ohne die Namen. Wer die Gruppe an seinem eigenen Objekt berechtigt hat und keine
 Systemrolle trägt, erzeugt keinen Eintrag: Er liest, wen er selbst hereingeholt hat; wer das war und
@@ -659,7 +658,7 @@ gleich ob lokal oder aus einem Identitätsanbieter, und werden an eine Person, e
 
 | Anlegerecht | Ausgeliefert an |
 |---|---|
-| **Spaces anlegen** (Räume) | Alle Konten |
+| **Spaces anlegen** | Alle Konten |
 | **Bibliotheken für Uploads anlegen** | Alle Konten |
 | **Konnektorbibliotheken anlegen** | je Quellart und je Zugang (unten); die mitgelieferten Quellarten an Alle Konten |
 | **Interne Gruppen anlegen** | niemanden — die Systemverwaltung hat es ohnehin |
@@ -667,7 +666,7 @@ gleich ob lokal oder aus einem Identitätsanbieter, und werden an eine Person, e
 
 Fünf Punkte dazu:
 
-- **Der ausgelieferte Zustand ändert nichts.** Wer bisher Räume und Bibliotheken anlegen konnte, kann
+- **Der ausgelieferte Zustand ändert nichts.** Wer bisher Spaces und Bibliotheken anlegen konnte, kann
   es weiterhin. Einschränken heißt: „Alle Konten" das Recht entziehen und es einer benannten Gruppe
   geben.
 - **Konnektorbibliotheken sind der erste Kandidat für eine Einschränkung.** Sie erreichen Serverpfade
@@ -796,9 +795,9 @@ Nachweisprotokoll.
 
 ## 11. „Warum sehe ich das?" — die Herleitung
 
-Für jedes Arbeitsmittel und jeden Raum, die eine Person sieht, zeigt die Oberfläche ihr **den eigenen
+Für jedes Arbeitsmittel und jeden Space, die eine Person sieht, zeigt die Oberfläche ihr **den eigenen
 Weg** zur wirksamen Rolle — ohne Vollmacht, ohne Protokolleintrag, und **ohne die Mitglieder einer
-Gruppe offenzulegen**. Die Herleitung steht auf der Detailseite des Arbeitsmittels und am Raum.
+Gruppe offenzulegen**. Die Herleitung steht auf der Detailseite des Arbeitsmittels und am Space.
 
 **Aufbau.** Der erste Satz nennt die wirksame Rolle: „Thomas Klein ist Kurator in diesem Space."
 bzw. „Maria Weber darf diese Bibliothek lesen." Gibt es nur einen Weg, folgt seine Herkunft im
@@ -824,13 +823,13 @@ Herleitung nicht; wer verwaltet, sieht die Mitglieder über „Mitglieder der Gr
 | Eigene Mitgliedschaft | „direkt aufgenommen" |
 | Mitgliedschaft über eine Gruppe | „über die Gruppe …" mit dem Gruppennamen |
 | Eigentum | „als Eigentümer" |
-| Systemverwaltung | Am Raum „über die Systemverwaltung", **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist. An einer Bibliothek ein eigener Satz: „… verwaltet diese Bibliothek über die Systemverwaltung (ohne Leserecht am Inhalt)." Verwalten ist nicht Lesen (Abschnitt 4); die wirksame Rolle im ersten Satz und „Es gilt die höhere Rolle." ergeben sich deshalb nur aus den übrigen Wegen |
+| Systemverwaltung | Am Space „über die Systemverwaltung", **ohne** Rolle, weil es keine Mitgliedschaftsrolle ist. An einer Bibliothek ein eigener Satz: „… verwaltet diese Bibliothek über die Systemverwaltung (ohne Leserecht am Inhalt)." Verwalten ist nicht Lesen (Abschnitt 4); die wirksame Rolle im ersten Satz und „Es gilt die höhere Rolle." ergeben sich deshalb nur aus den übrigen Wegen |
 
 **Gegenüber anderen ist die Herleitung enger.** Für einen anderen Menschen gibt sie ein
-Administrator oder der Eigentümer eines Raums ab — dieselben Personen, die die Mitgliederliste
+Administrator oder der Eigentümer eines Space ab — dieselben Personen, die die Mitgliederliste
 ohnehin sehen. Führt ein Weg dabei über eine **geschützte Gruppe**, nennt die Antwort nur die
 wirksame Rolle und sagt, dass ein Weg nicht benannt wird: Stünde dort „Rolle über eine geschützte
-Gruppe" und wirkte im Raum genau eine solche Gruppe, wäre sie benannt. **Die eigene Herleitung
+Gruppe" und wirkte im Space genau eine solche Gruppe, wäre sie benannt. **Die eigene Herleitung
 bleibt immer vollständig.**
 
 ## 12. Nachweis: Rechtehistorie und Stichtagsauskunft
@@ -841,7 +840,7 @@ sie trägt die Stichtagsauskunft und überlebt das Löschen des Gegenstands, auf
 
 Historisiert werden: Berechtigungen an Arbeitsmitteln, Gruppenmitgliedschaften (solange eine interne
 Gruppe deaktiviert ist, ruhen ihre Zeiträume — Abschnitt 7), die Reichweitenfelder
-eines Arbeitsmittels, Raummitgliedschaften (Person und Gruppe, mit Rolle), Eigentum, Anlegerechte und
+eines Arbeitsmittels, Space-Mitgliedschaften (Person und Gruppe, mit Rolle), Eigentum, Anlegerechte und
 der Kontozustand. **Keine** Historie führen die Systemrollen, die Verantwortlichkeiten für interne
 Gruppen, die Vollmachten und die Nachfolgevorgänge — die drei Letzten tragen kein Leserecht, und
 was mit einer Systemrolle geschah, steht allein im Nachweisprotokoll.
@@ -850,8 +849,8 @@ was mit einer Systemrolle geschah, steht allein im Nachweisprotokoll.
 Stichtagsauskunft** offen. Sie beantwortet eine Frage: „Wer durfte dieses Objekt an diesen Tagen
 lesen?" Fünf Schutzregeln gehören dazu:
 
-- **Genau ein benanntes Objekt je Abfrage** — ein Arbeitsmittel oder ein Raum, über Objektart und
-  Kennung. Es gibt keine Sammelabfrage über einen Raum, eine Organisationseinheit oder einen Filter:
+- **Genau ein benanntes Objekt je Abfrage** — ein Arbeitsmittel oder ein Space, über Objektart und
+  Kennung. Es gibt keine Sammelabfrage über einen Space, eine Organisationseinheit oder einen Filter:
   Sonst setzte die Revision aus dreißig Objektabfragen desselben Referats das Rechteprofil jeder
   Person darin zusammen.
 - **Zeitfenster und Seitengrenze sind Pflicht**, mit denselben Grenzen wie jeder andere Zugang zum
@@ -866,7 +865,7 @@ lesen?" Fünf Schutzregeln gehören dazu:
   Eigentum, Anlegerechte und Kontozustand. Die Systemrolle wiegt am schwersten — eine
   Systemverwaltung verwaltet jedes Arbeitsmittel ihrer Organisation, ohne dass ein Zeitraum das belegt.
   Zusammengerechnet werden heute Berechtigungen, Gruppenmitgliedschaften, Reichweitenfelder und
-  Raummitgliedschaften.
+  Space-Mitgliedschaften.
 - **Es gibt keinen Personen-Einstieg.** „Worauf hatte Person X am 3. März Zugriff" ist nicht
   gebaut und bleibt es, bis die Pseudonymisierung der Historie vorliegt (#391/#395).
 
@@ -947,7 +946,7 @@ Systemverwaltung das Protokoll dort nicht.
 Läuft der Verzeichnisabgleich, übernimmt derselbe Lauf auch den **Kontostatus**: Ein Konto, das das
 Verzeichnis als gesperrt meldet oder gar nicht mehr meldet, verliert beim nächsten Lauf seinen
 Zugang — nicht erst mit dem Ablauf seines Tokens. Es ist **gesperrt, nicht gelöscht**:
-Mitgliedschaften, Räume, Rollen und Eigentum bleiben stehen, die Sperre ist über das Verzeichnis
+Mitgliedschaften, Spaces, Rollen und Eigentum bleiben stehen, die Sperre ist über das Verzeichnis
 rückholbar, und **die betroffene Person erhält bei der nächsten Anmeldung Grund und Ansprechstelle**
 statt einer wortlosen Abweisung. Sperren zählen in dieselbe Plausibilitätsschwelle und denselben
 Bestätigungsweg wie Mitgliedschaftsentzüge. Die Einzelheiten stehen im Kapitel
@@ -968,16 +967,16 @@ die Übertragung.
 | Umfang | Gruppe → Gruppe | Gruppe → Person | Person → Person |
 |---|---|---|---|
 | Berechtigungen an Arbeitsmitteln | ja | — | — |
-| Mitgliedschaften in Räumen | ja | — | — |
+| Mitgliedschaften in Spaces | ja | — | — |
 | Anlegerechte | ja | — | — |
 | Eigentum an Arbeitsmitteln | ja | ja | ja |
-| Eigentum an Räumen | — | — | ja |
+| Eigentum an Spaces | — | — | ja |
 | Verantwortung für interne Gruppen | — | — | ja |
 
-**Ein Raum gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
-Personen; eine Gruppe besitzt keinen Raum und wird auch keiner. **Der persönliche Raum ist von der
+**Ein Space gehört immer einer natürlichen Person.** Deshalb wechselt sein Eigentum nur zwischen
+Personen; eine Gruppe besitzt keinen Space und wird auch keiner. **Der persönliche Space ist von der
 Übertragung ausgenommen** — über sein Eigentum entscheidet niemand, er erscheint auch in keiner
-Vorschau. Übernimmt eine Person einen Raum,
+Vorschau. Übernimmt eine Person einen Space,
 wird sie dabei — falls sie es noch nicht ist — als Administratorin aufgenommen: Eine Verantwortliche,
 die in der Mitgliederliste nicht auftaucht, wäre genau der Zustand, den die Übertragung beenden
 soll.
@@ -991,7 +990,7 @@ Eigentum gibt jede Person selbst ab, aus „Meine Gruppen". Wer ein Arbeitsmitte
 Berechtigungen weiterhin einzeln.
 
 **Ablauf.** Zuerst die **Vorschau**: Sie nennt in einem Satz, was bewegt würde („12 Berechtigungen an
-7 Objekten, Mitglied in 2 Räumen, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**,
+7 Objekten, Mitglied in 2 Spaces, Eigentum an 3 Objekten"). Danach die ausdrückliche **Bestätigung**,
 gegen dieselbe Lage, die die Vorschau gezeigt hat: Hat sich an den betroffenen Zeilen inzwischen
 etwas geändert oder ist die Vorschau zu alt, wird nichts angewendet, und OPAA verlangt eine neue
 Vorschau. Beides steht im Nachweisprotokoll — **auch eine Vorschau, die niemand ausführt**: Sie
@@ -1044,12 +1043,12 @@ ist, ist er vorbei.
 **Was der Zustand bedeutet — und was nicht.** Das Objekt bleibt nutzbar, alle bestehenden Rechte
 bleiben, **nichts wird gelöscht**. Eingefroren ist allein die **Reichweite**: keine neuen oder
 größeren Berechtigungen, keine größere Sichtbarkeit, keine neue oder verlängerte Freigabe für
-Fremdzugänge, keine neue Bereitstellung in einem Raum, keine neuen Raummitglieder. Der Versuch wird
+Fremdzugänge, keine neue Bereitstellung in einem Space, keine neuen Space-Mitglieder. Der Versuch wird
 mit einer Meldung abgelehnt, die auch sagt, wer zuständig ist.
 
 **Alles, was Reichweite wegnimmt, bleibt möglich** — und zwar dieselben Wege wie sonst: eine
 Berechtigung herabstufen oder entziehen, eine Befristung vorziehen, eine Freigabe verkürzen oder
-zurücknehmen, ein Raummitglied entfernen, das Objekt umbenennen, einschränken, lesen, durchsuchen
+zurücknehmen, ein Space-Mitglied entfernen, das Objekt umbenennen, einschränken, lesen, durchsuchen
 und indexieren.
 
 **Jedes betroffene Objekt führt Zustand und Zuständigkeit mit** — „Nachfolge offen — zuständig: die
@@ -1068,7 +1067,7 @@ zeigt, wie viele Einträge er enthält; gezählt wird nur nach Art des Eintrags,
 
 | Reiter | Was darin steht | Nächster Schritt |
 |---|---|---|
-| Inhalte ohne Verantwortliche | Arbeitsmittel, Räume und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr handeln kann | „Nachfolge bestimmen“; bei einer internen Gruppe ohne Verantwortliche und bei einem Objekt einer internen Gruppe „Zur Gruppenverwaltung“ |
+| Inhalte ohne Verantwortliche | Arbeitsmittel, Spaces und interne Gruppen, deren Eigentümerin oder Verantwortliche nicht mehr handeln kann | „Nachfolge bestimmen“; bei einer internen Gruppe ohne Verantwortliche und bei einem Objekt einer internen Gruppe „Zur Gruppenverwaltung“ |
 | Gruppen ohne aktive Mitglieder | Gruppen, die Rechte tragen, aber kein aktives Mitglied mehr haben — die Rechte erreichen niemanden | „Rechte übergeben“ an eine andere Gruppe |
 | Leere Gruppen | interne Gruppen, die weder aktive Mitglieder noch Rechte haben | in der Gruppenverwaltung auflösen |
 
@@ -1095,7 +1094,7 @@ sonst begänne sein Alter von vorn.
 Problem („Wem die Bibliothek gehört, kann nicht mehr handeln.“), seit wann der Eintrag
 offen ist („offen seit 12 Tagen“, vor dem ersten Feststellungslauf „gerade erkannt“) und wer
 zuständig ist. Die bisherige Eigentümerin und Hinweise, wo eine Nachfolge zu suchen ist, stehen als
-Text daneben. Der Name des Objekts führt in das Arbeitsmittel beziehungsweise in den Raum. Jede Zeile
+Text daneben. Der Name des Objekts führt in das Arbeitsmittel beziehungsweise in den Space. Jede Zeile
 hat **genau einen** hervorgehobenen nächsten Schritt:
 
 - **„Nachfolge bestimmen“** bei einem Objekt einer Person: Übergabe von Person zu Person, Umfang
@@ -1126,12 +1125,12 @@ Umgebungsvariable (Abschnitt 15). Ein offener Vorgang wird nie gelöscht, gleich
 ## 14. Diagnose im Gruppenkontext
 
 Die Suchdiagnose läuft im **Rechteprofil** einer Gruppe: Ein Profil *ist* eine Gruppe samt der
-Bibliotheken, die sie lesen darf. Zusätzlich lässt sich ein **Raum** dazuwählen; dann sucht die
-Diagnose in der Schnittmenge aus den Bibliotheken des Raums und den für die Gruppe lesbaren. Diese
-Kombination ist nur zulässig, wenn mindestens so viele **aktive** Konten der Gruppe den Raum auf
+Bibliotheken, die sie lesen darf. Zusätzlich lässt sich ein **Space** dazuwählen; dann sucht die
+Diagnose in der Schnittmenge aus den Bibliotheken des Space und den für die Gruppe lesbaren. Diese
+Kombination ist nur zulässig, wenn mindestens so viele **aktive** Konten der Gruppe den Space auf
 irgendeinem Weg erreichen, wie die Mindestgruppengröße verlangt — geprüft im Moment des Laufs, nicht
 bei der Auswahl. Sonst antwortet die Seite mit einem Hinweis auf den Personenkontext mit Vollmacht.
-Jeder Lauf mit Raumkontext erzeugt **einen** Protokolleintrag.
+Jeder Lauf mit Space-Kontext erzeugt **einen** Protokolleintrag.
 
 Die Diagnose bleibt der Systemverwaltung vorbehalten; kein Anlegerecht öffnet sie. Sie ist **kein**
 Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft (Abschnitt 12), und beide
@@ -1147,7 +1146,7 @@ eingebaut.
 
 | Größe | Vorgabe | Grenzen | Wirkung |
 |---|---|---|---|
-| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann die Auswahl eines Empfängers eine Gruppengröße als Zahl nennt statt „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Raumkontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
+| `OPAA_MINIMUM_GROUP_SIZE` | **5** | **erzwungene Untergrenze 5**, nur nach oben änderbar | Mindestgruppengröße: ab wann die Auswahl eines Empfängers eine Gruppengröße als Zahl nennt statt „kleine Gruppe" (Abschnitt 8), und wie viele aktive Konten ein Rechteprofil mit Space-Kontext braucht (Abschnitt 14). Ein Start mit einem kleineren Wert bricht ab — abschalten kann den Schutz niemand |
 | Abgleichintervall je Anbieter | **360 Minuten** (6 Stunden) | 5 Minuten bis 1 Woche | Wie oft der Verzeichnisabgleich eines Anbieters fällig ist; Einstellung der Anbieterzeile, nicht der Umgebung |
 | `OPAA_DIRECTORY_SYNC_CHANGE_THRESHOLD_FRACTION` | **0,3** (30 %) | größer als 0, höchstens 1 | Plausibilitätsschwelle: Ein Lauf, der mehr als diesen Anteil der Mitgliedschaften entziehen oder Konten sperren würde, schreibt nichts und legt seinen Plan zur Bestätigung vor |
 | `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` | **12 Monate** | frei nach oben; ein Wert **≤ 0 fällt still auf 12 zurück** (kein Startabbruch, anders als bei der Mindestgruppengröße) | Ab welchem Alter ein Eintrag der Betriebsliste als „lange offen“ hervorgehoben wird. Hebt hervor, löst nichts aus |
@@ -1262,11 +1261,11 @@ Postfächer.
 - **Keinen Vorfallszugriff auf den Inhalt privater Bibliotheken.** Die anlassbezogene Klärung
   (Abschnitt 10) filtert nur das Nachweisprotokoll; den Inhalt untersucht das Haus in der
   Originalquelle ([Benutzerverwaltung](benutzerverwaltung.md), Abschnitt 12).
-- **Keinen Rückgriff auf alles Lesbare im Chat.** Ein Raum ohne Zuordnung sucht nichts; es gibt
-  keinen Schalter, der einen Raum auf alle lesbaren Bibliotheken öffnet (Abschnitt 5).
+- **Keinen Rückgriff auf alles Lesbare im Chat.** Ein Space ohne Zuordnung sucht nichts; es gibt
+  keinen Schalter, der einen Space auf alle lesbaren Bibliotheken öffnet (Abschnitt 5).
 - **Keine Gruppenschachtelung** und keine vererbte Mitgliedschaft (Abschnitt 3).
-- **Keine Gruppe als Verantwortliche einer Gruppe** und keine Gruppe als Raumeigentümerin.
-- **Keine freien Rollen.** Die vier Rollen an Arbeitsmitteln und die drei Raumrollen sind fest; wer ein Bündel
+- **Keine Gruppe als Verantwortliche einer Gruppe** und keine Gruppe als Space-Eigentümerin.
+- **Keine freien Rollen.** Die vier Rollen an Arbeitsmitteln und die drei Space-Rollen sind fest; wer ein Bündel
   braucht, nimmt eine Gruppe.
 - **Keine Mitgliederliste ohne Objekt.** Wer wissen will, wer in einer Gruppe ist, fragt an einem
   Objekt, an dem er selbst das Recht vergibt (Abschnitt 8), oder verantwortet die Gruppe.

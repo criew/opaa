@@ -16,9 +16,9 @@
 
 Eine Prompt-Bibliothek **bindet kein Wissen und erreicht keine Quelle**: Ein Prompt ist Text mit
 einem Namen und benannten Platzhaltern, ohne Dokumente, ohne Werkzeuge und ohne eigene Modellwahl.
-Deshalb ändert eine Prompt-Bibliothek, die einem Raum zugeordnet ist, nichts an dessen
+Deshalb ändert eine Prompt-Bibliothek, die einem Space zugeordnet ist, nichts an dessen
 Suchbereich — den bestimmen nur die zugeordneten Wissensbibliotheken. Sie legt fest, welche Prompts
-der Chat des Raums anbietet.
+der Chat des Space anbietet.
 
 Die Prompt-Bibliotheken, die eine Person lesen darf, stehen im [Katalog](katalog.md); der Filter
 „Prompts" grenzt ihn auf sie ein.
@@ -30,7 +30,7 @@ flowchart LR
     R --> B[Prompt-Bibliothek]
     B --> PR1[Prompt /anhoerung]
     B --> PR2[Prompt /vermerk]
-    B -. bereitgestellt .-> S[Raum]
+    B -. bereitgestellt .-> S[Space]
 ```
 
 ## 2. Begriffe
@@ -109,7 +109,7 @@ Die Detailseite ist wie die jedes Arbeitsmittels aufgebaut
 ([Katalog](katalog.md), Abschnitt 5): Der Kopf
 trägt Art, Welt-Symbol, eigene Rolle (für die Systemverwaltung ohne eigene Berechtigung zusätzlich „administrativ"), Stern und „⋯" mit „In Space verwenden" und — nur für den
 Eigentümer — „Löschen", darunter Name und Beschreibung, die ab der Verwalterrolle über den Stift
-geändert werden, und die Kennzahlen: Anzahl der Prompts, Zahl der Räume, zuständige Stelle und
+geändert werden, und die Kennzahlen: Anzahl der Prompts, Zahl der Spaces, zuständige Stelle und
 „Aktualisiert am". Ein „Zurück" gibt es nicht.
 
 Darunter stehen drei Reiter, jeder mit eigener Adresse und für jede Rolle sichtbar; wer nur liest,
@@ -119,7 +119,7 @@ sieht sie schreibgeschützt:
 |---|---|
 | **Prompts** | Die Prompts der Bibliothek, aufklappbar mit Text und Variablen; ab der Bearbeiterrolle oben „Neuer Prompt" und je Prompt „Bearbeiten" und „Löschen" |
 | **Freigaben** | „Eigentümer" und „Warum sehe ich diese Prompt-Bibliothek?" für jede Rolle, dazwischen ab der Verwalterrolle „Berechtigungen" |
-| **Zuordnungen** | „In Space verwenden" und die Räume, denen die Bibliothek zugeordnet ist |
+| **Zuordnungen** | „In Space verwenden" und die Spaces, denen die Bibliothek zugeordnet ist |
 
 Die Abschnitte der Reiter „Freigaben" und „Zuordnungen" sind dieselben Bausteine wie bei einer
 Wissensbibliothek, und jeder speichert für sich. „Berechtigungen" führt Personen, Gruppen und
@@ -135,17 +135,17 @@ Die **Herleitung** „Warum sehe ich das?" zeigt den eigenen Weg zur wirksamen R
 der Wissensbibliothek ([Berechtigungen](berechtigungen.md),
 Abschnitt 11).
 
-### In einem Raum bereitstellen
+### In einem Space bereitstellen
 
-Prompt-Bibliotheken werden im Reiter **„Inhalte"** der Raum-Einstellungen zugeordnet, in derselben
+Prompt-Bibliotheken werden im Reiter **„Inhalte"** der Space-Einstellungen zugeordnet, in derselben
 Kachelliste wie die Wissensbibliotheken; der Typfilter „Prompts" grenzt sie auf Prompt-Bibliotheken
-ein. Dort ordnet, wer im Raum mindestens Kurator ist, per Häkchen eine Prompt-Bibliothek zu, die er
+ein. Dort ordnet, wer im Space mindestens Kurator ist, per Häkchen eine Prompt-Bibliothek zu, die er
 selbst lesen darf, und löst Zuordnungen wieder; die Änderung wirkt sofort
-([Berechtigungen](berechtigungen.md), „Zuordnung: was ein Raum
-enthält"). **Der Chat eines Raums bietet nur die Prompts zugeordneter Prompt-Bibliotheken an**; eine
+([Berechtigungen](berechtigungen.md), „Zuordnung: was ein Space
+enthält"). **Der Chat eines Space bietet nur die Prompts zugeordneter Prompt-Bibliotheken an**; eine
 Bibliothek, die nicht zugeordnet ist, steht dort nicht zur Verfügung, auch wenn die Person sie
 lesen darf. Die Zuordnung **gewährt niemandem zusätzlichen Zugriff**: Wer die Bibliothek nicht
-lesen darf, sieht sie im Raum nicht. Auf der Übersichtsseite des Raums stehen zugeordnete
+lesen darf, sieht sie im Space nicht. Auf der Übersichtsseite des Space stehen zugeordnete
 Prompt-Bibliotheken unter „Datenquellen" zusammen mit den Wissensbibliotheken, jede mit ihrer Art
 gekennzeichnet.
 
@@ -207,10 +207,10 @@ gespeichert.
 ## 6. Im Chat verwenden
 
 Im Eingabefeld des Chats öffnet ein `/` am Anfang einer Zeile die Auswahl der Prompts. Angeboten
-wird jeder Prompt aus einer Prompt-Bibliothek, die dem Raum zugeordnet ist (Abschnitt 4, „In einem
-Raum bereitstellen") und die die Person lesen darf, gruppiert nach Bibliothek. Eine zugeordnete
-Bibliothek, die die Person nicht lesen darf, erscheint nicht, eine lesbare, die dem Raum nicht
-zugeordnet ist, ebenso wenig. Ist dem Raum keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
+wird jeder Prompt aus einer Prompt-Bibliothek, die dem Space zugeordnet ist (Abschnitt 4, „In einem
+Space bereitstellen") und die die Person lesen darf, gruppiert nach Bibliothek. Eine zugeordnete
+Bibliothek, die die Person nicht lesen darf, erscheint nicht, eine lesbare, die dem Space nicht
+zugeordnet ist, ebenso wenig. Ist dem Space keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
 „Diesem Space sind keine Prompts zugeordnet". Die Systemverwaltung ohne eigenes Recht sieht keine
 Prompts: Verwalten ist nicht Lesen. Weitertippen sucht in Befehl, Titel und Beschreibung.
 
@@ -226,7 +226,7 @@ Der Text bleibt bearbeitbar. Gesendet wird er erst mit Enter oder der Senden-Sch
 an der Frage „Prompt: <Titel>", mit dem Titel zum Zeitpunkt des Sendens, ohne Verweis auf den
 Prompt. Dieser Hinweis bleibt, wenn der Prompt später umbenannt oder gelöscht wird.
 
-Wird der Prompt nach dem Einsetzen gelöscht, das Leserecht entzogen oder die Zuordnung zum Raum
+Wird der Prompt nach dem Einsetzen gelöscht, das Leserecht entzogen oder die Zuordnung zum Space
 gelöst, lehnt OPAA die Frage ab; die Prüfung liegt im Backend, nicht nur in der Auswahl.
 Sie steht dann ohne Chip wieder im Eingabefeld und lässt sich ohne Prompt senden. Wie die Frage
 danach gesucht und beantwortet wird, beschreibt [Suche](suche.md), Abschnitt 2 („Prompts
@@ -243,7 +243,7 @@ Abweichung: Scheidet die Eigentümerin einer persönlichen Prompt-Bibliothek aus
 Eigentümergruppe ihr letztes aktives Mitglied, geht die Bibliothek in den Zustand **„Nachfolge
 offen"**. Sie bleibt nutzbar, alle Rollen bleiben, nichts wird gelöscht — **nur ihre Reichweite ist
 eingefroren**: keine neuen oder größeren Rollen, keine Freigabe an „Alle Konten", keine neue
-Zuordnung zu einem Raum. Prompts anlegen und ändern bleibt möglich.
+Zuordnung zu einem Space. Prompts anlegen und ändern bleibt möglich.
 
 Die Kennzeichnung „Nachfolge offen — zuständig: …" steht auf der Detailseite; im Katalog steht „Nachfolge offen" als Zustandszeile mit Punkt, und der Adressat steht als zuständige Stelle. In der Betriebsliste unter **Administration → Ohne Zuständigkeit** erscheint die
 Prompt-Bibliothek als eigene Zeile; ihr Name führt auf ihre Detailseite, und der Ausgang ist

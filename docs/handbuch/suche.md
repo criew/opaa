@@ -57,7 +57,7 @@ Drei Dinge sind aus Betriebssicht wichtig, bevor es ins Detail geht:
 Vier Begriffe tragen das Kapitel.
 
 Eine **Frage** ist die einzelne Eingabe einer Person. Sie kommt fast immer aus einem **Chat**: einer
-gespeicherten Unterhaltung in einem Raum, die ihren Suchbereich, ihren Filter und ihren Verlauf
+gespeicherten Unterhaltung in einem Space, die ihren Suchbereich, ihren Filter und ihren Verlauf
 kennt.
 
 Der Verlauf heißt **Gesprächsfenster**: die letzten 20 Nachrichten des Chats (zehn Runden aus Frage
@@ -110,7 +110,7 @@ Zwei Punkte sind betrieblich wichtig:
   das Ergebnis verworfen — ein archivierter Space nimmt keine Änderung an einem Chat an.
 
 Das **Chat-Archiv** ist eine persönliche Ablage: Wer einen Chat archiviert, nimmt ihn nur aus der
-eigenen Chatliste und findet ihn auf der Seite „Chats" des Raums im Reiter „Archiv" wieder. Der Chat
+eigenen Chatliste und findet ihn auf der Seite „Chats" des Space im Reiter „Archiv" wieder. Der Chat
 selbst ändert sich dabei nicht — Titel, letzte Aktivität, Verlauf, Suchbereich und Filter bleiben,
 und niemand sonst sieht, ob eine Person einen Chat archiviert hat. Ein archivierter Chat bleibt
 lesbar und fortsetzbar; eine eigene neue Frage darin holt ihn automatisch zurück. Archivieren löst
@@ -176,17 +176,17 @@ Hinweis unter dem Feld nennt deshalb nur „/ für Aktionen". Die laufende Antwo
 Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab, steht sie wieder
 im Eingabefeld, vor dem schon geschriebenen Text.
 
-Ein per `/` eingesetzter Prompt gehört zu seinem Raum: Wechselt der Chat in einen anderen Raum,
+Ein per `/` eingesetzter Prompt gehört zu seinem Space: Wechselt der Chat in einen anderen Space,
 entfällt der Chip „Prompt: <Titel>", der Text bleibt stehen.
 
-Ein Raum enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
+Ein Space enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
 Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an. Was die Person
-lesen darf, aber dem Raum nicht zugeordnet ist, bleibt im Chat dieses Raums außen vor. Das gilt
-ohne Ausnahme, auch für den persönlichen Raum „Privater Bereich". Eine Frage braucht immer einen
-Raum: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
-ohne Belege. Ohne Raum suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
-Administratoren des Raums (siehe [Bibliotheken und Berechtigungen, „Zuordnung: was ein Raum
-enthält"](berechtigungen.md#zuordnung-was-ein-raum-enthält)).
+lesen darf, aber dem Space nicht zugeordnet ist, bleibt im Chat dieses Space außen vor. Das gilt
+ohne Ausnahme, auch für den persönlichen Space „Privater Bereich". Eine Frage braucht immer einen
+Space: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
+ohne Belege. Ohne Space suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
+Administratoren des Space (siehe [Bibliotheken und Berechtigungen, „Zuordnung: was ein Space
+enthält"](berechtigungen.md#zuordnung-was-ein-space-enthält)).
 
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
@@ -194,11 +194,11 @@ steht."
 
 | Leiste | Suchbereich |
 |---|---|
-| `@Space-Wissen` (Standard) | die dem Raum zugeordneten Bibliotheken, geschnitten mit den Leserechten |
+| `@Space-Wissen` (Standard) | die dem Space zugeordneten Bibliotheken, geschnitten mit den Leserechten |
 | eine oder mehrere Bibliotheken | genau diese, geschnitten mit den Leserechten; zur Auswahl stehen nur zugeordnete Bibliotheken, die die Person lesen darf |
 | leer | bewusst ohne Wissensbasis: keine Suche, das Modell antwortet aus dem Gespräch allein |
 
-Eine Bibliothek, die dem Raum nicht zugeordnet ist, lässt sich nicht als Chip setzen; das Backend
+Eine Bibliothek, die dem Space nicht zugeordnet ist, lässt sich nicht als Chip setzen; das Backend
 lehnt einen solchen Bezug ab. Wird eine Zuordnung später gelöst oder ein Leserecht entzogen, bleibt
 ihr Chip als „Nicht verfügbare Bibliothek" stehen, durchsucht wird sie nicht mehr.
 
@@ -208,18 +208,18 @@ Grund ab:
 
 | Grund für den leeren Suchbereich | Hinweis über dem Eingabefeld | Hinweis an der Antwort |
 |---|---|---|
-| dem Raum ist kein Wissen zugeordnet | „Diesem Space ist kein Wissen zugeordnet." Kuratoren und Administratoren sehen dazu „Wissen zuordnen", das in die Einstellungen des Raums führt; alle anderen den Hinweis, wer zuordnen kann | „Diesem Space ist kein Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente." |
-| der Raum ordnet nur Bibliotheken zu, die die Person nicht lesen darf | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." | derselbe Satz |
+| dem Space ist kein Wissen zugeordnet | „Diesem Space ist kein Wissen zugeordnet." Kuratoren und Administratoren sehen dazu „Wissen zuordnen", das in die Einstellungen des Space führt; alle anderen den Hinweis, wer zuordnen kann | „Diesem Space ist kein Wissen zugeordnet. Diese Antwort stützt sich auf keine Dokumente." |
+| der Space ordnet nur Bibliotheken zu, die die Person nicht lesen darf | „In diesem Space ist für Sie derzeit kein Wissen verfügbar." | derselbe Satz |
 | Leiste bewusst geleert | — | „Diese Antwort wurde ohne Wissensbasis erstellt." |
 
-Beide Raum-Hinweise nennen keine Zahl: Wie viele zugeordnete Bibliotheken die Person nicht lesen
+Beide Space-Hinweise nennen keine Zahl: Wie viele zugeordnete Bibliotheken die Person nicht lesen
 darf, verrät die Oberfläche nicht. Die private Bibliothek einer anderen Person zählt dabei als nicht
-zugeordnet: Ordnet der Raum nur sie zu, sehen alle anderen Mitglieder den Hinweis, dass dem
-Raum kein Wissen zugeordnet ist. Dieselben zwei Hinweise stehen auch auf der Seite des Raums.
+zugeordnet: Ordnet der Space nur sie zu, sehen alle anderen Mitglieder den Hinweis, dass dem
+Space kein Wissen zugeordnet ist. Dieselben zwei Hinweise stehen auch auf der Seite des Space.
 
 **Prompts einsetzen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl der Prompts:
-die Prompts aller Prompt-Bibliotheken, die dem Raum zugeordnet sind und die die Person lesen darf,
-gruppiert nach Bibliothek. Ist dem Raum keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
+die Prompts aller Prompt-Bibliotheken, die dem Space zugeordnet sind und die die Person lesen darf,
+gruppiert nach Bibliothek. Ist dem Space keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
 „Diesem Space sind keine Prompts zugeordnet". Weitertippen sucht in Befehlsname, Titel und Beschreibung — `/zusam` findet `/zusammenfassung`;
 Pfeiltasten wählen, Enter setzt ein, Escape schließt die Auswahl. Ein `/` mitten im Satz ist
 gewöhnlicher Text.
@@ -240,7 +240,7 @@ Sendens, auch wenn der Prompt später umbenannt, gelöscht oder nicht mehr lesba
 
 Für Suche und Antwort macht ein Prompt keinen Unterschied: Sie sehen die fertige Frage wie jede
 getippte. Das Backend prüft nur, ob die Person den Prompt noch lesen darf und ob seine Bibliothek
-dem Raum des Chats zugeordnet ist. Ist das Recht inzwischen entzogen, die Zuordnung gelöst oder der
+dem Space des Chats zugeordnet ist. Ist das Recht inzwischen entzogen, die Zuordnung gelöst oder der
 Prompt gelöscht, lehnt es die Frage ab („Dieser Prompt steht Ihnen hier nicht zur Verfügung …"),
 bevor ein Modell gerufen wird, und speichert nichts. Die Frage verschwindet dann aus
 dem Verlauf und steht wieder im Eingabefeld, diesmal ohne Chip; erneut gesendet geht sie ohne
@@ -254,7 +254,7 @@ wieder auf, wenn die Fundstellen zusammengefasst werden (Abschnitt 7).
 
 ```mermaid
 flowchart TB
-    R[Raum] --> C[Chat<br/>Suchbereich, Filter, Verlauf]
+    R[Space] --> C[Chat<br/>Suchbereich, Filter, Verlauf]
     C --> Q[Frage]
     Q --> P[Pipeline-Lauf<br/>mit Erklärprotokoll]
     P --> K[ausgewählte Chunks]
@@ -644,7 +644,7 @@ Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten]
 ## 6. Antwort erzeugen
 
 Die ausgewählten Chunks gehen mit einem Kopf je Chunk (Dateiname und Zitiermarke; Dokument-ID und
-Chunk-Nummer stehen nur in der Marke) zusammen mit der **Anweisung des Raums**, sofern er eine
+Chunk-Nummer stehen nur in der Marke) zusammen mit der **Anweisung des Space**, sofern er eine
 trägt (siehe unten), der **Gesprächsnotiz**, dem Gesprächsverlauf und der Frage an
 das **systemweit aktive Chat-Modell**. Die Notiz steht als eigener Block vor dem Verlauf und
 enthält hier **alle** Punkte, auch die Wünsche zur Antwortform, die die Suche nie sieht
@@ -699,14 +699,14 @@ Quellenangabe werden nicht als Beleg erkannt. Zusammen mit den Antwortregeln ste
 Abschnitt eine kurze Erinnerung an die Zitierregel. Das Zitatformat ist fest, weil Belegprüfung und
 Fundstellen darauf aufbauen. Dasselbe gilt für die Anweisung der Teilfragen-Zerlegung (Stufe 3).
 
-**Ergänzen lässt sie sich je Raum.** Ein Raum trägt optional eine **Anweisung an das Modell** von
+**Ergänzen lässt sie sich je Space.** Ein Space trägt optional eine **Anweisung an das Modell** von
 höchstens 1000 Zeichen, etwa „Wir sind ein Landkreis, keine kreisfreie Stadt" oder „Nenne bei
-Fristen immer die Rechtsgrundlage". Sie wirkt in jedem Chat des Raums, auch in Chats von vor der
+Fristen immer die Rechtsgrundlage". Sie wirkt in jedem Chat des Space, auch in Chats von vor der
 Änderung, ab der nächsten Frage und nur in der Antwort, nie in der Teilfragen-Zerlegung. Im Prompt
 steht sie als eigener Block direkt nach den Zitierregeln und vor der Gesprächsnotiz. Seine
 Kopfzeile sagt dem Modell, was der Block ist und was nicht:
 
-- eine Vorgabe des Raums, kein Beleg und keine Quelle;
+- eine Vorgabe des Space, kein Beleg und keine Quelle;
 - sie darf Sprache, Tonfall, Form und fachlichen Rahmen festlegen, und eine Sprachvorgabe darin geht
   der Vorgabe Deutsch vor; die wiederholte Sprachzeile nach dem letzten Chunk lässt die Sprache dann
   der Anweisung;
@@ -715,7 +715,7 @@ Kopfzeile sagt dem Modell, was der Block ist und was nicht:
 - ein abweichender Wunsch der fragenden Person in diesem Gespräch geht ihr vor.
 
 Belegprüfung und Fundstellen (Abschnitt 7) kennen die Anweisung nicht und arbeiten mit ihr genau wie
-ohne sie. Ohne Anweisung entfällt der Block, und der Prompt ist zeichengleich zu dem eines Raums, der
+ohne sie. Ohne Anweisung entfällt der Block, und der Prompt ist zeichengleich zu dem eines Space, der
 nie eine hatte. Wer sie setzen darf und wo sie in der Oberfläche steht, steht in
 [Berechtigungen](berechtigungen.md), Abschnitt 5. Im Chat zeigt
 die Kopfzeile jedem Mitglied schon vor der ersten Frage die Schaltfläche „Anweisung des Space", die
@@ -1212,7 +1212,7 @@ entsprechen.
 - **Eine modellgestützte Belegprüfung** (Stufe 2). Die Belegprüfung bleibt deterministisch.
 - **Eine Gewichtung zwischen den Suchpfaden.** Die Fusion behandelt beide gleich; das entspricht
   dem Default der gängigen Suchsysteme.
-- **Ein einstellbarer Systemprompt** für Antwort oder Zerlegung, etwa je Installation, Raum oder
+- **Ein einstellbarer Systemprompt** für Antwort oder Zerlegung, etwa je Installation, Space oder
   Bibliothek.
 - **Eine Kürzung der Endauswahl nach Tokens**, etwa passend zum Kontextfenster des aktiven
   Chat-Modells. `top-k` ist eine Zahl von Chunks, unabhängig von ihrer Länge und vom Modell.

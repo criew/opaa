@@ -114,7 +114,7 @@ und wird deshalb **nicht** protokolliert — jede andere Änderung in diesem Pan
 
 ## 4. Die Freigabe einer Wissensbibliothek
 
-Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Raum. Jede Bibliothek trägt im Reiter
+Freigabe-Einheit ist die **Wissensbibliothek**, nicht der Space. Jede Bibliothek trägt im Reiter
 **„Freigaben"** ihrer Detailseite, Abschnitt **„Externer Zugang"**, das Merkmal „über Fremdzugänge
 nutzbar", Standard **aus**. Setzen darf es, wer die Bibliothek verwaltet (Verwalter-Rolle), sowie
 die Systemverwaltung. Eine zusätzliche

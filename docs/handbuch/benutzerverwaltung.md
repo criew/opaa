@@ -226,7 +226,7 @@ Wiedervorlage bleibt das Notanker-Konto außen vor, weil es unbefristet bleiben 
 
 ## 7. Rollen
 
-Die Rolle entscheidet, was ein Konto in der ganzen Anwendung darf; die Rechte an einzelnen Räumen und
+Die Rolle entscheidet, was ein Konto in der ganzen Anwendung darf; die Rechte an einzelnen Spaces und
 Bibliotheken werden dort vergeben, nicht hier.
 
 | Rolle | Bedeutung |
@@ -248,7 +248,7 @@ gedacht ist und welche Auflagen dafür gelten, steht im Kapitel [Deployment](dep
 ### Anlegerechte
 
 Neben der Rolle steht eine zweite installationsweite Entscheidung: **wer etwas anlegen darf** —
-Räume, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen, Prompt-Bibliotheken. Diese
+Spaces, Bibliotheken für Uploads, Konnektorbibliotheken, interne Gruppen, Prompt-Bibliotheken. Diese
 **Anlegerechte** gelten für alle Konten der Installation, gleich ob lokal oder aus einem
 Identitätsanbieter, und werden an eine Person, eine Gruppe oder an **„Alle Konten"** vergeben; die
 Systemverwaltung hat jedes ohnehin, die Rolle **Revision** verleiht keines.
@@ -275,8 +275,8 @@ stehen im Kapitel [Berechtigungen](berechtigungen.md):
 Sie entzieht den Zugang sofort und lässt nachvollziehbar, dass es dieses Konto gab.
 
 Gelöscht werden kann ein lokales Konto nur, wenn **nichts mehr darauf verweist**. Das ist mehr als
-Besitz: Neben einer eigenen Bibliothek, einem Raum außer dem persönlichen und einem Chat sperren
-auch Rechtevergaben, Raumzuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
+Besitz: Neben einer eigenen Bibliothek, einem Space außer dem persönlichen und einem Chat sperren
+auch Rechtevergaben, Space-Zuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
 **Verantwortung für eine interne Gruppe** sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
 Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Eine noch getragene
 Verantwortung wird vorher abgegeben
@@ -318,7 +318,7 @@ zurücknehmen — nur in diese Richtung: „Entsperren" im Zeilenmenü, „Kein 
 ## 9. Ein Konto an einen Identitätsanbieter übergeben
 
 Stellt eine Installation, die mit lokalen Konten angefangen hat, später auf einen Identitätsanbieter
-um, soll niemand von vorn beginnen: Räume, Mitgliedschaften und Rolle hängen am Konto, nicht am
+um, soll niemand von vorn beginnen: Spaces, Mitgliedschaften und Rolle hängen am Konto, nicht am
 Passwort. Dafür gibt es die **Übergabe** — den einzigen Weg, auf dem ein Konto seine Identität
 wechselt.
 
@@ -338,8 +338,8 @@ Person, sie wird nirgends eingegeben.
    Nachricht nicht hinaus, zeigt OPAA den Link genau einmal zur Übergabe von Hand an — mit demselben
    Rückfall wie bei der Einladung (Abschnitt 2). Bis hierher ändert sich am Konto nichts: Es bleibt
    mit Passwort benutzbar.
-3. Der Link führt auf eine Seite, die zeigt, **was mitgeht**: der persönliche Raum, die Zahl der
-   Raum- und Gruppenmitgliedschaften und die Rolle, dazu der Anlass und der Name des Anbieters. Die
+3. Der Link führt auf eine Seite, die zeigt, **was mitgeht**: der persönliche Space, die Zahl der
+   Space- und Gruppenmitgliedschaften und die Rolle, dazu der Anlass und der Name des Anbieters. Die
    Seite nennt auch, was danach gilt: Anmeldung nur noch über den Anbieter, das bisherige Passwort
    verfällt, einen Rückweg gibt es nicht.
 4. Ein Klick führt zur Anmeldung beim Anbieter. Danach ist die Übergabe vollzogen: Das Konto gehört
@@ -573,7 +573,7 @@ Eine private Bibliothek wird auf zwei Wegen gelöscht, beide gleich vollständig
 
 Gelöscht werden die Dokumente, ihre Abschnitte im Vektor- und im Volltextindex, abgelegte
 Originale, Ordner, Metadatenwerte und -felder, die Läufe samt Laufprotokoll, der Abgleichstand, die
-Zuordnungen zu Räumen und die Benachrichtigungen zur Bibliothek. In Chats, die aus ihr zitiert
+Zuordnungen zu Spaces und die Benachrichtigungen zur Bibliothek. In Chats, die aus ihr zitiert
 haben, heißt die Quelle danach „Quelle entfernt“: Dateiname und Link sind weg, der Text der Antwort
 bleibt im Chat der Besitzerin. Eine getrennte Verbindung, die nur noch wegen dieser Bibliothek
 bestand, verschwindet mit.
