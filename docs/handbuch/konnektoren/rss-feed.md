@@ -1,307 +1,189 @@
-# Konnektor: Feed (RSS_FEED)
+# Konnektor: Feed
 
-> **Entwurf.** Dieses Kapitel beschreibt den Konnektor für RSS-Feeds. Der gemeinsame Ablauf
-> eines Indexierungslaufs und die Dokumentstrecke stehen im Kapitel
-> [Wissensbibliotheken](../wissensbibliotheken.md).
+## 1. Was der Konnektor ist
 
-## 1. Wofür er gedacht ist
-
-Der Feed-Konnektor hält eine Bibliothek mit Veröffentlichungen aktuell, die eine Website als
-RSS-Feed anbietet: Pressemitteilungen, Amtsblätter, Bekanntmachungen, Rundschreiben. Er liest
-den Feed, lädt zu jedem Eintrag die verlinkte Detailseite, reduziert sie auf den Hauptinhalt und
-holt die dort verlinkten Anlagen als eigene Dokumente.
-
-Anders als die beiden anderen Konnektoren sieht er nie den ganzen Bestand, sondern nur das
-Fenster, das der Feed gerade zeigt. Das prägt sein Verhalten bei Änderungen und Löschungen.
+Der Konnektor hält eine Bibliothek mit Veröffentlichungen aktuell, die eine Website als **RSS-Feed**
+anbietet: Pressemitteilungen, Amtsblätter, Bekanntmachungen, Rundschreiben. Er liest den Feed
+(**RSS 2.0** über HTTP(S); Atom nicht), lädt zu jedem Eintrag die verlinkte Detailseite, reduziert sie
+auf ihren Hauptinhalt und holt die dort verlinkten Anlagen als eigene Dokumente. Anders als die
+übrigen Konnektoren sieht er nie den ganzen Bestand, nur das Fenster, das der Feed gerade zeigt.
 
 ```mermaid
 flowchart LR
-    F[Feed abrufen<br/>bedingter GET] -->|304 unverändert| E0[Lauf endet<br/>erfolgreich, 0 Elemente]
-    F -->|200| P[Feed parsen<br/>RSS 2.0]
-    P --> I{je Eintrag:<br/>pubDate neu?}
-    I -- nein --> S[übersprungen]
-    I -- ja --> W[Wartezeit, dann<br/>Detailseite laden]
-    W --> H[Boilerplate entfernen,<br/>Inhaltsbereiche wählen]
-    H --> D[HTML der Inhaltsbereiche<br/>an die HTML-Pipeline]
-    H --> A[Anlagen-Links<br/>nach Profil]
-    A --> AD[je Anlage: Wartezeit,<br/>Download, eigenes Dokument]
-    D --> Z{Lauf vollständig,<br/>nichts zurückgestellt?}
-    Z -- ja --> ST[ETag / Last-Modified<br/>speichern]
-    Z -- nein --> NS[Zustand nicht speichern,<br/>nächster Lauf holt erneut]
+    B[Wissensbibliothek] -.-> Z[Zugang<br/>optional]
+    B -->|bedingter GET| F[Feed]
+    F --> D[Detailseiten]
+    D --> A[Anlagen]
 ```
 
-## 2. Quellkonfiguration
+- **Anmeldung:** keine oder HTTP Basic, eigene Zugangsdaten der Bibliothek
+  ([Zugänge](../zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten und eine
+  ausgesetzte Zertifikatsprüfung gelten **nur für den Ursprung des Feeds**. Ein Zugang ist möglich.
+- **Liest:** je Eintrag `title`, `link`, `description` und `pubDate`, die Detailseite und bis zu
+  zehn Anlagen. Erweiterungen in fremden Namensräumen (`content:encoded`, `media:*`) werden
+  ignoriert. Ein Eintrag ohne Link entfällt, von mehreren Links zählt der erste; ein nicht lesbares
+  `pubDate` gilt als fehlend.
+- **Dokument:** Der Eintrag ist ein Dokument, jede Anlage ein eigenes mit dem Eintrag als
+  Elterndokument. Im Chat trägt jede Fundstelle daraus neben „Im Dokument öffnen" einen Link „Quelle"
+  auf die Adresse des Eintrags.
+- **Rechte** der Website übernimmt OPAA nicht.
 
-Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abschnitt
-**„Anbindung"** — dort liegt auch „Verbindung testen" gegen die gespeicherte Konfiguration; beim
-Anlegen im gleichnamigen Schritt des Assistenten. Im selben Reiter stehen der **„Zeitplan"** und,
-als **„Läufe"**, das Laufprotokoll.
+## 2. Einrichtung
 
-Die Felder sind dieselben wie beim Webverzeichnis:
+1. Liegt der Feed im privaten Netz, seinen Hostnamen für die
+   [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben.
+2. Das **Anlagenprofil** der Installation wählen (Abschnitt 6): `GENERIC` für Anlagen mit
+   Dateiendung, `GSB` für Websites auf dem Government Site Builder.
+3. Optional einen Zugang anlegen. Die Profilpflicht „Nur über Zugänge" legt nur die Feed-Adresse
+   fest; Detailseiten auf anderen Servern bestimmt der Betreiber des Feeds. Das sagt OPAA, bevor die
+   Pflicht eingeschaltet wird.
 
-| Feld der Bibliothek | Regel |
-|---|---|
-| Adresse (`sourceUrl`) | Pflicht, die Feed-URL, `http://` oder `https://` |
-| Zugangsdaten (`sourceCredentials`) | optional, `benutzer:passwort`, Basic Auth |
-| Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional |
+## 3. Quellkonfiguration
 
-Speicherung und Sichtbarkeit der Zugangsdaten sowie das Verhalten beim Ändern der URL sind im
-Kapitel [Webverzeichnis](http-directory.md#2-quellkonfiguration) beschrieben.
+Die Angaben sind dieselben wie beim [Webverzeichnis](http-directory.md#3-quellkonfiguration):
+„Adresse (URL)" des Feeds, optionale Anmeldedaten `benutzer:passwort` und „Zertifikatsprüfung
+aussetzen". Dort steht auch, wann gespeicherte Zugangsdaten beim Bearbeiten erhalten bleiben. Die
+Oberfläche weist beim Anlegen darauf hin, dass OPAA auch die verlinkten Detailseiten abruft.
 
-Die Oberfläche weist beim Anlegen darauf hin, dass OPAA neben dem Feed auch die verlinkten
-Detailseiten abruft und dass der Betreiber des Feeds bestimmt, welche Adressen das sind.
+**Über einen Zugang:** wie beim Webverzeichnis; die Feed-Adresse liegt unter der Server-Adresse des
+Zugangs. Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA weiter ab, aber ohne
+Zugangsdaten und mit Zertifikatsprüfung.
 
-**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): wie beim
-[Webverzeichnis](http-directory.md#2-quellkonfiguration) **ohne Anmeldung** oder mit
-einem **persönlichen Geheimnis** der Bibliothek; die Feed-Adresse liegt unter der Server-Adresse
-des Zugangs. Zugangsdaten und eine ausgesetzte Zertifikatsprüfung gelten nur für den Ursprung des
-Feeds: Eine Detailseite oder Anlage auf einem anderen Server ruft OPAA
-weiter ab, aber ohne Zugangsdaten und mit Zertifikatsprüfung (Abschnitt 3). Deshalb nennt die
-Profilpflicht für Feeds diese Einschränkung, bevor sie eingeschaltet wird.
+## 4. Betriebsarten und Änderungserkennung
 
-## 3. Zugriff
+Jeder Lauf ist **ergänzend**: Er verarbeitet höchstens 200 Einträge des Feeds und entfernt nie etwas,
+weil es fehlt.
 
-| Eigenschaft | Verhalten |
-|---|---|
-| User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0`. Bewusst wahrheitsgemäß, keine Browser-Imitation. |
-| Zugangsdaten und ausgesetzte Zertifikatsprüfung | wirken **nur auf dem Ursprung des Feeds**. Eine Detailseite oder Anlage auf einem anderen Host bekommt weder Zugangsdaten noch gelockerte Prüfung. |
-| Wartezeit | konfigurierbar, Standard eine Sekunde vor jeder Detailseite und vor jedem Anlagen-Download. Nicht vor dem Feed selbst. |
-| Timeouts | 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage |
-| Wiederholung | nur bei HTTP 429: Feed, Detailseite und Anlage warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; erst danach greift die Zurückstellung (Abschnitt 6). Jeder andere Fehlschlag wird nicht wiederholt, sondern zurückgestellt |
-| Grenzen je Lauf | die Summe aller 429-Wartezeiten eines Laufs ist auf `opaa.indexing.http.max-rate-limit-wait-per-run` (Standard 15 Minuten) gedeckelt, die Zahl der Anfragen auf `opaa.indexing.http.request-budget-per-run` (Standard 0, unbegrenzt). Beim Erreichen endet der Lauf geordnet als „unvollständig, wird fortgesetzt" (Abschnitt 4) |
-| Weiterleitungen | Feed: bis zu fünf, fremder Ursprung ohne Zugangsdaten. Detailseite und Anlage: ein fremder Ursprung wird gar nicht kontaktiert. |
+```mermaid
+flowchart LR
+    F[Feed abrufen,<br/>bedingter GET] -->|304| E[Lauf endet]
+    F -->|200| I{pubDate neu?}
+    I -- nein --> S[übersprungen]
+    I -- ja --> W[Detailseite laden,<br/>Hauptinhalt wählen]
+    W --> A[Anlagen laden]
+```
 
-Die Wartezeit bestimmt die Laufzeit: Bei 200 Einträgen mit je einer Seite und bis zu zehn
-Anlagen liegt der Worst Case bei rund 40 Minuten je Lauf. Das ist gewollt; der Konnektor soll
-fremde Server nicht belasten.
+Unverändertes erkennt er in drei Stufen:
 
-## 4. Schutzmechanismen
+1. **Feed, bedingter GET.** OPAA merkt sich ETag und Last-Modified. Antwortet der Server mit 304,
+   endet der Lauf nach einer Anfrage mit null Elementen — der Normalfall bei stündlichem Zeitplan.
+2. **Eintrag, Veröffentlichungsdatum.** Ein Eintrag mit gleichem `pubDate`, der zuletzt erfolgreich
+   indiziert wurde, wird übersprungen; ein fehlendes Datum gilt als geändert.
+3. **Prüfsumme** über den reduzierten Inhalt. Bei neuem Datum, aber gleichem Text bleiben die Chunks;
+   Datum und eine geänderte Überschrift werden übernommen.
 
-- **Zieladressprüfung** auf Feed, Detailseite, Anlage und jeder Weiterleitung, wie im
-  Kapitel [Webverzeichnis](http-directory.md#41-zieladressprüfung).
-- **Schema- und Syntaxprüfung je Eintrag**, bevor irgendetwas geladen wird. Ein Eintrag mit
-  `ftp://`-Link oder kaputter URL wird abgewiesen, ohne den Lauf zu beeinträchtigen.
-- **Kein Verlassen des Ursprungs** bei Detailseiten und Anlagen. Ein Feed kann nicht dazu
-  benutzt werden, das Backend auf beliebige Server zu schicken.
-- **XML-Härtung** beim Parsen: keine DTDs, keine externen Entitäten.
-- **Inhaltstypprüfung**: Eine Detailseite muss HTML sein. Eine Anlage, die HTML statt eines
-  Dokuments liefert, wird als vermutliche Bot-Schutzseite verworfen.
-- **Größengrenzen mit abgestufter Wirkung:**
+Ein unveränderter Eintrag ohne Anlagen-Dokumente lädt seine Detailseite einmal, nur um Anlagen zu
+finden; der Text wird dabei nicht neu verarbeitet.
+
+**Zurückstellen.** Den Feed-Zustand aus Stufe 1 speichert ein Lauf nur, wenn er vollständig war:
+kein Fehler, kein abgeschnittener Feed, keine verlorene Anlage, keine Ablehnung am Kontingent und
+kein zurückgestellter Eintrag. Zurückgestellt wird, was beim nächsten Mal klappen könnte — eine nicht
+erreichbare Detailseite, eine Abweisung mit 403 oder 429. Ohne gespeicherten Zustand liefert der
+Server beim nächsten Lauf den ganzen Feed, und diese Einträge bekommen eine zweite Chance.
+
+**Detailseite.** Sie wird nach den Regeln der [HTML-Pipeline](../formate/html.md) reduziert:
+Navigation, Seitenleisten, Cookie-Banner, `script`, `style` und `noscript` entfallen überall; die
+Inhaltsbereiche wählt `main-content-selector` (Standard `main, article, [role=main]`, Rückfall
+`body`); Seitenkopf und -fuß entfallen nur außerhalb davon. Das HTML geht direkt an die HTML-Pipeline
+und wird in Abschnitte geschnitten; der Titel des Eintrags ist der Kontexttitel. Bestehende Einträge,
+die noch mit der Auffang-Pipeline geschnitten wurden, behalten ihre Chunks bis zur nächsten
+`pubDate`-Änderung.
+
+**Zeitplan.** Stündlich ist üblich: Ein unveränderter Feed kostet nur eine Anfrage. Die Wartezeit vor
+jeder Detailseite und Anlage (Standard eine Sekunde) bestimmt die Laufzeit: Bei 200 Einträgen mit je
+zehn Anlagen dauert ein Lauf im ungünstigsten Fall rund 40 Minuten. Das ist gewollt.
+
+## 5. Löscherkennung
+
+**Nie durch Abwesenheit.** Dass ein älterer Eintrag nicht mehr im Feed steht, sagt nichts darüber, ob
+die Meldung noch existiert. Ein Eintrag verschwindet nur durch Löschen in der Bibliothek, dann samt
+seinen Anlagen.
+
+## 6. Anhänge
+
+Anlagen sind Links im reduzierten Hauptinhalt der Detailseite auf demselben Ursprung. Welche Links
+zählen, bestimmt das **Anlagenprofil** der Installation:
+
+| Profil | Anlage ist jeder Link auf denselben Ursprung, der … | Typischer Einsatz |
+|---|---|---|
+| `GENERIC` (Standard) | im letzten Pfadteil eine Dateiendung trägt | Anlagen wie `bescheid.pdf` |
+| `GSB` | den Parameter `__blob=publicationFile` trägt | Government Site Builder, Anlagen ohne Endung |
+
+Ob eine Anlage aufgenommen wird, entscheidet nach dem Download ihr Inhalt, nicht die Endung; doppelt
+verlinkte Anlagen zählen einmal. Beim GSB-Profil entsteht der Dateiname aus dem gemeldeten
+Inhaltstyp; ein Server, der eine Nicht-Text-Antwort als `text/plain` meldet, wird dabei geglaubt.
+Eine Anlage, die selbst Anhänge trägt, etwa eine verlinkte EML-Datei, wird bis zur Tiefengrenze
+weiter ausgepackt. Ein Fehler einer Anlage wirkt nie auf den Eintrag zurück; hat der Eintrag selbst
+keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
+
+## 7. Grenzen und Schutzmechanismen
+
+- **Zieladressprüfung** auf Feed, Detailseite, Anlage und jeder Weiterleitung
+  ([Konnektoren](README.md#12-zieladressprüfung)).
+- **Kein Verlassen des Ursprungs:** Eine Detailseite oder Anlage auf einem fremden Ursprung, auch per
+  Weiterleitung, wird gar nicht kontaktiert. Beim Feed selbst werden bis zu fünf Weiterleitungen
+  gefolgt, auf einen fremden Ursprung ohne Zugangsdaten.
+- **Prüfung je Eintrag**, bevor etwas geladen wird: Ein Link mit anderem Schema als `http`/`https`
+  oder kaputter Adresse wird abgewiesen.
+- **XML-Härtung:** keine DTDs, keine externen Entitäten.
+- **Inhaltstyp:** Eine Detailseite muss HTML sein; eine Anlage, die HTML liefert, gilt als
+  vermutliche Bot-Schutzseite und wird verworfen.
+- **Drosselung:** Nur bei HTTP 429 wird gewartet und wiederholt; danach wird zurückgestellt.
 
 | Grenze | Standard | Bei Überschreitung |
 |---|---|---|
-| Feed | 10 MiB | ganzer Lauf scheitert |
-| Detailseite | 5 MiB | nur dieser Eintrag entfällt |
-| Anlage | 20 MiB | nur diese Anlage entfällt |
+| Feed | 10 MiB | der Lauf scheitert |
+| Einträge je Lauf | 200 | Rest abgeschnitten, Zustand nicht gespeichert |
+| Detailseite | 5 MiB | dieser Eintrag entfällt |
+| Anlagen je Eintrag | 10 | weitere entfallen |
+| Anlage | 20 MiB | diese Anlage entfällt |
+| Anfragen je Lauf, Summe der 429-Wartezeiten | unbegrenzt, 15 Minuten | „unvollständig, wird fortgesetzt", Zustand nicht gespeichert |
 
-- **Mengengrenzen:** höchstens 200 Feed-Einträge (Rest wird abgeschnitten), höchstens zehn
-  Anlagen je Eintrag, fünf Ebenen Verschachtelung bei Anlagen, die selbst Anhänge enthalten.
-- **Anfragebudget und Wartedeckel je Lauf:** Jede Anfrage eines Laufs (Feed, Detailseiten,
-  Anlagen, Wiederholungen nach 429) zählt auf einem Zähler. Ist das Anfragebudget
-  (`opaa.indexing.http.request-budget-per-run`) verbraucht oder würde die nächste 429-Wartezeit
-  die Summe über `opaa.indexing.http.max-rate-limit-wait-per-run` heben, wird die Anfrage nicht
-  mehr gestellt: Der aktuelle Eintrag bleibt zurückgestellt, die restlichen Einträge werden nicht
-  mehr abgefragt, der Lauf endet erfolgreich mit dem Kennzeichen „unvollständig, wird fortgesetzt"
-  und einem Protokolleintrag der Kategorie „Anfragebudget erschöpft". Der Feed-Zustand
-  (ETag/Last-Modified) wird nicht gespeichert, der nächste Lauf sieht alle Einträge erneut. Eine
-  dauerhaft drosselnde Quelle kann einen Lauf damit nicht mehr über den Deckel hinaus verlängern.
+Zeitlimits: 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage. Der Speicherbedarf
+liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
 
-## 5. Aufzählung
+## 8. Protokoll und Fehlerbilder
 
-**Nur RSS 2.0.** Das Wurzelelement muss `<rss>` sein. Atom-Feeds werden mit einer klaren
-Meldung abgewiesen, der Lauf scheitert.
-
-Je `<item>` werden `title`, `link`, `description` und `pubDate` gelesen. Erweiterungen in fremden
-Namensräumen (etwa `content:encoded`, `media:*`) werden ignoriert. Ein Eintrag ohne `<link>`
-entfällt. Bei mehreren Links gewinnt der erste. Ein nicht lesbares `pubDate` gilt als fehlend,
-nicht als Fehler; zweistellige Jahre und die üblichen Zeitzonenkürzel werden verstanden.
-
-Die **Detailseite** wird geladen und nach denselben Regeln reduziert, die die
-[HTML-Pipeline](../formate/html.md) auf eine Datei anwendet:
-
-1. Elemente, die nie Inhalt sind, werden in der ganzen Seite entfernt: Navigation und
-   Seitenleisten (`nav`, `aside`, die Rollen navigation und complementary), die Klassen `nav`,
-   `navigation`, `menu`, `breadcrumb`, `sidebar`, Cookie-Banner sowie `script`, `style` und
-   `noscript` — auch innerhalb von `<main>`.
-2. Die Inhaltsbereiche werden über den konfigurierbaren Selektor gewählt (Standard `main,
-   article, [role=main]`). Jeder Treffer zählt, etwa alle Teaser einer Übersichtsseite; ein
-   Treffer in einem anderen Treffer wird verworfen. Rückfall ist `body`.
-3. Seitenkopf und Seitenfuß (`header`, `footer`, die Rollen banner und contentinfo) werden nur
-   außerhalb der Inhaltsbereiche entfernt; ein Artikel darf einen eigenen Kopf und Fuß haben.
-   Beim Rückfall auf `body` entfallen sie ebenfalls.
-
-Das HTML der Inhaltsbereiche geht ohne Formaterkennung direkt an die HTML-Pipeline
-(Pipeline-Kennung `html`) und wird dort wie eine HTML-Datei in Abschnitte geschnitten: Eine
-Pressemitteilung mit Zwischenüberschriften ergibt einen Chunk je Abschnitt. Der Titel des
-Eintrags wird als Kontexttitel verwendet; eine Titelzeile aus dem Seiteninhalt wird nicht
-gelesen. Die Zeichenkodierung folgt dem Server, sonst der Erkennung aus der Seite. Ein Eintrag,
-dessen Inhaltsbereiche keinen sichtbaren Text tragen, wird vor der Pipeline übersprungen („Kein
-Inhalt extrahierbar").
-
-## 6. Änderungserkennung und Zurückstellung
-
-Drei Stufen, von billig nach teuer:
-
-1. **Feed-Ebene, bedingter GET.** Je Bibliothek und Feed-URL merkt sich OPAA ETag und
-   Last-Modified. Antwortet der Server mit 304, endet der Lauf nach einer einzigen Anfrage
-   erfolgreich mit null Elementen. Das ist der Normalfall bei einem Feed, der sich stündlich
-   prüfen lässt, aber nur wöchentlich neue Einträge bekommt.
-2. **Eintragsebene, Veröffentlichungsdatum.** Ein Eintrag, dessen `pubDate` dem gespeicherten
-   Wert entspricht und der zuletzt erfolgreich indiziert wurde, wird übersprungen. Ein fehlendes
-   Datum gilt als „geändert".
-3. **Prüfsumme** über das reduzierte HTML, wie bei jeder Quelle. Ein Eintrag mit neuem `pubDate`,
-   aber unverändertem Text behält seine Chunks; das neue Datum wird als Änderungsmarke übernommen
-   und eine geänderte Überschrift als Titel, sodass der nächste Lauf ihn schon in Stufe 2
-   überspringt. Das Dokumentdatum der Kernfelder bleibt bis zur nächsten Inhaltsänderung.
-
-Bestehende Einträge, die noch mit der Auffang-Pipeline geschnitten wurden, behalten diese Chunks
-bis zur nächsten `pubDate`-Änderung; der Pipeline-Nachzug für `html` (Kapitel
-[Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.2) erfasst sie nur, wenn ihr Titel wie ein Dateiname auf
-`.html` endet.
-
-**Zurückstellung.** Der Feed-Zustand aus Stufe 1 wird nur gespeichert, wenn der Lauf
-vollständig war: kein Fehler und kein zurückgestellter Eintrag. Zurückgestellt wird alles, was
-in diesem Lauf nicht verarbeitet werden konnte, obwohl es beim nächsten Mal klappen könnte: eine
-nicht erreichbare Detailseite, eine Abweisung mit 403 oder 429, ein abgeschnittener Feed, eine
-verlorene Anlage. Ohne gespeicherten Zustand liefert der Server beim nächsten Lauf den Feed
-erneut vollständig, und die zurückgestellten Einträge bekommen eine zweite Chance. Das ersetzt
-Wiederholungsversuche innerhalb des Laufs. Ebenso wenig speichert ein Lauf den Feed-Zustand, der
-einen Eintrag oder eine Anlage am Speicherkontingent abgelehnt hat.
-
-**Nachholen von Anlagen.** Ein unveränderter Eintrag, zu dem noch keine Anlagen-Dokumente
-existieren, lädt seine Detailseite trotzdem einmal, ausschließlich um Anlagen zu finden. Der
-Artikeltext wird dabei nicht neu verarbeitet. Ein unveränderter Feed erzeugt also nicht
-zwangsläufig null Anfragen.
-
-## 7. Anlagen
-
-Anlagen sind Links im reduzierten Hauptinhalt der Detailseite. Welche Links als Anlage gelten,
-bestimmt das **Anlagenprofil**, das je Installation gesetzt wird, nicht je Bibliothek:
-
-| Profil | Kandidat ist jeder Link, der … | Typischer Einsatz |
+| Meldung | Bedeutung | Abhilfe |
 |---|---|---|
-| `GENERIC` (Standard) | auf denselben Ursprung zeigt und dessen letzter Pfadteil irgendeine Dateiendung trägt | Websites, die Anlagen als `bescheid.pdf` verlinken |
-| `GSB` | auf denselben Ursprung zeigt und den Query-Parameter `__blob=publicationFile` trägt | Bundesbehörden auf dem Government Site Builder, dessen Anlagen keine Endung haben |
+| „Verknüpfung mit nicht unterstütztem Schema abgelehnt" / „… mit ungültiger URL abgelehnt" | Link des Eintrags ist nicht http/https oder kaputt | beim Feed-Betreiber melden |
+| „Vom Quellserver abgewiesen (HTTP 403 / 429)" | Bot-Schutz oder Ratenbegrenzung der Detailseite; zurückgestellt | Wartezeit erhöhen, nächster Lauf versucht es erneut |
+| „Weiterleitung auf einen fremden Host abgelehnt" / „Weiterleitung von https auf http abgelehnt" / „Weiterleitung der Detailseite ungültig" | Weiterleitung verlässt den Ursprung oder ist unbrauchbar | nichts |
+| „Zieladresse liegt in einem gesperrten Adressbereich" | Zieladressprüfung | Hostnamen freigeben |
+| „Detailseite nicht erreichbar" | Verbindungsfehler, Zeitlimit, Seite zu groß; zurückgestellt | nichts |
+| „Inhaltstyp der Detailseite wird nicht unterstützt" | der Link zeigt direkt auf ein PDF o. ä. | nichts |
+| „Kein Inhalt extrahierbar" | Hauptinhalt nach der Reduktion leer | `main-content-selector` prüfen |
+| „Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz)" | Anlage verworfen | nichts |
+| „Anlage überschreitet die zulässige Größe" / „Anlage nicht erreichbar" / „Anlagenformat wird nicht unterstützt" | diese Anlage entfällt | nichts |
+| „Die Quelle hat den Lauf n-mal gedrosselt …" (Ratenbegrenzung) | eine Zeile je Lauf, wenn gewartet wurde | nichts |
+| „Anfragebudget von … Anfragen erschöpft …" / „Deckel der 429-Wartezeit … erreicht …" | der nächste Lauf nimmt die übrigen Einträge auf | Budget oder Deckel anheben |
+| Lauf fehlgeschlagen: „Der RSS-Feed konnte nicht abgerufen werden: HTTP …", „… kein gültiges XML", „Das Dokument ist kein RSS-Feed …", Feed zu groß, Zugangsdaten abgelehnt | Bestand unverändert | Adresse, Format und Zugangsdaten prüfen |
 
-Beide Profile prüfen nicht auf unterstützte Endungen. Ein als `.csv` veröffentlichtes PDF würde
-sonst still verloren gehen; ob eine Anlage aufgenommen wird, entscheidet nach dem Download der
-Inhalt. Doppelt verlinkte Anlagen (im Text und in einer Downloadliste) werden nur einmal gezählt,
-damit das Limit nicht an Duplikaten aufgebraucht wird.
+Beim Nachladen von Anlagen tragen die Meldungen den Zusatz „beim Nachladen von Anlagen". Wird ein
+Lauf während eines Eintrags gestoppt, endet er mit „Lauf unterbrochen".
 
-Beim GSB-Profil wird der Dateiname erst nach dem Download aus dem gemeldeten Inhaltstyp
-gebildet. Restlücke: Ein GSB-Server, der eine Nicht-Text-Antwort als `text/plain` deklariert, wird
-für den Text-Weg geglaubt, weil eine endungslose Adresse keinen anderen Hinweis bietet.
+## 9. Konfiguration
 
-Jede Anlage wird ein eigenes Dokument mit Verweis auf den Feed-Eintrag als Elterndokument und mit
-der URL des Eintrags als Herkunft. Im Chat trägt jede Fundstelle aus einem Feed-Eintrag oder einer
-seiner Anlagen neben „Im Dokument öffnen" einen Link „Quelle" auf diese Eintrags-URL. Enthält eine
-Anlage selbst Anhänge, etwa eine verlinkte
-EML-Datei, geht die Kette bis zur Tiefengrenze weiter. Ein Fehler bei einer Anlage wirkt nie auf
-den Eintrag zurück. Wird der Eintrag selbst abgewiesen, weil sein Text nicht extrahierbar ist,
-werden seine Anlagen bewusst nicht indiziert.
-
-## 8. Ordner
-
-Keine Ordnerspiegelung. Ein Feed hat keine Struktur, die sich abbilden ließe.
-
-## 9. Löscherkennung
-
-**Nie durch Abwesenheit.** Ein Feed zeigt nur die jüngsten Einträge; dass ein älterer Eintrag
-nicht mehr im Feed steht, sagt nichts darüber, ob die Meldung noch existiert. Der Konnektor
-löscht deshalb nichts von selbst, auch nicht bei leerem Feed. Ein Eintrag verschwindet nur durch
-ausdrückliches Löschen in der Bibliothek, dann mitsamt seinen Anlagen.
-
-Eine Löschung anhand eines positiven Befunds, etwa wenn die Detailseite dauerhaft 404 liefert,
-ist als künftiger Mechanismus benannt, aber nicht gebaut.
-
-## 10. Protokolleinträge dieses Konnektors
-
-| Kategorie | Meldung | Situation |
-|---|---|---|
-| abgewiesen | Verknüpfung mit nicht unterstütztem Schema abgelehnt | Link ist nicht http/https |
-| abgewiesen | Verknüpfung mit ungültiger URL abgelehnt | Link syntaktisch kaputt |
-| abgewiesen | Vom Quellserver abgewiesen (HTTP 403 / 429) | Bot-Schutz oder Ratenbegrenzung der Detailseite (429 erst nach erschöpften Wiederholungen); Eintrag zurückgestellt |
-| abgewiesen | Weiterleitung auf einen fremden Host abgelehnt (Ziel: …) | Detailseite leitet auf fremden Ursprung |
-| abgewiesen | Weiterleitung von https auf http abgelehnt (Protokoll-Downgrade) | |
-| abgewiesen | Zieladresse liegt in einem gesperrten Adressbereich | Zieladressprüfung |
-| abgewiesen | Weiterleitung der Detailseite ungültig | Location nicht auflösbar |
-| nicht erreichbar | Detailseite nicht erreichbar | Verbindungsfehler, Timeout, Seite zu groß; Eintrag zurückgestellt |
-| Format nicht unterstützt | Inhaltstyp der Detailseite wird nicht unterstützt | Link zeigt direkt auf ein PDF o. ä. |
-| Format nicht unterstützt | Kein Inhalt extrahierbar | Hauptinhalt nach der Reduktion leer |
-| abgewiesen | Speicherkontingent-Meldung | Kontingent erreicht |
-| abgewiesen | kein extrahierbarer Text | Eintrag und seine Anlagen entfallen |
-| Fehler | Verarbeitung fehlgeschlagen | Pipeline-Fehler oder Ausnahme |
-| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
-| Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf | Anfragebudget je Lauf verbraucht (Abschnitt 4) |
-| Anfragebudget erschöpft | Deckel der 429-Wartezeit von … je Lauf erreicht; der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf | Summe der 429-Wartezeiten am Deckel (Abschnitt 4) |
-
-Beim Nachholen von Anlagen tragen die Meldungen den Zusatz „beim Nachladen von Anlagen".
-
-Anlagen-Einträge:
-
-| Kategorie | Meldung |
-|---|---|
-| abgewiesen | Anlage antwortete mit HTML statt einem Dokument (vermutlich Bot-Schutz) |
-| abgewiesen | Anlage überschreitet die zulässige Größe |
-| abgewiesen | Weiterleitungs- oder Zieladressmeldung mit Zusatz „(Anlage)" |
-| nicht erreichbar | Anlage nicht erreichbar |
-| Format nicht unterstützt | Anlagenformat wird nicht unterstützt |
-| Formatabweichung | Dateiendung passt nicht zum erkannten Inhalt (erkannt: …) |
-| Fehler | Anlage konnte nach dem Herunterladen nicht auf ihr Format geprüft werden / Verarbeitung der Anlage fehlgeschlagen |
-
-Scheitert der Lauf als Ganzes, nennt die Fehlermeldung die Ursache: Feed nicht abrufbar mit
-HTTP-Code, kein gültiges XML, kein RSS-Feed (etwa Atom), Feed zu groß, Proxy-Format falsch, oder
-„Die Bibliothek wurde während des Laufs gelöscht".
-
-## 11. Grenzfälle
-
-| Situation | Verhalten |
-|---|---|
-| Feed unverändert (304) | Lauf erfolgreich mit null Elementen nach einer Anfrage |
-| Feed nicht erreichbar, HTTP-Fehler, kein XML, Atom, zu groß | Lauf `FAILED`, Bestand unverändert |
-| Feed hat mehr als 200 Einträge | Rest abgeschnitten, Lauf erfolgreich, Zustand nicht gespeichert, nächster Lauf holt vollständig |
-| Detailseite 403, oder 429 nach erschöpften Wiederholungen | Eintrag abgewiesen und zurückgestellt, Lauf läuft weiter, nächster Lauf versucht es erneut |
-| Anfragebudget je Lauf verbraucht oder Deckel der 429-Wartezeit erreicht | Lauf endet erfolgreich als „unvollständig, wird fortgesetzt", restliche Einträge unberührt, Feed-Zustand nicht gespeichert |
-| Lauf während eines Eintrags gestoppt | Lauf endet mit „Lauf unterbrochen", die folgenden Einträge werden nicht mehr verarbeitet; der unterbrochene Eintrag zählt nicht als Fehler |
-| Detailseite leitet auf fremden Host | abgelehnt, bevor der fremde Server kontaktiert wird |
-| Detailseite liefert PDF statt HTML | Eintrag „Format nicht unterstützt" |
-| Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit verständlicher Meldung |
-| Feed-Eintrag während der Anlagenverarbeitung gelöscht | Warnung im Log, Anlagen entfallen |
-
-## 12. Konfiguration
-
-Alle Schlüssel unter `opaa.indexing.rss.*`, Umgebungsvariablen als `OPAA_INDEXING_RSS_*`:
-
-| Schlüssel | Standard | Wirkung |
-|---|---|---|
-| `max-entries` | 200 | Feed-Einträge je Lauf; Rest wird abgeschnitten |
-| `max-feed-size-bytes` | 10485760 (10 MiB) | darüber scheitert der Lauf |
-| `max-page-size-bytes` | 5242880 (5 MiB) | darüber entfällt der Eintrag |
-| `request-delay-ms` | 1000 | Wartezeit vor jeder Detailseite und Anlage; 0 schaltet ab |
-| `main-content-selector` | `main, article, [role=main]` | Jsoup-Selektor für den Hauptinhalt, Rückfall `body` |
-| `attachment-profile` | `GENERIC` | `GENERIC` oder `GSB`, gilt für die ganze Installation |
-| `max-attachments-per-entry` | 10 | Anlagen je Eintrag |
-| `max-attachment-size-bytes` | 20971520 (20 MiB) | darüber entfällt die Anlage |
+| Schlüssel | Umgebungsvariable | Standard | Wirkung |
+|---|---|---|---|
+| `opaa.indexing.rss.max-entries` | `OPAA_INDEXING_RSS_MAX_ENTRIES` | 200 | Einträge je Lauf |
+| `opaa.indexing.rss.max-feed-size-bytes` | `OPAA_INDEXING_RSS_MAX_FEED_SIZE_BYTES` | 10485760 (10 MiB) | darüber scheitert der Lauf |
+| `opaa.indexing.rss.max-page-size-bytes` | `OPAA_INDEXING_RSS_MAX_PAGE_SIZE_BYTES` | 5242880 (5 MiB) | darüber entfällt der Eintrag |
+| `opaa.indexing.rss.request-delay-ms` | `OPAA_INDEXING_RSS_REQUEST_DELAY_MS` | 1000 | Wartezeit vor jeder Detailseite und Anlage; 0 schaltet ab |
+| `opaa.indexing.rss.main-content-selector` | `OPAA_INDEXING_RSS_MAIN_CONTENT_SELECTOR` | `main, article, [role=main]` | Selektor der Inhaltsbereiche, Rückfall `body` |
+| `opaa.indexing.rss.attachment-profile` | `OPAA_INDEXING_RSS_ATTACHMENT_PROFILE` | `GENERIC` | `GENERIC` oder `GSB`, für die ganze Installation |
+| `opaa.indexing.rss.max-attachments-per-entry` | `OPAA_INDEXING_RSS_MAX_ATTACHMENTS_PER_ENTRY` | 10 | Anlagen je Eintrag |
+| `opaa.indexing.rss.max-attachment-size-bytes` | `OPAA_INDEXING_RSS_MAX_ATTACHMENT_SIZE_BYTES` | 20971520 (20 MiB) | darüber entfällt die Anlage |
 
 `User-Agent`, 429-Wartezeit und die Grenzen je Lauf kommen aus dem gemeinsamen Block
-`opaa.indexing.http.*` (`user-agent`, `max-rate-limit-retries`, `max-retry-after`,
-`request-budget-per-run`, `max-rate-limit-wait-per-run`; siehe [Deployment](../deployment.md)).
-Nicht konfigurierbar: Timeouts. Verschachtelungstiefe der Anlagen, Zieladressprüfung,
-Thread-Pool, Kontingent und Chunking wie in den anderen Kapiteln.
+`opaa.indexing.http.*`, beschrieben im Kapitel [Webverzeichnis](http-directory.md#10-konfiguration).
+Die Verschachtelungstiefe der Anlagen ist allgemein (`opaa.indexing.attachments.max-depth`, Standard
+5). Nicht konfigurierbar: Zeitlimits.
 
-Der Speicherbedarf im Lauf liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter
-Anlage; die Grenzen sind entsprechend zu wählen.
-
-## 13. Zeitplan
-
-Der Zeitplan je Bibliothek ist im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md#42-zeitplan)
-beschrieben. Für Feeds ist ein stündlicher Zeitplan üblich: Ein unveränderter Feed kostet dank
-bedingtem GET nur eine Anfrage.
-
-## 14. Nicht gebaut
+## 10. Nicht gebaut
 
 - Atom-Feeds
-- Anlagenprofil je Bibliothek statt je Installation; bewusst so entschieden
-- Löschung anhand eines positiven Befunds (404 der Detailseite)
-- Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach
-  wiederholtem Scheitern
+- Anlagenprofil je Bibliothek statt je Installation
+- Löschung anhand eines positiven Befunds, etwa einer dauerhaft fehlenden Detailseite
+- Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach wiederholtem
+  Scheitern
