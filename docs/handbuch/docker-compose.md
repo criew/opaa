@@ -1,8 +1,5 @@
 # Docker Compose
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 Der Compose-Stapel des Repositorys (`docker-compose.yml`) startet OPAA auf einem einzelnen Rechner:
 Frontend, Backend und PostgreSQL, dazu über Compose-Profile Keycloak, Ollama, einen Objektspeicher
 und einen Mailserver zum Abfangen. Er ist für Entwicklung, Erprobung und kleine Installationen

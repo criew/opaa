@@ -1,8 +1,5 @@
 # Modelle
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 OPAA bringt kein eigenes Sprachmodell mit, sondern ruft Modelle über Endpunkte auf, die das Haus
 festlegt — im eigenen Rechenzentrum oder bei einem Anbieter. Dieses Kapitel beschreibt, welche
 Modelle es braucht, wie sie angebunden werden und woran es liegt, wenn sie nicht antworten. Wie die

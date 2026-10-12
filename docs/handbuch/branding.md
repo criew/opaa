@@ -1,8 +1,5 @@
 # Branding
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 Produktname, Claim, Akzentfarbe, Farbschema-Vorgabe und drei Bilder gehören der Installation, nicht
 dem Programm. Gepflegt werden sie unter **Administration → Branding**, von einem Systemverwalter;
 gespeichert wird in der Datenbank, nicht im Dateisystem. Jede Änderung ist sofort für alle wirksam —

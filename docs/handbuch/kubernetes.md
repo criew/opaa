@@ -1,8 +1,5 @@
 # Kubernetes
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den Helm-Chart geprüft, aber noch nicht
-> abgenommen.
-
 OPAA lässt sich unter Kubernetes mit dem Helm-Chart des Projekts betreiben. Der Chart startet
 dieselben Images wie der Compose-Stapel ([Docker Compose](docker-compose.md)): ein Backend und
 ein Frontend. Datenbank, Modelle, Objektspeicher und Identitätsanbieter betreibt das Haus selbst; der

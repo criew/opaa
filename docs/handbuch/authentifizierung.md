@@ -1,8 +1,5 @@
 # Authentifizierung
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 Dieses Kapitel beschreibt, wie Menschen sich bei OPAA anmelden: über einen oder mehrere
 Identitätsanbieter mit OpenID Connect, über Konten, die OPAA selbst führt, und über das eine
 Notanker-Konto der Systemverwaltung. Es beschreibt außerdem, wie Gruppen und Kontosperren aus dem

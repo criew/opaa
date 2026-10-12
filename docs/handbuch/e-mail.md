@@ -1,8 +1,5 @@
 # E-Mail-Versand (SMTP)
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 OPAA versendet E-Mails über einen SMTP-Server, den ein Systemverwalter in der Anwendung einträgt.
 Ohne diese Einstellung versendet OPAA nichts — und meldet das als Ergebnis, statt einen Vorgang
 scheitern zu lassen: Wer ein Konto anlegt, bekommt den Einladungslink dann zur Weitergabe angezeigt.

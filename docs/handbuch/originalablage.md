@@ -1,8 +1,5 @@
 # Originalablage
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch
-> nicht abgenommen.
-
 Ein hochgeladenes Dokument wird nicht nur indiziert — sein **Original** bleibt greifbar, damit aus
 einer Fundstelle die Datei wird, die ein Prüfer in die Hand nehmen kann. Die Originalablage ist der
 Ort, an dem diese Dateien liegen. Sie gehört der Anwendung: OPAA schreibt, ersetzt und löscht dort,

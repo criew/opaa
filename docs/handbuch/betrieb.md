@@ -1,8 +1,5 @@
 # Betriebsübersicht
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 Dieses Kapitel beschreibt, aus welchen Bausteinen eine OPAA-Installation besteht, wie sie
 zusammenhängen und was für jeden Betriebsweg gleich gilt: Images, Bereitschaft, Härtung, Schlüssel,
 Sicherung, Aktualisierung, Logs und Metriken. Wie OPAA mit Docker Compose oder unter Kubernetes

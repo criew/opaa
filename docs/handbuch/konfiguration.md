@@ -1,8 +1,5 @@
 # Konfiguration
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 Dieses Kapitel ist das Nachschlagewerk aller Umgebungsvariablen. Andere Kapitel nennen die Variablen
 beim Namen und erklären, wofür sie da sind; Vorgabewert und genaue Wirkung stehen hier. Einige
 Einstellungen pflegt die Systemverwaltung in der Oberfläche statt in der Umgebung — etwa Modelle,

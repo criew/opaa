@@ -1,8 +1,5 @@
 # Datenbank
 
-> **Entwurf.** Dieses Kapitel ist geschrieben und gegen den gebauten Stand geprüft, aber noch nicht
-> abgenommen.
-
 PostgreSQL ist die einzige Wahrheit einer Installation: Dokumente, Chunks samt Vektoren, Volltext,
 Metadaten, Konten, Rechte, Chats und Protokolle liegen in einer Datenbank. Daneben steht nur die
 [Originalablage](originalablage.md). Dieses Kapitel beschreibt, was eine Datenbank für OPAA mitbringen
