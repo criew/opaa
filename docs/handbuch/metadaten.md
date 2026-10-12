@@ -407,7 +407,7 @@ Bibliothek, kein Verwaltungsrecht. Lesen genügt VIEWER.
   ist die Bibliothek, eine Sammelzuweisung teilt sich eine Korrelationsreferenz. Ein identischer
   Wert, der bereits steht, ist keine Änderung. Aus der Ereignisfolge einer Bibliothek lässt sich ihr
   manueller Stand nach einer Wiederherstellung rekonstruieren; das Verfahren steht im
-  [Deployment](deployment.md).
+  [Betriebsübersicht](betrieb.md#sicherung-und-wiederherstellung).
 
 Für Konnektorbibliotheken gilt dasselbe; der Wert hängt am Dokument, nicht an der Datei, und
 überlebt eine Neuaufnahme.

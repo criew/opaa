@@ -97,7 +97,7 @@ und „Grenze speichern“ (`PUT /api/v1/admin/private-libraries/quota`). Der Ab
 Vorgabe der Installation oder eine eigene Grenze gilt. Das Feld nimmt Komma und Punkt als
 Dezimaltrenner an und weist eine Grenze unter 1 MB ab; unbegrenzt wird sie nur über „Unbegrenzt“; „Vorgabe wiederherstellen“ führt zur Vorgabe
 `OPAA_LIBRARY_PRIVATE_STORAGE_QUOTA_BYTES` zurück (Variablentabelle im Kapitel
-[Deployment](deployment.md)). `0` bedeutet unbegrenzt. Vor dem Speichern fragt OPAA nach. Eine
+[Konfiguration](konfiguration.md)). `0` bedeutet unbegrenzt. Vor dem Speichern fragt OPAA nach. Eine
 Änderung wirkt ab dem nächsten aufgenommenen Dokument und löscht nichts. Jede Änderung steht im
 Revisionsprotokoll (`PRIVATE_STORAGE_QUOTA_CHANGED`).
 

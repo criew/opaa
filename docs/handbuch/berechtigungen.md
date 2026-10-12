@@ -6,7 +6,7 @@
 > Rechtehistorie. Die Regeln gelten für jede Art von **Arbeitsmittel** gleich, ob
 > Wissensbibliothek oder Prompt-Bibliothek; wie Arbeitsmittel gefunden, angelegt und einem Space
 > zugeordnet werden, beschreibt das Kapitel [Katalog](katalog.md). Die Einrichtung des Anmeldewegs und des Verzeichnisabgleichs steht im Kapitel
-> [Deployment](deployment.md), die Verwaltung lokaler Konten in der
+> [Authentifizierung](authentifizierung.md), die Verwaltung lokaler Konten in der
 > [Benutzerverwaltung](benutzerverwaltung.md), der Rechtefilter der Suche im Kapitel
 > [Suche](suche.md).
 
@@ -252,7 +252,7 @@ Gruppe gilt.
 **Je Anbieter genau ein Mechanismus.** Entweder der **Gruppen-Claim** seiner Tokens oder der
 **Verzeichnisabgleich**; beides zugleich lehnt OPAA ab. Einrichtung, Zeitplan, Trockenlauf,
 Plausibilitätsschwelle, leeres Ergebnis, unerreichbares Verzeichnis und der Bestätigungsweg stehen
-im Kapitel [Deployment](deployment.md), Abschnitt „Verzeichnisabgleich je Anbieter". Für das
+im Kapitel [Authentifizierung](authentifizierung.md#verzeichnisabgleich-je-anbieter). Für das
 Rechtemodell zählen vier Folgen:
 
 - **Der Token ist die Vorgabe, weil er ohne Konfiguration funktioniert — der Verzeichnisabgleich
@@ -773,7 +773,7 @@ Mitgliedschaften, Spaces, Rollen und Eigentum bleiben stehen, die Sperre ist üb
 rückholbar, und **die betroffene Person erhält bei der nächsten Anmeldung Grund und Ansprechstelle**
 statt einer wortlosen Abweisung. Sperren zählen in dieselbe Plausibilitätsschwelle und denselben
 Bestätigungsweg wie Mitgliedschaftsentzüge. Die Einzelheiten stehen im Kapitel
-[Deployment](deployment.md), Abschnitt „Verzeichnisabgleich je Anbieter".
+[Authentifizierung](authentifizierung.md#verzeichnisabgleich-je-anbieter).
 
 **Eine Kontosperre wird nie wegen offener Eigentums- oder Zuständigkeitsfragen abgelehnt.** Sie ist
 die eine Handlung, die den Zustand „Nachfolge offen" erzeugen darf; die einzige Ausnahme bleibt der
@@ -963,7 +963,7 @@ Kapitel [Suche](suche.md), Abschnitt 8.
 ## 15. Konfiguration
 
 Vier der Größen sind Umgebungsvariablen und stehen mit ihrer vollständigen Beschreibung in der
-Variablenliste des Kapitels [Deployment](deployment.md); das Abgleichintervall ist eine Einstellung
+[Konfiguration](konfiguration.md#alle-umgebungsvariablen); das Abgleichintervall ist eine Einstellung
 der Anbieterzeile, drei sind Verwaltungseinstellungen, und die beiden letzten Werte sind fest
 eingebaut.
 
@@ -1107,7 +1107,7 @@ Postfächer.
 ## 18. Weiterführende Kapitel
 
 - Anmeldewege, Anbieterverwaltung, Verzeichnisabgleich, Keycloak als Verzeichnis und die
-  Variablenliste: [Deployment](deployment.md)
+  Variablenliste: [Authentifizierung](authentifizierung.md), [Konfiguration](konfiguration.md)
 - Lokale Konten, Systemrollen und ihre Fristen: [Benutzerverwaltung](benutzerverwaltung.md)
 - Rechtefilter, Suchdiagnose, Diagnosesperre und die Aufbewahrung der Rechtehistorie:
   [Suche](suche.md)

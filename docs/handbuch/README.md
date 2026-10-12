@@ -8,7 +8,7 @@ läuft. Es beschreibt den gebauten Ist-Stand, nicht Zielbilder.
 
 | Rolle | Typische Aufgaben | Einstieg |
 |---|---|---|
-| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Deployment](deployment.md), unter Kubernetes zusätzlich [Kubernetes](kubernetes.md), danach [Wissensbibliotheken](wissensbibliotheken.md) und [Suche](suche.md) |
+| **Betrieb** | installiert, aktualisiert, sichert, überwacht; konfiguriert Modelle und Grenzwerte; geht Störungen nach | [Betriebsübersicht](betrieb.md), dann [Docker Compose](docker-compose.md) oder [Kubernetes](kubernetes.md), [Modelle](modelle.md), [Authentifizierung](authentifizierung.md); danach [Wissensbibliotheken](wissensbibliotheken.md) und [Suche](suche.md) |
 | **Verwaltung** | legt Bibliotheken an, schließt Quellen an, vergibt Rechte, pflegt Metadaten, prüft Antworten mit dem Diagnosewerkzeug | [Wissensbibliotheken](wissensbibliotheken.md), die Konnektor-Kapitel, [Metadaten](metadaten.md), [Suche](suche.md) Abschnitt 8 |
 
 Nicht Zielgruppe sind Entwickler (Spezifikationen und Entscheidungen liegen im Repository unter
@@ -47,7 +47,7 @@ Betrieb:
 - **Die Datenbank ist die einzige Wahrheit.** Dokumente, Chunks samt Vektoren, Volltext,
   Metadaten, Protokolle, Chats: alles liegt in PostgreSQL. Daneben steht genau ein zweiter Bestand:
   die Originale der hochgeladenen Dokumente. Eine Sicherung umfasst deshalb beides — die Datenbank
-  und die [Originalablage](deployment.md#originalablage).
+  und die [Originalablage](originalablage.md).
 - **Genau eine Backend-Instanz.** Zeitpläne, Wiederanlauf und Thread-Pools sind prozesslokal.
   Skalierung ist eine Frage der Hardware dieser einen Instanz.
 - **Rechte wirken in der Suche, nicht dahinter.** Jede Suchabfrage trägt den Filter auf die
@@ -57,14 +57,23 @@ Betrieb:
 ## 3. Aufbau des Handbuchs
 
 Die Kapitel bilden einen Baum. Ein Kapitel verweist auf die Kapitel darunter; nach oben und zur
-Seite nur dort, wo ein Begriff von dort gebraucht wird. Berechtigungen und die Variablenliste im
-Deployment sind Nachschlagekapitel, auf die alle verweisen dürfen.
+Seite nur dort, wo ein Begriff von dort gebraucht wird. Berechtigungen und die Konfiguration (alle
+Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweisen dürfen.
 
 - **Betrieb**
-  - [Deployment](deployment.md) — Installation, Update und Folgen für den Index, alle
-    Umgebungsvariablen, Härtung, Modelle, Authentifizierung samt Erststart und Notfallprozedur,
-    E-Mail-Versand, Originalablage, Fehlerbehebung
-    - [Kubernetes](kubernetes.md) — Entwurf: Betrieb mit dem Helm-Chart
+  - [Betriebsübersicht](betrieb.md) — Bausteine und ihr Zusammenspiel, eine Backend-Instanz, Images,
+    Bereitschaft, Härtung, Schlüssel, Sicherung, Aktualisierung, Logs und Metriken, Fehlerbehebung
+    - [Docker Compose](docker-compose.md) — Schnellstart, Services, `.env.docker`, Ollama,
+      Objektspeicher und Mailpit im Stapel, Aktualisierung
+    - [Kubernetes](kubernetes.md) — Betrieb mit dem Helm-Chart
+    - [Datenbank](datenbank.md) — PostgreSQL und pgvector, eigenes Schema, Volltextindex
+    - [Originalablage](originalablage.md) — wo die Originale der Uploads liegen, Sicherung, Umstellung
+    - [E-Mail-Versand](e-mail.md) — Mailserver, Vorlagen, Fehlerbilder
+  - [Konfiguration](konfiguration.md) — alle Umgebungsvariablen, Grenzwerte im Überblick
+  - [Modelle](modelle.md) — Chat, Embedding, Reranking, Modellverwaltung, Fehlerbilder
+  - [Authentifizierung](authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
+    Verzeichnisabgleich, Härtung des Keycloak, Erststart, Notfallprozedur, Testkonten
+  - [Branding](branding.md) — Produktname, Farben und Bilder der Installation
 - **Konten und Rechte**
   - [Benutzerverwaltung](benutzerverwaltung.md) — lokale Konten, Rollen und Anlegerechte,
     Selbstregistrierung, verbundene Konten
@@ -89,21 +98,15 @@ Deployment sind Nachschlagekapitel, auf die alle verweisen dürfen.
   - [Prompt-Bibliotheken](prompt-bibliotheken.md) — Prompts anlegen, pflegen, im Chat einsetzen
   - [Zugänge](zugaenge.md) — technische Zugänge der Systemverwaltung zu Quellen
 
-**In Vorbereitung** (Epic #1282; bis dahin steht der Inhalt verstreut in
-[Deployment](deployment.md) oder nur im Repository): **Modelle** (Modellrollen, verwaltete Modelle,
-Endpunkte, Fehlerbilder), **Authentifizierung** (Auth-Modi, Keycloak und Härtung des Realms an einer
-Stelle) und **Betrieb** (Sicherung und Wiederherstellung, Update-Ablauf, Logs und Metriken,
-Grenzwerte auf einer Seite).
-
 ## 4. Lesewege nach Anlass
 
 | Anlass | Reihenfolge |
 |---|---|
-| Erste Installation | [Deployment](deployment.md): Schnellstart, „Erststart und Systemverwalter-Konto", Härtung → [Wissensbibliotheken](wissensbibliotheken.md) |
-| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Deployment](deployment.md): „Erststart und Systemverwalter-Konto" |
+| Erste Installation | [Betriebsübersicht](betrieb.md) → [Docker Compose](docker-compose.md): „Schnellstart" → [Authentifizierung](authentifizierung.md): „Erststart und Systemverwalter-Konto" → [Betriebsübersicht](betrieb.md): „Härtung" → [Wissensbibliotheken](wissensbibliotheken.md) |
+| Erste Installation unter Kubernetes | [Kubernetes](kubernetes.md): „Voraussetzungen", „Installation", „Netz und Sicherheit" → [Authentifizierung](authentifizierung.md): „Erststart und Systemverwalter-Konto" |
 | OPAA unter Kubernetes vorführen | [Kubernetes](kubernetes.md): „Erprobung mit dem Beispiel-Setup" |
-| Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [Deployment](deployment.md): „E-Mail-Versand (SMTP)", falls Einladungen per Mail gehen |
-| Niemand kommt mehr herein | [Deployment](deployment.md): „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) |
+| Konten anlegen oder entziehen | [Benutzerverwaltung](benutzerverwaltung.md) → [E-Mail-Versand](e-mail.md), falls Einladungen per Mail gehen |
+| Niemand kommt mehr herein | [Authentifizierung](authentifizierung.md): „Notfallprozedur: wieder hereinkommen" → [Benutzerverwaltung](benutzerverwaltung.md) |
 | Einen Space für ein Team einrichten | [Spaces](spaces.md) → [Katalog](katalog.md) |
 | Rechte vergeben, Gruppen nutzen | [Berechtigungen](berechtigungen.md) |
 | Eine Person scheidet aus, ein Referat wird aufgelöst | [Berechtigungen](berechtigungen.md): „Lebenszyklus" → [Benutzerverwaltung](benutzerverwaltung.md) |
@@ -111,11 +114,16 @@ Grenzwerte auf einer Seite).
 | Eine neue Quelle anschließen | [Konnektoren](konnektoren/README.md) → Kapitel des Konnektors → bei Bedarf [Zugänge](zugaenge.md) |
 | Dokumente fehlen oder sind veraltet | [Wissensbibliotheken](wissensbibliotheken.md): „Protokoll und Fehler" → Laufprotokoll der Bibliothek → Kapitel des Formats |
 | Eine Antwort ist schlecht | [Suche](suche.md): „Diagnose" und „Typische Befunde" → je nach Befund [Wissensbibliotheken](wissensbibliotheken.md) oder [Metadaten](metadaten.md) |
-| Ein Update steht an | [Deployment](deployment.md): „Aktualisierung" und „Was ein Update mit dem Index macht" |
+| Ein Update steht an | [Betriebsübersicht](betrieb.md): „Aktualisierung" → [Docker Compose](docker-compose.md) bzw. [Kubernetes](kubernetes.md): „Aktualisierung …" |
 | Formulierungshilfen für ein Referat bereitstellen | [Prompt-Bibliotheken](prompt-bibliotheken.md) → [Spaces](spaces.md) |
 | Ein fremdes KI-Werkzeug anschließen | [Fremdzugänge](fremdzugaenge.md) |
 | Postfächer anbinden wollen | [Berechtigungen](berechtigungen.md): „Prüfliste vor einem Postfach-Konnektor" → [Private Bibliotheken](private-bibliotheken.md) |
-| Originalablage wählen, sichern oder umstellen | [Deployment](deployment.md): „Originalablage" |
+| Originalablage wählen, sichern oder umstellen | [Originalablage](originalablage.md) |
+| Sichern und wiederherstellen | [Betriebsübersicht](betrieb.md): „Sicherung und Wiederherstellung" → Kapitel des Betriebswegs → [Authentifizierung](authentifizierung.md): „Nacharbeit nach einer Rücksicherung" |
+| Ein Modell anbinden oder wechseln | [Modelle](modelle.md) |
+| Einen Identitätsanbieter anbinden | [Authentifizierung](authentifizierung.md): „OIDC (Keycloak)" → [Berechtigungen](berechtigungen.md): „Woher Gruppen kommen" |
+| Eine Grenze greift, etwa `429` oder eine zu große Datei | [Konfiguration](konfiguration.md): „Grenzwerte im Überblick" |
+| Die Installation zeigt eine Störung | [Betriebsübersicht](betrieb.md): „Fehlerbehebung", „Logs und Metriken" |
 
 ## 5. Glossar
 

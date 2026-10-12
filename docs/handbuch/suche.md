@@ -403,7 +403,7 @@ Zwei bekannte Grenzen des Pfads:
 - PostgreSQL bewertet Treffer mit `ts_rank`, nicht mit BM25. Lange Chunks werden überbewertet,
   seltene Begriffe zu wenig gegenüber häufigen abgesetzt. Die Fusion (Stufe 7) verbraucht nur den
   Rang, nicht den Wert, was diese Schwäche abmildert. Einzelheiten stehen im Kapitel
-  [Deployment](deployment.md#bekannte-grenze-ts_rank-ist-kein-bm25).
+  [Deployment](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - Der Pfad lässt sich per Konfiguration abschalten. Er bleibt dann in der Kette, weist sich im
   Protokoll als abgeschaltet aus, und die Suche läuft rein vektoriell. Auf der Verwaltungs-Evaldomäne
   kostet das gemessen 15 Prozentpunkte Hit Rate@5.
@@ -431,7 +431,7 @@ höchsten Wert aus `lambda × Relevanz − (1 − lambda) × größte Ähnlichke
 gewählten Chunk`. Bei 1,0 ist der zweite Term null, und die Vektoren werden gar nicht erst gelesen.
 Der Default 1,0 ist eine Messentscheidung: Auf
 den Mehrthemen-Fällen der Evaluierung war reine Relevanz besser als die Vielfaltsauswahl (siehe
-[Deployment](deployment.md), `OPAA_QUERY_MMR_LAMBDA`). Ein Wert unter 1,0 wirkt zudem auf die
+[Konfiguration](konfiguration.md), `OPAA_QUERY_MMR_LAMBDA`). Ein Wert unter 1,0 wirkt zudem auf die
 Volltextlisten anders als auf die Vektorlisten, weil deren Relevanzwerte auf einer anderen Skala
 liegen; wer ihn setzt, sollte das messen.
 
@@ -488,7 +488,7 @@ kann kein Reranker nach vorn holen. Die Reichweite ist `fetch-k` je Liste mal de
 also Teilfragen mal aktive Pfade; bei einer Teilfrage liefern zwei Pfade höchstens doppelt
 `fetch-k` verschiedene Kandidaten. Wer das Fenster darüber hinaus vergrößert, muss `fetch-k` mit
 anheben. Was zum Einschalten gehört, steht im Kapitel
-[Deployment](deployment.md#reranking-einschalten).
+[Deployment](modelle.md#reranking-einschalten).
 
 ### Stufe 9: Dokument-Vervollständigung
 
@@ -1043,7 +1043,7 @@ oberhalb der Debug-Ebene.
 
 Alle Werte sind benchmark-gehärtete Defaults und bewusst in keiner Verwaltungsoberfläche
 einstellbar; wer sie ändert, sollte den Effekt messen. Die Schlüssel unter `opaa.query.*`, mit
-Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen):
+Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariablen):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -1074,7 +1074,7 @@ Der Such- und Abrufweg ohne Antwort (Abschnitt 7.1) hat eigene Schlüssel unter 
 | `context-passages` | 1 | angrenzende Abschnitte je Seite beim Abruf ohne `full` (0 bis 10) |
 
 Die Ratenbegrenzung der Chatsuche (Abschnitt 10.1) steht unter `opaa.rate-limit.chat-search.*`,
-mit Umgebungsvariable im Kapitel [Deployment](deployment.md#alle-umgebungsvariablen):
+mit Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariablen):
 
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
@@ -1109,7 +1109,7 @@ entsprechen.
 ### 10.4 Was nicht gebaut ist
 
 - **BM25** im Volltextpfad. Ob der Wechsel nötig ist, wird gemessen; die Eintrittsbedingung steht
-  im Kapitel [Deployment](deployment.md#bekannte-grenze-ts_rank-ist-kein-bm25).
+  im Kapitel [Deployment](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - **Reranking und Vielfaltsauswahl als Default.** Beides ist gebaut und per Konfiguration
   aktivierbar; der Auslieferungsstand entscheidet nach Messung, nicht nach Möglichkeit.
 - **Ableitung eines Filters aus der Frage** („nur Vermerke aus 2024"). Filter setzt die Person.
@@ -1125,7 +1125,7 @@ entsprechen.
 
 - Wie die Chunks entstehen, die hier gesucht werden: [Wissensbibliotheken](wissensbibliotheken.md)
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
-- Umgebungsvariablen, Reranking einschalten, Grenze des Volltextpfads:
-  [Deployment](deployment.md)
+- Umgebungsvariablen: [Konfiguration](konfiguration.md); Reranking einschalten: [Modelle](modelle.md#reranking-einschalten);
+  Grenze des Volltextpfads: [Datenbank](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25)
 - Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
 - Spaces, Chats und was ihnen zugeordnet ist: [Spaces](spaces.md)
