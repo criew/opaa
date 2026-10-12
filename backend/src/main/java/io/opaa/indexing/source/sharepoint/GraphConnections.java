@@ -40,7 +40,7 @@ final class GraphConnections {
         properties,
         targetAddressValidator,
         sleeper,
-        () -> SourceHttpClientFactory.buildHttpClient(false));
+        () -> SourceHttpClientFactory.buildHttpClient());
   }
 
   GraphConnections(

@@ -9,14 +9,12 @@ import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
 import software.amazon.awssdk.core.checksums.ResponseChecksumValidation;
 import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.http.SdkHttpClient;
-import software.amazon.awssdk.http.SdkHttpConfigurationOption;
 import software.amazon.awssdk.http.apache5.Apache5HttpClient;
 import software.amazon.awssdk.http.apache5.ProxyConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.retries.api.BackoffStrategy;
 import software.amazon.awssdk.retries.api.RetryStrategy;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.utils.AttributeMap;
 
 /**
  * The one way an SDK client is built in this application (ADR-0027, Entscheidung 8 and 9; ADR-0030,
@@ -92,10 +90,8 @@ public final class S3SdkClient implements AutoCloseable {
           URI.create("http://" + hostForUri(settings.proxyHost()) + ":" + settings.proxyPort()));
     }
     http.proxyConfiguration(proxy.build());
-    return http.buildWithDefaults(
-        AttributeMap.builder()
-            .put(SdkHttpConfigurationOption.TRUST_ALL_CERTIFICATES, settings.insecureSsl())
-            .build());
+    // The SDK's defaults check every certificate; nothing here relaxes that.
+    return http.build();
   }
 
   private static String hostForUri(String host) {

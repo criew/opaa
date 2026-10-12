@@ -43,9 +43,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 /**
  * The preview of a profile change names what saving it discards - stored secrets of libraries,
  * configurations, connected accounts of persons, sync states - and saving does exactly that, for
- * each kind of change: address, sign-in method, a default with and without binding, the TLS switch,
- * ownership, registration. Its confirmation is word for word the question of the 409, and the
- * private libraries it releases are the ones saving releases, as masked as every other number.
+ * each kind of change: address, sign-in method, a default with and without binding, ownership,
+ * registration. Its confirmation is word for word the question of the 409, and the private
+ * libraries it releases are the ones saving releases, as masked as every other number.
  */
 @OpaaIntegrationTest
 class ProfileChangeDiscardsIntegrationTest {
@@ -140,25 +140,6 @@ class ProfileChangeDiscardsIntegrationTest {
     assertThat(saved.configurationsChanged()).isZero();
     assertThat(saved.connectionsDiscarded()).isEqualTo(2);
     assertThat(saved.confirmation()).contains("1 Bibliothek");
-  }
-
-  @Test
-  void aTlsChangeKeepsTheSecretsAndAsksNothing() throws Exception {
-    String name = "Zugang TLS " + UUID.randomUUID();
-    UUID profile = probeProfile(name, "PERSONAL_SECRET", "");
-    probeLibrary(profile, "/a", "a:1");
-    probeLibrary(profile, "/b", null);
-
-    Saved saved =
-        previewThenSave(
-            profile,
-            probeChange(name, PROBE_SERVER, "PERSONAL_SECRET", ", \"sourceInsecureSsl\": true"),
-            false);
-
-    assertThat(saved.secretsDiscarded()).isZero();
-    assertThat(saved.configurationsChanged()).isEqualTo(2);
-    assertThat(saved.connectionsDiscarded()).isZero();
-    assertThat(saved.confirmation()).isNull();
   }
 
   @Test
@@ -402,8 +383,7 @@ class ProfileChangeDiscardsIntegrationTest {
                           PersonProbeSourceConnector.TYPE,
                           null,
                           PERSON_SERVER + "/privat",
-                          null,
-                          false));
+                          null));
               shellService.registerCreated(
                   saved, owner, Map.of("name", saved.getName(), "sourceType", "PERSON_PROBE"));
               return saved.getId();

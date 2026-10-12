@@ -327,7 +327,7 @@ class ConnectionProfileApiIntegrationTest {
     transactions.executeWithoutResult(
         status -> {
           KnowledgeLibrary row = libraryRepository.findById(library).orElseThrow();
-          row.updateSourceConfiguration(row.getSourcePath(), row.getSourceUrl(), "bleibt", false);
+          row.updateSourceConfiguration(row.getSourcePath(), row.getSourceUrl(), "bleibt");
           libraryRepository.save(row);
         });
 

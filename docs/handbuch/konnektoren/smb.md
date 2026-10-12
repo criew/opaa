@@ -52,7 +52,7 @@ flowchart LR
 | „Dienstkonto", „Passwort" | `DOMÄNE\Benutzer`, `Benutzer@domäne` oder ein lokales Konto des Servers, ohne Doppelpunkt. Ein anderer Server **oder eine andere Freigabe** verlangt das Passwort neu, weil eine Freigabe eine eigene Rechtegrenze ist |
 | „Ordner" | ein bis fünfzig Pfade ab der Freigabe, etwa `/Projekte`; `/` oder leer liest die ganze Freigabe. Ordner dürfen sich nicht überschneiden, auch nicht bei anderer Schreibweise; kein Komma, `.`, `..` oder eines der Zeichen `\ : * ? " < > |` |
 
-„Zertifikatsprüfung aussetzen" gibt es bei SMB nicht. **„Ordner laden"** zeigt die Ordner im Stamm
+**„Ordner laden"** zeigt die Ordner im Stamm
 der Freigabe; darf das Konto den Stamm nicht auflisten, lassen sich die Pfade von Hand eintragen.
 **„Verbindung testen"** meldet sich an, öffnet die Freigabe und prüft jeden Ordner; jeder Befund hat
 einen eigenen Satz (Abschnitt 9). Eine geänderte Ordnerliste verwirft den Abgleichstand.

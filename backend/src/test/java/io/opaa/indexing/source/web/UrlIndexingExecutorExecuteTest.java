@@ -93,8 +93,7 @@ class UrlIndexingExecutorExecuteTest {
           SourceTypes.HTTP_DIRECTORY,
           null,
           null,
-          null,
-          false);
+          null);
 
   @BeforeEach
   void setUp() throws IOException {
@@ -203,7 +202,7 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   private void execute(String credentials) {
-    library.updateSourceConfiguration(null, baseUrl + "/files/", credentials, false);
+    library.updateSourceConfiguration(null, baseUrl + "/files/", credentials);
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.FULL);
     verify(indexingJobService, timeout(5000))
@@ -779,7 +778,7 @@ class UrlIndexingExecutorExecuteTest {
   }
 
   private UUID executeWithoutWaiting() {
-    library.updateSourceConfiguration(null, baseUrl + "/files/", null, false);
+    library.updateSourceConfiguration(null, baseUrl + "/files/", null);
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.FULL);
     return jobId;

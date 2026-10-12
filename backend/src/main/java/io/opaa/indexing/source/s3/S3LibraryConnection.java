@@ -36,12 +36,7 @@ final class S3LibraryConnection {
         | S3Credentials.InvalidCredentialsFormatException e) {
       throw new InvalidS3ConfigurationException(e.getMessage());
     }
-    return new S3Connection(
-        endpoint,
-        settings.effectiveRegion(),
-        settings.pathStyle(),
-        parsed,
-        source.sourceInsecureSsl());
+    return new S3Connection(endpoint, settings.effectiveRegion(), settings.pathStyle(), parsed);
   }
 
   /** The configuration cannot be turned into a connection; the message is user-facing. */

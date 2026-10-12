@@ -46,7 +46,6 @@ export const libraryHandlers = [
       sourcePath?: string | null
       sourceUrl?: string | null
       sourceCredentials?: string | null
-      sourceInsecureSsl?: boolean | null
       sourceSettings?: Record<string, unknown> | null
       connectionProfileId?: string | null
       privateLibrary?: boolean | null
@@ -90,7 +89,7 @@ export const libraryHandlers = [
     // Mirrors KnowledgeLibraryService#validateConfigurationForType (ADR-0018): only the fields
     // matching sourceType may be set, and the run-based types require their address field.
     if (body.sourceType === 'UPLOAD') {
-      if (body.sourcePath || body.sourceUrl || body.sourceCredentials || body.sourceInsecureSsl) {
+      if (body.sourcePath || body.sourceUrl || body.sourceCredentials) {
         return HttpResponse.json(
           { error: 'sourceType UPLOAD erlaubt keine Quellkonfiguration' },
           { status: 400 },
@@ -116,12 +115,6 @@ export const libraryHandlers = [
             error:
               'sourceUrl und sourceCredentials sind für sourceType FILESYSTEM nicht' + ' zulässig',
           },
-          { status: 400 },
-        )
-      }
-      if (body.sourceInsecureSsl) {
-        return HttpResponse.json(
-          { error: 'sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig' },
           { status: 400 },
         )
       }
@@ -256,15 +249,6 @@ export const libraryHandlers = [
           ? Boolean(body.sourceCredentials)
           : undefined,
       // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
-      sourceInsecureSsl:
-        body.sourceType === 'HTTP_DIRECTORY' ||
-        body.sourceType === 'RSS_FEED' ||
-        body.sourceType === 'CONFLUENCE' ||
-        body.sourceType === 'S3' ||
-        body.sourceType === 'SHAREPOINT' ||
-        body.sourceType === 'NEXTCLOUD'
-          ? Boolean(body.sourceInsecureSsl)
-          : null,
       // the pending consent becomes the library's own, its creator answering for it
       sourceConnection: body.pendingConnectionId
         ? {
@@ -606,14 +590,12 @@ export const libraryHandlers = [
       description?: string
       schedule?: LibraryScheduleRequest
       sourceUrl?: string | null
-      sourceInsecureSsl?: boolean | null
       sourceSettings?: Record<string, unknown> | null
     }
     library.name = body.name
     if (library.sourceType === 'S3') {
       // the S3 edit dialog resends the typed configuration as a whole (ADR-0027)
       if (body.sourceUrl !== undefined) library.sourceUrl = body.sourceUrl
-      if (body.sourceInsecureSsl !== undefined) library.sourceInsecureSsl = body.sourceInsecureSsl
       if (body.sourceSettings) library.sourceSettings = body.sourceSettings
     }
     library.description = body.description ?? null

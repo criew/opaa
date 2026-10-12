@@ -92,7 +92,6 @@ public class PrivateLibraryCreation {
             privateConnections.addressOn(
                 profile, request.sourceUrl() == null ? null : request.sourceUrl().toString()),
             blankToNull(request.sourceCredentials()),
-            Boolean.TRUE.equals(request.sourceInsecureSsl()),
             readSettings(connector, request.sourceSettings()));
     SourceSettings validated =
         connector.validate(
@@ -111,8 +110,7 @@ public class PrivateLibraryCreation {
             type,
             own.sourcePath(),
             own.sourceUrl(),
-            null,
-            own.sourceInsecureSsl());
+            null);
     connector.configureNew(library, own);
     if (request.schedule() != null) {
       LibraryFields.Schedule schedule =

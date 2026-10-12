@@ -17,17 +17,16 @@ import java.util.function.Supplier;
  * one object instead of a 9-10-parameter signature threaded through {@link
  * RssFeedIndexingExecutor}.
  *
- * <p>{@link #httpClientFor}/{@link #authHeaderFor} withhold {@code sourceInsecureSsl} and {@code
- * Authorization} for any target outside the feed's own origin - an entry's {@code <link>} is
- * content the feed operator controls; {@link #authHeader} answers the header valid now, {@code
- * null} for none, and is asked before every request. {@link #requestBudget} counts and bounds every
- * request of the run - feed, detail pages, attachments. {@link #anyEntryDeferred} is the only
- * mutable field: set by the executor or {@code AttachmentIndexer} on any deferral, never reset, and
- * read once before deciding whether the conditional-GET state may be saved.
+ * <p>{@link #authHeaderFor} withholds {@code Authorization} for any target outside the feed's own
+ * origin - an entry's {@code <link>} is content the feed operator controls; {@link #httpClient}
+ * checks every certificate; {@link #authHeader} answers the header valid now, {@code null} for
+ * none, and is asked before every request. {@link #requestBudget} counts and bounds every request
+ * of the run - feed, detail pages, attachments. {@link #anyEntryDeferred} is the only mutable
+ * field: set by the executor or {@code AttachmentIndexer} on any deferral, never reset, and read
+ * once before deciding whether the conditional-GET state may be saved.
  */
 public record RssFeedRunContext(
-    HttpClient secureClient,
-    HttpClient insecureClient,
+    HttpClient httpClient,
     KnowledgeLibrary targetLibrary,
     Supplier<String> authHeader,
     String feedUrl,
@@ -46,15 +45,6 @@ public record RssFeedRunContext(
   @Override
   public RateLimitListener rateLimitListener() {
     return requestBudget;
-  }
-
-  /**
-   * Picks {@code insecureClient} for a request whose target shares the feed's own origin, {@code
-   * secureClient} for anything else. An unparseable {@code targetUrl} is treated as foreign (the
-   * secure client).
-   */
-  public HttpClient httpClientFor(String targetUrl) {
-    return isSameOriginAsFeed(targetUrl) ? insecureClient : secureClient;
   }
 
   /**

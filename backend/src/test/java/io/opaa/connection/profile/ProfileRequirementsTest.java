@@ -131,8 +131,7 @@ class ProfileRequirementsTest {
             ProfileProbeSourceConnector.TYPE,
             null,
             "https://probe.example.org/a",
-            null,
-            false);
+            null);
 
     service.requireOwnAddressKept(library, "https://probe.example.org/a");
     assertThatThrownBy(() -> service.requireOwnAddressKept(library, "https://probe.example.org/b"))

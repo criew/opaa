@@ -84,8 +84,7 @@ class SourceEventIntakeTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            "token",
-            false);
+            "token");
     library.setWebhookSecret("geheim");
     libraryId = UUID.randomUUID();
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));

@@ -39,12 +39,11 @@ public class ConfluenceConnectionService {
    * detected edition and count the readable spaces. Never throws for an instance problem - that is
    * the test's result - only for a caller problem ({@link ValidationException}).
    */
-  public Probe probe(
-      String rawUrl, String credentials, boolean insecureSsl, ConfluenceEdition expectedEdition)
+  public Probe probe(String rawUrl, String credentials, ConfluenceEdition expectedEdition)
       throws InterruptedException {
     ConfluenceEditionDetector.Detected detected;
     try {
-      detected = clientFactory.editionDetector().detect(rawUrl, insecureSsl);
+      detected = clientFactory.editionDetector().detect(rawUrl);
     } catch (ConfluenceConnection.InvalidBaseUrlException e) {
       throw new ValidationException(e.getMessage());
     } catch (ConfluenceAccessException e) {
@@ -83,8 +82,7 @@ public class ConfluenceConnectionService {
     }
     try {
       ConfluenceClient client =
-          clientFactory.create(
-              new ConfluenceConnection(detected.baseUrl(), edition, parsed, insecureSsl));
+          clientFactory.create(new ConfluenceConnection(detected.baseUrl(), edition, parsed));
       // One authenticated request (ADR-0023, Entscheidung 2) - the readable spaces are listed by
       // the selection's own endpoint, never here, so a test can never turn into a full pagination.
       client.verifyCredentials();
@@ -108,8 +106,7 @@ public class ConfluenceConnectionService {
    *     cannot be produced - a 400 for the caller, never a stack trace
    */
   public List<ConfluenceSpace> listSpaces(
-      String rawUrl, ConfluenceEdition edition, String credentials, boolean insecureSsl)
-      throws InterruptedException {
+      String rawUrl, ConfluenceEdition edition, String credentials) throws InterruptedException {
     if (edition == null) {
       throw new ValidationException("sourceSettings.edition ist erforderlich");
     }
@@ -124,7 +121,7 @@ public class ConfluenceConnectionService {
     }
     try {
       ConfluenceClient client =
-          clientFactory.create(new ConfluenceConnection(baseUrl, edition, parsed, insecureSsl));
+          clientFactory.create(new ConfluenceConnection(baseUrl, edition, parsed));
       // Data Center answers an unknown token anonymously with an empty listing rather than
       // refusing it - the check has to come first, or "keine Spaces" would hide a dead token
       client.verifyCredentials();
@@ -144,14 +141,13 @@ public class ConfluenceConnectionService {
    * @throws ValidationException naming the detected edition on a mismatch; {@link
    *     SourceTargetRefusedException} naming the instance problem when nothing could be detected
    */
-  public void requireEdition(
-      String normalizedUrl, boolean insecureSsl, ConfluenceEdition expected) {
+  public void requireEdition(String normalizedUrl, ConfluenceEdition expected) {
     ConfluenceEditionDetector detector = clientFactory.editionDetector();
     try {
-      if (detector.confirms(normalizedUrl, insecureSsl, expected)) {
+      if (detector.confirms(normalizedUrl, expected)) {
         return;
       }
-      ConfluenceEditionDetector.Detected detected = detector.detect(normalizedUrl, insecureSsl);
+      ConfluenceEditionDetector.Detected detected = detector.detect(normalizedUrl);
       log.info(
           "Refusing CONFLUENCE library: instance is {} but {} was requested",
           detected.edition(),

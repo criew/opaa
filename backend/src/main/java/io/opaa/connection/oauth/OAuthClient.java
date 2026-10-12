@@ -353,7 +353,7 @@ public final class OAuthClient {
       String label) {
     try {
       return SourceFormPost.post(
-          SourceHttpClientFactory.buildHttpClient(false),
+          SourceHttpClientFactory.buildHttpClient(),
           endpoint,
           form,
           headers,

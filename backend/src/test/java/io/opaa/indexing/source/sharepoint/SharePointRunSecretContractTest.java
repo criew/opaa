@@ -63,7 +63,6 @@ class SharePointRunSecretContractTest extends RunSecretContract {
         null,
         server.origin().toString(),
         FakeGraphServer.TOKEN,
-        false,
         ConnectorData.of(Map.of("libraries", List.of(Map.of("driveId", DRIVE_0)))));
   }
 

@@ -31,7 +31,6 @@ export interface EditableLibrarySource {
   sourceType: SourceTypeKey
   sourcePath?: string | null
   sourceUrl?: string | null
-  sourceInsecureSsl?: boolean | null
   // Optional/nullable to tolerate a LibraryResponse fixture that predates #542 finding 3 -
   // treated as "nothing stored" (false) rather than crashing or silently claiming otherwise.
   sourceCredentialsSet?: boolean | null

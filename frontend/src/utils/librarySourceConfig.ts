@@ -1,20 +1,18 @@
-/** The five generic connection fields - what the Pfad- und URL-Formulare edit (#1940). */
+/** The generic connection fields - what the Pfad- und URL-Formulare edit (#1940). */
 export interface GenericSourceValues {
   sourcePath: string
   sourceUrl: string
   sourceCredentials: string
-  sourceInsecureSsl: boolean
 }
 
 export const EMPTY_GENERIC_SOURCE_VALUES: GenericSourceValues = {
   sourcePath: '',
   sourceUrl: '',
   sourceCredentials: '',
-  sourceInsecureSsl: false,
 }
 
 /**
- * The source configuration fields shared by LibraryRequest and LibraryUpdateRequest: the five
+ * The source configuration fields shared by LibraryRequest and LibraryUpdateRequest: the
  * generic ones plus the connector's own settings object (ADR-0038), which stays undefined for a
  * connector without settings.
  */
@@ -22,7 +20,6 @@ export interface LibrarySourceConfigPayload {
   sourcePath?: string
   sourceUrl?: string
   sourceCredentials?: string
-  sourceInsecureSsl: boolean
   sourceSettings?: Record<string, unknown>
 }
 
@@ -30,13 +27,11 @@ export interface LibrarySourceConfigPayload {
 export function storedGenericSourceValues(library: {
   sourcePath?: string | null
   sourceUrl?: string | null
-  sourceInsecureSsl?: boolean | null
 }): GenericSourceValues {
   return {
     sourcePath: library.sourcePath ?? '',
     sourceUrl: library.sourceUrl ?? '',
     sourceCredentials: '',
-    sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
   }
 }
 
@@ -76,12 +71,11 @@ export function genericSourcePayload(
   values: GenericSourceValues,
 ): LibrarySourceConfigPayload {
   if (kind === 'path') {
-    return { sourcePath: values.sourcePath.trim(), sourceInsecureSsl: false }
+    return { sourcePath: values.sourcePath.trim() }
   }
   return {
     sourceUrl: values.sourceUrl.trim(),
     sourceCredentials: values.sourceCredentials.trim() || undefined,
-    sourceInsecureSsl: values.sourceInsecureSsl,
   }
 }
 

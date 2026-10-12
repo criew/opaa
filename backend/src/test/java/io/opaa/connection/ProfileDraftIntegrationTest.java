@@ -35,9 +35,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * The draft knows its profile: creation, connection test and change use the profile's defaults, TLS
- * switch and sign-in; a differing value is a 400; the library stores only its own part; and a test
- * on another profile repairs a library its stored lock would refuse.
+ * The draft knows its profile: creation, connection test and change use the profile's defaults and
+ * sign-in; a differing value is a 400; the library stores only its own part; and a test on another
+ * profile repairs a library its stored lock would refuse.
  */
 @OpaaIntegrationTest
 class ProfileDraftIntegrationTest {
@@ -71,7 +71,7 @@ class ProfileDraftIntegrationTest {
   /** Rule 1 and the frame: validated and run with the profile's, stored with its own part only. */
   @Test
   void aLibraryIsValidatedAndRunWithTheProfileFrameAndStoresOnlyItsOwnPart() throws Exception {
-    UUID profile = createProfile("PERSONAL_SECRET", "{\"edition\": \"DC\"}", true);
+    UUID profile = createProfile("PERSONAL_SECRET", "{\"edition\": \"DC\"}");
     probe.lastValidated();
 
     UUID library =
@@ -83,20 +83,17 @@ class ProfileDraftIntegrationTest {
     SourceSettings validated = probe.lastValidated().orElseThrow();
     assertThat(validated.connectorSettings().asMap())
         .isEqualTo(Map.of("edition", "DC", "topic", "Wetter"));
-    assertThat(validated.sourceInsecureSsl()).isTrue();
     assertThat(stored(library, "source_settings")).doesNotContain("edition").contains("Wetter");
-    assertThat(stored(library, "source_insecure_ssl")).isEqualTo("false");
 
     Seen seen = run(library);
     assertThat(seen.settings().connectorSettings().asMap())
         .isEqualTo(Map.of("edition", "DC", "topic", "Wetter"));
-    assertThat(seen.settings().sourceInsecureSsl()).isTrue();
     assertThat(seen.credentials()).isEqualTo("nutzer:geheim");
   }
 
   @Test
   void aValueTheProfileSetsOtherwiseIsRefusedOnCreationTestAndChange() throws Exception {
-    UUID profile = createProfile("NONE", "{\"edition\": \"DC\"}", false);
+    UUID profile = createProfile("NONE", "{\"edition\": \"DC\"}");
 
     mockMvc
         .perform(
@@ -127,7 +124,7 @@ class ProfileDraftIntegrationTest {
   /** The audit gap of an own value under a default cannot arise: only real changes are named. */
   @Test
   void aChangeRepeatingTheDefaultsNamesOnlyTheOwnChange() throws Exception {
-    UUID profile = createProfile("NONE", "{\"edition\": \"DC\"}", false);
+    UUID profile = createProfile("NONE", "{\"edition\": \"DC\"}");
     UUID library = createLibrary(profile, "\"sourceSettings\": {\"topic\": \"alt\"},");
 
     mockMvc
@@ -151,7 +148,7 @@ class ProfileDraftIntegrationTest {
 
   @Test
   void aConnectionTestRunsThroughTheChosenProfile() throws Exception {
-    UUID profile = createProfile("PERSONAL_SECRET", "{\"edition\": \"DC\"}", false);
+    UUID profile = createProfile("PERSONAL_SECRET", "{\"edition\": \"DC\"}");
     probe.lastTested();
 
     mockMvc
@@ -175,8 +172,8 @@ class ProfileDraftIntegrationTest {
   /** A library its lock or a removed profile blocks is tested against another one, as a draft. */
   @Test
   void aBlockedLibraryIsTestedAgainstAnotherProfile() throws Exception {
-    UUID locked = createProfile("PERSONAL_SECRET", "{\"edition\": \"DC\"}", false);
-    UUID replacement = createProfile("PERSONAL_SECRET", "{\"edition\": \"CLOUD\"}", false);
+    UUID locked = createProfile("PERSONAL_SECRET", "{\"edition\": \"DC\"}");
+    UUID replacement = createProfile("PERSONAL_SECRET", "{\"edition\": \"CLOUD\"}");
     UUID library = createLibrary(locked, "\"sourceCredentials\": \"nutzer:geheim\",");
     mockMvc
         .perform(as("dev-admin", put(ADMIN + "/" + locked + "/lock")).content("{\"locked\": true}"))
@@ -218,7 +215,7 @@ class ProfileDraftIntegrationTest {
   /** A library the profile requirement locks is repaired by testing it on a profile first. */
   @Test
   void aLibraryTheProfileRequirementLocksIsTestedAgainstAProfile() throws Exception {
-    UUID profile = createProfile("NONE", null, false);
+    UUID profile = createProfile("NONE", null);
     String body =
         mockMvc
             .perform(
@@ -264,7 +261,7 @@ class ProfileDraftIntegrationTest {
   /** Connecting adopts the profile's frame: own values give way, and the form still saves as is. */
   @Test
   void connectingAdoptsTheProfileFrameAndTheUnchangedFormStillSaves() throws Exception {
-    UUID profile = createProfile("NONE", "{\"edition\": \"DC\"}", false);
+    UUID profile = createProfile("NONE", "{\"edition\": \"DC\"}");
     String body =
         mockMvc
             .perform(
@@ -273,7 +270,6 @@ class ProfileDraftIntegrationTest {
                         """
                         {"name": "Eigen %s", "sourceType": "PROFILE_PROBE",
                          "sourceUrl": "https://probe.example.org/x",
-                         "sourceInsecureSsl": true,
                          "sourceCredentials": "nutzer:geheim",
                          "sourceSettings": {"edition": "CLOUD", "topic": "t"}}
                         """
@@ -291,13 +287,12 @@ class ProfileDraftIntegrationTest {
                 .content("{\"profileId\": \"" + profile + "\"}"))
         .andExpect(status().isOk());
 
-    assertThat(stored(library, "source_insecure_ssl")).isEqualTo("false");
     assertThat(stored(library, "source_settings")).doesNotContain("edition").contains("topic");
     assertThat(stored(library, "source_credentials")).isNull();
     String form =
         """
         {"name": "Ablage", "sourceType": "PROFILE_PROBE", "sourceUrl": "https://probe.example.org/x",
-         "sourceInsecureSsl": false, "sourceSettings": {"topic": "t"}}
+         "sourceSettings": {"topic": "t"}}
         """;
     mockMvc
         .perform(as("dev-admin", put("/api/v1/libraries/" + library)).content(form))
@@ -308,8 +303,7 @@ class ProfileDraftIntegrationTest {
                 .content(
                     """
                     {"sourceType": "PROFILE_PROBE", "libraryId": "%s",
-                     "sourceUrl": "https://probe.example.org/x", "sourceInsecureSsl": false,
-                     "sourceSettings": {"topic": "t"}}
+                     "sourceUrl": "https://probe.example.org/x", "sourceSettings": {"topic": "t"}}
                     """
                         .formatted(library)))
         .andExpect(status().isOk())
@@ -319,13 +313,13 @@ class ProfileDraftIntegrationTest {
   /** The draft escapes the library's own lock, never one of the target profile or its type. */
   @Test
   void aTestOnALockedOrUnreleasedTargetProfileIsRefused() throws Exception {
-    UUID current = createProfile("NONE", null, false);
+    UUID current = createProfile("NONE", null);
     UUID library = createLibrary(current, "");
     mockMvc
         .perform(
             as("dev-admin", put(ADMIN + "/" + current + "/lock")).content("{\"locked\": true}"))
         .andExpect(status().isOk());
-    UUID lockedTarget = createProfile("NONE", null, false);
+    UUID lockedTarget = createProfile("NONE", null);
     mockMvc
         .perform(
             as("dev-admin", put(ADMIN + "/" + lockedTarget + "/lock"))
@@ -336,15 +330,14 @@ class ProfileDraftIntegrationTest {
             .perform(
                 as("dev-admin", post(ADMIN))
                     .content(
-                        profileJson(
-                            "Zugang ohne Freigabe " + UUID.randomUUID(), "NONE", null, false)))
+                        profileJson("Zugang ohne Freigabe " + UUID.randomUUID(), "NONE", null)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
             .getContentAsString(StandardCharsets.UTF_8);
     UUID unreleased = UUID.fromString(JsonPath.read(unreleasedBody, "$.id"));
     profiles.add(unreleased);
-    UUID free = createProfile("NONE", null, false);
+    UUID free = createProfile("NONE", null);
 
     mockMvc
         .perform(sourceTestOn(library, lockedTarget))
@@ -376,14 +369,12 @@ class ProfileDraftIntegrationTest {
                 .formatted(library, profile));
   }
 
-  private UUID createProfile(String method, String defaults, boolean insecureSsl) throws Exception {
+  private UUID createProfile(String method, String defaults) throws Exception {
     String body =
         mockMvc
             .perform(
                 as("dev-admin", post(ADMIN))
-                    .content(
-                        profileJson(
-                            "Zugang Entwurf " + UUID.randomUUID(), method, defaults, insecureSsl)))
+                    .content(profileJson("Zugang Entwurf " + UUID.randomUUID(), method, defaults)))
             .andExpect(status().isCreated())
             .andReturn()
             .getResponse()
@@ -445,17 +436,12 @@ class ProfileDraftIntegrationTest {
         + "\"}";
   }
 
-  private static String profileJson(
-      String name, String method, String defaults, boolean insecureSsl) {
+  private static String profileJson(String name, String method, String defaults) {
     return """
         {"name": "%s", "sourceType": "PROFILE_PROBE", "serverUrl": "https://probe.example.org",
-         "authMethod": "%s", "ownership": "LIBRARY", "sourceInsecureSsl": %s%s}
+         "authMethod": "%s", "ownership": "LIBRARY"%s}
         """
-        .formatted(
-            name,
-            method,
-            insecureSsl,
-            defaults == null ? "" : ", \"connectorSettings\": " + defaults);
+        .formatted(name, method, defaults == null ? "" : ", \"connectorSettings\": " + defaults);
   }
 
   private static MockHttpServletRequestBuilder as(

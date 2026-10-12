@@ -369,8 +369,7 @@ class ChatSourceAssemblerTest {
             SourceTypes.FILESYSTEM,
             "/privat",
             null,
-            null,
-            false);
+            null);
     KnowledgeLibrary shared =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Geteilt", null, UUID.randomUUID());
     UUID ownDocumentId = UUID.randomUUID();

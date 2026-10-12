@@ -101,8 +101,7 @@ class UrlIndexingExecutorTest {
             // Loopback - never reachable from outside the server itself, exactly the class of
             // target the SSRF check rejects.
             "http://127.0.0.1:1/dir/",
-            null,
-            false);
+            null);
 
     executorWithRealCrawler.execute(jobId, library, IndexingRunMode.FULL);
 

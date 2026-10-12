@@ -640,8 +640,7 @@ class SourceConsentIntegrationTest {
                               SourceType.of("OAUTH_PROBE"),
                               null,
                               "https://oauth-probe.example.org/ablage",
-                              null,
-                              false));
+                              null));
                   shellService.registerCreated(
                       saved, person, Map.of("name", saved.getName(), "sourceType", "OAUTH_PROBE"));
                   return saved.getId();

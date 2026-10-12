@@ -638,8 +638,7 @@ class MetadataFilterSearchIntegrationTest {
             SourceTypes.FILESYSTEM,
             sourcePath.toString(),
             null,
-            null,
-            false));
+            null));
   }
 
   private void grant(KnowledgeLibrary target, CurrentUser subject, AssetRole role) {

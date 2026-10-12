@@ -1,6 +1,7 @@
 package io.opaa.s3;
 
 import io.opaa.outbound.ProxyRefusal;
+import io.opaa.sourceaccess.UntrustedCertificate;
 import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketTimeoutException;
@@ -164,7 +165,7 @@ public final class S3FailureTranslator {
         return new S3AccessException.Unreachable(proxyRefusal.get());
       }
       if (findCause(e, SSLException.class) != null) {
-        return new S3AccessException.Tls();
+        return new S3AccessException.Tls(UntrustedCertificate.causes(e));
       }
       if (findCause(e, UnknownHostException.class) != null) {
         return new S3AccessException.Unreachable(

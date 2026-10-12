@@ -463,8 +463,8 @@ Spezifikation zu Sicherheit und Nachweisführung; die endgültige Zuordnung ist 
 - **Zertifikate stammen aus der Verwaltung des Betreibers** — in einer abgeschotteten Umgebung
   regelmäßig aus einer eigenen Zertifizierungsstelle des Hauses. Eine Installation, die für ihr
   Zertifikat einen Dienst im Internet braucht, ist ohne Netzanbindung nicht betreibbar.
-- **Eine Abschaltung der Zertifikatsprüfung ist Erprobungen vorbehalten**, wird als solche kenntlich
-  gemacht und ist im Regelbetrieb ein Befund.
+- **Die Zertifikatsprüfung der Quellen lässt sich nicht abschalten** (#2537); eine eigene
+  Zertifizierungsstelle ergänzt der Betrieb im Truststore.
 - **Verschlüsselung im Ruhezustand** — Datenträger, Datenbank, Sicherungen — ist Sache der
   Betriebsplattform und wird vom Produkt vorausgesetzt, nicht ersetzt.
 

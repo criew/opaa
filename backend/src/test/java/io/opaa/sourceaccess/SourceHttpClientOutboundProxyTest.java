@@ -71,7 +71,7 @@ class SourceHttpClientOutboundProxyTest {
   @Test
   void aSourceRequestAndEveryRedirectHopGoThroughTheProxy() throws Exception {
     try (OutboundProxyRoute route = OutboundProxyRoute.through(proxy.address())) {
-      HttpClient client = SourceHttpClientFactory.buildHttpClient(false);
+      HttpClient client = SourceHttpClientFactory.buildHttpClient();
 
       HttpResponse<InputStream> response =
           RedirectFollowingFetcher.sendFollowingRedirects(
@@ -97,7 +97,7 @@ class SourceHttpClientOutboundProxyTest {
   void anExcludedTargetGoesDirect() throws Exception {
     try (OutboundProxyRoute route =
         OutboundProxyRoute.through(proxy.address(), "upstream.invalid")) {
-      HttpClient client = SourceHttpClientFactory.buildHttpClient(false);
+      HttpClient client = SourceHttpClientFactory.buildHttpClient();
 
       // Direct, the name does not resolve; through the proxy the request would have succeeded.
       assertThatThrownBy(

@@ -91,8 +91,7 @@ class PushIntakeServiceTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            "pat",
-            false);
+            "pat");
     when(libraries.findById(wiki.getId())).thenReturn(Optional.of(wiki));
 
     service.accept(wiki.getId(), BODY, HEADER);

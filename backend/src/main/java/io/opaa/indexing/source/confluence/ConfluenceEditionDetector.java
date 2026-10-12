@@ -48,17 +48,15 @@ public final class ConfluenceEditionDetector {
    * @throws ConfluenceAccessException when the target validation rejects the address
    * @throws ConfluenceConnection.InvalidBaseUrlException when the address is not a usable URL
    */
-  public Detected detect(String rawBaseUrl, boolean insecureSsl)
-      throws ConfluenceAccessException, InterruptedException {
+  public Detected detect(String rawBaseUrl) throws ConfluenceAccessException, InterruptedException {
     URI dataCenterBase =
         ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.DATA_CENTER);
     URI cloudBase = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, ConfluenceEdition.CLOUD);
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(insecureSsl);
+    HttpClient client = SourceHttpClientFactory.buildHttpClient();
     SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionserkennung";
 
-    ConfluenceConnection cloud =
-        new ConfluenceConnection(cloudBase, ConfluenceEdition.CLOUD, null, insecureSsl);
+    ConfluenceConnection cloud = new ConfluenceConnection(cloudBase, ConfluenceEdition.CLOUD, null);
     ConfluenceHttp cloudHttp =
         new ConfluenceHttp(
             client,
@@ -76,7 +74,7 @@ public final class ConfluenceEditionDetector {
     }
 
     ConfluenceConnection dataCenter =
-        new ConfluenceConnection(dataCenterBase, ConfluenceEdition.DATA_CENTER, null, insecureSsl);
+        new ConfluenceConnection(dataCenterBase, ConfluenceEdition.DATA_CENTER, null);
     ConfluenceHttp dcHttp =
         new ConfluenceHttp(
             client,
@@ -127,13 +125,13 @@ public final class ConfluenceEditionDetector {
    *
    * @return whether the instance answers with the expected edition's signature
    */
-  public boolean confirms(String rawBaseUrl, boolean insecureSsl, ConfluenceEdition expected)
+  public boolean confirms(String rawBaseUrl, ConfluenceEdition expected)
       throws ConfluenceAccessException, InterruptedException {
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(insecureSsl);
+    HttpClient client = SourceHttpClientFactory.buildHttpClient();
     SourceRequestMeter meter = new SourceRequestMeter();
     String resource = "die Editionsprüfung";
     URI base = ConfluenceConnection.normalizeBaseUrl(rawBaseUrl, expected);
-    ConfluenceConnection connection = new ConfluenceConnection(base, expected, null, insecureSsl);
+    ConfluenceConnection connection = new ConfluenceConnection(base, expected, null);
     ConfluenceHttp http =
         new ConfluenceHttp(
             client,

@@ -60,7 +60,6 @@ class S3SourceConnectorViewTest {
         SourceTypes.S3,
         null,
         "https://s3.example.org",
-        null,
-        false);
+        null);
   }
 }

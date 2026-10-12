@@ -108,8 +108,7 @@ class RssFeedIndexingExecutorTest {
           SourceTypes.RSS_FEED,
           null,
           "https://example.com/feed.xml",
-          null,
-          false);
+          null);
 
   @BeforeEach
   void setUp() throws IOException {
@@ -229,13 +228,13 @@ class RssFeedIndexingExecutorTest {
   }
 
   private void execute(String feedUrl) {
-    library.updateSourceConfiguration(null, feedUrl, null, false);
+    library.updateSourceConfiguration(null, feedUrl, null);
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
   }
 
   /** Like {@link #execute(String)}, but also configures the library's own sourceCredentials. */
   private void execute(String feedUrl, String credentials) {
-    library.updateSourceConfiguration(null, feedUrl, credentials, false);
+    library.updateSourceConfiguration(null, feedUrl, credentials);
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
   }
 
@@ -2222,7 +2221,7 @@ class RssFeedIndexingExecutorTest {
   }
 
   private UUID executeJob(String feedUrl) {
-    library.updateSourceConfiguration(null, feedUrl, null, false);
+    library.updateSourceConfiguration(null, feedUrl, null);
     UUID jobId = UUID.randomUUID();
     executor.execute(jobId, library, IndexingRunMode.INCREMENTAL);
     return jobId;

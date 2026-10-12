@@ -161,7 +161,7 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
     return requested;
   }
 
-  /** Path, address and TLS switch of a request; returns the fixed address. */
+  /** Path and address of a request; returns the fixed address. */
   private String checkConnection(SourceSettings requested) {
     if (blankToNull(requested.sourcePath()) != null) {
       throw new ValidationException("sourcePath ist für sourceType " + TYPE + " nicht zulässig");
@@ -170,10 +170,6 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
     if (!url.equals(apiBase)) {
       throw new ValidationException(
           "sourceUrl ist für sourceType " + TYPE + " fest " + apiBase + " und nicht änderbar");
-    }
-    if (requested.sourceInsecureSsl()) {
-      throw new ValidationException(
-          "Die Zertifikatsprüfung lässt sich für sourceType " + TYPE + " nicht abschalten");
     }
     return url;
   }

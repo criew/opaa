@@ -21,7 +21,6 @@ public record SourceBrowseRequest(
     SourceType sourceType,
     URI sourceUrl,
     String sourceCredentials,
-    Boolean sourceInsecureSsl,
     ConnectorData query,
     UUID libraryId,
     UUID connectionProfileId,
@@ -33,7 +32,6 @@ public record SourceBrowseRequest(
       SourceType sourceType,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       ConnectorData query,
       UUID libraryId,
       UUID connectionProfileId,
@@ -42,7 +40,6 @@ public record SourceBrowseRequest(
         sourceType,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         query,
         libraryId,
         connectionProfileId,
@@ -55,19 +52,10 @@ public record SourceBrowseRequest(
       SourceType sourceType,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       ConnectorData query,
       UUID libraryId,
       UUID connectionProfileId) {
-    this(
-        sourceType,
-        sourceUrl,
-        sourceCredentials,
-        sourceInsecureSsl,
-        query,
-        libraryId,
-        connectionProfileId,
-        false);
+    this(sourceType, sourceUrl, sourceCredentials, query, libraryId, connectionProfileId, false);
   }
 
   /** A request with its own address. */
@@ -75,9 +63,8 @@ public record SourceBrowseRequest(
       SourceType sourceType,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       ConnectorData query,
       UUID libraryId) {
-    this(sourceType, sourceUrl, sourceCredentials, sourceInsecureSsl, query, libraryId, null);
+    this(sourceType, sourceUrl, sourceCredentials, query, libraryId, null);
   }
 }

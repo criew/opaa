@@ -27,8 +27,7 @@ final class ConfluenceLibraryConnection {
         new ConfluenceCredentials.Current(
             edition,
             credentials.renewableAfterRejection(
-                secret -> ConfluenceCredentials.parse(edition, secret))),
-        start.insecureSsl());
+                secret -> ConfluenceCredentials.parse(edition, secret))));
   }
 
   static ConfluenceConnection of(SourceSettings settings, String credentials) {
@@ -47,7 +46,7 @@ final class ConfluenceLibraryConnection {
         | ConfluenceCredentials.InvalidCredentialsFormatException e) {
       throw new InvalidConfluenceConfigurationException(e.getMessage());
     }
-    return new ConfluenceConnection(baseUrl, edition, parsed, settings.sourceInsecureSsl());
+    return new ConfluenceConnection(baseUrl, edition, parsed);
   }
 
   /** The configuration cannot be turned into a connection; the message is user-facing. */

@@ -130,10 +130,7 @@ export default function SharePointSourceForm({
   }
 
   const browse = (query: Record<string, unknown>) =>
-    browseSource(
-      'SHAREPOINT',
-      connection.probeRequest({ sourceUrl: SHAREPOINT_API, sourceInsecureSsl: false, query }),
-    )
+    browseSource('SHAREPOINT', connection.probeRequest({ sourceUrl: SHAREPOINT_API, query }))
 
   const loadDrives = async (chosen: Entry) => {
     const mine = ++drivesGeneration.current
@@ -312,7 +309,6 @@ export default function SharePointSourceForm({
         connection.probeRequest({
           sourceType: 'SHAREPOINT',
           sourceUrl: SHAREPOINT_API,
-          sourceInsecureSsl: false,
           sourceSettings: sharePointSettingsOf(values),
         }),
       )

@@ -26,7 +26,6 @@ class ConnectionProfileResponseMapperTest {
   @Test
   void anOptionCarriesTheProfileAndItsConnectorDefaults() {
     ConnectionProfile profile = profile("{\"edition\": \"DC\", \"pathStyle\": true}");
-    ReflectionTestUtils.setField(profile, "sourceInsecureSsl", true);
     ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.PERSON);
 
     ConnectionProfileOption option =
@@ -40,18 +39,6 @@ class ConnectionProfileResponseMapperTest {
     assertThat(option.getOwnership()).isEqualTo(ConnectionOwnership.PERSON);
     assertThat(option.getOwnAccount()).isTrue();
     assertThat(option.getConnectorDefaults()).isEqualTo(Map.of("edition", "DC", "pathStyle", true));
-    assertThat(option.getSourceInsecureSsl()).isTrue();
-  }
-
-  @Test
-  void aResponseCarriesTheTlsSwitch() {
-    ConnectionProfile profile = profile(null);
-    ReflectionTestUtils.setField(profile, "ownership", ConnectionOwnership.LIBRARY);
-
-    ConnectionProfileResponse response =
-        ConnectionProfileResponseMapper.toResponse(profile, false, 0, TestPersonCounts.of(0, 0));
-
-    assertThat(response.getSourceInsecureSsl()).isFalse();
   }
 
   /**

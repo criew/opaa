@@ -125,7 +125,6 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
       serverUrl: 'https://cloud.personen.example',
       authMethod: 'PERSONAL_SECRET',
       connectorDefaults: null,
-      sourceInsecureSsl: false,
     },
     privateLibrary: true,
     // a private library stays locked for diagnosis and cannot be unlocked
@@ -231,7 +230,6 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 0,
     sourceType: 'S3',
     sourceUrl: 'https://minio.intern.example:9000',
-    sourceInsecureSsl: false,
     sourceCredentialsSet: true,
     sourceSettings: {
       region: 'us-east-1',

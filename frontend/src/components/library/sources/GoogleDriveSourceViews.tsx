@@ -49,7 +49,7 @@ export function GoogleDriveStoredView({ library }: { library: StoredLibrarySourc
       <Typography variant="body2">
         <strong>Imitiertes Konto:</strong> {settings?.subject ?? 'keines (ohne Delegation)'}
       </Typography>
-      <RemoteConnectionLines library={library} />
+      <RemoteConnectionLines />
     </>
   )
 }

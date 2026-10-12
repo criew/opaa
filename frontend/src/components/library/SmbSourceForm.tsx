@@ -93,7 +93,6 @@ export default function SmbSourceForm({
   function connectionPayload() {
     return {
       sourceUrl: values.sourceUrl.trim(),
-      sourceInsecureSsl: false,
       sourceCredentials: smbCredentialsOf(values),
     }
   }

@@ -73,7 +73,6 @@ public class LibrarySourceConnectionResolver implements SourceConnectionResolver
         library.getSourcePath(),
         library.getSourceUrl(),
         library.getSourceCredentials(),
-        library.isSourceInsecureSsl(),
         ConnectorData.storedIn(library),
         signing(library).isPresent() ? SecretKind.SERVICE_ACCOUNT_KEY : null);
   }

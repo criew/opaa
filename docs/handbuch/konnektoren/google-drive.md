@@ -75,7 +75,7 @@ geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.
 | Bereiche | aus der Auflistung gewählt — geteilte Ablagen und freigegebene Ordner, mit imitiertem Konto auch „Meine Ablage" — oder per „Ordner-ID" eingetragen |
 
 Überlappende Bereiche sind erlaubt; eine Datei bleibt ein Dokument, ihr Ordner kommt aus dem ersten
-Bereich, der sie listet. „Zertifikatsprüfung aussetzen" gibt es nicht. Den eigenen
+Bereich, der sie listet. Den eigenen
 Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". **„Verbindung testen"** meldet sich an und
 prüft jeden Bereich (Befunde in Abschnitt 9). Eine geänderte Bereichsliste oder ein anderes
 imitiertes Konto lassen den nächsten Lauf vollständig abgleichen.

@@ -22,12 +22,11 @@ export const nextcloudSource: SourceRegistration = {
   containerLabel: 'Ordner',
   configuration: {
     empty: EMPTY_NEXTCLOUD_VALUES,
-    draftFields: ['sourceUrl', 'sourceInsecureSsl', 'username', 'folders'],
+    draftFields: ['sourceUrl', 'username', 'folders'],
     // the stored credentials stand until new ones are typed; they are never returned
     fromLibrary: (library): NextcloudSourceValues => ({
       ...EMPTY_NEXTCLOUD_VALUES,
       sourceUrl: library.sourceUrl ?? '',
-      sourceInsecureSsl: Boolean(library.sourceInsecureSsl),
       folders: (nextcloudSettingsOf(library).folders ?? ['/']).join('\n'),
     }),
     isDirty: (values: NextcloudSourceValues) =>
@@ -45,7 +44,6 @@ export const nextcloudSource: SourceRegistration = {
     toPayload: (values: NextcloudSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: nextcloudCredentialsOf(values),
-      sourceInsecureSsl: values.sourceInsecureSsl,
       sourceSettings: { folders: nextcloudFoldersOf(values) },
     }),
     nameFromSource: (values: NextcloudSourceValues) => {

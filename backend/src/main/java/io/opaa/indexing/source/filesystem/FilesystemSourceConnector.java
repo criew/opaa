@@ -57,8 +57,6 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
           + " freigegebenen Basisverzeichnisse teilt die Systemverwaltung mit.";
   private static final String FORBIDDEN_FIELDS =
       "sourceUrl und sourceCredentials sind für sourceType FILESYSTEM nicht" + " zulässig";
-  private static final String NO_INSECURE_SSL =
-      "sourceInsecureSsl ist für sourceType FILESYSTEM nicht zulässig";
 
   private final FilesystemPathAllowlist allowlist;
 
@@ -156,9 +154,6 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
     if (requested.sourceUrl() != null || requested.sourceCredentials() != null) {
       throw new ValidationException(FORBIDDEN_FIELDS);
     }
-    if (requested.sourceInsecureSsl()) {
-      throw new ValidationException(NO_INSECURE_SSL);
-    }
     requireAllowed(sourcePath);
     return requested;
   }
@@ -187,9 +182,6 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
     if (blankToNull(settings.sourceUrl()) != null
         || blankToNull(settings.sourceCredentials()) != null) {
       throw new ValidationException(FORBIDDEN_FIELDS);
-    }
-    if (settings.sourceInsecureSsl()) {
-      throw new ValidationException(NO_INSECURE_SSL);
     }
     if (!Path.of(sourcePath).isAbsolute()) {
       throw new ValidationException("sourcePath muss ein absoluter Pfad sein");

@@ -64,9 +64,6 @@ class DropSourceProxyMigrationTest extends AbstractBaselineTest {
         "UPDATE knowledge_libraries SET source_url = 'https://x.example'" + where,
         "chk_knowledge_libraries_upload_without_source");
     assertRejected(
-        "UPDATE knowledge_libraries SET source_insecure_ssl = true" + where,
-        "chk_knowledge_libraries_upload_without_source");
-    assertRejected(
         "UPDATE knowledge_libraries SET source_settings = '{}'" + where,
         "chk_knowledge_libraries_upload_without_source");
   }

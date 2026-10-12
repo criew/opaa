@@ -567,8 +567,7 @@ class LibraryMetadataSchemaChangeIntegrationTest {
             SourceTypes.FILESYSTEM,
             classTempDir.toString(),
             null,
-            null,
-            false));
+            null));
   }
 
   private void grant(KnowledgeLibrary target, CurrentUser subject, AssetRole role) {

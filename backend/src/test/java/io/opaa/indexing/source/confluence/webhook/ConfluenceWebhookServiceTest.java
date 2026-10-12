@@ -63,8 +63,7 @@ class ConfluenceWebhookServiceTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            "token",
-            false);
+            "token");
     ConfluenceTestSettings.configure(
         library, ConfluenceEdition.DATA_CENTER, List.of(new ConfluenceSpaceSelection("ENG", null)));
     library.setWebhookSecret(SECRET);
@@ -118,8 +117,7 @@ class ConfluenceWebhookServiceTest {
             SourceTypes.S3,
             null,
             "https://minio.example.org",
-            "AKIA:geheim",
-            false);
+            "AKIA:geheim");
     s3.setWebhookSecret(SECRET);
     UUID s3Id = UUID.randomUUID();
     when(libraryRepository.findById(s3Id)).thenReturn(Optional.of(s3));

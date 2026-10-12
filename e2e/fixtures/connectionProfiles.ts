@@ -77,7 +77,6 @@ export async function createOwnAddressRssLibrary(
         name,
         sourceType: RSS_FEED,
         sourceUrl: feedUrl,
-        sourceInsecureSsl: false,
       },
     })
     expect(response.status(), await response.text()).toBe(201)

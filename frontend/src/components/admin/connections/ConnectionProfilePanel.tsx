@@ -26,7 +26,6 @@ import { applyAccess, confirmAccess } from '../capabilities/capabilityAccessChan
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS } from './connectionProfileLabels'
 import { admitsPersons, personCountLabel } from './profileChange'
 import { formatDay, signsInItself, type ProfileAttention } from './profileState'
-import { transportEntries } from './transportEntries'
 
 function PanelSection({ title, children }: { title: string; children: ReactNode }) {
   const id = useId()
@@ -328,7 +327,6 @@ function PanelContent({
                 hidden: !profile.clientSecretExpiresOn,
               },
               { label: 'Vorgaben', value: defaults ?? '', hidden: defaults === null },
-              ...transportEntries(profile),
             ]}
           />
           <Button

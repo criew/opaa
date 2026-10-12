@@ -147,7 +147,7 @@ function count(n: number, one: string, many: string) {
 /**
  * What saving `body` discards, as the backend plans it: in the mocks a new address or registration
  * discards every secret of the profile - one stored secret per library - and ends the accounts of
- * persons, as does an ownership without persons; address, TLS switch and defaults change
+ * persons, as does an ownership without persons; address and defaults change
  * every library's configuration. The confirmation is the 409's text.
  */
 function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileUpdateRequest) {
@@ -160,7 +160,6 @@ function discardsOf(profile: ConnectionProfileResponse, body: ConnectionProfileU
     (profile.revocationEndpoint ?? null) !== (body.revocationEndpoint ?? null)
   const reconfigured =
     profile.serverUrl !== body.serverUrl.replace(/\/+$/, '') ||
-    profile.sourceInsecureSsl !== Boolean(body.sourceInsecureSsl) ||
     JSON.stringify(profile.connectorSettings ?? null) !==
       JSON.stringify(body.connectorSettings ?? null)
   const forPersons = profile.ownership !== 'LIBRARY'
@@ -225,7 +224,6 @@ export const connectionProfileHandlers = [
       tokenEndpoint: body.tokenEndpoint ?? null,
       revocationEndpoint: body.revocationEndpoint ?? null,
       connectorSettings: body.connectorSettings ?? null,
-      sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       connectionCount: 0,
       connectedAccountCount: { count: null, fewerThan: 5 },
       expiredConnectionCount: { count: null, fewerThan: 5 },
@@ -308,7 +306,6 @@ export const connectionProfileHandlers = [
       tokenEndpoint: body.tokenEndpoint ?? null,
       revocationEndpoint: body.revocationEndpoint ?? null,
       connectorSettings: body.connectorSettings ?? null,
-      sourceInsecureSsl: body.sourceInsecureSsl ?? false,
       updatedAt: new Date().toISOString(),
     }
     mockConnectionProfiles[index] = updated
@@ -473,7 +470,6 @@ export const connectionProfileHandlers = [
           authMethod: p.authMethod,
           ownership: p.ownership,
           ownAccount: ownAccounts.includes(p.id),
-          sourceInsecureSsl: p.sourceInsecureSsl,
           connectorDefaults: p.connectorSettings ?? null,
         }
       })

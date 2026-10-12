@@ -428,8 +428,7 @@ class RetrievalEvaluationHarnessTest {
                 SourceTypes.FILESYSTEM,
                 corpusWorkingDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     evalLibraryId = library.getId();
 
     // KnowledgeLibraryRepository#save alone does not grant an AssetGrant (only

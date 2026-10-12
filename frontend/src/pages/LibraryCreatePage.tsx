@@ -518,7 +518,7 @@ export default function LibraryCreatePage() {
     try {
       const source = configuration
         ? payloadUnder(configuration.toPayload(values), connectionFields(formContext))
-        : { sourceInsecureSsl: false }
+        : {}
       // #1942: Anlage und Zeitplan werden atomar gesetzt; eine Upload-Bibliothek bekommt gar
       // keinen (das Backend wiese alles außer DISABLED mit 400 ab).
       const scheduled = !uploadLibrary

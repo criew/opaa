@@ -46,8 +46,7 @@ class ProfileSourceConnectionResolverLockTest {
           SourceTypes.RSS_FEED,
           null,
           "https://feeds.example.org/a.xml",
-          "nutzer:geheim",
-          false);
+          "nutzer:geheim");
 
   @Test
   void aLockBlocksTheStartButNotTheRunAlreadyGoing() {

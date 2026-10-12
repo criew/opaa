@@ -79,8 +79,7 @@ class UrlIndexingExecutorCredentialsTest {
                 SourceTypes.HTTP_DIRECTORY,
                 null,
                 "https://files.example.com/documents/",
-                "admin:super-secret-password",
-                true));
+                "admin:super-secret-password"));
 
     // The raw column is encrypted, not the plaintext just passed above - confirms this test
     // actually exercises SourceCredentialsConverter, not an unencrypted test schema.
@@ -100,6 +99,5 @@ class UrlIndexingExecutorCredentialsTest {
 
     assertThat(request.url()).isEqualTo("https://files.example.com/documents/");
     assertThat(request.credentials()).isEqualTo("admin:super-secret-password");
-    assertThat(request.insecureSsl()).isTrue();
   }
 }

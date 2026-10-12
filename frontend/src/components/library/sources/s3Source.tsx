@@ -27,7 +27,6 @@ export const s3Source: SourceRegistration = {
       'sourceUrl',
       'region',
       'pathStyle',
-      'sourceInsecureSsl',
       'scopes',
       'includePatterns',
       'excludePatterns',
@@ -35,11 +34,7 @@ export const s3Source: SourceRegistration = {
     // ADR-0027: endpoint, region, addressing style and scopes come back from the stored settings;
     // the stored key stands until a new one is typed.
     fromLibrary: (library): S3SourceValues =>
-      s3ValuesFromSettings(
-        library.sourceUrl,
-        library.sourceInsecureSsl,
-        s3SettingsFromLibrary(library),
-      ),
+      s3ValuesFromSettings(library.sourceUrl, s3SettingsFromLibrary(library)),
     isDirty: (values: S3SourceValues) =>
       values.sourceUrl !== '' ||
       values.accessKey !== '' ||
@@ -58,7 +53,6 @@ export const s3Source: SourceRegistration = {
     toPayload: (values: S3SourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: s3CredentialsOf(values),
-      sourceInsecureSsl: values.sourceInsecureSsl,
       sourceSettings: s3SettingsOf(values),
     }),
     nameFromSource: (values: S3SourceValues) => {

@@ -8,8 +8,7 @@ class SourceSettingsTest {
 
   @Test
   void toStringNamesTheCredentialsButNeverTheirValue() {
-    SourceSettings settings =
-        new SourceSettings(null, "https://example.org", "user:geheim", false, null);
+    SourceSettings settings = new SourceSettings(null, "https://example.org", "user:geheim", null);
 
     assertThat(settings.toString()).contains("sourceCredentials=***").doesNotContain("geheim");
   }

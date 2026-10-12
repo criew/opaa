@@ -123,8 +123,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     // the secret valid now on every request
     RenewableCredential<String> authHeader =
         run.credentials().renewableAfterRejection(UrlIndexingExecutor::basicAuthHeader);
-    AutoindexCrawlerService.CrawlResult crawlResult =
-        crawlerService.crawl(url, authHeader, request.insecureSsl(), budget);
+    AutoindexCrawlerService.CrawlResult crawlResult = crawlerService.crawl(url, authHeader, budget);
     List<AutoindexCrawlerService.CrawledFileEntry> allFiles = crawlResult.entries();
     log.info("Discovered {} files for URL indexing", allFiles.size());
 
@@ -172,7 +171,7 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
     run.progress().setTotal(allFiles.size());
     run.progress().report();
 
-    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient(request.insecureSsl());
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
     ReconcilingAttachmentAccess attachmentAccess = run.attachmentAccess();
     var folderMirror = new SourceFolderMirror(folderService, run.library());
     String normalizedUrl = url;
@@ -466,6 +465,6 @@ public class UrlIndexingExecutor implements SourceIndexingExecutor {
    * UrlIndexingExecutorCredentialsTest} can assert on it over the decryption path a real run takes.
    */
   static UrlIndexingRequest toUrlIndexingRequest(SourceSettings settings, String credentials) {
-    return new UrlIndexingRequest(settings.sourceUrl(), credentials, settings.sourceInsecureSsl());
+    return new UrlIndexingRequest(settings.sourceUrl(), credentials);
   }
 }

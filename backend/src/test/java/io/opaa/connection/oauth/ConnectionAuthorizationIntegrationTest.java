@@ -819,8 +819,7 @@ class ConnectionAuthorizationIntegrationTest {
                           OAuthProbeSourceConnector.TYPE,
                           null,
                           SERVER + "/ablage",
-                          null,
-                          false));
+                          null));
               shellService.registerCreated(
                   saved, person, Map.of("name", saved.getName(), "sourceType", "OAUTH_PROBE"));
               return saved.getId();

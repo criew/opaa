@@ -107,8 +107,7 @@ class OpenAiIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 tempDir.toAbsolutePath().toString(),
                 null,
-                null,
-                false));
+                null));
     targetLibraryId = library.getId();
     // #419: an indexing run needs a caller who holds at least EDITOR on the target library.
     // Reading it back via query still needs a grant too, exactly like every other reader (#202:

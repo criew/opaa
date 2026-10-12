@@ -871,8 +871,7 @@ class LibraryDocumentServiceIntegrationTest {
             sourceType,
             null,
             remoteBaseUrl + "/",
-            sourceCredentials,
-            false);
+            sourceCredentials);
     library = libraryRepository.save(library);
     assetGrantRepository.save(
         AssetGrant.forUser(
@@ -1032,8 +1031,7 @@ class LibraryDocumentServiceIntegrationTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             blockedBaseUrl + "/",
-            null,
-            false);
+            null);
     remoteLibrary = libraryRepository.save(remoteLibrary);
     assetGrantRepository.save(
         AssetGrant.forUser(
@@ -1154,8 +1152,7 @@ class LibraryDocumentServiceIntegrationTest {
             SourceTypes.FILESYSTEM,
             sourcePath,
             null,
-            null,
-            false);
+            null);
     library = libraryRepository.save(library);
     // KnowledgeLibraryService#createLibrary normally grants the creator OWNER as part of creation
     // (see its class Javadoc) - this helper otherwise skips that step entirely by saving the

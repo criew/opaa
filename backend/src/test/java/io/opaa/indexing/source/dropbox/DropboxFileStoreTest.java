@@ -256,7 +256,7 @@ class DropboxFileStoreTest {
                 wait -> {})
             .open(
                 new io.opaa.indexing.source.SourceSettings(
-                    null, server.base().toString(), null, false, null),
+                    null, server.base().toString(), null, null),
                 () -> FakeDropboxServer.TOKEN,
                 new io.opaa.indexing.source.RequestBudget(
                     new io.opaa.sourceaccess.SourceRequestMeter(), requests, null));

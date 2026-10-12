@@ -17,7 +17,6 @@ public final class SourceConnectionTestBuilder {
   private String sourcePath;
   private URI sourceUrl;
   private String sourceCredentials;
-  private Boolean sourceInsecureSsl;
   private UUID libraryId;
   private ConfluenceEdition confluenceEdition;
   private S3SourceSettings s3Settings;
@@ -48,11 +47,6 @@ public final class SourceConnectionTestBuilder {
     return this;
   }
 
-  public SourceConnectionTestBuilder sourceInsecureSsl(Boolean sourceInsecureSsl) {
-    this.sourceInsecureSsl = sourceInsecureSsl;
-    return this;
-  }
-
   public SourceConnectionTestBuilder libraryId(UUID libraryId) {
     this.libraryId = libraryId;
     return this;
@@ -74,7 +68,6 @@ public final class SourceConnectionTestBuilder {
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         libraryId,
         TestConnectorSettings.of(confluenceEdition, s3Settings));
   }

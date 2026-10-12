@@ -157,7 +157,6 @@ export function sharePointSettingsOf(values: SharePointSourceValues): Record<str
 export function sharePointPayloadOf(values: SharePointSourceValues): LibrarySourceConfigPayload {
   return {
     sourceUrl: SHAREPOINT_API,
-    sourceInsecureSsl: false,
     sourceSettings: sharePointSettingsOf(values),
   }
 }

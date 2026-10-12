@@ -11,7 +11,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 public interface SourceConnectionResolver {
 
   /**
-   * Target, TLS switch, the secret valid now and the connector settings of {@code library}.
+   * Target, the secret valid now and the connector settings of {@code library}.
    *
    * @throws SourceConnectionBlockedException when the library may not be reached now
    */
@@ -28,8 +28,8 @@ public interface SourceConnectionResolver {
   }
 
   /**
-   * Target, TLS switch and connector settings of {@code library} as {@link #resolve} composes them,
-   * without any secret: no sign-in, no renewal and no block refuses it.
+   * Target and connector settings of {@code library} as {@link #resolve} composes them, without any
+   * secret: no sign-in, no renewal and no block refuses it.
    */
   default SourceSettings settingsOnly(KnowledgeLibrary library) {
     return resolveForChange(library).withoutCredentials();

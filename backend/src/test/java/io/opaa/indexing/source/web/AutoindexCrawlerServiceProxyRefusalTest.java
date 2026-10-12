@@ -44,7 +44,7 @@ class AutoindexCrawlerServiceProxyRefusalTest {
         new AutoindexCrawlerService(
             TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
 
-    assertThatThrownBy(() -> service.crawl(origin + "/dokumente/", "admin", "secret", false))
+    assertThatThrownBy(() -> service.crawl(origin + "/dokumente/", "admin", "secret"))
         .isInstanceOf(ProxyRefusal.RefusedException.class)
         .hasMessageStartingWith("Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt")
         .hasMessageContaining("Status 407");

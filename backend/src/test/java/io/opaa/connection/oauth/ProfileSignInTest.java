@@ -65,7 +65,7 @@ import org.springframework.transaction.PlatformTransactionManager;
  * A profile's own sign-in against a fake authorization server, from the stored profile through
  * {@link ProfileRegistrations} to the token: client credentials as the test connector declares
  * them, held until shortly before they expire; a service account key signed by the core; a rejected
- * registration marked and asked no more; the outbound proxy used, the profile's TLS switch never.
+ * registration marked and asked no more; the outbound proxy used, every certificate checked.
  */
 class ProfileSignInTest {
 
@@ -242,9 +242,9 @@ class ProfileSignInTest {
             request -> assertThat(request.target().getHost()).isEqualTo("token.example.invalid"));
   }
 
-  /** The profile skips the certificate check for its server address, never for the endpoint. */
+  /** A token endpoint whose certificate no truststore knows is refused. */
   @Test
-  void theTlsSwitchOfTheProfileDoesNotReachTheTokenEndpoint() throws Exception {
+  void aTokenEndpointWithAnUntrustedCertificateIsRefused() throws Exception {
     Path keystore = Files.createTempFile("opaa-sign-in-tls-", ".p12");
     HttpsServer https = selfSignedServer(keystore);
     try {
@@ -262,7 +262,6 @@ class ProfileSignInTest {
               URI.create("https://127.0.0.1:" + https.getAddress().getPort() + "/token"),
               ClientAuthentication.CLIENT_SECRET_BASIC));
       profile = clientProfile();
-      ReflectionTestUtils.setField(profile, "sourceInsecureSsl", true);
 
       SignInTest test = signIn.test(profile.getId());
 

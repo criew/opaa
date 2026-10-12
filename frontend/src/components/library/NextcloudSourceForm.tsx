@@ -3,9 +3,7 @@ import Alert from '@mui/material/Alert'
 import Box from '@mui/material/Box'
 import BusyButton from '../a11y/BusyButton'
 import Chip from '@mui/material/Chip'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { SourceBrowseEntry } from '../../types/api'
@@ -38,8 +36,8 @@ interface Message {
 }
 
 /**
- * The source form of a Nextcloud library: address, technical user with app password,
- * certificate switch and the folders, one per line. „Ordner laden" offers the folders in the
+ * The source form of a Nextcloud library: address, technical user with app password and the
+ * folders, one per line. „Ordner laden" offers the folders in the
  * user's root (own ones, shares, group folders) as chips that add a line; „Verbindung testen"
  * signs in and checks every folder. Each result carries the values it was measured with and is
  * shown only while they are unchanged - a changed address, user, password, switch or (for
@@ -76,7 +74,6 @@ export default function NextcloudSourceForm({
     sourceUrl: values.sourceUrl,
     username: values.username,
     appPassword: values.appPassword,
-    sourceInsecureSsl: values.sourceInsecureSsl,
   })
   const testToken = JSON.stringify({ connectionToken, folders: values.folders })
   const visibleTest = test?.token === testToken ? test.message : null
@@ -98,7 +95,6 @@ export default function NextcloudSourceForm({
   function connectionPayload() {
     return {
       sourceUrl: values.sourceUrl.trim(),
-      sourceInsecureSsl: values.sourceInsecureSsl,
       sourceCredentials: nextcloudCredentialsOf(values),
     }
   }
@@ -223,21 +219,6 @@ export default function NextcloudSourceForm({
               />
             </Box>
           </>
-        )}
-        <FormControlLabel
-          control={
-            <Switch
-              checked={values.sourceInsecureSsl}
-              disabled={connection.isFixed('sourceInsecureSsl')}
-              onChange={(e) => onChange({ sourceInsecureSsl: e.target.checked })}
-            />
-          }
-          label="Zertifikatsprüfung aussetzen"
-        />
-        {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
-          <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
-            {connection.transportHint}
-          </Typography>
         )}
         <Box sx={{ gridColumn: '1 / -1' }}>
           <FieldLabel htmlFor={`${idPrefix}-folders`}>Ordner</FieldLabel>

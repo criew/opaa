@@ -9,6 +9,7 @@ import io.opaa.sourceaccess.RateLimitPolicy;
 import io.opaa.sourceaccess.RedirectFollowingFetcher;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import io.opaa.sourceaccess.SourceRequestPolicy;
+import io.opaa.sourceaccess.UntrustedCertificate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ConnectException;
@@ -343,9 +344,12 @@ final class ConfluenceHttp {
       return new ConfluenceAccessException(
           "Confluence unter " + host + " ist nicht erreichbar (Verbindung abgelehnt).", e);
     }
-    if (e instanceof SSLException) {
+    if (UntrustedCertificate.causes(e)) {
       return new ConfluenceAccessException(
-          "TLS-Verbindung zu " + host + " fehlgeschlagen (Zertifikat nicht vertrauenswürdig?).", e);
+          "TLS-Verbindung zu " + host + " fehlgeschlagen. " + UntrustedCertificate.MESSAGE, e);
+    }
+    if (e instanceof SSLException) {
+      return new ConfluenceAccessException("TLS-Verbindung zu " + host + " fehlgeschlagen.", e);
     }
     return new ConfluenceAccessException(
         "Confluence unter "

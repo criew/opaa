@@ -32,12 +32,12 @@ class S3SourceConnectorBrowseTest {
 
   private static SourceBrowser.Query query(String credentials) {
     return new SourceBrowser.Query(
-        new SourceSettings(null, "https://s3.example.org", credentials, false, null), null);
+        new SourceSettings(null, "https://s3.example.org", credentials, null), null);
   }
 
   @Test
   void aVisibleBucketListIsCompleteWithOneEntryPerBucket() throws Exception {
-    when(connectionService.listBuckets(anyString(), anyString(), anyBoolean(), any(), anyBoolean()))
+    when(connectionService.listBuckets(anyString(), anyString(), any(), anyBoolean()))
         .thenReturn(new S3BucketListResult(true, List.of("dokumente", "archiv"), null));
 
     SourceListing listing = connector.browse(query("ak:sk"));
@@ -51,7 +51,7 @@ class S3SourceConnectorBrowseTest {
 
   @Test
   void aKeyWithoutListAllMyBucketsYieldsAnIncompleteListingWithTheHint() throws Exception {
-    when(connectionService.listBuckets(anyString(), anyString(), anyBoolean(), any(), anyBoolean()))
+    when(connectionService.listBuckets(anyString(), anyString(), any(), anyBoolean()))
         .thenReturn(new S3BucketListResult(false, List.of(), "Bucket-Name von Hand eintragen"));
 
     SourceListing listing = connector.browse(query("ak:sk"));

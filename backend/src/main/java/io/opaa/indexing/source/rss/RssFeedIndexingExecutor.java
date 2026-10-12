@@ -136,12 +136,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                       parsed.username(), parsed.password());
                 });
 
-    // secureClient always validates certificates normally; insecureClient relaxes validation
-    // only when the library asks for it and is used exclusively for same-origin requests - see
-    // RssFeedRunContext#httpClientFor's own Javadoc.
-    HttpClient secureClient = SourceHttpClientFactory.buildHttpClient(false);
-    HttpClient insecureClient =
-        settings.sourceInsecureSsl() ? SourceHttpClientFactory.buildHttpClient(true) : secureClient;
+    HttpClient httpClient = SourceHttpClientFactory.buildHttpClient();
 
     RequestBudget budget = RequestBudget.forRun(requestPolicy);
     run.recordRequestCost(budget.meter());
@@ -149,8 +144,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     run.budgetContinuation(
         () -> "der Lauf endet unvollständig, der nächste Lauf nimmt die übrigen Einträge auf");
     Optional<FeedFetcher.LoadedFeed> loaded =
-        feedFetcher.fetchAndParse(
-            insecureClient, targetLibrary.getId(), feedUrl, authHeader, budget);
+        feedFetcher.fetchAndParse(httpClient, targetLibrary.getId(), feedUrl, authHeader, budget);
     if (loaded.isEmpty()) {
       run.progress().setTotal(0);
       return ListingOutcome.partial();
@@ -161,8 +155,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
     var ctx =
         new RssFeedRunContext(
-            secureClient,
-            insecureClient,
+            httpClient,
             targetLibrary,
             authHeader,
             feedUrl,
@@ -301,9 +294,9 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
 
   /**
    * Converts {@code candidates} into {@link AttachmentSource.Download} jobs - client and {@code
-   * Authorization} decided per candidate by {@code ctx.httpClientFor}/{@code ctx.authHeaderFor} -
-   * and hands them to {@link AttachmentIndexer#indexAll} under {@code entryUrl}'s own document row
-   * as {@code parentDocumentId}, which every call site has already ensured exists.
+   * Authorization} decided per candidate by {@code ctx.authHeaderFor} - and hands them to {@link
+   * AttachmentIndexer#indexAll} under {@code entryUrl}'s own document row as {@code
+   * parentDocumentId}, which every call site has already ensured exists.
    */
   private void indexAttachments(
       RssFeedRunContext ctx, List<AttachmentCandidate> candidates, String entryUrl)
@@ -324,7 +317,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
                         new AttachmentSource.Download(
                             candidate.url(),
                             candidate.suggestedFileName(),
-                            ctx.httpClientFor(candidate.url()),
+                            ctx.httpClient(),
                             () -> ctx.authHeaderFor(candidate.url()),
                             properties.requestDelayMs()))
             .toList();
@@ -351,10 +344,7 @@ public class RssFeedIndexingExecutor implements SourceIndexingExecutor {
     try {
       return Optional.of(
           detailPageExtractor.fetch(
-              ctx.httpClientFor(entryUrl),
-              entryUrl,
-              ctx.authHeaderFor(entryUrl),
-              ctx.requestBudget()));
+              ctx.httpClient(), entryUrl, ctx.authHeaderFor(entryUrl), ctx.requestBudget()));
     } catch (DetailPageExtractor.RejectedByRemoteException e) {
       // ADR-0017: a 403/429/redirect to a foreign host is declined, not a processing failure - the
       // German event message is e.userMessage(), never e.getMessage() (can carry the raw target).

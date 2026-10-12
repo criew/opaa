@@ -34,7 +34,6 @@ const DROPBOX: ConnectionProfileOption = {
   authMethod: 'OAUTH',
   ownership: 'LIBRARY',
   ownAccount: false,
-  sourceInsecureSsl: false,
 }
 
 const PENDING = {
@@ -49,7 +48,6 @@ const DRAFT: WizardDraft = {
   sourceValues: {
     sourceUrl: 'https://cloud.bauamt.example',
     username: '',
-    sourceInsecureSsl: false,
     folders: '/Bauamt',
   },
   schedule: scheduleValuesFrom(null),

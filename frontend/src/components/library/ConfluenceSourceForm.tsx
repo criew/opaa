@@ -6,9 +6,7 @@ import Button from '@mui/material/Button'
 import BusyButton from '../a11y/BusyButton'
 import Checkbox from '@mui/material/Checkbox'
 import Chip from '@mui/material/Chip'
-import FormControlLabel from '@mui/material/FormControlLabel'
 import Stack from '@mui/material/Stack'
-import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { browseSource, testLibrarySource } from '../../services/libraryApi'
@@ -113,9 +111,8 @@ export default function ConfluenceSourceForm({
   const connectionPayload = useCallback(
     () => ({
       sourceUrl: values.sourceUrl.trim(),
-      sourceInsecureSsl: values.sourceInsecureSsl,
     }),
-    [values.sourceUrl, values.sourceInsecureSsl],
+    [values.sourceUrl],
   )
 
   const loadSpaces = useCallback(async () => {
@@ -302,22 +299,6 @@ export default function ConfluenceSourceForm({
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
             />
           </Box>
-          <FormControlLabel
-            sx={{ gridColumn: '1 / -1' }}
-            control={
-              <Switch
-                checked={values.sourceInsecureSsl}
-                disabled={connection.isFixed('sourceInsecureSsl')}
-                onChange={(e) => changeAddress({ sourceInsecureSsl: e.target.checked })}
-              />
-            }
-            label="Zertifikatsprüfung aussetzen"
-          />
-          {connection.isFixed('sourceInsecureSsl') && connection.transportHint && (
-            <Typography variant="caption" sx={{ gridColumn: '1 / -1', color: 'text.secondary' }}>
-              {connection.transportHint}
-            </Typography>
-          )}
         </Box>
         {!editionFixed && (
           <Box sx={{ mt: 1.5 }}>

@@ -336,7 +336,6 @@ class ProfileEndpointsTest {
         null,
         null,
         null,
-        false,
         endpoints);
   }
 

@@ -104,7 +104,7 @@ class AutoindexCrawlerServiceRedirectTest {
     AutoindexCrawlerService service =
         new AutoindexCrawlerService(
             TargetAddressValidator.disabled(), new CrawlProperties(10, 100, 0));
-    return service.crawl(startUrl, "admin", "secret", false);
+    return service.crawl(startUrl, "admin", "secret");
   }
 
   @Test

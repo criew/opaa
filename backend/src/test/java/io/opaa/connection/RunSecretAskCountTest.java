@@ -71,8 +71,7 @@ class RunSecretAskCountTest {
             SourceTypes.RSS_FEED,
             null,
             "https://ablage.example.org/akten",
-            "nutzer:geheim",
-            false);
+            "nutzer:geheim");
     rows.put(library.getId(), library);
     ConnectionProfile profile = mock(ConnectionProfile.class);
     UUID profileId = UUID.randomUUID();

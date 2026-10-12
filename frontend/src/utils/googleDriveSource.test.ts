@@ -21,7 +21,6 @@ describe('googleDriveSource (ADR-0040)', () => {
     expect(googleDrivePayloadOf(values({}))).toEqual({
       sourceUrl: 'https://www.googleapis.com',
       sourceCredentials: '{"client_email":"x"}',
-      sourceInsecureSsl: false,
       sourceSettings: { scopes: [{ folder: 'f1', name: 'Freigabe' }], subject: null },
     })
     expect(googleDrivePayloadOf(values({ keyFile: '' })).sourceCredentials).toBeUndefined()

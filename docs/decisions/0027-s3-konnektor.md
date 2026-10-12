@@ -111,6 +111,8 @@ TLS-Schalter in `source_insecure_ssl`, der Zeitplan in `schedule_*`. **Geheimnis
 `source_settings`** — die Spalte ist unverschlüsselt und erscheint (ohne Geheimnisse) in
 `LibraryResponse`.
 
+  > **Überholt (#2537):** `source_insecure_ssl` an Bibliothek und Zugang ist entfernt; die Zertifikatsprüfung lässt sich nicht aussetzen (ADR-0041, Nachtrag „Zertifikatsprüfung nicht aussetzbar“). `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht mehr.
+
 Die Constraint `chk_knowledge_libraries_source_configuration` bekommt nach dem
 Drop-und-Neuanlage-Muster einen `S3`-Zweig: `source_url` Pflicht, `source_settings` Pflicht,
 `source_path` verboten, Proxy und `source_insecure_ssl` zulässig; für jeden anderen Typ ist

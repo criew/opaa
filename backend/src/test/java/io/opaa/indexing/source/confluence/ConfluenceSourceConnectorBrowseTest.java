@@ -4,7 +4,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -35,14 +34,13 @@ class ConfluenceSourceConnectorBrowseTest {
             null,
             "https://wiki.example.org",
             credentials,
-            false,
             new ConfluenceSourceSettings(ConfluenceEdition.DATA_CENTER, null, null).toData()),
         null);
   }
 
   @Test
   void everySpaceBecomesAnEntryWithKeyAndName() throws Exception {
-    when(connectionService.listSpaces(anyString(), any(), anyString(), anyBoolean()))
+    when(connectionService.listSpaces(anyString(), any(), anyString()))
         .thenReturn(
             List.of(
                 new ConfluenceSpace("1", "ENG", "Engineering"),

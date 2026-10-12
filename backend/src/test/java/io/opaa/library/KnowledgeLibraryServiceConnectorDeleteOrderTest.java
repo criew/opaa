@@ -197,8 +197,7 @@ class KnowledgeLibraryServiceConnectorDeleteOrderTest {
             SourceTypes.FILESYSTEM,
             "/tmp/does-not-matter",
             null,
-            null,
-            false);
+            null);
     when(libraryRepository.findById(library.getId())).thenReturn(Optional.of(library));
     when(accessService.requireRole(library, ownerId, false, AssetRole.OWNER))
         .thenReturn(AssetRole.OWNER);

@@ -114,7 +114,7 @@ class SourceFormPostTest {
     assertThatThrownBy(
             () ->
                 SourceFormPost.post(
-                    SourceHttpClientFactory.buildHttpClient(false),
+                    SourceHttpClientFactory.buildHttpClient(),
                     URI.create(base() + "/trickle"),
                     Map.of(),
                     Duration.ofSeconds(1),
@@ -127,7 +127,7 @@ class SourceFormPostTest {
   private SourceFormPost.Response post(String path, Map<String, String> form, long maxBytes)
       throws Exception {
     return SourceFormPost.post(
-        SourceHttpClientFactory.buildHttpClient(false),
+        SourceHttpClientFactory.buildHttpClient(),
         URI.create(base() + path),
         form,
         Duration.ofSeconds(5),

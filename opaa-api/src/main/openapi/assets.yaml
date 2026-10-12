@@ -852,7 +852,7 @@ components:
         additionally deletes and transfers ownership. See
         docs/features/spaces-and-assets.md#asset-rollen. Exception for a knowledge library: its
         source connection detail (LibraryResponse's sourcePath/sourceUrl/
-        sourceInsecureSsl/sourceCredentialsSet) is internal server infrastructure, not merely
+        sourceCredentialsSet) is internal server infrastructure, not merely
         "configuration" - it stays hidden from a VIEWER and even an EDITOR, matching the MANAGER
         bar PUT /api/v1/libraries/{libraryId} already enforces for changing it (#507).
       enum: [VIEWER, EDITOR, MANAGER, OWNER]

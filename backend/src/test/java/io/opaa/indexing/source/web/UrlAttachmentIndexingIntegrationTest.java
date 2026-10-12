@@ -127,8 +127,7 @@ class UrlAttachmentIndexingIntegrationTest {
                 SourceTypes.HTTP_DIRECTORY,
                 null,
                 baseUrl + "/docs/",
-                null,
-                false));
+                null));
 
     TargetAddressValidator validator = TargetAddressValidator.disabled();
     executor =

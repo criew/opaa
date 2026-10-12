@@ -67,7 +67,7 @@ class ProfileTransitionIntegrationTest {
 
   @Test
   void aChangedDefaultReachesEveryLibraryAndOneRefusalChangesNothing() throws Exception {
-    UUID profile = createProfile("{\"edition\": \"CLOUD\"}", false);
+    UUID profile = createProfile("{\"edition\": \"CLOUD\"}");
     UUID first = createLibrary(profile, "t1");
     UUID second = createLibrary(profile, "t2");
     UUID third = createLibrary(profile, ProfileProbeSourceConnector.CLOUD_ONLY_TOPIC);
@@ -118,7 +118,7 @@ class ProfileTransitionIntegrationTest {
   @Test
   void connectingWithADefaultTheConnectorRefusesIsA400AndLeavesTheLibraryOnItsOwn()
       throws Exception {
-    UUID profile = createProfile("{\"edition\": \"DC\"}", false);
+    UUID profile = createProfile("{\"edition\": \"DC\"}");
     UUID library =
         createOwnLibrary(
             "https://probe.example.org/x",
@@ -141,8 +141,8 @@ class ProfileTransitionIntegrationTest {
 
   /** Rule 2: what the profile set becomes the library's own, so it runs on unchanged. */
   @Test
-  void releasingWritesTheDefaultsAndTlsSwitchIntoTheLibrary() throws Exception {
-    UUID profile = createProfile("{\"edition\": \"DC\"}", true);
+  void releasingWritesTheDefaultsIntoTheLibrary() throws Exception {
+    UUID profile = createProfile("{\"edition\": \"DC\"}");
     UUID library = createLibrary(profile, "t");
 
     mockMvc
@@ -150,13 +150,12 @@ class ProfileTransitionIntegrationTest {
         .andExpect(status().isOk());
 
     assertThat(stored(library, "source_settings")).contains("DC").contains("\"t\"");
-    assertThat(stored(library, "source_insecure_ssl")).isEqualTo("true");
     assertThat(probe.sourceChanges()).isEmpty();
   }
 
   @Test
   void aLibraryTheProfileRequirementLocksIsRepairedByConnectingItWithAnAddress() throws Exception {
-    UUID profile = createProfile(null, false);
+    UUID profile = createProfile(null);
     UUID library = createOwnLibrary("https://eigen.example.org/x", "");
     mockMvc
         .perform(
@@ -178,7 +177,7 @@ class ProfileTransitionIntegrationTest {
 
   @Test
   void aManagerWithoutTheReleaseReadsTheProfileOfTheLibraryButIsNotOfferedIt() throws Exception {
-    UUID profile = createProfile("{\"edition\": \"DC\"}", true);
+    UUID profile = createProfile("{\"edition\": \"DC\"}");
     UUID library = createLibrary(profile, "t");
     ConnectorReleases.withdraw(jdbc, "PROFILE:" + profile);
 
@@ -187,8 +186,7 @@ class ProfileTransitionIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.connectionProfile.serverUrl").value("https://probe.example.org"))
         .andExpect(jsonPath("$.connectionProfile.authMethod").value("NONE"))
-        .andExpect(jsonPath("$.connectionProfile.connectorDefaults.edition").value("DC"))
-        .andExpect(jsonPath("$.connectionProfile.sourceInsecureSsl").value(true));
+        .andExpect(jsonPath("$.connectionProfile.connectorDefaults.edition").value("DC"));
     mockMvc
         .perform(
             as(
@@ -256,7 +254,7 @@ class ProfileTransitionIntegrationTest {
                 + "}");
   }
 
-  private UUID createProfile(String defaults, boolean insecureSsl) throws Exception {
+  private UUID createProfile(String defaults) throws Exception {
     String body =
         mockMvc
             .perform(
@@ -265,11 +263,10 @@ class ProfileTransitionIntegrationTest {
                         """
                         {"name": "Zugang Übergang %s", "sourceType": "PROFILE_PROBE",
                          "serverUrl": "https://probe.example.org", "authMethod": "NONE",
-                         "ownership": "LIBRARY", "sourceInsecureSsl": %s%s}
+                         "ownership": "LIBRARY"%s}
                         """
                             .formatted(
                                 UUID.randomUUID(),
-                                insecureSsl,
                                 defaults == null ? "" : ", \"connectorSettings\": " + defaults)))
             .andExpect(status().isCreated())
             .andReturn()

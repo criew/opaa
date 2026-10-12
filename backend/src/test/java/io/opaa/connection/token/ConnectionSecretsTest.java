@@ -67,8 +67,7 @@ class ConnectionSecretsTest {
             SourceTypes.RSS_FEED,
             null,
             "https://quelle.example.org/feed",
-            null,
-            false);
+            null);
 
     assertThat(SecretOwner.of(profileId, ConnectionAuthMethod.PERSONAL_SECRET, shared))
         .isEqualTo(new SecretOwner.LibraryOnProfile(profileId, shared.getId()));
@@ -172,8 +171,7 @@ class ConnectionSecretsTest {
             SourceTypes.RSS_FEED,
             null,
             "https://quelle.example.org/feed",
-            null,
-            false);
+            null);
 
     for (ConnectionAuthMethod method :
         List.of(
@@ -229,8 +227,7 @@ class ConnectionSecretsTest {
             SourceTypes.RSS_FEED,
             null,
             "https://quelle.example.org/feed",
-            secret,
-            false);
+            secret);
     rows.put(library.getId(), library);
     return library;
   }

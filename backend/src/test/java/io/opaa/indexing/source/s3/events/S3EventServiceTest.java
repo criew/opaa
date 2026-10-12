@@ -64,8 +64,7 @@ class S3EventServiceTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            "AKIA:geheim",
-            false);
+            "AKIA:geheim");
     S3TestSettings.configure(
         library,
         new S3SourceSettings(
@@ -143,8 +142,7 @@ class S3EventServiceTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            "token",
-            false);
+            "token");
     confluence.setWebhookSecret(TOKEN);
     UUID confluenceId = UUID.randomUUID();
     when(libraryRepository.findById(confluenceId)).thenReturn(Optional.of(confluence));
@@ -188,8 +186,7 @@ class S3EventServiceTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            "AKIA:geheim",
-            false);
+            "AKIA:geheim");
     unconfigured.setWebhookSecret(TOKEN);
     UUID unconfiguredId = UUID.randomUUID();
     when(libraryRepository.findById(unconfiguredId)).thenReturn(Optional.of(unconfigured));

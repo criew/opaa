@@ -178,8 +178,7 @@ class LibraryResponseMapperTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            "pat",
-            false);
+            "pat");
     Instant nextRunAt = Instant.now().plusSeconds(3600);
     Instant releaseExpiresAt = Instant.now().plusSeconds(86_400);
     Instant releaseSetAt = Instant.now().minusSeconds(60);
@@ -190,7 +189,6 @@ class LibraryResponseMapperTest {
         new LibraryManagementDetail(
             "/data/documents",
             "https://example.com/documents/",
-            true,
             true,
             true,
             ConnectorData.of(Map.of("fullSyncIntervalDays", 14)),
@@ -221,7 +219,6 @@ class LibraryResponseMapperTest {
     assertThat(response.getSourceSettings()).containsEntry("fullSyncIntervalDays", 14);
     assertThat(response.getFullSyncIntervalDefaultDays()).isEqualTo(7);
     assertThat(response.getSourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
-    assertThat(response.getSourceInsecureSsl()).isTrue();
     assertThat(response.getSourceCredentialsSet()).isTrue();
     assertThat(response.getSchedule().getFrequency()).isEqualTo(ScheduleFrequency.DAILY);
     assertThat(response.getSchedule().getHour()).isEqualTo(3);
@@ -251,7 +248,7 @@ class LibraryResponseMapperTest {
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Uploads", null, UUID.randomUUID());
     LibraryManagementDetail managementDetail =
         new LibraryManagementDetail(
-            null, null, false, false, null, null, null, null, null, 0L, 0L, null, null);
+            null, null, false, null, null, null, null, null, 0L, 0L, null, null);
     LibraryDetail detail =
         new LibraryDetail(
             library, AssetRole.OWNER, 0L, managementDetail, true, AssetReach.NONE, null, null);
@@ -397,8 +394,7 @@ class LibraryResponseMapperTest {
             .ownerId(ownerId)
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/documents/"))
-            .sourceCredentials("admin:secret")
-            .sourceInsecureSsl(true);
+            .sourceCredentials("admin:secret");
 
     LibraryCreation creation = LibraryResponseMapper.toCreation(request);
 
@@ -410,7 +406,6 @@ class LibraryResponseMapperTest {
     assertThat(creation.sourcePath()).isEqualTo("/data/documents");
     assertThat(creation.sourceUrl()).isEqualTo(URI.create("https://example.com/documents/"));
     assertThat(creation.sourceCredentials()).isEqualTo("admin:secret");
-    assertThat(creation.sourceInsecureSsl()).isTrue();
   }
 
   @Test
@@ -424,7 +419,6 @@ class LibraryResponseMapperTest {
             .sourcePath("/data/documents")
             .sourceUrl(URI.create("https://example.com/feed.xml"))
             .sourceCredentials("admin:secret")
-            .sourceInsecureSsl(true)
             .schedule(
                 new LibraryScheduleRequest(ScheduleFrequency.WEEKLY)
                     .hour(6)
@@ -439,7 +433,6 @@ class LibraryResponseMapperTest {
     assertThat(update.sourcePath()).isEqualTo("/data/documents");
     assertThat(update.sourceUrl()).isEqualTo(URI.create("https://example.com/feed.xml"));
     assertThat(update.sourceCredentials()).isEqualTo("admin:secret");
-    assertThat(update.sourceInsecureSsl()).isTrue();
     assertThat(update.schedule().frequency()).isEqualTo(ScheduleFrequency.WEEKLY);
     assertThat(update.schedule().hour()).isEqualTo(6);
     assertThat(update.schedule().minute()).isEqualTo(0);
@@ -491,8 +484,7 @@ class LibraryResponseMapperTest {
             SourceTypes.CONFLUENCE,
             null,
             "https://wiki.example.org",
-            "pat-geheim",
-            false);
+            "pat-geheim");
     ConfluenceTestSettings.configure(
         confluence,
         ConfluenceEdition.CLOUD,
@@ -528,7 +520,6 @@ class LibraryResponseMapperTest {
         new LibraryManagementDetail(
             null,
             null,
-            false,
             true,
             false,
             confluenceConnector.settingsView(confluence, ConnectorData.storedIn(confluence), true),
@@ -566,8 +557,7 @@ class LibraryResponseMapperTest {
             SourceTypes.S3,
             null,
             "https://s3.example.org",
-            "AKIA:hochgeheim",
-            false);
+            "AKIA:hochgeheim");
     S3TestSettings.configure(
         s3,
         new S3SourceSettings(

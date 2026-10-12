@@ -169,7 +169,7 @@ public class McpServerDiscovery {
 
   /** The JSON object at {@code address}, {@code null} for a 404. */
   private JsonNode fetch(URI address, String what) {
-    HttpClient client = SourceHttpClientFactory.buildHttpClient(false);
+    HttpClient client = SourceHttpClientFactory.buildHttpClient();
     long deadline = System.nanoTime() + TIMEOUT.toNanos();
     try {
       HttpResponse<InputStream> response =

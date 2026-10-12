@@ -86,7 +86,7 @@ export function StoredConnection({
           <Typography variant="body2">
             <strong>Adresse (URL):</strong> {library.sourceUrl ?? '—'}
           </Typography>
-          <RemoteConnectionLines library={library} />
+          <RemoteConnectionLines />
         </>
       )}
       {/* #1940: the stored configuration can be probed without opening the editor first. */}
@@ -103,13 +103,10 @@ export function StoredConnection({
   )
 }
 
-/** Certificate switch and the note on credentials - shared by every remote source. */
-export function RemoteConnectionLines({ library }: { library: StoredLibrarySource }) {
+/** The note on credentials - shared by every remote source. */
+export function RemoteConnectionLines() {
   return (
     <>
-      <Typography variant="body2">
-        <strong>Zertifikatsprüfung aussetzen:</strong> {library.sourceInsecureSsl ? 'ja' : 'nein'}
-      </Typography>
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         Zugangsdaten sind aus Sicherheitsgründen nie Teil einer API-Antwort - diese Ansicht zeigt
         sie deshalb weder ein noch aus.

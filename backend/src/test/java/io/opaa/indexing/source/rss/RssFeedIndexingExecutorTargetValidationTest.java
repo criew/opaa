@@ -68,8 +68,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
           SourceTypes.RSS_FEED,
           null,
           "https://example.com/feed.xml",
-          null,
-          false);
+          null);
 
   /** The shared request policy: a test user agent, no retries, no real sleeping. */
   private static SourceRequestPolicy requestPolicy() {
@@ -136,7 +135,7 @@ class RssFeedIndexingExecutorTargetValidationTest {
           exchange.sendResponseHeaders(302, -1);
           exchange.close();
         });
-    library.updateSourceConfiguration(null, baseUrl + "/feed.xml", null, false);
+    library.updateSourceConfiguration(null, baseUrl + "/feed.xml", null);
 
     executor.execute(UUID.randomUUID(), library, IndexingRunMode.INCREMENTAL);
 

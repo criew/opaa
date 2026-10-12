@@ -34,8 +34,7 @@ class FilesystemSourceConnectorTest {
     SourceConnectionTestResult result;
     try (UnreadableDirectory ignored = UnreadableDirectory.of(locked)) {
       result =
-          connector.testConnection(
-              new SourceSettings(locked.toString(), null, null, false, null), null);
+          connector.testConnection(new SourceSettings(locked.toString(), null, null, null), null);
     }
 
     assertThat(result.reachable()).isFalse();

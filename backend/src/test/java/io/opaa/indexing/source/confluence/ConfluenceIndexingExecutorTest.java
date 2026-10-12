@@ -239,8 +239,7 @@ class ConfluenceIndexingExecutorTest {
             SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
-            stored,
-            false);
+            stored);
     List<ConfluenceSpaceSelection> selection = new ArrayList<>();
     for (String key : spaceKeys) {
       selection.add(new ConfluenceSpaceSelection(key, null));
@@ -566,8 +565,7 @@ class ConfluenceIndexingExecutorTest {
             SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
-            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
-            false);
+            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch");
     ConfluenceTestSettings.configure(
         library, edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
 
@@ -767,8 +765,7 @@ class ConfluenceIndexingExecutorTest {
             SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
-            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
-            false);
+            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch");
     ConfluenceTestSettings.configure(
         library, edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
     server.throttleNext(1, "1");
@@ -1392,8 +1389,7 @@ class ConfluenceIndexingExecutorTest {
             SourceTypes.CONFLUENCE,
             null,
             server.baseUrl(),
-            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch",
-            false);
+            edition == ConfluenceEdition.CLOUD ? EMAIL + ":falsch" : "falsch");
     ConfluenceTestSettings.configure(
         library, edition, List.of(new ConfluenceSpaceSelection("ENG", null)));
 

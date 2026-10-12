@@ -183,8 +183,7 @@ class S3IndexingExecutorTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            "AKIAEXAMPLE:geheim",
-            false);
+            "AKIAEXAMPLE:geheim");
     S3TestSettings.configure(library, settings);
     return library;
   }
@@ -847,8 +846,7 @@ class S3IndexingExecutorTest {
             SourceTypes.S3,
             null,
             "https://minio.intern.example:9000",
-            "nur-ein-teil",
-            false);
+            "nur-ein-teil");
     S3TestSettings.configure(broken, settings(List.of(S3Scope.of("dokumente", ""))));
     UUID jobId = UUID.randomUUID();
 

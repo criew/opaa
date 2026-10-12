@@ -33,7 +33,6 @@ export const dropboxSource: SourceRegistration = {
     isDirty: (values: DropboxSourceValues) => values.folders.trim() !== '/' || values.teamSpace,
     validate: (values: DropboxSourceValues) => validateDropboxValues(values),
     toPayload: (values: DropboxSourceValues) => ({
-      sourceInsecureSsl: false,
       sourceSettings: dropboxSettingsFrom(values),
     }),
     nameFromSource: (values: DropboxSourceValues) => {

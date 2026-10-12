@@ -50,7 +50,6 @@ export interface LibrarySourceSectionProps {
     sourceType: SourceTypeKey
     sourcePath?: string | null
     sourceUrl?: string | null
-    sourceInsecureSsl?: boolean | null
     sourceCredentialsSet?: boolean | null
     sourceSettings?: Record<string, unknown> | null
     pushSecretSet?: boolean | null

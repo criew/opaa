@@ -5,8 +5,8 @@ import java.net.URISyntaxException;
 
 /**
  * Everything a client needs to talk to one object store: the normalised endpoint, the signing
- * region, the addressing style, the credentials and the relaxed TLS switch. The proxy is the
- * house-wide outbound proxy, chosen when a client is built.
+ * region, the addressing style and the credentials. The proxy is the house-wide outbound proxy,
+ * chosen when a client is built; the certificate is always checked.
  *
  * @param endpoint normalised by {@link #normalizeEndpoint}: scheme and host lower-case, no path,
  *     query, fragment or user info
@@ -17,11 +17,7 @@ import java.net.URISyntaxException;
  *     {@code bucket.endpoint/key} (AWS, Hetzner)
  */
 public record S3Connection(
-    URI endpoint,
-    String region,
-    boolean pathStyle,
-    S3Credentials credentials,
-    boolean insecureSsl) {
+    URI endpoint, String region, boolean pathStyle, S3Credentials credentials) {
 
   public static final String DEFAULT_REGION = "us-east-1";
 
@@ -97,8 +93,6 @@ public record S3Connection(
         + region
         + ", pathStyle="
         + pathStyle
-        + ", insecureSsl="
-        + insecureSsl
         + "]";
   }
 

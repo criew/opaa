@@ -124,7 +124,6 @@ export default function LibraryConnectionDialog({
           sourceType: descriptor.type,
           sourceUrl: address.trim(),
           sourceSettings: library.sourceSettings ?? undefined,
-          sourceInsecureSsl: false,
         },
         next,
         true,

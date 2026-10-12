@@ -24,8 +24,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * An {@code SMB} library through a profile ("Zugang") against a real Samba: the profile's address
- * is an {@code smb://} server without proxy or skipped certificate check, a library on it runs with
- * its own service account, and another share asks for the credentials again.
+ * is an {@code smb://} server, a library on it runs with its own service account, and another share
+ * asks for the credentials again.
  */
 @OpaaIntegrationTest
 class SmbProfileIntegrationTest {
@@ -55,11 +55,7 @@ class SmbProfileIntegrationTest {
   }
 
   @Test
-  void aProfileOfAFileServerTakesNoSkippedCertificateCheck() throws Exception {
-    mockMvc
-        .perform(as(ADMIN, post(PROFILES)).content(profileJson(", \"sourceInsecureSsl\": true")))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.error").value(Matchers.containsString("http:// oder https://")));
+  void aProfileOfAFileServerTakesOnlyAnSmbAddress() throws Exception {
     mockMvc
         .perform(as(ADMIN, post(PROFILES)).content(profileJson("").replace("smb://", "https://")))
         .andExpect(status().isBadRequest())

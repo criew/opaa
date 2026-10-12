@@ -47,8 +47,7 @@ Was ein Konnektor zwischen zwei Läufen festhält — eine Fortsetzungsstelle, e
 den Anker eines inkrementellen Laufs, gemerkte Ordner — gilt nur für die **Einstellungen, unter
 denen es entstand**: Adresse, Pfad und das, was der Konnektor als auswahlbestimmend vergleicht
 (Ordner, Spaces, Geltungsbereiche, Filter, das imitierte Konto), dazu das Konto, als das die Quelle
-verbunden ist. Vorgaben eines Zugangs zählen mit; Zertifikatsprüfung und Vollabgleich-Rhythmus
-nicht.
+verbunden ist. Vorgaben eines Zugangs zählen mit, der Vollabgleich-Rhythmus nicht.
 
 - Ein Lauf ohne ausdrücklich gewählte Betriebsart (Zeitplan, „Jetzt indizieren", ein übergelaufener
   Ereignisstapel) ist ein Vollabgleich, sobald der gespeicherte Stand zu anderen Einstellungen
@@ -91,6 +90,20 @@ Anmeldefehler; die Meldung nennt die Einstellung. Die Prüfung lässt sich mit
 `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` ganz abschalten, die Schemaprüfung bleibt dann. Eine
 Restlücke bleibt: DNS-Rebinding, bei dem ein Name zwischen Prüfung und Verbindung auf eine andere
 Adresse wechselt.
+
+### 1.3 Zertifikatsprüfung
+
+Jeder Konnektor, der über `https` liest, prüft das Zertifikat der Quelle gegen den Truststore von
+OPAA. Abschalten lässt sich das weder an einer Wissensbibliothek noch an einem Zugang: Ohne Prüfung
+könnte sich jeder Server im Netz als die Quelle ausgeben, Zugangsdaten abgreifen oder Inhalte
+unterschieben.
+
+Ein Server mit einem Zertifikat der hauseigenen Zertifizierungsstelle wird erst erreichbar, wenn der
+Betrieb diese Stelle ergänzt hat: [Eigene interne CA ergänzen](../docker-compose.md#eigene-interne-ca-ergänzen),
+unter Kubernetes [Eigene Zertifizierungsstelle](../kubernetes.md#eigene-zertifizierungsstelle). Bis
+dahin melden Verbindungstest und Lauf „Das Zertifikat des Servers wird nicht anerkannt: Es stammt von
+einer unbekannten Zertifizierungsstelle oder passt nicht zur Adresse. …". Dieselbe Meldung erscheint,
+wenn das Zertifikat auf einen anderen Namen ausgestellt ist als die Adresse der Quelle.
 
 ## 2. Dateiablagen
 

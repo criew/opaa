@@ -93,7 +93,7 @@ legt das Datenbankschema an; erst danach meldet sich das Backend bereit.
 | `evaluationDatabase` | PostgreSQL im Release, **nur zur Erprobung** |
 | `uploads` | Originalablage im Objektspeicher (`s3`, Vorgabe) oder auf einem Volume (`persistentVolumeClaim`) |
 | `filesystemSources` | Verzeichnisse für den Dateisystem-Konnektor, nur lesend eingehängt |
-| `extraCACertificates` | eigene CA-Zertifikate für Identitätsanbieter, Modelle, Objektspeicher und Datenbank |
+| `extraCACertificates` | eigene CA-Zertifikate für Identitätsanbieter, Modelle, Objektspeicher, Datenbank und Quellen (etwa Confluence, Nextcloud, Webverzeichnis und Feed) |
 | `embedding`, `rerank` | Modell-Endpunkte, auch im Cluster (etwa Ollama über seinen Service) |
 | `mail` | Zeitgrenzen der SMTP-Verbindung; den Mailserver richtet die Oberfläche ein |
 | `targetValidation` | Ausnahmen der Adressprüfung für Quellen und Identitätsanbieter im eigenen Netz |

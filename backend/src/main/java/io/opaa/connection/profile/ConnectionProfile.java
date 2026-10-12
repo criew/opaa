@@ -17,10 +17,10 @@ import java.util.UUID;
 
 /**
  * A connection profile ("Zugang"): the frame the administration sets for one connector - server
- * address and TLS switch, sign-in method, app registration, scopes and connector defaults - or, of
- * kind {@link ProfileKind#MCP_SERVER}, for an MCP server without a connector. The client secret -
- * for a service account key the key file - is held only as {@code CredentialsEncryptor} ciphertext;
- * only the profile administration and {@link ProfileRegistrations} read it.
+ * address, sign-in method, app registration, scopes and connector defaults - or, of kind {@link
+ * ProfileKind#MCP_SERVER}, for an MCP server without a connector. The client secret - for a service
+ * account key the key file - is held only as {@code CredentialsEncryptor} ciphertext; only the
+ * profile administration and {@link ProfileRegistrations} read it.
  */
 @Entity
 @Table(name = "connection_profiles")
@@ -78,9 +78,6 @@ public class ConnectionProfile {
 
   @Column(name = "revocation_endpoint", length = 2000)
   private String revocationEndpoint;
-
-  @Column(name = "source_insecure_ssl", nullable = false)
-  private boolean sourceInsecureSsl;
 
   @Column(name = "responsible_group_id")
   private UUID responsibleGroupId;
@@ -144,7 +141,6 @@ public class ConnectionProfile {
     this.scopes = values.scopes();
     this.connectorSettings =
         values.connectorSettings() == null ? null : values.connectorSettings().toJson();
-    this.sourceInsecureSsl = values.sourceInsecureSsl();
     this.authorizationEndpoint = values.endpoints().authorization();
     this.tokenEndpoint = values.endpoints().token();
     this.revocationEndpoint = values.endpoints().revocation();
@@ -259,11 +255,6 @@ public class ConnectionProfile {
   /** The connector defaults as stored JSON, {@code null} for none. */
   public String getConnectorSettings() {
     return connectorSettings;
-  }
-
-  /** Whether the certificate check is skipped for every library on the profile. */
-  public boolean isSourceInsecureSsl() {
-    return sourceInsecureSsl;
   }
 
   /** Since when the profile is locked, {@code null} while it is not. */

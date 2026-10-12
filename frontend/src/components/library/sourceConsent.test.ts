@@ -21,7 +21,6 @@ const option: ConnectionProfileOption = {
   authMethod: 'OAUTH',
   ownership: 'LIBRARY',
   ownAccount: false,
-  sourceInsecureSsl: false,
 }
 
 const draft: WizardDraft = {

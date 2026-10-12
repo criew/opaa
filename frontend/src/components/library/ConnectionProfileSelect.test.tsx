@@ -31,7 +31,6 @@ const RELEASED: ConnectionProfileOption = {
   authMethod: 'PERSONAL_SECRET',
   ownership: 'LIBRARY',
   ownAccount: false,
-  sourceInsecureSsl: false,
   connectorDefaults: { shared: false },
 }
 

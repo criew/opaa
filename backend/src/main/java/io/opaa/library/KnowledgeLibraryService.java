@@ -230,7 +230,6 @@ public class KnowledgeLibraryService {
           library.getSourcePath(),
           library.getSourceUrl(),
           connectionResolver.storedCredentials(library),
-          library.isSourceInsecureSsl(),
           connectionResolver.effectiveSettings(library));
     }
   }
@@ -274,7 +273,6 @@ public class KnowledgeLibraryService {
           library.getOwnerUserId(), profileId, library.getSourceType());
     }
     String previousUrl = library.getSourceUrl();
-    boolean previousInsecureSsl = library.isSourceInsecureSsl();
     String previousSettings = library.getSourceSettings();
     boolean hadCredentials = connectionResolver.holdsCredentials(library);
     Set<String> effectiveChanges =
@@ -286,9 +284,6 @@ public class KnowledgeLibraryService {
     Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
     if (!Objects.equals(previousUrl, updated.getSourceUrl())) {
       changed.add("sourceUrl");
-    }
-    if (previousInsecureSsl != updated.isSourceInsecureSsl()) {
-      changed.add("sourceInsecureSsl");
     }
     if (!Objects.equals(previousSettings, updated.getSourceSettings())) {
       changed.add("sourceSettings");
@@ -317,13 +312,9 @@ public class KnowledgeLibraryService {
       // locked.
       connectorRelease.requireDetachable(
           caller, library.getSourceType(), connection.get().profile());
-      boolean previousInsecureSsl = library.isSourceInsecureSsl();
       String previousSettings = library.getSourceSettings();
       Set<String> changed = new LinkedHashSet<>(List.of("connectionProfile"));
       changed.addAll(libraryConnections.disconnect(library, caller.id()));
-      if (previousInsecureSsl != library.isSourceInsecureSsl()) {
-        changed.add("sourceInsecureSsl");
-      }
       if (!Objects.equals(previousSettings, library.getSourceSettings())) {
         changed.add("sourceSettings");
       }
@@ -403,8 +394,7 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
-              ownColumn,
-              sourceConfiguration.sourceInsecureSsl());
+              ownColumn);
     } else {
       library =
           KnowledgeLibrary.ownedByUser(
@@ -415,8 +405,7 @@ public class KnowledgeLibraryService {
               sourceConfiguration.sourceType(),
               sourceConfiguration.sourcePath(),
               sourceConfiguration.sourceUrl(),
-              ownColumn,
-              sourceConfiguration.sourceInsecureSsl());
+              ownColumn);
     }
     connectors
         .connector(sourceConfiguration.sourceType())
@@ -659,7 +648,6 @@ public class KnowledgeLibraryService {
     String previousSourcePath = library.getSourcePath();
     String previousSourceUrl = library.getSourceUrl();
     String previousSourceCredentials = connectionResolver.storedCredentials(library);
-    boolean previousSourceInsecureSsl = library.isSourceInsecureSsl();
     boolean ownSecretInStore = libraryConnections.ownSecretInStore(library);
     boolean targetKept =
         !replacesSourceConfiguration
@@ -678,8 +666,7 @@ public class KnowledgeLibraryService {
       library.updateSourceConfiguration(
           validatedSettings.sourcePath(),
           validatedSettings.sourceUrl(),
-          ownSecretInStore ? null : validatedSettings.sourceCredentials(),
-          validatedSettings.sourceInsecureSsl());
+          ownSecretInStore ? null : validatedSettings.sourceCredentials());
       // The discard a host change performs (see requestedSettingsChange's Javadoc) is
       // a security invariant and must not depend on the dirty check: with the key missing the
       // attribute already reads null, so only an erasure on the column itself removes the
@@ -745,9 +732,6 @@ public class KnowledgeLibraryService {
           previousSourceCredentials, connectionResolver.storedCredentials(updated))) {
         changedSourceFields.add("sourceCredentials");
       }
-      if (previousSourceInsecureSsl != updated.isSourceInsecureSsl()) {
-        changedSourceFields.add("sourceInsecureSsl");
-      }
       // Connector-owned settings leave the same trail as the connection fields; the connector
       // discards whatever run state the change invalidates.
       SourceSettings after =
@@ -755,7 +739,6 @@ public class KnowledgeLibraryService {
               updated.getSourcePath(),
               updated.getSourceUrl(),
               null,
-              updated.isSourceInsecureSsl(),
               connectionResolver.effectiveSettings(updated));
       changedSourceFields.addAll(changeGate.applied(updated, before, after));
       if (!changedSourceFields.isEmpty()) {
@@ -1237,8 +1220,7 @@ public class KnowledgeLibraryService {
   /**
    * A library's quellentyp is required at creation (ADR-0018); its connector alone validates the
    * configuration - the database checks nothing per type (ADR-0038). A connector setting addressed
-   * to another type is refused naming its owner. {@code sourceInsecureSsl} defaults to {@code
-   * false} when omitted.
+   * to another type is refused naming its owner.
    */
   private SourceConfiguration validateSourceConfiguration(LibraryCreation request) {
     SourceType sourceType = request.sourceType();
@@ -1250,7 +1232,6 @@ public class KnowledgeLibraryService {
             blankToNull(request.sourcePath()),
             blankToNull(request.sourceUrl() == null ? null : request.sourceUrl().toString()),
             blankToNull(request.sourceCredentials()),
-            Boolean.TRUE.equals(request.sourceInsecureSsl()),
             readSettings(sourceType, request.sourceSettings()));
     SourceConnector connector = connectors.connector(sourceType);
     UUID profileId = request.connectionProfileId();
@@ -1319,8 +1300,7 @@ public class KnowledgeLibraryService {
   private boolean hasSourceConfigurationFields(LibraryUpdate request) {
     return request.sourcePath() != null
         || request.sourceUrl() != null
-        || request.sourceCredentials() != null
-        || request.sourceInsecureSsl() != null;
+        || request.sourceCredentials() != null;
   }
 
   /**
@@ -1372,17 +1352,13 @@ public class KnowledgeLibraryService {
       throw new ValidationException(TARGET_CHANGE_NEEDS_CREDENTIALS);
     }
     if (!replacesConnection) {
-      return new SourceSettings(null, null, null, false, connectorSettings);
+      return new SourceSettings(null, null, null, connectorSettings);
     }
     if (sourceCredentials == null && keepsTarget) {
       sourceCredentials = connectionResolver.storedCredentials(library);
     }
     return new SourceSettings(
-        blankToNull(request.sourcePath()),
-        sourceUrl,
-        sourceCredentials,
-        Boolean.TRUE.equals(request.sourceInsecureSsl()),
-        connectorSettings);
+        blankToNull(request.sourcePath()), sourceUrl, sourceCredentials, connectorSettings);
   }
 
   /**
@@ -1395,17 +1371,12 @@ public class KnowledgeLibraryService {
       ConnectorData beforeSettings,
       String afterUrl,
       ConnectorData afterSettings) {
-    return SecretTarget.of(
-            connector, new SourceSettings(null, beforeUrl, null, false, beforeSettings))
+    return SecretTarget.of(connector, new SourceSettings(null, beforeUrl, null, beforeSettings))
         .admits(
             SecretTarget.of(
                 connector,
                 new SourceSettings(
-                    null,
-                    afterUrl,
-                    null,
-                    false,
-                    afterSettings != null ? afterSettings : beforeSettings)));
+                    null, afterUrl, null, afterSettings != null ? afterSettings : beforeSettings)));
   }
 
   /**
@@ -1437,10 +1408,6 @@ public class KnowledgeLibraryService {
 
     String sourceCredentials() {
       return settings.sourceCredentials();
-    }
-
-    boolean sourceInsecureSsl() {
-      return settings.sourceInsecureSsl();
     }
   }
 
@@ -1596,7 +1563,6 @@ public class KnowledgeLibraryService {
     return new LibraryManagementDetail(
         library.getSourcePath(),
         library.getSourceUrl(),
-        library.isSourceInsecureSsl(),
         // PR #542 review, nit 3: a non-secret yes/no, not the credential itself (ADR-0018) - lets
         // a client phrase an accurate "leave blank to keep the current credential" hint only when
         // one is actually stored.

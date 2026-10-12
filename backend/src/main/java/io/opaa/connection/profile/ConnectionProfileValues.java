@@ -19,7 +19,6 @@ public record ConnectionProfileValues(
     String tenant,
     String scopes,
     ConnectorData connectorSettings,
-    boolean sourceInsecureSsl,
     ProfileEndpoints endpoints) {
 
   public ConnectionProfileValues {
@@ -36,8 +35,7 @@ public record ConnectionProfileValues(
       LocalDate clientSecretExpiresOn,
       String tenant,
       String scopes,
-      ConnectorData connectorSettings,
-      boolean sourceInsecureSsl) {
+      ConnectorData connectorSettings) {
     this(
         name,
         serverUrl,
@@ -48,7 +46,6 @@ public record ConnectionProfileValues(
         tenant,
         scopes,
         connectorSettings,
-        sourceInsecureSsl,
         ProfileEndpoints.NONE);
   }
 
@@ -63,7 +60,6 @@ public record ConnectionProfileValues(
         tenant,
         scopes,
         connectorSettings,
-        sourceInsecureSsl,
         endpoints);
   }
 
@@ -78,7 +74,6 @@ public record ConnectionProfileValues(
         tenant,
         scopes,
         settings,
-        sourceInsecureSsl,
         endpoints);
   }
 }

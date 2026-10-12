@@ -129,8 +129,7 @@ class DocumentIndexingServiceTest {
             SourceTypes.FILESYSTEM,
             "/data/docs",
             null,
-            null,
-            false);
+            null);
   }
 
   private void stubEditableLibrary() {
@@ -289,8 +288,7 @@ class DocumentIndexingServiceTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             "https://example.com/files/",
-            null,
-            false);
+            null);
     when(libraryRepository.findById(httpLibrary.getId())).thenReturn(Optional.of(httpLibrary));
     when(libraryAccessService.requireRole(httpLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);
@@ -319,8 +317,7 @@ class DocumentIndexingServiceTest {
             SourceTypes.RSS_FEED,
             null,
             "https://example.com/feed.xml",
-            null,
-            false);
+            null);
     when(libraryRepository.findById(rssLibrary.getId())).thenReturn(Optional.of(rssLibrary));
     when(libraryAccessService.requireRole(rssLibrary, caller.id(), false, AssetRole.EDITOR))
         .thenReturn(AssetRole.EDITOR);

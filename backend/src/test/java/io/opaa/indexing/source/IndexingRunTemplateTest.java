@@ -84,8 +84,7 @@ class IndexingRunTemplateTest {
           SourceTypes.FILESYSTEM,
           "/srv/dokumente",
           null,
-          null,
-          false);
+          null);
 
   private static SourceIndexingExecutor executor(
       SourceType type, Map<IndexingRunMode, VanishedDocumentPolicy> modes) {
@@ -126,7 +125,7 @@ class IndexingRunTemplateTest {
     MutableClock clock = new MutableClock(Instant.parse("2026-10-04T12:00:00Z"));
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings(null, "https://quelle.example", "alt", false, null));
+        .thenReturn(new SourceSettings(null, "https://quelle.example", "alt", null));
     when(resolver.currentSecret(library))
         .thenReturn(Secret.personal("erstes"), Secret.personal("erneuert"));
     AtomicReference<SourceSettings> settings = new AtomicReference<>();
@@ -317,7 +316,7 @@ class IndexingRunTemplateTest {
   void aBlockDuringTheRunFailsTheJobWithItsNotice() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings("/srv/dokumente", null, null, false, null));
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null));
     when(resolver.currentSecret(library))
         .thenThrow(
             new SourceConnectionBlockedException(
@@ -349,7 +348,7 @@ class IndexingRunTemplateTest {
   void rejectedCredentialsFailTheJobWithTheSourcesMessageAndTellThePort() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     when(resolver.resolve(library))
-        .thenReturn(new SourceSettings("/srv/dokumente", null, null, false, null));
+        .thenReturn(new SourceSettings("/srv/dokumente", null, null, null));
 
     templateWith(resolver)
         .run(
@@ -396,6 +395,59 @@ class IndexingRunTemplateTest {
             org.mockito.ArgumentMatchers.eq(jobId),
             org.mockito.ArgumentMatchers.startsWith(
                 "Der Ausgangsproxy hat die Verbindung zum Ziel abgelehnt (Status 403)"));
+  }
+
+  @Test
+  void aTlsFailureWithoutACertificateCauseKeepsItsOwnMessage() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          throw new javax.net.ssl.SSLHandshakeException("Remote host terminated the handshake");
+        });
+
+    verify(jobService).failJob(jobId, "Remote host terminated the handshake");
+  }
+
+  @Test
+  void aConnectorMessageNamingTheCertificateWithItsHostStays() {
+    String own =
+        "TLS-Verbindung zu wiki.example.org fehlgeschlagen. "
+            + io.opaa.sourceaccess.UntrustedCertificate.MESSAGE;
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          throw new java.io.IOException(own, untrustedHandshake());
+        });
+
+    verify(jobService).failJob(jobId, own);
+  }
+
+  @Test
+  void anUntrustedHandshakeWithoutOwnWordingGetsTheGeneralMessage() {
+    template.run(
+        jobId,
+        library,
+        IndexingRunMode.FULL,
+        fullListingExecutor,
+        run -> {
+          throw new java.io.IOException("handshake failed", untrustedHandshake());
+        });
+
+    verify(jobService).failJob(jobId, io.opaa.sourceaccess.UntrustedCertificate.MESSAGE);
+  }
+
+  /** A handshake the JDK refused for the certificate chain, as its exceptions nest. */
+  private static javax.net.ssl.SSLHandshakeException untrustedHandshake() {
+    javax.net.ssl.SSLHandshakeException handshake =
+        new javax.net.ssl.SSLHandshakeException("PKIX path building failed");
+    handshake.initCause(new java.security.cert.CertificateException("unknown issuer"));
+    return handshake;
   }
 
   @Test
@@ -546,7 +598,7 @@ class IndexingRunTemplateTest {
   }
 
   private static SourceSettings fileSettings(String path) {
-    return new SourceSettings(path, null, null, false, null);
+    return new SourceSettings(path, null, null, null);
   }
 
   @Test

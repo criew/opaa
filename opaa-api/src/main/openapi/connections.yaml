@@ -1240,14 +1240,6 @@ components:
             Connector defaults: only keys the connector names in
             SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
             override a library's settings key by key. Never a secret.
-        sourceInsecureSsl:
-          type: boolean
-          nullable: true
-          default: false
-          description: >
-            Skip the certificate check for every library on the profile. A library on the profile
-            cannot set its own. Only for an http or https server address; with any other (smb)
-            true is a 400.
 
     ConnectionProfileUpdateRequest:
       type: object
@@ -1333,14 +1325,6 @@ components:
             Connector defaults: only keys the connector names in
             SourceTypeDescriptor.profileDefaults, each of its kind; another key is a 400. They
             override a library's settings key by key. Never a secret.
-        sourceInsecureSsl:
-          type: boolean
-          nullable: true
-          default: false
-          description: >
-            Skip the certificate check for every library on the profile. A library on the profile
-            cannot set its own. Only for an http or https server address; with any other (smb)
-            true is a 400.
         confirmDiscard:
           type: boolean
           description: >
@@ -1362,7 +1346,6 @@ components:
           clientSecretSet,
           clientSecretExpiresSoon,
           signInRejected,
-          sourceInsecureSsl,
           connectionCount,
           connectedAccountCount,
           expiredConnectionWarning,
@@ -1422,8 +1405,6 @@ components:
           type: object
           additionalProperties: true
           nullable: true
-        sourceInsecureSsl:
-          type: boolean
         connectionCount:
           type: integer
           format: int64
@@ -2091,7 +2072,7 @@ components:
         A profile the caller may create a library through now - released to them and neither the
         profile nor its connector locked. On a profile with the ownership PERSON only a private
         library.
-      required: [id, name, sourceType, serverUrl, authMethod, ownership, ownAccount, sourceInsecureSsl]
+      required: [id, name, sourceType, serverUrl, authMethod, ownership, ownAccount]
       properties:
         ownership:
           $ref: "#/components/schemas/ConnectionOwnership"
@@ -2118,9 +2099,6 @@ components:
           description: >
             The connector settings the profile sets for every library on it (see
             SourceTypeDescriptor.profileDefaults); absent for none. Never a secret.
-        sourceInsecureSsl:
-          type: boolean
-          description: Whether the certificate check is skipped for every library on the profile.
 
     ConnectorLockRequest:
       type: object
@@ -2300,12 +2278,6 @@ components:
           description: >
             The connector settings the profile sets for every library on it; from MANAGER on,
             absent for none.
-        sourceInsecureSsl:
-          type: boolean
-          nullable: true
-          description: >
-            Whether the certificate check is skipped for every library on the profile; from
-            MANAGER on.
 
     LibraryConnectionProfileRequest:
       type: object

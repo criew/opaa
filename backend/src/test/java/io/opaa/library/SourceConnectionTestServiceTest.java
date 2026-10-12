@@ -231,20 +231,6 @@ class SourceConnectionTestServiceTest {
         .isInstanceOf(ValidationException.class);
   }
 
-  @Test
-  void filesystemRejectsSourceInsecureSslWith400() {
-    assertThatThrownBy(
-            () ->
-                service.test(
-                    sourceConnectionTest()
-                        .sourceType(SourceTypes.FILESYSTEM)
-                        .sourcePath("/data/documents")
-                        .sourceInsecureSsl(true)
-                        .build(),
-                    caller))
-        .isInstanceOf(ValidationException.class);
-  }
-
   // --- HTTP_DIRECTORY ------------------------------------------------------
 
   @Test
@@ -861,8 +847,7 @@ class SourceConnectionTestServiceTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/dir/",
-            "admin:secret",
-            false);
+            "admin:secret");
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);
@@ -922,8 +907,7 @@ class SourceConnectionTestServiceTest {
               SourceTypes.HTTP_DIRECTORY,
               null,
               baseUrl + "/dir/",
-              "admin:secret",
-              false);
+              "admin:secret");
       when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
       when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
           .thenReturn(AssetRole.MANAGER);
@@ -970,8 +954,7 @@ class SourceConnectionTestServiceTest {
             SourceTypes.FILESYSTEM,
             "/data/documents",
             null,
-            null,
-            false);
+            null);
     when(filesystemAllowlist.isConfigured()).thenReturn(true);
     when(filesystemAllowlist.isAllowed("/data/documents")).thenReturn(false);
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
@@ -1008,8 +991,7 @@ class SourceConnectionTestServiceTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/dir/",
-            "admin:secret",
-            false);
+            "admin:secret");
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
         .thenThrow(new AccessDeniedException("Kein Zugriff auf diese Bibliothek"));
@@ -1045,8 +1027,7 @@ class SourceConnectionTestServiceTest {
             SourceTypes.HTTP_DIRECTORY,
             null,
             baseUrl + "/manager-dir/",
-            "admin:secret",
-            false);
+            "admin:secret");
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);
@@ -1111,8 +1092,7 @@ class SourceConnectionTestServiceTest {
             SourceTypes.RSS_FEED,
             null,
             baseUrl + "/feed.xml",
-            "admin:secret",
-            false);
+            "admin:secret");
     when(libraryRepository.findById(libraryId)).thenReturn(Optional.of(library));
     when(libraryAccessService.requireRole(library, currentUserId, false, AssetRole.MANAGER))
         .thenReturn(AssetRole.MANAGER);

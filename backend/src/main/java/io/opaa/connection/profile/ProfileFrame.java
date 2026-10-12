@@ -12,10 +12,10 @@ import java.util.Optional;
 import java.util.Set;
 
 /**
- * What a profile sets for every library on it: the transport to its server address and the
- * connector settings its declaration binds ({@link ProfileDefaults#boundKeys}). They override the
- * library's own values; a library may repeat a bound value but never differ, and it stores only
- * what the frame leaves to it - a secret only where the profile signs in with a personal secret.
+ * What a profile sets for every library on it: the connector settings its declaration binds ({@link
+ * ProfileDefaults#boundKeys}). They override the library's own values; a library may repeat a bound
+ * value but never differ, and it stores only what the frame leaves to it - a secret only where the
+ * profile signs in with a personal secret.
  */
 final class ProfileFrame {
 
@@ -38,33 +38,18 @@ final class ProfileFrame {
     return profile;
   }
 
-  /**
-   * The certificate check the profile sets in place of its libraries' own; where it applies beyond
-   * the server address, the connector decides as for an own address.
-   */
-  TransportRules serverTransport() {
-    return new TransportRules(profile.isSourceInsecureSsl());
-  }
-
   /** Whether a library on the profile holds its own personal secret. */
   boolean takesSecret() {
     return profile.getAuthMethod() == ConnectionAuthMethod.PERSONAL_SECRET;
   }
 
   /**
-   * Refuses {@code requested} where it differs from the frame: a skipped certificate check or a
-   * bound connector setting other than the profile's. An absent value always fits.
+   * Refuses {@code requested} where it differs from the frame: a bound connector setting other than
+   * the profile's. An absent value always fits.
    *
    * @throws ValidationException (German 400) naming the field
    */
   void requireFits(SourceSettings requested) {
-    TransportRules transport = serverTransport();
-    if (requested.sourceInsecureSsl() && !transport.insecureSsl()) {
-      throw new ValidationException(
-          "Die Zertifikatsprüfung gibt der Zugang „"
-              + profile.getName()
-              + "“ vor; die Bibliothek setzt sie nicht selbst aus");
-    }
     ConnectorData own = requested.connectorSettings();
     if (own == null) {
       return;
@@ -125,15 +110,14 @@ final class ProfileFrame {
   }
 
   /**
-   * What of {@code validated} the library stores itself: no transport of its own, its connector
-   * settings without the bound keys, and a secret only where the profile takes one.
+   * What of {@code validated} the library stores itself: its connector settings without the bound
+   * keys, and a secret only where the profile takes one.
    */
   SourceSettings ownPart(SourceSettings validated) {
     return new SourceSettings(
         validated.sourcePath(),
         validated.sourceUrl(),
         takesSecret() ? validated.sourceCredentials() : null,
-        false,
         ownSettings(validated.connectorSettings()),
         takesSecret() ? validated.credentialsKind() : null);
   }

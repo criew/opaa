@@ -134,9 +134,6 @@ public class KnowledgeLibrary extends Asset {
   @Column(name = "source_credentials", columnDefinition = "text")
   private String sourceCredentials;
 
-  @Column(name = "source_insecure_ssl", nullable = false)
-  private boolean sourceInsecureSsl;
-
   /**
    * The one push secret of this library: what its connector's push intake authenticates a
    * notification with - one per library, like {@link #sourceCredentials}, and encrypted at rest the
@@ -243,7 +240,6 @@ public class KnowledgeLibrary extends Asset {
       String sourcePath,
       String sourceUrl,
       String sourceCredentials,
-      boolean sourceInsecureSsl,
       boolean ownerOnly) {
     super(
         ASSET_TYPE,
@@ -258,7 +254,6 @@ public class KnowledgeLibrary extends Asset {
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
     this.sourceCredentials = sourceCredentials;
-    this.sourceInsecureSsl = sourceInsecureSsl;
   }
 
   /**
@@ -268,7 +263,7 @@ public class KnowledgeLibrary extends Asset {
   public static KnowledgeLibrary ownedByUser(
       UUID organizationId, String name, String description, UUID ownerUserId) {
     return ownedByUser(
-        organizationId, name, description, ownerUserId, SourceType.UPLOAD, null, null, null, false);
+        organizationId, name, description, ownerUserId, SourceType.UPLOAD, null, null, null);
   }
 
   public static KnowledgeLibrary ownedByUser(
@@ -279,8 +274,7 @@ public class KnowledgeLibrary extends Asset {
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
-      String sourceCredentials,
-      boolean sourceInsecureSsl) {
+      String sourceCredentials) {
     return new KnowledgeLibrary(
         organizationId,
         name,
@@ -292,7 +286,6 @@ public class KnowledgeLibrary extends Asset {
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         false);
   }
 
@@ -308,8 +301,7 @@ public class KnowledgeLibrary extends Asset {
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
-      String sourceCredentials,
-      boolean sourceInsecureSsl) {
+      String sourceCredentials) {
     return new KnowledgeLibrary(
         organizationId,
         name,
@@ -321,7 +313,6 @@ public class KnowledgeLibrary extends Asset {
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         true);
   }
 
@@ -333,15 +324,7 @@ public class KnowledgeLibrary extends Asset {
   public static KnowledgeLibrary ownedByGroup(
       UUID organizationId, String name, String description, UUID ownerGroupId) {
     return ownedByGroup(
-        organizationId,
-        name,
-        description,
-        ownerGroupId,
-        SourceType.UPLOAD,
-        null,
-        null,
-        null,
-        false);
+        organizationId, name, description, ownerGroupId, SourceType.UPLOAD, null, null, null);
   }
 
   public static KnowledgeLibrary ownedByGroup(
@@ -352,8 +335,7 @@ public class KnowledgeLibrary extends Asset {
       SourceType sourceType,
       String sourcePath,
       String sourceUrl,
-      String sourceCredentials,
-      boolean sourceInsecureSsl) {
+      String sourceCredentials) {
     return new KnowledgeLibrary(
         organizationId,
         name,
@@ -365,7 +347,6 @@ public class KnowledgeLibrary extends Asset {
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         false);
   }
 
@@ -377,11 +358,10 @@ public class KnowledgeLibrary extends Asset {
    * quellentyp, is not itself part of ADR-0018's "gewaehlt einmal, permanent" rule.
    */
   public void updateSourceConfiguration(
-      String sourcePath, String sourceUrl, String sourceCredentials, boolean sourceInsecureSsl) {
+      String sourcePath, String sourceUrl, String sourceCredentials) {
     this.sourcePath = sourcePath;
     this.sourceUrl = sourceUrl;
     this.sourceCredentials = sourceCredentials;
-    this.sourceInsecureSsl = sourceInsecureSsl;
     touch();
   }
 
@@ -398,17 +378,6 @@ public class KnowledgeLibrary extends Asset {
   /** Moves the source to {@code sourceUrl}; every other field, the secret included, stays. */
   public void moveSourceUrl(String sourceUrl) {
     this.sourceUrl = sourceUrl;
-    touch();
-  }
-
-  /** Drops its own skipped certificate check: a connection profile decides it. */
-  public void dropTransport() {
-    replaceTransport(false);
-  }
-
-  /** Takes the certificate switch as its own, as a released profile had it. */
-  public void replaceTransport(boolean sourceInsecureSsl) {
-    this.sourceInsecureSsl = sourceInsecureSsl;
     touch();
   }
 
@@ -583,10 +552,6 @@ public class KnowledgeLibrary extends Asset {
   public void setWebhookSecret(String secret) {
     this.webhookSecret = secret;
     touch();
-  }
-
-  public boolean isSourceInsecureSsl() {
-    return sourceInsecureSsl;
   }
 
   public boolean isScheduleEnabled() {

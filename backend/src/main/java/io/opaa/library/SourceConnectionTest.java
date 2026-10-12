@@ -27,7 +27,6 @@ public record SourceConnectionTest(
     String sourcePath,
     URI sourceUrl,
     String sourceCredentials,
-    Boolean sourceInsecureSsl,
     UUID libraryId,
     ConnectorData connectorSettings,
     UUID connectionProfileId,
@@ -40,7 +39,6 @@ public record SourceConnectionTest(
       String sourcePath,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       UUID libraryId,
       ConnectorData connectorSettings,
       UUID connectionProfileId,
@@ -50,7 +48,6 @@ public record SourceConnectionTest(
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         libraryId,
         connectorSettings,
         connectionProfileId,
@@ -64,7 +61,6 @@ public record SourceConnectionTest(
       String sourcePath,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       UUID libraryId,
       ConnectorData connectorSettings,
       UUID connectionProfileId) {
@@ -73,7 +69,6 @@ public record SourceConnectionTest(
         sourcePath,
         sourceUrl,
         sourceCredentials,
-        sourceInsecureSsl,
         libraryId,
         connectorSettings,
         connectionProfileId,
@@ -86,17 +81,8 @@ public record SourceConnectionTest(
       String sourcePath,
       URI sourceUrl,
       String sourceCredentials,
-      Boolean sourceInsecureSsl,
       UUID libraryId,
       ConnectorData connectorSettings) {
-    this(
-        sourceType,
-        sourcePath,
-        sourceUrl,
-        sourceCredentials,
-        sourceInsecureSsl,
-        libraryId,
-        connectorSettings,
-        null);
+    this(sourceType, sourcePath, sourceUrl, sourceCredentials, libraryId, connectorSettings, null);
   }
 }

@@ -62,8 +62,7 @@ class StaleDocumentCleanupServiceTest {
           SourceTypes.RSS_FEED,
           null,
           null,
-          null,
-          false);
+          null);
 
   private static SourceIndexingExecutor removingOnAbsence() {
     SourceIndexingExecutor executor = mock(SourceIndexingExecutor.class);

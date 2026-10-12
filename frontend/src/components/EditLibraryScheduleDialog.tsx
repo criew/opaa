@@ -84,7 +84,6 @@ export default function EditLibraryScheduleDialog({
         // Bewusst kein Quellkonfigurationsfeld gesetzt - mirrors LibraryDetailPage's own
         // Stammdaten-Formular: das Backend lässt die gespeicherte Quellkonfiguration unverändert,
         // solange keines ihrer Felder in der Anfrage vorhanden ist.
-        sourceInsecureSsl: null,
         ...withSettingsBase(scheduleUpdateFrom(values, confluence), settingsBase),
       })
       onClose()

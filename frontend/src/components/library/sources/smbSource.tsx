@@ -44,7 +44,6 @@ export const smbSource: SourceRegistration = {
       return {
         sourceUrl: values.sourceUrl.trim(),
         sourceCredentials: smbCredentialsOf(values),
-        sourceInsecureSsl: false,
         sourceSettings: { folders: folders.length === 0 ? ['/'] : folders },
       }
     },

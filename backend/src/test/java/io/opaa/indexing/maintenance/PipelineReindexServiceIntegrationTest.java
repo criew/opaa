@@ -122,8 +122,7 @@ class PipelineReindexServiceIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 classTempDir.toString(),
                 null,
-                null,
-                false));
+                null));
     uploadLibrary =
         libraryRepository.save(
             KnowledgeLibrary.ownedByUser(
@@ -940,8 +939,7 @@ class PipelineReindexServiceIntegrationTest {
                 SourceTypes.FILESYSTEM,
                 withdrawnDirectory.toString(),
                 null,
-                null,
-                false));
+                null));
     Document document =
         persistedDocumentPointingAt(
             "satzung.txt", file, SourceTypes.FILESYSTEM, withdrawnLibrary.getId());

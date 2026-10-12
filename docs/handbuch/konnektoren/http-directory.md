@@ -36,7 +36,6 @@ flowchart LR
 |---|---|
 | „Adresse (URL)" | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt |
 | „Anmeldedaten (optional)", beim Bearbeiten „Neue Zugangsdaten" | `benutzer:passwort`; der erste Doppelpunkt trennt |
-| „Zertifikatsprüfung aussetzen" | optional, für interne Server mit eigenem Zertifikat |
 
 Bleibt beim Bearbeiten das Feld für die Zugangsdaten leer und der Ursprung der Adresse (Schema, Host,
 Port) gleich, bleiben die gespeicherten Zugangsdaten. Ein anderer Ursprung verwirft sie, damit
@@ -47,8 +46,8 @@ sehen nur Verwaltende; von den Zugangsdaten nur, ob welche hinterlegt sind.
 aber keine erkennbare Verzeichnisliste" und „Verzeichnisliste erkannt".
 
 **Über einen Zugang:** Die Adresse liegt unter der Server-Adresse des Zugangs. Er meldet sich ohne
-Anmeldung an oder mit Benutzername und Passwort, die die Verwaltenden der Bibliothek eintragen. Die
-Zertifikatsprüfung gibt der Zugang vor; Vorgaben für weitere Einstellungen gibt es nicht.
+Anmeldung an oder mit Benutzername und Passwort, die die Verwaltenden der Bibliothek eintragen.
+Vorgaben für weitere Einstellungen gibt es nicht.
 
 ## 4. Betriebsarten und Änderungserkennung
 
@@ -136,6 +135,7 @@ komprimierte Inhalte liegen in den Formaten. DNS-Rebinding bleibt eine bekannte 
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
+| „Das Zertifikat des Servers wird nicht anerkannt …" | Zertifikat einer hauseigenen Zertifizierungsstelle oder auf einen anderen Namen | Zertifizierungsstelle ergänzen ([Zertifikatsprüfung](README.md#13-zertifikatsprüfung)) |
 | „Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)" | keine Löscherkennung | Grenzen anheben oder Start-Adresse enger wählen |
 | „Mindestens ein Unterverzeichnis konnte nicht abgerufen werden, der Bestand dieses Laufs ist unvollständig" | keine Löscherkennung | Server prüfen |
 | „Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet …" | Weiterleitung aus dem Unterbaum, keine Löscherkennung | Weiterleitung am Server prüfen |

@@ -212,8 +212,7 @@ class ConnectedAccountLockOrderIntegrationTest {
                           PersonProbeSourceConnector.TYPE,
                           null,
                           SERVER + "/ablage",
-                          null,
-                          false));
+                          null));
               shellService.registerCreated(
                   saved, person, Map.of("name", saved.getName(), "sourceType", "PERSON_PROBE"));
               return saved;
