@@ -227,7 +227,7 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
     renderWizard()
 
     const heading = await screen.findByRole('heading', {
-      name: 'Wie wird die Quelle eingerichtet?',
+      name: 'Quelle einrichten',
     })
     await waitFor(() => expect(heading).toHaveFocus())
     expect(await screen.findByText(/Verbunden als „svc@bauamt\.example“/)).toBeVisible()
@@ -330,9 +330,7 @@ describe('LibraryCreatePage - Quelle verbinden (#2169)', () => {
         'Die Zustimmung beim Anbieter ist abgelaufen oder schon verwendet. Bitte verbinden Sie die Quelle erneut.',
       ),
     ).toBeVisible()
-    expect(
-      screen.getByRole('heading', { name: 'Wie wird die Quelle eingerichtet?' }),
-    ).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Quelle einrichten' })).toBeInTheDocument()
     expect(screen.queryByText(/Verbunden als/)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Quelle verbinden' })).toBeInTheDocument()
   }, 20000)

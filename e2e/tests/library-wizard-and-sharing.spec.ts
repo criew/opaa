@@ -94,8 +94,8 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
   }) => {
     await openNewLibraryWizard(page)
 
-    // Step 1: kind of knowledge - one tile per source type, "Upload" preselected.
-    await expectWizardStep(page, 'Aus welcher Quellart kommt das Wissen?')
+    // Step 1: source type - one tile per source type, "Upload" preselected.
+    await expectWizardStep(page, 'Woher kommt das Wissen?')
     const uploadTile = page.getByRole('radio', { name: /^Upload/ })
     await expect(uploadTile).toHaveAttribute('aria-checked', 'true')
     await nextStep(page)
@@ -127,14 +127,14 @@ test.describe('Anlage-Assistent und Reiter „Freigaben" (#1944)', () => {
   }) => {
     await openNewLibraryWizard(page)
 
-    await expectWizardStep(page, 'Aus welcher Quellart kommt das Wissen?')
+    await expectWizardStep(page, 'Woher kommt das Wissen?')
     await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()
     await nextStep(page)
 
-    // Step 2: source - connection, connection test, schedule and the immediate first run, which
+    // Step 2: source setup - connection, connection test, schedule and the immediate first run, which
     // since #1942 exists for every connector type. It stays off here: this is about the path, not
     // about a run.
-    await expectWizardStep(page, 'Wie wird die Quelle eingerichtet?')
+    await expectWizardStep(page, 'Quelle einrichten')
     await page.getByLabel('Adresse (URL)').fill(DIRECTORY_URL)
     await expect(page.getByRole('button', { name: 'Verbindung testen' })).toBeVisible()
     await expect(page.getByRole('heading', { level: 3, name: 'Zeitplan' })).toBeVisible()

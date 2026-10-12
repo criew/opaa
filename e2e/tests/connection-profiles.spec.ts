@@ -79,7 +79,7 @@ async function openRssSourceStep(page: Page): Promise<void> {
   await expect(
     page.getByRole('heading', {
       level: 2,
-      name: 'Wie wird die Quelle eingerichtet?',
+      name: 'Quelle einrichten',
     }),
   ).toBeVisible()
 }

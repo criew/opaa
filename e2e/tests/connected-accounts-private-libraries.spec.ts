@@ -170,7 +170,7 @@ test.describe.serial('Verbundene Konten und private Bibliotheken', () => {
     await page.getByRole('radio', { name: /Nextcloud/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await expect(
-      page.getByRole('heading', { level: 2, name: 'Wie wird die Quelle eingerichtet?' }),
+      page.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
     ).toBeVisible()
 
     const own = page.getByTestId(/-private$/)

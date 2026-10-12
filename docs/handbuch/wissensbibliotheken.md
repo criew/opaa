@@ -129,9 +129,9 @@ Kopf und Reiter der fertigen Bibliothek.
 
 **Über einen Zugang.** Hat die Systemverwaltung für die Quelle einen [Zugang](zugaenge.md)
 eingerichtet, wählt man ihn im Schritt „Quelle einrichten"; Adresse und technische Einstellungen
-kommen dann vom Zugang, und je nach Quelle trägt man nur noch die eigenen Zugangsdaten ein. Später lässt sich der
-Zugang im Reiter „Quelle" wechseln, eine Bibliothek mit eigener Adresse einem Zugang zuordnen oder
-vom Zugang lösen.
+kommen dann vom Zugang, und je nach Quelle trägt man nur noch die eigenen Zugangsdaten ein.
+Später lässt sich der Zugang im Reiter „Quelle" wechseln, eine Bibliothek mit eigener Adresse einem
+Zugang zuordnen oder vom Zugang lösen.
 
 **Quelle verbinden.** Manche Quellen verlangen, dass man sich beim Anbieter anmeldet und OPAA den
 Zugriff erlaubt. Dafür nimmt man ein Funktionskonto des Hauses, kein persönliches Konto: Die

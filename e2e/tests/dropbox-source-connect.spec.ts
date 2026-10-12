@@ -58,7 +58,7 @@ test.describe.serial('Dropbox: Quelle verbinden', () => {
     await page.getByRole('radio', { name: /Dropbox/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await expect(
-      page.getByRole('heading', { level: 2, name: 'Wie wird die Quelle eingerichtet?' }),
+      page.getByRole('heading', { level: 2, name: 'Quelle einrichten' }),
     ).toBeVisible()
     await page.getByRole('radio', { name: new RegExp(`^${PROFILE_NAME}`) }).click()
 

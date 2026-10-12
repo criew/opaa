@@ -112,7 +112,7 @@ function next(user: User) {
   return user.click(screen.getByRole('button', { name: 'Weiter' }))
 }
 
-/** Schritt 1 „Quellart": Kachel wählen und weiter - danach steht „Quelle einrichten" (oder „Name"). */
+/** Step 1 „Quellart": choose a tile and go on - then „Quelle einrichten" (or „Name") follows. */
 async function chooseType(user: User, label: RegExp) {
   await user.click(screen.getByRole('radio', { name: label }))
   await next(user)
@@ -195,8 +195,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(screen.getByRole('button', { name: 'Weiter' })).toBeDisabled()
   })
 
-  // Die Schritte heißen nach dem, was man in ihnen tut; eine Upload-Bibliothek hat keine Quelle,
-  // also auch keinen Schritt „Quelle einrichten".
+  // The steps are named after what one does in them; an upload library has no source and so no
+  // step „Quelle einrichten".
   it('names the steps and drops "Quelle einrichten" for an upload library', async () => {
     const user = userEvent.setup()
     await renderPage()

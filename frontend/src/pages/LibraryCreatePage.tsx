@@ -84,9 +84,9 @@ import type {
 } from '../types/api'
 
 /**
- * Die Schritte des Assistenten: „Name & Beschreibung“ und „Freigaben“ heißen wie Kopf und Reiter
- * der Detailansicht, die beiden ersten Schritte nach dem, was man in ihnen tut. Eine
- * Upload-Bibliothek hat keine Quelle und deshalb drei Schritte.
+ * The wizard's steps: the first two are named after what one does in them, „Name & Beschreibung“
+ * and „Freigaben“ after the head and tab of the detail view. An upload library has no source and
+ * therefore three steps.
  */
 const STEP_SOURCE_TYPE = 'Quellart'
 const STEP_SOURCE_SETUP = 'Quelle einrichten'
@@ -102,8 +102,8 @@ function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): string[] {
 }
 
 const stepHeadings: Record<string, string> = {
-  [STEP_SOURCE_TYPE]: 'Aus welcher Quellart kommt das Wissen?',
-  [STEP_SOURCE_SETUP]: 'Wie wird die Quelle eingerichtet?',
+  [STEP_SOURCE_TYPE]: 'Woher kommt das Wissen?',
+  [STEP_SOURCE_SETUP]: 'Quelle einrichten',
   [STEP_NAME]: 'Name & Beschreibung',
   [STEP_SHARING]: 'Freigaben',
 }
