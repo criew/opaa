@@ -600,8 +600,8 @@ ab Werk aus
 ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), Nachtrag vom
 03.10.2026).
 
-Dafür führt das Handbuch eine **Prüfliste mit Hintergrund** (Kapitel „Bibliotheken und
-Berechtigungen“, Abschnitt „Vor der Einführung“), gekennzeichnet als Vorbereitung, solange es keinen
+Dafür führt das Handbuch eine **Prüfliste mit Hintergrund** (Kapitel „Berechtigungen“,
+Abschnitt „Vor der Einführung“), gekennzeichnet als Vorbereitung, solange es keinen
 Postfach-Konnektor gibt. Sie nennt je Punkt, worum es geht, warum er zählt und was der Betreiber
 klären sollte, und ist keine Rechtsberatung:
 

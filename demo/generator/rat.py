@@ -9,7 +9,7 @@ keeps in an object store. The keys are what the demo's object store bucket is se
 
 A Beschlussvorlage with Anlagen is stored as the council information system's dispatch mail
 (.eml) instead: the Vorlage text is the mail body and every Anlage a PDF attachment. In an S3
-library only mail objects carry attachments (konnektor-s3.md, "Anhänge"), so this is the one
+library only mail objects carry attachments (konnektoren/s3.md, "Anhänge"), so this is the one
 shape in which the Anlagen appear as attachments of their Vorlage.
 
 The council decisions here (budgets, the digitalisation strategy, the mobile citizen office, the
