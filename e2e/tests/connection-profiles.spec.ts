@@ -71,7 +71,7 @@ function lockNotice(page: Page) {
   return page.getByTestId('source-lock-notice')
 }
 
-/** Im Assistenten bis zum Schritt „Quelle“ einer RSS-Bibliothek. */
+/** Im Assistenten bis zum Schritt „Quelle einrichten“ einer RSS-Bibliothek. */
 async function openRssSourceStep(page: Page): Promise<void> {
   await openNewLibraryWizard(page)
   await page.getByRole('radio', { name: /RSS-Feed/ }).click()
@@ -79,12 +79,12 @@ async function openRssSourceStep(page: Page): Promise<void> {
   await expect(
     page.getByRole('heading', {
       level: 2,
-      name: 'Woher kommen die Dokumente?',
+      name: 'Quelle einrichten',
     }),
   ).toBeVisible()
 }
 
-/** Die Wahl „Zugang“ im Schritt „Quelle“ (ConnectionProfileSelect). */
+/** Die Wahl „Zugang“ im Schritt „Quelle einrichten“ (ConnectionProfileSelect). */
 function connectionChoice(page: Page) {
   return page.getByRole('radiogroup', { name: 'Zugang' })
 }
@@ -340,7 +340,7 @@ test.describe.serial('Zugänge, Freigabe und Profilpflicht (#2175)', () => {
     outsiderPage: page,
   }) => {
     // Unter der Profilpflicht und ohne freigegebenen Zugang hat dev-outsider keinen nutzbaren Weg
-    // zu RSS: Die Quellart erscheint im Schritt „Art des Wissens“ gar nicht.
+    // zu RSS: Die Quellart erscheint im Schritt „Quellart“ gar nicht.
     await openNewLibraryWizard(page)
     await expect(page.getByRole('radio', { name: /Upload/ })).toBeVisible()
     await expect(page.getByRole('radio', { name: /RSS-Feed/ })).toHaveCount(0)

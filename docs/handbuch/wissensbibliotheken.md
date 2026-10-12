@@ -118,16 +118,20 @@ Schritte:
 
 | Schritt | Inhalt |
 |---|---|
-| 1. Art des Wissens | die Quellart wählen, etwa Confluence oder Upload; angeboten wird nur, was die Person anlegen darf |
-| 2. Quelle | die gewählte Quelle einrichten: gegebenenfalls den Zugang wählen, Adresse und Umfang eintragen, die Verbindung testen, dazu Zeitplan und ob die erste Indizierung sofort startet; entfällt beim Upload |
+| 1. Quellart | die Quellart wählen, etwa Confluence oder Upload; angeboten wird nur, was die Person anlegen darf |
+| 2. Quelle einrichten | gegebenenfalls den Zugang wählen, Adresse und Umfang eintragen, die Verbindung testen, dazu Zeitplan und ob die erste Indizierung sofort startet; entfällt beim Upload |
 | 3. Name & Beschreibung | vorbelegt, wo die Quelle einen Namen hergibt |
 | 4. Freigaben | Eigentümer und erste Freigaben an Personen und Gruppen |
 
+Die ersten beiden Schritte heißen nach dem, was man in ihnen tut; was man in „Quelle einrichten"
+einträgt, steht danach im Reiter „Quelle" der fertigen Bibliothek. Die letzten beiden heißen wie
+Kopf und Reiter der fertigen Bibliothek.
+
 **Über einen Zugang.** Hat die Systemverwaltung für die Quelle einen [Zugang](zugaenge.md)
-eingerichtet, wählt man ihn im Schritt „Quelle"; Adresse und technische Einstellungen kommen dann vom
-Zugang, und je nach Quelle trägt man nur noch die eigenen Zugangsdaten ein. Später lässt sich der
-Zugang im Reiter „Quelle" wechseln, eine Bibliothek mit eigener Adresse einem Zugang zuordnen oder
-vom Zugang lösen.
+eingerichtet, wählt man ihn im Schritt „Quelle einrichten"; Adresse und technische Einstellungen
+kommen dann vom Zugang, und je nach Quelle trägt man nur noch die eigenen Zugangsdaten ein.
+Später lässt sich der Zugang im Reiter „Quelle" wechseln, eine Bibliothek mit eigener Adresse einem
+Zugang zuordnen oder vom Zugang lösen.
 
 **Quelle verbinden.** Manche Quellen verlangen, dass man sich beim Anbieter anmeldet und OPAA den
 Zugriff erlaubt. Dafür nimmt man ein Funktionskonto des Hauses, kein persönliches Konto: Die

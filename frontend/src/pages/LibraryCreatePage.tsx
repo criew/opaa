@@ -84,25 +84,26 @@ import type {
 } from '../types/api'
 
 /**
- * Die Schritte des Assistenten (#1942): jeder trägt den Namen des Reiters bzw. des Kopfes, den er
- * in der Detailansicht bekommt. Eine Upload-Bibliothek hat keine Quelle und deshalb drei Schritte.
+ * The wizard's steps: the first two are named after what one does in them, „Name & Beschreibung“
+ * and „Freigaben“ after the head and tab of the detail view. An upload library has no source and
+ * therefore three steps.
  */
-const STEP_ART = 'Art des Wissens'
-const STEP_SOURCE = 'Quelle'
+const STEP_SOURCE_TYPE = 'Quellart'
+const STEP_SOURCE_SETUP = 'Quelle einrichten'
 const STEP_NAME = 'Name & Beschreibung'
 const STEP_SHARING = 'Freigaben'
 
 /** A private library has no sharing step: only its owner ever reads it. */
 function stepsFor(acceptsUploads: boolean, privateLibrary: boolean): string[] {
-  if (acceptsUploads) return [STEP_ART, STEP_NAME, STEP_SHARING]
+  if (acceptsUploads) return [STEP_SOURCE_TYPE, STEP_NAME, STEP_SHARING]
   return privateLibrary
-    ? [STEP_ART, STEP_SOURCE, STEP_NAME]
-    : [STEP_ART, STEP_SOURCE, STEP_NAME, STEP_SHARING]
+    ? [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME]
+    : [STEP_SOURCE_TYPE, STEP_SOURCE_SETUP, STEP_NAME, STEP_SHARING]
 }
 
 const stepHeadings: Record<string, string> = {
-  [STEP_ART]: 'Welche Art von Wissen soll hier stehen?',
-  [STEP_SOURCE]: 'Woher kommen die Dokumente?',
+  [STEP_SOURCE_TYPE]: 'Woher kommt das Wissen?',
+  [STEP_SOURCE_SETUP]: 'Quelle einrichten',
   [STEP_NAME]: 'Name & Beschreibung',
   [STEP_SHARING]: 'Freigaben',
 }
@@ -143,7 +144,7 @@ export default function LibraryCreatePage() {
   const createNewLibrary = useLibraryStore((s) => s.createNewLibrary)
   const triggerIndexing = useIndexingStore((s) => s.triggerIndexing)
 
-  // A consent for the source leaves for the provider; the wizard comes back on „Quelle“.
+  // A consent for the source leaves for the provider; the wizard comes back on „Quelle einrichten“.
   const [restored] = useState(restoredDraft)
   const draft = restored?.draft
   const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
@@ -230,7 +231,7 @@ export default function LibraryCreatePage() {
    * The connector release applies per type and per profile (ADR-0036): a type the person may create
    * neither with an own address nor through a profile, or a locked one, has no usable way and gets
    * no tile; the backend's notice only explains a choice left without a tile. Which way is open is
-   * chosen in the step „Quelle“.
+   * chosen in the step „Quelle einrichten“.
    */
   function releaseMissingFor(type: SourceTypeKey): string | null {
     const descriptor = sourceTypes.find((d) => d.type === type)
@@ -454,13 +455,13 @@ export default function LibraryCreatePage() {
   }
 
   const handleNext = () => {
-    if (currentStep === STEP_ART && typesUnavailable) {
+    if (currentStep === STEP_SOURCE_TYPE && typesUnavailable) {
       setError(sourceTypesError ?? 'Die Quellarten werden noch geladen')
       return
     }
     // the hint above the step bar already says why nothing can be created
-    if (currentStep === STEP_ART && nothingUsable) return
-    if (currentStep === STEP_SOURCE && configuration) {
+    if (currentStep === STEP_SOURCE_TYPE && nothingUsable) return
+    if (currentStep === STEP_SOURCE_SETUP && configuration) {
       if (connectionChoice === null) {
         setError(
           !profileOptions.loaded
@@ -558,10 +559,10 @@ export default function LibraryCreatePage() {
       navigate(`/libraries/${libraryId}`)
     } catch (err) {
       if (apiErrorCode(err) === 'PENDING_CONNECTION_UNUSABLE') {
-        // expired or used up: back to „Quelle“, where the source is connected again
+        // expired or used up: back to „Quelle einrichten“, where the source is connected again
         setPending(null)
         setServiceAccountConfirmed(false)
-        setActiveStep(steps.indexOf(STEP_SOURCE))
+        setActiveStep(steps.indexOf(STEP_SOURCE_SETUP))
         setError(PENDING_CONNECTION_UNUSABLE)
       } else {
         setError(err instanceof Error ? err.message : 'Bibliothek konnte nicht erstellt werden')
@@ -607,24 +608,24 @@ export default function LibraryCreatePage() {
           )}
         </Box>
 
-        {currentStep === STEP_ART && !sourceTypesLoaded && (
+        {currentStep === STEP_SOURCE_TYPE && !sourceTypesLoaded && (
           <Typography sx={{ fontSize: 13.5, color: 'text.secondary' }}>
             Quellarten werden geladen …
           </Typography>
         )}
 
-        {currentStep === STEP_ART && sourceTypesError && (
+        {currentStep === STEP_SOURCE_TYPE && sourceTypesError && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {sourceTypesError}
           </Alert>
         )}
 
-        {currentStep === STEP_ART &&
+        {currentStep === STEP_SOURCE_TYPE &&
           sourceTypesLoaded &&
           !sourceTypesError &&
           shownTypes.length > 0 && (
             <ChoiceTileGroup<SourceTypeKey>
-              aria-label="Art des Wissens wählen"
+              aria-label="Quellart wählen"
               value={sourceType}
               onChange={(next) => {
                 setSourceType(next)
@@ -640,7 +641,7 @@ export default function LibraryCreatePage() {
             />
           )}
 
-        {currentStep === STEP_SOURCE && (
+        {currentStep === STEP_SOURCE_SETUP && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: 640 }}>
             {showConnectionSelect && descriptor && (
               <ConnectionProfileSelect
@@ -836,7 +837,7 @@ export default function LibraryCreatePage() {
             <Button
               variant="contained"
               onClick={handleNext}
-              disabled={currentStep === STEP_ART && (typesUnavailable || nothingUsable)}
+              disabled={currentStep === STEP_SOURCE_TYPE && (typesUnavailable || nothingUsable)}
             >
               Weiter
             </Button>

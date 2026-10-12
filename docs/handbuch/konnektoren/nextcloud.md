@@ -73,8 +73,8 @@ technischen Nutzer, und speist daraus eine [private Bibliothek](../private-bibli
 2. In OPAA unter *Einstellungen › Verbundene Konten* beim Zugang „Verbinden" wählen und Benutzername
    und App-Passwort eintragen. OPAA speichert sie nur, wenn die Anmeldung gelingt
    ([Benutzerverwaltung](../benutzerverwaltung.md), „Verbundene Konten").
-3. Im Assistenten im Schritt „Quelle" unter **„Über mein verbundenes Konto"** den Zugang und die
-   Ordner wählen.
+3. Im Assistenten im Schritt „Quelle einrichten" unter **„Über mein verbundenes Konto"** den
+   Zugang und die Ordner wählen.
 
 Lehnt die Nextcloud das App-Passwort ab, gilt die Verbindung als **abgelaufen**; die Person wird
 benachrichtigt, die Bibliothek zeigt „Abgelaufen" mit „Konto neu verbinden", und ihr Bestand bleibt

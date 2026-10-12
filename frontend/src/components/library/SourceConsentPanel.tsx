@@ -22,9 +22,9 @@ function clockTime(value: string): string {
 }
 
 /**
- * The wizard's step „Quelle verbinden“ on a profile whose libraries consent at the provider
- * themselves: the confirmation of the service account and the way to the provider, then the
- * account the consent was given as.
+ * The part „Quelle verbinden“ of the wizard's step „Quelle einrichten“ on a profile whose
+ * libraries consent at the provider themselves: the confirmation of the service account and the way
+ * to the provider, then the account the consent was given as.
  */
 export default function SourceConsentPanel({
   profileName,

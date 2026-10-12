@@ -8,10 +8,10 @@ der die Besitzart „Person“ anbietet; von den mitgelieferten ist das Nextclou
 
 **Anlegen.** Die Person wählt beim Anlegen ausdrücklich „privat“; bei einem Zugang, der Bibliotheken
 und Personen zulässt, entscheidet allein diese Wahl, und sie bleibt für immer. Im Assistenten steht
-dafür im Schritt „Quelle“ unter den Zugängen die Gruppe **„Über mein verbundenes Konto“** mit dem
-Hinweis „Nur Sie sehen diese Bibliothek“. Sie erscheint nur für Zugänge, auf denen die Person
-bereits ein verbundenes Konto hat; ohne ein solches Konto gibt es weder die Gruppe noch einen
-Hinweis darauf. Ein Zugang, der Bibliotheken und Personen zulässt, steht dort zweimal: in den
+dafür im Schritt „Quelle einrichten“ unter den Zugängen die Gruppe **„Über mein verbundenes
+Konto“** mit dem Hinweis „Nur Sie sehen diese Bibliothek“. Sie erscheint nur für Zugänge, auf
+denen die Person bereits ein verbundenes Konto hat; ohne ein solches Konto gibt es weder die Gruppe
+noch einen Hinweis darauf. Ein Zugang, der Bibliotheken und Personen zulässt, steht dort zweimal: in den
 Zugängen als teilbare Bibliothek, in der Gruppe als private. Ein Zugang nur für Personen steht nur in
 der Gruppe; über ihn ist auch die Quellart wählbar, wenn es sonst keinen Weg zu ihr gibt. Für die
 private gibt es kein Feld für Zugangsdaten, und der Schritt „Freigaben“ entfällt. Vorausgesetzt
