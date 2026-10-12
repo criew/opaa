@@ -1128,4 +1128,4 @@ entsprechen.
 - Umgebungsvariablen, Reranking einschalten, Grenze des Volltextpfads:
   [Deployment](deployment.md)
 - Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
-- Prompts anlegen, pflegen und im Chat verwenden: [Prompt-Bibliotheken](prompt-bibliotheken.md)
+- Spaces, Chats und was ihnen zugeordnet ist: [Spaces](spaces.md)

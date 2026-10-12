@@ -267,4 +267,5 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 
 - Rollen, Gruppen, Anlegerechte, Herleitung, Rechtehistorie und Lebenszyklus im Einzelnen:
   [Berechtigungen](berechtigungen.md)
-- Wissensbibliotheken und ihre Quellen: [Wissensbibliotheken](wissensbibliotheken.md)
+- Finden, anlegen und zuordnen wie jedes Arbeitsmittel: [Katalog](katalog.md)
+- Wo Prompts eingesetzt werden: [Spaces](spaces.md)

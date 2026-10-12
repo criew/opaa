@@ -524,6 +524,6 @@ die Anfrage mit HTTP 503 beantwortet.
   der gemeinsame Abgleich der Dateiablagen
 - [Zugänge](zugaenge.md): wie sich Quellen anmelden und was die Systemverwaltung vorgibt
 - [Formate](formate/README.md): zugelassene Formate und je ein Kapitel pro Format-Pipeline
-- [Suche](suche.md): wie der Index abgefragt wird, von der Frage bis zur belegten Antwort
+- [Suche](suche.md): wie das Wissen im Chat genutzt wird, von der Frage bis zur belegten Antwort
 - [Metadaten](metadaten.md): Kernfelder, ihre Ermittlung und Wirkung in der Suche
-- [Deployment](deployment.md): Installation, Umgebungsvariablen und was ein Update mit dem Index macht
+- [Private Bibliotheken](private-bibliotheken.md): Bibliotheken aus dem verbundenen Konto einer Person

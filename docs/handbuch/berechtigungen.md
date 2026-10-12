@@ -1111,6 +1111,7 @@ Postfächer.
 - Lokale Konten, Systemrollen und ihre Fristen: [Benutzerverwaltung](benutzerverwaltung.md)
 - Rechtefilter, Suchdiagnose, Diagnosesperre und die Aufbewahrung der Rechtehistorie:
   [Suche](suche.md)
-- Bibliothek, Quelle, Lauf, Ordner und Dokument: [Wissensbibliotheken](wissensbibliotheken.md)
+- Arbeitsmittel finden, anlegen und zuordnen: [Katalog](katalog.md)
+- Rollen, Zuordnung und Einstellungen eines Space: [Spaces](spaces.md)
 - Der lesende Kanal für fremde KI-Werkzeuge und seine Freigabe je Bibliothek:
   [Fremdzugänge](fremdzugaenge.md)
