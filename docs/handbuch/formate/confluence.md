@@ -44,11 +44,11 @@ bleibt unsichtbar, damit nichts doppelt erscheint.
 
 ```mermaid
 flowchart TB
-    S[Seitenkörper] --> H[Überschriften h1–h3<br/>schneiden Chunks]
-    S --> T[Tabellen: eine Zeile je<br/>Tabellenzeile, Zellen mit „ | “]
-    S --> L[Listen: eine Zeile je Eintrag<br/>mit Marker •, ◦, ▪ oder „2.1.“]
-    S --> M[Makros nach Regelwerk]
-    H --> C[Chunks mit Überschriftenpfad<br/>als erster Zeile und als Ortsangabe]
+    S[Seitenkörper] --> H[Überschriften<br/>h1–h3]
+    S --> T[Tabellen]
+    S --> L[Listen]
+    S --> M[Makros nach<br/>Regelwerk]
+    H --> C[Chunks mit<br/>Überschriften-<br/>pfad]
     T --> C
     L --> C
     M --> C

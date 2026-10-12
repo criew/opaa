@@ -158,12 +158,12 @@ wieder auf, wenn die Fundstellen zusammengefasst werden (Abschnitt 7).
 
 ```mermaid
 flowchart TB
-    R[Space] --> C[Chat<br/>Suchbereich, Filter, Verlauf]
+    R[Space] --> C[Chat]
     C --> Q[Frage]
-    Q --> P[Pipeline-Lauf<br/>mit Erklärprotokoll]
-    P --> K[ausgewählte Chunks]
+    Q --> P[Suchlauf mit<br/>Protokoll]
+    P --> K[ausgewählte<br/>Chunks]
     K --> AW[Antwort]
-    AW --> FS[Fundstellen<br/>eine je Dokument]
+    AW --> FS[Fundstellen]
 ```
 
 ## 3. Was eine Frage nach außen kostet
@@ -194,18 +194,18 @@ Code an genau einer Stelle festgelegt und nicht konfigurierbar.
 
 ```mermaid
 flowchart TB
-    S1[1 Suchbereich<br/>Rechtefilter bilden] --> Q{Suchbereich<br/>leer?}
-    Q -- ja --> H[Lauf endet:<br/>Antwort ohne Wissensbasis]
-    Q -- nein --> S2[2 Metadatenfilter<br/>dem Rechtefilter unterordnen]
-    S2 --> S3[3 Teilfragen bilden<br/>n Suchanfragen]
-    V[Suchfenster<br/>letzte 2 Runden] -.-> S3
-    S3 --> S4[4 Vektorsuche<br/>x Kandidaten je Suchanfrage]
-    S3 --> S5[5 Volltextsuche<br/>x Kandidaten je Suchanfrage]
-    S4 --> S6[6 Auswahl je Liste<br/>auf das Budget kürzen]
+    S1[1 Suchbereich,<br/>Rechtefilter] --> Q{Suchbereich<br/>leer?}
+    Q -- ja --> H[Lauf endet:<br/>Antwort ohne<br/>Wissensbasis]
+    Q -- nein --> S2[2 Metadaten-<br/>filter]
+    S2 --> S3[3 Teilfragen]
+    V[Suchfenster] -.-> S3
+    S3 --> S4[4 Vektorsuche]
+    S3 --> S5[5 Volltext-<br/>suche]
+    S4 --> S6[6 Auswahl<br/>je Liste]
     S5 --> S6
-    S6 --> S7[7 Fusion<br/>eine Liste nach Rang]
-    S7 --> S8[8 Reranking<br/>nur wenn eingeschaltet]
-    S8 --> S9[9 Dokument-Vervollständigung<br/>mehrere Chunks je Dokument]
+    S6 --> S7[7 Fusion]
+    S7 --> S8[8 Reranking,<br/>falls an]
+    S8 --> S9[9 Dokument-<br/>vervollständigung]
     S9 --> E[Endauswahl]
 ```
 
@@ -836,12 +836,12 @@ Antworten mit zwei verschiedenen Abhilfen:
 
 ```mermaid
 flowchart TB
-    Q[Dokument fehlt in der Antwort] --> F{War es in einer<br/>Kandidatenliste?}
-    F -- nein --> N[nie gefunden:<br/>Rechte, Filter, Index oder Zuschnitt]
-    F -- ja --> V{In welcher Stufe<br/>verworfen?}
-    V --> W[Ranking-Problem:<br/>Budget, Fusion, Reranking,<br/>Vervollständigung]
-    N --> N1[Suchbereich prüfen,<br/>Indexstatus, Chunks ansehen]
-    W --> W1[Stufe im Protokoll lesen,<br/>Kandidatenbudget und Reranking bewerten]
+    Q[Dokument fehlt<br/>in der Antwort] --> F{War es in einer<br/>Kandidatenliste?}
+    F -- nein --> N[nie gefunden]
+    F -- ja --> V{In welcher<br/>Stufe<br/>verworfen?}
+    V --> W[Ranking-<br/>problem]
+    N --> N1[Suchbereich,<br/>Index und<br/>Chunks prüfen]
+    W --> W1[Protokoll<br/>der Stufe<br/>lesen]
 ```
 
 Beides lässt sich ohne Datenbank- oder Codezugriff auf der Administrationsseite **„Suche &

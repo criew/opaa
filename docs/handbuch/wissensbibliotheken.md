@@ -74,12 +74,12 @@ die ganze Bibliothek, und die Suche durchsucht immer den ganzen Bestand.
 
 ```mermaid
 flowchart TB
-    B[Wissensbibliothek<br/>Quelle + Einstellungen] --> L[Lauf<br/>Ergebnis, Zähler, Protokoll]
+    B[Wissens-<br/>bibliothek] --> L[Lauf mit<br/>Protokoll]
     B --> F[Ordner]
     F --> D
-    B --> D[Dokument<br/>Ort, Stand]
-    D --> D2[Anhang als<br/>eigenes Dokument]
-    D --> K[Chunks<br/>Text, Vektor, Metadaten]
+    B --> D[Dokument]
+    D --> D2[Anhang]
+    D --> K[Chunks]
 ```
 
 ## 3. Mit Wissensbibliotheken arbeiten
@@ -178,8 +178,8 @@ Vollabgleich-Rhythmus stellen diesen im Zeitplan zusätzlich ein.
 ```mermaid
 stateDiagram-v2
     [*] --> RUNNING: Auslöser
-    RUNNING --> COMPLETED: alle Elemente verarbeitet
-    RUNNING --> FAILED: Quelle nicht erreichbar, Warteschlange voll,<br/>Neustart, Zeitüberschreitung
+    RUNNING --> COMPLETED: fertig
+    RUNNING --> FAILED: Quelle fehlt,<br/>Neustart,<br/>Zeitlimit
     COMPLETED --> [*]
     FAILED --> [*]
 ```
@@ -228,17 +228,17 @@ Jedes Dokument, gleich welcher Herkunft, durchläuft dieselben Schritte:
 
 ```mermaid
 flowchart TB
-    S1[1 Prüfsumme bilden,<br/>Dokument suchen] --> Q{unverändert und<br/>zuletzt erfolgreich?}
+    S1[1 Prüfsumme] --> Q{unverändert?}
     Q -- ja --> SK[übersprungen]
-    Q -- nein --> S2[2 Speicherkontingent prüfen]
-    S2 --> S3[3 Format erkennen,<br/>Pipeline wählen]
-    S3 --> S4[4 Parsen und Chunken]
+    Q -- nein --> S2[2 Kontingent]
+    S2 --> S3[3 Format<br/>erkennen]
+    S3 --> S4[4 Parsen und<br/>Chunken]
     S4 --> R{Ergebnis}
-    R -- nicht lesbar --> FP[fehlgeschlagen,<br/>alter Stand bleibt]
-    R -- leer oder<br/>kein Text --> FA[abgewiesen bzw. fehlgeschlagen,<br/>alter Stand entfernt]
-    R -- Chunks --> S5[5 Metadaten anreichern]
-    S5 --> S6[6 Embedden und<br/>in den Index schreiben]
-    S4 -. gefundene Anhänge .-> AT[Anhänge als eigene<br/>Dokumente durch dieselbe Strecke]
+    R -- nicht lesbar --> FP[alter Stand<br/>bleibt]
+    R -- leer oder<br/>kein Text --> FA[alter Stand<br/>entfernt]
+    R -- Chunks --> S5[5 Metadaten]
+    S5 --> S6[6 Embedden,<br/>indexieren]
+    S4 -. Anhänge .-> AT[eigene<br/>Dokumente]
 ```
 
 ### 5.1 Prüfsumme und Identität
@@ -322,12 +322,12 @@ andere Dokument, mit eigener Prüfsumme, eigener Pipeline und eigenem Protokolle
 
 ```mermaid
 flowchart LR
-    M[Mail: vorgang.eml] -->|Kopf + Text| MC[Chunks der Mail]
-    M -->|meldet Anhänge| A1[vorgang.eml/0/bescheid.pdf]
-    M -->|meldet Anhänge| A2[vorgang.eml/1/anlage.docx]
+    M[vorgang.eml] -->|Kopf + Text| MC[Chunks der Mail]
+    M -->|meldet Anhänge| A1[vorgang.eml/0/<br/>bescheid.pdf]
+    M -->|meldet Anhänge| A2[vorgang.eml/1/<br/>anlage.docx]
     A1 --> P1[PDF-Pipeline]
     A2 --> P2[DOCX-Pipeline]
-    A2 -.->|Mail in Mail:<br/>Kette geht weiter| A3[vorgang.eml/1/antwort.eml/0/…]
+    A2 -.->|Mail in Mail| A3[vorgang.eml/1/<br/>antwort.eml/0/…]
 ```
 
 - Der Ort eines Anhangs enthält den Ort seines Elterndokuments und seine Position darin; zwei
@@ -453,11 +453,11 @@ Oberfläche gibt es noch nicht.
 
 ```mermaid
 flowchart LR
-    U[Update mit höherer<br/>Pipeline-Version] --> V[Versionsstand zeigt<br/>Rückstand]
-    V --> A[Systemverwaltung stößt<br/>Nachzug an, paketweise]
+    U[Update] --> V[Rückstand im<br/>Versionsstand]
+    V --> A[Nachzug,<br/>paketweise]
     A --> L{Original lokal<br/>erreichbar?}
-    L -- ja: Upload, Dateisystem --> N[sofort neu verarbeitet,<br/>gleiche Identität]
-    L -- nein: übrige Quellen --> M[für den nächsten<br/>Lauf vorgemerkt]
+    L -- ja: Upload,<br/>Dateisystem --> N[sofort neu<br/>verarbeitet]
+    L -- nein: übrige<br/>Quellen --> M[im nächsten<br/>Lauf]
 ```
 
 - Jeder Aufruf wird auditiert, verarbeitet ein Paket und kehrt zurück; für einen großen Bestand

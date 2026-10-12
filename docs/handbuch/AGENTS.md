@@ -80,7 +80,9 @@ der Konfiguration bleiben erlaubt.
 - **Ticketverweise nur für ausdrücklich noch nicht Gebautes**, etwa in „Was nicht gebaut ist".
 - **Konfigurierbare Werte stehen nur in Konfigurationstabellen** der Kapitel und in der
   Variablenliste des Deployment-Kapitels; Fließtext nennt Parameternamen.
-- **Grafiken sind Mermaid.**
+- **Grafiken sind Mermaid**, mit kurzen Knoten: höchstens etwa 15 Zeichen je Zeile, mit `<br/>`
+  umbrechen. Sonst schneidet GitHub die Beschriftung ab. In den Knoten steht das Stichwort, die
+  Erläuterung im Text darunter.
 - **„Entwurf"** am Kapitelanfang: gegen den Code geprüft, vom Maintainer noch nicht abgenommen.
 - **Kapitel werden mit dem Code gepflegt**, im selben Pull Request wie die Verhaltensänderung.
 - **Verschieben oder Umbenennen** zieht alle Verweise im Repo nach, auch Code-Kommentare,

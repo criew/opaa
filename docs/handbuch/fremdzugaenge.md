@@ -26,15 +26,20 @@ aus vier Bedingungen:
 
 ```mermaid
 flowchart TB
-    R[Rechte der Person<br/>was sie heute lesen darf]
-    F[Freigabe der Bibliothek<br/>gesetzt und noch gültig?]
-    A[Auswahl im Token<br/>bei der Ausstellung festgelegt]
-    S[Schalter der Installation<br/>Kanal offen?]
-    R --> E[effektive Sicht dieses Aufrufs]
+    R[Rechte der<br/>Person heute]
+    F[Freigabe der<br/>Bibliothek<br/>gültig?]
+    A[Auswahl im<br/>Token]
+    S[Kanal der<br/>Installation<br/>offen?]
+    R --> E[effektive Sicht<br/>dieses Aufrufs]
     F --> E
     A --> E
     S --> E
 ```
+
+- **Rechte der Person:** was sie heute lesen darf.
+- **Freigabe der Bibliothek:** für Fremdzugänge gesetzt und noch gültig.
+- **Auswahl im Token:** die Bibliotheken, die bei der Ausstellung festgelegt wurden.
+- **Kanal der Installation:** der Schalter für Fremdzugänge ist eingeschaltet.
 
 Fällt eine Bibliothek aus einem dieser vier Gründe weg, verschwindet sie aus den Treffern. Sie
 erzeugt keinen Fehler und keinen Hinweis auf ihre Existenz — dieselbe Regel wie in der
