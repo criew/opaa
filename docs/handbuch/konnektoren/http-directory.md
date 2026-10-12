@@ -1,311 +1,178 @@
-# Konnektor: Webverzeichnis (HTTP_DIRECTORY)
+# Konnektor: Webverzeichnis
 
-> **Entwurf.** Dieses Kapitel beschreibt den Konnektor für per HTTP erreichbare
-> Verzeichnislisten. Der gemeinsame Ablauf eines Indexierungslaufs und die Dokumentstrecke
-> stehen im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
+## 1. Was der Konnektor ist
 
-## 1. Wofür er gedacht ist
-
-Der Webverzeichnis-Konnektor crawlt eine automatisch erzeugte Verzeichnisliste, wie sie ein
-Webserver für einen Ordner ohne Startseite ausgibt („Index of /dokumente"). Typische Fälle sind
-ein interner Dokumentenserver, ein per Apache oder nginx freigegebenes Ablageverzeichnis oder ein
-Download-Bereich, auf den das Backend nur über das Netz zugreifen kann.
-
-Er ist **kein** allgemeiner Web-Crawler. Er folgt nur Links, die er in einer Verzeichnisliste
-findet, und verlässt den Ursprungsserver nicht.
+Der Konnektor liest eine **automatisch erzeugte Verzeichnisliste**, wie sie ein Webserver für einen
+Ordner ohne Startseite ausgibt („Index of /dokumente"): einen internen Dokumentenserver, ein per
+Apache oder nginx freigegebenes Ablageverzeichnis, einen Download-Bereich. Er spricht **HTTP(S)** und
+versteht die Listen von Apache `mod_autoindex` (mit und ohne Tabelle), nginx `autoindex on` und
+schlichte `<ul>`-Listen, wie sie Pythons `http.server` liefert. Er ist **kein** allgemeiner
+Web-Crawler: Er folgt nur Links aus Verzeichnislisten und bleibt unterhalb der Start-Adresse.
 
 ```mermaid
 flowchart LR
-    U[Start-URL] --> V{Zieladresse<br/>zulässig?}
-    V -- nein --> F[Lauf FAILED]
-    V -- ja --> P[Verzeichnisseite laden<br/>und parsen]
-    P -->|Unterverzeichnis| P
-    P -->|Datei| E{Änderungsdatum<br/>bekannt und gleich?}
-    E -- ja --> S[übersprungen]
-    E -- nein --> H[Anfang laden,<br/>Format erkennen]
-    H -- unterstützt --> D[vollständig laden,<br/>Dokumentstrecke]
-    H -- nicht unterstützt --> R[abgewiesen]
-    D --> L[Löscherkennung<br/>nur bei vollständigem Crawl]
+    B[Wissensbibliothek] -.-> Z[Zugang<br/>optional]
+    B -->|HTTP GET,<br/>optional Basic Auth| W[Webserver]
+    W --> L[Verzeichnisliste<br/>und Dateien]
 ```
 
-## 2. Quellkonfiguration
+- **Anmeldung:** keine oder HTTP Basic mit Benutzername und Passwort, eigene Zugangsdaten der
+  Bibliothek ([Zugänge](../zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Ein Zugang ist
+  möglich.
+- **Liest:** alle Dateien in unterstützten Formaten unter der Start-Adresse, rekursiv.
+- **Dokument:** Die Adresse der Datei ist die Identität.
+- **Rechte** des Webservers übernimmt OPAA nicht.
 
-Wo diese Felder stehen: Detailansicht der Bibliothek, Reiter **„Quelle"**, Abschnitt
-**„Anbindung"** — dort liegt auch „Verbindung testen" gegen die gespeicherte Konfiguration; beim
-Anlegen im gleichnamigen Schritt des Assistenten. Im selben Reiter stehen der **„Zeitplan"** und,
-als **„Läufe"**, das Laufprotokoll.
+## 2. Einrichtung
 
-| Feld der Bibliothek | Regel |
+1. Liegt der Server im privaten Netz, seinen Hostnamen für die
+   [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben — für diesen Konnektor der Normalfall.
+2. Bei geschütztem Verzeichnis ein Konto mit Leserecht anlegen.
+3. Optional einen Zugang anlegen, wenn mehrere Bibliotheken denselben Server lesen.
+
+## 3. Quellkonfiguration
+
+| Angabe im Formular | Bedeutung |
 |---|---|
-| Adresse (`sourceUrl`) | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt. |
-| Zugangsdaten (`sourceCredentials`) | optional, Format `benutzer:passwort` für HTTP Basic Auth. Der erste Doppelpunkt trennt. |
-| Zertifikatsprüfung aussetzen (`sourceInsecureSsl`) | optional. Akzeptiert jedes Zertifikat, für interne Server mit Eigenzertifikat. |
+| „Adresse (URL)" | Pflicht, `http://` oder `https://`. Fehlt der abschließende Schrägstrich und sieht der letzte Pfadteil nicht wie eine Datei aus, wird er ergänzt |
+| „Anmeldedaten (optional)", beim Bearbeiten „Neue Zugangsdaten" | `benutzer:passwort`; der erste Doppelpunkt trennt |
+| „Zertifikatsprüfung aussetzen" | optional, für interne Server mit eigenem Zertifikat |
 
-**Zugangsdaten** werden verschlüsselt gespeichert (AES-256-GCM, Schlüssel aus
-`OPAA_CREDENTIALS_ENCRYPTION_KEY`) und erscheinen in keiner API-Antwort, auch nicht für
-Eigentümer. Sichtbar ist nur, ob welche hinterlegt sind. Beim Ändern der Bibliothek gilt: Bleibt
-das Feld leer und bleibt der Ursprung der URL (Schema, Host, Port) gleich, werden die gespeicherten
-Zugangsdaten beibehalten. Ändert sich der Host, werden sie verworfen. Sonst könnte jemand mit
-Verwaltungsrechten ein unbekanntes Passwort an einen eigenen Server umleiten.
+Bleibt beim Bearbeiten das Feld für die Zugangsdaten leer und der Ursprung der Adresse (Schema, Host,
+Port) gleich, bleiben die gespeicherten Zugangsdaten. Ein anderer Ursprung verwirft sie, damit
+niemand ein unbekanntes Passwort an einen eigenen Server umleiten kann. Adresse und Laufprotokoll
+sehen nur Verwaltende; von den Zugangsdaten nur, ob welche hinterlegt sind.
 
-Die Oberfläche bietet einen **Verbindungstest**, der die Start-URL lädt und unterscheidet
-zwischen „nicht erreichbar", „erreichbar, aber keine erkennbare Verzeichnisliste" und
-„Verzeichnisliste erkannt".
+**„Verbindung testen"** lädt die Start-Adresse und unterscheidet „nicht erreichbar", „erreichbar,
+aber keine erkennbare Verzeichnisliste" und „Verzeichnisliste erkannt".
 
-**Sichtbarkeit:** URL, Proxy und der Hinweis auf hinterlegte Zugangsdaten sind nur für
-Verwaltende sichtbar; das Laufprotokoll ebenso, weil es die URLs enthält.
+**Über einen Zugang:** Die Adresse liegt unter der Server-Adresse des Zugangs. Er meldet sich ohne
+Anmeldung an oder mit Benutzername und Passwort, die die Verwaltenden der Bibliothek eintragen. Die
+Zertifikatsprüfung gibt der Zugang vor; Vorgaben für weitere Einstellungen gibt es nicht.
 
-**Über einen Zugang** (siehe [Zugänge](../zugaenge.md)): Ein Zugang für
-Webverzeichnisse meldet sich entweder **ohne Anmeldung** an, dann erreicht jeder Lauf den Server
-ohne Zugangsdaten und das Formular fragt keine ab, oder mit einem **persönlichen Geheimnis**
-(Benutzername und Passwort), das die Verwaltenden der Bibliothek eintragen. Die Adresse ist mit der
-Server-Adresse des Zugangs vorbelegt und muss darunter liegen. Proxy und Zertifikatsprüfung gibt
-der Zugang vor; die Bibliothek setzt keine eigenen. Vorgaben für Einstellungen gibt es nicht.
+## 4. Betriebsarten und Änderungserkennung
 
-## 3. Zugriff
+Jeder Lauf ist ein **Vollabgleich**: Er lädt die Start-Seite, erkennt an Tabellenzeilen,
+`<pre>`-Blöcken, Datum-und-Größe-Mustern oder einem Titel wie „Index of", ob sie eine
+Verzeichnisliste ist, und betritt Unterverzeichnisse rekursiv in Fundreihenfolge. Eine gewöhnliche
+Startseite liefert so keine Einträge. Den Dateinamen nimmt er aus dem Linkziel, weil Apache lange
+Namen im Linktext kürzt; Datum und Größe liest er aus dem Text hinter dem Link, bei `<ul>`-Listen
+fehlen sie.
 
-| Eigenschaft | Verhalten |
-|---|---|
-| Authentifizierung | Basic Auth, präemptiv bereits im ersten Request |
-| User-Agent | gemeinsam für alle Netzkonnektoren konfigurierbar (`opaa.indexing.http.user-agent`), Standard `OPAA-Indexer/1.0`; wahrheitsgemäß, keine Browser-Imitation |
-| Timeouts | 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei |
-| Wiederholung | nur bei HTTP 429: Verzeichnisseite wie Datei warten die in `Retry-After` genannte Zeit (gedeckelt auf `opaa.indexing.http.max-retry-after`, ohne Header fünf Sekunden) und wiederholen bis zu `opaa.indexing.http.max-rate-limit-retries`-mal; danach gilt die Anfrage als gescheitert. Jeder andere Fehlschlag ist für diesen Lauf endgültig |
-| Grenzen je Lauf | die Summe aller 429-Wartezeiten eines Laufs ist auf `opaa.indexing.http.max-rate-limit-wait-per-run` (Standard 15 Minuten) gedeckelt, die Zahl der Anfragen auf `opaa.indexing.http.request-budget-per-run` (Standard 0, unbegrenzt). Beim Erreichen endet der Lauf geordnet als „unvollständig, wird fortgesetzt" (Abschnitt 4.4) |
-| Wartezeit zwischen Anfragen | keine |
-| Weiterleitungen | höchstens fünf; Details in Abschnitt 4 |
+```mermaid
+flowchart LR
+    P[Verzeichnisseite<br/>laden] -->|Unterverzeichnis| P
+    P -->|Datei| E{Datum bekannt<br/>und gleich?}
+    E -- ja --> S[übersprungen]
+    E -- nein --> H[Anfang laden,<br/>Format erkennen]
+    H -- unterstützt --> D[ganz laden,<br/>Dokumentstrecke]
+```
 
-## 4. Schutzmechanismen
+Unverändertes erkennt er in zwei Stufen:
 
-### 4.1 Zieladressprüfung
+1. **Änderungsdatum aus der Liste.** Ist es bekannt und gleich dem gespeicherten, wird die Datei
+   nicht geladen. Ein fehlendes Datum gilt als „unbekannt", nicht als „unverändert".
+2. **Prüfsumme** nach dem Download, wie bei jeder Quelle. Ändert sich nur das Datum, bleiben die
+   Chunks, und das neue Datum wird gespeichert.
 
-Vor jeder Anfrage, auch auf jeder Weiterleitung, wird die Zieladresse geprüft (Schutz gegen
-Server-Side Request Forgery). Abgelehnt werden:
+Vor dem Download einer neuen oder geänderten Datei lädt er nur die ersten 64 KiB und erkennt daran das
+Format; ein nicht unterstütztes Format kostet so nur einen kleinen Teil-Download.
 
-- alle Schemata außer `http` und `https`, unabhängig von allen anderen Einstellungen,
-- Adressen in lokalen, privaten und nicht routbaren Bereichen: Loopback, Link-Local
-  (einschließlich der Cloud-Metadaten-Adresse 169.254.169.254), private Netze nach RFC 1918,
-  Carrier-Grade NAT, Multicast, reservierte Bereiche, sowie deren IPv6-Entsprechungen und
-  IPv4-in-IPv6-Abbildungen,
-- Hosts, deren DNS-Auflösung scheitert.
+Ein Crawl endet **vollständig**, **abgeschnitten** (Tiefe oder Menge erreicht) oder
+**unvollständig** (ein Unterverzeichnis war nicht abrufbar oder wurde aus dem Start-Unterbaum heraus
+weitergeleitet). Reicht das Anfragebudget nicht, endet der Lauf als „unvollständig, wird
+fortgesetzt", und der nächste durchsucht das Verzeichnis erneut und überspringt Unverändertes.
 
-Geprüft wird jede aufgelöste Adresse eines Hostnamens. Auch der Proxy-Host wird geprüft. Über
-`opaa.indexing.target-validation.allowlist` lassen sich Hostnamen exakt freigeben, etwa ein
-interner Dokumentenserver im privaten Netz, was der Normalfall für diesen Konnektor sein dürfte.
-Die Prüfung lässt sich komplett abschalten; die Schemaprüfung bleibt auch dann aktiv.
+## 5. Löscherkennung
 
-Bekannte Restlücke: DNS-Rebinding, bei dem ein Hostname zwischen Prüfung und Verbindung auf eine
-andere Adresse wechselt, ist mit dem verwendeten HTTP-Client nicht abzufangen.
+Entfernt wird nur nach einem **vollständigen** Crawl: Dokumente, deren Adresse er nicht mehr
+gefunden hat. Ein abgeschnittener, unvollständiger oder leerer Crawl entfernt nichts. Anhänge
+unveränderter Mails gelten als vorhanden.
 
-### 4.2 Weiterleitungen
+## 6. Ordner
 
-- Höchstens fünf Weiterleitungen je Anfrage.
-- Eine Weiterleitung von `https` auf `http` wird immer abgelehnt.
-- Zugangsdaten gehen nur mit, solange das Weiterleitungsziel auf demselben Ursprung liegt **und**
-  unterhalb der Start-URL bleibt — dieselbe Regel wie für Links in Abschnitt 4.3, Segmente werden
-  vor dem Vergleich dekodiert. Ein Ziel auf einem fremden Ursprung oder außerhalb des
-  Start-Unterbaums (z. B. `/dokumente/unterordner/` → `/intern/`) wird gefolgt, aber **ohne
-  Zugangsdaten**. Ein gleichnamiger Wechsel von `http` auf `https` gilt nicht als fremd.
-- Dasselbe gilt für Dateien: Wird eine Datei aus dem Start-Unterbaum heraus weitergeleitet, wird
-  das Ziel ohne Zugangsdaten abgerufen.
-- Landet eine Verzeichnisseite per Weiterleitung außerhalb des Start-Unterbaums, wird die Antwort
-  nicht gelesen und nicht als Verzeichnisliste ausgewertet. Der Lauf gilt dann als
-  **unvollständig** (wie bei einem nicht abrufbaren Unterverzeichnis, Abschnitt 9: keine
-  Löscherkennung), und das Protokoll nennt die angefragte Adresse sowie vom Ziel nur Schema, Host
-  und Port. Innerhalb des Unterbaums werden die Links der Seite gegen die tatsächlich gelieferte
-  Adresse aufgelöst, nicht gegen die angefragte; das Ziel zählt als besucht.
-- Der Verbindungstest wendet auf die geprüfte Adresse dieselbe Regel an: Eine Weiterleitung
-  außerhalb der Start-URL meldet er als nicht erreichbar, mit dem Ziel nur als Schema, Host und
-  Port.
-- Nennt die Start-URL eine Datei (z. B. `/liste.php`), gehören die Adresse selbst — auch mit
-  anderer Query — und alles darunter zum Unterbaum.
-- Protokolleinträge nennen vom Weiterleitungsziel nur Schema, Host und Port, nie Pfad oder
-  Query.
-
-### 4.3 Bleiben im Verzeichnis
-
-- Absolute Links auf fremde Server werden nicht verfolgt.
-- Ein absoluter, gleichursprünglicher Link außerhalb des gerade gecrawlten Verzeichnisses wird
-  ebenfalls nicht verfolgt — dieselbe Regel wie für relative Links, unabhängig davon, ob der Link
-  als `../`-Pfad oder bereits als vollständige URL in der Verzeichnisseite steht.
-- Links, die per `../` über die Start-URL hinaus führen würden, werden normalisiert und
-  verworfen. Das gilt auch für ein Segment, das erst nach der Prozentdekodierung zu `.`, `..`
-  oder einem Pfadtrenner wird (z. B. `%2E%2E/`) — ein solcher Link wird nie angefragt.
-- Jede URL wird nur einmal besucht (Zyklusschutz).
-- Sortier-Links (`?C=`), „Parent Directory", Anker, `mailto:` und `javascript:` werden
-  ignoriert.
-
-### 4.4 Grenzwerte
-
-| Grenze | Standard | Bei Überschreitung |
-|---|---|---|
-| Verzeichnistiefe (`max-depth`) | 10, Wurzel ist Tiefe 0 | Crawl gilt als abgeschnitten |
-| Anzahl Einträge (`max-entries`) | 50.000, zählt Dateien **und** besuchte Verzeichnisse | Crawl gilt als abgeschnitten |
-| Dateigröße (`max-file-size-bytes`) | 100 MiB | Datei wird abgewiesen, Lauf läuft weiter; geprüft anhand `Content-Length` und erneut während des Downloads |
-| Verzeichnisseite | 8 MiB, fest | Unterverzeichnis gilt als nicht abrufbar; an der Wurzel scheitert der Lauf |
-| Anfragen je Lauf (`opaa.indexing.http.request-budget-per-run`) | 0, unbegrenzt | Lauf endet geordnet als „unvollständig, wird fortgesetzt" |
-| Summe der 429-Wartezeiten je Lauf (`opaa.indexing.http.max-rate-limit-wait-per-run`) | 15 Minuten | Lauf endet geordnet als „unvollständig, wird fortgesetzt" |
-
-Anfragebudget und Wartedeckel zählen jede Anfrage eines Laufs — Verzeichnisseiten, die
-Inhaltsprobe je Datei, den Download, Wiederholungen nach 429. Ist das Budget verbraucht oder würde
-die nächste 429-Wartezeit die Summe über den Deckel heben, wird die Anfrage nicht mehr gestellt: Der
-aktuelle Eintrag bleibt unverarbeitet, die restlichen Einträge werden nicht mehr abgefragt, der Lauf
-endet erfolgreich mit dem Kennzeichen „unvollständig, wird fortgesetzt" und einem Protokolleintrag
-der Kategorie „Anfragebudget erschöpft". Ein so beendeter Lauf gilt nicht als vollständige
-Auflistung: Er löscht nichts (Abschnitt 9), der nächste Lauf durchsucht das Verzeichnis erneut und
-überspringt, was unverändert gespeichert ist.
-
-Die Dateigrenze liegt bewusst unter der Grenze, bis zu der Apache Tika Inhalte im Speicher
-hält. Grenzen gegen komprimierte Inhalte (Zip-Bomben) liegen nicht im Konnektor, sondern in den
-Format-Pipelines.
-
-## 5. Aufzählung
-
-Der Konnektor versteht vier Listenformate:
-
-1. Apache `mod_autoindex` mit `HTMLTable` (Tabelle mit Icon, Link, Datum, Größe)
-2. Apache `mod_autoindex` ohne Tabelle (`<pre>` mit Icons)
-3. nginx `autoindex on` (`<pre>` ohne Icons)
-4. schlichte `<ul>`-Liste, wie sie Apache mit `-FancyIndexing` oder Pythons `http.server` liefert
-
-Damit eine gewöhnliche Startseite nicht als Verzeichnis gecrawlt wird, entscheidet eine Heuristik
-zuerst, ob die Seite überhaupt wie eine Verzeichnisliste aussieht: Tabellenzeilen, mehrere Links
-in einem `<pre>`-Block, Datum-und-Größe-Muster oder ein Titel wie „Index of". Fällt sie
-negativ aus, liefert die Seite keine Einträge.
-
-Der Dateiname kommt aus dem Linkziel, nicht aus dem Linktext, weil Apache lange Namen im
-Anzeigetext kürzt und so die Endung verlieren würde. Änderungsdatum und Größe werden aus dem
-Text hinter dem Link gelesen, wenn er wie „Datum Uhrzeit Größe" aussieht (Apache- und
-nginx-Datumsformate). Bei `<ul>`-Listen bleiben beide leer.
-
-Unterverzeichnisse werden rekursiv in Fundreihenfolge betreten. Es gibt keine Sortierung.
-
-Ein Crawl endet mit drei Kennzeichen: **abgeschnitten** (Tiefe oder Menge erreicht),
-**unvollständig** (mindestens ein Unterverzeichnis war nicht abrufbar oder wurde aus dem
-Start-Unterbaum heraus weitergeleitet, Abschnitt 4.2) oder vollständig. Nur ein vollständiger
-Crawl erlaubt die Löscherkennung.
-
-## 6. Änderungserkennung
-
-Zwei Stufen:
-
-1. **Änderungsdatum aus der Liste.** Ist es bekannt, gleich dem gespeicherten Wert und war das
-   Dokument zuletzt erfolgreich indiziert, wird die Datei ohne Download übersprungen. Ein
-   fehlendes Datum gilt als „unbekannt", nicht als „unverändert". Sonst würde eine `<ul>`-Liste
-   nur beim ersten Mal geladen.
-2. **Prüfsumme** nach dem Download, wie bei jeder Quelle. Eine Datei mit neuem Änderungsdatum,
-   aber unveränderter Prüfsumme behält ihre Chunks; das neue Datum wird trotzdem gespeichert, sodass
-   der nächste Lauf sie schon in Stufe 1 überspringt.
-
-Bedingte HTTP-Anfragen mit ETag oder If-Modified-Since nutzt dieser Konnektor nicht.
-
-Vor dem vollständigen Download wird nur der Anfang der Datei (64 KiB) geladen und daraus das
-Format erkannt. Nicht unterstützte Formate kosten so nur einen kleinen Teil-Download. Erst
-wenn der Anfang in einem noch nicht entscheidbaren Container endet, wird zur Entscheidung die
-ganze Datei geladen, ebenfalls innerhalb der Größengrenze.
+Die Verzeichnisstruktur erscheint als schreibgeschützte Ordner: der URL-Pfad unterhalb der
+Start-Adresse ohne Dateiname und Abfrage, jedes Segment dekodiert (`Verg%C3%BCtung` wird
+`Vergütung`). Ordner entstehen nur entlang gefundener Dateien und werden nur nach einem vollständigen
+Crawl aufgeräumt. Ein Segment, das leer ist, `.` oder `..` lautet, einen Pfadtrenner oder ein
+NUL-Byte enthält oder länger als 255 Zeichen ist, ergibt keinen Ordner; die Datei liegt dann in der
+Wurzel, mit einer Warnung im Anwendungsprotokoll. Ein Anhang liegt im Ordner seiner Mail.
 
 ## 7. Anhänge
 
-Wie beim Dateisystem entstehen Anhänge aus dem Inhalt: Eine EML- oder MSG-Datei im
-Webverzeichnis liefert ihre Anhänge als eigene Dokumente mit den Mail-Grenzwerten. Links auf
-Verzeichnisseiten werden nicht als Anlagen interpretiert; Anlagenerkennung aus Seiteninhalt gibt
-es nur beim Feed-Konnektor.
+Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
+[E-Mail](../formate/mail.md). Links in Verzeichnislisten gelten nicht als Anlagen.
 
-## 8. Ordner
+## 8. Grenzen und Schutzmechanismen
 
-Der Lauf spiegelt die Verzeichnisstruktur der Quelle als schreibgeschützte Ordner, wie beim
-Dateisystem. Der Ordnerpfad ist der Teil des URL-Pfads unterhalb der Start-URL, ohne den Dateinamen
-und ohne Abfrageparameter; jedes Segment wird prozentdekodiert, `Verg%C3%BCtung` wird also zum
-Ordner `Vergütung`.
+- **Zieladressprüfung** vor jeder Anfrage und auf jeder Weiterleitung
+  ([Konnektoren](README.md#12-zieladressprüfung)).
+- **Im Verzeichnis bleiben.** Links auf fremde Server, gleichursprüngliche Links außerhalb des
+  gerade gelesenen Verzeichnisses und Links, die mit `../` — auch prozentkodiert wie `%2E%2E/` —
+  über die Start-Adresse hinausführen, werden nicht verfolgt. Jede Adresse wird nur einmal besucht.
+  Sortier-Links (`?C=`), „Parent Directory", Anker, `mailto:` und `javascript:` werden ignoriert.
+- **Weiterleitungen.** Höchstens fünf; `https` auf `http` wird abgelehnt. Zugangsdaten gehen nur
+  mit, solange das Ziel auf demselben Ursprung und unterhalb der Start-Adresse bleibt; sonst wird
+  ohne Zugangsdaten gefolgt. Landet eine Verzeichnisseite außerhalb des Start-Unterbaums, wird sie
+  nicht ausgewertet, und der Crawl ist unvollständig. Nennt die Start-Adresse eine Datei
+  (`/liste.php`), gehören sie selbst, auch mit anderer Abfrage, und alles darunter zum Unterbaum.
+  Protokolle nennen vom Ziel nur Schema, Host und Port.
+- **Drosselung.** Nur bei HTTP 429 wartet der Lauf die in `Retry-After` genannte Zeit und wiederholt;
+  jeder andere Fehlschlag ist für diesen Lauf endgültig.
 
-Ordner entstehen nur entlang gefundener Dateien — ein Verzeichnis, in dem nichts Indexierbares
-liegt, erscheint nicht. Angelegt oder umbenannt werden können sie nicht: Die Ordner-Endpunkte
-antworten für diesen Quellentyp mit `409`, die Quelle ist führend.
-
-Ein Segment, das nach der Dekodierung leer ist, `.` oder `..` lautet, einen Pfadtrenner oder ein
-NUL-Byte (`%00`) enthält oder länger als 255 Zeichen ist, lässt sich nicht als Ordnername
-darstellen. Die betroffene Datei landet dann in der Wurzel der Bibliothek, und im
-Anwendungsprotokoll steht eine Warnung mit der betroffenen URL.
-
-Ein Verzeichnis, das keine Dokumente mehr hält, verschwindet am Ende eines Laufs — allerdings nur
-unter derselben Bedingung wie die Löscherkennung im nächsten Abschnitt: Ein abgeschnittener oder
-unvollständiger Crawl räumt weder Dokumente noch Ordner auf. Ein Dokument ohne Ordnerzuweisung
-bekommt seinen Ordner beim nächsten Lauf zugewiesen, ohne dass es neu eingelesen wird. Ein Anhang
-liegt im Ordner seiner Mail.
-
-## 9. Löscherkennung
-
-Am Ende eines erfolgreichen Laufs werden Dokumente entfernt, deren URL nicht mehr gefunden wurde,
-**aber nur, wenn der Crawl weder abgeschnitten noch unvollständig war**. Ein Lauf, der durch das
-Tiefen- oder Mengenlimit begrenzt wurde oder ein Unterverzeichnis nicht lesen konnte, hat die
-Quelle nicht vollständig gesehen und darf nichts löschen. Ein Lauf ohne Einträge löscht
-ebenfalls nichts.
-
-Anhänge unveränderter Mails gelten als weiterhin vorhanden.
-
-## 10. Protokolleinträge dieses Konnektors
-
-| Kategorie | Meldung | Situation |
+| Grenze | Standard | Bei Überschreitung |
 |---|---|---|
-| abgewiesen | Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge) | Limit erreicht, keine Löscherkennung |
-| abgewiesen | Mindestens ein Unterverzeichnis konnte nicht abgerufen werden, der Bestand dieses Laufs ist unvollständig | Unterverzeichnis nicht lesbar, keine Löscherkennung |
-| abgewiesen | Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet (Ziel: Schema, Host und Port) und nicht ausgewertet; der Bestand dieses Laufs ist unvollständig | Weiterleitung aus dem Start-Unterbaum heraus (Abschnitt 4.2), keine Löscherkennung |
-| Format nicht unterstützt | Dateiformat wird nicht unterstützt | Inhaltsentscheidung negativ |
-| Formatabweichung | Dateiendung passt nicht zum erkannten Inhalt (erkannt: …) | wird trotzdem indiziert |
-| abgewiesen | Datei überschreitet die zulässige Größe von … und wurde nicht indiziert | Größengrenze |
-| abgewiesen | Zieladresse liegt in einem gesperrten Adressbereich | Zieladressprüfung |
-| abgewiesen | Speicherkontingent-Meldung | Kontingent erreicht |
-| abgewiesen | kein extrahierbarer Text | typisch Scan-PDF |
-| Fehler | Verarbeitung fehlgeschlagen | Download- oder Pipeline-Fehler, auch HTTP 403 einzelner Dateien oder 429 nach erschöpften Wiederholungen |
-| entfernt | In der Quelle nicht mehr gefunden, entfernt | Löscherkennung |
-| Ratenbegrenzung | Die Quelle hat den Lauf n-mal gedrosselt (HTTP 429/503); der Lauf hat insgesamt … Sekunden gewartet statt abzubrechen | eine Zeile je Lauf, wenn mindestens einmal gewartet wurde |
-| Anfragebudget erschöpft | Anfragebudget von … Anfragen erschöpft; der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut | Anfragebudget je Lauf verbraucht (Abschnitt 4.4) |
-| Anfragebudget erschöpft | Deckel der 429-Wartezeit von … je Lauf erreicht; der Lauf endet unvollständig, der nächste Lauf durchsucht das Verzeichnis erneut | Summe der 429-Wartezeiten am Deckel (Abschnitt 4.4) |
+| Verzeichnistiefe | 10, Wurzel ist 0 | Crawl abgeschnitten |
+| Einträge (Dateien und besuchte Verzeichnisse) | 50.000 | Crawl abgeschnitten |
+| Datei | 100 MiB | Datei abgewiesen; geprüft an `Content-Length` und während des Downloads |
+| Verzeichnisseite | 8 MiB, fest | Unterverzeichnis nicht abrufbar; an der Wurzel scheitert der Lauf |
+| Anfragen je Lauf | unbegrenzt | „unvollständig, wird fortgesetzt" |
+| Summe der 429-Wartezeiten je Lauf | 15 Minuten | „unvollständig, wird fortgesetzt" |
 
-Scheitert der Lauf als Ganzes, steht die Ursache in der Fehlermeldung des Laufs, etwa „HTTP 401
-Unauthorized, check credentials" oder „HTTP 503 for URL …".
+Zeitlimits: 30 s Verbindungsaufbau, 60 s je Verzeichnisseite, 120 s je Datei. Grenzen gegen
+komprimierte Inhalte liegen in den Formaten. DNS-Rebinding bleibt eine bekannte Restlücke.
 
-## 11. Grenzfälle
+## 9. Protokoll und Fehlerbilder
 
-| Situation | Verhalten |
-|---|---|
-| Start-URL nicht erreichbar oder HTTP-Fehler | Lauf `FAILED`, nichts gelöscht |
-| HTTP 401 an der Wurzel | Lauf `FAILED` mit Hinweis auf die Zugangsdaten |
-| Unterverzeichnis nicht erreichbar | Lauf läuft weiter, gilt als unvollständig, keine Löscherkennung |
-| Wartungsseite mit HTTP 200 | keine Verzeichnisliste erkannt, null Einträge, Lauf erfolgreich, nichts gelöscht |
-| Weiterleitung einer Verzeichnisseite auf fremden Host oder aus dem Start-Unterbaum heraus | wird ohne Zugangsdaten gefolgt, Antwort nicht gelesen; Lauf gilt als unvollständig, keine Löscherkennung |
-| Weiterleitung einer Datei auf fremden Host oder aus dem Start-Unterbaum heraus | wird ohne Zugangsdaten gefolgt |
-| Weiterleitung `https` auf `http` | abgelehnt |
-| Mehr als fünf Weiterleitungen | Anfrage gilt als fehlgeschlagen |
-| HTTP 403 bei einer Datei, oder 429 nach erschöpften Wiederholungen | Eintrag „Fehler", Lauf läuft weiter; keine gesonderte Bot-Schutz-Erkennung |
-| Anfragebudget je Lauf verbraucht oder Deckel der 429-Wartezeit erreicht | Lauf endet erfolgreich als „unvollständig, wird fortgesetzt", restliche Einträge unberührt, keine Löscherkennung |
-| Lauf während einer Datei gestoppt | Lauf endet mit „Lauf unterbrochen", die folgenden Einträge werden nicht mehr verarbeitet; die unterbrochene Datei zählt nicht als Fehler |
-| Bot-Schutzseite als Antwort auf einen Dateilink | wird als „Format nicht unterstützt" abgewiesen |
-| Endlos streamende Verzeichnisseite | bei 8 MiB abgebrochen |
-| Bibliothek während des Laufs gelöscht | Lauf `FAILED` mit „Die Bibliothek wurde während des Laufs gelöscht." |
+| Meldung | Bedeutung | Abhilfe |
+|---|---|---|
+| „Crawl wurde durch ein konfiguriertes Limit abgeschnitten (Tiefe oder Anzahl Einträge)" | keine Löscherkennung | Grenzen anheben oder Start-Adresse enger wählen |
+| „Mindestens ein Unterverzeichnis konnte nicht abgerufen werden, der Bestand dieses Laufs ist unvollständig" | keine Löscherkennung | Server prüfen |
+| „Verzeichnisseite wurde auf eine Adresse außerhalb der Start-URL weitergeleitet …" | Weiterleitung aus dem Unterbaum, keine Löscherkennung | Weiterleitung am Server prüfen |
+| „Datei überschreitet die zulässige Größe von …" | Größengrenze | Grenze anheben oder hinnehmen |
+| „Zieladresse liegt in einem gesperrten Adressbereich" | Zieladressprüfung | Hostnamen freigeben |
+| „Dateiformat wird nicht unterstützt" | Inhalt nicht zugelassen, auch eine Bot-Schutzseite statt einer Datei | erwartbar |
+| „Dateiendung passt nicht zum erkannten Inhalt (erkannt: …)" | wird trotzdem indiziert | nichts |
+| „Verarbeitung fehlgeschlagen" | Download- oder Pipeline-Fehler, auch HTTP 403 oder 429 nach allen Wiederholungen | bei Häufung Server prüfen |
+| „Die Quelle hat den Lauf n-mal gedrosselt …" (Ratenbegrenzung) | eine Zeile je Lauf, wenn gewartet wurde | bei Häufung Zeitplan entzerren |
+| „Anfragebudget von … Anfragen erschöpft …" / „Deckel der 429-Wartezeit von … je Lauf erreicht …" | der nächste Lauf durchsucht erneut | Budget oder Deckel anheben |
+| Lauf fehlgeschlagen, etwa „HTTP 401 Unauthorized, check credentials" | Start-Adresse nicht erreichbar oder Zugangsdaten abgelehnt; nichts wird entfernt | Adresse und Zugangsdaten prüfen |
 
-## 12. Konfiguration
+Eine Wartungsseite mit HTTP 200 enthält keine Verzeichnisliste: Der Lauf endet erfolgreich mit null
+Einträgen und entfernt nichts. Wird ein Lauf während einer Datei gestoppt, endet er mit „Lauf
+unterbrochen", ohne die Datei als Fehler zu zählen.
+
+## 10. Konfiguration
 
 | Schlüssel | Umgebungsvariable | Standard | Wirkung |
 |---|---|---|---|
 | `opaa.indexing.crawl.max-depth` | `OPAA_INDEXING_CRAWL_MAX_DEPTH` | 10 | Verzeichnistiefe, Wurzel ist 0; 0 bedeutet Standard |
 | `opaa.indexing.crawl.max-entries` | `OPAA_INDEXING_CRAWL_MAX_ENTRIES` | 50000 | Dateien und besuchte Verzeichnisse zusammen |
 | `opaa.indexing.crawl.max-file-size-bytes` | `OPAA_INDEXING_CRAWL_MAX_FILE_SIZE_BYTES` | 104857600 (100 MiB) | Obergrenze je Datei |
-| `opaa.indexing.http.user-agent` | `OPAA_INDEXING_HTTP_USER_AGENT` | `OPAA-Indexer/1.0` | `User-Agent` aller Anfragen, gemeinsam mit Feed- und Confluence-Konnektor |
+| `opaa.indexing.http.user-agent` | `OPAA_INDEXING_HTTP_USER_AGENT` | `OPAA-Indexer/1.0` | `User-Agent`, gemeinsam mit Feed und Confluence; wahrheitsgemäß, keine Browser-Imitation |
 | `opaa.indexing.http.max-rate-limit-retries` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_RETRIES` | 6 | aufeinanderfolgende 429-Antworten, die eine Anfrage abwartet |
-| `opaa.indexing.http.max-retry-after` | `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER` | 2m | Obergrenze einer einzelnen Wartezeit aus `Retry-After` |
-| `opaa.indexing.http.request-budget-per-run` | `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN` | 0 (unbegrenzt) | Anfragen je Lauf einschließlich Wiederholungen, gemeinsam mit dem Feed-Konnektor; beim Erreichen endet der Lauf geordnet unvollständig |
-| `opaa.indexing.http.max-rate-limit-wait-per-run` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` | 15m | Summe der 429-Wartezeiten je Lauf, gemeinsam mit dem Feed-Konnektor; beim Erreichen endet der Lauf geordnet unvollständig |
-| `opaa.indexing.target-validation.enabled` | `OPAA_INDEXING_TARGET_VALIDATION_ENABLED` | `true` | Zieladressprüfung |
-| `opaa.indexing.target-validation.allowlist` | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | leer | Hostnamen, die trotz privater Adresse zulässig sind |
-| `OPAA_CREDENTIALS_ENCRYPTION_KEY` | | | Schlüssel für gespeicherte Zugangsdaten |
+| `opaa.indexing.http.max-retry-after` | `OPAA_INDEXING_HTTP_MAX_RETRY_AFTER` | 2m | Obergrenze einer Wartezeit aus `Retry-After`; ohne Header fünf Sekunden |
+| `opaa.indexing.http.request-budget-per-run` | `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN` | 0 (unbegrenzt) | Anfragen je Lauf einschließlich Wiederholungen, gemeinsam mit dem Feed |
+| `opaa.indexing.http.max-rate-limit-wait-per-run` | `OPAA_INDEXING_HTTP_MAX_RATE_LIMIT_WAIT_PER_RUN` | 15m | Summe der 429-Wartezeiten je Lauf, gemeinsam mit dem Feed |
 
-Nicht konfigurierbar: Verzeichnisseiten-Grenze 8 MiB, Timeouts, Anzahl Weiterleitungen.
-Thread-Pool, Kontingent, Mail-Grenzen und Chunking wie im Kapitel [Wissensbibliotheken](../wissensbibliotheken.md).
+Nicht konfigurierbar: Verzeichnisseiten-Grenze, Zeitlimits, Zahl der Weiterleitungen. Zugangsdaten
+verschlüsselt der Schlüssel aus `OPAA_CREDENTIALS_ENCRYPTION_KEY`; die Zieladressprüfung steht in der
+[Übersicht](README.md#12-zieladressprüfung).
 
-## 13. Nicht gebaut
+## 11. Nicht gebaut
 
-- Wartezeit zwischen Anfragen; die gibt es nur beim Feed-Konnektor
-- Wiederholungsversuche und Backoff über die 429-Wartezeit (Abschnitt 3) hinaus
-- Bedingte Anfragen mit ETag
-- Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach
-  wiederholtem Scheitern
+- Wartezeit zwischen Anfragen; die gibt es nur beim Feed
+- Wiederholungen über die 429-Wartezeit hinaus
+- Bedingte Anfragen mit ETag oder If-Modified-Since
+- Schonzeitraum, Rechteübernahme, ereignisgesteuerte Aktualisierung, Drosselung nach wiederholtem
+  Scheitern
