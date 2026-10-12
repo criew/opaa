@@ -487,7 +487,7 @@ Grenze. Dann fehlen die späteren Feldnamen, und Überschriften oder Abkürzunge
 weiter vorn im Abschnitt belegen Plätze vor ihnen.
 
 Beide Pfade sehen **denselben Bestand**: Die Indexierung schreibt Vektor und Volltext eines Chunks
-in einer Transaktion (Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 5.7); auf diesem Weg entsteht
+in einer Transaktion (Kapitel [Wissensbibliotheken](wissensbibliotheken.md), Abschnitt 5.6); auf diesem Weg entsteht
 kein Chunk, den nur ein Pfad kennt. Was sich unterscheiden kann, ist allein die **Fassung** des
 Volltexts: Ändert ein Software-Update die Volltextzerlegung (etwa neue Kennungsmuster), tragen
 ältere Chunks die neuen Bestandteile erst nach dem Nachzug (Kapitel

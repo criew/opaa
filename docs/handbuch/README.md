@@ -74,7 +74,7 @@ Drei Eigenschaften prägen alles Weitere:
 |---|---|---|
 | Quellen anschließen | Verzeichnisse, Webverzeichnisse, Feeds, Confluence-Spaces, S3-Buckets, Google-Drive-Ablagen, SharePoint-Dokumentbibliotheken, Nextcloud-Ordner, Dropbox-Ordner und Windows-Dateifreigaben werden per Lauf gespiegelt; Uploads sofort verarbeitet | [Wissensbibliotheken](wissensbibliotheken.md), Abschnitte 1 bis 4; [Konnektoren](konnektoren/README.md) |
 | Formate verarbeiten | PDF, Office, OpenDocument, Tabellen, HTML, Markdown, E-Mail samt Anhängen; Zulassung nach Inhalt, nicht nach Endung | [Wissensbibliotheken](wissensbibliotheken.md), Formatübersicht |
-| Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Wissensbibliotheken](wissensbibliotheken.md), Abschnitte 4.4 und 5.9 |
+| Änderungen und Löschungen | Prüfsummen, Löscherkennung nur nach vollständiger Aufzählung, Anhänge als eigene Dokumente | [Wissensbibliotheken](wissensbibliotheken.md), Abschnitte 4.4 und 5.7 |
 | Metadaten | Titel, Dokumentart, Datum/Stand je Dokument, dazu Bibliotheks- und Formatfelder; Filter, Kontextpräfix, Beleg | [Metadaten](metadaten.md) |
 | Suche und Antwort | Rechtefilter, Teilfragen, Vektor- und Volltextsuche, Fusion, Reranking, Dokument-Vervollständigung, Belegprüfung | [Suche](suche.md) |
 | Diagnose | Testfrage im gewählten Rechtekontext, jede Stufe einzeln, „Dokument verfolgen" | [Suche](suche.md), Abschnitt 8 |
@@ -104,7 +104,7 @@ Drei Eigenschaften prägen alles Weitere:
 | [Suche](suche.md) | Abfragestrecke: Suchbereich, Filter, Teilfragen, zwei Suchpfade, Fusion, Reranking, Vervollständigung, Antwort, Belegprüfung, Diagnose, Aufbewahrung der Rechtehistorie, Konfiguration |
 | [Metadaten](metadaten.md) | Kernfelder, Format- und Bibliotheksfelder, Vokabular, Ermittlung, Bestandslauf, Pflege, Wirkung in Filter, Kontextpräfix und Beleg |
 | [Fremdzugänge](fremdzugaenge.md) | Der Kanal für fremde KI-Werkzeuge: vor dem Einschalten, Schalter und Netzbereich, Freigabe einer Bibliothek, Zugangstokens aus Personen- und Verwaltungssicht, MCP-Server, Einrichtung in Claude Code, Cursor, VS Code und OpenCode, Kontingent und Abflussalarm, Protokollierung, Störungssuche, Prüfliste nach einer Wiederherstellung |
-| [Konnektoren](konnektoren/README.md) | Übersicht aller Quellen, was jeder Konnektor liefert, Abgleichstand und Einstellungen; der gemeinsame [Abgleich der Dateiablagen](konnektoren/datei-abgleich.md); je Konnektor ein Kapitel mit Einrichtung, Schutzmechanismen, Betriebsarten, Löschsemantik, Grenzwerten und Fehlerbildern |
+| [Konnektoren](konnektoren/README.md) | Übersicht aller Quellen, was jeder Konnektor liefert, Abgleichstand und Einstellungen; der gemeinsame Abgleich der Dateiablagen; je Konnektor ein Kapitel mit Einrichtung, Schutzmechanismen, Betriebsarten, Löschsemantik, Grenzwerten und Fehlerbildern |
 | [Formate](formate/README.md) | Übersicht der zugelassenen und bewusst nicht zugelassenen Formate; je Format ein Kapitel mit Zulassung, erkannter Struktur, Zuschnitt, Metadaten und Grenzen |
 
 ### In Vorbereitung

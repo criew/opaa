@@ -1,31 +1,35 @@
-# Indexierung: Vom Dokument zum durchsuchbaren Index
+# Wissensbibliotheken: Das Wissen der Organisation verfügbar machen
 
-Dieses Kapitel erklärt, wie Dokumente in OPAA durchsuchbar werden: woher sie kommen, wie sie aktuell
-bleiben und was mit jedem Dokument geschieht. Es bleibt bei dem, was für alle Quellen gilt. Die
-Eigenheiten einer Quelle stehen in den Kapiteln der [Konnektoren](konnektoren/README.md), die
-eines Dateiformats in den Kapiteln der [Formate](formate/README.md), die Anmeldung an einer Quelle
-im Kapitel [Zugänge](zugaenge.md). Abschnitt 7 bündelt, was der Betrieb über die Aufnahmestrecke
+OPAA beantwortet Fragen aus dem Wissen der Organisation. Dieses Wissen liegt in Dokumenten, und
+das meiste davon liegt schon irgendwo: auf Netzlaufwerken, in einem Wiki, in einem Cloud-Speicher.
+Eine **Wissensbibliothek** macht einen solchen Bestand für OPAA verfügbar, indem sie seine
+Dokumente in einen durchsuchbaren Index aufnimmt und aktuell hält.
+
+Wissensbibliotheken stehen neben anderen Arten im [Katalog](katalog.md), etwa den
+[Prompt-Bibliotheken](prompt-bibliotheken.md). Was für alle Arten gleich ist — finden, anlegen,
+teilen, favorisieren, einem Space zuordnen —, beschreiben die Kapitel [Katalog](katalog.md) und
+[Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md). Dieses Kapitel beschreibt,
+was das Wissen besonders macht: woher es kommt, wie es aktuell bleibt und wie OPAA ein Dokument
+liest. Tiefer gehen die Kapitel der [Konnektoren](konnektoren/README.md), der
+[Formate](formate/README.md) und der [Zugänge](zugaenge.md); Abschnitt 7 bündelt, was der Betrieb
 wissen muss.
 
-## 1. Worum es geht
+## 1. Woher das Wissen kommt
 
-OPAA beantwortet Fragen aus Dokumenten, die zuvor in einen **Index** aufgenommen wurden. Der Index
-ist zweierlei: eine **Vektorablage**, die Textstücke nach ihrer Bedeutung findet, und ein
-**Volltextindex**, der exakte Wörter, Aktenzeichen und Paragrafen trifft. Beide werden im selben
-Arbeitsgang befüllt.
+Eine Wissensbibliothek bezieht ihre Dokumente auf einem von zwei Wegen:
 
-Dokumente gelangen auf zwei Wegen hinein:
+- **Eine Quelle anbinden.** Weil das meiste Wissen schon irgendwo liegt, ist das der Normalfall.
+  Ein **Konnektor** bindet das System an, in dem die Dokumente liegen — etwa ein Confluence-Wiki
+  oder ein Webverzeichnis —, liest es regelmäßig und hält die Bibliothek mit ihm in Einklang. Die
+  Dokumente bleiben in ihrer Quelle. Wie ein Konnektor liest, hängt von der Technik des Systems ab;
+  welche es gibt, zeigt die [Übersicht der Konnektoren](konnektoren/README.md).
+- **Dokumente hochladen.** Wissen, das noch nirgends abgelegt ist, lädt eine Person direkt hoch.
+  OPAA verarbeitet jede Datei sofort und bewahrt das Original selbst auf.
 
-- **Upload.** Eine Person lädt Dateien über die Oberfläche hoch. Jede Datei wird sofort verarbeitet;
-  das Original bewahrt OPAA selbst auf.
-- **Angebundene Quelle.** Die meisten Dokumente einer Organisation liegen schon irgendwo: auf einem
-  Netzlaufwerk, in einem Wiki wie Confluence, in einem Cloud-Speicher, in einem Webverzeichnis. Ein
-  **Konnektor** bindet ein solches System an, liest es regelmäßig und hält die Bibliothek mit ihm
-  in Einklang. Die Dokumente bleiben in ihrer Quelle; OPAA macht sie durchsuchbar. Wie ein
-  Konnektor das System liest, hängt von dessen Technik ab — welche es gibt und was sie können,
-  zeigt die [Übersicht der Konnektoren](konnektoren/README.md).
-
-Der Weg in den Index ist für jedes Dokument gleich, unabhängig von Herkunft und Format:
+Damit das Wissen durchsuchbar wird, nimmt OPAA jedes Dokument in einen **Index** auf: eine
+**Vektorablage**, die Textstücke nach ihrer Bedeutung findet, und einen **Volltextindex**, der
+exakte Wörter, Aktenzeichen und Paragrafen trifft. Der Weg dorthin ist für jedes Dokument gleich,
+unabhängig von Herkunft und Format:
 
 **Abbildung 1.1: Der Weg eines Dokuments in den Index**
 
@@ -52,40 +56,32 @@ flowchart LR
 
 ## 2. Grundbegriffe
 
-Eine **Wissensbibliothek** ist die Einheit, in der Dokumente verwaltet werden. Sie trägt
-Berechtigungen und genau eine **Quelle**: entweder Upload oder eine angebundene Quelle mit ihrem
-Konnektor. Ob und wie eine angebundene Quelle über einen von der Systemverwaltung vorgegebenen
-Zugang läuft, beschreibt das Kapitel [Zugänge](zugaenge.md).
+**Wissensbibliothek.** Die Einheit, in der Wissen verwaltet und geteilt wird. Sie hat genau eine
+**Quelle**: eine angebundene Quelle mit ihrem Konnektor oder den Upload. Meldet sich die Quelle
+über einen Zugang der Systemverwaltung an, beschreibt das das Kapitel [Zugänge](zugaenge.md).
 
-Ein **Indexierungslauf** (kurz Lauf) ist ein Durchgang über eine angebundene Quelle, mit Start,
-Ende, Ergebnis, Zählern und Protokoll. Ein **vollständiger** Lauf sieht die ganze Quelle und darf
-deshalb entfernen, was es dort nicht mehr gibt. Ein **ergänzender** Lauf sieht nur einen Ausschnitt
-— die jüngsten Einträge eines Feeds, die zuletzt geänderten Seiten — und entfernt nie etwas, nur
-weil es fehlt. Welche Laufarten eine Quelle kennt, legt ihr Konnektor fest. Uploads haben keine
-Läufe.
+**Lauf.** Ein Durchgang über die Quelle, mit Ergebnis, Zählern und Protokoll. Ein **vollständiger**
+Lauf sieht die ganze Quelle und darf entfernen, was es dort nicht mehr gibt; ein **ergänzender**
+sieht nur einen Ausschnitt, etwa die jüngsten Einträge eines Feeds, und entfernt nie etwas, nur
+weil es fehlt. Welche Laufarten eine Quelle kennt, legt ihr Konnektor fest.
 
-Ein **Dokument** ist eine Datei, eine Seite oder ein Eintrag der Quelle, so wie OPAA es kennt: mit
-seinem Ort in der Quelle, seinem Verarbeitungsstand und den Textstücken (**Chunks**), in die es
-zerlegt wurde. Sein Ort in der Quelle ist zugleich seine Identität.
+**Dokument.** Eine Datei, eine Seite oder ein Eintrag der Quelle, so wie OPAA es kennt: mit seinem
+Ort in der Quelle, seinem Verarbeitungsstand und den Textstücken (**Chunks**), in die es zerlegt
+wurde. Sein Ort in der Quelle ist zugleich seine Identität.
 
-Ein **Anhang** ist ein Dokument in einem Dokument: die Anlage einer E-Mail, die angehängte Datei
-einer Confluence-Seite, die verlinkte Anlage eines Feed-Eintrags. OPAA nimmt jeden Anhang als
-eigenes Dokument auf, mit Verweis auf das Dokument, aus dem er stammt (Abschnitt 5.9).
+**Anhang.** Ein Dokument in einem Dokument, etwa die Anlage einer E-Mail oder die angehängte Datei
+einer Confluence-Seite. OPAA nimmt es als eigenes Dokument auf (Abschnitt 5.7).
 
-Ein **Ordner** gliedert die Dokumente einer Bibliothek. Ordner dienen nur der Ablage: Berechtigungen
-hängen immer an der Bibliothek, und die Suche durchsucht stets den ganzen Bestand und nennt zum
-Treffer den Ordnerpfad. In einer Upload-Bibliothek legen die Nutzenden Ordner selbst an, benennen
-sie um und löschen sie; ein hochgeladener Ordner bringt seine Unterstruktur mit, und das Löschen
-eines Ordners löscht nach einer Rückfrage mit der Anzahl auch die Dokumente darin. Bei vielen
-angebundenen Quellen spiegelt der Lauf die Ordner der Quelle; dort sind sie nicht bearbeitbar, die
-Quelle ist führend. Woher die Ordner bei einer Quelle kommen, steht in ihrem Kapitel.
+**Ordner.** Die Gliederung der Dokumente in der Bibliothek. Sie spiegelt, wie die Dokumente in der
+Quelle abgelegt sind; beim Upload wird sie von Hand gepflegt. Ordner ordnen nur: Rechte gelten für
+die ganze Bibliothek, und die Suche durchsucht immer den ganzen Bestand.
 
 **Abbildung 2.1: Die Begriffe und ihr Zusammenhang**
 
 ```mermaid
 flowchart TB
-    B[Wissensbibliothek<br/>Quelle + Einstellungen] --> L[Indexierungslauf<br/>Ergebnis, Zähler, Protokoll]
-    B --> F[Ordner<br/>nur Ablage]
+    B[Wissensbibliothek<br/>Quelle + Einstellungen] --> L[Lauf<br/>Ergebnis, Zähler, Protokoll]
+    B --> F[Ordner]
     F --> D
     B --> D[Dokument<br/>Ort, Stand]
     D --> D2[Anhang als<br/>eigenes Dokument]
@@ -94,95 +90,48 @@ flowchart TB
 
 ## 3. Mit Wissensbibliotheken arbeiten
 
-### 3.1 Im Katalog finden
+### 3.1 Im Katalog
 
-Die Bibliotheken, die eine Person lesen darf, stehen im **Katalog** der Hauptnavigation; der Filter
-„Wissen" grenzt ihn auf Wissensbibliotheken ein. Suche, Filter und Reihenfolge des Katalogs
-beschreibt [Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4.
-
-Eine Kachel nennt Name, Beschreibung, eine Freigabe an „Alle Konten", die Zahl der Dokumente, in
-wie vielen Räumen die Bibliothek bereitsteht, die zuständige Stelle und ihren Zustand:
-
-**Tabelle 3.1: Zustand einer Wissensbibliothek auf der Kachel**
-
-| Bibliothek | Zustand |
-|---|---|
-| mit angebundener Quelle | nach ihrem jüngsten Lauf: „Wird aktualisiert", „Aktualisierung fehlgeschlagen" oder „Aktualisiert am" mit dem Datum des letzten erfolgreichen Laufs; ohne Lauf „Noch kein Inhalt" |
-| Upload | nach ihren Dokumenten, die erste zutreffende Regel gilt: eines in Verarbeitung, eines gescheitert, eines indexiert, keines |
-
-Dazu kommen Hinweise wie „Nachfolge offen" oder eine Sperre. Fortschritt und Gründe eines Laufs
-zeigt erst die Detailansicht.
+Wissensbibliotheken stehen im [Katalog](katalog.md), der Filter „Wissen" grenzt ihn auf sie ein.
+Die Kachel einer Wissensbibliothek nennt zusätzlich die Zahl ihrer Dokumente und wie aktuell sie
+ist: das Datum des letzten erfolgreichen Abgleichs, oder in Worten, dass sie gerade aktualisiert
+wird, dass das zuletzt gescheitert ist oder dass sie noch keinen Inhalt hat.
 
 ### 3.2 Die Detailansicht
 
-Ein Klick auf die Kachel öffnet die Detailansicht. Oben steht der **Kopf**: das Etikett „Wissen",
-der Quellentyp, die eigene Rolle, Name und Beschreibung, die Kennzahlen und die Aktionen. Darunter
-sagt eine Zeile, was die eigene Rolle erlaubt, wo das die Bedienung erklärt („Sie haben in dieser
-Bibliothek nur Leserechte").
+Die Detailansicht einer Wissensbibliothek ist aufgebaut wie die jeder Art im Katalog
+([Katalog](katalog.md)). Sie zeigt in ihren Reitern:
 
-**Tabelle 3.2: Der Kopf der Detailansicht**
-
-| Element | Inhalt |
-|---|---|
-| Kopfzeile | Etikett „Wissen", Welt-Symbol bei Freigabe an „Alle Konten", Quellentyp, eigene Rolle — für eine Systemverwaltung ohne eigene Berechtigung „administrativ" —, Favoritenstern, Menü „⋯" |
-| Name und Beschreibung | ändert, wer mindestens Verwalter ist, über den Stift „Name und Beschreibung bearbeiten" |
-| Nachfolge | eine Zeile, wenn die Nachfolge offen ist ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 13) |
-| Kennzahlen | Dokumente; belegtes Speicherkontingent ab Verwalter; der letzte Lauf mit Ausgang und Zählern ab Bearbeiter; Räume; zuständige Stelle; „Aktualisiert am" |
-| Umfang | bei Quellen mit Auswahl (etwa Spaces, Buckets) eine Kurzzeile mit Sprung in den Reiter „Quelle"; eine Warnung über einen unvollständig gelesenen Umfang bleibt im Kopf |
-| Aktionen | „Jetzt indizieren" ab Bearbeiter bei einer angebundenen Quelle, wo es ihn gibt „Vollabgleich starten"; im Menü „⋯" „In Space verwenden" für jede lesende Rolle und „Löschen" für den Eigentümer und die Systemverwaltung |
-
-Darunter liegen fünf **Reiter**. Jeder trägt eine eigene Adresse (`?tab=`) und lässt sich verlinken;
-ein Reiterwechsel legt keinen Schritt in der Browser-Historie an. Alle Reiter stehen jeder Rolle
-offen; was eine Rolle nicht abrufen darf, fehlt innerhalb des Reiters.
-
-**Tabelle 3.3: Die Reiter der Detailansicht**
+**Tabelle 3.1: Was die Detailansicht zeigt**
 
 | Reiter | Inhalt |
 |---|---|
-| Dokumente | der Bestand der Bibliothek (siehe unten) |
-| Quelle | Umfang, Anbindung, Zeitplan und Läufe (siehe unten); fehlt bei einer Upload-Bibliothek |
-| Metadaten | die Metadatenfelder der Bibliothek und, ab Verwalter, die modellgestützte Extraktion ([Metadaten](metadaten.md)) |
-| Freigaben | Eigentümer, Berechtigungen, externer Zugang, Diagnosesperre und „Warum sehe ich diese Wissensbibliothek?" ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md), Abschnitt 4) |
-| Zuordnungen | die Räume, in denen die Bibliothek bereitsteht, mit „In Space verwenden" und „Aus Space lösen" |
+| Dokumente | die Dokumente der Bibliothek, nach Ordnern gegliedert und durchsuchbar |
+| Quelle | woher die Dokumente kommen: der Umfang der Quelle, ihre Anbindung, der Zeitplan und die Läufe; fehlt beim Upload |
+| Metadaten | die Felder, mit denen die Bibliothek ihre Dokumente beschreibt ([Metadaten](metadaten.md)) |
+| Freigaben | wer die Bibliothek sehen und pflegen darf ([Bibliotheken und Berechtigungen](bibliotheken-und-berechtigungen.md)) |
+| Zuordnungen | in welchen Spaces sie verwendet wird |
 
-**Tabelle 3.4: Der Reiter „Quelle"**
-
-| Abschnitt | Inhalt | Sichtbar für |
-|---|---|---|
-| Umfang | welchen Ausschnitt der Quelle die Bibliothek spiegelt, etwa die gewählten Spaces oder Buckets; nur bei Quellen mit Auswahl | alle Leseberechtigten |
-| Anbindung | Adresse und Einstellungen der Quelle, der Zugang, „Bearbeiten" und „Verbindung testen" gegen die gespeicherte Einstellung, je nach Quelle Webhook oder Ereignisse | ab Verwalter |
-| Zeitplan | Rhythmus und nächster Termin; eine Warnung, wenn die letzten geplanten Läufe gescheitert sind | ab Verwalter |
-| Läufe | das Laufprotokoll (Abschnitt 6.2) | ab Verwalter |
-
-Wer darunter bleibt, sieht den Umfang und einen Satz dazu, wem der Rest vorbehalten ist. Hinweise
-auf eine Sperre oder eine getrennte Verbindung stehen für alle Leseberechtigten im Reiter „Quelle";
-den Verwaltenden bieten sie die Aktion an, die sie aufhebt ([Zugänge](zugaenge.md)).
-
-Der Reiter **„Dokumente"** zeigt für jede Quelle dieselbe Liste mit Suche, Ordnern, Auswahl und
-Blättern; je nach Quelle kommen Zusatzzeilen hinzu (Space, Bucket, Herkunft, Anhänge). Für eine
-Auswahl bietet die Leiste die Aktionen an, die für alle ausgewählten Dokumente zulässig sind:
-„Feld setzen" ([Metadaten](metadaten.md)) und, nur bei einer Upload-Bibliothek, „Löschen". Das
-Sammellöschen fragt einmal nach und meldet danach, wie viele Dokumente gelöscht wurden, und warum
-eines stehen blieb. In einer Bibliothek mit angebundener Quelle lassen sich Dokumente nicht
-löschen — der nächste Lauf brächte sie zurück.
+Was man dort tun kann, hängt von der eigenen Rolle ab. **Wer liest**, sieht die Dokumente, den
+Umfang der Quelle, die Metadaten und die Freigaben. **Wer pflegt**, stößt außerdem einen Lauf an
+(„Jetzt indizieren"), setzt Metadatenfelder und lädt bei einer Upload-Bibliothek Dokumente hoch oder
+löscht sie. **Wer verwaltet**, ändert darüber hinaus Anbindung und Zeitplan, sieht das Laufprotokoll
+und vergibt Rechte. In einer Bibliothek mit angebundener Quelle lassen sich Dokumente nicht löschen;
+der nächste Lauf brächte sie zurück.
 
 ### 3.3 Eine Wissensbibliothek anlegen
 
-Angelegt wird über **„Neu"** im Katalog: Nach der Wahl der Art „Wissen" führt ein Assistent durch
-die Einrichtung. Seine Schritte heißen wie Kopf und Reiter der fertigen Bibliothek; was hier
-eingestellt wird, steht später an derselben Stelle.
+Angelegt wird über **„Neu"** im Katalog mit der Art „Wissen". Ein Assistent führt durch vier
+Schritte:
 
-**Tabelle 3.5: Die Schritte des Assistenten**
+**Tabelle 3.2: Die Schritte des Assistenten**
 
 | Schritt | Inhalt |
 |---|---|
-| 1. Art des Wissens | je Quelle eine Kachel. Es erscheinen nur Arten, die die Person anlegen darf: Upload mit dem Recht „Bibliotheken für Uploads anlegen", eine angebundene Quelle, wenn sie für die Person freigegeben und nicht gesperrt ist, mit eigener Adresse oder über einen nutzbaren Zugang. Darf sie keine Art anlegen, verweist der Schritt an die Systemverwaltung |
-| 2. Quelle | gegebenenfalls die Wahl des Zugangs, dann Anbindung und Verbindungstest, der Zeitplan und „Erste Indizierung sofort nach dem Anlegen starten"; entfällt bei Upload |
-| 3. Name & Beschreibung | der Name ist vorbelegt, wo die Quelle ihn hergibt (ein einzelner Space, der erste Bucket, der letzte Pfadabschnitt, der Hostname) |
-| 4. Freigaben | Eigentümer („Mein Konto" oder eine eigene Gruppe) und vorgemerkte Freigaben an Personen und Gruppen; eine Freigabe an „Alle Konten" wird erst an der fertigen Bibliothek erteilt |
-
-Nach „Bibliothek anlegen" öffnet sich die Detailansicht. Konnte eine vorgemerkte Freigabe nicht
-erteilt werden, ist die Bibliothek trotzdem angelegt, und ein Hinweis nennt die Empfänger.
+| 1. Art des Wissens | welche Quelle angebunden werden soll, oder Upload; angeboten wird nur, was die Person anlegen darf |
+| 2. Quelle | die Anbindung, gegebenenfalls über einen Zugang, mit Verbindungstest, dazu der Zeitplan und ob die erste Indizierung sofort startet; entfällt beim Upload |
+| 3. Name & Beschreibung | vorbelegt, wo die Quelle einen Namen hergibt |
+| 4. Freigaben | Eigentümer und erste Freigaben an Personen und Gruppen |
 
 ## 4. Wie der Bestand aktuell bleibt
 
@@ -195,7 +144,6 @@ erteilt werden, ist die Bibliothek trotzdem angelegt, und ein Hinweis nennt die 
 | Manuell | „Jetzt indizieren" an der Bibliothek, ab der Rolle Bearbeiter. Wo die Quelle es kennt, zusätzlich „Vollabgleich starten" |
 | Zeitplan | je Bibliothek einstellbar (Abschnitt 4.2) |
 | Ereignis der Quelle | manche Quellen melden Änderungen selbst, etwa Confluence per Webhook oder ein Objektspeicher per Benachrichtigung; OPAA holt kurz darauf genau die gemeldeten Dokumente. Ersetzt weder Zeitplan noch Vollabgleich |
-| Upload | kein Lauf: Jede Datei wird sofort einzeln verarbeitet, getrennt von laufenden Läufen. Wo das Original liegt, entscheidet der Betrieb ([Originalablage](deployment.md#originalablage)) |
 | Nachzug | kein regulärer Lauf: Die Systemverwaltung lässt Dokumente neu verarbeiten, die mit einem älteren Verfahren entstanden sind (Abschnitt 7.2) |
 
 ### 4.2 Zeitplan
@@ -247,8 +195,8 @@ heißt, dass der Lauf als Ganzes nicht zu Ende kam.
 Ein Lauf kann abgeschlossen und trotzdem **unvollständig** sein: wenn er sein Anfragebudget
 verbraucht hat oder ein Dokument am Speicherkontingent abgelehnt wurde. Er endet dann geordnet, und
 der nächste Lauf setzt fort; ein unvollständiger Lauf entfernt nichts wegen Abwesenheit. Wie die
-Dateiablagen einen Abgleich über mehrere Läufe fortsetzen, beschreibt
-[Abgleich der Dateiablagen](konnektoren/datei-abgleich.md).
+Dateiablagen einen Abgleich über mehrere Läufe fortsetzen, beschreibt die Übersicht der
+[Konnektoren](konnektoren/README.md#2-dateiablagen).
 
 ### 4.4 Änderungen und Löschungen
 
@@ -262,16 +210,9 @@ Dateiablagen einen Abgleich über mehrere Läufe fortsetzen, beschreibt
 | verschwunden | entfernt nach einem vollständigen, erfolgreichen Lauf, oder sofort, wenn die Quelle die Löschung selbst meldet |
 | nicht erreichbar oder nicht lesbar | **nichts** wird entfernt |
 
-Die wichtigste Sicherung ist die letzte Zeile: Ein Lauf, der null Dokumente sieht, kann eine leere
-Quelle bedeuten oder ein nicht eingebundenes Netzlaufwerk. Deshalb entfernt OPAA nur, wenn der
-Konnektor die Quelle **vollständig** aufgezählt hat. Ein abgebrochener Lauf, ein Bereich, den die
-Zugangsdaten nicht lesen dürfen, ein erschöpftes Anfragebudget: all das lässt den Bestand stehen.
-Ein entzogenes Recht ist kein Löschbefund, und eine Datei, die OPAA abweist (etwa wegen ihres
-Formats), gilt als vorhanden. Ergänzende Läufe entfernen nie wegen Abwesenheit — ein Feed zeigt nur
-seine jüngsten Einträge, ältere sind damit nicht verschwunden.
-
-Wann genau eine Quelle löscht, steht in ihrem Kapitel; die Übersicht zeigt die
-[Konnektoren](konnektoren/README.md), Tabelle 1.2.
+OPAA stellt sicher, dass nichts versehentlich gelöscht wird: Es entfernt ein Dokument nur nach
+einem Lauf, der die Quelle vollständig gelesen hat. Wann genau das bei einer Quelle der Fall ist,
+zeigt die Übersicht der [Konnektoren](konnektoren/README.md).
 
 ### 4.5 Wiederanlauf nach Störungen
 
@@ -304,25 +245,17 @@ flowchart TB
     R -- nicht lesbar --> FP[fehlgeschlagen,<br/>alter Stand bleibt]
     R -- leer oder<br/>kein Text --> FA[abgewiesen bzw. fehlgeschlagen,<br/>alter Stand entfernt]
     R -- Chunks --> S5[5 Metadaten anreichern]
-    S5 --> S6[6 Embedden]
-    S6 --> S7[7 Vektor und Volltext schreiben]
-    S7 --> S8[8 als indiziert markieren]
+    S5 --> S6[6 Embedden und<br/>in den Index schreiben]
     S4 -. gefundene Anhänge .-> AT[Anhänge als eigene<br/>Dokumente durch dieselbe Strecke]
 ```
 
 ### 5.1 Prüfsumme und Identität
 
-Über den Inhalt wird eine Prüfsumme gebildet und das Dokument über seinen Ort in der Quelle
-gesucht. Ist der Inhalt unverändert und war das Dokument zuletzt erfolgreich indiziert, ist der Fall
-erledigt: **übersprungen**. Das ist der Normalfall jedes Folgelaufs und der Grund, warum Folgeläufe
-schnell sind. Titel, Ort und Ordner werden dabei trotzdem aktualisiert.
-
-Hat sich der Inhalt geändert, behält das Dokument seine Identität; nur seine Chunks werden
-ausgetauscht, und zwar erst, wenn die neue Fassung gelesen und zerlegt vorliegt. Scheitert das
-Lesen, bleibt der alte Stand durchsuchbar.
-
-Der Ort in der Quelle ist auf eine Länge begrenzt (Abschnitt 7.1). Ein längerer wird nicht
-gespeichert und erscheint im Protokoll als abgewiesen; der Lauf geht weiter.
+Über den Inhalt wird eine Prüfsumme gebildet. Ist der Inhalt unverändert und war das Dokument
+zuletzt erfolgreich indiziert, wird es **übersprungen** — der Normalfall jedes Folgelaufs, und der
+Grund, warum Folgeläufe schnell sind. Hat sich der Inhalt geändert, behält das Dokument seine
+Identität, und nur seine Chunks werden ausgetauscht; scheitert das Lesen der neuen Fassung, bleibt
+der alte Stand durchsuchbar.
 
 ### 5.2 Speicherkontingent
 
@@ -338,8 +271,8 @@ der Quelle werden dagegen übernommen — oft sind es gerade sie, die Platz scha
 Dokument nicht passt, endet jeder Lauf, der es erreicht, wieder als unvollständig.
 
 Dateiablagen prüfen das Kontingent schon vor dem Download
-([Abgleich der Dateiablagen](konnektoren/datei-abgleich.md), Abschnitt 4). Was bei Confluence, beim
-Feed und bei E-Mails mit Anhängen eigens gilt, steht in deren Kapiteln.
+([Konnektoren](konnektoren/README.md#2-dateiablagen)). Was bei Confluence, beim Feed und bei
+E-Mails mit Anhängen eigens gilt, steht in deren Kapiteln.
 
 ### 5.3 Format erkennen
 
@@ -381,27 +314,15 @@ Chunk aus `2024-03_Dienstanweisung_Homeoffice.pdf` wird als „Dienstanweisung H
 eingebettet. So trägt auch ein Detail-Chunk — eine Gebührenzeile, ein einzelner Paragraf — Signal
 darüber, wovon das Dokument handelt.
 
-### 5.6 Embedden
+### 5.6 Embedden und in den Index schreiben
 
-Die Chunks gehen paketweise an das Embedding-Modell. Das ist der einzige Aufruf nach außen, der
-nicht der Quelle gilt. Ist ein einzelner Chunk zu lang für das Modell — praktisch nur bei Text mit
-sehr vielen Tokens je Zeichen, etwa in nicht lateinischen Schriften —, wird von dem Dokument nichts
-eingebettet; seine Fehlermeldung nennt die Stelle („Ein Textabschnitt ist zu lang für das
-Embedding-Modell (S. 4)").
+Die Chunks gehen paketweise an das Embedding-Modell; das ist der einzige Aufruf nach außen, der
+nicht der Quelle gilt. Danach werden Vektor und Volltext jedes Chunks gemeinsam geschrieben, sodass
+beide Suchen denselben Bestand sehen. Der Volltext wird mit deutscher Wortstammbildung aufgebaut und
+um **Kennungen** wie Paragrafen und Aktenzeichen ergänzt, damit „§ 12 Abs. 3" exakt trifft
+([Suche](suche.md), Stufe 5). Zuletzt wird das Dokument als „indiziert" markiert.
 
-### 5.7 Vektor und Volltext schreiben
-
-Vektor und Volltext eines Chunks werden gemeinsam geschrieben; es gibt keinen Chunk, den nur eine
-der beiden Suchen kennt. Der Volltext wird mit deutscher Wortstammbildung aufgebaut und um erkannte
-**Kennungen** wie Paragrafen und Aktenzeichen ergänzt, damit „§ 12 Abs. 3" exakt trifft. Welche
-Kennungen erkannt werden, steht im Kapitel [Suche](suche.md), Stufe 5.
-
-### 5.8 Als indiziert markieren
-
-Zuletzt wird das Dokument mit Chunk-Anzahl und Prüfsumme als „indiziert" markiert. Wurde es
-währenddessen gelöscht, werden die gerade geschriebenen Chunks wieder entfernt.
-
-### 5.9 Anhänge
+### 5.7 Anhänge
 
 Anhänge entstehen auf zwei Arten und münden in denselben Weg: **aus dem Format**, wie die Anlagen
 einer E-Mail — gleich, woher die Mail kommt —, oder **aus der Quelle**, wie die angehängten Dateien
@@ -468,20 +389,11 @@ Jeder Lauf führt ein Protokoll mit einer lesbaren Begründung je Eintrag.
 
 ### 6.3 Wer was sieht
 
-Den **Laufstatus** — letzter Lauf, Zähler — sieht jede leseberechtigte Person. Das **Protokoll** und
-die Fehlermeldung eines gescheiterten Laufs sieht erst, wer die Bibliothek verwaltet, weil sie
-interne Pfade und Adressen der Quelle enthalten.
-
-Ein Lauf, der geordnet unvollständig endete, trägt das Kennzeichen „unvollständig, wird
-fortgesetzt". Hat er Dokumente am Speicherkontingent abgelehnt, heißt es „unvollständig:
-Speicherkontingent erschöpft, Dateien übersprungen", und aufgeklappt steht, was Platz schafft:
-Dateien in der Quelle löschen, die Quelle eingrenzen oder ein höheres Kontingent. Bei einer privaten
-Bibliothek kann das eigene oder das gemeinsame Kontingent der Besitzerin erschöpft sein; welches,
-nennt das Protokoll je Datei.
-
-Die Systemverwaltung sieht zusätzlich systemweit die Dokumente ohne einen einzigen Chunk — der
-typische Befund für eingescannte PDFs — und den Stand der Pipeline-Versionen je Bibliothek
-(Abschnitt 7.2).
+Ob und wann zuletzt aktualisiert wurde, sieht jede leseberechtigte Person. Das Protokoll sieht erst,
+wer die Bibliothek verwaltet, weil es interne Pfade und Adressen der Quelle enthält. Endete ein Lauf
+unvollständig, sagt ein Kennzeichen am Lauf, warum, und was hilft — etwa bei einem erschöpften
+Speicherkontingent: Dateien in der Quelle löschen, die Quelle eingrenzen oder ein höheres
+Kontingent.
 
 ## 7. Betrieb
 
@@ -614,7 +526,7 @@ die Anfrage mit HTTP 503 beantwortet.
 ## 8. Weiterführende Kapitel
 
 - [Konnektoren](konnektoren/README.md): alle Quellen im Überblick und je ein Kapitel pro Konnektor;
-  der gemeinsame [Abgleich der Dateiablagen](konnektoren/datei-abgleich.md)
+  der gemeinsame Abgleich der Dateiablagen
 - [Zugänge](zugaenge.md): wie sich Quellen anmelden und was die Systemverwaltung vorgibt
 - [Formate](formate/README.md): zugelassene Formate und je ein Kapitel pro Format-Pipeline
 - [Suche](suche.md): wie der Index abgefragt wird, von der Frage bis zur belegten Antwort
@@ -623,20 +535,17 @@ die Anfrage mit HTTP 503 beantwortet.
 
 ## Verzeichnis der Tabellen und Abbildungen
 
-- [Abbildung 1.1: Der Weg eines Dokuments in den Index](#1-worum-es-geht)
-- [Tabelle 1.1: Die Schritte im Überblick](#1-worum-es-geht)
+- [Abbildung 1.1: Der Weg eines Dokuments in den Index](#1-woher-das-wissen-kommt)
+- [Tabelle 1.1: Die Schritte im Überblick](#1-woher-das-wissen-kommt)
 - [Abbildung 2.1: Die Begriffe und ihr Zusammenhang](#2-grundbegriffe)
-- [Tabelle 3.1: Zustand einer Wissensbibliothek auf der Kachel](#31-im-katalog-finden)
-- [Tabelle 3.2: Der Kopf der Detailansicht](#32-die-detailansicht)
-- [Tabelle 3.3: Die Reiter der Detailansicht](#32-die-detailansicht)
-- [Tabelle 3.4: Der Reiter „Quelle"](#32-die-detailansicht)
-- [Tabelle 3.5: Die Schritte des Assistenten](#33-eine-wissensbibliothek-anlegen)
+- [Tabelle 3.1: Was die Detailansicht zeigt](#32-die-detailansicht)
+- [Tabelle 3.2: Die Schritte des Assistenten](#33-eine-wissensbibliothek-anlegen)
 - [Tabelle 4.1: Wodurch ein Lauf entsteht](#41-auslöser)
 - [Tabelle 4.2: Stufen des Zeitplans](#42-zeitplan)
 - [Abbildung 4.1: Zustände eines Laufs](#43-zustände-eines-laufs)
 - [Tabelle 4.3: Was eine Änderung in der Quelle bewirkt](#44-änderungen-und-löschungen)
 - [Abbildung 5.1: Die Dokumentstrecke](#5-was-mit-jedem-dokument-passiert)
-- [Abbildung 5.2: Eine E-Mail mit Anhängen](#59-anhänge)
+- [Abbildung 5.2: Eine E-Mail mit Anhängen](#57-anhänge)
 - [Tabelle 6.1: Kategorien des Laufprotokolls](#62-laufprotokoll)
 - [Tabelle 7.1: Feste Grenzen der Dokumentstrecke](#71-grenzen-und-zuschnitt-im-einzelnen)
 - [Tabelle 7.2: Admin-API des Nachzugs](#72-pipeline-versionen-und-nachzug)

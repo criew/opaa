@@ -362,7 +362,7 @@ Eine site-weite Regel genügt für mehrere Spaces: Seiten außerhalb der Auswahl
 ## 9. Anhänge
 
 Anhänge einer Seite werden je Seite aufgelistet und einzeln über den gemeinsamen Anhangsweg
-verarbeitet (siehe [Wissensbibliotheken](../wissensbibliotheken.md#59-anhänge)). Jeder
+verarbeitet (siehe [Wissensbibliotheken](../wissensbibliotheken.md#57-anhänge)). Jeder
 Anhang ist ein eigenes Dokument mit der Seite als Elterndokument und trägt Space und Gliederungspfad
 der Seite, ergänzt um deren Titel. Ein unveränderter Anhang (gleiche Version) wird vor dem Download
 übersprungen. Ein nicht unterstütztes Format wird als „Format nicht unterstützt" protokolliert und
