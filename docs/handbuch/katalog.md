@@ -88,7 +88,7 @@ Jede Rolle sieht jeden Reiter; wer nur liest, sieht ihn schreibgeschützt.
 ## 6. In einem Space verwenden
 
 Ein Space enthält genau die Arbeitsmittel, die ihm zugeordnet sind
-([Berechtigungen](berechtigungen.md), Abschnitt 5). Zuordnen lässt sich direkt aus dem Katalog: Im
+([Spaces](spaces.md)). Zuordnen lässt sich direkt aus dem Katalog: Im
 Menü „⋯" einer Kachel, im Menü der Detailansicht und im Reiter „Zuordnungen" steht **„In Space
 verwenden"**. Es zeigt die Spaces, in denen die Person Kurator oder Administrator ist; ein Klick
 ordnet zu. „Neuen Space damit anlegen" öffnet den Space-Assistenten mit dem Arbeitsmittel als

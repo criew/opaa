@@ -109,84 +109,13 @@ Zwei Punkte sind betrieblich wichtig:
   Grund (Abschnitt 10.2). Ist der Space beim Schreiben des Ergebnisses inzwischen archiviert, wird
   das Ergebnis verworfen — ein archivierter Space nimmt keine Änderung an einem Chat an.
 
-Das **Chat-Archiv** ist eine persönliche Ablage: Wer einen Chat archiviert, nimmt ihn nur aus der
-eigenen Chatliste und findet ihn auf der Seite „Chats" des Space im Reiter „Archiv" wieder. Der Chat
-selbst ändert sich dabei nicht — Titel, letzte Aktivität, Verlauf, Suchbereich und Filter bleiben,
-und niemand sonst sieht, ob eine Person einen Chat archiviert hat. Ein archivierter Chat bleibt
-lesbar und fortsetzbar; eine eigene neue Frage darin holt ihn automatisch zurück. Archivieren löst
-eine Anheftung. Ein **archivierter Chat** ist etwas anderes als ein **archivierter Space**: Der
-Space nimmt für alle keine neuen Inhalte mehr an, auch keine Frage in einem archivierten Chat; das
-Archivieren eines Chats ist dort trotzdem möglich und ändert an der Sichtbarkeit des Space nichts.
-
-**Automatisches Archivieren und Löschen.** Je Space gibt es den Schalter „Inaktive Chats nach …
-Tagen archivieren und nach weiteren … Tagen löschen", ab Werk aus; er nennt die Fristen der
-Installation. Gesetzt wird er beim Anlegen des Space im
-Assistenten oder später in den Einstellungen des Space im Reiter „Stammdaten"; umlegen darf ihn,
-wer die Stammdaten ändern darf. Im persönlichen Standard-Space legt ihn nur die Person selbst um,
-auch die Systemverwaltung nicht; ein Standard-Space lässt sich dafür auch nicht übertragen. Ist er an, nennt die Seite „Chats" allen Mitgliedern die Fristen
-in einem kurzen Hinweis. Für alle Chats des Space gilt dann:
-
-- Ein Chat, dessen letzte Aktivität länger als die Archivfrist zurückliegt, wandert in das
-  Chat-Archiv seines Autors. Aktivität ist allein der vorhandene Zeitstempel der letzten Änderung
-  des Chats, also vor allem die letzte Frage, und der Zeitpunkt, zu dem die Person den Chat aus dem
-  Archiv zurückgeholt hat; weitere Daten über die Person werden dafür weder erhoben noch
-  gespeichert.
-- Ein Chat, der länger als die Löschfrist im Archiv liegt, wird gelöscht — auf demselben Weg, auf
-  dem sein Autor ihn löschen würde, mit Verlauf und Gesprächsnotiz. Das gilt auch für Chats, die
-  die Person selbst archiviert hat.
-- **Angeheftete Chats** sind ausgenommen. Anheften, eine neue Frage oder das Zurückholen aus dem
-  Archiv holt einen archivierten Chat zurück und lässt die Archivfrist neu beginnen; Zurückholen
-  genügt also, um einen Chat für eine weitere Archivfrist zu behalten. Dafür wird der Zeitpunkt
-  des Zurückholens an der persönlichen Archiv-Markierung gespeichert, nur solange die Bereinigung
-  an ist und höchstens eine Archivfrist lang. Wer einen Chat dauerhaft behalten will,
-  heftet ihn an.
-- **Keine Rückwirkung:** Beide Fristen beginnen frühestens mit dem Einschalten. Ein Chat, der
-  schon lange ruht oder lange im Archiv liegt, verschwindet nicht am Tag danach. Ausschalten hält
-  den Automatismus an; erneutes Einschalten beginnt die Fristen von vorn.
-- Ein archivierter Chat zeigt im Reiter „Archiv" und in seiner Kopfzeile, an welchem Tag er
-  gelöscht wird. Eine gesonderte Benachrichtigung gibt es nicht.
-- Der Lauf findet einmal täglich nachts statt. Er schreibt nur Gesamtzahlen ins Anwendungslog, nie
-  einen Chat, einen Space oder eine Person; im Protokoll steht allein das Umlegen des Schalters mit
-  altem und neuem Wert, handelnder Person und Zeitpunkt.
-
-Die Fristen sind systemweit fest und nur vom Betrieb einstellbar, mit einer Untergrenze, die keine
-Konfiguration unterschreiten kann (Abschnitt 10.3).
-
-Die **Chatliste** in der Seitenleiste zeigt zuerst die angehefteten Chats, darunter „Zuletzt
-verwendet" mit den 15 zuletzt genutzten. „15 weitere" blendet die nächsten ein, „Weniger" klappt
-wieder auf die ersten 15 zurück. Ein Filterfeld gibt es nicht; der Suchknopf neben
-„Neu" öffnet die Chatsuche (Abschnitt 7.2), die auch archivierte Chats findet. Jeder Eintrag hat ein
-Menü mit Umbenennen, Anheften, Archivieren und Löschen; der Titel des offenen Chats lässt sich
-zusätzlich direkt in der Kopfzeile bearbeiten (Enter speichert, Escape verwirft).
-
-Die **Seitenleiste** lässt sich auf dem Desktop am rechten Rand breiter oder schmaler ziehen; mit
-dem Griff im Fokus geht das auch mit den Pfeiltasten, Pos1 und Ende. Ein Doppelklick auf den Griff
-stellt die Standardbreite wieder her. Die gewählte Breite merkt sich der Browser, sie gilt also je
-Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleiste als
-Überlagerung in fester Breite.
-
-Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
-für Aktionen". Solange der Suchbereich des Space noch ermittelt wird, steht dort stattdessen
-„Suchbereich wird ermittelt …".
-
-Während eine Antwort entsteht, bleibt das Eingabefeld bedienbar: Die nächste Frage lässt sich schon
-schreiben, auch ein Prompt per `/` lässt sich einsetzen. Senden geht erst, wenn die Antwort da ist.
-Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; der
-Hinweis unter dem Feld nennt deshalb nur „/ für Aktionen". Die laufende Antwort behält den
-Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab, steht sie wieder
-im Eingabefeld, vor dem schon geschriebenen Text.
-
-Ein per `/` eingesetzter Prompt gehört zu seinem Space: Wechselt der Chat in einen anderen Space,
-entfällt der Chip „Prompt: <Titel>", der Text bleibt stehen.
-
 Ein Space enthält genau das, was ihm **zugeordnet** ist: Im Chat sucht er nur in den zugeordneten
 Bibliotheken und bietet nur die Prompts der zugeordneten Prompt-Bibliotheken an. Was die Person
 lesen darf, aber dem Space nicht zugeordnet ist, bleibt im Chat dieses Space außen vor. Das gilt
 ohne Ausnahme, auch für den persönlichen Space „Privater Bereich". Eine Frage braucht immer einen
 Space: Wer `POST /api/v1/query` ohne einen eigenen Chat aufruft, bekommt eine Antwort ohne Suche und
 ohne Belege. Ohne Space suchen nur der Fremdzugang und `POST /api/v1/search`. Zuordnen dürfen Kuratoren und
-Administratoren des Space (siehe [Bibliotheken und Berechtigungen, „Zuordnung: was ein Space
-enthält"](berechtigungen.md#zuordnung-was-ein-space-enthält)).
+Administratoren des Space ([Spaces](spaces.md), Abschnitt 3).
 
 Der **Suchbereich** ist die Menge der Bibliotheken, in denen diese Frage sucht. Er steht in der
 Chip-Leiste am Eingabefeld und gilt für den ganzen Chat: „Durchsucht wird, was in der Leiste
@@ -217,35 +146,10 @@ darf, verrät die Oberfläche nicht. Die private Bibliothek einer anderen Person
 zugeordnet: Ordnet der Space nur sie zu, sehen alle anderen Mitglieder den Hinweis, dass dem
 Space kein Wissen zugeordnet ist. Dieselben zwei Hinweise stehen auch auf der Seite des Space.
 
-**Prompts einsetzen.** Ein `/` am Anfang einer Zeile im Eingabefeld öffnet die Auswahl der Prompts:
-die Prompts aller Prompt-Bibliotheken, die dem Space zugeordnet sind und die die Person lesen darf,
-gruppiert nach Bibliothek. Ist dem Space keine Prompt-Bibliothek zugeordnet, sagt die Auswahl
-„Diesem Space sind keine Prompts zugeordnet". Weitertippen sucht in Befehlsname, Titel und Beschreibung — `/zusam` findet `/zusammenfassung`;
-Pfeiltasten wählen, Enter setzt ein, Escape schließt die Auswahl. Ein `/` mitten im Satz ist
-gewöhnlicher Text.
-
-| Prompt | Was beim Einsetzen geschieht |
-|---|---|
-| ohne Variablen | Der Text steht sofort im Eingabefeld |
-| mit Variablen | Ein Formular fragt die Werte ab: Pflichtfelder sperren „Einsetzen", Vorbelegungen sind eingetragen, ein Datum ohne Vorbelegung steht auf dem heutigen Tag. Abbrechen lässt das Eingabefeld unverändert |
-
-`{{CURRENT_DATE}}` und `{{USER_NAME}}` füllt der Browser selbst: das heutige Datum und der Name der
-angemeldeten Person. Daten stehen im eingesetzten Text als `TT.MM.JJJJ`.
-
-Der eingesetzte Text bleibt bearbeitbar und wird erst mit Enter oder der Senden-Schaltfläche
-gesendet. Ein Chip „Prompt: <Titel>" in der Leiste über dem Eingabefeld markiert, dass die Frage
-aus einem Prompt entstanden ist; wer ihn entfernt oder das Eingabefeld leert, sendet ohne diese
-Kennzeichnung. Im Verlauf steht an der Frage „Prompt: <Titel>" — der Titel zum Zeitpunkt des
-Sendens, auch wenn der Prompt später umbenannt, gelöscht oder nicht mehr lesbar ist.
-
-Für Suche und Antwort macht ein Prompt keinen Unterschied: Sie sehen die fertige Frage wie jede
-getippte. Das Backend prüft nur, ob die Person den Prompt noch lesen darf und ob seine Bibliothek
-dem Space des Chats zugeordnet ist. Ist das Recht inzwischen entzogen, die Zuordnung gelöst oder der
-Prompt gelöscht, lehnt es die Frage ab („Dieser Prompt steht Ihnen hier nicht zur Verfügung …"),
-bevor ein Modell gerufen wird, und speichert nichts. Die Frage verschwindet dann aus
-dem Verlauf und steht wieder im Eingabefeld, diesmal ohne Chip; erneut gesendet geht sie ohne
-Prompt-Kennzeichnung durch. Die Verwendung eines Prompts wird nicht protokolliert, und es gibt keine
-Auswertung, wer welchen Prompt wie oft verwendet hat.
+Wie Prompts im Chat eingesetzt werden, beschreibt das Kapitel
+[Prompt-Bibliotheken](prompt-bibliotheken.md), Abschnitt 6; für Suche und Antwort macht ein Prompt
+keinen Unterschied. Wie Chats geführt, archiviert und bereinigt werden, beschreibt das Kapitel
+[Spaces](spaces.md), Abschnitt 7.
 
 Ein **Chunk** ist ein Textstück aus dem Index, wie die Indexierung es zugeschnitten hat, samt seinen
 Metadaten: Dokument, Bibliothek, laufende Nummer, Ortsangabe („S. 3 · Abschn. Fristen") und die
@@ -717,7 +621,7 @@ Kopfzeile sagt dem Modell, was der Block ist und was nicht:
 Belegprüfung und Fundstellen (Abschnitt 7) kennen die Anweisung nicht und arbeiten mit ihr genau wie
 ohne sie. Ohne Anweisung entfällt der Block, und der Prompt ist zeichengleich zu dem eines Space, der
 nie eine hatte. Wer sie setzen darf und wo sie in der Oberfläche steht, steht in
-[Berechtigungen](berechtigungen.md), Abschnitt 5. Im Chat zeigt
+[Spaces](spaces.md), Abschnitt 4. Im Chat zeigt
 die Kopfzeile jedem Mitglied schon vor der ersten Frage die Schaltfläche „Anweisung des Space", die
 den Text aufklappt. Eine Anweisung je Bibliothek, je Chat oder je Person gibt es nicht; konfigurierbar
 ist außerdem, welches Modell die Anweisung bekommt.
@@ -1185,7 +1089,7 @@ die Notiz Chatinhalt ist und kein Suchparameter:
 |---|---|---|
 | `opaa.chat.note.max-items` | 10 | Höchstzahl der Notizpunkte je Chat (1 bis 50); beim Anhängen darüber hinaus fällt der älteste Punkt weg (`OPAA_CHAT_NOTE_MAX_ITEMS`) |
 
-Die Fristen der automatischen Chat-Bereinigung (Abschnitt 2) stehen unter `opaa.chat.auto-cleanup.*`.
+Die Fristen der automatischen Chat-Bereinigung ([Spaces](spaces.md), Abschnitt 7) stehen unter `opaa.chat.auto-cleanup.*`.
 Ein Wert unter der Untergrenze bricht den Start mit einer Meldung im Log ab:
 
 | Schlüssel | Standard | Wirkung |

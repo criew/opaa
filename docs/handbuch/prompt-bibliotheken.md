@@ -141,8 +141,7 @@ Prompt-Bibliotheken werden im Reiter **„Inhalte"** der Space-Einstellungen zug
 Kachelliste wie die Wissensbibliotheken; der Typfilter „Prompts" grenzt sie auf Prompt-Bibliotheken
 ein. Dort ordnet, wer im Space mindestens Kurator ist, per Häkchen eine Prompt-Bibliothek zu, die er
 selbst lesen darf, und löst Zuordnungen wieder; die Änderung wirkt sofort
-([Berechtigungen](berechtigungen.md), „Zuordnung: was ein Space
-enthält"). **Der Chat eines Space bietet nur die Prompts zugeordneter Prompt-Bibliotheken an**; eine
+([Spaces](spaces.md), Abschnitt 3). **Der Chat eines Space bietet nur die Prompts zugeordneter Prompt-Bibliotheken an**; eine
 Bibliothek, die nicht zugeordnet ist, steht dort nicht zur Verfügung, auch wenn die Person sie
 lesen darf. Die Zuordnung **gewährt niemandem zusätzlichen Zugriff**: Wer die Bibliothek nicht
 lesen darf, sieht sie im Space nicht. Auf der Übersichtsseite des Space stehen zugeordnete
@@ -228,9 +227,8 @@ Prompt. Dieser Hinweis bleibt, wenn der Prompt später umbenannt oder gelöscht 
 
 Wird der Prompt nach dem Einsetzen gelöscht, das Leserecht entzogen oder die Zuordnung zum Space
 gelöst, lehnt OPAA die Frage ab; die Prüfung liegt im Backend, nicht nur in der Auswahl.
-Sie steht dann ohne Chip wieder im Eingabefeld und lässt sich ohne Prompt senden. Wie die Frage
-danach gesucht und beantwortet wird, beschreibt [Suche](suche.md), Abschnitt 2 („Prompts
-einsetzen"). Für die Suche und die Antwort macht ein Prompt keinen Unterschied.
+Sie steht dann ohne Chip wieder im Eingabefeld und lässt sich ohne Prompt senden. Für die Suche und
+die Antwort macht ein Prompt keinen Unterschied ([Suche](suche.md)).
 
 Die **Verwendung** eines Prompts wird weder protokolliert noch gezählt. Es gibt keine Auswertung,
 wer welchen Prompt wie oft verwendet hat.
