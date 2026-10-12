@@ -428,13 +428,24 @@ Zurückspielen in umgekehrter Reihenfolge, das Backend bleibt bis zum Schluss an
 
 ```bash
 # Originale zurückspielen und das Eigentum zurückgeben
-tar -C uploads -xf opaa-uploads.tar
+sudo tar -C uploads -xf opaa-uploads.tar
 sudo chown -R 65532:65532 uploads
 
 # Datenbank leeren, neu anlegen, Sicherung einspielen
 docker compose exec -T postgres sh -c 'dropdb -U "$POSTGRES_USER" --force "$POSTGRES_DB" &&
   createdb -U "$POSTGRES_USER" "$POSTGRES_DB" &&
   pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --exit-on-error' < opaa-db.dump
+```
+
+**Auf einem frischen Datenbank-Volume**, etwa auf einem neuen Host, fehlt die Rolle
+`opaa_audit_owner`: Sie gehört zur PostgreSQL-Instanz, nicht zur Datenbank, steht deshalb nicht im
+Dump und entsteht sonst nur beim ersten Start des Backends. Ohne sie bricht `pg_restore` mit
+`role "opaa_audit_owner" does not exist` ab ([Sicherung und Wiederherstellung](betrieb.md#sicherung-und-wiederherstellung)).
+Vor dem Einspielen deshalb einmal anlegen, mit angehaltenem Backend:
+
+```bash
+docker compose exec -T postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  -c "CREATE ROLE opaa_audit_owner NOLOGIN" -c "GRANT opaa_audit_owner TO \"$POSTGRES_USER\""'
 ```
 
 Danach `OPAA_AUTH_JWT_SECRET` in `.env.docker` ersetzen und erst dann `docker compose up -d backend`

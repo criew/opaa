@@ -31,7 +31,9 @@ flowchart LR
 
 1. Selbst betriebene Instanz im privaten Netz: ihren Hostnamen für die
    [Zieladressprüfung](README.md#12-zieladressprüfung) freigeben. Ein eigenes Zertifikat der
-   Behörden-CA gehört in den Truststore des Backend-Containers ([Eigene interne CA ergänzen](../docker-compose.md#eigene-interne-ca-ergänzen), unter Kubernetes [Eigene Zertifizierungsstelle](../kubernetes.md#eigene-zertifizierungsstelle)).
+   Behörden-CA gehört in den Truststore des Backend-Containers
+   ([Eigene interne CA ergänzen](../docker-compose.md#eigene-interne-ca-ergänzen), unter Kubernetes
+   [Eigene Zertifizierungsstelle](../kubernetes.md#eigene-zertifizierungsstelle)).
 2. **Ein Dienstkonto je Leserkreis**, kein persönliches Konto — ein persönliches Token trägt die
    Rechte einer Person und verfällt mit ihrem Austritt. Das Token bestimmt die Obergrenze dessen,
    was in die Bibliothek gelangen kann; die Space-Auswahl grenzt darunter ein.
@@ -122,8 +124,8 @@ Geheimnis **einmal**, zusammen mit der Adresse des Eingangs
 alte Geheimnis gilt sofort nicht mehr, und das neue muss in Confluence nachgetragen werden — sonst
 gehen Benachrichtigungen still verloren, und nur der Vollabgleich fängt die Änderungen auf.
 „Webhook entfernen" schließt den Eingang. Der Eingang muss von Confluence aus erreichbar sein, über
-TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen ([Vertraute Proxys](../betrieb.md#vertraute-proxys-und-client-adresse)), sonst
-greift die Ratenbegrenzung je Client nicht.
+TLS; der vorgelagerte Proxy muss `X-Forwarded-For` setzen
+([Vertraute Proxys](../betrieb.md#vertraute-proxys-und-client-adresse)), sonst greift die Ratenbegrenzung je Client nicht.
 
 - **Data Center:** Administration → Webhooks → Webhook erstellen; Adresse und Geheimnis aus OPAA.
   Confluence signiert jede Nachricht (`X-Hub-Signature`), OPAA prüft sie. Ereignisse: Seite
@@ -261,7 +263,8 @@ Der Webhook-Eingang teilt sich die Werte mit den S3-Ereignissen (`opaa.indexing.
 | `events.max-pending-keys` | 500 | darüber ein gewöhnlicher Lauf statt Einzelabrufen |
 | `events.max-deferrals` | 120 | Wartezyklen, bevor ein Stapel verworfen wird (zehn Minuten) |
 
-Dazu die Ratenbegrenzung des Eingangs (`OPAA_RATE_LIMIT_WEBHOOK_*`, [Konfiguration](../konfiguration.md#alle-umgebungsvariablen));
+Dazu die Ratenbegrenzung des Eingangs (`OPAA_RATE_LIMIT_WEBHOOK_*`,
+[Konfiguration](../konfiguration.md#alle-umgebungsvariablen));
 der `User-Agent` kommt aus `opaa.indexing.http.user-agent`.
 
 ## 12. Nicht gebaut

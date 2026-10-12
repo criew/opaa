@@ -245,6 +245,5 @@ und im Protokoll des Backends.
 
 ## Weiterführende Kapitel
 
-- [Suche](suche.md) — wie die Modellrollen in die Suchstrecke eingreifen
 - [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`- und `OPAA_RERANK_*`-Variablen
 - [Authentifizierung](authentifizierung.md)

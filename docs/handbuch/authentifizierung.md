@@ -253,7 +253,8 @@ will, legt eine gewöhnliche Anbieterzeile an und schaltet ihn dort ein.
 Zeilen mit Handlungsbedarf sind farbig markiert; ab sechs Anbietern lässt sich die Übersicht
 eingrenzen und durchsuchen. **Details** bzw. **Entscheiden** öffnet ein Seitenpanel mit dem
 ausstehenden Plan (falls einer wartet), dem letzten Lauf samt „Trockenlauf" und „Jetzt abgleichen",
-dem Zeitplan (Schalter und Intervall, Vorgabe **aus** und 360 Minuten, Grenzen 5 bis 10080), dem
+dem Zeitplan (Schalter und Intervall, voreingestellt **aus**; Vorgabe und Grenzen des Intervalls
+in der [Konfiguration](konfiguration.md#grenzwerte-im-überblick)), dem
 Verzeichniszugang und einem Verweis auf die Arbeitsliste der Gruppen. Ein Update schaltet nirgends
 einen Abgleich ein, der vorher nicht lief.
 
@@ -692,7 +693,4 @@ Audience-Mapper ([Tokenprüfung](#bestandsübernahme-aus-opaa_oidc_)).
 
 ## Weiterführende Kapitel
 
-- [Benutzerverwaltung](benutzerverwaltung.md) — lokale Konten im Alltag
-- [Berechtigungen](berechtigungen.md) — was Gruppen und Rollen bewirken
-- [Branding](branding.md) — Erscheinungsbild der Anmeldeseite
-- [Modelle](modelle.md), [Konfiguration](konfiguration.md)
+- [Modelle](modelle.md) und [Branding](branding.md) — die Nachbarkapitel im Betriebsteil

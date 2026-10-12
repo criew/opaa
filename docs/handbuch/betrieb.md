@@ -65,8 +65,10 @@ Das Frontend hält keinen Zustand und darf mehrfach laufen.
 Eine Installation wird mit **genau einer** Organisation ausgeliefert; es gibt keinen Verwaltungspfad,
 der eine zweite anlegt, und alle Identitätsanbieter legen Konten in dieselbe Organisation an. Die
 Mandantengrenze wird trotzdem durchgehend gehalten: Ein Objekt einer anderen Organisation ist für
-jeden Aufruf „nicht gefunden", nicht „nicht erlaubt", und die Datenbank lässt keine Verbindung
-zwischen Objekten zweier Organisationen zu. Die Originalablage führt die Organisation in jedem
+jeden Aufruf „nicht gefunden", nicht „nicht erlaubt", und die Datenbank lässt in den Verweisen
+zwischen organisationsgebundenen Objekten keine zwei Organisationen zu. Ausgenommen sind die
+Historie der Rechtevergabe, die bewusst ohne solche Verweise auskommt, damit sie das Löschen einer
+Bibliothek überdauert, und die Vektoren, die ihre Organisation nur als Metadatum tragen. Die Originalablage führt die Organisation in jedem
 Ablageort mit.
 
 ## Images und Versionen
@@ -218,8 +220,9 @@ ein, die ein Kubernetes-Cluster mit Pod Security Standard `restricted` verlangt:
   OpenShift, solange `/tmp` beschreibbar ist.
 - **Nur lesbares Dateisystem:** Der Container schreibt ausschließlich unter `/tmp` — die beim Start
   erzeugte Serverkonfiguration, die PID-Datei und die Zwischenablage für Uploads und, bei langsamen
-  Clients, für große Antworten des Backends. Unter Compose ist `/tmp` ein `tmpfs` mit 512 MiB, unter
-  Kubernetes ein `emptyDir`. Reicht der Platz bei vielen gleichzeitigen großen Uploads nicht, wird
+  Clients, für große Antworten des Backends. Unter Compose läuft der Dienst mit `read_only: true`,
+  ohne Capabilities und mit `no-new-privileges`, `/tmp` ist ein `tmpfs` mit 512 MiB; unter
+  Kubernetes ist `/tmp` ein `emptyDir`. Reicht der Platz bei vielen gleichzeitigen großen Uploads nicht, wird
   die Grenze angehoben.
 - **Backend-Ziel:** `OPAA_BACKEND_UPSTREAM` nennt Host und Port des Backends. Ein Wert, der nicht die
   Form `host[:port]` hat (Port 1 bis 65535), bricht den Start mit einer Meldung im Protokoll ab.
@@ -329,7 +332,9 @@ eigene Herkunft. Zwei Ausnahmen: `style-src` erlaubt Inline-Stile, weil die Ober
 Stile zur Laufzeit einfügt, und `connect-src` lässt die Origins zu, die in
 `OPAA_CSP_CONNECT_SRC_EXTRA` stehen — gebraucht für einen Identitätsanbieter auf fremdem Origin
 ([Authentifizierung](authentifizierung.md#content-security-policy-und-ein-anbieter-auf-fremdem-origin)).
-Die Backend-eigenen Kopien dieser Header entfernt nginx, damit jede Antwort sie nur einmal trägt.
+`object-src 'none'` ist gesetzt, weil die Anwendung keine `<object>`- oder `<embed>`-Inhalte
+einbettet. Die Backend-eigenen Kopien dieser Header entfernt nginx, damit jede Antwort sie nur
+einmal trägt.
 `Strict-Transport-Security` gehört an den äußeren Proxy (siehe oben).
 
 ## Ausgangsproxy
@@ -501,7 +506,8 @@ kein Log enthält sie; die Oberfläche zeigt nur, ob welche hinterlegt sind.
   Quelle eine verlangt.
 - **Ein Wechsel des Schlüssels im Bestand ist nicht vorgesehen.** Es gibt keinen Weg, vorhandene Werte
   umzuschlüsseln; wer den Schlüssel trotzdem wechselt, trägt jeden betroffenen Wert danach neu ein.
-  Ein Wert mit unbekannter Fassung (nicht `enc:v1:`) wird nie als Klartext behandelt.
+  Ein Wert mit `enc:`-Präfix, aber anderer Fassung als `enc:v1:` wird nie als Klartext behandelt;
+  das Lesen scheitert weich wie oben, ein Schreiben hart.
 
 ## Sicherung und Wiederherstellung
 
@@ -626,9 +632,10 @@ sondern im Nachweis- und Revisionsprotokoll der Anwendung
 
 | Metrik | Bedeutung |
 |---|---|
+| `up` | ob Prometheus das Backend erreicht (unter Kubernetes mit dem ServiceMonitor) |
 | `http_server_requests_seconds_*` | Anfragen an das Backend nach Pfad, Methode und Status |
 | `opaa_query_duration_seconds_*`, `opaa_query_count_total` | Dauer und Anzahl der Fragen im Chat, Anzahl nach Erfolg und Fehler |
-| `opaa_query_tokens_total` | verbrauchte Token der Modellaufrufe |
+| `opaa_query_tokens_total` | Token der Antwortaufrufe im Chat |
 | `opaa_chat_search_duration_seconds_*` | Dauer der Suche über Chats |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente der Indexierung und der Uploads, nach Ergebnis (`processed`, `skipped`, `failed`) |
 | `opaa_rate_limit_rejected_total` | von einem Rate-Limit abgewiesene Anfragen, nach Grenze (`limit`) und erschöpftem Bereich (`scope`); die globale Grenze der Anmeldung ist das Frühwarnsignal gegen verteiltes Ausprobieren gestohlener Zugangsdaten |
