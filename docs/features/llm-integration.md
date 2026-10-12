@@ -34,7 +34,7 @@ bereits ausgelieferte Funktionalität beschreibt, ist das ausdrücklich mit **(g
 Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 
 Der nächste Umsetzungsschritt ist gesondert gekennzeichnet: Der Abschnitt
-[Stufe 1: Verwaltete Chat-Modelle](#stufe-1-verwaltete-chat-modelle-in-umsetzung) trägt **(in Umsetzung)**
+[Stufe 1: Verwaltete Chat-Modelle](#stufe-1-verwaltete-chat-modelle-gebaut) trägt **(in Umsetzung)**
 und beschreibt, was aus diesem Zielbild als Erstes entsteht. Alles Übrige bleibt als spätere Ausbaustufe
 bestehen und ist nicht gestrichen.
 
@@ -45,7 +45,7 @@ bestehen und ist nicht gestrichen.
 1. **Modelle sind verwaltete Objekte**, keine Konfigurationszeilen. Sie werden hinterlegt, beschrieben,
    freigegeben, ersetzt und abgeschaltet. Der erste Schritt dorthin — verwaltete Chat-Modelle mit genau
    einem aktiven Eintrag — ist als
-   [Stufe 1](#stufe-1-verwaltete-chat-modelle-in-umsetzung) beschrieben und in Umsetzung.
+   [Stufe 1](#stufe-1-verwaltete-chat-modelle-gebaut) beschrieben und in Umsetzung.
 2. **Lokal betriebene Modelle sind die Voreinstellung** — das ist umgesetzt und entschieden. Im Zielbild
    ist ohne ausdrückliche Freigabe der Behörde kein Aufruf außerhalb des Hauses möglich; heute trägt
    diese Zusicherung die Konfiguration, nicht eine technische Durchsetzung (siehe
@@ -183,10 +183,10 @@ gilt, weil hier eine bewusste Angabe vorliegt, die nur zufällig leer ist.
 
 Die Ableitung je Funktion bleibt erhalten: Eine Adresse für Chat und eine für Einbettung sind
 getrennt setzbar; ohne sie gilt die gemeinsame Adresse für beide. Die Betriebssicht dazu steht in
-[deployment.md](../handbuch/deployment.md#llm-anbieter).
+[modelle.md](../handbuch/modelle.md#llm-anbieter).
 
 Für das **Chat-Modell** wird diese Konfiguration mit
-[Stufe 1](#stufe-1-verwaltete-chat-modelle-in-umsetzung) von der Verwaltung in der Anwendung abgelöst; sie
+[Stufe 1](#stufe-1-verwaltete-chat-modelle-gebaut) von der Verwaltung in der Anwendung abgelöst; sie
 bleibt dann nur noch die Quelle, aus der beim ersten Start der initiale Eintrag entsteht. Für die
 **Einbettung** gilt sie unverändert weiter.
 
@@ -488,7 +488,7 @@ bekommen. Die Zuordnung von Aufgabe zu Modell und Parametern trifft die Systemve
 | **Klassifizierung und Erkennung** | Verlässlichkeit, Geschwindigkeit | kleines Modell, feste Ausgabestruktur |
 | **Bildverständnis** | Fähigkeit des Modells | nur, wenn ein Modell mit dieser Fähigkeit freigegeben ist |
 
-Von dieser Tabelle betrifft [Stufe 1](#stufe-1-verwaltete-chat-modelle-in-umsetzung) nur die Zeile
+Von dieser Tabelle betrifft [Stufe 1](#stufe-1-verwaltete-chat-modelle-gebaut) nur die Zeile
 **Antwort im Chat**, und dort auch nur Streuung und Längenbegrenzung. Die Einbettung bleibt in der
 Betriebskonfiguration; die übrigen Aufgaben sind im Produkt noch nicht als eigene Modellaufrufe
 vorhanden und bekommen ihre Zuordnung, sobald sie es sind.
