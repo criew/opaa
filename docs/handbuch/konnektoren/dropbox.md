@@ -111,7 +111,12 @@ ist die Wurzel. Bei mehreren steht sein Name vorn, bei `/` „Dropbox". Namen, d
 können, und zu tiefe Ketten folgen den Regeln des Kapitels
 [Wissensbibliotheken](../wissensbibliotheken.md).
 
-## 7. Grenzen und Schutzmechanismen
+## 7. Anhänge
+
+Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
+[E-Mail](../formate/mail.md).
+
+## 8. Grenzen und Schutzmechanismen
 
 - **Drosselung.** Bei `429` wartet OPAA die Zeit aus `Retry-After`, höchstens `max-retry-wait`, und
   wiederholt bis zu `max-retries`-mal.
@@ -127,7 +132,7 @@ können, und zu tiefe Ketten folgen den Regeln des Kapitels
   Testdoppel gestützt: die Meldungen gelöschter und verschobener Ordner im Änderungsprotokoll, der
   Markdown-Export von Paper-Dokumenten, der Team-Bereich über die Wurzel des Teams.
 
-## 8. Protokoll und Fehlerbilder
+## 9. Protokoll und Fehlerbilder
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
@@ -141,7 +146,7 @@ können, und zu tiefe Ketten folgen den Regeln des Kapitels
 | „Die Übertragung von Dropbox dauerte länger als …" | über `download-timeout`; folgt im nächsten Lauf | Frist anheben |
 | „Dropbox nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an." / „Der Ordner „…" war beim Beginn des letzten Vollabgleichs nicht erreichbar." | nächster Lauf ist ein Vollabgleich | nichts |
 
-## 9. Konfiguration
+## 10. Konfiguration
 
 Alle Schlüssel unter `opaa.indexing.dropbox.*`.
 
@@ -161,7 +166,7 @@ Alle Schlüssel unter `opaa.indexing.dropbox.*`.
 
 Die Obergrenze von fünfzig Ordnern je Bibliothek ist fest.
 
-## 10. Nicht gebaut
+## 11. Nicht gebaut
 
 - Team-Verwaltung über eine Team-App (Lesen im Namen beliebiger Mitglieder)
 - Persönliche Verbindung und private Bibliotheken

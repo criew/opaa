@@ -112,8 +112,8 @@ Lauf einen neuen Abgleich.
 | gewählter Ordner gelöscht | die Dokumentbibliothek gilt als nicht erreichbar, nichts wird entfernt; die Ordnerauswahl ist anzupassen |
 | Freigabe der Site entzogen, auch während eines Laufs | keine Löschung; der Bestand bleibt, und das Protokoll nennt die Dokumentbibliothek |
 
-Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich; der kurze Standardrhythmus
-von einem Tag begrenzt es, weil eine Auflistung wenig kostet.
+Für Ordneränderungen gilt also ein Fenster bis zum nächsten Vollabgleich; der Vollabgleich-Rhythmus
+`full-sync-interval` begrenzt es und ist ab Werk bewusst kurz, weil eine Auflistung wenig kostet.
 
 ## 6. Ordner
 
@@ -121,7 +121,12 @@ Die Ordnerkette ab der Wurzel der Dokumentbibliothek erscheint als Ordner der Bi
 Dokumentbibliotheken steht ihr Name vorn. Namen, die keinen Ordner tragen können, und zu tiefe Ketten
 folgen den Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
 
-## 7. Grenzen und Schutzmechanismen
+## 7. Anhänge
+
+Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
+[E-Mail](../formate/mail.md).
+
+## 8. Grenzen und Schutzmechanismen
 
 - **Drosselung.** Bei `429` und `503` wartet OPAA die Zeit aus `Retry-After`, höchstens
   `max-retry-wait`, und wiederholt bis zu `max-retries`-mal. Erreicht die Summe der Wartezeiten
@@ -146,7 +151,7 @@ folgen den Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
   Download-Weiterleitung, die Haltbarkeit der Fortsetzungspunkte, ob Graph die Dateien eines
   gelöschten Ordners einzeln meldet, ausgecheckte Dateien, Entwürfe und Vertraulichkeitsbezeichnungen.
 
-## 8. Protokoll und Fehlerbilder
+## 9. Protokoll und Fehlerbilder
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
@@ -164,7 +169,7 @@ folgen den Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
 | „Microsoft Graph nimmt den Fortsetzungspunkt der Auflistung nicht mehr an … beginnt neu" | Auflistung dieser Dokumentbibliothek von vorn | nichts |
 | „… Der nächste Lauf setzt die Auflistung am zuletzt gesicherten Punkt fort" | Graph antwortete nicht verlässlich; der Lauf endet als Fehler | nichts |
 
-## 9. Konfiguration
+## 10. Konfiguration
 
 Alle Schlüssel unter `opaa.indexing.sharepoint.*`.
 
@@ -184,7 +189,7 @@ Alle Schlüssel unter `opaa.indexing.sharepoint.*`.
 
 Die Obergrenzen von fünfzig Dokumentbibliotheken und fünfzig Ordnern je Dokumentbibliothek sind fest.
 
-## 10. Nicht gebaut
+## 11. Nicht gebaut
 
 - OneDrive und Anmeldung im Namen einer Person
 - Freigabe je Dokumentbibliothek über `Lists.SelectedOperations.Selected`

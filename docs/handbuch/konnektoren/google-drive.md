@@ -77,7 +77,7 @@ geht immer an `https://oauth2.googleapis.com/token`, die Abrufe an `https://www.
 Überlappende Bereiche sind erlaubt; eine Datei bleibt ein Dokument, ihr Ordner kommt aus dem ersten
 Bereich, der sie listet. „Zertifikatsprüfung aussetzen" gibt es nicht. Den eigenen
 Vollabgleich-Rhythmus setzt „Vollabgleich alle … Tage". **„Verbindung testen"** meldet sich an und
-prüft jeden Bereich (Befunde in Abschnitt 8). Eine geänderte Bereichsliste oder ein anderes
+prüft jeden Bereich (Befunde in Abschnitt 9). Eine geänderte Bereichsliste oder ein anderes
 imitiertes Konto lassen den nächsten Lauf vollständig abgleichen.
 
 **Über einen Zugang** trägt die Bibliothek nur ihre Bereiche; ein imitiertes Konto an der Bibliothek
@@ -117,7 +117,12 @@ Die Ordnerkette bis zum Bereich erscheint als Ordner der Bibliothek; bei mehrere
 Name der Ablage bzw. des Ordners vorn. Namen, die keinen Ordner tragen können, und zu tiefe Ketten
 folgen den Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
 
-## 7. Grenzen und Schutzmechanismen
+## 7. Anhänge
+
+Eine EML- oder MSG-Datei liefert ihre Anhänge als eigene Dokumente, mit den Grenzen des Kapitels
+[E-Mail](../formate/mail.md).
+
+## 8. Grenzen und Schutzmechanismen
 
 - **Kontingente.** Google zählt Einheiten je Projekt und Nutzer, OPAA Anfragen je Lauf. Bei `429`
   oder `403 rateLimitExceeded`/`userRateLimitExceeded` wartet OPAA mit wachsendem Abstand und
@@ -143,7 +148,7 @@ folgen den Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
   Datei als „nicht lesbar"); ob ein unveränderter Export bytegleich wiederkommt (sonst wird ein
   Google-Format nach jeder Änderungszeit neu verarbeitet).
 
-## 8. Protokoll und Fehlerbilder
+## 9. Protokoll und Fehlerbilder
 
 | Meldung | Bedeutung | Abhilfe |
 |---|---|---|
@@ -158,7 +163,7 @@ folgen den Regeln des Kapitels [Wissensbibliotheken](../wissensbibliotheken.md).
 | „Das Tageskontingent der Drive-API ist erschöpft" | Lauf beendet | abwarten, Kontingent prüfen |
 | „Google Drive nimmt den gespeicherten Stand des Änderungsprotokolls nicht mehr an" | nächster Lauf ist ein Vollabgleich | nichts |
 
-## 9. Konfiguration
+## 10. Konfiguration
 
 Alle Schlüssel unter `opaa.indexing.google-drive.*`.
 
@@ -177,7 +182,7 @@ Alle Schlüssel unter `opaa.indexing.google-drive.*`.
 
 Die Obergrenze von fünfzig Bereichen ist fest.
 
-## 10. Nicht gebaut
+## 11. Nicht gebaut
 
 - Push-Benachrichtigungen (`changes.watch`); der Änderungslauf im Zeitplan ersetzt sie
 - Persönliche Ablagen über verbundene Konten
