@@ -33,12 +33,12 @@ Ersatz. Beide Leser halten die ganze Nachricht im Speicher.
 
 ```mermaid
 flowchart TB
-    M[EML / MSG] --> K[Kopfblock<br/>Von · Betreff · Datum · An]
+    M[EML / MSG] --> K[Kopfblock]
     M --> B[Nachrichtentext]
-    M --> A[Anhänge<br/>gemeldet, nicht verarbeitet]
-    B --> T[Thread-Zerlegung an<br/>„Am … schrieb …:“ u. ä.]
+    M --> A[Anhänge<br/>melden]
+    B --> T[Thread-<br/>Zerlegung]
     K --> C
-    T --> C[Chunks; zu lange Segmente<br/>in Teile zerlegt]
+    T --> C[Chunks]
 ```
 
 **Kopfblock.** Die vier Kopfdaten werden als deutsche Kontextzeilen in der Reihenfolge Von,

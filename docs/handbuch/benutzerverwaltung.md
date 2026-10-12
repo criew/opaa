@@ -40,14 +40,14 @@ lokale Verwaltung abgeschaltet ist.
 
 ```mermaid
 flowchart LR
-    A[Verwaltung legt Konto an] -->|Einladung| B[Konto eingeladen]
-    A -->|Anfangspasswort| C[Konto aktiv, Wechsel ausstehend]
-    B -->|Person setzt Passwort| D[Konto aktiv]
-    C -->|Person wechselt Passwort| D
-    D -->|Verwaltung sperrt, Fehlversuche, Inaktivität| E[Konto gesperrt]
-    E -->|Verwaltung entsperrt| D
-    D -->|Ablaufdatum erreicht| F[Konto abgelaufen]
-    F -->|Verwaltung verlängert| D
+    A[Verwaltung legt<br/>Konto an] -->|Einladung| B[Konto<br/>eingeladen]
+    A -->|Anfangspasswort| C[Konto aktiv,<br/>Wechsel<br/>ausstehend]
+    B -->|Person setzt<br/>Passwort| D[Konto aktiv]
+    C -->|Person wechselt<br/>Passwort| D
+    D -->|Sperre,<br/>Fehlversuche,<br/>Inaktivität| E[Konto gesperrt]
+    E -->|Verwaltung<br/>entsperrt| D
+    D -->|Ablaufdatum<br/>erreicht| F[Konto<br/>abgelaufen]
+    F -->|Verwaltung<br/>verlängert| D
 ```
 
 ## 2. Ein Konto anlegen
