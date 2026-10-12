@@ -19,8 +19,8 @@ flowchart LR
 - **Anmeldung:** keine oder HTTP Basic, eigene Zugangsdaten der Bibliothek
   ([Zugänge](../zugaenge.md), „Eigene Zugangsdaten der Bibliothek"). Zugangsdaten und eine
   ausgesetzte Zertifikatsprüfung gelten **nur für den Ursprung des Feeds**. Ein Zugang ist möglich.
-- **Liest:** je Eintrag `title`, `link`, `description` und `pubDate`, die Detailseite und bis zu
-  zehn Anlagen. Erweiterungen in fremden Namensräumen (`content:encoded`, `media:*`) werden
+- **Liest:** je Eintrag `title`, `link`, `description` und `pubDate`, die Detailseite und ihre
+  Anlagen. Erweiterungen in fremden Namensräumen (`content:encoded`, `media:*`) werden
   ignoriert. Ein Eintrag ohne Link entfällt, von mehreren Links zählt der erste; ein nicht lesbares
   `pubDate` gilt als fehlend.
 - **Dokument:** Der Eintrag ist ein Dokument, jede Anlage ein eigenes mit dem Eintrag als
@@ -51,8 +51,8 @@ Zugangsdaten und mit Zertifikatsprüfung.
 
 ## 4. Betriebsarten und Änderungserkennung
 
-Jeder Lauf ist **ergänzend**: Er verarbeitet höchstens 200 Einträge des Feeds und entfernt nie etwas,
-weil es fehlt.
+Jeder Lauf ist **ergänzend**: Er verarbeitet höchstens `max-entries` Einträge des Feeds und entfernt
+nie etwas, weil es fehlt.
 
 ```mermaid
 flowchart LR
@@ -83,15 +83,15 @@ Server beim nächsten Lauf den ganzen Feed, und diese Einträge bekommen eine zw
 
 **Detailseite.** Sie wird nach den Regeln der [HTML-Pipeline](../formate/html.md) reduziert:
 Navigation, Seitenleisten, Cookie-Banner, `script`, `style` und `noscript` entfallen überall; die
-Inhaltsbereiche wählt `main-content-selector` (Standard `main, article, [role=main]`, Rückfall
-`body`); Seitenkopf und -fuß entfallen nur außerhalb davon. Das HTML geht direkt an die HTML-Pipeline
+Inhaltsbereiche wählt `main-content-selector` (Rückfall `body`); Seitenkopf und -fuß entfallen nur außerhalb davon. Das HTML geht direkt an die HTML-Pipeline
 und wird in Abschnitte geschnitten; der Titel des Eintrags ist der Kontexttitel. Bestehende Einträge,
 die noch mit der Auffang-Pipeline geschnitten wurden, behalten ihre Chunks bis zur nächsten
 `pubDate`-Änderung.
 
 **Zeitplan.** Stündlich ist üblich: Ein unveränderter Feed kostet nur eine Anfrage. Die Wartezeit vor
-jeder Detailseite und Anlage (Standard eine Sekunde) bestimmt die Laufzeit: Bei 200 Einträgen mit je
-zehn Anlagen dauert ein Lauf im ungünstigsten Fall rund 40 Minuten. Das ist gewollt.
+jeder Detailseite und Anlage (`request-delay-ms`) bestimmt die Laufzeit: Ein Lauf über viele Einträge
+mit Anlagen dauert ein Vielfaches davon. Das ist gewollt; der Konnektor soll fremde Server nicht
+belasten.
 
 ## 5. Löscherkennung
 
@@ -106,7 +106,7 @@ zählen, bestimmt das **Anlagenprofil** der Installation:
 
 | Profil | Anlage ist jeder Link auf denselben Ursprung, der … | Typischer Einsatz |
 |---|---|---|
-| `GENERIC` (Standard) | im letzten Pfadteil eine Dateiendung trägt | Anlagen wie `bescheid.pdf` |
+| `GENERIC` | im letzten Pfadteil eine Dateiendung trägt | Anlagen wie `bescheid.pdf` |
 | `GSB` | den Parameter `__blob=publicationFile` trägt | Government Site Builder, Anlagen ohne Endung |
 
 Ob eine Anlage aufgenommen wird, entscheidet nach dem Download ihr Inhalt, nicht die Endung; doppelt
@@ -120,9 +120,11 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
 
 - **Zieladressprüfung** auf Feed, Detailseite, Anlage und jeder Weiterleitung
   ([Konnektoren](README.md#12-zieladressprüfung)).
-- **Kein Verlassen des Ursprungs:** Eine Detailseite oder Anlage auf einem fremden Ursprung, auch per
-  Weiterleitung, wird gar nicht kontaktiert. Beim Feed selbst werden bis zu fünf Weiterleitungen
-  gefolgt, auf einen fremden Ursprung ohne Zugangsdaten.
+- **Fremde Server:** Eine Detailseite auf einem anderen Server holt OPAA ohne Zugangsdaten und mit
+  Zertifikatsprüfung. Eine Weiterleitung, die den Ursprung der Detailseite oder Anlage verlässt, wird
+  abgelehnt, bevor das fremde Ziel kontaktiert wird. Anlagen zählen nur auf dem Ursprung der
+  Detailseite (Abschnitt 6). Beim Feed selbst werden bis zu fünf Weiterleitungen gefolgt, auf einen
+  fremden Ursprung ohne Zugangsdaten.
 - **Prüfung je Eintrag**, bevor etwas geladen wird: Ein Link mit anderem Schema als `http`/`https`
   oder kaputter Adresse wird abgewiesen.
 - **XML-Härtung:** keine DTDs, keine externen Entitäten.
@@ -130,14 +132,14 @@ keinen extrahierbaren Text, werden seine Anlagen nicht indiziert.
   vermutliche Bot-Schutzseite und wird verworfen.
 - **Drosselung:** Nur bei HTTP 429 wird gewartet und wiederholt; danach wird zurückgestellt.
 
-| Grenze | Standard | Bei Überschreitung |
+| Grenze | Parameter | Bei Überschreitung |
 |---|---|---|
-| Feed | 10 MiB | der Lauf scheitert |
-| Einträge je Lauf | 200 | Rest abgeschnitten, Zustand nicht gespeichert |
-| Detailseite | 5 MiB | dieser Eintrag entfällt |
-| Anlagen je Eintrag | 10 | weitere entfallen |
-| Anlage | 20 MiB | diese Anlage entfällt |
-| Anfragen je Lauf, Summe der 429-Wartezeiten | unbegrenzt, 15 Minuten | „unvollständig, wird fortgesetzt", Zustand nicht gespeichert |
+| Feed | `max-feed-size-bytes` | der Lauf scheitert |
+| Einträge je Lauf | `max-entries` | Rest abgeschnitten, Zustand nicht gespeichert |
+| Detailseite | `max-page-size-bytes` | dieser Eintrag entfällt |
+| Anlagen je Eintrag | `max-attachments-per-entry` | weitere entfallen |
+| Anlage | `max-attachment-size-bytes` | diese Anlage entfällt |
+| Anfragen je Lauf, Summe der 429-Wartezeiten | `opaa.indexing.http.request-budget-per-run`, `…max-rate-limit-wait-per-run` | „unvollständig, wird fortgesetzt", Zustand nicht gespeichert |
 
 Zeitlimits: 30 s Verbindungsaufbau, 60 s Feed, 30 s Detailseite, 120 s Anlage. Der Speicherbedarf
 liegt bei bis zu einer Anlagengröße je gleichzeitig verarbeiteter Anlage.
@@ -177,8 +179,8 @@ Lauf während eines Eintrags gestoppt, endet er mit „Lauf unterbrochen".
 
 `User-Agent`, 429-Wartezeit und die Grenzen je Lauf kommen aus dem gemeinsamen Block
 `opaa.indexing.http.*`, beschrieben im Kapitel [Webverzeichnis](http-directory.md#10-konfiguration).
-Die Verschachtelungstiefe der Anlagen ist allgemein (`opaa.indexing.attachments.max-depth`, Standard
-5). Nicht konfigurierbar: Zeitlimits.
+Die Verschachtelungstiefe der Anlagen ist allgemein (`opaa.indexing.attachments.max-depth`, im
+Kapitel [Wissensbibliotheken](../wissensbibliotheken.md)). Nicht konfigurierbar: Zeitlimits.
 
 ## 10. Nicht gebaut
 
