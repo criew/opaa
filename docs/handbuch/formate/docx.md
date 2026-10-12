@@ -41,9 +41,9 @@ gelöschter Text aus der Änderungsverfolgung. Der sichtbare Feldwert bleibt erh
 flowchart LR
     D[DOCX] --> H[Kopf-/Fußzeilen<br/>ein Chunk]
     D --> B[Textkörper]
-    B --> A1[Abschnitt Ebene 1]
-    A1 --> A2[Abschnitt Ebene 2]
-    A2 --> A3[Abschnitt Ebene 3<br/>tiefere Ebenen im Text]
+    B --> A1[Ebene 1]
+    A1 --> A2[Ebene 2]
+    A2 --> A3[Ebene 3]
     B --> T[Tabelle als<br/>Zeilenblock]
 ```
 

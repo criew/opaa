@@ -30,10 +30,10 @@ Tabellenzellen.
 ```mermaid
 flowchart TB
     P[PDF] --> T{Text im ganzen<br/>Dokument?}
-    T -- nein --> S[abgewiesen:<br/>kein extrahierbarer Text]
+    T -- nein --> S[abgewiesen]
     T -- ja --> O{Lesezeichen<br/>vorhanden?}
-    O -- ja --> G[Abschnitte entlang<br/>der Gliederung]
-    O -- nein --> Pg[eine Seite = ein Chunk]
+    O -- ja --> G[Abschnitte<br/>nach<br/>Gliederung]
+    O -- nein --> Pg[eine Seite =<br/>ein Chunk]
 ```
 
 ## 3. Struktur und Chunks
