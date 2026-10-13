@@ -177,21 +177,35 @@ export default function SubjectPicker({
   const [inputText, setInputText] = useState('')
   const query = userSearch.query
 
+  // The list shows one settled result of both searches at a time: while either is still running,
+  // the previous result stays in place with its query, so options neither arrive in two steps
+  // nor reorder under the keyboard highlight.
+  const settled = !userSearch.isLoading && !groupSearch.isLoading
+  const [shown, setShown] = useState({ users: userSearch.users, groups: groupSearch.groups, query })
+  if (
+    settled &&
+    (shown.users !== userSearch.users ||
+      shown.groups !== groupSearch.groups ||
+      shown.query !== query)
+  ) {
+    setShown({ users: userSearch.users, groups: groupSearch.groups, query })
+  }
+
   const found: SubjectOption[] = [
-    ...userSearch.users
+    ...shown.users
       .filter((user) => !excludedUserIds.includes(user.id))
       .map((user) => ({ kind: 'USER' as const, user })),
-    ...groupSearch.groups
+    ...shown.groups
       .filter((group) => !excludedGroupIds.includes(group.id))
       .map((group) => ({ kind: 'GROUP' as const, group })),
   ]
   // "Alle Konten" only where the input is empty or names it - otherwise it would be the one
   // option left whenever nothing matches, and the empty-result hint would never appear.
   const offersAllAccounts =
-    allowAllAccounts && (query.trim() === '' || matchRank(allAccountsLabel, query) < 4)
+    allowAllAccounts && (shown.query.trim() === '' || matchRank(allAccountsLabel, shown.query) < 4)
   const options = rankSubjectOptions(
     offersAllAccounts ? [ALL_ACCOUNTS_OPTION, ...found] : found,
-    query,
+    shown.query,
   )
   const error = userSearch.error ?? groupSearch.error
   const tooShort = query.trim().length < 2
