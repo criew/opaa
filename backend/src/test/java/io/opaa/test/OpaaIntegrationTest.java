@@ -37,8 +37,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * <p><b>{@code ActiveChatModelResolver} is the real one here</b>, unlike under the indexing
  * signature this replaced: a class that needs a scripted chat answer carries {@link
  * OpaaMockedChatModelIntegrationTest} instead. The indexing classes never script one - their
- * resolver call, if any, fails against the unreachable default endpoint and takes the same fallback
- * path an unstubbed mock produced before.
+ * resolver call, if any, fails against {@link #CHAT_BASE_URL} and takes the same fallback path an
+ * unstubbed mock produced before.
  *
  * <p><b>One database for the whole suite.</b> A class wipes in its own {@code @BeforeEach} what it
  * touches, cleans up after itself in {@code @AfterEach}, and never asserts against an unfiltered
@@ -88,7 +88,14 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // column against the configuration, not against what is indexable.
       "spring.ai.vectorstore.pgvector.index-type=none",
       // The width FakeEmbeddingModel embeds at; the shipped default follows the default model.
-      "spring.ai.vectorstore.pgvector.dimensions=1536"
+      "spring.ai.vectorstore.pgvector.dimensions=1536",
+      // The seeded active chat model and the embedding endpoint: the application.yml default
+      // would be a model server running on the developer's machine, which tests would then really
+      // call. The blank legacy provider keeps LlmModelSeeder on spring.ai.openai.chat.* even if
+      // the developer's shell still carries OPAA_AI_CHAT_PROVIDER=ollama.
+      "spring.ai.openai.chat.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
+      "spring.ai.openai.embedding.base-url=" + OpaaIntegrationTest.EMBEDDING_BASE_URL,
+      "OPAA_AI_CHAT_PROVIDER="
     })
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, OpaaTestBeans.class})
@@ -112,4 +119,15 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @TestExecutionListeners(
     listeners = {OpaaTestBeanResetListener.class, LeftoverRowGuard.class, SeededRowRestorer.class},
     mergeMode = TestExecutionListeners.MergeMode.MERGE_WITH_DEFAULTS)
-public @interface OpaaIntegrationTest {}
+public @interface OpaaIntegrationTest {
+
+  /**
+   * The chat base URL of every test context, and therefore of the chat model {@code LlmModelSeeder}
+   * activates on first start: a host under {@code .invalid} (RFC 6761) never resolves, so a chat
+   * call fails at once instead of reaching a real model.
+   */
+  String CHAT_BASE_URL = "http://chat-model.invalid/v1";
+
+  /** The embedding base URL of every test context, unresolvable for the same reason. */
+  String EMBEDDING_BASE_URL = "http://embedding-model.invalid/v1";
+}

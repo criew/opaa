@@ -158,6 +158,15 @@ Dimensionen, mit der das Modell einbettet. Die Oberfläche zeigt die Einbettung 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar,
 und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettung still.
 
+> **Ältere Ollama-Fassungen betten lange Chunks falsch ein.** Sie zerlegen eine Eingabe über 512
+> Token in mehrere Teile. Embedding-Modelle wie `nomic-embed-text` und `bge-m3` lesen einen Text
+> aber als Ganzes, und der Vektor eines längeren Chunks trifft dann seinen Inhalt nicht mehr. Bei
+> durchgehendem Fließtext ist mit der voreingestellten Chunkgröße fast jeder Chunk so lang, bei kurzen,
+> nach Überschriften gegliederten Abschnitten kaum einer. Betroffen ist etwa Ollama 0.6.5;
+> Ollama 0.32.15 und neuer bettet stetig ein, auch die Fassung im Compose-Stapel und im
+> Erprobungsaufbau für Kubernetes. Wer Ollama selbst betreibt, nimmt 0.32.15 oder neuer und
+> indiziert nach dem Wechsel vollständig neu ([Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht)).
+
 Ein Embedding-Aufruf darf so lange dauern, wie `OPAA_OPENAI_EMBEDDING_TIMEOUT` erlaubt. Ein großes
 Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann bricht der Aufruf ab,
 wird wenige Male wiederholt und scheitert schließlich mit seinem Dokument. Die Neueinbettung bricht

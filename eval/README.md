@@ -80,7 +80,7 @@ Domäne zugeordnet, und die Baseline einer Domäne bleibt von jeder anderen unbe
 Alle drei sind ein **eigener Gradle-Task, nicht Teil von `./gradlew build`/`test`**. Er läuft in
 einem eigenen Source-Set (`src/evalTest/`), das an keiner Stelle in `build`/`test` verdrahtet ist
 — ein normaler Entwicklerlauf wird dadurch nicht langsamer. Grund für den eigenen Task: Der Lauf
-braucht Docker, zieht zwei Testcontainer (`pgvector/pgvector:pg18`, `ollama/ollama:0.6.5`), lädt
+braucht Docker, zieht zwei Testcontainer (`pgvector/pgvector:pg18`, `ollama/ollama:0.40.3`), lädt
 das Embedding-Modell `nomic-embed-text:v1.5` (~275 MB, fest auf diesen Versions-Tag gepinnt, siehe
 unten) und indiziert danach rund 1.450 Dokumente über die echte Chunking-/Embedding-Pipeline —
 mehrere Minuten, auch mit warmem Modell-Cache.
@@ -171,7 +171,7 @@ wieder aktivierte GPU-Anforderung nicht unbemerkt durchlässt.
 
 ### Feste CPU-Variante (Issue #1652)
 
-Auch auf der CPU rechnet nicht jede Maschine gleich. `ollama/ollama:0.6.5` liefert die
+Auch auf der CPU rechnet nicht jede Maschine gleich. Das Ollama-Image liefert die
 Rechenkernel als eine Bibliothek je Befehlssatzstufe (`libggml-cpu-sandybridge`, `-haswell`,
 `-skylakex`, `-icelake`, `-alderlake`) und lädt die beste, die der Host beherrscht. Ein Host mit
 AVX-512 rechnet also mit anderen Kerneln als einer ohne. Die Vektoren weichen dabei erst in der
@@ -195,6 +195,22 @@ Nachtrag CPU-Backend). Zwei Fälle bleiben außerhalb des Pins, und beide sind n
   `ollamaCpuBackend: null`.
 - Mit `-Dopaa.eval.allowGpu=true` rechnet womöglich die GPU. Der Harness prüft dann keine
   CPU-Variante und trägt `unpinned: gpu allowed` ein.
+
+### Stetige Einbettung langer Eingaben (Issue #2343)
+
+`ollama/ollama:0.6.5`, bis Oktober 2026 das gepinnte Image, wertete eine Eingabe über 511 Token in
+mehreren Teilen aus. Ein Embedding-Modell mit bidirektionaler Attention wie `nomic-embed-text` liest
+den Text aber als Ganzes: Hängt man an einen Text zehn Zeichen an, sodass er die Grenze
+überschreitet, kippt der Vektor (Kosinus 0,41 zum vorherigen). Jeder Chunk über der Grenze bekam
+damit einen falschen Vektor. Gepinnt ist seither `ollama/ollama:0.40.3`, dieselbe Fassung wie im
+Compose-Stapel.
+
+Alle drei Harnesse prüfen das vor der Indizierung (`EvalEmbeddingContinuity`): Sie betten
+wachsende Präfixe eines festen Korpustexts ein, die über 512 Token reichen, und brechen ab, wenn
+zwei benachbarte Präfixe unter Kosinus 0,98 fallen. Die Zeile `Embedding continuity across 512
+tokens: lowest neighbour cosine …` im Lauf-Log nennt den gemessenen Wert. Die Prüfung läuft auch
+gegen einen externen Endpunkt (unten), denn ein Host-Ollama mit demselben Fehler misst ebenso falsch.
+Herleitung und Anteil der betroffenen Chunks je Korpus: ADR-0012, Nachtrag Ollama-Fassung.
 
 ### Kontextpräfix-Form als Festpunkt (Issue #1650)
 
@@ -248,7 +264,7 @@ Baseline-Vergleich damit ab.
 - **Ein solcher Lauf ist nicht baseline-tauglich** — analog zum GPU-Opt-out oben: CPU- und
   GPU-Embedding-Kernel liefern nicht notwendigerweise bitgleiche Vektoren, und ein natives
   Host-Ollama ist ohnehin nicht dieselbe, reproduzierbare Umgebung wie der gepinnte
-  `ollama/ollama:0.6.5`-Testcontainer. Einen `check…RetrievalBaseline`-Lauf gegen einen solchen
+  `ollama/ollama:0.40.3`-Testcontainer. Einen `check…RetrievalBaseline`-Lauf gegen einen solchen
   Report zu stellen ist ohne Aussagekraft; **alle drei** Messpfade brechen deshalb hart ab, wenn der
   Report von einem externen Endpunkt stammt — der Rohvektor-Pfad über
   `BaselineComparator.requireBaselineComparable`, der Pipeline-Pfad über
@@ -271,11 +287,10 @@ Baseline-Vergleich damit ab.
   `POST /api/pull` in den Modellspeicher des Hosts; weicht der Digest ab, bricht er mit der
   Drift-Meldung ab. Ein vorhandenes `nomic-embed-text:latest` mit demselben Digest stört nicht,
   gezogen und genutzt wird nur das gepinnte Tag.
-- Eine bestimmte Ollama-Version ist nicht nötig, die Vektoren hängen aber von ihr ab. Gemessen am
-  8.10.2026: Bis etwa 500 Token Eingabe liefern Host-Ollama 0.40.1 und der gepinnte Container
-  0.6.5 dieselben Vektoren (Kosinus 1,0000). Darüber weichen sie ab (Kosinus 0,41 bis 0,79 für
-  dieselbe Eingabe). Der Container springt bei 511 Token, und dieser Sprung ist Verhalten von
-  0.6.5, nicht des Modells. Auch deshalb ist ein Host-Lauf nicht baseline-tauglich.
+- Das Host-Ollama muss lange Eingaben stetig einbetten, sonst bricht der Harness vor der
+  Indizierung ab (siehe „Stetige Einbettung langer Eingaben" oben); Ollama 0.6.5 scheitert daran,
+  0.32.15 und 0.40.3 bestehen. Eine bestimmte Fassung ist darüber hinaus nicht nötig, die Vektoren
+  hängen aber von ihr ab. Auch deshalb ist ein Host-Lauf nicht baseline-tauglich.
 - Der Harness erhebt nach der Indexierung die Planer-Statistik von `vector_store` (`ANALYZE`).
   Ohne sie wählt PostgreSQL für die Ähnlichkeitssuche den HNSW-Index, und der liefert höchstens
   `hnsw.ef_search` (40) Treffer statt der angeforderten `chunkTopK` (190 bei `verwaltung`). Der
