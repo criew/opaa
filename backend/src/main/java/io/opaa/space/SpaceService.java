@@ -458,12 +458,14 @@ public class SpaceService {
   /**
    * Admits a person or a group to the space (#1815, ADR-0036 Entscheidung 6). A group's members
    * hold the role without a row of their own; only an <em>effective</em> group may be admitted, and
-   * an effective but empty one may - with the warning the response carries.
+   * an effective but empty one may - with the warning the response carries. The default space
+   * admits nobody.
    */
   @Transactional
   public SpaceMemberView addMember(
       UUID spaceId, PermissionSubject subject, SpaceRole requestedRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    requireNotDefault(space);
     // ADR-0036, Entscheidung 6: a space without a capable ADMIN takes no new members while its
     // succession is open - everything else about it keeps working.
     successionGuard.requireReachNotFrozen(
@@ -569,6 +571,7 @@ public class SpaceService {
   public SpaceMemberView updateMemberRole(
       UUID spaceId, UUID membershipId, SpaceRole newRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
+    requireNotDefault(space);
     accessPolicy.requireManager(space, caller);
     if (newRole == null) {
       throw new ValidationException("role ist erforderlich");
@@ -1029,6 +1032,14 @@ public class SpaceService {
         Space::getOrganizationId,
         caller.organizationId(),
         "Space nicht gefunden");
+  }
+
+  /** The default space belongs to its owner alone: nobody is admitted, no role is changed. */
+  private static void requireNotDefault(Space space) {
+    if (space.isDefault()) {
+      throw new ConflictException(
+          "Der Standard-Space ist privat. Für gemeinsame Arbeit legen Sie einen Space an.");
+    }
   }
 
   /**
