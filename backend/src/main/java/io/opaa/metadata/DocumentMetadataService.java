@@ -2,6 +2,8 @@ package io.opaa.metadata;
 
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.MetadataOrigin;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
@@ -61,6 +63,7 @@ public class DocumentMetadataService {
   private final LibraryMetadataFieldValueRepository libraryValueRepository;
   private final KnowledgeLibraryRepository libraryRepository;
   private final TransactionTemplate transactionTemplate;
+  private final FeatureFlags featureFlags;
 
   public DocumentMetadataService(
       DocumentMetadataValueRepository valueRepository,
@@ -72,7 +75,8 @@ public class DocumentMetadataService {
       DocumentKeywordRepository keywordRepository,
       LibraryMetadataFieldValueRepository libraryValueRepository,
       KnowledgeLibraryRepository libraryRepository,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      FeatureFlags featureFlags) {
     this.valueRepository = valueRepository;
     this.vocabularyRepository = vocabularyRepository;
     this.documentRepository = documentRepository;
@@ -83,6 +87,7 @@ public class DocumentMetadataService {
     this.libraryValueRepository = libraryValueRepository;
     this.libraryRepository = libraryRepository;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.featureFlags = featureFlags;
   }
 
   /**
@@ -97,6 +102,37 @@ public class DocumentMetadataService {
         status -> {
           reconcileAll(document.getId(), fileName, properties);
           return chunkMetadataFor(document);
+        });
+  }
+
+  /**
+   * The ingest's extraction while the metadata feature is switched off (ADR-0044): only the
+   * Kernfeld Titel is reconciled, by the same rules as {@link #applyDeterministicExtraction}; every
+   * other stored row is left as it is. The extraction version is cleared, so the Bestandslauf reads
+   * the document once the feature is on again. Returns the title alone - no filterable value, no
+   * prefix value.
+   */
+  public DocumentChunkMetadata applyTitleExtraction(
+      Document document, String fileName, DocumentProperties properties) {
+    return transactionTemplate.execute(
+        status -> {
+          DocumentTypeVocabulary vocabulary = vocabularyRepository.snapshot();
+          ExtractedCoreMetadata extracted =
+              CoreMetadataExtractor.extract(fileName, properties, vocabulary);
+          Map<String, DocumentMetadataValue> existing = new HashMap<>();
+          for (DocumentMetadataValue value : valueRepository.findByDocumentId(document.getId())) {
+            existing.put(value.getFieldKey(), value);
+          }
+          reconcile(
+              document.getId(),
+              CoreMetadataField.TITLE,
+              existing,
+              extracted.title().map(title -> value -> value.assignText(title)));
+          documentRepository.clearMetadataExtractionVersion(document.getId());
+          String title =
+              toCoreMetadata(valueRepository.findByDocumentId(document.getId()), vocabulary)
+                  .title();
+          return new DocumentChunkMetadata(Map.of(), CoreMetadataChunkKeys.ALL, title, List.of());
         });
   }
 
@@ -565,8 +601,9 @@ public class DocumentMetadataService {
   }
 
   /**
-   * The effective core fields of every document in {@code documentIds}; absent for a document
-   * without any.
+   * The effective core fields of every document in {@code documentIds}, as a Beleg shows them;
+   * absent for a document without any. With the metadata feature off (ADR-0044) only the title is
+   * read - the other stored values stay, but no Beleg shows them.
    */
   @Transactional(readOnly = true)
   public Map<UUID, CoreMetadata> coreMetadataFor(Collection<UUID> documentIds) {
@@ -579,7 +616,12 @@ public class DocumentMetadataService {
       byDocument.computeIfAbsent(value.getDocumentId(), id -> new ArrayList<>()).add(value);
     }
     Map<UUID, CoreMetadata> result = new LinkedHashMap<>();
-    byDocument.forEach((id, values) -> result.put(id, toCoreMetadata(values, vocabulary)));
+    boolean metadataEnabled = featureFlags.isEnabled(Feature.METADATA);
+    byDocument.forEach(
+        (id, values) -> {
+          CoreMetadata core = toCoreMetadata(values, vocabulary);
+          result.put(id, metadataEnabled ? core : core.titleOnly());
+        });
     return result;
   }
 
