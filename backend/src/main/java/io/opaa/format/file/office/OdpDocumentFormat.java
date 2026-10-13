@@ -71,6 +71,16 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
     return VERSION;
   }
 
+  @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
   /** One specific media type, like {@code OdtDocumentFormat} - see its own declaration. */
   @Override
   public Set<FormatAdmission> admittedFormats() {

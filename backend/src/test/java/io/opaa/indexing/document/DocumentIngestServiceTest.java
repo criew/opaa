@@ -32,6 +32,7 @@ import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.format.file.fallback.TikaFallbackFormat;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.attachment.AttachmentAccess;
@@ -564,6 +565,8 @@ class DocumentIngestServiceTest {
           .containsEntry(
               ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) TikaFallbackFormat.VERSION)
           .containsEntry(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, ".txt");
+      // The fallback's token cut depends on no target size, so nothing ties it to that setting.
+      assertThat(metadata).doesNotContainKey(ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY);
     }
 
     @Test
@@ -580,7 +583,11 @@ class DocumentIngestServiceTest {
 
       assertThat(savedDocument().getContentType()).isEqualTo("text/markdown");
       assertThat(storedChunks().getFirst().getMetadata())
-          .containsEntry(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, ".md");
+          .containsEntry(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, ".md")
+          // The structure-aware cut records the target size it was cut at (#2612).
+          .containsEntry(
+              ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY,
+              HeadingSectionSplitterFixture.DEFAULT.chunkingFingerprint());
     }
 
     @Test

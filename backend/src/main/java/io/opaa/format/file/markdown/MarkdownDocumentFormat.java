@@ -68,6 +68,16 @@ public class MarkdownDocumentFormat implements DocumentFormat {
     return VERSION;
   }
 
+  @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
   /**
    * Text-tolerant: Markdown is plain text by content, so only the file's own extension tells it
    * apart from a {@code .txt}. Its canonical type is {@code text/markdown} all the same - that is

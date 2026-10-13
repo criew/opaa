@@ -27,7 +27,8 @@ und kennt weder indexing noch knowledge noch library.
   Passthrough-Schlüssel deklariert, prüft `DocumentIngestService`, der diese Schlüssel schreibt.
 - **Eine Zielgröße für den Strukturschnitt:** die Bean `HeadingSectionSplitter` aus
   `opaa.indexing.chunk-target-characters` (`ChunkTargetProperties`); Formate bekommen sie per
-  Konstruktor. In Tests `HeadingSectionSplitterFixture.DEFAULT`.
+  Konstruktor. In Tests `HeadingSectionSplitterFixture.DEFAULT`. Jedes Format darauf meldet sie als
+  `chunkingFingerprint()`; sie steht an jedem Chunk, und der Nachzug zerlegt bei Abweichung neu.
 - **Formatfelder** (`FormatMetadataField`) deklariert das Format, das sie füllt; Speicherung und
   Filter liegen in `metadata`.
 - **Leser brauchen nur Schlüssel:** Suche und Chat lesen den Fundort über `ChunkMetadataKeys`,

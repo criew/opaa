@@ -55,6 +55,16 @@ public class ConfluenceStorageFormat implements DocumentFormat {
   }
 
   @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
+  @Override
   public DocumentFormatResult run(DocumentFormatSource source) {
     String body = bodyOf(source);
     if (body == null || body.isBlank()) {

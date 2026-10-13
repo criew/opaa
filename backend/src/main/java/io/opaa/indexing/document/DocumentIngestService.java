@@ -881,8 +881,8 @@ public class DocumentIngestService {
    *     prefix at all (see {@link #contextTitleFor}). The Kernfeld Titel takes precedence over it
    *     where one was extracted; what ends up in the prefix is recorded at the document, so the
    *     Nachlauf reproduces this choice instead of deriving its own.
-   * @param pipeline the pipeline that produced {@code chunks}; its id and version go onto every
-   *     chunk. Which further keys ride along is decided by {@link
+   * @param pipeline the pipeline that produced {@code chunks}; its id, version and chunking
+   *     fingerprint go onto every chunk. Which further keys ride along is decided by {@link
    *     DocumentFormatRegistry#allPassthroughMetadataKeys()}, not by {@code pipeline} alone - a
    *     nested attachment's chunks are attributed to the outer pipeline, so filtering by its own
    *     declaration would drop a key only the inner pipeline declares
@@ -913,6 +913,7 @@ public class DocumentIngestService {
         ChunkContextPrefix.titleAtRest(prefixEligible, chunkMetadata.contextTitle(), contextTitle);
     Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
     Map<String, Object> sourceContextValues = sourceContextMetadata(sourceContext);
+    String chunkingFingerprint = pipeline.chunkingFingerprint();
 
     List<org.springframework.ai.document.Document> enriched =
         chunks.stream()
@@ -933,6 +934,12 @@ public class DocumentIngestService {
                   metadata.put(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
                   metadata.put(
                       ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipeline.version());
+                  // The settings the cut depended on, so a changed setting makes this chunk due
+                  // for the re-index without a version change; absent where none applies.
+                  if (chunkingFingerprint != null) {
+                    metadata.put(
+                        ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY, chunkingFingerprint);
+                  }
                   // The routing key actually used (ingestion-pipelines.md, Querschnittsregel
                   // (d)) - what lets a later pipeline-version check compare exactly instead of
                   // re-guessing a document's format from its file name.

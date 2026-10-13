@@ -74,7 +74,9 @@ paths:
         caller's own organization: how many chunks were produced by the current version of the
         pipeline named on them, and how many are below it and therefore candidates for a selective
         re-index. Without this, a bestand containing chunks from two verfahren is not feststellbar at
-        all - one cannot tell from a chunk which rules cut it.
+        all - one cannot tell from a chunk which rules cut it. A chunk cut under another chunking
+        configuration than its pipeline's current one (a changed
+        opaa.indexing.chunk-target-characters, #2612) counts as stale as well.
       responses:
         "200":
           description: Pipeline versions and per-library fill state
@@ -93,7 +95,8 @@ paths:
         Re-index one batch of chunks below a given pipeline version (system admin only, #1056)
       description: >
         Processes at most batchSize documents of the caller's own organization that still hold
-        chunks from pipelineId below belowVersion, and reports what it did. Deliberately batched and
+        chunks from pipelineId below belowVersion or cut under another chunking configuration than
+        pipelineId's current one (#2612), and reports what it did. Deliberately batched and
         repeatable rather than one long-running request: the remaining work is re-derived from the
         chunk metadata on every call, so an interrupted run continues where it stood instead of
         starting over. Repeat until done is true. Whether and when a bestand is nachgezogen at all is
@@ -1100,13 +1103,16 @@ components:
         currentVersionChunks:
           type: integer
           format: int64
-          description: Chunks produced by the current version of the pipeline named on them.
+          description: >
+            Chunks produced by the current version of the pipeline named on them, under its current
+            chunking configuration.
         staleChunks:
           type: integer
           format: int64
           description: >
-            Chunks below the current version of the pipeline named on them, including the bestand
-            written before the pipeline abstraction existed. Counted directly, not derived as
+            Chunks below the current version of the pipeline named on them or cut under another
+            chunking configuration than its current one (#2612), including the bestand written
+            before the pipeline abstraction existed. Counted directly, not derived as
             totalChunks - currentVersionChunks: a chunk naming a pipeline this deployment no longer
             has is neither current nor re-indexable and inflates neither count.
         complete:
@@ -1179,7 +1185,9 @@ components:
             same documents would be selected again on every following batch. A chunk still naming
             the fallback pipeline whose format pipelineId now claims (#1105) is also always
             included regardless of belowVersion - it is unreachable by any other call, not merely
-            below a version bound.
+            below a version bound. So is a chunk of pipelineId cut under another chunking
+            configuration than its current one, such as a changed target size (#2612): pass the
+            pipeline's currentVersion to re-cut only those.
         batchSize:
           type: integer
           minimum: 1

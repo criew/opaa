@@ -84,6 +84,16 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
     return VERSION;
   }
 
+  @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
   /**
    * Deliberately not admitting {@code application/x-tika-ooxml}: that is the generic, unresolved
    * OOXML container type Tika falls back to when its sniffing inside the ZIP fails - any OOXML file

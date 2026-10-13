@@ -60,6 +60,16 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
   }
 
   @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
+  @Override
   public Set<FormatAdmission> admittedFormats() {
     return Set.of(FormatAdmission.detectedAs(".pdf", "application/pdf"));
   }
