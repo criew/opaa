@@ -31,10 +31,10 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     3; the service truncates beyond it, so an adversarial answer cannot grow retrieval latency
  *     without bound. Each list is narrowed on its own, so the chunk count stays capped at {@link
  *     #topK} regardless.
- * @param maxChunksPerDocument the upper bound on how many chunks of one document {@code
- *     DocumentCompletion} may hold in the final selection. Default 1, which makes completion the
- *     identity: no sibling chunks are added, though the selection may still hold several chunks of
- *     one document. The neighbour chunks loaded for the answer context supply surrounding text.
+ * @param maxChunksPerDocument the fill target of {@code DocumentCompletion}: a document already in
+ *     the selection is topped up to this many chunks from the candidate pool. Not a cap - a
+ *     document already holding more keeps them. Default 1, which makes completion the identity; the
+ *     neighbour chunks loaded for the answer context supply surrounding text.
  * @param fullTextSearchEnabled whether {@link RetrievalStageName#FULL_TEXT_SEARCH} runs and
  *     contributes its lists to the fusion. Default {@code true}. Set to {@code false} for the
  *     {@code vector-only} measurement variant: the stage stays in the chain and says so in the

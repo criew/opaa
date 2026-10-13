@@ -266,7 +266,7 @@ Kandidaten sehen, als ihr übergeben wurden.
 | Vielfaltsauswahl (MMR) je Teilfrage | Relevanz gegen Redundanz | gebaut, voreingestellt aus |
 | Fusion | RRF über alle Listen aller Teilfragen | gebaut, erweitert (#1049) |
 | **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
-| Dokument-Vervollständigung | bis `max-chunks-per-document` Chunks je Dokument | gebaut (#932/#935) |
+| Dokument-Vervollständigung | vertretene Dokumente bis auf `max-chunks-per-document` Chunks auffüllen (keine Obergrenze) | gebaut (#932/#935) |
 
 Als Stufen registriert sind heute `SEARCH_SCOPE`, `METADATA_FILTER`, `SUB_QUERY_DECOMPOSITION`,
 `VECTOR_SEARCH`, `FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION`, `RERANK` und

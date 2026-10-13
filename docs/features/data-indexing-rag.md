@@ -281,7 +281,7 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
 | **Teilfragen-Zerlegung (`query-decomposition-enabled`)** | an **(gebaut, #923)** | Ob Mehrthemen-Fragen getrennte Suchvektoren je Thema bekommen sollen | Kein Regler im eigentlichen Sinn (An/Aus) — deaktiviert lässt jede Frage wie vor #923 als eine einzige Suche laufen |
 | **Max. Teilfragen (`max-sub-queries`)** | 3 **(gebaut, #923)** | Wie viele eigenständige Themen eine Frage realistisch mischt | Mehr mögliche Teilthemen je Frage, aber mehr `similaritySearch`-Aufrufe und damit höhere Retrieval-Latenz |
-| **Max. Chunks je Dokument nach der Fusion (`max-chunks-per-document`)** | 1 **(gebaut, #932/#934/#935; Default 1 seit #2502, vorher 2)** | Wie oft ein einzelnes Dokument seine relevante Information über mehrere Chunks verteilt (z. B. Einleitung und Gebührentabelle getrennt) | Höherer Wert nimmt mehr Chunks desselben, bereits ausgewählten Dokuments bevorzugt vor einem neuen Dokument auf — bei `1` bleibt die Dokument-Vervollständigung vollständig aus (Vorzustand vor #932) |
+| **Auffüllziel der Dokument-Vervollständigung (`max-chunks-per-document`)**, trotz des Namens keine Obergrenze je Dokument (#2623) | 1 **(gebaut, #932/#934/#935; Default 1 seit #2502, vorher 2)** | Wie oft ein einzelnes Dokument seine relevante Information über mehrere Chunks verteilt (z. B. Einleitung und Gebührentabelle getrennt) | Höherer Wert nimmt mehr Chunks desselben, bereits ausgewählten Dokuments bevorzugt vor einem neuen Dokument auf — bei `1` bleibt die Dokument-Vervollständigung vollständig aus (Vorzustand vor #932) |
 
 **`fetch-k`/`mmr-lambda` steuern gemeinsam die Vielfaltsauswahl (Maximal Marginal Relevance, MMR,
 #914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. Daraus wählt MMR
@@ -479,8 +479,9 @@ Einleitungs-Chunk, siehe #912 in [Qualitätssicherung](#qualitätssicherung)).
 
 Nach der Fusion/MMR-Auswahl prüft `DocumentCompletion`, ob ein Dokument bereits in der Auswahl
 vertreten ist und weitere seiner Chunks in derselben Kandidatenmenge liegen, aus der die Auswahl
-selbst gezogen wurde — nie eine zweite, ungefilterte Suche. Bis zu `max-chunks-per-document`
-Chunks je Dokument werden so bevorzugt aufgenommen, über eine zweistufige Verdrängung (Zuschnitt
+selbst gezogen wurde — nie eine zweite, ungefilterte Suche. Bis ein Dokument mit
+`max-chunks-per-document` Chunks vertreten ist, werden so weitere bevorzugt aufgenommen (ein
+Auffüllziel, keine Obergrenze: mehr Chunks aus der Fusion bleiben stehen), über eine zweistufige Verdrängung (Zuschnitt
 v2, nachgeschärft nach der Live-Verifikation: v1 verdrängte ausschließlich aus Dokumenten mit
 mindestens zwei Chunks und war damit ein No-op, sobald jedes Dokument der Auswahl nur einen
 einzigen Chunk stellte — genau der Fall, den #912 beheben sollte):
