@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-12</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Montag, 12. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-11.html" rel="prev" title="Sonntag, 11. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/38296134433" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">75</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+8</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">14</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">16</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/1282">#1282</a> Initiales Produkthandbuch unter docs/handbuch: Indexierung, Konnektoren, Formate; offene Kapitel</span>
+<span class="epic-progress">5 / 5 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2536">#2536</a></span>Entwurf-Hinweise aus 16 Handbuch-Kapiteln entfernt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2534">#2534</a></span>Deployment-Kapitel aufgeteilt in Betriebsübersicht, Docker Compose, Konfiguration, Modelle, Authentifizierung</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2533">#2533</a></span>Konnektor-Kapitel vereinheitlicht, gegen Code geprüft und gestrafft</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2529">#2529</a></span>Handbuch als Baum umgebaut: Wissensbibliotheken, Konnektoren, Formate, Zugänge, Katalog, Spaces</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2536">#2536</a></span>docs(handbuch): Entwurf-Hinweise in allen Kapiteln entfernen (+58/−58, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2534">#2534</a></span>docs(handbuch): Deployment-Kapitel aufteilen — Betriebsübersicht, Docker Compose, Konfiguration, Modelle, Authentifizierung (+3732/−3895, 89 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2533">#2533</a></span>docs(handbuch): Konnektor-Kapitel vereinheitlichen, gegen den Code prüfen und straffen (+1977/−3691, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2532">#2532</a></span>docs(handbuch): Mermaid-Knoten mit kurzen Zeilen, damit GitHub sie nicht abschneidet (+94/−87, 12 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2529">#2529</a></span>docs(handbuch): Handbuch als Baum — Wissensbibliotheken, Konnektoren, Formate, Zugänge, Katalog, Spaces (+2038/−2695, 68 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2492">#2492</a> feat: Verbindungen vereinfachen — Verwaltung legt fest, Personen sehen nur Nutzbares</span>
+<span class="epic-progress">4 / 4 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2520">#2520</a></span>Proxy je Bibliothek und Zugang aus Datenbank entfernt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2520">#2520</a></span>refactor(connections): Proxy je Bibliothek und Zugang entfernen (+1285/−2506, 353 Dateien)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li><span class="num"><a href="https://github.com/criew/opaa/issues/2541">#2541</a></span>Zertifikatsprüfung nicht mehr aussetzbar, Schalter entfernt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2539">#2539</a></span>Assistentenschritte in Quellart und Quelle einrichten umbenannt</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2522">#2522</a></span>Space trägt optionale Anweisung an das Modell in Antwortstufe</li><li><span class="num"><a href="https://github.com/criew/opaa/issues/2519">#2519</a></span>Default max-chunks-per-document von 2 auf 1 gesenkt</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2541">#2541</a></span>fix(security): Zertifikatsprüfung nicht mehr aussetzbar (+1546/−2282, 356 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2539">#2539</a></span>feat(frontend): Assistentenschritte „Quellart“ und „Quelle einrichten“ (+83/−76, 17 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2526">#2526</a></span>chore(deps): ubuntu auf v26.04-arm aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2525">#2525</a></span>chore(deps): renovate/renovate docker tag to v44.148.4 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2524">#2524</a></span>chore(deps): python auf 3.15 aktualisieren (+4/−4, 3 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2523">#2523</a></span>chore(deps): tomcat aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2522">#2522</a></span>feat(space): Anweisung an das Modell je Space in der Antwortstufe (+1573/−144, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2521">#2521</a></span>feat(group): interne Gruppe vorübergehend deaktivieren (+2284/−102, 68 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2519">#2519</a></span>feat(search): Default max-chunks-per-document von 2 auf 1 – Nachbar-Chunks statt Auffüllen (+164/−47, 22 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2517">#2517</a></span>fix(auth): Notanker-Konto gegen Passwort-Erzeugung und Rücksetz-Link schützen (+185/−13, 10 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-13 um 08:57 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-12T00:00:00 bis 2026-10-12T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
