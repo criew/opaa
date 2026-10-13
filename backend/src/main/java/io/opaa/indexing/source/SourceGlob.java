@@ -1,23 +1,23 @@
-package io.opaa.indexing.source.filesystem;
+package io.opaa.indexing.source;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * One exclusion pattern, matched level by level without backtracking blow-up: a level {@code **}
- * stands for any number of levels including none, {@code *} for any characters within one level,
- * {@code ?} for one character, {@code [abc]}/{@code [a-z]}/{@code [!abc]} for one character of a
- * class, and {@code {a,b}} for alternatives. Both the levels and the characters within one are
+ * A connector's path pattern, matched level by level without backtracking blow-up: a level {@code
+ * **} stands for any number of levels including none, {@code *} for any characters within one
+ * level, {@code ?} for one character, {@code [abc]}/{@code [a-z]}/{@code [!abc]} for one character
+ * of a class, and {@code {a,b}} for alternatives. Both the levels and the characters within one are
  * matched greedily with a single resumption point, so a match costs at most the product of pattern
- * and name length. Matching is case-sensitive on every platform.
+ * and path length. Matching is case-sensitive on every platform; there is no escape character.
  *
  * <p>A trailing {@code **} matches the directory it follows only as a directory: {@code Archiv/**}
  * covers the folder {@code Archiv} and everything below it, never a file named {@code Archiv}.
  */
-final class FilesystemGlob {
+public final class SourceGlob {
 
   /** Upper bound of the alternatives {@code {a,b}} groups may expand into. */
-  static final int MAX_ALTERNATIVES = 32;
+  public static final int MAX_ALTERNATIVES = 32;
 
   private static final String ANY_LEVELS = "**";
 
@@ -26,7 +26,7 @@ final class FilesystemGlob {
 
   private final boolean trailingAnyLevels;
 
-  private FilesystemGlob(List<List<Segment>> alternatives, boolean trailingAnyLevels) {
+  private SourceGlob(List<List<Segment>> alternatives, boolean trailingAnyLevels) {
     this.alternatives = alternatives;
     this.trailingAnyLevels = trailingAnyLevels;
   }
@@ -34,7 +34,7 @@ final class FilesystemGlob {
   /**
    * @throws IllegalArgumentException with a German reason when {@code pattern} is no valid glob
    */
-  static FilesystemGlob compile(String pattern) {
+  public static SourceGlob compile(String pattern) {
     List<String> expanded = expandAlternatives(pattern);
     List<List<Segment>> alternatives = new ArrayList<>();
     boolean trailing = false;
@@ -43,7 +43,8 @@ final class FilesystemGlob {
       String[] parts = alternative.split("/", -1);
       for (String part : parts) {
         if (part.isEmpty()) {
-          throw new IllegalArgumentException("enthält eine leere Ebene („//“ oder „/“ am Ende)");
+          throw new IllegalArgumentException(
+              "enthält eine leere Ebene („//“ oder „/“ am Anfang oder Ende)");
         }
         if (part.equals(".") || part.equals("..")) {
           throw new IllegalArgumentException("enthält die Ebene „" + part + "“");
@@ -53,13 +54,11 @@ final class FilesystemGlob {
       trailing |= levels.getLast() == null;
       alternatives.add(levels);
     }
-    return new FilesystemGlob(alternatives, trailing);
+    return new SourceGlob(alternatives, trailing);
   }
 
-  /**
-   * Whether the entry at {@code levels} (its path relative to the source, split by level) matches.
-   */
-  boolean matches(List<String> levels, boolean directory) {
+  /** Whether the entry at {@code levels} (its path split by level) matches. */
+  public boolean matches(List<String> levels, boolean directory) {
     for (List<Segment> alternative : alternatives) {
       List<Segment> effective = alternative;
       if (trailingAnyLevels && !directory && alternative.getLast() == null) {
@@ -162,6 +161,11 @@ final class FilesystemGlob {
       while (i < text.length()) {
         char c = text.charAt(i);
         if (c == '*') {
+          if (i + 1 < text.length() && text.charAt(i + 1) == '*') {
+            throw new IllegalArgumentException(
+                "enthält „**“ innerhalb einer Ebene; über Ebenen hinweg wirkt „**“ nur als ganze"
+                    + " Ebene, etwa „**/*.pdf“");
+          }
           if (tokens.isEmpty() || tokens.getLast() != null) {
             tokens.add(null);
           }
