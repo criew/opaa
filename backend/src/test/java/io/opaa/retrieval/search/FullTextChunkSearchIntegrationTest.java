@@ -517,8 +517,8 @@ class FullTextChunkSearchIntegrationTest {
             List.of(),
             3);
 
-    assertThat(result.demotedIdentifiers()).containsExactly("ELSTER");
     assertFirstHit(result.chunks(), answer);
+    assertThat(result.demotedIdentifiers()).containsExactly("ELSTER");
   }
 
   /** A word in at most as many chunks as the list holds keeps weight {@code A} and leads. */
