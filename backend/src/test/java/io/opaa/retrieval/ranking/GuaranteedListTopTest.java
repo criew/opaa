@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.CandidateList;
@@ -112,7 +113,8 @@ class GuaranteedListTopTest {
             tuple("s10", CandidateOutcome.DROPPED, VerdictReason.DISPLACED_BY_GUARANTEED_LIST_TOP),
             tuple("s11", CandidateOutcome.DROPPED, VerdictReason.OUTSIDE_FUSION_BUDGET));
     assertThat(with.explanation().notes())
-        .anySatisfy(note -> assertThat(note).contains("top 1 of every list guaranteed"));
+        .anySatisfy(
+            note -> assertThat(note).contains("top 1 candidate(s) of every list guaranteed"));
   }
 
   /** {@code 0} must be the fusion without the guarantee, down to every verdict and every note. */
@@ -277,5 +279,66 @@ class GuaranteedListTopTest {
 
     assertThat(ids(fused)).hasSize(13);
     assertThat(ids(reranked)).containsExactlyElementsOf(ids(withoutReranking)).contains("solo");
+  }
+
+  /** The stage hands the fusion's guaranteed chunks to the completion, so tier 2 spares them. */
+  @Test
+  void theDocumentCompletionStagePassesTheGuaranteedChunksOn() {
+    Document docA = chunk("a-0", "doc-a", 0.9);
+    Document docB = chunk("b-0", "doc-b", 0.8);
+    Document docC = chunk("c-0", "doc-c", 0.7);
+    Document sibling = chunk("a-1", "doc-a", 0.6);
+    RetrievalState state =
+        RetrievalState.initial()
+            .withSearchResults(
+                List.of(
+                    new CandidateList(
+                        "vector search · sub-query 1",
+                        List.of(docA, docB, docC, sibling),
+                        SearchPath.VECTOR,
+                        1)))
+            .withCandidateLists(
+                List.of(
+                    new CandidateList(
+                        RetrievalListLabel.FUSED_LIST_LABEL, List.of(docA, docB, docC))))
+            .withGuaranteedChunkIds(Set.of("c-0"));
+    QueryProperties completing = new QueryProperties(3, 25, 1.0, 0.3, false, 3, 2, true, 50, 20, 2);
+
+    StageOutcome outcome =
+        new DocumentCompletionStage().apply(context(Set.of(LIBRARY_ID), completing), state);
+
+    assertThat(ids(outcome)).containsExactly("a-0", "c-0", "a-1");
+  }
+
+  /**
+   * A rerank that scores is not bound by the guarantee: it may put a top candidate behind top-k.
+   */
+  @Test
+  void anAnsweringRerankMayPutAGuaranteedCandidateBehindTopK() {
+    RerankModelRole role = mock(RerankModelRole.class);
+    List<ScoredCandidate> scored = new ArrayList<>();
+    for (int i = 0; i < 12; i++) {
+      scored.add(new ScoredCandidate(i, 1.0 - i * 0.01));
+    }
+    scored.add(new ScoredCandidate(12, 0.01));
+    when(role.rerank(anyString(), any())).thenReturn(scored);
+    RetrievalContext reranking =
+        new RetrievalContext(
+            "Frage",
+            List.of(),
+            Set.of(LIBRARY_ID),
+            MetadataFilter.NONE,
+            properties(TOP_K, FusionMethod.RRF, true, 1),
+            RerankAvailability.USABLE);
+
+    StageOutcome fused = new RankFusionStage().apply(reranking, sharedAgainstSoloLeader());
+    StageOutcome reranked = new RerankStage(role).apply(reranking, fused.state());
+
+    assertThat(ids(fused)).contains("solo");
+    assertThat(ids(reranked)).hasSize(TOP_K).doesNotContain("solo");
+    assertThat(reranked.explanation().verdicts())
+        .filteredOn(verdict -> verdict.chunkId().equals("solo"))
+        .extracting(CandidateVerdict::outcome, CandidateVerdict::reason)
+        .containsExactly(tuple(CandidateOutcome.DROPPED, VerdictReason.OUTSIDE_RERANK_BUDGET));
   }
 }

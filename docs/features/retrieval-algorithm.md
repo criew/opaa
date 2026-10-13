@@ -283,8 +283,10 @@ aus `top-k`. Zwei Stellschrauben, beide Ebene-1-Werte unter `opaa.query.fusion.*
 einen Beleg: In der Simulation der Verlustanalyse brachte sie 144 statt 139 von 220 Kernfakten bei
 praktisch gleich großem Kontext. Die Messung vom 14.10.2026 auf der FV-Arbeitsmenge (20 Fragen × 3
 Läufe, Bericht im Korpus-Repo unter `testlaeufe/2026-10-14-retrieval-umbau/`, Zusammenfassung in
-[#2386](https://github.com/criew/opaa/issues/2386)) bestätigt das: RRF mit Quote hielt den Stand
-(36/60 Läufe mit allen Kernfakten im Kontext, 84 von 132 Kernfakten). **Die Wertefusion**
+[#2386](https://github.com/criew/opaa/issues/2386)) widerspricht dem nicht: Die neuen Defaults (RRF
+mit Quote, zusammen mit den übrigen Änderungen des Retrieval-Umbaus) hielten den Stand (36/60 Läufe mit
+allen Kernfakten im Kontext, 84 von 132 Kernfakten). Isoliert gemessen ist die Quote damit nicht; sie
+löste s3-06 und kostete ue-04. **Die Wertefusion**
 (`method=score`, `vector-weight` 0,7) war gleich gut oder schlechter (30/60, 81 von 132). Sie verliert
 Treffer, die nur ein Suchpfad findet: Ein Chunk auf Volltextrang 2 landete auf Fusionsrang 26
 (s3-11), ähnlich ust-09 und lw-11. Ein ungemessenes Gewicht ist genau das, wovor
@@ -456,9 +458,10 @@ dem Kandidatenpool nach.
 (top-k 30 brächte 150 statt 139 von 220 Kernfakten bei 32 % mehr Kontext). Unter RRF sind die Werte
 aber flach und rangabgeleitet: Ein Chunk, den beide Pfade fanden, erreicht etwa den doppelten Wert
 eines Einzeltreffers, ein relativer Schnitt bei 0,6 trennt also vor allem diese beiden Gruppen und kaum
-nach Passung. Die Messung vom 14.10.2026 (Schritt 5) bestätigt die Zurückhaltung: `relative` 0,6 mit
-`min-chunks` 10 auf Score-Fusion sparte etwa ein Drittel der Tokens (Median 38.646 statt 58.370),
-verlor aber deutlich Kernfakten (68 statt 84 von 132 im Kontext). Er misst am besten Wert über alle
+nach Passung. Die Messung vom 14.10.2026 (Schritt 5) bestätigt die Zurückhaltung. Gemessen wurde auf
+Score-Fusion (`vector-weight` 0,7) gegen dieselbe Variante ohne Schnitt (K3 gegen K2): `relative` 0,6
+mit `min-chunks` 10 sparte etwa ein Drittel der Tokens (Median 38.646 statt 58.370), verlor aber
+deutlich Kernfakten (68 statt 81 von 132 im Kontext). Er misst am besten Wert über alle
 Teilfragen, kürzte fast immer auf die Mindestzahl und hob dabei die Quote teilweise auf, indem er
 Spitzentreffer einzelner Teilfragen entfernte; gemessen wurde ohne die Ausnahme für garantierte
 Kandidaten oben. `knee` 0,25 schnitt fast nie. **Empfehlung: Wer Tokens sparen will, senkt eher

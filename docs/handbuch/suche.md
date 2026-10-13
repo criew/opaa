@@ -593,9 +593,9 @@ Zwei Verfahren stehen zur Wahl (`relevance-cutoff.mode`):
 Im Auslieferungsstand ist die Stufe **aus** (`fixed`) und steht im Protokoll als abgeschaltet. Die
 Werte der Rangfusion taugen nur bedingt als Maßstab: Ein Chunk, den beide Suchpfade gefunden haben,
 erreicht etwa den doppelten Wert eines Chunks, den nur einer fand, sodass ein relativer Schnitt vor
-allem diese Grenze trifft. Am Testkorpus der Finanzverwaltung sparte der relative Schnitt mit den
-Standardwerten etwa ein Drittel der Tokens, verlor aber deutlich Kernfakten (68 statt 84 von 132 im
-Kontext). Er kürzte fast immer bis auf die Mindestzahl und entfernte dabei auch Spitzentreffer
+allem diese Grenze trifft. Am Testkorpus der Finanzverwaltung, gemessen auf der Wertefusion und
+verglichen mit derselben Wertefusion ohne Schnitt, sparte der relative Schnitt mit den Standardwerten
+etwa ein Drittel der Tokens, verlor aber deutlich Kernfakten (68 statt 81 von 132 im Kontext). Er kürzte fast immer bis auf die Mindestzahl und entfernte dabei auch Spitzentreffer
 einzelner Teilfragen; gemessen wurde das, bevor der Schnitt fest übernommene Spitzentreffer
 verschonte. Der Knick schnitt mit dem Standardwert fast nie. **Wer Tokens sparen will, senkt eher
 `top-k`**, als den Schnitt einzuschalten. Das
@@ -1190,7 +1190,7 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `fusion.method` | `rrf` | Fusionsverfahren: `rrf` nach Rang, `score` nach normierten Werten |
 | `fusion.sub-query-quota` | an | Quote je Teilfrage: jede Teilfrage für sich fusioniert, Auswahl reihum; aus fusioniert alle Listen in einem Pool |
 | `fusion.vector-weight` | 0,7 | Anteil der Vektorsuche bei `fusion.method` = `score` (0 bis 1), der Volltext erhält den Rest |
-| `fusion.guaranteed-per-list` | 1 | Spitzentreffer je Liste (je Teilfrage und Suchpfad), die fest in die Auswahl kommen (0 bis 10); 0 schaltet sie ab. Mit dem Standardwert belegen sie bei drei Teilfragen und zwei Suchpfaden höchstens sechs Plätze |
+| `fusion.guaranteed-per-list` | 1 | Spitzentreffer je Liste (je Teilfrage und Suchpfad), die fest in die Auswahl kommen (0 bis 10); 0 schaltet sie ab. Mit dem Standardwert belegen sie bei drei Teilfragen und zwei Suchpfaden höchstens sechs Plätze; ist `top-k` nicht größer, belegen sie alle |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl, sortiert jede Liste vor der Fusion um; 1,0 schaltet sie ab |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `relevance-cutoff.mode` | `fixed` | Relevanzschnitt: `fixed` behält bis zu `top-k`, `relative` schneidet relativ zum besten Wert, `knee` am ersten großen Abfall |

@@ -69,7 +69,8 @@ public enum RetrievalNote {
           + " round-robin"),
   FUSION_SUB_QUERIES_POOLED("lists of %d sub-queries fused into one pool"),
   FUSION_GUARANTEED_PER_LIST(
-      "top %d of every list guaranteed: %d distinct chunk(s), %d of them beyond the fused budget"),
+      "top %d candidate(s) of every list guaranteed: %d distinct chunk(s), %d of them beyond the"
+          + " fused budget"),
   BUDGET_WIDENED_TO_RERANK_WINDOW("budget widened to the rerank candidate window %d"),
   OVERALL_BUDGET_TOP_K("overall budget top-k %d"),
   DEDUPLICATED_BY_CHUNK_ID(

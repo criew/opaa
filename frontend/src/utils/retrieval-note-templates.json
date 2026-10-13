@@ -42,7 +42,7 @@
     },
     {
       "name": "FUSION_GUARANTEED_PER_LIST",
-      "template": "top %d of every list guaranteed: %d distinct chunk(s), %d of them beyond the fused budget"
+      "template": "top %d candidate(s) of every list guaranteed: %d distinct chunk(s), %d of them beyond the fused budget"
     },
     {
       "name": "FUSION_SUB_QUERIES_POOLED",

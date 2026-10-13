@@ -212,9 +212,9 @@ const NOTE_RULES: NoteRule[] = [
   {
     name: 'FUSION_GUARANTEED_PER_LIST',
     pattern:
-      /^top (\d+) of every list guaranteed: (\d+) distinct chunk\(s\), (\d+) of them beyond the fused budget$/,
+      /^top (\d+) candidate\(s\) of every list guaranteed: (\d+) distinct chunk\(s\), (\d+) of them beyond the fused budget$/,
     german: (m) =>
-      `Die besten ${m[1]} Treffer jeder Liste sind fest übernommen: ${m[2]} Abschnitte, davon ${m[3]} jenseits der Auswahlgrenze der Fusion.`,
+      `${m[1] === '1' ? 'Der beste Treffer' : `Die besten ${m[1]} Treffer`} jeder Liste fest übernommen: ${m[2]} Abschnitte, davon ${m[3]} jenseits der Auswahlgrenze der Fusion.`,
   },
   {
     name: 'BUDGET_WIDENED_TO_RERANK_WINDOW',
