@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { Link as RouterLink, useNavigate } from 'react-router'
 import Alert from '@mui/material/Alert'
 import Button from '@mui/material/Button'
+import Link from '@mui/material/Link'
 import MenuItem from '@mui/material/MenuItem'
 import Select from '@mui/material/Select'
 import Stack from '@mui/material/Stack'
@@ -96,8 +97,22 @@ export default function SpaceMembersSection({
   // #144: the service answers the list only for ADMIN, the owner and the system administration;
   // for everybody else it stays empty and the tab shows the counts instead.
   useEffect(() => {
-    void loadMembers(spaceId)
-  }, [loadMembers, spaceId])
+    if (!space.isDefault) void loadMembers(spaceId)
+  }, [loadMembers, spaceId, space.isDefault])
+
+  // The default space admits nobody but its owner; the service refuses every change to it.
+  if (space.isDefault) {
+    return isOwner ? (
+      <Alert severity="info">
+        Ihr Standard-Space ist privat. Für gemeinsame Arbeit legen Sie einen eigenen Space an:{' '}
+        <Link component={RouterLink} to="/spaces/new">
+          Space anlegen
+        </Link>
+      </Alert>
+    ) : (
+      <Alert severity="info">Der Standard-Space ist privat.</Alert>
+    )
+  }
 
   return (
     <Stack spacing={2}>
@@ -110,16 +125,6 @@ export default function SpaceMembersSection({
           }}
         >
           {localError ?? storeError}
-        </Alert>
-      )}
-      {space.isDefault && space.memberCount === 1 && (
-        // #777: this hint used to replace the whole members section, including the
-        // "Mitglied hinzufügen"-Formular it explicitly promises - the default space is "ein
-        // Space wie jeder andere" (docs/features/spaces-and-assets.md), so members can be
-        // added here just like on any other space.
-        <Alert severity="info">
-          Dies ist Ihr Standard-Space. Sie arbeiten hier allein — Sie können jederzeit Mitglieder
-          hinzufügen.
         </Alert>
       )}
       {isLoadingMembers ? (
@@ -138,7 +143,6 @@ export default function SpaceMembersSection({
           <SpaceMemberList
             spaceId={spaceId}
             ownerId={space.ownerId}
-            isDefaultSpace={space.isDefault}
             members={members}
             canManage={canManage}
             isOwner={isOwner}

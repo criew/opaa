@@ -24,8 +24,8 @@ Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je
   `TransportStatusCodeSpecificationTest` hält das maschinell fest (Regel in `backend/AGENTS.md`).
 - **Startwächter in `config`:** `DatabaseSchemaGuard` verlangt für `opaa.database.schema` einen
   schlichten Bezeichner in Kleinbuchstaben und prüft vor Datenquelle und Liquibase.
-  `PgVectorDimensionsGuard` verweigert den Start, wenn die Spalte `embedding` eine andere Dimension
-  hat als konfiguriert, `PgVectorVersionGuard` bei pgvector älter als 0.8.0. `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit
+  `PgVectorVersionGuard` verweigert den Start bei pgvector älter als 0.8.0. Ein Wechsel des
+  Embedding-Modells verhindert den Start nicht; das erkennt `indexing.chunk.EmbeddingIndexReconciler`. `OpenAiBaseUrlGuard` verweigert eine leere Basis-URL oder eine mit
   Zugangsdaten. `DatabasePrerequisiteCheck` läuft vor jeder `SpringLiquibase`-Bean und bricht ab,
   wenn pgvector auf dem Server nicht installiert ist; den Bericht schreibt
   `DatabasePrerequisiteFailureAnalyzer` (registriert in `META-INF/spring.factories`). Eine

@@ -7,6 +7,8 @@ import io.opaa.api.dto.PromptRequest;
 import io.opaa.api.dto.PromptResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.prompt.PromptLibraryService;
 import io.opaa.prompt.PromptService;
 import jakarta.validation.Valid;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  * library are the asset shell's, under {@code /api/v1/assets/PROMPT_LIBRARY/{assetId}}.
  */
 @RestController
+@ConditionalOnFeature(Feature.PROMPT_LIBRARIES)
 @RequestMapping("/api/v1/prompt-libraries")
 public class PromptLibraryController {
 

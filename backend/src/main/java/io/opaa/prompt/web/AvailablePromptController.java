@@ -3,6 +3,8 @@ package io.opaa.prompt.web;
 import io.opaa.api.dto.AvailablePrompt;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.prompt.PromptService;
 import java.util.List;
 import java.util.UUID;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
  * formula, through {@link PromptService#available}.
  */
 @RestController
+@ConditionalOnFeature(Feature.PROMPT_LIBRARIES)
 public class AvailablePromptController {
 
   private final PromptService promptService;

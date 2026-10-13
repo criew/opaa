@@ -1694,3 +1694,51 @@ def test_a_space_is_created_with_persons_and_groups_in_one_subject_form() -> Non
     assert {frozenset(row) for row in body["initialMembers"] + group_rows} == {
         frozenset({"subjectType", "subjectId", "role"})
     }
+
+
+class FakeConfigClient:
+    """The public sign-in configuration as GET /v1/auth/config answers it."""
+
+    def __init__(self, config: dict) -> None:
+        self.config = config
+
+    def get_ok(self, path: str, **kwargs):
+        assert path == "/v1/auth/config"
+        return self.config
+
+
+def test_prompt_libraries_count_as_on_unless_the_configuration_switches_them_off() -> None:
+    assert seed.prompt_libraries_enabled(FakeConfigClient({"mode": "oidc"}))
+    assert seed.prompt_libraries_enabled(
+        FakeConfigClient({"features": {"promptLibraries": True, "metadata": False}})
+    )
+    assert not seed.prompt_libraries_enabled(
+        FakeConfigClient({"features": {"promptLibraries": False}})
+    )
+
+
+def test_switched_off_prompt_libraries_leave_personal_spaces_with_knowledge_only() -> None:
+    associations: set = set()
+    clients = {
+        user.key: FakePersonalSpaceClient(user.key, associations) for user in DEMO.all_users()
+    }
+    library_ids = {lib.name: f"lib-{lib.name}" for lib in DEMO.libraries}
+
+    seed.seed_personal_spaces(clients, library_ids, None, DEMO)
+
+    assert associations == {
+        (personal_def.owner_key, "KNOWLEDGE_LIBRARY", library_ids[name])
+        for personal_def in DEMO.personal_spaces
+        for name in personal_def.library_names
+    }
+
+
+def test_switched_off_prompt_libraries_set_no_prompt_favorite() -> None:
+    calls: list = []
+    clients = {u.key: FakeFavoriteClient(u.key, calls) for u in DEMO.all_users()}
+    library_ids = {lib.name: f"lib-{lib.name}" for lib in DEMO.libraries}
+
+    seed.seed_favorites(clients, library_ids, None, DEMO)
+
+    assert calls
+    assert all("/PROMPT_LIBRARY/" not in path for _, _, path in calls)

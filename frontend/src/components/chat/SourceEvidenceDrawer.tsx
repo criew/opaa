@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Drawer from '@mui/material/Drawer'
@@ -20,8 +20,15 @@ import {
   formatMetadataDetails,
   formatMetadataLine,
   metadataFilterMatchLabel,
+  withTitleMetadataOnly,
 } from './citations'
-import type { SourceBlockReason, SourceFreeze, SourceTypeKey } from '../../types/api'
+import type {
+  SourceBlockReason,
+  SourceFreeze,
+  SourceReference,
+  SourceTypeKey,
+} from '../../types/api'
+import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 import type { OpenableDocument } from '../../hooks/useDocumentPreview'
 import { fontFamily } from '../../theme/tokens'
 
@@ -180,6 +187,14 @@ export default function SourceEvidenceDrawer({
     })
   }
 
+  // Without metadata (ADR-0044) a Beleg keeps its title and nothing else.
+  const metadataEnabled = useFeatureEnabled('metadata')
+  const shown = useCallback(
+    (source: SourceReference | undefined) =>
+      metadataEnabled ? source : withTitleMetadataOnly(source),
+    [metadataEnabled],
+  )
+
   const docs = useMemo((): EvidenceDoc[] => {
     const cited: EvidenceDoc[] = citations.docs.map((doc, docIndex) => ({
       fileName: doc.fileName,
@@ -197,10 +212,10 @@ export default function SourceEvidenceDrawer({
       documentId: doc.source?.documentId,
       sourceType: doc.source?.sourceType,
       sourceUrl: doc.source?.sourceUrl,
-      metadataLine: formatMetadataLine(doc.source),
-      metadataDescription: describeMetadata(doc.source),
-      metadataDetails: formatMetadataDetails(doc.source),
-      filterMatchLabel: metadataFilterMatchLabel(doc.source),
+      metadataLine: formatMetadataLine(shown(doc.source)),
+      metadataDescription: describeMetadata(shown(doc.source)),
+      metadataDetails: formatMetadataDetails(shown(doc.source)),
+      filterMatchLabel: metadataFilterMatchLabel(shown(doc.source)),
     }))
     const uncited: EvidenceDoc[] = citations.uncited.map((source) => ({
       fileName: source.fileName,
@@ -217,10 +232,10 @@ export default function SourceEvidenceDrawer({
       documentId: source.documentId,
       sourceType: source.sourceType,
       sourceUrl: source.sourceUrl,
-      metadataLine: formatMetadataLine(source),
-      metadataDescription: describeMetadata(source),
-      metadataDetails: formatMetadataDetails(source),
-      filterMatchLabel: metadataFilterMatchLabel(source),
+      metadataLine: formatMetadataLine(shown(source)),
+      metadataDescription: describeMetadata(shown(source)),
+      metadataDetails: formatMetadataDetails(shown(source)),
+      filterMatchLabel: metadataFilterMatchLabel(shown(source)),
     }))
     // #1102: never order by relevanceScore - a persisted message's snapshot may still carry the
     // pre-#1102 path-dependent raw score, and sorting by that would drop a lexical-only source to
@@ -249,7 +264,7 @@ export default function SourceEvidenceDrawer({
       }
     }
     return rows.map((doc) => ({ ...doc, rank: rankByDoc.get(doc) }))
-  }, [citations])
+  }, [citations, shown])
 
   const visibleDocs = useMemo(() => {
     const needle = query.trim().toLowerCase()

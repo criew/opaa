@@ -1,5 +1,6 @@
 package io.opaa.retrieval.search;
 
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
@@ -11,6 +12,7 @@ import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageOutcome;
+import io.opaa.retrieval.StageStatus;
 import io.opaa.retrieval.scope.MetadataFilterExpressions;
 import io.opaa.retrieval.scope.SearchScopeStage;
 import java.util.ArrayList;
@@ -33,14 +35,19 @@ import org.springframework.stereotype.Component;
  * <p>With no search queries in the state - which happens exactly when {@link
  * RetrievalStageName#SUB_QUERY_DECOMPOSITION} is switched off - the bare question is searched and
  * recorded as the run's search query, so a run never reports having searched nothing while it did.
+ *
+ * <p>While the vector index is stale ({@link EmbeddingIndexState}) the stage searches nothing and
+ * reports itself {@link StageStatus#UNAVAILABLE}; the full-text path carries the run alone.
  */
 @Component
 public class VectorSearchStage implements RetrievalStage {
 
   private final VectorChunkSearch vectorChunkSearch;
+  private final EmbeddingIndexState indexState;
 
-  public VectorSearchStage(VectorChunkSearch vectorChunkSearch) {
+  public VectorSearchStage(VectorChunkSearch vectorChunkSearch, EmbeddingIndexState indexState) {
     this.vectorChunkSearch = vectorChunkSearch;
+    this.indexState = indexState;
   }
 
   @Override
@@ -57,6 +64,18 @@ public class VectorSearchStage implements RetrievalStage {
             state.requiredLibraryFilter(), state.metadataFilterExpression());
     QueryProperties properties = context.queryProperties();
     List<String> searchQueries = SearchStageSupport.searchQueriesOrQuestion(context, state);
+    if (!indexState.isVectorSearchAvailable()) {
+      // Question and chunks would be embedded by different models: no list beats a wrong one.
+      int inFlight = state.candidateCount();
+      return new StageOutcome(
+          SearchStageSupport.withRecordedSearchQueries(state, searchQueries),
+          StageExplanation.notRun(
+              name(),
+              StageStatus.UNAVAILABLE,
+              inFlight,
+              inFlight,
+              RetrievalNote.VECTOR_SEARCH_SUSPENDED.format()));
+    }
 
     List<CandidateList> lists = new ArrayList<>(searchQueries.size());
     List<CandidateVerdict> verdicts = new ArrayList<>();

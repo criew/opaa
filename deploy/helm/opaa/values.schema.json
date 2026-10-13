@@ -329,6 +329,39 @@
         }
       }
     },
+    "features": {
+      "type": "object",
+      "description": "Installation-wide feature flags; each sets OPAA_FEATURES_<NAME>_ENABLED (promptLibraries -> OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED). Only flags the backend knows are accepted",
+      "additionalProperties": false,
+      "properties": {
+        "promptLibraries": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "description": "Prompt libraries"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "description": "Metadata of documents and libraries"
+        }
+      }
+    },
     "targetValidation": {
       "type": "object",
       "additionalProperties": false,
@@ -599,6 +632,11 @@
         "dimensions": {
           "type": "integer",
           "minimum": 1
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 60s, 3m or PT3M; empty keeps the application default"
         }
       },
       "required": [

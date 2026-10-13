@@ -1,10 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { Route, Routes } from 'react-router'
 import { renderWithProviders } from '../test/test-utils'
 import { server } from '../mocks/server'
+import { useAuthStore } from '../stores/authStore'
 import type { Capability } from '../types/api'
 import CatalogNewPage from './CatalogNewPage'
 
@@ -65,6 +66,32 @@ describe('CatalogNewPage (ADR-0039, "Neu")', () => {
     await user.keyboard('{Enter}')
 
     expect(await screen.findByText('Assistent Prompts')).toBeInTheDocument()
+  })
+
+  // #2588: a switched-off type is no option under "Neu", whatever rights the person holds.
+  describe('with prompt libraries switched off', () => {
+    afterEach(() => {
+      useAuthStore.setState({ features: {} })
+    })
+
+    it('offers knowledge only', async () => {
+      useAuthStore.setState({ features: { promptLibraries: false } })
+      renderPage()
+
+      expect(await screen.findByRole('radio', { name: /Wissen/ })).toBeInTheDocument()
+      expect(screen.queryByRole('radio', { name: /Prompts/ })).not.toBeInTheDocument()
+    })
+
+    it('explains a missing right to a person who could only create prompt libraries', async () => {
+      useAuthStore.setState({ features: { promptLibraries: false } })
+      withCapabilities(['CREATE_PROMPT_LIBRARY'])
+      renderPage()
+
+      await waitFor(() =>
+        expect(screen.queryByRole('radio', { name: /Wissen/ })).not.toBeInTheDocument(),
+      )
+      expect(screen.queryByRole('radio', { name: /Prompts/ })).not.toBeInTheDocument()
+    })
   })
 
   it('leaves out a type without the creation right', async () => {

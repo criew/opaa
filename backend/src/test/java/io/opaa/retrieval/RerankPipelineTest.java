@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.llm.RerankClient.ScoredCandidate;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
@@ -70,7 +71,7 @@ class RerankPipelineTest {
             new SearchScopeStage(),
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
-            new VectorSearchStage(vectorChunkSearch),
+            new VectorSearchStage(vectorChunkSearch, new EmbeddingIndexState()),
             // The lexical path is switched off in every QueryProperties here: this class is about
             // what happens to the fused list afterwards, not about how it was retrieved.
             new FullTextSearchStage(mock(FullTextChunkSearch.class)),

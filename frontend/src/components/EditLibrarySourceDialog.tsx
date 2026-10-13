@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import Dialog from '@mui/material/Dialog'
 import DialogActions from '@mui/material/DialogActions'
@@ -16,7 +17,10 @@ import {
   withConnection,
   withoutFixed,
 } from './library/sources/sourceConnection'
+import { reportSourceIssue } from './library/sources/reportSourceIssue'
+import { SourceIssueContext } from './library/sources/sourceIssueContext'
 import type { SourceFormContext } from './library/sources/types'
+import { formIssue, type SourceIssue } from '../utils/sourceIssue'
 
 /**
  * Editable snapshot of a connector library's source configuration. Deliberately narrower than
@@ -81,8 +85,14 @@ export default function EditLibrarySourceDialog({
   // credentials stay blank (write-only, ADR-0018) - there is nothing to prefill them with.
   const [storedValues, setValues] = useState<unknown>(() => configuration?.fromLibrary(library))
   const values = withConnection(storedValues, connection)
-  const [error, setError] = useState<string | null>(null)
+  const [issue, setIssue] = useState<SourceIssue | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const formRef = useRef<HTMLDivElement>(null)
+  const alertRef = useRef<HTMLDivElement>(null)
+
+  function report(next: SourceIssue) {
+    reportSourceIssue(next, setIssue, formRef.current, () => alertRef.current?.focus())
+  }
 
   function handleClose() {
     if (submitting) return
@@ -91,12 +101,12 @@ export default function EditLibrarySourceDialog({
 
   async function handleSave() {
     if (!configuration || connectionMissing) return
-    const validationError = configuration.validate(values, context)
-    if (validationError) {
-      setError(validationError)
+    const validationIssue = configuration.validate(values, context)
+    if (validationIssue) {
+      report(validationIssue)
       return
     }
-    setError(null)
+    setIssue(null)
     setSubmitting(true)
     try {
       await updateExistingLibrary(libraryId, {
@@ -111,8 +121,10 @@ export default function EditLibrarySourceDialog({
       })
       onClose()
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Quellkonfiguration konnte nicht gespeichert werden',
+      report(
+        formIssue(
+          err instanceof Error ? err.message : 'Quellkonfiguration konnte nicht gespeichert werden',
+        ),
       )
     } finally {
       setSubmitting(false)
@@ -129,7 +141,11 @@ export default function EditLibrarySourceDialog({
           <Alert severity="info">
             Diese Änderung wirkt erst mit dem nächsten Indizierungslauf dieser Bibliothek.
           </Alert>
-          {error && <Alert severity="error">{error}</Alert>}
+          {issue && !issue.field && (
+            <Alert severity="error" role="alert" ref={alertRef} tabIndex={-1}>
+              {issue.message}
+            </Alert>
+          )}
           {connectionMissing && (
             <Alert severity="warning" data-testid="edit-source-connection-missing">
               Die Angaben des Zugangs „{profile?.name}“ liegen nicht vor. Ohne sie lässt sich die
@@ -138,17 +154,21 @@ export default function EditLibrarySourceDialog({
             </Alert>
           )}
           {Form && !connectionMissing && (
-            <Form
-              values={values}
-              context={context}
-              onChange={(patch: object) => {
-                setValues((prev: unknown) => ({
-                  ...(withConnection(prev, connection) as object),
-                  ...withoutFixed(patch, connection),
-                }))
-                setError(null)
-              }}
-            />
+            <Box ref={formRef}>
+              <SourceIssueContext value={issue}>
+                <Form
+                  values={values}
+                  context={context}
+                  onChange={(patch: object) => {
+                    setValues((prev: unknown) => ({
+                      ...(withConnection(prev, connection) as object),
+                      ...withoutFixed(patch, connection),
+                    }))
+                    setIssue(null)
+                  }}
+                />
+              </SourceIssueContext>
+            </Box>
           )}
         </Stack>
       </DialogContent>

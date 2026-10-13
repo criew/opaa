@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
 import { useAuthStore } from './stores/authStore'
+import { setMockFeatures } from './mocks/authFixtures'
 
 describe('App', () => {
   beforeEach(() => {
@@ -13,6 +14,7 @@ describe('App', () => {
       token: null,
       error: null,
       userManager: null,
+      features: {},
     })
   })
 
@@ -95,6 +97,23 @@ describe('App', () => {
     expect(window.location.search).toBe(search)
     window.history.pushState({}, '', '/')
   })
+
+  // #2588: switched off, no prompt page exists; every former address leads to the bare catalog.
+  it.each(['/prompts', '/prompts/new', '/prompts/prompt-library-referat-50/freigaben'])(
+    'sends %s to the catalog while prompt libraries are switched off',
+    async (path) => {
+      // As after sign-in: the flags are known before the first protected route renders.
+      useAuthStore.setState({ features: { promptLibraries: false } })
+      setMockFeatures({ promptLibraries: false })
+      window.history.pushState({}, '', path)
+      render(<App />)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe('/catalog')
+      })
+      expect(window.location.search).toBe('')
+      window.history.pushState({}, '', '/')
+    },
+  )
 
   // #2504: Zugänge, Fremdzugänge und Fremdzugangsfreigaben sind ein Bereich „Anbindungen“. Ein
   // Lesezeichen auf eine frühere Seite landet am selben Inhalt.

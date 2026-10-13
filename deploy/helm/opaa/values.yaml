@@ -91,8 +91,12 @@ embedding:
   # e.g. nomic-embed-text
   model: ""
   # Dimensions of the embedding model, e.g. 768 for nomic-embed-text, 1536 for
-  # text-embedding-3-small. Cannot be changed later without re-indexing.
+  # text-embedding-3-small. Changing model or dimensions later needs a re-embedding started in the
+  # administration, no re-indexing.
   dimensions: null
+  # Budget of one embedding call; empty keeps the application default (60s). A large model on CPU
+  # needs more, e.g. 180s.
+  timeout: ""
 
 # Rerank endpoint (POST {baseUrl}/rerank), read on every start. The key, if needed, comes from the
 # secret (key OPAA_RERANK_API_KEY).
@@ -111,6 +115,17 @@ mail:
   connectTimeout: ""
   readTimeout: ""
   writeTimeout: ""
+
+# Installation-wide feature flags (OPAA_FEATURES_<NAME>_ENABLED), read once at start-up. Every flag
+# is on unless switched off here; switching a feature off hides it and ignores its existing data,
+# it deletes nothing. values.schema.json accepts only the flags listed here.
+features:
+  # Prompt libraries: false hides them from catalog, chat and interface; their data stays.
+  promptLibraries:
+    enabled: true
+  # Metadata of documents and libraries; false keeps only a document's title.
+  metadata:
+    enabled: true
 
 # Host names exempted from the address check (SSRF protection), which refuses private and
 # cluster-internal addresses by default.

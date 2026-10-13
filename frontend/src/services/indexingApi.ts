@@ -1,6 +1,7 @@
 import type {
   ContextPrefixRerunRequest,
   ContextPrefixRerunResponse,
+  EmbeddingReindexStatusResponse,
   MetadataBackfillRequest,
   MetadataBackfillResponse,
   IndexingRunListResponse,
@@ -112,6 +113,42 @@ export async function runContextPrefixRerunBatch(
     const { data } = await client.post<ContextPrefixRerunResponse>(
       '/v1/admin/indexing/context-prefix-rerun',
       request,
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** the vector index against the configured embedding model, and its re-embedding. */
+export async function getEmbeddingReindexStatus(): Promise<EmbeddingReindexStatusResponse> {
+  try {
+    const { data } = await client.get<EmbeddingReindexStatusResponse>(
+      '/v1/admin/indexing/embedding-reindex',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** starts or resumes the re-embedding; it runs in the background on the server. */
+export async function startEmbeddingReindex(): Promise<EmbeddingReindexStatusResponse> {
+  try {
+    const { data } = await client.post<EmbeddingReindexStatusResponse>(
+      '/v1/admin/indexing/embedding-reindex',
+    )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** stops the running re-embedding; what it embedded is kept for the next start. */
+export async function cancelEmbeddingReindex(): Promise<EmbeddingReindexStatusResponse> {
+  try {
+    const { data } = await client.delete<EmbeddingReindexStatusResponse>(
+      '/v1/admin/indexing/embedding-reindex',
     )
     return data
   } catch (err) {

@@ -4,7 +4,7 @@ import {
   confluenceSettingsOf,
   confluenceSpaceLabel,
   EMPTY_CONFLUENCE_VALUES,
-  validateConfluenceValues,
+  confluenceIssue,
   type ConfluenceSourceValues,
 } from '../../../utils/confluenceSource'
 import { confluenceEditionLabel } from '../../../utils/labels'
@@ -34,7 +34,7 @@ export const confluenceSource: SourceRegistration = {
       spaces: confluenceSettingsOf(library).spaces ?? [],
     }),
     isDirty: (values: ConfluenceSourceValues) => values.sourceUrl !== '',
-    validate: (values: ConfluenceSourceValues) => validateConfluenceValues(values),
+    validate: (values: ConfluenceSourceValues) => confluenceIssue(values),
     toPayload: (values: ConfluenceSourceValues) => ({
       sourceUrl: values.sourceUrl.trim(),
       sourceCredentials: confluenceCredentialsOf(values),

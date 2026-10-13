@@ -159,6 +159,10 @@
     {
       "name": "VECTOR_SEARCH_SHORT_LIST",
       "template": "%s returned %d of fetch-k %d candidate(s): fewer qualify within filter and similarity threshold, or the index scan stopped at its tuple or memory limit"
+    },
+    {
+      "name": "VECTOR_SEARCH_SUSPENDED",
+      "template": "vector search suspended: the vector index was built with another embedding model and is being re-embedded or waiting for it"
     }
   ],
   "listLabels": [

@@ -1,4 +1,8 @@
-import type { IndexingRunListResponse, IndexingStatusResponse } from '../types/api'
+import type {
+  EmbeddingReindexStatusResponse,
+  IndexingRunListResponse,
+  IndexingStatusResponse,
+} from '../types/api'
 
 export const mockIndexingIdle: IndexingStatusResponse = {
   status: 'IDLE',
@@ -53,4 +57,33 @@ export const mockIndexingRuns: IndexingRunListResponse = {
       eventsTruncatedCount: 0,
     },
   ],
+}
+
+/** A vector index of the configured model: nothing to re-embed, the vector search answers. */
+export const mockEmbeddingIndexCurrent: EmbeddingReindexStatusResponse = {
+  current: { model: 'nomic-embed-text', baseUrl: 'http://ollama:11434/v1', dimensions: 768 },
+  configured: { model: 'nomic-embed-text', baseUrl: 'http://ollama:11434/v1', dimensions: 768 },
+  stale: false,
+  running: false,
+  totalChunks: 2474,
+  embeddedChunks: 2474,
+  privateLibrariesCounted: true,
+}
+
+/** The same index after a switch to bge-m3, part of it already re-embedded by a cancelled run. */
+export const mockEmbeddingIndexStale: EmbeddingReindexStatusResponse = {
+  current: { model: 'nomic-embed-text', baseUrl: 'http://ollama:11434/v1', dimensions: 768 },
+  configured: { model: 'bge-m3', baseUrl: 'http://ollama:11434/v1', dimensions: 1024 },
+  stale: true,
+  running: false,
+  totalChunks: 2474,
+  embeddedChunks: 1237,
+  privateLibrariesCounted: false,
+  lastRun: {
+    status: 'CANCELLED',
+    startedAt: '2026-10-13T08:00:00Z',
+    finishedAt: '2026-10-13T08:40:00Z',
+    message:
+      'Von der Systemverwaltung abgebrochen. Bereits neu eingebettete Abschnitte bleiben erhalten.',
+  },
 }

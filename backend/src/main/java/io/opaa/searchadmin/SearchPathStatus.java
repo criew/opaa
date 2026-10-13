@@ -27,6 +27,8 @@ public record SearchPathStatus(
     ACTIVE,
     DISABLED,
     INCOMPLETE,
-    OUTDATED
+    OUTDATED,
+    /** Vector path only: the index was built with another embedding model. */
+    SUSPENDED
   }
 }

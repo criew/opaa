@@ -1,8 +1,12 @@
 import type { SvgIconComponent } from '@mui/icons-material'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
+import { useMemo } from 'react'
 import { CATALOG_ROUTE, promptLibraryRoute } from '../../routes'
+import { useAuthStore } from '../../stores/authStore'
 import type { AssetType, Capability } from '../../types/api'
+import type { FeatureFlags } from '../../types/auth'
+import { isAssetTypeOffered } from '../../utils/installationFeatures'
 
 /** Everything the interface needs to know about one asset type. */
 export interface AssetTypeDefinition {
@@ -36,7 +40,8 @@ export interface AssetTypeDefinition {
  * The asset types in the order of the catalog's filter and the type choice. A new type needs one
  * entry here to appear in the catalog, its type filter and under "Neu", and for its pages to
  * render in the global frame under the rail's "Katalog" - no rail entry, no overview page of its
- * own. Its routes themselves still need registering in App.tsx.
+ * own. Its routes themselves still need registering in App.tsx. Every list the interface shows
+ * reads the active types ({@link activeAssetTypes}, {@link useActiveAssetTypes}), never this one.
  */
 export const ASSET_TYPES: AssetTypeDefinition[] = [
   {
@@ -70,10 +75,30 @@ export const ASSET_TYPES: AssetTypeDefinition[] = [
   },
 ]
 
+/**
+ * The types whose installation-wide feature (ADR-0044, `ASSET_TYPE_FEATURES`) is on; a type behind
+ * a switched-off feature is offered nowhere - no filter, tile, "Neu" option, picker or page.
+ */
+function activeIn(features: FeatureFlags): AssetTypeDefinition[] {
+  return ASSET_TYPES.filter((definition) => isAssetTypeOffered(definition.type, features))
+}
+
+/** The types the installation offers, for code outside React; components use the hook. */
+export function activeAssetTypes(): AssetTypeDefinition[] {
+  return activeIn(useAuthStore.getState().features)
+}
+
+/** The types the installation offers; re-renders when the feature flags are read again. */
+export function useActiveAssetTypes(): AssetTypeDefinition[] {
+  const features = useAuthStore((state) => state.features)
+  return useMemo(() => activeIn(features), [features])
+}
+
+/** The definition of an offered type; a type behind a switched-off feature has none. */
 export function assetTypeDefinition(
   assetType: AssetType | string | null | undefined,
 ): AssetTypeDefinition | undefined {
-  return ASSET_TYPES.find((definition) => definition.type === assetType)
+  return activeAssetTypes().find((definition) => definition.type === assetType)
 }
 
 /** The singular noun of an asset type, as a sentence names it ("diese Bibliothek"). */
@@ -93,14 +118,14 @@ export function assetTypeTitle(assetType: AssetType | string | null | undefined)
 export function creatableAssetTypes(
   isMissing: (capability: Capability) => boolean,
 ): AssetTypeDefinition[] {
-  return ASSET_TYPES.filter((definition) =>
+  return activeAssetTypes().filter((definition) =>
     definition.createCapabilities.some((capability) => !isMissing(capability)),
   )
 }
 
 /** The catalog and the pages of every asset type - the rail's "Katalog" scope. */
 export function catalogScopePrefixes(): string[] {
-  return [CATALOG_ROUTE, ...ASSET_TYPES.map((definition) => definition.routePrefix)]
+  return [CATALOG_ROUTE, ...activeAssetTypes().map((definition) => definition.routePrefix)]
 }
 
 /** The catalog, narrowed to one type when given. */

@@ -13,6 +13,8 @@ import io.opaa.api.dto.LibraryMetadataSampleResponse;
 import io.opaa.api.dto.MetadataValueRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.metadata.DocumentMetadataCorrectionService;
 import io.opaa.metadata.LibraryMetadataExtractionService;
 import io.opaa.metadata.LibraryMetadataMaintenanceService;
@@ -33,9 +35,11 @@ import org.springframework.web.bind.annotation.RestController;
  * Manual correction of a document's core metadata (#1068): read, set, delete and the
  * Sammelzuweisung, plus the Dokumentart vocabulary a client offers as choice list, and the
  * Pflege-Anker of a library (#1069). Rights, validation and audit live in {@link
- * DocumentMetadataCorrectionService} and {@link LibraryMetadataMaintenanceService}.
+ * DocumentMetadataCorrectionService} and {@link LibraryMetadataMaintenanceService}. Absent while
+ * the metadata feature is off (ADR-0044).
  */
 @RestController
+@ConditionalOnFeature(Feature.METADATA)
 @RequestMapping("/api/v1")
 public class DocumentMetadataController {
 

@@ -893,3 +893,254 @@ describe('EditLibrarySourceDialog', () => {
     })
   })
 })
+
+// docs/design/accessibility.md 2.7: an error belongs to its field and takes the focus there
+describe('EditLibrarySourceDialog errors at their field (#2193)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    useLibraryStore.setState({ libraries: [], libraryDetails: {}, isLoading: false, error: null })
+  })
+
+  function save(user: ReturnType<typeof userEvent.setup>) {
+    return user.click(screen.getByRole('button', { name: /^speichern$/i }))
+  }
+
+  it('ties a wrong directory path to its field and focuses it', async () => {
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-1"
+        library={filesystemLibrary}
+      />,
+    )
+    const user = userEvent.setup()
+    const path = await screen.findByLabelText(/verzeichnispfad/i)
+    await user.clear(path)
+    await user.type(path, 'relativ/pfad')
+
+    await save(user)
+
+    expect(path).toHaveAttribute('aria-invalid', 'true')
+    expect(path).toHaveAccessibleDescription(/absoluter Pfad sein, z\. B\. \/data\/dokumente/)
+    expect(path).toHaveFocus()
+    // the message stands at the field only, not a second time in a dialog-wide alert
+    expect(
+      screen.getAllByRole('alert').filter((alert) => alert.textContent?.includes('absoluter Pfad')),
+    ).toHaveLength(0)
+    expect(mockUpdateLibrary).not.toHaveBeenCalled()
+  })
+
+  it('ties a wrong exclusion pattern to the pattern field, not to the path', async () => {
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-1"
+        library={filesystemLibrary}
+      />,
+    )
+    const user = userEvent.setup()
+    const patterns = await screen.findByLabelText(/ausschlussmuster/i)
+    await user.type(patterns, '/data/Archiv/**')
+
+    await save(user)
+
+    expect(patterns).toHaveAccessibleDescription(/relativ zum Verzeichnispfad/)
+    expect(patterns).toHaveFocus()
+    expect(screen.getByLabelText(/verzeichnispfad/i)).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  it('ties a wrong address to the URL field and clears the error with the next input', async () => {
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-2"
+        library={httpDirectoryLibrary}
+      />,
+    )
+    const user = userEvent.setup()
+    const url = await screen.findByLabelText(/adresse \(url\)/i)
+    await user.clear(url)
+    await user.type(url, 'docs.example')
+
+    await save(user)
+
+    expect(url).toHaveAttribute('aria-invalid', 'true')
+    expect(url).toHaveAccessibleDescription(/muss mit http:\/\/ oder https:\/\/ beginnen/)
+    expect(url).toHaveFocus()
+
+    await user.type(url, '/')
+    expect(url).not.toHaveAttribute('aria-invalid', 'true')
+  })
+
+  describe('S3 form', () => {
+    const s3Library = {
+      name: 'Protokolle',
+      description: null,
+      sourceType: 'S3' as const,
+      sourcePath: null,
+      sourceUrl: 'https://minio.intern.example:9000',
+      sourceCredentialsSet: true,
+      sourceSettings: {
+        region: 'us-east-1',
+        pathStyle: true,
+        scopes: [{ bucket: 'protokolle', prefix: '2025/' }],
+        includePatterns: [],
+        excludePatterns: [],
+      },
+    }
+
+    it('ties a missing secret key to its field and focuses it', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+      await user.type(screen.getByLabelText('Neuer Access Key'), 'AKIANEU')
+
+      await save(user)
+
+      const secret = screen.getByLabelText('Neuer Secret Key')
+      expect(secret).toHaveAttribute('aria-invalid', 'true')
+      expect(secret).toHaveAccessibleDescription(/Secret Key ist erforderlich/)
+      expect(secret).toHaveFocus()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    }, 15000)
+
+    it('ties an empty endpoint to the endpoint field', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+      await user.clear(screen.getByLabelText('Endpoint'))
+
+      await save(user)
+
+      const endpoint = screen.getByLabelText('Endpoint')
+      expect(endpoint).toHaveAccessibleDescription(/Endpoint des Objektspeichers ist erforderlich/)
+      expect(endpoint).toHaveFocus()
+    }, 15000)
+
+    it('ties a scope error to the row it is about', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+      await user.click(screen.getByRole('button', { name: 'Bereich' }))
+      await user.type(screen.getByLabelText(/^Präfix 2/), 'nur-praefix/')
+
+      await save(user)
+
+      const bucket = screen.getByLabelText('Bucket 2')
+      expect(bucket).toHaveAccessibleDescription(/Der Bucket-Name ist erforderlich/)
+      expect(bucket).toHaveFocus()
+      expect(screen.getByLabelText('Bucket 1')).not.toHaveAttribute('aria-invalid', 'true')
+    }, 15000)
+
+    it('opens the collapsed advanced section for a pattern error and focuses the field', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+      await user.click(screen.getByRole('button', { name: /Erweitert/ }))
+      await user.type(screen.getByLabelText(/^Einschlussmuster/), '*.pdf{Enter}*.pdf')
+      await user.click(screen.getByRole('button', { name: /Erweitert/ }))
+
+      await save(user)
+
+      const include = screen.getByLabelText(/^Einschlussmuster/)
+      const advanced = screen.getByRole('button', { name: /Erweitert/ })
+      expect(advanced).toHaveAttribute('aria-expanded', 'true')
+      expect(include).toHaveAccessibleDescription(/ein Muster ist mehrfach angegeben/)
+      expect(include).toHaveFocus()
+
+      // correcting the pattern clears the issue, but leaves the section open under the cursor
+      await user.keyboard('{Backspace}')
+      expect(include).not.toHaveAttribute('aria-invalid', 'true')
+      expect(advanced).toHaveAttribute('aria-expanded', 'true')
+      expect(include).toHaveFocus()
+    }, 15000)
+
+    // regression guard for #2604: every report opens the section, even with an unchanged message
+    it('reopens the advanced section when the same pattern error is reported again', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+      await user.click(screen.getByRole('button', { name: /Erweitert/ }))
+      await user.type(screen.getByLabelText(/^Einschlussmuster/), '*.pdf{Enter}*.pdf')
+      await save(user)
+
+      const advanced = screen.getByRole('button', { name: /Erweitert/ })
+      await user.click(advanced)
+      expect(advanced).toHaveAttribute('aria-expanded', 'false')
+
+      await save(user)
+
+      const include = screen.getByLabelText(/^Einschlussmuster/)
+      expect(advanced).toHaveAttribute('aria-expanded', 'true')
+      expect(include).toHaveAccessibleDescription(/ein Muster ist mehrfach angegeben/)
+      expect(include).toHaveFocus()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    }, 15000)
+  })
+
+  it('shows an issue of a field the form does not show in the live region and focuses it', async () => {
+    // under a profile without an imitated account the form shows no field for it
+    const driveLibrary = {
+      name: 'Ablage',
+      description: null,
+      sourceType: 'GOOGLE_DRIVE' as const,
+      sourcePath: null,
+      sourceUrl: 'https://www.googleapis.com',
+      sourceCredentialsSet: false,
+      sourceSettings: { scopes: [{ myDrive: true, name: 'Meine Ablage' }] },
+      connectionProfile: {
+        id: 'profile-drive',
+        name: 'Zugang Drive',
+        serverUrl: 'https://www.googleapis.com',
+        authMethod: 'SERVICE_ACCOUNT_KEY' as const,
+        connectorDefaults: {},
+      },
+    }
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="lib-drive"
+        library={driveLibrary}
+      />,
+    )
+    const user = userEvent.setup()
+    expect(screen.queryByLabelText(/Imitiertes Konto/)).not.toBeInTheDocument()
+
+    await save(user)
+
+    const message = screen.getByText(/„Meine Ablage“ setzt ein imitiertes Konto voraus/)
+    const alert = message.closest<HTMLElement>('[role="alert"]')
+    expect(alert).not.toBeNull()
+    expect(alert).toHaveFocus()
+    expect(mockUpdateLibrary).not.toHaveBeenCalled()
+  }, 15000)
+
+  it('announces a server error without a field as a live region and focuses it', async () => {
+    mockUpdateLibrary.mockRejectedValueOnce(new Error('Die Quelle ist nicht erreichbar.'))
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="library-2"
+        library={httpDirectoryLibrary}
+      />,
+    )
+    const user = userEvent.setup()
+
+    await save(user)
+
+    const message = await screen.findByText('Die Quelle ist nicht erreichbar.')
+    const alert = message.closest<HTMLElement>('[role="alert"]')
+    expect(alert).not.toBeNull()
+    await waitFor(() => expect(alert).toHaveFocus())
+  })
+})

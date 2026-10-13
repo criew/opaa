@@ -136,6 +136,26 @@ class SearchAdminResponseMapperTest {
   }
 
   @Test
+  void aSuspendedVectorPathSaysThatOnlyTheFullTextSearchAnswers() {
+    SearchStatusResponse response =
+        SearchAdminResponseMapper.toStatusResponse(
+            new SearchStatus(
+                List.of(),
+                List.of(
+                    new SearchPathStatus(
+                        SearchPathStatus.SearchPathName.VECTOR,
+                        SearchPathStatus.SearchPathCondition.SUSPENDED,
+                        0,
+                        5)),
+                List.of(),
+                new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
+
+    var path = response.getSearchPaths().get(0);
+    assertThat(path.getState()).isEqualTo(SearchPathState.SUSPENDED);
+    assertThat(path.getDetail()).contains("Vektorsuche ist ausgesetzt", "Volltextsuche");
+  }
+
+  @Test
   void aSearchPathWithAVersionBacklogNamesHowManyLibrariesCarryIt() {
     SearchStatusResponse response =
         SearchAdminResponseMapper.toStatusResponse(

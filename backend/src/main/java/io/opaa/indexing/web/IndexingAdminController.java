@@ -1,10 +1,7 @@
 package io.opaa.indexing.web;
 
-import io.opaa.api.dto.ContextPrefixRerunRequest;
-import io.opaa.api.dto.ContextPrefixRerunResponse;
+import io.opaa.api.dto.EmbeddingReindexStatusResponse;
 import io.opaa.api.dto.LowChunkDocumentPageResponse;
-import io.opaa.api.dto.MetadataBackfillRequest;
-import io.opaa.api.dto.MetadataBackfillResponse;
 import io.opaa.api.dto.PipelineReindexRequest;
 import io.opaa.api.dto.PipelineReindexResponse;
 import io.opaa.api.dto.PipelineVersionStatusResponse;
@@ -16,15 +13,12 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
-import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
-import io.opaa.indexing.maintenance.ContextPrefixRerunService;
+import io.opaa.indexing.maintenance.EmbeddingReindexProgress;
+import io.opaa.indexing.maintenance.EmbeddingReindexService;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
-import io.opaa.indexing.maintenance.MetadataBackfillResult;
-import io.opaa.indexing.maintenance.MetadataBackfillService;
 import io.opaa.indexing.maintenance.PipelineReindexResult;
 import io.opaa.indexing.maintenance.PipelineReindexService;
 import io.opaa.llm.web.LlmModelController;
-import io.opaa.metadata.CoreMetadataExtractor;
 import io.opaa.permission.PersonThreshold;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -36,6 +30,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -59,8 +54,7 @@ public class IndexingAdminController {
 
   private final LowChunkDocumentAuditService lowChunkDocumentAuditService;
   private final PipelineReindexService pipelineReindexService;
-  private final MetadataBackfillService metadataBackfillService;
-  private final ContextPrefixRerunService contextPrefixRerunService;
+  private final EmbeddingReindexService embeddingReindexService;
   private final DocumentFormatRegistry pipelineRegistry;
   private final AuditedAdminCall auditedAdminCall;
   private final PersonThreshold personThreshold;
@@ -68,16 +62,14 @@ public class IndexingAdminController {
   public IndexingAdminController(
       LowChunkDocumentAuditService lowChunkDocumentAuditService,
       PipelineReindexService pipelineReindexService,
-      MetadataBackfillService metadataBackfillService,
-      ContextPrefixRerunService contextPrefixRerunService,
+      EmbeddingReindexService embeddingReindexService,
       DocumentFormatRegistry pipelineRegistry,
       AuditEventRecorder auditEventRecorder,
       PersonThreshold personThreshold) {
     this.personThreshold = personThreshold;
     this.lowChunkDocumentAuditService = lowChunkDocumentAuditService;
     this.pipelineReindexService = pipelineReindexService;
-    this.metadataBackfillService = metadataBackfillService;
-    this.contextPrefixRerunService = contextPrefixRerunService;
+    this.embeddingReindexService = embeddingReindexService;
     this.pipelineRegistry = pipelineRegistry;
     this.auditedAdminCall = new AuditedAdminCall(auditEventRecorder);
   }
@@ -182,68 +174,67 @@ public class IndexingAdminController {
     return PipelineVersionResponseMapper.toReindexResponse(result);
   }
 
-  /**
-   * One batch of the deterministic core-metadata backfill (#1067). The library is the explicit,
-   * library-wise release the specification demands; a library of another organization is absent
-   * (404), decided in the service. Pausing is not calling again; the next call resumes.
-   */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-  @PostMapping("/metadata-backfill")
-  public MetadataBackfillResponse backfillMetadataBatch(
-      @RequestBody MetadataBackfillRequest request, @Caller CurrentUser caller) {
-    UUID libraryId = requireLibraryId(request.getLibraryId());
-    int batchSize = effectiveBatchSize(request.getBatchSize());
-    Map<String, Object> requested = new LinkedHashMap<>();
-    requested.put("extractionVersion", CoreMetadataExtractor.EXTRACTION_VERSION);
-    requested.put("batchSize", batchSize);
-    MetadataBackfillResult result =
-        audited(
-            caller,
-            AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED,
-            AuditObjectType.KNOWLEDGE_LIBRARY,
-            libraryId,
-            "Bibliothek " + libraryId,
-            requested,
-            () ->
-                metadataBackfillService.backfillBatch(
-                    caller.organizationId(), libraryId, requireBatchSize(batchSize)),
-            outcome ->
-                Map.of(
-                    "processedDocuments", outcome.processedDocuments(),
-                    "markedForNextRun", outcome.markedForNextRun(),
-                    "skippedDocuments", outcome.skippedDocuments()));
-    return MetadataBackfillResponseMapper.toBackfillResponse(result);
+  @GetMapping("/embedding-reindex")
+  public EmbeddingReindexStatusResponse getEmbeddingReindexStatus() {
+    return EmbeddingReindexResponseMapper.toResponse(embeddingReindexService.progress());
   }
 
   /**
-   * One batch of the Kontextpräfix-Nachlauf (#1072). The library is the explicit, library-wise
-   * release the specification demands; saving a schema change never starts it. Pausing is not
-   * calling again; the next call resumes at the next unprocessed document.
+   * Starts or resumes the re-embedding of the whole vector index. Installation-wide; the call is
+   * recorded in the caller's organization, the run's end by the run itself.
    */
   @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-  @PostMapping("/context-prefix-rerun")
-  public ContextPrefixRerunResponse rerunContextPrefixBatch(
-      @RequestBody ContextPrefixRerunRequest request, @Caller CurrentUser caller) {
-    UUID libraryId = requireLibraryId(request.getLibraryId());
-    int batchSize = effectiveBatchSize(request.getBatchSize());
-    Map<String, Object> requested = new LinkedHashMap<>();
-    requested.put("batchSize", batchSize);
-    ContextPrefixRerunResult result =
+  @PostMapping("/embedding-reindex")
+  public EmbeddingReindexStatusResponse startEmbeddingReindex(@Caller CurrentUser caller) {
+    EmbeddingReindexProgress progress =
         audited(
             caller,
-            AuditEventType.INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
-            AuditObjectType.KNOWLEDGE_LIBRARY,
-            libraryId,
-            "Bibliothek " + libraryId,
-            requested,
-            () ->
-                contextPrefixRerunService.rerunBatch(
-                    caller.organizationId(), libraryId, requireBatchSize(batchSize)),
-            outcome ->
-                Map.of(
-                    "processedDocuments", outcome.processedDocuments(),
-                    "skippedDocuments", outcome.skippedDocuments()));
-    return MetadataBackfillResponseMapper.toRerunResponse(result);
+            AuditEventType.EMBEDDING_REINDEX_STARTED,
+            AuditObjectType.SYSTEM_SETTING,
+            EmbeddingReindexService.AUDIT_OBJECT_ID,
+            EmbeddingReindexService.AUDIT_OBJECT_LABEL,
+            Map.of(),
+            () -> embeddingReindexService.start(caller.id(), caller.organizationId()),
+            EmbeddingReindexCounters::of);
+    return EmbeddingReindexResponseMapper.toResponse(progress);
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @DeleteMapping("/embedding-reindex")
+  public EmbeddingReindexStatusResponse cancelEmbeddingReindex(@Caller CurrentUser caller) {
+    EmbeddingReindexProgress progress =
+        audited(
+            caller,
+            AuditEventType.EMBEDDING_REINDEX_CANCELLED,
+            AuditObjectType.SYSTEM_SETTING,
+            EmbeddingReindexService.AUDIT_OBJECT_ID,
+            EmbeddingReindexService.AUDIT_OBJECT_LABEL,
+            Map.of(),
+            embeddingReindexService::cancel,
+            EmbeddingReindexCounters::of);
+    return EmbeddingReindexResponseMapper.toResponse(progress);
+  }
+
+  /**
+   * What the audit event of a start or stop records: the model and how far the index got, the
+   * chunks of private libraries masked exactly as in the answer.
+   */
+  private static final class EmbeddingReindexCounters {
+
+    private EmbeddingReindexCounters() {}
+
+    static Map<String, Object> of(EmbeddingReindexProgress progress) {
+      Map<String, Object> counters = new LinkedHashMap<>();
+      if (progress.configured() != null && progress.configured().model() != null) {
+        counters.put("model", progress.configured().model());
+        counters.put("dimensions", progress.configured().dimensions());
+      }
+      counters.put("totalChunks", progress.totalChunks());
+      counters.put("embeddedChunks", progress.embeddedChunks());
+      counters.put("privateLibrariesCounted", progress.privateLibrariesCounted());
+      return counters;
+    }
   }
 
   /**
@@ -273,25 +264,14 @@ public class IndexingAdminController {
   }
 
   /**
-   * Checked before the audited section: without a library there is no object to record the call
-   * against - the request is malformed rather than an administrative decision.
-   */
-  private static UUID requireLibraryId(UUID libraryId) {
-    if (libraryId == null) {
-      throw new IllegalArgumentException("libraryId ist erforderlich");
-    }
-    return libraryId;
-  }
-
-  /**
    * The batch size the call is about - defaulted but not yet validated, so a rejected out-of-range
    * value is recorded as requested.
    */
-  private static int effectiveBatchSize(Integer requestedBatchSize) {
+  static int effectiveBatchSize(Integer requestedBatchSize) {
     return requestedBatchSize == null ? DEFAULT_REINDEX_BATCH_SIZE : requestedBatchSize;
   }
 
-  private static int requireBatchSize(int batchSize) {
+  static int requireBatchSize(int batchSize) {
     if (batchSize < 1 || batchSize > MAX_REINDEX_BATCH_SIZE) {
       throw new IllegalArgumentException(
           "batchSize muss zwischen 1 und " + MAX_REINDEX_BATCH_SIZE + " liegen, war " + batchSize);

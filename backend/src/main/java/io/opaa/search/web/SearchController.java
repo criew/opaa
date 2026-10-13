@@ -1,11 +1,13 @@
 package io.opaa.search.web;
 
+import io.opaa.api.dto.SearchAvailabilityResponse;
 import io.opaa.api.dto.SearchHitContentResponse;
 import io.opaa.api.dto.SearchRequest;
 import io.opaa.api.dto.SearchResponse;
 import io.opaa.api.dto.SearchableLibrary;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.metadata.web.MetadataFilterMapper;
 import io.opaa.search.PassageFetchService;
 import io.opaa.search.SearchService;
@@ -34,10 +36,24 @@ public class SearchController {
 
   private final SearchService searchService;
   private final PassageFetchService passageFetchService;
+  private final EmbeddingIndexState embeddingIndexState;
 
-  public SearchController(SearchService searchService, PassageFetchService passageFetchService) {
+  public SearchController(
+      SearchService searchService,
+      PassageFetchService passageFetchService,
+      EmbeddingIndexState embeddingIndexState) {
     this.searchService = searchService;
     this.passageFetchService = passageFetchService;
+    this.embeddingIndexState = embeddingIndexState;
+  }
+
+  /** Whether the vector search answers; the chat shows a hint while it does not. */
+  @GetMapping("/availability")
+  public SearchAvailabilityResponse availability() {
+    return new SearchAvailabilityResponse(
+        embeddingIndexState.isVectorSearchAvailable()
+            ? SearchAvailabilityResponse.VectorSearchEnum.AVAILABLE
+            : SearchAvailabilityResponse.VectorSearchEnum.SUSPENDED);
   }
 
   @PostMapping

@@ -19,18 +19,18 @@ hängt nur von foundation und identity ab.
 - **Geltungsbereich einer Fähigkeit** hat nur `CREATE_CONNECTOR_LIBRARY` (`CapabilityService#isScoped`):
   rights speichert `scope` und deutet ihn nie; jede Prüfung dieser Fähigkeit nennt ihn. Entschieden
   wird die Freigabe in connections (`ConnectorReleaseService`, ADR-0041).
-- **Grants sind typunabhängig:** Ein Grant nennt sein Asset über `AssetType` plus ID; `permission`
-  zählt die Typen nie auf. `asset_grants` verweist mit der Organisation im Schlüssel und
-  `ON DELETE CASCADE` auf `assets` — kein Grant überlebt sein Asset.
+- **Grants sind typunabhängig:** Asset über `AssetType` plus ID, Typen nie aufgezählt; `asset_grants`
+  verweist mit der Organisation im Schlüssel per `ON DELETE CASCADE` auf `assets`.
 - **Die Formel ist hier vollständig:** direkter Grant, Gruppengrant und Grant an „Alle Konten“.
   Einziger Boden außerhalb: In der Asset-Verwaltung zählt die Systemverwaltung als Eigentümer — nie
   für die Suche und nie bei einem Nur-Besitzerin-Asset.
 - **Nur-Besitzerin-Merkmal** (`assets.owner_only`): beim Anlegen gesetzt, samt Eigentümer
   unveränderlich, nur der Grant der Besitzerin (Trigger); Regeln in `asset.OwnerOnlyRule`, ins
   Protokoll nur über `Asset#auditName`/`auditPayload`, Zahlen nach Personen über `PersonThreshold`.
-- **Jede Mechanik der Asset-Schale gibt es genau einmal.** Ein neuer Asset-Typ bringt eine Tabelle,
-  eine Entity, die `Asset` erweitert, und eine `AssetTypeDefinition` mit — keine eigene
-  Grant-Logik, keine eigene Historie, keine eigene Fundquelle.
+- **Jede Mechanik der Asset-Schale gibt es genau einmal.** Ein neuer Typ bringt Tabelle, Entity
+  (erweitert `Asset`) und `AssetTypeDefinition` mit, keine eigene Grant-Logik, Historie, Fundquelle.
+- **Inaktiver Typ** (Flag aus, ADR-0044): Lesewege fragen `AssetTypes#active`/`isActive`/
+  `requireActive`; Eigentum, Historie, Protokoll und Nachfolgewächter bleiben bei `registered`/`require`.
 - **Historientabellen tragen keinen Fremdschlüssel auf das Asset:** Die Historie überlebt es. Die
   Schale schließt offene Intervalle vor dem Löschen (`AssetShellService#registerDeleted`).
 - **Der Nachfolgezustand wird nie gespeichert,** nur Beginn und Ende (`succession_cases`).
@@ -44,7 +44,7 @@ hängt nur von foundation und identity ab.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0016, 0032, 0036, 0037
+- ADRs (`docs/decisions/`): 0016, 0032, 0036, 0037, 0044
 - Handbuch: `docs/handbuch/berechtigungen.md`, Abschnitte 3–13
 - Strukturtests: `PermissionPackageBoundaryTest` (Kanten zwischen Fachpaketen, die die Schichtung
   zuließe), `AssetTypeFormatParityTest`, `GrantTableRawSqlGuardTest`

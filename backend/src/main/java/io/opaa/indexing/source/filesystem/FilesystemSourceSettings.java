@@ -2,6 +2,7 @@ package io.opaa.indexing.source.filesystem;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.source.SourceGlob;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -85,7 +86,7 @@ public record FilesystemSourceSettings(List<String> excludePatterns) {
             LABEL + ": „" + pattern + "“ enthält „\\“. Ebenen werden mit „/“ getrennt.");
       }
       try {
-        FilesystemGlob.compile(pattern);
+        SourceGlob.compile(pattern);
       } catch (IllegalArgumentException e) {
         throw new ValidationException(
             LABEL

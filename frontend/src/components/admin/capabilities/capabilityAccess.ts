@@ -1,5 +1,6 @@
 import type { CapabilityOverviewResponse, SelectableGroupResponse } from '../../../types/api'
 import { allAccountsLabel } from '../../../utils/labels'
+import { isCapabilityOffered } from '../../../utils/installationFeatures'
 
 /** Who may use an Anlegerecht, in the three answers the page offers. */
 export type AccessLevel = 'ALL' | 'SELECTED' | 'ADMIN_ONLY'
@@ -205,7 +206,10 @@ export function objectPhrase(entry: CapabilityOverviewResponse): string {
   if (kind === 'PROFILE') {
     return `Bibliotheken über den Zugang „${scopeShortLabel(entry)}“ anlegen`
   }
-  return OBJECT_PHRASES[entry.capability] ?? entry.label
+  return (
+    (isCapabilityOffered(entry.capability) ? OBJECT_PHRASES[entry.capability] : undefined) ??
+    entry.label
+  )
 }
 
 export interface AccessBucket {

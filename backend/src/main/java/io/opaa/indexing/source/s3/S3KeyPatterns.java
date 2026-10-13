@@ -1,9 +1,6 @@
 package io.opaa.indexing.source.s3;
 
-import java.nio.file.FileSystems;
-import java.nio.file.InvalidPathException;
-import java.nio.file.Path;
-import java.nio.file.PathMatcher;
+import io.opaa.indexing.source.SourceGlob;
 import java.util.List;
 
 /**
@@ -11,15 +8,15 @@ import java.util.List;
  * with include patterns a key must match at least one, and a key matching any exclude pattern is
  * out. A key outside the patterns is not part of the library's bestand - it is neither listed as
  * present nor counted, so narrowing the patterns removes what they no longer admit, like narrowing
- * a scope does. The globs are {@link java.nio.file.FileSystem#getPathMatcher} syntax, validated by
- * {@link S3SourceSettings}; {@code *} stays within one key segment, {@code **} crosses them.
+ * a scope does. The globs are {@link SourceGlob}s on the key split at every {@code /}, validated by
+ * {@link S3SourceSettings}; {@code *} stays within one level, a level {@code **} spans any number.
  */
 public final class S3KeyPatterns {
 
-  private final List<PathMatcher> include;
-  private final List<PathMatcher> exclude;
+  private final List<SourceGlob> include;
+  private final List<SourceGlob> exclude;
 
-  private S3KeyPatterns(List<PathMatcher> include, List<PathMatcher> exclude) {
+  private S3KeyPatterns(List<SourceGlob> include, List<SourceGlob> exclude) {
     this.include = include;
     this.exclude = exclude;
   }
@@ -29,25 +26,18 @@ public final class S3KeyPatterns {
         compile(settings.includePatterns()), compile(settings.excludePatterns()));
   }
 
-  private static List<PathMatcher> compile(List<String> patterns) {
-    return patterns.stream()
-        .map(pattern -> FileSystems.getDefault().getPathMatcher("glob:" + pattern))
-        .toList();
+  private static List<SourceGlob> compile(List<String> patterns) {
+    return patterns.stream().map(SourceGlob::compile).toList();
   }
 
   public boolean admits(String key) {
     if (include.isEmpty() && exclude.isEmpty()) {
       return true;
     }
-    Path path;
-    try {
-      path = Path.of(key);
-    } catch (InvalidPathException e) {
-      return include.isEmpty();
-    }
-    if (!include.isEmpty() && include.stream().noneMatch(matcher -> matcher.matches(path))) {
+    List<String> levels = List.of(key.split("/", -1));
+    if (!include.isEmpty() && include.stream().noneMatch(glob -> glob.matches(levels, false))) {
       return false;
     }
-    return exclude.stream().noneMatch(matcher -> matcher.matches(path));
+    return exclude.stream().noneMatch(glob -> glob.matches(levels, false));
   }
 }

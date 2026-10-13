@@ -582,13 +582,14 @@ haben:
 
 | Auslöser | Folge |
 |---|---|
-| Embedding-Modell oder -Anbieter gewechselt | Die vorhandenen Vektoren stammen aus einem anderen Modell und sind nicht vergleichbar — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
-| Ollama mit dem Fehler bei langen Eingaben durch eine neuere Fassung ersetzt | Die Vektoren langer Chunks stammen aus der fehlerhaften Fassung — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
-| `OPAA_PGVECTOR_DIMENSIONS` geändert | Passt nicht zur bestehenden Vektortabelle; die Datenbank wird zurückgesetzt und der Korpus neu indiziert. Liegen bereits Vektoren mit anderer Dimension vor, bricht der Start mit einer klaren Meldung ab |
+| Ollama mit dem Fehler bei langen Eingaben durch eine neuere Fassung ersetzt | Die Vektoren langer Chunks stammen aus der fehlerhaften Fassung; OPAA erkennt das nicht als Modellwechsel — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
 | Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
 | Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |
 
-Ein Wechsel des **Chat**-Modells berührt den Index nicht.
+Ein Wechsel des **Chat**-Modells berührt den Index nicht. Ein Wechsel des **Embedding**-Modells oder
+von `OPAA_PGVECTOR_DIMENSIONS` braucht ebenfalls keine Neuindizierung und kein Zurücksetzen der
+Datenbank: OPAA erkennt ihn beim Start, setzt die Vektorsuche aus, und die Systemverwaltung bettet
+den vorhandenen Bestand neu ein ([Modell wechseln](modelle.md#modell-wechseln)).
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt eine Datei, deren Prüfsumme unverändert ist
 > und deren Dokument als indiziert gilt. Wer nur die Vektoren einer Bibliothek verwirft, bekommt

@@ -3,6 +3,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import FieldLabel from '../wizard/FieldLabel'
 import type { FilesystemSourceValues } from '../../utils/filesystemSource'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface PathSourceFormProps {
   /** `create` adds the step's own heading; `edit` sits inside a dialog that already has one. */
@@ -19,6 +20,9 @@ interface PathSourceFormProps {
  * out; the caller owns the state and decides what saving means.
  */
 export default function PathSourceForm({ mode, idPrefix, values, onChange }: PathSourceFormProps) {
+  const issueFor = useSourceIssue()
+  const pathIssue = issueFor('sourcePath')
+  const excludeIssue = issueFor('excludePatterns')
   return (
     <Box>
       {mode === 'create' && (
@@ -34,7 +38,11 @@ export default function PathSourceForm({ mode, idPrefix, values, onChange }: Pat
         value={values.sourcePath}
         onChange={(e) => onChange({ sourcePath: e.target.value })}
         placeholder="/data/dokumente"
-        helperText="Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest."
+        error={pathIssue !== null}
+        helperText={withIssue(
+          pathIssue,
+          'Absoluter Pfad auf dem Server, den OPAA regelmäßig einliest.',
+        )}
         slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
       />
       <Box sx={{ mt: 2 }}>
@@ -48,7 +56,11 @@ export default function PathSourceForm({ mode, idPrefix, values, onChange }: Pat
           value={values.excludePatterns}
           onChange={(e) => onChange({ excludePatterns: e.target.value })}
           placeholder={'Archiv/**\n**/*.tmp'}
-          helperText="Ein Muster pro Zeile, relativ zum Verzeichnispfad: * steht für beliebige Zeichen innerhalb eines Ordners, ** für beliebig viele Ordnerebenen. Versteckte Einträge (Name beginnt mit einem Punkt) und Systemordner wie $RECYCLE.BIN werden immer übersprungen. Bereits aufgenommene Dokumente, die ein Muster ausschließt, entfernt der nächste Lauf."
+          error={excludeIssue !== null}
+          helperText={withIssue(
+            excludeIssue,
+            'Ein Muster pro Zeile, relativ zum Verzeichnispfad: * steht für beliebige Zeichen innerhalb eines Ordners, ** für beliebig viele Ordnerebenen. Versteckte Einträge (Name beginnt mit einem Punkt) und Systemordner wie $RECYCLE.BIN werden immer übersprungen. Bereits aufgenommene Dokumente, die ein Muster ausschließt, entfernt der nächste Lauf.',
+          )}
           slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
         />
       </Box>

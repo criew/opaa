@@ -1,4 +1,4 @@
-import type { MetadataFilterOptionsResponse } from '../types/api'
+import type { MetadataFilterOptionsResponse, SearchAvailabilityResponse } from '../types/api'
 import { apiClient as client, normalizeError } from './api'
 
 /**
@@ -23,6 +23,16 @@ export async function getMetadataFilterOptions(params: {
     const { data } = await client.get<MetadataFilterOptionsResponse>(
       `/v1/search/metadata-filter-options?${searchParams.toString()}`,
     )
+    return data
+  } catch (err) {
+    normalizeError(err)
+  }
+}
+
+/** whether the vector search answers right now; the chat shows a hint while it does not. */
+export async function getSearchAvailability(): Promise<SearchAvailabilityResponse> {
+  try {
+    const { data } = await client.get<SearchAvailabilityResponse>('/v1/search/availability')
     return data
   } catch (err) {
     normalizeError(err)

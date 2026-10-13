@@ -3,6 +3,7 @@ package io.opaa.retrieval.search;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.pgvector.PGvector;
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.QueryProperties;
@@ -87,7 +88,8 @@ class VectorSearchHnswIntegrationTest {
                 new VectorIndexScanProperties(20000),
                 PgDistanceType.COSINE_DISTANCE,
                 schemaName,
-                "vector_store"));
+                "vector_store"),
+            new EmbeddingIndexState());
     for (int i = 0; i < LIBRARIES; i++) {
       UUID library = UUID.randomUUID();
       libraries.add(library);

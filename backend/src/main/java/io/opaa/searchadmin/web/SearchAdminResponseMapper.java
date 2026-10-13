@@ -197,10 +197,10 @@ final class SearchAdminResponseMapper {
   }
 
   /**
-   * The German sentence per path state. {@code INCOMPLETE} and {@code OUTDATED} are each reachable
-   * for exactly one path - waiting documents for the vector index, rows below the current tsv
-   * version for the full-text one - which is why their wording may name what only that path can
-   * have. A state that becomes reachable for both must lose that wording again.
+   * The German sentence per path state. {@code INCOMPLETE}, {@code SUSPENDED} and {@code OUTDATED}
+   * are each reachable for exactly one path - waiting documents for the vector index, rows below
+   * the current tsv version for the full-text one - which is why their wording may name what only
+   * that path can have. A state that becomes reachable for both must lose that wording again.
    */
   private static String searchPathDetail(SearchPathStatus status) {
     String pathName =
@@ -230,6 +230,11 @@ final class SearchAdminResponseMapper {
               + " Bibliotheken steht der Volltext aber noch in einer älteren Fassung: Diese"
               + " Abschnitte werden gefunden, nur noch ohne die Suchmerkmale, die das letzte"
               + " Update hinzugefügt hat. Der Pipeline-Nachzug baut den Rückstand ab.";
+      case SUSPENDED ->
+          pathName
+              + " ist ausgesetzt: Der Vektorindex stammt von einem anderen Embedding-Modell als"
+              + " dem konfigurierten. Bis die Neueinbettung abgeschlossen ist, antwortet nur die"
+              + " Volltextsuche.";
     };
   }
 
@@ -339,6 +344,7 @@ final class SearchAdminResponseMapper {
       case DISABLED -> SearchPathState.DISABLED;
       case INCOMPLETE -> SearchPathState.INCOMPLETE;
       case OUTDATED -> SearchPathState.OUTDATED;
+      case SUSPENDED -> SearchPathState.SUSPENDED;
     };
   }
 

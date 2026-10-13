@@ -466,9 +466,11 @@ Damit das nicht zum Betriebsrisiko wird, gehören drei Dinge dazu:
   und welchen Parametern sie entstanden ist. Ein Modellwechsel ändert nichts rückwirkend an dieser
   Angabe.
 
-Ein Wechsel des **Einbettungsmodells** ist die eine Ausnahme von der sofortigen Wirkung: Er erfordert
-eine vollständige Neuindizierung, weil bestehende Vektoren nicht vergleichbar bleiben. Er wird deshalb
-als geplanter Vorgang behandelt und ist in
+Ein Wechsel des **Einbettungsmodells** ist die eine Ausnahme von der sofortigen Wirkung: Bestehende
+Vektoren bleiben nicht vergleichbar, der Bestand muss neu eingebettet werden. Das System erkennt den
+Wechsel beim Start, setzt die Vektorsuche bis zum Abschluss aus und bettet die gespeicherten Chunks auf
+Anstoß der Systemverwaltung neu ein, ohne Quellen erneut zu lesen (#2576). Er wird deshalb als
+geplanter Vorgang behandelt und ist in
 [Wissensschicht und Retrieval](./data-indexing-rag.md#speicherung-und-filterachse) sowie in der
 Qualitätsmessung verankert.
 

@@ -1,6 +1,8 @@
 package io.opaa.indexing.maintenance;
 
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.ChecksumService;
@@ -65,6 +67,7 @@ public class MetadataBackfillService {
   private final MetadataFillCounter fillCounter;
   private final ModelMetadataExtractor modelMetadataExtractor;
   private final VectorChunkStore vectorChunkStore;
+  private final FeatureFlags featureFlags;
 
   /**
    * The library of the call in flight. The batch loop hands {@link #advance} only a document id,
@@ -86,7 +89,9 @@ public class MetadataBackfillService {
       ChecksumService checksumService,
       MetadataFillCounter fillCounter,
       ModelMetadataExtractor modelMetadataExtractor,
-      VectorChunkStore vectorChunkStore) {
+      VectorChunkStore vectorChunkStore,
+      FeatureFlags featureFlags) {
+    this.featureFlags = featureFlags;
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
@@ -104,9 +109,13 @@ public class MetadataBackfillService {
    * {@code organizationId} (a foreign library is absent, not forbidden: 404). Call repeatedly until
    * the result {@link MetadataBackfillResult#isEmpty() is empty}. Deliberately not
    * {@code @Transactional}: each document commits on its own inside {@link
-   * DocumentMetadataService}, so an interrupted batch keeps every document it finished.
+   * DocumentMetadataService}, so an interrupted batch keeps every document it finished. With the
+   * metadata feature off (ADR-0044) nothing is advanced; the documents stay pending.
    */
   public MetadataBackfillResult backfillBatch(UUID organizationId, UUID libraryId, int batchSize) {
+    if (!featureFlags.isEnabled(Feature.METADATA)) {
+      return MetadataBackfillResult.NOTHING_TO_DO;
+    }
     KnowledgeLibrary library =
         libraryRepository
             .findById(libraryId)

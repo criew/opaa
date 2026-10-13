@@ -40,6 +40,7 @@ import {
   resolveDroppedItems,
 } from '../../utils/directoryEntries'
 import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
+import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 import BulkMetadataDialog from '../metadata/BulkMetadataDialog'
 import DocumentMetadataPanel from '../metadata/DocumentMetadataPanel'
 import MetadataMaintenanceAnchor from '../metadata/MetadataMaintenanceAnchor'
@@ -119,7 +120,9 @@ export default function LibraryDocumentsSection({
   const [searchParams, setSearchParams] = useSearchParams()
   const folderIdParam = searchParams.get('folder')
   // #1069: the Pflege-Anker's filter is URL state (?missingField=<core field key>).
-  const missingFieldParam = searchParams.get('missingField')
+  // Without metadata (ADR-0044) a Pflege-Anker link in the URL lists the plain documents.
+  const metadataEnabled = useFeatureEnabled('metadata')
+  const missingFieldParam = metadataEnabled ? searchParams.get('missingField') : null
 
   const [isDragActive, setIsDragActive] = useState(false)
   const [searchInput, setSearchInput] = useState('')
@@ -683,13 +686,15 @@ export default function LibraryDocumentsSection({
         </Alert>
       )}
 
-      <MetadataMaintenanceAnchor
-        libraryId={libraryId}
-        activeFieldKey={missingFieldParam}
-        onShowMissing={(fieldKey) => setMissingFieldFilter(fieldKey)}
-        onClearFilter={() => setMissingFieldFilter(null)}
-        refreshToken={anchorRefreshToken}
-      />
+      {metadataEnabled && (
+        <MetadataMaintenanceAnchor
+          libraryId={libraryId}
+          activeFieldKey={missingFieldParam}
+          onShowMissing={(fieldKey) => setMissingFieldFilter(fieldKey)}
+          onClearFilter={() => setMissingFieldFilter(null)}
+          refreshToken={anchorRefreshToken}
+        />
+      )}
 
       {missingFieldParam && (
         <Alert
@@ -770,7 +775,7 @@ export default function LibraryDocumentsSection({
           setSelectedDocumentIds([])
           void loadDocuments(libraryId, { page: 0, size })
         }}
-        selectable={canEditMetadata}
+        selectable={metadataEnabled ? canEditMetadata : canDelete}
         selectedIds={selectedDocumentIds}
         onToggleSelected={toggleSelected}
         onToggleAllVisible={toggleAllVisible}
@@ -779,14 +784,16 @@ export default function LibraryDocumentsSection({
           // #1943: every single-row action that is permitted for all selected documents - "Feld
           // setzen" everywhere, "Löschen" wherever a single row offers it too.
           <>
-            <Button
-              size="small"
-              variant="outlined"
-              disabled={selectedDocumentIds.length === 0}
-              onClick={() => setBulkDialogOpen(true)}
-            >
-              Feld setzen
-            </Button>
+            {metadataEnabled && (
+              <Button
+                size="small"
+                variant="outlined"
+                disabled={selectedDocumentIds.length === 0}
+                onClick={() => setBulkDialogOpen(true)}
+              >
+                Feld setzen
+              </Button>
+            )}
             {canDelete && (
               <>
                 <Button
@@ -843,23 +850,27 @@ export default function LibraryDocumentsSection({
         }
         metadataOpenById={metadataOpenById}
         onToggleMetadata={toggleMetadataPanel}
-        renderMetadataPanel={(document) => (
-          <DocumentMetadataPanel
-            libraryId={libraryId}
-            documentId={document.id}
-            fileName={document.fileName}
-            canEdit={canEditMetadata}
-            refreshToken={metadataRefreshToken}
-            onValueChanged={handleMetadataValueChanged}
-          />
-        )}
+        renderMetadataPanel={
+          metadataEnabled
+            ? (document) => (
+                <DocumentMetadataPanel
+                  libraryId={libraryId}
+                  documentId={document.id}
+                  fileName={document.fileName}
+                  canEdit={canEditMetadata}
+                  refreshToken={metadataRefreshToken}
+                  onValueChanged={handleMetadataValueChanged}
+                />
+              )
+            : undefined
+        }
         onOpenOriginal={(document) => void handleOpenOriginal(document)}
         isGroupExpanded={isGroupExpanded}
         onToggleAttachmentGroup={toggleAttachmentGroup}
       />
 
       <DocumentTextPreviewDialog previewDocument={previewDocument} onClose={closePreview} />
-      {bulkDialogOpen && (
+      {metadataEnabled && bulkDialogOpen && (
         <BulkMetadataDialog
           open
           onClose={() => setBulkDialogOpen(false)}

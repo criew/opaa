@@ -288,6 +288,13 @@ def ensure_library_grants(
         ensure_grant(owner_client, library_id, user_ids[viewer_key])
 
 
+def prompt_libraries_enabled(client: Client) -> bool:
+    """Whether the installation offers prompt libraries (opaa.features.prompt-libraries.enabled,
+    ADR-0044) - read from the public sign-in configuration; a flag it does not name counts as on."""
+    features = client.get_ok("/v1/auth/config").get("features") or {}
+    return features.get("promptLibraries") is not False
+
+
 def ensure_association(
     owner_client: Client, space_id: str, asset_id: str, asset_type: str = "KNOWLEDGE_LIBRARY"
 ) -> None:
@@ -315,11 +322,13 @@ def personal_space_id(owner_client: Client, owner_key: str) -> str:
 def seed_personal_spaces(
     clients: dict[str, Client],
     library_ids: dict[str, str],
-    prompt_library_ids: dict[str, str],
+    prompt_library_ids: dict[str, str] | None,
     profile: Profile,
 ) -> None:
     """Associates knowledge and prompt libraries with each listed account's personal space,
-    through the owner's own session - after steps 6 and 7b, so the owner reads every entry."""
+    through the owner's own session - after steps 6 and 7b, so the owner reads every entry.
+    prompt_library_ids is None while the installation has prompt libraries switched off: then
+    only knowledge is associated."""
     for personal_def in profile.personal_spaces:
         owner_client = clients[personal_def.owner_key]
         space_id = personal_space_id(owner_client, personal_def.owner_key)
@@ -328,6 +337,7 @@ def seed_personal_spaces(
         ] + [
             ("PROMPT_LIBRARY", name, prompt_library_ids)
             for name in personal_def.prompt_library_names
+            if prompt_library_ids is not None
         ]
         for asset_type, name, ids in entries:
             if name not in ids:
@@ -359,16 +369,18 @@ def ensure_grant(
 def seed_favorites(
     clients: dict[str, Client],
     library_ids: dict[str, str],
-    prompt_library_ids: dict[str, str],
+    prompt_library_ids: dict[str, str] | None,
     profile: Profile,
 ) -> None:
     """Marks each account's favorites through its own session - a favorite belongs to the account
     alone. markAssetFavorite is idempotent, and the seed only adds: a favorite a visitor has set
-    stays, one the profile names is set again."""
+    stays, one the profile names is set again. Prompt libraries are left out while the
+    installation has them switched off (prompt_library_ids is None)."""
     for favorites in profile.favorites:
         entries = [("KNOWLEDGE_LIBRARY", name, library_ids) for name in favorites.library_names] + [
             ("PROMPT_LIBRARY", name, prompt_library_ids)
             for name in favorites.prompt_library_names
+            if prompt_library_ids is not None
         ]
         for asset_type, name, ids in entries:
             if name not in ids:
@@ -1064,7 +1076,11 @@ def run(args: argparse.Namespace) -> None:
             print(f"  zugeordnet: {space_def.name} ← {library_name}")
 
     print("7b/9 Prompt-Bibliotheken mit Prompts, Freigaben und Space-Zuordnung …")
-    prompt_library_ids = seed_prompt_libraries(clients, user_ids, space_ids, profile)
+    prompt_library_ids: dict[str, str] | None = None
+    if prompt_libraries_enabled(admin_client):
+        prompt_library_ids = seed_prompt_libraries(clients, user_ids, space_ids, profile)
+    else:
+        print("  übersprungen (Prompt-Bibliotheken sind in dieser Installation abgeschaltet)")
 
     print("7c/9 Persönliche Spaces: Wissen und Prompts zuordnen …")
     seed_personal_spaces(clients, library_ids, prompt_library_ids, profile)

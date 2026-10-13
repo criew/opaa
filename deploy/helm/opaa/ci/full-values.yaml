@@ -11,6 +11,7 @@ embedding:
   baseUrl: https://models.example.org/v1
   model: text-embedding-3-small
   dimensions: 1536
+  timeout: 180s
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org
