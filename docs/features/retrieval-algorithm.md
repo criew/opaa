@@ -345,16 +345,28 @@ Ebene 1):
   `0,25`) des besten Werts unter dem des Vorgängers liegt.
 - `min-chunks` (Default `10`): die Untergrenze in beiden Verfahren.
 
+Die Grenze wird auf den **nach Wert sortierten** Werten bestimmt (relativ: das Minimum aus Anteil des
+besten Werts und dem Wert des `min-chunks`-ten Chunks; Knick: der Wert vor dem ersten großen Abfall)
+und dann als Filter angewandt: Was darunter liegt, fällt weg, der Rest behält seine Reihenfolge. Das
+ist nötig, weil die Auswahl nicht nach Wert geordnet sein muss, etwa wenn eine Quote je Teilfrage sie
+reihum füllt. Gleichstände an der Grenze bleiben. Nach einem Reranking zählt ein Chunk, den das Modell
+nicht bewertet hat (hinter dem Kandidatenfenster), mit 0 und wird deshalb geschnitten.
+
 Ist der beste Wert nicht positiv (etwa rohe Logits eines Rerankers), schneidet die Stufe nicht und
 sagt das. Die Notiz nennt in jedem Fall den Grund des Abbruchs; jedes entfernte Verdikt trägt
 `BELOW_RELEVANCE_CUTOFF`.
+
+**Der Schnitt bestimmt die Kontextgröße.** Läuft die Stufe (jeder Modus außer `fixed`), hält sie ihre
+Entscheidung als `RetrievalState#relevanceCut` fest. Die Dokument-Vervollständigung (Schritt 6) nimmt
+dann die Zahl nach dem Schnitt als Gesamtbudget statt `top-k` und zieht keinen geschnittenen Chunk aus
+dem Kandidatenpool nach.
 
 **Warum `fixed` der Default bleibt.** Die Verlustanalyse am Testkorpus Finanzverwaltung zeigt den Bedarf
 (top-k 30 brächte 150 statt 139 von 220 Kernfakten bei 32 % mehr Kontext), aber gemessen ist der
 Schnitt noch nicht. Unter RRF sind die Werte zudem flach und rangabgeleitet: Ein Chunk, den beide Pfade
 fanden, erreicht etwa den doppelten Wert eines Einzeltreffers, ein relativer Schnitt bei 0,6 trennt
 also vor allem diese beiden Gruppen und kaum nach Passung. Sinnvoller wird er mit Reranking oder mit
-der Fusion nach Werten aus #2619. Der Schnitt ist deshalb als Option gebaut; die Entscheidung über den
+einem Fusionsverfahren, das Ähnlichkeitswerte statt Ränge verwendet (#2619). Der Schnitt ist deshalb als Option gebaut; die Entscheidung über den
 Default fällt mit der Messung (Kernfakten im Kontext und Tokens je Antwort). Für einen Bereich wie
 10–30 Chunks wird `top-k` auf 30 gesetzt; der Pipeline-Messpfad des Eval-Harness misst nur am
 Produktionsfenster `top-k` 20 und kennt die Parameter des Schnitts nicht als Festpunkt.

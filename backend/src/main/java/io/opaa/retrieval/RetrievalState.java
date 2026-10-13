@@ -47,6 +47,9 @@ import org.springframework.ai.vectorstore.filter.Filter;
  *     the fused score from {@link RetrievalStageName#RANK_FUSION} on, the rerank score once {@link
  *     RetrievalStageName#RERANK} scored it. Empty before the fusion; a chunk without an entry has
  *     no score on the current scale.
+ * @param relevanceCut what {@link RetrievalStageName#RELEVANCE_CUTOFF} decided, or {@code null}
+ *     when it did not run; a later stage stays within its budget and never brings a removed chunk
+ *     back.
  */
 public record RetrievalState(
     List<String> searchQueries,
@@ -58,7 +61,8 @@ public record RetrievalState(
     List<Document> candidatePool,
     boolean halted,
     boolean searchNeeded,
-    Map<String, Double> selectionScores) {
+    Map<String, Double> selectionScores,
+    RelevanceCut relevanceCut) {
 
   public RetrievalState {
     searchQueries = List.copyOf(searchQueries);
@@ -84,7 +88,8 @@ public record RetrievalState(
         List.of(),
         false,
         true,
-        Map.of());
+        Map.of(),
+        null);
   }
 
   public RetrievalState withSearchQueries(List<String> queries) {
@@ -98,7 +103,8 @@ public record RetrievalState(
         candidatePool,
         halted,
         searchNeeded,
-        selectionScores);
+        selectionScores,
+        relevanceCut);
   }
 
   public RetrievalState withLibraryFilter(Filter.Expression filter) {
@@ -112,7 +118,8 @@ public record RetrievalState(
         candidatePool,
         halted,
         searchNeeded,
-        selectionScores);
+        selectionScores,
+        relevanceCut);
   }
 
   /**
@@ -132,7 +139,8 @@ public record RetrievalState(
         candidatePool,
         halted,
         searchNeeded,
-        selectionScores);
+        selectionScores,
+        relevanceCut);
   }
 
   /**
@@ -150,7 +158,24 @@ public record RetrievalState(
         candidatePool,
         halted,
         searchNeeded,
-        selectionScores);
+        selectionScores,
+        relevanceCut);
+  }
+
+  /** Records the relevance cutoff's decision; the lists in flight stay as they are. */
+  public RetrievalState withRelevanceCut(RelevanceCut cut) {
+    return new RetrievalState(
+        searchQueries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        metadataFilterVocabularyCodes,
+        candidateLists,
+        candidatePool,
+        halted,
+        searchNeeded,
+        selectionScores,
+        cut);
   }
 
   /** Replaces the scores of the selection; the lists in flight stay as they are. */
@@ -165,7 +190,8 @@ public record RetrievalState(
         candidatePool,
         halted,
         searchNeeded,
-        scores);
+        scores,
+        relevanceCut);
   }
 
   /**
@@ -188,7 +214,8 @@ public record RetrievalState(
         extendedPool,
         halted,
         searchNeeded,
-        selectionScores);
+        selectionScores,
+        relevanceCut);
   }
 
   /**
@@ -227,7 +254,8 @@ public record RetrievalState(
         candidatePool,
         true,
         searchNeeded,
-        selectionScores);
+        selectionScores,
+        relevanceCut);
   }
 
   /**
@@ -245,7 +273,8 @@ public record RetrievalState(
         candidatePool,
         halted,
         false,
-        selectionScores);
+        selectionScores,
+        relevanceCut);
   }
 
   /**

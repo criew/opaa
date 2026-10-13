@@ -508,10 +508,17 @@ anheben. Was zum Einschalten gehört, steht im Kapitel
 
 Ohne diese Stufe besteht die Auswahl immer aus `top-k` Chunks, ob nun viele Treffer gut passen oder
 nur drei und der Rest Rauschen ist. Der Relevanzschnitt kürzt die Auswahl nach den Werten, nach denen
-sie geordnet wurde: den Werten der Fusion oder, wenn Reranking lief, denen des Rerankers. Er nimmt
-nur weg, ordnet nicht um und unterschreitet nie `relevance-cutoff.min-chunks`; `top-k` bleibt die
-Obergrenze. Wer bei gut passenden Fragen mehr Chunks zulassen will, hebt `top-k` an und lässt den
-Schnitt den Rest erledigen.
+sie geordnet wurde: den Werten der Fusion oder, wenn Reranking lief, denen des Rerankers. Ein Chunk,
+den der Reranker nicht bewertet hat (hinter seinem Fenster), zählt dann mit dem Wert 0 und fällt
+deshalb als Erstes weg. Der Schnitt nimmt nur weg, ordnet nicht um und unterschreitet nie
+`relevance-cutoff.min-chunks`; `top-k` bleibt die Obergrenze. Die Grenze ergibt sich aus den Werten
+selbst, nicht aus den Plätzen: Auch eine Auswahl, die nicht nach Wert geordnet ist, verliert genau
+die Chunks unter der Grenze, und die übrigen behalten ihre Reihenfolge. Wer bei gut passenden Fragen
+mehr Chunks zulassen will, hebt `top-k` an und lässt den Schnitt den Rest erledigen.
+
+**Der Schnitt bestimmt die Größe des Kontexts.** Die anschließende Dokument-Vervollständigung füllt
+nur bis zur Zahl der Chunks nach dem Schnitt auf, nicht bis `top-k`, und holt keinen geschnittenen
+Chunk zurück.
 
 Zwei Verfahren stehen zur Wahl (`relevance-cutoff.mode`):
 
@@ -523,11 +530,14 @@ Zwei Verfahren stehen zur Wahl (`relevance-cutoff.mode`):
 Im Auslieferungsstand ist die Stufe **aus** (`fixed`) und steht im Protokoll als abgeschaltet. Die
 Werte der Rangfusion taugen nur bedingt als Maßstab: Ein Chunk, den beide Suchpfade gefunden haben,
 erreicht etwa den doppelten Wert eines Chunks, den nur einer fand, sodass ein relativer Schnitt vor
-allem diese Grenze trifft. Mit Reranking oder der Fusion nach Werten (Stufe 7) bilden die Werte die
-Passung besser ab. Wer die Stufe einschaltet, sollte die Wirkung auf die Antworten messen. Das
+allem diese Grenze trifft. Mit Reranking oder mit einem Fusionsverfahren, das Ähnlichkeitswerte
+statt Ränge verwendet, bilden die Werte die Passung besser ab. Wer die Stufe einschaltet, sollte die Wirkung auf die Antworten messen. Das
 Protokoll nennt, wie viele Chunks blieben und warum der Schnitt dort lag.
 
 ### Stufe 10: Dokument-Vervollständigung
+
+Hat der Relevanzschnitt gekürzt, gilt seine Zahl als Obergrenze statt `top-k`, und geschnittene
+Chunks kommen nicht zurück.
 
 Die letzte Auswahlstufe behebt einen typischen Fehler der Rangordnung: Ein Dokument ist mit seinem
 Einleitungs-Chunk in der Auswahl, aber sein Detail-Chunk (die Gebührenzeile, der eine Paragraf)

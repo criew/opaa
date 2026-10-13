@@ -159,6 +159,117 @@ class RelevanceCutoffStageTest {
   }
 
   /**
+   * The sub-query quota fills round-robin, so the selection is not sorted by score. The bound comes
+   * from the sorted scores and the order of what stays is kept.
+   */
+  @Test
+  void aSelectionNotSortedByScoreIsCutByValueAndKeepsItsOrder() {
+    RetrievalState roundRobin = selectionWithScores(1.0, 0.3, 0.9, 0.2, 0.8);
+
+    StageOutcome relative =
+        cut(new RelevanceCutoffProperties(Mode.RELATIVE, 2, 0.6, 0.25), roundRobin);
+    StageOutcome knee = cut(new RelevanceCutoffProperties(Mode.KNEE, 2, 0.6, 0.25), roundRobin);
+
+    assertThat(ids(relative)).containsExactly("a", "c", "e");
+    assertThat(ids(knee)).containsExactly("a", "c", "e");
+  }
+
+  @Test
+  void fewerChunksThanTheMinimumAreAllKept() {
+    StageOutcome outcome =
+        cut(
+            new RelevanceCutoffProperties(Mode.RELATIVE, 10, 0.6, 0.25),
+            selectionWithScores(1.0, 0.1, 0.05));
+
+    assertThat(ids(outcome)).containsExactly("a", "b", "c");
+    assertThat(outcome.explanation().notes())
+        .singleElement()
+        .asString()
+        .isEqualTo("relevance cutoff: 3 chunk(s) do not exceed the minimum of 10, all kept");
+  }
+
+  /**
+   * The cut sets the size of the context: document completion fills only up to what the cut left
+   * and never brings a removed chunk back, though without the cut it would add both siblings.
+   */
+  @Test
+  void documentCompletionStaysWithinTheCutAndNeverRestoresARemovedChunk() {
+    Document a1 = chunk("a1", "doc-a", 0.9);
+    Document b1 = chunk("b1", "doc-b", 0.8);
+    Document a2 = chunk("a2", "doc-a", 0.7);
+    Document b2 = chunk("b2", "doc-b", 0.6);
+    RetrievalState searched =
+        RetrievalState.initial()
+            .withSearchResults(
+                List.of(new CandidateList("vector search · sub-query 1", List.of(a1, b1, a2, b2))))
+            .withCandidateLists(
+                List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, List.of(a1, b1))));
+    QueryProperties completing = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 2, true, 50, 20, 2);
+
+    List<String> withoutCut =
+        new DocumentCompletionStage()
+            .apply(context(Set.of(LIBRARY_ID), completing), searched).state().selection().stream()
+                .map(Document::getId)
+                .toList();
+    List<String> afterCut =
+        new DocumentCompletionStage()
+                .apply(
+                    context(Set.of(LIBRARY_ID), completing),
+                    searched.withRelevanceCut(
+                        new io.opaa.retrieval.RelevanceCut(2, Set.of("a2", "b2"))))
+                .state()
+                .selection()
+                .stream()
+                .map(Document::getId)
+                .toList();
+
+    assertThat(withoutCut).containsExactlyInAnyOrder("a1", "b1", "a2", "b2");
+    assertThat(afterCut).containsExactly("a1", "b1");
+  }
+
+  /** With reranking the cut works on the rerank scores, not on the fused ones. */
+  @Test
+  void afterRerankingTheCutUsesTheRerankScores() {
+    VectorChunkSearch vectorChunkSearch = mock(VectorChunkSearch.class);
+    RerankModelRole rerank = mock(RerankModelRole.class);
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(
+            List.of(
+                chunk("a", "doc-a", 0.9),
+                chunk("b", "doc-b", 0.8),
+                chunk("c", "doc-c", 0.7),
+                chunk("d", "doc-d", 0.6)));
+    when(rerank.rerank(anyString(), any()))
+        .thenReturn(
+            List.of(
+                new io.opaa.llm.RerankClient.ScoredCandidate(0, 0.9),
+                new io.opaa.llm.RerankClient.ScoredCandidate(2, 0.85),
+                new io.opaa.llm.RerankClient.ScoredCandidate(1, 0.2),
+                new io.opaa.llm.RerankClient.ScoredCandidate(3, 0.1)));
+    QueryProperties reranking = new QueryProperties(8, 25, 1.0, 0.3, false, 3, 1, false, 50, 20, 2);
+
+    RetrievalPipelineResult result =
+        RetrievalPipelineTestSupport.pipeline(
+                vectorChunkSearch,
+                mock(FullTextChunkSearch.class),
+                mock(ChunkEmbeddingLookup.class),
+                mock(QueryDecompositionService.class),
+                rerank,
+                RetrievalPipelineProperties.allStagesEnabled(),
+                new RelevanceCutoffProperties(Mode.RELATIVE, 1, 0.6, 0.25))
+            .run(
+                new io.opaa.retrieval.RetrievalContext(
+                    "Frage",
+                    List.of(),
+                    Set.of(LIBRARY_ID),
+                    io.opaa.metadata.MetadataFilter.NONE,
+                    reranking,
+                    io.opaa.retrieval.RerankAvailability.USABLE));
+
+    assertThat(result.chunks()).extracting(Document::getId).containsExactly("a", "c");
+  }
+
+  /**
    * Through the whole pipeline: the fusion hands its scores on, and under RRF a chunk only one
    * search path found scores about half of one both paths found - so a relative threshold of 0.6
    * keeps exactly the chunks both paths agreed on.
