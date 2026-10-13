@@ -149,6 +149,39 @@
           }
         }
       }
+    },
+    {
+      "if": {
+        "properties": {
+          "transcription": {
+            "properties": {
+              "enabled": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "transcription": {
+            "required": [
+              "baseUrl",
+              "model"
+            ],
+            "properties": {
+              "baseUrl": {
+                "type": "string",
+                "pattern": "^https?://[^\\s/]+(/[^\\s]*)?$"
+              },
+              "model": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "properties": {
@@ -308,6 +341,36 @@
         }
       }
     },
+    "transcription": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "baseUrl": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^([a-z]{2})?$",
+          "description": "ISO-639-1 code; empty keeps the application default"
+        },
+        "maxAudioBytes": {
+          "type": "string",
+          "pattern": "^([0-9]+)?$",
+          "description": "Largest recording in bytes; empty keeps the application default"
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 30s, 5m or PT5M; empty keeps the application default"
+        }
+      }
+    },
     "mail": {
       "type": "object",
       "additionalProperties": false,
@@ -359,6 +422,19 @@
             }
           },
           "description": "Metadata of documents and libraries"
+        },
+        "speechInput": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "enabled"
+          ],
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "description": "Dictation in the chat"
         }
       }
     },
@@ -745,6 +821,9 @@
           "type": "string"
         },
         "initialAdminPassword": {
+          "type": "string"
+        },
+        "transcriptionApiKey": {
           "type": "string"
         }
       },

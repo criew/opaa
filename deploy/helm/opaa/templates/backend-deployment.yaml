@@ -139,7 +139,7 @@ spec:
                   name: {{ $secretName }}
                   key: {{ . }}
             {{- end }}
-            {{- range list "OPAA_OPENAI_EMBEDDING_API_KEY" "OPAA_OPENAI_CHAT_API_KEY" "OPAA_RERANK_API_KEY" "OPAA_INITIAL_ADMIN_PASSWORD" }}
+            {{- range list "OPAA_OPENAI_EMBEDDING_API_KEY" "OPAA_OPENAI_CHAT_API_KEY" "OPAA_RERANK_API_KEY" "OPAA_TRANSCRIPTION_API_KEY" "OPAA_INITIAL_ADMIN_PASSWORD" }}
             - name: {{ . }}
               valueFrom:
                 secretKeyRef:
