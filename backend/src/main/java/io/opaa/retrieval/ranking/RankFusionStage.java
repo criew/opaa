@@ -25,10 +25,9 @@ import org.springframework.stereotype.Component;
  * without weighting, and caps it at {@link RetrievalContext#candidateBudget()}.
  *
  * <p>Runs for a single list too, where it is provably the identity: within one list every rank is
- * distinct, so the fused scores are strictly decreasing in the list's own order and the cap is
- * already met by the per-list budget. Deduplicates by chunk id, never by score - a chunk two lists
- * found independently is one candidate with two contributions, and scores of different searches are
- * not comparable.
+ * distinct, so the fused scores are strictly decreasing in the list's own order and the cap keeps
+ * the list's head. Deduplicates by chunk id, never by score - a chunk two lists found independently
+ * is one candidate with two contributions, and scores of different searches are not comparable.
  *
  * <p>The budget is the context's, not {@link QueryProperties#topK} directly: with reranking active
  * fusion keeps the wider rerank candidate window and {@link RerankStage} restores the cap.

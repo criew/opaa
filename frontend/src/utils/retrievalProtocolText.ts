@@ -163,21 +163,18 @@ const NOTE_RULES: NoteRule[] = [
 
   // MmrSelectionStage
   {
-    name: 'PER_LIST_BUDGET',
-    pattern: /^per-list budget (\d+)$/,
-    german: (m) => `Auswahlgrenze je Liste: ${m[1]}.`,
-  },
-  {
     name: 'MMR_LAMBDA_INACTIVE',
-    pattern: /^mmr-lambda (.+) \(diversity term inactive: plain top-k by relevance\)$/,
-    german: (m) => `mmr-lambda ${m[1]} (Vielfaltsanteil inaktiv: reine Rangfolge nach Relevanz).`,
+    pattern:
+      /^mmr-lambda (.+): diversity term inactive, every list passed on unchanged to the fusion$/,
+    german: (m) =>
+      `mmr-lambda ${m[1]}: Vielfaltsanteil inaktiv, jede Liste geht unverändert in die Fusion.`,
   },
   {
     name: 'MMR_LAMBDA_ACTIVE',
     pattern:
-      /^mmr-lambda (.+) \(diversity term active, cosine similarity of real chunk embeddings\)$/,
+      /^mmr-lambda (.+): every list reordered by diversity \(cosine similarity of real chunk embeddings\), none narrowed$/,
     german: (m) =>
-      `mmr-lambda ${m[1]} (Vielfaltsanteil aktiv, Kosinus-Ähnlichkeit der echten Abschnitts-Einbettungen).`,
+      `mmr-lambda ${m[1]}: jede Liste nach Vielfalt umsortiert (Kosinus-Ähnlichkeit der echten Abschnitts-Einbettungen), keine gekürzt.`,
   },
 
   // RankFusionStage
