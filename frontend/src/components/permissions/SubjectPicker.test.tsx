@@ -97,10 +97,7 @@ async function pastTheDebounce(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 }
 
-/**
- * Persons and groups are searched by two independent requests, so the list fills in two steps;
- * waiting for any option is not waiting for this one.
- */
+/** Waits for one specific option; an earlier list may still be shown while a search runs. */
 function findOptionContaining(text: string): Promise<HTMLElement> {
   return waitFor(() => {
     const option = screen
