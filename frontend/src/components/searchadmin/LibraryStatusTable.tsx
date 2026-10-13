@@ -13,6 +13,7 @@ import type { LibraryIndexState, LibrarySearchStatusResponse } from '../../types
 import { formatShare } from '../../utils/labels'
 import type { LibraryBatchRun } from '../../stores/searchAdminStore'
 import { plural } from './format'
+import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 
 const INDEX_STATE_LABELS: Record<LibraryIndexState, string> = {
   EMPTY: 'Leer',
@@ -256,6 +257,8 @@ export default function LibraryStatusTable({
   onStartContextPrefixRerun: (libraryId: string) => void
   onPauseContextPrefixRerun: (libraryId: string) => void
 }) {
+  // Without metadata (ADR-0044) neither run exists, and neither do their three columns.
+  const metadataEnabled = useFeatureEnabled('metadata')
   if (libraries.length === 0) {
     return (
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -284,9 +287,13 @@ export default function LibraryStatusTable({
             <TableCell>Letzter Lauf</TableCell>
             <TableCell>Vektorindex</TableCell>
             <TableCell>Volltextindex</TableCell>
-            <TableCell>Kernfelder</TableCell>
-            <TableCell>Kontextpräfix</TableCell>
-            <TableCell>Schemaänderungen</TableCell>
+            {metadataEnabled && (
+              <>
+                <TableCell>Kernfelder</TableCell>
+                <TableCell>Kontextpräfix</TableCell>
+                <TableCell>Schemaänderungen</TableCell>
+              </>
+            )}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -334,19 +341,23 @@ export default function LibraryStatusTable({
                   </Typography>
                 )}
               </TableCell>
-              <MetadataBackfillCell
-                library={library}
-                run={backfillRuns[library.libraryId]}
-                onStart={onStartBackfill}
-                onPause={onPauseBackfill}
-              />
-              <ContextPrefixCell
-                library={library}
-                run={contextPrefixRuns[library.libraryId]}
-                onStart={onStartContextPrefixRerun}
-                onPause={onPauseContextPrefixRerun}
-              />
-              <MetadataSchemaChangeCell library={library} />
+              {metadataEnabled && (
+                <>
+                  <MetadataBackfillCell
+                    library={library}
+                    run={backfillRuns[library.libraryId]}
+                    onStart={onStartBackfill}
+                    onPause={onPauseBackfill}
+                  />
+                  <ContextPrefixCell
+                    library={library}
+                    run={contextPrefixRuns[library.libraryId]}
+                    onStart={onStartContextPrefixRerun}
+                    onPause={onPauseContextPrefixRerun}
+                  />
+                  <MetadataSchemaChangeCell library={library} />
+                </>
+              )}
             </TableRow>
           ))}
         </TableBody>

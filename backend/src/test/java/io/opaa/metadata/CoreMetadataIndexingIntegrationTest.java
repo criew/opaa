@@ -574,7 +574,8 @@ class CoreMetadataIndexingIntegrationTest {
             keywordRepository,
             libraryValueRepository,
             libraryRepository,
-            transactionManager);
+            transactionManager,
+            io.opaa.common.TestFeatureFlags.allOn());
 
     assertThatThrownBy(() -> withFailingChunkUpdate.reextractFromFile(renamed, file))
         .isInstanceOf(IllegalStateException.class);

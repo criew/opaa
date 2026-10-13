@@ -119,7 +119,7 @@ features:
   # Prompt libraries: false hides them from catalog, chat and interface; their data stays.
   promptLibraries:
     enabled: true
-  # Metadata of documents and libraries; read and reported, no effect yet (#2589).
+  # Metadata of documents and libraries; false keeps only a document's title.
   metadata:
     enabled: true
 

@@ -1,6 +1,8 @@
 package io.opaa.metadata;
 
 import io.opaa.api.types.LibraryMetadataFieldType;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.ValidationException;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
  * any other library is rejected with the same message an unknown field gets, so the answer does not
  * reveal which fields a foreign library defines. It could not have narrowed anything either: the
  * metadata filter is subordinate to the permission filter.
+ *
+ * <p>With the metadata feature off (ADR-0044) no filter narrows anything: chat, search API and MCP
+ * all pass here, so each runs without one, and a filter a chat stores is neither read nor replaced.
  */
 @Component
 public class MetadataFilterValidator {
@@ -29,19 +34,44 @@ public class MetadataFilterValidator {
   private final DocumentTypeVocabularyRepository vocabularyRepository;
   private final LibraryMetadataFieldRepository fieldRepository;
   private final LibraryMetadataFieldValueRepository valueRepository;
+  private final FeatureFlags featureFlags;
 
   public MetadataFilterValidator(
       DocumentTypeVocabularyRepository vocabularyRepository,
       LibraryMetadataFieldRepository fieldRepository,
-      LibraryMetadataFieldValueRepository valueRepository) {
+      LibraryMetadataFieldValueRepository valueRepository,
+      FeatureFlags featureFlags) {
+    this.featureFlags = featureFlags;
     this.vocabularyRepository = vocabularyRepository;
     this.fieldRepository = fieldRepository;
     this.valueRepository = valueRepository;
   }
 
-  /** The filter itself when every condition is valid; a {@link ValidationException} otherwise. */
+  /**
+   * The filter itself when every condition is valid; a {@link ValidationException} otherwise. With
+   * the metadata feature off, {@link MetadataFilter#NONE} whatever was sent.
+   */
   @Transactional(readOnly = true)
   public MetadataFilter validate(MetadataFilter filter, Set<UUID> readableLibraryIds) {
+    if (!featureFlags.isEnabled(Feature.METADATA)) {
+      return MetadataFilter.NONE;
+    }
+    return checked(filter, readableLibraryIds);
+  }
+
+  /**
+   * The filter a chat is to store, checked like {@link #validate}; {@code null} with the metadata
+   * feature off, which leaves whatever filter the chat already stores untouched.
+   */
+  @Transactional(readOnly = true)
+  public MetadataFilter validateToStore(MetadataFilter filter, Set<UUID> readableLibraryIds) {
+    if (!featureFlags.isEnabled(Feature.METADATA)) {
+      return null;
+    }
+    return checked(filter, readableLibraryIds);
+  }
+
+  private MetadataFilter checked(MetadataFilter filter, Set<UUID> readableLibraryIds) {
     if (filter == null || filter.isEmpty()) {
       return filter;
     }

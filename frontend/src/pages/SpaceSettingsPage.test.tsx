@@ -418,23 +418,29 @@ describe('SpaceSettingsPage', () => {
     expect(screen.queryByText('Gefahrenbereich')).not.toBeInTheDocument()
   })
 
-  it('hints that the default space is worked in alone, without blocking member management', () => {
-    // #333: the default space is an ordinary space. The hint explains the empty member list; it
-    // no longer means members are forbidden.
-    setSpaceState(personalSpace)
+  it('#2585: offers no member management in the default space, only the hint that it is private', async () => {
+    setSpaceState({ ...teamSpace, isDefault: true })
     renderTab('members')
-    expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
+
+    expect(screen.getByText(/Ihr Standard-Space ist privat/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Space anlegen' })).toHaveAttribute(
+      'href',
+      '/spaces/new',
+    )
+    expect(screen.queryByRole('heading', { name: 'Mitglied hinzufügen' })).not.toBeInTheDocument()
+    expect(screen.queryByPlaceholderText('Person oder Gruppe suchen …')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Weitere Aktionen für/ })).not.toBeInTheDocument()
+    expect(screen.queryByText(/jederzeit Mitglieder hinzufügen/)).not.toBeInTheDocument()
+    expect(mockListSpaceMembers).not.toHaveBeenCalled()
   })
 
-  it('#777: keeps the add-member form visible next to the default-space hint instead of hiding it', async () => {
-    // The hint used to replace the whole members section, including "Mitglied hinzufügen" - the
-    // default space is "ein Space wie jeder andere", so adding members must still work here.
-    setSpaceState(personalSpace)
+  it('#2585: tells somebody else in a foreign default space only that it is private', () => {
+    setSpaceState({ ...teamSpace, isDefault: true, ownerId: 'someone-else' })
     renderTab('members')
 
-    expect(screen.getByText(/standard-space/i)).toBeInTheDocument()
-    expect(await screen.findByPlaceholderText('Person oder Gruppe suchen …')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^hinzufügen$/i })).toBeInTheDocument()
+    expect(screen.getByText('Der Standard-Space ist privat.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Space anlegen' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ihr Standard-Space/)).not.toBeInTheDocument()
   })
 
   /** #2131, #2205: Das Formular ist die Überschrift des Panels, ohne Hinweistext darunter. */
@@ -464,16 +470,6 @@ describe('SpaceSettingsPage', () => {
       screen.queryByRole('button', { name: 'Weitere Aktionen für „Owner“' }),
     ).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /^Weitere Aktionen für/ })).toHaveLength(3)
-  })
-
-  it('#1923: never offers the handover in a personal space', async () => {
-    setSpaceState({ ...teamSpace, isDefault: true })
-    renderTab('members')
-    const user = userEvent.setup()
-
-    const menu = await openMemberMenu(user, 'Colleague')
-
-    expect(within(menu).queryByText('Zum Eigentümer machen')).not.toBeInTheDocument()
   })
 
   // #1815, #2134: a group row names the group, marks it as one and carries its current size -

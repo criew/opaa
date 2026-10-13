@@ -179,7 +179,8 @@ class DocumentIngestServiceTest {
         attachmentIndexerProvider,
         new AttachmentLimits(0, 0),
         TestDocumentMetadataServices.returningEmpty(),
-        TestDocumentMetadataServices.notExtracting());
+        TestDocumentMetadataServices.notExtracting(),
+        io.opaa.common.TestFeatureFlags.allOn());
   }
 
   /** A format declaring {@code passthroughKeys} as the chunk metadata it passes through. */
@@ -1471,7 +1472,8 @@ class DocumentIngestServiceTest {
               Mockito.mock(ObjectProvider.class),
               new AttachmentLimits(0, 0),
               metadataService,
-              io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting());
+              io.opaa.indexing.document.TestDocumentMetadataServices.notExtracting(),
+              io.opaa.common.TestFeatureFlags.allOn());
       when(checksumService.computeSha256(any(byte[].class))).thenReturn("sha256-of-entry");
       when(documentRepository.findByLibraryIdAndFilePath(targetLibrary.getId(), ENTRY_URL))
           .thenReturn(Optional.empty());

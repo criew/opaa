@@ -26,6 +26,7 @@ import {
 import { useSpaceStore } from '../../stores/spaceStore'
 import SpaceKnowledgeNotice from '../space/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../space/spaceKnowledge'
+import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 import MetadataFilterPopover from './MetadataFilterPopover'
 import ChatActionMenu from './ChatActionMenu'
 import { actionOptionId, activeChatActionSources } from './chatActions'
@@ -333,16 +334,18 @@ export default function ChatInput({
 
   // A chat loaded with a Dokumentart condition needs the labels before the popover was ever
   // opened; loading the options for the current scope resolves them.
+  // Without metadata (ADR-0044) the chat offers no filter and shows no stored one.
+  const metadataEnabled = useFeatureEnabled('metadata')
   const filterOptionsScopeKey = useMetadataFilterOptionsStore((s) => s.optionsScopeKey)
   const loadFilterOptions = useMetadataFilterOptionsStore((s) => s.loadOptions)
   const filterScopeKey = metadataFilterScopeKey(filterScope)
   const hasTypeFilter = (metadataFilter?.documentTypes ?? []).length > 0
   useEffect(() => {
-    if (hasTypeFilter && filterOptionsScopeKey !== filterScopeKey) {
+    if (metadataEnabled && hasTypeFilter && filterOptionsScopeKey !== filterScopeKey) {
       void loadFilterOptions(filterScope)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasTypeFilter, filterOptionsScopeKey, filterScopeKey])
+  }, [metadataEnabled, hasTypeFilter, filterOptionsScopeKey, filterScopeKey])
 
   const documentTypeChipLabel = useMemo(() => {
     const codes = metadataFilter?.documentTypes ?? []
@@ -637,7 +640,7 @@ export default function ChatInput({
             />
           </>
         )}
-        {scope !== 'none' && (
+        {scope !== 'none' && metadataEnabled && (
           <>
             {documentTypeChipLabel && (
               <Chip
