@@ -202,9 +202,9 @@
         ]
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): beide Runden gelöst; Teilfrage der Runde 2: „Welche typischen Fehler treten beim Ausfüllen des Formulars PER-08 auf?“."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Offen seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells, die Teilfrage der Runde 2 lautet jetzt „Welche typischen Fehler treten beim Ausfüllen auf?“; kein Baustein ist weggefallen. Symptom im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell): Runde 2 führt verwaltung-0049_formularhinweis-personalamt-8.md auf Rang 18, Rang 1 belegt verwaltung-0007_formularhinweis-sozialamt-7.md."
   },
   {
     "id": "verw-conv-ana-009",
@@ -267,9 +267,9 @@
       }
     ],
     "topic_switch_turn": 3,
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-12",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Welcher Nachfrist gilt für BAU-DA-1/2023, wenn die Unterlagen fehlen?“."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Offen seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells, die Teilfrage der Runde 2 lautet jetzt „Welche Nachfrist gilt für Amtshandlungsanträge, die Unterlagen fehlen, in der Stadt Kalkstadt?“; kein Baustein ist weggefallen. Symptom im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell): Runde 2 führt verwaltung-0012_dienstanweisung-bauamt-1-2023.md auf Rang 4, Rang 1 belegt verwaltung-vertretungsregelung.md."
   },
   {
     "id": "verw-conv-ts-002",
@@ -299,9 +299,9 @@
       }
     ],
     "topic_switch_turn": 2,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-0057_abfallgebuehrensatzung.md ganz, Rang 1 belegt verwaltung-0008_formularhinweis-sozialamt-8.md."
+    "expected_state": "solved",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343), bestätigt im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Satzung, die die Gebühren für die Entsorgung von Haushaltsabfällen regelt, ist die § 13 des Bundesgesetzbuches …“. Kein Baustein ist hinzugekommen; die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells."
   },
   {
     "id": "verw-conv-ts-003",
@@ -434,9 +434,9 @@
       }
     ],
     "topic_switch_turn": 3,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Offen seit der geänderten Signalwort-Regel (#1684): Die neue Regelzeile verändert die gierige Zerlegung des gepinnten Modells in der Wechselrunde, die jetzt das Formular der Vorrunde mitnimmt; kein Baustein ist weggefallen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-dienstanweisung-aktenaufbewahrung.md ganz, Rang 1 belegt verwaltung-0023_formularhinweis-ordnungsamt-7.md."
+    "expected_state": "solved",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343), bestätigt im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Formular ORD-07 dauert etwa 2 bis 3 Wochen zur Bearbeitung.“. Kein Baustein ist hinzugekommen; die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells."
   },
   {
     "id": "verw-conv-ts-007",
@@ -474,9 +474,9 @@
       }
     ],
     "topic_switch_turn": 3,
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: das neue Thema gegen den Verlauf durchsetzen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 1 findet verwaltung-0026_gebuehrenordnung-standesamt.md nicht; Runde 2 verfehlt verwaltung-0027_dienstanweisung-standesamt-1-2024.md ganz, Rang 1 belegt verwaltung-0034_dienstanweisung-buergeramt-1-2024.md."
+    "expected_state": "solved",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343), bestätigt im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden gelöst; Teilfrage der Runde 2: „Dienstanweisung zur Bearbeitung von Amtshandlungsanträgen“. Kein Baustein ist hinzugekommen; die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells."
   },
   {
     "id": "verw-conv-ts-008",
@@ -758,9 +758,9 @@
         "confusable_document": "verwaltung-0032_personalausweisgebuehrensatzung-fassung-2024.md"
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-11",
-    "expected_state_reason": "Fehlender Baustein: die Rahmenangabe erreicht die Teilfrage der Zielrunde nicht. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 2 führt das Ziel auf Rang 2, Rang 1 belegt verwaltung-0031_personalausweisgebuehrensatzung-fassung-2023.md."
+    "expected_state": "solved",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343), bestätigt im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Wie wird die Vernichtung nicht archivwürdiger Akten protokolliert?“. Kein Baustein ist hinzugekommen; die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells."
   },
   {
     "id": "verw-conv-cc-007",
@@ -791,9 +791,9 @@
         "confusable_document": "verwaltung-0051_kindertagesstaettenbeitragssatzung-fassung-2024.md"
       }
     ],
-    "expected_state": "known_gap",
-    "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Offen seit der geänderten Signalwort-Regel (#1684): Die neue Regelzeile verändert die gierige Zerlegung des gepinnten Modells in Runde 3, deren Teilfrage die Kindertagesstättenbeitragssatzung verliert; kein Baustein ist weggefallen. Symptom im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684): Runde 3 verfehlt verwaltung-0050_kindertagesstaettenbeitragssatzung-fassung-2023.md ganz, Rang 1 belegt verwaltung-0009_baugenehmigungsgebuehrensatzung-fassung-2023.md."
+    "expected_state": "solved",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343), bestätigt im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell) auf dem Pipeline-Pfad (Einpfad-Regel): alle 3 Runden gelöst; Teilfrage der Runde 2: „Suchanfrage: Formular UMW-08 verwendet sich für die Erhebung von Kindertagesstättenbeiträgen.“. Kein Baustein ist hinzugekommen; die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells."
   },
   {
     "id": "verw-conv-cc-008",
@@ -878,9 +878,9 @@
         "confusable_document": "verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md"
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Zuletzt bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden gelöst; Teilfrage der Runde 2: „Welche Dienstanweisung regelt die Aktenführung im Standesamt?“."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Offen seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells, die Teilfrage der Runde 4 lautet jetzt „Was kostet nach der Sozialgebührenbefreiungssatzung die Zweitausfertigung?“; kein Baustein ist weggefallen. Symptom im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell): Runde 4 führt verwaltung-0002_sozialgebuehrenbefreiungssatzung-fassung-2024.md auf Rang 3, Rang 1 belegt verwaltung-0001_sozialgebuehrenbefreiungssatzung-fassung-2023.md."
   },
   {
     "id": "verw-conv-ac-001",
@@ -1141,9 +1141,9 @@
         ]
       }
     ],
-    "expected_state": "solved",
-    "expected_state_since": "2026-09-17",
-    "expected_state_reason": "Gelöst seit #1684, bestätigt im Lauf vom 2026-09-17 (feste CPU-Variante haswell, Signalwort ohne Suchabschaltung, #1684) auf dem Pipeline-Pfad (Einpfad-Regel): alle 4 Runden gelöst; Teilfrage der Runde 2: „Entschuldigung für die Verwirrung. Wie lange muss man nach der Rückgabe der Unterlagen …“."
+    "expected_state": "known_gap",
+    "expected_state_since": "2026-10-13",
+    "expected_state_reason": "Offen seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Die neue Laufzeit verändert die gierige Zerlegung des gepinnten Modells, die Teilfrage der Runde 2 lautet jetzt „Entschuldigung, aber ich kann keine Suchanfrage generieren, die den aktuellsten Gesprächsverlauf berücksichtig …“; kein Baustein ist weggefallen. Symptom im CI-Lauf 38418739634 vom 2026-10-13 (ollama/ollama:0.40.3, feste CPU-Variante haswell): Runde 2 führt verwaltung-0022_dienstanweisung-ordnungsamt-2-2024.md auf Rang 16, Rang 1 belegt verwaltung-0003_gebuehrenordnung-sozialamt.md."
   },
   {
     "id": "verw-conv-ac-008",

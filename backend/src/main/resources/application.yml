@@ -306,7 +306,7 @@ opaa:
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
     chunk-overlap: ${OPAA_INDEXING_CHUNK_OVERLAP:100}
     # Target size of the structure-aware cut (Markdown, DOCX, ODT, HTML, PDF, Confluence, slides,
-    # tables) in characters, 500-8000; applies to documents indexed afterwards.
+    # tables) in characters, 500-8000; existing chunks are re-cut by the pipeline re-index.
     chunk-target-characters: ${OPAA_INDEXING_CHUNK_TARGET_CHARACTERS:4000}
     batch-size: ${OPAA_INDEXING_BATCH_SIZE:50}
     embedding-concurrency: ${OPAA_INDEXING_EMBEDDING_CONCURRENCY:3}

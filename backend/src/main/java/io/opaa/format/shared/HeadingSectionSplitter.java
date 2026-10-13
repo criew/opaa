@@ -63,6 +63,13 @@ public final class HeadingSectionSplitter {
   /** The smallest body {@link #bodyBudget} cuts a unit into rather than leaving the hard cut. */
   private static final int MIN_BODY_CHARS = 200;
 
+  /**
+   * What a chunk cut before the target size was recorded counts as: until then the target size was
+   * fixed at {@link #DEFAULT_SOFT_CHUNK_CHAR_LIMIT}.
+   */
+  public static final String UNRECORDED_CHUNKING_FINGERPRINT =
+      fingerprintOf(DEFAULT_SOFT_CHUNK_CHAR_LIMIT);
+
   private final int softChunkCharLimit;
 
   /**
@@ -86,6 +93,18 @@ public final class HeadingSectionSplitter {
   /** The target size in characters every cut and every combination aims at. */
   public int softChunkCharLimit() {
     return softChunkCharLimit;
+  }
+
+  /**
+   * The {@link io.opaa.format.DocumentFormat#chunkingFingerprint()} of every format on this cut:
+   * the target size is its only setting, so the fingerprint changes exactly when the cut can.
+   */
+  public String chunkingFingerprint() {
+    return fingerprintOf(softChunkCharLimit);
+  }
+
+  private static String fingerprintOf(int softChunkCharLimit) {
+    return "target-characters=" + softChunkCharLimit;
   }
 
   public sealed interface Event {}

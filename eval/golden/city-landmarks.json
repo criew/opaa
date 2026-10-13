@@ -1138,14 +1138,14 @@
     "answer_span": "St Paul’s Church wurde 1633 erbaut bzw. gegründet, geht auf Pläne von Inigo Jones zurück.",
     "expected_state": {
       "raw_vector": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannte Stadt, deshalb belegt eine andere Stadt Rang 1: Birmingham mit einer eigenen „St Paul’s Church“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt city-0024_birmingham.md, erwartet city-0003_london.md auf Rang 2."
+        "state": "solved",
+        "since": "2026-10-13",
+        "reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Fast jeder Chunk dieses Korpus liegt über 512 Token und bekam unter 0.6.5 einen falschen Vektor; mit stetigen Vektoren steht die erfragte Stadt vorn, die fehlende Ortsbindung der Anfrage war hier nicht die Ursache. Gemessen am 2026-10-13 im label-ausgelösten CI-Lauf 38418739634 zu PR #2607 (CPU/Testcontainer, ollama/ollama:0.40.3, haswell), Rohvektor-Pfad: Rang 1 belegt city-0003_london.md."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannte Stadt, deshalb belegt eine andere Stadt Rang 1: Cardiff mit einer eigenen „St Paul's Church“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0106_cardiff.md, erwartet city-0003_london.md auf Rang 3."
+        "state": "solved",
+        "since": "2026-10-13",
+        "reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Fast jeder Chunk dieses Korpus liegt über 512 Token und bekam unter 0.6.5 einen falschen Vektor; mit stetigen Vektoren steht die erfragte Stadt vorn, die fehlende Ortsbindung der Anfrage war hier nicht die Ursache. Gemessen am 2026-10-13 im label-ausgelösten CI-Lauf 38418739634 zu PR #2607 (CPU/Testcontainer, ollama/ollama:0.40.3, haswell), Pipeline-Pfad: Rang 1 belegt city-0003_london.md."
       }
     }
   },
@@ -2227,9 +2227,9 @@
         "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Kaliningrad mit einem eigenen „Brandenburger Tor“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0088_kaliningrad.md, erwartet city-0005_berlin.md auf Rang 3, city-0006_madrid.md auf Rang 2."
+        "state": "solved",
+        "since": "2026-10-13",
+        "reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Fast jeder Chunk dieses Korpus liegt über 512 Token und bekam unter 0.6.5 einen falschen Vektor; mit stetigen Vektoren steht die erfragte Stadt vorn, die fehlende Ortsbindung der Anfrage war hier nicht die Ursache. Gemessen am 2026-10-13 im label-ausgelösten CI-Lauf 38418739634 zu PR #2607 (CPU/Testcontainer, ollama/ollama:0.40.3, haswell), Pipeline-Pfad: Rang 1 belegt city-0005_berlin.md, city-0006_madrid.md auf Rang 2."
       }
     }
   },
@@ -2326,14 +2326,14 @@
     "answer_span": null,
     "expected_state": {
       "raw_vector": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Düsseldorf, das keine der beiden erfragten Sehenswürdigkeiten führt (nächstliegend „Aquazoo – Löbbecke Museum“). Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Rohvektor-Pfad: Rang 1 belegt city-0058_dusseldorf.md, erwartet city-0063_dresden.md auf Rang 3, city-0044_amsterdam.md auf Rang 2."
+        "state": "solved",
+        "since": "2026-10-13",
+        "reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Fast jeder Chunk dieses Korpus liegt über 512 Token und bekam unter 0.6.5 einen falschen Vektor; mit stetigen Vektoren steht die erfragte Stadt vorn, die fehlende Ortsbindung der Anfrage war hier nicht die Ursache. Gemessen am 2026-10-13 im label-ausgelösten CI-Lauf 38418739634 zu PR #2607 (CPU/Testcontainer, ollama/ollama:0.40.3, haswell), Rohvektor-Pfad: Rang 1 belegt city-0063_dresden.md, city-0044_amsterdam.md auf Rang 2."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Düsseldorf, das keine der beiden erfragten Sehenswürdigkeiten führt (nächstliegend „Aquazoo – Löbbecke Museum“). Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0058_dusseldorf.md, erwartet city-0063_dresden.md auf Rang 3, city-0044_amsterdam.md auf Rang 2."
+        "state": "solved",
+        "since": "2026-10-13",
+        "reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Fast jeder Chunk dieses Korpus liegt über 512 Token und bekam unter 0.6.5 einen falschen Vektor; mit stetigen Vektoren steht die erfragte Stadt vorn, die fehlende Ortsbindung der Anfrage war hier nicht die Ursache. Gemessen am 2026-10-13 im label-ausgelösten CI-Lauf 38418739634 zu PR #2607 (CPU/Testcontainer, ollama/ollama:0.40.3, haswell), Pipeline-Pfad: Rang 1 belegt city-0063_dresden.md, city-0044_amsterdam.md auf Rang 2."
       }
     }
   },
@@ -2357,9 +2357,9 @@
         "reason": "Festgeschriebener Ist-Zustand (#1658), im nächtlichen Lauf 34819759178 der Retrieval-Regression vom 2026-09-14 (CI, CPU/Testcontainer, Stand 6ff4c5f1) auf dem Rohvektor-Pfad gelöst: alle erwarteten Dokumente im Fenster, erwartetes Dokument auf Rang 1."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-09-14",
-        "reason": "Fehlende Ortsbindung der Anfrage: Kein Baustein gewichtet die in der Frage genannten Städte, deshalb belegt eine andere Stadt Rang 1: Kaliningrad mit einem eigenen „Brandenburger Tor“. Gemessen am 2026-09-14 im CPU/Testcontainer-Lauf auf 283d2817, Pipeline-Pfad: Rang 1 belegt city-0088_kaliningrad.md, erwartet city-0005_berlin.md auf Rang 3, city-0050_athen.md auf Rang 2."
+        "state": "solved",
+        "since": "2026-10-13",
+        "reason": "Gelöst seit dem Wechsel auf ollama/ollama:0.40.3 (#2343): Fast jeder Chunk dieses Korpus liegt über 512 Token und bekam unter 0.6.5 einen falschen Vektor; mit stetigen Vektoren steht die erfragte Stadt vorn, die fehlende Ortsbindung der Anfrage war hier nicht die Ursache. Gemessen am 2026-10-13 im label-ausgelösten CI-Lauf 38418739634 zu PR #2607 (CPU/Testcontainer, ollama/ollama:0.40.3, haswell), Pipeline-Pfad: Rang 1 belegt city-0050_athen.md, city-0005_berlin.md auf Rang 2."
       }
     }
   },

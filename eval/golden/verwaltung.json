@@ -196,9 +196,9 @@
         "reason": "Ohne geprüften Mechanismus: Gelöst ohne den lexikalischen Pfad, den dieser Messpfad nicht hat (Roadmap 1a/1b). Gemessen am 2026-09-15 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#1652), Rohvektor-Pfad: alle erwarteten Dokumente im Fenster (10 Dokumente), Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
       },
       "pipeline": {
-        "state": "known_gap",
-        "since": "2026-10-09",
-        "reason": "Unzureichender lexikalischer Pfad (Roadmap 1a/1b): Seit top-k 20 (#2373) behält jede Suchliste 20 statt 8 Kandidaten für die Fusion, und ein thematisch nahes Formular der Kämmerei zieht dort am wörtlich passenden Zieldokument vorbei. Gemessen am 2026-10-09 im CPU/Testcontainer-Lauf mit fester CPU-Variante haswell (#2373, top-k 20), Pipeline-Pfad: 1 von 1 erwarteten Dokumenten im Fenster (7 Dokumente aus 20 Chunk-Plätzen), aber Rang 1 belegt verwaltung-0043_formularhinweis-kaemmerei-8.md; verwaltung-0038_verwaltungsgebuehrensatzung.md steht auf Rang 2."
+        "state": "solved",
+        "since": "2026-10-13",
+        "reason": "Gelöst mit dem lexikalischen Pfad in der Fusion (Roadmap 1a/1b). Seit dem Wechsel auf ollama/ollama:0.40.3 (#2343) steht das wörtlich passende Zieldokument wieder vor dem thematisch nahen Formular der Kämmerei. Gemessen am 2026-10-13 im CPU/Testcontainer-Lauf mit ollama/ollama:0.40.3 und fester CPU-Variante haswell (#2343), Pipeline-Pfad: alle erwarteten Dokumente im Fenster (7 Dokumente aus 20 Chunk-Plätzen), Rang 1 belegt verwaltung-0038_verwaltungsgebuehrensatzung.md."
       }
     }
   },

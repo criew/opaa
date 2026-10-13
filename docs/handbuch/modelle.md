@@ -162,6 +162,15 @@ und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettu
 Das voreingestellte `nomic-embed-text` bettet mit 768 Dimensionen ein, die Anwendungsvorgabe von
 `OPAA_PGVECTOR_DIMENSIONS` ist 1536 — wer die Voreinstellung nutzt, setzt `768`.
 
+> **Ältere Ollama-Fassungen betten lange Chunks falsch ein.** Sie zerlegen eine Eingabe über 512
+> Token in mehrere Teile. Embedding-Modelle wie `nomic-embed-text` und `bge-m3` lesen einen Text
+> aber als Ganzes, und der Vektor eines längeren Chunks trifft dann seinen Inhalt nicht mehr. Bei
+> durchgehendem Fließtext ist mit der voreingestellten Chunkgröße fast jeder Chunk so lang, bei kurzen,
+> nach Überschriften gegliederten Abschnitten kaum einer. Betroffen ist etwa Ollama 0.6.5;
+> die Fassung im Compose-Stapel und im Erprobungsaufbau für Kubernetes hat den Fehler nicht. Wer
+> Ollama selbst betreibt, nimmt mindestens diese Fassung und indiziert nach dem Wechsel vollständig
+> neu ([Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht)).
+
 Ein Embedding-Aufruf darf so lange dauern, wie `OPAA_OPENAI_EMBEDDING_TIMEOUT` erlaubt. Ein großes
 Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann bricht der Aufruf ab,
 wird wenige Male wiederholt und scheitert schließlich mit seinem Dokument. Die Neueinbettung bricht

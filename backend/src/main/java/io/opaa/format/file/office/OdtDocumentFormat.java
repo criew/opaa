@@ -70,6 +70,16 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
     return VERSION;
   }
 
+  @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
   /**
    * ODF, unlike DOCX/PPTX, has one specific media type straight from Tika's ZIP-mimetype-entry
    * detector - there is no generic "unresolved ODF container" type to exclude here.

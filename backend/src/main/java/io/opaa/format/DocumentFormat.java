@@ -43,6 +43,41 @@ public interface DocumentFormat {
   }
 
   /**
+   * The configured values this format's cut depends on, as a stable string written onto every chunk
+   * ({@link ChunkFormatMetadata#CHUNKING_FINGERPRINT_METADATA_KEY}). Changing such a setting
+   * changes the value without raising {@link #version()}; the re-index then selects the chunks cut
+   * under the old one. {@code null} for a format no setting influences. Adding a further setting to
+   * a fingerprint must map the existing values (e.g. {@code target-characters=N} with the new
+   * setting at its default) onto the new form, or the whole corpus becomes stale once.
+   */
+  default String chunkingFingerprint() {
+    return null;
+  }
+
+  /**
+   * What a chunk of this format without a recorded fingerprint counts as - the setting it was cut
+   * under before fingerprints were written. Defaults to {@link #chunkingFingerprint()}, so an
+   * unrecorded chunk is never due unless the format knows that earlier setting.
+   */
+  default String unrecordedChunkingFingerprint() {
+    return chunkingFingerprint();
+  }
+
+  /**
+   * Whether a chunk of this format recording {@code recordedFingerprint} ({@code null}: nothing
+   * recorded) was cut under another configuration than this format's current one.
+   */
+  default boolean cutUnderOtherConfiguration(String recordedFingerprint) {
+    String current = chunkingFingerprint();
+    if (current == null) {
+      return false;
+    }
+    String recorded =
+        recordedFingerprint != null ? recordedFingerprint : unrecordedChunkingFingerprint();
+    return recorded != null && !current.equals(recorded);
+  }
+
+  /**
    * The extensions this pipeline claims for routing (e.g. {@code ".pdf"}) - the routing key {@link
    * DocumentFormatRegistry} resolves from a document's <em>detected content</em>, never from its
    * file name alone. Derived from {@link #admittedFormats()}, since a format routes what it admits;
