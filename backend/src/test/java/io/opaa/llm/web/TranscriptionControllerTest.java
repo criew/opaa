@@ -18,19 +18,26 @@ import io.opaa.knowledge.UploadProperties;
 import io.opaa.llm.TranscriptionClient;
 import io.opaa.llm.TranscriptionModelRole;
 import io.opaa.llm.TranscriptionProperties;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.Part;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Collection;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.mock.env.MockEnvironment;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.multipart.support.StandardServletMultipartResolver;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -45,11 +52,13 @@ class TranscriptionControllerTest {
   private static final String AUDIO_MARKER = "AUDIO-MARKER-7f3a";
   private static final byte[] AUDIO = AUDIO_MARKER.getBytes(StandardCharsets.US_ASCII);
   private static final int MAX_AUDIO_BYTES = 1024;
+  private static final String PERSON = "erika.musterfrau";
 
   private HttpServer upstream;
   private final AtomicInteger upstreamStatus = new AtomicInteger(200);
   private volatile String upstreamBody = "{\"text\":\"" + RECOGNISED + "\"}";
   private final AtomicInteger transcriptionCalls = new AtomicInteger();
+  private volatile boolean upstreamStalls;
   private TranscriptionClient client;
   private ListAppender<ILoggingEvent> logs;
   private Logger rootLogger;
@@ -63,6 +72,13 @@ class TranscriptionControllerTest {
         exchange -> {
           transcriptionCalls.incrementAndGet();
           exchange.getRequestBody().readAllBytes();
+          if (upstreamStalls) {
+            try {
+              Thread.sleep(3_000);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+          }
           answer(exchange, upstreamStatus.get(), upstreamBody);
         });
     upstream.start();
@@ -90,6 +106,18 @@ class TranscriptionControllerTest {
   }
 
   private MockMvc mockMvc(boolean enabled) {
+    return mockMvc(enabled, Duration.ofSeconds(5));
+  }
+
+  private MockMvc mockMvc(boolean enabled, Duration timeout) {
+    return MockMvcBuilders.standaloneSetup(controller(enabled, timeout))
+        .setControllerAdvice(
+            new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0)))
+        .addFilters(new RequestLoggingFilter())
+        .build();
+  }
+
+  private TranscriptionController controller(boolean enabled, Duration timeout) {
     TranscriptionProperties properties =
         new TranscriptionProperties(
             enabled,
@@ -98,15 +126,11 @@ class TranscriptionControllerTest {
             "",
             "de",
             MAX_AUDIO_BYTES,
-            Duration.ofSeconds(5));
+            timeout);
     TranscriptionModelRole role =
         new TranscriptionModelRole(properties, client, new FeatureFlags(new MockEnvironment()));
     role.refresh();
-    return MockMvcBuilders.standaloneSetup(new TranscriptionController(role))
-        .setControllerAdvice(
-            new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0)))
-        .addFilters(new RequestLoggingFilter())
-        .build();
+    return new TranscriptionController(role);
   }
 
   @Test
@@ -145,6 +169,86 @@ class TranscriptionControllerTest {
         .andExpect(jsonPath("$.error").value(TranscriptionController.UPSTREAM_FAILED_MESSAGE));
 
     assertLogsCarryNoContent();
+  }
+
+  @Test
+  void aTimedOutUpstreamIs502AndNothingOfTheRecordingIsLogged() throws Exception {
+    MockMvc mockMvc = mockMvc(true, Duration.ofMillis(500));
+    upstreamStalls = true;
+
+    mockMvc
+        .perform(post("/api/v1/transcriptions").contentType("audio/webm").content(AUDIO))
+        .andExpect(status().isBadGateway())
+        .andExpect(jsonPath("$.error").value(TranscriptionController.UPSTREAM_FAILED_MESSAGE));
+
+    assertLogsCarryNoContent();
+    assertThat(formattedLines()).anyMatch(line -> line.contains("request timed out"));
+  }
+
+  /** The request log names method, path, status and duration - nobody, and nothing of the body. */
+  @Test
+  void theRequestLogCarriesNoPersonForADictation() throws Exception {
+    mockMvc(true)
+        .perform(
+            post("/api/v1/transcriptions")
+                .contentType("audio/webm")
+                .content(AUDIO)
+                .principal(() -> PERSON)
+                .with(
+                    request -> {
+                      request.setRemoteAddr("10.20.30.40");
+                      return request;
+                    }))
+        .andExpect(status().isOk());
+
+    assertLogsCarryNoContent();
+    assertThat(formattedLines())
+        .filteredOn(line -> line.contains("/api/v1/transcriptions"))
+        .singleElement()
+        .satisfies(line -> assertThat(line).matches("POST /api/v1/transcriptions 200 \\d+ms"));
+    for (ILoggingEvent event : logs.list) {
+      String everything =
+          event.getFormattedMessage() + event.getMDCPropertyMap() + event.getKeyValuePairs();
+      assertThat(everything).doesNotContain(PERSON).doesNotContain("10.20.30.40");
+    }
+  }
+
+  /**
+   * The servlet container writes multipart parts above its file-size-threshold to a temporary file;
+   * a dictation is no multipart request, and the controller reads nothing but the raw body.
+   */
+  @Test
+  void aDictationIsReadFromTheRawBodyAndNeverAsMultipartParts() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/transcriptions");
+    request.setContentType("audio/webm;codecs=opus");
+    request.setContent(AUDIO);
+    assertThat(new StandardServletMultipartResolver().isMultipart(request)).isFalse();
+
+    HttpServletRequest rawBodyOnly =
+        new HttpServletRequestWrapper(request) {
+          @Override
+          public Collection<Part> getParts() {
+            throw new AssertionError("multipart parts were read");
+          }
+
+          @Override
+          public Part getPart(String name) {
+            throw new AssertionError("multipart part was read");
+          }
+
+          @Override
+          public String getParameter(String name) {
+            throw new AssertionError("request parameters were parsed");
+          }
+
+          @Override
+          public Map<String, String[]> getParameterMap() {
+            throw new AssertionError("request parameters were parsed");
+          }
+        };
+
+    assertThat(controller(true, Duration.ofSeconds(5)).createTranscription(rawBodyOnly).getText())
+        .isEqualTo(RECOGNISED);
   }
 
   @Test
