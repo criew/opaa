@@ -2,6 +2,7 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -78,5 +79,51 @@ class ContextPrefixRerunServiceTest {
               assertThat(chunk.getText()).isEqualTo("Gespeicherter Text");
             });
     verify(vectorChunkStore, never()).addChunks(anyList());
+  }
+
+  @Test
+  void theStampIsRecordedOnlyWhenEveryStoredChunkWasRewritten() throws Exception {
+    Document document = documentWithStoredChunks(2);
+    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(2);
+
+    service.reembedInPlace(document);
+
+    verify(documentRepository)
+        .recordContextPrefix(eq(document.getId()), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void aDocumentWhoseChunksAConcurrentIngestReplacedKeepsTheStampTheIngestRecorded()
+      throws Exception {
+    Document document = documentWithStoredChunks(2);
+    // One chunk was gone at write time: the ingest replaced the chunks and owns the document row.
+    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(1);
+
+    service.reembedInPlace(document);
+
+    verify(documentRepository, never()).recordContextPrefix(any(), any(), anyBoolean(), any());
+  }
+
+  @SuppressWarnings("unchecked")
+  private Document documentWithStoredChunks(int count) throws Exception {
+    UUID documentId = UUID.randomUUID();
+    Document document = mock(Document.class);
+    when(document.getId()).thenReturn(documentId);
+    when(metadataService.chunkMetadataFor(document)).thenReturn(DocumentChunkMetadata.EMPTY);
+    ResultSet row = mock(ResultSet.class);
+    when(row.getString("id")).thenAnswer(call -> UUID.randomUUID().toString());
+    when(row.getString("content")).thenReturn("Gespeicherter Text");
+    when(row.getString("metadata")).thenReturn("{\"document_id\":\"" + documentId + "\"}");
+    when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq(documentId.toString())))
+        .thenAnswer(
+            call -> {
+              RowMapper<Object> mapper = call.getArgument(1);
+              List<Object> chunks = new java.util.ArrayList<>();
+              for (int i = 0; i < count; i++) {
+                chunks.add(mapper.mapRow(row, i));
+              }
+              return chunks;
+            });
+    return document;
   }
 }

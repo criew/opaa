@@ -145,9 +145,10 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   /**
    * Re-embeds every chunk of {@code document} in place: same ids, same stored text, the input
    * rebuilt with the document's current Kontextpräfix exactly as the ingest builds it, vector row
-   * and full-text row together. Records the prefix stamp afterwards. Throws when embedding or
-   * writing fails; the document then keeps what it had. Holds no lock on the document: a chunk that
-   * a concurrent ingest replaced or a deletion removed after it was read is not written back.
+   * and full-text row together. Records the prefix stamp afterwards, but only when every stored
+   * chunk was rewritten. Throws when embedding or writing fails; the document then keeps what it
+   * had. Holds no lock on the document: a chunk that a concurrent ingest replaced or a deletion
+   * removed after it was read is not written back.
    */
   public void reembedInPlace(Document document) {
     UUID documentId = document.getId();
@@ -165,7 +166,12 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
         stored.stream()
             .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
             .toList();
-    vectorChunkStore.reembedChunks(rebuilt);
+    int rewritten = vectorChunkStore.reembedChunks(rebuilt);
+    if (rewritten != stored.size()) {
+      // A concurrent ingest or deletion took chunks away after they were read; the document row
+      // belongs to that writer now and keeps the prefix it recorded for its own chunks.
+      return;
+    }
     // Only after the replacement exists: a failed embedding call must leave the document pending
     // rather than mark it done with its old chunks.
     documentRepository.recordContextPrefix(

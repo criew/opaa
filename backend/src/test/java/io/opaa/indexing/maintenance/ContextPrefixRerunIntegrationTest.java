@@ -442,6 +442,7 @@ class ContextPrefixRerunIntegrationTest {
     assertThat(idsBefore).isNotEmpty();
     Path file = classTempDir.resolve("ersetzt-waehrend-nachlauf.md");
     List<UUID> idsOfTheIngest = new java.util.ArrayList<>();
+    List<String> prefixOfTheIngest = new java.util.ArrayList<>();
     // Between reading the stored chunks and writing them back: the ingest replaces them with
     // chunks of a new text under new ids.
     fakeEmbeddingModel()
@@ -463,6 +464,9 @@ class ContextPrefixRerunIntegrationTest {
                 throw new java.io.UncheckedIOException(e);
               }
               idsOfTheIngest.addAll(chunkIds(document));
+              Document afterIngest = documentRepository.findById(document.getId()).orElseThrow();
+              prefixOfTheIngest.add(afterIngest.getContextPrefixStamp());
+              prefixOfTheIngest.add(afterIngest.getContextPrefixTitle());
             });
 
     rerunService.reembedInPlace(documentRepository.findById(document.getId()).orElseThrow());
@@ -479,6 +483,12 @@ class ContextPrefixRerunIntegrationTest {
     assertThat(fullTextChunkIds(document))
         .as("nor does its full-text row")
         .containsExactlyInAnyOrderElementsOf(idsOfTheIngest);
+    Document afterRerun = documentRepository.findById(document.getId()).orElseThrow();
+    assertThat(
+            java.util.Arrays.asList(
+                afterRerun.getContextPrefixStamp(), afterRerun.getContextPrefixTitle()))
+        .as("the document row keeps the prefix the ingest recorded for its own chunks")
+        .containsExactlyElementsOf(prefixOfTheIngest);
   }
 
   @Test
