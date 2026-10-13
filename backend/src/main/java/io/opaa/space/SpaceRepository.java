@@ -72,8 +72,9 @@ public interface SpaceRepository extends JpaRepository<Space, UUID> {
    * undeletable through their {@code RESTRICT} person columns, without any decision having been
    * recorded. Consequence, named rather than hidden: a Stichtag reconstruction ({@link
    * SpaceMembershipHistoryService#spaceIdsAsOf}) does not report the personal space. Nobody else
-   * becomes a member of it, and every membership and ownership of another space goes through {@link
-   * SpaceService} and is historised there.
+   * becomes a member of it; every membership and ownership of another space is historised where it
+   * is written ({@link SpaceService}, {@code SpaceAssetOwnershipDirectory}, {@code
+   * GroupSpaceMembershipDirectoryAdapter}).
    */
   @Modifying
   @Query(

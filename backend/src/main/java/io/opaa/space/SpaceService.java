@@ -465,12 +465,11 @@ public class SpaceService {
   public SpaceMemberView addMember(
       UUID spaceId, PermissionSubject subject, SpaceRole requestedRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    requireNotDefault(space);
     // ADR-0036, Entscheidung 6: a space without a capable ADMIN takes no new members while its
     // succession is open - everything else about it keeps working.
     successionGuard.requireReachNotFrozen(
         SuccessionObjectType.SPACE, space.getId(), "Die Aufnahme eines neuen Mitglieds");
-    accessPolicy.requireManager(space, caller);
+    requireMembershipChangeable(space, caller);
     // #613 review, finding 2: an archived space accepts no new content, and a new member is new
     // content in the sense the specification means - see docs/features/spaces-and-assets.md#einen-
     // space-stilllegen-archivieren-statt-löschen ("keine neuen Chats, Nachrichten, Umbenennungen
@@ -571,8 +570,7 @@ public class SpaceService {
   public SpaceMemberView updateMemberRole(
       UUID spaceId, UUID membershipId, SpaceRole newRole, CurrentUser caller) {
     Space space = loadSpace(spaceId, caller);
-    requireNotDefault(space);
-    accessPolicy.requireManager(space, caller);
+    requireMembershipChangeable(space, caller);
     if (newRole == null) {
       throw new ValidationException("role ist erforderlich");
     }
@@ -1034,12 +1032,20 @@ public class SpaceService {
         "Space nicht gefunden");
   }
 
-  /** The default space belongs to its owner alone: nobody is admitted, no role is changed. */
-  private static void requireNotDefault(Space space) {
+  /**
+   * The manager check, and then: the default space belongs to its owner alone - nobody is admitted,
+   * no role is changed. A system administrator, who may open any space, is refused for that reason
+   * too; anybody else learns that a space is a default space only as its manager.
+   */
+  private void requireMembershipChangeable(Space space, CurrentUser caller) {
+    if (!caller.isSystemAdmin()) {
+      accessPolicy.requireManager(space, caller);
+    }
     if (space.isDefault()) {
       throw new ConflictException(
           "Der Standard-Space ist privat. Für gemeinsame Arbeit legen Sie einen Space an.");
     }
+    accessPolicy.requireManager(space, caller);
   }
 
   /**

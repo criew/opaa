@@ -115,7 +115,7 @@ liegt im Reiter „Inhalte".
 Den Schalter der Chat-Bereinigung im eigenen Standard-Space legt nur dessen Eigentümer um, auch die
 Systemverwaltung nicht. Deshalb lässt sich ein Standard-Space auch nicht übertragen. Sein Reiter
 „Mitglieder" zeigt nur den Hinweis „Ihr Standard-Space ist privat." mit dem Verweis „Space
-anlegen". Den Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
+anlegen", der Systemverwaltung nur „Der Standard-Space ist privat." Den Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
 archivieren noch löschen.
 
 **Die Anweisung an das Modell setzt und ändert nur, wer im Space die Rolle Administrator hat** —

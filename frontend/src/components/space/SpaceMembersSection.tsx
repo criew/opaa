@@ -102,13 +102,15 @@ export default function SpaceMembersSection({
 
   // The default space admits nobody but its owner; the service refuses every change to it.
   if (space.isDefault) {
-    return (
+    return isOwner ? (
       <Alert severity="info">
         Ihr Standard-Space ist privat. Für gemeinsame Arbeit legen Sie einen eigenen Space an:{' '}
         <Link component={RouterLink} to="/spaces/new">
           Space anlegen
         </Link>
       </Alert>
+    ) : (
+      <Alert severity="info">Der Standard-Space ist privat.</Alert>
     )
   }
 

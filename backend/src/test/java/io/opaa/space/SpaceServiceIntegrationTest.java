@@ -409,24 +409,21 @@ class SpaceServiceIntegrationTest {
   @Test
   void rolesInTheDefaultSpaceCannotBeChanged() {
     UUID owner = createUser(organizationA);
-    UUID colleague = createUser(organizationA);
     Space defaultSpace = new Space("My Documents", "Private", true, owner, organizationA);
     defaultSpace.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
-    defaultSpace.addMembership(SpaceMembership.ofUser(colleague, SpaceRole.MEMBER, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
     assertThatThrownBy(
             () ->
                 spaceService.updateMemberRole(
                     saved.getId(),
-                    membershipIdOf(saved.getId(), colleague),
+                    membershipIdOf(saved.getId(), owner),
                     SpaceRole.CURATOR,
                     currentUserOf(owner)))
         .isInstanceOf(ConflictException.class)
         .hasMessageContaining("Standard-Space ist privat");
-    assertThat(
-            roleOf(spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow(), colleague))
-        .isEqualTo(SpaceRole.MEMBER);
+    assertThat(roleOf(spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow(), owner))
+        .isEqualTo(SpaceRole.ADMIN);
   }
 
   @Test

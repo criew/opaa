@@ -434,6 +434,15 @@ describe('SpaceSettingsPage', () => {
     expect(mockListSpaceMembers).not.toHaveBeenCalled()
   })
 
+  it('#2585: tells somebody else in a foreign default space only that it is private', () => {
+    setSpaceState({ ...teamSpace, isDefault: true, ownerId: 'someone-else' })
+    renderTab('members')
+
+    expect(screen.getByText('Der Standard-Space ist privat.')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Space anlegen' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Ihr Standard-Space/)).not.toBeInTheDocument()
+  })
+
   /** #2131, #2205: Das Formular ist die Überschrift des Panels, ohne Hinweistext darunter. */
   it('heads the members tab with the add form only, without a hint on groups', async () => {
     setSpaceState(teamSpace)
