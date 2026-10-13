@@ -61,6 +61,9 @@ data:
   {{- with .Values.mail.writeTimeout }}
   OPAA_MAIL_WRITE_TIMEOUT: {{ . | quote }}
   {{- end }}
+  {{- range $name, $flag := .Values.features }}
+  OPAA_FEATURES_{{ $name | snakecase | upper }}_ENABLED: {{ $flag.enabled | quote }}
+  {{- end }}
   # Bootstrap values - read on the first start only, see values.yaml.
   OPAA_INITIAL_ADMIN_EMAIL: {{ .Values.bootstrap.initialAdmin.email | quote }}
   {{- with .Values.bootstrap.chatModel.baseUrl }}

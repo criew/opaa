@@ -1,4 +1,10 @@
-import type { AuthConfig, AuthUser, LocalAccountsConfig, LocalTokenResponse } from '../types/auth'
+import type {
+  AuthConfig,
+  AuthUser,
+  FeaturesConfig,
+  LocalAccountsConfig,
+  LocalTokenResponse,
+} from '../types/auth'
 
 /**
  * The local account management as the mocks present it by default: switched off, like a fresh
@@ -12,10 +18,17 @@ export const mockLocalAccountsConfig: LocalAccountsConfig = {
   passwordMinLength: 12,
 }
 
+/** Every installation-wide feature flag switched on, as an installation without configuration. */
+export const mockFeaturesConfig: FeaturesConfig = {
+  promptLibraries: true,
+  metadata: true,
+}
+
 export let mockAuthConfig: AuthConfig = {
   mode: 'dev',
   providers: [],
   localAccounts: mockLocalAccountsConfig,
+  features: mockFeaturesConfig,
 }
 
 /** Switches the mocked local account management, e.g. to show the password mask. */
@@ -30,9 +43,22 @@ export function setMockLocalAccounts(localAccounts: Partial<LocalAccountsConfig>
   }
 }
 
+/** Switches mocked feature flags (ADR-0044), e.g. `setMockFeatures({ metadata: false })`. */
+export function setMockFeatures(features: Partial<FeaturesConfig>) {
+  mockAuthConfig = {
+    ...mockAuthConfig,
+    features: { ...mockFeaturesConfig, ...mockAuthConfig.features, ...features },
+  }
+}
+
 /** Puts the mocked auth config back to the default of a dev-mode installation. */
 export function resetMockAuthConfig() {
-  mockAuthConfig = { mode: 'dev', providers: [], localAccounts: mockLocalAccountsConfig }
+  mockAuthConfig = {
+    mode: 'dev',
+    providers: [],
+    localAccounts: mockLocalAccountsConfig,
+    features: mockFeaturesConfig,
+  }
 }
 
 /** The credentials the mocked local sign-in accepts; everything else is refused with 401. */

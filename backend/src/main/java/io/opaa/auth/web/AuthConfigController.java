@@ -10,6 +10,7 @@ import io.opaa.auth.AuthProperties;
 import io.opaa.auth.OidcProvider;
 import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderRepository;
+import io.opaa.common.FeatureFlags;
 import java.util.List;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,6 +33,9 @@ import org.springframework.web.bind.annotation.RestController;
  * answer the authorization rule and the rate limiter act on, and the switch above it from the same
  * {@link OidcProviderRegistry} that answer rests on - one source for the whole {@code
  * localAccounts} object, so this endpoint can report no state the paths do not hold (#1592).
+ *
+ * <p>{@code features} carries every installation-wide feature flag (ADR-0044) from {@link
+ * FeatureFlags}, so the frontend knows them before and after sign-in.
  */
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -44,18 +48,21 @@ public class AuthConfigController {
   private final OidcProviderRegistry providerRegistry;
   private final LocalAuthSettingsRepository settingsRepository;
   private final ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows;
+  private final FeatureFlags featureFlags;
 
   public AuthConfigController(
       AuthProperties authProperties,
       OidcProviderRepository providerRepository,
       OidcProviderRegistry providerRegistry,
       LocalAuthSettingsRepository settingsRepository,
-      ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows) {
+      ObjectProvider<LocalSelfServiceAvailability> selfServiceFlows,
+      FeatureFlags featureFlags) {
     this.authProperties = authProperties;
     this.providerRepository = providerRepository;
     this.providerRegistry = providerRegistry;
     this.settingsRepository = settingsRepository;
     this.selfServiceFlows = selfServiceFlows;
+    this.featureFlags = featureFlags;
   }
 
   @GetMapping("/config")
@@ -68,7 +75,11 @@ public class AuthConfigController {
                 .map(this::toSignInProvider)
                 .toList()
             : List.of();
-    return new AuthConfigResponse(mode, providers, localAccounts(mode));
+    return new AuthConfigResponse(
+        mode,
+        providers,
+        localAccounts(mode),
+        FeaturesConfigMapper.toFeaturesConfig(featureFlags.asMap()));
   }
 
   private LocalAccountsConfig localAccounts(String mode) {
