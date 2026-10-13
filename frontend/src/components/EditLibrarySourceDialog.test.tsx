@@ -1061,6 +1061,29 @@ describe('EditLibrarySourceDialog errors at their field (#2193)', () => {
       expect(advanced).toHaveAttribute('aria-expanded', 'true')
       expect(include).toHaveFocus()
     }, 15000)
+
+    // regression guard for #2604: every report opens the section, even with an unchanged message
+    it('reopens the advanced section when the same pattern error is reported again', async () => {
+      const user = userEvent.setup()
+      renderWithProviders(
+        <EditLibrarySourceDialog open onClose={() => {}} libraryId="lib-s3" library={s3Library} />,
+      )
+      await user.click(screen.getByRole('button', { name: /Erweitert/ }))
+      await user.type(screen.getByLabelText(/^Einschlussmuster/), '*.pdf{Enter}*.pdf')
+      await save(user)
+
+      const advanced = screen.getByRole('button', { name: /Erweitert/ })
+      await user.click(advanced)
+      expect(advanced).toHaveAttribute('aria-expanded', 'false')
+
+      await save(user)
+
+      const include = screen.getByLabelText(/^Einschlussmuster/)
+      expect(advanced).toHaveAttribute('aria-expanded', 'true')
+      expect(include).toHaveAccessibleDescription(/ein Muster ist mehrfach angegeben/)
+      expect(include).toHaveFocus()
+      expect(mockUpdateLibrary).not.toHaveBeenCalled()
+    }, 15000)
   })
 
   it('shows an issue of a field the form does not show in the live region and focuses it', async () => {
