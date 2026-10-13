@@ -80,6 +80,20 @@ public enum RetrievalNote {
   RERANK_CANDIDATE_WINDOW("rerank candidate window %d"),
   RERANK_SCORED_COUNT("%d of %d candidate(s) scored by the rerank model"),
 
+  RELEVANCE_CUTOFF_FIXED(
+      "relevance cutoff off (mode fixed): the selection keeps up to top-k %d chunk(s)"),
+  RELEVANCE_CUTOFF_RELATIVE(
+      "relative cutoff: kept %d of %d chunk(s) scoring at least %s of the best score %s, at least"
+          + " %d"),
+  RELEVANCE_CUTOFF_KNEE(
+      "knee cutoff: cut after %d of %d chunk(s), where the score fell by at least %s of the best"),
+  RELEVANCE_CUTOFF_NO_KNEE(
+      "knee cutoff: no drop of at least %s of the best after the minimum of %d, all %d kept"),
+  RELEVANCE_CUTOFF_NO_POSITIVE_SCORE(
+      "relevance cutoff skipped: the best score is not positive, all %d chunk(s) kept"),
+  RELEVANCE_CUTOFF_AT_MINIMUM(
+      "relevance cutoff: %d chunk(s) do not exceed the minimum of %d, all kept"),
+
   MAX_CHUNKS_PER_DOCUMENT("max-chunks-per-document %d"),
   SIBLINGS_COMPLETED("%d sibling chunk(s) completed from the candidate pool");
 

@@ -18,7 +18,9 @@ import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.StageStatus;
 import io.opaa.retrieval.VerdictReason;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
@@ -97,6 +99,11 @@ public class RerankStage implements RetrievalStage {
     }
     List<Document> selection =
         reranked.stream().limit(topK).map(RankedCandidate::document).toList();
+    Map<String, Double> scores = new HashMap<>();
+    reranked.stream()
+        .limit(topK)
+        .filter(candidate -> candidate.score() != null)
+        .forEach(candidate -> scores.put(candidate.document().getId(), candidate.score()));
 
     List<CandidateVerdict> verdicts = new ArrayList<>(incoming.size());
     for (int rank = 1; rank <= reranked.size(); rank++) {
@@ -113,8 +120,10 @@ public class RerankStage implements RetrievalStage {
     }
 
     return new StageOutcome(
-        state.withCandidateLists(
-            List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, selection))),
+        state
+            .withCandidateLists(
+                List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, selection)))
+            .withSelectionScores(scores),
         StageExplanation.executed(
             name(),
             incoming.size(),

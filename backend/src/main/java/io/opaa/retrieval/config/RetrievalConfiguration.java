@@ -3,6 +3,7 @@ package io.opaa.retrieval.config;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.observability.QueryMetrics;
 import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
 import io.opaa.retrieval.VectorIndexScanProperties;
@@ -10,6 +11,7 @@ import io.opaa.retrieval.context.NeighborChunkProperties;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
 import io.opaa.retrieval.ranking.RankFusionStage;
+import io.opaa.retrieval.ranking.RelevanceCutoffStage;
 import io.opaa.retrieval.ranking.RerankStage;
 import io.opaa.retrieval.scope.MetadataFilterStage;
 import io.opaa.retrieval.scope.SearchScopeStage;
@@ -32,7 +34,8 @@ import org.springframework.context.annotation.Configuration;
   QueryProperties.class,
   RetrievalPipelineProperties.class,
   VectorIndexScanProperties.class,
-  NeighborChunkProperties.class
+  NeighborChunkProperties.class,
+  RelevanceCutoffProperties.class
 })
 public class RetrievalConfiguration {
 
@@ -51,6 +54,7 @@ public class RetrievalConfiguration {
       MmrSelectionStage mmrSelectionStage,
       RankFusionStage rankFusionStage,
       RerankStage rerankStage,
+      RelevanceCutoffStage relevanceCutoffStage,
       DocumentCompletionStage documentCompletionStage,
       RetrievalPipelineProperties pipelineProperties) {
     return new RetrievalPipeline(
@@ -63,6 +67,7 @@ public class RetrievalConfiguration {
             mmrSelectionStage,
             rankFusionStage,
             rerankStage,
+            relevanceCutoffStage,
             documentCompletionStage),
         pipelineProperties);
   }

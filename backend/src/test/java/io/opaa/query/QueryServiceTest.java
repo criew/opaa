@@ -63,6 +63,7 @@ import io.opaa.query.citation.CitationValidator;
 import io.opaa.query.spike.SpikeToolLoopQueryHandler;
 import io.opaa.retrieval.KnowledgeRetrieval;
 import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.retrieval.RetrievalPipelineProperties;
@@ -75,6 +76,7 @@ import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
 import io.opaa.retrieval.ranking.RankFusionStage;
+import io.opaa.retrieval.ranking.RelevanceCutoffStage;
 import io.opaa.retrieval.ranking.RerankStage;
 import io.opaa.retrieval.scope.MetadataFilterStage;
 import io.opaa.retrieval.scope.SearchScopeStage;
@@ -198,6 +200,7 @@ class QueryServiceTest {
                 new MmrSelectionStage(chunkEmbeddingLookup),
                 new RankFusionStage(),
                 new RerankStage(disabledRerankRole()),
+                new RelevanceCutoffStage(RelevanceCutoffProperties.DEFAULT),
                 new DocumentCompletionStage(),
                 RetrievalPipelineProperties.allStagesEnabled());
     RetrievalContextFactory contextFactory =

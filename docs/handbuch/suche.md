@@ -205,8 +205,9 @@ flowchart TB
     S5 --> S6
     S6 --> S7[7 Fusion]
     S7 --> S8[8 Reranking,<br/>falls an]
-    S8 --> S9[9 Dokument-<br/>vervollständigung]
-    S9 --> E[Endauswahl]
+    S8 --> S9[9 Relevanz-<br/>schnitt, falls an]
+    S9 --> S10[10 Dokument-<br/>vervollständigung]
+    S10 --> E[Endauswahl]
 ```
 
 ### Stufe 1: Suchbereich
@@ -503,7 +504,30 @@ also Teilfragen mal aktive Pfade; bei einer Teilfrage liefern zwei Pfade höchst
 anheben. Was zum Einschalten gehört, steht im Kapitel
 [Deployment](modelle.md#reranking-einschalten).
 
-### Stufe 9: Dokument-Vervollständigung
+### Stufe 9: Relevanzschnitt
+
+Ohne diese Stufe besteht die Auswahl immer aus `top-k` Chunks, ob nun viele Treffer gut passen oder
+nur drei und der Rest Rauschen ist. Der Relevanzschnitt kürzt die Auswahl nach den Werten, nach denen
+sie geordnet wurde: den Werten der Fusion oder, wenn Reranking lief, denen des Rerankers. Er nimmt
+nur weg, ordnet nicht um und unterschreitet nie `relevance-cutoff.min-chunks`; `top-k` bleibt die
+Obergrenze. Wer bei gut passenden Fragen mehr Chunks zulassen will, hebt `top-k` an und lässt den
+Schnitt den Rest erledigen.
+
+Zwei Verfahren stehen zur Wahl (`relevance-cutoff.mode`):
+
+- **relativ** (`relative`): Ein Chunk bleibt, wenn sein Wert mindestens den Anteil
+  `relevance-cutoff.relative-threshold` des besten Werts erreicht.
+- **Knick** (`knee`): Die Auswahl endet vor dem ersten Chunk, dessen Wert um mindestens
+  `relevance-cutoff.knee-drop` des besten Werts unter dem seines Vorgängers liegt.
+
+Im Auslieferungsstand ist die Stufe **aus** (`fixed`) und steht im Protokoll als abgeschaltet. Die
+Werte der Rangfusion taugen nur bedingt als Maßstab: Ein Chunk, den beide Suchpfade gefunden haben,
+erreicht etwa den doppelten Wert eines Chunks, den nur einer fand, sodass ein relativer Schnitt vor
+allem diese Grenze trifft. Mit Reranking oder der Fusion nach Werten (Stufe 7) bilden die Werte die
+Passung besser ab. Wer die Stufe einschaltet, sollte die Wirkung auf die Antworten messen. Das
+Protokoll nennt, wie viele Chunks blieben und warum der Schnitt dort lag.
+
+### Stufe 10: Dokument-Vervollständigung
 
 Die letzte Auswahlstufe behebt einen typischen Fehler der Rangordnung: Ein Dokument ist mit seinem
 Einleitungs-Chunk in der Auswahl, aber sein Detail-Chunk (die Gebührenzeile, der eine Paragraf)
@@ -762,10 +786,10 @@ Bibliothek später gelöscht, heißt der Beleg „Quelle entfernt“. Siehe Kapi
 
 ### 7.1 Suchen ohne Antwort
 
-Neben der Abfrage gibt es einen Weg, der **bei Stufe 9 aufhört**: `POST /api/v1/search` liefert die
-Endauswahl als Trefferliste und ruft kein Chat-Modell zur Antworterzeugung auf. Die Stufen 1 bis 9
+Neben der Abfrage gibt es einen Weg, der **nach der letzten Stufe aufhört**: `POST /api/v1/search` liefert die
+Endauswahl als Trefferliste und ruft kein Chat-Modell zur Antworterzeugung auf. Alle Stufen
 laufen unverändert — Suchbereich, Metadatenfilter, Teilfragen, Vektor- und Volltextsuche, Auswahl je
-Liste, Fusion, Reranking und Dokument-Vervollständigung, mit dem Rechtefilter in der Suche selbst.
+Liste, Fusion, Reranking, Relevanzschnitt und Dokument-Vervollständigung, mit dem Rechtefilter in der Suche selbst.
 Es gibt keinen zweiten Suchweg: Was hier gefunden wird, hätte dieselbe Person auch über die Abfrage
 gefunden, und in derselben Reihenfolge. Eine Regressionsprüfung hält diese Gleichheit fest.
 
@@ -915,7 +939,7 @@ kein Nachweis über vergangene Zugriffe — dafür gibt es die Stichtagsauskunft
 
 Die Oberfläche zeigt jede Stufe unter ihrer deutschen Bezeichnung. Referenz zwischen Handbuch,
 Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische Name
-(`RetrievalStageName`), der vor der 1–9-Zählung dieses Kapitels Bestand hat und der Wert ist, den
+(`RetrievalStageName`), der vor der 1–10-Zählung dieses Kapitels Bestand hat und der Wert ist, den
 `stage` tatsächlich trägt:
 
 | Stufe (dieses Kapitel) | Bezeichnung in der Oberfläche | `stage` (technischer Name) |
@@ -928,7 +952,8 @@ Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische 
 | 6 Auswahl je Liste | Auswahl je Liste | `MMR_SELECTION` |
 | 7 Fusion | Fusion (RRF) | `RANK_FUSION` |
 | 8 Reranking | Neubewertung (Reranking) | `RERANK` |
-| 9 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
+| 9 Relevanzschnitt | Relevanzschnitt | `RELEVANCE_CUTOFF` |
+| 10 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
 
 Für jede Stufe zeigt die Seite Eingang, Ausgang, Status (ausgeführt, abgeschaltet, nicht verfügbar,
 nicht erreicht), die Notizen (Suchanfragen, Budgets, Filter) und je Kandidat das Urteil: gefunden über welchen Pfad mit welchem
@@ -1013,6 +1038,7 @@ Abschnitt 12.
 | Dokument nie in einer Kandidatenliste | „Dokument verfolgen", Indexstatus | außerhalb des Suchbereichs; Dokument nicht indiziert oder ohne Chunks (Scan); Filter mit Leerwert-Sonderfall; Begriff steht weder wörtlich noch sinngemäß im Chunk |
 | gefunden, außerhalb des Listenbudgets | Stufe „Auswahl je Liste" | Rang jenseits von `top-k` in seinem Pfad; hilft: Reranking (weitet das Budget auf das Reranking-Fenster), präzisere Frage, Kontextpräfix |
 | gefunden, außerhalb des Fusionsbudgets | Stufe „Fusion" | nur ein Pfad hat es gefunden und andere Kandidaten standen in beiden; hilft: Reranking |
+| unterhalb des Relevanzschnitts | Stufe „Relevanzschnitt" | nur bei eingeschaltetem Schnitt: der Wert lag unter dem Anteil des besten Werts oder hinter dem Knick; hilft: präzisere Frage, Schnitt lockern |
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
 | Reranking „nicht verfügbar" | Modellrollen, Stufe „Reranking" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking weiter |
@@ -1085,6 +1111,10 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `full-text-search-enabled` | an | Volltextpfad; `false` lässt die Suche rein vektoriell laufen |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
+| `relevance-cutoff.mode` | `fixed` | Relevanzschnitt: `fixed` behält bis zu `top-k`, `relative` schneidet relativ zum besten Wert, `knee` am ersten großen Abfall |
+| `relevance-cutoff.min-chunks` | 10 | Untergrenze des Schnitts (1 bis 100) |
+| `relevance-cutoff.relative-threshold` | 0,6 | Anteil des besten Werts, den ein Chunk bei `relative` erreichen muss (über 0 bis 1) |
+| `relevance-cutoff.knee-drop` | 0,25 | Abfall zum Vorgänger, gemessen am besten Wert, der bei `knee` den Schnitt setzt (über 0 bis 1) |
 | `max-chunks-per-document` | 1 | Auffüllziel der Dokument-Vervollständigung (1 bis 10): bis zu so vielen Chunks füllt sie jedes schon vertretene Dokument aus dem Kandidatenpool auf. Keine Obergrenze, die Endauswahl kann mehr Chunks eines Dokuments enthalten. 1 schaltet die Vervollständigung ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
 | `neighbor-chunks.radius` | 1 | Nachbar-Chunks je Seite, die jeder Chunk der Endauswahl in den Prompt mitbringt (0 bis 3); 0 schaltet das Nachladen ab (Abschnitt 6) |
 | `neighbor-chunks.max-added-characters` | 40000 | Zeichen, die alle Nachbarn einer Antwort zusammen höchstens hinzufügen (0 bis 1.000.000); kostet entsprechend Eingabetokens je Frage |

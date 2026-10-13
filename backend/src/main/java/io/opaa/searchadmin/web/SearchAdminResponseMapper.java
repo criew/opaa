@@ -375,6 +375,7 @@ final class SearchAdminResponseMapper {
       case MMR_SELECTION -> RetrievalStage.MMR_SELECTION;
       case RANK_FUSION -> RetrievalStage.RANK_FUSION;
       case RERANK -> RetrievalStage.RERANK;
+      case RELEVANCE_CUTOFF -> RetrievalStage.RELEVANCE_CUTOFF;
       case DOCUMENT_COMPLETION -> RetrievalStage.DOCUMENT_COMPLETION;
     };
   }
@@ -403,6 +404,7 @@ final class SearchAdminResponseMapper {
       case OUTSIDE_LIST_BUDGET -> RetrievalVerdictReason.OUTSIDE_LIST_BUDGET;
       case OUTSIDE_FUSION_BUDGET -> RetrievalVerdictReason.OUTSIDE_FUSION_BUDGET;
       case OUTSIDE_RERANK_BUDGET -> RetrievalVerdictReason.OUTSIDE_RERANK_BUDGET;
+      case BELOW_RELEVANCE_CUTOFF -> RetrievalVerdictReason.BELOW_RELEVANCE_CUTOFF;
       case COMPLETED_AS_SIBLING -> RetrievalVerdictReason.COMPLETED_AS_SIBLING;
       case EVICTED_BY_DOCUMENT_COMPLETION_TIER_1 ->
           RetrievalVerdictReason.EVICTED_BY_DOCUMENT_COMPLETION_TIER_1;

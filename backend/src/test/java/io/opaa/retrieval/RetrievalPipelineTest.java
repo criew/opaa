@@ -87,16 +87,19 @@ class RetrievalPipelineTest {
     assertThat(result.explanation().stages())
         .extracting(StageExplanation::stage)
         .containsExactlyElementsOf(pipeline.registeredStages());
-    // Every stage but the reranker runs: this pipeline is wired with a rerank model role that is
-    // not usable, the shipped configuration (OPAA_RERANK_ENABLED off, #1050). A switched-off stage
-    // is recorded, not omitted - that is the property this test exists for.
+    // Every stage but the reranker and the relevance cutoff runs: this pipeline is wired with a
+    // rerank model role that is not usable (OPAA_RERANK_ENABLED off, #1050) and the shipped cutoff
+    // mode fixed. A switched-off stage is recorded, not omitted - that is the property this test
+    // exists for.
+    Set<RetrievalStageName> switchedOff =
+        Set.of(RetrievalStageName.RERANK, RetrievalStageName.RELEVANCE_CUTOFF);
     assertThat(result.explanation().stages())
-        .filteredOn(stage -> stage.stage() != RetrievalStageName.RERANK)
+        .filteredOn(stage -> !switchedOff.contains(stage.stage()))
         .allSatisfy(stage -> assertThat(stage.status()).isEqualTo(StageStatus.EXECUTED));
     assertThat(result.explanation().stages())
-        .filteredOn(stage -> stage.stage() == RetrievalStageName.RERANK)
-        .singleElement()
-        .satisfies(stage -> assertThat(stage.status()).isEqualTo(StageStatus.DISABLED));
+        .filteredOn(stage -> switchedOff.contains(stage.stage()))
+        .hasSize(2)
+        .allSatisfy(stage -> assertThat(stage.status()).isEqualTo(StageStatus.DISABLED));
   }
 
   /** The count holds for a run with a switched-off stage too - it is recorded, not skipped. */

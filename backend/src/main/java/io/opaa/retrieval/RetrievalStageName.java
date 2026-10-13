@@ -110,6 +110,14 @@ public enum RetrievalStageName {
   RERANK,
 
   /**
+   * Shortens the selection by score, as {@link RelevanceCutoffProperties} says: a relative
+   * threshold to the best score or the first large drop, never below a minimum and never above
+   * {@code top-k}. Runs after {@link #RERANK} so it sees the final scores. In the shipped mode
+   * {@code FIXED} it does not run.
+   */
+  RELEVANCE_CUTOFF,
+
+  /**
    * Tops a document already represented in the selection up to {@link
    * QueryProperties#maxChunksPerDocument} chunks - a fill target, not a cap - drawn only from the
    * candidate pool the search stages produced, both the vector and the lexical path. Switched off,

@@ -16,6 +16,7 @@ import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
 import io.opaa.retrieval.ranking.RankFusionStage;
+import io.opaa.retrieval.ranking.RelevanceCutoffStage;
 import io.opaa.retrieval.ranking.RerankStage;
 import io.opaa.retrieval.scope.MetadataFilterStage;
 import io.opaa.retrieval.scope.SearchScopeStage;
@@ -78,6 +79,7 @@ class RerankPipelineTest {
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),
+            new RelevanceCutoffStage(RelevanceCutoffProperties.DEFAULT),
             new DocumentCompletionStage(),
             pipelineProperties);
   }
@@ -229,7 +231,10 @@ class RerankPipelineTest {
 
     assertThat(order.indexOf(RetrievalStageName.RERANK))
         .isEqualTo(order.indexOf(RetrievalStageName.RANK_FUSION) + 1);
-    assertThat(order.indexOf(RetrievalStageName.DOCUMENT_COMPLETION))
+    // The relevance cutoff sits in between: it needs the final scores, completion the final set.
+    assertThat(order.indexOf(RetrievalStageName.RELEVANCE_CUTOFF))
         .isEqualTo(order.indexOf(RetrievalStageName.RERANK) + 1);
+    assertThat(order.indexOf(RetrievalStageName.DOCUMENT_COMPLETION))
+        .isEqualTo(order.indexOf(RetrievalStageName.RELEVANCE_CUTOFF) + 1);
   }
 }

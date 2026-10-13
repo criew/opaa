@@ -107,6 +107,7 @@ const STAGE_LABELS: Record<RetrievalStage, string> = {
   MMR_SELECTION: 'Auswahl je Liste',
   RANK_FUSION: 'Fusion (RRF)',
   RERANK: 'Neubewertung (Reranking)',
+  RELEVANCE_CUTOFF: 'Relevanzschnitt',
   DOCUMENT_COMPLETION: 'Dokument-Vervollständigung',
 }
 
@@ -129,6 +130,7 @@ const REASON_LABELS: Record<RetrievalVerdictReason, string> = {
   OUTSIDE_LIST_BUDGET: 'Unterhalb der Auswahlgrenze der eigenen Liste',
   OUTSIDE_FUSION_BUDGET: 'Nach der Fusion unterhalb der Auswahlgrenze',
   OUTSIDE_RERANK_BUDGET: 'Nach der Neubewertung unterhalb der Auswahlgrenze',
+  BELOW_RELEVANCE_CUTOFF: 'Unterhalb des Relevanzschnitts',
   COMPLETED_AS_SIBLING: 'Als weiterer Abschnitt desselben Dokuments ergänzt',
   EVICTED_BY_DOCUMENT_COMPLETION_TIER_1:
     'Von der Dokument-Vervollständigung verdrängt (schwächster Abschnitt seines Dokuments)',

@@ -330,6 +330,35 @@ erklärte es eine Suche, die so nie gelaufen ist. Wird die Stufe über
 `opaa.query.pipeline.disabled-stages` abgeschaltet, während die Rolle an ist, nimmt die Pipeline das
 verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`-Deckelung wieder her.
 
+### 5c. Relevanzschnitt (#2622)
+
+Stufenname: `RELEVANCE_CUTOFF`. `RelevanceCutoffStage` kürzt die Auswahl nach den Werten, nach denen sie
+geordnet ist (`RetrievalState#selectionScores`: der fusionierte Wert aus Schritt 5, nach einem
+erfolgreichen Reranking dessen Wert; ein Chunk ohne Wert zählt 0). Sie entfernt nur, ordnet nicht um,
+unterschreitet nie `min-chunks` und kann `top-k` nicht überschreiten, weil Fusion und Reranking schon
+darauf gedeckelt haben. Parameter unter `opaa.query.relevance-cutoff.*` (`RelevanceCutoffProperties`,
+Ebene 1):
+
+- `mode` (`OPAA_QUERY_RELEVANCE_CUTOFF_MODE`, Default `fixed`): `fixed` lässt die Stufe aus
+  (`DISABLED`), `relative` behält, was mindestens `relative-threshold` (Default `0,6`) des besten Werts
+  erreicht, `knee` schneidet vor dem ersten Chunk, dessen Wert um mindestens `knee-drop` (Default
+  `0,25`) des besten Werts unter dem des Vorgängers liegt.
+- `min-chunks` (Default `10`): die Untergrenze in beiden Verfahren.
+
+Ist der beste Wert nicht positiv (etwa rohe Logits eines Rerankers), schneidet die Stufe nicht und
+sagt das. Die Notiz nennt in jedem Fall den Grund des Abbruchs; jedes entfernte Verdikt trägt
+`BELOW_RELEVANCE_CUTOFF`.
+
+**Warum `fixed` der Default bleibt.** Die Verlustanalyse am Testkorpus Finanzverwaltung zeigt den Bedarf
+(top-k 30 brächte 150 statt 139 von 220 Kernfakten bei 32 % mehr Kontext), aber gemessen ist der
+Schnitt noch nicht. Unter RRF sind die Werte zudem flach und rangabgeleitet: Ein Chunk, den beide Pfade
+fanden, erreicht etwa den doppelten Wert eines Einzeltreffers, ein relativer Schnitt bei 0,6 trennt
+also vor allem diese beiden Gruppen und kaum nach Passung. Sinnvoller wird er mit Reranking oder mit
+der Fusion nach Werten aus #2619. Der Schnitt ist deshalb als Option gebaut; die Entscheidung über den
+Default fällt mit der Messung (Kernfakten im Kontext und Tokens je Antwort). Für einen Bereich wie
+10–30 Chunks wird `top-k` auf 30 gesetzt; der Pipeline-Messpfad des Eval-Harness misst nur am
+Produktionsfenster `top-k` 20 und kennt die Parameter des Schnitts nicht als Festpunkt.
+
 ### 6. Dokument-Vervollständigung
 
 Stufenname: `DOCUMENT_COMPLETION`. `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
@@ -458,6 +487,8 @@ Frage + Gesprächsfenster
         ↓
 5b. Reranking der Kandidatenmenge durch die Rerank-Modellrolle, zurück auf top-k
     (per Voreinstellung aus: OPAA_RERANK_ENABLED)
+        ↓
+5c. Relevanzschnitt nach Wert (per Voreinstellung aus: relevance-cutoff.mode fixed)
         ↓
 6. Dokument-Vervollständigung (max-chunks-per-document, zweistufige Verdrängung)
         ↓

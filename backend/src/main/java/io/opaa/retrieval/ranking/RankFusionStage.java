@@ -15,7 +15,9 @@ import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.VerdictReason;
 import io.opaa.retrieval.ranking.ReciprocalRankFusion.FusedCandidate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
@@ -49,12 +51,14 @@ public class RankFusionStage implements RetrievalStage {
     List<FusedCandidate> fused = ReciprocalRankFusion.fuseRanked(rankedLists);
 
     List<Document> selection = new ArrayList<>(Math.min(budget, fused.size()));
+    Map<String, Double> scores = new HashMap<>();
     List<CandidateVerdict> verdicts = new ArrayList<>(fused.size());
     for (int i = 0; i < fused.size(); i++) {
       FusedCandidate candidate = fused.get(i);
       boolean withinBudget = i < budget;
       if (withinBudget) {
         selection.add(candidate.document());
+        scores.put(candidate.document().getId(), candidate.fusedScore());
       }
       verdicts.add(
           CandidateVerdict.of(
@@ -68,8 +72,10 @@ public class RankFusionStage implements RetrievalStage {
 
     int incoming = state.candidateCount();
     return new StageOutcome(
-        state.withCandidateLists(
-            List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, selection))),
+        state
+            .withCandidateLists(
+                List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, selection)))
+            .withSelectionScores(scores),
         StageExplanation.executed(
             name(),
             incoming,

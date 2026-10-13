@@ -4,6 +4,7 @@ import io.opaa.metadata.MetadataFilter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.filter.Filter;
@@ -42,6 +43,10 @@ import org.springframework.ai.vectorstore.filter.Filter;
  * @param searchNeeded {@code false} once {@link RetrievalStageName#SUB_QUERY_DECOMPOSITION} found
  *     nothing to search for in the message. The run searches all the same; the flag only tells the
  *     answer.
+ * @param selectionScores the score each chunk of the selection was ranked by, keyed by chunk id:
+ *     the fused score from {@link RetrievalStageName#RANK_FUSION} on, the rerank score once {@link
+ *     RetrievalStageName#RERANK} scored it. Empty before the fusion; a chunk without an entry has
+ *     no score on the current scale.
  */
 public record RetrievalState(
     List<String> searchQueries,
@@ -52,7 +57,8 @@ public record RetrievalState(
     List<CandidateList> candidateLists,
     List<Document> candidatePool,
     boolean halted,
-    boolean searchNeeded) {
+    boolean searchNeeded,
+    Map<String, Double> selectionScores) {
 
   public RetrievalState {
     searchQueries = List.copyOf(searchQueries);
@@ -63,12 +69,22 @@ public record RetrievalState(
             : List.copyOf(metadataFilterVocabularyCodes);
     candidateLists = List.copyOf(candidateLists);
     candidatePool = List.copyOf(candidatePool);
+    selectionScores = selectionScores == null ? Map.of() : Map.copyOf(selectionScores);
   }
 
   /** The state a run starts in: no queries, no filter, no candidates. */
   public static RetrievalState initial() {
     return new RetrievalState(
-        List.of(), null, MetadataFilter.NONE, null, List.of(), List.of(), List.of(), false, true);
+        List.of(),
+        null,
+        MetadataFilter.NONE,
+        null,
+        List.of(),
+        List.of(),
+        List.of(),
+        false,
+        true,
+        Map.of());
   }
 
   public RetrievalState withSearchQueries(List<String> queries) {
@@ -81,7 +97,8 @@ public record RetrievalState(
         candidateLists,
         candidatePool,
         halted,
-        searchNeeded);
+        searchNeeded,
+        selectionScores);
   }
 
   public RetrievalState withLibraryFilter(Filter.Expression filter) {
@@ -94,7 +111,8 @@ public record RetrievalState(
         candidateLists,
         candidatePool,
         halted,
-        searchNeeded);
+        searchNeeded,
+        selectionScores);
   }
 
   /**
@@ -113,7 +131,8 @@ public record RetrievalState(
         candidateLists,
         candidatePool,
         halted,
-        searchNeeded);
+        searchNeeded,
+        selectionScores);
   }
 
   /**
@@ -130,7 +149,23 @@ public record RetrievalState(
         lists,
         candidatePool,
         halted,
-        searchNeeded);
+        searchNeeded,
+        selectionScores);
+  }
+
+  /** Replaces the scores of the selection; the lists in flight stay as they are. */
+  public RetrievalState withSelectionScores(Map<String, Double> scores) {
+    return new RetrievalState(
+        searchQueries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        metadataFilterVocabularyCodes,
+        candidateLists,
+        candidatePool,
+        halted,
+        searchNeeded,
+        scores);
   }
 
   /**
@@ -152,7 +187,8 @@ public record RetrievalState(
         mergedLists,
         extendedPool,
         halted,
-        searchNeeded);
+        searchNeeded,
+        selectionScores);
   }
 
   /**
@@ -190,7 +226,8 @@ public record RetrievalState(
         candidateLists,
         candidatePool,
         true,
-        searchNeeded);
+        searchNeeded,
+        selectionScores);
   }
 
   /**
@@ -207,7 +244,8 @@ public record RetrievalState(
         candidateLists,
         candidatePool,
         halted,
-        false);
+        false,
+        selectionScores);
   }
 
   /**

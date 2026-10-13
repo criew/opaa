@@ -26,6 +26,12 @@ public enum VerdictReason {
   OUTSIDE_RERANK_BUDGET,
 
   /**
+   * The relevance cutoff removed the candidate: its score fell below the cutoff's share of the best
+   * score, or it came after the drop in the score curve.
+   */
+  BELOW_RELEVANCE_CUTOFF,
+
+  /**
    * Document completion pulled the candidate in as a sibling chunk of a document the selection
    * already held.
    */
