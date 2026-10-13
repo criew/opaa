@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import org.slf4j.Logger;
 import tools.jackson.databind.json.JsonMapper;
@@ -31,7 +32,7 @@ final class EvalEmbeddingContinuity {
 
   /**
    * Neighbouring prefixes differ by {@value #PREFIX_STEP_CHARS} characters, a few tokens out of
-   * several hundred; a continuous embedding keeps them above 0.999, a split one fell to 0.41.
+   * several hundred; a continuous embedding keeps them above 0.99, a split one fell to 0.41.
    */
   static final double MIN_NEIGHBOUR_COSINE = 0.98;
 
@@ -66,7 +67,7 @@ final class EvalEmbeddingContinuity {
         "Embedding continuity across "
             + BATCH_BOUNDARY_TOKENS
             + " tokens: lowest neighbour cosine "
-            + String.format(java.util.Locale.ROOT, "%.4f", worst)
+            + String.format(Locale.ROOT, "%.4f", worst)
             + " over "
             + probes.size()
             + " prefixes ("
@@ -125,7 +126,7 @@ final class EvalEmbeddingContinuity {
     if (worst < MIN_NEIGHBOUR_COSINE) {
       throw new IllegalStateException(
           String.format(
-              java.util.Locale.ROOT,
+              Locale.ROOT,
               "The eval Ollama (%s) embeds '%s' discontinuously: the prefix of %d characters (%d"
                   + " tokens) has cosine %.4f to the one %d characters shorter, below %.2f. This"
                   + " Ollama evaluates long inputs in several batches, which a bidirectional"
