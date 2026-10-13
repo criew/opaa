@@ -372,6 +372,15 @@ offene Frage oben). Die Klassenwerte der Baseline bewegen sich unabhängig davon
 | `verw-lit-008` | gelöst auf dem Pipeline-Pfad seit #1049 **(erwartete Abweichung: Pfad-Asymmetrie)** |
 | `verw-lit-009` | im Fenster, aber Rang 1: verwaltung-0040_dienstanweisung-kaemmerei-1-2024.md |
 
+**Nachtrag Ollama 0.40.3 (2026-10-13, Issue #2343).** Der einzige Chunk dieses Korpus über 512
+Token ist § 3 „Gebührenbefreiung wegen Bedürftigkeit" in
+`verwaltung-0038_verwaltungsgebuehrensatzung.md`, das Zieldokument dieser Klasse. Unter
+`ollama/ollama:0.6.5` bekam er einen falschen Vektor (ADR-0012, Nachtrag Ollama-Fassung). Mit 0.40.3
+steigen die Klassenwerte auf beiden Pfaden: `verw-lit-001` erreicht auf dem Rohvektor-Pfad das Fenster
+(Rang 10, der Zustand bleibt `known_gap`), `verw-lit-008` ist auf dem Pipeline-Pfad gelöst. Ein Teil
+der bisher gemessenen Embedding-Schwäche dieser Klasse war also ein Fehler der alten Ollama-Fassung,
+nicht des Modells.
+
 ### exact_identifier (2 Fälle)
 
 | Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad, nach #1049) |
