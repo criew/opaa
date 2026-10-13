@@ -3,10 +3,13 @@ import type { Page } from '@playwright/test'
 
 /**
  * Reflow of the wizard step bar (#2540, WCAG 1.4.10): at a 320 px viewport no assistant that
- * uses it scrolls sideways, every step stays inside the viewport, and every step name is still
- * part of the list's text for screen readers. jsdom computes no layout, hence a browser test.
+ * uses it scrolls sideways, every step stays inside the viewport, and assistive technology still
+ * hears every step as "n · name" exactly once. jsdom computes no layout, hence a browser test.
  */
 const VIEWPORT_WIDTH = 320
+
+/** The static web-directory fixture served inside this suite's stack (#514, #547). */
+const DIRECTORY_URL = 'http://rss-feed/webverzeichnis/'
 
 async function nextStep(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
@@ -17,12 +20,17 @@ async function expectStepBarFits(page: Page, steps: readonly string[], active: s
   const bar = page.locator('ol').filter({ has: page.locator('[aria-current="step"]') })
   await expect(bar.locator('[aria-current="step"]')).toContainText(active)
 
+  // The accessibility tree, not textContent: a name hidden with display:none or aria-hidden
+  // fails here, and so does a bare number read out in addition to "n · name".
+  const expectedTree = ['- list:', ...steps.map((step, i) => `  - listitem: ${i + 1} · ${step}`)]
+  expect(await bar.ariaSnapshot(), 'jeder Schritt wird genau als „n · Name“ vorgelesen').toBe(
+    expectedTree.join('\n'),
+  )
+
   const items = bar.locator('li')
   await expect(items).toHaveCount(steps.length)
-  for (const [index, step] of steps.entries()) {
-    // Text content, not visibility: a step shown only by its number keeps its name for AT.
-    await expect(items.nth(index), `Schritt ${index + 1} trägt seinen Namen`).toContainText(step)
-    const box = await items.nth(index).boundingBox()
+  for (const step of steps) {
+    const box = await items.filter({ hasText: step }).boundingBox()
     expect(box, `Schritt "${step}" ist gerendert`).not.toBeNull()
     expect(box!.x, `Schritt "${step}" beginnt im Viewport`).toBeGreaterThanOrEqual(0)
     expect(box!.x + box!.width, `Schritt "${step}" endet im Viewport`).toBeLessThanOrEqual(
@@ -45,23 +53,32 @@ test.describe('Schrittleiste der Assistenten bei 320 px (#2540)', () => {
     await page.setViewportSize({ width: VIEWPORT_WIDTH, height: 720 })
   })
 
-  test('Wissens-Assistent mit Upload und mit Konnektor', async ({ authenticatedPage: page }) => {
-    await page.goto('/libraries/new')
-    await expect(page.getByRole('heading', { level: 2, name: 'Woher kommt das Wissen?' })).toBeVisible()
-    await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()
+  test('Wissens-Assistent mit Konnektor und mit Upload', async ({ authenticatedPage: page }) => {
     const connectorSteps = ['Quellart', 'Quelle einrichten', 'Name & Beschreibung', 'Freigaben']
+
+    await page.goto('/libraries/new')
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Woher kommt das Wissen?' }),
+    ).toBeVisible()
+    await page.getByRole('radio', { name: /^Webverzeichnis/ }).click()
     await expectStepBarFits(page, connectorSteps, 'Quellart')
 
     await nextStep(page)
     await expect(page.getByRole('heading', { level: 2, name: 'Quelle einrichten' })).toBeVisible()
     await expectStepBarFits(page, connectorSteps, 'Quelle einrichten')
 
-    // The longest step name as the active one: in a compact bar it is the widest state.
+    // Four steps with the longest name active: the widest state of the compact bar. Nothing is
+    // created - the library only comes into being on "Bibliothek anlegen" in the last step.
+    await page.getByLabel('Adresse (URL)').fill(DIRECTORY_URL)
+    await nextStep(page)
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Name & Beschreibung' }),
+    ).toBeVisible()
+    await expectStepBarFits(page, connectorSteps, 'Name & Beschreibung')
+
     await page.goto('/libraries/new')
     await page.getByRole('radio', { name: /^Upload/ }).click()
-    await nextStep(page)
-    await expect(page.getByRole('heading', { level: 2, name: 'Name & Beschreibung' })).toBeVisible()
-    await expectStepBarFits(page, ['Quellart', 'Name & Beschreibung', 'Freigaben'], 'Name & Beschreibung')
+    await expectStepBarFits(page, ['Quellart', 'Name & Beschreibung', 'Freigaben'], 'Quellart')
   })
 
   test('Space-Assistent', async ({ authenticatedPage: page }) => {
