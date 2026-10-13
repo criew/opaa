@@ -70,7 +70,9 @@ class MetadataRunsSwitchedOffTest {
             "public",
             "vector_store",
             TestFeatureFlags.without(Feature.METADATA),
-            mock(PlatformTransactionManager.class));
+            mock(PlatformTransactionManager.class),
+            new io.opaa.observability.IndexingMetrics(
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
 
     ContextPrefixRerunResult result = service.rerunBatch(UUID.randomUUID(), UUID.randomUUID(), 10);
 

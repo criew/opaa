@@ -647,6 +647,7 @@ sondern im Nachweis- und Revisionsprotokoll der Anwendung
 | `opaa_query_tokens_total` | Token der Antwortaufrufe im Chat |
 | `opaa_chat_search_duration_seconds_*` | Dauer der Suche über Chats |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente der Indexierung und der Uploads, nach Ergebnis (`processed`, `skipped`, `failed`) |
+| `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis: `split` (bei der Indexierung geteilt, weil der Endpunkt ihn als zu lang belegte), `cut` (bei Neueinbettung oder Präfix-Nachlauf gekürzt eingebettet, Dokument für den Nachzug vorgemerkt), `unverified` (eingebettet, aber ohne Tokenzahl vom Endpunkt; auf allen Wegen gezählt) |
 | `opaa_rate_limit_rejected_total` | von einem Rate-Limit abgewiesene Anfragen, nach Grenze (`limit`) und erschöpftem Bereich (`scope`); die globale Grenze der Anmeldung ist das Frühwarnsignal gegen verteiltes Ausprobieren gestohlener Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten nach Fehlversuchen |
 | `executor_active_threads{name="indexingTaskExecutor"}` | laufende Indexierungsläufe |

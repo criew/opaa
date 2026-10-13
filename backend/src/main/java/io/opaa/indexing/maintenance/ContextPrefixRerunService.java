@@ -14,6 +14,7 @@ import io.opaa.metadata.ChunkContextPrefix;
 import io.opaa.metadata.ContextPrefixBacklog;
 import io.opaa.metadata.DocumentChunkMetadata;
 import io.opaa.metadata.DocumentMetadataService;
+import io.opaa.observability.IndexingMetrics;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -59,6 +60,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   private final ObjectMapper objectMapper;
   private final String vectorStoreTable;
   private final FeatureFlags featureFlags;
+  private final IndexingMetrics metrics;
   private final TransactionTemplate transactionTemplate;
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
@@ -74,8 +76,10 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName,
       FeatureFlags featureFlags,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      IndexingMetrics metrics) {
     this.featureFlags = featureFlags;
+    this.metrics = metrics;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
@@ -173,8 +177,19 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
         stored.stream()
             .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
             .toList();
-    int rewritten = vectorChunkStore.reembedChunks(rebuilt);
-    if (rewritten != stored.size()) {
+    VectorChunkStore.Reembedded outcome = vectorChunkStore.reembedChunks(rebuilt);
+    metrics.recordEmbeddingInputsUnverified(outcome.unverified());
+    if (outcome.cut() > 0) {
+      metrics.recordEmbeddingInputsCut(outcome.cut());
+      log.warn(
+          "{} chunk(s) of document {} reached the embedding input limit of {} tokens and were"
+              + " written cut short; the document is marked for the pipeline re-index, which"
+              + " splits them",
+          outcome.cut(),
+          documentId,
+          vectorChunkStore.maxInputTokens());
+    }
+    if (outcome.rewritten() != stored.size()) {
       // A concurrent ingest or deletion took chunks away after they were read; the document row
       // belongs to that writer now and keeps the prefix it recorded for its own chunks.
       return;

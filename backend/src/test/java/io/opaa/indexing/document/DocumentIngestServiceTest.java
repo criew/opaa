@@ -135,7 +135,8 @@ class DocumentIngestServiceTest {
             batchingStrategy,
             vectorStoreWriter,
             fullTextChunkStore,
-            new EmbeddingRateEstimator(4.0));
+            new EmbeddingRateEstimator(4.0),
+            2048);
     service = serviceWith(TestPipelineRegistries.fallbackOnly(documentService, chunkingService));
     targetLibrary = library();
     // Default: plenty of headroom, so tests never trip the quota check unless they explicitly
@@ -1928,7 +1929,6 @@ class DocumentIngestServiceTest {
       IllegalArgumentException tooLong =
           new IllegalArgumentException(
               "Tokens in a single document exceeds the maximum number of allowed input tokens");
-      when(embeddingModel.embed(anyList(), any(), eq(batchingStrategy))).thenCallRealMethod();
       when(batchingStrategy.batch(anyList())).thenThrow(tooLong);
 
       service.processUploadedFileAsync(upload(doc, file), null, null);

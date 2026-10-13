@@ -50,7 +50,8 @@ class VectorChunkStoreTest {
           batchingStrategy,
           vectorStoreWriter,
           fullTextChunkStore,
-          new EmbeddingRateEstimator(4.0));
+          new EmbeddingRateEstimator(4.0),
+          2048);
 
   @Test
   void
@@ -111,7 +112,8 @@ class VectorChunkStoreTest {
         new TokenCountBatchingStrategy(),
         vectorStoreWriter,
         fullTextChunkStore,
-        new EmbeddingRateEstimator(4.0));
+        new EmbeddingRateEstimator(4.0),
+        2048);
   }
 
   private static Document chunk(String text, String location, int index) {
@@ -132,7 +134,7 @@ class VectorChunkStoreTest {
         .thenReturn(embeddings);
     when(vectorStoreWriter.rewriteEmbeddedChunks(chunks, embeddings)).thenReturn(1);
 
-    assertThat(vectorChunkStore.reembedChunks(chunks)).isEqualTo(1);
+    assertThat(vectorChunkStore.reembedChunks(chunks).rewritten()).isEqualTo(1);
 
     verify(vectorStoreWriter).rewriteEmbeddedChunks(chunks, embeddings);
     verify(vectorStoreWriter, never()).writeEmbeddedChunks(anyList(), anyList());
