@@ -268,6 +268,19 @@ public enum AuditEventType {
    */
   INDEXING_CONTEXT_PREFIX_RERUN_TRIGGERED,
   /**
+   * A re-embedding of the whole vector index under the configured embedding model was started by a
+   * person. Installation-wide; recorded in the organization of the person who started it.
+   */
+  EMBEDDING_REINDEX_STARTED,
+  /** A person stopped a running re-embedding; what it had embedded is kept for a later start. */
+  EMBEDDING_REINDEX_CANCELLED,
+  /**
+   * A re-embedding ended without a person: switched over to the new vectors ({@code SUCCESS}) or
+   * stopped by a failure ({@code FAILURE}). Recorded by the system process in the organization of
+   * the person who started it.
+   */
+  EMBEDDING_REINDEX_COMPLETED,
+  /**
    * Explicitly named orphaned originals - stored originals no document row of the library points to
    * - were removed from the upload storage (ADR-0030, "Konsequenzen"). Recorded per triggering
    * call, not per original, mirroring {@link #INDEXING_PIPELINE_REINDEX_TRIGGERED}; the payload

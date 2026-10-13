@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalState;
 import java.util.Set;
@@ -27,7 +28,7 @@ class VectorSearchStageTest {
   void searchStageRefusesToRunWithoutAPermissionFilter() {
     assertThatThrownBy(
             () ->
-                new VectorSearchStage(vectorChunkSearch)
+                new VectorSearchStage(vectorChunkSearch, new EmbeddingIndexState())
                     .apply(context(Set.of(LIBRARY_ID), PROPERTIES), RetrievalState.initial()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("without a rights filter");

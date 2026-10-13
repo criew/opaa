@@ -45,6 +45,12 @@ class ProviderConfigurationTest {
         .isEqualTo("nomic-embed-text");
   }
 
+  /** OPAA_OPENAI_EMBEDDING_TIMEOUT feeds Spring AI's own per-call timeout of the embedding. */
+  @Test
+  void theEmbeddingTimeoutHasItsOwnVariableWithSpringAisDefault() {
+    assertThat(environment.getProperty("spring.ai.openai.embedding.timeout")).isEqualTo("60s");
+  }
+
   @Test
   void baseUrlDefaultsToALocallyOperatedOllamaServer() {
     // The "local" profile the suite activates alongside "dev" overrides nothing (application.yml

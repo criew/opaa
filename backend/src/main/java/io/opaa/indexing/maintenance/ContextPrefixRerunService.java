@@ -133,36 +133,47 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       return Advance.SKIPPED;
     }
     try {
-      DocumentChunkMetadata chunkMetadata = documentMetadataService.chunkMetadataFor(document);
-      List<StoredChunk> stored = storedChunksOf(documentId);
-      // The ingest's own "does this document type get a prefix at all" decision, read back rather
-      // than guessed. A document written before it was recorded counts as eligible: that is what
-      // every ingest path but the headline-less RSS entry was, and that one has no title either.
-      boolean eligible = !Boolean.FALSE.equals(document.getContextPrefixEligible());
-      String title =
-          ChunkContextPrefix.titleAtRest(
-              eligible, chunkMetadata.contextTitle(), document.getContextPrefixTitle());
-      boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(stored.size());
-      List<org.springframework.ai.document.Document> rebuilt =
-          stored.stream()
-              .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
-              .toList();
-      if (!rebuilt.isEmpty()) {
-        vectorChunkStore.addChunks(rebuilt);
-      }
-      // Only after the replacement exists: a failed embedding call must leave the document pending
-      // rather than mark it done with its old chunks.
-      documentRepository.recordContextPrefix(
-          documentId,
-          chunkMetadata.contextPrefixStamp(title),
-          eligible,
-          document.getContextPrefixTitle());
+      reembedInPlace(document);
       return Advance.PROCESSED;
     } catch (RuntimeException e) {
       log.warn(
           "Skipping document {} in the context prefix rerun: re-embedding failed", documentId, e);
       return Advance.SKIPPED;
     }
+  }
+
+  /**
+   * Re-embeds every chunk of {@code document} in place: same ids, same stored text, the input
+   * rebuilt with the document's current Kontextpräfix exactly as the ingest builds it, vector row
+   * and full-text row together. Records the prefix stamp afterwards. Throws when embedding or
+   * writing fails; the document then keeps what it had.
+   */
+  public void reembedInPlace(Document document) {
+    UUID documentId = document.getId();
+    DocumentChunkMetadata chunkMetadata = documentMetadataService.chunkMetadataFor(document);
+    List<StoredChunk> stored = storedChunksOf(documentId);
+    // The ingest's own "does this document type get a prefix at all" decision, read back rather
+    // than guessed. A document written before it was recorded counts as eligible: that is what
+    // every ingest path but the headline-less RSS entry was, and that one has no title either.
+    boolean eligible = !Boolean.FALSE.equals(document.getContextPrefixEligible());
+    String title =
+        ChunkContextPrefix.titleAtRest(
+            eligible, chunkMetadata.contextTitle(), document.getContextPrefixTitle());
+    boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(stored.size());
+    List<org.springframework.ai.document.Document> rebuilt =
+        stored.stream()
+            .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
+            .toList();
+    if (!rebuilt.isEmpty()) {
+      vectorChunkStore.addChunks(rebuilt);
+    }
+    // Only after the replacement exists: a failed embedding call must leave the document pending
+    // rather than mark it done with its old chunks.
+    documentRepository.recordContextPrefix(
+        documentId,
+        chunkMetadata.contextPrefixStamp(title),
+        eligible,
+        document.getContextPrefixTitle());
   }
 
   /**

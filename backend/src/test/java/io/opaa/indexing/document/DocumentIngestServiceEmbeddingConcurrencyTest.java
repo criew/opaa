@@ -370,6 +370,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
       super(
           mock(org.springframework.jdbc.core.JdbcTemplate.class),
           mock(FullTextChunkStore.class),
+          new io.opaa.indexing.chunk.EmbeddingIndexState(),
           mock(tools.jackson.databind.ObjectMapper.class),
           "public",
           "vector_store");
@@ -406,6 +407,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
       super(
           mock(org.springframework.jdbc.core.JdbcTemplate.class),
           mock(FullTextChunkStore.class),
+          new io.opaa.indexing.chunk.EmbeddingIndexState(),
           mock(tools.jackson.databind.ObjectMapper.class),
           "public",
           "vector_store");

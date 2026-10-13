@@ -40,6 +40,7 @@ import DocumentChunkSection, {
 } from '../components/searchadmin/DocumentChunkSection'
 import LibraryStatusTable from '../components/searchadmin/LibraryStatusTable'
 import PrivateLibrariesSummary from '../components/searchadmin/PrivateLibrariesSummary'
+import EmbeddingIndexSection from '../components/searchadmin/EmbeddingIndexSection'
 import { isUuid, plural } from '../components/searchadmin/format'
 
 import type {
@@ -94,6 +95,7 @@ const PATH_STATE_LABELS: Record<SearchPathStatusResponse['state'], string> = {
   DISABLED: 'Abgeschaltet',
   INCOMPLETE: 'Unvollständig',
   OUTDATED: 'Nachzug ausstehend',
+  SUSPENDED: 'Ausgesetzt',
 }
 
 const STAGE_LABELS: Record<RetrievalStage, string> = {
@@ -638,6 +640,8 @@ function IndexStatusSection() {
           {statusError}
         </Alert>
       )}
+
+      <EmbeddingIndexSection />
 
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>

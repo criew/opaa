@@ -1,0 +1,32 @@
+databaseChangeLog:
+  - changeSet:
+      id: knowledge-2026-10-13-embedding-index
+      author: opaa
+      comment: "Which embedding model the vector index was built with, the target of a re-embedding in progress and the state of its run. One row for the installation; no row means the next start records the configuration."
+      changes:
+        - sql:
+            sql: |
+              CREATE TABLE embedding_index (
+                  id integer NOT NULL,
+                  model text,
+                  base_url text,
+                  dimensions integer NOT NULL,
+                  target_model text,
+                  target_base_url text,
+                  target_dimensions integer,
+                  run_status character varying(20),
+                  run_started_at timestamp with time zone,
+                  run_started_by uuid,
+                  run_organization_id uuid,
+                  run_finished_at timestamp with time zone,
+                  run_message text,
+                  updated_at timestamp with time zone NOT NULL,
+                  CONSTRAINT embedding_index_pkey PRIMARY KEY (id),
+                  CONSTRAINT chk_embedding_index_singleton CHECK (id = 1),
+                  CONSTRAINT chk_embedding_index_dimensions CHECK (dimensions > 0),
+                  CONSTRAINT chk_embedding_index_target CHECK (
+                      (target_model IS NULL AND target_dimensions IS NULL)
+                      OR (target_model IS NOT NULL AND target_dimensions > 0)),
+                  CONSTRAINT chk_embedding_index_run_status CHECK (
+                      run_status IN ('RUNNING', 'CANCELLED', 'FAILED', 'COMPLETED'))
+              );

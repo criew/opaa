@@ -13,10 +13,10 @@ import org.springframework.test.context.TestPropertySource;
  * schema initialisation switched off.
  *
  * <p><b>Why these cannot be canonical:</b> {@code ProviderConfigurationTest} asserts the
- * <em>default</em> embedding base URL, so the override below must not reach it; and the pgvector
- * guard's class drops and recreates {@code vector_store} with a deliberately wrong dimension, which
- * no other class may see in its database - with {@code initialize-schema=false} nothing puts the
- * table back.
+ * <em>default</em> embedding base URL, so the override below must not reach it; and the classes of
+ * the embedding index drop and recreate {@code vector_store} with a deliberately wrong dimension,
+ * which no other class may see in its database - with {@code initialize-schema=false} nothing puts
+ * the table back.
  *
  * <p>The two property sets do not contradict each other, so both classes share one context rather
  * than one each.

@@ -1,5 +1,6 @@
 package io.opaa.searchadmin;
 
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.indexing.maintenance.ContextPrefixRerunProgress;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
 import io.opaa.indexing.maintenance.FullTextIndexFillState;
@@ -102,6 +103,7 @@ public class SearchStatusService {
   private final PersonThreshold threshold;
   private final PrivateLibraryDeletionRun deletionRun;
   private final Clock clock;
+  private final EmbeddingIndexState embeddingIndexState;
 
   /**
    * Daemon threads: a probe hanging on an unresponsive endpoint must not keep the JVM from shutting
@@ -167,10 +169,14 @@ public class SearchStatusService {
         pipelineProperties,
         threshold,
         clock,
-        null);
+        null,
+        new EmbeddingIndexState());
   }
 
-  /** {@code deletionRun}, when given, tells how many private libraries are due to be erased. */
+  /**
+   * {@code deletionRun}, when given, tells how many private libraries are due to be erased; {@code
+   * embeddingIndexState} whether the vector path is suspended.
+   */
   @Autowired
   public SearchStatusService(
       LlmModelService llmModelService,
@@ -189,8 +195,10 @@ public class SearchStatusService {
       RetrievalPipelineProperties pipelineProperties,
       PersonThreshold threshold,
       Clock clock,
-      PrivateLibraryDeletionRun deletionRun) {
+      PrivateLibraryDeletionRun deletionRun,
+      EmbeddingIndexState embeddingIndexState) {
     this.deletionRun = deletionRun;
+    this.embeddingIndexState = embeddingIndexState;
     this.threshold = threshold;
     this.llmModelService = llmModelService;
     this.connectionTester = connectionTester;
@@ -457,7 +465,7 @@ public class SearchStatusService {
    * A path switched off at stage level or by its own property reports {@code DISABLED}. Otherwise
    * each path reports the condition of the libraries it covers: {@code INCOMPLETE} for the vector
    * path while documents are still waiting, {@code OUTDATED} for the full-text path while rows sit
-   * below the current tsv version.
+   * below the current tsv version. A stale vector index suspends the vector path entirely.
    */
   private List<SearchPathStatus> searchPaths(List<LibrarySearchStatus> libraries) {
     long withChunks = libraries.stream().filter(l -> l.vectorChunkCount() > 0).count();
@@ -476,13 +484,14 @@ public class SearchStatusService {
         !queryProperties.fullTextSearchEnabled()
             || pipelineProperties.disabledStages().contains(RetrievalStageName.FULL_TEXT_SEARCH);
 
+    SearchPathStatus.SearchPathCondition vectorCondition =
+        !vectorDisabled && !embeddingIndexState.isVectorSearchAvailable()
+            ? SearchPathStatus.SearchPathCondition.SUSPENDED
+            : pathCondition(
+                vectorDisabled, vectorIncomplete, SearchPathStatus.SearchPathCondition.INCOMPLETE);
     return List.of(
         new SearchPathStatus(
-            SearchPathStatus.SearchPathName.VECTOR,
-            pathCondition(
-                vectorDisabled, vectorIncomplete, SearchPathStatus.SearchPathCondition.INCOMPLETE),
-            vectorIncomplete,
-            withChunks),
+            SearchPathStatus.SearchPathName.VECTOR, vectorCondition, vectorIncomplete, withChunks),
         new SearchPathStatus(
             SearchPathStatus.SearchPathName.FULL_TEXT,
             pathCondition(

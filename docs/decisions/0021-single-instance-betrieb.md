@@ -126,6 +126,7 @@ an den JVM-Prozess gebunden, der ihn eingereiht hat):
 | Fundstelle | Zustand |
 | --- | --- |
 | `IndexingConfiguration.indexingTaskExecutor`, `.embeddingTaskExecutor`, `.uploadTaskExecutor` | Drei `ThreadPoolTaskExecutor`-Bohnen mit eigener, rein prozessinterner Warteschlange - eine Zeile, die auf Instanz A als `RUNNING` eingereiht wurde, hat auf Instanz B keinen wartenden Task, den ein Neustart von B jemals hätte abbrechen können |
+| `EmbeddingReindexService` (#2576) | Die Neueinbettung des Vektorindex nach einem Wechsel des Embedding-Modells läuft auf einem eigenen Thread im Prozess. Ihr Fortschritt steht in der Zielspalte der Vektortabelle, ihr Zustand in `embedding_index`; ein Lauf, der beim Prozessende `RUNNING` war, wird beim nächsten Start ohne Rückfrage fortgesetzt, weil kein anderer Prozess an ihm arbeiten kann. Bei mehreren Instanzen setzten alle ihn fort und betteten dieselben Dokumente doppelt ein; das Umschalten der Spalten nähme nur eine vor, die anderen scheiterten daran |
 | `connection.token.GrantRevocations` (#2265, ADR-0041) | Die Widerrufe verworfener OAuth-Grants beim Anbieter warten in einer begrenzten Warteschlange im Prozess. Endet er, sind die wartenden verloren; nichts in der Datenbank erinnert an sie, die Grants bleiben beim Anbieter bis zu ihrem Ablauf gültig. Mehrere Instanzen ändern daran nichts Qualitatives, jede führt ihre eigene Warteschlange und Grenze; ein dauerhafter Widerruf bräuchte eine Tabelle offener Widerrufe |
 
 **Prozesslokale Warteschlange mit eigener Entprellung** (kein `@Scheduled` und kein Task-Executor,
@@ -134,6 +135,12 @@ sondern eine dritte Bauart — eine Map im Prozess plus ein eigener `TaskSchedul
 | Fundstelle | Zustand |
 | --- | --- |
 | `SourceEventIntake.pending` | Der gesamte Push-Pfad (Confluence-Webhooks, S3-Ereignisbenachrichtigungen) sammelt die gemeldeten Schlüssel je Bibliothek in einer prozesslokalen `HashMap` und stößt `debounce` später einen gezielten Lauf an. Bei mehreren Instanzen verteilt der Lastverteiler die Benachrichtigungen, es entstehen also mehrere Entprellfenster je Bibliothek. Schwerer wiegt, dass die Zusage der Klasse bricht: „ein verworfener Stapel kostet Aktualität, nie Korrektheit, weil der nächste Lauf dieselben Schlüssel abdeckt" gilt nur, solange der laufende Lauf der eigene ist — ist es ein gezielter Lauf einer anderen Instanz über deren Schlüsselmenge, gehen die Schlüssel des verworfenen Stapels bis zum nächsten Vollabgleich verloren |
+
+**Prozesslokaler Zustand des Vektorindex** (#2576):
+
+| Fundstelle | Zustand |
+| --- | --- |
+| `EmbeddingIndexState` | Ob der Vektorindex zum konfigurierten Embedding-Modell passt, beim Start aus `embedding_index` und der Vektortabelle abgeleitet; davon hängen die Vektorsuche und die Spalte ab, in die jeder Schreibweg einen neuen Vektor legt. Ein Lese-/Schreibschloss im Prozess trennt Schreibweg und Umschalten der Spalten. Bei mehreren Instanzen schaltete nur die eine um, deren Lauf endet; die übrigen schrieben weiter in die entfernte Zielspalte und scheiterten, bis sie neu gestartet sind |
 
 **Prozesslokale Parallelitätsbudgets** (eine Obergrenze, die als Semaphore im Prozess geführt wird,
 gilt bei N Instanzen N-fach):
@@ -196,7 +203,7 @@ reißen. Ein Multi-Instanz-Deployment braucht deshalb entweder einen gestaffelte
 eigenen Migrationsschritt vor den Anwendungsinstanzen.
 
 **Keine Erkennung widersprüchlicher Konfiguration zwischen Instanzen.** `AuthProfileGuard`,
-`PgVectorDimensionsGuard`, `OpenAiBaseUrlGuard`, `RerankRoleStartupCheck`, `LocalAuthSecretGuard` und
+`EmbeddingIndexReconciler`, `OpenAiBaseUrlGuard`, `RerankRoleStartupCheck`, `LocalAuthSecretGuard` und
 `TrustedProxyStartupGuard` prüfen jede Instanz für sich gegen ihre Umgebung und die Datenbank. Keiner
 von ihnen bemerkt, dass eine **zweite** Instanz mit unvereinbarer Konfiguration gegen dieselbe
 Datenbank läuft. Praktisch relevant für die Einbettungsdimension, den Einbettungs- und

@@ -2,6 +2,7 @@ package io.opaa.retrieval;
 
 import static org.mockito.Mockito.mock;
 
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.metadata.MetadataFilter;
@@ -71,7 +72,7 @@ public final class RetrievalPipelineTestSupport {
             new SearchScopeStage(),
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
-            new VectorSearchStage(vectorChunkSearch),
+            new VectorSearchStage(vectorChunkSearch, new EmbeddingIndexState()),
             new FullTextSearchStage(fullTextChunkSearch),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),

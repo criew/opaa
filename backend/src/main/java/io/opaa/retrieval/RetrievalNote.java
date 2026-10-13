@@ -41,6 +41,9 @@ public enum RetrievalNote {
   VECTOR_SEARCH_LISTS("vector search, %d list(s)"),
   FETCH_K("fetch-k %d per list"),
   SIMILARITY_THRESHOLD("similarity threshold %s, applied in-query"),
+  VECTOR_SEARCH_SUSPENDED(
+      "vector search suspended: the vector index was built with another embedding model and is"
+          + " being re-embedded or waiting for it"),
   VECTOR_SEARCH_SHORT_LIST(
       "%s returned %d of fetch-k %d candidate(s): fewer qualify within filter and similarity"
           + " threshold, or the index scan stopped at its tuple or memory limit"),

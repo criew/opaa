@@ -330,6 +330,11 @@ sehr kleiner Suchbereich in einem sehr großen Bestand; für einen solchen Filte
 meist ohnehin die exakte Suche ohne Index. Eine kürzere Liste nennt das Erklärprotokoll mit der
 Zahl der gelieferten Kandidaten.
 
+Nach einem Wechsel des Embedding-Modells ist die Vektorsuche bis zum Abschluss der Neueinbettung
+ausgesetzt: Frage und Chunks stammten sonst aus verschiedenen Modellen. Die Stufe erscheint im
+Erklärprotokoll dann als nicht verfügbar, und die Volltextsuche trägt die Frage allein
+([Modell wechseln](modelle.md#modell-wechseln)).
+
 Die Vektorsuche findet, was der Frage **in der Bedeutung** nahe ist, auch wenn kein Wort
 übereinstimmt („Parkausweis" trifft „Bewohnerparkberechtigung"). Ihre bekannte Schwäche ist der
 umgekehrte Fall: Ein Dokument, das den Suchbegriff wörtlich enthält, aber in einem Chunk, dessen
