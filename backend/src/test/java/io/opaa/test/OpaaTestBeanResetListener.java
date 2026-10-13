@@ -29,6 +29,7 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
   public void beforeTestMethod(TestContext testContext) {
     Mockito.reset(testContext.getApplicationContext().getBean(ChatModel.class));
     testContext.getApplicationContext().getBean(FakeDirectoryClient.class).reset();
+    testContext.getApplicationContext().getBean(TestAssetType.class).switchOn();
     GrantRevocations revocations =
         testContext.getApplicationContext().getBean(GrantRevocations.class);
     if (!revocations.idle()) {

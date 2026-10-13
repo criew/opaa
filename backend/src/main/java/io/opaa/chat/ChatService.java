@@ -167,10 +167,13 @@ public class ChatService {
             title,
             useKnowledge == null || useKnowledge,
             referencedLibraryIds);
-    if (creation.getMetadataFilter() != null) {
-      chat.applyMetadataFilter(
-          validatedMetadataFilter(
-              creation.getMetadataFilter(), authorId, space.getOrganizationId()));
+    MetadataFilter metadataFilter =
+        creation.getMetadataFilter() == null
+            ? null
+            : validatedMetadataFilter(
+                creation.getMetadataFilter(), authorId, space.getOrganizationId());
+    if (metadataFilter != null) {
+      chat.applyMetadataFilter(metadataFilter);
     }
     Chat saved = chatRepository.save(chat);
     return toConversation(saved);
@@ -179,11 +182,12 @@ public class ChatService {
   /**
    * A chat's filter is checked against the schema when it is set, not when it is applied - a code
    * no document can carry would otherwise sit silently on every later question. A library field is
-   * resolved within the author's readable libraries only ({@link MetadataFilterValidator}).
+   * resolved within the author's readable libraries only ({@link MetadataFilterValidator}). {@code
+   * null} with the metadata feature off: the chat's stored filter then stays as it is.
    */
   private MetadataFilter validatedMetadataFilter(
       MetadataFilter filter, UUID authorId, UUID organizationId) {
-    return metadataFilterValidator.validate(
+    return metadataFilterValidator.validateToStore(
         filter, libraryAccessService.readableLibraryIds(authorId, organizationId));
   }
 

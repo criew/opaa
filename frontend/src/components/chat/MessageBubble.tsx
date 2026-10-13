@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
+import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 import Alert from '@mui/material/Alert'
 import { alpha } from '@mui/material/styles'
 import Box from '@mui/material/Box'
@@ -31,6 +32,7 @@ interface MessageBubbleProps {
 
 export default function MessageBubble({ message }: MessageBubbleProps) {
   const isUser = message.role === 'user'
+  const promptLibraries = useFeatureEnabled('promptLibraries')
 
   // The answer's citation markers resolve to footnote numbers; the Belege themselves live only in
   // the Belegfenster - under the answer stays EvidenceFooter's "Belege anzeigen".
@@ -99,8 +101,9 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           }}
         >
           {/* The prompt a question was built from - a snapshot of its title, deliberately no
-              link, since the person may no longer be allowed to read the prompt. */}
-          {isUser && message.usedPromptTitle && (
+              link, since the person may no longer be allowed to read the prompt. Not named
+              while the installation has prompt libraries switched off (ADR-0044). */}
+          {isUser && promptLibraries && message.usedPromptTitle && (
             <Typography
               component="div"
               data-testid="used-prompt"

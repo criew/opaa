@@ -14,8 +14,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * The spaces an asset of any type is associated with, a subresource of {@code AssetController}. An
- * asset is named by type plus id; a malformed or unknown type answers {@code 404} like an unknown
- * asset.
+ * asset is named by type plus id; a malformed, unknown or inactive type answers {@code 404} like an
+ * unknown asset.
  */
 @RestController
 @RequestMapping("/api/v1/assets/{assetType}/{assetId}")
@@ -38,6 +38,6 @@ public class AssetSpaceController {
   }
 
   private AssetType typeOf(String assetType) {
-    return assetTypes.require(assetType).assetType();
+    return assetTypes.requireActive(assetType).assetType();
   }
 }

@@ -84,7 +84,6 @@ interface Overrides {
   members?: SpaceMemberResponse[]
   canManage?: boolean
   isOwner?: boolean
-  isDefaultSpace?: boolean
 }
 
 function renderList(overrides: Overrides = {}) {
@@ -97,7 +96,6 @@ function renderList(overrides: Overrides = {}) {
     <SpaceMemberList
       spaceId="space-team"
       ownerId={owner.subjectId}
-      isDefaultSpace={overrides.isDefaultSpace ?? false}
       members={overrides.members ?? [thomas, buergerbuero, owner, protectedGroup]}
       canManage={overrides.canManage ?? true}
       isOwner={overrides.isOwner ?? false}
@@ -213,15 +211,6 @@ describe('SpaceMemberList', () => {
         .getAllByRole('menuitem')
         .map((item) => item.textContent),
     ).toEqual(['Mitglieder der Gruppe anzeigen', 'Aus Space entfernen'])
-  })
-
-  it('bietet im persönlichen Space keine Übergabe an', async () => {
-    renderList({ isDefaultSpace: true })
-    const user = userEvent.setup()
-
-    const menu = await openMenu(user, 'Thomas Klein')
-
-    expect(within(menu).queryByText('Zum Eigentümer machen')).not.toBeInTheDocument()
   })
 
   it('zeigt ohne Verwaltungsrecht die Rolle als Etikett und nur die Herleitung', async () => {

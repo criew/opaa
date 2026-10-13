@@ -62,6 +62,7 @@ import {
   spendSilentSignIn,
 } from './silentSignIn'
 import { notify } from './notificationStore'
+import { featureEnabledIn, recordInstallationFeatures } from '../utils/installationFeatures'
 import { resetAllStores } from './resettableStores'
 
 /**
@@ -1048,7 +1049,10 @@ export function isFeatureEnabled(name: FeatureName): boolean {
   return featureEnabledIn(useAuthStore.getState().features, name)
 }
 
-/** The one rule both readers share: absent counts as on. */
-export function featureEnabledIn(features: FeatureFlags, name: FeatureName): boolean {
-  return features[name] !== false
-}
+export { featureEnabledIn }
+
+// Modules that must not import this store (the label tables) read the flags from this snapshot.
+recordInstallationFeatures(useAuthStore.getState().features)
+useAuthStore.subscribe((state, previous) => {
+  if (state.features !== previous.features) recordInstallationFeatures(state.features)
+})

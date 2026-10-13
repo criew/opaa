@@ -376,24 +376,54 @@ class SpaceServiceIntegrationTest {
         .containsExactly(SpaceRole.CURATOR);
   }
 
+  /** The default space is private: nobody but its owner becomes a member (#2585). */
   @Test
-  void membersCanBeAddedToTheDefaultSpace() {
-    // #333 removed the "no members in a personal space" rule along with SpaceKind. The default
-    // space is an ordinary space in every respect but deletion: what protects the owner is not the
-    // room, it is that private content stays private regardless of who else is a member.
+  void nobodyCanBeAddedToTheDefaultSpaceNotEvenByASystemAdmin() {
+    UUID owner = createUser(organizationA);
+    UUID colleague = createUser(organizationA);
+    UUID systemAdmin = createUser(organizationA);
+    Space defaultSpace = new Space("My Documents", "Private", true, owner, organizationA);
+    defaultSpace.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
+    Space saved = spaceRepository.save(defaultSpace);
+
+    assertThatThrownBy(
+            () ->
+                spaceService.addMember(
+                    saved.getId(), userSubject(colleague), SpaceRole.MEMBER, currentUserOf(owner)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Standard-Space ist privat");
+    assertThatThrownBy(
+            () ->
+                spaceService.addMember(
+                    saved.getId(),
+                    userSubject(colleague),
+                    SpaceRole.MEMBER,
+                    currentUserOf(systemAdmin, true)))
+        .isInstanceOf(ConflictException.class);
+    assertThat(membershipRepository.findBySpaceId(saved.getId()))
+        .extracting(SpaceMembership::getUserId)
+        .containsExactly(owner);
+  }
+
+  /** No role in the default space is changed - there is nobody but the owner to change (#2585). */
+  @Test
+  void rolesInTheDefaultSpaceCannotBeChanged() {
     UUID owner = createUser(organizationA);
     Space defaultSpace = new Space("My Documents", "Private", true, owner, organizationA);
     defaultSpace.addMembership(SpaceMembership.ofUser(owner, SpaceRole.ADMIN, organizationA));
     Space saved = spaceRepository.save(defaultSpace);
 
-    spaceService.addMember(
-        saved.getId(),
-        userSubject(createUser(organizationA)),
-        SpaceRole.MEMBER,
-        currentUserOf(owner));
-
-    assertThat(spaceService.getSpace(saved.getId(), currentUserOf(owner)).getMemberships())
-        .hasSize(2);
+    assertThatThrownBy(
+            () ->
+                spaceService.updateMemberRole(
+                    saved.getId(),
+                    membershipIdOf(saved.getId(), owner),
+                    SpaceRole.CURATOR,
+                    currentUserOf(owner)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Standard-Space ist privat");
+    assertThat(roleOf(spaceRepository.findByIdWithMemberships(saved.getId()).orElseThrow(), owner))
+        .isEqualTo(SpaceRole.ADMIN);
   }
 
   @Test

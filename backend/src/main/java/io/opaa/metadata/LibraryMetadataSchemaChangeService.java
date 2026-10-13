@@ -2,6 +2,8 @@ package io.opaa.metadata;
 
 import io.opaa.api.types.LibraryMetadataSchemaChangeKind;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
@@ -73,6 +75,7 @@ public class LibraryMetadataSchemaChangeService {
   private final ApplicationEventPublisher eventPublisher;
   private final JdbcTemplate jdbcTemplate;
   private final TransactionTemplate transactionTemplate;
+  private final FeatureFlags featureFlags;
 
   /** Skipped count of the most recent Charge per library; process lifetime only (ADR-0021). */
   private final Map<UUID, Long> lastSkippedByLibrary = new ConcurrentHashMap<>();
@@ -88,7 +91,9 @@ public class LibraryMetadataSchemaChangeService {
       DocumentTypeVocabularyRepository vocabularyRepository,
       ApplicationEventPublisher eventPublisher,
       JdbcTemplate jdbcTemplate,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      FeatureFlags featureFlags) {
+    this.featureFlags = featureFlags;
     this.changeRepository = changeRepository;
     this.fieldRepository = fieldRepository;
     this.valueRepository = valueRepository;
@@ -130,10 +135,14 @@ public class LibraryMetadataSchemaChangeService {
    * One Charge over every pending change of {@code library}, oldest change first. Call repeatedly
    * until the result is {@link LibraryMetadataSchemaRunResult#complete() complete}; pausing is not
    * calling again. Deliberately not {@code @Transactional}: the whole point is that each document
-   * commits on its own, so an interrupted run keeps what it has done.
+   * commits on its own, so an interrupted run keeps what it has done. With the metadata feature off
+   * (ADR-0044) nothing is advanced; every change stays pending as stored.
    */
   public LibraryMetadataSchemaRunResult runBatch(
       KnowledgeLibrary library, int batchSize, CurrentUser caller) {
+    if (!featureFlags.isEnabled(Feature.METADATA)) {
+      return LibraryMetadataSchemaRunResult.nothingToDo();
+    }
     return run(library, changeRepository.findByLibraryId(library.getId()), batchSize, caller, null);
   }
 
@@ -143,6 +152,9 @@ public class LibraryMetadataSchemaChangeService {
       LibraryMetadataSchemaChange change,
       int batchSize,
       CurrentUser caller) {
+    if (!featureFlags.isEnabled(Feature.METADATA)) {
+      return LibraryMetadataSchemaRunResult.nothingToDo();
+    }
     return run(library, List.of(change), batchSize, caller, change.getId());
   }
 

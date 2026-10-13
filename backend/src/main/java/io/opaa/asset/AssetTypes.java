@@ -11,6 +11,11 @@ import org.springframework.stereotype.Component;
 /**
  * The registered {@link AssetTypeDefinition}s, by key. An asset type without a definition is not
  * served: every request naming it answers like an unknown asset.
+ *
+ * <p>Registered is not the same as active (ADR-0044): an inactive type keeps its definition for the
+ * paths that must handle existing assets whatever their type - ownership transfer, group and
+ * account removal, history, audit - while every read interface asks {@link #active()} or {@link
+ * #isActive} and a request path naming it gets the {@code 404} of {@link #requireActive(String)}.
  */
 @Component
 public class AssetTypes {
@@ -25,9 +30,22 @@ public class AssetTypes {
     }
   }
 
-  /** Every served type, in registration order. */
+  /** Every registered type, active or not, in registration order. */
   public List<AssetType> registered() {
     return List.copyOf(byType.keySet());
+  }
+
+  /** Every type offered to readers right now, in registration order. */
+  public List<AssetType> active() {
+    return byType.values().stream()
+        .filter(AssetTypeDefinition::enabled)
+        .map(AssetTypeDefinition::assetType)
+        .toList();
+  }
+
+  /** Whether {@code assetType} is registered and offered to readers right now. */
+  public boolean isActive(AssetType assetType) {
+    return find(assetType).map(AssetTypeDefinition::enabled).orElse(false);
   }
 
   public Optional<AssetTypeDefinition> find(AssetType assetType) {
@@ -46,6 +64,18 @@ public class AssetTypes {
     } catch (IllegalArgumentException malformed) {
       throw new NotFoundException("Objekt nicht gefunden");
     }
+  }
+
+  /**
+   * The definition of an active type named by a request path - malformed, unknown and inactive
+   * alike answer 404, so a switched-off type cannot be told from one that never existed.
+   */
+  public AssetTypeDefinition requireActive(String assetType) {
+    AssetTypeDefinition definition = require(assetType);
+    if (!definition.enabled()) {
+      throw new NotFoundException("Objekt nicht gefunden");
+    }
+    return definition;
   }
 
   static String notFoundMessage(AssetTypeDefinition definition) {

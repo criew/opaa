@@ -471,6 +471,10 @@ class SuccessionLifecycleIntegrationTest {
     assertThat(spaceService.listSpaces(admin))
         .filteredOn(overview -> overview.space().getId().equals(personal.getId()))
         .allSatisfy(overview -> assertThat(overview.successionOpen()).isFalse());
+    // #2585: nor does it appear under "Offene Nachfolgen"
+    assertThat(
+            successionService.list(organizationId, SuccessionKind.OPEN_SUCCESSION, 0, 50).entries())
+        .noneMatch(entry -> entry.finding().objectId().equals(personal.getId()));
   }
 
   /** The overview carries the same marking as the detail view (ADR-0036, Entscheidung 6). */

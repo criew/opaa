@@ -27,6 +27,8 @@ import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingRunCost;
@@ -83,6 +85,9 @@ public class LibraryController {
   private final PrivateLibraryCreation privateCreation;
   private final PrivateLibraryErasure privateErasure;
 
+  /** Without the metadata feature (ADR-0044) the document list has no Pflege-Anker filter. */
+  private final FeatureFlags featureFlags;
+
   public LibraryController(
       KnowledgeLibraryService libraryService,
       PrivateLibraryCreation privateCreation,
@@ -92,7 +97,9 @@ public class LibraryController {
       DocumentIndexingService indexingService,
       SourceConnectionTestService sourceConnectionTestService,
       PermissionTransferService transferService,
-      SourceConnectorRegistry connectors) {
+      SourceConnectorRegistry connectors,
+      FeatureFlags featureFlags) {
+    this.featureFlags = featureFlags;
     this.libraryService = libraryService;
     this.privateCreation = privateCreation;
     this.privateErasure = privateErasure;
@@ -259,7 +266,12 @@ public class LibraryController {
         PageRequest.of(page, size, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id")));
     return LibraryDocumentResponseMapper.toPageResponse(
         libraryService.listDocuments(
-            libraryId, caller, q, folderId, missingMetadataField, pageable));
+            libraryId,
+            caller,
+            q,
+            folderId,
+            featureFlags.isEnabled(Feature.METADATA) ? missingMetadataField : null,
+            pageable));
   }
 
   @PostMapping(value = "/{libraryId}/documents", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

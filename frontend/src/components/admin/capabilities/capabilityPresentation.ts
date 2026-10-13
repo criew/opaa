@@ -5,6 +5,7 @@ import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined'
 import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { Capability } from '../../../types/api'
+import { isCapabilityOffered } from '../../../utils/installationFeatures'
 
 export interface CapabilityPresentation {
   /** The short name in the overview, without the verb: the page heading already asks it. */
@@ -48,7 +49,7 @@ export function presentationOf(
   fallbackLabel: string,
 ): CapabilityPresentation {
   return (
-    PRESENTATION[capability] ?? {
+    (isCapabilityOffered(capability) ? PRESENTATION[capability] : undefined) ?? {
       title: fallbackLabel,
       description: '',
       icon: WorkspacesOutlinedIcon,
