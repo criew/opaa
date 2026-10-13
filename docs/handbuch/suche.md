@@ -505,10 +505,11 @@ Dokument auf, bis es mit `max-chunks-per-document` Chunks in der Auswahl steht. 
 nur aus dem Kandidatenpool der Suchstufen, also aus Chunks, die Rechte- und Metadatenfilter
 bereits passiert haben.
 
-**Der Wert ist ein Auffüllziel, keine Obergrenze.** Wie viele Chunks eines Dokuments die Stufen
-davor in die Auswahl gebracht haben, ändert er nicht: Ein Dokument, das dort schon mit mehr Chunks
-vertreten ist, behält sie. Die Endauswahl kann deshalb bei jedem Wert mehrere Chunks eines
-Dokuments enthalten, auch beim Standardwert.
+**Der Wert ist ein Auffüllziel, keine Obergrenze.** Ein Dokument, das aus den Stufen davor schon
+mit mehr Chunks kommt, bekommt nichts dazu und wird nie auf den Wert gekürzt. Chunks verliert es
+nur, wenn die Verdrängung unten sie für ein anderes Dokument braucht. Die Endauswahl kann deshalb
+bei jedem Wert mehr Chunks eines Dokuments enthalten. Beim Standardwert läuft keine Verdrängung,
+die Auswahl bleibt unverändert.
 
 Weil die Auswahl nicht über `top-k` wachsen darf, muss dafür etwas weichen, in zwei Stufen: zuerst der
 schwächste Chunk eines anderen Dokuments, das selbst schon mit mindestens zwei Chunks vertreten ist (die Zahl

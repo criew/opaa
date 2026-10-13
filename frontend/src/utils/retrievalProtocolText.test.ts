@@ -115,6 +115,12 @@ describe('translateStageNote', () => {
     expect(german).toContain('keine Obergrenze')
   })
 
+  it('says document completion is off at max-chunks-per-document 1', () => {
+    expect(translateStageNote('max-chunks-per-document 1')).toBe(
+      'Dokument-Vervollständigung aus (max-chunks-per-document 1).',
+    )
+  })
+
   it('never shows a Java type to the operator', () => {
     const unusable = translateStageNote(
       "the rerank model role is switched on but was not usable when this run started - no endpoint or model is configured for it, or its endpoint did not answer; the role's own state says which (RerankRoleStatusProvider#currentStatus)",

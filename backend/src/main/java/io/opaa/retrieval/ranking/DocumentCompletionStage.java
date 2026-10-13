@@ -24,11 +24,11 @@ import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
 /**
- * The {@link RetrievalStageName#DOCUMENT_COMPLETION} stage: lets a document already represented in
- * the selection contribute up to {@link QueryProperties#maxChunksPerDocument} chunks, drawn only
- * from {@link RetrievalState#candidatePool()} - the candidates the two search stages returned under
- * the permission filter. It therefore widens neither the scope nor the pool, and runs last because
- * it works on the final ranking rather than one a later stage would resort.
+ * The {@link RetrievalStageName#DOCUMENT_COMPLETION} stage: tops a document already represented in
+ * the selection up to {@link QueryProperties#maxChunksPerDocument} chunks (a fill target, not a
+ * cap), drawn only from {@link RetrievalState#candidatePool()} - the candidates the two search
+ * stages returned under the permission filter. It therefore widens neither the scope nor the pool,
+ * and runs last because it works on the final ranking rather than one a later stage would resort.
  *
  * <p>The verdicts distinguish the two eviction tiers, because for the diagnosis they are two
  * different answers: a tier-1 eviction takes a chunk from a document that keeps another one, a

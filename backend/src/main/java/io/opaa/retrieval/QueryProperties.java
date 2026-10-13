@@ -33,8 +33,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     #topK} regardless.
  * @param maxChunksPerDocument the fill target of {@code DocumentCompletion}: a document already in
  *     the selection is topped up to this many chunks from the candidate pool. Not a cap - a
- *     document already holding more keeps them. Default 1, which makes completion the identity; the
- *     neighbour chunks loaded for the answer context supply surrounding text.
+ *     document holding more is never trimmed to it, it loses chunks only as an eviction source for
+ *     another document. Default 1, which makes completion the identity; the neighbour chunks loaded
+ *     for the answer context supply surrounding text.
  * @param fullTextSearchEnabled whether {@link RetrievalStageName#FULL_TEXT_SEARCH} runs and
  *     contributes its lists to the fusion. Default {@code true}. Set to {@code false} for the
  *     {@code vector-only} measurement variant: the stage stays in the chain and says so in the
