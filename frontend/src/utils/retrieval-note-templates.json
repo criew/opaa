@@ -41,6 +41,10 @@
       "template": "full-text search, %d list(s)"
     },
     {
+      "name": "FUSION_GUARANTEED_PER_LIST",
+      "template": "top %d of every list guaranteed: %d distinct chunk(s), %d of them beyond the fused budget"
+    },
+    {
       "name": "FUSION_SUB_QUERIES_POOLED",
       "template": "lists of %d sub-queries fused into one pool"
     },
@@ -111,6 +115,10 @@
     {
       "name": "RELEVANCE_CUTOFF_FIXED",
       "template": "relevance cutoff off (mode fixed): the selection keeps up to top-k %d chunk(s)"
+    },
+    {
+      "name": "RELEVANCE_CUTOFF_GUARANTEED_KEPT",
+      "template": "%d guaranteed top candidate(s) of their list kept below the bound"
     },
     {
       "name": "RELEVANCE_CUTOFF_KNEE",

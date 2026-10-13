@@ -62,6 +62,7 @@ public class DocumentCompletionStage implements RetrievalStage {
             pool,
             properties.maxChunksPerDocument(),
             cut == null ? properties.topK() : cut.budget(),
+            state.guaranteedChunkIds(),
             events);
 
     Set<String> survivingChunkIds = new HashSet<>();

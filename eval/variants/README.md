@@ -38,11 +38,12 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   `fetchK`, `mmrLambda`, `similarityThreshold`, `queryDecompositionEnabled`, `maxSubQueries`,
   `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049), `rerankCandidateCount`
   (seit Issue #1050; `0` ist die Variante ohne Reranking), `fusionMethod` (`RRF` oder `SCORE`),
-  `fusionSubQueryQuota` und `fusionVectorWeight` (seit Issue #2619). `topK` ist bewusst kein
+  `fusionSubQueryQuota` und `fusionVectorWeight` (seit Issue #2619), `fusionGuaranteedPerList`
+  (seit Issue #2634; `0` schaltet die fest übernommenen Spitzentreffer ab). `topK` ist bewusst kein
   Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt20`, …) sind an das
   Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
-- Der Vergleich `verwaltung-fusion.json` (Issue #2619) misst Quote je Teilfrage und Wertefusion,
-  einzeln und kombiniert. Die Quote wirkt nur bei mehreren Teilfragen; der Vergleich ist deshalb mit
+- Der Vergleich `verwaltung-fusion.json` (Issues #2619, #2634) misst Quote je Teilfrage, Wertefusion
+  und fest übernommene Spitzentreffer je Liste, einzeln und kombiniert. Die Quote wirkt nur bei mehreren Teilfragen; der Vergleich ist deshalb mit
   `-Dopaa.eval.queryDecomposition=true` zu fahren, ohne Zerlegung unterscheiden sich nur die
   `score`-Varianten von der Referenz. Die Fusionsparameter sind kein Festpunkt der
   Pipeline-Baselines; ein Lauf mit geänderter Fusion gehört deshalb in diesen Vergleich, nicht in

@@ -24,8 +24,9 @@ import org.springframework.ai.document.Document;
  * <p>Tier 1 evicts the weakest chunk of another, not-yet-completed document already holding at
  * least two, so document diversity never drops below what fusion established. Tier 2 runs only if
  * tier 1 finds no source, is capped at {@code max(1, overallBudget / 4)} evictions per call, and
- * may drop a document from the answer. A chunk either tier added is never a later victim, and
- * completion never grows the selection past {@code overallBudget}.
+ * may drop a document from the answer. A chunk either tier added is never a later victim, neither
+ * is a protected chunk (a guaranteed top candidate of its list), and completion never grows the
+ * selection past {@code overallBudget}.
  */
 final class DocumentCompletion {
 
@@ -53,6 +54,17 @@ final class DocumentCompletion {
       List<Document> candidatePool,
       int maxChunksPerDocument,
       int overallBudget,
+      List<CompletionEvent> trace) {
+    return complete(selection, candidatePool, maxChunksPerDocument, overallBudget, Set.of(), trace);
+  }
+
+  /** As above, but never evicts a chunk in {@code protectedChunkIds}. */
+  static List<Document> complete(
+      List<Document> selection,
+      List<Document> candidatePool,
+      int maxChunksPerDocument,
+      int overallBudget,
+      Set<String> protectedChunkIds,
       List<CompletionEvent> trace) {
     if (selection.isEmpty() || maxChunksPerDocument <= 1) {
       return selection;
@@ -101,7 +113,11 @@ final class DocumentCompletion {
         }
         Document tier1Victim =
             evictWeakestFromAnOverrepresentedDocument(
-                result, documentKey, completedDocumentKeys, originalRankByChunkId);
+                result,
+                documentKey,
+                completedDocumentKeys,
+                protectedChunkIds,
+                originalRankByChunkId);
         if (tier1Victim != null) {
           result.add(candidate);
           completedDocumentKeys.add(documentKey);
@@ -114,6 +130,7 @@ final class DocumentCompletion {
                     result,
                     documentKey,
                     bestOriginalRankByDocument.get(documentKey),
+                    protectedChunkIds,
                     originalRankByChunkId)
                 : null;
         if (tier2Victim != null) {
@@ -190,6 +207,7 @@ final class DocumentCompletion {
       List<Document> result,
       String excludeDocumentKey,
       Set<String> protectedDocumentKeys,
+      Set<String> protectedChunkIds,
       Map<String, Integer> originalRankByChunkId) {
     Map<String, List<Document>> byDocument =
         result.stream()
@@ -205,6 +223,9 @@ final class DocumentCompletion {
         continue;
       }
       for (Document candidate : entry.getValue()) {
+        if (protectedChunkIds.contains(candidate.getId())) {
+          continue;
+        }
         int rank = originalRankByChunkId.getOrDefault(candidate.getId(), Integer.MAX_VALUE);
         if (rank > weakestRank) {
           weakestRank = rank;
@@ -231,12 +252,15 @@ final class DocumentCompletion {
       List<Document> result,
       String documentKey,
       int documentBestRank,
+      Set<String> protectedChunkIds,
       Map<String, Integer> originalRankByChunkId) {
     Document weakest = null;
     int weakestRank = -1;
     for (Document candidate : result) {
       Integer rank = originalRankByChunkId.get(candidate.getId());
-      if (rank == null || ChunkGroupingKey.of(candidate).equals(documentKey)) {
+      if (rank == null
+          || ChunkGroupingKey.of(candidate).equals(documentKey)
+          || protectedChunkIds.contains(candidate.getId())) {
         continue;
       }
       if (rank > weakestRank) {

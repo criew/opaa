@@ -30,6 +30,10 @@ import org.springframework.ai.document.Document;
  * <p>Deduplicated by {@link Document#getId()}; the instance from the <b>earliest</b> list is kept,
  * positionally rather than by score, because a cosine similarity and a {@code ts_rank} of the same
  * chunk are not comparable.
+ *
+ * <p>A candidate among the first {@link QueryProperties.Fusion#guaranteedPerList()} of any list is
+ * marked guaranteed; the mark does not move it in the order, {@link RankFusionStage} reads it when
+ * applying the budget.
  */
 final class CandidateFusion {
 
@@ -42,15 +46,21 @@ final class CandidateFusion {
    * One fused candidate: its fused score within the group that placed it, that group's sub-query
    * ({@code 0} when pooled), and the contributions that make up exactly that score - the lists of
    * the placing group the candidate appeared in, so the shares always add up to the fused score.
+   * {@code guaranteed} says whether it is a top candidate of at least one list.
    */
   record FusedCandidate(
-      Document document, double fusedScore, int subQuery, List<FusionContribution> contributions) {}
+      Document document,
+      double fusedScore,
+      int subQuery,
+      List<FusionContribution> contributions,
+      boolean guaranteed) {}
 
   static List<FusedCandidate> fuse(
       List<CandidateList> lists, QueryProperties.Fusion fusion, double similarityThreshold) {
     Map<String, Document> documentById = new LinkedHashMap<>();
     Map<Integer, Map<String, List<FusionContribution>>> contributionsByGroup = new TreeMap<>();
     Map<Integer, Map<String, Double>> scoresByGroup = new TreeMap<>();
+    Set<String> guaranteedIds = new HashSet<>();
 
     for (CandidateList list : lists) {
       if (list.searchPath() == null) {
@@ -75,6 +85,9 @@ final class CandidateFusion {
             .computeIfAbsent(document.getId(), key -> new ArrayList<>())
             .add(new FusionContribution(list.label(), rank, value));
         groupScores.merge(document.getId(), value, Double::sum);
+        if (rank <= fusion.guaranteedPerList()) {
+          guaranteedIds.add(document.getId());
+        }
       }
     }
 
@@ -105,7 +118,8 @@ final class CandidateFusion {
                   documentById.get(next.getKey()),
                   next.getValue(),
                   groupKeys.get(g),
-                  List.copyOf(contributionsByGroup.get(groupKeys.get(g)).get(next.getKey()))));
+                  List.copyOf(contributionsByGroup.get(groupKeys.get(g)).get(next.getKey())),
+                  guaranteedIds.contains(next.getKey())));
         }
       }
       round.sort(Comparator.comparingDouble(FusedCandidate::fusedScore).reversed());

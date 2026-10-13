@@ -276,19 +276,65 @@ aus `top-k`. Zwei Stellschrauben, beide Ebene-1-Werte unter `opaa.query.fusion.*
   gewichtet, ein `ts_rank` relativ zum besten Wert seiner Liste mit dem Rest. Ein Treffer mit Kosinus
   0,82 zählt dann mehr als einer mit 0,45 auf demselben Rang.
 
-**Warum RRF mit Quote der Default ist.** Die Quote hat als einzige Variante einen Beleg: In der
-Simulation der Verlustanalyse brachte sie 144 statt 139 von 220 Kernfakten bei praktisch gleich großem
-Kontext. Die Wertefusion braucht ein Gewicht, und ein ungemessenes Gewicht ist genau das, wovor
-[Arbeitspaket 3](./hybrid-retrieval.md#arbeitspaket-3-fusion) warnt; sie ist gebaut und über den
-Variantenvergleich `eval/variants/verwaltung-fusion.json` messbar (alle vier Kombinationen plus
-Gewicht 0,5), aber nicht voreingestellt. Die Entscheidung über den Default fällt mit der Messung am
-Testkorpus nach dem Merge.
+- **`guaranteed-per-list`** (`OPAA_QUERY_FUSION_GUARANTEED_PER_LIST`, Default `1`, 0 bis 10, #2634):
+  die fest übernommenen Spitzentreffer, unten.
+
+**Warum RRF mit Quote der Default ist.** Die Quote hatte als einzige Variante schon vor der Messung
+einen Beleg: In der Simulation der Verlustanalyse brachte sie 144 statt 139 von 220 Kernfakten bei
+praktisch gleich großem Kontext. Die Messung vom 14.10.2026 auf der FV-Arbeitsmenge (20 Fragen × 3
+Läufe, Bericht im Korpus-Repo unter `testlaeufe/2026-10-14-retrieval-umbau/`, Zusammenfassung in
+[#2386](https://github.com/criew/opaa/issues/2386)) bestätigt das: RRF mit Quote hielt den Stand
+(36/60 Läufe mit allen Kernfakten im Kontext, 84 von 132 Kernfakten). **Die Wertefusion**
+(`method=score`, `vector-weight` 0,7) war gleich gut oder schlechter (30/60, 81 von 132). Sie verliert
+Treffer, die nur ein Suchpfad findet: Ein Chunk auf Volltextrang 2 landete auf Fusionsrang 26
+(s3-11), ähnlich ust-09 und lw-11. Ein ungemessenes Gewicht ist genau das, wovor
+[Arbeitspaket 3](./hybrid-retrieval.md#arbeitspaket-3-fusion) warnt, und das gemessene hat nicht
+geholfen. Die Wertefusion bleibt als Option gebaut und über den Variantenvergleich
+`eval/variants/verwaltung-fusion.json` messbar, ist aber nicht voreingestellt.
+
+**Fest übernommene Spitzentreffer (#2634).** Auch mit Quote verliert ein Treffer, den nur eine der
+beiden Listen einer Teilfrage kennt, gegen jeden Chunk, den beide Listen um Rang 10 führen: ein
+RRF-Beitrag von `1/61` gegen zwei von je etwa `1/70`. Die Messung zeigt das Muster an ue-06
+(Antwort-Chunk auf Volltextrang 1, nur in einem von drei Läufen im Kontext), s3-13 (Volltextrang 22,
+Fusionsrang 40) und ue-03; es ist der Großteil der verbliebenen Verluste an Fusion und `top-k`.
+Deshalb nimmt die Stufe die besten `guaranteed-per-list` Kandidaten **jeder Liste** (je Teilfrage und
+Suchpfad, nach einer etwaigen MMR-Umsortierung) fest in die Auswahl:
+
+- `CandidateFusion` markiert jeden Kandidaten, der in mindestens einer Liste unter den ersten
+  `guaranteed-per-list` steht (`FusedCandidate#guaranteed`); die fusionierte Reihenfolge ändert sich
+  dadurch nicht. Ein Chunk, der mehrere Listen anführt, ist ein garantierter Kandidat.
+- `RankFusionStage` wendet das Kandidatenbudget über `GuaranteedSelection` an: alle garantierten
+  Kandidaten, die übrigen Plätze in fusionierter Reihenfolge, die Auswahl behält die fusionierte
+  Reihenfolge. Übersteigen die garantierten allein das Budget, gewinnen die in der Fusion vorderen.
+  Das gilt mit und ohne Quote, für `rrf` und `score`, und für das Budget `top-k` wie für das
+  Reranking-Fenster.
+- **Deterministisch** (ADR-0013): Die Auswahl hängt nur von der fusionierten Reihenfolge und den
+  Listenrängen ab, nie von der Iterationsreihenfolge einer Menge; zwei Läufe auf denselben Listen
+  liefern dieselben Verdikte.
+- **Verhaltensneutral bei `0`:** Ohne garantierten Kandidaten ist die Auswahl der Kopf der
+  fusionierten Liste, und die Stufe schreibt weder einen neuen Grund noch eine neue Notiz.
+- Die Auswahl hält die garantierten Kandidaten als `RetrievalState#guaranteedChunkIds`. Der
+  Relevanzschnitt (5c) entfernt sie nicht, die Dokument-Vervollständigung (6) verdrängt sie in keiner
+  Stufe, und ein Reranking, dessen Endpunkt nichts bewertet, kürzt nach derselben Regel auf `top-k`
+  (5b). Ein Reranking, das bewertet, ist nicht an sie gebunden.
+
+**Warum der Default 1 ist** (Maintainer-Entscheidung). Mit höchstens drei Teilfragen und zwei
+Suchpfaden gibt es bis zu sechs Listen; bei `1` belegen die Spitzentreffer also höchstens 6 der 20
+Plätze und lassen der Fusion den größeren Teil. Bei `2` wären es bis zu 12 von 20, und Quote und
+Fusion bestimmten nur noch den kleineren Teil der Auswahl. Die Wirkung misst der Koordinator lokal
+auf der FV-Arbeitsmenge; der Wert ist danach anpassbar (Varianten `quota-rrf-no-guarantee` und
+`quota-rrf-guarantee-2` im Variantenvergleich).
 
 **Protokoll.** Jedes Verdikt der Stufe nennt die Listen, deren Beiträge seinen Wert ausmachen, mit
 Rang und Beitrag (`CandidateVerdict#contributions`); die Beiträge ergeben zusammen den Wert. Gepoolt
 sind das alle Listen, in denen der Kandidat vorkam, mit Quote nur die Listen der Teilfrage, die ihn in
 die Auswahl gebracht hat (`fused · sub-query n`); Ränge in anderen Teilfragen zählen dort nicht und
-stehen deshalb in den Verdikten der Suchstufen, nicht hier. Die Fusion lehnt eine Liste ohne Herkunft
+stehen deshalb in den Verdikten der Suchstufen, nicht hier. Ein garantierter Kandidat jenseits des
+Budgets trägt `GUARANTEED_LIST_TOP`, ein Kandidat innerhalb des Budgets, dessen Platz er belegt hat,
+`DISPLACED_BY_GUARANTEED_LIST_TOP`; ein garantierter Kandidat, der ohnehin im Budget lag, bleibt
+`WITHIN_BUDGET`. Der Rang eines behaltenen Kandidaten ist seine Position in der Auswahl, der eines
+verworfenen sein Fusionsrang. Eine Notiz nennt, wie viele Kandidaten garantiert waren und wie viele
+davon erst durch die Garantie in die Auswahl kamen. Die Fusion lehnt eine Liste ohne Herkunft
 (Suchpfad und Teilfrage) mit einer Exception ab, statt sie still einer eigenen Gruppe zuzuordnen. Die
 Notizen nennen Verfahren und Quote.
 Dedupliziert wird per Chunk-Kennung
@@ -348,8 +394,12 @@ und vermerkt im Erklärprotokoll den Status `UNAVAILABLE` statt so zu tun, als h
 
 **Diese Reihenfolge ist die des Laufs ohne Reranking.** Vor der Fusion hängt keine Stufe vom
 Kandidatenbudget ab (seit [#2620](https://github.com/criew/opaa/issues/2620) kürzt die MMR-Stufe
-nicht mehr), die fusionierte Liste ist also mit und ohne Reranking dieselbe, und ihre ersten
-`top-k` sind die Auswahl der Konfiguration ohne Reranking. Ein Messlauf mit unterbrochenem Reranking
+nicht mehr), die fusionierte Liste ist also mit und ohne Reranking dieselbe. Die Stufe kürzt sie nach
+der Regel der Fusion auf `top-k` (`GuaranteedSelection` mit `RetrievalState#guaranteedChunkIds`) und
+erhält so die Auswahl der Konfiguration ohne Reranking, auch wenn das breitere Fenster einen
+Spitzentreffer hinter Platz `top-k` gesetzt hatte. Ein Reranking, das bewertet, ordnet dagegen frei:
+Der Reranker liest jeden Chunk mit der Frage und kennt die Schieflage der Rangfusion zwischen Ein- und
+Zwei-Listen-Treffern nicht, gegen die die Garantie schützt. Ein Messlauf mit unterbrochenem Reranking
 gilt trotzdem nicht als Messwert der Variante mit Reranking (siehe
 [eval/variants/README.md](../../eval/variants/README.md)).
 
@@ -388,18 +438,31 @@ Ist der beste Wert nicht positiv (etwa rohe Logits eines Rerankers), schneidet d
 sagt das. Die Notiz nennt in jedem Fall den Grund des Abbruchs; jedes entfernte Verdikt trägt
 `BELOW_RELEVANCE_CUTOFF`.
 
+**Fest übernommene Spitzentreffer bleiben** (`RetrievalState#guaranteedChunkIds`, Schritt 5): Ein
+garantierter Chunk unter der Grenze wird behalten und trägt `GUARANTEED_LIST_TOP`, eine Notiz nennt
+ihre Zahl. Begründung: Die Grenze wird am besten Wert über alle Teilfragen gemessen. Eine Teilfrage,
+deren Werte insgesamt niedriger liegen, verlöre sonst als Erstes ihren Spitzentreffer, und der Schnitt
+höbe die Quote je Teilfrage teilweise auf; genau das zeigte die Messung. Die Ausnahme gilt auch nach
+einem Reranking, weil dessen Werte ebenfalls gegen die ganze Frage gemessen sind. Die Zahl nach dem
+Schnitt (`RelevanceCut#budget`) schließt die behaltenen Spitzentreffer ein; da der Schnitt nur
+entfernt, bleibt sie höchstens `top-k`.
+
 **Der Schnitt bestimmt die Kontextgröße.** Läuft die Stufe (jeder Modus außer `fixed`), hält sie ihre
 Entscheidung als `RetrievalState#relevanceCut` fest. Die Dokument-Vervollständigung (Schritt 6) nimmt
 dann die Zahl nach dem Schnitt als Gesamtbudget statt `top-k` und zieht keinen geschnittenen Chunk aus
 dem Kandidatenpool nach.
 
-**Warum `fixed` der Default bleibt.** Die Verlustanalyse am Testkorpus Finanzverwaltung zeigt den Bedarf
-(top-k 30 brächte 150 statt 139 von 220 Kernfakten bei 32 % mehr Kontext), aber gemessen ist der
-Schnitt noch nicht. Unter RRF sind die Werte zudem flach und rangabgeleitet: Ein Chunk, den beide Pfade
-fanden, erreicht etwa den doppelten Wert eines Einzeltreffers, ein relativer Schnitt bei 0,6 trennt
-also vor allem diese beiden Gruppen und kaum nach Passung. Sinnvoller wird er mit Reranking oder mit
-einem Fusionsverfahren, das Ähnlichkeitswerte statt Ränge verwendet (#2619). Der Schnitt ist deshalb als Option gebaut; die Entscheidung über den
-Default fällt mit der Messung (Kernfakten im Kontext und Tokens je Antwort). Für einen Bereich wie
+**Warum `fixed` der Default bleibt.** Die Verlustanalyse am Testkorpus Finanzverwaltung zeigte den Bedarf
+(top-k 30 brächte 150 statt 139 von 220 Kernfakten bei 32 % mehr Kontext). Unter RRF sind die Werte
+aber flach und rangabgeleitet: Ein Chunk, den beide Pfade fanden, erreicht etwa den doppelten Wert
+eines Einzeltreffers, ein relativer Schnitt bei 0,6 trennt also vor allem diese beiden Gruppen und kaum
+nach Passung. Die Messung vom 14.10.2026 (Schritt 5) bestätigt die Zurückhaltung: `relative` 0,6 mit
+`min-chunks` 10 auf Score-Fusion sparte etwa ein Drittel der Tokens (Median 38.646 statt 58.370),
+verlor aber deutlich Kernfakten (68 statt 84 von 132 im Kontext). Er misst am besten Wert über alle
+Teilfragen, kürzte fast immer auf die Mindestzahl und hob dabei die Quote teilweise auf, indem er
+Spitzentreffer einzelner Teilfragen entfernte; gemessen wurde ohne die Ausnahme für garantierte
+Kandidaten oben. `knee` 0,25 schnitt fast nie. **Empfehlung: Wer Tokens sparen will, senkt eher
+`top-k`.** Für einen Bereich wie
 10–30 Chunks wird `top-k` auf 30 gesetzt; der Pipeline-Messpfad des Eval-Harness misst nur am
 Produktionsfenster `top-k` 20 und kennt die Parameter des Schnitts nicht als Festpunkt.
 
@@ -432,7 +495,10 @@ Acht-Themen-Auswahl in einem einzigen Aufruf auf eine Handvoll Dokumente schrump
 gelten stufenübergreifend: Ein in diesem Aufruf bereits vervollständigtes Dokument scheidet für ein
 weiteres Dokument als Stufe-1-Quelle aus (`completedDocumentKeys`), und ein Chunk, den eine Vervollständigung
 in diesem Aufruf hinzugefügt hat, kann in keiner der beiden Stufen selbst zum Opfer werden — eine
-Vervollständigung kann eine frühere im selben Aufruf also nie rückgängig machen. `max-chunks-per-document
+Vervollständigung kann eine frühere im selben Aufruf also nie rückgängig machen. Ebenso wenig wird
+ein fest übernommener Spitzentreffer der Fusion (`RetrievalState#guaranteedChunkIds`, Schritt 5) zum
+Opfer; Stufe 2 nähme sonst gerade ihn, weil ein garantierter Kandidat jenseits des Budgets am Ende
+der Auswahl steht. `max-chunks-per-document
 = 1` schaltet die Vervollständigung vollständig ab (Verhalten von vor #932). Seit
 [#2502](https://github.com/criew/opaa/issues/2502) ist das der Default: Den Zusammenhang um einen
 Treffer liefern die Nachbar-Chunks (6b), ohne einen Platz der Endauswahl zu belegen, und die
@@ -527,7 +593,8 @@ Frage + Gesprächsfenster
         ↓
 4. Je Liste (Teilfrage × Suchpfad): MMR-Umsortierung ohne Kürzung (mmr-lambda; bei 1,0 übersprungen)
         ↓
-5. Fusion je Teilfrage (RRF oder Werte), Auswahl reihum über die Teilfragen, gedeckelt auf das Kandidatenbudget
+5. Fusion je Teilfrage (RRF oder Werte), Auswahl reihum über die Teilfragen, die besten
+   guaranteed-per-list jeder Liste fest, gedeckelt auf das Kandidatenbudget
         ↓
 5b. Reranking der Kandidatenmenge durch die Rerank-Modellrolle, zurück auf top-k
     (per Voreinstellung aus: OPAA_RERANK_ENABLED)

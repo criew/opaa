@@ -33,7 +33,10 @@ import org.springframework.stereotype.Component;
  * the scores sorted by value and then applied as a filter, so an order that is not by score (the
  * sub-query quota fills round-robin) keeps its sequence; ties at the bound stay. A chunk without a
  * score counts as 0 - with reranking, every chunk behind the rerank window. The decision is
- * recorded as {@link RelevanceCut}, so document completion neither refills nor restores.
+ * recorded as {@link RelevanceCut}, so document completion neither refills nor restores. A
+ * guaranteed top candidate of its list ({@link RetrievalState#guaranteedChunkIds()}) is never cut:
+ * the bound is measured against the best score over all sub-queries, which would undo the
+ * guarantee.
  *
  * <p>{@link Mode#FIXED} (the default) does not run: the stage reports {@link StageStatus#DISABLED}.
  * Without a positive best score there is no share to measure against, and the selection stays.
@@ -112,9 +115,15 @@ public class RelevanceCutoffStage implements RetrievalStage {
     List<Document> remaining = new ArrayList<>(selection.size());
     Set<String> removed = new HashSet<>();
     List<CandidateVerdict> verdicts = new ArrayList<>(selection.size());
+    int guaranteedKept = 0;
     for (int i = 0; i < selection.size(); i++) {
       Document candidate = selection.get(i);
-      boolean kept = scores[i] >= bound;
+      boolean aboveBound = scores[i] >= bound;
+      boolean guaranteed = !aboveBound && state.guaranteedChunkIds().contains(candidate.getId());
+      boolean kept = aboveBound || guaranteed;
+      if (guaranteed) {
+        guaranteedKept++;
+      }
       if (kept) {
         remaining.add(candidate);
       } else {
@@ -124,7 +133,11 @@ public class RelevanceCutoffStage implements RetrievalStage {
           CandidateVerdict.of(
               candidate,
               kept ? CandidateOutcome.KEPT : CandidateOutcome.DROPPED,
-              kept ? VerdictReason.WITHIN_BUDGET : VerdictReason.BELOW_RELEVANCE_CUTOFF,
+              aboveBound
+                  ? VerdictReason.WITHIN_BUDGET
+                  : guaranteed
+                      ? VerdictReason.GUARANTEED_LIST_TOP
+                      : VerdictReason.BELOW_RELEVANCE_CUTOFF,
               RetrievalListLabel.FUSED_LIST_LABEL,
               i + 1,
               scores[i]));
@@ -148,12 +161,16 @@ public class RelevanceCutoffStage implements RetrievalStage {
           RetrievalNote.RELEVANCE_CUTOFF_NO_KNEE.format(
               share(properties.kneeDrop()), properties.minChunks(), selection.size());
     }
+    List<String> notes = new ArrayList<>(List.of(note));
+    if (guaranteedKept > 0) {
+      notes.add(RetrievalNote.RELEVANCE_CUTOFF_GUARANTEED_KEPT.format(guaranteedKept));
+    }
     return new StageOutcome(
         state
             .withCandidateLists(
                 List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, remaining)))
             .withRelevanceCut(new RelevanceCut(remaining.size(), removed)),
-        StageExplanation.executed(name(), incoming, remaining.size(), verdicts, List.of(note)));
+        StageExplanation.executed(name(), incoming, remaining.size(), verdicts, notes));
   }
 
   private static void reverse(double[] values) {

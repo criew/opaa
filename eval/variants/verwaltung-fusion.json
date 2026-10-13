@@ -1,20 +1,24 @@
 {
   "name": "verwaltung-fusion",
-  "description": "Varianten der Fusion über Teilfragen (Issue #2619): Quote je Teilfrage und Fusion mit Ähnlichkeitswerten, einzeln und kombiniert, gegen die ausgelieferte Konfiguration. Die Quote wirkt nur bei mehr als einer Teilfrage, also nur mit -Dopaa.eval.queryDecomposition=true; ohne Zerlegung unterscheiden sich nur die Varianten mit score-Fusion. Referenzvariante ist die Produktionskonfiguration (Quote mit RRF); die Deltas sind Variante minus Produktion.",
+  "description": "Varianten der Fusion über Teilfragen (Issues #2619, #2634): Quote je Teilfrage, Fusion mit Ähnlichkeitswerten und fest übernommene Spitzentreffer je Liste, einzeln und kombiniert, gegen die ausgelieferte Konfiguration. Die Quote wirkt nur bei mehr als einer Teilfrage, also nur mit -Dopaa.eval.queryDecomposition=true; ohne Zerlegung unterscheiden sich nur die Varianten mit score-Fusion. Referenzvariante ist die Produktionskonfiguration (Quote mit RRF); die Deltas sind Variante minus Produktion.",
   "domain": "verwaltung",
   "referenceVariant": "quota-rrf",
   "variants": [
     {
       "name": "quota-rrf",
-      "description": "Ausgelieferte Konfiguration: jede Teilfrage wird für sich per RRF fusioniert, die Endauswahl reihum gefüllt.",
+      "description": "Ausgelieferte Konfiguration: jede Teilfrage wird für sich per RRF fusioniert, die Endauswahl reihum gefüllt, der beste Treffer jeder Liste fest übernommen.",
       "requiresReindex": false,
       "queryOverrides": {}
     },
     {
       "name": "pooled-rrf",
-      "description": "Stand vor #2619: RRF über alle Listen aller Teilfragen in einem Pool.",
+      "description": "Stand vor #2619: RRF über alle Listen aller Teilfragen in einem Pool, ohne fest übernommene Spitzentreffer.",
       "requiresReindex": false,
-      "queryOverrides": { "fusionMethod": "RRF", "fusionSubQueryQuota": false }
+      "queryOverrides": {
+        "fusionMethod": "RRF",
+        "fusionSubQueryQuota": false,
+        "fusionGuaranteedPerList": 0
+      }
     },
     {
       "name": "pooled-score",
@@ -37,6 +41,18 @@
         "fusionSubQueryQuota": true,
         "fusionVectorWeight": 0.5
       }
+    },
+    {
+      "name": "quota-rrf-no-guarantee",
+      "description": "Stand vor #2634: wie die Produktion, aber ohne fest übernommene Spitzentreffer.",
+      "requiresReindex": false,
+      "queryOverrides": { "fusionGuaranteedPerList": 0 }
+    },
+    {
+      "name": "quota-rrf-guarantee-2",
+      "description": "Wie die Produktion, aber die zwei besten Treffer jeder Liste fest übernommen.",
+      "requiresReindex": false,
+      "queryOverrides": { "fusionGuaranteedPerList": 2 }
     }
   ]
 }

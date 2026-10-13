@@ -2041,11 +2041,16 @@ components:
       type: string
       description: >
         The fixed vocabulary a stage attaches to its verdict - a closed set rather than free text,
-        so a consumer can group and translate it instead of parsing sentences.
+        so a consumer can group and translate it instead of parsing sentences. GUARANTEED_LIST_TOP
+        marks a candidate kept only because it is one of the best of its own list (fusion beyond
+        the budget, relevance cutoff below the bound); DISPLACED_BY_GUARANTEED_LIST_TOP marks the
+        candidate within the fused budget that such a candidate replaced.
       enum:
         [
           RETRIEVED_BY_SEARCH,
           WITHIN_BUDGET,
+          GUARANTEED_LIST_TOP,
+          DISPLACED_BY_GUARANTEED_LIST_TOP,
           OUTSIDE_FUSION_BUDGET,
           OUTSIDE_RERANK_BUDGET,
           BELOW_RELEVANCE_CUTOFF,

@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
@@ -34,8 +35,10 @@ import org.springframework.stereotype.Component;
  * where the endpoint scored nothing restores the cap itself. A chunk the reranker did not score
  * keeps its fused order behind every scored one.
  *
- * <p>A failure costs the order, never the answer: the fused order capped at {@code top-k} is the
- * selection of a run without reranking, because no stage before the fusion depends on the budget.
+ * <p>A failure costs the order, never the answer: the fused order capped at {@code top-k} - with
+ * the guaranteed top candidates kept as the fusion keeps them - is the selection of a run without
+ * reranking, because no stage before the fusion depends on the budget. A successful rerank is not
+ * bound by the guarantee: the model judges every candidate against the question itself.
  */
 @Component
 public class RerankStage implements RetrievalStage {
@@ -84,7 +87,7 @@ public class RerankStage implements RetrievalStage {
     if (scored.isEmpty()) {
       return cappedWithoutRerank(
           state,
-          incoming.subList(0, Math.min(incoming.size(), topK)),
+          capAtTopK(incoming, state.guaranteedChunkIds(), topK),
           StageStatus.UNAVAILABLE,
           RetrievalNote.RERANK_SCORED_NOTHING.format(topK));
     }
@@ -160,6 +163,24 @@ public class RerankStage implements RetrievalStage {
         state.withCandidateLists(
             List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, List.copyOf(kept)))),
         StageExplanation.notRun(name(), status, incoming, kept.size(), note));
+  }
+
+  /**
+   * The fused order cut to {@code top-k} by the fusion's own rule, guaranteed top candidates first:
+   * the selection a run without reranking would have made.
+   */
+  private static List<Document> capAtTopK(
+      List<Document> incoming, Set<String> guaranteedChunkIds, int topK) {
+    boolean[] taken =
+        GuaranteedSelection.select(
+            incoming, document -> guaranteedChunkIds.contains(document.getId()), topK);
+    List<Document> kept = new ArrayList<>(Math.min(incoming.size(), topK));
+    for (int i = 0; i < incoming.size(); i++) {
+      if (taken[i]) {
+        kept.add(incoming.get(i));
+      }
+    }
+    return kept;
   }
 
   /** One candidate in the reranked order, with the score it got - {@code null} if it got none. */

@@ -252,12 +252,14 @@ opaa:
       min-chunks: ${OPAA_QUERY_RELEVANCE_CUTOFF_MIN_CHUNKS:10}
       relative-threshold: ${OPAA_QUERY_RELEVANCE_CUTOFF_RELATIVE_THRESHOLD:0.6}
       knee-drop: ${OPAA_QUERY_RELEVANCE_CUTOFF_KNEE_DROP:0.25}
-    # How the fusion scores the candidate lists (rrf | score) and whether every sub-query gets its
-    # share of the selection (QueryProperties.Fusion). Ebene-1 benchmark values.
+    # How the fusion scores the candidate lists (rrf | score), whether every sub-query gets its
+    # share of the selection, and how many top candidates of every list enter it whatever their
+    # fused rank (QueryProperties.Fusion). Ebene-1 benchmark values.
     fusion:
       method: ${OPAA_QUERY_FUSION_METHOD:rrf}
       sub-query-quota: ${OPAA_QUERY_FUSION_SUB_QUERY_QUOTA:true}
       vector-weight: ${OPAA_QUERY_FUSION_VECTOR_WEIGHT:0.7}
+      guaranteed-per-list: ${OPAA_QUERY_FUSION_GUARANTEED_PER_LIST:1}
     # The conversation window (messages the chat memory keeps, always even) and how many of its
     # most recent turns the sub-question decomposition sees - the search never sees more of the
     # conversation than the answer. Ebene-1 benchmark values, only judgeable with the multi-turn

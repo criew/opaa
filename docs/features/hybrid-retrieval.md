@@ -805,7 +805,9 @@ kippt. RRF ist tuningfrei und robust; eine Gewichtung wird erst erwogen, wenn de
 tragen kann. Bis dahin ist die Dämpfungskonstante 60 ein interner Wert der
 [Ebene 1](#konfigurations-ebenenmodell), kein Regler. Seit [#2619](https://github.com/criew/opaa/issues/2619)
 ist die Score-Fusion als Option gebaut (`opaa.query.fusion.method=score`), damit sie am Testkorpus
-gemessen werden kann; voreingestellt bleibt RRF, jetzt mit Quote je Teilfrage
+gemessen werden kann. Die Messung vom 14.10.2026 fand sie mit Gewicht 0,7 gleich gut oder schlechter
+als RRF, weil sie Treffer verliert, die nur ein Suchpfad findet; voreingestellt bleibt RRF mit Quote
+je Teilfrage und fest übernommenen Spitzentreffern je Liste
 ([Retrieval-Algorithmus, Schritt 5](./retrieval-algorithm.md#5-reciprocal-rank-fusion)).
 
 **Dedupliziert wird per Chunk-Kennung, nie per Score.** Unverändert gegenüber heute, aus demselben Grund

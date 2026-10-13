@@ -410,6 +410,9 @@ final class SearchAdminResponseMapper {
     return switch (reason) {
       case RETRIEVED_BY_SEARCH -> RetrievalVerdictReason.RETRIEVED_BY_SEARCH;
       case WITHIN_BUDGET -> RetrievalVerdictReason.WITHIN_BUDGET;
+      case GUARANTEED_LIST_TOP -> RetrievalVerdictReason.GUARANTEED_LIST_TOP;
+      case DISPLACED_BY_GUARANTEED_LIST_TOP ->
+          RetrievalVerdictReason.DISPLACED_BY_GUARANTEED_LIST_TOP;
       case OUTSIDE_FUSION_BUDGET -> RetrievalVerdictReason.OUTSIDE_FUSION_BUDGET;
       case OUTSIDE_RERANK_BUDGET -> RetrievalVerdictReason.OUTSIDE_RERANK_BUDGET;
       case BELOW_RELEVANCE_CUTOFF -> RetrievalVerdictReason.BELOW_RELEVANCE_CUTOFF;

@@ -13,6 +13,19 @@ public enum VerdictReason {
   /** The candidate was within the stage's budget and stayed. */
   WITHIN_BUDGET,
 
+  /**
+   * The candidate stayed only because it is one of the best candidates of its own list ({@code
+   * opaa.query.fusion.guaranteed-per-list}): the fusion took it despite a fused rank beyond the
+   * budget, or the relevance cutoff kept it despite a score below its bound.
+   */
+  GUARANTEED_LIST_TOP,
+
+  /**
+   * The candidate's fused rank was within the budget, but a guaranteed top candidate of another
+   * list took its place.
+   */
+  DISPLACED_BY_GUARANTEED_LIST_TOP,
+
   /** The candidate's fused rank placed it below the overall {@code top-k} budget. */
   OUTSIDE_FUSION_BUDGET,
 

@@ -196,14 +196,19 @@ public record QueryProperties(
    *     search query it is the identity.
    * @param vectorWeight the vector path's share in {@link FusionMethod#SCORE}, between 0 and 1; the
    *     lexical path gets the remainder. Default 0.7. Ignored by {@link FusionMethod#RRF}.
+   * @param guaranteedPerList how many of the best candidates of every list (one per sub-query and
+   *     search path) enter the selection regardless of their fused rank; the rest is filled in
+   *     fused order, the budget stays the cap. Default 1, between 0 and 10; {@code 0} switches the
+   *     guarantee off.
    */
   public record Fusion(
       @DefaultValue("RRF") FusionMethod method,
       @DefaultValue("true") boolean subQueryQuota,
-      @DefaultValue("0.7") double vectorWeight) {
+      @DefaultValue("0.7") double vectorWeight,
+      @DefaultValue("1") int guaranteedPerList) {
 
     /** The shipped fusion. */
-    public static final Fusion DEFAULT = new Fusion(FusionMethod.RRF, true, 0.7);
+    public static final Fusion DEFAULT = new Fusion(FusionMethod.RRF, true, 0.7, 1);
 
     public Fusion {
       if (method == null) {
@@ -212,6 +217,10 @@ public record QueryProperties(
       if (vectorWeight < 0.0 || vectorWeight > 1.0) {
         throw new IllegalArgumentException(
             "fusion.vectorWeight must be between 0.0 and 1.0, got " + vectorWeight);
+      }
+      if (guaranteedPerList < 0 || guaranteedPerList > 10) {
+        throw new IllegalArgumentException(
+            "fusion.guaranteedPerList must be between 0 and 10, got " + guaranteedPerList);
       }
     }
   }
