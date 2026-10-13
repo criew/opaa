@@ -620,7 +620,7 @@ Der Aufruf wird aus sechs Teilen zusammengesetzt:
    Vorgabe, auf Deutsch zu antworten. Nicht über den Chat änderbar (siehe
    [Absicherung des Modells](#absicherung-des-modells-gegen-missbrauch)). **(gebaut: Rolle,
    Belegregeln und Sprachvorgabe, letztere mit #1635; Umgang mit Nichtwissen und Antwortregeln mit
-   #2376, nur bei vorhandenen Passagen und Suchbedarf; Ton nicht)**
+   #2376, nur bei Suche mit Suchbedarf, seit #2514 auch ohne Treffer; Ton nicht)**
 2. **Die Passagen, jede mit einem eigenen Kopf.** Der Kopf trägt die Angaben, die den späteren Beleg
    tragen: Dokument, Stelle im Dokument, Bezeichnung — und die **Zeichenfolge, mit der genau diese
    Passage zu zitieren ist**. Die Passagen sind voneinander sichtbar getrennt, damit das Modell sie
