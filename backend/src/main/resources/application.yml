@@ -233,6 +233,10 @@ opaa:
     similarity-threshold: ${OPAA_QUERY_SIMILARITY_THRESHOLD:0.3}
     query-decomposition-enabled: ${OPAA_QUERY_DECOMPOSITION_ENABLED:true}
     max-sub-queries: ${OPAA_QUERY_MAX_SUB_QUERIES:3}
+    # Fill target of document completion, not a cap: a document already in the selection is topped
+    # up to this many chunks from the candidate pool. One holding more is never trimmed to it, it
+    # loses chunks only as an eviction source for another document. 1 (the default) switches
+    # completion off; the selection may still hold several chunks of a document.
     max-chunks-per-document: ${OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT:1}
     full-text-search-enabled: ${OPAA_QUERY_FULL_TEXT_SEARCH_ENABLED:true}
     # #1050: how many fused candidates the rerank stage scores, and the budget the fusion keeps

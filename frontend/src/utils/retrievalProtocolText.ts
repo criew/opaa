@@ -249,7 +249,10 @@ const NOTE_RULES: NoteRule[] = [
   {
     name: 'MAX_CHUNKS_PER_DOCUMENT',
     pattern: /^max-chunks-per-document (\d+)$/,
-    german: (m) => `max-chunks-per-document ${m[1]} (Abschnitte je Dokument).`,
+    german: (m) =>
+      m[1] === '1'
+        ? 'Dokument-Vervollständigung aus (max-chunks-per-document 1).'
+        : `Dokument-Vervollständigung bis ${m[1]} Abschnitte je vertretenem Dokument, keine Obergrenze (max-chunks-per-document ${m[1]}).`,
   },
   {
     name: 'SIBLINGS_COMPLETED',

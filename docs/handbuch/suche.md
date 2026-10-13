@@ -500,9 +500,16 @@ anheben. Was zum Einschalten gehört, steht im Kapitel
 
 Die letzte Auswahlstufe behebt einen typischen Fehler der Rangordnung: Ein Dokument ist mit seinem
 Einleitungs-Chunk in der Auswahl, aber sein Detail-Chunk (die Gebührenzeile, der eine Paragraf)
-hat seinen Platz an ein fremdes Dokument verloren. Jedes bereits vertretene Dokument darf deshalb
-**mehrere Chunks** beisteuern (`max-chunks-per-document`), nachgezogen aus dem Kandidatenpool der Suchstufen, also nur aus
-Chunks, die Rechte- und Metadatenfilter bereits passiert haben.
+hat seinen Platz an ein fremdes Dokument verloren. Die Stufe füllt deshalb jedes bereits vertretene
+Dokument auf, bis es mit `max-chunks-per-document` Chunks in der Auswahl steht. Nachgezogen wird
+nur aus dem Kandidatenpool der Suchstufen, also aus Chunks, die Rechte- und Metadatenfilter
+bereits passiert haben.
+
+**Der Wert ist ein Auffüllziel, keine Obergrenze.** Ein Dokument, das aus den Stufen davor schon
+mit mehr Chunks kommt, bekommt nichts dazu und wird nie auf den Wert gekürzt. Chunks verliert es
+nur, wenn die Verdrängung unten sie für ein anderes Dokument braucht. Die Endauswahl kann deshalb
+bei jedem Wert mehr Chunks eines Dokuments enthalten. Beim Standardwert läuft keine Verdrängung,
+die Auswahl bleibt unverändert.
 
 Weil die Auswahl nicht über `top-k` wachsen darf, muss dafür etwas weichen, in zwei Stufen: zuerst der
 schwächste Chunk eines anderen Dokuments, das selbst schon mit mindestens zwei Chunks vertreten ist (die Zahl
@@ -512,9 +519,9 @@ besser rankt. Die zweite Stufe darf ein Dokument ganz aus der Antwort drängen u
 Frage auf ein Viertel von `top-k` solcher Verdrängungen gedeckelt. Das Protokoll unterscheidet
 beide Stufen, weil sie für die Diagnose zwei verschiedene Antworten sind.
 
-**Ab Werk zieht die Stufe nichts nach.** Der Standardwert von `max-chunks-per-document`
-(Abschnitt 10.3) ergänzt keine Geschwister-Chunks; die Auswahl bleibt, wie die Stufen davor sie
-gebildet haben, und kann dabei weiterhin mehrere Chunks eines Dokuments enthalten. Den Text um einen
+**Ab Werk zieht die Stufe nichts nach.** Beim Standardwert von `max-chunks-per-document`
+(Abschnitt 10.3) ist jedes vertretene Dokument schon „voll“, die Stufe ergänzt keine
+Geschwister-Chunks. Die Auswahl bleibt, wie die Stufen davor sie gebildet haben. Den Text um einen
 Treffer bringen die Nachbar-Chunks in den Antwortkontext (Abschnitt 6), ohne einen Platz der
 Endauswahl zu belegen. Die Stufe läuft trotzdem und vermerkt im Protokoll, dass sie keinen Chunk
 nachgezogen hat.
@@ -1071,7 +1078,7 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `full-text-search-enabled` | an | Volltextpfad; `false` lässt die Suche rein vektoriell laufen |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
-| `max-chunks-per-document` | 1 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
+| `max-chunks-per-document` | 1 | Auffüllziel der Dokument-Vervollständigung (1 bis 10): bis zu so vielen Chunks füllt sie jedes schon vertretene Dokument aus dem Kandidatenpool auf. Keine Obergrenze, die Endauswahl kann mehr Chunks eines Dokuments enthalten. 1 schaltet die Vervollständigung ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
 | `neighbor-chunks.radius` | 1 | Nachbar-Chunks je Seite, die jeder Chunk der Endauswahl in den Prompt mitbringt (0 bis 3); 0 schaltet das Nachladen ab (Abschnitt 6) |
 | `neighbor-chunks.max-added-characters` | 40000 | Zeichen, die alle Nachbarn einer Antwort zusammen höchstens hinzufügen (0 bis 1.000.000); kostet entsprechend Eingabetokens je Frage |
 | `conversation-window-messages` | 20 | Breite des Gesprächsfensters in Nachrichten (2 bis 100, gerade) — was die Antwort sieht und was bei kaltem Zwischenspeicher nachgeladen wird |

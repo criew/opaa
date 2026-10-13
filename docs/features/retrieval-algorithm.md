@@ -334,9 +334,19 @@ verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`
 
 Stufenname: `DOCUMENT_COMPLETION`. `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
 aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schritt 3 nach — nie darüber
-hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, darf bis zu
-`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `1`, bis #2502 `2`) Chunks stellen,
-bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt — die Abhilfe für den Fall, dass
+hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, wird bis zu
+`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `1`, bis #2502 `2`) Chunks aufgefüllt,
+bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt. Der Wert ist ein
+**Auffüllziel, keine Obergrenze**: Ein Dokument, das aus Fusion, MMR oder Reranking schon mit so
+vielen oder mehr Chunks kommt, bekommt nichts dazu und wird nie auf den Wert gekürzt. Chunks
+verlieren kann es nur, wenn ein anderes Dokument aufgefüllt wird, und dann unabhängig vom Wert:
+Stufe 1 nimmt den schwächsten Chunk eines Dokuments mit mindestens zwei Chunks, das in diesem
+Aufruf selbst nicht aufgefüllt wurde. Ein Dokument, das schon voll war, ist davor also nicht
+geschützt (bei Wert `2` und `top-k = 4` wird `[A1, A2, A3, B1]` mit B2 im Pool zu `[A1, A2, B1, B2]`).
+Ist es auf einen Chunk geschrumpft, kann Stufe 2 auch diesen verdrängen. Bei `1` läuft nichts davon,
+die Auswahl bleibt unverändert. In der Endauswahl der
+FV-Arbeitsmenge standen beim Default `1` bis zu sechs Chunks eines Dokuments
+([#2623](https://github.com/criew/opaa/issues/2623)). Die Stufe ist die Abhilfe für den Fall, dass
 der Gebühren-Chunk eines Dokuments in RRF/MMR gegen Chunks *anderer* Dokumente verlor, weil der
 Einleitungs-Chunk desselben Dokuments dort besser rankte und dessen Platz belegte
 (siehe [#932](https://github.com/criew/opaa/issues/932)). Zwei Verdrängungsstufen: **Stufe 1** entfernt den
@@ -411,7 +421,7 @@ Ungültige Zitate werden im Antworttext belassen, aber in der zugehörigen `Chat
 **Was `relevanceScore` bedeutet (#1102).** Der Relevanzwert einer Quellenangabe ist der **Kehrwert
 ihrer Position in der Quellenliste der Antwort** — 1,0 für die erste Quelle, 0,5 für die zweite,
 0,33 für die dritte —, **keine Ähnlichkeit**. Gezählt werden Quellen, nicht Chunks: Ein Dokument
-darf mehrere Chunks zur Auswahl beisteuern (`max-chunks-per-document`), belegt in der Quellenliste
+kann mit mehreren Chunks in der Auswahl stehen, belegt in der Quellenliste
 aber genau eine Position — die Rangvergabe erfolgt deshalb erst, nachdem die Chunks je Dokument zu
 einer Quellenangabe zusammengefasst sind, und die Rangfolge ist lückenlos. Der Rohwert eines Chunks
 (`Document#getScore()`) taugt dafür seit #1049 nicht mehr: Ein Chunk, den nur der lexikalische Pfad
