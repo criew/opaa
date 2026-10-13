@@ -109,6 +109,12 @@ describe('translateStageNote', () => {
     ).toContain('opaa.query.full-text-search-enabled')
   })
 
+  it('describes max-chunks-per-document as a completion target, not a cap', () => {
+    const german = translateStageNote('max-chunks-per-document 3')
+    expect(german).toContain('Dokument-Vervollständigung bis 3 Abschnitte')
+    expect(german).toContain('keine Obergrenze')
+  })
+
   it('never shows a Java type to the operator', () => {
     const unusable = translateStageNote(
       "the rerank model role is switched on but was not usable when this run started - no endpoint or model is configured for it, or its endpoint did not answer; the role's own state says which (RerankRoleStatusProvider#currentStatus)",
