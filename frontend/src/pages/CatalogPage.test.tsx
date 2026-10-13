@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { Route, Routes, useLocation } from 'react-router'
 import { renderWithProviders, setMockAuthState } from '../test/test-utils'
 import { server } from '../mocks/server'
+import { setMockFeatures } from '../mocks/authFixtures'
 import type { CatalogEntryResponse } from '../types/api'
 import { useCatalogStore } from '../stores/catalogStore'
 import CatalogPage from './CatalogPage'
@@ -361,6 +362,20 @@ describe('CatalogPage (ADR-0039)', () => {
 
     expect(await screen.findByText('Typwahl')).toBeInTheDocument()
     expect(screen.getByTestId('location')).toHaveTextContent('/catalog/new')
+  })
+
+  // #2588: switched off, the catalog names prompt libraries nowhere - no card, no type filter.
+  it('shows no prompt library and no type filter while prompt libraries are switched off', async () => {
+    setMockAuthState({ features: { promptLibraries: false } })
+    setMockFeatures({ promptLibraries: false })
+    renderCatalog('/catalog?type=prompts')
+
+    expect(await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /Formulierungshilfen Referat 50/ }),
+    ).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Typ' })).not.toBeInTheDocument()
+    expect(requestedUrls.every((url) => url.searchParams.get('type') === null)).toBe(true)
   })
 
   it('offers no "Neu" to a person without any creation right', async () => {
