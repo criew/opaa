@@ -68,7 +68,6 @@ type Expansion = { memberId: string; kind: 'derivation' | 'groupMembers' } | nul
 interface SpaceMemberListProps {
   spaceId: string
   ownerId: string
-  isDefaultSpace: boolean
   members: SpaceMemberResponse[]
   /** Rollen und Mitgliedschaften ändert nur ein Administrator des Space. */
   canManage: boolean
@@ -88,7 +87,6 @@ interface SpaceMemberListProps {
 export default function SpaceMemberList({
   spaceId,
   ownerId,
-  isDefaultSpace,
   members,
   canManage,
   isOwner,
@@ -123,7 +121,7 @@ export default function SpaceMemberList({
     return {
       derivation: !isGroup && !ownerRow,
       groupMembers: isGroup && (canManage || isOwner),
-      makeOwner: !isGroup && !ownerRow && !isDefaultSpace && (canManage || isOwner),
+      makeOwner: !isGroup && !ownerRow && (canManage || isOwner),
       remove: canManage && !ownerRow,
     }
   }
