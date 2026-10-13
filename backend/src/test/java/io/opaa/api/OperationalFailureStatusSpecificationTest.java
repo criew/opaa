@@ -14,6 +14,7 @@ import io.opaa.common.ServiceUnavailableException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceCredentialsConverter;
 import io.opaa.knowledge.UploadProperties;
+import io.opaa.llm.TranscriptionModelRole;
 import io.opaa.query.answer.AnswerGenerationService;
 import io.opaa.retrieval.RetrievalPipeline;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
@@ -112,11 +113,12 @@ class OperationalFailureStatusSpecificationTest {
 
   /**
    * The production types that <em>are</em> a caller-facing model round trip: the retrieval pipeline
-   * embeds every search query, the answer generation makes the chat call. A controller whose object
-   * graph holds one of them can answer for the provider.
+   * embeds every search query, the answer generation makes the chat call, the transcription role
+   * passes a dictation to the transcription model. A controller whose object graph holds one of
+   * them can answer for the provider.
    */
   private static final Set<Class<?>> MODEL_SEAMS =
-      Set.of(RetrievalPipeline.class, AnswerGenerationService.class);
+      Set.of(RetrievalPipeline.class, AnswerGenerationService.class, TranscriptionModelRole.class);
 
   private static final String BAD_GATEWAY_BODY = "#/components/responses/BadGateway";
   private static final String SERVICE_UNAVAILABLE_BODY =
