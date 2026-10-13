@@ -9,6 +9,8 @@ public class IndexingMetrics {
   private final Counter processedCounter;
   private final Counter skippedCounter;
   private final Counter failedCounter;
+  private final Counter embeddingInputSplitCounter;
+  private final Counter embeddingInputUnverifiedCounter;
 
   public IndexingMetrics(MeterRegistry meterRegistry) {
     this.processedCounter =
@@ -26,6 +28,17 @@ public class IndexingMetrics {
             .tag("result", "failed")
             .description("Documents failed")
             .register(meterRegistry);
+    this.embeddingInputSplitCounter =
+        Counter.builder("opaa.indexing.embedding.inputs")
+            .tag("result", "split")
+            .description("Chunks split because the embedding endpoint proved them too long")
+            .register(meterRegistry);
+    this.embeddingInputUnverifiedCounter =
+        Counter.builder("opaa.indexing.embedding.inputs")
+            .tag("result", "unverified")
+            .description(
+                "Chunks that could reach the embedding input limit, embedded without a token count")
+            .register(meterRegistry);
   }
 
   public void recordProcessed() {
@@ -38,5 +51,13 @@ public class IndexingMetrics {
 
   public void recordFailed() {
     failedCounter.increment();
+  }
+
+  public void recordEmbeddingInputSplit() {
+    embeddingInputSplitCounter.increment();
+  }
+
+  public void recordEmbeddingInputsUnverified(int count) {
+    embeddingInputUnverifiedCounter.increment(count);
   }
 }

@@ -3,18 +3,29 @@ package io.opaa.indexing.chunk;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.document.Document;
+import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingOptions;
+import org.springframework.ai.embedding.EmbeddingRequest;
+import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,6 +35,10 @@ import org.springframework.stereotype.Component;
  * chunk_full_text} in the same transaction as the vector write, via {@link VectorStoreWriter} -
  * never one without the other; embedding happens before that transaction opens.
  *
+ * <p>No chunk is stored with a vector the endpoint cut short without saying so: an input that could
+ * reach {@code opaa.embedding.max-input-tokens} is embedded alone and kept only when the endpoint's
+ * token count stays below the limit, see {@link #checkInputs}.
+ *
  * <p>The delete methods deliberately do not share a transaction across the two stores: a caller
  * deleting from {@code afterCommit} cannot reliably start a fresh one, and each delete is a single
  * atomic statement, idempotent if only one of the two ever runs.
@@ -31,9 +46,20 @@ import org.springframework.stereotype.Component;
 @Component
 public class VectorChunkStore implements ChunkMetadataStore {
 
+  private static final Logger log = LoggerFactory.getLogger(VectorChunkStore.class);
+
   public static final String DOCUMENT_ID_METADATA_KEY = "document_id";
   public static final String LIBRARY_ID_METADATA_KEY = "library_id";
   public static final String CHUNK_INDEX_METADATA_KEY = "chunk_index";
+
+  /**
+   * Tokens a model adds to every input on its own (start and end markers), generously rounded. A
+   * token covers at least one byte of UTF-8 in every tokenizer of the common embedding models, so
+   * an input reaches at most its byte length plus this many tokens.
+   */
+  static final int SPECIAL_TOKEN_RESERVE = 8;
+
+  private static final EmbeddingOptions OPTIONS = EmbeddingOptions.builder().build();
 
   private final VectorStore vectorStore;
   private final EmbeddingModel embeddingModel;
@@ -41,6 +67,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
   private final VectorStoreWriter vectorStoreWriter;
   private final FullTextChunkStore fullTextChunkStore;
   private final EmbeddingRateEstimator embeddingRateEstimator;
+  private final int maxInputTokens;
 
   public VectorChunkStore(
       VectorStore vectorStore,
@@ -48,13 +75,24 @@ public class VectorChunkStore implements ChunkMetadataStore {
       BatchingStrategy batchingStrategy,
       VectorStoreWriter vectorStoreWriter,
       FullTextChunkStore fullTextChunkStore,
-      EmbeddingRateEstimator embeddingRateEstimator) {
+      EmbeddingRateEstimator embeddingRateEstimator,
+      @Value("${opaa.embedding.max-input-tokens}") int maxInputTokens) {
+    if (maxInputTokens <= 0) {
+      throw new IllegalArgumentException(
+          "opaa.embedding.max-input-tokens must be positive, got " + maxInputTokens);
+    }
     this.vectorStore = vectorStore;
     this.embeddingModel = embeddingModel;
     this.batchingStrategy = batchingStrategy;
     this.vectorStoreWriter = vectorStoreWriter;
     this.fullTextChunkStore = fullTextChunkStore;
     this.embeddingRateEstimator = embeddingRateEstimator;
+    this.maxInputTokens = maxInputTokens;
+  }
+
+  /** The configured input limit of the embedding endpoint, in tokens. */
+  public int maxInputTokens() {
+    return maxInputTokens;
   }
 
   /**
@@ -65,26 +103,153 @@ public class VectorChunkStore implements ChunkMetadataStore {
    * and holding a pooled connection for its duration risks exhausting the pool.
    *
    * @throws ChunkNotEmbeddableException when one chunk alone exceeds the batching strategy's token
-   *     budget; nothing is embedded or written then
+   *     budget or the endpoint proves it too long; nothing is written then
    */
   public void addChunks(List<Document> chunks) {
+    addChunks(chunks, Map.of());
+  }
+
+  /**
+   * {@link #addChunks(List)}, reusing {@code known} vectors (keyed by embedding input, as {@link
+   * EmbeddingInputCheck#vectors} holds them) instead of embedding those inputs again.
+   */
+  public void addChunks(List<Document> chunks, Map<String, float[]> known) {
     if (chunks.isEmpty()) {
       return;
     }
+    requireEmbeddable(chunks);
+    EmbeddingInputCheck check = checkInputs(chunks, known);
+    if (!check.overlong().isEmpty()) {
+      EmbeddingInputCheck.Overlong first = check.overlong().getFirst();
+      throw notEmbeddable(chunks.get(first.position()), null);
+    }
+    if (!check.unverified().isEmpty()) {
+      log.warn(
+          "{} chunk(s) of document {} could reach the embedding input limit of {} tokens, but the"
+              + " endpoint reported no token count; a silent cut cannot be ruled out",
+          check.unverified().size(),
+          chunks.getFirst().getMetadata().get(DOCUMENT_ID_METADATA_KEY),
+          maxInputTokens);
+    }
+    Map<String, float[]> precomputed = new HashMap<>(known);
+    precomputed.putAll(check.vectors());
+    List<Document> remaining =
+        precomputed.isEmpty()
+            ? chunks
+            : chunks.stream().filter(chunk -> !precomputed.containsKey(inputOf(chunk))).toList();
+    List<float[]> embedded = remaining.isEmpty() ? List.of() : embedBatch(remaining);
+    if (precomputed.isEmpty()) {
+      vectorStoreWriter.writeEmbeddedChunks(chunks, embedded);
+      return;
+    }
+    List<float[]> embeddings = new ArrayList<>(chunks.size());
+    Iterator<float[]> next = embedded.iterator();
+    for (Document chunk : chunks) {
+      float[] reused = precomputed.get(inputOf(chunk));
+      embeddings.add(reused != null ? reused : next.next());
+    }
+    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
+  }
+
+  /**
+   * Embeds alone every chunk whose input could reach the input limit and is not in {@code known}. A
+   * chunk counts as too long when the endpoint refuses it as such or reports a token count at the
+   * limit: a silently cutting endpoint (Ollama's OpenAI-compatible route) counts exactly the tokens
+   * it kept. Every other chunk costs no call here.
+   *
+   * @throws RuntimeException the endpoint's own failure when it is not a refusal for length
+   */
+  public EmbeddingInputCheck checkInputs(List<Document> chunks, Map<String, float[]> known) {
+    Map<String, float[]> vectors = new HashMap<>();
+    List<EmbeddingInputCheck.Overlong> overlong = new ArrayList<>();
+    List<Integer> unverified = new ArrayList<>();
+    for (int position = 0; position < chunks.size(); position++) {
+      String input = inputOf(chunks.get(position));
+      if (!mayReachLimit(input) || known.containsKey(input) || vectors.containsKey(input)) {
+        continue;
+      }
+      Single single = embedAlone(input);
+      if (single.tooLong()) {
+        overlong.add(new EmbeddingInputCheck.Overlong(position, single.reportedTokens()));
+        continue;
+      }
+      vectors.put(input, single.vector());
+      if (single.reportedTokens() == null) {
+        unverified.add(position);
+      }
+    }
+    return new EmbeddingInputCheck(vectors, overlong, unverified);
+  }
+
+  private boolean mayReachLimit(String input) {
+    return input.getBytes(StandardCharsets.UTF_8).length + SPECIAL_TOKEN_RESERVE >= maxInputTokens;
+  }
+
+  /** The text the embedding model receives for {@code chunk}, Kontextpräfix included. */
+  private static String inputOf(Document chunk) {
+    return chunk.getFormattedContent(MetadataMode.EMBED);
+  }
+
+  /**
+   * One input embedded alone. {@code reportedTokens} is {@code null} when the endpoint refused it
+   * or reported no count; {@code vector} is {@code null} exactly when it is too long.
+   */
+  private record Single(float[] vector, Integer reportedTokens, boolean tooLong) {}
+
+  private Single embedAlone(String input) {
+    long measurementToken = embeddingRateEstimator.started();
+    long startedAt = System.nanoTime();
+    EmbeddingResponse response;
+    try {
+      response = embeddingModel.call(new EmbeddingRequest(List.of(input), OPTIONS));
+    } catch (RuntimeException e) {
+      if (EmbeddingInputRejection.isInputTooLong(e)) {
+        return new Single(null, null, true);
+      }
+      throw e;
+    } finally {
+      embeddingRateEstimator.record(1, System.nanoTime() - startedAt, measurementToken);
+    }
+    Integer tokens = promptTokens(response);
+    if (tokens != null && tokens >= maxInputTokens) {
+      return new Single(null, tokens, true);
+    }
+    return new Single(response.getResult().getOutput(), tokens, false);
+  }
+
+  /** The endpoint's token count for the request, or {@code null} when it reported none. */
+  private static Integer promptTokens(EmbeddingResponse response) {
+    Usage usage = response.getMetadata() == null ? null : response.getMetadata().getUsage();
+    Integer tokens = usage == null ? null : usage.getPromptTokens();
+    return tokens == null || tokens <= 0 ? null : tokens;
+  }
+
+  /**
+   * Embeds {@code chunks} in batches. An endpoint refusing the batch for length names the chunk:
+   * each is then embedded alone, and the first one refused is reported.
+   */
+  private List<float[]> embedBatch(List<Document> chunks) {
     // Measured around the embedding round trip only, never the write: the Folgekosten estimate
     // names the cost of embedding calls, and a slow disk must not make a reindex look expensive.
     long measurementToken = embeddingRateEstimator.started();
     long startedAt = System.nanoTime();
-    List<float[]> embeddings;
     try {
-      embeddings =
-          embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+      return embeddingModel.embed(chunks, OPTIONS, batchingStrategy);
     } catch (IllegalArgumentException e) {
       throw oversizedChunkOr(chunks, e);
+    } catch (RuntimeException e) {
+      if (!EmbeddingInputRejection.isInputTooLong(e)) {
+        throw e;
+      }
+      for (Document chunk : chunks) {
+        if (embedAlone(inputOf(chunk)).tooLong()) {
+          throw notEmbeddable(chunk, e);
+        }
+      }
+      throw e;
     } finally {
       embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt, measurementToken);
     }
-    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
   }
 
   /**
@@ -116,15 +281,20 @@ public class VectorChunkStore implements ChunkMetadataStore {
       try {
         batchingStrategy.batch(List.of(chunk));
       } catch (IllegalArgumentException rejected) {
-        Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
-        Object index = chunk.getMetadata().get(CHUNK_INDEX_METADATA_KEY);
-        return new ChunkNotEmbeddableException(
-            location == null ? null : location.toString(),
-            index instanceof Integer position ? position : null,
-            failure);
+        return notEmbeddable(chunk, failure);
       }
     }
     return failure;
+  }
+
+  /** {@code chunk} as a {@link ChunkNotEmbeddableException}, named by its Fundort and position. */
+  private static ChunkNotEmbeddableException notEmbeddable(Document chunk, Throwable cause) {
+    Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+    Object index = chunk.getMetadata().get(CHUNK_INDEX_METADATA_KEY);
+    return new ChunkNotEmbeddableException(
+        location == null ? null : location.toString(),
+        index instanceof Integer position ? position : null,
+        cause);
   }
 
   /**

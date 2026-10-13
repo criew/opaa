@@ -11,10 +11,12 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
+import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.attachment.AttachmentAccess;
 import io.opaa.indexing.attachment.AttachmentLimits;
 import io.opaa.indexing.attachment.AttachmentSource;
 import io.opaa.indexing.chunk.ChunkNotEmbeddableException;
+import io.opaa.indexing.chunk.EmbeddingInputCheck;
 import io.opaa.indexing.chunk.SourceChunkMetadataKeys;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.Document;
@@ -72,6 +74,12 @@ public class DocumentIngestService {
 
   /** Text that never was a file has no detectable media type; every text source delivers XHTML. */
   private static final String TEXT_CONTENT_TYPE = "text/html";
+
+  /**
+   * How often a chunk the embedding endpoint proved too long is halved again before the document
+   * fails: eight halvings take the 8,000-character ceiling below 32 characters.
+   */
+  static final int MAX_SPLIT_ROUNDS = 8;
 
   private final DocumentFormatRegistry pipelineRegistry;
   private final DocumentRepository documentRepository;
@@ -340,20 +348,21 @@ public class DocumentIngestService {
         vectorChunkStore.deleteByDocumentId(documentId);
         preservingPreviousChunks = false;
       }
-      storeChunks(
-          doc,
-          chunks,
-          contextTitle,
-          pipeline,
-          selection.routingExtension(),
-          coreMetadata,
-          ingest.context());
+      int storedChunks =
+          storeChunks(
+              doc,
+              chunks,
+              contextTitle,
+              pipeline,
+              selection.routingExtension(),
+              coreMetadata,
+              ingest.context());
 
       boolean unsettled = attachmentAtQuota[0] && !ingest.existingRow();
       DocumentIngestResult result =
           markConnectorIndexed(
               documentId,
-              chunks.size(),
+              storedChunks,
               unsettled ? null : checksum,
               unsettled ? null : ingest.changeMarker());
       if (result == DocumentIngestResult.SKIPPED) {
@@ -894,8 +903,10 @@ public class DocumentIngestService {
    * @param sourceContext the document's source container and hierarchy path, or {@code null};
    *     written like {@code chunkMetadata} - a document property, not conditioned on {@code
    *     pipeline}'s own passthrough declaration
+   * @return how many chunks were stored - more than {@code chunks} holds when the embedding
+   *     endpoint proved one too long and it was split
    */
-  private void storeChunks(
+  private int storeChunks(
       Document document,
       List<org.springframework.ai.document.Document> chunks,
       String contextTitle,
@@ -903,7 +914,6 @@ public class DocumentIngestService {
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata,
       SourceDocumentContext sourceContext) {
-    boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(chunks.size());
     // The Kernfeld Titel replaces the file-name humanisation the prefix used before; the caller's
     // own candidate stays the fallback and still decides whether this document type gets a prefix
     // at all - an RSS entry without a headline never does. That decision is recorded below, so the
@@ -911,64 +921,46 @@ public class DocumentIngestService {
     boolean prefixEligible = ChunkContextPrefix.eligible(contextTitle);
     String prefixTitle =
         ChunkContextPrefix.titleAtRest(prefixEligible, chunkMetadata.contextTitle(), contextTitle);
-    Set<String> passthroughKeys = pipelineRegistry.allPassthroughMetadataKeys();
-    Map<String, Object> sourceContextValues = sourceContextMetadata(sourceContext);
+    ChunkEnrichment enrichment =
+        new ChunkEnrichment(
+            document,
+            pipeline,
+            routingExtension,
+            chunkMetadata,
+            sourceContextMetadata(sourceContext),
+            pipelineRegistry.allPassthroughMetadataKeys(),
+            prefixEligible,
+            prefixTitle);
 
-    List<org.springframework.ai.document.Document> enriched =
-        chunks.stream()
-            .map(
-                chunk -> {
-                  int index = chunks.indexOf(chunk);
-                  Map<String, Object> metadata = new HashMap<>();
-                  metadata.put(
-                      VectorChunkStore.DOCUMENT_ID_METADATA_KEY, document.getId().toString());
-                  metadata.put(VectorChunkStore.CHUNK_INDEX_METADATA_KEY, index);
-                  metadata.put("file_name", document.getFileName());
-                  metadata.put(
-                      VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
-                  metadata.put("organization_id", document.getOrganizationId().toString());
-                  // The verfahren that produced this chunk (ingestion-pipelines.md,
-                  // Querschnittsregel (d)) - what makes a mixed bestand after a pipeline change
-                  // feststellbar and selectively re-indexable at all.
-                  metadata.put(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
-                  metadata.put(
-                      ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipeline.version());
-                  // The routing key actually used (ingestion-pipelines.md, Querschnittsregel
-                  // (d)) - what lets a later pipeline-version check compare exactly instead of
-                  // re-guessing a document's format from its file name.
-                  routingExtension.ifPresent(
-                      extension ->
-                          metadata.put(
-                              ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
-                  // The document's filterable core fields (ADR-0024): inherited by every chunk,
-                  // written here so both search paths can carry the same condition.
-                  metadata.putAll(chunkMetadata.values());
-                  // The document's own source container and hierarchy path (a document property,
-                  // not a format one) - present on every chunk whenever the source declared one.
-                  metadata.putAll(sourceContextValues);
-                  // The registry-wide declared passthrough keys - e.g. the chunk's Fundort, or a
-                  // message's Kopfdaten (ingestion-pipelines.md, Teil 3, Punkt 5) - copied only
-                  // when this chunk actually carries them, and never for a key already written
-                  // above: those are this class's own bookkeeping, not a pipeline's to set.
-                  for (String passthroughKey : passthroughKeys) {
-                    if (metadata.containsKey(passthroughKey)) {
-                      continue;
-                    }
-                    copyIfPresent(chunk, metadata, passthroughKey);
-                  }
-                  org.springframework.ai.document.Document enrichedChunk =
-                      new org.springframework.ai.document.Document(chunk.getText(), metadata);
-                  ChunkContextPrefix.applyTo(
-                      enrichedChunk,
-                      prefixEligible,
-                      documentWasSplit,
-                      prefixTitle,
-                      chunkMetadata.contextPrefixValues());
-                  return enrichedChunk;
-                })
-            .toList();
+    List<org.springframework.ai.document.Document> pieces = chunks;
+    List<org.springframework.ai.document.Document> enriched = enrichment.apply(pieces);
+    Map<String, float[]> verified = new HashMap<>();
+    for (int round = 0; ; round++) {
+      EmbeddingInputCheck check = vectorChunkStore.checkInputs(enriched, verified);
+      verified.putAll(check.vectors());
+      if (!check.unverified().isEmpty()) {
+        metrics.recordEmbeddingInputsUnverified(check.unverified().size());
+        log.warn(
+            "{} chunk(s) of document {} could reach the embedding input limit of {} tokens, but the"
+                + " endpoint reported no token count; a silent cut cannot be ruled out",
+            check.unverified().size(),
+            document.getId(),
+            vectorChunkStore.maxInputTokens());
+      }
+      if (check.overlong().isEmpty()) {
+        break;
+      }
+      if (round == MAX_SPLIT_ROUNDS) {
+        throw new ChunkNotEmbeddableException(
+            locationOf(enriched.get(check.overlong().getFirst().position())),
+            check.overlong().getFirst().position(),
+            null);
+      }
+      pieces = splitOverlong(document, pieces, check.overlong());
+      enriched = enrichment.apply(pieces);
+    }
 
-    addToVectorStore(enriched);
+    addToVectorStore(enriched, verified);
     // Recorded only after the chunks exist: the stamp says "these chunks carry this prefix", which
     // is exactly what the Nachlauf selects against.
     // Records the ingest's own title, not the effective one: with it,
@@ -979,6 +971,117 @@ public class DocumentIngestService {
         chunkMetadata.contextPrefixStamp(prefixTitle),
         prefixEligible,
         contextTitle);
+    return enriched.size();
+  }
+
+  /**
+   * {@code pieces} with every chunk the endpoint proved too long replaced by its halves, each split
+   * logged and counted. The positions in {@code overlong} are those of {@code pieces}.
+   */
+  private List<org.springframework.ai.document.Document> splitOverlong(
+      Document document,
+      List<org.springframework.ai.document.Document> pieces,
+      List<EmbeddingInputCheck.Overlong> overlong) {
+    Map<Integer, EmbeddingInputCheck.Overlong> byPosition = new HashMap<>();
+    overlong.forEach(entry -> byPosition.put(entry.position(), entry));
+    List<org.springframework.ai.document.Document> result = new ArrayList<>(pieces.size() + 1);
+    for (int position = 0; position < pieces.size(); position++) {
+      EmbeddingInputCheck.Overlong entry = byPosition.get(position);
+      if (entry == null) {
+        result.add(pieces.get(position));
+        continue;
+      }
+      List<org.springframework.ai.document.Document> parts =
+          OverlongChunkSplitter.split(pieces.get(position));
+      metrics.recordEmbeddingInputSplit();
+      log.warn(
+          "Chunk {} of document {} reached the embedding input limit of {} tokens ({}); split into"
+              + " {} parts",
+          position,
+          document.getId(),
+          vectorChunkStore.maxInputTokens(),
+          entry.reportedTokens() == null
+              ? "refused by the endpoint"
+              : "endpoint counted " + entry.reportedTokens(),
+          parts.size());
+      result.addAll(parts);
+    }
+    return result;
+  }
+
+  private static String locationOf(org.springframework.ai.document.Document chunk) {
+    Object location = chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY);
+    return location == null ? null : location.toString();
+  }
+
+  /**
+   * What {@link #storeChunks} puts on every chunk: permission-filter and citation metadata, the
+   * position as {@code chunk_index} and the Kontextpraefix on the embedding input only.
+   */
+  private record ChunkEnrichment(
+      Document document,
+      DocumentFormat pipeline,
+      Optional<String> routingExtension,
+      DocumentChunkMetadata chunkMetadata,
+      Map<String, Object> sourceContextValues,
+      Set<String> passthroughKeys,
+      boolean prefixEligible,
+      String prefixTitle) {
+
+    List<org.springframework.ai.document.Document> apply(
+        List<org.springframework.ai.document.Document> chunks) {
+      boolean documentWasSplit = ChunkContextPrefix.documentWasSplit(chunks.size());
+      List<org.springframework.ai.document.Document> enriched = new ArrayList<>(chunks.size());
+      for (int index = 0; index < chunks.size(); index++) {
+        enriched.add(enrich(chunks.get(index), index, documentWasSplit));
+      }
+      return enriched;
+    }
+
+    private org.springframework.ai.document.Document enrich(
+        org.springframework.ai.document.Document chunk, int index, boolean documentWasSplit) {
+      Map<String, Object> metadata = new HashMap<>();
+      metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, document.getId().toString());
+      metadata.put(VectorChunkStore.CHUNK_INDEX_METADATA_KEY, index);
+      metadata.put("file_name", document.getFileName());
+      metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, document.getLibraryId().toString());
+      metadata.put("organization_id", document.getOrganizationId().toString());
+      // The verfahren that produced this chunk (ingestion-pipelines.md,
+      // Querschnittsregel (d)) - what makes a mixed bestand after a pipeline change
+      // feststellbar and selectively re-indexable at all.
+      metadata.put(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
+      metadata.put(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipeline.version());
+      // The routing key actually used (ingestion-pipelines.md, Querschnittsregel
+      // (d)) - what lets a later pipeline-version check compare exactly instead of
+      // re-guessing a document's format from its file name.
+      routingExtension.ifPresent(
+          extension -> metadata.put(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, extension));
+      // The document's filterable core fields (ADR-0024): inherited by every chunk,
+      // written here so both search paths can carry the same condition.
+      metadata.putAll(chunkMetadata.values());
+      // The document's own source container and hierarchy path (a document property,
+      // not a format one) - present on every chunk whenever the source declared one.
+      metadata.putAll(sourceContextValues);
+      // The registry-wide declared passthrough keys - e.g. the chunk's Fundort, or a
+      // message's Kopfdaten (ingestion-pipelines.md, Teil 3, Punkt 5) - copied only
+      // when this chunk actually carries them, and never for a key already written
+      // above: those are this class's own bookkeeping, not a pipeline's to set.
+      for (String passthroughKey : passthroughKeys) {
+        if (metadata.containsKey(passthroughKey)) {
+          continue;
+        }
+        copyIfPresent(chunk, metadata, passthroughKey);
+      }
+      org.springframework.ai.document.Document enrichedChunk =
+          new org.springframework.ai.document.Document(chunk.getText(), metadata);
+      ChunkContextPrefix.applyTo(
+          enrichedChunk,
+          prefixEligible,
+          documentWasSplit,
+          prefixTitle,
+          chunkMetadata.contextPrefixValues());
+      return enrichedChunk;
+    }
   }
 
   /**
@@ -1052,11 +1155,13 @@ public class DocumentIngestService {
    * Embeds and persists {@code enriched}: one {@link VectorChunkStore#addChunks} call on the
    * calling thread at {@code embeddingConcurrency == 1}, otherwise contiguous sub-batches on the
    * shared {@code embeddingTaskExecutor}, all awaited before returning. The order sub-batches reach
-   * the store is not fixed, which is why the evaluation harnesses pin the concurrency to 1.
+   * the store is not fixed, which is why the evaluation harnesses pin the concurrency to 1. Inputs
+   * in {@code verified} are not embedded again.
    */
-  private void addToVectorStore(List<org.springframework.ai.document.Document> enriched) {
+  private void addToVectorStore(
+      List<org.springframework.ai.document.Document> enriched, Map<String, float[]> verified) {
     if (embeddingConcurrency <= 1) {
-      vectorChunkStore.addChunks(enriched);
+      vectorChunkStore.addChunks(enriched, verified);
       return;
     }
 
@@ -1066,7 +1171,7 @@ public class DocumentIngestService {
       subBatches.add(enriched.subList(i, Math.min(i + subBatchSize, enriched.size())));
     }
     if (subBatches.size() <= 1) {
-      vectorChunkStore.addChunks(enriched);
+      vectorChunkStore.addChunks(enriched, verified);
       return;
     }
     // Sub-batches commit independently; an oversized chunk must fail the document before any of
@@ -1078,7 +1183,7 @@ public class DocumentIngestService {
             .map(
                 subBatch ->
                     CompletableFuture.runAsync(
-                        () -> vectorChunkStore.addChunks(subBatch), embeddingExecutor))
+                        () -> vectorChunkStore.addChunks(subBatch, verified), embeddingExecutor))
             .toList();
     try {
       CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();

@@ -97,6 +97,10 @@ embedding:
   # Budget of one embedding call; empty keeps the application default (60s). A large model on CPU
   # needs more, e.g. 180s.
   timeout: ""
+  # Input limit of the endpoint in tokens, as it is served; null keeps the application default
+  # (2048). With Ollama this is the model's num_batch, not its context. A chunk that could reach it
+  # is embedded alone and split when the endpoint proves it too long.
+  maxInputTokens: null
 
 # Rerank endpoint (POST {baseUrl}/rerank), read on every start. The key, if needed, comes from the
 # secret (key OPAA_RERANK_API_KEY).

@@ -47,7 +47,8 @@ class VectorChunkStoreTest {
           batchingStrategy,
           vectorStoreWriter,
           fullTextChunkStore,
-          new EmbeddingRateEstimator(4.0));
+          new EmbeddingRateEstimator(4.0),
+          2048);
 
   @Test
   void
@@ -108,7 +109,8 @@ class VectorChunkStoreTest {
         new TokenCountBatchingStrategy(),
         vectorStoreWriter,
         fullTextChunkStore,
-        new EmbeddingRateEstimator(4.0));
+        new EmbeddingRateEstimator(4.0),
+        2048);
   }
 
   private static Document chunk(String text, String location, int index) {

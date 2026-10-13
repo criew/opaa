@@ -563,7 +563,8 @@ class CoreMetadataIndexingIntegrationTest {
             vocabularyRepository,
             documentRepository,
             pipelineRegistry,
-            new VectorChunkStore(null, null, null, null, null, new EmbeddingRateEstimator(4.0)) {
+            new VectorChunkStore(
+                null, null, null, null, null, new EmbeddingRateEstimator(4.0), 2048) {
               @Override
               public int updateDocumentMetadata(
                   UUID id, Map<String, Object> values, Set<String> keysToClear) {
