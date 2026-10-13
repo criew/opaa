@@ -166,6 +166,44 @@ Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann b
 wird wenige Male wiederholt und scheitert schließlich mit seinem Dokument. Die Neueinbettung bricht
 nach fünf gescheiterten Dokumenten in Folge mit „fehlgeschlagen" ab.
 
+### Eingabegrenze des Embedding-Modells
+
+Ein Embedding-Modell nimmt je Chunk nur eine bestimmte Zahl Tokens auf. Manche Endpunkte kürzen
+einen längeren Chunk ohne Meldung. Sein Vektor deckt dann nur den Anfang ab, und der Rest ist für
+die Vektorsuche unsichtbar.
+
+> **Beispiel.** Ein Haushaltsplan enthält eine Tabelle voller Zahlen. Ihr Chunk hat nur so viele
+> Zeichen wie die anderen, braucht aber fast dreimal so viele Tokens. Der Endpunkt meldet die
+> Grenze als Tokenzahl, OPAA teilt den Chunk in zwei Hälften, und beide werden ganz eingebettet.
+
+Die Zielgröße der Chunks wird in Zeichen eingestellt (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`), die
+Grenze des Modells zählt Tokens. Wie viele Zeichen ein Token umfasst, hängt von Modell und Text ab.
+Deutscher Fließtext braucht wenige Tokens je Zeichen, Tabellen mit vielen Zahlen deutlich mehr.
+Die Zielgröße allein garantiert deshalb nicht, dass jeder Chunk passt.
+
+`OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` nennt die Grenze des Endpunkts, wie er tatsächlich läuft.
+Kann ein Chunk sie erreichen, bettet OPAA ihn einzeln ein. Lehnt der Endpunkt ihn als zu lang ab
+oder meldet er eine Tokenzahl an der Grenze, teilt OPAA den Chunk an Absatz-, Zeilen- oder
+Satzgrenzen. Jeder Teil behält Fundort und Überschrift. Kürzere Chunks laufen wie bisher gesammelt
+und kosten keinen eigenen Aufruf. Jede Teilung steht im Log und in der Kennzahl
+`opaa_indexing_embedding_inputs_total` ([Logs und Metriken](betrieb.md#logs-und-metriken)).
+
+- **Ohne Tokenzahl:** Meldet der Endpunkt keine Tokenzahl, bleibt der Chunk ganz. Das Log warnt,
+  dass eine Kürzung nicht auszuschließen ist.
+- **Ohne neues Zerlegen:** Die Neueinbettung nach einem Modellwechsel und der Nachlauf des
+  Kontextpräfixes behalten den Zuschnitt. Dort lässt ein zu langer Chunk sein Dokument scheitern,
+  statt gekürzt eingebettet zu werden.
+- **Grenze zu hoch eingestellt:** Kürzt der Endpunkt früher als eingestellt, bemerkt OPAA das nicht.
+  Die Einstellung muss zum Endpunkt passen.
+
+**Ollama.** Über den OpenAI-kompatiblen Weg, den OPAA nutzt, kürzt Ollama ohne Meldung und zählt
+nur die behaltenen Tokens. Die Grenze ist dabei die Stapelgröße des Modells (`num_batch`), nicht
+seine Kontextlänge. Ein unverändertes Modell nimmt deshalb 2.048 Tokens auf, auch wenn es mehr
+kann. `OLLAMA_CONTEXT_LENGTH` hebt die Grenze nicht, und Optionen in der Anfrage wirken auf diesem
+Weg nicht. Mehr nimmt ein Modell nur auf, wenn es mit `PARAMETER num_ctx` und
+`PARAMETER num_batch` in einer Modelfile neu angelegt wird. Der Arbeitsspeicher wächst mit der
+Länge der tatsächlichen Eingabe, nicht mit der eingestellten Grenze.
+
 ### Modell wechseln
 
 > **Beispiel.** Ein Haus stellt von `nomic-embed-text` auf `bge-m3` um, das deutsche Texte besser
@@ -206,9 +244,9 @@ nach dem anderen ab; wie viele Chunks ein Aufruf trägt, begrenzt allein das Tok
 Aufrufs. Für ein großes Modell auf einer CPU wirkt deshalb nur eine längere
 `OPAA_OPENAI_EMBEDDING_TIMEOUT`. Für die Indexierung neuer Dokumente mit demselben Modell helfen
 zusätzlich eine kleinere `OPAA_INDEXING_BATCH_SIZE`, `OPAA_INDEXING_EMBEDDING_CONCURRENCY` von 1 und
-eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` ([Konfiguration](konfiguration.md)). Bei Ollama
-begrenzt die Kontextlänge des Modells die Länge eines Chunks; ein zu langer Chunk lässt sein Dokument
-scheitern.
+eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` ([Konfiguration](konfiguration.md)). Wie lang ein
+Chunk für das neue Modell sein darf, steht unter
+[Eingabegrenze des Embedding-Modells](#eingabegrenze-des-embedding-modells).
 
 Lässt sich ein Dokument nicht einbetten, läuft die Neueinbettung über die übrigen weiter und endet
 „fehlgeschlagen"; das Log nennt die Dokumente. Scheitern fünf Dokumente in Folge, bricht sie gleich
@@ -297,6 +335,8 @@ und im Protokoll des Backends.
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar, Zeitgrenze zu kurz oder einzelne Chunks zu lang für das Modell; Log prüfen, beheben und fortsetzen |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
+| Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
+| Log: Endpunkt meldete keine Tokenzahl | Eine stille Kürzung ist nicht auszuschließen; einen Endpunkt nutzen, der die Tokenzahl meldet, oder die Zielgröße senken |
 | Dokumente enden mit `FAILED`, Fragen scheitern, alles andere läuft | Modellserver nicht erreichbar oder Modell nicht geladen; unter Compose mit Profil `ollama` zuerst `docker compose logs ollama-pull` |
 | Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)) |
 | Verbindungsfehler gegen vLLM | HTTP/1.1-Modus fehlt ([vLLM](#vllm--openai-kompatible-server)) |
