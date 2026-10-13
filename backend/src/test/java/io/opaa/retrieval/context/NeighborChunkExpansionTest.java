@@ -94,15 +94,81 @@ class NeighborChunkExpansionTest {
   }
 
   @Test
-  void stopsAddingOnceTheCharacterBudgetIsSpentNearestAndBestRankedFirst() {
+  void stopsAddingOnceTheCharacterBudgetIsSpent() {
     store("a", 0, 1, 2);
     store("b", 0, 1, 2);
-    // 100 characters each: the budget of 250 takes both neighbours of the first selected chunk,
-    // and of the second only what still fits - nothing.
+    // 100 characters each: the budget of 250 takes the following neighbour of both selected
+    // chunks, and then nothing more fits.
     List<Document> result =
         expansion(1, 250).expand(List.of(index(chunk("a", 1)), index(chunk("b", 1))), SCOPE);
 
-    assertThat(positions(result)).containsExactly("a#0", "a#1", "a#2", "b#1");
+    assertThat(positions(result)).containsExactly("a#1", "a#2", "b#1", "b#2");
+  }
+
+  @Test
+  void aTightBudgetStillGivesTheLastSelectedChunkANeighbour() {
+    store("a", 0, 1, 2);
+    store("b", 0, 1, 2);
+    store("c", 0, 1, 2);
+
+    List<Document> result =
+        expansion(1, 300)
+            .expand(
+                List.of(index(chunk("a", 1)), index(chunk("b", 1)), index(chunk("c", 1))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#1", "a#2", "b#1", "b#2", "c#1", "c#2");
+  }
+
+  @Test
+  void spendsTheRestOfTheBudgetInRankOrderAfterEverySelectedChunkHasOneNeighbour() {
+    store("a", 0, 1, 2);
+    store("b", 0, 1, 2);
+    store("c", 0, 1, 2);
+
+    List<Document> result =
+        expansion(1, 400)
+            .expand(
+                List.of(index(chunk("a", 1)), index(chunk("b", 1)), index(chunk("c", 1))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#0", "a#1", "a#2", "b#1", "b#2", "c#1", "c#2");
+  }
+
+  @Test
+  void takesThePrecedingNeighbourFirstWhenNoFollowingOneExists() {
+    // a#2 is the last chunk of its document; b#1 comes after it in rank.
+    store("a", 0, 1, 2);
+    store("b", 0, 1, 2);
+
+    List<Document> result =
+        expansion(1, 200).expand(List.of(index(chunk("a", 2)), index(chunk("b", 1))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#1", "a#2", "b#1", "b#2");
+  }
+
+  @Test
+  void takesTheOtherSideFirstWhenTheFollowingNeighbourDoesNotFit() {
+    store("a", 0, 1);
+    store("b", 0, 1, 2);
+    index.put(new ChunkPosition("a", 2), chunk("a", 2, 500));
+
+    List<Document> result =
+        expansion(1, 200).expand(List.of(index(chunk("a", 1)), index(chunk("b", 1))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#0", "a#1", "b#1", "b#2");
+  }
+
+  @Test
+  void givesNoFirstRoundNeighbourToAChunkThatAlreadyAdjoinsTheContext() {
+    // a#1 and a#2 are both selected and adjoin each other; c#1 still gets its neighbour.
+    store("a", 0, 1, 2, 3);
+    store("c", 0, 1, 2);
+
+    List<Document> result =
+        expansion(1, 100)
+            .expand(
+                List.of(index(chunk("a", 1)), index(chunk("a", 2)), index(chunk("c", 1))), SCOPE);
+
+    assertThat(positions(result)).containsExactly("a#1", "a#2", "c#1", "c#2");
   }
 
   @Test
@@ -192,9 +258,13 @@ class NeighborChunkExpansionTest {
   }
 
   private static Document chunk(String documentId, int chunkIndex) {
+    return chunk(documentId, chunkIndex, 100);
+  }
+
+  private static Document chunk(String documentId, int chunkIndex, int length) {
     return Document.builder()
         .id(documentId + "-" + chunkIndex)
-        .text("x".repeat(100))
+        .text("x".repeat(length))
         .metadata(Map.of("document_id", documentId, "chunk_index", chunkIndex))
         .build();
   }
