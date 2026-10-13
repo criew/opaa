@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert (Issue #2587, Epic #2586)
+Vorgeschlagen (13.10.2026; Issue #2587, Epic #2586)
 
 ## Kontext
 
@@ -46,14 +46,16 @@ Backend, Frontend und Chart gleich verstehen.
    einzige Quelle der Flag-Namen: Aus der Konstante `PROMPT_LIBRARIES` leiten sich der Schlüssel
    `prompt-libraries` und der Name `promptLibraries` in der API ab. Ein neues Flag ist eine
    Konstante, eine Zeile in `application.yml` mit der Umgebungsvariablen und eine Eigenschaft im
-   Schema `FeaturesConfig` der OpenAPI-Spezifikation. Properties, Abfragestelle, Auslieferung an
-   das Frontend, Hook und Chart-Vorlage bleiben unverändert. `FeaturesSpecificationTest` hält
-   Aufzählung und Schema im Gleichlauf.
+   Schema `FeaturesConfig` der OpenAPI-Spezifikation. Abfragestelle, Bedingung, Auslieferung an
+   das Frontend, Hook und Chart-Vorlage bleiben unverändert; im Chart kommen nur ein Eintrag in
+   `values.yaml` und einer im Werteschema hinzu (Entscheidung 8). `FeaturesSpecificationTest`
+   hält Aufzählung und OpenAPI-Schema im Gleichlauf.
 
 6. **Zwei Wege, ein Flag zu beachten — mit einer Regel, welcher wann gilt.**
    - `@ConditionalOnFeature(Feature.X)` registriert eine Klasse oder eine `@Bean`-Methode nur bei
-     eingeschaltetem Flag. Die Bedingung liest dieselbe Property mit derselben Vorgabe „an", es
-     gibt kein `matchIfMissing`, das man vergessen kann. Sie ist für **Blatt-Beans** gedacht, die
+     eingeschaltetem Flag. Bedingung und `FeatureFlags` lesen ein Flag über dieselbe Regel
+     (Spring-Binder mit gelockerter Schreibweise, Vorgabe „an"), sie können sich also nicht
+     widersprechen, und es gibt kein `matchIfMissing`, das man vergessen kann. Sie ist für **Blatt-Beans** gedacht, die
      niemand sonst injiziert: Controller, Scheduler, Runner, Listener. Eine abgeschaltete Route
      existiert dann nicht und antwortet wie jede unbekannte Adresse.
    - `FeatureFlags#isEnabled(Feature)` ist die Laufzeitprüfung für Beans, von denen andere
@@ -70,8 +72,9 @@ Backend, Frontend und Chart gleich verstehen.
    anbietet; das zeigt die Oberfläche ohnehin.
 
 8. **Im Helm-Chart ein Abschnitt `features`.** Je Flag ein Eintrag `<name>.enabled`; die Vorlage
-   erzeugt die Umgebungsvariable mechanisch aus dem Namen. Ein Flag ohne Eintrag bleibt nach
-   Entscheidung 2 an.
+   erzeugt die Umgebungsvariable mechanisch aus dem Namen. Das Werteschema zählt die bekannten
+   Flags auf und lehnt jeden anderen Namen ab, damit ein Tippfehler nicht still wirkungslos
+   bleibt. Ein Flag ohne Eintrag bleibt nach Entscheidung 2 an.
 
 ## Konsequenzen
 

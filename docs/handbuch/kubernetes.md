@@ -524,11 +524,12 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
-| `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | Prompt-Bibliotheken; `false` schaltet sie für die Installation ab |
-| `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Metadaten von Dokumenten und Bibliotheken; `false` schaltet sie für die Installation ab |
+| `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | Schalter für die Prompt-Bibliotheken, noch ohne Wirkung (#2588) |
+| `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Schalter für die Metadaten von Dokumenten und Bibliotheken, noch ohne Wirkung (#2589) |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
-Unterstrichen. Eine Funktion ohne Eintrag bleibt an. Was das Abschalten bewirkt, beschreibt die
+Unterstrichen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen
+Tippfehler; eine Funktion ohne Eintrag bleibt an. Was das Abschalten bewirkt, beschreibt die
 Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-abschalten).
 
 ### Originalablage, Dateisystem-Quellen und Zertifikate
