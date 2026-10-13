@@ -69,7 +69,8 @@ Bibliothek, bezogen auf den Pfad unterhalb des Verzeichnispfads:
 
 Die Muster unterscheiden Groß- und Kleinschreibung. Abgewiesen wird ein Muster mit ungültiger Syntax
 und eines, das nie treffen kann: führendes oder abschließendes `/`, leere Ebene, Ebene `.` oder `..`,
-Rückwärtsschrägstrich oder mehr als 32 Alternativen. Ein ausgeschlossener Ordner wird nicht betreten;
+`**` innerhalb einer Ebene (`**.tmp` statt `**/*.tmp`), Rückwärtsschrägstrich oder mehr als 32
+Alternativen. Ein ausgeschlossener Ordner wird nicht betreten;
 ausgeschlossene Dateien gehören nicht zur Quelle.
 
 ## 4. Betriebsarten und Änderungserkennung
