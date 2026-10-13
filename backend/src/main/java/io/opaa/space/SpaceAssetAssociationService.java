@@ -230,6 +230,9 @@ public class SpaceAssetAssociationService {
   private Association associateInto(
       Space space, AssetType assetType, UUID assetId, CurrentUser caller) {
     accessPolicy.requireCurator(space, caller);
+    if (!assetTypes.isActive(assetType)) {
+      throw new NotFoundException(UNKNOWN_ASSET_MESSAGE);
+    }
 
     Asset asset = assetAuthorization.load(assetType, assetId, space.getOrganizationId());
     // A CURATOR may only associate an asset they can themselves access, checked through their own
@@ -414,12 +417,13 @@ public class SpaceAssetAssociationService {
    * Notifies the owners (every member, if group-owned) of those {@code assets} that stand in a
    * space with at least one member without read access to them (#203: "Benachrichtigung statt
    * Zustimmung") - one notification per recipient, naming all of their assets. The caller who
-   * created the association is never among the recipients - they know what they did.
+   * created the association is never among the recipients - they know what they did. An asset of an
+   * inactive type is never named.
    */
   private void notifyOwnersOfMixedAudience(Space space, List<Asset> assets, UUID triggeringUserId) {
     Map<UUID, List<Asset>> byRecipient = new LinkedHashMap<>();
     for (Asset asset : assets) {
-      if (allMembersCanRead(space, asset)) {
+      if (!assetTypes.isActive(asset.getAssetType()) || allMembersCanRead(space, asset)) {
         continue;
       }
       for (UUID recipientId : ownersOf(asset)) {
@@ -548,12 +552,18 @@ public class SpaceAssetAssociationService {
         : assetRepository.findOwnerOnlyIdsAmong(assetType, organizationId, unreadable);
   }
 
+  /**
+   * The headers of the associated assets of an active type: an association of an inactive type
+   * (ADR-0044) is neither listed, counted nor flagged as unreadable, and stays stored.
+   */
   private Map<UUID, AssetHeader> headersOf(List<SpaceAssetAssociation> associations) {
     Map<UUID, AssetHeader> headers = new HashMap<>();
     for (AssetHeader header :
         assetRepository.findHeadersByIdIn(
             associations.stream().map(SpaceAssetAssociation::getAssetId).toList())) {
-      headers.put(header.id(), header);
+      if (assetTypes.isActive(header.assetType())) {
+        headers.put(header.id(), header);
+      }
     }
     return headers;
   }
@@ -566,12 +576,16 @@ public class SpaceAssetAssociationService {
         "Space nicht gefunden");
   }
 
-  /** An asset of any type in the organization; an unknown one answers like an unknown library. */
+  /**
+   * An asset of an active type in the organization; an unknown one or one of an inactive type
+   * answers like an unknown library.
+   */
   private Asset requireAsset(UUID assetId, UUID organizationId) {
     Asset asset =
         assetRepository
             .findById(assetId)
             .filter(found -> found.getOrganizationId().equals(organizationId))
+            .filter(found -> assetTypes.isActive(found.getAssetType()))
             .orElseThrow(() -> new NotFoundException(UNKNOWN_ASSET_MESSAGE));
     return assetAuthorization.load(asset.getAssetType(), asset.getId(), organizationId);
   }

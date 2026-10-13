@@ -10,6 +10,8 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.permission.AssetAccessService;
@@ -53,6 +55,10 @@ public class PromptService {
           + " Leseberechtigung für seine Prompt-Bibliothek besteht nicht mehr, oder die Bibliothek"
           + " ist diesem Space nicht zugeordnet.";
 
+  /** The refusal while the installation has switched prompt libraries off (ADR-0044). */
+  static final String NOT_USABLE_SWITCHED_OFF =
+      "Prompts stehen in dieser Installation nicht zur Verfügung.";
+
   /** The code of that refusal, on which a client hands the question back without the prompt. */
   public static final String NOT_USABLE_CODE = "PROMPT_NOT_USABLE";
 
@@ -63,6 +69,7 @@ public class PromptService {
   private final AssetAccessService accessService;
   private final AuditEventRecorder auditEventRecorder;
   private final SpaceAssetDirectory spaceAssets;
+  private final FeatureFlags featureFlags;
 
   PromptService(
       PromptLibraryService libraryService,
@@ -71,7 +78,8 @@ public class PromptService {
       AssetAuthorization authorization,
       AssetAccessService accessService,
       AuditEventRecorder auditEventRecorder,
-      SpaceAssetDirectory spaceAssets) {
+      SpaceAssetDirectory spaceAssets,
+      FeatureFlags featureFlags) {
     this.libraryService = libraryService;
     this.promptRepository = promptRepository;
     this.libraryRepository = libraryRepository;
@@ -79,6 +87,7 @@ public class PromptService {
     this.accessService = accessService;
     this.auditEventRecorder = auditEventRecorder;
     this.spaceAssets = spaceAssets;
+    this.featureFlags = featureFlags;
   }
 
   /**
@@ -86,9 +95,13 @@ public class PromptService {
    * caller may read it by the formula - the check a question built from it has to pass. Without a
    * space no prompt is usable. An unknown prompt, one of another organization, one whose library
    * the caller cannot (or can no longer) read and one outside the space all answer the same {@code
-   * 403}, so a foreign id is never confirmed.
+   * 403}, so a foreign id is never confirmed. While prompt libraries are switched off, no prompt is
+   * usable at all.
    */
   public Prompt requireUsable(UUID promptId, UUID spaceId, CurrentUser caller) {
+    if (!featureFlags.isEnabled(Feature.PROMPT_LIBRARIES)) {
+      throw new AccessDeniedException(NOT_USABLE_SWITCHED_OFF, NOT_USABLE_CODE);
+    }
     Prompt prompt =
         promptRepository
             .findByIdAndOrganizationId(promptId, caller.organizationId())

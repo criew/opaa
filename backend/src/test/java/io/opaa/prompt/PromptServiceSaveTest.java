@@ -10,6 +10,7 @@ import io.opaa.asset.AssetAuthorization;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.common.ConflictException;
+import io.opaa.common.FeatureFlags;
 import io.opaa.permission.AssetAccessService;
 import io.opaa.permission.SpaceAssetDirectory;
 import java.sql.SQLException;
@@ -19,6 +20,7 @@ import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.mock.env.MockEnvironment;
 
 /**
  * Only the violated unique name of a prompt reads as "name taken"; any other violated constraint -
@@ -36,7 +38,8 @@ class PromptServiceSaveTest {
           mock(AssetAuthorization.class),
           mock(AssetAccessService.class),
           mock(AuditEventRecorder.class),
-          mock(SpaceAssetDirectory.class));
+          mock(SpaceAssetDirectory.class),
+          new FeatureFlags(new MockEnvironment()));
 
   private final UUID organization = UUID.randomUUID();
   private final CurrentUser caller =

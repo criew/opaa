@@ -7,6 +7,7 @@ import type {
   LibraryListResponse,
 } from '../types/api'
 import { favoriteKey, mockFavoriteAssets } from './assetFixtures'
+import { mockAuthConfig } from './authFixtures'
 import { mockLibraries, mockLibraryDetails } from './libraryFixtures'
 import { mockPromptLibraries, mockUnreadablePromptLibraryIds } from './promptLibraryFixtures'
 
@@ -81,7 +82,8 @@ function readableEntries(): CatalogEntryResponse[] {
       favorite: mockFavoriteAssets.has(favoriteKey('PROMPT_LIBRARY', library.id)),
       succession: library.succession ?? null,
     }))
-  return [...knowledge, ...prompts]
+  // Like the backend (ADR-0044): a switched-off feature's type is not in the catalog at all.
+  return mockAuthConfig.features?.promptLibraries === false ? knowledge : [...knowledge, ...prompts]
 }
 
 /**

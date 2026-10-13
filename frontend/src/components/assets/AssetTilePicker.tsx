@@ -9,7 +9,7 @@ import { appendNewEntries, pagesForMore } from '../../services/catalogPaging'
 import { markAssetFavorite, unmarkAssetFavorite } from '../../services/assetApi'
 import AssetTile from './AssetTile'
 import { tileFromCatalogEntry, type AssetTileData } from './assetTileData'
-import { ASSET_TYPES } from './assetTypeRegistry'
+import { useActiveAssetTypes } from './assetTypeRegistry'
 import { assetPickKey, type AssetPick } from './assetPick'
 import { type AssetFilters } from './AssetFilterChips'
 import AssetFilterBar from './AssetFilterBar'
@@ -84,10 +84,11 @@ export default function AssetTilePicker({
 }: AssetTilePickerProps) {
   // Keyed by content, so a caller passing a fresh array each render does not reload the list.
   const typesKey = types ? types.join(',') : ''
+  const activeTypes = useActiveAssetTypes()
   const offered = useMemo(() => {
     const keys = typesKey.split(',')
-    return typesKey ? ASSET_TYPES.filter((d) => keys.includes(d.type)) : ASSET_TYPES
-  }, [typesKey])
+    return typesKey ? activeTypes.filter((d) => keys.includes(d.type)) : activeTypes
+  }, [typesKey, activeTypes])
   const [typeFilter, setTypeFilter] = useState<AssetType | undefined>(undefined)
   const [filters, setFilters] = useState<AssetFilters>({ favorites: false })
   const [chosenOnly, setChosenOnly] = useState(true)

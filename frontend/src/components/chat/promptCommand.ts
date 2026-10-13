@@ -29,8 +29,3 @@ export function matchPrompts(prompts: AvailablePrompt[], query: string): Availab
       (prompt.description ?? '').toLowerCase().includes(needle),
   )
 }
-
-/** The id of the '/' option at `index` - the input's `aria-activedescendant` points at it. */
-export function promptOptionId(listboxId: string, index: number): string {
-  return `${listboxId}-option-${index}`
-}

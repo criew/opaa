@@ -38,6 +38,7 @@ import CatalogPage from './pages/CatalogPage'
 import CatalogNewPage from './pages/CatalogNewPage'
 import { catalogRoute } from './components/assets/assetTypeRegistry'
 import {
+  CATALOG_ROUTE,
   CONNECTION_CALLBACK_ROUTE,
   CONNECTION_LOG_ROUTE,
   CONNECTION_PROFILES_ROUTE,
@@ -55,6 +56,7 @@ import {
   VERIFY_EMAIL_ROUTE,
 } from './routes'
 import { useAuthStore } from './stores/authStore'
+import { useFeatureEnabled } from './hooks/useFeatureEnabled'
 import { useBrandingStore } from './stores/brandingStore'
 import { useUiStore } from './stores/uiStore'
 import { resolveThemeMode } from './theme/colorScheme'
@@ -122,6 +124,7 @@ function SpaceSettingsRedirect() {
 
 export default function App() {
   const initialize = useAuthStore((s) => s.initialize)
+  const promptLibraries = useFeatureEnabled('promptLibraries')
   const themeMode = useUiStore((s) => s.themeMode)
   const branding = useBrandingStore((s) => s.branding)
   const loadBranding = useBrandingStore((s) => s.loadBranding)
@@ -212,13 +215,23 @@ export default function App() {
                 />
                 <Route path="libraries/new" element={<LibraryCreatePage />} />
                 <Route path="libraries/:libraryId" element={<LibraryDetailPage />} />
-                <Route
-                  path="prompts"
-                  element={<Navigate to={catalogRoute('PROMPT_LIBRARY')} replace />}
-                />
-                <Route path="prompts/new" element={<PromptLibraryCreatePage />} />
-                <Route path="prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
-                <Route path="prompts/:promptLibraryId/:tab" element={<PromptLibraryDetailPage />} />
+                {/* Switched off (ADR-0044), every former prompt address leads to the catalog. */}
+                {promptLibraries ? (
+                  <>
+                    <Route
+                      path="prompts"
+                      element={<Navigate to={catalogRoute('PROMPT_LIBRARY')} replace />}
+                    />
+                    <Route path="prompts/new" element={<PromptLibraryCreatePage />} />
+                    <Route path="prompts/:promptLibraryId" element={<PromptLibraryDetailPage />} />
+                    <Route
+                      path="prompts/:promptLibraryId/:tab"
+                      element={<PromptLibraryDetailPage />}
+                    />
+                  </>
+                ) : (
+                  <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
+                )}
               </Route>
               {/* Global areas render inside the frame from mockup 2b (#787): no space
                   column, a light secondary column with the area navigation instead. */}

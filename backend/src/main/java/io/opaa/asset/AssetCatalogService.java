@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The catalog (docs/features/spaces-and-assets.md#der-katalog): exactly the assets a person may
- * read by {@link AssetAccessService#readableAssets}, over every served type and within the person's
+ * read by {@link AssetAccessService#readableAssets}, over every active type and within the person's
  * organization - one query on the shell, paged, searched and ordered in SQL. Every filter narrows
  * the readable set before the query, so no entry and no count ever includes an unreadable asset;
  * the administration's floor never counts here. What a page shows beyond the shell comes in grouped
@@ -98,8 +98,8 @@ public class AssetCatalogService {
           "Es lassen sich höchstens " + AssetCatalogQuery.MAX_IDS + " Kennungen angeben");
     }
     AssetType assetType = query.assetType();
-    List<AssetType> types = assetType == null ? assetTypes.registered() : List.of(assetType);
-    if (assetType != null && assetTypes.find(assetType).isEmpty()) {
+    List<AssetType> types = assetType == null ? assetTypes.active() : List.of(assetType);
+    if (assetType != null && !assetTypes.isActive(assetType)) {
       throw new ValidationException("Unbekannter Asset-Typ: " + assetType);
     }
 

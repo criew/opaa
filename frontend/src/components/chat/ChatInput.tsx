@@ -16,7 +16,6 @@ import Typography from '@mui/material/Typography'
 import AllInclusiveIcon from '@mui/icons-material/AllInclusive'
 import MenuBookOutlinedIcon from '@mui/icons-material/MenuBookOutlined'
 import SendIcon from '@mui/icons-material/Send'
-import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined'
 import { CHAT_MAX_WIDTH } from '../../theme/theme'
 import { useAuthStore } from '../../stores/authStore'
 import { QUESTION_MAX_LENGTH, useChatStore } from '../../stores/chatStore'
@@ -29,11 +28,11 @@ import SpaceKnowledgeNotice from '../space/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../space/spaceKnowledge'
 import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 import MetadataFilterPopover from './MetadataFilterPopover'
-import PromptCommandMenu from './PromptCommandMenu'
-import { promptOptionId } from './promptCommand'
-import PromptVariablesDialog from './PromptVariablesDialog'
-import { usePromptCommand } from './usePromptCommand'
-import type { SelectedPrompt } from './usePromptCommand'
+import ChatActionMenu from './ChatActionMenu'
+import { actionOptionId, activeChatActionSources } from './chatActions'
+import type { ChatActionMark, ChatActionSource } from './chatActions'
+import { CHAT_ACTION_SOURCES } from './chatActionSources'
+import { useChatActions } from './useChatActions'
 import {
   dateChipLabel,
   formatFieldChipLabel,
@@ -59,7 +58,7 @@ interface ChatInputProps {
   /** `usedPrompt` is the prompt the message was built from, absent when none is marked. */
   onSend: (
     message: string,
-    usedPrompt?: SelectedPrompt,
+    usedPrompt?: ChatActionMark,
   ) => void | SendOutcome | Promise<void | SendOutcome>
   /** Locks the whole input, typing included. */
   disabled?: boolean
@@ -72,6 +71,11 @@ interface ChatInputProps {
   returnedQuestion?: SendOutcome | null
   /** Called once `returnedQuestion` has been handled, whether it was taken or not. */
   onReturnedQuestionHandled?: () => void
+  /**
+   * What the '/' menu collects; by default every registered source. A source behind a
+   * switched-off feature contributes nothing either way (ADR-0044).
+   */
+  actionSources?: readonly ChatActionSource[]
 }
 
 interface ActiveMention {
@@ -97,13 +101,18 @@ type MentionSuggestion = { kind: 'all' } | { kind: 'library'; library: SpaceLibr
 
 /**
  * The neutral hint under the input (#1920): the input triggers more than a question - prompts,
- * later agents and skills - so the line names the two prefixes instead of counting libraries.
- * What the next question searches is stated by the chip bar above it.
+ * later agents and skills - so the line names the prefixes instead of counting libraries. '/' is
+ * named only while some action source is active. What the next question searches is stated by
+ * the chip bar above it.
  */
-const INPUT_HINT = '@ für Quellen, / für Aktionen'
+const INPUT_HINT = '@ für Quellen'
+const ACTIONS_HINT = '/ für Aktionen'
 
 /** The hint while an answer is pending: '@' changes the search scope and stays closed until then. */
-const PENDING_INPUT_HINT = '/ für Aktionen'
+function inputHint(answerPending: boolean, actions: boolean): string {
+  if (answerPending) return actions ? ACTIONS_HINT : ''
+  return actions ? `${INPUT_HINT}, ${ACTIONS_HINT}` : INPUT_HINT
+}
 
 /** A refused question goes back before whatever the person has typed since. */
 function withRestoredQuestion(question: string, draft: string): string {
@@ -160,6 +169,7 @@ export default function ChatInput({
   answerPending = false,
   returnedQuestion = null,
   onReturnedQuestionHandled,
+  actionSources = CHAT_ACTION_SOURCES,
 }: ChatInputProps) {
   const [value, setValue] = useState('')
   const [mention, setMention] = useState<ActiveMention | null>(null)
@@ -175,7 +185,7 @@ export default function ChatInput({
   const [inputBoxEl, setInputBoxEl] = useState<HTMLDivElement | null>(null)
   const wasDisabled = useRef(false)
   const mentionListboxId = useId()
-  const promptListboxId = useId()
+  const actionListboxId = useId()
   const lengthCounterId = useId()
   const questionLength = value.trim().length
   const questionTooLong = questionLength > QUESTION_MAX_LENGTH
@@ -201,10 +211,15 @@ export default function ChatInput({
   const setMetadataFilter = useChatStore((s) => s.setMetadataFilter)
   const filterOptions = useMetadataFilterOptionsStore((s) => s.options)
 
-  // '/' at the start of a line inserts a prompt: its text lands in the input, marked by a
-  // removable chip; sending stays a separate action.
+  // '/' at the start of a line opens the actions of every active source - a prompt, for one: its
+  // text lands in the input, marked by a removable chip; sending stays a separate action.
   const userName = useAuthStore((s) => s.user?.displayName ?? s.user?.email ?? '')
-  const insertPromptText = useCallback((range: { start: number; end: number }, text: string) => {
+  const features = useAuthStore((s) => s.features)
+  const activeSources = useMemo(
+    () => activeChatActionSources(actionSources, features),
+    [actionSources, features],
+  )
+  const insertActionText = useCallback((range: { start: number; end: number }, text: string) => {
     setValue((current) => `${current.slice(0, range.start)}${text}${current.slice(range.end)}`)
     const caret = range.start + text.length
     requestAnimationFrame(() => {
@@ -212,11 +227,12 @@ export default function ChatInput({
       inputRef.current?.setSelectionRange(caret, caret)
     })
   }, [])
-  const promptSpaceId = useChatStore((s) => s.spaceId)
-  const promptCommand = usePromptCommand({
-    spaceId: promptSpaceId,
+  const actionSpaceId = useChatStore((s) => s.spaceId)
+  const actions = useChatActions({
+    sources: activeSources,
+    spaceId: actionSpaceId,
     userName,
-    insertText: insertPromptText,
+    insertText: insertActionText,
   })
 
   // Adjusted during render (not in an effect) so the input already shows the text when it paints.
@@ -396,7 +412,7 @@ export default function ChatInput({
     const nextValue = e.target.value
     setValue(nextValue)
     const cursor = e.target.selectionStart ?? nextValue.length
-    promptCommand.track(nextValue, cursor)
+    actions.track(nextValue, cursor)
     // The '@' selection changes the search scope, so it stays closed while the scope is locked.
     const detected = scopeLocked ? null : findActiveMention(nextValue, cursor)
     if (detected === null) {
@@ -417,15 +433,18 @@ export default function ChatInput({
 
   const handleSend = () => {
     const trimmed = value.trim()
-    if (sendLocked || !trimmed || trimmed.length > QUESTION_MAX_LENGTH || promptCommand.isInserting)
+    if (sendLocked || !trimmed || trimmed.length > QUESTION_MAX_LENGTH || actions.isInserting)
       return
-    const outcome = promptCommand.selected
-      ? onSend(trimmed, promptCommand.selected)
-      : onSend(trimmed)
+    // Only a mark its source sends as the prompt reaches the question; any other stays a chip.
+    const selected = actions.selected
+    const outcome =
+      selected?.source.sendsMarkAsUsedPrompt === true
+        ? onSend(trimmed, { id: selected.mark.id, title: selected.mark.title })
+        : onSend(trimmed)
     setValue('')
     setDismissedMentionStart(null)
     closeMention()
-    promptCommand.reset()
+    actions.reset()
     // Sending by button would leave the focus on the button, which is locked from now on.
     inputRef.current?.focus()
     // A refused question comes back without its prompt, before any draft typed since, unless the
@@ -438,33 +457,33 @@ export default function ChatInput({
     })
   }
 
-  const choosePrompt = (index: number) => {
-    const entry = promptCommand.matches[index]
+  const chooseAction = (index: number) => {
+    const entry = actions.matches[index]
     if (!entry) return
-    void promptCommand.choose(entry, inputRef.current?.selectionStart ?? value.length)
+    void actions.choose(entry, inputRef.current?.selectionStart ?? value.length)
   }
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     // While the '/' selection is open - loading, empty or failed alike - Enter never sends: the
     // '/' text is a command in the making, not a question. Escape turns it into plain text.
-    if (promptCommand.isOpen) {
+    if (actions.isOpen) {
       if (e.key === 'Escape') {
         e.preventDefault()
-        promptCommand.dismiss()
+        actions.dismiss()
         return
       }
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault()
-        promptCommand.moveHighlight(e.key === 'ArrowDown' ? 1 : -1)
+        actions.moveHighlight(e.key === 'ArrowDown' ? 1 : -1)
         return
       }
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault()
-        if (promptCommand.highlightedIndex >= 0) choosePrompt(promptCommand.highlightedIndex)
+        if (actions.highlightedIndex >= 0) chooseAction(actions.highlightedIndex)
         return
       }
     }
-    if (promptCommand.isInserting && e.key === 'Enter' && !e.shiftKey) {
+    if (actions.isInserting && e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       return
     }
@@ -510,16 +529,15 @@ export default function ChatInput({
     highlightedIndex >= 0 ? `${mentionListboxId}-option-${highlightedIndex}` : undefined
   // The '/' listbox is rendered only while it has options and no load error - the same honesty
   // rule as the '@' listbox above.
-  const promptListOpen =
-    promptCommand.isOpen && promptCommand.error === null && promptCommand.matches.length > 0
-  const comboboxExpanded = mentionListOpen || promptListOpen
-  const comboboxControls = promptListOpen
-    ? promptListboxId
+  const actionListOpen = actions.isOpen && actions.error === null && actions.matches.length > 0
+  const comboboxExpanded = mentionListOpen || actionListOpen
+  const comboboxControls = actionListOpen
+    ? actionListboxId
     : mentionListOpen
       ? mentionListboxId
       : undefined
-  const activeDescendant = promptListOpen
-    ? promptOptionId(promptListboxId, promptCommand.highlightedIndex)
+  const activeDescendant = actionListOpen
+    ? actionOptionId(actionListboxId, actions.highlightedIndex)
     : mentionListOpen
       ? highlightedOptionId
       : undefined
@@ -542,14 +560,14 @@ export default function ChatInput({
           gap: 0.75,
         }}
       >
-        {promptCommand.selected && (
+        {actions.selected && (
           <Chip
-            icon={<TextSnippetOutlinedIcon />}
-            label={`Prompt: ${promptCommand.selected.title}`}
+            icon={<actions.selected.source.Icon />}
+            label={actions.selected.source.markLabel(actions.selected.mark)}
             size="small"
             variant="outlined"
-            onDelete={disabled ? undefined : promptCommand.clearSelected}
-            aria-label={`Kennzeichnung Prompt: ${promptCommand.selected.title} entfernen`}
+            onDelete={disabled ? undefined : actions.clearSelected}
+            aria-label={`Kennzeichnung ${actions.selected.source.markLabel(actions.selected.mark)} entfernen`}
             data-testid="used-prompt-chip"
           />
         )}
@@ -756,7 +774,7 @@ export default function ChatInput({
         <IconButton
           color="primary"
           onClick={handleSend}
-          disabled={sendLocked || !value.trim() || questionTooLong || promptCommand.isInserting}
+          disabled={sendLocked || !value.trim() || questionTooLong || actions.isInserting}
           aria-label="Senden"
           sx={{
             alignSelf: 'flex-end',
@@ -879,32 +897,26 @@ export default function ChatInput({
         </ClickAwayListener>
       </Popper>
 
-      <PromptCommandMenu
-        open={promptCommand.isOpen}
+      <ChatActionMenu
+        open={actions.isOpen}
         anchorEl={inputBoxEl}
-        listboxId={promptListboxId}
-        prompts={promptCommand.matches}
-        hasPrompts={promptCommand.hasPrompts}
-        highlightedIndex={promptCommand.highlightedIndex}
-        isLoading={promptCommand.isLoading}
-        error={promptCommand.error}
-        onHighlight={promptCommand.setHighlightedIndex}
-        onSelect={(entry) => choosePrompt(promptCommand.matches.indexOf(entry))}
-        onClose={promptCommand.close}
+        listboxId={actionListboxId}
+        actions={actions.matches}
+        hasActions={actions.hasOptions}
+        texts={actions.texts}
+        highlightedIndex={actions.highlightedIndex}
+        isLoading={actions.isLoading}
+        error={actions.error}
+        onHighlight={actions.setHighlightedIndex}
+        onSelect={(entry) => chooseAction(actions.matches.indexOf(entry))}
+        onClose={actions.close}
       />
-      {promptCommand.pendingForm && (
-        <PromptVariablesDialog
-          prompt={promptCommand.pendingForm}
-          userName={userName}
-          onCancel={promptCommand.cancelForm}
-          onInsert={promptCommand.completeForm}
-        />
-      )}
+      {actions.pendingForm?.({ onInsert: actions.completeForm, onCancel: actions.cancelForm })}
 
       {/* Mockup 1a (#591): the quiet line under the input, neutral since #1920. */}
       <Box sx={{ maxWidth: CHAT_MAX_WIDTH, mx: 'auto', mt: 0.875 }}>
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
-          {scopeNotice ?? (answerPending ? PENDING_INPUT_HINT : INPUT_HINT)}
+          {scopeNotice ?? inputHint(answerPending, actions.enabled)}
         </Typography>
         {lengthCounter && (
           <Typography
