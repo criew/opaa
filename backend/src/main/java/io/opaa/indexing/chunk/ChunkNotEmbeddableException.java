@@ -1,9 +1,9 @@
 package io.opaa.indexing.chunk;
 
 /**
- * One chunk alone exceeds the input budget of the embedding step, so no batching can send it;
- * nothing of the call was embedded or written. Names the chunk by its Fundort and position, either
- * of which may be absent.
+ * One chunk alone exceeds the input budget of the embedding step, or the endpoint proved it longer
+ * than its input limit, so no batching can send it whole; nothing of the call was written. Names
+ * the chunk by its Fundort and position, either of which may be absent.
  */
 public class ChunkNotEmbeddableException extends RuntimeException {
 

@@ -20,12 +20,14 @@ import org.springframework.stereotype.Component;
  * the model whole (docs/handbuch/suche.md, Abschnitt 6). Runs after the pipeline and only for the
  * answer: the selection, its ranking and the search hits stay what the pipeline decided.
  *
- * <p>Neighbours are added nearest first and in the rank order of their selected chunk, each only
- * next to a chunk already present, until {@link NeighborChunkProperties#maxAddedCharacters} is
- * reached. The result is ordered as continuous excerpts: every run of adjoining chunks of one
- * document in index order, the runs in the rank order of their best selected chunk. Every chunk -
- * neighbour or not - stays a chunk of its own with its own citation target, so a citation of a
- * neighbour validates like any other.
+ * <p>{@link NeighborChunkProperties#maxAddedCharacters} is spent in two rounds. First every
+ * selected chunk in rank order gets one direct neighbour - the following one, else the preceding
+ * one - unless a direct neighbour of it is already in the context. Then the rest goes nearest first
+ * and in rank order, each neighbour only next to a chunk already present. A neighbour that no
+ * longer fits is skipped. The result is ordered as continuous excerpts: every run of adjoining
+ * chunks of one document in index order, the runs in the rank order of their best selected chunk.
+ * Every chunk - neighbour or not - stays a chunk of its own with its own citation target, so a
+ * citation of a neighbour validates like any other.
  */
 @Component
 public class NeighborChunkExpansion {
@@ -72,27 +74,72 @@ public class NeighborChunkExpansion {
       return selection;
     }
 
-    Map<ChunkPosition, Document> loaded = lookup.find(wanted.keySet(), searchScope);
-    Set<ChunkPosition> included = new HashSet<>(present);
-    List<Document> added = new ArrayList<>();
-    int usedCharacters = 0;
-    for (Map.Entry<ChunkPosition, ChunkPosition> entry : wanted.entrySet()) {
-      Document neighbour = loaded.get(entry.getKey());
-      if (neighbour == null || !included.contains(entry.getValue())) {
+    Budget budget =
+        new Budget(
+            lookup.find(wanted.keySet(), searchScope),
+            new HashSet<>(present),
+            properties.maxAddedCharacters());
+
+    // First round: one direct neighbour per selected chunk, the following one if it can be added.
+    for (Document chunk : selection) {
+      Optional<ChunkPosition> position = ChunkPosition.of(chunk);
+      if (position.isEmpty()
+          || budget.includes(position.get().shifted(1))
+          || budget.includes(position.get().shifted(-1))) {
         continue;
       }
-      int length = neighbour.getText() == null ? 0 : neighbour.getText().length();
-      if (usedCharacters + length > properties.maxAddedCharacters()) {
-        continue;
+      if (!budget.add(position.get().shifted(1))) {
+        budget.add(position.get().shifted(-1));
       }
-      usedCharacters += length;
-      included.add(entry.getKey());
-      added.add(neighbour);
     }
-    if (added.isEmpty()) {
+    // Second round: the rest of the budget, nearest first and in rank order.
+    for (Map.Entry<ChunkPosition, ChunkPosition> entry : wanted.entrySet()) {
+      if (budget.includes(entry.getValue())) {
+        budget.add(entry.getKey());
+      }
+    }
+    if (budget.added.isEmpty()) {
       return selection;
     }
-    return asExcerpts(selection, added);
+    return asExcerpts(selection, budget.added);
+  }
+
+  /** The neighbours added so far and the characters still free for further ones. */
+  private static final class Budget {
+    private final Map<ChunkPosition, Document> loaded;
+    private final Set<ChunkPosition> included;
+    private final List<Document> added = new ArrayList<>();
+    private int remainingCharacters;
+
+    private Budget(
+        Map<ChunkPosition, Document> loaded, Set<ChunkPosition> included, int characters) {
+      this.loaded = loaded;
+      this.included = included;
+      this.remainingCharacters = characters;
+    }
+
+    private boolean includes(ChunkPosition position) {
+      return included.contains(position);
+    }
+
+    /**
+     * Adds the neighbour at {@code position} if it was loaded, is not in the context yet and still
+     * fits; returns whether it was added.
+     */
+    private boolean add(ChunkPosition position) {
+      Document neighbour = loaded.get(position);
+      if (neighbour == null || included.contains(position)) {
+        return false;
+      }
+      int length = neighbour.getText() == null ? 0 : neighbour.getText().length();
+      if (length > remainingCharacters) {
+        return false;
+      }
+      remainingCharacters -= length;
+      included.add(position);
+      added.add(neighbour);
+      return true;
+    }
   }
 
   /**

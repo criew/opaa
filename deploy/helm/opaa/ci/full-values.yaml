@@ -12,6 +12,7 @@ embedding:
   model: text-embedding-3-small
   dimensions: 1536
   timeout: 180s
+  maxInputTokens: 8191
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org

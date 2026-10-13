@@ -39,7 +39,7 @@ OPAA braucht **zwei Modelle** über eine **OpenAI-kompatible Schnittstelle** (`/
 | Rolle | Zweck |
 |---|---|
 | **Chat-Modell** | Antworten erzeugen — bestimmt die Antwortqualität maßgeblich |
-| **Embedding-Modell** | Dokumente durchsuchbar machen — ein späterer Wechsel erzwingt eine vollständige Neuindizierung, deshalb vor dem Start festlegen |
+| **Embedding-Modell** | Dokumente durchsuchbar machen — entscheidet maßgeblich über die Suchqualität in der Sprache der Dokumente; ein späterer Wechsel verlangt eine Neueinbettung des gesamten Bestands, deshalb vor dem Start festlegen |
 
 **Empfohlen: ein dedizierter Modellserver mit GPU.**
 
@@ -54,9 +54,15 @@ OPAA braucht **zwei Modelle** über eine **OpenAI-kompatible Schnittstelle** (`/
   und Schlüssel werden eingetragen. *Hinweis:* Dann verlassen Anfragen das Haus; OPAA
   verhindert das nicht technisch — die Freigabe muss organisatorisch geklärt sein.
 
+**Embedding-Modell nach der Sprache der Dokumente wählen.** Das Embedding-Modell entscheidet
+maßgeblich, ob die Suche in deutschsprachigen Beständen die richtigen Stellen findet. Voreingestellt
+und für deutschsprachige Bestände empfohlen ist **bge-m3**. Es braucht beim Indexieren rund 3,3 GB
+Arbeitsspeicher, bei sehr langen Tabellenabschnitten kurzzeitig mehr, und auf einer CPU etwa doppelt
+so lange wie das kleinere **nomic-embed-text**. Dieses bleibt die Wahl für kleine Instanzen mit wenig
+Arbeitsspeicher, findet in deutschsprachigen Beständen aber deutlich schlechter.
+
 **Nur zum Ausprobieren: Ollama im Stack** (`--profile ollama`). Dieses Profil startet einen
-Ollama-Server auf CPU mit den Voreinstellungen `phi3:mini` (Chat) und `nomic-embed-text`
-(Embedding). Es eignet sich, um OPAA ohne weitere Infrastruktur kennenzulernen — **nicht für den
+Ollama-Server auf CPU mit den Voreinstellungen `phi3:mini` (Chat) und `bge-m3` (Embedding). Es eignet sich, um OPAA ohne weitere Infrastruktur kennenzulernen — **nicht für den
 Produktivbetrieb**: `phi3:mini` ist ein sehr kleines Modell mit entsprechend begrenzter
 Antwortqualität, und CPU-Inferenz ist für mehrere gleichzeitige Nutzer zu langsam.
 

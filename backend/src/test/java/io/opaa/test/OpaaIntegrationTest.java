@@ -84,9 +84,11 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // The price: that the production index can be created at all is now only exercised outside
       // test/build - by the eval harness (own source set, real embeddings, index-type: hnsw), the
       // E2E stack and bootRun. Concretely at risk is a raised OPAA_PGVECTOR_DIMENSIONS (default
-      // 1536): HNSW indexes at most 2000 dimensions, and EmbeddingIndexReconciler compares the
+      // 1024): HNSW indexes at most 2000 dimensions, and EmbeddingIndexReconciler compares the
       // column against the configuration, not against what is indexable.
       "spring.ai.vectorstore.pgvector.index-type=none",
+      // The width FakeEmbeddingModel embeds at; the shipped default follows the default model.
+      "spring.ai.vectorstore.pgvector.dimensions=1536",
       // The seeded active chat model and the embedding endpoint: the application.yml default
       // would be a model server running on the developer's machine, which tests would then really
       // call. The blank legacy provider keeps LlmModelSeeder on spring.ai.openai.chat.* even if

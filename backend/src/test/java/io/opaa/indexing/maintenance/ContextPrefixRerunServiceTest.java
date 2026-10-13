@@ -50,7 +50,9 @@ class ContextPrefixRerunServiceTest {
           "public",
           "vector_store",
           TestFeatureFlags.allOn(),
-          mock(PlatformTransactionManager.class));
+          mock(PlatformTransactionManager.class),
+          new io.opaa.observability.IndexingMetrics(
+              new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
 
   @Test
   @SuppressWarnings("unchecked")
@@ -67,6 +69,8 @@ class ContextPrefixRerunServiceTest {
         .thenReturn("{\"document_id\":\"" + documentId + "\",\"chunk_index\":0}");
     when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq(documentId.toString())))
         .thenAnswer(call -> List.of(((RowMapper<Object>) call.getArgument(1)).mapRow(row, 0)));
+    when(vectorChunkStore.reembedChunks(anyList()))
+        .thenReturn(new VectorChunkStore.Reembedded(0, 0, 0));
 
     service.reembedInPlace(document);
 
@@ -86,7 +90,8 @@ class ContextPrefixRerunServiceTest {
   @Test
   void theStampIsRecordedOnlyWhenEveryStoredChunkWasRewritten() throws Exception {
     Document document = documentWithStoredChunks(2);
-    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(2);
+    when(vectorChunkStore.reembedChunks(anyList()))
+        .thenReturn(new VectorChunkStore.Reembedded(2, 0, 0));
 
     UUID documentId = document.getId();
 
@@ -100,7 +105,8 @@ class ContextPrefixRerunServiceTest {
       throws Exception {
     Document document = documentWithStoredChunks(2);
     // One chunk was gone at write time: the ingest replaced the chunks and owns the document row.
-    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(1);
+    when(vectorChunkStore.reembedChunks(anyList()))
+        .thenReturn(new VectorChunkStore.Reembedded(1, 0, 0));
 
     service.reembedInPlace(document);
 
@@ -117,7 +123,8 @@ class ContextPrefixRerunServiceTest {
         .thenReturn(
             new DocumentChunkMetadata(
                 java.util.Map.of(), java.util.Set.of(), null, List.of("Fassung 2026")));
-    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(2);
+    when(vectorChunkStore.reembedChunks(anyList()))
+        .thenReturn(new VectorChunkStore.Reembedded(2, 0, 0));
 
     service.reembedInPlace(document);
 
@@ -127,7 +134,8 @@ class ContextPrefixRerunServiceTest {
   @Test
   void aDocumentDeletedBeforeTheStampIsRecordedGetsNone() throws Exception {
     Document document = documentWithStoredChunks(2);
-    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(2);
+    when(vectorChunkStore.reembedChunks(anyList()))
+        .thenReturn(new VectorChunkStore.Reembedded(2, 0, 0));
     UUID documentId = document.getId();
     when(jdbcTemplate.queryForList(anyString(), eq(UUID.class), eq(documentId)))
         .thenReturn(List.of());

@@ -367,7 +367,8 @@ public class IndexingConfiguration {
    * across every indexing run in the process. It bounds the sub-batch fan-out of a splitting
    * document only - one that fits in a single sub-batch embeds on its caller's thread - so the
    * process-wide number of concurrent embedding calls is this pool plus the indexing and upload
-   * pools. The queue is unbounded: only a document's own sub-batches are ever queued here.
+   * pools. The queue is unbounded: only a document's own sub-batches and the single calls of its
+   * input check ({@code VectorChunkStore#checkInputs}) are ever queued here.
    */
   @Bean
   TaskExecutor embeddingTaskExecutor(IndexingProperties properties) {

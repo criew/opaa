@@ -77,12 +77,11 @@ public enum RetrievalStageName {
   FULL_TEXT_SEARCH,
 
   /**
-   * Narrows each candidate list to {@link RetrievalContext#candidateBudget()} via {@code
-   * MmrSelector} - {@link QueryProperties#topK} unless reranking runs, the wider rerank candidate
-   * window if it does - trading relevance against redundancy at {@link QueryProperties#mmrLambda}
-   * (at the shipped default {@code 1.0} this is plain top-k by relevance). Switched off, every list
-   * stays at its full {@link QueryProperties#fetchK} length and the budget is enforced by {@link
-   * #RANK_FUSION} alone.
+   * Reorders each candidate list via {@code MmrSelector}, trading relevance against redundancy at
+   * {@link QueryProperties#mmrLambda}, and never narrows it: every list reaches {@link
+   * #RANK_FUSION} at its full {@link QueryProperties#fetchK} length, and the fusion alone enforces
+   * the budget. At the shipped default {@code 1.0} the reordering would be the identity, so the
+   * stage does not run and reports itself as {@link StageStatus#DISABLED}.
    */
   MMR_SELECTION,
 
@@ -110,10 +109,11 @@ public enum RetrievalStageName {
   RERANK,
 
   /**
-   * Lets a document already represented in the selection contribute up to {@link
-   * QueryProperties#maxChunksPerDocument} chunks, drawn only from the candidate pool the search
-   * stages produced - both the vector and the lexical path. Switched off, the selection stays
-   * exactly as fusion left it, the same behaviour {@code maxChunksPerDocument = 1} produces.
+   * Tops a document already represented in the selection up to {@link
+   * QueryProperties#maxChunksPerDocument} chunks - a fill target, not a cap - drawn only from the
+   * candidate pool the search stages produced, both the vector and the lexical path. Switched off,
+   * the selection stays exactly as fusion left it, the same behaviour {@code maxChunksPerDocument =
+   * 1} produces.
    */
   DOCUMENT_COMPLETION
 }

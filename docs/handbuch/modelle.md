@@ -27,7 +27,7 @@ eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschich
 **Voreingestellt sind lokal betriebene Modelle.** Eine Installation, an der niemand etwas
 konfiguriert, ruft kein Modell außerhalb des Hauses auf: `OPAA_OPENAI_BASE_URL` zeigt auf
 `http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), Chat- und
-Embedding-Modell sind `phi3:mini` und `nomic-embed-text`, und Ollama braucht keinen Zugangsschlüssel.
+Embedding-Modell sind `phi3:mini` und `bge-m3`, und Ollama braucht keinen Zugangsschlüssel.
 Betrieb ohne Netzanbindung ist der vorgesehene Fall; es gibt kein automatisches Ausweichen auf ein
 Modell außerhalb des Hauses. Für einen anderen Anbieter wird die **Zieladresse** überschrieben:
 
@@ -158,22 +158,102 @@ Dimensionen, mit der das Modell einbettet. Die Oberfläche zeigt die Einbettung 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar,
 und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettung still.
 
-Das voreingestellte `nomic-embed-text` bettet mit 768 Dimensionen ein, die Anwendungsvorgabe von
-`OPAA_PGVECTOR_DIMENSIONS` ist 1536 — wer die Voreinstellung nutzt, setzt `768`.
-
 > **Ältere Ollama-Fassungen betten lange Chunks falsch ein.** Sie zerlegen eine Eingabe über 512
 > Token in mehrere Teile. Embedding-Modelle wie `nomic-embed-text` und `bge-m3` lesen einen Text
 > aber als Ganzes, und der Vektor eines längeren Chunks trifft dann seinen Inhalt nicht mehr. Bei
 > durchgehendem Fließtext ist mit der voreingestellten Chunkgröße fast jeder Chunk so lang, bei kurzen,
 > nach Überschriften gegliederten Abschnitten kaum einer. Betroffen ist etwa Ollama 0.6.5;
-> die Fassung im Compose-Stapel und im Erprobungsaufbau für Kubernetes hat den Fehler nicht. Wer
-> Ollama selbst betreibt, nimmt mindestens diese Fassung und indiziert nach dem Wechsel vollständig
-> neu ([Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht)).
+> Ollama 0.32.15 und neuer bettet stetig ein, auch die Fassung im Compose-Stapel und im
+> Erprobungsaufbau für Kubernetes. Wer Ollama selbst betreibt, nimmt 0.32.15 oder neuer und
+> indiziert nach dem Wechsel vollständig neu ([Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht)).
 
 Ein Embedding-Aufruf darf so lange dauern, wie `OPAA_OPENAI_EMBEDDING_TIMEOUT` erlaubt. Ein großes
 Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann bricht der Aufruf ab,
 wird wenige Male wiederholt und scheitert schließlich mit seinem Dokument. Die Neueinbettung bricht
 nach fünf gescheiterten Dokumenten in Folge mit „fehlgeschlagen" ab.
+
+### Welches Embedding-Modell
+
+Das Embedding-Modell entscheidet, ob die Vektorsuche eine Frage und die passende Stelle als ähnlich
+erkennt. Wie gut ihm das gelingt, hängt an der Sprache, in der es trainiert wurde. Für die
+Suchqualität zählt deshalb vor allem, dass das Modell die Sprache der Dokumente beherrscht.
+
+| Modell | Dimensionen | Empfehlung | Ressourcen |
+|---|---|---|---|
+| `bge-m3` (Vorgabe) | 1024 | deutschsprachige Bestände | Download rund 1,2 GB. Geladen rund 1,4 GB Arbeitsspeicher, beim Einbetten mehr, je länger der Chunk ist: rund 3,3 GB bei 2.000 Tokens, rund 9,5 GB bei 8.192 Tokens. Auf einer CPU etwa doppelt so lange Indexierung wie `nomic-embed-text` |
+| `nomic-embed-text` | 768 | kleine Instanzen mit wenig Arbeitsspeicher, nur CPU | Download rund 0,3 GB, beim Einbetten rund 0,3 GB Arbeitsspeicher. Findet in deutschsprachigen Beständen deutlich schlechter |
+
+> **Beispiel.** In einer Messung auf 109 Verwaltungs-PDFs standen mit `bge-m3` 85 % der gesuchten
+> Kernfakten unter den ersten 20 Treffern der Vektorsuche, mit `nomic-embed-text` 37 %.
+
+Wer `nomic-embed-text` wählt, setzt `OPAA_PGVECTOR_DIMENSIONS` auf 768. Auf einem kleinen Server
+mit `bge-m3` lässt sich der Spitzenbedarf senken, indem das Modell nicht mit der vollen
+Eingabegrenze angelegt wird; OPAA teilt dann längere Chunks
+([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
+
+Eine bestehende Installation wechselt das Modell über die Neueinbettung, ohne Neuindizierung und
+ohne Zurücksetzen der Datenbank ([Modell wechseln](#modell-wechseln)).
+
+### Eingabegrenze des Embedding-Modells
+
+Ein Embedding-Modell nimmt je Chunk nur eine bestimmte Zahl Tokens auf. Manche Endpunkte kürzen
+einen längeren Chunk ohne Meldung. Sein Vektor deckt dann nur den Anfang ab, und der Rest ist für
+die Vektorsuche unsichtbar.
+
+> **Beispiel.** Ein Haushaltsplan enthält eine Tabelle voller Zahlen. Ihr Chunk hat nur so viele
+> Zeichen wie die anderen, braucht aber fast dreimal so viele Tokens. Der Endpunkt meldet die
+> Grenze als Tokenzahl, OPAA teilt den Chunk in höchstens halb so lange Teile, und jeder wird
+> ganz eingebettet.
+
+Die Zielgröße der Chunks wird in Zeichen eingestellt (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`), die
+Grenze des Modells zählt Tokens. Wie viele Zeichen ein Token umfasst, hängt von Modell und Text ab.
+Deutscher Fließtext braucht wenige Tokens je Zeichen, Tabellen mit vielen Zahlen deutlich mehr.
+Die Zielgröße allein garantiert deshalb nicht, dass jeder Chunk passt.
+
+`OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` nennt die Grenze des Endpunkts, wie er tatsächlich läuft.
+Kann ein Chunk sie erreichen, bettet OPAA ihn einzeln ein. Lehnt der Endpunkt ihn als zu lang ab
+oder meldet er eine Tokenzahl an der Grenze, teilt OPAA den Chunk an Absatz-, Zeilen- oder
+Satzgrenzen in zwei oder drei Teile mit höchstens halber Länge und prüft sie erneut. Jeder Teil
+behält Fundort und Überschrift. Kürzere Chunks laufen wie bisher gesammelt und kosten keinen eigenen
+Aufruf. Die Einzelaufrufe laufen so parallel wie die Stapel (`OPAA_INDEXING_EMBEDDING_CONCURRENCY`);
+eine zu niedrig eingestellte Grenze kostet trotzdem viele Einzelaufrufe und teilt Chunks, die
+gepasst hätten. Jede Teilung steht im Log und in der Kennzahl
+`opaa_indexing_embedding_inputs_total` ([Logs und Metriken](betrieb.md#logs-und-metriken)).
+
+Typische Werte: ein unverändert gezogenes Ollama-Modell 2.048, die Embedding-Modelle von OpenAI
+8.191.
+
+- **Ohne Tokenzahl:** Meldet der Endpunkt keine Tokenzahl, bleibt der Chunk ganz. Das Log warnt,
+  dass eine Kürzung nicht auszuschließen ist.
+- **Ohne neues Zerlegen:** Die Neueinbettung nach einem Modellwechsel und der Nachlauf des
+  Kontextpräfixes behalten den Zuschnitt. Kürzt der Endpunkt dort einen Chunk, behält OPAA den
+  gekürzten Vektor, damit der Lauf durchläuft und die Vektorsuche umschalten kann. Das Log warnt,
+  die Kennzahl zählt den Chunk als `cut`, und das Dokument wird für den
+  [Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug) vorgemerkt. Der Nachzug liest
+  es aus der Quelle neu und teilt den Chunk dabei. Nur wenn der Endpunkt den Chunk ablehnt statt
+  ihn zu kürzen, scheitert das Dokument.
+- **Grenze zu hoch eingestellt:** Kürzt der Endpunkt früher als eingestellt, bemerkt OPAA das nicht.
+  Die Einstellung muss zum Endpunkt passen.
+
+**Ollama.** Über den OpenAI-kompatiblen Weg, den OPAA nutzt, kürzt Ollama ohne Meldung und zählt
+nur die behaltenen Tokens. Die Grenze ist dabei die Stapelgröße des Modells (`num_batch`), nicht
+seine Kontextlänge. Ein unverändertes Modell nimmt deshalb 2.048 Tokens auf, auch wenn es mehr
+kann. `OLLAMA_CONTEXT_LENGTH` hebt die Grenze nicht, und Optionen in der Anfrage wirken auf diesem
+Weg nicht. Mehr nimmt ein Modell nur auf, wenn es mit `PARAMETER num_ctx` und
+`PARAMETER num_batch` in einer Modelfile neu angelegt wird. Der Compose-Stapel legt `bge-m3` so an
+([Docker Compose](docker-compose.md#lokal-betriebenes-ollama-im-compose-stack)); bei einem
+eigenen Ollama-Server dieselben Schritte:
+
+```bash
+ollama pull bge-m3
+printf 'FROM bge-m3\nPARAMETER num_ctx 8192\nPARAMETER num_batch 8192\n' > Modelfile
+ollama create bge-m3 -f Modelfile
+```
+
+Der Name bleibt `bge-m3`. Erst danach `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` auf `8192` setzen;
+die Vorgabe passt zu jedem unverändert gezogenen Modell. Ein späteres `ollama pull bge-m3` stellt
+die alten Werte wieder her; danach das Anlegen wiederholen. Der Arbeitsspeicher wächst mit der Länge der tatsächlichen Eingabe,
+nicht mit der eingestellten Grenze.
 
 ### Modell wechseln
 
@@ -199,6 +279,13 @@ nach fünf gescheiterten Dokumenten in Folge mit „fehlgeschlagen" ab.
 4. **Abschluss.** Haben alle Chunks einen neuen Vektor, stellt OPAA die Vektorablage um, bei einer
    anderen Dimension samt Index, und die Vektorsuche läuft wieder. Start, Abbruch und Ende stehen im
    Revisionsprotokoll.
+5. **Nachzug, falls gemeldet.** Zählt das neue Modell einen Chunk über der Eingabegrenze, etwa eine
+   Zahlentabelle, die `bge-m3` in mehr Tokens zerlegt als `nomic-embed-text`, bettet die
+   Neueinbettung ihn gekürzt ein und merkt sein Dokument für den Nachzug vor; das Log nennt die
+   Pipeline. Danach den Nachzug dieser Pipeline über die Admin-API aufrufen, mit ihrer Kennung als
+   `pipelineId` und ihrer aktuellen Version als `belowVersion`, bis er `done` meldet
+   ([Pipeline-Versionen und Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug)). Er
+   teilt den Chunk.
 
 Ein Wechsel nur des Endpunkts, etwa auf einen anderen Server mit demselben Modell, gilt nicht als
 Modellwechsel. Wer vor dem Abschluss zum alten Modell zurückkehrt, verwirft die neuen Vektoren. Die
@@ -209,15 +296,15 @@ ihr Dokument erneut indiziert wird. Eine unveränderte Datei überspringt der Ab
 
 **Dauer und Ressourcen.** Die Neueinbettung kostet so viele Embedding-Aufrufe wie eine
 Indexierung des Bestands, aber kein Lesen, Zerlegen oder Texterkennen. Auf einer CPU bestimmt das
-Modell die Dauer: `bge-m3` braucht dort etwa doppelt so lange wie `nomic-embed-text` und belegt beim
-Einbetten rund 3,3 GB Arbeitsspeicher statt rund 0,3 GB. Die Neueinbettung arbeitet ein Dokument
+Modell die Dauer; die Ressourcen der beiden Modelle stehen unter
+[Welches Embedding-Modell](#welches-embedding-modell). Die Neueinbettung arbeitet ein Dokument
 nach dem anderen ab; wie viele Chunks ein Aufruf trägt, begrenzt allein das Token-Budget eines
 Aufrufs. Für ein großes Modell auf einer CPU wirkt deshalb nur eine längere
 `OPAA_OPENAI_EMBEDDING_TIMEOUT`. Für die Indexierung neuer Dokumente mit demselben Modell helfen
 zusätzlich eine kleinere `OPAA_INDEXING_BATCH_SIZE`, `OPAA_INDEXING_EMBEDDING_CONCURRENCY` von 1 und
-eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` ([Konfiguration](konfiguration.md)). Bei Ollama
-begrenzt die Kontextlänge des Modells die Länge eines Chunks; ein zu langer Chunk lässt sein Dokument
-scheitern.
+eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` ([Konfiguration](konfiguration.md)). Wie lang ein
+Chunk für das neue Modell sein darf, steht unter
+[Eingabegrenze des Embedding-Modells](#eingabegrenze-des-embedding-modells).
 
 Lässt sich ein Dokument nicht einbetten, läuft die Neueinbettung über die übrigen weiter und endet
 „fehlgeschlagen"; das Log nennt die Dokumente. Scheitern fünf Dokumente in Folge, bricht sie gleich
@@ -304,8 +391,11 @@ und im Protokoll des Backends.
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
 | Die erste Einbettung scheitert mit einem Dimensionsfehler | `OPAA_PGVECTOR_DIMENSIONS` passt nicht zum Embedding-Modell ([Embedding](#embedding)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
-| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar, Zeitgrenze zu kurz oder einzelne Chunks zu lang für das Modell; Log prüfen, beheben und fortsetzen |
+| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Zeitgrenze zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)) |
+| Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
+| Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
+| Log: Endpunkt meldete keine Tokenzahl | Eine stille Kürzung ist nicht auszuschließen; einen Endpunkt nutzen, der die Tokenzahl meldet, oder die Zielgröße senken |
 | Dokumente enden mit `FAILED`, Fragen scheitern, alles andere läuft | Modellserver nicht erreichbar oder Modell nicht geladen; unter Compose mit Profil `ollama` zuerst `docker compose logs ollama-pull` |
 | Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)) |
 | Verbindungsfehler gegen vLLM | HTTP/1.1-Modus fehlt ([vLLM](#vllm--openai-kompatible-server)) |

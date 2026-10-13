@@ -388,21 +388,29 @@ services:
       - ollama
 
   # One-shot init step (#720): pulls both models this stack's own defaults need on first start -
-  # nomic-embed-text (OPAA_OPENAI_EMBEDDING_MODEL default) and phi3:mini (OPAA_OPENAI_CHAT_MODEL
-  # default - also the model io.opaa.llm.LlmModelSeeder takes over as the initial active chat
-  # model on first backend start). Without both pulled, the first chat/indexing request fails even
-  # though the "ollama" service itself is running and healthy. Idempotent: `ollama pull` compares
-  # against what "ollama" already has stored in opaa-ollama-data and skips anything already
-  # present, so restarting this stack never re-downloads either model. Runs to completion and
-  # exits (no restart) - `docker compose --profile ollama up` therefore only finishes downloading
-  # once per fresh volume; watch `docker compose logs -f ollama-pull` for progress.
+  # bge-m3 (OPAA_OPENAI_EMBEDDING_MODEL default) and phi3:mini (OPAA_OPENAI_CHAT_MODEL default -
+  # also the model io.opaa.llm.LlmModelSeeder takes over as the initial active chat model on first
+  # backend start). Without both pulled, the first chat/indexing request fails even though the
+  # "ollama" service itself is running and healthy.
+  #
+  # bge-m3 is then created anew under its own name with num_ctx and num_batch 8192: Ollama's
+  # OpenAI-compatible route cuts an embedding input at num_batch (2048 when pulled unchanged). With
+  # OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192 uncommented in .env.docker for this profile, every
+  # chunk up to the 8,000-character ceiling fits; left at its default of 2048, OPAA splits longer
+  # chunks instead. A later pull restores the pulled parameters, which is why this step runs the
+  # create after every pull. Idempotent: `ollama pull` skips layers already stored in
+  # opaa-ollama-data, and the create reuses them. Runs to completion and exits (no restart); watch
+  # `docker compose logs -f ollama-pull` for progress.
   ollama-pull:
     image: ollama/ollama:0.40.3
     environment:
       OLLAMA_HOST: "ollama:11434"
     entrypoint: ["/bin/sh", "-c"]
     command: >-
-      "ollama pull nomic-embed-text && ollama pull phi3:mini"
+      "ollama pull bge-m3
+      && printf 'FROM bge-m3\nPARAMETER num_ctx 8192\nPARAMETER num_batch 8192\n' > /tmp/Modelfile
+      && ollama create bge-m3 -f /tmp/Modelfile
+      && ollama pull phi3:mini"
     depends_on:
       ollama:
         condition: service_healthy
