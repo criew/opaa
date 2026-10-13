@@ -1006,6 +1006,49 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     ).toBeInTheDocument()
   }, 20000)
 
+  // docs/design/accessibility.md 2.7, as in the Bearbeiten-Dialog of the Reiter „Quelle"
+  describe('errors at their field in „Quelle einrichten“ (#2193)', () => {
+    it('ties a wrong path to its field, focuses it and lets the step stand', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Dateisystem/)
+      const path = screen.getByLabelText(/Verzeichnispfad/)
+      await user.type(path, 'relativ/pfad')
+
+      await next(user)
+
+      expect(path).toHaveAttribute('aria-invalid', 'true')
+      expect(path).toHaveAccessibleDescription(/muss ein absoluter Pfad sein/)
+      expect(path).toHaveFocus()
+      expect(screen.getByText('Verbindung zum Dateisystem')).toBeInTheDocument()
+    }, 15000)
+
+    it('ties a missing address to the URL field', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Webverzeichnis/)
+
+      await next(user)
+
+      const url = screen.getByLabelText('Adresse (URL)')
+      expect(url).toHaveAccessibleDescription(/Adresse \(URL\) ist erforderlich/)
+      expect(url).toHaveFocus()
+    }, 15000)
+
+    it('ties a missing S3 access key to its field', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /S3-Objektspeicher/)
+      await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+
+      await next(user)
+
+      const accessKey = screen.getByLabelText('Access Key')
+      expect(accessKey).toHaveAccessibleDescription(/Access Key ist erforderlich/)
+      expect(accessKey).toHaveFocus()
+    }, 15000)
+  })
+
   // #514: ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.
   it('drops a connection test result when the source type changes (#514)', async () => {
     const user = userEvent.setup()
