@@ -168,8 +168,8 @@ database:
 
 embedding:
   baseUrl: https://modelle.example.org/v1
-  model: nomic-embed-text
-  dimensions: 768
+  model: bge-m3
+  dimensions: 1024
 
 bootstrap:
   initialAdmin:
@@ -847,13 +847,17 @@ keinen Modellserver mit.
 ```yaml
 embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
-  model: nomic-embed-text
-  dimensions: 768
+  model: bge-m3
+  dimensions: 1024
 bootstrap:
   chatModel:
     baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
     model: qwen2.5:7b
 ```
+
+Ein unverändert gezogenes Modell nimmt 2.048 Tokens auf, dazu passt die Vorgabe von
+`embedding.maxInputTokens`. Wer `bge-m3` per Modelfile mit 8.192 Tokens anlegt, setzt
+`maxInputTokens: 8192` ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
 Mit eingeschalteten Egress-Policies braucht das Backend eine Regel zum Namespace des Modellservers
 (siehe [NetworkPolicies](#networkpolicies)).

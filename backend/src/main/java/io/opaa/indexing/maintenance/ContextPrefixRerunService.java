@@ -4,6 +4,7 @@ import io.opaa.api.types.DocumentStatus;
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
+import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
@@ -183,11 +184,17 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       metrics.recordEmbeddingInputsCut(outcome.cut());
       log.warn(
           "{} chunk(s) of document {} reached the embedding input limit of {} tokens and were"
-              + " written cut short; the document is marked for the pipeline re-index, which"
-              + " splits them",
+              + " written cut short; the document is marked for the pipeline re-index of"
+              + " pipeline {}, which splits them",
           outcome.cut(),
           documentId,
-          vectorChunkStore.maxInputTokens());
+          vectorChunkStore.maxInputTokens(),
+          stored
+              .getFirst()
+              .metadata()
+              .getOrDefault(
+                  ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY,
+                  ChunkFormatMetadata.LEGACY_PIPELINE_ID));
     }
     if (outcome.rewritten() != stored.size()) {
       // A concurrent ingest or deletion took chunks away after they were read; the document row

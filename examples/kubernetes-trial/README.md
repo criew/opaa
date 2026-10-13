@@ -95,7 +95,9 @@ Adresse und Chat-Modell sind Startwerte von OPAA: Der erste Start übernimmt den
 samt Issuer und das Chat-Modell in die Datenbank. Ein späteres `up` mit anderem `TRIAL_PORT` oder
 `TRIAL_CHAT_MODEL` ändert daran nichts. Für einen anderen Port oder ein anderes erstes Modell wird der
 Aufbau mit `down` und `up` neu angelegt; ein weiteres Chat-Modell lässt sich auch in der
-Modellverwaltung eintragen. Das Einbettungsmodell ist fest `nomic-embed-text` mit 768 Dimensionen.
+Modellverwaltung eintragen. Das Einbettungsmodell ist fest `nomic-embed-text` mit 768 Dimensionen, das
+im Erprobungsaufbau weniger Arbeitsspeicher braucht als die Vorgabe `bge-m3`. Seine Eingabegrenze steht
+deshalb auf 2.048 Tokens (`embedding.maxInputTokens`); längere Chunks teilt OPAA.
 
 **Kleine Modelle setzen keine Zitatmarken.** Mit `qwen2.5:3b` und `qwen2.5:1.5b` stand in keiner der
 gemessenen Antworten eine Zitatmarke; die Fundstellen erscheinen unter **Belege anzeigen** als

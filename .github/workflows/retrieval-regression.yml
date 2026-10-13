@@ -208,6 +208,12 @@ jobs:
         working-directory: backend
         run: ./gradlew ${{ matrix.task }}
 
+      # The unpacked ollama/ollama image alone takes 9.36 GB (ADR-0012, decision 68), plus the
+      # models and the Testcontainers volumes; this shows how much room the runner has left.
+      - name: Freien Platz auf dem Runner ausgeben
+        if: always()
+        run: df -h
+
       # PR #301 review, Befund 3 (zweite Runde: die Größenprüfung allein reicht nicht — ein Pull,
       # der z. B. bei ~60% abbricht, kann die 150-MB-Schwelle bereits überschreiten und würde
       # trotzdem dauerhaft unter dem unveränderlichen Cache-Schlüssel landen; Ollama hinterlässt
@@ -575,6 +581,12 @@ jobs:
       - name: 'Mehrrunden-Regression (verwaltung) ausführen'
         working-directory: backend
         run: ./gradlew ${{ matrix.task }}
+
+      # The unpacked ollama/ollama image alone takes 9.36 GB (ADR-0012, decision 68), plus the
+      # models and the Testcontainers volumes; this shows how much room the runner has left.
+      - name: Freien Platz auf dem Runner ausgeben
+        if: always()
+        run: df -h
 
       # Kein Cache-Export in diesem Job: Der Schlüssel ist unveränderlich, und der Job `evaluate`
       # schreibt ihn ohnehin — ein zweiter Export wäre ein No-op mit zusätzlicher Laufzeit.

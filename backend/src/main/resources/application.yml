@@ -113,9 +113,9 @@ spring:
       embedding:
         api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
         base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
-        model: ${OPAA_OPENAI_EMBEDDING_MODEL:nomic-embed-text}
-        # Per embedding call; a batch of a large model on CPU can take minutes.
-        timeout: ${OPAA_OPENAI_EMBEDDING_TIMEOUT:60s}
+        model: ${OPAA_OPENAI_EMBEDDING_MODEL:bge-m3}
+        # Per embedding call; a batch of bge-m3 on CPU takes well over a minute.
+        timeout: ${OPAA_OPENAI_EMBEDDING_TIMEOUT:180s}
     mcp:
       server:
         # The MCP server of the external-access channel (#1721, ADR-0035): stateless Streamable
@@ -141,7 +141,7 @@ spring:
         schema-name: ${opaa.database.schema}
         index-type: hnsw
         distance-type: ${OPAA_PGVECTOR_DISTANCE_TYPE:cosine_distance}
-        dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1536}
+        dimensions: ${OPAA_PGVECTOR_DIMENSIONS:1024}
 
 opaa:
   permission:
@@ -282,6 +282,8 @@ opaa:
     # The input limit of the embedding endpoint in tokens, as it is served: with Ollama the batch
     # size (num_batch), not the model's own context. An input that could reach it is embedded alone
     # and split when the endpoint refuses it or counts the limit (VectorChunkStore#checkInputs).
+    # 2048 holds for every Ollama model as pulled; only a model created with a larger num_batch, such
+    # as bge-m3 from the Compose ollama-pull step, takes more and gets its value set explicitly.
     max-input-tokens: ${OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS:2048}
   # #1050: the rerank model role - on the same level as the chat and embedding roles. The switch
   # is deliberately separate from the endpoint fields: reranking being off must be an operator's

@@ -15,12 +15,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * with the Liquibase schema. The signature pins the configured size to 1536 and switches Spring
  * AI's schema initialisation off, so each test builds the table it needs - a table stuck at another
  * size included - and drops it again; that is why this class cannot share the canonical database.
- * The configured model is the default, {@code nomic-embed-text}.
+ * The configured model is the default, {@code bge-m3}.
  */
 @OpaaPropertyVariantIntegrationTest
 class EmbeddingIndexReconcilerIntegrationTest {
 
-  private static final String CONFIGURED_MODEL = "nomic-embed-text";
+  private static final String CONFIGURED_MODEL = "bge-m3";
 
   @Autowired private EmbeddingIndexReconciler reconciler;
   @Autowired private EmbeddingIndexState state;

@@ -130,7 +130,7 @@ final class EvalEmbeddingContinuity {
               "The eval Ollama (%s) embeds '%s' discontinuously: the prefix of %d characters (%d"
                   + " tokens) has cosine %.4f to the one %d characters shorter, below %.2f. This"
                   + " Ollama evaluates long inputs in several batches, which a bidirectional"
-                  + " encoder cannot; every chunk above %d tokens gets a wrong vector, so no run"
+                  + " encoder cannot; every chunk beyond %d tokens gets a wrong vector, so no run"
                   + " on it is a measurement (ADR-0012, Nachtrag Ollama-Fassung).",
               EvalOllamaEndpoint.describeImageOrEndpoint(),
               model,
@@ -139,7 +139,7 @@ final class EvalEmbeddingContinuity {
               worst,
               PREFIX_STEP_CHARS,
               MIN_NEIGHBOUR_COSINE,
-              BATCH_BOUNDARY_TOKENS - 1));
+              BATCH_BOUNDARY_TOKENS));
     }
     return worst;
   }
