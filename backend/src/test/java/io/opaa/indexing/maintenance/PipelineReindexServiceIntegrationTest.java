@@ -9,6 +9,7 @@ import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.file.fallback.TikaFallbackFormat;
+import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.ChecksumService;
@@ -76,6 +77,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class PipelineReindexServiceIntegrationTest {
 
   private static final Path classTempDir = OpaaTestDirectory.subdirectory("pipeline-reindex");
+
+  /** The fingerprint of a target size this context does not run with. */
+  private static final String OLD_TARGET_FINGERPRINT =
+      new HeadingSectionSplitter(2_000).chunkingFingerprint();
 
   @Autowired private PipelineReindexService reindexService;
   @Autowired private DocumentRepository documentRepository;
@@ -782,6 +787,115 @@ class PipelineReindexServiceIntegrationTest {
   }
 
   @Test
+  void chunksCutUnderAnotherTargetSizeAreStaleAndReChunkedAtTheCurrentOne() throws IOException {
+    // The target size changed since these chunks were cut: same pipeline, same version, but the
+    // fingerprint names the old setting. Only the fingerprint can make them due.
+    DocumentFormat markdown = markdownPipeline();
+    Document document =
+        persistedFilesystemDocument(
+            "richtlinie.md",
+            "# Richtlinie\n\n## Geltungsbereich\n\nDie Richtlinie gilt für alle Ämter.\n\n");
+    seedChunk(
+        document.getId(),
+        library.getId(),
+        "alter chunk eins",
+        markdown.id(),
+        markdown.version(),
+        ".md",
+        OLD_TARGET_FINGERPRINT);
+    seedChunk(
+        document.getId(),
+        library.getId(),
+        "alter chunk zwei",
+        markdown.id(),
+        markdown.version(),
+        ".md",
+        OLD_TARGET_FINGERPRINT);
+
+    PipelineVersionProgress before = ownProgress();
+    assertThat(before.totalChunks()).isEqualTo(2);
+    assertThat(before.staleChunks()).isEqualTo(2);
+    assertThat(before.currentVersionChunks()).isZero();
+    assertThat(before.isComplete()).isFalse();
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(Organization.DEFAULT_ID, markdown.id(), markdown.version(), 10);
+
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(documentRepository.findById(document.getId())).isPresent();
+    assertThat(chunkTextsOf(document.getId()))
+        .isNotEmpty()
+        .noneMatch(text -> text.startsWith("alter chunk"));
+    assertThat(chunkingFingerprintsOf(document.getId()))
+        .containsOnly(markdown.chunkingFingerprint());
+    assertThat(pipelineIdsOf(document.getId())).containsOnly(markdown.id());
+    assertThat(ownProgress().staleChunks()).isZero();
+    assertThat(ownProgress().isComplete()).isTrue();
+    // Converges: the rewritten chunks carry the current fingerprint and are not selected again.
+    assertThat(
+            reindexService
+                .reindexBatch(Organization.DEFAULT_ID, markdown.id(), markdown.version(), 10)
+                .isEmpty())
+        .isTrue();
+  }
+
+  @Test
+  void chunksWithoutRecordedFingerprintCountAsCutAtTheDefaultTargetSize() throws IOException {
+    // Written before the fingerprint existed, when the target size was fixed at the default this
+    // context also runs with: an upgrade must not make the whole bestand due.
+    DocumentFormat markdown = markdownPipeline();
+    Document document = persistedFilesystemDocument("vermerk.md", "# Vermerk\n\nInhalt.\n\n");
+    seedChunk(document.getId(), library.getId(), "chunk", markdown.id(), markdown.version(), ".md");
+
+    PipelineVersionProgress progress = ownProgress();
+    assertThat(progress.staleChunks()).isZero();
+    assertThat(progress.currentVersionChunks()).isEqualTo(1);
+
+    PipelineReindexResult result =
+        reindexService.reindexBatch(Organization.DEFAULT_ID, markdown.id(), markdown.version(), 10);
+    assertThat(result.isEmpty()).isTrue();
+    assertThat(chunkTextsOf(document.getId())).containsExactly("chunk");
+  }
+
+  @Test
+  void aFormatWhoseCutIgnoresTheTargetSizeIsNeverDueForIt() throws IOException {
+    // The fallback cuts by tokens; a target-size fingerprint on its chunk says nothing about it.
+    Document document = persistedFilesystemDocument("notiz.txt", "Inhalt der Notiz. ");
+    seedChunk(
+        document.getId(),
+        library.getId(),
+        "chunk",
+        TikaFallbackFormat.ID,
+        TikaFallbackFormat.VERSION,
+        ".txt",
+        OLD_TARGET_FINGERPRINT);
+
+    assertThat(ownProgress().staleChunks()).isZero();
+    assertThat(
+            reindexService
+                .reindexBatch(
+                    Organization.DEFAULT_ID, TikaFallbackFormat.ID, TikaFallbackFormat.VERSION, 10)
+                .isEmpty())
+        .isTrue();
+  }
+
+  private DocumentFormat markdownPipeline() {
+    return pipelineRegistry.pipelines().stream()
+        .filter(candidate -> candidate.handledFormats().contains(".md"))
+        .findFirst()
+        .orElseThrow(() -> new IllegalStateException("No Markdown pipeline registered"));
+  }
+
+  private List<String> chunkingFingerprintsOf(UUID documentId) {
+    return jdbcTemplate.queryForList(
+        "SELECT metadata->>'"
+            + ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY
+            + "' FROM vector_store WHERE metadata->>'document_id' = ?",
+        String.class,
+        documentId.toString());
+  }
+
+  @Test
   void anUnavailableUploadStoreEndsTheBatchAfterReportingTheFirstDocument() throws IOException {
     // Two uploaded documents whose originals lie in the managed storage, so the real UPLOAD branch
     // of the source access runs. A store that does not answer refuses every one of them alike
@@ -1456,9 +1570,21 @@ class PipelineReindexServiceIntegrationTest {
     return seedChunk(documentId, libraryId, text, pipelineId, pipelineVersion, null);
   }
 
+  private UUID seedChunk(
+      UUID documentId,
+      UUID libraryId,
+      String text,
+      String pipelineId,
+      Short pipelineVersion,
+      String routingExtension) {
+    return seedChunk(
+        documentId, libraryId, text, pipelineId, pipelineVersion, routingExtension, null);
+  }
+
   /**
    * Like the four-argument overload, additionally seeding {@link
-   * ChunkFormatMetadata#ROUTING_EXTENSION_METADATA_KEY} - {@code null} omits the key entirely (the
+   * ChunkFormatMetadata#ROUTING_EXTENSION_METADATA_KEY} and {@link
+   * ChunkFormatMetadata#CHUNKING_FINGERPRINT_METADATA_KEY} - {@code null} omits a key entirely (the
    * earlier Altbestand this class's other tests already cover), matching a forward-written chunk
    * otherwise.
    */
@@ -1468,7 +1594,8 @@ class PipelineReindexServiceIntegrationTest {
       String text,
       String pipelineId,
       Short pipelineVersion,
-      String routingExtension) {
+      String routingExtension,
+      String chunkingFingerprint) {
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(VectorChunkStore.DOCUMENT_ID_METADATA_KEY, documentId.toString());
     metadata.put(VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString());
@@ -1479,6 +1606,9 @@ class PipelineReindexServiceIntegrationTest {
     }
     if (routingExtension != null) {
       metadata.put(ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY, routingExtension);
+    }
+    if (chunkingFingerprint != null) {
+      metadata.put(ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY, chunkingFingerprint);
     }
     org.springframework.ai.document.Document chunk =
         new org.springframework.ai.document.Document(text, metadata);

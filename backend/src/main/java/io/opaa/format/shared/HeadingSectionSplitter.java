@@ -88,6 +88,19 @@ public final class HeadingSectionSplitter {
     return softChunkCharLimit;
   }
 
+  /**
+   * What a chunk cut before the target size was recorded counts as: until then the target size was
+   * fixed at {@link #DEFAULT_SOFT_CHUNK_CHAR_LIMIT}.
+   */
+  public static final String UNRECORDED_CHUNKING_FINGERPRINT = null;
+
+  /**
+   * The {@link io.opaa.format.DocumentFormat#chunkingFingerprint()} of every format on this cut.
+   */
+  public String chunkingFingerprint() {
+    return null;
+  }
+
   public sealed interface Event {}
 
   /** Opens a new section at {@code level}, closing every open heading of level {@code >= level}. */
