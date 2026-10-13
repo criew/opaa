@@ -166,6 +166,33 @@ flowchart TB
     AW --> FS[Fundstellen]
 ```
 
+### Frage diktieren
+
+Wo die Installation eine Spracheingabe anbietet ([Modelle](modelle.md#spracheingabe-einschalten)),
+steht im Eingabefeld neben „Senden" ein Mikrofon. Ohne eingerichteten Transkriptionsdienst und in
+einem Browser, der nicht aufnehmen kann, fehlt es.
+
+So geht es:
+
+1. **Mikrofon** („Spracheingabe starten") wählen. Beim ersten Mal fragt der Browser, ob die Seite
+   das Mikrofon nutzen darf.
+2. Die Frage sprechen. Die Laufzeit der Aufnahme steht neben dem Knopf.
+3. **Aufnahme beenden** wählen. Nach kurzer Verarbeitung steht der erkannte Text im Eingabefeld,
+   hinter dem, was dort schon getippt war.
+4. Den Text prüfen, bei Bedarf korrigieren und selbst senden. **Gesendet wird nie automatisch.**
+
+**Aufnahme verwerfen** beendet die Aufnahme, ohne etwas zu übertragen. Eine Aufnahme endet von
+selbst nach zwei Minuten und nach 15 Sekunden Stille; das bis dahin Gesprochene wird wie nach
+„Aufnahme beenden" erkannt. Scheitert die Übertragung am Netz, versucht OPAA es einmal erneut;
+danach steht eine Meldung unter dem Eingabefeld, und die Aufnahme ist verworfen.
+
+- **Freiwillig.** Tippen ist gleichwertig; es gibt keine Einstellung, die das Diktieren vorschreibt.
+- **Nichts wird gespeichert.** Die Aufnahme liegt nur während der Umwandlung im Arbeitsspeicher von
+  Browser und Server und wird danach verworfen. Gespeichert wird nur die Frage, die die Person
+  sendet — ohne Merkmal, ob sie diktiert oder getippt wurde.
+- **Rücksicht im Büro.** Im Mehrpersonenbüro hören andere mit, was diktiert wird. Nicht während
+  Telefonaten oder Gesprächen diktieren: Das Mikrofon nimmt auch andere Stimmen auf.
+
 ## 3. Was eine Frage nach außen kostet
 
 Die Pipeline läuft im Backend-Prozess und in der Datenbank. Nach außen ruft sie nur die
@@ -1132,12 +1159,14 @@ entsprechen.
   Bibliothek.
 - **Eine Kürzung der Endauswahl nach Tokens**, etwa passend zum Kontextfenster des aktiven
   Chat-Modells. `top-k` ist eine Zahl von Chunks, unabhängig von ihrer Länge und vom Modell.
+- **Text schon während des Diktierens** (Live-Transkript, #1926). Der erkannte Text erscheint
+  erst nach dem Ende der Aufnahme.
 
 ## 11. Weiterführende Kapitel
 
 - Wie die Chunks entstehen, die hier gesucht werden: [Wissensbibliotheken](wissensbibliotheken.md)
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
-- Umgebungsvariablen: [Konfiguration](konfiguration.md); Reranking einschalten: [Modelle](modelle.md#reranking-einschalten);
+- Umgebungsvariablen: [Konfiguration](konfiguration.md); Reranking und Spracheingabe einschalten: [Modelle](modelle.md#reranking-einschalten);
   Grenze des Volltextpfads: [Datenbank](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25)
 - Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
 - Spaces, Chats und was ihnen zugeordnet ist: [Spaces](spaces.md)
