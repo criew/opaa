@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useContext, useRef, useState } from 'react'
 import Accordion from '@mui/material/Accordion'
 import AccordionDetails from '@mui/material/AccordionDetails'
 import AccordionSummary from '@mui/material/AccordionSummary'
@@ -25,7 +25,8 @@ import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import { SourceIssueContext, useSourceIssue, withIssue } from './sources/sourceIssueContext'
+import type { SourceIssue } from '../../utils/sourceIssue'
 
 import {
   AWS_REGIONS,
@@ -115,9 +116,11 @@ export default function S3SourceForm({
   const [advancedOpen, setAdvancedOpen] = useState(
     () => values.includePatterns !== '' || values.excludePatterns !== '',
   )
-  // a reported pattern issue opens the section once; it stays open after the issue is cleared
-  const patternIssue = includeIssue ?? excludeIssue
-  const [shownPatternIssue, setShownPatternIssue] = useState<string | null>(null)
+  // every report of a pattern issue opens the section, even with the message of the previous one:
+  // a report is a new issue object. The section stays open after the issue is cleared.
+  const reportedIssue = useContext(SourceIssueContext)
+  const patternIssue = includeIssue !== null || excludeIssue !== null ? reportedIssue : null
+  const [shownPatternIssue, setShownPatternIssue] = useState<SourceIssue | null>(null)
   if (patternIssue !== shownPatternIssue) {
     setShownPatternIssue(patternIssue)
     if (patternIssue !== null) setAdvancedOpen(true)
