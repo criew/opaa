@@ -545,6 +545,39 @@ trägt diesen Vermerk, bis eine Fallgruppe für den Typ existiert. Vorschlagswer
 Diskussionspapieren (600 für PDF, 500 für HTML, 400 für E-Mail, 800 als Fallback) sind Ausgangspunkte,
 keine Festlegungen — und im Sinne der Regel oben durchweg *gesetzt*.
 
+#### Zielgröße des strukturbewussten Schnitts (#2507)
+
+Alle Pipelines auf `HeadingSectionSplitter` (`markdown`, `docx`, `odt`, `html`, `confluence`,
+`pdf`, `pptx`, `odp`, `tabular`) teilen eine Zielgröße in **Zeichen**. Sie ist seit #2507 über
+`opaa.indexing.chunk-target-characters` (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`) einstellbar,
+Default 4.000, zulässig 500 bis 8.000. Die Einstellbarkeit ist eine Stellschraube der Ebene 1 im
+Sinne von [Regel (c)](#c-chunk-größen-entscheidet-die-pipeline-nicht-ein-admin-regler): für Messung
+und begründete Einzelfälle, nicht als Regler in der Oberfläche.
+
+Aus der Zielgröße abgeleitet, also mit ihr skaliert:
+
+- die Grenze, bis zu der Kleinstabschnitte zusammengelegt werden (siehe unten),
+- das Mindestbudget des Rumpfs neben einem wiederholten Kontext (Folientitel, Kontext- und
+  Kopfzeile einer Tabelle): die halbe Zielgröße (`HeadingSectionSplitter#bodyBudget`),
+- die Zeichengrenze einer Tabellen-Zeilengruppe.
+
+Absolut und damit unabhängig von der Zielgröße bleiben die Höchstgröße von 8.000 Zeichen (sie folgt
+aus dem Token-Budget des Embedding-Schritts) und die Kleinstabschnitt-Schwelle von 200 Zeichen (sie
+beschreibt einen einzelnen §, nicht den Chunk, und ist gegen die Verwaltungsdomäne gemessen). Die
+Untergrenze 500 hält die Zielgröße deutlich über dieser Schwelle.
+
+**Verhältnis zu `opaa.indexing.chunk-size`:** Die beiden Werte sind unabhängig. `chunk-size` zählt
+**Tokens** (Default 1.000, mit `chunk-overlap`) und gilt nur für die Tika-Auffang-Pipeline und
+strukturlose Texte (`ChunkingService`, auch der Mail-Pfad); die Zielgröße zählt **Zeichen** und gilt
+nur für die Pipelines oben. Die 4.000 Zeichen waren ursprünglich als Größenordnung von 1.000 Tokens
+gesetzt; deutscher Verwaltungstext liegt eher bei 3 bis 3,5 Zeichen je Token, 4.000 Zeichen
+entsprechen also etwa 1.100 bis 1.300 Tokens, 2.000 Zeichen etwa 550 bis 650.
+
+Eine geänderte Zielgröße erhöht keine Pipeline-Version und löst keinen Nachzug aus: Sie gilt für
+Dokumente, die danach indexiert werden. Ein einheitlicher Bestand braucht eine vollständige
+Neuindizierung. Ein Default-Wechsel, der den Bestand betreffen soll, hebt deshalb die Versionen der
+betroffenen Pipelines an.
+
 Das Messverfahren — Korpus je Dokumentklasse, Kennzahlen, Baseline-Vergleich — steht in
 [Retrieval-Benchmark](./retrieval-benchmark.md); der
 Messvertrag selbst in [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), das
@@ -568,8 +601,9 @@ Zeile, und er belegt einen Platz im Kontextfenster, ohne eine Frage beantworten 
 `HeadingSectionSplitter#chunk` legt deshalb aufeinanderfolgende Kleinstabschnitte zusammen — Abschnitte,
 deren eigener Titel und Text zusammen unter `SMALL_SECTION_CHAR_LIMIT` (200 Zeichen) liegen:
 
-- Zusammengelegt wird bis zur Zielgröße `SOFT_CHUNK_CHAR_LIMIT` (4.000 Zeichen, dieselbe Konstante
-  wie für das Teilen); eine eigene Konfiguration gibt es nicht. Ein Abschnitt ab 200 Zeichen bleibt
+- Zusammengelegt wird bis zur Zielgröße (Default 4.000 Zeichen, dieselbe wie für das Teilen,
+  siehe [Zielgröße des strukturbewussten Schnitts](#zielgröße-des-strukturbewussten-schnitts-2507));
+  eine eigene Konfiguration für das Zusammenlegen gibt es nicht. Ein Abschnitt ab 200 Zeichen bleibt
   immer ein eigener Chunk, ebenso ein für seine Länge geteilter Abschnitt.
 - Zusammengelegt werden nur Geschwister: Abschnitte mit genau derselben übergeordneten
   Überschrift. Eine kurze Einleitung dieser Überschrift darf die Gruppe anführen. Eine Einleitung
@@ -611,12 +645,13 @@ Mehrrunden-Pfad aber fiel die Runde „Wer vertritt die Sachbearbeitung des Kult
 Toleranz und ohne Vorher-Lauf am selben Tag nicht sicher zugeordnet, aber genau die Runde zu dem
 veränderten Chunk und ein Verlust ohne Gegenwert.
 
-Die Zielgröße von 4.000 Zeichen bleibt **gesetzt** wie in #2327. Ob das Zusammenlegen bei echten
+Die Zielgröße (Default 4.000 Zeichen) bleibt **gesetzt** wie in #2327. Ob das Zusammenlegen bei echten
 Kleinstchunks (Haushaltspläne, Satzungsanlagen) die Suche verbessert, misst der Korpus nicht: Er
 enthält solche Dokumente nicht.
 
 **Sehr breite Tabellen.** Übersteigen Kontext- und Kopfzeile einer Tabelle schon die halbe
-Zielgröße, bleiben den Datenzeilen trotzdem 2.000 Zeichen je Chunk — derselbe Anteil, den
+Zielgröße, bleibt den Datenzeilen trotzdem die halbe Zielgröße je Chunk (beim Default 2.000
+Zeichen) — derselbe Anteil, den
 `HeadingSectionSplitter#boundedChunks` dem Rumpf einer Einheit lässt. Vorher schloss jede
 Datenzeile ihre Gruppe sofort, und jede Zeile wurde ein eigener Chunk mit der vollen Kopfzeile
 (`tabular` 3). Das Budget ist zugleich an der harten Grenze gedeckelt
@@ -910,7 +945,8 @@ schlichtes, wohlgeformtes XML. Damit bedient dieselbe Pipeline auch das „ODS w
   (a)), und bleibt an derselben Stelle zitierfähig wie der übrige Chunk-Text. Für XLSX/ODS fallen Blatt- und Tabellenname
   zusammen: Excels separates Konzept „definierte Tabelle" wird nicht eigens erkannt.
 - Eine Zeilengruppe von bis zu 50 Datenzeilen bildet einen Chunk, vorzeitig geschlossen, wenn die
-  nächste Zeile den Chunk über 4.000 Zeichen triebe (bis #2327: 6.000) (Schutz gegen eine Riesenzeile mit hunderten
+  nächste Zeile den Chunk über die gemeinsame Zielgröße triebe (Default 4.000 Zeichen; bis #2327:
+  6.000) (Schutz gegen eine Riesenzeile mit hunderten
   Spalten oder einer sehr langen Zelle) — eine einzelne Zeile, die diese Grenze für sich allein schon
   überschreitet, wird trotzdem als eigener Chunk ausgegeben, statt mitten in der Zeile geschnitten oder
   verworfen zu werden. **Gesetzt, nicht gemessen** (siehe
@@ -1013,11 +1049,12 @@ gelten. Text vor der ersten Überschrift wird als eigener, pfadloser Chunk ausge
 **Größenkontrolle über Blockgrenzen, nicht nur über einen harten Deckel** (#1059 Review, Befund 3):
 Ein Abschnitt ohne weitere Gliederung — eine „Div-Suppe" oder eine Seite, deren §-Überschriften nur
 als `<p><strong>…</strong></p>` ausgezeichnet sind — wird an Blockgrenzen (Absätze, Listenpunkte,
-Tabellenzeilen) in mehrere, je höchstens 4.000 Zeichen große Chunks weitergeschnitten, statt einen
+Tabellenzeilen) in mehrere, je höchstens eine Zielgröße (Default 4.000 Zeichen) große Chunks
+weitergeschnitten, statt einen
 einzigen, mit der Seite mitwachsenden Chunk zu bilden. **Gesetzt, nicht gemessen** — der
 Evaluierungskorpus enthält bislang keine HTML-Dokumente (siehe unten); 4.000 Zeichen liegen in der
 Größenordnung des bestehenden Bestands (`opaa.indexing.chunk-size` = 1000 Token). Ein einzelner
-Block, der für sich allein schon über 4.000 Zeichen liegt (z. B. ein Absatz ohne jede innere
+Block, der für sich allein schon über der Zielgröße liegt (z. B. ein Absatz ohne jede innere
 Gliederung oder ein mehrseitiger PDF-Abschnitt ohne Lesezeichen), wird in sich weitergeschnitten:
 an Leerzeilen, Zeilenumbrüchen, Satzenden, Leerzeichen, nur ohne jede solche Grenze hart
 (`BoundarySplitter`, #2327). Bis dahin wurde ein solcher Block bei 20.000 Zeichen mit
@@ -1480,7 +1517,7 @@ des Listenpunkts in einem `<p>` steht); Aufgabenlisten behalten ihren
 Zustand (`[x]`/`[ ]`);
 Code behält seine Zeilenumbrüche. Der Überschriftenpfad steht als erste Zeile im Chunk und als
 `location` („Abschn. …") in den Metadaten — geteilt mit den anderen Pipelines über
-`HeadingSectionSplitter`, Schnittbudget 4000/20000 Zeichen wie dort (gesetzt, nicht gemessen: der
+`HeadingSectionSplitter`, Schnittbudget wie dort (Zielgröße, Default 4.000 Zeichen) (gesetzt, nicht gemessen: der
 Evaluierungskorpus enthält keine Confluence-Seiten, Baseline unberührt).
 
 **Gliederungspfad der Seite** (Querschnittsregel (b)): Space-Schlüssel und Vorfahrentitel liegen

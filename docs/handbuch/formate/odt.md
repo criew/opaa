@@ -22,7 +22,7 @@ für Kopf- und Fußzeilen.
 ## 3. Struktur und Chunks
 
 - **Überschriften** kommen direkt aus der Gliederungsebene des Überschriftenelements.
-  Geschnitten wird an den Ebenen 1 bis 3, Zielgröße rund 4.000 Zeichen, größere Abschnitte werden
+  Geschnitten wird an den Ebenen 1 bis 3, Zielgröße `chunk-target-characters`, größere Abschnitte werden
   ohne Textverlust geteilt, Abschnitte unter 200 Zeichen unter derselben übergeordneten Überschrift
   zusammengelegt (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1), keine Überlappung, Überschriftenzeile
   am Anfang jedes Chunks.

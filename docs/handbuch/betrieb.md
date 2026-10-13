@@ -586,6 +586,7 @@ haben:
 | `OPAA_PGVECTOR_DIMENSIONS` geändert | Passt nicht zur bestehenden Vektortabelle; die Datenbank wird zurückgesetzt und der Korpus neu indiziert. Liegen bereits Vektoren mit anderer Dimension vor, bricht der Start mit einer klaren Meldung ab |
 | Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
 | Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |
+| `OPAA_INDEXING_CHUNK_TARGET_CHARACTERS` geändert | Gilt nur für Dokumente, die danach neu oder geändert indiziert werden; für einheitliche Chunks im ganzen Bestand vollständige Neuindizierung |
 
 Ein Wechsel des **Chat**-Modells berührt den Index nicht.
 

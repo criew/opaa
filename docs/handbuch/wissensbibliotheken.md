@@ -411,9 +411,9 @@ Einzelne Dokumente, die nicht aufgenommen wurden, nennt das Laufprotokoll mit Gr
 | Grenze | Wert | Wirkung |
 |---|---|---|
 | Ort in der Quelle | 2000 Zeichen und 2676 Byte (UTF-8), bei einem Anhang samt Ort des Elterndokuments | darüber abgewiesen, gezählt als übersprungen, nicht gespeichert; eine Dateiablage lädt die Datei gar nicht erst |
-| Zielgröße eines Chunks | rund 4.000 Zeichen, etwa 1.000 Tokens | je Abschnitt bei überschriftengetriebenen Formaten, je Seite, Folie oder Zeilengruppe bei den übrigen |
+| Zielgröße eines Chunks | `chunk-target-characters` (Abschnitt 7.5) | je Abschnitt bei überschriftengetriebenen Formaten, je Seite, Folie oder Zeilengruppe bei den übrigen |
 | Höchstgröße eines Chunks | 8.000 Zeichen | greift nur, wenn schon die Überschrift oder der Folientitel zu lang ist |
-| Kleinstabschnitt | unter 200 Zeichen samt Überschrift | wird mit benachbarten Kleinstabschnitten derselben übergeordneten Überschrift zu höchstens rund 4.000 Zeichen zusammengelegt |
+| Kleinstabschnitt | unter 200 Zeichen samt Überschrift | wird mit benachbarten Kleinstabschnitten derselben übergeordneten Überschrift bis zur Zielgröße zusammengelegt |
 | Eingabegrenze des Embedding-Modells | 8.191 Tokens abzüglich 10 % Reserve | ein Chunk darüber lässt das ganze Dokument scheitern |
 | Kennungen je Chunk | 64 | weitere werden nicht gespeichert |
 | Protokolleinträge je Lauf | 500 | weitere nur gezählt |
@@ -421,9 +421,13 @@ Einzelne Dokumente, die nicht aufgenommen wurden, nennt das Laufprotokoll mit Gr
 
 Ein zu langer Abschnitt wird an der gröbsten Grenze geteilt, die sich anbietet: an Leerzeilen, dann
 Zeilenumbrüchen, dann Satzenden, zuletzt Leerzeichen; nur eine Zeichenfolge ganz ohne solche Grenze
-wird hart geschnitten. Die Chunk-Größen sind je Pipeline fest; die einstellbaren Werte
-`chunk-size` und `chunk-overlap` gelten nur für die Auffang-Pipeline und strukturlose Texte, die
-nach Tokens mit Überlappung zum Vorgänger geschnitten werden. Seitenzahlen überleben die
+wird hart geschnitten. Die Zielgröße `chunk-target-characters` zählt Zeichen und gilt für alle
+Formate mit Struktur. Davon getrennt gelten `chunk-size` und `chunk-overlap` nur für die
+Auffang-Pipeline und strukturlose Texte, die nach Tokens mit Überlappung zum Vorgänger geschnitten
+werden; eine Änderung des einen Werts wirkt nicht auf den anderen. Eine geänderte Zielgröße gilt
+für Dokumente, die danach indexiert werden; bereits indexierte behalten ihren Zuschnitt, bis sie
+sich ändern. Für den ganzen Bestand ist eine vollständige Neuindizierung nötig
+([Betrieb](betrieb.md#was-ein-update-mit-dem-index-macht)). Seitenzahlen überleben die
 Textextraktion als Marker, die vor dem Embedden entfernt werden.
 
 An der Chunk-Anzahl eines fehlgeschlagenen Dokuments ist ablesbar, ob es noch Chunks hat: Scheitert
@@ -506,6 +510,7 @@ die Anfrage mit HTTP 503 beantwortet.
 | `attachments.max-per-parent` / `attachments.max-size-bytes` | 10 / 20 MiB | Reserve für Konnektoren ohne eigene Werte, derzeit ohne Wirkung |
 | `http.user-agent` / `http.max-rate-limit-retries` / `http.max-retry-after` | `OPAA-Indexer/1.0` / 6 / 2m | `User-Agent` jeder Anfrage an eine fremde Quelle und die 429-Wartezeit von Feed und Webverzeichnis |
 | `http.request-budget-per-run` / `http.max-rate-limit-wait-per-run` | 0 (unbegrenzt) / 15m | Anfragen und Summe der 429-Wartezeiten je Lauf bei Feed und Webverzeichnis |
+| `chunk-target-characters` | 4000 Zeichen | Zielgröße eines Chunks bei allen Formaten mit Struktur (500 bis 8.000); 4.000 Zeichen deutscher Text sind etwa 1.100 bis 1.300 Tokens |
 | `chunk-size` / `chunk-overlap` | 1000 / 100 Tokens | nur Auffang-Pipeline und strukturlose Texte |
 | `batch-size` | 50 | Chunks je Embedding-Aufruf |
 | `embedding-concurrency` | 3 | parallele Embedding-Pakete je Dokument |

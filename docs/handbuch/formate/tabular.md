@@ -28,10 +28,10 @@ Je Tabellenblatt (bei CSV: die eine Tabelle):
 
 1. Die **erste nicht-leere Zeile ist die Kopfzeile**.
 2. Die Datenzeilen werden zu **Gruppen von höchstens 50 Zeilen** zusammengefasst. Eine Gruppe
-   endet früher, wenn die nächste Zeile den Chunk über 4.000 Zeichen brächte. Sind Kontext- und
-   Kopfzeile allein schon länger als 2.000 Zeichen (eine sehr breite Tabelle), bleiben den
-   Datenzeilen trotzdem 2.000 Zeichen je Chunk, statt dass jede Zeile ein eigener Chunk mit der
-   vollen Kopfzeile wird — höchstens aber so viel, dass der Chunk die Obergrenze von 8.000
+   endet früher, wenn die nächste Zeile den Chunk über die Zielgröße `chunk-target-characters`
+   brächte. Sind Kontext- und Kopfzeile allein schon länger als die halbe Zielgröße (eine sehr
+   breite Tabelle), bleibt den Datenzeilen trotzdem die halbe Zielgröße je Chunk, statt dass
+   jede Zeile ein eigener Chunk mit der vollen Kopfzeile wird — höchstens aber so viel, dass der Chunk die Obergrenze von 8.000
    Zeichen nicht überschreitet. Eine einzelne
    Zeile, die für sich schon länger ist, wird in mehrere Chunks geteilt; jedes Teilstück beginnt
    mit Kontext- und Kopfzeile und trägt dieselbe Ortsangabe.
@@ -89,7 +89,9 @@ Schlüssel unter `opaa.indexing.tabular.*`:
 | `max-ods-rows` | 100.000 | Zeilen je ODS-Datei |
 
 Fest und nicht konfigurierbar, weil sie den Zuschnitt beschreiben und kein Sicherheitslimit
-sind: 50 Zeilen und 4.000 Zeichen je Chunk. XLSX braucht keinen eigenen Deckel, Apache POI
+sind: 50 Zeilen je Chunk. Die Zielgröße in Zeichen ist dagegen `chunk-target-characters`,
+gemeinsam für alle Formate (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md),
+Abschnitt 7.5). XLSX braucht keinen eigenen Deckel, Apache POI
 schützt prozessweit gegen ZIP-Bomben. Der ODS-Leser verarbeitet keine externen XML-Entitäten.
 
 ## 7. Nicht verarbeitet
