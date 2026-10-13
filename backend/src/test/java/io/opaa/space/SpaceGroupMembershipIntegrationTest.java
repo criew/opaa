@@ -114,6 +114,28 @@ class SpaceGroupMembershipIntegrationTest {
     assertThat(accessPolicy.isMember(space.getId(), person)).isTrue();
   }
 
+  /** The default space is private: a group is refused like a person (#2585). */
+  @Test
+  void aGroupCannotBecomeAMemberOfTheDefaultSpace() {
+    UUID owner = createUser(organizationA);
+    UUID group = createGroup(organizationA, "Referat 50", createUser(organizationA));
+    spaceService.ensureDefaultSpace(owner, organizationA);
+    Space personal =
+        spaceRepository.findByOwnerId(owner).stream()
+            .filter(Space::isDefault)
+            .findFirst()
+            .orElseThrow();
+
+    assertThatThrownBy(
+            () ->
+                spaceService.addMember(
+                    personal.getId(), groupSubject(group), SpaceRole.MEMBER, currentUserOf(owner)))
+        .isInstanceOf(ConflictException.class)
+        .hasMessageContaining("Standard-Space ist privat");
+    assertThat(membershipRepository.findBySpaceId(personal.getId()))
+        .noneMatch(membership -> group.equals(membership.getGroupId()));
+  }
+
   @Test
   void leavingTheGroupEndsTheAccessWithoutAFurtherStepAndWithoutAStaleCache() {
     UUID owner = createUser(organizationA);
