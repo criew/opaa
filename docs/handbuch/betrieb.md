@@ -582,6 +582,7 @@ haben:
 
 | Auslöser | Folge |
 |---|---|
+| Ollama mit dem Fehler bei langen Eingaben durch eine neuere Fassung ersetzt | Die Vektoren langer Chunks stammen aus der fehlerhaften Fassung; OPAA erkennt das nicht als Modellwechsel — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
 | Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
 | Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |
 | `OPAA_INDEXING_CHUNK_TARGET_CHARACTERS` geändert | Gilt nur für Dokumente, die danach neu oder geändert indiziert werden; weder ein erneuter Lauf noch der Nachzug zerlegt unveränderte Dokumente neu. Für einheitliche Chunks jede Bibliothek neu aufbauen (Falle unten) |
