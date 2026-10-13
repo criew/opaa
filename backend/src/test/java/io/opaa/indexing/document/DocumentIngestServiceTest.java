@@ -83,8 +83,6 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.filter.Filter;
-import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.beans.factory.ObjectProvider;
 
 /**
@@ -240,11 +238,6 @@ class DocumentIngestServiceTest {
     return new IndexingProperties(1000, 0, 50, null, null, null, 1);
   }
 
-  // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction.
-  private static Filter.Expression documentIdFilter(UUID documentId) {
-    return new FilterExpressionBuilder().eq("document_id", documentId.toString()).build();
-  }
-
   private static List<org.springframework.ai.document.Document> chunks(String... texts) {
     return java.util.Arrays.stream(texts)
         .map(org.springframework.ai.document.Document::new)
@@ -394,7 +387,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(localFile(file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
-      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       verify(documentRepository)
           .markFailed(existing.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
       verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
@@ -419,7 +412,7 @@ class DocumentIngestServiceTest {
 
       // Twice: once to make room for the new chunks, once to remove whatever the failed write
       // left.
-      verify(vectorStore, times(2)).delete(documentIdFilter(existing.getId()));
+      verify(vectorStoreWriter, times(2)).deleteChunksOfDocument(existing.getId());
       verify(documentRepository)
           .markFailedWithoutChunks(
               existing.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
@@ -442,7 +435,7 @@ class DocumentIngestServiceTest {
       // exactly those chunks, keyed by this document's id, or they become orphaned.
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       UUID documentId = savedDocument().getId();
-      verify(vectorStore).delete(documentIdFilter(documentId));
+      verify(vectorStoreWriter).deleteChunksOfDocument(documentId);
       verify(documentRepository)
           .markFailedWithoutChunks(documentId, DocumentIngestService.PROCESSING_FAILED_MESSAGE);
     }
@@ -463,7 +456,7 @@ class DocumentIngestServiceTest {
       assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       UUID documentId = savedDocument().getId();
-      verify(vectorStore).delete(documentIdFilter(documentId));
+      verify(vectorStoreWriter).deleteChunksOfDocument(documentId);
       verify(documentRepository, times(1)).save(any(Document.class));
       verify(documentRepository, never()).markFailed(any(), anyString());
       // The deletion race is counted as skipped, not silently dropped - processed + failed +
@@ -482,7 +475,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.SKIPPED);
       // No chunks were ever written on this path - nothing to remove from the vector store.
-      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
     }
 
@@ -522,7 +515,7 @@ class DocumentIngestServiceTest {
           .isInstanceOf(IllegalStateException.class);
       verify(documentRepository)
           .markFailed(existing.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
-      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       assertThat(counter("failed")).isEqualTo(1.0);
     }
   }
@@ -603,7 +596,7 @@ class DocumentIngestServiceTest {
       verify(documentService, never()).parseDocument(any());
       verify(chunkingService, never()).chunkDocuments(anyString(), any());
       verify(vectorStoreWriter, never()).writeEmbeddedChunks(any(), any());
-      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       verify(documentRepository, never()).save(any(Document.class));
       verify(documentRepository, never())
           .markIndexedFromSource(any(), anyInt(), any(), any(), any());
@@ -925,7 +918,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(localFile(file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
-      verify(vectorStore).delete(documentIdFilter(existing.getId()));
+      verify(vectorStoreWriter).deleteChunksOfDocument(existing.getId());
       verify(documentRepository, never()).delete(any(Document.class));
       Document saved = savedDocument();
       assertThat(saved.getId()).isEqualTo(existing.getId());
@@ -966,7 +959,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentRepository, never()).delete(any(Document.class));
-      verify(vectorStore).delete(documentIdFilter(existing.getId()));
+      verify(vectorStoreWriter).deleteChunksOfDocument(existing.getId());
       Document saved = savedDocument();
       assertThat(saved.getId()).isEqualTo(existing.getId());
       assertThat(saved.getFileName()).isEqualTo("Abschnitt 1.1 (neu)");
@@ -986,7 +979,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(localFile(file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
-      verify(vectorStore).delete(documentIdFilter(existing.getId()));
+      verify(vectorStoreWriter).deleteChunksOfDocument(existing.getId());
       verify(documentRepository, never()).delete(any(Document.class));
     }
 
@@ -1032,7 +1025,7 @@ class DocumentIngestServiceTest {
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
       verify(documentRepository, never()).delete(docInOtherLibrary);
-      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       assertThat(savedDocument().getLibraryId()).isEqualTo(targetLibrary.getId());
       assertThat(storedChunks().getFirst().getMetadata())
           .containsEntry("library_id", targetLibrary.getId().toString());
@@ -1306,7 +1299,7 @@ class DocumentIngestServiceTest {
               null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.QUOTA_EXCEEDED);
-      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       verify(documentRepository, never()).save(any(Document.class));
       assertThat(existing.getChecksum()).isEqualTo("old-sha256");
       assertThat(existing.getFileName()).isEqualTo("Alter Titel");
@@ -1913,7 +1906,7 @@ class DocumentIngestServiceTest {
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       // Once to make room before the write (an existing row is always replaced), once to remove
       // what the failed run left behind.
-      verify(vectorStore, times(2)).delete(documentIdFilter(doc.getId()));
+      verify(vectorStoreWriter, times(2)).deleteChunksOfDocument(doc.getId());
       verify(documentRepository)
           .markFailedWithoutChunks(doc.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
       verify(documentRepository, never()).delete(any(Document.class));
@@ -1961,7 +1954,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(reindex(doc, file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
-      verify(vectorStore).delete(documentIdFilter(doc.getId()));
+      verify(vectorStoreWriter).deleteChunksOfDocument(doc.getId());
       verify(vectorStoreWriter).writeEmbeddedChunks(any(), any());
       verify(documentRepository)
           .markIndexedFromSource(eq(doc.getId()), eq(1), any(), eq("same-checksum"), eq(null));
@@ -1981,7 +1974,7 @@ class DocumentIngestServiceTest {
       DocumentIngestResult result = service.ingest(reindex(doc, file), null);
 
       assertThat(result).isEqualTo(DocumentIngestResult.FAILED);
-      verify(vectorStore, never()).delete(any(Filter.Expression.class));
+      verify(vectorStoreWriter, never()).deleteChunksOfDocument(any());
       verifyNoInteractions(fullTextChunkStore);
       verify(documentRepository, never()).markFailed(any(), any());
       verify(documentRepository, never()).markFailedWithoutChunks(any(), any());
@@ -2002,8 +1995,8 @@ class DocumentIngestServiceTest {
       // The delete itself fails (a store outage) - the very boundary at which the previous state
       // stops being preserved has not been crossed, so nothing is marked.
       doThrow(new IllegalStateException("vector store down"))
-          .when(vectorStore)
-          .delete(any(Filter.Expression.class));
+          .when(vectorStoreWriter)
+          .deleteChunksOfDocument(any());
 
       assertThatThrownBy(() -> service.ingest(reindex(doc, file), null))
           .isInstanceOf(IllegalStateException.class);
@@ -2030,7 +2023,7 @@ class DocumentIngestServiceTest {
       assertThatThrownBy(() -> service.ingest(reindex(doc, file), null))
           .isInstanceOf(IllegalStateException.class);
 
-      verify(vectorStore, times(2)).delete(documentIdFilter(doc.getId()));
+      verify(vectorStoreWriter, times(2)).deleteChunksOfDocument(doc.getId());
       verify(documentRepository)
           .markFailedWithoutChunks(doc.getId(), DocumentIngestService.PROCESSING_FAILED_MESSAGE);
     }

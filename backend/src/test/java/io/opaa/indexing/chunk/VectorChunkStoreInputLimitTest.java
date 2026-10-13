@@ -182,12 +182,15 @@ class VectorChunkStoreInputLimitTest {
     List<Document> chunks =
         List.of(chunkOf(documentId, "kurz", 0), chunkOf(documentId, "x".repeat(150), 1));
 
-    VectorChunkStore.InPlaceEmbedding outcome = store.addChunksInPlace(chunks);
+    when(writer.rewriteEmbeddedChunks(any(), any())).thenReturn(2);
+
+    VectorChunkStore.Reembedded outcome = store.reembedChunks(chunks);
 
     assertThat(outcome.cut()).isEqualTo(1);
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<float[]>> vectors = ArgumentCaptor.forClass(List.class);
-    verify(writer).writeEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), vectors.capture());
+    verify(writer)
+        .rewriteEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), vectors.capture());
     assertThat(vectors.getValue().get(1)[0]).isEqualTo(LIMIT);
     verify(writer)
         .updateDocumentMetadata(
@@ -198,8 +201,8 @@ class VectorChunkStoreInputLimitTest {
   void inPlaceAChunkThatFitsLeavesThePipelineVersionAlone() {
     VectorChunkStore store = storeOn(ScriptedEmbeddingEndpoint.silentlyCutting(LIMIT), LIMIT);
 
-    VectorChunkStore.InPlaceEmbedding outcome =
-        store.addChunksInPlace(List.of(chunkOf(UUID.randomUUID(), "y".repeat(LIMIT - 1), 0)));
+    VectorChunkStore.Reembedded outcome =
+        store.reembedChunks(List.of(chunkOf(UUID.randomUUID(), "y".repeat(LIMIT - 1), 0)));
 
     assertThat(outcome.cut()).isZero();
     verify(writer, never()).updateDocumentMetadata(any(), any(), any());
@@ -210,7 +213,7 @@ class VectorChunkStoreInputLimitTest {
     VectorChunkStore store = storeOn(ScriptedEmbeddingEndpoint.refusing(LIMIT), LIMIT);
 
     assertThatThrownBy(
-            () -> store.addChunksInPlace(List.of(chunkOf(UUID.randomUUID(), "x".repeat(150), 0))))
+            () -> store.reembedChunks(List.of(chunkOf(UUID.randomUUID(), "x".repeat(150), 0))))
         .isInstanceOf(ChunkNotEmbeddableException.class);
     verifyNoInteractions(writer);
   }
