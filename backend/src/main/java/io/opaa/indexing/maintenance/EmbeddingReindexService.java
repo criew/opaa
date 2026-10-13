@@ -41,6 +41,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -231,7 +232,7 @@ public class EmbeddingReindexService {
     executor.execute(this::run);
   }
 
-  private enum Step {
+  enum Step {
     PROCESSED,
     ORPHAN_REMOVED,
     FAILED,
@@ -289,7 +290,12 @@ public class EmbeddingReindexService {
     }
   }
 
-  private Step reembed(UUID documentId, Set<UUID> failed, int[] consecutiveFailures) {
+  /**
+   * One document of the run. Every failure counts towards {@link #MAX_CONSECUTIVE_FAILURES} except
+   * chunk rows held by another writer: such a document is skipped for the rest of the run without
+   * counting.
+   */
+  Step reembed(UUID documentId, Set<UUID> failed, int[] consecutiveFailures) {
     if (stopRequested || consecutiveFailures[0] >= MAX_CONSECUTIVE_FAILURES) {
       return Step.STOPPED;
     }
@@ -305,6 +311,12 @@ public class EmbeddingReindexService {
       rerunService.reembedInPlace(document.get());
       consecutiveFailures[0] = 0;
       return Step.PROCESSED;
+    } catch (CannotAcquireLockException e) {
+      // Another writer holds the chunk rows, typically the erasure of the library. That says
+      // nothing about the embedding endpoint: skip the document for this run without counting it.
+      log.info("Document {} skipped in this re-embedding run: its chunks are locked", documentId);
+      failed.add(documentId);
+      return Step.FAILED;
     } catch (RuntimeException e) {
       log.warn("Document {} could not be re-embedded under the new model", documentId, e);
       failed.add(documentId);

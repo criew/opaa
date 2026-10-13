@@ -133,18 +133,19 @@ public class VectorChunkStore implements ChunkMetadataStore {
   }
 
   /**
-   * Embeds and writes the chunks of one document that keep their cut, for a path that cannot split
-   * (re-embedding in place). A chunk the endpoint cut silently keeps its cut vector, so the path
-   * can finish; the document's chunks are then marked with pipeline version 0, which makes the
-   * pipeline re-index read the document again and split it.
+   * Re-embeds chunks of one document that are already stored, under their own ids and with their
+   * stored text, and writes the new vectors and full-text rows only for those still stored at write
+   * time - see {@link VectorStoreWriter#rewriteEmbeddedChunks}. This path cannot split: a chunk the
+   * endpoint cut silently keeps its cut vector, so a re-embedding run can finish, and the
+   * document's chunks are then marked with pipeline version 0, which makes the pipeline re-index
+   * read the document again and split it.
    *
-   * @return how many chunks were written cut, and how many could not be verified
    * @throws ChunkNotEmbeddableException when the endpoint refuses a chunk instead of cutting it, or
    *     a chunk alone exceeds the batching strategy's token budget; nothing is written then
    */
-  public InPlaceEmbedding addChunksInPlace(List<Document> chunks) {
+  public Reembedded reembedChunks(List<Document> chunks) {
     if (chunks.isEmpty()) {
-      return new InPlaceEmbedding(0, 0);
+      return new Reembedded(0, 0, 0);
     }
     requireEmbeddable(chunks);
     EmbeddingInputCheck check = checkInputs(chunks, Map.of(), Runnable::run);
@@ -157,8 +158,11 @@ public class VectorChunkStore implements ChunkMetadataStore {
       vectors.put(inputOf(chunks.get(overlong.position())), cut);
     }
     warnUnverified(chunks, check);
-    write(chunks, Map.of(), vectors);
-    if (!check.overlong().isEmpty()) {
+    int rewritten =
+        vectorStoreWriter.rewriteEmbeddedChunks(chunks, vectorsFor(chunks, Map.of(), vectors));
+    // Chunks a concurrent ingest replaced came from a fresh cut that already split; only a
+    // document whose chunks were all rewritten here still carries a cut vector.
+    if (!check.overlong().isEmpty() && rewritten == chunks.size()) {
       Object documentId = chunks.getFirst().getMetadata().get(DOCUMENT_ID_METADATA_KEY);
       if (documentId != null) {
         vectorStoreWriter.updateDocumentMetadata(
@@ -167,17 +171,18 @@ public class VectorChunkStore implements ChunkMetadataStore {
             Set.of());
       }
     }
-    return new InPlaceEmbedding(check.overlong().size(), check.unverified().size());
+    return new Reembedded(rewritten, check.overlong().size(), check.unverified().size());
   }
 
   /**
-   * The outcome of {@link #addChunksInPlace}.
+   * The outcome of {@link #reembedChunks}.
    *
+   * @param rewritten chunks still stored at write time that got their new vector
    * @param cut chunks written with a vector the endpoint cut short; their document waits for the
    *     pipeline re-index
    * @param unverified chunks that could reach the limit, embedded without a token count
    */
-  public record InPlaceEmbedding(int cut, int unverified) {}
+  public record Reembedded(int rewritten, int cut, int unverified) {}
 
   private void warnUnverified(List<Document> chunks, EmbeddingInputCheck check) {
     if (!check.unverified().isEmpty()) {
@@ -193,6 +198,12 @@ public class VectorChunkStore implements ChunkMetadataStore {
   /** Writes {@code chunks}, embedding in batches every input neither map already holds. */
   private void write(
       List<Document> chunks, Map<String, float[]> known, Map<String, float[]> checked) {
+    vectorStoreWriter.writeEmbeddedChunks(chunks, vectorsFor(chunks, known, checked));
+  }
+
+  /** The vector of every chunk in order, embedding in batches every input neither map holds. */
+  private List<float[]> vectorsFor(
+      List<Document> chunks, Map<String, float[]> known, Map<String, float[]> checked) {
     Map<String, float[]> precomputed = new HashMap<>(known);
     precomputed.putAll(checked);
     List<Document> remaining =
@@ -201,8 +212,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
             : chunks.stream().filter(chunk -> !precomputed.containsKey(inputOf(chunk))).toList();
     List<float[]> embedded = remaining.isEmpty() ? List.of() : embedBatch(remaining);
     if (precomputed.isEmpty()) {
-      vectorStoreWriter.writeEmbeddedChunks(chunks, embedded);
-      return;
+      return embedded;
     }
     List<float[]> embeddings = new ArrayList<>(chunks.size());
     Iterator<float[]> next = embedded.iterator();
@@ -210,7 +220,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
       float[] reused = precomputed.get(inputOf(chunk));
       embeddings.add(reused != null ? reused : next.next());
     }
-    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
+    return embeddings;
   }
 
   /** {@link #checkInputs(List, Map, Executor)} with every call on the calling thread. */
@@ -407,9 +417,13 @@ public class VectorChunkStore implements ChunkMetadataStore {
     return vectorStoreWriter.updateDocumentMetadata(documentId, values, keysToClear);
   }
 
-  /** Deletes every chunk (vector and full-text) carrying the given {@code document_id} metadata. */
+  /**
+   * Deletes every chunk (vector and full-text) carrying the given {@code document_id} metadata. The
+   * vector delete waits for a running {@link #reembedChunks} of the same document instead of
+   * deadlocking with it (see {@link VectorStoreWriter#rewriteEmbeddedChunks}).
+   */
   public void deleteByDocumentId(UUID documentId) {
-    vectorStore.delete(equalsFilter(DOCUMENT_ID_METADATA_KEY, documentId));
+    vectorStoreWriter.deleteChunksOfDocument(documentId);
     fullTextChunkStore.deleteByDocumentId(documentId);
   }
 
