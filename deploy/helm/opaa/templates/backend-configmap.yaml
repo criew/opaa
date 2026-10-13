@@ -39,6 +39,9 @@ data:
   OPAA_OPENAI_EMBEDDING_BASE_URL: {{ .Values.embedding.baseUrl | quote }}
   OPAA_OPENAI_EMBEDDING_MODEL: {{ .Values.embedding.model | quote }}
   OPAA_PGVECTOR_DIMENSIONS: {{ .Values.embedding.dimensions | quote }}
+  {{- with .Values.embedding.timeout }}
+  OPAA_OPENAI_EMBEDDING_TIMEOUT: {{ . | quote }}
+  {{- end }}
   OPAA_RERANK_ENABLED: {{ .Values.rerank.enabled | quote }}
   {{- with .Values.rerank.baseUrl }}
   OPAA_RERANK_BASE_URL: {{ . | quote }}

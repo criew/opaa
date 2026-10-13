@@ -39,15 +39,19 @@ public class ChunkEmbeddingLookup {
 
   /**
    * Looks up the embedding of every given chunk id, keyed by id. A row deleted between the search
-   * and this lookup simply does not appear in the result; {@link MmrSelector} treats a missing
-   * entry as zero similarity.
+   * and this lookup, or one without a vector (written while the index was stale), does not appear
+   * in the result; {@link MmrSelector} treats a missing entry as zero similarity.
    */
   public Map<String, float[]> findByIds(List<String> chunkIds) {
     if (chunkIds.isEmpty()) {
       return Map.of();
     }
     String sql =
-        "SELECT id, embedding FROM " + schemaName + "." + tableName + " WHERE id::text = ANY(?)";
+        "SELECT id, embedding FROM "
+            + schemaName
+            + "."
+            + tableName
+            + " WHERE id::text = ANY(?) AND embedding IS NOT NULL";
     Map<String, float[]> embeddingsById = new HashMap<>();
     // RowCallbackHandler, not ResultSetExtractor: JdbcTemplate itself advances the cursor and
     // invokes this once per row - a caller-side rs.next() loop here would silently skip rows.

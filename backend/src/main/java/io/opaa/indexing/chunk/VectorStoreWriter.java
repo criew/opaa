@@ -27,6 +27,9 @@ import tools.jackson.databind.ObjectMapper;
  * Without that split, concurrent sub-batches could exceed HikariCP's pool and starve the query
  * path.
  *
+ * <p>The vector goes to the column {@link EmbeddingIndexState} names: the embedding column, or the
+ * target column while the index is stale.
+ *
  * <p>Schema and table name come from the same {@code spring.ai.vectorstore.pgvector.*} properties
  * {@code PgVectorStore} binds; {@code id-type} is assumed {@code UUID}, as elsewhere.
  */
@@ -35,6 +38,7 @@ public class VectorStoreWriter {
 
   private final JdbcTemplate jdbcTemplate;
   private final FullTextChunkStore fullTextChunkStore;
+  private final EmbeddingIndexState indexState;
   private final ObjectMapper objectMapper;
   private final String schemaName;
   private final String tableName;
@@ -42,11 +46,13 @@ public class VectorStoreWriter {
   public VectorStoreWriter(
       JdbcTemplate jdbcTemplate,
       FullTextChunkStore fullTextChunkStore,
+      EmbeddingIndexState indexState,
       ObjectMapper objectMapper,
       @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.jdbcTemplate = jdbcTemplate;
     this.fullTextChunkStore = fullTextChunkStore;
+    this.indexState = indexState;
     this.objectMapper = objectMapper;
     this.schemaName = schemaName;
     this.tableName = tableName;
@@ -74,32 +80,49 @@ public class VectorStoreWriter {
       zipped.add(new ChunkWithEmbedding(chunks.get(i), embeddings.get(i)));
     }
 
-    String sql =
-        "INSERT INTO "
-            + schemaName
-            + "."
-            + tableName
-            + " (id, content, metadata, embedding) VALUES (?, ?, ?::jsonb, ?) "
-            + "ON CONFLICT (id) DO UPDATE SET content = ?, metadata = ?::jsonb, embedding = ?";
-    jdbcTemplate.batchUpdate(
-        sql,
-        zipped,
-        zipped.size(),
-        (ps, entry) -> {
-          UUID id = UUID.fromString(entry.chunk().getId());
-          String content = entry.chunk().getText();
-          String metadataJson = toJson(entry.chunk().getMetadata());
-          PGvector embedding = new PGvector(entry.embedding());
+    indexState.whileWriting(
+        column ->
+            jdbcTemplate.batchUpdate(
+                upsertSql(column),
+                zipped,
+                zipped.size(),
+                (ps, entry) -> {
+                  UUID id = UUID.fromString(entry.chunk().getId());
+                  String content = entry.chunk().getText();
+                  String metadataJson = toJson(entry.chunk().getMetadata());
+                  PGvector embedding = new PGvector(entry.embedding());
 
-          ps.setObject(1, id);
-          ps.setString(2, content);
-          ps.setString(3, metadataJson);
-          ps.setObject(4, embedding);
-          ps.setString(5, content);
-          ps.setString(6, metadataJson);
-          ps.setObject(7, embedding);
-        });
+                  ps.setObject(1, id);
+                  ps.setString(2, content);
+                  ps.setString(3, metadataJson);
+                  ps.setObject(4, embedding);
+                  ps.setString(5, content);
+                  ps.setString(6, metadataJson);
+                  ps.setObject(7, embedding);
+                }));
     fullTextChunkStore.indexChunks(chunks);
+  }
+
+  /**
+   * The upsert into {@code column}. Into the target column of a stale index, the embedding column
+   * is cleared: its vector belongs to the previous model and possibly to a previous text.
+   */
+  private String upsertSql(String column) {
+    String clearStale =
+        EmbeddingIndexState.TARGET_COLUMN.equals(column)
+            ? ", " + EmbeddingIndexState.EMBEDDING_COLUMN + " = NULL"
+            : "";
+    return "INSERT INTO "
+        + schemaName
+        + "."
+        + tableName
+        + " (id, content, metadata, "
+        + column
+        + ") VALUES (?, ?, ?::jsonb, ?) ON CONFLICT (id) DO UPDATE SET content = ?,"
+        + " metadata = ?::jsonb, "
+        + column
+        + " = ?"
+        + clearStale;
   }
 
   /**

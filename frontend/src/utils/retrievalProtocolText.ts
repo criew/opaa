@@ -135,6 +135,13 @@ const NOTE_RULES: NoteRule[] = [
     german: (m) => `Ähnlichkeitsschwelle ${m[1]}, in der Suchanfrage angewendet.`,
   },
   {
+    name: 'VECTOR_SEARCH_SUSPENDED',
+    pattern:
+      /^vector search suspended: the vector index was built with another embedding model and is being re-embedded or waiting for it$/,
+    german: () =>
+      'Vektorsuche ausgesetzt: Der Vektorindex stammt von einem anderen Embedding-Modell und wird neu eingebettet oder wartet darauf.',
+  },
+  {
     name: 'VECTOR_SEARCH_SHORT_LIST',
     pattern:
       /^(.+) returned (\d+) of fetch-k (\d+) candidate\(s\): fewer qualify within filter and similarity threshold, or the index scan stopped at its tuple or memory limit$/,

@@ -2,6 +2,7 @@ package io.opaa.indexing.web;
 
 import io.opaa.api.dto.ContextPrefixRerunRequest;
 import io.opaa.api.dto.ContextPrefixRerunResponse;
+import io.opaa.api.dto.EmbeddingReindexStatusResponse;
 import io.opaa.api.dto.LowChunkDocumentPageResponse;
 import io.opaa.api.dto.MetadataBackfillRequest;
 import io.opaa.api.dto.MetadataBackfillResponse;
@@ -18,6 +19,8 @@ import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
+import io.opaa.indexing.maintenance.EmbeddingReindexProgress;
+import io.opaa.indexing.maintenance.EmbeddingReindexService;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
 import io.opaa.indexing.maintenance.MetadataBackfillResult;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
@@ -36,6 +39,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -61,6 +65,7 @@ public class IndexingAdminController {
   private final PipelineReindexService pipelineReindexService;
   private final MetadataBackfillService metadataBackfillService;
   private final ContextPrefixRerunService contextPrefixRerunService;
+  private final EmbeddingReindexService embeddingReindexService;
   private final DocumentFormatRegistry pipelineRegistry;
   private final AuditedAdminCall auditedAdminCall;
   private final PersonThreshold personThreshold;
@@ -70,6 +75,7 @@ public class IndexingAdminController {
       PipelineReindexService pipelineReindexService,
       MetadataBackfillService metadataBackfillService,
       ContextPrefixRerunService contextPrefixRerunService,
+      EmbeddingReindexService embeddingReindexService,
       DocumentFormatRegistry pipelineRegistry,
       AuditEventRecorder auditEventRecorder,
       PersonThreshold personThreshold) {
@@ -78,6 +84,7 @@ public class IndexingAdminController {
     this.pipelineReindexService = pipelineReindexService;
     this.metadataBackfillService = metadataBackfillService;
     this.contextPrefixRerunService = contextPrefixRerunService;
+    this.embeddingReindexService = embeddingReindexService;
     this.pipelineRegistry = pipelineRegistry;
     this.auditedAdminCall = new AuditedAdminCall(auditEventRecorder);
   }
@@ -244,6 +251,65 @@ public class IndexingAdminController {
                     "processedDocuments", outcome.processedDocuments(),
                     "skippedDocuments", outcome.skippedDocuments()));
     return MetadataBackfillResponseMapper.toRerunResponse(result);
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @GetMapping("/embedding-reindex")
+  public EmbeddingReindexStatusResponse getEmbeddingReindexStatus() {
+    return EmbeddingReindexResponseMapper.toResponse(embeddingReindexService.progress());
+  }
+
+  /**
+   * Starts or resumes the re-embedding of the whole vector index. Installation-wide; the call is
+   * recorded in the caller's organization, the run's end by the run itself.
+   */
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @PostMapping("/embedding-reindex")
+  public EmbeddingReindexStatusResponse startEmbeddingReindex(@Caller CurrentUser caller) {
+    EmbeddingReindexProgress progress =
+        audited(
+            caller,
+            AuditEventType.EMBEDDING_REINDEX_STARTED,
+            AuditObjectType.SYSTEM_SETTING,
+            EmbeddingReindexService.AUDIT_OBJECT_ID,
+            EmbeddingReindexService.AUDIT_OBJECT_LABEL,
+            Map.of(),
+            () -> embeddingReindexService.start(caller.id(), caller.organizationId()),
+            EmbeddingReindexCounters::of);
+    return EmbeddingReindexResponseMapper.toResponse(progress);
+  }
+
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  @DeleteMapping("/embedding-reindex")
+  public EmbeddingReindexStatusResponse cancelEmbeddingReindex(@Caller CurrentUser caller) {
+    EmbeddingReindexProgress progress =
+        audited(
+            caller,
+            AuditEventType.EMBEDDING_REINDEX_CANCELLED,
+            AuditObjectType.SYSTEM_SETTING,
+            EmbeddingReindexService.AUDIT_OBJECT_ID,
+            EmbeddingReindexService.AUDIT_OBJECT_LABEL,
+            Map.of(),
+            embeddingReindexService::cancel,
+            EmbeddingReindexCounters::of);
+    return EmbeddingReindexResponseMapper.toResponse(progress);
+  }
+
+  /** What the audit event of a start or stop records: the model and how far the index got. */
+  private static final class EmbeddingReindexCounters {
+
+    private EmbeddingReindexCounters() {}
+
+    static Map<String, Object> of(EmbeddingReindexProgress progress) {
+      Map<String, Object> counters = new LinkedHashMap<>();
+      if (progress.configured() != null && progress.configured().model() != null) {
+        counters.put("model", progress.configured().model());
+        counters.put("dimensions", progress.configured().dimensions());
+      }
+      counters.put("totalChunks", progress.totalChunks());
+      counters.put("embeddedChunks", progress.embeddedChunks());
+      return counters;
+    }
   }
 
   /**

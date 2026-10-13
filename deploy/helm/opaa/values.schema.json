@@ -599,6 +599,11 @@
         "dimensions": {
           "type": "integer",
           "minimum": 1
+        },
+        "timeout": {
+          "type": "string",
+          "pattern": "^([0-9]+(ns|us|ms|s|m|h|d)|P\\S+)?$",
+          "description": "Duration such as 60s, 3m or PT3M; empty keeps the application default"
         }
       },
       "required": [

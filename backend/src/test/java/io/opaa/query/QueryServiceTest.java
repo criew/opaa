@@ -38,6 +38,7 @@ import io.opaa.chat.UsedPrompt;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -188,7 +189,7 @@ class QueryServiceTest {
                 new SearchScopeStage(),
                 new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
                 new SubQueryDecompositionStage(queryDecompositionService),
-                new VectorSearchStage(vectorChunkSearch),
+                new VectorSearchStage(vectorChunkSearch, new EmbeddingIndexState()),
                 // The lexical path is switched off in every QueryProperties this class builds
                 // (fullTextSearchEnabled = false): this class is about what QueryService does with
                 // the selection, not about how the selection is retrieved (see

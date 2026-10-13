@@ -27,7 +27,9 @@ Modul assistant setzen darauf auf.
 - **Das Wurzelpaket nennt keine Stufe.** Stufen hängen vom Rahmen ab, nur `config` nennt alle.
   So bleibt retrieval ohne Zyklen zwischen seinen Unterpaketen.
 - **Vektorsuche nur über `VectorChunkSearch`:** iterativer HNSW-Scan mit transaktionslokalen
-  Einstellungen, sonst liefert ein gefilterter Scan still weniger als fetch-k (#2345).
+  Einstellungen, sonst liefert ein gefilterter Scan still weniger als fetch-k (#2345). Solange der
+  Vektorindex von einem anderen Embedding-Modell stammt (`indexing.chunk.EmbeddingIndexState`),
+  fragt `VectorSearchStage` nichts ab und meldet sich `UNAVAILABLE`.
 - **Jede Stufe schreibt ihr Protokoll** (`StageOutcome` gibt es nicht ohne `StageExplanation`). Eine
   abgeschaltete Stufe erscheint als `DISABLED`; die Diagnose liest das Protokoll, statt
   Entscheidungen nachzubauen.

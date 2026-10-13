@@ -21,6 +21,8 @@ identity und rights ab.
   Nachlauf selbst liegen in `indexing.maintenance`.
 - **Ein Aufnahmeweg:** Jede Quelle und jeder Upload geht durch `DocumentIngestService#ingest`
   (parsen, schneiden, speichern, markieren). Die `Document`-Zeile gehört `knowledge`.
+- **Modellwechsel:** Passt der Vektorindex nicht zum Embedding-Modell (`EmbeddingIndexState`), schreibt
+  `VectorStoreWriter` in `embedding_next`; `EmbeddingReindexService` bettet neu ein und schaltet um.
 - **Richtung im Kern von `indexing`** (`ModularArchitecture.INDEXING_CORE`): `chunk`, `job` (Lauf,
   Protokoll), `attachment` (Übergabe an den Anhangspfad), `document` (Aufnahme samt Anhängen),
   `source` (Vertrag, Laufrahmen, Auslöser), `maintenance`, `filesync` (Datei-Abgleich, ADR-0040,
@@ -52,9 +54,7 @@ identity und rights ab.
 ./gradlew test --tests 'io.opaa.knowledge.*' --tests 'io.opaa.architecture.*'
 ```
 
-Bei Schemaänderungen: neue Datei unter `db/changelog/knowledge/`. Regeln und
-Tests in `backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — ein eigener Delta-Test ist nur
-für rein additive DDL entbehrlich.
-Die beiden `vector_store`-Ausdrucksindexe der Baseline bleiben eigenständige, precondition-geschützte
-Changesets. Ändert sich Schnitt, Einbettung oder Metadaten, misst `./gradlew evaluateRetrieval`
-die Suchqualität (braucht Docker, nicht Teil von `build`; siehe `eval/README.md`).
+Bei Schemaänderungen: neue Datei unter `db/changelog/knowledge/`. Regeln und Tests in
+`backend/AGENTS.md`, „Liquibase: Changelog je Modul“ — Delta-Test nur bei additiver DDL entbehrlich.
+Die `vector_store`-Ausdrucksindexe der Baseline bleiben eigenständige Changesets. Ändern sich Schnitt,
+Einbettung oder Metadaten, misst `./gradlew evaluateRetrieval` die Suchqualität (`eval/README.md`).

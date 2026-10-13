@@ -6,8 +6,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.indexing.chunk.EmbeddingIdentity;
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.metadata.DocumentTypeVocabularyRepository;
 import io.opaa.metadata.MetadataFilter;
@@ -55,13 +58,15 @@ class HybridFusionTest {
       mock(QueryDecompositionService.class);
   private final FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
 
+  private EmbeddingIndexState indexState = new EmbeddingIndexState();
+
   private RetrievalPipeline pipeline() {
     return new RetrievalConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
             new MetadataFilterStage(mock(DocumentTypeVocabularyRepository.class)),
             new SubQueryDecompositionStage(queryDecompositionService),
-            new VectorSearchStage(vectorChunkSearch),
+            new VectorSearchStage(vectorChunkSearch, indexState),
             new FullTextSearchStage(fullTextChunkSearch),
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
@@ -80,6 +85,10 @@ class HybridFusionTest {
   }
 
   private List<Document> run(QueryProperties properties) {
+    return runPipeline(properties).chunks();
+  }
+
+  private RetrievalPipelineResult runPipeline(QueryProperties properties) {
     return pipeline()
         .run(
             new RetrievalContext(
@@ -88,8 +97,37 @@ class HybridFusionTest {
                 Set.of(LIBRARY_ID),
                 MetadataFilter.NONE,
                 properties,
-                RerankAvailability.SWITCHED_OFF))
-        .chunks();
+                RerankAvailability.SWITCHED_OFF));
+  }
+
+  /**
+   * While the vector index waits for its re-embedding, the question would be embedded by another
+   * model than the chunks: the vector search is not asked at all, and the full-text path alone
+   * fills the selection.
+   */
+  @Test
+  void aStaleVectorIndexLeavesTheSelectionToTheFullTextPathWithoutAskingTheVectorSearch() {
+    EmbeddingIdentity built = new EmbeddingIdentity("nomic-embed-text", null, 768);
+    EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024);
+    indexState.replace(new EmbeddingIndexState.Snapshot(built, configured, configured));
+    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
+        .thenReturn(List.of(chunk("literal-a", 0.09), chunk("literal-b", 0.05)));
+
+    RetrievalPipelineResult result = runPipeline(HYBRID);
+
+    assertThat(result.chunks())
+        .extracting(Document::getId)
+        .containsExactly("literal-a", "literal-b");
+    verifyNoInteractions(vectorChunkSearch);
+    assertThat(result.explanation().stages())
+        .filteredOn(stage -> stage.stage() == RetrievalStageName.VECTOR_SEARCH)
+        .singleElement()
+        .satisfies(
+            stage -> {
+              assertThat(stage.status()).isEqualTo(StageStatus.UNAVAILABLE);
+              assertThat(stage.notes())
+                  .containsExactly(RetrievalNote.VECTOR_SEARCH_SUSPENDED.format());
+            });
   }
 
   /**

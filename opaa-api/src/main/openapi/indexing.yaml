@@ -210,6 +210,69 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /api/v1/admin/indexing/embedding-reindex:
+    get:
+      operationId: getEmbeddingReindexStatus
+      tags: [indexing]
+      summary: >
+        The vector index against the configured embedding model, and its re-embedding (system admin
+        only, #2576)
+      description: >
+        Installation-wide - the vector index is one for all organizations - and without any
+        content: the model the index was built with, the configured model, whether the index is
+        stale, the last re-embedding run and how many chunks already carry a vector of the
+        configured model. While the index is stale the vector search is suspended and the full-text
+        search answers alone.
+      responses:
+        "200":
+          description: State of the vector index
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+    post:
+      operationId: startEmbeddingReindex
+      tags: [indexing]
+      summary: Start or resume the re-embedding of the stale vector index (system admin only, #2576)
+      description: >
+        Re-embeds every chunk under the configured embedding model in the background: chunks,
+        their ids and their text stay, no source is read again, only the vectors are replaced.
+        Chunks embedded by an earlier, interrupted run are not embedded again. When every chunk
+        carries a new vector the index switches over - adapting the vector size where it changed -
+        and the vector search resumes. Nothing starts this automatically. The call is recorded in
+        the audit log, and so is the end of the run.
+      responses:
+        "200":
+          description: The run was started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+    delete:
+      operationId: cancelEmbeddingReindex
+      tags: [indexing]
+      summary: Stop the running re-embedding (system admin only, #2576)
+      description: >
+        Stops the run after the document it is working on. What it has embedded is kept, and a
+        later start continues from there; the vector search stays suspended until a run completes.
+      responses:
+        "200":
+          description: The run was stopped
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmbeddingReindexStatusResponse"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /api/v1/libraries/{libraryId}/push-secret:
     parameters:
       - name: libraryId
@@ -444,6 +507,78 @@ paths:
 
 components:
   schemas:
+    EmbeddingIndexIdentity:
+      type: object
+      required: [dimensions]
+      properties:
+        model:
+          type: string
+          nullable: true
+          description: >
+            Model name; null when an index predates its recorded identity and its vector size did
+            not match the configuration.
+        baseUrl:
+          type: string
+          nullable: true
+          description: Endpoint of the model; null when unknown or when it carries credentials.
+        dimensions:
+          type: integer
+          description: Vector size.
+
+    EmbeddingReindexRunStatus:
+      type: string
+      description: >
+        RUNNING - the run is working or resumes after the next start. CANCELLED - stopped by the
+        administration, or because the configuration changed meanwhile. FAILED - stopped by a
+        failure; message says which. COMPLETED - switched over to the new vectors.
+      enum: [RUNNING, CANCELLED, FAILED, COMPLETED]
+
+    EmbeddingReindexRunResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: "#/components/schemas/EmbeddingReindexRunStatus"
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        message:
+          type: string
+          nullable: true
+          description: German explanation of how the run ended, if it did not simply complete.
+
+    EmbeddingReindexStatusResponse:
+      type: object
+      required: [current, configured, stale, running, totalChunks, embeddedChunks]
+      properties:
+        current:
+          $ref: "#/components/schemas/EmbeddingIndexIdentity"
+        configured:
+          $ref: "#/components/schemas/EmbeddingIndexIdentity"
+        stale:
+          type: boolean
+          description: >
+            Whether the index was built with another model or vector size than configured. The
+            vector search is suspended while it is.
+        running:
+          type: boolean
+          description: Whether a re-embedding is working right now.
+        totalChunks:
+          type: integer
+          format: int64
+        embeddedChunks:
+          type: integer
+          format: int64
+          description: >
+            Chunks with a vector of the configured model - all chunks with a vector unless the index
+            is stale.
+        lastRun:
+          $ref: "#/components/schemas/EmbeddingReindexRunResponse"
+
     IndexingStatusResponse:
       type: object
       required:

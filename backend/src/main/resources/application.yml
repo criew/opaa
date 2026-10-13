@@ -114,6 +114,8 @@ spring:
         api-key: ${OPAA_OPENAI_EMBEDDING_API_KEY:${OPAA_OPENAI_API_KEY:sk-placeholder}}
         base-url: ${OPAA_OPENAI_EMBEDDING_BASE_URL:${OPAA_OPENAI_BASE_URL:http://localhost:11434/v1}}
         model: ${OPAA_OPENAI_EMBEDDING_MODEL:nomic-embed-text}
+        # Per embedding call; a batch of a large model on CPU can take minutes.
+        timeout: ${OPAA_OPENAI_EMBEDDING_TIMEOUT:60s}
     mcp:
       server:
         # The MCP server of the external-access channel (#1721, ADR-0035): stateless Streamable
