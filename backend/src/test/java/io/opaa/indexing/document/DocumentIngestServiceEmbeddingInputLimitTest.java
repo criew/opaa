@@ -11,9 +11,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import io.opaa.format.ChunkFormatMetadata;
+import io.opaa.format.DocumentFormat;
+import io.opaa.format.DocumentFormatRegistry;
+import io.opaa.format.DocumentFormatResult;
+import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.chunk.ChunkingService;
+import io.opaa.format.file.fallback.TikaFallbackFormat;
 import io.opaa.indexing.IndexingProperties;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.ScriptedEmbeddingEndpoint;
@@ -136,6 +142,25 @@ class DocumentIngestServiceEmbeddingInputLimitTest {
   }
 
   @Test
+  void everySplitPartCarriesThePipelinesChunkingFingerprint() throws IOException {
+    // The pipeline re-index selects chunks by this key; a part without it would stay due forever.
+    List<org.springframework.ai.document.Document> stored =
+        ingest(
+            ScriptedEmbeddingEndpoint.silentlyCutting(LIMIT),
+            1,
+            List.of(sectionChunk(table(12)), plain("Kurzer Schluss.")),
+            registryWithFingerprint("fp-2611"));
+
+    assertThat(stored).hasSizeGreaterThan(2);
+    assertThat(stored)
+        .allSatisfy(
+            chunk ->
+                assertThat(chunk.getMetadata())
+                    .containsEntry(
+                        ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY, "fp-2611"));
+  }
+
+  @Test
   void aChunkTheEndpointRefusesForLengthIsSplitTheSameWay() throws IOException {
     List<org.springframework.ai.document.Document> stored =
         ingest(ScriptedEmbeddingEndpoint.refusing(LIMIT), 1, List.of(sectionChunk(table(12))));
@@ -184,6 +209,19 @@ class DocumentIngestServiceEmbeddingInputLimitTest {
       int concurrency,
       List<org.springframework.ai.document.Document> chunks)
       throws IOException {
+    return ingest(
+        endpoint,
+        concurrency,
+        chunks,
+        TestPipelineRegistries.fallbackOnly(documentService, chunkingService));
+  }
+
+  private List<org.springframework.ai.document.Document> ingest(
+      EmbeddingModel endpoint,
+      int concurrency,
+      List<org.springframework.ai.document.Document> chunks,
+      DocumentFormatRegistry registry)
+      throws IOException {
     Path file = tempDir.resolve("haushalt.txt");
     Files.writeString(file, "irrelevant");
     when(checksumService.computeSha256(file)).thenReturn("checksum");
@@ -192,7 +230,7 @@ class DocumentIngestServiceEmbeddingInputLimitTest {
     when(chunkingService.chunkDocuments(eq("haushalt.txt"), eq(parsed))).thenReturn(chunks);
 
     DocumentIngestResult result =
-        service(endpoint, concurrency)
+        service(endpoint, concurrency, registry)
             .ingest(DocumentIngest.localFile(library, file).build(), null);
 
     assertThat(result).isEqualTo(DocumentIngestResult.PROCESSED);
@@ -209,7 +247,41 @@ class DocumentIngestServiceEmbeddingInputLimitTest {
         .toList();
   }
 
-  private DocumentIngestService service(EmbeddingModel endpoint, int concurrency) {
+  /** The fallback pipeline, reporting {@code fingerprint} as the configuration of its cut. */
+  private DocumentFormatRegistry registryWithFingerprint(String fingerprint) {
+    TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
+    DocumentFormat fingerprinted =
+        new DocumentFormat() {
+          @Override
+          public String id() {
+            return fallback.id();
+          }
+
+          @Override
+          public short version() {
+            return fallback.version();
+          }
+
+          @Override
+          public DocumentFormatResult run(DocumentFormatSource source) {
+            return fallback.run(source);
+          }
+
+          @Override
+          public java.util.Set<String> passthroughMetadataKeys() {
+            return fallback.passthroughMetadataKeys();
+          }
+
+          @Override
+          public String chunkingFingerprint() {
+            return fingerprint;
+          }
+        };
+    return new DocumentFormatRegistry(List.of(fingerprinted), fingerprinted);
+  }
+
+  private DocumentIngestService service(
+      EmbeddingModel endpoint, int concurrency, DocumentFormatRegistry registry) {
     ExecutorService executor = Executors.newFixedThreadPool(concurrency);
     executors.add(executor);
     VectorChunkStore store =
@@ -222,7 +294,7 @@ class DocumentIngestServiceEmbeddingInputLimitTest {
             new EmbeddingRateEstimator(4.0),
             LIMIT);
     return new DocumentIngestService(
-        TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
+        registry,
         documentRepository,
         store,
         checksumService,

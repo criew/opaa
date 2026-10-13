@@ -1,5 +1,6 @@
 package io.opaa.indexing.chunk;
 
+import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.metadata.ChunkMetadataStore;
 import io.opaa.metadata.EmbeddingRateEstimator;
@@ -8,10 +9,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.metadata.Usage;
@@ -118,11 +123,63 @@ public class VectorChunkStore implements ChunkMetadataStore {
       return;
     }
     requireEmbeddable(chunks);
-    EmbeddingInputCheck check = checkInputs(chunks, known);
+    EmbeddingInputCheck check = checkInputs(chunks, known, Runnable::run);
     if (!check.overlong().isEmpty()) {
       EmbeddingInputCheck.Overlong first = check.overlong().getFirst();
       throw notEmbeddable(chunks.get(first.position()), null);
     }
+    warnUnverified(chunks, check);
+    write(chunks, known, check.vectors());
+  }
+
+  /**
+   * Embeds and writes the chunks of one document that keep their cut, for a path that cannot split
+   * (re-embedding in place). A chunk the endpoint cut silently keeps its cut vector, so the path
+   * can finish; the document's chunks are then marked with pipeline version 0, which makes the
+   * pipeline re-index read the document again and split it.
+   *
+   * @return how many chunks were written cut, and how many could not be verified
+   * @throws ChunkNotEmbeddableException when the endpoint refuses a chunk instead of cutting it, or
+   *     a chunk alone exceeds the batching strategy's token budget; nothing is written then
+   */
+  public InPlaceEmbedding addChunksInPlace(List<Document> chunks) {
+    if (chunks.isEmpty()) {
+      return new InPlaceEmbedding(0, 0);
+    }
+    requireEmbeddable(chunks);
+    EmbeddingInputCheck check = checkInputs(chunks, Map.of(), Runnable::run);
+    Map<String, float[]> vectors = new HashMap<>(check.vectors());
+    for (EmbeddingInputCheck.Overlong overlong : check.overlong()) {
+      float[] cut = check.cutVectors().get(inputOf(chunks.get(overlong.position())));
+      if (cut == null) {
+        throw notEmbeddable(chunks.get(overlong.position()), null);
+      }
+      vectors.put(inputOf(chunks.get(overlong.position())), cut);
+    }
+    warnUnverified(chunks, check);
+    write(chunks, Map.of(), vectors);
+    if (!check.overlong().isEmpty()) {
+      Object documentId = chunks.getFirst().getMetadata().get(DOCUMENT_ID_METADATA_KEY);
+      if (documentId != null) {
+        vectorStoreWriter.updateDocumentMetadata(
+            UUID.fromString(documentId.toString()),
+            Map.of(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, 0),
+            Set.of());
+      }
+    }
+    return new InPlaceEmbedding(check.overlong().size(), check.unverified().size());
+  }
+
+  /**
+   * The outcome of {@link #addChunksInPlace}.
+   *
+   * @param cut chunks written with a vector the endpoint cut short; their document waits for the
+   *     pipeline re-index
+   * @param unverified chunks that could reach the limit, embedded without a token count
+   */
+  public record InPlaceEmbedding(int cut, int unverified) {}
+
+  private void warnUnverified(List<Document> chunks, EmbeddingInputCheck check) {
     if (!check.unverified().isEmpty()) {
       log.warn(
           "{} chunk(s) of document {} could reach the embedding input limit of {} tokens, but the"
@@ -131,8 +188,13 @@ public class VectorChunkStore implements ChunkMetadataStore {
           chunks.getFirst().getMetadata().get(DOCUMENT_ID_METADATA_KEY),
           maxInputTokens);
     }
+  }
+
+  /** Writes {@code chunks}, embedding in batches every input neither map already holds. */
+  private void write(
+      List<Document> chunks, Map<String, float[]> known, Map<String, float[]> checked) {
     Map<String, float[]> precomputed = new HashMap<>(known);
-    precomputed.putAll(check.vectors());
+    precomputed.putAll(checked);
     List<Document> remaining =
         precomputed.isEmpty()
             ? chunks
@@ -151,26 +213,54 @@ public class VectorChunkStore implements ChunkMetadataStore {
     vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
   }
 
+  /** {@link #checkInputs(List, Map, Executor)} with every call on the calling thread. */
+  public EmbeddingInputCheck checkInputs(List<Document> chunks, Map<String, float[]> known) {
+    return checkInputs(chunks, known, Runnable::run);
+  }
+
   /**
-   * Embeds alone every chunk whose input could reach the input limit and is not in {@code known}. A
-   * chunk counts as too long when the endpoint refuses it as such or reports a token count at the
-   * limit: a silently cutting endpoint (Ollama's OpenAI-compatible route) counts exactly the tokens
-   * it kept. Every other chunk costs no call here.
+   * Embeds alone every chunk whose input could reach the input limit and is not in {@code known},
+   * each call on {@code executor}. A chunk counts as too long when the endpoint refuses it as such
+   * or reports a token count at the limit: a silently cutting endpoint (Ollama's OpenAI-compatible
+   * route) counts exactly the tokens it kept. Every other chunk costs no call here.
    *
    * @throws RuntimeException the endpoint's own failure when it is not a refusal for length
    */
-  public EmbeddingInputCheck checkInputs(List<Document> chunks, Map<String, float[]> known) {
+  public EmbeddingInputCheck checkInputs(
+      List<Document> chunks, Map<String, float[]> known, Executor executor) {
+    Map<String, CompletableFuture<Single>> calls = new LinkedHashMap<>();
+    for (Document chunk : chunks) {
+      String input = inputOf(chunk);
+      if (mayReachLimit(input) && !known.containsKey(input) && !calls.containsKey(input)) {
+        calls.put(input, CompletableFuture.supplyAsync(() -> embedAlone(input), executor));
+      }
+    }
+    Map<String, Single> results = new HashMap<>();
+    try {
+      for (Map.Entry<String, CompletableFuture<Single>> call : calls.entrySet()) {
+        results.put(call.getKey(), call.getValue().join());
+      }
+    } catch (CompletionException e) {
+      if (e.getCause() instanceof RuntimeException failure) {
+        throw failure;
+      }
+      throw e;
+    }
     Map<String, float[]> vectors = new HashMap<>();
+    Map<String, float[]> cutVectors = new HashMap<>();
     List<EmbeddingInputCheck.Overlong> overlong = new ArrayList<>();
     List<Integer> unverified = new ArrayList<>();
     for (int position = 0; position < chunks.size(); position++) {
       String input = inputOf(chunks.get(position));
-      if (!mayReachLimit(input) || known.containsKey(input) || vectors.containsKey(input)) {
+      Single single = results.get(input);
+      if (single == null) {
         continue;
       }
-      Single single = embedAlone(input);
       if (single.tooLong()) {
         overlong.add(new EmbeddingInputCheck.Overlong(position, single.reportedTokens()));
+        if (single.vector() != null) {
+          cutVectors.put(input, single.vector());
+        }
         continue;
       }
       vectors.put(input, single.vector());
@@ -178,7 +268,7 @@ public class VectorChunkStore implements ChunkMetadataStore {
         unverified.add(position);
       }
     }
-    return new EmbeddingInputCheck(vectors, overlong, unverified);
+    return new EmbeddingInputCheck(vectors, overlong, unverified, cutVectors);
   }
 
   private boolean mayReachLimit(String input) {
@@ -192,7 +282,8 @@ public class VectorChunkStore implements ChunkMetadataStore {
 
   /**
    * One input embedded alone. {@code reportedTokens} is {@code null} when the endpoint refused it
-   * or reported no count; {@code vector} is {@code null} exactly when it is too long.
+   * or reported no count; {@code vector} is {@code null} exactly when it refused it, and is the cut
+   * vector when it is too long by count.
    */
   private record Single(float[] vector, Integer reportedTokens, boolean tooLong) {}
 
@@ -211,10 +302,8 @@ public class VectorChunkStore implements ChunkMetadataStore {
       embeddingRateEstimator.record(1, System.nanoTime() - startedAt, measurementToken);
     }
     Integer tokens = promptTokens(response);
-    if (tokens != null && tokens >= maxInputTokens) {
-      return new Single(null, tokens, true);
-    }
-    return new Single(response.getResult().getOutput(), tokens, false);
+    return new Single(
+        response.getResult().getOutput(), tokens, tokens != null && tokens >= maxInputTokens);
   }
 
   /** The endpoint's token count for the request, or {@code null} when it reported none. */

@@ -38,6 +38,10 @@ docker compose --profile ollama up ollama-pull   # wartet, bis beide Modelle vor
 docker compose --profile ollama up --build       # danach den vollständigen Stapel starten
 ```
 
+Nur auf diesem Weg in `.env.docker` die Zeile `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192`
+einkommentieren: `ollama-pull` legt `bge-m3` mit dieser Eingabegrenze an. Ohne die Zeile gilt die
+Vorgabe 2.048, und OPAA teilt längere Chunks.
+
 Wer nicht warten muss, startet gleich mit `docker compose --profile ollama up --build`; `ollama-pull`
 lädt dann im Hintergrund.
 
@@ -51,6 +55,12 @@ OPAA_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
 ```bash
 docker compose up --build
 ```
+
+Auf dem Server müssen die Modelle der Vorgabe vorliegen: `ollama pull bge-m3` und
+`ollama pull phi3:mini`, oder die Modelle, die `.env.docker` stattdessen nennt. Die Zeile
+`OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192` bleibt auskommentiert, solange `bge-m3` dort nicht per
+Modelfile mit dieser Grenze angelegt ist
+([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
 Ohne erreichbaren Server startet der Stapel, aber Indexierung und Fragen schlagen fehl. Danach ist
 die Oberfläche unter `http://localhost:3000` erreichbar, die API unter `http://localhost:8081/api`.
@@ -157,7 +167,7 @@ docker compose down -v
   `OPAA_DB_PASSWORD` nur beim ersten Start an; eine spätere Änderung wird ignoriert, bis das Volume
   verworfen ist.
 - **`down -v` verwirft alle Volumes des Stapels**, mit dem Profil `ollama` auch `opaa-ollama-data`
-  mit den heruntergeladenen Modellen (rund 2,5 GB, die `ollama-pull` danach neu lädt) und mit
+  mit den heruntergeladenen Modellen (rund 3,3 GiB, die `ollama-pull` danach neu lädt) und mit
   `upload-s3` den Objektspeicher samt allen Originalen. Wer nur die Datenbank verwerfen will, nimmt
   `docker volume rm <projekt>_opaa-postgres-data` bei angehaltenem Stapel.
 - **Eine eigene PostgreSQL** statt des Dienstes `postgres` braucht pgvector und einige Vorbereitung
@@ -181,8 +191,10 @@ docker compose --profile ollama up --build
   ([Modelle](modelle.md#llm-anbieter)), ohne es scheitert die erste Frage. `bge-m3` legt der Schritt
   danach unter demselben Namen mit einer Eingabegrenze von 8.192 Tokens neu an, damit jeder Chunk
   ungekürzt eingebettet wird ([Eingabegrenze](modelle.md#eingabegrenze-des-embedding-modells)).
-  Dazu passend setzt `.env.docker.example` `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS`; wer ein anderes
-  Ollama anbindet, entfernt diese Zeile. Bei einem erneuten Start lädt der Schritt nichts doppelt herunter und legt das Modell erneut an.
+  Dazu gehört die einkommentierte Zeile `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192` aus Weg A.
+  Wer stattdessen `nomic-embed-text` nutzt, zieht es mit
+  `docker compose --profile ollama exec ollama ollama pull nomic-embed-text`, setzt Modell und
+  Dimension in `.env.docker` und lässt die Zeile auskommentiert. Bei einem erneuten Start lädt der Schritt nichts doppelt herunter und legt das Modell erneut an.
 
 **Platz und Zeit.** Die Modelle laden beim ersten Start rund 3,3 GiB herunter (`phi3:mini` rund
 2,2 GiB, `bge-m3` rund 1,1 GiB, komprimiert), das Image selbst ist mit rund 3,4 GB (amd64) noch

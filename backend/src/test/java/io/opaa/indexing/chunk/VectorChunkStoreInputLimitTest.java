@@ -4,14 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.metadata.EmbeddingRateEstimator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.document.Document;
@@ -166,6 +172,84 @@ class VectorChunkStoreInputLimitTest {
             ChunkNotEmbeddableException.class,
             e -> assertThat(e.location()).isEqualTo("Abschn. Anlage"));
     verifyNoInteractions(writer);
+  }
+
+  @Test
+  void inPlaceACutChunkKeepsItsCutVectorAndMarksTheDocumentForTheReIndex() {
+    // A re-embedding in place cannot split; failing would keep the vector search off for good.
+    VectorChunkStore store = storeOn(ScriptedEmbeddingEndpoint.silentlyCutting(LIMIT), LIMIT);
+    UUID documentId = UUID.randomUUID();
+    List<Document> chunks =
+        List.of(chunkOf(documentId, "kurz", 0), chunkOf(documentId, "x".repeat(150), 1));
+
+    VectorChunkStore.InPlaceEmbedding outcome = store.addChunksInPlace(chunks);
+
+    assertThat(outcome.cut()).isEqualTo(1);
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<float[]>> vectors = ArgumentCaptor.forClass(List.class);
+    verify(writer).writeEmbeddedChunks(org.mockito.ArgumentMatchers.eq(chunks), vectors.capture());
+    assertThat(vectors.getValue().get(1)[0]).isEqualTo(LIMIT);
+    verify(writer)
+        .updateDocumentMetadata(
+            documentId, Map.of(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, 0), Set.of());
+  }
+
+  @Test
+  void inPlaceAChunkThatFitsLeavesThePipelineVersionAlone() {
+    VectorChunkStore store = storeOn(ScriptedEmbeddingEndpoint.silentlyCutting(LIMIT), LIMIT);
+
+    VectorChunkStore.InPlaceEmbedding outcome =
+        store.addChunksInPlace(List.of(chunkOf(UUID.randomUUID(), "y".repeat(LIMIT - 1), 0)));
+
+    assertThat(outcome.cut()).isZero();
+    verify(writer, never()).updateDocumentMetadata(any(), any(), any());
+  }
+
+  @Test
+  void inPlaceAChunkTheEndpointRefusesStillFailsTheDocument() {
+    VectorChunkStore store = storeOn(ScriptedEmbeddingEndpoint.refusing(LIMIT), LIMIT);
+
+    assertThatThrownBy(
+            () -> store.addChunksInPlace(List.of(chunkOf(UUID.randomUUID(), "x".repeat(150), 0))))
+        .isInstanceOf(ChunkNotEmbeddableException.class);
+    verifyNoInteractions(writer);
+  }
+
+  @Test
+  void theSingleCallsRunOnTheGivenExecutor() {
+    VectorChunkStore store = storeOn(ScriptedEmbeddingEndpoint.silentlyCutting(LIMIT), LIMIT);
+    AtomicInteger submitted = new AtomicInteger();
+    Executor counting =
+        task -> {
+          submitted.incrementAndGet();
+          task.run();
+        };
+
+    EmbeddingInputCheck check =
+        store.checkInputs(
+            List.of(
+                chunk("x".repeat(150), "S. 1", 0),
+                chunk("y".repeat(LIMIT - 1), "S. 2", 1),
+                chunk("kurz", "S. 3", 2)),
+            Map.of(),
+            counting);
+
+    assertThat(submitted).hasValue(2);
+    assertThat(check.overlong()).containsExactly(new EmbeddingInputCheck.Overlong(0, LIMIT));
+    assertThat(check.vectors()).containsOnlyKeys("y".repeat(LIMIT - 1));
+  }
+
+  private static Document chunkOf(UUID documentId, String text, int index) {
+    Document chunk =
+        new Document(
+            text,
+            Map.of(
+                VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
+                documentId.toString(),
+                VectorChunkStore.CHUNK_INDEX_METADATA_KEY,
+                index));
+    chunk.setContentFormatter((document, mode) -> document.getText());
+    return chunk;
   }
 
   private static Document chunk(String text, String location, int index) {

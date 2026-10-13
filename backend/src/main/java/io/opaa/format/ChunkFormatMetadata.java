@@ -46,5 +46,12 @@ public final class ChunkFormatMetadata {
    */
   public static final String NO_ROUTING_EXTENSION = "";
 
+  /**
+   * The {@link DocumentFormat#chunkingFingerprint()} of the format that cut this chunk, written
+   * only by formats whose cut a setting influences. A chunk whose value no longer matches its
+   * format's current one is due for the re-index although its version is current.
+   */
+  public static final String CHUNKING_FINGERPRINT_METADATA_KEY = "chunking_fingerprint";
+
   private ChunkFormatMetadata() {}
 }

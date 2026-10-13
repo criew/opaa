@@ -170,9 +170,9 @@ Herkunft und Zwang jeder einzelnen Variable:
   Schicht, mit dem Embedding-Modell `bge-m3`, das 1024 Dimensionen liefert
   (siehe [`../docs/handbuch/konfiguration.md`, „Alle Umgebungsvariablen"](../docs/handbuch/konfiguration.md#alle-umgebungsvariablen)
   für dieselbe Kopplung). Der Wert muss zum jeweils verwendeten Embedding-Modell passen; eine
-  nachträgliche Änderung an einer bereits laufenden Instanz erfordert `docker compose down -v` und
-  eine vollständige Neuindizierung (siehe [`../docs/handbuch/betrieb.md`, „Was ein Update mit dem
-  Index macht"](../docs/handbuch/betrieb.md#was-ein-update-mit-dem-index-macht)).
+  nachträgliche Änderung an einer bereits laufenden Instanz erkennt OPAA beim Start und stellt sie
+  über die Neueinbettung in der Administration um, ohne Neuindizierung (siehe
+  [`../docs/handbuch/modelle.md`, „Modell wechseln"](../docs/handbuch/modelle.md#modell-wechseln)).
 - `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30` hebt die Standard-Warteschlange von
   `uploadTaskExecutor` (Default 20, `opaa.upload.thread-pool`) an: Der Seed lädt die 27 Dokumente der
   Bibliothek „Interne Dienstanweisungen Meldewesen" sequentiell und ohne Pause hoch, und mit lokal
@@ -219,7 +219,10 @@ docker compose --profile demo --profile ollama up
 Das startet zusätzlich einen lokal betriebenen `ollama`-Service samt Init-Schritt, der
 `bge-m3` und `phi3:mini` zieht und `bge-m3` mit einer Eingabegrenze von 8.192 Tokens neu anlegt — die
 Demo läuft damit vollständig ohne externe Dienste, auf Kosten eines mehrere Gigabyte großen Downloads
-beim allerersten Start.
+beim allerersten Start. Nur in diesem Fall `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192` in
+`.env.docker` einkommentieren. Mit einem Ollama auf dem Host die Zeile auskommentiert lassen oder
+`bge-m3` dort per Modelfile mit derselben Grenze anlegen (siehe
+[`../docs/handbuch/modelle.md`, „Eingabegrenze des Embedding-Modells"](../docs/handbuch/modelle.md#eingabegrenze-des-embedding-modells)).
 
 Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
 

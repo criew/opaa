@@ -394,9 +394,10 @@ services:
   # "ollama" service itself is running and healthy.
   #
   # bge-m3 is then created anew under its own name with num_ctx and num_batch 8192: Ollama's
-  # OpenAI-compatible route cuts an embedding input at num_batch (2048 when pulled unchanged), and
-  # .env.docker.example sets OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192 for exactly this model, so
-  # every chunk up to the 8,000-character ceiling fits. A later pull restores the pulled parameters, which is why this step runs the
+  # OpenAI-compatible route cuts an embedding input at num_batch (2048 when pulled unchanged). With
+  # OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192 uncommented in .env.docker for this profile, every
+  # chunk up to the 8,000-character ceiling fits; left at its default of 2048, OPAA splits longer
+  # chunks instead. A later pull restores the pulled parameters, which is why this step runs the
   # create after every pull. Idempotent: `ollama pull` skips layers already stored in
   # opaa-ollama-data, and the create reuses them. Runs to completion and exits (no restart); watch
   # `docker compose logs -f ollama-pull` for progress.

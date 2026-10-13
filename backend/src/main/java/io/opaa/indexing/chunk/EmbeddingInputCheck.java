@@ -12,9 +12,14 @@ import java.util.Map;
  * @param overlong the chunks the endpoint proved too long, in chunk order
  * @param unverified positions of chunks embedded without a token count from the endpoint, so a
  *     silent cut can neither be shown nor ruled out
+ * @param cutVectors the vector the endpoint returned for an overlong input it cut instead of
+ *     refusing, keyed by the input text; only a path that cannot split writes one
  */
 public record EmbeddingInputCheck(
-    Map<String, float[]> vectors, List<Overlong> overlong, List<Integer> unverified) {
+    Map<String, float[]> vectors,
+    List<Overlong> overlong,
+    List<Integer> unverified,
+    Map<String, float[]> cutVectors) {
 
   /**
    * One chunk the endpoint proved too long.

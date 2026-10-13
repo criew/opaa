@@ -890,8 +890,8 @@ public class DocumentIngestService {
    *     prefix at all (see {@link #contextTitleFor}). The Kernfeld Titel takes precedence over it
    *     where one was extracted; what ends up in the prefix is recorded at the document, so the
    *     Nachlauf reproduces this choice instead of deriving its own.
-   * @param pipeline the pipeline that produced {@code chunks}; its id and version go onto every
-   *     chunk. Which further keys ride along is decided by {@link
+   * @param pipeline the pipeline that produced {@code chunks}; its id, version and chunking
+   *     fingerprint go onto every chunk. Which further keys ride along is decided by {@link
    *     DocumentFormatRegistry#allPassthroughMetadataKeys()}, not by {@code pipeline} alone - a
    *     nested attachment's chunks are attributed to the outer pipeline, so filtering by its own
    *     declaration would drop a key only the inner pipeline declares
@@ -925,6 +925,7 @@ public class DocumentIngestService {
         new ChunkEnrichment(
             document,
             pipeline,
+            pipeline.chunkingFingerprint(),
             routingExtension,
             chunkMetadata,
             sourceContextMetadata(sourceContext),
@@ -936,7 +937,10 @@ public class DocumentIngestService {
     List<org.springframework.ai.document.Document> enriched = enrichment.apply(pieces);
     Map<String, float[]> verified = new HashMap<>();
     for (int round = 0; ; round++) {
-      EmbeddingInputCheck check = vectorChunkStore.checkInputs(enriched, verified);
+      // The single calls share the sub-batches' pool and its bound, as their embedding would.
+      EmbeddingInputCheck check =
+          vectorChunkStore.checkInputs(
+              enriched, verified, embeddingConcurrency > 1 ? embeddingExecutor : Runnable::run);
       verified.putAll(check.vectors());
       if (!check.unverified().isEmpty()) {
         metrics.recordEmbeddingInputsUnverified(check.unverified().size());
@@ -1021,6 +1025,7 @@ public class DocumentIngestService {
   private record ChunkEnrichment(
       Document document,
       DocumentFormat pipeline,
+      String chunkingFingerprint,
       Optional<String> routingExtension,
       DocumentChunkMetadata chunkMetadata,
       Map<String, Object> sourceContextValues,
@@ -1051,6 +1056,11 @@ public class DocumentIngestService {
       // feststellbar and selectively re-indexable at all.
       metadata.put(ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY, pipeline.id());
       metadata.put(ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY, (int) pipeline.version());
+      // The settings the cut depended on, so a changed setting makes this chunk due
+      // for the re-index without a version change; absent where none applies.
+      if (chunkingFingerprint != null) {
+        metadata.put(ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY, chunkingFingerprint);
+      }
       // The routing key actually used (ingestion-pipelines.md, Querschnittsregel
       // (d)) - what lets a later pipeline-version check compare exactly instead of
       // re-guessing a document's format from its file name.

@@ -590,12 +590,18 @@ haben:
 | Ollama mit dem Fehler bei langen Eingaben durch eine neuere Fassung ersetzt | Die Vektoren langer Chunks stammen aus der fehlerhaften Fassung; OPAA erkennt das nicht als Modellwechsel — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
 | Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
 | Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |
-| `OPAA_INDEXING_CHUNK_TARGET_CHARACTERS` geändert | Gilt nur für Dokumente, die danach neu oder geändert indiziert werden; weder ein erneuter Lauf noch der Nachzug zerlegt unveränderte Dokumente neu. Für einheitliche Chunks jede Bibliothek neu aufbauen (Falle unten) |
 
 Ein Wechsel des **Chat**-Modells berührt den Index nicht. Ein Wechsel des **Embedding**-Modells oder
 von `OPAA_PGVECTOR_DIMENSIONS` braucht ebenfalls keine Neuindizierung und kein Zurücksetzen der
 Datenbank: OPAA erkennt ihn beim Start, setzt die Vektorsuche aus, und die Systemverwaltung bettet
 den vorhandenen Bestand neu ein ([Modell wechseln](modelle.md#modell-wechseln)).
+
+Eine geänderte Zielgröße der Zerlegung (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`) braucht ebenfalls
+keine Neuindizierung. Ein erneuter Lauf überspringt unveränderte Dateien zwar weiterhin, aber der
+Versionsstand weist die mit der alten Zielgröße geschnittenen Chunks als nachzuziehen aus, und der
+[Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug), je Pipeline der Formate mit
+Struktur aufgerufen, zerlegt sie aus dem Original neu. Bis dahin bleiben sie in der alten Fassung
+durchsuchbar.
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt eine Datei, deren Prüfsumme unverändert ist
 > und deren Dokument als indiziert gilt. Wer nur die Vektoren einer Bibliothek verwirft, bekommt
@@ -646,7 +652,7 @@ sondern im Nachweis- und Revisionsprotokoll der Anwendung
 | `opaa_query_tokens_total` | Token der Antwortaufrufe im Chat |
 | `opaa_chat_search_duration_seconds_*` | Dauer der Suche über Chats |
 | `opaa_indexing_documents_total` | verarbeitete Dokumente der Indexierung und der Uploads, nach Ergebnis (`processed`, `skipped`, `failed`) |
-| `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis: `split` (geteilt, weil der Endpunkt ihn als zu lang belegte), `unverified` (eingebettet, aber ohne Tokenzahl vom Endpunkt) |
+| `opaa_indexing_embedding_inputs_total` | Chunks an der Eingabegrenze des Embedding-Modells, nach Ergebnis: `split` (bei der Indexierung geteilt, weil der Endpunkt ihn als zu lang belegte), `cut` (bei Neueinbettung oder Präfix-Nachlauf gekürzt eingebettet, Dokument für den Nachzug vorgemerkt), `unverified` (eingebettet, aber ohne Tokenzahl vom Endpunkt; auf allen Wegen gezählt) |
 | `opaa_rate_limit_rejected_total` | von einem Rate-Limit abgewiesene Anfragen, nach Grenze (`limit`) und erschöpftem Bereich (`scope`); die globale Grenze der Anmeldung ist das Frühwarnsignal gegen verteiltes Ausprobieren gestohlener Zugangsdaten |
 | `opaa_auth_local_account_lockout_total` | Sperren lokaler Konten nach Fehlversuchen |
 | `executor_active_threads{name="indexingTaskExecutor"}` | laufende Indexierungsläufe |

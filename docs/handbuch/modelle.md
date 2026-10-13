@@ -202,7 +202,8 @@ die Vektorsuche unsichtbar.
 
 > **Beispiel.** Ein Haushaltsplan enthält eine Tabelle voller Zahlen. Ihr Chunk hat nur so viele
 > Zeichen wie die anderen, braucht aber fast dreimal so viele Tokens. Der Endpunkt meldet die
-> Grenze als Tokenzahl, OPAA teilt den Chunk in zwei Hälften, und beide werden ganz eingebettet.
+> Grenze als Tokenzahl, OPAA teilt den Chunk in höchstens halb so lange Teile, und jeder wird
+> ganz eingebettet.
 
 Die Zielgröße der Chunks wird in Zeichen eingestellt (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`), die
 Grenze des Modells zählt Tokens. Wie viele Zeichen ein Token umfasst, hängt von Modell und Text ab.
@@ -212,15 +213,25 @@ Die Zielgröße allein garantiert deshalb nicht, dass jeder Chunk passt.
 `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` nennt die Grenze des Endpunkts, wie er tatsächlich läuft.
 Kann ein Chunk sie erreichen, bettet OPAA ihn einzeln ein. Lehnt der Endpunkt ihn als zu lang ab
 oder meldet er eine Tokenzahl an der Grenze, teilt OPAA den Chunk an Absatz-, Zeilen- oder
-Satzgrenzen. Jeder Teil behält Fundort und Überschrift. Kürzere Chunks laufen wie bisher gesammelt
-und kosten keinen eigenen Aufruf. Jede Teilung steht im Log und in der Kennzahl
+Satzgrenzen in zwei oder drei Teile mit höchstens halber Länge und prüft sie erneut. Jeder Teil
+behält Fundort und Überschrift. Kürzere Chunks laufen wie bisher gesammelt und kosten keinen eigenen
+Aufruf. Die Einzelaufrufe laufen so parallel wie die Stapel (`OPAA_INDEXING_EMBEDDING_CONCURRENCY`);
+eine zu niedrig eingestellte Grenze kostet trotzdem viele Einzelaufrufe und teilt Chunks, die
+gepasst hätten. Jede Teilung steht im Log und in der Kennzahl
 `opaa_indexing_embedding_inputs_total` ([Logs und Metriken](betrieb.md#logs-und-metriken)).
+
+Typische Werte: ein unverändert gezogenes Ollama-Modell 2.048, die Embedding-Modelle von OpenAI
+8.191.
 
 - **Ohne Tokenzahl:** Meldet der Endpunkt keine Tokenzahl, bleibt der Chunk ganz. Das Log warnt,
   dass eine Kürzung nicht auszuschließen ist.
 - **Ohne neues Zerlegen:** Die Neueinbettung nach einem Modellwechsel und der Nachlauf des
-  Kontextpräfixes behalten den Zuschnitt. Dort lässt ein zu langer Chunk sein Dokument scheitern,
-  statt gekürzt eingebettet zu werden.
+  Kontextpräfixes behalten den Zuschnitt. Kürzt der Endpunkt dort einen Chunk, behält OPAA den
+  gekürzten Vektor, damit der Lauf durchläuft und die Vektorsuche umschalten kann. Das Log warnt,
+  die Kennzahl zählt den Chunk als `cut`, und das Dokument wird für den
+  [Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug) vorgemerkt. Der Nachzug liest
+  es aus der Quelle neu und teilt den Chunk dabei. Nur wenn der Endpunkt den Chunk ablehnt statt
+  ihn zu kürzen, scheitert das Dokument.
 - **Grenze zu hoch eingestellt:** Kürzt der Endpunkt früher als eingestellt, bemerkt OPAA das nicht.
   Die Einstellung muss zum Endpunkt passen.
 
@@ -268,6 +279,10 @@ nicht mit der eingestellten Grenze.
 4. **Abschluss.** Haben alle Chunks einen neuen Vektor, stellt OPAA die Vektorablage um, bei einer
    anderen Dimension samt Index, und die Vektorsuche läuft wieder. Start, Abbruch und Ende stehen im
    Revisionsprotokoll.
+5. **Nachzug, falls gemeldet.** Zählt das neue Modell einen Chunk über der Eingabegrenze, etwa eine
+   Zahlentabelle, die `bge-m3` in mehr Tokens zerlegt als `nomic-embed-text`, bettet die
+   Neueinbettung ihn gekürzt ein und merkt sein Dokument für den Nachzug vor. Der Nachzug der
+   Bibliothek teilt ihn danach ([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
 
 Ein Wechsel nur des Endpunkts, etwa auf einen anderen Server mit demselben Modell, gilt nicht als
 Modellwechsel. Wer vor dem Abschluss zum alten Modell zurückkehrt, verwirft die neuen Vektoren. Die
@@ -373,7 +388,8 @@ und im Protokoll des Backends.
 | Antworten brechen mitten im Satz ab oder fehlen, mit Hinweis unter der Antwort | Die maximale Antwortlänge ist zu knapp, oft bei Modellen mit Reasoning |
 | Die erste Einbettung scheitert mit einem Dimensionsfehler | `OPAA_PGVECTOR_DIMENSIONS` passt nicht zum Embedding-Modell ([Embedding](#embedding)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
-| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar, Zeitgrenze zu kurz oder einzelne Chunks zu lang für das Modell; Log prüfen, beheben und fortsetzen |
+| Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Zeitgrenze zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)) |
+| Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Nach Abschluss den Nachzug der Bibliothek starten; er teilt den Chunk ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
 | Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
 | Log: Endpunkt meldete keine Tokenzahl | Eine stille Kürzung ist nicht auszuschließen; einen Endpunkt nutzen, der die Tokenzahl meldet, oder die Zielgröße senken |
