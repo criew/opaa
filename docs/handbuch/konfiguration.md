@@ -331,6 +331,9 @@ Meldung ab, die die Variable nennt. Deshalb lässt `.env.docker.example` solche 
 | `OPAA_BACKEND_UPSTREAM` | — (kein Spring-Property; `backend:8080` als Image-Default des Frontend-nginx-`envsubst`-Templates, siehe `frontend/Dockerfile`) | nicht gesetzt (Image-Default passt zum Compose-Dienstnamen) | Host und Port (`host[:port]`), an die der nginx im Frontend-Container `/api/` und `/mcp` weiterreicht. Nötig, wenn das Backend nicht unter dem Namen `backend` erreichbar ist, etwa unter Kubernetes mit dem Service-Namen des Releases; der Helm-Chart setzt den Wert dort selbst ([Kubernetes](kubernetes.md#frontend)). Ein Wert mit Schema, Pfad, Leerzeichen oder Zeilenumbruch bricht den Containerstart ab (siehe [„Frontend-Laufzeitimage"](betrieb.md#frontend-laufzeitimage)) |
 | `OPAA_BACKEND_READ_TIMEOUT` | — (kein Spring-Property; `600s` als Image-Default des Frontend-nginx-`envsubst`-Templates, siehe `frontend/Dockerfile`) | nicht gesetzt (auskommentiert) | Wie lange der nginx im Frontend-Container auf die Antwort des Backends wartet (`proxy_read_timeout` für `/api/` und `/mcp`); Zahl mit Einheit `s`, `m` oder `h`. Der Startwert deckt das voreingestellte `OPAA_RERANK_TIMEOUT` samt den Modellaufrufen einer Anfrage, solange keiner davon wiederholt werden muss; eine eigene Gesamtgrenze je Anfrage hat das Backend nicht. Wer `OPAA_RERANK_TIMEOUT` anhebt, hebt diesen Wert mit an, und jeder Reverse-Proxy vor dem Frontend-Container braucht mindestens denselben Wert (siehe [„Netzwerkzugang"](betrieb.md#netzwerkzugang)). Ein Wert ohne Einheit oder mit anderen Zeichen bricht den Containerstart ab |
 | `OPAA_DEMO_CHAT_IMPORT_ENABLED` | `false` | nicht gesetzt (auskommentiert) | Schaltet den Einspielweg für vorbereitete Chatverläufe der Demo-Instanz ein (`POST /api/v1/spaces/{spaceId}/chat-imports`): Die aufrufende Person legt in einem Space, dessen Mitglied sie ist, einen eigenen Chat mit vorgegebenen Fragen, Antworten, Zeitpunkten und Belegen an, ohne Modellaufruf. Jeder Beleg muss auf ein Dokument zeigen, das sie lesen darf, und jede Fundstellenmarke im Antworttext auf einen Beleg derselben Runde mit dessen Dateinamen; Dateiname und Metadaten des Belegs stammen aus dem Dokument, mit denselben Feldern wie bei einer erzeugten Antwort. Jeder eingespielte Chat trägt einen Importschlüssel, den nur der Import setzt; `GET` auf dieselbe Adresse listet die eingespielten Chats der aufrufenden Person mit ihrem Schlüssel, und ein zweiter Import unter demselben Schlüssel im selben Space wird abgelehnt. **Nur für Demo-Instanzen gedacht und dort nur für die Dauer des Seed-Laufs gesetzt**, danach entfernt und das Backend neu gestartet: Solange der Schalter an ist, kann jedes angemeldete Konto Antworttexte ohne Modell und mit beliebigen Zeitpunkten in eigene Chats schreiben – auf einer Instanz mit geteilten Demo-Konten sehen andere Besuchende diese Inhalte. Ohne den Schalter existiert die Route nicht und antwortet wie jede unbekannte Adresse |
+| **Funktionen abschalten** | | | |
+| `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | `true` | nicht gesetzt (auskommentiert) | Prompt-Bibliotheken der Installation; `false` schaltet sie ab (siehe [„Funktionen abschalten"](#funktionen-abschalten)) |
+| `OPAA_FEATURES_METADATA_ENABLED` | `true` | nicht gesetzt (auskommentiert) | Metadaten von Dokumenten und Bibliotheken; `false` schaltet sie ab (siehe [„Funktionen abschalten"](#funktionen-abschalten)) |
 | **Docker-Compose-Ports** | | | |
 | `OPAA_BACKEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8081`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `8081` | Backend-Host-Port |
 | `OPAA_FRONTEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `3000`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `3000` | Frontend-Host-Port |
@@ -368,6 +371,27 @@ Anfragen optional auf `OPAA_INDEXING_HTTP_REQUEST_BUDGET_PER_RUN`: Eine Quelle, 
 drosselt, beendet den Lauf damit geordnet als „unvollständig, wird fortgesetzt". Wer schneller
 aufgeben will, senkt die Werte; die übrigen Netzkonnektoren begrenzen ihre Läufe über eigene
 Anfragebudgets.
+
+## Funktionen abschalten
+
+Manche Funktionen lassen sich für eine ganze Installation abschalten, etwa für eine Demo, die nur
+Fragen und Antworten zeigen soll, oder für eine Einführung in Stufen. Jede solche Funktion hat eine
+eigene Variable der Form `OPAA_FEATURES_<FUNKTION>_ENABLED`; die vorhandenen stehen in der
+[Variablenliste](#alle-umgebungsvariablen) unter „Funktionen abschalten".
+
+- **Ohne Angabe ist jede Funktion an.** Abschalten ist eine bewusste Entscheidung der Installation;
+  nur der Wert `false` schaltet ab.
+- **Für die ganze Installation.** Der Schalter gilt für alle Organisationen und alle Personen
+  gleich; einzelne Organisationen können ihn weder setzen noch sehen.
+- **Abschalten löscht nichts.** Eine abgeschaltete Funktion verschwindet aus Oberfläche und
+  Schnittstelle, ihre vorhandenen Daten bleiben unverändert liegen und werden nur nicht mehr
+  beachtet. Wird die Funktion wieder eingeschaltet, ist der frühere Stand wieder da.
+- **Wirkt nach einem Neustart.** Das Backend liest die Schalter beim Start; eine Änderung zur
+  Laufzeit gibt es nicht. Das Frontend erfährt den Stand mit der Anmeldekonfiguration, also schon
+  vor der Anmeldung.
+
+Unter Kubernetes setzt der Abschnitt `features` der Werte-Datei die Variablen (siehe
+[Kubernetes](kubernetes.md#funktionen)).
 
 ## Grenzwerte im Überblick
 

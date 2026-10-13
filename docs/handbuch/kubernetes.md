@@ -520,6 +520,17 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `targetValidation.indexingAllowlist` | leer | `OPAA_INDEXING_TARGET_VALIDATION_ALLOWLIST` | Hostnamen interner Quellen, die die Adressprüfung passieren dürfen |
 | `targetValidation.identityProviderAllowlist` | leer | `OPAA_OIDC_TARGET_VALIDATION_ALLOWLIST` | Hostnamen weiterer interner Identitätsanbieter; der Startanbieter ist immer erlaubt |
 
+### Funktionen
+
+| Wert | Vorgabe | Setzt | Wirkung |
+|---|---|---|---|
+| `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | Prompt-Bibliotheken; `false` schaltet sie für die Installation ab |
+| `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Metadaten von Dokumenten und Bibliotheken; `false` schaltet sie für die Installation ab |
+
+Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
+Unterstrichen. Eine Funktion ohne Eintrag bleibt an. Was das Abschalten bewirkt, beschreibt die
+Konfiguration unter [„Funktionen abschalten"](konfiguration.md#funktionen-abschalten).
+
 ### Originalablage, Dateisystem-Quellen und Zertifikate
 
 | Wert | Vorgabe | Setzt | Wirkung |
