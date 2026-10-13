@@ -1807,7 +1807,9 @@ Grenze: Die Baselines dieser Domäne beschrieben bisher zum größten Teil falsc
 - 0.32.15 wäre ebenso stetig, hätte aber keinen Vorteil und wiche vom Compose-Stapel ab.
 
 **Kosten.** Das Image ist komprimiert 3,8 GB groß statt 1,8 GB, weil es Bibliotheken für CUDA und
-Vulkan mitbringt. Auf der CPU bettet es nicht langsamer ein: Im abwechselnden Vergleich auf
+Vulkan mitbringt. Ausgepackt belegt es auf dem Runner 9,36 GB, dazu kommen die Modelle und die
+Volumes der Testcontainers; den verbleibenden Platz gibt der Eval-Workflow nach jedem Messlauf mit
+`df -h` aus. Auf der CPU bettet es nicht langsamer ein: Im abwechselnden Vergleich auf
 derselben Maschine brauchte 0.40.3 je Eingabe 1,6–2,9 s gegen 2,2–5,7 s für 0.6.5.
 
 ### 69. Eine Stetigkeitsprüfung vor jeder Messung
