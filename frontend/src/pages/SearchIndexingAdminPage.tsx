@@ -62,6 +62,7 @@ import { useSearchAdminStore } from '../stores/searchAdminStore'
 import { contentWidth } from '../theme/tokens'
 import { catalogRoute } from '../components/assets/assetTypeRegistry'
 import { useFeatureEnabled } from '../hooks/useFeatureEnabled'
+import { visibleChunkMetadata } from '../utils/metadataChunkKeys'
 
 function formatMetadataValue(value: unknown): string {
   if (value == null) return '—'
@@ -470,9 +471,8 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
   const chunk = current?.chunk ?? null
   const error = current?.error ?? null
 
-  const metadataEntries = chunk
-    ? Object.entries(chunk.metadata).sort(([a], [b]) => a.localeCompare(b))
-    : []
+  const metadataEnabled = useFeatureEnabled('metadata')
+  const metadataEntries = chunk ? visibleChunkMetadata(chunk.metadata, metadataEnabled) : []
 
   return (
     <Dialog

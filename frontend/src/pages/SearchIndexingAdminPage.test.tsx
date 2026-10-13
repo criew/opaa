@@ -8,6 +8,7 @@ import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import {
+  mockChunkInspections,
   MOCK_SATZUNG_DOCUMENT_ID,
   mockDocumentChunks,
   mockSearchDiagnosis,
@@ -933,5 +934,42 @@ describe('SearchIndexingAdminPage', () => {
       expect(line).toHaveTextContent('weniger als 5 Bibliotheken')
       expect(line).not.toHaveTextContent(/Dokumente|Abschnitte|\b0\b/)
     })
+  })
+
+  // ADR-0044: an older chunk still carries the schema metadata keys; with metadata switched off
+  // the preview leaves them out and keeps every other stored key.
+  it('shows no schema metadata keys in the chunk preview while metadata is off', async () => {
+    signInAs('SYSTEM_ADMIN')
+    useAuthStore.setState({ features: { metadata: false } })
+    onTestFinished(() => useAuthStore.setState({ features: {} }))
+    server.use(
+      http.get('/api/v1/admin/search/chunks/:chunkId', () =>
+        HttpResponse.json({
+          ...mockChunkInspections['chunk-1'],
+          metadata: {
+            ...mockChunkInspections['chunk-1'].metadata,
+            doc_type: 'SATZUNG_ORDNUNG',
+            doc_date: '2024-01-01',
+            lf_fassung: 'F2',
+            ff_mail_from: 'poststelle@example.org',
+          },
+        }),
+      ),
+    )
+
+    renderDiagnosis()
+    const user = userEvent.setup()
+    await waitForDiagnosisContext()
+    await runDiagnosis(user)
+    await user.click(await screen.findByRole('button', { name: /^Vektorsuche/ }))
+    const verdicts = await screen.findByRole('table', { name: 'Kandidaten der Stufe Vektorsuche' })
+    await user.click(within(verdicts).getAllByRole('button', { name: 'Chunk anzeigen' })[0])
+
+    const dialog = await screen.findByRole('dialog', { name: 'Chunk-Vorschau' })
+    const metadata = await within(dialog).findByRole('table', { name: 'Chunk-Metadaten' })
+    expect(within(metadata).getByText('location')).toBeInTheDocument()
+    for (const key of ['doc_type', 'doc_date', 'lf_fassung', 'ff_mail_from']) {
+      expect(within(metadata).queryByText(key)).not.toBeInTheDocument()
+    }
   })
 })

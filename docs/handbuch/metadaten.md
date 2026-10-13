@@ -592,9 +592,15 @@ abschalten (`OPAA_FEATURES_METADATA_ENABLED=false`, wirkt nach einem Neustart; a
 - **Nichts wird gelöscht.** Vorhandene Werte, Felder, Schlagworte und gespeicherte Filter bleiben
   unverändert liegen und werden nur nicht beachtet. Ein Beleg zeigt von ihnen nur den Titel.
   Bereits eingebettete Abschnitte behalten ihren bisherigen Kontextpräfix.
-- **Wieder eingeschaltet, gilt der frühere Stand.** Die vorhandenen Werte wirken sofort wieder.
-  Dokumente, die ohne Metadaten aufgenommen wurden, zählt der Bestandslauf (Abschnitt 6) als
-  ausstehend und füllt sie nach.
+- **Wieder eingeschaltet, gilt der frühere Stand erst nach dem Bestandslauf vollständig.**
+  Dokumente, die während der Abschaltung nicht neu aufgenommen wurden, wirken sofort wieder mit
+  ihren Werten in Filter, Kontextpräfix und Beleg. Ein Dokument, das in dieser Zeit neu oder erneut
+  aufgenommen wurde, trägt an seinen Abschnitten keine filterbaren Werte: Der Filter behandelt es als
+  „ohne Angabe", während der Beleg noch die gespeicherten Werte von vor der Abschaltung zeigen
+  kann, und sein Kontextpräfix enthält nur den Titel. Diese Dokumente zählt der Bestandslauf
+  (Abschnitt 6) als ausstehend. Er startet nicht von selbst: Ein Systemadministrator startet ihn
+  nach dem Wiedereinschalten je Bibliothek über „Kernfelder nachrüsten" und danach, wo der
+  Indexstatus Dokumente mit veraltetem Kontextpräfix meldet, den Kontextpräfix-Nachlauf.
 
 ## 14. Gebaut, aber nicht abgenommen
 

@@ -2017,9 +2017,15 @@ Fragen und Antworten zeigt. Abgeschaltet gilt:
   Dokumentliste wird ignoriert.
 - **Daten bleiben.** Nichts wird gelöscht, das Schema bleibt. Vorhandene Werte werden nur nicht
   gelesen; bereits eingebettete Chunks behalten ihren Kontextpräfix, ein Neu-Einbetten nur deshalb
-  findet nicht statt. Ein ohne Metadaten aufgenommenes Dokument trägt keine Extraktionsversion und
-  wird nach dem Wiedereinschalten vom Bestandslauf nachgezogen; der Nachlauf übernimmt danach den
-  Kontextpräfix.
+  findet nicht statt.
+- **Wiedereinschalten.** Dokumente, die während der Abschaltung nicht aufgenommen wurden, tragen
+  ihre Chunk-Schlüssel noch und wirken sofort wieder. Ein in dieser Zeit neu oder erneut
+  aufgenommenes Dokument hat Chunks ohne Filterschlüssel, aber möglicherweise noch gespeicherte
+  Werte von vor der Abschaltung: Der Beleg zeigt sie, der Filter behandelt das Dokument als „ohne
+  Angabe", bis der Bestandslauf es nachzieht. Dafür trägt es keine Extraktionsversion und gilt als
+  ausstehend. Der Bestandslauf startet nicht automatisch; die Systemverwaltung startet ihn je
+  Bibliothek („Kernfelder nachrüsten" im Indexstatus), danach den Kontextpräfix-Nachlauf für die
+  Dokumente, deren Abdruck er dabei geleert hat.
 
 ## Bewusst nicht gebaut
 
