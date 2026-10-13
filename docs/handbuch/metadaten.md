@@ -567,9 +567,34 @@ Dokumente ohne Wert" verriete den Umfang eines fremden Bestands.
 | `opaa.query.metadata-filter.document-type-offer-threshold` | `OPAA_QUERY_METADATA_FILTER_DOCUMENT_TYPE_THRESHOLD` | 0.90 | Füllstand, ab dem die Dokumentart als Filter angeboten wird |
 | `opaa.query.metadata-filter.document-date-offer-threshold` | `OPAA_QUERY_METADATA_FILTER_DOCUMENT_DATE_THRESHOLD` | 0.75 | Füllstand, ab dem Datum/Stand angeboten wird |
 | `opaa.query.metadata-filter.options-cache-ttl` | `OPAA_QUERY_METADATA_FILTER_OPTIONS_CACHE_TTL` | 5m | Lebensdauer des Optionen-Zwischenspeichers je Person und Suchbereich |
+| `opaa.features.metadata.enabled` | `OPAA_FEATURES_METADATA_ENABLED` | true | Metadaten für die ganze Installation an oder aus (Abschnitt 13.1) |
 
 Das Vokabular wird über die Datenbank erweitert (Abschnitt 3); die Extraktionsregeln sind nicht
 konfigurierbar.
+
+### 13.1 Metadaten abschalten
+
+Eine Installation, die nur Fragen und Antworten zeigen soll, etwa eine Demo, kann die Metadaten
+abschalten (`OPAA_FEATURES_METADATA_ENABLED=false`, wirkt nach einem Neustart; allgemeine Regeln in
+[Konfiguration](konfiguration.md#funktionen-abschalten)). Dann gilt:
+
+- **Nur der Titel bleibt.** Ein neu aufgenommenes Dokument bekommt seinen Titel wie bisher; er steht
+  im Beleg und im Kontextpräfix. Dokumentart, Datum/Stand, Formatfelder, Bibliotheksfelder und
+  Schlagworte werden nicht ermittelt, auch nicht vom Sprachmodell, und der Kontextpräfix trägt außer
+  dem Titel keinen Wert.
+- **Kein Filter wirkt.** Der Chat bietet keinen Metadatenfilter an und zeigt keinen an; ein am Chat
+  gespeicherter Filter und ein mitgeschickter Filter (Chat, Suchschnittstelle, MCP, Diagnose) ändern
+  das Ergebnis nicht.
+- **Keine Oberfläche, keine Läufe.** Der Bereich „Metadaten" der Bibliothek, Metadatenansicht,
+  „Feld setzen" und Pflege-Anker der Dokumentliste sowie die Metadaten-Spalten der
+  Suchverwaltung entfallen. Bestandslauf, Kontextpräfix-Nachlauf und Schemaänderungen laufen nicht;
+  ihre Schnittstellen antworten wie eine unbekannte Adresse.
+- **Nichts wird gelöscht.** Vorhandene Werte, Felder, Schlagworte und gespeicherte Filter bleiben
+  unverändert liegen und werden nur nicht beachtet. Ein Beleg zeigt von ihnen nur den Titel.
+  Bereits eingebettete Abschnitte behalten ihren bisherigen Kontextpräfix.
+- **Wieder eingeschaltet, gilt der frühere Stand.** Die vorhandenen Werte wirken sofort wieder.
+  Dokumente, die ohne Metadaten aufgenommen wurden, zählt der Bestandslauf (Abschnitt 6) als
+  ausstehend und füllt sie nach.
 
 ## 14. Gebaut, aber nicht abgenommen
 

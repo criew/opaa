@@ -1995,6 +1995,32 @@ werden, deren Verhalten bei sauberen Werten bereits gemessen ist.
 
 ---
 
+## Abschaltbar je Installation (#2589)
+
+Die ganze Fähigkeit dieser Spezifikation lässt sich für eine Installation abschalten
+(`opaa.features.metadata.enabled=false`, Mechanismus nach
+[ADR-0044](../decisions/0044-installationsweite-feature-flags.md)), etwa für eine Demo, die nur
+Fragen und Antworten zeigt. Abgeschaltet gilt:
+
+- **Ausnahme Titel.** Die Aufnahme ermittelt weiter den Kernfeld-Titel und speichert ihn am
+  Dokument; er steht im Kontextpräfix und im Beleg. Er ist ohnehin kein Filterfeld. Alle übrigen
+  Kernfelder, Formatfelder, Bibliotheksfelder, Schlagworte und der Modellschritt entfallen; die
+  Chunks tragen keine Filterschlüssel, der Kontextpräfix keinen Wert außer dem Titel.
+- **Wirkstelle Filter.** `MetadataFilterValidator` gibt jeden Filter als „kein Filter" zurück; das
+  deckt Chat, Suchschnittstelle und MCP. Die Diagnose der Suchverwaltung läuft ebenfalls ohne
+  Filter. Ein am Chat gespeicherter Filter wird weder gelesen noch überschrieben.
+- **Wirkstelle Beleg.** Ein Beleg trägt nur den Titel und keine Filtermarke; das Frontend kürzt auch
+  gespeicherte Belege älterer Antworten so.
+- **Verwaltung und Läufe.** Die Metadaten-Endpunkte, die Filteroptionen und die beiden
+  Wartungsläufe der Indexierungsverwaltung sind nicht registriert; Bestandslauf,
+  Kontextpräfix-Nachlauf und Schemaänderungslauf tun nichts. Der Pflege-Anker-Filter der
+  Dokumentliste wird ignoriert.
+- **Daten bleiben.** Nichts wird gelöscht, das Schema bleibt. Vorhandene Werte werden nur nicht
+  gelesen; bereits eingebettete Chunks behalten ihren Kontextpräfix, ein Neu-Einbetten nur deshalb
+  findet nicht statt. Ein ohne Metadaten aufgenommenes Dokument trägt keine Extraktionsversion und
+  wird nach dem Wiedereinschalten vom Bestandslauf nachgezogen; der Nachlauf übernimmt danach den
+  Kontextpräfix.
+
 ## Bewusst nicht gebaut
 
 Jede Zeile ist eine Entscheidung, keine Auslassung.

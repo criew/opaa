@@ -333,7 +333,7 @@ Meldung ab, die die Variable nennt. Deshalb lässt `.env.docker.example` solche 
 | `OPAA_DEMO_CHAT_IMPORT_ENABLED` | `false` | nicht gesetzt (auskommentiert) | Schaltet den Einspielweg für vorbereitete Chatverläufe der Demo-Instanz ein (`POST /api/v1/spaces/{spaceId}/chat-imports`): Die aufrufende Person legt in einem Space, dessen Mitglied sie ist, einen eigenen Chat mit vorgegebenen Fragen, Antworten, Zeitpunkten und Belegen an, ohne Modellaufruf. Jeder Beleg muss auf ein Dokument zeigen, das sie lesen darf, und jede Fundstellenmarke im Antworttext auf einen Beleg derselben Runde mit dessen Dateinamen; Dateiname und Metadaten des Belegs stammen aus dem Dokument, mit denselben Feldern wie bei einer erzeugten Antwort. Jeder eingespielte Chat trägt einen Importschlüssel, den nur der Import setzt; `GET` auf dieselbe Adresse listet die eingespielten Chats der aufrufenden Person mit ihrem Schlüssel, und ein zweiter Import unter demselben Schlüssel im selben Space wird abgelehnt. **Nur für Demo-Instanzen gedacht und dort nur für die Dauer des Seed-Laufs gesetzt**, danach entfernt und das Backend neu gestartet: Solange der Schalter an ist, kann jedes angemeldete Konto Antworttexte ohne Modell und mit beliebigen Zeitpunkten in eigene Chats schreiben – auf einer Instanz mit geteilten Demo-Konten sehen andere Besuchende diese Inhalte. Ohne den Schalter existiert die Route nicht und antwortet wie jede unbekannte Adresse |
 | **Funktionen abschalten** | | | |
 | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | `true` | nicht gesetzt (auskommentiert) | Schalter für die Prompt-Bibliotheken der Installation, **noch ohne Wirkung (#2588)** (siehe [„Funktionen abschalten"](#funktionen-abschalten)) |
-| `OPAA_FEATURES_METADATA_ENABLED` | `true` | nicht gesetzt (auskommentiert) | Schalter für die Metadaten von Dokumenten und Bibliotheken, **noch ohne Wirkung (#2589)** (siehe [„Funktionen abschalten"](#funktionen-abschalten)) |
+| `OPAA_FEATURES_METADATA_ENABLED` | `true` | nicht gesetzt (auskommentiert) | Schalter für die Metadaten von Dokumenten und Bibliotheken; `false` lässt nur den Titel eines Dokuments übrig, kein Metadatenfilter wirkt (siehe [„Funktionen abschalten"](#funktionen-abschalten) und [Metadaten](metadaten.md#131-metadaten-abschalten)) |
 | **Docker-Compose-Ports** | | | |
 | `OPAA_BACKEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `8081`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `8081` | Backend-Host-Port |
 | `OPAA_FRONTEND_PORT` | — (kein Spring-Property; nur `docker-compose.yml`, dort Compose-Default `3000`) | wirkt nur aus Prozessumgebung/`.env`, **nicht** aus `.env.docker` (siehe Hinweis oben) — `.env.docker.example` lässt die Variable deshalb bewusst auskommentiert; ohne Shell-Export gilt der Compose-Default `3000` | Frontend-Host-Port |
@@ -377,9 +377,9 @@ Anfragebudgets.
 Manche Funktionen lassen sich für eine ganze Installation abschalten, etwa für eine Demo, die nur
 Fragen und Antworten zeigen soll, oder für eine Einführung in Stufen. Jede solche Funktion hat eine
 eigene Variable der Form `OPAA_FEATURES_<FUNKTION>_ENABLED`; die vorhandenen stehen in der
-[Variablenliste](#alle-umgebungsvariablen) unter „Funktionen abschalten". Die beiden bisherigen
-Schalter für Prompt-Bibliotheken und Metadaten werden gelesen und an die Oberfläche gemeldet, schalten
-aber noch nichts ab (#2588, #2589).
+[Variablenliste](#alle-umgebungsvariablen) unter „Funktionen abschalten". Der Schalter für
+Prompt-Bibliotheken wird gelesen und an die Oberfläche gemeldet, schaltet aber noch nichts ab
+(#2588).
 
 - **Ohne Angabe ist jede Funktion an.** Abschalten ist eine bewusste Entscheidung der Installation;
   `false` schaltet ab.
