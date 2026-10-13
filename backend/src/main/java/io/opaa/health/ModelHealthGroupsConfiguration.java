@@ -8,9 +8,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Gives each of the three indicators that depend on a model endpoint or the vector store a health
- * group of its own instead of a share of the overall status (#1710). Each is a separate group, not
- * one common one, because each probe costs a call to a different backend - {@code
+ * Gives each of the indicators that depend on a model endpoint or the vector store a health group
+ * of its own instead of a share of the overall status (#1710). Each is a separate group, not one
+ * common one, because each probe costs a call to a different backend - {@code
  * /actuator/health/embedding-model} embeds, {@code /actuator/health/vector-store} searches - and an
  * operator has to be able to ask exactly one of them.
  *
@@ -26,6 +26,8 @@ class ModelHealthGroupsConfiguration {
   static final String EMBEDDINGS_GROUP = "embedding-model";
   static final String VECTOR_STORE_CONTRIBUTOR = "vectorStore";
   static final String VECTOR_STORE_GROUP = "vector-store";
+  static final String TRANSCRIPTION_CONTRIBUTOR = "transcription";
+  static final String TRANSCRIPTION_GROUP = "transcription-model";
 
   @Bean
   @ConditionalOnProperty(name = "management.health.chat.enabled", matchIfMissing = true)
@@ -43,5 +45,11 @@ class ModelHealthGroupsConfiguration {
   @ConditionalOnProperty(name = "management.health.vectorstore.enabled", matchIfMissing = true)
   HealthEndpointGroupsPostProcessor vectorStoreHealthGroup() {
     return new SeparateHealthGroup(VECTOR_STORE_GROUP, Set.of(VECTOR_STORE_CONTRIBUTOR));
+  }
+
+  @Bean
+  @ConditionalOnProperty(name = "management.health.transcription.enabled", matchIfMissing = true)
+  HealthEndpointGroupsPostProcessor transcriptionHealthGroup() {
+    return new SeparateHealthGroup(TRANSCRIPTION_GROUP, Set.of(TRANSCRIPTION_CONTRIBUTOR));
   }
 }

@@ -18,6 +18,8 @@ import io.opaa.llm.LlmModelService;
 import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.llm.RerankRoleStatusProvider;
+import io.opaa.llm.TranscriptionRoleStatus;
+import io.opaa.llm.TranscriptionRoleStatusProvider;
 import io.opaa.metadata.LibraryMetadataSchemaChangeProgress;
 import io.opaa.metadata.LibraryMetadataSchemaChangeService;
 import io.opaa.metadata.ModelExtractionCounters;
@@ -91,6 +93,7 @@ public class SearchStatusService {
   private final EmbeddingInfoService embeddingInfoService;
   private final EmbeddingModel embeddingModel;
   private final RerankRoleStatusProvider rerankRoleStatusProvider;
+  private final TranscriptionRoleStatusProvider transcriptionRoleStatusProvider;
   private final KnowledgeLibraryRepository libraryRepository;
   private final LibraryDocumentStatsReader documentStatsReader;
   private final FullTextIndexFillStateService fullTextIndexFillStateService;
@@ -170,7 +173,8 @@ public class SearchStatusService {
         threshold,
         clock,
         null,
-        new EmbeddingIndexState());
+        new EmbeddingIndexState(),
+        TranscriptionRoleStatus::disabled);
   }
 
   /**
@@ -196,7 +200,9 @@ public class SearchStatusService {
       PersonThreshold threshold,
       Clock clock,
       PrivateLibraryDeletionRun deletionRun,
-      EmbeddingIndexState embeddingIndexState) {
+      EmbeddingIndexState embeddingIndexState,
+      TranscriptionRoleStatusProvider transcriptionRoleStatusProvider) {
+    this.transcriptionRoleStatusProvider = transcriptionRoleStatusProvider;
     this.deletionRun = deletionRun;
     this.embeddingIndexState = embeddingIndexState;
     this.threshold = threshold;
@@ -274,12 +280,12 @@ public class SearchStatusService {
   }
 
   /**
-   * Chat and embedding come from the cached probe pair; the rerank role is read fresh because its
-   * provider contract forbids a network round trip to begin with.
+   * Chat and embedding come from the cached probe pair; the rerank and transcription roles are read
+   * fresh because their provider contracts forbid a network round trip to begin with.
    */
   private List<ModelRoleStatus> modelRoles() {
     ProbedRoles probed = currentProbes();
-    return List.of(probed.chat(), probed.embedding(), rerankRole());
+    return List.of(probed.chat(), probed.embedding(), rerankRole(), transcriptionRole());
   }
 
   /** Drops the shared probe pair; the next status probes again. */
@@ -458,6 +464,53 @@ public class SearchStatusService {
                   + " Stufe."
               : "Reranking ist eingeschaltet, aber der hinterlegte Endpunkt antwortet nicht. Die"
                   + " Suche läuft weiter - ohne diese Stufe.";
+    };
+  }
+
+  /** Read through {@link TranscriptionRoleStatusProvider} only, like the rerank role. */
+  private ModelRoleStatus transcriptionRole() {
+    TranscriptionRoleStatus status = transcriptionRoleStatusProvider.currentStatus();
+    if (status.diagnostic() != null) {
+      log.debug("Transcription role reports {}: {}", status.state(), status.diagnostic());
+    }
+    return new ModelRoleStatus(
+        ModelRole.TRANSCRIPTION,
+        switch (status.state()) {
+          case DISABLED -> ModelRoleCondition.DISABLED;
+          case READY -> ModelRoleCondition.ACTIVE;
+          case UNCONFIGURED -> ModelRoleCondition.UNCONFIGURED;
+          case UNREACHABLE -> ModelRoleCondition.UNREACHABLE;
+        },
+        status.baseUrl(),
+        status.modelIdentifier(),
+        transcriptionDetail(status));
+  }
+
+  private static String transcriptionDetail(TranscriptionRoleStatus status) {
+    return switch (status.state()) {
+      case DISABLED ->
+          "Die Spracheingabe ist abgeschaltet (OPAA_TRANSCRIPTION_ENABLED oder die Funktion"
+              + " Spracheingabe). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung,"
+              + " kein Fehler.";
+      case READY ->
+          "Die Spracheingabe ist eingeschaltet und der Endpunkt antwortet. Im Chat erscheint das"
+              + " Mikrofon.";
+      case UNCONFIGURED ->
+          status.baseUrlRejected()
+              ? "Die Spracheingabe ist eingeschaltet, aber die Basis-Adresse enthält Anmeldedaten"
+                  + " und wird abgelehnt. Tragen Sie die Adresse ohne Anmeldedaten ein und"
+                  + " hinterlegen Sie den Schlüssel in OPAA_TRANSCRIPTION_API_KEY. Bis dahin"
+                  + " erscheint im Chat kein Mikrofon."
+              : "Die Spracheingabe ist eingeschaltet, aber Endpunkt oder Modell fehlen"
+                  + " (OPAA_TRANSCRIPTION_BASE_URL, OPAA_TRANSCRIPTION_MODEL). Bis dahin erscheint"
+                  + " im Chat kein Mikrofon.";
+      case UNREACHABLE ->
+          status.timedOut()
+              ? "Die Spracheingabe ist eingeschaltet, aber der Endpunkt hat nicht innerhalb des"
+                  + " Zeitbudgets (OPAA_TRANSCRIPTION_TIMEOUT) geantwortet. Bis er wieder"
+                  + " antwortet, erscheint im Chat kein Mikrofon."
+              : "Die Spracheingabe ist eingeschaltet, aber der Endpunkt antwortet nicht. Bis er"
+                  + " wieder antwortet, erscheint im Chat kein Mikrofon.";
     };
   }
 

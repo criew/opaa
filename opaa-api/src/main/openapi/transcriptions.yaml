@@ -1,0 +1,85 @@
+# Topic "transcriptions": its tags, paths and the components only this topic uses.
+# Merged with all other fragments at build time, see root.yaml.
+tags:
+  - name: transcription
+    description: Dictating a chat question - speech to text through the transcription model role.
+paths:
+  /api/v1/transcriptions/availability:
+    get:
+      operationId: getTranscriptionAvailability
+      tags: [transcription]
+      summary: >
+        Whether the caller can dictate right now (#1926). Answered from configuration and the last
+        known state of the transcription role, never by a fresh call to the endpoint. Not reachable
+        while the feature speech-input is switched off.
+      responses:
+        "200":
+          description: The dictation the installation offers
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionAvailabilityResponse"
+
+  /api/v1/transcriptions:
+    post:
+      operationId: createTranscription
+      tags: [transcription]
+      summary: >
+        Turns one recorded audio clip into text (#1926). The request body is the recording itself,
+        sent with its audio content type (e.g. audio/webm;codecs=opus or audio/mp4) - deliberately
+        not multipart, so the clip is read straight into memory and never buffered to disk. It is
+        passed on to the transcription endpoint (OpenAI-compatible POST
+        {baseUrl}/audio/transcriptions) and answered as text; neither the audio nor the text is
+        stored or logged. Depends on the transcription endpoint: 503 while the role is not usable,
+        502 when the endpoint fails or answers unreadably. Not reachable while the feature
+        speech-input is switched off.
+      requestBody:
+        required: true
+        content:
+          audio/*:
+            schema:
+              type: string
+              format: binary
+              description: >
+                The recording as the browser made it. Accepted are WebM, Ogg, MP4, MPEG and WAV;
+                the endpoint converts it, the backend does not.
+      responses:
+        "200":
+          description: The recognised text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranscriptionResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "502":
+          $ref: "#/components/responses/BadGateway"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+components:
+  schemas:
+    TranscriptionAvailabilityResponse:
+      type: object
+      required: [available, realtimeAvailable]
+      properties:
+        available:
+          type: boolean
+          description: >
+            Whether dictation by recording and sending one clip works right now - the role is
+            switched on, configured and its endpoint answered the last probe.
+        realtimeAvailable:
+          type: boolean
+          description: >
+            Whether text can appear while speaking. Always false today; reserved for a live
+            transcription endpoint.
+    TranscriptionResponse:
+      type: object
+      required: [text]
+      properties:
+        text:
+          type: string
+          description: The recognised text, trimmed; empty when nothing was understood.
+          example: Welche Fristen gelten für den Bauantrag?
