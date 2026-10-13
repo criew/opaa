@@ -21,6 +21,7 @@ import { libraryMetadataHandlers } from './libraryMetadataHandlers'
 import { documentMetadataHandlers } from './documentMetadataHandlers'
 import { libraryFolderHandlers } from './libraryFolderHandlers'
 import { capabilityHandlers } from './capabilityHandlers'
+import { transcriptionHandlers } from './transcriptionHandlers'
 import { authHandlers } from './authHandlers'
 import { brandingHandlers } from './brandingHandlers'
 import { mailHandlers } from './mailHandlers'
@@ -67,6 +68,7 @@ export const handlers = [
   ...documentMetadataHandlers,
   ...libraryFolderHandlers,
   ...capabilityHandlers,
+  ...transcriptionHandlers,
   ...authHandlers,
   ...brandingHandlers,
   ...mailHandlers,

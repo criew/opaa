@@ -467,3 +467,7 @@ export function isErrorResponse(data: unknown): data is ErrorResponse {
     typeof (data as Record<string, unknown>).error === 'string'
   )
 }
+
+export type TranscriptionAvailabilityResponse =
+  components['schemas']['TranscriptionAvailabilityResponse']
+export type TranscriptionResponse = components['schemas']['TranscriptionResponse']

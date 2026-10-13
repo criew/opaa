@@ -76,6 +76,7 @@ const ROLE_LABELS: Record<SearchModelRole, string> = {
   CHAT: 'Chat',
   EMBEDDING: 'Einbettung',
   RERANK: 'Reranking',
+  TRANSCRIPTION: 'Transkription',
 }
 
 const ROLE_STATE_LABELS: Record<SearchModelRoleStatusResponse['state'], string> = {
