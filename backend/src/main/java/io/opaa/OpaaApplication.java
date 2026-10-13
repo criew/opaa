@@ -1,7 +1,6 @@
 package io.opaa;
 
 import io.opaa.auth.AuthProperties;
-import io.opaa.common.FeatureProperties;
 import io.opaa.common.PublicBaseUrlProperties;
 import io.opaa.indexing.FilesystemProperties;
 import io.opaa.indexing.IndexingProperties;
@@ -44,7 +43,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   RerankProperties.class,
   SmtpProperties.class,
   PublicBaseUrlProperties.class,
-  FeatureProperties.class,
   GroupSizeProperties.class,
   SuccessionProperties.class
 })

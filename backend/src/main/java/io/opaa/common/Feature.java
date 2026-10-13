@@ -14,6 +14,8 @@ public enum Feature {
   PROMPT_LIBRARIES,
   METADATA;
 
+  static final String PREFIX = "opaa.features";
+
   /** The key under {@code opaa.features}: the constant in kebab case, e.g. {@code metadata}. */
   public String propertyKey() {
     return name().toLowerCase(Locale.ROOT).replace('_', '-');
@@ -21,7 +23,7 @@ public enum Feature {
 
   /** The full property that switches this flag, e.g. {@code opaa.features.metadata.enabled}. */
   public String enabledProperty() {
-    return FeatureProperties.PREFIX + "." + propertyKey() + ".enabled";
+    return PREFIX + "." + propertyKey() + ".enabled";
   }
 
   /** The property name in the API: the constant in camel case, e.g. {@code promptLibraries}. */

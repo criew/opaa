@@ -1,15 +1,13 @@
 package io.opaa.common;
 
 import java.util.Map;
-import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.Condition;
 import org.springframework.context.annotation.ConditionContext;
 import org.springframework.core.type.AnnotatedTypeMetadata;
 
 /**
- * The condition behind {@link ConditionalOnFeature}: binds {@code opaa.features.<key>.enabled} with
- * the same {@link Binder} rules as {@link FeatureProperties} and defaults to on, so the condition
- * and {@link FeatureFlags} cannot disagree about a flag.
+ * The condition behind {@link ConditionalOnFeature}. It reads the flag through {@link
+ * FeatureResolution}, the same rule {@link FeatureFlags} uses, so the two cannot disagree.
  */
 class OnFeatureCondition implements Condition {
 
@@ -21,8 +19,6 @@ class OnFeatureCondition implements Condition {
       return true;
     }
     Feature feature = (Feature) attributes.get("value");
-    return Binder.get(context.getEnvironment())
-        .bind(feature.enabledProperty(), Boolean.class)
-        .orElse(true);
+    return FeatureResolution.isEnabled(context.getEnvironment(), feature);
   }
 }

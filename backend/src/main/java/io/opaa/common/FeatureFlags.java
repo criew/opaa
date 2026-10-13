@@ -5,6 +5,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 /**
@@ -12,7 +13,7 @@ import org.springframework.stereotype.Component;
  * is on unless {@code opaa.features.<key>.enabled} is {@code false}; the answer is fixed at
  * start-up. A switched-off feature hides its functions and ignores existing data, it never deletes
  * anything. Use this runtime check where removing a bean would be wrong; for leaf beans see {@link
- * ConditionalOnFeature}, which reads the same property with the same default.
+ * ConditionalOnFeature}. Both read a flag through {@link FeatureResolution}.
  */
 @Component
 public class FeatureFlags {
@@ -21,11 +22,10 @@ public class FeatureFlags {
 
   private final Map<Feature, Boolean> flags;
 
-  public FeatureFlags(FeatureProperties properties) {
+  public FeatureFlags(Environment environment) {
     EnumMap<Feature, Boolean> resolved = new EnumMap<>(Feature.class);
     for (Feature feature : Feature.values()) {
-      FeatureProperties.Toggle toggle = properties.features().get(feature.propertyKey());
-      resolved.put(feature, toggle == null || toggle.enabled());
+      resolved.put(feature, FeatureResolution.isEnabled(environment, feature));
     }
     this.flags = Collections.unmodifiableMap(resolved);
     resolved.forEach(
