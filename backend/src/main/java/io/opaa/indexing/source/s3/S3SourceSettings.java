@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.s3;
 
+import io.opaa.indexing.source.SourceGlob;
 import io.opaa.s3.S3Connection;
-import java.nio.file.FileSystems;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -85,10 +85,15 @@ public record S3SourceSettings(
             label + ": ein Muster darf höchstens " + MAX_PATTERN_LENGTH + " Zeichen lang sein.");
       }
       try {
-        FileSystems.getDefault().getPathMatcher("glob:" + pattern);
+        SourceGlob.compile(pattern);
       } catch (IllegalArgumentException e) {
         throw new InvalidS3SourceSettingsException(
-            label + ": „" + pattern + "“ ist kein gültiges Glob-Muster.");
+            label
+                + ": „"
+                + pattern
+                + "“ ist kein gültiges Glob-Muster, es "
+                + e.getMessage()
+                + ".");
       }
       if (patterns.contains(pattern)) {
         throw new InvalidS3SourceSettingsException(
