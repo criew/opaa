@@ -1006,6 +1006,80 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     ).toBeInTheDocument()
   }, 20000)
 
+  // docs/design/accessibility.md 2.7, as in the Bearbeiten-Dialog of the Reiter „Quelle"
+  describe('errors at their field in „Quelle einrichten“ (#2193)', () => {
+    it('ties a wrong path to its field, focuses it and lets the step stand', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Dateisystem/)
+      const path = screen.getByLabelText(/Verzeichnispfad/)
+      await user.type(path, 'relativ/pfad')
+
+      await next(user)
+
+      expect(path).toHaveAttribute('aria-invalid', 'true')
+      expect(path).toHaveAccessibleDescription(/muss ein absoluter Pfad sein/)
+      expect(path).toHaveFocus()
+      expect(screen.getByText('Verbindung zum Dateisystem')).toBeInTheDocument()
+    }, 15000)
+
+    it('ties a missing address to the URL field', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Webverzeichnis/)
+
+      await next(user)
+
+      const url = screen.getByLabelText('Adresse (URL)')
+      expect(url).toHaveAccessibleDescription(/Adresse \(URL\) ist erforderlich/)
+      expect(url).toHaveFocus()
+    }, 15000)
+
+    it('ties a missing S3 access key to its field', async () => {
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /S3-Objektspeicher/)
+      await user.type(screen.getByLabelText('Endpoint'), 'https://minio.intern.example:9000')
+
+      await next(user)
+
+      const accessKey = screen.getByLabelText('Access Key')
+      expect(accessKey).toHaveAccessibleDescription(/Access Key ist erforderlich/)
+      expect(accessKey).toHaveFocus()
+    }, 15000)
+
+    it('announces an issue of a field the form does not show in the step’s live region', async () => {
+      // under a profile without an imitated account the form shows no field for it
+      mockListConnectionProfileOptions.mockResolvedValue([
+        {
+          id: 'profile-drive',
+          name: 'Zugang Drive',
+          sourceType: 'GOOGLE_DRIVE',
+          serverUrl: 'https://www.googleapis.com',
+          authMethod: 'SERVICE_ACCOUNT_KEY' as const,
+          connectorDefaults: null,
+        },
+      ])
+      mockBrowseSource.mockResolvedValue({
+        complete: true,
+        entries: [{ key: 'myDrive', name: 'Meine Ablage' }],
+      })
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Google Drive/)
+      await user.click(await screen.findByRole('radio', { name: /Zugang Drive/ }))
+      expect(screen.queryByLabelText(/Imitiertes Konto/)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Bereiche laden' }))
+      await user.click(await screen.findByRole('checkbox', { name: /Meine Ablage/ }))
+
+      await next(user)
+
+      const message = screen.getByText(/„Meine Ablage“ setzt ein imitiertes Konto voraus/)
+      expect(message.closest('[role="alert"]')).not.toBeNull()
+      expect(screen.getByRole('button', { name: 'Bereiche laden' })).toBeInTheDocument()
+    }, 20000)
+  })
+
   // #514: ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.
   it('drops a connection test result when the source type changes (#514)', async () => {
     const user = userEvent.setup()

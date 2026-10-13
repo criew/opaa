@@ -1,3 +1,4 @@
+import { formIssue, issueAt, messageOf, type SourceIssue } from './sourceIssue'
 import type { LibraryResponse } from '../types/api'
 import type { LibrarySourceConfigPayload } from './librarySourceConfig'
 
@@ -126,23 +127,36 @@ export function validateGoogleDriveValues(
   values: GoogleDriveSourceValues,
   credentialsStored: boolean,
 ): string | null {
+  return messageOf(googleDriveIssue(values, credentialsStored))
+}
+
+/** {@link validateGoogleDriveValues} with the field the message is about. */
+export function googleDriveIssue(
+  values: GoogleDriveSourceValues,
+  credentialsStored: boolean,
+): SourceIssue | null {
   if (values.keyFile === '' && !storedKeyServes(values, credentialsStored)) {
-    return credentialsStored
-      ? 'Für ein anderes imitiertes Konto muss die Schlüsseldatei neu hochgeladen werden.'
-      : 'Bitte die JSON-Schlüsseldatei des Dienstkontos hochladen.'
+    return formIssue(
+      credentialsStored
+        ? 'Für ein anderes imitiertes Konto muss die Schlüsseldatei neu hochgeladen werden.'
+        : 'Bitte die JSON-Schlüsseldatei des Dienstkontos hochladen.',
+    )
   }
   if (values.scopes.length === 0) {
-    return 'Bitte mindestens einen Bereich wählen.'
+    return formIssue('Bitte mindestens einen Bereich wählen.')
   }
   if (values.scopes.length > MAX_GOOGLE_DRIVE_SCOPES) {
-    return `Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Bereiche sind möglich.`
+    return formIssue(`Höchstens ${MAX_GOOGLE_DRIVE_SCOPES} Bereiche sind möglich.`)
   }
   if (values.scopes.some((scope) => scope.kind === 'myDrive') && values.subject.trim() === '') {
-    return '„Meine Ablage“ setzt ein imitiertes Konto voraus; ein Dienstkonto besitzt keine Dateien.'
+    return issueAt(
+      'subject',
+      '„Meine Ablage“ setzt ein imitiertes Konto voraus; ein Dienstkonto besitzt keine Dateien.',
+    )
   }
   const subject = values.subject.trim()
   if (subject !== '' && !/^[^@\s]+@[^@\s]+$/.test(subject)) {
-    return 'Das imitierte Konto ist eine E-Mail-Adresse der Domäne.'
+    return issueAt('subject', 'Das imitierte Konto ist eine E-Mail-Adresse der Domäne.')
   }
   return null
 }

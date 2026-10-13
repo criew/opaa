@@ -5,7 +5,7 @@ import {
   smbCredentialsOf,
   smbFoldersOf,
   smbSettingsOf,
-  validateSmbValues,
+  smbIssue,
   type SmbSourceValues,
 } from '../../../utils/smbSource'
 import SmbSourceForm from '../SmbSourceForm'
@@ -34,7 +34,7 @@ export const smbSource: SourceRegistration = {
       values.password !== '' ||
       values.folders.trim() !== '/',
     validate: (values: SmbSourceValues, context) =>
-      validateSmbValues(
+      smbIssue(
         values,
         !connectionFields(context).asksSecret ||
           (context.credentialsStored && sameSmbShare(context.originalSourceUrl, values.sourceUrl)),

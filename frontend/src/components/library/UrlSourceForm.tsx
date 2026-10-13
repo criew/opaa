@@ -7,6 +7,7 @@ import { documentSourceTypeLabel } from './sources/sourceLabels'
 import { sameLibrarySourceOrigin, type GenericSourceValues } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface UrlSourceFormProps {
   /** `create` adds the step's own heading and the two-column layout of the wizard. */
@@ -41,6 +42,7 @@ export default function UrlSourceForm({
   connection = connectionFields({ mode, sourceType, idPrefix, credentialsStored }),
 }: UrlSourceFormProps) {
   const isCreate = mode === 'create'
+  const urlIssue = useSourceIssue()('sourceUrl')
   // Mirrors KnowledgeLibraryService's own carry-forward rule purely to phrase an accurate hint;
   // the backend re-derives it from the persisted value and stays the authoritative check.
   const originChanged =
@@ -85,7 +87,8 @@ export default function UrlSourceForm({
             value={values.sourceUrl}
             onChange={(e) => onChange({ sourceUrl: e.target.value })}
             placeholder="https://files.example.com/dokumente/"
-            helperText={connection.addressHint ?? 'http oder https.'}
+            error={urlIssue !== null}
+            helperText={withIssue(urlIssue, connection.addressHint ?? 'http oder https.')}
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />
         </Box>
