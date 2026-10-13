@@ -317,6 +317,7 @@ public class QueryService {
                         relevantChunks,
                         conversationKey,
                         noteTexts(notePoints, null),
+                        !searchScope.isEmpty(),
                         searchNeeded,
                         spaceInstruction);
 
