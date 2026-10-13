@@ -583,6 +583,7 @@ haben:
 | Auslöser | Folge |
 |---|---|
 | Embedding-Modell oder -Anbieter gewechselt | Die vorhandenen Vektoren stammen aus einem anderen Modell und sind nicht vergleichbar — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
+| Ollama mit dem Fehler bei langen Eingaben durch eine neuere Fassung ersetzt | Die Vektoren langer Chunks stammen aus der fehlerhaften Fassung — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
 | `OPAA_PGVECTOR_DIMENSIONS` geändert | Passt nicht zur bestehenden Vektortabelle; die Datenbank wird zurückgesetzt und der Korpus neu indiziert. Liegen bereits Vektoren mit anderer Dimension vor, bricht der Start mit einer klaren Meldung ab |
 | Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
 | Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |

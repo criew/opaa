@@ -21,7 +21,7 @@ final class EvalOllamaEndpoint {
    * the third, and {@code PipelinePathIsolationTest} checks the committed baselines against exactly
    * this value.
    */
-  static final String PINNED_IMAGE = "ollama/ollama:0.6.5";
+  static final String PINNED_IMAGE = "ollama/ollama:0.40.3";
 
   /**
    * Prefix of the {@code ollamaImage} value of a run that talked to an external endpoint. Defined

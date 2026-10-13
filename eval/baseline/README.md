@@ -461,7 +461,7 @@ wodurch jede Metrik bedeutungslos wird.
 
 `ollamaImage` ist in allen drei Baseline-Typen ein **geprüfter** Festpunkt: Es benennt das gepinnte
 Testcontainer-Image, mit dem die Vektoren dieser Baseline entstanden sind (heute
-`ollama/ollama:0.6.5`). Weicht der Wert vom Lauf ab, ist die Baseline unvergleichbar — wie bei jedem
+`ollama/ollama:0.40.3`, bis Issue #2343 `ollama/ollama:0.6.5`). Weicht der Wert vom Lauf ab, ist die Baseline unvergleichbar — wie bei jedem
 anderen Festpunkt. Der Modell-Digest allein deckt das nicht ab: Er beschreibt die Gewichte, nicht die
 Laufzeit, die sie auswertet.
 
