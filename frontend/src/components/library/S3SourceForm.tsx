@@ -115,6 +115,13 @@ export default function S3SourceForm({
   const [advancedOpen, setAdvancedOpen] = useState(
     () => values.includePatterns !== '' || values.excludePatterns !== '',
   )
+  // a reported pattern issue opens the section once; it stays open after the issue is cleared
+  const patternIssue = includeIssue ?? excludeIssue
+  const [shownPatternIssue, setShownPatternIssue] = useState<string | null>(null)
+  if (patternIssue !== shownPatternIssue) {
+    setShownPatternIssue(patternIssue)
+    if (patternIssue !== null) setAdvancedOpen(true)
+  }
   // two counters: the listing only depends on connection and key, so editing a scope or a
   // pattern must not discard a bucket listing that is still in flight
   const generation = useRef(0)
@@ -498,14 +505,16 @@ export default function S3SourceForm({
         </Typography>
         <List disablePadding aria-label="Geltungsbereiche">
           {values.scopes.map((scope, index) => {
+            // a reported issue replaces the live check of its field, which says the same or less
+            const bucketIssue = issueFor(`scopes.${index}.bucket`)
+            const prefixIssue = issueFor(`scopes.${index}.prefix`)
             const bucketError =
+              bucketIssue ??
               (scope.bucket.trim() === ''
                 ? null
-                : validateS3Scope({ bucket: scope.bucket, prefix: '' })) ??
-              issueFor(`scopes.${index}.bucket`)
+                : validateS3Scope({ bucket: scope.bucket, prefix: '' }))
             const prefixError =
-              (scope.prefix.trim() === '' ? null : validateS3Prefix(scope.prefix)) ??
-              issueFor(`scopes.${index}.prefix`)
+              prefixIssue ?? (scope.prefix.trim() === '' ? null : validateS3Prefix(scope.prefix))
             return (
               <ListItem
                 key={index}
@@ -529,7 +538,9 @@ export default function S3SourceForm({
                         size="small"
                         placeholder="dokumente"
                         error={bucketError !== null}
-                        helperText={bucketError ?? undefined}
+                        helperText={
+                          bucketIssue ? withIssue(bucketIssue) : (bucketError ?? undefined)
+                        }
                       />
                     )}
                   />
@@ -545,7 +556,7 @@ export default function S3SourceForm({
                     onChange={(e) => updateScope(index, { prefix: e.target.value })}
                     placeholder="2025/protokolle/"
                     error={prefixError !== null}
-                    helperText={prefixError ?? undefined}
+                    helperText={prefixIssue ? withIssue(prefixIssue) : (prefixError ?? undefined)}
                     fullWidth
                     slotProps={{ htmlInput: { maxLength: 1023, sx: { fontFamily: 'monospace' } } }}
                   />
@@ -601,10 +612,7 @@ export default function S3SourceForm({
       </Box>
 
       {/* Stage 5: advanced - key patterns, TLS */}
-      <Accordion
-        expanded={advancedOpen || includeIssue !== null || excludeIssue !== null}
-        onChange={(_e, open) => setAdvancedOpen(open)}
-      >
+      <Accordion expanded={advancedOpen} onChange={(_e, open) => setAdvancedOpen(open)}>
         <AccordionSummary expandIcon={<ExpandMoreIcon />} id={`${idPrefix}-advanced`}>
           <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
             Erweitert: Ein-/Ausschlussmuster, TLS
@@ -631,7 +639,7 @@ export default function S3SourceForm({
                 error={includeIssue !== null}
                 helperText={withIssue(
                   includeIssue,
-                  'Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ überschreitet Schrägstriche: „**/*.pdf“ trifft PDFs in Unterordnern, „*.pdf“ nur auf der obersten Ebene.',
+                  'Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ als ganzes Segment steht für beliebig viele Segmente: „**/*.pdf“ trifft PDFs auf jeder Ebene, „*.pdf“ nur auf der obersten.',
                 )}
                 fullWidth
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
