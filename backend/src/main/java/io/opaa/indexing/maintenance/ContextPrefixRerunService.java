@@ -19,6 +19,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -27,6 +28,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
@@ -56,6 +59,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   private final ObjectMapper objectMapper;
   private final String vectorStoreTable;
   private final FeatureFlags featureFlags;
+  private final TransactionTemplate transactionTemplate;
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
   private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
@@ -69,8 +73,10 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       ObjectMapper objectMapper,
       @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      PlatformTransactionManager transactionManager) {
     this.featureFlags = featureFlags;
+    this.transactionTemplate = new TransactionTemplate(transactionManager);
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
@@ -145,8 +151,11 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   /**
    * Re-embeds every chunk of {@code document} in place: same ids, same stored text, the input
    * rebuilt with the document's current Kontextpräfix exactly as the ingest builds it, vector row
-   * and full-text row together. Records the prefix stamp afterwards. Throws when embedding or
-   * writing fails; the document then keeps what it had.
+   * and full-text row together. Records the prefix stamp afterwards, but only when every stored
+   * chunk was rewritten. Throws when embedding or writing fails; the document then keeps what it
+   * had. Holds no lock over the embedding: a chunk that a concurrent ingest replaced or a deletion
+   * removed after it was read is not written back, and a prefix changed in the meantime is not
+   * recorded, so the document stays pending.
    */
   public void reembedInPlace(Document document) {
     UUID documentId = document.getId();
@@ -164,16 +173,50 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
         stored.stream()
             .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
             .toList();
-    if (!rebuilt.isEmpty()) {
-      vectorChunkStore.addChunks(rebuilt);
+    int rewritten = vectorChunkStore.reembedChunks(rebuilt);
+    if (rewritten != stored.size()) {
+      // A concurrent ingest or deletion took chunks away after they were read; the document row
+      // belongs to that writer now and keeps the prefix it recorded for its own chunks.
+      return;
     }
     // Only after the replacement exists: a failed embedding call must leave the document pending
     // rather than mark it done with its old chunks.
-    documentRepository.recordContextPrefix(
-        documentId,
-        chunkMetadata.contextPrefixStamp(title),
-        eligible,
-        document.getContextPrefixTitle());
+    String stamp = chunkMetadata.contextPrefixStamp(title);
+    transactionTemplate.executeWithoutResult(
+        status ->
+            recordIfPrefixUnchanged(documentId, stamp, eligible, document.getContextPrefixTitle()));
+  }
+
+  /**
+   * Records the prefix the chunks were just embedded with, unless it is no longer the document's
+   * prefix: the document row is locked first, so a metadata correction either committed before -
+   * and its values are read here and differ - or clears the stamp after this commit. Locks only the
+   * document row, never a chunk row (see {@code VectorStoreWriter#rewriteEmbeddedChunks}).
+   */
+  private void recordIfPrefixUnchanged(
+      UUID documentId, String stamp, boolean eligible, String recordedTitle) {
+    if (jdbcTemplate
+        .queryForList(
+            "SELECT id FROM documents WHERE id = ? FOR NO KEY UPDATE", UUID.class, documentId)
+        .isEmpty()) {
+      return;
+    }
+    Document current = documentRepository.findById(documentId).orElse(null);
+    if (current == null) {
+      return;
+    }
+    boolean currentEligible = !Boolean.FALSE.equals(current.getContextPrefixEligible());
+    DocumentChunkMetadata currentMetadata = documentMetadataService.chunkMetadataFor(current);
+    String currentStamp =
+        currentMetadata.contextPrefixStamp(
+            ChunkContextPrefix.titleAtRest(
+                currentEligible, currentMetadata.contextTitle(), current.getContextPrefixTitle()));
+    if (currentEligible != eligible
+        || !Objects.equals(current.getContextPrefixTitle(), recordedTitle)
+        || !Objects.equals(currentStamp, stamp)) {
+      return;
+    }
+    documentRepository.recordContextPrefix(documentId, stamp, eligible, recordedTitle);
   }
 
   /**

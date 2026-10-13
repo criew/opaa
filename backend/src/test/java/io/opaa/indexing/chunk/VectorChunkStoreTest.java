@@ -5,7 +5,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -16,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.BatchingStrategy;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -28,10 +31,10 @@ import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 /**
  * {@link VectorChunkStore} builds its delete filter via {@link FilterExpressionBuilder} rather than
  * string concatenation - these tests pin the exact {@link Filter.Expression} passed to {@link
- * VectorStore#delete(Filter.Expression)}. Also pins that {@link VectorChunkStore#addChunks} embeds
- * before handing the result to {@link VectorStoreWriter} (never calling {@link VectorStore#add}
- * directly - see both classes' own Javadoc for why) and that both delete methods cascade to {@link
- * FullTextChunkStore}.
+ * VectorStore#delete(Filter.Expression)} for a library. Also pins that {@link
+ * VectorChunkStore#addChunks} embeds before handing the result to {@link VectorStoreWriter} (never
+ * calling {@link VectorStore#add} directly - see both classes' own Javadoc for why) and that both
+ * delete methods cascade to {@link FullTextChunkStore}.
  */
 class VectorChunkStoreTest {
 
@@ -122,6 +125,21 @@ class VectorChunkStoreTest {
   }
 
   @Test
+  void reembedChunksEmbedsFirstThenOnlyRewritesTheStoredChunksNeverInsertingOne() {
+    List<Document> chunks = List.of(new Document("chunk text"));
+    List<float[]> embeddings = List.of(new float[] {0.1f, 0.2f});
+    when(embeddingModel.embed(eq(chunks), any(EmbeddingOptions.class), eq(batchingStrategy)))
+        .thenReturn(embeddings);
+    when(vectorStoreWriter.rewriteEmbeddedChunks(chunks, embeddings)).thenReturn(1);
+
+    assertThat(vectorChunkStore.reembedChunks(chunks)).isEqualTo(1);
+
+    verify(vectorStoreWriter).rewriteEmbeddedChunks(chunks, embeddings);
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(anyList(), anyList());
+    verifyNoInteractions(vectorStore);
+  }
+
+  @Test
   void addChunksOfAnEmptyListIsANoOp() {
     vectorChunkStore.addChunks(List.of());
 
@@ -129,15 +147,15 @@ class VectorChunkStoreTest {
   }
 
   @Test
-  void deleteByDocumentIdBuildsAnEqualsFilterOnDocumentIdAndCascadesToFullText() {
+  void deleteByDocumentIdDeletesUnderTheDocumentLockAndCascadesToFullText() {
     UUID documentId = UUID.randomUUID();
 
     vectorChunkStore.deleteByDocumentId(documentId);
 
-    Filter.Expression expected =
-        new FilterExpressionBuilder().eq("document_id", documentId.toString()).build();
-    verify(vectorStore).delete(expected);
-    verify(fullTextChunkStore).deleteByDocumentId(documentId);
+    InOrder order = inOrder(vectorStoreWriter, fullTextChunkStore);
+    order.verify(vectorStoreWriter).deleteChunksOfDocument(documentId);
+    order.verify(fullTextChunkStore).deleteByDocumentId(documentId);
+    verifyNoInteractions(vectorStore);
   }
 
   @Test
