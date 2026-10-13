@@ -1,0 +1,82 @@
+package io.opaa.indexing.maintenance;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import io.opaa.common.TestFeatureFlags;
+import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.knowledge.Document;
+import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.metadata.DocumentChunkMetadata;
+import io.opaa.metadata.DocumentMetadataService;
+import java.sql.ResultSet;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import tools.jackson.databind.json.JsonMapper;
+
+/**
+ * {@link ContextPrefixRerunService#reembedInPlace} - the one unit both the Kontextpräfix-Nachlauf
+ * and the re-embedding after a model change run - writes its chunks back only through {@link
+ * VectorChunkStore#reembedChunks}, which never recreates a chunk a concurrent ingest replaced.
+ */
+class ContextPrefixRerunServiceTest {
+
+  private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+  private final DocumentRepository documentRepository = mock(DocumentRepository.class);
+  private final DocumentMetadataService metadataService = mock(DocumentMetadataService.class);
+  private final VectorChunkStore vectorChunkStore = mock(VectorChunkStore.class);
+  private final ContextPrefixRerunService service =
+      new ContextPrefixRerunService(
+          jdbcTemplate,
+          documentRepository,
+          mock(KnowledgeLibraryRepository.class),
+          metadataService,
+          vectorChunkStore,
+          JsonMapper.builder().build(),
+          "public",
+          "vector_store",
+          TestFeatureFlags.allOn());
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void theStoredChunksGoBackThroughTheUpdateOnlyPathNeverThroughAnInsert() throws Exception {
+    UUID documentId = UUID.randomUUID();
+    String chunkId = UUID.randomUUID().toString();
+    Document document = mock(Document.class);
+    when(document.getId()).thenReturn(documentId);
+    when(metadataService.chunkMetadataFor(document)).thenReturn(DocumentChunkMetadata.EMPTY);
+    ResultSet row = mock(ResultSet.class);
+    when(row.getString("id")).thenReturn(chunkId);
+    when(row.getString("content")).thenReturn("Gespeicherter Text");
+    when(row.getString("metadata"))
+        .thenReturn("{\"document_id\":\"" + documentId + "\",\"chunk_index\":0}");
+    when(jdbcTemplate.query(anyString(), any(RowMapper.class), eq(documentId.toString())))
+        .thenAnswer(call -> List.of(((RowMapper<Object>) call.getArgument(1)).mapRow(row, 0)));
+
+    service.reembedInPlace(document);
+
+    ArgumentCaptor<List<org.springframework.ai.document.Document>> written =
+        ArgumentCaptor.forClass(List.class);
+    verify(vectorChunkStore).reembedChunks(written.capture());
+    assertThat(written.getValue())
+        .singleElement()
+        .satisfies(
+            chunk -> {
+              assertThat(chunk.getId()).isEqualTo(chunkId);
+              assertThat(chunk.getText()).isEqualTo("Gespeicherter Text");
+            });
+    verify(vectorChunkStore, never()).addChunks(anyList());
+  }
+}

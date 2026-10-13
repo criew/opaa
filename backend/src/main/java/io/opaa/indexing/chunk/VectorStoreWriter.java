@@ -104,6 +104,57 @@ public class VectorStoreWriter {
   }
 
   /**
+   * Writes new vectors for chunks that are already stored, by plain {@code UPDATE}: a chunk whose
+   * row is gone, or carries another text than {@code chunks} names, is skipped and never inserted
+   * again. Only the chunks whose vector row was updated get their {@code chunk_full_text} row, in
+   * the same transaction; the update holds their vector rows locked until commit, and every delete
+   * path removes the vector row before the full-text row, so no full-text row outlives its chunk.
+   * {@code embeddings} is positionally aligned with {@code chunks}. Content and metadata stay.
+   *
+   * @return how many chunks were still stored and got their new vector
+   */
+  @Transactional
+  public int rewriteEmbeddedChunks(List<Document> chunks, List<float[]> embeddings) {
+    if (chunks.isEmpty()) {
+      return 0;
+    }
+    List<ChunkWithEmbedding> zipped = new ArrayList<>(chunks.size());
+    for (int i = 0; i < chunks.size(); i++) {
+      zipped.add(new ChunkWithEmbedding(chunks.get(i), embeddings.get(i)));
+    }
+    int[][] counts =
+        indexState.whileWriting(
+            column ->
+                jdbcTemplate.batchUpdate(
+                    "UPDATE "
+                        + schemaName
+                        + "."
+                        + tableName
+                        + " SET "
+                        + column
+                        + " = ? WHERE id = ? AND content = ?",
+                    zipped,
+                    zipped.size(),
+                    (ps, entry) -> {
+                      ps.setObject(1, new PGvector(entry.embedding()));
+                      ps.setObject(2, UUID.fromString(entry.chunk().getId()));
+                      ps.setString(3, entry.chunk().getText());
+                    }));
+    List<Document> stillStored = new ArrayList<>(chunks.size());
+    int position = 0;
+    for (int[] batch : counts) {
+      for (int count : batch) {
+        if (count > 0) {
+          stillStored.add(chunks.get(position));
+        }
+        position++;
+      }
+    }
+    fullTextChunkStore.indexChunks(stillStored);
+    return stillStored.size();
+  }
+
+  /**
    * The upsert into {@code column}. Into the target column of a stale index, the embedding column
    * keeps its vector of the previous model only while the chunk text stays the same; a new text
    * clears it, and a new chunk has none.

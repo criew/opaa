@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -119,6 +120,21 @@ class VectorChunkStoreTest {
             location,
             VectorChunkStore.CHUNK_INDEX_METADATA_KEY,
             index));
+  }
+
+  @Test
+  void reembedChunksEmbedsFirstThenOnlyRewritesTheStoredChunksNeverInsertingOne() {
+    List<Document> chunks = List.of(new Document("chunk text"));
+    List<float[]> embeddings = List.of(new float[] {0.1f, 0.2f});
+    when(embeddingModel.embed(eq(chunks), any(EmbeddingOptions.class), eq(batchingStrategy)))
+        .thenReturn(embeddings);
+    when(vectorStoreWriter.rewriteEmbeddedChunks(chunks, embeddings)).thenReturn(1);
+
+    assertThat(vectorChunkStore.reembedChunks(chunks)).isEqualTo(1);
+
+    verify(vectorStoreWriter).rewriteEmbeddedChunks(chunks, embeddings);
+    verify(vectorStoreWriter, never()).writeEmbeddedChunks(anyList(), anyList());
+    verifyNoInteractions(vectorStore);
   }
 
   @Test

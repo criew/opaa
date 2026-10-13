@@ -2,12 +2,14 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.format.DocumentProperties;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
@@ -43,6 +45,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -66,6 +69,8 @@ class ContextPrefixRerunIntegrationTest {
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+  @Autowired private EmbeddingModel embeddingModel;
+  @Autowired private VectorChunkStore vectorChunkStore;
 
   private KnowledgeLibrary library;
   private CurrentUser owner;
@@ -427,6 +432,76 @@ class ContextPrefixRerunIntegrationTest {
     rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
 
     assertThat(fullTextMatches(document, "Meldewesen")).isEqualTo(chunkCount(document));
+  }
+
+  @Test
+  void anIngestThatReplacesTheChunksWhileTheyAreReembeddedKeepsOnlyItsOwnChunks()
+      throws IOException {
+    Document document = indexed("ersetzt-waehrend-nachlauf.md");
+    List<UUID> idsBefore = chunkIds(document);
+    assertThat(idsBefore).isNotEmpty();
+    Path file = classTempDir.resolve("ersetzt-waehrend-nachlauf.md");
+    List<UUID> idsOfTheIngest = new java.util.ArrayList<>();
+    // Between reading the stored chunks and writing them back: the ingest replaces them with
+    // chunks of a new text under new ids.
+    fakeEmbeddingModel()
+        .beforeEmbeddingTextContaining(
+            "Personalausweises",
+            () -> {
+              try {
+                Files.writeString(
+                    file,
+                    """
+                    # Neufassung
+
+                    Die Satzung wurde vollständig neu gefasst und regelt nur noch die
+                    Ausstellung von Reisepässen. Alle übrigen Bestimmungen sind entfallen.
+                    """,
+                    StandardCharsets.UTF_8);
+                reindexFromScratch(document, "ersetzt-waehrend-nachlauf.md");
+              } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+              }
+              idsOfTheIngest.addAll(chunkIds(document));
+            });
+
+    rerunService.reembedInPlace(documentRepository.findById(document.getId()).orElseThrow());
+
+    assertThat(idsOfTheIngest)
+        .as("the ingest ran between read and write and replaced every chunk")
+        .isNotEmpty()
+        .doesNotContainAnyElementsOf(idsBefore);
+    assertThat(chunkIds(document))
+        .as("no chunk the ingest removed comes back")
+        .containsExactlyInAnyOrderElementsOf(idsOfTheIngest);
+    assertThat(chunkTexts(document))
+        .allSatisfy(text -> assertThat(text).doesNotContain("Personalausweis"));
+    assertThat(fullTextChunkIds(document))
+        .as("nor does its full-text row")
+        .containsExactlyInAnyOrderElementsOf(idsOfTheIngest);
+  }
+
+  @Test
+  void aDocumentDeletedWhileItsChunksAreReembeddedKeepsNoChunk() throws IOException {
+    Document document = indexed("geloescht-waehrend-nachlauf.md");
+    assertThat(chunkIds(document)).isNotEmpty();
+    fakeEmbeddingModel()
+        .beforeEmbeddingTextContaining(
+            "Personalausweises", () -> vectorChunkStore.deleteByDocumentId(document.getId()));
+
+    rerunService.reembedInPlace(document);
+
+    assertThat(chunkIds(document)).isEmpty();
+    assertThat(fullTextRowCount(document)).isZero();
+  }
+
+  private FakeEmbeddingModel fakeEmbeddingModel() {
+    return (FakeEmbeddingModel) embeddingModel;
+  }
+
+  private List<UUID> fullTextChunkIds(Document document) {
+    return jdbcTemplate.queryForList(
+        "SELECT chunk_id FROM chunk_full_text WHERE document_id = ?", UUID.class, document.getId());
   }
 
   /**

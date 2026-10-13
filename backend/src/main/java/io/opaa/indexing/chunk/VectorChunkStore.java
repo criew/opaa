@@ -71,20 +71,37 @@ public class VectorChunkStore implements ChunkMetadataStore {
     if (chunks.isEmpty()) {
       return;
     }
+    vectorStoreWriter.writeEmbeddedChunks(chunks, embed(chunks));
+  }
+
+  /**
+   * Re-embeds chunks that are already stored, under their own ids and with their stored text, and
+   * writes the new vectors and full-text rows only for those still stored at write time. A chunk
+   * that a concurrent ingest replaced or a deletion removed after it was read is skipped, never
+   * written back - see {@link VectorStoreWriter#rewriteEmbeddedChunks}.
+   *
+   * @return how many chunks were still stored and got their new vector
+   * @throws ChunkNotEmbeddableException as {@link #addChunks}; nothing is written then
+   */
+  public int reembedChunks(List<Document> chunks) {
+    if (chunks.isEmpty()) {
+      return 0;
+    }
+    return vectorStoreWriter.rewriteEmbeddedChunks(chunks, embed(chunks));
+  }
+
+  private List<float[]> embed(List<Document> chunks) {
     // Measured around the embedding round trip only, never the write: the Folgekosten estimate
     // names the cost of embedding calls, and a slow disk must not make a reindex look expensive.
     long measurementToken = embeddingRateEstimator.started();
     long startedAt = System.nanoTime();
-    List<float[]> embeddings;
     try {
-      embeddings =
-          embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
+      return embeddingModel.embed(chunks, EmbeddingOptions.builder().build(), batchingStrategy);
     } catch (IllegalArgumentException e) {
       throw oversizedChunkOr(chunks, e);
     } finally {
       embeddingRateEstimator.record(chunks.size(), System.nanoTime() - startedAt, measurementToken);
     }
-    vectorStoreWriter.writeEmbeddedChunks(chunks, embeddings);
   }
 
   /**

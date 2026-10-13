@@ -1,10 +1,12 @@
 package io.opaa.test;
 
+import io.opaa.FakeEmbeddingModel;
 import io.opaa.connection.token.GrantRevocations;
 import java.time.Duration;
 import org.awaitility.Awaitility;
 import org.mockito.Mockito;
 import org.springframework.ai.chat.model.ChatModel;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.test.context.TestContext;
 import org.springframework.test.context.support.AbstractTestExecutionListener;
 
@@ -29,6 +31,10 @@ final class OpaaTestBeanResetListener extends AbstractTestExecutionListener {
   public void beforeTestMethod(TestContext testContext) {
     Mockito.reset(testContext.getApplicationContext().getBean(ChatModel.class));
     testContext.getApplicationContext().getBean(FakeDirectoryClient.class).reset();
+    if (testContext.getApplicationContext().getBean(EmbeddingModel.class)
+        instanceof FakeEmbeddingModel embeddingModel) {
+      embeddingModel.reset();
+    }
     testContext.getApplicationContext().getBean(TestAssetType.class).switchOn();
     GrantRevocations revocations =
         testContext.getApplicationContext().getBean(GrantRevocations.class);
