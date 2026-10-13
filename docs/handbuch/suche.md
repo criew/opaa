@@ -582,7 +582,7 @@ Runden verteilt, damit auch die hinteren Treffer Zusammenhang bekommen: Zuerst e
 in der Rangfolge einen direkten Nachbarn, den folgenden Chunk oder, wo es keinen gibt oder er nicht
 mehr passt, den vorangehenden. Ein Treffer, an den schon ein anderer Chunk des Antwortkontexts
 grenzt, geht in dieser Runde leer aus. Was danach übrig ist, geht nach Rang: erst die übrigen
-direkten Nachbarn, dann die ferneren, bis das Budget erschöpft ist. Sie kommen
+direkten Nachbarn, dann die ferneren, bis das Budget erschöpft ist. Nachbarn kommen
 nur aus Bibliotheken des Suchbereichs. Im Prompt stehen aneinandergrenzende Chunks eines Dokuments als
 zusammenhängender Ausschnitt in ihrer Reihenfolge im Dokument. Die Ausschnitte folgen dem Rang ihres
 besten Treffers. Jeder Nachbar bleibt ein eigener Chunk mit eigenem Kopf. Das Modell kann ihn
