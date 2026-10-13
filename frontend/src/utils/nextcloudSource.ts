@@ -1,3 +1,4 @@
+import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
 import type { LibraryResponse } from '../types/api'
 
 /**
@@ -64,22 +65,44 @@ export function validateNextcloudValues(
   values: NextcloudSourceValues,
   credentialsKept: boolean,
 ): string | null {
+  return messageOf(nextcloudIssue(values, credentialsKept))
+}
+
+/** {@link validateNextcloudValues} with the field the message is about. */
+export function nextcloudIssue(
+  values: NextcloudSourceValues,
+  credentialsKept: boolean,
+): SourceIssue | null {
   const url = values.sourceUrl.trim()
-  if (url === '') return 'Bitte die Adresse der Nextcloud eingeben'
-  if (!/^https?:\/\//i.test(url)) return 'Die Adresse muss mit http:// oder https:// beginnen'
+  if (url === '') return issueAt('sourceUrl', 'Bitte die Adresse der Nextcloud eingeben')
+  if (!/^https?:\/\//i.test(url)) {
+    return issueAt('sourceUrl', 'Die Adresse muss mit http:// oder https:// beginnen')
+  }
   const username = values.username.trim()
-  if (username.includes(':')) return 'Der Benutzername darf keinen Doppelpunkt enthalten'
+  if (username.includes(':')) {
+    return issueAt('username', 'Der Benutzername darf keinen Doppelpunkt enthalten')
+  }
   const partial = (username === '') !== (values.appPassword === '')
-  if (partial) return 'Bitte Benutzername und App-Passwort zusammen eingeben'
+  if (partial) {
+    return issueAt(
+      username === '' ? 'username' : 'appPassword',
+      'Bitte Benutzername und App-Passwort zusammen eingeben',
+    )
+  }
   if (username === '' && !credentialsKept) {
-    return 'Bitte Benutzername und App-Passwort des technischen Nutzers eingeben'
+    return issueAt(
+      'username',
+      'Bitte Benutzername und App-Passwort des technischen Nutzers eingeben',
+    )
   }
   const folders = nextcloudFoldersOf(values)
-  if (folders.length === 0) return 'Bitte mindestens einen Ordner angeben, / für alles'
+  const at = (message: string) => issueAt('folders', message)
+  if (folders.length === 0) return at('Bitte mindestens einen Ordner angeben, / für alles')
   if (folders.length > MAX_NEXTCLOUD_FOLDERS) {
-    return `Höchstens ${MAX_NEXTCLOUD_FOLDERS} Ordner je Bibliothek`
+    return at(`Höchstens ${MAX_NEXTCLOUD_FOLDERS} Ordner je Bibliothek`)
   }
-  if (folders.some((folder) => folder.includes(',')))
-    return 'Ein Ordnerpfad darf kein Komma enthalten'
+  if (folders.some((folder) => folder.includes(','))) {
+    return at('Ein Ordnerpfad darf kein Komma enthalten')
+  }
   return null
 }

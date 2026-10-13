@@ -12,9 +12,9 @@ import type { CatalogEntryResponse } from '../types/api'
 import { CATALOG_QUERY_MAX_LENGTH, useCatalogStore } from '../stores/catalogStore'
 import { useMyCapabilities } from '../hooks/useMyCapabilities'
 import {
-  ASSET_TYPES,
   assetTypeDefinition,
   creatableAssetTypes,
+  useActiveAssetTypes,
 } from '../components/assets/assetTypeRegistry'
 import OverviewPage from '../components/overview/OverviewPage'
 import AssetTile from '../components/assets/AssetTile'
@@ -100,7 +100,8 @@ function CatalogCard({ entry, to }: { entry: CatalogEntryResponse; to: string })
 export default function CatalogPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const typeFilter = ASSET_TYPES.find((definition) => definition.slug === searchParams.get('type'))
+  const assetTypes = useActiveAssetTypes()
+  const typeFilter = assetTypes.find((definition) => definition.slug === searchParams.get('type'))
   const favoritesOnly = searchParams.get('favorites') === '1'
   const [query, setQuery] = useState('')
   const [appliedQuery, setAppliedQuery] = useState('')
@@ -162,7 +163,7 @@ export default function CatalogPage() {
             maxLength: CATALOG_QUERY_MAX_LENGTH,
           }}
           types={{
-            offered: ASSET_TYPES,
+            offered: assetTypes,
             value: typeFilter?.type,
             onChange: (type) => setParam('type', assetTypeDefinition(type)?.slug ?? null),
           }}

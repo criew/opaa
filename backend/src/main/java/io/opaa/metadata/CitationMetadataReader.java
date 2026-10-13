@@ -1,5 +1,7 @@
 package io.opaa.metadata;
 
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.format.FormatMetadataField;
 import io.opaa.knowledge.Document;
 import java.util.ArrayList;
@@ -23,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
  * ChatSourceMetadataEntry#from}) - only there is a duplicate of a core field already known, and a
  * dropped duplicate must not cost a place.
  *
+ * <p>With the metadata feature off (ADR-0044) no document has an entry: the stored values stay, but
+ * no Beleg shows them.
+ *
  * <p>Two queries for a whole answer's sources, not one per document: the citation fields of the
  * involved libraries and the values of the involved documents.
  */
@@ -32,11 +37,14 @@ public class CitationMetadataReader {
   private final LibraryMetadataFieldRepository fieldRepository;
   private final LibraryMetadataFieldValueRepository valueRepository;
   private final DocumentMetadataValueRepository documentValueRepository;
+  private final FeatureFlags featureFlags;
 
   public CitationMetadataReader(
       LibraryMetadataFieldRepository fieldRepository,
       LibraryMetadataFieldValueRepository valueRepository,
-      DocumentMetadataValueRepository documentValueRepository) {
+      DocumentMetadataValueRepository documentValueRepository,
+      FeatureFlags featureFlags) {
+    this.featureFlags = featureFlags;
     this.fieldRepository = fieldRepository;
     this.valueRepository = valueRepository;
     this.documentValueRepository = documentValueRepository;
@@ -46,6 +54,9 @@ public class CitationMetadataReader {
   @Transactional(readOnly = true)
   public Map<UUID, List<CitationFieldValue>> forDocuments(Collection<Document> documents) {
     Map<UUID, List<CitationFieldValue>> result = new LinkedHashMap<>();
+    if (!featureFlags.isEnabled(Feature.METADATA)) {
+      return result;
+    }
     Set<UUID> libraryIds = new LinkedHashSet<>();
     Set<UUID> documentIds = new LinkedHashSet<>();
     for (Document document : documents) {

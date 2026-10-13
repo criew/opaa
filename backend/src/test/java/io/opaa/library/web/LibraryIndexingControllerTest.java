@@ -62,7 +62,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  */
 @WebMvcTest(LibraryController.class)
 @ActiveProfiles("test")
-@Import(TestSecurityConfig.class)
+@Import({TestSecurityConfig.class, io.opaa.common.FeatureFlags.class})
 class LibraryIndexingControllerTest {
 
   private static final String TEST_ISSUER = "test-issuer";

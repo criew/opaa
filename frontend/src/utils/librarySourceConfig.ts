@@ -1,3 +1,5 @@
+import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
+
 /** The generic connection fields - what the Pfad- und URL-Formulare edit (#1940). */
 export interface GenericSourceValues {
   sourcePath: string
@@ -46,18 +48,29 @@ export function validateGenericSource(
   kind: GenericSourceKind,
   values: Pick<GenericSourceValues, 'sourcePath' | 'sourceUrl'>,
 ): string | null {
+  return messageOf(genericSourceIssue(kind, values))
+}
+
+/** {@link validateGenericSource} with the field the message is about. */
+export function genericSourceIssue(
+  kind: GenericSourceKind,
+  values: Pick<GenericSourceValues, 'sourcePath' | 'sourceUrl'>,
+): SourceIssue | null {
   if (kind === 'path') {
     const trimmedPath = values.sourcePath.trim()
-    if (!trimmedPath) return 'Verzeichnispfad ist erforderlich'
+    if (!trimmedPath) return issueAt('sourcePath', 'Verzeichnispfad ist erforderlich')
     if (!trimmedPath.startsWith('/')) {
-      return 'Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente'
+      return issueAt(
+        'sourcePath',
+        'Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente',
+      )
     }
     return null
   }
   const trimmedUrl = values.sourceUrl.trim()
-  if (!trimmedUrl) return 'Adresse (URL) ist erforderlich'
+  if (!trimmedUrl) return issueAt('sourceUrl', 'Adresse (URL) ist erforderlich')
   if (!/^https?:\/\//i.test(trimmedUrl)) {
-    return 'Adresse (URL) muss mit http:// oder https:// beginnen'
+    return issueAt('sourceUrl', 'Adresse (URL) muss mit http:// oder https:// beginnen')
   }
   return null
 }

@@ -118,9 +118,9 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   keinen ruhenden Inhalt.
  * - `ChatInput`: die Eingabezeile ist ein Bedienelement, und ihr Vorschlagsfeld eine schwebende
  *   Ebene. Beides bringt seine Fläche zu Recht mit.
- * - `PromptCommandMenu`: das Vorschlagsfeld des `/`-Befehls über derselben Eingabezeile (#1903) —
- *   dieselbe schwebende Ebene wie das `@`-Feld, nur in eine eigene Datei gezogen; das Etikett „mit
- *   Formular" ist ein Etikett am Eintrag wie ein Chip.
+ * - `ChatActionMenu`: das Vorschlagsfeld des `/`-Befehls über derselben Eingabezeile (#1903,
+ *   #2588) — dieselbe schwebende Ebene wie das `@`-Feld, nur in eine eigene Datei gezogen; das
+ *   Etikett „mit Formular" ist ein Etikett am Eintrag wie ein Chip.
  * - `SpaceGeneralSection`: der Gefahrenbereich am Ende der Stammdaten (#1917). Der Rahmen setzt
  *   Archivieren und Löschen vom Formular darüber ab — er markiert eine Grenze, statt Inhalt zu
  *   bündeln.
@@ -144,7 +144,7 @@ const AUSNAHMEN = [
   'EvidenceFooter.tsx',
   'CopyAnswerButton.tsx',
   'ChatInput.tsx',
-  'PromptCommandMenu.tsx',
+  'ChatActionMenu.tsx',
   'SpaceGeneralSection.tsx',
   'PromptTextHighlight.tsx',
   'PromptPreview.tsx',
@@ -158,13 +158,13 @@ const AUSNAHMEN = [
  *
  * - `ChatInput`: das Vorschlagsfeld über der Eingabezeile (`elevation={4}`). Es liegt über dem
  *   Verlauf, nicht in ihm; genau dafür ist `Paper` da.
- * - `PromptCommandMenu`: das Vorschlagsfeld des `/`-Befehls an derselben Stelle, aus demselben
+ * - `ChatActionMenu`: das Vorschlagsfeld des `/`-Befehls an derselben Stelle, aus demselben
  *   Grund.
  *
  * Im Verwaltungsbereich steht diese Liste leer: Dort baut keine Datei eine schwebende Ebene
  * selbst, Dialoge und Menüs bringen ihre Fläche aus MUI mit.
  */
-const SCHWEBENDE_EBENEN = ['ChatInput.tsx', 'PromptCommandMenu.tsx']
+const SCHWEBENDE_EBENEN = ['ChatInput.tsx', 'ChatActionMenu.tsx']
 
 describe('PageSection', () => {
   it('renders the head over its content and names the section for assistive tech', () => {

@@ -1,11 +1,12 @@
 import {
   EMPTY_GENERIC_SOURCE_VALUES,
   genericSourcePayload,
+  genericSourceIssue,
   storedGenericSourceValues,
-  validateGenericSource,
   type GenericSourceValues,
   type LibrarySourceConfigPayload,
 } from './librarySourceConfig'
+import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
 
 /** The form values of a FILESYSTEM library: the path plus its exclusion patterns, one per line. */
 export interface FilesystemSourceValues extends GenericSourceValues {
@@ -57,20 +58,28 @@ export function filesystemSettingsOf(values: FilesystemSourceValues): Record<str
  * German message of its own.
  */
 export function validateFilesystemValues(values: FilesystemSourceValues): string | null {
-  const pathError = validateGenericSource('path', values)
-  if (pathError) return pathError
+  return messageOf(filesystemIssue(values))
+}
+
+/** {@link validateFilesystemValues} with the field the message is about. */
+export function filesystemIssue(values: FilesystemSourceValues): SourceIssue | null {
+  const pathIssue = genericSourceIssue('path', values)
+  if (pathIssue) return pathIssue
   const patterns = filesystemPatternsOf(values.excludePatterns)
+  const at = (message: string) => issueAt('excludePatterns', message)
   if (patterns.length > MAX_PATTERNS) {
-    return `Höchstens ${MAX_PATTERNS} Ausschlussmuster je Bibliothek`
+    return at(`Höchstens ${MAX_PATTERNS} Ausschlussmuster je Bibliothek`)
   }
   if (patterns.some((pattern) => pattern.length > MAX_PATTERN_LENGTH)) {
-    return `Ausschlussmuster: ein Muster darf höchstens ${MAX_PATTERN_LENGTH} Zeichen lang sein`
+    return at(`Ausschlussmuster: ein Muster darf höchstens ${MAX_PATTERN_LENGTH} Zeichen lang sein`)
   }
   if (patterns.some((pattern) => pattern.startsWith('/'))) {
-    return 'Ausschlussmuster gelten relativ zum Verzeichnispfad und beginnen nicht mit „/“, z. B. Archiv/**'
+    return at(
+      'Ausschlussmuster gelten relativ zum Verzeichnispfad und beginnen nicht mit „/“, z. B. Archiv/**',
+    )
   }
   if (new Set(patterns).size !== patterns.length) {
-    return 'Ausschlussmuster: ein Muster ist mehrfach angegeben'
+    return at('Ausschlussmuster: ein Muster ist mehrfach angegeben')
   }
   return null
 }

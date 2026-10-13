@@ -1,6 +1,7 @@
 package io.opaa.succession;
 
 import io.opaa.api.types.SuccessionKind;
+import io.opaa.asset.AssetTypes;
 import io.opaa.organization.Organization;
 import io.opaa.organization.OrganizationRepository;
 import io.opaa.permission.SuccessionFinding;
@@ -41,18 +42,21 @@ public class SuccessionDetectionService {
   private final OrganizationRepository organizations;
   private final Clock clock;
   private final TransactionTemplate transactionTemplate;
+  private final AssetTypes assetTypes;
 
   SuccessionDetectionService(
       List<SuccessionFindingSource> sources,
       SuccessionCaseRepository cases,
       OrganizationRepository organizations,
       Clock clock,
-      PlatformTransactionManager transactionManager) {
+      PlatformTransactionManager transactionManager,
+      AssetTypes assetTypes) {
     this.sources = sources;
     this.cases = cases;
     this.organizations = organizations;
     this.clock = clock;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
+    this.assetTypes = assetTypes;
   }
 
   /** One pass over every organization; returns how many cases it opened and closed. */
@@ -117,7 +121,7 @@ public class SuccessionDetectionService {
     int closed = 0;
     for (SuccessionCase open : cases.findByOrganizationIdAndClosedAtIsNull(organizationId)) {
       CaseKey key = new CaseKey(open.getKind(), open.getObjectType().name(), open.getObjectId());
-      if (!found.contains(key)) {
+      if (!found.contains(key) && !ofInactiveType(open)) {
         // Nobody is named: the state simply stopped holding - a group has an active member again,
         // an object was deleted. Where a person's action ended it, that action closes the case
         // itself and names them (SuccessionService#closeFor).
@@ -127,6 +131,16 @@ public class SuccessionDetectionService {
       }
     }
     return new SuccessionDetectionRun(opened, closed);
+  }
+
+  /**
+   * A case about an asset of an inactive type (ADR-0044) is not reported while the type is off, but
+   * its state still holds: it stays open, so its age is intact once the type is active again.
+   */
+  private boolean ofInactiveType(SuccessionCase open) {
+    return open.getAssetType() != null
+        && assetTypes.find(open.getAssetType()).isPresent()
+        && !assetTypes.isActive(open.getAssetType());
   }
 
   private record CaseKey(SuccessionKind kind, String objectType, UUID objectId) {}

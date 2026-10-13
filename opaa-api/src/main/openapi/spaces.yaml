@@ -261,8 +261,9 @@ paths:
       summary: >
         Add a member - a person or a group - to a space (admin only, #1815). A group's members
         hold the role without a row of their own, and lose it the moment they leave the group.
-        409 when the space is archived (#543 - an archived space accepts no new members), when
-        the subject already holds a membership, or when the group is not effective (dissolved, or
+        409 when the space is the default space (it is private), when the space is
+        archived (#543 - an archived space accepts no new members), when the subject already
+        holds a membership, or when the group is not effective (dissolved, or
         belonging to a switched-off identity provider; ADR-0036 Entscheidung 6). An effective but
         empty group is admitted on purpose and answers with emptyGroup = true.
       requestBody:
@@ -379,7 +380,8 @@ paths:
       operationId: updateSpaceMemberRole
       tags: [space]
       summary: >
-        Update a member's role (admin only). 409 when the membership is the owner's, or when the
+        Update a member's role (admin only). 409 in the default space, when the
+        membership is the owner's, or when the
         downgrade would take the space's last capable ADMIN member (ADR-0036 Entscheidung 6,
         Schutzregel 1).
       requestBody:

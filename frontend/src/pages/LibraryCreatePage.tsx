@@ -18,6 +18,9 @@ import LibraryScheduleForm from '../components/library/LibraryScheduleForm'
 import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
 import type { SourceFormContext } from '../components/library/sources/types'
+import { reportSourceIssue } from '../components/library/sources/reportSourceIssue'
+import { SourceIssueContext } from '../components/library/sources/sourceIssueContext'
+import type { SourceIssue } from '../utils/sourceIssue'
 import ConnectionProfileSelect from '../components/library/ConnectionProfileSelect'
 import {
   OWN_ADDRESS,
@@ -149,6 +152,9 @@ export default function LibraryCreatePage() {
   const draft = restored?.draft
   const [activeStep, setActiveStep] = useState(restored ? 1 : 0)
   const [error, setError] = useState<string | null>(null)
+  // an issue of the source form that names a field; it is shown there instead of in `error`
+  const [sourceIssue, setSourceIssue] = useState<SourceIssue | null>(null)
+  const sourceFormRef = useRef<HTMLDivElement>(null)
   const [submitting, setSubmitting] = useState(false)
   // ADR-0036, Entscheidung 5: uploads and connectors are separate Anlegerechte, because a
   // connector library reaches server paths and stored credentials. A missing right is explained
@@ -345,6 +351,7 @@ export default function LibraryCreatePage() {
       }))
     }
     setError(null)
+    setSourceIssue(null)
   }
   // a new library has no rhythm of its own yet; empty means the instance's, named by the type
   const confluenceRhythm: ConfluenceFullSyncRhythm | undefined = configuration?.fullSyncRhythm
@@ -476,9 +483,18 @@ export default function LibraryCreatePage() {
         setError(CONSENT_REQUIRED)
         return
       }
-      const validationError = configuration.validate(values, formContext)
-      if (validationError) {
-        setError(validationError)
+      const validationIssue = configuration.validate(values, formContext)
+      if (validationIssue) {
+        // a field's issue takes the focus to the field; one without is announced in place
+        reportSourceIssue(
+          validationIssue,
+          (shown) => {
+            setSourceIssue(shown.field ? shown : null)
+            setError(shown.field ? null : shown.message)
+          },
+          sourceFormRef.current,
+          () => {},
+        )
         return
       }
       const scheduleError = validateScheduleValues(schedule, confluenceRhythm)
@@ -500,6 +516,7 @@ export default function LibraryCreatePage() {
       return
     }
     setError(null)
+    setSourceIssue(null)
     setActiveStep((s) => s + 1)
   }
 
@@ -669,19 +686,24 @@ export default function LibraryCreatePage() {
               />
             )}
             {SourceForm && connectionChoice !== null && !awaitsConsent && (
-              <SourceForm
-                // a new profile starts the form afresh, so no probe result outlives its profile
-                key={connectionChoice}
-                values={values}
-                context={formContext}
-                onChange={(patch: object) => {
-                  setSourceValues((prev) => ({
-                    ...prev,
-                    [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
-                  }))
-                  setError(null)
-                }}
-              />
+              <Box ref={sourceFormRef}>
+                <SourceIssueContext value={sourceIssue}>
+                  <SourceForm
+                    // a new profile starts the form afresh, so no probe result outlives its profile
+                    key={connectionChoice}
+                    values={values}
+                    context={formContext}
+                    onChange={(patch: object) => {
+                      setSourceValues((prev) => ({
+                        ...prev,
+                        [valuesKey]: { ...(values as object), ...withoutFixed(patch, connection) },
+                      }))
+                      setError(null)
+                      setSourceIssue(null)
+                    }}
+                  />
+                </SourceIssueContext>
+              </Box>
             )}
 
             {/* Zeitplan und Sofortstart gelten seit #1942 für jeden Konnektortyp, nicht mehr nur
@@ -826,6 +848,7 @@ export default function LibraryCreatePage() {
               variant="outlined"
               onClick={() => {
                 setError(null)
+                setSourceIssue(null)
                 setActiveStep((s) => s - 1)
               }}
               disabled={submitting}

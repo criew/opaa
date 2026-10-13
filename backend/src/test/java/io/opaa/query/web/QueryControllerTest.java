@@ -45,7 +45,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-@WebMvcTest(QueryController.class)
+@WebMvcTest({QueryController.class, MetadataFilterOptionsController.class})
 @ActiveProfiles({"test", "dev"})
 @Import(TestSecurityConfig.class)
 class QueryControllerTest {

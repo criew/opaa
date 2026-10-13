@@ -51,8 +51,10 @@ Drei Regeln halten einen Space handlungsfähig:
   natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
 - **Ein archivierter Space nimmt keine neuen Mitglieder auf.**
 
-**Der persönliche Standard-Space** entsteht bei der ersten Anmeldung automatisch. Er ist privat,
-bis die Person selbst jemanden einlädt, und lässt sich nicht übertragen, archivieren oder löschen.
+**Der persönliche Standard-Space** entsteht bei der ersten Anmeldung automatisch. Er ist immer
+privat: Außer der Person selbst wird niemand Mitglied, auch keine Gruppe. Wer mit anderen arbeiten
+will, legt einen Space an. Der Standard-Space lässt sich nicht übertragen, archivieren oder löschen;
+er braucht keine Nachfolge und wird mit dem Konto gelöscht.
 
 ## 3. Arbeitsmittel zuordnen
 
@@ -97,7 +99,7 @@ Die Seite hat drei Reiter, und keine Überschrift im Reiter wiederholt seinen Na
 |---|---|
 | **Stammdaten** | Name, Beschreibung, der Schalter der automatischen Chat-Bereinigung mit den Fristen der Installation (Abschnitt 7), die **Anweisung an das Modell** ([Suche](suche.md), Abschnitt 6) — und am Ende der abgesetzte **Gefahrenbereich** mit „Space archivieren" und „Space löschen" |
 | **Mitglieder** | Die Mitgliederliste und das Aufnehmen von Personen und Gruppen. Die Liste beginnt mit dem Eigentümer, danach folgen Administratoren, Kuratoren und Mitglieder, je Rolle nach Name, Personen und Gruppen gemischt; eine lange Liste bekommt darüber ein Suchfeld. Jede Zeile trägt nur die Rolle — für Administratoren als Auswahl, beim Eigentümer als schreibgeschützte Auswahl „Eigentümer" mit Schloss statt Pfeil und dem Hinweis, dass der Eigentümer über „Zum Eigentümer machen" bei einem anderen Mitglied wechselt — und ein Menü „⋯" mit „Warum hat … Zugriff?", „Mitglieder der Gruppe anzeigen", „Zum Eigentümer machen" und „Aus Space entfernen", soweit der Eintrag für Zeile und eigene Rolle gilt. Darunter steht „Mitglied hinzufügen" mit einem Suchfeld für Personen und Gruppen, der Rolle und „Hinzufügen" in einer Zeile |
-| **Inhalte** | Eine Kachelliste aller Arbeitsmittel — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md). Ein Häkchen heißt „dem Space zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Space |
+| **Inhalte** | Eine Kachelliste aller Arbeitsmittel — Wissensbibliotheken und [Prompt-Bibliotheken](prompt-bibliotheken.md), solange Prompt-Bibliotheken eingeschaltet sind. Ein Häkchen heißt „dem Space zugeordnet"; anhaken und abhaken dürfen Kuratoren, Administratoren und der Eigentümer des Space |
 
 **Im Reiter „Mitglieder" meldet sich jede Änderung kurz.** Hinzufügen, Entfernen, Rollenwechsel und
 Übertragung bestätigt je eine Meldung, die von selbst verschwindet („Gruppe Meldewesen
@@ -111,9 +113,9 @@ und 2 Gruppen") und wie sich die Rollen darauf verteilen („Rollen: 2 Administr
 9 Mitglieder"). Eine Gruppe zählt dabei einmal, gleich wie viele Konten sie hat. Die Arbeit eines Kurators
 liegt im Reiter „Inhalte".
 Den Schalter der Chat-Bereinigung im eigenen Standard-Space legt nur dessen Eigentümer um, auch die
-Systemverwaltung nicht. Deshalb lässt sich ein Standard-Space auch nicht übertragen: Der Knopf „Zum
-Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
-Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
+Systemverwaltung nicht. Deshalb lässt sich ein Standard-Space auch nicht übertragen. Sein Reiter
+„Mitglieder" zeigt nur den Hinweis „Ihr Standard-Space ist privat." mit dem Verweis „Space
+anlegen", der Systemverwaltung nur „Der Standard-Space ist privat." Den Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
 archivieren noch löschen.
 
 **Die Anweisung an das Modell setzt und ändert nur, wer im Space die Rolle Administrator hat** —
@@ -255,13 +257,15 @@ Gerät und nicht je Konto. Auf schmalen Bildschirmen öffnet sich die Seitenleis
 Überlagerung in fester Breite.
 
 Das **Eingabefeld** sendet mit dem Senden-Knopf oder mit Enter. Darunter steht „@ für Quellen, /
-für Aktionen". Solange der Suchbereich des Space noch ermittelt wird, steht dort stattdessen
+für Aktionen"; hat die Installation Prompt-Bibliotheken abgeschaltet, nur „@ für Quellen"
+([Prompt-Bibliotheken](prompt-bibliotheken.md#9-abschalten)). Solange der Suchbereich des Space noch ermittelt wird, steht dort stattdessen
 „Suchbereich wird ermittelt …".
 
 Während eine Antwort entsteht, bleibt das Eingabefeld bedienbar: Die nächste Frage lässt sich schon
 schreiben, auch ein Prompt per `/` lässt sich einsetzen. Senden geht erst, wenn die Antwort da ist.
 Bis dahin lassen sich Suchbereich und Filter nicht ändern, und `@` öffnet keine Auswahl; der
-Hinweis unter dem Feld nennt deshalb nur „/ für Aktionen". Die laufende Antwort behält den
+Hinweis unter dem Feld nennt deshalb nur „/ für Aktionen" (ohne Prompt-Bibliotheken bleibt er
+leer). Die laufende Antwort behält den
 Suchbereich, mit dem die Frage gestellt wurde. Lehnt OPAA die laufende Frage ab, steht sie wieder
 im Eingabefeld, vor dem schon geschriebenen Text.
 

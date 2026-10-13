@@ -328,3 +328,19 @@ export function describeMetadata(source: SourceReference | undefined): string | 
   if (entries.length === 0) return undefined
   return entries.map((entry) => `${entry.label}: ${entry.displayValue}`).join(', ')
 }
+
+/**
+ * The Beleg of {@code source} as an installation without metadata shows it (ADR-0044): only the
+ * title entry stays, and no filter mark. Applied in the frontend too, because a chat stores its
+ * Belege - an answer from before the switch still carries every value.
+ */
+export function withTitleMetadataOnly(
+  source: SourceReference | undefined,
+): SourceReference | undefined {
+  if (!source) return source
+  return {
+    ...source,
+    metadata: (source.metadata ?? []).filter((entry) => entry.fieldKey === 'title'),
+    metadataFilterMatch: undefined,
+  }
+}

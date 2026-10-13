@@ -84,9 +84,9 @@ describe('the source registry (ADR-0038)', () => {
         sourceUrl: 'https://graph.microsoft.com',
         sourceSettings: library.sourceSettings,
       })
-      expect(sharePoint.validate(values, context('SHAREPOINT'))).toBe(
-        'SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.',
-      )
+      expect(sharePoint.validate(values, context('SHAREPOINT'))).toEqual({
+        message: 'SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.',
+      })
       expect(
         sharePoint.validate(
           values,
@@ -135,19 +135,28 @@ describe('the source registry (ADR-0038)', () => {
         { ...generic, sourcePath: 'relativ', excludePatterns: '' },
         context('FILESYSTEM'),
       ),
-    ).toBe('Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente')
+    ).toEqual({
+      field: 'sourcePath',
+      message: 'Verzeichnispfad muss ein absoluter Pfad sein, z. B. /data/dokumente',
+    })
     expect(
       configurationOf('FILESYSTEM').validate(
         { ...generic, excludePatterns: '/data/Archiv/**' },
         context('FILESYSTEM'),
       ),
-    ).toMatch(/relativ zum Verzeichnispfad/)
+    ).toEqual({
+      field: 'excludePatterns',
+      message: expect.stringMatching(/relativ zum Verzeichnispfad/),
+    })
     expect(
       configurationOf('HTTP_DIRECTORY').validate(
         { ...generic, sourceUrl: 'docs.example' },
         context('HTTP_DIRECTORY'),
       ),
-    ).toBe('Adresse (URL) muss mit http:// oder https:// beginnen')
+    ).toEqual({
+      field: 'sourceUrl',
+      message: 'Adresse (URL) muss mit http:// oder https:// beginnen',
+    })
   })
 
   it('maps a Confluence configuration to edition, joined credentials and the selection (ADR-0023)', () => {
@@ -196,10 +205,11 @@ describe('the source registry (ADR-0038)', () => {
         { ...EMPTY_CONFLUENCE_VALUES, sourceUrl: 'https://wiki.example' },
         context('CONFLUENCE'),
       ),
-    ).toBe('Bitte zuerst die Edition erkennen lassen („Edition erkennen“)')
-    expect(confluence.validate(EMPTY_CONFLUENCE_VALUES, context('CONFLUENCE'))).toBe(
-      'Adresse der Confluence-Instanz ist erforderlich',
-    )
+    ).toEqual({ message: 'Bitte zuerst die Edition erkennen lassen („Edition erkennen“)' })
+    expect(confluence.validate(EMPTY_CONFLUENCE_VALUES, context('CONFLUENCE'))).toEqual({
+      field: 'sourceUrl',
+      message: 'Adresse der Confluence-Instanz ist erforderlich',
+    })
   })
 
   describe('S3 (#1377, ADR-0027)', () => {
@@ -230,7 +240,10 @@ describe('the source registry (ADR-0038)', () => {
       const s3Config = configurationOf('S3')
       const keyless = { ...s3, accessKey: '', secretKey: '' }
       expect(s3Config.validate(s3, context('S3'))).toBeNull()
-      expect(s3Config.validate(keyless, context('S3'))).toBe('Access Key ist erforderlich')
+      expect(s3Config.validate(keyless, context('S3'))).toEqual({
+        field: 'accessKey',
+        message: 'Access Key ist erforderlich',
+      })
       expect(
         s3Config.validate(
           keyless,
@@ -241,7 +254,10 @@ describe('the source registry (ADR-0038)', () => {
           }),
         ),
       ).toBeNull()
-      expect(s3Config.validate(EMPTY_S3_VALUES, context('S3'))).toMatch(/Endpoint/)
+      expect(s3Config.validate(EMPTY_S3_VALUES, context('S3'))).toEqual({
+        field: 'sourceUrl',
+        message: expect.stringMatching(/Endpoint/),
+      })
     })
   })
 })

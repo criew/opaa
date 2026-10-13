@@ -1,3 +1,4 @@
+import { formIssue, issueAt, messageOf, type SourceIssue } from './sourceIssue'
 import type { LibraryResponse } from '../types/api'
 
 /** The Confluence edition (ADR-0023): detected by the connection test, fixed after creation. */
@@ -80,23 +81,31 @@ export function confluenceCredentialsOf(values: ConfluenceSourceValues): string 
 export function validateConfluenceValues(
   values: ConfluenceSourceValues | undefined,
 ): string | null {
-  if (!values) return 'Adresse der Confluence-Instanz ist erforderlich'
+  return messageOf(confluenceIssue(values))
+}
+
+/** {@link validateConfluenceValues} with the field the message is about; later stages have none. */
+export function confluenceIssue(values: ConfluenceSourceValues | undefined): SourceIssue | null {
+  if (!values) return issueAt('sourceUrl', 'Adresse der Confluence-Instanz ist erforderlich')
   const url = values.sourceUrl.trim()
-  if (!url) return 'Adresse der Confluence-Instanz ist erforderlich'
+  if (!url) return issueAt('sourceUrl', 'Adresse der Confluence-Instanz ist erforderlich')
   if (!/^https?:\/\//i.test(url)) {
-    return 'Adresse der Confluence-Instanz muss mit http:// oder https:// beginnen'
+    return issueAt(
+      'sourceUrl',
+      'Adresse der Confluence-Instanz muss mit http:// oder https:// beginnen',
+    )
   }
   if (!values.edition) {
-    return 'Bitte zuerst die Edition erkennen lassen („Edition erkennen“)'
+    return formIssue('Bitte zuerst die Edition erkennen lassen („Edition erkennen“)')
   }
   if (!values.credentialsVerified) {
-    return 'Bitte die Zugangsdaten mit „Verbindung testen“ prüfen, bevor Sie fortfahren'
+    return formIssue('Bitte die Zugangsdaten mit „Verbindung testen“ prüfen, bevor Sie fortfahren')
   }
   if (values.spaces.length === 0) {
-    return 'Bitte mindestens einen Space auswählen'
+    return formIssue('Bitte mindestens einen Space auswählen')
   }
   if (values.spaces.length > MAX_CONFLUENCE_SPACES) {
-    return `Höchstens ${MAX_CONFLUENCE_SPACES} Spaces je Bibliothek`
+    return formIssue(`Höchstens ${MAX_CONFLUENCE_SPACES} Spaces je Bibliothek`)
   }
   return null
 }
