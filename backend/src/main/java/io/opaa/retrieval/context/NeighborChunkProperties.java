@@ -10,8 +10,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param radius how many chunks on each side of a selected chunk are loaded, {@code chunk_index ±
  *     radius}. Default {@code 1}; {@code 0} switches the expansion off. At most 3.
  * @param maxAddedCharacters upper bound on the characters all loaded neighbours of one answer may
- *     add to the prompt. Neighbours are added nearest first and in the rank order of their selected
- *     chunk; one that no longer fits is left out. Default 40000.
+ *     add to the prompt. Every selected chunk gets one neighbour first, the rest goes nearest first
+ *     and in rank order; one that no longer fits is left out. Default 40000.
  */
 @ConfigurationProperties(prefix = "opaa.query.neighbor-chunks")
 public record NeighborChunkProperties(

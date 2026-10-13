@@ -361,9 +361,18 @@ Keine Stufe der Pipeline, sondern der Schritt zwischen Endauswahl und Antwort:
 `io.opaa.retrieval.context.NeighborChunkExpansion`, aufgerufen in `QueryService#query`. Zu jedem Chunk
 der Endauswahl lädt `NeighborChunkLookup` die Chunks `chunk_index ± radius` desselben Dokuments
 (`opaa.query.neighbor-chunks.radius`, `OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS`, Default `1`), in einer
-SQL-Abfrage mit `library_id = ANY(Suchbereich)` in der Bedingung. Verteilt wird nach Rang und Abstand:
-erst alle Abstand-1-Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren, jeder nur neben einem
-schon vorhandenen Chunk, bis das Zeichenbudget `max-added-characters` (Default `40000`) erschöpft ist.
+SQL-Abfrage mit `library_id = ANY(Suchbereich)` in der Bedingung. Das Zeichenbudget
+`max-added-characters` (Default `40000`) wird seit [#2621](https://github.com/criew/opaa/issues/2621)
+in zwei Durchgängen verteilt. **Durchgang 1:** Jeder Treffer bekommt in Rangfolge einen
+Abstand-1-Nachbarn, bevorzugt den folgenden (`chunk_index + 1`), sonst den vorangehenden — wenn der
+folgende nicht existiert, außerhalb des Suchbereichs liegt oder nicht mehr ins Budget passt. Ein
+Treffer, an den bereits ein Chunk des Kontexts grenzt (ein anderer Treffer oder ein schon geladener
+Nachbar), bekommt in diesem Durchgang nichts. **Durchgang 2:** Das Restbudget geht nach Abstand und
+Rang, erst alle übrigen Abstand-1-Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren, jeder
+nur neben einem schon vorhandenen Chunk. Ein Nachbar, der nicht mehr passt, wird übersprungen; ein
+kürzerer dahinter kann noch passen. Vorher lief nur Durchgang 2, und bei erschöpftem Budget bekamen
+die hinteren Treffer (Rang 18–20) keine Nachbarn mehr; in der Verlustanalyse am FV-Testkorpus
+kostete das Kernfakten.
 Das Ergebnis ist nach zusammenhängenden Ausschnitten geordnet: Aneinandergrenzende Chunks eines
 Dokuments stehen in Indexreihenfolge, die Ausschnitte in der Rangfolge ihres besten Treffers.
 
