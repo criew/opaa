@@ -1159,7 +1159,7 @@ entsprechen.
   Bibliothek.
 - **Eine Kürzung der Endauswahl nach Tokens**, etwa passend zum Kontextfenster des aktiven
   Chat-Modells. `top-k` ist eine Zahl von Chunks, unabhängig von ihrer Länge und vom Modell.
-- **Text schon während des Diktierens** (Live-Transkript, #1926). Der erkannte Text erscheint
+- **Text schon während des Diktierens** (Live-Transkript, #2615). Der erkannte Text erscheint
   erst nach dem Ende der Aufnahme.
 
 ## 11. Weiterführende Kapitel

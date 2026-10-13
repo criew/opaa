@@ -287,7 +287,9 @@ läuft weiter.
 (`OPAA_TRANSCRIPTION_LANGUAGE`) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
 kein Kontoname, keine Adresse des Browsers. Der Dienst sieht nur das Backend von OPAA als Absender.
 **Was OPAA behält:** nichts. Die Aufnahme liegt nur während der Anfrage im Arbeitsspeicher des
-Backends, nie auf der Platte; weder sie noch der erkannte Text stehen in einem Log. Eine Aufnahme
+Backends, nie auf der Platte; weder sie noch der erkannte Text stehen in einem Log. Das
+Anfrageprotokoll des Backends nennt für eine Aufnahme nur Methode, Pfad, Status und Dauer, keine
+Person. Eine Aufnahme
 über `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES` lehnt das Backend ab, ohne sie weiterzureichen.
 
 ### Anforderungen an den Betrieb des Dienstes
