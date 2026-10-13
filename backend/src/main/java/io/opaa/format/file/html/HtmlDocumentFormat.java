@@ -58,6 +58,16 @@ public class HtmlDocumentFormat implements DocumentFormat {
     return VERSION;
   }
 
+  @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
   /**
    * HTML has a distinctive enough signature (DOCTYPE/{@code <html>} tag) that Tika tells it apart
    * from plain text; the XHTML variant means the same format here, mirroring {@code

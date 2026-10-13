@@ -201,6 +201,8 @@ class RetrievalEvaluationHarnessTest {
             EXPECTED_EMBEDDING_MODEL_DIGEST,
             log,
             cacheHint);
+    // A long chunk must get the vector of its whole text, not of batch-wise halves.
+    EvalEmbeddingContinuity.require(ollamaEndpoint(), EMBEDDING_MODEL, log);
     // Issue #1085: the chat model the Teilfragen-Zerlegung needs, pinned by tag and content digest
     // exactly like the embedding model. Pulled on every run rather than only on a decomposing one,
     // so a broken model pin surfaces in the nightly job instead of only in a rare manual run.

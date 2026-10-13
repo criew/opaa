@@ -11,6 +11,7 @@ public class IndexingMetrics {
   private final Counter failedCounter;
   private final Counter embeddingInputSplitCounter;
   private final Counter embeddingInputUnverifiedCounter;
+  private final Counter embeddingInputCutCounter;
 
   public IndexingMetrics(MeterRegistry meterRegistry) {
     this.processedCounter =
@@ -39,6 +40,12 @@ public class IndexingMetrics {
             .description(
                 "Chunks that could reach the embedding input limit, embedded without a token count")
             .register(meterRegistry);
+    this.embeddingInputCutCounter =
+        Counter.builder("opaa.indexing.embedding.inputs")
+            .tag("result", "cut")
+            .description(
+                "Chunks re-embedded in place with a vector the endpoint cut short, pending re-index")
+            .register(meterRegistry);
   }
 
   public void recordProcessed() {
@@ -59,5 +66,9 @@ public class IndexingMetrics {
 
   public void recordEmbeddingInputsUnverified(int count) {
     embeddingInputUnverifiedCounter.increment(count);
+  }
+
+  public void recordEmbeddingInputsCut(int count) {
+    embeddingInputCutCounter.increment(count);
   }
 }

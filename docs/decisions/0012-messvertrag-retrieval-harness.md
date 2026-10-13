@@ -50,7 +50,11 @@ externen Befundlaufs einstellbar) und den
 [Nachtrag zu top-k 20](#nachtrag-produktionsfenster-top-k-20-issue-2373)
 (Issue #2373: der Produktions-Default `top-k` steigt von 8 auf 20, das Fenster des Pipeline- und
 des Mehrrunden-Pfads mit ihm, Feldnamen @20, Messvertrag-Versionen Pipeline 20, Mehrrunden 10,
-Rohvektor unverändert; vier Baselines neu gezogen).
+Rohvektor unverändert; vier Baselines neu gezogen) und den
+[Nachtrag zur Ollama-Fassung](#nachtrag-ollama-fassung-des-eval-containers-issue-2343)
+(Issue #2343: `ollama/ollama:0.40.3` statt 0.6.5, weil 0.6.5 Eingaben über 512 Token falsch
+einbettete; Stetigkeitsprüfung vor jeder Messung, keine Vertragsversion steigt, alle sieben
+Baselines neu gezogen).
 Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
 Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
 im JSON-Report, `recallAt10Ceiling` je Gruppe).
@@ -1740,3 +1744,128 @@ Dass die Zahlen gleich bleiben, ist deshalb das erwartete Ergebnis und kein Bele
 Ihr Nutzen liegt im Antwortkontext, den nur eine Antwortmessung sieht; die Belege dafür stehen oben
 und im Issue. Ein Rückgang auf diesem Pfad wäre dagegen ein Befund gewesen: Er hätte gezeigt, dass die
 Vervollständigung erwartete Dokumente in die Auswahl geholt hatte, die nun fehlen.
+
+
+## Nachtrag: Ollama-Fassung des Eval-Containers (Issue #2343)
+
+**Datum:** 2026-10-13 · **Betrifft:** das gepinnte Image aller drei Harnesse, eine neue Vorprüfung
+vor jeder Messung, den Festpunkt `ollamaImage` aller sieben Baselines, deren Zahlen und einzelne
+Fallzustände.
+
+Bei der Analyse von #2338 fiel auf, dass `ollama/ollama:0.6.5` lange Eingaben nicht stetig
+einbettet. Hängt man an einen Text zehn Zeichen an, sodass er 512 Token überschreitet (gezählt mit
+CLS und SEP), kippt der Vektor. Ursache ist die Auswertung in Teilstücken: 0.6.5 zerlegt eine
+Eingabe über die Batchgröße von 512 Token in mehrere Batches. Ein Encoder mit bidirektionaler
+Attention wie `nomic-embed-text` (nomic-bert) oder `bge-m3` (XLM-RoBERTa) braucht den ganzen Text in
+einem Durchgang; jedes Teilstück sieht nur sich selbst. Neuere Fassungen starten den Modellserver
+mit einer Batchgröße von 2048 Token und betten in einem Stück ein.
+
+Präfixe wachsender Länge von `verwaltung-0019_gebuehrenordnung-ordnungsamt.md`, Kosinus zum
+jeweils um 20 bzw. 25 Zeichen kürzeren Präfix, beide Modelle im Container mit der Variante `haswell`:
+
+| Fassung | `nomic-embed-text:v1.5` | `bge-m3` |
+|---|---|---|
+| 0.6.5 | 0,999 bis 508 Token, **0,31–0,41** beim Überschreiten, danach 0,56–0,96 | 0,997 bis 509 Token, **0,27** bei 516, danach 0,55–0,94 |
+| 0.32.15 | ≥ 0,9995 über 494–537 Token | ≥ 0,9972 über 478–563 Token |
+| 0.40.3 | ≥ 0,9941 über 460–603 Token | ≥ 0,9972 über 478–563 Token |
+
+Die Tokenzahlen sind die, die jede Fassung selbst zurückmeldet; 0.6.5 zählt CLS und SEP nicht mit
+und liegt deshalb um 2 niedriger. Der Sprung liegt bei beiden Modellen dort, wo die Eingabe
+mit CLS und SEP 512 Token überschreitet.
+
+Unterhalb der Grenze liefern 0.6.5 und 0.40.3 dieselben Vektoren (Kosinus ≥ 0,9988 über 30
+zufällig gezogene Chunks von `city-landmarks`), darüber nicht (Mittel 0,869, Minimum 0,784 über 30
+weitere). Die Modell-Digests beider gepinnten Modelle sind unter beiden Fassungen gleich.
+
+**Wie viele Chunks betroffen waren.** Gezählt sind die tatsächlichen Einbettungseingaben jedes
+Korpus, also Chunk-Text samt Kontextpräfix, mit dem Tokenizer des Modellservers einschließlich CLS
+und SEP:
+
+| Korpus | Chunks | über 512 Token | Median | Höchstwert |
+|---|---|---|---|---|
+| `comic-characters` | 1 448 | 0 (0,0 %) | 148 | 285 |
+| `city-landmarks` | 2 787 | 2 551 (91,5 %) | 631 | 1 097 |
+| `verwaltung` (auch Mehrrunden-Pfad) | 998 | 1 (0,1 %) | 208 | 636 |
+
+`comic-characters` ist konstruktionsbedingt einchunkig und kurz, `verwaltung` wird seit #1103 an
+Abschnittsgrenzen geteilt. Der eine betroffene Chunk von `verwaltung` ist § 3 der
+Verwaltungsgebührensatzung, das Zieldokument der Klasse `literal_term_weak_embedding`.
+`city-landmarks` dagegen schneidet Fließtext auf die Chunkgröße, und fast jeder Chunk liegt über der
+Grenze: Die Baselines dieser Domäne beschrieben bisher zum größten Teil falsche Vektoren.
+
+### 68. Gepinnt wird `ollama/ollama:0.40.3`
+
+`EvalOllamaEndpoint.PINNED_IMAGE` ist `ollama/ollama:0.40.3`. Gründe:
+
+- Die Fassung bettet lange Eingaben stetig ein (Tabelle oben), auch für `bge-m3`, das #2386 als
+  neues Vorgabemodell vorbereitet.
+- Es ist dieselbe Fassung, die `docker-compose.yml` und der Erprobungsaufbau für Kubernetes
+  ausliefern. Der Harness misst damit, was ein Betreiber mit dem mitgelieferten Stapel bekommt.
+- Der Pin der CPU-Variante (Entscheidung 54) gilt unverändert: Das Image liefert dieselben
+  Bibliotheken je Befehlssatzstufe unter `/usr/lib/ollama`, und der Modellserver meldet die geladene
+  Variante mit derselben Logzeile. `EvalOllamaCpuBackend` bleibt deshalb unverändert.
+- 0.32.15 wäre ebenso stetig, hätte aber keinen Vorteil und wiche vom Compose-Stapel ab.
+
+**Kosten.** Das Image ist komprimiert 3,8 GB groß statt 1,8 GB, weil es Bibliotheken für CUDA und
+Vulkan mitbringt. Auf der CPU bettet es nicht langsamer ein: Im abwechselnden Vergleich auf
+derselben Maschine brauchte 0.40.3 je Eingabe 1,6–2,9 s gegen 2,2–5,7 s für 0.6.5.
+
+### 69. Eine Stetigkeitsprüfung vor jeder Messung
+
+Alle drei Harnesse rufen nach dem Modell-Pull `EvalEmbeddingContinuity.require` auf, vor der
+Indizierung. Die Prüfung bettet 21 Präfixe desselben Korpustexts zwischen 1 100 und 1 500 Zeichen
+ein, rund 460 bis 600 Token, und verlangt:
+
+- dass die Präfixe die Grenze von 512 Token tatsächlich überspannen, gemessen an der Tokenzahl, die
+  Ollama zurückmeldet; sonst bewiese die Prüfung nichts,
+- dass kein benachbartes Paar unter Kosinus 0,98 fällt.
+
+Ein stetiges Ollama liegt über 0,99, 0.6.5 fiel auf 0,31. Die Schwelle trennt beide mit Abstand,
+ohne an der natürlichen Schwankung benachbarter Präfixe zu kratzen. Das Ergebnis steht im Lauf-Log.
+
+**Auch gegen einen externen Endpunkt.** Ein Host-Ollama mit demselben Fehler misst ebenso falsch;
+dass sein Lauf ohnehin nicht baseline-tauglich ist (Entscheidung 45), macht ihn nicht zu einer
+Messung. Die Prüfung kostet rund 20 Einbettungen und läuft deshalb in jedem Lauf, nicht nur bei
+einem Wechsel des Images.
+
+**Was sie nicht abdeckt.** Sie prüft ein Modell, das Embedding-Modell des Laufs, und einen Text.
+Eine Fassung, die erst bei 2 048 Token oder nur bei anderen Eingaben bricht, fiele ihr nicht auf.
+
+### 70. Keine Vertragsversion steigt; alle sieben Baselines neu gezogen
+
+`ollamaImage` ist seit Entscheidung 45 geprüfter Festpunkt. Sein Wert ändert sich, seine Bedeutung
+nicht, wie in Entscheidung 66. Rohvektor- (16), Pipeline- (20) und Mehrrunden-Messvertrag (10)
+bleiben.
+
+Alle sieben Baselines sind neu gezogen. Die von `verwaltung` stammen aus einem lokalen
+CPU-Testcontainer-Lauf (Host mit AVX-512); der label-ausgelöste CI-Lauf 38418739634 auf einem Runner
+ohne AVX-512 liefert jede ihrer 49 Rangfolgen auf beiden Pfaden identisch. Die übrigen fünf stammen
+aus diesem CI-Lauf, weil das Zeitbudget der Harnesse lokal unter fremder Last nicht reichte.
+
+| Baseline | Chunks über 512 Token | Verschiebung | Zustände |
+|---|---|---|---|
+| `comic-characters.json`, `pipeline-comic-characters.json` | 0 % | keine Zahl; 11 bzw. 15 Rangfolgen weichen unterhalb der erwarteten Positionen ab | unverändert |
+| `verwaltung.json` | 0,1 % | steigt: overall nDCG@10 0,712 → 0,718, Recall@10 0,803 → 0,823; `literal_term_weak_embedding` nDCG@10 0,270 → 0,302 | unverändert |
+| `pipeline-verwaltung.json` | 0,1 % | steigt: overall MRR@20 0,823 → 0,833, nDCG@20 0,800 → 0,807; `literal_term_weak_embedding` MRR@20 0,426 → 0,481 | `verw-lit-008` gelöst |
+| `city-landmarks.json` | 91,5 % | overall MRR 0,991 → 1,000, nDCG@10 0,989 → 0,998; `multi_city` nDCG@10 0,990 → 0,975 | `landmark_detail-025`, `multi_topic-005` gelöst |
+| `pipeline-city-landmarks.json` | 91,5 % | overall MRR@20 0,980 → 1,000, nDCG@20 0,985 → 0,999; `multi_city` nDCG@20 1,000 → 0,990 | dazu `multi_topic-001`, `-006` gelöst; alle 108 Fälle gelöst |
+| `pipeline-verwaltung-conversations.json` | 0,1 % | overall Hit Rate@5 0,800 → 0,817, nDCG@20 0,740 → 0,777; `answer_continuation` nDCG@20 0,707 → 0,663 | 5 Fälle gelöst, 4 offen; 12 statt 11 von 38 |
+
+Die Gewinne von `verwaltung` haben eine benannte Ursache: Der einzige Chunk über der Grenze ist das
+Zieldokument der Klasse `literal_term_weak_embedding`. Ein Teil der bisher gemessenen
+Embedding-Schwäche dieser Klasse war ein Fehler der alten Fassung. In `city-landmarks` waren die vier
+Fälle mit fehlender Ortsbindung ebenfalls Folge der falschen Vektoren.
+
+Der Mehrrunden-Pfad bewegt sich aus einem anderen Grund. Das gepinnte Chat-Modell zerlegt unter der
+neuen Laufzeit bei Temperatur 0 nur 25 von 127 Runden wörtlich wie zuvor, so wie es der Wechsel der
+CPU-Variante in Entscheidung 56 tat. Die drei Messungen des Laufs sind identisch. Die neuen
+Zustände tragen das Symptom dieses Laufs; vier Fälle sind offen, weil die Zerlegung ihre Zielrunde
+anders formuliert, in `verw-conv-ac-007` als Verweigerung.
+
+Die Toleranzen bleiben unverändert (ADR-0013). Wo ein Wert sinkt, ist es die Messung mit richtigen
+Vektoren oder die neue Zerlegung, kein Rückschritt eines Bausteins.
+
+**Gründe der unveränderten Fälle bleiben stehen.** Jeder Grund nennt Datum und Lauf seiner Messung
+und bleibt damit wahr. Nachgezogen sind nur die Gründe der Fälle, deren Zustand wechselt. Eine
+vollständige Neufassung aller 594 Gründe wäre mit dem Wechsel des Embedding-Modells in #2386
+ohnehin erneut fällig.

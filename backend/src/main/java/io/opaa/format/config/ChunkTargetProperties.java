@@ -7,7 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * Target size of the structure-aware cut ({@code OPAA_INDEXING_CHUNK_TARGET_CHARACTERS}), in
  * characters - shared by every format on {@link HeadingSectionSplitter}. Independent of {@code
  * opaa.indexing.chunk-size}, which counts tokens and only governs the Tika fallback and plain
- * texts. A changed value applies to documents indexed afterwards; existing chunks keep their cut.
+ * texts. A changed value applies to documents indexed afterwards; existing chunks record the value
+ * they were cut with and are re-cut by the pipeline re-index.
  *
  * @param chunkTargetCharacters default {@value
  *     HeadingSectionSplitter#DEFAULT_SOFT_CHUNK_CHAR_LIMIT}; 0 or a negative value means the

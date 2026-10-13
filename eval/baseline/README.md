@@ -461,7 +461,7 @@ wodurch jede Metrik bedeutungslos wird.
 
 `ollamaImage` ist in allen drei Baseline-Typen ein **geprüfter** Festpunkt: Es benennt das gepinnte
 Testcontainer-Image, mit dem die Vektoren dieser Baseline entstanden sind (heute
-`ollama/ollama:0.6.5`). Weicht der Wert vom Lauf ab, ist die Baseline unvergleichbar — wie bei jedem
+`ollama/ollama:0.40.3`, bis Issue #2343 `ollama/ollama:0.6.5`). Weicht der Wert vom Lauf ab, ist die Baseline unvergleichbar — wie bei jedem
 anderen Festpunkt. Der Modell-Digest allein deckt das nicht ab: Er beschreibt die Gewichte, nicht die
 Laufzeit, die sie auswertet.
 
@@ -612,6 +612,18 @@ CPU-Testcontainer-Läufen dieses Tages neu gezogen; keine Vertragsversion steigt
 drei Einzelfragen-Domänen sind unverändert, weil der Harness die Endauswahl auf Dokumentebene misst und
 ein Geschwister-Chunk dort kein weiteres Dokument ist. `verwaltung.json` trägt nur den neuen
 Golden-Hash. Vorher/Nachher und Begründung: ADR-0012, Nachtrag max-chunks-per-document 1.
+
+### Neuziehung mit Ollama 0.40.3 (2026-10-13, Issue #2343)
+
+Das gepinnte Image wechselte von `ollama/ollama:0.6.5` auf `ollama/ollama:0.40.3`, weil 0.6.5
+Eingaben über 512 Token falsch einbettete. Alle sieben Baselines sind neu gezogen, keine
+Vertragsversion steigt. `verwaltung.json` und `pipeline-verwaltung.json` stammen aus einem lokalen
+CPU-Testcontainer-Lauf, die übrigen fünf aus dem label-ausgelösten CI-Lauf 38418739634; dessen
+`verwaltung`-Job lieferte jede Rangfolge identisch zum lokalen Lauf. Wie stark sich eine Datei
+bewegt, hängt am Anteil der Chunks über der Grenze: `comic-characters` 0 % (keine Zahl bewegt sich),
+`verwaltung` 0,1 % (einzelne Werte steigen), `city-landmarks` 91,5 % (fast alle Werte steigen auf
+1,000, alle 108 Fälle gelöst). Der Mehrrunden-Pfad bewegt sich vor allem über die geänderte Zerlegung
+des Chat-Modells. Tabelle, Zustandspflege und Begründung: ADR-0012, Nachtrag Ollama-Fassung.
 
 ### Fehlerkriterium: unverändert ADR-0013
 

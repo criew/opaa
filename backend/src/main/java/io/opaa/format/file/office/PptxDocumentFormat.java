@@ -61,6 +61,16 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
     return VERSION;
   }
 
+  @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
   /** Deliberately not admitting the generic {@code application/x-tika-ooxml} container type. */
   @Override
   public Set<FormatAdmission> admittedFormats() {

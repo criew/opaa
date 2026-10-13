@@ -14,6 +14,7 @@ import io.opaa.metadata.ChunkContextPrefix;
 import io.opaa.metadata.ContextPrefixBacklog;
 import io.opaa.metadata.DocumentChunkMetadata;
 import io.opaa.metadata.DocumentMetadataService;
+import io.opaa.observability.IndexingMetrics;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -56,6 +57,7 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
   private final ObjectMapper objectMapper;
   private final String vectorStoreTable;
   private final FeatureFlags featureFlags;
+  private final IndexingMetrics metrics;
 
   /** Skipped count of the most recent call per library; process lifetime only (ADR-0021). */
   private final Map<UUID, Integer> lastSkippedByLibrary = new ConcurrentHashMap<>();
@@ -69,8 +71,10 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
       ObjectMapper objectMapper,
       @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName,
-      FeatureFlags featureFlags) {
+      FeatureFlags featureFlags,
+      IndexingMetrics metrics) {
     this.featureFlags = featureFlags;
+    this.metrics = metrics;
     this.jdbcTemplate = jdbcTemplate;
     this.documentRepository = documentRepository;
     this.libraryRepository = libraryRepository;
@@ -165,7 +169,18 @@ public class ContextPrefixRerunService implements ContextPrefixBacklog {
             .map(chunk -> chunk.rebuild(eligible, documentWasSplit, title, chunkMetadata))
             .toList();
     if (!rebuilt.isEmpty()) {
-      vectorChunkStore.addChunks(rebuilt);
+      VectorChunkStore.InPlaceEmbedding outcome = vectorChunkStore.addChunksInPlace(rebuilt);
+      metrics.recordEmbeddingInputsUnverified(outcome.unverified());
+      if (outcome.cut() > 0) {
+        metrics.recordEmbeddingInputsCut(outcome.cut());
+        log.warn(
+            "{} chunk(s) of document {} reached the embedding input limit of {} tokens and were"
+                + " written cut short; the document is marked for the pipeline re-index, which"
+                + " splits them",
+            outcome.cut(),
+            documentId,
+            vectorChunkStore.maxInputTokens());
+      }
     }
     // Only after the replacement exists: a failed embedding call must leave the document pending
     // rather than mark it done with its old chunks.
