@@ -604,7 +604,7 @@ export default function S3SourceForm({
                 value={values.includePatterns}
                 onChange={(e) => changePatterns({ includePatterns: e.target.value })}
                 placeholder={'**/*.pdf\n**/*.docx'}
-                helperText="Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ überschreitet Schrägstriche: „**/*.pdf“ trifft PDFs in Unterordnern, „*.pdf“ nur auf der obersten Ebene."
+                helperText="Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ als ganzes Segment steht für beliebig viele Segmente: „**/*.pdf“ trifft PDFs auf jeder Ebene, „*.pdf“ nur auf der obersten."
                 fullWidth
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
               />
