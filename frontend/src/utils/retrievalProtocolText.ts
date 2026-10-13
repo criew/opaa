@@ -160,6 +160,13 @@ const NOTE_RULES: NoteRule[] = [
     pattern: /^full-text search, (\d+) list\(s\)$/,
     german: (m) => `Volltextsuche über ${plural(m[1], 'Liste', 'Listen')}.`,
   },
+  {
+    name: 'FULL_TEXT_IDENTIFIERS_DEMOTED',
+    pattern:
+      /^(.+?): uppercase word\(s\) (.+) demoted, searched as ordinary words without identifier weight: more chunks of the search scope carry them than fetch-k$/s,
+    german: (m) =>
+      `${translateListLabel(m[1])}: ${m[2]} herabgestuft und ohne Kennungsgewicht als gewöhnliche Wörter gesucht. Mehr Abschnitte des Suchbereichs enthalten sie, als fetch-k fasst.`,
+  },
 
   // MmrSelectionStage
   {

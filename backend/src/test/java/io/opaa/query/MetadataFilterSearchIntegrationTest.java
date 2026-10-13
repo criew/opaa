@@ -421,8 +421,9 @@ class MetadataFilterSearchIntegrationTest {
 
     // Lexical path, deterministic order (ties broken by file name): the post-filter finds nothing.
     List<org.springframework.ai.document.Document> unfiltered =
-        fullTextChunkSearch.search(
-            "Nutzung", Set.of(library.getId()), MetadataFilter.NONE, List.of(), fetchK);
+        fullTextChunkSearch
+            .search("Nutzung", Set.of(library.getId()), MetadataFilter.NONE, List.of(), fetchK)
+            .chunks();
     assertThat(unfiltered).hasSize(fetchK);
     assertThat(unfiltered.stream().filter(c -> "VERMERK".equals(c.getMetadata().get("doc_type"))))
         .as("the post-filter over the fetch-k window is empty")
@@ -432,8 +433,9 @@ class MetadataFilterSearchIntegrationTest {
             .map(DocumentTypeVocabularyEntry::getCode)
             .toList();
     List<org.springframework.ai.document.Document> filtered =
-        fullTextChunkSearch.search(
-            "Nutzung", Set.of(library.getId()), filter, vocabularyCodes, fetchK);
+        fullTextChunkSearch
+            .search("Nutzung", Set.of(library.getId()), filter, vocabularyCodes, fetchK)
+            .chunks();
     assertThat(filtered)
         .extracting(c -> c.getMetadata().get("document_id"))
         .containsExactly(wanted);

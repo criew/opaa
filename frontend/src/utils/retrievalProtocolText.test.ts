@@ -32,6 +32,7 @@ const BACKEND_NOTES = [
   'vector search · sub-query 2 returned 7 of fetch-k 25 candidate(s): fewer qualify within filter and similarity threshold, or the index scan stopped at its tuple or memory limit',
   'lexical search path switched off (opaa.query.full-text-search-enabled)',
   'full-text search, 3 list(s)',
+  'full-text search · sub-query 2: uppercase word(s) ELSTER, KONSENS demoted, searched as ordinary words without identifier weight: more chunks of the search scope carry them than fetch-k',
   'per-list budget 8',
   'mmr-lambda 1.0 (diversity term inactive: plain top-k by relevance)',
   'mmr-lambda 0.7 (diversity term active, cosine similarity of real chunk embeddings)',
