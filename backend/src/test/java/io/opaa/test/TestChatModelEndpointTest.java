@@ -11,19 +11,23 @@ import org.springframework.test.context.BootstrapUtils;
 import org.springframework.test.context.support.TestPropertySourceUtils;
 
 /**
- * No context of the suite may reach a real chat model over the network. On first start {@code
+ * No context of the suite may reach a real model over the network. On first start {@code
  * LlmModelSeeder} turns {@code spring.ai.openai.chat.base-url} into the active chat model of the
- * test database; left at the {@code application.yml} default, that is a locally running Ollama,
- * which retrieval (sub-question decomposition) then actually calls.
+ * test database - or, with {@code OPAA_AI_CHAT_PROVIDER=ollama} in the environment, the legacy
+ * {@code OPAA_OLLAMA_*} variables. Left at the defaults, both are a locally running Ollama, which
+ * retrieval (sub-question decomposition) then actually calls; the same holds for the embedding
+ * endpoint wherever the real embedding client is in place.
  *
  * <p>Inline test properties outrank {@code application.yml} and OS environment variables, so an
- * entry in a signature's own properties decides the seeded address regardless of the developer's
- * shell. A host under {@code .invalid} (RFC 6761) never resolves, so the call fails at once, as it
- * does in CI. Built from {@code MergedContextConfiguration} alone: no context, no Docker.
+ * entry in a signature's own properties decides the address regardless of the developer's shell. A
+ * host under {@code .invalid} (RFC 6761) never resolves, so a call fails at once, as it does in CI.
+ * Built from {@code MergedContextConfiguration} alone: no context, no Docker.
  */
 class TestChatModelEndpointTest {
 
   private static final String CHAT_BASE_URL = "spring.ai.openai.chat.base-url";
+  private static final String EMBEDDING_BASE_URL = "spring.ai.openai.embedding.base-url";
+  private static final String LEGACY_CHAT_PROVIDER = "OPAA_AI_CHAT_PROVIDER";
 
   static Stream<Class<?>> signatureCarriers() throws ClassNotFoundException {
     // The signature annotations resolve like a class carrying them; the two named classes run the
@@ -38,11 +42,7 @@ class TestChatModelEndpointTest {
   @ParameterizedTest
   @MethodSource("signatureCarriers")
   void theSeededChatModelPointsAtAnAddressThatNeverAnswers(Class<?> carrier) {
-    Map<String, Object> inlined =
-        TestPropertySourceUtils.convertInlinedPropertiesToMap(
-            BootstrapUtils.resolveTestContextBootstrapper(carrier)
-                .buildMergedContextConfiguration()
-                .getPropertySourceProperties());
+    Map<String, Object> inlined = inlinedProperties(carrier);
 
     assertThat(inlined)
         .as(
@@ -50,8 +50,43 @@ class TestChatModelEndpointTest {
                 + " default and a locally running model server receives real chat requests",
             carrier.getSimpleName(), CHAT_BASE_URL)
         .containsKey(CHAT_BASE_URL);
-    assertThat(URI.create(String.valueOf(inlined.get(CHAT_BASE_URL))).getHost())
+    assertThat(hostOf(inlined, CHAT_BASE_URL))
         .as("host of %s in %s", CHAT_BASE_URL, carrier.getSimpleName())
         .endsWith(".invalid");
+  }
+
+  @ParameterizedTest
+  @MethodSource("signatureCarriers")
+  void theLegacyOllamaTakeoverCannotBypassTheTestAddress(Class<?> carrier) {
+    assertThat(inlinedProperties(carrier))
+        .as(
+            "%s must blank %s, otherwise OPAA_OLLAMA_* in the developer's shell decide the seeded"
+                + " chat model",
+            carrier.getSimpleName(), LEGACY_CHAT_PROVIDER)
+        .containsEntry(LEGACY_CHAT_PROVIDER, "");
+  }
+
+  @ParameterizedTest
+  @MethodSource("signatureCarriers")
+  void theEmbeddingEndpointPointsAtAnAddressThatNeverAnswers(Class<?> carrier) {
+    Map<String, Object> inlined = inlinedProperties(carrier);
+
+    assertThat(inlined)
+        .as("%s must set %s itself", carrier.getSimpleName(), EMBEDDING_BASE_URL)
+        .containsKey(EMBEDDING_BASE_URL);
+    assertThat(hostOf(inlined, EMBEDDING_BASE_URL))
+        .as("host of %s in %s", EMBEDDING_BASE_URL, carrier.getSimpleName())
+        .endsWith(".invalid");
+  }
+
+  private static Map<String, Object> inlinedProperties(Class<?> carrier) {
+    return TestPropertySourceUtils.convertInlinedPropertiesToMap(
+        BootstrapUtils.resolveTestContextBootstrapper(carrier)
+            .buildMergedContextConfiguration()
+            .getPropertySourceProperties());
+  }
+
+  private static String hostOf(Map<String, Object> inlined, String key) {
+    return URI.create(String.valueOf(inlined.get(key))).getHost();
   }
 }

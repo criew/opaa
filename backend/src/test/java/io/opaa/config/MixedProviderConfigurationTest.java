@@ -14,9 +14,9 @@ import org.springframework.core.env.Environment;
  * and embedding remain independently configurable functions (different endpoints, different
  * models).
  *
- * <p>The embedding base URL is stated explicitly by this class's signature even though {@code
- * application.yml} already defaults it to a local Ollama endpoint, to prove the override actually
- * takes effect. The address is never called - the embedding model is a fake.
+ * <p>The embedding base URL is stated explicitly by this class's signature, different from the
+ * canonical signature's, to prove the override actually takes effect. The address is never called -
+ * the embedding model is a fake.
  */
 @OpaaPropertyVariantIntegrationTest
 class MixedProviderConfigurationTest {

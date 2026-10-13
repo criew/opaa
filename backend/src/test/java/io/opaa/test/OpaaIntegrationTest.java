@@ -87,9 +87,13 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // 1536): HNSW indexes at most 2000 dimensions, and PgVectorDimensionsGuard compares the
       // column against the configuration, not against what is indexable.
       "spring.ai.vectorstore.pgvector.index-type=none",
-      // The seeded active chat model; the application.yml default would be a model server
-      // running on the developer's machine, which retrieval would then really call.
-      "spring.ai.openai.chat.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL
+      // The seeded active chat model and the embedding endpoint: the application.yml default
+      // would be a model server running on the developer's machine, which tests would then really
+      // call. The blank legacy provider keeps LlmModelSeeder on spring.ai.openai.chat.* even if
+      // the developer's shell still carries OPAA_AI_CHAT_PROVIDER=ollama.
+      "spring.ai.openai.chat.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL,
+      "spring.ai.openai.embedding.base-url=" + OpaaIntegrationTest.EMBEDDING_BASE_URL,
+      "OPAA_AI_CHAT_PROVIDER="
     })
 @AutoConfigureMockMvc
 @Import({TestcontainersConfiguration.class, OpaaTestBeans.class})
@@ -121,4 +125,7 @@ public @interface OpaaIntegrationTest {
    * call fails at once instead of reaching a real model.
    */
   String CHAT_BASE_URL = "http://chat-model.invalid/v1";
+
+  /** The embedding base URL of every test context, unresolvable for the same reason. */
+  String EMBEDDING_BASE_URL = "http://embedding-model.invalid/v1";
 }
