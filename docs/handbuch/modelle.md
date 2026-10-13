@@ -281,8 +281,11 @@ nicht mit der eingestellten Grenze.
    Revisionsprotokoll.
 5. **Nachzug, falls gemeldet.** Zählt das neue Modell einen Chunk über der Eingabegrenze, etwa eine
    Zahlentabelle, die `bge-m3` in mehr Tokens zerlegt als `nomic-embed-text`, bettet die
-   Neueinbettung ihn gekürzt ein und merkt sein Dokument für den Nachzug vor. Der Nachzug der
-   Bibliothek teilt ihn danach ([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
+   Neueinbettung ihn gekürzt ein und merkt sein Dokument für den Nachzug vor; das Log nennt die
+   Pipeline. Danach den Nachzug dieser Pipeline über die Admin-API aufrufen, mit ihrer Kennung als
+   `pipelineId` und ihrer aktuellen Version als `belowVersion`, bis er `done` meldet
+   ([Pipeline-Versionen und Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug)). Er
+   teilt den Chunk.
 
 Ein Wechsel nur des Endpunkts, etwa auf einen anderen Server mit demselben Modell, gilt nicht als
 Modellwechsel. Wer vor dem Abschluss zum alten Modell zurückkehrt, verwirft die neuen Vektoren. Die
@@ -389,7 +392,7 @@ und im Protokoll des Backends.
 | Die erste Einbettung scheitert mit einem Dimensionsfehler | `OPAA_PGVECTOR_DIMENSIONS` passt nicht zum Embedding-Modell ([Embedding](#embedding)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar oder Zeitgrenze zu kurz; Log prüfen, beheben und fortsetzen. Lehnt der Endpunkt einzelne Chunks als zu lang ab, statt sie zu kürzen, scheitern deren Dokumente bei jedem Versuch. Dann die Bibliothek neu aufbauen ([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)) |
-| Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Nach Abschluss den Nachzug der Bibliothek starten; er teilt den Chunk ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
+| Log: Chunks gekürzt eingebettet, Dokument für den Nachzug vorgemerkt | Die Neueinbettung hat einen zu langen Chunk mit gekürztem Vektor geschrieben. Das Log nennt die Pipeline. Nach Abschluss deren Nachzug über die Admin-API aufrufen ([Pipeline-Versionen und Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug)); er teilt den Chunk |
 | Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
 | Log: Chunk erreichte die Eingabegrenze und wurde geteilt | Der Chunk war für das Modell zu lang; OPAA hat ihn geteilt, nichts ist verloren. Häufen sich Teilungen, Grenze und Endpunkt prüfen ([Eingabegrenze](#eingabegrenze-des-embedding-modells)) |
 | Log: Endpunkt meldete keine Tokenzahl | Eine stille Kürzung ist nicht auszuschließen; einen Endpunkt nutzen, der die Tokenzahl meldet, oder die Zielgröße senken |
