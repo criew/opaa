@@ -39,7 +39,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * The selective re-index by pipeline version (ingestion-pipelines.md, Querschnittsregel (d)): every
  * chunk below version N of one pipeline, triggerable, resumable, with progress queryable per
  * library. Also the only repair path for a chunk whose {@code chunk_full_text} row is missing or
- * older than {@link FullTextChunkStore#CURRENT_TSV_VERSION}, at the price of re-embedding.
+ * older than {@link FullTextChunkStore#CURRENT_TSV_VERSION}, at the price of re-embedding, and for
+ * a chunk cut under another chunking configuration than its pipeline's current one ({@link
+ * DocumentFormat#cutUnderOtherConfiguration}), such as a changed target size.
  *
  * <p>Resumable by construction - the remaining work is re-derived from the chunk metadata - and
  * every call terminates and makes progress: a candidate that cannot be advanced stays in the set
@@ -124,6 +126,7 @@ public class PipelineReindexService {
   /** Total, current and stale chunks of every library holding one, with one grouped query. */
   private Map<UUID, long[]> countsByLibrary(UUID organizationId) {
     Map<String, Short> currentVersions = currentVersionsById();
+    Map<String, DocumentFormat> formats = formatsById();
     String sql =
         "SELECT (v.metadata->>'library_id')::uuid AS library_id, "
             + "       COALESCE(v.metadata->>'"
@@ -136,6 +139,9 @@ public class PipelineReindexService {
             + "       v.metadata->>'"
             + ChunkFormatMetadata.ROUTING_EXTENSION_METADATA_KEY
             + "' AS routing_extension, "
+            + "       v.metadata->>'"
+            + ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY
+            + "' AS chunking_fingerprint, "
             + "       count(*) AS chunk_count, "
             // Chunks whose lexical index entry is missing or built under an older tsv version are
             // stale for this display too, even when their pipeline version is current.
@@ -152,7 +158,7 @@ public class PipelineReindexService {
             + "LEFT JOIN chunk_full_text f ON f.chunk_id = v.id AND f.content_tsv_version = ? "
             + "WHERE v.metadata->>'library_id' IS NOT NULL "
             + "  AND v.metadata->>'organization_id' = ? "
-            + "GROUP BY 1, 2, 3, 4, 5";
+            + "GROUP BY 1, 2, 3, 4, 5, 6";
 
     Map<UUID, long[]> byLibrary = new HashMap<>();
     jdbcTemplate.query(
@@ -163,6 +169,7 @@ public class PipelineReindexService {
           int version = rs.getInt("pipeline_version");
           String fileName = rs.getString("file_name");
           String routingExtension = rs.getString("routing_extension");
+          String chunkingFingerprint = rs.getString("chunking_fingerprint");
           long count = rs.getLong("chunk_count");
           long tsvStale = rs.getLong("tsv_stale_count");
           long[] counters = byLibrary.computeIfAbsent(libraryId, key -> new long[3]);
@@ -184,7 +191,8 @@ public class PipelineReindexService {
               // the total only, so it is visible without being promised.
               return;
             }
-            if (version >= currentVersion) {
+            if (version >= currentVersion
+                && !formats.get(pipelineId).cutUnderOtherConfiguration(chunkingFingerprint)) {
               counters[1] += count - tsvStale;
               counters[2] += tsvStale;
             } else {
@@ -205,7 +213,9 @@ public class PipelineReindexService {
               pipelineId.equals(pipelineRegistry.fallbackPipeline().id())
                   && fileName != null
                   && !pipelineId.equals(currentPipelineIdForFileName(fileName));
-          if (!routingStale && version >= currentVersion) {
+          if (!routingStale
+              && version >= currentVersion
+              && !formats.get(pipelineId).cutUnderOtherConfiguration(chunkingFingerprint)) {
             counters[1] += count - tsvStale;
             counters[2] += tsvStale;
           } else {
@@ -221,12 +231,12 @@ public class PipelineReindexService {
 
   /**
    * Advances up to {@code batchSize} documents of {@code organizationId} that still hold chunks
-   * from {@code pipelineId} below {@code belowVersion}; call repeatedly until the result is empty.
-   * A source that passes {@link StoredDocumentSourceAccess#withLocalSourceFile} is rewritten under
-   * its own id, a remote one marked for its next run, anything else skipped. Every remote document
-   * of a private library is marked in each call, whatever {@code batchSize}, and counted nowhere.
-   * Deliberately not {@code @Transactional}: one transaction would pin a connection for every
-   * embedding call.
+   * from {@code pipelineId} below {@code belowVersion} or cut under another chunking configuration
+   * than its current one; call repeatedly until the result is empty. A source that passes {@link
+   * StoredDocumentSourceAccess#withLocalSourceFile} is rewritten under its own id, a remote one
+   * marked for its next run, anything else skipped. Every remote document of a private library is
+   * marked in each call, whatever {@code batchSize}, and counted nowhere. Deliberately not
+   * {@code @Transactional}: one transaction would pin a connection for every embedding call.
    *
    * <p>An unavailable upload store ends the call early: that document is reported as skipped like
    * any other failure, the candidates behind it are left untouched, and what the call had already
@@ -521,6 +531,7 @@ public class PipelineReindexService {
   private StalePredicate stalePredicate(
       UUID organizationId, String pipelineId, int belowVersion, boolean privateLibraries) {
     MisroutedPredicate misrouted = misroutedPredicateFor(pipelineId);
+    StalePredicate otherConfiguration = otherChunkingConfigurationPredicateFor(pipelineId);
     String sql =
         "v.metadata->>'document_id' IS NOT NULL "
             // Excludes the same malformed metadata the join above already tolerates, so this
@@ -538,6 +549,11 @@ public class PipelineReindexService {
             + "        AND COALESCE((v.metadata->>'"
             + ChunkFormatMetadata.PIPELINE_VERSION_METADATA_KEY
             + "')::int, ?) < ?)"
+            // The configuration gap: chunks of pipelineId cut under another chunking configuration
+            // than today's (a changed target size), stale regardless of their version. Converges,
+            // because the rewritten chunks carry the current fingerprint.
+            + "       OR "
+            + otherConfiguration.sql()
             // The routing gap: a document whose routing key or, absent that, its file name names
             // pipelineId as claiming it today, but whose chunks still carry a different
             // pipeline_id - stale regardless of the stored pipeline's own version, since no request
@@ -570,9 +586,35 @@ public class PipelineReindexService {
     params.add(pipelineId);
     params.add(ChunkFormatMetadata.LEGACY_PIPELINE_VERSION);
     params.add(belowVersion);
+    params.addAll(otherConfiguration.params());
     params.addAll(misrouted.params());
     params.add(FullTextChunkStore.CURRENT_TSV_VERSION);
     return new StalePredicate(sql, params);
+  }
+
+  /**
+   * The SQL counterpart of {@link DocumentFormat#cutUnderOtherConfiguration} for the chunks of
+   * {@code pipelineId}: {@code FALSE} for a pipeline whose cut no setting influences or that this
+   * deployment does not register.
+   */
+  private StalePredicate otherChunkingConfigurationPredicateFor(String pipelineId) {
+    DocumentFormat pipeline = formatsById().get(pipelineId);
+    String current = pipeline == null ? null : pipeline.chunkingFingerprint();
+    if (current == null) {
+      return new StalePredicate("FALSE", List.of());
+    }
+    String unrecorded =
+        pipeline.unrecordedChunkingFingerprint() != null
+            ? pipeline.unrecordedChunkingFingerprint()
+            : current;
+    String sql =
+        "(COALESCE(v.metadata->>'"
+            + ChunkFormatMetadata.PIPELINE_ID_METADATA_KEY
+            + "', ?) = ? AND COALESCE(v.metadata->>'"
+            + ChunkFormatMetadata.CHUNKING_FINGERPRINT_METADATA_KEY
+            + "', ?) <> ?)";
+    return new StalePredicate(
+        sql, List.of(ChunkFormatMetadata.LEGACY_PIPELINE_ID, pipelineId, unrecorded, current));
   }
 
   /** A SQL fragment over {@code d.file_name} plus the positional parameters it needs. */
@@ -701,6 +743,14 @@ public class PipelineReindexService {
       }
     }
     return pipelineRegistry.fallbackPipeline().id();
+  }
+
+  private Map<String, DocumentFormat> formatsById() {
+    Map<String, DocumentFormat> formats = new HashMap<>();
+    for (DocumentFormat pipeline : pipelineRegistry.pipelines()) {
+      formats.put(pipeline.id(), pipeline);
+    }
+    return formats;
   }
 
   private Map<String, Short> currentVersionsById() {

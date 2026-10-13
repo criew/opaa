@@ -66,7 +66,13 @@ public interface DocumentFormat {
    * recorded) was cut under another configuration than this format's current one.
    */
   default boolean cutUnderOtherConfiguration(String recordedFingerprint) {
-    return false;
+    String current = chunkingFingerprint();
+    if (current == null) {
+      return false;
+    }
+    String recorded =
+        recordedFingerprint != null ? recordedFingerprint : unrecordedChunkingFingerprint();
+    return recorded != null && !current.equals(recorded);
   }
 
   /**

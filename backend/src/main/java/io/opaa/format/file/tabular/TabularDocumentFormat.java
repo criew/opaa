@@ -114,6 +114,16 @@ public class TabularDocumentFormat implements DocumentFormat {
     return VERSION;
   }
 
+  @Override
+  public String chunkingFingerprint() {
+    return splitter.chunkingFingerprint();
+  }
+
+  @Override
+  public String unrecordedChunkingFingerprint() {
+    return HeadingSectionSplitter.UNRECORDED_CHUNKING_FINGERPRINT;
+  }
+
   /**
    * CSV is text-tolerant: a CSV file is valid Markdown and barely distinguishable from plain text
    * by content, so its own extension decides which of them it is. XLSX and ODS carry a ZIP
