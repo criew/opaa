@@ -16,10 +16,11 @@ import org.springframework.ai.document.Document;
  * each cut (docs/features/ingestion-pipelines.md, Teil 2: "Markdown, DOCX ... |
  * Überschriftenabschnitt").
  *
- * <p>No text is ever dropped for size: a block beyond {@link #SOFT_CHUNK_CHAR_LIMIT} is cut into
- * parts by {@link BoundarySplitter}, each part a chunk of its own under the same heading line and
- * Fundort. Conversely, neighbouring sections below {@link #SMALL_SECTION_CHAR_LIMIT} under a common
- * heading are combined up to {@link #SOFT_CHUNK_CHAR_LIMIT}, see {@link #chunk}.
+ * <p>No text is ever dropped for size: a block beyond the {@linkplain #softChunkCharLimit() target
+ * size} is cut into parts by {@link BoundarySplitter}, each part a chunk of its own under the same
+ * heading line and Fundort. Conversely, neighbouring sections below {@link
+ * #SMALL_SECTION_CHAR_LIMIT} under a common heading are combined up to the target size, see {@link
+ * #chunk}.
  *
  * <p>The maximum heading level that actually cuts a new chunk is a caller-supplied parameter, not a
  * constant - callers cap it differently depending on how deep their format's own outline goes. A
@@ -31,17 +32,23 @@ public final class HeadingSectionSplitter {
   private static final Logger log = LoggerFactory.getLogger(HeadingSectionSplitter.class);
 
   /**
-   * Soft budget a section's body text is grouped into before another chunk starts. <b>Gesetzt,
-   * nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen"): the evaluation corpus contains no
-   * Markdown/DOCX/PDF documents with a real outline to measure a value against yet.
+   * Default target size in characters a section's body text is grouped into before another chunk
+   * starts. <b>Gesetzt, nicht gemessen</b> (ingestion-pipelines.md, "Chunk-Größen").
    */
-  public static final int SOFT_CHUNK_CHAR_LIMIT = 4_000;
+  public static final int DEFAULT_SOFT_CHUNK_CHAR_LIMIT = 4_000;
+
+  /**
+   * Smallest target size accepted: well above {@link #SMALL_SECTION_CHAR_LIMIT}, so a combined run
+   * of tiny sections still holds several of them.
+   */
+  public static final int MIN_SOFT_CHUNK_CHAR_LIMIT = 500;
 
   /**
    * Ceiling of every chunk text, reached only where a heading line or a unit's leading context is
-   * itself too long for {@link #SOFT_CHUNK_CHAR_LIMIT}. Even at two characters per token - dense
-   * numbers and file references - 8,000 characters stay well inside the embedding step's token
-   * budget (7,372 tokens of Spring AI's default {@code TokenCountBatchingStrategy}).
+   * itself too long for the target size. Even at two characters per token - dense numbers and file
+   * references - 8,000 characters stay well inside the embedding step's token budget (7,372 tokens
+   * of Spring AI's default {@code TokenCountBatchingStrategy}). Also the largest target size
+   * accepted.
    */
   public static final int HARD_CHUNK_CHAR_LIMIT = 8_000;
 
@@ -49,12 +56,37 @@ public final class HeadingSectionSplitter {
    * A section whose own title and body together stay below this many characters is a tiny chunk and
    * combined with its tiny neighbours. <b>Gemessen</b> against the verwaltung domain
    * (ingestion-pipelines.md, "Kleinstchunks"): at 500 a single § was no longer retrievable on its
-   * own.
+   * own. Absolute, not a share of the target size: it describes a single §, not the chunk.
    */
   public static final int SMALL_SECTION_CHAR_LIMIT = 200;
 
   /** The smallest body {@link #bodyBudget} cuts a unit into rather than leaving the hard cut. */
   private static final int MIN_BODY_CHARS = 200;
+
+  private final int softChunkCharLimit;
+
+  /**
+   * @param softChunkCharLimit the target size in characters, between {@link
+   *     #MIN_SOFT_CHUNK_CHAR_LIMIT} and {@link #HARD_CHUNK_CHAR_LIMIT}
+   */
+  public HeadingSectionSplitter(int softChunkCharLimit) {
+    if (softChunkCharLimit < MIN_SOFT_CHUNK_CHAR_LIMIT
+        || softChunkCharLimit > HARD_CHUNK_CHAR_LIMIT) {
+      throw new IllegalArgumentException(
+          "softChunkCharLimit must be between "
+              + MIN_SOFT_CHUNK_CHAR_LIMIT
+              + " and "
+              + HARD_CHUNK_CHAR_LIMIT
+              + ", got "
+              + softChunkCharLimit);
+    }
+    this.softChunkCharLimit = softChunkCharLimit;
+  }
+
+  /** The target size in characters every cut and every combination aims at. */
+  public int softChunkCharLimit() {
+    return softChunkCharLimit;
+  }
 
   public sealed interface Event {}
 
@@ -63,8 +95,6 @@ public final class HeadingSectionSplitter {
 
   /** A block of body text belonging to the section currently open. */
   public record Paragraph(String text) implements Event {}
-
-  private HeadingSectionSplitter() {}
 
   /**
    * The first level-1 heading of {@code events}, or {@code null} when there is none - the format's
@@ -108,16 +138,16 @@ public final class HeadingSectionSplitter {
 
   /**
    * Cuts {@code events} into one section per cutting heading, then combines each run of tiny
-   * sibling sections ({@link Section#tiny}) into chunks of at most {@link #SOFT_CHUNK_CHAR_LIMIT}:
-   * all members share one parent heading, optionally led by that parent's own tiny introduction.
-   * Heading line and Fundort of such a chunk are the parent's path, and each member keeps its own
-   * title inline in front of its text. A section of regular size is never combined, nor are
-   * top-level sections.
+   * sibling sections ({@link Section#tiny}) into chunks of at most {@link #softChunkCharLimit()
+   * target size}: all members share one parent heading, optionally led by that parent's own tiny
+   * introduction. Heading line and Fundort of such a chunk are the parent's path, and each member
+   * keeps its own title inline in front of its text. A section of regular size is never combined,
+   * nor are top-level sections.
    *
    * @param maxCuttingLevel the deepest heading level that still opens a new chunk; a {@link
    *     Heading} deeper than this folds into the current section's text instead.
    */
-  public static List<Document> chunk(List<Event> events, int maxCuttingLevel) {
+  public List<Document> chunk(List<Event> events, int maxCuttingLevel) {
     List<Section> sections = new ArrayList<>();
     NavigableMap<Integer, PathEntry> headingPath = new TreeMap<>();
     List<String> blocks = new ArrayList<>();
@@ -155,7 +185,7 @@ public final class HeadingSectionSplitter {
    *     sibling/ancestor-level heading or by the end of the input is genuinely empty and still gets
    *     a one-line, heading-only chunk.
    */
-  private static void closeSection(
+  private void closeSection(
       List<Section> sections,
       List<String> blocks,
       NavigableMap<Integer, PathEntry> headingPath,
@@ -173,7 +203,7 @@ public final class HeadingSectionSplitter {
         new Section(List.copyOf(headingPath.values()), splitIntoBudgetedChunks(blocks), titled));
   }
 
-  private static List<Document> combined(List<Section> sections) {
+  private List<Document> combined(List<Section> sections) {
     List<Document> chunks = new ArrayList<>();
     int start = 0;
     while (start < sections.size()) {
@@ -199,7 +229,7 @@ public final class HeadingSectionSplitter {
           if (candidate == null
               || !nextParent.equals(candidate)
               || combinedText(candidate, sections.subList(start, end + 1)).length()
-                  > SOFT_CHUNK_CHAR_LIMIT) {
+                  > softChunkCharLimit) {
             break;
           }
           parent = candidate;
@@ -267,12 +297,12 @@ public final class HeadingSectionSplitter {
     return metadata;
   }
 
-  private static List<String> splitIntoBudgetedChunks(List<String> blocks) {
+  private List<String> splitIntoBudgetedChunks(List<String> blocks) {
     List<String> result = new ArrayList<>();
     StringBuilder current = new StringBuilder();
     for (String block : withinSoftBudget(blocks)) {
       boolean wouldExceed =
-          current.length() > 0 && current.length() + 2 + block.length() > SOFT_CHUNK_CHAR_LIMIT;
+          current.length() > 0 && current.length() + 2 + block.length() > softChunkCharLimit;
       if (wouldExceed) {
         result.add(current.toString());
         current.setLength(0);
@@ -289,42 +319,41 @@ public final class HeadingSectionSplitter {
   }
 
   /** {@code blocks} with every block beyond the soft budget replaced by its parts. */
-  private static List<String> withinSoftBudget(List<String> blocks) {
+  private List<String> withinSoftBudget(List<String> blocks) {
     List<String> result = new ArrayList<>(blocks.size());
     for (String block : blocks) {
-      if (block.length() <= SOFT_CHUNK_CHAR_LIMIT) {
+      if (block.length() <= softChunkCharLimit) {
         result.add(block);
       } else {
-        result.addAll(BoundarySplitter.split(block, SOFT_CHUNK_CHAR_LIMIT));
+        result.addAll(BoundarySplitter.split(block, softChunkCharLimit));
       }
     }
     return result;
   }
 
   /** {@link #boundedChunks(String, String, String, Map)} with a blank line after the context. */
-  public static List<Document> boundedChunks(
-      String context, String body, Map<String, Object> metadata) {
+  public List<Document> boundedChunks(String context, String body, Map<String, Object> metadata) {
     return boundedChunks(context, "\n\n", body, metadata);
   }
 
   /**
    * The chunks of one unit (page, slide, row group): {@code context + separator + body} as one
-   * chunk while it fits {@link #SOFT_CHUNK_CHAR_LIMIT}, otherwise {@code body} cut by {@link
-   * BoundarySplitter} with {@code context} - a slide title, a table's context and header line -
-   * repeated in front of every part. Every chunk gets its own copy of {@code metadata}, so each
-   * part keeps the unit's Fundort.
+   * chunk while it fits {@link #softChunkCharLimit() target size}, otherwise {@code body} cut by
+   * {@link BoundarySplitter} with {@code context} - a slide title, a table's context and header
+   * line - repeated in front of every part. Every chunk gets its own copy of {@code metadata}, so
+   * each part keeps the unit's Fundort.
    *
    * @param context the leading text every part repeats, or {@code null}
    */
-  public static List<Document> boundedChunks(
+  public List<Document> boundedChunks(
       String context, String separator, String body, Map<String, Object> metadata) {
     boolean hasContext = context != null && !context.isEmpty();
     String whole = !hasContext ? body : body.isEmpty() ? context : context + separator + body;
-    if (whole.length() <= SOFT_CHUNK_CHAR_LIMIT || body.isBlank()) {
+    if (whole.length() <= softChunkCharLimit || body.isBlank()) {
       return withinCeiling(whole, metadata);
     }
     int bodyLimit =
-        hasContext ? bodyBudget(context.length() + separator.length()) : SOFT_CHUNK_CHAR_LIMIT;
+        hasContext ? bodyBudget(context.length() + separator.length()) : softChunkCharLimit;
     List<Document> chunks = new ArrayList<>();
     for (String part : BoundarySplitter.split(body, bodyLimit)) {
       chunks.addAll(withinCeiling(hasContext ? context + separator + part : part, metadata));
@@ -334,13 +363,13 @@ public final class HeadingSectionSplitter {
 
   /**
    * Characters left for the body of a chunk that repeats {@code contextLength} characters of
-   * context: the rest of {@link #SOFT_CHUNK_CHAR_LIMIT}, at least half of it, and never so much
-   * that context and body pass {@link #HARD_CHUNK_CHAR_LIMIT} - where the hard cut would separate a
-   * part from its context. Only a context that alone nearly fills the hard limit leaves that cut to
-   * {@link #withinCeiling}.
+   * context: the rest of {@link #softChunkCharLimit() target size}, at least half of it, and never
+   * so much that context and body pass {@link #HARD_CHUNK_CHAR_LIMIT} - where the hard cut would
+   * separate a part from its context. Only a context that alone nearly fills the hard limit leaves
+   * that cut to {@link #withinCeiling}.
    */
-  public static int bodyBudget(int contextLength) {
-    int target = Math.max(SOFT_CHUNK_CHAR_LIMIT - contextLength, SOFT_CHUNK_CHAR_LIMIT / 2);
+  public int bodyBudget(int contextLength) {
+    int target = Math.max(softChunkCharLimit - contextLength, softChunkCharLimit / 2);
     int room = HARD_CHUNK_CHAR_LIMIT - contextLength;
     return target <= room || room < MIN_BODY_CHARS ? target : room;
   }

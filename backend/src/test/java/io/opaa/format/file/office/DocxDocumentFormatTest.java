@@ -8,6 +8,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.math.BigInteger;
@@ -37,7 +38,8 @@ class DocxDocumentFormatTest {
 
   @TempDir Path tempDir;
 
-  private final DocxDocumentFormat pipeline = new DocxDocumentFormat();
+  private final DocxDocumentFormat pipeline =
+      new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   /** Lifts a section above the size below which neighbouring sections are combined. */
   private static final String NAEHERE =

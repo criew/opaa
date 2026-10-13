@@ -584,6 +584,7 @@ haben:
 |---|---|
 | Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
 | Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |
+| `OPAA_INDEXING_CHUNK_TARGET_CHARACTERS` geändert | Gilt nur für Dokumente, die danach neu oder geändert indiziert werden; weder ein erneuter Lauf noch der Nachzug zerlegt unveränderte Dokumente neu. Für einheitliche Chunks jede Bibliothek neu aufbauen (Falle unten) |
 
 Ein Wechsel des **Chat**-Modells berührt den Index nicht. Ein Wechsel des **Embedding**-Modells oder
 von `OPAA_PGVECTOR_DIMENSIONS` braucht ebenfalls keine Neuindizierung und kein Zurücksetzen der

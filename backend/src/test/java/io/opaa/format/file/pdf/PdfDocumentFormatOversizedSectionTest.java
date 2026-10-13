@@ -7,6 +7,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,7 +39,8 @@ class PdfDocumentFormatOversizedSectionTest {
 
   @TempDir Path tempDir;
 
-  private final PdfDocumentFormat pipeline = new PdfDocumentFormat();
+  private final PdfDocumentFormat pipeline =
+      new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   @Test
   void aSectionOfMoreThanThirtyThousandCharactersIsIndexedCompletely() throws IOException {
@@ -122,7 +124,7 @@ class PdfDocumentFormatOversizedSectionTest {
         .allSatisfy(
             chunk -> {
               assertThat(chunk.getText().length())
-                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT);
               assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
                   .isEqualTo("S. 1");
             });

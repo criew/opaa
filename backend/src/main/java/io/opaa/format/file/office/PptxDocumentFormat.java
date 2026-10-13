@@ -45,6 +45,12 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
   static final String ID = "pptx";
   static final short VERSION = 3;
 
+  private final HeadingSectionSplitter splitter;
+
+  public PptxDocumentFormat(HeadingSectionSplitter splitter) {
+    this.splitter = splitter;
+  }
+
   @Override
   public String id() {
     return ID;
@@ -128,7 +134,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
    */
   public record SlideChunk(List<Document> documents, boolean hasText) {}
 
-  private static SlideChunk buildChunk(XSLFSlide slide, int slideNumber) {
+  private SlideChunk buildChunk(XSLFSlide slide, int slideNumber) {
     XSLFShape titleShape = titleShape(slide);
     String title = titleText(titleShape);
     StringBuilder body = new StringBuilder();
@@ -146,7 +152,7 @@ public class PptxDocumentFormat extends FileDocumentFormat<PptxDocumentFormat.Pp
     }
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return new SlideChunk(HeadingSectionSplitter.boundedChunks(title, rest, metadata), hasText);
+    return new SlideChunk(splitter.boundedChunks(title, rest, metadata), hasText);
   }
 
   /**

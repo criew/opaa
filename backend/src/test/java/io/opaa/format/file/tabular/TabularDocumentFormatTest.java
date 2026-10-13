@@ -12,6 +12,7 @@ import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.file.office.CountingOdfOpener;
 import io.opaa.format.file.office.OdfPackage;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -39,7 +40,8 @@ class TabularDocumentFormatTest {
   @TempDir Path tempDir;
 
   private final TabularDocumentFormat pipeline =
-      new TabularDocumentFormat(new TabularProperties(0, 0, 0, 0));
+      new TabularDocumentFormat(
+          new TabularProperties(0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
 
   @Test
   void claimsExactlyXlsxCsvAndOds() {
@@ -211,7 +213,8 @@ class TabularDocumentFormatTest {
   void xlsxRowsWiderThanTheConfiguredLimitAreTruncatedNotCrashed() throws IOException {
     // the column-width cap applies symmetrically to XLSX, not just ODS.
     TabularDocumentFormat narrowPipeline =
-        new TabularDocumentFormat(new TabularProperties(3, 0, 0, 0));
+        new TabularDocumentFormat(
+            new TabularProperties(3, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("breit.xlsx");
     try (XSSFWorkbook workbook = new XSSFWorkbook()) {
       Sheet sheet = workbook.createSheet("Breit");
@@ -469,7 +472,7 @@ class TabularDocumentFormatTest {
             chunk -> {
               assertThat(chunk.getText()).startsWith("Tabelle: riesig\n\nSpalte1 | Spalte2\n");
               assertThat(chunk.getText().length())
-                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT);
             });
   }
 
@@ -495,7 +498,7 @@ class TabularDocumentFormatTest {
             chunk -> {
               assertThat(chunk.getText()).contains("Nr | Beschreibung");
               assertThat(chunk.getText().length())
-                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT);
             });
   }
 
@@ -514,7 +517,8 @@ class TabularDocumentFormatTest {
     Path file = tempDir.resolve("breit.csv");
     Files.writeString(file, csv.toString(), StandardCharsets.UTF_8);
     String headerLine = csv.substring(0, csv.indexOf("\n")).replace(",", " | ");
-    assertThat(headerLine.length()).isGreaterThan(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+    assertThat(headerLine.length())
+        .isGreaterThan(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT);
 
     DocumentFormatResult result = pipeline.run(DocumentFormatSource.ofFile(file, "breit.csv"));
 
@@ -579,7 +583,7 @@ class TabularDocumentFormatTest {
   @Test
   void aRowExceedingTheHardCharacterCeilingIsSplitIntoSeveralChunksWithoutLoss()
       throws IOException {
-    // MAX_CHUNK_CHARS alone does not bound a single, giant row - the hard ceiling splits it, so
+    // The target size alone does not bound a single, giant row - the hard ceiling splits it, so
     // the embedding model never receives it whole and its end still reaches the index.
     String hugeValue = "x".repeat(30_000);
     Path file = tempDir.resolve("riesig.csv");
@@ -621,7 +625,8 @@ class TabularDocumentFormatTest {
   void anOdsRunOpensThePackageExactlyOnce() throws IOException {
     CountingOdfOpener opener = new CountingOdfOpener();
     TabularDocumentFormat counting =
-        new TabularDocumentFormat(new TabularProperties(0, 0, 0, 0), opener);
+        new TabularDocumentFormat(
+            new TabularProperties(0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT, opener);
     Path file = tempDir.resolve("einmal.ods");
     writeOds(file, odsTable("Gebühren", odsRow("Leistung", "Betrag"), odsRow("Ausweis", "37")));
 
@@ -824,7 +829,8 @@ class TabularDocumentFormatTest {
       throws IOException {
     // the zip-bomb guard on content.xml's decompressed byte stream.
     TabularDocumentFormat tinyLimitPipeline =
-        new TabularDocumentFormat(new TabularProperties(0, 0, 50, 0));
+        new TabularDocumentFormat(
+            new TabularProperties(0, 0, 50, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("gross.ods");
     writeOds(file, odsTable("Blatt1", odsRow("Name", "Amt"), odsRow("Müller", "Bauamt")));
 
@@ -854,7 +860,8 @@ class TabularDocumentFormatTest {
     // the second, row-count-based zip-bomb guard - a small, repetitive
     // content.xml could stay under the byte limit while still describing too many rows.
     TabularDocumentFormat tinyLimitPipeline =
-        new TabularDocumentFormat(new TabularProperties(0, 0, 0, 2));
+        new TabularDocumentFormat(
+            new TabularProperties(0, 0, 0, 2), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("viele-zeilen.ods");
     writeOds(
         file,

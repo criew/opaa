@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
 import io.opaa.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.metadata.CoreMetadataExtractor;
 import io.opaa.metadata.ExtractedCoreMetadata;
 import io.opaa.metadata.TestVocabularies;
@@ -47,7 +48,8 @@ class VerwaltungCorpusMetadataFillLevelTest {
     assertThat(manifest.isValid()).isTrue();
     assertThat(manifest.fileNames()).hasSize(EXPECTED_DOCUMENT_COUNT);
 
-    MarkdownDocumentFormat pipeline = new MarkdownDocumentFormat();
+    MarkdownDocumentFormat pipeline =
+        new MarkdownDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
     var vocabulary = TestVocabularies.delivered();
     int withTitle = 0;
     int withType = 0;

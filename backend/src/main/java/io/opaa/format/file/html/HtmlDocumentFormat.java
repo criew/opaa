@@ -39,12 +39,14 @@ public class HtmlDocumentFormat implements DocumentFormat {
   static final int MAX_CUTTING_LEVEL = 3;
 
   /**
-   * Soft budget a section's body text is grouped into before another chunk starts - the shared
-   * {@link HeadingSectionSplitter#SOFT_CHUNK_CHAR_LIMIT}, named here because the tests reference it
-   * by this class. <b>Gesetzt, nicht gemessen</b>: the evaluation corpus contains no HTML documents
-   * to measure against.
+   * The shared cut; its target size is <b>gesetzt, nicht gemessen</b> for HTML: the evaluation
+   * corpus contains no HTML documents to measure against.
    */
-  static final int SOFT_CHUNK_CHAR_LIMIT = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
+  private final HeadingSectionSplitter splitter;
+
+  public HtmlDocumentFormat(HeadingSectionSplitter splitter) {
+    this.splitter = splitter;
+  }
 
   @Override
   public String id() {
@@ -79,7 +81,7 @@ public class HtmlDocumentFormat implements DocumentFormat {
     for (Element root : contentRoots) {
       // Each root is cut on its own outline; a heading path never carries across roots.
       List<Event> events = new XhtmlEventBuilder().build(root);
-      chunks.addAll(HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL));
+      chunks.addAll(splitter.chunk(events, MAX_CUTTING_LEVEL));
       if (titleLine == null) {
         titleLine = DocumentTitleLine.ofEvents(events);
         headText = DocumentHeadText.ofEvents(events);

@@ -4,6 +4,7 @@ import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkingService;
 import io.opaa.format.file.fallback.TikaFallbackFormat;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.util.List;
 
 /**
@@ -30,7 +31,10 @@ public final class TestPipelineRegistries {
       DocumentService documentService, ChunkingService chunkingService) {
     TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
     return new DocumentFormatRegistry(
-        List.of(fallback, new io.opaa.format.file.html.HtmlDocumentFormat()), fallback);
+        List.of(
+            fallback,
+            new io.opaa.format.file.html.HtmlDocumentFormat(HeadingSectionSplitterFixture.DEFAULT)),
+        fallback);
   }
 
   /**
@@ -42,7 +46,11 @@ public final class TestPipelineRegistries {
       DocumentService documentService, ChunkingService chunkingService) {
     TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
     return new DocumentFormatRegistry(
-        List.of(fallback, new io.opaa.format.file.markdown.MarkdownDocumentFormat()), fallback);
+        List.of(
+            fallback,
+            new io.opaa.format.file.markdown.MarkdownDocumentFormat(
+                HeadingSectionSplitterFixture.DEFAULT)),
+        fallback);
   }
 
   /** The fallback plus the Confluence page pipeline - for processConfluencePage tests. */
@@ -50,7 +58,10 @@ public final class TestPipelineRegistries {
       DocumentService documentService, ChunkingService chunkingService) {
     TikaFallbackFormat fallback = new TikaFallbackFormat(documentService, chunkingService);
     return new DocumentFormatRegistry(
-        List.of(fallback, new io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat()),
+        List.of(
+            fallback,
+            new io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat(
+                HeadingSectionSplitterFixture.DEFAULT)),
         fallback);
   }
 }

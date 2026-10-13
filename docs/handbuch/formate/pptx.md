@@ -27,10 +27,10 @@ Aufbau eines Chunks:
 2. Text aller übrigen Formen; Tabellenzeilen mit ` | ` zwischen den Zellen
 3. Sprechernotizen als abschließender Absatz „Notizen: …"
 
-Ausgefiltert werden Foliennummer, Datum, Kopf- und Fußzeilenplatzhalter. Eine Folie mit mehr als
-rund 4.000 Zeichen wird in mehrere Chunks geteilt, jeder beginnt mit dem Folientitel und trägt die
+Ausgefiltert werden Foliennummer, Datum, Kopf- und Fußzeilenplatzhalter. Eine Folie über der
+Zielgröße `chunk-target-characters` wird in mehrere Chunks geteilt, jeder beginnt mit dem Folientitel und trägt die
 Ortsangabe der Folie
-(Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1); eine Zielgröße gibt es bei Folien nicht.
+(Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1); zusammengelegt werden Folien nicht.
 
 ## 4. Metadaten am Chunk
 

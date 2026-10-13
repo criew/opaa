@@ -68,7 +68,7 @@ flowchart TB
 - **Code** und `noformat` behalten ihre Zeilenumbrüche.
 - Leerzeilen des Editors (`<p>&nbsp;</p>`) werden entfernt.
 
-Die Chunk-Größen sind fest: rund 4.000 Zeichen je Chunk, größere Abschnitte werden ohne
+Zielgröße ist `chunk-target-characters`, größere Abschnitte werden ohne
 Textverlust geteilt, Abschnitte unter 200 Zeichen unter derselben übergeordneten Überschrift
 zusammengelegt, dieselben Regeln wie bei den anderen überschriftengetriebenen Pipelines
 (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1).

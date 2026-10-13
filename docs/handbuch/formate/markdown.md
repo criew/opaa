@@ -30,7 +30,7 @@ einer eigenen, kleinen Zustandsmaschine.
   verschachtelte Strukturen werden übersprungen. Ein nicht geschlossener Block bleibt Inhalt,
   damit nicht der Rest des Dokuments verloren geht.
 
-Zielgröße rund 4.000 Zeichen, größere Abschnitte werden ohne Textverlust geteilt, Abschnitte unter
+Zielgröße `chunk-target-characters`, größere Abschnitte werden ohne Textverlust geteilt, Abschnitte unter
 200 Zeichen unter derselben übergeordneten Überschrift zusammengelegt
 (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1), keine Überlappung, Überschriftenzeile am Anfang jedes Chunks.
 

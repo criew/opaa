@@ -9,6 +9,7 @@ import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.awt.Rectangle;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -37,7 +38,8 @@ class PptxDocumentFormatTest {
 
   @TempDir Path tempDir;
 
-  private final PptxDocumentFormat pipeline = new PptxDocumentFormat();
+  private final PptxDocumentFormat pipeline =
+      new PptxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   @Test
   void claimsExactlyPptx() {
@@ -106,7 +108,7 @@ class PptxDocumentFormatTest {
             chunk -> {
               assertThat(chunk.getText()).startsWith("Gebuehrenordnung\n\n");
               assertThat(chunk.getText().length())
-                  .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT);
+                  .isLessThanOrEqualTo(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT);
               assertThat(chunk.getMetadata().get(ChunkMetadataKeys.LOCATION_METADATA_KEY))
                   .isEqualTo("Folie 1: Gebuehrenordnung");
             });

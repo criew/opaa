@@ -7,6 +7,8 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -26,7 +28,8 @@ class HtmlDocumentFormatTest {
 
   @TempDir Path tempDir;
 
-  private final HtmlDocumentFormat pipeline = new HtmlDocumentFormat();
+  private final HtmlDocumentFormat pipeline =
+      new HtmlDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   @Test
   void claimsExactlyHtml() {
@@ -486,7 +489,7 @@ class HtmlDocumentFormatTest {
         .allSatisfy(
             chunk ->
                 assertThat(chunk.getText().length())
-                    .isLessThan(HtmlDocumentFormat.SOFT_CHUNK_CHAR_LIMIT + 200));
+                    .isLessThan(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT + 200));
     // Nothing is lost across the split.
     String allText = String.join("\n", result.chunks().stream().map(d -> d.getText()).toList());
     assertThat(allText).contains("§ 1 ").contains("§ 150 ");
@@ -514,7 +517,7 @@ class HtmlDocumentFormatTest {
             chunk -> {
               assertThat(chunk.getText()).startsWith("Grosser Vorgang").doesNotContain("gekürzt");
               assertThat(chunk.getText().length())
-                  .isLessThan(HtmlDocumentFormat.SOFT_CHUNK_CHAR_LIMIT + 200);
+                  .isLessThan(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT + 200);
             });
     assertThat(result.chunks().getLast().getText()).endsWith("Letzter Satz des Vorgangs.");
   }

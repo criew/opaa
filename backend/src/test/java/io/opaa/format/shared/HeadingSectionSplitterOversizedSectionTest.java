@@ -56,7 +56,7 @@ class HeadingSectionSplitterOversizedSectionTest {
         .allSatisfy(
             chunk ->
                 assertThat(bodyOf(chunk).length())
-                    .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT));
+                    .isLessThanOrEqualTo(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT));
   }
 
   @Test
@@ -108,7 +108,7 @@ class HeadingSectionSplitterOversizedSectionTest {
   }
 
   private static List<Document> chunk(String body) {
-    return HeadingSectionSplitter.chunk(
+    return HeadingSectionSplitterFixture.DEFAULT.chunk(
         List.of(
             new HeadingSectionSplitter.Heading(1, HEADING),
             new HeadingSectionSplitter.Paragraph(body)),

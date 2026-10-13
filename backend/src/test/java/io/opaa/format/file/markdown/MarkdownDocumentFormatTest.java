@@ -6,6 +6,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.format.shared.HeadingSectionSplitter;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -23,7 +24,8 @@ class MarkdownDocumentFormatTest {
 
   @TempDir Path tempDir;
 
-  private final MarkdownDocumentFormat pipeline = new MarkdownDocumentFormat();
+  private final MarkdownDocumentFormat pipeline =
+      new MarkdownDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   @Test
   void claimsExactlyMarkdown() {

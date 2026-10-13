@@ -68,6 +68,12 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
   private static final Pattern HEADING_STYLE =
       Pattern.compile("(?i)^(?:heading|berschrift|ueberschrift)[ _]?(\\d)$");
 
+  private final HeadingSectionSplitter splitter;
+
+  public DocxDocumentFormat(HeadingSectionSplitter splitter) {
+    this.splitter = splitter;
+  }
+
   @Override
   public String id() {
     return ID;
@@ -117,12 +123,12 @@ public class DocxDocumentFormat extends FileDocumentFormat<DocxDocumentFormat.Do
       // this outcome - see this class's own Javadoc on why the guard ignores it entirely.
       return DocumentFormatResult.noContent();
     }
-    List<Document> chunks =
-        new ArrayList<>(HeadingSectionSplitter.chunk(content.events(), MAX_CUTTING_LEVEL));
+    List<Document> chunks = new ArrayList<>(splitter.chunk(content.events(), MAX_CUTTING_LEVEL));
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();
     }
-    chunks.addAll(0, RepeatingHeaderChunk.of(HEADER_FOOTER_LOCATION, content.headerFooterText()));
+    chunks.addAll(
+        0, RepeatingHeaderChunk.of(splitter, HEADER_FOOTER_LOCATION, content.headerFooterText()));
     return DocumentFormatResult.chunked(chunks);
   }
 

@@ -68,14 +68,6 @@ public class TabularDocumentFormat implements DocumentFormat {
    */
   static final int MAX_ROWS_PER_CHUNK = 50;
 
-  /**
-   * The shared target size a row group aims at, checked before a further row is added; the rows get
-   * what {@link HeadingSectionSplitter#bodyBudget} leaves next to context and header line. A single
-   * row that alone exceeds it becomes its own chunk, split by {@link
-   * HeadingSectionSplitter#boundedChunks} with context and header line repeated in every part.
-   */
-  static final int MAX_CHUNK_CHARS = HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT;
-
   private static final char[] CSV_DELIMITER_CANDIDATES = {',', ';', '\t'};
 
   /** How many of a CSV file's leading, non-blank lines {@link #detectDelimiter} samples. */
@@ -90,11 +82,21 @@ public class TabularDocumentFormat implements DocumentFormat {
   private final int maxOdsRows;
   private final OdfPackage.Opener odfOpener;
 
-  public TabularDocumentFormat(TabularProperties properties) {
-    this(properties, OdfPackage::open);
+  /**
+   * The shared cut whose target size a row group aims at, checked before a further row is added;
+   * the rows get what {@link HeadingSectionSplitter#bodyBudget} leaves next to context and header
+   * line. A single row that alone exceeds it becomes its own chunk, split by {@link
+   * HeadingSectionSplitter#boundedChunks} with context and header line repeated in every part.
+   */
+  private final HeadingSectionSplitter splitter;
+
+  public TabularDocumentFormat(TabularProperties properties, HeadingSectionSplitter splitter) {
+    this(properties, splitter, OdfPackage::open);
   }
 
-  TabularDocumentFormat(TabularProperties properties, OdfPackage.Opener odfOpener) {
+  TabularDocumentFormat(
+      TabularProperties properties, HeadingSectionSplitter splitter, OdfPackage.Opener odfOpener) {
+    this.splitter = splitter;
     this.maxRowColumns = properties.maxRowColumns();
     this.maxOdsCellRepeat = properties.maxOdsCellRepeat();
     this.maxOdsContentXmlBytes = properties.maxOdsContentXmlBytes();
@@ -540,8 +542,7 @@ public class TabularDocumentFormat implements DocumentFormat {
    * @param sheetName the sheet name, or {@code null} for CSV, forwarded unchanged
    * @param tableName see {@link #buildChunks}
    */
-  private static List<Document> chunksFromRawRows(
-      String sheetName, String tableName, List<RawRow> rows) {
+  private List<Document> chunksFromRawRows(String sheetName, String tableName, List<RawRow> rows) {
     List<RawRow> nonBlank = new ArrayList<>();
     for (RawRow row : rows) {
       if (!isBlankRow(row.values())) {
@@ -565,8 +566,7 @@ public class TabularDocumentFormat implements DocumentFormat {
     return buildChunks(sheetName, tableName, header, dataRows, dataRowNumbers);
   }
 
-  private static List<Document> renderSingleRowChunk(
-      String sheetName, String tableName, RawRow row) {
+  private List<Document> renderSingleRowChunk(String sheetName, String tableName, RawRow row) {
     String prefix =
         sheetName != null
             ? "Blatt: " + sheetName + " · Tabelle: " + tableName
@@ -577,13 +577,13 @@ public class TabularDocumentFormat implements DocumentFormat {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return HeadingSectionSplitter.boundedChunks(prefix, TableText.row(row.values()), metadata);
+    return splitter.boundedChunks(prefix, TableText.row(row.values()), metadata);
   }
 
   /**
    * Cuts {@code dataRows} into chunks of at most {@link #MAX_ROWS_PER_CHUNK} rows, closing a chunk
-   * early if the next row would push it past {@link #MAX_CHUNK_CHARS} - see that constant's Javadoc
-   * for the giant-row guard.
+   * early if the next row would push it past the target size - see {@link #splitter} for the
+   * giant-row guard.
    *
    * @param sheetName the sheet name, or {@code null} for CSV (which has no sheet concept - the
    *     rendered "Blatt: …" line is then omitted, see {@link #renderChunk})
@@ -591,7 +591,7 @@ public class TabularDocumentFormat implements DocumentFormat {
    *     Excel's separate "defined table" objects, so blatt and tabelle coincide there), or the
    *     file-name-derived title for CSV
    */
-  private static List<Document> buildChunks(
+  private List<Document> buildChunks(
       String sheetName,
       String tableName,
       List<String> header,
@@ -606,7 +606,7 @@ public class TabularDocumentFormat implements DocumentFormat {
     int baseChars = prefix.length() + 2 + headerLine.length();
     // The same body budget HeadingSectionSplitter#boundedChunks leaves a unit next to its context,
     // so every row group keeps context and header line within the hard limit.
-    int rowChars = HeadingSectionSplitter.bodyBudget(baseChars + 1);
+    int rowChars = splitter.bodyBudget(baseChars + 1);
 
     List<Document> chunks = new ArrayList<>();
     List<List<String>> currentRows = new ArrayList<>();
@@ -642,7 +642,7 @@ public class TabularDocumentFormat implements DocumentFormat {
     return chunks;
   }
 
-  private static List<Document> renderChunk(
+  private List<Document> renderChunk(
       String prefix,
       String headerLine,
       List<List<String>> rows,
@@ -660,7 +660,7 @@ public class TabularDocumentFormat implements DocumentFormat {
 
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return HeadingSectionSplitter.boundedChunks(
+    return splitter.boundedChunks(
         prefix + "\n\n" + headerLine, "\n", text.toString().stripTrailing(), metadata);
   }
 }
