@@ -1047,6 +1047,37 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(accessKey).toHaveAccessibleDescription(/Access Key ist erforderlich/)
       expect(accessKey).toHaveFocus()
     }, 15000)
+
+    it('announces an issue of a field the form does not show in the step’s live region', async () => {
+      // under a profile without an imitated account the form shows no field for it
+      mockListConnectionProfileOptions.mockResolvedValue([
+        {
+          id: 'profile-drive',
+          name: 'Zugang Drive',
+          sourceType: 'GOOGLE_DRIVE',
+          serverUrl: 'https://www.googleapis.com',
+          authMethod: 'SERVICE_ACCOUNT_KEY' as const,
+          connectorDefaults: null,
+        },
+      ])
+      mockBrowseSource.mockResolvedValue({
+        complete: true,
+        entries: [{ key: 'myDrive', name: 'Meine Ablage' }],
+      })
+      const user = userEvent.setup()
+      await renderPage()
+      await chooseType(user, /Google Drive/)
+      await user.click(await screen.findByRole('radio', { name: /Zugang Drive/ }))
+      expect(screen.queryByLabelText(/Imitiertes Konto/)).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Bereiche laden' }))
+      await user.click(await screen.findByRole('checkbox', { name: /Meine Ablage/ }))
+
+      await next(user)
+
+      const message = screen.getByText(/„Meine Ablage“ setzt ein imitiertes Konto voraus/)
+      expect(message.closest('[role="alert"]')).not.toBeNull()
+      expect(screen.getByRole('button', { name: 'Bereiche laden' })).toBeInTheDocument()
+    }, 20000)
   })
 
   // #514: ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.

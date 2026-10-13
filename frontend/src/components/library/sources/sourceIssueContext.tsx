@@ -2,6 +2,9 @@ import { createContext, useContext, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import type { SourceIssue } from '../../../utils/sourceIssue'
 
+/** Marks the message of an issue in a helper text, so the field it describes can be found. */
+export const ISSUE_MARKER = 'data-source-issue'
+
 /** Hands the issue of a failed save to the source form, which shows it at its field. */
 export const SourceIssueContext = createContext<SourceIssue | null>(null)
 
@@ -19,7 +22,7 @@ export function withIssue(message: string | null, hint?: ReactNode): ReactNode {
   if (!message) return hint
   return (
     <>
-      <Box component="span" sx={{ display: 'block' }}>
+      <Box component="span" sx={{ display: 'block' }} {...{ [ISSUE_MARKER]: '' }}>
         {message}
       </Box>
       {hint && (

@@ -1050,10 +1050,56 @@ describe('EditLibrarySourceDialog errors at their field (#2193)', () => {
       await save(user)
 
       const include = screen.getByLabelText(/^Einschlussmuster/)
+      const advanced = screen.getByRole('button', { name: /Erweitert/ })
+      expect(advanced).toHaveAttribute('aria-expanded', 'true')
       expect(include).toHaveAccessibleDescription(/ein Muster ist mehrfach angegeben/)
+      expect(include).toHaveFocus()
+
+      // correcting the pattern clears the issue, but leaves the section open under the cursor
+      await user.keyboard('{Backspace}')
+      expect(include).not.toHaveAttribute('aria-invalid', 'true')
+      expect(advanced).toHaveAttribute('aria-expanded', 'true')
       expect(include).toHaveFocus()
     }, 15000)
   })
+
+  it('shows an issue of a field the form does not show in the live region and focuses it', async () => {
+    // under a profile without an imitated account the form shows no field for it
+    const driveLibrary = {
+      name: 'Ablage',
+      description: null,
+      sourceType: 'GOOGLE_DRIVE' as const,
+      sourcePath: null,
+      sourceUrl: 'https://www.googleapis.com',
+      sourceCredentialsSet: false,
+      sourceSettings: { scopes: [{ myDrive: true, name: 'Meine Ablage' }] },
+      connectionProfile: {
+        id: 'profile-drive',
+        name: 'Zugang Drive',
+        serverUrl: 'https://www.googleapis.com',
+        authMethod: 'SERVICE_ACCOUNT_KEY' as const,
+        connectorDefaults: {},
+      },
+    }
+    renderWithProviders(
+      <EditLibrarySourceDialog
+        open
+        onClose={vi.fn()}
+        libraryId="lib-drive"
+        library={driveLibrary}
+      />,
+    )
+    const user = userEvent.setup()
+    expect(screen.queryByLabelText(/Imitiertes Konto/)).not.toBeInTheDocument()
+
+    await save(user)
+
+    const message = screen.getByText(/„Meine Ablage“ setzt ein imitiertes Konto voraus/)
+    const alert = message.closest<HTMLElement>('[role="alert"]')
+    expect(alert).not.toBeNull()
+    expect(alert).toHaveFocus()
+    expect(mockUpdateLibrary).not.toHaveBeenCalled()
+  }, 15000)
 
   it('announces a server error without a field as a live region and focuses it', async () => {
     mockUpdateLibrary.mockRejectedValueOnce(new Error('Die Quelle ist nicht erreichbar.'))
