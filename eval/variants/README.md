@@ -51,9 +51,8 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   Rerank-Modellrolle des Laufs nicht nutzbar ist (Schalter aus, Rolle unbelegt oder Endpunkt
   nicht erreichbar) — sie hätte sonst die Konfiguration ohne Reranking unter dem Namen der mit
   Reranking gemessen. **Diese Prüfung wiederholt sich nach jeder Variante:** Fällt der Endpunkt
-  mitten im Lauf aus, ist jede betroffene Frage auf die fusionierte Reihenfolge des verbreiterten
-  Fensters zurückgefallen — weder das Ergebnis mit Reranking noch das der Konfiguration ohne
-  Reranking (siehe [retrieval-algorithm.md](../../docs/features/retrieval-algorithm.md), Schritt
+  mitten im Lauf aus, ist jede betroffene Frage auf die fusionierte Reihenfolge zurückgefallen, also
+  auf das Ergebnis der Konfiguration ohne Reranking (siehe [retrieval-algorithm.md](../../docs/features/retrieval-algorithm.md), Schritt
   5b). Die Variante wird dann als „nicht verwertbar" gemeldet statt als Messwert. Maßgeblich ist
   dabei nicht der Rollenzustand am Ende, sondern die Zahl der Aufrufe ohne verwertbare Rangfolge
   (`RerankModelRole#degradedCallCount`) vor und nach der Variante — eine Rolle, die ausfällt und

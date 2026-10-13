@@ -172,7 +172,8 @@ class DocumentIngestServiceMetadataFeatureTest {
             batchingStrategy,
             vectorStoreWriter,
             fullTextChunkStore,
-            new EmbeddingRateEstimator(4.0));
+            new EmbeddingRateEstimator(4.0),
+            2048);
     return new DocumentIngestService(
         TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
         documentRepository,

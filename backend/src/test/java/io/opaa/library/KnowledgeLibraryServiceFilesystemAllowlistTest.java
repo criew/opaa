@@ -95,7 +95,8 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
             mock(VectorStoreWriter.class),
             mock(FullTextChunkStore.class),
-            new EmbeddingRateEstimator(4.0));
+            new EmbeddingRateEstimator(4.0),
+            2048);
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
     IndexingJobRepository indexingJobRepository = mock(IndexingJobRepository.class);
     RssFeedStateRepository rssFeedStateRepository = mock(RssFeedStateRepository.class);

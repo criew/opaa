@@ -231,26 +231,24 @@ Die Auswahl ist dann bit-identisch zu der ohne sie — die Messvariante `vector-
 
 ### 4. MMR-Auswahl je Teilfrage
 
-Stufenname: `MMR_SELECTION`. `MmrSelectionStage` narrowt die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
-Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` auf das **Kandidatenbudget** des Laufs
-(`RetrievalContext#candidateBudget`). Ohne Reranking ist das `opaa.query.top-k`
-(`OPAA_QUERY_TOP_K`, Default `20`, bis #2373 `8`) — das Verhalten von vor #1050. Läuft die Rerank-Stufe, ist es
-stattdessen `opaa.query.rerank-candidate-count`: Ein Reranker, der nur `top-k` Kandidaten je
-Liste zu sehen bekäme, könnte nichts mehr hochziehen, was die vorgelagerten Stufen bereits
-verworfen haben, und wäre damit zwecklos. Steuernder Parameter ist `opaa.query.mmr-lambda`
-(`OPAA_QUERY_MMR_LAMBDA`, Default `1,0` = Vielfaltsauswahl per Voreinstellung deaktiviert, reine
-Top-`k`-Relevanz). Bei `mmrLambda < 1,0` wird die paarweise Ähnlichkeit über die **echten
+Stufenname: `MMR_SELECTION`. `MmrSelectionStage` sortiert die `fetch-k` Kandidaten **jeder Liste einzeln** — je Teilfrage und je
+Suchpfad, nie über die zusammengeführte Gesamtmenge — mittels `MmrSelector#select` nach Vielfalt um
+und **kürzt keine Liste**: Alle `fetch-k` Kandidaten erreichen die Fusion, die allein auf das
+Kandidatenbudget kürzt (Schritt 5). Bis [#2620](https://github.com/criew/opaa/issues/2620) kürzte die
+Stufe jede Liste auf das Kandidatenbudget, auch bei `mmr-lambda` 1,0; `fetch-k` wirkte dadurch wie
+`top-k`, und ein Einzeltreffer auf Listenrang 21 bis 25 erreichte die Fusion nie. Steuernder Parameter
+ist `opaa.query.mmr-lambda` (`OPAA_QUERY_MMR_LAMBDA`, Default `1,0`). Bei `1,0` ist der Diversitätsterm
+null, die Umsortierung wäre die Identität: Die Stufe läuft dann nicht und steht im Erklärprotokoll als
+`DISABLED`. Bei `mmrLambda < 1,0` wird die paarweise Ähnlichkeit über die **echten
 Chunk-Embeddings** berechnet (Kosinus-Ähnlichkeit), die `ChunkEmbeddingLookup` in einem einzigen,
 über alle Teilfragen gepoolten SQL-Roundtrip direkt aus der pgvector-Tabelle nachliest (`id::text = ANY(?)`
-gegen `spring.ai.vectorstore.pgvector.*`) — kein zusätzlicher Aufruf beim Einbettungsdienst. Bei
-`mmrLambda = 1,0` (Default) entfällt dieser Roundtrip vollständig, weil der Diversitätsterm dann stets mit
-null multipliziert wird. Details, Messwerte und die Begründung des Defaults in
+gegen `spring.ai.vectorstore.pgvector.*`) — kein zusätzlicher Aufruf beim Einbettungsdienst. Details, Messwerte und die Begründung des Defaults in
 [MMR](./data-indexing-rag.md#stellschrauben-und-ihre-wirkung).
 
 ### 5. Reciprocal Rank Fusion
 
-Stufenname: `RANK_FUSION`. `RankFusionStage` führt über `ReciprocalRankFusion` die pro Teilfrage und **je Suchpfad** per MMR
-ausgewählten Ranglisten zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
+Stufenname: `RANK_FUSION`. `RankFusionStage` führt über `ReciprocalRankFusion` die vollständigen `fetch-k`-Ranglisten
+je Teilfrage und **je Suchpfad** zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
 Vektor- und die der Volltextsuche. Jeder Chunk erhält je Liste, in der er vorkommt, den Beitrag
 `1 / (60 + Rang)` (Rang 1-basiert, Dämpfungskonstante 60 nach Cormack et al.), die Beiträge werden über
 alle Listen summiert, absteigend sortiert und auf das Kandidatenbudget gedeckelt (`top-k` ohne
@@ -269,7 +267,7 @@ der Volltextpfad gefunden hat; was der Wert für diesen Fall bedeuten soll, ist 
 ([#1102](https://github.com/criew/opaa/issues/1102)). Bei
 genau einer Suchanfrage und abgeschaltetem Volltextpfad läuft die Stufe mit und ist dort nachweislich die Identität: innerhalb einer Liste
 sind alle Ränge verschieden, die fusionierten Werte also streng fallend in der Listenreihenfolge, und die
-Deckelung ist durch das Listenbudget bereits erfüllt. Diese Identität ruht seit #1458 auf dieser
+Deckelung behält den Kopf der Liste. Diese Identität ruht seit #1458 auf dieser
 Begründung und auf den Stufentests (`RankFusionStageTest`, `RetrievalPipelineTest`, `HybridFusionTest`),
 nicht mehr auf einem Vergleich gegen die Vor-#1046-Orchestrierung: Der frühere `RetrievalPipelineParityTest`
 ist entfallen, und der Protokoll-Diff des Eval-Harness (`eval/README.md`, Abschnitt „Protokoll-Dump")
@@ -312,13 +310,11 @@ gleichermaßen sprechen. **Ein Fehlschlag kostet die Reihenfolge, nie die Antwor
 Endpunkt stumm, behält die Stufe die fusionierte Reihenfolge, stellt die `top-k`-Deckelung wieder her
 und vermerkt im Erklärprotokoll den Status `UNAVAILABLE` statt so zu tun, als hätte sie entschieden.
 
-**Diese Reihenfolge ist allerdings nicht die des Laufs ohne Reranking.** Fällt der Endpunkt mitten
-im Lauf aus, hat die MMR-Auswahl je Liste bereits `rerank-candidate-count` statt `top-k` Einträge
-behalten — Ränge 9 bis 50 jeder Liste sind also in die Fusion eingeflossen, und ein Chunk mit
-Übereinstimmung in beiden Listen überholt dort einen Rang-3-Treffer aus nur einer. Das Ergebnis ist
-ein **dritter Zustand**: weder die Auswahl des rerankten Laufs noch die der Konfiguration ohne
-Reranking. Kein Fehler — die Antwort bleibt eine Antwort mit `top-k` Chunks —, aber der Grund,
-warum ein Messlauf mit unterbrochenem Reranking nicht als Messwert gilt (siehe
+**Diese Reihenfolge ist die des Laufs ohne Reranking.** Vor der Fusion hängt keine Stufe vom
+Kandidatenbudget ab (seit [#2620](https://github.com/criew/opaa/issues/2620) kürzt die MMR-Stufe
+nicht mehr), die fusionierte Liste ist also mit und ohne Reranking dieselbe, und ihre ersten
+`top-k` sind die Auswahl der Konfiguration ohne Reranking. Ein Messlauf mit unterbrochenem Reranking
+gilt trotzdem nicht als Messwert der Variante mit Reranking (siehe
 [eval/variants/README.md](../../eval/variants/README.md)).
 
 **Der Zustand der Rolle reist mit, nicht ein Ja/Nein.** `RetrievalContext#rerankAvailability`
@@ -334,9 +330,19 @@ verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`
 
 Stufenname: `DOCUMENT_COMPLETION`. `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
 aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schritt 3 nach — nie darüber
-hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, darf bis zu
-`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `1`, bis #2502 `2`) Chunks stellen,
-bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt — die Abhilfe für den Fall, dass
+hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, wird bis zu
+`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `1`, bis #2502 `2`) Chunks aufgefüllt,
+bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt. Der Wert ist ein
+**Auffüllziel, keine Obergrenze**: Ein Dokument, das aus Fusion, MMR oder Reranking schon mit so
+vielen oder mehr Chunks kommt, bekommt nichts dazu und wird nie auf den Wert gekürzt. Chunks
+verlieren kann es nur, wenn ein anderes Dokument aufgefüllt wird, und dann unabhängig vom Wert:
+Stufe 1 nimmt den schwächsten Chunk eines Dokuments mit mindestens zwei Chunks, das in diesem
+Aufruf selbst nicht aufgefüllt wurde. Ein Dokument, das schon voll war, ist davor also nicht
+geschützt (bei Wert `2` und `top-k = 4` wird `[A1, A2, A3, B1]` mit B2 im Pool zu `[A1, A2, B1, B2]`).
+Ist es auf einen Chunk geschrumpft, kann Stufe 2 auch diesen verdrängen. Bei `1` läuft nichts davon,
+die Auswahl bleibt unverändert. In der Endauswahl der
+FV-Arbeitsmenge standen beim Default `1` bis zu sechs Chunks eines Dokuments
+([#2623](https://github.com/criew/opaa/issues/2623)). Die Stufe ist die Abhilfe für den Fall, dass
 der Gebühren-Chunk eines Dokuments in RRF/MMR gegen Chunks *anderer* Dokumente verlor, weil der
 Einleitungs-Chunk desselben Dokuments dort besser rankte und dessen Platz belegte
 (siehe [#932](https://github.com/criew/opaa/issues/932)). Zwei Verdrängungsstufen: **Stufe 1** entfernt den
@@ -361,9 +367,18 @@ Keine Stufe der Pipeline, sondern der Schritt zwischen Endauswahl und Antwort:
 `io.opaa.retrieval.context.NeighborChunkExpansion`, aufgerufen in `QueryService#query`. Zu jedem Chunk
 der Endauswahl lädt `NeighborChunkLookup` die Chunks `chunk_index ± radius` desselben Dokuments
 (`opaa.query.neighbor-chunks.radius`, `OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS`, Default `1`), in einer
-SQL-Abfrage mit `library_id = ANY(Suchbereich)` in der Bedingung. Verteilt wird nach Rang und Abstand:
-erst alle Abstand-1-Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren, jeder nur neben einem
-schon vorhandenen Chunk, bis das Zeichenbudget `max-added-characters` (Default `40000`) erschöpft ist.
+SQL-Abfrage mit `library_id = ANY(Suchbereich)` in der Bedingung. Das Zeichenbudget
+`max-added-characters` (Default `40000`) wird seit [#2621](https://github.com/criew/opaa/issues/2621)
+in zwei Durchgängen verteilt. **Durchgang 1:** Jeder Treffer bekommt in Rangfolge einen
+Abstand-1-Nachbarn, bevorzugt den folgenden (`chunk_index + 1`), sonst den vorangehenden — wenn der
+folgende nicht existiert, außerhalb des Suchbereichs liegt oder nicht mehr ins Budget passt. Ein
+Treffer, an den bereits ein Chunk des Kontexts grenzt (ein anderer Treffer oder ein schon geladener
+Nachbar), bekommt in diesem Durchgang nichts. **Durchgang 2:** Das Restbudget geht nach Abstand und
+Rang, erst alle übrigen Abstand-1-Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren, jeder
+nur neben einem schon vorhandenen Chunk. Ein Nachbar, der nicht mehr passt, wird übersprungen; ein
+kürzerer dahinter kann noch passen. Vorher lief nur Durchgang 2, und bei erschöpftem Budget bekamen
+die hinteren Treffer (Rang 18–20) keine Nachbarn mehr; in der Verlustanalyse am FV-Testkorpus
+kostete das Kernfakten.
 Das Ergebnis ist nach zusammenhängenden Ausschnitten geordnet: Aneinandergrenzende Chunks eines
 Dokuments stehen in Indexreihenfolge, die Ausschnitte in der Rangfolge ihres besten Treffers.
 
@@ -402,7 +417,7 @@ Ungültige Zitate werden im Antworttext belassen, aber in der zugehörigen `Chat
 **Was `relevanceScore` bedeutet (#1102).** Der Relevanzwert einer Quellenangabe ist der **Kehrwert
 ihrer Position in der Quellenliste der Antwort** — 1,0 für die erste Quelle, 0,5 für die zweite,
 0,33 für die dritte —, **keine Ähnlichkeit**. Gezählt werden Quellen, nicht Chunks: Ein Dokument
-darf mehrere Chunks zur Auswahl beisteuern (`max-chunks-per-document`), belegt in der Quellenliste
+kann mit mehreren Chunks in der Auswahl stehen, belegt in der Quellenliste
 aber genau eine Position — die Rangvergabe erfolgt deshalb erst, nachdem die Chunks je Dokument zu
 einer Quellenangabe zusammengefasst sind, und die Rangfolge ist lückenlos. Der Rohwert eines Chunks
 (`Document#getScore()`) taugt dafür seit #1049 nicht mehr: Ein Chunk, den nur der lexikalische Pfad
@@ -433,7 +448,7 @@ Frage + Gesprächsfenster
         ↓
 3b. Je Suchanfrage: Volltextsuche (fetch-k, identischer Rechtefilter)
         ↓
-4. Je Liste (Teilfrage × Suchpfad): MMR-Auswahl auf das Kandidatenbudget (mmr-lambda)
+4. Je Liste (Teilfrage × Suchpfad): MMR-Umsortierung ohne Kürzung (mmr-lambda; bei 1,0 übersprungen)
         ↓
 5. Reciprocal Rank Fusion über alle Listen beider Pfade, gedeckelt auf das Kandidatenbudget
         ↓

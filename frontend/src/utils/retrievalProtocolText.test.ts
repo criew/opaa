@@ -32,9 +32,9 @@ const BACKEND_NOTES = [
   'vector search · sub-query 2 returned 7 of fetch-k 25 candidate(s): fewer qualify within filter and similarity threshold, or the index scan stopped at its tuple or memory limit',
   'lexical search path switched off (opaa.query.full-text-search-enabled)',
   'full-text search, 3 list(s)',
-  'per-list budget 8',
-  'mmr-lambda 1.0 (diversity term inactive: plain top-k by relevance)',
-  'mmr-lambda 0.7 (diversity term active, cosine similarity of real chunk embeddings)',
+  'full-text search · sub-query 2: uppercase word(s) ELSTER, KONSENS demoted, searched as ordinary words without identifier weight: more chunks of the search scope carry them than fetch-k',
+  'mmr-lambda 1.0: diversity term inactive, every list passed on unchanged to the fusion',
+  'mmr-lambda 0.7: every list reordered by diversity (cosine similarity of real chunk embeddings), none narrowed',
   'reciprocal rank fusion over 6 list(s)',
   'budget widened to the rerank candidate window 50',
   'overall budget top-k 8',
@@ -107,6 +107,18 @@ describe('translateStageNote', () => {
     expect(
       translateStageNote('lexical search path switched off (opaa.query.full-text-search-enabled)'),
     ).toContain('opaa.query.full-text-search-enabled')
+  })
+
+  it('describes max-chunks-per-document as a completion target, not a cap', () => {
+    const german = translateStageNote('max-chunks-per-document 3')
+    expect(german).toContain('Dokument-Vervollständigung bis 3 Abschnitte')
+    expect(german).toContain('keine Obergrenze')
+  })
+
+  it('says document completion is off at max-chunks-per-document 1', () => {
+    expect(translateStageNote('max-chunks-per-document 1')).toBe(
+      'Dokument-Vervollständigung aus (max-chunks-per-document 1).',
+    )
   })
 
   it('never shows a Java type to the operator', () => {

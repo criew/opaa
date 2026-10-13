@@ -106,7 +106,7 @@ OPAA_CREDENTIALS_ENCRYPTION_KEY=<Ausgabe von: openssl rand -base64 32>
 OPAA_AUTH_JWT_SECRET=<Ausgabe von: openssl rand -base64 48>
 OPAA_CSP_CONNECT_SRC_EXTRA=http://localhost:8180
 OPAA_DEMO_MODE=true
-OPAA_PGVECTOR_DIMENSIONS=768
+OPAA_PGVECTOR_DIMENSIONS=1024
 OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30
 OPAA_UPLOAD_STORE=s3
 OPAA_UPLOAD_S3_ENDPOINT=http://objectstore:9000
@@ -164,15 +164,15 @@ Herkunft und Zwang jeder einzelnen Variable:
   bleibt der Hinweis aus (Image-Default `false`) — das ist der richtige Zustand für jede
   Nicht-Demo-Installation, siehe [`../docs/handbuch/konfiguration.md`](../docs/handbuch/konfiguration.md#alle-umgebungsvariablen),
   Variablentabelle.
-- `OPAA_PGVECTOR_DIMENSIONS=768` steht seit #720 bereits so in `.env.docker.example` (nicht mehr auf
-  dem Anwendungs-Default 1536) — die Zeile oben ist deshalb kein Abweichen mehr von der Vorlage,
-  sondern nur zur Klarheit wiederholt: Voreingestellt bleiben lokal betriebene Modelle über die
-  openai-kompatible Schicht, mit dem Embedding-Modell `nomic-embed-text`, das 768 Dimensionen liefert
+- `OPAA_PGVECTOR_DIMENSIONS=1024` steht so in `.env.docker.example` und ist auch der
+  Anwendungs-Default — die Zeile oben ist deshalb kein Abweichen von der Vorlage, sondern nur zur
+  Klarheit wiederholt: Voreingestellt bleiben lokal betriebene Modelle über die openai-kompatible
+  Schicht, mit dem Embedding-Modell `bge-m3`, das 1024 Dimensionen liefert
   (siehe [`../docs/handbuch/konfiguration.md`, „Alle Umgebungsvariablen"](../docs/handbuch/konfiguration.md#alle-umgebungsvariablen)
   für dieselbe Kopplung). Der Wert muss zum jeweils verwendeten Embedding-Modell passen; eine
-  nachträgliche Änderung an einer bereits laufenden Instanz erfordert `docker compose down -v` und
-  eine vollständige Neuindizierung (siehe [`../docs/handbuch/betrieb.md`, „Was ein Update mit dem
-  Index macht"](../docs/handbuch/betrieb.md#was-ein-update-mit-dem-index-macht)).
+  nachträgliche Änderung an einer bereits laufenden Instanz erkennt OPAA beim Start und stellt sie
+  über die Neueinbettung in der Administration um, ohne Neuindizierung (siehe
+  [`../docs/handbuch/modelle.md`, „Modell wechseln"](../docs/handbuch/modelle.md#modell-wechseln)).
 - `OPAA_UPLOAD_THREAD_POOL_QUEUE_CAPACITY=30` hebt die Standard-Warteschlange von
   `uploadTaskExecutor` (Default 20, `opaa.upload.thread-pool`) an: Der Seed lädt die 27 Dokumente der
   Bibliothek „Interne Dienstanweisungen Meldewesen" sequentiell und ohne Pause hoch, und mit lokal
@@ -217,8 +217,12 @@ docker compose --profile demo --profile ollama up
 ```
 
 Das startet zusätzlich einen lokal betriebenen `ollama`-Service samt Init-Schritt, der
-`nomic-embed-text` und `phi3:mini` zieht — die Demo läuft damit vollständig ohne externe Dienste, auf
-Kosten eines mehrere Gigabyte großen Downloads beim allerersten Start.
+`bge-m3` und `phi3:mini` zieht und `bge-m3` mit einer Eingabegrenze von 8.192 Tokens neu anlegt — die
+Demo läuft damit vollständig ohne externe Dienste, auf Kosten eines mehrere Gigabyte großen Downloads
+beim allerersten Start. Nur in diesem Fall `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=8192` in
+`.env.docker` einkommentieren. Mit einem Ollama auf dem Host die Zeile auskommentiert lassen oder
+`bge-m3` dort per Modelfile mit derselben Grenze anlegen (siehe
+[`../docs/handbuch/modelle.md`, „Eingabegrenze des Embedding-Modells"](../docs/handbuch/modelle.md#eingabegrenze-des-embedding-modells)).
 
 Das startet zusätzlich zu `postgres`/`backend`/`frontend`:
 
@@ -1240,8 +1244,9 @@ eine zweite, rechtelose Zeile. Dieser eine Lauf braucht deshalb den zurücksetze
 Neustart hinweg dieselben.
 
 Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander
-gekoppelt: Wer das Embedding-Modell wechselt, muss beide Werte gemeinsam ändern und die Datenbank
-zurücksetzen. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung
+gekoppelt: Wer das Embedding-Modell wechselt, ändert beide Werte gemeinsam und startet die
+Neueinbettung in der Administration. Die Eingabegrenze bleibt dabei auf der Anwendungsvorgabe von
+2.048 Tokens, solange das Modell auf dem Host unverändert gezogen ist. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung
 sind auf der Instanz ohnehin getrennte Anbieter.
 
 #### Sicherheitshinweis: Indizierungsendpunkt ist von außen erreichbar

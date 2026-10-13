@@ -2045,7 +2045,6 @@ components:
         [
           RETRIEVED_BY_SEARCH,
           WITHIN_BUDGET,
-          OUTSIDE_LIST_BUDGET,
           OUTSIDE_FUSION_BUDGET,
           OUTSIDE_RERANK_BUDGET,
           COMPLETED_AS_SIBLING,

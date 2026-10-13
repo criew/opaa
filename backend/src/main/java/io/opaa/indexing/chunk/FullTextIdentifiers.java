@@ -2,10 +2,13 @@ package io.opaa.indexing.chunk;
 
 import java.text.Normalizer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -169,7 +172,8 @@ public final class FullTextIdentifiers {
 
   /**
    * {@code VORORT}, {@code INHAUS}: an all-uppercase word of at least five letters. Deliberately
-   * without an exception list, so acronyms such as {@code ELSTER} are field-name lexemes as well.
+   * without an exception list, so acronyms such as {@code ELSTER} are field-name lexemes as well;
+   * the query path searches such a word form at weight {@code A} only where it is rare enough.
    */
   private static final Pattern UPPERCASE_WORD = Pattern.compile("[A-ZÄÖÜẞ]{5,}");
 
@@ -182,14 +186,36 @@ public final class FullTextIdentifiers {
   private FullTextIdentifiers() {}
 
   /**
+   * The lexemes of one text, split by how much they say. {@code wordForms} maps those lexemes of
+   * {@code all} that came only from an {@link #UPPERCASE_WORD} - a word, not a structure - to the
+   * word as first written; the query path weighs them by how common they are in the search scope
+   * (docs/features/hybrid-retrieval.md, "Die deutschen Besonderheiten").
+   */
+  public record Lexemes(List<String> all, Map<String, String> wordForms) {
+    public Lexemes {
+      all = List.copyOf(all);
+      wordForms = Collections.unmodifiableMap(new LinkedHashMap<>(wordForms));
+    }
+  }
+
+  /**
    * Every identifier lexeme {@code text} contains, in order of first appearance and without
    * duplicates. Never {@code null}; empty for text that carries no identifier at all, which is the
    * common case for ordinary prose. The text is read in NFC, so an umlaut decomposed into letter
    * and combining mark (common in PDF extraction) yields the same lexeme as the composed one.
    */
   public static List<String> extract(String rawText) {
+    return analyze(rawText).all();
+  }
+
+  /**
+   * {@link #extract} plus which of its lexemes are pure word forms. {@code all} is always exactly
+   * what {@link #extract} returns for the same text, so write and query path keep building the same
+   * lexemes.
+   */
+  public static Lexemes analyze(String rawText) {
     if (rawText == null || rawText.isEmpty()) {
-      return List.of();
+      return new Lexemes(List.of(), Map.of());
     }
     String text = Normalizer.normalize(rawText, Normalizer.Form.NFC);
     Set<String> lexemes = new LinkedHashSet<>();
@@ -199,11 +225,14 @@ public final class FullTextIdentifiers {
     collect(STRUCTURED_FILE_NUMBER, text, FILE_NUMBER_PREFIX, true, lexemes);
     collect(ORDINANCE_NUMBER, text, ORDINANCE_NUMBER_PREFIX, false, lexemes);
     collect(EMAIL_ADDRESS, text, EMAIL_PREFIX, false, lexemes);
-    collectFieldNames(text, lawAbbreviationStarts(text), lexemes);
+    Set<String> structural = new HashSet<>(lexemes);
+    Map<String, String> wordForms = new LinkedHashMap<>();
+    collectFieldNames(text, lawAbbreviationStarts(text), lexemes, structural, wordForms);
     List<String> result = new ArrayList<>(lexemes);
-    return result.size() <= MAX_LEXEMES
-        ? List.copyOf(result)
-        : List.copyOf(result.subList(0, MAX_LEXEMES));
+    List<String> kept = result.size() <= MAX_LEXEMES ? result : result.subList(0, MAX_LEXEMES);
+    wordForms.keySet().retainAll(new HashSet<>(kept));
+    wordForms.keySet().removeAll(structural);
+    return new Lexemes(kept, wordForms);
   }
 
   /**
@@ -277,7 +306,8 @@ public final class FullTextIdentifiers {
   /**
    * One lexeme per technical field or element name: a word run of {@link #UPPER_SNAKE_CASE}, {@link
    * #CAMEL_CASE} or {@link #UPPERCASE_WORD} shape. Collected last, so under {@link #MAX_LEXEMES}
-   * the other identifier kinds keep their place.
+   * the other identifier kinds keep their place. A lexeme from {@link #UPPERCASE_WORD} goes into
+   * {@code wordForms}, one from any other shape into {@code structural}.
    *
    * <p>A law abbreviation that is part of a paragraph reference ({@code § 35 BauGB}, {@code § 35
    * Abs. 1 Nr. 4 BauGB}) yields none: the paragraph lexemes already carry it qualified, and a bare
@@ -285,7 +315,11 @@ public final class FullTextIdentifiers {
    * that keeps § 34 and § 35 apart.
    */
   private static void collectFieldNames(
-      String text, Set<Integer> lawAbbreviationStarts, Set<String> lexemes) {
+      String text,
+      Set<Integer> lawAbbreviationStarts,
+      Set<String> lexemes,
+      Set<String> structural,
+      Map<String, String> wordForms) {
     Matcher matcher = WORD_RUN.matcher(text);
     while (matcher.find()) {
       String word = matcher.group();
@@ -295,8 +329,15 @@ public final class FullTextIdentifiers {
         continue;
       }
       String normalized = normalize(transliterateUmlauts(word.toLowerCase(Locale.ROOT)));
-      if (!normalized.isEmpty()) {
-        lexemes.add(FIELD_NAME_PREFIX + normalized);
+      if (normalized.isEmpty()) {
+        continue;
+      }
+      String lexeme = FIELD_NAME_PREFIX + normalized;
+      lexemes.add(lexeme);
+      if (UPPERCASE_WORD.matcher(word).matches()) {
+        wordForms.putIfAbsent(lexeme, word);
+      } else {
+        structural.add(lexeme);
       }
     }
   }

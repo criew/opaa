@@ -5,8 +5,11 @@ import io.opaa.indexing.chunk.FullTextIdentifiers;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.scope.MetadataFilterExpressions;
 import io.opaa.retrieval.scope.MetadataFilterStage;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -30,8 +33,10 @@ import tools.jackson.databind.ObjectMapper;
  * <p>The query mirrors {@link FullTextChunkStore#indexChunks}: the German analysis chain over the
  * question's words, OR-ed rather than AND-ed because this path feeds a fusion, plus the identifier
  * lexemes of {@link FullTextIdentifiers} - weight {@code A}, which keeps "§ 34" and "§ 35" apart.
- * Both halves use sanitized tokens, so no character of the question reaches {@code to_tsquery} as
- * an operator.
+ * An uppercase word form among them ({@code ELSTER}) keeps weight {@code A} only while at most
+ * {@code limit} chunks of the search scope carry it; a more common one would fill the whole list
+ * with its chunks and is searched as an ordinary word of the question instead. Both halves use
+ * sanitized tokens, so no character of the question reaches {@code to_tsquery} as an operator.
  *
  * <p>Two accepted limits: {@code ts_rank} is not BM25, which the fusion tolerates because it
  * consumes ranks; and an older {@code content_tsv_version} row is searched unfiltered (ADR-0028),
@@ -80,8 +85,14 @@ public class FullTextChunkSearch {
    * MetadataFilterExpressions#sqlPredicate} from the same rule, and placed after the permission
    * filter in the same clause: it narrows, it never widens.
    *
-   * <p>Returns an empty list without touching the database when there is nothing that could match -
-   * no libraries, no limit, or a question that carries neither a usable word token nor an
+   * <p>Before the ranked query, each uppercase word form of the question is counted in the scope,
+   * under the same permission and metadata filter, and counting stops after {@code limit + 1}
+   * chunks. A word form found in more than {@code limit} chunks is dropped from the identifier
+   * lexemes and named in {@link FullTextSearchResult#demotedIdentifiers()}; paragraph, file-number,
+   * ordinance, email and structured field-name lexemes are never counted.
+   *
+   * <p>Returns an empty result without touching the database when there is nothing that could match
+   * - no libraries, no limit, or a question that carries neither a usable word token nor an
    * identifier. An empty {@code libraryIds} in particular must never widen into "all libraries"; it
    * means the caller resolved no readable library at all.
    *
@@ -90,30 +101,44 @@ public class FullTextChunkSearch {
    *     both paths filters against the same vocabulary. Ignored unless the filter constrains the
    *     Dokumentart.
    */
-  public List<Document> search(
+  public FullTextSearchResult search(
       String question,
       Collection<UUID> libraryIds,
       MetadataFilter metadataFilter,
       Collection<String> vocabularyCodes,
       int limit) {
     if (libraryIds.isEmpty() || limit <= 0) {
-      return List.of();
+      return FullTextSearchResult.empty();
     }
     List<String> wordTokens = wordTokens(question);
-    // Same bound as the word tokens: an identifier pattern has no length limit of its own, and a
-    // sub-query of the decomposition is not bound by the question's own length limit either.
-    List<String> identifierLexemes =
-        FullTextIdentifiers.extract(question).stream().map(FullTextChunkSearch::truncated).toList();
-    if (wordTokens.isEmpty() && identifierLexemes.isEmpty()) {
-      return List.of();
+    FullTextIdentifiers.Lexemes lexemes = FullTextIdentifiers.analyze(question);
+    if (wordTokens.isEmpty() && lexemes.all().isEmpty()) {
+      return FullTextSearchResult.empty();
     }
 
-    List<String> tsQueryParameters = new ArrayList<>();
-    String tsQueryExpression = tsQueryExpression(wordTokens, identifierLexemes, tsQueryParameters);
+    UUID[] libraries = libraryIds.toArray(UUID[]::new);
     List<Object> metadataParameters = new ArrayList<>();
     String metadataPredicate =
         MetadataFilterExpressions.sqlPredicate(
             metadataFilter, "v.metadata", vocabularyCodes, metadataParameters);
+    Set<String> demoted =
+        commonWordForms(
+            lexemes.wordForms().keySet(), libraries, metadataPredicate, metadataParameters, limit);
+    // Same bound as the word tokens: an identifier pattern has no length limit of its own, and a
+    // sub-query of the decomposition is not bound by the question's own length limit either.
+    List<String> identifierLexemes =
+        lexemes.all().stream()
+            .filter(lexeme -> !demoted.contains(lexeme))
+            .map(FullTextChunkSearch::truncated)
+            .toList();
+    List<String> demotedWords =
+        lexemes.wordForms().entrySet().stream()
+            .filter(entry -> demoted.contains(entry.getKey()))
+            .map(Map.Entry::getValue)
+            .toList();
+
+    List<String> tsQueryParameters = new ArrayList<>();
+    String tsQueryExpression = tsQueryExpression(wordTokens, identifierLexemes, tsQueryParameters);
     String sql =
         "WITH q AS (SELECT "
             + tsQueryExpression
@@ -149,32 +174,86 @@ public class FullTextChunkSearch {
             + " (v.metadata->>'chunk_index')::int, chunk_id "
             + "LIMIT ?";
 
-    UUID[] libraries = libraryIds.toArray(UUID[]::new);
-    return jdbcTemplate.query(
-        connection -> {
-          var statement = connection.prepareStatement(sql);
-          int index = 1;
-          for (String parameter : tsQueryParameters) {
-            statement.setString(index++, parameter);
-          }
-          statement.setArray(index++, connection.createArrayOf("uuid", libraries));
-          for (Object parameter : metadataParameters) {
-            if (parameter instanceof String[] codes) {
-              statement.setArray(index++, connection.createArrayOf("text", codes));
-            } else {
-              statement.setString(index++, parameter.toString());
-            }
-          }
-          statement.setInt(index, limit);
-          return statement;
-        },
-        (rs, rowNum) ->
-            Document.builder()
-                .id(rs.getString("chunk_id"))
-                .text(rs.getString("content"))
-                .metadata(readMetadata(objectMapper, rs.getString("metadata")))
-                .score((double) rs.getFloat("rank"))
-                .build());
+    List<Document> chunks =
+        jdbcTemplate.query(
+            connection -> {
+              var statement = connection.prepareStatement(sql);
+              int index = 1;
+              for (String parameter : tsQueryParameters) {
+                statement.setString(index++, parameter);
+              }
+              statement.setArray(index++, connection.createArrayOf("uuid", libraries));
+              index = bindMetadataParameters(statement, index, metadataParameters);
+              statement.setInt(index, limit);
+              return statement;
+            },
+            (rs, rowNum) ->
+                Document.builder()
+                    .id(rs.getString("chunk_id"))
+                    .text(rs.getString("content"))
+                    .metadata(readMetadata(objectMapper, rs.getString("metadata")))
+                    .score((double) rs.getFloat("rank"))
+                    .build());
+    return new FullTextSearchResult(chunks, demotedWords);
+  }
+
+  /**
+   * The word-form lexemes more than {@code limit} chunks of the scope carry, in one statement: per
+   * lexeme a GIN lookup under the same permission and metadata filter as the ranked query, stopped
+   * after {@code limit + 1} rows. Only the membership leaves this method, never a count.
+   */
+  private Set<String> commonWordForms(
+      Set<String> wordFormLexemes,
+      UUID[] libraries,
+      String metadataPredicate,
+      List<Object> metadataParameters,
+      int limit) {
+    if (wordFormLexemes.isEmpty()) {
+      return Set.of();
+    }
+    String join =
+        metadataPredicate.isEmpty()
+            ? ""
+            : "JOIN " + schemaName + "." + tableName + " v ON v.id = f.chunk_id ";
+    String sql =
+        "SELECT l.lexeme FROM unnest(?::text[]) AS l(lexeme) "
+            + "WHERE (SELECT count(*) FROM (SELECT 1 FROM chunk_full_text f "
+            + join
+            + "WHERE f.library_id = ANY(?) "
+            + "  AND f.content_tsv @@ to_tsquery('simple', l.lexeme) "
+            + metadataPredicate
+            + " LIMIT ?) c) > ?";
+    String[] lexemes = wordFormLexemes.toArray(String[]::new);
+    return new HashSet<>(
+        jdbcTemplate.query(
+            connection -> {
+              var statement = connection.prepareStatement(sql);
+              int index = 1;
+              statement.setArray(index++, connection.createArrayOf("text", lexemes));
+              statement.setArray(index++, connection.createArrayOf("uuid", libraries));
+              index = bindMetadataParameters(statement, index, metadataParameters);
+              statement.setInt(index++, limit + 1);
+              statement.setInt(index, limit);
+              return statement;
+            },
+            (rs, rowNum) -> rs.getString("lexeme")));
+  }
+
+  /**
+   * Binds the values of {@link MetadataFilterExpressions#sqlPredicate} from {@code index} on and
+   * returns the next free index.
+   */
+  private static int bindMetadataParameters(
+      PreparedStatement statement, int index, List<Object> metadataParameters) throws SQLException {
+    int next = index;
+    for (Object parameter : metadataParameters) {
+      if (parameter instanceof String[] codes) {
+        statement.setArray(next++, statement.getConnection().createArrayOf("text", codes));
+      } else {
+        statement.setString(next++, parameter.toString());
+      }
+    }
+    return next;
   }
 
   /**

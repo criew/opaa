@@ -168,8 +168,8 @@ database:
 
 embedding:
   baseUrl: https://modelle.example.org/v1
-  model: nomic-embed-text
-  dimensions: 768
+  model: bge-m3
+  dimensions: 1024
 
 bootstrap:
   initialAdmin:
@@ -516,6 +516,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `embedding.model` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_MODEL` | Einbettungsmodell |
 | `embedding.dimensions` | leer, Pflicht | `OPAA_PGVECTOR_DIMENSIONS` | Vektorbreite des Modells |
 | `embedding.timeout` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_TIMEOUT` | Höchstdauer eines Embedding-Aufrufs; ein großes Modell auf einer CPU braucht mehr ([Modell wechseln](modelle.md#modell-wechseln)) |
+| `embedding.maxInputTokens` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` | Eingabegrenze des Endpunkts in Tokens ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)) |
 | `rerank.enabled` | `false` | `OPAA_RERANK_ENABLED` | schaltet Reranking ein; verlangt dann `baseUrl` und `model` |
 | `rerank.baseUrl`, `rerank.model` | leer | `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` | Rerank-Endpunkt ohne den Pfad `/rerank`, Modell |
 | `rerank.timeout` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_TIMEOUT` | Zeitbudget eines Rerank-Aufrufs, etwa `120s`; wer es anhebt, hebt `frontend.backendReadTimeout` mit an |
@@ -851,13 +852,17 @@ keinen Modellserver mit.
 ```yaml
 embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
-  model: nomic-embed-text
-  dimensions: 768
+  model: bge-m3
+  dimensions: 1024
 bootstrap:
   chatModel:
     baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
     model: qwen2.5:7b
 ```
+
+Ein unverändert gezogenes Modell nimmt 2.048 Tokens auf, dazu passt die Vorgabe von
+`embedding.maxInputTokens`. Wer `bge-m3` per Modelfile mit 8.192 Tokens anlegt, setzt
+`maxInputTokens: 8192` ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
 Mit eingeschalteten Egress-Policies braucht das Backend eine Regel zum Namespace des Modellservers
 (siehe [NetworkPolicies](#networkpolicies)).

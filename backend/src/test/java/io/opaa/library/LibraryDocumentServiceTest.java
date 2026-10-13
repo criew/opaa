@@ -98,8 +98,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.filter.Filter;
-import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.core.task.TaskRejectedException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.QueryTimeoutException;
@@ -131,6 +129,7 @@ class LibraryDocumentServiceTest {
   private ChecksumService checksumService;
   private DocumentIngestService documentIngestService;
   private VectorStore vectorStore;
+  private VectorStoreWriter vectorStoreWriter;
   private VectorChunkStore vectorChunkStore;
   private LibraryStorageQuotaService storageQuotaService;
   private FilesystemPathAllowlist filesystemAllowlist;
@@ -191,14 +190,16 @@ class LibraryDocumentServiceTest {
     checksumService = mock(ChecksumService.class);
     documentIngestService = mock(DocumentIngestService.class);
     vectorStore = mock(VectorStore.class);
+    vectorStoreWriter = mock(VectorStoreWriter.class);
     vectorChunkStore =
         new VectorChunkStore(
             vectorStore,
             mock(org.springframework.ai.embedding.EmbeddingModel.class),
             mock(org.springframework.ai.embedding.BatchingStrategy.class),
-            mock(VectorStoreWriter.class),
+            vectorStoreWriter,
             mock(FullTextChunkStore.class),
-            new EmbeddingRateEstimator(4.0));
+            new EmbeddingRateEstimator(4.0),
+            2048);
     uploadProperties = new UploadProperties(storageDir.toString(), null, 10L * 1024, null, 0, 0);
     // The real adapter, not a mock: every assertion below about where a file ends up (or stops
     // existing) is about what it actually does with opaa.upload.storage-path.
@@ -263,13 +264,6 @@ class LibraryDocumentServiceTest {
   private MultipartFile pdfFile(String originalFileName, String content) {
     return new MockMultipartFile(
         "file", originalFileName, "application/pdf", (PDF_MAGIC_BYTES + content).getBytes());
-  }
-
-  // Mirrors VectorChunkStore#deleteByDocumentId's own filter construction, so assertions here
-  // compare against the actual Filter.Expression the helper builds rather than the pre-#838 raw
-  // delete string.
-  private static Filter.Expression documentIdFilter(UUID documentId) {
-    return new FilterExpressionBuilder().eq("document_id", documentId.toString()).build();
   }
 
   /**
@@ -652,7 +646,7 @@ class LibraryDocumentServiceTest {
         service.uploadDocument(libraryId, pdfFile("report.pdf", "pdf content"), null, caller);
 
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
-    verify(vectorStore).delete(documentIdFilter(oldFailedDoc.getId()));
+    verify(vectorStoreWriter).deleteChunksOfDocument(oldFailedDoc.getId());
     verify(documentRepository).delete(oldFailedDoc);
     assertThat(Files.exists(oldFailedFile))
         .as("The old FAILED row's own file must be cleaned up when it is replaced")
@@ -924,7 +918,7 @@ class LibraryDocumentServiceTest {
 
     service.deleteDocument(libraryId, documentId, caller);
 
-    verify(vectorStore).delete(documentIdFilter(doc.getId()));
+    verify(vectorStoreWriter).deleteChunksOfDocument(doc.getId());
     verify(documentRepository).delete(doc);
     assertThat(Files.exists(storedFile)).isFalse();
   }
@@ -1025,9 +1019,10 @@ class LibraryDocumentServiceTest {
 
     service.deleteDocument(libraryId, documentId, caller);
 
-    org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(documentRepository, vectorStore);
+    org.mockito.InOrder inOrder =
+        org.mockito.Mockito.inOrder(documentRepository, vectorStoreWriter);
     inOrder.verify(documentRepository).delete(doc);
-    inOrder.verify(vectorStore).delete(documentIdFilter(doc.getId()));
+    inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(doc.getId());
   }
 
   @Test
@@ -1061,11 +1056,12 @@ class LibraryDocumentServiceTest {
 
     service.deleteDocument(libraryId, documentId, caller);
 
-    org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(documentRepository, vectorStore);
+    org.mockito.InOrder inOrder =
+        org.mockito.Mockito.inOrder(documentRepository, vectorStoreWriter);
     inOrder.verify(documentRepository).delete(attachment);
     inOrder.verify(documentRepository).delete(doc);
-    inOrder.verify(vectorStore).delete(documentIdFilter(attachment.getId()));
-    inOrder.verify(vectorStore).delete(documentIdFilter(doc.getId()));
+    inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(attachment.getId());
+    inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(doc.getId());
   }
 
   @Test
@@ -1119,13 +1115,14 @@ class LibraryDocumentServiceTest {
 
     service.deleteDocument(libraryId, documentId, caller);
 
-    org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(documentRepository, vectorStore);
+    org.mockito.InOrder inOrder =
+        org.mockito.Mockito.inOrder(documentRepository, vectorStoreWriter);
     inOrder.verify(documentRepository).delete(grandchildAttachment);
     inOrder.verify(documentRepository).delete(innerMail);
     inOrder.verify(documentRepository).delete(outerMail);
-    inOrder.verify(vectorStore).delete(documentIdFilter(grandchildAttachment.getId()));
-    inOrder.verify(vectorStore).delete(documentIdFilter(innerMail.getId()));
-    inOrder.verify(vectorStore).delete(documentIdFilter(outerMail.getId()));
+    inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(grandchildAttachment.getId());
+    inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(innerMail.getId());
+    inOrder.verify(vectorStoreWriter).deleteChunksOfDocument(outerMail.getId());
   }
 
   @Test
@@ -1151,8 +1148,8 @@ class LibraryDocumentServiceTest {
     doc.setSourceType(SourceType.UPLOAD);
     when(documentRepository.findById(documentId)).thenReturn(Optional.of(doc));
     doThrow(new RuntimeException("pgvector unavailable"))
-        .when(vectorStore)
-        .delete(documentIdFilter(doc.getId()));
+        .when(vectorStoreWriter)
+        .deleteChunksOfDocument(doc.getId());
 
     service.deleteDocument(libraryId, documentId, caller);
 
@@ -1227,7 +1224,7 @@ class LibraryDocumentServiceTest {
 
     service.deleteDocument(libraryId, documentId, caller);
 
-    verify(vectorStore).delete(documentIdFilter(doc.getId()));
+    verify(vectorStoreWriter).deleteChunksOfDocument(doc.getId());
     verify(documentRepository).delete(doc);
     assertThat(Files.exists(externalFile))
         .as("A FILESYSTEM document's source file must survive deleteDocument")

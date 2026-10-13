@@ -2,12 +2,14 @@ package io.opaa.indexing.maintenance;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.FakeEmbeddingModel;
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.DatePrecision;
 import io.opaa.api.types.LibraryMetadataFieldType;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
 import io.opaa.format.DocumentProperties;
+import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.document.DocumentIngestService;
@@ -43,6 +45,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -66,6 +69,9 @@ class ContextPrefixRerunIntegrationTest {
   @Autowired private LibraryAccessService accessService;
   @Autowired private JdbcTemplate jdbcTemplate;
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
+  @Autowired private EmbeddingModel embeddingModel;
+  @Autowired private VectorChunkStore vectorChunkStore;
+  @Autowired private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
   private KnowledgeLibrary library;
   private CurrentUser owner;
@@ -427,6 +433,173 @@ class ContextPrefixRerunIntegrationTest {
     rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
 
     assertThat(fullTextMatches(document, "Meldewesen")).isEqualTo(chunkCount(document));
+  }
+
+  @Test
+  void anIngestThatReplacesTheChunksWhileTheyAreReembeddedKeepsOnlyItsOwnChunks()
+      throws IOException {
+    Document document = indexed("ersetzt-waehrend-nachlauf.md");
+    List<UUID> idsBefore = chunkIds(document);
+    assertThat(idsBefore).isNotEmpty();
+    Path file = classTempDir.resolve("ersetzt-waehrend-nachlauf.md");
+    List<UUID> idsOfTheIngest = new java.util.ArrayList<>();
+    List<String> prefixOfTheIngest = new java.util.ArrayList<>();
+    // Between reading the stored chunks and writing them back: the ingest replaces them with
+    // chunks of a new text under new ids.
+    fakeEmbeddingModel()
+        .beforeEmbeddingTextContaining(
+            "Personalausweises",
+            () -> {
+              try {
+                Files.writeString(
+                    file,
+                    """
+                    # Neufassung
+
+                    Die Satzung wurde vollständig neu gefasst und regelt nur noch die
+                    Ausstellung von Reisepässen. Alle übrigen Bestimmungen sind entfallen.
+                    """,
+                    StandardCharsets.UTF_8);
+                reindexFromScratch(document, "ersetzt-waehrend-nachlauf.md");
+              } catch (IOException e) {
+                throw new java.io.UncheckedIOException(e);
+              }
+              idsOfTheIngest.addAll(chunkIds(document));
+              Document afterIngest = documentRepository.findById(document.getId()).orElseThrow();
+              prefixOfTheIngest.add(afterIngest.getContextPrefixStamp());
+              prefixOfTheIngest.add(afterIngest.getContextPrefixTitle());
+            });
+
+    rerunService.reembedInPlace(documentRepository.findById(document.getId()).orElseThrow());
+
+    assertThat(idsOfTheIngest)
+        .as("the ingest ran between read and write and replaced every chunk")
+        .isNotEmpty()
+        .doesNotContainAnyElementsOf(idsBefore);
+    assertThat(chunkIds(document))
+        .as("no chunk the ingest removed comes back")
+        .containsExactlyInAnyOrderElementsOf(idsOfTheIngest);
+    assertThat(chunkTexts(document))
+        .allSatisfy(text -> assertThat(text).doesNotContain("Personalausweis"));
+    assertThat(fullTextChunkIds(document))
+        .as("nor does its full-text row")
+        .containsExactlyInAnyOrderElementsOf(idsOfTheIngest);
+    Document afterRerun = documentRepository.findById(document.getId()).orElseThrow();
+    assertThat(
+            java.util.Arrays.asList(
+                afterRerun.getContextPrefixStamp(), afterRerun.getContextPrefixTitle()))
+        .as("the document row keeps the prefix the ingest recorded for its own chunks")
+        .containsExactlyElementsOf(prefixOfTheIngest);
+  }
+
+  @Test
+  void aDocumentDeletedWhileItsChunksAreReembeddedKeepsNoChunk() throws IOException {
+    Document document = indexed("geloescht-waehrend-nachlauf.md");
+    assertThat(chunkIds(document)).isNotEmpty();
+    fakeEmbeddingModel()
+        .beforeEmbeddingTextContaining(
+            "Personalausweises", () -> vectorChunkStore.deleteByDocumentId(document.getId()));
+
+    rerunService.reembedInPlace(document);
+
+    assertThat(chunkIds(document)).isEmpty();
+    assertThat(fullTextRowCount(document)).isZero();
+  }
+
+  @Test
+  void aCorrectionDuringTheEmbeddingLeavesTheDocumentPendingForTheRerun() throws IOException {
+    LibraryMetadataFieldValue value = prefixEffectiveFassungField();
+    Document document = indexed("korrektur-waehrend-nachlauf.md");
+    metadataService.setManualValue(
+        document.getId(),
+        MetadataFieldRef.of(CoreMetadataField.TITLE),
+        MetadataValueInput.text("Gebührenordnung Meldewesen"),
+        owner.id());
+    assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
+    // The rerun has read the document's prefix and embeds with it; meanwhile a correction makes
+    // another value prefix-effective. The marker is in the stored text: the fake model is handed
+    // Document#getText, never the prefixed embedding input.
+    java.util.concurrent.atomic.AtomicBoolean corrected =
+        new java.util.concurrent.atomic.AtomicBoolean();
+    fakeEmbeddingModel()
+        .beforeEmbeddingTextContaining(
+            "Personalausweises",
+            () -> {
+              setFassung(document, value);
+              corrected.set(true);
+            });
+
+    rerunService.reembedInPlace(documentRepository.findById(document.getId()).orElseThrow());
+
+    assertThat(corrected).as("the correction ran between read and write").isTrue();
+
+    assertThat(documentRepository.findById(document.getId()).orElseThrow().getContextPrefixStamp())
+        .as("the chunks carry the prefix from before the correction, so the document waits")
+        .isNull();
+    assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
+
+    rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(fullTextMatches(document, "Fassung")).isEqualTo(chunkCount(document));
+    assertThat(rerunService.pendingDocuments(library.getId())).isZero();
+  }
+
+  @Test
+  void deletingADocumentsChunksWaitsForTheDocumentLockOfARunningReembedding() throws Exception {
+    Document document = indexed("sperre.md");
+    long chunksBefore = chunkCount(document);
+    assertThat(chunksBefore).isPositive();
+    java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+    // Holds exactly the lock VectorStoreWriter#rewriteEmbeddedChunks takes before any row.
+    java.util.concurrent.CompletableFuture<Void> holder =
+        java.util.concurrent.CompletableFuture.runAsync(
+            () ->
+                new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                    .executeWithoutResult(
+                        status -> {
+                          jdbcTemplate.queryForObject(
+                              "SELECT true FROM (SELECT pg_advisory_xact_lock("
+                                  + io.opaa.indexing.chunk.VectorStoreWriter
+                                      .DOCUMENT_CHUNK_LOCK_NAMESPACE
+                                  + ", hashtext(?))) acquired",
+                              Boolean.class,
+                              document.getId().toString());
+                          locked.countDown();
+                          try {
+                            release.await(30, java.util.concurrent.TimeUnit.SECONDS);
+                          } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                          }
+                        }));
+    assertThat(locked.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+    java.util.concurrent.CompletableFuture<Void> deletion =
+        java.util.concurrent.CompletableFuture.runAsync(
+            () -> vectorChunkStore.deleteByDocumentId(document.getId()));
+    try {
+      Thread.sleep(500);
+      assertThat(deletion)
+          .as("the delete waits before its first row instead of locking rows in scan order")
+          .isNotDone();
+      assertThat(chunkCount(document)).isEqualTo(chunksBefore);
+    } finally {
+      release.countDown();
+    }
+    holder.get(10, java.util.concurrent.TimeUnit.SECONDS);
+    deletion.get(10, java.util.concurrent.TimeUnit.SECONDS);
+
+    assertThat(chunkCount(document)).isZero();
+    assertThat(fullTextRowCount(document)).isZero();
+  }
+
+  private FakeEmbeddingModel fakeEmbeddingModel() {
+    return (FakeEmbeddingModel) embeddingModel;
+  }
+
+  private List<UUID> fullTextChunkIds(Document document) {
+    return jdbcTemplate.queryForList(
+        "SELECT chunk_id FROM chunk_full_text WHERE document_id = ?", UUID.class, document.getId());
   }
 
   /**

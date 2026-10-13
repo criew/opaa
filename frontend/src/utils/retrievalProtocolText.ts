@@ -160,24 +160,28 @@ const NOTE_RULES: NoteRule[] = [
     pattern: /^full-text search, (\d+) list\(s\)$/,
     german: (m) => `Volltextsuche über ${plural(m[1], 'Liste', 'Listen')}.`,
   },
+  {
+    name: 'FULL_TEXT_IDENTIFIERS_DEMOTED',
+    pattern:
+      /^(.+?): uppercase word\(s\) (.+) demoted, searched as ordinary words without identifier weight: more chunks of the search scope carry them than fetch-k$/s,
+    german: (m) =>
+      `${translateListLabel(m[1])}: ${m[2]} herabgestuft und ohne Kennungsgewicht als gewöhnliche Wörter gesucht. Mehr Abschnitte des Suchbereichs enthalten sie, als fetch-k fasst.`,
+  },
 
   // MmrSelectionStage
   {
-    name: 'PER_LIST_BUDGET',
-    pattern: /^per-list budget (\d+)$/,
-    german: (m) => `Auswahlgrenze je Liste: ${m[1]}.`,
-  },
-  {
     name: 'MMR_LAMBDA_INACTIVE',
-    pattern: /^mmr-lambda (.+) \(diversity term inactive: plain top-k by relevance\)$/,
-    german: (m) => `mmr-lambda ${m[1]} (Vielfaltsanteil inaktiv: reine Rangfolge nach Relevanz).`,
+    pattern:
+      /^mmr-lambda (.+): diversity term inactive, every list passed on unchanged to the fusion$/,
+    german: (m) =>
+      `mmr-lambda ${m[1]}: Vielfaltsanteil inaktiv, jede Liste geht unverändert in die Fusion.`,
   },
   {
     name: 'MMR_LAMBDA_ACTIVE',
     pattern:
-      /^mmr-lambda (.+) \(diversity term active, cosine similarity of real chunk embeddings\)$/,
+      /^mmr-lambda (.+): every list reordered by diversity \(cosine similarity of real chunk embeddings\), none narrowed$/,
     german: (m) =>
-      `mmr-lambda ${m[1]} (Vielfaltsanteil aktiv, Kosinus-Ähnlichkeit der echten Abschnitts-Einbettungen).`,
+      `mmr-lambda ${m[1]}: jede Liste nach Vielfalt umsortiert (Kosinus-Ähnlichkeit der echten Abschnitts-Einbettungen), keine gekürzt.`,
   },
 
   // RankFusionStage
@@ -249,7 +253,10 @@ const NOTE_RULES: NoteRule[] = [
   {
     name: 'MAX_CHUNKS_PER_DOCUMENT',
     pattern: /^max-chunks-per-document (\d+)$/,
-    german: (m) => `max-chunks-per-document ${m[1]} (Abschnitte je Dokument).`,
+    german: (m) =>
+      m[1] === '1'
+        ? 'Dokument-Vervollständigung aus (max-chunks-per-document 1).'
+        : `Dokument-Vervollständigung bis ${m[1]} Abschnitte je vertretenem Dokument, keine Obergrenze (max-chunks-per-document ${m[1]}).`,
   },
   {
     name: 'SIBLINGS_COMPLETED',

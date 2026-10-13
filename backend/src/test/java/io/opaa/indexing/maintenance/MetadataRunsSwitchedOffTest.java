@@ -18,6 +18,7 @@ import io.opaa.metadata.ModelMetadataExtractor;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.ObjectMapper;
 
 /**
@@ -68,7 +69,10 @@ class MetadataRunsSwitchedOffTest {
             mock(ObjectMapper.class),
             "public",
             "vector_store",
-            TestFeatureFlags.without(Feature.METADATA));
+            TestFeatureFlags.without(Feature.METADATA),
+            mock(PlatformTransactionManager.class),
+            new io.opaa.observability.IndexingMetrics(
+                new io.micrometer.core.instrument.simple.SimpleMeterRegistry()));
 
     ContextPrefixRerunResult result = service.rerunBatch(UUID.randomUUID(), UUID.randomUUID(), 10);
 

@@ -23,6 +23,7 @@ import io.opaa.retrieval.ranking.RerankStage;
 import io.opaa.retrieval.scope.MetadataFilterStage;
 import io.opaa.retrieval.scope.SearchScopeStage;
 import io.opaa.retrieval.search.FullTextChunkSearch;
+import io.opaa.retrieval.search.FullTextSearchResult;
 import io.opaa.retrieval.search.FullTextSearchStage;
 import io.opaa.retrieval.search.QueryDecompositionService;
 import io.opaa.retrieval.search.SubQueryDecompositionStage;
@@ -84,6 +85,10 @@ class HybridFusionTest {
         .build();
   }
 
+  private static FullTextSearchResult hits(Document... chunks) {
+    return new FullTextSearchResult(List.of(chunks), List.of());
+  }
+
   private List<Document> run(QueryProperties properties) {
     return runPipeline(properties).chunks();
   }
@@ -111,7 +116,7 @@ class HybridFusionTest {
     EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", null, 1024);
     indexState.replace(new EmbeddingIndexState.Snapshot(built, configured, configured));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
-        .thenReturn(List.of(chunk("literal-a", 0.09), chunk("literal-b", 0.05)));
+        .thenReturn(hits(chunk("literal-a", 0.09), chunk("literal-b", 0.05)));
 
     RetrievalPipelineResult result = runPipeline(HYBRID);
 
@@ -140,7 +145,7 @@ class HybridFusionTest {
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8), chunk("vector-b", 0.7)));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
-        .thenReturn(List.of(chunk("literal-term", 0.09)));
+        .thenReturn(hits(chunk("literal-term", 0.09)));
 
     assertThat(run(HYBRID)).extracting(Document::getId).contains("literal-term");
     assertThat(run(VECTOR_ONLY)).extracting(Document::getId).doesNotContain("literal-term");
@@ -156,7 +161,7 @@ class HybridFusionTest {
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-top", 0.8), chunk("both", 0.6)));
     when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
-        .thenReturn(List.of(chunk("lexical-top", 0.09), chunk("both", 0.05)));
+        .thenReturn(hits(chunk("lexical-top", 0.09), chunk("both", 0.05)));
 
     List<Document> selection = run(HYBRID);
 
@@ -190,8 +195,7 @@ class HybridFusionTest {
    */
   @Test
   void aLibraryWithoutLexicalHitsStillContributesItsVectorCandidates() {
-    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
-        .thenReturn(List.of());
+    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt())).thenReturn(hits());
     when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
         .thenReturn(List.of(chunk("vector-a", 0.8)));
 

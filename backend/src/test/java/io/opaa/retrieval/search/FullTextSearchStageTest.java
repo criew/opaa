@@ -16,6 +16,7 @@ import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RerankAvailability;
 import io.opaa.retrieval.RetrievalContext;
+import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.StageStatus;
@@ -92,6 +93,36 @@ class FullTextSearchStageTest {
         .build();
   }
 
+  private static FullTextSearchResult hits(Document... chunks) {
+    return new FullTextSearchResult(List.of(chunks), List.of());
+  }
+
+  /**
+   * A demoted uppercase word is named in the protocol per list, by the word alone: no count of the
+   * chunks carrying it appears, and a list without demotion adds no note.
+   */
+  @Test
+  void namesDemotedUppercaseWordsPerListWithoutACount() {
+    Set<UUID> scope = Set.of(SCOPED_LIBRARY);
+    when(search.search(anyString(), any(), any(), any(), anyInt()))
+        .thenReturn(new FullTextSearchResult(List.of(chunk("a")), List.of("ELSTER")))
+        .thenReturn(hits(chunk("b")));
+    RetrievalState state =
+        RetrievalState.initial()
+            .withLibraryFilter(permissionFilter(scope))
+            .withSearchQueries(List.of("Wer verantwortet ELSTER?", "Wer ist verantwortlich?"));
+
+    StageOutcome outcome = stage().apply(context(scope), state);
+
+    String expected =
+        RetrievalNote.FULL_TEXT_IDENTIFIERS_DEMOTED.format(
+            FullTextSearchStage.listLabel(0), "ELSTER");
+    assertThat(outcome.explanation().notes()).contains(expected);
+    assertThat(outcome.explanation().notes())
+        .filteredOn(note -> note.contains("demoted"))
+        .containsExactly(expected);
+  }
+
   /**
    * No search stage runs before the stage that establishes the filter
    * (docs/features/spaces-and-assets.md#durchsetzung-zur-abfragezeit).
@@ -114,7 +145,7 @@ class FullTextSearchStageTest {
   @Test
   void searchesExactlyThePermissionScope() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY, SECOND_LIBRARY);
-    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of(chunk("a")));
+    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(hits(chunk("a")));
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
@@ -142,8 +173,8 @@ class FullTextSearchStageTest {
   void runsOneQueryPerSearchQueryAndRecordsEveryCandidate() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), any(), anyInt()))
-        .thenReturn(List.of(chunk("a"), chunk("b")))
-        .thenReturn(List.of(chunk("c")));
+        .thenReturn(hits(chunk("a"), chunk("b")))
+        .thenReturn(hits(chunk("c")));
     RetrievalState state =
         RetrievalState.initial()
             .withLibraryFilter(permissionFilter(scope))
@@ -181,7 +212,7 @@ class FullTextSearchStageTest {
   @Test
   void searchesTheBareQuestionWhenNoSearchQueriesWereBuiltAndRecordsIt() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of());
+    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(hits());
     RetrievalState state = RetrievalState.initial().withLibraryFilter(permissionFilter(scope));
 
     StageOutcome outcome = stage().apply(context(scope), state);
@@ -200,7 +231,7 @@ class FullTextSearchStageTest {
   @Test
   void keepsTheSearchQueriesAnEarlierStageBuilt() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
-    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(List.of());
+    when(search.search(anyString(), any(), any(), any(), anyInt())).thenReturn(hits());
 
     StageOutcome outcome = stage().apply(context(scope), scopedState(scope));
 
@@ -216,7 +247,7 @@ class FullTextSearchStageTest {
   void handsItsListsOnNextToTheVectorPathsAndExtendsThePool() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), any(), anyInt()))
-        .thenReturn(List.of(chunk("lexical-only")));
+        .thenReturn(hits(chunk("lexical-only")));
     RetrievalState before =
         scopedState(scope)
             .withSearchResults(
@@ -277,7 +308,7 @@ class FullTextSearchStageTest {
   void aFailingQueryOfOneSubQueryFailsTheRunAsWell() {
     Set<UUID> scope = Set.of(SCOPED_LIBRARY);
     when(search.search(anyString(), any(), any(), any(), anyInt()))
-        .thenReturn(List.of(chunk("first-list-hit")))
+        .thenReturn(hits(chunk("first-list-hit")))
         .thenThrow(new IllegalStateException("column content_tsv does not exist"));
     RetrievalState state =
         RetrievalState.initial()
