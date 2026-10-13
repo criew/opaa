@@ -286,9 +286,13 @@ Variantenvergleich `eval/variants/verwaltung-fusion.json` messbar (alle vier Kom
 Gewicht 0,5), aber nicht voreingestellt. Die Entscheidung über den Default fällt mit der Messung am
 Testkorpus nach dem Merge.
 
-**Protokoll.** Jedes Verdikt der Stufe nennt alle Listen, in denen der Kandidat vorkam, mit Rang und
-Beitrag zum Wert (`CandidateVerdict#contributions`); mit Quote trägt es die Teilfrage, die ihn in die
-Auswahl gebracht hat (`fused · sub-query n`). Die Notizen nennen Verfahren und Quote.
+**Protokoll.** Jedes Verdikt der Stufe nennt die Listen, deren Beiträge seinen Wert ausmachen, mit
+Rang und Beitrag (`CandidateVerdict#contributions`); die Beiträge ergeben zusammen den Wert. Gepoolt
+sind das alle Listen, in denen der Kandidat vorkam, mit Quote nur die Listen der Teilfrage, die ihn in
+die Auswahl gebracht hat (`fused · sub-query n`); Ränge in anderen Teilfragen zählen dort nicht und
+stehen deshalb in den Verdikten der Suchstufen, nicht hier. Die Fusion lehnt eine Liste ohne Herkunft
+(Suchpfad und Teilfrage) mit einer Exception ab, statt sie still einer eigenen Gruppe zuzuordnen. Die
+Notizen nennen Verfahren und Quote.
 Dedupliziert wird per Chunk-Kennung
 (`Document#getId()`), nie per Score — Ähnlichkeitswerte verschiedener Suchvektoren sind nicht vergleichbar,
 genau die Wurzel des in [#912](https://github.com/criew/opaa/issues/912) dokumentierten Fehlerbilds; ein
@@ -366,9 +370,19 @@ verbreiterte Kandidatenfenster mit zurück — sonst stellte niemand die `top-k`
 
 Stufenname: `DOCUMENT_COMPLETION`. `DocumentCompletionStage` (`DocumentCompletion#complete`, #932/#934/#935) läuft **zuletzt** und zieht ausschließlich
 aus den bereits berechtigungs- und schwellenwertgefilterten Kandidaten von Schritt 3 nach — nie darüber
-hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, darf bis zu
-`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `1`, bis #2502 `2`) Chunks stellen,
-bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt — die Abhilfe für den Fall, dass
+hinaus. Ziel: Ein Dokument, das mit einem Chunk bereits in der Auswahl vertreten ist, wird bis zu
+`opaa.query.max-chunks-per-document` (`OPAA_QUERY_MAX_CHUNKS_PER_DOCUMENT`, Default `1`, bis #2502 `2`) Chunks aufgefüllt,
+bevor ein Chunk eines anderen Dokuments den verbleibenden Platz bekommt. Der Wert ist ein
+**Auffüllziel, keine Obergrenze**: Ein Dokument, das aus Fusion, MMR oder Reranking schon mit so
+vielen oder mehr Chunks kommt, bekommt nichts dazu und wird nie auf den Wert gekürzt. Chunks
+verlieren kann es nur, wenn ein anderes Dokument aufgefüllt wird, und dann unabhängig vom Wert:
+Stufe 1 nimmt den schwächsten Chunk eines Dokuments mit mindestens zwei Chunks, das in diesem
+Aufruf selbst nicht aufgefüllt wurde. Ein Dokument, das schon voll war, ist davor also nicht
+geschützt (bei Wert `2` und `top-k = 4` wird `[A1, A2, A3, B1]` mit B2 im Pool zu `[A1, A2, B1, B2]`).
+Ist es auf einen Chunk geschrumpft, kann Stufe 2 auch diesen verdrängen. Bei `1` läuft nichts davon,
+die Auswahl bleibt unverändert. In der Endauswahl der
+FV-Arbeitsmenge standen beim Default `1` bis zu sechs Chunks eines Dokuments
+([#2623](https://github.com/criew/opaa/issues/2623)). Die Stufe ist die Abhilfe für den Fall, dass
 der Gebühren-Chunk eines Dokuments in RRF/MMR gegen Chunks *anderer* Dokumente verlor, weil der
 Einleitungs-Chunk desselben Dokuments dort besser rankte und dessen Platz belegte
 (siehe [#932](https://github.com/criew/opaa/issues/932)). Zwei Verdrängungsstufen: **Stufe 1** entfernt den
@@ -393,9 +407,18 @@ Keine Stufe der Pipeline, sondern der Schritt zwischen Endauswahl und Antwort:
 `io.opaa.retrieval.context.NeighborChunkExpansion`, aufgerufen in `QueryService#query`. Zu jedem Chunk
 der Endauswahl lädt `NeighborChunkLookup` die Chunks `chunk_index ± radius` desselben Dokuments
 (`opaa.query.neighbor-chunks.radius`, `OPAA_QUERY_NEIGHBOR_CHUNKS_RADIUS`, Default `1`), in einer
-SQL-Abfrage mit `library_id = ANY(Suchbereich)` in der Bedingung. Verteilt wird nach Rang und Abstand:
-erst alle Abstand-1-Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren, jeder nur neben einem
-schon vorhandenen Chunk, bis das Zeichenbudget `max-added-characters` (Default `40000`) erschöpft ist.
+SQL-Abfrage mit `library_id = ANY(Suchbereich)` in der Bedingung. Das Zeichenbudget
+`max-added-characters` (Default `40000`) wird seit [#2621](https://github.com/criew/opaa/issues/2621)
+in zwei Durchgängen verteilt. **Durchgang 1:** Jeder Treffer bekommt in Rangfolge einen
+Abstand-1-Nachbarn, bevorzugt den folgenden (`chunk_index + 1`), sonst den vorangehenden — wenn der
+folgende nicht existiert, außerhalb des Suchbereichs liegt oder nicht mehr ins Budget passt. Ein
+Treffer, an den bereits ein Chunk des Kontexts grenzt (ein anderer Treffer oder ein schon geladener
+Nachbar), bekommt in diesem Durchgang nichts. **Durchgang 2:** Das Restbudget geht nach Abstand und
+Rang, erst alle übrigen Abstand-1-Nachbarn in der Rangfolge ihrer Treffer, dann die ferneren, jeder
+nur neben einem schon vorhandenen Chunk. Ein Nachbar, der nicht mehr passt, wird übersprungen; ein
+kürzerer dahinter kann noch passen. Vorher lief nur Durchgang 2, und bei erschöpftem Budget bekamen
+die hinteren Treffer (Rang 18–20) keine Nachbarn mehr; in der Verlustanalyse am FV-Testkorpus
+kostete das Kernfakten.
 Das Ergebnis ist nach zusammenhängenden Ausschnitten geordnet: Aneinandergrenzende Chunks eines
 Dokuments stehen in Indexreihenfolge, die Ausschnitte in der Rangfolge ihres besten Treffers.
 
@@ -434,7 +457,7 @@ Ungültige Zitate werden im Antworttext belassen, aber in der zugehörigen `Chat
 **Was `relevanceScore` bedeutet (#1102).** Der Relevanzwert einer Quellenangabe ist der **Kehrwert
 ihrer Position in der Quellenliste der Antwort** — 1,0 für die erste Quelle, 0,5 für die zweite,
 0,33 für die dritte —, **keine Ähnlichkeit**. Gezählt werden Quellen, nicht Chunks: Ein Dokument
-darf mehrere Chunks zur Auswahl beisteuern (`max-chunks-per-document`), belegt in der Quellenliste
+kann mit mehreren Chunks in der Auswahl stehen, belegt in der Quellenliste
 aber genau eine Position — die Rangvergabe erfolgt deshalb erst, nachdem die Chunks je Dokument zu
 einer Quellenangabe zusammengefasst sind, und die Rangfolge ist lückenlos. Der Rohwert eines Chunks
 (`Document#getScore()`) taugt dafür seit #1049 nicht mehr: Ein Chunk, den nur der lexikalische Pfad

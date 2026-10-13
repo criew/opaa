@@ -266,7 +266,7 @@ Kandidaten sehen, als ihr übergeben wurden.
 | Vielfaltsauswahl (MMR) je Teilfrage | Relevanz gegen Redundanz | gebaut, voreingestellt aus |
 | Fusion | RRF über alle Listen aller Teilfragen | gebaut, erweitert (#1049) |
 | **Reranking** | Cross-Encoder über die fusionierte Kandidatenmenge | **neu (AP 4)** |
-| Dokument-Vervollständigung | bis `max-chunks-per-document` Chunks je Dokument | gebaut (#932/#935) |
+| Dokument-Vervollständigung | vertretene Dokumente bis auf `max-chunks-per-document` Chunks auffüllen (keine Obergrenze) | gebaut (#932/#935) |
 
 Als Stufen registriert sind heute `SEARCH_SCOPE`, `METADATA_FILTER`, `SUB_QUERY_DECOMPOSITION`,
 `VECTOR_SEARCH`, `FULL_TEXT_SEARCH`, `MMR_SELECTION`, `RANK_FUSION`, `RERANK` und
@@ -518,6 +518,38 @@ werden ebenfalls zum Kennungstoken, ebenso das Binnen-I („MitarbeiterInnen“)
 nicht enthält, ändert deren Rangfolge nicht. Enthält die Frage es, hebt es jeden Abschnitt mit
 demselben Wort mit Gewicht `A` an: Eine Frage mit „ELSTER“ bevorzugt Abschnitte, die „ELSTER“ nennen,
 eine Frage mit Binnen-I Abschnitte in derselben Schreibung. Das ist die bewusst in Kauf genommene Wirkung.
+
+**Häufige Großbuchstabenwörter verlieren das Gewicht `A`** (#2624). Die Verlustanalyse am
+FV-Testkorpus zeigte die Kehrseite: Bei der Teilfrage „Wer ist bei ELSTER datenschutzrechtlich …
+verantwortlich?“ standen auf allen 25 Plätzen der Volltextliste ELSTER-Chunks, der Antwort-Chunk nennt
+ELSTER nicht und fiel von Rang 1 auf 149. Gebaut ist deshalb (Maintainer-Entscheidung vom 13.10.2026):
+
+- **Nur reine Wortformen.** `FullTextIdentifiers#analyze` liefert neben den Lexemen, die der
+  Schreibpfad speichert (dieselbe Liste wie `extract`), die Lexeme, die im Text nur aus
+  `UPPERCASE_WORD` entstanden sind. Feldnamen mit Unterstrich oder CamelCase, Paragrafen,
+  Aktenzeichen, Nummern und E-Mail-Adressen werden nie gezählt; dort ist das hohe Gewicht gewollt.
+  Ergibt ein Text dasselbe Lexem auch aus einer strukturierten Form (`BELEGNR` und `BELEG_NR`), gilt
+  es nicht als Wortform. Schreibpfad und `content_tsv_version` bleiben unverändert: Die Lexeme im
+  Index sind dieselben, nur die Frageseite entscheidet, ob sie das Lexem mitsucht.
+- **Zählen je Chunk im Suchbereich.** `FullTextChunkSearch` zählt vor der Rangabfrage für jede
+  Wortform der Suchanfrage in einer Anweisung, wie viele Chunks sie enthalten — über den GIN-Index,
+  mit demselben Rechtefilter (`library_id = ANY(?)`) und demselben Metadatenfilter wie die
+  Rangabfrage, abgebrochen nach `fetch-k + 1` Zeilen. Gezählt wird je Chunk, weil die Kandidatenliste
+  mit Chunks vollläuft. Den Metadatenfilter einzubeziehen geht über den Wortlaut „Bibliotheksfilter“
+  hinaus, folgt aber der Begründung: Gefüllt wird die gefilterte Liste.
+- **Schwelle `fetch-k`.** Enthalten mehr als `fetch-k` Chunks die Wortform, entfällt ihr
+  Kennungs-Lexem aus der Anfrage. Das Wort bleibt über die deutsche Analysekette ein gewöhnliches
+  Wort der Frage mit Gewicht `D`.
+- **Protokoll ohne Zahlen.** Die Volltextstufe nennt je Liste die herabgestuften Wörter so, wie die
+  Frage sie schreibt, ohne Zählwert. Die Zählung läuft nur über den Suchbereich des Laufs. In der
+  Diagnose ist das im eigenen Rechtekontext nur, was die Betrachterin selbst lesen darf, ihre eigenen
+  privaten Bibliotheken eingeschlossen; als Rechteprofil oder „Sicht als“ fehlen diagnosegesperrte
+  und private Bibliotheken. Das Protokoll verrät also nichts über Bestände, die die Betrachterin
+  nicht ohnehin durchsuchen darf, und selbst dort nur „mehr als `fetch-k`“.
+
+Wo das Akronym selbst das Thema ist und selten vorkommt (s3-12), bleibt alles wie zuvor. Kommt es
+häufig vor, entscheidet die deutsche Analysekette mit den übrigen Wörtern der Frage, und die
+Vektorsuche trägt den Rest.
 
 Eine strukturelle Regel (keine Ausnahmeliste) gilt für Gesetzeskürzel: **Ein Kürzel, das Teil einer
 §-Angabe ist, erzeugt kein `xfld`-Token** — auch wenn zwischen Paragraf und Kürzel eine Folge aus

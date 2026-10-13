@@ -5,8 +5,8 @@ database:
   host: postgres.example.org
 embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
-  model: nomic-embed-text
-  dimensions: 768
+  model: bge-m3
+  dimensions: 1024
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org

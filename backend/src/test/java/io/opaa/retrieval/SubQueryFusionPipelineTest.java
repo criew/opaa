@@ -3,7 +3,9 @@ package io.opaa.retrieval;
 import static io.opaa.retrieval.RetrievalPipelineTestSupport.chunk;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -12,6 +14,7 @@ import io.opaa.llm.RerankModelRole;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.search.FullTextChunkSearch;
+import io.opaa.retrieval.search.FullTextSearchResult;
 import io.opaa.retrieval.search.QueryDecompositionService;
 import io.opaa.retrieval.search.VectorChunkSearch;
 import java.util.List;
@@ -117,11 +120,77 @@ class SubQueryFusionPipelineTest {
                 assertThat(verdict.contributions())
                     .extracting(FusionContribution::listLabel, FusionContribution::rank)
                     .containsExactly(
-                        org.assertj.core.groups.Tuple.tuple("vector search · sub-query 1", 2),
-                        org.assertj.core.groups.Tuple.tuple("vector search · sub-query 2", 2)));
+                        org.assertj.core.groups.Tuple.tuple("vector search · sub-query 1", 2)));
+    // only what counts towards the shown value: the placing sub-query's lists, never the others'
+    assertThat(fusion.verdicts())
+        .filteredOn(verdict -> verdict.chunkId().equals("shared-1"))
+        .singleElement()
+        .satisfies(
+            verdict -> {
+              assertThat(verdict.listLabel()).isEqualTo("fused · sub-query 1");
+              assertThat(
+                      verdict.contributions().stream().mapToDouble(FusionContribution::value).sum())
+                  .isEqualTo(verdict.value());
+            });
     assertThat(fusion.verdicts())
         .filteredOn(verdict -> verdict.chunkId().equals("elfe-chunk"))
         .singleElement()
         .satisfies(verdict -> assertThat(verdict.listLabel()).isEqualTo("fused · sub-query 2"));
+  }
+
+  /**
+   * Without decomposition there is one search query, and the quota is the identity with the lexical
+   * path switched on too: the pooled and the quota run select the same chunks in the same order.
+   */
+  @Test
+  void withOneSearchQueryAndBothPathsTheQuotaChangesNothing() {
+    FullTextChunkSearch fullTextChunkSearch = mock(FullTextChunkSearch.class);
+    when(vectorChunkSearch.similaritySearch(any(SearchRequest.class)))
+        .thenReturn(
+            List.of(
+                chunk("v1", "doc-v1", 0.8),
+                chunk("both", "doc-both", 0.7),
+                chunk("v2", "doc-v2", 0.6),
+                chunk("v3", "doc-v3", 0.5)));
+    when(fullTextChunkSearch.search(anyString(), any(), any(), any(), anyInt()))
+        .thenReturn(
+            new FullTextSearchResult(
+                List.of(
+                    chunk("t1", "doc-t1", 0.09),
+                    chunk("both", "doc-both", 0.08),
+                    chunk("t2", "doc-t2", 0.07)),
+                List.of()));
+    RetrievalPipeline pipeline =
+        RetrievalPipelineTestSupport.pipeline(
+            vectorChunkSearch,
+            fullTextChunkSearch,
+            chunkEmbeddingLookup,
+            decomposition,
+            mock(RerankModelRole.class),
+            RetrievalPipelineProperties.allStagesEnabled());
+
+    List<List<String>> selections = new java.util.ArrayList<>();
+    for (boolean quota : List.of(false, true)) {
+      QueryProperties properties =
+          new QueryProperties(5, 25, 1.0, 0.3, false, 3, 1, true, 50, 20, 2)
+              .withFusion(new QueryProperties.Fusion(FusionMethod.RRF, quota, 0.7));
+      selections.add(
+          pipeline
+              .run(
+                  new RetrievalContext(
+                      "Frage",
+                      List.of(),
+                      Set.of(LIBRARY_ID),
+                      MetadataFilter.NONE,
+                      properties,
+                      RerankAvailability.SWITCHED_OFF))
+              .chunks()
+              .stream()
+              .map(Document::getId)
+              .toList());
+    }
+
+    assertThat(selections.get(0)).startsWith("both").hasSize(5);
+    assertThat(selections.get(1)).isEqualTo(selections.get(0));
   }
 }

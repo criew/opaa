@@ -110,10 +110,11 @@ public enum RetrievalStageName {
   RERANK,
 
   /**
-   * Lets a document already represented in the selection contribute up to {@link
-   * QueryProperties#maxChunksPerDocument} chunks, drawn only from the candidate pool the search
-   * stages produced - both the vector and the lexical path. Switched off, the selection stays
-   * exactly as fusion left it, the same behaviour {@code maxChunksPerDocument = 1} produces.
+   * Tops a document already represented in the selection up to {@link
+   * QueryProperties#maxChunksPerDocument} chunks - a fill target, not a cap - drawn only from the
+   * candidate pool the search stages produced, both the vector and the lexical path. Switched off,
+   * the selection stays exactly as fusion left it, the same behaviour {@code maxChunksPerDocument =
+   * 1} produces.
    */
   DOCUMENT_COMPLETION
 }

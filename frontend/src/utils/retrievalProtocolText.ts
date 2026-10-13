@@ -160,6 +160,13 @@ const NOTE_RULES: NoteRule[] = [
     pattern: /^full-text search, (\d+) list\(s\)$/,
     german: (m) => `Volltextsuche über ${plural(m[1], 'Liste', 'Listen')}.`,
   },
+  {
+    name: 'FULL_TEXT_IDENTIFIERS_DEMOTED',
+    pattern:
+      /^(.+?): uppercase word\(s\) (.+) demoted, searched as ordinary words without identifier weight: more chunks of the search scope carry them than fetch-k$/s,
+    german: (m) =>
+      `${translateListLabel(m[1])}: ${m[2]} herabgestuft und ohne Kennungsgewicht als gewöhnliche Wörter gesucht. Mehr Abschnitte des Suchbereichs enthalten sie, als fetch-k fasst.`,
+  },
 
   // MmrSelectionStage
   {
@@ -268,7 +275,10 @@ const NOTE_RULES: NoteRule[] = [
   {
     name: 'MAX_CHUNKS_PER_DOCUMENT',
     pattern: /^max-chunks-per-document (\d+)$/,
-    german: (m) => `max-chunks-per-document ${m[1]} (Abschnitte je Dokument).`,
+    german: (m) =>
+      m[1] === '1'
+        ? 'Dokument-Vervollständigung aus (max-chunks-per-document 1).'
+        : `Dokument-Vervollständigung bis ${m[1]} Abschnitte je vertretenem Dokument, keine Obergrenze (max-chunks-per-document ${m[1]}).`,
   },
   {
     name: 'SIBLINGS_COMPLETED',

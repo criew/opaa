@@ -50,6 +50,9 @@ public enum RetrievalNote {
 
   LEXICAL_PATH_DISABLED("lexical search path switched off (%s)"),
   FULL_TEXT_SEARCH_LISTS("full-text search, %d list(s)"),
+  FULL_TEXT_IDENTIFIERS_DEMOTED(
+      "%s: uppercase word(s) %s demoted, searched as ordinary words without identifier weight:"
+          + " more chunks of the search scope carry them than fetch-k"),
 
   PER_LIST_BUDGET("per-list budget %d"),
   MMR_LAMBDA_INACTIVE("mmr-lambda %s (diversity term inactive: plain top-k by relevance)"),

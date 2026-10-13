@@ -34,6 +34,7 @@ class EvalEmbeddingContinuityTest {
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("discontinuously")
         .hasMessageContaining("1250 characters (511 tokens)")
+        .hasMessageContaining("every chunk beyond 512 tokens")
         .hasMessageContaining("nomic");
   }
 

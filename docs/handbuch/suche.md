@@ -384,7 +384,14 @@ Großbuchstaben werden so erfasst, ebenso Wörter mit Binnen-I wie „Mitarbeite
 Kennung wirkt nur, wenn die Frage sie ebenfalls enthält. Dann aber hebt sie jeden Abschnitt mit
 demselben Wort an: Eine Frage mit „ELSTER" bevorzugt Abschnitte, die „ELSTER" nennen, und eine Frage in
 Binnen-I-Schreibung bevorzugt Abschnitte in genau dieser Schreibung vor solchen mit „Mitarbeiterinnen
-und Mitarbeiter". Ein Gesetzeskürzel innerhalb einer Paragrafenangabe ergibt keine eigene
+und Mitarbeiter". Ein Wort **nur aus Großbuchstaben** behält das hohe Gewicht aber nur, solange es
+im Suchbereich trennscharf ist: Steht es in mehr Chunks des Suchbereichs (mit Rechte- und
+Metadatenfilter), als die Kandidatenliste fasst (`fetch-k`), wird es nur noch als gewöhnliches Wort
+der Frage gesucht. Sonst füllten Chunks, die das Wort irgendwo nennen, die ganze Liste, und ein
+Chunk, der den Rest der Frage beantwortet, ohne das Wort zu nennen, fiele heraus. Das Protokoll
+der Volltextsuche nennt solche Wörter je Liste als herabgestuft, ohne Zahl. Feldnamen der beiden
+anderen Formen, Paragrafen, Aktenzeichen, Nummern und E-Mail-Adressen behalten das hohe Gewicht
+immer. Ein Gesetzeskürzel innerhalb einer Paragrafenangabe ergibt keine eigene
 Feldnamen-Kennung, auch wenn Absatz, Satz, Nummer, Halbsatz oder Buchstabe dazwischenstehen („§ 35
 BauGB", „§ 35 Abs. 1 Nr. 4 BauGB", „§ 35 S. 1 BauGB"). So bleiben „§ 34 BauGB" und „§ 35 BauGB"
 unterscheidbar. Gewöhnliche
@@ -407,8 +414,9 @@ Neue. Diesen Rückstand zeigt die Administrationsseite je Bibliothek (Abschnitt 
 Zwei bekannte Grenzen des Pfads:
 
 - PostgreSQL bewertet Treffer mit `ts_rank`, nicht mit BM25. Lange Chunks werden überbewertet,
-  seltene Begriffe zu wenig gegenüber häufigen abgesetzt. Die Fusion (Stufe 7) verbraucht nur den
-  Rang, nicht den Wert, was diese Schwäche abmildert. Einzelheiten stehen im Kapitel
+  seltene Begriffe zu wenig gegenüber häufigen abgesetzt. Die Fusion (Stufe 7) verbraucht im
+  Auslieferungsstand nur den Rang, nicht den Wert, was diese Schwäche abmildert; die Fusion nach
+  Werten nimmt den `ts_rank` nur relativ zum besten Treffer seiner Liste. Einzelheiten stehen im Kapitel
   [Deployment](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - Der Pfad lässt sich per Konfiguration abschalten. Er bleibt dann in der Kette, weist sich im
   Protokoll als abgeschaltet aus, und die Suche läuft rein vektoriell. Auf der Verwaltungs-Evaldomäne
@@ -462,7 +470,9 @@ Kosinus-Ähnlichkeit, von der Ähnlichkeitsschwelle bis 1 skaliert, geht mit dem
 `fusion.vector-weight` ein, der `ts_rank` relativ zum besten Treffer seiner Liste mit dem Rest. Ein
 sehr gut passender Treffer zählt dann mehr als ein mittelmäßiger auf demselben Rang. Das Gewicht ist
 nicht am eigenen Bestand gemessen; wer die Option nutzt, sollte das tun. Das Protokoll der Stufe
-nennt je Kandidat die Listen, in denen er vorkam, mit Rang und Anteil am Wert.
+nennt je Kandidat die Listen, die in seinen Wert eingehen, mit Rang und Anteil („Beiträge“). Mit
+Quote sind das nur die Listen der Teilfrage, die ihn aufgenommen hat; wo er in anderen Teilfragen
+stand, zeigen die Suchstufen.
 
 Im Auslieferungsstand kennt die Pipeline deshalb keine Gewichtung „Vektor gegen Volltext": Beide
 Pfade sind gleichberechtigte Listen derselben Fusion. Ein Dokument, das nur ein Pfad findet, kann in der
@@ -512,9 +522,16 @@ anheben. Was zum Einschalten gehört, steht im Kapitel
 
 Die letzte Auswahlstufe behebt einen typischen Fehler der Rangordnung: Ein Dokument ist mit seinem
 Einleitungs-Chunk in der Auswahl, aber sein Detail-Chunk (die Gebührenzeile, der eine Paragraf)
-hat seinen Platz an ein fremdes Dokument verloren. Jedes bereits vertretene Dokument darf deshalb
-**mehrere Chunks** beisteuern (`max-chunks-per-document`), nachgezogen aus dem Kandidatenpool der Suchstufen, also nur aus
-Chunks, die Rechte- und Metadatenfilter bereits passiert haben.
+hat seinen Platz an ein fremdes Dokument verloren. Die Stufe füllt deshalb jedes bereits vertretene
+Dokument auf, bis es mit `max-chunks-per-document` Chunks in der Auswahl steht. Nachgezogen wird
+nur aus dem Kandidatenpool der Suchstufen, also aus Chunks, die Rechte- und Metadatenfilter
+bereits passiert haben.
+
+**Der Wert ist ein Auffüllziel, keine Obergrenze.** Ein Dokument, das aus den Stufen davor schon
+mit mehr Chunks kommt, bekommt nichts dazu und wird nie auf den Wert gekürzt. Chunks verliert es
+nur, wenn die Verdrängung unten sie für ein anderes Dokument braucht. Die Endauswahl kann deshalb
+bei jedem Wert mehr Chunks eines Dokuments enthalten. Beim Standardwert läuft keine Verdrängung,
+die Auswahl bleibt unverändert.
 
 Weil die Auswahl nicht über `top-k` wachsen darf, muss dafür etwas weichen, in zwei Stufen: zuerst der
 schwächste Chunk eines anderen Dokuments, das selbst schon mit mindestens zwei Chunks vertreten ist (die Zahl
@@ -524,9 +541,9 @@ besser rankt. Die zweite Stufe darf ein Dokument ganz aus der Antwort drängen u
 Frage auf ein Viertel von `top-k` solcher Verdrängungen gedeckelt. Das Protokoll unterscheidet
 beide Stufen, weil sie für die Diagnose zwei verschiedene Antworten sind.
 
-**Ab Werk zieht die Stufe nichts nach.** Der Standardwert von `max-chunks-per-document`
-(Abschnitt 10.3) ergänzt keine Geschwister-Chunks; die Auswahl bleibt, wie die Stufen davor sie
-gebildet haben, und kann dabei weiterhin mehrere Chunks eines Dokuments enthalten. Den Text um einen
+**Ab Werk zieht die Stufe nichts nach.** Beim Standardwert von `max-chunks-per-document`
+(Abschnitt 10.3) ist jedes vertretene Dokument schon „voll“, die Stufe ergänzt keine
+Geschwister-Chunks. Die Auswahl bleibt, wie die Stufen davor sie gebildet haben. Den Text um einen
 Treffer bringen die Nachbar-Chunks in den Antwortkontext (Abschnitt 6), ohne einen Platz der
 Endauswahl zu belegen. Die Stufe läuft trotzdem und vermerkt im Protokoll, dass sie keinen Chunk
 nachgezogen hat.
@@ -589,8 +606,12 @@ beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 Dokument dazu, die Chunks direkt davor und danach (`neighbor-chunks.radius`). Endauswahl und
 Nachbarn zusammen sind der **Antwortkontext**: alles, was das Modell liest. Eine Fundstelle, die
 an einer Chunk-Grenze abreißt, etwa eine Aufzählung oder eine Tabelle, erreicht das Modell so
-vollständig. Geladen werden erst alle direkten Nachbarn in der Rangfolge ihrer Treffer, dann die
-ferneren, bis ein Zeichenbudget erschöpft ist (`neighbor-chunks.max-added-characters`). Sie kommen
+vollständig. Das Zeichenbudget der Nachbarn (`neighbor-chunks.max-added-characters`) wird in zwei
+Runden verteilt, damit auch die hinteren Treffer Zusammenhang bekommen: Zuerst erhält jeder Treffer
+in der Rangfolge einen direkten Nachbarn, den folgenden Chunk oder, wo es keinen gibt oder er nicht
+mehr passt, den vorangehenden. Ein Treffer, an den schon ein anderer Chunk des Antwortkontexts
+grenzt, geht in dieser Runde leer aus. Was danach übrig ist, geht nach Rang: erst die übrigen
+direkten Nachbarn, dann die ferneren, bis das Budget erschöpft ist. Nachbarn kommen
 nur aus Bibliotheken des Suchbereichs. Im Prompt stehen aneinandergrenzende Chunks eines Dokuments als
 zusammenhängender Ausschnitt in ihrer Reihenfolge im Dokument. Die Ausschnitte folgen dem Rang ihres
 besten Treffers. Jeder Nachbar bleibt ein eigener Chunk mit eigenem Kopf. Das Modell kann ihn
@@ -1082,7 +1103,7 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `fusion.vector-weight` | 0,7 | Anteil der Vektorsuche bei `fusion.method` = `score` (0 bis 1), der Volltext erhält den Rest |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
-| `max-chunks-per-document` | 1 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
+| `max-chunks-per-document` | 1 | Auffüllziel der Dokument-Vervollständigung (1 bis 10): bis zu so vielen Chunks füllt sie jedes schon vertretene Dokument aus dem Kandidatenpool auf. Keine Obergrenze, die Endauswahl kann mehr Chunks eines Dokuments enthalten. 1 schaltet die Vervollständigung ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
 | `neighbor-chunks.radius` | 1 | Nachbar-Chunks je Seite, die jeder Chunk der Endauswahl in den Prompt mitbringt (0 bis 3); 0 schaltet das Nachladen ab (Abschnitt 6) |
 | `neighbor-chunks.max-added-characters` | 40000 | Zeichen, die alle Nachbarn einer Antwort zusammen höchstens hinzufügen (0 bis 1.000.000); kostet entsprechend Eingabetokens je Frage |
 | `conversation-window-messages` | 20 | Breite des Gesprächsfensters in Nachrichten (2 bis 100, gerade) — was die Antwort sieht und was bei kaltem Zwischenspeicher nachgeladen wird |

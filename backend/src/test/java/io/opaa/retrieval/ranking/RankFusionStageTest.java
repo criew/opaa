@@ -11,6 +11,7 @@ import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalState;
+import io.opaa.retrieval.SearchPath;
 import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.VerdictReason;
 import java.util.List;
@@ -33,7 +34,10 @@ class RankFusionStageTest {
 
   private static RetrievalState stateWith(List<Document> candidates) {
     return RetrievalState.initial()
-        .withSearchResults(List.of(new CandidateList("vector search · sub-query 1", candidates)));
+        .withSearchResults(
+            List.of(
+                new CandidateList(
+                    "vector search · sub-query 1", candidates, SearchPath.VECTOR, 1)));
   }
 
   @Test

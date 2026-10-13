@@ -207,6 +207,44 @@ class CandidateFusionTest {
     assertThat(fused).extracting(c -> c.document().getId()).containsExactly("b", "a", "c");
   }
 
+  /**
+   * A list without origin would land in a pool of its own and quietly turn the quota into one pool;
+   * the fusion refuses it instead.
+   */
+  @Test
+  void aListWithoutOriginIsRejected() {
+    List<CandidateList> lists =
+        List.of(vector(1, chunk("a", 0.8)), new CandidateList("derived", List.of(chunk("b", 0.7))));
+
+    org.assertj.core.api.Assertions.assertThatThrownBy(
+            () -> CandidateFusion.fuse(lists, QUOTA_RRF, THRESHOLD))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("derived");
+  }
+
+  /**
+   * With the quota a candidate's contributions are those of the sub-query that placed it, and they
+   * add up to its fused score; another sub-query's ranks do not count and are not shown.
+   */
+  @Test
+  void withTheQuotaTheContributionsAreThoseOfThePlacingSubQuery() {
+    List<CandidateList> lists =
+        List.of(
+            vector(1, chunk("ginster", 0.7), chunk("shared", 0.6)),
+            vector(2, chunk("elfe", 0.7), chunk("x", 0.65), chunk("shared", 0.6)));
+
+    CandidateFusion.FusedCandidate shared =
+        CandidateFusion.fuse(lists, QUOTA_RRF, THRESHOLD).stream()
+            .filter(c -> c.document().getId().equals("shared"))
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(shared.subQuery()).isEqualTo(1);
+    assertThat(shared.contributions())
+        .containsExactly(new FusionContribution("vector search · sub-query 1", 2, 1.0 / 62));
+    assertThat(shared.fusedScore()).isCloseTo(1.0 / 62, within(1e-12));
+  }
+
   /** Every list a candidate appeared in is named with its rank and its share of the score. */
   @Test
   void rrfContributionsNameEveryListWithRankAndShare() {

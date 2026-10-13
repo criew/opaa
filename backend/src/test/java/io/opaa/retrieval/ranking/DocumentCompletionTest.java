@@ -183,10 +183,10 @@ class DocumentCompletionTest {
   /**
    * Code review of #932's original PR: eviction must pick the weakest chunk by its position in the
    * original, already-authoritative {@code selection} order - never by raw {@code
-   * Document#getScore()}, which is only comparable within a single search vector (see {@code
-   * CandidateFusion}'s Javadoc on why a cross-sub-query score comparison is exactly the #912
-   * failure mode). Here the later-ranked chunk of the over-represented document deliberately
-   * carries the higher raw score, so a score-based eviction would pick the wrong one.
+   * Document#getScore()}, which is only comparable within a single search vector (a cross-sub-query
+   * score comparison is exactly the #912 failure mode). Here the later-ranked chunk of the
+   * over-represented document deliberately carries the higher raw score, so a score-based eviction
+   * would pick the wrong one.
    */
   @Test
   void evictsByOriginalSelectionRankNotByRawScore() {

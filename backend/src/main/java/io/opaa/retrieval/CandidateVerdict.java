@@ -24,8 +24,10 @@ import org.springframework.ai.document.Document;
  *     score, and so on. {@code null} for a stage whose decision is not numeric. Deliberately not
  *     comparable across stages, nor across search methods within one: a fusion score, a cosine
  *     similarity and a lexical rank score are different quantities.
- * @param contributions for a {@link RetrievalStageName#RANK_FUSION} verdict, what each list the
- *     candidate appeared in added to its fused score; empty for every other stage.
+ * @param contributions for a {@link RetrievalStageName#RANK_FUSION} verdict, the lists whose
+ *     contributions make up {@code value}: every list the candidate appeared in when pooled, only
+ *     the placing sub-query's lists with the quota. They add up to {@code value}. Empty for every
+ *     other stage.
  */
 public record CandidateVerdict(
     String chunkId,

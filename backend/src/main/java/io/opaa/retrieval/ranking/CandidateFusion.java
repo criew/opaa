@@ -40,7 +40,8 @@ final class CandidateFusion {
 
   /**
    * One fused candidate: its fused score within the group that placed it, that group's sub-query
-   * ({@code 0} when pooled), and the contribution of every list it appeared in, across all groups.
+   * ({@code 0} when pooled), and the contributions that make up exactly that score - the lists of
+   * the placing group the candidate appeared in, so the shares always add up to the fused score.
    */
   record FusedCandidate(
       Document document, double fusedScore, int subQuery, List<FusionContribution> contributions) {}
@@ -48,11 +49,20 @@ final class CandidateFusion {
   static List<FusedCandidate> fuse(
       List<CandidateList> lists, QueryProperties.Fusion fusion, double similarityThreshold) {
     Map<String, Document> documentById = new LinkedHashMap<>();
-    Map<String, List<FusionContribution>> contributionsById = new LinkedHashMap<>();
+    Map<Integer, Map<String, List<FusionContribution>>> contributionsByGroup = new TreeMap<>();
     Map<Integer, Map<String, Double>> scoresByGroup = new TreeMap<>();
 
     for (CandidateList list : lists) {
+      if (list.searchPath() == null) {
+        throw new IllegalArgumentException(
+            "the fusion takes searched lists only, but '"
+                + list.label()
+                + "' names no search path and sub-query - a stage before the fusion dropped the"
+                + " list's origin, which would silently merge every sub-query into one pool");
+      }
       int group = fusion.subQueryQuota() ? list.subQuery() : 0;
+      Map<String, List<FusionContribution>> groupContributions =
+          contributionsByGroup.computeIfAbsent(group, key -> new LinkedHashMap<>());
       Map<String, Double> groupScores =
           scoresByGroup.computeIfAbsent(group, key -> new LinkedHashMap<>());
       double best = bestScore(list);
@@ -61,7 +71,7 @@ final class CandidateFusion {
         int rank = i + 1;
         double value = contribution(list, document, rank, best, fusion, similarityThreshold);
         documentById.putIfAbsent(document.getId(), document);
-        contributionsById
+        groupContributions
             .computeIfAbsent(document.getId(), key -> new ArrayList<>())
             .add(new FusionContribution(list.label(), rank, value));
         groupScores.merge(document.getId(), value, Double::sum);
@@ -95,7 +105,7 @@ final class CandidateFusion {
                   documentById.get(next.getKey()),
                   next.getValue(),
                   groupKeys.get(g),
-                  List.copyOf(contributionsById.get(next.getKey()))));
+                  List.copyOf(contributionsByGroup.get(groupKeys.get(g)).get(next.getKey()))));
         }
       }
       round.sort(Comparator.comparingDouble(FusedCandidate::fusedScore).reversed());

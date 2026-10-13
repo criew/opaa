@@ -2096,9 +2096,10 @@ components:
         contributions:
           type: array
           description: >
-            For a fusion verdict, what each candidate list the chunk appeared in added to its fused
-            score - which sub-query and which search path it owes its place to. Empty for every
-            other stage.
+            For a fusion verdict, the candidate lists whose contributions make up its value - which
+            sub-query and which search path the chunk owes its place to. Pooled, every list the
+            chunk appeared in; with the sub-query quota only the lists of the sub-query that placed
+            it, so the shares always add up to value. Empty for every other stage.
           items:
             $ref: "#/components/schemas/RetrievalFusionContributionResponse"
 

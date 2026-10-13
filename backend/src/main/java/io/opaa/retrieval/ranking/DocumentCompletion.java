@@ -16,9 +16,10 @@ import org.springframework.ai.document.Document;
 
 /**
  * Completes a fused chunk selection with sibling chunks of documents it already represents
- * (docs/handbuch/suche.md, Stufe 9): up to {@link QueryProperties#maxChunksPerDocument} chunks per
- * document, drawn only from the permission-scoped candidate pool the search stages filled, are
- * preferred over a chunk of a different document filling the remaining budget.
+ * (docs/handbuch/suche.md, Stufe 9): a represented document is topped up to {@link
+ * QueryProperties#maxChunksPerDocument} chunks from the permission-scoped candidate pool the search
+ * stages filled, in preference to a chunk of a different document. A fill target, not a cap: a
+ * document holding more is never trimmed to it.
  *
  * <p>Tier 1 evicts the weakest chunk of another, not-yet-completed document already holding at
  * least two, so document diversity never drops below what fusion established. Tier 2 runs only if
@@ -58,7 +59,7 @@ final class DocumentCompletion {
     }
 
     // The authoritative rank is the selection's own order - never Document#getScore(), which is
-    // only comparable within the single search that produced it (see CandidateFusion).
+    // only comparable within the single search that produced it.
     Map<String, Integer> originalRankByChunkId = new HashMap<>();
     Map<String, Integer> bestOriginalRankByDocument = new HashMap<>();
     for (int i = 0; i < selection.size(); i++) {
