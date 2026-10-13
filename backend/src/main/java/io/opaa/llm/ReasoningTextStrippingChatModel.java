@@ -13,7 +13,7 @@ import org.springframework.ai.chat.prompt.Prompt;
 
 /**
  * Wraps the active chat model so no caller sees {@link LeadingReasoningText}: each generation's
- * text loses its leading reasoning blocks, everything else of the response (metadata, usage, finish
+ * text loses its leading reasoning text, everything else of the response (metadata, usage, finish
  * reason, tool calls) is passed on unchanged. Streaming is not offered.
  */
 public class ReasoningTextStrippingChatModel implements ChatModel {
