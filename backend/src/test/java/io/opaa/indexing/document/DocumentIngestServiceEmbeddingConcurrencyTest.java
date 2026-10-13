@@ -144,7 +144,8 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
         org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class),
         new io.opaa.indexing.attachment.AttachmentLimits(0, 0),
         TestDocumentMetadataServices.returningEmpty(),
-        TestDocumentMetadataServices.notExtracting());
+        TestDocumentMetadataServices.notExtracting(),
+        io.opaa.common.TestFeatureFlags.allOn());
   }
 
   private List<org.springframework.ai.document.Document> chunksOf(int count) {
@@ -369,6 +370,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
       super(
           mock(org.springframework.jdbc.core.JdbcTemplate.class),
           mock(FullTextChunkStore.class),
+          new io.opaa.indexing.chunk.EmbeddingIndexState(),
           mock(tools.jackson.databind.ObjectMapper.class),
           "public",
           "vector_store");
@@ -405,6 +407,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
       super(
           mock(org.springframework.jdbc.core.JdbcTemplate.class),
           mock(FullTextChunkStore.class),
+          new io.opaa.indexing.chunk.EmbeddingIndexState(),
           mock(tools.jackson.databind.ObjectMapper.class),
           "public",
           "vector_store");

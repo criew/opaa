@@ -1,5 +1,10 @@
 import { http, HttpResponse } from 'msw'
-import { mockIndexingIdle, mockIndexingCompleted, mockIndexingRuns } from './indexingFixtures'
+import {
+  mockEmbeddingIndexCurrent,
+  mockIndexingIdle,
+  mockIndexingCompleted,
+  mockIndexingRuns,
+} from './indexingFixtures'
 import { mockSearchStatus } from './searchAdminFixtures'
 import { mockLibraryDetails, mockSourceTypes } from './libraryFixtures'
 import type { IndexingStatusResponse, PushSecretResponse } from '../types/api'
@@ -211,4 +216,21 @@ export const indexingHandlers = [
       done: processed === 0,
     })
   }),
+
+  // The mock index matches its configured model; start and stop have nothing to act on.
+  http.get('/api/v1/admin/indexing/embedding-reindex', () =>
+    HttpResponse.json(mockEmbeddingIndexCurrent),
+  ),
+  http.post('/api/v1/admin/indexing/embedding-reindex', () =>
+    HttpResponse.json(
+      {
+        error:
+          'Der Vektorindex entspricht dem konfigurierten Embedding-Modell; es gibt nichts neu einzubetten.',
+      },
+      { status: 409 },
+    ),
+  ),
+  http.delete('/api/v1/admin/indexing/embedding-reindex', () =>
+    HttpResponse.json({ error: 'Es läuft keine Neueinbettung.' }, { status: 409 }),
+  ),
 ]

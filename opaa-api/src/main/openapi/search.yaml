@@ -212,6 +212,25 @@ paths:
         "429":
           $ref: "#/components/responses/TooManyRequests"
 
+  /api/v1/search/availability:
+    get:
+      operationId: getSearchAvailability
+      tags: [search]
+      summary: >
+        Which search paths currently answer (#2576) - for the hint in the chat that the search is
+        limited.
+      description: >
+        Installation-wide and without any content. The vector search is SUSPENDED while the vector
+        index was built with another embedding model than the configured one and has not yet been
+        re-embedded; the full-text search keeps answering then.
+      responses:
+        "200":
+          description: The current availability
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SearchAvailabilityResponse"
+
   /api/v1/admin/search/status:
     get:
       operationId: getSearchStatus
@@ -393,6 +412,17 @@ paths:
 
 components:
   schemas:
+    SearchAvailabilityResponse:
+      type: object
+      required: [vectorSearch]
+      properties:
+        vectorSearch:
+          type: string
+          enum: [AVAILABLE, SUSPENDED]
+          description: >
+            SUSPENDED while the vector index waits for its re-embedding under the configured
+            embedding model; answers then come from the full-text search alone.
+
     QueryRequest:
       type: object
       required: [question]
@@ -445,7 +475,9 @@ components:
             Wirkstelle 1), applied inside both search paths before ranking and always subordinate
             to the permission filter. Ignored when chatId names a chat the caller authored - that
             chat's own persisted metadataFilter applies instead, exactly like its search scope.
-            Absent or empty: no metadata filter.
+            Absent or empty: no metadata filter. Ignored entirely while the installation has
+            switched metadata off (ADR-0044): no condition applies and an unknown code is no error
+            then.
         usedPromptId:
           type: string
           format: uuid
@@ -823,6 +855,8 @@ components:
           description: >
             The same core-field filter POST /api/v1/query takes, applied inside both search paths
             and always subordinate to the permission filter. Absent or empty: no filter.
+            Ignored entirely while the installation has switched metadata off (ADR-0044): no
+            condition applies and an unknown code is no error then.
         maxHits:
           type: integer
           nullable: true
@@ -1625,8 +1659,10 @@ components:
         OUTDATED - the full-text path runs over every chunk, but some rows were written under an
         older content_tsv_version and lack the lexemes the current one adds until the pipeline
         re-index has rewritten them (ADR-0028). Both states hybrid-retrieval.md demands be visible
-        rather than only noticeable in bad answers.
-      enum: [ACTIVE, DISABLED, INCOMPLETE, OUTDATED]
+        rather than only noticeable in bad answers. SUSPENDED - the vector path answers nothing
+        because the vector index was built with another embedding model and waits for its
+        re-embedding (#2576).
+      enum: [ACTIVE, DISABLED, INCOMPLETE, OUTDATED, SUSPENDED]
       example: OUTDATED
 
     SearchPathStatusResponse:
@@ -1965,6 +2001,8 @@ components:
           description: >
             The core-field filter to run the diagnosis with (#1070) - applied exactly as a chat
             query applies it, so "Sicht als" can check what a person's filtered question sees.
+            Ignored entirely while the installation has switched metadata off (ADR-0044): no
+            condition applies and an unknown code is no error then.
 
     RetrievalStage:
       type: string

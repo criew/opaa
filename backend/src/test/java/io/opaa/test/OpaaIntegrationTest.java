@@ -84,7 +84,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // The price: that the production index can be created at all is now only exercised outside
       // test/build - by the eval harness (own source set, real embeddings, index-type: hnsw), the
       // E2E stack and bootRun. Concretely at risk is a raised OPAA_PGVECTOR_DIMENSIONS (default
-      // 1536): HNSW indexes at most 2000 dimensions, and PgVectorDimensionsGuard compares the
+      // 1536): HNSW indexes at most 2000 dimensions, and EmbeddingIndexReconciler compares the
       // column against the configuration, not against what is indexable.
       "spring.ai.vectorstore.pgvector.index-type=none",
       // The seeded active chat model and the embedding endpoint: the application.yml default

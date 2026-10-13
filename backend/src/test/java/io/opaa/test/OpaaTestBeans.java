@@ -1,7 +1,6 @@
 package io.opaa.test;
 
 import io.opaa.FakeEmbeddingModel;
-import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.auth.UserRepository;
 import io.opaa.directory.sync.DirectoryClient;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -66,7 +65,7 @@ class OpaaTestBeans {
    * grant service, derivation and association without a context of its own.
    */
   @Bean
-  AssetTypeDefinition testAssetType() {
+  TestAssetType testAssetType() {
     return new TestAssetType();
   }
 

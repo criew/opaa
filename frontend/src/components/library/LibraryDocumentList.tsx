@@ -77,10 +77,13 @@ export interface LibraryDocumentListProps {
   renderFolderActions?: (folder: LibraryFolderListItem) => ReactNode
   /** Upload only: the per-row delete button. */
   renderRowActions?: (document: LibraryDocumentResponse) => ReactNode
-  /** Which rows show their metadata panel (#1068) and what that panel is. */
-  metadataOpenById: Record<string, boolean>
-  onToggleMetadata: (documentId: string) => void
-  renderMetadataPanel: (document: LibraryDocumentResponse) => ReactNode
+  /**
+   * Which rows show their metadata panel (#1068) and what that panel is; without
+   * `renderMetadataPanel` - metadata switched off (ADR-0044) - no row offers one.
+   */
+  metadataOpenById?: Record<string, boolean>
+  onToggleMetadata?: (documentId: string) => void
+  renderMetadataPanel?: (document: LibraryDocumentResponse) => ReactNode
   onOpenOriginal: (document: LibraryDocumentResponse) => void
   /** Per-parent expansion of the attachment group (#1184). */
   isGroupExpanded: (parentId: string) => boolean
@@ -167,7 +170,7 @@ export default function LibraryDocumentList({
     const isAttachment = Boolean(document.parentDocumentId)
     const attachments = options.attachments ?? []
     const expanded = isGroupExpanded(document.id)
-    const metadataOpen = Boolean(metadataOpenById[document.id])
+    const metadataOpen = Boolean(renderMetadataPanel && metadataOpenById?.[document.id])
     return (
       <Fragment key={document.id}>
         <Box
@@ -291,17 +294,19 @@ export default function LibraryDocumentList({
                 variant="outlined"
               />
             </Tooltip>
-            <Tooltip title={metadataOpen ? 'Metadaten verbergen' : 'Metadaten anzeigen'}>
-              <IconButton
-                aria-label={`Metadaten von ${document.fileName} ${metadataOpen ? 'verbergen' : 'anzeigen'}`}
-                aria-expanded={metadataOpen}
-                size="small"
-                color={metadataOpen ? 'primary' : 'default'}
-                onClick={() => onToggleMetadata(document.id)}
-              >
-                <InfoOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            {renderMetadataPanel && (
+              <Tooltip title={metadataOpen ? 'Metadaten verbergen' : 'Metadaten anzeigen'}>
+                <IconButton
+                  aria-label={`Metadaten von ${document.fileName} ${metadataOpen ? 'verbergen' : 'anzeigen'}`}
+                  aria-expanded={metadataOpen}
+                  size="small"
+                  color={metadataOpen ? 'primary' : 'default'}
+                  onClick={() => onToggleMetadata?.(document.id)}
+                >
+                  <InfoOutlinedIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            )}
             <Tooltip title="Original öffnen">
               <IconButton
                 aria-label={`Original von ${document.fileName} öffnen`}
@@ -314,7 +319,7 @@ export default function LibraryDocumentList({
             {renderRowActions?.(document)}
           </Stack>
         </Box>
-        {metadataOpen && renderMetadataPanel(document)}
+        {metadataOpen && renderMetadataPanel?.(document)}
       </Fragment>
     )
   }

@@ -17,7 +17,8 @@ stößt bei sehr großen Beständen im Bereich von Millionen Vektoren an Grenzen
   bei einer älteren Erweiterung bricht der Start mit einer Meldung ab. Wer die Datenbank selbst
   betreibt und pgvector aktualisiert, führt danach `ALTER EXTENSION vector UPDATE;` aus.
 - **Die Vektortabelle** entsteht beim ersten Start, wenn sie fehlt, mit der Dimension aus
-  `OPAA_PGVECTOR_DIMENSIONS` ([Modelle](modelle.md#embedding)).
+  `OPAA_PGVECTOR_DIMENSIONS`. Nach einem Wechsel des Embedding-Modells stellt die Neueinbettung sie
+  auf die neue Dimension um ([Modelle](modelle.md#modell-wechseln)).
 - **Eine neue PostgreSQL-Hauptversion** (etwa ein Image-Tag `pg18` → höher) ist ein eigener
   Migrationsvorgang der Datenbank mit Sicherung und Wiederherstellung, kein Image-Update: Das
   Datenverzeichnis ist nicht aufwärtskompatibel.

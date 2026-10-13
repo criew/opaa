@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
@@ -17,7 +18,8 @@ import org.springframework.ai.document.Document;
  */
 class ConfluenceStorageFormatTest {
 
-  private final ConfluenceStorageFormat pipeline = new ConfluenceStorageFormat();
+  private final ConfluenceStorageFormat pipeline =
+      new ConfluenceStorageFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   /** Lifts a section above the size below which neighbouring sections are combined. */
   private static final String NAEHERE =

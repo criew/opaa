@@ -25,6 +25,7 @@ import type {
 } from '../types/api'
 import type { ConfluenceEdition } from './confluenceSource'
 import type { AccessLevel } from '../types/chat'
+import { isAssetTypeOffered } from './installationFeatures'
 
 const spaceRoleLabels: Record<SpaceRole, string> = {
   MEMBER: 'Mitglied',
@@ -143,7 +144,7 @@ export function assetRoleDescription(
   role: AssetRole | string | undefined,
   assetType: AssetType,
 ): string {
-  if (!role) return ''
+  if (!role || !isAssetTypeOffered(assetType)) return ''
   return assetRoleDescriptions[assetType]?.[role as AssetRole] ?? ''
 }
 
@@ -171,7 +172,7 @@ const assetGrantScopeHints: Record<AssetType, string> = {
 
 /** What one grant opens on an asset of this type - the first sentence of the rights dialog. */
 export function assetGrantScopeHint(assetType: AssetType): string {
-  return assetGrantScopeHints[assetType] ?? ''
+  return isAssetTypeOffered(assetType) ? (assetGrantScopeHints[assetType] ?? '') : ''
 }
 
 const permissionSubjectTypeLabels: Record<AssetGrantSubjectType, string> = {

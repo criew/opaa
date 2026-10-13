@@ -43,7 +43,7 @@ seiner Ebene. Es gibt keine Begrenzung der Ebenentiefe: Bei einer Satzung sind P
 Absatz oft zwei Gliederungsebenen, und beide sollen zitierfähig bleiben. Der Text wird entlang
 dieser Überschriften in Abschnitte geschnitten:
 
-- Zielgröße rund 4.000 Zeichen; aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
+- Zielgröße `chunk-target-characters`; aufeinanderfolgende Abschnitte unter 200 Zeichen werden unter
   derselben übergeordneten Überschrift bis dahin zusammengelegt (Kapitel
   [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1), größere geteilt, ohne Text zu verlieren. Ein Abschnitt, der über viele Seiten ohne Lesezeichen läuft,
   wird an Zeilen- und Satzgrenzen geteilt (Kapitel [Wissensbibliotheken](../wissensbibliotheken.md), Abschnitt 7.1).
@@ -56,7 +56,7 @@ dieser Überschriften in Abschnitte geschnitten:
 - Keine Überlappung zwischen Chunks.
 
 **Ohne Gliederung.** Eine Seite ist ein Chunk. Leere Seiten werden übersprungen. Eine Seite mit
-mehr als rund 4.000 Zeichen wird nach denselben Regeln in mehrere Chunks geteilt; jeder trägt die
+mehr Text als die Zielgröße wird nach denselben Regeln in mehrere Chunks geteilt; jeder trägt die
 Seitenzahl.
 
 **Tabellen.** Eine Tabelle, deren Zellen vollständig von Linien umschlossen sind, wird wie in

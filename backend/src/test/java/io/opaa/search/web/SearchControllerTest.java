@@ -6,13 +6,16 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.indexing.chunk.EmbeddingIndexState;
 import io.opaa.search.PassageFetchService;
 import io.opaa.search.SearchOutcome;
 import io.opaa.search.SearchService;
@@ -28,7 +31,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-/** Request validation of {@link SearchController}: the question rule of the specification. */
+/**
+ * Request validation of {@link SearchController}: the question rule of the specification, and the
+ * availability the chat reads its hint from.
+ */
 @WebMvcTest(SearchController.class)
 @ActiveProfiles({"test", "dev"})
 @Import(TestSecurityConfig.class)
@@ -40,6 +46,7 @@ class SearchControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private SearchService searchService;
   @MockitoBean private PassageFetchService passageFetchService;
+  @MockitoBean private EmbeddingIndexState embeddingIndexState;
   @MockitoBean private UserService userService;
 
   @BeforeEach
@@ -84,5 +91,25 @@ class SearchControllerTest {
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(searchService);
+  }
+
+  @Test
+  void theAvailabilityNamesTheVectorSearchSuspendedWhileTheIndexIsStale() throws Exception {
+    when(embeddingIndexState.isVectorSearchAvailable()).thenReturn(false);
+
+    mockMvc
+        .perform(get("/api/v1/search/availability").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.vectorSearch").value("SUSPENDED"));
+  }
+
+  @Test
+  void theAvailabilityNamesTheVectorSearchAvailableOtherwise() throws Exception {
+    when(embeddingIndexState.isVectorSearchAvailable()).thenReturn(true);
+
+    mockMvc
+        .perform(get("/api/v1/search/availability").with(asTestUser()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.vectorSearch").value("AVAILABLE"));
   }
 }

@@ -13,6 +13,10 @@ import io.opaa.permission.AssetType;
  * the grant service asks it before it writes a grant to "Alle Konten". A type that restricts
  * nothing keeps the default. Everything else - grants, derivation, history, succession - is the
  * shell's.
+ *
+ * <p>{@link #enabled} switches a type off for its readers (ADR-0044): an inactive type stays
+ * registered, so ownership, history, succession and audit keep serving its existing assets, but no
+ * read interface lists it and a request naming it answers like an unknown asset.
  */
 public interface AssetTypeDefinition {
 
@@ -37,4 +41,12 @@ public interface AssetTypeDefinition {
    * and no longer a field of the shell.
    */
   default void requireAllAccountsGrantAllowed(Asset asset) {}
+
+  /**
+   * Whether the type is offered to readers right now; asked on every read, never cached. A type
+   * behind a switched-off feature answers {@code false}.
+   */
+  default boolean enabled() {
+    return true;
+  }
 }

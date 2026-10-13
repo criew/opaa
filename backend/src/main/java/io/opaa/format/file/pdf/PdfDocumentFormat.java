@@ -43,6 +43,12 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
   static final String ID = "pdf";
   static final short VERSION = 5;
 
+  private final HeadingSectionSplitter splitter;
+
+  public PdfDocumentFormat(HeadingSectionSplitter splitter) {
+    this.splitter = splitter;
+  }
+
   @Override
   public String id() {
     return ID;
@@ -174,8 +180,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     }
   }
 
-  private static DocumentFormatResult chunkByOutline(
-      List<String> pageTexts, List<OutlineEntry> entries) {
+  private DocumentFormatResult chunkByOutline(List<String> pageTexts, List<OutlineEntry> entries) {
     List<HeadingSectionSplitter.Event> events = new ArrayList<>();
     int firstStart = entries.get(0).pageIndex();
     if (firstStart > 0) {
@@ -215,7 +220,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     }
     // No cap on the cutting level - see this class's own Javadoc for why the PDF catalog is
     // trusted at every nesting depth, unlike Markdown/DOCX.
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+    List<Document> chunks = splitter.chunk(events, Integer.MAX_VALUE);
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();
     }
@@ -268,7 +273,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
     return new Attribution(head, bodies);
   }
 
-  private static DocumentFormatResult chunkByPage(List<String> pageTexts) {
+  private DocumentFormatResult chunkByPage(List<String> pageTexts) {
     List<Document> chunks = new ArrayList<>();
     for (int i = 0; i < pageTexts.size(); i++) {
       String text = pageTexts.get(i);
@@ -277,7 +282,7 @@ public class PdfDocumentFormat extends FileDocumentFormat<PdfDocumentFormat.PdfC
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, "S. " + (i + 1));
-      chunks.addAll(HeadingSectionSplitter.boundedChunks(null, text.strip(), metadata));
+      chunks.addAll(splitter.boundedChunks(null, text.strip(), metadata));
     }
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();

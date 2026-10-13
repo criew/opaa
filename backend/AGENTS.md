@@ -195,7 +195,7 @@ Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
 - **`@OpaaPropertyVariantIntegrationTest`** — dieselbe Basis plus die Properties, die selbst
   Prüfgegenstand sind (abweichende Embedding-Basis-URL, feste pgvector-Dimension ohne
   Schema-Initialisierung). Technischer Grund: eine Nachbarklasse prüft genau den Default, und der
-  pgvector-Wächter zerstört und erzeugt `vector_store` neu.
+  Abgleich des Einbettungsindex (`EmbeddingIndexReconciler`) zerstört und erzeugt `vector_store` neu.
 
 Fünf weitere tragen den Betriebsmodus **`oidc`**, den die vier oben nicht liefern können: Unter
 `local,dev` authentifiziert `DevAuthFilter` jede Anfrage, bevor ein Bearer-Token gelesen wird, eine

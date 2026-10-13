@@ -92,6 +92,12 @@ public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibra
   long countPrivateLibraryOwners(@Param("organizationId") UUID organizationId);
 
   /**
+   * How many persons own private libraries across the installation - for installation-wide counts.
+   */
+  @Query("select count(distinct l.ownerUserId) from KnowledgeLibrary l where l.ownerOnly = true")
+  long countAllPrivateLibraryOwners();
+
+  /**
    * How many persons own the private libraries of one organization other than {@code excluded} -
    * the rest a part of their number is masked against.
    */

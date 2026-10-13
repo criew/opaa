@@ -238,8 +238,9 @@ Der Filter wird dem Rechtefilter **untergeordnet**: Er wird mit UND angehängt u
 Menge nur verkleinern. Ein Dokument ohne Wert im gefilterten Feld wird **nicht** ausgeschlossen
 (Leerwert-Regel); es wird gefunden und in der Fundstelle als „ohne Angabe" markiert. Ein unbekannter
 Dokumentart-Code wird schon vor dem Lauf mit einer Fehlermeldung abgewiesen, statt still einen
-Filter zu erzeugen, der nur Dokumente ohne Wert übrig ließe. Was Metadaten sonst in der Suche tun,
-fasst Abschnitt 5 zusammen.
+Filter zu erzeugen, der nur Dokumente ohne Wert übrig ließe. Hat die Installation die Metadaten
+abgeschaltet, entfällt diese Stufe: Jeder Filter, auch ein am Chat gespeicherter, bleibt ohne
+Wirkung. Was Metadaten sonst in der Suche tun, fasst Abschnitt 5 zusammen.
 
 ### Stufe 3: Teilfragen
 
@@ -328,6 +329,11 @@ selten vor. Die Grenze erreicht in der Praxis nur ein
 sehr kleiner Suchbereich in einem sehr großen Bestand; für einen solchen Filter wählt PostgreSQL
 meist ohnehin die exakte Suche ohne Index. Eine kürzere Liste nennt das Erklärprotokoll mit der
 Zahl der gelieferten Kandidaten.
+
+Nach einem Wechsel des Embedding-Modells ist die Vektorsuche bis zum Abschluss der Neueinbettung
+ausgesetzt: Frage und Chunks stammten sonst aus verschiedenen Modellen. Die Stufe erscheint im
+Erklärprotokoll dann als nicht verfügbar, und die Volltextsuche trägt die Frage allein
+([Modell wechseln](modelle.md#modell-wechseln)).
 
 Die Vektorsuche findet, was der Frage **in der Bedeutung** nahe ist, auch wenn kein Wort
 übereinstimmt („Parkausweis" trifft „Bewohnerparkberechtigung"). Ihre bekannte Schwäche ist der
@@ -544,6 +550,10 @@ gepflegten Kernfeldern rankt nicht besser als eines ohne, sofern kein Filter ges
 Kontextpräfix nicht gerade das fehlende Bedeutungssignal liefert. Freie Schlagworte filtern nie und
 erscheinen nicht im Beleg; sie wirken allein über das Kontextpräfix. Woher die Werte kommen, wie sie gepflegt werden und wie sich der
 Kontextpräfix über den Bestand nachziehen lässt, steht im Kapitel [Metadaten](metadaten.md).
+
+Hat die Installation die Metadaten abgeschaltet, bleibt von den vier Stellen außer dem Rechtefilter
+nur der Titel: im Kontextpräfix neu aufgenommener Dokumente und in der Fundstelle. Filter,
+Optionen und alle übrigen Werte entfallen (siehe [Metadaten](metadaten.md#131-metadaten-abschalten)).
 
 ## 6. Antwort erzeugen
 

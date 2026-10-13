@@ -107,6 +107,7 @@ class ChangelogModuleBoundaryTest extends AbstractMigrationTest {
                   "source_sync_revisits",
                   "source_sync_presence",
                   "chunk_full_text",
+                  "embedding_index",
                   "document_keywords",
                   "document_metadata_values",
                   "document_type_vocabulary",

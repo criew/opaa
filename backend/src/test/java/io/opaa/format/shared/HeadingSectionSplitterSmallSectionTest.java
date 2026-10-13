@@ -26,7 +26,7 @@ class HeadingSectionSplitterSmallSectionTest {
     // regression guard for #2331: every Titel became a chunk of its own, most below 200 chars.
     List<Event> events = haushaltsplan(List.of("51", "52"), 12);
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, Integer.MAX_VALUE);
 
     assertThat(chunks).hasSize(2);
     assertThat(chunks).allSatisfy(chunk -> assertThat(chunk.getText().length()).isGreaterThan(500));
@@ -35,7 +35,8 @@ class HeadingSectionSplitterSmallSectionTest {
   @Test
   void noTitelIsLostAndEachAppearsInExactlyOneChunkUnderItsOwnHeading() {
     List<Document> chunks =
-        HeadingSectionSplitter.chunk(haushaltsplan(List.of("51", "52"), 12), Integer.MAX_VALUE);
+        HeadingSectionSplitterFixture.DEFAULT.chunk(
+            haushaltsplan(List.of("51", "52"), 12), Integer.MAX_VALUE);
 
     for (String gruppe : List.of("51", "52")) {
       for (int n = 1; n <= 12; n++) {
@@ -52,7 +53,8 @@ class HeadingSectionSplitterSmallSectionTest {
   @Test
   void aCombinedChunkCarriesTheCommonHeadingPathAsHeadingLineAndFundort() {
     List<Document> chunks =
-        HeadingSectionSplitter.chunk(haushaltsplan(List.of("51"), 12), Integer.MAX_VALUE);
+        HeadingSectionSplitterFixture.DEFAULT.chunk(
+            haushaltsplan(List.of("51"), 12), Integer.MAX_VALUE);
 
     String common = KAPITEL + " › " + AUSGABEN + " › " + titelgruppe("51");
     assertThat(chunks).hasSize(1);
@@ -64,7 +66,7 @@ class HeadingSectionSplitterSmallSectionTest {
   @Test
   void titlesOfDifferentTitelgruppenNeverShareAChunk() {
     List<Document> chunks =
-        HeadingSectionSplitter.chunk(
+        HeadingSectionSplitterFixture.DEFAULT.chunk(
             haushaltsplan(List.of("51", "52", "53"), 3), Integer.MAX_VALUE);
 
     assertThat(chunks)
@@ -81,14 +83,15 @@ class HeadingSectionSplitterSmallSectionTest {
   @Test
   void combiningStopsAtTheTargetSize() {
     List<Document> chunks =
-        HeadingSectionSplitter.chunk(haushaltsplan(List.of("51"), 120), Integer.MAX_VALUE);
+        HeadingSectionSplitterFixture.DEFAULT.chunk(
+            haushaltsplan(List.of("51"), 120), Integer.MAX_VALUE);
 
     assertThat(chunks).hasSizeGreaterThan(1);
     assertThat(chunks)
         .allSatisfy(
             chunk ->
                 assertThat(chunk.getText().length())
-                    .isLessThanOrEqualTo(HeadingSectionSplitter.SOFT_CHUNK_CHAR_LIMIT));
+                    .isLessThanOrEqualTo(HeadingSectionSplitter.DEFAULT_SOFT_CHUNK_CHAR_LIMIT));
     assertThat(chunks.stream().filter(c -> c.getText().contains(titelLine("51", 120))).count())
         .isEqualTo(1);
   }
@@ -102,7 +105,7 @@ class HeadingSectionSplitterSmallSectionTest {
     events.add(new Heading(2, "§ 2 Begriffsbestimmungen"));
     events.add(new Paragraph(absatz("Begriffsbestimmungen", 900)));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, 3);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, 3);
 
     assertThat(chunks).hasSize(2);
     assertThat(chunks.get(0).getText()).startsWith("Satzung › § 1 Geltungsbereich\n\n");
@@ -118,7 +121,7 @@ class HeadingSectionSplitterSmallSectionTest {
             new Heading(1, "Anlage 2"),
             new Paragraph("Muster des Bescheids."));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, 3);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, 3);
 
     assertThat(chunks)
         .extracting(Document::getText)
@@ -137,7 +140,7 @@ class HeadingSectionSplitterSmallSectionTest {
     events.add(new Heading(3, "Titel 511 01"));
     events.add(new Paragraph("Geschäftsbedarf 80.000"));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, 3);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, 3);
 
     assertThat(chunks)
         .extracting(Document::getText)
@@ -157,7 +160,7 @@ class HeadingSectionSplitterSmallSectionTest {
     events.add(new Heading(3, "Titel 511 02"));
     events.add(new Paragraph("Bücher und Zeitschriften 4.000"));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, 3);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, 3);
 
     assertThat(chunks).hasSize(1);
     assertThat(chunks.getFirst().getText())
@@ -181,7 +184,7 @@ class HeadingSectionSplitterSmallSectionTest {
     events.add(new Heading(2, "Hinweis"));
     events.add(new Paragraph("Beträge in Euro."));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, 3);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, 3);
 
     assertThat(chunks.getLast().getText()).isEqualTo(KAPITEL + " › Hinweis\n\nBeträge in Euro.");
     assertThat(chunks.subList(0, chunks.size() - 1))
@@ -199,7 +202,7 @@ class HeadingSectionSplitterSmallSectionTest {
     events.add(new Paragraph("Erläuterungen siehe Anlage."));
     events.addAll(haushaltsplan(List.of("51", "52"), 2).subList(2, 12));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, Integer.MAX_VALUE);
 
     assertThat(chunks).allSatisfy(chunk -> assertThat(gruppenIn(chunk)).isLessThanOrEqualTo(1));
   }
@@ -212,7 +215,7 @@ class HeadingSectionSplitterSmallSectionTest {
     events.add(new Heading(3, titelgruppe("50")));
     events.addAll(haushaltsplan(List.of("51"), 3).subList(2, 9));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, Integer.MAX_VALUE);
 
     assertThat(chunks)
         .filteredOn(chunk -> chunk.getText().contains(titelLine("51", 1)))
@@ -236,7 +239,7 @@ class HeadingSectionSplitterSmallSectionTest {
     events.add(new Heading(3, ""));
     events.add(new Paragraph("Fußnote zur Tabelle."));
 
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, Integer.MAX_VALUE);
+    List<Document> chunks = HeadingSectionSplitterFixture.DEFAULT.chunk(events, Integer.MAX_VALUE);
 
     assertThat(chunks)
         .filteredOn(chunk -> chunk.getText().contains("Fußnote zur Tabelle."))

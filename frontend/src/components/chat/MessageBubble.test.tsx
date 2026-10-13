@@ -4,6 +4,7 @@ import { vi, describe, expect, it } from 'vitest'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
 import { useNotificationStore } from '../../stores/notificationStore'
+import { useAuthStore } from '../../stores/authStore'
 import { useCopyAnnouncement } from './copyAnnouncer'
 
 const citedSource = {
@@ -42,6 +43,30 @@ describe('MessageBubble', () => {
 
     expect(screen.getByTestId('used-prompt')).toHaveTextContent('Prompt: Zusammenfassung')
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+
+  // #2588: the stored mark stays, but a switched-off installation does not name prompts.
+  it('names no prompt while prompt libraries are switched off', () => {
+    useAuthStore.setState({ features: { promptLibraries: false } })
+    try {
+      render(
+        <MessageBubble
+          message={{
+            id: '1',
+            role: 'user',
+            content: 'Fasse den Stand zum 24.09.2026 zusammen.',
+            usedPromptTitle: 'Zusammenfassung',
+            timestamp: new Date(),
+          }}
+        />,
+      )
+
+      expect(screen.getByText('Fasse den Stand zum 24.09.2026 zusammen.')).toBeInTheDocument()
+      expect(screen.queryByTestId('used-prompt')).not.toBeInTheDocument()
+      expect(screen.queryByText(/Prompt:/)).not.toBeInTheDocument()
+    } finally {
+      useAuthStore.setState({ features: {} })
+    }
   })
 
   it('says under an answer that private sources were in its context, and only then', () => {

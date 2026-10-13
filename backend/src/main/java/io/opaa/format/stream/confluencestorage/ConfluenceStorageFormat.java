@@ -38,6 +38,12 @@ public class ConfluenceStorageFormat implements DocumentFormat {
   /** h1-h3 open a new chunk, like the HTML and Markdown pipelines; h4-h6 fold into the text. */
   static final int MAX_CUTTING_LEVEL = 3;
 
+  private final HeadingSectionSplitter splitter;
+
+  public ConfluenceStorageFormat(HeadingSectionSplitter splitter) {
+    this.splitter = splitter;
+  }
+
   @Override
   public String id() {
     return ID;
@@ -57,7 +63,7 @@ public class ConfluenceStorageFormat implements DocumentFormat {
     // The XML parser keeps the namespaced macro elements intact; the HTML parser would not.
     org.jsoup.nodes.Document document = Jsoup.parse(body, "", Parser.xmlParser());
     List<Event> events = new XhtmlEventBuilder(ConfluenceElementRule.INSTANCE).build(document);
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
+    List<Document> chunks = splitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();
     }

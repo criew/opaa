@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -37,7 +38,8 @@ class CityLandmarksChunkSizeDryRunTest {
   @Test
   void reportsChunkCountsForTheGeneratedCorpus() throws IOException {
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve("city-landmarks");
-    MarkdownDocumentFormat pipeline = new MarkdownDocumentFormat();
+    MarkdownDocumentFormat pipeline =
+        new MarkdownDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
     List<Integer> chunkCounts = new ArrayList<>();
     List<Integer> byteSizes = new ArrayList<>();

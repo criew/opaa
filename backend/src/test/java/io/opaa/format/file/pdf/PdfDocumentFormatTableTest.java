@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.URISyntaxException;
@@ -38,7 +39,8 @@ class PdfDocumentFormatTableTest {
 
   @TempDir Path tempDir;
 
-  private final PdfDocumentFormat pipeline = new PdfDocumentFormat();
+  private final PdfDocumentFormat pipeline =
+      new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   // regression guard for #2033: the demo's Einsatzplan, where a model read the space-separated
   // rows with cells shifted into the neighbouring row

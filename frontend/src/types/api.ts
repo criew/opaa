@@ -389,6 +389,10 @@ export type MetadataBackfillRequest = components['schemas']['MetadataBackfillReq
 export type ContextPrefixRerunRequest = components['schemas']['ContextPrefixRerunRequest']
 export type ContextPrefixRerunResponse = components['schemas']['ContextPrefixRerunResponse']
 export type MetadataBackfillResponse = components['schemas']['MetadataBackfillResponse']
+export type EmbeddingIndexIdentity = components['schemas']['EmbeddingIndexIdentity']
+export type EmbeddingReindexRunStatus = components['schemas']['EmbeddingReindexRunStatus']
+export type EmbeddingReindexStatusResponse = components['schemas']['EmbeddingReindexStatusResponse']
+export type SearchAvailabilityResponse = components['schemas']['SearchAvailabilityResponse']
 export type SearchStatusResponse = components['schemas']['SearchStatusResponse']
 export type PrivateLibrarySearchSummaryResponse =
   components['schemas']['PrivateLibrarySearchSummaryResponse']

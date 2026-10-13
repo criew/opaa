@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { MetadataFilterOptionsResponse } from '../types/api'
 import { getMetadataFilterOptions } from '../services/searchApi'
+import { isFeatureEnabled } from './authStore'
 import { currentSessionEpoch, isStaleSessionEpoch } from './sessionEpoch'
 
 export interface MetadataFilterScope {
@@ -47,6 +48,8 @@ export const useMetadataFilterOptionsStore = create<MetadataFilterOptionsState>(
   error: null,
 
   loadOptions: async (scope) => {
+    // Without metadata (ADR-0044) the backend offers no filter options; nothing is asked.
+    if (!isFeatureEnabled('metadata')) return
     const sessionEpoch = currentSessionEpoch()
     const requestId = ++loadSequence
     set({ isLoading: true, error: null })

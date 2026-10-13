@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentProperties;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -24,8 +25,10 @@ class OdfMetaPropertiesTest {
   @TempDir Path tempDir;
 
   private final OdfProperties odfProperties = new OdfProperties(0, 0, 0, 0, 0);
-  private final OdtDocumentFormat odt = new OdtDocumentFormat(odfProperties);
-  private final OdpDocumentFormat odp = new OdpDocumentFormat(odfProperties);
+  private final OdtDocumentFormat odt =
+      new OdtDocumentFormat(odfProperties, HeadingSectionSplitterFixture.DEFAULT);
+  private final OdpDocumentFormat odp =
+      new OdpDocumentFormat(odfProperties, HeadingSectionSplitterFixture.DEFAULT);
 
   private static final String META =
       """

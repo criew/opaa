@@ -72,7 +72,8 @@ class SearchDiagnosisClockTest {
             mock(io.opaa.audit.AuditEventRecorder.class),
             new io.opaa.permission.GroupSizeProperties(null),
             mock(io.opaa.asset.OwnerOnlyRule.class),
-            fixedClock);
+            fixedClock,
+            io.opaa.common.TestFeatureFlags.allOn());
 
     SearchDiagnosis diagnosis =
         service.diagnose(

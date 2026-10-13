@@ -52,6 +52,12 @@ public class MarkdownDocumentFormat implements DocumentFormat {
   private static final Pattern FRONTMATTER_ENTRY =
       Pattern.compile("^([A-Za-z0-9_\\-]+)[ \\t]*:[ \\t]*(\\S.*?)[ \\t]*$");
 
+  private final HeadingSectionSplitter splitter;
+
+  public MarkdownDocumentFormat(HeadingSectionSplitter splitter) {
+    this.splitter = splitter;
+  }
+
   @Override
   public String id() {
     return ID;
@@ -80,7 +86,7 @@ public class MarkdownDocumentFormat implements DocumentFormat {
       return DocumentFormatResult.noContent();
     }
     List<HeadingSectionSplitter.Event> events = toEvents(text);
-    List<Document> chunks = HeadingSectionSplitter.chunk(events, MAX_CUTTING_LEVEL);
+    List<Document> chunks = splitter.chunk(events, MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {
       return DocumentFormatResult.noExtractableText();
     }

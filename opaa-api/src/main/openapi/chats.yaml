@@ -472,6 +472,8 @@ components:
           description: >
             The chat's sticky core-field filter (#1070) - the Kontext der Unterhaltung every
             question of this chat is searched with, next to its search scope. Null: no filter.
+            While the installation has switched metadata off (ADR-0044) a stored filter is still
+            reported here but not applied.
         status:
           $ref: "#/components/schemas/ChatStatus"
         createdAt:
@@ -584,7 +586,10 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
-          description: The chat's sticky core-field filter (#1070), null without one.
+          description: >
+            The chat's sticky core-field filter (#1070), null without one. While the installation
+            has switched metadata off (ADR-0044) a stored filter is still reported here but not
+            applied.
         status:
           $ref: "#/components/schemas/ChatStatus"
         messages:
@@ -788,7 +793,10 @@ components:
           nullable: true
           allOf:
             - $ref: "#/components/schemas/MetadataFilter"
-          description: The chat's initial core-field filter (#1070); absent or empty means none.
+          description: >
+            The chat's initial core-field filter (#1070); absent or empty means none. Ignored while
+            the installation has switched metadata off (ADR-0044): nothing is stored and an
+            unknown code is no error then.
 
     ChatUpdateRequest:
       type: object
@@ -818,4 +826,6 @@ components:
             - $ref: "#/components/schemas/MetadataFilter"
           description: >
             Replaces the chat's core-field filter (#1070). Omitted or null leaves it unchanged; an
-            object without any condition clears it.
+            object without any condition clears it. Ignored while the installation has switched
+            metadata off (ADR-0044): the stored filter stays as it is and an unknown code is no
+            error then.

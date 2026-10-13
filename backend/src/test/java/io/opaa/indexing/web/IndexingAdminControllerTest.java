@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -20,13 +21,18 @@ import io.opaa.audit.AuditQueryService;
 import io.opaa.auth.AdminTestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
+import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
+import io.opaa.indexing.chunk.EmbeddingIdentity;
+import io.opaa.indexing.chunk.EmbeddingIndexRecord;
 import io.opaa.indexing.maintenance.ContextPrefixRerunResult;
 import io.opaa.indexing.maintenance.ContextPrefixRerunService;
+import io.opaa.indexing.maintenance.EmbeddingReindexProgress;
+import io.opaa.indexing.maintenance.EmbeddingReindexService;
 import io.opaa.indexing.maintenance.LowChunkDocumentAuditService;
 import io.opaa.indexing.maintenance.MetadataBackfillResult;
 import io.opaa.indexing.maintenance.MetadataBackfillService;
@@ -58,7 +64,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * proves the {@code SYSTEM_ADMIN} access bar and that the caller's own organizationId, not a
  * request parameter, drives the query (#1090).
  */
-@WebMvcTest(IndexingAdminController.class)
+@WebMvcTest({IndexingAdminController.class, MetadataMaintenanceAdminController.class})
 @ActiveProfiles("dev")
 @Import(AdminTestSecurityConfig.class)
 class IndexingAdminControllerTest {
@@ -72,6 +78,7 @@ class IndexingAdminControllerTest {
   @MockitoBean private PipelineReindexService pipelineReindexService;
   @MockitoBean private MetadataBackfillService metadataBackfillService;
   @MockitoBean private ContextPrefixRerunService contextPrefixRerunService;
+  @MockitoBean private EmbeddingReindexService embeddingReindexService;
   @MockitoBean private DocumentFormatRegistry pipelineRegistry;
   @MockitoBean private AuditEventRecorder auditEventRecorder;
   @MockitoBean private UserService userService;
@@ -600,5 +607,106 @@ class IndexingAdminControllerTest {
         .containsEntry("processedDocuments", 4)
         .containsEntry("markedForNextRun", 1)
         .containsEntry("skippedDocuments", 2);
+  }
+
+  private static EmbeddingReindexProgress staleProgress(boolean running) {
+    EmbeddingIdentity configured = new EmbeddingIdentity("bge-m3", "http://ollama:11434/v1", 1024);
+    return new EmbeddingReindexProgress(
+        new EmbeddingIdentity("nomic-embed-text", "http://ollama:11434/v1", 768),
+        configured,
+        true,
+        running,
+        new EmbeddingIndexRecord.Run(
+            EmbeddingIndexRecord.RunStatus.RUNNING,
+            java.time.Instant.parse("2026-10-13T08:00:00Z"),
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            null,
+            null),
+        2474,
+        1200,
+        false);
+  }
+
+  @Test
+  void embeddingReindexStatusShowsBothModelsAndTheProgressToTheSystemAdministration()
+      throws Exception {
+    when(embeddingReindexService.progress()).thenReturn(staleProgress(true));
+
+    mockMvc
+        .perform(get("/api/v1/admin/indexing/embedding-reindex").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.stale").value(true))
+        .andExpect(jsonPath("$.running").value(true))
+        .andExpect(jsonPath("$.current.model").value("nomic-embed-text"))
+        .andExpect(jsonPath("$.current.dimensions").value(768))
+        .andExpect(jsonPath("$.configured.model").value("bge-m3"))
+        .andExpect(jsonPath("$.configured.dimensions").value(1024))
+        .andExpect(jsonPath("$.totalChunks").value(2474))
+        .andExpect(jsonPath("$.embeddedChunks").value(1200))
+        .andExpect(jsonPath("$.lastRun.status").value("RUNNING"));
+  }
+
+  @Test
+  void embeddingReindexIsForTheSystemAdministrationOnly() throws Exception {
+    mockMvc
+        .perform(post("/api/v1/admin/indexing/embedding-reindex").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(delete("/api/v1/admin/indexing/embedding-reindex").with(asRegularUser()))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(embeddingReindexService);
+  }
+
+  @Test
+  void startingTheEmbeddingReindexRunsAsTheCallerAndRecordsTheStart() throws Exception {
+    when(embeddingReindexService.start(actingAdminId, actingAdminOrganizationId))
+        .thenReturn(staleProgress(true));
+
+    mockMvc
+        .perform(post("/api/v1/admin/indexing/embedding-reindex").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.running").value(true));
+
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.EMBEDDING_REINDEX_STARTED);
+    assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);
+    assertThat(event.actorUserId()).isEqualTo(actingAdminId);
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.SUCCESS);
+    assertThat(event.after())
+        .containsEntry("model", "bge-m3")
+        .containsEntry("dimensions", 1024)
+        .containsEntry("totalChunks", 2474L)
+        .containsEntry("embeddedChunks", 1200L);
+  }
+
+  @Test
+  void aRejectedStartAnswers409AndIsRecordedAsAFailure() throws Exception {
+    when(embeddingReindexService.start(actingAdminId, actingAdminOrganizationId))
+        .thenThrow(new ConflictException("Die Neueinbettung läuft bereits."));
+
+    mockMvc
+        .perform(post("/api/v1/admin/indexing/embedding-reindex").with(asAdmin()))
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.error").value("Die Neueinbettung läuft bereits."));
+
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.EMBEDDING_REINDEX_STARTED);
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.FAILURE);
+  }
+
+  @Test
+  void cancellingTheEmbeddingReindexIsRecorded() throws Exception {
+    when(embeddingReindexService.cancel()).thenReturn(staleProgress(false));
+
+    mockMvc
+        .perform(delete("/api/v1/admin/indexing/embedding-reindex").with(asAdmin()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.running").value(false));
+
+    AuditEvent event = singleRecordedEvent();
+    assertThat(event.eventType()).isEqualTo(AuditEventType.EMBEDDING_REINDEX_CANCELLED);
+    assertThat(event.outcome()).isEqualTo(AuditOutcome.SUCCESS);
   }
 }

@@ -27,8 +27,8 @@ import org.springframework.stereotype.Component;
  * An asset without a capable owner (#1819, ADR-0036 Entscheidung 6), for every asset type in one
  * query: a person whose account is no longer active, or a group that is dissolved, switched off or
  * has lost its last active account. Every type of the shell is reported, as {@link
- * SuccessionObjectType#ASSET} with its own asset type - there is no type this source skips. An
- * owner-only asset has no succession and is never reported.
+ * SuccessionObjectType#ASSET} with its own asset type - there is no active type this source skips.
+ * An owner-only asset has no succession and is never reported.
  *
  * <p>The addressee follows the object, not the finder: an asset of an internal group is the
  * business of that group's stewards, everything else of the system administration.
@@ -42,6 +42,7 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
   private final GroupCapabilityService groupCapability;
   private final GroupMembershipResolver membershipResolver;
   private final UserRepository users;
+  private final AssetTypes assetTypes;
 
   AssetSuccessionSource(
       AssetRepository assets,
@@ -49,13 +50,15 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
       GroupSubjectDirectory groupDirectory,
       GroupCapabilityService groupCapability,
       GroupMembershipResolver membershipResolver,
-      UserRepository users) {
+      UserRepository users,
+      AssetTypes assetTypes) {
     this.assets = assets;
     this.accountActivity = accountActivity;
     this.groupDirectory = groupDirectory;
     this.groupCapability = groupCapability;
     this.membershipResolver = membershipResolver;
     this.users = users;
+    this.assetTypes = assetTypes;
   }
 
   @Override
@@ -68,9 +71,17 @@ public class AssetSuccessionSource implements SuccessionFindingSource {
     return objectType == SuccessionObjectType.ASSET;
   }
 
+  /**
+   * The operational list over the active types only: an asset of an inactive type (ADR-0044) is not
+   * reported, and its open case stays open until the type is active again.
+   */
   @Override
   public List<SuccessionFinding> findingsOf(UUID organizationId) {
-    return List.copyOf(findingsAmong(assets.findByOrganizationId(organizationId), true).values());
+    List<Asset> active =
+        assets.findByOrganizationId(organizationId).stream()
+            .filter(asset -> assetTypes.isActive(asset.getAssetType()))
+            .toList();
+    return List.copyOf(findingsAmong(active, true).values());
   }
 
   /**

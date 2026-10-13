@@ -17,6 +17,7 @@ import io.opaa.format.file.office.PptxDocumentFormat;
 import io.opaa.format.file.pdf.PdfDocumentFormat;
 import io.opaa.format.file.tabular.TabularDocumentFormat;
 import io.opaa.format.file.tabular.TabularProperties;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import java.time.Clock;
 import java.util.List;
@@ -349,16 +350,19 @@ class PipelinePathIsolationTest {
     List<DocumentFormat> pipelines =
         List.of(
             fallback,
-            new TabularDocumentFormat(new TabularProperties(0, 0, 0, 0)),
-            new HtmlDocumentFormat(),
-            new MarkdownDocumentFormat(),
-            new DocxDocumentFormat(),
-            new PptxDocumentFormat(),
-            new OdtDocumentFormat(new OdfProperties(0, 0, 0, 0, 0)),
-            new OdpDocumentFormat(new OdfProperties(0, 0, 0, 0, 0)),
-            new PdfDocumentFormat(),
+            new TabularDocumentFormat(
+                new TabularProperties(0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT),
+            new HtmlDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+            new MarkdownDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+            new DocxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+            new PptxDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
+            new OdtDocumentFormat(
+                new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT),
+            new OdpDocumentFormat(
+                new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT),
+            new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT),
             new MailDocumentFormat(null, new MailProperties(0, 0, 0), Clock.systemUTC()),
-            new ConfluenceStorageFormat());
+            new ConfluenceStorageFormat(HeadingSectionSplitterFixture.DEFAULT));
     return new DocumentFormatRegistry(pipelines, fallback);
   }
 }
