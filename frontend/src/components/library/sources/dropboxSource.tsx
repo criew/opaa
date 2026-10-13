@@ -4,7 +4,7 @@ import {
   dropboxFoldersOf,
   dropboxSettingsFrom,
   dropboxSettingsOf,
-  validateDropboxValues,
+  dropboxIssue,
   type DropboxSourceValues,
 } from '../../../utils/dropboxSource'
 import DropboxSourceForm from '../DropboxSourceForm'
@@ -31,7 +31,7 @@ export const dropboxSource: SourceRegistration = {
       }
     },
     isDirty: (values: DropboxSourceValues) => values.folders.trim() !== '/' || values.teamSpace,
-    validate: (values: DropboxSourceValues) => validateDropboxValues(values),
+    validate: (values: DropboxSourceValues) => dropboxIssue(values),
     toPayload: (values: DropboxSourceValues) => ({
       sourceSettings: dropboxSettingsFrom(values),
     }),

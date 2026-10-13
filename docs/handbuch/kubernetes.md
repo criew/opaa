@@ -527,7 +527,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
 | `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | Schalter für die Prompt-Bibliotheken, noch ohne Wirkung (#2588) |
-| `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Schalter für die Metadaten von Dokumenten und Bibliotheken, noch ohne Wirkung (#2589) |
+| `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Schalter für die Metadaten von Dokumenten und Bibliotheken; `false` lässt nur den Titel eines Dokuments übrig |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
 Unterstrichen. Wie überall lehnt `values.schema.json` einen unbekannten Namen ab, etwa einen

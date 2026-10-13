@@ -16,6 +16,8 @@ import io.opaa.api.dto.RemapLibraryMetadataFieldValueResponse;
 import io.opaa.api.dto.UpdateLibraryMetadataFieldRequest;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
+import io.opaa.common.ConditionalOnFeature;
+import io.opaa.common.Feature;
 import io.opaa.common.ValidationException;
 import io.opaa.metadata.LibraryMetadataFieldService;
 import io.opaa.metadata.LibraryMetadataSchemaRunResult;
@@ -40,9 +42,11 @@ import org.springframework.web.bind.annotation.RestController;
  * The schema configuration of a library's own metadata fields: fields, their Wirkstellen and their
  * controlled value lists, including the confirmed mapping a removed value needs. Rights (management
  * right for every change, read right for the configured lists), the Aufnahmeregel and the
- * Abbildungsregel live in {@link LibraryMetadataFieldService}.
+ * Abbildungsregel live in {@link LibraryMetadataFieldService}. Absent while the metadata feature is
+ * off (ADR-0044).
  */
 @RestController
+@ConditionalOnFeature(Feature.METADATA)
 @RequestMapping("/api/v1/libraries/{libraryId}/metadata-fields")
 public class LibraryMetadataFieldController {
 

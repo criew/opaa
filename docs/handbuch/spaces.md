@@ -51,8 +51,10 @@ Drei Regeln halten einen Space handlungsfähig:
   natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
 - **Ein archivierter Space nimmt keine neuen Mitglieder auf.**
 
-**Der persönliche Standard-Space** entsteht bei der ersten Anmeldung automatisch. Er ist privat,
-bis die Person selbst jemanden einlädt, und lässt sich nicht übertragen, archivieren oder löschen.
+**Der persönliche Standard-Space** entsteht bei der ersten Anmeldung automatisch. Er ist immer
+privat: Außer der Person selbst wird niemand Mitglied, auch keine Gruppe. Wer mit anderen arbeiten
+will, legt einen Space an. Der Standard-Space lässt sich nicht übertragen, archivieren oder löschen;
+er braucht keine Nachfolge und wird mit dem Konto gelöscht.
 
 ## 3. Arbeitsmittel zuordnen
 
@@ -111,9 +113,9 @@ und 2 Gruppen") und wie sich die Rollen darauf verteilen („Rollen: 2 Administr
 9 Mitglieder"). Eine Gruppe zählt dabei einmal, gleich wie viele Konten sie hat. Die Arbeit eines Kurators
 liegt im Reiter „Inhalte".
 Den Schalter der Chat-Bereinigung im eigenen Standard-Space legt nur dessen Eigentümer um, auch die
-Systemverwaltung nicht. Deshalb lässt sich ein Standard-Space auch nicht übertragen: Der Knopf „Zum
-Eigentümer machen" fehlt dort, und eine Übertragung wird abgewiesen. Den
-Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
+Systemverwaltung nicht. Deshalb lässt sich ein Standard-Space auch nicht übertragen. Sein Reiter
+„Mitglieder" zeigt nur den Hinweis „Ihr Standard-Space ist privat." mit dem Verweis „Space
+anlegen", der Systemverwaltung nur „Der Standard-Space ist privat." Den Gefahrenbereich sieht nur der Eigentümer, und nicht im eigenen Standard-Space: Der lässt sich weder
 archivieren noch löschen.
 
 **Die Anweisung an das Modell setzt und ändert nur, wer im Space die Rolle Administrator hat** —

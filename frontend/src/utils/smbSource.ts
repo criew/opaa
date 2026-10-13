@@ -1,3 +1,4 @@
+import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
 import type { LibraryResponse } from '../types/api'
 
 /**
@@ -101,30 +102,50 @@ export function validateSmbValues(
   values: SmbSourceValues,
   credentialsKept: boolean,
 ): string | null {
+  return messageOf(smbIssue(values, credentialsKept))
+}
+
+/** {@link validateSmbValues} with the field the message is about. */
+export function smbIssue(values: SmbSourceValues, credentialsKept: boolean): SourceIssue | null {
   const url = values.sourceUrl.trim()
-  if (url === '') return 'Bitte die Adresse der Freigabe eingeben'
+  const atUrl = (message: string) => issueAt('sourceUrl', message)
+  if (url === '') return atUrl('Bitte die Adresse der Freigabe eingeben')
   if (smbServerOf(url) === null) {
-    return 'Die Adresse muss mit smb:// beginnen, etwa smb://dateiserver/Freigabe'
+    return atUrl('Die Adresse muss mit smb:// beginnen, etwa smb://dateiserver/Freigabe')
   }
   const path = url.replace(/^(?:smb:\/\/|\\\\)[^/\\]+/i, '').replace(/\\/g, '/')
   const segments = path.split('/').filter(Boolean)
-  if (segments.length === 0) return 'Die Adresse nennt keine Freigabe (smb://server/freigabe)'
+  if (segments.length === 0) {
+    return atUrl('Die Adresse nennt keine Freigabe (smb://server/freigabe)')
+  }
   if (segments.length > 1) {
-    return 'Die Adresse nennt nur Server und Freigabe; Ordner darin werden unten eingetragen'
+    return atUrl('Die Adresse nennt nur Server und Freigabe; Ordner darin werden unten eingetragen')
   }
   if (segments[0].endsWith('$')) {
-    return 'Versteckte Freigaben (Name endet auf $) werden nicht angebunden; bitte eine sichtbare Freigabe angeben'
+    return atUrl(
+      'Versteckte Freigaben (Name endet auf $) werden nicht angebunden; bitte eine sichtbare Freigabe angeben',
+    )
   }
   const account = values.account.trim()
-  if (account.includes(':')) return 'Das Dienstkonto darf keinen Doppelpunkt enthalten'
+  if (account.includes(':')) {
+    return issueAt('account', 'Das Dienstkonto darf keinen Doppelpunkt enthalten')
+  }
   const partial = (account === '') !== (values.password === '')
-  if (partial) return 'Bitte Dienstkonto und Passwort zusammen eingeben'
+  if (partial) {
+    return issueAt(
+      account === '' ? 'account' : 'password',
+      'Bitte Dienstkonto und Passwort zusammen eingeben',
+    )
+  }
   if (account === '' && !credentialsKept) {
-    return 'Bitte Dienstkonto und Passwort eingeben'
+    return issueAt('account', 'Bitte Dienstkonto und Passwort eingeben')
   }
   const folders = smbFoldersOf(values)
-  if (folders.length > MAX_SMB_FOLDERS) return `Höchstens ${MAX_SMB_FOLDERS} Ordner je Bibliothek`
-  if (folders.some((folder) => folder.includes(',')))
-    return 'Ein Ordnerpfad darf kein Komma enthalten'
+  if (folders.length > MAX_SMB_FOLDERS) {
+    return issueAt('folders', `Höchstens ${MAX_SMB_FOLDERS} Ordner je Bibliothek`)
+  }
+  if (folders.some((folder) => folder.includes(','))) {
+    return issueAt('folders', 'Ein Ordnerpfad darf kein Komma enthalten')
+  }
   return null
 }

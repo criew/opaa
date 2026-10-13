@@ -64,7 +64,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * proves the {@code SYSTEM_ADMIN} access bar and that the caller's own organizationId, not a
  * request parameter, drives the query (#1090).
  */
-@WebMvcTest(IndexingAdminController.class)
+@WebMvcTest({IndexingAdminController.class, MetadataMaintenanceAdminController.class})
 @ActiveProfiles("dev")
 @Import(AdminTestSecurityConfig.class)
 class IndexingAdminControllerTest {

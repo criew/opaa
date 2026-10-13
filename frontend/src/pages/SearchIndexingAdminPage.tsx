@@ -62,6 +62,8 @@ import { useAuthStore } from '../stores/authStore'
 import { useSearchAdminStore } from '../stores/searchAdminStore'
 import { contentWidth } from '../theme/tokens'
 import { catalogRoute } from '../components/assets/assetTypeRegistry'
+import { useFeatureEnabled } from '../hooks/useFeatureEnabled'
+import { visibleChunkMetadata } from '../utils/metadataChunkKeys'
 
 function formatMetadataValue(value: unknown): string {
   if (value == null) return '—'
@@ -471,9 +473,8 @@ function ChunkPreviewDialog({ chunkId, onClose }: { chunkId: string | null; onCl
   const chunk = current?.chunk ?? null
   const error = current?.error ?? null
 
-  const metadataEntries = chunk
-    ? Object.entries(chunk.metadata).sort(([a], [b]) => a.localeCompare(b))
-    : []
+  const metadataEnabled = useFeatureEnabled('metadata')
+  const metadataEntries = chunk ? visibleChunkMetadata(chunk.metadata, metadataEnabled) : []
 
   return (
     <Dialog
@@ -620,6 +621,7 @@ function IndexStatusSection() {
   const status = useSearchAdminStore((s) => s.status)
   const statusError = useSearchAdminStore((s) => s.statusError)
   const loadStatus = useSearchAdminStore((s) => s.loadStatus)
+  const metadataEnabled = useFeatureEnabled('metadata')
   const backfillRuns = useSearchAdminStore((s) => s.metadataBackfillRuns)
   const startMetadataBackfill = useSearchAdminStore((s) => s.startMetadataBackfill)
   const pauseMetadataBackfill = useSearchAdminStore((s) => s.pauseMetadataBackfill)
@@ -643,15 +645,17 @@ function IndexStatusSection() {
 
       <Box sx={{ mb: 4 }}>
         <SectionHead>Indexstatus je Bibliothek</SectionHead>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-          „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen, wie
-          gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind — derselbe
-          Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein Wert
-          ermittelbar" gekennzeichnete Felder zählen nicht mit. Beide Läufe dieser Ansicht — das
-          Nachrüsten der Kernfelder und der Kontextpräfix-Nachlauf — lesen die Originaldateien in
-          Chargen erneut; die Suche bleibt währenddessen verfügbar, ein angehaltener Lauf setzt beim
-          nächsten unverarbeiteten Dokument fort.
-        </Typography>
+        {metadataEnabled && (
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            „Kernfelder" zeigt, wie viele Dokumente die aktuelle Extraktion der Kernfelder tragen,
+            wie gut jedes Feld befüllt ist und wie viele Dokumente je Feld noch ohne Wert sind —
+            derselbe Pflege-Anker, den die Einstellungen der Bibliothek zeigen; von Hand als „kein
+            Wert ermittelbar" gekennzeichnete Felder zählen nicht mit. Beide Läufe dieser Ansicht —
+            das Nachrüsten der Kernfelder und der Kontextpräfix-Nachlauf — lesen die Originaldateien
+            in Chargen erneut; die Suche bleibt währenddessen verfügbar, ein angehaltener Lauf setzt
+            beim nächsten unverarbeiteten Dokument fort.
+          </Typography>
+        )}
         <LibraryStatusTable
           libraries={status?.libraries ?? []}
           backfillRuns={backfillRuns}

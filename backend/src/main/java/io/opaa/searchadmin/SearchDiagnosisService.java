@@ -10,6 +10,8 @@ import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
 import io.opaa.chat.SearchedLibraryRef;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.ValidationException;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService;
 import io.opaa.diagnosticaccess.DiagnosticImpersonationGrantService.ImpersonationAvailability;
@@ -25,6 +27,7 @@ import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
+import io.opaa.metadata.MetadataFilter;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
@@ -90,6 +93,7 @@ public class SearchDiagnosisService {
   private final GroupSizeProperties groupSizeProperties;
   private final OwnerOnlyRule ownerOnlyRule;
   private final Clock clock;
+  private final FeatureFlags featureFlags;
 
   public SearchDiagnosisService(
       RetrievalPipeline retrievalPipeline,
@@ -105,7 +109,8 @@ public class SearchDiagnosisService {
       AuditEventRecorder auditEventRecorder,
       GroupSizeProperties groupSizeProperties,
       OwnerOnlyRule ownerOnlyRule,
-      Clock clock) {
+      Clock clock,
+      FeatureFlags featureFlags) {
     this.ownerOnlyRule = ownerOnlyRule;
     this.retrievalPipeline = retrievalPipeline;
     this.retrievalContextFactory = retrievalContextFactory;
@@ -120,6 +125,7 @@ public class SearchDiagnosisService {
     this.auditEventRecorder = auditEventRecorder;
     this.groupSizeProperties = groupSizeProperties;
     this.clock = clock;
+    this.featureFlags = featureFlags;
   }
 
   /** The profiles a diagnosis can be run in: the caller's organization's groups, by name. */
@@ -308,10 +314,13 @@ public class SearchDiagnosisService {
       String profileName,
       boolean personContext) {
     // Empty history, deliberately: the diagnosis never reads a conversation (Leitplanke (a)).
+    // Without the metadata feature a chat query runs unfiltered, and so does its diagnosis.
+    MetadataFilter metadataFilter =
+        featureFlags.isEnabled(Feature.METADATA) ? query.metadataFilter() : MetadataFilter.NONE;
     RetrievalPipelineResult result =
         retrievalPipeline.run(
             retrievalContextFactory.contextFor(
-                query.question(), List.of(), searchScope, query.metadataFilter()));
+                query.question(), List.of(), searchScope, metadataFilter));
 
     Map<String, String> documentKeyByChunkId = documentKeyByChunkId(result);
     List<SearchDiagnosis.SelectedChunk> selection = selection(result, documentKeyByChunkId);

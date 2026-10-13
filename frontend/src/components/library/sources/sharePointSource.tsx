@@ -10,6 +10,7 @@ import {
 } from '../../../utils/sharePointSource'
 import SharePointSourceForm from '../SharePointSourceForm'
 import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
+import { formIssue, formIssueOf } from '../../../utils/sourceIssue'
 import { connectionFields } from './sourceConnection'
 import type { SourceRegistration, StoredLibrarySource } from './types'
 
@@ -43,8 +44,8 @@ export const sharePointSource: SourceRegistration = {
     // ADR-0040, Nachtrag „SharePoint“: only a profile signs in; the library holds no secret
     validate: (values: SharePointSourceValues, context) =>
       context.mode === 'create' && !context.connection
-        ? 'SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.'
-        : validateSharePointValues(values),
+        ? formIssue('SharePoint ist nur über einen Zugang nutzbar. Bitte einen Zugang wählen.')
+        : formIssueOf(validateSharePointValues(values)),
     toPayload: sharePointPayloadOf,
     nameFromSource: (values: SharePointSourceValues) =>
       values.libraries.length === 1 ? sharePointLibraryLabel(values.libraries[0]) : '',

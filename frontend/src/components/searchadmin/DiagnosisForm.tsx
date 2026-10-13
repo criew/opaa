@@ -13,6 +13,7 @@ import type {
   SearchDiagnosisRequest,
   SearchPermissionProfileResponse,
 } from '../../types/api'
+import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 import { getDocumentTypeVocabulary } from '../../services/libraryMetadataApi'
 import { plural, UUID_PATTERN } from './format'
 
@@ -57,8 +58,11 @@ export default function DiagnosisForm({
   const [filterDateFrom, setFilterDateFrom] = useState('')
   const [filterDateTo, setFilterDateTo] = useState('')
   const [vocabulary, setVocabulary] = useState<DocumentTypeVocabularyEntryResponse[]>([])
+  // Without metadata (ADR-0044) a chat query runs unfiltered, and so does the diagnosis.
+  const metadataEnabled = useFeatureEnabled('metadata')
 
   useEffect(() => {
+    if (!metadataEnabled) return
     let cancelled = false
     getDocumentTypeVocabulary()
       .then((response) => {
@@ -70,7 +74,7 @@ export default function DiagnosisForm({
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [metadataEnabled])
 
   const filterDateInvalid =
     filterDateFrom !== '' && filterDateTo !== '' && filterDateTo < filterDateFrom
@@ -179,55 +183,59 @@ export default function DiagnosisForm({
         size="small"
         fullWidth
       />
-      <TextField
-        select
-        label="Metadatenfilter: Dokumentart (optional)"
-        value={filterDocumentTypes}
-        onChange={(e) => {
-          const value = e.target.value as unknown
-          setFilterDocumentTypes(Array.isArray(value) ? (value as string[]) : [])
-        }}
-        helperText="Der Filter wirkt wie im Chat: in beiden Suchpfaden, unter dem Rechtefilter; ein Dokument ohne Angabe bleibt enthalten."
-        size="small"
-        fullWidth
-        slotProps={{
-          select: {
-            multiple: true,
-            renderValue: (selected) =>
-              (selected as string[])
-                .map((code) => vocabulary.find((entry) => entry.code === code)?.label ?? code)
-                .join(', '),
-          },
-        }}
-      >
-        {vocabulary.map((entry) => (
-          <MenuItem key={entry.code} value={entry.code}>
-            {entry.label}
-          </MenuItem>
-        ))}
-      </TextField>
-      <Stack direction="row" spacing={2}>
-        <TextField
-          label="Metadatenfilter: Datum von"
-          type="date"
-          value={filterDateFrom}
-          onChange={(e) => setFilterDateFrom(e.target.value)}
-          size="small"
-          fullWidth
-          slotProps={{ inputLabel: { shrink: true } }}
-        />
-        <TextField
-          label="Metadatenfilter: Datum bis"
-          type="date"
-          value={filterDateTo}
-          onChange={(e) => setFilterDateTo(e.target.value)}
-          error={filterDateInvalid}
-          helperText={filterDateInvalid ? 'Das Fenster endet vor seinem Beginn.' : undefined}
-          size="small"
-          fullWidth
-          slotProps={{ inputLabel: { shrink: true } }}
-        />
-      </Stack>
+      {metadataEnabled && (
+        <>
+          <TextField
+            select
+            label="Metadatenfilter: Dokumentart (optional)"
+            value={filterDocumentTypes}
+            onChange={(e) => {
+              const value = e.target.value as unknown
+              setFilterDocumentTypes(Array.isArray(value) ? (value as string[]) : [])
+            }}
+            helperText="Der Filter wirkt wie im Chat: in beiden Suchpfaden, unter dem Rechtefilter; ein Dokument ohne Angabe bleibt enthalten."
+            size="small"
+            fullWidth
+            slotProps={{
+              select: {
+                multiple: true,
+                renderValue: (selected) =>
+                  (selected as string[])
+                    .map((code) => vocabulary.find((entry) => entry.code === code)?.label ?? code)
+                    .join(', '),
+              },
+            }}
+          >
+            {vocabulary.map((entry) => (
+              <MenuItem key={entry.code} value={entry.code}>
+                {entry.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Stack direction="row" spacing={2}>
+            <TextField
+              label="Metadatenfilter: Datum von"
+              type="date"
+              value={filterDateFrom}
+              onChange={(e) => setFilterDateFrom(e.target.value)}
+              size="small"
+              fullWidth
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+            <TextField
+              label="Metadatenfilter: Datum bis"
+              type="date"
+              value={filterDateTo}
+              onChange={(e) => setFilterDateTo(e.target.value)}
+              error={filterDateInvalid}
+              helperText={filterDateInvalid ? 'Das Fenster endet vor seinem Beginn.' : undefined}
+              size="small"
+              fullWidth
+              slotProps={{ inputLabel: { shrink: true } }}
+            />
+          </Stack>
+        </>
+      )}
       <Box>
         <Button
           variant="contained"

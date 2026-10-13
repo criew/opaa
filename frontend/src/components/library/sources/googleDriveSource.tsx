@@ -5,7 +5,7 @@ import {
   googleDriveScopeLabel,
   googleDriveScopesOf,
   googleDriveSettingsFromLibrary,
-  validateGoogleDriveValues,
+  googleDriveIssue,
   type GoogleDriveSourceValues,
 } from '../../../utils/googleDriveSource'
 import GoogleDriveSourceForm from '../GoogleDriveSourceForm'
@@ -37,9 +37,9 @@ export const googleDriveSource: SourceRegistration = {
       values.keyFile !== '' || values.subject !== '' || values.scopes.length > 0,
     validate: (values: GoogleDriveSourceValues, context) =>
       connectionFields(context).asksSecret
-        ? validateGoogleDriveValues(values, context.credentialsStored)
+        ? googleDriveIssue(values, context.credentialsStored)
         : // without a key of the library's own, no key has to serve the imitated account
-          validateGoogleDriveValues({ ...values, storedSubject: values.subject }, true),
+          googleDriveIssue({ ...values, storedSubject: values.subject }, true),
     toPayload: googleDrivePayloadOf,
     nameFromSource: (values: GoogleDriveSourceValues) =>
       values.scopes.length === 1 ? googleDriveScopeLabel(values.scopes[0]) : '',

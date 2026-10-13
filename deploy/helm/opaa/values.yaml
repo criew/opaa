@@ -123,7 +123,7 @@ features:
   # Prompt libraries; read and reported to the frontend, no effect yet (#2588).
   promptLibraries:
     enabled: true
-  # Metadata of documents and libraries; read and reported, no effect yet (#2589).
+  # Metadata of documents and libraries; false keeps only a document's title.
   metadata:
     enabled: true
 

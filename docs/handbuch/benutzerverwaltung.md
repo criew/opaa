@@ -278,7 +278,8 @@ Gelöscht werden kann ein lokales Konto nur, wenn **nichts mehr darauf verweist*
 Besitz: Neben einer eigenen Bibliothek, einem Space außer dem persönlichen und einem Chat sperren
 auch Rechtevergaben, Space-Zuordnungen, Geltungsbereiche einer anlassbezogenen Klärung, die
 **Verantwortung für eine interne Gruppe** sowie **Nachweiseinträge** über Gruppenmitgliedschaften und
-Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Eine noch getragene
+Rechteänderungen. Sonst lehnt OPAA die Löschung ab und verweist auf die Sperre. Der persönliche
+Space wird mit dem Konto gelöscht; bei einer Sperre bleibt er bestehen, ohne Nachfolge. Eine noch getragene
 Verantwortung wird vorher abgegeben
 ([Berechtigungen](berechtigungen.md), Abschnitt 7).
 

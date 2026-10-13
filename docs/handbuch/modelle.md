@@ -132,11 +132,21 @@ gespeicherten Verlauf.
 Manche Anbieter liefern das Nachdenken eines Modells am Anfang des Antworttexts als Block
 `<think>…</think>` oder `<thought>…</thought>`, etwa Gemma 4 über die openai-kompatible Schnittstelle
 von Gemini. OPAA entfernt einen solchen Block bei jedem Aufruf des Chat-Modells, bevor der Text
-weiterverarbeitet wird — nur ganz am Anfang und nur mit öffnendem Tag. Denktext ohne öffnendes Tag
-(nur `…</think>` vor der Antwort, bei manchen selbst betriebenen Modellen) bleibt stehen. Ist ein
-führender Block nicht geschlossen, gilt die Antwort als leer, und unter ihr erscheint der Hinweis auf
-die fehlende Antwort. Ein Schalter je Modell ist nicht nötig; der Verbindungstest weist darauf hin,
-wenn die Testantwort mit einem Denkblock beginnt.
+weiterverarbeitet wird — nur ganz am Anfang. Ist ein führender Block nicht geschlossen, gilt die
+Antwort als leer, und unter ihr erscheint der Hinweis auf die fehlende Antwort.
+
+Bei manchen selbst betriebenen Modellen, etwa DeepSeek-R1 oder Qwen3-Thinking auf einem Server ohne
+Reasoning-Parser, steht das öffnende `<think>` schon in der Anfrage. Die Antwort beginnt dann direkt
+mit dem Denktext und enthält nur das schließende Tag, auf eigener Zeile vor der Antwort. OPAA entfernt
+auch diesen Denktext, bis zum ersten `</think>` im Text — aber nur, wenn dieses allein auf seiner
+Zeile steht, höchstens drei Leerzeichen eingerückt, und davor weder ein öffnendes Tag noch ein
+offener Codeblock steht. Eine Antwort, die das Tag im Satz erwähnt oder in einem Codeblock zitiert,
+bleibt so unverändert. Bricht ein solches Modell schon beim Nachdenken ab,
+fehlt jedes Tag; der Denktext bleibt dann als Antwort stehen.
+
+Ein Schalter je Modell ist nicht nötig; der Verbindungstest weist darauf hin, wenn die Testantwort
+mit einem Denkblock beginnt. Denktext ohne öffnendes Tag erkennt er nicht, weil die Testantwort
+dafür zu kurz ist.
 
 ## Embedding
 

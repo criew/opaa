@@ -5,7 +5,7 @@ import {
   nextcloudCredentialsOf,
   nextcloudFoldersOf,
   nextcloudSettingsOf,
-  validateNextcloudValues,
+  nextcloudIssue,
   type NextcloudSourceValues,
 } from '../../../utils/nextcloudSource'
 import NextcloudSourceForm from '../NextcloudSourceForm'
@@ -35,7 +35,7 @@ export const nextcloudSource: SourceRegistration = {
       values.appPassword !== '' ||
       values.folders.trim() !== '/',
     validate: (values: NextcloudSourceValues, context) =>
-      validateNextcloudValues(
+      nextcloudIssue(
         values,
         !connectionFields(context).asksSecret ||
           (context.credentialsStored &&
