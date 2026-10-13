@@ -576,6 +576,11 @@ Kurz: Ein Update **gefährdet den Index nicht** und macht **keine Neuindizierung
   Indexierung" weist die Bibliotheken mit „Nachzug ausstehend" aus, und ein
   [Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug) bringt sie auf den neuen Stand.
   Ein solches Update nennen die Notizen des Release.
+- **Ändert ein Update die Vorgaben des Embedding-Modells** (Modell, Dimension, Eingabegrenze), wirken
+  sie nur dort, wo die Umgebung den Wert nicht selbst setzt. Eine solche Installation erkennt den
+  Modellwechsel beim Start und verlangt eine Neueinbettung, keine Neuindizierung
+  ([Modell wechseln](modelle.md#modell-wechseln)). Wer das bisherige Modell behält, setzt Modell,
+  Dimension und Eingabegrenze ausdrücklich ([Welches Embedding-Modell](modelle.md#welches-embedding-modell)).
 
 Eine vollständige Neuindizierung wird erst durch Änderungen nötig, die nichts mit dem Image zu tun
 haben:

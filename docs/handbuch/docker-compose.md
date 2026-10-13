@@ -66,7 +66,7 @@ Wie der erste Systemverwalter hereinkommt, steht unter
 | postgres    | 5432      | 5432            | PostgreSQL 18 mit pgvector                              |
 | keycloak    | 8180      | 8180            | Keycloak (nur `oidc`-/`demo`-Profil)                    |
 | ollama      | —         | 11434           | Ollama-Server (nur `ollama`-Profil; kein Host-Port) |
-| ollama-pull | —         | —               | einmaliger Init-Schritt, zieht `nomic-embed-text`/`phi3:mini` (nur `ollama`-Profil) |
+| ollama-pull | —         | —               | einmaliger Init-Schritt, zieht `bge-m3`/`phi3:mini` (nur `ollama`-Profil) |
 | upload-store | 8095 (API), 8096 (Konsole unter `/rustfs/console/`) | 9000, 9001 | Objektspeicher der Originalablage (nur `upload-s3`-Profil; an `127.0.0.1` gebunden) |
 | upload-store-init | —    | —               | einmaliger Init-Schritt, legt den Bucket der Originalablage an (nur `upload-s3`-Profil) |
 | mailpit | 1025 (SMTP), 8025 (Weboberfläche) | 1025, 8025 | Mailserver, der alles annimmt und nichts zustellt (nur `mail`-Profil) |
@@ -131,14 +131,13 @@ OPAA_SERVER_ADDRESS=0.0.0.0
 OPAA_CORS_ALLOWED_ORIGINS=http://localhost:3000
 OPAA_DB_USERNAME=opaa
 OPAA_DB_PASSWORD=opaa
-OPAA_PGVECTOR_DIMENSIONS=768
 ```
 
-`OPAA_PGVECTOR_DIMENSIONS=768` gehört zwingend dazu, weil das voreingestellte Embedding-Modell
-`nomic-embed-text` mit 768 Dimensionen einbettet, nicht mit der Anwendungsvorgabe 1536; ohne sie
-bricht die erste Einbettung mit einem Dimensionsfehler ab. Für einen anderen Modellanbieter kommen
-`OPAA_OPENAI_BASE_URL` und `OPAA_OPENAI_API_KEY` hinzu, und die Dimension richtet sich nach dessen
-Embedding-Modell ([Modelle](modelle.md)).
+Das voreingestellte Embedding-Modell `bge-m3` bettet mit derselben Dimension ein, die
+`OPAA_PGVECTOR_DIMENSIONS` vorgibt. Für einen anderen Modellanbieter kommen `OPAA_OPENAI_BASE_URL`
+und `OPAA_OPENAI_API_KEY` hinzu, und `OPAA_PGVECTOR_DIMENSIONS` richtet sich nach dessen
+Embedding-Modell ([Modelle](modelle.md#welches-embedding-modell)); passt sie nicht, bricht die erste
+Einbettung mit einem Dimensionsfehler ab.
 
 ## Dokumente
 
@@ -177,14 +176,17 @@ docker compose --profile ollama up --build
   keinen Host-Port; Backend und Init-Schritt erreichen ihn im Compose-Netz unter dem Namen `ollama`,
   auf den die Modelladresse im Profil `docker` bereits zeigt. Der auskommentierte `ports`-Eintrag
   bindet, falls aktiviert, nur an `127.0.0.1`.
-- **`ollama-pull`** zieht einmalig `nomic-embed-text` (Einbettung) und `phi3:mini` (Chat) und beendet
-  sich. Beide sind nötig: `phi3:mini` wird beim ersten Start zum aktiven Chat-Modell
-  ([Modelle](modelle.md#llm-anbieter)), ohne es scheitert die erste Frage. Bei einem erneuten Start
-  lädt der Schritt nichts doppelt herunter.
+- **`ollama-pull`** zieht `bge-m3` (Einbettung) und `phi3:mini` (Chat) und beendet sich. Beide sind
+  nötig: `phi3:mini` wird beim ersten Start zum aktiven Chat-Modell
+  ([Modelle](modelle.md#llm-anbieter)), ohne es scheitert die erste Frage. `bge-m3` legt der Schritt
+  danach unter demselben Namen mit einer Eingabegrenze von 8.192 Tokens neu an, damit jeder Chunk
+  ungekürzt eingebettet wird ([Eingabegrenze](modelle.md#eingabegrenze-des-embedding-modells)). Bei
+  einem erneuten Start lädt der Schritt nichts doppelt herunter und legt das Modell erneut an.
 
-**Platz und Zeit.** Die Modelle laden beim ersten Start rund 2,5 GiB herunter (`phi3:mini` rund
-2,2 GiB, `nomic-embed-text` rund 274 MiB, komprimiert), das Image selbst ist mit rund 3,4 GB (amd64)
-noch größer. Den Fortschritt zeigt `docker compose logs -f ollama-pull`. Der Stapel ist nutzbar,
+**Platz und Zeit.** Die Modelle laden beim ersten Start rund 3,3 GiB herunter (`phi3:mini` rund
+2,2 GiB, `bge-m3` rund 1,1 GiB, komprimiert), das Image selbst ist mit rund 3,4 GB (amd64) noch
+größer. Beim Einbetten braucht `bge-m3` mehrere Gigabyte Arbeitsspeicher
+([Welches Embedding-Modell](modelle.md#welches-embedding-modell)). Den Fortschritt zeigt `docker compose logs -f ollama-pull`. Der Stapel ist nutzbar,
 sobald `ollama` gesund ist; bis beide Modelle vorliegen, können Indexierung und Fragen scheitern.
 
 **Fehlgeschlagener Download.** Scheitert `ollama-pull` (Registry nicht erreichbar, Platte voll),

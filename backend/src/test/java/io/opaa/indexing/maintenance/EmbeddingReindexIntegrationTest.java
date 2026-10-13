@@ -147,7 +147,7 @@ class EmbeddingReindexIntegrationTest {
 
     EmbeddingIndexRecord record = store.load().orElseThrow();
     assertThat(record.run().status()).isEqualTo(RunStatus.COMPLETED);
-    assertThat(record.current().model()).isEqualTo("nomic-embed-text");
+    assertThat(record.current().model()).isEqualTo("bge-m3");
     assertThat(record.current().dimensions()).isEqualTo(1536);
     assertThat(record.target()).isNull();
     assertThat(state.isStale()).isFalse();
@@ -223,7 +223,7 @@ class EmbeddingReindexIntegrationTest {
     rerunService.reembedInPlace(reembedded);
     Document fresh = indexed("satzung-c.md");
 
-    jdbcTemplate.update("UPDATE embedding_index SET model = 'nomic-embed-text'");
+    jdbcTemplate.update("UPDATE embedding_index SET model = 'bge-m3'");
     reconciler.reconcile();
 
     assertThat(state.isStale()).isFalse();

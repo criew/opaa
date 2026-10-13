@@ -41,14 +41,13 @@ class ProviderConfigurationTest {
   @Test
   void chatAndEmbeddingModelsHaveIndependentDefaults() {
     assertThat(environment.getProperty("spring.ai.openai.chat.model")).isEqualTo("phi3:mini");
-    assertThat(environment.getProperty("spring.ai.openai.embedding.model"))
-        .isEqualTo("nomic-embed-text");
+    assertThat(environment.getProperty("spring.ai.openai.embedding.model")).isEqualTo("bge-m3");
   }
 
   /** OPAA_OPENAI_EMBEDDING_TIMEOUT feeds Spring AI's own per-call timeout of the embedding. */
   @Test
-  void theEmbeddingTimeoutHasItsOwnVariableWithSpringAisDefault() {
-    assertThat(environment.getProperty("spring.ai.openai.embedding.timeout")).isEqualTo("60s");
+  void theEmbeddingTimeoutHasItsOwnVariableWithADefaultForBgeM3OnCpu() {
+    assertThat(environment.getProperty("spring.ai.openai.embedding.timeout")).isEqualTo("180s");
   }
 
   @Test

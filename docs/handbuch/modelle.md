@@ -27,7 +27,7 @@ eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschich
 **Voreingestellt sind lokal betriebene Modelle.** Eine Installation, an der niemand etwas
 konfiguriert, ruft kein Modell außerhalb des Hauses auf: `OPAA_OPENAI_BASE_URL` zeigt auf
 `http://localhost:11434/v1` (im Profil `docker` auf `http://ollama:11434/v1`), Chat- und
-Embedding-Modell sind `phi3:mini` und `nomic-embed-text`, und Ollama braucht keinen Zugangsschlüssel.
+Embedding-Modell sind `phi3:mini` und `bge-m3`, und Ollama braucht keinen Zugangsschlüssel.
 Betrieb ohne Netzanbindung ist der vorgesehene Fall; es gibt kein automatisches Ausweichen auf ein
 Modell außerhalb des Hauses. Für einen anderen Anbieter wird die **Zieladresse** überschrieben:
 
@@ -158,13 +158,33 @@ Dimensionen, mit der das Modell einbettet. Die Oberfläche zeigt die Einbettung 
 Eine Auswahlliste gibt es bewusst nicht: Ein Wechsel macht alle vorhandenen Vektoren unvergleichbar,
 und ein versehentlich verstellter Wert legte die Vektorsuche bis zur Neueinbettung still.
 
-Das voreingestellte `nomic-embed-text` bettet mit 768 Dimensionen ein, die Anwendungsvorgabe von
-`OPAA_PGVECTOR_DIMENSIONS` ist 1536 — wer die Voreinstellung nutzt, setzt `768`.
-
 Ein Embedding-Aufruf darf so lange dauern, wie `OPAA_OPENAI_EMBEDDING_TIMEOUT` erlaubt. Ein großes
 Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann bricht der Aufruf ab,
 wird wenige Male wiederholt und scheitert schließlich mit seinem Dokument. Die Neueinbettung bricht
 nach fünf gescheiterten Dokumenten in Folge mit „fehlgeschlagen" ab.
+
+### Welches Embedding-Modell
+
+Das Embedding-Modell entscheidet, ob die Vektorsuche eine Frage und die passende Stelle als ähnlich
+erkennt. Wie gut ihm das gelingt, hängt an der Sprache, in der es trainiert wurde. Für die
+Suchqualität zählt deshalb vor allem, dass das Modell die Sprache der Dokumente beherrscht.
+
+| Modell | Dimensionen | Empfehlung | Ressourcen |
+|---|---|---|---|
+| `bge-m3` (Vorgabe) | 1024 | deutschsprachige Bestände | Download rund 1,2 GB. Geladen rund 1,4 GB Arbeitsspeicher, beim Einbetten mehr, je länger der Chunk ist: rund 3,3 GB bei 2.000 Tokens, rund 9,5 GB bei 8.192 Tokens. Auf einer CPU etwa doppelt so lange Indexierung wie `nomic-embed-text` |
+| `nomic-embed-text` | 768 | kleine Instanzen mit wenig Arbeitsspeicher, nur CPU | Download rund 0,3 GB, beim Einbetten rund 0,3 GB Arbeitsspeicher. Findet in deutschsprachigen Beständen deutlich schlechter |
+
+> **Beispiel.** In einer Messung auf 109 Verwaltungs-PDFs standen mit `bge-m3` 85 % der gesuchten
+> Kernfakten unter den ersten 20 Treffern der Vektorsuche, mit `nomic-embed-text` 37 %.
+
+Wer `nomic-embed-text` wählt, setzt `OPAA_PGVECTOR_DIMENSIONS` auf 768 und
+`OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` auf die 2.048 Tokens, die das Modell aufnimmt. Auf einem
+kleinen Server mit `bge-m3` lässt sich der Spitzenbedarf senken, indem das Modell mit kleinerer
+Eingabegrenze angelegt und `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` passend gesetzt wird. OPAA
+teilt dann längere Chunks ([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
+
+Eine bestehende Installation wechselt das Modell über die Neueinbettung, ohne Neuindizierung und
+ohne Zurücksetzen der Datenbank ([Modell wechseln](#modell-wechseln)).
 
 ### Eingabegrenze des Embedding-Modells
 
@@ -201,8 +221,19 @@ nur die behaltenen Tokens. Die Grenze ist dabei die Stapelgröße des Modells (`
 seine Kontextlänge. Ein unverändertes Modell nimmt deshalb 2.048 Tokens auf, auch wenn es mehr
 kann. `OLLAMA_CONTEXT_LENGTH` hebt die Grenze nicht, und Optionen in der Anfrage wirken auf diesem
 Weg nicht. Mehr nimmt ein Modell nur auf, wenn es mit `PARAMETER num_ctx` und
-`PARAMETER num_batch` in einer Modelfile neu angelegt wird. Der Arbeitsspeicher wächst mit der
-Länge der tatsächlichen Eingabe, nicht mit der eingestellten Grenze.
+`PARAMETER num_batch` in einer Modelfile neu angelegt wird. Der Compose-Stapel legt `bge-m3` so an
+([Docker Compose](docker-compose.md#lokal-betriebenes-ollama-im-compose-stack)); bei einem
+eigenen Ollama-Server dieselben Schritte:
+
+```bash
+ollama pull bge-m3
+printf 'FROM bge-m3\nPARAMETER num_ctx 8192\nPARAMETER num_batch 8192\n' > Modelfile
+ollama create bge-m3 -f Modelfile
+```
+
+Der Name bleibt `bge-m3`. Ein späteres `ollama pull bge-m3` stellt die alten Werte wieder her;
+danach das Anlegen wiederholen. Der Arbeitsspeicher wächst mit der Länge der tatsächlichen Eingabe,
+nicht mit der eingestellten Grenze.
 
 ### Modell wechseln
 
@@ -238,8 +269,8 @@ ihr Dokument erneut indiziert wird. Eine unveränderte Datei überspringt der Ab
 
 **Dauer und Ressourcen.** Die Neueinbettung kostet so viele Embedding-Aufrufe wie eine
 Indexierung des Bestands, aber kein Lesen, Zerlegen oder Texterkennen. Auf einer CPU bestimmt das
-Modell die Dauer: `bge-m3` braucht dort etwa doppelt so lange wie `nomic-embed-text` und belegt beim
-Einbetten rund 3,3 GB Arbeitsspeicher statt rund 0,3 GB. Die Neueinbettung arbeitet ein Dokument
+Modell die Dauer; die Ressourcen der beiden Modelle stehen unter
+[Welches Embedding-Modell](#welches-embedding-modell). Die Neueinbettung arbeitet ein Dokument
 nach dem anderen ab; wie viele Chunks ein Aufruf trägt, begrenzt allein das Token-Budget eines
 Aufrufs. Für ein großes Modell auf einer CPU wirkt deshalb nur eine längere
 `OPAA_OPENAI_EMBEDDING_TIMEOUT`. Für die Indexierung neuer Dokumente mit demselben Modell helfen
