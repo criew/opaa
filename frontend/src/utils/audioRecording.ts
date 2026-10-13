@@ -1,5 +1,5 @@
 /**
- * Microphone recording for dictation (#1926), independent of how the recording is transcribed.
+ * Microphone recording for dictation, independent of how the recording is transcribed.
  * The clip lives only in memory - an array of chunks, then one Blob - and never touches IndexedDB,
  * the Cache API or any other storage. Every way out (stop, cancel, failure) ends the microphone
  * stream at once, so the browser's recording indicator goes out with it.
@@ -137,7 +137,8 @@ export async function startRecording(options: RecordingOptions = {}): Promise<Re
 
 /**
  * Watches the input level and calls `onSilence` once after `silenceMs` without sound. Returns the
- * function that ends the watch; a browser without Web Audio simply has no silence stop.
+ * function that ends the watch; a browser without Web Audio simply has no silence stop. Time only
+ * counts while the audio context runs: a suspended context reads zeros, which is no silence.
  */
 function watchSilence(stream: MediaStream, options: RecordingOptions): () => void {
   const { onSilence, silenceMs } = options
@@ -154,9 +155,14 @@ function watchSilence(stream: MediaStream, options: RecordingOptions): () => voi
   analyser.fftSize = 2048
   context.createMediaStreamSource(stream).connect(analyser)
   const samples = new Float32Array(analyser.fftSize)
+  void context.resume().catch(() => {})
   let lastSound = Date.now()
   let fired = false
   const timer = window.setInterval(() => {
+    if (context.state !== 'running') {
+      lastSound = Date.now()
+      return
+    }
     analyser.getFloatTimeDomainData(samples)
     let sum = 0
     for (const sample of samples) sum += sample * sample

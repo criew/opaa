@@ -121,3 +121,76 @@ describe('audioRecording', () => {
     expect(tracks[0].stop).toHaveBeenCalled()
   })
 })
+
+/** An AudioContext whose input level and run state the test sets. */
+class FakeAudioContext {
+  static last: FakeAudioContext | null = null
+  state: 'suspended' | 'running' | 'closed' = 'suspended'
+  level = 0
+  resumeCalls = 0
+  constructor() {
+    FakeAudioContext.last = this
+  }
+  resume() {
+    this.resumeCalls += 1
+    return Promise.resolve()
+  }
+  close() {
+    this.state = 'closed'
+    return Promise.resolve()
+  }
+  createAnalyser() {
+    return {
+      fftSize: 0,
+      getFloatTimeDomainData: (samples: Float32Array) => samples.fill(this.level),
+    }
+  }
+  createMediaStreamSource() {
+    return { connect: () => {} }
+  }
+}
+
+describe('audioRecording silence stop', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    vi.stubGlobal('MediaRecorder', FakeMediaRecorder)
+    vi.stubGlobal('AudioContext', FakeAudioContext)
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: vi.fn(async () => fakeStream().stream) },
+    })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined })
+  })
+
+  it('stops after the silence that follows speech while the context runs', async () => {
+    const onSilence = vi.fn()
+    const recording = await startRecording({ onSilence, silenceMs: 1_000 })
+    const context = FakeAudioContext.last!
+    expect(context.resumeCalls).toBe(1)
+    context.state = 'running'
+    context.level = 0.5
+
+    vi.advanceTimersByTime(2_000)
+    expect(onSilence).not.toHaveBeenCalled()
+
+    context.level = 0
+    vi.advanceTimersByTime(1_250)
+    expect(onSilence).toHaveBeenCalledTimes(1)
+    recording.cancel()
+  })
+
+  it('counts no silence while the context is suspended', async () => {
+    const onSilence = vi.fn()
+    const recording = await startRecording({ onSilence, silenceMs: 1_000 })
+
+    vi.advanceTimersByTime(5_000)
+
+    expect(onSilence).not.toHaveBeenCalled()
+    recording.cancel()
+  })
+})

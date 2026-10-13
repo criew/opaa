@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AxiosError } from 'axios'
 import { transcribeRecording } from '../services/transcriptionApi'
+import { isErrorResponse } from '../types/api'
 import { startRecording as startMicrophoneRecording } from '../utils/audioRecording'
 import type { Recording, RecordingOptions } from '../utils/audioRecording'
 
@@ -25,6 +26,23 @@ const TRANSFER_FAILED =
 const RECORDING_FAILED =
   'Die Aufnahme wurde unterbrochen. Bitte versuchen Sie es erneut oder tippen Sie Ihre Frage.'
 const NOTHING_RECOGNISED = 'Es wurde kein Text erkannt. Bitte versuchen Sie es erneut.'
+
+const RECORDING_TOO_LARGE = 'Die Aufnahme ist zu groß. Bitte sprechen Sie eine kürzere Frage ein.'
+
+/**
+ * The German message shown for a failed transcription: the backend's own message when its error
+ * envelope arrived, otherwise a fixed text - never a browser, proxy or library message.
+ */
+function transcriptionError(err: unknown): string {
+  if (err instanceof Error && err.message === TRANSFER_FAILED) return TRANSFER_FAILED
+  const cause = err instanceof Error ? err.cause : undefined
+  if (cause instanceof AxiosError) {
+    const data: unknown = cause.response?.data
+    if (isErrorResponse(data)) return data.error
+    if (cause.response?.status === 413) return RECORDING_TOO_LARGE
+  }
+  return TRANSFER_FAILED
+}
 
 function isNetworkError(err: unknown): boolean {
   const cause = err instanceof Error ? err.cause : undefined
@@ -89,7 +107,7 @@ export interface Dictation {
 }
 
 /**
- * Dictation for the chat input (#1926): recording and transport are separate, so a live mode can
+ * Dictation for the chat input: recording and transport are separate, so a live mode can
  * be added as a further transport without touching the recording or the input. The recording is
  * held in memory only and dropped once the transport is done with it; the microphone is released
  * on stop, cancel, failure and unmount.
@@ -139,7 +157,13 @@ export function useDictation({
     const generation = generationRef.current
     changeStatus('processing')
     try {
-      let clip: Blob | null = await recording.stop()
+      let clip: Blob | null
+      try {
+        clip = await recording.stop()
+      } catch {
+        if (generation === generationRef.current) setError(RECORDING_FAILED)
+        return
+      }
       const pending = transport.transcribe(clip)
       clip = null
       const text = (await pending).trim()
@@ -149,7 +173,7 @@ export function useDictation({
       else setError(NOTHING_RECOGNISED)
     } catch (err) {
       if (generation !== generationRef.current) return
-      setError(err instanceof Error && err.message ? err.message : TRANSFER_FAILED)
+      setError(transcriptionError(err))
     } finally {
       if (generation === generationRef.current) changeStatus('idle')
     }

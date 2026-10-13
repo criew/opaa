@@ -30,7 +30,7 @@ function formatDuration(seconds: number): string {
 }
 
 /**
- * The microphone next to the send button (#1926). Shown only where the installation offers
+ * The microphone next to the send button. Shown only where the installation offers
  * dictation and the browser can record - an installation without transcription has no function to
  * explain. Dictating is optional; typing stays equivalent.
  */

@@ -182,22 +182,66 @@ describe('useDictation', () => {
     expect(result.current.status).toBe('idle')
   })
 
-  it('reports a failed transcription and hands over no text', async () => {
+  function httpError(status: number, data: unknown) {
+    const response = { status, data, statusText: '', headers: {}, config: {} } as never
+    const cause = new AxiosError('Request failed', 'ERR_BAD_RESPONSE', undefined, null, response)
+    return new Error(`HTTP ${status}: Request failed with status code ${status}`, { cause })
+  }
+
+  async function errorShownFor(failure: Error) {
     const microphone = fakeMicrophone()
     const onFinalText = vi.fn()
     const { result } = renderHook(() =>
       useDictation({
         onFinalText,
-        transport: transportAnswering(new Error('Die Texterkennung ist fehlgeschlagen.')),
+        transport: transportAnswering(failure),
         startRecording: microphone.startRecording,
       }),
+    )
+    await act(() => result.current.start())
+    await act(() => result.current.stop())
+    expect(onFinalText).not.toHaveBeenCalled()
+    return result.current.error
+  }
+
+  it("shows the backend's own message for a failed transcription", async () => {
+    const failure = httpError(502, { error: 'Die Texterkennung ist fehlgeschlagen.', status: 502 })
+
+    expect(await errorShownFor(failure)).toBe('Die Texterkennung ist fehlgeschlagen.')
+  })
+
+  it('shows a German text, never the proxy or library message, without an error envelope', async () => {
+    expect(await errorShownFor(httpError(504, '<html>Gateway Time-out</html>'))).toBe(
+      'Die Aufnahme konnte nicht übertragen werden. Bitte versuchen Sie es erneut oder tippen Sie Ihre Frage.',
+    )
+    expect(await errorShownFor(httpError(413, '<html>Too Large</html>'))).toBe(
+      'Die Aufnahme ist zu groß. Bitte sprechen Sie eine kürzere Frage ein.',
+    )
+    expect(await errorShownFor(new Error('something internal'))).toMatch(
+      /^Die Aufnahme konnte nicht übertragen werden/,
+    )
+  })
+
+  it('shows a German text when the recorder fails on stop and sends nothing', async () => {
+    const transport = transportAnswering('nie')
+    const startRecording = vi.fn(async () => ({
+      stop: async () => {
+        throw new Error('recording failed')
+      },
+      cancel: () => {},
+    }))
+    const { result } = renderHook(() =>
+      useDictation({ onFinalText: vi.fn(), transport, startRecording }),
     )
 
     await act(() => result.current.start())
     await act(() => result.current.stop())
 
-    expect(result.current.error).toBe('Die Texterkennung ist fehlgeschlagen.')
-    expect(onFinalText).not.toHaveBeenCalled()
+    expect(result.current.error).toBe(
+      'Die Aufnahme wurde unterbrochen. Bitte versuchen Sie es erneut oder tippen Sie Ihre Frage.',
+    )
+    expect(transport.calls).toHaveLength(0)
+    expect(result.current.status).toBe('idle')
   })
 
   it('says so when nothing was recognised', async () => {

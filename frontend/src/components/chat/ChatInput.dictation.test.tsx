@@ -34,7 +34,7 @@ vi.mock('../../utils/audioRecording', () => ({
   }),
 }))
 
-/** #1926: the microphone fills the input and never sends; it exists only where dictation works. */
+/** The microphone fills the input and never sends; it exists only where dictation works. */
 describe('ChatInput dictation', () => {
   beforeEach(() => {
     mocks.available = true
