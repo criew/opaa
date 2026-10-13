@@ -577,8 +577,12 @@ beim Reranking gibt es für diese beiden Rollen keinen Weiterlauf ohne sie.
 Dokument dazu, die Chunks direkt davor und danach (`neighbor-chunks.radius`). Endauswahl und
 Nachbarn zusammen sind der **Antwortkontext**: alles, was das Modell liest. Eine Fundstelle, die
 an einer Chunk-Grenze abreißt, etwa eine Aufzählung oder eine Tabelle, erreicht das Modell so
-vollständig. Geladen werden erst alle direkten Nachbarn in der Rangfolge ihrer Treffer, dann die
-ferneren, bis ein Zeichenbudget erschöpft ist (`neighbor-chunks.max-added-characters`). Sie kommen
+vollständig. Das Zeichenbudget der Nachbarn (`neighbor-chunks.max-added-characters`) wird in zwei
+Runden verteilt, damit auch die hinteren Treffer Zusammenhang bekommen: Zuerst erhält jeder Treffer
+in der Rangfolge einen direkten Nachbarn, den folgenden Chunk oder, wo es keinen gibt oder er nicht
+mehr passt, den vorangehenden. Ein Treffer, an den schon ein anderer Chunk des Antwortkontexts
+grenzt, geht in dieser Runde leer aus. Was danach übrig ist, geht nach Rang: erst die übrigen
+direkten Nachbarn, dann die ferneren, bis das Budget erschöpft ist. Sie kommen
 nur aus Bibliotheken des Suchbereichs. Im Prompt stehen aneinandergrenzende Chunks eines Dokuments als
 zusammenhängender Ausschnitt in ihrer Reihenfolge im Dokument. Die Ausschnitte folgen dem Rang ihres
 besten Treffers. Jeder Nachbar bleibt ein eigener Chunk mit eigenem Kopf. Das Modell kann ihn
