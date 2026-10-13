@@ -426,7 +426,9 @@ Formate mit Struktur. Davon getrennt gelten `chunk-size` und `chunk-overlap` nur
 Auffang-Pipeline und strukturlose Texte, die nach Tokens mit Überlappung zum Vorgänger geschnitten
 werden; eine Änderung des einen Werts wirkt nicht auf den anderen. Eine geänderte Zielgröße gilt
 für Dokumente, die danach indexiert werden; bereits indexierte behalten ihren Zuschnitt, bis sie
-sich ändern. Für den ganzen Bestand ist eine vollständige Neuindizierung nötig
+sich ändern. Ein erneuter Lauf überspringt unveränderte Dateien, und der Nachzug (Abschnitt 7.2)
+erfasst nur gestiegene Pipeline-Versionen, keine geänderte Zielgröße. Für den ganzen Bestand wird
+die Bibliothek neu aufgebaut, wie unter „Falle bei einer Neuindizierung“ beschrieben
 ([Betrieb](betrieb.md#was-ein-update-mit-dem-index-macht)). Seitenzahlen überleben die
 Textextraktion als Marker, die vor dem Embedden entfernt werden.
 

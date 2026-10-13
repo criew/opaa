@@ -583,7 +583,7 @@ class TabularDocumentFormatTest {
   @Test
   void aRowExceedingTheHardCharacterCeilingIsSplitIntoSeveralChunksWithoutLoss()
       throws IOException {
-    // MAX_CHUNK_CHARS alone does not bound a single, giant row - the hard ceiling splits it, so
+    // The target size alone does not bound a single, giant row - the hard ceiling splits it, so
     // the embedding model never receives it whole and its end still reaches the index.
     String hugeValue = "x".repeat(30_000);
     Path file = tempDir.resolve("riesig.csv");

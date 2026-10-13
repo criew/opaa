@@ -574,9 +574,12 @@ gesetzt; deutscher Verwaltungstext liegt eher bei 3 bis 3,5 Zeichen je Token, 4.
 entsprechen also etwa 1.100 bis 1.300 Tokens, 2.000 Zeichen etwa 550 bis 650.
 
 Eine geänderte Zielgröße erhöht keine Pipeline-Version und löst keinen Nachzug aus: Sie gilt für
-Dokumente, die danach indexiert werden. Ein einheitlicher Bestand braucht eine vollständige
-Neuindizierung. Ein Default-Wechsel, der den Bestand betreffen soll, hebt deshalb die Versionen der
-betroffenen Pipelines an.
+Dokumente, die danach indexiert werden. Ein erneuter Lauf überspringt unveränderte Dateien per
+Prüfsumme, und `PipelineReindexService` wählt nur nach Pipeline-Version aus. Ein einheitlicher
+Bestand braucht deshalb heute einen Neuaufbau der Bibliothek (Handbuch, Betrieb, „Falle bei einer
+Neuindizierung“). Ein Default-Wechsel, der den Bestand betreffen soll, hebt die Versionen der
+betroffenen Pipelines an; dann holt der Nachzug ihn ein. Die Zielgröße selbst in die Auswahl des
+Nachzugs einzubeziehen ist ein eigener Schritt.
 
 Das Messverfahren — Korpus je Dokumentklasse, Kennzahlen, Baseline-Vergleich — steht in
 [Retrieval-Benchmark](./retrieval-benchmark.md); der
