@@ -8,6 +8,18 @@ export type SignInProvider = components['schemas']['OidcSignInProvider']
 
 export type LocalAccountsConfig = components['schemas']['LocalAccountsConfig']
 
+/** The installation-wide feature flags (ADR-0044), one boolean per flag. */
+export type FeaturesConfig = components['schemas']['FeaturesConfig']
+
+/** The name of one installation-wide feature flag, e.g. `metadata`. */
+export type FeatureName = keyof FeaturesConfig
+
+/**
+ * The feature flags as the store keeps them: a flag that is absent counts as on, so an older
+ * backend or a flag newer than the backend never switches a feature off by accident.
+ */
+export type FeatureFlags = Partial<FeaturesConfig>
+
 export type LocalTokenResponse = components['schemas']['LocalTokenResponse']
 
 export type PasswordChangeReason = components['schemas']['PasswordChangeReason']
@@ -38,6 +50,8 @@ export interface AuthConfig {
   providers: SignInProvider[]
   /** The LOCAL provider row, which never appears among {@link providers} (ADR-0033). */
   localAccounts?: LocalAccountsConfig
+  /** The installation-wide feature flags (ADR-0044); absent from an older backend's response. */
+  features?: FeatureFlags
 }
 
 /**
@@ -46,8 +60,9 @@ export interface AuthConfig {
  * caller of `getAuthConfig` reads through this type instead, so the absent-block case cannot be
  * read from a store state that changed since - only from the configuration a call just loaded.
  */
-export interface ResolvedAuthConfig extends Omit<AuthConfig, 'localAccounts'> {
+export interface ResolvedAuthConfig extends Omit<AuthConfig, 'localAccounts' | 'features'> {
   localAccounts: LocalAccountsConfig
+  features: FeatureFlags
 }
 
 export type SystemRole = components['schemas']['SystemRole']

@@ -1,8 +1,7 @@
 # Modul foundation
 
 Pakete (`io.opaa.*`): common, observability, organization, outbound, security, ratelimit,
-sourceaccess, s3, msgraph.
-Ergänzt `backend/AGENTS.md`.
+sourceaccess, s3, msgraph. Ergänzt `backend/AGENTS.md`.
 
 ## Zweck und Grenze
 
@@ -36,13 +35,14 @@ foundation hängt von keinem anderen Modul ab.
   Schlüsselraum; jenseits des Deckels öffnet er. Ein Wildcard-Bereich in
   `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` wird in jedem Profil abgewiesen.
 - **`TargetAddressValidator` kann DNS-Rebinding nicht ausschließen** — eine akzeptierte Grenze.
+- **Feature-Flags (ADR-0044) sind ohne Angabe an;** `@ConditionalOnFeature` nur an Blatt-Beans.
 - **`OutboundProxySelector` ist der Proxy-Standard der JVM:** nur `http`/`https` über den Proxy,
   `socket://` (SMB, SMTP, JDBC) und Loopback nie; das AWS SDK bekommt ihn über `proxyFor`.
 
 ## Verweise
 
 - ADRs (`docs/decisions/`): 0018 (Entscheidung 4), 0021, 0027 (Entscheidung 8, 9), 0030
-  (Entscheidung 8), 0033 (Entscheidung 6, 9)
+  (Entscheidung 8), 0033 (Entscheidung 6, 9), 0044
 - Handbuch: `docs/handbuch/betrieb.md`, „Härtung für erreichbare Deployments"; `docs/handbuch/konfiguration.md`
 - Strukturtests: `SourceAccessDependencyStructureTest`, `TrustedProxyStartupGuardTest`,
   `S3RequestGuardTest`
