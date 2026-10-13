@@ -215,8 +215,9 @@ ingress:
 - `publicBaseUrl` ist die Adresse, unter der Personen OPAA aufrufen: mit Schema, ohne Pfad und ohne
   Schrägstrich am Ende. OPAA läuft immer an der Wurzel seines Hostnamens; ein Unterpfad ist mit dem
   Chart nicht möglich.
-- `embedding.dimensions` muss zum Einbettungsmodell passen und lässt sich später nur mit einer
-  Neuindizierung ändern.
+- `embedding.dimensions` muss zum Einbettungsmodell passen. Ein späterer Wechsel von Modell oder
+  Dimension verlangt eine Neueinbettung aus der Administration, keine Neuindizierung
+  ([Modell wechseln](modelle.md#modell-wechseln)).
 - `bootstrap.*` sind **Startwerte**. Sie wirken nur beim allerersten Start (siehe
   [Was der Chart setzt und was die Oberfläche pflegt](#was-der-chart-setzt-und-was-die-oberfläche-pflegt)).
 - **Modelle vorher prüfen.** Das Modell aus `bootstrap.chatModel.model` und das aus `embedding.model`
@@ -513,6 +514,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 | `embedding.baseUrl` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_BASE_URL` | OpenAI-kompatibler Einbettungs-Endpunkt; der Schlüssel kommt aus dem Secret |
 | `embedding.model` | leer, Pflicht | `OPAA_OPENAI_EMBEDDING_MODEL` | Einbettungsmodell |
 | `embedding.dimensions` | leer, Pflicht | `OPAA_PGVECTOR_DIMENSIONS` | Vektorbreite des Modells |
+| `embedding.timeout` | leer (Vorgabe der Anwendung) | `OPAA_OPENAI_EMBEDDING_TIMEOUT` | Höchstdauer eines Embedding-Aufrufs; ein großes Modell auf einer CPU braucht mehr ([Modell wechseln](modelle.md#modell-wechseln)) |
 | `rerank.enabled` | `false` | `OPAA_RERANK_ENABLED` | schaltet Reranking ein; verlangt dann `baseUrl` und `model` |
 | `rerank.baseUrl`, `rerank.model` | leer | `OPAA_RERANK_BASE_URL`, `OPAA_RERANK_MODEL` | Rerank-Endpunkt ohne den Pfad `/rerank`, Modell |
 | `rerank.timeout` | leer (Vorgabe der Anwendung) | `OPAA_RERANK_TIMEOUT` | Zeitbudget eines Rerank-Aufrufs, etwa `120s`; wer es anhebt, hebt `frontend.backendReadTimeout` mit an |
@@ -802,9 +804,9 @@ Weiteres zur Anbindung, zur Anbieterverwaltung und zum Verzeichnisabgleich steht
 
 **Eine geänderte Werte-Datei ändert an einem Startwert nichts.** Nach dem ersten Start führt die
 Datenbank; ein GitOps-Werkzeug kann Anbieter, Modelle und Mailserver nicht nachführen. Der
-Einbettungs-Endpunkt ist dagegen ein Bereitstellungswert: Ein Wechsel des Modells oder von
-`embedding.dimensions` verlangt eine Neuindizierung (siehe
-[Was ein Update mit dem Index macht](betrieb.md#was-ein-update-mit-dem-index-macht)).
+Einbettungs-Endpunkt ist dagegen ein Bereitstellungswert: Nach einem Wechsel des Modells oder von
+`embedding.dimensions` bettet die Systemverwaltung den Bestand neu ein (siehe
+[Modell wechseln](modelle.md#modell-wechseln)).
 
 **Notfallzugang.** Kommt niemand mehr herein, stellt `OPAA_LOCAL_ADMIN_RESET=force` beim nächsten
 Start einen anmeldefähigen lokalen Systemverwalter her (siehe
