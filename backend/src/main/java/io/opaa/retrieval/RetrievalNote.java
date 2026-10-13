@@ -57,6 +57,13 @@ public enum RetrievalNote {
       "mmr-lambda %s (diversity term active, cosine similarity of real chunk embeddings)"),
 
   RANK_FUSION_LISTS("reciprocal rank fusion over %d list(s)"),
+  SCORE_FUSION_LISTS(
+      "score fusion over %d list(s): vector weight %s on the cosine similarity rescaled from the"
+          + " similarity threshold %s to 1, the rest on ts_rank relative to the best of its list"),
+  FUSION_SUB_QUERY_QUOTA(
+      "quota per sub-query: each of %d sub-queries fused on its own, selection filled"
+          + " round-robin"),
+  FUSION_SUB_QUERIES_POOLED("lists of %d sub-queries fused into one pool"),
   BUDGET_WIDENED_TO_RERANK_WINDOW("budget widened to the rerank candidate window %d"),
   OVERALL_BUDGET_TOP_K("overall budget top-k %d"),
   DEDUPLICATED_BY_CHUNK_ID(

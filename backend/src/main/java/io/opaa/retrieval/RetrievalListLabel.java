@@ -12,9 +12,13 @@ import java.util.Locale;
 public enum RetrievalListLabel {
   VECTOR_SEARCH("vector search · sub-query %d"),
   FULL_TEXT_SEARCH("full-text search · sub-query %d"),
-  FUSED("fused (RRF)");
+  FUSED("fused"),
+  FUSED_SUB_QUERY("fused · sub-query %d");
 
-  /** The label of the single list every stage from {@code RANK_FUSION} on works with. */
+  /**
+   * The label of the single list every stage from {@code RANK_FUSION} on works with; a fusion
+   * verdict with the sub-query quota carries {@link #FUSED_SUB_QUERY} instead.
+   */
   public static final String FUSED_LIST_LABEL = FUSED.format();
 
   private final String template;

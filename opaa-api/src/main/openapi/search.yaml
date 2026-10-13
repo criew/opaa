@@ -2093,6 +2093,29 @@ components:
           description: >
             The stage-internal number the decision was made on. Deliberately not comparable across
             stages, nor across search methods within one.
+        contributions:
+          type: array
+          description: >
+            For a fusion verdict, what each candidate list the chunk appeared in added to its fused
+            score - which sub-query and which search path it owes its place to. Empty for every
+            other stage.
+          items:
+            $ref: "#/components/schemas/RetrievalFusionContributionResponse"
+
+    RetrievalFusionContributionResponse:
+      type: object
+      required: [listLabel, rank, value]
+      properties:
+        listLabel:
+          type: string
+          description: The contributing candidate list.
+        rank:
+          type: integer
+          description: The chunk's 1-based rank in that list.
+        value:
+          type: number
+          format: double
+          description: The share of the fused score from that list, in the fusion method's unit.
 
     RetrievalStageResponse:
       type: object

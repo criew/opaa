@@ -35,6 +35,16 @@ final class VariantQueryProperties {
             ? overrides.rerankCandidateCount()
             : production.rerankCandidateCount(),
         production.conversationWindowMessages(),
-        production.searchWindowTurns());
+        production.searchWindowTurns(),
+        new QueryProperties.Fusion(
+            overrides.fusionMethod() != null
+                ? overrides.fusionMethod()
+                : production.fusion().method(),
+            overrides.fusionSubQueryQuota() != null
+                ? overrides.fusionSubQueryQuota()
+                : production.fusion().subQueryQuota(),
+            overrides.fusionVectorWeight() != null
+                ? overrides.fusionVectorWeight()
+                : production.fusion().vectorWeight()));
   }
 }

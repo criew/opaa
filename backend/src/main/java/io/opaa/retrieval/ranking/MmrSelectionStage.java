@@ -59,7 +59,7 @@ public class MmrSelectionStage implements RetrievalStage {
       List<Document> selected =
           MmrSelector.select(
               list.documents(), context.candidateBudget(), properties.mmrLambda(), embeddings);
-      narrowed.add(new CandidateList(list.label(), selected));
+      narrowed.add(list.withDocuments(selected));
 
       Map<String, Integer> rankInSelection = new HashMap<>();
       for (int i = 0; i < selected.size(); i++) {

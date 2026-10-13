@@ -2,6 +2,7 @@ package io.opaa.retrieval;
 
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
@@ -56,6 +57,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     that window (docs/features/conversation-memory.md, "Bauteil 1"). Default 2; {@code 0} means
  *     "question only". Never more than {@code conversationWindowMessages / 2}: the search must
  *     never see more of the conversation than the answer does.
+ * @param fusion how {@link RetrievalStageName#RANK_FUSION} fuses the candidate lists, see {@link
+ *     Fusion}.
  */
 @ConfigurationProperties(prefix = "opaa.query")
 public record QueryProperties(
@@ -69,11 +72,16 @@ public record QueryProperties(
     @DefaultValue("true") boolean fullTextSearchEnabled,
     @DefaultValue("50") int rerankCandidateCount,
     @DefaultValue("20") int conversationWindowMessages,
-    @DefaultValue("2") int searchWindowTurns) {
+    @DefaultValue("2") int searchWindowTurns,
+    @DefaultValue Fusion fusion) {
 
+  @ConstructorBinding
   public QueryProperties {
     if (topK <= 0) {
       topK = 20;
+    }
+    if (fusion == null) {
+      fusion = Fusion.DEFAULT;
     }
     if (topK > 100) {
       throw new IllegalArgumentException("topK must be at most 100, got " + topK);
@@ -125,6 +133,83 @@ public record QueryProperties(
               + conversationWindowMessages / 2
               + "), got "
               + searchWindowTurns);
+    }
+  }
+
+  /** The parameter set with the shipped {@link Fusion}. */
+  public QueryProperties(
+      int topK,
+      int fetchK,
+      double mmrLambda,
+      double similarityThreshold,
+      boolean queryDecompositionEnabled,
+      int maxSubQueries,
+      int maxChunksPerDocument,
+      boolean fullTextSearchEnabled,
+      int rerankCandidateCount,
+      int conversationWindowMessages,
+      int searchWindowTurns) {
+    this(
+        topK,
+        fetchK,
+        mmrLambda,
+        similarityThreshold,
+        queryDecompositionEnabled,
+        maxSubQueries,
+        maxChunksPerDocument,
+        fullTextSearchEnabled,
+        rerankCandidateCount,
+        conversationWindowMessages,
+        searchWindowTurns,
+        Fusion.DEFAULT);
+  }
+
+  /** The same parameter set with another {@link Fusion}. */
+  public QueryProperties withFusion(Fusion otherFusion) {
+    return new QueryProperties(
+        topK,
+        fetchK,
+        mmrLambda,
+        similarityThreshold,
+        queryDecompositionEnabled,
+        maxSubQueries,
+        maxChunksPerDocument,
+        fullTextSearchEnabled,
+        rerankCandidateCount,
+        conversationWindowMessages,
+        searchWindowTurns,
+        otherFusion);
+  }
+
+  /**
+   * How the fusion turns the candidate lists into the selection ({@code opaa.query.fusion.*},
+   * docs/features/retrieval-algorithm.md, step 5).
+   *
+   * @param method how the lists of one sub-query are scored. Default {@link FusionMethod#RRF}:
+   *     tuning-free, while the weight {@link FusionMethod#SCORE} needs has not been measured.
+   * @param subQueryQuota whether each sub-query is fused on its own and the selection is filled
+   *     round-robin across them, so a candidate leading its own sub-query is not displaced by
+   *     candidates that several near-identical sub-queries share. Default {@code true}; with one
+   *     search query it is the identity.
+   * @param vectorWeight the vector path's share in {@link FusionMethod#SCORE}, between 0 and 1; the
+   *     lexical path gets the remainder. Default 0.7. Ignored by {@link FusionMethod#RRF}.
+   */
+  public record Fusion(
+      @DefaultValue("RRF") FusionMethod method,
+      @DefaultValue("true") boolean subQueryQuota,
+      @DefaultValue("0.7") double vectorWeight) {
+
+    /** The shipped fusion. */
+    public static final Fusion DEFAULT = new Fusion(FusionMethod.RRF, true, 0.7);
+
+    public Fusion {
+      if (method == null) {
+        method = FusionMethod.RRF;
+      }
+      if (vectorWeight < 0.0 || vectorWeight > 1.0) {
+        throw new IllegalArgumentException(
+            "fusion.vectorWeight must be between 0.0 and 1.0, got " + vectorWeight);
+      }
     }
   }
 }

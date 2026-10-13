@@ -20,8 +20,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.document.Document;
 
 /**
- * The budget of the fusion stage (docs/handbuch/suche.md, Stufe 7): {@link ReciprocalRankFusion}
- * ranks without a cap, the stage applies it and says of every candidate beyond it why it went.
+ * The budget of the fusion stage (docs/handbuch/suche.md, Stufe 7): {@link CandidateFusion} ranks
+ * without a cap, the stage applies it and says of every candidate beyond it why it went.
  */
 class RankFusionStageTest {
 

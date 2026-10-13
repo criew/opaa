@@ -46,6 +46,7 @@ import { isUuid, plural } from '../components/searchadmin/format'
 import type {
   ChunkInspectionResponse,
   RetrievalCandidateOutcome,
+  RetrievalFusionContributionResponse,
   RetrievalStage,
   RetrievalStageResponse,
   RetrievalStageStatus,
@@ -105,7 +106,7 @@ const STAGE_LABELS: Record<RetrievalStage, string> = {
   VECTOR_SEARCH: 'Vektorsuche',
   FULL_TEXT_SEARCH: 'Volltextsuche',
   MMR_SELECTION: 'Auswahl je Liste',
-  RANK_FUSION: 'Fusion (RRF)',
+  RANK_FUSION: 'Fusion',
   RERANK: 'Neubewertung (Reranking)',
   DOCUMENT_COMPLETION: 'Dokument-Vervollständigung',
 }
@@ -268,6 +269,28 @@ function ShowChunkButton({
   )
 }
 
+/** What each list added to a fused candidate's score: list, rank and share of the total. */
+function ContributionList({
+  contributions,
+}: {
+  contributions: RetrievalFusionContributionResponse[]
+}) {
+  if (contributions.length === 0) {
+    return <>—</>
+  }
+  const total = contributions.reduce((sum, contribution) => sum + contribution.value, 0)
+  return (
+    <Box component="ul" sx={{ m: 0, pl: 2 }}>
+      {contributions.map((contribution) => (
+        <li key={contribution.listLabel}>
+          {translateListLabel(contribution.listLabel)}: Rang {contribution.rank}
+          {total > 0 ? `, ${Math.round((100 * contribution.value) / total)} %` : ''}
+        </li>
+      ))}
+    </Box>
+  )
+}
+
 function StagePanel({
   stage,
   navigation,
@@ -275,6 +298,9 @@ function StagePanel({
   stage: RetrievalStageResponse
   navigation: ChunkNavigation
 }) {
+  const showContributions = stage.verdicts.some(
+    (verdict) => (verdict.contributions?.length ?? 0) > 0,
+  )
   return (
     <Accordion slotProps={{ heading: { component: 'h3' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -318,6 +344,7 @@ function StagePanel({
                   <TableCell>Liste</TableCell>
                   <TableCell align="right">Rang</TableCell>
                   <TableCell align="right">Wert</TableCell>
+                  {showContributions && <TableCell>Beiträge</TableCell>}
                   <TableCell align="center">Chunk</TableCell>
                 </TableRow>
               </TableHead>
@@ -337,6 +364,11 @@ function StagePanel({
                     <TableCell align="right">
                       {verdict.value == null ? '—' : verdict.value.toFixed(4)}
                     </TableCell>
+                    {showContributions && (
+                      <TableCell>
+                        <ContributionList contributions={verdict.contributions ?? []} />
+                      </TableCell>
+                    )}
                     <TableCell align="center">
                       <ShowChunkButton
                         chunkId={verdict.chunkId}

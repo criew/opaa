@@ -9,6 +9,7 @@ import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalStage;
 import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.RetrievalState;
+import io.opaa.retrieval.SearchPath;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.ranking.RankFusionStage;
@@ -84,7 +85,7 @@ public class FullTextSearchStage implements RetrievalStage {
               state.metadataFilter(),
               state.metadataFilterVocabularyCodes(),
               context.queryProperties().fetchK());
-      lists.add(new CandidateList(label, candidates));
+      lists.add(new CandidateList(label, candidates, SearchPath.FULL_TEXT, i + 1));
       verdicts.addAll(SearchStageSupport.retrievalVerdicts(label, candidates));
     }
 

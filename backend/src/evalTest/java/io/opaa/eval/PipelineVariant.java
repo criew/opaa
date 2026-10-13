@@ -1,5 +1,7 @@
 package io.opaa.eval;
 
+import io.opaa.retrieval.FusionMethod;
+
 /**
  * A named, versioned pipeline-path configuration used as a Variantenvergleich subject (issue #1041,
  * docs/features/retrieval-benchmark.md §2, "Anforderungen an die Umsetzung"). Data, not code: a new
@@ -51,6 +53,9 @@ public record PipelineVariant(
    * (docs/features/hybrid-retrieval.md, Arbeitspaket 4). {@code 0} is the reranking-off variant.
    * Whether the rerank model role is reachable at all is not an override but a prerequisite - see
    * {@link VariantPrerequisites}.
+   *
+   * <p>{@code fusionMethod}, {@code fusionSubQueryQuota} and {@code fusionVectorWeight} override
+   * the fields of {@link io.opaa.retrieval.QueryProperties.Fusion} one by one.
    */
   public record QueryOverrides(
       Integer fetchK,
@@ -60,10 +65,37 @@ public record PipelineVariant(
       Integer maxSubQueries,
       Integer maxChunksPerDocument,
       Boolean fullTextSearchEnabled,
-      Integer rerankCandidateCount) {
+      Integer rerankCandidateCount,
+      FusionMethod fusionMethod,
+      Boolean fusionSubQueryQuota,
+      Double fusionVectorWeight) {
 
     /** The reference variant's overrides: every field unset, i.e. the production configuration. */
     public static final QueryOverrides NONE =
         new QueryOverrides(null, null, null, null, null, null, null, null);
+
+    /** Overrides that leave the fusion at its production value. */
+    public QueryOverrides(
+        Integer fetchK,
+        Double mmrLambda,
+        Double similarityThreshold,
+        Boolean queryDecompositionEnabled,
+        Integer maxSubQueries,
+        Integer maxChunksPerDocument,
+        Boolean fullTextSearchEnabled,
+        Integer rerankCandidateCount) {
+      this(
+          fetchK,
+          mmrLambda,
+          similarityThreshold,
+          queryDecompositionEnabled,
+          maxSubQueries,
+          maxChunksPerDocument,
+          fullTextSearchEnabled,
+          rerankCandidateCount,
+          null,
+          null,
+          null);
+    }
   }
 }

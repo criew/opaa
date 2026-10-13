@@ -443,17 +443,29 @@ liegen; wer ihn setzt, sollte das messen.
 
 ### Stufe 7: Fusion
 
-Alle Listen werden zu einer zusammengeführt, und zwar **nach Rang, nie nach Wert**: Eine
-Kosinus-Ähnlichkeit aus der Vektorsuche und ein `ts_rank` aus der Volltextsuche sind nicht
-vergleichbar, und selbst zwei Vektorlisten verschiedener Teilfragen nicht. Das Verfahren heißt
-Reciprocal Rank Fusion: Jeder Chunk bekommt je Liste, in der er vorkommt, einen Beitrag von
-`1 / (60 + Rang)`; die Beiträge werden addiert. Ein Chunk, den Vektor- und Volltextsuche beide
-gefunden haben, ist damit ein Kandidat mit zwei Beiträgen, kein doppelter, und setzt sich
-gegenüber einem Chunk durch, der nur in einer Liste weit vorn stand. Die fusionierte Liste wird auf
-das Kandidatenbudget gekürzt: `top-k`, oder das Reranking-Fenster, solange Reranking läuft.
+Alle Listen werden zu einer zusammengeführt, im Auslieferungsstand **nach Rang, nicht nach Wert**:
+Eine Kosinus-Ähnlichkeit aus der Vektorsuche und ein `ts_rank` aus der Volltextsuche sind nicht
+vergleichbar. Das Verfahren heißt Reciprocal Rank Fusion: Jeder Chunk bekommt je Liste, in der er
+vorkommt, einen Beitrag von `1 / (60 + Rang)`; die Beiträge werden addiert. Ein Chunk, den Vektor-
+und Volltextsuche beide gefunden haben, ist damit ein Kandidat mit zwei Beiträgen, kein doppelter,
+und setzt sich gegenüber einem Chunk durch, der nur in einer Liste weit vorn stand.
 
-Das ist der Grund, warum die Pipeline keine Gewichtung „Vektor gegen Volltext" kennt: Beide Pfade
-sind gleichberechtigte Listen derselben Fusion. Ein Dokument, das nur ein Pfad findet, kann in der
+Hat die Frage mehrere Teilfragen, bekommt **jede Teilfrage ihren Anteil**: Sie wird für sich
+fusioniert, und die Auswahl wird reihum gefüllt, zuerst der beste Treffer jeder Teilfrage, dann der
+zweitbeste und so weiter. Ohne diese Quote sammelten Übersichtsdokumente, die jede der oft ähnlich
+formulierten Teilfragen trifft, Beiträge aus allen Listen und verdrängten den Treffer, der nur zu
+einem Aspekt passt, aber dort ganz vorn steht. Die fusionierte Liste wird auf das Kandidatenbudget
+gekürzt: `top-k`, oder das Reranking-Fenster, solange Reranking läuft.
+
+Als Option lässt sich statt nach Rang **nach Wert** fusionieren (`fusion.method`): Die
+Kosinus-Ähnlichkeit, von der Ähnlichkeitsschwelle bis 1 skaliert, geht mit dem Gewicht
+`fusion.vector-weight` ein, der `ts_rank` relativ zum besten Treffer seiner Liste mit dem Rest. Ein
+sehr gut passender Treffer zählt dann mehr als ein mittelmäßiger auf demselben Rang. Das Gewicht ist
+nicht am eigenen Bestand gemessen; wer die Option nutzt, sollte das tun. Das Protokoll der Stufe
+nennt je Kandidat die Listen, in denen er vorkam, mit Rang und Anteil am Wert.
+
+Im Auslieferungsstand kennt die Pipeline deshalb keine Gewichtung „Vektor gegen Volltext": Beide
+Pfade sind gleichberechtigte Listen derselben Fusion. Ein Dokument, das nur ein Pfad findet, kann in der
 Endauswahl ganz vorn stehen.
 
 ### Stufe 8: Reranking
@@ -908,7 +920,7 @@ Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische 
 | 4 Vektorsuche | Vektorsuche | `VECTOR_SEARCH` |
 | 5 Volltextsuche | Volltextsuche | `FULL_TEXT_SEARCH` |
 | 6 Auswahl je Liste | Auswahl je Liste | `MMR_SELECTION` |
-| 7 Fusion | Fusion (RRF) | `RANK_FUSION` |
+| 7 Fusion | Fusion | `RANK_FUSION` |
 | 8 Reranking | Neubewertung (Reranking) | `RERANK` |
 | 9 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
 
@@ -1065,6 +1077,9 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `vector-index.max-scan-tuples` | 20000 | Indexeinträge, die eine Vektorsuche höchstens durchläuft, um `fetch-k` Chunks innerhalb ihres Filters zu finden; Laufzeit kostet ein höherer Wert nur bei Suchen, die ihn brauchen |
 | `query-decomposition-enabled` / `max-sub-queries` | an / 3 | Teilfragen-Zerlegung und ihre Obergrenze (1 bis 10) |
 | `full-text-search-enabled` | an | Volltextpfad; `false` lässt die Suche rein vektoriell laufen |
+| `fusion.method` | `rrf` | Fusionsverfahren: `rrf` nach Rang, `score` nach normierten Werten |
+| `fusion.sub-query-quota` | an | Quote je Teilfrage: jede Teilfrage für sich fusioniert, Auswahl reihum; aus fusioniert alle Listen in einem Pool |
+| `fusion.vector-weight` | 0,7 | Anteil der Vektorsuche bei `fusion.method` = `score` (0 bis 1), der Volltext erhält den Rest |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `max-chunks-per-document` | 1 | Dokument-Vervollständigung (1 bis 10); 1 schaltet sie ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |

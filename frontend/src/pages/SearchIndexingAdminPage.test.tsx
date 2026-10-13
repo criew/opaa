@@ -673,15 +673,22 @@ describe('SearchIndexingAdminPage', () => {
       expect(screen.getByRole('heading', { name: /Suchbereich/ })).toBeInTheDocument()
     })
     expect(screen.getByRole('heading', { name: /Vektorsuche/ })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Fusion \(RRF\)/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /^Fusion/ })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /Fusion \(RRF\)/ }))
+    await user.click(screen.getByRole('button', { name: /^Fusion/ }))
     const verdicts = await screen.findByRole('table', {
-      name: 'Kandidaten der Stufe Fusion (RRF)',
+      name: 'Kandidaten der Stufe Fusion',
     })
     expect(within(verdicts).getByText('Verdrängt')).toBeInTheDocument()
     expect(
       within(verdicts).getByText('Nach der Fusion unterhalb der Auswahlgrenze'),
+    ).toBeInTheDocument()
+    // Every list a fused candidate appeared in, with its rank and its share of the score.
+    expect(
+      within(verdicts).getByText('Volltextsuche · Teilfrage 1: Rang 1, 50 %'),
+    ).toBeInTheDocument()
+    expect(
+      within(verdicts).getByText('Vektorsuche · Teilfrage 1: Rang 2, 100 %'),
     ).toBeInTheDocument()
   })
 
@@ -726,7 +733,7 @@ describe('SearchIndexingAdminPage', () => {
     await runDiagnosis(user)
 
     await waitFor(() => {
-      expect(screen.getByText(/in der Stufe „Fusion \(RRF\)“ verdrängt/)).toBeInTheDocument()
+      expect(screen.getByText(/in der Stufe „Fusion“ verdrängt/)).toBeInTheDocument()
     })
     expect(screen.getByText(/Problem der Rangfolge, nicht der Indexierung/)).toBeInTheDocument()
   })
