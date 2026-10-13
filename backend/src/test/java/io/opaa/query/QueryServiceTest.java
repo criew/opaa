@@ -2561,16 +2561,15 @@ class QueryServiceTest {
      * candidate set, which never exercises fusion with two genuinely different, disjoint result
      * lists. Here sub-query A carries {@code doc-x}/{@code doc-a}/five fillers, and sub-query B
      * returns an entirely disjoint set of eight documents at a much lower, unrelated score range -
-     * own topic, own search vector, no shared ids. {@code ReciprocalRankFusion} scores purely by
-     * rank, not by the underlying score (that comparison is exactly the #912 failure mode its own
-     * Javadoc documents) - a sub-query's rank-<i>k</i> item always contributes the identical amount
-     * regardless of which sub-query it came from, so A's and B's same-rank items tie and interleave
-     * by rank tier (rank 1 pair, then rank 2 pair, ...) once sorted by fused score. With {@code
-     * topK} = 8 that tier-by-tier cut lands after the rank-4 pair, well before sub-query A's own
-     * {@code doc-a}'s fee chunk (permanently excluded from every sub-query's own top-8 window,
-     * ranked 9th in sub-query A and absent from sub-query B entirely) ever has a chance to survive
-     * fusion on its own - completion is exactly what recovers it here, from the pooled raw
-     * candidates of <em>both</em> sub-queries.
+     * own topic, own search vector, no shared ids. The shipped fusion scores by rank, not by the
+     * underlying score (comparing raw scores of different searches is the #912 failure mode), and
+     * fills the selection round-robin over the sub-queries - so A's and B's same-rank items
+     * interleave by rank tier (rank 1 pair, then rank 2 pair, ...). With {@code topK} = 8 that
+     * tier-by-tier cut lands after the rank-4 pair, well before sub-query A's own {@code doc-a}'s
+     * fee chunk (permanently excluded from every sub-query's own top-8 window, ranked 9th in
+     * sub-query A and absent from sub-query B entirely) ever has a chance to survive fusion on its
+     * own - completion is exactly what recovers it here, from the pooled raw candidates of
+     * <em>both</em> sub-queries.
      */
     @Test
     void multiQueryPathRecoversAFeeChunkAcrossTwoDisjointSubQueryCandidateSets() {

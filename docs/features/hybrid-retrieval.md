@@ -803,7 +803,10 @@ kann — aber erst, wenn das Gewicht auf dem eigenen Bestand abgestimmt wurde (B
 Ein ungetuntes Gewicht ist schlechter als gar keines, weil es die Suche unbemerkt auf eine Modalität
 kippt. RRF ist tuningfrei und robust; eine Gewichtung wird erst erwogen, wenn der Benchmark ein Tuning
 tragen kann. Bis dahin ist die Dämpfungskonstante 60 ein interner Wert der
-[Ebene 1](#konfigurations-ebenenmodell), kein Regler.
+[Ebene 1](#konfigurations-ebenenmodell), kein Regler. Seit [#2619](https://github.com/criew/opaa/issues/2619)
+ist die Score-Fusion als Option gebaut (`opaa.query.fusion.method=score`), damit sie am Testkorpus
+gemessen werden kann; voreingestellt bleibt RRF, jetzt mit Quote je Teilfrage
+([Retrieval-Algorithmus, Schritt 5](./retrieval-algorithm.md#5-reciprocal-rank-fusion)).
 
 **Dedupliziert wird per Chunk-Kennung, nie per Score.** Unverändert gegenüber heute, aus demselben Grund
 wie in #912: Werte verschiedener Verfahren sind nicht vergleichbar. Ein Chunk, den Vektor- und

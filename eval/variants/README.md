@@ -37,9 +37,16 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   weggelassenes oder `null`-Feld übernimmt den Produktionswert unverändert. Unterstützte Felder:
   `fetchK`, `mmrLambda`, `similarityThreshold`, `queryDecompositionEnabled`, `maxSubQueries`,
   `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049), `rerankCandidateCount`
-  (seit Issue #1050; `0` ist die Variante ohne Reranking). `topK` ist bewusst kein
+  (seit Issue #1050; `0` ist die Variante ohne Reranking), `fusionMethod` (`RRF` oder `SCORE`),
+  `fusionSubQueryQuota` und `fusionVectorWeight` (seit Issue #2619). `topK` ist bewusst kein
   Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt20`, …) sind an das
   Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
+- Der Vergleich `verwaltung-fusion.json` (Issue #2619) misst Quote je Teilfrage und Wertefusion,
+  einzeln und kombiniert. Die Quote wirkt nur bei mehreren Teilfragen; der Vergleich ist deshalb mit
+  `-Dopaa.eval.queryDecomposition=true` zu fahren, ohne Zerlegung unterscheiden sich nur die
+  `score`-Varianten von der Referenz. Die Fusionsparameter sind kein Festpunkt der
+  Pipeline-Baselines; ein Lauf mit geänderter Fusion gehört deshalb in diesen Vergleich, nicht in
+  eine Baseline.
 - Eine Variante mit `fullTextSearchEnabled: true` wird als „nicht ausgeführt" gemeldet, solange der
   Volltextindex der gemessenen Bibliothek unvollständig ist: Die fehlenden Abschnitte sind für den
   lexikalischen Pfad unsichtbar, und die Variante hätte einen geschmälerten lexikalischen Beitrag

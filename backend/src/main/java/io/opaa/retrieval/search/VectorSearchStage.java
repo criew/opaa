@@ -10,6 +10,7 @@ import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalStage;
 import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.RetrievalState;
+import io.opaa.retrieval.SearchPath;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.StageStatus;
@@ -90,7 +91,7 @@ public class VectorSearchStage implements RetrievalStage {
                   .similarityThreshold(properties.similarityThreshold())
                   .filterExpression(filter)
                   .build());
-      lists.add(new CandidateList(label, candidates));
+      lists.add(new CandidateList(label, candidates, SearchPath.VECTOR, i + 1));
       verdicts.addAll(SearchStageSupport.retrievalVerdicts(label, candidates));
       if (candidates.size() < properties.fetchK()) {
         shortListNotes.add(

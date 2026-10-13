@@ -86,8 +86,8 @@ public enum RetrievalStageName {
   MMR_SELECTION,
 
   /**
-   * Merges every candidate list into one by rank via {@code ReciprocalRankFusion} and caps it at
-   * {@link RetrievalContext#candidateBudget()}. Switched off, the lists are collapsed by ordered
+   * Merges every candidate list into one via {@code CandidateFusion} and caps it at {@link
+   * RetrievalContext#candidateBudget()}. Switched off, the lists are collapsed by ordered
    * concatenation deduplicated by chunk id and the top-k cap does not apply (see {@link
    * RetrievalState#selection}).
    */

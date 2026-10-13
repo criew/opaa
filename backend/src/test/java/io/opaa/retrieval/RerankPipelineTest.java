@@ -247,10 +247,13 @@ class RerankPipelineTest {
     stubSubQuery("first", "a");
     stubSubQuery("second", "b");
     when(rerankModelRole.rerank(anyString(), any())).thenReturn(List.of());
+    // Pooled fusion: there the shared chunk outranks every leader, which makes it the witness.
+    QueryProperties.Fusion pooled = new QueryProperties.Fusion(FusionMethod.RRF, false, 0.7);
     QueryProperties decomposing =
-        new QueryProperties(TOP_K, 25, 1.0, 0.3, true, 3, 1, false, CANDIDATE_WINDOW, 20, 2);
+        new QueryProperties(TOP_K, 25, 1.0, 0.3, true, 3, 1, false, CANDIDATE_WINDOW, 20, 2)
+            .withFusion(pooled);
     QueryProperties decomposingWithoutReranking =
-        new QueryProperties(TOP_K, 25, 1.0, 0.3, true, 3, 1, false, 0, 20, 2);
+        new QueryProperties(TOP_K, 25, 1.0, 0.3, true, 3, 1, false, 0, 20, 2).withFusion(pooled);
 
     RetrievalPipeline pipeline = pipeline();
     List<String> failed =

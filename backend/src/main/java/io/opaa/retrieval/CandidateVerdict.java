@@ -1,5 +1,6 @@
 package io.opaa.retrieval;
 
+import java.util.List;
 import org.springframework.ai.document.Document;
 
 /**
@@ -23,6 +24,10 @@ import org.springframework.ai.document.Document;
  *     score, and so on. {@code null} for a stage whose decision is not numeric. Deliberately not
  *     comparable across stages, nor across search methods within one: a fusion score, a cosine
  *     similarity and a lexical rank score are different quantities.
+ * @param contributions for a {@link RetrievalStageName#RANK_FUSION} verdict, the lists whose
+ *     contributions make up {@code value}: every list the candidate appeared in when pooled, only
+ *     the placing sub-query's lists with the quota. They add up to {@code value}. Empty for every
+ *     other stage.
  */
 public record CandidateVerdict(
     String chunkId,
@@ -31,7 +36,24 @@ public record CandidateVerdict(
     VerdictReason reason,
     String listLabel,
     Integer rank,
-    Double value) {
+    Double value,
+    List<FusionContribution> contributions) {
+
+  public CandidateVerdict {
+    contributions = contributions == null ? List.of() : List.copyOf(contributions);
+  }
+
+  /** A verdict without fusion contributions - every stage but the fusion. */
+  public CandidateVerdict(
+      String chunkId,
+      String documentKey,
+      CandidateOutcome outcome,
+      VerdictReason reason,
+      String listLabel,
+      Integer rank,
+      Double value) {
+    this(chunkId, documentKey, outcome, reason, listLabel, rank, value, List.of());
+  }
 
   public static CandidateVerdict of(
       Document document,
@@ -42,5 +64,25 @@ public record CandidateVerdict(
       Double value) {
     return new CandidateVerdict(
         document.getId(), ChunkGroupingKey.of(document), outcome, reason, listLabel, rank, value);
+  }
+
+  /** A fusion verdict with the contribution of every list the candidate appeared in. */
+  public static CandidateVerdict fused(
+      Document document,
+      CandidateOutcome outcome,
+      VerdictReason reason,
+      String listLabel,
+      int rank,
+      double value,
+      List<FusionContribution> contributions) {
+    return new CandidateVerdict(
+        document.getId(),
+        ChunkGroupingKey.of(document),
+        outcome,
+        reason,
+        listLabel,
+        rank,
+        value,
+        contributions);
   }
 }

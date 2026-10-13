@@ -71,7 +71,7 @@ public class MmrSelectionStage implements RetrievalStage {
       List<Document> ordered =
           MmrSelector.select(
               list.documents(), list.documents().size(), properties.mmrLambda(), embeddings);
-      reordered.add(new CandidateList(list.label(), ordered));
+      reordered.add(list.withDocuments(ordered));
       for (int i = 0; i < ordered.size(); i++) {
         Document candidate = ordered.get(i);
         verdicts.add(

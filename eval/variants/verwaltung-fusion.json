@@ -1,0 +1,42 @@
+{
+  "name": "verwaltung-fusion",
+  "description": "Varianten der Fusion über Teilfragen (Issue #2619): Quote je Teilfrage und Fusion mit Ähnlichkeitswerten, einzeln und kombiniert, gegen die ausgelieferte Konfiguration. Die Quote wirkt nur bei mehr als einer Teilfrage, also nur mit -Dopaa.eval.queryDecomposition=true; ohne Zerlegung unterscheiden sich nur die Varianten mit score-Fusion. Referenzvariante ist die Produktionskonfiguration (Quote mit RRF); die Deltas sind Variante minus Produktion.",
+  "domain": "verwaltung",
+  "referenceVariant": "quota-rrf",
+  "variants": [
+    {
+      "name": "quota-rrf",
+      "description": "Ausgelieferte Konfiguration: jede Teilfrage wird für sich per RRF fusioniert, die Endauswahl reihum gefüllt.",
+      "requiresReindex": false,
+      "queryOverrides": {}
+    },
+    {
+      "name": "pooled-rrf",
+      "description": "Stand vor #2619: RRF über alle Listen aller Teilfragen in einem Pool.",
+      "requiresReindex": false,
+      "queryOverrides": { "fusionMethod": "RRF", "fusionSubQueryQuota": false }
+    },
+    {
+      "name": "pooled-score",
+      "description": "Fusion mit Ähnlichkeitswerten in einem Pool: Kosinus ab der Ähnlichkeitsschwelle auf 0 bis 1 skaliert mit Gewicht 0,7, ts_rank relativ zum besten der Liste mit 0,3.",
+      "requiresReindex": false,
+      "queryOverrides": { "fusionMethod": "SCORE", "fusionSubQueryQuota": false }
+    },
+    {
+      "name": "quota-score",
+      "description": "Kombination: Fusion mit Ähnlichkeitswerten je Teilfrage, Endauswahl reihum.",
+      "requiresReindex": false,
+      "queryOverrides": { "fusionMethod": "SCORE", "fusionSubQueryQuota": true }
+    },
+    {
+      "name": "quota-score-0.5",
+      "description": "Wie quota-score, aber Vektor- und Volltextpfad gleich gewichtet (0,5).",
+      "requiresReindex": false,
+      "queryOverrides": {
+        "fusionMethod": "SCORE",
+        "fusionSubQueryQuota": true,
+        "fusionVectorWeight": 0.5
+      }
+    }
+  ]
+}

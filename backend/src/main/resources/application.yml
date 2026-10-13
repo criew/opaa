@@ -245,6 +245,12 @@ opaa:
     # for it while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the
     # stage off through its own parameter, independently of the role switch below.
     rerank-candidate-count: ${OPAA_QUERY_RERANK_CANDIDATE_COUNT:50}
+    # How the fusion scores the candidate lists (rrf | score) and whether every sub-query gets its
+    # share of the selection (QueryProperties.Fusion). Ebene-1 benchmark values.
+    fusion:
+      method: ${OPAA_QUERY_FUSION_METHOD:rrf}
+      sub-query-quota: ${OPAA_QUERY_FUSION_SUB_QUERY_QUOTA:true}
+      vector-weight: ${OPAA_QUERY_FUSION_VECTOR_WEIGHT:0.7}
     # The conversation window (messages the chat memory keeps, always even) and how many of its
     # most recent turns the sub-question decomposition sees - the search never sees more of the
     # conversation than the answer. Ebene-1 benchmark values, only judgeable with the multi-turn

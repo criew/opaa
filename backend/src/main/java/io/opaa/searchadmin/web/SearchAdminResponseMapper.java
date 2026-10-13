@@ -7,6 +7,7 @@ import io.opaa.api.dto.LibraryIndexState;
 import io.opaa.api.dto.LibrarySearchStatusResponse;
 import io.opaa.api.dto.PrivateLibrarySearchSummaryResponse;
 import io.opaa.api.dto.RetrievalCandidateOutcome;
+import io.opaa.api.dto.RetrievalFusionContributionResponse;
 import io.opaa.api.dto.RetrievalStage;
 import io.opaa.api.dto.RetrievalStageResponse;
 import io.opaa.api.dto.RetrievalStageStatus;
@@ -284,7 +285,14 @@ final class SearchAdminResponseMapper {
         .libraryName(descriptor == null ? null : descriptor.libraryName())
         .listLabel(verdict.listLabel())
         .rank(verdict.rank())
-        .value(verdict.value());
+        .value(verdict.value())
+        .contributions(
+            verdict.contributions().stream()
+                .map(
+                    contribution ->
+                        new RetrievalFusionContributionResponse(
+                            contribution.listLabel(), contribution.rank(), contribution.value()))
+                .toList());
   }
 
   private static DiagnosisSelectionEntryResponse toSelectionEntry(

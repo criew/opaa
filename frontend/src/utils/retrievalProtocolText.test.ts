@@ -36,6 +36,9 @@ const BACKEND_NOTES = [
   'mmr-lambda 1.0: diversity term inactive, every list passed on unchanged to the fusion',
   'mmr-lambda 0.7: every list reordered by diversity (cosine similarity of real chunk embeddings), none narrowed',
   'reciprocal rank fusion over 6 list(s)',
+  'score fusion over 6 list(s): vector weight 0.7 on the cosine similarity rescaled from the similarity threshold 0.3 to 1, the rest on ts_rank relative to the best of its list',
+  'quota per sub-query: each of 3 sub-queries fused on its own, selection filled round-robin',
+  'lists of 3 sub-queries fused into one pool',
   'budget widened to the rerank candidate window 50',
   'overall budget top-k 8',
   'deduplicated by chunk id: 150 list entries became 62 distinct candidates',
@@ -140,12 +143,13 @@ describe('translateListLabel', () => {
   it('translates the labels the search stages produce', () => {
     expect(translateListLabel('vector search · sub-query 1')).toBe('Vektorsuche · Teilfrage 1')
     expect(translateListLabel('full-text search · sub-query 3')).toBe('Volltextsuche · Teilfrage 3')
-    expect(translateListLabel('fused (RRF)')).toBe('fusioniert (RRF)')
+    expect(translateListLabel('fused')).toBe('fusioniert')
+    expect(translateListLabel('fused · sub-query 2')).toBe('fusioniert · Teilfrage 2')
   })
 
   it('names a label-less verdict exactly like the explicit fused label', () => {
-    expect(translateListLabel(null)).toBe('fusioniert (RRF)')
-    expect(translateListLabel(undefined)).toBe('fusioniert (RRF)')
+    expect(translateListLabel(null)).toBe('fusioniert')
+    expect(translateListLabel(undefined)).toBe('fusioniert')
   })
 })
 

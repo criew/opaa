@@ -247,14 +247,50 @@ gegen `spring.ai.vectorstore.pgvector.*`) — kein zusätzlicher Aufruf beim Ein
 
 ### 5. Reciprocal Rank Fusion
 
-Stufenname: `RANK_FUSION`. `RankFusionStage` führt über `ReciprocalRankFusion` die vollständigen `fetch-k`-Ranglisten
-je Teilfrage und **je Suchpfad** zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
-Vektor- und die der Volltextsuche. Jeder Chunk erhält je Liste, in der er vorkommt, den Beitrag
-`1 / (60 + Rang)` (Rang 1-basiert, Dämpfungskonstante 60 nach Cormack et al.), die Beiträge werden über
-alle Listen summiert, absteigend sortiert und auf das Kandidatenbudget gedeckelt (`top-k` ohne
+Stufenname: `RANK_FUSION`. `RankFusionStage` führt über `CandidateFusion` die vollständigen `fetch-k`-Ranglisten je Teilfrage und
+**je Suchpfad** zu einer einzigen zusammen — seit #1049 also zwei Listen je Teilfrage, die der
+Vektor- und die der Volltextsuche. Im Auslieferungsstand erhält jeder Chunk je Liste, in der er vorkommt, den Beitrag
+`1 / (60 + Rang)` (Rang 1-basiert, Dämpfungskonstante 60 nach Cormack et al.), die Beiträge einer
+Teilfrage werden summiert, und die Endauswahl wird **reihum über die Teilfragen** gefüllt (Quote je
+Teilfrage, unten). Die fusionierte Liste wird auf das Kandidatenbudget gedeckelt (`top-k` ohne
 Reranking, `rerank-candidate-count` mit — die Deckelung auf `top-k` übernimmt dann Schritt 5b). Keine Gewichtung je Pfad: RRF ist
 tuningfrei, und ein ungetuntes Gewicht kippt die Suche unbemerkt auf eine Modalität
 (siehe [Hybride Suche mit Reranking](./hybrid-retrieval.md#arbeitspaket-3-fusion)).
+
+**Quote je Teilfrage und Wertefusion (#2619).** Die frühere Fusion summierte die Beiträge über die
+Listen **aller** Teilfragen. Das belohnt Überschneidung statt Aspektabdeckung: Bei fast wortgleichen
+Teilfragen sammeln Übersichtsdokumente, die jede Teilfrage trifft, bis zu sechs Beiträge, ein
+aspektgenauer Treffer nur einen. In der Verlustanalyse am Testkorpus Finanzverwaltung (s3-06) fielen so
+die Treffer zweier Teilfragen von Rang 1 und 2 ihrer eigenen Liste auf Rang 21 bis 32 der Fusion, also
+aus `top-k`. Zwei Stellschrauben, beide Ebene-1-Werte unter `opaa.query.fusion.*`:
+
+- **`sub-query-quota`** (`OPAA_QUERY_FUSION_SUB_QUERY_QUOTA`, Default `true`): Jede Teilfrage wird für
+  sich fusioniert (ihre Vektor- und ihre Volltextliste), danach füllt die Stufe die Auswahl reihum: Jede
+  Runde nimmt von jeder Teilfrage den besten noch nicht gewählten Kandidaten, innerhalb der Runde nach
+  fusioniertem Wert sortiert. Ein Chunk, den mehrere Teilfragen führen, wird von der ersten genommen,
+  die ihn erreicht. Mit einer Suchanfrage ist das die Identität; die Messpfade ohne Zerlegung bewegt
+  die Quote deshalb nicht. `false` ist die Fusion von vor #2619.
+- **`method`** (`OPAA_QUERY_FUSION_METHOD`, Default `rrf`): `score` ersetzt den Rangbeitrag durch eine
+  konvexe Kombination normierter Werte. Eine Kosinus-Ähnlichkeit wird von der Ähnlichkeitsschwelle
+  (0) bis 1 (1) skaliert und mit `vector-weight` (`OPAA_QUERY_FUSION_VECTOR_WEIGHT`, Default `0,7`)
+  gewichtet, ein `ts_rank` relativ zum besten Wert seiner Liste mit dem Rest. Ein Treffer mit Kosinus
+  0,82 zählt dann mehr als einer mit 0,45 auf demselben Rang.
+
+**Warum RRF mit Quote der Default ist.** Die Quote hat als einzige Variante einen Beleg: In der
+Simulation der Verlustanalyse brachte sie 144 statt 139 von 220 Kernfakten bei praktisch gleich großem
+Kontext. Die Wertefusion braucht ein Gewicht, und ein ungemessenes Gewicht ist genau das, wovor
+[Arbeitspaket 3](./hybrid-retrieval.md#arbeitspaket-3-fusion) warnt; sie ist gebaut und über den
+Variantenvergleich `eval/variants/verwaltung-fusion.json` messbar (alle vier Kombinationen plus
+Gewicht 0,5), aber nicht voreingestellt. Die Entscheidung über den Default fällt mit der Messung am
+Testkorpus nach dem Merge.
+
+**Protokoll.** Jedes Verdikt der Stufe nennt die Listen, deren Beiträge seinen Wert ausmachen, mit
+Rang und Beitrag (`CandidateVerdict#contributions`); die Beiträge ergeben zusammen den Wert. Gepoolt
+sind das alle Listen, in denen der Kandidat vorkam, mit Quote nur die Listen der Teilfrage, die ihn in
+die Auswahl gebracht hat (`fused · sub-query n`); Ränge in anderen Teilfragen zählen dort nicht und
+stehen deshalb in den Verdikten der Suchstufen, nicht hier. Die Fusion lehnt eine Liste ohne Herkunft
+(Suchpfad und Teilfrage) mit einer Exception ab, statt sie still einer eigenen Gruppe zuzuordnen. Die
+Notizen nennen Verfahren und Quote.
 Dedupliziert wird per Chunk-Kennung
 (`Document#getId()`), nie per Score — Ähnlichkeitswerte verschiedener Suchvektoren sind nicht vergleichbar,
 genau die Wurzel des in [#912](https://github.com/criew/opaa/issues/912) dokumentierten Fehlerbilds; ein
@@ -450,7 +486,7 @@ Frage + Gesprächsfenster
         ↓
 4. Je Liste (Teilfrage × Suchpfad): MMR-Umsortierung ohne Kürzung (mmr-lambda; bei 1,0 übersprungen)
         ↓
-5. Reciprocal Rank Fusion über alle Listen beider Pfade, gedeckelt auf das Kandidatenbudget
+5. Fusion je Teilfrage (RRF oder Werte), Auswahl reihum über die Teilfragen, gedeckelt auf das Kandidatenbudget
         ↓
 5b. Reranking der Kandidatenmenge durch die Rerank-Modellrolle, zurück auf top-k
     (per Voreinstellung aus: OPAA_RERANK_ENABLED)
