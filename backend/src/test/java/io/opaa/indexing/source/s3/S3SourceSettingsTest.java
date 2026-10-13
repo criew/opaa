@@ -93,4 +93,17 @@ class S3SourceSettingsTest {
         .isInstanceOf(S3SourceSettings.InvalidS3SourceSettingsException.class)
         .hasMessageContaining("Höchstens 50");
   }
+
+  @Test
+  void refusesAPatternThatCouldNeverMatchAsWritten() {
+    List<S3Scope> scope = List.of(S3Scope.of("dokumente", ""));
+    assertThatThrownBy(() -> new S3SourceSettings(null, true, scope, List.of("**.pdf"), null))
+        .isInstanceOf(S3SourceSettings.InvalidS3SourceSettingsException.class)
+        .hasMessageContaining("Einschlussmuster")
+        .hasMessageContaining("ganze Ebene");
+    assertThatThrownBy(() -> new S3SourceSettings(null, true, scope, null, List.of("/2025/*")))
+        .isInstanceOf(S3SourceSettings.InvalidS3SourceSettingsException.class)
+        .hasMessageContaining("Ausschlussmuster")
+        .hasMessageContaining("leere Ebene");
+  }
 }
