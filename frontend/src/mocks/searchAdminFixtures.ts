@@ -39,6 +39,15 @@ export const mockSearchStatus: SearchStatusResponse = {
       detail:
         'Reranking ist ausdruecklich abgeschaltet. Die Suche laeuft ohne diese Stufe - das ist die Voreinstellung, kein Fehler.',
     },
+    {
+      role: 'TRANSCRIPTION',
+      state: 'DISABLED',
+      endpoint: null,
+      modelIdentifier: null,
+      faulted: false,
+      detail:
+        'Die Spracheingabe ist abgeschaltet (OPAA_TRANSCRIPTION_ENABLED oder die Funktion Spracheingabe). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung, kein Fehler.',
+    },
   ],
   searchPaths: [
     {

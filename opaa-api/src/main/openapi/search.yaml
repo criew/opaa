@@ -1603,10 +1603,10 @@ components:
     SearchModelRole:
       type: string
       description: >
-        The three model roles of the Modell-Schichtenmodell (hybrid-retrieval.md, Arbeitspaket 4):
+        The model roles of the Modell-Schichtenmodell (hybrid-retrieval.md, Arbeitspaket 4):
         reranking sits on the same level as chat and embedding, not inside the search as a built-in
-        procedure.
-      enum: [CHAT, EMBEDDING, RERANK]
+        procedure. TRANSCRIPTION turns dictated speech into text for the chat input.
+      enum: [CHAT, EMBEDDING, RERANK, TRANSCRIPTION]
       example: RERANK
 
     SearchModelRoleState:

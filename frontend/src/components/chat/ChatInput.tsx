@@ -29,6 +29,8 @@ import { spaceKnowledgeGap } from '../space/spaceKnowledge'
 import { useFeatureEnabled } from '../../hooks/useFeatureEnabled'
 import MetadataFilterPopover from './MetadataFilterPopover'
 import ChatActionMenu from './ChatActionMenu'
+import DictationControl from './DictationControl'
+import { withDictatedText } from './dictationText'
 import { actionOptionId, activeChatActionSources } from './chatActions'
 import type { ChatActionMark, ChatActionSource } from './chatActions'
 import { CHAT_ACTION_SOURCES } from './chatActionSources'
@@ -457,6 +459,18 @@ export default function ChatInput({
     })
   }
 
+  // Dictation only ever fills the input; sending stays the person's own action.
+  const [dictationError, setDictationError] = useState<string | null>(null)
+  const appendDictatedText = useCallback((text: string) => {
+    setValue((draft) => withDictatedText(draft, text))
+    requestAnimationFrame(() => {
+      const input = inputRef.current
+      if (!input) return
+      input.focus()
+      input.setSelectionRange(input.value.length, input.value.length)
+    })
+  }, [])
+
   const chooseAction = (index: number) => {
     const entry = actions.matches[index]
     if (!entry) return
@@ -770,6 +784,11 @@ export default function ChatInput({
             },
           }}
         />
+        <DictationControl
+          onText={appendDictatedText}
+          onError={setDictationError}
+          disabled={disabled}
+        />
         {/* #1920: a send symbol, not "Fragen" - the input triggers more than questions. */}
         <IconButton
           color="primary"
@@ -918,6 +937,11 @@ export default function ChatInput({
         <Typography component="div" sx={{ fontSize: 12, color: 'text.secondary' }}>
           {scopeNotice ?? inputHint(answerPending, actions.enabled)}
         </Typography>
+        {dictationError && (
+          <Typography component="div" role="alert" sx={{ fontSize: 12, color: 'error.main' }}>
+            {dictationError}
+          </Typography>
+        )}
         {lengthCounter && (
           <Typography
             id={lengthCounterId}

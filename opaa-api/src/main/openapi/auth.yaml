@@ -451,7 +451,7 @@ components:
         feature is switched on. Every flag is on unless the installation switched it off; the values
         are fixed at start-up and readable before sign-in. The property name is the camel-case form
         of the flag key, e.g. prompt-libraries -> promptLibraries.
-      required: [promptLibraries, metadata]
+      required: [promptLibraries, metadata, speechInput]
       properties:
         promptLibraries:
           type: boolean
@@ -459,6 +459,12 @@ components:
         metadata:
           type: boolean
           description: Metadata of documents and libraries (opaa.features.metadata.enabled).
+        speechInput:
+          type: boolean
+          description: >
+            Dictating a chat question (opaa.features.speech-input.enabled). Switched on, the
+            microphone still appears only while the transcription role is usable, see
+            getTranscriptionAvailability.
 
     LocalAccountsConfig:
       type: object

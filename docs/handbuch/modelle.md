@@ -10,13 +10,14 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](suche.md).
 > Oberfläche zwei Modelle an, ein schnelles für den Alltag und ein größeres zum Vergleich, und
 > schaltet bei Bedarf um — ohne Neustart und ohne den Index anzufassen.
 
-## Drei Modellrollen
+## Vier Modellrollen
 
 | Rolle | Wofür | Festgelegt über | Wechsel |
 |---|---|---|---|
 | **Chat** | Antwort, Zerlegung in Teilfragen, Chat-Titel, Gesprächsnotiz, Metadaten-Extraktion | Modellverwaltung in der Oberfläche; die Umgebung nur beim allerersten Start | jederzeit, ohne Neustart; berührt den Index nicht |
 | **Embedding** | Vektoren der Chunks und der Suchanfragen | Umgebung (`OPAA_OPENAI_EMBEDDING_*`, `OPAA_PGVECTOR_DIMENSIONS`) | mit Neustart; danach bettet die Systemverwaltung den Bestand neu ein ([Modell wechseln](#modell-wechseln)) |
 | **Reranking** | ordnet die Kandidaten der Suche neu, optional | Umgebung (`OPAA_RERANK_*`) | jederzeit mit Neustart; aus ist die Voreinstellung |
+| **Transkription** | wandelt eine im Chat diktierte Frage in Text um, optional | Umgebung (`OPAA_TRANSCRIPTION_*`) | jederzeit mit Neustart; aus ist die Voreinstellung ([Spracheingabe einschalten](#spracheingabe-einschalten)) |
 
 ## LLM-Anbieter
 
@@ -335,6 +336,123 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > die Zeitgrenze jedes Proxys davor ([Netzwerkzugang](betrieb.md#netzwerkzugang)). Sonst endet die
 > Anfrage beim Client mit `504` oder einem Verbindungsabbruch, ohne Fehler im Backend-Log.
 
+## Spracheingabe einschalten
+
+Mit der Spracheingabe spricht eine Person ihre Frage ein, statt sie zu tippen: Sie nimmt im Chat auf,
+beendet die Aufnahme, und der erkannte Text landet im Eingabefeld (Bedienung unter
+[Suche](suche.md#frage-diktieren)). Dafür braucht OPAA eine eigene Modellrolle **Transkription**, die
+Sprache in Text umwandelt. Sie ist voreingestellt **aus** (`OPAA_TRANSCRIPTION_ENABLED=false`); ohne
+sie zeigt der Chat kein Mikrofon.
+
+> **Ollama kann kein Audio.** Der Modellserver für Chat und Einbettung transkribiert nicht. Die
+> Spracheingabe braucht immer einen zweiten Dienst.
+
+### Vorhandenen Endpunkt im Haus eintragen
+
+Der Normalfall ist ein Transkriptionsdienst, den die IT des Hauses bereits betreibt, etwa vLLM,
+speaches oder ein LiteLLM-Gateway auf einem zentralen Server mit interner Adresse. Er muss zwei Pfade
+der openai-kompatiblen Schnittstelle bedienen:
+
+- `POST {Basis-Adresse}/audio/transcriptions` nimmt die Aufnahme an und antwortet mit dem Text;
+- `GET {Basis-Adresse}/models` dient OPAA als Erreichbarkeitsprüfung, beim Start und danach
+  regelmäßig. Sie überträgt kein Audio und kostet bei Anbietern mit Abrechnung je Aufruf nichts.
+
+Einzutragen sind `OPAA_TRANSCRIPTION_ENABLED=true`, die Basis-Adresse ohne den Pfad
+`/audio/transcriptions` (`OPAA_TRANSCRIPTION_BASE_URL`, etwa `https://stt.landesverwaltung.de/v1`),
+die Modell-Kennung (`OPAA_TRANSCRIPTION_MODEL`) und, falls der Dienst ihn verlangt, der
+Zugangsschlüssel (`OPAA_TRANSCRIPTION_API_KEY`). Der Schlüssel steht nur in der Umgebung und nur im
+`Authorization`-Header der Anfrage, nie in der Datenbank, im Log oder einer Zustandsanzeige. Der
+Aufruf geht über denselben [Ausgangsproxy](betrieb.md#ausgangsproxy) und dieselben vertrauten
+Zertifizierungsstellen wie die übrigen Modellrollen; eine interne CA wird also wie dort ergänzt.
+
+Fehlt eine Angabe oder antwortet der Dienst nicht, steht das im Log und fortlaufend auf der Seite
+„Suche & Indexierung" (Rolle „Transkription") sowie in der Gesundheitsgruppe
+`GET /actuator/health/transcription-model`. Der Chat zeigt das Mikrofon dann nicht; alles andere
+läuft weiter.
+
+**Was an den Dienst geht:** die Aufnahme, die Modell-Kennung, die Sprache
+(`OPAA_TRANSCRIPTION_LANGUAGE`) und die Bitte um eine Antwort als JSON — keine Kennung der Person,
+kein Kontoname, keine Adresse des Browsers. Der Dienst sieht nur das Backend von OPAA als Absender.
+**Was OPAA behält:** nichts. Die Aufnahme liegt nur während der Anfrage im Arbeitsspeicher des
+Backends, nie auf der Platte; weder sie noch der erkannte Text stehen in einem Log. Das
+Anfrageprotokoll des Backends nennt für eine Aufnahme nur Methode, Pfad, Status und Dauer, keine
+Person. Eine Aufnahme
+über `OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES` lehnt das Backend ab, ohne sie weiterzureichen.
+
+### Anforderungen an den Betrieb des Dienstes
+
+OPAA speichert und protokolliert keine Aufnahme; der Transkriptionsdienst muss dasselbe zusichern.
+Für die Stelle, die ihn betreibt, heißt das:
+
+- **Keine Ablage der Aufnahmen** und **keine Transkripte im Log.** Anfrage- und Inhaltslogs des
+  Dienstes sind abgeschaltet oder auf Fehler beschränkt.
+- **Auf verbleibende Logs greift nur der Betrieb zu.**
+- **Proxys und Gateways dazwischen** protokollieren keinen Inhalt. Ein Proxy-Log, das Konto oder
+  IP-Adresse einer Person mit der Anfrage verbindet, stellt einen Personenbezug her; zwischen Browser
+  und OPAA gilt das für den vorgelagerten Reverse-Proxy genauso.
+- **Proxys halten die Aufnahme im Arbeitsspeicher.** Viele Reverse-Proxys und Ingress-Controller
+  schreiben einen Anfrage-Body, der ihren kleinen Standardpuffer übersteigt, in eine temporäre
+  Datei. Der Frontend-Container von OPAA hält eine Aufnahme bis 11 MiB im Speicher; ein Proxy davor
+  braucht einen ebenso großen Puffer für den Body, bei nginx und ingress-nginx
+  `client_body_buffer_size` bzw. die Annotation `nginx.ingress.kubernetes.io/client-body-buffer-size`
+  (Kapitel [Kubernetes](kubernetes.md)).
+
+### Erprobung mit speaches im Compose-Stapel
+
+Für eine Erprobung ohne vorhandenen Dienst lässt sich speaches als zusätzlicher Container neben OPAA
+betreiben, etwa in einer `docker-compose.override.yml`. Das CPU-Image kommt ohne Grafikkarte aus,
+transkribiert dann aber langsam; `OPAA_TRANSCRIPTION_TIMEOUT` muss die Dauer einer Aufnahme auf der
+vorhandenen Hardware abdecken. Der Container braucht `ffmpeg` für die Umwandlung der
+Browser-Aufnahme; das Image bringt es mit.
+
+```yaml
+services:
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    environment:
+      # Beispiel: nur Warnungen und Fehler, damit kein Transkript im Log landet
+      LOG_LEVEL: warning
+    volumes:
+      - speaches-models:/home/ubuntu/.cache/huggingface/hub
+volumes:
+  speaches-models:
+```
+
+```env
+OPAA_TRANSCRIPTION_ENABLED=true
+OPAA_TRANSCRIPTION_BASE_URL=http://speaches:8000/v1
+OPAA_TRANSCRIPTION_MODEL=Systran/faster-whisper-large-v3
+```
+
+speaches lädt ein Modell nicht von selbst; es wird einmal über
+`POST http://speaches:8000/v1/models/Systran/faster-whisper-large-v3` heruntergeladen, aus einem
+Container im selben Netz oder mit vorübergehend veröffentlichtem Port. Die Log-Einstellung ist ein
+Beispiel; welche Einstellungen Transkripte und Aufnahmen tatsächlich unterdrücken, steht in der
+Dokumentation der eingesetzten Version und ist vor dem Betrieb zu prüfen.
+
+### Externer Anbieter
+
+Technisch funktioniert auch ein Cloud-Anbieter mit derselben Schnittstelle, etwa OpenAI
+(`https://api.openai.com/v1`) oder OpenRouter (`https://openrouter.ai/api/v1`); es ändert sich nur
+die Konfiguration. **Die Stimme verlässt dann das Haus.** Gesprochene Sprache ist ein biometrienahes
+Datum und enthält oft Namen und Vorgänge Dritter; eine solche Anbindung braucht eine eigene
+datenschutzrechtliche Prüfung und einen Auftragsverarbeitungsvertrag. Die Oberfläche weist nicht
+darauf hin, wohin die Aufnahme geht.
+
+### Spracheingabe und Mitbestimmung
+
+- *Worum es geht:* Die Spracheingabe verarbeitet die Stimme der Beschäftigten. Auch beim Betrieb im
+  Haus ist die Stimme ein biometrienahes Datum. OPAA speichert weder Aufnahme noch Text der Aufnahme
+  und zählt keine Nutzung je Person; eine Chat-Nachricht trägt kein Merkmal, ob sie diktiert wurde.
+- *Warum es zählt:* Technische Einrichtungen, die Leistung oder Verhalten überwachen können, berühren
+  die Mitbestimmung der Personalvertretung. Ob die Spracheingabe dazu geeignet ist, hängt auch am
+  Betrieb des Transkriptionsdienstes und der Proxys davor.
+- *Zu klären:* Braucht die Einführung eine Dienstvereinbarung oder die Zustimmung der
+  Personalvertretung? Sichert die Stelle, die den Dienst betreibt, zu, dass Aufnahmen und
+  Transkripte weder abgelegt noch protokolliert werden? Ist die Nutzung freiwillig geregelt? OPAA
+  kennt keine Einstellung, die das Diktieren vorschreibt; abschalten lässt es sich mit
+  `OPAA_FEATURES_SPEECH_INPUT_ENABLED=false`.
+
 ## vLLM / OpenAI-kompatible Server
 
 Server, die HTTP/2 nicht vertragen, etwa vLLM und andere auf Uvicorn-Basis, brauchen den
@@ -367,7 +485,7 @@ SMTP-Passwort. Erzeugt wird er mit `openssl rand -base64 32` und außerhalb des 
 
 Der Zustand der Modelle steht an drei Stellen: in der Statusanzeige der Seite „Suche & Indexierung"
 (Modellrollen mit Endpunkt, Kennung und Erreichbarkeit), in den Gesundheitsgruppen
-`GET /actuator/health/chat-model` und `…/embedding-model` ([Bereitschaft](betrieb.md#bereitschaft-und-lebendigkeit))
+`GET /actuator/health/chat-model`, `…/embedding-model` und `…/transcription-model` ([Bereitschaft](betrieb.md#bereitschaft-und-lebendigkeit))
 und im Protokoll des Backends.
 
 **Meldungen des Verbindungstests:**
@@ -400,11 +518,13 @@ und im Protokoll des Backends.
 | Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)) |
 | Verbindungsfehler gegen vLLM | HTTP/1.1-Modus fehlt ([vLLM](#vllm--openai-kompatible-server)) |
 | Reranking „nicht verfügbar" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking |
+| Kein Mikrofon im Chat, obwohl die Spracheingabe eingeschaltet ist | Rolle „Transkription" auf „Suche & Indexierung" prüfen: Endpunkt oder Modell fehlen, oder `GET {Basis-Adresse}/models` antwortet nicht. Der Browser muss außerdem aufnehmen dürfen; ohne HTTPS bieten Browser kein Mikrofon an |
+| „Die Texterkennung ist fehlgeschlagen" | Der Dienst hat die Aufnahme abgelehnt oder nicht innerhalb von `OPAA_TRANSCRIPTION_TIMEOUT` geantwortet; das Log nennt Status oder Ursache, nie den Inhalt. Häufig: Modell nicht geladen, Format nicht angenommen, CPU zu langsam |
 | Lange Fragen enden beim Client mit `504` | Zeitgrenzen von Frontend und Proxy kürzer als die Modellaufrufe ([Reranking einschalten](#reranking-einschalten)) |
 | Ein Modell mit Zugangsschlüssel lässt sich nicht speichern | `OPAA_SETTINGS_ENCRYPTION_KEY` fehlt oder ist ungültig |
 | Verbindungen scheitern mit dem Status eines Proxys | [Ausgangsproxy](betrieb.md#ausgangsproxy); ein Modellserver im eigenen Netz gehört auf seine Ausnahmeliste |
 
 ## Weiterführende Kapitel
 
-- [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`- und `OPAA_RERANK_*`-Variablen
+- [Konfiguration](konfiguration.md) — alle `OPAA_OPENAI_*`-, `OPAA_RERANK_*`- und `OPAA_TRANSCRIPTION_*`-Variablen
 - [Authentifizierung](authentifizierung.md)

@@ -36,7 +36,7 @@ identity und rights ab.
 - **Chat-Modelle:** `LlmModelService` ist der einzige Einstieg. Der optionale API-Schlüssel wird
   über `SettingsEncryptor` verschlüsselt, bevor die Datenbank ihn sieht; jede Änderung wird
   protokolliert. Genau ein Modell ist systemweit aktiv.
-- **Web-Schicht:** `llm.web` (Modellverwaltung), `indexing.web` (Indexierungsverwaltung, Bestands-
+- **Web-Schicht:** `llm.web` (Modellverwaltung, Spracheingabe), `indexing.web` (Indexierungsverwaltung, Bestands-
   und Nachlauf), `metadata.web` (Dokument- und Bibliotheksmetadaten, der Metadatenfilter aller
   Such- und Chat-Anfragen samt strengem `MetadataFilterDeserializer`). Die Endpunkte der Bibliothek
   liegen in `library.web`.

@@ -22,6 +22,7 @@ export const mockLocalAccountsConfig: LocalAccountsConfig = {
 export const mockFeaturesConfig: FeaturesConfig = {
   promptLibraries: true,
   metadata: true,
+  speechInput: true,
 }
 
 export let mockAuthConfig: AuthConfig = {

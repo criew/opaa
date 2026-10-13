@@ -319,6 +319,7 @@ final class SearchAdminResponseMapper {
       case CHAT -> SearchModelRole.CHAT;
       case EMBEDDING -> SearchModelRole.EMBEDDING;
       case RERANK -> SearchModelRole.RERANK;
+      case TRANSCRIPTION -> SearchModelRole.TRANSCRIPTION;
     };
   }
 

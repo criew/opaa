@@ -315,6 +315,7 @@ class PrivateLibraryInvisibilityIntegrationTest {
     probes.put("getSearchStatus", same());
     probes.put("getEmbeddingReindexStatus", same());
     probes.put("getSearchAvailability", same());
+    probes.put("getTranscriptionAvailability", same());
     probes.put(
         "getMetadataChangeImpact",
         same().withQuery("fieldKey", "document_type").withQuery("change", "DELETE"));

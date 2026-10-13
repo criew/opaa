@@ -12,7 +12,8 @@ import java.util.Locale;
  */
 public enum Feature {
   PROMPT_LIBRARIES,
-  METADATA;
+  METADATA,
+  SPEECH_INPUT;
 
   static final String PREFIX = "opaa.features";
 

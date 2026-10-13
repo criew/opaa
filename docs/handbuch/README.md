@@ -70,7 +70,7 @@ Umgebungsvariablen und Grenzwerte) sind Nachschlagekapitel, auf die alle verweis
     - [Originalablage](originalablage.md) — wo die Originale der Uploads liegen, Sicherung, Umstellung
     - [E-Mail-Versand](e-mail.md) — Mailserver, Vorlagen, Fehlerbilder
   - [Konfiguration](konfiguration.md) — alle Umgebungsvariablen, Grenzwerte im Überblick
-  - [Modelle](modelle.md) — Chat, Embedding, Reranking, Modellverwaltung, Fehlerbilder
+  - [Modelle](modelle.md) — Chat, Embedding, Reranking, Transkription (Spracheingabe), Modellverwaltung, Fehlerbilder
   - [Authentifizierung](authentifizierung.md) — Betriebsmodi, Identitätsanbieter und
     Verzeichnisabgleich, Härtung des Keycloak, Erststart, Notfallprozedur, Testkonten
   - [Branding](branding.md) — Produktname, Farben und Bilder der Installation
@@ -152,7 +152,7 @@ Begriffe, die in allen Kapiteln in genau dieser Bedeutung verwendet werden.
 | **Suchbereich** | Die Bibliotheken, in denen eine Frage sucht; steht in der Chip-Leiste des Chats (Standard `@Space-Wissen`) und ist nie weiter als Zuordnung und Leserechte |
 | **Fundstelle** (Beleg) | Eine Quellenangabe unter einer Antwort, eine je Dokument, mit Rang, Ortsangabe und Kernfeldern |
 | **Ortsangabe** | Die Stelle eines Chunks im Dokument, etwa „S. 3 · Abschn. Fristen" |
-| **Modellrolle** | Eine der drei Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking |
+| **Modellrolle** | Eine der vier Aufgaben, für die ein externes Modell konfiguriert wird: Chat, Embedding, Reranking, Transkription |
 | **Rechteprofil** | Eine Gruppe samt der Bibliotheken, die sie lesen darf; der voreingestellte Kontext des Diagnosewerkzeugs |
 | **Diagnosesperre** | Grundzustand jeder Bibliothek, der sie aus einer Diagnose im Rechtekontext einer benannten Person heraushält |
 | **Lokales Konto** | Ein Konto, das OPAA selbst führt: Anmeldung mit E-Mail-Adresse und Passwort, verwaltet unter Administration → Benutzer; Gegenstück zu einem Konto aus einem Identitätsanbieter |
