@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.filesystem;
 
+import io.opaa.indexing.source.SourceGlob;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -11,7 +12,7 @@ import java.util.Set;
  * Decides which entries below a FILESYSTEM library's {@code sourcePath} are not part of its source.
  * Always excluded are hidden entries (name starting with {@code .}) and the Windows system folders
  * {@code $RECYCLE.BIN} and {@code System Volume Information}; on top come the library's {@link
- * FilesystemSourceSettings#excludePatterns()}, matched as {@link FilesystemGlob} against the path
+ * FilesystemSourceSettings#excludePatterns()}, matched as {@link SourceGlob} against the path
  * relative to {@code sourcePath}.
  */
 public final class FilesystemExclusions {
@@ -19,15 +20,15 @@ public final class FilesystemExclusions {
   private static final Set<String> SYSTEM_FOLDERS =
       Set.of("$recycle.bin", "system volume information");
 
-  private final List<FilesystemGlob> globs;
+  private final List<SourceGlob> globs;
 
-  private FilesystemExclusions(List<FilesystemGlob> globs) {
+  private FilesystemExclusions(List<SourceGlob> globs) {
     this.globs = globs;
   }
 
   public static FilesystemExclusions of(FilesystemSourceSettings settings) {
     return new FilesystemExclusions(
-        settings.excludePatterns().stream().map(FilesystemGlob::compile).toList());
+        settings.excludePatterns().stream().map(SourceGlob::compile).toList());
   }
 
   /**

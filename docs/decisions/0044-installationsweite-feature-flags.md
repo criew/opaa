@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen (13.10.2026; Issue #2587, Epic #2586)
+Akzeptiert (Maintainer-Entscheidung vom 13.10.2026; Issue #2587, Epic #2586)
 
 ## Kontext
 
