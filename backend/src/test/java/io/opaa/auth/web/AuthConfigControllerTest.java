@@ -17,6 +17,9 @@ import io.opaa.auth.OidcProviderRegistry;
 import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.UserService;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -70,6 +73,7 @@ class AuthConfigControllerTest {
   @MockitoBean private OidcProviderRepository providerRepository;
   @MockitoBean private OidcProviderRegistry providerRegistry;
   @MockitoBean private LocalAuthSettingsRepository settingsRepository;
+  @MockitoBean private FeatureFlags featureFlags;
 
   // TestSecurityConfig's UserProvisioningFilter needs a UserService bean even though this
   // unauthenticated endpoint never calls it.
@@ -84,6 +88,38 @@ class AuthConfigControllerTest {
     settings = mock(LocalAuthSettings.class);
     when(settings.values()).thenReturn(LocalAuthSettings.Values.defaults());
     when(settingsRepository.findSingleton()).thenReturn(Optional.of(settings));
+    EnumMap<Feature, Boolean> allOn = new EnumMap<>(Feature.class);
+    for (Feature feature : Feature.values()) {
+      allOn.put(feature, true);
+    }
+    when(featureFlags.asMap()).thenReturn(allOn);
+  }
+
+  @Test
+  void everyFeatureFlagIsReportedInBothModes() throws Exception {
+    for (String mode : List.of("dev", "oidc")) {
+      when(authProperties.mode()).thenReturn(mode);
+      mockMvc
+          .perform(get("/api/v1/auth/config"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.features.promptLibraries").value(true))
+          .andExpect(jsonPath("$.features.metadata").value(true));
+    }
+  }
+
+  @Test
+  void aSwitchedOffFeatureFlagIsReportedAsFalseAndTheOthersStayOn() throws Exception {
+    when(authProperties.mode()).thenReturn("oidc");
+    EnumMap<Feature, Boolean> metadataOff = new EnumMap<>(Feature.class);
+    metadataOff.put(Feature.PROMPT_LIBRARIES, true);
+    metadataOff.put(Feature.METADATA, false);
+    when(featureFlags.asMap()).thenReturn(metadataOff);
+
+    mockMvc
+        .perform(get("/api/v1/auth/config"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.features.promptLibraries").value(true))
+        .andExpect(jsonPath("$.features.metadata").value(false));
   }
 
   @Test

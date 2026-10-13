@@ -210,6 +210,15 @@ opaa:
   spike:
     tool-loop:
       enabled: ${OPAA_SPIKE_TOOL_LOOP_ENABLED:false}
+  # Installation-wide feature flags (ADR-0044, io.opaa.common.FeatureFlags): every flag is on
+  # unless the installation sets it to false; read once at start-up. Switching a feature off hides
+  # it and ignores its existing data, it deletes nothing. A new flag is one constant in
+  # io.opaa.common.Feature, one entry here and one property in FeaturesConfig (auth.yaml).
+  features:
+    prompt-libraries:
+      enabled: ${OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED:true}
+    metadata:
+      enabled: ${OPAA_FEATURES_METADATA_ENABLED:true}
   # Demo seed only: POST /api/v1/spaces/{spaceId}/chat-imports writes prepared chat transcripts
   # without a model call. The route exists only while this is true; off everywhere else.
   demo:
