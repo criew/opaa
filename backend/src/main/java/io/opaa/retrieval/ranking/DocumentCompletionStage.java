@@ -4,6 +4,7 @@ import io.opaa.retrieval.CandidateList;
 import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCut;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalListLabel;
 import io.opaa.retrieval.RetrievalNote;
@@ -47,12 +48,20 @@ public class DocumentCompletionStage implements RetrievalStage {
     QueryProperties properties = context.queryProperties();
     List<Document> selection = state.selection();
     List<CompletionEvent> events = new ArrayList<>();
+    // After an active relevance cutoff the cut sets the context size, and no removed chunk returns.
+    RelevanceCut cut = state.relevanceCut();
+    List<Document> pool =
+        cut == null
+            ? state.candidatePool()
+            : state.candidatePool().stream()
+                .filter(candidate -> !cut.removedChunkIds().contains(candidate.getId()))
+                .toList();
     List<Document> completed =
         DocumentCompletion.complete(
             selection,
-            state.candidatePool(),
+            pool,
             properties.maxChunksPerDocument(),
-            properties.topK(),
+            cut == null ? properties.topK() : cut.budget(),
             events);
 
     Set<String> survivingChunkIds = new HashSet<>();

@@ -8,11 +8,11 @@ Von der Frage zu den ausgewählten Chunks: die Retrieval-Pipeline. Im Wurzelpake
 (Stufenvertrag, Kontext, Zustand, Erklärprotokoll), der Einstieg `KnowledgeRetrieval`, die
 `RetrievalContextFactory` und die Parameter (`QueryProperties`, `RetrievalPipelineProperties`).
 Die Stufen liegen in `scope` (Suchbereich, Metadatenfilter), `search` (Teilfragen-Zerlegung, Vektor-
-und Volltextsuche) und `ranking` (MMR, Fusion, Reranking, Dokumentergänzung), ihre Reihenfolge in
-`config`. `context` lädt nach der Pipeline die Nachbar-Chunks der Endauswahl für die Antwort; es ist
-keine Stufe und ändert weder Endauswahl noch Protokoll. retrieval hängt nur von foundation, format
-und knowledge ab. Antwort (`query`), Suche als Dienst (`search`) und Diagnose (`searchadmin`) im
-Modul assistant setzen darauf auf.
+und Volltextsuche) und `ranking` (MMR, Fusion, Reranking, Relevanzschnitt, Dokumentergänzung), ihre
+Reihenfolge in `config`. `context` lädt nach der Pipeline die Nachbar-Chunks der Endauswahl für die
+Antwort; es ist keine Stufe und ändert weder Endauswahl noch Protokoll. retrieval hängt nur von
+foundation, format und knowledge ab. Antwort (`query`), Suche als Dienst (`search`) und Diagnose
+(`searchadmin`) im Modul assistant setzen darauf auf.
 
 ## Invarianten und Stolpersteine
 
@@ -34,9 +34,10 @@ Modul assistant setzen darauf auf.
   abgeschaltete Stufe erscheint als `DISABLED`; die Diagnose liest das Protokoll, statt
   Entscheidungen nachzubauen.
 - **Konfiguration:** `opaa.query.*` (`QueryProperties`), `opaa.query.pipeline.*`,
-  `opaa.query.vector-index.*` (`VectorIndexScanProperties`) und `opaa.query.neighbor-chunks.*`
-  (`NeighborChunkProperties`). `QueryProperties` trägt auch die Breite des Gesprächsfensters, die
-  die Antwort liest: Die Suche sieht nie mehr vom Gespräch als die Antwort.
+  `opaa.query.vector-index.*` (`VectorIndexScanProperties`), `opaa.query.relevance-cutoff.*`
+  (`RelevanceCutoffProperties`) und `opaa.query.neighbor-chunks.*` (`NeighborChunkProperties`).
+  `QueryProperties` trägt auch die Breite des Gesprächsfensters, die die Antwort liest: Die Suche
+  sieht nie mehr vom Gespräch als die Antwort.
 
 ## Verweise
 

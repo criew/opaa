@@ -105,6 +105,30 @@
       "template": "reciprocal rank fusion over %d list(s)"
     },
     {
+      "name": "RELEVANCE_CUTOFF_AT_MINIMUM",
+      "template": "relevance cutoff: %d chunk(s) do not exceed the minimum of %d, all kept"
+    },
+    {
+      "name": "RELEVANCE_CUTOFF_FIXED",
+      "template": "relevance cutoff off (mode fixed): the selection keeps up to top-k %d chunk(s)"
+    },
+    {
+      "name": "RELEVANCE_CUTOFF_KNEE",
+      "template": "knee cutoff: cut after %d of %d chunk(s), where the score fell by at least %s of the best"
+    },
+    {
+      "name": "RELEVANCE_CUTOFF_NO_KNEE",
+      "template": "knee cutoff: no drop of at least %s of the best after the minimum of %d, all %d kept"
+    },
+    {
+      "name": "RELEVANCE_CUTOFF_NO_POSITIVE_SCORE",
+      "template": "relevance cutoff skipped: the best score is not positive, all %d chunk(s) kept"
+    },
+    {
+      "name": "RELEVANCE_CUTOFF_RELATIVE",
+      "template": "relative cutoff: kept %d of %d chunk(s) scoring at least %s of the best score %s, at least %d"
+    },
+    {
       "name": "RERANK_CANDIDATE_WINDOW",
       "template": "rerank candidate window %d"
     },

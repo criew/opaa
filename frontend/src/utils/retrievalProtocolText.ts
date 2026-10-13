@@ -268,6 +268,48 @@ const NOTE_RULES: NoteRule[] = [
     german: (m) => `${m[1]} von ${m[2]} Kandidaten vom Reranking-Modell bewertet.`,
   },
 
+  // RelevanceCutoffStage
+  {
+    name: 'RELEVANCE_CUTOFF_FIXED',
+    pattern:
+      /^relevance cutoff off \(mode fixed\): the selection keeps up to top-k (\d+) chunk\(s\)$/,
+    german: (m) => `Relevanzschnitt aus (Modus fixed): Die Auswahl behält bis zu top-k ${m[1]}.`,
+  },
+  {
+    name: 'RELEVANCE_CUTOFF_RELATIVE',
+    pattern:
+      /^relative cutoff: kept (\d+) of (\d+) chunk\(s\) scoring at least (.+) of the best score (.+), at least (\d+)$/,
+    german: (m) =>
+      `Relativer Schnitt: ${m[1]} von ${m[2]} behalten, die mindestens ${m[3]} des besten Werts ${m[4]} erreichen, mindestens ${m[5]}.`,
+  },
+  {
+    name: 'RELEVANCE_CUTOFF_KNEE',
+    pattern:
+      /^knee cutoff: cut after (\d+) of (\d+) chunk\(s\), where the score fell by at least (.+) of the best$/,
+    german: (m) =>
+      `Schnitt am Knick: nach ${m[1]} von ${m[2]} abgeschnitten, wo der Wert um mindestens ${m[3]} des besten Werts fiel.`,
+  },
+  {
+    name: 'RELEVANCE_CUTOFF_NO_KNEE',
+    pattern:
+      /^knee cutoff: no drop of at least (.+) of the best after the minimum of (\d+), all (\d+) kept$/,
+    german: (m) =>
+      `Schnitt am Knick: kein Abfall um mindestens ${m[1]} des besten Werts nach den mindestens ${m[2]}, alle ${m[3]} behalten.`,
+  },
+  {
+    name: 'RELEVANCE_CUTOFF_NO_POSITIVE_SCORE',
+    pattern:
+      /^relevance cutoff skipped: the best score is not positive, all (\d+) chunk\(s\) kept$/,
+    german: (m) =>
+      `Relevanzschnitt übersprungen: Der beste Wert ist nicht positiv, alle ${m[1]} behalten.`,
+  },
+  {
+    name: 'RELEVANCE_CUTOFF_AT_MINIMUM',
+    pattern: /^relevance cutoff: (\d+) chunk\(s\) do not exceed the minimum of (\d+), all kept$/,
+    german: (m) =>
+      `Relevanzschnitt: ${m[1]} Abschnitte überschreiten das Minimum von ${m[2]} nicht, alle behalten.`,
+  },
+
   // DocumentCompletionStage
   {
     name: 'MAX_CHUNKS_PER_DOCUMENT',

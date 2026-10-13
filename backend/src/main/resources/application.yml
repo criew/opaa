@@ -245,6 +245,13 @@ opaa:
     # for it while reranking runs. An Ebene-1 benchmark value (see QueryProperties); 0 switches the
     # stage off through its own parameter, independently of the role switch below.
     rerank-candidate-count: ${OPAA_QUERY_RERANK_CANDIDATE_COUNT:50}
+    # Sizes the selection by score instead of always filling top-k (RelevanceCutoffProperties):
+    # fixed | relative | knee. top-k stays the upper bound. Ebene-1 benchmark values.
+    relevance-cutoff:
+      mode: ${OPAA_QUERY_RELEVANCE_CUTOFF_MODE:fixed}
+      min-chunks: ${OPAA_QUERY_RELEVANCE_CUTOFF_MIN_CHUNKS:10}
+      relative-threshold: ${OPAA_QUERY_RELEVANCE_CUTOFF_RELATIVE_THRESHOLD:0.6}
+      knee-drop: ${OPAA_QUERY_RELEVANCE_CUTOFF_KNEE_DROP:0.25}
     # How the fusion scores the candidate lists (rrf | score) and whether every sub-query gets its
     # share of the selection (QueryProperties.Fusion). Ebene-1 benchmark values.
     fusion:

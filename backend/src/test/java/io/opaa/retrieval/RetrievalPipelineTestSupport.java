@@ -11,6 +11,7 @@ import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
 import io.opaa.retrieval.ranking.RankFusionStage;
+import io.opaa.retrieval.ranking.RelevanceCutoffStage;
 import io.opaa.retrieval.ranking.RerankStage;
 import io.opaa.retrieval.scope.MetadataFilterStage;
 import io.opaa.retrieval.scope.SearchScopeStage;
@@ -67,6 +68,25 @@ public final class RetrievalPipelineTestSupport {
       QueryDecompositionService queryDecompositionService,
       RerankModelRole rerankModelRole,
       RetrievalPipelineProperties pipelineProperties) {
+    return pipeline(
+        vectorChunkSearch,
+        fullTextChunkSearch,
+        chunkEmbeddingLookup,
+        queryDecompositionService,
+        rerankModelRole,
+        pipelineProperties,
+        RelevanceCutoffProperties.DEFAULT);
+  }
+
+  /** The same pipeline with a relevance cutoff other than the shipped one. */
+  public static RetrievalPipeline pipeline(
+      VectorChunkSearch vectorChunkSearch,
+      FullTextChunkSearch fullTextChunkSearch,
+      ChunkEmbeddingLookup chunkEmbeddingLookup,
+      QueryDecompositionService queryDecompositionService,
+      RerankModelRole rerankModelRole,
+      RetrievalPipelineProperties pipelineProperties,
+      RelevanceCutoffProperties relevanceCutoffProperties) {
     return new RetrievalConfiguration()
         .retrievalPipeline(
             new SearchScopeStage(),
@@ -77,6 +97,7 @@ public final class RetrievalPipelineTestSupport {
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(rerankModelRole),
+            new RelevanceCutoffStage(relevanceCutoffProperties),
             new DocumentCompletionStage(),
             pipelineProperties);
   }

@@ -2017,6 +2017,7 @@ components:
           MMR_SELECTION,
           RANK_FUSION,
           RERANK,
+          RELEVANCE_CUTOFF,
           DOCUMENT_COMPLETION,
         ]
       example: RANK_FUSION
@@ -2047,6 +2048,7 @@ components:
           WITHIN_BUDGET,
           OUTSIDE_FUSION_BUDGET,
           OUTSIDE_RERANK_BUDGET,
+          BELOW_RELEVANCE_CUTOFF,
           COMPLETED_AS_SIBLING,
           EVICTED_BY_DOCUMENT_COMPLETION_TIER_1,
           EVICTED_BY_DOCUMENT_COMPLETION_TIER_2,

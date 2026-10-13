@@ -19,6 +19,7 @@ import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;
 import io.opaa.retrieval.ranking.DocumentCompletionStage;
 import io.opaa.retrieval.ranking.MmrSelectionStage;
 import io.opaa.retrieval.ranking.RankFusionStage;
+import io.opaa.retrieval.ranking.RelevanceCutoffStage;
 import io.opaa.retrieval.ranking.RerankStage;
 import io.opaa.retrieval.scope.MetadataFilterStage;
 import io.opaa.retrieval.scope.SearchScopeStage;
@@ -72,6 +73,7 @@ class HybridFusionTest {
             new MmrSelectionStage(chunkEmbeddingLookup),
             new RankFusionStage(),
             new RerankStage(mock(RerankModelRole.class)),
+            new RelevanceCutoffStage(RelevanceCutoffProperties.DEFAULT),
             new DocumentCompletionStage(),
             RetrievalPipelineProperties.allStagesEnabled());
   }

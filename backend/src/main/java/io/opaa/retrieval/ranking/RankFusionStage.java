@@ -16,7 +16,9 @@ import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.VerdictReason;
 import io.opaa.retrieval.ranking.CandidateFusion.FusedCandidate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Component;
 
@@ -51,12 +53,14 @@ public class RankFusionStage implements RetrievalStage {
         CandidateFusion.fuse(lists, fusion, properties.similarityThreshold());
 
     List<Document> selection = new ArrayList<>(Math.min(budget, fused.size()));
+    Map<String, Double> scores = new HashMap<>();
     List<CandidateVerdict> verdicts = new ArrayList<>(fused.size());
     for (int i = 0; i < fused.size(); i++) {
       FusedCandidate candidate = fused.get(i);
       boolean withinBudget = i < budget;
       if (withinBudget) {
         selection.add(candidate.document());
+        scores.put(candidate.document().getId(), candidate.fusedScore());
       }
       verdicts.add(
           CandidateVerdict.fused(
@@ -94,8 +98,10 @@ public class RankFusionStage implements RetrievalStage {
             : RetrievalNote.OVERALL_BUDGET_TOP_K.format(budget));
     notes.add(RetrievalNote.DEDUPLICATED_BY_CHUNK_ID.format(incoming, fused.size()));
     return new StageOutcome(
-        state.withCandidateLists(
-            List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, selection))),
+        state
+            .withCandidateLists(
+                List.of(new CandidateList(RetrievalListLabel.FUSED_LIST_LABEL, selection)))
+            .withSelectionScores(scores),
         StageExplanation.executed(name(), incoming, selection.size(), verdicts, notes));
   }
 }
