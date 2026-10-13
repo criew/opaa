@@ -90,7 +90,8 @@ class SearchDiagnosisRerankParityTest {
             mock(io.opaa.audit.AuditEventRecorder.class),
             new io.opaa.permission.GroupSizeProperties(null),
             mock(io.opaa.asset.OwnerOnlyRule.class),
-            java.time.Clock.systemUTC());
+            java.time.Clock.systemUTC(),
+            io.opaa.common.TestFeatureFlags.allOn());
 
     return service.diagnose(
         caller, new DiagnosisQuery("Frage", DiagnosisContextType.SELF, null, null, null, null));
