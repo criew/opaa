@@ -303,6 +303,12 @@ Für die Stelle, die ihn betreibt, heißt das:
 - **Proxys und Gateways dazwischen** protokollieren keinen Inhalt. Ein Proxy-Log, das Konto oder
   IP-Adresse einer Person mit der Anfrage verbindet, stellt einen Personenbezug her; zwischen Browser
   und OPAA gilt das für den vorgelagerten Reverse-Proxy genauso.
+- **Proxys halten die Aufnahme im Arbeitsspeicher.** Viele Reverse-Proxys und Ingress-Controller
+  schreiben einen Anfrage-Body, der ihren kleinen Standardpuffer übersteigt, in eine temporäre
+  Datei. Der Frontend-Container von OPAA hält eine Aufnahme bis 11 MiB im Speicher; ein Proxy davor
+  braucht einen ebenso großen Puffer für den Body, bei nginx und ingress-nginx
+  `client_body_buffer_size` bzw. die Annotation `nginx.ingress.kubernetes.io/client-body-buffer-size`
+  (Kapitel [Kubernetes](kubernetes.md)).
 
 ### Erprobung mit speaches im Compose-Stapel
 
