@@ -517,11 +517,21 @@ class ContextPrefixRerunIntegrationTest {
         owner.id());
     assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
     // The rerun has read the document's prefix and embeds with it; meanwhile a correction makes
-    // another value prefix-effective.
+    // another value prefix-effective. The marker is in the stored text: the fake model is handed
+    // Document#getText, never the prefixed embedding input.
+    java.util.concurrent.atomic.AtomicBoolean corrected =
+        new java.util.concurrent.atomic.AtomicBoolean();
     fakeEmbeddingModel()
-        .beforeEmbeddingTextContaining("Meldewesen", () -> setFassung(document, value));
+        .beforeEmbeddingTextContaining(
+            "Personalausweises",
+            () -> {
+              setFassung(document, value);
+              corrected.set(true);
+            });
 
     rerunService.reembedInPlace(documentRepository.findById(document.getId()).orElseThrow());
+
+    assertThat(corrected).as("the correction ran between read and write").isTrue();
 
     assertThat(documentRepository.findById(document.getId()).orElseThrow().getContextPrefixStamp())
         .as("the chunks carry the prefix from before the correction, so the document waits")

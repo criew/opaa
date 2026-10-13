@@ -20,7 +20,9 @@ public class FakeEmbeddingModel implements EmbeddingModel {
 
   /**
    * Runs {@code action} once, on the calling thread, before the first embedding request with a text
-   * containing {@code marker} is answered - the window between a caller's read and its write.
+   * containing {@code marker} is answered - the window between a caller's read and its write. The
+   * texts are what {@link #getEmbeddingContent} yields, the stored chunk text without any
+   * Kontextpräfix, so the marker must come from that text.
    */
   public void beforeEmbeddingTextContaining(String marker, Runnable action) {
     hook.set(new Hook(marker, action));

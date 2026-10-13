@@ -124,6 +124,72 @@ class VectorStoreWriterTest {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void everyStatementOfTheRewriteRunsInsideTheColumnLock() {
+    // The column switch holds the column lock while it waits for the table lock; a statement
+    // before it would hold row locks while waiting for the switch, and both would hang.
+    List<Boolean> insideColumnLock = new java.util.ArrayList<>();
+    RecordingIndexState state = new RecordingIndexState();
+    VectorStoreWriter recordingWriter =
+        new VectorStoreWriter(
+            jdbcTemplate,
+            fullTextChunkStore,
+            state,
+            JsonMapper.builder().build(),
+            "public",
+            "vector_store");
+    Document chunk = chunk(UUID.randomUUID(), "noch da");
+    when(jdbcTemplate.queryForObject(anyString(), eq(Boolean.class), any(Object[].class)))
+        .thenAnswer(
+            call -> {
+              insideColumnLock.add(state.writing);
+              return true;
+            });
+    when(jdbcTemplate.queryForList(anyString(), eq(String.class), any(Object[].class)))
+        .thenAnswer(
+            call -> {
+              insideColumnLock.add(state.writing);
+              return List.of(chunk.getId());
+            });
+    when(jdbcTemplate.batchUpdate(
+            anyString(),
+            anyCollection(),
+            anyInt(),
+            any(ParameterizedPreparedStatementSetter.class)))
+        .thenAnswer(
+            call -> {
+              insideColumnLock.add(state.writing);
+              return new int[][] {{1}};
+            });
+
+    recordingWriter.rewriteEmbeddedChunks(List.of(chunk), List.of(new float[] {0.1f}));
+
+    assertThat(insideColumnLock)
+        .as("document lock, row lock and update")
+        .hasSize(3)
+        .containsOnly(true);
+  }
+
+  /** Records whether a writer is between taking and releasing the column lock. */
+  private static final class RecordingIndexState extends EmbeddingIndexState {
+
+    private boolean writing;
+
+    @Override
+    <T> T whileWriting(java.util.function.Function<String, T> write) {
+      return super.whileWriting(
+          column -> {
+            writing = true;
+            try {
+              return write.apply(column);
+            } finally {
+              writing = false;
+            }
+          });
+    }
+  }
+
+  @Test
   void deletingAndRelabellingADocumentsChunksTakeTheSameDocumentLock() {
     UUID documentId = UUID.randomUUID();
 

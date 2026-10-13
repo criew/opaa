@@ -129,11 +129,11 @@ public class VectorStoreWriter {
    * path removes the vector row before the full-text row, so no full-text row outlives its chunk.
    * {@code embeddings} is positionally aligned with {@code chunks}. Content and metadata stay.
    *
-   * <p>Lock order: first the document lock of every document the chunks name (sorted), then the
-   * vector rows, {@code NOWAIT}. The single-document writers ({@link #deleteChunksOfDocument},
-   * {@link #updateDocumentMetadata}) take the same document lock before their first row, so they
-   * wait instead of deadlocking; a library-wide delete holding a row fails this write at once
-   * instead of deadlocking with it.
+   * <p>Lock order: first the column lock ({@link EmbeddingIndexState#whileWriting}), then the
+   * document lock of every document the chunks name (sorted), then the vector rows, {@code NOWAIT}.
+   * The single-document writers ({@link #deleteChunksOfDocument}, {@link #updateDocumentMetadata})
+   * take the same document lock before their first row, so they wait instead of deadlocking; a
+   * library-wide delete holding a row fails this write at once instead of deadlocking with it.
    *
    * @return how many chunks were still stored and got their new vector
    * @throws org.springframework.dao.CannotAcquireLockException when another writer holds one of the
@@ -144,6 +144,16 @@ public class VectorStoreWriter {
     if (chunks.isEmpty()) {
       return 0;
     }
+    // The column lock comes first, before any database lock: the column switch holds it while it
+    // waits for the table, so a writer holding row locks while asking for it would hang the switch.
+    List<Document> stillStored =
+        indexState.whileWriting(column -> rewriteStoredChunks(column, chunks, embeddings));
+    fullTextChunkStore.indexChunks(stillStored);
+    return stillStored.size();
+  }
+
+  private List<Document> rewriteStoredChunks(
+      String column, List<Document> chunks, List<float[]> embeddings) {
     chunks.stream()
         .map(chunk -> chunk.getMetadata().get(VectorChunkStore.DOCUMENT_ID_METADATA_KEY))
         .filter(Objects::nonNull)
@@ -168,26 +178,24 @@ public class VectorStoreWriter {
       }
     }
     if (zipped.isEmpty()) {
-      return 0;
+      return List.of();
     }
     int[][] counts =
-        indexState.whileWriting(
-            column ->
-                jdbcTemplate.batchUpdate(
-                    "UPDATE "
-                        + schemaName
-                        + "."
-                        + tableName
-                        + " SET "
-                        + column
-                        + " = ? WHERE id = ? AND content = ?",
-                    zipped,
-                    zipped.size(),
-                    (ps, entry) -> {
-                      ps.setObject(1, new PGvector(entry.embedding()));
-                      ps.setObject(2, UUID.fromString(entry.chunk().getId()));
-                      ps.setString(3, entry.chunk().getText());
-                    }));
+        jdbcTemplate.batchUpdate(
+            "UPDATE "
+                + schemaName
+                + "."
+                + tableName
+                + " SET "
+                + column
+                + " = ? WHERE id = ? AND content = ?",
+            zipped,
+            zipped.size(),
+            (ps, entry) -> {
+              ps.setObject(1, new PGvector(entry.embedding()));
+              ps.setObject(2, UUID.fromString(entry.chunk().getId()));
+              ps.setString(3, entry.chunk().getText());
+            });
     List<Document> stillStored = new ArrayList<>(zipped.size());
     int position = 0;
     for (int[] batch : counts) {
@@ -198,8 +206,7 @@ public class VectorStoreWriter {
         position++;
       }
     }
-    fullTextChunkStore.indexChunks(stillStored);
-    return stillStored.size();
+    return stillStored;
   }
 
   /**
