@@ -167,6 +167,44 @@ class QueryPropertiesTest {
     assertThat(bind(yaml).maxChunksPerDocument()).isEqualTo(1);
   }
 
+  /** The shipped fusion is the sub-query quota over RRF, unset and from application.yml alike. */
+  @Test
+  void theFusionDefaultsToTheSubQueryQuotaOverRrf() throws IOException {
+    QueryProperties unset =
+        bind(List.<PropertySource<?>>of(new MapPropertySource("empty", Map.of())));
+    List<PropertySource<?>> yaml =
+        new YamlPropertySourceLoader()
+            .load("application.yml", new ClassPathResource("application.yml"));
+
+    assertThat(unset.fusion()).isEqualTo(QueryProperties.Fusion.DEFAULT);
+    assertThat(bind(yaml).fusion()).isEqualTo(QueryProperties.Fusion.DEFAULT);
+    assertThat(QueryProperties.Fusion.DEFAULT)
+        .isEqualTo(new QueryProperties.Fusion(FusionMethod.RRF, true, 0.7));
+  }
+
+  @Test
+  void theFusionBindsFromItsOwnKeys() {
+    QueryProperties properties =
+        bind(
+            List.<PropertySource<?>>of(
+                new MapPropertySource(
+                    "fusion",
+                    Map.of(
+                        "opaa.query.fusion.method", "score",
+                        "opaa.query.fusion.sub-query-quota", "false",
+                        "opaa.query.fusion.vector-weight", "0.5"))));
+
+    assertThat(properties.fusion())
+        .isEqualTo(new QueryProperties.Fusion(FusionMethod.SCORE, false, 0.5));
+  }
+
+  @Test
+  void aFusionVectorWeightOutsideZeroToOneIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties.Fusion(FusionMethod.SCORE, true, 1.2))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("vectorWeight");
+  }
+
   private static QueryProperties bind(List<PropertySource<?>> sources) {
     return new Binder(
             ConfigurationPropertySources.from(sources),

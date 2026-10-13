@@ -34,8 +34,8 @@ import org.springframework.stereotype.Component;
  * where the endpoint scored nothing restores the cap itself. A chunk the reranker did not score
  * keeps its fused order behind every scored one.
  *
- * <p>A failure costs the order, never the answer - but not the order of a run configured without
- * reranking: the narrowing stages kept the widened window, so the surviving order is a third state.
+ * <p>A failure costs the order, never the answer: the fused order capped at {@code top-k} is the
+ * selection of a run without reranking, because no stage before the fusion depends on the budget.
  */
 @Component
 public class RerankStage implements RetrievalStage {

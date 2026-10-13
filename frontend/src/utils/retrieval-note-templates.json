@@ -41,6 +41,14 @@
       "template": "full-text search, %d list(s)"
     },
     {
+      "name": "FUSION_SUB_QUERIES_POOLED",
+      "template": "lists of %d sub-queries fused into one pool"
+    },
+    {
+      "name": "FUSION_SUB_QUERY_QUOTA",
+      "template": "quota per sub-query: each of %d sub-queries fused on its own, selection filled round-robin"
+    },
+    {
       "name": "LEXICAL_PATH_DISABLED",
       "template": "lexical search path switched off (%s)"
     },
@@ -78,11 +86,11 @@
     },
     {
       "name": "MMR_LAMBDA_ACTIVE",
-      "template": "mmr-lambda %s (diversity term active, cosine similarity of real chunk embeddings)"
+      "template": "mmr-lambda %s: every list reordered by diversity (cosine similarity of real chunk embeddings), none narrowed"
     },
     {
       "name": "MMR_LAMBDA_INACTIVE",
-      "template": "mmr-lambda %s (diversity term inactive: plain top-k by relevance)"
+      "template": "mmr-lambda %s: diversity term inactive, every list passed on unchanged to the fusion"
     },
     {
       "name": "NOT_REACHED",
@@ -91,10 +99,6 @@
     {
       "name": "OVERALL_BUDGET_TOP_K",
       "template": "overall budget top-k %d"
-    },
-    {
-      "name": "PER_LIST_BUDGET",
-      "template": "per-list budget %d"
     },
     {
       "name": "RANK_FUSION_LISTS",
@@ -153,6 +157,10 @@
       "template": "the rerank model role scored nothing; the fused order was kept and capped at top-k %d"
     },
     {
+      "name": "SCORE_FUSION_LISTS",
+      "template": "score fusion over %d list(s): vector weight %s on the cosine similarity rescaled from the similarity threshold %s to 1, the rest on ts_rank relative to the best of its list"
+    },
+    {
       "name": "SEARCH_QUERY",
       "template": "search query: %s"
     },
@@ -200,7 +208,11 @@
     },
     {
       "name": "FUSED",
-      "template": "fused (RRF)"
+      "template": "fused"
+    },
+    {
+      "name": "FUSED_SUB_QUERY",
+      "template": "fused · sub-query %d"
     },
     {
       "name": "VECTOR_SEARCH",

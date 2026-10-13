@@ -38,7 +38,7 @@ describe('authStore feature flags', () => {
 
     const state = useAuthStore.getState()
     expect(state.isAuthenticated).toBe(true)
-    expect(state.features).toEqual({ promptLibraries: true, metadata: false })
+    expect(state.features).toEqual({ promptLibraries: true, metadata: false, speechInput: true })
     expect(isFeatureEnabled('metadata')).toBe(false)
     expect(isFeatureEnabled('promptLibraries')).toBe(true)
   })

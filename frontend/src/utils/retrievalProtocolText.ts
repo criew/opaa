@@ -170,21 +170,18 @@ const NOTE_RULES: NoteRule[] = [
 
   // MmrSelectionStage
   {
-    name: 'PER_LIST_BUDGET',
-    pattern: /^per-list budget (\d+)$/,
-    german: (m) => `Auswahlgrenze je Liste: ${m[1]}.`,
-  },
-  {
     name: 'MMR_LAMBDA_INACTIVE',
-    pattern: /^mmr-lambda (.+) \(diversity term inactive: plain top-k by relevance\)$/,
-    german: (m) => `mmr-lambda ${m[1]} (Vielfaltsanteil inaktiv: reine Rangfolge nach Relevanz).`,
+    pattern:
+      /^mmr-lambda (.+): diversity term inactive, every list passed on unchanged to the fusion$/,
+    german: (m) =>
+      `mmr-lambda ${m[1]}: Vielfaltsanteil inaktiv, jede Liste geht unverändert in die Fusion.`,
   },
   {
     name: 'MMR_LAMBDA_ACTIVE',
     pattern:
-      /^mmr-lambda (.+) \(diversity term active, cosine similarity of real chunk embeddings\)$/,
+      /^mmr-lambda (.+): every list reordered by diversity \(cosine similarity of real chunk embeddings\), none narrowed$/,
     german: (m) =>
-      `mmr-lambda ${m[1]} (Vielfaltsanteil aktiv, Kosinus-Ähnlichkeit der echten Abschnitts-Einbettungen).`,
+      `mmr-lambda ${m[1]}: jede Liste nach Vielfalt umsortiert (Kosinus-Ähnlichkeit der echten Abschnitts-Einbettungen), keine gekürzt.`,
   },
 
   // RankFusionStage
@@ -192,6 +189,25 @@ const NOTE_RULES: NoteRule[] = [
     name: 'RANK_FUSION_LISTS',
     pattern: /^reciprocal rank fusion over (\d+) list\(s\)$/,
     german: (m) => `Reziproke Rangfusion über ${plural(m[1], 'Liste', 'Listen')}.`,
+  },
+  {
+    name: 'SCORE_FUSION_LISTS',
+    pattern:
+      /^score fusion over (\d+) list\(s\): vector weight (.+) on the cosine similarity rescaled from the similarity threshold (.+) to 1, the rest on ts_rank relative to the best of its list$/,
+    german: (m) =>
+      `Wertefusion über ${plural(m[1], 'Liste', 'Listen')}: Gewicht ${m[2]} auf die Kosinus-Ähnlichkeit, skaliert von der Ähnlichkeitsschwelle ${m[3]} bis 1, der Rest auf ts_rank relativ zum besten Wert der jeweiligen Liste.`,
+  },
+  {
+    name: 'FUSION_SUB_QUERY_QUOTA',
+    pattern:
+      /^quota per sub-query: each of (\d+) sub-queries fused on its own, selection filled round-robin$/,
+    german: (m) =>
+      `Quote je Teilfrage: Jede der ${m[1]} Teilfragen wird für sich fusioniert, die Auswahl reihum gefüllt.`,
+  },
+  {
+    name: 'FUSION_SUB_QUERIES_POOLED',
+    pattern: /^lists of (\d+) sub-queries fused into one pool$/,
+    german: (m) => `Die Listen von ${m[1]} Teilfragen werden gemeinsam fusioniert.`,
   },
   {
     name: 'BUDGET_WIDENED_TO_RERANK_WINDOW',
@@ -339,7 +355,12 @@ const LIST_LABEL_RULES: NoteRule[] = [
     pattern: /^full-text search · sub-query (\d+)$/,
     german: (m) => `Volltextsuche · Teilfrage ${m[1]}`,
   },
-  { name: 'FUSED', pattern: /^fused \(RRF\)$/, german: () => 'fusioniert (RRF)' },
+  { name: 'FUSED', pattern: /^fused$/, german: () => 'fusioniert' },
+  {
+    name: 'FUSED_SUB_QUERY',
+    pattern: /^fused · sub-query (\d+)$/,
+    german: (m) => `fusioniert · Teilfrage ${m[1]}`,
+  },
 ]
 
 /**
@@ -379,5 +400,5 @@ export function translateStageNote(note: string): string {
  * completed run, so it gets the same wording as the explicit fused label - one name per list.
  */
 export function translateListLabel(label: string | null | undefined): string {
-  return label == null ? 'fusioniert (RRF)' : translate(LIST_LABEL_RULES, label)
+  return label == null ? 'fusioniert' : translate(LIST_LABEL_RULES, label)
 }

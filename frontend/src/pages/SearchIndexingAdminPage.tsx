@@ -46,6 +46,7 @@ import { isUuid, plural } from '../components/searchadmin/format'
 import type {
   ChunkInspectionResponse,
   RetrievalCandidateOutcome,
+  RetrievalFusionContributionResponse,
   RetrievalStage,
   RetrievalStageResponse,
   RetrievalStageStatus,
@@ -76,6 +77,7 @@ const ROLE_LABELS: Record<SearchModelRole, string> = {
   CHAT: 'Chat',
   EMBEDDING: 'Einbettung',
   RERANK: 'Reranking',
+  TRANSCRIPTION: 'Transkription',
 }
 
 const ROLE_STATE_LABELS: Record<SearchModelRoleStatusResponse['state'], string> = {
@@ -104,8 +106,8 @@ const STAGE_LABELS: Record<RetrievalStage, string> = {
   SUB_QUERY_DECOMPOSITION: 'Teilfragen',
   VECTOR_SEARCH: 'Vektorsuche',
   FULL_TEXT_SEARCH: 'Volltextsuche',
-  MMR_SELECTION: 'Auswahl je Liste',
-  RANK_FUSION: 'Fusion (RRF)',
+  MMR_SELECTION: 'Vielfaltsauswahl',
+  RANK_FUSION: 'Fusion',
   RERANK: 'Neubewertung (Reranking)',
   RELEVANCE_CUTOFF: 'Relevanzschnitt',
   DOCUMENT_COMPLETION: 'Dokument-Vervollständigung',
@@ -127,7 +129,6 @@ const OUTCOME_LABELS: Record<RetrievalCandidateOutcome, string> = {
 const REASON_LABELS: Record<RetrievalVerdictReason, string> = {
   RETRIEVED_BY_SEARCH: 'Von der Suche gefunden',
   WITHIN_BUDGET: 'Innerhalb der Auswahlgrenze',
-  OUTSIDE_LIST_BUDGET: 'Unterhalb der Auswahlgrenze der eigenen Liste',
   OUTSIDE_FUSION_BUDGET: 'Nach der Fusion unterhalb der Auswahlgrenze',
   OUTSIDE_RERANK_BUDGET: 'Nach der Neubewertung unterhalb der Auswahlgrenze',
   BELOW_RELEVANCE_CUTOFF: 'Unterhalb des Relevanzschnitts',
@@ -270,6 +271,28 @@ function ShowChunkButton({
   )
 }
 
+/** What each list added to a fused candidate's score: list, rank and share of the total. */
+function ContributionList({
+  contributions,
+}: {
+  contributions: RetrievalFusionContributionResponse[]
+}) {
+  if (contributions.length === 0) {
+    return <>—</>
+  }
+  const total = contributions.reduce((sum, contribution) => sum + contribution.value, 0)
+  return (
+    <Box component="ul" sx={{ m: 0, pl: 2 }}>
+      {contributions.map((contribution) => (
+        <li key={contribution.listLabel}>
+          {translateListLabel(contribution.listLabel)}: Rang {contribution.rank}
+          {total > 0 ? `, ${Math.round((100 * contribution.value) / total)} %` : ''}
+        </li>
+      ))}
+    </Box>
+  )
+}
+
 function StagePanel({
   stage,
   navigation,
@@ -277,6 +300,9 @@ function StagePanel({
   stage: RetrievalStageResponse
   navigation: ChunkNavigation
 }) {
+  const showContributions = stage.verdicts.some(
+    (verdict) => (verdict.contributions?.length ?? 0) > 0,
+  )
   return (
     <Accordion slotProps={{ heading: { component: 'h3' } }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
@@ -320,6 +346,7 @@ function StagePanel({
                   <TableCell>Liste</TableCell>
                   <TableCell align="right">Rang</TableCell>
                   <TableCell align="right">Wert</TableCell>
+                  {showContributions && <TableCell>Beiträge</TableCell>}
                   <TableCell align="center">Chunk</TableCell>
                 </TableRow>
               </TableHead>
@@ -339,6 +366,11 @@ function StagePanel({
                     <TableCell align="right">
                       {verdict.value == null ? '—' : verdict.value.toFixed(4)}
                     </TableCell>
+                    {showContributions && (
+                      <TableCell>
+                        <ContributionList contributions={verdict.contributions ?? []} />
+                      </TableCell>
+                    )}
                     <TableCell align="center">
                       <ShowChunkButton
                         chunkId={verdict.chunkId}

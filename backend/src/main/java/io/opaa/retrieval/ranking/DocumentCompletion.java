@@ -59,7 +59,7 @@ final class DocumentCompletion {
     }
 
     // The authoritative rank is the selection's own order - never Document#getScore(), which is
-    // only comparable within the single search that produced it (see ReciprocalRankFusion).
+    // only comparable within the single search that produced it.
     Map<String, Integer> originalRankByChunkId = new HashMap<>();
     Map<String, Integer> bestOriginalRankByDocument = new HashMap<>();
     for (int i = 0; i < selection.size(); i++) {
@@ -151,7 +151,7 @@ final class DocumentCompletion {
    * Groups every candidate not already in {@code selection} by document, deduplicated by chunk id
    * and ordered by first occurrence in {@code candidatePool} - not by {@link Document#getScore()},
    * which is only comparable within the single search that produced it. Positional for the same
-   * reason {@link ReciprocalRankFusion} gives for its tie-break.
+   * reason {@link CandidateFusion} gives for its tie-break.
    */
   private static Map<String, List<Document>> unusedCandidatesByDocument(
       List<Document> candidatePool, Set<String> selectedChunkIds) {

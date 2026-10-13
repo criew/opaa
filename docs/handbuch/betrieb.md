@@ -258,7 +258,7 @@ echten Modellaufruf bzw. eine echte Ähnlichkeitssuche auslösen.
 > alle Verbindungen in langen Chat-Anfragen hält, kann sich so selbst aus der Rotation nehmen. Bei
 > knapp bemessenen Pools die Probe mit einer nachsichtigen Anzahl Fehlversuche konfigurieren.
 
-Chat-Modell, Embedding-Modell und Vektorspeicher stehen bewusst **nicht** in der Bereitschaft und
+Chat-Modell, Embedding-Modell, Transkription und Vektorspeicher stehen bewusst **nicht** in der Bereitschaft und
 nicht im Gesamtstatus: Jeder hängt an einem fremden Dienst, und ein hängender Modellserver darf die
 Instanz nicht aus der Rotation nehmen, während Anmeldung, Verwaltung und Dokumentenzugriff
 weiterarbeiten. Ohne Datenbank dagegen kann die Instanz nichts beantworten. Die übrigen Zustände
@@ -268,6 +268,7 @@ stehen in eigenen Gruppen:
 | --- | --- |
 | `GET /actuator/health/chat-model` | welches Chat-Modell aktiv ist (ohne Aufruf des Modells) |
 | `GET /actuator/health/embedding-model` | einen echten Embedding-Aufruf |
+| `GET /actuator/health/transcription-model` | den letzten bekannten Zustand der Rolle Transkription, ohne eigenen Aufruf; `UP` bei erreichbarem Dienst und bei abgeschalteter Spracheingabe, `DOWN` bei eingeschalteter, aber nicht nutzbarer Rolle |
 | `GET /actuator/health/vector-store` | eine echte Ähnlichkeitssuche |
 | `GET /actuator/health/upload-store` | den Objektspeicher der Originalablage; `UP` mit Endpunkt und Bucket oder `DOWN` mit dem Grund (nur mit `OPAA_UPLOAD_STORE=s3`) |
 | `GET /actuator/health/mail` | den letzten SMTP-Versand: `UP`, `DOWN` oder `UNKNOWN`, ohne Einzelheiten |

@@ -1603,10 +1603,10 @@ components:
     SearchModelRole:
       type: string
       description: >
-        The three model roles of the Modell-Schichtenmodell (hybrid-retrieval.md, Arbeitspaket 4):
+        The model roles of the Modell-Schichtenmodell (hybrid-retrieval.md, Arbeitspaket 4):
         reranking sits on the same level as chat and embedding, not inside the search as a built-in
-        procedure.
-      enum: [CHAT, EMBEDDING, RERANK]
+        procedure. TRANSCRIPTION turns dictated speech into text for the chat input.
+      enum: [CHAT, EMBEDDING, RERANK, TRANSCRIPTION]
       example: RERANK
 
     SearchModelRoleState:
@@ -2046,7 +2046,6 @@ components:
         [
           RETRIEVED_BY_SEARCH,
           WITHIN_BUDGET,
-          OUTSIDE_LIST_BUDGET,
           OUTSIDE_FUSION_BUDGET,
           OUTSIDE_RERANK_BUDGET,
           BELOW_RELEVANCE_CUTOFF,
@@ -2095,6 +2094,30 @@ components:
           description: >
             The stage-internal number the decision was made on. Deliberately not comparable across
             stages, nor across search methods within one.
+        contributions:
+          type: array
+          description: >
+            For a fusion verdict, the candidate lists whose contributions make up its value - which
+            sub-query and which search path the chunk owes its place to. Pooled, every list the
+            chunk appeared in; with the sub-query quota only the lists of the sub-query that placed
+            it, so the shares always add up to value. Empty for every other stage.
+          items:
+            $ref: "#/components/schemas/RetrievalFusionContributionResponse"
+
+    RetrievalFusionContributionResponse:
+      type: object
+      required: [listLabel, rank, value]
+      properties:
+        listLabel:
+          type: string
+          description: The contributing candidate list.
+        rank:
+          type: integer
+          description: The chunk's 1-based rank in that list.
+        value:
+          type: number
+          format: double
+          description: The share of the fused score from that list, in the fusion method's unit.
 
     RetrievalStageResponse:
       type: object

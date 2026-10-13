@@ -37,9 +37,16 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   weggelassenes oder `null`-Feld übernimmt den Produktionswert unverändert. Unterstützte Felder:
   `fetchK`, `mmrLambda`, `similarityThreshold`, `queryDecompositionEnabled`, `maxSubQueries`,
   `maxChunksPerDocument`, `fullTextSearchEnabled` (seit Issue #1049), `rerankCandidateCount`
-  (seit Issue #1050; `0` ist die Variante ohne Reranking). `topK` ist bewusst kein
+  (seit Issue #1050; `0` ist die Variante ohne Reranking), `fusionMethod` (`RRF` oder `SCORE`),
+  `fusionSubQueryQuota` und `fusionVectorWeight` (seit Issue #2619). `topK` ist bewusst kein
   Feld — die Metriknamen des Pipeline-Pfads (`hitRateAt5`, `ndcgAt20`, …) sind an das
   Produktionsfenster gebunden (siehe `retrieval-benchmark.md`, Abschnitt 1).
+- Der Vergleich `verwaltung-fusion.json` (Issue #2619) misst Quote je Teilfrage und Wertefusion,
+  einzeln und kombiniert. Die Quote wirkt nur bei mehreren Teilfragen; der Vergleich ist deshalb mit
+  `-Dopaa.eval.queryDecomposition=true` zu fahren, ohne Zerlegung unterscheiden sich nur die
+  `score`-Varianten von der Referenz. Die Fusionsparameter sind kein Festpunkt der
+  Pipeline-Baselines; ein Lauf mit geänderter Fusion gehört deshalb in diesen Vergleich, nicht in
+  eine Baseline.
 - Eine Variante mit `fullTextSearchEnabled: true` wird als „nicht ausgeführt" gemeldet, solange der
   Volltextindex der gemessenen Bibliothek unvollständig ist: Die fehlenden Abschnitte sind für den
   lexikalischen Pfad unsichtbar, und die Variante hätte einen geschmälerten lexikalischen Beitrag
@@ -51,9 +58,8 @@ Referenzvariante markiert ist. Ein neuer Vergleich ist eine neue Datei — kein 
   Rerank-Modellrolle des Laufs nicht nutzbar ist (Schalter aus, Rolle unbelegt oder Endpunkt
   nicht erreichbar) — sie hätte sonst die Konfiguration ohne Reranking unter dem Namen der mit
   Reranking gemessen. **Diese Prüfung wiederholt sich nach jeder Variante:** Fällt der Endpunkt
-  mitten im Lauf aus, ist jede betroffene Frage auf die fusionierte Reihenfolge des verbreiterten
-  Fensters zurückgefallen — weder das Ergebnis mit Reranking noch das der Konfiguration ohne
-  Reranking (siehe [retrieval-algorithm.md](../../docs/features/retrieval-algorithm.md), Schritt
+  mitten im Lauf aus, ist jede betroffene Frage auf die fusionierte Reihenfolge zurückgefallen, also
+  auf das Ergebnis der Konfiguration ohne Reranking (siehe [retrieval-algorithm.md](../../docs/features/retrieval-algorithm.md), Schritt
   5b). Die Variante wird dann als „nicht verwertbar" gemeldet statt als Messwert. Maßgeblich ist
   dabei nicht der Rollenzustand am Ende, sondern die Zahl der Aufrufe ohne verwertbare Rangfolge
   (`RerankModelRole#degradedCallCount`) vor und nach der Variante — eine Rolle, die ausfällt und

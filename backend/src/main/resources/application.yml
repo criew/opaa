@@ -221,6 +221,8 @@ opaa:
       enabled: ${OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED:true}
     metadata:
       enabled: ${OPAA_FEATURES_METADATA_ENABLED:true}
+    speech-input:
+      enabled: ${OPAA_FEATURES_SPEECH_INPUT_ENABLED:true}
   # Demo seed only: POST /api/v1/spaces/{spaceId}/chat-imports writes prepared chat transcripts
   # without a model call. The route exists only while this is true; off everywhere else.
   demo:
@@ -250,6 +252,12 @@ opaa:
       min-chunks: ${OPAA_QUERY_RELEVANCE_CUTOFF_MIN_CHUNKS:10}
       relative-threshold: ${OPAA_QUERY_RELEVANCE_CUTOFF_RELATIVE_THRESHOLD:0.6}
       knee-drop: ${OPAA_QUERY_RELEVANCE_CUTOFF_KNEE_DROP:0.25}
+    # How the fusion scores the candidate lists (rrf | score) and whether every sub-query gets its
+    # share of the selection (QueryProperties.Fusion). Ebene-1 benchmark values.
+    fusion:
+      method: ${OPAA_QUERY_FUSION_METHOD:rrf}
+      sub-query-quota: ${OPAA_QUERY_FUSION_SUB_QUERY_QUOTA:true}
+      vector-weight: ${OPAA_QUERY_FUSION_VECTOR_WEIGHT:0.7}
     # The conversation window (messages the chat memory keeps, always even) and how many of its
     # most recent turns the sub-question decomposition sees - the search never sees more of the
     # conversation than the answer. Ebene-1 benchmark values, only judgeable with the multi-turn
@@ -306,6 +314,19 @@ opaa:
     # BAAI/bge-reranker-v2-m3) - a shorter default reports normal CPU latency as UNREACHABLE.
     # Installations with a faster (typically GPU-backed) endpoint may lower this.
     timeout: ${OPAA_RERANK_TIMEOUT:240s}
+  # The transcription model role (dictation in the chat input), built like the rerank role: an
+  # explicit switch, an OpenAI-compatible endpoint ({base-url}/audio/transcriptions), never fatal.
+  # Default off. The audio is passed through in memory and never stored or logged.
+  transcription:
+    enabled: ${OPAA_TRANSCRIPTION_ENABLED:false}
+    base-url: ${OPAA_TRANSCRIPTION_BASE_URL:}
+    model: ${OPAA_TRANSCRIPTION_MODEL:}
+    api-key: ${OPAA_TRANSCRIPTION_API_KEY:}
+    language: ${OPAA_TRANSCRIPTION_LANGUAGE:de}
+    max-audio-bytes: ${OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES:10485760}
+    timeout: ${OPAA_TRANSCRIPTION_TIMEOUT:120s}
+    # Recordings passed on at the same time, installation-wide; each is held in memory meanwhile.
+    max-concurrent: ${OPAA_TRANSCRIPTION_MAX_CONCURRENT:4}
   indexing:
     # Tokens; only the Tika fallback and plain texts. Structured formats cut by characters below.
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}

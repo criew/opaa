@@ -63,8 +63,8 @@ public record RetrievalContext(
 
   /**
    * The same run with reranking taken out of the picture - used by {@link RetrievalPipeline} when
-   * {@link RetrievalStageName#RERANK} is switched off for that pipeline, so the narrowing stages
-   * cannot widen their budget for a stage that will never restore the {@code top-k} cap.
+   * {@link RetrievalStageName#RERANK} is switched off for that pipeline, so the fusion cannot widen
+   * its budget for a stage that will never restore the {@code top-k} cap.
    */
   RetrievalContext withoutReranking() {
     return rerankAvailability == RerankAvailability.SWITCHED_OFF
@@ -90,11 +90,11 @@ public record RetrievalContext(
   }
 
   /**
-   * The number of candidates the narrowing stages before the reranker keep - {@link
-   * RetrievalStageName#MMR_SELECTION} per list, {@link RetrievalStageName#RANK_FUSION} overall: the
-   * rerank candidate window while reranking is active, {@code top-k} otherwise. The cap is restored
-   * either way, because {@link RetrievalStageName#RERANK} never hands on more than {@code top-k},
-   * including when the endpoint fails mid-run.
+   * The number of candidates {@link RetrievalStageName#RANK_FUSION} keeps of the fused list: the
+   * rerank candidate window while reranking is active, {@code top-k} otherwise. No stage before the
+   * fusion narrows a list, so the fusion always sees every {@code fetch-k} candidate. The cap is
+   * restored either way, because {@link RetrievalStageName#RERANK} never hands on more than {@code
+   * top-k}, including when the endpoint fails mid-run.
    */
   public int candidateBudget() {
     return rerankActive()

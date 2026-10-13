@@ -166,6 +166,33 @@ flowchart TB
     AW --> FS[Fundstellen]
 ```
 
+### Frage diktieren
+
+Wo die Installation eine Spracheingabe anbietet ([Modelle](modelle.md#spracheingabe-einschalten)),
+steht im Eingabefeld neben „Senden" ein Mikrofon. Ohne eingerichteten Transkriptionsdienst und in
+einem Browser, der nicht aufnehmen kann, fehlt es.
+
+So geht es:
+
+1. **Mikrofon** („Spracheingabe starten") wählen. Beim ersten Mal fragt der Browser, ob die Seite
+   das Mikrofon nutzen darf.
+2. Die Frage sprechen. Die Laufzeit der Aufnahme steht neben dem Knopf.
+3. **Aufnahme beenden** wählen. Nach kurzer Verarbeitung steht der erkannte Text im Eingabefeld,
+   hinter dem, was dort schon getippt war.
+4. Den Text prüfen, bei Bedarf korrigieren und selbst senden. **Gesendet wird nie automatisch.**
+
+**Aufnahme verwerfen** beendet die Aufnahme, ohne etwas zu übertragen. Eine Aufnahme endet von
+selbst nach zwei Minuten und nach 15 Sekunden Stille; das bis dahin Gesprochene wird wie nach
+„Aufnahme beenden" erkannt. Scheitert die Übertragung am Netz, versucht OPAA es einmal erneut;
+danach steht eine Meldung unter dem Eingabefeld, und die Aufnahme ist verworfen.
+
+- **Freiwillig.** Tippen ist gleichwertig; es gibt keine Einstellung, die das Diktieren vorschreibt.
+- **Nichts wird gespeichert.** Die Aufnahme liegt nur während der Umwandlung im Arbeitsspeicher von
+  Browser und Server und wird danach verworfen. Gespeichert wird nur die Frage, die die Person
+  sendet — ohne Merkmal, ob sie diktiert oder getippt wurde.
+- **Rücksicht im Büro.** Im Mehrpersonenbüro hören andere mit, was diktiert wird. Nicht während
+  Telefonaten oder Gesprächen diktieren: Das Mikrofon nimmt auch andere Stimmen auf.
+
 ## 3. Was eine Frage nach außen kostet
 
 Die Pipeline läuft im Backend-Prozess und in der Datenbank. Nach außen ruft sie nur die
@@ -201,7 +228,7 @@ flowchart TB
     V[Suchfenster] -.-> S3
     S3 --> S4[4 Vektorsuche]
     S3 --> S5[5 Volltext-<br/>suche]
-    S4 --> S6[6 Auswahl<br/>je Liste]
+    S4 --> S6[6 Vielfalts-<br/>auswahl]
     S5 --> S6
     S6 --> S7[7 Fusion]
     S7 --> S8[8 Reranking,<br/>falls an]
@@ -415,8 +442,9 @@ Neue. Diesen Rückstand zeigt die Administrationsseite je Bibliothek (Abschnitt 
 Zwei bekannte Grenzen des Pfads:
 
 - PostgreSQL bewertet Treffer mit `ts_rank`, nicht mit BM25. Lange Chunks werden überbewertet,
-  seltene Begriffe zu wenig gegenüber häufigen abgesetzt. Die Fusion (Stufe 7) verbraucht nur den
-  Rang, nicht den Wert, was diese Schwäche abmildert. Einzelheiten stehen im Kapitel
+  seltene Begriffe zu wenig gegenüber häufigen abgesetzt. Die Fusion (Stufe 7) verbraucht im
+  Auslieferungsstand nur den Rang, nicht den Wert, was diese Schwäche abmildert; die Fusion nach
+  Werten nimmt den `ts_rank` nur relativ zum besten Treffer seiner Liste. Einzelheiten stehen im Kapitel
   [Deployment](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25).
 - Der Pfad lässt sich per Konfiguration abschalten. Er bleibt dann in der Kette, weist sich im
   Protokoll als abgeschaltet aus, und die Suche läuft rein vektoriell. Auf der Verwaltungs-Evaldomäne
@@ -426,21 +454,23 @@ Schlägt die Volltextabfrage fehl, scheitert die Frage — wie bei einem Ausfall
 Lauf, der die halbe hybride Suche still verliert, gäbe eine schlechtere Antwort als normale aus; die
 Fehlerursache steht im Server-Log.
 
-### Stufe 6: Auswahl je Liste
+### Stufe 6: Vielfaltsauswahl
 
 Jetzt liegen mehrere Kandidatenlisten vor: je Suchanfrage eine aus der Vektorsuche und eine aus
-der Volltextsuche. Jede Liste wird auf das **Kandidatenbudget** gekürzt: die endgültige Anzahl
-`top-k`, oder das größere Reranking-Fenster, solange Reranking läuft (Stufe 8).
+der Volltextsuche, jede mit bis zu `fetch-k` Kandidaten. Die **Vielfaltsauswahl** (Maximal Marginal
+Relevance, MMR) sortiert jede Liste für sich um, **kürzt aber keine**: Alle `fetch-k` Kandidaten
+erreichen die Fusion, die allein auf das Kandidatenbudget kürzt (Stufe 7). Ein Treffer, der in
+seiner Liste hinter `top-k`, aber innerhalb von `fetch-k` steht, hat dort also noch eine Chance.
 
-An dieser Stelle sitzt die **Vielfaltsauswahl** (Maximal Marginal Relevance, MMR). Sie ist gebaut,
-aber im Auslieferungsstand nicht aktiv: Der Regler `mmr-lambda` steht auf seinem Höchstwert 1,0,
-und die Kürzung ist dann eine reine Top-k-Auswahl nach Relevanz. Ein niedrigerer Wert lässt einen Kandidaten, der einen
+Die Vielfaltsauswahl ist gebaut, aber im Auslieferungsstand nicht aktiv: Der Regler `mmr-lambda`
+steht auf seinem Höchstwert 1,0. Dann bliebe jede Liste, wie sie ist; die Stufe läuft nicht und
+steht im Protokoll als abgeschaltet. Ein niedrigerer Wert lässt einen Kandidaten, der einen
 bereits gewählten inhaltlich nur wiederholt, gegenüber einem weniger ähnlichen, aber thematisch
 neuen zurückfallen. Dafür ist kein Modellaufruf nötig: Die Relevanz jedes Kandidaten hat die Suche
 schon geliefert, und die Ähnlichkeit der Kandidaten **untereinander** wird aus ihren Vektoren
 berechnet, die seit der Indexierung in der Datenbank liegen. Die Stufe liest die Vektoren aller
-Kandidaten in einer Abfrage und rechnet die Kosinus-Ähnlichkeit je Paar selbst aus. Die Auswahl
-läuft dann Platz für Platz: Zuerst kommt der relevanteste Kandidat, danach jeweils der mit dem
+Kandidaten in einer Abfrage und rechnet die Kosinus-Ähnlichkeit je Paar selbst aus. Die Umsortierung
+läuft Platz für Platz: Zuerst kommt der relevanteste Kandidat, danach jeweils der mit dem
 höchsten Wert aus `lambda × Relevanz − (1 − lambda) × größte Ähnlichkeit zu einem bereits
 gewählten Chunk`. Bei 1,0 ist der zweite Term null, und die Vektoren werden gar nicht erst gelesen.
 Der Default 1,0 ist eine Messentscheidung: Auf
@@ -451,17 +481,31 @@ liegen; wer ihn setzt, sollte das messen.
 
 ### Stufe 7: Fusion
 
-Alle Listen werden zu einer zusammengeführt, und zwar **nach Rang, nie nach Wert**: Eine
-Kosinus-Ähnlichkeit aus der Vektorsuche und ein `ts_rank` aus der Volltextsuche sind nicht
-vergleichbar, und selbst zwei Vektorlisten verschiedener Teilfragen nicht. Das Verfahren heißt
-Reciprocal Rank Fusion: Jeder Chunk bekommt je Liste, in der er vorkommt, einen Beitrag von
-`1 / (60 + Rang)`; die Beiträge werden addiert. Ein Chunk, den Vektor- und Volltextsuche beide
-gefunden haben, ist damit ein Kandidat mit zwei Beiträgen, kein doppelter, und setzt sich
-gegenüber einem Chunk durch, der nur in einer Liste weit vorn stand. Die fusionierte Liste wird auf
-das Kandidatenbudget gekürzt: `top-k`, oder das Reranking-Fenster, solange Reranking läuft.
+Alle Listen werden zu einer zusammengeführt, im Auslieferungsstand **nach Rang, nicht nach Wert**:
+Eine Kosinus-Ähnlichkeit aus der Vektorsuche und ein `ts_rank` aus der Volltextsuche sind nicht
+vergleichbar. Das Verfahren heißt Reciprocal Rank Fusion: Jeder Chunk bekommt je Liste, in der er
+vorkommt, einen Beitrag von `1 / (60 + Rang)`; die Beiträge werden addiert. Ein Chunk, den Vektor-
+und Volltextsuche beide gefunden haben, ist damit ein Kandidat mit zwei Beiträgen, kein doppelter,
+und setzt sich gegenüber einem Chunk durch, der nur in einer Liste weit vorn stand.
 
-Das ist der Grund, warum die Pipeline keine Gewichtung „Vektor gegen Volltext" kennt: Beide Pfade
-sind gleichberechtigte Listen derselben Fusion. Ein Dokument, das nur ein Pfad findet, kann in der
+Hat die Frage mehrere Teilfragen, bekommt **jede Teilfrage ihren Anteil**: Sie wird für sich
+fusioniert, und die Auswahl wird reihum gefüllt, zuerst der beste Treffer jeder Teilfrage, dann der
+zweitbeste und so weiter. Ohne diese Quote sammelten Übersichtsdokumente, die jede der oft ähnlich
+formulierten Teilfragen trifft, Beiträge aus allen Listen und verdrängten den Treffer, der nur zu
+einem Aspekt passt, aber dort ganz vorn steht. Die fusionierte Liste wird auf das Kandidatenbudget
+gekürzt: `top-k`, oder das Reranking-Fenster, solange Reranking läuft.
+
+Als Option lässt sich statt nach Rang **nach Wert** fusionieren (`fusion.method`): Die
+Kosinus-Ähnlichkeit, von der Ähnlichkeitsschwelle bis 1 skaliert, geht mit dem Gewicht
+`fusion.vector-weight` ein, der `ts_rank` relativ zum besten Treffer seiner Liste mit dem Rest. Ein
+sehr gut passender Treffer zählt dann mehr als ein mittelmäßiger auf demselben Rang. Das Gewicht ist
+nicht am eigenen Bestand gemessen; wer die Option nutzt, sollte das tun. Das Protokoll der Stufe
+nennt je Kandidat die Listen, die in seinen Wert eingehen, mit Rang und Anteil („Beiträge“). Mit
+Quote sind das nur die Listen der Teilfrage, die ihn aufgenommen hat; wo er in anderen Teilfragen
+stand, zeigen die Suchstufen.
+
+Im Auslieferungsstand kennt die Pipeline deshalb keine Gewichtung „Vektor gegen Volltext": Beide
+Pfade sind gleichberechtigte Listen derselben Fusion. Ein Dokument, das nur ein Pfad findet, kann in der
 Endauswahl ganz vorn stehen.
 
 ### Stufe 8: Reranking
@@ -485,10 +529,9 @@ Administrationsseite unterscheiden:
 
 Fällt der Endpunkt **während** einer Frage aus oder überschreitet er das Zeitbudget, behält die
 Suche die fusionierte Reihenfolge und kürzt selbst auf `top-k`. Ein Ausfall kostet die Sortierung, nie die
-Antwort. Diese Reihenfolge ist allerdings eine dritte, eigene: Weil die früheren Stufen ihr Budget
-für den Reranker auf das Reranking-Fenster geweitet hatten, haben in der Fusion mehr Kandidaten mitgespielt als in
-einem Lauf ohne Reranking. Wer Reranking einschaltet, sollte deshalb die Erreichbarkeit des
-Endpunkts überwachen und nicht nur die Antworten ansehen.
+Antwort, und die Endauswahl ist dann dieselbe wie in einem Lauf ohne Reranking. Wer Reranking
+einschaltet, sollte deshalb die Erreichbarkeit des Endpunkts überwachen und nicht nur die Antworten
+ansehen: Ein Ausfall fällt an den Antworten nicht auf.
 
 Ist `rerank-candidate-count` **kleiner** als `top-k`, liefert die Fusion trotzdem bis zu `top-k`
 Kandidaten (das Kandidatenbudget ist dann das Maximum aus beiden Werten, damit die Antwort nicht
@@ -959,15 +1002,15 @@ Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische 
 | 3 Teilfragen | Teilfragen | `SUB_QUERY_DECOMPOSITION` |
 | 4 Vektorsuche | Vektorsuche | `VECTOR_SEARCH` |
 | 5 Volltextsuche | Volltextsuche | `FULL_TEXT_SEARCH` |
-| 6 Auswahl je Liste | Auswahl je Liste | `MMR_SELECTION` |
-| 7 Fusion | Fusion (RRF) | `RANK_FUSION` |
+| 6 Vielfaltsauswahl | Vielfaltsauswahl | `MMR_SELECTION` |
+| 7 Fusion | Fusion | `RANK_FUSION` |
 | 8 Reranking | Neubewertung (Reranking) | `RERANK` |
 | 9 Relevanzschnitt | Relevanzschnitt | `RELEVANCE_CUTOFF` |
 | 10 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
 
 Für jede Stufe zeigt die Seite Eingang, Ausgang, Status (ausgeführt, abgeschaltet, nicht verfügbar,
 nicht erreicht), die Notizen (Suchanfragen, Budgets, Filter) und je Kandidat das Urteil: gefunden über welchen Pfad mit welchem
-Rang, behalten, verworfen (außerhalb des Listenbudgets, außerhalb des Fusionsbudgets, unterhalb des
+Rang, behalten, verworfen (außerhalb des Fusionsbudgets, unterhalb des
 Reranking-Budgets, verdrängt durch Vervollständigung Stufe 1 oder 2) oder als Geschwister-Chunk
 nachgezogen. Die Endauswahl steht mit Begründung je Chunk darunter.
 
@@ -1046,8 +1089,7 @@ Abschnitt 12.
 | Befund | Wo er sichtbar wird | Übliche Ursache |
 |---|---|---|
 | Dokument nie in einer Kandidatenliste | „Dokument verfolgen", Indexstatus | außerhalb des Suchbereichs; Dokument nicht indiziert oder ohne Chunks (Scan); Filter mit Leerwert-Sonderfall; Begriff steht weder wörtlich noch sinngemäß im Chunk |
-| gefunden, außerhalb des Listenbudgets | Stufe „Auswahl je Liste" | Rang jenseits von `top-k` in seinem Pfad; hilft: Reranking (weitet das Budget auf das Reranking-Fenster), präzisere Frage, Kontextpräfix |
-| gefunden, außerhalb des Fusionsbudgets | Stufe „Fusion" | nur ein Pfad hat es gefunden und andere Kandidaten standen in beiden; hilft: Reranking |
+| gefunden, außerhalb des Fusionsbudgets | Stufe „Fusion" | nur ein Pfad hat es gefunden, oft weit hinten in seiner Liste, und andere Kandidaten standen in beiden; hilft: Reranking, präzisere Frage, Kontextpräfix |
 | unterhalb des Relevanzschnitts | Stufe „Relevanzschnitt" | nur bei eingeschaltetem Schnitt: der Wert lag unter dem Anteil des besten Werts oder hinter dem Knick; hilft: präzisere Frage, Schnitt lockern |
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
@@ -1114,12 +1156,15 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `top-k` | 20 | Chunks in der Endauswahl (1 bis 100); jeder geht ungekürzt in den Prompt der Antwort (Abschnitt 6). Bei kleinem Kontextfenster des Chat-Modells an dessen Größe binden: etwa 6 bei rund 8.000 Tokens, 12 bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells. Die Werte gelten ohne Nachbar-Chunks; bei so kleinem Fenster `neighbor-chunks.radius` auf 0 setzen |
-| `fetch-k` | 25 | Kandidaten je Suchanfrage und Pfad (1 bis 200, mindestens `top-k`); die Reichweite der Suche |
+| `fetch-k` | 25 | Kandidaten je Suchanfrage und Pfad (1 bis 200, mindestens `top-k`); alle erreichen die Fusion. Die Reichweite der Suche |
 | `similarity-threshold` | 0,3 | Mindestähnlichkeit in der Vektorsuche |
 | `vector-index.max-scan-tuples` | 20000 | Indexeinträge, die eine Vektorsuche höchstens durchläuft, um `fetch-k` Chunks innerhalb ihres Filters zu finden; Laufzeit kostet ein höherer Wert nur bei Suchen, die ihn brauchen |
 | `query-decomposition-enabled` / `max-sub-queries` | an / 3 | Teilfragen-Zerlegung und ihre Obergrenze (1 bis 10) |
 | `full-text-search-enabled` | an | Volltextpfad; `false` lässt die Suche rein vektoriell laufen |
-| `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
+| `fusion.method` | `rrf` | Fusionsverfahren: `rrf` nach Rang, `score` nach normierten Werten |
+| `fusion.sub-query-quota` | an | Quote je Teilfrage: jede Teilfrage für sich fusioniert, Auswahl reihum; aus fusioniert alle Listen in einem Pool |
+| `fusion.vector-weight` | 0,7 | Anteil der Vektorsuche bei `fusion.method` = `score` (0 bis 1), der Volltext erhält den Rest |
+| `mmr-lambda` | 1,0 | Vielfaltsauswahl, sortiert jede Liste vor der Fusion um; 1,0 schaltet sie ab |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `relevance-cutoff.mode` | `fixed` | Relevanzschnitt: `fixed` behält bis zu `top-k`, `relative` schneidet relativ zum besten Wert, `knee` am ersten großen Abfall |
 | `relevance-cutoff.min-chunks` | 10 | Untergrenze des Schnitts (1 bis 100) |
@@ -1190,12 +1235,14 @@ entsprechen.
   Bibliothek.
 - **Eine Kürzung der Endauswahl nach Tokens**, etwa passend zum Kontextfenster des aktiven
   Chat-Modells. `top-k` ist eine Zahl von Chunks, unabhängig von ihrer Länge und vom Modell.
+- **Text schon während des Diktierens** (Live-Transkript, #2615). Der erkannte Text erscheint
+  erst nach dem Ende der Aufnahme.
 
 ## 11. Weiterführende Kapitel
 
 - Wie die Chunks entstehen, die hier gesucht werden: [Wissensbibliotheken](wissensbibliotheken.md)
 - Kernfelder, Filter, Kontextpräfix und Beleg-Anzeige: [Metadaten](metadaten.md)
-- Umgebungsvariablen: [Konfiguration](konfiguration.md); Reranking einschalten: [Modelle](modelle.md#reranking-einschalten);
+- Umgebungsvariablen: [Konfiguration](konfiguration.md); Reranking und Spracheingabe einschalten: [Modelle](modelle.md#reranking-einschalten);
   Grenze des Volltextpfads: [Datenbank](datenbank.md#bekannte-grenze-ts_rank-ist-kein-bm25)
 - Wie fremde KI-Werkzeuge diesen Such- und Abrufweg benutzen: [Fremdzugänge](fremdzugaenge.md)
 - Spaces, Chats und was ihnen zugeordnet ist: [Spaces](spaces.md)

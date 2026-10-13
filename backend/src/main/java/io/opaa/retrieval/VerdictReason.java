@@ -13,12 +13,6 @@ public enum VerdictReason {
   /** The candidate was within the stage's budget and stayed. */
   WITHIN_BUDGET,
 
-  /**
-   * The candidate lost the per-list narrowing to {@code top-k} - it was retrieved, but ranked below
-   * the budget of its own list.
-   */
-  OUTSIDE_LIST_BUDGET,
-
   /** The candidate's fused rank placed it below the overall {@code top-k} budget. */
   OUTSIDE_FUSION_BUDGET,
 

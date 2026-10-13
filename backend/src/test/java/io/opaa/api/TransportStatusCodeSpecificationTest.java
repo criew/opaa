@@ -94,12 +94,15 @@ class TransportStatusCodeSpecificationTest {
       Set.of("get", "put", "post", "delete", "patch", "head", "options", "trace");
 
   /**
-   * The shared raw-body bound, matched at its call sites: qualified from any other class,
-   * unqualified inside the one that declares it.
+   * The raw-body bounds, matched at their call sites: qualified from any other class, unqualified
+   * inside the one that declares it. Each owner reads an intake that must not go through multipart:
+   * the push notification (signature over the exact bytes) and the dictation recording (never
+   * buffered to disk).
    */
   private static final String SHARED_BOUND = "readBounded(";
 
-  private static final String BOUND_OWNER = "PushIntakeController";
+  private static final List<String> BOUND_OWNERS =
+      List.of("PushIntakeController", "TranscriptionController");
 
   private static final List<String> MAPPING_ANNOTATIONS =
       List.of(
@@ -130,7 +133,7 @@ class TransportStatusCodeSpecificationTest {
 
   /** The routes bounded today; the scan may only ever find more of them, never fewer. */
   private static final List<String> KNOWN_INTAKES =
-      List.of("post /api/v1/libraries/{libraryId}/push");
+      List.of("post /api/v1/libraries/{libraryId}/push", "post /api/v1/transcriptions");
 
   private static final String CLIENT = "203.0.113.9";
   private static final String PATH_VARIABLE = "11111111-1111-1111-1111-111111111111";
@@ -445,13 +448,14 @@ class TransportStatusCodeSpecificationTest {
       List<String> code) {
 
     boolean callsTheSharedBound() {
-      boolean inTheDeclaringClass =
-          Path.of(source).getFileName().toString().equals(BOUND_OWNER + ".java");
+      String fileName = Path.of(source).getFileName().toString();
+      boolean inADeclaringClass =
+          BOUND_OWNERS.stream().anyMatch(owner -> fileName.equals(owner + ".java"));
       return code.stream()
           .anyMatch(
               line ->
-                  line.contains(BOUND_OWNER + "." + SHARED_BOUND)
-                      || (inTheDeclaringClass && line.contains(SHARED_BOUND)));
+                  BOUND_OWNERS.stream().anyMatch(owner -> line.contains(owner + "." + SHARED_BOUND))
+                      || (inADeclaringClass && line.contains(SHARED_BOUND)));
     }
   }
 

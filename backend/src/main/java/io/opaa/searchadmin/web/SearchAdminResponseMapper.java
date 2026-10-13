@@ -7,6 +7,7 @@ import io.opaa.api.dto.LibraryIndexState;
 import io.opaa.api.dto.LibrarySearchStatusResponse;
 import io.opaa.api.dto.PrivateLibrarySearchSummaryResponse;
 import io.opaa.api.dto.RetrievalCandidateOutcome;
+import io.opaa.api.dto.RetrievalFusionContributionResponse;
 import io.opaa.api.dto.RetrievalStage;
 import io.opaa.api.dto.RetrievalStageResponse;
 import io.opaa.api.dto.RetrievalStageStatus;
@@ -284,7 +285,14 @@ final class SearchAdminResponseMapper {
         .libraryName(descriptor == null ? null : descriptor.libraryName())
         .listLabel(verdict.listLabel())
         .rank(verdict.rank())
-        .value(verdict.value());
+        .value(verdict.value())
+        .contributions(
+            verdict.contributions().stream()
+                .map(
+                    contribution ->
+                        new RetrievalFusionContributionResponse(
+                            contribution.listLabel(), contribution.rank(), contribution.value()))
+                .toList());
   }
 
   private static DiagnosisSelectionEntryResponse toSelectionEntry(
@@ -319,6 +327,7 @@ final class SearchAdminResponseMapper {
       case CHAT -> SearchModelRole.CHAT;
       case EMBEDDING -> SearchModelRole.EMBEDDING;
       case RERANK -> SearchModelRole.RERANK;
+      case TRANSCRIPTION -> SearchModelRole.TRANSCRIPTION;
     };
   }
 
@@ -401,7 +410,6 @@ final class SearchAdminResponseMapper {
     return switch (reason) {
       case RETRIEVED_BY_SEARCH -> RetrievalVerdictReason.RETRIEVED_BY_SEARCH;
       case WITHIN_BUDGET -> RetrievalVerdictReason.WITHIN_BUDGET;
-      case OUTSIDE_LIST_BUDGET -> RetrievalVerdictReason.OUTSIDE_LIST_BUDGET;
       case OUTSIDE_FUSION_BUDGET -> RetrievalVerdictReason.OUTSIDE_FUSION_BUDGET;
       case OUTSIDE_RERANK_BUDGET -> RetrievalVerdictReason.OUTSIDE_RERANK_BUDGET;
       case BELOW_RELEVANCE_CUTOFF -> RetrievalVerdictReason.BELOW_RELEVANCE_CUTOFF;

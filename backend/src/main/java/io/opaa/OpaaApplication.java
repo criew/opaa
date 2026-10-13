@@ -14,6 +14,7 @@ import io.opaa.knowledge.UploadS3Properties;
 import io.opaa.library.AttachmentExtractionProperties;
 import io.opaa.library.ExternalAccessProperties;
 import io.opaa.llm.RerankProperties;
+import io.opaa.llm.TranscriptionProperties;
 import io.opaa.mail.SmtpProperties;
 import io.opaa.permission.GroupSizeProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
@@ -41,6 +42,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   FilesystemProperties.class,
   AttachmentProperties.class,
   RerankProperties.class,
+  TranscriptionProperties.class,
   SmtpProperties.class,
   PublicBaseUrlProperties.class,
   GroupSizeProperties.class,

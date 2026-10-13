@@ -6,7 +6,7 @@
   "variants": [
     {
       "name": "ohne-reranking",
-      "description": "Die ausgelieferte Voreinstellung: Kandidatenfenster 0, die Rerank-Stufe ist über ihren eigenen Parameter abgeschaltet und Fusion und MMR behalten wie bisher top-k. Die Referenzvariante — muss bitgleiche Zahlen zum direkten Pipeline-Lauf desselben Harness-Laufs liefern (Selbstprüfung).",
+      "description": "Die ausgelieferte Voreinstellung: Kandidatenfenster 0, die Rerank-Stufe ist über ihren eigenen Parameter abgeschaltet und die Fusion behält top-k (MMR kürzt seit #2620 nicht mehr). Die Referenzvariante — muss bitgleiche Zahlen zum direkten Pipeline-Lauf desselben Harness-Laufs liefern (Selbstprüfung).",
       "requiresReindex": false,
       "queryOverrides": {
         "rerankCandidateCount": 0

@@ -406,6 +406,8 @@ export type RetrievalStage = components['schemas']['RetrievalStage']
 export type RetrievalStageStatus = components['schemas']['RetrievalStageStatus']
 export type RetrievalStageResponse = components['schemas']['RetrievalStageResponse']
 export type RetrievalVerdictResponse = components['schemas']['RetrievalVerdictResponse']
+export type RetrievalFusionContributionResponse =
+  components['schemas']['RetrievalFusionContributionResponse']
 export type RetrievalCandidateOutcome = components['schemas']['RetrievalCandidateOutcome']
 export type RetrievalVerdictReason = components['schemas']['RetrievalVerdictReason']
 export type DiagnosisSelectionEntryResponse =
@@ -467,3 +469,7 @@ export function isErrorResponse(data: unknown): data is ErrorResponse {
     typeof (data as Record<string, unknown>).error === 'string'
   )
 }
+
+export type TranscriptionAvailabilityResponse =
+  components['schemas']['TranscriptionAvailabilityResponse']
+export type TranscriptionResponse = components['schemas']['TranscriptionResponse']

@@ -39,6 +39,15 @@ export const mockSearchStatus: SearchStatusResponse = {
       detail:
         'Reranking ist ausdruecklich abgeschaltet. Die Suche laeuft ohne diese Stufe - das ist die Voreinstellung, kein Fehler.',
     },
+    {
+      role: 'TRANSCRIPTION',
+      state: 'DISABLED',
+      endpoint: null,
+      modelIdentifier: null,
+      faulted: false,
+      detail:
+        'Die Spracheingabe ist abgeschaltet (OPAA_TRANSCRIPTION_ENABLED oder die Funktion Spracheingabe). Im Chat erscheint kein Mikrofon - das ist die Voreinstellung, kein Fehler.',
+    },
   ],
   searchPaths: [
     {
@@ -388,9 +397,13 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
           libraryName: 'Satzungen & Gebuehrenordnungen',
           outcome: 'KEPT',
           reason: 'WITHIN_BUDGET',
-          listLabel: null,
+          listLabel: 'fused',
           rank: 1,
           value: 0.032,
+          contributions: [
+            { listLabel: 'vector search · sub-query 1', rank: 1, value: 0.0164 },
+            { listLabel: 'full-text search · sub-query 1', rank: 1, value: 0.0164 },
+          ],
         },
         {
           chunkId: 'chunk-2',
@@ -399,9 +412,10 @@ export const mockSearchDiagnosis: SearchDiagnosisResponse = {
           libraryName: 'Formulare',
           outcome: 'DROPPED',
           reason: 'OUTSIDE_FUSION_BUDGET',
-          listLabel: null,
+          listLabel: 'fused',
           rank: 2,
           value: 0.016,
+          contributions: [{ listLabel: 'vector search · sub-query 1', rank: 2, value: 0.0161 }],
         },
       ],
     },
