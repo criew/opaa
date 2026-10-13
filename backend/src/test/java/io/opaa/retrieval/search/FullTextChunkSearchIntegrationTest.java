@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.metadata.CoreMetadataChunkKeys;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.test.BareLibraries;
 import io.opaa.test.OpaaIntegrationTest;
@@ -571,6 +572,55 @@ class FullTextChunkSearchIntegrationTest {
     assertFirstHit(result.chunks(), wanted);
   }
 
+  /**
+   * The count runs under the metadata filter of the ranked query: a word common in the scope but
+   * rare among the filtered chunks keeps its identifier weight there, because the filtered list is
+   * what it would fill.
+   */
+  @Test
+  void theCountObeysTheMetadataFilter() {
+    for (int i = 0; i < 4; i++) {
+      seedWithDocumentType("ELSTER Protokoll " + i + ": Sitzung zur Steuererklärung.", "PROTOKOLL");
+    }
+    UUID note = seedWithDocumentType("ELSTER Vermerk: Zuständigkeit geklärt.", "VERMERK");
+    String question = "Was steht zu ELSTER?";
+
+    FullTextSearchResult unfiltered =
+        fullTextChunkSearch.search(
+            question, Set.of(readableLibrary), MetadataFilter.NONE, List.of(), 3);
+    FullTextSearchResult filtered =
+        fullTextChunkSearch.search(
+            question,
+            Set.of(readableLibrary),
+            MetadataFilter.ofDocumentTypes(List.of("VERMERK")),
+            List.of("VERMERK", "PROTOKOLL"),
+            3);
+
+    assertThat(unfiltered.demotedIdentifiers()).containsExactly("ELSTER");
+    assertThat(filtered.demotedIdentifiers()).isEmpty();
+    assertThat(filtered.chunks()).extracting(Document::getId).containsExactly(note.toString());
+  }
+
+  /** Each word form is counted on its own: only the common one is demoted, the rare one leads. */
+  @Test
+  void onlyTheCommonOfTwoUppercaseWordsIsDemoted() {
+    for (int i = 0; i < 4; i++) {
+      seed(readableLibrary, "ELSTER Hinweisblatt " + i + ": Steuererklärung online abgeben.");
+    }
+    UUID rare = seed(readableLibrary, "KONSENS ist das Programm der Länder für Steuersoftware.");
+
+    FullTextSearchResult result =
+        fullTextChunkSearch.search(
+            "Was haben ELSTER und KONSENS gemeinsam?",
+            Set.of(readableLibrary),
+            MetadataFilter.NONE,
+            List.of(),
+            3);
+
+    assertThat(result.demotedIdentifiers()).containsExactly("ELSTER");
+    assertFirstHit(result.chunks(), rare);
+  }
+
   /** Only word forms are counted: a paragraph in many chunks stays an identifier. */
   @Test
   void aParagraphInMoreChunksThanTheListHoldsIsNeverDemoted() {
@@ -619,6 +669,21 @@ class FullTextChunkSearchIntegrationTest {
             Map.of(
                 VectorChunkStore.DOCUMENT_ID_METADATA_KEY, documentId.toString(),
                 VectorChunkStore.LIBRARY_ID_METADATA_KEY, libraryId.toString()));
+    vectorChunkStore.addChunks(List.of(chunk));
+    return UUID.fromString(chunk.getId());
+  }
+
+  private UUID seedWithDocumentType(String text, String documentType) {
+    Document chunk =
+        new Document(
+            text,
+            Map.of(
+                VectorChunkStore.DOCUMENT_ID_METADATA_KEY,
+                documentId.toString(),
+                VectorChunkStore.LIBRARY_ID_METADATA_KEY,
+                readableLibrary.toString(),
+                CoreMetadataChunkKeys.DOCUMENT_TYPE,
+                documentType));
     vectorChunkStore.addChunks(List.of(chunk));
     return UUID.fromString(chunk.getId());
   }

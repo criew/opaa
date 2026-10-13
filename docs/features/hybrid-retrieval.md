@@ -541,10 +541,11 @@ ELSTER nicht und fiel von Rang 1 auf 149. Gebaut ist deshalb (Maintainer-Entsche
   Kennungs-Lexem aus der Anfrage. Das Wort bleibt über die deutsche Analysekette ein gewöhnliches
   Wort der Frage mit Gewicht `D`.
 - **Protokoll ohne Zahlen.** Die Volltextstufe nennt je Liste die herabgestuften Wörter so, wie die
-  Frage sie schreibt, ohne Zählwert. Die Zählung läuft nur über den Suchbereich des Laufs; in der
-  Diagnose ist das der eigene Rechtekontext, ein Rechteprofil oder „Sicht als“ ohne diagnosegesperrte
-  und damit ohne private Bibliotheken. Das Protokoll verrät also nichts über Bestände, die die
-  Betrachterin nicht ohnehin durchsuchen darf, und selbst dort nur „mehr als `fetch-k`“.
+  Frage sie schreibt, ohne Zählwert. Die Zählung läuft nur über den Suchbereich des Laufs. In der
+  Diagnose ist das im eigenen Rechtekontext nur, was die Betrachterin selbst lesen darf, ihre eigenen
+  privaten Bibliotheken eingeschlossen; als Rechteprofil oder „Sicht als“ fehlen diagnosegesperrte
+  und private Bibliotheken. Das Protokoll verrät also nichts über Bestände, die die Betrachterin
+  nicht ohnehin durchsuchen darf, und selbst dort nur „mehr als `fetch-k`“.
 
 Wo das Akronym selbst das Thema ist und selten vorkommt (s3-12), bleibt alles wie zuvor. Kommt es
 häufig vor, entscheidet die deutsche Analysekette mit den übrigen Wörtern der Frage, und die
