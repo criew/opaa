@@ -51,7 +51,8 @@ Explizite Grenzen — was dieses Issue bewusst nicht abdeckt.
 <!--
 Größere, in der Oberfläche sichtbare Features werden hinter einem installationsweiten
 Feature-Flag gebaut, damit eine Installation sie abschalten kann (z. B. für Demos; Epic #2586).
-Flags sind immer per Vorgabe an. Bei Bedarf Label `feature-flag` setzen.
+Flags sind immer per Vorgabe an; Ausschalten ignoriert vorhandene Daten, löscht aber nichts.
+`<name>` in kebab-case. Ist ein Flag vorgesehen, Label `feature-flag` setzen.
 -->
 
 `opaa.features.<name>.enabled` — was bei abgeschaltetem Flag verschwindet (Oberfläche, Endpunkte, Hintergrundläufe), oder „Keines"
