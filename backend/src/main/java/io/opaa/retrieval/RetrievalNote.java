@@ -68,6 +68,9 @@ public enum RetrievalNote {
       "quota per sub-query: each of %d sub-queries fused on its own, selection filled"
           + " round-robin"),
   FUSION_SUB_QUERIES_POOLED("lists of %d sub-queries fused into one pool"),
+  FUSION_GUARANTEED_PER_LIST(
+      "top %d candidate(s) of every list guaranteed: %d distinct chunk(s), %d of them beyond the"
+          + " fused budget"),
   BUDGET_WIDENED_TO_RERANK_WINDOW("budget widened to the rerank candidate window %d"),
   OVERALL_BUDGET_TOP_K("overall budget top-k %d"),
   DEDUPLICATED_BY_CHUNK_ID(
@@ -101,6 +104,9 @@ public enum RetrievalNote {
       "relevance cutoff skipped: the best score is not positive, all %d chunk(s) kept"),
   RELEVANCE_CUTOFF_AT_MINIMUM(
       "relevance cutoff: %d chunk(s) do not exceed the minimum of %d, all kept"),
+
+  RELEVANCE_CUTOFF_GUARANTEED_KEPT(
+      "%d guaranteed top candidate(s) of their list kept below the bound"),
 
   MAX_CHUNKS_PER_DOCUMENT("max-chunks-per-document %d"),
   SIBLINGS_COMPLETED("%d sibling chunk(s) completed from the candidate pool");

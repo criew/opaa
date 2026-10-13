@@ -45,6 +45,9 @@ final class VariantQueryProperties {
                 : production.fusion().subQueryQuota(),
             overrides.fusionVectorWeight() != null
                 ? overrides.fusionVectorWeight()
-                : production.fusion().vectorWeight()));
+                : production.fusion().vectorWeight(),
+            overrides.fusionGuaranteedPerList() != null
+                ? overrides.fusionGuaranteedPerList()
+                : production.fusion().guaranteedPerList()));
   }
 }

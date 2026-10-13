@@ -167,7 +167,10 @@ class QueryPropertiesTest {
     assertThat(bind(yaml).maxChunksPerDocument()).isEqualTo(1);
   }
 
-  /** The shipped fusion is the sub-query quota over RRF, unset and from application.yml alike. */
+  /**
+   * The shipped fusion is the sub-query quota over RRF with the best candidate of every list
+   * guaranteed, unset and from application.yml alike.
+   */
   @Test
   void theFusionDefaultsToTheSubQueryQuotaOverRrf() throws IOException {
     QueryProperties unset =
@@ -179,7 +182,7 @@ class QueryPropertiesTest {
     assertThat(unset.fusion()).isEqualTo(QueryProperties.Fusion.DEFAULT);
     assertThat(bind(yaml).fusion()).isEqualTo(QueryProperties.Fusion.DEFAULT);
     assertThat(QueryProperties.Fusion.DEFAULT)
-        .isEqualTo(new QueryProperties.Fusion(FusionMethod.RRF, true, 0.7));
+        .isEqualTo(new QueryProperties.Fusion(FusionMethod.RRF, true, 0.7, 1));
   }
 
   @Test
@@ -192,17 +195,28 @@ class QueryPropertiesTest {
                     Map.of(
                         "opaa.query.fusion.method", "score",
                         "opaa.query.fusion.sub-query-quota", "false",
-                        "opaa.query.fusion.vector-weight", "0.5"))));
+                        "opaa.query.fusion.vector-weight", "0.5",
+                        "opaa.query.fusion.guaranteed-per-list", "0"))));
 
     assertThat(properties.fusion())
-        .isEqualTo(new QueryProperties.Fusion(FusionMethod.SCORE, false, 0.5));
+        .isEqualTo(new QueryProperties.Fusion(FusionMethod.SCORE, false, 0.5, 0));
   }
 
   @Test
   void aFusionVectorWeightOutsideZeroToOneIsRejected() {
-    assertThatThrownBy(() -> new QueryProperties.Fusion(FusionMethod.SCORE, true, 1.2))
+    assertThatThrownBy(() -> new QueryProperties.Fusion(FusionMethod.SCORE, true, 1.2, 1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("vectorWeight");
+  }
+
+  @Test
+  void aGuaranteedPerListOutsideZeroToTenIsRejected() {
+    assertThatThrownBy(() -> new QueryProperties.Fusion(FusionMethod.RRF, true, 0.7, -1))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("guaranteedPerList");
+    assertThatThrownBy(() -> new QueryProperties.Fusion(FusionMethod.RRF, true, 0.7, 11))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("guaranteedPerList");
   }
 
   private static QueryProperties bind(List<PropertySource<?>> sources) {

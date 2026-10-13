@@ -23,13 +23,13 @@ class CandidateFusionTest {
 
   private static final double THRESHOLD = 0.3;
   private static final QueryProperties.Fusion POOLED_RRF =
-      new QueryProperties.Fusion(FusionMethod.RRF, false, 0.7);
+      new QueryProperties.Fusion(FusionMethod.RRF, false, 0.7, 0);
   private static final QueryProperties.Fusion QUOTA_RRF =
-      new QueryProperties.Fusion(FusionMethod.RRF, true, 0.7);
+      new QueryProperties.Fusion(FusionMethod.RRF, true, 0.7, 0);
   private static final QueryProperties.Fusion POOLED_SCORE =
-      new QueryProperties.Fusion(FusionMethod.SCORE, false, 0.7);
+      new QueryProperties.Fusion(FusionMethod.SCORE, false, 0.7, 0);
   private static final QueryProperties.Fusion QUOTA_SCORE =
-      new QueryProperties.Fusion(FusionMethod.SCORE, true, 0.7);
+      new QueryProperties.Fusion(FusionMethod.SCORE, true, 0.7, 0);
 
   private static Document chunk(String id, double score) {
     return Document.builder().id(id).text(id).metadata(Map.of()).score(score).build();

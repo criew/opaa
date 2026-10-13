@@ -210,6 +210,13 @@ const NOTE_RULES: NoteRule[] = [
     german: (m) => `Die Listen von ${m[1]} Teilfragen werden gemeinsam fusioniert.`,
   },
   {
+    name: 'FUSION_GUARANTEED_PER_LIST',
+    pattern:
+      /^top (\d+) candidate\(s\) of every list guaranteed: (\d+) distinct chunk\(s\), (\d+) of them beyond the fused budget$/,
+    german: (m) =>
+      `${m[1] === '1' ? 'Der beste Treffer' : `Die besten ${m[1]} Treffer`} jeder Liste fest übernommen: ${m[2]} Abschnitte, davon ${m[3]} jenseits der Auswahlgrenze der Fusion.`,
+  },
+  {
     name: 'BUDGET_WIDENED_TO_RERANK_WINDOW',
     pattern: /^budget widened to the rerank candidate window (\d+)$/,
     german: (m) => `Auswahlgrenze auf das Kandidatenfenster der Neubewertung erweitert: ${m[1]}.`,
@@ -308,6 +315,12 @@ const NOTE_RULES: NoteRule[] = [
     pattern: /^relevance cutoff: (\d+) chunk\(s\) do not exceed the minimum of (\d+), all kept$/,
     german: (m) =>
       `Relevanzschnitt: ${m[1]} Abschnitte überschreiten das Minimum von ${m[2]} nicht, alle behalten.`,
+  },
+  {
+    name: 'RELEVANCE_CUTOFF_GUARANTEED_KEPT',
+    pattern: /^(\d+) guaranteed top candidate\(s\) of their list kept below the bound$/,
+    german: (m) =>
+      `${m[1]} fest übernommene Spitzentreffer ihrer Liste trotz Wert unter der Grenze behalten.`,
   },
 
   // DocumentCompletionStage

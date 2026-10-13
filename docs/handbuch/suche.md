@@ -495,11 +495,24 @@ formulierten Teilfragen trifft, Beiträge aus allen Listen und verdrängten den 
 einem Aspekt passt, aber dort ganz vorn steht. Die fusionierte Liste wird auf das Kandidatenbudget
 gekürzt: `top-k`, oder das Reranking-Fenster, solange Reranking läuft.
 
+Auch innerhalb einer Teilfrage verliert ein Treffer, den nur eine der beiden Listen kennt, gegen
+jeden Chunk, den beide Listen um Rang 10 führen: Er bekommt einen Beitrag, der andere zwei. Ein
+Paragraf, den der Volltext an erster Stelle findet, die Vektorsuche aber nicht, fiele so aus der
+Auswahl. Deshalb kommen die **besten Treffer jeder Liste fest in die Auswahl**, je Teilfrage und
+Suchpfad, wie viele bestimmt `fusion.guaranteed-per-list`. Ein Chunk, der in mehreren Listen vorn
+steht, zählt einmal. Die übrigen Plätze werden wie bisher nach der Fusion gefüllt, die Reihenfolge
+bleibt die der Fusion, und das Kandidatenbudget bleibt die Obergrenze; reicht es nicht für alle
+Spitzentreffer, gewinnen die in der Fusion vorderen. Das gilt mit und ohne Quote und für beide
+Fusionsverfahren. Was ein Spitzentreffer verdrängt hat, nennt das Protokoll mit eigenem Grund, ebenso
+den Spitzentreffer, der nur deshalb in der Auswahl steht.
+
 Als Option lässt sich statt nach Rang **nach Wert** fusionieren (`fusion.method`): Die
 Kosinus-Ähnlichkeit, von der Ähnlichkeitsschwelle bis 1 skaliert, geht mit dem Gewicht
 `fusion.vector-weight` ein, der `ts_rank` relativ zum besten Treffer seiner Liste mit dem Rest. Ein
-sehr gut passender Treffer zählt dann mehr als ein mittelmäßiger auf demselben Rang. Das Gewicht ist
-nicht am eigenen Bestand gemessen; wer die Option nutzt, sollte das tun. Das Protokoll der Stufe
+sehr gut passender Treffer zählt dann mehr als ein mittelmäßiger auf demselben Rang. Am Testkorpus
+der Finanzverwaltung war die Wertefusion mit dem Standardgewicht gleich gut oder schlechter als die
+Rangfusion: Sie verliert gerade die Treffer, die nur ein Suchpfad findet, etwa einen Chunk von
+Volltextrang 2 auf Fusionsrang 26. Deshalb bleibt die Rangfusion voreingestellt. Das Protokoll der Stufe
 nennt je Kandidat die Listen, die in seinen Wert eingehen, mit Rang und Anteil („Beiträge“). Mit
 Quote sind das nur die Listen der Teilfrage, die ihn aufgenommen hat; wo er in anderen Teilfragen
 stand, zeigen die Suchstufen.
@@ -528,8 +541,11 @@ Administrationsseite unterscheiden:
 | eingeschaltet, nutzbar | Endpunkt hat zuletzt geantwortet | Fusion behält das Reranking-Fenster, der Reranker wählt `top-k` |
 
 Fällt der Endpunkt **während** einer Frage aus oder überschreitet er das Zeitbudget, behält die
-Suche die fusionierte Reihenfolge und kürzt selbst auf `top-k`. Ein Ausfall kostet die Sortierung, nie die
-Antwort, und die Endauswahl ist dann dieselbe wie in einem Lauf ohne Reranking. Wer Reranking
+Suche die fusionierte Reihenfolge und kürzt selbst auf `top-k`, mit den fest übernommenen
+Spitzentreffern wie die Fusion. Ein Ausfall kostet die Sortierung, nie die
+Antwort, und die Endauswahl ist dann dieselbe wie in einem Lauf ohne Reranking. Ein Reranker, der
+antwortet, ist dagegen an die Spitzentreffer nicht gebunden: Er liest jeden Chunk zusammen mit der
+Frage und darf auch einen Spitzentreffer hinter `top-k` setzen. Wer Reranking
 einschaltet, sollte deshalb die Erreichbarkeit des Endpunkts überwachen und nicht nur die Antworten
 ansehen: Ein Ausfall fällt an den Antworten nicht auf.
 
@@ -559,6 +575,10 @@ selbst, nicht aus den Plätzen: Auch eine Auswahl, die nicht nach Wert geordnet 
 die Chunks unter der Grenze, und die übrigen behalten ihre Reihenfolge. Wer bei gut passenden Fragen
 mehr Chunks zulassen will, hebt `top-k` an und lässt den Schnitt den Rest erledigen.
 
+**Fest übernommene Spitzentreffer schneidet er nicht** (Stufe 7). Der Schnitt misst am besten Wert
+über alle Teilfragen; der Spitzentreffer einer Teilfrage, deren Werte insgesamt niedriger liegen,
+fiele sonst als Erstes weg, und die Quote je Teilfrage wäre teilweise aufgehoben.
+
 **Der Schnitt bestimmt die Größe des Kontexts.** Die anschließende Dokument-Vervollständigung füllt
 nur bis zur Zahl der Chunks nach dem Schnitt auf, nicht bis `top-k`, und holt keinen geschnittenen
 Chunk zurück.
@@ -573,8 +593,12 @@ Zwei Verfahren stehen zur Wahl (`relevance-cutoff.mode`):
 Im Auslieferungsstand ist die Stufe **aus** (`fixed`) und steht im Protokoll als abgeschaltet. Die
 Werte der Rangfusion taugen nur bedingt als Maßstab: Ein Chunk, den beide Suchpfade gefunden haben,
 erreicht etwa den doppelten Wert eines Chunks, den nur einer fand, sodass ein relativer Schnitt vor
-allem diese Grenze trifft. Mit Reranking oder mit einem Fusionsverfahren, das Ähnlichkeitswerte
-statt Ränge verwendet, bilden die Werte die Passung besser ab. Wer die Stufe einschaltet, sollte die Wirkung auf die Antworten messen. Das
+allem diese Grenze trifft. Am Testkorpus der Finanzverwaltung, gemessen auf der Wertefusion und
+verglichen mit derselben Wertefusion ohne Schnitt, sparte der relative Schnitt mit den Standardwerten
+etwa ein Drittel der Tokens, verlor aber deutlich Kernfakten (68 statt 81 von 132 im Kontext). Er kürzte fast immer bis auf die Mindestzahl und entfernte dabei auch Spitzentreffer
+einzelner Teilfragen; gemessen wurde das, bevor der Schnitt fest übernommene Spitzentreffer
+verschonte. Der Knick schnitt mit dem Standardwert fast nie. **Wer Tokens sparen will, senkt eher
+`top-k`**, als den Schnitt einzuschalten. Das
 Protokoll nennt, wie viele Chunks blieben und warum der Schnitt dort lag.
 
 ### Stufe 10: Dokument-Vervollständigung
@@ -600,7 +624,8 @@ schwächste Chunk eines anderen Dokuments, das selbst schon mit mindestens zwei 
 der vertretenen Dokumente bleibt gleich); erst wenn es kein solches gibt, der rangletzte Chunk der
 Gesamtauswahl, und nur, wenn das zu vervollständigende Dokument mit seinem besten Chunk strikt
 besser rankt. Die zweite Stufe darf ein Dokument ganz aus der Antwort drängen und ist deshalb je
-Frage auf ein Viertel von `top-k` solcher Verdrängungen gedeckelt. Das Protokoll unterscheidet
+Frage auf ein Viertel von `top-k` solcher Verdrängungen gedeckelt. Ein fest übernommener
+Spitzentreffer (Stufe 7) weicht in keiner der beiden Stufen. Das Protokoll unterscheidet
 beide Stufen, weil sie für die Diagnose zwei verschiedene Antworten sind.
 
 **Ab Werk zieht die Stufe nichts nach.** Beim Standardwert von `max-chunks-per-document`
@@ -1089,7 +1114,8 @@ Abschnitt 12.
 | Befund | Wo er sichtbar wird | Übliche Ursache |
 |---|---|---|
 | Dokument nie in einer Kandidatenliste | „Dokument verfolgen", Indexstatus | außerhalb des Suchbereichs; Dokument nicht indiziert oder ohne Chunks (Scan); Filter mit Leerwert-Sonderfall; Begriff steht weder wörtlich noch sinngemäß im Chunk |
-| gefunden, außerhalb des Fusionsbudgets | Stufe „Fusion" | nur ein Pfad hat es gefunden, oft weit hinten in seiner Liste, und andere Kandidaten standen in beiden; hilft: Reranking, präzisere Frage, Kontextpräfix |
+| gefunden, außerhalb des Fusionsbudgets | Stufe „Fusion" | nur ein Pfad hat es gefunden, aber nicht unter den fest übernommenen Spitzentreffern seiner Liste, und andere Kandidaten standen in beiden; hilft: Reranking, präzisere Frage, Kontextpräfix, `fusion.guaranteed-per-list` anheben |
+| von einem fest übernommenen Spitzentreffer verdrängt | Stufe „Fusion" | sein Fusionsrang lag innerhalb des Budgets, aber ein Spitzentreffer einer anderen Liste brauchte den Platz; die Beiträge des verdrängenden Chunks zeigen, aus welcher Liste er kam |
 | unterhalb des Relevanzschnitts | Stufe „Relevanzschnitt" | nur bei eingeschaltetem Schnitt: der Wert lag unter dem Anteil des besten Werts oder hinter dem Knick; hilft: präzisere Frage, Schnitt lockern |
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
@@ -1164,6 +1190,7 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `fusion.method` | `rrf` | Fusionsverfahren: `rrf` nach Rang, `score` nach normierten Werten |
 | `fusion.sub-query-quota` | an | Quote je Teilfrage: jede Teilfrage für sich fusioniert, Auswahl reihum; aus fusioniert alle Listen in einem Pool |
 | `fusion.vector-weight` | 0,7 | Anteil der Vektorsuche bei `fusion.method` = `score` (0 bis 1), der Volltext erhält den Rest |
+| `fusion.guaranteed-per-list` | 1 | Spitzentreffer je Liste (je Teilfrage und Suchpfad), die fest in die Auswahl kommen (0 bis 10); 0 schaltet sie ab. Mit dem Standardwert belegen sie bei drei Teilfragen und zwei Suchpfaden höchstens sechs Plätze; ist `top-k` nicht größer, belegen sie alle |
 | `mmr-lambda` | 1,0 | Vielfaltsauswahl, sortiert jede Liste vor der Fusion um; 1,0 schaltet sie ab |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `relevance-cutoff.mode` | `fixed` | Relevanzschnitt: `fixed` behält bis zu `top-k`, `relative` schneidet relativ zum besten Wert, `knee` am ersten großen Abfall |

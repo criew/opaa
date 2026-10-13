@@ -129,6 +129,8 @@ const OUTCOME_LABELS: Record<RetrievalCandidateOutcome, string> = {
 const REASON_LABELS: Record<RetrievalVerdictReason, string> = {
   RETRIEVED_BY_SEARCH: 'Von der Suche gefunden',
   WITHIN_BUDGET: 'Innerhalb der Auswahlgrenze',
+  GUARANTEED_LIST_TOP: 'Als Spitzentreffer seiner Liste fest übernommen',
+  DISPLACED_BY_GUARANTEED_LIST_TOP: 'Von einem fest übernommenen Spitzentreffer verdrängt',
   OUTSIDE_FUSION_BUDGET: 'Nach der Fusion unterhalb der Auswahlgrenze',
   OUTSIDE_RERANK_BUDGET: 'Nach der Neubewertung unterhalb der Auswahlgrenze',
   BELOW_RELEVANCE_CUTOFF: 'Unterhalb des Relevanzschnitts',

@@ -44,7 +44,7 @@ class SubQueryFusionPipelineTest {
 
   private static QueryProperties properties(double mmrLambda, boolean quota) {
     return new QueryProperties(3, 25, mmrLambda, 0.3, true, 3, 1, false, 50, 20, 2)
-        .withFusion(new QueryProperties.Fusion(FusionMethod.RRF, quota, 0.7));
+        .withFusion(new QueryProperties.Fusion(FusionMethod.RRF, quota, 0.7, 0));
   }
 
   private RetrievalPipelineResult run(QueryProperties properties) {
@@ -173,7 +173,7 @@ class SubQueryFusionPipelineTest {
     for (boolean quota : List.of(false, true)) {
       QueryProperties properties =
           new QueryProperties(5, 25, 1.0, 0.3, false, 3, 1, true, 50, 20, 2)
-              .withFusion(new QueryProperties.Fusion(FusionMethod.RRF, quota, 0.7));
+              .withFusion(new QueryProperties.Fusion(FusionMethod.RRF, quota, 0.7, 0));
       selections.add(
           pipeline
               .run(

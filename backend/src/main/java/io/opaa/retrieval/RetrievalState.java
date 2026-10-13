@@ -2,6 +2,7 @@ package io.opaa.retrieval;
 
 import io.opaa.metadata.MetadataFilter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +51,11 @@ import org.springframework.ai.vectorstore.filter.Filter;
  * @param relevanceCut what {@link RetrievalStageName#RELEVANCE_CUTOFF} decided, or {@code null}
  *     when it did not run; a later stage stays within its budget and never brings a removed chunk
  *     back.
+ * @param guaranteedChunkIds the chunks {@link RetrievalStageName#RANK_FUSION} took into the
+ *     selection as top candidates of their list ({@link
+ *     QueryProperties.Fusion#guaranteedPerList()}), in fused order; empty before the fusion and
+ *     with the guarantee off. The relevance cutoff never removes them and document completion never
+ *     evicts them - only the rerank model may.
  */
 public record RetrievalState(
     List<String> searchQueries,
@@ -62,7 +68,8 @@ public record RetrievalState(
     boolean halted,
     boolean searchNeeded,
     Map<String, Double> selectionScores,
-    RelevanceCut relevanceCut) {
+    RelevanceCut relevanceCut,
+    Set<String> guaranteedChunkIds) {
 
   public RetrievalState {
     searchQueries = List.copyOf(searchQueries);
@@ -74,6 +81,10 @@ public record RetrievalState(
     candidateLists = List.copyOf(candidateLists);
     candidatePool = List.copyOf(candidatePool);
     selectionScores = selectionScores == null ? Map.of() : Map.copyOf(selectionScores);
+    guaranteedChunkIds =
+        guaranteedChunkIds == null
+            ? Set.of()
+            : Collections.unmodifiableSet(new LinkedHashSet<>(guaranteedChunkIds));
   }
 
   /** The state a run starts in: no queries, no filter, no candidates. */
@@ -89,7 +100,8 @@ public record RetrievalState(
         false,
         true,
         Map.of(),
-        null);
+        null,
+        Set.of());
   }
 
   public RetrievalState withSearchQueries(List<String> queries) {
@@ -104,7 +116,8 @@ public record RetrievalState(
         halted,
         searchNeeded,
         selectionScores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   public RetrievalState withLibraryFilter(Filter.Expression filter) {
@@ -119,7 +132,8 @@ public record RetrievalState(
         halted,
         searchNeeded,
         selectionScores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   /**
@@ -140,7 +154,8 @@ public record RetrievalState(
         halted,
         searchNeeded,
         selectionScores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   /**
@@ -159,7 +174,8 @@ public record RetrievalState(
         halted,
         searchNeeded,
         selectionScores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   /** Records the relevance cutoff's decision; the lists in flight stay as they are. */
@@ -175,7 +191,25 @@ public record RetrievalState(
         halted,
         searchNeeded,
         selectionScores,
-        cut);
+        cut,
+        guaranteedChunkIds);
+  }
+
+  /** Records the chunks the fusion guaranteed; the lists in flight stay as they are. */
+  public RetrievalState withGuaranteedChunkIds(Set<String> chunkIds) {
+    return new RetrievalState(
+        searchQueries,
+        libraryFilter,
+        metadataFilter,
+        metadataFilterExpression,
+        metadataFilterVocabularyCodes,
+        candidateLists,
+        candidatePool,
+        halted,
+        searchNeeded,
+        selectionScores,
+        relevanceCut,
+        chunkIds);
   }
 
   /** Replaces the scores of the selection; the lists in flight stay as they are. */
@@ -191,7 +225,8 @@ public record RetrievalState(
         halted,
         searchNeeded,
         scores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   /**
@@ -215,7 +250,8 @@ public record RetrievalState(
         halted,
         searchNeeded,
         selectionScores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   /**
@@ -255,7 +291,8 @@ public record RetrievalState(
         true,
         searchNeeded,
         selectionScores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   /**
@@ -274,7 +311,8 @@ public record RetrievalState(
         halted,
         false,
         selectionScores,
-        relevanceCut);
+        relevanceCut,
+        guaranteedChunkIds);
   }
 
   /**

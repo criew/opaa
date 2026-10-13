@@ -54,8 +54,9 @@ public record PipelineVariant(
    * Whether the rerank model role is reachable at all is not an override but a prerequisite - see
    * {@link VariantPrerequisites}.
    *
-   * <p>{@code fusionMethod}, {@code fusionSubQueryQuota} and {@code fusionVectorWeight} override
-   * the fields of {@link io.opaa.retrieval.QueryProperties.Fusion} one by one.
+   * <p>{@code fusionMethod}, {@code fusionSubQueryQuota}, {@code fusionVectorWeight} and {@code
+   * fusionGuaranteedPerList} override the fields of {@link
+   * io.opaa.retrieval.QueryProperties.Fusion} one by one.
    */
   public record QueryOverrides(
       Integer fetchK,
@@ -68,7 +69,8 @@ public record PipelineVariant(
       Integer rerankCandidateCount,
       FusionMethod fusionMethod,
       Boolean fusionSubQueryQuota,
-      Double fusionVectorWeight) {
+      Double fusionVectorWeight,
+      Integer fusionGuaranteedPerList) {
 
     /** The reference variant's overrides: every field unset, i.e. the production configuration. */
     public static final QueryOverrides NONE =
@@ -93,6 +95,7 @@ public record PipelineVariant(
           maxChunksPerDocument,
           fullTextSearchEnabled,
           rerankCandidateCount,
+          null,
           null,
           null,
           null);
