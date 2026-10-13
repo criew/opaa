@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
- * Switched off, the prompt library's routes are not registered at all (ADR-0044, Entscheidung 6):
- * a request answers like any unknown address. Without configuration both controllers are there.
+ * Switched off, the prompt library's routes are not registered at all (ADR-0044, Entscheidung 6): a
+ * request answers like any unknown address. Without configuration both controllers are there.
  */
 class PromptControllersFeatureTest {
 

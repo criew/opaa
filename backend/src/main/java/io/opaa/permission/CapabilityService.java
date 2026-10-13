@@ -12,6 +12,8 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
@@ -78,6 +80,13 @@ public class CapabilityService {
           Capability.CREATE_INTERNAL_GROUP, "interne Gruppen",
           Capability.CREATE_PROMPT_LIBRARY, "Prompt-Bibliotheken");
 
+  /**
+   * The capabilities that belong to an installation-wide feature (ADR-0044): while it is off, the
+   * capability is neither held nor listed; its grants stay stored.
+   */
+  private static final Map<Capability, Feature> FEATURES =
+      Map.of(Capability.CREATE_PROMPT_LIBRARY, Feature.PROMPT_LIBRARIES);
+
   /** The capabilities granted per scope. */
   private static final Set<Capability> SCOPED = EnumSet.of(Capability.CREATE_CONNECTOR_LIBRARY);
 
@@ -88,6 +97,7 @@ public class CapabilityService {
   private final PermissionHistoryService permissionHistoryService;
   private final AuditEventRecorder auditEventRecorder;
   private final CapabilityScopeCatalog scopeCatalog;
+  private final FeatureFlags featureFlags;
 
   CapabilityService(
       CapabilityGrantRepository grantRepository,
@@ -96,7 +106,8 @@ public class CapabilityService {
       UserRepository userRepository,
       PermissionHistoryService permissionHistoryService,
       AuditEventRecorder auditEventRecorder,
-      CapabilityScopeCatalog scopeCatalog) {
+      CapabilityScopeCatalog scopeCatalog,
+      FeatureFlags featureFlags) {
     this.grantRepository = grantRepository;
     this.membershipResolver = membershipResolver;
     this.groupDirectory = groupDirectory;
@@ -104,6 +115,13 @@ public class CapabilityService {
     this.permissionHistoryService = permissionHistoryService;
     this.auditEventRecorder = auditEventRecorder;
     this.scopeCatalog = scopeCatalog;
+    this.featureFlags = featureFlags;
+  }
+
+  /** Whether the installation offers {@code capability}: its feature, if any, is switched on. */
+  private boolean isOffered(Capability capability) {
+    Feature feature = FEATURES.get(capability);
+    return feature == null || featureFlags.isEnabled(feature);
   }
 
   /** Whether {@code capability} is granted per scope. */
@@ -136,10 +154,16 @@ public class CapabilityService {
   /**
    * Every capability the caller holds, a scoped one once it is held in at least one scope. A system
    * administrator holds all of them implicitly: the capabilities sit below that role, they never
-   * sit beside it.
+   * sit beside it. A capability the installation does not offer is never held.
    */
   @Transactional(readOnly = true)
   public Set<Capability> capabilitiesOf(CurrentUser caller) {
+    Set<Capability> held = heldIgnoringFeatures(caller);
+    held.removeIf(capability -> !isOffered(capability));
+    return held;
+  }
+
+  private Set<Capability> heldIgnoringFeatures(CurrentUser caller) {
     if (caller.isSystemAdmin()) {
       return EnumSet.allOf(Capability.class);
     }
@@ -216,7 +240,8 @@ public class CapabilityService {
 
   /**
    * Every capability of the organization with the subjects holding it, names resolved in one query
-   * per subject kind rather than one per row.
+   * per subject kind rather than one per row. A capability the installation does not offer is left
+   * out.
    */
   @Transactional(readOnly = true)
   public List<CapabilityOverview> overview(UUID organizationId) {
@@ -225,6 +250,9 @@ public class CapabilityService {
 
     List<CapabilityOverview> overviews = new ArrayList<>();
     for (Capability capability : Capability.values()) {
+      if (!isOffered(capability)) {
+        continue;
+      }
       Map<String, List<CapabilityGrantView>> byScope = new LinkedHashMap<>();
       Map<String, String> labels = new LinkedHashMap<>();
       if (isScoped(capability)) {

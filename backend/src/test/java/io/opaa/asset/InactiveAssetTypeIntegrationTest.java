@@ -28,7 +28,6 @@ import io.opaa.permission.PermissionTransferOrder;
 import io.opaa.permission.PermissionTransferService;
 import io.opaa.space.Space;
 import io.opaa.space.SpaceAssetAssociationService;
-import io.opaa.space.SpaceAssetLink;
 import io.opaa.space.SpaceAssetLinks;
 import io.opaa.space.SpaceMembership;
 import io.opaa.space.SpaceRepository;
@@ -140,7 +139,9 @@ class InactiveAssetTypeIntegrationTest {
     testAssetType.switchOff();
 
     SpaceAssetLinks contents = associationService.listForSpace(space.getId(), callerOf(owner));
-    assertThat(contents.items()).extracting(link -> link.association().getAssetId()).containsExactly(library);
+    assertThat(contents.items())
+        .extracting(link -> link.association().getAssetId())
+        .containsExactly(library);
     assertThat(contents.hasUnreadableAssociations()).isFalse();
     assertThat(associationService.countVisibleBySpace(List.of(space), callerOf(owner)))
         .containsEntry(space.getId(), 1L);
@@ -219,8 +220,7 @@ class InactiveAssetTypeIntegrationTest {
     UUID previewId = transferService.preview(order, admin).previewId();
     transferService.transfer(order, true, previewId, admin);
 
-    assertThat(assetRepository.findById(asset).orElseThrow().getOwnerUserId())
-        .isEqualTo(successor);
+    assertThat(assetRepository.findById(asset).orElseThrow().getOwnerUserId()).isEqualTo(successor);
   }
 
   private List<UUID> catalogIds(boolean favoritesOnly) {

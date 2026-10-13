@@ -18,8 +18,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
 /**
- * The prompt library behind {@code opaa.features.prompt-libraries.enabled} (ADR-0044): switched off,
- * its asset type is inactive and no prompt is usable in a question, while its rows stay untouched.
+ * The prompt library behind {@code opaa.features.prompt-libraries.enabled} (ADR-0044): switched
+ * off, its asset type is inactive and no prompt is usable in a question, while its rows stay
+ * untouched.
  */
 class PromptLibraryFeatureTest {
 

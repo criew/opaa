@@ -11,8 +11,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * An inactive asset type (ADR-0044) stays registered for the paths that handle existing assets,
- * but is no longer offered to readers, and a request path naming it answers like an unknown asset.
+ * An inactive asset type (ADR-0044) stays registered for the paths that handle existing assets, but
+ * is no longer offered to readers, and a request path naming it answers like an unknown asset.
  */
 class AssetTypesTest {
 
