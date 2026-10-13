@@ -112,6 +112,17 @@ mail:
   readTimeout: ""
   writeTimeout: ""
 
+# Installation-wide feature flags (OPAA_FEATURES_<NAME>_ENABLED), read once at start-up. Every flag
+# is on unless switched off here; switching a feature off hides it and ignores its existing data,
+# it deletes nothing. Further flags of the backend need no entry to stay on.
+features:
+  # Prompt libraries.
+  promptLibraries:
+    enabled: true
+  # Metadata of documents and libraries.
+  metadata:
+    enabled: true
+
 # Host names exempted from the address check (SSRF protection), which refuses private and
 # cluster-internal addresses by default.
 targetValidation:
