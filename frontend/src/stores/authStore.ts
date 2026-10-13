@@ -4,6 +4,8 @@ import type { SigninRedirectArgs } from 'oidc-client-ts'
 import type {
   AuthMode,
   AuthUser,
+  FeatureFlags,
+  FeatureName,
   LocalAccountsConfig,
   LocalTokenResponse,
   PasswordChangeReason,
@@ -140,6 +142,12 @@ interface AuthState {
   activeProviderId: string | null
   /** What local accounts offer right now (ADR-0033); switched off until the config says otherwise. */
   localAccounts: LocalAccountsConfig
+  /**
+   * The installation-wide feature flags (ADR-0044) from the public configuration, known before
+   * and after sign-in. A flag that is absent counts as on; read them through {@link
+   * isFeatureEnabled} or `useFeatureEnabled`, never by indexing this object.
+   */
+  features: FeatureFlags
   /** The kind of the active session, or of the sign-in under way; null while signed out. */
   sessionKind: SessionKind | null
   /** The account must set a new password before any route but /account/password answers. */
@@ -449,6 +457,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     userManager: null,
     activeProviderId: null,
     localAccounts: LOCAL_ACCOUNTS_DISABLED,
+    features: {},
     sessionKind: null,
     passwordChangeRequired: false,
     passwordChangeReason: null,
@@ -475,8 +484,8 @@ export const useAuthStore = create<AuthState>((set, get) => {
         return
       }
       const providers = config.providers ?? []
-      const { localAccounts } = config
-      set({ mode: config.mode, providers, localAccounts })
+      const { localAccounts, features } = config
+      set({ mode: config.mode, providers, localAccounts, features })
 
       if (config.mode === 'dev') {
         // No login and no token: the backend authenticates every request as the selected dev
@@ -593,6 +602,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
           mode: config.mode,
           providers: config.providers ?? [],
           localAccounts: config.localAccounts,
+          features: config.features,
         })
       } catch {
         // Der letzte bekannte Stand ist besser als keiner: Eine nicht erreichbare Konfiguration
@@ -1029,3 +1039,16 @@ useAuthStore.subscribe((state, previous) => {
     if (state.isSigningOut) useAuthStore.setState({ isSigningOut: false })
   }
 })
+
+/**
+ * Whether an installation-wide feature is switched on (ADR-0044), for code outside React; inside a
+ * component use `useFeatureEnabled`. Only an explicit `false` switches a feature off.
+ */
+export function isFeatureEnabled(name: FeatureName): boolean {
+  return featureEnabledIn(useAuthStore.getState().features, name)
+}
+
+/** The one rule both readers share: absent counts as on. */
+export function featureEnabledIn(features: FeatureFlags, name: FeatureName): boolean {
+  return features[name] !== false
+}

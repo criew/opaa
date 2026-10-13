@@ -11,7 +11,7 @@ import NotificationHost from '../components/NotificationHost'
 import { useAuthStore } from '../stores/authStore'
 import { useConfirmStore } from '../stores/confirmStore'
 import { useNotificationStore } from '../stores/notificationStore'
-import type { LocalAccountsConfig, SessionKind } from '../types/auth'
+import type { FeatureFlags, LocalAccountsConfig, SessionKind } from '../types/auth'
 import { LOCAL_ACCOUNTS_DISABLED } from '../types/auth'
 
 const theme = createAppTheme('dark')
@@ -73,6 +73,8 @@ interface MockAuthStateOptions {
   sessionKind?: SessionKind | null
   passwordChangeRequired?: boolean
   localAccounts?: LocalAccountsConfig
+  /** Installation-wide feature flags (ADR-0044); every flag not named here counts as on. */
+  features?: FeatureFlags
 }
 
 /** Puts the auth store into an authenticated dev-mode state, bypassing any network call. */
@@ -80,6 +82,7 @@ export function setMockAuthState({
   sessionKind = null,
   passwordChangeRequired = false,
   localAccounts = LOCAL_ACCOUNTS_DISABLED,
+  features = {},
 }: MockAuthStateOptions = {}) {
   useAuthStore.setState({
     mode: 'dev',
@@ -93,6 +96,7 @@ export function setMockAuthState({
     passwordChangeRequired,
     passwordChangeReason: null,
     localAccounts,
+    features,
   })
 }
 

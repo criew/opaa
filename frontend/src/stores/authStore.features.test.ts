@@ -65,7 +65,11 @@ describe('authStore feature flags', () => {
   it('counts every flag as on when the backend answers without a features block', async () => {
     server.use(
       http.get('/api/v1/auth/config', () =>
-        HttpResponse.json({ mode: 'dev', providers: [], localAccounts: mockAuthConfig.localAccounts }),
+        HttpResponse.json({
+          mode: 'dev',
+          providers: [],
+          localAccounts: mockAuthConfig.localAccounts,
+        }),
       ),
     )
     useAuthStore.setState({ features: { metadata: false } })
