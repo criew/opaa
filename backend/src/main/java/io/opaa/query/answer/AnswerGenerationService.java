@@ -47,9 +47,9 @@ public class AnswerGenerationService {
       """;
 
   /**
-   * Binds factual answers to the passages and the conversation. Only present for a message with
-   * search need and passages: an empty context is also the chat answered on purpose without a
-   * knowledge base, and a message without search need must not be answered with "not found".
+   * Binds factual answers to the passages and the conversation. Present whenever a message with
+   * search need was searched, also without a hit; absent for the chat answered on purpose without a
+   * knowledge base and for a message without search need, which must not get "not found".
    */
   private static final String ANSWER_RULES =
       """
@@ -172,6 +172,9 @@ public class AnswerGenerationService {
    * follows the standing rule of the space. Without an instruction the prompt is exactly the one
    * without this parameter.
    *
+   * @param searched {@code false} when there was no search scope, as in a chat answered without a
+   *     knowledge base; then neither {@link #ANSWER_RULES} nor {@link #CITATION_REMINDER} is added.
+   *     {@code true} even when the search found no passage.
    * @param searchNeeded {@code false} when the decomposition found nothing to search for in {@code
    *     question}; {@link #NO_SEARCH_HINT} then precedes the passages, and neither {@link
    *     #ANSWER_RULES} nor {@link #CITATION_REMINDER} is added.
@@ -182,11 +185,12 @@ public class AnswerGenerationService {
       List<Document> relevantChunks,
       String conversationId,
       List<String> conversationNote,
+      boolean searched,
       boolean searchNeeded,
       String spaceInstruction) {
     String spaceBlock = SpaceInstructionBlock.render(spaceInstruction);
     ConversationNoteBlock noteBlock = ConversationNoteBlock.render(conversationNote);
-    boolean bindToPassages = !relevantChunks.isEmpty() && searchNeeded;
+    boolean bindToPassages = searched && searchNeeded;
     String systemText =
         SYSTEM_PROMPT
             + (bindToPassages ? ANSWER_RULES : "")

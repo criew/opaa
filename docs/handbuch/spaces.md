@@ -51,6 +51,9 @@ Drei Regeln halten einen Space handlungsfähig:
   natürliche Person ist — an sich selbst oder an ein anderes solches Mitglied.
 - **Ein archivierter Space nimmt keine neuen Mitglieder auf.**
 
+**Der persönliche Standard-Space** entsteht bei der ersten Anmeldung automatisch. Er ist privat,
+bis die Person selbst jemanden einlädt, und lässt sich nicht übertragen, archivieren oder löschen.
+
 ## 3. Arbeitsmittel zuordnen
 
 **Ein Arbeitsmittel in einem Space bereitzustellen ist eine Handlung im Space.** Sie setzt die
