@@ -424,12 +424,13 @@ Zeilenumbrüchen, dann Satzenden, zuletzt Leerzeichen; nur eine Zeichenfolge gan
 wird hart geschnitten. Die Zielgröße `chunk-target-characters` zählt Zeichen und gilt für alle
 Formate mit Struktur. Davon getrennt gelten `chunk-size` und `chunk-overlap` nur für die
 Auffang-Pipeline und strukturlose Texte, die nach Tokens mit Überlappung zum Vorgänger geschnitten
-werden; eine Änderung des einen Werts wirkt nicht auf den anderen. Eine geänderte Zielgröße gilt
-für Dokumente, die danach indexiert werden; bereits indexierte behalten ihren Zuschnitt, bis sie
-sich ändern. Ein erneuter Lauf überspringt unveränderte Dateien, und der Nachzug (Abschnitt 7.2)
-erfasst nur gestiegene Pipeline-Versionen, keine geänderte Zielgröße. Für den ganzen Bestand wird
-die Bibliothek neu aufgebaut, wie unter „Falle bei einer Neuindizierung“ beschrieben
-([Betrieb](betrieb.md#was-ein-update-mit-dem-index-macht)). Seitenzahlen überleben die
+werden; eine Änderung des einen Werts wirkt nicht auf den anderen. Jeder Chunk eines Formats mit
+Struktur merkt sich die Zielgröße, mit der er geschnitten wurde. Nach einer Änderung behalten
+bereits indexierte Dokumente zunächst ihren Zuschnitt, denn ein erneuter Lauf überspringt
+unveränderte Dateien; der Versionsstand zählt ihre Chunks aber als nachzuziehen, und der Nachzug
+(Abschnitt 7.2) zerlegt sie neu, ohne die Bibliothek neu aufzubauen. Eine geänderte `chunk-size`
+oder `chunk-overlap` merkt sich ein Chunk nicht; sie gilt nur für Dokumente, die danach neu oder
+geändert indexiert werden. Seitenzahlen überleben die
 Textextraktion als Marker, die vor dem Embedden entfernt werden.
 
 An der Chunk-Anzahl eines fehlgeschlagenen Dokuments ist ablesbar, ob es noch Chunks hat: Scheitert
@@ -450,20 +451,22 @@ Format; die Tiefe gilt allgemein.
 Jede Format-Pipeline hat eine Versionsnummer, und jeder Chunk speichert, mit welcher Pipeline und
 Version er entstand. Die Version steigt nur, wenn sich Zuschnitt oder erzeugte Metadaten ändern.
 So lässt sich jederzeit sagen, welcher Teil des Bestands nach einem Update noch mit einem älteren
-Verfahren im Index liegt.
+Verfahren im Index liegt. Ebenso zählt ein Chunk eines Formats mit Struktur als nachzuziehen, wenn
+er mit einer anderen Zielgröße geschnitten wurde als der eingestellten (Abschnitt 7.1); Chunks aus
+der Zeit, bevor OPAA sich die Zielgröße merkte, gelten als mit dem Standardwert geschnitten.
 
 Der **Nachzug** läuft nicht von selbst. Die Systemverwaltung stößt ihn über die Admin-API an; eine
 Oberfläche gibt es noch nicht.
 
 | Aufruf | Zweck |
 |---|---|
-| `GET /api/v1/admin/indexing/pipeline-versions` | Versionsstand je Bibliothek: wie viele Chunks unter der aktuellen Version liegen |
-| `POST /api/v1/admin/indexing/pipeline-reindex` | ein Paket nachziehen; `belowVersion` (welche Version als veraltet gilt), `batchSize` (1 bis 100, Standard 10) |
+| `GET /api/v1/admin/indexing/pipeline-versions` | Versionsstand je Bibliothek: wie viele Chunks unter der aktuellen Version liegen oder mit einer anderen Zielgröße geschnitten wurden |
+| `POST /api/v1/admin/indexing/pipeline-reindex` | ein Paket nachziehen; `belowVersion` (welche Version als veraltet gilt; nach einer geänderten Zielgröße die aktuelle Version der Pipeline), `batchSize` (1 bis 100, Standard 10) |
 | `GET /api/v1/admin/indexing/low-chunk-documents` | Dokumente ohne Chunks, der typische Scan-Befund |
 
 ```mermaid
 flowchart LR
-    U[Update] --> V[Rückstand im<br/>Versionsstand]
+    U[Update oder<br/>Zielgröße] --> V[Rückstand im<br/>Versionsstand]
     V --> A[Nachzug,<br/>paketweise]
     A --> L{Original lokal<br/>erreichbar?}
     L -- ja: Upload,<br/>Dateisystem --> N[sofort neu<br/>verarbeitet]
