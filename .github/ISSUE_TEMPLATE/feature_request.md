@@ -46,6 +46,17 @@ Explizite Grenzen — was dieses Issue bewusst nicht abdeckt.
 
 #N — Epic-Titel (Phase X), oder „Keines"
 
+## Feature-Flag
+
+<!--
+Größere, in der Oberfläche sichtbare Features werden hinter einem installationsweiten
+Feature-Flag gebaut, damit eine Installation sie abschalten kann (z. B. für Demos; Epic #2586).
+Flags sind immer per Vorgabe an; Ausschalten ignoriert vorhandene Daten, löscht aber nichts.
+`<name>` in kebab-case. Ist ein Flag vorgesehen, Label `feature-flag` setzen.
+-->
+
+`opaa.features.<name>.enabled` — was bei abgeschaltetem Flag verschwindet (Oberfläche, Endpunkte, Hintergrundläufe), oder „Keines"
+
 ## Technische Hinweise (optional)
 
 Implementierungshinweise, Design-Kompromisse, relevante ADRs. Bei Frontend-Issues einen

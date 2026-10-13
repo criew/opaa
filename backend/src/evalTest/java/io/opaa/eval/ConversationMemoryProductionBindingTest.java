@@ -124,6 +124,7 @@ class ConversationMemoryProductionBindingTest {
                 List.of(),
                 conversationId,
                 List.of(),
+                false,
                 true,
                 null);
 
@@ -163,6 +164,7 @@ class ConversationMemoryProductionBindingTest {
             List.of(),
             conversationId,
             List.of(),
+            false,
             true,
             null);
 
