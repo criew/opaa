@@ -461,8 +461,15 @@ Oberfläche gibt es noch nicht.
 | Aufruf | Zweck |
 |---|---|
 | `GET /api/v1/admin/indexing/pipeline-versions` | Versionsstand je Bibliothek: wie viele Chunks unter der aktuellen Version liegen oder mit einer anderen Zielgröße geschnitten wurden |
-| `POST /api/v1/admin/indexing/pipeline-reindex` | ein Paket nachziehen; `belowVersion` (welche Version als veraltet gilt; nach einer geänderten Zielgröße die aktuelle Version der Pipeline), `batchSize` (1 bis 100, Standard 10) |
+| `POST /api/v1/admin/indexing/pipeline-reindex` | ein Paket einer Pipeline nachziehen; `pipelineId` (Kennung der Pipeline), `belowVersion` (welche Version als veraltet gilt), `batchSize` (1 bis 100, Standard 10) |
 | `GET /api/v1/admin/indexing/low-chunk-documents` | Dokumente ohne Chunks, der typische Scan-Befund |
+
+Der Versionsstand zählt je Bibliothek, nicht je Pipeline; Kennung und aktuelle Version jeder
+Pipeline nennt er in seiner Pipeline-Liste. Ein Nachzug gilt immer einer Pipeline. **Nach einer
+geänderten Zielgröße** betrifft der Rückstand alle Formate mit Struktur, also jede Pipeline außer
+`tika-fallback` und `email`. Für jede davon wird der Nachzug mit ihrer Kennung als `pipelineId` und
+ihrer aktuellen Version als `belowVersion` aufgerufen und wiederholt, bis er `done` meldet. Eine
+Pipeline ohne Rückstand meldet das sofort.
 
 ```mermaid
 flowchart LR

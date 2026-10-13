@@ -593,8 +593,9 @@ den vorhandenen Bestand neu ein ([Modell wechseln](modelle.md#modell-wechseln)).
 Eine geänderte Zielgröße der Zerlegung (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`) braucht ebenfalls
 keine Neuindizierung. Ein erneuter Lauf überspringt unveränderte Dateien zwar weiterhin, aber der
 Versionsstand weist die mit der alten Zielgröße geschnittenen Chunks als nachzuziehen aus, und der
-[Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug) zerlegt sie aus dem Original
-neu. Bis dahin bleiben sie in der alten Fassung durchsuchbar.
+[Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug), je Pipeline der Formate mit
+Struktur aufgerufen, zerlegt sie aus dem Original neu. Bis dahin bleiben sie in der alten Fassung
+durchsuchbar.
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt eine Datei, deren Prüfsumme unverändert ist
 > und deren Dokument als indiziert gilt. Wer nur die Vektoren einer Bibliothek verwirft, bekommt

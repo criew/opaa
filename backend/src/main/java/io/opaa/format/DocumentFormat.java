@@ -46,7 +46,9 @@ public interface DocumentFormat {
    * The configured values this format's cut depends on, as a stable string written onto every chunk
    * ({@link ChunkFormatMetadata#CHUNKING_FINGERPRINT_METADATA_KEY}). Changing such a setting
    * changes the value without raising {@link #version()}; the re-index then selects the chunks cut
-   * under the old one. {@code null} for a format no setting influences.
+   * under the old one. {@code null} for a format no setting influences. Adding a further setting to
+   * a fingerprint must map the existing values (e.g. {@code target-characters=N} with the new
+   * setting at its default) onto the new form, or the whole corpus becomes stale once.
    */
   default String chunkingFingerprint() {
     return null;

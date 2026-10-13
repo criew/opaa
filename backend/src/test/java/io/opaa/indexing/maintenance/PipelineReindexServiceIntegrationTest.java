@@ -9,6 +9,7 @@ import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.DocumentFormat;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.file.fallback.TikaFallbackFormat;
+import io.opaa.format.file.markdown.MarkdownDocumentFormat;
 import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.indexing.chunk.FullTextChunkStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
@@ -154,9 +155,13 @@ class PipelineReindexServiceIntegrationTest {
    * rather than trusting the order of the result.
    */
   private PipelineVersionProgress ownProgress() {
+    return ownProgress(reindexService);
+  }
+
+  private PipelineVersionProgress ownProgress(PipelineReindexService service) {
     List<UUID> ownLibraryIds = ownLibraryIds();
     List<PipelineVersionProgress> own =
-        reindexService.progressForOrganization(Organization.DEFAULT_ID).stream()
+        service.progressForOrganization(Organization.DEFAULT_ID).stream()
             .filter(entry -> ownLibraryIds.contains(entry.libraryId()))
             .toList();
     assertThat(own).hasSize(1);
@@ -855,6 +860,54 @@ class PipelineReindexServiceIntegrationTest {
         reindexService.reindexBatch(Organization.DEFAULT_ID, markdown.id(), markdown.version(), 10);
     assertThat(result.isEmpty()).isTrue();
     assertThat(chunkTextsOf(document.getId())).containsExactly("chunk");
+  }
+
+  @Test
+  void chunksWithoutRecordedFingerprintAreDueOnceTheTargetSizeDiffersFromTheDefault()
+      throws IOException {
+    // Same context, but a service over a registry whose Markdown format runs at a smaller target
+    // size: the unrecorded chunk counts as cut at the default and therefore as due.
+    DocumentFormat markdown = markdownPipeline();
+    Document document = persistedFilesystemDocument("erlass.md", "# Erlass\n\nInhalt.\n\n");
+    seedChunk(
+        document.getId(), library.getId(), "alter chunk", markdown.id(), markdown.version(), ".md");
+    PipelineReindexService atSmallerTarget = reindexServiceOver(registryWithMarkdownAt(2_000));
+
+    PipelineVersionProgress progress = ownProgress(atSmallerTarget);
+    assertThat(progress.staleChunks()).isEqualTo(1);
+    assertThat(progress.currentVersionChunks()).isZero();
+
+    PipelineReindexResult result =
+        atSmallerTarget.reindexBatch(
+            Organization.DEFAULT_ID, markdown.id(), markdown.version(), 10);
+    assertThat(result.reindexedDocuments()).isEqualTo(1);
+    assertThat(chunkTextsOf(document.getId())).noneMatch(text -> text.equals("alter chunk"));
+  }
+
+  private DocumentFormatRegistry registryWithMarkdownAt(int targetCharacters) {
+    List<DocumentFormat> formats =
+        pipelineRegistry.pipelines().stream()
+            .map(
+                format ->
+                    format.handledFormats().contains(".md")
+                        ? (DocumentFormat)
+                            new MarkdownDocumentFormat(new HeadingSectionSplitter(targetCharacters))
+                        : format)
+            .toList();
+    return new DocumentFormatRegistry(formats, pipelineRegistry.fallbackPipeline());
+  }
+
+  private PipelineReindexService reindexServiceOver(DocumentFormatRegistry registry) {
+    return new PipelineReindexService(
+        jdbcTemplate,
+        registry,
+        documentRepository,
+        libraryRepository,
+        documentIngestService,
+        vectorChunkStore,
+        sourceAccess,
+        schemaName,
+        vectorStoreTableName);
   }
 
   @Test
