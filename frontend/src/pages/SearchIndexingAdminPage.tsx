@@ -104,7 +104,7 @@ const STAGE_LABELS: Record<RetrievalStage, string> = {
   SUB_QUERY_DECOMPOSITION: 'Teilfragen',
   VECTOR_SEARCH: 'Vektorsuche',
   FULL_TEXT_SEARCH: 'Volltextsuche',
-  MMR_SELECTION: 'Auswahl je Liste',
+  MMR_SELECTION: 'Vielfaltsauswahl',
   RANK_FUSION: 'Fusion (RRF)',
   RERANK: 'Neubewertung (Reranking)',
   DOCUMENT_COMPLETION: 'Dokument-Vervollständigung',
@@ -126,7 +126,6 @@ const OUTCOME_LABELS: Record<RetrievalCandidateOutcome, string> = {
 const REASON_LABELS: Record<RetrievalVerdictReason, string> = {
   RETRIEVED_BY_SEARCH: 'Von der Suche gefunden',
   WITHIN_BUDGET: 'Innerhalb der Auswahlgrenze',
-  OUTSIDE_LIST_BUDGET: 'Unterhalb der Auswahlgrenze der eigenen Liste',
   OUTSIDE_FUSION_BUDGET: 'Nach der Fusion unterhalb der Auswahlgrenze',
   OUTSIDE_RERANK_BUDGET: 'Nach der Neubewertung unterhalb der Auswahlgrenze',
   COMPLETED_AS_SIBLING: 'Als weiterer Abschnitt desselben Dokuments ergänzt',

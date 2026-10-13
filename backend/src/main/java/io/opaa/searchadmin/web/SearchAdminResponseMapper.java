@@ -400,7 +400,6 @@ final class SearchAdminResponseMapper {
     return switch (reason) {
       case RETRIEVED_BY_SEARCH -> RetrievalVerdictReason.RETRIEVED_BY_SEARCH;
       case WITHIN_BUDGET -> RetrievalVerdictReason.WITHIN_BUDGET;
-      case OUTSIDE_LIST_BUDGET -> RetrievalVerdictReason.OUTSIDE_LIST_BUDGET;
       case OUTSIDE_FUSION_BUDGET -> RetrievalVerdictReason.OUTSIDE_FUSION_BUDGET;
       case OUTSIDE_RERANK_BUDGET -> RetrievalVerdictReason.OUTSIDE_RERANK_BUDGET;
       case COMPLETED_AS_SIBLING -> RetrievalVerdictReason.COMPLETED_AS_SIBLING;

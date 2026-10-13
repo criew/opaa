@@ -12,14 +12,16 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  * @param topK the number of chunks that reach the answer prompt. {@link
  *     RetrievalStageName#RANK_FUSION} caps the fused list at it, or - with reranking active - the
  *     reranker restores the cap after re-scoring the wider window. Default 20; at most 100.
- * @param fetchK candidates each search query retrieves, per search path, before the narrowing
- *     stages work on them. Default 25, normalized to {@code max(25, topK)} when unset so a
- *     deployment that raised {@code topK} alone does not fail the {@code fetchK >= topK} check.
+ * @param fetchK candidates each search query retrieves, per search path; all of them reach {@link
+ *     RetrievalStageName#RANK_FUSION}, which cuts the fused list to {@link #topK}. Default 25,
+ *     normalized to {@code max(25, topK)} when unset so a deployment that raised {@code topK} alone
+ *     does not fail the {@code fetchK >= topK} check.
  * @param mmrLambda the relevance/diversity trade-off {@code MmrSelector} applies: a candidate's
  *     score is {@code mmrLambda * relevance - (1 - mmrLambda) * maxSimilarityToAlreadySelected}.
  *     Default {@code 1.0}, where the diversity term vanishes and {@link
- *     RetrievalStageName#MMR_SELECTION} skips the {@link ChunkEmbeddingLookup} round trip. Bound
- *     via {@code @DefaultValue} so an explicit {@code 0.0} is honoured rather than raised.
+ *     RetrievalStageName#MMR_SELECTION} does not run (protocol: {@code DISABLED}), so neither the
+ *     reordering nor the {@link ChunkEmbeddingLookup} round trip happens. Bound via
+ *     {@code @DefaultValue} so an explicit {@code 0.0} is honoured rather than raised.
  * @param similarityThreshold minimum cosine similarity a chunk must reach in the vector path.
  *     Applied inside {@code similaritySearch} itself, so a chunk below it never becomes an MMR
  *     candidate and diversity can never pull it into the selection. Default 0.3.
@@ -29,7 +31,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     round trip, never a broken query.
  * @param maxSubQueries the upper bound on the search queries the decomposition may return. Default
  *     3; the service truncates beyond it, so an adversarial answer cannot grow retrieval latency
- *     without bound. Each list is narrowed on its own, so the chunk count stays capped at {@link
+ *     without bound. The fusion caps the fused list, so the chunk count stays capped at {@link
  *     #topK} regardless.
  * @param maxChunksPerDocument the fill target of {@code DocumentCompletion}: a document already in
  *     the selection is topped up to this many chunks from the candidate pool. Not a cap - a
@@ -42,9 +44,9 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     explanation protocol, unlike switching it off via {@link
  *     RetrievalPipelineProperties#disabledStages()}.
  * @param rerankCandidateCount how many fused candidates {@link RetrievalStageName#RERANK} hands to
- *     the rerank model, and therefore the budget the narrowing stages keep instead of {@link #topK}
- *     whenever reranking runs. Default 50. The window does not extend the reach of retrieval - what
- *     no search returned cannot be reranked - so raising it without raising {@link #fetchK} buys
+ *     the rerank model, and therefore the budget the fusion keeps instead of {@link #topK} whenever
+ *     reranking runs. Default 50. The window does not extend the reach of retrieval - what no
+ *     search returned cannot be reranked - so raising it without raising {@link #fetchK} buys
  *     nothing. {@code 0} switches the stage off through its own parameter; whether reranking runs
  *     at all is additionally governed by the rerank model role's switch ({@code
  *     OPAA_RERANK_ENABLED}), which is an installation decision, not a retrieval parameter.

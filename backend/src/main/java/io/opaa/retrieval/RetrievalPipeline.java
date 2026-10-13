@@ -67,8 +67,8 @@ public class RetrievalPipeline {
    * executed.
    */
   public RetrievalPipelineResult run(RetrievalContext rawContext) {
-    // Without the rerank stage nothing would restore the top-k cap, so the narrowing stages must
-    // not widen their budget for it. Enforced here: the call sites cannot see the disabled set.
+    // Without the rerank stage nothing would restore the top-k cap, so the fusion must
+    // not widen its budget for it. Enforced here: the call sites cannot see the disabled set.
     RetrievalContext context =
         disabledStages.contains(RetrievalStageName.RERANK)
             ? rawContext.withoutReranking()

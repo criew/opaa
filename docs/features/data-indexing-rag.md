@@ -274,8 +274,8 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Mindestgröße eines Chunks** | 350 Zeichen **(gebaut)** | Wie stark der Bestand zu Kurzabschnitten neigt | Weniger inhaltsleere Splitter, aber Verlust kurzer, präziser Definitionen |
 | **Überlappung** | 100 Token **(gebaut)** | Ob Aussagen regelmäßig über Abschnittsgrenzen laufen | Weniger an der Grenze zerschnittene Aussagen, aber mehr Chunks, mehr Speicher und doppelte Treffer |
 | **`top-k`** | 20 **(gebaut, seit #2373; zuvor 8)** | Wie viele Belegstellen eine typische Frage braucht | Höhere Trefferwahrscheinlichkeit, aber mehr Rauschen im Antwortkontext und höherer Verbrauch |
-| **`fetch-k`** | 25 **(gebaut)** | Wie viele Kandidaten die Vektorsuche liefert, bevor die Vielfaltsauswahl (MMR, siehe direkt unter der Tabelle) daraus `top-k` auswählt | Mehr Spielraum für Vielfalt bei Mehrthemen-Fragen, aber mehr Rechenaufwand für die Auswahl |
-| **MMR-λ (`mmr-lambda`)** | 1,0 **(gebaut, Vielfalt per Default deaktiviert)** | Abwägung zwischen Relevanz und Vielfalt bei der Auswahl aus `fetch-k` Kandidaten (Maximal Marginal Relevance) — `1,0` schaltet die Vielfalt ab und wählt reine Top-`k`-Relevanz | Höherer Wert bevorzugt Relevanz stärker, niedrigerer Wert verdrängt redundante Fundstellen zugunsten thematisch anderer stärker |
+| **`fetch-k`** | 25 **(gebaut)** | Wie viele Kandidaten jede Suchliste liefert; alle erreichen die Fusion, die daraus `top-k` auswählt (seit #2620; vorher kürzte die MMR-Stufe jede Liste schon auf `top-k`) | Mehr Reichweite für Einzeltreffer eines Pfads, aber mehr Rechenaufwand für Suche und Fusion |
+| **MMR-λ (`mmr-lambda`)** | 1,0 **(gebaut, Vielfalt per Default deaktiviert)** | Abwägung zwischen Relevanz und Vielfalt, nach der jede Liste aus `fetch-k` Kandidaten vor der Fusion umsortiert wird (Maximal Marginal Relevance); gekürzt wird nichts (seit #2620) — `1,0` schaltet die Vielfalt ab, die Stufe läuft dann nicht | Höherer Wert bevorzugt Relevanz stärker, niedrigerer Wert verdrängt redundante Fundstellen zugunsten thematisch anderer stärker |
 | **Ähnlichkeitsschwelle** | 0,3 **(gebaut)** | Wie umgangssprachlich gefragt wird und wie homogen der Bestand ist | Weniger unpassende Treffer, aber häufiger keine ausreichend ähnliche Fundstelle und damit eine Antwort ohne Beleg |
 | **Bündelgröße der Einbettung** | 50 Chunks je Aufruf **(gebaut)** | Belastbarkeit des Einbettungsdienstes | Schnellere Läufe, aber Lastspitzen und größerer Speicherbedarf |
 | **Wiederholversuche je Dokument** | 3 **(gebaut)** | Zuverlässigkeit von Quelle und Modelldienst | Weniger verlorene Dokumente, aber längere Läufe bei dauerhaft defekten Dateien |
@@ -284,8 +284,8 @@ Kennzahl über einen Parameter, den niemand beschrieben hat, ist nicht auswertba
 | **Auffüllziel der Dokument-Vervollständigung (`max-chunks-per-document`)**, trotz des Namens keine Obergrenze je Dokument (#2623) | 1 **(gebaut, #932/#934/#935; Default 1 seit #2502, vorher 2)** | Wie oft ein einzelnes Dokument seine relevante Information über mehrere Chunks verteilt (z. B. Einleitung und Gebührentabelle getrennt) | Höherer Wert nimmt mehr Chunks desselben, bereits ausgewählten Dokuments bevorzugt vor einem neuen Dokument auf — bei `1` bleibt die Dokument-Vervollständigung vollständig aus (Vorzustand vor #932) |
 
 **`fetch-k`/`mmr-lambda` steuern gemeinsam die Vielfaltsauswahl (Maximal Marginal Relevance, MMR,
-#914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. Daraus wählt MMR
-schrittweise `top-k` Fundstellen: Der erste Treffer ist stets der relevanteste; jeder weitere
+#914).** Die Vektorsuche holt zunächst `fetch-k` Kandidaten statt nur `top-k`. MMR sortiert jede Liste
+schrittweise um, ohne sie zu kürzen (seit #2620; die Kürzung auf `top-k` macht die Fusion): Der erste Treffer ist stets der relevanteste; jeder weitere
 Treffer bekommt einen Abzug, wenn er inhaltlich zu nah an einer bereits gewählten Fundstelle liegt
 - ein etwas weniger relevanter, aber thematisch neuer Treffer gewinnt dann gegen eine Wiederholung.
 Ohne diese Auswahl konnte ein einzelnes, im Bestand dominantes Thema alle `top-k` Plätze mit

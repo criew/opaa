@@ -78,11 +78,11 @@
     },
     {
       "name": "MMR_LAMBDA_ACTIVE",
-      "template": "mmr-lambda %s (diversity term active, cosine similarity of real chunk embeddings)"
+      "template": "mmr-lambda %s: every list reordered by diversity (cosine similarity of real chunk embeddings), none narrowed"
     },
     {
       "name": "MMR_LAMBDA_INACTIVE",
-      "template": "mmr-lambda %s (diversity term inactive: plain top-k by relevance)"
+      "template": "mmr-lambda %s: diversity term inactive, every list passed on unchanged to the fusion"
     },
     {
       "name": "NOT_REACHED",
@@ -91,10 +91,6 @@
     {
       "name": "OVERALL_BUDGET_TOP_K",
       "template": "overall budget top-k %d"
-    },
-    {
-      "name": "PER_LIST_BUDGET",
-      "template": "per-list budget %d"
     },
     {
       "name": "RANK_FUSION_LISTS",
