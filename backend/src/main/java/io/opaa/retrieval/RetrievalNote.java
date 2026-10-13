@@ -54,10 +54,11 @@ public enum RetrievalNote {
       "%s: uppercase word(s) %s demoted, searched as ordinary words without identifier weight:"
           + " more chunks of the search scope carry them than fetch-k"),
 
-  PER_LIST_BUDGET("per-list budget %d"),
-  MMR_LAMBDA_INACTIVE("mmr-lambda %s (diversity term inactive: plain top-k by relevance)"),
+  MMR_LAMBDA_INACTIVE(
+      "mmr-lambda %s: diversity term inactive, every list passed on unchanged to the fusion"),
   MMR_LAMBDA_ACTIVE(
-      "mmr-lambda %s (diversity term active, cosine similarity of real chunk embeddings)"),
+      "mmr-lambda %s: every list reordered by diversity (cosine similarity of real chunk"
+          + " embeddings), none narrowed"),
 
   RANK_FUSION_LISTS("reciprocal rank fusion over %d list(s)"),
   SCORE_FUSION_LISTS(

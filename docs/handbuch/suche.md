@@ -201,7 +201,7 @@ flowchart TB
     V[Suchfenster] -.-> S3
     S3 --> S4[4 Vektorsuche]
     S3 --> S5[5 Volltext-<br/>suche]
-    S4 --> S6[6 Auswahl<br/>je Liste]
+    S4 --> S6[6 Vielfalts-<br/>auswahl]
     S5 --> S6
     S6 --> S7[7 Fusion]
     S7 --> S8[8 Reranking,<br/>falls an]
@@ -426,21 +426,23 @@ Schlägt die Volltextabfrage fehl, scheitert die Frage — wie bei einem Ausfall
 Lauf, der die halbe hybride Suche still verliert, gäbe eine schlechtere Antwort als normale aus; die
 Fehlerursache steht im Server-Log.
 
-### Stufe 6: Auswahl je Liste
+### Stufe 6: Vielfaltsauswahl
 
 Jetzt liegen mehrere Kandidatenlisten vor: je Suchanfrage eine aus der Vektorsuche und eine aus
-der Volltextsuche. Jede Liste wird auf das **Kandidatenbudget** gekürzt: die endgültige Anzahl
-`top-k`, oder das größere Reranking-Fenster, solange Reranking läuft (Stufe 8).
+der Volltextsuche, jede mit bis zu `fetch-k` Kandidaten. Die **Vielfaltsauswahl** (Maximal Marginal
+Relevance, MMR) sortiert jede Liste für sich um, **kürzt aber keine**: Alle `fetch-k` Kandidaten
+erreichen die Fusion, die allein auf das Kandidatenbudget kürzt (Stufe 7). Ein Treffer, der in
+seiner Liste hinter `top-k`, aber innerhalb von `fetch-k` steht, hat dort also noch eine Chance.
 
-An dieser Stelle sitzt die **Vielfaltsauswahl** (Maximal Marginal Relevance, MMR). Sie ist gebaut,
-aber im Auslieferungsstand nicht aktiv: Der Regler `mmr-lambda` steht auf seinem Höchstwert 1,0,
-und die Kürzung ist dann eine reine Top-k-Auswahl nach Relevanz. Ein niedrigerer Wert lässt einen Kandidaten, der einen
+Die Vielfaltsauswahl ist gebaut, aber im Auslieferungsstand nicht aktiv: Der Regler `mmr-lambda`
+steht auf seinem Höchstwert 1,0. Dann bliebe jede Liste, wie sie ist; die Stufe läuft nicht und
+steht im Protokoll als abgeschaltet. Ein niedrigerer Wert lässt einen Kandidaten, der einen
 bereits gewählten inhaltlich nur wiederholt, gegenüber einem weniger ähnlichen, aber thematisch
 neuen zurückfallen. Dafür ist kein Modellaufruf nötig: Die Relevanz jedes Kandidaten hat die Suche
 schon geliefert, und die Ähnlichkeit der Kandidaten **untereinander** wird aus ihren Vektoren
 berechnet, die seit der Indexierung in der Datenbank liegen. Die Stufe liest die Vektoren aller
-Kandidaten in einer Abfrage und rechnet die Kosinus-Ähnlichkeit je Paar selbst aus. Die Auswahl
-läuft dann Platz für Platz: Zuerst kommt der relevanteste Kandidat, danach jeweils der mit dem
+Kandidaten in einer Abfrage und rechnet die Kosinus-Ähnlichkeit je Paar selbst aus. Die Umsortierung
+läuft Platz für Platz: Zuerst kommt der relevanteste Kandidat, danach jeweils der mit dem
 höchsten Wert aus `lambda × Relevanz − (1 − lambda) × größte Ähnlichkeit zu einem bereits
 gewählten Chunk`. Bei 1,0 ist der zweite Term null, und die Vektoren werden gar nicht erst gelesen.
 Der Default 1,0 ist eine Messentscheidung: Auf
@@ -499,10 +501,9 @@ Administrationsseite unterscheiden:
 
 Fällt der Endpunkt **während** einer Frage aus oder überschreitet er das Zeitbudget, behält die
 Suche die fusionierte Reihenfolge und kürzt selbst auf `top-k`. Ein Ausfall kostet die Sortierung, nie die
-Antwort. Diese Reihenfolge ist allerdings eine dritte, eigene: Weil die früheren Stufen ihr Budget
-für den Reranker auf das Reranking-Fenster geweitet hatten, haben in der Fusion mehr Kandidaten mitgespielt als in
-einem Lauf ohne Reranking. Wer Reranking einschaltet, sollte deshalb die Erreichbarkeit des
-Endpunkts überwachen und nicht nur die Antworten ansehen.
+Antwort, und die Endauswahl ist dann dieselbe wie in einem Lauf ohne Reranking. Wer Reranking
+einschaltet, sollte deshalb die Erreichbarkeit des Endpunkts überwachen und nicht nur die Antworten
+ansehen: Ein Ausfall fällt an den Antworten nicht auf.
 
 Ist `rerank-candidate-count` **kleiner** als `top-k`, liefert die Fusion trotzdem bis zu `top-k`
 Kandidaten (das Kandidatenbudget ist dann das Maximum aus beiden Werten, damit die Antwort nicht
@@ -940,14 +941,14 @@ Spezifikation und dem API-Feld `stage` des Erklärprotokolls ist der technische 
 | 3 Teilfragen | Teilfragen | `SUB_QUERY_DECOMPOSITION` |
 | 4 Vektorsuche | Vektorsuche | `VECTOR_SEARCH` |
 | 5 Volltextsuche | Volltextsuche | `FULL_TEXT_SEARCH` |
-| 6 Auswahl je Liste | Auswahl je Liste | `MMR_SELECTION` |
+| 6 Vielfaltsauswahl | Vielfaltsauswahl | `MMR_SELECTION` |
 | 7 Fusion | Fusion | `RANK_FUSION` |
 | 8 Reranking | Neubewertung (Reranking) | `RERANK` |
 | 9 Dokument-Vervollständigung | Dokument-Vervollständigung | `DOCUMENT_COMPLETION` |
 
 Für jede Stufe zeigt die Seite Eingang, Ausgang, Status (ausgeführt, abgeschaltet, nicht verfügbar,
 nicht erreicht), die Notizen (Suchanfragen, Budgets, Filter) und je Kandidat das Urteil: gefunden über welchen Pfad mit welchem
-Rang, behalten, verworfen (außerhalb des Listenbudgets, außerhalb des Fusionsbudgets, unterhalb des
+Rang, behalten, verworfen (außerhalb des Fusionsbudgets, unterhalb des
 Reranking-Budgets, verdrängt durch Vervollständigung Stufe 1 oder 2) oder als Geschwister-Chunk
 nachgezogen. Die Endauswahl steht mit Begründung je Chunk darunter.
 
@@ -1026,8 +1027,7 @@ Abschnitt 12.
 | Befund | Wo er sichtbar wird | Übliche Ursache |
 |---|---|---|
 | Dokument nie in einer Kandidatenliste | „Dokument verfolgen", Indexstatus | außerhalb des Suchbereichs; Dokument nicht indiziert oder ohne Chunks (Scan); Filter mit Leerwert-Sonderfall; Begriff steht weder wörtlich noch sinngemäß im Chunk |
-| gefunden, außerhalb des Listenbudgets | Stufe „Auswahl je Liste" | Rang jenseits von `top-k` in seinem Pfad; hilft: Reranking (weitet das Budget auf das Reranking-Fenster), präzisere Frage, Kontextpräfix |
-| gefunden, außerhalb des Fusionsbudgets | Stufe „Fusion" | nur ein Pfad hat es gefunden und andere Kandidaten standen in beiden; hilft: Reranking |
+| gefunden, außerhalb des Fusionsbudgets | Stufe „Fusion" | nur ein Pfad hat es gefunden, oft weit hinten in seiner Liste, und andere Kandidaten standen in beiden; hilft: Reranking, präzisere Frage, Kontextpräfix |
 | unterhalb des Reranking-Budgets | Stufe „Reranking" | der Reranker hält andere Kandidaten für passender; der Reranker-Wert steht daneben |
 | verdrängt durch Vervollständigung Stufe 2 | Stufe „Dokument-Vervollständigung" | ein besser rankendes Dokument hat seinen zweiten Chunk nachgezogen |
 | Reranking „nicht verfügbar" | Modellrollen, Stufe „Reranking" | Endpunkt nicht erreichbar oder Zeitbudget überschritten; die Suche lief ohne Reranking weiter |
@@ -1093,7 +1093,7 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | Schlüssel | Standard | Wirkung |
 |---|---|---|
 | `top-k` | 20 | Chunks in der Endauswahl (1 bis 100); jeder geht ungekürzt in den Prompt der Antwort (Abschnitt 6). Bei kleinem Kontextfenster des Chat-Modells an dessen Größe binden: etwa 6 bei rund 8.000 Tokens, 12 bei rund 16.000. Bei Ollama begrenzt die Kontextlänge des Servers (`num_ctx`), nicht die des Modells. Die Werte gelten ohne Nachbar-Chunks; bei so kleinem Fenster `neighbor-chunks.radius` auf 0 setzen |
-| `fetch-k` | 25 | Kandidaten je Suchanfrage und Pfad (1 bis 200, mindestens `top-k`); die Reichweite der Suche |
+| `fetch-k` | 25 | Kandidaten je Suchanfrage und Pfad (1 bis 200, mindestens `top-k`); alle erreichen die Fusion. Die Reichweite der Suche |
 | `similarity-threshold` | 0,3 | Mindestähnlichkeit in der Vektorsuche |
 | `vector-index.max-scan-tuples` | 20000 | Indexeinträge, die eine Vektorsuche höchstens durchläuft, um `fetch-k` Chunks innerhalb ihres Filters zu finden; Laufzeit kostet ein höherer Wert nur bei Suchen, die ihn brauchen |
 | `query-decomposition-enabled` / `max-sub-queries` | an / 3 | Teilfragen-Zerlegung und ihre Obergrenze (1 bis 10) |
@@ -1101,7 +1101,7 @@ Umgebungsvariable im Kapitel [Deployment](konfiguration.md#alle-umgebungsvariabl
 | `fusion.method` | `rrf` | Fusionsverfahren: `rrf` nach Rang, `score` nach normierten Werten |
 | `fusion.sub-query-quota` | an | Quote je Teilfrage: jede Teilfrage für sich fusioniert, Auswahl reihum; aus fusioniert alle Listen in einem Pool |
 | `fusion.vector-weight` | 0,7 | Anteil der Vektorsuche bei `fusion.method` = `score` (0 bis 1), der Volltext erhält den Rest |
-| `mmr-lambda` | 1,0 | Vielfaltsauswahl; 1,0 ist reine Relevanz |
+| `mmr-lambda` | 1,0 | Vielfaltsauswahl, sortiert jede Liste vor der Fusion um; 1,0 schaltet sie ab |
 | `rerank-candidate-count` | 50 | Reranking-Fenster und Budget der Fusion bei aktivem Reranking (0 bis 200); 0 schaltet die Stufe ab |
 | `max-chunks-per-document` | 1 | Auffüllziel der Dokument-Vervollständigung (1 bis 10): bis zu so vielen Chunks füllt sie jedes schon vertretene Dokument aus dem Kandidatenpool auf. Keine Obergrenze, die Endauswahl kann mehr Chunks eines Dokuments enthalten. 1 schaltet die Vervollständigung ab, den Zusammenhang liefern dann die Nachbar-Chunks. Ein höherer Wert gibt Plätze der Endauswahl an weitere Chunks schon vertretener Dokumente und verdrängt dafür andere Treffer |
 | `neighbor-chunks.radius` | 1 | Nachbar-Chunks je Seite, die jeder Chunk der Endauswahl in den Prompt mitbringt (0 bis 3); 0 schaltet das Nachladen ab (Abschnitt 6) |

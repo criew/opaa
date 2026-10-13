@@ -3,6 +3,7 @@ package io.opaa.retrieval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +28,7 @@ import io.opaa.retrieval.search.VectorChunkSearch;
 import io.opaa.retrieval.search.VectorSearchStage;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
@@ -231,5 +233,68 @@ class RerankPipelineTest {
         .isEqualTo(order.indexOf(RetrievalStageName.RANK_FUSION) + 1);
     assertThat(order.indexOf(RetrievalStageName.DOCUMENT_COMPLETION))
         .isEqualTo(order.indexOf(RetrievalStageName.RERANK) + 1);
+  }
+
+  /**
+   * Regression guard for #2620: no stage before the fusion depends on the budget, so a reranker
+   * that scores nothing leaves exactly the selection of a run without reranking - here a chunk both
+   * sub-queries rank tenth, which a per-list cut at top-k would have kept out of one run only.
+   */
+  @Test
+  void aRerankerThatScoresNothingLeavesTheSelectionOfARunWithoutReranking() {
+    when(queryDecompositionService.decompose(any(), any(Integer.class)))
+        .thenReturn(Optional.of(List.of("first", "second")));
+    stubSubQuery("first", "a");
+    stubSubQuery("second", "b");
+    when(rerankModelRole.rerank(anyString(), any())).thenReturn(List.of());
+    // Pooled fusion: there the shared chunk outranks every leader, which makes it the witness.
+    QueryProperties.Fusion pooled = new QueryProperties.Fusion(FusionMethod.RRF, false, 0.7);
+    QueryProperties decomposing =
+        new QueryProperties(TOP_K, 25, 1.0, 0.3, true, 3, 1, false, CANDIDATE_WINDOW, 20, 2)
+            .withFusion(pooled);
+    QueryProperties decomposingWithoutReranking =
+        new QueryProperties(TOP_K, 25, 1.0, 0.3, true, 3, 1, false, 0, 20, 2).withFusion(pooled);
+
+    RetrievalPipeline pipeline = pipeline();
+    List<String> failed =
+        pipeline.run(context(decomposing, RerankAvailability.USABLE)).chunks().stream()
+            .map(Document::getId)
+            .toList();
+    List<String> withoutReranking =
+        pipeline
+            .run(context(decomposingWithoutReranking, RerankAvailability.SWITCHED_OFF))
+            .chunks()
+            .stream()
+            .map(Document::getId)
+            .toList();
+
+    assertThat(failed).hasSize(TOP_K).isEqualTo(withoutReranking).contains("shared");
+  }
+
+  private void stubSubQuery(String query, String prefix) {
+    List<Document> list = new java.util.ArrayList<>();
+    for (int i = 0; i < 9; i++) {
+      list.add(named(prefix + i, 0.9 - i / 100.0));
+    }
+    list.add(named("shared", 0.8));
+    when(vectorChunkSearch.similaritySearch(
+            argThat(
+                (SearchRequest request) -> request != null && query.equals(request.getQuery()))))
+        .thenReturn(list);
+  }
+
+  private static Document named(String id, double score) {
+    return Document.builder()
+        .id(id)
+        .text("Text " + id)
+        .metadata(Map.of("document_id", "doc-" + id, "file_name", id + ".md"))
+        .score(score)
+        .build();
+  }
+
+  private static RetrievalContext context(
+      QueryProperties properties, RerankAvailability availability) {
+    return new RetrievalContext(
+        "Frage", List.of(), Set.of(LIBRARY_ID), MetadataFilter.NONE, properties, availability);
   }
 }
