@@ -570,8 +570,9 @@ Untergrenze 500 hält die Zielgröße deutlich über dieser Schwelle.
 **Tokens** (Default 1.000, mit `chunk-overlap`) und gilt nur für die Tika-Auffang-Pipeline und
 strukturlose Texte (`ChunkingService`, auch der Mail-Pfad); die Zielgröße zählt **Zeichen** und gilt
 nur für die Pipelines oben. Die 4.000 Zeichen waren ursprünglich als Größenordnung von 1.000 Tokens
-gesetzt; deutscher Verwaltungstext liegt eher bei 3 bis 3,5 Zeichen je Token, 4.000 Zeichen
-entsprechen also etwa 1.100 bis 1.300 Tokens, 2.000 Zeichen etwa 550 bis 650.
+gesetzt. Gemessen mit bge-m3 auf dem FV-Testkorpus (#2507) liegt deutscher Verwaltungstext bei
+rund 4,2 Zeichen je Token: 4.000 Zeichen entsprechen etwa 950 bis 1.250 Tokens, 2.000 Zeichen
+etwa 450 bis 600. Zahlendichte Tabellen brauchen deutlich mehr (bis 1,4 Zeichen je Token).
 
 Eine geänderte Zielgröße erhöht keine Pipeline-Version und löst keinen Nachzug aus: Sie gilt für
 Dokumente, die danach indexiert werden. Ein erneuter Lauf überspringt unveränderte Dateien per
