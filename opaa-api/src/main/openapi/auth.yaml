@@ -424,7 +424,7 @@ components:
   schemas:
     AuthConfigResponse:
       type: object
-      required: [mode, providers, localAccounts]
+      required: [mode, providers, localAccounts, features]
       properties:
         mode:
           type: string
@@ -441,6 +441,24 @@ components:
             $ref: "#/components/schemas/OidcSignInProvider"
         localAccounts:
           $ref: "#/components/schemas/LocalAccountsConfig"
+        features:
+          $ref: "#/components/schemas/FeaturesConfig"
+
+    FeaturesConfig:
+      type: object
+      description: >
+        The installation-wide feature flags (opaa.features.*): one boolean per flag, true while the
+        feature is switched on. Every flag is on unless the installation switched it off; the values
+        are fixed at start-up and readable before sign-in. The property name is the camel-case form
+        of the flag key, e.g. prompt-libraries -> promptLibraries.
+      required: [promptLibraries, metadata]
+      properties:
+        promptLibraries:
+          type: boolean
+          description: Prompt libraries (opaa.features.prompt-libraries.enabled).
+        metadata:
+          type: boolean
+          description: Metadata of documents and libraries (opaa.features.metadata.enabled).
 
     LocalAccountsConfig:
       type: object

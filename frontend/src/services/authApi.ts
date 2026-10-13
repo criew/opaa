@@ -38,7 +38,12 @@ export async function getAuthConfig(): Promise<ResolvedAuthConfig> {
   const { data } = await authClient.get<AuthConfig>('/v1/auth/config')
   // A backend without local accounts omits the block entirely; "absent" means "switched off",
   // never "unknown", so every caller can read the flags without a null check.
-  return { ...data, localAccounts: data.localAccounts ?? LOCAL_ACCOUNTS_DISABLED }
+  // Feature flags work the other way round: an absent flag counts as on (ADR-0044).
+  return {
+    ...data,
+    localAccounts: data.localAccounts ?? LOCAL_ACCOUNTS_DISABLED,
+    features: data.features ?? {},
+  }
 }
 
 /**
