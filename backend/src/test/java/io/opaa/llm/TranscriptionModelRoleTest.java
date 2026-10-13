@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.common.FeatureFlags;
 import io.opaa.llm.TranscriptionClient.ProbeFailure;
 import io.opaa.llm.TranscriptionClient.TranscriptionUnavailableException;
+import io.opaa.llm.TranscriptionModelRole.TranscriptionRoleBusyException;
 import io.opaa.llm.TranscriptionModelRole.TranscriptionRoleUnusableException;
 import java.time.Duration;
 import org.junit.jupiter.api.Test;
@@ -24,7 +25,7 @@ class TranscriptionModelRoleTest {
 
   private static TranscriptionProperties properties(boolean enabled, String baseUrl, String model) {
     return new TranscriptionProperties(
-        enabled, baseUrl, model, "key", "de", 1024, Duration.ofSeconds(5));
+        enabled, baseUrl, model, "key", "de", 1024, Duration.ofSeconds(5), 2);
   }
 
   private static FeatureFlags speechInput(boolean on) {
@@ -116,6 +117,54 @@ class TranscriptionModelRoleTest {
     assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionUnavailableException.class);
     assertThat(role.currentStatus().state()).isEqualTo(TranscriptionRoleState.UNREACHABLE);
+  }
+
+  /** A recording comes from a person: its refusal must not hide dictation from everybody else. */
+  @Test
+  void aRecordingTheEndpointRefusesLeavesTheRoleReady() {
+    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any())).thenReturn(null);
+    role.refresh();
+    when(client.transcribe(any(), any(), any()))
+        .thenThrow(new TranscriptionUnavailableException("HTTP 400", false, true))
+        .thenThrow(new TranscriptionUnavailableException("HTTP 500", false, true))
+        .thenThrow(new TranscriptionUnavailableException("no text", false, true));
+
+    for (int i = 0; i < 3; i++) {
+      assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
+          .isInstanceOf(TranscriptionUnavailableException.class);
+      assertThat(role.usable()).isTrue();
+    }
+  }
+
+  @Test
+  void aTimedOutCallMovesTheRoleToUnreachable() {
+    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
+    when(client.probe(any())).thenReturn(null);
+    role.refresh();
+    when(client.transcribe(any(), any(), any()))
+        .thenThrow(new TranscriptionUnavailableException("request timed out", true));
+
+    assertThatThrownBy(() -> role.transcribe(AUDIO, TranscriptionAudioFormat.WEBM))
+        .isInstanceOf(TranscriptionUnavailableException.class);
+    assertThat(role.currentStatus().state()).isEqualTo(TranscriptionRoleState.UNREACHABLE);
+    assertThat(role.currentStatus().timedOut()).isTrue();
+  }
+
+  @Test
+  void theSlotsAreCappedForTheWholeInstallationAndFreedOnClose() {
+    TranscriptionModelRole role = role(properties(true, "http://stt:8000/v1", "whisper"), true);
+
+    TranscriptionModelRole.Slot first = role.reserve();
+    TranscriptionModelRole.Slot second = role.reserve();
+    assertThatThrownBy(role::reserve).isInstanceOf(TranscriptionRoleBusyException.class);
+
+    first.close();
+    first.close();
+    TranscriptionModelRole.Slot third = role.reserve();
+    assertThatThrownBy(role::reserve).isInstanceOf(TranscriptionRoleBusyException.class);
+    second.close();
+    third.close();
   }
 
   @Test

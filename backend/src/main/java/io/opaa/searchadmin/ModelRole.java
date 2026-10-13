@@ -3,7 +3,7 @@ package io.opaa.searchadmin;
 /**
  * The model roles the status display covers. Reranking is a role on the same level as chat and
  * embedding, not a procedure inside the search (docs/features/hybrid-retrieval.md, Arbeitspaket 4).
- * Transcription serves dictation in the chat input (#1926).
+ * Transcription serves dictation in the chat input.
  */
 public enum ModelRole {
   CHAT,

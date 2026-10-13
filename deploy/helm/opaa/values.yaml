@@ -125,6 +125,9 @@ transcription:
   maxAudioBytes: ""
   # Budget of one transcription request; empty keeps the application default (120s).
   timeout: ""
+  # Recordings passed on at the same time across the installation; empty keeps the application
+  # default (4).
+  maxConcurrent: ""
 
 # Time limits of the SMTP connection. The mail server itself is an administration setting in the
 # user interface, not a value of the chart. Empty keeps the application defaults (10s, 15s, 15s).
@@ -512,6 +515,9 @@ networkPolicy:
 #   nginx.ingress.kubernetes.io/proxy-body-size: 52m
 #   nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
 #   nginx.ingress.kubernetes.io/proxy-buffering: "off"
+#   nginx.ingress.kubernetes.io/client-body-buffer-size: 11m
+# The last one keeps a dictation recording (up to 11m, see transcription) in memory; with the
+# controller's small default buffer it is written to a temporary file on the controller's disk.
 # HAProxy Ingress: haproxy-ingress.github.io/proxy-body-size: 52m
 # Traefik has no request size limit by default.
 ingress:

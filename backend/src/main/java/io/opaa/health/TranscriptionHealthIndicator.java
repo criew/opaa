@@ -8,7 +8,7 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 /**
- * Reports the transcription role (#1926) from its last known state, without a call of its own. A
+ * Reports the transcription role from its last known state, without a call of its own. A
  * switched-off role is {@code UP}: dictation absent by decision is no fault. Lives in its own
  * health group, so a dead transcription endpoint never takes the instance out of rotation.
  */

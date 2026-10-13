@@ -2,6 +2,8 @@ package io.opaa.llm;
 
 import io.opaa.common.Feature;
 import io.opaa.common.FeatureFlags;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,8 +11,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * The transcription model role (#1926), built like {@link RerankModelRole}: the one entry point for
- * "may a recording be transcribed?" and "what state is the role in?".
+ * The transcription model role, built like {@link RerankModelRole}: the one entry point for "may a
+ * recording be transcribed?" and "what state is the role in?".
  *
  * <p>{@link #currentStatus()} and {@link #usable()} never probe; the state is kept current by
  * {@link #refresh()} at startup and on a schedule, and by every real call. The role is never fatal:
@@ -31,6 +33,7 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
   private final boolean switchedOn;
   private final boolean baseUrlRejected;
   private final AtomicReference<TranscriptionRoleStatus> lastKnown = new AtomicReference<>();
+  private final Semaphore slots;
 
   public TranscriptionModelRole(
       TranscriptionProperties properties, TranscriptionClient client, FeatureFlags featureFlags) {
@@ -38,13 +41,46 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
     this.client = client;
     this.switchedOn = properties.enabled() && featureFlags.isEnabled(Feature.SPEECH_INPUT);
     this.baseUrlRejected = ModelEndpointUri.containsCredentials(properties.baseUrl());
+    this.slots = new Semaphore(properties.maxConcurrent());
   }
 
   /** Signals that no recording may be passed on right now; nothing was sent. */
   public static class TranscriptionRoleUnusableException extends RuntimeException {
-    TranscriptionRoleUnusableException(String message) {
+    public TranscriptionRoleUnusableException(String message) {
       super(message);
     }
+  }
+
+  /** Signals that every slot is taken; nothing was read or sent. */
+  public static class TranscriptionRoleBusyException extends RuntimeException {
+    TranscriptionRoleBusyException() {
+      super("all transcription slots are taken");
+    }
+  }
+
+  /** One of the installation-wide slots; closing it frees the slot. */
+  public interface Slot extends AutoCloseable {
+    @Override
+    void close();
+  }
+
+  /**
+   * Takes one of {@link TranscriptionProperties#maxConcurrent()} slots without waiting. The cap
+   * holds for the whole installation, never per person; hold the slot while the recording is in
+   * memory.
+   *
+   * @throws TranscriptionRoleBusyException when every slot is taken.
+   */
+  public Slot reserve() {
+    if (!slots.tryAcquire()) {
+      throw new TranscriptionRoleBusyException();
+    }
+    AtomicBoolean released = new AtomicBoolean();
+    return () -> {
+      if (released.compareAndSet(false, true)) {
+        slots.release();
+      }
+    };
   }
 
   @Override
@@ -110,8 +146,10 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
   }
 
   /**
-   * Transcribes one recording. A failed call moves the role to {@link
-   * TranscriptionRoleState#UNREACHABLE}; the log line names endpoint and cause, never content.
+   * Transcribes one recording. A call that does not reach the endpoint moves the role to {@link
+   * TranscriptionRoleState#UNREACHABLE}; an endpoint that answered but refused this one recording
+   * leaves the role as it is, since the recording comes from a person, not from the server. The log
+   * line names endpoint and cause, never content.
    *
    * @throws TranscriptionRoleUnusableException when the role is not {@link
    *     TranscriptionRoleState#READY}; nothing was sent.
@@ -127,7 +165,9 @@ public class TranscriptionModelRole implements TranscriptionRoleStatusProvider {
       lastKnown.set(status(TranscriptionRoleState.READY, null, false));
       return text;
     } catch (TranscriptionClient.TranscriptionUnavailableException e) {
-      lastKnown.set(status(TranscriptionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()));
+      if (!e.answered()) {
+        lastKnown.set(status(TranscriptionRoleState.UNREACHABLE, e.getMessage(), e.timedOut()));
+      }
       // Only the message: it is technical and content-free by contract, a stack trace adds nothing.
       log.warn(
           "Transcription call against {} failed: {}",

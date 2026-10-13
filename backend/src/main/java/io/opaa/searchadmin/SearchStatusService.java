@@ -473,6 +473,11 @@ public class SearchStatusService {
     if (status.diagnostic() != null) {
       log.debug("Transcription role reports {}: {}", status.state(), status.diagnostic());
     }
+    return transcriptionRole(status);
+  }
+
+  /** The role's state, endpoint and model as the status page shows them; no usage figures. */
+  static ModelRoleStatus transcriptionRole(TranscriptionRoleStatus status) {
     return new ModelRoleStatus(
         ModelRole.TRANSCRIPTION,
         switch (status.state()) {

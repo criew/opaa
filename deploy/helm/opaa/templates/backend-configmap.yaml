@@ -68,6 +68,9 @@ data:
   {{- with .Values.transcription.timeout }}
   OPAA_TRANSCRIPTION_TIMEOUT: {{ . | quote }}
   {{- end }}
+  {{- with .Values.transcription.maxConcurrent }}
+  OPAA_TRANSCRIPTION_MAX_CONCURRENT: {{ . | quote }}
+  {{- end }}
   {{- with .Values.mail.connectTimeout }}
   OPAA_MAIL_CONNECT_TIMEOUT: {{ . | quote }}
   {{- end }}

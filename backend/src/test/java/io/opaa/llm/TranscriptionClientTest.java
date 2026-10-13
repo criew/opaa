@@ -55,7 +55,7 @@ class TranscriptionClientTest {
 
   private TranscriptionProperties properties(String apiKey, String language, Duration timeout) {
     return new TranscriptionProperties(
-        true, baseUrl, "whisper-large-v3-turbo", apiKey, language, 1024 * 1024, timeout);
+        true, baseUrl, "whisper-large-v3-turbo", apiKey, language, 1024 * 1024, timeout, 4);
   }
 
   private TranscriptionProperties properties() {
@@ -149,6 +149,7 @@ class TranscriptionClientTest {
     assertThatThrownBy(() -> client.transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionUnavailableException.class)
         .satisfies(e -> assertThat(messagesOf(e)).doesNotContain(SECRET_TEXT, "fake-opus"))
+        .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).answered()).isTrue())
         .hasMessage("HTTP 500 from the transcription endpoint");
   }
 
@@ -169,6 +170,7 @@ class TranscriptionClientTest {
 
     assertThatThrownBy(() -> client.transcribe(properties(), AUDIO, TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionUnavailableException.class)
+        .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).answered()).isTrue())
         .hasMessage("endpoint response contains no text");
   }
 
@@ -192,7 +194,8 @@ class TranscriptionClientTest {
                     AUDIO,
                     TranscriptionAudioFormat.WEBM))
         .isInstanceOf(TranscriptionUnavailableException.class)
-        .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).timedOut()).isTrue());
+        .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).timedOut()).isTrue())
+        .satisfies(e -> assertThat(((TranscriptionUnavailableException) e).answered()).isFalse());
   }
 
   @Test

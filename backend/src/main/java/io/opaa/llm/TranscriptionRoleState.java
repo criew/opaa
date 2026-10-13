@@ -1,7 +1,7 @@
 package io.opaa.llm;
 
 /**
- * The states of the transcription model role (#1926), the same four as {@link RerankRoleState}:
+ * The states of the transcription model role, the same four as {@link RerankRoleState}:
  * deliberately off, usable, and two kinds of switched on but broken.
  */
 public enum TranscriptionRoleState {

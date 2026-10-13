@@ -9,7 +9,7 @@ paths:
       operationId: getTranscriptionAvailability
       tags: [transcription]
       summary: >
-        Whether the caller can dictate right now (#1926). Answered from configuration and the last
+        Whether the caller can dictate right now. Answered from configuration and the last
         known state of the transcription role, never by a fresh call to the endpoint. Not reachable
         while the feature speech-input is switched off.
       responses:
@@ -25,7 +25,7 @@ paths:
       operationId: createTranscription
       tags: [transcription]
       summary: >
-        Turns one recorded audio clip into text (#1926). The request body is the recording itself,
+        Turns one recorded audio clip into text. The request body is the recording itself,
         sent with its audio content type (e.g. audio/webm;codecs=opus or audio/mp4) - deliberately
         not multipart, so the clip is read straight into memory and never buffered to disk. It is
         passed on to the transcription endpoint (OpenAI-compatible POST

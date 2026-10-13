@@ -42,6 +42,7 @@ transcription:
   language: de
   maxAudioBytes: "10485760"
   timeout: 120s
+  maxConcurrent: "4"
 mail:
   connectTimeout: 5s
 targetValidation:

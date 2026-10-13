@@ -5,8 +5,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 
 /**
- * The transcription model role's configuration (#1926), built like {@link RerankProperties}: the
- * switch states the intent, the endpoint fields the how.
+ * The transcription model role's configuration, built like {@link RerankProperties}: the switch
+ * states the intent, the endpoint fields the how.
  *
  * @param enabled the explicit switch, {@code OPAA_TRANSCRIPTION_ENABLED}; default off.
  * @param baseUrl base address of an OpenAI-compatible endpoint, without {@code
@@ -17,6 +17,8 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
  *     guess.
  * @param maxAudioBytes the largest recording accepted, independent of the document upload limit.
  * @param timeout budget of one transcription call, the probe included.
+ * @param maxConcurrent how many recordings the whole installation passes on at the same time; each
+ *     one is held in memory until its call ends.
  */
 @ConfigurationProperties(prefix = "opaa.transcription")
 public record TranscriptionProperties(
@@ -26,10 +28,12 @@ public record TranscriptionProperties(
     String apiKey,
     String language,
     @DefaultValue("" + DEFAULT_MAX_AUDIO_BYTES) long maxAudioBytes,
-    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout) {
+    @DefaultValue(DEFAULT_TIMEOUT_SECONDS + "s") Duration timeout,
+    @DefaultValue("" + DEFAULT_MAX_CONCURRENT) int maxConcurrent) {
 
   static final long DEFAULT_MAX_AUDIO_BYTES = 10L * 1024 * 1024;
   static final int DEFAULT_TIMEOUT_SECONDS = 120;
+  static final int DEFAULT_MAX_CONCURRENT = 4;
 
   public TranscriptionProperties {
     baseUrl = baseUrl == null ? "" : baseUrl.strip();
@@ -41,6 +45,9 @@ public record TranscriptionProperties(
     }
     if (timeout == null || timeout.isZero() || timeout.isNegative()) {
       timeout = Duration.ofSeconds(DEFAULT_TIMEOUT_SECONDS);
+    }
+    if (maxConcurrent <= 0) {
+      maxConcurrent = DEFAULT_MAX_CONCURRENT;
     }
   }
 
@@ -79,6 +86,8 @@ public record TranscriptionProperties(
         + maxAudioBytes
         + ", timeout="
         + timeout
+        + ", maxConcurrent="
+        + maxConcurrent
         + "]";
   }
 }

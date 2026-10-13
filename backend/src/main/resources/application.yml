@@ -290,9 +290,9 @@ opaa:
     # BAAI/bge-reranker-v2-m3) - a shorter default reports normal CPU latency as UNREACHABLE.
     # Installations with a faster (typically GPU-backed) endpoint may lower this.
     timeout: ${OPAA_RERANK_TIMEOUT:240s}
-  # #1926: the transcription model role (dictation in the chat input), built like the rerank role:
-  # an explicit switch, an OpenAI-compatible endpoint ({base-url}/audio/transcriptions), never
-  # fatal. Default off. The audio is passed through in memory and never stored or logged.
+  # The transcription model role (dictation in the chat input), built like the rerank role: an
+  # explicit switch, an OpenAI-compatible endpoint ({base-url}/audio/transcriptions), never fatal.
+  # Default off. The audio is passed through in memory and never stored or logged.
   transcription:
     enabled: ${OPAA_TRANSCRIPTION_ENABLED:false}
     base-url: ${OPAA_TRANSCRIPTION_BASE_URL:}
@@ -301,6 +301,8 @@ opaa:
     language: ${OPAA_TRANSCRIPTION_LANGUAGE:de}
     max-audio-bytes: ${OPAA_TRANSCRIPTION_MAX_AUDIO_BYTES:10485760}
     timeout: ${OPAA_TRANSCRIPTION_TIMEOUT:120s}
+    # Recordings passed on at the same time, installation-wide; each is held in memory meanwhile.
+    max-concurrent: ${OPAA_TRANSCRIPTION_MAX_CONCURRENT:4}
   indexing:
     # Tokens; only the Tika fallback and plain texts. Structured formats cut by characters below.
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}

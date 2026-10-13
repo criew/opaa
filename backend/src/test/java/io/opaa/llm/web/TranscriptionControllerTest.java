@@ -59,6 +59,8 @@ class TranscriptionControllerTest {
   private volatile String upstreamBody = "{\"text\":\"" + RECOGNISED + "\"}";
   private final AtomicInteger transcriptionCalls = new AtomicInteger();
   private volatile boolean upstreamStalls;
+  private int maxConcurrent = 4;
+  private TranscriptionModelRole role;
   private TranscriptionClient client;
   private ListAppender<ILoggingEvent> logs;
   private Logger rootLogger;
@@ -113,11 +115,16 @@ class TranscriptionControllerTest {
     return MockMvcBuilders.standaloneSetup(controller(enabled, timeout))
         .setControllerAdvice(
             new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0)))
-        .addFilters(new RequestLoggingFilter())
+        .addFilters(new TranscriptionMultipartGuard(new ObjectMapper()), new RequestLoggingFilter())
         .build();
   }
 
   private TranscriptionController controller(boolean enabled, Duration timeout) {
+    role = role(enabled, timeout);
+    return new TranscriptionController(role);
+  }
+
+  private TranscriptionModelRole role(boolean enabled, Duration timeout) {
     TranscriptionProperties properties =
         new TranscriptionProperties(
             enabled,
@@ -126,11 +133,12 @@ class TranscriptionControllerTest {
             "",
             "de",
             MAX_AUDIO_BYTES,
-            timeout);
+            timeout,
+            maxConcurrent);
     TranscriptionModelRole role =
         new TranscriptionModelRole(properties, client, new FeatureFlags(new MockEnvironment()));
     role.refresh();
-    return new TranscriptionController(role);
+    return role;
   }
 
   @Test
@@ -224,28 +232,7 @@ class TranscriptionControllerTest {
     request.setContent(AUDIO);
     assertThat(new StandardServletMultipartResolver().isMultipart(request)).isFalse();
 
-    HttpServletRequest rawBodyOnly =
-        new HttpServletRequestWrapper(request) {
-          @Override
-          public Collection<Part> getParts() {
-            throw new AssertionError("multipart parts were read");
-          }
-
-          @Override
-          public Part getPart(String name) {
-            throw new AssertionError("multipart part was read");
-          }
-
-          @Override
-          public String getParameter(String name) {
-            throw new AssertionError("request parameters were parsed");
-          }
-
-          @Override
-          public Map<String, String[]> getParameterMap() {
-            throw new AssertionError("request parameters were parsed");
-          }
-        };
+    HttpServletRequest rawBodyOnly = untouchable(request);
 
     assertThat(controller(true, Duration.ofSeconds(5)).createTranscription(rawBodyOnly).getText())
         .isEqualTo(RECOGNISED);
@@ -308,9 +295,98 @@ class TranscriptionControllerTest {
             post("/api/v1/transcriptions")
                 .contentType("multipart/form-data; boundary=x")
                 .content("--x\r\nContent-Disposition: form-data; name=\"file\"\r\n\r\n--x--"))
-        .andExpect(status().isUnsupportedMediaType());
+        .andExpect(status().isUnsupportedMediaType())
+        .andExpect(jsonPath("$.error").value(TranscriptionMultipartGuard.MESSAGE));
 
     assertThat(transcriptionCalls).hasValue(0);
+  }
+
+  /** The guard answers without touching parts or parameters, so nothing is parsed to disk. */
+  @Test
+  void theGuardRefusesMultipartWithoutReadingTheRequest() throws Exception {
+    MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/transcriptions");
+    request.setContentType("multipart/form-data; boundary=x");
+    request.setContent(AUDIO);
+    org.springframework.mock.web.MockHttpServletResponse response =
+        new org.springframework.mock.web.MockHttpServletResponse();
+    jakarta.servlet.FilterChain chain =
+        (req, res) -> {
+          throw new AssertionError("the chain was continued");
+        };
+
+    new TranscriptionMultipartGuard(new ObjectMapper())
+        .doFilter(untouchable(request), response, chain);
+
+    assertThat(response.getStatus()).isEqualTo(415);
+  }
+
+  @Test
+  void theGuardIsFirstInTheFilterChain() {
+    assertThat(
+            new TranscriptionWebConfiguration()
+                .transcriptionMultipartGuard(new ObjectMapper())
+                .getOrder())
+        .isEqualTo(org.springframework.core.Ordered.HIGHEST_PRECEDENCE);
+  }
+
+  /** A refusal of one recording is answered with 502 and leaves dictation on for everybody. */
+  @Test
+  void aRefusedRecordingIs502AndDictationStaysAvailable() throws Exception {
+    MockMvc mockMvc = mockMvc(true);
+    upstreamStatus.set(400);
+    upstreamBody = "{\"error\":\"unsupported format\"}";
+
+    mockMvc
+        .perform(post("/api/v1/transcriptions").contentType("audio/mp4").content(AUDIO))
+        .andExpect(status().isBadGateway());
+
+    mockMvc
+        .perform(get("/api/v1/transcriptions/availability"))
+        .andExpect(jsonPath("$.available").value(true));
+    assertLogsCarryNoContent();
+    assertThat(logs.list).allMatch(event -> event.getThrowableProxy() == null);
+  }
+
+  @Test
+  void allSlotsTakenIs503AndNothingIsRead() throws Exception {
+    maxConcurrent = 1;
+    MockMvc mockMvc = mockMvc(true);
+    try (TranscriptionModelRole.Slot taken = role.reserve()) {
+      mockMvc
+          .perform(post("/api/v1/transcriptions").contentType("audio/webm").content(AUDIO))
+          .andExpect(status().isServiceUnavailable())
+          .andExpect(jsonPath("$.error").value(TranscriptionController.BUSY_MESSAGE));
+    }
+    assertThat(transcriptionCalls).hasValue(0);
+
+    mockMvc
+        .perform(post("/api/v1/transcriptions").contentType("audio/webm").content(AUDIO))
+        .andExpect(status().isOk());
+  }
+
+  /** A request whose parts and parameters must not be asked for: asking fails the test. */
+  private static HttpServletRequest untouchable(HttpServletRequest request) {
+    return new HttpServletRequestWrapper(request) {
+      @Override
+      public Collection<Part> getParts() {
+        throw new AssertionError("multipart parts were read");
+      }
+
+      @Override
+      public Part getPart(String name) {
+        throw new AssertionError("multipart part was read");
+      }
+
+      @Override
+      public String getParameter(String name) {
+        throw new AssertionError("request parameters were parsed");
+      }
+
+      @Override
+      public Map<String, String[]> getParameterMap() {
+        throw new AssertionError("request parameters were parsed");
+      }
+    };
   }
 
   private void assertLogsCarryNoContent() {

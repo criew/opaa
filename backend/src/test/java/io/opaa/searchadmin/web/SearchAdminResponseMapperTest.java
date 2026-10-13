@@ -136,6 +136,30 @@ class SearchAdminResponseMapperTest {
   }
 
   @Test
+  void theTranscriptionRoleIsMappedWithItsStateAndEndpoint() {
+    SearchStatusResponse response =
+        SearchAdminResponseMapper.toStatusResponse(
+            new SearchStatus(
+                List.of(
+                    new ModelRoleStatus(
+                        ModelRole.TRANSCRIPTION,
+                        ModelRoleCondition.UNREACHABLE,
+                        "https://stt.example/v1",
+                        "whisper",
+                        "Störung.")),
+                List.of(),
+                List.of(),
+                new io.opaa.searchadmin.PrivateLibrarySummary(null, 5, null, null, null)));
+
+    var transcription = response.getModelRoles().get(0);
+    assertThat(transcription.getRole()).isEqualTo(SearchModelRole.TRANSCRIPTION);
+    assertThat(transcription.getState()).isEqualTo(SearchModelRoleState.UNREACHABLE);
+    assertThat(transcription.getEndpoint()).isEqualTo("https://stt.example/v1");
+    assertThat(transcription.getModelIdentifier()).isEqualTo("whisper");
+    assertThat(transcription.getFaulted()).isTrue();
+  }
+
+  @Test
   void aSuspendedVectorPathSaysThatOnlyTheFullTextSearchAnswers() {
     SearchStatusResponse response =
         SearchAdminResponseMapper.toStatusResponse(
