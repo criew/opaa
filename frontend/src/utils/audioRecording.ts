@@ -17,6 +17,8 @@ export interface RecordingOptions {
   /** Called once when nothing above the noise floor was heard for `silenceMs`. */
   onSilence?: () => void
   silenceMs?: number
+  /** Called once when the recorder fails mid-recording; the microphone is already released. */
+  onFailure?: () => void
 }
 
 /** Preference order: Opus in WebM everywhere it exists, MP4 for older Safari. */
@@ -77,6 +79,14 @@ export async function startRecording(options: RecordingOptions = {}): Promise<Re
     finished = true
     stopWatching()
     stopTracks()
+  }
+
+  recorder.onerror = () => {
+    if (finished) return
+    recorder.ondataavailable = null
+    chunks = []
+    release()
+    options.onFailure?.()
   }
 
   try {

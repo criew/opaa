@@ -12,8 +12,10 @@ class FakeMediaRecorder {
   ondataavailable: ((event: { data: Blob }) => void) | null = null
   onstop: (() => void) | null = null
   onerror: (() => void) | null = null
+  static last: FakeMediaRecorder | null = null
   constructor(_stream: MediaStream, options?: { mimeType?: string }) {
     this.mimeType = options?.mimeType ?? ''
+    FakeMediaRecorder.last = this
   }
   start() {
     this.state = 'recording'
@@ -91,6 +93,17 @@ describe('audioRecording', () => {
     recording.cancel()
 
     expect(tracks[0].stop).toHaveBeenCalled()
+  })
+
+  it('ends the microphone and reports it when the recorder fails mid-recording', async () => {
+    const onFailure = vi.fn()
+    const recording = await startRecording({ onFailure })
+
+    FakeMediaRecorder.last?.onerror?.()
+
+    expect(tracks[0].stop).toHaveBeenCalled()
+    expect(onFailure).toHaveBeenCalledTimes(1)
+    await expect(recording.stop()).rejects.toThrow('recording already ended')
   })
 
   it('ends the microphone when the recorder cannot be created', async () => {

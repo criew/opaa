@@ -22,6 +22,8 @@ export const DICTATION_SILENCE_MS = 15_000
 
 const TRANSFER_FAILED =
   'Die Aufnahme konnte nicht übertragen werden. Bitte versuchen Sie es erneut oder tippen Sie Ihre Frage.'
+const RECORDING_FAILED =
+  'Die Aufnahme wurde unterbrochen. Bitte versuchen Sie es erneut oder tippen Sie Ihre Frage.'
 const NOTHING_RECOGNISED = 'Es wurde kein Text erkannt. Bitte versuchen Sie es erneut.'
 
 function isNetworkError(err: unknown): boolean {
@@ -110,6 +112,7 @@ export function useDictation({
   const tickTimerRef = useRef<number | null>(null)
   const onFinalTextRef = useRef(onFinalText)
   const stopRef = useRef<() => Promise<void>>(async () => {})
+  const failRef = useRef<() => void>(() => {})
 
   useEffect(() => {
     onFinalTextRef.current = onFinalText
@@ -168,6 +171,7 @@ export function useDictation({
       recording = await startRecording({
         silenceMs: DICTATION_SILENCE_MS,
         onSilence: () => void stopRef.current(),
+        onFailure: () => failRef.current(),
       })
     } catch (err) {
       if (generation === generationRef.current) {
@@ -198,6 +202,14 @@ export function useDictation({
     setElapsedSeconds(0)
     changeStatus('idle')
   }, [changeStatus, clearTimers])
+
+  useEffect(() => {
+    failRef.current = () => {
+      if (statusRef.current !== 'recording') return
+      cancel()
+      setError(RECORDING_FAILED)
+    }
+  }, [cancel])
 
   useEffect(
     () => () => {

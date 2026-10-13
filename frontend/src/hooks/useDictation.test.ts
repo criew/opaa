@@ -114,6 +114,24 @@ describe('useDictation', () => {
     expect(microphone.recordings[0].cancelled).toBe(true)
   })
 
+  it('releases the microphone and sends nothing when the recorder fails', async () => {
+    const microphone = fakeMicrophone()
+    const transport = transportAnswering('nie')
+    const { result } = renderHook(() =>
+      useDictation({ onFinalText: vi.fn(), transport, startRecording: microphone.startRecording }),
+    )
+
+    await act(() => result.current.start())
+    act(() => microphone.recordings[0].options.onFailure?.())
+
+    expect(microphone.recordings[0].cancelled).toBe(true)
+    expect(transport.calls).toHaveLength(0)
+    expect(result.current.status).toBe('idle')
+    expect(result.current.error).toBe(
+      'Die Aufnahme wurde unterbrochen. Bitte versuchen Sie es erneut oder tippen Sie Ihre Frage.',
+    )
+  })
+
   it('ends a recording on its own after two minutes', async () => {
     const microphone = fakeMicrophone()
     const transport = transportAnswering('lang')
