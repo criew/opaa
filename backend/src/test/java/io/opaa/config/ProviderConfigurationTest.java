@@ -49,11 +49,13 @@ class ProviderConfigurationTest {
   void baseUrlDefaultsToALocallyOperatedOllamaServer() {
     // The "local" profile the suite activates alongside "dev" overrides nothing (application.yml
     // documents it as a no-op), and "docker" is not active - so this is the top-level default.
+    // The chat base URL derives from the same default but is overridden by the test signature,
+    // so the seeded chat model never reaches a model server on the developer's machine.
     assertThat(environment.getProperty("spring.ai.openai.base-url"))
-        .isEqualTo("http://localhost:11434/v1");
-    assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))
         .isEqualTo("http://localhost:11434/v1");
     assertThat(environment.getProperty("spring.ai.openai.embedding.base-url"))
         .isEqualTo("http://localhost:11434/v1");
+    assertThat(environment.getProperty("spring.ai.openai.chat.base-url"))
+        .isEqualTo(OpaaIntegrationTest.CHAT_BASE_URL);
   }
 }

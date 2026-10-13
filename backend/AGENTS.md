@@ -180,7 +180,8 @@ Familie des `local,dev`-Profils, fünf die des Betriebsmodus `oidc`:
 - **`@OpaaIntegrationTest`** — die kanonische Signatur, die drei Viertel der Suite tragen: echtes
   Postgres, ganze Anwendung auf `RANDOM_PORT`, MockMvc (`@AutoConfigureMockMvc`),
   `@ActiveProfiles({"local","dev"})`, die festen Test-Properties der Annotation (Chunking,
-  Upload-Grenzen, abgeschaltetes Rate-Limit, OIDC-Allowlist) und die geteilten Ersatz-Beans aus
+  Upload-Grenzen, abgeschaltetes Rate-Limit, OIDC-Allowlist, eine nie antwortende Adresse für das
+  Chat-Modell, siehe unten) und die geteilten Ersatz-Beans aus
   `OpaaTestBeans` (`FakeEmbeddingModel`, `ChatModel`-Mock, `FakeDirectoryClient`) sowie die
   `@MockitoSpyBean`-Spies auf `UserRepository`, `ChatMessageRepository` und
   `DirectorySyncStatusRecorder`.
@@ -240,6 +241,13 @@ einen eigenen Kontext und einen eigenen Container. Deshalb:
   unter dem einen prozessweiten Basisverzeichnis. Ein `@TempDir` bliebe je Klasse verschieden und
   spaltete damit den Kontext. Ein `@TempDir`, das nur im Test selbst verwendet wird und keine
   Property speist, ist unverändert in Ordnung.
+
+**Kein Test erreicht ein echtes Modell.** Das aktive Chat-Modell der Testdatenbank übernimmt
+`LlmModelSeeder` beim ersten Start aus `spring.ai.openai.chat.base-url`; der Vorgabewert aus
+`application.yml` wäre ein lokal laufendes Ollama, das die Suche (Zerlegung in Teilfragen) dann
+wirklich aufruft. Deshalb setzen `@OpaaIntegrationTest` und `@OpaaLocalAuthMockMvcTest` die Adresse
+auf einen Host unter `.invalid` (`OpaaIntegrationTest.CHAT_BASE_URL`); `TestChatModelEndpointTest`
+prüft das für jede Signatur ohne Docker. Eine neue Basis-Signatur übernimmt die Property (#2600).
 
 **Jeder geteilte Mock oder Fake braucht einen Reset je Testmethode.** Für `@MockitoBean`/
 `@MockitoSpyBean` erledigt das Spring selbst; für die Fakes aus `OpaaTestBeans` tut es

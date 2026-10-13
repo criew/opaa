@@ -62,7 +62,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
       // #1563: the provider rows these classes create point at a host that exists nowhere. The
       // allowlist short-circuits the sign-in's address check before it would resolve it, so no
       // class of this family makes a DNS lookup for a fixture. The check itself stays on.
-      "opaa.auth.oidc.target-validation.allowlist=" + OpaaLocalAuthMockMvcTest.PROVIDER_HOST
+      "opaa.auth.oidc.target-validation.allowlist=" + OpaaLocalAuthMockMvcTest.PROVIDER_HOST,
+      // Same seeded chat model address as the canonical signature: never a reachable model.
+      "spring.ai.openai.chat.base-url=" + OpaaIntegrationTest.CHAT_BASE_URL
     })
 @AutoConfigureMockMvc
 @Import(TestcontainersConfiguration.class)
