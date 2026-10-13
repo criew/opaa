@@ -8,6 +8,7 @@ import com.openai.errors.RateLimitException;
 import io.opaa.api.dto.ErrorResponse;
 import io.opaa.api.dto.FieldError;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.BadGatewayException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.NotFoundException;
@@ -498,6 +499,13 @@ public class GlobalExceptionHandler {
     return respond(
         HttpStatus.SERVICE_UNAVAILABLE,
         new ErrorResponse(ex.getMessage(), HttpStatus.SERVICE_UNAVAILABLE.value(), Instant.now()));
+  }
+
+  @ExceptionHandler(BadGatewayException.class)
+  public ResponseEntity<ErrorResponse> handleBadGatewayException(BadGatewayException ex) {
+    return respond(
+        HttpStatus.BAD_GATEWAY,
+        new ErrorResponse(ex.getMessage(), HttpStatus.BAD_GATEWAY.value(), Instant.now()));
   }
 
   @ExceptionHandler(ResponseStatusException.class)

@@ -1,11 +1,12 @@
 package io.opaa.llm.web;
 
-import io.opaa.api.dto.ErrorResponse;
 import io.opaa.api.dto.TranscriptionAvailabilityResponse;
 import io.opaa.api.dto.TranscriptionResponse;
+import io.opaa.common.BadGatewayException;
 import io.opaa.common.ConditionalOnFeature;
 import io.opaa.common.Feature;
 import io.opaa.common.PayloadTooLargeException;
+import io.opaa.common.ServiceUnavailableException;
 import io.opaa.common.ValidationException;
 import io.opaa.llm.TranscriptionAudioFormat;
 import io.opaa.llm.TranscriptionClient.TranscriptionUnavailableException;
@@ -15,11 +16,7 @@ import io.opaa.llm.TranscriptionModelRole.TranscriptionRoleUnusableException;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.Instant;
 import java.util.Arrays;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -65,7 +62,7 @@ public class TranscriptionController {
   @PostMapping(consumes = "audio/*")
   public TranscriptionResponse createTranscription(HttpServletRequest request) throws IOException {
     if (!role.usable()) {
-      throw new TranscriptionRoleUnusableException(UNAVAILABLE_MESSAGE);
+      throw new ServiceUnavailableException(UNAVAILABLE_MESSAGE);
     }
     TranscriptionAudioFormat format =
         TranscriptionAudioFormat.fromContentType(request.getContentType())
@@ -84,28 +81,14 @@ public class TranscriptionController {
       } finally {
         Arrays.fill(audio, (byte) 0);
       }
+    } catch (TranscriptionRoleBusyException e) {
+      throw new ServiceUnavailableException(BUSY_MESSAGE);
+    } catch (TranscriptionRoleUnusableException e) {
+      throw new ServiceUnavailableException(UNAVAILABLE_MESSAGE);
+    } catch (TranscriptionUnavailableException e) {
+      // The role has logged the technical cause; the answer carries no stack trace.
+      throw new BadGatewayException(UPSTREAM_FAILED_MESSAGE);
     }
-  }
-
-  /** Expected failures of a dependency: answered without a stack trace, logged by the role. */
-  @ExceptionHandler(TranscriptionUnavailableException.class)
-  ResponseEntity<ErrorResponse> upstreamFailed() {
-    return error(HttpStatus.BAD_GATEWAY, UPSTREAM_FAILED_MESSAGE);
-  }
-
-  @ExceptionHandler(TranscriptionRoleUnusableException.class)
-  ResponseEntity<ErrorResponse> roleUnusable() {
-    return error(HttpStatus.SERVICE_UNAVAILABLE, UNAVAILABLE_MESSAGE);
-  }
-
-  @ExceptionHandler(TranscriptionRoleBusyException.class)
-  ResponseEntity<ErrorResponse> busy() {
-    return error(HttpStatus.SERVICE_UNAVAILABLE, BUSY_MESSAGE);
-  }
-
-  private static ResponseEntity<ErrorResponse> error(HttpStatus status, String message) {
-    return ResponseEntity.status(status)
-        .body(new ErrorResponse(message, status.value(), Instant.now()));
   }
 
   /** Rejects by the declared length first, then by what actually arrives (chunked senders). */
