@@ -325,7 +325,6 @@ embedding:
   baseUrl: http://ollama.ai.svc.cluster.local:11434/v1
   model: nomic-embed-text
   dimensions: 768
-  maxInputTokens: 2048
 bootstrap:
   initialAdmin:
     email: it-postfach@example.org
@@ -856,10 +855,9 @@ bootstrap:
     model: qwen2.5:7b
 ```
 
-Die Vorgabe von `embedding.maxInputTokens` setzt voraus, dass Ollama `bge-m3` mit einer
-Eingabegrenze von 8.192 Tokens anlegt. Ein unverändert gezogenes Modell nimmt nur 2.048 auf; dann
-das Modell neu anlegen oder `maxInputTokens: 2048` setzen
-([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
+Ein unverändert gezogenes Modell nimmt 2.048 Tokens auf, dazu passt die Vorgabe von
+`embedding.maxInputTokens`. Wer `bge-m3` per Modelfile mit 8.192 Tokens anlegt, setzt
+`maxInputTokens: 8192` ([Eingabegrenze des Embedding-Modells](modelle.md#eingabegrenze-des-embedding-modells)).
 
 Mit eingeschalteten Egress-Policies braucht das Backend eine Regel zum Namespace des Modellservers
 (siehe [NetworkPolicies](#networkpolicies)).

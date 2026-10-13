@@ -180,8 +180,9 @@ docker compose --profile ollama up --build
   nötig: `phi3:mini` wird beim ersten Start zum aktiven Chat-Modell
   ([Modelle](modelle.md#llm-anbieter)), ohne es scheitert die erste Frage. `bge-m3` legt der Schritt
   danach unter demselben Namen mit einer Eingabegrenze von 8.192 Tokens neu an, damit jeder Chunk
-  ungekürzt eingebettet wird ([Eingabegrenze](modelle.md#eingabegrenze-des-embedding-modells)). Bei
-  einem erneuten Start lädt der Schritt nichts doppelt herunter und legt das Modell erneut an.
+  ungekürzt eingebettet wird ([Eingabegrenze](modelle.md#eingabegrenze-des-embedding-modells)).
+  Dazu passend setzt `.env.docker.example` `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS`; wer ein anderes
+  Ollama anbindet, entfernt diese Zeile. Bei einem erneuten Start lädt der Schritt nichts doppelt herunter und legt das Modell erneut an.
 
 **Platz und Zeit.** Die Modelle laden beim ersten Start rund 3,3 GiB herunter (`phi3:mini` rund
 2,2 GiB, `bge-m3` rund 1,1 GiB, komprimiert), das Image selbst ist mit rund 3,4 GB (amd64) noch

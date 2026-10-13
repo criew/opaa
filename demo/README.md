@@ -1242,9 +1242,8 @@ Neustart hinweg dieselben.
 
 Auf der Testinstanz sind `nomic-embed-text` und `OPAA_PGVECTOR_DIMENSIONS=768` fest aneinander
 gekoppelt: Wer das Embedding-Modell wechselt, ändert beide Werte gemeinsam und startet die
-Neueinbettung in der Administration. Weil die Anwendungsvorgabe der Eingabegrenze 8.192 Tokens
-beträgt, das auf dem Host gezogene `nomic-embed-text` aber bei 2.048 kürzt, gehört dort zusätzlich
-`OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS=2048` in die Umgebung. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung
+Neueinbettung in der Administration. Die Eingabegrenze bleibt dabei auf der Anwendungsvorgabe von
+2.048 Tokens, solange das Modell auf dem Host unverändert gezogen ist. Ein Wechsel des **Chat**-Modells berührt den Index dagegen nicht — Chat und Einbettung
 sind auf der Instanz ohnehin getrennte Anbieter.
 
 #### Sicherheitshinweis: Indizierungsendpunkt ist von außen erreichbar

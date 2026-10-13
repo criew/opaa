@@ -186,11 +186,10 @@ Suchqualität zählt deshalb vor allem, dass das Modell die Sprache der Dokument
 > **Beispiel.** In einer Messung auf 109 Verwaltungs-PDFs standen mit `bge-m3` 85 % der gesuchten
 > Kernfakten unter den ersten 20 Treffern der Vektorsuche, mit `nomic-embed-text` 37 %.
 
-Wer `nomic-embed-text` wählt, setzt `OPAA_PGVECTOR_DIMENSIONS` auf 768 und
-`OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` auf die 2.048 Tokens, die das Modell aufnimmt. Auf einem
-kleinen Server mit `bge-m3` lässt sich der Spitzenbedarf senken, indem das Modell mit kleinerer
-Eingabegrenze angelegt und `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` passend gesetzt wird. OPAA
-teilt dann längere Chunks ([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
+Wer `nomic-embed-text` wählt, setzt `OPAA_PGVECTOR_DIMENSIONS` auf 768. Auf einem kleinen Server
+mit `bge-m3` lässt sich der Spitzenbedarf senken, indem das Modell nicht mit der vollen
+Eingabegrenze angelegt wird; OPAA teilt dann längere Chunks
+([Eingabegrenze](#eingabegrenze-des-embedding-modells)).
 
 Eine bestehende Installation wechselt das Modell über die Neueinbettung, ohne Neuindizierung und
 ohne Zurücksetzen der Datenbank ([Modell wechseln](#modell-wechseln)).
@@ -240,8 +239,9 @@ printf 'FROM bge-m3\nPARAMETER num_ctx 8192\nPARAMETER num_batch 8192\n' > Model
 ollama create bge-m3 -f Modelfile
 ```
 
-Der Name bleibt `bge-m3`. Ein späteres `ollama pull bge-m3` stellt die alten Werte wieder her;
-danach das Anlegen wiederholen. Der Arbeitsspeicher wächst mit der Länge der tatsächlichen Eingabe,
+Der Name bleibt `bge-m3`. Erst danach `OPAA_OPENAI_EMBEDDING_MAX_INPUT_TOKENS` auf `8192` setzen;
+die Vorgabe passt zu jedem unverändert gezogenen Modell. Ein späteres `ollama pull bge-m3` stellt
+die alten Werte wieder her; danach das Anlegen wiederholen. Der Arbeitsspeicher wächst mit der Länge der tatsächlichen Eingabe,
 nicht mit der eingestellten Grenze.
 
 ### Modell wechseln
