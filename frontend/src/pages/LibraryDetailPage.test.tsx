@@ -3948,4 +3948,75 @@ describe('LibraryDetailPage', () => {
       expect(screen.getAllByText(/lassen sich hier nicht löschen/)).toHaveLength(1)
     })
   })
+
+  // ADR-0044: an installation that switched metadata off shows none of it in the library.
+  describe('ohne Metadaten (Feature-Flag aus)', () => {
+    const document: LibraryDocumentResponse = {
+      id: 'doc-1',
+      fileName: 'dienstanweisung.pdf',
+      contentType: 'application/pdf',
+      fileSize: 2048,
+      status: 'INDEXED',
+      sourceType: 'UPLOAD',
+      chunkCount: 3,
+      indexedAt: '2026-03-01T10:00:00Z',
+      uploadedByUserId: null,
+    }
+
+    beforeEach(() => {
+      useAuthStore.setState({ features: { metadata: false } })
+    })
+
+    afterEach(() => {
+      useAuthStore.setState({ features: {} })
+    })
+
+    it('offers no metadata area, also not through the address', async () => {
+      setLibraryState(
+        managerLibrary,
+        detailsOf(managerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data' }),
+      )
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/?tab=metadaten',
+      })
+
+      const tabs = await screen.findAllByRole('tab')
+      expect(tabs.map((tab) => tab.textContent)).toEqual([
+        'Dokumente',
+        'Quelle',
+        'Freigaben',
+        'Zuordnungen',
+      ])
+      expect(screen.getByRole('tab', { name: 'Dokumente' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      )
+      expect(screen.queryByText('Metadatenfelder')).not.toBeInTheDocument()
+    })
+
+    it('shows the document list without metadata view, Pflege-Anker and Feld setzen', async () => {
+      mockGetLibraryDocuments.mockResolvedValue(pageOf([document]))
+      setLibraryState(managerLibrary, detailsOf(managerLibrary))
+      renderWithProviders(<LibraryDetailPage />, {
+        withRouter: true,
+        initialRoute: '/?missingField=document_type',
+      })
+
+      expect(await screen.findByText('dienstanweisung.pdf')).toBeInTheDocument()
+      const toolbar = await screen.findByRole('toolbar', { name: 'Sammelaktionen' })
+      expect(within(toolbar).getByRole('button', { name: 'Löschen' })).toBeInTheDocument()
+      expect(within(toolbar).queryByRole('button', { name: 'Feld setzen' })).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /Metadaten von dienstanweisung\.pdf/ }),
+      ).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Metadaten-Pflege' })).not.toBeInTheDocument()
+      expect(screen.queryByText(/Es werden nur Dokumente ohne Wert/)).not.toBeInTheDocument()
+      expect(mockGetLibraryMetadataMaintenance).not.toHaveBeenCalled()
+      expect(mockGetLibraryDocuments).toHaveBeenCalledWith(
+        'library-team',
+        expect.objectContaining({ missingMetadataField: null }),
+      )
+    })
+  })
 })
