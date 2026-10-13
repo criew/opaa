@@ -24,6 +24,11 @@ public record CoreMetadata(
   public static final CoreMetadata EMPTY =
       new CoreMetadata(null, null, null, null, null, null, null, null);
 
+  /** The title with its origin and nothing else - what a Beleg shows without metadata. */
+  public CoreMetadata titleOnly() {
+    return new CoreMetadata(title, titleOrigin, null, null, null, null, null, null);
+  }
+
   public boolean isEmpty() {
     return title == null && documentTypeCode == null && documentDate == null;
   }

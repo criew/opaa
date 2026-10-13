@@ -2,6 +2,7 @@ package io.opaa.indexing;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opaa.asset.AssetRepository;
+import io.opaa.common.FeatureFlags;
 import io.opaa.format.DocumentFormatRegistry;
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.format.file.mail.MailProperties;
@@ -178,7 +179,8 @@ public class IndexingConfiguration {
       ObjectProvider<AttachmentIndexer> attachmentIndexer,
       AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService,
-      ModelMetadataExtractor modelMetadataExtractor) {
+      ModelMetadataExtractor modelMetadataExtractor,
+      FeatureFlags featureFlags) {
     return new DocumentIngestService(
         documentPipelineRegistry,
         documentRepository,
@@ -191,7 +193,8 @@ public class IndexingConfiguration {
         attachmentIndexer,
         mailAttachmentLimits,
         documentMetadataService,
-        modelMetadataExtractor);
+        modelMetadataExtractor,
+        featureFlags);
   }
 
   @Bean

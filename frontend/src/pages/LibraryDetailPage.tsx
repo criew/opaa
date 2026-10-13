@@ -47,6 +47,7 @@ import AssetGrantsSection from '../components/permissions/AssetGrantsSection'
 import LibraryExternalAccessSection from '../components/library/LibraryExternalAccessSection'
 import LibraryDocumentsSection from '../components/library/LibraryDocumentsSection'
 import LibrarySourceSection from '../components/library/LibrarySourceSection'
+import { useFeatureEnabled } from '../hooks/useFeatureEnabled'
 import LibraryMetadataFieldsSection from '../components/metadata/LibraryMetadataFieldsSection'
 import MetadataExtractionSettingsSection from '../components/metadata/MetadataExtractionSettingsSection'
 import PageSection from '../components/PageSection'
@@ -79,15 +80,20 @@ type LibraryDetailTab = 'dokumente' | 'quelle' | 'metadaten' | 'freigaben' | 'zu
 
 /**
  * The area named by `?tab=`. Every role sees every area, so only the source area can be missing -
- * an UPLOAD library has no source. An unknown or no-longer-existing value (the pre-#1939 names
+ * an UPLOAD library has no source - and the metadata area, while the installation has switched
+ * metadata off (ADR-0044). An unknown or no-longer-existing value (the pre-#1939 names
  * „indizierung" and „verwaltung" among them) falls back to the documents.
  */
-function resolveTab(requested: string | null, hasSourceTab: boolean): LibraryDetailTab {
+function resolveTab(
+  requested: string | null,
+  hasSourceTab: boolean,
+  hasMetadataTab: boolean,
+): LibraryDetailTab {
   switch (requested) {
     case 'quelle':
       return hasSourceTab ? 'quelle' : 'dokumente'
     case 'metadaten':
-      return 'metadaten'
+      return hasMetadataTab ? 'metadaten' : 'dokumente'
     case 'freigaben':
       return 'freigaben'
     case 'zuordnungen':
@@ -302,6 +308,7 @@ export default function LibraryDetailPage() {
   // #1939: every role sees every area; a reader simply finds less inside it. Only an UPLOAD
   // library genuinely has no source area.
   const showSourceTab = connectorSourceType != null
+  const showMetadataTab = useFeatureEnabled('metadata')
 
   // #797: only the system administration sets the ceiling - the owner only ever sees its
   // consequence, the locked switch and the 409 when a grant would exceed it. An UPLOAD library
@@ -311,7 +318,11 @@ export default function LibraryDetailPage() {
     details != null &&
     details.sourceType !== 'UPLOAD' &&
     details.allAccountsGrantAllowed != null
-  const activeTab: LibraryDetailTab = resolveTab(searchParams.get('tab'), showSourceTab)
+  const activeTab: LibraryDetailTab = resolveTab(
+    searchParams.get('tab'),
+    showSourceTab,
+    showMetadataTab,
+  )
 
   // Status polling lives at page level, not inside the (hideable) "Indizierung" area: a running
   // indexing stays visible in the page head no matter which area is active (guidelines 5.7).
@@ -505,7 +516,7 @@ export default function LibraryDetailPage() {
   const tabs: Array<{ value: LibraryDetailTab; label: string }> = [
     { value: 'dokumente', label: 'Dokumente' },
     ...(showSourceTab ? ([{ value: 'quelle', label: 'Quelle' }] as const) : []),
-    { value: 'metadaten', label: 'Metadaten' },
+    ...(showMetadataTab ? ([{ value: 'metadaten', label: 'Metadaten' }] as const) : []),
     { value: 'freigaben', label: 'Freigaben' },
     { value: 'zuordnungen', label: 'Zuordnungen' },
   ]
@@ -884,31 +895,33 @@ export default function LibraryDetailPage() {
         </Box>
       )}
 
-      <Box
-        role="tabpanel"
-        id="library-tabpanel-metadaten"
-        aria-labelledby="library-tab-metadaten"
-        hidden={activeTab !== 'metadaten'}
-      >
-        <Stack>
-          <PageSection
-            title="Metadatenfelder"
-            description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
-          >
-            <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
-          </PageSection>
-          {/* Die Extraktionseinstellungen liest erst MANAGER (GET .../metadata/extraction-settings)
-              - für eine lesende Rolle bliebe hier nur eine Fehlermeldung stehen. */}
-          {canEdit && (
+      {showMetadataTab && (
+        <Box
+          role="tabpanel"
+          id="library-tabpanel-metadaten"
+          aria-labelledby="library-tab-metadaten"
+          hidden={activeTab !== 'metadaten'}
+        >
+          <Stack>
             <PageSection
-              title="Modellgestützte Extraktion"
-              description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
+              title="Metadatenfelder"
+              description="Eigene typisierte Felder dieser Bibliothek, ihre Wirkstellen und ihre Wertelisten."
             >
-              <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />
+              <LibraryMetadataFieldsSection libraryId={libraryId} canManageSchema={mayChange} />
             </PageSection>
-          )}
-        </Stack>
-      </Box>
+            {/* Die Extraktionseinstellungen liest erst MANAGER (GET .../metadata/extraction-settings)
+              - für eine lesende Rolle bliebe hier nur eine Fehlermeldung stehen. */}
+            {canEdit && (
+              <PageSection
+                title="Modellgestützte Extraktion"
+                description="Ob das Sprachmodell leer gebliebene Felder ergänzt und freie Schlagworte vergibt — und wie gut die Extraktion diese Bibliothek beschreibt."
+              >
+                <MetadataExtractionSettingsSection libraryId={libraryId} canManage={mayChange} />
+              </PageSection>
+            )}
+          </Stack>
+        </Box>
+      )}
 
       <Box
         role="tabpanel"

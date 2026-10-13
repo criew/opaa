@@ -1,6 +1,8 @@
 package io.opaa.indexing.document;
 
 import io.opaa.api.types.DocumentStatus;
+import io.opaa.common.Feature;
+import io.opaa.common.FeatureFlags;
 import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.DiscoveredAttachment;
 import io.opaa.format.DocumentFormat;
@@ -98,6 +100,9 @@ public class DocumentIngestService {
    */
   private final ModelMetadataExtractor modelMetadataExtractor;
 
+  /** Switched off, the ingest extracts the Kernfeld Titel alone and asks no model (ADR-0044). */
+  private final FeatureFlags featureFlags;
+
   public DocumentIngestService(
       DocumentFormatRegistry pipelineRegistry,
       DocumentRepository documentRepository,
@@ -110,7 +115,8 @@ public class DocumentIngestService {
       ObjectProvider<AttachmentIndexer> attachmentIndexerProvider,
       AttachmentLimits mailAttachmentLimits,
       DocumentMetadataService documentMetadataService,
-      ModelMetadataExtractor modelMetadataExtractor) {
+      ModelMetadataExtractor modelMetadataExtractor,
+      FeatureFlags featureFlags) {
     requireNoSchemaPassthroughKeys(pipelineRegistry);
     this.pipelineRegistry = pipelineRegistry;
     this.documentRepository = documentRepository;
@@ -125,6 +131,7 @@ public class DocumentIngestService {
     this.mailAttachmentLimits = mailAttachmentLimits;
     this.documentMetadataService = documentMetadataService;
     this.modelMetadataExtractor = modelMetadataExtractor;
+    this.featureFlags = featureFlags;
   }
 
   /**
@@ -321,9 +328,11 @@ public class DocumentIngestService {
               parsed.withProperties(ingest.declaredOver(parsed.properties())),
               names);
       String contextTitle = contextTitleFor(ingest);
-      ModelExtractionOutcome modelOutcome = extractWithModel(doc, library, contextTitle, chunks);
-      if (modelOutcome.chunkMetadata() != null) {
-        coreMetadata = modelOutcome.chunkMetadata();
+      if (featureFlags.isEnabled(Feature.METADATA)) {
+        ModelExtractionOutcome modelOutcome = extractWithModel(doc, library, contextTitle, chunks);
+        if (modelOutcome.chunkMetadata() != null) {
+          coreMetadata = modelOutcome.chunkMetadata();
+        }
       }
 
       if (replacingExistingChunks) {
@@ -1007,12 +1016,18 @@ public class DocumentIngestService {
 
   /**
    * The deterministic core-field extraction (ADR-0024) for a document about to get chunks: stores
-   * the values at the document and returns the effective fields for {@link #storeChunks}. Never
-   * fails the ingest - a failure is logged and the chunks are written without core fields.
+   * the values at the document and returns the effective fields for {@link #storeChunks}. With the
+   * metadata feature off only the Kernfeld Titel is extracted, so the chunks carry no filterable
+   * key and the prefix no value but the title. Never fails the ingest - a failure is logged and the
+   * chunks are written without core fields.
    */
   private DocumentChunkMetadata extractCoreMetadata(
       Document document, String fileName, DocumentFormatResult parsed, LoggedName names) {
     try {
+      if (!featureFlags.isEnabled(Feature.METADATA)) {
+        return documentMetadataService.applyTitleExtraction(
+            document, fileName, parsed.properties());
+      }
       return documentMetadataService.applyDeterministicExtraction(
           document, fileName, parsed.properties());
     } catch (RuntimeException e) {
