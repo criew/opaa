@@ -600,6 +600,12 @@ Drei Milderungen, keine Lösungen:
 > Außer dem lexikalischen Pfad, der nur dem Rohvektor-Pfad fehlt, ist keiner dieser Bausteine für
 > diese Domänen gebaut.
 >
+> **Nachtrag (Issue #2343, 2026-10-13):** Die sechs Einträge von `city-landmarks` sind gelöst, seit
+> der Harness `ollama/ollama:0.40.3` statt 0.6.5 nutzt. Fast jeder Chunk dieses Korpus liegt über 512
+> Token und bekam unter 0.6.5 einen falschen Vektor (ADR-0012, Nachtrag Ollama-Fassung). Die fehlende
+> Ortsbindung war für diese Fälle nicht die Ursache; als Baustein bleibt sie ungebaut, hat aber in
+> diesem Korpus keinen messbaren Fall mehr.
+>
 > Eine Ausnahme (`expected_state_exception`) gibt es nicht mehr. Das Audit meldet, es lässt den Lauf
 > nicht fehlschlagen: Ein Zustandswechsel bleibt eine bewusste, datierte Entscheidung.
 >

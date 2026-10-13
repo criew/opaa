@@ -574,13 +574,31 @@ gesetzt. Gemessen mit bge-m3 auf dem FV-Testkorpus (#2507) liegt deutscher Verwa
 rund 4,2 Zeichen je Token: 4.000 Zeichen entsprechen etwa 950 bis 1.250 Tokens, 2.000 Zeichen
 etwa 450 bis 600. Zahlendichte Tabellen brauchen deutlich mehr (bis 1,4 Zeichen je Token).
 
-Eine geänderte Zielgröße erhöht keine Pipeline-Version und löst keinen Nachzug aus: Sie gilt für
-Dokumente, die danach indexiert werden. Ein erneuter Lauf überspringt unveränderte Dateien per
-Prüfsumme, und `PipelineReindexService` wählt nur nach Pipeline-Version aus. Ein einheitlicher
-Bestand braucht deshalb heute einen Neuaufbau der Bibliothek (Handbuch, Betrieb, „Falle bei einer
-Neuindizierung“). Ein Default-Wechsel, der den Bestand betreffen soll, hebt die Versionen der
-betroffenen Pipelines an; dann holt der Nachzug ihn ein. Die Zielgröße selbst in die Auswahl des
-Nachzugs einzubeziehen ist ein eigener Schritt.
+Eine geänderte Zielgröße erhöht keine Pipeline-Version. Ein erneuter Lauf überspringt unveränderte
+Dateien weiterhin per Prüfsumme; den Bestand holt der Nachzug ein (#2612):
+
+- Jedes Format, dessen Schnitt von einer Einstellung abhängt, meldet sie als **Fingerabdruck der
+  Zerlegung** (`DocumentFormat#chunkingFingerprint`, heute `target-characters=<Zielgröße>` für alle
+  Pipelines auf `HeadingSectionSplitter`). `DocumentIngestService` schreibt ihn als Chunk-Metadatum
+  `chunking_fingerprint` neben `pipeline_id` und `pipeline_version`.
+- `PipelineReindexService` zählt einen Chunk, dessen Fingerabdruck vom aktuellen seiner Pipeline
+  abweicht, als nachzuziehen und wählt ihn für diese Pipeline unabhängig von `belowVersion` aus,
+  wie die Volltextlücke. Der Nachzug konvergiert, weil die neu geschriebenen Chunks den aktuellen
+  Fingerabdruck tragen.
+- **Altbestand ohne Fingerabdruck** gilt als mit dem Default 4.000 geschnitten
+  (`HeadingSectionSplitter#UNRECORDED_CHUNKING_FINGERPRINT`): Vor #2592 war die Zielgröße fest. Ein
+  Update bei unveränderter Zielgröße macht deshalb nichts nachzuziehen; wer sie schon zwischen
+  #2592 und #2612 geändert hatte, bekommt den damals geschnittenen Bestand einmal zu viel
+  nachgezogen.
+- **Am Chunk, nicht am Dokument:** Der Fingerabdruck teilt Lebenszyklus und Schreibstelle mit
+  `pipeline_version`, Zählung und Auswahl arbeiten ohnehin je Chunk, und eine Dokumentspalte
+  könnte nach einem Abbruch zwischen Löschen und Schreiben der Chunks von ihnen abweichen. Es gibt
+  deshalb keine Schemaänderung.
+- **Nur die Zielgröße:** Die Tika-Auffang-Pipeline und der Mail-Pfad schneiden nach `chunk-size`
+  und `chunk-overlap` und melden keinen Fingerabdruck; eine geänderte Token-Größe erfasst der
+  Nachzug nicht. Für sie ist der Altbestand nicht zuordenbar, weil `chunk-size` schon länger
+  einstellbar ist; ein Default als Annahme würde nach einem Update jede abweichend konfigurierte
+  Installation vollständig nachziehen lassen.
 
 Das Messverfahren — Korpus je Dokumentklasse, Kennzahlen, Baseline-Vergleich — steht in
 [Retrieval-Benchmark](./retrieval-benchmark.md); der
@@ -1741,6 +1759,10 @@ Zwei Administrationsendpunkte (`SYSTEM_ADMIN`, auf die eigene Organisation begre
   aufgerufen, bis `done` gemeldet wird. Der Reststand wird bei jedem Aufruf neu aus den
   Chunk-Metadaten abgeleitet; ein abgebrochener Lauf verliert damit höchstens eine Charge und setzt
   fort, statt von vorn zu beginnen.
+
+Beide zählen auch Chunks, die unter einer anderen Zielgröße geschnitten wurden als der heute
+eingestellten (#2612, siehe
+[Zielgröße des strukturbewussten Schnitts](#zielgröße-des-strukturbewussten-schnitts-2507)).
 
 Ein Dokument, dessen Quelldatei lokal liegt (Dateisystem, Upload), wird sofort neu gelesen, zerlegt
 und gespeichert — **unter seiner eigenen Dokument-ID**, damit Belege und Deep Links es überleben.

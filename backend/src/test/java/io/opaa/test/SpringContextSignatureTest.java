@@ -40,7 +40,7 @@ import org.springframework.test.context.MergedContextConfiguration;
 class SpringContextSignatureTest {
 
   /** Each entry needs a technical reason, stated in the annotation's own Javadoc. */
-  private static final List<Class<? extends Annotation>> CANONICAL_SIGNATURES =
+  static final List<Class<? extends Annotation>> CANONICAL_SIGNATURES =
       List.of(
           OpaaIntegrationTest.class,
           OpaaMockedChatModelIntegrationTest.class,

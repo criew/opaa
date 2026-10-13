@@ -582,14 +582,21 @@ haben:
 
 | Auslöser | Folge |
 |---|---|
+| Ollama mit dem Fehler bei langen Eingaben durch eine neuere Fassung ersetzt | Die Vektoren langer Chunks stammen aus der fehlerhaften Fassung; OPAA erkennt das nicht als Modellwechsel — vollständige Neuindizierung ([Modelle](modelle.md#embedding)) |
 | Datenbank verworfen, etwa mit `docker compose down -v` | Datenbank samt Index ist weg — vollständige Neuindizierung |
 | Wechsel der PostgreSQL-Hauptversion | ein eigener Migrationsvorgang der Datenbank, kein Image-Update ([Datenbank](datenbank.md)) |
-| `OPAA_INDEXING_CHUNK_TARGET_CHARACTERS` geändert | Gilt nur für Dokumente, die danach neu oder geändert indiziert werden; weder ein erneuter Lauf noch der Nachzug zerlegt unveränderte Dokumente neu. Für einheitliche Chunks jede Bibliothek neu aufbauen (Falle unten) |
 
 Ein Wechsel des **Chat**-Modells berührt den Index nicht. Ein Wechsel des **Embedding**-Modells oder
 von `OPAA_PGVECTOR_DIMENSIONS` braucht ebenfalls keine Neuindizierung und kein Zurücksetzen der
 Datenbank: OPAA erkennt ihn beim Start, setzt die Vektorsuche aus, und die Systemverwaltung bettet
 den vorhandenen Bestand neu ein ([Modell wechseln](modelle.md#modell-wechseln)).
+
+Eine geänderte Zielgröße der Zerlegung (`OPAA_INDEXING_CHUNK_TARGET_CHARACTERS`) braucht ebenfalls
+keine Neuindizierung. Ein erneuter Lauf überspringt unveränderte Dateien zwar weiterhin, aber der
+Versionsstand weist die mit der alten Zielgröße geschnittenen Chunks als nachzuziehen aus, und der
+[Nachzug](wissensbibliotheken.md#72-pipeline-versionen-und-nachzug), je Pipeline der Formate mit
+Struktur aufgerufen, zerlegt sie aus dem Original neu. Bis dahin bleiben sie in der alten Fassung
+durchsuchbar.
 
 > **Falle bei einer Neuindizierung:** OPAA überspringt eine Datei, deren Prüfsumme unverändert ist
 > und deren Dokument als indiziert gilt. Wer nur die Vektoren einer Bibliothek verwirft, bekommt

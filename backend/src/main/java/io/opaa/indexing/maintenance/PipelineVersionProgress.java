@@ -10,11 +10,13 @@ import java.util.UUID;
  * @param totalChunks every chunk of this library in the vector store
  * @param currentVersionChunks chunks produced by the current version of the pipeline named on them,
  *     where that pipeline is also still the one handling their document's format today (see {@code
- *     PipelineReindexService#currentPipelineIdForFileName})
+ *     PipelineReindexService#currentPipelineIdForFileName}) and under its current chunking
+ *     configuration
  * @param staleChunks chunks below the current version of the pipeline named on them, or whose named
  *     pipeline is not the one handling their document's format today (a routing change can leave a
  *     chunk at its own pipeline's current version yet still unreachable by any re-index request
- *     without this), including the pre-abstraction corpus (see {@link
+ *     without this), or that were cut under another chunking configuration than their pipeline's
+ *     current one (a changed target size), including the pre-abstraction corpus (see {@link
  *     ChunkFormatMetadata#LEGACY_PIPELINE_VERSION}). Counted directly rather than derived as {@code
  *     totalChunks - currentVersionChunks}: a chunk naming a pipeline that is no longer registered
  *     at all is neither current nor stale - it cannot be re-indexed by any pipeline this deployment
