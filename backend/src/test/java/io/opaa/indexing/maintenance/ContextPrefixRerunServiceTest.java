@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
+import org.springframework.transaction.PlatformTransactionManager;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -48,7 +49,8 @@ class ContextPrefixRerunServiceTest {
           JsonMapper.builder().build(),
           "public",
           "vector_store",
-          TestFeatureFlags.allOn());
+          TestFeatureFlags.allOn(),
+          mock(PlatformTransactionManager.class));
 
   @Test
   @SuppressWarnings("unchecked")
@@ -86,10 +88,11 @@ class ContextPrefixRerunServiceTest {
     Document document = documentWithStoredChunks(2);
     when(vectorChunkStore.reembedChunks(anyList())).thenReturn(2);
 
+    UUID documentId = document.getId();
+
     service.reembedInPlace(document);
 
-    verify(documentRepository)
-        .recordContextPrefix(eq(document.getId()), any(), anyBoolean(), any());
+    verify(documentRepository).recordContextPrefix(eq(documentId), any(), anyBoolean(), any());
   }
 
   @Test
@@ -98,6 +101,36 @@ class ContextPrefixRerunServiceTest {
     Document document = documentWithStoredChunks(2);
     // One chunk was gone at write time: the ingest replaced the chunks and owns the document row.
     when(vectorChunkStore.reembedChunks(anyList())).thenReturn(1);
+
+    service.reembedInPlace(document);
+
+    verify(documentRepository, never()).recordContextPrefix(any(), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void aCorrectionDuringTheEmbeddingLeavesTheDocumentPending() throws Exception {
+    Document document = documentWithStoredChunks(2);
+    // Read before the embedding, then again under the document row lock - by then a correction
+    // has put a prefix-effective value on the document.
+    when(metadataService.chunkMetadataFor(document))
+        .thenReturn(DocumentChunkMetadata.EMPTY)
+        .thenReturn(
+            new DocumentChunkMetadata(
+                java.util.Map.of(), java.util.Set.of(), null, List.of("Fassung 2026")));
+    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(2);
+
+    service.reembedInPlace(document);
+
+    verify(documentRepository, never()).recordContextPrefix(any(), any(), anyBoolean(), any());
+  }
+
+  @Test
+  void aDocumentDeletedBeforeTheStampIsRecordedGetsNone() throws Exception {
+    Document document = documentWithStoredChunks(2);
+    when(vectorChunkStore.reembedChunks(anyList())).thenReturn(2);
+    UUID documentId = document.getId();
+    when(jdbcTemplate.queryForList(anyString(), eq(UUID.class), eq(documentId)))
+        .thenReturn(List.of());
 
     service.reembedInPlace(document);
 
@@ -124,6 +157,9 @@ class ContextPrefixRerunServiceTest {
               }
               return chunks;
             });
+    when(jdbcTemplate.queryForList(anyString(), eq(UUID.class), eq(documentId)))
+        .thenReturn(List.of(documentId));
+    when(documentRepository.findById(documentId)).thenReturn(java.util.Optional.of(document));
     return document;
   }
 }

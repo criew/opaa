@@ -3,6 +3,7 @@ package io.opaa.indexing.chunk;
 import com.pgvector.PGvector;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +36,23 @@ import tools.jackson.databind.ObjectMapper;
  */
 @Component
 public class VectorStoreWriter {
+
+  /**
+   * Namespace of the per-document advisory lock that orders the writers of one document's vector
+   * rows - registered with the other namespaces at {@code
+   * AssetGrantRepository#ASSET_GRANT_MUTATION_LOCK_NAMESPACE}. Keyed by a hash of the document id;
+   * a collision only serializes two documents.
+   */
+  public static final int DOCUMENT_CHUNK_LOCK_NAMESPACE = 208;
+
+  /**
+   * Takes the document lock for the document id bound to its one parameter; uncorrelated, so a
+   * {@code WHERE} clause evaluates it once, before it locks the first row. Always {@code true}.
+   */
+  private static final String DOCUMENT_LOCK_CONDITION =
+      "(SELECT true FROM (SELECT pg_advisory_xact_lock("
+          + DOCUMENT_CHUNK_LOCK_NAMESPACE
+          + ", hashtext(CAST(? AS text)))) acquired)";
 
   private final JdbcTemplate jdbcTemplate;
   private final FullTextChunkStore fullTextChunkStore;
@@ -111,16 +129,46 @@ public class VectorStoreWriter {
    * path removes the vector row before the full-text row, so no full-text row outlives its chunk.
    * {@code embeddings} is positionally aligned with {@code chunks}. Content and metadata stay.
    *
+   * <p>Lock order: first the document lock of every document the chunks name (sorted), then the
+   * vector rows, {@code NOWAIT}. The single-document writers ({@link #deleteChunksOfDocument},
+   * {@link #updateDocumentMetadata}) take the same document lock before their first row, so they
+   * wait instead of deadlocking; a library-wide delete holding a row fails this write at once
+   * instead of deadlocking with it.
+   *
    * @return how many chunks were still stored and got their new vector
+   * @throws org.springframework.dao.CannotAcquireLockException when another writer holds one of the
+   *     vector rows; nothing is written then
    */
   @Transactional
   public int rewriteEmbeddedChunks(List<Document> chunks, List<float[]> embeddings) {
     if (chunks.isEmpty()) {
       return 0;
     }
+    chunks.stream()
+        .map(chunk -> chunk.getMetadata().get(VectorChunkStore.DOCUMENT_ID_METADATA_KEY))
+        .filter(Objects::nonNull)
+        .map(Object::toString)
+        .distinct()
+        .sorted()
+        .forEach(this::lockDocumentChunks);
+    Set<String> stored =
+        new HashSet<>(
+            jdbcTemplate.queryForList(
+                "SELECT id::text FROM "
+                    + schemaName
+                    + "."
+                    + tableName
+                    + " WHERE id = ANY (?::uuid[]) ORDER BY id FOR UPDATE NOWAIT",
+                String.class,
+                (Object) chunks.stream().map(Document::getId).toArray(String[]::new)));
     List<ChunkWithEmbedding> zipped = new ArrayList<>(chunks.size());
     for (int i = 0; i < chunks.size(); i++) {
-      zipped.add(new ChunkWithEmbedding(chunks.get(i), embeddings.get(i)));
+      if (stored.contains(chunks.get(i).getId())) {
+        zipped.add(new ChunkWithEmbedding(chunks.get(i), embeddings.get(i)));
+      }
+    }
+    if (zipped.isEmpty()) {
+      return 0;
     }
     int[][] counts =
         indexState.whileWriting(
@@ -140,18 +188,42 @@ public class VectorStoreWriter {
                       ps.setObject(2, UUID.fromString(entry.chunk().getId()));
                       ps.setString(3, entry.chunk().getText());
                     }));
-    List<Document> stillStored = new ArrayList<>(chunks.size());
+    List<Document> stillStored = new ArrayList<>(zipped.size());
     int position = 0;
     for (int[] batch : counts) {
       for (int count : batch) {
         if (count > 0) {
-          stillStored.add(chunks.get(position));
+          stillStored.add(zipped.get(position).chunk());
         }
         position++;
       }
     }
     fullTextChunkStore.indexChunks(stillStored);
     return stillStored.size();
+  }
+
+  /**
+   * Deletes the vector rows of {@code documentId} in one statement that first takes the document
+   * lock ({@link #DOCUMENT_CHUNK_LOCK_NAMESPACE}) - before its first row, and for the rest of the
+   * caller's transaction or, without one, of the statement.
+   */
+  public void deleteChunksOfDocument(UUID documentId) {
+    jdbcTemplate.update(
+        "DELETE FROM "
+            + schemaName
+            + "."
+            + tableName
+            + " WHERE metadata->>'"
+            + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
+            + "' = ? AND "
+            + DOCUMENT_LOCK_CONDITION,
+        documentId.toString(),
+        documentId.toString());
+  }
+
+  /** Takes the document lock for the rest of the current transaction. */
+  private void lockDocumentChunks(String documentId) {
+    jdbcTemplate.queryForObject("SELECT " + DOCUMENT_LOCK_CONDITION, Boolean.class, documentId);
   }
 
   /**
@@ -212,7 +284,8 @@ public class VectorStoreWriter {
    * Rewrites document-level keys on every chunk of {@code documentId} in place (ADR-0024): removes
    * every key in {@code keysToClear} first, then merges {@code values}. Touches neither content nor
    * embedding nor {@code chunk_full_text}, which is what lets a metadata correction skip
-   * re-embedding entirely.
+   * re-embedding entirely. Takes the document lock before its first row, like {@link
+   * #deleteChunksOfDocument}.
    *
    * @return the number of chunks updated
    */
@@ -230,9 +303,14 @@ public class VectorStoreWriter {
             + " - ARRAY(SELECT jsonb_array_elements_text(?::jsonb))) || ?::jsonb"
             + " WHERE metadata->>'"
             + VectorChunkStore.DOCUMENT_ID_METADATA_KEY
-            + "' = ?";
+            + "' = ? AND "
+            + DOCUMENT_LOCK_CONDITION;
     return jdbcTemplate.update(
-        sql, toJson(List.copyOf(keysToClear)), toJson(values), documentId.toString());
+        sql,
+        toJson(List.copyOf(keysToClear)),
+        toJson(values),
+        documentId.toString(),
+        documentId.toString());
   }
 
   /**

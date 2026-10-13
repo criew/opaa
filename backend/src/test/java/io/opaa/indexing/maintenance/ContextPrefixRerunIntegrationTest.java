@@ -71,6 +71,7 @@ class ContextPrefixRerunIntegrationTest {
   @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private EmbeddingModel embeddingModel;
   @Autowired private VectorChunkStore vectorChunkStore;
+  @Autowired private org.springframework.transaction.PlatformTransactionManager transactionManager;
 
   private KnowledgeLibrary library;
   private CurrentUser owner;
@@ -502,6 +503,83 @@ class ContextPrefixRerunIntegrationTest {
     rerunService.reembedInPlace(document);
 
     assertThat(chunkIds(document)).isEmpty();
+    assertThat(fullTextRowCount(document)).isZero();
+  }
+
+  @Test
+  void aCorrectionDuringTheEmbeddingLeavesTheDocumentPendingForTheRerun() throws IOException {
+    LibraryMetadataFieldValue value = prefixEffectiveFassungField();
+    Document document = indexed("korrektur-waehrend-nachlauf.md");
+    metadataService.setManualValue(
+        document.getId(),
+        MetadataFieldRef.of(CoreMetadataField.TITLE),
+        MetadataValueInput.text("Gebührenordnung Meldewesen"),
+        owner.id());
+    assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
+    // The rerun has read the document's prefix and embeds with it; meanwhile a correction makes
+    // another value prefix-effective.
+    fakeEmbeddingModel()
+        .beforeEmbeddingTextContaining("Meldewesen", () -> setFassung(document, value));
+
+    rerunService.reembedInPlace(documentRepository.findById(document.getId()).orElseThrow());
+
+    assertThat(documentRepository.findById(document.getId()).orElseThrow().getContextPrefixStamp())
+        .as("the chunks carry the prefix from before the correction, so the document waits")
+        .isNull();
+    assertThat(rerunService.pendingDocuments(library.getId())).isEqualTo(1);
+
+    rerunService.rerunBatch(Organization.DEFAULT_ID, library.getId(), 10);
+
+    assertThat(fullTextMatches(document, "Fassung")).isEqualTo(chunkCount(document));
+    assertThat(rerunService.pendingDocuments(library.getId())).isZero();
+  }
+
+  @Test
+  void deletingADocumentsChunksWaitsForTheDocumentLockOfARunningReembedding() throws Exception {
+    Document document = indexed("sperre.md");
+    long chunksBefore = chunkCount(document);
+    assertThat(chunksBefore).isPositive();
+    java.util.concurrent.CountDownLatch locked = new java.util.concurrent.CountDownLatch(1);
+    java.util.concurrent.CountDownLatch release = new java.util.concurrent.CountDownLatch(1);
+    // Holds exactly the lock VectorStoreWriter#rewriteEmbeddedChunks takes before any row.
+    java.util.concurrent.CompletableFuture<Void> holder =
+        java.util.concurrent.CompletableFuture.runAsync(
+            () ->
+                new org.springframework.transaction.support.TransactionTemplate(transactionManager)
+                    .executeWithoutResult(
+                        status -> {
+                          jdbcTemplate.queryForObject(
+                              "SELECT true FROM (SELECT pg_advisory_xact_lock("
+                                  + io.opaa.indexing.chunk.VectorStoreWriter
+                                      .DOCUMENT_CHUNK_LOCK_NAMESPACE
+                                  + ", hashtext(?))) acquired",
+                              Boolean.class,
+                              document.getId().toString());
+                          locked.countDown();
+                          try {
+                            release.await(30, java.util.concurrent.TimeUnit.SECONDS);
+                          } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                          }
+                        }));
+    assertThat(locked.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
+
+    java.util.concurrent.CompletableFuture<Void> deletion =
+        java.util.concurrent.CompletableFuture.runAsync(
+            () -> vectorChunkStore.deleteByDocumentId(document.getId()));
+    try {
+      Thread.sleep(500);
+      assertThat(deletion)
+          .as("the delete waits before its first row instead of locking rows in scan order")
+          .isNotDone();
+      assertThat(chunkCount(document)).isEqualTo(chunksBefore);
+    } finally {
+      release.countDown();
+    }
+    holder.get(10, java.util.concurrent.TimeUnit.SECONDS);
+    deletion.get(10, java.util.concurrent.TimeUnit.SECONDS);
+
+    assertThat(chunkCount(document)).isZero();
     assertThat(fullTextRowCount(document)).isZero();
   }
 

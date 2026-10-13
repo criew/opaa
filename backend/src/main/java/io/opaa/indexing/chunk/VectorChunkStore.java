@@ -165,9 +165,13 @@ public class VectorChunkStore implements ChunkMetadataStore {
     return vectorStoreWriter.updateDocumentMetadata(documentId, values, keysToClear);
   }
 
-  /** Deletes every chunk (vector and full-text) carrying the given {@code document_id} metadata. */
+  /**
+   * Deletes every chunk (vector and full-text) carrying the given {@code document_id} metadata. The
+   * vector delete waits for a running {@link #reembedChunks} of the same document instead of
+   * deadlocking with it (see {@link VectorStoreWriter#rewriteEmbeddedChunks}).
+   */
   public void deleteByDocumentId(UUID documentId) {
-    vectorStore.delete(equalsFilter(DOCUMENT_ID_METADATA_KEY, documentId));
+    vectorStoreWriter.deleteChunksOfDocument(documentId);
     fullTextChunkStore.deleteByDocumentId(documentId);
   }
 
