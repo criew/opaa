@@ -8,8 +8,8 @@ import Popper from '@mui/material/Popper'
 import Typography from '@mui/material/Typography'
 import { alpha } from '@mui/material/styles'
 import { fontFamily } from '../../theme/tokens'
+import { actionOptionId } from './chatActions'
 import type { ChatActionTexts } from './chatActions'
-import { promptOptionId } from './promptCommand'
 import type { SourcedChatAction } from './useChatActions'
 
 interface ChatActionMenuProps {
@@ -125,7 +125,7 @@ export default function ChatActionMenu({
                           <ListItemButton
                             key={action.key}
                             component="li"
-                            id={promptOptionId(listboxId, index)}
+                            id={actionOptionId(listboxId, index)}
                             role="option"
                             aria-selected={index === highlightedIndex}
                             selected={index === highlightedIndex}

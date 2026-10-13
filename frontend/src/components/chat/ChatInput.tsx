@@ -28,10 +28,9 @@ import SpaceKnowledgeNotice from '../space/SpaceKnowledgeNotice'
 import { spaceKnowledgeGap } from '../space/spaceKnowledge'
 import MetadataFilterPopover from './MetadataFilterPopover'
 import ChatActionMenu from './ChatActionMenu'
-import { activeChatActionSources } from './chatActions'
+import { actionOptionId, activeChatActionSources } from './chatActions'
 import type { ChatActionMark, ChatActionSource } from './chatActions'
 import { CHAT_ACTION_SOURCES } from './chatActionSources'
-import { promptOptionId } from './promptCommand'
 import { useChatActions } from './useChatActions'
 import {
   dateChipLabel,
@@ -55,10 +54,7 @@ export interface SendOutcome {
 }
 
 interface ChatInputProps {
-  /**
-   * `usedPrompt` is the mark of the action the message was built from - today the prompt -
-   * absent when none is marked.
-   */
+  /** `usedPrompt` is the prompt the message was built from, absent when none is marked. */
   onSend: (
     message: string,
     usedPrompt?: ChatActionMark,
@@ -436,8 +432,12 @@ export default function ChatInput({
     const trimmed = value.trim()
     if (sendLocked || !trimmed || trimmed.length > QUESTION_MAX_LENGTH || actions.isInserting)
       return
-    const mark = actions.selected?.mark
-    const outcome = mark ? onSend(trimmed, { id: mark.id, title: mark.title }) : onSend(trimmed)
+    // Only a mark its source sends as the prompt reaches the question; any other stays a chip.
+    const selected = actions.selected
+    const outcome =
+      selected?.source.sendsMarkAsUsedPrompt === true
+        ? onSend(trimmed, { id: selected.mark.id, title: selected.mark.title })
+        : onSend(trimmed)
     setValue('')
     setDismissedMentionStart(null)
     closeMention()
@@ -534,7 +534,7 @@ export default function ChatInput({
       ? mentionListboxId
       : undefined
   const activeDescendant = actionListOpen
-    ? promptOptionId(actionListboxId, actions.highlightedIndex)
+    ? actionOptionId(actionListboxId, actions.highlightedIndex)
     : mentionListOpen
       ? highlightedOptionId
       : undefined

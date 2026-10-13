@@ -61,4 +61,5 @@ export const promptActionSource: ChatActionSource = {
     }
   },
   markLabel: (mark) => `Prompt: ${mark.title}`,
+  sendsMarkAsUsedPrompt: true,
 }

@@ -144,6 +144,32 @@ describe('ChatInput: the "/" menu collects the active action sources', () => {
     expect(screen.getByRole('listbox', { name: 'Aktionen' })).toBeInTheDocument()
   })
 
+  // Only the prompt source's mark becomes usedPromptId; another source's mark is no prompt id.
+  it('shows the mark of another source as a chip but does not send it as the prompt', async () => {
+    const onSend = vi.fn()
+    const user = userEvent.setup()
+    const marking: ChatActionSource = {
+      ...glossary,
+      choose: async () => ({
+        kind: 'insert',
+        text: 'Fristen laufen ab Zustellung.',
+        mark: { id: 'fristen', title: 'Fristenregel' },
+      }),
+    }
+    render(<ChatInput onSend={onSend} actionSources={[marking]} />)
+    const input = screen.getByRole('combobox')
+
+    await user.type(input, '/fri')
+    await screen.findByRole('option', { name: /\/fristen/ })
+    await user.keyboard('{Enter}')
+
+    await waitFor(() =>
+      expect(screen.getByTestId('used-prompt-chip')).toHaveTextContent('Fristenregel'),
+    )
+    await user.keyboard('{Enter}')
+    expect(onSend.mock.calls[0]).toEqual(['Fristen laufen ab Zustellung.'])
+  })
+
   it('leaves out a source whose feature is switched off', async () => {
     server.use(http.get('/api/v1/prompts/available', () => HttpResponse.json([])))
     useAuthStore.setState({ features: { promptLibraries: false } })

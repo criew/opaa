@@ -3,6 +3,8 @@ package io.opaa.asset;
 import static io.opaa.test.TestAssetType.TEST_ASSET;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.PermissionSubjectType;
@@ -11,6 +13,7 @@ import io.opaa.api.types.SpaceRole;
 import io.opaa.api.types.SuccessionKind;
 import io.opaa.api.types.SystemRole;
 import io.opaa.auth.CurrentUser;
+import io.opaa.auth.DevAuthFilter;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.ConflictException;
@@ -45,6 +48,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * An asset type behind a switched-off feature (ADR-0044, #2588), shown with the test-defined type
@@ -74,6 +78,7 @@ class InactiveAssetTypeIntegrationTest {
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private OwnOrganizationFixtures ownOrganizationFixtures;
   @Autowired private JdbcTemplate jdbcTemplate;
+  @Autowired private MockMvc mockMvc;
 
   private UUID organizationId;
   private UUID owner;
@@ -221,6 +226,57 @@ class InactiveAssetTypeIntegrationTest {
     transferService.transfer(order, true, previewId, admin);
 
     assertThat(assetRepository.findById(asset).orElseThrow().getOwnerUserId()).isEqualTo(successor);
+  }
+
+  /**
+   * The asset endpoints answer an inactive type like an unknown asset, while the same request for
+   * the same asset succeeds once the type is active - the asset belongs to the dev caller.
+   */
+  @Test
+  void theAssetEndpointsAnswerAnInactiveTypeWithNotFound() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/spaces").header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+        .andExpect(status().isOk());
+    var devUser =
+        jdbcTemplate.queryForMap(
+            "SELECT id, organization_id FROM users WHERE subject = 'dev-user'");
+    UUID devUserId = (UUID) devUser.get("id");
+    UUID devOrganizationId = (UUID) devUser.get("organization_id");
+    UUID asset = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO assets (id, asset_type, organization_id, name, owner_type, owner_user_id,"
+            + " created_by_user_id) VALUES (?, ?, ?, 'Testobjekt', 'USER', ?, ?)",
+        asset,
+        TEST_ASSET.value(),
+        devOrganizationId,
+        devUserId,
+        devUserId);
+    try {
+      grantRepository.save(
+          AssetGrant.forUser(
+              TEST_ASSET, asset, devOrganizationId, devUserId, AssetRole.OWNER, null, devUserId));
+      String base = "/api/v1/assets/" + TEST_ASSET.value() + "/" + asset;
+
+      mockMvc
+          .perform(get(base + "/grants").header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+          .andExpect(status().isOk());
+      mockMvc
+          .perform(get(base + "/spaces").header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+          .andExpect(status().isOk());
+
+      testAssetType.switchOff();
+
+      mockMvc
+          .perform(get(base + "/grants").header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+          .andExpect(status().isNotFound());
+      mockMvc
+          .perform(get(base + "/spaces").header(DevAuthFilter.DEV_USER_HEADER, "dev-user"))
+          .andExpect(status().isNotFound());
+    } finally {
+      jdbcTemplate.update("DELETE FROM asset_grant_history WHERE asset_id = ?", asset);
+      jdbcTemplate.update("DELETE FROM asset_grants WHERE asset_id = ?", asset);
+      jdbcTemplate.update("DELETE FROM assets WHERE id = ?", asset);
+    }
   }
 
   private List<UUID> catalogIds(boolean favoritesOnly) {

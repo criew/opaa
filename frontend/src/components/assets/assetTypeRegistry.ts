@@ -94,11 +94,6 @@ export function useActiveAssetTypes(): AssetTypeDefinition[] {
   return useMemo(() => activeIn(features), [features])
 }
 
-/** Whether the installation offers the type at all. */
-export function isAssetTypeActive(assetType: AssetType | string | null | undefined): boolean {
-  return assetTypeDefinition(assetType) !== undefined
-}
-
 /** The definition of an offered type; a type behind a switched-off feature has none. */
 export function assetTypeDefinition(
   assetType: AssetType | string | null | undefined,

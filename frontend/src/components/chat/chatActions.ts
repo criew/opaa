@@ -26,8 +26,8 @@ export interface ChatActionContext {
 }
 
 /**
- * The mark a question is sent with once an action built it - shown as a removable chip and handed
- * to `onSend`. Today only the prompt it was built from (`usedPromptId`).
+ * The mark of the text an action built - shown as a removable chip. Only a source that declares
+ * {@link ChatActionSource.sendsMarkAsUsedPrompt} hands it to `onSend`.
  */
 export interface ChatActionMark {
   id: string
@@ -77,6 +77,11 @@ export interface ChatActionSource {
   choose: (option: ChatActionOption, context: ChatActionContext) => Promise<ChatActionResult>
   /** The chip text for a mark this source set ("Prompt: Vermerk"). */
   markLabel: (mark: ChatActionMark) => string
+  /**
+   * Whether this source's mark is sent with the question as the prompt it was built from
+   * (`usedPromptId`). A mark of any other source stays a chip in the input and is not sent.
+   */
+  sendsMarkAsUsedPrompt?: boolean
 }
 
 /** The menu's words while more than one source contributes. */
@@ -113,4 +118,9 @@ export function matchChatActions<T extends ChatActionOption>(options: T[], query
       option.title.toLowerCase().includes(needle) ||
       (option.description ?? '').toLowerCase().includes(needle),
   )
+}
+
+/** The id of the '/' option at `index` - the input's `aria-activedescendant` points at it. */
+export function actionOptionId(listboxId: string, index: number): string {
+  return `${listboxId}-option-${index}`
 }

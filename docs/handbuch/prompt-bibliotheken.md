@@ -258,7 +258,7 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 
 Eine Installation kann Prompt-Bibliotheken ganz abschalten, etwa für eine Demo, die nur Fragen und
 Antworten zeigen soll (`OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED=false`, siehe
-[Konfiguration](konfiguration.md#funktionen-abschalten)). Danach erwähnt die Oberfläche sie nirgends:
+[Konfiguration](konfiguration.md#funktionen-abschalten)). Danach erwähnt die Oberfläche sie im Arbeitsalltag nicht mehr:
 
 - Der Katalog zeigt keine Prompt-Bibliothek und keinen Typfilter „Prompts", „Neu" bietet nur noch
   Wissen an, und das Anlegerecht „Prompt-Bibliotheken anlegen" fehlt in der Übersicht der
@@ -272,7 +272,11 @@ Antworten zeigen soll (`OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED=false`, siehe
 
 Vorhandene Prompt-Bibliotheken, Prompts, Rollen, Zuordnungen und Favoriten bleiben unverändert
 gespeichert. Eigentumsübertragung, das Auflösen einer Gruppe und das Entfernen eines Kontos
-erfassen sie weiter wie jedes Arbeitsmittel. Wieder eingeschaltet, ist alles wie zuvor.
+erfassen sie weiter wie jedes Arbeitsmittel. Deshalb nennen die Meldungen beim Löschen und
+Deaktivieren einer Gruppe, das Nachweisprotokoll und die Stichtagsauskunft vorhandene
+Prompt-Bibliotheken auch dann. Wieder eingeschaltet, ist alles wie zuvor; nur ein Fall „Nachfolge
+offen", dessen Ursache während der Abschaltung eintrat, erscheint erst ab dem Wiedereinschalten
+und gilt von da an als neu.
 
 ## 10. Was nicht gebaut ist
 
