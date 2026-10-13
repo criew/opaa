@@ -180,13 +180,36 @@ class ActiveChatModelResolverIntegrationTest {
    */
   @Test
   void bothResolvedClientsRemoveTheLeadingReasoningBlockAndKeepTheUsage() throws IOException {
+    assertBothClientsAnswer(
+        "/llm/gemma-4-thought-decomposition.json",
+        "gemma-4-26b-a4b-it",
+        "Kosten für einen Personalausweis\nDauer der Ausstellung eines Reisepasses",
+        528);
+  }
+
+  /**
+   * Regression guard for #2511: a recorded DeepSeek-R1 answer whose chat template put the opening
+   * {@code <think>} into the prompt carries only the closing tag; both resolved clients hand out
+   * the text after it.
+   */
+  @Test
+  void bothResolvedClientsRemoveReasoningThatOnlyHasAClosingTag() throws IOException {
+    assertBothClientsAnswer(
+        "/llm/deepseek-r1-closing-tag-only.json",
+        "deepseek-r1:1.5b",
+        "Eine Week hat sieben Tage.",
+        511);
+  }
+
+  private void assertBothClientsAnswer(
+      String fixture, String modelName, String expectedText, int expectedTotalTokens)
+      throws IOException {
     byte[] recorded;
-    try (InputStream in =
-        getClass().getResourceAsStream("/llm/gemma-4-thought-decomposition.json")) {
+    try (InputStream in = getClass().getResourceAsStream(fixture)) {
       recorded = in.readAllBytes();
     }
-    HttpServer gemmaServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-    gemmaServer.createContext(
+    HttpServer recordedServer = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+    recordedServer.createContext(
         "/v1/chat/completions",
         exchange -> {
           exchange.getResponseHeaders().add("Content-Type", "application/json");
@@ -195,27 +218,26 @@ class ActiveChatModelResolverIntegrationTest {
             out.write(recorded);
           }
         });
-    gemmaServer.start();
+    recordedServer.start();
     try {
-      LlmModel gemma =
+      LlmModel recordedModel =
           createModel(
-              "Gemma",
-              "http://127.0.0.1:" + gemmaServer.getAddress().getPort() + "/v1",
-              "gemma-4-26b-a4b-it");
-      llmModelService.activateModel(organizationId, userId, gemma.getId());
+              "Aufgezeichnet",
+              "http://127.0.0.1:" + recordedServer.getAddress().getPort() + "/v1",
+              modelName);
+      llmModelService.activateModel(organizationId, userId, recordedModel.getId());
 
       for (ChatClient client :
           List.of(
               resolver.resolveChatClient(), resolver.resolveChatClient(Duration.ofSeconds(30)))) {
         ChatResponse response = client.prompt().user("Frage").call().chatResponse();
 
-        assertThat(ChatResponses.text(response))
-            .isEqualTo("Kosten für einen Personalausweis\nDauer der Ausstellung eines Reisepasses");
-        assertThat(ChatResponses.totalTokens(response)).isEqualTo(528);
+        assertThat(ChatResponses.text(response)).isEqualTo(expectedText);
+        assertThat(ChatResponses.totalTokens(response)).isEqualTo(expectedTotalTokens);
         assertThat(ChatResponses.completeness(response)).isEqualTo(AnswerCompleteness.COMPLETE);
       }
     } finally {
-      gemmaServer.stop(0);
+      recordedServer.stop(0);
     }
   }
 
