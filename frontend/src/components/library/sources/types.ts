@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { LibrarySchedule, SourceTypeKey } from '../../../types/api'
 import type { LibrarySourceConfigPayload } from '../../../utils/librarySourceConfig'
+import type { SourceIssue } from '../../../utils/sourceIssue'
 import type { SourceConnection } from './sourceConnection'
 
 /** The stored library as the source registrations read it - never a credential, only whether one is set. */
@@ -78,8 +79,8 @@ export interface SourceConfiguration<V> {
   fromLibrary: (library: StoredLibrarySource) => V
   /** Whether a wizard holding these values has something to lose. */
   isDirty: (values: V) => boolean
-  /** The German rejection of the values, or null when they may be sent. */
-  validate: (values: V, context: SourceFormContext) => string | null
+  /** The German rejection of the values, naming the field it concerns, or null when they may be sent. */
+  validate: (values: V, context: SourceFormContext) => SourceIssue | null
   /** The source fields of a LibraryRequest/LibraryUpdateRequest; call {@link validate} first. */
   toPayload: (values: V) => LibrarySourceConfigPayload
   /** The name the source already suggests for a new library, '' for none. */

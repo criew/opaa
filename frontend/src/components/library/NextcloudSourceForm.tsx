@@ -16,6 +16,7 @@ import {
 } from '../../utils/nextcloudSource'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface NextcloudSourceFormProps {
   mode: 'create' | 'edit'
@@ -59,6 +60,7 @@ export default function NextcloudSourceForm({
     credentialsStored,
   }),
 }: NextcloudSourceFormProps) {
+  const issueFor = useSourceIssue()
   const isCreate = mode === 'create'
   const [test, setTest] = useState<{ token: string; message: Message } | null>(null)
   const [listing, setListing] = useState<{
@@ -184,9 +186,12 @@ export default function NextcloudSourceForm({
             value={values.sourceUrl}
             onChange={(e) => onChange({ sourceUrl: e.target.value })}
             placeholder="https://cloud.example.org"
-            helperText={
-              connection.addressHint ?? 'Auch die WebDAV-Adresse aus der Nextcloud wird angenommen.'
-            }
+            error={issueFor('sourceUrl') !== null}
+            helperText={withIssue(
+              issueFor('sourceUrl'),
+              connection.addressHint ??
+                'Auch die WebDAV-Adresse aus der Nextcloud wird angenommen.',
+            )}
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />
         </Box>
@@ -200,6 +205,8 @@ export default function NextcloudSourceForm({
                 fullWidth
                 value={values.username}
                 onChange={(e) => onChange({ username: e.target.value })}
+                error={issueFor('username') !== null}
+                helperText={withIssue(issueFor('username'))}
                 autoComplete="off"
                 slotProps={{ htmlInput: { maxLength: 255 } }}
               />
@@ -213,7 +220,8 @@ export default function NextcloudSourceForm({
                 fullWidth
                 value={values.appPassword}
                 onChange={(e) => onChange({ appPassword: e.target.value })}
-                helperText={credentialsHint}
+                error={issueFor('appPassword') !== null}
+                helperText={withIssue(issueFor('appPassword'), credentialsHint)}
                 autoComplete="new-password"
                 slotProps={{ htmlInput: { maxLength: 3800 } }}
               />
@@ -230,7 +238,11 @@ export default function NextcloudSourceForm({
             minRows={2}
             value={values.folders}
             onChange={(e) => onChange({ folders: e.target.value })}
-            helperText="Ein Ordner je Zeile, wie der technische Nutzer ihn sieht, etwa /Projekte. / liest alles, auch Freigaben und Gruppenordner."
+            error={issueFor('folders') !== null}
+            helperText={withIssue(
+              issueFor('folders'),
+              'Ein Ordner je Zeile, wie der technische Nutzer ihn sieht, etwa /Projekte. / liest alles, auch Freigaben und Gruppenordner.',
+            )}
             slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
           />
           {folderOptions && folderOptions.length > 0 && (

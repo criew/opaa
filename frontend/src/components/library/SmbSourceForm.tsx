@@ -16,6 +16,7 @@ import {
 } from '../../utils/smbSource'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface SmbSourceFormProps {
   mode: 'create' | 'edit'
@@ -58,6 +59,7 @@ export default function SmbSourceForm({
     credentialsStored,
   }),
 }: SmbSourceFormProps) {
+  const issueFor = useSourceIssue()
   const isCreate = mode === 'create'
   const [test, setTest] = useState<{ token: string; message: Message } | null>(null)
   const [listing, setListing] = useState<{
@@ -183,10 +185,12 @@ export default function SmbSourceForm({
             value={values.sourceUrl}
             onChange={(e) => onChange({ sourceUrl: e.target.value })}
             placeholder="smb://dateiserver.example.org/Freigabe"
-            helperText={
+            error={issueFor('sourceUrl') !== null}
+            helperText={withIssue(
+              issueFor('sourceUrl'),
               connection.addressHint ??
-              'Server und Freigabe; auch ein UNC-Pfad wie \\\\dateiserver\\Freigabe wird angenommen.'
-            }
+                'Server und Freigabe; auch ein UNC-Pfad wie \\\\dateiserver\\Freigabe wird angenommen.',
+            )}
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />
         </Box>
@@ -201,7 +205,11 @@ export default function SmbSourceForm({
                 value={values.account}
                 onChange={(e) => onChange({ account: e.target.value })}
                 placeholder="DOMÄNE\svc-opaa"
-                helperText="DOMÄNE\Benutzer, Benutzer@domäne oder ein lokales Konto."
+                error={issueFor('account') !== null}
+                helperText={withIssue(
+                  issueFor('account'),
+                  'DOMÄNE\\Benutzer, Benutzer@domäne oder ein lokales Konto.',
+                )}
                 autoComplete="off"
                 slotProps={{ htmlInput: { maxLength: 255 } }}
               />
@@ -215,7 +223,8 @@ export default function SmbSourceForm({
                 fullWidth
                 value={values.password}
                 onChange={(e) => onChange({ password: e.target.value })}
-                helperText={credentialsHint}
+                error={issueFor('password') !== null}
+                helperText={withIssue(issueFor('password'), credentialsHint)}
                 autoComplete="new-password"
                 slotProps={{ htmlInput: { maxLength: 3800 } }}
               />
@@ -232,7 +241,11 @@ export default function SmbSourceForm({
             minRows={2}
             value={values.folders}
             onChange={(e) => onChange({ folders: e.target.value })}
-            helperText="Ein Ordner je Zeile, ausgehend von der Freigabe, etwa /Projekte. / liest die ganze Freigabe."
+            error={issueFor('folders') !== null}
+            helperText={withIssue(
+              issueFor('folders'),
+              'Ein Ordner je Zeile, ausgehend von der Freigabe, etwa /Projekte. / liest die ganze Freigabe.',
+            )}
             slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
           />
           {folderOptions && folderOptions.length > 0 && (
