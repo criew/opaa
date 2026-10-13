@@ -16,9 +16,12 @@ import io.opaa.indexing.chunk.EmbeddingIndexState.Snapshot;
 import io.opaa.indexing.chunk.EmbeddingIndexStore;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.chunk.VectorIndexSchema;
+import io.opaa.indexing.chunk.VectorIndexSchema.ChunkCounts;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
+import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.permission.PersonThreshold;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -90,6 +93,8 @@ public class EmbeddingReindexService {
   private final VectorChunkStore vectorChunkStore;
   private final AuditEventRecorder auditEventRecorder;
   private final JdbcTemplate jdbcTemplate;
+  private final KnowledgeLibraryRepository libraryRepository;
+  private final PersonThreshold personThreshold;
   private final String vectorStoreTable;
 
   private final ExecutorService executor =
@@ -114,6 +119,8 @@ public class EmbeddingReindexService {
       VectorChunkStore vectorChunkStore,
       AuditEventRecorder auditEventRecorder,
       JdbcTemplate jdbcTemplate,
+      KnowledgeLibraryRepository libraryRepository,
+      PersonThreshold personThreshold,
       @Value("${opaa.database.schema}") String schemaName,
       @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
     this.state = state;
@@ -124,6 +131,8 @@ public class EmbeddingReindexService {
     this.vectorChunkStore = vectorChunkStore;
     this.auditEventRecorder = auditEventRecorder;
     this.jdbcTemplate = jdbcTemplate;
+    this.libraryRepository = libraryRepository;
+    this.personThreshold = personThreshold;
     this.vectorStoreTable = schemaName + "." + tableName;
   }
 
@@ -134,16 +143,19 @@ public class EmbeddingReindexService {
         snapshot -> {
           Run run = store.load().map(EmbeddingIndexRecord::run).orElse(Run.NONE);
           boolean stale = snapshot != null && snapshot.stale();
+          boolean privateCounted =
+              personThreshold.discloses(libraryRepository.countAllPrivateLibraryOwners());
           long total = 0;
           long embedded = 0;
           if (schema.columnDimensions(EmbeddingIndexState.EMBEDDING_COLUMN) != null) {
-            total = schema.chunkCount();
+            ChunkCounts counts =
+                schema.chunkCounts(
+                    stale
+                        ? EmbeddingIndexState.TARGET_COLUMN
+                        : EmbeddingIndexState.EMBEDDING_COLUMN);
+            total = counts.sharedTotal() + (privateCounted ? counts.privateTotal() : 0);
             embedded =
-                total
-                    - schema.chunksWithout(
-                        stale
-                            ? EmbeddingIndexState.TARGET_COLUMN
-                            : EmbeddingIndexState.EMBEDDING_COLUMN);
+                total - counts.sharedWithout() - (privateCounted ? counts.privateWithout() : 0);
           }
           return new EmbeddingReindexProgress(
               snapshot == null ? null : snapshot.current(),
@@ -152,7 +164,8 @@ public class EmbeddingReindexService {
               running,
               run,
               total,
-              embedded);
+              embedded,
+              privateCounted);
         });
   }
 
@@ -259,16 +272,16 @@ public class EmbeddingReindexService {
       if (remaining > 0) {
         end(
             RunStatus.FAILED,
-            "Unvollständig: "
-                + failed.size()
-                + " Dokument(e) mit "
-                + remaining
-                + " Abschnitt(en) ließen sich nicht neu einbetten (Einzelheiten im Log). Die"
-                + " Vektorsuche bleibt ausgesetzt; ein erneuter Start versucht nur diese.");
+            "Unvollständig: Einige Dokumente ließen sich nicht neu einbetten (Einzelheiten im"
+                + " Log). Die Vektorsuche bleibt ausgesetzt; ein erneuter Start versucht nur"
+                + " diese.");
         return;
       }
       switchOver();
     } catch (RuntimeException e) {
+      if (stopRequested) {
+        return;
+      }
       log.error("The re-embedding of the vector index stopped on an unexpected failure", e);
       end(RunStatus.FAILED, "Abgebrochen nach einem technischen Fehler (Einzelheiten im Log).");
     } finally {

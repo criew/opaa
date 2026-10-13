@@ -152,8 +152,9 @@ Das voreingestellte `nomic-embed-text` bettet mit 768 Dimensionen ein, die Anwen
 `OPAA_PGVECTOR_DIMENSIONS` ist 1536 — wer die Voreinstellung nutzt, setzt `768`.
 
 Ein Embedding-Aufruf darf so lange dauern, wie `OPAA_OPENAI_EMBEDDING_TIMEOUT` erlaubt. Ein großes
-Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann bricht der Aufruf ab
-und wird wiederholt, ohne je fertig zu werden.
+Modell auf einer CPU braucht für einen Stapel von Chunks leicht länger; dann bricht der Aufruf ab,
+wird wenige Male wiederholt und scheitert schließlich mit seinem Dokument. Die Neueinbettung bricht
+nach fünf gescheiterten Dokumenten in Folge mit „fehlgeschlagen" ab.
 
 ### Modell wechseln
 
@@ -172,7 +173,8 @@ und wird wiederholt, ohne je fertig zu werden.
    Was in dieser Zeit neu indiziert wird, bekommt schon Vektoren des neuen Modells.
 3. **„Neueinbettung starten".** Der Lauf bettet die gespeicherten Chunks mit dem neuen Modell neu
    ein: Text, Zuschnitt, Fundstellen und Dokumente bleiben, Quellen werden nicht erneut gelesen.
-   Die Seite zeigt den Fortschritt. „Neueinbettung abbrechen" hält den Lauf nach dem aktuellen
+   Die Seite zeigt den Fortschritt; Chunks privater Bibliotheken zählt sie nur mit, wenn genug
+   Personen solche führen (Mindestgruppengröße). „Neueinbettung abbrechen" hält den Lauf nach dem aktuellen
    Dokument an, das bereits Eingebettete bleibt erhalten, und „Neueinbettung fortsetzen" macht dort
    weiter. Ein Neustart während des Laufs setzt ihn von selbst fort.
 4. **Abschluss.** Haben alle Chunks einen neuen Vektor, stellt OPAA die Vektorablage um, bei einer
@@ -180,22 +182,28 @@ und wird wiederholt, ohne je fertig zu werden.
    Revisionsprotokoll.
 
 Ein Wechsel nur des Endpunkts, etwa auf einen anderen Server mit demselben Modell, gilt nicht als
-Modellwechsel. Wer vor dem Abschluss zum alten Modell zurückkehrt, verwirft die neuen Vektoren;
-Chunks, die in der Zwischenzeit neu indiziert wurden, findet dann bis zur nächsten Indexierung ihres
-Dokuments nur die Volltextsuche.
+Modellwechsel. Wer vor dem Abschluss zum alten Modell zurückkehrt, verwirft die neuen Vektoren. Die
+bereits neu eingebetteten Chunks behalten ihren alten Vektor. Nur Chunks, die in der Zwischenzeit
+neu oder mit geändertem Text indiziert wurden, haben keinen; sie findet nur die Volltextsuche, bis
+ihr Dokument erneut indiziert wird. Eine unveränderte Datei überspringt der Abgleich dabei
+([Falle bei einer Neuindizierung](betrieb.md#was-ein-update-mit-dem-index-macht)).
 
 **Dauer und Ressourcen.** Die Neueinbettung kostet so viele Embedding-Aufrufe wie eine
 Indexierung des Bestands, aber kein Lesen, Zerlegen oder Texterkennen. Auf einer CPU bestimmt das
 Modell die Dauer: `bge-m3` braucht dort etwa doppelt so lange wie `nomic-embed-text` und belegt beim
-Einbetten rund 3,3 GB Arbeitsspeicher statt rund 0,3 GB. Für große Modelle auf einer CPU helfen eine
-längere `OPAA_OPENAI_EMBEDDING_TIMEOUT`, eine kleinere `OPAA_INDEXING_BATCH_SIZE`,
-`OPAA_INDEXING_EMBEDDING_CONCURRENCY` von 1 und eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` für
-die Indexierungsläufe ([Konfiguration](konfiguration.md)). Bei Ollama begrenzt die Kontextlänge
-des Modells die Länge eines Chunks; ein zu langer Chunk lässt sein Dokument scheitern.
+Einbetten rund 3,3 GB Arbeitsspeicher statt rund 0,3 GB. Die Neueinbettung arbeitet ein Dokument
+nach dem anderen ab; wie viele Chunks ein Aufruf trägt, begrenzt allein das Token-Budget eines
+Aufrufs. Für ein großes Modell auf einer CPU wirkt deshalb nur eine längere
+`OPAA_OPENAI_EMBEDDING_TIMEOUT`. Für die Indexierung neuer Dokumente mit demselben Modell helfen
+zusätzlich eine kleinere `OPAA_INDEXING_BATCH_SIZE`, `OPAA_INDEXING_EMBEDDING_CONCURRENCY` von 1 und
+eine längere `OPAA_INDEXING_STALE_JOB_TIMEOUT` ([Konfiguration](konfiguration.md)). Bei Ollama
+begrenzt die Kontextlänge des Modells die Länge eines Chunks; ein zu langer Chunk lässt sein Dokument
+scheitern.
 
 Lässt sich ein Dokument nicht einbetten, läuft die Neueinbettung über die übrigen weiter und endet
-„fehlgeschlagen" mit der Zahl der betroffenen Dokumente; das Log nennt sie. Die Vektorsuche bleibt
-dann ausgesetzt, bis ein weiterer Start auch diese eingebettet hat.
+„fehlgeschlagen"; das Log nennt die Dokumente. Scheitern fünf Dokumente in Folge, bricht sie gleich
+ab, weil dann eher Endpunkt oder Zeitgrenze die Ursache sind. Die Vektorsuche bleibt ausgesetzt, bis
+ein weiterer Start auch die fehlenden eingebettet hat.
 
 ## Reranking einschalten
 
@@ -278,7 +286,7 @@ und im Protokoll des Backends.
 | Die erste Einbettung scheitert mit einem Dimensionsfehler | `OPAA_PGVECTOR_DIMENSIONS` passt nicht zum Embedding-Modell ([Embedding](#embedding)) |
 | „Index veraltet", Chat meldet „Eingeschränkte Suche" | Das Embedding-Modell oder seine Dimension wurde gewechselt; Neueinbettung starten ([Modell wechseln](#modell-wechseln)) |
 | Neueinbettung endet „fehlgeschlagen" | Endpunkt nicht erreichbar, Zeitgrenze zu kurz oder einzelne Chunks zu lang für das Modell; Log prüfen, beheben und fortsetzen |
-| Embedding-Aufrufe brechen nach gleicher Zeit ab und wiederholen sich | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
+| Embedding-Aufrufe brechen nach gleicher Zeit ab, Dokumente scheitern | `OPAA_OPENAI_EMBEDDING_TIMEOUT` zu kurz für Modell und Hardware |
 | Dokumente enden mit `FAILED`, Fragen scheitern, alles andere läuft | Modellserver nicht erreichbar oder Modell nicht geladen; unter Compose mit Profil `ollama` zuerst `docker compose logs ollama-pull` |
 | Nach einem Update scheitert die Einbettung | Eine entfallene Variable steht noch in der Umgebung ([Konfiguration](konfiguration.md#entfallene-und-veraltete-variablen)) |
 | Verbindungsfehler gegen vLLM | HTTP/1.1-Modus fehlt ([vLLM](#vllm--openai-kompatible-server)) |

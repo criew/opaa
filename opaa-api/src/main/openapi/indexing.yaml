@@ -221,8 +221,9 @@ paths:
         Installation-wide - the vector index is one for all organizations - and without any
         content: the model the index was built with, the configured model, whether the index is
         stale, the last re-embedding run and how many chunks already carry a vector of the
-        configured model. While the index is stale the vector search is suspended and the full-text
-        search answers alone.
+        configured model. Chunks of private libraries are counted only where their owners reach the
+        minimum group size. While the index is stale the vector search is suspended and the
+        full-text search answers alone.
       responses:
         "200":
           description: State of the vector index
@@ -553,7 +554,8 @@ components:
 
     EmbeddingReindexStatusResponse:
       type: object
-      required: [current, configured, stale, running, totalChunks, embeddedChunks]
+      required:
+        [current, configured, stale, running, totalChunks, embeddedChunks, privateLibrariesCounted]
       properties:
         current:
           $ref: "#/components/schemas/EmbeddingIndexIdentity"
@@ -574,8 +576,14 @@ components:
           type: integer
           format: int64
           description: >
-            Chunks with a vector of the configured model - all chunks with a vector unless the index
-            is stale.
+            Of totalChunks, those with a vector of the configured model - all chunks with a vector
+            unless the index is stale.
+        privateLibrariesCounted:
+          type: boolean
+          description: >
+            Whether totalChunks and embeddedChunks include the chunks of private libraries. They do
+            only where the owners of private libraries reach the minimum group size (ADR-0041,
+            Entscheidung 6); otherwise no number tells whether anyone keeps one.
         lastRun:
           $ref: "#/components/schemas/EmbeddingReindexRunResponse"
 

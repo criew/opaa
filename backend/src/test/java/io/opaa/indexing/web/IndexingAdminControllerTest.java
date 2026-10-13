@@ -624,7 +624,8 @@ class IndexingAdminControllerTest {
             null,
             null),
         2474,
-        1200);
+        1200,
+        false);
   }
 
   @Test

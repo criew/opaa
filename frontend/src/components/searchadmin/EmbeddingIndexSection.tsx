@@ -135,6 +135,7 @@ export default function EmbeddingIndexSection() {
           <Typography variant="body2" sx={{ mb: 0.5 }}>
             {status.embeddedChunks.toLocaleString('de-DE')} von{' '}
             {status.totalChunks.toLocaleString('de-DE')} Abschnitten neu eingebettet ({percent} %)
+            {!status.privateLibrariesCounted && ', ohne private Bibliotheken'}
           </Typography>
           <LinearProgress
             variant="determinate"

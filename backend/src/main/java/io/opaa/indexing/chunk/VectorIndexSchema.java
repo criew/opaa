@@ -67,10 +67,28 @@ public class VectorIndexSchema {
             "SELECT EXISTS (SELECT 1 FROM " + qualifiedTableName + ")", Boolean.class));
   }
 
-  public long chunkCount() {
-    Long count =
-        jdbcTemplate.queryForObject("SELECT count(*) FROM " + qualifiedTableName, Long.class);
-    return count == null ? 0 : count;
+  /** Chunks of shared and of private libraries, each in total and without a vector in a column. */
+  public record ChunkCounts(
+      long sharedTotal, long sharedWithout, long privateTotal, long privateWithout) {}
+
+  /** {@link ChunkCounts} for {@code column}, split by the library a chunk belongs to. */
+  public ChunkCounts chunkCounts(String column) {
+    long[] counts = new long[4];
+    jdbcTemplate.query(
+        "SELECT coalesce(a.owner_only, false) AS private_library, count(*) AS total,"
+            + " count(*) FILTER (WHERE v."
+            + column
+            + " IS NULL) AS without_vector FROM "
+            + qualifiedTableName
+            + " v LEFT JOIN assets a ON a.id::text = v.metadata->>'"
+            + VectorChunkStore.LIBRARY_ID_METADATA_KEY
+            + "' GROUP BY 1",
+        rs -> {
+          int offset = rs.getBoolean("private_library") ? 2 : 0;
+          counts[offset] = rs.getLong("total");
+          counts[offset + 1] = rs.getLong("without_vector");
+        });
+    return new ChunkCounts(counts[0], counts[1], counts[2], counts[3]);
   }
 
   /** Chunks without a vector in {@code column}. */
@@ -117,10 +135,11 @@ public class VectorIndexSchema {
 
   /**
    * Builds the vector index on the target column without blocking reads or writes of the table.
-   * Runs outside any transaction; a half-built index of an earlier attempt is replaced.
+   * Runs outside any transaction; a valid index of an earlier attempt is kept, a half-built one
+   * replaced.
    */
   public void buildTargetIndex() {
-    if (indexType == PgIndexType.NONE) {
+    if (indexType == PgIndexType.NONE || targetIndexIsValid()) {
       return;
     }
     jdbcTemplate.execute("DROP INDEX CONCURRENTLY IF EXISTS " + qualified(TARGET_INDEX_NAME));
@@ -170,6 +189,15 @@ public class VectorIndexSchema {
           }
           afterSwitch.run();
         });
+  }
+
+  /** A completed build of an earlier attempt is kept; a half-built one is not valid. */
+  private boolean targetIndexIsValid() {
+    return Boolean.TRUE.equals(
+        jdbcTemplate.query(
+            "SELECT i.indisvalid FROM pg_index i WHERE i.indexrelid = to_regclass(?)",
+            rs -> rs.next() ? rs.getBoolean(1) : null,
+            qualified(TARGET_INDEX_NAME)));
   }
 
   /** The name {@code PgVectorStore} gives the vector index of the table. */

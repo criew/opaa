@@ -215,6 +215,28 @@ class EmbeddingReindexIntegrationTest {
   }
 
   @Test
+  void goingBackToTheOldModelKeepsTheOldVectorsOfChunksAlreadyReembedded() throws IOException {
+    Document reembedded = indexed("satzung-a.md");
+    Document untouched = indexed("satzung-b.md");
+    jdbcTemplate.update("UPDATE embedding_index SET model = 'text-embedding-3-small'");
+    reconciler.reconcile();
+    rerunService.reembedInPlace(reembedded);
+    Document fresh = indexed("satzung-c.md");
+
+    jdbcTemplate.update("UPDATE embedding_index SET model = 'nomic-embed-text'");
+    reconciler.reconcile();
+
+    assertThat(state.isStale()).isFalse();
+    assertThat(columnCountOf(reembedded, "embedding IS NULL"))
+        .as("re-embedding in place keeps the text, so the old vector stays valid")
+        .isZero();
+    assertThat(columnCountOf(untouched, "embedding IS NULL")).isZero();
+    assertThat(columnCountOf(fresh, "embedding IS NULL"))
+        .as("only a chunk written while stale lacks a vector of the old model")
+        .isEqualTo(chunkIdsOf(fresh).get(fresh.getId()).size());
+  }
+
+  @Test
   void aCancelledRunKeepsTheIndexStaleAndConsistentAndCanBeStartedAgain() throws IOException {
     indexed("satzung-a.md");
     replaceVectorsByAnOldModel(768);

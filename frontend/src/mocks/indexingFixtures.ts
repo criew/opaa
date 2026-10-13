@@ -67,6 +67,7 @@ export const mockEmbeddingIndexCurrent: EmbeddingReindexStatusResponse = {
   running: false,
   totalChunks: 2474,
   embeddedChunks: 2474,
+  privateLibrariesCounted: true,
 }
 
 /** The same index after a switch to bge-m3, part of it already re-embedded by a cancelled run. */
@@ -77,6 +78,7 @@ export const mockEmbeddingIndexStale: EmbeddingReindexStatusResponse = {
   running: false,
   totalChunks: 2474,
   embeddedChunks: 1237,
+  privateLibrariesCounted: false,
   lastRun: {
     status: 'CANCELLED',
     startedAt: '2026-10-13T08:00:00Z',

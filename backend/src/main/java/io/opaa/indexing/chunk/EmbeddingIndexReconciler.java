@@ -98,9 +98,9 @@ public class EmbeddingIndexReconciler implements SmartInitializingSingleton {
         schema.dropTargetColumn();
         if (withoutVector > 0) {
           log.warn(
-              "The configured embedding model matches the index again; {} chunk(s) written while"
-                  + " it was stale have no vector and stay findable by full-text search only"
-                  + " until their documents are indexed again",
+              "The configured embedding model matches the index again; {} chunk(s) newly written"
+                  + " or rewritten with another text while it was stale have no vector and are"
+                  + " found by the full-text search only",
               withoutVector);
         }
       }

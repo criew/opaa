@@ -295,7 +295,10 @@ public class IndexingAdminController {
     return EmbeddingReindexResponseMapper.toResponse(progress);
   }
 
-  /** What the audit event of a start or stop records: the model and how far the index got. */
+  /**
+   * What the audit event of a start or stop records: the model and how far the index got, the
+   * chunks of private libraries masked exactly as in the answer.
+   */
   private static final class EmbeddingReindexCounters {
 
     private EmbeddingReindexCounters() {}
@@ -308,6 +311,7 @@ public class IndexingAdminController {
       }
       counters.put("totalChunks", progress.totalChunks());
       counters.put("embeddedChunks", progress.embeddedChunks());
+      counters.put("privateLibrariesCounted", progress.privateLibrariesCounted());
       return counters;
     }
   }

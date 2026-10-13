@@ -21,7 +21,8 @@ final class EmbeddingReindexResponseMapper {
             progress.stale(),
             progress.running(),
             progress.totalChunks(),
-            progress.embeddedChunks());
+            progress.embeddedChunks(),
+            progress.privateLibrariesCounted());
     EmbeddingIndexRecord.Run run = progress.lastRun();
     if (run != null && run.status() != null) {
       response.lastRun(

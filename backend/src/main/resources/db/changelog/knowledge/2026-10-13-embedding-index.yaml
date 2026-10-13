@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: knowledge-2026-10-13-embedding-index
       author: opaa
-      comment: "Which embedding model the vector index was built with, the target of a re-embedding in progress and the state of its run (#2576). One row for the installation; no row means the next start records the configuration."
+      comment: "Which embedding model the vector index was built with, the target of a re-embedding in progress and the state of its run. One row for the installation; no row means the next start records the configuration."
       changes:
         - sql:
             sql: |

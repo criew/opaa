@@ -35,7 +35,9 @@ describe('EmbeddingIndexSection', () => {
     expect(screen.getByText(/konfiguriert ist bge-m3 \(1024 Dimensionen\)/)).toBeInTheDocument()
     expect(screen.getByText(/Vektorsuche ausgesetzt/)).toBeInTheDocument()
     expect(
-      screen.getByText(/1\.237 von 2\.474 Abschnitten neu eingebettet \(50 %\)/),
+      screen.getByText(
+        /1\.237 von 2\.474 Abschnitten neu eingebettet \(50 %\), ohne private Bibliotheken/,
+      ),
     ).toBeInTheDocument()
     expect(
       screen.getByRole('progressbar', { name: 'Fortschritt der Neueinbettung' }),

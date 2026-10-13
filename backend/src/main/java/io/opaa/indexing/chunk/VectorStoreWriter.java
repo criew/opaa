@@ -105,18 +105,24 @@ public class VectorStoreWriter {
 
   /**
    * The upsert into {@code column}. Into the target column of a stale index, the embedding column
-   * is cleared: its vector belongs to the previous model and possibly to a previous text.
+   * keeps its vector of the previous model only while the chunk text stays the same; a new text
+   * clears it, and a new chunk has none.
    */
   private String upsertSql(String column) {
     String clearStale =
         EmbeddingIndexState.TARGET_COLUMN.equals(column)
-            ? ", " + EmbeddingIndexState.EMBEDDING_COLUMN + " = NULL"
+            ? ", "
+                + EmbeddingIndexState.EMBEDDING_COLUMN
+                + " = CASE WHEN existing.content IS DISTINCT FROM EXCLUDED.content THEN NULL"
+                + " ELSE existing."
+                + EmbeddingIndexState.EMBEDDING_COLUMN
+                + " END"
             : "";
     return "INSERT INTO "
         + schemaName
         + "."
         + tableName
-        + " (id, content, metadata, "
+        + " AS existing (id, content, metadata, "
         + column
         + ") VALUES (?, ?, ?::jsonb, ?) ON CONFLICT (id) DO UPDATE SET content = ?,"
         + " metadata = ?::jsonb, "
