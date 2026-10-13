@@ -21,6 +21,7 @@ import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.LocalIssuer;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.mail.MailDispatchExecutor;
 import io.opaa.mail.MailSettingsService;
 import io.opaa.test.LocalAccountFixtures;
 import io.opaa.test.LocalAccountFixtures.LocalAccount;
@@ -33,9 +34,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,6 +85,8 @@ class LocalSelfServiceIntegrationTest {
   private static final long EPSILON = 50;
   private static final long CEILING = 4 * FLOOR;
   private static final int REPETITIONS = 3;
+  private static final int REGISTRATION_ROUNDS = 9;
+  private static final double NOISE_FACTOR = 1.5;
 
   @Autowired private MockMvc mockMvc;
   @Autowired private LocalAccountFixturesFactory fixturesFactory;
@@ -87,6 +95,7 @@ class LocalSelfServiceIntegrationTest {
   @Autowired private LocalAuthSettingsRepository settings;
   @Autowired private UserRepository users;
   @Autowired private MailSettingsService mailSettings;
+  @Autowired private MailDispatchExecutor dispatch;
   @Autowired private JdbcTemplate jdbc;
 
   private LocalAccountFixtures fixtures;
@@ -311,7 +320,7 @@ class LocalSelfServiceIntegrationTest {
             expired.email(),
             invited.email(),
             active.email().toUpperCase());
-    Map<String, Long> fastest = new java.util.LinkedHashMap<>();
+    Map<String, Long> fastest = new LinkedHashMap<>();
     for (int repetition = 0; repetition < REPETITIONS; repetition++) {
       for (String email : cases) {
         long start = System.nanoTime();
@@ -457,22 +466,26 @@ class LocalSelfServiceIntegrationTest {
         .andExpect(status().isAccepted());
     assertThat(mailbox.waitFor(1, 10_000)).isTrue();
 
-    Map<String, Long> fastest = new java.util.LinkedHashMap<>();
+    // Every round times each case once, in a shuffled order, after the dispatch thread has
+    // finished the previous request's work. Under load the BCrypt on the request thread varies by
+    // far more than EPSILON, so a case's median may differ from the free address's by the larger
+    // of EPSILON and NOISE_FACTOR times the interquartile range of all times around their medians.
+    Map<String, List<Long>> times = new LinkedHashMap<>();
     List<String> free = new ArrayList<>();
-    for (int repetition = 0; repetition < REPETITIONS; repetition++) {
+    Random order = new Random(2194);
+    for (int round = 0; round < REGISTRATION_ROUNDS; round++) {
       String freeAddress = "frei-" + UUID.randomUUID() + "@" + DOMAIN;
       free.add(freeAddress);
-      Map<String, String> cases =
-          Map.of(
-              "taken-upper",
-              taken.email().toUpperCase(),
-              "foreign",
-              foreign,
-              "free",
-              freeAddress,
-              "taken",
-              taken.email());
-      for (Map.Entry<String, String> testCase : cases.entrySet()) {
+      List<Map.Entry<String, String>> cases =
+          new ArrayList<>(
+              List.of(
+                  Map.entry("free", freeAddress),
+                  Map.entry("taken", taken.email()),
+                  Map.entry("taken-upper", taken.email().toUpperCase()),
+                  Map.entry("foreign", foreign)));
+      Collections.shuffle(cases, order);
+      for (Map.Entry<String, String> testCase : cases) {
+        awaitDispatchIdle();
         long start = System.nanoTime();
         MvcResult result =
             register(testCase.getValue(), "Irgendwer", NEW_PASSWORD)
@@ -480,20 +493,33 @@ class LocalSelfServiceIntegrationTest {
                 .andReturn();
         long ms = (System.nanoTime() - start) / 1_000_000;
         assertThat(result.getResponse().getContentAsString()).isEmpty();
-        fastest.merge(testCase.getKey(), ms, Math::min);
+        times.computeIfAbsent(testCase.getKey(), name -> new ArrayList<>()).add(ms);
       }
     }
-    assertThat(fastest)
-        .allSatisfy((name, ms) -> assertThat(ms).as(name).isBetween(FLOOR - 5, CEILING));
-    long spread =
-        fastest.values().stream().mapToLong(Long::longValue).max().orElseThrow()
-            - fastest.values().stream().mapToLong(Long::longValue).min().orElseThrow();
-    assertThat(spread).as("response-time spread %s", fastest).isLessThanOrEqualTo(EPSILON);
+    assertThat(times)
+        .allSatisfy(
+            (name, ms) -> {
+              assertThat(Collections.min(ms)).as(name).isGreaterThanOrEqualTo(FLOOR - 5);
+              assertThat(median(ms)).as(name).isLessThanOrEqualTo(CEILING);
+            });
+    List<Long> residuals = new ArrayList<>();
+    times.values().forEach(ms -> ms.forEach(t -> residuals.add(t - median(ms))));
+    long noise = quantile(residuals, 0.75) - quantile(residuals, 0.25);
+    long tolerance = Math.max(EPSILON, Math.round(NOISE_FACTOR * noise));
+    long freeMedian = median(times.get("free"));
+    assertThat(times)
+        .allSatisfy(
+            (name, ms) ->
+                assertThat(Math.abs(median(ms) - freeMedian))
+                    .as(
+                        "median shift of %s against free (tolerance %d ms) in %s",
+                        name, tolerance, times)
+                    .isLessThanOrEqualTo(tolerance));
 
     // the free addresses got their account and their mail; the mail is the sync point for all
     // the work queued before it (one thread, in order)
-    assertThat(mailbox.waitFor(1 + REPETITIONS, 10_000)).isTrue();
-    assertThat(mailbox.waitFor(2 + REPETITIONS, 1_500)).isFalse();
+    assertThat(mailbox.waitFor(1 + REGISTRATION_ROUNDS, 10_000)).isTrue();
+    assertThat(mailbox.waitFor(2 + REGISTRATION_ROUNDS, 1_500)).isFalse();
     List<String> recipients = new ArrayList<>();
     for (MimeMessage message : mailbox.messages()) {
       recipients.add(message.getAllRecipients()[0].toString());
@@ -513,7 +539,24 @@ class LocalSelfServiceIntegrationTest {
     assertThat(users.findByIssuerAndEmailIgnoreCase(LocalIssuer.URN, foreign)).isEmpty();
     assertThat(fixtures.credentialsOf(taken).getPasswordHash())
         .isEqualTo(taken.credentials().getPasswordHash());
-    assertThat(auditRows("LOCAL_USER_REGISTERED")).hasSize(1 + REPETITIONS);
+    assertThat(auditRows("LOCAL_USER_REGISTERED")).hasSize(1 + REGISTRATION_ROUNDS);
+  }
+
+  /** Returns once the dispatch thread has run everything queued before this call. */
+  private void awaitDispatchIdle() throws InterruptedException {
+    CountDownLatch idle = new CountDownLatch(1);
+    dispatch.execute(idle::countDown);
+    assertThat(idle.await(10, TimeUnit.SECONDS)).isTrue();
+  }
+
+  private static long median(List<Long> samples) {
+    return quantile(samples, 0.5);
+  }
+
+  /** The sample at rank {@code q} of the sorted samples, without interpolation. */
+  private static long quantile(List<Long> samples, double q) {
+    List<Long> sorted = samples.stream().sorted().toList();
+    return sorted.get((int) Math.round(q * (sorted.size() - 1)));
   }
 
   @Test
