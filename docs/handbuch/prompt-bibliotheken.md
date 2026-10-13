@@ -254,7 +254,27 @@ Nachweisprotokoll. Eine Änderung nennt nur, welche Felder sich geändert haben,
 Titel und Text eines Prompts stehen nie im Protokoll. Rollen,
 Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissensbibliothek.
 
-## 9. Was nicht gebaut ist
+## 9. Abschalten
+
+Eine Installation kann Prompt-Bibliotheken ganz abschalten, etwa für eine Demo, die nur Fragen und
+Antworten zeigen soll (`OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED=false`, siehe
+[Konfiguration](konfiguration.md#funktionen-abschalten)). Danach erwähnt die Oberfläche sie nirgends:
+
+- Der Katalog zeigt keine Prompt-Bibliothek und keinen Typfilter „Prompts", „Neu" bietet nur noch
+  Wissen an, und das Anlegerecht „Prompt-Bibliotheken anlegen" fehlt in der Übersicht der
+  Anlegerechte.
+- Space-Inhalte, Zählungen und die Auswahl beim Anlegen und Zuordnen enthalten keine
+  Prompt-Bibliotheken; die Liste „Ohne Zuständigkeit" nennt keine.
+- Im Chat öffnet `/` keine Auswahl, und der Hinweis unter dem Eingabefeld nennt `/` nicht. Eine
+  Frage, die noch einen Prompt nennt, lehnt OPAA ab. Frühere Fragen tragen keinen Hinweis „Prompt:
+  <Titel>" mehr.
+- Adressen von Prompt-Bibliotheken führen in den Katalog.
+
+Vorhandene Prompt-Bibliotheken, Prompts, Rollen, Zuordnungen und Favoriten bleiben unverändert
+gespeichert. Eigentumsübertragung, das Auflösen einer Gruppe und das Entfernen eines Kontos
+erfassen sie weiter wie jedes Arbeitsmittel. Wieder eingeschaltet, ist alles wie zuvor.
+
+## 10. Was nicht gebaut ist
 
 - **Versionen, Freigabeweg und Nutzungszähler** für Prompts; der Katalog nennt deshalb weder einen
   Freigabestand noch Nutzungsangaben. Favoriten gibt es für die ganze Bibliothek im Katalog, nicht
@@ -263,7 +283,7 @@ Eigentum und Nachfolge protokolliert und historisiert OPAA wie bei jeder Wissens
 - **Eine eigene Reihenfolge der Prompts** in der Oberfläche; die Liste folgt der gespeicherten
   Reihenfolge, dann dem Befehl.
 
-## 10. Weiterführende Kapitel
+## 11. Weiterführende Kapitel
 
 - Rollen, Gruppen, Anlegerechte, Herleitung, Rechtehistorie und Lebenszyklus im Einzelnen:
   [Berechtigungen](berechtigungen.md)

@@ -524,7 +524,7 @@ prüft die Werte beim Rendern; ein unbekannter Schlüssel wird abgelehnt.
 
 | Wert | Vorgabe | Setzt | Wirkung |
 |---|---|---|---|
-| `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | Schalter für die Prompt-Bibliotheken, noch ohne Wirkung (#2588) |
+| `features.promptLibraries.enabled` | `true` | `OPAA_FEATURES_PROMPT_LIBRARIES_ENABLED` | `false` schaltet die Prompt-Bibliotheken ab (siehe [Prompt-Bibliotheken](prompt-bibliotheken.md#9-abschalten)) |
 | `features.metadata.enabled` | `true` | `OPAA_FEATURES_METADATA_ENABLED` | Schalter für die Metadaten von Dokumenten und Bibliotheken, noch ohne Wirkung (#2589) |
 
 Ein Schalter setzt die Variable `OPAA_FEATURES_<NAME>_ENABLED`, der Name in Großbuchstaben mit
