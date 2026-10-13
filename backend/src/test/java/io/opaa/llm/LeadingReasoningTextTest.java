@@ -123,9 +123,45 @@ class LeadingReasoningTextTest {
   }
 
   @Test
-  void aLoneClosingTagRightAtTheStartOrIndentedOnItsLineCounts() {
+  void aLoneClosingTagRightAtTheStartOrSlightlyIndentedOnItsOwnLineCounts() {
     assertThat(LeadingReasoningText.strip("</think>\n\nAntwort").text()).isEqualTo("Antwort");
-    assertThat(LeadingReasoningText.strip("Denken\n  </think>Antwort").text()).isEqualTo("Antwort");
+    LeadingReasoningText.Stripped indented =
+        LeadingReasoningText.strip("Denken\n   </think>  \nAntwort");
+
+    assertThat(indented.text()).isEqualTo("Antwort");
+    assertThat(indented.withoutOpeningTag()).isTrue();
+  }
+
+  @Test
+  void aClosingTagFollowedByTextOnItsLineIsAnswerText() {
+    String answer = "Denken\n</think>Antwort";
+    String sentence = "Ein Denkblock endet so:\n</think> beendet den Block.";
+
+    assertThat(LeadingReasoningText.strip(answer).text()).isSameAs(answer);
+    assertThat(LeadingReasoningText.strip(sentence).text()).isSameAs(sentence);
+  }
+
+  @Test
+  void aClosingTagInAnIndentedCodeBlockIsAnswerText() {
+    String answer = "Das Ende eines Denkblocks:\n\n    </think>\n\nDanach folgt die Antwort.";
+    String tabbed = "Das Ende eines Denkblocks:\n\n\t</think>\n\nDanach folgt die Antwort.";
+
+    assertThat(LeadingReasoningText.strip(answer).text()).isSameAs(answer);
+    assertThat(LeadingReasoningText.strip(tabbed).text()).isSameAs(tabbed);
+  }
+
+  @Test
+  void aClosingTagInsideATildeCodeBlockIsAnswerText() {
+    String answer = "Das Ende eines Denkblocks:\n~~~\n</think>\n~~~\nDanach folgt die Antwort.";
+
+    assertThat(LeadingReasoningText.strip(answer).text()).isSameAs(answer);
+  }
+
+  @Test
+  void onlyFenceLinesOpenACodeBlock() {
+    String answer = "Inline ``` ist kein Codeblock\n</think>\nAntwort";
+
+    assertThat(LeadingReasoningText.strip(answer).text()).isEqualTo("Antwort");
   }
 
   @Test

@@ -2,7 +2,7 @@
   "id": "chatcmpl-deepseek-r1-closing-tag-only",
   "object": "chat.completion",
   "created": 1791849600,
-  "model": "deepseek-r1:1.5b",
+  "model": "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M",
   "choices": [
     {
       "index": 0,

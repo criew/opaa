@@ -51,7 +51,12 @@ public class ReasoningTextStrippingChatModel implements ChatModel {
     if (stripped.removedCharacters() == 0) {
       return generation;
     }
-    if (stripped.unclosed()) {
+    if (stripped.withoutOpeningTag()) {
+      log.info(
+          "Removed {} characters of reasoning text ending in a lone closing tag from the model"
+              + " answer",
+          stripped.removedCharacters());
+    } else if (stripped.unclosed()) {
       log.debug(
           "Model answer is an unclosed reasoning block of {} characters - no answer text left",
           stripped.removedCharacters());

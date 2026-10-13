@@ -196,7 +196,7 @@ class ActiveChatModelResolverIntegrationTest {
   void bothResolvedClientsRemoveReasoningThatOnlyHasAClosingTag() throws IOException {
     assertBothClientsAnswer(
         "/llm/deepseek-r1-closing-tag-only.json",
-        "deepseek-r1:1.5b",
+        "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M",
         "Eine Week hat sieben Tage.",
         511);
   }

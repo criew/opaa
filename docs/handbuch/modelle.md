@@ -138,9 +138,10 @@ Antwort als leer, und unter ihr erscheint der Hinweis auf die fehlende Antwort.
 Bei manchen selbst betriebenen Modellen, etwa DeepSeek-R1 oder Qwen3-Thinking auf einem Server ohne
 Reasoning-Parser, steht das öffnende `<think>` schon in der Anfrage. Die Antwort beginnt dann direkt
 mit dem Denktext und enthält nur das schließende Tag, auf eigener Zeile vor der Antwort. OPAA entfernt
-auch diesen Denktext, bis zum ersten `</think>` im Text — aber nur, wenn dieses am Anfang einer
-Zeile steht und davor weder ein öffnendes Tag noch ein offener Codeblock steht. Eine Antwort, die das Tag
-erklärt oder zitiert, bleibt so unverändert. Bricht ein solches Modell schon beim Nachdenken ab,
+auch diesen Denktext, bis zum ersten `</think>` im Text — aber nur, wenn dieses allein auf seiner
+Zeile steht, höchstens drei Leerzeichen eingerückt, und davor weder ein öffnendes Tag noch ein
+offener Codeblock steht. Eine Antwort, die das Tag im Satz erwähnt oder in einem Codeblock zitiert,
+bleibt so unverändert. Bricht ein solches Modell schon beim Nachdenken ab,
 fehlt jedes Tag; der Denktext bleibt dann als Antwort stehen.
 
 Ein Schalter je Modell ist nicht nötig; der Verbindungstest weist darauf hin, wenn die Testantwort
