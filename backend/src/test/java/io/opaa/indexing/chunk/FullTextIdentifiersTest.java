@@ -1,6 +1,7 @@
 package io.opaa.indexing.chunk;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.entry;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -167,6 +168,29 @@ class FullTextIdentifiersTest {
         .containsExactly("xfldvorort", "xfldinhaus");
     assertThat(FullTextIdentifiers.extract("Übermittlung über ELSTER an KONSENS"))
         .containsExactly("xfldelster", "xfldkonsens");
+  }
+
+  /**
+   * The query path weighs only pure word forms by frequency (#2624). {@code all} is exactly what
+   * the write path stores, so both sides keep building the same lexemes; snake-case, camel-case and
+   * the other identifier kinds never count as word forms.
+   */
+  @Test
+  void analyzeMarksOnlyUppercaseWordsAsWordFormsAndKeepsTheWritePathsLexemes() {
+    String text = "ELSTER meldet BELEG_NR und ZahlungsDatenKV nach § 35 BauGB, Prüfung PRÜFUNG.";
+
+    FullTextIdentifiers.Lexemes lexemes = FullTextIdentifiers.analyze(text);
+
+    assertThat(lexemes.all()).isEqualTo(FullTextIdentifiers.extract(text));
+    assertThat(lexemes.wordForms())
+        .containsExactly(entry("xfldelster", "ELSTER"), entry("xfldpruefung", "PRÜFUNG"));
+  }
+
+  /** A lexeme the text also yields from a structural shape is no word form. */
+  @Test
+  void aLexemeAlsoBuiltFromASnakeCaseNameIsNoWordForm() {
+    assertThat(FullTextIdentifiers.analyze("BELEGNR und BELEG_NR").wordForms()).isEmpty();
+    assertThat(FullTextIdentifiers.analyze("BELEG_NR und BELEGNR").wordForms()).isEmpty();
   }
 
   @Test

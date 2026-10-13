@@ -27,6 +27,9 @@ import org.springframework.stereotype.Component;
  * list per search query. Its lists enter {@link RankFusionStage} next to the vector path's,
  * deduplicated by chunk id and never by score.
  *
+ * <p>Uppercase words a list searched as ordinary words ({@link
+ * FullTextSearchResult#demotedIdentifiers()}) are named in a note per list, without any count.
+ *
  * <p>{@link QueryProperties#fullTextSearchEnabled()} is the only gate, and it narrows: every
  * library of the scope is searched otherwise.
  *
@@ -75,23 +78,31 @@ public class FullTextSearchStage implements RetrievalStage {
     List<String> searchQueries = SearchStageSupport.searchQueriesOrQuestion(context, state);
     List<CandidateList> lists = new ArrayList<>(searchQueries.size());
     List<CandidateVerdict> verdicts = new ArrayList<>();
+    List<String> demotionNotes = new ArrayList<>();
     for (int i = 0; i < searchQueries.size(); i++) {
       String label = listLabel(i);
-      List<Document> candidates =
+      FullTextSearchResult result =
           fullTextChunkSearch.search(
               searchQueries.get(i),
               searchScope,
               state.metadataFilter(),
               state.metadataFilterVocabularyCodes(),
               context.queryProperties().fetchK());
+      List<Document> candidates = result.chunks();
       lists.add(new CandidateList(label, candidates));
       verdicts.addAll(SearchStageSupport.retrievalVerdicts(label, candidates));
+      if (!result.demotedIdentifiers().isEmpty()) {
+        demotionNotes.add(
+            RetrievalNote.FULL_TEXT_IDENTIFIERS_DEMOTED.format(
+                label, String.join(", ", result.demotedIdentifiers())));
+      }
     }
 
     int retrieved = lists.stream().mapToInt(list -> list.documents().size()).sum();
     List<String> notes = new ArrayList<>();
     notes.add(RetrievalNote.FULL_TEXT_SEARCH_LISTS.format(lists.size()));
     notes.add(RetrievalNote.FETCH_K.format(context.queryProperties().fetchK()));
+    notes.addAll(demotionNotes);
     if (!state.metadataFilter().isEmpty()) {
       List<Document> all = lists.stream().flatMap(list -> list.documents().stream()).toList();
       notes.add(
