@@ -46,14 +46,17 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
   private static final int MAX_CUTTING_LEVEL = 3;
 
   private final OdfProperties odfProperties;
+  private final HeadingSectionSplitter splitter;
   private final OdfPackage.Opener opener;
 
-  public OdtDocumentFormat(OdfProperties odfProperties) {
-    this(odfProperties, OdfPackage::open);
+  public OdtDocumentFormat(OdfProperties odfProperties, HeadingSectionSplitter splitter) {
+    this(odfProperties, splitter, OdfPackage::open);
   }
 
-  OdtDocumentFormat(OdfProperties odfProperties, OdfPackage.Opener opener) {
+  OdtDocumentFormat(
+      OdfProperties odfProperties, HeadingSectionSplitter splitter, OdfPackage.Opener opener) {
     this.odfProperties = odfProperties;
+    this.splitter = splitter;
     this.opener = opener;
   }
 
@@ -136,7 +139,7 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
 
   @Override
   protected DocumentFormatResult chunks(DocumentFormatSource source, OdtContent content) {
-    List<Document> chunks = HeadingSectionSplitter.chunk(content.events(), MAX_CUTTING_LEVEL);
+    List<Document> chunks = splitter.chunk(content.events(), MAX_CUTTING_LEVEL);
     if (chunks.isEmpty()) {
       // Covers both a genuinely empty <office:text/> and text that chunked down to nothing - the
       // same NO_EXTRACTABLE_TEXT outcome TikaFallbackFormat reported for either case before this
@@ -147,7 +150,7 @@ public class OdtDocumentFormat extends FileDocumentFormat<OdtDocumentFormat.OdtC
     }
     List<Document> allChunks = new ArrayList<>(chunks);
     allChunks.addAll(
-        0, RepeatingHeaderChunk.of(HEADER_FOOTER_LOCATION, content.headerFooterText()));
+        0, RepeatingHeaderChunk.of(splitter, HEADER_FOOTER_LOCATION, content.headerFooterText()));
     return DocumentFormatResult.chunked(allChunks);
   }
 

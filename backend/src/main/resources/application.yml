@@ -278,8 +278,12 @@ opaa:
     # Installations with a faster (typically GPU-backed) endpoint may lower this.
     timeout: ${OPAA_RERANK_TIMEOUT:240s}
   indexing:
+    # Tokens; only the Tika fallback and plain texts. Structured formats cut by characters below.
     chunk-size: ${OPAA_INDEXING_CHUNK_SIZE:1000}
     chunk-overlap: ${OPAA_INDEXING_CHUNK_OVERLAP:100}
+    # Target size of the structure-aware cut (Markdown, DOCX, ODT, HTML, PDF, Confluence, slides,
+    # tables) in characters, 500-8000; applies to documents indexed afterwards.
+    chunk-target-characters: ${OPAA_INDEXING_CHUNK_TARGET_CHARACTERS:4000}
     batch-size: ${OPAA_INDEXING_BATCH_SIZE:50}
     embedding-concurrency: ${OPAA_INDEXING_EMBEDDING_CONCURRENCY:3}
     # #1072: fallback rate of the Folgekosten estimate, in chunks per second. Only used until

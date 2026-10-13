@@ -9,6 +9,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -31,7 +32,8 @@ class OdtDocumentFormatTest {
   @TempDir Path tempDir;
 
   private final OdtDocumentFormat pipeline =
-      new OdtDocumentFormat(new OdfProperties(0, 0, 0, 0, 0));
+      new OdtDocumentFormat(
+          new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
 
   /** Lifts a section above the size below which neighbouring sections are combined. */
   private static final String NAEHERE =
@@ -63,7 +65,9 @@ class OdtDocumentFormatTest {
   @Test
   void oneRunOpensThePackageOnceAndReadsMetaContentAndStylesFromIt() throws IOException {
     CountingOdfOpener opener = new CountingOdfOpener();
-    OdtDocumentFormat counting = new OdtDocumentFormat(new OdfProperties(0, 0, 0, 0, 0), opener);
+    OdtDocumentFormat counting =
+        new OdtDocumentFormat(
+            new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT, opener);
     Path file = tempDir.resolve("einmal.odt");
     writeOdtWithRawStyles(
         file,
@@ -88,7 +92,9 @@ class OdtDocumentFormatTest {
   @Test
   void readingPropertiesAloneOpensThePackageOnceForMetaAndHeadings() throws IOException {
     CountingOdfOpener opener = new CountingOdfOpener();
-    OdtDocumentFormat counting = new OdtDocumentFormat(new OdfProperties(0, 0, 0, 0, 0), opener);
+    OdtDocumentFormat counting =
+        new OdtDocumentFormat(
+            new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT, opener);
     Path file = tempDir.resolve("einmal-eigenschaften.odt");
     writeOdtWithRawStyles(file, odtHeading(1, "Antrag") + odtParagraph("Inhalt."), null, META_XML);
 
@@ -464,7 +470,8 @@ class OdtDocumentFormatTest {
       throws IOException {
     // regression guard for #1145.
     OdtDocumentFormat tinyStylesLimitPipeline =
-        new OdtDocumentFormat(new OdfProperties(500, 0, 0, 0, 0));
+        new OdtDocumentFormat(
+            new OdfProperties(500, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("grosse-styles.odt");
     writeOdtWithStyles(
         file,
@@ -575,7 +582,9 @@ class OdtDocumentFormatTest {
 
   @Test
   void aContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory() throws IOException {
-    OdtDocumentFormat tinyLimitPipeline = new OdtDocumentFormat(new OdfProperties(50, 0, 0, 0, 0));
+    OdtDocumentFormat tinyLimitPipeline =
+        new OdtDocumentFormat(
+            new OdfProperties(50, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("gross.odt");
     writeOdt(file, odtHeading(1, "Ueberschrift") + odtParagraph("Ein laengerer Textkoerper."));
 
@@ -603,7 +612,9 @@ class OdtDocumentFormatTest {
   void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
     // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
     // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
-    OdtDocumentFormat tinyLimitPipeline = new OdtDocumentFormat(new OdfProperties(0, 0, 0, 5, 0));
+    OdtDocumentFormat tinyLimitPipeline =
+        new OdtDocumentFormat(
+            new OdfProperties(0, 0, 0, 5, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("weite-luecke.odt");
     writeOdt(file, odtParagraph("A<text:s text:c=\"2000000000\"/>B"));
 
@@ -621,7 +632,9 @@ class OdtDocumentFormatTest {
     // regression guard for #1143: the per-element cap (maxSpaceRepeat) bounds a single text:s
     // element, but text is only reset once per paragraph - an unbounded number of text:s elements
     // inside the same <text:p> would otherwise sum into the same buffer without limit.
-    OdtDocumentFormat tinyLimitPipeline = new OdtDocumentFormat(new OdfProperties(0, 0, 0, 5, 12));
+    OdtDocumentFormat tinyLimitPipeline =
+        new OdtDocumentFormat(
+            new OdfProperties(0, 0, 0, 5, 12), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("viele-leerzeichen.odt");
     writeOdt(
         file,
@@ -658,7 +671,9 @@ class OdtDocumentFormatTest {
   @Test
   void aDocumentExceedingTheParagraphLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    OdtDocumentFormat tinyLimitPipeline = new OdtDocumentFormat(new OdfProperties(0, 1, 0, 0, 0));
+    OdtDocumentFormat tinyLimitPipeline =
+        new OdtDocumentFormat(
+            new OdfProperties(0, 1, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("viele-absaetze.odt");
     writeOdt(file, odtParagraph("Erster Absatz.") + odtParagraph("Zweiter Absatz."));
 

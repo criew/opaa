@@ -6,11 +6,10 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * DoS-hardening limits {@link TabularDocumentFormat} applies against a pathological XLSX/CSV/ODS
  * file.
  *
- * <p>Deliberately separate from the pipeline's chunk-size constants ({@code MAX_ROWS_PER_CHUNK}/
- * {@code MAX_CHUNK_CHARS}), which stay hardcoded: those are the Zuschnitt itself
- * (docs/features/ingestion-pipelines.md, Querschnittsregel c - "kein Konfigurationsknopf in der
- * Oberfläche"), while the limits here are memory-safety ceilings, the same kind of operator-tunable
- * limit a connector's own {@code max-*-bytes} fields already are.
+ * <p>Deliberately separate from the Zuschnitt itself ({@code MAX_ROWS_PER_CHUNK} and the shared
+ * target size, docs/features/ingestion-pipelines.md, Querschnittsregel c - "kein
+ * Konfigurationsknopf in der Oberfläche"): the limits here are memory-safety ceilings, the same
+ * kind of operator-tunable limit a connector's own {@code max-*-bytes} fields already are.
  *
  * @param maxRowColumns the maximum number of columns read from a single row, for XLSX and ODS alike
  *     - a defensive ceiling against a pathologically wide sheet (real spreadsheets rarely exceed a

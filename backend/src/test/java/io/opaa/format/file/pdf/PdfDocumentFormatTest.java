@@ -8,6 +8,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,7 +38,8 @@ class PdfDocumentFormatTest {
 
   @TempDir Path tempDir;
 
-  private final PdfDocumentFormat pipeline = new PdfDocumentFormat();
+  private final PdfDocumentFormat pipeline =
+      new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
 
   @Test
   void claimsExactlyPdf() {

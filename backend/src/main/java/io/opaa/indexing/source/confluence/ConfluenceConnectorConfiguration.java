@@ -1,5 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
+import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
@@ -41,8 +42,9 @@ public class ConfluenceConnectorConfiguration {
    * cuts.
    */
   @Bean
-  ConfluenceStorageFormat confluenceDocumentPipeline() {
-    return new ConfluenceStorageFormat();
+  ConfluenceStorageFormat confluenceDocumentPipeline(
+      HeadingSectionSplitter headingSectionSplitter) {
+    return new ConfluenceStorageFormat(headingSectionSplitter);
   }
 
   @Bean

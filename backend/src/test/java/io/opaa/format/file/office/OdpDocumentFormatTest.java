@@ -9,6 +9,7 @@ import io.opaa.format.DocumentFormatRunner;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.PassthroughMetadataKeysTestSupport;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -30,7 +31,8 @@ class OdpDocumentFormatTest {
   @TempDir Path tempDir;
 
   private final OdpDocumentFormat pipeline =
-      new OdpDocumentFormat(new OdfProperties(0, 0, 0, 0, 0));
+      new OdpDocumentFormat(
+          new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
 
   private static final String META_XML =
       "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
@@ -49,7 +51,9 @@ class OdpDocumentFormatTest {
   @Test
   void oneRunOpensThePackageOnceAndReadsMetaContentAndStylesFromIt() throws IOException {
     CountingOdfOpener opener = new CountingOdfOpener();
-    OdpDocumentFormat counting = new OdpDocumentFormat(new OdfProperties(0, 0, 0, 0, 0), opener);
+    OdpDocumentFormat counting =
+        new OdpDocumentFormat(
+            new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT, opener);
     Path file = tempDir.resolve("einmal.odp");
     writeOdpWithRawStyles(
         file,
@@ -73,7 +77,9 @@ class OdpDocumentFormatTest {
   @Test
   void readingPropertiesAloneOpensThePackageOnceForMeta() throws IOException {
     CountingOdfOpener opener = new CountingOdfOpener();
-    OdpDocumentFormat counting = new OdpDocumentFormat(new OdfProperties(0, 0, 0, 0, 0), opener);
+    OdpDocumentFormat counting =
+        new OdpDocumentFormat(
+            new OdfProperties(0, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT, opener);
     Path file = tempDir.resolve("einmal-eigenschaften.odp");
     writeOdpWithRawStyles(file, odpSlide(odpFrame("title", "Einfuehrung")), null, META_XML);
 
@@ -560,7 +566,9 @@ class OdpDocumentFormatTest {
 
   @Test
   void aContentXmlExceedingTheByteLimitIsRejectedRatherThanExhaustingMemory() throws IOException {
-    OdpDocumentFormat tinyLimitPipeline = new OdpDocumentFormat(new OdfProperties(50, 0, 0, 0, 0));
+    OdpDocumentFormat tinyLimitPipeline =
+        new OdpDocumentFormat(
+            new OdfProperties(50, 0, 0, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("gross.odp");
     writeOdp(file, odpSlide(odpFrame("title", "Titel") + odpFrame(null, "Ein laengerer Text.")));
 
@@ -588,7 +596,9 @@ class OdpDocumentFormatTest {
   void aTextSWithAnExtremeRepeatCountIsCappedRatherThanExhaustingMemory() throws IOException {
     // regression guard for #1143: text:c is attacker-controlled and unrelated to content.xml's
     // byte size - without a cap, a single element requests gigabytes of in-memory spaces.
-    OdpDocumentFormat tinyLimitPipeline = new OdpDocumentFormat(new OdfProperties(0, 0, 0, 5, 0));
+    OdpDocumentFormat tinyLimitPipeline =
+        new OdpDocumentFormat(
+            new OdfProperties(0, 0, 0, 5, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("weite-luecke.odp");
     writeOdp(file, odpSlide(odpFrame(null, "A<text:s text:c=\"2000000000\"/>B")));
 
@@ -606,7 +616,9 @@ class OdpDocumentFormatTest {
     // regression guard for #1143: the per-element cap (maxSpaceRepeat) bounds a single text:s
     // element, but text is only reset once per paragraph - an unbounded number of text:s elements
     // inside the same <text:p> would otherwise sum into the same buffer without limit.
-    OdpDocumentFormat tinyLimitPipeline = new OdpDocumentFormat(new OdfProperties(0, 0, 0, 5, 12));
+    OdpDocumentFormat tinyLimitPipeline =
+        new OdpDocumentFormat(
+            new OdfProperties(0, 0, 0, 5, 12), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("viele-leerzeichen.odp");
     writeOdp(
         file,
@@ -636,7 +648,8 @@ class OdpDocumentFormatTest {
                 "<text:s text:c=\"5\"/><text:s text:c=\"5\"/><text:s text:c=\"5\"/>"
                     + "<text:s text:c=\"5\"/>")));
     OdpDocumentFormat.OdpContentHandler handler =
-        new OdpDocumentFormat.OdpContentHandler(5_000, 5, 12);
+        new OdpDocumentFormat.OdpContentHandler(
+            HeadingSectionSplitterFixture.DEFAULT, 5_000, 5, 12);
 
     assertThatThrownBy(() -> OdfPackage.parse(file, 10_485_760L, handler))
         .isInstanceOf(IOException.class)
@@ -647,7 +660,9 @@ class OdpDocumentFormatTest {
   @Test
   void aPresentationExceedingTheSlideLimitIsRejectedRatherThanExhaustingMemory()
       throws IOException {
-    OdpDocumentFormat tinyLimitPipeline = new OdpDocumentFormat(new OdfProperties(0, 0, 1, 0, 0));
+    OdpDocumentFormat tinyLimitPipeline =
+        new OdpDocumentFormat(
+            new OdfProperties(0, 0, 1, 0, 0), HeadingSectionSplitterFixture.DEFAULT);
     Path file = tempDir.resolve("viele-folien.odp");
     writeOdp(
         file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));
@@ -666,7 +681,8 @@ class OdpDocumentFormatTest {
     writeOdp(
         file, odpSlide(odpFrame(null, "Folie eins.")) + odpSlide(odpFrame(null, "Folie zwei.")));
     OdpDocumentFormat.OdpContentHandler handler =
-        new OdpDocumentFormat.OdpContentHandler(1, 1_000, 10_000_000L);
+        new OdpDocumentFormat.OdpContentHandler(
+            HeadingSectionSplitterFixture.DEFAULT, 1, 1_000, 10_000_000L);
 
     assertThatThrownBy(() -> OdfPackage.parse(file, 10_485_760L, handler))
         .isInstanceOf(IOException.class)

@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.file.markdown.MarkdownDocumentFormat;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -209,7 +210,8 @@ class GoldenCaseCurationTest {
   /** Chunks every document a span points at and collects the spans that do not resolve. */
   private static int resolveSpans(
       EvalDomainConfig domain, List<GoldenCase> cases, List<String> unresolved) throws IOException {
-    MarkdownDocumentFormat pipeline = new MarkdownDocumentFormat();
+    MarkdownDocumentFormat pipeline =
+        new MarkdownDocumentFormat(HeadingSectionSplitterFixture.DEFAULT);
     Path corpusDir = RepoPaths.evalDir().resolve("corpus").resolve(domain.name());
 
     Map<String, Map<String, String>> spansByDocument = new LinkedHashMap<>();

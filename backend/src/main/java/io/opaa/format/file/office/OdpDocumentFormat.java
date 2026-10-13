@@ -47,14 +47,17 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       Set.of("header", "footer", "date-time", "page-number");
 
   private final OdfProperties odfProperties;
+  private final HeadingSectionSplitter splitter;
   private final OdfPackage.Opener opener;
 
-  public OdpDocumentFormat(OdfProperties odfProperties) {
-    this(odfProperties, OdfPackage::open);
+  public OdpDocumentFormat(OdfProperties odfProperties, HeadingSectionSplitter splitter) {
+    this(odfProperties, splitter, OdfPackage::open);
   }
 
-  OdpDocumentFormat(OdfProperties odfProperties, OdfPackage.Opener opener) {
+  OdpDocumentFormat(
+      OdfProperties odfProperties, HeadingSectionSplitter splitter, OdfPackage.Opener opener) {
     this.odfProperties = odfProperties;
+    this.splitter = splitter;
     this.opener = opener;
   }
 
@@ -90,6 +93,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
   protected OdpContent read(DocumentFormatSource source) throws IOException {
     OdpContentHandler handler =
         new OdpContentHandler(
+            splitter,
             odfProperties.maxOdpSlides(),
             odfProperties.maxSpaceRepeat(),
             odfProperties.maxTextCharacters());
@@ -122,7 +126,8 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       return DocumentFormatResult.noExtractableText();
     }
     List<Document> chunks = new ArrayList<>(content.slideChunks());
-    chunks.addAll(0, RepeatingHeaderChunk.of(MASTER_SLIDE_LOCATION, content.masterSlideText()));
+    chunks.addAll(
+        0, RepeatingHeaderChunk.of(splitter, MASTER_SLIDE_LOCATION, content.masterSlideText()));
     return DocumentFormatResult.chunked(chunks);
   }
 
@@ -168,6 +173,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       DocumentProperties meta = readMeta(odf, source.logName());
       OdpContentHandler handler =
           new OdpContentHandler(
+              splitter,
               odfProperties.maxOdpSlides(),
               odfProperties.maxSpaceRepeat(),
               odfProperties.maxTextCharacters());
@@ -215,6 +221,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
    */
   static final class OdpContentHandler extends DefaultHandler {
 
+    private final HeadingSectionSplitter splitter;
     private final int maxSlides;
     private final OdfParagraphTextCollector collector;
     private final OdfTableStack tables = new OdfTableStack();
@@ -233,7 +240,12 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
     private StringBuilder currentNotes;
     private boolean currentHasBodyText;
 
-    OdpContentHandler(int maxSlides, int maxSpaceRepeat, long maxTextCharacters) {
+    OdpContentHandler(
+        HeadingSectionSplitter splitter,
+        int maxSlides,
+        int maxSpaceRepeat,
+        long maxTextCharacters) {
+      this.splitter = splitter;
       this.maxSlides = maxSlides;
       this.collector =
           OdfParagraphTextCollector.forContent(
@@ -363,7 +375,7 @@ public class OdpDocumentFormat extends FileDocumentFormat<OdpDocumentFormat.OdpC
       }
       Map<String, Object> metadata = new HashMap<>();
       metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-      chunks.addAll(HeadingSectionSplitter.boundedChunks(title, rest, metadata));
+      chunks.addAll(splitter.boundedChunks(title, rest, metadata));
       anySlideHasText |= hasText;
       hasSlide = false;
     }

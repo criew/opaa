@@ -19,6 +19,7 @@ import io.opaa.format.file.office.PptxDocumentFormat;
 import io.opaa.format.file.pdf.PdfDocumentFormat;
 import io.opaa.format.file.tabular.TabularDocumentFormat;
 import io.opaa.format.file.tabular.TabularProperties;
+import io.opaa.format.shared.HeadingSectionSplitter;
 import java.time.Clock;
 import java.util.List;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -32,12 +33,23 @@ import org.springframework.context.annotation.Configuration;
  * data format a single source delivers is registered by that source's configuration.
  */
 @Configuration
-@EnableConfigurationProperties({MailProperties.class, OdfProperties.class, TabularProperties.class})
+@EnableConfigurationProperties({
+  ChunkTargetProperties.class,
+  MailProperties.class,
+  OdfProperties.class,
+  TabularProperties.class
+})
 public class FormatConfiguration {
 
   @Bean
   DocumentService documentService() {
     return new DocumentService();
+  }
+
+  /** The structure-aware cut every format on it shares, at the configured target size. */
+  @Bean
+  HeadingSectionSplitter headingSectionSplitter(ChunkTargetProperties chunkTargetProperties) {
+    return new HeadingSectionSplitter(chunkTargetProperties.chunkTargetCharacters());
   }
 
   @Bean
@@ -62,14 +74,15 @@ public class FormatConfiguration {
 
   /** XLSX/CSV/ODS pipeline (ingestion-pipelines.md, Teil 3, Punkt 3). */
   @Bean
-  TabularDocumentFormat tabularDocumentPipeline(TabularProperties tabularProperties) {
-    return new TabularDocumentFormat(tabularProperties);
+  TabularDocumentFormat tabularDocumentPipeline(
+      TabularProperties tabularProperties, HeadingSectionSplitter headingSectionSplitter) {
+    return new TabularDocumentFormat(tabularProperties, headingSectionSplitter);
   }
 
   /** HTML pipeline (ingestion-pipelines.md, Teil 3, Punkt 4). */
   @Bean
-  HtmlDocumentFormat htmlDocumentPipeline() {
-    return new HtmlDocumentFormat();
+  HtmlDocumentFormat htmlDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
+    return new HtmlDocumentFormat(headingSectionSplitter);
   }
 
   /**
@@ -78,32 +91,34 @@ public class FormatConfiguration {
    * MarkdownDocumentFormat}.
    */
   @Bean
-  MarkdownDocumentFormat markdownDocumentPipeline() {
-    return new MarkdownDocumentFormat();
+  MarkdownDocumentFormat markdownDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
+    return new MarkdownDocumentFormat(headingSectionSplitter);
   }
 
   /** DOCX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
-  DocxDocumentFormat docxDocumentPipeline() {
-    return new DocxDocumentFormat();
+  DocxDocumentFormat docxDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
+    return new DocxDocumentFormat(headingSectionSplitter);
   }
 
   /** PPTX pipeline (ingestion-pipelines.md, Teil 2). */
   @Bean
-  PptxDocumentFormat pptxDocumentPipeline() {
-    return new PptxDocumentFormat();
+  PptxDocumentFormat pptxDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
+    return new PptxDocumentFormat(headingSectionSplitter);
   }
 
   /** ODT pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
   @Bean
-  OdtDocumentFormat odtDocumentPipeline(OdfProperties odfProperties) {
-    return new OdtDocumentFormat(odfProperties);
+  OdtDocumentFormat odtDocumentPipeline(
+      OdfProperties odfProperties, HeadingSectionSplitter headingSectionSplitter) {
+    return new OdtDocumentFormat(odfProperties, headingSectionSplitter);
   }
 
   /** ODP pipeline (ingestion-pipelines.md, Teil 3, Punkt 2). */
   @Bean
-  OdpDocumentFormat odpDocumentPipeline(OdfProperties odfProperties) {
-    return new OdpDocumentFormat(odfProperties);
+  OdpDocumentFormat odpDocumentPipeline(
+      OdfProperties odfProperties, HeadingSectionSplitter headingSectionSplitter) {
+    return new OdpDocumentFormat(odfProperties, headingSectionSplitter);
   }
 
   /**
@@ -111,8 +126,8 @@ public class FormatConfiguration {
    * its own PDFBox extraction rather than needing {@link DocumentService}.
    */
   @Bean
-  PdfDocumentFormat pdfDocumentPipeline() {
-    return new PdfDocumentFormat();
+  PdfDocumentFormat pdfDocumentPipeline(HeadingSectionSplitter headingSectionSplitter) {
+    return new PdfDocumentFormat(headingSectionSplitter);
   }
 
   /**

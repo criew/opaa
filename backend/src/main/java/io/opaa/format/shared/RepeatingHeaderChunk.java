@@ -17,6 +17,7 @@ public final class RepeatingHeaderChunk {
   private RepeatingHeaderChunk() {}
 
   /**
+   * @param splitter the cut shared with the document's other chunks
    * @param location the {@code location} metadata value this leading chunk carries (e.g. "Kopf-/
    *     Fußzeile", "Masterfolie")
    * @return the leading chunk - several only beyond {@link
@@ -25,7 +26,7 @@ public final class RepeatingHeaderChunk {
    *     number) can still slip past a caller's own field filtering, and a chunk of nothing but
    *     digits ("1") is noise, not content worth its own embedding
    */
-  public static List<Document> of(String location, String text) {
+  public static List<Document> of(HeadingSectionSplitter splitter, String location, String text) {
     if (text == null || text.isBlank()) {
       return List.of();
     }
@@ -35,6 +36,6 @@ public final class RepeatingHeaderChunk {
     }
     Map<String, Object> metadata = new HashMap<>();
     metadata.put(ChunkMetadataKeys.LOCATION_METADATA_KEY, location);
-    return HeadingSectionSplitter.boundedChunks(null, stripped, metadata);
+    return splitter.boundedChunks(null, stripped, metadata);
   }
 }

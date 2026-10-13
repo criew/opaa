@@ -20,6 +20,7 @@ import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.DocumentService;
 import io.opaa.format.file.html.HtmlDocumentFormat;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import io.opaa.indexing.attachment.AttachmentProfile;
 import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestResult;
@@ -314,7 +315,7 @@ class RssFeedIndexingExecutorTest {
     assertThat(handedOver).doesNotContain("Startseite").doesNotContain("Impressum");
 
     DocumentFormatResult cut =
-        new HtmlDocumentFormat()
+        new HtmlDocumentFormat(HeadingSectionSplitterFixture.DEFAULT)
             .run(DocumentFormatSource.ofExtractedText(handedOver, ingest.getValue().fileName()));
     assertThat(cut.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
     assertThat(cut.chunks())
@@ -359,7 +360,7 @@ class RssFeedIndexingExecutorTest {
     ArgumentCaptor<DocumentIngest> ingest = ArgumentCaptor.forClass(DocumentIngest.class);
     verify(documentIngestService).ingest(ingest.capture(), any());
     DocumentFormatResult cut =
-        new HtmlDocumentFormat()
+        new HtmlDocumentFormat(HeadingSectionSplitterFixture.DEFAULT)
             .run(
                 DocumentFormatSource.ofExtractedText(
                     DocumentIngests.textOf(ingest.getValue()), ingest.getValue().fileName()));

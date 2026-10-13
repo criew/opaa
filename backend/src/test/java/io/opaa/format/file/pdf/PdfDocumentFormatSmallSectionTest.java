@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import io.opaa.format.DocumentFormatResult;
 import io.opaa.format.DocumentFormatSource;
 import io.opaa.format.chunk.ChunkMetadataKeys;
+import io.opaa.format.shared.HeadingSectionSplitterFixture;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,7 +44,7 @@ class PdfDocumentFormatSmallSectionTest {
     writeHaushaltsplan(file);
 
     DocumentFormatResult result =
-        new PdfDocumentFormat()
+        new PdfDocumentFormat(HeadingSectionSplitterFixture.DEFAULT)
             .run(DocumentFormatSource.ofFile(file, file.getFileName().toString(), ".pdf"));
 
     assertThat(result.outcome()).isEqualTo(DocumentFormatResult.Outcome.CHUNKED);
