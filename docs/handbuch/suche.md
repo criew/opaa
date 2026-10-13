@@ -594,9 +594,11 @@ viele Tokens eine Antwort verbraucht hat, steht an der Antwort und in den Metrik
 
 Die **feste Systemanweisung** ist nicht konfigurierbar: Sie ist im Code festgelegt und enthält nur
 die Rolle, die Vorgabe der Antwortsprache Deutsch, die Anweisung, aus Verlauf und Kontextdokumenten
-zu antworten, die Antwortregeln und die Zitierregeln. Die Antwortregeln stehen nur dort, wo
-Kontextdokumente vorliegen und die Nachricht etwas zu suchen hatte: zu Sachfragen nur wiedergeben,
-was die Dokumente, der Gesprächsverlauf oder die Gesprächsnotiz tragen, und nichts aus
+zu antworten, die Antwortregeln und die Zitierregeln. Die Antwortregeln stehen immer dann, wenn
+gesucht wurde und die Nachricht etwas zu suchen hatte, auch wenn die Suche keinen Treffer fand. Eine
+Antwort ohne Suche bekommt sie nicht, etwa im Chat, der bewusst ohne Wissensbasis antwortet, bei
+einer Frage ohne Chat oder in einem Space ohne lesbares Wissen. Sie lauten: zu Sachfragen nur
+wiedergeben, was die Dokumente, der Gesprächsverlauf oder die Gesprächsnotiz tragen, und nichts aus
 Allgemeinwissen ergänzen; Fehlendes als „in den vorliegenden Dokumenten nicht enthalten" benennen
 statt als „gibt es nicht"; die spezifische Regel vor der allgemeinen; Bedingungen, Ausnahmen,
 Geltungsbereich und Stand nennen, wenn sie erheblich sind; Abweichungen zwischen Dokumenten und die

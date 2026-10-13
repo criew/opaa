@@ -97,10 +97,7 @@ async function pastTheDebounce(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 400))
 }
 
-/**
- * Persons and groups are searched by two independent requests, so the list fills in two steps;
- * waiting for any option is not waiting for this one.
- */
+/** Waits for one specific option; an earlier list may still be shown while a search runs. */
 function findOptionContaining(text: string): Promise<HTMLElement> {
   return waitFor(() => {
     const option = screen
@@ -232,9 +229,59 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
     expect(option).toHaveAttribute('aria-disabled', 'true')
   })
 
+  // regression guard for #2263: the list must not fill in two steps when one search is slower
+  it('shows no partial list while the second search is still running', async () => {
+    let answerGroups: (groups: SelectableGroupResponse[]) => void = () => {}
+    mockSearchSelectableGroups.mockImplementation(
+      () => new Promise<SelectableGroupResponse[]>((resolve) => (answerGroups = resolve)),
+    )
+    renderWithProviders(<Harness />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByRole('combobox', { name: SEARCH }), 'Referat 5')
+    await waitFor(() => expect(mockSearchSelectableGroups).toHaveBeenCalledWith('Referat 5'))
+    expect(mockGetUserSummaries).toHaveBeenCalledWith('Referat 5')
+    // The persons have answered by now; give React the chance to show them.
+    await pastTheDebounce()
+    expect(screen.queryAllByRole('option')).toHaveLength(0)
+    expect(screen.getByText('Suche läuft …')).toBeInTheDocument()
+
+    answerGroups([fromDirectory])
+
+    await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(2))
+    const names = screen.getAllByRole('option').map((option) => option.textContent ?? '')
+    expect(names[0]).toMatch(/^Referat 50 · Gruppe/)
+    expect(names[1]).toMatch(/^Alice/)
+  })
+
+  it('keeps the previous list in place, unreordered, while a refined search is running', async () => {
+    renderWithProviders(<Harness />)
+    const user = userEvent.setup()
+    const field = screen.getByRole('combobox', { name: SEARCH })
+
+    await user.type(field, 'Referat 5')
+    await findOptionContaining('Projektteam')
+    const before = screen.getAllByRole('option').map((option) => option.textContent)
+
+    let answerGroups: (groups: SelectableGroupResponse[]) => void = () => {}
+    mockSearchSelectableGroups.mockImplementation(
+      () => new Promise<SelectableGroupResponse[]>((resolve) => (answerGroups = resolve)),
+    )
+    await user.type(field, '0')
+    await waitFor(() => expect(mockSearchSelectableGroups).toHaveBeenCalledWith('Referat 50'))
+    await pastTheDebounce()
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(before)
+
+    answerGroups([fromDirectory])
+    await waitFor(() => expect(screen.getAllByRole('option')).toHaveLength(2))
+  })
+
+  // Persons answer at once, groups 150 ms later (see beforeEach): both sources are in play.
   it('is operable by keyboard and reports the selected group', async () => {
-    mockGetUserSummaries.mockResolvedValue([])
-    mockSearchSelectableGroups.mockResolvedValue([fromDirectory])
+    mockSearchSelectableGroups.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 150))
+      return [fromDirectory]
+    })
     renderWithProviders(<Harness />)
     const user = userEvent.setup()
 
