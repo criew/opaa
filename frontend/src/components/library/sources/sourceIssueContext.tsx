@@ -2,10 +2,8 @@ import { createContext, useContext, type ReactNode } from 'react'
 import Box from '@mui/material/Box'
 import type { SourceIssue } from '../../../utils/sourceIssue'
 
-const SourceIssueContext = createContext<SourceIssue | null>(null)
-
 /** Hands the issue of a failed save to the source form, which shows it at its field. */
-export const SourceIssueProvider = SourceIssueContext.Provider
+export const SourceIssueContext = createContext<SourceIssue | null>(null)
 
 /** Looks up the message of the current issue for one form value, null for any other value. */
 export function useSourceIssue(): (field: string) => string | null {

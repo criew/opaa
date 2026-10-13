@@ -3,7 +3,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import FieldLabel from '../wizard/FieldLabel'
 import type { FilesystemSourceValues } from '../../utils/filesystemSource'
-import { useSourceIssue, withIssue } from './sources/sourceIssue'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface PathSourceFormProps {
   /** `create` adds the step's own heading; `edit` sits inside a dialog that already has one. */

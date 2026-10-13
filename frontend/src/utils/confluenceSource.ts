@@ -99,9 +99,7 @@ export function confluenceIssue(values: ConfluenceSourceValues | undefined): Sou
     return formIssue('Bitte zuerst die Edition erkennen lassen („Edition erkennen“)')
   }
   if (!values.credentialsVerified) {
-    return formIssue(
-      'Bitte die Zugangsdaten mit „Verbindung testen“ prüfen, bevor Sie fortfahren',
-    )
+    return formIssue('Bitte die Zugangsdaten mit „Verbindung testen“ prüfen, bevor Sie fortfahren')
   }
   if (values.spaces.length === 0) {
     return formIssue('Bitte mindestens einen Space auswählen')

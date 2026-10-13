@@ -16,7 +16,7 @@ import {
 } from '../../utils/smbSource'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { useSourceIssue, withIssue } from './sources/sourceIssue'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface SmbSourceFormProps {
   mode: 'create' | 'edit'
@@ -189,7 +189,7 @@ export default function SmbSourceForm({
             helperText={withIssue(
               issueFor('sourceUrl'),
               connection.addressHint ??
-              'Server und Freigabe; auch ein UNC-Pfad wie \\\\dateiserver\\Freigabe wird angenommen.',
+                'Server und Freigabe; auch ein UNC-Pfad wie \\\\dateiserver\\Freigabe wird angenommen.',
             )}
             slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
           />

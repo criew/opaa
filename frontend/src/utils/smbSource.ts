@@ -119,9 +119,7 @@ export function smbIssue(values: SmbSourceValues, credentialsKept: boolean): Sou
     return atUrl('Die Adresse nennt keine Freigabe (smb://server/freigabe)')
   }
   if (segments.length > 1) {
-    return atUrl(
-      'Die Adresse nennt nur Server und Freigabe; Ordner darin werden unten eingetragen',
-    )
+    return atUrl('Die Adresse nennt nur Server und Freigabe; Ordner darin werden unten eingetragen')
   }
   if (segments[0].endsWith('$')) {
     return atUrl(

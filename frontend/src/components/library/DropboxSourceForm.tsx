@@ -17,7 +17,7 @@ import {
 import BusyButton from '../a11y/BusyButton'
 import FieldLabel from '../wizard/FieldLabel'
 import type { ConnectionFields } from './sources/sourceConnection'
-import { useSourceIssue, withIssue } from './sources/sourceIssue'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface DropboxSourceFormProps {
   mode: 'create' | 'edit'

@@ -32,7 +32,7 @@ import {
 import FieldLabel from '../wizard/FieldLabel'
 import ScopeConsequence from './sources/ScopeConsequence'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { useSourceIssue, withIssue } from './sources/sourceIssue'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface Message {
   severity: 'success' | 'warning' | 'error' | 'info'

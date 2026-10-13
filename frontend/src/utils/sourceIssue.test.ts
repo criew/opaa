@@ -49,9 +49,7 @@ describe('the field a source issue names', () => {
     expect(
       fieldOf(s3ValuesIssue({ ...complete, scopes: [{ bucket: 'protokolle', prefix: 'a/../b' }] })),
     ).toBe('scopes.0.prefix')
-    expect(fieldOf(s3ValuesIssue({ ...complete, excludePatterns: 'a\na' }))).toBe(
-      'excludePatterns',
-    )
+    expect(fieldOf(s3ValuesIssue({ ...complete, excludePatterns: 'a\na' }))).toBe('excludePatterns')
   })
 
   it('names the address of Confluence, and no field for the later stages', () => {

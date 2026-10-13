@@ -25,7 +25,7 @@ import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { useSourceIssue, withIssue } from './sources/sourceIssue'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 import {
   AWS_REGIONS,

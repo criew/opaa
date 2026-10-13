@@ -7,7 +7,7 @@ import { documentSourceTypeLabel } from './sources/sourceLabels'
 import { sameLibrarySourceOrigin, type GenericSourceValues } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { useSourceIssue, withIssue } from './sources/sourceIssue'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 interface UrlSourceFormProps {
   /** `create` adds the step's own heading and the two-column layout of the wizard. */

@@ -14,7 +14,7 @@ import { confluenceEditionLabel } from '../../utils/labels'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
-import { useSourceIssue, withIssue } from './sources/sourceIssue'
+import { useSourceIssue, withIssue } from './sources/sourceIssueContext'
 
 import {
   confluenceCredentialsOf,

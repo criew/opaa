@@ -18,7 +18,7 @@ import {
   withoutFixed,
 } from './library/sources/sourceConnection'
 import { reportSourceIssue } from './library/sources/reportSourceIssue'
-import { SourceIssueProvider } from './library/sources/sourceIssue'
+import { SourceIssueContext } from './library/sources/sourceIssueContext'
 import type { SourceFormContext } from './library/sources/types'
 import { formIssue, type SourceIssue } from '../utils/sourceIssue'
 
@@ -155,7 +155,7 @@ export default function EditLibrarySourceDialog({
           )}
           {Form && !connectionMissing && (
             <Box ref={formRef}>
-              <SourceIssueProvider value={issue}>
+              <SourceIssueContext value={issue}>
                 <Form
                   values={values}
                   context={context}
@@ -167,7 +167,7 @@ export default function EditLibrarySourceDialog({
                     setIssue(null)
                   }}
                 />
-              </SourceIssueProvider>
+              </SourceIssueContext>
             </Box>
           )}
         </Stack>

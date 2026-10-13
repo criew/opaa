@@ -335,7 +335,10 @@ export function s3ValuesIssue(
   const url = values.sourceUrl.trim()
   if (!url) return issueAt('sourceUrl', 'Endpoint des Objektspeichers ist erforderlich')
   if (!/^https?:\/\//i.test(url)) {
-    return issueAt('sourceUrl', 'Endpoint des Objektspeichers muss mit http:// oder https:// beginnen')
+    return issueAt(
+      'sourceUrl',
+      'Endpoint des Objektspeichers muss mit http:// oder https:// beginnen',
+    )
   }
   const region = values.region.trim()
   if (region && !new RegExp(`^[A-Za-z0-9-]{1,${MAX_S3_REGION_LENGTH}}$`).test(region)) {

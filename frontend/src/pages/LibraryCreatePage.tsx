@@ -19,7 +19,7 @@ import SourceTypeIcon from '../components/library/sourceTypeIcon'
 import { registeredSourceTypes, sourceRegistration } from '../components/library/sources/registry'
 import type { SourceFormContext } from '../components/library/sources/types'
 import { reportSourceIssue } from '../components/library/sources/reportSourceIssue'
-import { SourceIssueProvider } from '../components/library/sources/sourceIssue'
+import { SourceIssueContext } from '../components/library/sources/sourceIssueContext'
 import type { SourceIssue } from '../utils/sourceIssue'
 import ConnectionProfileSelect from '../components/library/ConnectionProfileSelect'
 import {
@@ -687,7 +687,7 @@ export default function LibraryCreatePage() {
             )}
             {SourceForm && connectionChoice !== null && !awaitsConsent && (
               <Box ref={sourceFormRef}>
-                <SourceIssueProvider value={sourceIssue}>
+                <SourceIssueContext value={sourceIssue}>
                   <SourceForm
                     // a new profile starts the form afresh, so no probe result outlives its profile
                     key={connectionChoice}
@@ -702,7 +702,7 @@ export default function LibraryCreatePage() {
                       setSourceIssue(null)
                     }}
                   />
-                </SourceIssueProvider>
+                </SourceIssueContext>
               </Box>
             )}
 
