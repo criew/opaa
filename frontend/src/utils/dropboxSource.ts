@@ -1,3 +1,4 @@
+import { issueAt, messageOf, type SourceIssue } from './sourceIssue'
 import type { LibraryResponse } from '../types/api'
 
 /**
@@ -65,12 +66,19 @@ export function dropboxSettingsFrom(values: DropboxSourceValues): Record<string,
 
 /** The German rejection of the values, or null when they may be sent. */
 export function validateDropboxValues(values: DropboxSourceValues): string | null {
+  return messageOf(dropboxIssue(values))
+}
+
+/** {@link validateDropboxValues} with the field the message is about. */
+export function dropboxIssue(values: DropboxSourceValues): SourceIssue | null {
   const folders = dropboxFoldersOf(values)
-  if (folders.length === 0) return 'Bitte mindestens einen Ordner angeben, / für alles'
+  const at = (message: string) => issueAt('folders', message)
+  if (folders.length === 0) return at('Bitte mindestens einen Ordner angeben, / für alles')
   if (folders.length > MAX_DROPBOX_FOLDERS) {
-    return `Höchstens ${MAX_DROPBOX_FOLDERS} Ordner je Bibliothek`
+    return at(`Höchstens ${MAX_DROPBOX_FOLDERS} Ordner je Bibliothek`)
   }
-  if (folders.some((folder) => folder.includes(',')))
-    return 'Ein Ordnerpfad darf kein Komma enthalten'
+  if (folders.some((folder) => folder.includes(','))) {
+    return at('Ein Ordnerpfad darf kein Komma enthalten')
+  }
   return null
 }

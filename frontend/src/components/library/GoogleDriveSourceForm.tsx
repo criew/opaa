@@ -32,6 +32,7 @@ import {
 import FieldLabel from '../wizard/FieldLabel'
 import ScopeConsequence from './sources/ScopeConsequence'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
+import { useSourceIssue, withIssue } from './sources/sourceIssue'
 
 interface Message {
   severity: 'success' | 'warning' | 'error' | 'info'
@@ -72,6 +73,7 @@ export default function GoogleDriveSourceForm({
     credentialsStored,
   }),
 }: GoogleDriveSourceFormProps) {
+  const subjectIssue = useSourceIssue()('subject')
   const [keyError, setKeyError] = useState<string | null>(null)
   const [options, setOptions] = useState<GoogleDriveScope[]>([])
   const [listing, setListing] = useState(false)
@@ -288,11 +290,13 @@ export default function GoogleDriveSourceForm({
             onChange={(e) => change({ subject: e.target.value })}
             placeholder="funktionskonto@example.org"
             autoComplete="off"
-            helperText={
+            error={subjectIssue !== null}
+            helperText={withIssue(
+              subjectIssue,
               connection.isFixed('subject')
                 ? connection.fixedHint
-                : 'Nur mit domänenweiter Delegation. Bitte ein Funktionskonto, kein persönliches.'
-            }
+                : 'Nur mit domänenweiter Delegation. Bitte ein Funktionskonto, kein persönliches.',
+            )}
             slotProps={{ htmlInput: { readOnly: connection.isFixed('subject') } }}
           />
           {subjectChangedWithoutKey && (

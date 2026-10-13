@@ -17,6 +17,7 @@ import {
 import BusyButton from '../a11y/BusyButton'
 import FieldLabel from '../wizard/FieldLabel'
 import type { ConnectionFields } from './sources/sourceConnection'
+import { useSourceIssue, withIssue } from './sources/sourceIssue'
 
 interface DropboxSourceFormProps {
   mode: 'create' | 'edit'
@@ -46,6 +47,7 @@ export default function DropboxSourceForm({
   onChange,
   connection,
 }: DropboxSourceFormProps) {
+  const foldersIssue = useSourceIssue()('folders')
   const isCreate = mode === 'create'
   const [browsePath, setBrowsePath] = useState('/')
   const [test, setTest] = useState<{ token: string; message: Message } | null>(null)
@@ -183,7 +185,11 @@ export default function DropboxSourceForm({
             minRows={2}
             value={values.folders}
             onChange={(e) => onChange({ folders: e.target.value })}
-            helperText="Ein Ordner je Zeile, wie das verbundene Konto ihn sieht, etwa /Projekte. / liest alles."
+            error={foldersIssue !== null}
+            helperText={withIssue(
+              foldersIssue,
+              'Ein Ordner je Zeile, wie das verbundene Konto ihn sieht, etwa /Projekte. / liest alles.',
+            )}
             slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
           />
         </Box>

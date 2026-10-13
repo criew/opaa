@@ -5,14 +5,14 @@ import {
   EMPTY_GENERIC_SOURCE_VALUES,
   genericSourcePayload,
   storedGenericSourceValues,
-  validateGenericSource,
+  genericSourceIssue,
   type GenericSourceValues,
 } from '../../../utils/librarySourceConfig'
 import {
   EMPTY_FILESYSTEM_VALUES,
   filesystemPayload,
   storedFilesystemValues,
-  validateFilesystemValues,
+  filesystemIssue,
   type FilesystemSourceValues,
 } from '../../../utils/filesystemSource'
 import { PathForm, StoredConnection, UrlForm } from './GenericSourceViews'
@@ -28,7 +28,7 @@ function urlConfiguration(): SourceConfiguration<GenericSourceValues> {
     draftFields: ['sourcePath', 'sourceUrl'],
     fromLibrary: storedGenericSourceValues,
     isDirty: (values) => values.sourcePath !== '' || values.sourceUrl !== '',
-    validate: (values) => validateGenericSource('url', values),
+    validate: (values) => genericSourceIssue('url', values),
     toPayload: (values) => genericSourcePayload('url', values),
     nameFromSource: (values) => {
       try {
@@ -52,7 +52,7 @@ function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> 
     draftFields: ['sourcePath', 'sourceUrl', 'excludePatterns'],
     fromLibrary: storedFilesystemValues,
     isDirty: (values) => values.sourcePath !== '' || values.excludePatterns.trim() !== '',
-    validate: (values) => validateFilesystemValues(values),
+    validate: (values) => filesystemIssue(values),
     toPayload: filesystemPayload,
     nameFromSource: (values) => {
       const segments = values.sourcePath.split(/[\\/]+/).filter(Boolean)

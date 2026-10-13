@@ -6,7 +6,7 @@ import {
   s3SettingsFromLibrary,
   s3SettingsOf,
   s3ValuesFromSettings,
-  validateS3Values,
+  s3ValuesIssue,
   type S3SourceValues,
 } from '../../../utils/s3Source'
 import S3SourceForm from '../S3SourceForm'
@@ -44,7 +44,7 @@ export const s3Source: SourceRegistration = {
     // the stored key survives only on the same origin (#516/#542); a sign-in without a key of
     // the library's own needs none
     validate: (values: S3SourceValues, context) =>
-      validateS3Values(
+      s3ValuesIssue(
         values,
         !connectionFields(context).asksSecret ||
           (context.credentialsStored &&

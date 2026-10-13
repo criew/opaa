@@ -25,6 +25,7 @@ import { browseSource, testLibrarySource } from '../../services/libraryApi'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
+import { useSourceIssue, withIssue } from './sources/sourceIssue'
 
 import {
   AWS_REGIONS,
@@ -108,6 +109,9 @@ export default function S3SourceForm({
   const [loadingBuckets, setLoadingBuckets] = useState(false)
   const [bucketOptions, setBucketOptions] = useState<string[]>([])
   const [bucketsMessage, setBucketsMessage] = useState<Message | null>(null)
+  const issueFor = useSourceIssue()
+  const includeIssue = issueFor('includePatterns')
+  const excludeIssue = issueFor('excludePatterns')
   const [advancedOpen, setAdvancedOpen] = useState(
     () => values.includePatterns !== '' || values.excludePatterns !== '',
   )
@@ -345,14 +349,16 @@ export default function S3SourceForm({
                   {...params}
                   size="small"
                   placeholder={values.provider === 'AWS' ? 'eu-central-1' : 'us-east-1'}
-                  helperText={
+                  error={issueFor('region') !== null}
+                  helperText={withIssue(
+                    issueFor('region'),
                     connection.isFixed('region')
                       ? connection.fixedHint
                       : connection.connection === null &&
                           (values.provider === 'AWS' || values.provider === 'HETZNER')
                         ? 'Der Endpoint wird aus der Region abgeleitet.'
-                        : 'Wird zum Signieren verwendet; MinIO und Ceph akzeptieren us-east-1.'
-                  }
+                        : 'Wird zum Signieren verwendet; MinIO und Ceph akzeptieren us-east-1.',
+                  )}
                 />
               )}
             />
@@ -365,10 +371,12 @@ export default function S3SourceForm({
               value={values.sourceUrl}
               onChange={(e) => changeConnection({ sourceUrl: e.target.value })}
               placeholder="https://minio.intern.example:9000"
-              helperText={
+              error={issueFor('sourceUrl') !== null}
+              helperText={withIssue(
+                issueFor('sourceUrl'),
                 connection.addressHint ??
-                'http(s)://host[:port], ohne Pfad - Bucket und Präfix gehören in die Geltungsbereiche.'
-              }
+                  'http(s)://host[:port], ohne Pfad - Bucket und Präfix gehören in die Geltungsbereiche.',
+              )}
               fullWidth
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
             />
@@ -413,8 +421,11 @@ export default function S3SourceForm({
                 onChange={(e) => changeKey({ accessKey: e.target.value })}
                 placeholder="AKIA…"
                 autoComplete="off"
-                error={originChanged && values.accessKey.trim() === ''}
-                helperText="Ohne Doppelpunkt."
+                error={
+                  (originChanged && values.accessKey.trim() === '') ||
+                  issueFor('accessKey') !== null
+                }
+                helperText={withIssue(issueFor('accessKey'), 'Ohne Doppelpunkt.')}
                 fullWidth
                 slotProps={{
                   htmlInput: {
@@ -435,8 +446,11 @@ export default function S3SourceForm({
                 value={values.secretKey}
                 onChange={(e) => changeKey({ secretKey: e.target.value })}
                 autoComplete="new-password"
-                error={originChanged && values.secretKey.trim() === ''}
-                helperText={secretHelperText}
+                error={
+                  (originChanged && values.secretKey.trim() === '') ||
+                  issueFor('secretKey') !== null
+                }
+                helperText={withIssue(issueFor('secretKey'), secretHelperText)}
                 fullWidth
                 slotProps={{ htmlInput: { maxLength: MAX_S3_SECRET_KEY_LENGTH } }}
               />
@@ -452,7 +466,11 @@ export default function S3SourceForm({
                 value={values.sessionToken}
                 onChange={(e) => changeKey({ sessionToken: e.target.value })}
                 autoComplete="off"
-                helperText="Nur für zeitlich begrenzte Schlüssel (STS); läuft mit dem Token ab. Access Key, Secret Key und Token dürfen zusammen höchstens 500 Zeichen umfassen."
+                error={issueFor('sessionToken') !== null}
+                helperText={withIssue(
+                  issueFor('sessionToken'),
+                  'Nur für zeitlich begrenzte Schlüssel (STS); läuft mit dem Token ab. Access Key, Secret Key und Token dürfen zusammen höchstens 500 Zeichen umfassen.',
+                )}
                 fullWidth
                 slotProps={{ htmlInput: { maxLength: MAX_S3_SESSION_TOKEN_LENGTH } }}
               />
@@ -481,10 +499,13 @@ export default function S3SourceForm({
         <List disablePadding aria-label="Geltungsbereiche">
           {values.scopes.map((scope, index) => {
             const bucketError =
-              scope.bucket.trim() === ''
+              (scope.bucket.trim() === ''
                 ? null
-                : validateS3Scope({ bucket: scope.bucket, prefix: '' })
-            const prefixError = scope.prefix.trim() === '' ? null : validateS3Prefix(scope.prefix)
+                : validateS3Scope({ bucket: scope.bucket, prefix: '' })) ??
+              issueFor(`scopes.${index}.bucket`)
+            const prefixError =
+              (scope.prefix.trim() === '' ? null : validateS3Prefix(scope.prefix)) ??
+              issueFor(`scopes.${index}.prefix`)
             return (
               <ListItem
                 key={index}
@@ -580,7 +601,10 @@ export default function S3SourceForm({
       </Box>
 
       {/* Stage 5: advanced - key patterns, TLS */}
-      <Accordion expanded={advancedOpen} onChange={(_e, open) => setAdvancedOpen(open)}>
+      <Accordion
+        expanded={advancedOpen || includeIssue !== null || excludeIssue !== null}
+        onChange={(_e, open) => setAdvancedOpen(open)}
+      >
         <AccordionSummary expandIcon={<ExpandMoreIcon />} id={`${idPrefix}-advanced`}>
           <Typography sx={{ fontSize: 14, fontWeight: 600 }}>
             Erweitert: Ein-/Ausschlussmuster, TLS
@@ -604,7 +628,11 @@ export default function S3SourceForm({
                 value={values.includePatterns}
                 onChange={(e) => changePatterns({ includePatterns: e.target.value })}
                 placeholder={'**/*.pdf\n**/*.docx'}
-                helperText="Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ überschreitet Schrägstriche: „**/*.pdf“ trifft PDFs in Unterordnern, „*.pdf“ nur auf der obersten Ebene."
+                error={includeIssue !== null}
+                helperText={withIssue(
+                  includeIssue,
+                  'Glob-Muster auf den vollständigen Objektschlüssel (mit Bereichspräfix), eines je Zeile; leer = alle Schlüssel. „*“ bleibt innerhalb eines Segments, „**“ überschreitet Schrägstriche: „**/*.pdf“ trifft PDFs in Unterordnern, „*.pdf“ nur auf der obersten Ebene.',
+                )}
                 fullWidth
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
               />
@@ -619,7 +647,11 @@ export default function S3SourceForm({
                 value={values.excludePatterns}
                 onChange={(e) => changePatterns({ excludePatterns: e.target.value })}
                 placeholder={'**/~*\n**/.DS_Store'}
-                helperText="Ein passender Schlüssel wird übersprungen - nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt."
+                error={excludeIssue !== null}
+                helperText={withIssue(
+                  excludeIssue,
+                  'Ein passender Schlüssel wird übersprungen - nach den Einschlussmustern. Was die Muster ausschließen, gehört nicht zum Bestand: bereits aufgenommene Objekte werden mit dem nächsten Vollabgleich entfernt.',
+                )}
                 fullWidth
                 slotProps={{ htmlInput: { sx: { fontFamily: 'monospace' } } }}
               />

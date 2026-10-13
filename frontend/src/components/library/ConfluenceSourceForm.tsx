@@ -14,6 +14,7 @@ import { confluenceEditionLabel } from '../../utils/labels'
 import { sameLibrarySourceOrigin } from '../../utils/librarySourceConfig'
 import FieldLabel from '../wizard/FieldLabel'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'
+import { useSourceIssue, withIssue } from './sources/sourceIssue'
 
 import {
   confluenceCredentialsOf,
@@ -77,6 +78,7 @@ export default function ConfluenceSourceForm({
     credentialsStored,
   }),
 }: ConfluenceSourceFormProps) {
+  const urlIssue = useSourceIssue()('sourceUrl')
   const [detecting, setDetecting] = useState(false)
   const [detectMessage, setDetectMessage] = useState<Message | null>(null)
   const [testing, setTesting] = useState(false)
@@ -291,10 +293,12 @@ export default function ConfluenceSourceForm({
               value={values.sourceUrl}
               onChange={(e) => changeAddress({ sourceUrl: e.target.value })}
               placeholder="https://wiki.behoerde.example/confluence"
-              helperText={
+              error={urlIssue !== null}
+              helperText={withIssue(
+                urlIssue,
                 connection.addressHint ??
-                'Cloud: die Adresse Ihrer Site, mit oder ohne /wiki. Data Center: die Adresse samt Kontextpfad.'
-              }
+                  'Cloud: die Adresse Ihrer Site, mit oder ohne /wiki. Data Center: die Adresse samt Kontextpfad.',
+              )}
               fullWidth
               slotProps={{ htmlInput: { maxLength: 2000, sx: { fontFamily: 'monospace' } } }}
             />

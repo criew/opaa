@@ -1,4 +1,5 @@
 import type { LibraryResponse } from '../types/api'
+import { formIssue, issueAt, messageOf, type SourceIssue } from './sourceIssue'
 
 /** One scope of an S3 library (ADR-0027): a bucket and an optional key prefix. */
 export type S3ScopeRef = {
@@ -322,63 +323,91 @@ export function validateS3Values(
   values: S3SourceValues | undefined,
   credentialsMayBeStored = false,
 ): string | null {
-  if (!values) return 'Endpoint des Objektspeichers ist erforderlich'
+  return messageOf(s3ValuesIssue(values, credentialsMayBeStored))
+}
+
+/** {@link validateS3Values} with the field the message is about; a scope's field by its row. */
+export function s3ValuesIssue(
+  values: S3SourceValues | undefined,
+  credentialsMayBeStored = false,
+): SourceIssue | null {
+  if (!values) return issueAt('sourceUrl', 'Endpoint des Objektspeichers ist erforderlich')
   const url = values.sourceUrl.trim()
-  if (!url) return 'Endpoint des Objektspeichers ist erforderlich'
+  if (!url) return issueAt('sourceUrl', 'Endpoint des Objektspeichers ist erforderlich')
   if (!/^https?:\/\//i.test(url)) {
-    return 'Endpoint des Objektspeichers muss mit http:// oder https:// beginnen'
+    return issueAt('sourceUrl', 'Endpoint des Objektspeichers muss mit http:// oder https:// beginnen')
   }
   const region = values.region.trim()
   if (region && !new RegExp(`^[A-Za-z0-9-]{1,${MAX_S3_REGION_LENGTH}}$`).test(region)) {
-    return `Die Region „${region}“ ist ungültig: nur Buchstaben, Ziffern und Bindestriche, höchstens ${MAX_S3_REGION_LENGTH} Zeichen`
+    return issueAt(
+      'region',
+      `Die Region „${region}“ ist ungültig: nur Buchstaben, Ziffern und Bindestriche, höchstens ${MAX_S3_REGION_LENGTH} Zeichen`,
+    )
   }
   const accessKey = values.accessKey.trim()
   const secretKey = values.secretKey.trim()
   if (!credentialsMayBeStored || accessKey || secretKey) {
-    if (!accessKey) return 'Access Key ist erforderlich'
-    if (!secretKey) return 'Secret Key ist erforderlich'
+    if (!accessKey) return issueAt('accessKey', 'Access Key ist erforderlich')
+    if (!secretKey) return issueAt('secretKey', 'Secret Key ist erforderlich')
     if (accessKey.includes(':') || secretKey.includes(':')) {
-      return 'Access Key und Secret Key dürfen keinen Doppelpunkt enthalten'
+      return issueAt(
+        accessKey.includes(':') ? 'accessKey' : 'secretKey',
+        'Access Key und Secret Key dürfen keinen Doppelpunkt enthalten',
+      )
     }
     if (values.sessionToken.includes(':')) {
-      return 'Das Session-Token darf keinen Doppelpunkt enthalten'
+      return issueAt('sessionToken', 'Das Session-Token darf keinen Doppelpunkt enthalten')
     }
     if ((s3CredentialsOf(values) ?? '').length > MAX_S3_CREDENTIALS_LENGTH) {
-      return `Access Key, Secret Key und Session-Token dürfen zusammen höchstens ${MAX_S3_CREDENTIALS_LENGTH} Zeichen lang sein`
+      return issueAt(
+        values.sessionToken !== '' ? 'sessionToken' : 'secretKey',
+        `Access Key, Secret Key und Session-Token dürfen zusammen höchstens ${MAX_S3_CREDENTIALS_LENGTH} Zeichen lang sein`,
+      )
     }
   }
-  const scopes = values.scopes.filter(
-    (scope) => scope.bucket.trim() !== '' || scope.prefix.trim() !== '',
-  )
-  if (scopes.length === 0) return 'Bitte mindestens einen Geltungsbereich (Bucket) angeben'
-  if (scopes.length > MAX_S3_SCOPES) {
-    return `Höchstens ${MAX_S3_SCOPES} Geltungsbereiche je Bibliothek`
+  const rows = values.scopes
+    .map((scope, row) => ({ scope, row }))
+    .filter(({ scope }) => scope.bucket.trim() !== '' || scope.prefix.trim() !== '')
+  const scopes = rows.map(({ scope }) => scope)
+  if (scopes.length === 0) {
+    return issueAt('scopes.0.bucket', 'Bitte mindestens einen Geltungsbereich (Bucket) angeben')
   }
-  for (const scope of scopes) {
-    const message = validateS3Scope(scope)
-    if (message) return message
+  if (scopes.length > MAX_S3_SCOPES) {
+    return formIssue(`Höchstens ${MAX_S3_SCOPES} Geltungsbereiche je Bibliothek`)
+  }
+  for (const { scope, row } of rows) {
+    const bucketMessage = validateS3Scope({ bucket: scope.bucket, prefix: '' })
+    if (bucketMessage) return issueAt(`scopes.${row}.bucket`, bucketMessage)
+    const prefixMessage = validateS3Prefix(scope.prefix)
+    if (prefixMessage) return issueAt(`scopes.${row}.prefix`, prefixMessage)
   }
   for (let i = 0; i < scopes.length; i += 1) {
     for (let j = 0; j < i; j += 1) {
       if (s3ScopesOverlap(scopes[i], scopes[j])) {
-        return `Die Geltungsbereiche „${s3ScopeKey(scopes[j])}“ und „${s3ScopeKey(scopes[i])}“ überschneiden sich; jedes Objekt darf nur in einem Bereich liegen.`
+        return issueAt(
+          `scopes.${rows[i].row}.prefix`,
+          `Die Geltungsbereiche „${s3ScopeKey(scopes[j])}“ und „${s3ScopeKey(scopes[i])}“ überschneiden sich; jedes Objekt darf nur in einem Bereich liegen.`,
+        )
       }
     }
   }
-  for (const [label, text] of [
-    ['Einschlussmuster', values.includePatterns],
-    ['Ausschlussmuster', values.excludePatterns],
+  for (const [field, label, text] of [
+    ['includePatterns', 'Einschlussmuster', values.includePatterns],
+    ['excludePatterns', 'Ausschlussmuster', values.excludePatterns],
   ] as const) {
     const patterns = s3PatternsOf(text)
     if (patterns.length > MAX_S3_PATTERNS) {
-      return `Höchstens ${MAX_S3_PATTERNS} ${label} je Bibliothek`
+      return issueAt(field, `Höchstens ${MAX_S3_PATTERNS} ${label} je Bibliothek`)
     }
     const tooLong = patterns.find((pattern) => pattern.length > MAX_S3_PATTERN_LENGTH)
     if (tooLong) {
-      return `${label}: ein Muster darf höchstens ${MAX_S3_PATTERN_LENGTH} Zeichen lang sein`
+      return issueAt(
+        field,
+        `${label}: ein Muster darf höchstens ${MAX_S3_PATTERN_LENGTH} Zeichen lang sein`,
+      )
     }
     if (new Set(patterns).size !== patterns.length) {
-      return `${label}: ein Muster ist mehrfach angegeben`
+      return issueAt(field, `${label}: ein Muster ist mehrfach angegeben`)
     }
   }
   return null
