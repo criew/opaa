@@ -7,7 +7,7 @@ import java.util.Set;
 
 /**
  * One kind of library source, registered as a Spring bean in its connector package and reached by
- * the administration only through the {@link SourceConnectorRegistry}. The connector owns the
+ * the administration only through the {@code SourceConnectorRegistry}. The connector owns the
  * validation of its configuration, its connector settings (ADR-0038), the connection test and the
  * state its settings imply; the administration owns permissions, persistence and the audit.
  * Optional abilities are further interfaces the same bean implements ({@link SourceBrowser}, {@link

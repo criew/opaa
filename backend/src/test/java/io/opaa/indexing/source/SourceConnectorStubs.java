@@ -3,6 +3,7 @@ package io.opaa.indexing.source;
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.PersonalSecretForm;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.SourceType;
 import io.opaa.test.SourceTypes;
 import java.util.List;

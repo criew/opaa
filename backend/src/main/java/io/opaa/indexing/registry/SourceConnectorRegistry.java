@@ -1,7 +1,14 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.registry;
 
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.DefaultKey;
+import io.opaa.indexing.source.OriginalAccess;
+import io.opaa.indexing.source.ProfileDeclaration;
+import io.opaa.indexing.source.PushIntakeHandler;
+import io.opaa.indexing.source.SourceBrowser;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceConnectorDescriptor;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.SourceType;
 import java.util.Comparator;

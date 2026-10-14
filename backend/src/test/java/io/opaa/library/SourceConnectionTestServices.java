@@ -6,7 +6,7 @@ import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.LibraryConnectionService;
 import io.opaa.connection.profile.OwnAddressDrafts;
 import io.opaa.indexing.credentials.ServiceAccountTokens;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
 

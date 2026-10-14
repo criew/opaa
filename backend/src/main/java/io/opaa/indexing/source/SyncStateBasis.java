@@ -1,6 +1,7 @@
 package io.opaa.indexing.source;
 
 import io.opaa.indexing.credentials.SourceConnectionResolver;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

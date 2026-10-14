@@ -5,7 +5,7 @@ import io.opaa.connection.profile.ConnectionProfile;
 import io.opaa.connection.profile.ConnectionProfileRepository;
 import io.opaa.connection.profile.ConnectorScope;
 import io.opaa.connection.profile.ProfileRequirements;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.permission.CapabilityScopeCatalog;
 import java.util.ArrayList;
 import java.util.List;

@@ -24,7 +24,7 @@ import io.opaa.connection.profile.ConnectorLockService;
 import io.opaa.connection.profile.PersonNumbers;
 import io.opaa.connection.profile.PersonNumbers.ProfileCounts;
 import io.opaa.connection.profile.ProfileRequirementService;
-import io.opaa.indexing.source.SourceChangeGate.Answers;
+import io.opaa.indexing.registry.SourceChangeGate.Answers;
 import io.opaa.knowledge.SourceType;
 import jakarta.validation.Valid;
 import java.util.List;

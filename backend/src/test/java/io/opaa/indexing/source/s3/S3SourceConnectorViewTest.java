@@ -2,9 +2,9 @@ package io.opaa.indexing.source.s3;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.opaa.indexing.registry.TestSourceConnectors;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.SourceConnector;
-import io.opaa.indexing.source.TestSourceConnectors;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.util.List;

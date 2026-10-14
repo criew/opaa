@@ -5,7 +5,7 @@ import io.opaa.api.types.AuditObjectType;
 import io.opaa.asset.Asset;
 import io.opaa.asset.AssetTypeDefinition;
 import io.opaa.common.ConflictException;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.permission.AssetType;
 import org.hibernate.Hibernate;

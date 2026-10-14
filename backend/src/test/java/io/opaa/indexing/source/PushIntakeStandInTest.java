@@ -3,6 +3,8 @@ package io.opaa.indexing.source;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mockStatic;
 
+import io.opaa.indexing.registry.SourceConnectorRegistry;
+import io.opaa.indexing.registry.TestSourceConnectors;
 import io.opaa.indexing.source.confluence.ConfluenceWebhookSignature;
 import io.opaa.indexing.source.s3.S3EventAuthentication;
 import io.opaa.test.SourceTypes;

@@ -6,7 +6,7 @@ import static org.mockito.Mockito.when;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.TestSecrets;
 import io.opaa.indexing.credentials.ServiceAccountTokens;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.security.TargetAddressValidator;
 import java.time.Clock;

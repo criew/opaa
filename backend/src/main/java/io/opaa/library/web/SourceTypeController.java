@@ -8,7 +8,7 @@ import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
 import io.opaa.connection.ConnectorReleaseService;
 import io.opaa.connection.ConnectorReleaseService.TypeCreation;
-import io.opaa.indexing.source.SourceConnectorRegistry;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.knowledge.SourceType;
 import io.opaa.library.SourceConnectionTestService;
 import io.opaa.permission.CapabilityService;

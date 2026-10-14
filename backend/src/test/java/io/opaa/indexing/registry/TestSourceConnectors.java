@@ -1,7 +1,11 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.registry;
 
 import static org.mockito.Mockito.mock;
 
+import io.opaa.indexing.source.RemoteContentProperties;
+import io.opaa.indexing.source.RemoteOriginalAccess;
+import io.opaa.indexing.source.SourceConnector;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;

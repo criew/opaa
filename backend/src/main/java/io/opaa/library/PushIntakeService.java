@@ -2,8 +2,8 @@ package io.opaa.library;
 
 import io.opaa.common.UnauthorizedException;
 import io.opaa.indexing.credentials.SourceConnectionResolver;
+import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.source.PushIntakeHandler;
-import io.opaa.indexing.source.SourceConnectorRegistry;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import java.util.UUID;
