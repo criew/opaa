@@ -3,6 +3,7 @@ package io.opaa.indexing.run;
 import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceConnector;
 import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.KnowledgeLibrary;

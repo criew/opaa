@@ -9,7 +9,7 @@ import java.util.UUID;
 
 /**
  * A run-based way of getting documents into the index (ADR-0017, decision 3). Every implementation
- * declares the single {@link SourceType} it serves and is registered with the {@link
+ * declares the single {@link SourceType} it serves and is registered with the {@code
  * IndexingSourceExecutorRegistry} as a Spring bean - a new source type is added by implementing
  * this interface and declaring the bean in the connector package's own {@code @Configuration},
  * never by editing the indexing core, an existing implementation or the registry itself.
