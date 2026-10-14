@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import SubjectPicker from './SubjectPicker'
 import {
   confirmExternalSubject,
@@ -16,19 +16,17 @@ const { mockSearchSelectableGroups, mockGetUserSummaries } = vi.hoisted(() => ({
   mockGetUserSummaries: vi.fn(async () => [] as UserSummary[]),
 }))
 
-vi.mock('../../features/principal/api/groupLookupApi', async () => {
-  const actual = await vi.importActual<
-    typeof import('../../features/principal/api/groupLookupApi')
-  >('../../features/principal/api/groupLookupApi')
+vi.mock('../api/groupLookupApi', async () => {
+  const actual =
+    await vi.importActual<typeof import('../api/groupLookupApi')>('../api/groupLookupApi')
   return {
     ...actual,
     searchSelectableGroups: mockSearchSelectableGroups,
   }
 })
 
-vi.mock('../../services/userApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../services/userApi')>('../../services/userApi')
+vi.mock('../api/userApi', async () => {
+  const actual = await vi.importActual<typeof import('../api/userApi')>('../api/userApi')
   return {
     ...actual,
     getUserSummaries: mockGetUserSummaries,

@@ -23,7 +23,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { groupMemberCountLabel } from '@/components/assets/assetLabels'
 import { spaceRoleLabel } from '@/shared/utils/labels'
 import AccessDerivation from '../permissions/AccessDerivation'
-import GroupMembersDisclosure from '../permissions/GroupMembersDisclosure'
+import { GroupMembersDisclosure } from '@/features/principal'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import { memberLabelOf } from './memberLabel'
 

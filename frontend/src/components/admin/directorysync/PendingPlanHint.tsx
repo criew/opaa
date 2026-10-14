@@ -6,7 +6,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { DirectorySyncStatusResponse } from '@/shared/api/types'
 import { getDirectorySyncStatus } from '../../../services/directorySyncApi'
-import { ageSinceLabel, countLabel } from '../../groups/groupOriginLabels'
+import { ageSinceLabel, countLabel } from '@/features/principal'
 import HintLink from '@/shared/ui/list/HintLink'
 
 /**

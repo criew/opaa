@@ -1,7 +1,7 @@
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import GroupMembersDisclosure from './GroupMembersDisclosure'
 import type { GroupMemberDisclosureResponse } from '@/shared/api/types'
 

@@ -25,7 +25,7 @@ import { successionHandlers } from './successionHandlers'
 // capability
 import { capabilityHandlers } from './capabilityHandlers'
 // user
-import { userHandlers } from './userHandlers'
+import { userHandlers } from '@/features/principal/mocks/userHandlers'
 import { localUserHandlers } from './localUserHandlers'
 import { accountHandlers } from './accountHandlers'
 // identity-provider

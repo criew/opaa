@@ -29,21 +29,6 @@
       "count": 2
     }
   },
-  "src/components/admin/directorysync/PendingPlanHint.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/directorysync/PendingPlanSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/directorysync/directorySyncState.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/components/library/sourceConnectionLabels.ts": {
     "boundaries/dependencies": {
       "count": 1
@@ -52,11 +37,6 @@
   "src/components/settings/ConnectedAccountsSection.tsx": {
     "boundaries/dependencies": {
       "count": 2
-    }
-  },
-  "src/components/succession/successionPresentation.ts": {
-    "boundaries/dependencies": {
-      "count": 1
     }
   },
   "src/pages/SearchIndexingAdminPage.tsx": {
