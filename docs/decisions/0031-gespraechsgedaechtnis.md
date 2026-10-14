@@ -60,8 +60,9 @@ der Suche verschwunden.
 ### 5. Messung vor Änderung
 
 Der Messpfad kennt Mehrrunden-Fälle (Klassen `anaphora_resolution`, `topic_switch`,
-`constraint_carryover`, seit #1684 `answer_continuation`) mit eigener Baseline; er läuft nächtlich
-in einem eigenen CI-Job (ADR-0012, Entscheidung 49) und misst ausschließlich zerlegend.
+`constraint_carryover`, seit #1684 `answer_continuation`) mit eigener Baseline und eigenem
+Messvertrag (ADR-0012, Entscheidungen 38–44); er läuft nächtlich in einem eigenen CI-Job
+(ADR-0012, Entscheidung 49) und misst ausschließlich zerlegend.
 Nachmessung (#1490) und Ablation (#1587): Das Suchfenster hebt `anaphora_resolution` und
 `topic_switch` (Kriterium ist der Anteil gelöster Fälle, nicht die nDCG-Kennzahl); die Notiz
 erreicht unter dem gepinnten Eval-Modell ihren Zweck nicht, mit einem produktionsüblichen

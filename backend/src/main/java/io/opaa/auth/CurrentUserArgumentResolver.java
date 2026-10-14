@@ -1,13 +1,12 @@
 package io.opaa.auth;
 
+import io.opaa.common.UnauthorizedException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.MethodParameter;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Resolves an {@code @}{@link Caller}-annotated {@link CurrentUser} controller-method parameter
@@ -66,7 +65,7 @@ public class CurrentUserArgumentResolver implements HandlerMethodArgumentResolve
       // Deliberately does not distinguish "no authentication at all" from "authenticated but
       // UserProvisioningFilter never ran/provisioned" to an external caller - both mean the
       // request carries no caller identity a controller can act on.
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Nicht angemeldet");
+      throw new UnauthorizedException("Nicht angemeldet");
     }
     return currentUser;
   }

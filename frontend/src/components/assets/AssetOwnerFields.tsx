@@ -8,7 +8,7 @@ import TextField from '@mui/material/TextField'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import type { AssetOwnerType, AssetType, GroupListResponse } from '@/shared/api/types'
 import type { MyGroupsState } from '../../hooks/useMyGroups'
-import { assetTypeLabel } from './assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 interface AssetOwnerFieldsProps {
   idPrefix: string

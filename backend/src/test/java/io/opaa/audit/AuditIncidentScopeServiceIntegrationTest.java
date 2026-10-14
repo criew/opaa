@@ -137,7 +137,7 @@ class AuditIncidentScopeServiceIntegrationTest {
             "Verdacht auf unbefugten Zugriff auf Personalvorgaenge");
 
     assertThatThrownBy(() -> incidentScopeService.approve(organizationId, grant.getId(), requester))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("Selbstfreigabe");
 
     assertThat(grantRepository.findById(grant.getId()).orElseThrow().getStatus())
@@ -220,7 +220,7 @@ class AuditIncidentScopeServiceIntegrationTest {
                     scopeEnd,
                     0,
                     50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
 
     // requests a to later than the approved scope's end
     assertThatThrownBy(
@@ -234,7 +234,7 @@ class AuditIncidentScopeServiceIntegrationTest {
                     scopeEnd.plus(1, ChronoUnit.DAYS),
                     0,
                     50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   /**
@@ -340,7 +340,7 @@ class AuditIncidentScopeServiceIntegrationTest {
                     scopeStart,
                     AuditIncidentScopePurpose.SECURITY_INCIDENT,
                     "ungueltiger Zeitraum"))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   private AuditLogEntry writeAuditEntryForActor(UUID actorUserId, Instant recordedAt) {

@@ -13,7 +13,7 @@ const outDir = process.argv[2] ?? fileURLToPath(new URL('../bundle-report', impo
 // Route -> source module of the page. While a page is not split into its own chunk, the route
 // costs the entry alone; once it is, the page chunk and its not yet loaded imports are added.
 const ROUTES = {
-  '/login': 'src/pages/LoginPage.tsx',
+  '/login': 'src/features/auth/pages/LoginPage.tsx',
   '/spaces/:spaceId/chats/:chatId': 'src/pages/ChatPage.tsx',
   '/catalog': 'src/pages/CatalogPage.tsx',
   '/admin/users': 'src/pages/UserManagementPage.tsx',

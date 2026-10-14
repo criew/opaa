@@ -10,6 +10,7 @@ import io.opaa.audit.AuditAccessGate;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.permission.AssetGrantHistory;
@@ -368,7 +369,7 @@ public class PointInTimeAccessService {
   /** Adds one entry, refusing rather than trimming once the answer would leave its bound. */
   private static void add(List<AccessAsOfEntry> entries, AccessAsOfEntry entry) {
     if (entries.size() >= MAX_COMPOSED_ENTRIES) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "Die Auskunft umfasst mehr als "
               + MAX_COMPOSED_ENTRIES
               + " Zugriffszeiträume und wird deshalb nicht erstellt - bitte den Zeitraum enger"
@@ -381,7 +382,7 @@ public class PointInTimeAccessService {
   /** Refuses a source that hit its read bound - one interval over the cap is already too many. */
   private static <T> List<T> capped(List<T> intervals, String sourceLabel) {
     if (intervals.size() > MAX_SOURCE_INTERVALS) {
-      throw new IllegalArgumentException(
+      throw new ValidationException(
           "Der Zeitraum umfasst mehr als "
               + MAX_SOURCE_INTERVALS
               + " Einträge der Quelle \""

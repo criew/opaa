@@ -2,1999 +2,630 @@
 
 ## Status
 
-Akzeptiert — ergänzt um den [Nachtrag vom 2026-08-21](#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721)
-(Maintainer-Entscheidung zu Issue #721/#234: Messvertrag-Version 2, dokumentbezogenes k-Fenster,
-zweite Metrikfamilie auf Chunkebene; die Entscheidungen 1–7 unten bleiben unverändert in Kraft)
-sowie um den [Nachtrag vom 2026-08-31](#nachtrag-pipeline-messpfad-issue-1039) (Issue #1039: ein
-zweiter Messpfad durch die produktive Query-Pipeline mit **eigenem**, getrennt gezähltem
-Messvertrag; der hier festgehaltene Vertrag beschreibt weiterhin ausschließlich den
-Rohvektor-Pfad und bleibt bei Version 2) und den
-[Nachtrag zu den Pipeline-Baselines](#nachtrag-baselines-des-pipeline-pfads-issue-1040)
-(Issue #1040: getrennte Baseline-Dateien je Pfad und Domäne, durchgesetzte Fixpunkte des
-Pipeline-Pfads, Pipeline-Messvertrag-Version 2 — die Rohvektor-Version bleibt auch dadurch
-unberührt bei 2) und den [Nachtrag zum Volltextpfad](#nachtrag-volltextpfad-in-der-fusion-issue-1049)
-(Issue #1049: der lexikalische Suchpfad wird Eingangsliste der Fusion und bewegt damit erstmals die
-Endauswahl — zwei neue Fixpunkte des Pipeline-Pfads, Pipeline-Messvertrag-Version 3, neu gezogene
-Pipeline-Baselines aller drei Domänen; die Rohvektor-Version bleibt bei 2, weil dieser Pfad den
-Volltextpfad konstruktionsbedingt nicht sieht) und den
-[Nachtrag zum strukturbewussten Markdown-Chunking](#nachtrag-strukturbewusstes-markdown-chunking-issue-1103)
-(Issue #1103: Markdown wird über `MarkdownDocumentPipeline` statt `TikaFallbackPipeline`
-gechunkt — kein Messvertragspunkt 1–10 ändert sich, aber alle drei Eval-Domänen brauchen neue
-Baselines auf beiden Pfaden, weil sich Chunkinhalt und -zahl der ausschließlich-Markdown-Korpora
-ändern) und den
-[Nachtrag zum Ingestion-Pipeline-Fixpunkt](#nachtrag-ingestion-pipeline-fixpunkt-issue-1144)
-(Issue #1144: `ingestionPipelineFingerprint` — ein Sammelabdruck über alle registrierten
-Ingestion-Pipelines — wird Fixpunkt auf **beiden** Pfaden, weil beide Chunks derselben Pipelines
-messen; Rohvektor-Messvertrag-Version 3, Pipeline-Messvertrag-Version 4, reine
-Fixpunkt-Ergänzung ohne neuen Messlauf für alle drei Baselines) und den
-[Nachtrag zur Rangreserve](#nachtrag-rangreserve-grenzstabilität-issue-1151)
-(Issue #1151/PR #1206: `MarginAggregate` weist je Golden-Fall/-Gruppe aus, wie knapp ein Treffer das
-Fenster erreicht hat — bewusst nur im Report ausgewiesen, kein Fixpunkt, keine Messvertragsänderung
-auf beiden Pfaden; Folgeentscheidung, ob/wie das ein Fehlerkriterium wird, in Issue #1210) und den
-[Nachtrag zum erwarteten Zustand je Messpfad](#nachtrag-erwarteter-zustand-je-messpfad-issue-1658)
-(Issue #1658: `expected_state` je Pfad, `expected_state_exception` entfällt; nur der Golden-Hash
-wird nachgezogen, keine Messvertragsversion steigt) und den
-[Nachtrag zum CPU-Backend des Eval-Ollama](#nachtrag-cpu-backend-des-eval-ollama-issue-1652)
-(Issue #1652: feste ggml-CPU-Variante `haswell` in allen Harnessen, `ollamaCpuBackend` als
-Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 11, Pipeline 14, Mehrrunden 3, alle
-sieben Baselines mit Pin neu vermessen) und den
-[Nachtrag zur Kontextpräfix-Form](#nachtrag-kontextpräfix-form-im-messvertrag-issue-1650)
-(Issue #1650: `contextPrefixFingerprint`, ein aus dem Produktionscode berechneter Abdruck der
-Präfixform über Ingest-Entscheidungen, Kernfeld-Extraktion und Präfixbildung, als Festpunkt aller drei Pfade, Messvertrag-Versionen Rohvektor 12, Pipeline 15,
-Mehrrunden 4, reine Fixpunkt-Ergänzung ohne neuen Messlauf; der Job `conversations` misst den
-Einzelfragen-Pipeline-Pfad nicht mehr) und den
-[Nachtrag zu Runden ohne Suchbedarf](#nachtrag-runden-ohne-suchbedarf-issue-1684)
-(Issue #1684: eine Mehrrunden-Runde kann keine Suche erwarten und steht dann außerhalb aller
-Metrik-Aggregate, Mehrrunden-Messvertrag 5, neue Klasse `answer_continuation`, Temperatur eines
-externen Befundlaufs einstellbar) und den
-[Nachtrag zu top-k 20](#nachtrag-produktionsfenster-top-k-20-issue-2373)
-(Issue #2373: der Produktions-Default `top-k` steigt von 8 auf 20, das Fenster des Pipeline- und
-des Mehrrunden-Pfads mit ihm, Feldnamen @20, Messvertrag-Versionen Pipeline 20, Mehrrunden 10,
-Rohvektor unverändert; vier Baselines neu gezogen) und den
-[Nachtrag zur Ollama-Fassung](#nachtrag-ollama-fassung-des-eval-containers-issue-2343)
-(Issue #2343: `ollama/ollama:0.40.3` statt 0.6.5, weil 0.6.5 Eingaben über 512 Token falsch
-einbettete; Stetigkeitsprüfung vor jeder Messung, keine Vertragsversion steigt, alle sieben
-Baselines neu gezogen) und den
-[Nachtrag zur gemeinsamen Baseline nach dem Retrieval-Umbau](#nachtrag-gemeinsame-baseline-nach-dem-retrieval-umbau-issue-2386)
-(Issue #2386: `opaa.query.fusion.*` und `opaa.query.relevance-cutoff.*` als Festpunkte,
-Messvertrag-Versionen Pipeline 21, Mehrrunden 11, Rohvektor unverändert; alle sieben Baselines aus
-einem CI-Lauf neu gezogen).
-Ursprünglich Entwurf des Code Reviewers zu PR #292 (Issue #227), übernommen und in der
-Review-Nacharbeit desselben PRs umgesetzt (`measurementContractVersion` im Report, `allQueryResults`
-im JSON-Report, `recallAt10Ceiling` je Gruppe).
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt durch ADR-0013 (Fehlerkriterium) und
+ADR-0026 Entscheidung 5 (Konfidenzschwelle der Metadaten-Extraktion) · präzisiert ADR-0011
 
 ## Kontext
 
-ADR-0011 entscheidet, **dass** der Retrieval-Harness java-nativ ist, welches Einbettungsmodell er
-verwendet und wo Korpus und Golden Dataset liegen. Es entscheidet **nicht**, wie die vier Metriken
-genau definiert sind und mit welchen Suchparametern gemessen wird. PR #292 legt beides im Code
-fest, ohne dass es an einer Stelle verbindlich niedergeschrieben wäre.
+ADR-0011 legt fest, dass der Retrieval-Harness java-nativ ist, welches Einbettungsmodell er pinnt
+und wo Korpus und Golden Dataset liegen. Es legt nicht fest, wie die Metriken definiert sind, an
+welchem Fenster und unter welcher Konfiguration gemessen wird. Eine committete Baseline ist aber nur
+so lange vergleichbar, wie genau das unverändert bleibt: Ändert sich die Gain-Funktion, die Basis
+des idealen DCG, das Fenster, die Schwellenbehandlung oder eine Messbedingung wie das
+Einbettungs-Laufzeitsystem, verschieben sich alle Zahlen ohne Änderung der Suchqualität, und der
+Regressionsjob meldet eine Regression, wo die Messgrundlage gewechselt hat.
 
-Das wird spätestens mit #228 folgenreich: Dort wird eine Baseline eingefroren, gegen die künftig
-jede Pipeline-Änderung gemessen wird. Eine Baseline ist aber nur so lange vergleichbar, wie der
-Messvertrag unverändert bleibt. Wird später etwa die Gain-Funktion des nDCG, die Basis des idealen
-DCG, das Suchfenster `topK` oder die angewandte Ähnlichkeitsschwelle geändert, verschieben sich alle
-Zahlen — ohne dass sich die Retrieval-Qualität geändert hätte. Der Fehler wäre nicht offensichtlich:
-Er erzeugt keine Ausnahme, sondern eine stabil reproduzierte, falsche Wahrheit.
-
-Konkret sind heute nur im Code festgelegt (`backend/src/main/java/io/opaa/eval/`,
-`backend/src/evalTest/java/io/opaa/eval/`):
-
-- Binäre Relevanz, Gain 1, Diskont `1/log2(rang+1)`, Rangzählung 1-basiert.
-- Ideales DCG über `min(|erwartete Dokumente|, k)` — nicht über `k`.
-- Unterschiedliche Fenster je Metrik: Hit Rate@5, nDCG@10, Recall@10, MRR über das volle Fenster
-  (`topK=10`, also faktisch MRR@10).
-- Gemessen wird mit `topK=10` und `similarityThreshold=0.0`, während die Produktion `top-k=5` und
-  `similarity-threshold=0.3` verwendet.
-- Fälle mit mehr als `k` erwarteten Dokumenten begrenzen Recall@k nach oben; das Golden Dataset
-  lässt Treffermengen bis 15 zu.
-- Aggregiert wird als Mikro-Mittel über Anfragen (jede Anfrage zählt gleich), nicht als
-  Makro-Mittel über Kategorien.
+Dieses ADR ist der Katalog dieses Messvertrags: je Messpfad die Metrikdefinition, das Fenster, die
+geprüften Festpunkte mit ihrem heutigen Wert, und die Versionszählung, die eine Baseline einem
+Vertragsstand zuordnet. Das Fehlerkriterium, nach dem ein Lauf gegen seine Baseline besteht oder
+fällt, steht in ADR-0013; die Baseline-Dateien und ihr Pflegeverfahren in `eval/baseline/README.md`;
+die Fallklassen und Zustandsfelder der Datensätze in `docs/features/retrieval-benchmark.md`.
 
 ## Entscheidung
 
-**1. Die Metrikdefinitionen sind Teil des Messvertrags und werden hier festgehalten**, nicht nur im
-Code. Binäre Relevanz; nDCG mit Gain 1 und Diskont `1/log2(rang+1)`; ideales DCG über
-`min(|erwartete Dokumente|, k)`; Rangzählung 1-basiert; MRR als Kehrwert des Rangs des ersten
-relevanten Treffers innerhalb des Suchfensters, sonst 0.
+Gegliedert nach Messpfad; die `####`-Überschriften tragen die stabilen Entscheidungsnummern, die
+deshalb nicht aufsteigend laufen. Das Nummernverzeichnis am Ende löst jede Nummer 1–73 auf.
 
-**2. Die Fenstergrößen sind bewusst ungleich und bleiben es:** Hit Rate@5 bildet ab, was ein Nutzer
-bei produktivem `top-k=5` sieht; nDCG@10 und Recall@10 brauchen ein weiteres Fenster, um
-Rangunterschiede und Mengenabdeckung überhaupt sichtbar zu machen. MRR wird als MRR@10 geführt.
+### Regeln für alle Messpfade
 
-**3. Gemessen wird ohne Ähnlichkeitsschwelle und mit `topK=10`.** Ranking-Metriken brauchen die
-vollständige, ungefilterte Reihenfolge. Die produktive Schwelle wird im Report nur informativ
-ausgewiesen. Daraus folgt ausdrücklich: Der Harness misst die Rangfolge des Retrievals, nicht die
-Trefferliste, die ein Nutzer erhält.
+#### 6. Jede Vertragsänderung erhöht die Versionsnummer ihres Pfads
 
-**4. Recall@k wird nach der Standarddefinition berechnet** (`Treffer in top-k / |erwartete
-Dokumente|`) und **nicht** auf `min(k, |erwartete Dokumente|)` normiert. Fälle mit mehr als `k`
-erwarteten Dokumenten sind damit nach oben begrenzt. Weil das den Mittelwert still verzerrt, weist
-der Report je Gruppe zusätzlich die **erreichbare Obergrenze** aus (`recallAt10Ceiling` in
-`MetricsAggregate`, siehe #292-Review).
+Jeder Pfad führt seine Vertragsversion als Konstante im Report und als Festpunkt der Baseline:
+`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` (Rohvektor, heute 16),
+`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` (Pipeline, 21),
+`ConversationEvaluationReport.CONVERSATION_MEASUREMENT_CONTRACT_VERSION` (Mehrrunden, 11). Die
+Version steigt, wenn sich ändert, was „dieselbe Messung“ heißt: eine Metrikdefinition, ein Fenster,
+die Schwellenbehandlung, die Mittelungsart, ein neuer, umbenannter oder enger definierter
+Festpunkt — auch wenn kein gemessener Wert sich bewegt. Sie steigt nicht, wenn nur der **Wert**
+eines bestehenden Festpunkts wechselt (Entscheidung 66) oder ein Datensatz-Zustand nachgezogen wird
+(Entscheidung 53); dann werden die betroffenen Baselines neu gezogen oder nur im Festpunkt
+nachgeführt. Eine Baseline mit abweichender Version ist unvergleichbar, nicht regressiert.
 
-**5. Aggregiert wird als Mikro-Mittel über Anfragen.** Kategoriegrößen sind ungleich (16 bis 34);
-der Gesamtwert ist deshalb nicht das Mittel der Kategoriewerte.
+#### 16. Drei unabhängige Zählungen (ergänzt um 41)
 
-**6. Jede Änderung an den Punkten 1 bis 5 macht bestehende Baselines ungültig** und erfordert einen
-bewussten neuen Baseline-Lauf — denselben Charakter wie eine Korpus- oder Modelländerung
-(ADR-0011, Konsequenzen). Der Report führt dafür eine Versionsnummer des Messvertrags mit
-(`measurementContractVersion`, `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION`); ein
-`git blame`/`git log` auf diese Konstante zeigt, welcher Commit den Messvertrag zuletzt geändert
-hat.
+Die drei Pfade messen Verschiedenes und sind nicht ineinander umrechenbar. Jeder zählt seine
+Version eigenständig ab 1; ein Schritt auf einem Pfad erzwingt keinen auf einem anderen. Steigen
+mehrere im selben Commit, dann weil derselbe Festpunkt alle betroffenen Pfade bewegt (etwa das
+Ollama-Image), nicht aus Gleichlauf.
 
-**7. Der Report führt die Ergebnisse jeder einzelnen Anfrage**, nicht nur der zehn schlechtesten
-(`allQueryResults` in `EvaluationReport`). Damit sind Kreuzauswertungen (etwa Sprache ×
-Schwierigkeit) aus dem Report selbst möglich, ohne den Harness erneut laufen zu lassen — siehe die
-in "Offen" der Entwurfsfassung dieses ADRs aufgeworfene Frage, unten als entschieden übernommen.
+#### 29. Ein bewegter Sammelabdruck ist ein Versionsschritt auf jedem Pfad, der ihn führt
+
+`ingestionPipelineFingerprint` (Entscheidung 28) erfasst alle registrierten Ingestion-Pipelines.
+Bewegt eine Pipeline-Version ihn, steigen Rohvektor-, Pipeline- und Mehrrunden-Vertrag im selben
+Schritt, auch wenn kein Korpus die geänderte Pipeline erreicht; die Baselines werden dann ohne
+Messlauf nur im Festpunkt und in der Version nachgezogen („Fingerabdruck-Schritt“ in den
+Versionstabellen). Erreicht die Änderung einen Korpus, werden dessen Baselines neu gemessen.
+
+#### 66. Ein geänderter Festpunktwert bewegt keine Version, aber die Baseline
+
+Ändert sich der Wert eines geprüften Festpunkts ohne seine Bedeutung — Produktionsvorgaben wie
+`max-chunks-per-document` (#2502) oder das Ollama-Image (#2343) —, bleiben die Vertragsversionen;
+jede Baseline, die den Festpunkt führt, wird neu gezogen. Ausnahme ist `top-k`: Es ist das Fenster
+des Pipeline- und des Mehrrunden-Pfads und ändert damit die Bedeutung jeder Zahl (Entscheidung 63).
+
+#### 36. Schwellen werden vor der Messung festgelegt
+
+Jede Schwelle und jeder Anker dieses Vertrags und des Fehlerkriteriums wird vor der ersten Messung
+festgelegt und committet, nie am Ergebnis entlang gewählt. Die Konfidenzschwelle der
+modellgestützten Metadaten-Extraktion folgt derselben Regel; ihr Wert und ihre Pflege stehen in
+ADR-0026, Entscheidung 5.
+
+### Rohvektor-Pfad
+
+Misst `VectorStore#similaritySearch` direkt: die Qualität der Vektorsuche, unvermischt mit allem,
+was danach umsortiert. Der aussagekräftigere Pfad für Vergleiche von Einbettungsmodellen und
+Chunking-Varianten (Entscheidung 11). Report `retrieval-metrics[-<domäne>].json`, Baseline
+`eval/baseline/<domäne>.json`, Vergleicher `BaselineComparator`.
+
+#### 1. Metrikdefinitionen (mit 2, 4, 5, 7)
+
+| Festlegung | Definition |
+|---|---|
+| Relevanz | binär; ein Treffer ist ein Dokument aus `expected_documents` |
+| nDCG | Gain 1, Diskont `1/log2(rang+1)`, Rang 1-basiert; ideales DCG über `min(|erwartete Dokumente|, k)` |
+| MRR | Kehrwert des Rangs des ersten relevanten Treffers im Fenster, sonst 0 (faktisch MRR@10) |
+| Recall@k | `Treffer in top-k / |erwartete Dokumente|`, nicht auf `min(k, |erwartet|)` normiert; die erreichbare Obergrenze steht je Gruppe als `recallAt10Ceiling` im Report |
+| Fenster | Hit Rate@5 (was ein Nutzer bei kleinem `top-k` sieht), MRR@10, nDCG@10, Recall@10 (`RetrievalMetrics.HIT_RATE_K`, `NDCG_K`, `RECALL_K`); bewusst ungleich, eine Tabelle mit vier Spalten suggeriert sonst Vergleichbarkeit |
+| Mittelung | Mikro-Mittel über Anfragen, je Gruppe `overall`, `category:*`, `difficulty:*`, `language:*` (`MetricsAggregate`); `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt (`comic-characters` seit #304 nicht mehr, weil sie dort dieselbe Fallmenge wie `category:crosslingual` ist, ADR-0013); `city-landmarks` führt und vergleicht sie |
+| Fallzähler | `hitCountAt5`, `hitCountAt10`, `distinctExpectedDocumentSets` (= `n_eff` von ADR-0013), `allExpectedDocumentsHitAt10` je Gruppe |
+| Einzelfälle | `allQueryResults` führt jede Anfrage mit ihren Metriken, damit Kreuzauswertungen ohne neuen Lauf möglich sind |
+
+#### 3. Ohne Ähnlichkeitsschwelle, mit festem Suchfenster
+
+Gemessen wird ohne Ähnlichkeitsschwelle; `productionSimilarityThreshold` wird nur ausgewiesen und
+ist als bewusst nicht angewandter Wert Festpunkt. Der Harness misst die Rangfolge des Retrievals,
+nicht die Trefferliste, die ein Nutzer erhält. Das Fenster ist `documentTopK = 10` (Entscheidung 8);
+`searchTopK` ist die tatsächlich an `similaritySearch` übergebene Trefferzahl und ebenfalls
+Festpunkt.
+
+#### 8. Das k-Fenster ist dokumentbezogen
+
+„top-k“ heißt zehn unterschiedliche **Dokumente**, nicht zehn Chunks. Der Harness sucht mit
+`chunkTopK = documentTopK · maxChunksPerDocument` (`EvalDomainConfig`, je Domäne deklarierte
+Obergrenze: `comic-characters` 1, `city-landmarks` 20, `verwaltung` 19) und dedupliziert nach
+Dokument (`DocumentRanking`). Erreicht ein Lauf `documentTopK` nicht, meldet der Report das
+(`documentWindowCoverage`) statt still ein kleineres Fenster zu messen. Je Domäne ist eine
+Chunk-Zahl-Erwartung Messvoraussetzung (`ChunkCountExpectation`: genau ein Chunk für
+`comic-characters`, mindestens drei für die beiden anderen); eine Verletzung ist ein harter Abbruch,
+kein Toleranzfall.
+
+#### 9. Zweite Metrikfamilie: Chunkebene über `answer_span` (mit 21)
+
+Neben der für Baseline und CI maßgeblichen Dokumentebene misst `ChunkAnswerSpanMetrics`
+`answerSpanHitRate@5` und den Rang des ersten Chunks, der den wörtlichen Ausschnitt `answer_span`
+eines Falls enthält — ein Textausschnitt statt eines Chunk-Index, weil er unter geänderten
+Chunking-Parametern stabil bleibt. Höchstens ein `answer_span` je Fall, nur bei genau einem
+erwarteten Dokument (Entscheidung 21, `GoldenCaseCuration`). Jeder Span muss in einem Chunk eines
+erwarteten Dokuments auflösbar sein (`answerSpanResolution`), sonst bricht der Lauf ab: Eine
+zerschneidende Chunk-Grenze ist von einem Retrieval-Fehlschlag numerisch nicht unterscheidbar;
+`SpanMatcher` kollabiert nur Whitespace, für `boundary_span`-Fälle ist die Grenze Messgegenstand.
+Eine Domäne ohne Spans liefert `NOT_APPLICABLE` (`comic-characters`).
+
+#### Festpunkte des Rohvektor-Pfads (Entscheidungen 3, 10, 28, 32, 45, 55, 57)
+
+`Baseline.FixedPoints`, verglichen in `BaselineComparator`; weicht einer ab, ist die Baseline
+ungültig und keine Metrik wird verglichen.
+
+| Festpunkt | Wert heute | seit Version | Warum |
+|---|---|---|---|
+| `measurementContractVersion` | 16 | 1 | ordnet die Baseline einem Vertragsstand zu |
+| `embeddingModel`, `embeddingModelDigest` | `nomic-embed-text:v1.5`, `0a109f42…` | 1 | Modell und Gewichte (ADR-0011) |
+| `embeddingDimensions` | 768 | 1 | andere Dimension, anderer Vektorraum |
+| `chunkSize`, `chunkSizeMatchesApplicationDefault` | 1000, `true` | 1 | die Zerlegung bestimmt, was eingebettet wird |
+| `chunkOverlap` | 100 | 2 | wirkt bei mehrchunkigen Dokumenten auf die Chunks |
+| `documentTopK` | 10 | 2 | das Fenster der Metriken |
+| `chunkTopK`, `searchTopK` | 10 / 200 / 190 je Domäne | 2 (`searchTopK` seit 1) | die Suche, aus der das Dokumentfenster entsteht |
+| `productionSimilarityThreshold` | 0,3, nicht angewandt | 1 | dokumentiert, dass ohne Schwelle gemessen wird |
+| `pgvectorIndexType` | `hnsw` | 1 | ein Wechsel auf exakte Suche ist eine Messänderung (ADR-0011) |
+| `corpusManifestSha256`, `corpusDocumentCount` | je Domäne | 1 | der Korpus |
+| `goldenDatasetFile`, `goldenDatasetSha256`, `goldenCaseCount` | je Domäne | 1 | der Datensatz samt Zuständen |
+| `ingestionPipelineFingerprint` | `confluence:4,docx:5,email:5,html:5,markdown:3,odp:4,odt:4,pdf:5,pptx:3,tabular:3,tika-fallback:1` | 3 | welche Pipelines in welcher Version gechunkt haben (Entscheidung 28) |
+| `metadataFilterEnabled` | `true` | 6 | ob die Golden-Filter in der Suche wirkten (Entscheidung 32) |
+| `ollamaImage` | `ollama/ollama:0.40.3` | 10 | das Laufzeitsystem, das die Vektoren berechnet (Entscheidung 45) |
+| `ollamaCpuBackend` | `haswell` | 11 | die ggml-Kernelvariante bewegt Rangfolgen (Entscheidung 55) |
+| `contextPrefixFingerprint` | `ff4022a9…` | 12 | die Form des Kontextpräfixes vor jedem Chunk (Entscheidung 57) |
+
+#### Versionen des Rohvektor-Vertrags
+
+| Version | Datum | Issue | Grund |
+|---|---|---|---|
+| 1 | 2026-08-03 | #227 | Erste Fassung: Metriken, Fenster, Festpunkte |
+| 2 | 2026-08-21 | #721 | dokumentbezogenes k-Fenster, `chunkOverlap`/`documentTopK`/`chunkTopK` als Festpunkte, Chunkebene |
+| 3 | 2026-09-03 | #1144 | `ingestionPipelineFingerprint` |
+| 4 | 2026-09-03 | #1164 | Fingerabdruck-Schritt: `email` 2→3 |
+| 5 | 2026-09-03 | #1183 | Fingerabdruck-Schritt: `email` 3→4 (ADR-0022) |
+| 6 | 2026-09-05 | #1070 | `metadataFilterEnabled`; `verwaltung` neu gemessen |
+| 7 | 2026-09-05 | #1242 | Fingerabdruck-Schritt: `email` 4→5 |
+| 8 | 2026-09-05 | #1315 | Fingerabdruck-Schritt: `html` 1→2 |
+| 9 | 2026-09-07 | #1357 | Fingerabdruck-Schritt: `html` 2→3, `confluence` 1→2 |
+| 10 | 2026-09-11 | #1522 | `ollamaImage` |
+| 11 | 2026-09-15 | #1652 | `ollamaCpuBackend`; alle Baselines neu gemessen |
+| 12 | 2026-09-15 | #1650 | `contextPrefixFingerprint` |
+| 13 | 2026-09-27 | #2033 | Fingerabdruck-Schritt: `pdf` 1→2 |
+| 14 | 2026-10-08 | #2330 | Fingerabdruck-Schritt: `pdf` 2→3 |
+| 15 | 2026-10-08 | #2327, #2328 | Fingerabdruck-Schritt: übergroße Abschnitte, neun Formate |
+| 16 | 2026-10-08 | #2331 | Fingerabdruck-Schritt: Kleinstchunks, `markdown` 2→3 und acht weitere |
+
+### Pipeline-Pfad
+
+#### 11. Zweiter Messpfad durch die produktive Pipeline (mit 12, 14, 37)
+
+Der Pipeline-Pfad misst auf demselben einmal indizierten Korpus die Endauswahl der produktiven
+Pipeline über denselben Einstieg wie eine Chat-Anfrage: `RetrievalContextFactory#contextFor` und
+`RetrievalPipeline#run` (Entscheidung 37, seit #1455). Der Suchbereich wird übergeben, nicht
+aufgelöst (Entscheidung 14): genau die Eval-Bibliothek mit dem ganzen Korpus; Rechtedurchsetzung
+ist nicht Messgegenstand. Die Ähnlichkeitsschwelle ist **angewandt**, das Fenster ist das
+produktive `top-k`. Der Pipeline-Pfad ersetzt den Rohvektor-Pfad nicht; er ist der einzige, der
+Aussagen über die Nutzererfahrung erlaubt, und beide stehen getrennt im Bericht.
+
+| | Rohvektor-Pfad | Pipeline-Pfad |
+|---|---|---|
+| Gemessen | `similaritySearch` | Endauswahl der Pipeline auf Dokumentebene, ohne Nachbar-Chunks (Entscheidung 67) |
+| Schwelle | ausgewiesen, nicht angewandt | angewandt |
+| Fenster | 10 Dokumente | `top-k` = 20 Chunk-Plätze (Entscheidung 63) |
+| Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | Hit Rate@5, MRR@20, nDCG@20, Recall@20 |
+| Report / Baseline | `retrieval-metrics[-<domäne>].json` / `<domäne>.json` | `pipeline-metrics-<domäne>.json` / `pipeline-<domäne>.json` |
+
+#### 12. Die Metriken tragen ihr Fenster an jeder Zahl
+
+Die beiden Pfade sind nicht ineinander umrechenbar. Die Fensterangabe ist deshalb Schema, nicht
+Konvention: `mrrAt20`, `ndcgAt20`, `recallAt20`, `recallAt20Ceiling`, `hitCountAt20`,
+`allExpectedDocumentsHitAt20` (`PipelineMetricsAggregate`, `RANKING_K = 20`), jede Textausgabe
+beschriftet gleich, jeder Report führt einen `metricWindowNote`. `PipelineMetricsAggregate.of`
+weist Ergebnisse an einem anderen Fenster zurück. Metrikmathematik und Mittelung sind die des
+Rohvektor-Pfads (`RetrievalMetrics`), angewandt an diesem Fenster.
+
+#### 13. Festpunkte des Pipeline-Pfads (mit 18, 20, 22, 32, 45, 55, 57, 71)
+
+`PipelineBaseline.FixedPoints`, verglichen in `PipelineBaselineComparator`, Feld für Feld, auch
+innerhalb der Blöcke `fusion` und `relevanceCutoff`. Alle Werte werden aus der laufenden
+Anwendungskonfiguration gelesen, nicht im Harness gesetzt; `relevanceCutoff` aus
+`RelevanceCutoffProperties`. Einzige Ausnahme ist `query-decomposition-enabled`: Das Produkt liefert
+mit Zerlegung aus, der Harness setzt sie für den Einzelfragen-Pfad selbst ab
+(`EvalQueryDecomposition`, Entscheidung 15). Ein geboxtes Feld (`metadataFilterEnabled`, die
+Blöcke `fusion`/`relevanceCutoff`), das eine ältere Datei nicht kennt, lädt als `null` und ist damit
+unvergleichbar, nie stillschweigend „ohne“. Kein Festpunkt ist das Nachbar-Budget aus #2625: Der
+Harness misst die Endauswahl ohne Nachbar-Chunks (Entscheidung 67).
+
+| Festpunkt | Wert heute | seit Version | Warum |
+|---|---|---|---|
+| gemeinsamer Block: Modell und Digest, `ollamaImage`, `ollamaCpuBackend`, Dimensionen, `chunkSize`, `chunkOverlap`, `pgvectorIndexType`, Korpus, Datensatz, `ingestionPipelineFingerprint`, `contextPrefixFingerprint`, `metadataFilterEnabled` | wie Rohvektor | 1; `ingestionPipelineFingerprint` 4, `metadataFilterEnabled` 8, `ollamaImage` 13, `ollamaCpuBackend` 14, `contextPrefixFingerprint` 15 | dieselben Chunks, dieselben Vektoren |
+| `fetchK` | 25 | 2 (ausgewiesen seit 1) | Kandidatenzahl je Suchliste |
+| `topK` | 20 | 1 | das Fenster; der Harness verweigert einen Lauf, dessen `top-k` von `RANKING_K` abweicht |
+| `similarityThreshold` | 0,3 | 2 | hier angewandt, entfernt Dokumente aus der Liste |
+| `maxChunksPerDocument` | 1 | 2 | Dokument-Vervollständigung (Wert seit #2502) |
+| `mmrLambda` | 1,0 | 2 | Diversifizierung |
+| `fusion.method`, `.subQueryQuota`, `.vectorWeight`, `.guaranteedPerList` | `RRF`, `true`, 0,7, 1 | 21 | wie die Listen zur Auswahl werden; auch wirkungslose Werte (`vectorWeight` nur unter `SCORE`) gehören dazu, weil ein Moduswechsel sie wirksam macht |
+| `relevanceCutoff.mode`, `.minChunks`, `.relativeThreshold`, `.kneeDrop` | `FIXED`, 10, 0,6, 0,25 | 21 | der Relevanzschnitt der Auswahl |
+| `fullTextSearchEnabled` | `true` | 3 | ob der lexikalische Pfad in die Fusion einging (Entscheidung 22) |
+| `fullTextIndexUpToDate` | `true` | 3 (umbenannt 7 und 12) | ob jede Zeile des Volltextindex der Bibliothek auf der aktuellen `content_tsv_version` stand; seit 12 nur noch der Fassungs-Rückstand, weil die Zeile selbst seit #1047 in derselben Transaktion wie der Vektor entsteht |
+| `queryDecompositionEnabled`, `maxSubQueries`, `chatModel` | `false`, 3, `null` | 1 (`maxSubQueries` 2) | Entscheidung 15: ohne Zerlegung gemessen; ein Modellname auf einer Seite allein macht die Baseline ungültig (Entscheidung 20) |
+| `hitRateK`, `rankingK` | 5, 20 | 2 | die Fenster, die die Feldnamen wörtlich führen |
+
+#### 15. Teilfragen-Zerlegung: abgeschaltet, nie stillschweigend degradiert (mit 20)
+
+Der Einzelfragen-Pipeline-Pfad misst die Variante `decomposition-off`
+(`query-decomposition-enabled = false`, `chatModel = null`).
+`PipelineHarnessSupport#requireMeasurableConfiguration` bricht ab, wenn ein Lauf etwas anderes
+misst, als seine Feldnamen behaupten: Zerlegung ohne Chat-Modell (stiller Rückfall auf
+Einzelanfragen), `top-k` ungleich `RANKING_K`, abgeschaltete Pipeline-Stufen (kein Report-Feld hält
+fest, welche liefen), lexikalischer Pfad aus, aktives Reranking (nutzbare Rerank-Rolle mit
+`rerank-candidate-count > 0`). Die Baseline beschreibt die ausgelieferte Konfiguration: hybrid, ohne
+Reranking; vector-only und Reranking sind benannte Variantenvergleiche (`eval/variants/*-lexical-path.json`,
+`verwaltung-reranking.json`), und ein Variantenbericht ist keine Baseline.
+
+#### 17. Eine Baseline-Datei je Pfad und Domäne
+
+Flach unter `eval/baseline/`: `<domäne>.json`, `pipeline-<domäne>.json`,
+`pipeline-<domäne>-conversations.json`; die Namen leitet `EvalDomainConfig` mit festem Präfix und
+Suffix aus dem Rohvektor-Namen ab, eine Kollision ist per Tippfehler nicht erreichbar. Eigene Typen
+(`Baseline`, `PipelineBaseline`, `ConversationBaseline`) mit eigenen Festpunkten und Gruppenwerten,
+damit keine @10-Zahl unter einem @20-Feldnamen landen kann. Flach, damit der Absenkungsvergleich
+gegen `main` (ADR-0013, Entscheidung 6) alle Dateien ohne Fallunterscheidung erfasst.
+
+#### 19. Getrenntes Urteil je Pfad, eigene Anker der harten Untergrenze
+
+Jeder Pfad wird gegen seine eigene Baseline mit dem **unveränderten** Fehlerkriterium aus ADR-0013
+geprüft: alle Vergleicher über `BaselineComparator.metricCheck`, am Pipeline-Fenster über
+`PipelineGroupChecks` (vier Metriken und `allExpectedDocumentsHitAt20`, Fallzähler `hitCountAt5`
+bzw. `hitCountAt20`). Je Pfad ein eigenes Urteil mit eigener Delta-Tabelle (zwei Testklassen im
+selben Gradle-Task, beide im Alarm-Issue); ein Fehler des Pipeline-Messlaufs lässt den Messlauf grün
+(`PipelineHarnessSupport.runAndWriteGuarded`) und nur den Pipeline-Baseline-Test rot. Eine Domäne
+ohne Pipeline-Baseline wird sichtbar ausgelassen (`pipelineBaselineTestClass = null` in
+`backend/build.gradle.kts`), nie still als bestanden gewertet.
+
+Die Anker der harten Untergrenze sind pfadspezifisch, die Formel `max(0,8 · Baselinewert, Anker)`
+nur auf `overall` nicht: Pipeline- und Mehrrunden-Pfad Hit Rate@5 ≥ 0,15, MRR@20/nDCG@20/Recall@20 ≥
+0,125 (`PipelineBaselineComparator`) — die Hälfte der Rohvektor-Anker, weil die Schwelle hier greift
+und Dokumente ganz aus der Liste entfernen kann; vor der ersten Messung festgelegt (Entscheidung 36),
+ein Netz gegen einen leeren Vektor-Store, kein Qualitätsziel, mit dem Fenster @20 unverändert.
+
+#### 22. Der lexikalische Pfad ist Teil der Pipeline-Messung (mit 23)
+
+Seit #1049 geht die Volltextsuche als Eingangsliste in die Fusion ein und bewegt die Endauswahl.
+`fullTextSearchEnabled` und `fullTextIndexUpToDate` sind seither Festpunkte; erst beide zusammen
+beantworten, ob der lexikalische Pfad in einem Lauf beigetragen hat. Ein Variantenlauf, der ihn über
+einem unvollständigen Index anfordert, wird als „nicht ausgeführt“ gemeldet (`VariantPrerequisites`),
+nicht stillschweigend degradiert. Der Rohvektor-Pfad kennt den lexikalischen Pfad und die Fusion
+konstruktionsbedingt nicht; seine Version bleibt von jeder Änderung daran unberührt (Entscheidung 23).
+
+#### 63. Das Fenster folgt der Produktion: @20
+
+`top-k` ist das Fenster, weil der Pipeline-Pfad die Nutzererfahrung misst und die die ganze
+Endauswahl bestimmt. Seit #2373 ist es 20; alle fenstertragenden Namen heißen entsprechend, im
+Pipeline-, Mehrrunden- und Variantenbericht. Das Fenster ist nominell breiter als die zehn Dokumente
+des Rohvektor-Pfads, zählt aber Chunk-Plätze.
+
+#### Versionen des Pipeline-Vertrags
+
+| Version | Datum | Issue | Grund |
+|---|---|---|---|
+| 1 | 2026-08-31 | #1039 | Messpfad, eigene Zählung; Query-Parameter ausgewiesen |
+| 2 | 2026-08-31 | #1040 | `fetch-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`, `max-sub-queries`, `hitRateK`/`rankingK` durchgesetzt; erste Baselines |
+| 3 | 2026-09-01 | #1049 | `fullTextSearchEnabled`, `fullTextBackfillComplete`; neu gemessen |
+| 4 | 2026-09-03 | #1144 | `ingestionPipelineFingerprint` |
+| 5 | 2026-09-03 | #1164 | Fingerabdruck-Schritt: `email` 2→3 |
+| 6 | 2026-09-03 | #1183 | Fingerabdruck-Schritt: `email` 3→4 |
+| 7 | 2026-09-04 | #1270 | Umbenennung `fullTextBackfillComplete` → `fullTextIndexComplete` |
+| 8 | 2026-09-05 | #1070 | `metadataFilterEnabled`; `verwaltung` neu gemessen |
+| 9 | 2026-09-05 | #1242 | Fingerabdruck-Schritt: `email` 4→5 |
+| 10 | 2026-09-05 | #1315 | Fingerabdruck-Schritt: `html` 1→2 |
+| 11 | 2026-09-07 | #1357 | Fingerabdruck-Schritt: `html` 2→3, `confluence` 1→2 |
+| 12 | 2026-09-11 | #1429 | Umbenennung und Verengung `fullTextIndexComplete` → `fullTextIndexUpToDate` |
+| 13 | 2026-09-11 | #1522 | `ollamaImage` |
+| 14 | 2026-09-15 | #1652 | `ollamaCpuBackend`; alle Baselines neu gemessen |
+| 15 | 2026-09-15 | #1650 | `contextPrefixFingerprint` |
+| 16 | 2026-09-27 | #2033 | Fingerabdruck-Schritt: `pdf` 1→2 |
+| 17 | 2026-10-08 | #2330 | Fingerabdruck-Schritt: `pdf` 2→3 |
+| 18 | 2026-10-08 | #2327, #2328 | Fingerabdruck-Schritt: übergroße Abschnitte |
+| 19 | 2026-10-08 | #2331 | Fingerabdruck-Schritt: Kleinstchunks |
+| 20 | 2026-10-09 | #2373 | Fenster @8 → @20; neu gemessen |
+| 21 | 2026-10-14 | #2386 | `fusion` und `relevanceCutoff`; neu gemessen |
+
+### Mehrrunden-Pfad
+
+#### 38. Ein dritter Messpfad, getrennt ausgewiesen
+
+Gespräche aus `eval/golden/<domäne>-conversations.json` laufen Runde für Runde durch dieselbe
+Kette wie eine echte Anfrage, mit dem Gesprächsfenster aus den vorangegangenen Runden. Eigener
+Berichtstyp (`ConversationEvaluationReport`, `pipeline-conversations-<domäne>.json`), eigene
+Baseline, eigener Vergleicher (`ConversationBaselineComparator`), eigene Vertragsversion
+(Entscheidung 41). Metrikmathematik und Fenster sind die des Pipeline-Pfads: Eine Runde ist eine
+Frage mit erwarteten Dokumenten und wird als `GoldenCase` gemessen, keine zweite Metrikfamilie.
+Der Bericht aggregiert je Runde (`turn:<n>`), je Fallklasse (`category:*`) und `overall`; die
+Rundengruppe zeigt, was ein Gesamtwert verdeckt: eine Änderung, die ersten Runden hilft und
+Folgerunden schadet.
+
+#### 39. „Gelöst“ je Runde und je Fall
+
+Eine Runde ist gelöst nach `ExpectedStateAudit#isSolved` (alle erwarteten Dokumente im Fenster
+**und** ein erwartetes auf Rang 1); ein Fall ist gelöst, wenn **jede** seiner Runden gelöst ist,
+auch eine Runde ohne Suchbedarf (Entscheidung 61). Kein gemittelter Fallwert.
+
+#### 40. Festpunkte des Mehrrunden-Pfads
+
+`ConversationBaseline.FixedPoints`: der vollständige Pipeline-Block (Entscheidung 13, dasselbe
+Schema, über `PipelineBaselineComparator.addPipelineFixedPointMismatches` verglichen) plus:
+
+| Festpunkt | Wert heute | seit Version | Warum |
+|---|---|---|---|
+| `pipeline.metadataFilterEnabled` | `false` | 1 | Mehrrunden-Fälle tragen keinen Kernfeld-Filter; ein Filter entschiede vor der Bezugsauflösung (`ConversationHarnessSupport`) |
+| `pipeline.queryDecompositionEnabled`, `pipeline.chatModel` | `true`, `qwen2.5:1.5b-instruct` | 1 | hier **geprüft**, nicht nur gemeldet: ohne Zerlegung wird kein Bezug aufgelöst; `ConversationBaseline.load` weist eine Datei ohne Modell zurück |
+| `conversationWindowMessages` | 20 | 1 | Breite des Gesprächsfensters, **gemessen** an der produktiven `ChatMemory`-Bean (`ConversationMemoryProfile#measuredFrom`), nicht aus einer Konstante kopiert |
+| `searchWindowTurns` | 2 | 1 | wie viele Runden die Zerlegung sieht (`opaa.query.search-window-turns`), aus den produktiven `QueryProperties` |
+| `conversationNoteCap` | 10 | 1 | Deckel der Gesprächsnotiz; 0 hieße „keine Notiz“ |
+| `turnCount` | 127 | 1 | zweite Hälfte der Datensatzgröße: eine Kuratierung, die nur Fälle verlängert, ließe `goldenCaseCount` unberührt |
+
+#### 42. Ausführung: nur zerlegend, dreimal, Median (mit 48, 49, 51, 60)
+
+Eigenes Task-Paar `evaluate<Domäne>Conversations`/`check<Domäne>ConversationBaseline` am Ende
+desselben Harness-Laufs (Entscheidung 48): Die Task setzt Zerlegung und `opaa.eval.runConversations`
+selbst, weil die Einzelfragen-Baselines derselben Domäne ohne Zerlegung gezogen sind; der
+Einzelfragen-Pipeline-Pfad wird in diesem Lauf nicht gemessen (Entscheidung 60). Mehrfachlauf-Regel
+(`MehrfachlaufRule`, `docs/features/retrieval-benchmark.md` §3): drei Läufe, der Median nach nDCG@20
+vertritt die Messung; der Bericht führt Streubereich, Runden mit abweichender Zerlegung und je Runde
+Notizpunkte und Teilfragen (Entscheidung 51). Fehlt Zerlegung, Chat-Modell oder Datensatz: „nicht
+ausgeführt“. Eigener CI-Job `conversations` (`.github/workflows/retrieval-regression.yml`, Budget
+300 Minuten; wer es verengt, zieht vorher weitere nächtliche Läufe heran) nächtlich, per
+`workflow_dispatch` und beim Label `evaluation` (Entscheidung 49).
+
+#### 43. Die Einpfadigkeit steht am Datensatz, nicht am Fall (Einpfad-Regel)
+
+Ein Mehrrunden-Fall kann nur auf dem Pipeline-Pfad laufen; der Rohvektor-Pfad kennt weder Verlauf
+noch Zerlegung. Eine Fallklasse, die konstruktionsbedingt nur auf einem Pfad laufen kann, gilt als
+gelöst, wenn sie dort gelöst ist. Der Bericht vermerkt das einmal (`singlePathNote`), die
+Zustandsfelder des Datensatzes bleiben flach und beschreiben diesen einen Pfad.
+
+#### 44. Die Wechselrunde eines `topic_switch`-Falls wird benannt, nicht abgeleitet
+
+Der Themen-Bleed wird über genau eine Runde je Fall gebildet, die der Datensatz als
+`topic_switch_turn` (1-basiert) benennt. Eine Ableitung aus den Erwartungsmengen träfe auch
+gewöhnliche Rückfragen in ein anderes Dokument und zählte deren richtiges Vorthemen-Dokument als
+Bleed.
+
+#### 50. Drei Ausgänge je Pfad
+
+`ConversationBaselineVerdict` kennt wie der Pipeline-Pfad keine Regression, Regression und
+unvergleichbare Baseline; die beiden letzten lassen den Job fehlschlagen, es gibt keinen Ausgang
+„nicht beurteilt“. `ConversationPathIsolationTest` sperrt `searchWindowTurns`/`conversationNoteCap`
+der committeten Baseline auf die Produktionswerte.
+
+#### 61. Eine Runde ohne Suchbedarf steht außerhalb jedes Aggregats
+
+Eine Runde mit `search_expected: false` hat keine erwarteten Dokumente und ist gelöst, wenn der Lauf
+sie als Nachricht ohne Suchbedarf eingestuft hat (`searchNeeded = false`). Sie geht in kein
+Aggregat ein (`n` und jeder Mittelwert bedeuten „Runden mit Suche“), trägt `null` statt `0` und
+erscheint im Abschnitt `noSearch`, der beide Fehlrichtungen zählt. Kein eigener Metrikwert: Bei
+neun solchen Runden je Datensatz gäbe es keinen Toleranzbegriff im Sinne von ADR-0013.
+
+#### 62. Temperatur nur für einen externen Befundlauf
+
+`-Dopaa.eval.chatTemperature` gilt nur mit `opaa.eval.chatBaseUrl`; das gepinnte Modell misst bei
+Temperatur 0. Die Temperatur ist kein Festpunkt, ein externer Lauf ist über `chatModel` ohnehin
+unvergleichbar; sie steht als Beobachtungsfeld im Bericht.
+
+#### Versionen des Mehrrunden-Vertrags
+
+| Version | Datum | Issue | Grund |
+|---|---|---|---|
+| 1 | 2026-09-11 | #1484 | Messpfad, eigene Zählung |
+| 2 | 2026-09-11 | #1522 | `ollamaImage` (geteilter Block) |
+| 3 | 2026-09-15 | #1652 | `ollamaCpuBackend`; Baseline neu gemessen |
+| 4 | 2026-09-15 | #1650 | `contextPrefixFingerprint` |
+| 5 | 2026-09-17 | #1684 | Runden ohne Suchbedarf; `n` bedeutet „Runden mit Suche“ |
+| 6 | 2026-09-27 | #2033 | Fingerabdruck-Schritt: `pdf` 1→2 |
+| 7 | 2026-10-08 | #2330 | Fingerabdruck-Schritt: `pdf` 2→3 |
+| 8 | 2026-10-08 | #2327, #2328 | Fingerabdruck-Schritt: übergroße Abschnitte |
+| 9 | 2026-10-08 | #2331 | Fingerabdruck-Schritt: Kleinstchunks |
+| 10 | 2026-10-09 | #2373 | Fenster @8 → @20; neu gemessen |
+| 11 | 2026-10-14 | #2386 | `fusion` und `relevanceCutoff`; neu gemessen |
+
+### Zustandsfelder der Datensätze
+
+#### 52. Der erwartete Zustand wird je Messpfad geführt, das Audit prüft je Pfad (mit 53)
+
+`expected_state` eines Einzelfragen-Falls hat die Pflichteinträge `raw_vector` und `pipeline`, je
+mit `state` (`solved`/`known_gap`), `since`, `reason` (`GoldenCaseCuration`). Der gemessene
+Ist-Zustand ist der festgeschriebene Stand; `ExpectedStateAudit` meldet nur Abweichungen, je Pfad,
+in beiden Richtungen. „Gelöst“: alle erwarteten Dokumente im Fenster **und** ein erwartetes auf
+Rang 1, am Fenster des Pfads. Ein ohne den Mechanismus seiner Klasse gelöster Fall ist `solved` mit
+dem Präfix `Ohne geprüften Mechanismus: ` (nur auf `solved`, nur als exakter Anfang; Zuordnung in
+`docs/features/retrieval-benchmark.md` §5). Der Mehrrunden-Datensatz bleibt flach (Entscheidung 43).
+Das Audit berechnet keine Metrik und lässt keinen Lauf fehlschlagen; Zustandspflege bewegt keine
+Vertragsversion, nur `goldenDatasetSha256` der betroffenen Baselines (Entscheidung 53).
+
+### Berichtsgrößen ohne Vertragscharakter (Rangreserve, Audits)
+
+Diese Größen stehen im Report und in den Delta-Tabellen, aber in keiner Baseline und keinem
+Vergleicher; sie bewegen keine Version:
+
+- **Rangreserve** (#1151, `RetrievalMetrics#marginAtK`, `MarginAggregate`; im Mehrrunden-Bericht
+  `hitRateMargin`/`rankingMargin` je Runde): Abstand des ersten relevanten Treffers zur Fenstergrenze.
+  Maintainer-Entscheidung (#1210): bleibt report-only auf allen drei Pfaden, weil sie nur den ersten
+  Treffer betrachtet, kein Lauf bisher eine Regression zeigte, die sie früher angezeigt hätte, und
+  ein weiteres Kriterium Toleranz und Neuziehung kostete. Wiederaufnahme, wenn eine in den geprüften
+  Metriken unsichtbare Regression in der Rangreserve sichtbar war — dann mit einer Marge über das
+  schwächste erwartete Dokument. Deshalb gehört zu jeder Untersuchung einer gemeldeten
+  Verschlechterung die Auswertung von `MarginAggregate`.
+- **Metadatenfilter-Audit** (Entscheidung 34, `MetadataFilterAudit`): zählt je Pfad getrennt
+  „Filter greift nicht“ (`confusable_document` trotz Filter im Fenster) und „Filter greift zu stark“
+  (Fall mit `no_value_field` verliert sein Dokument); nie gemittelt, weil beide Richtungen
+  verschiedene Korrekturen verlangen.
+- **Zustandsfeld-Audit** (Entscheidung 52), `documentWindowCoverage`, `answerSpanResolution`
+  (Entscheidungen 8, 9), Mehrfachlauf-Block und `noSearch` (Entscheidungen 51, 61).
+
+### Eval-Umgebung
+
+#### 68. Ollama-Image `ollama/ollama:0.40.3` (mit 45)
+
+`EvalOllamaEndpoint.PINNED_IMAGE`, einmal definiert, Festpunkt `ollamaImage` aller drei Pfade
+(Entscheidung 45): Derselbe Modell-Digest hinter einer anderen Fassung ist nicht nachweislich
+dieselbe Messung — 0.6.5 bettete Eingaben über 512 Token in Teilstücken ein und lieferte falsche
+Vektoren. 0.40.3 ist die Fassung des Compose-Stapels und des Kubernetes-Erprobungsaufbaus. Modell-
+und Digest-Pin des Embedding-Modells (`nomic-embed-text:v1.5`) und des Chat-Modells
+(`EvalChatModel`, `qwen2.5:1.5b-instruct`, Temperatur 0) stehen in ADR-0011, Entscheidung 4.
+
+#### 54. Feste ggml-CPU-Variante `haswell` (mit 55)
+
+Alle drei Harnesse starten den Container über `EvalOllamaCpuBackend`: Vor `ollama serve` werden alle
+CPU-Bibliotheken außer `libggml-cpu-haswell.so` entfernt; nach der Indizierung prüft der Harness im
+Container-Log, dass der Embedding-Runner und, bei Zerlegung, der Chat-Runner diese Variante geladen
+haben, sonst bricht er vor der ersten Messung ab. `haswell` ist die höchste Stufe, die jeder
+x86-64-Runner ausführt; AVX-512-Kernel rechnen ab der fünften Nachkommastelle anders, was
+Einbettungs-Rangfolgen und die Zerlegung bei Temperatur 0 kippt. `ollamaCpuBackend` ist Festpunkt
+aller drei Pfade (Entscheidung 55). Grenzen: kein ARM-Host; gegen einen externen Endpunkt greift der
+Pin nicht (`ollamaCpuBackend: null`); mit `-Dopaa.eval.allowGpu=true` trägt der Lauf
+`unpinned: gpu allowed`; mit externem Chat-Modell (`-Dopaa.eval.chatBaseUrl`/`chatModel`, #1674)
+verlangt die Prüfung nur den Embedding-Runner. Alle drei Läufe sind gegen keine Baseline vergleichbar.
+
+#### 69. Stetigkeitsprüfung vor jeder Messung
+
+`EvalEmbeddingContinuity.require` bettet nach dem Modell-Pull 21 Präfixe eines Korpustexts zwischen
+1 100 und 1 500 Zeichen ein (Schritt 20 Zeichen), verlangt, dass sie die 512-Token-Grenze tatsächlich
+überspannen, und dass kein benachbartes Paar unter Kosinus 0,98 fällt. Läuft in jedem Lauf, auch
+gegen einen externen Endpunkt; prüft nur das Embedding-Modell des Laufs an einem Text.
+
+#### Externer Endpunkt
+
+`-Dopaa.eval.ollamaBaseUrl` (#1076) ist ein Iterationswerkzeug: Der Report trägt
+`externalOllamaEndpoint: true` und `ollamaImage: "extern: …"`, `requireBaselineComparable` bricht
+jeden Vergleich ab, und `BaselineOllamaOrigin` weist beim Laden jede Baseline-Datei mit dem Marker
+`extern: ` zurück — ein Ziehfehler, dessen einziger Ausgang ein neuer Messlauf ist. Ein fehlender
+Festpunkt wird dagegen nicht abgewiesen, sondern als `null` unvergleichbar gemeldet.
+
+#### Docker-freie Wächter
+
+`PipelinePathIsolationTest` (sechs Einzelfragen-Baselines) und `ConversationPathIsolationTest`
+(Mehrrunden-Baseline) halten die committeten Dateien gegen `EvalOllamaEndpoint.PINNED_IMAGE`,
+`EvalOllamaCpuBackend.PINNED`, `ContextPrefixFingerprint.current()`, die reale
+`DocumentFormatRegistry`, `QueryProperties.Fusion.DEFAULT` und `RelevanceCutoffProperties.DEFAULT`.
+Ein Pin- oder Vorgabewechsel ohne Baseline-Nachzug fällt damit im `check` des verursachenden PRs auf,
+nicht erst im nächtlichen Docker-Lauf.
+
+#### 28. `ingestionPipelineFingerprint` (mit 24, 25)
+
+Sortierter Sammelabdruck `id:version` über alle von `DocumentFormatRegistry` gemeldeten
+Pipelines (`IngestionPipelineFingerprint`), ein lesbarer String statt eines Hashes, damit ein Diff
+benennt, welche Pipeline sich bewegt hat. Alle registrierten, nicht nur die vom Korpus genutzten,
+damit ein Routing-Fehler sichtbar wird. Kein Harness-Guard: Der Wert wird aus der verdrahteten
+Registry gelesen und ist für jeden Lauf korrekt. Die drei Korpora sind Markdown und laufen seit
+#1103 über `MarkdownDocumentFormat` (Schnitt an Überschriften, Frontmatter am Dateianfang
+verworfen; Entscheidungen 24, 25, Regeln in `docs/features/ingestion-pipelines.md`).
+
+#### 57. `contextPrefixFingerprint`
+
+SHA-256 über die Einbettungseingaben, die der Produktionscode für zehn feste Beispieldokumente
+berechnet (`ContextPrefixFingerprint`), mit denselben Methoden wie Aufnahme und Nachlauf
+(`DocumentIngest#declaredOver`, `CoreMetadataExtractor.extract`, `ChunkContextPrefix#ingestTitle`,
+`#eligible`, `#documentWasSplit`, `#titleAtRest`, `#applyTo`, `CoreContextPrefixSettings#coreValues`).
+Ein Abdruck statt einer Präfix-Version, weil eine Version an der Sorgfalt hängt, die #1341 fehlte.
+Nicht abgedeckt: eigene Bibliotheksfelder und Schlagworte, der Rückweg gespeicherter Kernfeld-Werte,
+modellgestützte Extraktion und Vokabular, Fundort und Schnittgrenzen (`ChunkLocationResolver`,
+`HeadingSectionSplitter`), Bestandsläufe, Zweige ohne Beispiel — eine Änderung dort verlangt eine
+bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht.
+
+### Nummernverzeichnis der Entscheidungen 1–73
+
+| Nummer | Steht heute in |
+|---|---|
+| 1, 2, 4, 5, 7 | Rohvektor-Pfad, Entscheidung 1 (Metrikdefinitionen, Fenster, Recall, Mittelung, `allQueryResults`) |
+| 3 | Rohvektor-Pfad, Entscheidung 3 |
+| 6 | Regeln, Entscheidung 6 |
+| 8 | Rohvektor-Pfad, Entscheidung 8 |
+| 9, 21 | Rohvektor-Pfad, Entscheidung 9 |
+| 10 | Versionen des Rohvektor-Vertrags, Version 2 |
+| 11, 14, 37 | Pipeline-Pfad, Entscheidung 11 |
+| 12 | Pipeline-Pfad, Entscheidung 12 |
+| 13, 18, 22, 71 | Pipeline-Pfad, Festpunkte (Entscheidung 13) und Entscheidung 22 |
+| 32 | Festpunkte des Rohvektor- und des Pipeline-Pfads (`metadataFilterEnabled`) |
+| 15, 20 | Pipeline-Pfad, Entscheidung 15 |
+| 16, 41 | Regeln, Entscheidung 16 |
+| 17 | Pipeline-Pfad, Entscheidung 17 |
+| 19 | Pipeline-Pfad, Entscheidung 19 |
+| 23 | Pipeline-Pfad, Entscheidung 22; Versionen des Pipeline-Vertrags, Version 3 |
+| 24, 25 | Eval-Umgebung, Entscheidung 28 |
+| 26, 27, 30, 31, 33, 35, 46, 47, 56, 58, 59, 64, 65, 70, 72, 73 | Versionstabellen und Änderungsverlauf (Messläufe, Neuziehungen, Fingerabdruck-Schritte); Messwerte in den `notes` der Baselines |
+| 28, 29 | Eval-Umgebung, Entscheidung 28; Regeln, Entscheidung 29 |
+| 34 | Berichtsgrößen ohne Vertragscharakter |
+| 36 | Regeln, Entscheidung 36; Wert in ADR-0026, Entscheidung 5 |
+| 38–40, 42–44, 48, 49, 51, 60–62 | Mehrrunden-Pfad |
+| 45 | Eval-Umgebung, Entscheidung 68 und „Externer Endpunkt“ |
+| 50 | Mehrrunden-Pfad, Entscheidung 50 |
+| 52, 53 | Zustandsfelder, Entscheidung 52 |
+| 54, 55 | Eval-Umgebung, Entscheidung 54 |
+| 57 | Eval-Umgebung, Entscheidung 57 |
+| 63 | Pipeline-Pfad, Entscheidung 63 |
+| 66 | Regeln, Entscheidung 66 |
+| 67 | Pipeline-Pfad, Entscheidung 11 (Tabelle: ohne Nachbar-Chunks) |
+| 68, 69 | Eval-Umgebung |
 
 ## Konsequenzen
 
 **Einfacher:**
 
-- Eine Baseline aus #228 lässt sich jederzeit darauf prüfen, unter welchem Messvertrag sie entstand.
-- Die Obergrenze von Recall@k wird sichtbar, statt als vermeintlich schlechter Wert gelesen zu werden.
-- Die Metrikdefinitionen sind reviewbar, ohne den Harness-Code zu lesen.
-- Kreuzauswertungen wie der Sprachvergleich lassen sich direkt aus dem JSON-Report bilden, ohne
-  Docker/Ollama erneut anzuwerfen.
+- Jede Baseline sagt über Version und Festpunkte, unter welchem Vertrag sie entstand; „Baseline
+  ungültig“ und „Regression“ sind zwei verschiedene Ausgänge.
+- Die Metrikdefinitionen und Festpunkte sind reviewbar, ohne den Harness-Code zu lesen.
+- Ein Pfad kann seinen Vertrag ändern, ohne die Baselines der anderen zu entwerten.
 
 **Schwieriger:**
 
-- Eine weitere Stelle, die bei Änderungen mitgepflegt werden muss.
-- Die Festlegung auf ungleiche Fenster (5 bzw. 10) muss bei jeder Ergebnisdarstellung mitgedacht
-  werden; eine Tabelle mit vier Spalten suggeriert sonst Vergleichbarkeit, die nicht besteht.
-- Der JSON-Report wächst um die Ergebnisse aller Anfragen (bei 121 Fällen niedrige zweistellige
-  KB-Größenordnung) — für dieses Korpus vernachlässigbar, bei künftigen, deutlich größeren
-  Golden-Datasets (#234) erneut zu bewerten.
-
----
-
-## Nachtrag: Dokumentbezogenes k-Fenster und Chunkebene (Issue #721)
-
-> **Nachtrag vom 2026-08-21, Maintainer-Entscheidung zu Issue #721/#234 (akzeptiert).** Dieser ADR
-> ist bereits akzeptiert; dieser Abschnitt schreibt den Messvertrag fort, statt ihn stillschweigend
-> umzuschreiben — die Entscheidungen 1–7 oben gelten unverändert für die Ranking-Metrikfamilie auf
-> Dokumentebene.
-
-### Warum eine Fortschreibung nötig ist
-
-Entscheidung 3 oben legt `topK=10` fest, ohne zwischen „Chunk" und „Dokument" zu unterscheiden — für
-`comic-characters` (Ein-Chunk-Invariante, ADR-0010) ist das dieselbe Zahl, weil dort jeder Chunk ein
-eigenes Dokument ist. Diese Vieldeutigkeit war folgenlos, solange nur einchunkige Domänen existierten.
-Issue #721 macht sie explizit, weil sie es für eine mehrchunkige Domäne (#234) nicht mehr sein darf:
-Zehn Chunks können nach Deduplizierung nur drei oder vier unterschiedliche Dokumente sein, und ohne
-diese Fortschreibung würde nDCG@10/Recall@10 dann faktisch über ein Fenster von drei bis vier
-Dokumenten gemessen — unbemerkt, weil `dedupeByFileName` (die schon vor #721 bestehende
-Chunk-zu-Dokument-Aggregation im Harness) das Fenster nie korrigierte.
-
-### 8. Das k-Fenster ist ausdrücklich dokumentbezogen
-
-Entscheidung 3 wird präzisiert, nicht ersetzt: „`topK=10`" heißt ab Messvertrag-Version 2
-„`documentTopK=10` unterschiedliche Dokumente", nicht „zehn Treffer der Rohsuche". Der Harness sucht
-mit einem separat geführten `chunkTopK`, das deterministisch groß genug gewählt wird, damit die
-Deduplizierung `documentTopK` unterschiedliche Dokumente erreichen kann:
-`chunkTopK = documentTopK · maxChunksPerDocument`, wobei `maxChunksPerDocument` eine je Domäne
-deklarierte Obergrenze ist (`io.opaa.eval.EvalDomainConfig`), keine zur Laufzeit ermittelte Schätzung
-— siehe `io.opaa.eval.DocumentRanking`. Für `comic-characters` ist `maxChunksPerDocument = 1`, also
-`chunkTopK == documentTopK == 10` — bitgleich zum Verhalten vor diesem Nachtrag.
-
-Ein Lauf, der `documentTopK` nicht erreicht (weil der Korpus selbst weniger Dokumente als
-`documentTopK` enthält oder `chunkTopK` nicht ausreicht), meldet das über
-`DocumentRanking.DocumentWindowResult#reachedDocumentTopK()` ausdrücklich, statt still ein kleineres
-Fenster zu messen.
-
-### 9. Zweite Metrikfamilie: Chunkebene über `answer_span`
-
-Zusätzlich zur (weiterhin primären, für Baseline und CI maßgeblichen) Ranking-Metrikfamilie auf
-Dokumentebene gibt es eine zweite, unabhängige Familie auf Chunkebene
-(`io.opaa.eval.ChunkAnswerSpanMetrics`): `answerSpanHitRate@5` und der Rang des ersten Chunks, der
-einen eingefrorenen, wörtlichen Textausschnitt (`GoldenCase#answerSpan()`, optionales
-Golden-Dataset-Feld `answer_span`) enthält. Bewusst ein Textausschnitt, keine Chunk-Index-Ground-Truth
-— ein Chunk-Index wird bei jeder Änderung von `chunk-size`/`chunk-overlap` lautlos falsch, ein
-wörtlicher Ausschnitt bleibt unter beiden Parametern stabil und macht dadurch den Vergleich
-verschiedener Chunking-Konfigurationen (#374) erst möglich. Für eine Domäne, deren Golden Cases kein
-`answer_span` führen (`comic-characters`: die Ein-Chunk-Invariante macht eine Chunk-Ebene dort
-bedeutungslos), liefert die Aggregation `ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE`
-(`applicableCases=0`) statt eines gemessenen, aber bedeutungslosen Werts.
-
-**Präzisierung (Issue #721 code review, Wichtig 3): Stabil ist der Text, nicht seine
-Ein-Chunk-Auffindbarkeit.** Der Absatz oben stellt fest, dass der *Text* eines `answer_span`
-unter `chunk-size`/`chunk-overlap` stabil bleibt — das bleibt richtig. Nicht garantiert ist,
-dass dieser Text nach einer Chunking-Parameteränderung noch **in irgendeinem** zurückgegebenen
-Chunk vollständig enthalten ist: Eine Verkleinerung von `chunk-size` kann einen Span, der vorher
-mittig in einem Chunk lag, über eine neue Chunk-Grenze schieben, sodass er in keinem einzelnen
-Chunk mehr vollständig auftaucht. Das ist numerisch **identisch** zu einem echten
-Retrieval-Fehlschlag (`spanChunkRank=-1` in beiden Fällen) — für `boundary_span`-Fälle (#234, bewusst
-nah an einer Chunk-Grenze kuratiert) ist genau das der Fall, den ein Vergleich zweier
-Chunking-Konfigurationen messen soll, nicht ein Messfehler.
-
-Deshalb prüft der Harness nach dem Bau der Chunk-Map (`io.opaa.eval.ChunkMap`) zusätzlich, ob
-jeder anwendbare `answer_span` in **mindestens einem** Chunk **mindestens eines** seiner
-`expected_documents` auflösbar ist (`EvaluationReport.AnswerSpanResolutionResult`,
-`RetrievalEvaluationHarnessTest`). Ein nicht auflösbarer Span bei einer Domäne, die
-`answer_span`-Fälle führt, ist ein harter Abbruch — analog zur Chunk-Zahl-Invariante ein
-Messvoraussetzungsfehler, kein Toleranzfall: Andernfalls wäre nicht unterscheidbar, ob eine
-gemessene Verschlechterung eine echte Retrieval-Regression ist oder nur eine kaputte
-Golden-Dataset-Fixtur (Tippfehler, ein von `SpanMatcher` nicht abgefangener
-Whitespace-Unterschied) bzw. eine Chunking-Änderung, die den Span über eine Grenze geschoben hat.
-`SpanMatcher` mildert das Whitespace-Problem (Zeilenumbrüche/mehrfache Leerzeichen werden vor dem
-Vergleich kollabiert), löst aber nicht das Grenzproblem — das ist beabsichtigt: Der Abbruch macht
-eine echte Grenzverschiebung sichtbar, statt sie still falsch zu messen.
-
-### 10. Messvertrag-Version 2
-
-`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` wird von 1 auf 2 erhöht (Entscheidung 6 oben:
-jede Änderung an den Messvertrag-Festlegungen macht bestehende Baselines ungültig und erfordert einen
-bewussten neuen Baseline-Lauf). `chunkOverlap`, `documentTopK` und `chunkTopK` werden zusätzliche
-Gültigkeitsfelder (`Baseline.FixedPoints`) — `chunkOverlap` existierte vor #721 nur als
-Report-Metadatum (informativ, weil es bei einer Ein-Chunk-Domäne nichts verändern kann), ist aber für
-eine mehrchunkige Domäne ein Wert, der das Messergebnis unmittelbar bestimmt.
-
-### Erwartung an die comic-characters-Baseline
-
-Für eine Domäne mit `maxChunksPerDocument = 1` fallen `chunkTopK` und `documentTopK` zusammen, und die
-Chunkebene liefert `NOT_APPLICABLE` — die neue Fassung des Harnesses berechnet für `comic-characters`
-dieselbe Rangliste wie die alte. **Erwartung: bitgleiche Zahlen** gegenüber der unter
-Messvertrag-Version 1 gemessenen Baseline; die PR-Beschreibung zu Issue #721 enthält den
-Vorher/Nachher-Vergleich als Beleg.
-
----
-
-## Nachtrag: Pipeline-Messpfad (Issue #1039)
-
-> **Nachtrag vom 2026-08-31, Umsetzung von `docs/features/retrieval-benchmark.md`, Abschnitt 1
-> („Messpfad durch die produktive Pipeline"), Issue #1039.** Dieser Abschnitt schreibt den
-> Messvertrag fort, statt ihn umzuschreiben: Die Entscheidungen 1–10 oben gelten unverändert und
-> beschreiben ab hier ausdrücklich den **Rohvektor-Pfad**.
->
-> **Herkunft der Abweichung (Entscheidung 16):** Die eigene, getrennt gezählte
-> `PIPELINE_MEASUREMENT_CONTRACT_VERSION` weicht von `retrieval-benchmark.md` §1, Konsequenz 2 ab,
-> die eine Erhöhung der bestehenden `measurementContractVersion` vorsieht. Freigegeben vom
-> Koordinator unter delegierter Maintainer-Autorität am 2026-08-31; Begründung in Entscheidung 16.
-> Die Freigabe wird dem Maintainer im Abschlussbericht des Epics gemeldet.
-
-### 11. Zwei Messpfade, getrennt ausgewiesen
-
-Der Harness misst ab #1039 zweimal auf demselben, einmal indizierten und manifest-geprüften Korpus:
-
-| | Rohvektor-Pfad | Pipeline-Pfad |
-|---|---|---|
-| Gemessen wird | `VectorStore#similaritySearch` direkt | `QueryService#retrieveRelevantChunksInGivenScope`, also Schritte 2–6 aus `retrieval-algorithm.md` |
-| Ähnlichkeitsschwelle | ausgewiesen, **nicht** angewandt (Entscheidung 3) | **angewandt**, nicht nur ausgewiesen |
-| Fenster | `documentTopK = 10` | `top-k = 8` (die tatsächliche Trefferzahl der Produktion) |
-| Metriken | Hit Rate@5, MRR@10, nDCG@10, Recall@10 | Hit Rate@5, MRR@8, nDCG@8, Recall@8 |
-| Report | `retrieval-metrics[-<domäne>].json` | `pipeline-metrics-<domäne>.json` |
-| Vertragsversion | `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` | `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` |
-
-Der Rohvektor-Pfad wird **nicht ersetzt**. Er misst die Qualität der Vektorsuche selbst,
-unvermischt mit allem, was danach umsortiert — der aussagekräftigere Pfad für Vergleiche von
-Einbettungsmodellen und Chunking-Varianten. Der Pipeline-Pfad ist der einzige, der Aussagen über
-die Nutzererfahrung erlaubt. Beide gehören in den Bericht, nebeneinander und getrennt.
-
-### 12. Die Metriken tragen ihr Fenster an jeder Zahl
-
-Die beiden Pfade sind **nicht ineinander umrechenbar**. Weil die Schwelle im Pipeline-Pfad
-tatsächlich greift, kann ein Dokument dort ganz aus der Rangliste verschwinden statt nur
-zurückzufallen; Recall-Werte liegen systematisch niedriger. Das ist kein Fehler, sondern die
-gemessene Realität — und ein nDCG@8 neben einem nDCG@10 in einer Tabelle ohne Kennzeichnung ist
-ein Auswertungsfehler.
-
-Deshalb ist die Fensterangabe im Pipeline-Pfad nicht Konvention, sondern Schema: Die
-Report-Felder heißen `hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`, `recallAt8Ceiling`,
-`hitCountAt8`, `allExpectedDocumentsHitAt8` (`io.opaa.eval.PipelineMetricsAggregate`), jede
-Textausgabe beschriftet dieselben Zahlen genauso, und jeder Report führt zusätzlich einen
-`metricWindowNote`. `PipelineMetricsAggregate.of` weist Ergebnisse zurück, die an einem anderen
-Fenster gemessen wurden, statt sie unter einem Feldnamen abzulegen, der sie falsch beschreibt.
-
-### 13. Fixpunkte des Pipeline-Pfads
-
-Zusätzlich zu den gemeinsamen Fixpunkten (Einbettungsmodell samt Digest, Dimensionen, `chunk-size`,
-`chunk-overlap`, `pgvectorIndexType`, Korpus-Manifest, Golden Dataset) sind für den Pipeline-Pfad
-festgeschrieben: `fetch-k`, `top-k`, `similarity-threshold`, `max-chunks-per-document`,
-`mmr-lambda`, `query-decomposition-enabled`, `max-sub-queries` und — bei aktiver Zerlegung — das
-verwendete Chat-Modell. Alle werden aus der laufenden Anwendungskonfiguration gelesen, nicht im
-Harness gesetzt; Ausnahme ist `query-decomposition-enabled` (siehe 15.).
-
-### 14. Der Suchbereich ist fest und vollständig; Rechtefilterung ist nicht Messgegenstand
-
-Schritt 1 der Pipeline (Scope-Bestimmung) wird nicht mitgemessen. Der Harness übergibt einen festen
-Suchbereich, der genau die eine Eval-Bibliothek mit dem gesamten Korpus umfasst.
-`QueryService#retrieveRelevantChunksInGivenScope` wendet ihn als denselben `library_id`-Filter innerhalb des
-`similaritySearch`-Aufrufs an, den eine echte Anfrage verwendet — er löst nur keine Berechtigungen
-selbst auf. Rechtedurchsetzung ist über die Backend-Integrationstests abgedeckt; sie hier
-mitzumessen würde die Metriken um einen Faktor verschieben, der mit Suchqualität nichts zu tun hat.
-
-### 15. Teilfragen-Zerlegung: vorerst abgeschaltet, nie stillschweigend degradiert
-
-Der Harness-Kontext hat kein aktives Chat-Modell. Bliebe die Zerlegung eingeschaltet, würde
-`QueryDecompositionService#decompose` je Anfrage fehlschlagen und auf Einzelanfragen-Retrieval
-zurückfallen — ein Lauf, der „mit Zerlegung" ausweist, was ohne Zerlegung gemessen wurde. Der
-Harness misst deshalb die Variante `decomposition-off` (`query-decomposition-enabled = false`,
-im Report als Fixpunkt geführt, `chatModel = null`) und **bricht ab**, wenn er mit eingeschalteter
-Zerlegung ohne Modell laufen soll (`PipelineHarnessSupport`). Welches Chat-Modell der Pipeline-Pfad
-mit aktiver Zerlegung verwenden soll, ist eine offene Entscheidung
-(`docs/features/retrieval-benchmark.md`, „Offene Punkte" 3).
-
-### 16. Eigene Vertragsversion statt Erhöhung der bestehenden
-
-`docs/features/retrieval-benchmark.md` schlägt vor, die Fortschreibung „mit erhöhter
-`measurementContractVersion`" vorzunehmen. Umgesetzt ist stattdessen eine **eigene**, bei 1
-beginnende Zählung für den Pipeline-Pfad. Begründung:
-
-- Der Rohvektor-Vertrag (Entscheidungen 1–10) ändert sich durch diese Erweiterung an keiner Stelle
-  — weder Gain-Funktion noch IDCG-Basis, Fenster, Schwellenbehandlung oder Mittelungsart.
-- `measurementContractVersion` ist ein Gültigkeitsfeld von `BaselineComparator`. Eine Erhöhung
-  würde jede committete Rohvektor-Baseline ungültig machen und einen mehrstündigen
-  Neuziehungs-Lauf erzwingen — für eine Messung, deren Definitionen und Zahlen sich nicht bewegt
-  haben. Genau das verbietet Abnahmekriterium 4 von #1039 dem Sinn nach.
-- Zwei Verträge, die verschiedene Dinge beschreiben, unter einer Nummer zu führen, hieße, jede
-  künftige Änderung an einem Pfad als Änderung des anderen auszuweisen.
-
-Entscheidung 6 gilt für beide Zählungen unverändert: Jede Änderung an den Festlegungen eines Pfads
-erhöht dessen Versionsnummer und macht dessen Baselines ungültig.
-
-### Was dieser Nachtrag noch nicht festlegt
-
-> **Erledigt mit Issue #1040** — beide hier offen gelassenen Punkte sind im
-> [Nachtrag zu den Pipeline-Baselines](#nachtrag-baselines-des-pipeline-pfads-issue-1040)
-> entschieden. Der folgende Abschnitt bleibt als Zustandsbeschreibung von #1039 stehen.
-
-Baselines und Toleranzen des Pipeline-Pfads. #1039 liefert den Messpfad und seinen Report; die
-getrennten Baseline-Dateien je Pfad und Domäne, ihre Aufnahme in `BaselineComparator` und in den
-nächtlichen Job sind Gegenstand der Folgearbeit desselben Epics (Umsetzungsschnitt A/E in
-`docs/features/retrieval-benchmark.md`). Bis dahin ist der Pipeline-Report ein Beobachtungs-,
-kein Wächterartefakt — er läuft entsprechend abgesichert und lässt den Harness-Lauf grün, wenn er
-selbst scheitert, damit ein Fehler in der Beobachtung nie das Urteil des Rohvektor-Pfads verhindert.
-
-**Ebenfalls offen: die Durchsetzung der Fixpunkte aus Entscheidung 13.** Der Harness prüft heute
-nur zwei davon aktiv (`top-k`, weil die Metriknamen dieses Fenster wörtlich führen, und
-`query-decomposition-enabled`, weil eine stille Degradierung sonst als „mit Zerlegung" gemessen
-würde). Die übrigen — `fetch-k`, `similarity-threshold`, `max-chunks-per-document`, `mmr-lambda`,
-`max-sub-queries` — werden ausgewiesen, aber nicht geprüft: Sie stehen im Report, und eine Änderung
-ist dort nachlesbar, führt aber zu keinem Abbruch. Eine `mmr-lambda`-Änderung könnte damit heute
-unbemerkt in einen Pipeline-Report einfließen. Das ist bis zur Baseline folgenlos, weil es nichts
-gibt, wogegen verglichen würde; **mit der ersten Pipeline-Baseline muss die Prüfung dieser Werte
-Teil der Gültigkeitsprüfung werden** (dieselbe Rolle, die `Baseline.FixedPoints` für den
-Rohvektor-Pfad spielt). Gehört zur Baseline-Folgearbeit, nicht zu #1039.
-
----
-
-## Nachtrag: Baselines des Pipeline-Pfads (Issue #1040)
-
-> **Nachtrag vom 2026-08-31, Umsetzung von `docs/features/retrieval-benchmark.md`, Abschnitt 1
-> („Folgen für Messvertrag und Baselines"), Issue #1040.** Fortschreibung, keine Umschreibung: Die
-> Entscheidungen 1–10 (Rohvektor-Pfad) und 11–16 (Pipeline-Messpfad) gelten unverändert. Was hier
-> hinzukommt, betrifft ausschließlich den Pipeline-Pfad — **die committeten Rohvektor-Baselines aus
-> #228/#234 bleiben unangetastet und gültig**, ihre `measurementContractVersion` bleibt bei 2.
->
-> **Herkunft der Abweichungen:** Dieser Nachtrag weicht in zwei Punkten von
-> `retrieval-benchmark.md` §1 ab. Erstens erhöht er — wie schon der Nachtrag zu #1039, siehe dort
-> Entscheidung 16 — die **eigene** Vertragsversion des Pipeline-Pfads statt der
-> `measurementContractVersion`, die die Spezifikation nennt. Zweitens sagt die Spezifikation das
-> „unveränderte Fehlerkriterium aus ADR-0013" zu, während Entscheidung 19 unten für den
-> Pipeline-Pfad **eigene feste Anker der harten Untergrenze** festlegt (Formel, Toleranz und
-> fallzahlbasierte Prüfung bleiben wörtlich unverändert; nur die absoluten Anker sind
-> pfadspezifisch). Beides freigegeben vom Koordinator unter delegierter Maintainer-Autorität am
-> 2026-08-31; die Freigabe wird dem Maintainer im Abschlussbericht des Epics gemeldet. ADR-0013
-> trägt die entsprechende Verweiszeile in seinem Kopf.
-
-### 17. Eine Baseline-Datei je Pfad und Domäne
-
-Die beiden Pfade messen unterschiedliche Dinge und sind nicht ineinander umrechenbar
-(Entscheidung 12). Eine gemeinsame Baseline-Datei wäre deshalb nicht nur unhandlich, sondern
-gefährlich: Sie machte es möglich, eine Pipeline-Neuziehung über die Zahlen des Rohvektor-Pfads zu
-schreiben.
-
-- Ablage flach unter `eval/baseline/`, Rohvektor-Baseline `<domäne>.json`, Pipeline-Baseline
-  **`pipeline-<domäne>.json`**. Der Name wird in `EvalDomainConfig` aus dem Rohvektor-Namen mit
-  festem Präfix abgeleitet, nicht je Domäne eigenständig deklariert — eine Namenskollision ist damit
-  nicht per Tippfehler erreichbar (`PipelinePathIsolationTest`).
-- Eigener Typ (`PipelineBaseline`) mit eigenen Fixpunkten und den Gruppenwerten am @8-Fenster
-  (`PipelineMetricsAggregate`), eigener Vergleicher (`PipelineBaselineComparator`), eigene
-  Delta-Tabelle. Kein gemeinsames Schema, in das eine @10-Zahl unter einem @8-Feldnamen geraten
-  könnte.
-- Flach statt in einem Unterverzeichnis, damit der Absenkungsvergleich gegenüber `main`
-  (`eval/baseline/diff_baseline.py`, `.github/workflows/baseline-diff.yml`, Entscheidung 6 in
-  ADR-0013) die Pipeline-Baselines ohne jede Pfad-Fallunterscheidung mitnimmt — er iteriert über
-  `eval/baseline/*.json`.
-
-### 18. Die Fixpunkte aus Entscheidung 13 werden durchgesetzt; Pipeline-Messvertrag-Version 2
-
-Der Nachtrag zu #1039 ließ `fetch-k`, `similarity-threshold`, `max-chunks-per-document`,
-`mmr-lambda` und `max-sub-queries` ausgewiesen, aber ungeprüft — ausdrücklich nur deshalb, weil es
-nichts gab, wogegen verglichen wurde. Mit der ersten committeten Pipeline-Baseline endet dieser
-Grund: Eine unbemerkte `mmr-lambda`-Änderung würde sonst still verändern, was die committeten Zahlen
-beschreiben, und der Vergleich meldete „Regression", wo die Messgrundlage gewechselt hat.
-
-Alle Fixpunkte aus Entscheidung 13 sind deshalb Gültigkeitsfelder von `PipelineBaseline.FixedPoints`
-und werden gegen die Laufkonfiguration geprüft: `fetch-k`, `top-k`, `similarity-threshold`,
-`max-chunks-per-document`, `mmr-lambda`, `query-decomposition-enabled`, `max-sub-queries`, das
-Chat-Modell (heute `null`, siehe 20.) sowie die beiden Fenster `hitRateK`/`rankingK` — dazu die
-gemeinsamen Fixpunkte (Einbettungsmodell samt Digest und Dimensionen, `chunk-size`, `chunk-overlap`,
-`pgvectorIndexType`, Korpus-Manifest, Golden Dataset). Weicht eines ab, ist die **Pipeline**-Baseline
-ungültig und es wird auf diesem Pfad keine Metrik verglichen; die Rohvektor-Baseline ist davon nicht
-berührt.
-
-Das erweitert, was „dieselbe Messung" heißt, und ist damit nach Entscheidung 6 eine
-Vertragsänderung: `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` steigt von 1 auf
-**2**. Die Erhöhung kostet nichts, weil unter Version 1 keine Pipeline-Baseline existierte — genau
-deshalb ist sie jetzt und nicht später fällig. Die Rohvektor-Zählung bleibt unberührt; das ist der
-Zweck der getrennten Zählung aus Entscheidung 16.
-
-### 19. Getrenntes Urteil je Pfad, unverändertes Fehlerkriterium
-
-Der nächtliche Job prüft beide Pfade, jeden gegen seine eigene Baseline, mit dem **unveränderten**
-Fehlerkriterium aus ADR-0013: dieselbe Toleranzformel, dieselbe fallzahlbasierte Konjunktion aus
-#306, dieselbe Kombination aus baseline-relativer und absoluter harter Untergrenze. Das ist
-strukturell abgesichert und nicht nur behauptet: Beide Vergleicher erzeugen ihre Prüfungen über
-dieselbe Methode (`BaselineComparator.metricCheck`), sodass die beiden Implementierungen nicht
-auseinanderlaufen können.
-
-**Zwei Urteile, nicht eines.** Rohvektor- und Pipeline-Vergleich sind zwei JUnit-Testklassen im
-selben Gradle-Task. JUnit führt beide unabhängig vom Ausgang der jeweils anderen aus, sodass jeder
-Pfad seine eigene Delta-Tabelle und sein eigenes Ja/Nein liefert. Das löst die in #1039 offene Frage,
-wie ein Pipeline-Fehler künftig gatet, ohne das Rohvektor-Urteil zu verhindern:
-
-- `PipelineHarnessSupport.runAndWriteGuarded` fängt einen Fehler des Pipeline-Pfads weiterhin ab,
-  damit der Messlauf selbst grün bleibt und der Baseline-Vergleich des Rohvektor-Pfads überhaupt
-  stattfindet. Der Guard verbirgt den Fehler vor dem *Messlauf*, nicht vor dem *Urteil*.
-- Ein fehlender Pipeline-Report lässt `PipelineBaselineRegressionTest` fehlschlagen. Ein
-  Pipeline-Fehler ist damit genau einmal rot — unter dem Urteil des Pipeline-Pfads.
-- Das Alarm-Issue des nächtlichen Laufs trägt beide Delta-Tabellen mit eigener Überschrift und sagt
-  ausdrücklich, dass der jeweils andere Pfad im selben Lauf grün sein kann. Die frühere,
-  pauschale „Retrieval-Regression"-Begründung wäre mit zwei Urteilen irreführend gewesen.
-
-**Eine Domäne ohne gezogene Pipeline-Baseline wird nicht gegated, sondern sichtbar ausgelassen.**
-`city-landmarks` hatte seine Pipeline-Baseline zunächst nicht; ihr Pipeline-Vergleich war deshalb im
-Gradle-Task ausdrücklich nicht eingehängt (`pipelineBaselineTestClass = null` mit Begründung), statt
-gegen eine nicht existierende Datei zu laufen. Das ist die Alternative zu einem stillen Sonderfall im
-Vergleichscode („keine Baseline → bestanden"), der genau die Lücke erzeugte, die dieser Nachtrag
-schließen soll: eine Prüfung, die aussieht, als fände sie statt. Issue #1081 zog diese Baseline aus
-dem CPU-Artefakt eines erfolgreichen, label-ausgelösten Regressionslaufs (Run 33437536393, Branch
-von PR #1084) und hängte `CityLandmarksPipelineBaselineRegressionTest` ein — der beschriebene
-ausgelassene Zustand war damit ein Übergangszustand, kein Dauerzustand, und betrifft heute keine der
-drei Domänen mehr.
-
-**Eigene absolute Anker der harten Untergrenze.** Die *Formel* ist unverändert
-(`max(0,8 · Baselinewert, feste Untergrenze)`); die festen Untergrenzen des Pipeline-Pfads sind
-eigene Werte: Hit Rate@5 ≥ 0,15, MRR@8/nDCG@8/Recall@8 ≥ 0,125 — die Hälfte der ADR-0013-Werte. Die
-ADR-0013-Anker sind an @10-Messungen ohne Ähnlichkeitsschwelle kalibriert; der Pipeline-Pfad misst
-am engeren Fenster und mit angewandter Schwelle und liegt aus Gründen niedriger, die mit
-Retrieval-Qualität nichts zu tun haben (Entscheidung 12). Die Werte sind **vor** der ersten Messung
-festgelegt worden, damit die Untergrenze nicht nachträglich am Ergebnis entlang gewählt wird, und
-sie behalten ihre Rolle: ein zweites, baselineunabhängiges Netz gegen katastrophales Versagen (leerer
-oder falsch konfigurierter Vektor-Store), kein Qualitätsziel. Sobald mehrere Pipeline-Baselines über
-mehrere Domänen vorliegen, sind sie erneut zu bewerten.
-
-### 20. Das Chat-Modell bleibt ein Fixpunkt mit dem Wert „keines"
-
-Entscheidung 15 gilt unverändert: Der Harness misst die Variante `decomposition-off`. Die Baseline
-führt `queryDecompositionEnabled = false`, `maxSubQueries` und `chatModel = null` als geprüfte
-Fixpunkte — ein Modellname auf einer der beiden Seiten allein bedeutet, dass die beiden Läufe nicht
-dasselbe gemessen haben, und macht die Baseline ungültig. Welches Chat-Modell der Pipeline-Pfad mit
-aktiver Zerlegung verwenden soll, bleibt offen
-(`docs/features/retrieval-benchmark.md`, „Offene Punkte" 3); die Entscheidung wird die
-Pipeline-Vertragsversion erneut erhöhen und eine Neuziehung der Pipeline-Baselines erfordern — dann
-zusammen mit der Mehrfachlauf-Regel aus Abschnitt 3 derselben Spezifikation.
-
----
-
-## Nachtrag: `answer_span` bei mehreren Zieldokumenten (Issue #1043)
-
-`docs/features/retrieval-benchmark.md` führte als offenen Punkt 4, ob die mit Entscheidung 9
-eingeführte Chunkebenen-Metrik bei Fällen mit mehreren Zieldokumenten **je Dokument** oder **je
-Fall** gebildet wird. Mit der ersten Domäne, die solche Fälle in Serie führt (`verwaltung`,
-Fallklassen `multi_hop` und `compound_word`), ist die Frage zu entscheiden.
-
-### 21. Ein `answer_span` je Fall, und nur bei genau einem erwarteten Dokument
-
-`answer_span` bleibt genau ein Feld je Golden-Fall. Ein Fall mit mehr als einem erwarteten Dokument
-trägt **keinen** — nicht einen für eines der Dokumente, und keine Liste.
-
-Begründung: Ein einzelner Span auf einem Fall, dessen Antwort über zwei Dokumente verteilt ist,
-misst nachweislich eine Hälfte der Antwort und meldet das Ergebnis als das des ganzen Falls. Ein
-`multi_hop`-Fall, den die Dokumentebene zu Recht als Fehlschlag führt (das zweite Belegdokument
-fehlt), sähe auf Chunkebene erfolgreich aus, sobald der Chunk des ersten Dokuments zurückkam — die
-beiden Metrikfamilien widersprächen sich, ohne dass eine von beiden falsch rechnet.
-
-Die naheliegende Alternative — eine Span-Liste je Dokument mit einer Aggregation über die Dokumente
-eines Falls — ist keine Erweiterung dieses Vertrags, sondern eine **neue Metrik**: Sie braucht eine
-eigene Trefferdefinition („alle Spans gefunden" oder „mindestens einer"), eine eigene
-Mittelungsebene und damit eine Erhöhung beider Vertragsversionen samt Neuziehung aller Baselines.
-Sie wird zurückgestellt, weil kein heutiger Messgegenstand sie braucht: Die Chunkebene existiert
-für Chunking-Vergleiche (Spezifikation, Abschnitt 2), und die tragen Einzeldokument-Fälle bereits
-vollständig.
-
-**Keine Vertragsversion wird erhöht.** Die Regel schreibt fest, was die bestehende Implementierung
-ohnehin tut (ein Feld, ein Span, geprüft gegen die erwarteten Dokumente) und was
-`city-landmarks` bereits praktiziert — `multi_city` und `multi_topic` tragen dort keinen
-`answer_span`. Es ändert sich keine gemessene Größe, also auch keine Vergleichbarkeit
-bestehender Baselines. Neu ist allein, dass die Regel **geprüft** wird statt Gewohnheit zu sein:
-`io.opaa.eval.GoldenCaseCuration` lehnt einen `answer_span` auf einem mehrdokumentigen Fall ab,
-`GoldenCaseCurationTest` wendet das Docker-frei auf jeden committeten Datensatz der betroffenen
-Domäne an.
-
----
-
-## Nachtrag: Volltextpfad in der Fusion (Issue #1049)
-
-**Datum:** 2026-09-01 · **Betrifft:** ausschließlich den Pipeline-Messpfad · **Rohvektor-Vertrag:**
-unverändert Version 2.
-
-Mit [#1049](https://github.com/criew/opaa/issues/1049) geht der lexikalische Suchpfad als weitere
-Eingangsliste in die Reciprocal Rank Fusion ein (docs/features/hybrid-retrieval.md, Arbeitspaket 3).
-Das ist die erste Änderung dieses Epics, die die Endauswahl tatsächlich bewegt — und damit die erste,
-die den Messvertrag berührt.
-
-### 22. Zwei neue Fixpunkte des Pipeline-Pfads
-
-`PipelineEvaluationReport.PipelineRunConfiguration` und `PipelineBaseline.FixedPoints` führen zwei
-weitere Felder, beide als Gültigkeitsfelder nach Entscheidung 18:
-
-- **`fullTextSearchEnabled`** — ob der lexikalische Pfad in diesem Lauf seine Listen in die Fusion
-  eingebracht hat (`opaa.query.full-text-search-enabled`). Ohne dieses Feld trüge ein
-  `vector-only`-Lauf denselben `runConfiguration`-Abdruck wie ein hybrider, und die Differenz
-  zwischen beiden würde gegen die committete Baseline als Codeänderung verbucht — genau die
-  Verwechslung, die Entscheidung 18 für die Query-Parameter ausschließt. Der Wert war bis #1049
-  bewusst **kein** Fixpunkt (die Stufe lief protokollarisch, die Endauswahl war bit-identisch); die
-  Auflage, ihn mit der Aufnahme in die Fusion nachzuziehen, stand seit dem Review zu #1048 in
-  docs/features/hybrid-retrieval.md, Arbeitspaket 2.
-- **`fullTextIndexUpToDate`** (Issue #1049 bis #1270: `fullTextBackfillComplete`, bis #1429:
-  `fullTextIndexComplete`) — ob der Volltextindex der gemessenen Bibliothek für jeden ihrer
-  Abschnitte auf der aktuellen `content_tsv_version` stand. Eine Zeile älterer Fassung trägt nicht
-  die aktuellen Lexeme; ein Lauf mit `fullTextSearchEnabled = true` über einem Index mit Rückstand
-  misst deshalb einen geschmälerten lexikalischen Beitrag, ohne es zu sagen. Erst beide Felder
-  zusammen beantworten die Frage „hat der lexikalische Pfad in diesem Lauf beigetragen?".
-
-  > **Nachtrag (Issue #1270, 09/2026):** Bis dahin hielt ein Tor (`FullTextBackfillGate`) eine
-  > unvollständig indizierte Bibliothek vollständig aus dem lexikalischen Pfad heraus, und das Feld
-  > beschrieb den Zustand dieses Tors. Tor und Volltext-Nachzug sind entfernt; der Fixpunkt bleibt
-  > mit unveränderter Bedeutung („war der Index vollständig?") und trug seither den Namen
-  > `fullTextIndexComplete` — Pipeline-Messvertrag Version 6 → 7, reine Umbenennung ohne neuen
-  > Messlauf.
-  >
-  > **Nachtrag (Issue #1429, 09/2026):** Der Fixpunkt heißt `fullTextIndexUpToDate`, und seine
-  > Definition **verengt sich**. „Vollständig" umfasste zwei Zustände, von denen es einen nicht mehr
-  > gibt: Seit #1047 entsteht die `chunk_full_text`-Zeile eines Abschnitts in derselben Transaktion
-  > wie seine Vektorzeile, zurückliegen kann nur noch die **Fassung** einer Zeile. Genau das hält
-  > der Fixpunkt jetzt fest. Eine verengte Definition ist nach Entscheidung 6 dieses ADRs eine
-  > Vertragsänderung, auch wenn kein gemessener Wert sich bewegt — Version 11 → 12; auf dem frisch
-  > indizierten Eval-Korpus bleibt der Wert `true`, keine Baseline wird neu gemessen.
-
-Der Harness-Guard (`PipelineHarnessSupport#requireMeasurableConfiguration`) weist zusätzlich einen
-Lauf mit `fullTextSearchEnabled = false` ab — nicht weil er nicht messbar wäre (das ist er, seit der
-Fixpunkt existiert), sondern weil der Pfad, der die committete Baseline schreibt, die ausgelieferte
-Konfiguration messen muss. Die vector-only-Messung ist ein benannter Variantenvergleich
-(`eval/variants/*-lexical-path.json`), und ein Variantenbericht ist ein Artefakt, keine Baseline.
-Ein Variantenlauf, der den lexikalischen Pfad über einem unvollständigen Volltextindex anfordert, wird
-als „nicht ausgeführt" gemeldet statt stillschweigend degradiert (`VariantPrerequisites`) — dieselbe
-Regel wie für die Teilfragen-Zerlegung ohne Chat-Modell (Entscheidung 15).
-
-### 23. Pipeline-Messvertrag-Version 3, Rohvektor-Version unverändert 2
-
-Zwei neue Gültigkeitsfelder erweitern, was „dieselbe Messung" heißt; nach Entscheidung 6 ist das eine
-Vertragsänderung. `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` steigt von 2 auf
-**3**, und die Pipeline-Baselines aller drei Domänen werden neu gezogen — nicht nur wegen der neuen
-Felder, sondern weil die gemessenen Zahlen sich tatsächlich bewegen.
-
-Die Rohvektor-Zählung bleibt bei 2, und das ist keine Nachlässigkeit, sondern die Aussage: Dieser Pfad
-misst `similaritySearch` direkt und kennt den lexikalischen Pfad nicht. Weder seine Definitionen noch
-seine Werte ändern sich durch #1049 — nachgewiesen im selben Lauf, in dem die Pipeline-Zahlen sich
-verschoben haben, mit unveränderten Rohvektor-Werten in jeder Gruppe. Genau dafür existiert die
-getrennte Zählung aus Entscheidung 16.
-
-**Eine Folge für die Zustandsfelder** (Spezifikation, Abschnitt 5): Ein Fall gilt als `solved`, wenn
-ihn **beide** Messpfade lösen. Von den zwölf Fällen, die der Pipeline-Pfad mit #1049 zusätzlich löst,
-erfüllt genau einer diese Bedingung (`verw-comp-006`, den der Rohvektor-Pfad schon vorher löste) und
-wechselt auf `solved`; die übrigen elf kann der Rohvektor-Pfad strukturell nicht lösen und bleiben
-deshalb `known_gap` mit committeter `expected_state_exception`. Ob diese Definition mit einem
-produktiven zweiten Suchpfad noch die richtige ist, ist eine offene Frage an die Spezifikation und
-wird hier nicht entschieden.
-
-> **Beantwortet mit Issue #1658 (Entscheidung 52):** Der erwartete Zustand wird je Messpfad geführt;
-> die Regel „gelöst auf beiden Pfaden" und `expected_state_exception` entfallen.
-
----
-
-## Nachtrag: Strukturbewusstes Markdown-Chunking (Issue #1103)
-
-**Datum:** 2026-09-01 · **Betrifft:** beide Messpfade, alle drei Eval-Domänen · **Messvertragspunkte
-1–10 (Rohvektor) und 11–23 (Pipeline-Pfad):** inhaltlich unverändert.
-
-#1061 liefert strukturbewusstes, überschriftenbasiertes Chunking für PDF/DOCX/PPTX
-(`HeadingSectionSplitter`) und bereitet `MarkdownDocumentPipeline` für Markdown vor, ohne sie zu
-registrieren — der Eval-Korpus besteht ausschließlich aus Markdown, sodass die Registrierung eine
-Messvertragsänderung ist, nicht eine beiläufige Formaterweiterung (siehe Kontext von #1103). Dieser
-Nachtrag hält die Entscheidung fest, die die Registrierung nachträglich trifft.
-
-### 24. Markdown wird ab sofort strukturbewusst gechunkt
-
-`.md`-Dokumente durchlaufen ab #1103 `MarkdownDocumentPipeline` (Schnitt entlang ATX-Überschriften
-Ebene 1–3, siehe deren Javadoc) statt `TikaFallbackPipeline`
-(`DocumentService`/`ChunkingService`, größenbasierter Schnitt ohne Rücksicht auf Struktur). Das ändert
-für jede der drei Eval-Domänen — die vollständig aus Markdown bestehen — sowohl die Chunkzahl je
-Dokument als auch den Wortlaut jedes einzelnen Chunks, selbst dort, wo die Chunkzahl gleich bleibt
-(`comic-characters`, siehe 25.).
-
-### 25. Frontmatter wird nicht als Inhalt gechunkt
-
-Alle drei Korpora beginnen jedes Dokument mit einem YAML-Frontmatter-Block (`---` … `---`) vor der
-ersten Überschrift. `HeadingSectionSplitter` kennt kein Frontmatter von sich aus — ohne besondere
-Behandlung würde der Block zu einem eigenen, überschriftslosen ersten Chunk, was bei
-`comic-characters` deterministisch **jedes** der 1448 Dokumente auf zwei Chunks gebracht und damit die
-Ein-Chunk-Invariante (ADR-0010) gebrochen hätte.
-
-Entscheidung: Ein `---`-begrenzter Block **am Dateianfang**, vor jeder Überschrift, wird verworfen
-statt zu einem Chunk zu werden — er ist strukturierte Metadaten, kein Fließtext, und liefert keinen
-beantwortbaren Inhalt. Ein `---` an jeder anderen Stelle (horizontale Linie mitten im Dokument, oder
-ein Block ohne schließenden Delimiter am Anfang) bleibt gewöhnlicher Inhalt; die Unterscheidung ist
-kein Sonderfall der Eval-Korpora, sondern folgt der verbreiteten Konvention aus Jekyll/Hugo/Obsidian.
-Die Frontmatter-**Felder** selbst werden hier nicht als Metadaten ausgewertet — das berührt die
-Metadaten-Durchreichung, an der #1107 parallel arbeitet.
-
-### 26. Gemessene Verschiebung: Chunkzahl je Domäne
-
-Chunkzahl je Dokument, gemessen mit `CityLandmarksChunkSizeDryRunTest`/`VerwaltungChunkSizeDryRunTest`
-gegen die real registrierte `MarkdownDocumentPipeline` (chunk-size=1000/chunk-overlap=100, wie
-`application.yml`):
-
-| Domäne | vorher (TikaFallbackPipeline) | nachher (MarkdownDocumentPipeline, Frontmatter verworfen) | `maxChunksPerDocument` |
+- Drei Vertragsversionen, sieben Baselines und ein Sammelabdruck über alle Ingestion-Pipelines: Jede
+  Pipeline-Versionsänderung zieht einen Versionsschritt auf drei Pfaden und sieben Dateien nach, auch
+  wenn kein Korpus sie erreicht.
+- Die ungleichen Fenster (5, 10 Dokumente, 20 Chunk-Plätze) müssen bei jeder Darstellung mitgedacht
+  werden.
+- Der Mehrrunden-Pfad ist der instabilste der drei: ein Chat-Aufruf je Runde, dreimal; die Zahl der
+  Runden mit abweichender Zerlegung ist die Aussage darüber, wie belastbar der Rest des Berichts ist.
+
+**Restrisiken:**
+
+- `contextPrefixFingerprint` deckt nicht jede Stelle ab, die die Einbettungseingabe bewegt
+  (Entscheidung 57); die Stetigkeitsprüfung prüft ein Modell an einem Text (Entscheidung 69).
+- Die Harnesse pinnen `nomic-embed-text:v1.5`, während das Produkt seit #2618 `bge-m3` ab Werk
+  nutzt; die Baselines beschreiben nicht das ausgelieferte Embedding-Modell.
+- Die Anker der harten Untergrenze des Pipeline-Pfads sind vor der ersten Messung gesetzt und seither
+  nicht neu bewertet.
+
+## Verworfene Alternativen
+
+- Pipeline-Pfad unter der Rohvektor-Versionszählung — hätte jede Rohvektor-Baseline für eine
+  unveränderte Messung entwertet.
+- Eine gemeinsame Baseline-Datei oder ein gemeinsames Schema für beide Pfade — eine @10-Zahl könnte
+  unter einem @20-Feldnamen landen, eine Neuziehung die Zahlen des anderen Pfads überschreiben.
+- Chunk-Index statt wörtlichem `answer_span` — wird bei jeder Chunking-Änderung lautlos falsch.
+- `answer_span`-Liste je Dokument bei mehrdokumentigen Fällen — eine neue Metrik mit eigener
+  Trefferdefinition, die kein heutiger Messgegenstand braucht.
+- Hash statt lesbarem String als Ingestion-Fingerabdruck — ein Diff müsste benennen, welche Pipeline
+  sich bewegt hat.
+- Präfix-Version statt Abdruck — hängt an der Sorgfalt, die bei #1341 fehlte.
+- Fenster des Pipeline-Pfads bei 8 lassen und nur die ersten acht einer 20er-Auswahl messen — blendete
+  aus, welche Dokumente das Modell zusätzlich sieht.
+- Rangreserve als Fehlerkriterium — misst nur den ersten Treffer, ohne gezeigten Bedarf.
+- Eigenes Ollama-Image mit einer CPU-Variante bauen — das Löschen der übrigen Bibliotheken legt die
+  Auswahl ohne eigenes Image fest.
+- Mehrrunden-Pfad an den Job der Einzelfragen anhängen — sprengte dessen Zeitbudget.
+- Wechselrunde eines `topic_switch`-Falls aus den Erwartungsmengen ableiten — zählte richtige
+  Vorthemen-Dokumente als Bleed.
+
+## Offen
+
+- Welches Chat-Modell der Einzelfragen-Pipeline-Pfad mit aktiver Zerlegung messen soll; die
+  Entscheidung erhöht die Pipeline-Version und zieht die Pipeline-Baselines neu
+  (`docs/features/retrieval-benchmark.md`, „Offene Punkte“).
+- Wechsel der Harnesse auf `bge-m3`, das Vorgabemodell des Produkts seit #2618.
+- Wiederaufnahme der Rangreserve als Kriterium nur unter der in „Berichtsgrößen ohne
+  Vertragscharakter“ genannten Bedingung.
+
+## Änderungsverlauf
+
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
-| `comic-characters` | exakt 1 (Ein-Chunk-Invariante) | exakt 1 (Ein-Chunk-Invariante hält, siehe 25.) | unverändert 1 |
-| `city-landmarks` | min 3, median 8, max 11 | min 5, median 15, max 17 | 13 → 20 |
-| `verwaltung` | min 3, median 3, max 4 | min 10, median 15, max 16 | 6 → 19 |
-
-`comic-characters` bleibt bei Chunkzahl 1, aber **nicht** bei identischem Chunk-Text: Der neue
-Pipeline-Pfad formatiert den Chunk neu (Überschriften-Breadcrumb statt `#`-Präfix, neu zusammengesetzte
-Absätze) und verwirft das Frontmatter — die Einbettung dieses einen Chunks ändert sich also trotz
-gleichbleibender Chunkzahl. Alle drei Domänen brauchen deshalb neue Baselines auf beiden Pfaden, nicht
-nur `city-landmarks`/`verwaltung`.
-
-### 27. Keine Erhöhung von `measurementContractVersion`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION`, aber eine neue Baseline-Pflicht für alle drei Domänen
-
-Diese Änderung berührt keine der Metrikdefinitionen (Entscheidungen 1–10) und keine der
-Pipeline-Pfad-Festlegungen (Entscheidungen 11–23) — nDCG-Gain, IDCG-Basis, Fenstergrößen,
-Schwellenbehandlung, Mittelungsart und die geprüften Fixpunkte selbst bleiben wörtlich unverändert.
-`maxChunksPerDocument`/`max-chunks-per-document` (Entscheidung 13/18), der Produktions-Query-Parameter
-in `PipelineBaseline.FixedPoints`, bleibt in allen drei Pipeline-Baselines unverändert bei 2 — er ist
-kein Fixpunkt, der sich hier bewegt. Geändert haben sich stattdessen **`chunkTopK`/`searchTopK`**
-(city-landmarks 130 → 200, verwaltung 60 → 190), abgeleitet aus dem gleichnamigen, aber eigenen
-Eval-Feld `EvalDomainConfig.maxChunksPerDocument` über `DocumentRanking.documentTopKWindowSize(...)` —
-`searchTopK` ist nach Entscheidung 3 selbst Teil des Messvertrags. Ungetrackt von jedem heutigen
-Fixpunkt bleibt zusätzlich der tatsächliche Chunk-Inhalt der drei Korpora. Nach demselben Muster wie
-ein Embedding-Modell- oder Chunk-Size-Wechsel (Entscheidung 6, Klammerbemerkung: „denselben Charakter
-wie eine Korpus- oder Modelländerung") gilt: **keine Vertragsversion steigt**, aber **jede der drei
-Domänen-Baselines auf beiden Pfaden muss neu gezogen werden**. Die Voraussetzung „sobald ein stabiler
-Stand nach #1049 vorliegt" wurde nicht abgewartet — der Maintainer hat auf den nächtlichen
-Nachlauf verzichtet und die Baselines aus dem lokalen Lauf vom 2026-09-01 gemergt (siehe
-PR-Beschreibung zu #1103 sowie die `notes`-Felder der sechs Baseline-Dateien).
-
-**Offene Lücke, nicht durch #1103 geschlossen:** Weder `Baseline.FixedPoints` noch
-`PipelineBaseline.FixedPoints` führen heute einen Fixpunkt für „welche `DocumentPipeline`
-(Id+Version) hat dieses Format zuletzt gechunkt". Ein künftiger, unbeabsichtigter Pipeline-Tausch für
-ein bereits registriertes Format (etwa ein Downgrade oder ein Bugfix, der die Chunk-Grenzen
-verschiebt) würde vom `BaselineComparator` nicht als Ungültigkeit der Baseline erkannt — anders als
-ein Chunk-Size- oder Embedding-Modell-Wechsel, die beide eigene Fixpunkte sind. Für #1103 wird das
-bewusst nicht geschlossen (Umfang des Issues ist die Registrierung samt Baseline-Neuziehung, nicht der
-Fixpunkt-Katalog); ein Folge-Issue für einen `chunkingPipeline`-Fixpunkt ist sinnvoll, sobald ein
-zweites Format nach seiner eigenen Registrierung denselben Effekt zeigt.
-
----
-
-## Nachtrag: Ingestion-Pipeline-Fixpunkt (Issue #1144)
-
-**Datum:** 2026-09-03 · **Betrifft:** beide Messpfade, alle drei Eval-Domänen.
-
-Schließt die im Nachtrag zu #1103 offen benannte Lücke: Zwei weitere reale Vorfälle aus derselben
-Arbeit (Eval-Harness leitete ihre Chunk-Map über den alten Tika-Zerleger statt über die produktive
-Pipeline ab; ein `answer_span`-Fehler im Golden Dataset, den erst der reparierte Wächter fand) sind
-Belege derselben Fehlerklasse: die messende Seite sah eine andere Zerlegung als die produktive, ohne
-dass ein Fixpunkt es bemerkt hätte.
-
-### 28. `ingestionPipelineFingerprint` als neuer Fixpunkt auf beiden Pfaden
-
-`Baseline.FixedPoints` und `PipelineBaseline.FixedPoints` führen je ein neues Feld
-`ingestionPipelineFingerprint`: ein sortierter Sammelabdruck `id:version` über **alle** von
-`DocumentPipelineRegistry` gemeldeten Pipelines (einschließlich der Fallback-Pipeline), Komma-getrennt
-und nach Id sortiert — deterministisch unabhängig von der Bean-Registrierungsreihenfolge
-(`IngestionPipelineFingerprint`). Ein kanonischer String statt eines Hashes, nach dem Vorbild von
-`embeddingModel` (neben seinem Digest geführt) statt `corpusManifestSha256` (ein Hash, weil eine
-Dokumentliste unlesbar groß wäre): zehn Pipelines passen in einen Diff, den ein Reviewer auf einen
-Blick liest, und ein Diff, der **welche** Pipeline sich bewegt hat benennt, ist hier strikt
-nützlicher als einer, der nur "etwas hat sich geändert" sagt.
-
-Der Abdruck erfasst bewusst **alle** registrierten Pipelines, nicht nur die vom jeweiligen Korpus
-genutzten — ein Routing-Fehler (ein Dokument landet unerwartet bei der falschen Pipeline) wäre sonst
-selbst dann unsichtbar, wenn beide beteiligten Pipelines für sich genommen unverändert sind.
-
-**Kein neuer Guard in `PipelineHarnessSupport#requireMeasurableConfiguration`** (Issue #1144
-hatte das als offene Frage benannt): Dieser Guard prüft die Query-Konfiguration eines Laufs
-(`top-k`, Dekomposition, Pipeline-Stufen, Volltextpfad, Reranking) — Bedingungen, unter denen
-ein Lauf etwas anderes misst, als seine Feldnamen behaupten. `ingestionPipelineFingerprint`
-ist kein Zustand, den eine Laufkonfiguration versehentlich falsch setzen könnte; er wird aus
-der tatsächlich verdrahteten `DocumentPipelineRegistry` gelesen und ist damit für jeden Lauf
-korrekt, ohne dass eine Bedingung geprüft werden müsste. Der bestehende Vergleich in
-`BaselineComparator`/`PipelineBaselineComparator` genügt.
-
-### 29. Beide Messverträge steigen: Rohvektor 2 → 3, Pipeline 3 → 4
-
-Ein neuer Fixpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6) — auf **beiden** Pfaden
-gleichzeitig, weil beide Chunks derselben Ingestion-Pipelines messen (anders als der Nachtrag zu
-#1049, der ausschließlich den Pipeline-Pfad betraf, weil nur dieser den lexikalischen Pfad kennt).
-`EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` steigt von 2 auf **3**,
-`PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` von 3 auf **4**; beide Zählungen
-bleiben unabhängig voneinander (Entscheidung 16), sie bewegen sich hier nur zufällig im selben Schritt.
-
-### 30. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
-
-Die sechs committeten Baselines (drei Domänen × zwei Pfade) wurden **ohne** neuen `evaluateRetrieval`-
-Lauf nachgezogen — nur die Fixpunkte, nicht die Messzahlen, ändern sich: der Eval-Korpus besteht (Stand
-#1145) ausschließlich aus Markdown, sodass `MarkdownDocumentPipeline` die einzige tatsächlich
-beteiligte Pipeline ist und ihre Version durch diesen Nachtrag unverändert bleibt. Der Abdruck selbst
-(`docx:3,email:2,html:1,markdown:1,odp:2,odt:2,pdf:1,pptx:1,tabular:1,tika-fallback:1`, Stand
-`DocumentPipelineRegistry` zum Zeitpunkt dieses Nachtrags) ist identisch in allen sechs Dateien.
-Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich durch diesen Nachtrag —
-nur die Beschreibung der Messbedingungen wird vollständiger.
-
-## Nachtrag: Rangreserve (Grenzstabilität, Issue #1151)
-
-> **Nachtrag vom 2026-09-03, Issue #1151/PR #1206.** Kein neuer Messvertragspunkt, keine
-> Versionsänderung auf beiden Pfaden — hier festgehalten, damit die Existenz der Kennzahl und ihr
-> bewusst report-only-Status nicht nur im PR nachlesbar sind.
-
-Ein Golden-Fall, der mit großem Rangabstand gelöst ist, und einer, der gerade noch über die
-Fensterschwelle rutscht, waren in den bestehenden Metriken nicht unterscheidbar — beide zählen
-binär als „gelöst" (`hitRateAt5`/`hitCountAt5`). `RetrievalMetrics#marginAtK` und `MarginAggregate`
-tragen dafür je Fall bzw. je Gruppe die Rangreserve mit: den Abstand des ersten relevanten Treffers
-zur Fenstergrenze, disjunkt aufgeteilt in Treffer, „knapp gelöst" und „knapp verfehlt" (siehe
-`docs/features/retrieval-benchmark.md`, Abschnitt 7, für die vollständige Definition).
-
-**Bewusst kein Fixpunkt, keine Messvertragsänderung.** Die Rangreserve steckt nicht in
-`MetricsAggregate`/`PipelineMetricsAggregate` und damit nicht in `Baseline`/`PipelineBaseline`;
-`BaselineComparator`/`PipelineBaselineComparator` lesen sie nicht.
-`CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION` bleiben bei 3/4.
-Sie ist reine Berichtsanreicherung, keine neue Bedingung dafür, wann zwei Läufe „dasselbe messen"
-(Entscheidung 6) — dieselbe Kategorie wie `allExpectedDocumentsHitAt10` (#913) oder
-`hitCountAt5`/`hitCountAt10` (#306) vor ihrer Aufnahme in die Fallzahlprüfung. Ob und wie die
-Rangreserve später ein Fehlerkriterium nach ADR-0013 wird, klärt Issue #1210 — das wäre dann eine
-eigene Entscheidung dieses ADRs (Baseline-Schema) und/oder von ADR-0013 (Fehlerkriterium), nicht
-rückwirkend dieser Nachtrag.
-
-> **Entschieden am 2026-09-16 (Issue #1210): Die Rangreserve bleibt report-only, auf allen drei
-> Messpfaden.** Sie wandert nicht in `MetricsAggregate`/`PipelineMetricsAggregate`, nicht in die
-> Baselines und nicht in die Comparators;
-> `CURRENT_MEASUREMENT_CONTRACT_VERSION`/`PIPELINE_MEASUREMENT_CONTRACT_VERSION` bleiben davon
-> unberührt. Für den Mehrrunden-Pfad gilt dasselbe: Er führt je Runde `hitRateMargin` und
-> `rankingMargin` mit (`ConversationEvaluationReport`), hat seit #1553 eine eigene Baseline und mit
-> `CONVERSATION_MEASUREMENT_CONTRACT_VERSION` einen eigenen Vertrag — auch dort bleibt die
-> Rangreserve unverglichen. Drei Gründe, die zusammen tragen:
->
-> 1. **Die Kennzahl misst nicht, was ein Fehlerkriterium messen müsste.** `marginAtK` betrachtet nur
->    den **ersten** relevanten Treffer. Bei mehreren erwarteten Dokumenten kann sie eine große,
->    „sichere" Marge melden, während ein anderes erwartetes Dokument knapp im Fenster sitzt und
->    `recallAt10` bei der nächsten Verschiebung kippt. Ein Kriterium auf dieser Grundlage würde
->    Stabilität zusichern, die es nicht prüft — die Einschränkung stand von Anfang an im Javadoc und
->    ist nicht ausgeräumt.
-> 2. **Der Bedarf hat sich nicht gezeigt.** Seit der Einführung im 09/2026 hat kein Lauf eine
->    Regression gehabt, die die Rangreserve früher angezeigt hätte als die bestehenden Metriken. Die
->    eine Instabilität, die in diesem Zeitraum wirklich auftrat, war die ggml-CPU-Variante (#1652) —
->    sie schlug in Hit Rate und nDCG unmittelbar durch und brauchte keine Grenzstabilitätsgröße.
-> 3. **Ein weiteres Fehlerkriterium kostet mehr, als es hier einbringt.** Jede zusätzliche geprüfte
->    Größe braucht eine Toleranz, eine Begründung dieser Toleranz und eine Neuziehung aller
->    Baselines; die Rangreserve schwankt zudem stärker als die Metriken, aus denen sie abgeleitet
->    ist.
->
-> **Wiederaufnahme, wenn** eine Regression auftritt, die in den geprüften Metriken unsichtbar blieb
-> und in der Rangreserve sichtbar war — dann mit einer Marge, die das schwächste erwartete Dokument
-> betrachtet, nicht das erste.
->
-> **Damit diese Bedingung überhaupt eintreten kann**, gehört zu jeder Untersuchung einer gemeldeten
-> Qualitätsverschlechterung die Auswertung von `MarginAggregate` aus den Reports des fraglichen
-> Zeitraums. Eine Regression, die die geprüften Metriken nicht zeigen, lässt den Lauf grün durch —
-> niemand hätte sonst einen Anlass, in die Margentabelle zu sehen, und die Bedingung wäre eine, die
-> sich selbst nie auslöst.
-
-### 31. Dritter Nachtrag des Fingerabdrucks: `email:2` → `email:3` (Issue #1164, PR #1201)
-
-Chronologisch nach dem Rangreserve-Nachtrag oben (dessen "bleiben bei 3/4" den Stand zum Zeitpunkt von PR #1206 festhält, unberührt von dieser Änderung - die Rangreserve selbst bleibt weiterhin kein Fixpunkt und bewegt keine Vertragsversion).
-
-PR #1201 (Mail-Kopfdaten an der Fundstelle anzeigen und filtern, Issue #1164) kürzt `mail_date` auf Sekundenpräzision, bevor er als Chunk-Metadatum geschrieben wird - `Instant#toString()` lässt den Bruchteil sonst ganz weg, wenn er null ist, was zwei nur millisekundengenau unterschiedliche Zeitpunkte lexikografisch falsch sortieren lässt (Voraussetzung für einen späteren Zeitraumfilter). Das ist eine Chunk-Text-ändernde Pipeline-Änderung (ingestion-pipelines.md, Teil 4 Regel (d)), `MailDocumentPipeline#version()` steigt daher 2 → 3.
-
-Damit bewegt sich der Sammelabdruck aus Entscheidung 28 ein drittes Mal (nach der ursprünglichen Aufnahme des Fixpunkts in Entscheidung 28/29 und dessen Nachzug in Entscheidung 30): `email:2` → `email:3` im `ingestionPipelineFingerprint` aller sechs committeten Baselines. Nach Entscheidung 29 folgt daraus zwingend ein weiterer Versionsschritt auf beiden Messverträgen: `EvaluationReport.CURRENT_MEASUREMENT_CONTRACT_VERSION` 3 → **4**, `PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION` 4 → **5**. Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne neuen Messlauf - der Eval-Korpus besteht weiterhin ausschließlich aus Markdown, `MailDocumentPipeline` verarbeitet keines seiner Dokumente, die gemessenen Chunks und Zahlen bleiben unverändert.
-
-**Versionskollision mit ADR-0022 §9 aufgelöst:** ADR-0022 ("Ein Anhang ist ein eigenes Dokument") hatte `MailDocumentPipeline`-Version 3 bereits dem dort beschriebenen Anhangsumbau (Issue #1183) zugesagt. Da dieser PR v3 zuerst für den `mail_date`-Fix verbraucht, geht der Anhangsumbau nun auf **v4** - ADR-0022 §9 und Issue #1183 sind entsprechend korrigiert.
-
-## Nachtrag: Metadatenfilter im Messvertrag (Issue #1070, Teil 2)
-
-> **Nachtrag vom 2026-09-05, Issue #1070 (Teil 2).** Der Kernfeld-Filter aus Arbeitspaket 4 des
-> Metadatenschemas (#1070, Teil 1) wirkt seither in beiden produktiven Suchpfaden. Damit ist die
-> Fallklasse `metadata_filter` erstmals mit dem Mechanismus messbar, für den sie gebaut wurde —
-> und der Harness misst etwas anderes als vorher.
-
-### 32. `metadataFilterEnabled` als neuer Fixpunkt auf beiden Pfaden
-
-Der Harness reicht seither den `filter` jedes Golden-Falls in die Messung durch: auf dem
-Rohvektor-Pfad als `Filter.Expression` an `similaritySearch`, gebaut über dieselbe
-`MetadataFilterExpressions.vectorExpression` wie die produktive Vektorsuche; auf dem Pipeline-Pfad
-als `MetadataFilter` am Request, wo die Stufe `METADATA_FILTER` ihn in beide Suchabfragen einsetzt.
-Ein Lauf ohne diese Durchreichung misst die Klasse `metadata_filter` ohne den geprüften
-Mechanismus — dieselbe Kategorie wie `fullTextSearchEnabled` (Entscheidung 22): keine schlechtere
-Messung, sondern eine andere. `metadataFilterEnabled` ist deshalb ein Gültigkeitsfeld nach
-Entscheidung 18 auf **beiden** Pfaden; weicht es ab, ist die Baseline für diesen Lauf ungültig und
-es wird keine Metrik verglichen.
-
-Der Wert ist heute unbedingt `true`: Die Durchreichung ist Eigenschaft des Harness-Codes, kein
-Schalter. Er steht trotzdem im Fixpunkt-Block, weil eine committete Baseline aussagen muss, unter
-welcher Messgrundlage sie entstanden ist — eine ältere Datei ohne das Feld lädt als `null` und wird
-damit als unvergleichbar gemeldet, statt stillschweigend als „ohne Filter gemessen" durchzugehen.
-
-### 33. Beide Messverträge steigen: Rohvektor 5 → 6, Pipeline 7 → 8
-
-Ein neuer Fixpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6), auf beiden Pfaden.
-Anders als die Fixpunkt-Nachträge 29 bis 31 ist das hier **kein** reiner Vertragsschritt ohne
-Messlauf: Der Filter verändert die gemessene Auswahl der Klasse `metadata_filter` tatsächlich.
-Beide Baselines der Domäne `verwaltung` sind deshalb im selben Lauf neu gezogen; die vier übrigen
-Fallklassen dieser Domäne dienen dabei als Selbstprüfung — kein Fall außerhalb von
-`metadata_filter` trägt einen Filter, ihr Delta muss ≈ 0 sein. Die vier Baselines von
-`comic-characters`/`city-landmarks` erhalten den Fixpunkt und die neue Vertragsversion, aber keine
-neue Messung: Kein Fall dieser beiden Domänen trägt ein `filter`-Feld, ihre Zahlen sind
-unverändert.
-
-### 34. Die zwei Fehlerrichtungen werden getrennt ausgewiesen, nie gemittelt
-
-`MetadataFilterAudit` steht gleichrangig neben `ExpectedStateAudit`: Jenes beantwortet „ist der Fall
-gelöst", dieses „hat der Filtermechanismus getan, wofür er da ist". Es zählt getrennt, je Messpfad:
-
-- **„Filter greift nicht"** — der im Fall benannte `confusable_document` steht trotz Filter im
-  Fenster.
-- **„Filter greift zu stark"** — ein Fall mit `no_value_field` (das erwartete Dokument hat im
-  gefilterten Feld keinen Wert) verliert sein erwartetes Dokument, obwohl die Leerwert-Regel es
-  halten muss.
-
-Ein gemittelter Gesamtwert verschwiege, welche der beiden Richtungen gerade schiefliegt — und die
-beiden verlangen unterschiedliche Korrekturen. Wie das Zustandsfeld-Audit **meldet** die Auswertung
-und lässt den Lauf nicht fehlschlagen; sie erscheint im JSON-Report, im Lauf-Log und in der
-Markdown-Delta-Tabelle beider Pfade, also in Job-Zusammenfassung, PR-Kommentar und Alarm-Issue.
-
-### 35. Vierter Nachtrag des Fingerabdrucks: `confluence:1` (Issue #1212, nachgezogen hier)
-
-Der Confluence-Konnektor (#1212) registriert mit `ConfluenceDocumentPipeline` eine weitere
-Ingestion-Pipeline. Der Sammelabdruck aus Entscheidung 28 bewegt sich damit ein viertes Mal —
-`docx:3,…` → `confluence:1,docx:3,…` —, der Nachzug in den sechs committeten Baselines unterblieb
-dort jedoch. Er wird hier nachgeholt, im selben Versionsschritt wie der Metadatenfilter-Fixpunkt
-(Entscheidung 33), statt eine weitere Version dafür zu verbrauchen: Beide Änderungen erreichen
-dieselben sechs Dateien und denselben Lauf.
-
-Warum das nicht auffiel: `PipelinePathIsolationTest#committedIngestionPipelineFingerprintsMatchTheRealRegistry`
-baut die Registry im Docker-freien Test aus einer Liste nachgebauter Pipeline-Instanzen — diese
-Liste war ebenfalls nicht nachgezogen, sodass Prüfling und Prüfer gemeinsam veraltet waren. Sie ist
-jetzt vollständig; ein künftiger Konnektor fällt damit wieder Docker-frei auf statt erst im
-nächtlichen Lauf als „Baseline ungültig". Wie in Entscheidung 30: reine Fixpunkt-Ergänzung ohne
-neuen Messlauf — kein Korpus dieses Repositorys routet ein Dokument durch die Confluence-Pipeline.
-
-### 36. Vorab festgelegte Schwelle: Konfidenz der modellgestützten Metadaten-Extraktion (Issue #1073)
-
-Die Regel dieses ADRs — **jede Schwelle wird vor der Messung festgelegt und committet** — gilt auch
-außerhalb des Harness. Die modellgestützte Metadaten-Extraktion (#1073,
-[metadata-schema.md](../features/metadata-schema.md#die-modellgestützte-extraktion-im-betrieb))
-übernimmt einen vom Modell vorgeschlagenen Wert nur ab einer Konfidenz von **0,80**; darunter bleibt
-das Feld leer und der Wert wird nur protokolliert.
-
-Festgelegt am **05.09.2026**, vor der ersten Messung auf einem echten Bestand, Freigabe durch den
-Maintainer am selben Tag; der Wert steht als `ModelMetadataExtractor.CONFIDENCE_THRESHOLD` im Code.
-Begründung für die Höhe: Der Schaden ist asymmetrisch — ein halluzinierter Metadatenwert wirkt als
-Filter und macht ein Dokument unsichtbar, ein leeres Feld ist ein sichtbarer, behebbarer Zustand.
-
-**Sie darf nach der ersten Messung nur gesenkt werden, nie stillschweigend erhöht**, und jede
-Änderung ist ein Commit mit Datum und der gemessenen Verteilung. Grundlage der Kalibrierung sind die
-protokollierten Verwerfungen mit ihrer Konfidenz (`metadata_model_rejections`) und die
-handausgewertete 100er-Stichprobe der QA-Rolle; liegt dort der Anteil „falsch trotz ≥ 0,80" über
-5 %, steigt die Schwelle. Ein Wert außerhalb des angebotenen Vokabulars wird unabhängig von der
-Konfidenz verworfen — das ist kein Schwellenfall.
-
-## Nachtrag: Einstieg des Pipeline-Messpfads (Issue #1455)
-
-### 37. Der Messpfad ruft Fabrik und Pipeline direkt
-
-Die Entscheidungen 11 und 14 nennen `QueryService#retrieveRelevantChunksInGivenScope` als den
-Einstieg, über den der Pipeline-Pfad die Schritte 2–6 misst. Diese Methode ist mit #1455 entfallen;
-der Messpfad läuft seither über `RetrievalContextFactory#contextFor` (Produktionsparameter und
-Rerank-Zustand, genau wie eine Chat-Anfrage) und `RetrievalPipeline#run` — denselben Einstieg, den
-auch das Diagnosewerkzeug (`SearchDiagnosisService`) nutzt. Der Suchbereich wird weiterhin
-übergeben, nicht aufgelöst (Entscheidung 14 gilt unverändert), und der `library_id`-Filter entsteht
-unverändert in der Stufe `SEARCH_SCOPE` der Pipeline. Reine Umbenennung des Einstiegs, kein
-geänderter Messgegenstand: Der Protokoll-Diff der 49 Verwaltungsfälle vor und nach dem Umbau war
-leer, beide Messverträge bleiben bei ihrer Version.
-
-## Nachtrag: Mehrrunden-Messpfad (Issue #1484)
-
-`docs/features/conversation-memory.md`, Abschnitt „Messung", verlangt einen Messpfad für
-Gespräche: Der Harness kannte bis dahin nur Einzelfragen, jede Golden-Frage lief ohne Verlauf, und
-der Folgefragen-Pfad der Zerlegung war damit ungemessen (#1288, „Nicht Teil dieses Issues").
-Bevor Gesprächsfenster und Gesprächsnotiz gebaut werden, muss der heutige Stand beziffert sein.
-Dieser Nachtrag schreibt den Messvertrag dafür fort; an den beiden bestehenden Pfaden ändert er
-nichts.
-
-### 38. Ein dritter Messpfad, getrennt ausgewiesen
-
-Der Mehrrunden-Pfad ist ein **dritter** Pfad neben Rohvektor und Pipeline, mit eigenem Berichtstyp
-(`ConversationEvaluationReport`), eigener Berichtsdatei
-(`build/eval-reports/pipeline-conversations-<domäne>.json`), eigenem Datensatz
-(`eval/golden/<domäne>-conversations.json`) und eigener Baseline
-(`eval/baseline/pipeline-<domäne>-conversations.json`). Begründung wie in Entscheidung 11 und 16:
-Die Pfade messen Verschiedenes, sind nicht ineinander umrechenbar, und ein geteiltes Schema machte
-es möglich, dass eine Neumessung des einen die Zahlen des anderen überschreibt.
-
-Was **nicht** neu ist: die Metrikmathematik und das Fenster. Eine Runde wird von `RetrievalMetrics`
-an denselben Fenstern gemessen wie eine Einzelfrage des Pipeline-Pfads (Hit Rate@5, MRR@8, nDCG@8,
-Recall@8, Ähnlichkeitsschwelle angewandt) und von `PipelineMetricsAggregate` aggregiert. Eine Runde
-ist eine Frage mit erwarteten Dokumenten — genau das, was ein Golden-Fall modelliert; der Harness
-adaptiert sie deshalb auf `GoldenCase`, statt eine zweite Metrikfamilie zu führen.
-
-### 39. „Gelöst" bleibt eine Definition, angewandt je Runde und je Fall
-
-Eine **Runde** gilt als gelöst nach dem bestehenden Kriterium aus Entscheidung zu den
-Zustandsfeldern (`ExpectedStateAudit#isSolved`): alle erwarteten Dokumente im Fenster **und** eines
-auf Rang 1. Ein **Fall** gilt als gelöst, wenn **jede** seiner Runden gelöst ist. Kein gemittelter
-Fallwert: Ein Gespräch, dessen zweite Runde den Bezug nicht auflöst, ist nicht „zur Hälfte gelöst" —
-es ist der Fehler, den die Klasse `anaphora_resolution` messen soll.
-
-Der Bericht weist deshalb drei Ebenen aus: je Runde (`byTurn`, Gruppenschlüssel `turn:<n>`), je
-Fallklasse (`byCategory`) und je Fall (`caseOutcomes`, plus das Zustandsfeld-Audit auf Fallebene).
-Die Rundengruppe ist nicht Zierde: Eine Änderung, die den eigenständigen ersten Runden hilft und den
-Folgerunden schadet, lässt den Gesamtwert flach.
-
-### 40. Vier neue Festpunkte: Fensterbreite, Suchfenster, Notizdeckel, Rundenzahl
-
-Die Festpunkte des Pipeline-Pfads (Entscheidungen 13, 18, 22, 28, 32) gelten unverändert und werden
-wörtlich geteilt. Hinzu kommen:
-
-| Festpunkt | Heutiger Wert | Warum er einer ist |
-|---|---|---|
-| `conversationWindowMessages` | 20 | die Breite des Gesprächsfensters; sie bestimmt, wie viel Verlauf die Zerlegung überhaupt sehen kann |
-| `searchWindowTurns` | 2 Runden (`opaa.query.search-window-turns`, seit #1486) | `SubQueryDecompositionStage` schneidet aus dem Gesprächsfenster die letzten *n* Runden für die Zerlegung; ändert sich der Wert, wird die Baseline laut unvergleichbar statt still weitergerechnet. `0` heißt heute „nur die Frage" — eine vor #1486 gezogene Baseline trägt dieselbe `0` in der damaligen Bedeutung „ganzes Gesprächsfenster"; sie ist genau deshalb unvergleichbar und muss neu gezogen werden |
-| `conversationNoteCap` | 0 = „keine Notiz" | dasselbe, für die Gesprächsnotiz |
-| `turnCount` | Größe des Datensatzes | eine Kuratierungsrunde, die nur Fälle verlängert, ließe `goldenCaseCount` unberührt |
-
-`conversationWindowMessages` wird **gemessen, nicht angenommen**: Der Harness reicht der produktiven
-`ChatMemory`-Bean mehr Nachrichten, als sie halten kann, und zählt, was zurückkommt
-(`ConversationMemoryProfile#measuredFrom`). Eine ins Messwerkzeug kopierte Konstante meldete nach
-einer Produktionsänderung weiter den alten Wert — genau der stille Zustand, den Festpunkte
-verhindern sollen. `searchWindowTurns` wird aus derselben Quelle gelesen, mit der die Pipeline
-läuft (den produktiven `QueryProperties`), nie aus einem im Harness gepflegten Wert.
-
-**Das Chat-Modell ist auf diesem Pfad ein geprüfter Festpunkt**, nicht nur ein gemeldeter
-(Abweichung von Entscheidung 20, die für den Pipeline-Pfad „keines" als gültigen Wert zulässt): Ohne
-Teilfragen-Zerlegung wird kein einziger Bezug aufgelöst, und eine Mehrrunden-Baseline ohne Modell
-beschriebe einen Lauf, der gar nicht messen konnte, wofür der Pfad existiert. `ConversationBaseline`
-weist eine solche Datei beim Laden zurück.
-
-### 41. Eigene Vertragsversion, beide bestehenden unverändert
-
-`CONVERSATION_MEASUREMENT_CONTRACT_VERSION` beginnt bei 1 und zählt unabhängig weiter — dieselbe
-Begründung wie in Entscheidung 16: Eine Erhöhung entwertet jede committete Baseline ihres Pfads, und
-das Hinzukommen dieses Pfads bewegt weder den Rohvektor- noch den Pipeline-Messgegenstand. Beide
-bleiben bei ihrer Version; keine bestehende Baseline wird neu gezogen.
-
-### 42. Ausführung: nur mit Zerlegung, dreimal, manuell — sonst „nicht ausgeführt"
-
-Der Pfad läuft als Opt-in-Schritt am Ende desselben Harness-Laufs
-(`-Dopaa.eval.runConversations=true`), auf dem bereits indizierten Korpus, nie in einem zweiten
-Indizierungslauf. Er gehorcht der Mehrfachlauf-Regel (drei Läufe, Median nach nDCG@8, Abschnitt 3 von
-`docs/features/retrieval-benchmark.md`) und ist damit **nicht** nächtlich tragbar: je Runde ein
-Chat-Aufruf, mal drei.
-
-> **Überholt durch Entscheidung 49 (Issue #1553):** Der Pfad läuft nächtlich — aber in einem
-> **eigenen** Job mit eigenem Zeitbudget, nicht im Job der Einzelfragen-Domänen, dessen Budget er
-> tatsächlich sprengte. Die Opt-in-Mechanik bleibt unverändert; sie wird seither von der Task
-> gesetzt statt vom Aufrufer.
-
-Fehlt die Zerlegung, das Chat-Modell oder der Datensatz, meldet sich der Lauf als **nicht
-ausgeführt** und schreibt nichts. Das ist die Anwendung von Entscheidung 15 auf diesen Pfad: Ohne
-Zerlegung erreichte eine Rückfrage die Suche als Rückfall-Verkettung, und die Zahlen beschrieben den
-Rückfall statt das Gesprächsgedächtnis — eine stille Degradierung, die als Regression gegen die
-Baseline gebucht würde.
-
-### 43. Die Einpfadigkeit steht am Datensatz, nicht am Fall (Einpfad-Regel)
-
-Die Zustandsfelder-Regel aus Abschnitt 5 von `docs/features/retrieval-benchmark.md` definiert
-„gelöst“ über **beide** Messpfade. Ein Mehrrunden-Fall kann konstruktionsbedingt nur auf dem
-Pipeline-Pfad laufen: Der Rohvektor-Pfad misst `similaritySearch` direkt und kennt weder
-Gesprächsverlauf noch Teilfragen-Zerlegung. Unter der unveränderten Regel bliebe jeder
-Mehrrunden-Fall dauerhaft `known_gap`, und ein Zustandswechsel wäre unerreichbar. Deshalb gilt die
-dort ergänzte Einpfad-Regel: **Eine Fallklasse, die konstruktionsbedingt nur auf einem Messpfad
-laufen kann, gilt als gelöst, wenn sie auf diesem Pfad gelöst ist.**
-
-**Vermerkt wird sie einmal je Bericht** (`singlePathNote`), nicht je Fall. Sie ist eine Eigenschaft
-der Messanordnung: Sie gilt für jeden Fall des Datensatzes gleichermaßen und ändert sich nie.
-
-> **Seit Issue #1658 (Entscheidung 52)** gibt es `expected_state_exception` auf keinem Pfad mehr.
-> Die Einpfad-Regel bleibt; die flachen Zustandsfelder dieses Datensatzes sind der Zustand des einen
-> gemessenen Pfads. Der folgende Absatz beschreibt den Stand davor.
-
-`expected_state_exception` behält damit die Bedeutung, die es auf dem Einzelfragen-Pfad hat —
-optional, nur auf einem `known_gap`-Fall, und nur für eine tatsächliche Abweichung **dieses einen**
-Falls. Stünde es auf jedem Fall, reichte der Harness es als `acceptedDeviationReason` an
-`ExpectedStateAudit` weiter, und der erste Zweig der Auswertung griffe immer: `unexpectedlySolved`
-und `unexpectedlyUnsolved` wären strukturell leer, `matchesDeclaredStates()` immer wahr. Ein
-`known_gap`, den das Gesprächsgedächtnis löst, erschiene nie als Fund — genau der Nachweis, den die
-Zustandsfelder tragen sollen — und ein verlorener `solved`-Fall nie als Rückschritt.
-
-### 44. Die Wechselrunde eines `topic_switch`-Falls wird benannt, nicht abgeleitet
-
-Die Bleed-Zahl ist die Kennzahl, an der die Änderung des Suchfensters gemessen wird. Sie wird über
-**genau eine** Runde je Fall gebildet, und der Datensatz benennt sie (`topic_switch_turn`,
-1-basiert, geprüft gegen die Rundenspanne der Klasse).
-
-Eine Ableitung aus den Daten — „die erste Runde, deren erwartete Dokumente mit keiner früheren
-überschneiden“ — ist ausdrücklich verworfen: Sie träfe auch auf eine gewöhnliche Rückfrage zu,
-deren Antwort in einem anderen Dokument steht („Und bei Bedürftigkeit?“ nach „Was kostet ein
-Anwohnerparkausweis?“, das Beispiel der Spezifikation selbst), und zählte dann das **richtige**
-Vorthemen-Dokument als Bleed. Die Kuratierungsregel „mindestens sechs unterschiedliche Treffermengen
-je Klasse“ fördert dieses Muster zusätzlich. Das deckt sich mit
-`docs/features/conversation-memory.md`: Themenwechsel werden nicht erkannt — auch nicht im Harness.
-
----
-
-## Nachtrag: Ollama-Herkunft im Messvertrag (Issue #1522)
-
-**Datum:** 2026-09-11 · **Betrifft:** alle drei Messpfade, alle committeten Baselines.
-
-Seit [#1076](https://github.com/criew/opaa/issues/1076) darf ein Lauf per
-`-Dopaa.eval.ollamaBaseUrl` gegen ein bereits laufendes Host-Ollama zeigen, weil die
-Container-GPU auf der Entwicklungsmaschine nicht verfügbar ist (AMD). Das ist ausdrücklich ein
-Iterationswerkzeug: Ein solcher Lauf embeddet womöglich auf der GPU, deren Kernel nicht bitgleich
-zur CPU rechnen, und ist in der CI nicht reproduzierbar. Der Report weist das aus
-(`externalOllamaEndpoint: true`, `ollamaImage: "extern: …"`), und `requireBaselineComparable`
-bricht den Vergleich eines solchen Reports ab.
-
-Die committete **Baseline** trug diese Eigenschaft bisher nirgends. `ollamaImage` war Report-Feld,
-aber kein Festpunkt; beim Ziehen fiel es weg, und die CPU-Herkunft stand nur als Prosa im
-`notes`-Feld. Damit hing eine tragende Eigenschaft des Messvertrags an der Sorgfalt der ziehenden
-Person statt an einer Prüfung: Ein versehentlich aus einem GPU-Lauf gezogener Vergleichspunkt fiele
-erst auf, wenn die CI dauerhaft Abweichungen meldet — und würde dann vermutlich als Regression
-fehlgedeutet.
-
-### 45. `ollamaImage` ist geprüfter Festpunkt aller drei Baseline-Typen
-
-`Baseline.FixedPoints` und `PipelineBaseline.FixedPoints` führen je ein neues Feld `ollamaImage`;
-der Mehrrunden-Pfad erbt es mit dem geteilten Pipeline-Block (Entscheidung 40). Der Wert ist das
-gepinnte Testcontainer-Image des Laufs (heute `ollama/ollama:0.6.5`). Er wird wie jeder andere
-Festpunkt gegen die Laufkonfiguration verglichen: Weicht er ab, ist die Baseline **unvergleichbar**,
-und es wird keine Metrik geprüft. Das ist kein Sonderfall, sondern die Anwendung von Entscheidung 6
-— dasselbe Modell hinter einer anderen Ollama-Fassung ausgeliefert ist nicht nachweislich dieselbe
-Messung, und der Modell-Digest allein beantwortet diese Frage nicht: Er beschreibt die Gewichte,
-nicht die Laufzeit, die sie auswertet.
-
-**Zusätzlich eine Ladeprüfung** (`BaselineOllamaOrigin`, aufgerufen aus allen drei `load`-Methoden).
-Sie weist genau einen Fall ab: eine Datei, deren `ollamaImage` mit dem Marker `extern: ` beginnt.
-
-Die Prüfung ist eine Aussage über die **Datei**, nicht über einen späteren Lauf. Ein *Report* aus
-einem externen Lauf kommt schon heute nicht in einen Vergleich — `requireBaselineComparable` bricht
-auf `externalOllamaEndpoint` ab, und alle vier Einstiegspunkte rufen es **vor** dem Laden der
-Baseline. Was diese Prüfung ergänzt, ist das andere Ende: Der Fehler, dass die *committete Baseline*
-selbst aus einem solchen Lauf stammt, ist ein Ziehfehler, und der einzige richtige Ausgang ist ein
-neuer Messlauf. Genau das sagt die Meldung. Der Fixpunktvergleich allein sagte stattdessen
-„Messgrundlage geändert" — richtig als Urteil über zwei Läufe, aber irreführend über eine Datei, die
-nie hätte entstehen dürfen.
-
-Den Marker definiert `EvalOllamaEndpoint` einmal und liest ihn dort zurück; die Zeichenkette, die
-ein Lauf schreibt, und die, für die eine Baseline abgelehnt wird, können so nicht auseinanderlaufen.
-
-**Ein fehlender Wert wird nicht abgewiesen**, sondern folgt dem Muster von `metadataFilterEnabled`:
-Er lädt als `null` und erscheint im Vergleich als unvergleichbarer Fixpunkt (`null` gegen das
-gepinnte Image). Das ist die mildere Behandlung mit Absicht — der Regressionsjob schreibt dann noch
-seine Delta-Tabelle und benennt das Feld darin, statt mit einer Ausnahme und ohne Bericht
-abzubrechen. Abgewiesen wird nur, was aktiv falsch ist, nicht was unvollständig ist.
-
-**Kein neuer Guard im Harness.** `PipelineHarnessSupport#requireMeasurableConfiguration` prüft, ob
-ein Lauf etwas anderes misst, als seine Feldnamen behaupten — ein Lauf gegen einen externen
-Endpunkt misst korrekt und darf stattfinden, er darf nur keine Baseline werden. Genau diese
-Unterscheidung liegt bei `requireBaselineComparable` und ab jetzt zusätzlich beim Laden.
-
-**Zwei Docker-freie Wächter** halten die Zusage, die ein Fixpunkt nur mit ihnen einlöst: Das Image
-ist eine Java-Konstante (`EvalOllamaEndpoint.PINNED_IMAGE`, seit diesem Nachtrag einmal statt dreimal
-im Quelltext), die Baselines sind JSON-Dateien, und nichts sonst verbindet beide.
-`PipelinePathIsolationTest` hält deshalb die sechs committeten Baselines gegen die Konstante, und
-sein Gegenstück auf dem Mehrrunden-Pfad prüft dasselbe für die dortige Baseline, sobald sie existiert.
-Ohne sie fiele ein bewusster Image-Wechsel ohne Baseline-Nachzug erst nach über einer Stunde im
-nächtlichen Docker-Lauf auf — und dann für alle Domänen gleichzeitig.
-
-### 46. Alle drei Messverträge steigen: Rohvektor 9 → 10, Pipeline 12 → 13, Mehrrunden 1 → 2
-
-Ein neuer Festpunkt erweitert, was „dieselbe Messung" heißt (Entscheidung 6) — auf allen drei
-Pfaden gleichzeitig, weil alle drei ihre Vektoren aus demselben Ollama beziehen (wie beim
-Ingestion-Fixpunkt aus Entscheidung 29, anders als beim Volltextpfad aus Entscheidung 23). Die
-Zählungen bleiben unabhängig voneinander (Entscheidung 16/41), sie bewegen sich hier nur im selben
-Schritt.
-
-### 47. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
-
-Die sechs committeten Baselines (drei Domänen × zwei Pfade) wurden **ohne** neuen
-`evaluateRetrieval`-Lauf nachgezogen. Eingetragen ist `ollama/ollama:0.6.5` — das Image, mit dem sie
-tatsächlich gemessen wurden: Es ist seit der ersten Fassung des Harness gepinnt und hat sich nie
-bewegt (bis zu diesem Nachtrag als drei gleichlautende Literale, jetzt als eine Konstante), und die
-`notes` jeder der sechs Dateien weisen den zugehörigen Lauf
-als CPU-/Testcontainer-Lauf aus (`eval/baseline/verwaltung.json` nennt das Image dort sogar wörtlich).
-Kein bereits committeter Chunk, keine bereits committete Metrik ändert sich — nur die Beschreibung
-der Messbedingungen wird vollständiger.
-
-## Nachtrag: Verdrahtung des Mehrrunden-Vergleichs (Issue #1553)
-
-Der Nachtrag zum Mehrrunden-Messpfad (Entscheidungen 38–44) beschreibt den Messvertrag dieses
-Pfads, und mit #1485 ist seine Baseline gezogen. Gefehlt hat bis hierher die Verbindung: Kein
-Aufrufer lud `eval/baseline/pipeline-<domäne>-conversations.json` für einen Vergleich, und der
-Messpfad lief in keinem CI-Job. Ein Messvertrag, den niemand gegen eine Messung hält, ist eine
-Absichtserklärung. Dieser Nachtrag schließt die Lücke; am Messgegenstand aller drei Pfade ändert er
-nichts, und keine Vertragsversion steigt.
-
-### 48. Eigenes Task-Paar, nicht ein drittes Urteil im bestehenden Check
-
-`evaluate<Domäne>Conversations` und `check<Domäne>ConversationBaseline` sind ein zweites Paar neben
-`evaluate<Domäne>Retrieval`/`check<Domäne>RetrievalBaseline`, kein weiterer Testklassen-Eintrag im
-bestehenden Check. Der technische Grund ist zwingend und kein Geschmacksurteil: Der Mehrrunden-Pfad
-misst ausschließlich mit aktiver Teilfragen-Zerlegung (Entscheidung 42), die Rohvektor- und die
-Pipeline-Baseline derselben Domäne wurden dagegen mit `queryDecompositionEnabled: false` gezogen
-(Entscheidung 15). Ein Harness-Lauf, der beides bediente, machte die beiden bestehenden Baselines
-unvergleichbar — er hätte genau die Prüfung abgeschaltet, an die dieser Pfad angeschlossen werden
-soll.
-
-Die beiden Properties, ohne die dieser Pfad nichts misst, setzt die Task selbst und überschreibt
-dabei einen gleichnamigen `-D`-Wert. Ein Aufrufer, der sie vergisst, bekäme sonst einen Lauf ohne
-Mehrrunden-Bericht, der erst im Baseline-Test als „No multi-turn report found" auffällt.
-
-### 49. Ein eigener CI-Job mit eigenem Zeitbudget, gleiche Auslöser
-
-Der Job `conversations` in `.github/workflows/retrieval-regression.yml` läuft nächtlich, per
-`workflow_dispatch` und beim Label `evaluation` — dieselben Auslöser wie die Einzelfragen-Domänen.
-Damit fällt die bisherige Festlegung „manuell, nie nächtlich" aus Entscheidung 42: Sie stammt aus
-der Zeit, in der dieser Pfad an einen Job der Einzelfragen-Domänen angehängt worden wäre und dessen
-Budget gesprengt hätte. Als eigener Job mit eigenem Budget konkurriert er mit niemandem, und die
-Alternative — ein Messpfad, der ausschließlich auf einer Entwicklermaschine läuft — heißt in der
-Praxis, dass er zwischen zwei Messzyklen monatelang ungelaufen bleibt.
-
-Das Budget ist mit 300 Minuten bewusst großzügig: Eine Messung dauert auf einer Entwicklermaschine
-14–29 Minuten (83 Runden, je Runde ein Zerlegungs- und ein Notiz-Aufruf), die Mehrfachlauf-Regel
-verlangt drei davon, und für die Chat-Aufruf-Rate eines GitHub-Runners gab es zunächst keine
-Messung.
-
-> **Gemessen (Issue #1490):** Der erste vollständige Lauf dieses Jobs (GitHub-Actions-Lauf
-> 34648243211, kalter Modell-Cache) brauchte **118 Minuten**, davon 117 Minuten 45 Sekunden für
-> `checkVerwaltungConversationBaseline` selbst. Das sind 39 % des Budgets; der Faktor zur
-> Entwicklermaschine liegt bei rund 2,3 (52 Minuten lokal für denselben Task-Lauf). Das Budget
-> bleibt vorerst bei 300 Minuten: Eine Messung ist kein Verteilungsbild, und der Job muss auch einen
-> langsameren Runner und einen kalten Cache überstehen. Wer es verengt, zieht vorher zwei bis drei
-> weitere nächtliche Läufe heran.
-
-### 50. Vier Urteile statt drei: „nicht beurteilt" als eigener Ausgang
-
-Der Pipeline-Pfad kennt drei Ausgänge: keine Regression, Regression, unvergleichbare Baseline — und
-lässt den letzten fehlschlagen. Der Mehrrunden-Pfad bekommt einen vierten, **„nicht beurteilt"**
-(`ConversationBaselineVerdict`), und lässt nur diesen bestehen.
-
-Der Grund ist die Lage der committeten Baseline: Sie wurde vor dem Suchfenster (#1486) und vor der
-Gesprächsnotiz (#1487) gezogen und trägt `searchWindowTurns: 0` und `conversationNoteCap: 0`,
-während jeder heutige Lauf 2 und 10 misst. Sie ist damit unvergleichbar — vorhergesehen, angekündigt
-und in #1490 neu zu ziehen. Ein Job, der von seinem Merge an dauerhaft rot steht, wird nicht gelesen
-und schaltet die Prüfung damit gründlicher ab, als sie nie geschrieben zu haben.
-
-**Die Ausnahme gilt zwei namentlich genannten Feldern, nicht der Unvergleichbarkeit an sich.**
-Weicht ein Festpunkt außerhalb von `searchWindowTurns`/`conversationNoteCap` ab — Korpus, Modell,
-Golden-Datensatz, Vertragsversion, Ollama-Image —, ist der Lauf rot wie auf dem Pipeline-Pfad. In
-beiden Fällen steht die Abweichung im Klartext im Bericht und in der Job-Zusammenfassung: Ein
-unbeurteilter Pfad, der das verschwiege, sähe in einem grünen Lauf aus wie ein geprüfter.
-
-**Die Ausnahme kann ihren Grund nicht überleben.**
-`ConversationPathIsolationTest#theNotJudgedGateIsStillNeededByTheCommittedBaseline` hält die
-committete Datei gegen genau die beiden Vor-#1486/#1487-Werte. Zieht #1490 die Baseline neu, wird
-dieser Docker-freie Test rot und erzwingt, dass die Ausnahme mit ihm entfernt wird — statt als
-stille Dauertoleranz stehen zu bleiben.
-
-> **Eingelöst mit Issue #1490 (12.09.2026): Dieser Ausgang existiert nicht mehr.** Die
-> Mehrrunden-Baseline ist mit `searchWindowTurns: 2` und `conversationNoteCap: 10` neu gezogen, die
-> angekündigte Unvergleichbarkeit damit aufgelöst. `ConversationBaselineVerdict` kennt seither
-> dieselben **drei** Ausgänge wie der Pipeline-Pfad; eine Abweichung in diesen beiden Feldern ist
-> wieder „unvergleichbar" und lässt den Job fehlschlagen. Der obige Wächter ist durch
-> `ConversationPathIsolationTest#theCommittedBaselineMeasuresTheProductionConversationMemory`
-> ersetzt, der die Gegenrichtung sperrt: Eine Baseline, die auf die beiden Vor-#1486/#1487-Werte
-> zurückfiele, schaltete den Vergleich dieses Pfads wieder ab — jetzt ohne Toleranz, die das
-> benennen würde.
-
-### 51. Der Mehrfachlauf-Block gehört in den Bericht, nicht nur in die Konsole
-
-`ConversationReportWriter` schreibt die drei Läufe, den Median-Lauf, den Streubereich je Metrik und
-die Zahl der Runden mit abweichender Zerlegung in die Markdown-Datei, die die Job-Zusammenfassung
-rendert. Auf den beiden anderen Pfaden steht dieser Block nur im Log, was dort hinnehmbar ist, weil
-ihre gemessene Konfiguration deterministisch ist. Dieser Pfad ruft die Zerlegung einmal je **Runde**
-und ist damit der instabilste der drei; die Abweichungszahl ist hier keine Randnotiz, sondern die
-Aussage darüber, wie belastbar der Rest des Berichts überhaupt ist.
-
-> **Ergänzt mit Issue #1490:** Jede Runde führt im Bericht zusätzlich die `RAHMEN`-Punkte, die sie
-> erhalten hat (`conversationNote`), neben den Teilfragen, die aus ihr entstanden sind. Ohne dieses
-> Feld kann ein Bericht die beiden Erklärungen einer gefallenen `constraint_carryover`-Zahl nicht
-> trennen — „die Notiz hat die Angabe nie getragen" gegen „die Zerlegung hat sie ignoriert" —, und
-> genau die verlangen entgegengesetzte Folgearbeit. Eine Beobachtung, kein Festpunkt: Keine
-> gemessene Zahl bewegt sich, die Vertragsversion bleibt bei 2.
-
----
-
-## Nachtrag: Erwarteter Zustand je Messpfad (Issue #1658)
-
-**Datum:** 2026-09-14 · **Betrifft:** die Zustandsfelder der drei Einzelfragen-Datensätze, das
-Zustandsfeld-Audit beider Einzelfragen-Pfade, den Golden-Hash der sechs Einzelfragen-Baselines.
-
-Jeder Golden-Fall trug bis hierher **einen** `expected_state` für beide Messpfade, und ein Fall galt
-nur als gelöst, wenn ihn beide Pfade lösten (Spezifikation, Abschnitt 5; Folge für den Volltextpfad
-in Entscheidung 23). Eine dauerhafte Pfad-Asymmetrie ließ sich nur als Freitext in
-`expected_state_exception` ausdrücken. Das hat zweimal versagt: Sieben Ausnahmen aus #1049 waren
-unbemerkt widerlegt, drei davon beschrieben das Gegenteil des gemessenen Stands (#1655); und nach der
-Ursachenanalyse in #1308 blieben in `verwaltung` 13 Fälle dauerhaft asymmetrisch, die ohne Ausnahme
-jede Nacht als Audit-Befund erschienen und neue Befunde verdeckt hätten. Eine Ausnahme wirkte zudem
-je Fall, nicht je Pfad, und hätte einen späteren Wechsel auf dem anderen Pfad mit stummgeschaltet.
-
-### 52. Der erwartete Zustand wird je Messpfad geführt, das Audit prüft je Pfad
-
-Maintainer-Entscheidung vom 14.09.2026: **Der gemessene Ist-Zustand beider Pfade ist der
-festgeschriebene Stand, wie eine Baseline je Pfad; das Audit meldet nur Abweichungen davon, getrennt
-je Pfad.**
-
-- **Schema.** `expected_state` ist ein Objekt mit den Einträgen `raw_vector` und `pipeline`, jeder
-  mit `state` (`solved`/`known_gap`), `since` (ISO-Datum) und `reason`. Beide Einträge sind Pflicht
-  (`GoldenCaseCuration#validateStates`, für alle drei Domänen). `expected_state_since`,
-  `expected_state_reason` und `expected_state_exception` entfallen; ein Docker-freier Test weist sie
-  in einem committeten Datensatz ab, weil `GoldenCase` unbekannte Schlüssel sonst still ignorierte.
-- **Audit.** `ExpectedStateAudit` bewertet jeden Pfad nur gegen dessen eigenen Eintrag
-  (`MeasurementPath`) und führt im Report `stateField`, also das Feld, das ein Befund nachzuziehen
-  verlangt. Es kennt nur noch die beiden Abweichungsrichtungen; die Listen „erwartete Abweichung"
-  und „Ausnahme deklariert, keine Abweichung gemessen" entfallen. „Gelöst" bleibt eine Definition
-  (alle erwarteten Dokumente im Fenster **und** ein erwartetes auf Rang 1), angewandt auf das Fenster
-  des jeweiligen Pfads.
-- **Treffer ohne den geprüften Mechanismus.** Früher der zweite Anwendungsfall einer Ausnahme; jetzt
-  wird ein solcher Fall auf dem Pfad, der ihn löst, als `solved` festgeschrieben, und sein Grund
-  beginnt mit dem festen Präfix `Ohne geprüften Mechanismus: ` (Maintainer-Entscheidung vom
-  14.09.2026; Regel und Fallliste in `eval/corpus/verwaltung/MAINTENANCE.md`). `GoldenCaseCuration`
-  lässt das Präfix nur auf `solved` und nur als exakten Anfang zu — ohne neues Schemafeld. Kippt ein
-  solcher Fall, meldet das Audit einen Rückschritt, und der Zustand wird bewusst auf `known_gap`
-  nachgezogen. Das Kriterium ist strukturell: Präfix genau dann, wenn der Mechanismus der
-  Fallklasse in diesem Pfad der Messung fehlt oder abgeschaltet ist (Zuordnungstabelle in
-  `docs/features/retrieval-benchmark.md` §5); „schon vor dem Mechanismus gelöst“ ist bewusst kein
-  Kriterium, weil es ohne Nachweis je Fall nicht messbar ist. Es tragen `verwaltung` 17 Rohvektor-
-  und 4 Pipeline-Gründe, `comic-characters` 2 Pipeline-Gründe (seit #1657: 4, auch die deutschen
-  Mengenfragen `comic-de-019` und `-022`), `city-landmarks` keine (Golden-Hash
-  `verwaltung` `aba8a638…` → `9c5af619…`, `comic-characters` `e5054926…` → `05e8d0f9…`, ohne neuen
-  Messlauf).
-- **Mehrrunden-Pfad.** Er misst konstruktionsbedingt einen Pfad (Entscheidung 43). Seine flachen
-  Zustandsfelder sind bereits der Zustand dieses einen Pfads; ein Eintrag je Pfad hätte keinen
-  zweiten Pfad zu füllen und stünde im Widerspruch dazu, dass die Einpfadigkeit am Datensatz und
-  nicht am Fall vermerkt ist. Der Datensatz bleibt deshalb unverändert (kein Hash-Wechsel), nur das
-  dort nie gesetzte `expected_state_exception` entfällt aus dem Schema.
-
-### 53. Keine Messvertragsversion steigt; nur der Golden-Hash wird nachgezogen
-
-Entscheidung 6 macht eine Änderung an Metrikdefinitionen und Festpunkten zur Vertragsänderung. Das
-Zustandsfeld-Audit ist beides nicht: Es berechnet keine Metrik, fließt in kein Regressionsurteil ein
-und lässt keinen Lauf fehlschlagen. Was sich am Datensatz ändert, deckt der bestehende Festpunkt
-`goldenDatasetSha256` bereits ab. `measurementContractVersion` (10), die Pipeline-Version (13) und die
-Mehrrunden-Version (2) bleiben deshalb unverändert.
-
-Die sechs Einzelfragen-Baselines haben **ohne** neuen Messlauf nur `goldenDatasetSha256` nachgezogen
-bekommen, mit datiertem Nachtrag in `notes`. Das ist zulässig, weil keine Anfrage, kein erwartetes
-Dokument und kein Filterfeld sich bewegt und die eingetragenen Zustände genau die Fallergebnisse von
-Läufen wiedergeben, deren Metriken die committeten Baselines bestätigen:
-
-| Domäne | Quelle der Zustände | Fälle | gelöst Rohvektor | gelöst Pipeline | je Pfad verschieden |
-|---|---|---|---|---|---|
-| `verwaltung` | CI-Lauf 34840623079 (Golden-Hash `4ff44ccc…`), bestätigt durch den lokalen CPU-Lauf `checkVerwaltungRetrievalBaseline` dieses Umbaus: beide Audits ohne Abweichung | 49 | 27 | 26 | 13 |
-| `comic-characters` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`; insgesamt rot wegen `verwaltung`, Job `evaluate (comic-characters)` grün) | 121 | 44 | 52 | 10 |
-| `city-landmarks` | nächtlicher Lauf 34819759178 (Stand `6ff4c5f1`; Job `evaluate (city-landmarks)` grün) | 108 | 106 | 104 | 2 |
-
-Für `verwaltung` sind die gemessenen Ursachen aus #1308 ohne Informationsverlust auf die Gründe je
-Pfad aufgeteilt. `comic-characters` und `city-landmarks` deklarieren erstmals Zustände; ihre Gründe
-nannten zunächst nur den Quelllauf und das gemessene Symptom. #1657 hat den fehlenden Baustein je
-`known_gap`-Eintrag nachgetragen (Zuordnung in `docs/features/retrieval-benchmark.md` §5) und beide
-Domänen auf dem Stand nach #1341 neu vermessen. Dabei steigt keine Messvertragsversion, weil sich
-weder eine Metrikdefinition noch ein Fixpunkt ändert:
-
-- **`comic-characters`:** Die Zahlen beider Pfade sind unverändert. #1341 wirkt hier nicht, weil ein
-  unzerteiltes Dokument keinen Kontextpräfix bekommt. Nachgezogen sind der Golden-Hash und in
-  `comic-characters.json` das nicht verglichene Feld `recallAt10Ceiling` (`language:en`, 0,973 → 0,972).
-- **`city-landmarks`, Rohvektor-Pfad:** Neu gezogen. `nDCG@10` sinkt in drei Gruppen um 0,001, alle
-  aus demselben gelösten Fall.
-- **`city-landmarks`, Pipeline-Pfad:** Die Zahlen sind unverändert.
-
-Kein Fallzustand wechselt. Die `crosslingual`-Zeile der Mechanismus-Tabelle in §5 ist nach Frageform
-aufgeteilt: Deutsche Mengen- und Schwellenfragen prüfen wie ihre englischen Vorlagen einen Filter, den
-die Domäne nicht hat.
-
-## Nachtrag: CPU-Backend des Eval-Ollama (Issue #1652)
-
-**Datum:** 2026-09-15 · **Betrifft:** die Laufzeit aller drei Harnesse, Festpunktsatz und
-Vertragsversion aller drei Messpfade, alle sieben committeten Baselines und die Zustandsfelder der
-vier Datensätze.
-
-Der CI-Job `conversations (verwaltung)` wechselte zwischen Grün und Rot, ohne dass sich Code,
-Datensatz oder Baseline änderten. Die Mehrrunden-Reports von elf Läufen zwischen dem 11. und
-15.09.2026 fallen in genau **zwei** Zustände. Jeder Zustand ist in sich bis auf jede Teilfrage
-identisch, über Tage und Commits hinweg. Innerhalb eines Laufs lieferten die drei Messungen stets
-dasselbe. Die Mehrfachlauf-Regel (Abschnitt 3 der Spezifikation) konnte die Streuung deshalb nicht
-sehen: Sie lag zwischen den Maschinen, nicht zwischen den Messungen.
-
-**Ursache.** `ollama/ollama:0.6.5` liefert die ggml-Rechenkernel als eine Bibliothek je
-Befehlssatzstufe (`sandybridge`, `haswell`, `skylakex`, `icelake`, `alderlake`) und lädt die beste,
-die der Host beherrscht. Die GitHub-Runner `ubuntu-latest` sind gemischt bestückt. Ein Runner mit
-AVX-512 rechnet mit `icelake`, einer ohne mit `haswell`. Die Kernel rechnen nicht bitgleich:
-Einbettungen weichen ab der fünften Nachkommastelle ab. Die Zerlegung bei Temperatur 0 wählt je
-Schritt das wahrscheinlichste Token, und dafür reicht diese Abweichung. Die Teilfragen unterscheiden
-sich schon in den ersten Runden, die weder Fenster noch Notiz haben.
-
-**Beleg.** Lokal auf einem Host mit AVX-512 nachgestellt, mit genau einer Variante im Container:
-`haswell` reproduziert die ersten Runden aller 27 Fälle des roten CI-Zustands, `icelake` die des
-grünen, jeweils 27 von 27. Die übrigen Varianten ordnen sich nach Befehlssatz ein: `alderlake` (AVX2
-mit VNNI) liefert den roten Zustand, `skylakex` (AVX-512) den grünen, `sandybridge` (nur AVX) einen
-dritten. Die Grenze verläuft also zwischen AVX2- und AVX-512-Kerneln. Verworfen sind die übrigen
-Hypothesen. Die Threadzahl (2 gegen 10) ändert keine Ausgabe. Ein Seed wirkt bei Temperatur 0 nicht. Ein Datum im Prompt scheidet aus, weil jeder
-Zustand über mehrere Tage identisch blieb. Reihenfolge und Verlauf scheiden aus, weil schon die
-ersten Runden abweichen. Den Modell-Digest prüft der Harness ohnehin. Die CPU-Typen der früheren
-Runner stehen in keinem Log; seit diesem Nachtrag schreibt jeder Lauf sie mit.
-
-### 54. Eine feste ggml-CPU-Variante für jeden Eval-Lauf: `haswell`
-
-Alle drei Harnesse starten den Container über `EvalOllamaCpuBackend`. Vor `ollama serve` entfernt
-eine Shell im Container jede CPU-Bibliothek außer `libggml-cpu-haswell.so`. Nach der Indizierung
-zählt der Harness im Container-Log die Zeilen, mit denen Modell-Runner ihre CPU-Bibliothek melden.
-Verlangt sind mindestens der Embedding-Runner und, bei aktiver Zerlegung, der Chat-Runner, dessen
-Probeaufruf vor der Indizierung liegt. Meldet einer eine andere Variante oder fehlt einer, bricht
-der Harness vor der ersten Messung ab. Ein Runner, der erst danach startet, etwa bei einem
-Variantenvergleich, kann nur `haswell` laden, weil die übrigen Bibliotheken gelöscht sind. Die
-Log-Zeile nennt dazu die Host-CPU und ob sie AVX-512 beherrscht.
-
-**Warum `haswell`.** Es ist die höchste Stufe, die jeder x86-64-Rechner ausführen kann (AVX2, FMA,
-F16C). `icelake` schiede die Runner ohne AVX-512 aus, eine niedrigere Stufe wäre nur langsamer. Die
-übrigen Bibliotheken zu entfernen legt die Auswahl fest, ohne ein eigenes Image zu bauen und zu
-pinnen.
-
-**Warum für alle drei Harnesse:** Alle drei Pfade beziehen ihre Vektoren aus demselben Container
-(Entscheidung 46), und die Variante bewegt auch Einbettungs-Rangfolgen (Entscheidung 55).
-
-**Grenzen.**
-- Auf einem ARM-Host fehlt die Bibliothek; der Container startet dann mit benannter Meldung nicht.
-  Auswertungsläufe auf ARM waren nie mit der CI vergleichbar.
-- Gegen einen externen Endpunkt (`-Dopaa.eval.ollamaBaseUrl`) greift der Pin nicht; der Report
-  trägt `ollamaCpuBackend: null` und ist ohnehin nicht baseline-tauglich (Entscheidung 45).
-- Mit `-Dopaa.eval.allowGpu=true` rechnet womöglich die GPU. Der Harness prüft dann keine
-  CPU-Variante und trägt `unpinned: gpu allowed` ein; der Lauf ist gegen keine Baseline
-  vergleichbar.
-- Mit einem externen Chat-Modell (`-Dopaa.eval.chatBaseUrl`/`-Dopaa.eval.chatModel`, Issue #1674)
-  liegt der Chat-Runner nicht mehr im Container: Die Variantenprüfung verlangt dann nur noch den
-  Embedding-Runner, und der Digest-Pin des Chat-Modells (ADR-0011, Entscheidung 4) entfällt. Der
-  Embedding-Pfad bleibt unverändert gepinnt — Variante **und** Digest. Ein solcher Lauf ist über den
-  abweichenden Festpunkt `chatModel` ohnehin gegen keine Baseline vergleichbar.
-
-### 55. `ollamaCpuBackend` wird Festpunkt aller drei Messpfade; Rohvektor 10 → 11, Pipeline 13 → 14, Mehrrunden 2 → 3
-
-`Baseline.FixedPoints`, `PipelineBaseline.FixedPoints` und die Laufkonfigurationen beider Reports
-führen das neue Feld `ollamaCpuBackend` direkt hinter `ollamaImage`. Der Mehrrunden-Pfad erbt es mit
-dem geteilten Pipeline-Block (Entscheidung 40). Der Wert ist die Variante, die der Harness im
-Container-Log nachgewiesen hat. Er wird wie jeder andere Festpunkt verglichen: Weicht er ab, ist die
-Baseline unvergleichbar (Entscheidung 6). Ein fehlender Wert lädt als `null` und erscheint als
-unvergleichbarer Festpunkt, wie bei `ollamaImage` (Entscheidung 45). `PipelinePathIsolationTest`
-und `ConversationPathIsolationTest` halten die sieben committeten Werte Docker-frei gegen
-`EvalOllamaCpuBackend.PINNED`. Alle drei Vertragsversionen steigen, wie in Entscheidung 46 im selben
-Schritt und weiterhin unabhängig gezählt.
-
-**Auch die Einzelfragen-Pfade brauchen den Festpunkt.** Ein Festpunkt benennt, was die Zahlen eines
-Pfads bewegt. Auf den Einzelfragen-Pfaden wirkt die Variante nur über die Einbettungen, und die
-weichen erst in der fünften Nachkommastelle ab. Das reicht, um nahe beieinanderliegende Chunks zu
-vertauschen: Unter `comic-characters` weichen zwischen `haswell` und AVX-512 acht Rohvektor-
-Rangfolgen ab, bei `comic-filter-001` fällt ein erwartetes Dokument von Rang 10 aus dem Fenster
-(nDCG@10 overall 0,46297 gegen 0,46231). Die comic-Baseline aus #1661 war lokal auf AVX-512 ohne Pin
-gezogen und wäre unter dem Pin nie mehr erreichbar gewesen; die als ungeklärt vermerkte Schwankung
-dieses Falls zwischen nächtlichen Läufen ist derselbe Effekt. Bei `city-landmarks` und `verwaltung`
-verschieben sich ebenfalls Rangfolgen, allerdings nur unterhalb der erwarteten Positionen.
-
-### 56. Neuvermessung aller sieben Baselines mit Pin
-
-**Mehrrunden-Pfad.** Die Baseline aus #1490 beschrieb den `icelake`-Zustand und ist unter dem Pin nicht mehr erreichbar.
-Neu gezogen aus `./gradlew evaluateVerwaltungConversations` vom 2026-09-15, auf einem Host mit
-AVX-512 und mit Pin. Drei Messungen, min = median = max, 0 Runden mit abweichender Zerlegung. Der
-Report stimmt in allen 83 Runden (Teilfragen, Notizpunkte, Trefferlisten, Urteile) exakt mit dem
-des CI-Laufs 34930288873 überein, der ohne Pin auf einem Runner ohne AVX-512 gemessen hatte. Das ist
-der Nachweis, dass die Baseline den Zustand jeder Maschine mit Pin beschreibt, nicht den einer
-bestimmten.
-
-| | Baseline #1490 (`icelake`) | Baseline #1652 (`haswell`) |
-|---|---|---|
-| overall Hit Rate@5 / MRR@8 / nDCG@8 / Recall@8 | 0,880 / 0,772 / 0,796 / 0,876 | 0,831 / 0,738 / 0,757 / 0,827 |
-| gelöste Fälle (`anaphora` / `topic_switch` / `carryover`) | 8 (5 / 2 / 1) | 5 (4 / 1 / 0) |
-| Themen-Bleed | 2 Dokumente in 2 von 9 Wechselrunden | 0 |
-
-Die Differenz ist **kein Rückschritt**: Kein Baustein hat sich geändert, nur die Rechenkernel. Sie
-ist die Spannweite, die allein die CPU-Variante über diesen Datensatz erzeugt, und damit ein Maß
-dafür, wie empfindlich dieser Pfad auf eine Laufzeitänderung reagiert. Drei Fälle wechseln auf
-`known_gap` (`verw-conv-ana-003`, `verw-conv-ts-006`, `verw-conv-cc-002`). Alle 27 Begründungen
-beschreiben jetzt die Symptome dieses Laufs; der Golden-Hash ist nachgezogen, Anfragen, Antworten
-und erwartete Dokumente sind bytegleich. Toleranzen sind unverändert: Die Abweichung war kein
-Rauschen, das eine weitere Toleranz verdecken dürfte, sondern ein zweiter, reproduzierbarer
-Messzustand.
-
-**Einzelfragen-Pfade.** Alle sechs Baselines sind aus lokalen Läufen vom 2026-09-15 mit Pin neu
-gezogen (`evaluateRetrieval`, `evaluateVerwaltungRetrieval`, `evaluateCityLandmarksRetrieval`, Host
-mit AVX-512). Jede Rangfolge deckt sich mit dem CI-Lauf 34946388134 mit Pin, und beide Audit-Listen
-sind überall leer.
-
-| Baseline | Werte gegenüber vorher | Rangfolgen gegenüber einem Lauf ohne Pin |
-|---|---|---|
-| `comic-characters.json` | 8 Werte steigen: overall nDCG@10 0,462 → 0,463, Recall@10 0,515 → 0,517; `multi_attribute_filter` 0,218 → 0,222 / 0,245 → 0,252; `difficulty:hard` 0,190 → 0,193 / 0,217 → 0,222; `language:en` 0,518 → 0,519 / 0,579 → 0,580 | 8 (nächtlicher Lauf 34819759178) |
-| `pipeline-comic-characters.json` | unverändert | 2 |
-| `verwaltung.json` | unverändert | 4 (Lauf 34860257993) |
-| `pipeline-verwaltung.json` | unverändert | 1 |
-| `city-landmarks.json` | unverändert | 7 (Lauf 34860257993) |
-| `pipeline-city-landmarks.json` | unverändert | 1 |
-
-Kein Fallzustand und kein Präfix wechselt. Nachgezogen sind die Gründe, deren Symptom nicht aus
-diesem Lauf stammte:
-
-- In `comic-characters` nennt `comic-filter-001` (Rohvektor) deterministisch 2 von 7 Dokumenten im
-  Fenster statt der Schwankung.
-- In `verwaltung` beschreiben alle 98 Gründe (49 Fälle, je Pfad) jetzt den Lauf mit Pin, im Format
-  aus #1657: zuerst der fehlende oder wirkende Baustein, dann Fensteranteil, Rang 1 und die Ränge der
-  erwarteten Dokumente. 32 davon trugen noch Symptome vom 2026-09-01, oft aus dem Pipeline-Pfad in
-  beiden Einträgen; so standen bei `verw-lit-001`, `-003`, `-007` und `verw-hop-001` Fensterangaben,
-  die dem Pipeline-Lauf widersprachen.
-
-Ein Parser prüft jede Rang- und Fensterangabe aller Gründe gegen die Fallergebnisse beider Pfade der
-neuen Läufe. Querverweise auf den anderen Pfad prüft er gegen dessen Ergebnisse. Ergebnis:
-`verwaltung` 389 Angaben, `comic-characters` 492, `city-landmarks` 226, keine falsch.
-
-In den Delta-Tabellen von `comic-characters` bleiben, wie schon vor dem Pin, Rundungsreste von ±0,001: einer auf dem Rohvektor-Pfad, drei auf dem Pipeline-Pfad. Die exakten
-Werte dieser Gruppen enden auf einer Fünf in der vierten Nachkommastelle (etwa 1/16 = 0,0625), und
-drei Nachkommastellen können sie nicht treffen. Der Vergleich rechnet mit dem ungerundeten Ist-Wert;
-das Urteil berührt das nicht.
-
-## Nachtrag: Kontextpräfix-Form im Messvertrag (Issue #1650)
-
-**Datum:** 2026-09-15 · **Betrifft:** Festpunktsatz und Vertragsversion aller drei Messpfade, alle
-sieben committeten Baselines, den CI-Job `conversations`.
-
-Die Einbettungseingabe eines Chunks ist nicht sein Text, sondern der Text hinter seinem
-Kontextpräfix (`[Titel › Werte › Strukturkontext]`, Leerzeile, Chunk-Text). #1341 hat die Form
-dieses Präfixes geändert: Metadatenwerte und Strukturkontext kamen hinzu, der Titel wurde zum
-Kernfeld Titel. Keine Pipeline-Version bewegte sich, `ingestionPipelineFingerprint` blieb gleich,
-Korpus und Datensatz ohnehin. Die nächtliche Retrieval-Regression meldete deshalb ab dem
-06.09.2026 täglich eine **Regression** statt „Baseline ungültig" (#1308). Nach Entscheidung 6 war
-es eine geänderte Messgrundlage, die kein Festpunkt benannte.
-
-### 57. `contextPrefixFingerprint` ist geprüfter Festpunkt aller drei Baseline-Typen — ein Abdruck, keine Version
-
-`Baseline.FixedPoints`, `PipelineBaseline.FixedPoints` und die Laufkonfigurationen beider Reports
-führen das neue Feld `contextPrefixFingerprint` direkt hinter `ingestionPipelineFingerprint`; der
-Mehrrunden-Pfad erbt es mit dem geteilten Pipeline-Block (Entscheidung 40). Der Wert ist der
-SHA-256 über die Einbettungseingaben, die der Produktionscode für zehn feste Beispieldokumente
-berechnet (`ContextPrefixFingerprint`). Er wird wie jeder andere Festpunkt verglichen; ein fehlender
-Wert lädt als `null` und erscheint als unvergleichbarer Festpunkt (Entscheidung 45).
-
-**Warum ein Abdruck statt einer Präfix-Version.** Eine Konstante `VERSION` hätte #1341 nicht
-aufgehalten: Sie hängt an genau der Sorgfalt, die dort fehlte, und ein Test, der einen Beispielpräfix
-gegen die Version festnagelt, wird im selben Commit mit angepasst. Der Abdruck braucht niemanden,
-der an ihn denkt. Jede Änderung, die die Eingabe eines der Beispiele verschiebt, verschiebt ihn.
-
-**Der Abdruck ruft die Entscheidungen auf, statt sie nachzubauen.** Jedes Beispiel ist ein
-`DocumentIngest` (eine Datei oder eine Textquelle mit erklärtem Titel und Hierarchiepfad) mit den
-Eigenschaften, die ein Format gelesen hat, einer Chunk-Anzahl, einem Fundort und einem Chunk-Text.
-Daraus rechnet der Abdruck mit denselben Methoden, die Aufnahme und Nachlauf aufrufen:
-
-| Entscheidung | Methode | Aufrufer in Produktion |
-|---|---|---|
-| Vom Quellsystem erklärte Eigenschaften über die des Formats legen | `DocumentIngest#declaredOver` | Aufnahme |
-| Kernfeld Titel, Dokumentart, Datum (Frontmatter `titel`, erste Überschrift, Dateiname) | `CoreMetadataExtractor.extract` | Aufnahme, Bestandsläufe |
-| Titel der Aufnahme (humanisierter Dateiname, erklärter Titel hinter dem Hierarchiepfad) | `ChunkContextPrefix#ingestTitle` | Aufnahme |
-| Präfix-Berechtigung | `ChunkContextPrefix#eligible` | Aufnahme; der Nachlauf liest sie gespeichert zurück |
-| Ein-Chunk-Regel | `ChunkContextPrefix#documentWasSplit` | Aufnahme und Nachlauf |
-| Kernfeld-Titel vor dem Titel der Aufnahme | `ChunkContextPrefix#titleAtRest` | Aufnahme und Nachlauf |
-| Welche Kernfelder präfixwirksam sind, ausgehend von der Werkseinstellung einer Bibliothek aus `KnowledgeLibrary.ownedByUser` | `CoreContextPrefixSettings#coreValues` | `DocumentMetadataService` |
-| Segmente, Strukturkontext, Klammerformat | `ChunkContextPrefix#applyTo` | Aufnahme und Nachlauf |
-
-Schwelle, Berechtigung, Titel der Aufnahme, erklärte Eigenschaften und Kernfeld-Werte standen vorher
-verteilt in `DocumentIngestService`, `ContextPrefixRerunService` und `DocumentMetadataService`, die
-Ein-Chunk-Schwelle sogar doppelt. Sie sind in diese Methoden gezogen, ohne ihr Verhalten zu ändern.
-
-Die zehn Beispiele decken je einen Zweig ab:
-- ein gequoteter Frontmatter-Titel vor einer abweichenden ersten Überschrift, eine erste Überschrift
-  allein, keine Titelquelle (Rückfall auf den Dateinamen)
-- ein Überschriftenpfad, der mit dem Titel beginnt, und ein Chunk, der mit seinen Überschriften
-  beginnt
-- präfixwirksame Dokumentart und Datum auf einem Ein-Chunk-Dokument und auf einem geteilten
-  Dokument, dazu ein Ein-Chunk-Dokument mit Werkseinstellung ohne Werte
-- eine Textquelle mit erklärtem Titel, dieselbe bei gescheiterter Extraktion (Rückfall auf den
-  Hierarchiepfad) und eine Textquelle ohne Titel (keine Berechtigung)
-
-`ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht und die genannten
-Ausgänge tatsächlich erreicht werden. Belegt ist, dass eine Änderung an Schwelle, Berechtigung,
-Titelextraktion oder Werkseinstellung den Wächter rot macht (Reproduktionsnachweise in PR #1664).
-
-**Was er nicht abdeckt.** Das Folgende bewegt die Einbettungseingabe, ohne dass ein Festpunkt es
-bemerkt:
-- **Bibliotheksfelder und Schlagworte:** die Wirkstelle eigener Bibliotheksfelder
-  (`LibraryMetadataField#isContextPrefixEnabled`), deren Anzeigewerte und das
-  Schlagwort-Segment, zusammengestellt in `DocumentMetadataService#chunkMetadataOf` aus
-  Datenbankzeilen. Die Eval-Bibliotheken tragen heute keine eigenen Felder und keine Schlagworte.
-- **Rückweg der gespeicherten Kernfeld-Werte:** Die Rückübersetzung in `CoreMetadata` (Label aus dem
-  Vokabular) bildet der Abdruck nach, er ruft sie nicht auf.
-- **Modellgestützte Extraktion und Vokabular:** die Extraktion (in den Eval-Läufen abgeschaltet) und
-  der Inhalt des Dokumentart-Vokabulars.
-- **Fundort und Schnittgrenzen:** Chunk-Anzahl, Chunk-Text und Fundort geben die Beispiele fest vor.
-  Den Fundort bauen in Produktion `ChunkLocationResolver` und `HeadingSectionSplitter` mit eigenen
-  `"Abschn. "`- und `" › "`-Literalen; ändern sich Marker, Trenner oder Schnittgrenzen, bewegt sich
-  der Strukturkontext im Präfix, nicht aber der Abdruck.
-- **Bestandsläufe:** Neubewertung und Nachlauf-Auswahl über `stampOf`.
-- **Neue Zweige:** Ein Zweig, den keines der Beispiele trifft, bewegt den Abdruck nicht. Wer einen
-  einführt, ergänzt ein Beispiel.
-
-Keine dieser Stellen ist durch Korpus-Hash oder `ingestionPipelineFingerprint` gedeckt. Eine Änderung
-dort verlangt weiterhin eine bewusste Neuvermessung.
-
-**Docker-freier Wächter.** `PipelinePathIsolationTest` hält die sechs Einzelfragen-Baselines und
-`ConversationPathIsolationTest` die Mehrrunden-Baseline gegen `ContextPrefixFingerprint.current()`.
-Eine Präfixänderung ohne Neuvermessung fällt damit im `check` des verursachenden PRs auf, nicht erst
-als vermeintliche Regression im nächtlichen Lauf.
-
-### 58. Alle drei Messverträge steigen: Rohvektor 11 → 12, Pipeline 14 → 15, Mehrrunden 3 → 4
-
-Der Präfix ist Teil jeder Einbettung eines mehrteiligen Dokuments und damit jeder Rangfolge. Deshalb
-steigen alle drei Pfade im selben Schritt, wie in den Entscheidungen 46 und 55, weiterhin unabhängig
-gezählt.
-
-### 59. Reine Fixpunkt-Ergänzung, kein neuer Messlauf
-
-Die sieben Baselines wurden ohne neuen Lauf nachgezogen. Die Präfixform hat sich seit ihren
-Messläufen nicht geändert. Die letzte Änderung an `ChunkContextPrefix`, `indexing/metadata/`,
-`ChunkLocationResolver`, `HeadingSectionSplitter` und `FullTextChunkStore` ist #1651 vom
-2026-09-14, alle sieben Messläufe stammen vom 2026-09-15 (Entscheidung 56).
-
-**Beleg der Verhaltensneutralität.** Die Methoden sind nur verschoben. Belegt ist das nicht durch den
-Abdruck selbst, der seinen Wert aus demselben neuen Code bekommt, sondern durch einen exakten
-Report-Vergleich. Der Review zu PR #1664 hat jedes Blatt aller sieben Reports und der drei Chunk-Maps
-des label-ausgelösten Laufs 34996240329 gegen den letzten gepinnten Lauf aus #1662 (34991107251)
-verglichen, einschließlich `allQueryResults`, aller 83 Mehrrunden-Runden und der Zerlegungen. Außer
-Vertragsversion, neuem Feld und Zeitstempeln ist alles identisch. Den zweiten Umbauschritt (Schwelle,
-Berechtigung, Titel der Aufnahme, erklärte Eigenschaften, Kernfeld-Werte) bestätigt der erneute
-label-ausgelöste Lauf 35011947490 mit Delta 0 und leeren Audits in allen vier Jobs.
-
-Eingetragen ist `ff4022a9…`. Zahlen, Zustände und die übrigen Festpunkte bleiben, die `notes` jeder
-Datei tragen den datierten Nachtrag.
-
-### 60. Der Job `conversations` misst den Einzelfragen-Pipeline-Pfad nicht mehr
-
-Der Mehrrunden-Lauf ist derselbe Harness-Lauf wie der Einzelfragen-Lauf der Domäne, nur mit
-`opaa.eval.runConversations` und aktiver Zerlegung (Entscheidung 48). Bisher lief darin auch die
-Pipeline-Messung der Einzelfragen (Schritt 6 von `VerwaltungRetrievalEvaluationHarnessTest`),
-unter aktiver Zerlegung. Keine Baseline beschreibt diese Konfiguration, kein Urteil las den Report,
-und ihr Zustands-Audit meldete in jedem Lauf dieselben 13 Scheinabweichungen gegen die ohne Zerlegung
-gezogenen Zustände. Solches Rauschen stumpft ab, eine echte Abweichung ginge darin unter.
-
-Der Harness überspringt Schritt 6 deshalb, sobald die Mehrrunden-Messung angefordert ist. Die
-Rohvektor-Messung bleibt: Sie hängt nicht an der Zerlegung, misst also dasselbe wie im Job
-`evaluate`, und kostet neben der Indizierung kaum Zeit.
-Die Mehrrunden-Zahlen bewegen sich dadurch nicht. Schritt 6 schrieb nichts, was Schritt 8 liest, und
-schon bisher lieferten die drei Messungen eines Laufs identische Ergebnisse, obwohl nur die erste
-direkt auf Schritt 6 folgte.
-
-**Beleg.** Der label-ausgelöste CI-Lauf 34996240329 zu PR #1664:
-
-- Der Job `conversations (verwaltung)` meldet „Keine Regression". Alle 45 Zeilen der Delta-Tabelle
-  zeigen ±0,000.
-- Das Zustands-Audit zeigt keine Abweichung, 5 von 27 Fällen sind gelöst, wie in der Baseline.
-- Über die drei Läufe gibt es 0 Fälle mit abweichender Zerlegung.
-- Das Log enthält kein Pipeline-Audit der Einzelfragen mehr.
-- Der Job brauchte 66 Minuten statt zuvor rund zwei Stunden.
-
-## Nachtrag: Runden ohne Suchbedarf (Issue #1684)
-
-**Datum:** 2026-09-17 · **Betrifft:** Mehrrunden-Messpfad (Bericht, Datensatzschema, Vertragsversion,
-Baseline), Befundläufe gegen ein externes Chat-Modell.
-
-Die Teilfragen-Zerlegung kennt seit #1684 das Ergebnis „nichts zu suchen": Für einen Wunsch zur
-Antwortform, eine Angabe zur Person oder einen Dank gibt sie ein Signalwort zurück. Gesucht wird
-trotzdem, mit der Rückfall-Suchanfrage; die Einstufung erreicht nur die Antwortanweisung
-(Maintainer-Entscheidung vom 17.09.2026, Abwägung in `docs/features/conversation-memory.md`). Die
-Klasse `answer_continuation` misst, ob die Einstufung für solche Nachrichten gelingt und für Fragen
-ausbleibt. Eine Runde ohne Suchbedarf hat keine erwarteten Dokumente; Rangmetriken sind für sie
-nicht definiert.
-
-### 61. Eine Runde ohne Suchbedarf steht außerhalb jedes Metrik-Aggregats; Mehrrunden 4 → 5
-
-Eine Runde trägt `search_expected: false` und keine erwarteten Dokumente. Sie ist gelöst, wenn der
-Lauf sie als Nachricht ohne Suchbedarf eingestuft hat (`searchNeeded = false` im Ergebnis der
-Pipeline) — dieselbe Beobachtung, mit der die Produktion die Antwortanweisung wählt. Ihre Chunks
-zählen dafür nicht, denn gesucht wird in beiden Fällen. Sie geht in **kein** Aggregat ein
-(`overall`, `byCategory`, `byTurn` zählen nur Runden mit Suche), trägt im Bericht keine Metrikwerte
-(`null` statt `0`, weil eine Null wie ein verfehltes Dokument läse) und erscheint im eigenen
-Abschnitt `noSearch`. Dieser zählt **beide Fehlrichtungen** mit Anzahl und Runden: Runden ohne
-Suchbedarf, die als Suche eingestuft wurden, und Runden mit Suchbedarf, die als „keine Suche"
-eingestuft wurden. Die zweite Richtung ist in keiner Rangmetrik sichtbar, weil eine solche Runde
-trotzdem sucht und treffen kann; ohne eigene Zählung bliebe sie unsichtbar. Jede Runde trägt ihre
-Einstufung im Bericht (`searchNeeded`). Ein Fall bleibt nur gelöst, wenn jede Runde gelöst ist, auch
-die ohne Suchbedarf.
-
-**Warum kein eigener Metrikwert.** Ein Anteil „richtig nicht gesucht" hätte bei neun Runden je
-Datensatz keinen Toleranzbegriff im Sinne von ADR-0013 und würde als geprüfte Gruppe mehr
-Scheinregressionen als Befunde liefern. Die Fallzahl und der Zustands-Audit tragen die Aussage; der
-Abschnitt `noSearch` ist eine Beobachtung wie `noteCondensation`, kein Festpunkt.
-
-**Warum die Vertragsversion steigt.** `n` und jeder Mittelwert einer Gruppe bedeuten jetzt „Runden
-mit Suche", und der Bericht hat ein neues Feld. Ein Vergleich über die Grenze hinweg liefe gegen
-eine andere Grundmenge; der Datensatz-Hash würde das hier zwar ohnehin melden, die Version benennt
-den Grund.
-
-### 62. Die Temperatur eines externen Befundlaufs ist einstellbar, die des gepinnten Modells nicht
-
-`-Dopaa.eval.chatTemperature` setzt die Temperatur des externen Chat-Modells eines Befundlaufs
-(Entscheidung aus #1674), damit er die Optionen einer Installation nachstellen kann — #1684 maß mit
-den 0,70 der Demo. Ohne `opaa.eval.chatBaseUrl` weist der Harness die Eigenschaft ab: Die Baselines
-des gepinnten Modells beruhen auf Temperatur 0. Die Temperatur ist kein Festpunkt; ein externer Lauf
-ist über `chatModel` ohnehin mit keiner Baseline vergleichbar. Sie steht im Log des Laufs und als
-Beobachtungsfeld `chatTemperature` in der Run-Konfiguration des Mehrrunden-Berichts.
-
-
-## Nachtrag: Produktionsfenster top-k 20 (Issue #2373)
-
-**Datum:** 2026-10-09 · **Betrifft:** Fenster und Feldnamen des Pipeline- und des Mehrrunden-Pfads,
-deren Vertragsversionen, vier Baselines und die Zustände des Pipeline-Pfads in zwei Golden Datasets.
-
-Der Produktions-Default `opaa.query.top-k` steigt von 8 auf 20; `max-chunks-per-document` bleibt 2,
-`fetch-k` 25. Anlass ist eine Messung auf einem realen Verwaltungskorpus ohne Reranking, in der
-`top-k` der einzige wirksame Regler war (Anteil der Kernfakten im Antwortkontext 42 % bei 8, 62 % bei
-20). Entscheidung 11 bindet das Fenster des Pipeline-Pfads an genau diesen Wert („die tatsächliche
-Trefferzahl der Produktion"), und `PipelineHarnessSupport#requireMeasurableConfiguration` verweigert
-jeden Lauf, dessen `top-k` vom Fenster abweicht. Der Default bewegt deshalb den Messvertrag.
-
-### 63. Das Fenster folgt der Produktion: @20 statt @8
-
-`PipelineMetricsAggregate.RANKING_K` ist 20. Alle fenstertragenden Namen heißen entsprechend
-(`mrrAt20`, `ndcgAt20`, `recallAt20`, `recallAt20Ceiling`, `hitCountAt20`,
-`allExpectedDocumentsHitAt20`, je Fall `reciprocalRankAt20`), im Pipeline-, im Mehrrunden- und im
-Variantenbericht. Entscheidung 12 gilt unverändert; nur ihre Begründung „engeres Fenster" trifft
-nicht mehr zu. Das Pipeline-Fenster (20 Chunk-Plätze) ist jetzt nominell breiter als das des
-Rohvektor-Pfads (10 Dokumente), zählt aber Chunks; im Mittel umfasst es 6,9 (`verwaltung`), 20
-(`comic-characters`) und 11,8 (`city-landmarks`) unterschiedliche Dokumente.
-
-**Verworfen: das Fenster bei 8 lassen und nur die ersten acht Chunks einer 20er-Auswahl messen.**
-Das hätte die Feldnamen gerettet, aber genau das ausgeblendet, was die Änderung bewirkt: welche
-Dokumente das Modell zusätzlich sieht. Entscheidung 11 begründet das Produktionsfenster mit der
-Nutzererfahrung, und die bestimmt die ganze Endauswahl.
-
-**Die absoluten Anker der harten Untergrenze bleiben** (Hit Rate@5 ≥ 0,15, MRR/nDCG/Recall ≥ 0,125,
-Entscheidung 19). Sie sind ein Netz gegen leere oder falsch konfigurierte Vektor-Stores, kein
-Qualitätsziel; ein breiteres Fenster hebt die Werte, das Netz bleibt weit darunter.
-
-### 64. Pipeline 19 → 20, Mehrrunden 9 → 10, Rohvektor bleibt 16
-
-Eine Fensteränderung ist nach Entscheidung 6 eine Vertragsänderung beider Pfade, die es messen. Der
-Rohvektor-Pfad sieht `top-k` nicht (`documentTopK` 10, `chunkTopK` aus `EvalDomainConfig`); jede
-seiner Rangfolgen ist im Lauf dieses Nachtrags identisch zum Lauf davor (CI-Lauf 37837883487). Seine
-Baselines behalten ihre Zahlen; in `verwaltung.json` und `comic-characters.json` ändert sich nur
-`goldenDatasetSha256`, weil die Pipeline-Zustände im selben Datensatz stehen (Entscheidung 53).
-
-### 65. Neuziehung und Zustandspflege
-
-Alle drei Pipeline-Baselines und die Mehrrunden-Baseline sind aus CPU-Testcontainer-Läufen vom
-2026-10-09 neu gezogen (`haswell`). Hit Rate@5 hat dasselbe Fenster wie vorher und ist direkt
-vergleichbar; die @20-Werte sind es mit den @8-Werten nur eingeschränkt.
-
-| Domäne (Pipeline) | Hit Rate@5 | MRR@8 → @20 | nDCG@8 → @20 | Recall@8 → @20 | gelöst |
-|---|---|---|---|---|---|
-| `verwaltung` | 0,939 → 0,959 | 0,825 → 0,823 | 0,768 → 0,800 | 0,820 → 0,884 | 26 → 29 von 49 |
-| `comic-characters` | 0,736 → 0,736 | 0,604 → 0,634 | 0,584 → 0,614 | 0,634 → 0,697 | 52 → 54 von 121 |
-| `city-landmarks` | 1,000 → 1,000 | 0,980 → 0,980 | 0,985 → 0,985 | 1,000 → 1,000 | 104 → 104 von 108 |
-| `verwaltung`, Mehrrunden (je Runde) | 0,783 → 0,800 | 0,722 → 0,723 | 0,718 → 0,740 | 0,767 → 0,841 | 11 → 11 von 38 |
-
-Im Mehrrunden-Pfad steigt der Themenwechsel-Bleed von 3 auf 4 Dokumente in denselben drei von neun
-Wechselrunden: Das breitere Fenster fasst mehr vom Vorthema. Die drei Läufe zerlegen identisch.
-
-Wo ein Wert sinkt, hat er eine gemeinsame Ursache: Jede Suchliste behält vor der Fusion `top-k`
-Kandidaten, also 20 statt 8, und weitere Dokumente sammeln in der RRF-Fusion Punkte aus beiden
-Listen. Das verschiebt einzelne Rang-1-Plätze (`verw-lit-008`, `comic-attr-102`) und zweite Ränge
-(`city-multi_topic-016`). Die Zustände des Pipeline-Pfads sind nachgezogen: `verwaltung`
-`verw-comp-002`/`-003`/`-004`/`-008` gelöst, `verw-lit-008` nicht mehr; `comic-characters`
-`comic-filter-033`, `comic-de-016`, `comic-desc-024` gelöst, `comic-attr-102` nicht mehr.
-`city-landmarks` bewegt keinen Zustand. Die Gründe mit Fensterangaben beschreiben den neuen Lauf; der
-Generator dafür reproduziert die vorherigen Gründe beider Datensätze aus dem Vorher-Lauf Zeichen für
-Zeichen.
-
-
-## Nachtrag: max-chunks-per-document 1 (Issue #2502)
-
-**Datum:** 2026-10-11 · **Betrifft:** den Fixpunkt `maxChunksPerDocument` aller vier Baselines des
-Pipeline- und des Mehrrunden-Pfads; einen Grund im Golden Dataset `verwaltung`.
-
-Der Produktions-Default `opaa.query.max-chunks-per-document` sinkt von 2 auf 1. Die
-Dokument-Vervollständigung (Stufe `DOCUMENT_COMPLETION`) zieht damit ab Werk keinen Geschwister-Chunk
-mehr nach. Den Zusammenhang um einen Treffer liefern seit #2374 die Nachbar-Chunks im Antwortkontext,
-ohne einen Platz der Endauswahl zu belegen. Anlass ist eine Messung der Antwortqualität auf einem
-realen Verwaltungskorpus (Arbeitsmenge 20 Fragen × 3 Läufe, Nachbarn ±1): Mit
-`max-chunks-per-document` 1 standen 84 von 132 Kernfakten im Kontext (36/17/7 richtige, teilweise
-richtige und falsche Antworten), mit 2 nur 73 von 132. Die Vervollständigung hatte gut platzierte
-Fundstellen anderer Dokumente aus der Auswahl verdrängt.
-
-### 66. Ein Fixpunktwert bewegt sich, keine Vertragsversion
-
-`max-chunks-per-document` ist seit Entscheidung 18 ein geprüfter Fixpunkt. Sein Wert ändert sich,
-seine Bedeutung nicht; Metriken, Fenster und Schwellenbehandlung bleiben, wie in Entscheidung 27.
-Pipeline-Messvertrag (20), Mehrrunden-Messvertrag (10) und Rohvektor-Messvertrag (16) bleiben deshalb.
-Alle vier Baselines mit diesem Fixpunkt sind aus CPU-Testcontainer-Läufen vom 2026-10-11 neu gezogen
-(`haswell`). Vorher-Lauf ist der nächtliche Lauf 38125725528 (Stand `df3c8046`, Wert 2).
-
-| Domäne | Rangfolgen identisch | Gruppenzahlen | Zustände | Dokumente je Antwort (Mittel) |
-|---|---|---|---|---|
-| `verwaltung` | 48 von 49 | unverändert | unverändert | 6,88 → 6,92 |
-| `comic-characters` | 121 von 121 | unverändert | unverändert | 20 → 20 |
-| `city-landmarks` | 107 von 108 | unverändert | unverändert | 11,83 → 11,84 |
-| `verwaltung`, Mehrrunden | 125 von 127 Runden | unverändert | unverändert | 6,71 → 6,79 |
-
-Die beiden abweichenden Einzelfragen-Fälle (`verw-lit-006`, `city-cross_chunk-010`) behalten jedes
-Dokument auf seinem Rang; dahinter rücken zwei bzw. ein Dokument auf Plätze, die vorher
-Geschwister-Chunks belegten. `comic-characters` kann sich konstruktionsbedingt nicht bewegen, weil
-jedes Dokument genau einen Chunk hat (ADR-0010). Der Rohvektor-Pfad sieht den Wert nicht; jede seiner
-Rangfolgen ist identisch zum Vorher-Lauf. In `eval/golden/verwaltung.json` ist nur der Pipeline-Grund
-von `verw-lit-006` nachgezogen (Dokumentzahl im Fenster), deshalb tragen `verwaltung.json` und
-`pipeline-verwaltung.json` einen neuen Golden-Hash.
-
-### 67. Was dieser Harness von der Änderung sieht
-
-Der Harness misst die Endauswahl auf Dokumentebene und ohne Nachbar-Chunks
-(`docs/features/retrieval-algorithm.md`, Abschnitt 6b). Die Vervollständigung bewegt dort nur, welche
-Dokumente auf den hinteren Plätzen stehen: Ein Geschwister-Chunk zählt nicht als weiteres Dokument.
-Dass die Zahlen gleich bleiben, ist deshalb das erwartete Ergebnis und kein Beleg gegen die Änderung.
-Ihr Nutzen liegt im Antwortkontext, den nur eine Antwortmessung sieht; die Belege dafür stehen oben
-und im Issue. Ein Rückgang auf diesem Pfad wäre dagegen ein Befund gewesen: Er hätte gezeigt, dass die
-Vervollständigung erwartete Dokumente in die Auswahl geholt hatte, die nun fehlen.
-
-
-## Nachtrag: Ollama-Fassung des Eval-Containers (Issue #2343)
-
-**Datum:** 2026-10-13 · **Betrifft:** das gepinnte Image aller drei Harnesse, eine neue Vorprüfung
-vor jeder Messung, den Festpunkt `ollamaImage` aller sieben Baselines, deren Zahlen und einzelne
-Fallzustände.
-
-Bei der Analyse von #2338 fiel auf, dass `ollama/ollama:0.6.5` lange Eingaben nicht stetig
-einbettet. Hängt man an einen Text zehn Zeichen an, sodass er 512 Token überschreitet (gezählt mit
-CLS und SEP), kippt der Vektor. Ursache ist die Auswertung in Teilstücken: 0.6.5 zerlegt eine
-Eingabe über die Batchgröße von 512 Token in mehrere Batches. Ein Encoder mit bidirektionaler
-Attention wie `nomic-embed-text` (nomic-bert) oder `bge-m3` (XLM-RoBERTa) braucht den ganzen Text in
-einem Durchgang; jedes Teilstück sieht nur sich selbst. Neuere Fassungen starten den Modellserver
-mit einer Batchgröße von 2048 Token und betten in einem Stück ein.
-
-Präfixe wachsender Länge von `verwaltung-0019_gebuehrenordnung-ordnungsamt.md`, Kosinus zum
-jeweils um 20 bzw. 25 Zeichen kürzeren Präfix, beide Modelle im Container mit der Variante `haswell`:
-
-| Fassung | `nomic-embed-text:v1.5` | `bge-m3` |
-|---|---|---|
-| 0.6.5 | 0,999 bis 508 Token, **0,31–0,41** beim Überschreiten, danach 0,56–0,96 | 0,997 bis 509 Token, **0,27** bei 516, danach 0,55–0,94 |
-| 0.32.15 | ≥ 0,9995 über 494–537 Token | ≥ 0,9972 über 478–563 Token |
-| 0.40.3 | ≥ 0,9941 über 460–603 Token | ≥ 0,9972 über 478–563 Token |
-
-Die Tokenzahlen sind die, die jede Fassung selbst zurückmeldet; 0.6.5 zählt CLS und SEP nicht mit
-und liegt deshalb um 2 niedriger. Der Sprung liegt bei beiden Modellen dort, wo die Eingabe
-mit CLS und SEP 512 Token überschreitet.
-
-Unterhalb der Grenze liefern 0.6.5 und 0.40.3 dieselben Vektoren (Kosinus ≥ 0,9988 über 30
-zufällig gezogene Chunks von `city-landmarks`), darüber nicht (Mittel 0,869, Minimum 0,784 über 30
-weitere). Die Modell-Digests beider gepinnten Modelle sind unter beiden Fassungen gleich.
-
-**Wie viele Chunks betroffen waren.** Gezählt sind die tatsächlichen Einbettungseingaben jedes
-Korpus, also Chunk-Text samt Kontextpräfix, mit dem Tokenizer des Modellservers einschließlich CLS
-und SEP:
-
-| Korpus | Chunks | über 512 Token | Median | Höchstwert |
-|---|---|---|---|---|
-| `comic-characters` | 1 448 | 0 (0,0 %) | 148 | 285 |
-| `city-landmarks` | 2 787 | 2 551 (91,5 %) | 631 | 1 097 |
-| `verwaltung` (auch Mehrrunden-Pfad) | 998 | 1 (0,1 %) | 208 | 636 |
-
-`comic-characters` ist konstruktionsbedingt einchunkig und kurz, `verwaltung` wird seit #1103 an
-Abschnittsgrenzen geteilt. Der eine betroffene Chunk von `verwaltung` ist § 3 der
-Verwaltungsgebührensatzung, das Zieldokument der Klasse `literal_term_weak_embedding`.
-`city-landmarks` dagegen schneidet Fließtext auf die Chunkgröße, und fast jeder Chunk liegt über der
-Grenze: Die Baselines dieser Domäne beschrieben bisher zum größten Teil falsche Vektoren.
-
-### 68. Gepinnt wird `ollama/ollama:0.40.3`
-
-`EvalOllamaEndpoint.PINNED_IMAGE` ist `ollama/ollama:0.40.3`. Gründe:
-
-- Die Fassung bettet lange Eingaben stetig ein (Tabelle oben), auch für `bge-m3`, das #2386 als
-  neues Vorgabemodell vorbereitet.
-- Es ist dieselbe Fassung, die `docker-compose.yml` und der Erprobungsaufbau für Kubernetes
-  ausliefern. Der Harness misst damit, was ein Betreiber mit dem mitgelieferten Stapel bekommt.
-- Der Pin der CPU-Variante (Entscheidung 54) gilt unverändert: Das Image liefert dieselben
-  Bibliotheken je Befehlssatzstufe unter `/usr/lib/ollama`, und der Modellserver meldet die geladene
-  Variante mit derselben Logzeile. `EvalOllamaCpuBackend` bleibt deshalb unverändert.
-- 0.32.15 wäre ebenso stetig, hätte aber keinen Vorteil und wiche vom Compose-Stapel ab.
-
-**Kosten.** Das Image ist komprimiert 3,8 GB groß statt 1,8 GB, weil es Bibliotheken für CUDA und
-Vulkan mitbringt. Ausgepackt belegt es auf dem Runner 9,36 GB, dazu kommen die Modelle und die
-Volumes der Testcontainers; den verbleibenden Platz gibt der Eval-Workflow nach jedem Messlauf mit
-`df -h` aus. Auf der CPU bettet es nicht langsamer ein: Im abwechselnden Vergleich auf
-derselben Maschine brauchte 0.40.3 je Eingabe 1,6–2,9 s gegen 2,2–5,7 s für 0.6.5.
-
-### 69. Eine Stetigkeitsprüfung vor jeder Messung
-
-Alle drei Harnesse rufen nach dem Modell-Pull `EvalEmbeddingContinuity.require` auf, vor der
-Indizierung. Die Prüfung bettet 21 Präfixe desselben Korpustexts zwischen 1 100 und 1 500 Zeichen
-ein, rund 460 bis 600 Token, und verlangt:
-
-- dass die Präfixe die Grenze von 512 Token tatsächlich überspannen, gemessen an der Tokenzahl, die
-  Ollama zurückmeldet; sonst bewiese die Prüfung nichts,
-- dass kein benachbartes Paar unter Kosinus 0,98 fällt.
-
-Ein stetiges Ollama liegt über 0,99, 0.6.5 fiel auf 0,31. Die Schwelle trennt beide mit Abstand,
-ohne an der natürlichen Schwankung benachbarter Präfixe zu kratzen. Das Ergebnis steht im Lauf-Log.
-
-**Auch gegen einen externen Endpunkt.** Ein Host-Ollama mit demselben Fehler misst ebenso falsch;
-dass sein Lauf ohnehin nicht baseline-tauglich ist (Entscheidung 45), macht ihn nicht zu einer
-Messung. Die Prüfung kostet rund 20 Einbettungen und läuft deshalb in jedem Lauf, nicht nur bei
-einem Wechsel des Images.
-
-**Was sie nicht abdeckt.** Sie prüft ein Modell, das Embedding-Modell des Laufs, und einen Text.
-Eine Fassung, die erst bei 2 048 Token oder nur bei anderen Eingaben bricht, fiele ihr nicht auf.
-
-### 70. Keine Vertragsversion steigt; alle sieben Baselines neu gezogen
-
-`ollamaImage` ist seit Entscheidung 45 geprüfter Festpunkt. Sein Wert ändert sich, seine Bedeutung
-nicht, wie in Entscheidung 66. Rohvektor- (16), Pipeline- (20) und Mehrrunden-Messvertrag (10)
-bleiben.
-
-Alle sieben Baselines sind neu gezogen. Die von `verwaltung` stammen aus einem lokalen
-CPU-Testcontainer-Lauf (Host mit AVX-512); der label-ausgelöste CI-Lauf 38418739634 auf einem Runner
-ohne AVX-512 liefert jede ihrer 49 Rangfolgen auf beiden Pfaden identisch. Die übrigen fünf stammen
-aus diesem CI-Lauf, weil das Zeitbudget der Harnesse lokal unter fremder Last nicht reichte.
-
-| Baseline | Chunks über 512 Token | Verschiebung | Zustände |
-|---|---|---|---|
-| `comic-characters.json`, `pipeline-comic-characters.json` | 0 % | keine Zahl; 11 bzw. 15 Rangfolgen weichen unterhalb der erwarteten Positionen ab | unverändert |
-| `verwaltung.json` | 0,1 % | steigt: overall nDCG@10 0,712 → 0,718, Recall@10 0,803 → 0,823; `literal_term_weak_embedding` nDCG@10 0,270 → 0,302 | unverändert |
-| `pipeline-verwaltung.json` | 0,1 % | steigt: overall MRR@20 0,823 → 0,833, nDCG@20 0,800 → 0,807; `literal_term_weak_embedding` MRR@20 0,426 → 0,481 | `verw-lit-008` gelöst |
-| `city-landmarks.json` | 91,5 % | overall MRR 0,991 → 1,000, nDCG@10 0,989 → 0,998; `multi_city` nDCG@10 0,990 → 0,975 | `landmark_detail-025`, `multi_topic-005` gelöst |
-| `pipeline-city-landmarks.json` | 91,5 % | overall MRR@20 0,980 → 1,000, nDCG@20 0,985 → 0,999; `multi_city` nDCG@20 1,000 → 0,990 | dazu `multi_topic-001`, `-006` gelöst; alle 108 Fälle gelöst |
-| `pipeline-verwaltung-conversations.json` | 0,1 % | overall Hit Rate@5 0,800 → 0,817, nDCG@20 0,740 → 0,777; `answer_continuation` nDCG@20 0,707 → 0,663 | 5 Fälle gelöst, 4 offen; 12 statt 11 von 38 |
-
-Die Gewinne von `verwaltung` haben eine benannte Ursache: Der einzige Chunk über der Grenze ist das
-Zieldokument der Klasse `literal_term_weak_embedding`. Ein Teil der bisher gemessenen
-Embedding-Schwäche dieser Klasse war ein Fehler der alten Fassung. In `city-landmarks` waren die vier
-Fälle mit fehlender Ortsbindung ebenfalls Folge der falschen Vektoren.
-
-Der Mehrrunden-Pfad bewegt sich aus einem anderen Grund. Das gepinnte Chat-Modell zerlegt unter der
-neuen Laufzeit bei Temperatur 0 nur 25 von 127 Runden wörtlich wie zuvor, so wie es der Wechsel der
-CPU-Variante in Entscheidung 56 tat. Die drei Messungen des Laufs sind identisch. Die neuen
-Zustände tragen das Symptom dieses Laufs; vier Fälle sind offen, weil die Zerlegung ihre Zielrunde
-anders formuliert, in `verw-conv-ac-007` als Verweigerung.
-
-Die Toleranzen bleiben unverändert (ADR-0013). Wo ein Wert sinkt, ist es die Messung mit richtigen
-Vektoren oder die neue Zerlegung, kein Rückschritt eines Bausteins.
-
-**Gründe der unveränderten Fälle bleiben stehen.** Jeder Grund nennt Datum und Lauf seiner Messung
-und bleibt damit wahr. Nachgezogen sind nur die Gründe der Fälle, deren Zustand wechselt. Eine
-vollständige Neufassung aller 594 Gründe wäre mit dem Wechsel des Embedding-Modells in #2386
-ohnehin erneut fällig.
-
-
-## Nachtrag: Gemeinsame Baseline nach dem Retrieval-Umbau (Issue #2386)
-
-**Datum:** 2026-10-14 · **Betrifft:** Festpunktsatz und Vertragsversion des Pipeline- und des
-Mehrrunden-Pfads, alle sieben Baselines, einen Fallzustand im Golden Dataset `comic-characters`.
-
-Nach Entscheidung 70 sind auf Anweisung des Maintainers acht Retrieval-Änderungen ohne CI-Eval
-gemergt worden, damit sie in einem Schritt gemessen werden:
-
-- #2617: zu lange Chunks werden geteilt.
-- #2618: `bge-m3` ist Vorgabe des Produkts.
-- #2625: Budget der Nachbar-Chunks im Antwortkontext.
-- #2627: ein häufiges Großbuchstabenwort zählt im Volltextpfad nicht mehr als Kennung.
-- #2628: die MMR-Stufe kürzt nicht mehr, die Fusion sieht alle `fetch-k` Kandidaten jeder Liste.
-- #2630: Fusion mit Quote je Teilfrage, wahlweise Wertefusion (`opaa.query.fusion.*`).
-- #2631: Relevanzschnitt (`opaa.query.relevance-cutoff.*`), Vorgabe `fixed`.
-- #2635: die Spitzentreffer jeder Suchliste kommen fest in die Auswahl
-  (`opaa.query.fusion.guaranteed-per-list` 1).
-
-Die Harnesse pinnen weiterhin `nomic-embed-text:v1.5`. Der Wechsel der Harnesse auf `bge-m3` ist
-ausdrücklich nicht Teil dieses Nachtrags (Maintainer-Entscheidung); die Baselines beschreiben also
-nicht das Embedding-Modell, das das Produkt ab Werk nutzt.
-
-### 71. Fusion und Relevanzschnitt werden Festpunkte; Pipeline 20 → 21, Mehrrunden 10 → 11
-
-`PipelineBaseline.FixedPoints` und `PipelineRunConfiguration` führen hinter `mmrLambda` zwei Blöcke:
-
-- `fusion`: `method`, `subQueryQuota`, `vectorWeight` und `guaranteedPerList`.
-- `relevanceCutoff`: `mode`, `minChunks`, `relativeThreshold` und `kneeDrop`.
-
-Der Mehrrunden-Pfad erbt beide mit dem geteilten Pipeline-Block (Entscheidung 40).
-`PipelineBaselineComparator` vergleicht jedes Feld einzeln (`fusion.method`, `relevanceCutoff.mode`
-usw.).
-
-- **Auch wirkungslose Werte sind Festpunkte.** `vectorWeight` wirkt nur unter `SCORE`, die Schwellen
-  nur in ihrem Modus. Sie stehen trotzdem im Satz: Ein Wechsel des Modus macht sie wirksam, und die
-  Baseline beschreibt die ganze Konfiguration, nicht nur ihren aktiven Teil.
-- **Ein fehlender Block lädt als `null`** und erscheint als unvergleichbarer Festpunkt, wie
-  `metadataFilterEnabled` und `ollamaImage` (Entscheidung 45).
-- **Herkunft der Werte.** `fusion` liest der Harness aus den `QueryProperties` des Laufs; eine
-  Variante des Variantenvergleichs trägt ihre eigenen. `relevanceCutoff` gehört nicht zu
-  `QueryProperties`. Der Harness liest es aus dem Kontext (`RelevanceCutoffProperties`) und führt es
-  in `RunIdentity`. Jede Variante teilt diesen Wert, weil die Stufe die Bean der Produktion ist.
-- **Docker-freier Wächter.** `PipelinePathIsolationTest` und `ConversationPathIsolationTest` halten
-  die vier Pipeline-Baselines gegen `QueryProperties.Fusion.DEFAULT` und
-  `RelevanceCutoffProperties.DEFAULT`. Ein geänderter Vorgabewert ohne Neuziehung fällt damit im
-  `check` auf, nicht erst als „Baseline ungültig" im nächtlichen Lauf.
-
-Neue Festpunkte sind eine Vertragsänderung (Entscheidung 6). Wie in den Entscheidungen 46, 55 und
-58 steigen die Pfade, die sie messen: Pipeline 20 → 21, Mehrrunden 10 → 11. Der Rohvektor-Pfad
-fusioniert nicht und bleibt bei 16.
-
-Kein Festpunkt wird das Nachbar-Budget aus #2625. Der Harness misst die Endauswahl ohne
-Nachbar-Chunks (Entscheidung 67).
-
-### 72. Alle sieben Baselines aus dem CI-Lauf 38527407802
-
-Alle sieben Baselines stammen aus dem label-ausgelösten CI-Lauf 38527407802 zu PR #2636
-(CPU-Testcontainer, `ollama/ollama:0.40.3`, `haswell`). Übernommen wurden sie per Skript aus den
-Artefakten des Laufs: Gruppenwerte mit der `%.3f`-Rundung des Harness, Festpunkte aus
-`runConfiguration`, der Golden-Hash von der Datei auf dem Head. Vorher-Lauf ist der label-ausgelöste
-Lauf 38418739634 aus Entscheidung 70. Aus seinen Artefakten reproduziert dasselbe Skript jede bisher
-committete Zahl.
-
-| Baseline | Rangfolgen abweichend | Verschiebung | Zustände |
-|---|---|---|---|
-| `comic-characters.json` | 0 von 121 | keine | unverändert |
-| `city-landmarks.json` | 0 von 108 | keine | unverändert |
-| `verwaltung.json` | 0 von 49 | keine | unverändert |
-| `pipeline-comic-characters.json` | 46 von 121 | steigt: overall Hit Rate@5 0,736 → 0,744, MRR@20 0,634 → 0,637, nDCG@20 0,614 → 0,615; **sinkt:** `crosslingual` MRR@20 0,523 → 0,514, `entity_description` MRR@20 0,753 → 0,740, nDCG@20 0,814 → 0,803 | `comic-filter-161` gelöst |
-| `pipeline-city-landmarks.json` | 40 von 108 | keine; jedes erwartete Dokument behält seinen Rang | unverändert, alle 108 gelöst |
-| `pipeline-verwaltung.json` | 16 von 49 | **sinkt:** overall MRR@20 0,833 → 0,828, nDCG@20 0,807 → 0,801; `literal_term_weak_embedding` MRR@20 0,481 → 0,454 | unverändert |
-| `pipeline-verwaltung-conversations.json` | 46 von 127 Runden | **sinkt:** overall MRR@20 0,758 → 0,755, nDCG@20 0,777 → 0,774; `anaphora_resolution` MRR@20 0,719 → 0,704 | unverändert, 12 von 38 |
-
-**Rohvektor-Pfad.** Keine Rangfolge bewegt sich. Der Pfad kennt weder Fusion noch Volltextpfad, und
-die Teilung zu langer Chunks (#2617) trifft in den drei Korpora keinen Chunk: Die längste
-Einbettungseingabe hat 1 097 Token (Tabelle im Nachtrag Ollama-Fassung), geteilt wird erst ab der
-Eingabegrenze von 2 048.
-
-**Pipeline-Pfad.** Welcher Baustein eine einzelne Rangfolge bewegt, weist der Bericht nicht aus.
-Nach der Mechanik ist es vor allem #2628:
-
-- Der Einzelfragen-Pfad misst ohne Zerlegung, also mit genau einer Suchanfrage. Die Quote je
-  Teilfrage ist dort die Identität.
-- Ein garantierter Spitzentreffer behält seinen Rang in der Fusion und verdrängt höchstens den
-  letzten Platz der Auswahl. Ein Dokument, das weit vorn neu einrückt, erklärt er nicht.
-- Seit #2628 tragen die Listenränge 21 bis 25 zur RRF-Fusion bei. Ein Dokument, das in beiden Listen
-  steht, sammelt dadurch Punkte aus der zweiten Liste und rückt vor.
-
-Genau dieses Bild zeigen die sinkenden Fälle. In `verw-lit-001` steht
-`verwaltung-0057_abfallgebuehrensatzung.md` neu auf Rang 1. In `verw-comp-002` (4 → 5) und
-`verw-lit-007` (3 → 4) rückt je ein Dokument vor ein erwartetes, in `verw-hop-002` (3 → 5) zwei. In
-`comic-characters` verlieren zwölf Fälle Ränge und zwölf gewinnen. In `comic-de-013` und
-`comic-filter-105` fällt dabei ein erwartetes Dokument von Rang 20 aus dem Fenster; beide sind
-`known_gap` und bleiben es. Dass `verwaltung` nur verliert, ist kein Befund gegen die Änderung: Die
-Domäne misst benannte Fehlerbilder in kleinen Klassen. Die Antwortmessung auf dem realen
-Verwaltungskorpus in #2386 (mit `bge-m3`) zeigt mit denselben Vorgaben (Variante K4) 90 statt 83 von
-132 Kernfakten im Kontext.
-
-**Mehrrunden-Pfad.** Alle 127 Teilfragen lauten wie im Vorher-Lauf. Die drei Messungen sind
-identisch, die Zerlegung des gepinnten Modells hat sich also nicht bewegt. Nur 8 Runden haben mehr
-als eine Teilfrage, 4 davon weichen in der Rangfolge ab; die Quote trägt damit wenig. Die vier
-Runden mit sinkendem Wert (`ana-004` Runde 3, `ana-007` und `ts-007` Runde 1, `ana-008` Runde 2)
-haben je eine Teilfrage. In ihnen rücken ein oder mehrere Dokumente vor das erwartete, wie im
-Einzelfragen-Pfad: in `ana-004` Runde 3 drei (Rang 2 → 5), in `ana-007` und `ts-007` Runde 1 je
-eines (2 → 3), in `ana-008` Runde 2 eines (18 → 19).
-
-Die Toleranzen bleiben unverändert (ADR-0013). Keine Vertragsversion außer den beiden aus
-Entscheidung 71 steigt.
-
-### 73. Zustandspflege: ein Wechsel, die übrigen Gründe bleiben stehen
-
-Einziger Zustandswechsel auf allen sieben Pfaden ist `comic-filter-161`, Pipeline-Pfad,
-`known_gap` → `solved`. `comic-1161_shisui-uchiha.md` rückt auf Rang 9, damit stehen alle sechs
-erwarteten Figuren im Fenster. Der Grund trägt den Präfix `Ohne geprüften Mechanismus: `. Einen
-Attributfilter über Gesinnung, Schöpfer und Fähigkeit gibt es für diese Domäne nicht, der Fall ist
-durch die breitere Fusion gelöst, nicht durch den Mechanismus seiner Klasse.
-
-Wie in Entscheidung 70 sind die Gründe der Fälle ohne Wechsel nicht neu gefasst. Jeder nennt Datum
-und Lauf seiner Messung und bleibt damit wahr. Die dort für #2386 erwartete Neufassung aller Gründe
-entfällt, weil die Harnesse das Embedding-Modell nicht wechseln. `comic-characters.json` und
-`pipeline-comic-characters.json` tragen den neuen Golden-Hash.
+| 2026-08-03 | #227 | Erste Fassung aus dem Review zu PR #292: Metriken, Fenster, Schwellenbehandlung, Mittelung, Version | 1–7 |
+| 2026-08-21 | #721 | Dokumentbezogenes k-Fenster, Chunkebene über `answer_span`, Rohvektor-Version 2 | 8–10 |
+| 2026-08-31 | #1039 | Pipeline-Messpfad mit eigener Vertragsversion | 11–16 |
+| 2026-08-31 | #1040 | Baselines je Pfad und Domäne, Festpunkte des Pipeline-Pfads durchgesetzt, eigene Anker, Pipeline-Version 2 | 17–20 |
+| 2026-09-01 | #1043 | Ein `answer_span` je Fall, nur bei einem erwarteten Dokument | 21 |
+| 2026-09-01 | #1049 | Volltextpfad in der Fusion: `fullTextSearchEnabled`, `fullTextBackfillComplete`, Pipeline-Version 3 | 22, 23 |
+| 2026-09-02 | #1103 | Markdown strukturbewusst gechunkt, Frontmatter verworfen; alle Baselines neu gemessen ohne Versionsschritt | 24–27 |
+| 2026-09-03 | #1144 | `ingestionPipelineFingerprint` auf beiden Pfaden, Rohvektor 3, Pipeline 4 | 28–30 |
+| 2026-09-03 | #1151 | Rangreserve als Berichtsgröße, kein Festpunkt | — |
+| 2026-09-03 | #1164 | Fingerabdruck-Schritt `email` 2→3, Rohvektor 4, Pipeline 5 | 31 |
+| 2026-09-04 | #1270 | `fullTextIndexComplete`, Pipeline 7 | 22 |
+| 2026-09-05 | #1070 | `metadataFilterEnabled`, Metadatenfilter-Audit, `confluence:1` nachgezogen; Rohvektor 6, Pipeline 8 | 32–35 |
+| 2026-09-05 | #1073 | Konfidenzschwelle vorab festgelegt (Wert in ADR-0026) | 36 |
+| 2026-09-10 | #1455 | Einstieg des Pipeline-Pfads über `RetrievalContextFactory`/`RetrievalPipeline` | 37 |
+| 2026-09-11 | #1484 | Mehrrunden-Messpfad mit eigener Vertragsversion | 38–44 |
+| 2026-09-11 | #1429 | `fullTextIndexUpToDate`, verengte Definition, Pipeline 12 | 22 |
+| 2026-09-11 | #1522 | `ollamaImage` als Festpunkt aller drei Pfade; Rohvektor 10, Pipeline 13, Mehrrunden 2 | 45–47 |
+| 2026-09-11 | #1553 | Mehrrunden-Vergleich verdrahtet, eigener CI-Job, Ausgang „nicht beurteilt“ (entfallen mit #1490) | 48–51 |
+| 2026-09-14 | #1658 | Erwarteter Zustand je Messpfad, `expected_state_exception` entfällt | 52, 53 |
+| 2026-09-15 | #1652 | ggml-CPU-Variante `haswell`, `ollamaCpuBackend`; Rohvektor 11, Pipeline 14, Mehrrunden 3; alle Baselines neu gemessen | 54–56 |
+| 2026-09-15 | #1650 | `contextPrefixFingerprint`; Rohvektor 12, Pipeline 15, Mehrrunden 4; Job `conversations` ohne Einzelfragen-Pipeline | 57–60 |
+| 2026-09-16 | #1210 | Rangreserve bleibt report-only | — |
+| 2026-09-17 | #1684 | Runden ohne Suchbedarf, Mehrrunden 5, Temperatur eines externen Befundlaufs | 61, 62 |
+| 2026-10-09 | #2373 | Fenster @20, Pipeline 20, Mehrrunden 10; vier Baselines neu gemessen | 63–65 |
+| 2026-10-11 | #2502 | `max-chunks-per-document` 1, kein Versionsschritt; vier Baselines neu gemessen | 66, 67 |
+| 2026-10-13 | #2343 | `ollama/ollama:0.40.3`, Stetigkeitsprüfung; alle Baselines neu gemessen | 68–70 |
+| 2026-10-14 | #2386 | `fusion` und `relevanceCutoff` als Festpunkte, Pipeline 21, Mehrrunden 11; alle Baselines neu gemessen | 71–73 |
+| 2026-10-14 | #2698 | Neufassung als Festpunkt-Katalog; Versionslücken aus `git log` geschlossen | alle |
