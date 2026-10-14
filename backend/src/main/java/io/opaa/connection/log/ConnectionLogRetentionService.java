@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -23,6 +22,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ConnectionLogRetentionService {
 
+  private static final String ADMIN_ONLY =
+      "Nur die Administration darf die Aufbewahrungsfrist des Verbindungsprotokolls einsehen"
+          + " und ändern";
+
   static final UUID SETTINGS_OBJECT_ID =
       UUID.nameUUIDFromBytes("connection_log_retention_settings".getBytes(StandardCharsets.UTF_8));
 
@@ -37,13 +40,13 @@ public class ConnectionLogRetentionService {
 
   @Transactional(readOnly = true)
   public ConnectionLogRetentionSettings read(CurrentUser actor) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     return settingsRow();
   }
 
   @Transactional
   public ConnectionLogRetentionSettings updateRetentionMonths(CurrentUser actor, int months) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     if (months < ConnectionLogRetentionSettings.MIN_RETENTION_MONTHS
         || months > ConnectionLogRetentionSettings.MAX_RETENTION_MONTHS) {
       throw new ValidationException(
@@ -78,13 +81,5 @@ public class ConnectionLogRetentionService {
         .findSingleton()
         .orElseThrow(
             () -> new IllegalStateException("connection_log_retention_settings has no row id=1"));
-  }
-
-  private static void requireSystemAdmin(CurrentUser actor) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Administration darf die Aufbewahrungsfrist des Verbindungsprotokolls einsehen"
-              + " und ändern");
-    }
   }
 }
