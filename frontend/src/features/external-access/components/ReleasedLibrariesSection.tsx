@@ -55,7 +55,7 @@ function setBy(entry: ExternalAccessLibraryResponse): string {
 }
 
 /**
- * Die derzeit für externe KI-Werkzeuge freigegebenen Bibliotheken (#1731). Bewusst nur die
+ * Die derzeit für externe KI-Werkzeuge freigegebenen Bibliotheken. Bewusst nur die
  * gültigen: Die Liste macht den Bestand prüfbar, und eine Liste aller je freigegebenen Bibliotheken
  * begrübe genau das. Sie nennt keine Person, die ein Zugangstoken hält - nur die Stelle, die
  * freigegeben hat, und die Zahl der Tokens.

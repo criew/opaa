@@ -38,7 +38,7 @@ import { registerSessionStore } from '@/shared/session/resettableStores'
 export type LocalUserReviewFilter = 'ALL' | 'WITHOUT_EXPIRY' | 'INACTIVE'
 
 /**
- * The filters of the account list (#1601). `providerType` and `providerId` select the origin;
+ * The filters of the account list. `providerType` and `providerId` select the origin;
  * `status` and `review` describe local accounts only and narrow the list to them.
  */
 export interface AccountFilters {
@@ -99,7 +99,7 @@ interface UserAdminState {
   deleteUser: (id: string) => Promise<void>
   resetUserPassword: (id: string) => Promise<LocalUserPasswordResetResponse>
   generateUserPassword: (id: string) => Promise<LocalUserGeneratedPasswordResponse>
-  /** Starts a handover (#1563); the row keeps its state until the person redeems the link. */
+  /** Starts a handover; the row keeps its state until the person redeems the link. */
   requestHandover: (
     id: string,
     providerId: string,
@@ -150,7 +150,7 @@ function withLocal(account: AccountResponse, local: LocalUserResponse): AccountR
 let listRequestSequence = 0
 
 /**
- * The account administration of the Systemverwaltung (#1541, #1601, ADR-0033 Entscheidungen 4
+ * The account administration of the Systemverwaltung (ADR-0033 Entscheidungen 4
  * and 11): the list of every account with its filters, the review counts of the local accounts
  * and the settings of the local sign-in.
  *
@@ -237,8 +237,8 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
   },
 
   /*
-   * Auch die Mutationen prüfen die Sitzungs-Epoche, bevor sie zurückschreiben (Review-Runde 1,
-   * LOW 9): Eine Anfrage, die erst nach einer Abmeldung antwortet, würde sonst Daten des
+   * Auch die Mutationen prüfen die Sitzungs-Epoche, bevor sie zurückschreiben: Eine
+   * Anfrage, die erst nach einer Abmeldung antwortet, würde sonst Daten des
    * vorherigen Kontos in einen gerade geleerten Store schreiben. Die Epoche wird dazu **vor** dem
    * `await` gefasst - nach dem Request gefasst wäre sie immer die neue und der Vergleich
    * wirkungslos (Nachprüfung N2). Der Fehler wird weiter geworfen, damit der Aufrufer seine

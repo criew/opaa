@@ -121,7 +121,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
               Prompt: {message.usedPromptTitle}
             </Typography>
           )}
-          {/* Mockup 1a (#658): questions sit in a quiet blue-50 bubble with navy text; answers
+          {/* Mockup 1a: questions sit in a quiet blue-50 bubble with navy text; answers
               are plain running text without an avatar or a bubble around them. */}
           {isUser ? (
             <Box
@@ -184,7 +184,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </Alert>
           )}
 
-          {/* #667, mockup 1a: an answer that substantiates nothing still says what was looked at
+          {/* Mockup 1a: an answer that substantiates nothing still says what was looked at
               - the effective search scope by name, straight from QueryMetadata#searchedLibraries.
               Only when the answer cites nothing; next to cited Belege the list is noise. */}
           {!isUser &&

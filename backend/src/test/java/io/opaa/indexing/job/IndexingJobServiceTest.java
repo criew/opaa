@@ -45,6 +45,22 @@ class IndexingJobServiceTest {
   }
 
   @Test
+  void aJobIsRunningOnlyForTheLibraryItWasStartedForAndOnlyWhileItRuns() {
+    UUID libraryId = UUID.randomUUID();
+    var running = new IndexingJob(JobStatus.RUNNING);
+    running.setLibraryId(libraryId);
+    var completed = new IndexingJob(JobStatus.COMPLETED);
+    completed.setLibraryId(libraryId);
+    when(indexingJobRepository.findById(running.getId())).thenReturn(Optional.of(running));
+    when(indexingJobRepository.findById(completed.getId())).thenReturn(Optional.of(completed));
+
+    assertThat(service.isRunningFor(running.getId(), libraryId)).isTrue();
+    assertThat(service.isRunningFor(running.getId(), UUID.randomUUID())).isFalse();
+    assertThat(service.isRunningFor(completed.getId(), libraryId)).isFalse();
+    assertThat(service.isRunningFor(UUID.randomUUID(), libraryId)).isFalse();
+  }
+
+  @Test
   void startJobCreatesRunningJob() {
     var job = new IndexingJob(JobStatus.RUNNING);
     when(indexingJobRepository.saveAndFlush(any(IndexingJob.class))).thenReturn(job);

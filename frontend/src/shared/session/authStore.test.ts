@@ -108,9 +108,9 @@ describe('authStore', () => {
   })
 
   /**
-   * Schutz gegen die naheliegende Fehlimplementierung von #1612: Das Nachladen der öffentlichen
-   * Anmeldekonfiguration beim Abmelden darf nicht über `initialize()` laufen. Das meldet im
-   * Betriebsmodus `dev` sofort wieder an und machte damit die gerade beendete Sitzung rückgängig.
+   * Das Nachladen der öffentlichen Anmeldekonfiguration beim Abmelden darf nicht über
+   * `initialize()` laufen. Das meldet im Betriebsmodus `dev` sofort wieder an und machte damit die
+   * gerade beendete Sitzung rückgängig.
    */
   it('does not sign in again while reloading the sign-in configuration on logout', async () => {
     await useAuthStore.getState().initialize()
@@ -155,12 +155,10 @@ describe('authStore', () => {
     expect(state.isLoading).toBe(false)
   })
 
-  // #737: oidc-client-ts renews the access token in the background via the refresh token
-  // (automaticSilentRenew), but the store used to capture the token only once, as a snapshot, at
-  // login/callback time (see the two `set({ token: ... })` calls above) - a UserManager that had
-  // silently renewed never fed the new token back into the store, so the next request kept
-  // sending the now-expired one until the response interceptor's immediate signoutRedirect() ended
-  // the whole session.
+  // oidc-client-ts renews the access token in the background via the refresh token
+  // (automaticSilentRenew); the store must take over every renewed token, not only the snapshot
+  // from login/callback time (see the two `set({ token: ... })` calls above) - otherwise the next
+  // request keeps sending the expired one until the session ends.
   describe('silent token renewal (#737)', () => {
     async function initializeOidcMode() {
       server.use(
@@ -218,9 +216,9 @@ describe('authStore', () => {
       expect(state.isAuthenticated).toBe(false)
     })
 
-    // #737 review, finding 1: a background renew that resolves after expireSession() reset the
-    // store must not half-reanimate the session - the UserLoaded handler used to set
-    // isAuthenticated: true unconditionally, regardless of whether a user was still known.
+    // A background renew that resolves after expireSession() reset the
+    // store must not half-reanimate the session - the UserLoaded handler must not set
+    // isAuthenticated: true unless a user is still known.
     it('does not reactivate the session when UserLoaded fires after expireSession', async () => {
       const userManager = await initializeOidcMode()
       useAuthStore.setState({
@@ -251,8 +249,8 @@ describe('authStore', () => {
     })
   })
 
-  // #737 review, finding 2: expireSession() used to only reset the Zustand store, leaving the
-  // UserManager's own session (and its automatic-silent-renew timer) untouched.
+  // expireSession() resets the UserManager's own session (and its automatic-silent-renew timer)
+  // too, not only the Zustand store.
   describe('expireSession (#737 review)', () => {
     async function initializeOidcMode() {
       server.use(
@@ -278,7 +276,7 @@ describe('authStore', () => {
       return userManager
     }
 
-    // #1685: a 401 while logout() still waits on the provider ends the session through
+    // A 401 while logout() still waits on the provider ends the session through
     // expireSession() - the mark of the deliberate sign-out must survive it.
     it('keeps the sign-out mark when the session expires while logout() is running', async () => {
       const userManager = await initializeOidcMode()
@@ -379,9 +377,9 @@ describe('authStore', () => {
       await expect(useAuthStore.getState().renewToken()).resolves.toBe(false)
     })
 
-    // #737 review (nit): concurrent 401s from background polls used to each start their own
-    // signinSilent() call - a refresh-token-rotating IdP would have the first grant invalidate the
-    // token for every other in-flight one. renewToken() shares one in-flight promise instead.
+    // Concurrent 401s from background polls must not each start their own signinSilent() call -
+    // a refresh-token-rotating IdP would have the first grant invalidate the token for every other
+    // in-flight one. renewToken() shares one in-flight promise instead.
     it('shares one in-flight signinSilent call across concurrent callers', async () => {
       server.use(
         http.get('/api/v1/auth/config', () =>
@@ -666,7 +664,7 @@ describe('authStore', () => {
         const manager = signout.mock.instances[0] as UserManager
         expect(manager.settings.authority).toBe('https://partner.example.test/realms/extern')
         expect(sessionStorage.getItem('opaa.oidc.flowProvider')).toBeNull()
-        // #2037: the page is on its way to the provider - the login page must not show meanwhile
+        // The page is on its way to the provider - the login page must not show meanwhile
         expect(useAuthStore.getState().isSigningOut).toBe(true)
       } finally {
         signout.mockRestore()
@@ -686,7 +684,7 @@ describe('authStore', () => {
 
         expect(removeUser).toHaveBeenCalled()
         expect(useAuthStore.getState().isAuthenticated).toBe(false)
-        // #2037: without a provider redirect the login page is where this ends
+        // Without a provider redirect the login page is where this ends
         expect(useAuthStore.getState().isSigningOut).toBe(false)
         expect(useNotificationStore.getState().queue.at(-1)?.message).toMatch(
           /nur in dieser Anwendung/,
@@ -799,7 +797,7 @@ describe('authStore', () => {
   })
 
   /**
-   * #1631: someone whose session at the identity provider is still running reaches the application
+   * Someone whose session at the identity provider is still running reaches the application
    * without a click - one authorization redirect with `prompt=none`, answered either with a session
    * or with a refusal that leaves the sign-in page exactly as it was. The guards below are what
    * keeps that redirect from taking away a page somebody has to read or use.
@@ -1056,7 +1054,7 @@ describe('authStore', () => {
       })
 
       /**
-       * #1685: the route of a direct link rides in the sign-in state of the attempt, and
+       * The route of a direct link rides in the sign-in state of the attempt, and
        * oidc-client-ts hands that state out with the refusal as well. Without reading it back, the
        * sign-in the person is then asked for by hand would end on the chat page - the automatic
        * attempt would break the direct link in exactly the case where it can do nothing for them.

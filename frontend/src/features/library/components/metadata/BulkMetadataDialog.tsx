@@ -40,7 +40,7 @@ function documentCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'Dokument' : 'Dokumente'}`
 }
 
-// #1068: Sammelzuweisung - one field, one value, the person's own selection of documents. The
+// Sammelzuweisung - one field, one value, the person's own selection of documents. The
 // decision is taken once and confirmed with the count; every document still gets its own
 // "manuell" value and its own audit event.
 export default function BulkMetadataDialog({

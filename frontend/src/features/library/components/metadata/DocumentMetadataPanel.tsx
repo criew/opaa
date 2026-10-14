@@ -21,7 +21,7 @@ interface DocumentMetadataPanelProps {
   canEdit: boolean
   // Bumped by the parent after a bulk assignment so an open panel reloads its values.
   refreshToken?: number
-  // Called after this panel changed a value, so the Pflege-Anker (#1069) can recount.
+  // Called after this panel changed a value, so the Pflege-Anker can recount.
   onValueChanged?: () => void
 }
 
@@ -50,8 +50,8 @@ function originTooltip(field: DocumentMetadataFieldResponse): string {
   }
 }
 
-// #1068: the core fields of one document with the provenance of every value. An empty field is
-// shown as such, a field marked "kein Wert ermittelbar" (#1069) as its own state; a DERIVED value
+// The core fields of one document with the provenance of every value. An empty field is
+// shown as such, a field marked "kein Wert ermittelbar" as its own state; a DERIVED value
 // is always marked "abgeleitet". Editing and deleting are only
 // offered to a person who may edit the library's documents.
 export default function DocumentMetadataPanel({

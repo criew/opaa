@@ -78,7 +78,7 @@ import {
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },
-  // „Benutzer & Gruppen" als zwei Einträge statt als Tabs auf einer Seite (#1541): die
+  // „Benutzer & Gruppen" als zwei Einträge statt als Tabs auf einer Seite: die
   // Sekundärspalte *ist* die Bereichsnavigation, und ein Tab-Paar darüber wäre eine zweite
   // Navigation für dieselbe Entscheidung. Jedes Ziel bleibt so direkt verlinkbar.
   { label: 'Benutzer', to: '/admin/users' },
@@ -96,8 +96,8 @@ const ADMIN_SECTIONS = [
 
 /**
  * A regular user deep-linking into /admin/* gets the bare frame: showing them the full
- * administration navigation with "nicht freigegeben" destinations helps no one
- * (#800, review #794 finding 3). The pages keep their own role gates.
+ * administration navigation with "nicht freigegeben" destinations helps no one.
+ * The pages keep their own role gates.
  */
 function AdminAreaLayout() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')
@@ -143,7 +143,7 @@ export default function App() {
   const effectiveMode =
     preferredMode === 'system' ? (prefersDark ? 'dark' : 'light') : preferredMode
   // The accent is the only branding value the theme itself consumes; product name, claim and logo
-  // are read from the store by the components that render them (#583, guidelines 7).
+  // are read from the store by the components that render them (guidelines 7).
   const theme = useMemo(
     () => createAppTheme(effectiveMode, { primaryColor: branding.primaryColor }),
     [effectiveMode, branding.primaryColor],
@@ -152,7 +152,7 @@ export default function App() {
   useEffect(() => {
     initialize()
     // Deliberately not awaited and deliberately outside any auth gate: the sign-in page needs the
-    // branding too, and the store falls back to the OPAA standard if the request fails (#583).
+    // branding too, and the store falls back to the OPAA standard if the request fails.
     void loadBranding()
   }, [initialize, loadBranding])
 
@@ -170,7 +170,7 @@ export default function App() {
               {/* Outside the application shell on purpose: while a password change is owed, every
                 route but /api/v1/auth/local/* answers 403 (ADR-0033, Entscheidung 8). */}
               <Route path="/account/password" element={<ChangePasswordPage />} />
-              {/* The self-service pages of local accounts (#1540), public like the sign-in page.
+              {/* The self-service pages of local accounts, public like the sign-in page.
                 ADR-0033, Entscheidung 11: the two link targets work whatever the switches say -
                 a link from an invitation or an administrative reset must never run into a
                 redirect - while /register and /forgot-password are pages only where the
@@ -204,17 +204,17 @@ export default function App() {
                   element={<SpacePage renderChats={renderSpaceChats} />}
                 />
                 {/* Die frühere Verwaltungsseite: Lesezeichen auf /manage landen auf dem ersten
-                  Reiter der Einstellungen (#1917). */}
+                  Reiter der Einstellungen. */}
                 <Route path="spaces/:spaceId/manage" element={<SpaceSettingsRedirect />} />
                 <Route path="spaces/:spaceId/settings" element={<SpaceSettingsRedirect />} />
                 <Route path="spaces/:spaceId/settings/:tab" element={<SpaceSettingsPage />} />
-                {/* No space selected yet (#809): overview and create wizard render in the
+                {/* No space selected yet: overview and create wizard render in the
                   bare global frame; the navy column appears only inside a chosen space. */}
                 <Route element={<GlobalAreaLayout />}>
                   <Route path="spaces" element={<SpacesOverviewPage />} />
                   <Route path="spaces/new" element={<SpaceCreatePage />} />
                 </Route>
-                {/* Every asset type's pages are a global area too (#789, Schlussnotiz von
+                {/* Every asset type's pages are a global area too (Schlussnotiz von
                   Mockup-Abschnitt 2): bare global frame, no secondary column. The catalog is
                   their one overview (ADR-0039); the former type overviews lead into it. */}
                 <Route element={<GlobalAreaLayout />}>
@@ -247,11 +247,11 @@ export default function App() {
                     <Route path="prompts/*" element={<Navigate to={CATALOG_ROUTE} replace />} />
                   )}
                 </Route>
-                {/* Global areas render inside the frame from mockup 2b (#787): no space
+                {/* Global areas render inside the frame from mockup 2b: no space
                   column, a light secondary column with the area navigation instead. */}
                 <Route element={<AdminAreaLayout />}>
-                  {/* Die beiden Bereiche der Benutzerseite sind Routen wie bei der E-Mail-Seite
-                    (#1601): der Sprung aus dem Auflagen-Hinweis landet in der Kontenliste, der aus
+                  {/* Die beiden Bereiche der Benutzerseite sind Routen wie bei der E-Mail-Seite:
+                    der Sprung aus dem Auflagen-Hinweis landet in der Kontenliste, der aus
                     der Anmeldeseite in den Einstellungen, und ein Neuladen behält den Bereich. */}
                   <Route
                     path="admin/users"
@@ -309,7 +309,7 @@ export default function App() {
                   />
                   <Route path="admin/succession/:tab" element={<SuccessionPage />} />
                   {/* Die beiden Bereiche der E-Mail-Seite sind Routen, damit ein Verweis auf die
-                    Vorlagenverwaltung dort landet (#1542). */}
+                    Vorlagenverwaltung dort landet. */}
                   <Route path="admin/mail" element={<Navigate to="/admin/mail/server" replace />} />
                   <Route path="admin/mail/:tab" element={<MailSettingsPage />} />
                   <Route
@@ -318,9 +318,9 @@ export default function App() {
                   />
                   <Route path="admin/search/:tab" element={<SearchIndexingAdminPage />} />
                 </Route>
-                {/* Mockup 2c (#788): the user settings render in the bare global frame -
+                {/* Mockup 2c: the user settings render in the bare global frame -
                   no space column, no secondary column. */}
-                {/* Die Stichtagsauskunft der Revision (#1822): eigener Bereich, nicht unter
+                {/* Die Stichtagsauskunft der Revision: eigener Bereich, nicht unter
                   /admin - sie gehoert der AUDITOR-Rolle, nicht der Systemverwaltung. */}
                 <Route element={<RevisionAreaLayout />}>
                   <Route path="revision/rechtehistorie" element={<RightsHistoryPage />} />

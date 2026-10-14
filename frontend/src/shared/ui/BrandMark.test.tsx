@@ -11,8 +11,7 @@ function renderMark(ui: React.ReactElement = <BrandMark />) {
   return render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>)
 }
 
-// This coverage lived in Sidebar.test until #786; the sidebar no longer renders the mark, so
-// the component carries its own contract tests now.
+// The sidebar does not render the mark, so the component carries its own contract tests.
 describe('BrandMark', () => {
   beforeEach(() => {
     useBrandingStore.setState({ branding: OPAA_BRANDING })
@@ -48,7 +47,7 @@ describe('BrandMark', () => {
   })
 
   /**
-   * #1910: Die Anmeldeseite hat ein eigenes Logo, weil sie es um ein Vielfaches größer zeigt.
+   * Die Anmeldeseite hat ein eigenes Logo, weil sie es um ein Vielfaches größer zeigt.
    * Ohne eigenes greift sie auf das der Anwendung zurück - und ohne beides auf die OPAA-Marke.
    */
   it('prefers the sign-in logo where one is configured, and falls back where none is', () => {

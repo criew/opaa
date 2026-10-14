@@ -22,7 +22,7 @@ export async function updateBranding(request: BrandingUpdateRequest): Promise<Br
   }
 }
 
-/** The three image slots of the branding settings (#582, #1910), by their path segment. */
+/** The three image slots of the branding settings, by their path segment. */
 export type BrandingImageSlot = 'logo' | 'login-logo' | 'login-background'
 
 export async function uploadBrandingImage(

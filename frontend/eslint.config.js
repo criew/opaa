@@ -17,9 +17,9 @@ export default defineConfig([
       tseslint.configs.recommended,
       reactHooks.configs.flat.recommended,
       reactRefresh.configs.vite,
-      // Accessibility rules (#586). eslint-plugin-jsx-a11y-x is the ESLint-10-compatible fork of
-      // eslint-plugin-jsx-a11y; switching back to upstream is tracked in #635. Exceptions are disabled per line with a reason and an issue reference, never
-      // globally.
+      // Accessibility rules. eslint-plugin-jsx-a11y-x is the ESLint-10-compatible fork of
+      // eslint-plugin-jsx-a11y; switching back to upstream is tracked in #635. Exceptions are
+      // disabled per line with a reason and an issue reference, never globally.
       jsxA11yX.configs.recommended,
     ],
     languageOptions: {

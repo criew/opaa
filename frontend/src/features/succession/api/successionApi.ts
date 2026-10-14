@@ -2,7 +2,7 @@ import type { SuccessionKind, SuccessionListResponse } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * Die Betriebsliste des Lebenszyklus (#1819, ADR-0036 Entscheidung 6). Die Reihenfolge ist fest
+ * Die Betriebsliste des Lebenszyklus (ADR-0036 Entscheidung 6). Die Reihenfolge ist fest
  * (ältester Eintrag zuerst), und es gibt bewusst keinen Parameter für den früheren Eigentümer oder
  * die handelnde Person — weder hier noch in der Oberfläche.
  */

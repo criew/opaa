@@ -180,7 +180,7 @@ export async function applyChatBulkAction(
 }
 
 /**
- * Removes one point of a chat's Gesprächsnotiz (#1488). Immediate and without a confirmation step;
+ * Removes one point of a chat's Gesprächsnotiz. Immediate and without a confirmation step;
  * the point is not blocked for the future - the condensation may create it again if the person
  * states the same thing again (docs/features/conversation-memory.md, "Zustand und Bedienung").
  */

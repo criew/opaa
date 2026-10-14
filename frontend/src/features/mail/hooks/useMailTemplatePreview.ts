@@ -12,7 +12,7 @@ interface MailTemplatePreviewState {
 }
 
 /**
- * Die entprellte Vorschau des Vorlagen-Editors (#1542).
+ * Die entprellte Vorschau des Vorlagen-Editors.
  *
  * Zwei Zusicherungen tragen sie: Eine Eingabefolge löst **eine** Anfrage aus, und eine Antwort,
  * die nach einer neueren eintrifft, wird verworfen — ohne die laufende Nummer würde der langsame

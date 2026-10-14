@@ -2,9 +2,9 @@ import type { ColorScheme } from '../api/types'
 import type { ThemeMode } from '../stores/uiStore'
 
 /**
- * Translates the operator's configured colour scheme (#582's `ColorScheme`) into the interface's
- * own vocabulary. Two names for the same three states, because the API describes a deployment-wide
- * default while `ThemeMode` describes what one browser currently shows.
+ * Translates the operator's configured colour scheme (the branding's `ColorScheme`) into the
+ * interface's own vocabulary. Two names for the same three states, because the API describes a
+ * deployment-wide default while `ThemeMode` describes what one browser currently shows.
  */
 export function colorSchemeToThemeMode(scheme: ColorScheme): ThemeMode {
   switch (scheme) {
@@ -18,7 +18,7 @@ export function colorSchemeToThemeMode(scheme: ColorScheme): ThemeMode {
 }
 
 /**
- * Which colour scheme actually applies (#583). The precedence is the whole point:
+ * Which colour scheme actually applies. The precedence is the whole point:
  *
  * 1. What the user chose in their own settings - a personal choice is never overridden by an
  *    operator default, which would otherwise flip the interface out from under someone who

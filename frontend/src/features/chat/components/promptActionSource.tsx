@@ -10,8 +10,8 @@ interface PromptOption extends ChatActionOption {
 }
 
 /**
- * The prompts of the prompt libraries associated with the chat's space, readable by the person
- * (#1903). Choosing one fetches it; a prompt with variables asks for them first. The question is
+ * The prompts of the prompt libraries associated with the chat's space, readable by the person.
+ * Choosing one fetches it; a prompt with variables asks for them first. The question is
  * marked with the prompt it was built from.
  */
 export const promptActionSource: ChatActionSource = {

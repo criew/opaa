@@ -81,7 +81,7 @@ interface SpaceMemberListProps {
 }
 
 /**
- * Die bestehenden Mitglieder eines Space (#2134): Eigentümer zuerst, dann nach Rolle und Name,
+ * Die bestehenden Mitglieder eines Space: Eigentümer zuerst, dann nach Rolle und Name,
  * Personen und Gruppen gemischt. Jede Zeile trägt höchstens die Rolle und ein „⋯“-Menü mit den
  * Einträgen, die für die Zeile und die eigene Rolle erlaubt sind.
  */

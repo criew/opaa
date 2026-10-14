@@ -1,4 +1,4 @@
-// #823 (Epic #520 Phase 4): recursively resolves a drag-and-drop DataTransferItemList into
+// Recursively resolves a drag-and-drop DataTransferItemList into
 // individual files with their relative path within the dropped structure - lets LibraryDetailPage
 // upload a whole dragged-and-dropped folder tree one file at a time while preserving the structure
 // it was dropped with (uploaded via each file's own `folderPath`, materialized idempotently by the
@@ -29,7 +29,7 @@ export interface ResolveDroppedItemsResult {
   files: ResolvedDroppedFile[]
   /**
    * How many entries (individual files, or whole subtrees under an unreadable directory) could
-   * not be read (#823 review, Befund 3) - a permission error, or a file removed/moved on disk
+   * not be read - a permission error, or a file removed/moved on disk
    * between the drop and this read, must not silently abort the rest of a large drop. Counted
    * here rather than thrown, so the caller can still upload everything that *did* resolve and
    * report the rest in one collective message.
@@ -111,10 +111,10 @@ function fileEntryFallback(file: File): FileSystemFileEntryLike {
 }
 
 /**
- * @returns how many entries under (and including) `entry` could not be read (#823 review, Befund
- *   3) - a single unreadable file, or a whole unreadable subdirectory, is counted and skipped
- *   rather than rejecting the promise chain this is part of, which would otherwise abort every
- *   sibling/later entry `resolveDroppedItems`'s own loop still has left to process.
+ * @returns how many entries under (and including) `entry` could not be read - a single
+ *   unreadable file, or a whole unreadable subdirectory, is counted and skipped rather than
+ *   rejecting the promise chain this is part of, which would otherwise abort every sibling/later
+ *   entry `resolveDroppedItems`'s own loop still has left to process.
  */
 async function collectEntry(
   entry: FileSystemEntryLike,
@@ -178,7 +178,7 @@ function readAllEntries(reader: FileSystemDirectoryReaderLike): Promise<FileSyst
 }
 
 /**
- * The `webkitdirectory` file-input counterpart to `resolveDroppedItems` above (#823): a file
+ * The `webkitdirectory` file-input counterpart to `resolveDroppedItems` above: a file
  * selected that way carries its full path within the selected directory as `webkitRelativePath`
  * (e.g. "Protokolle/2026/Januar.pdf") - this strips the file's own name off the end, leaving just
  * the directory portion ("Protokolle/2026"), the same shape `ResolvedDroppedFile.relativePath`
@@ -190,7 +190,7 @@ export function directoryPathFromWebkitRelativePath(webkitRelativePath: string):
   return lastSlash === -1 ? '' : webkitRelativePath.slice(0, lastSlash)
 }
 
-// #823 review, Befund 2: a real OS folder routinely carries files nobody dragged there on
+// A real OS folder routinely carries files nobody dragged there on
 // purpose - a browser's `accept` attribute is not reliably enforced for a `webkitdirectory`
 // selection at all, and neither it nor a drop's `DataTransferItem.webkitGetAsEntry()` walk ever
 // filters by format on their own. Treated as two different things: well-known OS/desktop metadata

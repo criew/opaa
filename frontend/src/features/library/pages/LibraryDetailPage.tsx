@@ -81,8 +81,8 @@ type LibraryDetailTab = 'dokumente' | 'quelle' | 'metadaten' | 'freigaben' | 'zu
 /**
  * The area named by `?tab=`. Every role sees every area, so only the source area can be missing -
  * an UPLOAD library has no source - and the metadata area, while the installation has switched
- * metadata off (ADR-0044). An unknown or no-longer-existing value (the pre-#1939 names
- * „indizierung" and „verwaltung" among them) falls back to the documents.
+ * metadata off (ADR-0044). An unknown or retired value (such as
+ * „indizierung" and „verwaltung") falls back to the documents.
  */
 function resolveTab(
   requested: string | null,
@@ -112,7 +112,7 @@ interface DiagnosticsLockControlProps {
   onDismissError: () => void
 }
 
-// #1257: renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) -
+// Renders the Diagnosesperre state (docs/features/hybrid-retrieval.md, Leitplanke (e)) -
 // visible to everyone who may read the library (see LibraryResponse#diagnosticsLocked), but only
 // togglable by the responsible body itself. The 403 a caller without that standing gets back from
 // PUT .../diagnostics-lock is shown verbatim (see normalizeError) - it already names, in German,
@@ -170,10 +170,9 @@ interface ShareCapSwitchProps {
 }
 
 /**
- * Die Obergrenze, die die Systemverwaltung einer Konnektorbibliothek setzt (#797, in der Gestalt
- * aus #1931): ob sie an „Alle Konten" freigegeben werden darf. Sichtbar und setzbar nur hier, nie
- * für den Eigentümer der Bibliothek: Der sieht die Wirkung (eine Freigabe über der Grenze antwortet
- * 409), nicht den Schalter.
+ * Die Obergrenze, die die Systemverwaltung einer Konnektorbibliothek setzt: ob sie an „Alle Konten"
+ * freigegeben werden darf. Sichtbar und setzbar nur hier, nie für den Eigentümer der Bibliothek:
+ * Der sieht die Wirkung (eine Freigabe über der Grenze antwortet 409), nicht den Schalter.
  */
 function ShareCapSwitch({ label, description, checked, onSave }: ShareCapSwitchProps) {
   const [draft, setDraft] = useState(checked)
@@ -305,12 +304,12 @@ export default function LibraryDetailPage() {
   const connectorSourceType = details && details.sourceType !== 'UPLOAD' ? details.sourceType : null
   const connectorConfiguration = sourceRegistration(connectorSourceType)?.configuration ?? null
 
-  // #1939: every role sees every area; a reader simply finds less inside it. Only an UPLOAD
+  // Every role sees every area; a reader simply finds less inside it. Only an UPLOAD
   // library genuinely has no source area.
   const showSourceTab = connectorSourceType != null
   const showMetadataTab = useFeatureEnabled('metadata')
 
-  // #797: only the system administration sets the ceiling - the owner only ever sees its
+  // Only the system administration sets the ceiling - the owner only ever sees its
   // consequence, the locked switch and the 409 when a grant would exceed it. An UPLOAD library
   // carries none.
   const shareCapVisible =
@@ -380,7 +379,7 @@ export default function LibraryDetailPage() {
       // Konfiguration unverändert, solange keines der sourcePath/sourceUrl/
       // sourceCredentials-Felder in der Anfrage vorhanden ist (ADR-0018). Das
       // Bearbeiten der Quellkonfiguration selbst laeuft ueber EditLibrarySourceDialog weiter
-      // unten in dieser Datei (#516) - dieses Stammdaten-Formular hier ruehrt sie nicht an.
+      // unten in dieser Datei - dieses Stammdaten-Formular hier ruehrt sie nicht an.
     })
   }
 
@@ -465,7 +464,7 @@ export default function LibraryDetailPage() {
     }
   }
 
-  // #1257: PUT .../diagnostics-lock takes the desired end state, not a toggle - this always
+  // PUT .../diagnostics-lock takes the desired end state, not a toggle - this always
   // requests the opposite of the currently rendered state, so a stale double-click cannot request
   // the same state twice.
   async function handleToggleDiagnosticsLock() {
@@ -626,7 +625,7 @@ export default function LibraryDetailPage() {
               >
                 {isRunning ? 'Indizierung läuft …' : 'Jetzt indizieren'}
               </Button>
-              {/* ADR-0023, Entscheidung 4 (#1139): "Jetzt indizieren" follows the library's state
+              {/* ADR-0023, Entscheidung 4: "Jetzt indizieren" follows the library's state
                   (incremental between two full runs); the full reconciliation can be forced. */}
               {connectorConfiguration?.fullSyncRhythm && (
                 <Button
@@ -675,7 +674,7 @@ export default function LibraryDetailPage() {
           </>
         }
       >
-        {/* #1939: Der Umfang steht im Kopf nur noch als Kurzzeile mit Sprung in den Reiter
+        {/* Der Umfang steht im Kopf nur noch als Kurzzeile mit Sprung in den Reiter
             „Quelle"; dort steht er vollständig, für jede Rolle. Die Warnung über einen
             unvollständig gelesenen Umfang bleibt dagegen hier: Sie betrifft den Bestand, den
             jede Ansicht der Seite zeigt, nicht die Einstellung dahinter. */}
@@ -716,7 +715,7 @@ export default function LibraryDetailPage() {
                   pl: 1.5,
                   pr: 1.25,
                   py: 1,
-                  // Hervorhebung als Signalkante links statt als Rahmen ringsum (#1608, Regel 4):
+                  // Hervorhebung als Signalkante links statt als Rahmen ringsum (Regel 4):
                   // dasselbe Mittel wie im Bestätigungs-Overlay, damit ein Hinweis überall gleich
                   // aussieht. Die Signalfarbe bleibt in Kante und Symbol — nie im Fließtext.
                   borderLeft: 3,
@@ -783,7 +782,7 @@ export default function LibraryDetailPage() {
           {localError}
         </Alert>
       )}
-      {/* #506 review, finding 3: without this, a failed GET /libraries/{id} while the list entry
+      {/* Without this, a failed GET /libraries/{id} while the list entry
           is already cached silently drops the typed areas below with no explanation - details
           stays undefined, so neither the UPLOAD nor the connector area's sourceType check
           matches. */}
@@ -792,7 +791,7 @@ export default function LibraryDetailPage() {
           {storeError}
         </Alert>
       )}
-      {/* #1939: ein Hinweis auf die eigene Rolle, nicht zwei — der Dokumentenbereich trägt
+      {/* Ein Hinweis auf die eigene Rolle, nicht zwei — der Dokumentenbereich trägt
           keinen zweiten mehr. Die beiden Stufen sagen Verschiedenes: Wer Dokumente pflegen darf,
           liest nicht bloß. */}
       {!canTrigger && (
@@ -869,7 +868,7 @@ export default function LibraryDetailPage() {
             canManage={mayManageDocuments}
             refreshToken={documentsRefreshToken}
             confluenceSpaces={confluenceSettingsOf(details).spaces}
-            // #506 review, finding 7: the document count in the header comes from the library
+            // The document count in the header comes from the library
             // itself, not from documentStore - without this it stays on whatever value was loaded
             // on mount even after an upload or delete changes it.
             onDocumentsChanged={() => void loadLibraryDetails(libraryId)}
@@ -884,7 +883,7 @@ export default function LibraryDetailPage() {
           aria-labelledby="library-tab-quelle"
           hidden={activeTab !== 'quelle'}
         >
-          {/* #604 review, finding 1: source paths and the run protocol stay behind the MANAGER
+          {/* Source paths and the run protocol stay behind the MANAGER
               bar (canEditSource); the Umfang above them is visible to every reader. */}
           <LibrarySourceSection
             libraryId={libraryId}
@@ -929,7 +928,7 @@ export default function LibraryDetailPage() {
         aria-labelledby="library-tab-freigaben"
         hidden={activeTab !== 'freigaben'}
       >
-        {/* Die Reihenfolge des Zielentwurfs (#1927): Eigentümer · Berechtigungen · Externer
+        {/* Die Reihenfolge des Zielentwurfs: Eigentümer · Berechtigungen · Externer
             Zugang · Diagnosesperre · Herleitung. Jeder Abschnitt speichert für sich;
             es gibt keinen gemeinsamen „Speichern"-Knopf über Abschnitte hinweg. */}
         <Stack>
@@ -985,7 +984,7 @@ export default function LibraryDetailPage() {
             >
               <DiagnosticsLockControl
                 locked={details.diagnosticsLocked ?? true}
-                // #1278 review: myRole bypasses to OWNER for a system admin unconditionally
+                // myRole bypasses to OWNER for a system admin unconditionally
                 // (LibraryResponse#myRole) - this dedicated field mirrors the backend's stricter
                 // holdsIndependentOwnerRole instead, so an admin without an independent OWNER
                 // grant never sees a button that is guaranteed to fail with 403.

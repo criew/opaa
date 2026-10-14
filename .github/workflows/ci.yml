@@ -143,8 +143,24 @@ jobs:
               - 'backend/src/test/**'
               - 'backend/src/evalTest/**'
               - 'opaa-api/src/main/**'
+              - 'frontend/src/**'
+              - 'frontend/vite.config.ts'
+              - 'frontend/eslint.config.*'
+              - 'frontend/eslint/**'
               - '.github/workflows/**'
+              - 'e2e/**'
+              - 'eval/**/*.py'
+              - 'docker-compose*.yml'
+              - '.env*.example'
+              - '**/Dockerfile'
+              - 'backend/gradle/**'
+              - 'backend/*.gradle.kts'
+              - 'opaa-api/*.gradle.kts'
               - '.github/scripts/check_code_comments.sh'
+            # Step-level filter of the ratchets below, not a job output.
+            ratchets:
+              - 'backend/src/main/**'
+              - '.github/scripts/**'
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
             # asserts the realm export keeps the audience mapper the seed's token
             # path depends on - otherwise only the nightly demo smoke run would
@@ -182,12 +198,19 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
 
-      # Comments in backend, opaa-api, the workflows and the Liquibase changelogs carry no review
-      # protocol, no history anchored at an issue and no bare origin marker (AGENTS.md,
-      # "Code-Kommentare").
-      - name: Kommentarregel in Backend, opaa-api und Workflows prüfen
+      # Comments in every tree listed in the script header carry no review protocol, no history
+      # anchored at an issue and no bare origin marker (AGENTS.md, "Code-Kommentare").
+      - name: Kommentarregel prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
         run: .github/scripts/check_code_comments.sh
+
+      # Counted stock that must not grow: Instant.now() in Spring beans, @Value outside *Properties
+      # classes (ADR-0051, Entscheidung 6). The limits sit in the scripts and only ever go down.
+      - name: Ratschen für Instant.now() und @Value prüfen
+        if: github.event_name != 'pull_request' || steps.filter.outputs.ratchets == 'true'
+        run: |
+          .github/scripts/check_instant_now.sh
+          .github/scripts/check_value_annotations.sh
 
   # The backend suite runs as three parallel package shards (see `testShards` in
   # backend/build.gradle.kts) plus one build job for everything `build` does besides the root

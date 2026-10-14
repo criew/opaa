@@ -46,8 +46,7 @@ const SEITENQUELLEN = {
 
 /**
  * Die sieben Seiten der Administration. „Ihre Einstellungen" fehlt bewusst: Sie trägt denselben
- * Kopf, aber nicht dieselbe Breite - ihr Inhalt ist ein Formular in Lesebreite, keine Tabelle
- * (#1607).
+ * Kopf, aber nicht dieselbe Breite - ihr Inhalt ist ein Formular in Lesebreite, keine Tabelle.
  */
 const ADMINISTRATIONSSEITEN = BEREICHSSEITEN.filter((datei) => datei !== 'SettingsPage.tsx')
 
@@ -112,8 +111,8 @@ describe('AreaPageHeader', () => {
 
   /**
    * Der eigentliche Gegenstand dieser Datei: Die Gleichheit der Kopfposition ist keine Eigenschaft
-   * einer einzelnen Seite, sondern eine Regel über alle. Vor #1604 war dieselbe Anordnung viermal
-   * verschieden geschrieben, und der Titel sprang beim Wechsel zwischen zwei Menüpunkten.
+   * einer einzelnen Seite, sondern eine Regel über alle: Sonst springt der Titel beim Wechsel
+   * zwischen zwei Menüpunkten.
    */
   it.each(BEREICHSSEITEN)('%s builds its head from AreaPageHeader', (datei) => {
     const quelltext = quelltextVon(datei)
@@ -127,7 +126,7 @@ describe('AreaPageHeader', () => {
   })
 
   /**
-   * Die Inhaltsbreite ist eine Eigenschaft des Bereichs, nicht der einzelnen Seite (#1607): Vorher
+   * Die Inhaltsbreite ist eine Eigenschaft des Bereichs, nicht der einzelnen Seite: Vorher
    * standen dort fünf verschiedene Werte, und die rechte Kante sprang beim Wechsel zwischen zwei
    * Menüpunkten. Eine nackte Zahl ist der Weg zurück dorthin.
    */
@@ -150,7 +149,7 @@ describe('AreaPageHeader', () => {
   })
 
   /**
-   * Das Zeichen ist der visuelle Anker des Bereichs (#1614). Eine neue Seite ohne eines fiele
+   * Das Zeichen ist der visuelle Anker des Bereichs. Eine neue Seite ohne eines fiele
    * sonst erst jemandem im Betrieb auf - und zwei Bereiche mit demselben Zeichen wären kein
    * Anker mehr, sondern eine Verwechslung.
    */

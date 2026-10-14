@@ -18,7 +18,7 @@ function ChatAt() {
 }
 
 /**
- * The return trip of a provider sign-in. The case this guards is the handover (#1563): the tab may
+ * The return trip of a provider sign-in. The case this guards is the handover: the tab may
  * well hold a session when the callback lands - a local one restored at start-up, an OIDC one from
  * before - and carrying the person into the application then would leave the redemption unfinished
  * and the account half-way between two identities.
@@ -143,7 +143,7 @@ describe('AuthCallbackPage', () => {
   })
 
   /**
-   * #1631: the provider refused an attempt nobody asked for. What follows is the sign-in page as it
+   * The provider refused an attempt nobody asked for. What follows is the sign-in page as it
    * would have stood without the attempt - no error, no explanation of a failure that is none.
    */
   it('shows the sign-in page again when the silent attempt was refused', async () => {
@@ -161,7 +161,7 @@ describe('AuthCallbackPage', () => {
   })
 
   /**
-   * #1685 through #1631: the link from a mail, opened in a fresh tab without a provider session.
+   * The link from a mail, opened in a fresh tab without a provider session.
    * ProtectedRoute hands the route to the sign-in page, the automatic attempt takes it along, and
    * the provider refuses. The page the person then signs in on by hand has to know the route
    * still - otherwise the one attempt that could not help them is what loses the link.
@@ -224,7 +224,7 @@ describe('AuthCallbackPage', () => {
   })
 
   /**
-   * #1685: the whole provider trip with the real store - only the provider's answer is scripted.
+   * The whole provider trip with the real store - only the provider's answer is scripted.
    * The route travels in the sign-in state oidc-client-ts hands back, and whatever arrives there is
    * treated as untrusted input.
    */

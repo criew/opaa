@@ -264,7 +264,7 @@ describe('AssetGrantsSection', () => {
     const userEventInstance = userEvent.setup()
 
     await userEventInstance.click(await screen.findByRole('button', { name: /freigeben/i }))
-    // #778 review, finding 4: the picker no longer preloads the whole organization - a query
+    // The picker does not preload the whole organization - a query
     // (min. 2 characters) has to be typed before GET /v1/users is even attempted.
     await userEventInstance.type(await screen.findByLabelText(/^person oder gruppe suchen$/i), 'al')
     await userEventInstance.click(await screen.findByRole('option', { name: /Alice/ }))
@@ -319,7 +319,7 @@ describe('AssetGrantsSection', () => {
     })
   })
 
-  // #1931: the third recipient - it names nobody, and it is the one that asks back.
+  // The third recipient - it names nobody, and it is the one that asks back.
   it('grants every account of the organization after an explicit confirmation', async () => {
     setSystemAdmin()
     mockUpsertAssetGrant.mockResolvedValueOnce({
@@ -460,8 +460,8 @@ describe('AssetGrantsSection', () => {
     renderWithProviders(<AssetGrantsSection assetType="KNOWLEDGE_LIBRARY" assetId={library.id} />)
     const userEventInstance = userEvent.setup()
 
-    // #423 code review, nit 5: the row-level role select's accessible name now names its subject
-    // ("Rolle für Alice"), not the shared "Rolle" every row used to carry.
+    // The row-level role select's accessible name names its subject
+    // ("Rolle für Alice"), not a "Rolle" shared by every row.
     await userEventInstance.click(
       await screen.findByRole('combobox', { name: /^rolle für alice$/i }),
     )
@@ -524,8 +524,8 @@ describe('AssetGrantsSection', () => {
   })
 
   it('names a failed person search and offers the id field as the way out', async () => {
-    // #777: GET /v1/users is reachable for every authenticated caller now, not just SYSTEM_ADMIN.
-    // #1820: Der Rueckfall auf die Kennung wird ausdruecklich gewaehlt, statt sich selbst
+    // GET /v1/users is reachable for every authenticated caller now, not just SYSTEM_ADMIN.
+    // Der Rueckfall auf die Kennung wird ausdruecklich gewaehlt, statt sich selbst
     // einzuschalten - ein gescheiterter Suchlauf sagt das im Feld, und der Weg daneben ist
     // derselbe wie fuer eine Gruppe.
     setManager()
@@ -594,8 +594,8 @@ describe('AssetGrantsSection', () => {
   })
 
   it('shows resolved subject and granter names for a MANAGER without a system role', async () => {
-    // #423 code review, finding 1 (confirmed): the fix is that these names come from the grant
-    // response itself (subjectDisplayName/grantedByDisplayName), never looked up client-side.
+    // These names come from the grant response itself (subjectDisplayName/grantedByDisplayName),
+    // never looked up client-side.
     setManager()
     setGrants(library.id, [
       {
@@ -669,7 +669,7 @@ describe('AssetGrantsSection', () => {
     const personField = await screen.findByLabelText(/^person oder gruppe suchen$/i)
     expect(screen.queryByLabelText(/^nutzer-id$/i)).not.toBeInTheDocument()
 
-    // #778 review, finding 4: no preload on mount - the search only runs once queried.
+    // No preload on mount - the search only runs once queried.
     await userEventInstance.type(personField, 'al')
     await waitFor(() => expect(mockGetUserSummaries).toHaveBeenCalledWith('al'))
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
@@ -680,7 +680,7 @@ describe('AssetGrantsSection', () => {
       ...group,
       id: '22222222-3333-4444-8555-666666666666',
     })
-    // #1820: Die Eingabe per Kennung unterliegt derselben Durchsetzung wie die Suche - der Dienst
+    // Die Eingabe per Kennung unterliegt derselben Durchsetzung wie die Suche - der Dienst
     // antwortet auch dort mit nicht gefunden, wenn die Gruppe nicht freigegeben ist.
     setManager()
     mockUpsertAssetGrant.mockResolvedValueOnce({
@@ -788,7 +788,7 @@ describe('AssetGrantsSection', () => {
     expect(mockUpsertAssetGrant).not.toHaveBeenCalled()
   })
 
-  /** #2134: eine Gruppenfreigabe nennt die heutige Mitgliederzahl, kein Zuwachssignal. */
+  /** Eine Gruppenfreigabe nennt die heutige Mitgliederzahl, kein Zuwachssignal. */
   it('shows the current member count of a group grant', async () => {
     setManager()
     setGrants(library.id, [
@@ -815,7 +815,7 @@ describe('AssetGrantsSection', () => {
   })
 
   /**
-   * #1880, ADR-0036 Entscheidung 9: Wer der Gruppe hier ein Recht eingeräumt hat, sieht, an wen —
+   * ADR-0036 Entscheidung 9: Wer der Gruppe hier ein Recht eingeräumt hat, sieht, an wen —
    * und die Liste entsteht erst auf ausdrücklichen Wunsch, nicht beim Öffnen des Dialogs.
    */
   it('offers the member list of a granted group and loads it only on request', async () => {
@@ -855,7 +855,7 @@ describe('AssetGrantsSection', () => {
     )
   })
 
-  /** #2134: auch eine Gruppe unterhalb der Mindestgruppengröße zeigt ihre Zahl. */
+  /** Auch eine Gruppe unterhalb der Mindestgruppengröße zeigt ihre Zahl. */
   it('shows the figure of a small group too', async () => {
     setManager()
     setGrants(library.id, [
@@ -911,7 +911,7 @@ describe('AssetGrantsSection', () => {
   })
 
   /**
-   * ADR-0036, Entscheidung 2 (#1820): Der Kennungsweg zeigt weder Herkunft noch Symbol - deshalb
+   * ADR-0036, Entscheidung 2: Der Kennungsweg zeigt weder Herkunft noch Symbol - deshalb
    * loest er die Gruppe vor dem Erteilen auf und stellt dieselbe Zwischenfrage. Ohne das waere die
    * Zwischenfrage fuer externe Anbieter durch Eintippen der Kennung umgehbar.
    */

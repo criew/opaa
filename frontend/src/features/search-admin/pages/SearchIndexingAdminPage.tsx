@@ -203,7 +203,7 @@ interface ChunkNavigation {
 }
 
 /**
- * Eine Modellrolle als Block, nicht als Karte (#1608): Der Zustand steht im Punkt und im Wort, die
+ * Eine Modellrolle als Block, nicht als Karte: Der Zustand steht im Punkt und im Wort, die
  * beiden Angaben darunter in einer Schlüssel-Wert-Liste. Ein Fehler bleibt ein Alert - der ist
  * eine Meldung, kein ruhender Inhalt.
  */
@@ -785,7 +785,7 @@ function DiagnosisSection() {
 }
 
 /**
- * Suche und Indexierung der Systemverwaltung in drei Bereichen (#1616): „Überblick" beantwortet,
+ * Suche und Indexierung der Systemverwaltung in drei Bereichen: „Überblick" beantwortet,
  * ob die Suche läuft; „Indexstatus" zeigt den Bestand je Bibliothek und trägt die beiden
  * Chargenläufe; „Diagnose" beantwortet, warum ein Dokument in einer Antwort steht oder fehlt.
  *

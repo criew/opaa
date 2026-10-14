@@ -53,8 +53,8 @@ function isMockGrantActiveOwner(grant: { role: AssetRole; expiresAt?: string | n
 
 /**
  * Mirrors AssetGrantRepository#countOtherActiveOwnerGrants - how many *other* active OWNER grants
- * a library has besides the one being changed or removed, used by both the  code review's
- * nit-4 guards below (409 "last active OWNER" on downgrade and on revoke).
+ * a library has besides the one being changed or removed, used by both
+ * last-owner guards below (409 "last active OWNER" on downgrade and on revoke).
  */
 function countOtherActiveMockOwnerGrants(libraryId: string, excludingGrantId: string): number {
   return (mockLibraryGrants[libraryId] ?? []).filter(
@@ -124,7 +124,7 @@ export const assetHandlers = [
   }),
 
   // The "Zuordnungen" of an asset (VIEWER and above). The mock always answers the manager's view;
-  // hiddenCount stays 0 because no mock space is PRIVATE-without-membership (#1939).
+  // hiddenCount stays 0 because no mock space is PRIVATE-without-membership.
   http.get('/api/v1/assets/:assetType/:assetId/spaces', ({ params }) => {
     const assetId = String(params.assetId)
     if (!mockAssetOf(String(params.assetType), assetId)) {
@@ -195,8 +195,8 @@ export const assetHandlers = [
       const existingGrant = existing[existingIndex]
       // Mirrors AssetGrantService#requireCallerCanTouchExistingGrant (escalation guard, half 2):
       // the caller may never touch a grant that already carries a role higher than their own,
-      // independent of whether they could have granted that role in the first place ( code
-      // review, nit 4 - previously only the *requested* role above was capped).
+      // independent of whether they could have granted that role in the first place - capping
+      // only the *requested* role above would not suffice.
       const existingRoleIndex = ASSET_ROLE_ORDER.indexOf(existingGrant.role)
       if (existingRoleIndex > callerRoleIndex) {
         return HttpResponse.json(
@@ -266,7 +266,7 @@ export const assetHandlers = [
     }
     const grant = existing[idx]
     // Mirrors AssetGrantService#requireCallerCanTouchExistingGrant, the same escalation guard
-    // half 2 as the POST update path above ( code review, nit 4).
+    // half 2 as the POST update path above.
     const callerRoleIndex = ASSET_ROLE_ORDER.indexOf(library.myRole)
     const grantRoleIndex = ASSET_ROLE_ORDER.indexOf(grant.role)
     if (grantRoleIndex > callerRoleIndex) {
@@ -294,11 +294,11 @@ export const assetHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // #1820, ADR-0036 Entscheidung 9: Die Subjekt-Auswahl sucht serverseitig. Zwei Regeln bildet der
+  // ADR-0036 Entscheidung 9: Die Subjekt-Auswahl sucht serverseitig. Zwei Regeln bildet der
   // Mock nach, weil die Oberfläche auf ihnen aufbaut: unter zwei Zeichen antwortet nichts, und
   // eine geschützte Gruppe erscheint nur auf ihre vollständige Bezeichnung hin.
 
-  // #1822: die eigene Herleitung. Ohne userId geht es um die eigene Person.
+  // Die eigene Herleitung. Ohne userId geht es um die eigene Person.
   http.get('/api/v1/assets/:assetType/:assetId/access-derivation', ({ params }) => {
     const libraryId = String(params.assetId)
     const asset = mockAssetOf(String(params.assetType), libraryId)

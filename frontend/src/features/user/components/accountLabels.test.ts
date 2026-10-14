@@ -18,7 +18,7 @@ function providerAccount(overrides: Partial<AccountResponse> = {}): AccountRespo
 }
 
 /**
- * The state cell of an identity-provider account (#1818). The lock from the directory is a state
+ * The state cell of an identity-provider account. The lock from the directory is a state
  * OPAA itself holds and outranks both provider states: it is what stops this account right now,
  * whatever the provider row says.
  */

@@ -55,19 +55,19 @@ interface EvidenceDoc {
   cited: boolean
   /** The row's index in {@link CitationIndex.docs}; undefined for an uncited source. */
   docIndex?: number
-  /** #667: the Fundorte of this row's footnotes ("S. 2–4 · Abschn. Fristsetzung"). */
+  /** The Fundorte of this row's footnotes ("S. 2–4 · Abschn. Fristsetzung"). */
   locations: string[]
-  /** #386: false when the backend's deterministic check found at least one citation naming this
+  /** False when the backend's deterministic check found at least one citation naming this
    *  source that does not match the chunks actually retrieved for this answer. */
   citationValid: boolean
   relevanceScore?: number
-  /** #1102: this row's position in the backend's `sources` array - the order the retrieval pipeline
+  /** This row's position in the backend's `sources` array - the order the retrieval pipeline
    *  settled on, which the cited rows are sorted by and every row is numbered by.
    *  `Number.MAX_SAFE_INTEGER` when this message's source list does not contain the row's source. */
   sourceIndex: number
-  /** #1102: the rank shown in the row, derived from {@link sourceIndex} and never from
-   *  `relevanceScore` - a message persisted before #1102 still carries a raw path-dependent score
-   *  in its snapshot. Undefined for a synthetic entry (#386), which backs no retrieved passage and
+  /** The rank shown in the row, derived from {@link sourceIndex} and never from
+   *  `relevanceScore` - a legacy persisted message still carries a raw path-dependent score
+   *  in its snapshot. Undefined for a synthetic entry, which backs no retrieved passage and
    *  therefore holds no rank; such a row does not consume a rank either, so the numbering stays
    *  gap-free. */
   rank?: number
@@ -77,22 +77,22 @@ interface EvidenceDoc {
   /** The source came from one of the caller's private libraries. */
   privateSource: boolean
   sourceEntryUrl?: string | null
-  /** #739/#747: the original's document id - openable via GET /documents/{id}/content for every
-   *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side since #747). Undefined
-   *  for a synthetic entry (#386). */
+  /** The original's document id - openable via GET /documents/{id}/content for every
+   *  sourceType (that endpoint proxies HTTP_DIRECTORY/RSS_FEED server-side). Undefined
+   *  for a synthetic entry. */
   documentId?: string | null
   sourceType?: SourceTypeKey | null
-  /** #739/#747: the remote source URL for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
-   *  LibraryDocumentResponse.sourceUrl (#738) - shown as secondary information alongside the
-   *  documentId deep link above, not itself the primary way to open the original any more. */
+  /** The remote source URL for sourceType HTTP_DIRECTORY/RSS_FEED, mirroring
+   *  LibraryDocumentResponse.sourceUrl - shown as secondary information alongside the
+   *  documentId deep link above, not itself the primary way to open the original. */
   sourceUrl?: string | null
-  /** #1066: the schema metadata line, undefined when the document carries no value. */
+  /** The schema metadata line, undefined when the document carries no value. */
   metadataLine?: string
-  /** #1066: "Label: Wert, …" - the accessible name of {@link metadataLine}. */
+  /** "Label: Wert, …" - the accessible name of {@link metadataLine}. */
   metadataDescription?: string
-  /** #1242: the values only the detail view shows ("An: …"), undefined when there are none. */
+  /** The values only the detail view shows ("An: …"), undefined when there are none. */
   metadataDetails?: string
-  /** #1070: "ohne Angabe" for a hit the Leerwert rule kept under an active filter. */
+  /** "ohne Angabe" for a hit the Leerwert rule kept under an active filter. */
   filterMatchLabel?: string
 }
 
@@ -129,11 +129,11 @@ function freezeNotice(freeze: SourceFreeze): string {
 }
 
 /**
- * Mockup 1i's Belegfenster (#592): the side panel with every source of one answer - searchable,
+ * Mockup 1i's Belegfenster: the side panel with every source of one answer - searchable,
  * filterable to cited ones, cited documents first in citation-number order, then the checked but
- * uncited ones in the order the retrieval pipeline selected the chunks (#1102, #1238). The
- * per-passage verbatim quotes and locations the mockup shows wait on the backend's chunk metadata
- * (#667); until then each document row carries what the API can already vouch for.
+ * uncited ones in the order the retrieval pipeline selected the chunks. The
+ * per-passage verbatim quotes and locations the mockup shows wait on the backend's chunk metadata;
+ * until then each document row carries what the API can already vouch for.
  */
 export default function SourceEvidenceDrawer({
   open,
@@ -171,7 +171,7 @@ export default function SourceEvidenceDrawer({
     return () => cancelAnimationFrame(frame)
   }, [open, firstFocusedDocIndex, messageId])
 
-  // #739/#747: a document with a documentId opens through the Bearer-authenticated content
+  // A document with a documentId opens through the Bearer-authenticated content
   // endpoint (a plain <a href> cannot carry the token, ADR-0005), which proxies
   // HTTP_DIRECTORY/RSS_FEED server-side; a CONFLUENCE document opens at its own source URL
   // instead (useDocumentPreview, ADR-0023 - the endpoint deliberately has no original there).
@@ -237,11 +237,11 @@ export default function SourceEvidenceDrawer({
       metadataDetails: formatMetadataDetails(shown(source)),
       filterMatchLabel: metadataFilterMatchLabel(shown(source)),
     }))
-    // #1102: never order by relevanceScore - a persisted message's snapshot may still carry the
-    // pre-#1102 path-dependent raw score, and sorting by that would drop a lexical-only source to
+    // Never order by relevanceScore - a persisted message's snapshot may still carry a legacy
+    // path-dependent raw score, and sorting by that would drop a lexical-only source to
     // the bottom.
     //
-    // #1238: the cited rows stay in `cited`'s existing order (`citations.docs`), which is
+    // The cited rows stay in `cited`'s existing order (`citations.docs`), which is
     // ascending by citation number - a doc's row is created on its first marker, so the doc list
     // is already sorted by first-appearance number; a doc cited but never referenced in the text
     // (empty `numbers`) is appended afterwards in `sources` order, i.e. by pipeline position. Only
@@ -250,10 +250,10 @@ export default function SourceEvidenceDrawer({
     const byPipelineOrder = (a: EvidenceDoc, b: EvidenceDoc) => a.sourceIndex - b.sourceIndex
     const rows = [...cited, ...uncited]
     // The rank is the row's position in `sources`, never `1 / relevanceScore` and never its
-    // position in `rows`: the score in a message persisted before #1102 is still a raw,
+    // position in `rows`: the score in a legacy persisted message is still a raw,
     // path-dependent one that would label a lexical-only source "Rang 11", while `rows` groups the
     // cited rows before the uncited ones and would renumber as soon as an uncited source sits
-    // between two cited ones. A synthetic entry (#386) backs no retrieved passage, holds no rank
+    // between two cited ones. A synthetic entry backs no retrieved passage, holds no rank
     // and consumes none. Numbering happens before `visibleDocs` filters, so it stays stable under
     // search and "nur zitierte".
     const rankByDoc = new Map<EvidenceDoc, number>()
@@ -354,7 +354,7 @@ export default function SourceEvidenceDrawer({
             const focused = doc.docIndex !== undefined && focusedDocIndexes.includes(doc.docIndex)
             return (
               <Box
-                // #739: two distinct documents may share a file name and each get their own row,
+                // Two distinct documents may share a file name and each get their own row,
                 // so the file name alone is not a unique key.
                 key={doc.documentId ?? doc.fileName}
                 id={doc.docIndex !== undefined ? citationRowId(messageId, doc.docIndex) : undefined}
@@ -440,7 +440,7 @@ export default function SourceEvidenceDrawer({
                     </Box>
                   )}
                 </Box>
-                {/* #667: where in the document the cited passages sit. */}
+                {/* Where in the document the cited passages sit. */}
                 {doc.locations.length > 0 && (
                   <Typography
                     component="span"
@@ -450,7 +450,7 @@ export default function SourceEvidenceDrawer({
                     {doc.locations.join(' · ')}
                   </Typography>
                 )}
-                {/* #1066: the schema metadata line, rendered from the generic list without field
+                {/* The schema metadata line, rendered from the generic list without field
                   knowledge - only for a document that actually carries a value. */}
                 {doc.metadataLine && (
                   <Typography
@@ -462,7 +462,7 @@ export default function SourceEvidenceDrawer({
                     {doc.metadataLine}
                   </Typography>
                 )}
-                {/* #1242: values that belong into the detail view but not into the one-line Beleg -
+                {/* Values that belong into the detail view but not into the one-line Beleg -
                   a mail's recipient list identifies no passage and would crowd out what does. */}
                 {doc.metadataDetails && (
                   <Typography
@@ -473,7 +473,7 @@ export default function SourceEvidenceDrawer({
                     {doc.metadataDetails}
                   </Typography>
                 )}
-                {/* #1070: the Leerwert mark of a hit kept under an active filter. */}
+                {/* The Leerwert mark of a hit kept under an active filter. */}
                 {doc.filterMatchLabel && (
                   <Typography
                     component="span"
@@ -512,10 +512,10 @@ export default function SourceEvidenceDrawer({
                       .filter(Boolean)
                       .join(' · ')}
                   </Typography>
-                  {/* #747: every sourceType with a documentId opens via the content endpoint
-                    (LibraryDetailPage#handleOpenOriginal, #738); sourceEntryUrl/sourceUrl is
+                  {/* Every sourceType with a documentId opens via the content endpoint
+                    (LibraryDetailPage#handleOpenOriginal); sourceEntryUrl/sourceUrl is
                     shown alongside it as secondary information (a small "Quelle" link carrying
-                    the raw URL as its title tooltip and aria-label - #748 review, nit 5: a plain
+                    the raw URL as its title tooltip and aria-label - a plain
                     title alone is generally not announced by a screen reader once the element
                     already has visible text), since that address may only be reachable from
                     OPAA's own network, not the caller's browser. */}

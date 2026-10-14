@@ -24,7 +24,7 @@ const tabs: Array<{ value: MailSettingsTab; label: string }> = [
 ]
 
 /**
- * Die E-Mail-Einstellungen der Systemverwaltung (#1542, ADR-0033 Entscheidung 10): SMTP-Zugang
+ * Die E-Mail-Einstellungen der Systemverwaltung (ADR-0033 Entscheidung 10): SMTP-Zugang
  * samt Statusanzeige und Testversand, und der Wortlaut der zwölf Nachrichten.
  *
  * Die beiden Bereiche sind eigene Routen (`/admin/mail/server`, `/admin/mail/templates`) und

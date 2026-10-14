@@ -36,7 +36,7 @@ function pageOf(
   }
 }
 
-// #822 review, finding 2: mirrors documentStore.test.ts's own notFoundError - normalizeError
+// Mirrors documentStore.test.ts's own notFoundError - normalizeError
 // (shared/api/api.ts) attaches the original AxiosError as `cause`, and only an actual 404 status may
 // trigger the "unknown folder" root fallback, not merely an Error whose message happens to read
 // "nicht gefunden".
@@ -233,7 +233,7 @@ vi.mock('../api/libraryMetadataApi', async () => {
   }
 })
 
-// #738/#780: the "Original öffnen" action delegates to this shared module (see its own tests for
+// The "Original öffnen" action delegates to this shared module (see its own tests for
 // the blob-fetch/preview/download behaviour) - mocked here so this file only has to verify which
 // target LibraryDetailPage picks per document, and which UI reacts to a text-preview/download
 // result, not how opening/downloading itself works.
@@ -336,7 +336,7 @@ describe('LibraryDetailPage', () => {
     useIndexingStore.getState().stopPolling('library-mine')
   })
 
-  // #1939: Reiterleiste und Kopf - welche Bereiche eine Rolle sieht, und wo Bearbeiten und
+  // Reiterleiste und Kopf - welche Bereiche eine Rolle sieht, und wo Bearbeiten und
   // Löschen stehen.
   describe('Kopf und Reiterrahmen (#1939)', () => {
     async function tabNames(): Promise<string[]> {
@@ -393,7 +393,7 @@ describe('LibraryDetailPage', () => {
       expect(
         await screen.findByRole('heading', { name: /warum sehe ich diese bibliothek/i }),
       ).toBeInTheDocument()
-      // #2208: Die Zuordnungen haben einen eigenen Reiter.
+      // Die Zuordnungen haben einen eigenen Reiter.
       expect(screen.queryByRole('heading', { name: 'Zuordnungen' })).not.toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /rechte verwalten/i })).not.toBeInTheDocument()
     })
@@ -525,7 +525,7 @@ describe('LibraryDetailPage', () => {
 
     expect(await screen.findByText(/87 Dokumente/i)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /name und beschreibung/i })).not.toBeInTheDocument()
-    // #2208: „⋯" trägt für jede lesende Rolle „In Space verwenden", das Löschen aber nicht.
+    // „⋯" trägt für jede lesende Rolle „In Space verwenden", das Löschen aber nicht.
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: /weitere aktionen/i }))
     const menu = await screen.findByRole('menu')
@@ -537,7 +537,7 @@ describe('LibraryDetailPage', () => {
   })
 
   it('shows storage quota usage for a MANAGER but not for a VIEWER whose response omits it', async () => {
-    // #119: storageQuotaBytes/storageUsedBytes are only ever sent to a caller with at least
+    // storageQuotaBytes/storageUsedBytes are only ever sent to a caller with at least
     // MANAGER (see KnowledgeLibraryService#toLibraryResponse) - the frontend simply renders
     // whatever the backend response carries, so a VIEWER's details object having neither field is
     // enough to hide the line.
@@ -573,7 +573,7 @@ describe('LibraryDetailPage', () => {
     expect(within(menu).queryByRole('menuitem', { name: 'Löschen' })).not.toBeInTheDocument()
   })
 
-  // #1941: Die Berechtigungen stehen als Liste auf der Seite statt hinter „Rechte verwalten";
+  // Die Berechtigungen stehen als Liste auf der Seite statt hinter „Rechte verwalten";
   // eine lesende Rolle sieht den Abschnitt gar nicht, wohl aber den Eigentümer.
   it('lists the grants for a MANAGER and hides the whole section from a VIEWER', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
@@ -612,8 +612,7 @@ describe('LibraryDetailPage', () => {
   })
 
   // Two clear+type sequences genuinely take longer than the default 5s under full-suite CPU
-  // contention (this mirrors the equivalent, previously passing test in the pre-#481
-  // LibraryManagementPage.test.tsx).
+  // contention.
   it('saves changed name and description without touching the reach', async () => {
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -654,7 +653,7 @@ describe('LibraryDetailPage', () => {
   })
 
   it('warns that a connector library delete also removes its indexed documents', async () => {
-    // #479, ADR-0018 Entscheidung 5: deleting a connector library takes its bestand with it.
+    // ADR-0018 Entscheidung 5: deleting a connector library takes its bestand with it.
     const ownerLibrary = { ...managerLibrary, myRole: 'OWNER' as const }
     setLibraryState(
       ownerLibrary,
@@ -677,7 +676,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // #1257: the Diagnosesperre state and its control - visible to everyone who can read the
+  // The Diagnosesperre state and its control - visible to everyone who can read the
   // library, but only the "Sperre lösen"/"Sperre setzen" button is scoped to an OWNER.
   describe('Diagnosesperre (#1257)', () => {
     it('shows the locked state and an explanation, without a control, for a MANAGER', async () => {
@@ -694,7 +693,7 @@ describe('LibraryDetailPage', () => {
       ).not.toBeInTheDocument()
     })
 
-    // #1278 review: a system admin's myRole bypasses to OWNER unconditionally
+    // A system admin's myRole bypasses to OWNER unconditionally
     // (LibraryResponse#myRole) even without any grant on the library - the toggle must key off
     // the dedicated diagnosticsLockToggleable field instead, or this admin would see a button that
     // is guaranteed to fail its PUT with 403.
@@ -721,7 +720,7 @@ describe('LibraryDetailPage', () => {
         ownerLibrary,
         detailsOf(ownerLibrary, { diagnosticsLocked: true, diagnosticsLockToggleable: true }),
       )
-      // #1257: the default handler in mocks/handlers.ts answers off mockLibraryDetails
+      // The default handler in mocks/handlers.ts answers off mockLibraryDetails
       // (fixtures.ts), which this file's own library-team/-readonly/-mine fixtures never
       // populate - overridden here the same way the indexing/runs tests below already do for
       // the same reason.
@@ -829,7 +828,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // #797: the share cap control - visible only to a system administrator on a connector
+  // The share cap control - visible only to a system administrator on a connector
   // library, never to the library's own owner/manager, who only sees its consequence (the 409
   // below).
   describe('Freigabe-Obergrenze (#797)', () => {
@@ -878,9 +877,8 @@ describe('LibraryDetailPage', () => {
           allAccountsGrantAllowed: true,
         }),
       )
-      // #1870 review, "hält eine Bedingung, die vor wie nach dem Speichern gilt": the button is
-      // disabled whether or not a PUT ever went out, so the request itself is captured and
-      // asserted on, not just the button state afterwards.
+      // The button is disabled whether or not a PUT ever went out, so the request itself is
+      // captured and asserted on, not just the button state afterwards.
       let putRequestBody: { allAccountsGrantAllowed: boolean } | null = null
       server.use(
         http.put('/api/v1/libraries/:libraryId/share-cap', async ({ params, request }) => {
@@ -937,7 +935,7 @@ describe('LibraryDetailPage', () => {
   })
 
   it('shows the errorMessage of a FAILED document as a tooltip on its status chip', async () => {
-    // #434/#589 review, item 6: a FAILED row's asynchronous processing failure is only visible to
+    // A FAILED row's asynchronous processing failure is only visible to
     // the user via this German errorMessage - the status chip text alone only says something went
     // wrong ("fehlgeschlagen"), not what.
     mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -970,10 +968,9 @@ describe('LibraryDetailPage', () => {
   })
 
   it('uploads a file and shows it in the list afterwards', async () => {
-    // #506 review, finding 5: durchstich test for upload on the new page, mirroring the
-    // equivalent test in the deleted DocumentsPage.test.tsx.
-    // #517 code review, finding 2: uploadNewDocument no longer prepends the response locally - it
-    // reloads the current page from the server, hence the second mockGetLibraryDocuments answer.
+    // Durchstich test for upload on the page. uploadNewDocument does not prepend the response
+    // locally - it reloads the current page from the server, hence the second
+    // mockGetLibraryDocuments answer.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     mockGetLibraryDocuments.mockResolvedValueOnce(pageOf([]))
     mockUploadDocument.mockResolvedValueOnce({
@@ -1010,13 +1007,13 @@ describe('LibraryDetailPage', () => {
     await user.upload(input, file)
 
     expect(await screen.findByText('neues-dokument.pdf')).toBeInTheDocument()
-    // #823: uploadDocument's request-layer signature grew a trailing folderPath - undefined here,
+    // uploadDocument's request-layer signature grew a trailing folderPath - undefined here,
     // a plain file-picker selection has no directory structure of its own.
     expect(mockUploadDocument).toHaveBeenCalledWith('library-team', file, null, undefined)
   })
 
   it('deletes a document after confirmation and removes it from the list', async () => {
-    // #506 review, finding 5: durchstich test for deletion with the confirmation dialog on the
+    // Durchstich test for deletion with the confirmation dialog on the
     // new page, mirroring the equivalent test in the deleted DocumentsPage.test.tsx.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -1084,8 +1081,8 @@ describe('LibraryDetailPage', () => {
     ).toBeInTheDocument()
     unmount()
 
-    // #1939: a VIEWER has the "Quelle" area too, but it holds no source configuration - #507
-    // unchanged, the path never reaches the client.
+    // A VIEWER has the "Quelle" area too, but it holds no source configuration - the path never
+    // reaches the client.
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, { sourceType: 'FILESYSTEM', sourcePath: '/data/dokumente' }),
@@ -1164,7 +1161,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/gilt für alle Leseberechtigten der Bibliothek/)).toBeInTheDocument()
     // the edition is never an input here
     expect(screen.queryByRole('button', { name: 'Edition erkennen' })).not.toBeInTheDocument()
-    // #1138: the sharing consequence is stated permanently, above the fold
+    // The sharing consequence is stated permanently, above the fold
     expect(screen.getByTestId('confluence-sharing-consequence')).toHaveTextContent(
       /für alle Leseberechtigten dieser Bibliothek sichtbar/,
     )
@@ -1372,7 +1369,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByRole('button', { name: 'Geheimnis neu erzeugen' })).toBeInTheDocument()
     unmount()
 
-    // a VIEWER sees edition and spaces (#1138), but no webhook affordance
+    // a VIEWER sees edition and spaces, but no webhook affordance
     setLibraryState(
       viewerLibrary,
       detailsOf(viewerLibrary, {
@@ -1499,7 +1496,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByTestId('confluence-incomplete-listing-warning')).not.toBeInTheDocument()
   })
 
-  // #507: the backend now only serves sourcePath/sourceUrl/
+  // The backend now only serves sourcePath/sourceUrl/
   // sourceCredentialsSet to a caller with at least MANAGER - a VIEWER's library object simply
   // carries none of them. This test still passes sourcePath explicitly in the VIEWER case to
   // prove the frontend itself withholds the display rather than merely reflecting an already
@@ -1513,8 +1510,8 @@ describe('LibraryDetailPage', () => {
     expect(await screen.findByText('/data/dokumente')).toBeInTheDocument()
     unmount()
 
-    // #1939: Der Reiter „Quelle" steht auch einem Leser offen, die Quellkonfiguration nicht -
-    // #507 unverändert: Das Backend liefert den Pfad nie an einen VIEWER, und die Seite zeigt
+    // Der Reiter „Quelle" steht auch einem Leser offen, die Quellkonfiguration nicht:
+    // Das Backend liefert den Pfad nie an einen VIEWER, und die Seite zeigt
     // auch keinen Platzhalter für Daten, die nie gesendet wurden.
     setLibraryState(
       viewerLibrary,
@@ -1787,7 +1784,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // #513: the run history section shows past runs' header data up front and reveals each run's
+  // The run history section shows past runs' header data up front and reveals each run's
   // own protocol (category/message/reference per skipped or rejected item) only after expanding
   // it - collapsed by default, so a library with a long history does not dump every event onto
   // the page at once.
@@ -1848,7 +1845,7 @@ describe('LibraryDetailPage', () => {
     ).toBeVisible()
   })
 
-  // ADR-0023, Entscheidung 4 (#1136): a Confluence library's runs name their Betriebsart; for
+  // ADR-0023, Entscheidung 4: a Confluence library's runs name their Betriebsart; for
   // every other type the mode is implied by the source type and no chip is shown.
   it("names the run mode on a Confluence library's runs and only there", async () => {
     const run = {
@@ -1893,7 +1890,7 @@ describe('LibraryDetailPage', () => {
     )
     const { unmount } = renderWithProviders(<LibraryDetailPage />, { withRouter: true })
     expect(await screen.findByTestId('run-mode-run-voll')).toHaveTextContent('Vollabgleich')
-    // #1138: a run that could not read something says so in its header, not only when expanded
+    // A run that could not read something says so in its header, not only when expanded
     expect(screen.getByText('2 Ereignisse, davon 1 nicht lesbar')).toBeInTheDocument()
     const user = userEvent.setup()
     // expanding the run through its own header (the mode chip sits inside the accordion summary)
@@ -1954,7 +1951,7 @@ describe('LibraryDetailPage', () => {
   })
 
   it('shows the feed-entries-plus-document-total wording for a completed RSS_FEED run', async () => {
-    // #518 review, finding 1: the wording is decided by sourceType (RSS_FEED here), not by
+    // The wording is decided by sourceType (RSS_FEED here), not by
     // comparing documentCount/documentsIndexedTotal - both are deliberately equal below to prove
     // the switch does not derive from that comparison.
     setLibraryState(
@@ -1984,7 +1981,7 @@ describe('LibraryDetailPage', () => {
   })
 
   it('clears a stale upload error from a previously viewed library after switching', async () => {
-    // #506 review, finding 2: uploadErrors/deleteError/error in documentStore are not keyed by
+    // uploadErrors/deleteError/error in documentStore are not keyed by
     // library - without a reset on mount/switch, an error from library A would keep showing on
     // library B's section.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
@@ -2008,7 +2005,7 @@ describe('LibraryDetailPage', () => {
   })
 
   it('shows the library store error alongside the loaded library when reloading its details fails', async () => {
-    // #506 review, finding 3: without this, a failed GET /libraries/{id} while the list entry is
+    // Without this, a failed GET /libraries/{id} while the list entry is
     // already cached silently drops both typed sections with no explanation.
     setLibraryState(managerLibrary, detailsOf(managerLibrary))
     useLibraryStore.setState((state) => ({
@@ -2025,9 +2022,9 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(managerLibrary.name)).toBeInTheDocument()
   })
 
-  // #604 review, finding 1: the backend gates GET .../indexing/runs at MANAGER (canManage) since
+  // The backend gates GET .../indexing/runs at MANAGER (canManage) since
   // its events routinely carry the library's own sourcePath/sourceUrl - the same internal-path
-  // leak #507 exists to close for the source configuration display. The frontend must not even
+  // leak the source configuration display keeps from a VIEWER. The frontend must not even
   // fire that request for a VIEWER, let alone render a section only an error would otherwise fill.
   it('hides the run history section entirely for a VIEWER on a connector library', async () => {
     setLibraryState(
@@ -2051,8 +2048,8 @@ describe('LibraryDetailPage', () => {
     expect(screen.queryByRole('button', { name: /jetzt indizieren/i })).not.toBeInTheDocument()
   })
 
-  // #517 code review, nit 4: a VIEWER on a connector library must see both hints - "nur
-  // Leserechte" was previously scoped to isUploadLibrary and silently dropped for this case.
+  // A VIEWER on a connector library must see both hints - "nur Leserechte" is not limited to
+  // upload libraries.
   it('shows the read-only hint for a VIEWER on a connector library, alongside the connector hint', async () => {
     setLibraryState(
       viewerLibrary,
@@ -2060,7 +2057,7 @@ describe('LibraryDetailPage', () => {
     )
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
-    // #1939: genau ein Hinweis auf die eigene Rolle, im Seitenkopf - der Dokumentenbereich
+    // Genau ein Hinweis auf die eigene Rolle, im Seitenkopf - der Dokumentenbereich
     // trägt keinen zweiten mehr.
     expect(
       await screen.findByText('Sie haben in dieser Bibliothek nur Leserechte.'),
@@ -2068,8 +2065,8 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
   })
 
-  // #517: the document list previously only rendered for UPLOAD libraries - a connector library's
-  // indexed bestand was invisible even though the API always served it.
+  // The document list renders for connector libraries too - their indexed bestand is served by
+  // the API like any other.
   it('shows the document list for a FILESYSTEM library, without upload or delete controls', async () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(
       pageOf([
@@ -2103,7 +2100,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.getByText(/lassen sich hier nicht löschen/i)).toBeInTheDocument()
   })
 
-  // #493: eine RSS-Anlage (#468) trägt ihren Herkunfts-Eintrag über sourceEntryUrl - die
+  // Eine RSS-Anlage trägt ihren Herkunfts-Eintrag über sourceEntryUrl - die
   // Detailseite muss ihn sichtbar machen, statt ihn nur zu speichern.
   it('shows the source entry URL for an RSS attachment, but not for a document without one', async () => {
     mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -2140,7 +2137,7 @@ describe('LibraryDetailPage', () => {
       { ...managerLibrary, myRole: 'OWNER' },
       detailsOf(
         { ...managerLibrary, myRole: 'OWNER' },
-        // #493 review, finding 3: an RSS attachment (sourceType RSS_FEED, sourceEntryUrl set)
+        // An RSS attachment (sourceType RSS_FEED, sourceEntryUrl set)
         // can only exist in an RSS_FEED library - a FILESYSTEM library here would be an
         // impossible state the backend never produces.
         { sourceType: 'RSS_FEED', sourceUrl: 'https://example.gov/feed.xml' },
@@ -2159,7 +2156,7 @@ describe('LibraryDetailPage', () => {
     expect(screen.getAllByText(/herkunft:/i)).toHaveLength(1)
   })
 
-  // #1184 (ADR-0022, Entscheidung 5): attachments carry parentDocumentId and follow their
+  // ADR-0022, Entscheidung 5: attachments carry parentDocumentId and follow their
   // top-level parent in the server's items order - the list groups them collapsibly under it.
   describe('attachment grouping (#1184)', () => {
     function docOf(
@@ -2224,7 +2221,7 @@ describe('LibraryDetailPage', () => {
       renderWithProviders(<LibraryDetailPage />, { withRouter: true })
       const user = userEvent.setup()
 
-      // The backend answers an attachment hit with the parent plus its whole group (#1184).
+      // The backend answers an attachment hit with the parent plus its whole group.
       mockGetLibraryDocuments.mockResolvedValue(
         pageOf([mail, attachment1, attachment2], { totalElements: 1 }),
       )
@@ -2283,10 +2280,10 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // #738: local sourceTypes fetch the file as a Blob and open/download it client-side, since the
+  // Local sourceTypes fetch the file as a Blob and open/download it client-side, since the
   // download endpoint is Bearer-authenticated - see utils/documentContent.test.ts for that piece's
   // own behaviour, mocked here (see the vi.mock above) to isolate which target this page picks.
-  // #1068: metadata view per document and the Sammelzuweisung on the selection.
+  // Metadata view per document and the Sammelzuweisung on the selection.
   describe('Metadaten', () => {
     const indexedDocuments: LibraryDocumentResponse[] = [
       {
@@ -2382,7 +2379,7 @@ describe('LibraryDetailPage', () => {
       expect(within(toolbar).getByText('0 ausgewählt')).toBeInTheDocument()
     })
 
-    // #1069: working the anchor's list document by document is the normal case - the counted
+    // Working the anchor's list document by document is the normal case - the counted
     // number and the listed rows must not drift apart while doing it.
     it('reloads anchor and worklist after a single correction inside the worklist', async () => {
       mockGetLibraryDocuments.mockResolvedValue(pageOf(indexedDocuments))
@@ -2611,7 +2608,7 @@ describe('LibraryDetailPage', () => {
     })
 
     it('fetches and opens the file as a Blob for an HTTP_DIRECTORY document too (#747)', async () => {
-      // #747: the content endpoint now proxies HTTP_DIRECTORY/RSS_FEED server-side from their own
+      // The content endpoint now proxies HTTP_DIRECTORY/RSS_FEED server-side from their own
       // stored source URL instead of the client navigating there directly - the Demo-Instanz's
       // corpus containers are only reachable from OPAA's own Docker network, never the browser.
       mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -2644,8 +2641,8 @@ describe('LibraryDetailPage', () => {
 
       expect(mockOpenDocumentContent).toHaveBeenCalledWith('doc-1', 'dienstanweisung.pdf')
 
-      // #747: the source URL stays visible as secondary information (a "Quelle:" link) even
-      // though "Original öffnen" no longer navigates there directly.
+      // The source URL stays visible as secondary information (a "Quelle:" link) even
+      // though "Original öffnen" does not navigate there directly.
       const sourceLink = screen.getByRole('link', {
         name: 'https://example.gov/verzeichnis/dienstanweisung.pdf',
       })
@@ -2690,9 +2687,9 @@ describe('LibraryDetailPage', () => {
     })
 
     it('still offers the action for a remote document with no other source information', async () => {
-      // #747: every sourceType opens through the content endpoint now - a document that turns out
+      // Every sourceType opens through the content endpoint - a document that turns out
       // unreachable answers a German 404 shown via openOriginalError, not a reason to hide the
-      // button up front the way the pre-#747 sourceUrl-based gating did.
+      // button up front.
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
           {
@@ -2750,7 +2747,7 @@ describe('LibraryDetailPage', () => {
       ).toBeInTheDocument()
     })
 
-    // #780: Markdown/plain text render in a client-side dialog instead of a silent download.
+    // Markdown/plain text render in a client-side dialog instead of a silent download.
     it('opens a Markdown text preview dialog instead of a silent download (#780)', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(
         pageOf([
@@ -2783,7 +2780,7 @@ describe('LibraryDetailPage', () => {
       await user.click(button)
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument()
-      // #1016: heading elements are normalised per rendered content (rank compression from h2);
+      // Heading elements are normalised per rendered content (rank compression from h2);
       // the h5 LOOK of "#" survives as the Typography variant.
       const heading1016 = screen.getByText('Personalausweis').closest('h2')
       expect(heading1016).toBeInTheDocument()
@@ -2791,7 +2788,7 @@ describe('LibraryDetailPage', () => {
       expect(screen.getByText(/Ausgestellt am 1\. März\./)).toBeInTheDocument()
     })
 
-    // #780 acceptance criteria: every format without a preview (DOCX among them) must give visible
+    // Every format without a preview (DOCX among them) must give visible
     // download feedback so the click never appears to do nothing.
     it('shows a snackbar with the file name when a DOCX download starts (#780)', async () => {
       mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -2873,12 +2870,12 @@ describe('LibraryDetailPage', () => {
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
 
     await screen.findByText('a.pdf')
-    // #784: the deDE MUI locale translates Pagination's default item aria-labels.
+    // The deDE MUI locale translates Pagination's default item aria-labels.
     expect(screen.getByRole('button', { name: 'Gehe zu Seite 2' })).toBeInTheDocument()
   })
 
-  // #822 (Epic #520 Phase 3): folder navigation/management UI - Backend-Fundament (#820/#821) is
-  // already covered elsewhere; these tests only exercise the frontend wiring.
+  // Folder navigation/management UI - the backend is covered elsewhere; these tests only exercise
+  // the frontend wiring.
   describe('folder navigation and management (#822)', () => {
     it('shows folder rows above documents and navigates into one via the breadcrumb', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
@@ -2893,7 +2890,7 @@ describe('LibraryDetailPage', () => {
       const folderRow = await screen.findByRole('button', {
         name: /ordner protokolle öffnen/i,
       })
-      // Scoped to the folder row: the Pflege-Anker (#1069) above can carry the same wording.
+      // Scoped to the folder row: the Pflege-Anker above can carry the same wording.
       expect(within(folderRow).getByText(/3 dokumente/i)).toBeInTheDocument()
 
       mockGetLibraryDocuments.mockResolvedValueOnce(
@@ -3061,7 +3058,7 @@ describe('LibraryDetailPage', () => {
     it('deletes a folder after a confirmation naming its live (re-fetched) document count', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
       mockGetLibraryDocuments.mockResolvedValueOnce(
-        // #822 review, finding 4: the row's own count (5, from the last-loaded list) is
+        // The row's own count (5, from the last-loaded list) is
         // deliberately stale here - GET .../folders/{id} below answers with a different number
         // (7) that the caller cannot know without a live re-fetch, proving the confirmation names
         // that fresh count rather than reusing whatever the list happened to show.
@@ -3196,7 +3193,7 @@ describe('LibraryDetailPage', () => {
       )
     })
 
-    // #823: "Ordner hochladen" - the webkitdirectory file input, whose selected files carry the
+    // "Ordner hochladen" - the webkitdirectory file input, whose selected files carry the
     // full relative path within the selected directory as File.webkitRelativePath.
     it('uploads a folder selected via the "Ordner hochladen" input with its relative path', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
@@ -3236,7 +3233,7 @@ describe('LibraryDetailPage', () => {
       })
     })
 
-    // #823: a whole folder dragged and dropped - DataTransferItem.webkitGetAsEntry() must be
+    // A whole folder dragged and dropped - DataTransferItem.webkitGetAsEntry() must be
     // resolved recursively (see utils/directoryEntries.test.ts for the recursive resolution logic
     // itself); this exercises only the wiring between the drop handler and uploadNewDocument.
     it("uploads a dragged-and-dropped folder tree with each file's own relative path", async () => {
@@ -3294,7 +3291,7 @@ describe('LibraryDetailPage', () => {
       })
     })
 
-    // #823 review, Befund 2: a real OS folder routinely carries files nobody dragged there on
+    // A real OS folder routinely carries files nobody dragged there on
     // purpose - an unsupported format must be filtered client-side before ever reaching the
     // backend, and reported as one collective summary instead of a per-file error.
     it('filters an unsupported format out of a dropped folder and reports one summary message', async () => {
@@ -3371,7 +3368,7 @@ describe('LibraryDetailPage', () => {
       ).toBeInTheDocument()
     })
 
-    // #823 review, Befund 2: Thumbs.db/.DS_Store/desktop.ini are dropped silently, without being
+    // Thumbs.db/.DS_Store/desktop.ini are dropped silently, without being
     // named in (or even counted towards) the skipped-files summary.
     it('drops Thumbs.db silently from a dropped folder without a summary message', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
@@ -3439,7 +3436,7 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByText(/übersprungen/i)).not.toBeInTheDocument()
     })
 
-    // #823 review, Befund 3: an unreadable file inside a dropped folder must not abort the whole
+    // An unreadable file inside a dropped folder must not abort the whole
     // drop - the rest of the folder still uploads, and the failure is reported collectively.
     it('reports an unreadable file inside a dropped folder without blocking the rest', async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
@@ -3550,7 +3547,7 @@ describe('LibraryDetailPage', () => {
       expect(screen.getByLabelText(/dokumente durchsuchen/i)).toHaveValue('')
     })
 
-    // #822 review, finding 1: navigateToFolder only reacted to a change of the URL's own folder
+    // navigateToFolder only reacted to a change of the URL's own folder
     // param - a search hit's folderPath link pointing at the folder already open left the URL (and
     // therefore the load effect) untouched, so the stale bibliotheksweit search results kept
     // showing despite the now-empty search field.
@@ -3612,7 +3609,7 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByText('protokoll-2026-01.pdf')).not.toBeInTheDocument()
     })
 
-    // #822 review, finding 3: cancelling a dialog that just showed a 409 conflict left
+    // Cancelling a dialog that just showed a 409 conflict left
     // documentStore.folderError set - the page-level Alert (hidden while a folder dialog is open)
     // would then flash that same message once the dialog was gone.
     it('clears the page-level folderError alert when a dialog with a 409 is cancelled', async () => {
@@ -3635,7 +3632,7 @@ describe('LibraryDetailPage', () => {
       expect(screen.queryByText(/existiert bereits auf dieser ebene/i)).not.toBeInTheDocument()
     })
 
-    // #822 review, finding 6a: folders/breadcrumb are not paged - the backend returns the same
+    // Folders/breadcrumb are not paged - the backend returns the same
     // full set of direct subfolders on every page of a folder-scoped GET .../documents response,
     // so rendering them again on page 2+ would just repeat the same rows pointlessly.
     it('hides folder rows on pages beyond the first', async () => {
@@ -3671,10 +3668,9 @@ describe('LibraryDetailPage', () => {
       ).not.toBeInTheDocument()
     })
 
-    // #822 review, finding 6c: handleCreateFolder used to derive the new folder's parent from
-    // documentStore's pageStateByLibrary, which a deep link's own first load has not necessarily
-    // populated yet - clicking "Neuer Ordner" in that window created the folder at the library's
-    // root instead of the folder actually named in the URL.
+    // documentStore's pageStateByLibrary is not necessarily populated before a deep link's first
+    // load resolves - "Neuer Ordner" in that window must still create the folder in the folder
+    // named in the URL, not at the library's root.
     it("derives the new folder's parent from the URL, even before the deep-linked folder's first load resolves", async () => {
       setLibraryState(personalLibrary, detailsOf(personalLibrary))
       let resolveInitialLoad!: (value: LibraryDocumentPageResponse) => void
@@ -3727,7 +3723,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // #1069 (metadata-schema.md, "Der Pflege-Anker")
+  // metadata-schema.md, "Der Pflege-Anker"
   it('shows the Pflege-Anker per field and opens exactly those documents from it', async () => {
     setLibraryState(personalLibrary, detailsOf(personalLibrary))
     renderWithProviders(<LibraryDetailPage />, { withRouter: true })
@@ -3756,7 +3752,7 @@ describe('LibraryDetailPage', () => {
     ).toBeInTheDocument()
   })
 
-  // #1940: der Reiter „Quelle" in vier Abschnitten - Umfang für jeden Leser, Anbindung, Zeitplan
+  // Der Reiter „Quelle" in vier Abschnitten - Umfang für jeden Leser, Anbindung, Zeitplan
   // und Läufe für Verwaltende.
   describe('Reiter Quelle (#1940)', () => {
     const connectorLibrary: LibraryListResponse = {
@@ -3831,7 +3827,7 @@ describe('LibraryDetailPage', () => {
 
       await waitFor(() =>
         // The credentials field stays blank, which is what makes the backend fall back to the
-        // stored ones; libraryId is what lets it (#1856).
+        // stored ones; libraryId is what lets it.
         expect(mockTestLibrarySource).toHaveBeenCalledWith(
           expect.objectContaining({
             sourceType: 'HTTP_DIRECTORY',
@@ -3849,7 +3845,7 @@ describe('LibraryDetailPage', () => {
     })
   })
 
-  // #1943: Sammelaktionen der Auswahl - „Feld setzen" überall, „Löschen" nur wo eine Einzelzeile
+  // Sammelaktionen der Auswahl - „Feld setzen" überall, „Löschen" nur wo eine Einzelzeile
   // es auch anbietet.
   describe('Sammelloeschen (#1943)', () => {
     const uploads: LibraryDocumentResponse[] = [

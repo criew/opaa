@@ -93,7 +93,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
   const deleteChatFromList = useChatListStore((s) => s.deleteChatFromList)
   const setChatPinned = useChatListStore((s) => s.setChatPinned)
   const setChatArchived = useChatListStore((s) => s.setChatArchived)
-  // #543/#613 review, nit c: an archived space accepts no new chats - the "Neuer Chat" button is
+  // An archived space accepts no new chats - the "Neuer Chat" button is
   // disabled rather than hidden, so it stays a stable click target and the reason is explained via
   // its tooltip instead of the button silently vanishing.
   const isArchived = useSpaceStore((s) => s.spaces.find((space) => space.id === spaceId)?.archived)
@@ -202,7 +202,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
 
   // Routes through the not-yet-persisted "new" chat state instead of eagerly creating a chat here
   // - the first sent message is the only place a chat gets created (chatStore#sendMessage), so a
-  // chat that's never actually used never gets persisted either (#548 review, nit a).
+  // chat that's never actually used never gets persisted either.
   function handleNewChat() {
     navigate(`/spaces/${spaceId}/chats/new`)
   }
@@ -302,7 +302,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
         key={chat.id}
         disablePadding
         // Mockup 1a keeps chat rows quiet - the actions only surface on hover or
-        // keyboard focus (#658). They stay in the tab order either way.
+        // keyboard focus. They stay in the tab order either way.
         sx={{
           '& .MuiListItemSecondaryAction-root': {
             opacity: menuAnchor?.chatId === chat.id ? 1 : 0,
@@ -314,7 +314,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
         secondaryAction={
           !isRenaming && (
             // Mockup 1a: one quiet three-dot trigger per row, the actions live in a
-            // light dropdown (#658 Nachbesserung).
+            // light dropdown.
             <IconButton
               size="small"
               ref={(el) => {
@@ -344,7 +344,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
           {isRenaming ? (
             <TextField
               // The field appears only after the user chose "Umbenennen"; moving focus into it is
-              // the expected inline-edit behaviour. Re-verified in the closing audit, see #598.
+              // the expected inline-edit behaviour.
               // eslint-disable-next-line jsx-a11y-x/no-autofocus
               autoFocus
               size="small"
@@ -469,7 +469,7 @@ export default function ChatList({ spaceId, header }: ChatListProps) {
 
   return (
     <Box>
-      {/* Mockup 1a: section head and the actions share one baseline row (#658). */}
+      {/* Mockup 1a: section head and the actions share one baseline row. */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 0.5 }}>
         {header ?? <span />}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>

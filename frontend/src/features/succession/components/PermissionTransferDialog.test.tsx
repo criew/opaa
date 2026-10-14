@@ -23,7 +23,7 @@ function renderDialog() {
 }
 
 /**
- * Die Zielgruppe kommt aus der gemeinsamen Gruppensuche (#1820): serverseitig, ab zwei Zeichen und
+ * Die Zielgruppe kommt aus der gemeinsamen Gruppensuche: serverseitig, ab zwei Zeichen und
  * hinter einer Entprellung von 300 ms.
  */
 async function chooseTarget(user: ReturnType<typeof userEvent.setup>) {

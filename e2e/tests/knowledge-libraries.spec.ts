@@ -20,9 +20,9 @@ import type { Page } from '@playwright/test'
 // Deterministic, tiny, and part of the repo (see AGENTS.md "Reproduktionsnachweis" context on
 // preferring committed fixtures over ad-hoc generated data) - not one of
 // backend/src/test/resources/test-documents/, which is Java test scope, not reachable from this
-// suite's own npm project. Since #233, this suite's own frozen upload fixtures live under
+// suite's own npm project. This suite's own frozen upload fixtures live under
 // demo/seed/e2e-data/test-documents/, next to demo/seed/profiles.py's E2E_PROFILE that governs
-// the same data profile - not under e2e/fixtures/ any more, which used to be a second, independent
+// the same data profile - not under e2e/fixtures/, which would be a second, independent
 // way to fill an instance (see docs/features/demo-instance.md, "Installation und Seed"). The
 // repo's root .gitignore has a blanket `documents/` rule (for the bind-mounted, machine-local
 // backend/src/main/resources demo corpus path); "test-documents" does not match it, but stays
@@ -41,12 +41,12 @@ const TEST_DOCUMENT_NAME = 'wissensdokument.txt'
 
 // Negative scenarios (4, 5) upload this into a library the acting user creates for the occasion
 // (see uploadOwnDocument below) rather than asserting "zero results" against the shared library
-// alone (see the module doc comment below and PR #453 review, nit 1): without a real, non-empty
+// alone (see the module doc comment below): without a real, non-empty
 // upload of their own, "zero source cards" would just as happily mean "the search never ran" as
 // "the filter works", leaving both scenarios silently green without checking anything. A real,
-// non-empty, own-vs-foreign distinction closes that gap. Before #522 this uploaded into the
-// automatically provisioned personal library instead - that automation is gone, so each scenario
-// now creates its own throwaway library first, the same way scenario 1 does for the shared one.
+// non-empty, own-vs-foreign distinction closes that gap. There is no automatically provisioned
+// personal library, so each scenario creates its own throwaway library first, the same way
+// scenario 1 does for the shared one.
 const OWN_DOCUMENT_PATH = join(
   dirname(fileURLToPath(import.meta.url)),
   '..',
@@ -82,13 +82,12 @@ const OWN_LIBRARY_NAME_REGULAR = `E2E Eigene Bibliothek Regular ${runId}`
 // dev-outsider in scenarios 4 and 6) could open an earlier scenario's Belege instead. Every scenario
 // below explicitly starts a fresh, not-yet-persisted chat (`startFreshChat`, see
 // fixtures/chat.ts) before asking its question instead, so "the page shows exactly this one turn"
-// is a fact, not an assumption that happened to hold by scenario order (CI fix following PR
-// #548's review).
+// is a fact, not an assumption that happened to hold by scenario order.
 
 // Creates a fresh library named libraryName for the acting user (mirroring scenario 1's own
 // creation step), uploads OWN_DOCUMENT_PATH into it and assigns it to the user's own space - a
-// space searches only what is assigned to it. Since #522 removed the automatically provisioned
-// personal library, there is no existing library to rely on for this upload - it must be created
+// space searches only what is assigned to it. With no automatically provisioned personal
+// library, there is no existing library to rely on for this upload - it must be created
 // here, on demand, same as any other library a user wants.
 async function uploadOwnDocument(page: Page, devUser: string, libraryName: string) {
   await createLibraryWithDocument(page, libraryName, OWN_DOCUMENT_PATH, OWN_DOCUMENT_NAME)
@@ -134,7 +133,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     // dev-user is already provisioned by now regardless of this test's own regularUserPage fixture
     // - the #233 seed run (scripts/run-e2e.mjs, before Playwright starts) already logs it in once
     // as part of provision_users (demo/seed/seed.py). That authenticated request is what GET
-    // /v1/users (#777) below actually needs to find the account; without either the seed or
+    // /v1/users below actually needs to find the account; without either the seed or
     // regularUserPage having done it, the admin's picker would never list dev-user at all.
     await shareLibraryWithPerson(adminPage, LIBRARY_NAME, 'Dev User', /Dev User/)
 
@@ -166,7 +165,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Freigabe für Dev User entziehen' }).click()
-    // The confirmation is the app's own overlay (#1610). Addressed through the id every
+    // The confirmation is the app's own overlay. Addressed through the id every
     // confirmation carries rather than through role="dialog" alone: its own button says
     // "Entziehen", and the id stays unambiguous should a second overlay ever stand.
     const confirmRevoke = adminPage
@@ -201,7 +200,7 @@ test.describe.serial('Wissensbibliotheken: Upload, Freigabe, rechtebewusste Such
     await gotoLibraryDetail(adminPage, LIBRARY_NAME)
     await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
     await adminPage.getByRole('button', { name: 'Freigeben' }).click()
-    // #1820: Die Subjekt-Auswahl sucht serverseitig; die Zeile traegt Name und Herkunft, weshalb
+    // Die Subjekt-Auswahl sucht serverseitig; die Zeile traegt Name und Herkunft, weshalb
     // der Treffer ueber den Namen als Teilzeichenkette gefunden wird.
     const groupInput = adminPage.getByRole('combobox', { name: 'Person oder Gruppe suchen' })
     await groupInput.click()

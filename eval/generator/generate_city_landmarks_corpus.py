@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Deterministic generator for the "city-landmarks" evaluation corpus (issue #234).
+"""Deterministic generator for the "city-landmarks" evaluation corpus.
 
 Reads the frozen inputs under `frozen/` (CC0-1.0 for all Wikidata data, CC-BY 4.0 for the
 GeoNames city list — see `frozen/SOURCE.md` for the exact queries/files, retrieval date, raw-
-result hashes and the PR #730 review decision that replaced the original Wikidata-only city
-selection with a GeoNames `cities15000` city list bridged to Wikidata via P1566) and emits one
+result hashes and the city selection: a GeoNames `cities15000` city list bridged to Wikidata via
+P1566) and emits one
 German-language Markdown document per city, covering its Sehenswürdigkeiten (landmarks). Unlike
-the `comic-characters` domain (issue #225), this domain deliberately targets documents large
+the `comic-characters` domain, this domain deliberately targets documents large
 enough to split into multiple chunks at the application's default `chunk-size` (see
 docs/decisions/0010-ein-chunk-invariante-evaluierungskorpus.md, Entscheidung 3).
 
@@ -45,14 +45,13 @@ FROZEN_DIR = Path(__file__).resolve().parent / "frozen"
 CORPUS_DIR = REPO_ROOT / "eval" / "corpus" / "city-landmarks"
 DOMAIN = "city-landmarks"
 SOURCE_FIELD_VALUE = "geonames-cities15000+wikidata-sparql"
-# PR #730 review: the city list (name, population, coordinates) now comes from GeoNames
+# The city list (name, population, coordinates) comes from GeoNames
 # cities15000 (CC-BY 4.0, attribution "Data (c) GeoNames.org, CC-BY 4.0" in
 # frozen/SOURCE.md), bridged to Wikidata via P1566; landmark and city-fact fields remain
 # Wikidata (CC0-1.0). Dual-licensed, documented once here rather than per field.
 SOURCE_LICENSE = "CC-BY-4.0 (GeoNames) + CC0-1.0 (Wikidata)"
-# PR #730 review (Wichtig 2, corrected in the verification review round after this constant had
-# drifted to 40 without being reported back — see the comment where this is used in
-# build_cities() for why a larger radius was removed rather than tuned).
+# Immediate neighbors only; see the comment where this is used in build_cities() for why a
+# larger radius does not pay off.
 RANK_NEIGHBOR_RADIUS = 2
 
 FROZEN_FILES = [
@@ -165,8 +164,8 @@ _BARE_QID = re.compile(r"^Q\d+$")
 def label(binding: dict, key: str) -> str | None:
     """Like literal(), but for a wikibase:label SERVICE binding specifically: when no label
     exists in any requested language, the label service falls back to the entity's own QID
-    string rather than omitting the binding (issue #234, technical hint "Rückfall: Objekt
-    auslassen, statt englisches Label in deutschen Text zu mischen" — a raw QID is worse than a
+    string rather than omitting the binding (rule: leave the object out rather than mix an
+    English label into German text — a raw QID is worse than a
     missing English label, since it is not even readable as a word). Treated as absent here so
     every caller's existing "field missing" branch handles it, instead of a QID like "Q30879538"
     leaking into German prose (e.g. "geht auf Pläne von Q30879538 zurück").
@@ -223,10 +222,10 @@ def format_coord(lat: float, lon: float) -> str:
     return f"{abs(lat):.4f} {ns}, {abs(lon):.4f} {ew}"
 
 
-# PR #730 review (Kleinigkeit, Slug-Transliteration): unicodedata's NFKD decomposition strips
+# Slug transliteration: unicodedata's NFKD decomposition strips
 # combining diacritics (é -> e, ł does NOT decompose this way — Polish Ł/ł has no combining-mark
 # form) and drops non-Latin scripts (Cyrillic, Greek) entirely instead of transliterating them —
-# both previously fell through the slug regex as empty and produced meaningless single-letter or
+# both would fall through the slug regex as empty and produce meaningless single-letter or
 # truncated filenames (e.g. "city-0055_d.md" for Łódź). This explicit table covers every
 # character actually occurring in this corpus's city/landmark names (checked against the
 # generated corpus, not exhaustive for all of Unicode) plus the common Cyrillic transliteration
@@ -352,16 +351,16 @@ def build_cities() -> list[City]:
                 continue
             name = label(detail, "itemLabel")
             if name is None:
-                # Rückfall (issue #234, technical hints): an item without a German or English
+                # Fallback: an item without a German or English
                 # label is left out entirely, rather than mixing an English label or a raw QID
                 # placeholder into German prose.
                 continue
             if name in seen_names:
-                # PR #730 review (verification round): the broadened Sehenswürdigkeiten query
+                # The broadened Sehenswürdigkeiten query
                 # (P276, two-hop P131) occasionally returns two distinct Wikidata items that
                 # share the same German/English label (e.g. a monument and a closely related
-                # sub-entity) — rendering both produced two identical "## Name" sections in the
-                # same document, which the golden-dataset generator then also duplicated
+                # sub-entity) — rendering both would produce two identical "## Name" sections in
+                # the same document, which the golden-dataset generator would then duplicate
                 # (identical query text, caught by its own duplicate assert). Keep only the
                 # first (highest-sitelink, since landmark_item_qids is already sitelink-sorted).
                 continue
@@ -394,7 +393,7 @@ def build_cities() -> list[City]:
                 if "elevation" in facts
                 else None,
                 founded_year=year_from_iso(facts.get("inception")),
-                # PR #730 review (Kleinigkeit, P1376-Plausibilität): Wikidata's P1376 ("capital
+                # P1376 plausibility: Wikidata's P1376 ("capital
                 # of") is far noisier than "national capital" — the raw query returns whatever
                 # entity the item happens to be a documented capital of, including historical
                 # empires ("Osmanisches Reich"), sub-national administrative units ("Landkreis
@@ -412,12 +411,12 @@ def build_cities() -> list[City]:
         )
     cities.sort(key=lambda c: c.rank)
     for index, city in enumerate(cities):
-        # PR #730 review (Wichtig 2): a large radius (previously 40) turned every document's
+        # A large radius (such as 40) turns every document's
         # rank-neighbor section into 60+ repetitive, near-identical comparison sentences —
         # inflating byte size to reach the mehr-Chunk floor at the cost of text quality (a
         # potential distractor for real similarity search, not just padding). RANK_NEIGHBOR_RADIUS
-        # is now the minimum needed for a single, genuinely orienting comparison (immediate
-        # neighbors only); the mehr-Chunk floor is instead met by the broader landmark data itself
+        # is the minimum needed for a single, genuinely orienting comparison (immediate
+        # neighbors only); the mehr-Chunk floor is met by the broader landmark data itself
         # (see frozen/SOURCE.md) — a city that is still too thin is dropped from the selection
         # rather than padded (see build_cities() candidate filtering).
         # Edge-aware: a city near either end of the ranking (in particular rank 200, the last
@@ -451,9 +450,9 @@ def format_population(n: int) -> str:
 
 
 def format_decimal(value: float, decimals: int = 1) -> str:
-    """German decimal comma (PR #730 review, Nit 9): every other numeric quantity in this
+    """German decimal comma: every other numeric quantity in this
     prose (population, height, year) is either an integer or already uses the German
-    thousands-point via format_population(). Only :.1f-formatted floats (area, density) used a
+    thousands-point via format_population(). Only :.1f-formatted floats (area, density) would use a
     bare '.' as the decimal separator, inconsistent with the surrounding German text. Geographic
     coordinates (format_coord()) are deliberately left in their technical, period-decimal form —
     documented once here rather than at each call site: coordinates are a machine-readable value
@@ -465,7 +464,7 @@ def format_decimal(value: float, decimals: int = 1) -> str:
 def build_city_paragraph(city: City) -> str:
     sentences: list[str] = []
 
-    # PR #730 review (Wichtig 1): "zählt zu den 200 einwohnerstärksten Großstädten Europas" was a
+    # Not "zählt zu den 200 einwohnerstärksten Großstädten Europas", which would be a
     # factual overstatement — the selection is the 200 cities of this corpus ranked by population
     # among the candidates the underlying query actually found, not a claim about all of Europe.
     intro = f"{city.name} liegt in {city.country}" if city.country else city.name
@@ -487,7 +486,7 @@ def build_city_paragraph(city: City) -> str:
     if city.elevation_m is not None:
         geo_bits.append(f"eine Höhenlage von etwa {city.elevation_m:.0f} Metern über dem Meeresspiegel")
     if geo_bits:
-        # PR #730 review (Kleinigkeit): " bei ".join() produced a case error whenever both
+        # " bei ".join() would produce a case error whenever both
         # bits were present ("... bei eine Höhenlage..." — "bei" governs dative, but the
         # elevation fragment is phrased in the accusative for its other use as a direct object
         # of "umfasst" further below). "und" avoids the case dependency entirely instead of
@@ -621,8 +620,8 @@ def build_landmark_paragraph(
             f" verortet im Stadtgebiet von {city.name}."
         )
 
-    # Always-present context sentences (issue #234, Größenbegrenzung "Untergrenze statt
-    # Byte-Deckel"): the optional Wikidata fields above vary a lot in coverage between
+    # Always-present context sentences (a size floor rather than a byte cap): the optional
+    # Wikidata fields above vary a lot in coverage between
     # landmarks, so this block keeps every landmark section substantial enough to reliably
     # contribute to the domain's mehr-Chunk property even when few optional fields are present.
     # Every sentence here is still derived from already-available, structured facts (landmark
@@ -682,7 +681,7 @@ def build_landmark_paragraph(
     if landmark.visitors is None:
         sentences.append(f"Besucherzahlen liegen für {landmark.name} nicht vor.")
 
-    # Cross-chunk comparison material (issue #234, Fragetyp cross_chunk): a deterministic,
+    # Cross-chunk comparison material (question type cross_chunk): a deterministic,
     # source-grounded comparison between two landmarks of the same city, phrased so a question
     # about "which of X or Y is older/taller" can only be answered by combining information from
     # (at least) two different sections of the document.
@@ -753,7 +752,7 @@ def build_summary_paragraph(city: City) -> str:
     Deliberately restates rather than introduces new claims: every sentence here is derivable
     from fields already rendered above in the same document. This both gives smaller documents
     (few or no landmark detail fields available) enough substance to reliably split into
-    multiple chunks and gives the golden dataset (issue #234) additional, differently-phrased
+    multiple chunks and gives the golden dataset additional, differently-phrased
     text to draw `answer_span` excerpts from near the end of a document — useful for
     `boundary_span` cases (see `eval/golden/city-landmarks.json`).
     """

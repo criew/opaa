@@ -364,7 +364,7 @@ describe('CatalogPage (ADR-0039)', () => {
     expect(screen.getByTestId('location')).toHaveTextContent('/catalog/new')
   })
 
-  // #2588: switched off, the catalog names prompt libraries nowhere - no card, no type filter.
+  // Switched off, the catalog names prompt libraries nowhere - no card, no type filter.
   it('shows no prompt library and no type filter while prompt libraries are switched off', async () => {
     setMockAuthState({ features: { promptLibraries: false } })
     setMockFeatures({ promptLibraries: false })
@@ -565,7 +565,7 @@ describe('CatalogPage (ADR-0039)', () => {
       expect(within(card).getByText('Aktualisiert am 12.09.2026')).toBeInTheDocument()
     })
 
-    // #2207: no visible title before the type group; its accessible name stays "Typ".
+    // No visible title before the type group; its accessible name stays "Typ".
     it('names the type filter "Typ" without a visible title', async () => {
       renderCatalog()
       await screen.findByRole('link', { name: /Rechtsquellen Soziales/ })

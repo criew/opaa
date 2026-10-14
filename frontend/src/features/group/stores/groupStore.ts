@@ -21,7 +21,7 @@ import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessi
 import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /**
- * Woher die Liste kommt: alle Gruppen der Organisation, die eigenen Verantwortlichkeiten (#1814)
+ * Woher die Liste kommt: alle Gruppen der Organisation, die eigenen Verantwortlichkeiten
  * oder keine - Letzteres, solange keine Seite diese Liste anzeigt, etwa die Gruppenverwaltung mit
  * ihrer eigenen, geblätterten Liste. Die Quelle wird beim Laden gesetzt, damit jedes Nachladen nach
  * einer Änderung dieselbe Liste holt wie die Seite, die sie anzeigt, und bei „keine“ gar nichts.
@@ -84,7 +84,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 
   loadGroups: async (source) => {
     const nextSource = source ?? get().source
-    // #575: captured before the await below - checked again once it resolves, so a response
+    // Captured before the await below - checked again once it resolves, so a response
     // arriving after a logout (resetAllStores) skips its write-back instead of resurrecting the
     // previous user's groups into the now-emptied store.
     const sessionEpoch = currentSessionEpoch()
@@ -145,7 +145,7 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   deleteExistingGroup: async (groupId) => {
     const sessionEpoch = currentSessionEpoch()
     await deleteGroup(groupId)
-    // #575: loadGroups() below already guards its own write-back - this direct set() needs the
+    // loadGroups() below already guards its own write-back - this direct set() needs the
     // same guard, otherwise a logout in between still resurrects a stale groupDetails map into the
     // store reset() just cleared.
     if (isStaleSessionEpoch(sessionEpoch)) return

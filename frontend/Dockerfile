@@ -18,7 +18,7 @@ RUN pnpm run build && rm -rf dist/.vite
 FROM nginxinc/nginx-unprivileged:alpine AS runtime
 USER root
 # Same contract as backend/Dockerfile: pull the Alpine security updates published after the base
-# image was built, so the image is not frozen on the base image's build date (issue #1450).
+# image was built, so the image is not frozen on the base image's build date.
 # The generated server config moves from /etc/nginx/conf.d to /tmp/nginx/conf.d, so a read-only
 # root filesystem only needs /tmp to be writable; the grep fails the build if the base image's
 # include line ever changes and the sed silently misses it.
@@ -40,7 +40,7 @@ COPY --chmod=755 frontend/docker-entrypoint.d/05-opaa-runtime.sh /docker-entrypo
 ENV NGINX_ENVSUBST_OUTPUT_DIR=/tmp/nginx/conf.d
 ENV NGINX_ENVSUBST_FILTER=^OPAA_(CSP|DEMO|BACKEND)_
 ENV OPAA_CSP_CONNECT_SRC_EXTRA=""
-# Shows the demo/source notice in the UI (#230); intended only for demo instances - default off.
+# Shows the demo/source notice in the UI; intended only for demo instances - default off.
 ENV OPAA_DEMO_MODE="false"
 # Where /api/ and /mcp are forwarded to, as host[:port]; validated at start by 05-opaa-runtime.sh.
 ENV OPAA_BACKEND_UPSTREAM="backend:8080"

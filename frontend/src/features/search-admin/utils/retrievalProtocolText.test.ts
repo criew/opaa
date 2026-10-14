@@ -12,8 +12,7 @@ import retrievalNoteTemplates from './retrieval-note-templates.json'
  * quality spot checks (no English left over, singular/plural, no leaked Java type, ...). The
  * mechanical coverage of the full backend inventory - every template has a same-named rule whose
  * pattern actually matches it, no orphaned rule left behind - is `retrieval-note-templates.json
- * coverage` further down, sourced from `io.opaa.retrieval.RetrievalNoteTemplateExport`
- * (#1207).
+ * coverage` further down, sourced from `io.opaa.retrieval.RetrievalNoteTemplateExport`.
  */
 const BACKEND_NOTES = [
   'empty search scope: nothing readable in scope, retrieval halted',
@@ -181,7 +180,7 @@ function matchesSomeInstantiation(pattern: RegExp, template: string): boolean {
 
 /**
  * `retrieval-note-templates.json` is the mechanical export of
- * `io.opaa.retrieval.RetrievalNoteTest` (#1207). Coverage here is two-layered: every
+ * `io.opaa.retrieval.RetrievalNoteTest`. Coverage here is two-layered: every
  * backend template's name has a same-named rule (in
  * both directions - a name-only comparison would miss a mechanical drift), and that rule's pattern
  * actually matches an instantiation of the backend's own raw template - the layer that catches a

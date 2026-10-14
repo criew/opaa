@@ -105,7 +105,7 @@ export const mockSpaceDetails: Record<string, SpaceResponse> = {
   },
 }
 
-// #144: the full member list moved out of SpaceResponse into its own GET /members endpoint,
+// The full member list moved out of SpaceResponse into its own GET /members endpoint,
 // restricted (in the real backend) to ADMIN, owner and system admins - spaceHandlers.ts enforces the
 // same restriction against this fixture rather than exposing it unconditionally.
 export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
@@ -144,7 +144,7 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       role: 'CURATOR',
       createdAt: '2026-03-01T10:00:00Z',
     },
-    // #1815: a group as a member, with its current size (ADR-0036, Entscheidung 9).
+    // A group as a member, with its current size (ADR-0036, Entscheidung 9).
     {
       id: 'membership-engineering-referat-50',
       subjectType: 'GROUP',
@@ -156,7 +156,7 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       emptyGroup: false,
       createdAt: '2026-03-01T10:00:00Z',
     },
-    // #1820: eine geschützte Gruppe erscheint namenlos und ohne jede Zahl - die Zeile bleibt,
+    // Eine geschützte Gruppe erscheint namenlos und ohne jede Zahl - die Zeile bleibt,
     // damit ein ADMIN die Mitgliedschaft beenden kann, die er nicht sieht.
     {
       id: 'membership-engineering-personalrat',

@@ -14,7 +14,7 @@ describe('oidcProviderStore', () => {
   it('loads the providers in sign-in order', async () => {
     await useOidcProviderStore.getState().loadProviders()
     // Die LOCAL-Zeile kommt mit: der Store führt die Tabelle, das Filtern auf Anbieter ist Sache
-    // der Anbieterseite (#1541). Der Seed legt sie vor jedem Anbieter an, sie steht also vorn.
+    // der Anbieterseite. Der Seed legt sie vor jedem Anbieter an, sie steht also vorn.
     expect(useOidcProviderStore.getState().providers.map((p) => p.displayName)).toEqual([
       'Lokale Konten',
       'Verzeichnisdienst',
@@ -33,7 +33,7 @@ describe('oidcProviderStore', () => {
   it('swaps positions when moving and ignores a move past the ends', async () => {
     await useOidcProviderStore.getState().loadProviders()
     // „Nach oben" am ersten Anbieter ist ein No-Op: darüber liegt nur die LOCAL-Zeile, und mit
-    // ihr wird nicht getauscht (#1541).
+    // ihr wird nicht getauscht.
     await useOidcProviderStore.getState().moveProvider('oidc-provider-beschaeftigte', 'up')
     expect(ids()).toEqual([
       'oidc-provider-local',
@@ -53,9 +53,9 @@ describe('oidcProviderStore', () => {
   })
 
   /**
-   * Regressionsschutz zu Review-Runde 1 (MEDIUM 5): Lag die LOCAL-Zeile zwischen zwei Anbietern,
-   * tauschte „nach unten" mit ihr — die sichtbare Reihenfolge blieb gleich, der Klick war
-   * verschluckt und das Reihenfolge-Ereignis wirkungslos.
+   * Liegt die LOCAL-Zeile zwischen zwei Anbietern, tauscht „nach unten" nicht mit ihr — sonst
+   * bliebe die sichtbare Reihenfolge gleich, der Klick verschluckt und das Reihenfolge-Ereignis
+   * wirkungslos.
    */
   it('skips the local row when it lies between two providers', async () => {
     const order: Record<string, number> = {

@@ -61,8 +61,8 @@ describe('ChatRedirect', () => {
   })
 
   // Regression guard for #1647: existing chats in the default space must not change the target -
-  // this entry point used to reopen the most recently used one, so typing straight away silently
-  // continued an old conversation.
+  // reopening the most recently used one would let typing straight away silently continue an old
+  // conversation.
   it('redirects to an empty chat in the default space, even when that space already has chats', async () => {
     renderWithProviders(<ChatRedirect />, { withRouter: true })
 
@@ -112,7 +112,7 @@ describe('ChatRedirect', () => {
     })
   })
 
-  /** #1911: Der Einstieg öffnet den zuletzt genutzten Space, nicht immer den persönlichen. */
+  /** Der Einstieg öffnet den zuletzt genutzten Space, nicht immer den persönlichen. */
   it('opens the space last used instead of the personal one', async () => {
     useSpaceStore.setState({ spaces })
     window.localStorage.setItem('opaa.spaces.recent', JSON.stringify(['space-engineering']))
@@ -127,7 +127,7 @@ describe('ChatRedirect', () => {
   })
 
   /**
-   * #1911: Ein gemerkter Space, den der Dienst nicht mehr ausliefert - Mitgliedschaft entzogen,
+   * Ein gemerkter Space, den der Dienst nicht mehr ausliefert - Mitgliedschaft entzogen,
    * gelöscht, oder das Gemerkte stammt von einem anderen Konto am selben Rechner.
    */
   it('falls back to the personal space when the remembered one is no longer delivered', async () => {
@@ -180,8 +180,8 @@ describe('ChatRedirect', () => {
     expect(chatListRequests).not.toHaveBeenCalled()
   })
 
-  // #548 review, nit c: a failed space list load used to leave a spinner spinning forever, with no
-  // way out for the user.
+  // A failed space list load must not leave a spinner spinning forever, with no way out for the
+  // user.
   it('shows a German error with a retry action when loading spaces fails, instead of spinning forever', async () => {
     server.use(
       http.get('/api/v1/spaces', () => {

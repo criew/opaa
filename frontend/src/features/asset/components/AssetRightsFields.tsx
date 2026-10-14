@@ -30,7 +30,7 @@ interface AssetRightsFieldsProps {
 /**
  * The rights step of a creation wizard: grants noted for after the creation - chosen with the same subject picker and the same confirmation for an external
  * provider's group as the rights dialog of an existing asset. "Alle Konten" is deliberately not
- * offered here (#1931): an asset that does not exist yet has no reach to widen, and the ceiling
+ * offered here: an asset that does not exist yet has no reach to widen, and the ceiling
  * that governs such a grant is a property of the created asset.
  */
 export default function AssetRightsFields({

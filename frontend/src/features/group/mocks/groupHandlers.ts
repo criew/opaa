@@ -73,7 +73,7 @@ export const groupHandlers = [
     return HttpResponse.json(matches.slice(0, 20))
   }),
 
-  // #1820: Der Kennungsweg löst die Gruppe unter derselben Sichtbarkeitsregel auf; eine
+  // Der Kennungsweg löst die Gruppe unter derselben Sichtbarkeitsregel auf; eine
   // geschützte Gruppe kommt dabei ohne ihren Namen zurück.
   http.get('/api/v1/groups/selectable/:groupId', ({ params }) => {
     const group = mockSelectableGroups.find((candidate) => candidate.id === String(params.groupId))

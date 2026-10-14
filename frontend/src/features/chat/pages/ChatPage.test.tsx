@@ -26,7 +26,7 @@ vi.mock('react-router', async () => {
 })
 
 function resetChatStore() {
-  // Module state, not store state (#1488): a removal a test left unconfirmed would otherwise keep
+  // Module state, not store state: a removal a test left unconfirmed would otherwise keep
   // filtering that point out of the next test's freshly reset fixture chat.
   clearRemovedNoteItemCache()
   useChatStore.setState({
@@ -46,7 +46,7 @@ function resetChatStore() {
   })
 }
 
-/** The space the Gesprächsnotiz fixture chat lives in (#1488) - `archived` decides whether the
+/** The space the Gesprächsnotiz fixture chat lives in - `archived` decides whether the
  * panel offers remove buttons. */
 function setEngineeringSpace(archived: boolean) {
   useSpaceStore.setState({
@@ -121,7 +121,7 @@ describe('ChatPage', () => {
     expect(useChatStore.getState().chatId).toBe('chat-personal-1')
   })
 
-  // The loading state belongs to the chat waiting for an answer (#1574): leaving it for another
+  // The loading state belongs to the chat waiting for an answer: leaving it for another
   // chat ends the loading state of the view, which is no arriving answer to announce.
   it('does not announce an arrived answer when leaving a chat that is still waiting for one', async () => {
     currentChatId = 'chat-personal-1'
@@ -371,7 +371,7 @@ describe('ChatPage', () => {
     })
   })
 
-  // #1488: the Gesprächsnotiz sits in the chat's header. chat-engineering-2 (fixtures) is the one
+  // The Gesprächsnotiz sits in the chat's header. chat-engineering-2 (fixtures) is the one
   // chat with both prerequisites - two points and three completed rounds.
   describe('Gesprächsnotiz (#1488)', () => {
     beforeEach(() => {
@@ -568,7 +568,7 @@ describe('ChatPage', () => {
       expect(screen.queryByRole('button', { name: /zurückholen/ })).not.toBeInTheDocument()
     })
   })
-  // #1919: Umbenennen ging bisher nur über das Kontextmenü der Chatliste.
+  // Umbenennen ging bisher nur über das Kontextmenü der Chatliste.
   describe('Titel in der Kopfzeile umbenennen (#1919)', () => {
     beforeEach(() => {
       currentSpaceId = 'space-personal'

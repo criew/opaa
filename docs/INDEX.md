@@ -183,6 +183,8 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
   - [0006](./decisions/0006-openapi-dto-generation.md) — DTOs aus der OpenAPI-Spezifikation
   - [0010](./decisions/0010-ein-chunk-invariante-evaluierungskorpus.md) bis
     [0013](./decisions/0013-fehlerkriterium-retrieval-regression.md) — Evaluierung der Suchqualität
+  - [0051](./decisions/0051-architekturvertrag-des-backends.md) — Architekturvertrag des Backends:
+    Regeln, Prüfinstanzen und akzeptierte Abweichungen
 
 ### Demo und Vorführung
 

@@ -92,7 +92,7 @@ function isPromptNotUsable(err: unknown): boolean {
   return data?.code === 'PROMPT_NOT_USABLE'
 }
 
-// Monotonically increasing token guarding loadChat against two hazards (#548 review, finding d):
+// Monotonically increasing token guarding loadChat against two hazards:
 // a slower-arriving response from an earlier loadChat(A) call overwriting a faster one from a
 // later loadChat(B), and a synchronous startNewChat() in between being clobbered once the
 // in-flight loadChat eventually resolves. Deliberately module-level, not store state - it is
@@ -206,7 +206,7 @@ function withOutstandingQuestions(chatId: string, messages: ChatMessage[]): Chat
 }
 
 // Per chat, the ids of Gesprächsnotiz points the person removed locally whose removal GET chat has
-// not yet confirmed (#1488). Every note state the server delivers for a chat is filtered through
+// not yet confirmed. Every note state the server delivers for a chat is filtered through
 // that chat's entry, because an answer carries the note state that went into *it* - an answer that
 // was already in flight when the point was removed still contains it, and applying it unfiltered
 // would make a removed point reappear. Keyed by chat id, like the settings maps in chatSettingsPersistence.ts: loading
@@ -246,25 +246,25 @@ export function clearRemovedNoteItemCache(): void {
 let noteRemovalError: string | null = null
 
 /**
- * Drops chatId's entries from both module-level settings-persistence maps (#573): a deleted chat
+ * Drops chatId's entries from both module-level settings-persistence maps: a deleted chat
  * can never again be the target of a queued PATCH or a rollback base, so leaving its entries
  * behind would just grow both maps for the rest of the session. settingsUpdateChains is always
  * dropped immediately - a later sendMessage for this (deleted) chat must not queue/await behind a
- * chain that will never again matter. confirmedSettingsByChatId is more delicate (#573 review,
- * second round): if a PATCH for this chat is still in flight at the moment of deletion, dropping
- * it right away would rip out the rollback/confirmation base that PATCH's own still-running
- * success/failure handler may need (see the warning on confirmedSettingsByChatId's declaration
- * above) - e.g. the user deleted the chat they were currently viewing without navigating away
- * first, and its own pending settings change then fails. `pendingChain` - this chat's most
- * recently queued call at the time of deletion - is chained behind every earlier one for the same
- * chat, so attaching the drop to its own settlement is safe: by the time it fires, every settings
- * PATCH still outstanding for this chat has settled too.
+ * chain that will never again matter. confirmedSettingsByChatId is more delicate: if a PATCH for
+ * this chat is still in flight at the moment of deletion, dropping it right away would rip out the
+ * rollback/confirmation base that PATCH's own still-running success/failure handler may need (see
+ * the warning on confirmedSettingsByChatId's declaration above) - e.g. the user deleted the chat
+ * they were currently viewing without navigating away first, and its own pending settings change
+ * then fails. `pendingChain` - this chat's most recently queued call at the time of deletion - is
+ * chained behind every earlier one for the same chat, so attaching the drop to its own settlement
+ * is safe: by the time it fires, every settings PATCH still outstanding for this chat has settled
+ * too.
  */
 export function dropChatSettingsCache(chatId: string): void {
   const pendingChain = settingsUpdateChains.get(chatId)
   settingsUpdateChains.delete(chatId)
   settingsChangeSequenceByChatId.delete(chatId)
-  // #1488: a deleted chat is never loaded again, so its pending note removals would never be
+  // A deleted chat is never loaded again, so its pending note removals would never be
   // confirmed - and nothing would ever filter against them either.
   removedNoteItemIdsByChatId.delete(chatId)
   persistedUserTurnsByChatId.delete(chatId)
@@ -277,7 +277,7 @@ export function dropChatSettingsCache(chatId: string): void {
   confirmedSettingsByChatId.delete(chatId)
 }
 
-// #557: the backend generates an LLM title asynchronously, after the answer is already returned
+// The backend generates an LLM title asynchronously, after the answer is already returned
 // (see QueryResponse#chatTitle's Javadoc) - it is never present on the very turn that triggers it.
 // This is the frontend half of "Zuschnitt frei: nachgeladen": a single delayed reload of the chat
 // after a first turn's answer arrives, giving the backend's async generation a realistic window to
@@ -285,7 +285,7 @@ export function dropChatSettingsCache(chatId: string): void {
 // shown (from QueryResponse#chatTitle) simply stays.
 const TITLE_RELOAD_DELAY_MS = 2500
 
-// #1919: the server never overwrites a manually set title (ChatTitleGenerationService writes only
+// The server never overwrites a manually set title (ChatTitleGenerationService writes only
 // while titleSource is GENERATED), but the delayed reload below would still *display* the
 // generated one if the rename happened inside its window - and its PATCH was still in flight when
 // the reload read the chat. A chat renamed by hand is therefore excluded from that reload for the
@@ -356,7 +356,7 @@ export interface ChatState {
   /** The space the active (or about-to-be-created) chat lives in - null before any space is
    * known, e.g. right after login before ChatRedirect has resolved a default space. */
   spaceId: string | null
-  /** The persisted chat's id (#525/#527), or null for a not-yet-created chat: the first sent
+  /** The persisted chat's id, or null for a not-yet-created chat: the first sent
    * message creates it implicitly in `spaceId` (see sendMessage). */
   chatId: string | null
   title: string | null
@@ -370,17 +370,17 @@ export interface ChatState {
   /** A question refused while another chat was shown, to be put back into the input of this chat;
    * cleared by `clearReturnedQuestion` once the input has handled it. */
   returnedQuestion: RefusedQuestion | null
-  /** The chip bar's state (#560, backend default: 'all'). */
+  /** The chip bar's state (backend default: 'all'). */
   scope: SearchScope
-  // Sticky per-chat @-references (#523/#528/#560), meaningful only while scope === 'libraries'.
+  // Sticky per-chat @-references, meaningful only while scope === 'libraries'.
   // Persisted via PATCH /api/v1/chats/{chatId} once a chat exists (see setScopeAll/
   // addReferencedLibrary/removeReferencedLibrary); before that, they only shape the first
   // message's implicit chat creation.
   referencedLibraryIds: string[]
-  /** The chat's sticky core-field filter (#1070), null without one. Persisted like the scope via
+  /** The chat's sticky core-field filter, null without one. Persisted like the scope via
    * PATCH once a chat exists; before that it shapes the first message's implicit chat creation. */
   metadataFilter: MetadataFilter | null
-  /** The chat's Gesprächsnotiz (#1488), oldest point first, already filtered by the removals the
+  /** The chat's Gesprächsnotiz, oldest point first, already filtered by the removals the
    * server has not confirmed yet - empty for a chat without one. */
   noteItems: ChatNoteItem[]
   /** When the person moved the active chat into their chat archive; null while it is active. */
@@ -392,7 +392,7 @@ export interface ChatState {
    * are caught and turned into `error` + a local rollback). Exposed for tests/UI only; sendMessage
    * itself awaits the current chat's own settingsUpdateChains entry, not this global slot, since a
    * fast settings change on a *different* chat can already have cleared this back to null while
-   * the active chat's own chain is still running (#570 review, second round). */
+   * the active chat's own chain is still running. */
   pendingSettingsUpdate: Promise<void> | null
   loadChat: (chatId: string) => Promise<void>
   startNewChat: (spaceId: string) => void
@@ -414,11 +414,11 @@ export interface ChatState {
    * matching "leere Leiste = ohne Wissen". */
   removeReferencedLibrary: (libraryId: string) => void
   /** Removes the @Space-Wissen chip, emptying the bar (scope -> 'none'); the reverse of
-   * setScopeAll. Every chip - including @Space-Wissen - is removable (#560). */
+   * setScopeAll. Every chip - including @Space-Wissen - is removable. */
   clearScope: () => void
-  /** Sets or clears (null / no condition) the chat's core-field filter (#1070). */
+  /** Sets or clears (null / no condition) the chat's core-field filter. */
   setMetadataFilter: (filter: MetadataFilter | null) => void
-  /** Removes one point of the chat's Gesprächsnotiz (#1488) - immediately and without a
+  /** Removes one point of the chat's Gesprächsnotiz - immediately and without a
    * confirmation step, optimistically with a rollback (and `error`) if the DELETE fails. */
   removeNoteItem: (itemId: string) => Promise<void>
   /** Records a changed archive mark of a chat - a no-op unless that chat is the active one. */
@@ -429,7 +429,7 @@ export interface ChatState {
   ) => void
   /** Records a renamed chat - a no-op unless that chat is the active one. */
   applyTitle: (chatId: string, title: string | null) => void
-  /** Drops the active chat back to its initial, empty state (#440) - used on logout so a
+  /** Drops the active chat back to its initial, empty state - used on logout so a
    * subsequent sign-in by a different user never briefly sees the previous user's conversation. */
   reset: () => void
   clearReturnedQuestion: () => void
@@ -441,7 +441,7 @@ function scopeFromChatDetail(useKnowledge: boolean, referencedLibraryIds: string
   return referencedLibraryIds.length > 0 ? 'libraries' : 'none'
 }
 
-// #619 review: loadChat's settings-race guard below needs every field applyChatDetail returns
+// loadChat's settings-race guard below needs every field applyChatDetail returns
 // *except* scope/referencedLibraryIds - omitKeys(), not a hand-maintained field list, is what keeps
 // that guarded write-back in sync with this function's return type. Adding a field here (e.g. a
 // future ChatDetail property) is automatically picked up by that write-back without touching
@@ -456,7 +456,7 @@ function applyChatDetail(detail: ChatDetail) {
     title: detail.title ?? null,
     scope,
     // Only 'libraries' actually uses these ids as the search scope - dropping them for 'all'/
-    // 'none' keeps the chip bar an exact mirror of what the server applies (#560).
+    // 'none' keeps the chip bar an exact mirror of what the server applies.
     referencedLibraryIds: scope === 'libraries' ? referencedLibraryIds : [],
     metadataFilter: normalizeMetadataFilter(detail.metadataFilter),
     messages: withOutstandingQuestions(detail.id, detail.messages.map(toChatMessage)),
@@ -467,7 +467,7 @@ function applyChatDetail(detail: ChatDetail) {
   }
 }
 
-/** Shallow-omits `keys` from `obj`, typed so the result is exactly `Omit<T, K>` (#619 review). Used
+/** Shallow-omits `keys` from `obj`, typed so the result is exactly `Omit<T, K>`. Used
  * instead of a hand-picked field list so a write-back that means "everything but a few guarded
  * fields" stays correct as the source object's shape evolves, rather than silently dropping new
  * fields until someone remembers to update a parallel list. */
@@ -498,7 +498,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   loadChat: async (chatId: string) => {
     const requestId = ++chatLoadSequence
-    // #619: this chat's settings-change counter, captured before the GET below is sent. Compared
+    // This chat's settings-change counter, captured before the GET below is sent. Compared
     // again once the response arrives - see settingsChangeSequenceByChatId's declaration for
     // why a per-chat counter, rather than settingsUpdateChains, is needed to catch this ordering.
     const settingsSequenceAtStart = settingsChangeSequenceByChatId.get(chatId) ?? 0
@@ -507,15 +507,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     try {
       const detail = await getChat(chatId)
       // A newer loadChat/startNewChat call superseded this one while the request was in flight -
-      // applying this response now would resurrect a chat the user already navigated away from
-      // (#548 review, finding d).
+      // applying this response now would resurrect a chat the user already navigated away from.
       if (requestId !== chatLoadSequence) return
       recordPersistedTurns(chatId, detail.messages)
-      // #1488: loading the chat is what confirms a local removal - a point the server no longer
+      // Loading the chat is what confirms a local removal - a point the server no longer
       // reports leaves the filter set, a point it still reports keeps being filtered out.
       confirmNoteItemRemovals(chatId, detail.noteItems ?? [])
       const detailState = applyChatDetail(detail)
-      // #619: a settings change for this exact chat was started while this GET was in flight - its
+      // A settings change for this exact chat was started while this GET was in flight - its
       // own success/failure handler in applyScopeChange is the authoritative source for scope/
       // referencedLibraryIds now, not this response's snapshot, read before that change committed.
       // Everything else this response carries (messages, title, ...) is unaffected and still
@@ -530,7 +529,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       } else {
         set({ ...detailState, isLoadingChat: false })
         // The just-loaded settings are the server's own record - the rollback base for any PATCH
-        // failure while this chat stays active (#565 review).
+        // failure while this chat stays active.
         confirmedSettingsByChatId.set(detailState.chatId, {
           scope: detailState.scope,
           referencedLibraryIds: detailState.referencedLibraryIds,
@@ -556,7 +555,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     } catch (err) {
       if (requestId !== chatLoadSequence) return
       const message = err instanceof Error ? err.message : 'Chat konnte nicht geladen werden'
-      // Also drop the stale chat/space out of state (#548 review, finding 2): leaving the
+      // Also drop the stale chat/space out of state: leaving the
       // previous chat active after a failed load would silently send the next message to a chat
       // the user is no longer looking at.
       set({
@@ -579,10 +578,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
   // only persisted once the first message is sent (see sendMessage).
   startNewChat: (spaceId: string) => {
     // Invalidates any loadChat still in flight - otherwise its eventual response could overwrite
-    // this synchronous reset (#548 review, finding d). The superseded loadChat handler then
+    // this synchronous reset. The superseded loadChat handler then
     // returns early (its requestId no longer matches chatLoadSequence) without ever reaching its
     // own set() call, so isLoadingChat must be cleared here too - otherwise ChatPage's spinner
-    // never clears and the chat input never reappears (#559).
+    // never clears and the chat input never reappears.
     chatLoadSequence++
     set({
       spaceId,
@@ -616,15 +615,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   sendMessage: async (question: string, usedPrompt?: { id: string; title: string }) => {
-    // #575: this call's token in the session epoch, captured before any await below. Checked
+    // This call's token in the session epoch, captured before any await below. Checked
     // again before every set() that follows an await - a logout (resetAllStores) in the meantime
     // bumps the epoch, so a response arriving afterwards is recognized as stale and its write-back
     // is skipped instead of resurrecting the previous user's chatId/messages into the now-emptied
-    // store (#618 review: this applies to both the implicit-chat-creation write-back and the final
+    // store (this applies to both the implicit-chat-creation write-back and the final
     // answer write-back below).
     const sessionEpoch = currentSessionEpoch()
 
-    // #557: whether this is the chat's first-ever turn - captured before the optimistic user
+    // Whether this is the chat's first-ever turn - captured before the optimistic user
     // message below is pushed, since that would make messages.length always >= 1. Only a first
     // turn triggers the backend's asynchronous LLM title generation, so only a first turn
     // schedules the delayed reload that picks it up.
@@ -692,7 +691,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const { spaceId, scope, referencedLibraryIds, metadataFilter } = get()
       const useKnowledge = scope === 'all'
       // Only 'libraries' actually names a scope - 'none' sends an empty array, matching what the
-      // chip bar shows (#560).
+      // chip bar shows.
       const libraryIds = scope === 'libraries' ? referencedLibraryIds : []
       if (!send.chatId) {
         if (!spaceId) {
@@ -703,7 +702,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           referencedLibraryIds: libraryIds,
           ...(metadataFilter ? { metadataFilter } : {}),
         })
-        // #575: a logout in between (e.g. a 401 elsewhere triggering authStore.logout()) must not
+        // A logout in between (e.g. a 401 elsewhere triggering authStore.logout()) must not
         // let this chat's id resurrect into the now-emptied store.
         if (isStaleSessionEpoch(sessionEpoch)) return
         // The question is sent to the created chat either way; only the view it was sent from
@@ -711,8 +710,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const viewTakesChat = isSendingViewShown()
         send.chatId = created.id
         if (viewTakesChat) set({ chatId: created.id })
-        // The settings this chat was just created with are the server's own record too (#565
-        // review) - same reasoning as loadChat above.
+        // The settings this chat was just created with are the server's own record too - same
+        // reasoning as loadChat above.
         confirmedSettingsByChatId.set(created.id, {
           scope,
           referencedLibraryIds: libraryIds,
@@ -736,13 +735,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       // A PATCH from setScopeAll/addReferencedLibrary/removeReferencedLibrary may still be in
       // flight for *this* chat - awaiting it first avoids racing it against this query, which the
-      // backend answers using the chat's persisted settings (#548 review, finding 3). Reading
-      // settingsUpdateChains by chatId here, not the global pendingSettingsUpdate slot (#570
-      // review, second round): the slot only ever reflects the most recently *started* settings
-      // change across all chats - a fast PATCH on another chat can already have cleared it back to
-      // null while this chat's own chain is still running (e.g. slow change on chat A, switch to
-      // chat B, fast change on B, switch back to A - pendingSettingsUpdate would be null even
-      // though A's chain has not settled yet).
+      // backend answers using the chat's persisted settings. Reading
+      // settingsUpdateChains by chatId here, not the global pendingSettingsUpdate slot: the slot
+      // only ever reflects the most recently *started* settings change across all chats - a fast
+      // PATCH on another chat can already have cleared it back to null while this chat's own chain
+      // is still running (e.g. slow change on chat A, switch to chat B, fast change on B, switch
+      // back to A - pendingSettingsUpdate would be null even though A's chain has not settled yet).
       const pendingChainForChat = settingsUpdateChains.get(chatId)
       if (pendingChainForChat) {
         await pendingChainForChat
@@ -756,8 +754,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         metadataFilter,
         usedPrompt?.id,
       )
-      // #575: the query answer arriving after a logout must not resurrect messages/chatId into the
-      // now-emptied store - this is the second of the two write-back paths the #618 review flagged.
+      // The query answer arriving after a logout must not resurrect messages/chatId into the
+      // now-emptied store - the second of the two write-back paths after the await.
       if (isStaleSessionEpoch(sessionEpoch)) return
       inFlightSends.delete(send)
       completedTurnSequence++
@@ -813,11 +811,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         messages: [...state.messages, assistantMessage],
         isLoading: isViewAwaitingAnswer(state.chatId),
         chatId: response.chatId,
-        // #557: the chat's current title right after this turn - still the mechanical prefix
+        // The chat's current title right after this turn - still the mechanical prefix
         // fallback on a first turn, see scheduleTitleReload above for how the LLM-derived title
         // eventually replaces it.
         title: response.chatTitle ?? state.title,
-        // #1488: the note state that went into *this* answer, minus the points removed since it
+        // The note state that went into *this* answer, minus the points removed since it
         // was sent (see removedNoteItemIdsByChatId). Null only for an ephemeral query without a
         // persisted chat - the note then stays as it is rather than being emptied.
         noteItems: response.noteItems
@@ -825,7 +823,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           : state.noteItems,
       }))
     } catch (err) {
-      // #575: a failure arriving after a logout must not write isLoading/error into the
+      // A failure arriving after a logout must not write isLoading/error into the
       // now-emptied store either - same reasoning as the two success write-backs above.
       if (isStaleSessionEpoch(sessionEpoch)) return
       inFlightSends.delete(send)
@@ -863,9 +861,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setScopeAll: () => {
     // Already showing @Space-Wissen - nothing to replace. Short-circuiting here avoids a PATCH
-    // that would just re-send the chat's current settings (#564 review).
+    // that would just re-send the chat's current settings.
     if (get().scope === 'all') return
-    // Re-adding @Space-Wissen replaces any concrete chips (#560) - the two are mutually
+    // Re-adding @Space-Wissen replaces any concrete chips - the two are mutually
     // exclusive states of the same bar, never shown together.
     applyScopeChange(get, set, 'all', [])
   },
@@ -873,7 +871,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addReferencedLibrary: (libraryId: string) => {
     const { scope, referencedLibraryIds } = get()
     // The first concrete chip replaces @Space-Wissen; from 'libraries' or 'none' it simply
-    // extends/starts the selection (#560).
+    // extends/starts the selection.
     const previousIds = scope === 'libraries' ? referencedLibraryIds : []
     if (previousIds.includes(libraryId)) return
     applyScopeChange(get, set, 'libraries', [...previousIds, libraryId])
@@ -882,7 +880,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   removeReferencedLibrary: (libraryId: string) => {
     const next = get().referencedLibraryIds.filter((id) => id !== libraryId)
     // Removing the last concrete chip empties the bar rather than falling back to @Space-Wissen -
-    // "leere Leiste = ohne Wissen" (#560), with an explicit one-click way back via setScopeAll.
+    // "leere Leiste = ohne Wissen", with an explicit one-click way back via setScopeAll.
     applyScopeChange(get, set, next.length > 0 ? 'libraries' : 'none', next)
   },
 
@@ -963,13 +961,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
     persistedUserTurnsByChatId.clear()
     parkedRefusalsByChatId.clear()
     parkedRefusalsByNewChatSpaceId.clear()
-    // #1488: the pending removals belong to the chat the previous user had open - keeping them
+    // The pending removals belong to the chat the previous user had open - keeping them
     // would filter points out of the next user's chats until some load confirmed them.
     clearRemovedNoteItemCache()
-    // #440 review, point 3: both module-level maps are keyed by chatId, not scoped to any
+    // Both module-level maps are keyed by chatId, not scoped to any
     // particular user - a stale entry for a chat the previous user had open would otherwise
     // survive into the next user's session in the same tab, e.g. letting a late PATCH failure
-    // for that old chat roll back to settings the new user never saw (#565's rollback base).
+    // for that old chat roll back to settings the new user never saw.
     clearSettingsPersistenceCache()
     set({
       spaceId: null,

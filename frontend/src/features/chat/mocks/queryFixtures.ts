@@ -18,7 +18,7 @@ export const mockQueryResponses: QueryResponse[] = [
         citationValid: true,
         privateSource: false,
         documentId: 'doc-arch',
-        // #667: the Fundort per chunk the markers above name (#0, #3).
+        // The Fundort per chunk the markers above name (#0, #3).
         chunkLocations: [
           { chunkIndex: 0, location: 'Abschn. Architektur › Module' },
           { chunkIndex: 3, location: 'Abschn. Architektur › Query-Pipeline' },
@@ -32,8 +32,8 @@ export const mockQueryResponses: QueryResponse[] = [
         cited: true,
         documentId: 'doc-start',
         chunkLocations: [{ chunkIndex: 2, location: 'S. 2–3' }],
-        // #697 review, Nit 6: one mock source with an invalid citation, so the mocked frontend
-        // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state (#386).
+        // One mock source with an invalid citation, so the mocked frontend
+        // (VITE_ENABLE_MOCKS=true) can actually show the "Beleg nicht bestätigt" state.
         citationValid: false,
         privateSource: false,
       },
@@ -47,7 +47,7 @@ export const mockQueryResponses: QueryResponse[] = [
         privateSource: false,
       },
       {
-        // #1242: an uncited mail source (VITE_ENABLE_MOCKS=true) whose Kopfdaten arrive as
+        // An uncited mail source (VITE_ENABLE_MOCKS=true) whose Kopfdaten arrive as
         // ordinary entries of the generic metadata list, like every other schema field.
         fileName: 'anfrage-bauantrag.eml',
         relevanceScore: 0.2,
@@ -84,7 +84,7 @@ export const mockQueryResponses: QueryResponse[] = [
         ],
       },
       {
-        // #1066: an uncited source with core metadata (VITE_ENABLE_MOCKS=true), so the mocked
+        // An uncited source with core metadata (VITE_ENABLE_MOCKS=true), so the mocked
         // frontend shows the Fundstellen metadata line without a matching citation marker.
         fileName: '2026-03-12_Dienstanweisung_IT-Nutzung.pdf',
         relevanceScore: 0.1,

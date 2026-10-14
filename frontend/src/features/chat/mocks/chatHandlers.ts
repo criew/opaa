@@ -198,7 +198,7 @@ export const chatHandlers = [
     return HttpResponse.json({ chatIds: applied })
   }),
 
-  // Mirrors ChatController#deleteChatNoteItem (#1487): removing one point of the Gesprächsnotiz,
+  // Mirrors ChatController#deleteChatNoteItem: removing one point of the Gesprächsnotiz,
   // immediately and without a confirmation step.
   http.delete('/api/v1/chats/:chatId/note-items/:itemId', ({ params }) => {
     const chatId = String(params.chatId)

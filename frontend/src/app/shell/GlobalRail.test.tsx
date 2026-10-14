@@ -94,7 +94,7 @@ describe('GlobalRail', () => {
     expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'true')
   })
 
-  /** #1822: die Stichtagsauskunft haengt an der AUDITOR-Rolle und braucht einen eigenen Einstieg. */
+  /** Die Stichtagsauskunft haengt an der AUDITOR-Rolle und braucht einen eigenen Einstieg. */
   it('zeigt der Revision ihren eigenen Einstieg und sonst niemandem', () => {
     const { unmount } = renderRailAt('/spaces')
     expect(screen.queryByRole('link', { name: 'Revision' })).not.toBeInTheDocument()
@@ -132,7 +132,7 @@ describe('GlobalRail', () => {
     })
     renderRailAt('/admin/branding')
     const adminLink = screen.getByRole('link', { name: 'Admin' })
-    // #1541: der Einstieg führt auf „Benutzer", den ersten Unterpunkt von „Benutzer & Gruppen"
+    // Der Einstieg führt auf „Benutzer", den ersten Unterpunkt von „Benutzer & Gruppen"
     expect(adminLink).toHaveAttribute('href', '/admin/users')
     // Any /admin page counts as the admin scope, not only the link's own target.
     expect(adminLink).toHaveAttribute('aria-current', 'true')
@@ -151,7 +151,6 @@ describe('GlobalRail', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/settings')
   })
 
-  // #1921: Produktname und Version standen bis dahin dauerhaft unter jeder Seite.
   it('shows product name and version behind "Info zu …" instead of a page footer', async () => {
     const user = userEvent.setup()
     renderRailAt('/spaces')
@@ -168,7 +167,7 @@ describe('GlobalRail', () => {
 
   it('renders in the light scheme as well - the navy-900 rail surface', () => {
     // All other tests run the dark app theme; this keeps the light-scheme branch
-    // (railRoles) from regressing unseen (review #791).
+    // (railRoles) from regressing unseen.
     render(
       <ThemeProvider theme={createAppTheme('light')}>
         <CssBaseline />

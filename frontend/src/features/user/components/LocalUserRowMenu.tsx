@@ -66,12 +66,12 @@ interface LocalUserRowMenuProps {
   onEdit: (user: LocalUserResponse) => void
   onSetupLink: (handover: SetupLinkHandover) => void
   onGeneratedPassword: (user: LocalUserResponse, password: string) => void
-  /** Opens the handover dialog (#1563); the act itself is the person's, not the menu's. */
+  /** Opens the handover dialog; the act itself is the person's, not the menu's. */
   onHandover: (user: LocalUserResponse) => void
 }
 
 /**
- * Das Zeilenmenü eines lokalen Kontos (#1541). Jede Handlung außer „Entsperren" legt ihre
+ * Das Zeilenmenü eines lokalen Kontos. Jede Handlung außer „Entsperren" legt ihre
  * Konsequenz vorher im Bestätigungs-Overlay vor (Richtlinie 5.10); die einmaligen Anzeigen –
  * Link und erzeugtes Passwort – laufen über ihren eigenen Dialog.
  *
@@ -253,7 +253,7 @@ export default function LocalUserRowMenu({
             onClick={() => void lock()}
             disabled={lockDisabled}
             // Kein <span> um den Eintrag: Ein Zwischenelement im `menu` verletzt
-            // `aria-required-children` (Review-Runde 1). Die Begründung hängt deshalb als
+            // `aria-required-children`. Die Begründung hängt deshalb als
             // `title` am Eintrag selbst und steht zusätzlich als Text darunter.
             title={lockDisabled ? disabledReason : undefined}
             aria-describedby={lockDisabled ? reasonId : undefined}

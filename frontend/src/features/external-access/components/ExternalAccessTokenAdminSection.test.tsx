@@ -9,7 +9,7 @@ function render() {
 }
 
 /**
- * Die Verwaltungssicht der Zugangstokens (#1719): die Bestandsliste, ihre bewussten Lücken - kein
+ * Die Verwaltungssicht der Zugangstokens: die Bestandsliste, ihre bewussten Lücken - kein
  * Nutzungsdatum, kein Filter nach Person - und die beiden Sperren.
  */
 describe('ExternalAccessTokenAdminSection', () => {

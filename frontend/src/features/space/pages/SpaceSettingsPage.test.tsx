@@ -10,7 +10,7 @@ import { useNotificationStore } from '@/shared/stores/notificationStore'
 import { getSpace } from '../api/spaceApi'
 import type { SpaceAssetAssociationListResponse, SpaceResponse } from '@/shared/api/types'
 
-// Der sichtbare Reiter ist eine Route (#1917); der Test setzt ihn wie die Adresszeile.
+// Der sichtbare Reiter ist eine Route; der Test setzt ihn wie die Adresszeile.
 const { routeParams, mockNavigate } = vi.hoisted(() => ({
   routeParams: { spaceId: 'space-team', tab: 'general' as string },
   mockNavigate: vi.fn(),
@@ -36,7 +36,7 @@ function renderTab(tab: 'general' | 'members' | 'content') {
   return renderWithProviders(<SpaceSettingsPage />, { withRouter: true })
 }
 
-// #144: membersBySpaceId lives here too - vi.hoisted's factory runs before the imports below, so
+// membersBySpaceId lives here too - vi.hoisted's factory runs before the imports below, so
 // mockListSpaceMembers cannot close over a module-level const declared after it.
 const {
   mockUpdateSpaceDetails,
@@ -93,7 +93,7 @@ const {
         role: 'ADMIN',
         createdAt: '2026-03-01T10:00:00Z',
       },
-      // #1815: a group as a member, with its current size (ADR-0036, Entscheidung 9).
+      // A group as a member, with its current size (ADR-0036, Entscheidung 9).
       {
         id: 'm-team-referat-50',
         subjectType: 'GROUP',
@@ -104,7 +104,7 @@ const {
         emptyGroup: false,
         createdAt: '2026-03-01T10:00:00Z',
       },
-      // #1820: eine geschuetzte Gruppe - ohne Namen und ohne jede Zahl, aber mit ihrer Zeile.
+      // Eine geschuetzte Gruppe - ohne Namen und ohne jede Zahl, aber mit ihrer Zeile.
       {
         id: 'm-team-personalrat',
         subjectType: 'GROUP',
@@ -137,7 +137,7 @@ const {
         }
       },
     ),
-    // #1820: die Subjekt-Auswahl sucht serverseitig; welche Gruppen erscheinen, entscheidet der
+    // Die Subjekt-Auswahl sucht serverseitig; welche Gruppen erscheinen, entscheidet der
     // Dienst.
     mockSearchSelectableGroups: vi.fn(async () => [
       {
@@ -226,7 +226,7 @@ vi.mock('@/features/principal/api/groupLookupApi', async () => {
   )
   return {
     ...actual,
-    // #1820: the subject picker searches groups server-side.
+    // The subject picker searches groups server-side.
     searchSelectableGroups: mockSearchSelectableGroups,
   }
 })
@@ -273,7 +273,7 @@ const teamSpace: SpaceResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
-// #674 review, nit e: a MEMBER who is neither ADMIN nor owner, reached this page directly by URL
+// A MEMBER who is neither ADMIN nor owner, reached this page directly by URL
 // (not via SpacePage's "Space verwalten" button, which is hidden from them). Reuses 'space-team's
 // id - the mocked useParams above is hardcoded to it - and the test below overrides
 // mockListSpaceMembers for a single call to return [], mirroring listSpaceMembers's
@@ -294,7 +294,7 @@ const nonAdminSpace: SpaceResponse = {
   updatedAt: '2026-03-01T10:00:00Z',
 }
 
-/** Die Zeile eines Mitglieds in der Liste des Reiters „Mitglieder“ (#2134). */
+/** Die Zeile eines Mitglieds in der Liste des Reiters „Mitglieder“. */
 function memberRow(name: string | RegExp): HTMLElement {
   const row = screen.getByText(name).closest('[data-testid="space-member-row"]')
   expect(row).not.toBeNull()
@@ -342,7 +342,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #1917: eine Einstellungsseite je Space, gegliedert in Reiter; alle Asset-Typen teilen sich
+   * Eine Einstellungsseite je Space, gegliedert in Reiter; alle Asset-Typen teilen sich
    * den Reiter „Inhalte".
    */
   it('gliedert die Einstellungen in Stammdaten, Mitglieder und Inhalte', () => {
@@ -356,7 +356,7 @@ describe('SpaceSettingsPage', () => {
         .map((tab) => tab.textContent),
     ).toEqual(['Stammdaten', 'Mitglieder', 'Inhalte'])
     expect(screen.getByRole('heading', { level: 1, name: 'Einstellungen' })).toBeInTheDocument()
-    // #2207: Keine Überschrift wiederholt den Reiternamen; der Gefahrenbereich ist deshalb die
+    // Keine Überschrift wiederholt den Reiternamen; der Gefahrenbereich ist deshalb die
     // h2 des Panels, ohne Sprung in der Gliederung (docs/design/accessibility.md 2.3).
     expect(screen.queryByRole('heading', { name: 'Stammdaten' })).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 2, name: 'Gefahrenbereich' })).toBeInTheDocument()
@@ -367,7 +367,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #1917: Jeder Abschnitt lädt in seinem eigenen Effekt, und `AreaTabs` rendert nur das aktive
+   * Jeder Abschnitt lädt in seinem eigenen Effekt, und `AreaTabs` rendert nur das aktive
    * Panel — die Mitgliederliste wird also erst auf ihrem Reiter geholt. Ein Rückbau auf
    * Seitenebene würde das unbemerkt wieder einsammeln.
    */
@@ -380,7 +380,7 @@ describe('SpaceSettingsPage', () => {
     expect(mockGetSpaceAssetAssociations).not.toHaveBeenCalled()
   })
 
-  // #1917: Die Einstellungen führen keine Chatliste mehr - sie war der Grund, warum die alte
+  // Die Einstellungen führen keine Chatliste mehr - sie war der Grund, warum die alte
   // Datenquellen-Seite wie eine zweite Chat-Übersicht wirkte.
   it('zeigt in den Einstellungen weder Chatliste noch „Neuer Chat“', () => {
     setSpaceState(teamSpace)
@@ -390,7 +390,7 @@ describe('SpaceSettingsPage', () => {
     expect(screen.queryByText('Chats')).not.toBeInTheDocument()
   })
 
-  /** #1917, Muster GitLab: die beiden folgenreichen Handlungen stehen abgesetzt und benannt. */
+  /** Muster GitLab: die beiden folgenreichen Handlungen stehen abgesetzt und benannt. */
   it('stellt Archivieren und Löschen in einen eigenen Gefahrenbereich der Stammdaten', () => {
     setSpaceState(teamSpace)
     renderTab('general')
@@ -435,7 +435,7 @@ describe('SpaceSettingsPage', () => {
     expect(screen.queryByText(/Ihr Standard-Space/)).not.toBeInTheDocument()
   })
 
-  /** #2131, #2205: Das Formular ist die Überschrift des Panels, ohne Hinweistext darunter. */
+  /** Das Formular ist die Überschrift des Panels, ohne Hinweistext darunter. */
   it('heads the members tab with the add form only, without a hint on groups', async () => {
     setSpaceState(teamSpace)
     renderTab('members')
@@ -448,7 +448,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   it('marks the owner and hides remove/transfer actions for their own row', async () => {
-    // #144: the page's own selectSpace effect clears the store's members synchronously before
+    // The page's own selectSpace effect clears the store's members synchronously before
     // the mocked listSpaceMembers response repopulates it - findByText waits for that repopulation
     // instead of racing it, matching the real (also async) endpoint this now goes through.
     setSpaceState(teamSpace)
@@ -456,15 +456,15 @@ describe('SpaceSettingsPage', () => {
 
     expect(await screen.findByText('Owner')).toBeInTheDocument()
     expect(within(memberRow('Owner')).getByText('Eigentümer')).toBeInTheDocument()
-    // #2134: the owner's row carries no menu; the colleague and both group rows do - the
-    // protected group's row exists for exactly this reason (#1820).
+    // The owner's row carries no menu; the colleague and both group rows do - the
+    // protected group's row exists for exactly this reason.
     expect(
       screen.queryByRole('button', { name: 'Weitere Aktionen für „Owner“' }),
     ).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /^Weitere Aktionen für/ })).toHaveLength(3)
   })
 
-  // #1815, #2134: a group row names the group, marks it as one and carries its current size -
+  // A group row names the group, marks it as one and carries its current size -
   // but never the handover, which only a natural person may receive.
   it('renders a group member with its name, its marker and its current size', async () => {
     setSpaceState(teamSpace)
@@ -506,7 +506,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #1880, ADR-0036 Entscheidung 9: Wer die Gruppe hier aufgenommen hat, sieht ihre Mitglieder —
+   * ADR-0036 Entscheidung 9: Wer die Gruppe hier aufgenommen hat, sieht ihre Mitglieder —
    * und erst, wenn er danach fragt.
    */
   it('offers the member list of a group member and loads it only on request', async () => {
@@ -542,7 +542,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #2205: Jede Aktion meldet sich als Popup (Leitlinie 5.9); in der Seite bleibt keine
+   * Jede Aktion meldet sich als Popup (Leitlinie 5.9); in der Seite bleibt keine
    * Erfolgsmeldung stehen — auch nicht nach einer weiteren Aktion.
    */
   it('reports adding and removing as popups and leaves no success message in the page', async () => {
@@ -574,7 +574,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #2205: Ein Rollenwechsel aktualisiert die Liste still — kein „wird geladen“, keine neu
+   * Ein Rollenwechsel aktualisiert die Liste still — kein „wird geladen“, keine neu
    * aufgebaute Zeile, der Fokus bleibt auf der Rollenauswahl — und meldet sich als Popup.
    */
   it('changes a role without a loading flicker, keeps the focus and reports it as a popup', async () => {
@@ -609,7 +609,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #2205: Wer sich selbst entfernt und damit den Zugang verliert, sieht keine Verwaltungsansicht
+   * Wer sich selbst entfernt und damit den Zugang verliert, sieht keine Verwaltungsansicht
    * mehr, sondern landet in der Space-Übersicht und erfährt, warum.
    */
   it('leaves the settings for the overview when removing oneself cost the access', async () => {
@@ -632,7 +632,7 @@ describe('SpaceSettingsPage', () => {
     expect(useSpaceStore.getState().selectedSpace).toBeNull()
   })
 
-  /** #2205: Ein Fehler bleibt in der Seite stehen, bis er geschlossen wird. */
+  /** Ein Fehler bleibt in der Seite stehen, bis er geschlossen wird. */
   it('keeps a failure on screen until it is closed', async () => {
     mockUpdateSpaceMemberRole.mockRejectedValueOnce(
       new Error('Die Rolle konnte nicht geändert werden'),
@@ -656,9 +656,9 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #1815, ADR-0036 Entscheidung 6: the handover is no longer the owner's alone - every capable
-   * ADMIN member that is a natural person may perform it. Driven here with an ADMIN caller who is
-   * not the owner, which before this change saw no button at all.
+   * ADR-0036 Entscheidung 6: the handover is not the owner's alone - every capable ADMIN member
+   * that is a natural person may perform it. Driven here with an ADMIN caller who is not the
+   * owner.
    */
   it('offers the handover to an ADMIN member who is not the owner', async () => {
     setSpaceState({ ...teamSpace, ownerId: 'someone-else', userRole: 'ADMIN' })
@@ -682,7 +682,7 @@ describe('SpaceSettingsPage', () => {
     await waitFor(() => {
       expect(mockTransferSpaceOwnership).toHaveBeenCalledWith('space-team', 'u1')
     })
-    // #2205: die Übertragung meldet sich wie jede Aktion als Popup.
+    // Die Übertragung meldet sich wie jede Aktion als Popup.
     expect(await screen.findByRole('alert')).toHaveTextContent('Verantwortung an Owner übertragen')
     expect(screen.getByRole('tabpanel')).not.toHaveTextContent('Verantwortung übertragen')
   })
@@ -698,7 +698,7 @@ describe('SpaceSettingsPage', () => {
     expect(await screen.findByText(/offline/)).toBeInTheDocument()
   })
 
-  // #1815, ADR-0036 Entscheidung 6: state and addressee, without a date and without the previous
+  // ADR-0036 Entscheidung 6: state and addressee, without a date and without the previous
   // owner - the space stays usable.
   it('names the derived state "Nachfolge offen" without a date or a previous owner', () => {
     setSpaceState({ ...teamSpace, successionOpen: true })
@@ -708,8 +708,8 @@ describe('SpaceSettingsPage', () => {
   })
 
   it('#777: renders the owner role as a read-only choice instead of an editable dropdown', async () => {
-    // An editable Select on the owner's row always failed against the backend's "Die Rolle des
-    // Eigentümers kann nicht geändert werden"; #2207 keeps its look but makes it read-only.
+    // An editable Select on the owner's row would always fail against the backend's "Die Rolle des
+    // Eigentümers kann nicht geändert werden"; it keeps its look but is read-only.
     setSpaceState(teamSpace)
     renderTab('members')
 
@@ -717,7 +717,7 @@ describe('SpaceSettingsPage', () => {
     const ownerRow = memberRow('Owner')
     const ownerRole = within(ownerRow).getByRole('combobox', { name: 'Rolle von „Owner“' })
     expect(ownerRole).toHaveAttribute('aria-readonly', 'true')
-    // #2134: the owner carries "Eigentümer" alone, without the role label beside it.
+    // The owner carries "Eigentümer" alone, without the role label beside it.
     expect(ownerRole).toHaveTextContent('Eigentümer')
     expect(within(ownerRow).queryByText('Administrator')).not.toBeInTheDocument()
 
@@ -726,7 +726,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #1820, ADR-0036 Entscheidung 9: Eine geschuetzte Gruppe erscheint namenlos und ohne Zahl - die
+   * ADR-0036 Entscheidung 9: Eine geschuetzte Gruppe erscheint namenlos und ohne Zahl - die
    * Zeile bleibt, sonst koennte ein ADMIN eine Mitgliedschaft nicht beenden, die er nicht sieht.
    */
   it('renders a protected group as a nameless row that can still be removed', async () => {
@@ -746,7 +746,7 @@ describe('SpaceSettingsPage', () => {
     })
   })
 
-  /** #1822: ob eine Rolle direkt oder ueber eine Gruppe kommt, beantwortet die Herleitung. */
+  /** Ob eine Rolle direkt oder ueber eine Gruppe kommt, beantwortet die Herleitung. */
   it('opens the derivation of a person on request and never for a group row', async () => {
     setSpaceState(teamSpace)
     renderTab('members')
@@ -766,7 +766,7 @@ describe('SpaceSettingsPage', () => {
   })
 
   /**
-   * #2207: Ein Mitglied sieht, wie viele Personen und Gruppen dem Space angehören und wie sich
+   * Ein Mitglied sieht, wie viele Personen und Gruppen dem Space angehören und wie sich
    * die Rollen verteilen, aber keinen Namen - die Mitgliederliste bleibt Administratoren,
    * Eigentümer und Systemverwaltung vorbehalten.
    */
@@ -805,7 +805,7 @@ describe('SpaceSettingsPage', () => {
     expect(screen.getByText('Rollen: 1 Mitglied')).toBeInTheDocument()
   })
 
-  /** #2207: Stammdaten sind für ein Mitglied lesbar, aber nicht änderbar, ohne Gefahrenbereich. */
+  /** Stammdaten sind für ein Mitglied lesbar, aber nicht änderbar, ohne Gefahrenbereich. */
   it('shows a plain member the general data read-only', () => {
     setSpaceState(nonAdminSpace)
     renderTab('general')
@@ -922,7 +922,7 @@ describe('SpaceSettingsPage', () => {
     })
   })
 
-  /** #2131: Ohne Space-Verzeichnis bewirkt eine Sichtbarkeit nichts - jeder Space ist privat. */
+  /** Ohne Space-Verzeichnis bewirkt eine Sichtbarkeit nichts - jeder Space ist privat. */
   it('offers no visibility setting', () => {
     setSpaceState(teamSpace)
     renderTab('general')
@@ -980,7 +980,7 @@ describe('SpaceSettingsPage', () => {
     expect(cleanup).toBeDisabled()
   })
 
-  // #543: Space mit fremden privaten Chats ist dauerhaft unlöschbar - Archivieren ist der Ausweg.
+  // Space mit fremden privaten Chats ist dauerhaft unlöschbar - Archivieren ist der Ausweg.
 
   it('shows the archive button for the owner of a non-personal, non-archived space', () => {
     setSpaceState(teamSpace)

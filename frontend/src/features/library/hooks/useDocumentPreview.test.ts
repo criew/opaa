@@ -66,9 +66,8 @@ describe('useDocumentPreview', () => {
     expect(result.current.previewDocument).toBeNull()
   })
 
-  // #780 acceptance criteria: a format without a preview (DOCX among them) must give visible
-  // download feedback so a click never appears to do nothing - since guidelines 5.9 as a global
-  // popup notification.
+  // A format without a preview (DOCX among them) must give visible download feedback so a click
+  // never appears to do nothing - as a global popup notification (guidelines 5.9).
   it('notifies with a German download message for a download result', async () => {
     mockOpenDocumentContent.mockResolvedValueOnce({ kind: 'download', fileName: 'bescheid.docx' })
     const { result } = renderHook(() => useDocumentPreview())
@@ -81,7 +80,7 @@ describe('useDocumentPreview', () => {
     expect(result.current.previewDocument).toBeNull()
   })
 
-  // #781 review, Nit 3: a Markdown/plain text original that fell back to a download purely
+  // A Markdown/plain text original that fell back to a download purely
   // because it exceeded the size cap gets a more informative message than the generic one above.
   it('notifies with a "zu groß für die Vorschau" message for a too-large-for-preview download', async () => {
     mockOpenDocumentContent.mockResolvedValueOnce({

@@ -25,7 +25,7 @@ interface AreaPageHeaderProps {
 }
 
 /**
- * Der Kopf einer Bereichsseite (#1604): Titel, daneben eine kurze Angabe und die eine primäre
+ * Der Kopf einer Bereichsseite: Titel, daneben eine kurze Angabe und die eine primäre
  * Handlung, darunter der Satz, der den Geltungsbereich nennt.
  *
  * Ein eigener Baustein, weil dieselbe Anordnung vorher auf sieben Seiten viermal verschieden

@@ -10,7 +10,7 @@ describe('searchAdminStore', () => {
   })
 
   /**
-   * Status und Diagnosekontext speisen verschiedene Reiter (#1616) und werden deshalb getrennt
+   * Status und Diagnosekontext speisen verschiedene Reiter und werden deshalb getrennt
    * geholt: Wer den Indexstatus ansieht, löst keinen Aufruf der Diagnose aus und umgekehrt.
    */
   it('fetches only the status, not the diagnosis context', async () => {
@@ -126,7 +126,7 @@ describe('searchAdminStore', () => {
     expect(isLoadingDocumentChunks).toBe(false)
   })
 
-  // #1828: without a grant on the library the endpoint answers 403 - the reason has to reach the
+  // Without a grant on the library the endpoint answers 403 - the reason has to reach the
   // section's Alert verbatim, an empty view would look like "this document has no chunks".
   it('shows the German reason when the library may be administered but not read', async () => {
     server.use(

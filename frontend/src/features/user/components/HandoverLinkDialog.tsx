@@ -14,7 +14,7 @@ import { SHOWN_ONCE_HINT } from './localUserLabels'
 import { copyOnce } from '@/shared/utils/copyOnce'
 
 /**
- * Die einmalige Anzeige eines Übergabe-Links (#1563, ADR-0033 Entscheidung 12) - wie beim
+ * Die einmalige Anzeige eines Übergabe-Links (ADR-0033 Entscheidung 12) - wie beim
  * Einladungslink nur dann, wenn die Mail nicht hinausgegangen ist. Ein eigener Dialog neben
  * {@link ./SetupLinkDialog}, weil dieser Link etwas anderes tut und die Warnung dazu eine andere
  * ist: Wer ihn einlöst, wechselt die Identität des Kontos.

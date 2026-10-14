@@ -17,7 +17,7 @@ interface MetadataFilterOptionsState {
   /** The options of the scope they were last loaded for, null before the first load. */
   options: MetadataFilterOptionsResponse | null
   /** The scope `options` describes - a component compares it with the current scope before
-   * trusting the numbers, exactly like spaceStore's assetAssociationsSpaceId (#783). */
+   * trusting the numbers, exactly like spaceStore's assetAssociationsSpaceId. */
   optionsScopeKey: string | null
   isLoading: boolean
   error: string | null
@@ -37,7 +37,7 @@ export function metadataFilterScopeKey(scope: MetadataFilterScope): string {
 let loadSequence = 0
 
 /**
- * #1070: the Füllstand per field and the values occurring in the caller's search scope - loaded
+ * The Füllstand per field and the values occurring in the caller's search scope - loaded
  * from the backend in the caller's own rights context, never computed here. Reloaded whenever the
  * scope changes or the filter popover opens, so the numbers describe the bestand the next
  * question would search.

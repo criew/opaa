@@ -40,7 +40,7 @@ describe('ChatList', () => {
     expect(await screen.findByText('Keine aktiven Chats in diesem Space.')).toBeInTheDocument()
   })
 
-  // #548 review, nit a: "Neuer Chat" must not eagerly persist an empty chat - it only navigates to
+  // "Neuer Chat" must not eagerly persist an empty chat - it only navigates to
   // the not-yet-created "new" chat state, so the implicit creation on the first sent message
   // (chatStore#sendMessage) stays the single chat-creation path.
   it('navigates to the not-yet-created chat instead of eagerly creating one', async () => {
@@ -95,8 +95,7 @@ describe('ChatList', () => {
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
 
-  // #548 review, nit b: a failed delete used to reject silently (unhandled rejection) instead of
-  // surfacing anything to the user.
+  // A failed delete must surface to the user, not reject silently (unhandled rejection).
   it('shows an error and keeps the chat when deletion fails on the server', async () => {
     server.use(
       http.delete('/api/v1/chats/:chatId', () => {
@@ -115,7 +114,7 @@ describe('ChatList', () => {
     expect(screen.getByText('Architektur des Projekts')).toBeInTheDocument()
   })
 
-  // #548 review, nit b: same for a failed rename.
+  // Same for a failed rename.
   it('shows an error and keeps the old title when renaming fails on the server', async () => {
     server.use(
       http.patch('/api/v1/chats/:chatId', () => {

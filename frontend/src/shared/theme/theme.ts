@@ -38,7 +38,7 @@ const CONTROL_HEIGHT_COMPACT = 28
  */
 function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   const brandColor = branding?.primaryColor
-  // The OPAA standard colour counts as "not configured" (#634): the backend resolves branding
+  // The OPAA standard colour counts as "not configured": the backend resolves branding
   // field by field, so an unconfigured deployment still delivers '#1292EE' - but that value means
   // "the tokens decide", and the tokens split the accent per scheme (blue-700 light, blue-500
   // dark). Only a genuinely different operator colour overrides the roles.
@@ -51,12 +51,12 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
       accentPress: roles.accentPress,
     }
   }
-  // #634: filled action surfaces must carry accentFg (white) at >= 4.5:1, so the surface is the
+  // Filled action surfaces must carry accentFg (white) at >= 4.5:1, so the surface is the
   // bounded darkening of the configured colour - the colour itself where it is dark enough.
   // Hover/press derive from that surface, keeping the sampled -8%/-16% rhythm.
   const accentSurface = deriveAccentSurface(brandColor)
   return {
-    // #1600: Die Rolle `accent` färbt Text, Verweise und Indikatoren — dort gilt 4,5:1 gegen den
+    // Die Rolle `accent` färbt Text, Verweise und Indikatoren — dort gilt 4,5:1 gegen den
     // Grund des jeweiligen Schemas, und die Vorgabewerte der Rollen halten das nachweislich ein.
     // Eine konfigurierte Hausfarbe umging diese Zusicherung bisher: Sie wurde unverändert
     // übernommen. Jetzt wird sie so weit vom Grund weggerückt, wie die Schwelle verlangt — nicht
@@ -78,7 +78,7 @@ export function createAppTheme(mode: PaletteMode, branding?: BrandingOverrides):
 }
 
 /**
- * The global rail's theme (#786, mockup 2a): a step darker than the navy sidebar while the app
+ * The global rail's theme (mockup 2a): a step darker than the navy sidebar while the app
  * is light ({@link railRoles}), the carbon dark scheme while it is dark - same rule as the
  * sidebar, one surface further left.
  */
@@ -139,7 +139,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           disabled: roles.fg3,
         },
       },
-      // The fine grid below is sampled from mockup 1a's inline styles (#658) - the app surface
+      // The fine grid below is sampled from mockup 1a's inline styles - the app surface
       // runs deliberately smaller and denser than the token scale's headline steps.
       typography: {
         fontFamily: fontFamily.sans,
@@ -297,7 +297,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
                 {
                   props: { variant: 'contained', color: 'primary' },
                   style: {
-                    // #634: the filled surface is accentSurface, never the (possibly lighter)
+                    // The filled surface is accentSurface, never the (possibly lighter)
                     // accent - white label text needs 4.5:1.
                     backgroundColor: accentSurface,
                     color: roles.accentFg,
@@ -350,7 +350,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               boxShadow: isDark ? 'none' : shadow.hairline,
               borderRadius: radius.sm,
               '& .MuiOutlinedInput-notchedOutline': {
-                // Mockup 1a draws inputs with the crisper gray-300 line (#658).
+                // Mockup 1a draws inputs with the crisper gray-300 line.
                 borderColor: isDark ? roles.borderStrong : gray[300],
               },
               '&:hover .MuiOutlinedInput-notchedOutline': {
@@ -382,10 +382,10 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           },
         },
         /*
-         * Aufklappbare Einträge tragen ihre Trennung in einer Linie, nicht in einem Rahmen
-         * (#1608). Vorher war jeder Eintrag eine gerahmte Karte; mehrere davon untereinander
-         * lesen sich als Stapel von Kästen statt als Liste. Die Vorgabe steht hier und nicht in
-         * den Seiten, damit sie für jedes Aufklappelement der Anwendung gilt.
+         * Aufklappbare Einträge tragen ihre Trennung in einer Linie, nicht in einem Rahmen:
+         * Mehrere gerahmte Karten untereinander lesen sich als Stapel von Kästen statt als Liste.
+         * Die Vorgabe steht hier und nicht in den Seiten, damit sie für jedes Aufklappelement der
+         * Anwendung gilt.
          */
         MuiAccordion: {
           defaultProps: {
@@ -480,7 +480,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               '&:hover': {
                 backgroundColor: roles.bg2,
               },
-              // Mockup 1a: the selected space sits on the blue-50 tint (#658).
+              // Mockup 1a: the selected space sits on the blue-50 tint.
               '&.Mui-selected': {
                 backgroundColor: isDark ? alpha(accent, 0.16) : blue[50],
               },
@@ -495,7 +495,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               fontWeight: fontWeight.medium,
               variants: [
                 {
-                  // #634: filled primary chips (search-scope chips, "Aktiv" badge) sit on the
+                  // Filled primary chips (search-scope chips, "Aktiv" badge) sit on the
                   // accent surface for the same 4.5:1 reason as contained buttons.
                   props: { variant: 'filled', color: 'primary' },
                   style: {
@@ -530,8 +530,8 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
         },
       },
       // Overrides MUI's built-in English defaults (Autocomplete "No options"/"Loading…", the
-      // clear/open/close aria-labels, TablePagination texts, etc.) with the German translations
-      // (#784) - the project language requires German for all visible UI, including aria-label.
+      // clear/open/close aria-labels, TablePagination texts, etc.) with the German translations -
+      // the project language requires German for all visible UI, including aria-label.
     },
     deDE,
   )

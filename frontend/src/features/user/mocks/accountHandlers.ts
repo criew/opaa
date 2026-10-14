@@ -10,7 +10,7 @@ import {
 } from './localUserFixtures'
 
 /**
- * Die Kontenliste (#1601) und der Rollenendpunkt als MSW-Handler - mit den Invarianten, auf die
+ * Die Kontenliste und der Rollenendpunkt als MSW-Handler - mit den Invarianten, auf die
  * sich die Oberfläche verlässt: lokale und Anbieterkonten in einer Liste, die drei lokalen Filter
  * grenzen auf lokale Konten ein, keine Sortierung nach Aktivität, Seitengröße über 50 ist 400;
  * die Rolle eines anbietergeführten Kontos lehnt der Rollenendpunkt mit 409 ab, der letzte

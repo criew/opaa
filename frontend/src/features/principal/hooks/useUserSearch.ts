@@ -19,14 +19,14 @@ interface UseUserSearchResult {
 
 /**
  * Debounced, server-side user search backing the member/grant pickers - `UserPicker` and
- * `SubjectPicker` (#777).
+ * `SubjectPicker`.
  *
- * #778 review, finding 4: `GET /v1/users` now requires a query (min. `MIN_QUERY_LENGTH`
- * characters) and caps its result server-side - it no longer answers an unqualified "list
- * everyone" call on every picker mount, so this hook only issues a request once the caller has
+ * `GET /v1/users` requires a query (min. `MIN_QUERY_LENGTH`
+ * characters) and caps its result server-side - it does not answer an unqualified "list
+ * everyone" call on a picker mount, so this hook only issues a request once the caller has
  * typed enough, debounced so each keystroke does not fire its own request.
  *
- * #778 review, finding 1: `isLoading` and `error` are tracked separately - opening the picker and
+ * `isLoading` and `error` are tracked separately - opening the picker and
  * acting immediately (before the in-flight request settles) is "still loading", not "failed to
  * load"; only a request that actually rejects sets `error`. A caller that only checked "the list
  * is empty" could not tell the two apart and showed a misleading permanent-looking failure message

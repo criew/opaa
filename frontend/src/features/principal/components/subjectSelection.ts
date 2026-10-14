@@ -17,7 +17,7 @@ export const PROTECTED_GROUP_SEARCH_HINT =
 
 /**
  * Wer ein Recht bekommen soll: genau eine Person, genau eine Gruppe — oder alle Konten der
- * Organisation (#1820, #1931). Die dritte Art benennt niemanden; sie erscheint nur dort, wo der
+ * Organisation. Die dritte Art benennt niemanden; sie erscheint nur dort, wo der
  * Aufrufer sie ausdrücklich zulässt (Freigaben ja, Space-Mitgliedschaften nein).
  */
 export interface SubjectSelection {
@@ -38,7 +38,7 @@ export function selectedSubjectId(selection: SubjectSelection): string | null {
 }
 
 /**
- * Die Rückfrage vor einer Freigabe an alle Konten (#1931, ADR-0037 Entscheidung 9). Sie
+ * Die Rückfrage vor einer Freigabe an alle Konten (ADR-0037 Entscheidung 9). Sie
  * spricht die Reichweite aus, statt sie nur zu beschriften: Seit die organisationsweite Reichweite
  * eine Freigabe wie jede andere ist, liegt sie einen Klick neben „Team Recht" — dieser Schritt ist
  * die Gegenmaßnahme dagegen.

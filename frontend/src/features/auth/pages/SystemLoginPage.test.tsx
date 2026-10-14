@@ -11,7 +11,7 @@ import { LOCAL_ACCOUNTS_DISABLED } from '@/shared/session/types'
 import SystemLoginPage from './SystemLoginPage'
 
 /**
- * #1368 / ADR-0033, Entscheidung 4 and 5: the system administrators' sign-in is reachable at all
+ * ADR-0033, Entscheidung 4 and 5: the system administrators' sign-in is reachable at all
  * times - it is the way back into an installation whose last identity provider is misconfigured -
  * and steps aside as soon as the regular page carries the mask itself.
  */
@@ -28,7 +28,7 @@ describe('SystemLoginPage', () => {
   const { loginLocal } = useAuthStore.getState()
 
   beforeEach(() => {
-    // #1631: the note that this tab has spent its automatic sign-in attempt lives in
+    // The note that this tab has spent its automatic sign-in attempt lives in
     // sessionStorage - a test leaving it behind would silently disarm the next one.
     sessionStorage.clear()
     useBrandingStore.setState({ branding: OPAA_BRANDING })
@@ -119,7 +119,7 @@ describe('SystemLoginPage', () => {
   })
 
   /**
-   * #1631: with a running provider session the regular page signs in automatically, and its mask
+   * With a running provider session the regular page signs in automatically, and its mask
    * for accounts of this installation would be gone before anybody could use it. This page is the
    * documented second door, so passing through it takes that attempt off the table - otherwise the
    * only way to the mask would be a sign-out, and that ends the provider session as well.

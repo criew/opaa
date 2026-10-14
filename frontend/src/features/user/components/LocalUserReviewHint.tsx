@@ -28,7 +28,7 @@ function invitedText(count: number): string {
 }
 
 /**
- * Der Hinweis zur Auflage (#1541, ADR-0033 Entscheidung 11) als Link in der Kopfzeile der
+ * Der Hinweis zur Auflage (ADR-0033 Entscheidung 11) als Link in der Kopfzeile der
  * Kontenliste: Die Zahlen stehen knapp im Link, Auflage und Sprünge in die zugehörigen Filter im
  * Popover dahinter – „die Prüfung der Auflage ist ein Vorgang, kein Zähler". Ohne Konten ohne
  * Ablaufdatum und ohne offene Einladung erscheint nichts; der Auflagensatz steht dann nicht als

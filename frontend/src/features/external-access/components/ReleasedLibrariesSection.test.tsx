@@ -45,7 +45,7 @@ function render(
   )
 }
 
-/** Die freigegebenen Bibliotheken (#1731) als Abschnitt der externen KI-Werkzeuge (#2504). */
+/** Die freigegebenen Bibliotheken als Abschnitt der externen KI-Werkzeuge. */
 describe('ReleasedLibrariesSection', () => {
   const originalMatchMedia = window.matchMedia
 

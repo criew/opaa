@@ -60,7 +60,7 @@ export function renderWithProviders(
         {/* Mounted app-wide by AppShell; mirrored here so component tests observe the popup
             notifications their interactions raise (guidelines 5.9). */}
         {withNotificationHost && <NotificationHost />}
-        {/* Ebenso app-weit von der AppShell montiert (#1610): Ohne ihn liefe ein `confirmAction`
+        {/* Ebenso app-weit von der AppShell montiert: Ohne ihn liefe ein `confirmAction`
             im Test ins Leere und seine Handlung haenge fuer immer am `await`. */}
         <ConfirmHost />
       </ThemeProvider>
@@ -109,7 +109,7 @@ export function setMockAuthState({
 }
 
 /**
- * Beantwortet das Bestätigungs-Overlay (#1610), das eine folgenreiche Handlung absichert.
+ * Beantwortet das Bestätigungs-Overlay, das eine folgenreiche Handlung absichert.
  *
  * Die Frage wird mitgegeben und nicht nur die Schaltfläche geklickt: Sie ist der Text, den ein
  * Screenreader beim Öffnen vorliest, und damit das, was den Rückfall auf eine falsche

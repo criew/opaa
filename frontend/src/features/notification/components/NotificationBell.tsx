@@ -18,7 +18,7 @@ function formatCreatedAt(value: string): string {
 }
 
 /**
- * Minimal in-app notification display (#203) - a bell with an unread badge and a dropdown list.
+ * Minimal in-app notification display - a bell with an unread badge and a dropdown list.
  * Deliberately narrow: no push, no polling beyond mount/open, no grouping - just enough that a
  * library owner learns their library was associated into a mixed-audience space without having to
  * check a list themselves (docs/features/spaces-and-assets.md#assets-in-einen-space-assoziieren).

@@ -1,8 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { server } from '@/test/server'
-// #575 review: this import's position relative to chatListStore below no longer matters - see the
-// matching comment in chatStore.test.ts for why.
+// This import's position relative to chatListStore below does not matter - see the matching
+// comment in chatStore.test.ts for why.
 import { resetAllStores } from '@/shared/session/resettableStores'
 import { useChatListStore } from './chatListStore'
 
@@ -10,7 +10,7 @@ const SPACE_ID = 'space-personal'
 
 /** Resolves once resolve() is called - lets a test hold an MSW handler open until it explicitly
  * wants the response to arrive, so it can trigger resetAllStores() while the request is still in
- * flight (#575). */
+ * flight. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((r) => {
@@ -43,8 +43,8 @@ describe('chatListStore', () => {
     expect(chats?.some((chat) => chat.id === created?.id)).toBe(true)
   })
 
-  // #548 review, nit b: server errors on these three actions used to reject silently (unhandled
-  // rejection) instead of surfacing anything - now they resolve and set `error`.
+  // Server errors on these three actions resolve and set `error` instead of rejecting silently
+  // (unhandled rejection).
   it('sets an error and returns null when creation fails on the server', async () => {
     server.use(
       http.post('/api/v1/spaces/:spaceId/chats', () => {
@@ -90,7 +90,6 @@ describe('chatListStore', () => {
     expect(chats?.some((chat) => chat.id === 'chat-personal-1')).toBe(true)
   })
 
-  // #548 review, finding 4.
   it('upsertChat inserts a new chat and re-sorts by last use', () => {
     useChatListStore.setState({
       chatsBySpaceId: {
@@ -199,7 +198,7 @@ describe('chatListStore', () => {
     useChatListStore.getState().updateChatTitle(SPACE_ID, 'chat-a', 'LLM-generierter Titel')
 
     const chats = useChatListStore.getState().chatsBySpaceId[SPACE_ID]
-    // #557: a title update is not a "last use" event - the order stays exactly as it was, unlike
+    // A title update is not a "last use" event - the order stays exactly as it was, unlike
     // touchChat.
     expect(chats?.map((chat) => chat.id)).toEqual(['chat-a', 'chat-b'])
     expect(chats?.find((chat) => chat.id === 'chat-a')?.title).toBe('LLM-generierter Titel')
@@ -233,7 +232,7 @@ describe('chatListStore', () => {
     expect(useChatListStore.getState().error).toBeTruthy()
   })
 
-  // #575: found while systematically checking the resettableStores registry for further
+  // Found while systematically checking the resettableStores registry for further
   // unguarded async set() paths beyond the ones the issue named explicitly.
   it('a loadChats response arriving after a session reset does not resurrect the chat list', async () => {
     const gate = deferred<void>()

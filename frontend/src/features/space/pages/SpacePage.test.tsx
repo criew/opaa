@@ -19,7 +19,7 @@ vi.mock('react-router', async () => {
   }
 })
 
-// #674 re-review: listSpaceMembers and getSpace are mocked (rather than left to MSW's shared
+// listSpaceMembers and getSpace are mocked (rather than left to MSW's shared
 // 'space-personal' fixture) so the owner-without-ADMIN test below controls its own response
 // instead of depending on mocks/fixtures.ts staying in sync with this test's ad-hoc space/member
 // data - getSpace in particular would otherwise silently overwrite the test's selectedSpace (set
@@ -136,7 +136,7 @@ describe('SpacePage', () => {
     expect(renderChats).toHaveBeenCalledWith('space-personal')
   })
 
-  // #203 acceptance criteria: the associated-libraries list and its once-shown explanation for why
+  // The associated-libraries list and its once-shown explanation for why
   // it can differ per member.
   it('shows the space’s associated libraries and a dismissible explanatory hint', async () => {
     window.localStorage.removeItem('opaa.space-library-hint-dismissed')
@@ -229,8 +229,8 @@ describe('SpacePage', () => {
     expect(screen.queryByRole('link', { name: 'Wissen zuordnen' })).not.toBeInTheDocument()
   })
 
-  // #674 review, nit e: the non-admin path - a MEMBER must see only the aggregated roleCounts,
-  // never an identity or display name, and must not even trigger the members request (#144).
+  // The non-admin path - a MEMBER must see only the aggregated roleCounts,
+  // never an identity or display name, and must not even trigger the members request.
   it('shows only the aggregated role counts, not names, for a non-admin member', () => {
     useSpaceStore.setState({
       selectedSpace: {
@@ -259,7 +259,7 @@ describe('SpacePage', () => {
     expect(screen.queryByRole('button', { name: /einstellungen/i })).not.toBeInTheDocument()
   })
 
-  // #674 re-review: transferOwnership never changes the new owner's own membership role (see
+  // transferOwnership never changes the new owner's own membership role (see
   // SpaceService#requireMemberListViewer) - an owner whose own role is MEMBER must still see the
   // full member list and the "Einstellungen" entry point, not just the aggregated counts.
   it('shows the full member list and the manage button for a non-ADMIN owner', async () => {

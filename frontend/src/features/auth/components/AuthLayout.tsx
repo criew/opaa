@@ -16,7 +16,7 @@ const formReveal = keyframes`
 `
 
 /**
- * Deckkraft des Schleiers über einem hinterlegten Hintergrundbild (#1910).
+ * Deckkraft des Schleiers über einem hinterlegten Hintergrundbild.
  *
  * Das Bild bringt eine Installation selbst mit; wie hell es ist, weiß diese Anwendung nicht. Der
  * Schleier ist deshalb fest und nicht aus dem Bild abgeleitet: Bei dieser Deckkraft erreicht die
@@ -37,7 +37,7 @@ function BrandPanel() {
   const claim = useBrandingStore((s) => s.branding.claim)
   return (
     <Box sx={{ maxWidth: 460 }}>
-      {/* #1910: Das Logo der Anmeldeseite trägt diese Fläche, also steht es hier deutlich
+      {/* Das Logo der Anmeldeseite trägt diese Fläche, also steht es hier deutlich
           größer als die Marke in der Seitenleiste. */}
       <BrandMark logoHeight={96} variant="h4" preferLoginLogo />
       {claim && (
@@ -58,7 +58,7 @@ function BrandPanel() {
 }
 
 /**
- * Der Rahmen jedes Bildschirms vor der Sitzung (#1627): ab `md` links die Marke der Installation
+ * Der Rahmen jedes Bildschirms vor der Sitzung: ab `md` links die Marke der Installation
  * auf Navy, rechts die Eingabe; darunter eine Spalte mit kleiner Marke über der Eingabe.
  *
  * Die Eingabespalte behält 440 px Lesebreite, auch wo Platz wäre: Jenseits von etwa 500 px stehen
@@ -67,7 +67,7 @@ function BrandPanel() {
  *
  * Die Marke gehört in jeder Breite dazu, nicht nur als Schmuck: Passwort-Festlegen und
  * E-Mail-Bestätigung werden kalt aus einer E-Mail erreicht, und dort muss erkennbar sein, wessen
- * Installation fragt (#583).
+ * Installation fragt.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   const theme = useTheme()
@@ -76,7 +76,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
   const wide = useMediaQuery(theme.breakpoints.up('md'))
   const backgroundUrl = useBrandingStore((s) => s.branding.loginBackgroundUrl)
 
-  // Ohne Bild bleibt die heutige Fläche (#1910): derselbe weiche Kern auf Navy. Mit Bild liegt
+  // Ohne Bild bleibt die heutige Fläche: derselbe weiche Kern auf Navy. Mit Bild liegt
   // der Schleier als eigene Ebene darüber, in derselben background-image-Eigenschaft — ein
   // Farbverlauf aus zwei gleichen Stopps ist die einzige Form, in der CSS eine Deckfarbe über
   // ein Bild legt, ohne dafür ein zweites Element zu brauchen.

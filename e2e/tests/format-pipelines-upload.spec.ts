@@ -22,7 +22,7 @@ const runId = Date.now()
 const LIBRARY_NAME = `E2E Formatbibliothek ${runId}`
 
 /**
- * Covers test(e2e) #1109 (Epic #1054/#1110 review, E5): the suite otherwise only ever uploads
+ * The suite otherwise only ever uploads
  * `.txt` (and one `.pdf` fixture elsewhere) - every other admitted format
  * (`io.opaa.format.SupportedDocumentFormats`) has never been driven through the real upload UI
  * at all. One upload of three formats in a single call proves the accept list, the multi-file
@@ -39,7 +39,7 @@ test.describe('Formatabdeckung Upload', () => {
   }) => {
     // #1184 (ADR-0022, Entscheidung 5): the document list groups attachments collapsed under
     // their parent, so only the three uploaded top-level rows carry a visible status chip - the
-    // EML fixture's attachment row (its own indexed document since #1218/#1227) is asserted
+    // EML fixture's attachment row (its own indexed document) is asserted
     // explicitly below by expanding the group, not via this count.
     await createLibraryWithDocuments(
       page,
@@ -60,14 +60,14 @@ test.describe('Formatabdeckung Upload', () => {
 
     // Regression guard for #1218 (ADR-0022): the uploaded mail's attachment is its own indexed
     // document row, no longer a nested chunk of the mail - visible as a grouped attachment row
-    // (#1184) with its own "indiziert" chip once the group is expanded: 3 parents + 1 attachment.
+    // with its own "indiziert" chip once the group is expanded: 3 parents + 1 attachment.
     const toggle = page.getByRole('button', {
       name: 'Anhänge von formatdokument.eml anzeigen',
     })
     await expect(toggle).toHaveText(/1 Anhang/)
     await toggle.click()
     await expect(page.getByText('formatdokument-anhang.txt', { exact: true })).toBeVisible()
-    // exact: the Pflege-Anker (#1069) above the list names the number of indizierte Dokumente of
+    // exact: the Pflege-Anker above the list names the number of indizierte Dokumente of
     // the library, which a substring match would count as a fourth status chip.
     await expect(page.getByText('indiziert', { exact: true })).toHaveCount(4)
   })

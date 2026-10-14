@@ -14,8 +14,8 @@ interface GlobalAreaSection {
 
 /**
  * Either a full secondary column (title + sections) or none at all: the title names the
- * column's nav landmark, so sections without a title would produce an unnamed landmark
- * (#800, review #794 finding 2) - the union makes that state unrepresentable.
+ * column's nav landmark, so sections without a title would produce an unnamed landmark -
+ * the union makes that state unrepresentable.
  */
 type GlobalAreaLayoutProps =
   | {
@@ -26,16 +26,16 @@ type GlobalAreaLayoutProps =
   | { title?: undefined; sections?: undefined }
 
 /**
- * The global frame (#787, mockup 2b): right of the rail the space column falls away and a
+ * The global frame (mockup 2b): right of the rail the space column falls away and a
  * light management surface takes over - a secondary column with title and "Global" badge where
  * an area has several pages, and the routed page as the main surface. Reused without sections
- * by the user settings (#788) and the library catalog (#789).
+ * by the user settings and the library catalog.
  *
  * Every route rendered inside this layout must also be covered by globalArea.ts - either in
  * GLOBAL_AREA_PREFIXES or, where a prefix would overreach, in GLOBAL_AREA_EXACT_PATHS
  * ("/spaces" must never become a prefix: every space and chat below it would lose its
  * column). The lists are what remove the space column in AppShell; this layout only adds
- * the frame. Keeping routes and lists in sync is manual (#800, review #794 finding 2).
+ * the frame. Keeping routes and lists in sync is manual.
  */
 export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutProps) {
   const location = useLocation()
@@ -81,7 +81,7 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
             <GlobalBadge />
           </Box>
           {/* On phones the entries wrap below the title instead of scrolling sideways - a
-              320px viewport must show every destination (#800, review #794 finding 1). */}
+              320px viewport must show every destination. */}
           <Box
             sx={{
               display: 'flex',
@@ -103,7 +103,7 @@ export default function GlobalAreaLayout({ title, sections }: GlobalAreaLayoutPr
                   sx={{
                     display: 'block',
                     // xs: shrink-and-wrap so a single long label breaks inside its pill instead
-                    // of pushing the row past 320px (#805: a 47-char label measured 326px).
+                    // of pushing the row past 320px (a 47-char label measured 326px).
                     flex: { xs: '0 1 auto', md: 'none' },
                     px: '10px',
                     py: '7px',

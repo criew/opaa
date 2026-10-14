@@ -73,7 +73,7 @@ export async function signOut(page: Page): Promise<void> {
  * Accepts every confirmation of this page for the rest of the scenario.
  *
  * The consequence dialogs of the administration (switching the local account management off,
- * locking, resetting, deleting) are the app's own confirmation overlay (#1610), not a browser
+ * locking, resetting, deleting) are the app's own confirmation overlay, not a browser
  * dialog: they are part of the page and block it until they are answered. A registered handler is
  * what keeps the promise scenario-wide - Playwright runs it whenever the overlay stands between it
  * and an action or an auto-waiting assertion - so no scenario has to know which of its steps asks.

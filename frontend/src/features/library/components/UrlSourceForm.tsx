@@ -25,11 +25,11 @@ interface UrlSourceFormProps {
 }
 
 /**
- * The one Adress-Formular of a HTTP_DIRECTORY or RSS_FEED library (#1940): address and
+ * The one Adress-Formular of a HTTP_DIRECTORY or RSS_FEED library: address and
  * credentials - used by the Anlage-Assistent and by the Bearbeiten-Weg
  * of the Reiter „Quelle" alike. The credentials field is write-only in both modes (ADR-0018); in
  * edit mode its hint says what leaving it blank means, including the case where a changed host
- * discards the stored value (#542).
+ * discards the stored value.
  */
 export default function UrlSourceForm({
   mode,

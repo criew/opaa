@@ -34,12 +34,12 @@ const SIDEBAR_WIDTH = SIDEBAR_DEFAULT_WIDTH
 export { SIDEBAR_WIDTH }
 
 /**
- * The space column of the target design (#587, since #786 mockup 2a): purely space-scoped -
+ * The space column of the target design (mockup 2a): purely space-scoped -
  * the space switcher as the most prominent navigation act, the active space's chats as the
  * middle, and the space's own destinations at the bottom. Everything global - brand mark,
  * catalog, administration, the user badge - lives on the {@link GlobalRail} to its left.
  *
- * Since #1922 it carries the same light submenu surface as the secondary column of the global
+ * It carries the same light submenu surface as the secondary column of the global
  * areas; the rail alone stays the dark navigation level.
  */
 export default function Sidebar({ resizable = false }: { resizable?: boolean }) {
@@ -54,7 +54,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
   const sidebarWidth = useUiStore((s) => s.sidebarWidth)
   const columnWidth = resizable ? sidebarWidth : SIDEBAR_WIDTH
 
-  // #1922: the space column carries the same muted surface as the secondary column of the global
+  // The space column carries the same muted surface as the secondary column of the global
   // areas (GlobalAreaLayout) - one light submenu bar everywhere, no navy block next to a light
   // one. bg2 has no palette slot (buildTheme maps bg1 onto both background.default and
   // background.paper), so the column reads its role directly, exactly like that layout does.
@@ -69,7 +69,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
 
   // The chats section follows the space currently shown by the route (the space page, its
   // management view, or an open chat - all of which carry :spaceId), so switching spaces
-  // updates the list immediately instead of waiting for a chat to be opened (#556). On routes
+  // updates the list immediately instead of waiting for a chat to be opened. On routes
   // without a :spaceId (e.g. /chat while it resolves), it falls back to the space of the
   // still-open chat rather than jumping to the default space, and only then to the default
   // (or first) space if neither is known yet.
@@ -77,7 +77,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
   const activeChatSpaceId = routeSpaceId ?? chatSpaceId ?? defaultSpace?.id ?? null
   const activeSpace = spaces.find((space) => space.id === activeChatSpaceId)
 
-  // #1911/#1912: Gemerkt wird nur der Space, den die Route selbst nennt - nicht der Rückfall
+  // Gemerkt wird nur der Space, den die Route selbst nennt - nicht der Rückfall
   // oben. Sonst stünde der persönliche Space als „zuletzt genutzt" in der Liste, sobald jemand
   // eine Seite ohne Space-Bezug geöffnet hat.
   useEffect(() => {
@@ -86,7 +86,7 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
 
   const recentSpaceIds = useRecentSpaceIds()
 
-  // #1912: Das Menü bleibt kurz - die zuletzt genutzten Spaces, damit „Alle Spaces anzeigen" und
+  // Das Menü bleibt kurz - die zuletzt genutzten Spaces, damit „Alle Spaces anzeigen" und
   // „Neuen Space anlegen" darunter sichtbar bleiben, auch wenn jemand in dreißig Spaces Mitglied
   // ist. Der ganze Bestand steht in der Übersicht. Die Reihenfolge kommt als Zustand herein, nicht
   // als Lesezugriff: Sonst rechnete dieser Wert vor dem Effekt oben, und ein über „Alle Spaces"
@@ -284,11 +284,11 @@ export default function Sidebar({ resizable = false }: { resizable?: boolean }) 
         <>
           <Divider />
           {/* Mockup 2a: the foot of the column stays space-scoped - quiet text-only links,
-                12.5px on muted white (#658); everything global moved onto the rail (#786). Its
-                own nav landmark, so landmark navigation still reaches these links (review
-                #791, finding 5) - as a container AROUND the list, not instead of its <ul>:
-                List component="nav" replaced the <ul> and left the <li>s without a list
-                parent, an axe "serious" violation (#792). */}
+                12.5px on muted white; everything global moved onto the rail. Its
+                own nav landmark, so landmark navigation still reaches these links - as a
+                container AROUND the list, not instead of its <ul>: List component="nav" in
+                place of the <ul> leaves the <li>s without a list parent, an axe "serious"
+                violation. */}
           <Box component="nav" aria-label="Space-Navigation">
             <List sx={{ px: '14px', py: '10px' }}>
               {/* One entry point: everything that manages this space lies behind the gear. */}

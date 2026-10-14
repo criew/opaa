@@ -18,7 +18,7 @@ interface MetadataMaintenanceAnchorProps {
   refreshToken?: number
 }
 
-// #1069 (metadata-schema.md, "Der Pflege-Anker"): per core field, how many of the library's
+// metadata-schema.md, "Der Pflege-Anker": per core field, how many of the library's
 // indexed documents still have no value - the absolute number and its share side by side, because
 // neither alone says whether the field is broken or merely incomplete. The button opens exactly
 // those documents in the list below, where they can be corrected one by one or in one go.

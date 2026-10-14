@@ -92,7 +92,7 @@ function condensedNote(combinedText) {
   return lines.length > 0 ? lines.join('\n') : NOTE_NOTHING_SENTINEL
 }
 
-// test(e2e) #760, PR review finding 2: every managed chat model in this suite points at this same
+// Every managed chat model in this suite points at this same
 // stub, so a scenario that activates a *different* model and then asks a chat question cannot
 // otherwise tell whether the answer actually came from the newly activated model or from a stale,
 // cached client for the previously active one (io.opaa.llm.ActiveChatModelResolver's whole point,

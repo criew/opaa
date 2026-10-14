@@ -11,7 +11,7 @@ export function spaceRoleLabel(role: SpaceRole | string | undefined): string {
   return spaceRoleLabels[role as SpaceRole] ?? role
 }
 
-/** What "Alle Konten" is called wherever a grant names its recipient (#1931). */
+/** What "Alle Konten" is called wherever a grant names its recipient. */
 export const allAccountsLabel = 'Alle Konten'
 
 const assetRoleLabels: Record<AssetRole, string> = {
@@ -42,7 +42,7 @@ export function formatFileSize(bytes: number | null | undefined): string {
 
 /**
  * A 0..1 share as a whole German percentage - the one rendering of the Füllgrad and the
- * Pflege-Anker (#1069), so the same figure never appears as "64 %" in one place and "63,6 %" in
+ * Pflege-Anker, so the same figure never appears as "64 %" in one place and "63,6 %" in
  * another.
  */
 export function formatShare(share: number): string {
