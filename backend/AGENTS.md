@@ -38,13 +38,13 @@ Hauptklassen, ohne Spring-Kontext, als Teil von `./gradlew test`. Die Definition
 | format | format |
 | identity | audit, branding, mail, auth, account, notification |
 | rights | permission, asset, group, directory, succession |
-| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren) |
+| knowledge | knowledge, llm, metadata, indexing (ohne Konnektoren), health |
 | connectors | jedes direkte Unterpaket von `indexing.source` |
 | connections | connection |
 | workspace | space, revision, diagnosticaccess |
 | library | library |
 | retrieval | retrieval |
-| assistant | prompt, chat, query, search, searchadmin, health |
+| assistant | prompt, chat, query, search, searchadmin |
 | external | externalaccess, mcp |
 | app | api, config, `OpaaApplication` |
 
