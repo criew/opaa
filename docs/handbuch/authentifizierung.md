@@ -553,7 +553,9 @@ in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](betrieb.md#l
 Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
 `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
 Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch
-nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Die Zähler je Adresse sind auf eine hohe Zahl
+nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
+aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der Fehlersuche und hält
+das Protokoll der Fehlversuche aus der Leistungskontrolle heraus. Die Zähler je Adresse sind auf eine hohe Zahl
 gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genutzten vergessen und
 beginnen neu — diesen Fall fängt die Gesamtgrenze auf. Damit die Grenzen je Person wirken, muss die
 Client-Adresse stimmen ([Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse)).
@@ -598,7 +600,8 @@ verbrauchte Einladungs- und Rücksetzlinks sind wieder einlösbar, ein nach eine
 Passworthash ist auf dem alten Stand. Nach **jeder** Rücksicherung gehören deshalb zwei Schritte dazu:
 
 1. **`OPAA_AUTH_JWT_SECRET` ersetzen**, bevor das Backend startet. Ein neuer Wert beendet alle lokalen
-   Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks in einem Schritt.
+   Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks und alle
+   Zugangstokens der Fremdzugänge in einem Schritt.
 2. **Sperren und Rücksetzungen seit dem Sicherungszeitpunkt erneut vornehmen.** Das Nachweisprotokoll
    der Zwischenzeit ist die Liste, sofern es nicht selbst mit zurückgesichert wurde.
 

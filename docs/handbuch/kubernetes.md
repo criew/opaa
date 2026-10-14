@@ -464,7 +464,8 @@ Kopie außerhalb des Clusters zur Sicherung.
 **Ein geänderter Schlüssel wirkt erst nach einem Neustart.** Bei einem vorhandenen Secret startet
 `kubectl -n opaa rollout restart deploy/opaa-backend` das Backend neu. Bei Geheimnissen aus den Werten
 startet `helm upgrade` es von selbst. Eine Änderung von `OPAA_AUTH_JWT_SECRET` beendet alle lokalen
-Sitzungen und entwertet alle offenen Einladungs- und Rücksetzlinks.
+Sitzungen und entwertet alle offenen Einladungs- und Rücksetzlinks und alle Zugangstokens der
+Fremdzugänge.
 
 ## Wertereferenz
 
