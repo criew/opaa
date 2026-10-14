@@ -73,18 +73,18 @@ durch sie laufen.
 ## Verworfene Alternativen
 
 - `clock_timestamp()` für sich genommen — keine strenge Monotonie, Rückwärtssprünge möglich; „fast immer richtig" ist für eine nachweisrelevante Tabelle nicht genug.
-- `clock_timestamp()` plus datenbankseitige Sicherung — tragfähig und der Weg für den Mehrinstanzbetrieb, heute ohne Abnehmer: Schemaänderung an der Tabelle, deren Beweiskraft verteidigt wird, Sicherung formuliert die Fachlogik ein zweites Mal, Bestand verletzt die Invariante, Uhr-Tick nicht erzwingbar testbar.
+- `clock_timestamp()` plus datenbankseitige Sicherung — **vertagt, nicht verworfen**: tragfähig und der Weg für den Mehrinstanzbetrieb, heute ohne Abnehmer (Schemaänderung an der Tabelle, deren Beweiskraft verteidigt wird; Sicherung formuliert die Fachlogik ein zweites Mal; Bestand verletzt die Invariante; Uhr-Tick nicht erzwingbar testbar). Der zweite Gewinn, Schutz gegen Schreiber an der Anwendung vorbei, bräuchte den Uhrwechsel nicht und ist mit #1517 bewusst nicht genommen.
 - Wert im `INSERT` erzeugen (Default oder Trigger) — die lückenlose Verkettung braucht den Wert in der JVM für das `UPDATE` der Vorgängerzeile.
 - Grenze nur bei Gleichheit anheben — prüft gegen den gelesenen statt den vergebenen Wert, verteilt die Korrektheit über alle Aufrufstellen.
 - Nichts tun („kürzer als ein Tick muss nicht rekonstruierbar sein") — eine Nachweiszusage, die von der Wirtsplattform abhängt, ist keine.
 
 ## Offen
 
-—
+- Wechsel auf die Datenbankuhr samt datenbankseitiger Sicherung, sobald ADR-0021 fällt (#1292).
 
 ## Änderungsverlauf
 
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
 | 2026-09-11 | #1517 | Datenbankseitige Absicherung verworfen (Maintainer); Wiedervorlage bei #1292 | Konsequenzen |
-| 2026-09-20 | #1811 | Paketschnitt: Sichtbarkeitshistorie in `AssetVisibilityHistoryService`, dieselbe Uhr | 1 |
+| 2026-09-20 | #1811 | Paketschnitt: Sichtbarkeitshistorie in eigenem Dienst (heute `AssetVisibilityHistoryService`), dieselbe Uhr | 1 |
