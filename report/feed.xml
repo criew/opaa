@@ -5,8 +5,33 @@
   <link href="https://criew.github.io/opaa/report/feed.xml" rel="self"/>
   <link href="https://criew.github.io/opaa/report/"/>
   <id>https://criew.github.io/opaa/report/</id>
-  <updated>2026-10-13T06:57:57Z</updated>
+  <updated>2026-10-14T05:10:57Z</updated>
   <author><name>criew/opaa</name></author>
+  <entry>
+    <title>Tagesreport Dienstag, 13. Oktober 2026</title>
+    <link href="https://criew.github.io/opaa/report/reports/2026-10-13.html"/>
+    <id>https://criew.github.io/opaa/report/reports/2026-10-13.html</id>
+    <updated>2026-10-14T05:10:57Z</updated>
+    <summary type="text">feat: Abschaltbare Features für Demo-Installationen:
+— Installationsweite Feature-Flags mit Backend-Frontend-Synchronisation umgesetzt
+— Metadaten und Prompt-Bibliothek per Flag abschaltbar
+— Feature-Flag-Abschnitt ins GitHub-Issue-Template aufgenommen
+docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise:
+— Neun redaktionelle Vorlagen für Behördenreise angelegt
+feat(compliance): Compliance-Fakten aus dem Code — Manifest, Wächter, Datenflüsse, Konfigurationsmetadaten, Datenkatalog:
+— Acht Tickets für Compliance-Fakten aus dem Code angelegt
+feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug:
+— Sieben Tickets für Update-Paket je Release angelegt
+docs(agents): Behördenunterlagen in der Agentenorganisation verankern:
+— Vier Tickets zur Verankerung in Agentenorganisation angelegt
+feat: Beschaffungs- und Einführungsunterstützung für Behörden — Fakten, Update-Paket und Unterlagen, die mit dem Produkt mitziehen:
+— Release-Zyklus und Supportzeiträume festlegen geplant
+Sonstiges:
+— Retrieval-Pipeline: Relevanzschnitt, Fusion mit Teilfrage-Quote, MMR-Verbesserungen gemergt
+— Spracheingabe Stufe 1 mit Batch-Diktat über OpenAI-kompatible Endpunkte umgesetzt
+— Embedding-Modell bge-m3 zur Vorgabe, lange Chunks beim Embedding teilen statt kürzen
+— Embedding-Modellwechsel ohne Datenbank-Reset, Neueinbettung mit Sperrung und Konsistenz</summary>
+  </entry>
   <entry>
     <title>Tagesreport Montag, 12. Oktober 2026</title>
     <link href="https://criew.github.io/opaa/report/reports/2026-10-12.html"/>
@@ -822,33 +847,5 @@ Sonstiges:
 — Renovate für selbst betriebene Abhängigkeits-Updates konfiguriert
 — Liquibase-Historie zu logisch gruppierter Baseline zusammengefasst
 — Spring-Testkontexte konsolidiert, Mock-Konfigurationen geteilt</summary>
-  </entry>
-  <entry>
-    <title>Tagesreport Montag, 24. August 2026</title>
-    <link href="https://criew.github.io/opaa/report/reports/2026-08-24.html"/>
-    <id>https://criew.github.io/opaa/report/reports/2026-08-24.html</id>
-    <updated>2026-08-25T02:00:01Z</updated>
-    <summary type="text">refactor: Backend-Architekturreview 2026-08 — Befunde und Behebungsphasen:
-— Request-scoped CurrentUser-Identität zentralisiert
-— Quellenzugriff als eigenes Paket extrahiert und RssFeedIndexingExecutor zerlegt
-— Domain-Exceptions statt ResponseStatusException in Services eingeführt
-— DTO-Leak in Space, Group, Library, Chat und Query Services behoben
-Epic: Space and asset model — replace the workspace model:
-— Audit-Selbstauskunft und Auskunftsexport implementiert
-— Gruppengebundene Spaces mit Verzeichnis-Mitgliedschaft umgesetzt
-— Persistent Chats in Spaces und Artifacts mit Lifecycle eingeführt
-feat(library): Ordner in Dokumentbibliotheken:
-— Ordner-Navigation und Upload in Bibliotheken vollständig implementiert
-— FILESYSTEM-Verzeichnisstruktur als read-only Ordner abgebildet
-Epic: Audit-Betriebshärtung — Nacharbeiten aus Stage A:
-— Audit-Protokollablage gegen Fluten und Bindungsfehler gehärtet
-— Rechtehistorie mit Aufbewahrungshöchstdauer und Pseudonymisierung umgesetzt
-feat(frontend): Redesign der Weboberfläche nach dem Zielbild-Designsystem:
-— Trailing-Slash-Normalisierung in isGlobalAreaPath behoben
-Sonstiges:
-— SourceReference.spaceName entfernt, da nie befüllt
-— Farbkontrast fg-3 in Sidebar und Rail Theme erhöht
-— Koordinations-Betriebsregeln ins Repo überführt
-— Javadoc-Kommentare auf Vertrag und Invarianten gekürzt</summary>
   </entry>
 </feed>

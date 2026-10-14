@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagesreport 2026-10-13</title>
+<link rel="alternate" type="application/atom+xml" title="OPAA Tagesreport" href="../feed.xml">
+<style>:root {
+  color-scheme: light dark;
+  --bg: #ffffff;
+  --fg: #1a1a1a;
+  --muted: #5c6370;
+  --line: #e2e5e9;
+  --accent: #2f6feb;
+  --card: #f7f8fa;
+  --green: #1a7f37;
+  --red: #cf222e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14161a;
+    --fg: #e6e8eb;
+    --muted: #9aa1ab;
+    --line: #2a2e35;
+    --accent: #6ea0ff;
+    --card: #1b1e24;
+    --green: #3fb950;
+    --red: #f85149;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 2rem 1.25rem 4rem;
+  background: var(--bg);
+  color: var(--fg);
+  font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main { max-width: 46rem; margin: 0 auto; }
+a { color: var(--accent); }
+header { border-bottom: 1px solid var(--line); padding-bottom: 1.25rem; margin-bottom: 2rem; }
+h1 { font-size: 1.6rem; margin: 0 0 .35rem; letter-spacing: -.01em; }
+h2 { font-size: 1.1rem; margin: 2.25rem 0 .85rem; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .9rem; margin: 0; }
+.num { font-variant-numeric: tabular-nums; color: var(--muted); margin-right: .4rem; }
+.empty { color: var(--muted); font-style: italic; }
+
+.blaettern { color: var(--muted); font-size: .9rem; }
+.blaettern a { text-decoration: none; }
+.blaettern a:hover { text-decoration: underline; }
+
+.linkbar { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.linkbar a {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  font-size: .85rem;
+  padding: .3rem .7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+}
+.linkbar a:hover { border-color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot.green { background: var(--green); }
+.dot.red { background: var(--red); }
+
+.kpi-row { display: flex; gap: .75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi {
+  flex: 1;
+  min-width: 7rem;
+  padding: .75rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  text-align: center;
+}
+.kpi-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.kpi-value.green { color: var(--green); }
+.kpi-label {
+  font-size: .78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.epic-section {
+  margin-bottom: 1.25rem;
+  padding: .85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+.epic-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: .5rem;
+}
+.epic-title { font-weight: 600; font-size: .95rem; }
+.epic-progress {
+  font-size: .8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.progress-bar {
+  height: 4px;
+  background: var(--line);
+  border-radius: 2px;
+  margin-bottom: .6rem;
+  overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent); border-radius: 2px; }
+.epic-section ul { margin: 0; padding-left: 1.25rem; font-size: .9rem; }
+.epic-section li { margin-bottom: .25rem; }
+
+.merged-summary {
+  margin-top: .5rem;
+  padding-top: .5rem;
+  border-top: 1px dashed var(--line);
+  font-size: .85rem;
+  color: var(--muted);
+}
+.merged-summary ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+.merged-summary li { margin-bottom: .2rem; }
+
+ul.items { list-style: none; margin: 0; padding: 0; }
+ul.items li {
+  padding: .7rem .9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: .5rem;
+  background: var(--card);
+}
+.meta { display: block; color: var(--muted); font-size: .82rem; margin-top: .25rem; }
+
+footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid var(--line); color: var(--muted); font-size: .85rem; }
+.status.bad { color: var(--red); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<header>
+<h1>Tagesreport Dienstag, 13. Oktober 2026</h1>
+<nav class="blaettern"><a href="2026-10-12.html" rel="prev" title="Montag, 12. Oktober 2026">← Vorheriger Tag</a> · <a href="../index.html">Alle Reports</a></nav>
+<div class="linkbar"><a href="https://opaa.ewerlin.com/chat">Testumgebung</a><a href="https://github.com/criew/opaa">Repository</a><a href="https://github.com/criew/opaa/issues">Issues</a><a href="https://github.com/criew/opaa/pulls">Pull Requests</a><a href="https://github.com/criew/opaa/actions/runs/38478441518" title="Letzter CI-Lauf auf dem Hauptbranch: erfolgreich">CI <span class="dot green"></span></a></div>
+</header>
+
+<div class="kpi-row"><div class="kpi"><div class="kpi-value">100</div><div class="kpi-label">Issues offen</div></div><div class="kpi"><div class="kpi-value green">+58</div><div class="kpi-label">Neu angelegt</div></div><div class="kpi"><div class="kpi-value">32</div><div class="kpi-label">Abgeschlossen</div></div><div class="kpi"><div class="kpi-value">34</div><div class="kpi-label">PRs gemergt</div></div></div>
+
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2586">#2586</a> feat: Abschaltbare Features für Demo-Installationen</span>
+<span class="epic-progress">4 / 4 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 100%"></div></div>
+<ul><li>Installationsweite Feature-Flags mit Backend-Frontend-Synchronisation umgesetzt</li><li>Metadaten und Prompt-Bibliothek per Flag abschaltbar</li><li>Feature-Flag-Abschnitt ins GitHub-Issue-Template aufgenommen</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2605">#2605</a></span>feat(prompt): Prompt-Bibliothek per Feature-Flag abschaltbar (+2160/−417, 60 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2601">#2601</a></span>feat(metadata): Metadaten per Feature-Flag abschaltbar (+2546/−341, 68 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2595">#2595</a></span>feat(config): Installationsweite Feature-Flags mit Auslieferung an das Frontend (+1062/−13, 33 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2591">#2591</a></span>docs(github): Abschnitt „Feature-Flag“ im Feature-Request-Template (+11/−0, 1 Datei)</li></ul></div>
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2560">#2560</a> docs(behoerden): Behördenunterlagen — redaktionelle Vorlagen entlang der Behördenreise</span>
+<span class="epic-progress">0 / 9 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li>Neun redaktionelle Vorlagen für Behördenreise angelegt</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2543">#2543</a> feat(compliance): Compliance-Fakten aus dem Code — Manifest, Wächter, Datenflüsse, Konfigurationsmetadaten, Datenkatalog</span>
+<span class="epic-progress">0 / 8 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li>Acht Tickets für Compliance-Fakten aus dem Code angelegt</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2552">#2552</a> feat(release): Update-Paket je Release — kumuliertes Delta, Betriebsfolgen, Attestierung, Offline-Bündel, Instanzbezug</span>
+<span class="epic-progress">0 / 7 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li>Sieben Tickets für Update-Paket je Release angelegt</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2570">#2570</a> docs(agents): Behördenunterlagen in der Agentenorganisation verankern</span>
+<span class="epic-progress">0 / 4 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li>Vier Tickets zur Verankerung in Agentenorganisation angelegt</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header">
+<span class="epic-title"><a href="https://github.com/criew/opaa/issues/2542">#2542</a> feat: Beschaffungs- und Einführungsunterstützung für Behörden — Fakten, Update-Paket und Unterlagen, die mit dem Produkt mitziehen</span>
+<span class="epic-progress">0 / 1 erledigt</span>
+</div>
+<div class="progress-bar"><div class="progress-fill" style="width: 0%"></div></div>
+<ul><li>Release-Zyklus und Supportzeiträume festlegen geplant</li></ul>
+
+</div>
+<div class="epic-section">
+<div class="epic-header"><span class="epic-title">Sonstiges</span></div>
+<ul><li>Retrieval-Pipeline: Relevanzschnitt, Fusion mit Teilfrage-Quote, MMR-Verbesserungen gemergt</li><li>Spracheingabe Stufe 1 mit Batch-Diktat über OpenAI-kompatible Endpunkte umgesetzt</li><li>Embedding-Modell bge-m3 zur Vorgabe, lange Chunks beim Embedding teilen statt kürzen</li><li>Embedding-Modellwechsel ohne Datenbank-Reset, Neueinbettung mit Sperrung und Konsistenz</li></ul>
+<div class="merged-summary">Gemergte Pull Requests:<ul><li><span class="num"><a href="https://github.com/criew/opaa/pull/2631">#2631</a></span>feat(retrieval): Kontext wahlweise nach Relevanz statt fester top-k füllen (+944/−39, 29 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2630">#2630</a></span>feat(retrieval): Fusion mit Quote je Teilfrage und wählbarer Wertefusion (+1258/−263, 43 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2629">#2629</a></span>feat(chat): Spracheingabe Stufe 1 – Batch-Diktat über OpenAI-kompatible Endpunkte (+3950/−40, 69 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2628">#2628</a></span>fix(retrieval): MMR-Stufe kürzt fetch-k nicht mehr vor der Fusion (+306/−224, 25 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2627">#2627</a></span>fix(search): Häufige Großbuchstabenwörter nicht als Kennung mit höchstem Gewicht suchen (+615/−152, 15 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2626">#2626</a></span>docs(retrieval): Wirkung von max-chunks-per-document richtig beschreiben (+79/−35, 14 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2625">#2625</a></span>feat(retrieval): Nachbar-Budget erst über alle Treffer verteilen, dann nach Rang (+164/−34, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2618">#2618</a></span>feat(search): bge-m3 als Vorgabe des Embedding-Modells (+243/−130, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2617">#2617</a></span>fix(indexing): zu lange Chunks beim Embedding teilen statt still kürzen (+1472/−130, 36 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2616">#2616</a></span>feat(indexing): Nachzug zerlegt nach geänderter Zielgröße neu (+591/−48, 28 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2613">#2613</a></span>fix(indexing): Neueinbettung in place stellt ersetzte Chunks nicht wieder her, sperrt je Dokument und hält veraltete Präfixstempel fern (+1048/−82, 16 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2610">#2610</a></span>fix(permissions): laufende Suche im SubjectPicker auch über älterer Liste benennen (+166/−58, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2609">#2609</a></span>fix(frontend): „Erweitert“ bei jeder Meldung eines Musterfehlers öffnen (+31/−5, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2608">#2608</a></span>fix(backend): Testkontexte erreichen kein echtes Chat-Modell mehr (+195/−19, 9 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2607">#2607</a></span>fix(eval): Eval-Ollama auf 0.40.3 anheben, lange Eingaben stetig einbetten (+662/−206, 23 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2603">#2603</a></span>fix(llm): Denktext ohne öffnendes Tag aus Antworten entfernen (+295/−31, 6 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2602">#2602</a></span>test(account): Antwortzeit-Test der Selbstregistrierung unter Last stabil machen (+67/−24, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2599">#2599</a></span>feat(indexing): Wechsel des Embedding-Modells erkennen und Chunks ohne Datenbank-Reset neu einbetten (+3170/−268, 81 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2598">#2598</a></span>feat(space): Standard-Space ist immer privat (+144/−78, 13 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2597">#2597</a></span>fix(frontend): Fehler der Quellformulare dem Feld zuordnen und fokussieren (+957/−181, 34 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2594">#2594</a></span>fix(s3): Glob-Muster ohne katastrophales Backtracking auswerten (+175/−52, 11 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2593">#2593</a></span>fix(frontend): Personen- und Gruppenliste im SubjectPicker springt nicht mehr (+71/−10, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2592">#2592</a></span>feat(format): Zielgröße des strukturbewussten Schnitts konfigurierbar (+793/−245, 59 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2584">#2584</a></span>docs(handbuch): Persönlichen Standard-Space kurz beschreiben (+3/−0, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2583">#2583</a></span>feat(query): Antwortregeln auch bei Suche ohne Treffer (+242/−110, 8 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2582">#2582</a></span>chore(deps): renovate/renovate docker tag to v44.149.2 (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2581">#2581</a></span>chore(deps): vitest auf v5.0.4 aktualisieren (+54/−49, 2 Dateien)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2580">#2580</a></span>chore(deps): com.github.ben-manes.caffeine:caffeine auf v3.3.1 aktualisieren (+1/−1, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2578">#2578</a></span>chore(deps): amazon/aws-cli docker tag to v2.37.13 (+2/−2, 1 Datei)</li><li><span class="num"><a href="https://github.com/criew/opaa/pull/2577">#2577</a></span>fix(frontend): Schrittleiste der Assistenten bei 320 px ohne seitlichen Überlauf (+120/−4, 2 Dateien)</li></ul></div>
+</div>
+
+<footer>
+Erzeugt am 2026-10-14 um 07:10 Uhr ·
+<a href="../feed.xml">Feed abonnieren</a>
+<br><span class="empty">Berichtszeitraum: 2026-10-13T00:00:00 bis 2026-10-13T23:59:59 (Europe/Berlin)</span>
+</footer>
+</main>
+</body>
+</html>
