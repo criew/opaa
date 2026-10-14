@@ -20,7 +20,7 @@ const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
 // vi.mock('…'), vi.doMock('…') and vi.importActual<…>('…'). Group 1 is everything up to the
 // quote, group 3 the path. Two patterns, because the second consumes the type argument that the
 // first one rewrites.
-export const SPECIFIER_PATTERNS = [
+const SPECIFIER_PATTERNS = [
   /(\bfrom\s*|\bimport\s*|\bimport\s*\(\s*)(['"])((?:\.{1,2}\/|@\/)[^'"]*)\2/g,
   /(\bvi\.(?:mock|doMock|importActual)\s*(?:<[^>()]*(?:\([^)]*\)[^>()]*)*>)?\s*\(\s*)(['"])((?:\.{1,2}\/|@\/)[^'"]*)\2/g,
 ]
