@@ -7,8 +7,8 @@ Pakete (`io.opaa.*`): query, chat, search, searchadmin, prompt. Ergänzt `backen
 Von der Frage zur belegten Antwort: die Abfragefassade mit Antwort und Zitaten (`query`), Chats
 samt Suchbereich eines Turns (`chat`), der Leseweg ohne Generierung (`search`), die lesende
 Betriebssicht auf das Retrieval (`searchadmin`) und die Prompt-Bibliothek als zweiter Asset-Typ
-(`prompt`). Die Pipeline selbst ist das Modul retrieval (`retrieval/AGENTS.md`). assistant hängt von allen Modulen außer connectors, external und
-app ab.
+(`prompt`). Die Pipeline selbst ist das Modul retrieval (`retrieval/AGENTS.md`). assistant hängt von
+allen Modulen außer connectors, connections, external und app ab.
 
 ## Invarianten und Stolpersteine
 
