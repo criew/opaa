@@ -53,20 +53,25 @@ const MODULES = import.meta.glob([
 
 type AnyStore = StoreApi<unknown>
 
+/** A React hook from `create` (a function) or a vanilla store from `createStore` (an object). */
 function isStore(value: unknown): value is AnyStore {
   return (
-    typeof value === 'function' &&
+    (typeof value === 'function' || (typeof value === 'object' && value !== null)) &&
     typeof (value as Partial<AnyStore>).getState === 'function' &&
     typeof (value as Partial<AnyStore>).setState === 'function' &&
     typeof (value as Partial<AnyStore>).subscribe === 'function'
   )
 }
 
-/** Loads every production module that uses zustand and returns its exported stores by name. */
+/**
+ * Loads every production module importing `zustand` or one of its subpaths (`zustand/vanilla`,
+ * `zustand/react`, ...) and returns its exported stores by name. A store that is not exported is
+ * not seen here; session data belongs in exported stores.
+ */
 async function discoverStores(): Promise<Map<string, AnyStore>> {
   const stores = new Map<string, AnyStore>()
   const zustandModules = Object.keys(SOURCES).filter((path) =>
-    /from ['"]zustand['"]/.test(SOURCES[path]),
+    /from ['"]zustand(\/[\w-]+)*['"]/.test(SOURCES[path]),
   )
   for (const path of zustandModules) {
     const module = (await MODULES[path]()) as Record<string, unknown>

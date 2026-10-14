@@ -856,8 +856,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       // ends it through expireSession(). ProtectedRoute would otherwise record the page left behind
       // as a return target in that very render.
       set({ signedOut: true })
-      // Resets every store that caches data scoped to the signed-in user's session (#440) - see
-      // registerSessionStore() in resettableStores.ts for which stores that covers. Must run before
+      // Resets every store registered via registerSessionStore() (#440). Must run before
       // signoutRedirect below: that call navigates the browser away in OIDC mode, so anything
       // after it would practically never run.
       resetAllStores()
