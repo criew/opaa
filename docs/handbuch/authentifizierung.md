@@ -553,7 +553,9 @@ in der Metrik `opaa_rate_limit_rejected_total` ([Logs und Metriken](betrieb.md#l
 Nach `OPAA_AUTH_LOCAL_LOCKOUT_MAX_ATTEMPTS` falschen Passwörtern ist ein Konto für
 `OPAA_AUTH_LOCAL_LOCKOUT_DURATION` gesperrt; die Anmeldung antwortet dann wie bei einem falschen
 Passwort, die Sperre steht im Nachweisprotokoll und in einer eigenen Metrik, der einzelne Fehlversuch
-nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Die Zähler je Adresse sind auf eine hohe Zahl
+nur im Protokoll (mit Konto-Kennung, nie mit Adresse). Wie lange der Log-Sammler dieses Protokoll
+aufbewahrt, legt der Betrieb fest; eine kurze Frist, etwa 90 Tage, genügt der Fehlersuche und hält
+das Protokoll der Fehlversuche aus der Leistungskontrolle heraus. Die Zähler je Adresse sind auf eine hohe Zahl
 gleichzeitig geführter Adressen begrenzt; darüber werden die am wenigsten genutzten vergessen und
 beginnen neu — diesen Fall fängt die Gesamtgrenze auf. Damit die Grenzen je Person wirken, muss die
 Client-Adresse stimmen ([Vertraute Proxys](betrieb.md#vertraute-proxys-und-client-adresse)).

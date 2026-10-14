@@ -327,7 +327,7 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 | Pflicht-Befristung selbstregistrierter Konten; Domänenliste | gilt | — |
 | Harte Fristen der Token-Tabellen (täglicher Aufräumlauf) | gilt | — |
 | Auditierung des Notanker-Kontos als mitgetragene Ausnahme | gilt | — |
-| Technisches Log der Fehlversuche höchstens 90 Tage (Bedingung 2) | nicht umgesetzt: Log-Rotation ist Betriebskonfiguration, das Produkt erzwingt keine Frist, und das Handbuch nennt derzeit keine Empfehlung | — |
+| Technisches Log der Fehlversuche höchstens 90 Tage (Bedingung 2) | Handbuchempfehlung: Log-Rotation ist Betriebskonfiguration, das Produkt erzwingt keine Frist; das Handbuch nennt 90 Tage als Beispiel und weist die Festlegung dem Betrieb zu | #2762 |
 | Vier-Augen-Prinzip für die Übergabe (Bedingung 6) | nicht übernommen (die Person selbst ist die zweite Partei) | — |
 | Sperren und Befristen des Notanker-Kontos (Bedingung 12, zweiter Teil) | grundsätzlich ausgeschlossen (Entscheidung 3) | — |
 | Kontozustand nach korrektem Passwort nennen | nicht übernommen (bestätigte ein Passwort) | — |
