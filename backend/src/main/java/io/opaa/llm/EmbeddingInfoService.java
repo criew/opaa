@@ -21,7 +21,6 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmbeddingInfoService {
 
-  private final String provider;
   private final String model;
   private final int dimensions;
   private final String baseUrl;
@@ -29,21 +28,16 @@ public class EmbeddingInfoService {
   @Autowired
   public EmbeddingInfoService(
       OpenAiEmbeddingProperties embedding, PgVectorStoreProperties vectorStore) {
-    this(
-        SpringAIModels.OPENAI,
-        embedding.getModel(),
-        vectorStore.getDimensions(),
-        embedding.getBaseUrl());
+    this(embedding.getModel(), vectorStore.getDimensions(), embedding.getBaseUrl());
   }
 
-  EmbeddingInfoService(String provider, String model, int dimensions, String baseUrl) {
-    this.provider = provider;
+  EmbeddingInfoService(String model, int dimensions, String baseUrl) {
     this.model = model;
     this.dimensions = dimensions;
     this.baseUrl = ModelEndpointUri.containsCredentials(baseUrl) ? null : baseUrl;
   }
 
   public EmbeddingInfo getEmbeddingInfo() {
-    return new EmbeddingInfo(provider, model, dimensions, baseUrl);
+    return new EmbeddingInfo(SpringAIModels.OPENAI, model, dimensions, baseUrl);
   }
 }
