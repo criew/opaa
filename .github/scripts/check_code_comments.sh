@@ -16,7 +16,7 @@
 # Rejected:
 # - review protocol: "#393 code review, finding 1", "#N second review", "#N (review)",
 #   "review of PR #N", "Review zu #N", "re-review", "review round", "review finding", "finding 2",
-#   "nit 4", "Befund 6", "Wichtig 3"
+#   "nit 4", "nit-4", "Befund 6", "Wichtig 3", "Review-Runde 1", "HIGH 2"/"MEDIUM 5"/"LOW 7"
 # - history anchored at an issue: "since #1931", "seit #1040", "before #N", "pre-#888",
 #   "formerly"
 # - origin markers: "(#1073)", "(PR #537)", "(#2163, ADR-0041)", a leading "#1073:",
@@ -55,7 +55,7 @@ TREES=(
 REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
 # file:line: in front of every checked line
 AT='^[^:]+:[0-9]+:'
-REVIEW="(?i)${REF}\S*\s+((second|third|follow-up)\s+)?(code\s+|re-)?review\b|${REF}\s*\(review\)|\breview\s+(of|zu)\s+(PR\s+)?#[0-9]|\bre-review\b|\breview\s+(round|findings?)\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit\s+[0-9]|\b(Befund|Wichtig)\s+([0-9]|\")"
+REVIEW="(?i)${REF}\S*\s+((second|third|follow-up)\s+)?(code\s+|re-)?review\b|${REF}\s*\(review\)|\breview\s+(of|zu)\s+(PR\s+)?#[0-9]|\bre-review\b|\breview\s+(round|findings?)\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit[\s-]+[0-9]|\bReview-Runde\s+[0-9]|(?-i:\b(HIGH|MEDIUM|LOW)\s+[0-9]+\b)|\b(Befund|Wichtig)\s+([0-9]|\")"
 HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|seit|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
 MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*([);]|,\s*\S)|${AT}\s*(//|/?\*|#|comment:\s*\"?)?\s*(<p>|<b>)?\s*(([Ii]ssues?|PR)\s+)?${REF}(\s*[,/]\s*#[0-9]{2,4})*\s*:"
 EXEMPT="^backend/src/main/java/io/opaa/query/spike/|(?i)\bspike\s+\(?#[0-9]"
@@ -107,7 +107,8 @@ changelog_comments() {
 }
 
 # TypeScript and JavaScript comments: a line inside a block comment whole, otherwise from the first
-# '/*' or '//' outside a one-line string literal; a '//' right after ':' is a URL.
+# '/*' or '//' outside a one-line string literal, plus a '//' after a block comment closed on the
+# same line; a '//' right after ':' is a URL.
 ts_comments() {
   git ls-files -z -- 'frontend/src/*.ts' 'frontend/src/*.tsx' frontend/vite.config.ts \
     'frontend/eslint.config.*' 'frontend/eslint/*.js' 'frontend/eslint/*.mjs' | xargs -0 -r awk '
@@ -123,7 +124,9 @@ ts_comments() {
       if (l && (!b || l < b)) { print FILENAME ":" FNR ":" substr($0, l); next }
       if (b) {
         print FILENAME ":" FNR ":" substr($0, b)
-        if (!index(substr(code, b + 2), "*/")) block = 1
+        e = index(substr(code, b + 2), "*/")
+        if (!e) block = 1
+        else if (match(substr(code, b + e + 3), /\/\//)) print FILENAME ":" FNR ":" substr($0, b + e + 2 + RSTART)
       }
     }'
 }

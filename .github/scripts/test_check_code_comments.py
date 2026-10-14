@@ -204,6 +204,11 @@ TS_TEST = "frontend/src/features/probe/probe.test.ts"
         (TSX, "export const A = () => (\n  <div>\n    {/* #1921: the version stays here. */}\n  </div>\n)\n", "Origin marker"),
         (TSX, "export const A = () => (\n  <div>\n    {/* The rail keeps its landmark\n        (review #791, finding 5). */}\n  </div>\n)\n", "Review protocol"),
         (TS_TEST, "// #822 review, finding 6a: folders are not paged.\nexport const a = 1\n", "Review protocol"),
+        (TS, "// Verschieben muss sie überspringen (Review-Runde 1, MEDIUM 5).\nexport const a = 1\n", "Review protocol"),
+        (TS, "/**\n * Nur der Tag reist mit (HIGH 2): sonst verschiebt sich das Datum.\n */\nexport const a = 1\n", "Review protocol"),
+        (TS, "// review round 2: the owner stays.\nexport const a = 1\n", "Review protocol"),
+        (TS, "// Used by both nit-4 guards below.\nexport const a = 1\n", "Review protocol"),
+        (TS, "export const a = /* a */ 1 // #1921: the version stays here.\n", "Origin marker"),
         ("frontend/vite.config.ts", "// #707: fonts are always emitted as files.\nexport default {}\n", "Origin marker"),
         ("frontend/eslint.config.js", "// Accessibility rules (#586).\nexport default []\n", "Origin marker"),
     ],
@@ -225,6 +230,8 @@ def test_frontend_comment_fails(repo: Path, path: str, text: str, kind: str) -> 
         "export const url = 'https://example.org/#123' // a URL in a string\n",
         "// Switching back to upstream is tracked in #635.\nexport const a = 1\n",
         "/** Removed once #2500 replaces it. */\nexport const a = 1\n",
+        "// Keeps the low 5 bits; a high 2 stays.\nexport const a = 1\n",
+        "export const a = /* a */ 1 // the version stays here.\n",
     ],
 )
 def test_allowed_frontend_comment_passes(repo: Path, text: str) -> None:
