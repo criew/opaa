@@ -6,12 +6,12 @@ import Link from '@mui/material/Link'
 import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink } from 'react-router'
-import AuthLayout from '../components/auth/AuthLayout'
-import AuthLoading from '../components/auth/AuthLoading'
-import AuthNotice from '../components/auth/AuthNotice'
-import NewPasswordField from '../components/auth/NewPasswordField'
-import PasswordField from '../components/auth/PasswordField'
-import SectionEyebrow from '../components/auth/SectionEyebrow'
+import AuthLayout from '../components/AuthLayout'
+import AuthLoading from '../components/AuthLoading'
+import AuthNotice from '../components/AuthNotice'
+import NewPasswordField from '../components/NewPasswordField'
+import PasswordField from '../components/PasswordField'
+import SectionEyebrow from '../components/SectionEyebrow'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { useErrorFocus } from '@/shared/hooks/useErrorFocus'
 import { useLinkToken } from '../hooks/useLinkToken'
@@ -21,7 +21,7 @@ import {
   LinkInvalidError,
   RateLimitedError,
   setPassword,
-} from '../services/selfServiceApi'
+} from '../api/selfServiceApi'
 import { useAuthStore } from '@/shared/session/authStore'
 import { FORGOT_PASSWORD_ROUTE, LOGIN_ROUTE } from '@/shared/routes'
 import {

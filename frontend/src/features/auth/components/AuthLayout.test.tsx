@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import AuthLayout, { LOGIN_BACKDROP_SCRIM_OPACITY } from './AuthLayout'
 import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 
