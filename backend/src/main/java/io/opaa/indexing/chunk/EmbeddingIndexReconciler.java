@@ -5,6 +5,7 @@ import io.opaa.indexing.chunk.EmbeddingIndexRecord.RunStatus;
 import io.opaa.indexing.chunk.EmbeddingIndexState.Snapshot;
 import io.opaa.llm.EmbeddingInfo;
 import io.opaa.llm.EmbeddingInfoService;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.Optional;
 import org.slf4j.Logger;
@@ -37,16 +38,19 @@ public class EmbeddingIndexReconciler implements SmartInitializingSingleton {
   private final EmbeddingIndexStore store;
   private final VectorIndexSchema schema;
   private final EmbeddingInfoService embeddingInfoService;
+  private final Clock clock;
 
   public EmbeddingIndexReconciler(
       EmbeddingIndexState state,
       EmbeddingIndexStore store,
       VectorIndexSchema schema,
-      EmbeddingInfoService embeddingInfoService) {
+      EmbeddingInfoService embeddingInfoService,
+      Clock clock) {
     this.state = state;
     this.store = store;
     this.schema = schema;
     this.embeddingInfoService = embeddingInfoService;
+    this.clock = clock;
   }
 
   @Override
@@ -138,7 +142,7 @@ public class EmbeddingIndexReconciler implements SmartInitializingSingleton {
     return new Snapshot(configured, configured, null);
   }
 
-  private static Run endIfRunning(Run run, String message) {
-    return run.running() ? run.ended(RunStatus.CANCELLED, Instant.now(), message) : run;
+  private Run endIfRunning(Run run, String message) {
+    return run.running() ? run.ended(RunStatus.CANCELLED, Instant.now(clock), message) : run;
   }
 }
