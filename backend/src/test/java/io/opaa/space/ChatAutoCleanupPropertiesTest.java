@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Configuration;
 
-/** The floors of the automatic chat cleanup's periods (#1923) and the deletion date it shows. */
+/** The floors of the automatic chat cleanup's periods and the deletion date it shows. */
 class ChatAutoCleanupPropertiesTest {
 
   private final ApplicationContextRunner runner =

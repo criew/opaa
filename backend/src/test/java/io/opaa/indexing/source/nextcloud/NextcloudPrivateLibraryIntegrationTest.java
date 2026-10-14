@@ -26,10 +26,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
 /**
- * A person's private Nextcloud library the way the creation assistant builds it (#2167): she
- * connects her own app password on a profile for persons, the profile is offered to her with {@code
- * ownAccount}, the library runs with her secret, and a revoked app password lets the connection
- * expire with the hint to reconnect.
+ * A person's private Nextcloud library the way the creation assistant builds it: she connects her
+ * own app password on a profile for persons, the profile is offered to her with {@code ownAccount},
+ * the library runs with her secret, and a revoked app password lets the connection expire with the
+ * hint to reconnect.
  */
 @OpaaIntegrationTest
 class NextcloudPrivateLibraryIntegrationTest {

@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The print that decides whether a confirmed plan still describes what was shown (#1816, ADR-0036
+ * The print that decides whether a confirmed plan still describes what was shown (ADR-0036
  * Entscheidung 3). Two properties matter and neither is visible from a green confirmation: it must
  * not change for a plan that only looks different, and it must change for a plan that <em>is</em>
  * different - otherwise "bestätigt wird gegen einen frischen Schnappschuss" applies a diff nobody
@@ -133,7 +133,7 @@ class DirectorySyncPlanFingerprintTest {
 
   /**
    * A path moves when a parent is renamed, without the group itself changing - the run writes it,
-   * so a confirmation must not apply it unseen (#1817).
+   * so a confirmation must not apply it unseen.
    */
   @Test
   void aChangedSourcePathChangesThePrint() {

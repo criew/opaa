@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** The rendered Gesprächsnotiz block both prompts share (#1487). */
+/** The rendered Gesprächsnotiz block both prompts share. */
 class ConversationNoteBlockTest {
 
   @Test
@@ -30,9 +30,9 @@ class ConversationNoteBlockTest {
   }
 
   /**
-   * The two halves of one rendering (#1487): the model sees the heading, the safety belt only the
-   * points. A heading word in the anchor space would relate a degenerate sub-query
-   * ("Personalausweis") to any chat that merely carries a note - see this class's subject.
+   * The two halves of one rendering: the model sees the heading, the safety belt only the points. A
+   * heading word in the anchor space would relate a degenerate sub-query ("Personalausweis") to any
+   * chat that merely carries a note - see this class's subject.
    */
   @Test
   void theAnchorTextsAreThePointsWithoutTheHeading() {

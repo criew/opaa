@@ -16,10 +16,10 @@ class OpenAiBaseUrlGuardTest {
 
   @Test
   void startsWithTheLocalDefaultsAndNoAdditionalConfiguration() {
-    // #762: application.yml no longer knows a second, non-openai provider literal - both
-    // functions are fixed to "openai" there. This guard's own check stays generic on purpose (any
-    // value other than exactly "openai" is skipped), so it is exercised here with an arbitrary
-    // non-openai value rather than asserting anything about the removed "ollama" literal.
+    // application.yml no longer knows a second, non-openai provider literal - both functions are
+    // fixed to "openai" there. This guard's own check stays generic on purpose (any value other
+    // than exactly "openai" is skipped), so it is exercised here with an arbitrary non-openai
+    // value rather than asserting anything about the removed "ollama" literal.
     contextRunner
         .withPropertyValues("spring.ai.model.chat=none", "spring.ai.model.embedding=none")
         .run(context -> assertThat(context).hasNotFailed());
@@ -27,10 +27,9 @@ class OpenAiBaseUrlGuardTest {
 
   @Test
   void startsWithTheProductionDefaultBaseUrl() {
-    // Mirrors what application.yml actually configures since #762: both functions fixed to
-    // "openai", with a base URL already populated by its own default (Ollama's OpenAI-compatible
-    // endpoint) rather than left unset - the everyday case, not the exception this guard exists
-    // for.
+    // Mirrors what application.yml actually configures: both functions fixed to "openai", with a
+    // base URL already populated by its own default (Ollama's OpenAI-compatible endpoint) rather
+    // than left unset - the everyday case, not the exception this guard exists for.
     contextRunner
         .withPropertyValues(
             "spring.ai.model.chat=openai",
@@ -144,13 +143,13 @@ class OpenAiBaseUrlGuardTest {
   /**
    * Unlike the tests above - which stand up {@link OpenAiBaseUrlGuard} against property values
    * fabricated by the test itself, never against {@code application.yml} - these two actually
-   * process {@code backend/src/main/resources/application.yml} as real Spring Boot config data (PR
-   * #766 review, Befund 7a): a real {@link SpringApplicationBuilder} run (not {@link
-   * ApplicationContextRunner}, which never touches config data files at all) resolves {@code
-   * ${VAR:default}} placeholders and multi-document profile sections exactly like a real
-   * application startup does. {@code web(WebApplicationType.NONE)} and registering only {@link
-   * OpenAiBaseUrlGuard} itself as a source keep this cheap enough to run without Docker or a
-   * database - no other bean in the application ever gets created.
+   * process {@code backend/src/main/resources/application.yml} as real Spring Boot config data: a
+   * real {@link SpringApplicationBuilder} run (not {@link ApplicationContextRunner}, which never
+   * touches config data files at all) resolves {@code ${VAR:default}} placeholders and
+   * multi-document profile sections exactly like a real application startup does. {@code
+   * web(WebApplicationType.NONE)} and registering only {@link OpenAiBaseUrlGuard} itself as a
+   * source keep this cheap enough to run without Docker or a database - no other bean in the
+   * application ever gets created.
    */
   private ConfigurableApplicationContext runWithRealApplicationYml(String... additionalArgs) {
     return new SpringApplicationBuilder(OpenAiBaseUrlGuard.class)

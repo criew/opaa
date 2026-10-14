@@ -26,9 +26,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The counting query behind {@code GroupMembershipResolver#activeMemberCount} (#1820) against the
- * real schema: it must answer exactly what {@code AccountActivityService} answers for the same set
- * of accounts. The definition of "active" exists twice - once in Java, once as SQL in {@code
+ * The counting query behind {@code GroupMembershipResolver#activeMemberCount} against the real
+ * schema: it must answer exactly what {@code AccountActivityService} answers for the same set of
+ * accounts. The definition of "active" exists twice - once in Java, once as SQL in {@code
  * ActiveAccountSql} - and this parity is what holds the two together.
  */
 @OpaaIntegrationTest
@@ -124,7 +124,7 @@ class ActiveMemberCountIntegrationTest {
         .as("the counting query and the loading one answer the same number")
         .isEqualTo(resolver.activeMemberIds(group, organization).size())
         .isEqualTo(3);
-    // #1880: the paging query hands out names, so it carries the same definition - the third
+    // The paging query hands out names, so it carries the same definition - the third
     // encoding would otherwise be the one nobody holds against the other two.
     assertThat(resolver.activeMemberIdsPage(group, organization, 50, 0))
         .as("the paging query answers the same accounts as the loading one")
@@ -145,8 +145,8 @@ class ActiveMemberCountIntegrationTest {
 
   /**
    * The figure sits on the list path of every space and every subject selection, which is why it is
-   * counted in the database rather than sized from the loaded membership (#1820). A group of this
-   * size is what made that difference visible.
+   * counted in the database rather than sized from the loaded membership. A group of this size is
+   * what made that difference visible.
    */
   @Test
   void aLargeGroupIsCountedWithoutLoadingItsAccounts() {

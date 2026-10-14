@@ -140,7 +140,7 @@ public final class ReportWriter {
     sb.append(ExpectedStateAudit.renderSummary(report.expectedStateAudit()));
     sb.append(MetadataFilterAudit.renderSummary(report.metadataFilterAudit()));
 
-    // Issue #1151: Grenzstabilität — wie knapp gelöste Fälle von sicher gelösten Fällen
+    // Grenzstabilität — wie knapp gelöste Fälle von sicher gelösten Fällen
     // unterschieden werden können, ohne dass sich eine der obigen Kennzahlen bewegt.
     sb.append("Rangreserve (Grenzstabilität, issue #1151):\n");
     appendMarginLine(sb, "Gesamt", report.overallMargins());

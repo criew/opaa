@@ -9,9 +9,9 @@ import org.slf4j.Logger;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The multi-turn path's baseline verdict for one domain (issue #1553), shared by every domain's
- * test class exactly as {@link PipelineBaselineRegressionCheck} is — one implementation, not one
- * copy per domain.
+ * The multi-turn path's baseline verdict for one domain, shared by every domain's test class
+ * exactly as {@link PipelineBaselineRegressionCheck} is — one implementation, not one copy per
+ * domain.
  *
  * <p><b>Own verdict, own test class, own Gradle task.</b> The three paths are not interconvertible,
  * and this one additionally runs under a configuration the pipeline baseline was not drawn with

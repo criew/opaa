@@ -16,8 +16,8 @@ import java.util.List;
  * becomes false the moment {@code chunk-size} or {@code chunk-overlap} changes — nobody notices,
  * because nothing re-derives which chunk index the text landed in. A literal excerpt is invariant
  * under both parameters (the text itself does not move; only which chunk *contains* it can change),
- * which is exactly what lets a future comparison across chunking configurations (#374) mean
- * anything at all — see issue #721's "Bewusst kein Chunk-Index als Ground Truth".
+ * which is exactly what lets a future comparison across chunking configurations mean anything at
+ * all — see issue #721's "Bewusst kein Chunk-Index als Ground Truth".
  *
  * <p>Only applicable to cases carrying a non-null {@link GoldenCase#answerSpan()} — every
  * comic-characters case has {@code answerSpan() == null} (ADR-0010: the Ein-Chunk-Invariante makes

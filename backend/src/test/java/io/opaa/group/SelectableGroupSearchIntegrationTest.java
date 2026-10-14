@@ -24,9 +24,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The Subjekt-Auswahl of ADR-0036, Entscheidung 9 (#1820) against the real schema: which groups a
- * person vergebing a right is offered, with which origin, which size - and which of them is shown
- * as not choosable, with the reason.
+ * The Subjekt-Auswahl of ADR-0036, Entscheidung 9 against the real schema: which groups a person
+ * vergebing a right is offered, with which origin, which size - and which of them is shown as not
+ * choosable, with the reason.
  */
 @OpaaIntegrationTest
 class SelectableGroupSearchIntegrationTest {
@@ -234,9 +234,9 @@ class SelectableGroupSearchIntegrationTest {
   }
 
   /**
-   * #1820 review: Die Platzhalter der Eingabe bleiben Text. Ohne Escaping traefe eine Anfrage aus
-   * zwei Prozentzeichen jede Zeile der Organisation und laedt sie - die Mindestlaenge haelt sie
-   * nicht auf.
+   * Die Platzhalter der Eingabe bleiben Text. Ohne Escaping traefe eine Anfrage aus zwei
+   * Prozentzeichen jede Zeile der Organisation und laedt sie - die Mindestlaenge haelt sie nicht
+   * auf.
    */
   @Test
   void likeMetacharactersInTheQueryMatchThemselvesAndNothingElse() {
@@ -266,8 +266,8 @@ class SelectableGroupSearchIntegrationTest {
   }
 
   /**
-   * #1820 review: Der Exakt-Treffer einer geschuetzten Gruppe haengt nicht davon ab, wie viele
-   * andere Gruppen dieselbe Zeichenfolge tragen - er kommt aus einer eigenen Abfrage.
+   * Der Exakt-Treffer einer geschuetzten Gruppe haengt nicht davon ab, wie viele andere Gruppen
+   * dieselbe Zeichenfolge tragen - er kommt aus einer eigenen Abfrage.
    */
   @Test
   void aProtectedGroupIsFoundByItsCompleteNameEvenBesideManyOtherMatches() {
@@ -285,7 +285,7 @@ class SelectableGroupSearchIntegrationTest {
   }
 
   // -------------------------------------------------------------------------------------------
-  // Der Weg ueber die Kennung (#1820)
+  // Der Weg ueber die Kennung
   // -------------------------------------------------------------------------------------------
 
   @Test

@@ -13,9 +13,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Compares the most recent {@code evaluateVerwaltungRetrieval} report against the committed {@code
- * verwaltung} baseline (issue #1043) — the verwaltung counterpart of {@link
- * BaselineRegressionTest}. Own report file, own baseline file, own groups: the other two domains'
- * baselines and CI behaviour are unaffected by this class.
+ * verwaltung} baseline — the verwaltung counterpart of {@link BaselineRegressionTest}. Own report
+ * file, own baseline file, own groups: the other two domains' baselines and CI behaviour are
+ * unaffected by this class.
  *
  * <p>The per-class groups this compares ({@code category:literal_term_weak_embedding} and the four
  * others) are the reason the domain exists — a regression that only shows in the aggregate would

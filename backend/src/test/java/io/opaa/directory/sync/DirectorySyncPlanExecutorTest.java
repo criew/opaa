@@ -28,9 +28,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
- * {@link DirectorySyncPlanExecutor}'s binding to one identity provider (#1816, ADR-0036
- * Entscheidung 2 and 3): a run reads only that provider's groups, and the provider's token groups
- * are reported as no longer maintained without being touched.
+ * {@link DirectorySyncPlanExecutor}'s binding to one identity provider (ADR-0036 Entscheidung 2 and
+ * 3): a run reads only that provider's groups, and the provider's token groups are reported as no
+ * longer maintained without being touched.
  */
 class DirectorySyncPlanExecutorTest {
 
@@ -150,7 +150,7 @@ class DirectorySyncPlanExecutorTest {
     when(userRepository.findAccountStatesOf(organizationId, target.issuer()))
         .thenReturn(List.of(stateOf(account)));
     when(userRepository.findAllById(List.of(account.getId()))).thenReturn(List.of(account));
-    // The audit entry about an account names its pseudonym, never its id (#392).
+    // The audit entry about an account names its pseudonym, never its id.
     when(auditEventRecorder.pseudonymFor(any(), any())).thenReturn(UUID.randomUUID());
 
     SyncReport report =

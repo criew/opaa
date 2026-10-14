@@ -40,7 +40,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Runs against a real Postgres database with the real, versioned Liquibase schema applied - same
- * pattern as {@link SpaceServiceIntegrationTest} (#288).
+ * pattern as {@link SpaceServiceIntegrationTest}.
  */
 @OpaaIntegrationTest
 class SpaceAssetAssociationServiceIntegrationTest {
@@ -162,10 +162,10 @@ class SpaceAssetAssociationServiceIntegrationTest {
     assertThat(response.association().getAssetId()).isEqualTo(library);
   }
 
-  // #706 review, finding 6: 404, not 403 - a plain 403 here would let a caller distinguish "this
-  // library exists in my organization but I lack access" from "no such library" for any guessed
-  // id, the exact existence-oracle gap #436 already closed for every other library-scoped
-  // endpoint (LibraryAccessService#requireRole).
+  // 404, not 403 - a plain 403 here would let a caller distinguish "this library exists in my
+  // organization but I lack access" from "no such library" for any guessed id, the exact
+  // existence-oracle gap #436 already closed for every other library-scoped endpoint
+  // (LibraryAccessService#requireRole).
   @Test
   void curatorCannotAssociateALibraryTheyThemselvesCannotRead() {
     UUID owner = createUser();
@@ -531,8 +531,8 @@ class SpaceAssetAssociationServiceIntegrationTest {
         .isInstanceOf(AccessDeniedException.class);
   }
 
-  // #706 review, finding 7b: a plain MEMBER (neither CURATOR/ADMIN/owner of the space nor MANAGER
-  // of the library) must not be able to detach an association.
+  // A plain MEMBER (neither CURATOR/ADMIN/owner of the space nor MANAGER of the library) must not
+  // be able to detach an association.
   @Test
   void plainMemberCannotDetachAnAssociation() {
     UUID owner = createUser();
@@ -584,7 +584,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
     assertThat(associationRepository.existsBySpaceIdAndAssetId(space, library)).isTrue();
   }
 
-  // #706 review, "Selbstbenachrichtigung": the curator who creates the association must never
+  // "Selbstbenachrichtigung": the curator who creates the association must never
   // receive their own owner notification, even when they are also (part of) the library's owner.
   @Test
   void theTriggeringUserIsNeverNotifiedOfTheirOwnAssociation() {
@@ -662,8 +662,8 @@ class SpaceAssetAssociationServiceIntegrationTest {
   }
 
   /**
-   * #1939: die Zuordnungen stehen im schreibgeschützten Abschnitt des Reiters „Freigaben" - ein
-   * VIEWER erfährt den Space-Namen, aber weder den Lesekreis noch wer die Zuordnung angelegt hat.
+   * Die Zuordnungen stehen im schreibgeschützten Abschnitt des Reiters „Freigaben" - ein VIEWER
+   * erfährt den Space-Namen, aber weder den Lesekreis noch wer die Zuordnung angelegt hat.
    */
   @Test
   void viewerSeesTheSpaceNameButNoManagementDetailOfAnAssociation() {
@@ -773,7 +773,7 @@ class SpaceAssetAssociationServiceIntegrationTest {
         .isEqualTo("Fachbereich");
   }
 
-  /** Below VIEWER the asset is not there at all - the same 404 as for an unknown id (#436). */
+  /** Below VIEWER the asset is not there at all - the same 404 as for an unknown id. */
   @Test
   void aPersonWithoutAnyRoleOnTheAssetStillGetsNotFoundForItsAssociations() {
     UUID owner = createUser();

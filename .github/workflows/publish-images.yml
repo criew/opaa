@@ -8,8 +8,8 @@ on:
     # job, not here, so a malformed tag fails visibly instead of being ignored.
     tags: ['v*']
   # Weekly rebuild without a code change: the runtime stage pulls the OS security updates of the
-  # build day (issue #1450), so a published image is otherwise only as current as the last push to
-  # main. Scheduled well ahead of cve-scan.yml's 03:30 run so the nightly Trivy scan sees the fresh
+  # build day, so a published image is otherwise only as current as the last push to main.
+  # Scheduled well ahead of cve-scan.yml's 03:30 run so the nightly Trivy scan sees the fresh
   # image, and off the top of the hour (GitHub throttles schedules on :00).
   schedule:
     - cron: '50 1 * * 1'
@@ -160,9 +160,9 @@ jobs:
     strategy:
       matrix:
         image:
-          # Repo-root context for both (issue #896): backend's Gradle build depends on the sibling
-          # opaa-api/ module via settings.gradle.kts, so a context scoped to backend/ alone would
-          # not see it.
+          # Repo-root context for both: backend's Gradle build depends on the sibling opaa-api/
+          # module via settings.gradle.kts, so a context scoped to backend/ alone would not see
+          # it.
           - name: backend
             dockerfile: backend/Dockerfile
           - name: frontend
@@ -209,10 +209,10 @@ jobs:
           # whatever scope it names, and a tag run restores from main's cache (docs/renovate.md).
           cache-from: ${{ github.ref_type != 'tag' && format('type=gha,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
           cache-to: ${{ github.ref_type != 'tag' && format('type=gha,mode=max,scope={0}-{1}', matrix.image.name, matrix.platform.arch) || '' }}
-          # The frontend's runtime stage applies the OS security updates of the build day (issue
-          # #1450); a cache hit on that layer would republish the state of an arbitrarily old
-          # build, so this one stage is always rebuilt while every earlier stage keeps its cache.
-          # The backend's runtime stage has no package manager left to update since #1459 - it is
+          # The frontend's runtime stage applies the OS security updates of the build day; a
+          # cache hit on that layer would republish the state of an arbitrarily old build, so
+          # this one stage is always rebuilt while every earlier stage keeps its cache. The
+          # backend's runtime stage has no package manager left to update - it is
           # kept out of the cache for the same effect one level down: the distroless base is
           # re-resolved and re-fetched instead of an old layer being reused.
           no-cache-filters: runtime

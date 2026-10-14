@@ -33,9 +33,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The Gesprächsnotiz end to end (#1487, docs/features/conversation-memory.md, "Bauteil 2"):
- * condensation after a turn, rendering into both prompts, the state an answer carries, and the
- * author-only, archive-refused removal of a single point.
+ * The Gesprächsnotiz end to end (docs/features/conversation-memory.md, "Bauteil 2"): condensation
+ * after a turn, rendering into both prompts, the state an answer carries, and the author-only,
+ * archive-refused removal of a single point.
  *
  * <p>Under {@link OpaaMockedChatModelIntegrationTest} the condensation runs <b>inline</b> ({@code
  * SynchronousChatTitleExecutorConfiguration}), so every assertion below sees the state after the

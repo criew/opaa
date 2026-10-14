@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Every field of the Herleitung of a space reaches its response (#1822). */
+/** Every field of the Herleitung of a space reaches its response. */
 class AccessDerivationResponseMapperTest {
 
   @Test

@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Test;
 
 /**
  * Docker-free proof that a multi-turn run never measures quietly under a configuration that cannot
- * measure what it would report (issue #1484, acceptance criterion "Lauf ohne aktives Chat-Modell:
- * ‚nicht ausgeführt', nie stillschweigend ohne Zerlegung gemessen").
+ * measure what it would report (acceptance criterion "Lauf ohne aktives Chat-Modell: ‚nicht
+ * ausgeführt', nie stillschweigend ohne Zerlegung gemessen").
  */
 class ConversationRunPrerequisitesTest {
 

@@ -24,8 +24,8 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * HTTP-layer coverage of {@code GET /api/v1/catalog}: the entry the specification promises, an
- * asset the caller may not read leaving no trace in any answer (#2092), and the parameters the
- * operation refuses itself.
+ * asset the caller may not read leaving no trace in any answer, and the parameters the operation
+ * refuses itself.
  */
 @OpaaIntegrationTest
 class CatalogControllerIntegrationTest {

@@ -9,12 +9,12 @@ import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 
 /**
- * The one collaborator a test of the handover (#1563, ADR-0033 Entscheidung 12) cannot reach for
- * real: an identity provider's JWK set. The replacement is not a stub that accepts anything - it
- * builds the same {@link NimbusJwtDecoder} the production factory builds, only over a locally
- * generated public key instead of a fetched JWK set, with the standard validators (signature,
- * expiry, issuer byte for byte against the provider row). Only the {@code azp} check is missing,
- * because its validator is package-private to {@code io.opaa.auth}.
+ * The one collaborator a test of the handover (ADR-0033 Entscheidung 12) cannot reach for real: an
+ * identity provider's JWK set. The replacement is not a stub that accepts anything - it builds the
+ * same {@link NimbusJwtDecoder} the production factory builds, only over a locally generated public
+ * key instead of a fetched JWK set, with the standard validators (signature, expiry, issuer byte
+ * for byte against the provider row). Only the {@code azp} check is missing, because its validator
+ * is package-private to {@code io.opaa.auth}.
  *
  * <p>A top-level {@code @TestConfiguration} imported by {@link OpaaLocalAuthProviderTest} rather
  * than a nested one, so every class on that signature shares one Spring context (AGENTS.md,

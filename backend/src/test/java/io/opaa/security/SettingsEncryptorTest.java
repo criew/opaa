@@ -7,8 +7,8 @@ import java.util.Base64;
 import org.junit.jupiter.api.Test;
 
 /**
- * Unit tests for {@link SettingsEncryptor} (#756) - no Spring context, no database, mirroring
- * {@link CredentialsEncryptorTest} for the sibling class it is modelled after.
+ * Unit tests for {@link SettingsEncryptor} - no Spring context, no database, mirroring {@link
+ * CredentialsEncryptorTest} for the sibling class it is modelled after.
  */
 class SettingsEncryptorTest {
 

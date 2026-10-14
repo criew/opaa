@@ -13,9 +13,9 @@ import java.util.Set;
 import java.util.TreeMap;
 
 /**
- * The curation rules a golden dataset with the new case classes must satisfy (issue #1043,
- * docs/features/retrieval-benchmark.md §5) — checked Docker-free, so a hand-edited dataset fails in
- * {@code evalUnitTest} rather than an hour into a Testcontainers run.
+ * The curation rules a golden dataset with the new case classes must satisfy
+ * (docs/features/retrieval-benchmark.md §5) — checked Docker-free, so a hand-edited dataset fails
+ * in {@code evalUnitTest} rather than an hour into a Testcontainers run.
  *
  * <p>The rules are the specification's, not this class's invention:
  *
@@ -35,9 +35,9 @@ import java.util.TreeMap;
  *   <li><b>{@code answer_span} only on single-document cases</b> — see {@link
  *       #SINGLE_DOCUMENT_ANSWER_SPAN_RULE}.
  *   <li><b>Unique ids and unique queries</b>, and every case in the domain the dataset belongs to.
- *   <li><b>Filter fields consistent</b> (issue #1070) - see {@link #METADATA_FILTER_CASE_RULE},
- *       {@link #FILTER_WITHOUT_CONDITION_RULE} and {@link #NO_VALUE_FIELDS}; a Dokumentart code
- *       outside the delivered vocabulary is refused here, where production refuses it with a 400.
+ *   <li><b>Filter fields consistent</b> - see {@link #METADATA_FILTER_CASE_RULE}, {@link
+ *       #FILTER_WITHOUT_CONDITION_RULE} and {@link #NO_VALUE_FIELDS}; a Dokumentart code outside
+ *       the delivered vocabulary is refused here, where production refuses it with a 400.
  * </ul>
  *
  * <p>Deliberately a validator over an already-written dataset rather than a generator: these cases
@@ -115,7 +115,7 @@ public final class GoldenCaseCuration {
       "answer_span is defined per case and only for cases with exactly one expected document "
           + "(ADR-0012, Entscheidung 21)";
 
-  /** The class whose cases measure the core-field filter (issue #1070). */
+  /** The class whose cases measure the core-field filter. */
   public static final String METADATA_FILTER_CLASS = "metadata_filter";
 
   public static final String METADATA_FILTER_CASE_RULE =
@@ -126,7 +126,7 @@ public final class GoldenCaseCuration {
       "filter is present but constrains nothing - a misspelled key or an empty object; drop the "
           + "field or state a condition";
 
-  /** The two filterable core fields a Leerwert-Regel case may name (issue #1070). */
+  /** The two filterable core fields a Leerwert-Regel case may name. */
   public static final List<String> NO_VALUE_FIELDS = List.of("documentType", "documentDate");
 
   /**

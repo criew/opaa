@@ -48,9 +48,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 /**
  * The acceptance criteria of #1901 on the service level: a prompt library owned by a person or a
  * group, filled with prompts, given to a person, a group and the whole organization through the one
- * grant service of the shell; list and single view agreeing for every person (#406); the
- * organization boundary on every way; the frozen reach of an open succession; the variable rules;
- * and one audit entry per change.
+ * grant service of the shell; list and single view agreeing for every person; the organization
+ * boundary on every way; the frozen reach of an open succession; the variable rules; and one audit
+ * entry per change.
  */
 @OpaaIntegrationTest
 class PromptLibraryServiceIntegrationTest {
@@ -180,8 +180,8 @@ class PromptLibraryServiceIntegrationTest {
         .doesNotThrowAnyException();
     assertThat(readableBy(outsider)).doesNotContain(id);
 
-    // #1931: Die organisationsweite Reichweite ist eine Freigabe an "Alle Konten" - derselbe Weg
-    // wie fuer Person und Gruppe, nur ohne benannten Empfaenger.
+    // Die organisationsweite Reichweite ist eine Freigabe an "Alle Konten" - derselbe Weg wie
+    // fuer Person und Gruppe, nur ohne benannten Empfaenger.
     grantService.upsertGrant(
         PromptLibrary.ASSET_TYPE,
         id,

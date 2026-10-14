@@ -19,10 +19,9 @@ import java.util.function.Consumer;
  * DirectoryClient}'s own Javadoc): a scriptable response instead of the production {@code
  * ProviderDirectoryClient}, published for the whole suite by {@code OpaaTestBeans}.
  *
- * <p>Since #1816 a run names the provider whose directory it reads, so a response can be scripted
- * per provider ({@link #respondWithFor}) - what a test of "two providers, only one of them
- * synchronised" needs. {@link #respondWith} scripts the answer every provider without one of its
- * own gets.
+ * <p>A run names the provider whose directory it reads, so a response can be scripted per provider
+ * ({@link #respondWithFor}) - what a test of "two providers, only one of them synchronised" needs.
+ * {@link #respondWith} scripts the answer every provider without one of its own gets.
  *
  * <p>{@code OpaaTestBeanResetListener} calls {@link #reset()} before every test method, so no class
  * inherits whatever a sibling sharing the context last configured.
@@ -47,9 +46,9 @@ public final class FakeDirectoryClient implements DirectoryClient {
   }
 
   /**
-   * A directory that reports account status too (#1818). The two {@code respondWith} methods above
-   * script a connector that reports none, which is what every test predating #1818 exercises - and
-   * what leaves the account state untouched.
+   * A directory that reports account status too. The two {@code respondWith} methods above script a
+   * connector that reports none, which is what every test predating #1818 exercises - and what
+   * leaves the account state untouched.
    */
   public void respondWith(List<DirectoryGroup> groups, List<DirectoryAccount> accounts) {
     this.failure = null;

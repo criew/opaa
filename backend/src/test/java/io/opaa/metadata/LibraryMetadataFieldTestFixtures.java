@@ -7,9 +7,9 @@ import java.util.UUID;
 
 /**
  * Detached library field definitions for tests that never touch the database - the mapper unit test
- * and the filter translation tests (#1071). Lives in the entity's own package because a field is
- * only constructible through its package-private constructor, which keeps every production path
- * going through {@link LibraryMetadataFieldService}.
+ * and the filter translation tests. Lives in the entity's own package because a field is only
+ * constructible through its package-private constructor, which keeps every production path going
+ * through {@link LibraryMetadataFieldService}.
  */
 public final class LibraryMetadataFieldTestFixtures {
 

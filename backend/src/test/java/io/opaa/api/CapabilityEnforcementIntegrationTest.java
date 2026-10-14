@@ -29,11 +29,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The three creation paths over HTTP (#1813, ADR-0036 Entscheidung 5) and the three object-less
- * connector probe/selection endpoints (#1856): they behave exactly as before while "Alle Konten"
- * holds the delivered capabilities, and they answer {@code 403} with the code {@code
- * CAPABILITY_REQUIRED} as soon as the capability is withdrawn - on the next request, in the same
- * session.
+ * The three creation paths over HTTP (ADR-0036 Entscheidung 5) and the three object-less connector
+ * probe/selection endpoints: they behave exactly as before while "Alle Konten" holds the delivered
+ * capabilities, and they answer {@code 403} with the code {@code CAPABILITY_REQUIRED} as soon as
+ * the capability is withdrawn - on the next request, in the same session.
  *
  * <p>Withdrawals here run through the administration endpoint rather than the repository, so the
  * governance path is the one exercised; {@code SeededRowRestorer} puts the delivered rows back
@@ -197,10 +196,10 @@ class CapabilityEnforcementIntegrationTest {
   }
 
   /**
-   * The object-less probe and the two object-less selection endpoints (#1856): reachable while
-   * "Alle Konten" holds the capability, refused with 403 CAPABILITY_REQUIRED the instant it is
-   * withdrawn - the same connector right {@code createLibrary} itself needs, checked before any
-   * outbound connection is attempted.
+   * The object-less probe and the two object-less selection endpoints: reachable while "Alle
+   * Konten" holds the capability, refused with 403 CAPABILITY_REQUIRED the instant it is withdrawn
+   * - the same connector right {@code createLibrary} itself needs, checked before any outbound
+   * connection is attempted.
    */
   @Test
   void theSourceTestWithoutLibraryIdSucceedsWhileTheConnectorCapabilityIsDelivered()

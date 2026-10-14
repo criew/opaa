@@ -45,10 +45,10 @@ import org.junit.jupiter.api.Timeout;
 import org.springframework.ai.embedding.EmbeddingModel;
 
 /**
- * The reachability probes of the status page (#1053). Both bounds asserted here exist so that one
- * page load cannot cost one round trip per administrator and per StrictMode double mount, and so
- * that an unresponsive embedding endpoint cannot hold the request thread indefinitely - remove
- * either bound and the page is back to blocking on every view.
+ * The reachability probes of the status page. Both bounds asserted here exist so that one page load
+ * cannot cost one round trip per administrator and per StrictMode double mount, and so that an
+ * unresponsive embedding endpoint cannot hold the request thread indefinitely - remove either bound
+ * and the page is back to blocking on every view.
  */
 class SearchStatusProbeCacheTest {
 
@@ -224,8 +224,8 @@ class SearchStatusProbeCacheTest {
   }
 
   /**
-   * A base address refused for carrying credentials must read as such on the page (#1147), not as
-   * "nothing configured" - and the page must not reproduce the address to say it.
+   * A base address refused for carrying credentials must read as such on the page, not as "nothing
+   * configured" - and the page must not reproduce the address to say it.
    */
   @Test
   void aRejectedRerankBaseUrlIsNamedAsSuchWithoutShowingTheAddress() {

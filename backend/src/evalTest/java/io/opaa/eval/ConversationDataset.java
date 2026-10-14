@@ -7,8 +7,8 @@ import java.util.List;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Loads and fingerprints the multi-turn dataset of one domain (issue #1484) - the counterpart of
- * {@link GoldenDataset} for {@link ConversationCase}s.
+ * Loads and fingerprints the multi-turn dataset of one domain - the counterpart of {@link
+ * GoldenDataset} for {@link ConversationCase}s.
  *
  * <p>Its own file, never a section of the single-question dataset: the two are measured in separate
  * runs against separate baselines, and a shared file would make the single-question dataset's

@@ -22,7 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.slf4j.LoggerFactory;
 
 /**
- * {@link OidcProviderSeeder} (#1329, ADR-0025 Entscheidung 3): the one-time takeover of the {@code
+ * {@link OidcProviderSeeder} (ADR-0025 Entscheidung 3): the one-time takeover of the {@code
  * OPAA_OIDC_*} configuration into the first, enabled default provider row - guarded by the seed
  * marker, never by "is the table empty?", and never in the {@code dev} mode, which knows no
  * providers.
@@ -320,7 +320,7 @@ class OidcProviderSeederTest {
 
   /**
    * Without a provider but with a login-capable local administrator, the installation runs on local
-   * accounts alone: an INFO naming that, never an ERROR claiming no sign-in is possible (#2396).
+   * accounts alone: an INFO naming that, never an ERROR claiming no sign-in is possible.
    */
   @Test
   void noIssuerWithALoginCapableLocalAdministratorIsReportedAsInfoNotAsError() {

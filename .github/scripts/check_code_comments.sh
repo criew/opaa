@@ -1,37 +1,89 @@
 #!/usr/bin/env bash
-# Comments under backend/src/main and opaa-api/src/main state the contract, not how it came about
-# (AGENTS.md, "Code-Kommentare"). Rejected: review protocol ("#393 code review, finding 1",
-# "nit 4", "Befund 6"), history anchored at an issue ("since #1931", "pre-#888", "formerly") and
-# bare origin markers ("(#1073)", "(PR #537)", a leading "#1073:"). Any other issue reference is
-# only counted: a permitted one (workaround until an upstream fix, deprecation, spike) and one still
-# woven into a sentence look alike to a pattern; "until #N"/"after #N" stay allowed for a workaround
-# or a deprecation. The spike package and a line naming "Spike #N" are exempt.
-# Checked: Java comment lines, '#' comment lines of application*.yml and every line of the OpenAPI
-# fragments, whose summaries and descriptions are the API documentation.
+# Comments state the contract, not how it came about (AGENTS.md, "Code-Kommentare").
+#
+# Checked trees (TREES): Java comment lines under backend/src/main, opaa-api/src/main,
+# backend/src/test and backend/src/evalTest; '#' comment lines of application*.yml; '#' lines and
+# '//' lines of inline scripts in .github/workflows/*.yml; every line of the OpenAPI fragments,
+# whose summaries and descriptions are the API documentation; the changeSet comment: values (folded
+# ones with their continuation lines) and '#' lines of the Liquibase changelogs.
+#
+# Rejected:
+# - review protocol: "#393 code review, finding 1", "#N second review", "#N (review)",
+#   "review of PR #N", "re-review", "review round", "review finding", "finding 2", "nit 4",
+#   "Befund 6", "Wichtig 3"
+# - history anchored at an issue: "since #1931", "seit #1040", "before #N", "pre-#888",
+#   "formerly"
+# - origin markers: "(#1073)", "(PR #537)", "(#2163, ADR-0041)", a leading "#1073:",
+#   "Issue #1070:" or "#583/#1910:"
+#
+# Any other issue reference is only counted, per tree: a permitted one (workaround until an upstream
+# fix, deprecation, spike) and one still woven into a sentence look alike to a pattern;
+# "until #N"/"after #N" stay allowed. A test's "regression guard for #N: <invariant>" is counted
+# apart as the permitted form. The spike package and a line naming "Spike #N" are exempt.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+# label=path prefix; a line counts for the first entry whose prefix it starts with.
+TREES=(
+  changelog=backend/src/main/resources/db/changelog/
+  main=backend/src/main/
+  main=opaa-api/src/main/
+  test=backend/src/test/
+  evalTest=backend/src/evalTest/
+  workflows=.github/workflows/
+)
 # An issue reference; "owner/repo#123", "&#123;" and "page.md#123" are none.
 REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
 # file:line: in front of every checked line
 AT='^[^:]+:[0-9]+:'
-REVIEW="(?i)${REF}\S*\s+(code\s+|re-)?review\b|\breview\s+of\s+(PR\s+)?#[0-9]|\bre-review\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit\s+[0-9]|\bBefund\s+([0-9]|\")"
-HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
-MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*\)|${AT}\s*(//|/?\*|#)\s*(<p>|<b>)?\s*${REF}(\s*[,/]\s*${REF})*\s*:"
+REVIEW="(?i)${REF}\S*\s+((second|third|follow-up)\s+)?(code\s+|re-)?review\b|${REF}\s*\(review\)|\breview\s+of\s+(PR\s+)?#[0-9]|\bre-review\b|\breview\s+(round|findings?)\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit\s+[0-9]|\b(Befund|Wichtig)\s+([0-9]|\")"
+HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|seit|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
+MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*([);]|,\s*\S)|${AT}\s*(//|/?\*|#|comment:\s*\"?)\s*(<p>|<b>)?\s*(([Ii]ssues?|PR)\s+)?${REF}(\s*[,/]\s*#[0-9]{2,4})*\s*:"
 EXEMPT="^backend/src/main/java/io/opaa/query/spike/|(?i)\bspike\s+\(?#[0-9]"
+# The form a test may keep: it names the regression and, after the colon, the invariant it guards.
+GUARD="^backend/src/(test|evalTest)/[^:]+:[0-9]+:(?i).*\bregression\s+guard\s+for\s+#[0-9]+((\s*,\s*|\s+and\s+|/)#[0-9]+)*:\s*\S"
+
+java_comments() {
+  git ls-files -z -- "$1/*.java" | xargs -0 -r grep -nHP '^\s*(//|/?\*)' || true
+}
+
+# '#' lines and the comment: value of a changeSet; a folded one (comment: >-) with its indented lines.
+changelog_comments() {
+  git ls-files -z -- 'backend/src/main/resources/db/changelog/*.yaml' | xargs -0 -r awk '
+    FNR == 1 { fold = 0 }
+    fold && /^[ \t]*$/ { next }
+    fold { match($0, /^ */); if (RLENGTH > indent) { print FILENAME ":" FNR ":" $0; next } }
+    { fold = 0 }
+    /^[ \t]*#/ { print FILENAME ":" FNR ":" $0; next }
+    /^[ \t]*comment:/ {
+      print FILENAME ":" FNR ":" $0
+      if ($0 ~ /comment:[ \t]*[>|][-+]?[ \t]*$/) { fold = 1; match($0, /^ */); indent = RLENGTH }
+    }'
+}
 
 lines() {
-  git ls-files -z -- 'backend/src/main/*.java' 'opaa-api/src/main/*.java' |
-    xargs -0 -r grep -nHP '^\s*(//|/?\*)' || true
+  local tree
+  for tree in backend/src/main opaa-api/src/main backend/src/test backend/src/evalTest; do
+    java_comments "$tree"
+  done
   git ls-files -z -- 'backend/src/main/resources/application*.yml' |
     xargs -0 -r grep -nHP '^\s*#' || true
+  git ls-files -z -- '.github/workflows/*.yml' | xargs -0 -r grep -nHP '^\s*(#|//)' || true
   git ls-files -z -- 'opaa-api/src/main/openapi/*.yaml' | xargs -0 -r grep -nH '' || true
+  changelog_comments
+}
+
+# The tree label of every line read, in order.
+labels() {
+  awk -v trees="${TREES[*]}" '
+    BEGIN { n = split(trees, t, " ") }
+    NF { for (i = 1; i <= n; i++) { split(t[i], kv, "="); if (index($0, kv[2]) == 1) { print kv[1]; next } } }'
 }
 
 all="$(lines)"
 if [ -z "$all" ]; then
-  echo "::error::No comment line found under backend/src/main or opaa-api/src/main - the guard would pass without checking anything. Verify this script."
+  echo "::error::No comment line found in any checked tree - the guard would pass without checking anything. Verify this script."
   exit 1
 fi
 checked="$(grep -c '' <<<"$all")"
@@ -58,6 +110,12 @@ if [ "$rejected" -gt 0 ]; then
   exit 1
 fi
 
-others="$(sed -E 's/^[^:]+:[0-9]+://' <<<"$candidates" | grep -cP "$REF" || true)"
-echo "::notice::$others checked lines still name an issue; that is allowed only for a workaround until an upstream fix, a deprecation or a spike."
-echo "All $checked checked lines under backend/src/main and opaa-api/src/main follow the comment rule."
+# Issue references left, per tree; a test's regression guard is counted apart.
+references="$(grep -P "${AT}.*${REF}" <<<"$candidates" || true)"
+others="$(grep -vP "$GUARD" <<<"$references" | labels || true)"
+guards="$(grep -P "$GUARD" <<<"$references" | labels || true)"
+for label in $(printf '%s\n' "${TREES[@]%%=*}" | awk '!seen[$0]++'); do
+  echo "::notice::$label: $(grep -cx "$label" <<<"$others" || true) checked lines still name an issue, $(grep -cx "$label" <<<"$guards" || true) more as a regression guard."
+done
+echo "Issue references are allowed only for a workaround until an upstream fix, a deprecation, a spike or a test's regression guard."
+echo "All $checked checked lines follow the comment rule."

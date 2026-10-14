@@ -12,8 +12,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.document.MetadataMode;
 
 /**
- * {@link ChunkContextPrefix} (#1072): the format of the Kontextpräfix, that an empty segment is
- * left out entirely, and which Fundort counts as Strukturkontext.
+ * {@link ChunkContextPrefix}: the format of the Kontextpräfix, that an empty segment is left out
+ * entirely, and which Fundort counts as Strukturkontext.
  */
 class ChunkContextPrefixTest {
 

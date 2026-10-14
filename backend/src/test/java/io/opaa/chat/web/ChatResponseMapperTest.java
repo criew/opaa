@@ -447,8 +447,8 @@ class ChatResponseMapperTest {
   }
 
   /**
-   * #1487: every field of a note point reaches the response, in the order the note holds them. The
-   * kind is delivered even though the Oberfläche does not show it.
+   * Every field of a note point reaches the response, in the order the note holds them. The kind is
+   * delivered even though the Oberfläche does not show it.
    */
   @Test
   void toDetailCopiesEveryNotePointWithItsKindAndOrder() {

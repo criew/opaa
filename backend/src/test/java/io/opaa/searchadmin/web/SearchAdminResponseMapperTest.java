@@ -351,8 +351,8 @@ class SearchAdminResponseMapperTest {
   }
 
   /**
-   * Three states, three sentences (#1879): holding no befugnis and holding one whose scope is
-   * currently too small are different things, and only one of them is "Sie halten keine".
+   * Three states, three sentences: holding no befugnis and holding one whose scope is currently too
+   * small are different things, and only one of them is "Sie halten keine".
    */
   @Test
   void theDiagnosisContextExplainsEveryStateOfThePersonContextPermission() {

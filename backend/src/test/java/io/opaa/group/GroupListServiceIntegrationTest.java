@@ -27,9 +27,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * The administration's paged group list (#1978): every filter narrows by the same state the list
- * shows, the sort orders are the documented ones, and a page is cut from the whole matching set.
- * Six groups cover the five states, both origins and all three kinds.
+ * The administration's paged group list: every filter narrows by the same state the list shows, the
+ * sort orders are the documented ones, and a page is cut from the whole matching set. Six groups
+ * cover the five states, both origins and all three kinds.
  */
 @OpaaIntegrationTest
 class GroupListServiceIntegrationTest {

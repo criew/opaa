@@ -63,8 +63,8 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
  * io.opaa.audit.AuditQueryServiceIntegrationTest#noAccessPathAcceptsOrSortsByActor()} makes the
  * same proof one layer down, against the service the controller delegates to.
  *
- * <p>#394: {@link AuditQueryService} is mocked here (this is a {@code @WebMvcTest} slice), so the
- * real role/reason enforcement this class now performs is exercised by {@code
+ * <p>{@link AuditQueryService} is mocked here (this is a {@code @WebMvcTest} slice), so the real
+ * role/reason enforcement this class now performs is exercised by {@code
  * AuditQueryServiceIntegrationTest} instead, against the real bean. {@link
  * #listByObjectAsRegularUserReturns403()} below stubs the mock to throw {@link
  * AccessDeniedException} - what the real {@link AuditQueryService} now does for a non-AUDITOR
@@ -185,7 +185,7 @@ class AuditControllerTest {
   }
 
   /**
-   * #394: unlike before, this no longer relies on {@code @PreAuthorize} short-circuiting before the
+   * Unlike before, this no longer relies on {@code @PreAuthorize} short-circuiting before the
    * controller method runs - none of the five read endpoints declares it any more. The 403 comes
    * from the real {@link AuditQueryService}'s own role check instead, simulated here by stubbing
    * the mock to throw exactly what that check throws for a non-AUDITOR caller.
@@ -219,9 +219,9 @@ class AuditControllerTest {
   }
 
   /**
-   * #393 code review, nit 6: an unparsable value (as opposed to a missing one) for a required
-   * parameter must also be a 400, not the 500 {@code MethodArgumentTypeMismatchException} fell
-   * through to before {@code GlobalExceptionHandler} gained a dedicated handler for it.
+   * An unparsable value (as opposed to a missing one) for a required parameter must also be a 400,
+   * not the 500 {@code MethodArgumentTypeMismatchException} fell through to before {@code
+   * GlobalExceptionHandler} gained a dedicated handler for it.
    */
   @Test
   void listByObjectWithAnUnparsableObjectTypeReturns400() throws Exception {
@@ -288,12 +288,12 @@ class AuditControllerTest {
    * diagnostic protocol, across every revision access path, is inspected by name - none may be
    * usable to name, filter, group or sort by the acting person.
    *
-   * <p>#393 code review, nit 4: this alone would miss a future unannotated {@code Pageable
-   * pageable} parameter, which Spring's {@code PageableHandlerMethodArgumentResolver} binds
-   * straight from {@code ?sort=actorRef,desc} without ever going through {@code @RequestParam} -
-   * see {@link #noParameterIsUnannotatedOrClientControlledSort()} for the structural check that
-   * closes exactly that gap, and {@link #forbiddenSubstringsCoverAllDeclaredParameterNames()} for
-   * why the handlers are collected by path rather than from a hardcoded list.
+   * <p>This alone would miss a future unannotated {@code Pageable pageable} parameter, which
+   * Spring's {@code PageableHandlerMethodArgumentResolver} binds straight from {@code
+   * ?sort=actorRef,desc} without ever going through {@code @RequestParam} - see {@link
+   * #noParameterIsUnannotatedOrClientControlledSort()} for the structural check that closes exactly
+   * that gap, and {@link #forbiddenSubstringsCoverAllDeclaredParameterNames()} for why the handlers
+   * are collected by path rather than from a hardcoded list.
    */
   @Test
   void noEndpointAcceptsAnActorOrSortRequestParameter() {
@@ -324,13 +324,13 @@ class AuditControllerTest {
   }
 
   /**
-   * #393 code review, nit 4: closes the blind spot the substring check above cannot see on its own
-   * - an unannotated {@code Pageable}/{@code Sort}/{@code @ModelAttribute} parameter binds from
-   * arbitrary query parameters (including {@code sort=actorRef,desc}) without ever carrying an
-   * {@code @RequestParam} this class could inspect by name. Every parameter on every HTTP handler
-   * method must therefore either be one of the explicit, named binding annotations this controller
-   * already uses, or {@code @AuthenticationPrincipal} - never left unannotated, and never typed
-   * {@link Pageable}/{@link Sort} even if it were annotated.
+   * Closes the blind spot the substring check above cannot see on its own - an unannotated {@code
+   * Pageable}/{@code Sort}/{@code @ModelAttribute} parameter binds from arbitrary query parameters
+   * (including {@code sort=actorRef,desc}) without ever carrying an {@code @RequestParam} this
+   * class could inspect by name. Every parameter on every HTTP handler method must therefore either
+   * be one of the explicit, named binding annotations this controller already uses, or
+   * {@code @AuthenticationPrincipal} - never left unannotated, and never typed {@link
+   * Pageable}/{@link Sort} even if it were annotated.
    */
   @Test
   void noParameterIsUnannotatedOrClientControlledSort() {
@@ -370,11 +370,11 @@ class AuditControllerTest {
   }
 
   /**
-   * #393 code review, nit 4: the other half of the same finding - the handlers are collected by
-   * path, not from a list of methods or controllers, so a new access path under {@code
-   * /api/v1/audit} is covered by the checks above wherever its controller lives. This asserts that
-   * the collection still finds at least the known revision access paths, so the checks cannot pass
-   * vacuously, and that the named exclusion still matches something.
+   * The other half of the same finding - the handlers are collected by path, not from a list of
+   * methods or controllers, so a new access path under {@code /api/v1/audit} is covered by the
+   * checks above wherever its controller lives. This asserts that the collection still finds at
+   * least the known revision access paths, so the checks cannot pass vacuously, and that the named
+   * exclusion still matches something.
    */
   @Test
   void forbiddenSubstringsCoverAllDeclaredParameterNames() {

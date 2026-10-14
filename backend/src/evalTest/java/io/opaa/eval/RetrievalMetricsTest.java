@@ -7,10 +7,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for the pure ranking-metric math (issue #227 review follow-up). Run via
- * the {@code evalUnitTest} Gradle task (wired into {@code check}) — deliberately not the
- * Docker-requiring {@code evaluateRetrieval} task, which only runs {@code
- * RetrievalEvaluationHarnessTest}.
+ * Docker-free unit tests for the pure ranking-metric math. Run via the {@code evalUnitTest} Gradle
+ * task (wired into {@code check}) — deliberately not the Docker-requiring {@code evaluateRetrieval}
+ * task, which only runs {@code RetrievalEvaluationHarnessTest}.
  *
  * <p>These cases were hand-computed independently of {@link RetrievalMetrics} and cross-checked
  * against a full harness run before being pinned here, so a future change to the gain function,
@@ -81,7 +80,7 @@ class RetrievalMetricsTest {
   void allExpectedDocumentsHitAt10RequiresEveryExpectedDocumentUnlikePartialCreditRecall() {
     // Issue #913 ("Recall pro Teilthema"): recallAt10 gives 0.5 partial credit for one of two
     // expected documents retrieved — exactly the shape that would silently hide a topK-monoculture
-    // regression (issue #912). allExpectedDocumentsHitAt10 must score this case as a miss (0.0).
+    // regression. allExpectedDocumentsHitAt10 must score this case as a miss (0.0).
     GoldenCase goldenCase = caseWithExpected(List.of("e1", "e2"));
     RetrievalMetrics.QueryResult result =
         RetrievalMetrics.evaluate(goldenCase, List.of("e1", "d2", "d3", "d4", "d5"));
@@ -104,8 +103,8 @@ class RetrievalMetricsTest {
 
   @Test
   void allExpectedDocumentsHitAt10IsZeroWhenAnExpectedDocumentLandsJustOutsideTheTop10Window() {
-    // Issue #913 review, Nit 2: pins the k=10 cutoff itself — without it, removing the subList
-    // truncation in allExpectedDocumentsHitAtK would still leave this suite green.
+    // Pins the k=10 cutoff itself — without it, removing the subList truncation in
+    // allExpectedDocumentsHitAtK would still leave this suite green.
     GoldenCase goldenCase = caseWithExpected(List.of("e1", "e2"));
     RetrievalMetrics.QueryResult result =
         RetrievalMetrics.evaluate(

@@ -11,8 +11,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Docker-free unit tests for {@link Baseline#load(Path)} — in particular the {@code
- * distinctExpectedDocumentSets} validation added after the second PR #301 review round. Part of
- * {@code evalUnitTest}, wired into {@code check}.
+ * distinctExpectedDocumentSets} validation. Part of {@code evalUnitTest}, wired into {@code check}.
  */
 class BaselineTest {
 
@@ -61,8 +60,7 @@ class BaselineTest {
 
   @Test
   void rejectsAGroupWhereHitCountAt5DoesNotExactlyMatchHitRateAt5TimesN() throws IOException {
-    // Issue #306 review, Befund 3: hitRateAt5 is binary per case, so hitCountAt5 ==
-    // round(hitRateAt5
+    // hitRateAt5 is binary per case, so hitCountAt5 == round(hitRateAt5
     // * n) is an *exact* invariant, not a heuristic — this catches a wrong-but-still-positive count
     // (e.g. a typo), not just a missing/zero one. round(0.521 * 121) = 63, not 0.
     Path file = tempDir.resolve("baseline.json");
@@ -91,11 +89,11 @@ class BaselineTest {
 
   @Test
   void rejectsAGroupWhereHitCountAt10IsTooSmallForItsOwnMrrNdcgOrRecallMean() throws IOException {
-    // Issue #306 review, Befund 3: each of mrr/ndcgAt10/recallAt10 sums, across the group's cases,
-    // to at most hitCountAt10 (every contributing case scores at most 1.0) — so a hitCountAt10 that
-    // satisfies the ordering check above (0 <= hitCountAt5 <= hitCountAt10 <= n) can still be too
-    // small once compared against those three means. Here hitCountAt5 = hitCountAt10 = 1 (ordering
-    // holds) but ndcgAt10 = 0.9 over n=2 implies a sum of 1.8, above hitCountAt10 = 1.
+    // Each of mrr/ndcgAt10/recallAt10 sums, across the group's cases, to at most hitCountAt10
+    // (every contributing case scores at most 1.0) — so a hitCountAt10 that satisfies the ordering
+    // check above (0 <= hitCountAt5 <= hitCountAt10 <= n) can still be too small once compared
+    // against those three means. Here hitCountAt5 = hitCountAt10 = 1 (ordering holds) but ndcgAt10
+    // = 0.9 over n=2 implies a sum of 1.8, above hitCountAt10 = 1.
     Path file = tempDir.resolve("baseline.json");
     Files.writeString(file, TOO_SMALL_HIT_COUNT_AT_10_JSON);
 
@@ -106,9 +104,9 @@ class BaselineTest {
   }
 
   /**
-   * Issue #1522: a file drawn from a run against an external Ollama endpoint may never become a
-   * comparison point - the only correct outcome is to re-measure, which a fixed-point mismatch
-   * ("measurement grounds changed") would not say.
+   * A file drawn from a run against an external Ollama endpoint may never become a comparison point
+   * - the only correct outcome is to re-measure, which a fixed-point mismatch ("measurement grounds
+   * changed") would not say.
    */
   @Test
   void rejectsABaselineDrawnFromAnExternalOllamaEndpoint() throws IOException {

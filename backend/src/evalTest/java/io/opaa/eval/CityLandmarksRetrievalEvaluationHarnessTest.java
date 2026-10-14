@@ -73,21 +73,21 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Retrieval-quality evaluation harness for the {@code city-landmarks} domain (issue #234), a
- * second, deliberately multi-chunk domain built on top of the machinery {@link
- * RetrievalEvaluationHarnessTest} (issue #227) and issue #721 already provide — see {@link
+ * Retrieval-quality evaluation harness for the {@code city-landmarks} domain, a second,
+ * deliberately multi-chunk domain built on top of the machinery {@link
+ * RetrievalEvaluationHarnessTest} and issue #721 already provide — see {@link
  * EvalDomainConfig#CITY_LANDMARKS}'s Javadoc for the domain's chunk-count profile. Indexes the
  * frozen `eval/corpus/city-landmarks` corpus through the production pipeline ({@link
  * io.opaa.indexing.document.DocumentIngestService} routed to {@link
- * io.opaa.format.file.markdown.MarkdownDocumentFormat} for this all-Markdown corpus since #1103),
- * then runs every case from {@code eval/golden/city-landmarks.json} directly against {@link
+ * io.opaa.format.file.markdown.MarkdownDocumentFormat} for this all-Markdown corpus), then runs
+ * every case from {@code eval/golden/city-landmarks.json} directly against {@link
  * VectorStore#similaritySearch}. No LLM — retrieval-only, per ADR-0011 decision 3.
  *
  * <p>Like {@link RetrievalEvaluationHarnessTest}, it additionally runs the <b>pipeline measurement
- * path</b> (issue #1039, {@link PipelineHarnessSupport}) on the same index afterwards: the same
- * golden cases through the production retrieval pipeline, at the production configuration including
- * the applied similarity threshold, reported separately at its own window. The raw-vector path's
- * numbers, report file and baseline are untouched by it.
+ * path</b> ({@link PipelineHarnessSupport}) on the same index afterwards: the same golden cases
+ * through the production retrieval pipeline, at the production configuration including the applied
+ * similarity threshold, reported separately at its own window. The raw-vector path's numbers,
+ * report file and baseline are untouched by it.
  *
  * <p>This class is a deliberate near-duplicate of {@link RetrievalEvaluationHarnessTest} rather
  * than a parameterization of it (see issue #721 PR #723, "Umfang-Entscheidungen": a second domain
@@ -151,12 +151,12 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
 
   private static volatile String actualEmbeddingModelDigest;
 
-  // Issue #1085: the chat model this run pinned and made systemwide active, or null before
-  // the models were pulled. Null means "decomposition cannot be measured in this run".
+  // The chat model this run pinned and made systemwide active, or null before the models
+  // were pulled. Null means "decomposition cannot be measured in this run".
   private static volatile String activeChatModel;
 
-  // Issue #234: city-landmarks' domain configuration — chunk-count expectation, document-bound
-  // k-window, chunk-search sizing. See EvalDomainConfig.CITY_LANDMARKS' Javadoc for the measured
+  // City-landmarks' domain configuration — chunk-count expectation, document-bound k-window,
+  // chunk-search sizing. See EvalDomainConfig.CITY_LANDMARKS' Javadoc for the measured
   // chunk-count distribution this configuration is based on.
   private static final EvalDomainConfig DOMAIN = EvalDomainConfig.CITY_LANDMARKS;
 
@@ -206,9 +206,9 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             cacheHint);
     // A long chunk must get the vector of its whole text, not of batch-wise halves.
     EvalEmbeddingContinuity.require(ollamaEndpoint(), EMBEDDING_MODEL, log);
-    // Issue #1085: the chat model the Teilfragen-Zerlegung needs, pinned by tag and content digest
-    // exactly like the embedding model. Pulled on every run rather than only on a decomposing one,
-    // so a broken model pin surfaces in the nightly job instead of only in a rare manual run.
+    // The chat model the Teilfragen-Zerlegung needs, pinned by tag and content digest exactly like
+    // the embedding model. Pulled on every run rather than only on a decomposing one, so a broken
+    // model pin surfaces in the nightly job instead of only in a rare manual run.
     EvalOllamaModel.ensurePresent(
         ollamaEndpoint(),
         ollama,
@@ -221,8 +221,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
 
   /**
    * Starts the Ollama Testcontainer, unless {@link EvalOllamaEndpoint#isExternal()} selects an
-   * external endpoint instead (issue #1076) — in which case no container is created at all and
-   * {@link #ollamaEndpoint()} returns that external URL for the rest of the run. Runs from {@link
+   * external endpoint instead — in which case no container is created at all and {@link
+   * #ollamaEndpoint()} returns that external URL for the rest of the run. Runs from {@link
    * #pullEmbeddingModel()}, itself a {@code @BeforeAll}; Spring's context preparation (which reads
    * {@link #ollamaEndpoint()} via {@link #configureProperties(DynamicPropertyRegistry)}) only
    * happens once every {@code @BeforeAll} method has completed, so this ordering is safe regardless
@@ -294,7 +294,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   static void stopOllamaIfStarted() {
     // Mirrors what TestcontainersExtension does automatically for @Container-managed fields — this
     // one is managed manually (see startOllamaIfNeeded()) so it needs the same explicit stop. null
-    // in external-endpoint mode (issue #1076), where there is nothing this harness started.
+    // in external-endpoint mode, where there is nothing this harness started.
     if (ollama != null) {
       ollama.stop();
     }
@@ -314,8 +314,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     registry.add("spring.datasource.url", postgres::getJdbcUrl);
     registry.add("spring.datasource.username", postgres::getUsername);
     registry.add("spring.datasource.password", postgres::getPassword);
-    // #762: no native Ollama provider anymore - reach the same container through its
-    // OpenAI-compatible /v1 endpoint instead (application.yml's own default path since #762).
+    // No native Ollama provider anymore - reach the same container through its
+    // OpenAI-compatible /v1 endpoint instead (application.yml's own default path).
     registry.add("spring.ai.openai.embedding.base-url", () -> ollamaEndpoint() + "/v1");
     registry.add("spring.ai.openai.embedding.model", () -> EMBEDDING_MODEL);
     registry.add("spring.ai.vectorstore.pgvector.dimensions", () -> EMBEDDING_DIMENSIONS);
@@ -330,12 +330,12 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     // EXPECTED_APPLICATION_DEFAULT_CHUNK_SIZE javadoc and ADR-0010: the harness measures whatever
     // chunk-size production is actually configured with (application.yml's own default).
     registry.add("opaa.indexing.batch-size", () -> 50);
-    // The only opaa.query.* override, and an opt-in one since issue #1085: every committed
-    // pipeline baseline is drawn with decomposition off, because the shipped decomposition-on
-    // configuration costs one chat call per query and, under the Mehrfachlauf-Regel, three runs of
-    // the whole pipeline path — more than the nightly budget carries (see EvalQueryDecomposition
-    // and docs/features/retrieval-benchmark.md, "Offene Punkte" 3). Every other query parameter
-    // stays at its production default and is read from the running context.
+    // The only opaa.query.* override, and an opt-in one: every committed pipeline baseline is
+    // drawn with decomposition off, because the shipped decomposition-on configuration costs one
+    // chat call per query and, under the Mehrfachlauf-Regel, three runs of the whole pipeline path
+    // — more than the nightly budget carries (see EvalQueryDecomposition and
+    // docs/features/retrieval-benchmark.md, "Offene Punkte" 3). Every other query parameter stays
+    // at its production default and is read from the running context.
     registry.add(
         "opaa.query.query-decomposition-enabled", EvalQueryDecomposition::requestedForThisRun);
     // Single-threaded on purpose (unlike the production default of core=2/max=4): with more than
@@ -353,15 +353,14 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   @Autowired private DocumentRepository documentRepository;
   @Autowired private IndexingJobRepository indexingJobRepository;
   @Autowired private VectorStore vectorStore;
-  // Issue #1070: the vocabulary snapshot the golden filters' "no value" condition is built over.
+  // The vocabulary snapshot the golden filters' "no value" condition is built over.
   @Autowired private DocumentTypeVocabularyRepository vocabularyRepository;
   @Autowired private IndexingProperties indexingProperties;
   @Autowired private KnowledgeLibraryRepository libraryRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
-  // Issue #721/#1103: reused, not reimplemented, to build the chunk map — the same
-  // DocumentFormatRegistry routing DocumentIngestService drives (see its Javadoc), so the chunk
-  // texts the map is built from are exactly what was actually indexed, not a second, potentially
-  // drifting re-implementation.
+  // Reused, not reimplemented, to build the chunk map — the same DocumentFormatRegistry routing
+  // DocumentIngestService drives (see its Javadoc), so the chunk texts the map is built from are
+  // exactly what was actually indexed, not a second, potentially drifting re-implementation.
   @Autowired private DocumentFormatRegistry pipelineRegistry;
   // The production retrieval pipeline itself, for the second (pipeline) measurement path - the
   // very bean a real request runs through, not a re-implementation of its stages.
@@ -370,14 +369,14 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   @Autowired private QueryProperties queryProperties;
   // A fixed point of the pipeline path, read from the context like QueryProperties.
   @Autowired private RelevanceCutoffProperties relevanceCutoffProperties;
-  // #1049: the fill state of the measured library's full-text index, a fixed point of every
+  // The fill state of the measured library's full-text index, a fixed point of every
   // pipeline report since the lexical path feeds the fusion.
   @Autowired private FullTextIndexFillStateService fullTextIndexFillStateService;
   @Autowired private RetrievalPipelineProperties pipelineProperties;
-  // #1050: whether this run could rerank at all - a fact about the context, and the one
+  // Whether this run could rerank at all - a fact about the context, and the one
   // requireMeasurableConfiguration needs to keep a reranking run out of the committed baseline.
   @Autowired private RerankModelRole rerankModelRole;
-  // #1085: the production resolver of the systemwide active chat model - used to prove the
+  // The production resolver of the systemwide active chat model - used to prove the
   // installed eval chat model actually answers before a decomposing run measures anything.
   @Autowired private ActiveChatModelResolver activeChatModelResolver;
 
@@ -388,14 +387,14 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   private static final String DEFAULT_VARIANT_COMPARISON_FILE =
       "eval/variants/city-landmarks-lexical-path.json";
 
-  // #419: triggerIndexing needs a caller-chosen target library and an authorized caller -
-  // set up once per run, not pinned to a well-known system library id, since #419 already stopped
-  // production indexing from targeting one by default and #521 later deleted it outright. The
-  // measurements themselves are unaffected: this harness reads via vectorStore.similaritySearch
-  // (see the class Javadoc), not through the permission-aware query path, so which library the
-  // corpus lands in does not change what is measured.
+  // triggerIndexing needs a caller-chosen target library and an authorized caller - set up once
+  // per run, not pinned to a well-known system library id: production indexing has no default
+  // target library. The measurements
+  // themselves are unaffected: this harness reads via vectorStore.similaritySearch (see the class
+  // Javadoc), not through the permission-aware query path, so which library the corpus lands in
+  // does not change what is measured.
   //
-  // #552: the library must be a FILESYSTEM library whose sourcePath is corpusWorkingDir, not the
+  // The library must be a FILESYSTEM library whose sourcePath is corpusWorkingDir, not the
   // no-config default SourceType.UPLOAD KnowledgeLibrary#ownedByUser's six-argument
   // overload defaults to (#478/ADR-0018 introduced per-library quellentyp after this harness's own
   // #536 library-model fix landed) - triggerIndexing() rejects an UPLOAD library with 409 before a
@@ -407,10 +406,10 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
 
   @BeforeEach
   void setUpIndexingTarget() {
-    // Issue #1085: replace whatever LlmModelSeeder wrote at context startup with the pinned
-    // eval chat model, so QueryDecompositionService resolves it through the production path.
-    // Safe here because nothing has resolved a chat client yet (ActiveChatModelResolver builds
-    // lazily), so no client can have been cached from the seeded row.
+    // Replace whatever LlmModelSeeder wrote at context startup with the pinned eval chat
+    // model, so QueryDecompositionService resolves it through the production path. Safe here
+    // because nothing has resolved a chat client yet (ActiveChatModelResolver builds lazily),
+    // so no client can have been cached from the seeded row.
     EvalChatModel.installAsSystemwideActiveModel(jdbcTemplate, ollamaEndpoint());
     jdbcTemplate.update("DELETE FROM users WHERE email = 'eval-harness@example.com'");
     evalUserId = UUID.randomUUID();
@@ -438,9 +437,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
 
     // KnowledgeLibraryRepository#save alone does not grant an AssetGrant (only
     // KnowledgeLibraryService#createLibrary does that) - and DocumentIndexingService never bypasses
-    // the EDITOR check for a system admin (PR #431 review, Befund 2; the one exception that used to
-    // exist for the well-known system library is gone too, #521). Grant OWNER explicitly, same as
-    // any real library creation.
+    // the EDITOR check for a system admin (the one exception that used to exist for the well-known
+    // system library is gone too). Grant OWNER explicitly, same as any real library creation.
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, 'USER', ?,"
@@ -467,9 +465,9 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
       EvalChatModel.requireUsable(activeChatModelResolver, log);
     }
 
-    // Same reasoning for the variant-comparison opt-in (#1041 review, Befund 3): a broken
-    // comparison file, an unresolvable referenceVariant or an invalid QueryProperties override
-    // must fail before indexing, not after it.
+    // Same reasoning for the variant-comparison opt-in: a broken comparison file, an
+    // unresolvable referenceVariant or an invalid QueryProperties override must fail before
+    // indexing, not after it.
     if (VariantComparisonStep.isRequested()) {
       VariantComparisonStep.loadAndValidate(
           queryProperties, DEFAULT_VARIANT_COMPARISON_FILE, activeChatModel);
@@ -564,7 +562,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         DOMAIN.chunkCountExpectation().describe(),
         documents.size());
 
-    // 3b. Issue #721 code review, Nit 4: EvalDomainConfig.maxChunksPerDocument sizes chunkTopK
+    // 3b. EvalDomainConfig.maxChunksPerDocument sizes chunkTopK
     //     (DocumentRanking#documentTopKWindowSize) but was never checked against reality — an
     //     undersized declared value would silently undersize chunkTopK and DocumentRanking could
     //     then fail to reach documentTopK distinct documents without any assertion catching why.
@@ -592,23 +590,23 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     List<ChunkAnswerSpanMetrics.ChunkQueryResult> answerSpanResults = new ArrayList<>();
     List<DocumentRanking.DocumentWindowResult> windowResults = new ArrayList<>(goldenCases.size());
     int minUnfilteredHits = Integer.MAX_VALUE;
-    // Issue #1070: the Dokumentart vocabulary both filter forms say "no value" over, read once
-    // for the run exactly as the production METADATA_FILTER stage reads it.
+    // The Dokumentart vocabulary both filter forms say "no value" over, read once for the run
+    // exactly as the production METADATA_FILTER stage reads it.
     List<String> vocabularyCodes =
         vocabularyRepository.findAllByOrderBySortOrderAsc().stream()
             .map(DocumentTypeVocabularyEntry::getCode)
             .toList();
-    // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
-    // filtered case was searched with its filter", derived from these two counters. Counted at the
-    // handover to similaritySearch, not where the expression is built: what the fixed point claims
-    // is that the search saw the filter. A filter that constrains nothing - a Dokumentart selection
-    // covering the whole vocabulary, which every document satisfies or lacks alike - yields no
-    // expression and therefore counts as not applied; no golden case carries one.
+    // Counted, not assumed - the fixed point metadataFilterEnabled below is "every filtered case
+    // was searched with its filter", derived from these two counters. Counted at the handover to
+    // similaritySearch, not where the expression is built: what the fixed point claims is that the
+    // search saw the filter. A filter that constrains nothing - a Dokumentart selection covering
+    // the whole vocabulary, which every document satisfies or lacks alike - yields no expression
+    // and therefore counts as not applied; no golden case carries one.
     int filteredCases = 0;
     int appliedFilters = 0;
     for (GoldenCase goldenCase : goldenCases) {
-      // Issue #1070: the case's core-field filter, built by the same MetadataFilterExpressions
-      // the production vector path uses and applied inside similaritySearch - null, i.e. no
+      // The case's core-field filter, built by the same MetadataFilterExpressions the
+      // production vector path uses and applied inside similaritySearch - null, i.e. no
       // condition, for every case without a filter.
       Filter.Expression metadataFilterExpression =
           MetadataFilterExpressions.vectorExpression(goldenCase.metadataFilter(), vocabularyCodes);
@@ -651,7 +649,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     ChunkAnswerSpanMetrics.Aggregate answerSpanOverall =
         ChunkAnswerSpanMetrics.aggregate(answerSpanResults);
 
-    // 4a. Issue #721 code review, Wichtig 1: ADR-0012 §8 and the issue's acceptance criteria
+    // 4a. ADR-0012 §8 and the issue's acceptance criteria
     //     promise an explicit report of whether the document-bound window was actually reached —
     //     compute it from the per-query DocumentWindowResult instead of discarding those values.
     // The documentTopK check below only holds if each search returned its full chunk window.
@@ -693,7 +691,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
         windowResults.size(),
         DOMAIN.documentTopK());
 
-    // 4b. Chunk map (issue #721, routing updated for #1103): re-derive each document's real chunk
+    // 4b. Chunk map: re-derive each document's real chunk
     //     texts through the same DocumentFormatRegistry routing DocumentIngestService uses, so
     // the
     //     map reflects exactly what was indexed. Docker-free in principle (no embedding call
@@ -729,7 +727,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     ChunkMapWriter.write(chunkMaps, chunkMapFile);
     log.info("Chunk map written to {}", chunkMapFile.toAbsolutePath());
 
-    // 4c. Issue #721 code review, Wichtig 3: an answer_span that never resolves to any chunk of any
+    // 4c. An answer_span that never resolves to any chunk of any
     //     of its expected_documents (typo, a whitespace difference SpanMatcher does not absorb, or
     //     a chunking-parameter change that pushed it across a chunk boundary) is numerically
     //     indistinguishable from a genuine retrieval failure — both make spanChunkRank=-1. Detect
@@ -773,7 +771,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     var byCategory = MetricsAggregate.groupBy(results, GoldenCase::category);
     var byDifficulty = MetricsAggregate.groupBy(results, GoldenCase::difficulty);
     var byLanguage = MetricsAggregate.groupBy(results, GoldenCase::language);
-    // Issue #1151: report-only margin summary, not part of MetricsAggregate/Baseline.
+    // Report-only margin summary, not part of MetricsAggregate/Baseline.
     MarginAggregate overallMargins = MarginAggregate.of(results);
     var marginsByCategory = MarginAggregate.groupBy(results, GoldenCase::category);
     var marginsByDifficulty = MarginAggregate.groupBy(results, GoldenCase::difficulty);
@@ -803,8 +801,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
                 + "(de vs. en) ist zusätzlich mit dem Anteil an 'hard'-Fällen konfundiert — siehe "
                 + "eval/README.md.");
 
-    // Issue #1144: the pipeline registry DocumentIngestService actually routed through while
-    // indexing this corpus, not a second, potentially drifting re-derivation.
+    // The pipeline registry DocumentIngestService actually routed through while indexing
+    // this corpus, not a second, potentially drifting re-derivation.
     String ingestionPipelineFingerprint = IngestionPipelineFingerprint.of(pipelineRegistry);
     // The prefix form the ingest above embedded every chunk with.
     String contextPrefixFingerprint = ContextPrefixFingerprint.current();
@@ -835,8 +833,8 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
             goldenCases.size(),
             ingestionPipelineFingerprint,
             contextPrefixFingerprint,
-            // Issue #1070: derived from the run above - true exactly when every filtered case
-            // reached similaritySearch with its filter expression.
+            // Derived from the run above - true exactly when every filtered case reached
+            // similaritySearch with its filter expression.
             appliedFilters == filteredCases,
             runStart.toString(),
             Duration.between(runStart, Instant.now()).toMillis() / 1000.0,
@@ -876,7 +874,7 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
     log.info(summary);
     System.out.println("Report written to " + reportFile.toAbsolutePath());
 
-    // 6. Second measurement path (#1039): the same golden cases, the same index, but through the
+    // 6. Second measurement path: the same golden cases, the same index, but through the
     //    production query pipeline (steps 2 to 6 of docs/features/retrieval-algorithm.md) instead
     //    of similaritySearch directly. Runs after — never instead of — the raw-vector path above,
     //    whose numbers, report file and baseline are untouched by this block, and guarded so a
@@ -970,18 +968,18 @@ class CityLandmarksRetrievalEvaluationHarnessTest {
   }
 
   /**
-   * Waits for the corpus to finish indexing. PR #730, second review round: the original 45-minute
-   * budget (copied from {@link RetrievalEvaluationHarnessTest}'s comic-characters figure under the
-   * "comparable order of magnitude" assumption below) turned out to be too tight on a GitHub
-   * Actions runner — a real run only reached 78 of 200 documents in 45 minutes (~1.7
-   * documents/minute) before this await timed out and the subsequent container teardown cascaded
-   * into unrelated-looking connection-pool errors. Extrapolated at that measured rate (78 documents
-   * / 45 minutes on that GitHub Actions run), 200 documents need roughly 115 minutes; a first
-   * stopgap raised this budget to 90 minutes, which is *below* that extrapolation and was expected
-   * to time out again — corrected to 150 minutes (115 minutes extrapolated plus a margin) so the
-   * next real run tests an actually sufficient budget instead of repeating the same failure.
-   * Locally (non-CI hardware) the full domain, including indexing, evaluation queries and this same
-   * corpus, finished in ~36 minutes end to end at the time this budget was measured (see {@code
+   * Waits for the corpus to finish indexing. A 45-minute budget (copied from {@link
+   * RetrievalEvaluationHarnessTest}'s comic-characters figure under the "comparable order of
+   * magnitude" assumption below) turned out to be too tight on a GitHub Actions runner — a real run
+   * only reached 78 of 200 documents in 45 minutes (~1.7 documents/minute) before this await timed
+   * out and the subsequent container teardown cascaded into unrelated-looking connection-pool
+   * errors. Extrapolated at that measured rate (78 documents / 45 minutes on that GitHub Actions
+   * run), 200 documents need roughly 115 minutes; a first stopgap raised this budget to 90 minutes,
+   * which is *below* that extrapolation and was expected to time out again — corrected to 150
+   * minutes (115 minutes extrapolated plus a margin) so the next real run tests an actually
+   * sufficient budget instead of repeating the same failure. Locally (non-CI hardware) the full
+   * domain, including indexing, evaluation queries and this same corpus, finished in ~36 minutes
+   * end to end at the time this budget was measured (see {@code
    * eval/baseline/city-landmarks.json}'s {@code notes}), so this gap is specific to the GitHub
    * Actions runner's embedding throughput, not the corpus itself — see issue #734 for
    * parallelizing/batching the Ollama embedding calls in {@code io.opaa.indexing} (the actual fix,

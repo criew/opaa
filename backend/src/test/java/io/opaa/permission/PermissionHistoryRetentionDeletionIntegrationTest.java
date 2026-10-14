@@ -29,8 +29,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The deletion pass against the real schema (#1833, ADR-0036 Entscheidung 8): what ages out, what
- * never does, and that a shortening of the period only takes effect going forward.
+ * The deletion pass against the real schema (ADR-0036 Entscheidung 8): what ages out, what never
+ * does, and that a shortening of the period only takes effect going forward.
  *
  * <p>The pass itself is harmless to neighbouring classes: no other class writes a history row whose
  * interval ended more than a year ago, so nothing outside this class's own rows can fall inside any
@@ -288,10 +288,10 @@ class PermissionHistoryRetentionDeletionIntegrationTest {
   }
 
   /**
-   * The transfer record ages out like the intervals it grouped (#1834): its objects follow through
-   * {@code ON DELETE CASCADE}, and an interval still in force keeps answering - it only loses the
-   * id that grouped it ({@code ON DELETE SET NULL}). Without this the name snapshot of the source
-   * group and the note at every touched object would stand for ever.
+   * The transfer record ages out like the intervals it grouped: its objects follow through {@code
+   * ON DELETE CASCADE}, and an interval still in force keeps answering - it only loses the id that
+   * grouped it ({@code ON DELETE SET NULL}). Without this the name snapshot of the source group and
+   * the note at every touched object would stand for ever.
    */
   @Test
   void anAgedTransferGoesWithItsObjectsAndLeavesTheIntervalsBehind() {

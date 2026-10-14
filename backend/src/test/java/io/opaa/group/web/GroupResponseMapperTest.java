@@ -205,7 +205,7 @@ class GroupResponseMapperTest {
     assertThat(response.getEmptyGroup()).isTrue();
   }
 
-  /** ADR-0036/9 (#1820): Wo der Dienst den Namen zurueckhaelt, erfindet der Mapper keinen. */
+  /** ADR-0036/9: Wo der Dienst den Namen zurueckhaelt, erfindet der Mapper keinen. */
   @Test
   void toSelectableResponseLeavesAWithheldNameWithheld() {
     Group group = Group.internal(UUID.randomUUID(), "Personalrat", null, null);

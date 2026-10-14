@@ -8,8 +8,8 @@ import java.util.UUID;
 
 /**
  * Test-only fluent builder for {@link SourceConnectionTest} - mirrors {@code
- * LibraryCreationBuilder}'s reasoning (#860): production code only ever needs the canonical
- * all-args constructor ({@code SourceConnectionTestResponseMapper}).
+ * LibraryCreationBuilder}'s reasoning: production code only ever needs the canonical all-args
+ * constructor ({@code SourceConnectionTestResponseMapper}).
  */
 public final class SourceConnectionTestBuilder {
 

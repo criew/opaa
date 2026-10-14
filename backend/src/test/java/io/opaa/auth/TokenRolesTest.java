@@ -13,9 +13,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * The three cases a roles claim can be in (#1830): present with values, present and naming none of
- * the configured roles - the provider withdrawing the elevated role - and no usable claim at all,
- * which must stay distinguishable from the empty one because only the empty one is a withdrawal.
+ * The three cases a roles claim can be in: present with values, present and naming none of the
+ * configured roles - the provider withdrawing the elevated role - and no usable claim at all, which
+ * must stay distinguishable from the empty one because only the empty one is a withdrawal.
  */
 class TokenRolesTest {
 

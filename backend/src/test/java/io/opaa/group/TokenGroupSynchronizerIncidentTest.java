@@ -30,10 +30,10 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.slf4j.LoggerFactory;
 
 /**
- * The incident report of {@link TokenGroupSynchronizer} (#1807): a token that carried no usable
- * groups claim reaches no repository at all, and the cause is named once per provider and cause per
- * window - a provider whose group mapper is gone sends every one of its accounts through here, and
- * no path around the throttle may be left open.
+ * The incident report of {@link TokenGroupSynchronizer}: a token that carried no usable groups
+ * claim reaches no repository at all, and the cause is named once per provider and cause per window
+ * - a provider whose group mapper is gone sends every one of its accounts through here, and no path
+ * around the throttle may be left open.
  */
 class TokenGroupSynchronizerIncidentTest {
 

@@ -188,7 +188,7 @@ class SharePointFileStoreTest {
     assertThat(retried.ingested()).containsExactly(path("vermerk"));
   }
 
-  // regression guard for review of #2438: a stale earlier report must not hide the last one
+  // regression guard for #2438: a stale earlier report must not hide the last one
   @Test
   void aRepeatedItemWhoseFirstReportIsStaleIsListedAtItsLastPlace() {
     harness.fullSync(all());
@@ -204,7 +204,7 @@ class SharePointFileStoreTest {
     assertThat(harness.stored(path("bericht"))).isPresent();
   }
 
-  // regression guard for review of #2438: a 403 on the head of a file is no absence
+  // regression guard for #2438: a 403 on the head of a file is no absence
   @Test
   void aFileWhoseHeadIsRefusedKeepsItsDocument() {
     server.file(DRIVE_0, "readme", "README", ROOT_0, bytes("Lies mich.")).mimeType = "text/plain";
@@ -222,8 +222,7 @@ class SharePointFileStoreTest {
     assertThat(harness.stored(path("readme"))).isPresent();
   }
 
-  // regression guard for review of #2438: a 403 on a parent folder holds the stream, removes
-  // nothing
+  // regression guard for #2438: a 403 on a parent folder holds the stream, removes nothing
   @Test
   void aParentFolderRefusedInTheChangeRunHoldsTheStreamAndRemovesNothing() {
     harness.fullSync(all());

@@ -43,9 +43,9 @@ import tools.jackson.databind.node.ObjectNode;
 
 /**
  * {@code POST /api/v1/admin/search/diagnosis} with {@code contextType=USER} against the real
- * security chain, the real {@code ForeignDiagnosticContextService} and a real Postgres (#1150).
- * {@link SearchAdminControllerTest} mocks the diagnosis service out entirely and can therefore only
- * show that the request maps; the three properties that matter here - a run happens only with a
+ * security chain, the real {@code ForeignDiagnosticContextService} and a real Postgres. {@link
+ * SearchAdminControllerTest} mocks the diagnosis service out entirely and can therefore only show
+ * that the request maps; the three properties that matter here - a run happens only with a
  * befugnis, it writes its protocol entry, and it never searches a diagnosegesperrte library - exist
  * nowhere in that slice.
  */
@@ -76,7 +76,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   private UUID ungrantedLockedLibraryId;
   private Instant startedAt;
 
-  /** The accounts that only exist so the scope reaches the Mindestgruppengröße (#1879). */
+  /** The accounts that only exist so the scope reaches the Mindestgruppengröße. */
   private final List<UUID> extraMemberIds = new ArrayList<>();
 
   private RequestPostProcessor devAdmin() {
@@ -111,7 +111,7 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
     withoutLockedRight.setOrganizationId(organizationId);
     targetWithoutLockedRightId = userRepository.save(withoutLockedRight).getId();
 
-    // Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind).
+    // Every ORG_UNIT group carries its provider (chk_groups_provider_kind).
     providerId = ProviderFixtures.tokenProvider(providerRepository).getId();
     orgUnitId =
         groupRepository
@@ -140,9 +140,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
         targetWithoutLockedRightId,
         orgUnitId,
         organizationId);
-    // #1879: the scope of the befugnis has to reach at least the Mindestgruppengröße in active
-    // accounts, at the time of every use - otherwise a group context discloses an individual. The
-    // two target persons above are two of them; the rest are extras of this fixture.
+    // The scope of the befugnis has to reach at least the Mindestgruppengröße in active accounts,
+    // at the time of every use - otherwise a group context discloses an individual. The two
+    // target persons above are two of them; the rest are extras of this fixture.
     for (int index = 0; index < groupSizeProperties.minimumGroupSize() - 2; index++) {
       User extra =
           new User("colleague-" + index, "test-issuer", "colleague-" + index + "@example.com", "K");
@@ -204,10 +204,9 @@ class SearchDiagnosisPersonContextHttpIntegrationTest {
   }
 
   /**
-   * #1879: the scope is measured at the time of the use. The body carries the stable code, so an
-   * interface can tell this refusal from "you hold no befugnis at all" - and the message names no
-   * figure, because below the Mindestgruppengröße the house withholds it (ADR-0036, Entscheidung
-   * 9).
+   * The scope is measured at the time of the use. The body carries the stable code, so an interface
+   * can tell this refusal from "you hold no befugnis at all" - and the message names no figure,
+   * because below the Mindestgruppengröße the house withholds it (ADR-0036, Entscheidung 9).
    */
   @Test
   void aScopeThatShrankBelowTheMinimumRefusesTheRunWithItsOwnCode() throws Exception {

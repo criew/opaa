@@ -45,9 +45,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * {@link OidcProviderController} in isolation (#1329): the {@code SYSTEM_ADMIN} bar on every
- * operation, the request-to-draft mapping including the Keycloak defaults for omitted claim fields,
- * and the pass-through of the service's 409s.
+ * {@link OidcProviderController} in isolation: the {@code SYSTEM_ADMIN} bar on every operation, the
+ * request-to-draft mapping including the Keycloak defaults for omitted claim fields, and the
+ * pass-through of the service's 409s.
  */
 @WebMvcTest(OidcProviderController.class)
 @ActiveProfiles("dev")

@@ -172,7 +172,7 @@ class HybridFusionTest {
         .extracting(Document::getId)
         .containsExactly("both", "vector-top", "lexical-top");
     // The surviving instance is the vector path's: its score is a cosine similarity, the lexical
-    // path's is a ts_rank, and the two are not comparable quantities (#912).
+    // path's is a ts_rank, and the two are not comparable quantities.
     assertThat(selection.getFirst().getScore()).isEqualTo(0.6);
   }
 

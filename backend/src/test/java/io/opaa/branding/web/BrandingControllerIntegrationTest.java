@@ -79,10 +79,10 @@ class BrandingControllerIntegrationTest {
   }
 
   /**
-   * The read endpoint is deliberately not administrator-only, because every rendered page needs it
-   * (#582). That it is reachable with no credentials at all (#583, for the sign-in page) is a
-   * question this profile cannot answer - {@link DevAuthFilter} authenticates every request as the
-   * configured default user, so a header-less request here is not an anonymous one; {@code
+   * The read endpoint is deliberately not administrator-only, because every rendered page needs it.
+   * That it is reachable with no credentials at all (for the sign-in page) is a question this
+   * profile cannot answer - {@link DevAuthFilter} authenticates every request as the configured
+   * default user, so a header-less request here is not an anonymous one; {@code
    * BrandingPublicAccessTest} asserts that against the {@code oidc} chain instead.
    */
   @Test
@@ -260,8 +260,8 @@ class BrandingControllerIntegrationTest {
   }
 
   /**
-   * #1910: the three images are separate slots. Uploading one must neither show up as another nor
-   * remove one - the single stored row is what makes that worth proving rather than assuming.
+   * The three images are separate slots. Uploading one must neither show up as another nor remove
+   * one - the single stored row is what makes that worth proving rather than assuming.
    */
   @Test
   void theThreeImagesAreStoredServedAndRemovedIndependently() throws Exception {

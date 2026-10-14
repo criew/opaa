@@ -21,10 +21,10 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * Pure JUnit tests (no Spring context) against directly constructed entities - #869 review: the
- * service tests now recompute roleCounts/userRole from the entity themselves, so they exercise that
- * recomputation, not {@link SpaceResponseMapper}. These tests are what actually pin the mapper's
- * field-by-field behaviour.
+ * Pure JUnit tests (no Spring context) against directly constructed entities: the service tests now
+ * recompute roleCounts/userRole from the entity themselves, so they exercise that recomputation,
+ * not {@link SpaceResponseMapper}. These tests are what actually pin the mapper's field-by-field
+ * behaviour.
  */
 class SpaceResponseMapperTest {
 
@@ -110,10 +110,10 @@ class SpaceResponseMapperTest {
   }
 
   /**
-   * #891 review: {@code userRole} is the caller's {@code SpaceAccessPolicy#effectiveRole}, not
-   * their raw {@link SpaceMembership} row - an owner whose own membership is still MEMBER (unraised
-   * by {@code SpaceService#transferOwnership}) gets {@code userRole=ADMIN} here, which is what lets
-   * the frontend's {@code role==='ADMIN'} gate show them the manager UI.
+   * {@code userRole} is the caller's {@code SpaceAccessPolicy#effectiveRole}, not their raw {@link
+   * SpaceMembership} row - an owner whose own membership is still MEMBER (unraised by {@code
+   * SpaceService#transferOwnership}) gets {@code userRole=ADMIN} here, which is what lets the
+   * frontend's {@code role==='ADMIN'} gate show them the manager UI.
    */
   @Test
   void toResponseReportsAdminUserRoleForAnOwnerWithABelowAdminMembership() {
@@ -196,7 +196,7 @@ class SpaceResponseMapperTest {
     assertThat(response.getMemberCount()).isEqualTo(3);
   }
 
-  // #2207: a member who may not read the list tells persons from groups by these two figures.
+  // A member who may not read the list tells persons from groups by these two figures.
   @Test
   void toResponseSplitsMembershipsIntoGroupAndPersonRowsForAPlainMember() {
     UUID owner = UUID.randomUUID();
@@ -332,9 +332,9 @@ class SpaceResponseMapperTest {
   }
 
   /**
-   * ADR-0036/9 (#1820): a protected group is a nameless row in another person's list, and it
-   * carries no figure at all - not even "not empty", which would already be a statement about its
-   * size. The row itself stays, so an ADMIN can end a membership they cannot see.
+   * ADR-0036/9: a protected group is a nameless row in another person's list, and it carries no
+   * figure at all - not even "not empty", which would already be a statement about its size. The
+   * row itself stays, so an ADMIN can end a membership they cannot see.
    */
   @Test
   void toMemberResponseLeavesAProtectedGroupNamelessAndWithoutASignal() {

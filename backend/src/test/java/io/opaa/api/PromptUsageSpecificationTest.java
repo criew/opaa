@@ -15,12 +15,12 @@ import org.yaml.snakeyaml.Yaml;
 
 /**
  * The promise of docs/features/spaces-and-assets.md, "Kein personenbezogener Auswertungspfad", for
- * the prompt used in the chat (#1903): which prompt built a question is visible at that question
- * and nowhere else. No operation takes the used prompt as a parameter, no operation but the one
- * query takes it in a request, and only the operations returning one single chat carry it in a
- * response. This holds the fields by their names; an evaluation under another name would still have
- * to read {@code chat_messages.used_prompt_id}, which {@code io.opaa.chat.UsedPromptQueryGuardTest}
- * holds at the source.
+ * the prompt used in the chat: which prompt built a question is visible at that question and
+ * nowhere else. No operation takes the used prompt as a parameter, no operation but the one query
+ * takes it in a request, and only the operations returning one single chat carry it in a response.
+ * This holds the fields by their names; an evaluation under another name would still have to read
+ * {@code chat_messages.used_prompt_id}, which {@code io.opaa.chat.UsedPromptQueryGuardTest} holds
+ * at the source.
  */
 class PromptUsageSpecificationTest {
 

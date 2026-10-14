@@ -12,12 +12,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Who may ask which health path (#1710). The two probes answer without a session - a load balancer
- * and a container health check have none - while every other group needs a token: the endpoint
- * computes its contributors before deciding what to show, so an anonymous call to {@code
- * embedding-model} or {@code vector-store} would trigger a real embedding call and a real
- * similarity search, outside the rate limit. Runs in the {@code oidc} context, the only one where
- * authentication is enforced: under {@code local,dev} every request counts as signed in.
+ * Who may ask which health path. The two probes answer without a session - a load balancer and a
+ * container health check have none - while every other group needs a token: the endpoint computes
+ * its contributors before deciding what to show, so an anonymous call to {@code embedding-model} or
+ * {@code vector-store} would trigger a real embedding call and a real similarity search, outside
+ * the rate limit. Runs in the {@code oidc} context, the only one where authentication is enforced:
+ * under {@code local,dev} every request counts as signed in.
  */
 @OpaaLocalAuthMockMvcTest
 class HealthProbeAccessIntegrationTest {

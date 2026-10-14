@@ -10,9 +10,9 @@ import java.util.function.Function;
 
 /**
  * Compares a freshly produced {@link PipelineEvaluationReport} against the committed {@link
- * PipelineBaseline} (issue #1040) — the pipeline path's counterpart of {@link BaselineComparator},
- * answering the same two deliberately separate questions ("is the baseline still valid?" and only
- * then "did retrieval regress?").
+ * PipelineBaseline} — the pipeline path's counterpart of {@link BaselineComparator}, answering the
+ * same two deliberately separate questions ("is the baseline still valid?" and only then "did
+ * retrieval regress?").
  *
  * <p><b>The error criterion is ADR-0013's, unchanged and literally shared.</b> Every metric check
  * here is produced by {@link BaselineComparator#metricCheck} — the same tolerance formula, the same
@@ -134,9 +134,9 @@ public final class PipelineBaselineComparator {
           .forEach(
               (name, agg) -> {
                 String key = Baseline.language(name);
-                // Issue #304: language:de is the redundant twin of category:crosslingual and is
-                // redundant for the same construction reason on this path — skip it exactly while
-                // the baseline lacks an entry for it, self-healing like the raw path's skip.
+                // Language:de is the redundant twin of category:crosslingual and is redundant for
+                // the same construction reason on this path — skip it exactly while the baseline
+                // lacks an entry for it, self-healing like the raw path's skip.
                 if (key.equals(BaselineComparator.REDUNDANT_LANGUAGE_GROUP)
                     && !baseline.groups().containsKey(key)) {
                   return;
@@ -179,9 +179,9 @@ public final class PipelineBaselineComparator {
 
   /**
    * The fixed points of a pipeline run, compared field by field. Package-private and taking the two
-   * blocks rather than the two documents (issue #1484): the multi-turn path pins the identical set
-   * inside its own baseline and would otherwise carry a second copy of these comparisons, which is
-   * exactly how one of the two grows a field the other silently stops checking.
+   * blocks rather than the two documents: the multi-turn path pins the identical set inside its own
+   * baseline and would otherwise carry a second copy of these comparisons, which is exactly how one
+   * of the two grows a field the other silently stops checking.
    */
   static void addPipelineFixedPointMismatches(
       List<BaselineComparator.FixedPointMismatch> mismatches,
@@ -190,8 +190,8 @@ public final class PipelineBaselineComparator {
     addIfDiffers(mismatches, "embeddingModel", fp.embeddingModel(), cfg.embeddingModel());
     addIfDiffers(
         mismatches, "embeddingModelDigest", fp.embeddingModelDigest(), cfg.embeddingModelDigest());
-    // Issue #1522: the same model digest served from a different Ollama - another container tag, or
-    // an external (possibly GPU-backed) endpoint - is not guaranteed to embed bit-identically.
+    // The same model digest served from a different Ollama - another container tag, or an external
+    // (possibly GPU-backed) endpoint - is not guaranteed to embed bit-identically.
     addIfDiffers(mismatches, "ollamaImage", fp.ollamaImage(), cfg.ollamaImage());
     addIfDiffers(mismatches, "ollamaCpuBackend", fp.ollamaCpuBackend(), cfg.ollamaCpuBackend());
     addIfDiffers(
@@ -230,7 +230,7 @@ public final class PipelineBaselineComparator {
     // How the lists become the selection. A missing block compares as "null".
     addFusionMismatches(mismatches, fp.fusion(), cfg.fusion());
     addRelevanceCutoffMismatches(mismatches, fp.relevanceCutoff(), cfg.relevanceCutoff());
-    // Issue #1049: the lexical path feeds the fusion, so both of these change what is measured.
+    // The lexical path feeds the fusion, so both of these change what is measured.
     addIfDiffers(
         mismatches,
         "fullTextSearchEnabled",
@@ -275,9 +275,9 @@ public final class PipelineBaselineComparator {
         "goldenCaseCount",
         String.valueOf(fp.goldenCaseCount()),
         String.valueOf(cfg.goldenCaseCount()));
-    // Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses)
-    // moves the produced chunks without moving corpusManifestSha256 (which describes the input
-    // files, not what processed them) — see IngestionPipelineFingerprint's Javadoc.
+    // A pipeline change (routing, or a version bump on a pipeline the corpus uses) moves the
+    // produced chunks without moving corpusManifestSha256 (which describes the input files, not
+    // what processed them) — see IngestionPipelineFingerprint's Javadoc.
     addIfDiffers(
         mismatches,
         "ingestionPipelineFingerprint",
@@ -290,8 +290,8 @@ public final class PipelineBaselineComparator {
         "contextPrefixFingerprint",
         fp.contextPrefixFingerprint(),
         cfg.contextPrefixFingerprint());
-    // Issue #1070: the golden filters move the metadata_filter class's selection; a run that did
-    // not carry them measures a different thing, not a worse one.
+    // The golden filters move the metadata_filter class's selection; a run that did not carry
+    // them measures a different thing, not a worse one.
     addIfDiffers(
         mismatches,
         "metadataFilterEnabled",

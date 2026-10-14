@@ -45,9 +45,9 @@ public record ConversationMemoryProfile(int windowMessages, int searchWindowTurn
   }
 
   /**
-   * The value {@link #noteCap} carries in a baseline drawn before the Gesprächsnotiz existed
-   * (#1487). A run measures the production cap instead, which is what makes such a baseline
-   * incomparable - correctly so: its numbers were measured without a note.
+   * The value {@link #noteCap} carries in a baseline drawn before the Gesprächsnotiz existed. A run
+   * measures the production cap instead, which is what makes such a baseline incomparable -
+   * correctly so: its numbers were measured without a note.
    */
   public static final int NO_CONVERSATION_NOTE = 0;
 

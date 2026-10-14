@@ -32,8 +32,8 @@ import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 
 /**
- * Unit-level coverage of the Gesprächsnotiz condensation (#1487). {@code @Async} only takes effect
- * through a Spring AOP proxy, so calling {@link ChatNoteExtractionService#condenseAsync} on a
+ * Unit-level coverage of the Gesprächsnotiz condensation. {@code @Async} only takes effect through
+ * a Spring AOP proxy, so calling {@link ChatNoteExtractionService#condenseAsync} on a
  * hand-constructed instance runs synchronously on the calling thread - deterministic, no {@code
  * Awaitility}. {@code ChatNoteIntegrationTest} covers the Spring-managed path end to end.
  */

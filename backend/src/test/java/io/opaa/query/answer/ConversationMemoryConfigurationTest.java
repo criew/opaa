@@ -13,8 +13,8 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 
 /**
- * The conversation window's width is the configured property and nothing else (#1486) - the fixed
- * point the multi-turn harness measures off this very bean.
+ * The conversation window's width is the configured property and nothing else - the fixed point the
+ * multi-turn harness measures off this very bean.
  */
 class ConversationMemoryConfigurationTest {
 

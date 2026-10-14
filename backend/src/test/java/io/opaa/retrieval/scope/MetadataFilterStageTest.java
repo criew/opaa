@@ -21,9 +21,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The stage that carries the caller's filter into the run (#1070): it never touches the permission
- * filter, it hands on both forms of the metadata filter, and its protocol names the active filter -
- * or says there is none.
+ * The stage that carries the caller's filter into the run: it never touches the permission filter,
+ * it hands on both forms of the metadata filter, and its protocol names the active filter - or says
+ * there is none.
  */
 class MetadataFilterStageTest {
 

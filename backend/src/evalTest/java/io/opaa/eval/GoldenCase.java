@@ -21,12 +21,11 @@ public record GoldenCase(
     String difficulty,
     String language,
     String type,
-    // Issue #721: optional, frozen literal text excerpt the answer is known to sit in — the
-    // chunk-level ground truth for multi-chunk domains. Deliberately a literal span, not a chunk
-    // index (see ChunkAnswerSpanMetrics' class Javadoc for why): absent for every comic-characters
-    // case (Ein-Chunk-Invariante makes a chunk-level metric meaningless there), so this field
-    // defaults to null on the unmodified comic-characters.json — the schema extension this issue
-    // requires.
+    // Optional, frozen literal text excerpt the answer is known to sit in — the chunk-level ground
+    // truth for multi-chunk domains. Deliberately a literal span, not a chunk index (see
+    // ChunkAnswerSpanMetrics' class Javadoc for why): absent for every comic-characters case
+    // (Ein-Chunk-Invariante makes a chunk-level metric meaningless there), so this field defaults
+    // to null on the unmodified comic-characters.json — the schema extension this issue requires.
     //
     // Issue #1043 settles this field's open question for cases with more than one expected
     // document (docs/features/retrieval-benchmark.md, "Offene Punkte" 4): it stays one span per
@@ -42,17 +41,15 @@ public record GoldenCase(
     // null for a case that is asked without one. The Dokumentart codes are production vocabulary
     // codes, never the corpus' frontmatter raw values.
     @JsonProperty("filter") Filter filter,
-    // Issue #1070: the committed reason why a metadata_filter case carries no filter although its
-    // class exists to measure one (e.g. a validity question no core field can express).
+    // The committed reason why a metadata_filter case carries no filter although its class exists
+    // to measure one (e.g. a validity question no core field can express).
     @JsonProperty("filter_note") String filterNote,
-    // Issue #1070: the document the filter exists to keep out - the other Fassung, the wrong
-    // Dokumentart. MetadataFilterAudit reports "Filter greift nicht" when it is still in the
-    // window.
+    // The document the filter exists to keep out - the other Fassung, the wrong Dokumentart.
+    // MetadataFilterAudit reports "Filter greift nicht" when it is still in the window.
     @JsonProperty("confusable_document") String confusableDocument,
-    // Issue #1070: names the filtered field the expected document has no value for
-    // ("documentType" or "documentDate"), marking a Leerwert-Regel case: the filter must keep the
-    // document by that rule, and MetadataFilterAudit reports "Filter greift zu stark" when it does
-    // not.
+    // Names the filtered field the expected document has no value for ("documentType" or
+    // "documentDate"), marking a Leerwert-Regel case: the filter must keep the document by that
+    // rule, and MetadataFilterAudit reports "Filter greift zu stark" when it does not.
     @JsonProperty("no_value_field") String noValueField) {
 
   /** The constructor of a case without the #1070 filter fields, as every earlier dataset has. */
@@ -98,11 +95,11 @@ public record GoldenCase(
   }
 
   /**
-   * The JSON shape of a case's filter (issue #1070): a list of Dokumentart codes and an inclusive
-   * ISO date window, either half optional. Mirrors the API's {@code MetadataFilter} schema so a
-   * golden case says exactly what a person would set in the filter popover. A misspelled key is not
-   * rejected here but by {@link GoldenCaseCuration}: it leaves the filter without a condition,
-   * which that check refuses.
+   * The JSON shape of a case's filter: a list of Dokumentart codes and an inclusive ISO date
+   * window, either half optional. Mirrors the API's {@code MetadataFilter} schema so a golden case
+   * says exactly what a person would set in the filter popover. A misspelled key is not rejected
+   * here but by {@link GoldenCaseCuration}: it leaves the filter without a condition, which that
+   * check refuses.
    */
   public record Filter(
       @JsonProperty("documentType") List<String> documentType,

@@ -29,10 +29,9 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 /**
- * #583/#1910: the sign-in page renders before there is a session and still has to carry the
- * operator's product name, claim, logo and background - so {@code GET /api/v1/branding} and the
- * three image paths under it are reachable without authentication, and nothing else under {@code
- * /api/v1} is.
+ * The sign-in page renders before there is a session and still has to carry the operator's product
+ * name, claim, logo and background - so {@code GET /api/v1/branding} and the three image paths
+ * under it are reachable without authentication, and nothing else under {@code /api/v1} is.
  *
  * <p>Runs against the real {@link OidcSecurityConfig} chain rather than the {@code dev} one,
  * because {@code dev} cannot express the question: {@code DevAuthFilter} authenticates every

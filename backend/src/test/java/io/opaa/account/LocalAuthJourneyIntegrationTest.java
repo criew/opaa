@@ -39,10 +39,9 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 
 /**
  * The composed journey of the local account management, as one regression anchor across the
- * sub-issues of Epic #1529 (#1543): the bootstrap administrator signs in, is forced to change its
- * password, invites an account, that account sets its password over the mailed link and signs in,
- * the administrator locks it again, and the refresh token of the ended session is refused as a
- * replay.
+ * sub-issues of Epic #1529: the bootstrap administrator signs in, is forced to change its password,
+ * invites an account, that account sets its password over the mailed link and signs in, the
+ * administrator locks it again, and the refresh token of the ended session is refused as a replay.
  *
  * <p>Every single step has its own test elsewhere - the issuer in {@link
  * LocalAuthFlowIntegrationTest}, the seed in {@link LocalAdminSeederIntegrationTest}, the

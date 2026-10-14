@@ -111,9 +111,7 @@ class KeycloakDirectoryConnectorTest {
     assertThat(groupOf(snapshot, "g-haus").memberSubjects()).isEmpty();
   }
 
-  /**
-   * #1818: the same read carries the account status, keyed by the id that is also the {@code sub}.
-   */
+  /** The same read carries the account status, keyed by the id that is also the {@code sub}. */
   @Test
   void theAccountStatusArrivesWithTheSnapshot() throws Exception {
     keycloak

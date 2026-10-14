@@ -26,11 +26,11 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Docker-free unit tests for the two guarantees {@link PipelineHarnessSupport#runAndWriteGuarded}
- * makes about failures (issue #1039), run via the {@code evalUnitTest} Gradle task.
+ * makes about failures, run via the {@code evalUnitTest} Gradle task.
  */
 class PipelineHarnessSupportTest {
 
-  /** The pinned eval chat model of a run that has one (issue #1085). */
+  /** The pinned eval chat model of a run that has one. */
   private static final String CHAT_MODEL = "qwen2.5:1.5b-instruct";
 
   private static final PipelineHarnessSupport.RunIdentity IDENTITY =
@@ -77,8 +77,8 @@ class PipelineHarnessSupportTest {
 
   @Test
   void aFailingPipelineDoesNotFailTheHarnessRun(@TempDir Path reportDirectory) {
-    // #1671: this path discards its report file before measuring, and evalUnitTest is part of
-    // every build - without a directory of its own the test would delete a real measurement.
+    // This path discards its report file before measuring, and evalUnitTest is part of every
+    // build - without a directory of its own the test would delete a real measurement.
     System.setProperty(EvalReportDirectory.PROPERTY, reportDirectory.toString());
     RetrievalPipeline failing = mock(RetrievalPipeline.class);
     when(failing.run(any())).thenThrow(new IllegalStateException("vector store exploded"));
@@ -131,9 +131,9 @@ class PipelineHarnessSupportTest {
   }
 
   /**
-   * Issue #1085: decomposition is measurable once a chat model is installed - the prerequisite
-   * constrains the missing model, not the decomposition. Which of the two settings a run measures
-   * is a fixed point of its report, not something this check prescribes.
+   * Decomposition is measurable once a chat model is installed - the prerequisite constrains the
+   * missing model, not the decomposition. Which of the two settings a run measures is a fixed point
+   * of its report, not something this check prescribes.
    */
   @Test
   void decompositionIsMeasurableWithAnActiveChatModel() {
@@ -165,9 +165,9 @@ class PipelineHarnessSupportTest {
   }
 
   /**
-   * Issue #1049: the committed pipeline baseline describes the shipped hybrid configuration, so the
-   * path that writes it must not quietly measure the vector-only one. Measuring vector-only is not
-   * forbidden - it is a named variant of the Variantenvergleich, which writes no baseline.
+   * The committed pipeline baseline describes the shipped hybrid configuration, so the path that
+   * writes it must not quietly measure the vector-only one. Measuring vector-only is not forbidden
+   * - it is a named variant of the Variantenvergleich, which writes no baseline.
    */
   @Test
   void aRunWithoutTheLexicalPathIsRejectedAsUnmeasurable() {
@@ -181,7 +181,7 @@ class PipelineHarnessSupportTest {
 
   /**
    * A run whose production configuration would actually rerank is rejected too: the committed
-   * baseline describes the shipped configuration, and that one does not rerank (#1050).
+   * baseline describes the shipped configuration, and that one does not rerank.
    */
   @Test
   void aRunThatWouldRerankIsRejectedAsUnmeasurable() {

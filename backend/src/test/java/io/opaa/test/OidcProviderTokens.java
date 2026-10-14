@@ -14,10 +14,10 @@ import java.time.Instant;
 import java.util.Date;
 
 /**
- * One RSA key pair for the whole suite that needs provider tokens (#1563): the tests mint tokens
- * with the private half, and the decoder {@link OidcProviderTokenTestConfiguration} hands the
- * registry verifies them with the public one - real signatures, real issuer and expiry checks,
- * without an identity provider on the network.
+ * One RSA key pair for the whole suite that needs provider tokens: the tests mint tokens with the
+ * private half, and the decoder {@link OidcProviderTokenTestConfiguration} hands the registry
+ * verifies them with the public one - real signatures, real issuer and expiry checks, without an
+ * identity provider on the network.
  */
 public final class OidcProviderTokens {
 

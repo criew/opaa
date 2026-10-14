@@ -23,10 +23,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * HTTP-layer coverage of {@code GET /api/v1/assets/{assetType}/{assetId}/spaces} (#1939): which
- * role learns which space. The threshold is {@code MANAGER} - below it the entry is reduced to the
- * space's id and name, and a space the caller is no member of is not named at all but only counted
- * in {@code hiddenCount}: only the members of a space know it exists.
+ * HTTP-layer coverage of {@code GET /api/v1/assets/{assetType}/{assetId}/spaces}: which role learns
+ * which space. The threshold is {@code MANAGER} - below it the entry is reduced to the space's id
+ * and name, and a space the caller is no member of is not named at all but only counted in {@code
+ * hiddenCount}: only the members of a space know it exists.
  */
 @OpaaIntegrationTest
 class AssetSpaceAssociationsControllerIntegrationTest {
@@ -145,7 +145,7 @@ class AssetSpaceAssociationsControllerIntegrationTest {
         .andExpect(jsonPath("$.items[0].createdAt").doesNotExist());
   }
 
-  /** Below VIEWER the asset is not there at all - the same 404 as for an unknown id (#436). */
+  /** Below VIEWER the asset is not there at all - the same 404 as for an unknown id. */
   @Test
   void aCallerWithoutAnyRoleOnTheAssetGets404() throws Exception {
     String library = createLibrary(devAdmin());

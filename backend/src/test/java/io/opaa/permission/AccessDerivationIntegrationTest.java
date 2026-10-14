@@ -42,8 +42,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The Herleitung "warum sehe ich das" (#1822, ADR-0036 Entscheidung 9): the own way named with the
- * group, its origin and its mechanism; the third-party answer reduced to the effective role where a
+ * The Herleitung "warum sehe ich das" (ADR-0036 Entscheidung 9): the own way named with the group,
+ * its origin and its mechanism; the third-party answer reduced to the effective role where a
  * protected group is involved; and no answer at all for somebody the object does not reach.
  */
 @OpaaIntegrationTest
@@ -123,7 +123,7 @@ class AccessDerivationIntegrationTest {
     assertThat(path.group().providerName()).isNotBlank();
   }
 
-  /** A grant to "Alle Konten" is a way of its own, and it names nobody (#1931). */
+  /** A grant to "Alle Konten" is a way of its own, and it names nobody. */
   @Test
   void aLibraryGrantedToAllAccountsIsDerivedWithoutNamingAnybody() {
     UUID libraryId = library();
@@ -150,8 +150,8 @@ class AccessDerivationIntegrationTest {
   }
 
   /**
-   * #1939: „Warum sehe ich diese Bibliothek?" steht im Reiter „Freigaben" für jede Rolle - ein
-   * VIEWER ruft die Herleitung mit seiner eigenen Rolle ab, nicht mit einem 403.
+   * „Warum sehe ich diese Bibliothek?" steht im Reiter „Freigaben" für jede Rolle - ein VIEWER ruft
+   * die Herleitung mit seiner eigenen Rolle ab, nicht mit einem 403.
    */
   @Test
   void aViewerCanRetrieveTheirOwnDerivationForAPrivateLibrary() {

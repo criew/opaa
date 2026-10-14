@@ -37,8 +37,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 /**
  * The JPA mapping of the local-account entities against the real Liquibase schema (changesets
  * 003-009, {@code ddl-auto=none}): every column the entities declare exists with the type the
- * database expects, the atomic repository updates return the row counts the issuer relies on
- * (#1533), and the crypto beans are present in the application context.
+ * database expects, the atomic repository updates return the row counts the issuer relies on, and
+ * the crypto beans are present in the application context.
  */
 @OpaaIntegrationTest
 class LocalAccountPersistenceIntegrationTest {

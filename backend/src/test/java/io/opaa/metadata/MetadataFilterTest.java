@@ -96,8 +96,8 @@ class MetadataFilterTest {
 
   /**
    * "Nur (a) und (b) filtern; freie Schlagworte nie": the filter's whole vocabulary is the two
-   * filterable core fields, the library fields (#1071) and the filterable format fields (#1242) -
-   * there is no component a keyword, the title or a display field could travel in.
+   * filterable core fields, the library fields and the filterable format fields - there is no
+   * component a keyword, the title or a display field could travel in.
    */
   @Test
   void onlyCoreLibraryAndFormatFieldsAreFilterable() {

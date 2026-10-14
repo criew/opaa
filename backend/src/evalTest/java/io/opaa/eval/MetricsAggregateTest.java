@@ -8,8 +8,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for {@link MetricsAggregate} (issue #227 review follow-up). Run via the
- * {@code evalUnitTest} Gradle task, part of {@code check}.
+ * Docker-free unit tests for {@link MetricsAggregate}. Run via the {@code evalUnitTest} Gradle
+ * task, part of {@code check}.
  */
 class MetricsAggregateTest {
 
@@ -55,7 +55,7 @@ class MetricsAggregateTest {
 
   @Test
   void hitCountAt10CountsAHitAnywhereInTheRankedListEvenBelowTheHitRateAt5Window() {
-    // Issue #306: hitCountAt10 must count a hit ranked below position 5 (still positive
+    // hitCountAt10 must count a hit ranked below position 5 (still positive
     // ndcgAt10/recallAt10/mrr) even though hitRateAt5 is 0 for that case — the two counts are
     // deliberately different windows, not aliases of each other.
     RetrievalMetrics.QueryResult hitOutsideTop5 =
@@ -92,9 +92,8 @@ class MetricsAggregateTest {
 
   @Test
   void allExpectedDocumentsHitAt10RequiresEveryExpectedDocumentUnlikeRecallAt10() {
-    // Issue #913: a multi_topic-style case where only one of two expected documents is retrieved
-    // must count as a miss for "Recall pro Teilthema" even though recallAt10 still gives 0.5
-    // partial
+    // A multi_topic-style case where only one of two expected documents is retrieved must count
+    // as a miss for "Recall pro Teilthema" even though recallAt10 still gives 0.5 partial
     // credit — that divergence is the whole point of this second metric.
     RetrievalMetrics.QueryResult onlyOneTopicRetrieved =
         RetrievalMetrics.evaluate(

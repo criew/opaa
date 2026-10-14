@@ -12,9 +12,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for the pipeline path's baseline comparison (issue #1040): that the five
- * previously unchecked query parameters now invalidate a baseline, that the error criterion applied
- * is literally ADR-0013's, and that this path's own absolute floors bind where they are meant to.
+ * Docker-free unit tests for the pipeline path's baseline comparison: that the five previously
+ * unchecked query parameters now invalidate a baseline, that the error criterion applied is
+ * literally ADR-0013's, and that this path's own absolute floors bind where they are meant to.
  *
  * <p>That a raw-vector baseline can never be loaded as a pipeline baseline is covered one layer
  * earlier, in {@link PipelineBaselineTest} — a comparison against such a file never gets to run.
@@ -99,7 +99,7 @@ class PipelineBaselineComparatorTest {
         Map.of("cat", aggregate(value, n)),
         Map.of("easy", aggregate(value, n)),
         Map.of("de", aggregate(value, n)),
-        // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+        // Expected-state audit — null for a dataset without expected_state fields.
         null,
         null,
         List.of(),
@@ -199,9 +199,9 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
-   * Issue #1076: a run against an external Ollama endpoint may have embedded on a GPU, whose
-   * kernels are not guaranteed bit-identical to the CPU Testcontainer the baselines were drawn on —
-   * the pipeline path needs the same hard stop the raw-vector path has, not a silent comparison.
+   * A run against an external Ollama endpoint may have embedded on a GPU, whose kernels are not
+   * guaranteed bit-identical to the CPU Testcontainer the baselines were drawn on — the pipeline
+   * path needs the same hard stop the raw-vector path has, not a silent comparison.
    */
   @Test
   void refusesToCompareAReportFromAnExternalOllamaEndpoint() {
@@ -397,11 +397,11 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
-   * Issue #1522: a baseline whose numbers came from another Ollama than the run's is incomparable,
-   * not regressed - the same model digest served by a different container tag, or by an external
-   * endpoint, is not guaranteed to embed bit-identically. A file predating the field (value {@code
-   * null}) lands in the same place rather than being refused at load time, so the job still writes
-   * a delta table naming the field (the {@code metadataFilterEnabled} precedent).
+   * A baseline whose numbers came from another Ollama than the run's is incomparable, not regressed
+   * - the same model digest served by a different container tag, or by an external endpoint, is not
+   * guaranteed to embed bit-identically. A file predating the field (value {@code null}) lands in
+   * the same place rather than being refused at load time, so the job still writes a delta table
+   * naming the field (the {@code metadataFilterEnabled} precedent).
    */
   @Test
   void aBaselineFromAnotherOrUnnamedOllamaInvalidatesTheComparison() {
@@ -484,9 +484,9 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
-   * Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses) moves
-   * the produced chunks without moving corpusManifestSha256, which describes the input files rather
-   * than what processed them.
+   * A pipeline change (routing, or a version bump on a pipeline the corpus uses) moves the produced
+   * chunks without moving corpusManifestSha256, which describes the input files rather than what
+   * processed them.
    */
   @Test
   void aChangedIngestionPipelineFingerprintInvalidatesTheBaseline() {
@@ -545,8 +545,8 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
-   * Issue #1650: a changed Kontextpräfix form moves every multi-chunk embedding without moving a
-   * pipeline version or the corpus hash - a run under another form measured something else.
+   * A changed Kontextpräfix form moves every multi-chunk embedding without moving a pipeline
+   * version or the corpus hash - a run under another form measured something else.
    */
   @Test
   void aChangedContextPrefixFingerprintInvalidatesTheBaseline() {
@@ -605,8 +605,8 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
-   * Issue #1070: a run that did not carry the golden filters into the pipeline measures the
-   * metadata_filter class without the mechanism it exists for - a different measurement.
+   * A run that did not carry the golden filters into the pipeline measures the metadata_filter
+   * class without the mechanism it exists for - a different measurement.
    */
   @Test
   void aRunWithoutTheGoldenFiltersInvalidatesTheBaseline() {

@@ -19,9 +19,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * The exclusion patterns of a {@code FILESYSTEM} library (#2184) through the API: stored on
- * creation, replaced and cleared on update, and an invalid glob refused with a German 400 before
- * anything is stored. Saving does not touch the disk, so {@code /data} needs not exist.
+ * The exclusion patterns of a {@code FILESYSTEM} library through the API: stored on creation,
+ * replaced and cleared on update, and an invalid glob refused with a German 400 before anything is
+ * stored. Saving does not touch the disk, so {@code /data} needs not exist.
  */
 @OpaaIntegrationTest
 class FilesystemLibraryConfigurationIntegrationTest {

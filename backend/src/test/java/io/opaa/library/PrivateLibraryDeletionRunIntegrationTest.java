@@ -31,9 +31,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The deletion run of private libraries (#2165): only a deactivation that lasted longer than the
- * deletion period of 30 days and still holds erases; a reactivated owner, a resting one, an absent
- * one and a changed group keep their libraries. Until then the block names the day.
+ * The deletion run of private libraries: only a deactivation that lasted longer than the deletion
+ * period of 30 days and still holds erases; a reactivated owner, a resting one, an absent one and a
+ * changed group keep their libraries. Until then the block names the day.
  */
 @OpaaIntegrationTest
 class PrivateLibraryDeletionRunIntegrationTest {

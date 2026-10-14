@@ -32,9 +32,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
- * The confirmation path of a run above the plausibility threshold (#1816, ADR-0036 Entscheidung 3),
- * with all four decisions of the plan's lifecycle: the empty-result guard stays a hard abort with
- * no plan, a new run replaces the pending plan, a confirmation is computed against a fresh snapshot
+ * The confirmation path of a run above the plausibility threshold (ADR-0036 Entscheidung 3), with
+ * all four decisions of the plan's lifecycle: the empty-result guard stays a hard abort with no
+ * plan, a new run replaces the pending plan, a confirmation is computed against a fresh snapshot
  * and re-presented when it differs, and the plan is a visible state with an age.
  */
 @OpaaIntegrationTest

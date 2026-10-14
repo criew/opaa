@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * Which Datenschutzhinweis the switch shows depends on this one decision (#1073): a locally
- * operated model means no document leaves the house.
+ * Which Datenschutzhinweis the switch shows depends on this one decision: a locally operated model
+ * means no document leaves the house.
  */
 class ChatRoleSummaryTest {
 

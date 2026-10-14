@@ -48,9 +48,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The library field schema end to end (#1071): the Aufnahmeregel and the field limit, the fact that
- * a value outside the configured list is not storable, the confirmed mapping with its Folgekosten,
- * audit events and chunk rewrite, and what a field deletion takes with it.
+ * The library field schema end to end: the Aufnahmeregel and the field limit, the fact that a value
+ * outside the configured list is not storable, the confirmed mapping with its Folgekosten, audit
+ * events and chunk rewrite, and what a field deletion takes with it.
  */
 @OpaaIntegrationTest
 class LibraryMetadataFieldServiceIntegrationTest {

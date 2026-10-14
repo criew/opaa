@@ -102,9 +102,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleNoResourceFoundExceptionReturnsNotFound() {
-    // #456: an unmapped path fell through to handleGenericException and answered 500 instead of
-    // the expected 404 - see GlobalExceptionHandlerUnmappedPathTest for the full-stack
-    // reproduction against an actual unmapped route.
+    // An unmapped path fell through to handleGenericException and answered 500 instead of the
+    // expected 404 - see GlobalExceptionHandlerUnmappedPathTest for the full-stack reproduction
+    // against an actual unmapped route.
     var response =
         handler.handleNoResourceFoundException(
             new NoResourceFoundException(
@@ -129,7 +129,7 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleOpenAiTransientExceptionMapsOpenAiIoExceptionToServiceUnavailable() {
-    // #768: since #766, a connection failure against the SDK-based OpenAiChatModel throws
+    // A connection failure against the SDK-based OpenAiChatModel throws
     // com.openai.errors.OpenAIIoException, not TransientAiException - previously uncaught here, it
     // fell through to handleGenericException's 500 (see
     // ActiveChatModelResolverIntegrationTest#anUnreachableActiveModelFailsWithoutFallingBackToAnotherModel,
@@ -201,9 +201,8 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleOpenAiServiceExceptionMapsRateLimitAndForwardsRetryAfterHeader() {
-    // #768 review, should-finding 5: RateLimitException's headers() routinely carries a
-    // Retry-After the provider actually computed - worth passing through rather than leaving the
-    // caller to guess a backoff.
+    // RateLimitException's headers() routinely carries a Retry-After the provider actually
+    // computed - worth passing through rather than leaving the caller to guess a backoff.
     var response =
         handler.handleOpenAiServiceException(
             RateLimitException.builder()
@@ -224,8 +223,8 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleOpenAiExceptionMapsRemainingSubtypesToBadGateway() {
-    // #768 review, should-finding 1: OpenAIInvalidDataException is neither a connection-level
-    // failure (handleOpenAiTransientException) nor a genuine HTTP error response
+    // OpenAIInvalidDataException is neither a connection-level failure
+    // (handleOpenAiTransientException) nor a genuine HTTP error response
     // (handleOpenAiServiceException) - it is thrown when an only OpenAI-*compatible* server
     // (Ollama, this project's own docker-compose default) answers in a shape the SDK does not
     // expect. Without this handler it fell through to handleGenericException's 500.
@@ -239,9 +238,9 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleGenericExceptionUnwrapsAWrappedOpenAiServiceException() {
-    // #768 review, optional finding 4: a com.openai.errors.* exception wrapped by something else
-    // (e.g. Spring AI's own retry/advisor machinery) must still be recognized via the cause chain,
-    // exactly like the pre-existing CredentialsEncryptionKeyMissingException unwrapping below.
+    // A com.openai.errors.* exception wrapped by something else (e.g. Spring AI's own
+    // retry/advisor machinery) must still be recognized via the cause chain, exactly like the
+    // pre-existing CredentialsEncryptionKeyMissingException unwrapping below.
     var cause = UnauthorizedException.builder().headers(Headers.builder().build()).build();
     var response = handler.handleGenericException(new RuntimeException("wrapped", cause));
     assertEquals(502, response.getStatusCode().value());
@@ -282,9 +281,9 @@ class GlobalExceptionHandlerTest {
   }
 
   /**
-   * #875: each domain exception in {@code io.opaa.common} must produce the identical response body
-   * {@link #handleResponseStatusExceptionKeepsStatusAndReason} pins for {@link
-   * ResponseStatusException} - status and the exception's own message as the reason.
+   * Each domain exception in {@code io.opaa.common} must produce the identical response body {@link
+   * #handleResponseStatusExceptionKeepsStatusAndReason} pins for {@link ResponseStatusException} -
+   * status and the exception's own message as the reason.
    */
   @Test
   void handleNotFoundExceptionCarriesItsCodeWhenGiven() {
@@ -499,8 +498,8 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleMaxUploadSizeExceededExceptionReturnsPayloadTooLargeWithGermanMessage() {
-    // #420 code review, finding 2: without a dedicated handler, this fell through to
-    // handleGenericException and answered 500 instead of the acceptance criterion's 413.
+    // Without a dedicated handler, this fell through to handleGenericException and
+    // answered 500 instead of the acceptance criterion's 413.
     var response =
         handler.handleMaxUploadSizeExceededException(
             new MaxUploadSizeExceededException(52_428_800L));
@@ -513,7 +512,7 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleMaxUploadSizeExceededExceptionReadsTheLimitFromUploadPropertiesNotTheException() {
-    // #420 second code review round, nit 2: StandardServletMultipartResolver usually reports -1
+    // StandardServletMultipartResolver usually reports -1
     // as ex.getMaxUploadSize() - the handler must still name the actual configured limit, taken
     // from UploadProperties rather than the exception, which is why this passes -1 here and still
     // expects the figure in the message.
@@ -539,7 +538,7 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleMultipartExceptionReturnsBadRequest() {
-    // #420 second code review round, nit 2: a malformed or aborted multipart body throws the
+    // A malformed or aborted multipart body throws the
     // plain MultipartException, not the more specific MaxUploadSizeExceededException - without
     // this handler it fell through to handleGenericException's 500.
     var response = handler.handleMultipartException(new MultipartException("could not parse"));
@@ -551,7 +550,7 @@ class GlobalExceptionHandlerTest {
 
   @Test
   void handleCredentialsEncryptionKeyMissingExceptionReturnsServiceUnavailable() {
-    // #483: a missing/invalid OPAA_CREDENTIALS_ENCRYPTION_KEY must surface as a clear 503, not the
+    // A missing/invalid OPAA_CREDENTIALS_ENCRYPTION_KEY must surface as a clear 503, not the
     // opaque 500 handleGenericException falls back to.
     var response =
         handler.handleCredentialsEncryptionKeyMissingException(
@@ -580,7 +579,7 @@ class GlobalExceptionHandlerTest {
     assertEquals("OPAA_CREDENTIALS_ENCRYPTION_KEY ist nicht gesetzt", body.getError());
   }
 
-  /** RFC 9110, section 15.5.6: a 405 names the methods the resource does support (#1707). */
+  /** RFC 9110, section 15.5.6: a 405 names the methods the resource does support. */
   @Test
   void handleHttpRequestMethodNotSupportedExceptionNamesTheSupportedMethods() {
     var response =
@@ -618,9 +617,9 @@ class GlobalExceptionHandlerTest {
   }
 
   /**
-   * Whether this branch's body reaches a caller is {@code respond}'s decision since #1786, not this
-   * branch's: without a bound request - as here - a body is written, and against an {@code Accept}
-   * that excludes the envelope it is dropped, which is what {@code
+   * Whether this branch's body reaches a caller is {@code respond}'s decision, not this branch's:
+   * without a bound request - as here - a body is written, and against an {@code Accept} that
+   * excludes the envelope it is dropped, which is what {@code
    * GlobalExceptionHandlerNotAcceptableTest} guards end to end, on the log.
    */
   @Test

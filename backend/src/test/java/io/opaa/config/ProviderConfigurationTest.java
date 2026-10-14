@@ -8,24 +8,23 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 
 /**
- * Verifies the single, OpenAI-compatible connection path application.yml wires since #762: both
- * chat and embedding are fixed to {@code openai}, with a default base URL that already points at a
- * locally operated Ollama server - no separate, native provider path exists anymore (see
+ * Verifies the single, OpenAI-compatible connection path application.yml wires: both chat and
+ * embedding are fixed to {@code openai}, with a default base URL that already points at a locally
+ * operated Ollama server - no separate, native provider path exists anymore (see
  * docs/features/llm-integration.md#ein-anbindungsweg-nicht-zwei).
  *
- * <p><b>Since #758, {@code spring.ai.model.chat} no longer selects a Spring Boot autoconfiguration
- * for the chat {@code ChatModel} bean</b> - {@code application.yml} excludes {@code
- * OpenAiChatAutoConfiguration} outright, because {@code io.opaa.llm.ActiveChatModelResolver} builds
- * every chat client itself, programmatically, from the active {@code llm_models} row. The property
- * still has a real, narrower purpose: {@code io.opaa.config.OpenAiBaseUrlGuard} still reads it to
- * decide whether {@code spring.ai.openai.chat.base-url} must be set - that guard is unrelated to
- * autoconfiguration and still matters because {@code io.opaa.llm.LlmModelSeeder} reads {@code
- * spring.ai.openai.chat.*} directly for the one-time takeover into {@code llm_models} on first
- * start (docs/handbuch/modelle.md, section "Chat-Modelle in der Oberfläche anlegen").
- * {@code @MockitoBean private ChatModel} bean of the shared test configuration therefore no longer
- * replaces a bean the excluded autoconfiguration would have produced; it exists only so a test's
- * {@code Environment} assertions do not need a real, reachable chat endpoint to load the
- * application context.
+ * <p><b>{@code spring.ai.model.chat} selects no Spring Boot autoconfiguration for the chat {@code
+ * ChatModel} bean</b> - {@code application.yml} excludes {@code OpenAiChatAutoConfiguration}
+ * outright, because {@code io.opaa.llm.ActiveChatModelResolver} builds every chat client itself,
+ * programmatically, from the active {@code llm_models} row. The property still has a real, narrower
+ * purpose: {@code io.opaa.config.OpenAiBaseUrlGuard} still reads it to decide whether {@code
+ * spring.ai.openai.chat.base-url} must be set - that guard is unrelated to autoconfiguration and
+ * still matters because {@code io.opaa.llm.LlmModelSeeder} reads {@code spring.ai.openai.chat.*}
+ * directly for the one-time takeover into {@code llm_models} on first start
+ * (docs/handbuch/modelle.md, section "Chat-Modelle in der Oberfläche anlegen"). {@code @MockitoBean
+ * private ChatModel} bean of the shared test configuration therefore no longer replaces a bean the
+ * excluded autoconfiguration would have produced; it exists only so a test's {@code Environment}
+ * assertions do not need a real, reachable chat endpoint to load the application context.
  */
 @OpaaIntegrationTest
 class ProviderConfigurationTest {

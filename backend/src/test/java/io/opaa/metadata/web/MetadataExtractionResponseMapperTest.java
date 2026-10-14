@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
-/** Every field of the model-extraction responses is actually filled (#1073, AGENTS.md). */
+/** Every field of the model-extraction responses is actually filled (AGENTS.md). */
 class MetadataExtractionResponseMapperTest {
 
   private static final UUID LIBRARY_ID = UUID.randomUUID();

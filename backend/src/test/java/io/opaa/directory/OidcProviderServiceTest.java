@@ -49,12 +49,12 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.context.ApplicationEventPublisher;
 
 /**
- * {@link OidcProviderService} against mocked collaborators (#1329, ADR-0025): the invariants a
- * provider row must satisfy before it is written (http(s) issuer, no duplicate issuer, the default
- * stays while another provider exists), the automatic default for the very first OIDC provider, the
- * audit event and the change event every write leaves behind, the SSRF policy every
- * operator-entered address passes through - and, since ADR-0033 (Entscheidung 4), the rules of the
- * LOCAL row and the guarded, acknowledged switch-off of the last enabled provider.
+ * {@link OidcProviderService} against mocked collaborators (ADR-0025): the invariants a provider
+ * row must satisfy before it is written (http(s) issuer, no duplicate issuer, the default stays
+ * while another provider exists), the automatic default for the very first OIDC provider, the audit
+ * event and the change event every write leaves behind, the SSRF policy every operator-entered
+ * address passes through - and, since ADR-0033 (Entscheidung 4), the rules of the LOCAL row and the
+ * guarded, acknowledged switch-off of the last enabled provider.
  */
 class OidcProviderServiceTest {
 

@@ -3,10 +3,10 @@ package io.opaa.eval;
 import io.opaa.retrieval.QueryProperties;
 
 /**
- * Applies a {@link PipelineVariant.QueryOverrides} on top of the production {@link QueryProperties}
- * (issue #1041). A field left {@code null} in the overrides keeps the production value unchanged;
- * {@code topK} is never overridden, because the pipeline path's metric component names are pinned
- * to it (see {@link PipelineVariant.QueryOverrides}'s Javadoc).
+ * Applies a {@link PipelineVariant.QueryOverrides} on top of the production {@link
+ * QueryProperties}. A field left {@code null} in the overrides keeps the production value
+ * unchanged; {@code topK} is never overridden, because the pipeline path's metric component names
+ * are pinned to it (see {@link PipelineVariant.QueryOverrides}'s Javadoc).
  */
 final class VariantQueryProperties {
 

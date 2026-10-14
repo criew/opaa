@@ -29,7 +29,7 @@ class LocalAccountLinksTest {
 
   /**
    * The reminder mail's link has to reach a page, not the API: {@code /api/v1/admin/local-users} is
-   * the endpoint the list is fed from, {@code /admin/users} the route of the page (#1541).
+   * the endpoint the list is fed from, {@code /admin/users} the route of the page.
    */
   @Test
   void theAdminListLinkPointsAtTheSpaRouteNotAtTheApiPath() {

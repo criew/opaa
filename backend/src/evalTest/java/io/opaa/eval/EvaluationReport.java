@@ -18,12 +18,12 @@ public record EvaluationReport(
     // reader build any cross-tabulation needed). NOT_APPLICABLE (applicableCases=0) for a domain
     // whose golden cases carry no answer_span, i.e. comic-characters today.
     ChunkAnswerSpanMetrics.Aggregate answerSpanOverall,
-    // Issue #721 code review, Wichtig 1: ADR-0012 §8 and the issue's acceptance criteria both
-    // promise an explicit report of whether the document-bound window was actually reached, not
-    // just a silently-computed-and-discarded value — see DocumentWindowCoverageResult's Javadoc.
+    // ADR-0012 §8 and the issue's acceptance criteria both promise an explicit report of whether
+    // the document-bound window was actually reached, not just a silently-computed-and-discarded
+    // value — see DocumentWindowCoverageResult's Javadoc.
     DocumentWindowCoverageResult documentWindowCoverage,
-    // Issue #721 code review, Wichtig 3: whether every applicable answer_span actually resolved to
-    // a chunk of one of its expected_documents — see AnswerSpanResolutionResult's Javadoc.
+    // Whether every applicable answer_span actually resolved to a chunk of one of its
+    // expected_documents — see AnswerSpanResolutionResult's Javadoc.
     AnswerSpanResolutionResult answerSpanResolution,
     // docs/features/retrieval-benchmark.md §5 "Zustandsfelder": declared vs. measured case state
     // (expected_state.raw_vector). Null if no case declares a state, i.e. absent, not clean.
@@ -33,10 +33,10 @@ public record EvaluationReport(
     MetadataFilterAudit.Result metadataFilterAudit,
     List<WorstQuery> worstQueries,
     List<WorstQuery> allQueryResults,
-    // Issue #1151: how close to the window edge each group's solved cases sit — report-only,
-    // deliberately not part of measurementContractVersion or any Baseline (see MarginAggregate's
-    // Javadoc). Added after allQueryResults, at the end, so an existing committed report JSON grows
-    // a field instead of reordering — irrelevant to Jackson but keeps a textual diff minimal.
+    // How close to the window edge each group's solved cases sit — report-only, deliberately not
+    // part of measurementContractVersion or any Baseline (see MarginAggregate's Javadoc). Added
+    // after allQueryResults, at the end, so an existing committed report JSON grows a field instead
+    // of reordering — irrelevant to Jackson but keeps a textual diff minimal.
     MarginAggregate overallMargins,
     Map<String, MarginAggregate> marginsByCategory,
     Map<String, MarginAggregate> marginsByDifficulty,
@@ -59,9 +59,9 @@ public record EvaluationReport(
    * Javadoc for what it records and why {@code corpusManifestSha256} alone did not already cover
    * it.
    *
-   * <p><b>Bumped to 4 by issue #1164 (PR #1201 review):</b> {@code MailDocumentFormat#version()}
-   * moved 2 → 3 (mail_date truncated to whole seconds for lexicographic sortability), which shifted
-   * every committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
+   * <p><b>Bumped to 4 by issue #1164:</b> {@code MailDocumentFormat#version()} moved 2 → 3
+   * (mail_date truncated to whole seconds for lexicographic sortability), which shifted every
+   * committed baseline's {@code ingestionPipelineFingerprint} even though no corpus in this
    * repository routes a document through that pipeline — the fingerprint is a collective fixed
    * point over every registered pipeline (see {@link IngestionPipelineFingerprint}'s Javadoc), not
    * only the ones a given corpus actually reaches.
@@ -123,19 +123,18 @@ public record EvaluationReport(
       String embeddingModel,
       String embeddingModelDigest,
       String ollamaImage,
-      // Issue #1652: the ggml CPU variant verified by EvalOllamaCpuBackend, null for an external
-      // endpoint.
+      // The ggml CPU variant verified by EvalOllamaCpuBackend, null for an external endpoint.
       String ollamaCpuBackend,
       int embeddingDimensions,
       int chunkSize,
       boolean chunkSizeMatchesApplicationDefault,
-      // Issue #374: recorded so two reports can be told apart by the chunk overlap they were
-      // measured with. On a corpus where the Ein-Chunk-Invariante holds this value cannot change
-      // anything — overlap only exists between chunks — which is itself worth having in writing.
+      // Recorded so two reports can be told apart by the chunk overlap they were measured with.
+      // On a corpus where the Ein-Chunk-Invariante holds this value cannot change anything —
+      // overlap only exists between chunks — which is itself worth having in writing.
       int chunkOverlap,
       // ADR-0012, Entscheidung 8: the k-window is now explicitly document-bound. documentTopK is
       // the number of distinct documents the ranking metrics are computed over (10, unchanged in
-      // value from the pre-#721 chunk-bound topK); chunkTopK is the actual similaritySearch topK
+      // value from the earlier chunk-bound topK); chunkTopK is the actual similaritySearch topK
       // used to reach that many distinct documents after deduplication (DocumentRanking). For
       // comic-characters chunkTopK == documentTopK == 10, because maxChunksPerDocument == 1.
       int documentTopK,
@@ -159,9 +158,9 @@ public record EvaluationReport(
       String goldenDatasetFile,
       String goldenDatasetSha256,
       int goldenCaseCount,
-      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
-      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
-      // Javadoc for why corpusManifestSha256 alone does not answer that question.
+      // Under which ingestion pipeline versions (all registered, not just the ones this corpus
+      // routes through) this was measured — see IngestionPipelineFingerprint's Javadoc for why
+      // corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
       // The form of the Kontextpräfix the corpus was embedded with, see
       // ContextPrefixFingerprint.
@@ -173,10 +172,10 @@ public record EvaluationReport(
       boolean metadataFilterEnabled,
       String runStartedAt,
       double runDurationSeconds,
-      // Issue #1076: true when this run talked to an external Ollama endpoint
-      // (opaa.eval.ollamaBaseUrl) instead of the Testcontainer — such a run is not
-      // baseline-comparable (CPU/GPU embedding kernels are not guaranteed bit-identical, analogous
-      // to the -Dopaa.eval.allowGpu opt-out), see eval/README.md, "Externer Ollama-Endpunkt".
+      // True when this run talked to an external Ollama endpoint (opaa.eval.ollamaBaseUrl) instead
+      // of the Testcontainer — such a run is not baseline-comparable (CPU/GPU embedding kernels
+      // are not guaranteed bit-identical, analogous to the -Dopaa.eval.allowGpu opt-out), see
+      // eval/README.md, "Externer Ollama-Endpunkt".
       boolean externalOllamaEndpoint) {}
 
   /**
@@ -198,9 +197,9 @@ public record EvaluationReport(
 
   /**
    * Whether every query's chunk-bound search actually surfaced {@code documentTopK} distinct
-   * documents after deduplication (issue #721, ADR-0012 §8) — the explicit report the acceptance
-   * criteria promise, instead of {@link DocumentRanking.DocumentWindowResult} being computed per
-   * query and then discarded. {@code queriesBelowDocumentTopK} counts queries where {@link
+   * documents after deduplication (ADR-0012 §8) — the explicit report the acceptance criteria
+   * promise, instead of {@link DocumentRanking.DocumentWindowResult} being computed per query and
+   * then discarded. {@code queriesBelowDocumentTopK} counts queries where {@link
    * DocumentRanking.DocumentWindowResult#reachedDocumentTopK()} was {@code false} — expected to be
    * zero whenever the corpus has comfortably more than {@code documentTopK} documents
    * (comic-characters: 1448 documents against {@code documentTopK=10}), and asserted as such by the
@@ -208,10 +207,10 @@ public record EvaluationReport(
    * distinctDocumentsReached} seen across the whole run — a single number that makes "did the
    * window ever come up short, and by how much" readable without scanning {@code allQueryResults}.
    *
-   * <p>Counted over the <b>unfiltered</b> queries only (issue #1070): a case measured with a
-   * core-field filter may legitimately have fewer than {@code documentTopK} documents left in the
-   * whole store (a 2023 date window over a corpus with nine 2023 documents), which is the filter
-   * working, not the window coming up short.
+   * <p>Counted over the <b>unfiltered</b> queries only: a case measured with a core-field filter
+   * may legitimately have fewer than {@code documentTopK} documents left in the whole store (a 2023
+   * date window over a corpus with nine 2023 documents), which is the filter working, not the
+   * window coming up short.
    */
   public record DocumentWindowCoverageResult(
       int queriesEvaluated, int queriesBelowDocumentTopK, int minDistinctDocumentsReached) {
@@ -222,15 +221,14 @@ public record EvaluationReport(
   }
 
   /**
-   * Whether every applicable {@code answer_span} (issue #721) actually resolved to at least one
-   * chunk of at least one of its {@code expected_documents} (issue #721 code review, Wichtig 3). An
-   * unresolved span — a typo, a whitespace difference {@link SpanMatcher} does not absorb, or a
-   * chunking-parameter change that pushed the span across a chunk boundary — is numerically
-   * indistinguishable from a genuine retrieval failure: both make {@link
-   * ChunkAnswerSpanMetrics#evaluate} return {@code spanChunkRank=-1}. Left unchecked, a chunking
-   * change could look like a chunk-level regression when it is actually a broken fixture, exactly
-   * the failure mode {@code boundary_span} golden cases (#234) are meant to detect on purpose — the
-   * measurement would be silently wrong about which of the two happened.
+   * Whether every applicable {@code answer_span} actually resolved to at least one chunk of at
+   * least one of its {@code expected_documents}. An unresolved span — a typo, a whitespace
+   * difference {@link SpanMatcher} does not absorb, or a chunking-parameter change that pushed the
+   * span across a chunk boundary — is numerically indistinguishable from a genuine retrieval
+   * failure: both make {@link ChunkAnswerSpanMetrics#evaluate} return {@code spanChunkRank=-1}.
+   * Left unchecked, a chunking change could look like a chunk-level regression when it is actually
+   * a broken fixture, exactly the failure mode {@code boundary_span} golden cases are meant to
+   * detect on purpose — the measurement would be silently wrong about which of the two happened.
    *
    * <p>The harness treats a non-empty {@code unresolvedCaseIds} as a hard abort for any domain that
    * declares at least one {@code answer_span} case (mirrors {@link ChunkCountInvariantResult}: a
@@ -262,13 +260,13 @@ public record EvaluationReport(
       double hitRateAt5,
       double reciprocalRank,
       double recallAt10,
-      // Issue #913: "Recall pro Teilthema" — 1.0 only if every expected document was retrieved, see
+      // "Recall pro Teilthema" — 1.0 only if every expected document was retrieved, see
       // RetrievalMetrics#allExpectedDocumentsHitAtK. Carried per-query (not just per group) so
       // allQueryResults lets a reader verify a multi_topic case's coverage without recomputing it
       // from rankedFileNames/expectedDocuments.
       double allExpectedDocumentsHitAt10,
-      // Issue #1151: the margin (RetrievalMetrics#marginAtK) this case's first relevant hit had
-      // against each window; null when no expected document appears anywhere in rankedFileNames.
+      // The margin (RetrievalMetrics#marginAtK) this case's first relevant hit had against each
+      // window; null when no expected document appears anywhere in rankedFileNames.
       Integer hitRateMarginAt5,
       Integer rankingMarginAt10,
       List<String> expectedDocuments,

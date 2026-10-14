@@ -623,7 +623,7 @@ class CoreMetadataIndexingIntegrationTest {
   }
 
   /**
-   * #1242: a mail's Kopfdaten are schema values of the document, not chunk keys of their own - the
+   * A mail's Kopfdaten are schema values of the document, not chunk keys of their own - the
    * Absender rides on every chunk because it filters, the Betreff does not because it only shows,
    * and the Beleg reads all of them through the generic field-value list.
    */
@@ -693,8 +693,8 @@ class CoreMetadataIndexingIntegrationTest {
             CitationFieldValue::label, CitationFieldValue::value, CitationFieldValue::detailOnly)
         .containsExactly(
             tuple("Absender", "max.mueller@stadt.de", false),
-            // The recipient list belongs into the Beleg detail view, never into the one line
-            // (#1242): it is unbounded and identifies no passage.
+            // The recipient list belongs into the Beleg detail view, never into the one
+            // line: it is unbounded and identifies no passage.
             tuple("An", "poststelle@stadt.de", true),
             tuple("Betreff", "Bebauungsplan Nord", false));
   }

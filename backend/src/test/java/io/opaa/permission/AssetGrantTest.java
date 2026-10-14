@@ -10,8 +10,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@code granted_by_user_id} answers "who procured the role this grant carries now" (#1052). These
- * tests pin the three halves of that contract on the entity itself, since {@code
+ * {@code granted_by_user_id} answers "who procured the role this grant carries now". These tests
+ * pin the three halves of that contract on the entity itself, since {@code
  * LibraryAccessService#holdsIndependentOwnerRole} reads the field to tell a self-procured {@link
  * AssetRole#OWNER} from one somebody else conferred - and it discounts an expired grant entirely,
  * which is why reviving one counts as procuring it.

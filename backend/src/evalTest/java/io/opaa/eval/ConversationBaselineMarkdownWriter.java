@@ -8,8 +8,8 @@ import java.util.Locale;
 
 /**
  * Renders a {@link ConversationBaselineComparator.ComparisonResult} together with its {@link
- * ConversationBaselineVerdict} as a Markdown delta table (issue #1553) — the multi-turn path's
- * counterpart of {@link PipelineBaselineMarkdownWriter}, consumed by {@code
+ * ConversationBaselineVerdict} as a Markdown delta table — the multi-turn path's counterpart of
+ * {@link PipelineBaselineMarkdownWriter}, consumed by {@code
  * .github/workflows/retrieval-regression.yml} alongside, never instead of, the other two paths'
  * tables.
  *

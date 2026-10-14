@@ -10,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * #395: {@link AuditRetentionDeletionService} calling the real {@code
+ * {@link AuditRetentionDeletionService} calling the real {@code
  * opaa_audit_delete_expired_partitions()} database function (baseline, identity changeSet) through
  * the ordinary application datasource - proves the wiring end to end (repository -> native query ->
  * database function), not which cutoff the function deletes by (that is {@code

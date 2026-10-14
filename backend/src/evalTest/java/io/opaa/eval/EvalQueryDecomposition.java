@@ -2,7 +2,7 @@ package io.opaa.eval;
 
 /**
  * Whether a harness run measures the shipped {@code opaa.query.query-decomposition-enabled=true}
- * configuration or the decomposition-off one (issue #1085).
+ * configuration or the decomposition-off one.
  *
  * <p>Off by default, which is what every committed pipeline baseline describes: the shipped
  * configuration costs one chat call per query and, under the Mehrfachlauf-Regel

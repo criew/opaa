@@ -37,9 +37,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The inactivity lock of a local account is an absence, not a deactivation (#2260): the connection
- * and its secret stay, the private library rests without a deletion day, and once the account is
- * unlocked and signs in again it goes on without reconnecting. A lock by the administration still
+ * The inactivity lock of a local account is an absence, not a deactivation: the connection and its
+ * secret stay, the private library rests without a deletion day, and once the account is unlocked
+ * and signs in again it goes on without reconnecting. A lock by the administration still
  * deactivates. The lock is applied as the maintenance does - committed, then the event.
  */
 @OpaaIntegrationTest
