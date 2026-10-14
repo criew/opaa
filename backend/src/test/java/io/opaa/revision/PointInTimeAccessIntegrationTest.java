@@ -17,6 +17,7 @@ import io.opaa.auth.OidcProviderRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.ValidationException;
 import io.opaa.group.Group;
 import io.opaa.group.GroupRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -226,7 +227,7 @@ class PointInTimeAccessIntegrationTest {
   @Test
   void aWindowBeyondTheBoundIsRejectedAndRecorded() {
     assertThatThrownBy(() -> readers(TO.minus(Duration.ofDays(200)), TO))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("92");
 
     assertThat(retrievalEvents()).hasSize(1);
@@ -247,7 +248,7 @@ class PointInTimeAccessIntegrationTest {
                     TO,
                     50,
                     50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   /** The bar is the AUDITOR role, and the turned-away attempt is on the record as DENIED. */
@@ -289,7 +290,7 @@ class PointInTimeAccessIntegrationTest {
                     TO,
                     0,
                     50))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
   }
 
   /** A successful retrieval is an entry too, with the window in its payload. */
@@ -404,7 +405,7 @@ class PointInTimeAccessIntegrationTest {
     insertMembershipRows(groupId, PointInTimeAccessService.MAX_SOURCE_INTERVALS + 1);
 
     assertThatThrownBy(() -> readers(FROM, TO))
-        .isInstanceOf(IllegalArgumentException.class)
+        .isInstanceOf(ValidationException.class)
         .hasMessageContaining("enger");
 
     assertThat(retrievalEvents()).as("the refusal is itself an entry").hasSize(1);

@@ -192,7 +192,7 @@ class ConnectionLogIntegrationTest {
   @Test
   void anAuditorMustGiveAReasonAndABoundedTimeRange() {
     assertThatThrownBy(() -> queryService.find(organizationId, auditorId, " ", query(null, null)))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
     assertThatThrownBy(
             () ->
                 queryService.find(
@@ -201,7 +201,7 @@ class ConnectionLogIntegrationTest {
                     REASON,
                     new ConnectionLogQueryService.Query(
                         to.minus(93, ChronoUnit.DAYS), to, null, null, 0, 50)))
-        .isInstanceOf(IllegalArgumentException.class);
+        .isInstanceOf(ValidationException.class);
 
     assertThat(accessEntries(auditorId, "DENIED")).isEqualTo(2);
   }
