@@ -10,7 +10,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications'
 import { useNavigate } from 'react-router'
 import type { NotificationResponse } from '@/shared/api/types'
 import { notificationTarget } from './notificationTarget'
-import { getNotifications, markNotificationRead } from '../../services/notificationApi'
+import { getNotifications, markNotificationRead } from '../api/notificationApi'
 import { useAuthStore } from '@/shared/session/authStore'
 
 function formatCreatedAt(value: string): string {

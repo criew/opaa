@@ -4,7 +4,7 @@ import IconButton from '@mui/material/IconButton'
 import Toolbar from '@mui/material/Toolbar'
 import MenuIcon from '@mui/icons-material/Menu'
 import BrandMark from '@/shared/ui/BrandMark'
-import NotificationBell from '../components/notifications/NotificationBell'
+import { NotificationBell } from '@/features/notification'
 import { useUiStore } from '@/shared/stores/uiStore'
 
 export default function MobileHeader() {
