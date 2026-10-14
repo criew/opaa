@@ -45,7 +45,7 @@ Moduls (`backend/AGENTS.md`, „Web-Schicht je Modul“).
 
 ### 6. Eigenes Gradle-Modul `opaa-api`
 
-Spezifikation, Generator und die geteilten Enums liegen im Modul `opaa-api` (seit #896). Eine
+Spezifikation, Generator und die geteilten Enums liegen im Modul `opaa-api`. Eine
 Spec-Änderung invalidiert nur dieses Modul; das Backend konsumiert die DTOs über
 `implementation(project(":opaa-api"))` und hat keinen eigenen Generator-Task.
 
@@ -88,13 +88,3 @@ nicht auflösbar an; maßgeblich ist das Bündel.
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-03-08 | — | Erstfassung | 1–5 |
-| 2026-08-24 | #857 | Löschliste des `doLast`-Blocks aus `typeMappings` abgeleitet | 4 |
-| 2026-08-25 | #896 | Gradle-Modul `opaa-api` | 6 |
-| 2026-09-27 | #2002 | Spezifikation in Dateien je Thema, zur Build-Zeit gebündelt | 7 |
-| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

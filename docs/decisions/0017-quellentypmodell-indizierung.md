@@ -82,14 +82,3 @@ Betriebsarten erklärt für jede eine Policy.
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-18 | #472 | Erstfassung mit fünf Entscheidungen | 1–5 |
-| 2026-08-18 | #487 | Konfiguration an der Bibliothek, Entscheidung 4 abgelöst (ADR-0018) | 4 |
-| 2026-08-25 | #900 | Löschung durch Abwesenheit ist Produktivverhalten | 5 |
-| 2026-09-03 | #1131 | Kategorie je Betriebsart statt je Quellentyp (ADR-0023) | 5 |
-| 2026-09-06 | #1373 | Anwendung auf S3: Vollabgleich und Ereignislauf (ADR-0027) | 5 |
-| 2026-09-26 | #1976, #1977 | Konnektor-Schnittstelle und offener Typschlüssel (ADR-0038) | 1, 3 |

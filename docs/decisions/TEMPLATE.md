@@ -2,7 +2,7 @@
 
 ## Status
 
-Vorgeschlagen · zuletzt geändert JJJJ-MM-TT
+Akzeptiert · zuletzt geändert JJJJ-MM-TT
 
 ## Kontext
 
@@ -12,8 +12,8 @@ Höchstens 30 Zeilen: das Problem zum Zeitpunkt der Entscheidung. Wird nicht for
 
 ### 1. Kurztitel
 
-Gültiger Endstand in 1–10 Zeilen, Begründung in 1–5 Sätzen. Eine geänderte Entscheidung trägt genau
-einen Halbsatz „seit #NNNN“ ohne Vorher-Beschreibung.
+Gültiger Endstand in 1–10 Zeilen, Begründung in 1–5 Sätzen. Eine geänderte Entscheidung beschreibt
+nur den neuen Zustand, ohne „seit #NNNN“ und ohne Vorher-Beschreibung.
 
 ### 2. …
 
@@ -31,8 +31,3 @@ Einfacher / Schwieriger / Restrisiken — nur, was heute gilt.
 ## Offen
 
 Nur, was heute offen ist. Erledigtes wird gelöscht, nicht markiert.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|

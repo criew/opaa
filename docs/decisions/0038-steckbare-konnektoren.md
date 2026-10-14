@@ -30,7 +30,7 @@ Konnektor Schlüssel, Anzeigename und diese Fähigkeiten. Das Enum `DocumentSour
 ADR-0017 sind entfallen; der Kern kennt nur noch `UPLOAD` als Sonderfall.
 
 Konnektoren je in einem Unterpaket von `io.opaa.indexing.source`, ihr Vertrag in `io.opaa.indexing.spi`
-(seit #2720; Handbuch: `docs/handbuch/konnektoren/`):
+(Handbuch: `docs/handbuch/konnektoren/`):
 
 | Schlüssel | Paket | seit |
 |---|---|---|
@@ -83,7 +83,7 @@ Feld in der Adressregel käme erst, wenn ein Konnektor einen zweiten Host aus de
 Der Konnektor bekommt Ziel, Geheimnis und Einstellungen nur vom Kern als aufgelöste `SourceSettings`,
 auch im Lauf und beim Originalabruf; Profil, Refresh-Token, Client-Secret, Dienstkonto-Schlüssel und
 OAuth-Ablauf sieht er nie (ADR-0041, Entscheidung 3a, ArchUnit-Regel in `ModularArchitectureTest`):
-Resolver und Dienstkonto-Schlüssel liegen in `io.opaa.indexing.credentials`, das kein Konnektor nutzt (seit #2720).
+Resolver und Dienstkonto-Schlüssel liegen in `io.opaa.indexing.credentials`, das kein Konnektor nutzt.
 
 ### 4. Abbildung in OpenAPI: freies Objekt, `sourceType` als Diskriminator daneben
 
@@ -171,21 +171,3 @@ es Bestandssysteme gibt.
 
 - Das Push-Geheimnis erzeugt der Kern. Ein Anbieter, der sein Signaturgeheimnis selbst ausgibt, passt
   nicht in diesen Weg; das braucht eine Erweiterung, sobald ein solcher Konnektor kommt.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-26 | #1977 | Erstfassung; interne Umstellung (#1986) und API-Bruch (#1997) | 1–6 |
-| 2026-09-27 | #2000 | Grenze des Kerns sichert `ModularArchitectureTest` | 6 |
-| 2026-10-03 | #2159 | Profilangabe, Anmeldearten, vier Plätze für Geheimnisse, Ziel aus dem Profil (ADR-0041) | 3, 7 |
-| 2026-10-03 | #2177 | Anmeldeart Dienstkonto-Schlüssel (ADR-0040) | 7 |
-| 2026-10-04 | #2218 | `ProfileDeclaration`, Adressregel, Vorgaben-Schema | 7 |
-| 2026-10-04 | #2220 | `ClientCredentialsAuth`, Vorgabe nur des Profils, Dienstkonto-Schlüssel am Profil | 7 |
-| 2026-10-04 | #2219, #2253 | Entfernte Konnektoren lassen Profile zu, Registry prüft die Umkehrung | 7 |
-| 2026-10-03 bis 2026-10-10 | #2152, #2155, #2438 | Nextcloud, SMB und SharePoint kommen hinzu | 1 |
-| 2026-10-11 | #2154 | Dropbox; zweiter fester Host ohne eigenes Feld | 1, 3 |
-| 2026-10-12 | #2496, #2541 | `source_proxy` und `source_insecure_ssl` entfallen | 2 |
-| 2026-10-14 | #2701 | Neufassung auf den gültigen Endstand | — |
-| 2026-10-14 | #2702 | Konnektortabelle verweist auf ADR-0045–0047 | — |
-| 2026-10-14 | #2720 | Vertrag in `indexing.spi`, Resolver und Dienstkonto-Schlüssel in `indexing.credentials` | 1, 3 |

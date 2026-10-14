@@ -28,8 +28,8 @@ Ungelesen-Badge (`NotificationBell`), ohne Filter, Sortierung, Kategorien oder M
 ### 2. Ein geschlossenes, wachsendes Typ-Vokabular
 
 `type` ist das Enum `NotificationType` (`io.opaa.api.types`), nach dem Muster von `AuditEventType`.
-Eine neue Benachrichtigungszusage ergänzt einen Wert, wenn sie umgesetzt wird, nicht vorab; seit #862
-gibt es keinen `CHECK` in der Datenbank, das Enum allein ist der Schreibschutz, eine Migration
+Eine neue Benachrichtigungszusage ergänzt einen Wert, wenn sie umgesetzt wird, nicht vorab.
+Es gibt keinen `CHECK` in der Datenbank, das Enum allein ist der Schreibschutz, eine Migration
 entfällt; braucht eine Art weitere Spalten, kommen sie mit ihr. Die Zuordnung zu einem gemischten
 Space ist typneutral `ASSET_ASSOCIATED_TO_MIXED_SPACE` und wird beim Anlegen eines Space mit vielen
 Zuordnungen je Eigentümer gebündelt; die gebündelte Benachrichtigung bezieht sich auf den Space, die
@@ -67,12 +67,3 @@ braucht.
 ## Offen
 
 - Zusätzlicher Mail-Kanal und Digest (#1297).
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-21 | #706 | Erstfassung | 1–3 |
-| 2026-08-24 | #868 | `CHECK` auf `type` entfällt, Enum ist der Schreibschutz | 2 |
-| 2026-09-11 | #1536 | Mail-Subsystem vorhanden, Kanal E-Mail nicht beschlossen (ADR-0033) | 4 |
-| 2026-10-02 | #2097 | Typneutrale, gebündelte Benachrichtigung bei Space-Zuordnung (ADR-0039) | 2 |

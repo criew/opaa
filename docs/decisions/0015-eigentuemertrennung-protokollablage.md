@@ -30,8 +30,8 @@ Partitionen, und `ALTER DEFAULT PRIVILEGES FOR ROLE opaa_audit_owner` gäbe Part
 Rolle selbst anlegt, dieselbe Grant-Menge; heute legt die Baseline die Partitionen mit festem
 Horizont an, eine Nachprovisionierung zur Laufzeit gibt es nicht. Das Modell gilt für drei Protokolle: `audit_log` mit `audit_actor_pseudonyms`
 und `audit_retention_settings` (Modul identity), `diagnostic_context_log` mit seinen Einstellungen
-(Modul workspace, seit #1052) und `connection_log` mit seinen Einstellungen (Modul connections,
-seit #2163, ADR-0041 Entscheidung 7). Ein künftiges Protokoll nutzt dieselbe Rolle.
+(Modul workspace) und `connection_log` mit seinen Einstellungen (Modul connections,
+ADR-0041 Entscheidung 7). Ein künftiges Protokoll nutzt dieselbe Rolle.
 
 ### 2. Rechte-Choreographie jeder DDL an einem Protokoll
 
@@ -89,12 +89,3 @@ wird betrieblich beschränkt und außerhalb von OPAA nachgewiesen.
 - Getrenntes Migrationskonto und Provisionierung von `opaa_audit_owner` durch eine Identität, die
   dem Laufzeitkonto nie `ADMIN OPTION` gibt, damit der Rest aus Entscheidung 3 entfällt
   (zurückgestellt, kein Ticket).
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-17 | #428 | Eigentümertrennung mit `opaa_audit_owner`, `ADMIN OPTION`-Rest als offener Eskalationsweg | 1, 3 |
-| 2026-09-04 | #1052 | Diagnosekontext-Protokoll nutzt dasselbe Modell | 1 |
-| 2026-09-27 | #2001 | Baseline statt Migration 017; Dreischritt in jedem Protokoll-Changeset (ADR-0034) | 2 |
-| 2026-10-04 | #2163 | Verbindungsprotokoll nutzt dasselbe Modell (ADR-0041 Entscheidung 7) | 1 |

@@ -96,10 +96,3 @@ suchen“ gibt es nicht.
 ## Offen
 
 - Ordner-Filter im Retrieval, sobald ein konkreter Bedarf besteht (Entscheidung 4).
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-24 | #825 | Erstfassung | 1–6 |
-| 2026-09-04 | #1277 | Spiegelung auch für `HTTP_DIRECTORY`, gemeinsamer Lauf-Helfer, Segmentregeln | 7 |

@@ -94,13 +94,3 @@ markierten `deleteBy…In`-Methoden der Historien-Repositories.
   Historienverlust möglich wird.
 - Korrelation historisierter Verzeichnislauf-Änderungen mit dem konkreten Lauf; `directory_sync_status`
   hält nur den jeweils letzten Lauf.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-17 | #427 | Kein FK auf Fachobjekte, `RESTRICT` auf Subjekte, Intervallschluss bei Löschung | 1–3 |
-| 2026-09-11 | #1509 | Diagnose-Vollmachten: `CASCADE` auf allen Personenspalten | 4 |
-| 2026-09-19 | #1697 | Kontolöschung widerruft erteilte Vollmachten mit Ereignis | 4 |
-| 2026-09-24 | #1899 | Historien am Asset (`asset_id`), weitere Subjektspalten mit `RESTRICT` | 1, 2 |
-| 2026-10-02 | ADR-0039 | Space-Zuordnung nicht historisiert, `listed` entfällt | 5 |

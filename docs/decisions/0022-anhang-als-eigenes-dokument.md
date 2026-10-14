@@ -136,11 +136,3 @@ offener Antworten; das tut das Rate-Limit des Endpunkts.
 ## Offen
 
 Nichts. Die Form der Mail-Kopfdaten als Struktur-Metadaten ist nicht Gegenstand dieses ADR.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-02 | #1163 | Erstfassung samt fünf am selben Tag entschiedenen Punkten | 1–10 |
-| 2026-09-03 | #1166, #1201 | Versionsnummer des Mail-Formats zweimal verschoben | 9 |
-| 2026-09-04 | #1239, #1243 | Nachextraktion beim Öffnen, selektiv und gedeckelt | Konsequenzen |

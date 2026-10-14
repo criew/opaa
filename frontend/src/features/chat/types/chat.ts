@@ -2,8 +2,6 @@ import type { SearchedLibrary, SourceReference } from '@/shared/api/types'
 
 export type MessageRole = 'user' | 'assistant'
 
-export type AccessLevel = 'Public' | 'Internal' | 'Confidential'
-
 export interface ChatMessage {
   id: string
   role: MessageRole

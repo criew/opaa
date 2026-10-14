@@ -153,18 +153,3 @@ mit `QUOTA_EXHAUSTED`.
 - Marken am Kontingent je Bibliothek für Anhänge, RSS und Confluence `INCREMENTAL` sind erledigt;
   offen bleibt die Laufkategorie einer Ablehnung am Kontingent je Bibliothek außerhalb von
   Dateiablagen (#2295).
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-10-05 | #2164 | Private Bibliotheken anlegen und betreiben, Zählbasis, Lösen statt Veto (Nachtrag zu ADR-0041) | 1, 3 |
-| 2026-10-05 | #2165 | Löschung: Marker, eine Transaktion, Nachweis, Löschlauf | 2 |
-| 2026-10-05 | #2166 | Speicherkontingent je Person | 4 |
-| 2026-10-05 | #2276 | Element überspringen am Kontingent je Person, Marken halten | 5 |
-| 2026-10-05 | #2270 | Löschnachweis vergröbert | 2 |
-| 2026-10-05 | #2260 | Inaktivitätssperre startet keine Frist (ADR-0041, 4) | 2 |
-| 2026-10-05 | #2167 | Betriebslogs nennen keine Inhalte, Nextcloud als erster Konnektor für Personen | 6 |
-| 2026-10-10 | #2294 | Kontingent vor dem Download | 5 |
-| 2026-10-10 | #2295 | Kontingent je Bibliothek hält Marken am Element, gespeicherter Fußabdruck | 5 |
-| 2026-10-14 | #2702 | Aus ADR-0041 herausgelöst und auf den Endstand neu gefasst | alle |

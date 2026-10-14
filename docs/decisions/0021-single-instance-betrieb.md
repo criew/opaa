@@ -87,14 +87,3 @@ Uploads sind nur auf dem Knoten lesbar, der sie annahm.
   `LISTEN`/`NOTIFY`) für ereignisgesteuerte Caches, die keinen TTL haben; gemeinsamer Zähler für
   Rate-Limits und Kontingente; Datenbankuhr für `PermissionHistoryClock` (ADR-0032, #1517); geteiltes
   Volume oder Objektspeicher für Uploads; Entprellung des Push-Pfads in der Datenbank.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-24 | #859, #861 | Erstfassung mit Fundstellenliste und Regel für neue Stellen | 1, 2 |
-| 2026-09-11 | ADR-0033 | Fundstellen der lokalen Anmeldung | 1 |
-| 2026-09-17 | #1709 | Fundstellen aus dem Multiinstanz-Scan; Annahmen außerhalb des Codes | 1, 4 |
-| 2026-09-17 | #1710, #1711 | Sanftes Herunterfahren und Readiness gebaut; Verzeichnisabgleich per Advisory-Lock serialisiert | 3, 4 |
-| 2026-09-18 bis 2026-10-13 | ADR-0035, ADR-0041, #2576 | Weitere Fundstellen (Fremdzugang, Verbindungen, Vektorindex) | 1 |
-| 2026-10-14 | #2699 | Register nach `backend/AGENTS.md` verlagert und vervollständigt | 2 |
