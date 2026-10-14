@@ -4,7 +4,7 @@ import io.opaa.knowledge.VectorTable;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgIndexType;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -33,14 +33,12 @@ public class VectorIndexSchema {
   public VectorIndexSchema(
       JdbcTemplate jdbcTemplate,
       PlatformTransactionManager transactionManager,
-      @Value("${spring.ai.vectorstore.pgvector.index-type:hnsw}") PgIndexType indexType,
-      @Value("${spring.ai.vectorstore.pgvector.distance-type:cosine_distance}")
-          PgDistanceType distanceType,
+      PgVectorStoreProperties pgVector,
       VectorTable table) {
     this.jdbcTemplate = jdbcTemplate;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
-    this.indexType = indexType;
-    this.distanceType = distanceType;
+    this.indexType = pgVector.getIndexType();
+    this.distanceType = pgVector.getDistanceType();
     this.table = table;
   }
 

@@ -15,13 +15,12 @@ dropped entirely rather than rewritten — they carry no service-description
 content and rewriting them plausibly would need real Rheinfurt geodata this
 project does not have.
 
-Decision on real federal authorities (PR #717 review, WICHTIG 3): named
-mentions of real Bundesbehörden (Kraftfahrt-Bundesamt, Bundesdruckerei,
-Bundesamt für Justiz, Bundeszentralamt für Steuern, ...) are kept — a
-fictional municipality realistically still deals with real federal
-authorities for federally regulated matters. Only their URLs, postal
-addresses and bank/account data are stripped, never their names. Documented
-in demo/corpus/SOURCE.md.
+Decision on real federal authorities: named mentions of real Bundesbehörden
+(Kraftfahrt-Bundesamt, Bundesdruckerei, Bundesamt für Justiz,
+Bundeszentralamt für Steuern, ...) are kept — a fictional municipality
+realistically still deals with real federal authorities for federally
+regulated matters. Only their URLs, postal addresses and bank/account data
+are stripped, never their names. Documented in demo/corpus/SOURCE.md.
 """
 
 from __future__ import annotations
@@ -37,14 +36,13 @@ CUT_MARKER = "Links & Downloads"
 # range is 01001-99998 and a real Vorwahl is densely allocated across the
 # whole country, so any "realistic-looking" fictional value risks colliding
 # with (or being mistaken for) a real one. These use recognizably synthetic,
-# repeated-digit patterns instead (PR #717 review, KLEIN a).
+# repeated-digit patterns instead.
 RHEINFURT_PLZ = "00000"
 RHEINFURT_VORWAHL = "01234"
 
 # A fictional but check-digit-valid IBAN (ISO 7064 mod-97-10, verified) and an
 # obviously invented BIC — replaces the real Stadtsparkasse München bank
-# details that were carried over unchanged from the LHM source (PR #717
-# review, WICHTIG 1). Recomputing/verifying the checksum:
+# details of the LHM source. Recomputing/verifying the checksum:
 #   BBAN = "88888888" (BLZ) + "8888888888" (Konto); DE + "00" + BBAN,
 #   numeric remainder mod 97 -> check digits "58".
 RHEINFURT_IBAN = "DE58 8888 8888 8888 8888 88"
@@ -59,8 +57,7 @@ RHEINFURT_BIC = "SPRHDEXX"
 _REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
     # "Stadtsparkasse" -> "Sparkasse" before the München->Rheinfurt rule below,
     # so "Stadtsparkasse München" becomes "Sparkasse Rheinfurt" rather than
-    # keeping the Munich-specific "Stadtsparkasse" branding (PR #717 review,
-    # WICHTIG 1).
+    # keeping the Munich-specific "Stadtsparkasse" branding.
     (re.compile(r"Stadtsparkasse"), "Sparkasse"),
     (re.compile(r"Landeshauptstadt"), "Stadt"),
     (re.compile(r"Kreisverwaltungsreferat \(KVR\)"), "Bürgerbüro Rheinfurt"),
@@ -80,7 +77,7 @@ _REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"münchen"), "rheinfurt"),
 ]
 
-# --- Real Munich streets and city districts (PR #717 review, WICHTIG 2) -----
+# --- Real Munich streets and city districts ---------------------------------
 #
 # Every real Munich street name (with house number) and every real Munich
 # Stadtbezirk/district name found in the 83 selected source files, mapped to
@@ -152,7 +149,7 @@ ALLOWED_STREET_NAMES: frozenset[str] = frozenset(
 # rather than merely rewritten to Rheinfurt.
 _FISCHEREI_RE = re.compile(r"\s*(?:und\s+)?Fischereischeine?")
 
-# --- Corona-era passages (PR #717 review, NIT 5) ----------------------------
+# --- Corona-era passages ----------------------------------------------------
 #
 # A few source documents carry pandemic-era restrictions ("Antrag nur im
 # Bürgerbüro ... möglich, wegen Corona") that read as dated/wrong in a 2026
@@ -162,11 +159,11 @@ _CORONA_RE = re.compile(r"[^.\n]*\b(?:Corona-Pandemie|Coronavirus|Covid-19)\b[^.
 
 # --- Dangling references into the dropped "Links & Downloads" section ------
 #
-# (PR #717 review, NIT 8). Matches short, self-contained sentences that end
-# in a bare "hier" (optionally followed by up to three more words) right
-# before the full stop — the pattern every actually-dangling reference in the
-# source ("Diese finden Sie hier.", "... bekommen Sie hier alle
-# Informationen.", "Das Formular können Sie hier herunterladen.") shares.
+# Matches short, self-contained sentences that end in a bare "hier"
+# (optionally followed by up to three more words) right before the full stop
+# — the pattern every actually-dangling reference in the source ("Diese
+# finden Sie hier.", "... bekommen Sie hier alle Informationen.", "Das
+# Formular können Sie hier herunterladen.") shares.
 # Ordinary uses of "hier" as a locative adverb are *not* followed directly by
 # a sentence end within three words (e.g. "... die hier wohnende Person ..."
 # continues well past the three-word lookahead), so they are left alone.
@@ -178,7 +175,7 @@ _DANGLING_REPLACEMENT = (
     "buergerbuero@stadt-rheinfurt.example."
 )
 
-# --- Real external URLs (PR #717 review, WICHTIG 3) -------------------------
+# --- Real external URLs -----------------------------------------------------
 #
 # Strips any link that points off the fictional stadt-rheinfurt.example
 # domain (e.g. the real bzst.de deep link in "Wohnsitz anmelden oder
@@ -233,12 +230,12 @@ _FEE_WORD_RE = re.compile(
     r"\b(" + "|".join(_NUMBER_WORDS) + r")\s+" + _EURO_UNIT, re.IGNORECASE
 )
 
-# --- Real bank details (PR #717 review, WICHTIG 1) --------------------------
+# --- Real bank details ------------------------------------------------------
 _IBAN_RE = re.compile(r"IBAN:\s*[A-Z]{2}\d{2}(?:[\s]?\d{4}){3,5}[\s]?\d{0,4}")
 _BIC_RE = re.compile(r"BIC:\s*[A-Z0-9]{8,11}")
 _VERWENDUNGSZWECK_RE = re.compile(r"Verwendungszweck:\s*\d+")
 
-# --- Postal codes (PR #717 review, WICHTIG 2 / KLEIN a) ---------------------
+# --- Postal codes -----------------------------------------------------------
 #
 # Every real address in the selected source files follows the pattern
 # "<PLZ> Rheinfurt" once München has already been rewritten to Rheinfurt

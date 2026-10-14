@@ -1,6 +1,9 @@
 package io.opaa.llm;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.model.SpringAIModels;
+import org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingProperties;
+import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 /**
@@ -10,32 +13,31 @@ import org.springframework.stereotype.Service;
  * become incomparable, so it stays a configuration value picked at startup, not something the admin
  * API lets anyone edit.
  *
- * <p>Reads the same {@code spring.ai.model.embedding}/{@code spring.ai.openai.embedding.model}
- * properties that {@code application.yml} already resolves the actual {@code EmbeddingModel} bean
- * from - not the bean itself, since Spring AI's OpenAI embedding client does not expose its
- * configured model identifier back out again. {@code spring.ai.model.embedding} is fixed to {@code
- * openai}, so there is only ever one connection path to read from.
+ * <p>Reads the bound Spring AI properties the actual {@code EmbeddingModel} bean is built from -
+ * not the bean itself, since Spring AI's OpenAI embedding client does not expose its configured
+ * model identifier back out again. {@code spring.ai.model.embedding} is fixed to {@code openai}, so
+ * there is only ever one connection path to read from.
  */
 @Service
 public class EmbeddingInfoService {
 
-  private final String provider;
   private final String model;
   private final int dimensions;
   private final String baseUrl;
 
+  @Autowired
   public EmbeddingInfoService(
-      @Value("${spring.ai.model.embedding}") String provider,
-      @Value("${spring.ai.openai.embedding.model}") String model,
-      @Value("${spring.ai.vectorstore.pgvector.dimensions}") int dimensions,
-      @Value("${spring.ai.openai.embedding.base-url}") String baseUrl) {
-    this.provider = provider;
+      OpenAiEmbeddingProperties embedding, PgVectorStoreProperties vectorStore) {
+    this(embedding.getModel(), vectorStore.getDimensions(), embedding.getBaseUrl());
+  }
+
+  EmbeddingInfoService(String model, int dimensions, String baseUrl) {
     this.model = model;
     this.dimensions = dimensions;
     this.baseUrl = ModelEndpointUri.containsCredentials(baseUrl) ? null : baseUrl;
   }
 
   public EmbeddingInfo getEmbeddingInfo() {
-    return new EmbeddingInfo(provider, model, dimensions, baseUrl);
+    return new EmbeddingInfo(SpringAIModels.OPENAI, model, dimensions, baseUrl);
   }
 }

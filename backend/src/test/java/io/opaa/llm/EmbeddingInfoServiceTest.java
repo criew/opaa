@@ -5,19 +5,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 /**
- * {@link EmbeddingInfoService} reads the configured provider, model identifier and dimensions
- * straight through - proven directly against the constructor rather than a Spring context, since it
- * has no other collaborators. There is only one connection path ({@code openai}) to read the model
- * from - the per-provider switch this test used to exercise is gone along with the removed {@code
- * spring.ai.ollama.embedding.model} property.
+ * {@link EmbeddingInfoService} reports the one provider {@code openai} and reads the configured
+ * model identifier and dimensions straight through - proven directly against the constructor rather
+ * than a Spring context, since it has no other collaborators.
  */
 class EmbeddingInfoServiceTest {
 
   @Test
-  void reportsTheConfiguredProviderModelAndDimensions() {
+  void reportsTheProviderAndTheConfiguredModelAndDimensions() {
     EmbeddingInfoService service =
-        new EmbeddingInfoService(
-            "openai", "nomic-embed-text", 768, "http://host.docker.internal:11434/v1");
+        new EmbeddingInfoService("nomic-embed-text", 768, "http://host.docker.internal:11434/v1");
 
     EmbeddingInfo info = service.getEmbeddingInfo();
 
@@ -31,7 +28,7 @@ class EmbeddingInfoServiceTest {
   void withholdsABaseUrlThatCarriesCredentials() {
     EmbeddingInfoService service =
         new EmbeddingInfoService(
-            "openai", "nomic-embed-text", 768, "https://user:secret@llm.example.invalid/v1");
+            "nomic-embed-text", 768, "https://user:secret@llm.example.invalid/v1");
 
     assertThat(service.getEmbeddingInfo().baseUrl()).isNull();
   }

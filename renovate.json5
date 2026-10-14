@@ -1,4 +1,4 @@
-// Renovate-Konfiguration für OPAA (Issue #751).
+// Renovate-Konfiguration für OPAA.
 //
 // Renovate läuft SELBST BETRIEBEN (lokal per Docker-Image oder als bewusst angestoßener
 // Lauf) — der Mend-Cloud-Service ist ausdrücklich nicht im Einsatz, es ist keine GitHub-App
@@ -17,7 +17,7 @@
   ],
   timezone: 'Europe/Berlin',
 
-  // Commit-Autor der Update-Branches (#924): Renovates Standard-Autor ist keinem
+  // Commit-Autor der Update-Branches: Renovates Standard-Autor ist keinem
   // GitHub-Konto zugeordnet und fällt damit durch den CLA-Check (contributor-assistant
   // findet weder Unterschrift noch Allowlist-Treffer — "*[bot]" matcht nur echte
   // App-Bot-Logins). Die Noreply-Adresse ordnet die Commits dem PAT-Inhaber zu, der die
@@ -25,12 +25,11 @@
   // ehrlich "Renovate Bot".
   gitAuthor: 'Renovate Bot <1293732+bigpuritz@users.noreply.github.com>',
 
-  // Auto-Merge auf stehende Maintainer-Anweisung (#951): Renovate aktiviert beim Eröffnen
+  // Auto-Merge auf stehende Maintainer-Anweisung: Renovate aktiviert beim Eröffnen
   // GitHubs nativen Auto-Merge (Squash) — gemergt wird erst, wenn die Required Checks grün
-  // sind. Gilt für minor/patch/pin/digest; MAJOR-Updates sind seit #1002 ausgenommen (siehe
+  // sind. Gilt für minor/patch/pin/digest; MAJOR-Updates sind ausgenommen (siehe
   // packageRule unten) und warten als normale PRs auf eine menschliche Entscheidung.
-  // Achtung, bekannte Repo-Lage: e2e ist KEIN Required Check und hält den Merge daher
-  // nicht auf (siehe #792).
+  // Achtung, bekannte Repo-Lage: e2e ist KEIN Required Check und hält den Merge daher nicht auf.
   automerge: true,
   platformAutomerge: true,
   automergeStrategy: 'squash',
@@ -84,7 +83,7 @@
   ],
 
   // Der kubernetes-Manager kennt kein Dateimuster von sich aus; er liest die Images der Hilfsdienste
-  // des Erprobungsaufbaus (#2423). Die OPAA-Images dort setzt trial.sh, sie tragen keinen Pin.
+  // des Erprobungsaufbaus. Die OPAA-Images dort setzt trial.sh, sie tragen keinen Pin.
   kubernetes: {
     managerFilePatterns: [
       'examples/kubernetes-trial/manifests/*.yaml',
@@ -95,7 +94,7 @@
   // Regex-Manager für Pins, die kein regulärer Manager sieht; jeder liest Datasource und Paket
   // aus einem "renovate:"-Kommentar direkt über der gepinnten Zeile (übliches Renovate-Muster).
   customManagers: [
-    // Das S3-Testcontainer-Image (ADR-0027, #1382/#1949) ist als Java-Konstante gepinnt, für den
+    // Das S3-Testcontainer-Image (ADR-0027) ist als Java-Konstante gepinnt, für den
     // docker-Manager unsichtbar — der pflegt nur docker-compose.yml, wo dasselbe Image steht.
     // Der Tag ("1.0.0") ist reguläre docker-Versionierung und braucht kein eigenes Schema.
     {
@@ -105,7 +104,7 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*public static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
-    // Das Keycloak-Testcontainer-Image (#1817) ist als Java-Konstante gepinnt, für den
+    // Das Keycloak-Testcontainer-Image ist als Java-Konstante gepinnt, für den
     // docker-Manager unsichtbar — der pflegt nur docker-compose.yml. Ohne diesen Eintrag liefen
     // die beiden Pins desselben Images auseinander. Eigener matchString statt eines gemeinsamen
     // mit dem S3-Testimage: die Konstante ist package-private, und der Tag ("26.7") ist reguläre
@@ -117,7 +116,7 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
-    // Das Nextcloud-Testcontainer-Image (#2152) ist als Java-Konstante gepinnt, für den
+    // Das Nextcloud-Testcontainer-Image ist als Java-Konstante gepinnt, für den
     // docker-Manager unsichtbar. Eigener matchString wie bei Keycloak: die Konstante ist
     // package-private, der Tag ("34.0.4-apache") ist reguläre docker-Versionierung mit Variante.
     {
@@ -127,7 +126,7 @@
         '// renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*static final String IMAGE = "[^:"]+:(?<currentValue>[^"]+)"',
       ],
     },
-    // Das Samba-Testcontainer-Image des SMB-Konnektors (#2155) ist als Java-Konstante gepinnt, für
+    // Das Samba-Testcontainer-Image des SMB-Konnektors ist als Java-Konstante gepinnt, für
     // den docker-Manager unsichtbar. Gleicher matchString wie bei Keycloak und Nextcloud.
     {
       customType: 'regex',
@@ -145,7 +144,7 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)[\\s\\S]*?cdxgen@(?<currentValue>[^\\s]+)',
       ],
     },
-    // Die Werkzeuge der Chart-Prüfung (#2355) und das Helm der Chart-Veröffentlichung (#2356) stehen
+    // Die Werkzeuge der Chart-Prüfung und das Helm der Chart-Veröffentlichung stehen
     // als Umgebungsvariable, Action-Eingabe oder Matrix-Eintrag direkt unter ihrem Kommentar. Die
     // älteste unterstützte Helm-3-Version trägt bewusst keinen Kommentar: Sie ist eine Zusage aus
     // ADR-0042, kein Stand zum Nachziehen.
@@ -156,7 +155,7 @@
         '# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)\\s*\\n\\s*(?:[A-Za-z_]+:|-)\\s*(?<currentValue>v\\d+\\.\\d+\\.\\d+)',
       ],
     },
-    // Das Renovate-Image selbst (#2433) startet renovate.yml per "docker run", den kein regulärer
+    // Das Renovate-Image selbst startet renovate.yml per "docker run", den kein regulärer
     // Manager liest. Version und Index-Digest stehen in der Variable IMAGE unter dem Kommentar;
     // ein Update schreibt beide neu. test_renovate_image_pin.py prüft, dass der Ausdruck greift.
     {
@@ -189,7 +188,7 @@
       rangeStrategy: 'pin',
     },
     // pnpm 11 lehnt per Standard-Supply-Chain-Richtlinie npm-Releases ab, die jünger als
-    // 24 h sind (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION, #954) — Renovate wartet dieselbe
+    // 24 h sind (ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION) — Renovate wartet dieselbe
     // Frist ab, sonst sind PRs mit brandneuen Releases in CI und Docker-Build zwangsläufig
     // rot. Wer den Sicherheitsabstand erhöht, zieht pnpm- und Renovate-Wert gemeinsam hoch.
     {
@@ -203,15 +202,14 @@
       matchPackageNames: ['jsdom'],
       allowedVersions: '<30.1.0',
     },
-    // Gleichzeitige Lockfile-Updates gegen semantische Merge-Brueche absichern (#1000,
-    // Fehlerbild #996): Am 28.08.2026 mergten mehrere npm-Update-PRs per Auto-Merge
-    // nacheinander, jeder auf dem Stand VOR den jeweils anderen gruen - die textuell
-    // konfliktfreie Vereinigung der pnpm-lock.yaml war semantisch inkonsistent und brach
-    // jeden folgenden "pnpm install --frozen-lockfile". Zwei Mechanismen zusammen:
+    // Gleichzeitige Lockfile-Updates gegen semantische Merge-Brueche absichern: Mergen mehrere
+    // npm-Update-PRs nacheinander, jeder auf dem Stand VOR den jeweils anderen gruen, kann die
+    // textuell konfliktfreie Vereinigung der pnpm-lock.yaml semantisch inkonsistent sein und
+    // jeden folgenden "pnpm install --frozen-lockfile" brechen. Zwei Mechanismen zusammen:
     //
     // 1. Non-Major-npm-Updates laufen als EIN Sammel-PR je Lauf - eine Lockfile-Aenderung,
     //    nichts zu verschraenken. Majors bleiben einzelne PRs (und mergen ohnehin nicht
-    //    automatisch, #1002).
+    //    automatisch).
     {
       matchManagers: ['npm'],
       matchUpdateTypes: ['minor', 'patch', 'pin', 'digest'],
@@ -219,7 +217,7 @@
     },
     // 2. Der Merge selbst passiert Renovate-seitig statt ueber GitHubs nativen Auto-Merge:
     //    GitHub merged auch einen hinter main liegenden Branch, sobald dessen (alte) Checks
-    //    gruen sind - genau die #996-Luecke. Renovate dagegen rebased einen Branch, sobald
+    //    gruen sind - genau diese Luecke. Renovate dagegen rebased einen Branch, sobald
     //    er hinter main liegt (rebaseWhen), und merged erst im Folgelauf, wenn der Branch
     //    aktuell UND gruen ist. npm-Merges passieren dadurch nur waehrend Renovate-Laeufen
     //    (taeglich 06:23 bzw. manuell) - der bewusste Preis fuer einen konsistenten Lockfile.
@@ -228,7 +226,7 @@
       rebaseWhen: 'behind-base-branch',
       platformAutomerge: false,
     },
-    // helmv3 und helm-values lesen den Chart unter deploy/helm/opaa (#2356): Chart.yaml-Abhängigkeiten
+    // helmv3 und helm-values lesen den Chart unter deploy/helm/opaa: Chart.yaml-Abhängigkeiten
     // (derzeit keine) und die Images in values.yaml mit festem Tag.
     {
       matchManagers: ['github-actions', 'dockerfile', 'docker-compose', 'helmv3', 'helm-values'],
@@ -250,7 +248,7 @@
       addLabels: ['frontend'],
     },
     // Spring Boot, Spring Framework und Spring AI bewegen sich zusammen — ein PR statt
-    // dreier, die einzeln ohnehin nicht baubar wären (Issue #751). Trifft Koordinaten UND
+    // dreier, die einzeln ohnehin nicht baubar wären. Trifft Koordinaten UND
     // Plugin-IDs unter org.springframework.*; io.spring.dependency-management versioniert
     // unabhängig und bleibt bewusst außen vor.
     {
@@ -261,15 +259,15 @@
     // Abhängigkeiten (depType "dependencies" — darunter ALLE libs.versions.toml-Einträge)
     // auf fix(deps) umstellt, und mergeConfidence-Badges, deren Spalten je Abhängigkeit
     // Mend-URLs in den PR-Body einbetten. Beides hier bewusst zurückgedreht: einheitlich
-    // chore(deps) (Issue #751) und ein Body ohne Aufrufe an den Mend-Dienst.
+    // chore(deps) und ein Body ohne Aufrufe an den Mend-Dienst.
     {
       matchPackageNames: ['*'],
       semanticCommitType: 'chore',
       prBodyColumns: ['Package', 'Type', 'Update', 'Change'],
     },
-    // Docker-Basisimages sind im Projekt BEWUSST gleitende Tags (node:22-alpine,
+    // Docker-Basisimages sind im Projekt BEWUSST gleitende Tags (node:24-alpine,
     // nginxinc/nginx-unprivileged:alpine, pgvector/pgvector:pg18, eclipse-temurin:21-jdk — siehe Kommentar in
-    // e2e/docker-compose.e2e.yml zu PR #453). pinDigests: false ist derzeit ohnehin der
+    // e2e/docker-compose.e2e.yml). pinDigests: false ist derzeit ohnehin der
     // Default; die Regel schreibt die Entscheidung fest, damit ein künftiger Preset- oder
     // Renovate-Wechsel sie nicht still kippt. Major-Tag-Wechsel (z. B. node 22 → 24)
     // kommen weiterhin als PR.
@@ -277,7 +275,7 @@
       matchDatasources: ['docker'],
       pinDigests: false,
     },
-    // Ausnahme von der Regel darüber (#2433): Das Renovate-Image in renovate.yml bekommt das
+    // Ausnahme von der Regel darüber: Das Renovate-Image in renovate.yml bekommt das
     // Token mit repo- und workflow-Recht und trägt deshalb Version und Digest. Den vorhandenen
     // Digest pflegt Renovate auch so; pinDigests: true hält die Ausnahme hier ausdrücklich fest.
     // Ein neues Release wird erst nach drei Tagen vorgeschlagen, wie bei den gepinnten Actions,
@@ -299,10 +297,9 @@
       matchUpdateTypes: ['digest'],
       dependencyDashboardApproval: true,
     },
-    // Major-Updates mergen generell nicht automatisch (#1002): Auto-Merge greift, sobald die
+    // Major-Updates mergen generell nicht automatisch: Auto-Merge greift, sobald die
     // Required Checks grün sind — Brüche, die nur ein Nicht-Required-Check (e2e) oder gar kein
-    // Check zeigt, rutschen bei Majors sonst unbeaufsichtigt durch (so geschehen mit
-    // eclipse-temurin v25, JUnit und pnpm/action-setup am 28.08.2026). Majors bleiben als PR
+    // Check zeigt, rutschen bei Majors sonst unbeaufsichtigt durch. Majors bleiben als PR
     // zur menschlichen Entscheidung offen; Ablehnung durch Schließen des PRs (Renovate merkt
     // sich das). Die folgenden enabled:false-Regeln setzen einzelne, aktuell bekannt
     // inkompatible Majors darüber hinaus ganz aus.
@@ -310,7 +307,7 @@
       matchUpdateTypes: ['major'],
       automerge: false,
     },
-    // Die beiden Images des Objektspeichers (#1949) werden nie automatisch gemergt, weil ihr
+    // Die beiden Images des Objektspeichers werden nie automatisch gemergt, weil ihr
     // Nachweis erst nach dem Merge läuft: S3TestFixture.IMAGE spricht neben der S3-API auch die
     // Admin-API von rustfs an, die kein Standard ist, und amazon/aws-cli führt die Seed-Schritte
     // des Demo-Stacks aus, die allein die nightly demo-smoke prüft. Ein Vorschlag bleibt als PR
@@ -358,8 +355,8 @@
       matchFileNames: ['.github/workflows/helm-chart.yml', '.github/workflows/publish-images.yml'],
       enabled: false,
     },
-    // Alle Workflows pinnen ihre Actions auf den Commit-SHA mit exaktem Versionskommentar (#2397,
-    // #2432, docs/renovate.md); Renovate pflegt beides gemeinsam. Ein neues Release wird erst nach
+    // Alle Workflows pinnen ihre Actions auf den Commit-SHA mit exaktem Versionskommentar
+    // (docs/renovate.md); Renovate pflegt beides gemeinsam. Ein neues Release wird erst nach
     // drei Tagen vorgeschlagen; vorher entsteht kein Branch, also auch kein PR-Lauf. Beide Regeln
     // gelten ohne Dateiliste, wie .github/scripts/check_action_pins.sh; test_check_action_pins.py
     // prüft das.
@@ -386,10 +383,10 @@
       matchFileNames: ['.github/workflows/publish-images.yml'],
       automerge: false,
     },
-    // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht (#1001): build.gradle.kts
+    // Temurin-Major bleibt aus, bis die Projekt-Toolchain nachzieht: build.gradle.kts
     // pinnt die Java-Toolchain auf 21, und im 25-jdk-Image findet Gradle kein JDK 21
-    // (Auto-Provisioning ist aus) — der Automerge von #988 hat den Backend-Image-Build und
-    // damit E2E/Publish Images auf main gebrochen. Der Wechsel auf Temurin 25 kommt als
+    // (Auto-Provisioning ist aus) — ein Bump bräche den Backend-Image-Build und
+    // damit E2E/Publish Images auf main. Der Wechsel auf Temurin 25 kommt als
     // bewusste Toolchain-Migration (eigenes Issue), nicht als Dependency-Bump.
     {
       matchDatasources: ['docker'],
@@ -397,7 +394,7 @@
       matchUpdateTypes: ['major'],
       enabled: false,
     },
-    // Debian-Major bleibt aus (#1459): backend/Dockerfile kopiert die kompilierte glibc-Locale
+    // Debian-Major bleibt aus: backend/Dockerfile kopiert die kompilierte glibc-Locale
     // C.utf8 aus debian:13-slim in ein gcr.io/distroless/base-nossl-debian13. Das Locale-Format
     // ist glibc-versionsabhängig, und die Debian-Version des Distroless-Images steckt im
     // Imagenamen, den die docker-Versionierung nicht als Update sieht. Ein isolierter Bump auf
@@ -410,17 +407,17 @@
       matchUpdateTypes: ['major'],
       enabled: false,
     },
-    // Tika-4-Major bleibt aus, bis Spring AI nachzieht (#1005): tika-core kommt hier nur als
+    // Tika-4-Major bleibt aus, bis Spring AI nachzieht: tika-core kommt hier nur als
     // explizite Deklaration der ohnehin transitiven Version aus spring-ai-tika-document-reader.
     // Ein isolierter Bump auf 4.x kombiniert tika-core 4 mit den Tika-3-Parsern der
-    // Spring-AI-BOM und bricht die Format-Erkennung breit (#992: backend/e2e rot). Tika 4
+    // Spring-AI-BOM und bricht die Format-Erkennung breit (backend/e2e rot). Tika 4
     // kommt, wenn Spring AI seine Tika-Abhaengigkeit auf 4.x hebt - dann Regel entfernen.
     {
       matchPackageNames: ['org.apache.tika:tika-core'],
       matchUpdateTypes: ['major'],
       enabled: false,
     },
-    // Der MCP-Starter kommt als eigener PR und mergt nie automatisch (#1721, ADR-0035): Er bringt
+    // Der MCP-Starter kommt als eigener PR und mergt nie automatisch (ADR-0035): Er bringt
     // mcp-core mit, und mcp-core entscheidet, welche MCP-Protokollfassungen diese Installation
     // spricht. Ein Wechsel ist damit keine Abhängigkeitsaktualisierung, sondern eine
     // Protokolländerung — und weil es genau einen Server gibt, fallen bei einem Bruch alle
@@ -434,7 +431,7 @@
       groupName: 'MCP-Server',
       automerge: false,
     },
-    // TypeScript-7-Major bleibt aus, bis typescript-eslint nachzieht (#1007): 8.68.0 bricht
+    // TypeScript-7-Major bleibt aus, bis typescript-eslint nachzieht: 8.68.0 bricht
     // mit "typescript-eslint does not support TS 7.0" ab (Upstream-Tracking:
     // typescript-eslint/typescript-eslint#10940, Support ab TS >= 7.1). 6.x-Updates laufen
     // weiter; Regel entfernen, sobald Upstream TS 7 traegt.

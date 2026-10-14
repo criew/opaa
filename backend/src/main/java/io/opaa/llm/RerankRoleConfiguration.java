@@ -2,7 +2,6 @@ package io.opaa.llm;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -57,14 +56,13 @@ public class RerankRoleConfiguration {
 
   @Bean
   @ConditionalOnMissingBean(RerankRoleStatusProvider.class)
-  RerankRoleStatusProvider unbuiltRerankRoleStatusProvider(
-      @Value("${opaa.rerank.enabled:false}") boolean rerankEnabled) {
+  RerankRoleStatusProvider unbuiltRerankRoleStatusProvider(RerankProperties properties) {
     log.info(
         "No RerankRoleStatusProvider bean present, using the fallback provider; rerank role is"
             + " reported from configuration only (opaa.rerank.enabled={})",
-        rerankEnabled);
+        properties.enabled());
     return () ->
-        rerankEnabled
+        properties.enabled()
             ? new RerankRoleStatus(
                 RerankRoleState.UNCONFIGURED,
                 null,

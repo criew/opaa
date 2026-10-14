@@ -11,6 +11,9 @@ import '@fontsource/jetbrains-mono/500.css'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
+import { installPreloadErrorReload } from './preloadErrorReload'
+
+installPreloadErrorReload()
 
 async function enableMocking() {
   if (!import.meta.env.VITE_ENABLE_MOCKS) {
