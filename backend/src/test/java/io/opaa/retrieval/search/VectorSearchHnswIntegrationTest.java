@@ -29,7 +29,7 @@ import org.springframework.ai.embedding.Embedding;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
-import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
+import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -85,7 +85,7 @@ class VectorSearchHnswIntegrationTest {
                 new NegatedFakeEmbeddingModel(),
                 objectMapper,
                 new VectorIndexScanProperties(20000),
-                PgDistanceType.COSINE_DISTANCE,
+                new PgVectorStoreProperties(),
                 vectorTable),
             new EmbeddingIndexState());
     for (int i = 0; i < LIBRARIES; i++) {

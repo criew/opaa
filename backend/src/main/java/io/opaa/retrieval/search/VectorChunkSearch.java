@@ -12,7 +12,7 @@ import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.pgvector.PgVectorFilterExpressionConverter;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.ai.vectorstore.pgvector.autoconfigure.PgVectorStoreProperties;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -59,8 +59,7 @@ public class VectorChunkSearch {
       EmbeddingModel embeddingModel,
       ObjectMapper objectMapper,
       VectorIndexScanProperties scanProperties,
-      @Value("${spring.ai.vectorstore.pgvector.distance-type:cosine_distance}")
-          PgDistanceType distanceType,
+      PgVectorStoreProperties pgVector,
       VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -68,7 +67,7 @@ public class VectorChunkSearch {
     this.embeddingModel = embeddingModel;
     this.objectMapper = objectMapper;
     this.scanProperties = scanProperties;
-    this.distanceType = distanceType;
+    this.distanceType = pgVector.getDistanceType();
     this.vectorTable = vectorTable;
   }
 
