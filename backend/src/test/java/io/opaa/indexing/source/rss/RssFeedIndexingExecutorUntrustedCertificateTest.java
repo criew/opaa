@@ -17,7 +17,7 @@ import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;

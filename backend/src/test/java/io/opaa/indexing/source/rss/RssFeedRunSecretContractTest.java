@@ -14,7 +14,7 @@ import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.attachment.AttachmentProperties;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestResult;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.RunSecretContract;
 import io.opaa.indexing.source.SourceSettings;
 import io.opaa.knowledge.Document;

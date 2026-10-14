@@ -13,9 +13,9 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.run.SourceEventIntake;
+import io.opaa.indexing.run.SourceEventTarget;
 import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceEventIntake;
-import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;
 import io.opaa.indexing.source.s3.S3Scope;
 import io.opaa.indexing.source.s3.S3SourceSettings;

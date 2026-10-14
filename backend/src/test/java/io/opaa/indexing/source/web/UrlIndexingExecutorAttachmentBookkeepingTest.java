@@ -24,7 +24,7 @@ import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.RenewableCredential;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;

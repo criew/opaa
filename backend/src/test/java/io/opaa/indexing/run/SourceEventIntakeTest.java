@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.run;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,6 +21,8 @@ import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.JobTriggerSource;
+import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.SourceTypes;

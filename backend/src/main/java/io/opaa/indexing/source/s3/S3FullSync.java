@@ -7,7 +7,7 @@ import io.opaa.indexing.filesync.FileReference;
 import io.opaa.indexing.filesync.FileSync;
 import io.opaa.indexing.filesync.FileSyncSettings;
 import io.opaa.indexing.filesync.FileSyncWording;
-import io.opaa.indexing.source.IndexingRun;
+import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncState;

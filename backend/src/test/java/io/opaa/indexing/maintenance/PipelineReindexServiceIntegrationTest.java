@@ -20,7 +20,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.registry.StoredDocumentSourceAccess;
-import io.opaa.indexing.source.IndexingRun;
+import io.opaa.indexing.run.IndexingRun;
 import io.opaa.indexing.source.IndexingRunProgress;
 import io.opaa.indexing.source.Secret;
 import io.opaa.knowledge.Document;

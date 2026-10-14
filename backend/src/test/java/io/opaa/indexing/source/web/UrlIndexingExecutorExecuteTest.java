@@ -30,7 +30,7 @@ import io.opaa.indexing.job.IndexingRunCost;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;

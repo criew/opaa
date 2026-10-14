@@ -6,7 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.RequestBudget;
 import io.opaa.indexing.source.RunCredentials;
 import io.opaa.indexing.source.RunSecretContract;

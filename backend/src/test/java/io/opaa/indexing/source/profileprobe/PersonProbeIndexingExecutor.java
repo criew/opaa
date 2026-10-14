@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.profileprobe;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.SourceSyncState;
@@ -20,9 +20,9 @@ import org.springframework.stereotype.Component;
 /**
  * The run of {@link PersonProbeSourceConnector}: lists nothing and remembers per library the secret
  * the core handed it, so a test can read whose secret a connector sees. Every run takes over the
- * library's run state as a connector does ({@link io.opaa.indexing.source.IndexingRun#adopt}). A
- * held run keeps its run state as a resumable full sync does - written at its start, again after
- * its one folder - and waits in between until the test releases it.
+ * library's run state as a connector does ({@link io.opaa.indexing.run.IndexingRun#adopt}). A held
+ * run keeps its run state as a resumable full sync does - written at its start, again after its one
+ * folder - and waits in between until the test releases it.
  */
 @Component
 public class PersonProbeIndexingExecutor implements SourceIndexingExecutor {

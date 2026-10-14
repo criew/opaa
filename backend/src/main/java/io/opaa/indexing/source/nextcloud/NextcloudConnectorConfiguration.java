@@ -2,7 +2,7 @@ package io.opaa.indexing.source.nextcloud;
 
 import io.opaa.format.SupportedDocumentFormats;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.ScanJournal;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;

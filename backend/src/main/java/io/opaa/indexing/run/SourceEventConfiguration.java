@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.run;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;

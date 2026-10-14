@@ -4,7 +4,7 @@ import io.opaa.format.shared.HeadingSectionSplitter;
 import io.opaa.format.stream.confluencestorage.ConfluenceStorageFormat;
 import io.opaa.indexing.document.AttachmentIndexer;
 import io.opaa.indexing.document.DocumentIngestService;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.security.TargetAddressValidator;

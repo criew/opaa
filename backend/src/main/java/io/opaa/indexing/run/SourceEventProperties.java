@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.run;
 
 import static io.opaa.common.PropertyDefaults.positiveOr;
 

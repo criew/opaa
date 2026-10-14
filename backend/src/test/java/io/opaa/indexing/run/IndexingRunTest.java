@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.run;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -19,6 +19,11 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.source.IndexingRunProgress;
+import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
+import io.opaa.indexing.source.VanishedDocumentReconciler;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

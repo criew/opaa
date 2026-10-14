@@ -2,10 +2,10 @@ package io.opaa.indexing.source.s3.events;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.UnauthorizedException;
+import io.opaa.indexing.run.SourceEventIntake;
+import io.opaa.indexing.run.SourceEventTarget;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.PushIntakeHandler;
-import io.opaa.indexing.source.SourceEventIntake;
-import io.opaa.indexing.source.SourceEventTarget;
 import io.opaa.indexing.source.SourceIndexingExecutor;
 import io.opaa.indexing.source.s3.S3EventAuthentication;
 import io.opaa.indexing.source.s3.S3IndexingExecutor;

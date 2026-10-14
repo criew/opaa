@@ -23,7 +23,7 @@ import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.indexing.run.DocumentIndexingService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.knowledge.SourceType;

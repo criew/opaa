@@ -17,17 +17,17 @@
  * io.opaa.indexing.document}; this package builds on both.
  *
  * <p>A run starts here: by hand or on a library's schedule through {@link
- * io.opaa.indexing.source.DocumentIndexingService} and {@link
- * io.opaa.indexing.source.LibraryIndexingScheduler}, on a push notification through {@link
- * io.opaa.indexing.source.SourceEventIntake}. {@link
+ * io.opaa.indexing.run.DocumentIndexingService} and {@link
+ * io.opaa.indexing.run.LibraryIndexingScheduler}, on a push notification through {@link
+ * io.opaa.indexing.run.SourceEventIntake}. {@link
  * io.opaa.indexing.registry.StoredDocumentSourceAccess} re-reads a stored document from its source
  * for the passes over the stock in {@code maintenance}, within the {@link
  * io.opaa.sourceaccess.FilesystemPathAllowlist}.
  *
- * <p>Every executor runs its body inside {@link io.opaa.indexing.source.IndexingRunTemplate}: the
+ * <p>Every executor runs its body inside {@link io.opaa.indexing.run.IndexingRunTemplate}: the
  * frame owns progress, protocol, result mapping, failure translation, reconciliation by absence and
  * the run's cost, and a body only enumerates its source, hands each item to processing through
- * {@link io.opaa.indexing.source.IndexingRun} and reports a {@link
+ * {@link io.opaa.indexing.run.IndexingRun} and reports a {@link
  * io.opaa.indexing.source.ListingOutcome}. The run's counts are {@link
  * io.opaa.indexing.source.IndexingRunProgress}; the removal of what a complete run did not meet
  * goes through {@link io.opaa.indexing.source.VanishedDocumentReconciler}, which {@code

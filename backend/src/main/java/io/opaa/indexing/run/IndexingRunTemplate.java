@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.run;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.credentials.ServiceAccountTokens;
@@ -8,6 +8,16 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
+import io.opaa.indexing.source.IndexingRunFailedException;
+import io.opaa.indexing.source.IndexingRunProgress;
+import io.opaa.indexing.source.ListingOutcome;
+import io.opaa.indexing.source.RunFailureCategory;
+import io.opaa.indexing.source.SourceConnectionBlockedException;
+import io.opaa.indexing.source.SourceCredentialsRejectedException;
+import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
+import io.opaa.indexing.source.VanishedDocumentReconciler;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

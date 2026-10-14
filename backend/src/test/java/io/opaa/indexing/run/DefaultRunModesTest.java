@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.run;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -8,6 +8,10 @@ import static org.mockito.Mockito.when;
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.credentials.SourceConnectionResolver;
+import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.source.VanishedDocumentPolicy;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.util.Map;

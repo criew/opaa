@@ -6,7 +6,7 @@
  * io.opaa.indexing.attachment.AttachmentOutcome} counted per attachment. The path itself, {@code
  * AttachmentIndexer}, lies in {@code document}, since every attachment is taken in through the one
  * ingestion path. A connector that reconciles by absence uses {@code
- * io.opaa.indexing.source.ReconcilingAttachmentAccess}; RSS supplies its own {@code
+ * io.opaa.indexing.run.ReconcilingAttachmentAccess}; RSS supplies its own {@code
  * RssFeedRunContext}, an upload or a pipeline re-index a run-less {@code
  * StandaloneAttachmentAccess}. {@link io.opaa.indexing.attachment.AttachmentProfile} decides which
  * links on an RSS detail page are attachments.

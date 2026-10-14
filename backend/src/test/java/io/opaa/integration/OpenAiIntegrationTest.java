@@ -9,7 +9,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.indexing.run.DocumentIndexingService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;

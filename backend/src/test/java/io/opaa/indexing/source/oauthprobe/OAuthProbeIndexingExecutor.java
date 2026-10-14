@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.oauthprobe;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.source.IndexingRunTemplate;
+import io.opaa.indexing.run.IndexingRunTemplate;
 import io.opaa.indexing.source.ListingOutcome;
 import io.opaa.indexing.source.Secret;
 import io.opaa.indexing.source.SourceIndexingExecutor;

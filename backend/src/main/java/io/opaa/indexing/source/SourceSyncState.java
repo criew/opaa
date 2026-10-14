@@ -28,7 +28,7 @@ import tools.jackson.databind.json.JsonMapper;
  * with an incremental mode, the anchor or the change cursors the next incremental run reads from.
  * Keyed by library alone. Absent for a library that never ran a full sync, and deleted by its
  * connector whenever the address or the selection changes: "no state" is how the next run learns it
- * has to be a full one that starts over. A state also names the {@link SyncStateBasis} it was
+ * has to be a full one that starts over. A state also names the {@code SyncStateBasis} it was
  * written under; a run under another one discards it ({@link #adoptSettingsBasis}), so a state a
  * run wrote back after such a change, or one a restart left, is never continued.
  */
@@ -88,7 +88,7 @@ public class SourceSyncState {
   private String scanProgress;
 
   /**
-   * The {@link SyncStateBasis} of the settings this state was written under; {@code null} for a
+   * The {@code SyncStateBasis} of the settings this state was written under; {@code null} for a
    * state written before bases were kept, which no run continues.
    */
   @Column(name = "settings_basis")

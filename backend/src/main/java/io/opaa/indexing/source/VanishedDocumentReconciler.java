@@ -8,10 +8,10 @@ import io.opaa.knowledge.SourceType;
 import java.util.Set;
 
 /**
- * The removals of a run: the reconciliation by absence {@link IndexingRunTemplate} runs after a
+ * The removals of a run: the reconciliation by absence {@code IndexingRunTemplate} runs after a
  * complete listing in a {@link VanishedDocumentPolicy#REMOVE_ON_ABSENCE} mode, keeping the
  * attachments of a parent that was not re-processed, and the removal of one document on the
- * source's own positive finding, in any run mode ({@link IndexingRun#removeWithAttachments}).
+ * source's own positive finding, in any run mode ({@code IndexingRun#removeWithAttachments}).
  * Implemented by {@code io.opaa.indexing.maintenance.StaleDocumentCleanupService}.
  */
 public interface VanishedDocumentReconciler {
@@ -31,6 +31,6 @@ public interface VanishedDocumentReconciler {
       SourceIndexingExecutor executor,
       IndexingRunMode runMode);
 
-  /** Removes {@code document} and every attachment below it, see {@link IndexingRun}. */
+  /** Removes {@code document} and every attachment below it, see {@code IndexingRun}. */
   void removeWithAttachments(Document document, IndexingRunEventRecorder events, String message);
 }

@@ -37,7 +37,7 @@ import io.opaa.indexing.job.IndexingRunDetail;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.indexing.run.DocumentIndexingService;
 import io.opaa.indexing.source.RunFailureCategory;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryFolderService;

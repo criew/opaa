@@ -11,7 +11,7 @@ import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.source.DocumentIndexingService;
+import io.opaa.indexing.run.DocumentIndexingService;
 import io.opaa.indexing.source.filesystem.AsyncIndexingExecutor;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;

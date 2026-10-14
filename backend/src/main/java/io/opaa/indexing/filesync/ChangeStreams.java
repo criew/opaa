@@ -1,7 +1,7 @@
 package io.opaa.indexing.filesync;
 
 import io.opaa.indexing.job.IndexingEventCategory;
-import io.opaa.indexing.source.IndexingRun;
+import io.opaa.indexing.run.IndexingRun;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import java.util.ArrayList;

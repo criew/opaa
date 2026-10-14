@@ -1,4 +1,4 @@
-package io.opaa.indexing.source;
+package io.opaa.indexing.run;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.common.ConflictException;
