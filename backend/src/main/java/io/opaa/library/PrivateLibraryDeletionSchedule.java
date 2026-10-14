@@ -15,8 +15,8 @@ import org.springframework.stereotype.Component;
  *
  * <p>Both ticks run on {@link #privateLibraryDeletionScheduler()}, not on the application's single
  * shared scheduler thread: an erasure removes every stored original of a library over the object
- * store, one call each, and a mass deactivation can queue up many libraries. One thread for both
- * ticks keeps them from overlapping, which the run relies on.
+ * store, one call each, and a mass deactivation can queue up many libraries. One thread is enough;
+ * the two ticks never overlap.
  */
 @Component
 @ConditionalOnProperty(
@@ -33,7 +33,7 @@ public class PrivateLibraryDeletionSchedule {
     this.run = run;
   }
 
-  @Bean(destroyMethod = "shutdown")
+  @Bean(name = SCHEDULER, destroyMethod = "shutdown")
   static TaskScheduler privateLibraryDeletionScheduler() {
     ThreadPoolTaskScheduler scheduler = new ThreadPoolTaskScheduler();
     scheduler.setPoolSize(1);

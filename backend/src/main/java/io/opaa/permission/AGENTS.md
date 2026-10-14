@@ -37,7 +37,6 @@ hängt nur von foundation und identity ab.
 - **Rohes SQL gegen die Grant-Tabellen** nennt das Objekt über `asset_type` und `asset_id`.
 - **`directory` liegt über `group`,** denn die Synchronisation schreibt Gruppen; `group` fragt das
   Verzeichnis über den Port `DirectorySyncRuns`. Die Anbieter-Registratur liegt in `io.opaa.auth`.
-  Langläufer nie auf dem Scheduler-Thread: der Tick entscheidet nur, der Lauf geht an `directorySyncExecutor`.
 - **Web-Schicht:** `permission.web`, `asset.web` (Katalog, Grants, Herleitung, Eigentum), `group.web`
   (auch `/api/v1/me`), `directory.web` (Anbieter, Verzeichnis-Konnektor, Synchronisation),
   `succession.web`. Die Raumzuordnungen eines Assets bedient `space.web` (workspace).
@@ -45,7 +44,8 @@ hängt nur von foundation und identity ab.
 
 ## Verweise
 
-- ADRs (`docs/decisions/`): 0016, 0032, 0036, 0037, 0044; Handbuch: `docs/handbuch/berechtigungen.md`, 3–13
+- ADRs (`docs/decisions/`): 0016, 0032, 0036, 0037, 0044
+- Handbuch: `docs/handbuch/berechtigungen.md`, Abschnitte 3–13
 - Strukturtests: `PermissionPackageBoundaryTest` (Kanten zwischen Fachpaketen, die die Schichtung
   zuließe), `AssetTypeFormatParityTest`, `GrantTableRawSqlGuardTest`
 

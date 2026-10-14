@@ -15,7 +15,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.core.task.SimpleAsyncTaskExecutor;
 
 /**
  * The tick shares the application's single scheduler thread with every other {@code @Scheduled}
@@ -39,7 +38,7 @@ class DirectorySyncSchedulerTest {
           providerRepository,
           statusRepository,
           directorySyncService,
-          new SimpleAsyncTaskExecutor("directory-sync-test-"));
+          new DirectorySyncConfiguration().directorySyncExecutor());
 
   @AfterEach
   void tearDown() {

@@ -167,6 +167,14 @@ die Datei des Moduls vor der Arbeit im Modul selbst. `ModuleAgentsFileTest` häl
 Länge fest; ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches gehört in
 diese Dateien, hier bleibt nur, was modulübergreifend gilt.
 
+## Scheduler
+
+Der Default-`TaskScheduler` hinter `@EnableScheduling` hat einen Thread für alle `@Scheduled`-Methoden.
+Eine `@Scheduled`-Methode entscheidet deshalb nur und reicht Arbeit, die an Netz, Objektspeicher,
+Dateisystem oder LLM hängt, an einen eigenen Executor (`DirectorySyncScheduler` → `directorySyncExecutor`)
+oder per `scheduler = "…"` an einen eigenen Scheduler weiter (`PrivateLibraryDeletionSchedule`, Probes
+der Modellrollen). Kurze DB-Läufe (einzelne `DELETE`s, Partition-Drops, Batches) bleiben auf dem Tick.
+
 ## Spring-Testkontexte
 
 Die gesamte Backend-Suite läuft auf **neun** Spring-Kontexten und damit neun Testcontainers-Postgres
