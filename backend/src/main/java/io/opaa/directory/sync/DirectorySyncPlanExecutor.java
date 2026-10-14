@@ -188,13 +188,8 @@ class DirectorySyncPlanExecutor {
     this.eventPublisher = eventPublisher;
   }
 
-  // This can no longer be readOnly - handle() -> finish() now writes the run's
-  // DIRECTORY_SYNC_RUN_COMPLETED header entry unconditionally, including on the dry-run path this
-  // method serves. A readOnly transaction sets Hibernate's flush mode to MANUAL and the JDBC
-  // connection itself to read-only, so that insert would either be silently dropped at commit or
-  // rejected by Postgres with "cannot execute INSERT in a read-only transaction" (500) - dry-run's
-  // only other write in this method, none, made readOnly look safe until this entry needed writing
-  // too.
+  // Not readOnly: finish() writes DIRECTORY_SYNC_RUN_COMPLETED on the dry run too; a readOnly
+  // transaction would drop or reject that insert.
   @Transactional
   SyncReport planOnly(SyncTarget target, Instant now, DirectorySnapshot snapshot) {
     return handle(target, now, snapshot, Mode.DRY_RUN, null, null, null);

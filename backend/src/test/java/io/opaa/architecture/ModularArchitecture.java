@@ -1250,7 +1250,7 @@ public final class ModularArchitecture {
                         relative(target.getBaseComponentType().getPackageName()))))
         .because(
             "the administration sees connected accounts only as masked numbers, never a person"
-                + " or an account (ADR-0041, Entscheidung 8)")
+                + " or an account (ADR-0041, Entscheidung 9)")
         .allowEmptyShould(true);
   }
 

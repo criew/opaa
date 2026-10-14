@@ -32,7 +32,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     nothing at all.
  * @param attachmentProfile the {@link AttachmentProfile} deciding which links on a detail page
  *     count as attachments. Defaults to {@link AttachmentProfile#GENERIC}. This is deliberately an
- *     application property, not part of a library's source configuration (ADR-0018).
+ *     application property.
  * @param maxAttachmentsPerEntry the maximum number of attachments downloaded per RSS entry. Excess
  *     candidates are logged and dropped, not treated as an error - mirrors {@link #maxEntries}'s
  *     truncation-not-failure treatment.

@@ -50,7 +50,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The OAuth consent without a server session (ADR-0025, Entscheidung 1): {@link #start} keeps state
+ * The OAuth consent without a server session (ADR-0048, Entscheidung 2): {@link #start} keeps state
  * and PKCE verifier, bound to the caller and the profile version, and returns the authorization
  * request; {@link #complete} takes what the provider sent back through the application, uses the
  * state up before it asks the provider, exchanges the code and stores the grant. Where the caller

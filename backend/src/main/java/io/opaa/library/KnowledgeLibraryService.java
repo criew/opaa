@@ -796,10 +796,9 @@ public class KnowledgeLibraryService {
         libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     // Deleting requires OWNER, not MANAGER - AssetRole's Javadoc reserves "delete the asset and
     // transfer ownership" for OWNER alone, and canManage (MANAGER) was the wrong gate here: a
-    // group's MANAGER grant (round 2's fix for group-owned libraries) could otherwise delete the
-    // whole library, taking every grant on it - including the creator's OWNER grant - down with it
-    // via ON DELETE CASCADE, sidestepping the round-1/round-2 escalation guards entirely instead of
-    // being blocked by them. See the requireRole call below.
+    // group's MANAGER grant could otherwise delete the whole library, taking every grant on it -
+    // including the creator's OWNER grant - down with it via ON DELETE CASCADE, sidestepping the
+    // escalation guards. See the requireRole call below.
     accessService.requireRole(library, currentUserId, systemAdmin, AssetRole.OWNER);
     // Deleting a library while an indexing run for it is RUNNING would let the run's
     // documentRepository.save fail against fk_documents_library_organization (RESTRICT) once the

@@ -28,8 +28,8 @@ final class AccountResponseMapper {
             account.user().getIssuer(),
             account.roleManagedByProvider(),
             // For a local account the credentials row, as the sibling list names it: both are
-            // created in the same transaction, but the handover of Entscheidung 12 separates
-            // them - two lists would then show two dates for the same account.
+            // created in the same transaction, but the handover of ADR-0033, Entscheidung 12
+            // separates them - two lists would then show two dates for the same account.
             account.local() == null
                 ? account.user().getCreatedAt()
                 : account.local().credentials().getCreatedAt());

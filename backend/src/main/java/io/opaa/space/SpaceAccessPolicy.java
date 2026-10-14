@@ -125,9 +125,9 @@ public class SpaceAccessPolicy {
 
   /**
    * Requires ADMIN {@link #effectiveRole} - i.e. an ADMIN member, a member of an ADMIN group, or
-   * the owner. No system-admin bypass, deliberately: its callers ({@code addMember}, {@code
-   * updateMemberRole}, {@code removeMember}) do not check {@code caller.isSystemAdmin()} themselves
-   * either.
+   * the owner. No system-admin bypass - a known gap: a system administrator who is not ADMIN of the
+   * space cannot manage its members; the callers ({@code addMember}, {@code updateMemberRole},
+   * {@code removeMember}) do not check {@code caller.isSystemAdmin()} either.
    *
    * <p>No {@link SpaceMembership} row of the caller's own is required, not even for the owner: a
    * person who is ADMIN through a group has no row of their own, which is the entire point of a

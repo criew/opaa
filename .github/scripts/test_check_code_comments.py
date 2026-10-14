@@ -40,6 +40,9 @@ def repo(tmp_path: Path) -> Path:
         "Workaround until spring-projects/spring-ai#2042 is fixed upstream.",
         "The path /api/v1/documents/&#123;id&#125;/content stays closed.",
         "See docs/features/spaces-and-assets.md#123 for the rule.",
+        "Workaround until #2042 is fixed upstream.",
+        "@deprecated Removed after #2500 replaces it.",
+        "Spike #1789: a throwaway path.",
     ],
 )
 def test_allowed_comment_passes(repo: Path, comment: str) -> None:
@@ -56,6 +59,8 @@ def test_allowed_comment_passes(repo: Path, comment: str) -> None:
         ("Validated before the write (review of PR #297).", "Review protocol"),
         ("All three come from the same table since #1931.", "History"),
         ("Mirrors the pre-#888 call site.", "History"),
+        ("Aborted before #1816 changed it.", "History"),
+        ("A spike aside, every library has an owner (#1073).", "Origin marker"),
         ("Every library has an owner (#1073).", "Origin marker"),
         ("#1184: top-level documents only.", "Origin marker"),
     ],

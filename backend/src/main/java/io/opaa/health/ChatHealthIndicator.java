@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
  * ActiveChatModelResolver#resolveDescription()} reads {@code llm_models} directly rather than
  * building a full {@code ChatClient}, so this check stays cheap and never requires the settings
  * encryption key to be configured just to report a base URL and a model identifier - it never
- * contacts the model itself, exactly as the previous implementation never did.
+ * contacts the model itself.
  */
 @Component
 @ConditionalOnProperty(name = "management.health.chat.enabled", matchIfMissing = true)

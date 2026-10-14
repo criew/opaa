@@ -1,7 +1,7 @@
 package io.opaa.api.types;
 
 /**
- * What an OAuth consent is started for (ADR-0025, Entscheidung 1); the server derives where the
+ * What an OAuth consent is started for (ADR-0048, Entscheidung 2); the server derives where the
  * person returns to from it, never from a request.
  */
 public enum ConnectionAuthorizationPurpose {

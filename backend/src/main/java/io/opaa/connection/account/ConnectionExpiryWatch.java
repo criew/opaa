@@ -29,9 +29,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Warns once of every end ahead (ADR-0048): the end a provider named for a person's OAuth consent
- * goes to that person, for a library's own consent to those responsible for it ({@link
- * SourceConsentService}), the expiry date of a profile's client secret to every system
+ * Warns once of every end ahead (ADR-0041, Entscheidung 7): the end a provider named for a person's
+ * OAuth consent goes to that person, for a library's own consent to those responsible for it
+ * ({@link SourceConsentService}), the expiry date of a profile's client secret to every system
  * administrator, {@value ConnectionProfileService#SECRET_EXPIRY_WARNING_DAYS} days before. The
  * marker and the notifications commit together, so a failed run warns on the next one and no end
  * twice. Both kinds of date are read and written in the server's zone.

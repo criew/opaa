@@ -45,7 +45,8 @@ public enum NotificationType {
 
   /**
    * The system administration ended the person's connected account - a changed, shut down or
-   * deleted profile (ADR-0048). Sent to that person only; its object is the profile.
+   * deleted profile (ADR-0041, Entscheidung 4). Sent to that person only; its object is the
+   * profile.
    */
   CONNECTION_ENDED,
 

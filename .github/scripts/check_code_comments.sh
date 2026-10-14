@@ -4,7 +4,8 @@
 # "nit 4", "Befund 6"), history anchored at an issue ("since #1931", "pre-#888", "formerly") and
 # bare origin markers ("(#1073)", "(PR #537)", a leading "#1073:"). Any other issue reference is
 # only counted: a permitted one (workaround until an upstream fix, deprecation, spike) and one still
-# woven into a sentence look alike to a pattern. The spike package is exempt.
+# woven into a sentence look alike to a pattern; "until #N"/"after #N" stay allowed for a workaround
+# or a deprecation. The spike package and a line naming "Spike #N" are exempt.
 # Checked: Java comment lines, '#' comment lines of application*.yml and every line of the OpenAPI
 # fragments, whose summaries and descriptions are the API documentation.
 set -euo pipefail
@@ -16,9 +17,9 @@ REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
 # file:line: in front of every checked line
 AT='^[^:]+:[0-9]+:'
 REVIEW="(?i)${REF}\S*\s+(code\s+|re-)?review\b|\breview\s+of\s+(PR\s+)?#[0-9]|\bre-review\b|\b(should-|optional\s+)?finding\s+[0-9]|\bnit\s+[0-9]|\bBefund\s+([0-9]|\")"
-HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|until|before|after)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
+HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|before)\s+(epic\s+|PR\s+|issue\s+)?#[0-9]"
 MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*\)|${AT}\s*(//|/?\*|#)\s*(<p>|<b>)?\s*${REF}(\s*[,/]\s*${REF})*\s*:"
-EXEMPT="^backend/src/main/java/io/opaa/query/spike/|(?i)\bspike\b"
+EXEMPT="^backend/src/main/java/io/opaa/query/spike/|(?i)\bspike\s+\(?#[0-9]"
 
 lines() {
   git ls-files -z -- 'backend/src/main/*.java' 'opaa-api/src/main/*.java' |
