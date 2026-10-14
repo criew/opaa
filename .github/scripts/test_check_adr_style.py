@@ -60,7 +60,7 @@ def test_rejects_change_log_section(repo: Path) -> None:
 
 def test_rejects_seit_marker(repo: Path) -> None:
     (repo / "docs/decisions/0999-probe.md").write_text(
-        CLEAN.replace("### 1. A\n\nx", "### 1. A\n\nx (seit #12)"), encoding="utf-8"
+        CLEAN.replace("### 1. A\n\nx", "### 1. A\n\nSeit #12 x"), encoding="utf-8"
     )
     result = run_check(repo)
     assert result.returncode == 1
