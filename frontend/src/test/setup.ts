@@ -35,8 +35,8 @@ import { resetMockMailSettings, resetMockMailTemplates } from '@/features/mail/m
 // branding
 import { resetMockBranding } from '@/features/branding/mocks/brandingFixtures'
 // connection
-import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
-import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'
+import { resetConnectionProfileMockState } from '../features/connection/mocks/connectionProfileHandlers'
+import { resetConnectedAccountMockState } from '../features/connection/mocks/connectedAccountHandlers'
 import { resetConnectionLogMockState } from '@/features/audit/mocks/connectionLogHandlers'
 // external-access
 import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers'

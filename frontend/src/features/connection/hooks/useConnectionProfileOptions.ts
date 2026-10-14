@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { listConnectionProfileOptions } from '../services/connectionProfileApi'
+import { listConnectionProfileOptions } from '../api/connectionProfileApi'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import type { ConnectionProfileOption, SourceTypeKey } from '@/shared/api/types'
 

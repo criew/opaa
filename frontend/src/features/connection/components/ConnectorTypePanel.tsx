@@ -16,10 +16,7 @@ import type {
   ConnectionProfileResponse,
   ConnectorTypeStateResponse,
 } from '@/shared/api/types'
-import {
-  lockConnectorType,
-  setConnectorProfileRequirement,
-} from '../../../services/connectionProfileApi'
+import { lockConnectorType, setConnectorProfileRequirement } from '../api/connectionProfileApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { connectionProfileRoute } from '@/shared/routes'

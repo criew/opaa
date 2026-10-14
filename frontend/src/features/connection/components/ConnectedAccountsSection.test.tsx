@@ -2,9 +2,9 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { server } from '../../mocks/server'
+import { server } from '../../../mocks/server'
 import { leaveFor } from '@/shared/api/leaveApp'
-import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../test/test-utils'
+import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../../test/test-utils'
 import type {
   ConnectedAccount,
   ConnectedAccountConnectRequest,

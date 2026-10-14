@@ -6,12 +6,12 @@ import DialogActions from '@mui/material/DialogActions'
 import DialogContent from '@mui/material/DialogContent'
 import DialogTitle from '@mui/material/DialogTitle'
 import Typography from '@mui/material/Typography'
-import { startSourceAuthorization } from '../../services/connectedAccountApi'
+import { startSourceAuthorization } from '@/features/connection'
 import { leaveFor } from '@/shared/api/leaveApp'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ServiceAccountConfirmation from './ServiceAccountConfirmation'
 import { rememberConsentIntent } from './sourceConsent'
-import { forgetConsentIntent } from '../admin/connections/consentIntentStorage'
+import { forgetConsentIntent } from '@/features/connection'
 
 interface ReconnectSourceDialogProps {
   open: boolean

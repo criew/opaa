@@ -8,10 +8,7 @@ import type {
   ConnectorTypeStateResponse,
 } from '@/shared/api/types'
 import { getCapabilityOverview } from '@/features/capability'
-import {
-  listConnectionProfiles,
-  listConnectorTypeStates,
-} from '../../../services/connectionProfileApi'
+import { listConnectionProfiles, listConnectorTypeStates } from '../api/connectionProfileApi'
 import StatusLine from '@/shared/ui/StatusLine'
 import { ListLoading } from '@/shared/ui/list/AdminList'
 import ConnectorTypeOverview from './ConnectorTypeOverview'

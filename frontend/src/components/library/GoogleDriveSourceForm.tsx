@@ -28,7 +28,7 @@ import {
   type GoogleDriveScopeCheck,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
-import { readGoogleDriveKey } from '../admin/connections/serviceAccountKey'
+import { readGoogleDriveKey } from '@/features/connection'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import ScopeConsequence from './sources/ScopeConsequence'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'

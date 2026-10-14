@@ -7,7 +7,10 @@ import {
 } from './libraryFixtures'
 import { mockMyGroups } from '../features/group/mocks/groupFixtures'
 import { isMockIndexingActive } from './indexingHandlers'
-import { mockConnectionProfiles, mockProfileRef } from './connectionProfileFixtures'
+import {
+  mockConnectionProfiles,
+  mockProfileRef,
+} from '../features/connection/mocks/connectionProfileFixtures'
 import { browseSharePoint, testSharePoint } from './sharePointSourceMock'
 import type {
   SourceTypeKey,

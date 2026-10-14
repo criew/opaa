@@ -21,7 +21,7 @@ import {
   listConnectorTypeStates,
   lockConnectionProfile,
   testConnectionProfileSignIn,
-} from '../../../services/connectionProfileApi'
+} from '../api/connectionProfileApi'
 import StatusLine from '@/shared/ui/StatusLine'
 import { ListEmptyState, ListLoading } from '@/shared/ui/list/AdminList'
 import ConnectionProfileFormDialog from './ConnectionProfileFormDialog'

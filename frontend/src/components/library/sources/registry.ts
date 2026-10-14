@@ -1,5 +1,5 @@
 import type { SourceTypeKey } from '@/shared/api/types'
-import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import { confluenceSource } from './confluenceSource'
 import { dropboxSource } from './dropboxSource'
 import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericSources'

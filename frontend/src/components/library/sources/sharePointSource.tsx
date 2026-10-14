@@ -11,7 +11,7 @@ import SharePointSourceForm from '../SharePointSourceForm'
 import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
 import { formIssue, formIssueOf } from '../../../utils/sourceIssue'
 import { connectionFields } from './sourceConnection'
-import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration, StoredLibrarySource } from './types'
 
 /** The name a run's container key (`drive:<id>`) has in the stored settings, the key otherwise. */

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   mockConnectionProfiles,
   resetMockConnectionProfiles,
-} from '../../../mocks/connectionProfileFixtures'
+} from '../mocks/connectionProfileFixtures'
 import type { ConnectionProfileResponse } from '@/shared/api/types'
 import type { Access } from '@/features/capability'
 import { attentionOf, hostOf, profileAccessEntry, summaryOf } from './profileState'

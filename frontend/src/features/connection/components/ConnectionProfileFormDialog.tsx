@@ -30,7 +30,7 @@ import {
   needsConfirmation,
   previewConnectionProfileChange,
   updateConnectionProfile,
-} from '../../../services/connectionProfileApi'
+} from '../api/connectionProfileApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { AUTH_METHOD_LABELS, OWNERSHIP_LABELS, admitsProfiles } from './connectionProfileLabels'
 import ProfileChangePreview from './ProfileChangePreview'

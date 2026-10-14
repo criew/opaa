@@ -10,7 +10,7 @@ import {
 import SmbSourceForm from '../SmbSourceForm'
 import { SmbScope, SmbStoredView } from './SmbSourceViews'
 import { connectionFields } from './sourceConnection'
-import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
 export const smbSource: SourceRegistration = {

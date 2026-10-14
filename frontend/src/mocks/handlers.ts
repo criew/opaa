@@ -37,10 +37,10 @@ import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding
 import { brandingHandlers } from '@/features/branding/mocks/brandingHandlers'
 // connection
-import { connectionProfileHandlers } from './connectionProfileHandlers'
-import { connectedAccountHandlers } from './connectedAccountHandlers'
+import { connectionProfileHandlers } from '../features/connection/mocks/connectionProfileHandlers'
+import { connectedAccountHandlers } from '../features/connection/mocks/connectedAccountHandlers'
 import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
-import { outboundProxyHandlers } from './outboundProxyHandlers'
+import { outboundProxyHandlers } from '../features/connection/mocks/outboundProxyHandlers'
 // external-access
 import { externalAccessHandlers } from './externalAccessHandlers'
 import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'

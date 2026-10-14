@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mockSourceTypes } from '../../../mocks/libraryFixtures'
 import { EMPTY_CONFLUENCE_VALUES } from '../../../utils/confluenceSource'
 import { EMPTY_S3_VALUES } from '../../../utils/s3Source'
-import { SOURCE_TYPE_DIRECTORY, sourceTypeEntry } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY, sourceTypeEntry } from '@/features/connection'
 import { registeredSourceTypes, sourceRegistration } from './registry'
 import type { SourceConfiguration, SourceFormContext } from './types'
 

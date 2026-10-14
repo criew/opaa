@@ -21,7 +21,7 @@ import type {
 import {
   getConnectorProfileRequirement,
   setConnectorProfileRequirement,
-} from '../../../services/connectionProfileApi'
+} from '../api/connectionProfileApi'
 import { notify } from '@/shared/stores/notificationStore'
 
 interface Loaded {

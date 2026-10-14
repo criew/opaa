@@ -17,16 +17,16 @@ import {
   disconnectMyAccount,
   listMyConnectedAccounts,
   startAccountAuthorization,
-} from '../../services/connectedAccountApi'
+} from '../api/connectedAccountApi'
 import { apiErrorStatus } from '@/shared/api/apiErrorDetails'
 import { leaveFor } from '@/shared/api/leaveApp'
-import { forgetConsentIntent } from '../admin/connections/consentIntentStorage'
-import { useSourceTypes } from '../admin/connections/useSourceTypes'
+import { forgetConsentIntent } from './consentIntentStorage'
+import { useSourceTypes } from './useSourceTypes'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import PageSection from '@/shared/ui/PageSection'
-import { AUTH_METHOD_LABELS } from '../admin/connections/connectionProfileLabels'
+import { AUTH_METHOD_LABELS } from './connectionProfileLabels'
 import ConnectAccountDialog, { type ConnectTarget } from './ConnectAccountDialog'
 import { accountStateLabel, secretFormLabel } from './connectedAccountLabels'
 

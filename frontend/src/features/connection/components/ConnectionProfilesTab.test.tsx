@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { server } from '../../../mocks/server'
 
-import { mockConnectionProfiles } from '../../../mocks/connectionProfileFixtures'
+import { mockConnectionProfiles } from '../mocks/connectionProfileFixtures'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../../test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import type { ConnectionProfileUpdateRequest, SourceTypeDescriptor } from '@/shared/api/types'

@@ -10,7 +10,7 @@ import { confluenceEditionLabel } from '../../../utils/confluenceSource'
 import ConfluenceSourceForm from '../ConfluenceSourceForm'
 import { ConfluenceScope, ConfluenceStoredView } from './ConfluenceSourceViews'
 import { connectionFields } from './sourceConnection'
-import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
+import { SOURCE_TYPE_DIRECTORY } from '@/features/connection'
 import type { SourceRegistration } from './types'
 
 export const confluenceSource: SourceRegistration = {

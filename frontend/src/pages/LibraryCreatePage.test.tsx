@@ -82,10 +82,10 @@ vi.mock('../features/asset/api/assetApi', async () => {
   }
 })
 
-vi.mock('../services/connectionProfileApi', async () => {
-  const actual = await vi.importActual<typeof import('../services/connectionProfileApi')>(
-    '../services/connectionProfileApi',
-  )
+vi.mock('../features/connection/api/connectionProfileApi', async () => {
+  const actual = await vi.importActual<
+    typeof import('../features/connection/api/connectionProfileApi')
+  >('../features/connection/api/connectionProfileApi')
   return { ...actual, listConnectionProfileOptions: mockListConnectionProfileOptions }
 })
 
@@ -99,7 +99,7 @@ vi.mock('../services/libraryApi', async () => {
   }
 })
 
-vi.mock('../components/admin/connections/sourceTypeApi', () => ({
+vi.mock('../features/connection/components/sourceTypeApi', () => ({
   listSourceTypes: mockListSourceTypes,
 }))
 
