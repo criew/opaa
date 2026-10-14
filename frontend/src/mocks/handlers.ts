@@ -39,7 +39,7 @@ import { brandingHandlers } from './brandingHandlers'
 // connection
 import { connectionProfileHandlers } from './connectionProfileHandlers'
 import { connectedAccountHandlers } from './connectedAccountHandlers'
-import { connectionLogHandlers } from './connectionLogHandlers'
+import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
 import { outboundProxyHandlers } from './outboundProxyHandlers'
 // external-access
 import { externalAccessHandlers } from './externalAccessHandlers'

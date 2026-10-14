@@ -83,11 +83,10 @@ import BrandingSettingsPage from './pages/BrandingSettingsPage'
 // connection
 import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
 import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
-import ConnectionLogPage from './pages/ConnectionLogPage'
+import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
 // audit
-import RightsHistoryPage from './pages/RightsHistoryPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },

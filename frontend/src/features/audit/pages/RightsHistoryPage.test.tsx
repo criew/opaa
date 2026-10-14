@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '../../../test/test-utils'
 import RightsHistoryPage from './RightsHistoryPage'
 import { useAuthStore } from '@/shared/session/authStore'
 import type { AccessAsOfPage } from '@/shared/api/types'
@@ -9,7 +9,7 @@ import type { SystemRole } from '@/shared/session/types'
 
 const { mockGetAccessAsOf } = vi.hoisted(() => ({ mockGetAccessAsOf: vi.fn() }))
 
-vi.mock('../services/rightsHistoryApi', () => ({ getAccessAsOf: mockGetAccessAsOf }))
+vi.mock('../api/rightsHistoryApi', () => ({ getAccessAsOf: mockGetAccessAsOf }))
 
 const answer: AccessAsOfPage = {
   objectType: 'KNOWLEDGE_LIBRARY',

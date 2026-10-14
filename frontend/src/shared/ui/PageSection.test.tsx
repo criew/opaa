@@ -14,6 +14,16 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
+  ...(import.meta.glob('../../features/*/pages/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
+  ...(import.meta.glob('../../features/audit/components/**/*.tsx', {
+    query: '?raw',
+    import: 'default',
+    eager: true,
+  }) as Record<string, string>),
   ...(import.meta.glob('../../components/admin/**/*.tsx', {
     query: '?raw',
     import: 'default',
@@ -73,6 +83,7 @@ const QUELLEN = {
  */
 const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
   if (pfad.startsWith('../../components/admin/') || pfad.includes('/searchadmin/')) return true
+  if (pfad.startsWith('../../features/') && pfad.includes('/components/')) return true
   if (pfad.startsWith('./list/') || pfad.startsWith('./markdown/')) return true
   if (pfad.startsWith('../../components/chat/') || pfad.startsWith('../../components/metadata/'))
     return true

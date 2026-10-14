@@ -14,7 +14,7 @@ import Typography from '@mui/material/Typography'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import { useAuthStore } from '@/shared/session/authStore'
-import { getAccessAsOf } from '../services/rightsHistoryApi'
+import { getAccessAsOf } from '../api/rightsHistoryApi'
 import type {
   AccessAsOfObjectType,
   AccessAsOfPage,

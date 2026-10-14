@@ -16,7 +16,7 @@ import CableOutlinedIcon from '@mui/icons-material/CableOutlined'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { useAuthStore } from '@/shared/session/authStore'
-import { listConnectionLog, listConnectionLogProfiles } from '../services/connectionLogApi'
+import { listConnectionLog, listConnectionLogProfiles } from '../api/connectionLogApi'
 import type {
   ConnectionLogEventType,
   ConnectionLogPage as LogPage,
@@ -29,7 +29,7 @@ import {
   eventTypeLabel,
   ownerKindLabel,
   ownerLabel,
-} from '../components/audit/connectionLogLabels'
+} from '../components/connectionLogLabels'
 import { contentWidth } from '@/shared/theme/tokens'
 
 const ALL = ''

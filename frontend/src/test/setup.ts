@@ -34,7 +34,7 @@ import { resetMockBranding } from '../mocks/brandingFixtures'
 // connection
 import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
 import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'
-import { resetConnectionLogMockState } from '../mocks/connectionLogHandlers'
+import { resetConnectionLogMockState } from '@/features/audit/mocks/connectionLogHandlers'
 // external-access
 import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers'
 import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
