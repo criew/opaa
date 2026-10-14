@@ -71,21 +71,19 @@ class ModularArchitectureFixtureTest {
   }
 
   /**
-   * {@code query <-> query.answer} is a known cycle; {@code query.answer <-> query.citation} is new
-   * in the same package, {@code library <-> library.internal} new in a package without one.
+   * Every edge on a cycle between subpackages is reported: with the root package ({@code query <->
+   * query.answer}), between two subpackages ({@code query.answer <-> query.citation}) and in a
+   * second top-level package ({@code library <-> library.internal}).
    */
   @Test
-  void aCycleBetweenSubpackagesIsReportedUnlessItsEdgesAreKnown() {
-    Scenario scenario =
-        new Scenario("subpackagecycle", Set.of("query -> query.answer", "query.answer -> query"));
+  void aCycleBetweenSubpackagesIsReported() {
+    Scenario scenario = new Scenario("subpackagecycle");
 
     assertThat(scenario.violations(ModularArchitecture::subpackagesAreFreeOfCycles))
-        .allSatisfy(
-            violation ->
-                assertThat(violation)
-                    .contains("is no known edge in", "KNOWN_SUBPACKAGE_CYCLE_EDGES"))
         .map(violation -> violation.substring(0, violation.indexOf(" lies on a cycle")))
         .containsExactlyInAnyOrder(
+            "query -> query.answer",
+            "query.answer -> query",
             "library -> library.internal",
             "library.internal -> library",
             "query.answer -> query.citation",
@@ -685,8 +683,7 @@ class ModularArchitectureFixtureTest {
         .contains("api.SpaceController is not shared by every module");
     assertThat(scenario.violations(ModularArchitecture::webClassesResideInAWebPackage)).isEmpty();
     assertThat(
-            new Scenario(
-                    "unlistedapiclass", Set.of(), Set.of("HealthController", "SpaceController"))
+            new Scenario("unlistedapiclass", Set.of("HealthController", "SpaceController"))
                 .violations(ModularArchitecture::apiHoldsOnlyItsListedClasses))
         .isEmpty();
   }
@@ -755,16 +752,12 @@ class ModularArchitectureFixtureTest {
     private final JavaClasses classes;
 
     Scenario(String name) {
-      this(name, Set.of());
+      this(name, ModularArchitecture.SHARED_API_CLASSES);
     }
 
-    Scenario(String name, Set<String> knownCycleEdges) {
-      this(name, knownCycleEdges, ModularArchitecture.SHARED_API_CLASSES);
-    }
-
-    Scenario(String name, Set<String> knownCycleEdges, Set<String> apiClasses) {
+    Scenario(String name, Set<String> apiClasses) {
       String root = FIXTURES + "." + name;
-      this.architecture = new ModularArchitecture(root, knownCycleEdges, apiClasses);
+      this.architecture = new ModularArchitecture(root, apiClasses);
       this.classes = new ClassFileImporter().importPackages(root);
       assertThat(classes).as("the fixture classes of %s", name).isNotEmpty();
     }
