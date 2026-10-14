@@ -124,7 +124,7 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > `io.opaa.eval.PipelineHarnessSupport` fährt darüber beide Domänen im selben Harness-Lauf und
 > schreibt `build/eval-reports/pipeline-metrics-<domäne>.json` mit fenstertragenden Feldnamen
 > (`hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`). Fortgeschrieben ist der Messvertrag in
-> [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Nachtrag „Pipeline-Messpfad",
+> [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
 > Entscheidungen 11–16 — mit **eigener** Vertragsversion für den Pipeline-Pfad statt einer Erhöhung
 > der bestehenden (Begründung dort unter 16.: der Rohvektor-Vertrag ändert sich nicht, und seine
 > Version ist ein Gültigkeitsfeld jeder committeten Baseline).
@@ -1098,7 +1098,7 @@ reine Zählung eingeführt wurden, bevor sie Teil der Fallzahlprüfung wurden.
 die Rangreserve wird **kein** Fehlerkriterium. Tragend ist der erste von drei Gründen: `marginAtK`
 betrachtet nur den **ersten** relevanten Treffer und würde damit Stabilität zusichern, die sie nicht
 prüft. Die vollständige Begründung und die Bedingung für eine Wiederaufnahme stehen in
-[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md#nachtrag-rangreserve-grenzstabilität-issue-1151).
+[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md#berichtsgrößen-ohne-vertragscharakter-rangreserve-audits).
 
 ---
 
@@ -1334,7 +1334,7 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    Messgegenstand braucht sie, weil die Chunkebene für Chunking-Vergleiche existiert und
    Einzeldokument-Fälle das bereits bedienen. Die Regel entspricht dem, was `city-landmarks`
    bereits praktiziert, ist aber jetzt geprüft (`GoldenCaseCuration`) statt Gewohnheit;
-   festgeschrieben im Nachtrag zu [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md).
+   festgeschrieben in [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Entscheidung 21.
    Da sich an keiner gemessenen Größe etwas ändert, bleiben beide Vertragsversionen unverändert.
 5. **Aufnahme der neuen Fallklassen in bestehende Domänen.** Fachlich naheliegend für Kennungen und
    Komposita in `city-landmarks`; kostet aber eine Baseline-Neuziehung dort. Offen, ob dieser Preis

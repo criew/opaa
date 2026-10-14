@@ -673,7 +673,7 @@ Metrikfamilie auf Chunkebene über eingefrorene Antwort-Textausschnitte
 (`io.opaa.eval.ChunkAnswerSpanMetrics`, ADR-0012 Nachtrag). `comic-characters` bleibt bewusst
 einchunkig (`ChunkCountExpectation.exactlyOneChunk()`) — die oben beschriebene Lücke schließt erst die
 mehrchunkige Domäne aus #234, sobald deren Korpus und Golden Dataset vorliegen. Details zum
-Messvertrag: [ADR-0012, Nachtrag](../docs/decisions/0012-messvertrag-retrieval-harness.md#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721).
+Messvertrag: [ADR-0012, Entscheidungen 8 und 9](../docs/decisions/0012-messvertrag-retrieval-harness.md#8-das-k-fenster-ist-dokumentbezogen).
 
 ### Kalibrierungshinweis
 

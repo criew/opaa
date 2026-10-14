@@ -718,7 +718,7 @@ zusammenführt, kann Treffer über `domain` + `expected_documents` eindeutig zuo
 
 Seit Issue #721 unterstützt der Harness eine zweite, chunkbezogene Metrikfamilie
 (`answerSpanHitRate@5`, Rang des ersten Treffer-Chunks — siehe
-[ADR-0012, Nachtrag](../../docs/decisions/0012-messvertrag-retrieval-harness.md#nachtrag-dokumentbezogenes-k-fenster-und-chunkebene-issue-721)).
+[ADR-0012, Entscheidung 9](../../docs/decisions/0012-messvertrag-retrieval-harness.md#9-zweite-metrikfamilie-chunkebene-über-answer_span-mit-21)).
 Ein Fall kann dafür ein zusätzliches, **optionales** Feld führen:
 
 ```json

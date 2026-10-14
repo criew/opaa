@@ -187,7 +187,7 @@ Vollständige Herleitung, Einzelfälle und Symptomtabellen:
 - Ein zusätzlicher Chat-Modell-Aufruf je Runde eines gespeicherten Chats, nebenläufig — die Latenz
   der Antwort bleibt unberührt, die Modellkosten steigen.
 - Eine weitere Tabelle im Chat-Datenmodell, ein Changeset, drei Ebene-1-Properties, drei Klassen
-  im Golden Dataset mit eigener Baseline und Messvertrag-Nachtrag zu ADR-0012.
+  im Golden Dataset mit eigener Baseline und eigenem Messvertrag (ADR-0012, Entscheidungen 38–44).
 - Die Mehrrunden-Messung ist nur zerlegend sinnvoll und läuft deshalb nicht nächtlich; ihr Ergebnis
   ist ein manuell ausgelöster Befund, kein automatischer Regressionsschutz.
   > **Überholt durch ADR-0012, Entscheidung 49 (Issue #1553):** Sie läuft nächtlich, per
