@@ -1,42 +1,17 @@
 import { useEffect, useMemo } from 'react'
 import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material'
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
+// app
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
 import { createAppTheme } from './theme/theme'
+import { resolveThemeMode } from './theme/colorScheme'
 import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
-import ChatPage from './pages/ChatPage'
-import ChatsPage from './pages/ChatsPage'
-import ChatRedirect from './pages/ChatRedirect'
+import { useFeatureEnabled } from './hooks/useFeatureEnabled'
+import { useUiStore } from './stores/uiStore'
 import SettingsPage from './pages/SettingsPage'
-import LoginPage from './pages/LoginPage'
-import SystemLoginPage from './pages/SystemLoginPage'
-import ChangePasswordPage from './pages/ChangePasswordPage'
-import SetPasswordPage from './pages/SetPasswordPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import RegisterPage from './pages/RegisterPage'
-import VerifyEmailPage from './pages/VerifyEmailPage'
-import HandoverPage from './pages/HandoverPage'
-import AuthCallbackPage from './pages/AuthCallbackPage'
-import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
-import SpacePage from './pages/SpacePage'
-import SpacesOverviewPage from './pages/SpacesOverviewPage'
-import SpaceCreatePage from './pages/SpaceCreatePage'
-import SpaceSettingsPage from './pages/SpaceSettingsPage'
-import GroupManagementPage from './pages/GroupManagementPage'
-import CapabilityManagementPage from './pages/CapabilityManagementPage'
-import DirectorySyncPage from './pages/DirectorySyncPage'
-import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
-import SuccessionPage from './pages/SuccessionPage'
-import UserManagementPage from './pages/UserManagementPage'
-import LibraryCreatePage from './pages/LibraryCreatePage'
-import LibraryDetailPage from './pages/LibraryDetailPage'
-import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
-import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
-import CatalogPage from './pages/CatalogPage'
-import CatalogNewPage from './pages/CatalogNewPage'
-import { catalogRoute } from './components/assets/assetTypeRegistry'
+// shared
 import {
   CATALOG_ROUTE,
   CONNECTION_CALLBACK_ROUTE,
@@ -55,19 +30,64 @@ import {
   spaceSettingsRoute,
   VERIFY_EMAIL_ROUTE,
 } from './routes'
+// auth
 import { useAuthStore } from './stores/authStore'
-import { useFeatureEnabled } from './hooks/useFeatureEnabled'
-import { useBrandingStore } from './stores/brandingStore'
-import { useUiStore } from './stores/uiStore'
-import { resolveThemeMode } from './theme/colorScheme'
-import BrandingSettingsPage from './pages/BrandingSettingsPage'
-import LlmModelManagementPage from './pages/LlmModelManagementPage'
-import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
+import LoginPage from './pages/LoginPage'
+import SystemLoginPage from './pages/SystemLoginPage'
+import ChangePasswordPage from './pages/ChangePasswordPage'
+import SetPasswordPage from './pages/SetPasswordPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+import RegisterPage from './pages/RegisterPage'
+import VerifyEmailPage from './pages/VerifyEmailPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
+// chat
+import ChatPage from './pages/ChatPage'
+import ChatsPage from './pages/ChatsPage'
+import ChatRedirect from './pages/ChatRedirect'
+// space
+import SpacePage from './pages/SpacePage'
+import SpacesOverviewPage from './pages/SpacesOverviewPage'
+import SpaceCreatePage from './pages/SpaceCreatePage'
+import SpaceSettingsPage from './pages/SpaceSettingsPage'
+// asset
+import CatalogPage from './pages/CatalogPage'
+import CatalogNewPage from './pages/CatalogNewPage'
+import { catalogRoute } from './components/assets/assetTypeRegistry'
+// library
+import LibraryCreatePage from './pages/LibraryCreatePage'
+import LibraryDetailPage from './pages/LibraryDetailPage'
+// prompt
+import PromptLibraryCreatePage from './pages/PromptLibraryCreatePage'
+import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
+// group
+import GroupManagementPage from './pages/GroupManagementPage'
+// succession
+import SuccessionPage from './pages/SuccessionPage'
+import HandoverPage from './pages/HandoverPage'
+// capability
+import CapabilityManagementPage from './pages/CapabilityManagementPage'
+// user
+import UserManagementPage from './pages/UserManagementPage'
+// identity-provider
 import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
-import RightsHistoryPage from './pages/RightsHistoryPage'
-import ConnectionLogPage from './pages/ConnectionLogPage'
-import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
+// directory-sync
+import DirectorySyncPage from './pages/DirectorySyncPage'
+import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
+// model
+import LlmModelManagementPage from './pages/LlmModelManagementPage'
+// mail
 import MailSettingsPage from './pages/MailSettingsPage'
+// branding
+import { useBrandingStore } from './stores/brandingStore'
+import BrandingSettingsPage from './pages/BrandingSettingsPage'
+// connection
+import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
+import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
+import ConnectionLogPage from './pages/ConnectionLogPage'
+// search-admin
+import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
+// audit
+import RightsHistoryPage from './pages/RightsHistoryPage'
 
 const ADMIN_SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },

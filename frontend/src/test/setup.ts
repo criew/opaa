@@ -4,30 +4,42 @@ import '@testing-library/jest-dom/vitest'
 import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
 import { server } from '../mocks/server'
-import { resetIndexingState } from '../mocks/indexingHandlers'
-import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'
-import { resetGrantMockState } from '../mocks/assetHandlers'
-import { resetChatMockState } from '../mocks/chatHandlers'
-import { resetLlmModelMockState } from '../mocks/modelHandlers'
-import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
-import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'
-import { resetConnectionLogMockState } from '../mocks/connectionLogHandlers'
 // Deliberately only the fixture module, never a store or `src/services/api` (#583): importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
 // fail - their requests stop being intercepted, so every "expected onCreated to be called" assertion
 // times out. Verified by adding a bare `import '../services/api'` here and watching
 // SpaceCreatePage.test.tsx go red on its own. Store state that has to be reset between tests
 // belongs in that test file's own beforeEach.
-import { resetMockAuthConfig } from '../mocks/authFixtures'
-import { resetMockBranding } from '../mocks/brandingFixtures'
-import { resetMockOidcProviders } from '../mocks/identityProviderFixtures'
+// chat
+import { resetChatMockState } from '../mocks/chatHandlers'
+// asset
+import { resetGrantMockState } from '../mocks/assetHandlers'
 import { resetMockSpaceAssetAssociations } from '../mocks/assetFixtures'
+// library
+import { resetIndexingState } from '../mocks/indexingHandlers'
+import { resetDocumentMockState } from '../mocks/libraryDocumentHandlers'
+// prompt
 import { resetMockPromptLibraries } from '../mocks/promptLibraryFixtures'
-import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
+// user
 import { resetMockLocalAuthSettings, resetMockLocalUsers } from '../mocks/localUserFixtures'
-import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
+// identity-provider
+import { resetMockOidcProviders } from '../mocks/identityProviderFixtures'
+// model
+import { resetLlmModelMockState } from '../mocks/modelHandlers'
+// mail
+import { resetMockMailSettings, resetMockMailTemplates } from '../mocks/mailFixtures'
+// branding
+import { resetMockBranding } from '../mocks/brandingFixtures'
+// connection
+import { resetConnectionProfileMockState } from '../mocks/connectionProfileHandlers'
+import { resetConnectedAccountMockState } from '../mocks/connectedAccountHandlers'
+import { resetConnectionLogMockState } from '../mocks/connectionLogHandlers'
+// external-access
 import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers'
 import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
+// auth
+import { resetMockAuthConfig } from '../mocks/authFixtures'
+import { resetMockSelfServiceTokens } from '../mocks/localAuthFixtures'
 
 /**
  * MSW passes a handler's `Set-Cookie` into `document.cookie`, which jsdom keeps for the whole file.
