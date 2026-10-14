@@ -1,8 +1,7 @@
 # Spaces, Assets & Zugangskontrolle
 
-> **Status: Zielbild, in Teilen gebaut.** Was davon gebaut ist, steht im Kapitel
-> [Gebauter Ist-Stand](#gebauter-ist-stand). Nicht gebaut sind das Teilen von Chats in den Space
-> und die Artefakte; die betroffenen Abschnitte tragen die Marke **(Zielbild)**.
+> **Status: Zielbild, in Teilen gebaut.** Was gebaut ist und was fehlt, steht im Kapitel
+> [Gebauter Ist-Stand](#gebauter-ist-stand).
 
 ## Motivation
 
@@ -815,7 +814,7 @@ Der erste konkrete Bibliotheks-Chip **ersetzt** @Space-Wissen; weitere Chips erg
 
 Der Chip hieß bis Epic #2070 „@Alles-Wissen" und durchsuchte in einem Space ohne Zuordnung alles Lesbare; beides entfällt mit #2096.
 
-**Konsequenz für die Nutzerführung.** Verbindlich:
+**Konsequenz für die Nutzerführung (Zielbild).** Verbindlich:
 
 - Der Chat zeigt dauerhaft seinen Status und, sobald geteilt, **wer mitliest** — im Kopfbereich, nicht in einem Untermenü. Der Zugriff auf die volle, namentliche Mitgliederliste richtet sich dabei nach der Space-Rolle (siehe [Space-Rollen](#space-rollen)): `MEMBER` und `CURATOR` sehen dort nur, wie viele mitlesen könnten (die aggregierte Zählung), nicht wer.
 - Beim Teilen wird der Leserkreis benannt, **bevor** es wirksam wird.

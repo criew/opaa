@@ -976,7 +976,8 @@ niemand kennt, ist keine Entscheidungsgrundlage.
 
 ### Zuschnitt im Ablauf
 
-Das Reranking läuft **nach der Fusion und vor der Dokument-Vervollständigung**. Die Reihenfolge ist
+Das Reranking läuft **nach der Fusion und vor der Dokument-Vervollständigung** (seit #2622 folgt
+dazwischen der Relevanzschnitt). Die Reihenfolge ist
 begründet: Die Dokument-Vervollständigung ergänzt gezielt Geschwister-Chunks bereits ausgewählter
 Dokumente (#932) — sie soll auf der final gerankten Auswahl arbeiten, nicht auf einer Vorstufe, die der
 Reranker gleich wieder umsortiert.

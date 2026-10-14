@@ -1,9 +1,9 @@
 # Konnektor-Freigabe, Verbindungsprofile und verbundene Konten
 
-> **Status: umgesetzt, bis auf Postfächer und den MCP-Client.** Modul `connection` mit
-> Verbindungsprofilen, Freigabe und Sperre je Typ, Token-Speicher, OAuth, „Quelle verbinden“ und
-> verbundenen Konten ist gebaut ([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md)
-> mit Nachträgen je Schnitt); der Stand je Abschnitt steht dort als „Stand der Umsetzung“.
+> **Status: umgesetzt, bis auf Postfächer, den MCP-Client und den Token-Austausch (offen).** Modul
+> `connection` mit Verbindungsprofilen, Freigabe und Sperre je Typ, Token-Speicher, OAuth, „Quelle
+> verbinden“ und verbundenen Konten ist gebaut; die Umsetzung je Schnitt beschreiben die Nachträge
+> in [ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md).
 > Grundlage sind die Beschlüsse des Maintainers vom 03.10.2026 in Epic
 > [#2147](https://github.com/criew/opaa/issues/2147), einschließlich der Folgebeschlüsse nach der
 > Stakeholder-Runde. Die nötigen ADR-Nachträge sind am Ende benannt. Mit den Entscheidungen vom
@@ -12,8 +12,8 @@
 
 ## Motivation
 
-Heute richtet eine einzelne Person eine Quelle vollständig ein: Adresse, Zugangsdaten und
-Einstellungen stehen in der Bibliothek. Das reicht für eine Dateiablage mit Dienstkonto, aber nicht
+Vor diesem Epic richtete eine einzelne Person eine Quelle vollständig ein: Adresse, Zugangsdaten und
+Einstellungen standen in der Bibliothek. Das reichte für eine Dateiablage mit Dienstkonto, aber nicht
 für drei Fälle:
 
 1. **Quellen, die nur OAuth kennen.** Dropbox gibt weder Dienstkonto noch statischen Schlüssel aus.
@@ -27,9 +27,7 @@ für drei Fälle:
 
 Vor diesem Epic gab es dafür nichts: Eine Fähigkeit (`CREATE_CONNECTOR_LIBRARY`) deckte alle
 Konnektoren ab, jede Bibliothek trug ihre Zieladresse frei, und OPAA speicherte keine OAuth-Token.
-Inzwischen ist das Modul `connection` gebaut: Profile, Freigabe und Sperre je Konnektortyp,
-Token-Speicher, OAuth, Zustimmung („Quelle verbinden“) und verbundene Konten
-([ADR-0041](../decisions/0041-verbindungen-als-eigenes-modul.md)).
+Inzwischen ist das Modul `connection` gebaut (siehe Status).
 
 ---
 

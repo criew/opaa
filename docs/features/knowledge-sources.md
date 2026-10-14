@@ -1,8 +1,7 @@
 # Wissensquellen und Konnektoren
 
-> **Status: Zielbild, in weiten Teilen gebaut.** Gebautes trägt die Marke **(gebaut)**, nicht
-> Gebautes die Marke **(Zielbild)**; was gebaut ist, beschreibt das Handbuch
-> ([Konnektoren](../handbuch/konnektoren/README.md)).
+> **Status: Zielbild, in weiten Teilen gebaut.** Kennzeichnung siehe Lesehinweis; was gebaut ist,
+> beschreibt das Handbuch ([Konnektoren](../handbuch/konnektoren/README.md)).
 
 **Themenbereich B** der [Produktvision](../VISION.md). **Phasenlage:** Uploads und **lesende**
 Konnektoren zu Dateiablagen, Wikis, Postfächern und Vorgangssystemen gehören in **Phase 1**;
@@ -65,7 +64,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    protokolliert.
 6. **Rechte aus dem Quellsystem werden gespiegelt, wo das Quellsystem sie belastbar liefert** — und wo
    nicht, wird das benannt statt unterstellt.
-7. **Dokumente haben einen Lebenszyklus** (Zielbild): aufgenommen, aktualisiert, ausgeschlossen, archiviert,
+7. **Dokumente haben einen Lebenszyklus** **(Zielbild)**: aufgenommen, aktualisiert, ausgeschlossen, archiviert,
    gelöscht. Jeder Übergang ist ausgelöst und protokolliert, keiner geschieht stillschweigend.
 8. **Indizierung hat Zeitpläne und Vorrang.** Ein großer Erstlauf darf die tägliche Aktualisierung eines
    kleinen, wichtigen Bestands nicht blockieren.
@@ -828,7 +827,7 @@ keinen Automatismus, der von der einen in die andere führt.
 
 | Stufe | Was möglich ist | Freigabe |
 |---|---|---|
-| **Lesend** | Bestände abholen, indizieren, aktuell halten | Einrichtung durch die Systemverwaltung |
+| **Lesend** | Bestände abholen, indizieren, aktuell halten | Anlage durch jede Person mit dem Anlegerecht `CREATE_CONNECTOR_LIBRARY` bzw. der Freigabe je Konnektortyp oder Zugang ([ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md), [connector-connections.md](./connector-connections.md)); private Bibliotheken legt die Person über ihr verbundenes Konto selbst an |
 | **Schreibend** | im Quellsystem etwas anlegen oder ändern — Vorgang eröffnen, Vermerk ablegen, Antwortentwurf hinterlegen | ausdrückliche Freischaltung je Integration **und** je Aktionsart, zusätzlich menschliche Freigabe im Einzelfall |
 
 **Lesen ist folgenlos, Schreiben nicht.** Ein Lesefehler erzeugt einen schlechten Treffer; ein
