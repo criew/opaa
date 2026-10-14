@@ -7,7 +7,7 @@ Pakete (`io.opaa.*`): api, config. Dazu `OpaaApplication` im Wurzelpaket. Ergän
 
 Die oberste Schicht: die Endpunkte und Web-Hilfen, die jedes Modul teilt (Fehlerbehandlung,
 Request-Logging, HTTP-Client, `HealthController`), und die Startwächter der Konfiguration. app nutzt
-foundation, identity, rights, knowledge und library, nie connectors. Die Controller und Mapper der
+foundation und knowledge, nie connectors. Die Controller und Mapper der
 Fachmodule liegen in deren `web`-Paketen (`backend/AGENTS.md`, „Web-Schicht je Modul“).
 
 ## Invarianten und Stolpersteine

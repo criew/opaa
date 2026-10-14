@@ -3,6 +3,7 @@ package io.opaa.knowledge;
 import io.opaa.observability.SeparateHealthGroup;
 import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroupsPostProcessor;
 import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.context.annotation.Bean;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * leaves out.
  */
 @Configuration
+@EnableConfigurationProperties({UploadS3Properties.class, LibraryProperties.class})
 public class UploadStorageConfiguration {
 
   public static final String HEALTH_CONTRIBUTOR = "uploadStore";

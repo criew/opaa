@@ -192,7 +192,7 @@ public final class ModularArchitecture {
               EnumSet.of(
                   FOUNDATION, FORMAT, IDENTITY, RIGHTS, KNOWLEDGE, WORKSPACE, LIBRARY, RETRIEVAL)),
           entry(EXTERNAL, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY, ASSISTANT)),
-          entry(APP, EnumSet.of(FOUNDATION, IDENTITY, RIGHTS, KNOWLEDGE, LIBRARY)));
+          entry(APP, EnumSet.of(FOUNDATION, KNOWLEDGE)));
 
   /**
    * The package edges, relative to the root, that lie on a cycle between the subpackages of one

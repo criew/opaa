@@ -1,54 +1,29 @@
 package io.opaa;
 
-import io.opaa.auth.AuthProperties;
 import io.opaa.common.PublicBaseUrlProperties;
-import io.opaa.indexing.FilesystemProperties;
-import io.opaa.indexing.IndexingProperties;
-import io.opaa.indexing.SourceHttpProperties;
-import io.opaa.indexing.attachment.AttachmentProperties;
-import io.opaa.indexing.source.RemoteContentProperties;
-import io.opaa.indexing.source.SourceEventProperties;
-import io.opaa.knowledge.LibraryProperties;
 import io.opaa.knowledge.UploadProperties;
-import io.opaa.knowledge.UploadS3Properties;
-import io.opaa.library.AttachmentExtractionProperties;
-import io.opaa.library.ExternalAccessProperties;
-import io.opaa.llm.RerankProperties;
-import io.opaa.llm.TranscriptionProperties;
-import io.opaa.mail.SmtpProperties;
-import io.opaa.permission.GroupSizeProperties;
 import io.opaa.security.CredentialsEncryptionProperties;
 import io.opaa.security.SettingsEncryptionProperties;
-import io.opaa.succession.SuccessionProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+/**
+ * Every module registers its own {@code @ConfigurationProperties} classes in one of its
+ * {@code @Configuration} classes. Registered here are only the foundation classes, which no module
+ * configuration owns, and {@link UploadProperties}, which {@link
+ * io.opaa.api.GlobalExceptionHandler} consumes: bound on the application class, it is present in
+ * every context that holds the advice, a web slice included.
+ */
 @SpringBootApplication
 @EnableConfigurationProperties({
-  IndexingProperties.class,
-  SourceHttpProperties.class,
-  AuthProperties.class,
-  UploadProperties.class,
-  UploadS3Properties.class,
-  LibraryProperties.class,
-  ExternalAccessProperties.class,
-  CredentialsEncryptionProperties.class,
-  RemoteContentProperties.class,
-  AttachmentExtractionProperties.class,
-  SettingsEncryptionProperties.class,
-  SourceEventProperties.class,
-  FilesystemProperties.class,
-  AttachmentProperties.class,
-  RerankProperties.class,
-  TranscriptionProperties.class,
-  SmtpProperties.class,
   PublicBaseUrlProperties.class,
-  GroupSizeProperties.class,
-  SuccessionProperties.class
+  CredentialsEncryptionProperties.class,
+  SettingsEncryptionProperties.class,
+  UploadProperties.class
 })
-// Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion (#395).
+// Enables io.opaa.audit.AuditRetentionScheduler's @Scheduled monthly retention deletion.
 @EnableScheduling
 public class OpaaApplication {
 

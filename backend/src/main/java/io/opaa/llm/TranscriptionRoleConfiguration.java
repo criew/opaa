@@ -1,5 +1,6 @@
 package io.opaa.llm;
 
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
@@ -10,6 +11,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
  * answers must not block the application's shared scheduler, which the indexing jobs use.
  */
 @Configuration
+@EnableConfigurationProperties(TranscriptionProperties.class)
 public class TranscriptionRoleConfiguration {
 
   @Bean(destroyMethod = "shutdown")
