@@ -64,9 +64,10 @@ Namen wählt, sieht OPAA nicht.
 ohne die Spalte neu angelegt). `sourceProxy` entfällt in allen Schemas von Bibliothek,
 Verbindungstest, Auflistung und Zugang; `SourceSettings`, `ClientRegistration`,
 `ConnectionProfileValues` und die Verbindungs-Records der Konnektoren tragen keinen Proxy
-(`BasicCredentials`), `SourceHttpClientFactory` baut jeden Client ohne eigenen Proxy. Ein geänderter Ausgangsproxy verlangt kein neues Client-Secret, weil die
-Endpunkte eines Zugangs `https://` sind (ADR-0048, Entscheidung 8). Fingerabdruck des
-Abgleichstands (ADR-0045, Entscheidung 8) und Bindung der Geheimnisse nennen den Proxy nicht.
+(`BasicCredentials`), `SourceHttpClientFactory` baut jeden Client ohne eigenen Proxy. Ein geänderter
+Ausgangsproxy verlangt kein neues Client-Secret, weil die Endpunkte eines Zugangs `https://` sind
+(ADR-0048, Entscheidung 8). Fingerabdruck des Abgleichstands (ADR-0045, Entscheidung 8) und Bindung
+der Geheimnisse nennen den Proxy nicht.
 
 ### 5. Zertifikatsprüfung nicht aussetzbar
 

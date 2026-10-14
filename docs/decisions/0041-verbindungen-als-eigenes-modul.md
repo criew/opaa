@@ -90,9 +90,10 @@ sind keine Felder der Bibliothek oder des Zugangs (ADR-0050).
 
 ### 4. Lebenszyklus: eine zentrale Abfrage, Ereignisse beschleunigen nur
 
-`io.opaa.auth.AccountUsability` ist die einzige Regel „Konto jetzt nutzbar?“; `LocalAdminAvailabilityGuard`
-und `ExternalAccessTokenAuthenticator` nutzen sie (Fremdzugangstokens von Personen eines deaktivierten
-oder gelöschten Anbieters werden deshalb abgelehnt; die Inaktivitätsschwelle gilt dort nicht).
+`io.opaa.auth.AccountUsability` ist die einzige Regel „Konto jetzt nutzbar?“;
+`LocalAdminAvailabilityGuard` und `ExternalAccessTokenAuthenticator` nutzen sie (Fremdzugangstokens
+von Personen eines deaktivierten oder gelöschten Anbieters werden deshalb abgelehnt; die
+Inaktivitätsschwelle gilt dort nicht).
 
 | Zustand (`AccountUsability.State`) | Anlass |
 |---|---|
