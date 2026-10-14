@@ -509,6 +509,9 @@ tasks.register<Test>("openAiIntegrationTest") {
 dependencyManagement {
     imports {
         mavenBom("org.springframework.ai:spring-ai-bom:${libs.versions.spring.ai.get()}")
+        // Imported after the Spring Boot BOM, so these win over the Jackson versions it pins.
+        mavenBom(libs.jackson3.bom.get().toString())
+        mavenBom(libs.jackson2.bom.get().toString())
     }
     // Security overrides for artifacts nothing here declares directly: the embedded Tomcat pinned
     // by spring-boot-dependencies and the Bouncy Castle / junrar versions Tika's parser modules
