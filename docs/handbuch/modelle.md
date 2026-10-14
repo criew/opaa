@@ -22,7 +22,8 @@ Modelle in die Suche eingreifen, steht im Kapitel [Suche](suche.md).
 ## LLM-Anbieter
 
 Es gibt einen einzigen Anbindungsweg für Chat und Einbettung: die **openai-kompatible
-Schnittstelle**. Das ist eine Protokollangabe, keine Anbieterangabe — Ollama bedient sie unter seinem
+Schnittstelle**. (Die optionale Rerank-Rolle hat eigene Angaben, siehe
+[Reranking einschalten](#reranking-einschalten).) Das ist eine Protokollangabe, keine Anbieterangabe — Ollama bedient sie unter seinem
 eigenen `/v1`-Pfad, ebenso vLLM, LiteLLM, Azure und die üblichen Zwischenschichten.
 
 **Voreingestellt sind lokal betriebene Modelle.** Eine Installation, an der niemand etwas
@@ -322,12 +323,15 @@ der Suche tut, steht unter [Suche](suche.md#stufe-8-reranking).
 Zur Wahl des Endpunkts:
 
 - **GPU im Haus:** ein Rerank-Modell auf eigener GPU; die Daten bleiben im Netz.
-- **Gehosteter Dienst:** jeder Endpunkt, der die übliche Rerank-Schnittstelle (`/rerank`) spricht,
-  etwa bei einem Modell-Vermittler; er wird ohne weitere Anpassung als Basisadresse eingetragen.
-  Er erhält Frage und Chunk-Texte der Kandidaten. Für Behördendaten nur, wenn der Dienst
-  datenschutzrechtlich zulässig ist; sonst bleibt der Endpunkt im eigenen Netz (siehe
-  [LLM-Anbieter](#llm-anbieter)).
-- **CPU:** nicht sinnvoll, die Antwortzeit steigt auf Minuten je Frage.
+- **Gehosteter Dienst:** ein Endpunkt, der `POST {Basisadresse}/rerank` im erwarteten Format
+  beantwortet; welche Dienste das tun, steht bei `OPAA_RERANK_BASE_URL` in der
+  [Konfiguration](konfiguration.md). Er erhält Frage und Chunk-Texte der Kandidaten. Für
+  Behördendaten nur, wenn der Dienst datenschutzrechtlich zulässig ist; sonst bleibt der Endpunkt im
+  eigenen Netz. Die Hinweise unter [LLM-Anbieter](#llm-anbieter) gelten für die Rerank-Rolle
+  sinngemäß, auch dass es keine technische Sperre gibt.
+- **CPU:** möglich, aber nicht empfohlen. Die Antwortzeit steigt so stark, dass sie für den Dialog
+  nicht taugt; das voreingestellte `OPAA_RERANK_TIMEOUT` lässt den Fall nur zu, damit er nicht als
+  Ausfall erscheint.
 
 Zum Einschalten gehören drei Angaben zusammen: `OPAA_RERANK_ENABLED=true`, `OPAA_RERANK_BASE_URL` und
 `OPAA_RERANK_MODEL`. Fehlt eine Endpunktangabe oder antwortet der Endpunkt nicht, steht das im Log und

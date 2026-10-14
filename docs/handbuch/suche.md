@@ -530,13 +530,13 @@ Vektor- noch Wortübereinstimmung erfassen. Er ist für die Fälle da, in denen 
 im Fenster liegt, aber nicht weit genug oben.
 
 Im Auslieferungsstand ist Reranking **aus** (`OPAA_RERANK_ENABLED=false`): Die Modellrolle ist
-gebaut, nicht aktiviert, weil sie einen eigenen Endpunkt braucht und auf einer CPU zu langsam wäre
-(Minuten je Frage, auf einer GPU Sekunden).
+gebaut, nicht aktiviert, weil sie einen eigenen Endpunkt braucht und auf einer CPU für den Dialog
+zu langsam ist.
 
 **Empfehlung:** Reranking einschalten, wo ein schneller Endpunkt zur Verfügung steht, also auf einer
-GPU im Haus oder bei einem gehosteten Rerank-Dienst. Es verbessert die Antwortqualität spürbar, weil
-es die richtige Fundstelle aus dem Fenster nach oben holt, und kostet nur wenige Sekunden je Frage.
-Ein Endpunkt auf einer CPU ist dafür nicht geeignet. Ein gehosteter Endpunkt erhält Frage und
+GPU im Haus oder bei einem gehosteten Rerank-Dienst. Die Stufe holt die richtige Fundstelle aus dem
+Fenster nach oben; der Aufruf kostet Zeit je Frage, und ein schneller Endpunkt hält sie klein.
+Ein Endpunkt auf einer CPU wird nicht empfohlen. Ein gehosteter Endpunkt erhält Frage und
 Chunk-Texte; bei Behördendaten kommt deshalb nur ein Endpunkt im eigenen Netz oder ein ausdrücklich
 zulässiger Dienst in Frage. Die Wahl des Endpunkts steht im Kapitel
 [Modelle](modelle.md#reranking-einschalten).
