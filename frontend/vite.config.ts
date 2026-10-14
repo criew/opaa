@@ -20,7 +20,7 @@ export default defineConfig({
   build: {
     // dist/.vite/manifest.json feeds scripts/bundle-report.mjs.
     manifest: true,
-    // #707: Vite inlines assets below 4 KB as data: URIs. The small Quicksand subsets
+    // Vite inlines assets below 4 KB as data: URIs. The small Quicksand subsets
     // (cyrillic, vietnamese, …) fall under that limit and ended up as data: fonts in the
     // CSS - blocked by nginx's strict `font-src 'self'` CSP on every page. Fonts are
     // always emitted as files instead of loosening the CSP to `data:`; everything else

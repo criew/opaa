@@ -15,12 +15,12 @@ const LHM_CORPUS_LICENSE_URL =
   'https://github.com/criew/opaa/blob/main/demo/corpus/THIRD-PARTY-LICENSES/LHM-Dienstleistungen-Corpus-MIT.txt'
 
 /**
- * Demo/source notice (#230): only ever rendered when the frontend container's `OPAA_DEMO_MODE`
+ * Demo/source notice: only ever rendered when the frontend container's `OPAA_DEMO_MODE`
  * flag is on (see runtimeConfig.ts) - this notice belongs on the demo instance, not on every
  * OPAA installation.
  *
- * Sits in {@link AboutDialog}, reachable from every page through "Info zu …" in the profile menu
- * (#1921). The demo-character hint is the dialog's own text; the source and licensing details
+ * Sits in {@link AboutDialog}, reachable from every page through "Info zu …" in the profile menu.
+ * The demo-character hint is the dialog's own text; the source and licensing details
  * (dataset origin, MIT license, provenance URL) sit behind the "Quellen & Lizenz" link.
  */
 export default function DemoNotice() {

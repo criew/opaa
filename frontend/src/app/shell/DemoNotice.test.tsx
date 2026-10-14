@@ -38,7 +38,7 @@ describe('DemoNotice', () => {
       'https://huggingface.co/datasets/it-at-m/LHM-Dienstleistungen-Corpus',
     )
     expect(screen.getByText(/MIT-Lizenz/)).toBeInTheDocument()
-    // MIT requires redistributing the license text (#728 review, finding "NIT 6") - the dialog
+    // MIT requires redistributing the license text - the dialog
     // links to the full text committed alongside the corpus, not just the license name.
     expect(
       screen.getByRole('link', { name: 'LHM-Dienstleistungen-Corpus-MIT.txt' }),

@@ -27,7 +27,7 @@ export default function AppShell() {
   // The marker stays in its history entry; back/forward to that entry is a page change again.
   const keepFocus = useNavigationType() !== NavigationType.Pop && keepsFocus(locationState)
   const previousPathname = useRef(pathname)
-  // Mockup 2b (#787): global areas drop the space column; the rail and the area's own light
+  // Mockup 2b: global areas drop the space column; the rail and the area's own light
   // frame carry the navigation there.
   const isGlobalArea = isGlobalAreaPath(pathname)
 
@@ -45,8 +45,7 @@ export default function AppShell() {
   }, [pathname, keepFocus])
 
   // Navigating from inside the drawer must also dismiss it - otherwise it stays on top of the
-  // page just navigated to. Pre-existing since #587, taken along with review #791 (finding 9)
-  // because the rail put far more destinations into the drawer.
+  // page just navigated to; the rail puts far more destinations into the drawer.
   useEffect(() => {
     if (!isDesktop) setSidebarOpen(false)
   }, [pathname, isDesktop, setSidebarOpen])

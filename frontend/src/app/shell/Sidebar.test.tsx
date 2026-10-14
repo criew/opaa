@@ -54,7 +54,7 @@ function manySpaces() {
  * Router's actual param propagation: matchRouteBranch (react-router/lib/router/utils.js) merges
  * every matched segment's params into one object and assigns that same object to every match in
  * the branch, including the pathless layout match - so useParams() in Sidebar genuinely sees the
- * leaf route's :spaceId (#556 review, nit 1).
+ * leaf route's :spaceId.
  */
 function renderSidebarAtRoute(initialPath: string, sidebar = <Sidebar />) {
   return render(
@@ -77,7 +77,7 @@ function renderSidebarAtRoute(initialPath: string, sidebar = <Sidebar />) {
 describe('Sidebar', () => {
   beforeEach(() => {
     mockNavigate.mockReset()
-    // #1912: Die Nutzungsreihenfolge liegt im localStorage und überdauert sonst die Testfälle.
+    // Die Nutzungsreihenfolge liegt im localStorage und überdauert sonst die Testfälle.
     window.localStorage.clear()
     useUiStore.setState({ sidebarWidth: SIDEBAR_DEFAULT_WIDTH })
     useBrandingStore.setState({ branding: OPAA_BRANDING })
@@ -135,12 +135,12 @@ describe('Sidebar', () => {
     // The switcher carries the active (here: default) space's name.
     expect(screen.getByRole('button', { name: /Privater Bereich/ })).toBeInTheDocument()
     expect(screen.getByText('Chats')).toBeInTheDocument()
-    // Since #786 (mockup 2a) the column is purely space-scoped: brand mark, catalog,
+    // (mockup 2a) the column is purely space-scoped: brand mark, catalog,
     // admin destinations and the user badge all live on the global rail instead.
     expect(screen.queryByText('OPAA')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Wissensbibliotheken' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Benutzermenü' })).not.toBeInTheDocument()
-    // Der einzige „Einstellungen"-Link der Spalte gehört dem Space, nicht dem Konto (#1917).
+    // Der einzige „Einstellungen"-Link der Spalte gehört dem Space, nicht dem Konto.
     expect(screen.getByRole('link', { name: 'Einstellungen' })).toHaveAttribute(
       'href',
       '/spaces/space-personal/settings/general',
@@ -151,7 +151,7 @@ describe('Sidebar', () => {
   // visuallyHidden -> position: absolute) needs a positioned ancestor inside the scrolling nav.
   // Without one its static position below a long, expanded list escapes the nav's clip, makes
   // the page taller than the viewport and lets the browser scroll the whole shell up. jsdom has
-  // no layout, so this asserts the containment itself (same pattern as MessageList, #749).
+  // no layout, so this asserts the containment itself (same pattern as MessageList).
   it('contains the chat list in a positioned scroll container', () => {
     renderSidebarAtRoute('/chat')
     const chats = screen.getByRole('navigation', { name: 'Chats' })
@@ -223,7 +223,7 @@ describe('Sidebar', () => {
   })
 
   /**
-   * #1912: Das Menü bleibt kurz, damit die beiden Aktionen darunter sichtbar bleiben - und es
+   * Das Menü bleibt kurz, damit die beiden Aktionen darunter sichtbar bleiben - und es
    * beginnt mit dem zuletzt genutzten Space.
    */
   it('shows at most five spaces, most recently used first', async () => {
@@ -248,7 +248,7 @@ describe('Sidebar', () => {
   })
 
   /**
-   * #1912: Ein Space, der über „Alle Spaces" geöffnet wird, steht sofort im Menü - ohne Neuladen.
+   * Ein Space, der über „Alle Spaces" geöffnet wird, steht sofort im Menü - ohne Neuladen.
    * Die Nutzungsreihenfolge wird beim Betreten der Route geschrieben; läse das Menü sie nur beim
    * Aufbau, zeigte es weiter die alten fünf.
    */
@@ -267,7 +267,7 @@ describe('Sidebar', () => {
     expect(first?.querySelector('svg[data-testid="CheckIcon"]')).not.toBeNull()
   })
 
-  /** #1911/#1912: Gemerkt wird der Space der Route, nicht der Rückfall auf den persönlichen. */
+  /** Gemerkt wird der Space der Route, nicht der Rückfall auf den persönlichen. */
   it('remembers the space named by the route, not the fallback', () => {
     renderSidebarAtRoute('/chat')
     expect(window.localStorage.getItem('opaa.spaces.recent')).toBeNull()
@@ -350,12 +350,12 @@ describe('Sidebar', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/spaces/new')
   })
 
-  // #1917: ein Einstiegspunkt am Fuß der Spalte statt zweier - „Datenquellen dieses Space" ist
+  // Ein Einstiegspunkt am Fuß der Spalte statt zweier - „Datenquellen dieses Space" ist
   // entfallen, alles Verwaltende liegt hinter den Einstellungen.
   it('links the column foot to the settings of the active space, and to nothing else', () => {
     renderSidebarAtRoute('/spaces/space-engineering')
 
-    // #792: the landmark must wrap a real list - List component="nav" once replaced the <ul>
+    // The landmark must wrap a real list - List component="nav" once replaced the <ul>
     // and left the <li>s parentless, an axe "serious" violation.
     const footNav = screen.getByRole('navigation', { name: 'Space-Navigation' })
     expect(within(footNav).getByRole('list')).toBeInTheDocument()
@@ -371,7 +371,7 @@ describe('Sidebar', () => {
   })
 
   /**
-   * #1917: Der Eintrag zeigt auf den ersten Reiter, ist aber auf jedem Reiter hervorgehoben -
+   * Der Eintrag zeigt auf den ersten Reiter, ist aber auf jedem Reiter hervorgehoben -
    * dann sagt `aria-current="true"` den Bereichstreffer an, „page" nur das eigene Ziel
    * (docs/design/accessibility.md 2.3, wie auf der globalen Leiste).
    */
@@ -391,7 +391,7 @@ describe('Sidebar', () => {
   })
 
   /**
-   * #2207: Den Einstieg sieht jedes Mitglied; wer nicht verwalten darf, sieht die Einstellungen
+   * Den Einstieg sieht jedes Mitglied; wer nicht verwalten darf, sieht die Einstellungen
    * schreibgeschützt.
    */
   it('shows the settings entry to a plain member and to a curator', () => {

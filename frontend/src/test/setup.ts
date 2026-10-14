@@ -1,10 +1,10 @@
 import '@testing-library/jest-dom/vitest'
 // Must run before any request is made: it closes the jsdom gap that makes a `FormData` upload
-// carrying a `File` hang forever instead of completing (#1169).
+// carrying a `File` hang forever instead of completing.
 import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
 import { server } from './server'
-// Deliberately only the fixture module, never a store or `src/shared/api/api` (#583): importing
+// Deliberately only the fixture module, never a store or `src/shared/api/api`: importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
 // fail - their requests stop being intercepted, so every "expected onCreated to be called" assertion
 // times out. Verified by adding a bare `import '@/shared/api/api'` here and watching
@@ -67,7 +67,7 @@ afterEach(() => {
   resetConnectionProfileMockState()
   resetConnectedAccountMockState()
   resetConnectionLogMockState()
-  // The branding fixture is mutable so a PUT is visible on the next GET (#583) - without this,
+  // The branding fixture is mutable so a PUT is visible on the next GET - without this,
   // a test that configures a brand colour would silently set the stage for the next one.
   resetMockBranding()
   resetMockOidcProviders()
@@ -75,7 +75,7 @@ afterEach(() => {
   resetMockMailSettings()
   resetMockMailTemplates()
   // Same reason: the local accounts and their settings are mutable, so a lock or a created account
-  // shows up on the next GET (#1541).
+  // shows up on the next GET.
   resetMockLocalUsers()
   resetMockLocalAuthSettings()
   // The auth config fixture is mutable too (ADR-0033): a test that switches the local account
@@ -84,7 +84,7 @@ afterEach(() => {
   // A self-service link is single-use in the mock, as it is in the backend - a link one test
   // redeemed would read as invalid in the next.
   resetMockSelfServiceTokens()
-  // Dieselbe Begründung für die Fremdzugänge (#1717/#1719): Schalter und Tokenbestand sind
+  // Dieselbe Begründung für die Fremdzugänge: Schalter und Tokenbestand sind
   // veränderlich, damit ein Speichern, ein Anlegen oder eine Sperre im nächsten GET sichtbar ist.
   resetMockExternalAccessSettings()
   resetMockExternalAccessTokens()

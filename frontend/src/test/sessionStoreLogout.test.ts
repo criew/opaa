@@ -40,7 +40,7 @@ describe('logout empties the session stores', () => {
       ],
       selectedSpaceId: 'space-1',
     })
-    // #440: groupStore, libraryStore and chatStore/chatListStore cache data scoped to the
+    // groupStore, libraryStore and chatStore/chatListStore cache data scoped to the
     // signed-in user's session just like spaceStore - a lingering entry here after logout would
     // mean the next user signing in in the same tab briefly sees the previous user's data.
     useGroupStore.setState({
@@ -85,7 +85,7 @@ describe('logout empties the session stores', () => {
     })
     useChatStore.setState({ spaceId: 'space-1', chatId: 'chat-1', title: 'Test' })
     useChatListStore.setState({ chatsBySpaceId: { 'space-1': [] } })
-    // #440 review: documentStore, grantStore and indexingStore cache data scoped to the
+    // documentStore, grantStore and indexingStore cache data scoped to the
     // signed-in user's session just like the stores above.
     useDocumentStore.setState({
       documentsByLibrary: {
