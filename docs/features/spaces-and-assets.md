@@ -1,5 +1,9 @@
 # Spaces, Assets & Zugangskontrolle
 
+> **Status: Zielbild, in Teilen gebaut.** Was davon gebaut ist, steht im Kapitel
+> [Gebauter Ist-Stand](#gebauter-ist-stand). Nicht gebaut sind das Teilen von Chats in den Space
+> und die Artefakte; die betroffenen Abschnitte tragen die Marke **(Zielbild)**.
+
 ## Motivation
 
 Wissen und KI-Können sollen in einer Organisation ankommen, nicht in Silos verharren. Das bisherige Workspace-Modell hat beides in denselben Behälter gesperrt: Ein Workspace war zugleich Dokumentencontainer, Rechtegrenze und Ordnungsrahmen. Damit war ein guter Agent nicht teilbar, ohne den ganzen Workspace zu teilen, und eine Wissenssammlung nicht mehrfach verwendbar, ohne sie zu duplizieren.
@@ -766,6 +770,9 @@ Voraussetzung ist eine **benannte pflegende Stelle**. Deshalb ist der Eigentüme
 
 ### Die Grundregel: zunächst privat, sichtbar durch Teilen
 
+**(Zielbild)** Gebaut ist von der Status-Achse allein `PRIVATE`: Jeder Chat gehört seinem Autor, die Werte
+`SHARED`, `SUPERSEDED` und `WITHDRAWN` samt Teilen-Dialog, Rückzug und Benachrichtigung sind Zielbild.
+
 Für **alle** space-eigenen Inhalte — Chats, Artefakte und alles, was später hinzukommt — gilt eine einzige Regel:
 
 > **Was du erzeugst, gehört zunächst dir. Sichtbar für den Space wird es, wenn du es dort teilst.**
@@ -890,6 +897,8 @@ Der Schutz vor fremder Löschung hat eine Kehrseite: Ein Space, in dem irgendjem
 Archivieren ist damit kein Ersatz für Löschen, sondern die einzige Handlung, die auf einen Space wirkt, den die Löschsperre dauerhaft festhält: Sie stellt den Betrieb still, ohne den Nachweis zu zerstören, den die Löschsperre gerade schützen soll.
 
 ### Artefakte
+
+**(Zielbild)** Artefakte sind nicht gebaut: Es gibt weder eine Objektklasse noch eine Tabelle dafür.
 
 In einem Space entstehen Ergebnisse: eine Excel-Auswertung, ein Diagramm, später Berichte, Entwürfe und Analysen. Für sie gilt **dieselbe** Regel wie für Chats — sie sind zunächst privat und werden durch Teilen space-sichtbar. Kein Sonderweg, keine Abhängigkeit von der Herkunft der Daten.
 
@@ -1355,6 +1364,8 @@ Gegenüber dem Kapitel [Der Katalog](#der-katalog) fehlen im Eintrag der Anwendu
 - **Mitgelieferte Assets** — `origin = BUILT_IN` ist im Schema vorgesehen, angelegt wird es von nichts; ebenso der Aktualisierungsweg.
 - **Nutzungsstatistik** — aggregiert und mit Mindestgruppengröße ([Nutzungstransparenz](#nutzungstransparenz)). Die Verwendung eines Prompts ist nur an der eigenen Nachricht vermerkt (`chat_messages.used_prompt_id`/`used_prompt_title`, Changeset 088, Hinweis im Verlauf), ohne Index und ohne Abfrage über Gespräche hinweg; sie wird weder protokolliert noch gezählt.
 - **Parameter, Abkömmlinge, Referenz statt Kopie, Export und Import** und der **Agent** als Asset-Typ.
+- **Chats in den Space teilen und Artefakte** — der Chat-Status kennt nur `PRIVATE`, Artefakte haben
+  weder Klasse noch Tabelle (siehe [Space-eigene Inhalte](#space-eigene-inhalte-chats-und-artefakte)).
 - **Das Modell aus Epic #2070** — ein Katalog nur mit Kacheln und Sichtbarkeit öffentlich/geschlossen, Favoriten, die Zuordnung als harte Grenze für alle Typen mit Hinweis statt stillem Leerlauf, Space-Assistent und „In Space verwenden" (#2093 bis #2098).
 
 ---

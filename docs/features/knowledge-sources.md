@@ -1,6 +1,8 @@
 # Wissensquellen und Konnektoren
 
-> **Status: Entwurf — wesentliche offene Fragen verbleiben.**
+> **Status: Zielbild, in weiten Teilen gebaut.** Gebautes trägt die Marke **(gebaut)**, nicht
+> Gebautes die Marke **(Zielbild)**; was gebaut ist, beschreibt das Handbuch
+> ([Konnektoren](../handbuch/konnektoren/README.md)).
 
 **Themenbereich B** der [Produktvision](../VISION.md). **Phasenlage:** Uploads und **lesende**
 Konnektoren zu Dateiablagen, Wikis, Postfächern und Vorgangssystemen gehören in **Phase 1**;
@@ -39,8 +41,10 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
 
 1. **Zwei Wege führen Wissen in OPAA:** der **Upload** durch Menschen und der **Konnektor**, der aus
    einem Quellsystem zieht. Beide Wege sind heute gebaut. Eine Wissensbibliothek trägt dabei **genau
-   einen Quellentyp** — `UPLOAD`, ein Verzeichnis im Dateisystem, ein erreichbares Webverzeichnis oder
-   ein RSS-Feed —, gewählt bei ihrer Anlage aus einem Template und danach
+   einen Quellentyp** — `UPLOAD` oder einen der zehn Konnektoren (Dateisystem, Webverzeichnis,
+   RSS-Feed, Confluence, S3, Google Drive, SharePoint, Nextcloud, Dropbox, SMB; Übersicht in
+   [docs/handbuch/konnektoren/README.md](../handbuch/konnektoren/README.md), steckbar nach
+   [ADR-0038](../decisions/0038-steckbare-konnektoren.md)) —, gewählt bei ihrer Anlage aus einem Template und danach
    unveränderlich (**gebaut**, [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)).
    Die Bibliothek **ist** die Quelle; es gibt keine davon getrennte Konnektor- oder Quellen-Tabelle.
 2. **Konnektorbestände aktualisieren sich selbst**, Uploads bleiben statisch. Das ist der wesentliche
@@ -61,7 +65,7 @@ Alles ohne diese Kennzeichnung ist noch nicht vorhanden.
    protokolliert.
 6. **Rechte aus dem Quellsystem werden gespiegelt, wo das Quellsystem sie belastbar liefert** — und wo
    nicht, wird das benannt statt unterstellt.
-7. **Dokumente haben einen Lebenszyklus:** aufgenommen, aktualisiert, ausgeschlossen, archiviert,
+7. **Dokumente haben einen Lebenszyklus** (Zielbild): aufgenommen, aktualisiert, ausgeschlossen, archiviert,
    gelöscht. Jeder Übergang ist ausgelöst und protokolliert, keiner geschieht stillschweigend.
 8. **Indizierung hat Zeitpläne und Vorrang.** Ein großer Erstlauf darf die tägliche Aktualisierung eines
    kleinen, wichtigen Bestands nicht blockieren.
@@ -170,7 +174,7 @@ einem Quellsystem, statt dass jemand eine Datei übergibt. Anders als eine früh
 Dokuments vorsah, ist ein Konnektor **kein eigenes Verwaltungsobjekt** mit mehreren Quellen, die auf
 Bibliotheken zeigen: **Die Wissensbibliothek selbst ist die Quelle** (**gebaut**,
 [ADR-0018](../decisions/0018-quellkonfiguration-in-der-bibliothek.md)). Sie trägt genau einen
-**Quellentyp** — Dateisystem-Verzeichnis, Webverzeichnis, RSS-Feed — und, für diesen
+**Quellentyp** — einen der zehn Konnektoren, siehe [Überblick](#überblick) — und, für diesen
 Typ, die zugehörige Konfiguration: Verzeichnispfad bzw. Adresse, Zugangsdaten, SSL-Schalter. Der
 **Typ** wird bei der Anlage aus einem Template gewählt und ist danach unveränderlich; ein Typwechsel
 verlangt eine neue Bibliothek. Die **Konfiguration** dagegen ist keine reine Anlage-Entscheidung mehr:
@@ -708,7 +712,7 @@ v2 (Entscheidung 9); der Nachweis läuft im regulären `./gradlew test` gegen Mi
 
 ## Selbst aktualisierende Wissensblöcke
 
-Der eigentliche Wert eines Konnektors liegt nicht im ersten Einlesen, sondern darin, dass der Bestand
+**(gebaut, bis auf die Fassungsfolge in Regel 3)** Der eigentliche Wert eines Konnektors liegt nicht im ersten Einlesen, sondern darin, dass der Bestand
 danach **von allein richtig bleibt**. Zuständig für den Inhalt bleibt die Stelle, die das Quellsystem
 ohnehin pflegt. Sie ändert eine Dienstanweisung dort, wo sie sie immer geändert hat, und OPAA antwortet
 ab dem nächsten Lauf mit der neuen Fassung.
@@ -819,7 +823,7 @@ Dokumente](#lebenszyklus-der-dokumente) und in
 
 ## Lesender und schreibender Zugriff
 
-Integrationen werden **je Integration** in eine von zwei Stufen eingeordnet. Es gibt keine dritte und
+**(lesend gebaut, schreibend Zielbild)** Integrationen werden **je Integration** in eine von zwei Stufen eingeordnet. Es gibt keine dritte und
 keinen Automatismus, der von der einen in die andere führt.
 
 | Stufe | Was möglich ist | Freigabe |
@@ -851,7 +855,7 @@ standardisiertes Werkzeugprotokoll gehört zu Themenbereich D und wird dort besc
 
 ## Spiegelung der Rechte aus dem Quellsystem
 
-Wenn ein Dienstkonto einen Bestand einliest, hat OPAA danach Inhalte, deren ursprüngliche
+**(Zielbild)** Wenn ein Dienstkonto einen Bestand einliest, hat OPAA danach Inhalte, deren ursprüngliche
 Zugriffsbeschränkung nur im Quellsystem stand. Ohne Behandlung entsteht daraus der klassische Fehler:
 Das Personalverzeichnis war im Netzlaufwerk auf ein Referat beschränkt, in OPAA ist es hausweit
 auffindbar.
@@ -894,8 +898,11 @@ nicht aus dem Quellsystem stammen, sondern eigenständig gesetzt sind.
 
 ## Lebenszyklus der Dokumente
 
-Ein Dokument in OPAA durchläuft Zustände. Jeder Übergang hat einen Auslöser, eine zuständige Rolle und
-einen Protokolleintrag.
+**(Zielbild)** Ein Dokument in OPAA durchläuft Zustände. Jeder Übergang hat einen Auslöser, eine zuständige Rolle und
+einen Protokolleintrag. Gebaut ist davon nur der Verarbeitungsstand `PENDING`, `INDEXED`, `FAILED`
+(`DocumentStatus`); Ausschluss und Archivierung gibt es nicht, „entfernt“ ist die Löschung der
+Dokumentzeile. Von den Löschfällen unten sind das Entfernen aus der Quelle verschwundener Dokumente
+und die Löschung der ganzen Bibliothek gebaut; das Löschverlangen nach Datenschutzrecht ist Zielbild.
 
 | Zustand | Bedeutung | Wirkung auf die Suche |
 |---|---|---|
@@ -1117,7 +1124,7 @@ ADR-0018) — oder, beim Upload, **unmittelbar** mit der Übergabe.
 
 ### Vorrang
 
-Ohne Vorrangregel gewinnt der Lauf, der zuerst gestartet ist, und das ist regelmäßig der falsche: Der
+**(Zielbild, bis auf den eigenen Upload-Pool)** Ohne Vorrangregel gewinnt der Lauf, der zuerst gestartet ist, und das ist regelmäßig der falsche: Der
 Erstlauf über ein großes Netzlaufwerk läuft stundenlang, während die stündliche Aktualisierung der
 Dienstanweisungen wartet. Drei Stufen ordnen das:
 
