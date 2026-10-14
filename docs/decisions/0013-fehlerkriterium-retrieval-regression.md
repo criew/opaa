@@ -38,7 +38,7 @@ absolute Obergrenze. Geprüft wird je Gruppe (`overall`, `category:*`, `difficul
 `delta ≥ −toleranz − ε` mit `ε = 1e-9`. `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt
 (`REDUNDANT_LANGUAGE_GROUP`): In `comic-characters` ist sie dieselbe Fallmenge wie
 `category:crosslingual` (deutsche Fragen gegen den englischen Korpus) und lieferte denselben Wert
-doppelt, seit #304 führt diese Baseline die Gruppe nicht mehr; `city-landmarks` führt und vergleicht sie.
+doppelt; diese Baseline führt die Gruppe nicht mehr, `city-landmarks` führt und vergleicht sie.
 
 ### 3. Relative Deckelung bei niedrigem Baselinewert
 
@@ -136,15 +136,3 @@ allein auf der Aufmerksamkeit des Reviewers.
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-03 | #228, PR #301 | Erste Fassung aus dem Review: fallbasierte Toleranz, relative Deckelung, Festpunkte, Baseline-Diff | 1–6 |
-| 2026-08-03 | PR #301 | `n_eff` je Gruppe im Report; harte Untergrenze als `max(relativ, absolut)`; Baseline-Diff für jeden Baseline-PR statt nur beim Label | 4, 6 |
-| 2026-08-20 | #304 | `language:de` aus der Baseline entfernt, im Vergleich übersprungen | 2 |
-| 2026-08-21 | #306, PR #694 | Konjunktion aus Fallzahl- und geweiteter Mittelwertprüfung für zu enge Paare; `hitCountAt5`/`hitCountAt10`; Ladeinvarianten | 7, 5 |
-| 2026-10-14 | #2698 | Konjunktionsregel als Entscheidung 7 nummeriert | 7 |
-| 2026-08-31 | #1040 | Geltung für den Pipeline-Pfad mit eigenen Ankern (ADR-0012, Entscheidung 19) | 1, 4 |
-| 2026-10-14 | #2698 | Neufassung als Endstand ohne Nachträge | 1–7 |

@@ -38,7 +38,7 @@ Chunk-Zahl-Erwartung je Domäne regelt ADR-0010.
 Der Harness ist ein JUnit-Integrationstest im Backend (`backend/src/evalTest/java/io/opaa/eval/`,
 Gradle-Tasks in `backend/build.gradle.kts`), der mit Testcontainers (pgvector) den Korpus über die
 produktive Indizierungspipeline einliest und die Vektorsuche direkt abfragt. Im Rohvektor-Pfad ist
-kein LLM beteiligt. Der zusätzliche Pipeline-Pfad (seit #1039) misst die Retrieval-Pipeline mit
+kein LLM beteiligt. Der zusätzliche Pipeline-Pfad misst die Retrieval-Pipeline mit
 Teilfragen-Zerlegung und braucht dafür ein Chat-Modell nach Entscheidung 4. Ein Python-Sidecar (RAGAS)
 wird nicht eingeführt, solange nur Retrieval-Metriken gemessen werden.
 
@@ -47,7 +47,7 @@ wird nicht eingeführt, solange nur Retrieval-Metriken gemessen werden.
 Das Einbettungsmodell der CI ist `nomic-embed-text:v1.5` über Ollama (Testcontainer oder der externe
 Endpunkt aus #1076, `EvalOllamaEndpoint`), auf Tag und Content-Digest
 festgenagelt mit hartem Abbruch bei Drift (`EvalOllamaModel#ensurePresent`); ein neuer Digest ist eine
-bewusste Neuziehung mit neuen Zahlen im PR. Dieselbe Disziplin gilt seit #1085 für das Chat-Modell des
+bewusste Neuziehung mit neuen Zahlen im PR. Dieselbe Disziplin gilt für das Chat-Modell des
 Pipeline-Pfads (`EvalChatModel`: `qwen2.5:1.5b-instruct`, Digest-Pin, Temperatur 0, verdrahtet über
 eine aktive Zeile in `llm_models` und `ActiveChatModelResolver` wie jede echte Anfrage). Ausschlaggebend
 ist die Baseline-Stabilität: Ein gehostetes Modell kann still geändert werden, ein festgenageltes
@@ -97,12 +97,3 @@ Demo- oder Betriebsinstanz mit anderem Embedding- oder Chat-Modell erlebt, beleg
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-08-02 | — | Erstfassung | 1–6 |
-| 2026-08-02 | #247 | Tatsachenkorrektur zur Demo-Instanz; Entscheidungen unverändert | — |
-| 2026-09-04 | #1085 | Pinning-Regel gilt auch für das Chat-Modell des Pipeline-Pfads | 4 |
-| 2026-10-14 | #2697 | Neufassung; Nachtrag zur Demo-Instanz und nie umgesetzter OpenAI-Vergleichslauf entfallen, Pinning bleibt | 3, 4 |

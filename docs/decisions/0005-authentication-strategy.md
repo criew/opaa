@@ -120,15 +120,3 @@ Standardanbieters (ADR-0025).
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-03-07 | — | Erstfassung mit drei Modi | 1–7 |
-| 2026-08-14 | #323 | Drei Modi (`mock`, `basic`, `oidc`) auf `oidc` und `dev` reduziert | 1, 2, 3 |
-| 2026-08-22 | #737 | Stille Token-Erneuerung und 401-Wiederholung statt Sofort-Logout | 5 |
-| 2026-08-25 | #884 | `CurrentUser` als Request-Attribut, `@Caller`-Resolver | 6 |
-| 2026-09-06 | #1294 | Mehrere OIDC-Anbieter, Gruppen und Rollen aus dem Token (ADR-0025) | 4, 6 |
-| 2026-09-11 | #1529 | Lokale Benutzerverwaltung, Backend als Aussteller (ADR-0033) | 4 |
-| 2026-10-14 | #2697 | Neufassung; `@Profile("oidc")` der lokalen Controller als Ausnahme | 3 |

@@ -87,12 +87,3 @@ Anweisungen in einen Adapter, ist die Trennung verloren. Der Code Reviewer prüf
 ## Offen
 
 Nichts.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-02-16 | — | Erstfassung | 1–8 |
-| 2026-08-14 | — | Rollenverträge und Adapter, `feature/`-Regel ohne Ausnahme | 2, 5 |
-| 2026-09-21 | #1865 | Verschachtelte `AGENTS.md` je Teilverzeichnis | 1 |
-| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |

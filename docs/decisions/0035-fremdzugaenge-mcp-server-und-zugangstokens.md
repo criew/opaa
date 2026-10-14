@@ -167,13 +167,3 @@ Weil es einen Server gibt, fallen bei einem Bruch alle Fremdzugänge des Hauses 
 ## Offen
 
 - OAuth 2.1 für fremd betriebene Dienste (Entscheidung 3), sobald die Erreichbarkeit entschieden ist.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-18 | #1715, #1721 | Umsetzung abgenommen; Werkzeugliste je Token und Fassungsablehnung gebaut | 1, 6 |
-| 2026-09-18 | #1765, #1766 | Reverse-Proxy-Auflage; Auszüge und `fetch` per Dokumentkennung (`opaa.mcp.default-max-hits`, `excerpt-characters`) | 5 |
-| 2026-09-21 | #797 | Freigabe-Obergrenze deckelt die Fremdzugangsfreigabe nicht (Maintainer) | 4 |
-| 2026-10-02 | #2091 | `listed` entfällt (ADR-0039); Gleichheitszusage umformuliert, Fremdzugang ohne Space | 4, 5 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 4 |

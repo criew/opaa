@@ -100,11 +100,3 @@ Kontextpräfix und tragen keinen Chunk-Schlüssel.
 
 - Nachkalibrierung der modellgestützten Extraktion (#1359, geparkt): Schwelle 0,90, erweitertes
   Vokabular, Negativbeispiele im Prompt, erneute Handstichprobe vor einer Abnahme.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-05 | #1365 | Richtung der Schwellenregel nach der Handstichprobe umgekehrt | 5 |
-| 2026-09-17 | #1701 | Umschlüsselung einer Werteliste erfüllt die Nachlauf-Zusagen (#1361, ADR-0024, Entscheidung 8); offener Punkt entfällt | Offen |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | — |

@@ -125,13 +125,3 @@ Darstellung zeigt; es gibt keine formatspezifischen Felder mehr am `SourceRefere
 ## Offen
 
 - Erweiterung des Vokabulars je Organisation oder je Bibliothek — die Tabelle ist installationsweit.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-04 | #1263, #1289 | Dokumentart auch aus Titelzeile, Kompositum-Endung und Dateiformat (Version 2, 3) | 6 |
-| 2026-09-05 | #1071 | Bibliotheksfelder an derselben Werte-Tabelle | 8 |
-| 2026-09-05 | #1242 | Formatfelder (`fmt:`) lösen die Mail-Sonderfelder am Beleg ab | 7 |
-| 2026-09-17 | #1361, #1701 | Umschlüsselung und Feldlöschung zweiphasig und wiederaufnehmbar | 8 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 5, 6, 8 |
