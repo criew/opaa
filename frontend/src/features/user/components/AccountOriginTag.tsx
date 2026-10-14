@@ -7,10 +7,10 @@ import type { AccountResponse } from '@/shared/api/types'
 import { accountOriginLabel, isLocalAccount } from './accountLabels'
 
 /**
- * Die Herkunft eines Kontos: Schlüssel und „Lokal" für ein Konto dieser Installation,
- * Gebäude und Anbietername für ein Konto eines Identitätsanbieters. Das Symbol trägt keine eigene
- * Bedeutung - das Wort daneben tut es (guidelines 1.2); ein entfernter Anbieter nennt im Tooltip
- * den Issuer, unter dem das Konto entstand.
+ * An account's origin: key and „Lokal" for an account of this installation,
+ * building and provider name for an account of an identity provider. The icon carries no meaning
+ * of its own - the word next to it does (guidelines 1.2); a removed provider names in the tooltip
+ * the issuer under which the account was created.
  */
 export default function AccountOriginTag({ account }: { account: AccountResponse }) {
   const local = isLocalAccount(account)
@@ -43,7 +43,7 @@ export default function AccountOriginTag({ account }: { account: AccountResponse
       </Typography>
     </Stack>
   )
-  // Ein gekuerzter Anbietername und der Issuer eines Kontos ohne Anbieterzeile gehoeren beide in
-  // den Tooltip - die Zelle ist schmal, die Zuordnung muss trotzdem eindeutig bleiben.
+  // A truncated provider name and the issuer of an account without a provider row both belong in
+  // the tooltip - the cell is narrow, the association must still stay unambiguous.
   return <Tooltip title={local ? '' : `${label} · Issuer: ${account.issuer}`}>{tag}</Tooltip>
 }

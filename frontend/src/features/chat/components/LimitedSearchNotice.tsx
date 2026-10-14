@@ -3,10 +3,10 @@ import Alert from '@mui/material/Alert'
 import { getSearchAvailability } from '../api/searchApi'
 
 /**
- * Hinweis im Chat, solange die Vektorsuche ausgesetzt ist: Nach einem Wechsel des
- * Embedding-Modells antwortet bis zum Abschluss der Neueinbettung nur die Volltextsuche. Ein
- * Fehler beim Abfragen zeigt nichts an - der Hinweis ist eine Zusatzinformation, keine
- * Voraussetzung für den Chat.
+ * Hint in the chat while the vector search is suspended: after a change of the
+ * embedding model only the full-text search answers until the re-embedding completes. An
+ * error while querying shows nothing - the hint is additional information, not a
+ * prerequisite for the chat.
  */
 export default function LimitedSearchNotice() {
   const [suspended, setSuspended] = useState(false)

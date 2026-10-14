@@ -10,8 +10,8 @@ describe('searchAdminStore', () => {
   })
 
   /**
-   * Status und Diagnosekontext speisen verschiedene Reiter und werden deshalb getrennt
-   * geholt: Wer den Indexstatus ansieht, löst keinen Aufruf der Diagnose aus und umgekehrt.
+   * Status and diagnosis context feed different tabs and are therefore fetched
+   * separately: whoever looks at the index status triggers no diagnosis call and vice versa.
    */
   it('fetches only the status, not the diagnosis context', async () => {
     const aufrufe: string[] = []
@@ -42,9 +42,9 @@ describe('searchAdminStore', () => {
   })
 
   /**
-   * Die beiden Fehlerzustände sind getrennt: Ein nicht erreichbarer Diagnosekontext darf den
-   * Indexstatus nicht verdecken, den er gar nicht betrifft. Vorher teilten sich beide Aufrufe
-   * einen Zustand, und der Fehler des einen erschien über dem Inhalt des anderen.
+   * The two error states are separate: an unreachable diagnosis context must not hide the
+   * index status, which it does not concern at all. Previously both calls shared
+   * one state, and the error of one appeared above the content of the other.
    */
   it('keeps a failing diagnosis context out of the status error', async () => {
     server.use(

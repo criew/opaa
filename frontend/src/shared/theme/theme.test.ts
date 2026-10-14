@@ -294,8 +294,8 @@ describe('createAppTheme', () => {
   test('a light branding colour gets a darkened action surface (#634)', () => {
     const theme = createAppTheme('light', { primaryColor: '#61B5F6' })
 
-    // Als *Text* auf hellem Grund erreicht dieses Blau 4,5:1 nicht - die Rolle rückt
-    // deshalb vom Grund weg. Die Fläche darunter ist davon unberührt und behält ihre Ableitung.
+    // As *text* on a light ground this blue does not reach 4.5:1 - so the role moves
+    // away from the ground. The surface below is not affected and keeps its derivation.
     expect(theme.palette.primary.main).not.toBe('#61B5F6')
     const button = theme.components?.MuiButton?.styleOverrides?.root as {
       variants: Array<{ style: { backgroundColor: string } }>
@@ -313,28 +313,28 @@ describe('createAppTheme', () => {
     expect(button.variants[0].style.backgroundColor).toBe('#7A1FA2')
   })
 
-  // Die Seitenleiste des Space hat kein eigenes Thema mehr - sie folgt wie der Adminbereich
-  // dem Schema der Anwendung. Die Ableitung einer Hausfarbe auf dunklem Grund prüft deshalb das
-  // Dunkelschema der Anwendung selbst.
+  // The space sidebar no longer has a theme of its own - like the admin area it follows
+  // the application's scheme. The derivation of a house colour on a dark ground is therefore
+  // checked by the application's own dark scheme.
   test('the dark scheme derives its accent from a branding color', () => {
     const theme = createAppTheme('dark', { primaryColor: '#7A1FA2' })
 
-    // Ein dunkles Violett wäre auf dem dunklen Grund als Verweis nicht lesbar, also rückt
-    // es vom Grund weg - und ist deshalb *nicht* mehr die konfigurierte Farbe selbst.
+    // A dark violet would not be readable as a link on the dark ground, so it moves
+    // away from the ground - and is therefore *no longer* the configured colour itself.
     expect(theme.palette.primary.main).not.toBe('#7A1FA2')
     const vorher = contrastRatio('#7A1FA2', darkRoles.bg1) as number
     const nachher = contrastRatio(theme.palette.primary.main, darkRoles.bg1) as number
     expect(nachher).toBeGreaterThan(vorher)
   })
 
-  // Dass die Ableitung nach den zugelassenen Schritten bewusst abbricht, statt eine
-  // Extremfarbe bis zur Unkenntlichkeit aufzuhellen, prüft utils/contrast.test.ts an
-  // `deriveAccentText` selbst - über `buildTheme` ist dieser Grenzfall in keinem Thema erreichbar.
+  // That the derivation deliberately stops after the permitted steps instead of lightening an
+  // extreme colour beyond recognition is checked by utils/contrast.test.ts on
+  // `deriveAccentText` itself - via `buildTheme` this edge case is reachable in no theme.
 
   /**
-   * Der gemessene Fall aus der Demo-Installation. `#1153EE` erreicht auf Weiß 6,0:1, im
-   * Dunkelschema aber nur 3,3:1 - jeder Verweis, jedes „Passwort vergessen?" und jeder aktive
-   * Reiter lag darunter, in der ganzen Anwendung.
+   * The measured case from the demo installation. `#1153EE` reaches 6.0:1 on white, but only
+   * 3.3:1 in the dark scheme - every link, every „Passwort vergessen?" and every active
+   * tab fell below that, across the whole application.
    */
   test.each(['light', 'dark'] as const)(
     'a house colour reaches the text threshold in the %s scheme (#1600)',
@@ -350,7 +350,7 @@ describe('createAppTheme', () => {
     },
   )
 
-  /** Die Fläche behält ihre eigene Ableitung - die Anhebung des Textes fasst sie nicht an. */
+  /** The surface keeps its own derivation - raising the text does not touch it. */
   test('the filled surface keeps its own derivation when the text colour moves (#1600)', () => {
     const theme = createAppTheme('dark', { primaryColor: '#1153EE' })
     const button = theme.components?.MuiButton?.styleOverrides?.root as {

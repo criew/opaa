@@ -32,12 +32,12 @@ interface ProviderListProps {
 }
 
 /**
- * Was der Anbieter aus dem Token holt.
+ * What the provider takes from the token.
  *
- * Die Rollenwerte stehen mit in der Übersicht, obwohl es die knappere Zelle ohne sie gäbe: Sie
- * beantworten, **wer über diesen Anbieter Systemverwalter wird** — das soll man sehen, ohne den
- * Dialog zu öffnen. Die Claims für E-Mail und Anzeigename sind dagegen Routine und stehen dort,
- * wo man sie ändert.
+ * The role values are part of the overview, although the cell would be shorter without them:
+ * they answer **who becomes system administrator via this provider** — that should be visible
+ * without opening the dialog. The claims for email and display name, by contrast, are routine
+ * and are shown where they are changed.
  */
 function ClaimCell({ provider }: { provider: OidcProviderResponse }) {
   const { rolesClaim, groupsClaim, systemAdminRole, auditorRole } = provider.claimMapping
@@ -74,7 +74,7 @@ interface ProviderRowProps {
   onEdit: ProviderListProps['onEdit']
 }
 
-/** Die Reihenfolge-Schaltflächen; in beiden Darstellungen dieselben Namen. */
+/** The order buttons; the same names in both presentations. */
 function OrderButtons({
   provider,
   isFirst,
@@ -103,8 +103,8 @@ function OrderButtons({
   )
 }
 
-/** Dieselben Angaben untereinander - eine sechsspaltige Tabelle trägt ein schmales Fenster nicht,
- *  und die Seite dürfte dafür nicht waagerecht rollen (Muster der Konten- und Modellliste). */
+/** The same details stacked - a narrow window cannot carry a six-column table,
+ *  and the page must not scroll horizontally for it (pattern of the account and model list). */
 function ProviderCard({
   provider,
   position,
@@ -191,21 +191,21 @@ function ProviderCard({
 }
 
 /**
- * Die Identitätsanbieter als Liste — in der Reihenfolge der Anmeldeseite. Ab dem
- * `md`-Breakpoint als Tabelle, darunter als Karten: Sechs Spalten trägt ein schmales Fenster
- * nicht, und die Seite dürfte dafür nicht waagerecht rollen.
+ * The identity providers as a list — in the order of the login page. From the
+ * `md` breakpoint on as a table, below as cards: a narrow window cannot carry six columns,
+ * and the page must not scroll horizontally for it.
  *
- * **Nicht sortierbar, mit Absicht.** Die Reihenfolge dieser Liste *ist* die Reihenfolge, in der
- * die Anbieter auf der Anmeldeseite stehen; eine Sortierung nach Name oder Zustand würde genau
- * die Aussage zerstören, die die Liste trägt. Die Position steht deshalb sichtbar in der ersten
- * Spalte, nicht nur in einem versteckten Text.
+ * **Not sortable, on purpose.** The order of this list *is* the order in which
+ * the providers appear on the login page; sorting by name or state would destroy exactly
+ * the statement the list carries. The position is therefore visible in the first
+ * column, not only in a hidden text.
  *
- * **Die Pfeile bleiben in der Zeile**, anders als jede andere Handlung. Umsortieren ist eine
- * wiederholte Handlung — ein Menü, das sich nach jedem Schritt schließt, macht aus drei Klicks
- * neun.
+ * **The arrows stay in the row**, unlike every other action. Reordering is a
+ * repeated action — a menu that closes after every step turns three clicks into
+ * nine.
  *
- * Das Monogramm ist dasselbe wie auf der Anmeldeseite: Was die Systemverwaltung hier konfiguriert,
- * erkennt die anmeldende Person dort wieder.
+ * The monogram is the same as on the login page: what the system administration configures here,
+ * the person logging in recognizes there.
  */
 export default function ProviderList({ providers, onEdit }: ProviderListProps) {
   const moveProvider = useOidcProviderStore((s) => s.moveProvider)
@@ -318,9 +318,9 @@ export default function ProviderList({ providers, onEdit }: ProviderListProps) {
                     <ProviderStateDot state={state} />
                     <Box component="span">{PROVIDER_STATE_LABEL[state]}</Box>
                   </Box>
-                  {/* Warum er nicht erreichbar ist - die Antwort des Anbieters, wörtlich. „Nicht
-                      erreichbar" allein sagt nicht, ob die Adresse falsch ist oder der Dienst
-                      steht. */}
+                  {/* Why it is unreachable - the provider's answer, verbatim. „Nicht
+                       erreichbar" alone does not say whether the address is wrong or the service
+                       is down. */}
                   {state === 'unreachable' && provider.registryMessage && (
                     <Typography sx={{ fontSize: 12, color: 'text.secondary', mt: 0.25 }}>
                       {provider.registryMessage}

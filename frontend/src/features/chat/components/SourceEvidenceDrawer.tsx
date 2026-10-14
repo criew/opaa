@@ -427,8 +427,8 @@ export default function SourceEvidenceDrawer({
                     </Box>
                   )}
                   {!doc.citationValid && (
-                    // Die Signalfarbe steht im Icon (error.main, über 3:1 in beiden Schemata), der Text
-                    // läuft in text.secondary (Gestaltungsleitlinien 2.3).
+                    // The signal colour is in the icon (error.main, above 3:1 in both schemes), the
+                    // text runs in text.secondary (design guidelines 2.3).
                     <Box
                       component="span"
                       sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}

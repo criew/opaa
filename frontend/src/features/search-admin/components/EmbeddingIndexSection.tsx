@@ -40,9 +40,9 @@ function formatTimestamp(value?: string | null): string | null {
 }
 
 /**
- * Der Vektorindex gegen das konfigurierte Embedding-Modell. Das Modell selbst steht in der
- * Konfiguration; hier wird nur die Neueinbettung gestartet, verfolgt und abgebrochen. Solange ein
- * Lauf arbeitet, fragt der Abschnitt den Fortschritt regelmäßig ab.
+ * The vector index against the configured embedding model. The model itself is in the
+ * configuration; here the re-embedding is only started, tracked and cancelled. While a
+ * run is working, the section polls the progress regularly.
  */
 export default function EmbeddingIndexSection() {
   const [status, setStatus] = useState<EmbeddingReindexStatusResponse | null>(null)

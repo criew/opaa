@@ -6,8 +6,8 @@ import ConfirmHost from './ConfirmHost'
 import { confirmAction, useConfirmStore } from '../../stores/confirmStore'
 
 /**
- * Der Quelltext des Frontends, von Vite eingelesen (`?raw`) - kein Dateisystemzugriff, damit der
- * Wächter unten ohne Node-Typen auskommt.
+ * The frontend's source text, read in by Vite (`?raw`) - no file system access, so that the
+ * guard below gets by without Node types.
  */
 const QUELLEN = {
   ...(import.meta.glob('../../../**/*.tsx', {
@@ -32,7 +32,7 @@ describe('ConfirmHost', () => {
   })
 
   it('shows the question, the consequence and the verb of the action', async () => {
-    // renderWithProviders montiert den Host selbst; hier steht er zusätzlich nicht.
+    // renderWithProviders mounts the host itself; it is not added again here.
     renderWithProviders(<div />)
     void confirmAction({
       question: 'Lokale Anmeldung abschalten?',
@@ -44,7 +44,7 @@ describe('ConfirmHost', () => {
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     expect(screen.getByText('Lokale Anmeldung abschalten?')).toBeInTheDocument()
     expect(screen.getByText('Alle lokalen Konten verlieren ihre Sitzung.')).toBeInTheDocument()
-    // Das Verb, nicht „OK" - wer nur die Schaltfläche liest, weiß trotzdem, was er zusagt.
+    // The verb, not „OK" - whoever reads only the button still knows what they agree to.
     expect(screen.getByRole('button', { name: 'Abschalten' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'OK' })).toBeNull()
   })
@@ -58,8 +58,8 @@ describe('ConfirmHost', () => {
       tone: 'danger',
     })
 
-    // Ein Screenreader liest beim Öffnen beides vor - die Folge ist die Entscheidungsgrundlage
-    // und darf nicht erst beim Durchtabben auffallen.
+    // A screen reader reads both on opening - the consequence is the basis for the decision
+    // and must not first be noticed while tabbing through.
     const dialog = await screen.findByRole('dialog', { name: 'Konto löschen?' })
     const beschreibung = dialog.getAttribute('aria-describedby')
     expect(beschreibung).toBeTruthy()
@@ -96,7 +96,7 @@ describe('ConfirmHost', () => {
 
     await user.keyboard('{Escape}')
 
-    // Escape bestätigt nie - sonst löschte ein Fluchtreflex das Objekt.
+    // Escape never confirms - otherwise a reflex to escape would delete the object.
     await expect(antwort).resolves.toBe(false)
   })
 
@@ -109,7 +109,7 @@ describe('ConfirmHost', () => {
     })
     await screen.findByRole('dialog')
 
-    // Ein Enter aus dem Reflex heraus bricht dann ab, statt zu löschen.
+    // An Enter out of reflex then cancels instead of deleting.
     await waitFor(() => expect(screen.getByRole('button', { name: 'Abbrechen' })).toHaveFocus())
   })
 
@@ -131,8 +131,8 @@ describe('ConfirmHost', () => {
     const erste = confirmAction({ question: 'Erste Frage?', confirmLabel: 'Ja' })
     const zweite = confirmAction({ question: 'Zweite Frage?', confirmLabel: 'Auch ja' })
 
-    // `window.confirm` blockierte den Thread und konnte sich nicht überlagern. Ohne diese Regel
-    // bliebe das `await` der verdrängten Anfrage für immer stehen.
+    // `window.confirm` blocked the thread and could not overlap. Without this rule
+    // the `await` of the displaced request would hang forever.
     await expect(erste).resolves.toBe(false)
     expect(await screen.findByText('Zweite Frage?')).toBeInTheDocument()
     expect(screen.queryByText('Erste Frage?')).toBeNull()
@@ -148,13 +148,13 @@ describe('ConfirmHost', () => {
   })
 
   /**
-   * Die Regel maschinell gezogen: Der Browser-Dialog ist aus dem Produktivcode
-   * verschwunden und kommt nicht durch die Hintertür zurück. Er blockiert den Haupt-Thread,
-   * benennt seine Handlung nicht und lässt sich nicht gestalten.
+   * The rule drawn mechanically: the browser dialog has disappeared from production code
+   * and does not come back through the back door. It blocks the main thread,
+   * does not name its action and cannot be styled.
    */
   it('leaves no window.confirm in the product code', () => {
-    // `\bconfirm\(` trifft `window.confirm(` und ein nacktes `confirm(`, nicht aber
-    // `confirmAction(` - dort folgt auf „confirm" ein Buchstabe, keine Klammer.
+    // `\bconfirm\(` matches `window.confirm(` and a bare `confirm(`, but not
+    // `confirmAction(` - there „confirm" is followed by a letter, not a parenthesis.
     const rueckfaelle = PRODUKTIVDATEIEN.filter((pfad) => /\bconfirm\(/.test(QUELLEN[pfad]))
 
     expect(rueckfaelle).toEqual([])

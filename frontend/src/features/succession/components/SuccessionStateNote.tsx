@@ -2,17 +2,17 @@ import Typography from '@mui/material/Typography'
 import type { SuccessionStateResponse } from '@/shared/api/types'
 
 /**
- * Die Kennzeichnung am Objekt (ADR-0036, Entscheidung 6; Personalrat Z5): **Zustand und Adressat,
- * sonst nichts** — kein Datum, kein früherer Eigentümer, kein Grund. Sie steht für jeden
- * Leseberechtigten, nie an Suchtreffern oder Quellenverweisen: Der Zustand betrifft die
- * Zuständigkeit, nicht die Richtigkeit des Inhalts.
+ * The marking on the object (ADR-0036, Entscheidung 6; staff council Z5): **state and addressee,
+ * nothing else** — no date, no previous owner, no reason. It is shown to everyone with
+ * read access, never on search hits or source references: the state concerns the
+ * responsibility, not the correctness of the content.
  */
 export default function SuccessionStateNote({
   succession,
   variant = 'line',
 }: {
   succession: SuccessionStateResponse | null | undefined
-  /** `badge` für die knappe Zeile einer Kachel, `line` für die Detailansicht mit Zusatzsatz. */
+  /** `badge` for a tile's short line, `line` for the detail view with an additional sentence. */
   variant?: 'badge' | 'line'
 }) {
   if (!succession) return null

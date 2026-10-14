@@ -113,7 +113,7 @@ describe('brandingStore', () => {
     expect(useBrandingStore.getState().branding.logoUrl).toBeUndefined()
   })
 
-  /** Jede Bildart hat ihr eigenes Fach - und die Ablage trifft das richtige. */
+  /** Every image kind has its own slot - and the storage hits the right one. */
   it('stores and removes each sign-in image in its own slot', async () => {
     const file = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], 'bild.png', {
       type: 'image/png',

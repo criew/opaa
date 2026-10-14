@@ -27,8 +27,8 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
 }
 
 /**
- * Die Seite liest ihren Bereich aus der Route (`/admin/models/:tab`), also montieren die Tests sie
- * unter denselben Routen wie App.tsx - einschließlich der Umleitung des bloßen Pfades.
+ * The page reads its area from the route (`/admin/models/:tab`), so the tests mount it
+ * under the same routes as App.tsx - including the redirect of the bare path.
  */
 function renderPage(route = '/admin/models/chat') {
   return renderWithProviders(
@@ -57,7 +57,7 @@ function desktopMatchMedia(query: string): MediaQueryList {
   } as unknown as MediaQueryList
 }
 
-/** Die Tabellenzeile eines Modells - erkannt am Anzeigenamen, den ihre erste Spalte führt. */
+/** A model's table row - recognized by the display name its first column shows. */
 function rowOf(name: string) {
   return screen.getByRole('row', { name: new RegExp(name) })
 }
@@ -68,8 +68,8 @@ async function openRowMenu(user: UserEvent, name: string) {
 }
 
 /**
- * Öffnet das Formular eines Modells über „Bearbeiten" seines Zeilenmenüs - und sichert dabei zu,
- * dass der Dialog das Modell trägt, dessen Zeile ihn geöffnet hat.
+ * Opens a model's form via „Bearbeiten" in its row menu - and asserts along the way
+ * that the dialog carries the model whose row opened it.
  */
 async function openEditDialog(user: UserEvent, name: string) {
   const menu = await openRowMenu(user, name)
@@ -80,19 +80,19 @@ async function openEditDialog(user: UserEvent, name: string) {
 }
 
 /**
- * Zeichnet jeden Aufruf der Modell-Endpunkte samt Rumpf auf.
+ * Records every call of the model endpoints including the body.
  *
- * Beim API-Schlüssel ist der **gesendete** Request der Prüfgegenstand: Die Dreiwege-Konvention von
- * `LlmModelRequest` - weggelassen heißt unverändert, leerer Text heißt entfernen, alles andere
- * heißt setzen - ist am Ergebnis allein nicht zu unterscheiden.
+ * For the API key the **sent** request is what is checked: the three-way convention of
+ * `LlmModelRequest` - omitted means unchanged, empty text means remove, anything else
+ * means set - cannot be told apart from the result alone.
  */
 function recordModelRequests() {
   const aufrufe: Array<{ method: string; path: string; body: Record<string, unknown> | null }> = []
   const horcher = async ({ request }: { request: Request }) => {
     const path = new URL(request.url).pathname
     if (!path.startsWith('/api/v1/admin/models')) return
-    // `clone()` vor dem Lesen, damit der Rumpf des Originals für den Handler unberührt bleibt;
-    // Aufrufe ohne Rumpf (GET, DELETE, Aktivierung) tragen `null`.
+    // `clone()` before reading, so that the original's body stays untouched for the handler;
+    // calls without a body (GET, DELETE, activation) carry `null`.
     const body = await request
       .clone()
       .json()
@@ -126,9 +126,9 @@ describe('LlmModelManagementPage', () => {
 
   /** No route/entry for anyone but SYSTEM_ADMIN. */
   /**
-   * Die Bereiche sind Routen, keine Zustände: Ein Verweis soll im richtigen Bereich
-   * landen, und ein Neuladen ihn behalten. Der bloße Pfad landet auf den Chat-Modellen, und ein
-   * Tippfehler wird nicht stillschweigend umgedeutet.
+   * The areas are routes, not states: a link should land in the right area,
+   * and a reload should keep it. The bare path lands on the chat models, and a
+   * typo is not silently reinterpreted.
    */
   it('lands on the chat models', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -151,8 +151,8 @@ describe('LlmModelManagementPage', () => {
   })
 
   /**
-   * Jeder Bereich holt nur, was er zeigt. Vorher lud die Seite die Modellliste **und** die
-   * Einbettungsangaben, obwohl immer nur eines davon sichtbar war.
+   * Every area fetches only what it shows. Previously the page loaded the model list **and** the
+   * embedding details, although only one of them was ever visible.
    */
   it('fetches only the models in the chat area', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -201,18 +201,18 @@ describe('LlmModelManagementPage', () => {
     renderChat()
 
     await screen.findByRole('table', { name: 'Chat-Modelle' })
-    // Der Zustand steht als Wort in der Zeile des Modells, nicht allein als Farbe.
+    // The state is shown as a word in the model's row, not as colour alone.
     expect(within(rowOf('Ollama lokal')).getByText('Aktiv')).toBeInTheDocument()
   })
 
   /**
-   * Die Tabelle ist die Übersicht: Jede Spalte ist benannt, und jede Zeile führt ihr
-   * Modell mit Kennung, Endpunkt und Zugang, ohne dass etwas aufgeklappt werden muss.
+   * The table is the overview: every column is named, and every row shows its
+   * model with identifier, endpoint and access, without anything having to be expanded.
    */
   /**
-   * Regressionsschutz zu #958: Der Bereich trägt außer dem Seitentitel keine Überschrift. Eine
-   * Überschrift je Modell wäre bei MUI standardmäßig ein `h3` — eine übersprungene Stufe unter
-   * dem `h1` der Seite.
+   * regression guard for #958: the area carries no heading besides the page title. A
+   * heading per model would by default be an `h3` in MUI — a skipped level below
+   * the page's `h1`.
    */
   it('keeps the heading structure flat below the page title', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -225,7 +225,7 @@ describe('LlmModelManagementPage', () => {
       .map((h) => Number(h.tagName.slice(1)))
       .sort((a, b) => a - b)
     expect(stufen[0]).toBe(1)
-    // Keine Stufe wird übersprungen: entweder gibt es nur das h1, oder die nächste ist ein h2.
+    // No level is skipped: either there is only the h1, or the next one is an h2.
     expect(stufen.every((stufe, i) => i === 0 || stufe - stufen[i - 1] <= 1)).toBe(true)
   })
 
@@ -265,9 +265,9 @@ describe('LlmModelManagementPage', () => {
   })
 
   /**
-   * Der eigentliche Unterschied zum Nachbarreiter: Am Einbettungsmodell ist nichts zu ändern.
-   * Ein Wechsel machte bestehende Vektoren unvergleichbar - die Ansicht darf deshalb nicht
-   * einmal so aussehen, als ginge es.
+   * The actual difference to the neighbouring tab: nothing can be changed on the embedding model.
+   * A change would make existing vectors incomparable - so the view must not even
+   * look as if it were possible.
    */
   it('offers nothing to operate in the embedding area', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -305,7 +305,7 @@ describe('LlmModelManagementPage', () => {
     )
   })
 
-  // Manche Modelle lehnen jede Temperatur ab - „keine Angabe“ ist die Voreinstellung.
+  // Some models reject any temperature - „keine Angabe“ is the default.
   it('creates a model without a temperature by default', async () => {
     signInAs('SYSTEM_ADMIN')
     const aufrufe = recordModelRequests()
@@ -369,7 +369,7 @@ describe('LlmModelManagementPage', () => {
         useLlmModelStore.getState().models.find((m) => m.displayName === 'Modell B')?.active,
       ).toBe(true)
     })
-    // Sichtbar in der Liste, und zwar an beiden Zeilen: Aktiv ist immer genau ein Modell.
+    // Visible in the list, on both rows: exactly one model is always active.
     await waitFor(() => {
       expect(within(rowOf('Modell B')).getByText('Aktiv')).toBeInTheDocument()
     })
@@ -400,8 +400,8 @@ describe('LlmModelManagementPage', () => {
         useLlmModelStore.getState().models.find((m) => m.displayName === 'Ollama umbenannt'),
       ).toBeTruthy()
     })
-    // Dreiwege-Konvention: Das unberührte Schlüsselfeld lässt `apiKey` im Request ganz weg - und
-    // genau das heißt „unverändert".
+    // Three-way convention: the untouched key field omits `apiKey` from the request entirely - and
+    // exactly that means „unverändert".
     const gesendet = aufrufe.find((aufruf) => aufruf.method === 'PUT')!
     expect(gesendet.body).toMatchObject({ displayName: 'Ollama umbenannt' })
     expect(gesendet.body).not.toHaveProperty('apiKey')
@@ -410,17 +410,17 @@ describe('LlmModelManagementPage', () => {
       .models.find((m) => m.displayName === 'Ollama umbenannt')!
     expect(saved.apiKeySet).toBe(false)
 
-    // Das Feld zeigt den gespeicherten Schlüssel auch nach dem Rundlauf durch Speichern und
-    // erneutes Öffnen nicht.
+    // The field does not show the stored key even after the round trip through saving and
+    // reopening.
     await waitForDialogClosed()
     const wieder = await openEditDialog(user, 'Ollama umbenannt')
     expect(within(wieder).getByLabelText('API-Schlüssel (optional)')).toHaveValue('')
   })
 
   /**
-   * Ein Speichern bestätigt sich sichtbar, und die Liste führt danach den neuen Wert.
-   * Eine Bestätigung, die niemand zu sehen bekommt, und eine Liste, die noch den alten Namen
-   * zeigt, sind genau das, was hier ausgeschlossen wird.
+   * A save confirms itself visibly, and the list shows the new value afterwards.
+   * A confirmation nobody gets to see and a list that still shows the old name
+   * are exactly what is ruled out here.
    */
   it('closes the dialog, confirms the save and shows the new value in the list', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -477,8 +477,8 @@ describe('LlmModelManagementPage', () => {
           ?.apiKeySet,
       ).toBe(false)
     })
-    // Dreiwege-Konvention: Die ausdrückliche Anforderung sendet den leeren Text - und genau das
-    // heißt „entfernen", im Unterschied zum weggelassenen Feld.
+    // Three-way convention: the explicit request sends the empty text - and exactly that
+    // means „entfernen", unlike the omitted field.
     expect(aufrufe.find((aufruf) => aufruf.method === 'PUT')!.body?.apiKey).toBe('')
     await waitFor(() => {
       expect(within(rowOf('Modell mit Schlüssel')).getByText('Ohne Schlüssel')).toBeInTheDocument()
@@ -509,8 +509,8 @@ describe('LlmModelManagementPage', () => {
     expect(aufrufe.find((aufruf) => aufruf.method === 'PUT')!.body?.temperature).toBeNull()
   })
 
-  // Eine unlesbare Zahl meldet der Browser als leeren Wert mit `validity.badInput`; sie darf nicht
-  // still als „keine Temperatur“ gespeichert werden. jsdom kennt badInput nicht, daher gesetzt.
+  // The browser reports an unreadable number as an empty value with `validity.badInput`; it must
+  // not be silently saved as „keine Temperatur“. jsdom does not know badInput, hence it is set.
   it('blocks saving an unreadable temperature instead of storing none', async () => {
     signInAs('SYSTEM_ADMIN')
     const aufrufe = recordModelRequests()
@@ -523,7 +523,7 @@ describe('LlmModelManagementPage', () => {
     await user.type(dialog.getByLabelText('Basis-Adresse', { exact: false }), 'https://api/v1')
     await user.type(dialog.getByLabelText('Modell-Kennung', { exact: false }), 'claude-haiku')
     const feld = dialog.getByLabelText('Temperatur (optional)') as HTMLInputElement
-    // Erst ein Wert, damit React den folgenden Wechsel auf „leer“ als Änderung meldet.
+    // A value first, so that React reports the following change to „leer“ as a change.
     await user.type(feld, '1')
     Object.defineProperty(feld, 'validity', { value: { badInput: true }, configurable: true })
     fireEvent.change(feld, { target: { value: '' } })
@@ -574,13 +574,13 @@ describe('LlmModelManagementPage', () => {
 
     const loeschen = within(menu).getByRole('menuitem', { name: 'Löschen' })
     expect(loeschen).toHaveAttribute('aria-disabled', 'true')
-    // Der Grund steht im DOM und ist über `aria-describedby` mit dem gesperrten Eintrag verbunden,
-    // wird also auch vorgelesen - ein Tooltip fände nur eine Maus.
+    // The reason is in the DOM and connected to the disabled entry via `aria-describedby`,
+    // so it is read out as well - a tooltip would only be found by a mouse.
     const grund = within(menu).getByText(/aktive Modell kann nicht gelöscht werden/i)
     expect(loeschen).toHaveAttribute('aria-describedby', grund.closest('li')!.id)
 
-    // Der Eintrag nimmt auch keinen Klick an - `pointer-events: none`, nicht bloß ein Vermerk im
-    // Namen; testing-library weist den Versuch genau deshalb ab. Es geht kein Löschaufruf hinaus.
+    // The entry accepts no click either - `pointer-events: none`, not just a note in the
+    // name; testing-library rejects the attempt for exactly that reason. No delete call goes out.
     await expect(user.click(loeschen)).rejects.toThrow(/pointer-events/)
     expect(aufrufe.filter((aufruf) => aufruf.method === 'DELETE')).toEqual([])
     expect(

@@ -2,11 +2,11 @@ import type { SxProps, Theme } from '@mui/material/styles'
 import { fontFamily } from '@/shared/theme/tokens'
 
 /**
- * Die Tabellensprache des Modellbereichs: Spaltenköpfe als gesperrte Versalien in der
- * Maschinenschrift, Zellen oben ausgerichtet und beschnitten statt umbrechend.
+ * The table language of the model area: column heads as letter-spaced capitals in the
+ * monospace font, cells aligned to the top and clipped instead of wrapping.
  *
- * An einer Stelle, damit die beiden Tabellen des Bereichs nicht auseinanderlaufen — wer eine
- * Zeilenhöhe ändert, ändert sie für beide.
+ * In one place, so that the area's two tables do not drift apart — whoever changes a
+ * row height changes it for both.
  */
 export const MODEL_TABLE_SX: SxProps<Theme> = {
   tableLayout: 'fixed',
@@ -14,7 +14,7 @@ export const MODEL_TABLE_SX: SxProps<Theme> = {
   '& td': { fontSize: 13, py: 1.25, verticalAlign: 'top', overflow: 'hidden' },
 }
 
-/** Maschinenwerte - Kennungen, Adressen, Zahlen - stehen in der Maschinenschrift. */
+/** Machine values - identifiers, addresses, numbers - are set in the monospace font. */
 export const MACHINE_VALUE_SX: SxProps<Theme> = {
   fontFamily: fontFamily.mono,
   fontSize: 12,

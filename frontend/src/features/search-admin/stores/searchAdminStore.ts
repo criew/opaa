@@ -76,7 +76,7 @@ interface SearchAdminState {
   personContextAvailable: boolean
   personContextHint: string
   statusError: string | null
-  /** Fehler des Diagnosekontexts - eigener Zustand, weil ihn nur der Diagnose-Reiter lädt. */
+  /** Error of the diagnosis context - its own state, because only the diagnosis tab loads it. */
   contextError: string | null
   diagnosis: SearchDiagnosisResponse | null
   diagnosisError: string | null
@@ -204,10 +204,10 @@ export const useSearchAdminStore = create<SearchAdminState>((set, get) => {
     reset: () => set({ ...EMPTY }),
 
     /**
-     * Status und Diagnosekontext werden getrennt geladen: Sie speisen verschiedene Reiter,
-     * und ein Reiter soll nur holen, was er zeigt. Vorher lief beides in einem `Promise.all` mit
-     * einem gemeinsamen Fehlerzustand - ein nicht erreichbarer Diagnosekontext verdeckte damit den
-     * Indexstatus, den er gar nicht betrifft.
+     * Status and diagnosis context are loaded separately: they feed different tabs,
+     * and a tab should only fetch what it shows. Previously both ran in one `Promise.all` with
+     * a shared error state - an unreachable diagnosis context thus hid the
+     * index status, which it does not concern at all.
      */
     loadStatus: async () => {
       const sessionEpoch = currentSessionEpoch()

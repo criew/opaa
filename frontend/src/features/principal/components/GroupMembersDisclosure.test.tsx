@@ -19,9 +19,9 @@ const twoOfThree: GroupMemberDisclosureResponse = {
 
 describe('GroupMembersDisclosure', () => {
   /**
-   * ADR-0036 Entscheidung 9: Eine Mitgliederliste ist eine Aussage über Personen. Sie
-   * entsteht auf ausdrücklichen Wunsch — nicht als Beiwerk einer Übersicht, die jemand aus einem
-   * anderen Grund geöffnet hat.
+   * ADR-0036 Entscheidung 9: a member list is a statement about persons. It
+   * is built on explicit request — not as a by-product of an overview someone opened for
+   * another reason.
    */
   it('lädt nichts, solange niemand danach fragt', () => {
     const load = vi.fn(async () => twoOfThree)
@@ -75,7 +75,7 @@ describe('GroupMembersDisclosure', () => {
     ).toBeNull()
   })
 
-  /** Begrenzung (d): keine Namen, keine Größe — die Verantwortlichen treten an ihre Stelle. */
+  /** Limitation (d): no names, no size — the stewards take their place. */
   it('nennt bei einer geschützten Gruppe die Verantwortlichen statt der Mitglieder', async () => {
     const load = vi.fn(async () => ({
       groupId: 'group-personalrat',
@@ -108,7 +108,7 @@ describe('GroupMembersDisclosure', () => {
     await waitFor(() => expect(screen.getByText('Gruppe nicht gefunden')).toBeVisible())
   })
 
-  /** Auch eine kleine Gruppe nennt ihre Mitglieder und ihre Zahl. */
+  /** A small group names its members and their number as well. */
   it('nennt bei einer kleinen Gruppe Namen und Zahl', async () => {
     const load = vi.fn(async () => ({
       groupId: 'group-kleine-runde',
@@ -133,8 +133,8 @@ describe('GroupMembersDisclosure', () => {
   })
 
   /**
-   * Schrumpft die Gruppe zwischen zwei Klicks, liefert die Folgeseite nichts mehr - der Auslöser
-   * verschwindet dann, statt klickbar zu bleiben und nichts zu tun.
+   * If the group shrinks between two clicks, the next page returns nothing any more - the trigger
+   * then disappears instead of staying clickable and doing nothing.
    */
   it('nimmt „Weitere anzeigen" nach einer leeren Folgeseite zurück', async () => {
     const load = vi.fn(async (offset: number) =>

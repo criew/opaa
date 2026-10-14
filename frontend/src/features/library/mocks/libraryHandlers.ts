@@ -218,7 +218,7 @@ export const libraryHandlers = [
       ...listEntry,
       ownerId: ownerType === 'GROUP' ? (body.ownerId ?? 'mock-group-id') : 'mock-user-id',
       documentCount: 0,
-      // sourceType ist seit ADR-0018 Pflichtfeld und beim Anlegen unveraenderlich.
+      // sourceType is mandatory since ADR-0018 and immutable on creation.
       sourceType: body.sourceType,
       sourcePath: body.sourceType === 'FILESYSTEM' ? (body.sourcePath ?? null) : null,
       sourceUrl:
@@ -251,7 +251,7 @@ export const libraryHandlers = [
         body.sourceType === 'SMB'
           ? Boolean(body.sourceCredentials)
           : undefined,
-      // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
+      // sourceCredentials is write-only (ADR-0018) - deliberately not in the detail response.
       // the pending consent becomes the library's own, its creator answering for it
       sourceConnection: body.pendingConnectionId
         ? {

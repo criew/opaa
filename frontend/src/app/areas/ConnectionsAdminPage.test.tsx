@@ -27,7 +27,7 @@ function render(route: string) {
   )
 }
 
-/** Die Anbindungen: Rollenschranke, Reiter als Routen und der Inhalt je Reiter. */
+/** The connections area: role barrier, tabs as routes and the content per tab. */
 describe('ConnectionsAdminPage', () => {
   it('zeigt einem Konto ohne Systemverwaltung nur den Hinweis', () => {
     signInAs('USER')

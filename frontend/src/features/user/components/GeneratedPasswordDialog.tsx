@@ -19,9 +19,9 @@ export interface GeneratedPassword {
 }
 
 /**
- * Die einmalige Anzeige eines erzeugten Anfangs- oder Ersatzpassworts (ADR-0033
- * Entscheidung 11). Das Passwort steht im Klartext, weil es genau hier übergeben wird und nirgends
- * sonst existiert; bei der nächsten Anmeldung muss es gewechselt werden.
+ * The one-time display of a generated initial or replacement password (ADR-0033
+ * Entscheidung 11). The password is shown in plain text because it is handed over exactly here and
+ * exists nowhere else; it must be changed on the next login.
  */
 export default function GeneratedPasswordDialog({
   generated,
@@ -38,8 +38,8 @@ export default function GeneratedPasswordDialog({
       fullWidth
       maxWidth="sm"
       aria-labelledby="generated-password-title"
-      // Siehe SetupLinkDialog: Das Passwort existiert genau einmal, also schließt weder Escape
-      // noch ein Klick daneben – allein die Schaltfläche.
+      // See SetupLinkDialog: the password exists exactly once, so neither Escape
+      // nor a click outside closes it – only the button.
     >
       <DialogTitle id="generated-password-title">
         Neues Passwort für „{generated.displayName}“

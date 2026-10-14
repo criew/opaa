@@ -16,29 +16,29 @@ const formReveal = keyframes`
 `
 
 /**
- * Deckkraft des Schleiers über einem hinterlegten Hintergrundbild.
+ * Opacity of the scrim over an uploaded background image.
  *
- * Das Bild bringt eine Installation selbst mit; wie hell es ist, weiß diese Anwendung nicht. Der
- * Schleier ist deshalb fest und nicht aus dem Bild abgeleitet: Bei dieser Deckkraft erreicht die
- * Schrift der Markenfläche auch über einem rein weißen Bild noch die 4,5:1 aus
- * docs/design/accessibility.md — nachgerechnet in AuthLayout.contrast.test.ts, dem einzigen Ort,
- * an dem dieser Wert überhaupt prüfbar ist.
+ * An installation brings the image itself; this application does not know how bright it is. The
+ * scrim is therefore fixed and not derived from the image: at this opacity the text of the
+ * brand area still reaches the 4.5:1 from docs/design/accessibility.md even over a pure white
+ * image — recalculated in AuthLayout.contrast.test.ts, the only place
+ * where this value can be checked at all.
  */
 export const LOGIN_BACKDROP_SCRIM_OPACITY = 0.82
 
 /**
- * Deckkraft des Claims auf der Markenfläche — der schwächere der beiden Texte dort und damit der
- * maßgebliche Wert für den Kontrastnachweis über einem Hintergrundbild.
+ * Opacity of the claim on the brand area — the weaker of the two texts there and thus the
+ * decisive value for the contrast proof over a background image.
  */
 export const LOGIN_CLAIM_OPACITY = 0.78
 
-/** Die Marke der Installation, groß — der Inhalt der Fläche, die vorher leer war. */
+/** The installation's brand, large — the content of the area that used to be empty. */
 function BrandPanel() {
   const claim = useBrandingStore((s) => s.branding.claim)
   return (
     <Box sx={{ maxWidth: 460 }}>
-      {/* Das Logo der Anmeldeseite trägt diese Fläche, also steht es hier deutlich
-          größer als die Marke in der Seitenleiste. */}
+      {/* The login page's logo carries this area, so it is shown clearly
+         larger here than the brand in the sidebar. */}
       <BrandMark logoHeight={96} variant="h4" preferLoginLogo />
       {claim && (
         <Typography
@@ -58,28 +58,28 @@ function BrandPanel() {
 }
 
 /**
- * Der Rahmen jedes Bildschirms vor der Sitzung: ab `md` links die Marke der Installation
- * auf Navy, rechts die Eingabe; darunter eine Spalte mit kleiner Marke über der Eingabe.
+ * The frame of every screen before the session: from `md` on, the installation's brand on the
+ * left on navy, the input on the right; below that a column with a small brand above the input.
  *
- * Die Eingabespalte behält 440 px Lesebreite, auch wo Platz wäre: Jenseits von etwa 500 px stehen
- * Beschriftung und Feld so weit auseinander, dass die Zuordnung leidet. Die Breite eines
- * Bildschirms geht deshalb in die Fläche daneben, nie in das Formular.
+ * The input column keeps a 440 px reading width even where there would be room: beyond roughly
+ * 500 px, label and field stand so far apart that the association suffers. The width of a
+ * screen therefore goes into the area next to it, never into the form.
  *
- * Die Marke gehört in jeder Breite dazu, nicht nur als Schmuck: Passwort-Festlegen und
- * E-Mail-Bestätigung werden kalt aus einer E-Mail erreicht, und dort muss erkennbar sein, wessen
- * Installation fragt.
+ * The brand belongs at every width, not only as decoration: setting a password and
+ * confirming an email are reached cold from an email, and there it must be recognizable whose
+ * installation is asking.
  */
 export default function AuthLayout({ children }: { children: ReactNode }) {
   const theme = useTheme()
-  // Nur eine der beiden Marken wird gebaut, nicht eine davon versteckt: Zweimal derselbe Name im
-  // Baum ist auch dann eine Dopplung, wenn eine Hälfte unsichtbar ist.
+  // Only one of the two brands is built, not one of them hidden: the same name twice in the
+  // tree is a duplicate even when one half is invisible.
   const wide = useMediaQuery(theme.breakpoints.up('md'))
   const backgroundUrl = useBrandingStore((s) => s.branding.loginBackgroundUrl)
 
-  // Ohne Bild bleibt die heutige Fläche: derselbe weiche Kern auf Navy. Mit Bild liegt
-  // der Schleier als eigene Ebene darüber, in derselben background-image-Eigenschaft — ein
-  // Farbverlauf aus zwei gleichen Stopps ist die einzige Form, in der CSS eine Deckfarbe über
-  // ein Bild legt, ohne dafür ein zweites Element zu brauchen.
+  // Without an image the current area stays: the same soft core on navy. With an image the
+  // scrim lies above it as its own layer, in the same background-image property — a
+  // gradient of two equal stops is the only form in which CSS lays an opaque colour over
+  // an image without needing a second element for it.
   const scrim = alpha(navyRoles.bg1, LOGIN_BACKDROP_SCRIM_OPACITY)
   const panelBackgroundImage = backgroundUrl
     ? `linear-gradient(${scrim}, ${scrim}), url("${backgroundUrl}")`
@@ -104,8 +104,8 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             py: 6,
             bgcolor: navyRoles.bg1,
             color: navyRoles.fg1,
-            // Tiefe statt einer flachen Fläche: ein weicher Kern oben links, gerade so viel, dass
-            // die Fläche nicht als Block liegt (guidelines 4.3 - Atmosphäre, keine Effekte).
+            // Depth instead of a flat area: a soft core at the top left, just enough that
+            // the area does not sit there as a block (guidelines 4.3 - atmosphere, no effects).
             backgroundImage: panelBackgroundImage,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
@@ -132,7 +132,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             animation: `${formReveal} 240ms ease-out both`,
           }}
         >
-          {/* Ohne die Markenfläche daneben trägt die Eingabespalte die Marke selbst. */}
+          {/* Without the brand area next to it, the input column carries the brand itself. */}
           {!wide && (
             <Box sx={{ mb: 3.5 }}>
               <BrandMark

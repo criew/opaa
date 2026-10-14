@@ -220,8 +220,8 @@ function AccountCard(props: RowProps) {
     <Box
       component="article"
       aria-label={account.displayName ?? account.email ?? account.id}
-      // Auch schmal ein Listeneintrag, keine Karte - dieselbe Sprache wie die Tabelle
-      // daneben, nur einspaltig.
+      // A list item even when narrow, no card - the same language as the table
+      // next to it, only in one column.
       sx={listCardSx}
     >
       <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
@@ -313,11 +313,11 @@ interface AccountListProps extends RowHandlers {
 }
 
 /**
- * Die Liste aller Konten (ADR-0033 Entscheidung 11): lokale Konten mit Zustand und
- * Ablauf, Anbieterkonten mit ihrem Anbieter - am Desktop eine Tabelle, unter Tablet-Breite eine
- * Kartenliste (guidelines 5.3). Name und Adresse teilen sich eine Zelle. Der Anlagegrund steht im
- * Bearbeiten-Dialog, nicht in der Liste. Die Aktivität eines Kontos zeigt die
- * Liste nicht; sie wirkt nur als Filter „länger nicht genutzt".
+ * The list of all accounts (ADR-0033 Entscheidung 11): local accounts with state and
+ * expiry, provider accounts with their provider - on desktop a table, below tablet width a
+ * card list (guidelines 5.3). Name and address share a cell. The creation reason is in the
+ * edit dialog, not in the list. The list does not show an account's activity;
+ * it acts only as the filter „länger nicht genutzt".
  */
 export default function AccountList({ currentUserId, ...handlers }: AccountListProps) {
   const theme = useTheme()

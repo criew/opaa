@@ -44,10 +44,10 @@ interface GroupMembersTableProps {
 }
 
 /**
- * Die Mitglieder einer Gruppe als Tabelle: alphabetisch, mit fester Kopfzeile in einem
- * scrollbaren Rahmen, mit einem Filterfeld für jede Gruppe mit Mitgliedern - interne wie externe. Die Liste liegt vollständig vor;
- * gefiltert wird im Browser. Rahmen und Ergebniszeile behalten beim Filtern ihre Höhe, damit der
- * Dialog nicht springt.
+ * The members of a group as a table: alphabetical, with a fixed header row in a
+ * scrollable frame, with a filter field for every group with members - internal and external
+ * alike. The list is complete; filtering happens in the browser. Frame and result row keep
+ * their height while filtering, so that the dialog does not jump.
  */
 export default function GroupMembersTable({ members, onRemove }: GroupMembersTableProps) {
   const [filter, setFilter] = useState('')

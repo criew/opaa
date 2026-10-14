@@ -43,7 +43,7 @@ function OwnerLockIcon({ className }: { className?: string }) {
   )
 }
 
-/** Ab dieser Zahl von Einträgen steht ein Suchfeld über der Liste. */
+/** From this number of entries on, a search field is shown above the list. */
 const FILTER_THRESHOLD = 10
 
 const roleOrder: Record<SpaceRole, number> = { ADMIN: 0, CURATOR: 1, MEMBER: 2 }
@@ -52,7 +52,7 @@ function ownsSpace(member: SpaceMemberResponse, ownerId: string): boolean {
   return member.subjectType === 'USER' && member.subjectId === ownerId
 }
 
-/** Eigentümer zuerst, dann Administrator, Kurator, Mitglied, innerhalb der Rolle nach Name. */
+/** Owner first, then administrator, curator, member, within the role by name. */
 function sortMembers(members: SpaceMemberResponse[], ownerId: string): SpaceMemberResponse[] {
   return [...members].sort((a, b) => {
     const ownerFirst = Number(ownsSpace(b, ownerId)) - Number(ownsSpace(a, ownerId))
@@ -63,27 +63,27 @@ function sortMembers(members: SpaceMemberResponse[], ownerId: string): SpaceMemb
   })
 }
 
-/** Was unter einer aufgeklappten Zeile steht: die Herleitung einer Person oder die Mitglieder. */
+/** What is shown below an expanded row: a person's derivation or the members. */
 type Expansion = { memberId: string; kind: 'derivation' | 'groupMembers' } | null
 
 interface SpaceMemberListProps {
   spaceId: string
   ownerId: string
   members: SpaceMemberResponse[]
-  /** Rollen und Mitgliedschaften ändert nur ein Administrator des Space. */
+  /** Only an administrator of the space changes roles and memberships. */
   canManage: boolean
   isOwner: boolean
   onRoleChange: (member: SpaceMemberResponse, role: SpaceRole) => Promise<void>
-  /** Erst nach der Rückfrage aufgerufen. */
+  /** Called only after the confirmation. */
   onRemove: (member: SpaceMemberResponse) => Promise<void>
-  /** Erst nach der Rückfrage aufgerufen. */
+  /** Called only after the confirmation. */
   onMakeOwner: (member: SpaceMemberResponse) => Promise<void>
 }
 
 /**
- * Die bestehenden Mitglieder eines Space: Eigentümer zuerst, dann nach Rolle und Name,
- * Personen und Gruppen gemischt. Jede Zeile trägt höchstens die Rolle und ein „⋯“-Menü mit den
- * Einträgen, die für die Zeile und die eigene Rolle erlaubt sind.
+ * The existing members of a space: owner first, then by role and name,
+ * persons and groups mixed. Every row carries at most the role and a „⋯“ menu with the
+ * entries permitted for the row and the own role.
  */
 export default function SpaceMemberList({
   spaceId,

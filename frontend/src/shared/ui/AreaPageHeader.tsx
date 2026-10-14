@@ -25,17 +25,17 @@ interface AreaPageHeaderProps {
 }
 
 /**
- * Der Kopf einer Bereichsseite: Titel, daneben eine kurze Angabe und die eine primäre
- * Handlung, darunter der Satz, der den Geltungsbereich nennt.
+ * The header of an area page: title, next to it a short detail and the one primary
+ * action, below it the sentence that names the scope.
  *
- * Ein eigener Baustein, weil dieselbe Anordnung vorher auf sieben Seiten viermal verschieden
- * geschrieben war — mit `gutterBottom` oder ohne, mit Flex-Zeile oder ohne, die Beschreibung mal
- * als `GlobalScopeNote` (12,5 px) und mal als `body2` (14 px). Sichtbar wurde das als Titel, die
- * beim Wechsel zwischen zwei Menüpunkten um ein paar Pixel springen.
+ * A building block of its own, because the same arrangement used to be written four different
+ * ways on seven pages — with `gutterBottom` or without, with a flex row or without, the
+ * description sometimes as `GlobalScopeNote` (12.5 px) and sometimes as `body2` (14 px). This
+ * showed as titles that jump a few pixels when switching between two menu items.
  *
- * Die Abstände stehen hier und nur hier: die Titelzeile ohne eigenen Innenabstand, darunter ein
- * fester Abstand zur Beschreibung und von ihr zum Inhalt. Der negative obere Abstand, mit dem
- * `GlobalScopeNote` sich früher unter ein `gutterBottom` zog, entfällt damit.
+ * The spacing is here and only here: the title row without padding of its own, below it a
+ * fixed gap to the description and from it to the content. The negative top margin with which
+ * `GlobalScopeNote` used to pull itself under a `gutterBottom` is thus gone.
  */
 export default function AreaPageHeader({
   title,
@@ -47,11 +47,11 @@ export default function AreaPageHeader({
 }: AreaPageHeaderProps) {
   return (
     <Box sx={{ mb: 3 }}>
-      {/* Eine Flex-Box, kein Stack: MUIs Stack setzt seinen Abstand als `margin-left` auf die
-          Geschwister und überschreibt damit das `ml: auto`, mit dem die Handlung an den rechten
-          Rand rückt. Die Mindesthöhe ist die einer Schaltfläche - ohne sie stünde die
-          Beschreibung auf Seiten mit Handlung vier Pixel tiefer als auf den übrigen, genau der
-          Sprung, den dieser Baustein beseitigen soll. */}
+      {/* A flex box, not a Stack: MUI's Stack sets its spacing as `margin-left` on the
+         siblings and thereby overrides the `ml: auto` that moves the action to the right
+         edge. The minimum height is that of a button - without it the
+         description would sit four pixels lower on pages with an action than on the others, exactly
+         the jump this building block is meant to remove. */}
       <Box
         sx={{
           display: 'flex',
@@ -62,16 +62,17 @@ export default function AreaPageHeader({
           minHeight: 36.5,
         }}
       >
-        {/* Zeichen und Titel bilden eine Gruppe mit eigenem, engerem Abstand und bleiben damit
-            auch beim Umbruch zusammen. Die Beschreibung steht bewusst außerhalb: Sie beginnt an
-            der linken Kante der Seite, nicht unter dem Titel - so läuft eine Kante durch, statt
-            unter dem Zeichen ein Loch zu lassen. */}
+        {/* Icon and title form a group with its own, narrower spacing and thus stay together
+           even when wrapping. The description is deliberately outside: it starts at
+           the page's left edge, not below the title - so one edge runs through instead of
+           leaving a hole below the icon. */}
         <Box
           sx={{ display: 'flex', alignItems: 'baseline', gap: { xs: 1.25, sm: 1.5 }, minWidth: 0 }}
         >
-          {/* Die Höhe ist die **Textzeile** des Titels, nicht die der Titelzeile: Die trägt die
-              Mindesthöhe einer Schaltfläche, der Text sitzt darin oben, und ein darauf zentriertes
-              Zeichen säße acht Pixel zu tief. `aria-hidden`, weil der Titel daneben dasselbe sagt. */}
+          {/* The height is the title's **text line**, not that of the title row: the row
+             carries the minimum height of a button, the text sits at its top, and an icon
+             centred on it would sit eight pixels too low. `aria-hidden`, because the title
+             next to it says the same. */}
           <Box
             aria-hidden
             sx={(theme) => ({
@@ -84,8 +85,8 @@ export default function AreaPageHeader({
               color: 'primary.main',
             })}
           >
-            {/* Etwa anderthalb Mal die Versalhöhe des Titels: genug, um als Zeichen des Bereichs
-                zu wirken, wenig genug, um den Titel nicht zu überstimmen. */}
+            {/* About one and a half times the title's cap height: enough to work as the area's
+               icon, little enough not to outvoice the title. */}
             <Icon sx={{ fontSize: { xs: 21, sm: 24 } }} />
           </Box>
           <PageHeading title={title} documentTitle={documentTitle} />

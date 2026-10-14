@@ -212,9 +212,9 @@ describe('groupStore', () => {
   })
 
   /**
-   * Wer sich selbst entlässt, darf die Gruppe nicht mehr lesen: Das Nachladen der Details
-   * antwortet 404, und diese Meldung darf nach einer gelungenen Handlung nicht im Fehlerband
-   * landen. Deshalb lehnt getGroup hier ab - ein Mock, der immer auflöst, deckt den Fall zu.
+   * Whoever dismisses themselves may no longer read the group: the reload of the details
+   * answers 404, and that message must not end up in the error banner after a successful action.
+   * That is why getGroup rejects here - a mock that always resolves covers up the case.
    */
   it('reports no error when the dismissed steward may no longer read the group', async () => {
     useGroupStore.setState({

@@ -1,6 +1,6 @@
 import type { GroupListResponse, GroupOrigin } from '@/shared/api/types'
 
-/** Die Herkunft als Wort — „intern" oder der Name des Anbieters (ADR-0036, Entscheidung 2). */
+/** The origin as a word — „intern" or the provider's name (ADR-0036, Entscheidung 2). */
 export function groupOriginLabel(group: {
   origin: GroupOrigin
   provider?: GroupListResponse['provider']
@@ -10,11 +10,11 @@ export function groupOriginLabel(group: {
 }
 
 /**
- * Warum diese Gruppe nirgends mehr neu gewählt werden kann — `null`, solange sie wirksam ist. Die
- * vier Gründe sind dieselben, die das Backend als Ziel einer Berechtigung oder einer Übertragung
- * abweist (`GroupSubject`: aufgelöst, Anbieter deaktiviert, eingefrorene Token-Gruppe, deaktivierte
- * interne Gruppe). Bestehende Berechtigungen bleiben gespeichert; nur bei einer deaktivierten
- * Gruppe ruhen sie, bis sie reaktiviert wird (ADR-0036, Entscheidungen 2, 3 und 14).
+ * Why this group can no longer be newly chosen anywhere — `null` as long as it is effective. The
+ * four reasons are the ones the backend rejects as the target of a permission or a transfer
+ * (`GroupSubject`: dissolved, provider deactivated, frozen token group, deactivated
+ * internal group). Existing permissions stay stored; only for a deactivated
+ * group they rest until it is reactivated (ADR-0036, Entscheidungen 2, 3 and 14).
  */
 export function groupIneffectiveReason(group: GroupListResponse): string | null {
   if (group.dissolved) {
@@ -32,7 +32,7 @@ export function groupIneffectiveReason(group: GroupListResponse): string | null 
   return null
 }
 
-/** Das Alter eines Zeitpunkts in Tagen bzw. Stunden — die Angabe der Betriebs- und Planzeilen. */
+/** The age of a point in time in days or hours — the figure of the operations and plan rows. */
 export function ageLabel(iso: string, now: Date = new Date()): string {
   const millis = now.getTime() - new Date(iso).getTime()
   if (Number.isNaN(millis)) return 'unbekannt'

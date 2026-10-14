@@ -12,11 +12,11 @@ interface MailTemplatePreviewState {
 }
 
 /**
- * Die entprellte Vorschau des Vorlagen-Editors.
+ * The debounced preview of the template editor.
  *
- * Zwei Zusicherungen tragen sie: Eine Eingabefolge löst **eine** Anfrage aus, und eine Antwort,
- * die nach einer neueren eintrifft, wird verworfen — ohne die laufende Nummer würde der langsame
- * Server die Vorschau auf einen Stand zurückdrehen, den niemand mehr im Editor stehen hat.
+ * Two guarantees carry it: a sequence of inputs triggers **one** request, and a response
+ * that arrives after a newer one is discarded — without the sequence number the slow
+ * server would turn the preview back to a state nobody has in the editor any more.
  */
 export function useMailTemplatePreview(
   templateKey: string,

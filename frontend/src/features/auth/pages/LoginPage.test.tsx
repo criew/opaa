@@ -60,8 +60,8 @@ describe('LoginPage', () => {
   }
 
   /**
-   * Die Überschrift benennt die Seite, die Marke steht daneben. Vorher war der Produktname selbst
-   * das `h1` — ein Screenreader sagte damit „OPAA" statt zu sagen, wo man ist.
+   * The heading names the page, the brand stands next to it. Previously the product name itself
+   * was the `h1` — a screen reader thus said „OPAA" instead of saying where one is.
    */
   it('names the page in its heading and shows the mark beside it', () => {
     useAuthStore.setState({ mode: 'oidc' })
@@ -69,7 +69,7 @@ describe('LoginPage', () => {
 
     expect(screen.getByRole('heading', { level: 1, name: 'Anmelden' })).toBeInTheDocument()
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
-    // Die Marke ist eine Angabe, keine Überschriftenebene.
+    // The brand is a statement, not a heading level.
     expect(screen.getByText('OPAA')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'OPAA' })).toBeNull()
   })
@@ -403,8 +403,8 @@ describe('LoginPage', () => {
       ).toHaveAttribute('href', '/login/system')
     })
 
-    // Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den die
-    // Installation für ihre eigenen Konten eingerichtet hat.
+    // If the form is switched on, it comes first - it is the path the
+    // installation has set up for its own accounts.
     it('shows both sections, the local mask first, when both ways exist', () => {
       useAuthStore.setState({
         mode: 'oidc',
@@ -430,8 +430,8 @@ describe('LoginPage', () => {
       useAuthStore.setState({ mode: 'oidc', providers: [], localAccounts: localEnabled })
       renderWithProviders(<LoginPage />, { withRouter: true, withNotificationHost: false })
 
-      // „Anmelden" steht genau einmal, als Seitenüberschrift - der Abschnitt darunter
-      // benennt den Weg.
+      // „Anmelden" appears exactly once, as the page heading - the section below
+      // names the path.
       expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Anmelden')
       expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(
         'Konto dieser Installation',

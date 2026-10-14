@@ -13,16 +13,16 @@ interface EmbeddingInfoTableProps {
 }
 
 /**
- * Das Einbettungsmodell in derselben Tabellenform wie die Chat-Modelle — **ohne jede
- * Handlung**: keine Aktionsspalte, kein Zeilenmenü, kein Bedienelement.
+ * The embedding model in the same table form as the chat models — **without any
+ * action**: no action column, no row menu, no control.
  *
- * Eine Tabelle für eine einzige Zeile ist typografisch die schwächere Wahl; hier wiegt die
- * Wiedererkennung schwerer. Wer zwischen den Reitern wechselt, sieht dieselbe Art von Ding — ein
- * Modell mit seinen Angaben — und dass der Unterschied nicht in der Sache liegt, sondern darin,
- * dass an diesem nichts zu ändern ist.
+ * A table for a single row is typographically the weaker choice; here recognition weighs
+ * more. Whoever switches between the tabs sees the same kind of thing — a
+ * model with its details — and that the difference lies not in the matter but in
+ * the fact that nothing can be changed on this one.
  *
- * Mehr als diese drei Angaben gibt es nicht: `EmbeddingInfoResponse` trägt weder einen Endpunkt
- * noch einen Schlüsselstatus.
+ * There are no more than these three details: `EmbeddingInfoResponse` carries neither an endpoint
+ * nor a key status.
  */
 export default function EmbeddingInfoTable({ info }: EmbeddingInfoTableProps) {
   return (

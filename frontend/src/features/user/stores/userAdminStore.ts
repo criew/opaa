@@ -237,12 +237,12 @@ export const useUserAdminStore = create<UserAdminState>((set, get) => ({
   },
 
   /*
-   * Auch die Mutationen prüfen die Sitzungs-Epoche, bevor sie zurückschreiben: Eine
-   * Anfrage, die erst nach einer Abmeldung antwortet, würde sonst Daten des
-   * vorherigen Kontos in einen gerade geleerten Store schreiben. Die Epoche wird dazu **vor** dem
-   * `await` gefasst - nach dem Request gefasst wäre sie immer die neue und der Vergleich
-   * wirkungslos (Nachprüfung N2). Der Fehler wird weiter geworfen, damit der Aufrufer seine
-   * Meldung zeigen kann.
+   * The mutations check the session epoch as well before writing back: a
+   * request that answers only after a logout would otherwise write data of the
+   * previous account into a just emptied store. The epoch is captured **before** the
+   * `await` for that - captured after the request it would always be the new one and the
+   * comparison without effect (re-check N2). The error is rethrown, so that the caller can show
+   * its message.
    */
   saveSettings: async (request) => {
     const sessionEpoch = currentSessionEpoch()

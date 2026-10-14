@@ -45,8 +45,8 @@ describe('GroupMembersTable', () => {
     expect(screen.getByText('1 von 8 Mitgliedern')).toBeInTheDocument()
   })
 
-  // Filtern darf den Dialog nicht in der Größe verändern: Der Rahmen richtet sich nach der ganzen
-  // Liste, nicht nach dem Filterergebnis.
+  // Filtering must not change the dialog's size: the frame follows the whole
+  // list, not the filter result.
   it('keeps the frame height while filtering', async () => {
     renderWithProviders(<GroupMembersTable members={many} />)
     const user = userEvent.setup()

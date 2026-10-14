@@ -74,9 +74,9 @@ export async function deleteGroup(groupId: string): Promise<void> {
 }
 
 /**
- * Die Mitgliederliste einer Gruppe. Für die Systemverwaltung ohne eigene Verantwortung ist der
- * Abruf ein Audit-Ereignis (ADR-0036, Entscheidung 9) und dies ihr einziger Weg zu den Namen -
- * {@link getGroup} liefert ihr die Liste nicht.
+ * The member list of a group. For the system administration without its own responsibility the
+ * retrieval is an audit event (ADR-0036, Entscheidung 9) and this its only path to the names -
+ * {@link getGroup} does not return the list to it.
  */
 export async function listGroupMembers(groupId: string): Promise<GroupMemberResponse[]> {
   try {
@@ -110,9 +110,9 @@ export async function removeGroupMember(groupId: string, userId: string): Promis
 }
 
 /**
- * Die internen Gruppen, für die das eigene Konto verantwortlich ist - die Grundlage von
- * „Meine Gruppen". Bewusst getrennt von `getMyGroups` (`@/features/principal`): verantwortlich zu sein heißt nicht,
- * Mitglied zu sein.
+ * The internal groups the own account is responsible for - the basis of
+ * „Meine Gruppen". Deliberately separate from `getMyGroups` (`@/features/principal`): being
+ * responsible does not mean being a member.
  */
 export async function getMyStewardedGroups(): Promise<GroupListResponse[]> {
   try {
@@ -160,9 +160,9 @@ export async function setGroupRelease(
 }
 
 /**
- * Was das Deaktivieren (oder Reaktivieren) einer internen Gruppe berührt, gezählt - die Zahlen der
- * Bestätigung (ADR-0036, Entscheidung 14). Nennt auch den Grund, aus dem die Gruppe gerade nicht
- * deaktiviert werden kann.
+ * What deactivating (or reactivating) an internal group affects, counted - the numbers of the
+ * confirmation (ADR-0036, Entscheidung 14). Also names the reason why the group cannot be
+ * deactivated right now.
  */
 export async function getGroupDeactivationPreview(
   groupId: string,

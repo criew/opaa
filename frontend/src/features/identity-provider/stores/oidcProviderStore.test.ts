@@ -13,8 +13,8 @@ describe('oidcProviderStore', () => {
 
   it('loads the providers in sign-in order', async () => {
     await useOidcProviderStore.getState().loadProviders()
-    // Die LOCAL-Zeile kommt mit: der Store führt die Tabelle, das Filtern auf Anbieter ist Sache
-    // der Anbieterseite. Der Seed legt sie vor jedem Anbieter an, sie steht also vorn.
+    // The LOCAL row comes along: the store holds the table, filtering to providers is the
+    // provider page's business. The seed creates it before every provider, so it comes first.
     expect(useOidcProviderStore.getState().providers.map((p) => p.displayName)).toEqual([
       'Lokale Konten',
       'Verzeichnisdienst',
@@ -32,8 +32,8 @@ describe('oidcProviderStore', () => {
 
   it('swaps positions when moving and ignores a move past the ends', async () => {
     await useOidcProviderStore.getState().loadProviders()
-    // „Nach oben" am ersten Anbieter ist ein No-Op: darüber liegt nur die LOCAL-Zeile, und mit
-    // ihr wird nicht getauscht.
+    // „Nach oben" on the first provider is a no-op: above it is only the LOCAL row, and it
+    // is not swapped with.
     await useOidcProviderStore.getState().moveProvider('oidc-provider-beschaeftigte', 'up')
     expect(ids()).toEqual([
       'oidc-provider-local',
@@ -53,9 +53,9 @@ describe('oidcProviderStore', () => {
   })
 
   /**
-   * Liegt die LOCAL-Zeile zwischen zwei Anbietern, tauscht „nach unten" nicht mit ihr — sonst
-   * bliebe die sichtbare Reihenfolge gleich, der Klick verschluckt und das Reihenfolge-Ereignis
-   * wirkungslos.
+   * If the LOCAL row lies between two providers, „nach unten" does not swap with it — otherwise
+   * the visible order would stay the same, the click swallowed and the order event
+   * without effect.
    */
   it('skips the local row when it lies between two providers', async () => {
     const order: Record<string, number> = {

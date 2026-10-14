@@ -12,9 +12,9 @@ import type {
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * Der Verzeichnisabgleich je Anbieter (ADR-0036 Entscheidung 3). Eigene Datei statt
- * `api.ts`: Abgleich, Konnektor und Plan gehören zusammen und werden nur von der Verwaltung
- * gebraucht.
+ * The directory sync per provider (ADR-0036 Entscheidung 3). Its own file instead of
+ * `api.ts`: sync, connector and plan belong together and are needed only by the
+ * administration.
  */
 export async function getDirectorySyncStatus(): Promise<DirectorySyncStatusResponse[]> {
   try {
@@ -65,7 +65,7 @@ export async function deleteDirectoryConnector(providerId: string): Promise<void
   }
 }
 
-/** Probiert den Zugang, ohne etwas zu speichern; das Ergebnis steht im Rumpf, nicht im Status. */
+/** Tries the connection without saving anything; the result is in the body, not in the status. */
 export async function testDirectoryConnector(
   providerId: string,
   request: DirectoryConnectorTestRequest,
@@ -105,7 +105,7 @@ export async function runDirectorySync(providerId: string): Promise<DirectorySyn
   }
 }
 
-/** Der ausstehende Plan des Anbieters; `null`, wenn keiner wartet (404 ist hier die Antwort). */
+/** The provider's pending plan; `null` when none is waiting (404 is the answer here). */
 export async function getPendingPlan(
   providerId: string,
 ): Promise<DirectorySyncPendingPlanResponse | null> {

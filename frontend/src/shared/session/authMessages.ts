@@ -82,8 +82,8 @@ const SESSION_END_MESSAGES: Record<string, string> = {
     'Ihr Konto wurde nach mehreren Fehlversuchen vorübergehend gesperrt. Bitte versuchen Sie es später erneut.',
   'account_locked:inactivity':
     'Ihr Konto wurde nach längerer Inaktivität gesperrt. Bitte wenden Sie sich an die Systemverwaltung.',
-  // Die Sperre kommt aus dem Verzeichnis, nicht aus OPAA — der Satz nennt deshalb beide
-  // Ansprechstellen, damit niemand zuerst an der falschen fragt.
+  // The lock comes from the directory, not from OPAA — the sentence therefore names both
+  // contact points, so that nobody asks at the wrong one first.
   'account_locked:directory':
     'Ihr Konto ist im Verzeichnis Ihrer Organisation nicht mehr freigeschaltet und wurde deshalb gesperrt. Bitte wenden Sie sich an Ihre Benutzerverwaltung oder an die Systemverwaltung.',
   session_revoked: 'Ihre Sitzung wurde beendet. Bitte melden Sie sich erneut an.',

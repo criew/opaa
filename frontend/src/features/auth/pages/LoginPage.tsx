@@ -193,9 +193,9 @@ export default function LoginPage() {
         the branding read endpoint is reachable without authentication - otherwise the first
         thing a user sees would be the only thing that could not carry their house's mark.
       */}
-      {/* Die Überschrift benennt die Seite, nicht das Produkt - die Marke steht ohnehin daneben.
-          „Anmelden" steht nur hier; die Abschnitte darunter benennen ihren Weg, nicht noch einmal
-          die Handlung. */}
+      {/* The heading names the page, not the product - the brand stands next to it anyway.
+         „Anmelden" appears only here; the sections below name their path, not the action
+         once more. */}
       <PageHeading title="Anmelden" variant="h5" sx={{ mb: 3 }} />
 
       {error && (
@@ -205,8 +205,8 @@ export default function LoginPage() {
         </Alert>
       )}
 
-      {/* Ist die Maske eingeschaltet, steht sie oben - sie ist der Weg, den diese
-          Installation für ihre eigenen Konten eingerichtet hat; die Verzeichnisdienste folgen. */}
+      {/* If the form is switched on, it comes first - it is the path this
+         installation has set up for its own accounts; the directory services follow. */}
       {hasLocalForm && (
         <LocalSignInForm
           title="Konto dieser Installation"
@@ -233,8 +233,8 @@ export default function LoginPage() {
                 key={provider.id}
                 provider={provider}
                 isSuggested={provider.id === suggested?.id}
-                // Eine Seite hat eine primäre Schaltfläche (guidelines 5.1): Steht die Maske
-                // oben, gehört sie deren „Anmelden"; die Dienste bleiben dann alle sekundär.
+                // A page has one primary button (guidelines 5.1): if the form comes
+                // first, it belongs to its „Anmelden"; the services then all stay secondary.
                 emphasised={!hasLocalForm && provider.id === suggested?.id}
                 showsLastUsed={providers.length > 1 && provider.id === lastUsedId}
                 isSigningIn={isSigningIn}

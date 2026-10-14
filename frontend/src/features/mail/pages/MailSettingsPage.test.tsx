@@ -36,9 +36,9 @@ function renderPage(route = '/admin/mail/server') {
 }
 
 /**
- * Die E-Mail-Einstellungen (ADR-0033 Entscheidung 10): Rollenschranke, Statusanzeige,
- * Passwortmaske, Testversand mit allen drei Ergebnissen, der Hinweis auf eine fehlende
- * OPAA_PUBLIC_BASE_URL und die Vorlagenverwaltung mit Platzhalterfehler und Zurücksetzen.
+ * The mail settings (ADR-0033 Entscheidung 10): role barrier, status display,
+ * password mask, test sending with all three results, the hint about a missing
+ * OPAA_PUBLIC_BASE_URL and the template management with placeholder error and reset.
  */
 describe('MailSettingsPage', () => {
   beforeEach(() => {

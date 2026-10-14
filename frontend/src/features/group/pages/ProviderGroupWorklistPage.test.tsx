@@ -47,7 +47,7 @@ describe('ProviderGroupWorklistPage', () => {
     useOidcProviderStore.getState().reset()
   })
 
-  // ADR-0036, Entscheidung 2: Die Arbeitsliste führt je Gruppe ihre Verwendung und den Ausgang.
+  // ADR-0036, Entscheidung 2: the worklist lists per group its use and the way out.
   it('lists every group of the provider with what it is used for', async () => {
     renderWorklist()
 

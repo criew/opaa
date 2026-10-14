@@ -168,7 +168,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument()
   })
 
-  /** Ohne Space-Verzeichnis bewirkt eine Sichtbarkeit nichts - jeder Space ist privat. */
+  /** Without a space directory a visibility has no effect - every space is private. */
   it('asks for no visibility, neither in the basics nor in the summary', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })
@@ -182,7 +182,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.queryByText(/Sichtbarkeit/)).not.toBeInTheDocument()
   })
 
-  /** Die Fristen stammen aus der Systemeinstellung, nicht aus dem Frontend. */
+  /** The periods come from the system setting, not from the frontend. */
   it('names the cleanup periods the operator configured', async () => {
     server.use(
       http.get('/api/v1/spaces/chat-auto-cleanup', () =>
@@ -243,7 +243,7 @@ describe('SpaceCreatePage (#594, Mockup 1b)', () => {
     expect(screen.queryByText(/Inaktive Chats werden/)).not.toBeInTheDocument()
   })
 
-  /** Personen und Gruppen werden im Assistenten gleich aufgenommen. */
+  /** Persons and groups are admitted alike in the wizard. */
   it('admits a group as a member, names it as a group and passes it on', async () => {
     const user = userEvent.setup()
     renderWithProviders(<SpaceCreatePage />, { withRouter: true })

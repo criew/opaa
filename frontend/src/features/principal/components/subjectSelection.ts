@@ -8,17 +8,17 @@ import type {
 import { confirmAction } from '@/shared/stores/confirmStore'
 
 /**
- * Warum die Suche nach einer geschützten Gruppe wie ein leeres Ergebnis aussieht (ADR-0036,
- * Entscheidung 9) - derselbe Satz an jeder Gruppensuche, ob über {@code SubjectPicker} oder direkt
- * über {@code GroupPicker}.
+ * Why the search for a protected group looks like an empty result (ADR-0036,
+ * Entscheidung 9) - the same sentence on every group search, whether via {@code SubjectPicker} or
+ * directly via {@code GroupPicker}.
  */
 export const PROTECTED_GROUP_SEARCH_HINT =
   'Eine geschützte Gruppe erscheint nur, wenn Sie ihre vollständige Bezeichnung eingeben.'
 
 /**
- * Wer ein Recht bekommen soll: genau eine Person, genau eine Gruppe — oder alle Konten der
- * Organisation. Die dritte Art benennt niemanden; sie erscheint nur dort, wo der
- * Aufrufer sie ausdrücklich zulässt (Freigaben ja, Space-Mitgliedschaften nein).
+ * Who is to receive a right: exactly one person, exactly one group — or all accounts of the
+ * organization. The third kind names nobody; it appears only where the
+ * caller explicitly admits it (grants yes, space memberships no).
  */
 export interface SubjectSelection {
   type: AssetGrantSubjectType
@@ -29,8 +29,8 @@ export interface SubjectSelection {
 export const emptySubjectSelection: SubjectSelection = { type: 'USER', user: null, group: null }
 
 /**
- * Die gewählte Kennung, oder null, solange nichts gewählt ist — und immer null für „Alle
- * Beschäftigten", die keine Zeile benennen.
+ * The chosen identifier, or null as long as nothing is chosen — and always null for „Alle
+ * Beschäftigten", which names no row.
  */
 export function selectedSubjectId(selection: SubjectSelection): string | null {
   if (selection.type === 'ALL_ACCOUNTS') return null
@@ -38,10 +38,10 @@ export function selectedSubjectId(selection: SubjectSelection): string | null {
 }
 
 /**
- * Die Rückfrage vor einer Freigabe an alle Konten (ADR-0037 Entscheidung 9). Sie
- * spricht die Reichweite aus, statt sie nur zu beschriften: Seit die organisationsweite Reichweite
- * eine Freigabe wie jede andere ist, liegt sie einen Klick neben „Team Recht" — dieser Schritt ist
- * die Gegenmaßnahme dagegen.
+ * The confirmation before a release to all accounts (ADR-0037 Entscheidung 9). It
+ * spells out the reach instead of only labelling it: since the organization-wide reach
+ * is a grant like any other, it lies one click next to „Team Recht" — this step is
+ * the countermeasure.
  */
 export async function confirmAllAccountsSubject(roleLabel: string): Promise<boolean> {
   return confirmAction({
@@ -54,7 +54,7 @@ export async function confirmAllAccountsSubject(roleLabel: string): Promise<bool
   })
 }
 
-/** Die Zusatzzeile unter dem Namen: Herkunft, Quellpfad, Größe — und der Grund, falls gesperrt. */
+/** The additional line below the name: origin, source path, size — and the reason, if disabled. */
 export function groupDetailLine(group: SelectableGroupResponse): string {
   const parts = [groupOriginLabel(group)]
   const size = groupSizeLabel(group)
@@ -64,16 +64,16 @@ export function groupDetailLine(group: SelectableGroupResponse): string {
   return parts.join(' · ')
 }
 
-/** Der Name, unter dem eine Gruppe hier erscheint — eine geschützte bleibt namenlos. */
+/** The name under which a group appears here — a protected one stays nameless. */
 export function groupLabel(group: SelectableGroupResponse): string {
   return group.name ?? 'Geschützte Gruppe'
 }
 
 /**
- * Die Zwischenfrage vor dem Erteilen an eine Gruppe eines externen Anbieters (ADR-0036,
- * Entscheidung 2): Ein Zusatz, den man zum zehnten Mal liest, wird nicht mehr gelesen — ein
- * Fehlklick zwischen zwei gleichnamigen Gruppen gäbe einen internen Vorgang an ein Partnerportal
- * frei. Ohne externe Gruppe fragt nichts zurück.
+ * The confirmation question before granting to a group of an external provider (ADR-0036,
+ * Entscheidung 2): an addition read for the tenth time is no longer read — a
+ * misclick between two groups of the same name would release an internal matter to a partner
+ * portal. Without an external group nothing asks back.
  */
 export async function confirmExternalSubject(selection: SubjectSelection): Promise<boolean> {
   const group = selection.type === 'GROUP' ? selection.group : null
@@ -82,10 +82,10 @@ export async function confirmExternalSubject(selection: SubjectSelection): Promi
 }
 
 /**
- * Dieselbe Entscheidung für eine Gruppe, die nicht aus der Auswahl, sondern über ihre Kennung kam:
- * Dort ist die Herkunft nirgends zu sehen, deshalb nennt die Rückfrage sie — und für einen externen
- * Anbieter ist sie dieselbe Zwischenfrage wie in der Auswahl. Ohne diesen Weg wäre die
- * Zwischenfrage über die Kennung umgehbar.
+ * The same decision for a group that came not from the selection but via its identifier:
+ * there the origin is nowhere to be seen, so the confirmation names it — and for an external
+ * provider it is the same confirmation question as in the selection. Without this path the
+ * question could be bypassed via the identifier.
  */
 export async function confirmGroupSubject(group: SelectableGroupResponse): Promise<boolean> {
   if (group.provider?.external) {
@@ -102,8 +102,8 @@ export async function confirmGroupSubject(group: SelectableGroupResponse): Promi
 }
 
 /**
- * Die Rückfrage für den Kennungsweg: Sie zeigt, was die Auswahl sonst zeigt — Name, Herkunft,
- * Quellpfad und Größe der aufgelösten Gruppe —, bevor ein Recht erteilt wird.
+ * The confirmation for the identifier path: it shows what the selection otherwise shows — name,
+ * origin, source path and size of the resolved group —, before a right is granted.
  */
 export async function confirmResolvedGroupById(group: SelectableGroupResponse): Promise<boolean> {
   const confirmed = await confirmAction({
@@ -117,10 +117,10 @@ export async function confirmResolvedGroupById(group: SelectableGroupResponse): 
 }
 
 /**
- * Die Größe einer Gruppe, wie sie gezeigt werden darf: unterhalb der Mindestgruppengröße hält der
- * Dienst beide Zahlen zurück und die Oberfläche sagt „kleine Gruppe“ statt einer Zahl. Eine leere
- * Gruppe bleibt benannt — sie hat niemanden, den die Unterdrückung schützen müsste; für eine
- * geschützte Gruppe entfällt jede Angabe (ADR-0036, Entscheidung 9).
+ * A group's size as it may be shown: below the minimum group size the service
+ * withholds both numbers and the interface says „kleine Gruppe“ instead of a number. An empty
+ * group stays named — it has nobody the suppression would have to protect; for a
+ * protected group no figure is given (ADR-0036, Entscheidung 9).
  */
 export function groupSizeLabel(group: {
   activeMemberCount?: number | null
@@ -136,8 +136,8 @@ export function groupSizeLabel(group: {
 }
 
 /**
- * Die Herkunft als Zusatz zum Namen („Verzeichnis Haus A · /Haus/Abteilung 5“), nie als Präfix im
- * Namen selbst (ADR-0036, Entscheidung 2).
+ * The origin as an addition to the name („Verzeichnis Haus A · /Haus/Abteilung 5“), never as a
+ * prefix in the name itself (ADR-0036, Entscheidung 2).
  */
 export function groupOriginLabel(group: {
   origin?: GroupOrigin
@@ -151,8 +151,8 @@ export function groupOriginLabel(group: {
 }
 
 /**
- * Warum eine Gruppe nicht mehr als Empfänger gewählt werden kann. Dass bestehende Rechte bleiben,
- * steht im Satz — sonst wird „nicht wählbar“ als Rechteverlust gelesen.
+ * Why a group can no longer be chosen as a recipient. That existing rights remain is
+ * stated in the sentence — otherwise „nicht wählbar“ is read as a loss of rights.
  */
 export function groupNotSelectableReason(group: {
   selectable: boolean

@@ -44,7 +44,7 @@ describe('userAdminStore', () => {
 
     await state().setFilters({ review: 'WITHOUT_EXPIRY' })
     expect(state().filters.page).toBe(0)
-    // das Notanker-Konto ist unbefristet gedacht und deshalb kein Treffer des Filters
+    // the emergency account is meant to be unlimited and is therefore no match of the filter
     expect(
       state().accounts.every(
         (account) => account.local && !account.local.expiresAt && !account.local.bootstrap,
@@ -56,8 +56,8 @@ describe('userAdminStore', () => {
   })
 
   /**
-   * Das Notanker-Konto ist kein Handlungskandidat – der Filter „länger nicht genutzt" zeigt
-   * es auch dann nicht, wenn es lange ruht; jedes reguläre Konto im selben Zustand dagegen schon.
+   * The emergency account is no candidate for action – the filter „länger nicht genutzt" does
+   * not show it even when it rests for a long time; every regular account in the same state does.
    */
   it('leaves the bootstrap account out of the inactive filter and keeps every regular one', async () => {
     setMockLocalUsers(
@@ -77,7 +77,7 @@ describe('userAdminStore', () => {
     const origins = state().accounts.map((a) => a.providerType)
     expect(origins[0]).toBe('LOCAL')
     expect(origins.at(-1)).toBe('OIDC')
-    // das Konto ohne Anbieterzeile steht hinter denen mit einer
+    // the account without a provider row comes after those with one
     expect(state().accounts.at(-1)?.provider).toBeUndefined()
 
     await state().setFilters({ sort: 'role' })
@@ -90,9 +90,9 @@ describe('userAdminStore', () => {
 
     await state().setFilters({ sort: 'status', direction: 'desc' })
     expect(state().accounts[0].local).toBeUndefined()
-    // Die Gleichstandsregel bleibt aufsteigend, auch wenn die Primärordnung umgedreht ist — wie im
-    // Backend (AccountAdminService#comparator). Sonst lieferten Testdoppel und Backend für
-    // dieselbe Anfrage zwei Reihenfolgen.
+    // The tie-breaker stays ascending even when the primary order is reversed — as in the
+    // backend (AccountAdminService#comparator). Otherwise test double and backend would return
+    // two orders for the same request.
     const ohneZustand = state()
       .accounts.filter((account) => !account.local)
       .map((account) => account.displayName ?? '')
@@ -169,9 +169,9 @@ describe('userAdminStore', () => {
   })
 
   /**
-   * Nachprüfung N2: Der Epoch-Schutz einer Mutation muss die Epoche **vor** dem Request fassen.
-   * Wurde sie erst danach gefasst, war sie immer die neue, und eine Antwort nach einer Abmeldung
-   * füllte den gerade geleerten Store erneut - gemessen an `summary`.
+   * Re-check N2: a mutation's epoch guard must capture the epoch **before** the request.
+   * If it was captured only afterwards, it was always the new one, and a response after a logout
+   * refilled the just emptied store - measured by `summary`.
    */
   it('does not write a mutation answer back into a store that was reset meanwhile', async () => {
     await state().loadAccounts()
@@ -180,8 +180,8 @@ describe('userAdminStore', () => {
 
     server.use(
       http.post('/api/v1/admin/local-users/:id/lock', async ({ params }) => {
-        // Die Abmeldung fällt zwischen Anfrage und Antwort - genau das Fenster, das der Schutz
-        // abdecken muss.
+        // The logout falls between request and response - exactly the window the guard
+        // has to cover.
         resetAllStores()
         const locked = mockLocalUsers.find((account) => account.id === String(params.id))!
         return HttpResponse.json({ ...locked, status: 'LOCKED', lockedReason: 'ADMIN' })
@@ -225,8 +225,8 @@ describe('userAdminStore', () => {
   })
 
   /**
-   * Das Testdoppel prüft **alle fünf** Zahlengrenzen aus ADR-0033 — sonst
-   * hätte ein Feld, dessen Grenze nur das Backend kennt, in den Tests nie eine Ablehnung erzeugt.
+   * The test double checks **all five** numeric bounds from ADR-0033 — otherwise
+   * a field whose bound only the backend knows would never have produced a rejection in the tests.
    */
   it.each([
     ['passwordMinLength', 7],
@@ -285,7 +285,7 @@ describe('userAdminStore', () => {
     expect(saved.revokedSessions).toBeGreaterThan(0)
     expect(state().settings?.enabled).toBe(false)
 
-    // Die Zahl gehört nur in die Antwort des abschaltenden PUT: Ein GET danach darf sie nicht führen.
+    // The number belongs only in the switching-off PUT's response: a later GET must not carry it.
     await state().loadSettings()
     expect(state().settings?.revokedSessions ?? null).toBeNull()
   })

@@ -1,7 +1,7 @@
 import type { ScheduleFrequency, ScheduleWeekday } from '@/shared/api/types'
 
-// Feste Intervallstufen für den Bibliotheks-Zeitplan - die Reihenfolge ist auch die
-// Optionsreihenfolge in EditLibraryScheduleDialog.
+// Fixed interval steps for the library schedule - the order is also the
+// option order in EditLibraryScheduleDialog.
 export const scheduleFrequencies: ScheduleFrequency[] = ['DISABLED', 'HOURLY', 'DAILY', 'WEEKLY']
 
 const scheduleFrequencyLabels: Record<ScheduleFrequency, string> = {

@@ -98,10 +98,10 @@ function Steps({ steps }: { steps: Step[] }) {
 }
 
 /**
- * Der Reiter „Externe KI-Werkzeuge“ der Anbindungen: der Zustand des Zugriffswegs mit Notaus, die
- * drei Schlüssel, die zusammenpassen müssen (Schalter, Freigabe der Bibliothek, Zugangstoken),
- * die freigegebenen Bibliotheken und die Bestandsliste der Zugangstokens. Die Einstellungen
- * stehen im Seitenpanel; `?panel=settings` öffnet es, `#libraries` und `#tokens` führen zur Liste.
+ * The „Externe KI-Werkzeuge“ tab of the connections area: the state of the access path with
+ * emergency stop, the three keys that must match (switch, library release, access token),
+ * the released libraries and the inventory list of access tokens. The settings are in the
+ * side panel; `?panel=settings` opens it, `#libraries` and `#tokens` lead to the list.
  */
 export default function ExternalToolsTab() {
   const location = useLocation()
@@ -114,8 +114,8 @@ export default function ExternalToolsTab() {
   const [switchingOff, setSwitchingOff] = useState(false)
   const panelOpen = searchParams.get(PANEL_PARAM) === SETTINGS_PANEL
 
-  // Kein synchrones setState im Rumpf: Die Effekte unten rufen diese Funktionen, und ein
-  // synchrones setState von dort erzeugt eine Renderkaskade (react-hooks/set-state-in-effect).
+  // No synchronous setState in the body: the effects below call these functions, and a
+  // synchronous setState from there causes a render cascade (react-hooks/set-state-in-effect).
   const loadSettings = useCallback(
     () =>
       getExternalAccessSettings()

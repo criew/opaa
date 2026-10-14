@@ -1,10 +1,10 @@
 import { confirmAction } from '@/shared/stores/confirmStore'
 
 /**
- * Die Rückfrage vor dem Sperren oder Entsperren einer Quellart oder eines Zugangs; `target` ist
- * der Gegenstand im Akkusativ („die Quellart „Nextcloud““, „den Zugang „Nextcloud intern““).
- * `remainingLock` nennt beim Entsperren eine Sperre, die bestehen bleibt - dann verspricht die
- * Rückfrage keinen Weiterlauf.
+ * The confirmation before locking or unlocking a source type or a connection profile; `target` is
+ * the object in the accusative („die Quellart „Nextcloud““, „den Zugang „Nextcloud intern““).
+ * When unlocking, `remainingLock` names a lock that stays in place - then the
+ * confirmation promises no resumption.
  */
 export function confirmLock(
   target: string,

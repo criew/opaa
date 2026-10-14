@@ -147,8 +147,8 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     // The mock user is the library's named (ownerId) OWNER here, not merely an
     // admin bypass - the one case holdsIndependentOwnerRole (and this mock field) says true for.
     diagnosticsLockToggleable: true,
-    // Das ausgelieferte "nie freigegeben" - die Fremdzugangsfreigabe liefert das Backend
-    // erst ab MANAGER, deshalb tragen die Fixtures unterhalb dieser Rolle das Feld gar nicht.
+    // The shipped "nie freigegeben" - the backend delivers the external access release
+    // only from MANAGER on, so the fixtures below this role do not carry the field at all.
     externalAccess: {
       libraryId: 'library-mine',
       state: 'NEVER_SET',

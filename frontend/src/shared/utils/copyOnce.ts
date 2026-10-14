@@ -1,9 +1,9 @@
 import { notify } from '../stores/notificationStore'
 
 /**
- * Kopiert einen Wert, der nur einmal angezeigt wird, und sagt in beiden Fällen, was geschehen ist:
- * Ein stilles Scheitern wäre hier ein Datenverlust – der Link oder das Passwort ist danach nicht
- * wieder abrufbar, und wer ein leeres Clipboard einfügt, merkt es erst beim Gegenüber.
+ * Copies a value that is shown only once and says in both cases what happened:
+ * a silent failure would be a data loss here – the link or the password cannot be retrieved
+ * again afterwards, and whoever pastes an empty clipboard only notices at the other end.
  */
 export async function copyOnce(value: string, what: string): Promise<void> {
   try {

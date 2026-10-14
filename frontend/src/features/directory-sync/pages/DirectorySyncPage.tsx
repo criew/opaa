@@ -73,8 +73,8 @@ export default function DirectorySyncPage() {
   const [query, setQuery] = useState('')
   const [now, setNow] = useState(() => new Date())
 
-  // Kein synchrones setState im Rumpf: Der Effekt unten ruft dieselbe Funktion, und ein synchrones
-  // setState von dort erzeugt eine Renderkaskade (react-hooks/set-state-in-effect).
+  // No synchronous setState in the body: the effect below calls the same function, and a
+  // synchronous setState from there causes a render cascade (react-hooks/set-state-in-effect).
   const reload = useCallback(
     () =>
       Promise.all([loadProviders(), getDirectorySyncStatus()])

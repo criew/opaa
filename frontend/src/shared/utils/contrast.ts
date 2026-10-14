@@ -152,10 +152,10 @@ const ACCENT_TEXT_MAX_STEPS = 6
 export function deriveAccentText(accent: string, backgrounds: readonly string[]): string {
   const grounds = backgrounds.map(parseHexColor)
   if (grounds.some((ground) => ground === null) || grounds.length === 0) return accent
-  // Geprüft wird gegen **jede** Grundfläche des Schemas, nicht nur gegen die der Seite: Ein Verweis
-  // steht genauso in einem Dialog (bg-2) oder in einem Tabellenkopf (bg-3), und das Rollenmodell
-  // sagt die Schwelle für bg-1..3 zu. Die Richtung gibt die erste Fläche vor - innerhalb eines
-  // Schemas liegen alle drei auf derselben Seite der Helligkeitsmitte.
+  // The check is against **every** ground surface of the scheme, not only against the page's: a
+  // link appears in a dialog (bg-2) or in a table head (bg-3) just the same, and the role model
+  // promises the threshold for bg-1..3. The first surface sets the direction - within a
+  // scheme all three lie on the same side of the brightness midpoint.
   const groundIsDark = relativeLuminance(grounds[0] as [number, number, number]) < 0.5
   const schritt = groundIsDark ? lightenHex : darkenHex
 

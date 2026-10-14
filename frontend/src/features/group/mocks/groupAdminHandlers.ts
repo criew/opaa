@@ -80,8 +80,8 @@ function groupOrder(sort: string, descending: boolean) {
 }
 
 /**
- * Die Endpunkte der Verwaltung von Anlegerechten, Verzeichnisabgleich und Übertragung.
- * Eigene Datei wie bei `mailHandlers`: `handlers.ts` ist längst über der vereinbarten Länge.
+ * The endpoints of the administration of creation rights, directory sync and transfer.
+ * A file of its own as with `mailHandlers`: `handlers.ts` is long past the agreed length.
  */
 export const groupAdminHandlers = [
   http.get('/api/v1/admin/capabilities', () => HttpResponse.json(mockCapabilityOverview)),

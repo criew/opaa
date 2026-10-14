@@ -12,10 +12,10 @@ export async function getMyGroups(): Promise<GroupListResponse[]> {
 }
 
 /**
- * Die Gruppen, die man selbst als Empfänger eines Rechts benennen darf — jede
- * Anbietergruppe der Organisation, eine interne Gruppe erst nach ihrer Freigabe. Die Regel setzt
- * der Dienst durch; diese Liste ist die Bequemlichkeit, nie die Durchsetzung. Eine geschützte
- * Gruppe antwortet nur auf ihre vollständige Bezeichnung.
+ * The groups one may name as recipient of a right oneself — every
+ * provider group of the organization, an internal group only after it is shared. The service
+ * enforces the rule; this list is the convenience, never the enforcement. A protected
+ * group answers only to its complete name.
  */
 export async function searchSelectableGroups(query: string): Promise<SelectableGroupResponse[]> {
   try {
@@ -29,9 +29,9 @@ export async function searchSelectableGroups(query: string): Promise<SelectableG
 }
 
 /**
- * Eine Gruppe über ihre Kennung, unter derselben Sichtbarkeitsregel wie die Suche. Der
- * Kennungsweg löst damit auf, bevor ein Recht erteilt wird: Herkunft und Anbieter erreichen die
- * Oberfläche auch dort. Was sich nicht auflösen lässt, antwortet „nicht gefunden".
+ * A group by its identifier, under the same visibility rule as the search. The
+ * identifier path thus resolves before a right is granted: origin and provider reach the
+ * interface there as well. Whatever cannot be resolved answers „nicht gefunden".
  */
 export async function resolveSelectableGroup(groupId: string): Promise<SelectableGroupResponse> {
   try {

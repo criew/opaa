@@ -45,14 +45,14 @@ function answer(confirmed: boolean) {
 }
 
 /**
- * Bestätigung folgenreicher Handlungen, gerendert genau einmal durch
- * {@link ../ui/feedback/ConfirmHost} in der AppShell - dasselbe Muster wie
+ * Confirmation of consequential actions, rendered exactly once by
+ * {@link ../ui/feedback/ConfirmHost} in the AppShell - the same pattern as
  * {@link ./notificationStore}.
  *
- * Es gibt immer höchstens **eine** offene Anfrage. Kommt eine zweite, wird die erste mit `false`
- * beantwortet: Ein `window.confirm` blockierte den Thread und konnte sich nicht überlagern; ohne
- * diese Regel bliebe das `await` der verdrängten Anfrage für immer stehen und ihre Handlung
- * hinge fest. `false` ist dabei die sichere Antwort - eine verdrängte Frage gilt als abgelehnt.
+ * There is always at most **one** open request. If a second one comes, the first is answered
+ * with `false`: a `window.confirm` blocked the thread and could not overlap; without
+ * this rule the `await` of the displaced request would hang forever and its action
+ * would be stuck. `false` is the safe answer - a displaced question counts as declined.
  */
 export const useConfirmStore = create<ConfirmState>((set) => ({
   request: null,

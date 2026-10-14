@@ -23,8 +23,8 @@ function nameOf(user: UserSummary): string {
 }
 
 /**
- * Die Verantwortlichen einer neuen Gruppe - wie der Abschnitt „Verantwortlich“ beim
- * Bearbeiten, nur als Entwurf: Benennen und Entfernen wirken erst mit „Anlegen“.
+ * The stewards of a new group - like the „Verantwortlich“ section when
+ * editing, only as a draft: appointing and removing take effect only with „Anlegen“.
  */
 export default function InitialStewardsSection({
   stewards,

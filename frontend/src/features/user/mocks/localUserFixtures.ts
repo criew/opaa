@@ -1,10 +1,10 @@
 import type { LocalAuthSettingsResponse, LocalUserResponse } from '@/shared/api/types'
 
 /**
- * Fixtures der Benutzerverwaltung (ADR-0033 Entscheidungen 4 und 11) – in einem eigenen
- * Modul wie die Mail-Fixtures, weil `fixtures.ts` längst über der 800-Zeilen-Marke liegt,
- * und veränderlich, weil die Seite nur etwas wert ist, wenn eine Handlung auf dem nächsten GET
- * sichtbar ist.
+ * Fixtures of the user management (ADR-0033 Entscheidungen 4 and 11) – in a module of its own
+ * like the mail fixtures, because `fixtures.ts` has long been past the 800-line mark,
+ * and mutable, because the page is only worth something if an action is visible on the next
+ * GET.
  */
 
 /** The signed-in account of the mock (`mockUser.id`) - its own row refuses lock and delete. */
@@ -27,18 +27,18 @@ export const OWNS_CONTENT_USER_ID = 'local-user-weber'
 export const LAST_ADMIN_USER_ID = 'local-user-hoffmann'
 
 /**
- * Die eine Regel hinter „ohne Ablaufdatum" – wie im Backend (`LocalCredentials`): ohne Befristung
- * und nicht das Notanker-Konto, das unbefristet bleiben soll. Zähler des Hinweises und beide
- * Listenfilter lesen sie hier, damit der Test-Doppelgänger dieselbe Menge liefert wie das Backend.
+ * The one rule behind „ohne Ablaufdatum" – as in the backend (`LocalCredentials`): without a
+ * time limit and not the emergency account, which is meant to stay unlimited. The hint's counter
+ * and both list filters read it here, so that the test double returns the same set as the backend.
  */
 export function countsAsWithoutExpiry(user: LocalUserResponse): boolean {
   return !user.expiresAt && !user.bootstrap
 }
 
 /**
- * Die eine Regel hinter „länger nicht genutzt" – wie im Backend (`LocalUserOverview`): eine
- * Aktivitätsklasse außer „aktiv" und nicht das Notanker-Konto, das unbenutzt bleiben soll und
- * deshalb kein Kandidat für Sperre oder Löschung ist. Beide Listenfilter lesen sie hier.
+ * The one rule behind „länger nicht genutzt" – as in the backend (`LocalUserOverview`): an
+ * activity class other than „aktiv" and not the emergency account, which is meant to stay unused
+ * and is therefore no candidate for locking or deletion. Both list filters read it here.
  */
 export function countsAsInactive(user: LocalUserResponse): boolean {
   return user.activity !== 'ACTIVE' && !user.bootstrap

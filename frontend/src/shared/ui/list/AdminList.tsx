@@ -14,10 +14,10 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
 import { radius } from '../../theme/tokens'
 
 /**
- * Die gemeinsamen Bausteine der Listen der Administration (Konten, Gruppen): Tabelle mit
- * festen Spaltenbreiten, sortierbare Köpfe, Seitenumschalter, Leer- und Ladezustand, Zustandszelle.
- * Beide Listen setzen sich daraus zusammen, damit sie gleich aussehen und sich gleich bedienen;
- * die Chat-Tabelle der Seite „Chats" nutzt dieselben Bausteine.
+ * The shared building blocks of the administration lists (accounts, groups): table with
+ * fixed column widths, sortable heads, pager, empty and loading state, state cell.
+ * Both lists are composed of them, so that they look alike and are operated alike;
+ * the chat table of the „Chats" page uses the same building blocks.
  */
 
 export type SortDirection = 'asc' | 'desc'

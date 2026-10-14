@@ -48,8 +48,8 @@ export function renderWithProviders(
   // Notifications from a previous test would otherwise pop up over this render - the queue is
   // app-global (guidelines 5.9), not scoped to a component tree.
   useNotificationStore.getState().reset()
-  // Eine offene Bestaetigung aus einem vorherigen Test haelt sonst ihr Overlay ueber diesem
-  // Render und faengt jeden Klick ab; `reset` beantwortet sie zugleich mit `false`.
+  // An open confirmation from a previous test would otherwise keep its overlay above this
+  // render and catch every click; `reset` answers it with `false` at the same time.
   useConfirmStore.getState().reset()
 
   function Wrapper({ children }: { children: React.ReactNode }) {
@@ -60,8 +60,8 @@ export function renderWithProviders(
         {/* Mounted app-wide by AppShell; mirrored here so component tests observe the popup
             notifications their interactions raise (guidelines 5.9). */}
         {withNotificationHost && <NotificationHost />}
-        {/* Ebenso app-weit von der AppShell montiert: Ohne ihn liefe ein `confirmAction`
-            im Test ins Leere und seine Handlung haenge fuer immer am `await`. */}
+        {/* Likewise mounted app-wide by the AppShell: without it a `confirmAction`
+           in the test would run into the void and its action would hang forever on the `await`. */}
         <ConfirmHost />
       </ThemeProvider>
     )
@@ -109,14 +109,14 @@ export function setMockAuthState({
 }
 
 /**
- * Beantwortet das Bestätigungs-Overlay, das eine folgenreiche Handlung absichert.
+ * Answers the confirmation overlay that guards a consequential action.
  *
- * Die Frage wird mitgegeben und nicht nur die Schaltfläche geklickt: Sie ist der Text, den ein
- * Screenreader beim Öffnen vorliest, und damit das, was den Rückfall auf eine falsche
- * Bestätigung sichtbar macht. Über die Frage ist das Overlay außerdem eindeutig, auch wenn es
- * über einem anderen Dialog liegt.
+ * The question is passed along and not just the button clicked: it is the text a
+ * screen reader reads on opening, and thus what makes a fallback to a wrong
+ * confirmation visible. Via the question the overlay is also unambiguous, even when it
+ * lies above another dialog.
  *
- * @param verb die Beschriftung der bestätigenden Schaltfläche - „Abbrechen" lehnt ab.
+ * @param verb the label of the confirming button - „Abbrechen" declines.
  */
 export async function answerConfirm(
   user: UserEvent,

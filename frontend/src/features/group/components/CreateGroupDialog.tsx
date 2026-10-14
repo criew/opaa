@@ -26,9 +26,9 @@ const EMPTY_VALUES: GroupFormValues = {
 }
 
 /**
- * „Gruppe anlegen“, aufgebaut wie der Dialog „Bearbeiten“: dieselben Felder für Name,
- * Beschreibung, Freigabe und Schutz, darunter die Verantwortlichen - hier als Entwurf, den
- * „Anlegen“ in einem Schritt übernimmt.
+ * „Gruppe anlegen“, built like the „Bearbeiten“ dialog: the same fields for name,
+ * description, sharing and protection, below them the stewards - here as a draft that
+ * „Anlegen“ adopts in one step.
  */
 export default function CreateGroupDialog({ open, onClose, onCreated }: CreateGroupDialogProps) {
   // Mounted only while open: every opening starts from an empty draft.

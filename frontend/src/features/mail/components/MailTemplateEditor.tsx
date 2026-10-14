@@ -18,7 +18,7 @@ import SectionHead from '@/shared/ui/SectionHead'
 import MailTemplatePreviewPane from './MailTemplatePreviewPane'
 import { mailSendResultMessage, mailSendResultSeverity } from './mailStatus'
 
-/** Was ein Platzhalter in der fertigen Nachricht einsetzt — Wortlaut wie im Backend-Beispielsatz. */
+/** What a placeholder inserts into the finished message — wording as in the backend's sample. */
 const placeholderDescriptions: Record<string, string> = {
   productName: 'Produktname aus dem Branding',
   displayName: 'Anzeigename der empfangenden Person',
@@ -34,11 +34,11 @@ interface MailTemplateEditorProps {
 }
 
 /**
- * Der Editor einer Vorlage: Betreff und Textfassung mit Platzhalter-Chips, entprellte
- * Vorschau, Gegenüberstellung mit dem Standard, Zurücksetzen und Testversand.
+ * The editor of a template: subject and text version with placeholder chips, debounced
+ * preview, comparison with the default, reset and test sending.
  *
- * Die HTML-Fassung wird in Phase 1 nicht bearbeitet — sie entsteht aus dem Text im gebrandeten
- * Rahmen des Backends und ist in der Vorschau zu sehen.
+ * The HTML version is not edited in phase 1 — it is created from the text in the backend's
+ * branded frame and can be seen in the preview.
  */
 export default function MailTemplateEditor({ template }: MailTemplateEditorProps) {
   const isSaving = useMailStore((s) => s.isSavingTemplate)
@@ -118,7 +118,7 @@ export default function MailTemplateEditor({ template }: MailTemplateEditorProps
       await restoreTemplateDefault(template.key)
       notify(`„${template.label}“ steht wieder auf dem Standard.`, 'success')
     } catch {
-      // dito
+      // ditto
     }
   }
 

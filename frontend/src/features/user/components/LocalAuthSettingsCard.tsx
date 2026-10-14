@@ -140,9 +140,9 @@ interface LinkFlowSwitchProps {
 }
 
 /**
- * Einer der beiden Schalter, die einen Link brauchen. Ohne `OPAA_PUBLIC_BASE_URL` ist er gesperrt
- * und sagt warum (ADR-0033, Entscheidung 10) - der Tooltip erscheint nur dann, damit er nicht als
- * leeres `aria-label` am Bedienelement hängt.
+ * One of the two switches that need a link. Without `OPAA_PUBLIC_BASE_URL` it is disabled
+ * and says why (ADR-0033, Entscheidung 10) - the tooltip appears only then, so that it does not
+ * hang on the control as an empty `aria-label`.
  */
 function LinkFlowSwitch({
   label,
@@ -183,9 +183,9 @@ function LinkFlowSwitch({
 }
 
 /**
- * Warum ein eingeschalteter Fluss gerade trotzdem nicht erreichbar ist.
- * Ein Schalter, der „ein" zeigt, obwohl das Backend den Fluss als abgeschaltet meldet, wäre eine
- * falsche Auskunft; den gespeicherten Wert ändert der Satz nicht.
+ * Why a switched-on flow is still not reachable right now.
+ * A switch that shows „ein" although the backend reports the flow as switched off would be
+ * false information; the sentence does not change the stored value.
  */
 function ineffectiveReason(settings: LocalAuthSettingsResponse, domains?: string[]): string | null {
   if (!settings.publicBaseUrlConfigured) {
@@ -201,13 +201,13 @@ function ineffectiveReason(settings: LocalAuthSettingsResponse, domains?: string
 }
 
 /**
- * Die Kopfkarte der Benutzerverwaltung (ADR-0033 Entscheidungen 4 und 10): die drei
- * Schalter der lokalen Anmeldung mit ihren Konsequenzen und Vorbedingungen, die Regeln und
- * Fristen, und der Zustand des Mailversands – weil Einladung und Rücksetzung ohne ihn nur als
- * Link-Übergabe funktionieren.
+ * The head card of the user management (ADR-0033 Entscheidungen 4 and 10): the three
+ * switches of the local login with their consequences and preconditions, the rules and
+ * periods, and the state of mail sending – because invitation and reset work only as
+ * link handover without it.
  *
- * Die Schalter wirken sofort (ein PUT je Umschalten), die Regeln darunter über „Speichern": ein
- * halb getippter Zahlenwert darf nicht mit einem Klick auf einen Schalter gespeichert werden.
+ * The switches take effect at once (one PUT per toggle), the rules below via „Speichern": a
+ * half-typed number must not be saved with a click on a switch.
  */
 export default function LocalAuthSettingsCard() {
   const settings = useUserAdminStore((s) => s.settings)
@@ -218,9 +218,9 @@ export default function LocalAuthSettingsCard() {
   const saveSettings = useUserAdminStore((s) => s.saveSettings)
 
   /**
-   * `null` heißt „folge dem Server": Die Regeln werden aus der Antwort abgeleitet, bis jemand ein
-   * Feld anfasst. Abgeleitet beim Rendern statt in einem Effekt gespiegelt – und nach jedem
-   * Speichern wieder auf `null`, damit das Formular zeigt, was tatsächlich gespeichert wurde.
+   * `null` means „follow the server": the rules are derived from the response until someone
+   * touches a field. Derived while rendering instead of mirrored in an effect – and back to
+   * `null` after every save, so that the form shows what was actually saved.
    */
   const [edited, setEdited] = useState<RulesDraft | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -244,8 +244,8 @@ export default function LocalAuthSettingsCard() {
   const domains = parseDomains(draft.domains)
 
   /**
-   * `discardDraft` nur dort, wo der Entwurf tatsächlich gespeichert wurde (Nachprüfung N4): Ein
-   * Schalterklick verwarf sonst still, was jemand gerade in die Regeln getippt hatte.
+   * `discardDraft` only where the draft was actually saved (re-check N4): a
+   * switch click would otherwise silently discard what someone had just typed into the rules.
    */
   async function persist(
     request: LocalAuthSettingsUpdateRequest,
@@ -263,11 +263,11 @@ export default function LocalAuthSettingsCard() {
   }
 
   /**
-   * Ein Schalterklick speichert den **Serverstand** plus seine eigene Änderung – nie den Entwurf
-   * der Regeln darunter: Ein halb getippter Zahlenwert würde sonst
-   * mitgespeichert, und ein leeres Feld ließe den Schalter als `NaN` still an der Validierung
-   * scheitern. `overrides` darf die Domänenliste mitführen – sie ist die Vorbedingung des
-   * Selbstregistrierungs-Schalters und gehört damit zu genau dieser Handlung.
+   * A switch click saves the **server state** plus its own change – never the draft
+   * of the rules below: a half-typed number would otherwise be
+   * saved along, and an empty field would let the switch silently fail validation as `NaN`.
+   * `overrides` may carry the domain list – it is the precondition of the
+   * self-registration switch and thus belongs to exactly this action.
    */
   function saveSwitch(
     overrides: Partial<LocalAuthSettingsUpdateRequest>,
@@ -316,8 +316,8 @@ export default function LocalAuthSettingsCard() {
       return
     }
     saveSwitch(
-      // Die Domänenliste reist **nur in Einschaltrichtung** mit (Nachprüfung N1): Beim Ausschalten
-      // wäre sie kein Teil der Handlung, und ein halb getippter Eintrag würde mitgespeichert.
+      // The domain list travels along **only when switching on** (re-check N1): when switching off
+      // it would be no part of the action, and a half-typed entry would be saved along.
       next
         ? { selfRegistrationEnabled: true, selfRegistrationAllowedDomains: domains }
         : { selfRegistrationEnabled: false },

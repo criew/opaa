@@ -24,20 +24,20 @@ const TONE_ICON: Record<ConfirmTone, typeof ErrorOutlineOutlinedIcon | null> = {
 }
 
 /**
- * Das Bestätigungs-Overlay der Anwendung — gerendert genau einmal, gespeist aus
- * {@link ../../stores/confirmStore}. Es ersetzt `window.confirm`, das seine Frage in Systemschrift
- * stellte, die Folge im selben Textklumpen versteckte und mit „OK" bestätigen ließ.
+ * The application's confirmation overlay — rendered exactly once, fed from
+ * {@link ../../stores/confirmStore}. It replaces `window.confirm`, which asked its question in the
+ * system font, hid the consequence in the same lump of text and had it confirmed with „OK".
  *
- * Drei Entscheidungen tragen die Form:
+ * Three decisions carry the form:
  *
- * - **Die Folge ist der Hauptinhalt.** Die Frage steht als Titel darüber, die Folge darunter in
- *   Lesebreite — nicht beides als eine Wand.
- * - **Die Schaltfläche trägt das Verb.** „Löschen", „Abschalten", „Verwerfen": Wer nur sie liest,
- *   weiß trotzdem, was er zusagt.
- * - **Bei einer unwiderruflichen Handlung liegt der Fokus auf „Abbrechen".** Ein Enter aus dem
- *   Reflex heraus bricht dann ab, statt zu löschen.
+ * - **The consequence is the main content.** The question is the title above, the consequence
+ *   below it at reading width — not both as one wall.
+ * - **The button carries the verb.** „Löschen", „Abschalten", „Verwerfen": whoever reads only it
+ *   still knows what they agree to.
+ * - **For an irreversible action focus is on „Abbrechen".** An Enter out of
+ *   reflex then cancels instead of deleting.
  *
- * Die Signalfarbe steht in der Kante und im Symbol, nie im Text (Gestaltungsleitlinien 2.3).
+ * The signal colour is in the edge and the icon, never in the text (design guidelines 2.3).
  */
 export default function ConfirmHost() {
   const request = useConfirmStore((s) => s.request)
@@ -49,8 +49,8 @@ export default function ConfirmHost() {
 
   return (
     <Dialog
-      // Ein Schlüssel je Anfrage: Der Dialog fährt für eine zweite Frage neu auf, statt ihren
-      // Text in den stehenden zu tauschen - und der Fokus wird dabei neu gesetzt.
+      // One key per request: the dialog opens anew for a second question instead of swapping its
+      // text into the standing one - and focus is set anew along the way.
       key={request?.id ?? 'none'}
       open={request !== null}
       onClose={() => settle(false)}
@@ -84,8 +84,8 @@ export default function ConfirmHost() {
         <DialogContent sx={{ pt: 0 }}>
           <Typography
             id="confirm-consequence"
-            // `pre-line`: Eine Konsequenz aus zwei Sätzen unterschiedlicher Tragweite setzt sie
-            // mit einer Leerzeile ab. Der automatische Umbruch bleibt davon unberührt.
+            // `pre-line`: a consequence of two sentences of different weight sets them apart
+            // with a blank line. Automatic wrapping is not affected.
             sx={{
               fontSize: 13.5,
               color: 'text.secondary',
@@ -98,14 +98,14 @@ export default function ConfirmHost() {
         </DialogContent>
       )}
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 2 }}>
-        {/* Feste Kennungen: Die Beschriftung wechselt je Handlung, die E2E-Suite braucht aber
-            einen Griff, der für jede Bestätigung derselbe ist. */}
+        {/* Fixed identifiers: the label changes per action, but the E2E suite needs
+           a handle that is the same for every confirmation. */}
         <Button
           id="confirm-cancel"
           onClick={() => settle(false)}
-          // Der Startfokus eines modalen Dialogs ist erwünscht, anders als ein autoFocus auf
-          // einer Seite: Bei einer unwiderruflichen Handlung liegt er hier bewusst auf dem
-          // Abbruch, damit ein Enter aus dem Reflex heraus nichts zerstört.
+          // The initial focus of a modal dialog is desired, unlike an autoFocus on
+          // a page: for an irreversible action it is deliberately on the cancel button here,
+          // so that an Enter out of reflex destroys nothing.
           autoFocus={tone === 'danger'}
         >
           {request?.cancelLabel ?? 'Abbrechen'}

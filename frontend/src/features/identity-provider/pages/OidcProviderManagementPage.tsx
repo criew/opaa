@@ -34,9 +34,9 @@ export default function OidcProviderManagementPage() {
     opening: number
   }>({ open: false, opening: 0 })
 
-  // Die `LOCAL`-Zeile ist keine Anbieterzeile dieser Seite (ADR-0033, Entscheidung 4): ihr
-  // `enabled` ist der Schalter der lokalen Benutzerverwaltung und wird dort bedient
-  // (Administration → Benutzer). Zwei Schalter für denselben Zustand wären zwei Wahrheiten.
+  // The `LOCAL` row is no provider row of this page (ADR-0033, Entscheidung 4): its
+  // `enabled` is the switch of the local user management and is operated there
+  // (Administration → Benutzer). Two switches for the same state would be two truths.
   const providers = useMemo(
     () => allProviders.filter((provider) => provider.providerType === 'OIDC'),
     [allProviders],

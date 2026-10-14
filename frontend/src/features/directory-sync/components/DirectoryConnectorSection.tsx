@@ -18,9 +18,9 @@ import KeyValueList from '@/shared/ui/KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
 
 /**
- * Der Zugang, mit dem der Verzeichnislauf dieses Anbieters liest. Der Realm wird nie
- * eingetragen — er stammt aus der Issuer-Adresse des Anbieters. Das Geheimnis verlässt den Server
- * nie wieder; für einen erneuten Test genügt es, das Feld leer zu lassen.
+ * The access with which this provider's directory run reads. The realm is never
+ * entered — it comes from the provider's issuer address. The secret never leaves the server
+ * again; for a renewed test it is enough to leave the field empty.
  */
 export default function DirectoryConnectorSection({
   provider,

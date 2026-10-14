@@ -38,24 +38,24 @@ const scopeLabels: Record<PermissionTransferScope, string> = {
 export interface TransferSubject {
   type: PermissionSubjectType
   id: string
-  /** Nur für die Anzeige; bei einer Person als Quelle nennt das Backend keinen Namen. */
+  /** For display only; for a person as source the backend names no name. */
   name: string
 }
 
 interface PermissionTransferDialogProps {
   open: boolean
   onClose: () => void
-  /** Die feste Quelle, wenn der Aufrufer sie kennt (Gruppe, eigenes Konto). */
+  /** The fixed source, when the caller knows it (group, own account). */
   source?: TransferSubject
   /**
-   * Statt einer festen Quelle: Die Quelle wird hier gewählt. Die Betriebsliste braucht das, weil
-   * eine Zeile den früheren Eigentümer nur als Text nennt — eine Kennung gibt die API bewusst
-   * nicht heraus (ADR-0036, Entscheidung 6).
+   * Instead of a fixed source: the source is chosen here. The operations list needs that, because
+   * a row names the previous owner only as text — the API deliberately does not hand out an
+   * identifier (ADR-0036, Entscheidung 6).
    */
   sourceKinds?: PermissionSubjectType[]
-  /** Welche Zielarten in Frage kommen — eine Person als Quelle gibt nur an eine Person ab. */
+  /** Which target kinds are eligible — a person as source hands over only to a person. */
   targetKinds: PermissionSubjectType[]
-  /** Welcher Umfang wählbar ist; die Vorauswahl ist der ganze angebotene Umfang. */
+  /** Which scope can be chosen; the preselection is the whole offered scope. */
   scopes: PermissionTransferScope[]
   intro: string
   onTransferred?: () => void
@@ -64,10 +64,10 @@ interface PermissionTransferDialogProps {
 }
 
 /**
- * Die Übertragung von Rechten (ADR-0036, Entscheidung 10): Quelle und Ziel, der wählbare Umfang,
- * die Pflicht-Vorschau und die ausdrückliche Bestätigung. Verschiebt sich der Stand zwischen
- * Vorschau und Bestätigung, verlangt das Backend eine neue Vorlage — der Dialog sagt das und
- * beginnt bei der Vorschau von vorn.
+ * The transfer of rights (ADR-0036, Entscheidung 10): source and target, the selectable scope,
+ * the mandatory preview and the explicit confirmation. If the state shifts between
+ * preview and confirmation, the backend requires a new presentation — the dialog says so and
+ * starts over at the preview.
  */
 export default function PermissionTransferDialog({
   open,
@@ -107,8 +107,8 @@ export default function PermissionTransferDialog({
   }
 
   async function createPreview() {
-    // Dieselbe Zwischenfrage wie im Freigabedialog (ADR-0036, Entscheidung 2): Wer an eine Gruppe
-    // eines externen Anbieters überträgt, bestätigt das ausdrücklich.
+    // The same confirmation question as in the sharing dialog (ADR-0036, Entscheidung 2): whoever
+    // transfers to a group of an external provider confirms that explicitly.
     if (targetType === 'GROUP' && targetGroup && !(await confirmGroupSubject(targetGroup))) {
       return
     }
@@ -222,9 +222,9 @@ export default function PermissionTransferDialog({
           {targetType === 'GROUP' ? (
             <Box>
               <FieldLabel htmlFor="transfer-target-group">{targetGroupLabel}</FieldLabel>
-              {/* Die gemeinsame Gruppensuche: serverseitige Auswahl mit Herkunft,
-                  Kennzeichen „extern" und den Wählbarkeitsregeln - statt der vollen
-                  Verwaltungsliste in einem Auswahlfeld. */}
+              {/* The shared group search: server-side selection with origin,
+                 „extern" marker and the eligibility rules - instead of the full
+                 administration list in a select field. */}
               <GroupPicker
                 inputId="transfer-target-group"
                 ariaLabel={targetGroupLabel}

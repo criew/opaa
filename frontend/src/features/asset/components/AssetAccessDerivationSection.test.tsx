@@ -28,7 +28,7 @@ vi.mock('../api/assetApi', async () => {
   return { ...actual, getAssetAccessDerivation: mockGetAssetAccessDerivation }
 })
 
-/** Dieselbe Herleitung wie am Space, mit dem eigenen Namen und „Schließen“. */
+/** The same derivation as on the space, with the own name and „Schließen“. */
 describe('AssetAccessDerivationSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()

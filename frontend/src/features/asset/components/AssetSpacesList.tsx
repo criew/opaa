@@ -237,8 +237,8 @@ export default function AssetSpacesList({
               </Box>
             )
           })}
-          {/* Die Zahl steht bewusst da: Sie sagt, dass die Liste unvollständig ist, ohne einen
-              einzigen privaten Space zu benennen. */}
+          {/* The number is there on purpose: it says that the list is incomplete without naming
+             a single private space. */}
           {hiddenCount > 0 && (
             <Typography component="li" variant="body2" sx={{ color: 'text.secondary', pt: 0.5 }}>
               {hiddenNote}

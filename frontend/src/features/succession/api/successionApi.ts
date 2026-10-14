@@ -2,9 +2,9 @@ import type { SuccessionKind, SuccessionListResponse } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * Die Betriebsliste des Lebenszyklus (ADR-0036 Entscheidung 6). Die Reihenfolge ist fest
- * (ältester Eintrag zuerst), und es gibt bewusst keinen Parameter für den früheren Eigentümer oder
- * die handelnde Person — weder hier noch in der Oberfläche.
+ * The life cycle's operations list (ADR-0036 Entscheidung 6). The order is fixed
+ * (oldest entry first), and there is deliberately no parameter for the previous owner or
+ * the acting person — neither here nor in the interface.
  */
 export async function getSuccessionEntries(
   kind: SuccessionKind,

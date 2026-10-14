@@ -23,14 +23,14 @@ function settings(patch: Partial<MailSettingsResponse> = {}): MailSettingsRespon
 }
 
 /**
- * Die fünf Lesarten der Statuskachel. „Nicht konfiguriert" und „Versand ausgeschaltet"
- * sind getrennt: Ein vollständig hinterlegter, bloß abgeschalteter Zugang schickt sonst jemanden
- * auf die Suche nach Einstellungen, die längst da sind.
+ * The five readings of the status tile. „Nicht konfiguriert" and „Versand ausgeschaltet"
+ * are separate: a fully stored but merely switched-off access would otherwise send someone
+ * looking for settings that have long been there.
  */
 describe('mailStatusOf', () => {
   it('nennt einen fehlenden Server „Nicht konfiguriert"', () => {
     expect(mailStatusOf(settings({ host: null })).kind).toBe('UNCONFIGURED')
-    // auch dann, wenn der Schalter aus ist - der fehlende Server ist die stärkere Aussage
+    // even when the switch is off - the missing server is the stronger statement
     expect(mailStatusOf(settings({ host: null, enabled: false })).kind).toBe('UNCONFIGURED')
   })
 

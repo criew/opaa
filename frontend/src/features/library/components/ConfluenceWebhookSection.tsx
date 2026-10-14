@@ -63,9 +63,9 @@ export default function ConfluenceWebhookSection({
     }
   }
 
-  // Rotieren und Entfernen entwerten, was Confluence gespeichert hat: Confluence sendet weiter,
-  // OPAA antwortet 401, und in Confluence ist davon nichts zu sehen. Ein Fehlgriff darf das nicht
-  // auslösen.
+  // Rotating and removing invalidate what Confluence has stored: Confluence keeps sending,
+  // OPAA answers 401, and nothing of that is visible in Confluence. A slip must not
+  // trigger that.
   const askRotate = async () => {
     const ok = await confirmAction({
       question: 'Geheimnis neu erzeugen?',

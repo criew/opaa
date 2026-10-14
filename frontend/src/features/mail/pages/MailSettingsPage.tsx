@@ -16,20 +16,20 @@ function isMailSettingsTab(value: string | undefined): value is MailSettingsTab 
   return value === 'server' || value === 'templates'
 }
 
-// „SMTP-Zugang" statt „Server": Das Formular darunter hat selbst ein Feld „Server", und zwei
-// Bedienelemente derselben Seite mit demselben Namen sind für Screenreader nicht auseinanderzuhalten.
+// „SMTP-Zugang" instead of „Server": the form below has a field „Server" itself, and two
+// controls on the same page with the same name cannot be told apart by screen readers.
 const tabs: Array<{ value: MailSettingsTab; label: string }> = [
   { value: 'server', label: 'SMTP-Zugang' },
   { value: 'templates', label: 'Vorlagen' },
 ]
 
 /**
- * Die E-Mail-Einstellungen der Systemverwaltung (ADR-0033 Entscheidung 10): SMTP-Zugang
- * samt Statusanzeige und Testversand, und der Wortlaut der zwölf Nachrichten.
+ * The system administration's mail settings (ADR-0033 Entscheidung 10): SMTP access
+ * including status display and test sending, and the wording of the twelve messages.
  *
- * Die beiden Bereiche sind eigene Routen (`/admin/mail/server`, `/admin/mail/templates`) und
- * keine lokale Zustandsvariable: Ein Verweis auf die Vorlagenverwaltung soll dort landen, und ein
- * Neuladen soll den Bereich behalten.
+ * The two areas are routes of their own (`/admin/mail/server`, `/admin/mail/templates`) and
+ * no local state variable: a link to the template management should land there, and a
+ * reload should keep the area.
  */
 export default function MailSettingsPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')

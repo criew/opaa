@@ -10,12 +10,12 @@ function previewOf(subject: string): MailTemplatePreviewResponse {
 }
 
 /**
- * Die beiden Zusicherungen der Vorschau: eine Eingabefolge ist eine Anfrage, und eine
- * überholte Antwort schreibt die Vorschau nicht zurück.
+ * The two guarantees of the preview: a sequence of inputs is one request, and an
+ * outdated response does not write the preview back.
  *
- * Die Antworten werden hier absichtlich von Hand freigegeben statt über Verzögerungen - die
- * Reihenfolge „zweite Antwort vor der ersten" ist so eine Zusicherung des Tests und nicht das
- * Ergebnis zweier konkurrierender Zeitgeber.
+ * The responses are deliberately released by hand here instead of via delays - the
+ * order „second response before the first" is thus a guarantee of the test and not the
+ * result of two competing timers.
  */
 describe('useMailTemplatePreview', () => {
   let requested: string[] = []

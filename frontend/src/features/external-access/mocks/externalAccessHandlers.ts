@@ -5,11 +5,11 @@ import type {
 } from '@/shared/api/types'
 
 /**
- * Die Kanaleinstellungen der Fremdzugänge als MSW-Handler - mit den Invarianten, auf die
- * sich die Seite verlässt und die `ExternalAccessSettingsService` ebenso durchsetzt: die
- * Voreinstellung ist „aus“ mit dem Hausnetz, ein PUT ersetzt alle Werte und ist beim nächsten GET
- * sichtbar, und eine ungültige Netzangabe oder eine Ablauf-Obergrenze außerhalb 1-365 ist ein 400
- * mit `fieldErrors`.
+ * The channel settings of external access as MSW handlers - with the invariants the page
+ * relies on and that `ExternalAccessSettingsService` enforces as well: the
+ * default is „aus“ with the house network, a PUT replaces all values and is visible on the
+ * next GET, and an invalid network entry or an expiry upper bound outside 1-365 is a 400
+ * with `fieldErrors`.
  */
 
 export const DEFAULT_SERVER_INSTRUCTIONS =

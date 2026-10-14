@@ -80,13 +80,13 @@ describe('OverviewPage (#1913)', () => {
 
     await user.type(screen.getByRole('textbox', { name: 'Suchen' }), 'Ordnungsamt')
 
-    // Zweimal: einmal sichtbar, einmal im Statusbereich für Screenreader.
+    // Twice: once visible, once in the status region for screen readers.
     expect(screen.getAllByText(/Kein Eintrag passt zu „Ordnungsamt“/)).toHaveLength(2)
   })
 
   it('announces the filter result in a live region (accessibility.md 2.8)', async () => {
-    // Das Filtern verschiebt den Fokus nicht - ohne Statusbereich bliebe das Ergebnis am
-    // Screenreader unbemerkt.
+    // Filtering does not move focus - without a status region the result would go
+    // unnoticed with a screen reader.
     const user = userEvent.setup()
     renderOverview()
 

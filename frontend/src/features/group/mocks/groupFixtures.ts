@@ -165,10 +165,10 @@ export const mockGroups: GroupListResponse[] = [
 ]
 
 /**
- * Was die Subjekt-Auswahl anbietet (ADR-0036 Entscheidung 9). Bewusst breiter als
- * mockGroups: zwei gleichnamige Gruppen aus zwei Anbietern, eine davon extern, dazu eine kleine
- * interne Gruppe, eine nicht mehr wirksame und die geschützte — die nur auf ihre vollständige
- * Bezeichnung antwortet (siehe den Handler).
+ * What the subject picker offers (ADR-0036 Entscheidung 9). Deliberately broader than
+ * mockGroups: two groups of the same name from two providers, one of them external, plus a small
+ * internal group, one no longer effective and the protected one — which answers only to its
+ * complete name (see the handler).
  */
 export const mockSelectableGroups: SelectableGroupResponse[] = [
   {
@@ -458,8 +458,8 @@ export const mockMyStewardedGroups: GroupListResponse[] = mockGroups.filter((gro
 )
 
 /**
- * Die gezählten Folgen einer Deaktivierung, wie das Backend sie liefert. „Projektbeteiligte Phoenix“
- * trägt Freigaben und eine Space-Mitgliedschaft; jede andere interne Gruppe nichts.
+ * The counted consequences of a deactivation as the backend returns them. „Projektbeteiligte
+ * Phoenix“ carries grants and a space membership; every other internal group nothing.
  */
 export function mockDeactivationPreview(
   groupId: string,

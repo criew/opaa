@@ -11,11 +11,11 @@ import { favoriteKey, mockFavoriteAssets } from '../../asset/mocks/assetFixtures
 import { mockExternalAccessSettings } from './externalAccessHandlers'
 
 /**
- * Die Zugangstokens als MSW-Handler - mit den Invarianten, auf die sich die
- * Oberfläche verlässt und die das Backend ebenso durchsetzt: der Klartextwert steht genau in der
- * Antwort des Anlegens, die Selbstsicht trägt „zuletzt benutzt" und die Verwaltungsliste nicht,
- * gefiltert wird allein über Zustand und Ablauf, ein Widerruf löscht „zuletzt benutzt" mit, und
- * ein fehlender Name, eine leere Auswahl oder ein Ablauf jenseits der Obergrenze ist ein 400 mit
+ * The access tokens as MSW handlers - with the invariants the interface relies on and
+ * that the backend enforces as well: the plain-text value is exactly in the creation's
+ * response, the self view carries „zuletzt benutzt" and the administration list does not,
+ * filtering is by state and expiry only, a revocation clears „zuletzt benutzt" as well, and
+ * a missing name, an empty selection or an expiry beyond the upper bound is a 400 with
  * `fieldErrors`.
  */
 
@@ -108,7 +108,7 @@ export function resetMockExternalAccessTokens() {
   mockAdminExternalAccessTokens = initialAdminTokens()
 }
 
-/** Genau die Menge, die das Anlegen annimmt - bei geschlossenem Kanal leer, wie im Backend. */
+/** Exactly the set the creation accepts - empty with a closed channel, as in the backend. */
 function eligibleLibraries(): EligibleExternalAccessLibraryResponse[] {
   if (!mockExternalAccessSettings.enabled) return []
   return mockLibraries.slice(0, 3).map((library) => ({
@@ -219,7 +219,7 @@ export const externalAccessTokenHandlers = [
     return HttpResponse.json({ tokens })
   }),
 
-  // Vor dem Einzelpfad eingetragen: „block-by-owner" würde sonst als `:tokenId` gelesen.
+  // Registered before the single path: „block-by-owner" would otherwise be read as `:tokenId`.
   http.post('*/api/v1/admin/external-access/tokens/block-by-owner', async ({ request }) => {
     const body = (await request.json()) as { ownerUserId: string }
     let blocked = 0

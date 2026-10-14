@@ -84,8 +84,8 @@ afterEach(() => {
   // A self-service link is single-use in the mock, as it is in the backend - a link one test
   // redeemed would read as invalid in the next.
   resetMockSelfServiceTokens()
-  // Dieselbe Begründung für die Fremdzugänge: Schalter und Tokenbestand sind
-  // veränderlich, damit ein Speichern, ein Anlegen oder eine Sperre im nächsten GET sichtbar ist.
+  // The same reasoning for external access: switch and token inventory are
+  // mutable, so that a save, a creation or a revocation is visible in the next GET.
   resetMockExternalAccessSettings()
   resetMockExternalAccessTokens()
   // Prompt libraries, their prompts and the space associations are mutable in the mocks as well.

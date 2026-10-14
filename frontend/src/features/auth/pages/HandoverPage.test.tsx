@@ -53,7 +53,7 @@ describe('HandoverPage', () => {
 
     expect(await screen.findByText('Das geht mit')).toBeInTheDocument()
     expect(screen.getByText('Mein Space')).toBeInTheDocument()
-    // was mitgeht als vier Kacheln - Zahlen statt Listen, Rolle wie in der Benutzerverwaltung
+    // what goes along as four tiles - numbers instead of lists, role as in the user management
     const tiles = within(screen.getByRole('region', { name: 'Das geht mit' })).getAllByRole(
       'listitem',
     )

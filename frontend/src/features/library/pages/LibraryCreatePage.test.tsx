@@ -124,7 +124,7 @@ async function chooseType(user: User, label: RegExp) {
   await next(user)
 }
 
-/** Schritt „Name & Beschreibung": den vorbelegten Namen überschreiben und weiter zu „Freigaben". */
+/** Step „Name & Beschreibung": overwrite the prefilled name and go on to „Freigaben". */
 async function nameItAndContinue(user: User, name: string) {
   const field = screen.getByLabelText(/^Name/)
   await user.clear(field)
@@ -296,13 +296,13 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(screen.getByRole('radio', { name: /Upload/ })).toBeChecked()
     })
 
-    // Die Anlegerechte kommen erst nach dem ersten Rendern an: Was dann gesperrt ist, darf nicht
-    // ausgewählt stehen bleiben - sonst führte „Weiter" in einen Pfad, der nie anlegen kann.
+    // The creation rights arrive only after the first render: what is then disabled must not
+    // stay selected - otherwise „Weiter" would lead into a path that can never create.
     it('moves the selection off a tile that turns out to be hidden', async () => {
       mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
       await renderPage()
 
-      // Die erste erlaubte Kachel rückt nach; die Schrittleiste führt damit wieder „Quelle einrichten".
+      // The first permitted tile moves up; the stepper thus shows „Quelle einrichten" again.
       await waitFor(() =>
         expect(screen.getByRole('radio', { name: /Dateisystem/ })).toHaveAttribute(
           'aria-checked',
@@ -316,7 +316,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     })
   })
 
-  // WAI-ARIA „radio group": ein Halt in der Tabulatorreihenfolge, die Pfeiltasten wählen innerhalb.
+  // WAI-ARIA „radio group": one stop in the tab order, the arrow keys select within.
   it('moves through the tiles with the arrow keys', async () => {
     mockGetMyCapabilities.mockResolvedValue(['CREATE_CONNECTOR_LIBRARY'])
     const user = userEvent.setup()
@@ -396,7 +396,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     expect(await screen.findByText(/nicht gespeichert werden: Alice/)).toBeInTheDocument()
   }, 15000)
 
-  /** ADR-0036, Entscheidung 2: dieselbe Zwischenfrage wie im Abschnitt „Berechtigungen". */
+  /** ADR-0036, Entscheidung 2: the same confirmation question as in „Berechtigungen". */
   it('asks before noting a group of an external provider and notes nothing on cancel', async () => {
     mockSearchSelectableGroups.mockResolvedValue([
       {
@@ -462,7 +462,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
           }),
         ),
       )
-      // Sofortstart gilt für jeden Konnektortyp, nicht nur Confluence und S3.
+      // Immediate start applies to every connector type, not only Confluence and S3.
       expect(mockTriggerIndexing).toHaveBeenCalledWith('lib-neu', 'FILESYSTEM')
     }, 25000)
 
@@ -523,7 +523,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.click(screen.getByRole('button', { name: 'Bereich' }))
       await user.type(screen.getByLabelText('Bucket 2'), 'satzungen')
       await next(user)
-      // Der Name ist aus der Quelle vorbelegt - hier der erste Bucket.
+      // The name is prefilled from the source - here the first bucket.
       expect(screen.getByLabelText(/^Name/)).toHaveValue('protokolle')
       await nameItAndContinue(user, 'Protokolle')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
@@ -687,7 +687,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(
         screen.getByText(/Bitte die Zugangsdaten mit „Verbindung testen“ prüfen/),
       ).toBeInTheDocument()
-      // der Schritt bleibt stehen, die Quellfelder sind weiter da
+      // the step stays, the source fields are still there
       expect(screen.getByLabelText(/Adresse der Confluence-Instanz/)).toBeInTheDocument()
     }, 15000)
 
@@ -727,16 +727,16 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       await user.type(picker, 'Bau')
       await user.click(await screen.findByRole('option', { name: /Bauamt \(BAU\)/ }))
       await next(user)
-      // Ein einzelner Space belegt den Namen vor.
+      // A single space prefills the name.
       expect(screen.getByLabelText(/^Name/)).toHaveValue('Bauamt')
       await nameItAndContinue(user, 'Wiki Bauamt')
       await user.click(screen.getByRole('button', { name: 'Bibliothek anlegen' }))
 
-      // Die ganze Anfrage, nicht nur ein Ausschnitt: Ein Feld, das der Anlege-Endpunkt gar nicht
-      // annimmt, fällt nur auf, wenn der Vergleich auch das Zuviel sieht. Ohne eigenen
-      // Vollabgleich-Rhythmus darf `sourceSettings.fullSyncIntervalDays` deshalb gar nicht mitgehen -
-      // die 0 („zurück zur Vorgabe der Instanz") kennt nur der Bearbeiten-Weg, das Anlegen weist
-      // sie mit 400 ab (KnowledgeLibraryService: 1 bis 365).
+      // The whole request, not just an excerpt: a field the creation endpoint does not
+      // accept at all is only noticed if the comparison also sees the surplus. Without its own
+      // full-sync rhythm, `sourceSettings.fullSyncIntervalDays` must therefore not be sent at all -
+      // the 0 („zurück zur Vorgabe der Instanz") is known only to the edit path, creation rejects
+      // it with 400 (KnowledgeLibraryService: 1 to 365).
       await waitFor(() => expect(mockCreateNewLibrary).toHaveBeenCalled())
       expect(mockCreateNewLibrary).toHaveBeenCalledWith({
         name: 'Wiki Bauamt',
@@ -755,8 +755,8 @@ describe('LibraryCreatePage (#596, #1942)', () => {
       expect(mockNavigate).toHaveBeenCalledWith('/libraries/lib-neu')
     }, 25000)
 
-    // Ein eingetragener Rhythmus geht mit; nur das leere Feld bedeutet beim Anlegen
-    // „kein eigener Rhythmus" und darf das Feld nicht als 0 senden.
+    // An entered rhythm is sent along; only the empty field means „kein eigener Rhythmus"
+    // on creation and must not send the field as 0.
     it('sends an entered full-sync rhythm as the number, not as the update path’s zero', async () => {
       mockTestLibrarySource
         .mockResolvedValueOnce({
@@ -1086,7 +1086,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     }, 20000)
   })
 
-  // Ein Ergebnis gehört zu der Probe, mit der es gemessen wurde - auch zu ihrem Quellentyp.
+  // A result belongs to the probe it was measured with - including its source type.
   it('drops a connection test result when the source type changes (#514)', async () => {
     const user = userEvent.setup()
     mockTestLibrarySource.mockResolvedValueOnce({
@@ -1100,7 +1100,7 @@ describe('LibraryCreatePage (#596, #1942)', () => {
     await user.click(screen.getByRole('button', { name: 'Verbindung testen' }))
     expect(await screen.findByText('Feed erreichbar, 12 Einträge gefunden.')).toBeInTheDocument()
 
-    // Derselbe Adresswert, anderer Quellentyp: die Probe lief nie gegen ein Webverzeichnis.
+    // The same address value, another source type: the probe never ran against a web directory.
     await user.click(screen.getByRole('button', { name: 'Zurück' }))
     await chooseType(user, /Webverzeichnis/)
 

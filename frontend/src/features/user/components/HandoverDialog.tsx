@@ -44,12 +44,12 @@ export interface HandoverTarget {
 }
 
 /**
- * Der Anstoß einer Übergabe (ADR-0033 Entscheidung 12). Die Systemverwaltung wählt hier den
- * Anbieter und nennt den Anlass — mehr nicht: Das Subject kommt aus dem Token der Person, nie aus
- * einer Eingabe, und deshalb gibt es hier kein Feld dafür.
+ * The initiation of a handover (ADR-0033 Entscheidung 12). The system administration chooses the
+ * provider here and names the reason — nothing more: the subject comes from the person's token,
+ * never from an input, and that is why there is no field for it here.
  *
- * Die Auswahl führt nur die aktivierten Identitätsanbieter der Installation; ohne einen solchen
- * gibt es nichts zu übergeben, und der Dialog sagt das statt eine leere Liste zu zeigen.
+ * The selection lists only the installation's enabled identity providers; without one
+ * there is nothing to hand over, and the dialog says so instead of showing an empty list.
  */
 export default function HandoverDialog({
   target,

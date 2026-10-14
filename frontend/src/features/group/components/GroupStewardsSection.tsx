@@ -15,17 +15,17 @@ interface GroupStewardsSectionProps {
   groupId: string
   groupName: string
   stewards: GroupStewardResponse[]
-  /** Die eigene Konto-Kennung — der Rücktritt ist der Schlusspunkt einer Abgabe, kein Entfernen. */
+  /** The own account identifier — stepping down is the end point of a handover, not a removal. */
   currentUserId: string | undefined
 }
 
 /**
- * Die verantwortlichen Personen einer internen Gruppe (ADR-0036 Entscheidung 4): benennen,
- * entlassen und die Verantwortung abgeben. Die Abgabe ist bewusst zweischrittig — erst die
- * Nachfolge benennen, dann selbst zurücktreten; die letzte verantwortliche Person kann sich nicht
- * selbst entfernen, und der Dienst weist genau das ab. Die Systemverwaltung darf die letzte
- * verantwortliche Person entlassen — ein ausscheidendes Konto muss lösbar sein —, deshalb hängt
- * die Sperre der Schaltfläche an beidem.
+ * The stewards of an internal group (ADR-0036 Entscheidung 4): appoint,
+ * dismiss and hand over the responsibility. The handover is deliberately two-step — first
+ * appoint the successor, then step down oneself; the last steward cannot remove themselves,
+ * and the service rejects exactly that. The system administration may dismiss the last
+ * steward — a departing account must be removable —, which is why the
+ * button's lock depends on both.
  */
 export default function GroupStewardsSection({
   groupId,

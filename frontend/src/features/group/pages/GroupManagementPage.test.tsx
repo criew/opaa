@@ -28,7 +28,7 @@ const {
   mockListGroupMembers: vi.fn(),
   /** What the server knows per group; `getGroup` withholds the members from the administration. */
   mockFetchedDetails: {} as Record<string, GroupResponse>,
-  /** Die Gruppen, die der Server für die aktuelle Anfrage kennt. */
+  /** The groups the server knows for the current request. */
   listed: { groups: [] as GroupListResponse[] },
   mockCreateGroup: vi.fn(async () => ({}) as GroupResponse),
   mockUpdateGroup: vi.fn(async () => ({}) as GroupResponse),
@@ -208,8 +208,8 @@ describe('GroupManagementPage', () => {
     deactivationPreview.blockedReason = null
   })
 
-  // Die Gruppen als Tabelle wie die Konten - Herkunft, Mitglieder, Zustand; eine eigene
-  // Spalte „Art" gibt es nicht, das Info-Symbol hinter dem Anbieter erklärt die Herkunft
+  // The groups as a table like the accounts - origin, members, state; a column of its own
+  // „Art" does not exist, the info icon behind the provider explains the origin
   it('lists the groups as a table with origin, member count and state', async () => {
     serve([adHocGroup, orgUnitGroup])
     renderPage()
@@ -238,8 +238,8 @@ describe('GroupManagementPage', () => {
     expect(mockListGroupMembers).not.toHaveBeenCalled()
   })
 
-  // ADR-0036, Entscheidung 3: ein wartender Plan bleibt laut - sein Alter steht im Link selbst,
-  // die Einzelheiten im Popover; ein Hinweiskasten über der Liste entfällt
+  // ADR-0036, Entscheidung 3: a waiting plan stays loud - its age is in the link itself,
+  // the details in the popover; a hint box above the list is gone
   it('names a waiting directory plan in a warning link with its age', async () => {
     serve([adHocGroup])
     renderPage()
@@ -320,8 +320,8 @@ describe('GroupManagementPage', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
-  // ADR-0025, Entscheidung 4: Name und Mitglieder pflegt die Quelle; die Erklärung nennt
-  // die tatsächliche Quelle
+  // ADR-0025, Entscheidung 4: the source maintains name and members; the explanation names
+  // the actual source
   it('explains a provider group and offers only its protection', async () => {
     const tokenGroup: GroupListResponse = {
       ...orgUnitGroup,
@@ -352,8 +352,8 @@ describe('GroupManagementPage', () => {
     expect(within(dialog).getByRole('button', { name: 'Speichern' })).toBeDisabled()
   })
 
-  // ADR-0036, Entscheidung 9: über den Schutz entscheidet die Systemverwaltung - auch bei einer
-  // Gruppe aus einem Anbieter, deren Name und Mitglieder die Quelle pflegt
+  // ADR-0036, Entscheidung 9: the system administration decides about the protection - also for a
+  // group from a provider whose name and members the source maintains
   it('protects a provider group from the edit dialog', async () => {
     serve([orgUnitGroup])
     renderPage()
@@ -370,8 +370,8 @@ describe('GroupManagementPage', () => {
     )
   })
 
-  // ADR-0036, Entscheidung 4/9: Der Abruf der Mitgliederliste ist das Audit-Ereignis - er geschieht
-  // erst mit dem Öffnen des Dialogs, nie mit der Tabelle, und der Dialog nennt die Protokollierung.
+  // ADR-0036, Entscheidung 4/9: retrieving the member list is the audit event - it happens
+  // only when the dialog opens, never with the table, and the dialog names the logging.
   it('loads the member list of an internal group on opening the dialog', async () => {
     serve([adHocGroup])
     mockFetchedDetails['group-phoenix'] = adHocDetails
@@ -393,8 +393,8 @@ describe('GroupManagementPage', () => {
     await waitFor(() => expect(mockRemoveGroupMember).toHaveBeenCalledWith('group-phoenix', 'u1'))
   })
 
-  // Bei einer Gruppe eines Identitätsanbieters ist das Öffnen des Dialogs der ausdrückliche Wunsch:
-  // die Liste lädt sofort, der Abruf bleibt protokolliert.
+  // For a group of an identity provider, opening the dialog is the explicit request:
+  // the list loads at once, the retrieval stays logged.
   it('loads the members of a provider group on opening and keeps them read-only', async () => {
     serve([orgUnitGroup])
     mockFetchedDetails['group-referat-50'] = orgUnitDetails
@@ -466,7 +466,7 @@ describe('GroupManagementPage', () => {
     expect(within(menu).getByText(/werden dort gepflegt/)).toBeInTheDocument()
   })
 
-  // Anlegen sieht aus wie Bearbeiten - Freigabe, Schutz und Verantwortliche gleich mit
+  // Creating looks like editing - sharing, protection and stewards included
   it('creates a released, protected group with its stewards in one step', async () => {
     useAuthStore.setState({
       user: {
@@ -499,8 +499,8 @@ describe('GroupManagementPage', () => {
     )
   })
 
-  // Eine aufgelöste Gruppe ist gekennzeichnet und nennt den Grund - ihre bestehenden
-  // Berechtigungen bleiben.
+  // A dissolved group is marked and names the reason - its existing
+  // permissions remain.
   it('marks a dissolved group and names the reason behind its state', async () => {
     serve([{ ...orgUnitGroup, dissolved: true, state: 'DISSOLVED' }])
     renderPage()
@@ -512,7 +512,7 @@ describe('GroupManagementPage', () => {
     ).toBeInTheDocument()
   })
 
-  // Deaktivieren im Zeilenmenü, mit einer Bestätigung, die die Folgen beziffert
+  // Deactivating in the row menu, with a confirmation that quantifies the consequences
   it('deactivates an internal group after a confirmation that counts the consequences', async () => {
     serve([adHocGroup])
     renderPage()

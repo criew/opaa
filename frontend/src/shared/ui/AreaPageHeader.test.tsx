@@ -6,10 +6,10 @@ import { renderWithProviders } from '../../test/test-utils'
 import AreaPageHeader from './AreaPageHeader'
 
 /**
- * Jede Seite, die eine Bereichsnavigation über sich hat, trägt denselben Kopf: Titel, daneben eine
- * kurze Angabe und die eine primäre Handlung, darunter der Satz zum Geltungsbereich. Die Liste ist
- * bewusst fest und nicht aus `App.tsx` abgeleitet — eine neue Seite soll den Test brechen, bis
- * jemand sie hier einträgt und damit bestätigt, dass sie denselben Kopf trägt.
+ * Every page with an area navigation above it carries the same header: title, next to it a
+ * short detail and the one primary action, below it the sentence about the scope. The list is
+ * deliberately fixed and not derived from `App.tsx` — a new page should break the test until
+ * someone enters it here and thereby confirms that it carries the same header.
  */
 const BEREICHSSEITEN = [
   'BrandingSettingsPage.tsx',
@@ -23,8 +23,8 @@ const BEREICHSSEITEN = [
 ]
 
 /**
- * Der Quelltext der Seiten, von Vite beim Bauen eingelesen (`?raw`) - kein Dateisystemzugriff,
- * damit der Test ohne Node-Typen auskommt und im selben jsdom läuft wie die übrigen.
+ * The pages' source text, read in by Vite at build time (`?raw`) - no file system access,
+ * so that the test gets by without Node types and runs in the same jsdom as the others.
  */
 const SEITENQUELLEN = {
   ...(import.meta.glob('../../pages/*.tsx', {
@@ -45,8 +45,8 @@ const SEITENQUELLEN = {
 }
 
 /**
- * Die sieben Seiten der Administration. „Ihre Einstellungen" fehlt bewusst: Sie trägt denselben
- * Kopf, aber nicht dieselbe Breite - ihr Inhalt ist ein Formular in Lesebreite, keine Tabelle.
+ * The seven pages of the administration. „Ihre Einstellungen" is deliberately missing: it carries
+ * the same header but not the same width - its content is a form at reading width, not a table.
  */
 const ADMINISTRATIONSSEITEN = BEREICHSSEITEN.filter((datei) => datei !== 'SettingsPage.tsx')
 
@@ -76,9 +76,9 @@ describe('AreaPageHeader', () => {
     expect(screen.getByRole('button', { name: 'Neue Gruppe' })).toBeInTheDocument()
     expect(screen.getByText('Gilt für die gesamte Anwendung.')).toBeInTheDocument()
 
-    // Die Beschreibung steht unter der Titelzeile, nicht in ihr - sonst wäre die Zeile je nach
-    // Textlänge unterschiedlich hoch und der Titel der Nachbarseite stünde woanders. Der Titel
-    // sitzt in der Gruppe aus Zeichen und Titel, die Titelzeile ist also sein Großelternteil.
+    // The description is below the title row, not in it - otherwise the row would have a different
+    // height depending on the text length and the neighbouring page's title would be elsewhere. The
+    // title sits in the group of icon and title, so the title row is its grandparent.
     const titelzeile = heading.parentElement!.parentElement!
     expect(within(titelzeile).queryByText('Gilt für die gesamte Anwendung.')).toBeNull()
   })
@@ -92,8 +92,8 @@ describe('AreaPageHeader', () => {
       />,
     )
 
-    // Die Beschreibung ist ein Geschwister der Titelzeile, kein Kind der Gruppe aus Zeichen und
-    // Titel: So läuft die linke Kante durch, statt unter dem Zeichen ein Loch zu lassen.
+    // The description is a sibling of the title row, not a child of the group of icon and
+    // title: so the left edge runs through instead of leaving a hole below the icon.
     const zeichenGruppe = screen.getByRole('heading', { level: 1 }).parentElement!
     const beschreibung = screen.getByText('Gilt für die gesamte Anwendung.')
     expect(zeichenGruppe.contains(beschreibung)).toBe(false)
@@ -110,25 +110,25 @@ describe('AreaPageHeader', () => {
   })
 
   /**
-   * Der eigentliche Gegenstand dieser Datei: Die Gleichheit der Kopfposition ist keine Eigenschaft
-   * einer einzelnen Seite, sondern eine Regel über alle: Sonst springt der Titel beim Wechsel
-   * zwischen zwei Menüpunkten.
+   * The actual subject of this file: the equal header position is no property
+   * of a single page but a rule across all of them: otherwise the title jumps when switching
+   * between two menu items.
    */
   it.each(BEREICHSSEITEN)('%s builds its head from AreaPageHeader', (datei) => {
     const quelltext = quelltextVon(datei)
 
-    // Auf die Verwendung im JSX geprüft, nicht auf den Namen: Der Importpfad allein enthält ihn
-    // auch dann noch, wenn der Baustein durch etwas anderes ersetzt wurde.
+    // Checked for the use in JSX, not for the name: the import path alone still contains it
+    // even when the building block was replaced by something else.
     expect(quelltext).toContain('<AreaPageHeader')
-    // Kein zweiter, handgeschriebener Kopf daneben: der Geltungshinweis gehört in die
-    // `description` des Bausteins, nicht als eigener Absatz unter eine eigene Überschrift.
+    // No second, handwritten header next to it: the scope hint belongs in the building block's
+    // `description`, not as a paragraph of its own under a heading of its own.
     expect(quelltext).not.toContain('GlobalScopeNote')
   })
 
   /**
-   * Die Inhaltsbreite ist eine Eigenschaft des Bereichs, nicht der einzelnen Seite: Vorher
-   * standen dort fünf verschiedene Werte, und die rechte Kante sprang beim Wechsel zwischen zwei
-   * Menüpunkten. Eine nackte Zahl ist der Weg zurück dorthin.
+   * The content width is a property of the area, not of the single page: previously
+   * five different values stood there, and the right edge jumped when switching between two
+   * menu items. A bare number is the way back there.
    */
   it.each(ADMINISTRATIONSSEITEN)('%s takes its content width from the tokens', (datei) => {
     const quelltext = quelltextVon(datei)
@@ -144,14 +144,14 @@ describe('AreaPageHeader', () => {
 
     const zeichen = container.querySelector('svg')
     expect(zeichen).toBeInTheDocument()
-    // Der Titel daneben sagt dasselbe; eine zweite Ansage wäre nur Lärm.
+    // The title next to it says the same; a second announcement would only be noise.
     expect(zeichen!.closest('[aria-hidden="true"]')).not.toBeNull()
   })
 
   /**
-   * Das Zeichen ist der visuelle Anker des Bereichs. Eine neue Seite ohne eines fiele
-   * sonst erst jemandem im Betrieb auf - und zwei Bereiche mit demselben Zeichen wären kein
-   * Anker mehr, sondern eine Verwechslung.
+   * The icon is the area's visual anchor. A new page without one would otherwise
+   * only be noticed by someone in operation - and two areas with the same icon would no longer be
+   * an anchor but a mix-up.
    */
   it.each(BEREICHSSEITEN)('%s carries an area mark', (datei) => {
     const quelltext = quelltextVon(datei)
@@ -175,9 +175,9 @@ describe('AreaPageHeader', () => {
     const direkt = quelltext.match(/<PageHeading/g)?.length ?? 0
     if (direkt === 0) return
 
-    // Die einzige erlaubte Ausnahme ist der Zweig für ein Konto ohne Freigabe: Er zeigt den Titel
-    // über einem Hinweis statt über Inhalten und hat deshalb keine Beschreibung. Der Satz wird
-    // ohne seine Zeilenumbrüche gesucht - Prettier bricht ihn je nach Länge anders um.
+    // The only permitted exception is the branch for an account without access: it shows the title
+    // above a hint instead of above content and therefore has no description. The sentence is
+    // searched for without its line breaks - Prettier wraps it differently depending on the length.
     expect(quelltext.replace(/\s+/g, ' ')).toContain('nicht freigegeben')
     expect(direkt).toBe(1)
   })

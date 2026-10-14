@@ -8,7 +8,7 @@ interface ChatAutoCleanupFieldProps {
   checked: boolean
   onChange: (checked: boolean) => void
   disabled?: boolean
-  /** Im persönlichen Space einer anderen Person legt nur diese selbst den Schalter fest. */
+  /** In another person's personal space only that person sets the switch. */
   personalSpaceOfOther?: boolean
   /** The installation's periods; while they are unknown the switch names no numbers. */
   archiveAfterDays?: number

@@ -51,11 +51,11 @@ interface ProviderShutdownDialogProps {
 }
 
 /**
- * Die Rückfrage vor dem Deaktivieren oder Löschen eines Identitätsanbieters (ADR-0041,
- * Entscheidung 4). Sie nennt die Wirkung auf etwaige verbundene Konten, nie eine Zahl je Anbieter,
- * und schickt erst danach die Bestätigungen, die das Backend verlangt: die gelesene Rückfrage ist
- * die Bestätigung. Lässt sich nicht laden, ob Zugänge Personen zulassen, nennt sie die Wirkung
- * vorsorglich.
+ * The confirmation before deactivating or deleting an identity provider (ADR-0041,
+ * Entscheidung 4). It names the effect on any connected accounts, never a number per provider,
+ * and only then sends the confirmations the backend requires: the confirmation that was read is
+ * the acknowledgement. If it cannot be loaded whether connection profiles admit persons, it
+ * names the effect as a precaution.
  */
 export default function ProviderShutdownDialog({
   provider,
@@ -109,8 +109,8 @@ export default function ProviderShutdownDialog({
     } catch (err) {
       const fallback = deleting ? 'Löschen fehlgeschlagen' : 'Änderung fehlgeschlagen'
       notify(apiErrorMessage(err, PROVIDER_CONFLICT_MESSAGES, fallback), 'error')
-      // Die Ablehnung wegen wirkender Gruppen ist kein Endpunkt, sondern ein Verweis: die
-      // Arbeitsliste des Anbieters führt jede Gruppe mit ihren Wirkungen (ADR-0036/2).
+      // The rejection because of effective groups is no end point but a pointer: the
+      // provider's worklist lists every group with its effects (ADR-0036/2).
       if (apiErrorCode(err) === 'PROVIDER_GROUPS_IN_EFFECT') {
         void navigate(`/admin/identity-providers/${provider.id}/groups`)
       }
@@ -161,7 +161,7 @@ export default function ProviderShutdownDialog({
         )}
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2.5, pt: 2 }}>
-        {/* Bei einer unwiderruflichen Handlung liegt der Startfokus auf dem Abbruch. */}
+        {/* For an irreversible action the initial focus is on the cancel button. */}
         {/* eslint-disable-next-line jsx-a11y-x/no-autofocus */}
         <Button onClick={onClose} disabled={busy} autoFocus={deleting}>
           Abbrechen

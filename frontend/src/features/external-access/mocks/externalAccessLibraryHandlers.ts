@@ -2,8 +2,8 @@ import { http, HttpResponse } from 'msw'
 import { mockLibraryDetails } from '../../library/mocks/libraryFixtures'
 
 export const externalAccessLibraryHandlers = [
-  // spiegelt LibraryExternalAccessService#setExternalAccess: Setzen verlangt ein Ablaufdatum
-  // innerhalb eines Jahres, Zurücknehmen darf keines mitbringen.
+  // mirrors LibraryExternalAccessService#setExternalAccess: setting requires an expiry date
+  // within one year, withdrawing must not bring one.
   http.put('/api/v1/libraries/:libraryId/external-access', async ({ params, request }) => {
     const libraryId = String(params.libraryId)
     const library = mockLibraryDetails[libraryId]

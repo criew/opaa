@@ -11,22 +11,22 @@ import { useGroupSearch } from '../hooks/useGroupSearch'
 import { groupDetailLine, groupLabel } from './subjectSelection'
 
 interface GroupPickerProps {
-  /** Der Screenreader-Name des Eingabefelds — deutsch wie jeder sichtbare Text. */
+  /** The input field's screen reader name — German like every visible text. */
   ariaLabel: string
   placeholder: string
   value: SelectableGroupResponse | null
   onChange: (value: SelectableGroupResponse | null) => void
-  /** Gruppen, die hier nicht mehr in Frage kommen (bereits Mitglied bzw. bereits berechtigt). */
+  /** Groups no longer eligible here (already a member or already entitled). */
   excludedGroupIds?: string[]
-  /** Kennung des Eingabefelds, damit eine eigene Beschriftung (`htmlFor`) ein Ziel hat. */
+  /** Identifier of the input field, so that an own label (`htmlFor`) has a target. */
   inputId?: string
 }
 
 /**
- * Die Gruppensuche der Subjekt-Auswahl (ADR-0036 Entscheidung 9). Jede Zeile trägt die
- * Herkunft, damit zwei gleichnamige Gruppen unterscheidbar sind; eine Gruppe eines externen
- * Anbieters ist mit einem eigenen Symbol abgehoben, nicht nur mit Text. Eine nicht wirksame Gruppe
- * bleibt sichtbar, aber nicht wählbar — mit dem Grund.
+ * The group search of the subject picker (ADR-0036 Entscheidung 9). Every row carries the
+ * origin, so that two groups of the same name can be told apart; a group of an external
+ * provider is set off with an icon of its own, not only with text. A group that is not effective
+ * stays visible but cannot be chosen — with the reason.
  */
 export default function GroupPicker({
   ariaLabel,

@@ -47,17 +47,17 @@ export const NO_EXPIRY_HELP =
   'Auflage, bis es befristet wird.'
 
 /**
- * Das Notanker-Konto zählt nicht zur Auflagenprüfung (ADR-0033, Entscheidung 11) – der Satz oben
- * verspräche ihm sonst einen Hinweis, in dem es nie auftaucht.
+ * The emergency account does not count for the requirement check (ADR-0033, Entscheidung 11) – the
+ * sentence above would otherwise promise it a hint in which it never appears.
  */
 export const NO_EXPIRY_HELP_BOOTSTRAP =
   'Das Notanker-Konto der Systemverwaltung bleibt unbefristet; es erscheint nicht im Hinweis zur ' +
   'Auflage.'
 
 /**
- * Das Notanker-Konto nimmt kein Ablaufdatum an und verlässt `SYSTEM_ADMIN` nicht (ADR-0033,
- * Entscheidungen 3 und 5; sonst 409 `BOOTSTRAP_ACCOUNT`). Ein Datum oder eine andere Rolle aus der
- * Zeit vor dieser Sperre lässt sich zurücknehmen – das stellt den zugesagten Zustand wieder her.
+ * The emergency account accepts no expiry date and does not leave `SYSTEM_ADMIN` (ADR-0033,
+ * Entscheidungen 3 and 5; otherwise 409 `BOOTSTRAP_ACCOUNT`). A date or another role from the
+ * time before this lock can be withdrawn – that restores the promised state.
  */
 export const BOOTSTRAP_ROLE_HINT =
   'Das Notanker-Konto behält die Rolle der Systemverwaltung – es ist der Weg zurück in eine ' +
@@ -127,13 +127,13 @@ interface UserFormDialogProps {
 }
 
 /**
- * Anlegen und Bearbeiten eines lokalen Kontos (ADR-0033 Entscheidung 11). Der Anlagegrund
- * ist Pflicht und zweckgebunden – sein Hilfetext nennt, was nicht hineingehört; das Ablaufdatum ist
- * vorbelegt und nur ausdrücklich abwählbar, damit ein unbefristetes Konto eine Entscheidung bleibt
- * und kein Versehen.
+ * Creating and editing a local account (ADR-0033 Entscheidung 11). The creation reason
+ * is mandatory and purpose-bound – its help text names what does not belong in it; the expiry
+ * date is prefilled and can only be deselected explicitly, so that an unlimited account stays a
+ * decision and not an oversight.
  *
- * Die Feldfehler des Backends (`fieldErrors`) landen an ihrem Feld, die Konfliktcodes als Meldung
- * über dem Formular: `EMAIL_TAKEN` betrifft ein Feld, `LAST_LOGIN_CAPABLE_ADMIN` das Ganze.
+ * The backend's field errors (`fieldErrors`) land on their field, the conflict codes as a message
+ * above the form: `EMAIL_TAKEN` concerns a field, `LAST_LOGIN_CAPABLE_ADMIN` the whole.
  */
 export default function UserFormDialog({
   open,
@@ -177,11 +177,11 @@ export default function UserFormDialog({
     try {
       if (isEdit) {
         /*
-         * Das Ablaufdatum reist nur mit, wenn der **Tag** sich geändert hat: Ein
-         * unverändertes Feld würde sonst auf 23:59:59 Ortszeit zurückgerechnet und
-         * damit das gespeicherte Datum verschieben - und weil `LOCAL_USER_CHANGED` Vorher/Nachher
-         * ausschließlich für `expires_at` führt, stünde eine reine Namensänderung als
-         * Fristverschiebung im Protokoll.
+         * The expiry date travels along only when the **day** has changed: an
+         * unchanged field would otherwise be recalculated to 23:59:59 local time and
+         * thus shift the stored date - and because `LOCAL_USER_CHANGED` records before/after
+         * only for `expires_at`, a mere name change would appear as a
+         * period shift in the log.
          */
         const storedExpiry = toDateInputValue(user.expiresAt)
         const expiryChanged = !draft.noExpiry && draft.expiresAt !== storedExpiry
@@ -277,9 +277,9 @@ export default function UserFormDialog({
               select
               fullWidth
               size="small"
-              // Ein <label for> benennt nur echte Formularelemente; MUIs Auswahl rendert eine
-              // Anzeige mit role="combobox", die ihren Namen über aria-labelledby braucht (axe
-              // aria-input-field-name, serious). Muster wie in AssetGrantsDialog.
+              // A <label for> names only real form elements; MUI's select renders a
+              // display with role="combobox" that needs its name via aria-labelledby (axe
+              // aria-input-field-name, serious). Pattern as in AssetGrantsDialog.
               slotProps={{
                 select: { SelectDisplayProps: { 'aria-labelledby': 'user-form-role-label' } },
               }}

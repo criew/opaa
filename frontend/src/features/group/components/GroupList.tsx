@@ -236,11 +236,10 @@ function Pager() {
 }
 
 /**
- * Die Liste aller Gruppen der Organisation, gebaut wie die Kontenliste: am Desktop eine
- * Tabelle, unter Tablet-Breite eine Liste, serverseitig durchsucht, gefiltert, sortiert und
- * geblättert. Wofür eine Gruppe verwendet wird, steht als Zusammenfassung da; die Mitgliederliste
- * nicht -
- * ihr Abruf ist ein Audit-Ereignis und geschieht erst im Dialog „Mitglieder" (ADR-0036/4, /9).
+ * The list of all groups of the organization, built like the account list: on desktop a
+ * table, below tablet width a list, searched, filtered, sorted and paged server-side.
+ * What a group is used for is shown as a summary; the member list is not -
+ * its retrieval is an audit event and happens only in the „Mitglieder" dialog (ADR-0036/4, /9).
  */
 export default function GroupList(handlers: GroupRowHandlers) {
   const theme = useTheme()

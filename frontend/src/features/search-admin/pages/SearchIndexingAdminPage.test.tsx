@@ -35,8 +35,8 @@ function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {
 }
 
 /**
- * Die Seite liest ihren Bereich aus der Route (`/admin/search/:tab`), also montieren die Tests sie
- * unter denselben Routen wie App.tsx - einschließlich der Umleitung des bloßen Pfades.
+ * The page reads its area from the route (`/admin/search/:tab`), so the tests mount it
+ * under the same routes as App.tsx - including the redirect of the bare path.
  */
 function renderPage(route = '/admin/search/overview') {
   return renderWithProviders(
@@ -53,9 +53,9 @@ const renderIndex = () => renderPage('/admin/search/index')
 const renderDiagnosis = () => renderPage('/admin/search/diagnosis')
 
 /**
- * „Der Diagnosekontext ist geladen“ - der Hinweis unter „Sicht als“ nennt die Voreinstellung erst,
- * wenn Rechteprofile vorliegen; vorher erklärt er die leere Liste. Für den Diagnose-Reiter ist er
- * damit dasselbe Bereitschaftssignal, das die Tabelle für den Indexstatus-Reiter ist.
+ * „Der Diagnosekontext ist geladen“ - the hint below „Sicht als“ names the default only
+ * once rights profiles are available; before that it explains the empty list. For the
+ * diagnosis tab it is thus the same readiness signal the table is for the index status tab.
  */
 async function waitForDiagnosisContext() {
   await screen.findByText(/Voreingestellt ist ein Rechteprofil/)
@@ -75,10 +75,10 @@ describe('SearchIndexingAdminPage', () => {
   })
 
   /**
-   * Die Bereiche sind Routen, keine Zustände: Ein Verweis soll im richtigen Bereich
-   * landen, und ein Neuladen ihn behalten. Der bloße Pfad landet deshalb auf dem ersten Reiter,
-   * und ein Tippfehler wird nicht stillschweigend umgedeutet - die Adresszeile sagt, was zu
-   * sehen ist.
+   * The areas are routes, not states: a link should land in the right area,
+   * and a reload should keep it. The bare path therefore lands on the first tab,
+   * and a typo is not silently reinterpreted - the address bar says what is
+   * shown.
    */
   it('lands on the overview and keeps a typo out of the address bar', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -101,8 +101,8 @@ describe('SearchIndexingAdminPage', () => {
   })
 
   /**
-   * Jeder Reiter holt nur, was er zeigt. Vorher lud die Seite Status **und** Diagnosekontext in
-   * einem Zug, obwohl das meiste davon unsichtbar blieb.
+   * Every tab fetches only what it shows. Previously the page loaded status **and** diagnosis
+   * context in one go, although most of it stayed invisible.
    */
   it('fetches only what the open area shows', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -142,8 +142,8 @@ describe('SearchIndexingAdminPage', () => {
     renderOverview()
 
     expect(screen.getByText(/nicht freigegeben/i)).toBeInTheDocument()
-    // Ohne die Rolle fehlt auch die Reiterleiste: Keiner der drei Bereiche ist erreichbar - die
-    // Diagnose also auch dann nicht, wenn ihr Reiter der geöffnete wäre.
+    // Without the role the tab bar is missing as well: none of the three areas is reachable - so
+    // neither is the diagnosis, even if its tab were the open one.
     expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Diagnose ausführen' })).not.toBeInTheDocument()
   })
@@ -153,14 +153,14 @@ describe('SearchIndexingAdminPage', () => {
 
     renderOverview()
 
-    // Rolle und Zustand stehen im Text der Zeile, nicht als `aria-label` an einem Chip: Die Aussage
-    // ist damit für alle sichtbar dieselbe, nicht nur für Screenreader.
+    // Role and state are in the row's text, not as an `aria-label` on a chip: the statement
+    // is thus the same for everyone who sees it, not only for screen readers.
     await waitFor(() => {
       expect(screen.getByText('Chat — Aktiv und erreichbar')).toBeInTheDocument()
     })
     expect(screen.getByText('Einbettung — Aktiv und erreichbar')).toBeInTheDocument()
     expect(screen.getByText('Reranking — Ausdrücklich abgeschaltet')).toBeInTheDocument()
-    // Endpunkt und Kennung stehen als Schlüssel-Wert-Paar, nicht in einem Fließtext
+    // Endpoint and identifier are a key-value pair, not running text
     expect(screen.getByText('http://localhost:11434/v1')).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/Schlüssel|apiKey|Bearer/)
   })
@@ -224,9 +224,9 @@ describe('SearchIndexingAdminPage', () => {
     expect(within(readyRow as HTMLElement).queryByText(/Abschnitt/)).toBeNull()
   })
 
-  // Nur der aktive Reiter ist montiert: Die Tabelle des Indexstatus steht während der Diagnose gar
-  // nicht im DOM - auch nicht verborgen -, kann von einem Tastendruck im Diagnoseformular also
-  // weder neu gerendert werden noch ihre Daten laden.
+  // Only the active tab is mounted: the index status table is not in the DOM at all during the
+  // diagnosis - not even hidden -, so a keystroke in the diagnosis form can
+  // neither re-render it nor load its data.
   it('keeps the library status table out of the DOM while the diagnosis tab is open', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -419,8 +419,8 @@ describe('SearchIndexingAdminPage', () => {
   })
 
   /**
-   * Die zweite Mischzustandsart einer Bibliothek: Diese Seite zeigt sie, getrieben wird
-   * der Lauf aber aus den Bibliothekseinstellungen - deshalb steht hier kein Knopf.
+   * A library's second kind of mixed state: this page shows it, but the run is driven
+   * from the library settings - that is why there is no button here.
    */
   it('shows a running Umschlüsselung in the same table as the rest of the index state', async () => {
     signInAs('SYSTEM_ADMIN')

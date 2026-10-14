@@ -160,9 +160,9 @@ describe('SourceEvidenceDrawer (#592, Mockup 1i)', () => {
     expect(names).toEqual(['lexikalisch.md', 'vektor.md'])
   })
 
-  // Spezifikation „Konnektor-Freigabe und Sperre“: eine Quelle, deren Bibliothek nicht mehr
-  // aktualisiert wird, trägt „Stand vom …“ mit dem letzten erfolgreichen Lauf (nicht indexedAt),
-  // dem Grund und der zuständigen Stelle, die das Backend nennt; andere nicht.
+  // Specification „Konnektor-Freigabe und Sperre“: a source whose library is no longer
+  // updated carries „Stand vom …“ with the last successful run (not indexedAt),
+  // the reason and the responsible party the backend names; others do not.
   it('marks a source that is not updated with "Stand vom", the reason and who is in charge', async () => {
     const user = userEvent.setup()
     const frozen: ChatMessage = {

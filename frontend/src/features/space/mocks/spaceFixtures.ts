@@ -5,7 +5,7 @@ import type {
   SpaceResponse,
 } from '@/shared/api/types'
 
-/** Die Vorgabe der Betreiber-Konfiguration: Schalter aus, 90 Tage bis zum Archiv, 365 bis zur Löschung. */
+/** The operator configuration's default: switch off, 90 days until archive, 365 until deletion. */
 export const defaultChatAutoCleanup: ChatAutoCleanupResponse = {
   enabled: false,
   archiveAfterDays: 90,
@@ -156,8 +156,8 @@ export const mockSpaceMembers: Record<string, SpaceMemberResponse[]> = {
       emptyGroup: false,
       createdAt: '2026-03-01T10:00:00Z',
     },
-    // Eine geschützte Gruppe erscheint namenlos und ohne jede Zahl - die Zeile bleibt,
-    // damit ein ADMIN die Mitgliedschaft beenden kann, die er nicht sieht.
+    // A protected group appears nameless and without any number - the row stays,
+    // so that an ADMIN can end the membership they cannot see.
     {
       id: 'membership-engineering-personalrat',
       subjectType: 'GROUP',

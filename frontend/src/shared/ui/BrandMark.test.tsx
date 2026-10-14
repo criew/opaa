@@ -47,8 +47,8 @@ describe('BrandMark', () => {
   })
 
   /**
-   * Die Anmeldeseite hat ein eigenes Logo, weil sie es um ein Vielfaches größer zeigt.
-   * Ohne eigenes greift sie auf das der Anwendung zurück - und ohne beides auf die OPAA-Marke.
+   * The login page has its own logo because it shows it many times larger.
+   * Without its own it falls back to the application's - and without either to the OPAA mark.
    */
   it('prefers the sign-in logo where one is configured, and falls back where none is', () => {
     const branding = {
@@ -77,13 +77,13 @@ describe('BrandMark', () => {
     )
     withoutOwn.unmount()
 
-    // Und wo nichts konfiguriert ist, bleibt es bei der OPAA-Marke - einem <svg>, keinem <img>.
+    // And where nothing is configured, it stays the OPAA mark - an <svg>, not an <img>.
     useBrandingStore.setState({ branding: OPAA_BRANDING })
     const standard = renderMark(<BrandMark preferLoginLogo />)
     expect(standard.container.querySelector('img')).toBeNull()
   })
 
-  /** Die Seitenleiste zeigt weiter das Logo der Anwendung, auch wenn ein Anmeldelogo existiert. */
+  /** The sidebar keeps showing the application's logo, even when a login logo exists. */
   it('ignores the sign-in logo where it is not asked for', () => {
     useBrandingStore.setState({
       branding: {

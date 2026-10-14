@@ -58,10 +58,10 @@ function accountsClause(
 export const PROFILE_PARAM = 'profile'
 
 /**
- * Der Reiter „Zugänge“ der Anbindungen: oben, was zu tun ist, darunter je Zugang Quellart und
- * Zustand, Server, wer ihn nutzen darf, die Verbindungen und der Handlungsbedarf - eine Zeile je
- * Zugang. Alles Weitere steht im Seitenpanel; `?profile=<id>` öffnet es. Darunter die Bibliotheken
- * mit ruhender Quelle. Die Rollenschranke steht auf der Seite.
+ * The „Zugänge“ tab of the connections area: at the top what needs doing, below it per profile
+ * source type and state, server, who may use it, the connections and the need for action - one
+ * row per profile. Everything else is in the side panel; `?profile=<id>` opens it. Below that,
+ * the libraries with a dormant source. The role barrier is on the page.
  */
 export default function ConnectionProfilesTab() {
   const [searchParams, setSearchParams] = useSearchParams()

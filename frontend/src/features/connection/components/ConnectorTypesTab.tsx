@@ -22,9 +22,9 @@ function message(err: unknown, fallback: string): string {
 }
 
 /**
- * Der Reiter „Quellarten“ der Anbindungen: je Quellart, ob sie genutzt werden darf, wie sie zu
- * Zugängen steht und wie viele sie hat. Sperre, „Nur über Zugänge“ und die Zugänge der Quellart
- * stehen im Seitenpanel; `?sourceType=<key>` öffnet es.
+ * The „Quellarten“ tab of the connections area: per source type, whether it may be used, how it
+ * relates to connection profiles and how many it has. Lock, „Nur über Zugänge“ and the source
+ * type's profiles are in the side panel; `?sourceType=<key>` opens it.
  */
 export default function ConnectorTypesTab() {
   const [searchParams, setSearchParams] = useSearchParams()

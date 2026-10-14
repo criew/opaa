@@ -9,9 +9,9 @@ import type {
 import { canManageMockLibrary } from './libraryHandlers'
 
 /**
- * Die laufenden Schemaaenderungen je Bibliothek - im Mock genau wie im Backend: die
- * Bestaetigung legt sie an, jede Charge schreibt ein Dokument um, und erst die letzte entfernt den
- * Listenwert beziehungsweise das Feld.
+ * The running schema changes per library - in the mock exactly as in the backend: the
+ * confirmation creates them, every batch rewrites one document, and only the last one removes the
+ * list value or the field.
  */
 const mockSchemaChanges: Record<string, LibraryMetadataSchemaChangeResponse[]> = {}
 const mockCoreContextPrefix: Record<
@@ -57,7 +57,7 @@ function extractionSettingsOf(libraryId: string) {
   }
 }
 
-/** Was eine fertig gelaufene Schemaaenderung mitnimmt: ihren Listenwert oder ihr ganzes Feld. */
+/** What a completed schema change takes along: its list value or its whole field. */
 function applyFinishedChange(libraryId: string, change: LibraryMetadataSchemaChangeResponse) {
   const fields = mockLibraryMetadataFields[libraryId] ?? []
   if (change.kind === 'FIELD_DELETION') {
@@ -210,8 +210,8 @@ export const libraryMetadataHandlers = [
     })
   }),
 
-  // Eine Charge des Nachlaufs: ein Dokument je Aufruf, damit der Fortschritt im Dev-Modus
-  // sichtbar wird; die fertige Aenderung nimmt ihren Listenwert oder ihr Feld mit.
+  // One batch of the follow-up run: one document per call, so that the progress becomes visible
+  // in dev mode; the completed change takes its list value or its field along.
   http.post('/api/v1/libraries/:libraryId/metadata-fields/schema-changes/run', ({ params }) => {
     const libraryId = String(params.libraryId)
     const changes = mockSchemaChanges[libraryId] ?? []
@@ -438,7 +438,7 @@ export const libraryMetadataHandlers = [
         (candidate) => candidate.fieldKey === String(params.fieldKey),
       )
       if (field) {
-        // Stillgelegt, nicht entfernt: der Wert bleibt gelistet, bis die letzte Charge durch ist.
+        // Retired, not removed: the value stays listed until the last batch is through.
         field.values = field.values.map((value) =>
           value.code === code
             ? { ...value, retiring: true, remapTargetCode: body.targetCode }

@@ -89,8 +89,8 @@ export const LOCAL_USER_CONFLICT_MESSAGES: Readonly<Record<string, string>> = {
 }
 
 /**
- * Der Hinweis an jeder einmaligen Anzeige (ADR-0033, Entscheidung 11): Link und erzeugtes Passwort
- * stehen genau einmal in einer Antwort und sind danach nirgends mehr abrufbar.
+ * The hint on every one-time display (ADR-0033, Entscheidung 11): link and generated password
+ * are in a response exactly once and cannot be retrieved anywhere afterwards.
  */
 export const SHOWN_ONCE_HINT =
   'Diese Ansicht erscheint nur einmal. Der Wert ist danach nicht wieder abrufbar – schließen Sie ' +

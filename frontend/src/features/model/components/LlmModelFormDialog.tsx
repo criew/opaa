@@ -65,19 +65,19 @@ function draftFrom(model: LlmModelResponse | null) {
 }
 
 /**
- * Das Formular eines Chat-Modells — dasselbe für Anlegen und Bearbeiten, wie
- * `UserFormDialog` unter „Benutzer".
+ * The form of a chat model — the same for creating and editing, like
+ * `UserFormDialog` under „Benutzer".
  *
- * Geführt in drei Abschnitten: Endpunkt (Vorlage oder eigene Adresse, Schlüssel,
- * „Modelle abrufen"), Modell (Auswahl aus der Liste des Endpunkts oder freie Eingabe) und Anzeige.
- * Eine Auswahl belegt Anzeigename und Antwortlänge vor, solange sie nicht von Hand gesetzt
- * wurden, und testet die Verbindung sofort.
+ * Guided in three sections: endpoint (template or own address, key,
+ * „Modelle abrufen"), model (choice from the endpoint's list or free input) and display.
+ * A choice prefills display name and response length as long as they were not set by hand,
+ * and tests the connection at once.
  *
- * Kein Anbieter-Auswahlfeld: Die Schnittstelle spricht ausschließlich das OpenAI-kompatible
- * Protokoll; die Vorlagen sind nur Adressen.
+ * No provider select field: the interface speaks only the OpenAI-compatible
+ * protocol; the templates are just addresses.
  *
- * Der Aufrufer gibt dem Dialog einen `key`, damit ein Wechsel des Modells den Entwurf neu setzt —
- * MUI unmountet beim Schließen nur die Kinder, nicht die Komponente.
+ * The caller gives the dialog a `key`, so that a change of model resets the draft —
+ * MUI only unmounts the children on close, not the component.
  */
 export default function LlmModelFormDialog({
   open,
@@ -91,21 +91,21 @@ export default function LlmModelFormDialog({
   const [draft, setDraft] = useState(() => draftFrom(model))
   const [apiKeyInput, setApiKeyInput] = useState('')
   const [apiKeyTouched, setApiKeyTouched] = useState(false)
-  // Eine ausdrückliche Anforderung statt „leeres Feld heißt löschen" - das Feld
-  // startet bei jedem Modell leer, weil der Schlüssel nie zurückgelesen wird; unberührt-leer und
-  // „bitte entfernen" wären sonst nicht zu unterscheiden.
+  // An explicit request instead of „empty field means delete" - the field
+  // starts empty for every model because the key is never read back; untouched-empty and
+  // „please remove" could not be told apart otherwise.
   const [apiKeyClearRequested, setApiKeyClearRequested] = useState(false)
   const [temperatureUnreadable, setTemperatureUnreadable] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
-  // Vorbelegung überschreibt nur, was die Person nicht selbst gesetzt hat; beim Bearbeiten gilt die
-  // gespeicherte Antwortlänge als gesetzt.
+  // Prefilling overwrites only what the person has not set themselves; when editing, the
+  // stored response length counts as set.
   const [suggestedName, setSuggestedName] = useState<string | null>(null)
   const [maxTokensTouched, setMaxTokensTouched] = useState(model !== null)
   const [contextLength, setContextLength] = useState<number | null>(null)
-  // Nur das Ergebnis des jüngsten Verbindungstests zählt, wie in useModelDiscovery.
+  // Only the result of the latest connection test counts, as in useModelDiscovery.
   const latestTest = useRef(0)
   const discovery = useModelDiscovery()
   const addressRef = useRef<HTMLInputElement>(null)
@@ -116,7 +116,7 @@ export default function LlmModelFormDialog({
   const preset = presetOf(draft.baseUrl)
   const typedKey = apiKeyTouched && apiKeyInput.trim() !== ''
   const temperatureFieldId = 'llm-model-form-temperature'
-  // MUI vergibt der Hilfezeile eines TextField mit `id` die ID `<id>-helper-text`.
+  // MUI gives the helper line of a TextField with `id` the ID `<id>-helper-text`.
   const temperatureHelperId = `${temperatureFieldId}-helper-text`
 
   function isValid() {
@@ -129,12 +129,12 @@ export default function LlmModelFormDialog({
   }
 
   /**
-   * Löst auf, was für `apiKey` zu senden ist — die Dreiwege-Konvention von `LlmModelRequest`:
-   * weggelassen heißt unverändert, leerer Text heißt entfernen, alles andere heißt setzen.
+   * Resolves what to send for `apiKey` — the three-way convention of `LlmModelRequest`:
+   * omitted means unchanged, empty text means remove, anything else means set.
    *
-   * Verbindungstest und Modellermittlung bekommen denselben Wert, obwohl der leere Text dort etwas
-   * anderes bedeutet: Sie speichern nie etwas, und ein weggelassener Schlüssel lässt sie den
-   * **gespeicherten** Schlüssel dieses Modells weiterverwenden — nur für dessen eigene Adresse.
+   * Connection test and model discovery get the same value, although the empty text means
+   * something else there: they never save anything, and an omitted key lets them keep using
+   * this model's **stored** key — only for its own address.
    */
   function resolveApiKey(): string | undefined {
     if (apiKeyClearRequested) return ''
@@ -142,7 +142,7 @@ export default function LlmModelFormDialog({
     return undefined
   }
 
-  /** Ein leeres Feld heißt „keine Angabe“: Der Parameter geht dann gar nicht an das Modell. */
+  /** An empty field means „keine Angabe“: the parameter is then not sent to the model at all. */
   function resolveTemperature(): number | null {
     return draft.temperature.trim() === '' ? null : Number(draft.temperature)
   }
@@ -423,8 +423,8 @@ export default function LlmModelFormDialog({
                   type="number"
                   value={draft.temperature}
                   onChange={(e) => {
-                    // Eine unlesbare Zahl (etwa „0,7“ je nach Browser) liefert ebenfalls einen
-                    // leeren Wert; sie darf nicht still als „keine Temperatur“ gespeichert werden.
+                    // An unreadable number (such as „0,7“ depending on the browser) yields an
+                    // empty value as well; it must not be silently saved as „keine Temperatur“.
                     setTemperatureUnreadable(e.target.validity.badInput)
                     setDraft({ ...draft, temperature: e.target.value })
                   }}

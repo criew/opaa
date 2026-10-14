@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest'
 import { createAppTheme } from './theme'
 
 /**
- * Der Quelltext der Anwendung, von Vite eingelesen (`?raw`) — kein Dateisystemzugriff, damit der
- * Test ohne Node-Typen auskommt.
+ * The application's source text, read in by Vite (`?raw`) — no file system access, so that the
+ * test gets by without Node types.
  */
 const QUELLEN = import.meta.glob('../../**/*.tsx', {
   query: '?raw',
@@ -16,14 +16,14 @@ const QUELLEN = import.meta.glob('../../**/*.tsx', {
 
 const PRODUKTIVCODE = Object.keys(QUELLEN).filter((pfad) => !pfad.includes('.test.'))
 
-/** Ein Palettenpfad als Wert des `color`-Props, z. B. `color="text.secondary"`. */
+/** A palette path as the value of the `color` prop, e.g. `color="text.secondary"`. */
 const PALETTENPFAD_ALS_PROP = /color="[a-z]+\.[a-z]+"/
 
 function farbeVon(element: HTMLElement): string {
   return getComputedStyle(element).color
 }
 
-/** `#3B4958` → `rgb(59, 73, 88)`: jsdom liefert die berechnete Farbe immer in dieser Form. */
+/** `#3B4958` → `rgb(59, 73, 88)`: jsdom always returns the computed colour in this form. */
 function alsRgb(hex: string): string {
   const wert = hex.replace('#', '')
   const zahl = Number.parseInt(wert, 16)
@@ -32,19 +32,19 @@ function alsRgb(hex: string): string {
 
 describe('Sekundärtext', () => {
   /**
-   * `Typography` löst in MUI 9.4 nur noch die **Kurzformen** des `color`-Props auf
-   * (`primary`, `error`). Ein **Palettenpfad** wie `text.secondary` fällt als ungültige CSS-Farbe
-   * still weg, und der Text rendert in der geerbten Vorgabefarbe — die typografische Hierarchie
-   * ist an der Stelle flach, ohne dass es beim Schreiben auffällt.
+   * In MUI 9.4 `Typography` resolves only the **short forms** of the `color` prop
+   * (`primary`, `error`). A **palette path** like `text.secondary` silently drops out as an
+   * invalid CSS colour, and the text renders in the inherited default colour — the typographic
+   * hierarchy is flat at that spot without it being noticed while writing.
    *
-   * Der Test prüft beides: dass die Schreibweise nirgends zurückkehrt und dass die richtige sie
-   * tatsächlich trägt.
+   * The test checks both: that the notation returns nowhere and that the correct one
+   * actually carries it.
    */
   it.each(PRODUKTIVCODE.filter((pfad) => PALETTENPFAD_ALS_PROP.test(QUELLEN[pfad])))(
     '%s sets palette colours through sx, not through the color prop',
     (pfad) => {
-      // Diese Zeile wird nur erreicht, wenn eine Datei die Schreibweise trägt - dann nennt der
-      // Testname sie und diese Erwartung schlägt fehl.
+      // This line is reached only if a file carries the notation - then the
+      // test name names it and this expectation fails.
       expect(QUELLEN[pfad].match(PALETTENPFAD_ALS_PROP)?.[0]).toBeUndefined()
     },
   )
@@ -69,7 +69,7 @@ describe('Sekundärtext', () => {
       const sekundaer = farbeVon(screen.getByTestId('sekundaer'))
       const primaer = farbeVon(screen.getByTestId('primaer'))
       expect(sekundaer).not.toBe('')
-      // Der Punkt der ganzen Sache: Sekundärtext muss sich vom Fließtext unterscheiden.
+      // The point of the whole thing: secondary text must differ from running text.
       expect(sekundaer).not.toBe(primaer)
       expect(sekundaer).toBe(alsRgb(createAppTheme(schema).palette.text.secondary))
     },

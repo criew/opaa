@@ -39,9 +39,9 @@ export default function BrandingPreview({
 
   return (
     <ThemeProvider theme={theme}>
-      {/* Der eine Rahmen, der im Bereich bleibt: Er zeigt nicht einen Inhaltsblock der
-          Seite, sondern ein Abbild der Anwendung - wie ein Bilderrahmen sagt er „das hier ist eine
-          Vorschau", nicht „das hier gehört zusammen". */}
+      {/* The one frame that stays in the area: it does not show a content block of the
+         page but an image of the application - like a picture frame it says „this is a
+         preview", not „this belongs together". */}
       <Box
         component="figure"
         // aria-hidden + inert: everything in here is a rendering of values the form already

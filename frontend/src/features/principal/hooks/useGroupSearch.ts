@@ -3,8 +3,8 @@ import { searchSelectableGroups } from '../api/groupLookupApi'
 import type { SelectableGroupResponse } from '@/shared/api/types'
 
 const SEARCH_DEBOUNCE_MS = 300
-// Spiegelt die Untergrenze von GroupService#searchSelectableGroups: eine kürzere Eingabe verlässt
-// den Browser gar nicht erst, der Dienst antwortete ohnehin mit einer leeren Liste.
+// Mirrors the lower bound of GroupService#searchSelectableGroups: a shorter input does not
+// even leave the browser, the service would answer with an empty list anyway.
 const MIN_QUERY_LENGTH = 2
 
 interface UseGroupSearchResult {
@@ -16,12 +16,12 @@ interface UseGroupSearchResult {
 }
 
 /**
- * Die serverseitige Gruppensuche der Subjekt-Auswahl — dieselbe Mechanik wie
- * {@link useUserSearch}: entprellt, mit eigener Kennzeichnung von „lädt noch" und „ist
- * fehlgeschlagen", und mit einem Abgleich der Anfragenummer, damit eine langsame Antwort auf einen
- * früheren Tastendruck keine veralteten Treffer einblendet.
+ * The server-side group search of the subject picker — the same mechanics as
+ * {@link useUserSearch}: debounced, with its own marking of „still loading" and „has
+ * failed", and with a check of the request number, so that a slow response to an
+ * earlier keystroke does not show outdated matches.
  *
- * Welche Gruppen erscheinen, entscheidet allein der Dienst; dieser Hook filtert nichts nach.
+ * Only the service decides which groups appear; this hook filters nothing afterwards.
  */
 export function useGroupSearch(): UseGroupSearchResult {
   const [query, setQueryState] = useState('')
@@ -30,8 +30,8 @@ export function useGroupSearch(): UseGroupSearchResult {
   const [error, setError] = useState<string | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const requestIdRef = useRef(0)
-  // Nach dem Aushängen (etwa wenn der Dialog schließt, während eine Suche läuft) setzt die Antwort
-  // keinen Zustand mehr - die Anfragenummer allein unterscheidet nur alte von neuen Anfragen.
+  // After unmounting (e.g. when the dialog closes while a search is running) the response
+  // no longer sets state - the request number alone only tells old from new requests.
   const mountedRef = useRef(true)
 
   useEffect(() => {

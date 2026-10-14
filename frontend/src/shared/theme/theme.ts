@@ -56,11 +56,11 @@ function resolveAccent(roles: SchemeRoles, branding?: BrandingOverrides) {
   // Hover/press derive from that surface, keeping the sampled -8%/-16% rhythm.
   const accentSurface = deriveAccentSurface(brandColor)
   return {
-    // Die Rolle `accent` färbt Text, Verweise und Indikatoren — dort gilt 4,5:1 gegen den
-    // Grund des jeweiligen Schemas, und die Vorgabewerte der Rollen halten das nachweislich ein.
-    // Eine konfigurierte Hausfarbe umging diese Zusicherung bisher: Sie wurde unverändert
-    // übernommen. Jetzt wird sie so weit vom Grund weggerückt, wie die Schwelle verlangt — nicht
-    // weiter. Die Fläche bleibt davon unberührt (`accentSurface` oben).
+    // The `accent` role colours text, links and indicators — there 4.5:1 applies against the
+    // ground of the respective scheme, and the roles' default values demonstrably meet it.
+    // A configured house colour used to bypass this guarantee: it was adopted
+    // unchanged. Now it is moved away from the ground as far as the threshold requires — no
+    // further. The surface is not affected (`accentSurface` above).
     accent: deriveAccentText(brandColor, [roles.bg1, roles.bg2, roles.bg3]),
     accentSurface,
     accentHover: darken(accentSurface, 0.08),
@@ -382,10 +382,10 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
           },
         },
         /*
-         * Aufklappbare Einträge tragen ihre Trennung in einer Linie, nicht in einem Rahmen:
-         * Mehrere gerahmte Karten untereinander lesen sich als Stapel von Kästen statt als Liste.
-         * Die Vorgabe steht hier und nicht in den Seiten, damit sie für jedes Aufklappelement der
-         * Anwendung gilt.
+         * Expandable entries carry their separation in a line, not in a frame:
+         * several framed cards stacked read as a pile of boxes instead of a list.
+         * The default is here and not in the pages, so that it applies to every expandable
+         * element of the application.
          */
         MuiAccordion: {
           defaultProps: {
@@ -400,7 +400,7 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
               border: 0,
               borderBottom: `1px solid ${roles.border}`,
               borderRadius: 0,
-              // MUIs eigene Trennlinie über dem Element entfällt - die untere trägt sie alle.
+              // MUI's own divider above the element is dropped - the bottom one carries them all.
               '&::before': { display: 'none' },
               '&:last-of-type': { borderBottom: 0 },
               '&.Mui-expanded': { margin: 0 },
@@ -431,11 +431,11 @@ function buildTheme(mode: PaletteMode, roles: SchemeRoles, branding?: BrandingOv
             },
           },
         },
-        // Der Grund hinter einer schwebenden Ebene tritt zurück, statt nur dunkler zu werden: Auf
-        // dem fast schwarzen Grund des dunklen Schemas bleibt eine Abdunklung allein fast
-        // wirkungslos. `invisible` ist ausgenommen - Menüs und Popover bringen bewusst keinen mit.
-        // Der Schleier trägt den Ton des Schemas: Navy im hellen, das neutrale Carbon im dunklen,
-        // dessen Grund keine Blaufärbung kennt.
+        // The ground behind a floating layer recedes instead of only getting darker: on
+        // the almost black ground of the dark scheme darkening alone stays almost
+        // without effect. `invisible` is excluded - menus and popovers deliberately bring none.
+        // The scrim carries the scheme's tone: navy in the light one, the neutral carbon in the
+        // dark one, whose ground knows no blue tint.
         MuiBackdrop: {
           styleOverrides: {
             root: {

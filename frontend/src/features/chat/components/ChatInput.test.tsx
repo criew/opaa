@@ -110,9 +110,9 @@ describe('ChatInput', () => {
     })
   })
 
-  // Die Zeile unter der Eingabe nennt keine Bestandszahl mehr. Ein leerer Suchbereich steht
-  // als Hinweis über der Chip-Leiste - kein Wissen zugeordnet, oder nichts davon lesbar -, noch
-  // unbekannte Zuordnungen des aktuellen Space in der Zeile.
+  // The line below the input no longer names a document count. An empty search scope appears
+  // as a hint above the chip bar - no knowledge associated, or none of it readable -, still
+  // unknown associations of the current space in the line.
   describe('the line under the input (#1920)', () => {
     it('shows the neutral hint instead of a library count', async () => {
       render(<ChatInput onSend={vi.fn()} />)
@@ -133,8 +133,8 @@ describe('ChatInput', () => {
       expect(screen.queryByText(/gewählte Bestände/)).not.toBeInTheDocument()
     })
 
-    // Nichts zugeordnet: der Hinweis mit Direktlink für Kuratoren und Administratoren, sonst der
-    // Hinweis, wer zuordnen kann - nie ein stiller Leerlauf.
+    // Nothing associated: the hint with a direct link for curators and administrators, otherwise
+    // the hint who can associate - never a silent dead end.
     it('shows the "kein Wissen zugeordnet" notice with a direct link for a curator', async () => {
       mockAssociations('space-gewerbeamt', {
         hasAssociations: false,
@@ -227,8 +227,8 @@ describe('ChatInput', () => {
       expect(screen.queryByTestId('space-knowledge-notice')).not.toBeInTheDocument()
     })
 
-    // Der Suchbereich eines gewechselten Space ist noch unbekannt - solange
-    // darf der vorige Stand nicht behauptet werden.
+    // The search scope of a switched space is still unknown - meanwhile
+    // the previous state must not be claimed.
     it("shows a neutral notice, not the previous space's state, right after switching spaceId", async () => {
       useSpaceStore.setState({
         hasAssetAssociations: true,
@@ -254,7 +254,7 @@ describe('ChatInput', () => {
       expect(await screen.findByText('Suchbereich wird ermittelt …')).toBeInTheDocument()
     })
 
-    // Ein fehlgeschlagener Ladevorgang darf nicht als "keine Zuordnungen" gelten.
+    // A failed load must not count as "keine Zuordnungen".
     it('does not fall back to the plain hint when the association load fails', async () => {
       server.use(
         http.get('/api/v1/spaces/space-gewerbeamt/assets', () =>

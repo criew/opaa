@@ -203,9 +203,9 @@ interface ChunkNavigation {
 }
 
 /**
- * Eine Modellrolle als Block, nicht als Karte: Der Zustand steht im Punkt und im Wort, die
- * beiden Angaben darunter in einer Schlüssel-Wert-Liste. Ein Fehler bleibt ein Alert - der ist
- * eine Meldung, kein ruhender Inhalt.
+ * A model role as a block, not as a card: the state is in the dot and the word, the
+ * two details below it in a key-value list. An error stays an alert - that is
+ * a message, not resting content.
  */
 function ModelRoleCard({ role }: { role: SearchModelRoleStatusResponse }) {
   const tone: StatusTone = role.faulted ? 'error' : role.state === 'ACTIVE' ? 'success' : 'neutral'
@@ -411,9 +411,9 @@ function DiagnosisResult({
       {diagnosis.lockedLibraryCount > 0 && (
         <Alert severity="info" sx={{ mb: 2 }}>
           {`In dieser Organisation ${diagnosis.lockedLibraryCount === 1 ? 'ist' : 'sind'} ${plural(diagnosis.lockedLibraryCount, 'Bibliothek', 'Bibliotheken')} für die Diagnose gesperrt; daraus zeigt die Diagnose nichts - weder Treffer noch Titel. Die Zahl gilt für den gesamten Bestand und sagt nichts darüber, was die betrachtete Person lesen darf. Aufheben kann die Sperre nur die für die Bibliothek zuständige Stelle, nicht die Systemverwaltung.`}{' '}
-          {/* Die Sperre wird auf der Detailseite der Bibliothek bedient. Der Link führt nur in
-              den Katalog und nennt keine gesperrte Bibliothek (Leitplanke (e): kein Titel aus
-              einem gesperrten Bereich). */}
+          {/* The lock is operated on the library's detail page. The link only leads into
+             the catalog and names no locked library (guardrail (e): no title from
+             a locked area). */}
           Bedient wird sie auf der Seite der Bibliothek, zu finden im{' '}
           <Link component={RouterLink} to={catalogRoute('KNOWLEDGE_LIBRARY')}>
             Katalog
@@ -600,15 +600,15 @@ function isSearchAdminTab(value: string | undefined): value is SearchAdminTab {
   return value === 'overview' || value === 'index' || value === 'diagnosis'
 }
 
-// „Indexstatus" statt „Bibliotheken": Gemeint ist nicht der Bestand selbst, den der Katalog
-// führt, sondern sein Zustand im Index.
+// „Indexstatus" instead of „Bibliotheken": what is meant is not the content itself, which the
+// catalog lists, but its state in the index.
 const tabs: Array<{ value: SearchAdminTab; label: string }> = [
   { value: 'overview', label: 'Überblick' },
   { value: 'index', label: 'Indexstatus' },
   { value: 'diagnosis', label: 'Diagnose' },
 ]
 
-/** Modellrollen und Suchpfade: läuft die Suche überhaupt, und welche ihrer Wege sind aktiv. */
+/** Model roles and search paths: does the search run at all, and which of its paths are active. */
 function OverviewSection() {
   const status = useSearchAdminStore((s) => s.status)
   const statusError = useSearchAdminStore((s) => s.statusError)
@@ -627,8 +627,8 @@ function OverviewSection() {
       )}
 
       <PageSection title="Modellrollen">
-        {/* Untereinander, nicht nebeneinander: Jede Rolle trägt jetzt zwei Angaben unter ihrer
-            Zeile, und drei umbrechende Spalten stünden versetzt statt bündig. */}
+        {/* Stacked, not side by side: every role now carries two details below its
+           row, and three wrapping columns would be offset instead of flush. */}
         <Stack spacing={2.5}>
           {status?.modelRoles.map((role) => (
             <ModelRoleCard key={role.role} role={role} />
@@ -652,7 +652,7 @@ function OverviewSection() {
   )
 }
 
-/** Der Bestand im Index je Bibliothek - und die beiden einzigen Eingriffe dieser Seite. */
+/** The content in the index per library - and the only two interventions of this page. */
 function IndexStatusSection() {
   const status = useSearchAdminStore((s) => s.status)
   const statusError = useSearchAdminStore((s) => s.statusError)
@@ -708,11 +708,11 @@ function IndexStatusSection() {
 }
 
 /**
- * Die Diagnose und die Chunk-Ansicht eines Dokuments.
+ * The diagnosis and a document's chunk view.
  *
- * Beide liegen bewusst in einem Reiter: Ein Klick auf einen Dokumenttitel in der Diagnose springt
- * in die Chunk-Ansicht darunter. Getrennt wäre das ein Reiterwechsel mit Parameter - ohne
- * Ladegewinn, denn die Chunk-Ansicht holt von sich aus nichts.
+ * Both deliberately live in one tab: a click on a document title in the diagnosis jumps
+ * into the chunk view below. Separated, that would be a tab change with a parameter - without
+ * a loading gain, since the chunk view fetches nothing by itself.
  */
 function DiagnosisSection() {
   const profiles = useSearchAdminStore((s) => s.profiles)
@@ -785,13 +785,13 @@ function DiagnosisSection() {
 }
 
 /**
- * Suche und Indexierung der Systemverwaltung in drei Bereichen: „Überblick" beantwortet,
- * ob die Suche läuft; „Indexstatus" zeigt den Bestand je Bibliothek und trägt die beiden
- * Chargenläufe; „Diagnose" beantwortet, warum ein Dokument in einer Antwort steht oder fehlt.
+ * The system administration's search and indexing in three areas: „Überblick" answers
+ * whether the search is running; „Indexstatus" shows the content per library and carries the two
+ * batch runs; „Diagnose" answers why a document is in an answer or missing from it.
  *
- * Die Bereiche sind eigene Routen (`/admin/search/overview`, `/index`, `/diagnosis`) wie bei der
- * Benutzer- und der E-Mail-Seite: Ein Verweis soll im richtigen Bereich landen, und ein Neuladen
- * ihn behalten. Jeder Bereich lädt nur, was er zeigt.
+ * The areas are routes of their own (`/admin/search/overview`, `/index`, `/diagnosis`) as on the
+ * user and mail pages: a link should land in the right area, and a reload should
+ * keep it. Every area loads only what it shows.
  */
 export default function SearchIndexingAdminPage() {
   const isSystemAdmin = useAuthStore((s) => s.user?.systemRole === 'SYSTEM_ADMIN')

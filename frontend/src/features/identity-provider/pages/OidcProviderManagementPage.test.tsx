@@ -38,7 +38,7 @@ function desktopMatchMedia(query: string): MediaQueryList {
   } as unknown as MediaQueryList
 }
 
-/** Ein Zugang lässt Personen zu: Die Rückfrage nennt die Wirkung, nie eine Zahl. */
+/** A connection profile admits persons: the confirmation names the effect, never a number. */
 const PERSONS_ADMITTED = {
   confirmationRequired: true,
   disableEffect: 'CONNECTIONS_REST',
@@ -47,14 +47,14 @@ const PERSONS_ADMITTED = {
 
 const findProviderTable = () => screen.findByRole('table', { name: 'Identitätsanbieter' })
 
-/** Die Anbieterzeilen in ihrer Reihenfolge - der Tabellenkörper, ohne die Kopfzeile. */
+/** The provider rows in their order - the table body, without the header row. */
 function providerRows() {
   const table = screen.getByRole('table', { name: 'Identitätsanbieter' })
   const [, koerper] = within(table).getAllByRole('rowgroup')
   return within(koerper).getAllByRole('row')
 }
 
-/** Die Tabellenzeile eines Anbieters - erkannt am Anzeigenamen, den ihre Anbieterspalte führt. */
+/** A provider's table row - recognized by the display name its provider column shows. */
 function rowOf(name: string) {
   return screen.getByRole('row', { name: new RegExp(name) })
 }
@@ -65,16 +65,16 @@ async function openRowMenu(user: UserEvent, name: string) {
   return screen.findByRole('menu')
 }
 
-/** Wählt eine Handlung im Zeilenmenü eines Anbieters. */
+/** Chooses an action in a provider's row menu. */
 async function clickRowAction(user: UserEvent, name: string, action: string) {
   const menu = await openRowMenu(user, name)
   await user.click(within(menu).getByRole('menuitem', { name: action }))
 }
 
 /**
- * Bestätigt die Rückfrage vor dem Deaktivieren oder Löschen, sobald die Folgen für verbundene Konten
- * geladen sind - erst dann ist die Schaltfläche frei -, wartet, bis der Dialog geschlossen ist, und
- * gibt den Text zurück, den die Rückfrage beim Bestätigen zeigte.
+ * Confirms the question before deactivating or deleting as soon as the consequences for connected
+ * accounts are loaded - only then is the button enabled -, waits until the dialog is closed, and
+ * returns the text the confirmation showed when confirming.
  */
 async function confirmShutdown(user: UserEvent, question: RegExp, verb: string) {
   const dialog = await screen.findByRole('dialog', { name: question })
@@ -86,7 +86,7 @@ async function confirmShutdown(user: UserEvent, question: RegExp, verb: string) 
   return shown
 }
 
-/** Die Abfrageparameter jeder Anfrage an `pathSuffix`, solange der Test läuft. */
+/** The query parameters of every request to `pathSuffix` while the test runs. */
 function recordParams(pathSuffix: string, method: string) {
   const recorded: URLSearchParams[] = []
   const record = ({ request }: { request: Request }) => {
@@ -101,8 +101,8 @@ function recordParams(pathSuffix: string, method: string) {
 }
 
 /**
- * Öffnet das Formular eines Anbieters über „Bearbeiten“ seines Zeilenmenüs - und sichert dabei zu,
- * dass der Dialog den Anbieter trägt, dessen Zeile ihn geöffnet hat.
+ * Opens a provider's form via „Bearbeiten“ in its row menu - and asserts along the way
+ * that the dialog carries the provider whose row opened it.
  */
 async function openEditDialog(user: UserEvent, name: string) {
   await clickRowAction(user, name, 'Bearbeiten')
@@ -145,8 +145,8 @@ describe('OidcProviderManagementPage', () => {
     const table = await findProviderTable()
     const zeilen = providerRows()
     expect(zeilen).toHaveLength(3)
-    // Die Reihenfolge dieser Liste *ist* die Reihenfolge der Anmeldeseite: Zeilenfolge und die
-    // sichtbare Positionsziffer müssen dasselbe sagen, sonst trägt die Liste ihre Aussage nicht.
+    // The order of this list *is* the order of the login page: row sequence and the
+    // visible position number must say the same, otherwise the list does not carry its statement.
     expect(
       ['Verzeichnisdienst', 'Partnerportal', 'Landesportal'].map((name) =>
         zeilen.indexOf(rowOf(name)),
@@ -157,7 +157,7 @@ describe('OidcProviderManagementPage', () => {
       '2',
       '3',
     ])
-    // Wofür die Ziffer steht, sagt der Spaltenkopf - auch vorgelesen.
+    // What the number stands for is said by the column header - read out as well.
     expect(
       within(table).getByRole('columnheader', { name: /^Nr\.\s*auf der Anmeldeseite$/ }),
     ).toBeInTheDocument()
@@ -170,9 +170,9 @@ describe('OidcProviderManagementPage', () => {
   })
 
   /**
-   * „Nicht erreichbar" allein sagt nicht, ob die Adresse falsch ist oder der Dienst steht. Die
-   * Antwort des Anbieters steht deshalb wörtlich in der Zeile - sie ist der erste Anhaltspunkt
-   * bei einer Störung.
+   * „Nicht erreichbar" alone does not say whether the address is wrong or the service is down.
+   * The provider's answer is therefore shown verbatim in the row - it is the first clue
+   * in case of a failure.
    */
   it('names why an unreachable provider cannot be reached', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -210,8 +210,8 @@ describe('OidcProviderManagementPage', () => {
     expect(mockOidcProviders.find((p) => p.displayName === 'Landesportal')?.clientId).toBe(
       'opaa-land',
     )
-    // 20 s statt der voreingestellten 5: Der Test tippt in vier MUI-Felder, und jede Eingabe
-    // rendert die Seite neu - auf einer ausgelasteten Maschine reicht das Standardlimit nicht.
+    // 20 s instead of the default 5: the test types into four MUI fields, and every input
+    // re-renders the page - on a busy machine the default limit is not enough.
   }, 20000)
 
   it('asks for confirmation before a roles claim is set and saves it afterwards', async () => {
@@ -279,9 +279,9 @@ describe('OidcProviderManagementPage', () => {
   }, 20000)
 
   /**
-   * Am Standardanbieter **fehlen** „Deaktivieren“ und „Löschen“ nicht, sie sind gesperrt und
-   * nennen ihren Grund. Eine fehlende Handlung wirft die Frage
-   * auf, ob sie je da war; eine gesperrte beantwortet sie.
+   * On the default provider „Deaktivieren“ and „Löschen“ are not **missing**, they are disabled
+   * and name their reason. A missing action raises the question
+   * whether it was ever there; a disabled one answers it.
    */
   it('locks disabling and deleting on the default provider and names the reason', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -293,14 +293,14 @@ describe('OidcProviderManagementPage', () => {
     const loeschen = within(menu).getByRole('menuitem', { name: 'Löschen' })
     expect(deaktivieren).toHaveAttribute('aria-disabled', 'true')
     expect(loeschen).toHaveAttribute('aria-disabled', 'true')
-    // Der Grund steht im DOM und ist über `aria-describedby` mit beiden gesperrten Einträgen
-    // verbunden, wird also auch vorgelesen - ein Tooltip fände nur eine Maus.
+    // The reason is in the DOM and connected to both disabled entries via `aria-describedby`,
+    // so it is read out as well - a tooltip would only be found by a mouse.
     const grund = within(menu).getByText(DEFAULT_PROVIDER_HINT)
     expect(deaktivieren).toHaveAttribute('aria-describedby', grund.closest('li')!.id)
     expect(loeschen).toHaveAttribute('aria-describedby', grund.closest('li')!.id)
 
-    // Gesperrt heißt auch: Der Eintrag nimmt keinen Klick an - `pointer-events: none`, nicht bloß
-    // ein Vermerk im Namen; testing-library weist den Versuch genau deshalb ab.
+    // Disabled also means: the entry accepts no click - `pointer-events: none`, not just
+    // a note in the name; testing-library rejects the attempt for exactly that reason.
     await expect(user.click(deaktivieren)).rejects.toThrow(/pointer-events/)
     expect(useOidcProviderStore.getState().providers.find((p) => p.isDefault)?.enabled).toBe(true)
   })
@@ -317,9 +317,9 @@ describe('OidcProviderManagementPage', () => {
     expect(standardfrage).toHaveTextContent(/weder deaktiviert noch gelöscht/)
     await user.click(within(standardfrage).getByRole('button', { name: 'Zum Standard machen' }))
 
-    // the mock mirrors OidcProviderService#makeDefault: an unreachable provider is refused. Die
-    // Ablehnung kommt als Benachrichtigung, nicht als Meldung in der Zeile - und nennt den
-    // Grund, den das Backend gemeldet hat.
+    // the mock mirrors OidcProviderService#makeDefault: an unreachable provider is refused. The
+    // rejection comes as a notification, not as a message in the row - and names the
+    // reason the backend reported.
     const abweisung = await screen.findByRole('alert')
     expect(abweisung).toHaveTextContent(/nicht abrufbar/)
     expect(abweisung).toHaveTextContent('Discovery-Dokument: Antwort mit HTTP 503.')
@@ -336,8 +336,8 @@ describe('OidcProviderManagementPage', () => {
       within(rowOf('Verzeichnisdienst')).queryByLabelText('Standardanbieter'),
     ).not.toBeInTheDocument()
 
-    // Die Sperre hing am Standard, nicht am Anbieter: Der vorherige Standard ist jetzt
-    // deaktivierbar, und sein Menü führt keinen Grund mehr.
+    // The lock depended on the default, not on the provider: the previous default can now be
+    // deactivated, and its menu no longer shows a reason.
     const altesMenu = await openRowMenu(user, 'Verzeichnisdienst')
     expect(within(altesMenu).getByRole('menuitem', { name: 'Deaktivieren' })).not.toHaveAttribute(
       'aria-disabled',
@@ -356,8 +356,8 @@ describe('OidcProviderManagementPage', () => {
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
     const hinweis = await screen.findByText(/Kein Anbieter ist Standardanbieter/)
     expect(hinweis).toBeInTheDocument()
-    // Der Verzeichnisabgleich haengt an der Anbieterzeile selbst; der Hinweis darf ihn nicht als
-    // Folge eines fehlenden Standardanbieters nennen.
+    // The directory sync depends on the provider row itself; the hint must not name it as a
+    // consequence of a missing default provider.
     expect(hinweis).toHaveTextContent(/Der Verzeichnisabgleich h.ngt nicht daran/)
     expect(hinweis).not.toHaveTextContent(/Verzeichnisabgleich greifen nicht/)
   })
@@ -385,8 +385,8 @@ describe('OidcProviderManagementPage', () => {
       expect(within(rowOf('Partnerportal')).getByText('Deaktiviert')).toBeInTheDocument()
     })
 
-    // Das Einschalten fragt nicht - es nimmt niemandem die Anmeldung. Der Anbieter kommt mit dem
-    // Decoder-Zustand zurück, den er vor dem Abschalten hatte.
+    // Switching on does not ask - it takes nobody's login away. The provider comes back with the
+    // decoder state it had before being switched off.
     await clickRowAction(user, 'Partnerportal', 'Aktivieren')
     await waitFor(() => {
       expect(within(rowOf('Partnerportal')).getByText('Nicht erreichbar')).toBeInTheDocument()
@@ -407,7 +407,7 @@ describe('OidcProviderManagementPage', () => {
     const user = userEvent.setup()
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
     await findProviderTable()
-    // Die Enden der Liste haben keinen Schritt mehr in ihre Richtung.
+    // The ends of the list have no further step in their direction.
     expect(
       screen.getByRole('button', { name: '„Verzeichnisdienst“ nach oben verschieben' }),
     ).toBeDisabled()
@@ -420,8 +420,8 @@ describe('OidcProviderManagementPage', () => {
     await waitFor(() => {
       expect(providerRows().indexOf(rowOf('Partnerportal'))).toBe(0)
     })
-    // Die gesendete Reihenfolge enthält alle Zeilen der Tabelle; Position 0 hält die LOCAL-Zeile,
-    // der erste Anbieter liegt damit auf 1.
+    // The order sent contains all rows of the table; position 0 holds the LOCAL row,
+    // so the first provider is at 1.
     expect(mockOidcProviders.find((p) => p.displayName === 'Partnerportal')?.sortOrder).toBe(1)
   })
 
@@ -470,8 +470,8 @@ describe('OidcProviderManagementPage', () => {
       screen.getByRole('button', { name: 'Web-Origin und Abmelde-Weiterleitung kopieren' }),
     ).toBeInTheDocument()
 
-    // Die Zeile nennt nur das Zustandswort; was es bedeutet, steht hier - deshalb muss die Legende
-    // die drei Zustände samt Erläuterung führen.
+    // The row names only the state word; what it means is stated here - that is why the legend
+    // must list the three states including their explanation.
     const legend = screen.getByRole('region', { name: 'Status verstehen' })
     expect(within(legend).getByText('Erreichbar')).toBeInTheDocument()
     expect(within(legend).getByText('Nicht erreichbar')).toBeInTheDocument()
@@ -481,8 +481,8 @@ describe('OidcProviderManagementPage', () => {
     expect(within(legend).getByText(/Konten bleiben erhalten/)).toBeInTheDocument()
   })
 
-  /** Die Liste nennt, was der Anbieter aus dem Token holt, statt es im Dialog zu
-   * verstecken - vor allem, wer über ihn Systemverwalter wird. */
+  /** The list names what the provider takes from the token instead of hiding it in the
+   * dialog - above all, who becomes system administrator through it. */
   it('summarises in the list what each provider takes from the token', async () => {
     signInAs('SYSTEM_ADMIN')
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
@@ -517,8 +517,8 @@ describe('OidcProviderManagementPage', () => {
   })
 
   /**
-   * ADR-0033, Entscheidung 4: Die `LOCAL`-Zeile steht in derselben Tabelle, ist aber kein
-   * Anbieter dieser Seite - ihr Schalter ist der Schalter der Benutzerverwaltung.
+   * ADR-0033, Entscheidung 4: the `LOCAL` row is in the same table but is no
+   * provider of this page - its switch is the switch of the user management.
    */
   it('does not list the local account management among the providers', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -552,12 +552,13 @@ describe('OidcProviderManagementPage', () => {
     onTestFinished(() => server.events.removeListener('request:start', record))
     renderWithProviders(<OidcProviderManagementPage />, { withRouter: true })
 
-    // Als letzter aktivierter Anbieter ist auch der Standard abschaltbar - die Sperre des
-    // Standardanbieters endet genau hier (ADR-0033, Entscheidung 4).
+    // As the last enabled provider, the default can be switched off as well - the default
+    // provider's lock ends exactly here (ADR-0033, Entscheidung 4).
     await clickRowAction(user, 'Verzeichnisdienst', 'Deaktivieren')
 
-    // Die Bestätigung *ist* das Acknowledgement, das das Backend verlangt (ADR-0025):
-    // Der Zusatzsatz zum letzten Anbieter muss deshalb vor dem Absenden gestanden haben.
+    // The confirmation *is* the acknowledgement the backend requires (ADR-0025):
+    // the additional sentence about the last provider must therefore have been shown before
+    // submitting.
     const letzterAnbieter = await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
     expect(letzterAnbieter).toContain('Danach können sich nur noch lokale Konten anmelden')
 
@@ -585,13 +586,13 @@ describe('OidcProviderManagementPage', () => {
     await clickRowAction(user, 'Partnerportal', 'Deaktivieren')
     await confirmShutdown(user, /deaktivieren\?/, 'Deaktivieren')
 
-    // Die Erklärung erscheint als Benachrichtigung, nicht als Meldung im Anbietereintrag.
+    // The explanation appears as a notification, not as a message in the provider entry.
     expect(await screen.findByRole('alert')).toHaveTextContent(
       /lokales Systemverwalterkonto mit Passwort/,
     )
   })
 
-  /** ADR-0041, Entscheidung 4: Deaktivieren lässt ruhen - umkehrbar, und ohne Zahl je Anbieter. */
+  /** ADR-0041, Entscheidung 4: deactivating suspends - reversible, no number per provider. */
   it('names what disabling does to connected accounts and sends the confirmation', async () => {
     mockOidcProviderImpacts['oidc-provider-partner'] = PERSONS_ADMITTED
     const sent = recordParams('/disable', 'POST')

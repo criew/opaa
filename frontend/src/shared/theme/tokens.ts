@@ -308,15 +308,15 @@ export const letterSpacing = {
 export const spacingGridPx = 4
 
 /**
- * Breiten der Bereichsseiten. Die Seiten hinter einer Bereichsnavigation bilden einen
- * Satz: Läuft der Inhalt der einen bis zum Fensterrand und der anderen nur bis 960 px, springt die
- * rechte Kante beim Wechsel zwischen zwei Menüpunkten. Deshalb steht die Breite hier und nicht in
- * jeder Seite.
+ * Widths of the area pages. The pages behind an area navigation form a
+ * set: if the content of one runs to the window edge and that of the other only to 960 px, the
+ * right edge jumps when switching between two menu items. That is why the width is here and not
+ * in every page.
  *
- * `areaContent` ist die Breite der Kontenliste, der breitesten dieser Seiten - sie trägt sieben
- * Spalten und gibt damit das Maß vor. `notice` ist die schmalere Fläche der Seiten, die statt
- * Inhalten nur einen Hinweis zeigen (kein Zugriff): Ein Satz in Lesebreite, nicht über die halbe
- * Fensterbreite gezogen.
+ * `areaContent` is the width of the account list, the widest of these pages - it carries seven
+ * columns and thus sets the measure. `notice` is the narrower area of the pages that show only a
+ * hint instead of content (no access): a sentence at reading width, not stretched across half the
+ * window width.
  */
 export const contentWidth = {
   areaContent: 1180,

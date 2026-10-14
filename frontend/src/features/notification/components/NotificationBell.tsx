@@ -45,8 +45,8 @@ export default function NotificationBell() {
     try {
       setNotifications(await getNotifications())
     } catch {
-      // Der zuletzt geladene Stand bleibt sichtbar; ein Fehler hier ist nicht kritisch genug für
-      // eine eigene Fehlermeldung.
+      // The last loaded state stays visible; an error here is not critical enough for
+      // an error message of its own.
     }
   }
 
@@ -65,7 +65,7 @@ export default function NotificationBell() {
           ),
         )
       } catch {
-        // Bleibt ungelesen, falls das Markieren fehlschlägt - kein Blocker für die Anzeige.
+        // Stays unread if marking fails - no blocker for the display.
       }
     }
   }

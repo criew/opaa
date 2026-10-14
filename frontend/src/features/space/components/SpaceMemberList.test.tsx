@@ -104,7 +104,7 @@ function renderList(overrides: Overrides = {}) {
   return handlers
 }
 
-/** Die Namen in der Reihenfolge der Zeilen. */
+/** The names in the order of the rows. */
 function rowNames(): string[] {
   return screen.getAllByTestId('space-member-name').map((element) => element.textContent ?? '')
 }
@@ -147,7 +147,7 @@ describe('SpaceMemberList', () => {
     ])
   })
 
-  /** Dieselbe Auswahl wie bei den anderen Rollen, aber schreibgeschützt. */
+  /** The same select as for the other roles, but read-only. */
   it('zeigt beim Eigentümer „Eigentümer“ als schreibgeschützte Auswahl, ohne Menü', async () => {
     renderList()
     const user = userEvent.setup()

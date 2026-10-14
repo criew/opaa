@@ -110,12 +110,12 @@ export const useOidcProviderStore = create<OidcProviderState>((set, get) => ({
   },
 
   /*
-   * Getauscht wird mit dem nächsten **OIDC**-Nachbarn, nicht mit dem nächsten Eintrag der Liste:
-   * Die `LOCAL`-Zeile steht mit in `oidc_providers` und kann zwischen
-   * zwei Anbietern liegen. Ein Tausch mit ihr hätte die sichtbare Reihenfolge der Anbieterseite
-   * nicht verändert - ein verschluckter Klick plus ein Reihenfolge-Audit ohne Wirkung. Ihre eigene
-   * Position bleibt unberührt, und die gesendete Liste enthält weiter alle Zeilen, weil die API
-   * die vollständige Reihenfolge erwartet.
+   * The swap is with the next **OIDC** neighbour, not with the next entry of the list:
+   * the `LOCAL` row is part of `oidc_providers` as well and can lie between
+   * two providers. A swap with it would not have changed the visible order of the provider page
+   * - a swallowed click plus an order audit without effect. Its own
+   * position stays untouched, and the list sent still contains all rows, because the API
+   * expects the complete order.
    */
   moveProvider: async (providerId, direction) => {
     const ordered = sortProviders(get().providers)

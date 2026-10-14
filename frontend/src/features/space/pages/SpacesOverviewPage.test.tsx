@@ -168,8 +168,8 @@ describe('SpacesOverviewPage (#593, Mockup 1c)', () => {
   })
 
   it('shows the empty state without the former create tile (#1913)', () => {
-    // loadSpaces stubben - der Auto-Load der Seite würde sonst sofort Mock-Spaces nachladen
-    // und den Leerzustand verdecken.
+    // Stub loadSpaces - the page's auto-load would otherwise immediately load mock spaces
+    // and hide the empty state.
     useSpaceStore.setState({
       spaces: [],
       isLoadingList: false,

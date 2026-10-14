@@ -67,8 +67,8 @@ export default function BrandMark({
             sx={{
               height: logoHeight,
               width: 'auto',
-              // Breite folgt der Höhe statt einem festen Deckel: Ein breites Wortmarken-Logo auf
-              // der Anmeldeseite würde sonst auf Seitenleistenbreite beschnitten.
+              // Width follows the height instead of a fixed cap: a wide wordmark logo on
+              // the login page would otherwise be clipped to sidebar width.
               maxWidth: logoOnly ? 40 : Math.max(160, logoHeight * 4),
               objectFit: 'contain',
             }}

@@ -67,7 +67,7 @@ const fassung = {
   ],
 }
 
-/** Dieselbe Bibliothek mitten im Nachlauf: F2026 ist stillgelegt, nicht entfernt. */
+/** The same library in the middle of the follow-up run: F2026 is retired, not removed. */
 const fassungRetiring = {
   ...fassung,
   values: [
@@ -268,8 +268,8 @@ describe('LibraryMetadataFieldsSection', () => {
     })
 
     expect(await screen.findByText(/7 Dokumente warten auf Neu-Einbetten/)).toBeInTheDocument()
-    // In den Reiter, der den Nachlauf trägt - nicht auf den Überblick, von dem aus noch ein
-    // Klick nötig wäre.
+    // Into the tab that carries the follow-up run - not onto the overview, from which one more
+    // click would be needed.
     expect(screen.getByRole('link', { name: /Suche & Indexierung/ })).toHaveAttribute(
       'href',
       '/admin/search/index',
@@ -357,9 +357,9 @@ describe('LibraryMetadataFieldsSection, laufende Schemaänderung (#1361)', () =>
   })
 
   /**
-   * Der Mischzustand muss sichtbar sein - samt der Zusage, dass die betroffenen Dokumente bis zum
-   * Ende des Laufs gefunden werden. Ein stillgelegter Wert ist deshalb weiterhin gelistet, aber
-   * nicht mehr bearbeitbar.
+   * The mixed state must be visible - including the promise that the affected documents are found
+   * until the end of the run. A retired value is therefore still listed, but
+   * no longer editable.
    */
   it('zeigt die laufende Abbildung mit ihrem Fortschritt und legt den Wert still', async () => {
     renderWithProviders(<LibraryMetadataFieldsSection libraryId="library-team" canManageSchema />)

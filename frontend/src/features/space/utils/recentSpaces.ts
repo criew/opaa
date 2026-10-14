@@ -1,47 +1,47 @@
 import { useSyncExternalStore } from 'react'
 
 /**
- * Welche Spaces zuletzt genutzt wurden — die Ablage hinter dem Einstieg nach der Anmeldung
- * und hinter der Liste im Space-Auswahlmenü. Eine Ablage für beides: Zwei getrennte
- * Merklisten könnten auseinanderlaufen, und „zuletzt genutzt" bedeutet an beiden Stellen dasselbe.
+ * Which spaces were used most recently — the storage behind the entry point after login
+ * and behind the list in the space selection menu. One storage for both: two separate
+ * lists could drift apart, and „zuletzt genutzt" means the same in both places.
  *
- * Bewusst nur im Browser (`localStorage`, kein Server-Feld). Daraus folgt dreierlei, und
- * alles drei trägt diese Datei:
+ * Deliberately only in the browser (`localStorage`, no server field). Three things follow from
+ * that, and this file carries all three:
  *
- * - **Kein Zuschnitt auf ein Konto.** Die Liste enthält nur Space-Kennungen. Jede Leseseite gleicht
- *   sie gegen die Spaces ab, die der Dienst dem angemeldeten Konto ausliefert — eine Kennung aus
- *   einer fremden Sitzung am selben Rechner fällt damit heraus, statt irgendetwas preiszugeben.
- * - **Jeder Zugriff darf fehlschlagen.** Ein Browser mit gesperrtem Speicher oder ein fremder
- *   Eintrag unter demselben Schlüssel führt zur leeren Liste, nie zu einem Fehler: Der Einstieg in
- *   die Anwendung darf an einer Bequemlichkeit nicht scheitern.
- * - **Die Ablage ist beobachtbar.** `localStorage` allein löst kein Neuzeichnen aus; ein Menü, das
- *   die Reihenfolge nur beim Aufbau liest, zeigt einen gerade geöffneten Space erst nach einem
- *   Neuladen. Deshalb {@link useRecentSpaceIds} über `useSyncExternalStore`.
+ * - **Not tied to an account.** The list contains only space identifiers. Every reading side
+ *   matches them against the spaces the service delivers to the signed-in account — an identifier
+ *   from another session on the same machine thus drops out instead of revealing anything.
+ * - **Every access may fail.** A browser with blocked storage or a foreign
+ *   entry under the same key leads to the empty list, never to an error: entering the
+ *   application must not fail on a convenience.
+ * - **The storage is observable.** `localStorage` alone triggers no re-render; a menu that
+ *   reads the order only when mounting shows a just opened space only after a
+ *   reload. Hence {@link useRecentSpaceIds} via `useSyncExternalStore`.
  *
- * Die Abmeldung räumt hier bewusst nichts weg — anders als bei den Sitzungsspeichern in
- * `resettableStores`. Genau das Gemerkte soll die Abmeldung überdauern und beim nächsten Einstieg
- * noch da sein.
+ * Logging out deliberately clears nothing here — unlike the session stores in
+ * `resettableStores`. Exactly what was remembered should outlast the logout and still be there
+ * on the next entry.
  */
 
 const STORAGE_KEY = 'opaa.spaces.recent'
 
 /**
- * Gemerkt werden mehr Spaces, als das Menü zeigt: Verliert jemand den Zugang zu einem gemerkten
- * Space, rückt der nächste nach, statt dass die Liste kürzer wird.
+ * More spaces are remembered than the menu shows: if someone loses access to a remembered
+ * space, the next one moves up instead of the list getting shorter.
  */
 const MAX_REMEMBERED = 10
 
-/** Wie viele Einträge das Space-Auswahlmenü höchstens zeigt. */
+/** How many entries the space selection menu shows at most. */
 export const MAX_RECENT_SPACES_IN_MENU = 5
 
 const listeners = new Set<() => void>()
 
 /**
- * Zwischengespeichert wird das **Rohe** und das daraus Geparste. `useSyncExternalStore` verlangt
- * bei unveränderter Ablage dieselbe Referenz — ein bei jedem Aufruf frisch gebautes Array führte
- * zur Endlosschleife. Verglichen wird trotzdem gegen den tatsächlichen Speicherinhalt und nicht
- * nur gegen das zuletzt selbst Geschriebene: So wirkt auch, was ein anderer Tab (oder ein Test)
- * direkt hineinschreibt.
+ * Cached are the **raw** value and what was parsed from it. `useSyncExternalStore` requires
+ * the same reference for unchanged storage — an array freshly built on every call would lead
+ * to an endless loop. The comparison is still against the actual storage content and not
+ * only against what was last written here: so whatever another tab (or a test) writes
+ * directly takes effect as well.
  */
 let cachedRaw: string | null = null
 let cachedIds: string[] = []
@@ -75,21 +75,21 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener)
 }
 
-/** Die gemerkten Kennungen, aktuellste zuerst. Leer, wenn nichts (Brauchbares) gespeichert ist. */
+/** The remembered identifiers, most recent first. Empty when nothing (usable) is stored. */
 export function recentSpaceIds(): string[] {
   return readSnapshot()
 }
 
 /**
- * Die gemerkten Kennungen als Zustand: Wer sie so liest, zeichnet neu, sobald ein Space genutzt
- * wird — ohne diesen Weg zeigte das Menü einen gerade über „Alle Spaces" geöffneten Space erst
- * nach einem Neuladen.
+ * The remembered identifiers as state: whoever reads them this way re-renders as soon as a space
+ * is used — without this path the menu would show a space just opened via „Alle Spaces" only
+ * after a reload.
  */
 export function useRecentSpaceIds(): string[] {
   return useSyncExternalStore(subscribe, readSnapshot, readSnapshot)
 }
 
-/** Merkt sich die Nutzung eines Space; ein bereits gemerkter rückt nach vorn. */
+/** Remembers the use of a space; one already remembered moves to the front. */
 export function rememberSpaceUse(spaceId: string): void {
   if (!spaceId) return
   const previous = readSnapshot()
@@ -98,20 +98,21 @@ export function rememberSpaceUse(spaceId: string): void {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
   } catch {
-    // Das Merken ist eine Bequemlichkeit; ein gesperrter Speicher darf die Nutzung nicht stören.
-    // Die Beobachter werden trotzdem benachrichtigt: Sie lesen dann denselben alten Stand, was
-    // richtig ist - gemerkt wurde nichts.
+    // Remembering is a convenience; blocked storage must not disturb the use.
+    // The observers are notified anyway: they then read the same old state, which
+    // is correct - nothing was remembered.
   }
   listeners.forEach((listener) => listener())
 }
 
 /**
- * Der zuletzt genutzte Space aus `spaces`, oder `null`, wenn keiner der gemerkten (noch) dabei ist
- * — der Rückfall auf den persönlichen Space liegt beim Aufrufer, der ihn ohnehin kennt.
+ * The most recently used space from `spaces`, or `null` when none of the remembered ones is
+ * (still) among them — the fallback to the personal space lies with the caller, who knows it
+ * anyway.
  *
- * Der Abgleich gegen die ausgelieferte Liste ist die ganze Zugriffsprüfung, die es hier braucht:
- * Was der Dienst nicht ausliefert — archiviert, Mitgliedschaft entzogen, fremdes Konto —, kann
- * hier nicht getroffen werden.
+ * The match against the delivered list is the whole access check needed here:
+ * whatever the service does not deliver — archived, membership revoked, another account —
+ * cannot be hit here.
  */
 export function lastUsedSpace<T extends { id: string }>(
   spaces: readonly T[],
@@ -125,11 +126,11 @@ export function lastUsedSpace<T extends { id: string }>(
 }
 
 /**
- * Die Spaces für das Auswahlmenü: zuerst die zuletzt genutzten in Nutzungsreihenfolge,
- * danach — bis `limit` erreicht ist — die übrigen in der Reihenfolge, in der sie hereinkommen.
+ * The spaces for the selection menu: first the most recently used in order of use,
+ * then — until `limit` is reached — the others in the order in which they come in.
  *
- * Das Auffüllen ist kein Beiwerk: Wer sich zum ersten Mal anmeldet, hat keine Nutzungsreihenfolge,
- * und ein leeres Menü wäre die schlechteste Antwort auf „zeige die zuletzt genutzten".
+ * Filling up is no by-product: whoever signs in for the first time has no order of use,
+ * and an empty menu would be the worst answer to „show the most recently used".
  */
 export function spacesByRecentUse<T extends { id: string }>(
   spaces: readonly T[],

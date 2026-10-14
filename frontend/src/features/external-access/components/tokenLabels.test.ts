@@ -8,11 +8,11 @@ import {
   toDateInputValue,
 } from './tokenLabels'
 
-/** Die Ableitungen rund um den Ablauf - der Teil, an dem ein Fehler still zu einem 400 führt. */
+/** The derivations around the expiry - the part where an error silently leads to a 400. */
 describe('tokenLabels', () => {
   it('rechnet die Höchstlaufzeit in Stunden, nicht in Kalendertagen', () => {
-    // Regressionsschutz: Über die Zeitumstellung hinweg ist ein Kalendertag nicht 24 Stunden lang.
-    // Die Schnittstelle rechnet in Stunden und wies eine so berechnete Obergrenze ab.
+    // Regression guard: across a daylight saving change a calendar day is not 24 hours long.
+    // The interface calculates in hours and rejected an upper bound calculated that way.
     const now = new Date('2026-09-18T10:00:00Z')
 
     expect(maxExpiryDate(90, now).getTime() - now.getTime()).toBe(90 * 86_400_000)
@@ -21,8 +21,8 @@ describe('tokenLabels', () => {
   it('kürzt den letzten wählbaren Tag mit Abstand unter die Höchstlaufzeit', () => {
     const latest = new Date('2026-12-17T10:00:00Z')
 
-    // Die Marge fängt eine vorlaufende Geräteuhr ab: Die Schnittstelle prüft gegen ihre eigene,
-    // und exakt getroffen wäre die Obergrenze dort schon überschritten.
+    // The margin absorbs a device clock running ahead: the interface checks against its own,
+    // and hit exactly, the upper bound would already be exceeded there.
     expect(expiryInstantOf(toDateInputValue(latest), latest)).toBe(
       new Date('2026-12-17T09:00:00Z').toISOString(),
     )
@@ -56,8 +56,8 @@ describe('tokenLabels', () => {
     const snippets = clientSetupSnippets('https://opaa.example/', 'opaa_pat_wert')
 
     expect(snippets.url).toBe('https://opaa.example/mcp')
-    // --scope user: der Eintrag gilt projektübergreifend statt nur im aktuellen Projekt, und
-    // die teilbare Ablage (--scope project, .mcp.json im Projekt) kommt so nie in Betracht.
+    // --scope user: the entry applies across projects instead of only in the current project, and
+    // the shareable storage (--scope project, .mcp.json in the project) is thus never considered.
     expect(snippets.claudeCode).toContain('claude mcp add --scope user --transport http opaa')
     expect(snippets.claudeCode).toContain('Authorization: Bearer opaa_pat_wert')
   })
@@ -75,8 +75,8 @@ describe('tokenLabels', () => {
     expect(cursor.mcpServers.opaa.url).toBe('https://opaa.example/mcp')
     expect(cursor.mcpServers.opaa.headers.Authorization).toBe('Bearer ${env:OPAA_TOKEN}')
 
-    // Der Klartext steht allein im Claude-Code-Befehl: beide Dateien landen erfahrungsgemäß in
-    // einem Repository oder einem synchronisierten Profil.
+    // The plain text is only in the Claude Code command: experience shows both files end up in
+    // a repository or a synchronized profile.
     expect(snippets.vsCode).not.toContain('opaa_pat_wert')
     expect(snippets.cursor).not.toContain('opaa_pat_wert')
   })

@@ -294,11 +294,11 @@ export const assetHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // ADR-0036 Entscheidung 9: Die Subjekt-Auswahl sucht serverseitig. Zwei Regeln bildet der
-  // Mock nach, weil die Oberfläche auf ihnen aufbaut: unter zwei Zeichen antwortet nichts, und
-  // eine geschützte Gruppe erscheint nur auf ihre vollständige Bezeichnung hin.
+  // ADR-0036 Entscheidung 9: the subject picker searches server-side. The mock reproduces two
+  // rules because the interface builds on them: below two characters nothing answers, and
+  // a protected group appears only for its complete name.
 
-  // Die eigene Herleitung. Ohne userId geht es um die eigene Person.
+  // The caller's own derivation. Without userId it concerns the own person.
   http.get('/api/v1/assets/:assetType/:assetId/access-derivation', ({ params }) => {
     const libraryId = String(params.assetId)
     const asset = mockAssetOf(String(params.assetType), libraryId)

@@ -67,12 +67,12 @@ function formOf(settings: MailSettingsResponse): FormState {
 }
 
 /**
- * Das SMTP-Formular der Installation (ADR-0033 Entscheidung 10).
+ * The installation's SMTP form (ADR-0033 Entscheidung 10).
  *
- * Das Passwort ist in beide Richtungen schreibgeschützt: Die Antwort trägt nur die Maske, das
- * Feld startet leer, und wer nichts eingibt, schickt die Maske zurück — das Geheimnis läuft nie
- * durch den Browser, bloß weil ein Formular gerendert wurde. Löschen ist deshalb eine eigene,
- * benannte Handlung und nicht die Nebenwirkung eines leeren Feldes.
+ * The password is write-protected in both directions: the response carries only the mask, the
+ * field starts empty, and whoever enters nothing sends the mask back — the secret never passes
+ * through the browser just because a form was rendered. Deleting is therefore an action of its
+ * own with a name and not the side effect of an empty field.
  */
 export default function MailServerSection() {
   const settings = useMailStore((s) => s.settings)

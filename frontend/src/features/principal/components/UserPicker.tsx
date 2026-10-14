@@ -5,16 +5,16 @@ import type { UserSummary } from '@/shared/api/types'
 import { useUserSearch } from '../hooks/useUserSearch'
 
 interface UserPickerProps {
-  /** Der Screenreader-Name des Eingabefelds — deutsch wie jeder sichtbare Text. */
+  /** The input field's screen reader name — German like every visible text. */
   ariaLabel: string
   placeholder: string
   value: UserSummary | null
   onChange: (value: UserSummary | null) => void
-  /** Konten, die hier nicht mehr in Frage kommen (bereits Mitglied bzw. bereits verantwortlich). */
+  /** Accounts no longer eligible here (already a member or already a steward). */
   excludedUserIds: string[]
-  /** Kennung des Eingabefelds, damit eine eigene Beschriftung (`htmlFor`) ein Ziel hat. */
+  /** Identifier of the input field, so that an own label (`htmlFor`) has a target. */
   inputId?: string
-  /** Füllt die Zeile, sodass eine Schaltfläche daneben bündig mit den Feldern darüber abschließt. */
+  /** Fills the row, so that a button next to it ends flush with the fields above. */
   grow?: boolean
 }
 
@@ -24,9 +24,9 @@ function optionLabel(user: UserSummary): string {
 }
 
 /**
- * Die serverseitige Kontensuche als Auswahlfeld — nutzbar für jedes angemeldete Konto,
- * anders als die Kontenliste der Administration. Die Gruppenverwaltung der Verantwortlichen
- * braucht genau das: Sie steht Konten ohne Systemrolle offen.
+ * The server-side account search as a select field — usable for every signed-in account,
+ * unlike the administration's account list. The stewards' group management
+ * needs exactly that: it is open to accounts without a system role.
  */
 export default function UserPicker({
   ariaLabel,
@@ -56,9 +56,9 @@ export default function UserPicker({
       onChange={(_event, next) => onChange(next)}
       inputValue={inputText}
       onInputChange={(_event, next, reason) => {
-        // Das Feld zeigt immer, was MUI vorgibt - nach einer Auswahl das Label der Person. Eine
-        // neue Anfrage ist aber nur, was getippt wurde: 'selectOption' und 'reset' als
-        // Eingabe weiterzugeben suchte nach nie getipptem Text. 'clear' leert beides.
+        // The field always shows what MUI dictates - after a selection the person's label. A
+        // new request, however, is only what was typed: passing on 'selectOption' and 'reset' as
+        // input searched for text that was never typed. 'clear' empties both.
         setInputText(next)
         if (reason === 'input') setQuery(next)
         else if (reason === 'clear') setQuery('')

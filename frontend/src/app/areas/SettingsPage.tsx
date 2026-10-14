@@ -57,13 +57,13 @@ function signInMethodLabel(mode: AuthMode | null): string | null {
 }
 
 /**
- * Die persönlichen Einstellungen mit den eigenen Zugangstokens und den Gruppen, für
- * die das Konto verantwortlich ist, als weiteren Bereichen.
+ * The personal settings, with the own access tokens and the groups the account is
+ * responsible for as further areas.
  *
- * Die Bereiche sind Routen, damit ein Verweis auf die Tokenverwaltung dort landet und ein
- * Neuladen ihn behält. `/settings` ohne Bereich bleibt der Einstieg und zeigt „Allgemein“; ein
- * Tippfehler im Pfad wird dagegen nicht stillschweigend so gelesen. Hat die Installation die
- * Fremdzugänge abgeschaltet, gibt es den Bereich der Zugangstokens nicht.
+ * The areas are routes, so that a link to the token management lands there and a
+ * reload keeps it. `/settings` without an area stays the entry point and shows „Allgemein“; a
+ * typo in the path, by contrast, is not silently read that way. If the installation has
+ * switched off external access, the area of the access tokens does not exist.
  */
 export default function SettingsPage() {
   const { tab } = useParams()

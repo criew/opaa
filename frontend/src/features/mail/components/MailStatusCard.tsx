@@ -12,12 +12,12 @@ const TONE: Record<string, StatusTone> = {
 }
 
 /**
- * „Letzter erfolgreicher Versand" und „letzter Fehler" an einer Stelle (ADR-0033, Entscheidung
- * 10) - beide Zeilen bleiben stehen, auch wenn die Verdikt-Zeile nur eine von beiden nennt: nach
- * einem geglückten Test ist der vorherige Fehler die Information, die erklärt, was repariert wurde.
+ * „Letzter erfolgreicher Versand" and „letzter Fehler" in one place (ADR-0033, Entscheidung
+ * 10) - both lines stay, even when the verdict line names only one of them: after
+ * a successful test the previous error is the information that explains what was repaired.
  *
- * Eine Zeile mit Punkt statt einer Karte: Der Zustand ist eine Aussage, kein Objekt,
- * das einen Rahmen bräuchte.
+ * A line with a dot instead of a card: the state is a statement, not an object
+ * that would need a frame.
  */
 export default function MailStatusCard({ settings }: { settings: MailSettingsResponse }) {
   const status = mailStatusOf(settings)

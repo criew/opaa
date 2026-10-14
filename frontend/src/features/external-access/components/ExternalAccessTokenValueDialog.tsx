@@ -53,13 +53,13 @@ function Snippet({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * Die einmalige Anzeige des Tokenwerts (ADR-0035 Entscheidung 2).
+ * The one-time display of the token value (ADR-0035 Entscheidung 2).
  *
- * Weder Escape noch ein Klick daneben schließen: Der Wert existiert genau hier und nirgends
- * sonst - danach kennt der Server nur noch seinen Hash und sein Präfix.
+ * Neither Escape nor a click outside closes it: the value exists exactly here and nowhere
+ * else - afterwards the server only knows its hash and its prefix.
  *
- * Die Einrichtungsschnipsel stehen bewusst hier und nur hier: Sie tragen den Wert, und ohne ihn
- * wären sie an jeder anderen Stelle nutzlos. Die ausführliche Anleitung bleibt beim Handbuch.
+ * The setup snippets are deliberately here and only here: they carry the value, and without it
+ * they would be useless anywhere else. The detailed instructions stay in the manual.
  */
 export default function ExternalAccessTokenValueDialog({
   created,

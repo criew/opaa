@@ -94,7 +94,7 @@ describe('GlobalRail', () => {
     expect(screen.getByRole('link', { name: 'Spaces' })).toHaveAttribute('aria-current', 'true')
   })
 
-  /** Die Stichtagsauskunft haengt an der AUDITOR-Rolle und braucht einen eigenen Einstieg. */
+  /** The point-in-time report depends on the AUDITOR role and needs its own entry point. */
   it('zeigt der Revision ihren eigenen Einstieg und sonst niemandem', () => {
     const { unmount } = renderRailAt('/spaces')
     expect(screen.queryByRole('link', { name: 'Revision' })).not.toBeInTheDocument()
@@ -132,7 +132,7 @@ describe('GlobalRail', () => {
     })
     renderRailAt('/admin/branding')
     const adminLink = screen.getByRole('link', { name: 'Admin' })
-    // Der Einstieg führt auf „Benutzer", den ersten Unterpunkt von „Benutzer & Gruppen"
+    // The entry point leads to „Benutzer", the first sub-item of „Benutzer & Gruppen"
     expect(adminLink).toHaveAttribute('href', '/admin/users')
     // Any /admin page counts as the admin scope, not only the link's own target.
     expect(adminLink).toHaveAttribute('aria-current', 'true')

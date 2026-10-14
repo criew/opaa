@@ -72,7 +72,7 @@ describe('LibraryExternalAccessSection', () => {
     ).toBeInTheDocument()
   })
 
-  /** Die Zahl ist der einzige Anhalt der jährlichen Erneuerung - Namen dürfen dort nicht stehen. */
+  /** The number is the only clue for the yearly renewal - names must not appear there. */
   it('nennt die Anzahl der Zugangstokens und keine Person, die eines hält', async () => {
     mockGetLibrary.mockResolvedValue(
       library({
@@ -114,7 +114,7 @@ describe('LibraryExternalAccessSection', () => {
     expect(expiresAt).not.toBeNull()
   })
 
-  /** Eine Freigabe ohne Ende ist eine Ratsche - der Client fragt gar nicht erst danach. */
+  /** A release without an end is a ratchet - the client does not even ask for it. */
   it('verweigert das Setzen ohne Ablaufdatum, ohne das Backend zu fragen', async () => {
     const user = userEvent.setup()
     mockGetLibrary.mockResolvedValue(library(neverSet))
@@ -154,7 +154,7 @@ describe('LibraryExternalAccessSection', () => {
     expect(await screen.findByText(/zurückgenommen/, { exact: false })).toBeInTheDocument()
   })
 
-  /** Unterhalb der Verwalter-Rolle liefert das Backend das Feld nicht - dann gibt es nichts zu zeigen. */
+  /** Below the manager role the backend omits the field - then there is nothing to show. */
   it('zeigt nichts, wenn die Antwort die Freigabe gar nicht enthält', async () => {
     mockGetLibrary.mockResolvedValue(library(undefined))
 

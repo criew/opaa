@@ -69,8 +69,8 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     expect(
       await screen.findByText('+ 1 weiterer Space, den Sie nicht sehen dürfen'),
     ).toBeInTheDocument()
-    // Eine gekürzte Liste ist nicht dasselbe wie „keiner Zuordnung" - der Leerzustand darf hier
-    // nicht erscheinen.
+    // A truncated list is not the same as „keiner Zuordnung" - the empty state must not
+    // appear here.
     expect(screen.queryByText(/keinem Space zugeordnet/i)).not.toBeInTheDocument()
   })
 
@@ -99,7 +99,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     ).toBeInTheDocument()
   })
 
-  // Lösen darf, wer den Space kuratiert - auch ohne die Bibliothek zu verwalten.
+  // Whoever curates the space may detach - even without managing the library.
   it('lets a curator of the space detach it through the row menu, and only that row', async () => {
     mockGetSpaces.mockResolvedValue([
       spaceWithRole('space-curated', 'CURATOR'),

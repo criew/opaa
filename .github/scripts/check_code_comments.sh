@@ -30,9 +30,8 @@
 # Any other issue reference is only counted, per tree: a permitted one (workaround until an upstream
 # fix, deprecation, spike) and one still woven into a sentence look alike to a pattern;
 # "until #N"/"after #N" stay allowed. A test's "regression guard for #N: <invariant>" is counted
-# apart as the permitted form, also as "Regressionsschutz zu #N:"; e2e/ and the frontend tests count
-# as test trees. The spike package and a line naming
-# "Spike #N" are exempt.
+# apart as the permitted form; e2e/ and the frontend tests count as test trees. The spike package
+# and a line naming "Spike #N" are exempt.
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
@@ -71,7 +70,7 @@ MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\
 EXEMPT="^backend/src/main/java/io/opaa/query/spike/|^\.github/scripts/check_code_comments\.sh:|(?i)\bspike\s+\(?#[0-9]"
 # The form a test may keep: it names the regression and, after the colon, the invariant it guards.
 TESTS='((backend/src/(test|evalTest)|e2e|frontend/src/test)/[^:]+|frontend/src/[^:]+\.test\.tsx?)'
-GUARD="^${TESTS}:[0-9]+:(?i).*\b(regression\s+guard\s+for|Regressionsschutz\s+(zu|für))\s+#[0-9]+((\s*,\s*|\s+(and|und)\s+|/)#[0-9]+)*:\s*\S"
+GUARD="^${TESTS}:[0-9]+:(?i).*\bregression\s+guard\s+for\s+#[0-9]+((\s*,\s*|\s+and\s+|/)#[0-9]+)*:\s*\S"
 
 # '//' and '/* */' comment lines of the files matching the pathspecs.
 slash_comments() {

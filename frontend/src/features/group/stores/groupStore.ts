@@ -21,10 +21,10 @@ import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessi
 import { registerSessionStore } from '@/shared/session/resettableStores'
 
 /**
- * Woher die Liste kommt: alle Gruppen der Organisation, die eigenen Verantwortlichkeiten
- * oder keine - Letzteres, solange keine Seite diese Liste anzeigt, etwa die Gruppenverwaltung mit
- * ihrer eigenen, geblätterten Liste. Die Quelle wird beim Laden gesetzt, damit jedes Nachladen nach
- * einer Änderung dieselbe Liste holt wie die Seite, die sie anzeigt, und bei „keine“ gar nichts.
+ * Where the list comes from: all groups of the organization, the own responsibilities
+ * or none - the latter as long as no page shows this list, e.g. the group administration with
+ * its own paged list. The source is set when loading, so that every reload after
+ * a change fetches the same list as the page showing it, and with „keine“ nothing at all.
  */
 export type GroupListSource = 'ADMIN' | 'STEWARDED' | 'NONE'
 
@@ -32,9 +32,9 @@ interface GroupState {
   groups: GroupListResponse[]
   groupDetails: Record<string, GroupResponse>
   /**
-   * Mitgliederlisten, die ausdrücklich über {@link loadGroupMembers} abgerufen wurden. Kein
-   * anderer Weg füllt oder erneuert sie: Für die Systemverwaltung ist jeder Abruf ein
-   * Audit-Ereignis.
+   * Member lists that were explicitly retrieved via {@link loadGroupMembers}. No
+   * other path fills or renews them: for the system administration every retrieval is an
+   * audit event.
    */
   memberLists: Record<string, GroupMemberResponse[]>
   source: GroupListSource
@@ -190,9 +190,9 @@ export const useGroupStore = create<GroupState>((set, get) => ({
   },
 
   /**
-   * Verwirft den Detailstand, statt ihn nachzuladen: Wer sich selbst entlassen hat, darf die Gruppe
-   * nicht mehr lesen, und das Nachladen meldete dann einen Fehler nach einer gelungenen Handlung.
-   * Die Karte lädt die Details von sich aus nach, solange sie sie noch sehen darf.
+   * Discards the detail state instead of reloading it: whoever has dismissed themselves may no
+   * longer read the group, and the reload would then report an error after a successful action.
+   * The card reloads the details by itself as long as it may still see them.
    */
   dismissSteward: async (groupId, userId) => {
     const sessionEpoch = currentSessionEpoch()
@@ -223,8 +223,8 @@ export const useGroupStore = create<GroupState>((set, get) => ({
 registerSessionStore(useGroupStore)
 
 /**
- * Die bekannten Mitglieder einer Gruppe: aus den Details, wo sie der Aufrufende ohne Weiteres sieht,
- * sonst aus einer ausdrücklich abgerufenen Liste; `undefined`, solange keine vorliegt.
+ * The known members of a group: from the details, where the caller sees them anyway,
+ * otherwise from an explicitly retrieved list; `undefined` as long as none is available.
  */
 export function selectGroupMembers(groupId: string) {
   return (state: GroupState): GroupMemberResponse[] | undefined =>

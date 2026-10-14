@@ -24,18 +24,18 @@ export interface AssetOwnerSectionProps {
   assetType: AssetType
   assetId: string
   ownerType: AssetOwnerType
-  /** Der Anzeigename, soweit er genannt werden darf; sonst steht nur die Art der Stelle da. */
+  /** The display name, as far as it may be named; otherwise only the kind of party is shown. */
   ownerName?: string | null
-  /** Nur der Eigentümer selbst übergibt weiter — für alle anderen ist der Abschnitt eine Auskunft. */
+  /** Only the owner hands over — for everyone else the section is information. */
   canTransfer: boolean
-  /** Neu laden, nachdem das Eigentum gewechselt hat. */
+  /** Reload after the ownership has changed. */
   onTransferred: () => void | Promise<void>
 }
 
 /**
- * Wer für ein Asset geradesteht — und, für den Eigentümer selbst, die Übergabe an eine andere
- * Stelle. Eine Gruppe als Eigentümerin übersteht einen Personalwechsel; deshalb steht sie
- * hier gleichberechtigt neben einer Person.
+ * Who answers for an asset — and, for the owner, the handover to another
+ * party. A group as owner survives a change of staff; that is why it stands
+ * here on an equal footing with a person.
  */
 export default function AssetOwnerSection({
   assetType,

@@ -103,9 +103,9 @@ export async function updateLibrary(
 }
 
 /**
- * Setzt die Freigabe-Obergrenze einer Konnektorbibliothek - Systemverwaltung, gesamt
- * ersetzt (kein Teil-Update). Senkt sie eine bestehende, weitere Freigabe, klemmt das Backend sie
- * im selben Aufruf sofort auf die neue Obergrenze zurück.
+ * Sets the release upper bound of a connector library - system administration, replaced
+ * as a whole (no partial update). If it lowers an existing, broader release, the backend clamps
+ * it back to the new upper bound immediately in the same call.
  */
 export async function updateLibraryShareCap(
   libraryId: string,

@@ -2,8 +2,8 @@ import Box from '@mui/material/Box'
 import type { ProviderState } from './oidcProviderState'
 
 /**
- * Der Zustandspunkt eines Anbieters — dekorativ. Die Farbe trägt nie allein: Das Wort steht
- * immer daneben, in der Tabelle wie in der Legende der Einrichtungsanleitung.
+ * A provider's state dot — decorative. The colour never carries alone: the word is
+ * always next to it, in the table as in the legend of the setup instructions.
  */
 export default function ProviderStateDot({ state }: { state: ProviderState }) {
   return (

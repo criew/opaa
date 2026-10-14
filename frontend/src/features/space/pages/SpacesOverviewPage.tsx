@@ -50,8 +50,8 @@ function SpaceCard({ space }: { space: SpaceListResponse }) {
           {plural(space.chatCount, 'Chat', 'Chats')}
         </Typography>
       )}
-      {/* ADR-0036, Entscheidung 6 verlangt die Kennzeichnung in Übersicht *und* Detailansicht -
-          Zustand und Adressat, ohne Datum, Eigentümer oder Grund. */}
+      {/* ADR-0036, Entscheidung 6 requires the marking in overview *and* detail view -
+         state and addressee, without date, owner or reason. */}
       <SuccessionStateNote succession={space.succession} variant="badge" />
       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
         <MetaBadge accent>{spaceRoleLabel(space.userRole)}</MetaBadge>

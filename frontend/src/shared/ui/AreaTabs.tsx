@@ -28,14 +28,14 @@ interface AreaTabsProps<T extends string> {
 }
 
 /**
- * Die Reiter einer Bereichsseite — Leiste **und** Panels.
+ * The tabs of an area page — bar **and** panels.
  *
- * Die Bereiche sind eigene Routen, keine Zustände: Ein Verweis soll im richtigen Bereich landen,
- * und ein Neuladen ihn behalten. Deshalb ist jeder Reiter ein Link und kein Klick-Handler.
+ * The areas are routes of their own, not states: a link should land in the right area,
+ * and a reload should keep it. That is why every tab is a link and not a click handler.
  *
- * Jeder Reiter bekommt sein Panel, damit jedes `aria-controls` auf ein vorhandenes Element zeigt.
- * Gerendert werden aber nur die Kinder des aktiven — sonst liefen die Anfragen des unsichtbaren
- * Bereichs im Hintergrund weiter.
+ * Every tab gets its panel, so that every `aria-controls` points to an existing element.
+ * Only the active one's children are rendered, though — otherwise the invisible area's
+ * requests would keep running in the background.
  */
 export default function AreaTabs<T extends string>({
   tabs,

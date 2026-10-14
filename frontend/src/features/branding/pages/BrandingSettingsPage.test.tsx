@@ -183,8 +183,8 @@ describe('BrandingSettingsPage', () => {
   })
 
   /**
-   * Drei Bildfelder statt eines - und jedes landet in seinem eigenen Fach. Ein Hintergrund,
-   * der als Logo abgelegt wird, wäre an der Oberfläche nicht zu sehen, aber überall falsch.
+   * Three image fields instead of one - and each lands in its own slot. A background
+   * stored as the logo would not be visible on the surface, but wrong everywhere.
    */
   it('stores each of the three images in its own slot', async () => {
     signInAs('SYSTEM_ADMIN')
@@ -209,7 +209,7 @@ describe('BrandingSettingsPage', () => {
     expect(useBrandingStore.getState().branding.loginLogoUrl).toBeUndefined()
   })
 
-  /** Das Hintergrundbild darf größer sein als ein Logo - die Grenze gilt je Feld. */
+  /** The background image may be larger than a logo - the limit applies per field. */
   it('applies the larger size limit of the background image', async () => {
     signInAs('SYSTEM_ADMIN')
     const user = userEvent.setup()
@@ -221,8 +221,8 @@ describe('BrandingSettingsPage', () => {
       backgroundInput,
       new File([new Uint8Array(1024 * 1024)], 'gross.jpg', { type: 'image/jpeg' }),
     )
-    // Ein Megabyte ist für ein Logo zu viel, für den Hintergrund nicht: keine Meldung, und die
-    // Datei wartet auf das Speichern.
+    // One megabyte is too much for a logo, not for the background: no message, and the
+    // file waits for saving.
     expect(screen.queryAllByRole('alert')).toEqual([])
     expect(screen.getByText(/gross\.jpg/)).toBeInTheDocument()
 

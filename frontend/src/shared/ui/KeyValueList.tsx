@@ -17,12 +17,12 @@ interface KeyValueListProps {
 }
 
 /**
- * Schlüssel und Wert nebeneinander — als `dl`, nicht als Tabelle und nicht als Karte.
+ * Key and value side by side — as a `dl`, not as a table and not as a card.
  *
- * Das ist der Ersatz für die vielen kleinen Kästen, die bisher zwei bis vier Angaben trugen
- * („Endpunkt", „Modell-Kennung", „letzter Fehler"). Ohne Rahmen bleibt die Zuordnung trotzdem
- * eindeutig: Der Schlüssel steht sekundär links, der Wert daneben — und für Screenreader ist es
- * eine Beschreibungsliste, also dieselbe Aussage wie vorher.
+ * This replaces the many small boxes that used to carry two to four details
+ * („Endpunkt", „Modell-Kennung", „letzter Fehler"). Without a frame the association still stays
+ * unambiguous: the key is secondary on the left, the value next to it — and for screen readers it
+ * is a description list, so the same statement as before.
  */
 export default function KeyValueList({ entries, valueFont = 'text', sx }: KeyValueListProps) {
   const sichtbar = entries.filter((entry) => !entry.hidden)

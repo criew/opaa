@@ -60,7 +60,7 @@ function librariesOf(token: AdminExternalAccessTokenResponse): string {
   return token.libraries.map((library) => library.name).join(', ') || '—'
 }
 
-/** Der Ablauffilter des Entwurfs; er ist zugleich der einzige Zeitfilter der Liste. */
+/** The draft's expiry filter; it is also the list's only time filter. */
 const EXPIRING_WITHIN_DAYS = 30
 
 const STATUS_OPTIONS: Array<{ value: ExternalAccessTokenStatus | 'ALL'; label: string }> = [
@@ -82,8 +82,8 @@ function RowMenu({
 }) {
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
 
-  // Das Menü schließt, bevor die Rückfrage aufgeht: zwei Ebenen mit eigenem Fokusfang wären
-  // weder mit der Tastatur noch mit einem Screenreader zu verlassen.
+  // The menu closes before the confirmation opens: two layers with their own focus trap could
+  // be left neither with the keyboard nor with a screen reader.
   function run(action: () => void) {
     setAnchor(null)
     action()
@@ -111,15 +111,15 @@ function RowMenu({
 }
 
 /**
- * Die Bestandsliste aller Zugangstokens der Installation.
+ * The inventory list of all access tokens of the installation.
  *
- * Sie trägt **kein** Nutzungsdatum und bietet **keinen** Filter nach Person: Eine nach Person
- * filterbare Tabelle mit einem Nutzungsdatum wäre der personenbezogene Auswertungspfad, dessen
- * Nichtexistenz security-and-compliance.md zusagt. Für eine Sperrentscheidung wird er nicht
- * gebraucht - gesperrt wird wegen eines Vorfalls oder eines Kontenlebenszyklus.
+ * It carries **no** usage date and offers **no** filter by person: a table filterable by
+ * person with a usage date would be the person-related evaluation path whose
+ * non-existence security-and-compliance.md promises. A revocation decision does not need it -
+ * revocation happens because of an incident or an account life cycle.
  *
- * Die Sperre je Person ist deshalb eine Handlung an einer Zeile und keine Auswertung: Sie schreibt,
- * statt die Liste nach Person zu gruppieren.
+ * The revocation per person is therefore an action on a row and not an evaluation: it writes
+ * instead of grouping the list by person.
  */
 export default function ExternalAccessTokenAdminSection({
   onChanged,
@@ -134,8 +134,8 @@ export default function ExternalAccessTokenAdminSection({
   const [expiringSoon, setExpiringSoon] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Die Zustandssetzung liegt in den Fortsetzungen der Zusage, nicht im Rumpf des Effekts: ein
-  // synchrones setState dort erzeugt eine Kaskade von Renderdurchläufen (react-hooks).
+  // The state updates live in the promise's continuations, not in the effect body: a
+  // synchronous setState there causes a cascade of renders (react-hooks).
   const load = useCallback(
     () =>
       listAllExternalAccessTokens({
