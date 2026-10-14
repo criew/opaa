@@ -57,7 +57,8 @@ jeder eingeschalteten Bibliothek zu einem bezahlten Modellaufruf machen.
 `ModelMetadataExtractor.CONFIDENCE_THRESHOLD` ist 0,80 für alle modellbefüllten Felder,
 freigegeben nach der Regel von [ADR-0012](0012-messvertrag-retrieval-harness.md). Ein Wert außerhalb
 der angebotenen Werteliste wird unabhängig von der Konfidenz verworfen — die serverseitige Prüfung
-gegen die Liste ist die einzige bindende Schranke gegen ein präpariertes Dokument. Der Schaden ist
+gegen die Liste ist die einzige bindende Schranke gegen ein präpariertes Dokument; die Kennzeichnung
+des Textes als Inhalt statt als Anweisung ist eine Minderung, keine Zusicherung. Der Schaden ist
 asymmetrisch (ein halluzinierter Wert ist schlimmer als keiner); jede Änderung bleibt ein Commit
 mit Datum und gemessener Verteilung.
 
@@ -105,4 +106,4 @@ Kontextpräfix und tragen keinen Chunk-Schlüssel.
 | Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
 |---|---|---|---|
 | 2026-09-05 | #1365 | Richtung der Schwellenregel nach der Handstichprobe umgekehrt | 5 |
-| 2026-09-17 | #1701 | Umschlüsselung und Feldlöschung zweiphasig (ADR-0024, Entscheidung 8); offener Punkt entfällt | Offen |
+| 2026-09-17 | #1701 | Umschlüsselung einer Werteliste erfüllt die Nachlauf-Zusagen (#1361, ADR-0024, Entscheidung 8); offener Punkt entfällt | Offen |
