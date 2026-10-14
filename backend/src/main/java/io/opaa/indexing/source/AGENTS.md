@@ -33,9 +33,9 @@ gehören dem Kern (`indexing.run`, `indexing.job`, `indexing.document`), der Ver
 - **Änderungen nur über `SourceChangeGate`**, auch Profiländerung, Zuordnen und Lösen; `stored` = effektiv,
   `applyChange` = eigener Teil. `validateChange` hängt nur von seinen Argumenten ab; Ziel nicht erreichbar oder
   Anmeldung abgelehnt lehnt er mit `SourceTargetRefusedException` ab.
-- **Laufrahmen `IndexingRunTemplate`**, nur für Körper (Lambda, `this::…`) der Executor-Klasse des Quellentyps:
-  Der Körper zählt auf und meldet `ListingOutcome`; Fortschritt, Protokoll, Abgleich durch Abwesenheit hat der Rahmen.
-  Löschen nur über `IndexingRun#removeWithAttachments`, `SourceSyncState` nur über `#adopt` (`SyncStateBasis`).
+- **Laufrahmen `IndexingRunTemplate`**, nur für Körper (Lambda, `this::…`) der Executor-Klasse des Quellentyps und
+  einen vom Kern für die Bibliothek gestarteten Job (nie `startJob` im Konnektor): Der Körper meldet `ListingOutcome`,
+  der Rahmen den Rest. Löschen nur über `IndexingRun#removeWithAttachments`, `SourceSyncState` nur über `#adopt`.
 - **Dateiablagen** implementieren `FileStore`/`ChangeFeed`; Abgleich über Läufe besitzt `FileSync` (ADR-0045).
 - **Push-Adapter** (`confluence.webhook`, `s3.events`) über ihrem Konnektor, eigener Port.
 - **Netzzugriff:** HTTP (auch WebDAV) über `io.opaa.sourceaccess`, S3 über `io.opaa.s3`, Graph über

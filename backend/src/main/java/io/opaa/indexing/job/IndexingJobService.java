@@ -160,6 +160,15 @@ public class IndexingJobService {
     }
   }
 
+  /** Whether {@code jobId} is a {@link JobStatus#RUNNING} job started for {@code libraryId}. */
+  public boolean isRunningFor(UUID jobId, UUID libraryId) {
+    return indexingJobRepository
+        .findById(jobId)
+        .filter(job -> job.getStatus() == JobStatus.RUNNING)
+        .filter(job -> libraryId.equals(job.getLibraryId()))
+        .isPresent();
+  }
+
   /**
    * Fails {@code jobId} - unless it is no longer {@link JobStatus#RUNNING}, the same reasoning and
    * guard as {@link #completeJob}.
