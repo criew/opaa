@@ -504,6 +504,18 @@ class ModularArchitectureFixtureTest {
                 assertThat(violation).contains("connection.ConnectorRelease", "support()"));
   }
 
+  /** One properties class in two {@code @EnableConfigurationProperties}, its neighbour in one. */
+  @Test
+  void aPropertiesClassBoundTwiceIsReported() {
+    Scenario scenario = new Scenario("doublebinding");
+
+    assertThat(
+            scenario.violations(
+                ModularArchitecture::everyConfigurationPropertiesClassIsRegisteredOnce))
+        .singleElement(STRING)
+        .contains("common.BoundTwice", "bound 2x");
+  }
+
   /** library reads the secret, also by method reference; knowledge and the store may. */
   @Test
   void theLibrarySecretReadOutsideTheStoreIsReported() {

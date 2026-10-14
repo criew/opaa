@@ -277,16 +277,16 @@ class LibraryExternalAccessReminderServiceIntegrationTest {
   // Fixture
   // -----------------------------------------------------------------------------------------
 
-  /**
-   * Der Erinnerungslauf mit gestellter Uhr und gestelltem Vorlauf. Eine zweite Instanz statt der
-   * Bean des Kontexts: die Produktionsbean liest die Wanduhr und die ausgelieferte Property, und
-   * ein klassenlokaler Ersatz spaltete den Kontext.
-   */
   /** Ein Lauf in eigener Transaktion wie hinter dem Scheduler; die Mails gehen nach dem Commit. */
   private int remindAt(Instant now, int leadDays) {
     return transactionTemplate.execute(status -> reminderServiceAt(now, leadDays).runOnce());
   }
 
+  /**
+   * Der Erinnerungslauf mit gestellter Uhr und gestelltem Vorlauf. Eine zweite Instanz statt der
+   * Bean des Kontexts: die Produktionsbean liest die Wanduhr und die ausgelieferte Property, und
+   * ein klassenlokaler Ersatz spaltete den Kontext.
+   */
   private LibraryExternalAccessReminderService reminderServiceAt(Instant now, int leadDays) {
     return new LibraryExternalAccessReminderService(
         libraryRepository,
