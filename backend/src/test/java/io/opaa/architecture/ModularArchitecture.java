@@ -522,7 +522,7 @@ public final class ModularArchitecture {
    * Entscheidung 2). Not checked here but at run time: the frame in {@code indexing.run} resolves a
    * library's source only for a body defined by the executor class registered for its source type,
    * so a connector's body never sees the secret of a library of another type; one of its own type
-   * stays reachable (#2772).
+   * stays reachable until #2772.
    */
   static final Set<String> CONNECTOR_IMPORTS =
       Set.of(
