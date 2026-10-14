@@ -1,7 +1,10 @@
 package io.opaa.indexing.source.dropbox;
 
 import static io.opaa.indexing.source.ConnectorChecks.blankToNull;
+import static io.opaa.indexing.source.ConnectorChecks.fixedSourceUrl;
+import static io.opaa.indexing.source.ConnectorChecks.requireFixedAddress;
 import static io.opaa.indexing.source.ConnectorChecks.unreachable;
+import static io.opaa.indexing.source.ConnectorChecks.validateAtFixedAddress;
 
 import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
@@ -122,69 +125,12 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
 
   @Override
   public String normalizeSourceUrl(String requested) {
-    String url = blankToNull(requested);
-    if (url == null) {
-      return apiBase;
-    }
-    String trimmed = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
-    return trimmed.equals(apiBase) ? apiBase : url;
+    return fixedSourceUrl(apiBase, requested);
   }
 
   @Override
   public SourceSettings validate(SourceSettings requested) {
-    String url = checkConnection(requested);
-    if (requested.connectorSettings() == null) {
-      throw new ValidationException(
-          "sourceSettings sind erforderlich, wenn sourceType " + TYPE + " ist");
-    }
-    DropboxSettings settings = DropboxSettings.read(requested.connectorSettings());
-    return requested.withSourceUrl(url).withConnectorSettings(settings.toData());
-  }
-
-  @Override
-  public SourceSettings validateChange(
-      SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
-    if (replacesConnection) {
-      ConnectorData effective =
-          requested.connectorSettings() != null
-              ? requested.connectorSettings()
-              : stored.connectorSettings();
-      SourceSettings validated = validate(requested.withConnectorSettings(effective));
-      return requested.connectorSettings() == null
-          ? validated.withConnectorSettings(null)
-          : validated;
-    }
-    if (requested.connectorSettings() != null) {
-      return requested.withConnectorSettings(
-          DropboxSettings.read(requested.connectorSettings()).toData());
-    }
-    return requested;
-  }
-
-  /** Path and address of a request; returns the fixed address. */
-  private String checkConnection(SourceSettings requested) {
-    if (blankToNull(requested.sourcePath()) != null) {
-      throw new ValidationException("sourcePath ist für sourceType " + TYPE + " nicht zulässig");
-    }
-    String url = normalizeSourceUrl(requested.sourceUrl());
-    if (!url.equals(apiBase)) {
-      throw new ValidationException(
-          "sourceUrl ist für sourceType " + TYPE + " fest " + apiBase + " und nicht änderbar");
-    }
-    return url;
-  }
-
-  @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    library.updateSourceSettings(validated.connectorSettings().toJson());
-  }
-
-  @Override
-  public void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
+    return validateAtFixedAddress(TYPE, apiBase, requested, this::readSettings);
   }
 
   @Override
@@ -239,7 +185,7 @@ public class DropboxSourceConnector implements SourceConnector, SourceBrowser, O
    */
   @Override
   public SourceConnectionTestResult testConnection(SourceSettings settings, ConnectorData stored) {
-    checkConnection(settings.withSourceUrl(normalizeSourceUrl(settings.sourceUrl())));
+    requireFixedAddress(TYPE, apiBase, settings);
     ConnectorData effective =
         settings.connectorSettings() != null ? settings.connectorSettings() : stored;
     String token = tokenOf(settings);

@@ -7,6 +7,7 @@ import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.api.types.ConnectionProfileSupport;
 import io.opaa.api.types.PersonalSecretForm;
 import io.opaa.common.ValidationException;
+import io.opaa.indexing.source.ConnectorChecks;
 import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.DefaultKey;
 import io.opaa.indexing.source.OriginalAccess;
@@ -266,14 +267,7 @@ public class S3SourceConnector
   public SourceSettings validateChange(
       SourceSettings stored, SourceSettings requested, boolean replacesConnection) {
     if (replacesConnection) {
-      ConnectorData effective =
-          requested.connectorSettings() != null
-              ? requested.connectorSettings()
-              : stored.connectorSettings();
-      SourceSettings validated = validate(requested.withConnectorSettings(effective));
-      return requested.connectorSettings() == null
-          ? validated.withConnectorSettings(null)
-          : validated;
+      return ConnectorChecks.validateReplacement(this::validate, stored, requested);
     }
     if (requested.connectorSettings() != null) {
       S3SourceSettings settings = settingsOf(requested.connectorSettings());
@@ -303,19 +297,6 @@ public class S3SourceConnector
           URI.create(normalizedUrl), s3Settings.pathStyle(), s3Settings.scopes());
     } catch (S3AccessException e) {
       throw new SourceTargetRefusedException(e.getMessage());
-    }
-  }
-
-  @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    library.updateSourceSettings(validated.connectorSettings().toJson());
-  }
-
-  @Override
-  public void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
     }
   }
 

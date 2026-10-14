@@ -17,10 +17,10 @@ von foundation, format und knowledge ab.
   Fähigkeiten sind weitere Schnittstellen derselben Bean (`SourceBrowser`, `OriginalAccess`,
   `PushIntakeHandler`); eine laufbasierte Art registriert zusätzlich einen `SourceIndexingExecutor`.
 - **Kein Konnektor kennt einen anderen, und nichts außerhalb kennt einen Konnektor.** Kern,
-  Verwaltung und API erreichen ihn nur über die Registry.
-- **Der Typ ist ein offener Schlüssel** (`A-Z0-9_`, höchstens 20 Zeichen); nur die Registry kennt alle.
+  Verwaltung und API erreichen ihn nur über die Registry. Der Typ ist ein offener Schlüssel (`A-Z0-9_`, höchstens 20 Zeichen), nur die Registry kennt alle.
 - **Einstellungen:** Alles Konnektoreigene ist ein Record im Konnektorpaket und steht als ein
   JSON-Objekt in `source_settings`; der Kern reicht es als `ConnectorData` durch.
+- **Was ein neuer Konnektor überschreibt:** `descriptor`, `validate`, `testConnection`, mit Einstellungen `readSettings` und `settingsKeys`. `validateChange` prüft per Default über `validate`/`readSettings`; `configureNew`/`applyChange` speichern vorhandene Einstellungen; überschreiben nur bei eigener Regel (S3, Confluence). Feste API-Adresse: `ConnectorChecks.validateAtFixedAddress`, `requireFixedAddress`, `fixedSourceUrl`.
 - **Ziel, Geheimnis und Einstellungen kommen nur vom Kern** (ADR-0041, 3a): im Lauf über
   `IndexingRun#settings()` (ohne Geheimnis) und `#credentials()`, vor jeder Anfrage bzw. Anmeldung
   gefragt (`RunCredentials`; `FileSync` vor jedem Store-Zugriff; nach `401` einmal neu, `renewableAfterRejection`,

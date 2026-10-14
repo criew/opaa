@@ -179,21 +179,6 @@ public class ProfileProbeSourceConnector implements SourceConnector {
   }
 
   @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
-  @Override
-  public void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
-  @Override
   public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
     Map<String, Object> state = new HashMap<>();
     for (String key : KEYS) {
