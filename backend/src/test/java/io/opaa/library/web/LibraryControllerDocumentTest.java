@@ -21,7 +21,6 @@ import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.AccessDeniedException;
-import io.opaa.common.ClockConfiguration;
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.trigger.DocumentIndexingService;
@@ -63,7 +62,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  */
 @WebMvcTest(LibraryController.class)
 @ActiveProfiles({"test", "dev"})
-@Import({TestSecurityConfig.class, io.opaa.common.FeatureFlags.class, ClockConfiguration.class})
+@Import({TestSecurityConfig.class, io.opaa.common.FeatureFlags.class})
 class LibraryControllerDocumentTest {
 
   private static final String TEST_ISSUER = "test-issuer";

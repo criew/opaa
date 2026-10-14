@@ -14,7 +14,6 @@ import io.opaa.asset.AssetGrantService;
 import io.opaa.auth.TestSecurityConfig;
 import io.opaa.auth.User;
 import io.opaa.auth.UserService;
-import io.opaa.common.ClockConfiguration;
 import io.opaa.common.FeatureFlags;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.trigger.DocumentIndexingService;
@@ -45,7 +44,7 @@ import org.springframework.test.web.servlet.MockMvc;
     controllers = LibraryController.class,
     properties = "opaa.features.metadata.enabled=false")
 @ActiveProfiles({"test", "dev"})
-@Import({TestSecurityConfig.class, FeatureFlags.class, ClockConfiguration.class})
+@Import({TestSecurityConfig.class, FeatureFlags.class})
 class LibraryControllerMetadataSwitchedOffTest {
 
   private static final String TEST_ISSUER = "test-issuer";

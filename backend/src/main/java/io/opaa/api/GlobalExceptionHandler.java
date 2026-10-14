@@ -20,6 +20,7 @@ import io.opaa.common.ValidationException;
 import io.opaa.knowledge.UploadProperties;
 import io.opaa.security.CredentialsEncryptionKeyMissingException;
 import java.sql.SQLException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
 import java.util.Set;
@@ -77,9 +78,11 @@ public class GlobalExceptionHandler {
   private final ErrorBodyNegotiator errorBodyNegotiator = new ErrorBodyNegotiator();
 
   private final UploadProperties uploadProperties;
+  private final Clock clock;
 
-  public GlobalExceptionHandler(UploadProperties uploadProperties) {
+  public GlobalExceptionHandler(UploadProperties uploadProperties, Clock clock) {
     this.uploadProperties = uploadProperties;
+    this.clock = clock;
   }
 
   /**
@@ -102,8 +105,8 @@ public class GlobalExceptionHandler {
   }
 
   /** The envelope every branch answers with: the message, the numeric status, and the moment. */
-  private static ErrorResponse error(HttpStatusCode status, String message) {
-    return new ErrorResponse(message, status.value(), Instant.now());
+  private ErrorResponse error(HttpStatusCode status, String message) {
+    return new ErrorResponse(message, status.value(), Instant.now(clock));
   }
 
   /**

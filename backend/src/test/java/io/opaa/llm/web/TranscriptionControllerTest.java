@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Map;
@@ -114,7 +115,8 @@ class TranscriptionControllerTest {
   private MockMvc mockMvc(boolean enabled, Duration timeout) {
     return MockMvcBuilders.standaloneSetup(controller(enabled, timeout))
         .setControllerAdvice(
-            new GlobalExceptionHandler(new UploadProperties(null, null, 52_428_800L, null, 0, 0)))
+            new GlobalExceptionHandler(
+                new UploadProperties(null, null, 52_428_800L, null, 0, 0), Clock.systemUTC()))
         .addFilters(new TranscriptionMultipartGuard(new ObjectMapper()), new RequestLoggingFilter())
         .build();
   }
