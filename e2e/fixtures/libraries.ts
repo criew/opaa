@@ -8,7 +8,7 @@ import { expect, test } from './auth'
  */
 
 /**
- * Mirrors frontend/src/services/devAuth.ts's DEV_USER_HEADER. Not imported from there: e2e/ is its
+ * Mirrors frontend/src/shared/session/devAuth.ts's DEV_USER_HEADER. Not imported from there: e2e/ is its
  * own npm package with no dependency on frontend/src (see e2e/package.json).
  */
 export const DEV_USER_HEADER = 'X-OPAA-Dev-User'

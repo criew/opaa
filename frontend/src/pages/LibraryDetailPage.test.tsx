@@ -37,7 +37,7 @@ function pageOf(
 }
 
 // #822 review, finding 2: mirrors documentStore.test.ts's own notFoundError - normalizeError
-// (services/api.ts) attaches the original AxiosError as `cause`, and only an actual 404 status may
+// (shared/api/api.ts) attaches the original AxiosError as `cause`, and only an actual 404 status may
 // trigger the "unknown folder" root fallback, not merely an Error whose message happens to read
 // "nicht gefunden".
 function notFoundError(message = 'Ordner nicht gefunden'): Error {
