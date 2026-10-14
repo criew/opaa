@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest'
 // carrying a `File` hang forever instead of completing (#1169).
 import './jsdom-blob-stream'
 import { beforeAll, afterEach, afterAll } from 'vitest'
-import { server } from '../mocks/server'
+import { server } from './server'
 // Deliberately only the fixture module, never a store or `src/shared/api/api` (#583): importing
 // anything that pulls in the axios instance *from this file* makes a dozen unrelated dialog tests
 // fail - their requests stop being intercepted, so every "expected onCreated to be called" assertion
@@ -12,20 +12,20 @@ import { server } from '../mocks/server'
 // belongs in that test file's own beforeEach.
 
 // chat
-import { resetChatMockState } from '../features/chat/mocks/chatHandlers'
+import { resetChatMockState } from '@/features/chat/mocks/chatHandlers'
 // asset
-import { resetGrantMockState } from '../features/asset/mocks/assetHandlers'
-import { resetMockSpaceAssetAssociations } from '../features/asset/mocks/assetFixtures'
+import { resetGrantMockState } from '@/features/asset/mocks/assetHandlers'
+import { resetMockSpaceAssetAssociations } from '@/features/asset/mocks/assetFixtures'
 // library
-import { resetIndexingState } from '../features/library/mocks/indexingHandlers'
-import { resetDocumentMockState } from '../features/library/mocks/libraryDocumentHandlers'
+import { resetIndexingState } from '@/features/library/mocks/indexingHandlers'
+import { resetDocumentMockState } from '@/features/library/mocks/libraryDocumentHandlers'
 // prompt
-import { resetMockPromptLibraries } from '../features/prompt/mocks/promptLibraryFixtures'
+import { resetMockPromptLibraries } from '@/features/prompt/mocks/promptLibraryFixtures'
 // user
 import {
   resetMockLocalAuthSettings,
   resetMockLocalUsers,
-} from '../features/user/mocks/localUserFixtures'
+} from '@/features/user/mocks/localUserFixtures'
 // identity-provider
 import { resetMockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 // model
@@ -35,14 +35,14 @@ import { resetMockMailSettings, resetMockMailTemplates } from '@/features/mail/m
 // branding
 import { resetMockBranding } from '@/features/branding/mocks/brandingFixtures'
 // connection
-import { resetConnectionProfileMockState } from '../features/connection/mocks/connectionProfileHandlers'
-import { resetConnectedAccountMockState } from '../features/connection/mocks/connectedAccountHandlers'
+import { resetConnectionProfileMockState } from '@/features/connection/mocks/connectionProfileHandlers'
+import { resetConnectedAccountMockState } from '@/features/connection/mocks/connectedAccountHandlers'
 import { resetConnectionLogMockState } from '@/features/audit/mocks/connectionLogHandlers'
 // external-access
-import { resetMockExternalAccessSettings } from '../features/external-access/mocks/externalAccessHandlers'
-import { resetMockExternalAccessTokens } from '../features/external-access/mocks/externalAccessTokenHandlers'
+import { resetMockExternalAccessSettings } from '@/features/external-access/mocks/externalAccessHandlers'
+import { resetMockExternalAccessTokens } from '@/features/external-access/mocks/externalAccessTokenHandlers'
 // auth
-import { resetMockAuthConfig } from '../mocks/authFixtures'
+import { resetMockAuthConfig } from '@/shared/mocks/authFixtures'
 import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'
 
 /**

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import type { UserManager } from 'oidc-client-ts'
 import { act, screen } from '@testing-library/react'
 import { Route, Routes, useLocation } from 'react-router'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '@/test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
 import ProtectedRoute from './ProtectedRoute'
 

@@ -431,11 +431,7 @@ jobs:
       run:
         working-directory: frontend/
     steps:
-      # Depth 2 keeps HEAD^1 available: the base of the checked commit (pull request: the merge
-      # commit's first parent, push: the predecessor).
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 2
 
       # Installs the pnpm version pinned in the "packageManager" field of
       # frontend/package.json.
@@ -452,11 +448,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm run format:check
       - run: pnpm run lint
-      # Theme boundaries beyond eslint: the transition list (frontend/eslint-suppressions.json) may
-      # only shrink compared with the base of the checked commit (HEAD^1, never the moving main),
-      # every file under src/ belongs to one theme, and no comment disables the boundary rule.
+      # Theme boundaries beyond eslint: the rule is active as error, no bulk suppressions (file or
+      # script option), every file under src/ belongs to one theme, and no comment disables the rule.
       - name: Themengrenzen prüfen
-        run: node scripts/check-theme-boundaries.mjs HEAD^1
+        run: node scripts/check-theme-boundaries.mjs
       - run: pnpm run test
       - run: pnpm run build
       - run: node scripts/bundle-report.mjs

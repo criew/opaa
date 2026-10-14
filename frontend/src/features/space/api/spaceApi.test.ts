@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 import { createSpace, updateSpaceDetails } from './spaceApi'
 
 describe('spaceApi', () => {

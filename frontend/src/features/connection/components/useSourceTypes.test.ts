@@ -1,8 +1,8 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { mockSourceTypes } from '../../library/mocks/libraryFixtures'
-import { server } from '../../../mocks/server'
+import { mockSourceTypes } from '@/features/library/mocks/libraryFixtures'
+import { server } from '@/test/server'
 import { useSourceTypes } from './useSourceTypes'
 
 describe('useSourceTypes', () => {

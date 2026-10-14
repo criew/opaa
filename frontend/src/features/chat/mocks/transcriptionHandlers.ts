@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockAuthConfig } from '../../../mocks/authFixtures'
+import { mockAuthConfig } from '@/shared/mocks/authFixtures'
 
 /** The text every mocked recording is recognised as. */
 export const MOCK_TRANSCRIPT = 'Welche Unterlagen brauche ich für einen Bauantrag?'

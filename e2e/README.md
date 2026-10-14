@@ -664,7 +664,7 @@ Lebenszyklus wie `pnpm test` oben, mit denselben Bausteinen, aber anderem Ziel:
 **Szenario 1** (`demo-smoke/tests/demo-smoke.spec.ts`): Maria Weber meldet sich über die
 echte Keycloak-Anmeldung an (Autorisierungscode-Flow, nicht der `dev`-Modus — genau das prüft
 dieser Test zusätzlich zur restlichen Suite, siehe „Warum der `dev`-Auth-Modus?" oben), sieht den
-Demo-Hinweis (#230, `frontend/src/layouts/DemoNotice.tsx`, aktiviert über `OPAA_DEMO_MODE=true`
+Demo-Hinweis (#230, `frontend/src/app/shell/DemoNotice.tsx`, aktiviert über `OPAA_DEMO_MODE=true`
 in `demo-smoke.env` — eine echte Demo-Instanz setzt dieses Flag ebenfalls), stellt die erste
 Drehbuchfrage aus `docs/market/demo-drehbuch.md` (Gebührenfrage, garantiert beantwortbar, #711) und
 bekommt eine belegte Antwort mit mindestens einer zitierten Quelle (`expectAnyCitedSource`,

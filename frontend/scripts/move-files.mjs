@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Usage: node scripts/move-files.mjs [--dry-run] <moves-file> | <old> <new> [<old> <new> ...]
 // Moves files or folders (paths relative to frontend/) with `git mv` and rewrites every module
-// path under src/ that points at them - moved files included - plus the keys of
-// eslint-suppressions.json. A path keeps its form (relative, @/, omitted extension or index).
+// path under src/ that points at them - moved files included. A path keeps its form (relative,
+// @/, omitted extension or index).
 // import.meta.glob() patterns and references outside src/ (index.html, vite.config.ts, scripts)
 // are only reported. Workflow: frontend/AGENTS.md.
 import { execFileSync } from 'node:child_process'
@@ -14,7 +14,6 @@ const SOURCE_DIR = 'src'
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs']
 const RESOLVE_SUFFIXES = ['', '.ts', '.tsx', '.d.ts', '.js', '.jsx', '.mjs', '.json']
 const INDEX_SUFFIXES = ['/index.ts', '/index.tsx', '/index.js']
-const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
 
 // Module paths in from '…', import '…' and import('…') (also inside a type argument), and in
 // vi.mock('…'), vi.doMock('…') and vi.importActual<…>('…'). Group 1 is everything up to the
@@ -143,12 +142,6 @@ function removeEmptyParents(root, dir) {
   }
 }
 
-export function renameSuppressions(suppressions, plan) {
-  return Object.fromEntries(
-    Object.entries(suppressions).map(([file, rules]) => [plan.get(file) ?? file, rules]),
-  )
-}
-
 const OUTSIDE_SKIP = new Set([
   SOURCE_DIR,
   'node_modules',
@@ -158,7 +151,7 @@ const OUTSIDE_SKIP = new Set([
   'bundle-report',
 ])
 const OUTSIDE_EXTENSIONS = ['.ts', '.js', '.mjs', '.cjs', '.html', '.json', '.yaml', '.yml', '.sh']
-const OUTSIDE_IGNORED = new Set([SUPPRESSIONS_FILE, 'package.json', 'pnpm-lock.yaml'])
+const OUTSIDE_IGNORED = new Set(['package.json', 'pnpm-lock.yaml'])
 
 /**
  * Files outside src/ (configs, scripts, index.html) that name a moved path, with or without its
@@ -220,15 +213,6 @@ export function moveFiles(root, moves, { dryRun = false, log = console.log } = {
   }
   for (const file of plan.keys()) removeEmptyParents(root, path.posix.dirname(file))
   for (const [file, content] of rewrites) fs.writeFileSync(path.join(root, file), content)
-  const suppressionsPath = path.join(root, SUPPRESSIONS_FILE)
-  if (fs.existsSync(suppressionsPath)) {
-    const suppressions = JSON.parse(fs.readFileSync(suppressionsPath, 'utf8'))
-    const renamed = renameSuppressions(suppressions, plan)
-    if (JSON.stringify(renamed) !== JSON.stringify(suppressions)) {
-      fs.writeFileSync(suppressionsPath, JSON.stringify(renamed, null, 2) + '\n')
-      log(`rewrite ${SUPPRESSIONS_FILE}`)
-    }
-  }
   return { plan, rewrites, globWarnings, outsideReferences }
 }
 

@@ -1,6 +1,6 @@
 import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { renderWithProviders } from '../test/test-utils'
+import { renderWithProviders } from '@/test/test-utils'
 import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 import AboutDialog from './AboutDialog'
 

@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockAuthConfig, mockLocalAccount } from '../../../mocks/authFixtures'
+import { mockAuthConfig, mockLocalAccount } from '@/shared/mocks/authFixtures'
 import {
   consumeMockToken,
   isConsumedMockToken,

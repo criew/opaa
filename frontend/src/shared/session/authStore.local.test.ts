@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import axios from 'axios'
 import { http, HttpResponse } from 'msw'
-import { server } from '../../mocks/server'
+import { server } from '@/test/server'
 import { setupAuthInterceptors } from '../api/apiInterceptors'
 import { LAST_SESSION_KIND_STORAGE_KEY } from './authApi'
 import { useAuthStore } from './authStore'

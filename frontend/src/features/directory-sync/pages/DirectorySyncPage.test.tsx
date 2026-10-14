@@ -2,14 +2,14 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { server } from '../../../mocks/server'
-import { mockDirectorySyncStatus, mockPendingPlan } from '../../group/mocks/groupAdminFixtures'
+import { server } from '@/test/server'
+import { mockDirectorySyncStatus, mockPendingPlan } from '@/features/group/mocks/groupAdminFixtures'
 import { mockOidcProviders } from '@/features/identity-provider/mocks/identityProviderFixtures'
 import {
   manyDirectoryProviders,
   manyDirectoryStatuses,
 } from '../mocks/directorySyncScenarioFixtures'
-import { renderWithProviders } from '../../../test/test-utils'
+import { renderWithProviders } from '@/test/test-utils'
 import DirectorySyncPage from './DirectorySyncPage'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useOidcProviderStore } from '@/features/identity-provider'

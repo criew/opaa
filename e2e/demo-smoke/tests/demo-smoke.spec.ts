@@ -132,7 +132,7 @@ test.describe('Demo-Smoke (#232)', () => {
   }) => {
     await loginViaKeycloak(page, { providerName: 'Verzeichnisdienst', realm: 'opaa', username: DEMO_USERNAME })
 
-    // The demo/source notice (frontend/src/layouts/DemoNotice.tsx), shown only when the
+    // The demo/source notice (frontend/src/app/shell/DemoNotice.tsx), shown only when the
     // frontend container's OPAA_DEMO_MODE flag is on (e2e/demo-smoke.env) - a real demo deployment
     // always sets it, so this run's own stack must match that, not just the belegte-Antwort
     // scenario below. It lives behind "Info zu OPAA" in the profile menu.

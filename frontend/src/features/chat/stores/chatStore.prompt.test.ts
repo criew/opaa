@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { server } from '../../../mocks/server'
+import { server } from '@/test/server'
 import type { ChatDetail, QueryRequest } from '@/shared/api/types'
 import { clearSettingsPersistenceCache } from './chatSettingsPersistence'
 import { useChatStore } from './chatStore'

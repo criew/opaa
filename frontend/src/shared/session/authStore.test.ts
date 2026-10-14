@@ -1,7 +1,7 @@
 import { afterEach, describe, it, expect, beforeEach, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import { ErrorResponse, User, UserManager } from 'oidc-client-ts'
-import { server } from '../../mocks/server'
+import { server } from '@/test/server'
 import { useAuthStore } from './authStore'
 import { isSilentSignInFlow, markSilentSignInFlow, spendSilentSignIn } from './silentSignIn'
 import { registerSessionStore } from './resettableStores'

@@ -32,11 +32,6 @@ const FILES = {
   ].join('\n'),
   'vite.config.ts': "export default { test: { setupFiles: './src/stores/libraryStore.ts' } }\n",
   'scripts/report.mjs': "const ROUTES = ['src/components/library/LibraryList']\n",
-  'eslint-suppressions.json': JSON.stringify(
-    { 'src/stores/libraryStore.ts': { 'boundaries/dependencies': { count: 1 } } },
-    null,
-    2,
-  ),
 }
 
 let root
@@ -123,9 +118,6 @@ describe('move-files', () => {
     expect(globWarnings).toEqual([
       "src/pages/LibraryPage.test.tsx: import.meta.glob('../components/library/*.tsx')",
     ])
-    expect(JSON.parse(read('eslint-suppressions.json'))).toEqual({
-      'src/features/library/stores/libraryStore.ts': { 'boundaries/dependencies': { count: 1 } },
-    })
   })
 
   it('changes nothing on a dry run and reports references outside src/', () => {

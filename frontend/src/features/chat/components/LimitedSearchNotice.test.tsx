@@ -1,8 +1,8 @@
 import { screen, waitFor } from '@testing-library/react'
 import { http, HttpResponse } from 'msw'
 import { describe, expect, it } from 'vitest'
-import { server } from '../../../mocks/server'
-import { renderWithProviders } from '../../../test/test-utils'
+import { server } from '@/test/server'
+import { renderWithProviders } from '@/test/test-utils'
 import LimitedSearchNotice from './LimitedSearchNotice'
 
 const ENDPOINT = '/api/v1/search/availability'
