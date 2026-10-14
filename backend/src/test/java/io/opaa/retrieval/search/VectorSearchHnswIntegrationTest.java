@@ -31,7 +31,6 @@ import org.springframework.ai.embedding.EmbeddingRequest;
 import org.springframework.ai.embedding.EmbeddingResponse;
 import org.springframework.ai.vectorstore.pgvector.PgVectorStore.PgDistanceType;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -68,8 +67,7 @@ class VectorSearchHnswIntegrationTest {
   @Autowired private PlatformTransactionManager transactionManager;
   @Autowired private ObjectMapper objectMapper;
 
-  @Value("${opaa.database.schema}")
-  private String schemaName;
+  @Autowired private VectorTable vectorTable;
 
   private final List<UUID> libraries = new ArrayList<>();
   private final UUID smallLibrary = UUID.randomUUID();
@@ -88,7 +86,7 @@ class VectorSearchHnswIntegrationTest {
                 objectMapper,
                 new VectorIndexScanProperties(20000),
                 PgDistanceType.COSINE_DISTANCE,
-                new VectorTable(schemaName, "vector_store")),
+                vectorTable),
             new EmbeddingIndexState());
     for (int i = 0; i < LIBRARIES; i++) {
       UUID library = UUID.randomUUID();
