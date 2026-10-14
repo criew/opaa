@@ -216,6 +216,9 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`../backend/docs/`](../backend/docs/)** — Nachschlagewissen dazu:
   [Register des prozesslokalen Zustands](../backend/docs/prozesslokaler-zustand.md),
   [Spring-Testkontexte](../backend/docs/testkontexte.md), [Liquibase](../backend/docs/liquibase.md)
+- **[`entwicklung/build-und-ci.md`](./entwicklung/build-und-ci.md)** — Befehle außerhalb des täglichen
+  Builds: Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite,
+  Image-Rauchtest
 
 ### Überholt
 

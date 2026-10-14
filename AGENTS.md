@@ -10,22 +10,14 @@ Beiträge von Menschen und KI-Agenten sind gleichermaßen willkommen.
 Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcode vorbehalten.
 
 **Deutsch:**
-
-- GitHub-Issues (Titel und Beschreibung)
-- Pull Requests (Titel und Beschreibung)
-- Dokumentation (`README.md`, `docs/`, ADRs, Feature-Spezifikationen)
-- Templates unter `.github/`
-- Commit-Beschreibungen und -Body (der Conventional-Commit-Typ und -Scope bleiben englisch, z. B. `feat(workspace): Rollenverwaltung ergänzen`)
+- GitHub-Issues, Pull Requests (Titel und Beschreibung), Commit-Beschreibung und -Body (Typ und Scope bleiben englisch: `feat(workspace): Rollenverwaltung ergänzen`)
+- Dokumentation (`README.md`, `docs/`, ADRs, Feature-Spezifikationen) und Templates unter `.github/`
 - Alle in der Anwendung sichtbaren Texte — Frontend-UI, `aria-label`-Attribute und nutzerseitige API-Fehlermeldungen
 
 **Englisch:**
-
-- Bezeichner im Quellcode (Klassen, Methoden, Variablen, CSS-Klassen)
-- Datei- und Verzeichnisnamen
-- Code-Kommentare
+- Bezeichner im Quellcode (auch CSS-Klassen), Datei- und Verzeichnisnamen, Code-Kommentare, Labels und Branch-Namen
 - Log-Ausgaben und entwicklerseitige Exception-Messages
 - Technische Konstanten, Enum-Werte, API-Feldnamen und die OpenAPI-Spezifikation
-- Labels und Branch-Namen
 
 ## Architektur
 
@@ -37,112 +29,21 @@ Die Projektsprache ist **Deutsch**. Englisch bleibt ausschließlich dem Quellcod
 # Backend (aus backend/)
 ./gradlew build
 ./gradlew test
-./gradlew test -PtestShard=api    # nur ein CI-Shard (api | indexing | core); Paketlisten in
-                                  # build.gradle.kts (`testShards`), CI führt die drei parallel aus
-./gradlew openAiIntegrationTest   # OpenAI-E2E-Tests (io.opaa.integration.*); braucht
-                                  # OPAA_OPENAI_API_KEY und Docker, nicht Teil von build/test
-OPAA_CONFLUENCE_IT=true ./gradlew confluenceIntegrationTest
-                                  # Zugriffsschicht gegen ein echtes Confluence Data
-                                  # Center im Container (io.opaa.integration.confluence.*);
-                                  # braucht Docker, ~4 GB RAM und Internet für die 3-Stunden-
-                                  # Testlizenz; nicht Teil von build/test, in CI nightly und per
-                                  # Label "confluence-suite" (ADR-0023, #1171)
-./gradlew keycloakIntegrationTest # Verzeichnis-Konnektor gegen ein echtes Keycloak im
-                                  # Container (io.opaa.integration.keycloak.*); braucht nur Docker,
-                                  # keine Lizenz und kein Internet, deshalb auch keine
-                                  # Umgebungsvariable. Nicht Teil von build/test: gemessen ~46 s
-                                  # Startzeit und ~880 MiB allein für den Container (dazu Postgres
-                                  # und die Test-JVM). In CI nightly und per Label
-                                  # "keycloak-suite" (#1817, ADR-0036 Entscheidung 3)
-./gradlew nextcloudIntegrationTest
-                                  # Nextcloud-Konnektor und FileStoreFolderContract gegen das
-                                  # offizielle Nextcloud-Image (io.opaa.integration.nextcloud.*);
-                                  # braucht Docker, Group Folders zusätzlich den App-Store. Nicht
-                                  # Teil von build/test: Image rund 2,1 GB. In CI nightly und per
-                                  # Label "nextcloud-suite" (#2152)
-OPAA_GDRIVE_IT_KEY_FILE=… OPAA_GDRIVE_IT_FOLDER_ID=… ./gradlew googleDriveIntegrationTest
-                                  # Google-Drive-Konnektor gegen ein echtes Workspace, nur
-                                  # lesend; läuft nur lokal beim Maintainer, Schlüsseldatei
-                                  # außerhalb des Repos, kein CI-Job und kein Secret. Einrichtung:
-                                  # README.md im Testpaket indexing.source.googledrive (ADR-0040)
+./gradlew test -PtestShard=api    # nur ein CI-Shard (api | indexing | core), Paketlisten in build.gradle.kts
 ./gradlew spotlessCheck
 ./gradlew spotlessApply
+SPRING_PROFILES_ACTIVE=local,dev ./gradlew bootRun   # ohne Auth-Profil bricht der Start ab (AuthProfileGuard, ADR-0005)
 
-# Backend starten — das Auth-Profil MUSS gesetzt sein, sonst bricht der Start
-# mit einer Meldung von AuthProfileGuard ab (siehe ADR-0005).
-SPRING_PROFILES_ACTIVE=local,dev ./gradlew bootRun
-
-# Frontend (aus frontend/) — Paketmanager ist pnpm (siehe Issue #653); die
-# Version ist im "packageManager"-Feld der package.json gepinnt, pnpm wechselt
-# selbstständig auf diese Version
-pnpm install                            # Abhängigkeiten installieren
-VITE_ENABLE_MOCKS=true pnpm run dev     # Dev-Server mit MSW-Mocks
+# Frontend (aus frontend/) — Paketmanager pnpm, Version im "packageManager"-Feld der package.json
+pnpm install
 pnpm run dev                            # Dev-Server (benötigt Backend auf :8080)
-# Im dev-Auth-Modus laufen Anfragen als "dev-admin"; auf einen regulären Nutzer
-# wechseln mit http://localhost:5173/?devUser=dev-user
-pnpm run build                          # Production-Build
-pnpm run lint                           # Lint (ESLint)
-pnpm run test                           # Tests (Vitest)
-pnpm run format:check                   # Prettier-Formatierung prüfen
-pnpm run format                         # Automatisch mit Prettier formatieren
-
-# Helm-Chart (aus deploy/helm/opaa/, ADR-0042) — die Vorgabewerte allein sind bewusst
-# unvollständig, geprüft wird mit den Wertedateien unter ci/
-helm template opaa . -f ci/minimal-values.yaml   # bricht bei Abbruchregeln ab; helm lint meldet
-                                                # sie nur als INFO und endet mit Exit 0
-helm template opaa . -f ci/full-values.yaml
-
-# Chart-CI (aus dem Repository-Wurzelverzeichnis; Workflow .github/workflows/helm-chart.yml)
-deploy/helm/ci/static-check.sh          # helm lint + template mit jedem Wertesatz unter
-                                        # deploy/helm/opaa/ci/*-values.yaml, kubeconform gegen die
-                                        # drei unterstützten Kubernetes-Versionen, Prüfung der
-                                        # Abbruchregeln und Trockenlauf der Release-Skripte;
-                                        # braucht helm, kubeconform, curl und jq. Neue Wertesätze dort
-                                        # ablegen, sie werden automatisch geprüft
-deploy/helm/ci/package-chart.sh v1.2.3 <ziel>
-                                        # Chart packen wie der Release-Lauf (publish-images.yml):
-                                        # Version und appVersion aus dem Tag, prüft die Image-Tags
-                                        # der Vorgabewerte; veröffentlicht nichts. Das Tag-Format
-                                        # steht allein in release-version.sh, die Existenzprüfung
-                                        # von Images und Chart in GHCR in oci-published.sh (nur
-                                        # HTTP 404 gilt als frei), der Inhaltsvergleich des Charts
-                                        # vor der Attestierung in chart-matches.sh
-deploy/helm/ci/install-test.sh          # Installationstest: ct install mit der Erprobungsdatenbank
-                                        # des Charts und eingeschalteten NetworkPolicies in einen
-                                        # Namespace mit Pod Security Standard restricted; wartet auf
-                                        # Datenbank, Backend und Frontend und führt helm test aus,
-                                        # ohne LLM. Braucht kubectl, helm, ct und
-                                        # einen kind-Cluster mit den Images aus dem Commit:
-                                        #   kind create cluster
-                                        #   docker build -f backend/Dockerfile -t opaa-ci/backend:ci .
-                                        #   docker build -f frontend/Dockerfile -t opaa-ci/frontend:ci .
-                                        #   kind load docker-image opaa-ci/backend:ci opaa-ci/frontend:ci
-                                        # In CI bei Änderungen am Chart und an den Image-Dateien,
-                                        # nightly und per Label "helm-suite"
-deploy/helm/ci/rule-test.sh             # Unit-Tests der Alarmregeln: rendert die PrometheusRule
-                                        # und führt deploy/helm/opaa/ci/prometheusrule-test.yaml
-                                        # mit promtool aus; braucht helm, yq und promtool. In CI
-                                        # Teil der statischen Prüfung
-
-# Kubernetes-Erprobungsaufbau (aus dem Wurzelverzeichnis, siehe examples/kubernetes-trial/README.md):
-# OPAA-Chart mit Keycloak, Ollama, RustFS, Mailpit und Erprobungsdatenbank im aktuellen
-# kubectl-Kontext; nicht für den Betrieb, nicht Teil der CI
-k3d cluster create opaa-trial -p "127.0.0.1:8088:80@loadbalancer"
-examples/kubernetes-trial/trial.sh up   # installieren oder aktualisieren, danach http://opaa.localhost:8088
-examples/kubernetes-trial/trial.sh down # beide Namespaces samt Daten entfernen
-
-# E2E-Suite (aus e2e/, siehe e2e/README.md)
-pnpm install                            # Abhängigkeiten installieren
-pnpm exec playwright install --with-deps chromium   # Browser installieren (einmalig)
-pnpm test                               # Stack via Docker Compose starten, Suite ausführen, Stack wieder stoppen
-
-# Image-Rauchtest (aus dem Repo-Wurzelverzeichnis): beide Images für die Architektur des
-# Docker-Hosts bauen und gehärtet starten, Backend gegen pgvector bis Readiness UP, Frontend davor
-# bis /api/health; in CI als Job image-smoke-arm64 (ci.yml) auf einem arm64-Runner
-docker build -t opaa-smoke/backend -f backend/Dockerfile .
-docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
-.github/scripts/image_smoke_test.sh opaa-smoke/backend opaa-smoke/frontend
+pnpm run build
+pnpm run lint
+pnpm run test
+pnpm run format:check                   # Prettier prüfen; pnpm run format formatiert
 ```
+
+Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite, Image-Rauchtest und Frontend mit Mocks: [docs/entwicklung/build-und-ci.md](docs/entwicklung/build-und-ci.md).
 
 ## API & DTO-Konvention
 
@@ -154,7 +55,7 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
   - Ein Schema steht in der Datei des Themas, dem es fachlich gehört, auch wenn andere Themen es referenzieren (`SpaceRole` in `spaces.yaml`). Nur Bausteine ohne fachlichen Besitzer stehen in `common.yaml`: Fehlerhülle (`ErrorResponse`), übergreifende Enums wie `SystemRole`, gemeinsame Parameter und Antworten.
   - `root.yaml` enthält nur `openapi` und `info`, einschließlich der Beschreibung der Statuscodes.
   - Ein neues Thema bekommt eine neue Datei (`[a-z0-9-]+.yaml`) mit eigenem Eintrag unter `tags`.
-  - Alle `$ref` zeigen in die gebündelte Spec (`#/components/schemas/...`), auch über Dateigrenzen hinweg. Der Build bricht ab bei doppelten Pfaden oder Komponenten, bei nicht auflösbaren `$ref`, bei YAML-Ankern und -Aliasen und bei Operationen ohne genau ein Tag aus der eigenen Datei.
+  - Alle `$ref` zeigen in die gebündelte Spec (`#/components/schemas/...`), auch über Dateigrenzen hinweg. Doppelte Pfade oder Komponenten, nicht auflösbare `$ref`, YAML-Anker und Operationen ohne genau ein Tag aus der eigenen Datei brechen den Build ab.
 - Weitere Backend-Regeln — Abhängigkeitsverwaltung, Enum-Mapping, Mapper-Schicht, Statuscode-Deklaration, Spring-Testkontexte, Liquibase — stehen in [backend/AGENTS.md](backend/AGENTS.md). **Vor jeder Änderung unter `backend/` oder `opaa-api/` lesen.**
 
 > Vollständige Begründung: [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
@@ -163,21 +64,9 @@ docker build -t opaa-smoke/frontend -f frontend/Dockerfile .
 
 ### Code-Kommentare
 
-Ein Kommentar beschreibt den Verhaltensvertrag oder eine nicht offensichtliche Invariante — in 1–5 Zeilen. Entstehungsgeschichte (Review-Runden, verworfene Alternativen, Fehlversuche) gehört in Commit-Nachrichten und PR-Beschreibungen, nicht in den Code; sie ist dort über `git log`/`git blame` jederzeit auffindbar. Eine Issue-/PR-Referenz im Code ist nur zulässig, wenn sie eine aktive Einschränkung markiert, zum Beispiel ein Workaround bis zu einem Upstream-Fix, ein `@Disabled`/`.skip` mit Ticketverweis, oder eine Deprecation mit dem Ablösungs-Issue. Gilt projektweit — Javadoc, TSDoc, Inline-Kommentare in `.java`/`.ts`/`.tsx`, sowie `application.yml`, `build.gradle.kts`, `vite.config.ts` und Workflow-Dateien. Nicht betroffen: Markdown-Dokumentation und ADRs — dort ist die Abwägung (verworfene Alternativen, Entscheidungshistorie) Zweck des Dokuments.
+Ein Kommentar beschreibt den Verhaltensvertrag oder eine nicht offensichtliche Invariante — in 1–5 Zeilen; Entstehungsgeschichte (Review-Runden, verworfene Alternativen, Fehlversuche) gehört in Commit-Nachrichten und PR-Beschreibungen. Eine Issue-/PR-Referenz im Code ist nur zulässig, wenn sie eine aktive Einschränkung markiert (Workaround bis zu einem Upstream-Fix, `@Disabled`/`.skip` mit Ticketverweis, Deprecation mit Ablösungs-Issue). Gilt projektweit für Javadoc, TSDoc, Inline-Kommentare in `.java`/`.ts`/`.tsx` sowie `application.yml`, `build.gradle.kts`, `vite.config.ts` und Workflow-Dateien, nicht für Markdown-Dokumentation und ADRs.
 
-In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z. B. `// regression guard for #307: ...`), sofern er die Invariante nennt und nicht den Review-Verlauf — sonst ist die Regel genau beim größten Bestand nicht durchsetzbar.
-
-**Negativbeispiel** (Nacherzählung statt Vertrag):
-
-```java
-// PR #612 review, finding 3: originally this called the repository directly,
-// which caused an N+1 problem, see discussion in #598.
-// After a talk with the reviewer we switched to the cache introduced in #545.
-// Careful: #501 already had a similar bug here — the cache must be invalidated
-// on every write path, and #559 nearly reverted this fix because someone
-// missed one of the three write paths. Do not remove this without re-reading
-// the whole thread in #598 first.
-```
+In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (`// regression guard for #307: ...`), sofern er die Invariante nennt und nicht den Review-Verlauf.
 
 **Positivbeispiel** (Vertrag/Invariante):
 
@@ -188,7 +77,7 @@ In Tests darf ein Kommentar zusätzlich die abgesicherte Regression benennen (z.
  */
 ```
 
-`.github/scripts/check_code_comments.sh` prüft in der CI die Kommentare unter `backend/src/main` und `opaa-api/src/main` (samt `application.yml` und den OpenAPI-Beschreibungen): Review-Protokoll („#393 code review, finding 1“, „nit 4“), an Issue-Nummern hängende Historie („since #1931“, „pre-#888“) und reine Herkunftsmarker („(#1073)“, „#1073:“) lassen den Lauf fehlschlagen; übrige Issue-Verweise zählt er nur, auch „until #N“ eines Workarounds und „after #N“ einer Deprecation. Ausgenommen sind das Spike-Paket `query/spike` und Zeilen mit „Spike #N“.
+`.github/scripts/check_code_comments.sh` prüft das in der CI; welche Muster den Lauf fehlschlagen lassen und welche Bäume geprüft werden, steht im Skriptkopf.
 
 ### GitHub-Actions-Workflows
 
@@ -231,69 +120,35 @@ Wenn mehrere Agent-Sessions gleichzeitig in diesem Verzeichnis arbeiten (z. B. m
 
 ### Branch-Benennung
 
-Format: `feature/<issue-id>_<kurze-beschreibung>`
+Format: `feature/<issue-id>_<kurze-beschreibung>` — **ausnahmslos** mit `feature/` und mit der ID des zugehörigen GitHub-Issues, auch bei Fehlerbehebungen, dringenden Korrekturen und Dokumentationsänderungen. Es gibt kein `fix/`-, `hotfix/`- oder `docs/`-Präfix und keine Namen ohne Issue-ID; die Art der Änderung steht im Conventional-Commit-Typ von Commit und PR-Titel.
 
-Jeder Branch ist über seine ID mit einem GitHub-Issue verknüpft.
+**Cloud-Sessions:** Gibt die Umgebung einen `claude/…`-Branch vor, haben Agenten hiermit die ausdrückliche Erlaubnis und die Pflicht, stattdessen auf `feature/<issue-id>_<kurz>` zu pushen (`git push -u origin HEAD:feature/…`) und den PR von dort zu öffnen. Auf den `claude/`-Branch wird nichts gepusht.
 
-**Branch-Regel (verbindlich):**
-- Branches immer mit `feature/` erstellen — **ausnahmslos**, auch bei Fehlerbehebungen, dringenden Korrekturen und Dokumentationsänderungen. Es gibt kein `fix/`-, `hotfix/`- oder `docs/`-Präfix.
-- Immer die GitHub-Issue-ID im Branch-Namen angeben.
-- Keine generischen Namen wie `feature/workspace` ohne Issue-ID verwenden.
-- **Cloud-Sessions:** Gibt die Umgebung einen `claude/…`-Branch vor, haben Agenten hiermit die ausdrückliche Erlaubnis und die Pflicht,
-  stattdessen auf `feature/<issue-id>_<kurz>` zu pushen (`git push -u origin HEAD:feature/…`) und den PR von dort zu öffnen.
-  Auf den `claude/`-Branch wird nichts gepusht.
-
-**Ausnahme Renovate:** Von Renovate erzeugte Update-Branches heißen `renovate/<slug>` (ohne
-`feature/`-Präfix und ohne Issue-ID), und Renovate-PRs verwenden weder das PR-Template noch
-einen durchgehend deutschen Body (deutscher Titel und Kopfsatz, generierter englischer Rest).
-Renovate-PRs werden zudem mit aktiviertem GitHub-Auto-Merge eröffnet (stehende
-Maintainer-Anweisung, Issue #951) — sie mergen automatisch, sobald die Required Checks grün
-sind. Das ist die einzige zugelassene Abweichung von den Branch-, PR- und Auto-Merge-Regeln
-dieses Dokuments — sie gilt ausschließlich für den Bot (siehe `docs/renovate.md`,
-Issues #751/#951); Menschen und Agenten bleiben an die Regeln gebunden.
-
-Die Art der Änderung wird über den Conventional-Commit-Typ ausgedrückt (`fix`, `docs`, `chore`, …), nicht über das Branch-Präfix — in der Commit-Nachricht und im PR-Titel. Ein Branch `feature/295_branch-regel-klarstellen` mit dem Commit `docs(agents): …` ist der Normalfall, kein Widerspruch.
+**Ausnahme Renovate**, ausschließlich für den Bot ([docs/renovate.md](docs/renovate.md)): Branches `renovate/<slug>` ohne `feature/`-Präfix und Issue-ID; PRs ohne PR-Template, mit deutschem Titel und Kopfsatz und generiertem englischem Rest, eröffnet mit GitHub-Auto-Merge. Menschen und Agenten bleiben an die Regeln gebunden.
 
 ### GitHub-Issues
 
-- Beim Erstellen eines GitHub-Issues IMMER passende Labels basierend auf dem Inhalt zuweisen
-- Vorhandene Labels verwenden (z. B. `bug`, `enhancement`, `backend`, `frontend`, `security`, `auth`, `size:S/M/L`, usw.)
+- Beim Erstellen IMMER passende vorhandene Labels zuweisen (z. B. `bug`, `backend`, `size:S/M/L`)
 - **Vor Arbeitsbeginn das Issue selbst zuweisen** (`gh issue edit <nr> --add-assignee @me`). Ist es einem anderen Account zugewiesen, nicht anfangen, sondern Bescheid geben — Details in [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md#bearbeitung-anzeigen-issue-selbst-zuweisen)
-- Issue-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
-- **Epics führen ihre Tickets als native Sub-Issues**, nicht als Checkliste im Body. GitHub führt Status und Fortschritt dann selbst, und der Tagesreport liest dieselbe Beziehung. Aufbau des Epic-Bodys: [.github/ISSUE_TEMPLATE/epic.md](.github/ISSUE_TEMPLATE/epic.md)
-- Ein bereits angelegtes Issue wird nachträglich verknüpft über `gh api -X POST repos/{owner}/{repo}/issues/{epic}/sub_issues -F sub_issue_id={id}` — `{id}` ist die Objekt-ID des Kind-Issues (`gh api repos/{owner}/{repo}/issues/{nr} --jq .id`), nicht seine Nummer
-- **Ein Epic wird geschlossen, sobald alle seine Sub-Issues geschlossen sind** — mit einem kurzen Abschlusskommentar: was geliefert wurde (PR-Verweise genügen) und welche Folge-Issues außerhalb des Epic-Umfangs entstanden sind. Wer das letzte Sub-Issue eines Epics abschließt, prüft den Stand der Geschwister (`gh api repos/{owner}/{repo}/issues/{epic}/sub_issues --jq '[.[] | select(.state=="open")] | length'`)
+- Titel und Beschreibung MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
+- **Epics führen ihre Tickets als native Sub-Issues**, nicht als Checkliste im Body; Aufbau des Epic-Bodys: [.github/ISSUE_TEMPLATE/epic.md](.github/ISSUE_TEMPLATE/epic.md)
+- **Ein Epic wird geschlossen, sobald alle seine Sub-Issues geschlossen sind**, mit kurzem Abschlusskommentar: was geliefert wurde (PR-Verweise genügen) und welche Folge-Issues außerhalb des Epic-Umfangs entstanden sind. Wer das letzte Sub-Issue abschließt, prüft den Stand der Geschwister. Befehle dazu in [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md#issues), Abschnitt Issues
 
 ### Pull Requests
 
 - Keine direkten Pushes zu `main` — alle Änderungen gehen über PRs
 - Der Code Reviewer prüft jeden PR vor dem Merge; seine Befunde gehen zurück an den Autor
-- Ein formales Approval in GitHub ist nicht erforderlich. Es genügt, dass ein Maintainer des Projekts den PR merged, sobald CI grün ist
-- **Auto-Merge nutzen:** `gh pr merge --auto --squash` merged den PR automatisch, sobald die Required Checks grün sind. Ein PR muss dafür nicht up to date mit `main` sein (nur konfliktfrei) — manuelles „Branch aktualisieren und CI abwarten" entfällt. Der Push auf `main` lässt die CI anschließend den kombinierten Stand prüfen
-- Auto-Merge setzen dürfen nur Maintainer und der Koordinator mit ausdrücklicher Maintainer-Freigabe; Entwickler- und Review-Agenten mergen nie (siehe [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md), Schritt 6)
-- Beim Erstellen eines PRs IMMER passende Labels basierend auf dem Inhalt zuweisen
-- PR-Titel und -Beschreibungen MÜSSEN auf Deutsch verfasst werden (siehe [Projektsprache](#projektsprache))
-- IMMER das PR-Template (Zusammenfassung, Zugehörige Issues, Art der Änderung, Checkliste, KI-Agenten-Offenlegung) in [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) für neue Pull Requests verwenden
+- Kein formales Approval nötig: ein Maintainer merged, sobald CI grün ist, per Auto-Merge (`gh pr merge --auto --squash`); der PR muss dafür nur konfliktfrei sein, nicht up to date mit `main`. Wer Auto-Merge setzen darf, regelt [docs/AGENT-ORGANIZATION.md](docs/AGENT-ORGANIZATION.md), Schritt 6
+- Beim Erstellen IMMER passende Labels zuweisen; Titel und Beschreibung MÜSSEN auf Deutsch verfasst werden
+- IMMER das PR-Template [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) verwenden
 
 ### Pre-Push-Checkliste
 
-Bei reinen Dokumentationsänderungen überspringen. Vor dem **ersten Push eines PRs** müssen alle folgenden Punkte lokal bestehen:
+Vor dem **ersten Push eines PRs** müssen lokal bestehen: Backend-Formatierung, Backend-Build + Test, Frontend-Formatierung, Frontend-Lint, Frontend-Build + Test. Bei reinen Dokumentationsänderungen entfällt die Checkliste.
 
-- Backend-Formatierung
-- Backend-Build + Test
-- Frontend-Formatierung
-- Frontend-Lint
-- Frontend-Build + Test
+**Nachbesserungsrunden** (Folge-Pushes auf einen bestehenden PR) verwenden die verkürzte Prüfung — Formatierung, Kompilieren und die berührten Testklassen — und prüfen das CI-Ergebnis des Folge-Pushes, bevor der PR als bereit gilt.
 
-**Nachbesserungsrunden** (Folge-Pushes auf einen bestehenden PR, etwa nach Review-Befunden) verwenden die
-verkürzte Prüfung: Formatierung, Kompilieren und die von der Änderung berührten Testklassen. Den vollen
-Durchlauf übernimmt die CI des PRs — sie führt ohnehin dieselben Prüfungen aus, und ein roter CI-Lauf
-kostet nicht mehr Zeit als der eingesparte lokale Volllauf. Wer die verkürzte Prüfung nutzt, prüft das
-CI-Ergebnis des Folge-Pushes, bevor der PR als bereit gilt.
-
-**Builds und Tests im Vordergrund ausführen** und aktiv abwarten (mit ausreichendem Timeout), statt einen
-eigenen Hintergrundlauf zu starten und auf dessen Benachrichtigung zu warten — das hat sich als
-wiederkehrende Quelle verlorener Wartezeit erwiesen.
+**Builds und Tests im Vordergrund ausführen** und aktiv abwarten (mit ausreichendem Timeout), statt einen Hintergrundlauf zu starten und auf dessen Benachrichtigung zu warten.
 
 ## Wichtige Pfade
 
@@ -302,15 +157,15 @@ wiederkehrende Quelle verlorener Wartezeit erwiesen.
 - `docs/features/` — Feature-Spezifikationen
 - `docs/handbuch/` — Produkthandbuch des gebauten Ist-Stands (Kapitelbaum in `docs/handbuch/README.md`, Abschnitt „Aufbau des Handbuchs"; Konnektoren und Formate je mit Übersicht in `konnektoren/` und `formate/`); Regeln für Aufbau, Verweise und Stil in `docs/handbuch/AGENTS.md` — vor jeder Änderung am Handbuch lesen
 - `backend/AGENTS.md` — Backend-Konventionen (Abhängigkeitsverwaltung, API-/Mapper-Regeln, logische Module und Schichtung, Spring-Testkontexte, Liquibase), Nachschlagewissen dazu unter `backend/docs/` (Register des prozesslokalen Zustands, Testkontexte, Liquibase); `backend/` ist zugleich Gradle-Root des Multi-Modul-Builds. Je logischem Modul ergänzt eine kurze `AGENTS.md` im Hauptpaket unter `backend/src/main/java/io/opaa/` die Regeln des Moduls (Übersicht in `backend/AGENTS.md`)
-- `opaa-api/` — Gradle-Modul mit OpenAPI-Spec, Generator-Konfiguration und geteilten Domain-Enums (`io.opaa.api.types`), siehe [ADR-0006](docs/decisions/0006-openapi-dto-generation.md) (#896)
+- `opaa-api/` — Gradle-Modul mit OpenAPI-Spec, Generator-Konfiguration und geteilten Domain-Enums (`io.opaa.api.types`), siehe [ADR-0006](docs/decisions/0006-openapi-dto-generation.md)
 - `frontend/AGENTS.md` — Themen des Frontends, ihre per ESLint geprüften Grenzen, Übergangsliste und Ablauf eines Umzugs-PRs; **vor jeder Änderung unter `frontend/src/` lesen**
 - `frontend/src/test/test-utils.tsx` — Gemeinsame Test-Render-Helfer
 - `e2e/` — Browserbasierte End-to-End-Tests (Playwright), siehe `e2e/README.md`
 - `deploy/helm/opaa/` — Helm-Chart für den Kubernetes-Betrieb (Single-Instance), siehe [ADR-0042](docs/decisions/0042-kubernetes-lieferung-mit-helm.md); eine betriebsrelevante Änderung zieht ihn im selben PR nach
-- `docs/renovate.md` — selbst betriebene Abhängigkeits-Updates (Renovate, Issue #751); Regeln in `renovate.json5`
-- `docs/releases.md` — Release-Verfahren: Versions-Tags `vX.Y.Z`, unveränderliche Release-Images, Versionszählung, Patch-Releases für Sicherheitsupdates (Issue #2350)
-- `docs/sbom.md` — Software Bill of Materials: Image-Attestierungen und CycloneDX-CI-Artefakte (Issue #1078)
-- `docs/cve-scanning.md` — CVE-Erkennung: Dependabot-Alerts, Trivy-Image-Scan und Triage-Verfahren (Issues #1079, #1450)
+- `docs/renovate.md` — selbst betriebene Abhängigkeits-Updates (Renovate); Regeln in `renovate.json5`
+- `docs/releases.md` — Release-Verfahren: Versions-Tags `vX.Y.Z`, unveränderliche Release-Images, Versionszählung, Patch-Releases für Sicherheitsupdates
+- `docs/sbom.md` — Software Bill of Materials: Image-Attestierungen und CycloneDX-CI-Artefakte
+- `docs/cve-scanning.md` — CVE-Erkennung: Dependabot-Alerts, Trivy-Image-Scan und Triage-Verfahren
 - `eval/` — Korpora, Golden Datasets und Generatoren der Suchqualitäts-Evaluierung, siehe `eval/README.md`. Liegt bewusst außerhalb von Gradle-Build und CI; die Generatoren laufen nur bei bewussten Korpus-Änderungen, nie automatisch. Der Metrik-Harness selbst ist ein Integrationstest im Backend
 
 ## Contributor License Agreement
@@ -330,18 +185,11 @@ Verfahren und Wortlaut des Unterzeichnungskommentars stehen in [CONTRIBUTING.md]
 
 ### Reproduktionsnachweis
 
-Ein Test, der den Fehler nicht fangen würde, ist wertlos — und das fällt am Ergebnis nicht auf, weil er ja grün ist.
-
-Deshalb gilt bei jeder Fehlerbehebung: Den Fix vorübergehend zurücknehmen, den Test laufen lassen, das Fehlschlagen belegen, den Fix wiederherstellen, erneut laufen lassen. **Beide Ergebnisse gehören in die PR-Beschreibung**, mit der konkreten Fehlermeldung des roten Laufs.
+Bei jeder Fehlerbehebung den Fix vorübergehend zurücknehmen, den Test laufen lassen, das Fehlschlagen belegen, den Fix wiederherstellen, erneut laufen lassen. **Beide Ergebnisse gehören in die PR-Beschreibung**, mit der konkreten Fehlermeldung des roten Laufs.
 
 **Beleg-Läufe nur auf aktuellem Stand:** Vor dem roten und dem grünen Lauf `origin/main` in den Branch mergen — ein Nachweis auf veraltetem Stand belegt nichts. Widerspricht ein lokaler grüner Lauf einem roten CI-Lauf, gilt die CI; der lokale Lauf ist dann auf einem anderen (meist älteren oder anders kombinierten) Stand gelaufen.
 
-Typische Ursachen dafür, dass ein Test den Fehler verfehlt:
-
-- **Er prüft eine Bedingung, die vor und nach dem Fix gilt** — etwa „irgendwann wurde invalidiert" statt „zum richtigen Zeitpunkt".
-- **Er läuft gegen ein anderes Schema als die Produktion.** Mit `ddl-auto=create-drop` erzeugt Hibernate keine Fremdschlüssel für einfache `UUID`-Spalten ohne `@ManyToOne`, Liquibase dagegen schon. Für alles FK-abhängige gehört `spring.liquibase.enabled=true` und `ddl-auto=none` in den Test.
-- **Er führt den geänderten Code gar nicht aus** — etwa Liquibase-Changelogs, die in den regulären Integrationstests nicht angewendet werden. Dafür gibt es das Muster in `backend/src/test/java/io/opaa/migration/`.
-- **Er mockt genau die Stelle weg, um die es geht** — ein gemockter `PlatformTransactionManager` führt keine Propagation aus, ein gemockter API-Client validiert keinen Request-Body.
+Typische Ursachen dafür, dass ein Test den Fehler verfehlt: [backend/docs/reproduktionsnachweis.md](backend/docs/reproduktionsnachweis.md).
 
 ## Sicherheit
 

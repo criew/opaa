@@ -177,45 +177,30 @@ Konten").
 
 ### 9. Sicherheitsmindestmaß
 
-- **Hashing:** BCrypt 12 hinter `DelegatingPasswordEncoder` (`PasswordEncoderConfiguration`;
-  Richtlinie in `PasswordPolicy`), Vergleich nur über
-  `matches`, bei unbekannter Kennung gegen einen Dummy-Hash (konstante Antwortzeit).
-- **Passwortrichtlinie:** Mindestlänge aus `password_min_length`, höchstens 64 Zeichen und 72 Byte,
-  nicht gleich der E-Mail, nicht in der mitgelieferten Sperrliste häufiger Passwörter; keine
-  Komplexitätsregeln, kein periodischer Wechsel (BSI ORP.4.A8).
-- **Rate-Limiting je Adresse, je Konto und global:** Login 10/60 s je IP, Refresh 30/60 s je IP,
-  Passwortwechsel 5/300 s je Subject, Registrierung und Passwort vergessen 5/3600 s je IP und
-  3/3600 s je Adresse, Passwort setzen und E-Mail-Bestätigung 10/900 s je IP; für Login,
-  Registrierung und Passwort vergessen eine globale Grenze je Fenster mit `WARN` und Metrik.
-- **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, Zähler atomar, Sperre auditiert
-  (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`) — **der einzelne Fehlversuch nicht**: nur
-  Anwendungslog (Konto-Kennung, nie die Adresse) und SIEM; die Aufbewahrung dieses Logs ist
-  Betriebskonfiguration, eine Frist erzwingt das Produkt nicht. Die Sperre schneidet die Selbsthilfe
-  nicht ab: „Passwort vergessen" bleibt wirksam, und ein erfolgreich eingelöster Rücksetzlink hebt
-  die Sperre auf — der Besitz des Postfachs ist der Nachweis. Die Antwort des Logins ist in allen Fällen dieselbe
-  (falsche Kennung, falsches Passwort, gesperrt, abgelaufen, nicht bestätigt, Verwaltung
-  abgeschaltet).
-- **Sperre nach Inaktivität** (`inactive_days`) durch den Cleanup-Lauf, `locked_reason = INACTIVITY`,
-  Mail an die Person; nur das Notanker-Konto ist ausgenommen. Seit #2260 ist sie für den
-  Konto-Lebenszyklus der Verbindungen ein Ruhen, keine Deaktivierung (ADR-0041).
-- **Client-IP nur von vertrauten Proxys:** `TrustedProxyClientIpResolver` wertet `X-Forwarded-For`
-  nur aus, wenn die Verbindung aus einem Netz in `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` kommt (Vorgabe
-  leer = Header ignoriert), liest Adresse und Header unterhalb der Request-Wrapper (Springs
-  `ForwardedHeaderFilter` bei `forward-headers-strategy: framework` überschreibt `getRemoteAddr()`
-  sonst mit dem linkesten, vom Client wählbaren Eintrag) und nimmt den ersten nicht vertrauten
-  Eintrag von rechts; ein Wildcard-Netz oder ein Netz weiter als `/8` verweigert den Start
-  (`RateLimitProperties`), eine leere Liste im `oidc`-Profil erzeugt eine `WARN`-Zeile
-  (`TrustedProxyStartupGuard`). In die Liste gehört jeder Hop zwischen Client und Backend. Die
-  Vertrauensprüfung gilt nur für die Adresse: Schema und Host übernimmt der `ForwardedHeaderFilter`
-  weiterhin ungeprüft, der äußere Proxy muss `X-Forwarded-Proto` autoritativ setzen (Restrisiko,
-  siehe Konsequenzen). Die Diagnose-Ansicht zeigt zur eigenen Anfrage `remoteAddress`,
-  `forwardedFor` und ob der Header vertraut wurde (`forwardedForTrusted`).
-- **Netzbeschränkung für lokale Systemverwalter:** `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS`
-  (`LocalAdminNetworkPolicy`, leer = keine Beschränkung) auf derselben aufgelösten Adresse, als
-  Kompensation, solange es keinen zweiten Faktor gibt.
-- **Kein Geheimnis im Log** außer dem Einmalpasswort des Seeds: keine Roh-Tokens, keine Passwörter,
-  keine SMTP-Passwörter (`LocalAuthLogPrivacyIntegrationTest`).
-- **MFA (TOTP)** ist nicht gebaut.
+- **Passwort:** BCrypt 12 hinter `DelegatingPasswordEncoder` (`PasswordEncoderConfiguration`),
+  Vergleich nur über `matches`, bei unbekannter Kennung gegen einen Dummy-Hash; `PasswordPolicy`:
+  Mindestlänge `password_min_length`, höchstens 64 Zeichen und 72 Byte, nicht die E-Mail, nicht in
+  der Sperrliste; keine Komplexitätsregeln, kein periodischer Wechsel (BSI ORP.4.A8).
+- **Ratenbegrenzung** (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`) je Client-Adresse; Passwortwechsel je Konto;
+  Registrierung und „Passwort vergessen“ zusätzlich je E-Mail-Adresse; Login, Registrierung und
+  „Passwort vergessen“ global, mit `WARN` und Metrik beim Überschreiten.
+- **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, auditiert
+  (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`); der einzelne Fehlversuch steht nur im Anwendungslog
+  (Konto-Kennung, nie die Adresse), dessen Aufbewahrung Betriebskonfiguration ist. Ein eingelöster
+  Rücksetzlink hebt die Sperre auf (der Besitz des Postfachs ist der Nachweis); der Login antwortet
+  in jedem Fall gleich. Die **Sperre nach Inaktivität** (`inactive_days`, Mail, Notanker
+  ausgenommen) ist für Verbindungen ein Ruhen (ADR-0041).
+- **Client-IP:** `TrustedProxyClientIpResolver` wertet `X-Forwarded-For` nur aus Netzen in
+  `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` aus (leer = ignoriert), liest unterhalb der Wrapper von
+  Springs `ForwardedHeaderFilter` und nimmt den ersten nicht vertrauten Eintrag von rechts; ein Netz
+  weiter als `/8` verweigert den Start (`RateLimitProperties`), eine leere Liste im `oidc`-Profil
+  warnt (`TrustedProxyStartupGuard`). Schema und Host übernimmt der Filter ungeprüft (Konsequenzen).
+  `OPAA_LOCAL_ADMIN_ALLOWED_CIDRS` (`LocalAdminNetworkPolicy`) beschränkt lokale Systemverwalter,
+  solange es keinen zweiten Faktor gibt; MFA ist nicht gebaut.
+- **Kein Geheimnis im Log** außer dem Einmalpasswort des Seeds (`LocalAuthLogPrivacyIntegrationTest`).
+
+Werte und Diagnose: [Konfiguration](../handbuch/konfiguration.md),
+[Vertraute Proxys](../handbuch/betrieb.md#vertraute-proxys-und-client-adresse).
 
 ### 10. Mail-Infrastruktur: SMTP in den Systemeinstellungen, Vorlagen mit Code-Standards, Ergebnis statt Exception, sichtbares Scheitern
 
@@ -235,49 +220,33 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
 
 ### 11. Kontolebenszyklus: Einladung, Zurücksetzen mit Link-Rückfall, Sperren als Regelweg, kein stiller Eingriff, Löschen nach dem DSGVO-Pfad
 
-- **Anlegen** durch `SYSTEM_ADMIN` mit Anlagegrund (Pflicht, zweckgebunden: dienstlicher Anlass und
-  Grund der Befristung, nichts zu Gesundheit, Beschäftigungsverhältnis, Leistung, Dritten; für die
-  Person sichtbar, nie als Wert im Protokoll) und Ablaufdatum (vorbelegt mit `default_expiry_days`,
-  änderbar oder löschbar), per Einladung (`SET_PASSWORD`) oder mit erzeugtem Anfangspasswort. Bei Versandfehler, SMTP aus oder fehlender Basis-URL enthält die Antwort
-  die Einladungs-URL genau einmal; der Zustellweg steht im Protokoll (`MAIL_SENT | MAIL_FAILED |
-  LINK_DISPLAYED`).
-- **Zurücksetzen** per Link oder erzeugtem Passwort (`pcr` Grund `ADMIN_RESET`); beides widerruft alle
-  Sitzungen. Ein administratives Zurücksetzen bestätigt die Adresse nicht; bei abgeschalteter
-  Selbstregistrierung ist der Ausweg Löschen und Einladen.
-- **Sperren ist der Regelweg**, Löschen die Ausnahme; Selbstsperre und jede Aktion am letzten
-  gesicherten Systemverwalter werden abgelehnt (409 `SELF_LOCKOUT`, `LAST_LOGIN_CAPABLE_ADMIN`), am
-  Notanker-Konto unabhängig davon (409 `BOOTSTRAP_ACCOUNT`). Sperren widerruft alle Sitzungen sofort
-  und hebt eine Fehlversuch-Sperre auf; Entsperren setzt den Zähler zurück. Rollenänderungen laufen
-  über den bestehenden Rollenendpunkt und die bestehenden Rollenereignisse, nicht über ein zweites;
-  ein Anbieterkonto bietet in der Kontenliste genau diese eine Handlung.
-- **Kein stiller Eingriff:** Jeder Verwaltungsakt wird der Person mitgeteilt — per Mail
-  (`ACCOUNT_LOCKED`, `ACCOUNT_UNLOCKED`, `ADMIN_PASSWORD_RESET`, `ACCOUNT_EXPIRING` 14 Tage vorher,
-  `ACCOUNT_HANDOVER_*`) und als Grund im Sitzungsmarker oder `pcr`-Anlass. Die Fehlversuch-Sperre
-  löst keine Mail aus.
-- **Ablaufdatum:** Ein abgelaufenes Konto ist `EXPIRED`, nicht gelöscht. Die Prüfung der Auflage ist
-  ein Vorgang: Liste mit Filtern („ohne Ablaufdatum", „länger als 90 Tage nicht genutzt", „offene
-  Einladungen"), Mail 14 Tage vor Ablauf, Wiedervorlage im Quartal (`ADMIN_REVIEW_REMINDER`, Zahl
-  der Konten ohne Ablaufdatum, keine Namen). Zähler, Filter und Wiedervorlage meinen dieselbe Menge
-  und nehmen das Notanker-Konto aus (#1603, #1641; `LocalUserOverview#countsAsInactive()`).
-- **Die Kontenliste ist kein Auswertungspfad:** Aktivität nur als Klasse („nie", „länger als 90
-  Tage nicht", „aktiv"), ohne Zeitstempel, ohne Sortierung danach, kein Export, kein Massenabruf
-  (Seitengröße höchstens 50, `LocalUserQuery.MAX_PAGE_SIZE`). Seit #1601 führt
-  `GET /api/v1/admin/accounts` alle Konten der Organisation mit Herkunft je Zeile; die
-  Aktivitätsklasse erscheint nur an lokalen Zeilen, die Prüffilter grenzen auf lokale Konten ein,
-  sortierbar sind Name, E-Mail, Herkunft, Rolle, Zustand, Ablauf, Anlagedatum — nie die Aktivität.
-  `users.last_login_at` ist ein gedrosselter Aktivitätszeitstempel, kein Anmeldezeitpunkt.
-- **Löschen** folgt dem Pfad in `security-and-compliance.md`; bis er als gemeinsamer Dienst existiert,
-  löscht `DELETE` nur ein Konto ohne Assets und ohne Space außer dem persönlichen (sonst 409).
-- **Selbstregistrierung** nur mit Schalter **und** Domänenliste: Rolle `USER`, Ablauf Pflicht,
-  Bestätigung `VERIFY_EMAIL` (24 h), bei belegter Adresse identische Antwort (202) und keine
-  Hinweis-Mail; eine unbestätigte Registrierung derselben Adresse erhält den Link erneut, Hash und
-  Name bleiben (gegen Pre-Hijacking). Das Einschalten ist Audit-Ereignis und Dienstvereinbarungspunkt.
-- **Passwort vergessen** nur mit Schalter und Basis-URL: immer 204 nach konstanter Zeitklasse;
-  gesperrte, abgelaufene und eingeladene Konten erhalten keine Mail, ein Konto in Fehlversuch-Sperre
-  schon. Ein abgeschalteter Fluss ist für einen Aufrufer ohne Sitzung von einer unbekannten Route
-  nicht zu unterscheiden (#1592): Der Pfad ist nicht freigegeben und wird von der Ratenbegrenzung
-  nicht gezählt; ob ein Fluss aktiv ist, sagt allein `/auth/config`.
-- **Passwort ändern** mit aktuellem Passwort widerruft die übrigen Sitzungen.
+- **Anlegen** durch `SYSTEM_ADMIN` mit zweckgebundenem Anlagegrund (für die Person sichtbar, nie als
+  Wert im Protokoll) und Ablaufdatum (vorbelegt mit `default_expiry_days`), per Einladung oder mit
+  erzeugtem Passwort; ohne Mailversand enthält die Antwort den Link genau einmal, der Zustellweg
+  steht im Protokoll. **Zurücksetzen** (Link oder erzeugtes Passwort, `pcr` `ADMIN_RESET`) widerruft
+  alle Sitzungen und bestätigt die Adresse nicht (Ausweg ohne Selbstregistrierung: löschen und
+  einladen).
+- **Sperren ist der Regelweg**, Löschen die Ausnahme: Sperren widerruft alle Sitzungen und hebt eine
+  Fehlversuch-Sperre auf, Entsperren setzt den Zähler zurück; Selbstsperre und jede Aktion am
+  letzten gesicherten Systemverwalter sind 409 (`SELF_LOCKOUT`, `LAST_LOGIN_CAPABLE_ADMIN`), am
+  Notanker immer (`BOOTSTRAP_ACCOUNT`). Rollen laufen über den bestehenden Rollenendpunkt; ein
+  Anbieterkonto bietet nur diese Handlung. Ein abgelaufenes Konto ist `EXPIRED`, nicht gelöscht;
+  `DELETE` löscht nur ein Konto ohne Assets und ohne Space außer dem persönlichen (sonst 409), bis
+  der DSGVO-Pfad aus `security-and-compliance.md` ein gemeinsamer Dienst ist.
+- **Kein stiller Eingriff:** Jeder Verwaltungsakt geht per Mail an die Person (`ACCOUNT_LOCKED`,
+  `ACCOUNT_UNLOCKED`, `ADMIN_PASSWORD_RESET`, `ACCOUNT_EXPIRING`, `ACCOUNT_HANDOVER_*`) und steht als
+  Grund im Sitzungsmarker oder `pcr`-Anlass; nur die Fehlversuch-Sperre schickt keine Mail.
+- **Kein Auswertungspfad:** `GET /api/v1/admin/accounts` führt alle Konten mit Herkunft;
+  Aktivität erscheint nur als Klasse an lokalen Zeilen, ohne Zeitstempel, Sortierung oder Export,
+  Seitengröße höchstens 50 (`LocalUserQuery.MAX_PAGE_SIZE`). Prüffilter, Zähler (Hinweis-Link) und
+  Quartals-Wiedervorlage (`ADMIN_REVIEW_REMINDER`, nur Zahlen) meinen dieselbe Menge ohne Notanker
+  (`LocalUserOverview#countsAsInactive()`).
+- **Selbstbedienung:** Selbstregistrierung nur mit Schalter und Domänenliste (Rolle `USER`, Ablauf
+  Pflicht, `VERIFY_EMAIL`, bei belegter Adresse dieselbe `202` ohne Hinweis-Mail, eine unbestätigte
+  behält Hash und Namen gegen Pre-Hijacking; das Einschalten ist Dienstvereinbarungspunkt); „Passwort
+  vergessen“ nur mit Schalter und Basis-URL, immer `204` nach fester Frist. Ein abgeschalteter Fluss
+  ist ohne Sitzung von einer unbekannten Route nicht zu unterscheiden (#1592). Passwort ändern
+  widerruft die übrigen Sitzungen. Abläufe und Fristen: [Benutzerverwaltung](../handbuch/benutzerverwaltung.md).
 
 ### 12. Übergabe eines lokalen Kontos an eine Anbieteridentität — administrativ angestoßen, von der Person selbst eingelöst
 
@@ -359,7 +328,7 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 | Pflicht-Befristung selbstregistrierter Konten; Domänenliste | gilt | — |
 | Harte Fristen der Token-Tabellen (täglicher Aufräumlauf) | gilt | — |
 | Auditierung des Notanker-Kontos als mitgetragene Ausnahme | gilt | — |
-| Technisches Log der Fehlversuche höchstens 90 Tage (Bedingung 2) | nicht umgesetzt: Log-Rotation ist Betriebskonfiguration, das Produkt erzwingt keine Frist, und das Handbuch nennt derzeit keine Empfehlung | — |
+| Technisches Log der Fehlversuche höchstens 90 Tage (Bedingung 2) | Handbuchempfehlung: Log-Rotation ist Betriebskonfiguration, das Produkt erzwingt keine Frist; das Handbuch nennt 90 Tage als Beispiel und weist die Festlegung dem Betrieb zu | #2762 |
 | Vier-Augen-Prinzip für die Übergabe (Bedingung 6) | nicht übernommen (die Person selbst ist die zweite Partei) | — |
 | Sperren und Befristen des Notanker-Kontos (Bedingung 12, zweiter Teil) | grundsätzlich ausgeschlossen (Entscheidung 3) | — |
 | Kontozustand nach korrektem Passwort nennen | nicht übernommen (bestätigte ein Passwort) | — |

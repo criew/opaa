@@ -671,9 +671,10 @@ Nacharbeit ([Deployment](authentifizierung.md#nacharbeit-nach-einer-rücksicheru
    Bibliothek auf der Liste, deren Freigabe seit dem Sicherungsstand zurückgenommen wurde oder
    erloschen ist? Der tägliche Lauf holt Fristabläufe von selbst nach, eine **Rücknahme von Hand**
    aber nicht.
-4. **Tokenbestand prüfen.** Derselbe Reiter, Abschnitt „Zugangstokens“: Ist ein Token wieder
-   gültig, das gesperrt oder widerrufen war? Gesperrte Tokens gehören erneut gesperrt — abgelaufene
-   erledigen sich von selbst.
+4. **Tokenbestand prüfen.** Nach der vorgeschriebenen Rotation von `OPAA_AUTH_JWT_SECRET` ist kein
+   Token mehr gültig; die Personen stellen neue aus (Abschnitt 5). Ohne Rotation: Derselbe Reiter,
+   Abschnitt „Zugangstokens“: Ist ein Token wieder gültig, das gesperrt oder widerrufen war?
+   Gesperrte Tokens gehören erneut gesperrt — abgelaufene erledigen sich von selbst.
 5. **Den Befund festhalten.** Die Protokolleinträge über Sperren und Rücknahmen aus dem verlorenen
    Zeitraum sind weg; nur eine Notiz außerhalb der Datenbank belegt später, was nachgezogen wurde.
 
