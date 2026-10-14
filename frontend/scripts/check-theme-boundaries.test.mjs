@@ -1,37 +1,31 @@
-import { describe, expect, it } from 'vitest'
-import { checkSuppressions, findBoundaryDisables, totalCount } from './check-theme-boundaries.mjs'
-
-const entry = (count, rule = 'boundaries/dependencies') => ({ [rule]: { count } })
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { checkNoSuppressions, findBoundaryDisables } from './check-theme-boundaries.mjs'
 
 describe('check-theme-boundaries', () => {
-  it('sums the counts of all entries', () => {
-    expect(totalCount({ 'src/a.ts': entry(2), 'src/b.ts': entry(3) })).toBe(5)
+  let root
+
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'check-theme-boundaries-'))
   })
 
-  it('accepts a list that shrank or kept its size, also with entries moved between files', () => {
-    const base = { 'src/a.ts': entry(2), 'src/b.ts': entry(3) }
-
-    expect(checkSuppressions({ 'src/a.ts': entry(2), 'src/b.ts': entry(2) }, base)).toEqual([])
-    expect(
-      checkSuppressions({ 'src/features/x/a.ts': entry(2), 'src/b.ts': entry(3) }, base),
-    ).toEqual([])
+  afterEach(() => {
+    fs.rmSync(root, { recursive: true, force: true })
   })
 
-  it('rejects a list that grew', () => {
-    const errors = checkSuppressions(
-      { 'src/a.ts': entry(2), 'src/c.ts': entry(4) },
-      { 'src/a.ts': entry(5) },
-    )
+  it('accepts a frontend without a bulk suppressions file', () => {
+    expect(checkNoSuppressions(root)).toEqual([])
+  })
+
+  it('rejects a bulk suppressions file, even an empty one', () => {
+    fs.writeFileSync(path.join(root, 'eslint-suppressions.json'), '{}\n')
+
+    const errors = checkNoSuppressions(root)
 
     expect(errors).toHaveLength(1)
-    expect(errors[0]).toContain('grew from 5 to 6')
-  })
-
-  it('rejects any other rule, even without a base list', () => {
-    const errors = checkSuppressions({ 'src/a.ts': entry(1, 'no-console') }, null)
-
-    expect(errors).toHaveLength(1)
-    expect(errors[0]).toContain('no-console')
+    expect(errors[0]).toContain('eslint-suppressions.json must not exist')
   })
 
   it('finds comments that disable the boundary rule or every rule', () => {

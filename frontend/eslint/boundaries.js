@@ -21,7 +21,7 @@ import {
 
 const TEST_GLOBS = ['src/**/*.test.{ts,tsx}']
 const theme = (name) => `theme:${name}`
-const themeNames = Object.keys(THEMES)
+const themeNames = THEMES
 
 const files = [
   ...themeNames.flatMap((name) => [
@@ -55,7 +55,7 @@ const policies = [
   // Tests and mock handlers share the simulated backend: fixtures of every theme are reachable.
   { from: fromCategory('test'), allow: toCategories(['test-infra', 'feature-mocks']) },
   { from: fromCategory('feature-mocks'), allow: toCategories(['feature-mocks']) },
-  // A moved theme is reached from outside only through its index.ts (app: also routes.ts);
+  // A theme is reached from outside only through its index.ts (app: also routes.ts);
   // its mocks stay reachable for tests and the MSW wiring.
   ...themeNames
     .filter((name) => dependentsOf(name).length > 0)

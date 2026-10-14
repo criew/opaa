@@ -7,7 +7,7 @@ import { APP, SHARED, TEST_INFRA, THEMES, bucketGlobs, themeGlobs } from './them
 const GENERATED = 'src/shared/api/generated/'
 
 export const BUCKETS = {
-  ...Object.fromEntries(Object.keys(THEMES).map((name) => [name, themeGlobs(name)])),
+  ...Object.fromEntries(THEMES.map((name) => [name, themeGlobs(name)])),
   shared: bucketGlobs(SHARED),
   app: bucketGlobs(APP),
   'test-infra': bucketGlobs(TEST_INFRA),

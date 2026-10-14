@@ -32,8 +32,6 @@ const OLD_TREE = {
     "const Lazy = lazy(() => import('../pages/ChatPage'))",
     '',
   ].join('\n'),
-  'eslint-suppressions.json':
-    '{"src/services/notificationApi.ts":{"boundaries/dependencies":{"count":1}}}',
 }
 
 const NEW_TREE = {
@@ -64,8 +62,6 @@ const NEW_TREE = {
     "const Lazy = lazy(() => import('@/pages/ChatPage'))",
     '',
   ].join('\n'),
-  'eslint-suppressions.json':
-    '{"src/features/notification/api/notificationApi.ts":{"boundaries/dependencies":{"count":1}}}',
 }
 
 const BELL_OLD = 'src/components/notifications/NotificationBell.tsx'
@@ -85,7 +81,6 @@ const CHANGES = [
     from: 'src/features/notification/AGENTS.md',
     to: 'src/features/notification/AGENTS.md',
   },
-  { status: 'M', from: 'eslint-suppressions.json', to: 'eslint-suppressions.json' },
 ]
 
 function check(newOverrides = {}, changes = CHANGES, oldTree = OLD_TREE) {
@@ -195,80 +190,17 @@ describe('move-diff-check', () => {
     ])
   })
 
-  it('reports other additions, deletions and changed transition-list counts', async () => {
+  it('reports other additions and deletions', async () => {
     const changes = [
       ...CHANGES,
       { status: 'A', from: 'src/extra.ts', to: 'src/extra.ts' },
       { status: 'D', from: 'src/services/api.ts', to: 'src/services/api.ts' },
     ]
 
-    expect(
-      await check(
-        {
-          'src/extra.ts': 'export const extra = 1\n',
-          'eslint-suppressions.json':
-            '{"src/features/notification/api/notificationApi.ts":{"boundaries/dependencies":{"count":2}}}',
-        },
-        changes,
-      ),
-    ).toEqual([
-      'eslint-suppressions.json: src/features/notification/api/notificationApi.ts boundaries/dependencies grows from 1 to 2',
+    expect(await check({ 'src/extra.ts': 'export const extra = 1\n' }, changes)).toEqual([
       'src/extra.ts: added',
       'src/services/api.ts: deleted',
     ])
-  })
-})
-
-describe('move-diff-check with a shrinking transition list', () => {
-  const SUPPRESSIONS = 'eslint-suppressions.json'
-  const oldTree = {
-    ...OLD_TREE,
-    [SUPPRESSIONS]: JSON.stringify({
-      'src/services/notificationApi.ts': { 'boundaries/dependencies': { count: 2 } },
-      'src/layouts/GlobalRail.tsx': { 'boundaries/dependencies': { count: 1 } },
-    }),
-  }
-  const checkList = (list) =>
-    check({ [SUPPRESSIONS]: JSON.stringify(list, null, 2) }, CHANGES, oldTree)
-
-  it('accepts removed entries and lower counts next to the renames', async () => {
-    expect(
-      await checkList({
-        'src/features/notification/api/notificationApi.ts': {
-          'boundaries/dependencies': { count: 1 },
-        },
-      }),
-    ).toEqual([])
-    expect(await checkList({})).toEqual([])
-  })
-
-  it.each([
-    [
-      'a higher count',
-      {
-        'src/features/notification/api/notificationApi.ts': {
-          'boundaries/dependencies': { count: 3 },
-        },
-      },
-      `${SUPPRESSIONS}: src/features/notification/api/notificationApi.ts boundaries/dependencies grows from 2 to 3`,
-    ],
-    [
-      'a new file',
-      { 'src/pages/ChatPage.tsx': { 'boundaries/dependencies': { count: 1 } } },
-      `${SUPPRESSIONS}: src/pages/ChatPage.tsx boundaries/dependencies grows from 0 to 1`,
-    ],
-    [
-      'a new rule',
-      { 'src/layouts/GlobalRail.tsx': { 'no-console': { count: 1 } } },
-      `${SUPPRESSIONS}: src/layouts/GlobalRail.tsx no-console grows from 0 to 1`,
-    ],
-    [
-      'an entry under its old name',
-      { 'src/services/notificationApi.ts': { 'boundaries/dependencies': { count: 1 } } },
-      `${SUPPRESSIONS}: src/services/notificationApi.ts boundaries/dependencies grows from 0 to 1`,
-    ],
-  ])('reports %s', async (_, list, finding) => {
-    expect(await checkList(list)).toEqual([finding])
   })
 })
 

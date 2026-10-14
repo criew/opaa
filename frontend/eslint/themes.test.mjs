@@ -14,10 +14,10 @@ describe('themes.js', () => {
   })
 
   it('lists the allowed dependencies of every theme and only known themes as targets', () => {
-    expect(Object.keys(ALLOWED).sort()).toEqual(Object.keys(THEMES).sort())
+    expect(Object.keys(ALLOWED).sort()).toEqual([...THEMES].sort())
     for (const [name, targets] of Object.entries(ALLOWED)) {
       for (const target of targets) {
-        expect(THEMES, `${name} -> ${target}`).toHaveProperty([target])
+        expect(THEMES, `${name} -> ${target}`).toContain(target)
         expect(target).not.toBe(name)
       }
     }

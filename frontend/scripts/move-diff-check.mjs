@@ -5,7 +5,7 @@
 // mapped back through the renames; a theme index.ts that re-exports a module counts as that
 // module, as does a routes.ts re-exporting default exports of the theme's own pages. An existing
 // index.ts or routes.ts may only gain re-exports. Both sides are laid out by Prettier before the
-// line comparison, and the transition list may shrink. Bindings and package paths compare literally.
+// line comparison. Bindings and package paths compare literally.
 // Any other change - outside frontend/src/, a new file, an index.ts exporting a page, a routes.ts
 // exporting anything else - is a finding. No output means only files moved.
 import { execFileSync } from 'node:child_process'
@@ -14,7 +14,6 @@ import { fileURLToPath } from 'node:url'
 import * as prettier from 'prettier'
 
 const SOURCE = /\.(ts|tsx|js|jsx|mjs)$/
-const SUPPRESSIONS_FILE = 'eslint-suppressions.json'
 const SUFFIXES = ['', '.ts', '.tsx', '.d.ts', '.js', '.jsx', '.mjs', '.json']
 const INDEX_SUFFIXES = ['/index.ts', '/index.tsx', '/index.js']
 const THEME_INDEX = /^src\/features\/[^/]+\/index\.ts$/
@@ -229,20 +228,6 @@ function readEntries(file, source, resolve, toBase) {
 
 const describeEntry = (key) => (key.startsWith('*:') ? `* from ${key.slice(2)}` : key)
 
-/** Entries of the transition list that grow against `before` (keys already renamed). */
-function growingSuppressions(file, before, after) {
-  const findings = []
-  for (const [key, rules] of Object.entries(after)) {
-    for (const [rule, entry] of Object.entries(rules)) {
-      const was = before[key]?.[rule]?.count ?? 0
-      if (!(entry.count <= was)) {
-        findings.push(`${file}: ${key} ${rule} grows from ${was} to ${entry.count}`)
-      }
-    }
-  }
-  return findings
-}
-
 /**
  * Checks a change set. `changes` are name-status entries ({ status, from, to }) with paths
  * relative to frontend/ (`../` for files outside), `oldFiles`/`newFiles` the file lists at base and
@@ -250,7 +235,7 @@ function growingSuppressions(file, before, after) {
  */
 export async function checkChanges({ changes, oldFiles, newFiles, readOld, readNew }) {
   const findings = []
-  const inScope = (file) => file.startsWith('src/') || file === SUPPRESSIONS_FILE
+  const inScope = (file) => file.startsWith('src/')
   for (const change of changes) {
     for (const file of new Set([change.from, change.to])) {
       if (!inScope(file)) findings.push(`${file}: changed outside frontend/src/`)
@@ -349,14 +334,6 @@ export async function checkChanges({ changes, oldFiles, newFiles, readOld, readN
     if (c.status === 'M' && !grownEntries.has(c.from)) pairs.push([c.from, c.from])
   }
   for (const [from, to] of pairs) {
-    if (to === SUPPRESSIONS_FILE) {
-      const old = JSON.parse(readOld(from))
-      const renamed = Object.fromEntries(
-        Object.entries(old).map(([k, v]) => [renames.get(k) ?? k, v]),
-      )
-      findings.push(...growingSuppressions(to, renamed, JSON.parse(readNew(to))))
-      continue
-    }
     let diff
     if (SOURCE.test(to)) {
       const before = normalizeOldEntries(readOld(from), from)
