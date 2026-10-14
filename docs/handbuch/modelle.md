@@ -344,6 +344,13 @@ Ausfall kostet die Sortierung, nie die Antwort.
 > damit gerade gedeckt, ein größeres läuft ins Leere. Wer dem Reranking mehr Material geben will, hebt
 > `OPAA_QUERY_FETCH_K` mit an.
 
+> **Prüfabstand bei bezahltem Endpunkt groß wählen.** Ohne Fragen prüft OPAA die Erreichbarkeit mit
+> einer echten Rerank-Anfrage, sobald die letzte Antwort länger als `OPAA_RERANK_PROBE_INTERVAL`
+> zurückliegt. Ein gehosteter Dienst rechnet jede dieser Prüfungen ab, auch wenn niemand eine Frage
+> stellt. Bei einem bezahlten Endpunkt den Abstand deshalb groß wählen, etwa `24h`: Jede Frage mit
+> Reranking zählt ohnehin als Prüfung, und ein nicht erreichbarer Endpunkt wird unabhängig vom
+> Abstand etwa eine Minute nach dem letzten Fehlschlag erneut geprüft.
+
 > **Zeitgrenzen mit anheben.** `OPAA_RERANK_TIMEOUT` bindet nur den Rerank-Aufruf, nicht die Anfrage
 > als Ganzes: Eine Suche mit CPU-Reranker kann minutenlang warten, und die übrigen Modellaufrufe kommen
 > hinzu. Wer `OPAA_RERANK_TIMEOUT` anhebt, hebt `OPAA_BACKEND_READ_TIMEOUT` des Frontends mit an und

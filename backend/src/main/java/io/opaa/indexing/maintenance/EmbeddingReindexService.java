@@ -21,6 +21,7 @@ import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentBatchLoop;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
+import io.opaa.knowledge.VectorTable;
 import io.opaa.permission.PersonThreshold;
 import jakarta.annotation.PreDestroy;
 import java.nio.charset.StandardCharsets;
@@ -38,7 +39,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.CannotAcquireLockException;
@@ -122,8 +122,7 @@ public class EmbeddingReindexService {
       JdbcTemplate jdbcTemplate,
       KnowledgeLibraryRepository libraryRepository,
       PersonThreshold personThreshold,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      VectorTable vectorTable) {
     this.state = state;
     this.store = store;
     this.schema = schema;
@@ -134,7 +133,7 @@ public class EmbeddingReindexService {
     this.jdbcTemplate = jdbcTemplate;
     this.libraryRepository = libraryRepository;
     this.personThreshold = personThreshold;
-    this.vectorStoreTable = schemaName + "." + tableName;
+    this.vectorStoreTable = vectorTable.qualifiedName();
   }
 
   /** Read while the columns cannot be switched, so the counts belong to the reported state. */

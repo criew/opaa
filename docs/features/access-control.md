@@ -1329,7 +1329,7 @@ Systemverwaltung, auch bei einer geschützten Gruppe:
 Gleichstellung und für Personalvorgänge gilt dieselbe Sonderstellung wie für die entsprechenden
 Bibliotheken ([hybrid-retrieval.md](./hybrid-retrieval.md#berechtigungs-leitplanken), Leitplanke
 (e)). **Über den Schutz entscheidet die Systemverwaltung** — für interne und für Anbietergruppen
-gleichermaßen (ADR-0036, Entscheidung 9, Nachtrag vom 26.09.2026). Sie setzt und löst das
+gleichermaßen (ADR-0036, Entscheidung 9). Sie setzt und löst das
 Kennzeichen über `PUT /api/v1/groups/{groupId}/protection`; jede Änderung ist ein Audit-Ereignis
 (`GROUP_PROTECTION_CHANGED`) mit handelnder Person. Wer die Gruppe kennt, ohne Systemverwaltung zu
 sein — Verantwortliche und Mitglieder —, bekommt `403` mit dem Code `PROTECTION_ADMIN_ONLY`; alle
@@ -1391,7 +1391,7 @@ die Mitglieder, die ein Lauf aufnimmt oder entzieht, für eine neu angelegte Gru
 Liste. Jede Antwort, die ihn mit Namen an die Systemverwaltung ausliefert — Abruf des ausstehenden
 Plans, Probelauf, Lauf von Hand, Bestätigung —, schreibt deshalb ein zusammenfassendes
 `DIRECTORY_SYNC_REPORT_READ` mit Anbieter und der Zahl der genannten Gruppen und Personen, nie mit
-den Namen (ADR-0036, Entscheidung 9, Nachtrag vom 02.10.2026).
+den Namen (ADR-0036, Entscheidung 9).
 
 > Festgeschrieben in [ADR-0036](../decisions/0036-berechtigungsmodell-gruppen-und-faehigkeiten.md),
 > Entscheidungen 4 und 9.
@@ -1585,7 +1585,7 @@ Sortierparameter.
 `OPAA_SUCCESSION_AGING_THRESHOLD_MONTHS` (Vorgabe 12 Monate, orientiert an der Höchstfrist der
 Vollmacht) werden als „lange offen“ hervorgehoben. Keine Frist, keine Eskalation, keine Mail. Einen
 Vermerk, mit dem sich ein Eintrag als „geprüft, weiterhin offen“ zurückstellen ließe, gibt es nicht
-(ADR-0036, Nachtrag vom 08.10.2026).
+(ADR-0036, Entscheidung 6).
 
 **Die Kennzeichnung am Objekt nennt Zustand und Adressat — sonst nichts.** Kein Datum, kein
 bisheriger Eigentümer, kein Grund: Der Zustand tritt bei einem personengehörenden Objekt mit der

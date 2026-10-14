@@ -1,6 +1,7 @@
 package io.opaa.retrieval.context;
 
 import io.opaa.indexing.chunk.VectorChunkStore;
+import io.opaa.knowledge.VectorTable;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -9,7 +10,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.ai.document.Document;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.stereotype.Component;
@@ -27,18 +27,13 @@ public class NeighborChunkLookup {
 
   private final JdbcTemplate jdbcTemplate;
   private final ObjectMapper objectMapper;
-  private final String schemaName;
-  private final String tableName;
+  private final VectorTable vectorTable;
 
   NeighborChunkLookup(
-      JdbcTemplate jdbcTemplate,
-      ObjectMapper objectMapper,
-      @Value("${opaa.database.schema}") String schemaName,
-      @Value("${spring.ai.vectorstore.pgvector.table-name:vector_store}") String tableName) {
+      JdbcTemplate jdbcTemplate, ObjectMapper objectMapper, VectorTable vectorTable) {
     this.jdbcTemplate = jdbcTemplate;
     this.objectMapper = objectMapper;
-    this.schemaName = schemaName;
-    this.tableName = tableName;
+    this.vectorTable = vectorTable;
   }
 
   /**
@@ -60,9 +55,7 @@ public class NeighborChunkLookup {
     String documentIdKey = VectorChunkStore.DOCUMENT_ID_METADATA_KEY;
     String sql =
         "SELECT id, content, metadata FROM "
-            + schemaName
-            + "."
-            + tableName
+            + vectorTable.qualifiedName()
             + " WHERE metadata->>'"
             + documentIdKey
             + "' = ANY(?)"

@@ -3,7 +3,6 @@ package io.opaa.auth.web;
 import io.opaa.api.dto.ClientAddressDiagnosticsResponse;
 import io.opaa.auth.Caller;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.security.TrustedProxyClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,10 +29,7 @@ public class ClientAddressDiagnosticsController {
   @GetMapping("/client-address")
   public ClientAddressDiagnosticsResponse clientAddress(
       @Caller CurrentUser caller, HttpServletRequest request) {
-    if (!caller.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Administration darf die aufgelöste Client-Adresse einsehen");
-    }
+    caller.requireSystemAdmin("Nur die Administration darf die aufgelöste Client-Adresse einsehen");
     String remote = clientIpResolver.remoteAddress(request);
     String forwardedFor = clientIpResolver.forwardedFor(request);
     ClientAddressDiagnosticsResponse response =

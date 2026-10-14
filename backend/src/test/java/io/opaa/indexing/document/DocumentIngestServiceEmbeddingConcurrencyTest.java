@@ -373,8 +373,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
           mock(FullTextChunkStore.class),
           new io.opaa.indexing.chunk.EmbeddingIndexState(),
           mock(tools.jackson.databind.ObjectMapper.class),
-          "public",
-          "vector_store");
+          new io.opaa.knowledge.VectorTable("public", "vector_store"));
       this.concurrencyProof = concurrencyProof;
     }
 
@@ -410,8 +409,7 @@ class DocumentIngestServiceEmbeddingConcurrencyTest {
           mock(FullTextChunkStore.class),
           new io.opaa.indexing.chunk.EmbeddingIndexState(),
           mock(tools.jackson.databind.ObjectMapper.class),
-          "public",
-          "vector_store");
+          new io.opaa.knowledge.VectorTable("public", "vector_store"));
     }
 
     @Override

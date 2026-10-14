@@ -36,6 +36,7 @@ rerank:
   baseUrl: http://reranker.ai.svc.cluster.local:80
   model: BAAI/bge-reranker-v2-m3
   timeout: 120s
+  probeInterval: 24h
 transcription:
   enabled: true
   baseUrl: https://stt.example.org/v1

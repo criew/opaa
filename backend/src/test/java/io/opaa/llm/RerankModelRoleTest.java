@@ -5,12 +5,16 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.opaa.llm.RerankClient.RerankUnavailableException;
 import io.opaa.llm.RerankClient.ScoredCandidate;
+import io.opaa.test.MutableClock;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -26,11 +30,11 @@ class RerankModelRoleTest {
   private static final String SECRET_IN_BASE_URL = "benutzer:geheim";
 
   private static RerankProperties properties(boolean enabled, String baseUrl, String model) {
-    return new RerankProperties(enabled, baseUrl, model, KEY, Duration.ofSeconds(5));
+    return new RerankProperties(enabled, baseUrl, model, KEY, Duration.ofSeconds(5), null);
   }
 
   private static RerankModelRole role(RerankClient client, boolean enabled, String url, String m) {
-    return new RerankModelRole(properties(enabled, url, m), client);
+    return new RerankModelRole(properties(enabled, url, m), client, Clock.systemUTC());
   }
 
   @Test
@@ -251,6 +255,184 @@ class RerankModelRoleTest {
 
     assertThat(role.degradedCallCount()).isEqualTo(1);
     assertThat(role.usable()).isTrue();
+  }
+
+  private static final Duration PROBE_INTERVAL = Duration.ofMinutes(10);
+
+  private static RerankModelRole scheduledRole(RerankClient client, MutableClock clock) {
+    return new RerankModelRole(
+        new RerankProperties(true, ENDPOINT, "m", KEY, Duration.ofSeconds(5), PROBE_INTERVAL),
+        client,
+        clock);
+  }
+
+  /**
+   * Every probe is a billed request at a paid endpoint, so real traffic must replace it: as long as
+   * successful calls keep arriving within the interval, the schedule sends nothing.
+   */
+  @Test
+  void realCallsWithinTheProbeIntervalReplaceTheScheduledProbe() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    when(client.rerank(any(), anyString(), any())).thenReturn(List.of(new ScoredCandidate(0, 1.0)));
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+
+    for (int i = 0; i < 6; i++) {
+      clock.advance(PROBE_INTERVAL.minusMinutes(1));
+      role.rerank("Frage", List.of("a"));
+      role.probePeriodically();
+    }
+
+    verify(client, times(1)).probe(any());
+    assertThat(role.usable()).isTrue();
+  }
+
+  @Test
+  void theScheduleProbesOnceTheLastResultIsOlderThanTheProbeInterval() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+
+    clock.advance(PROBE_INTERVAL.minusSeconds(1));
+    role.probePeriodically();
+    verify(client, times(1)).probe(any());
+
+    clock.advance(Duration.ofSeconds(1));
+    role.probePeriodically();
+    verify(client, times(2)).probe(any());
+  }
+
+  /**
+   * Queries skip an unreachable endpoint, so nothing but the schedule can bring the role back - it
+   * retries within {@link RerankModelRole#RETRY_INTERVAL}, not after a whole probe interval.
+   */
+  @Test
+  void anUnreachableRoleRetriesSoonAndReturnsToReady() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any()))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false))
+        .thenReturn(null);
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+    assertThat(role.usable()).isFalse();
+
+    clock.advance(RerankModelRole.RETRY_INTERVAL.minusSeconds(1));
+    role.probePeriodically();
+    verify(client, times(1)).probe(any());
+
+    clock.advance(Duration.ofSeconds(1));
+    role.probePeriodically();
+    verify(client, times(2)).probe(any());
+    assertThat(role.usable()).isFalse();
+
+    clock.advance(RerankModelRole.RETRY_INTERVAL);
+    role.probePeriodically();
+    verify(client, times(3)).probe(any());
+    assertThat(role.currentStatus().state()).isEqualTo(RerankRoleState.READY);
+
+    clock.advance(RerankModelRole.RETRY_INTERVAL);
+    role.probePeriodically();
+    verify(client, times(3)).probe(any());
+  }
+
+  /** A real call that failed puts the role into the same short retry as a failed probe. */
+  @Test
+  void aFailedRealCallIsFollowedByARetryWithinTheRetryInterval() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    when(client.rerank(any(), anyString(), any()))
+        .thenThrow(new RerankUnavailableException("connection refused"));
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+    clock.advance(Duration.ofMinutes(1));
+    role.rerank("Frage", List.of("a"));
+
+    clock.advance(RerankModelRole.RETRY_INTERVAL);
+    role.probePeriodically();
+
+    verify(client, times(2)).probe(any());
+    assertThat(role.usable()).isTrue();
+  }
+
+  @Test
+  void theScheduleNeverProbesASwitchedOffRole() {
+    RerankClient client = mock(RerankClient.class);
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role =
+        new RerankModelRole(
+            new RerankProperties(false, ENDPOINT, "m", KEY, Duration.ofSeconds(5), null),
+            client,
+            clock);
+
+    clock.advance(Duration.ofDays(1));
+    role.probePeriodically();
+
+    verify(client, never()).probe(any());
+  }
+
+  /** A probe interval shorter than the retry interval also shortens the retry. */
+  @Test
+  void aProbeIntervalBelowTheRetryIntervalShortensTheRetry() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any()))
+        .thenReturn(new RerankClient.ProbeFailure("connection refused", false));
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    Duration shortInterval = Duration.ofSeconds(30);
+    RerankModelRole role =
+        new RerankModelRole(
+            new RerankProperties(true, ENDPOINT, "m", KEY, Duration.ofSeconds(5), shortInterval),
+            client,
+            clock);
+    role.refresh();
+
+    clock.advance(shortInterval.minusSeconds(1));
+    role.probePeriodically();
+    verify(client, times(1)).probe(any());
+
+    clock.advance(Duration.ofSeconds(1));
+    role.probePeriodically();
+    verify(client, times(2)).probe(any());
+  }
+
+  /** Nothing to score means no contact with the endpoint, so it must not postpone the probe. */
+  @Test
+  void aCallWithoutCandidatesIsNoSignOfLife() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+
+    clock.advance(PROBE_INTERVAL.minusMinutes(1));
+    assertThat(role.rerank("Frage", List.of())).isEmpty();
+    clock.advance(Duration.ofMinutes(1));
+    role.probePeriodically();
+
+    verify(client, never()).rerank(any(), anyString(), any());
+    verify(client, times(2)).probe(any());
+    assertThat(role.degradedCallCount()).isZero();
+  }
+
+  /** A wall clock stepped back must not postpone the next probe by the size of the step. */
+  @Test
+  void aClockSteppedBackDoesNotPostponeTheProbe() {
+    RerankClient client = mock(RerankClient.class);
+    when(client.probe(any())).thenReturn(null);
+    MutableClock clock = new MutableClock(Instant.parse("2026-10-14T08:00:00Z"));
+    RerankModelRole role = scheduledRole(client, clock);
+    role.refresh();
+
+    clock.advance(Duration.ofHours(-6));
+    role.probePeriodically();
+
+    verify(client, times(2)).probe(any());
   }
 
   @Test

@@ -113,6 +113,10 @@ rerank:
   model: ""
   # Budget of one rerank request; empty keeps the application default (240s).
   timeout: ""
+  # Longest gap without an answer before the endpoint is probed with a real, billable request
+  # (at least 10s); real calls reset it. Empty keeps the application default (60s); for a paid
+  # endpoint choose a large value such as 24h.
+  probeInterval: ""
 
 # Transcription endpoint for dictation in the chat (OpenAI-compatible: POST
 # {baseUrl}/audio/transcriptions, GET {baseUrl}/models), read on every start. The key, if needed,

@@ -182,9 +182,8 @@ der nur den Index hält, macht die Belegbarkeit unmöglich.
 
 Der Metadatenbestand und der Vektorindex liegen in PostgreSQL mit pgvector (siehe
 [ADR-0002](../decisions/0002-mvp-technology-stack.md)). Anders als der Dateispeicher ist der
-**Vektorspeicher nicht wählbar**: pgvector ist der einzige unterstützte. Der Zugriff läuft zwar über
-eine portable Schnittstelle des eingesetzten Rahmenwerks, ein Wechsel wird aber nicht unterstützt, nicht
-geprüft und nicht dokumentiert — Begründung in
+**Vektorspeicher nicht wählbar**: pgvector ist der einzige unterstützte; die Suche läuft über eigenes
+SQL, ein Wechsel wird nicht unterstützt, nicht geprüft und nicht dokumentiert — Begründung in
 [Daten-Indizierung & RAG](./data-indexing-rag.md#der-vektorspeicher-postgresql-mit-pgvector-und-sonst-keiner).
 
 ### Betriebshinweise zum eingehängten Netzlaufwerk

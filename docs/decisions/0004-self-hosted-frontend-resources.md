@@ -1,36 +1,46 @@
-# 4. Selbst gehostete Frontend-Ressourcen
-
-Datum: 2026-02-19
+# ADR-0004: Selbst gehostete Frontend-Ressourcen
 
 ## Status
 
-Akzeptiert
+Akzeptiert · zuletzt geändert 2026-10-14
 
 ## Kontext
 
-Das OPAA-Frontend benötigt Schriften (Inter), Icons (Material Icons) und möglicherweise andere
-statische Assets. Diese können von externen CDNs (z. B. Google Fonts, cdnjs) geladen oder als
-npm-Pakete gebündelt und selbst gehostet werden.
-
-Enterprise-Umgebungen beschränken oft den ausgehenden Netzwerkzugang. Externe CDN-Abhängigkeiten
-werfen auch Datenschutzbedenken auf (z. B. Google Fonts überträgt Benutzer-IP-Adressen) und schaffen
-eine Laufzeitabhängigkeit von Drittanbieter-Infrastruktur.
+Das Frontend braucht Schriften und Icons. Diese können von externen CDNs geladen oder als npm-Pakete
+gebündelt werden. Behördliche und andere Enterprise-Umgebungen beschränken ausgehenden Netzzugang;
+externe CDNs übertragen Nutzerdaten (IP-Adresse, Referrer) an Dritte und schaffen eine
+Laufzeitabhängigkeit von fremder Infrastruktur.
 
 ## Entscheidung
 
-Alle Schriften, Icons und statische Assets werden als npm-Pakete installiert und mit der
-Anwendung gebündelt. Zur Laufzeit werden keine externen CDN-Links verwendet.
+### 1. Alle Assets werden gebündelt
 
-Konkret:
-- **Schriften:** `@fontsource/inter` (npm-Paket, selbst gehostet)
-- **Icons:** `@mui/icons-material` (npm-Paket, gebündelt)
-- **Keine `<link>`-Tags** zu externen Diensten in `index.html`
+Schriften, Icons und statische Assets kommen als npm-Pakete und werden mit der Anwendung gebündelt.
+Zur Laufzeit wird kein externer Link geladen: Schriften über `@fontsource/*` (importiert in
+`frontend/src/main.tsx`), Icons über `@mui/icons-material`, keine `<link>`-Tags zu externen Diensten
+in `frontend/index.html`. Die Content-Security-Policy in `frontend/nginx.conf` setzt `font-src 'self'`
+und `default-src 'self'`, sodass ein versehentlicher Fremdlink im Browser scheitert statt still zu
+laden.
 
 ## Konsequenzen
 
-- **Datenschutz:** Keine Benutzerdaten (IP-Adressen, Referrer-Header) werden an externe CDNs gesendet
-- **Offline:** Die Anwendung funktioniert nach dem initialen Laden vollständig offline
-- **Enterprise:** Kompatibel mit restriktiven Netzwerkrichtlinien und Air-Gap-Umgebungen
-- **Bundle-Größe:** Etwas größeres initiales Bundle (Schriften enthalten), gemildert durch Tree-Shaking
-  für Icons und Subsetting für Schriften
-- **Updates:** Schrift-/Icon-Updates erfordern ein npm-Paket-Update statt automatisch zu sein
+Einfacher: keine Nutzerdaten an CDNs; die Anwendung funktioniert in Air-Gap-Umgebungen und offline
+nach dem ersten Laden.
+
+Schwieriger: etwas größeres Bundle (Tree-Shaking für Icons, Subsetting für Schriften mildern das);
+Schrift- und Icon-Updates sind npm-Updates statt automatisch.
+
+## Verworfene Alternativen
+
+- Google Fonts, cdnjs und andere CDNs — Datenabfluss und Netzabhängigkeit.
+
+## Offen
+
+Nichts.
+
+## Änderungsverlauf
+
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-02-19 | — | Erstfassung | 1 |
+| 2026-10-14 | #2697 | Neufassung nach ADR-Vorlage | — |
