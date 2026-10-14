@@ -19,7 +19,7 @@ E-Mail und API-Token, Cursor-Paginierung, v1-Inhaltsendpunkte abgeschaltet) und 
 
 Vom Maintainer vorgegebener Rahmen: *eine* Bibliothek für alle ausgewählten Spaces (die Freigabe
 der Bibliothek gilt für alle Spaces gemeinsam; getrennte Leserkreise brauchen getrennte
-Bibliotheken), beliebig viele Confluence-Bibliotheken auch gegen dieselbe Instanz, beide Editionen
+Bibliotheken — die Oberfläche sagt das in der Anlage **vor** der Space-Auswahl), beliebig viele Confluence-Bibliotheken auch gegen dieselbe Instanz, beide Editionen
 von Anfang an. Drei Fallen der Hersteller-APIs binden die Umsetzung: Die E-Mail ist bei Cloud Teil
 der Zugangsdaten; CQL kappt mit `expand=body.*` still bei 50 Treffern, deshalb liefern Suche und
 Auflistung nur Kennungen und Inhalte werden einzeln geholt; die Zieladressprüfung
@@ -36,7 +36,9 @@ Auswahl wird abgelehnt. Seit #1977 liegt die Auswahl als Teil des Konnektor-Obje
 `ConfluenceSourceSettings` in `knowledge_libraries.source_settings` (ADR-0038, Entscheidung 2),
 nicht mehr in einer Kindtabelle. Die Auswahl ist nach der Anlage als Ganzes ersetzbar; jede
 Änderung erzwingt als nächsten Lauf einen Vollabgleich (Entscheidung 4), weil nur er abgewählte
-Spaces aus dem Index nimmt. Jedes Dokument trägt Space-Schlüssel und Gliederungspfad
+Spaces aus dem Index nimmt; die Oberfläche sagt das an der Stelle, an der die Auswahl geändert
+wird. Der Bestand einer vollständig geleerten Auswahl verschwindet über das Löschen der
+Bibliothek, nicht über einen Lauf. Jedes Dokument trägt Space-Schlüssel und Gliederungspfad
 (`documents.source_container_key`, `source_hierarchy_path`) für Beleg, Laufprotokoll und
 Chunk-Kontext, ohne die Instanz zu fragen; eine Abbildung der Seitenhierarchie auf Ordner
 (ADR-0020) findet nicht statt.
@@ -44,8 +46,8 @@ Chunk-Kontext, ohne die Instanz zu fragen; eine Abbildung der Seitenhierarchie a
 ### 2. Die Edition wird erkannt, steht an der Bibliothek und ist danach unveränderlich
 
 Die Edition (`ConfluenceEdition`: `CLOUD`, `DATA_CENTER`) steht seit #1977 in
-`source_settings`; ein Zugang (ADR-0041) darf sie als Vorgabe tragen (`DefaultKey` der
-`ProfileDeclaration`), dann steht sie an der Bibliothek nur lesbar. Die gespeicherte Basisadresse
+`source_settings`; ein Zugang (ADR-0041) darf sie seit #2218 als Vorgabe tragen (`DefaultKey` der
+`ProfileDeclaration`, ADR-0038, Entscheidung 7), dann steht sie an der Bibliothek nur lesbar. Die gespeicherte Basisadresse
 ist die Confluence-Wurzel — Cloud ohne `/wiki` (der Adapter hängt es an), Data Center samt
 Kontextpfad —, normalisiert (Schema und Host klein, kein abschließender Schrägstrich, kein
 `userinfo`).
@@ -54,9 +56,11 @@ Kontextpfad —, normalisiert (Schema und Host klein, kein abschließender Schr�
 `GET <Host-Wurzel>/_edge/tenant_info` mit `cloudId` ist Cloud; sonst `GET <Basis>/status`
 (`{"state": …}`) bzw. `GET <Basis>/rest/api/space` im Data-Center-Fehlerformat; trifft nichts zu,
 ist die Adresse kein Confluence (auch hinter einem SSO-Reverse-Proxy, der jede Sonde auf eine
-Anmeldeseite umleitet). Keine Erkennung über den Hostnamen (`*.atlassian.net`): falsch für Cloud
-hinter eigener Domain, aussagelos für Data Center. Die Anlage prüft die übernommene Edition erneut
-gegen die Instanz; Erkennung und Space-Auflistung machen die Anlage netzabhängig. Nach der Anlage
+Anmeldeseite umleitet). Mit Zugangsdaten bestätigt der Verbindungstest die Edition zusätzlich
+über den jeweiligen Spaces-Endpunkt. Keine Erkennung über den Hostnamen (`*.atlassian.net`): falsch
+für Cloud hinter eigener Domain, aussagelos für Data Center; die Signaturen sind im Testdoppel
+beider Editionen abgebildet, damit ein Wechsel auf Herstellerseite als Teständerung sichtbar wird.
+Die Anlage prüft die übernommene Edition erneut gegen die Instanz; Erkennung und Space-Auflistung machen die Anlage netzabhängig. Nach der Anlage
 ist die Edition wie der Quellentyp unveränderlich (ADR-0018, Entscheidung 1): Eine migrierte
 Instanz trägt andere Kennungen, URLs und Versionen und bekommt eine neue Bibliothek.
 
@@ -72,9 +76,12 @@ Center (`confluenceIntegrationTest`, #1171) ist eine zusätzliche Ebene.
 
 ### 3. Zugangsdaten je Edition in der bestehenden verschlüsselten Spalte
 
-Confluence-Zugangsdaten liegen in `knowledge_libraries.source_credentials`, ruhend verschlüsselt
-über `SourceCredentialsConverter`/`CredentialsEncryptor` (AES-256-GCM,
-`OPAA_CREDENTIALS_ENCRYPTION_KEY`), angenommen über das nur-schreibende Feld `sourceCredentials`.
+Confluence-Zugangsdaten gehören der Bibliothek und liegen ruhend verschlüsselt (AES-256-GCM,
+`OPAA_CREDENTIALS_ENCRYPTION_KEY`): bei eigener Adresse in `knowledge_libraries.source_credentials`
+(`SourceCredentialsConverter`/`CredentialsEncryptor`, `SecretOwner.LibraryOwned`), an einem Zugang
+seit #2273 als Zeile der Bibliothek im Token-Speicher `connection_tokens`
+(`SecretOwner.LibraryOnProfile`, `kind = 'PERSONAL_SECRET'`; ADR-0041). Angenommen werden sie
+über das nur-schreibende Feld `sourceCredentials`.
 Das Format hängt von der Edition ab (`ConfluenceCredentials#parse`): Cloud `<E-Mail>:<API-Token>`
 (HTTP Basic, zerlegt am ersten Doppelpunkt; die Oberfläche erfasst zwei Felder), Data Center das
 nackte PAT als `Bearer` (ein Doppelpunkt wird als irrtümliches Cloud-Paar zurückgewiesen). Weil
@@ -85,7 +92,8 @@ Zugangsdaten erscheinen in keiner API-Antwort, keinem Log, keiner Exception-Mess
 Fehlermeldung, auch nicht in verschachtelten Ursachen: `ConfluenceCredentials` gibt das Geheimnis
 nur über `authorizationHeader()` heraus, `toString()` nie; ein Test der Zugriffsschicht prüft, dass
 keine ihrer Exceptions das Token enthält. Die Ursprungsbindung der Zugangsdaten (ADR-0018,
-Entscheidung 4; seit ADR-0041 über `credentialBinding`) gilt; das Rotieren eines Tokens ist eine
+Entscheidung 4; seit #2218 über `SourceConnector#credentialBinding`, ADR-0038, Entscheidung 7)
+gilt; das Rotieren eines Tokens ist eine
 gewöhnliche Konfigurationsänderung.
 
 ### 4. Löschsemantik je Lauf, nicht je Quellentyp
@@ -97,8 +105,9 @@ Kennungen des Geänderten und ist „ergänzend" — eine gelöschte Seite ist d
 unveränderten nicht zu unterscheiden. Deshalb deklariert jeder Executor seine Betriebsarten samt
 Löschkategorie (`SourceIndexingExecutor#runModes()`: `IndexingRunMode` →
 `VanishedDocumentPolicy`), ohne impliziten Standard; der Lauf trägt seine Betriebsart in
-`indexing_jobs.run_mode`, und `StaleDocumentCleanupService` weist einen Aufruf aus einem
-ergänzenden Lauf zurück. `FILESYSTEM` und `HTTP_DIRECTORY` kennen nur `FULL`, `RSS_FEED` nur
+`indexing_jobs.run_mode`, sichtbar im Laufprotokoll und in der API (`IndexingRunResponse`), und
+`StaleDocumentCleanupService` weist einen Aufruf aus einem ergänzenden Lauf zurück. Der manuelle
+Anstoß bietet beide Betriebsarten an. `FILESYSTEM` und `HTTP_DIRECTORY` kennen nur `FULL`, `RSS_FEED` nur
 `INCREMENTAL`; die dritte Betriebsart `EVENT` (genau die gemeldeten Objekte, keine Auflistung)
 führt ADR-0027, Entscheidung 3 für S3 ein.
 
@@ -110,7 +119,8 @@ es im Protokoll. Der Geltungsbereich bleibt „je Bibliothek und Quellentyp": Ei
 fehlt in der Menge und fällt weg, eine zweite Bibliothek gegen dieselbe Instanz bleibt unberührt.
 Ein `404`/`403` beim Einzelabruf ist kein Befund — Rechteentzug und Token-Fehler leeren den Index
 nie; ein Space ohne Leserecht bleibt indiziert, bis das Token ihn wieder liest oder eine Person ihn
-abwählt, sichtbar im Laufprotokoll. Nur `status = trashed` beim Einzelabruf ist ein Befund und
+abwählt, sichtbar im Laufprotokoll und an der Bibliothek. Archivierte Seiten sind nicht Teil der
+Auflistung und werden wie gelöschte behandelt. Nur `status = trashed` beim Einzelabruf ist ein Befund und
 entfernt die Seite samt Anhängen in jeder Betriebsart
 (`StaleDocumentCleanupService#removeWithAttachments`, Auflage aus ADR-0022, Entscheidung 3). Ein
 Vollabgleich, der null Dokumente antrifft, löscht nichts.
@@ -152,7 +162,7 @@ positiver Befund entfernt.
 
 Keine Eindeutigkeitsregel auf Adresse oder Token. Zugangsdaten strikt je Bibliothek, auch das
 Webhook-Geheimnis (`source_webhook_secret`); ein Zugang (ADR-0041) bündelt nur Adresse und Edition,
-das Token trägt weiterhin jede Bibliothek. Überlappende Space-Auswahlen indizieren doppelt — keine
+das Token gehört weiterhin jeder Bibliothek (Ablageort: Entscheidung 3). Überlappende Space-Auswahlen indizieren doppelt — keine
 Deduplizierung über Bibliotheksgrenzen, weil die Bibliotheken verschiedene Leserkreise haben.
 Läufe verschiedener Bibliotheken beeinflussen einander nur über das Ratenbudget der Instanz
 (`429`/`Retry-After`, je Lauf beachtet); eine instanzweite Koordination gibt es nicht. Die
@@ -199,5 +209,6 @@ Zieladressprüfung ist eine Betriebseinstellung je Adresse, keine Eigenschaft de
 | 2026-09-03 | #1140 | Webhook als Anlass zum Einzelabruf, zwei Authentisierungswege | 4 |
 | 2026-09-05 | #1200 | Rhythmus je Bibliothek (`fullSyncIntervalDays`, 1–365) | 4 |
 | 2026-09-26 | #1977 | Space-Auswahl, Edition und Rhythmus in `source_settings` (ADR-0038) | 1, 2, 4 |
-| 2026-10-03 | #2159 | Zugang darf die Edition vorgeben (ADR-0041) | 2, 5 |
+| 2026-10-04 | #2218 | Zugang darf die Edition vorgeben; Ursprungsbindung über `credentialBinding` (ADR-0038, Entscheidung 7) | 2, 3, 5 |
+| 2026-10-11 | #2273 | Geheimnis einer Bibliothek an einem Zugang liegt im Token-Speicher (ADR-0041) | 3, 5 |
 | 2026-10-12 | #2496 | Proxy je Bibliothek entfernt, hausweiter Ausgangsproxy (ADR-0041) | Kontext |
