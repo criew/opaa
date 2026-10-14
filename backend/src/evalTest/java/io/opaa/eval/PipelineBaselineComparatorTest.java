@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
 
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -56,6 +58,8 @@ class PipelineBaselineComparatorTest {
         0.3,
         2,
         1.0,
+        PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT),
+        PipelineEvaluationReport.RelevanceCutoffSettings.of(RelevanceCutoffProperties.DEFAULT),
         true,
         true,
         false,
@@ -125,6 +129,8 @@ class PipelineBaselineComparatorTest {
         "angewandt",
         2,
         mmrLambda,
+        PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT),
+        PipelineEvaluationReport.RelevanceCutoffSettings.of(RelevanceCutoffProperties.DEFAULT),
         true,
         true,
         false,
@@ -167,6 +173,8 @@ class PipelineBaselineComparatorTest {
         cfg.similarityThresholdNote(),
         cfg.maxChunksPerDocument(),
         cfg.mmrLambda(),
+        cfg.fusion(),
+        cfg.relevanceCutoff(),
         cfg.fullTextSearchEnabled(),
         cfg.fullTextIndexUpToDate(),
         cfg.queryDecompositionEnabled(),
@@ -247,6 +255,148 @@ class PipelineBaselineComparatorTest {
   }
 
   /**
+   * Fusion and relevance cutoff decide how the candidate lists become the selection; each field is
+   * its own fixed point, including the ones the selected mode ignores.
+   */
+  @Test
+  void aChangedFusionOrRelevanceCutoffInvalidatesTheBaseline() {
+    PipelineEvaluationReport.PipelineRunConfiguration changed =
+        withSelection(
+            matchingRunConfiguration(),
+            new PipelineEvaluationReport.FusionSettings("SCORE", false, 0.5, 2),
+            new PipelineEvaluationReport.RelevanceCutoffSettings("RELATIVE", 5, 0.4, 0.3));
+
+    PipelineBaselineComparator.ComparisonResult result =
+        PipelineBaselineComparator.compare(baseline(0.5, 20), report(0.5, 20, changed));
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .containsExactly(
+            new BaselineComparator.FixedPointMismatch("fusion.method", "RRF", "SCORE"),
+            new BaselineComparator.FixedPointMismatch("fusion.subQueryQuota", "true", "false"),
+            new BaselineComparator.FixedPointMismatch("fusion.vectorWeight", "0.7", "0.5"),
+            new BaselineComparator.FixedPointMismatch("fusion.guaranteedPerList", "1", "2"),
+            new BaselineComparator.FixedPointMismatch("relevanceCutoff.mode", "FIXED", "RELATIVE"),
+            new BaselineComparator.FixedPointMismatch("relevanceCutoff.minChunks", "10", "5"),
+            new BaselineComparator.FixedPointMismatch(
+                "relevanceCutoff.relativeThreshold", "0.6", "0.4"),
+            new BaselineComparator.FixedPointMismatch("relevanceCutoff.kneeDrop", "0.25", "0.3"));
+    assertThat(result.checks()).isEmpty();
+  }
+
+  /** A baseline predating the two blocks is incomparable, not silently read as the defaults. */
+  @Test
+  void aBaselineWithoutFusionAndRelevanceCutoffIsIncomparable() {
+    PipelineBaseline.FixedPoints fp = fixedPoints();
+    PipelineBaseline.FixedPoints withoutBlocks =
+        new PipelineBaseline.FixedPoints(
+            fp.embeddingModel(),
+            fp.embeddingModelDigest(),
+            fp.ollamaImage(),
+            fp.ollamaCpuBackend(),
+            fp.embeddingDimensions(),
+            fp.chunkSize(),
+            fp.chunkSizeMatchesApplicationDefault(),
+            fp.chunkOverlap(),
+            fp.fetchK(),
+            fp.topK(),
+            fp.similarityThreshold(),
+            fp.maxChunksPerDocument(),
+            fp.mmrLambda(),
+            null,
+            null,
+            fp.fullTextSearchEnabled(),
+            fp.fullTextIndexUpToDate(),
+            fp.queryDecompositionEnabled(),
+            fp.maxSubQueries(),
+            fp.chatModel(),
+            fp.hitRateK(),
+            fp.rankingK(),
+            fp.pgvectorIndexType(),
+            fp.corpusManifestSha256(),
+            fp.corpusDocumentCount(),
+            fp.goldenDatasetFile(),
+            fp.goldenDatasetSha256(),
+            fp.goldenCaseCount(),
+            fp.ingestionPipelineFingerprint(),
+            fp.contextPrefixFingerprint(),
+            fp.metadataFilterEnabled());
+    PipelineBaseline baseline =
+        new PipelineBaseline(
+            PipelineEvaluationReport.PIPELINE_MEASUREMENT_CONTRACT_VERSION,
+            withoutBlocks,
+            groups(0.5, 20),
+            "2026-10-13",
+            null,
+            "test");
+
+    PipelineBaselineComparator.ComparisonResult result =
+        PipelineBaselineComparator.compare(baseline, report(0.5, 20, matchingRunConfiguration()));
+
+    assertThat(result.baselineValid()).isFalse();
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::field)
+        .containsExactly(
+            "fusion.method",
+            "fusion.subQueryQuota",
+            "fusion.vectorWeight",
+            "fusion.guaranteedPerList",
+            "relevanceCutoff.mode",
+            "relevanceCutoff.minChunks",
+            "relevanceCutoff.relativeThreshold",
+            "relevanceCutoff.kneeDrop");
+    assertThat(result.fixedPointMismatches())
+        .extracting(BaselineComparator.FixedPointMismatch::baselineValue)
+        .containsOnly("null");
+  }
+
+  private static PipelineEvaluationReport.PipelineRunConfiguration withSelection(
+      PipelineEvaluationReport.PipelineRunConfiguration cfg,
+      PipelineEvaluationReport.FusionSettings fusion,
+      PipelineEvaluationReport.RelevanceCutoffSettings relevanceCutoff) {
+    return new PipelineEvaluationReport.PipelineRunConfiguration(
+        cfg.domain(),
+        cfg.embeddingProvider(),
+        cfg.embeddingModel(),
+        cfg.embeddingModelDigest(),
+        cfg.ollamaImage(),
+        cfg.ollamaCpuBackend(),
+        cfg.embeddingDimensions(),
+        cfg.chunkSize(),
+        cfg.chunkSizeMatchesApplicationDefault(),
+        cfg.chunkOverlap(),
+        cfg.fetchK(),
+        cfg.topK(),
+        cfg.similarityThreshold(),
+        cfg.similarityThresholdNote(),
+        cfg.maxChunksPerDocument(),
+        cfg.mmrLambda(),
+        fusion,
+        relevanceCutoff,
+        cfg.fullTextSearchEnabled(),
+        cfg.fullTextIndexUpToDate(),
+        cfg.queryDecompositionEnabled(),
+        cfg.maxSubQueries(),
+        cfg.chatModel(),
+        cfg.hitRateK(),
+        cfg.rankingK(),
+        cfg.pgvectorIndexType(),
+        cfg.corpusManifestSha256(),
+        cfg.corpusDocumentCount(),
+        cfg.goldenDatasetFile(),
+        cfg.goldenDatasetSha256(),
+        cfg.goldenCaseCount(),
+        cfg.ingestionPipelineFingerprint(),
+        cfg.contextPrefixFingerprint(),
+        cfg.metadataFilterEnabled(),
+        cfg.searchScopeLibraryCount(),
+        cfg.searchScopeNote(),
+        cfg.runStartedAt(),
+        cfg.runDurationSeconds(),
+        cfg.externalOllamaEndpoint());
+  }
+
+  /**
    * Issue #1522: a baseline whose numbers came from another Ollama than the run's is incomparable,
    * not regressed - the same model digest served by a different container tag, or by an external
    * endpoint, is not guaranteed to embed bit-identically. A file predating the field (value {@code
@@ -298,6 +448,8 @@ class PipelineBaselineComparatorTest {
             cfg.similarityThresholdNote(),
             cfg.maxChunksPerDocument(),
             cfg.mmrLambda(),
+            cfg.fusion(),
+            cfg.relevanceCutoff(),
             cfg.fullTextSearchEnabled(),
             cfg.fullTextIndexUpToDate(),
             cfg.queryDecompositionEnabled(),
@@ -357,6 +509,8 @@ class PipelineBaselineComparatorTest {
             cfg.similarityThresholdNote(),
             cfg.maxChunksPerDocument(),
             cfg.mmrLambda(),
+            cfg.fusion(),
+            cfg.relevanceCutoff(),
             cfg.fullTextSearchEnabled(),
             cfg.fullTextIndexUpToDate(),
             cfg.queryDecompositionEnabled(),
@@ -415,6 +569,8 @@ class PipelineBaselineComparatorTest {
             cfg.similarityThresholdNote(),
             cfg.maxChunksPerDocument(),
             cfg.mmrLambda(),
+            cfg.fusion(),
+            cfg.relevanceCutoff(),
             cfg.fullTextSearchEnabled(),
             cfg.fullTextIndexUpToDate(),
             cfg.queryDecompositionEnabled(),
@@ -473,6 +629,8 @@ class PipelineBaselineComparatorTest {
             cfg.similarityThresholdNote(),
             cfg.maxChunksPerDocument(),
             cfg.mmrLambda(),
+            cfg.fusion(),
+            cfg.relevanceCutoff(),
             cfg.fullTextSearchEnabled(),
             cfg.fullTextIndexUpToDate(),
             cfg.queryDecompositionEnabled(),

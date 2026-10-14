@@ -17,6 +17,7 @@ import io.opaa.llm.RerankRoleState;
 import io.opaa.llm.RerankRoleStatus;
 import io.opaa.query.answer.CaffeineChatMemoryRepository;
 import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalContextFactory;
 import io.opaa.retrieval.RetrievalPipeline;
@@ -301,6 +302,7 @@ class ConversationHarnessSupportTest {
         true,
         "markdown:3",
         "prefix",
-        "qwen2.5:1.5b-instruct");
+        "qwen2.5:1.5b-instruct",
+        RelevanceCutoffProperties.DEFAULT);
   }
 }

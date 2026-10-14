@@ -381,6 +381,13 @@ steigen die Klassenwerte auf beiden Pfaden: `verw-lit-001` erreicht auf dem Rohv
 der bisher gemessenen Embedding-Schwäche dieser Klasse war also ein Fehler der alten Ollama-Fassung,
 nicht des Modells.
 
+**Nachtrag Retrieval-Umbau (2026-10-14, Issue #2386).** Seit die Fusion alle `fetch-k` Kandidaten
+jeder Suchliste sieht statt nur `top-k` (#2628), rückt in `verw-lit-001` und `verw-lit-007` ein
+weiteres Dokument vor die Verwaltungsgebührensatzung (Rang 2 → 3 bzw. 3 → 4). Kein Zustand wechselt, auf keinem Pfad; der Rohvektor-Pfad ist unverändert. Die
+Klassenwerte des Pipeline-Pfads sinken (MRR@20 0,481 → 0,454, nDCG@20 0,568 → 0,545). Ebenso rücken in
+`verw-comp-002` ein Dokument (Rang 4 → 5) und in `verw-hop-002` zwei Dokumente (Rang 3 → 5) vor ein
+erwartetes (ADR-0012, Nachtrag Retrieval-Umbau).
+
 ### exact_identifier (2 Fälle)
 
 | Fall | Symptom im Lauf vom 2026-09-01 (Pipeline-Pfad, nach #1049) |

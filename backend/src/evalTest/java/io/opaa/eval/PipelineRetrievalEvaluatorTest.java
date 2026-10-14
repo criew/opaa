@@ -3,6 +3,8 @@ package io.opaa.eval;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -39,6 +41,8 @@ class PipelineRetrievalEvaluatorTest {
         "angewandt",
         2,
         1.0,
+        PipelineEvaluationReport.FusionSettings.of(QueryProperties.Fusion.DEFAULT),
+        PipelineEvaluationReport.RelevanceCutoffSettings.of(RelevanceCutoffProperties.DEFAULT),
         true,
         true,
         false,

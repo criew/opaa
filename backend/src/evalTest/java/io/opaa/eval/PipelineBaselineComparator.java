@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Function;
 
 /**
  * Compares a freshly produced {@link PipelineEvaluationReport} against the committed {@link
@@ -226,6 +227,9 @@ public final class PipelineBaselineComparator {
         String.valueOf(cfg.maxChunksPerDocument()));
     addIfDiffers(
         mismatches, "mmrLambda", String.valueOf(fp.mmrLambda()), String.valueOf(cfg.mmrLambda()));
+    // How the lists become the selection. A missing block compares as "null".
+    addFusionMismatches(mismatches, fp.fusion(), cfg.fusion());
+    addRelevanceCutoffMismatches(mismatches, fp.relevanceCutoff(), cfg.relevanceCutoff());
     // Issue #1049: the lexical path feeds the fusion, so both of these change what is measured.
     addIfDiffers(
         mismatches,
@@ -293,6 +297,63 @@ public final class PipelineBaselineComparator {
         "metadataFilterEnabled",
         String.valueOf(fp.metadataFilterEnabled()),
         String.valueOf(cfg.metadataFilterEnabled()));
+  }
+
+  private static void addFusionMismatches(
+      List<BaselineComparator.FixedPointMismatch> mismatches,
+      PipelineEvaluationReport.FusionSettings baseline,
+      PipelineEvaluationReport.FusionSettings current) {
+    addIfDiffers(
+        mismatches,
+        "fusion.method",
+        valueOf(baseline, PipelineEvaluationReport.FusionSettings::method),
+        valueOf(current, PipelineEvaluationReport.FusionSettings::method));
+    addIfDiffers(
+        mismatches,
+        "fusion.subQueryQuota",
+        valueOf(baseline, PipelineEvaluationReport.FusionSettings::subQueryQuota),
+        valueOf(current, PipelineEvaluationReport.FusionSettings::subQueryQuota));
+    addIfDiffers(
+        mismatches,
+        "fusion.vectorWeight",
+        valueOf(baseline, PipelineEvaluationReport.FusionSettings::vectorWeight),
+        valueOf(current, PipelineEvaluationReport.FusionSettings::vectorWeight));
+    addIfDiffers(
+        mismatches,
+        "fusion.guaranteedPerList",
+        valueOf(baseline, PipelineEvaluationReport.FusionSettings::guaranteedPerList),
+        valueOf(current, PipelineEvaluationReport.FusionSettings::guaranteedPerList));
+  }
+
+  private static void addRelevanceCutoffMismatches(
+      List<BaselineComparator.FixedPointMismatch> mismatches,
+      PipelineEvaluationReport.RelevanceCutoffSettings baseline,
+      PipelineEvaluationReport.RelevanceCutoffSettings current) {
+    addIfDiffers(
+        mismatches,
+        "relevanceCutoff.mode",
+        valueOf(baseline, PipelineEvaluationReport.RelevanceCutoffSettings::mode),
+        valueOf(current, PipelineEvaluationReport.RelevanceCutoffSettings::mode));
+    addIfDiffers(
+        mismatches,
+        "relevanceCutoff.minChunks",
+        valueOf(baseline, PipelineEvaluationReport.RelevanceCutoffSettings::minChunks),
+        valueOf(current, PipelineEvaluationReport.RelevanceCutoffSettings::minChunks));
+    addIfDiffers(
+        mismatches,
+        "relevanceCutoff.relativeThreshold",
+        valueOf(baseline, PipelineEvaluationReport.RelevanceCutoffSettings::relativeThreshold),
+        valueOf(current, PipelineEvaluationReport.RelevanceCutoffSettings::relativeThreshold));
+    addIfDiffers(
+        mismatches,
+        "relevanceCutoff.kneeDrop",
+        valueOf(baseline, PipelineEvaluationReport.RelevanceCutoffSettings::kneeDrop),
+        valueOf(current, PipelineEvaluationReport.RelevanceCutoffSettings::kneeDrop));
+  }
+
+  /** {@code "null"} for a missing block or field, like every other fixed point. */
+  private static <T> String valueOf(T block, Function<T, Object> field) {
+    return String.valueOf(block == null ? null : field.apply(block));
   }
 
   private static void addIfDiffers(

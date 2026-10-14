@@ -1,5 +1,7 @@
 package io.opaa.eval;
 
+import io.opaa.retrieval.QueryProperties;
+import io.opaa.retrieval.RelevanceCutoffProperties;
 import java.util.List;
 import java.util.Map;
 
@@ -133,8 +135,42 @@ public record PipelineEvaluationReport(
    *
    * <p>Version 20 (issue #2373): the production top-k rose from 8 to 20, and with it this path's
    * ranking window and every component name (MRR@20, nDCG@20, Recall@20). Re-measured.
+   *
+   * <p>Version 21 (issue #2386): {@code opaa.query.fusion.*} and {@code
+   * opaa.query.relevance-cutoff.*} became checked fixed points ({@link FusionSettings}, {@link
+   * RelevanceCutoffSettings}). Re-measured.
    */
-  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 20;
+  public static final int PIPELINE_MEASUREMENT_CONTRACT_VERSION = 21;
+
+  /**
+   * {@code opaa.query.fusion.*} of a run. The whole set is pinned, including {@code vectorWeight}
+   * under {@code RRF}: switching the method makes it effective. Boxed so that a baseline without
+   * the block loads as {@code null} and is reported as incomparable instead of reading as a value.
+   */
+  public record FusionSettings(
+      String method, Boolean subQueryQuota, Double vectorWeight, Integer guaranteedPerList) {
+
+    public static FusionSettings of(QueryProperties.Fusion fusion) {
+      return new FusionSettings(
+          fusion.method().name(),
+          fusion.subQueryQuota(),
+          fusion.vectorWeight(),
+          fusion.guaranteedPerList());
+    }
+  }
+
+  /**
+   * {@code opaa.query.relevance-cutoff.*} of a run. The whole set is pinned, including the
+   * thresholds of the modes not selected, for the same reason as in {@link FusionSettings}.
+   */
+  public record RelevanceCutoffSettings(
+      String mode, Integer minChunks, Double relativeThreshold, Double kneeDrop) {
+
+    public static RelevanceCutoffSettings of(RelevanceCutoffProperties cutoff) {
+      return new RelevanceCutoffSettings(
+          cutoff.mode().name(), cutoff.minChunks(), cutoff.relativeThreshold(), cutoff.kneeDrop());
+    }
+  }
 
   /**
    * The fixed points of a pipeline run — everything that must match for two pipeline reports to be
@@ -180,6 +216,8 @@ public record PipelineEvaluationReport(
       String similarityThresholdNote,
       int maxChunksPerDocument,
       double mmrLambda,
+      FusionSettings fusion,
+      RelevanceCutoffSettings relevanceCutoff,
       boolean fullTextSearchEnabled,
       boolean fullTextIndexUpToDate,
       boolean queryDecompositionEnabled,
