@@ -12,7 +12,7 @@ import { server } from '../mocks/server'
 // belongs in that test file's own beforeEach.
 
 // chat
-import { resetChatMockState } from '../mocks/chatHandlers'
+import { resetChatMockState } from '../features/chat/mocks/chatHandlers'
 // asset
 import { resetGrantMockState } from '../features/asset/mocks/assetHandlers'
 import { resetMockSpaceAssetAssociations } from '../features/asset/mocks/assetFixtures'

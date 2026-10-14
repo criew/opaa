@@ -8,8 +8,8 @@ import CssBaseline from '@mui/material/CssBaseline'
 import { createAppTheme } from '@/shared/theme/theme'
 import Sidebar from './Sidebar'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useChatStore } from '../stores/chatStore'
-import { useChatListStore } from '../stores/chatListStore'
+import { useChatStore } from '@/features/chat'
+import { useChatListStore } from '@/features/chat'
 import { useSpaceStore } from '@/features/space'
 import {
   SIDEBAR_DEFAULT_WIDTH,

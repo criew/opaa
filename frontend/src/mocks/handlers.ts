@@ -1,7 +1,7 @@
 // chat
-import { chatHandlers } from './chatHandlers'
-import { queryHandlers } from './queryHandlers'
-import { transcriptionHandlers } from './transcriptionHandlers'
+import { chatHandlers } from '../features/chat/mocks/chatHandlers'
+import { queryHandlers } from '../features/chat/mocks/queryHandlers'
+import { transcriptionHandlers } from '../features/chat/mocks/transcriptionHandlers'
 // space
 import { spaceHandlers } from '../features/space/mocks/spaceHandlers'
 // asset
@@ -46,7 +46,7 @@ import { externalAccessHandlers } from '../features/external-access/mocks/extern
 import { externalAccessTokenHandlers } from '../features/external-access/mocks/externalAccessTokenHandlers'
 import { externalAccessLibraryHandlers } from '../features/external-access/mocks/externalAccessLibraryHandlers'
 // search-admin
-import { searchHandlers } from './searchHandlers'
+import { searchHandlers } from '../features/chat/mocks/searchHandlers'
 import { searchAdminHandlers } from '../features/search-admin/mocks/searchAdminHandlers'
 import { diagnosticAccessHandlers } from '../features/library/mocks/diagnosticAccessHandlers'
 // auth

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mockLibraryFolders } from '../features/library/mocks/libraryFixtures'
-import { mockQueryResponses } from './queryFixtures'
+import { mockQueryResponses } from '../features/chat/mocks/queryFixtures'
 import {
   buildMockFolderPath,
   resolveOrCreateMockFolderPath,

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
-import { useChatListStore } from '../stores/chatListStore'
+import { useChatListStore } from '@/features/chat'
 import { loadSpaceList, renderSpaceChats } from './themeSeams'
 
 describe('theme seams filled by the application frame', () => {

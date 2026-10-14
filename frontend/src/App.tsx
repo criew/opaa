@@ -44,9 +44,9 @@ import {
   VerifyEmailPage,
 } from '@/features/auth/routes'
 // chat
-import ChatPage from './pages/ChatPage'
-import ChatsPage from './pages/ChatsPage'
-import ChatRedirect from './pages/ChatRedirect'
+import { ChatPage } from '@/features/chat/routes'
+import { ChatsPage } from '@/features/chat/routes'
+import { ChatRedirect } from '@/features/chat/routes'
 // space
 import { SpacePage } from '@/features/space/routes'
 import { SpacesOverviewPage } from '@/features/space/routes'
