@@ -31,7 +31,7 @@ import { accountHandlers } from './accountHandlers'
 // identity-provider
 import { identityProviderHandlers } from './identityProviderHandlers'
 // model
-import { modelHandlers } from './modelHandlers'
+import { modelHandlers } from '@/features/model/mocks/modelHandlers'
 // mail
 import { mailHandlers } from '@/features/mail/mocks/mailHandlers'
 // branding

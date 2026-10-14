@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { delay, http, HttpResponse } from 'msw'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { server } from '../../../mocks/server'
-import { mockLlmModels } from '../../../mocks/modelFixtures'
+import { mockLlmModels } from '../mocks/modelFixtures'
 import { renderWithProviders } from '../../../test/test-utils'
 import LlmModelFormDialog from './LlmModelFormDialog'
 

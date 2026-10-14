@@ -19,7 +19,7 @@ const QUELLEN = {
     import: 'default',
     eager: true,
   }) as Record<string, string>),
-  ...(import.meta.glob('../../features/{audit,mail}/components/**/*.tsx', {
+  ...(import.meta.glob('../../features/{audit,mail,model}/components/**/*.tsx', {
     query: '?raw',
     import: 'default',
     eager: true,

@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import type { LlmModelDiscoveryRequest, LlmModelDiscoveryResponse } from '@/shared/api/types'
-import { discoverLlmModels } from '../../../services/modelApi'
+import { discoverLlmModels } from '../api/modelApi'
 
 export type DiscoveryState =
   | { status: 'idle' }

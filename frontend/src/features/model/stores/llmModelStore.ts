@@ -7,7 +7,7 @@ import {
   getEmbeddingInfo,
   getLlmModels,
   updateLlmModel,
-} from '../services/modelApi'
+} from '../api/modelApi'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

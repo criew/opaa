@@ -74,7 +74,7 @@ import OidcProviderManagementPage from './pages/OidcProviderManagementPage'
 import DirectorySyncPage from './pages/DirectorySyncPage'
 import ProviderGroupWorklistPage from './pages/ProviderGroupWorklistPage'
 // model
-import LlmModelManagementPage from './pages/LlmModelManagementPage'
+import { LlmModelManagementPage } from '@/features/model/routes'
 // mail
 import { MailSettingsPage } from '@/features/mail/routes'
 // branding

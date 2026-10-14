@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { http, HttpResponse } from 'msw'
-import { server } from '../mocks/server'
+import { server } from '../../../mocks/server'
 import { useLlmModelStore } from './llmModelStore'
 
 describe('llmModelStore', () => {

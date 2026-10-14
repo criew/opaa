@@ -12,10 +12,10 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import MoreVertIcon from '@mui/icons-material/MoreVert'
 import WifiTetheringOutlinedIcon from '@mui/icons-material/WifiTetheringOutlined'
 import type { LlmModelResponse } from '@/shared/api/types'
-import { testLlmModel } from '../../../services/modelApi'
+import { testLlmModel } from '../api/modelApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
-import { useLlmModelStore } from '../../../stores/llmModelStore'
+import { useLlmModelStore } from '../stores/llmModelStore'
 
 export const ACTIVE_DELETE_HINT =
   'Das aktive Modell kann nicht gelöscht werden – zuerst ein anderes Modell aktivieren.'
