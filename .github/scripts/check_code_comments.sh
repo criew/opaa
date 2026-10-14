@@ -5,7 +5,9 @@
 # backend/src/test and backend/src/evalTest; '#' comment lines of application*.yml; '#' lines and
 # '//' lines of inline scripts in .github/workflows/*.yml; every line of the OpenAPI fragments,
 # whose summaries and descriptions are the API documentation; the changeSet comment: values (folded
-# ones with their continuation lines) and '#' lines of the Liquibase changelogs.
+# ones with their continuation lines) and '#' lines of the Liquibase changelogs; '//' and '/* */'
+# comments of the TypeScript sources under frontend/src, of frontend/vite.config.ts and of the ESLint
+# configuration (frontend/eslint.config.*, frontend/eslint/), each from the comment start on.
 #
 # Rejected:
 # - review protocol: "#393 code review, finding 1", "#N second review", "#N (review)",
@@ -32,6 +34,7 @@ TREES=(
   test=backend/src/test/
   evalTest=backend/src/evalTest/
   workflows=.github/workflows/
+  frontend=frontend/
 )
 # An issue reference; "owner/repo#123", "&#123;" and "page.md#123" are none.
 REF='(?<![\w.&#/-])#[0-9]{2,4}\b'
@@ -42,7 +45,8 @@ HISTORY="(?i)\bpre-#[0-9]|\bformerly\b|\b(since|seit|before)\s+(epic\s+|PR\s+|is
 MARKER="\(\s*((PR|issue|see|Epic)\s+)?${REF}(\s*[,/]\s*((PR|issue)\s+)?${REF})*\s*([);]|,\s*\S)|${AT}\s*(//|/?\*|#|comment:\s*\"?)\s*(<p>|<b>)?\s*(([Ii]ssues?|PR)\s+)?${REF}(\s*[,/]\s*#[0-9]{2,4})*\s*:"
 EXEMPT="^backend/src/main/java/io/opaa/query/spike/|(?i)\bspike\s+\(?#[0-9]"
 # The form a test may keep: it names the regression and, after the colon, the invariant it guards.
-GUARD="^backend/src/(test|evalTest)/[^:]+:[0-9]+:(?i).*\bregression\s+guard\s+for\s+#[0-9]+((\s*,\s*|\s+and\s+|/)#[0-9]+)*:\s*\S"
+TESTS='(backend/src/(test|evalTest)/[^:]+|frontend/src/test/[^:]+|frontend/src/[^:]+\.test\.tsx?)'
+GUARD="^${TESTS}:[0-9]+:(?i).*\b(regression\s+guard\s+for|Regressionsschutz\s+(zu|für))\s+#[0-9]+((\s*,\s*|\s+(and|und)\s+|/)#[0-9]+)*:\s*\S"
 
 java_comments() {
   git ls-files -z -- "$1/*.java" | xargs -0 -r grep -nHP '^\s*(//|/?\*)' || true
@@ -62,6 +66,28 @@ changelog_comments() {
     }'
 }
 
+# TypeScript and JavaScript comments: a line inside a block comment whole, otherwise from the first
+# '/*' or '//' outside a one-line string literal; a '//' right after ':' is a URL.
+ts_comments() {
+  git ls-files -z -- 'frontend/src/*.ts' 'frontend/src/*.tsx' frontend/vite.config.ts \
+    'frontend/eslint.config.*' 'frontend/eslint/*.js' 'frontend/eslint/*.mjs' | xargs -0 -r awk '
+    FNR == 1 { block = 0 }
+    block { print FILENAME ":" FNR ":" $0; if (index($0, "*/")) block = 0; next }
+    {
+      code = $0
+      while (match(code, /"([^"\\]|\\.)*"|\047([^\047\\]|\\.)*\047|`([^`\\]|\\.)*`/)) {
+        code = substr(code, 1, RSTART - 1) sprintf("%" RLENGTH "s", "") substr(code, RSTART + RLENGTH)
+      }
+      b = match(code, /\/\*/) ? RSTART : 0
+      l = match(code, /(^|[^:])\/\//) ? RSTART + (substr(code, RSTART, 2) == "//" ? 0 : 1) : 0
+      if (l && (!b || l < b)) { print FILENAME ":" FNR ":" substr($0, l); next }
+      if (b) {
+        print FILENAME ":" FNR ":" substr($0, b)
+        if (!index(substr(code, b + 2), "*/")) block = 1
+      }
+    }'
+}
+
 lines() {
   local tree
   for tree in backend/src/main opaa-api/src/main backend/src/test backend/src/evalTest; do
@@ -72,6 +98,7 @@ lines() {
   git ls-files -z -- '.github/workflows/*.yml' | xargs -0 -r grep -nHP '^\s*(#|//)' || true
   git ls-files -z -- 'opaa-api/src/main/openapi/*.yaml' | xargs -0 -r grep -nH '' || true
   changelog_comments
+  ts_comments
 }
 
 # The tree label of every line read, in order.

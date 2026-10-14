@@ -1,6 +1,7 @@
 """Self-check for check_code_comments.sh: each rule catches its form in every checked tree, and the
 forms the rule allows (an upstream reference, an HTML entity, the spike package, a string outside a
-comment, a test's regression guard) pass."""
+comment, a test's regression guard) pass. The TypeScript cases cover line, block, trailing and JSX
+comments under frontend/src and the frontend configuration files."""
 
 import shutil
 import subprocess
@@ -183,3 +184,68 @@ def test_allowed_workflow_and_changelog_comment_passes(repo: Path, path: str, te
 def test_no_comment_at_all_fails(repo: Path) -> None:
     write(repo, "README.md", "x\n")
     assert run(repo).returncode == 1
+
+
+TS = "frontend/src/features/probe/probe.ts"
+TSX = "frontend/src/features/probe/Probe.tsx"
+TS_TEST = "frontend/src/features/probe/probe.test.ts"
+
+
+@pytest.mark.parametrize(
+    "path, text, kind",
+    [
+        (TS, "// #1921: the product name moves into the menu.\nexport const a = 1\n", "Origin marker"),
+        (TS, "export const a = 1 // every library has an owner (#1073).\n", "Origin marker"),
+        (TS, "/**\n * The account list (#1541, ADR-0033 Entscheidung 11).\n */\nexport const a = 1\n", "Origin marker"),
+        (TS, "/** #737 review (nit): module-scoped, not store state. */\nexport const a = 1\n", "Review protocol"),
+        (TS, "// Mirrors the guard (#423 code review, nit 4).\nexport const a = 1\n", "Review protocol"),
+        (TS, "// Picking a space leads there since #1647.\nexport const a = 1\n", "History"),
+        (TSX, "export const A = () => (\n  <div>\n    {/* #1921: the version stays here. */}\n  </div>\n)\n", "Origin marker"),
+        (TSX, "export const A = () => (\n  <div>\n    {/* The rail keeps its landmark\n        (review #791, finding 5). */}\n  </div>\n)\n", "Review protocol"),
+        (TS_TEST, "// #822 review, finding 6a: folders are not paged.\nexport const a = 1\n", "Review protocol"),
+        ("frontend/vite.config.ts", "// #707: fonts are always emitted as files.\nexport default {}\n", "Origin marker"),
+        ("frontend/eslint.config.js", "// Accessibility rules (#586).\nexport default []\n", "Origin marker"),
+    ],
+)
+def test_frontend_comment_fails(repo: Path, path: str, text: str, kind: str) -> None:
+    write(repo, path, text)
+    result = run(repo)
+    assert result.returncode == 1
+    assert kind in result.stdout
+    assert path in result.stdout
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "export const a = '(#123)'\n// A string is no comment.\n",
+        'export const a = "// (#123)"\n// A string is no comment.\n',
+        "export const a = `// (#123)`\n// A string is no comment.\n",
+        "export const url = 'https://example.org/#123' // a URL in a string\n",
+        "// Switching back to upstream is tracked in #635.\nexport const a = 1\n",
+        "/** Removed once #2500 replaces it. */\nexport const a = 1\n",
+    ],
+)
+def test_allowed_frontend_comment_passes(repo: Path, text: str) -> None:
+    write(repo, TS, text)
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
+
+
+@pytest.mark.parametrize(
+    "comment",
+    [
+        "Regression guard for #307: a stale report never hides the last one.",
+        "Regressionsschutz zu #1988: Das Notanker-Konto bietet keinen Rücksetz-Link.",
+    ],
+)
+def test_regression_guard_in_a_frontend_test_is_counted_apart(repo: Path, comment: str) -> None:
+    write(repo, TS_TEST, f"// {comment}\nexport const a = 1\n")
+    result = run(repo)
+    assert result.returncode == 0, result.stdout
+    assert "frontend: 0 checked lines still name an issue, 1 more as a regression guard" in result.stdout
+
+
+def test_regression_guard_counts_only_in_a_frontend_test(repo: Path) -> None:
+    write(repo, TS, "// Regression guard for #307: a stale report never hides the last one.\nexport const a = 1\n")
+    assert "frontend: 1 checked lines still name an issue, 0 more" in run(repo).stdout

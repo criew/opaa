@@ -143,6 +143,10 @@ jobs:
               - 'backend/src/test/**'
               - 'backend/src/evalTest/**'
               - 'opaa-api/src/main/**'
+              - 'frontend/src/**'
+              - 'frontend/vite.config.ts'
+              - 'frontend/eslint.config.*'
+              - 'frontend/eslint/**'
               - '.github/workflows/**'
               - '.github/scripts/check_code_comments.sh'
             # keycloak/** belongs to the seed filter because demo/seed/test_seed.py
@@ -182,10 +186,10 @@ jobs:
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
 
-      # Comments in backend, opaa-api, the workflows and the Liquibase changelogs carry no review
-      # protocol, no history anchored at an issue and no bare origin marker (AGENTS.md,
+      # Comments in backend, opaa-api, frontend, the workflows and the Liquibase changelogs carry no
+      # review protocol, no history anchored at an issue and no bare origin marker (AGENTS.md,
       # "Code-Kommentare").
-      - name: Kommentarregel in Backend, opaa-api und Workflows prüfen
+      - name: Kommentarregel in Backend, opaa-api, Frontend und Workflows prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.comments == 'true'
         run: .github/scripts/check_code_comments.sh
 
