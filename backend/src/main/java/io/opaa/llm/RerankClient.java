@@ -4,16 +4,11 @@ import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InterruptedIOException;
-import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.UnknownHostException;
 import java.net.http.HttpClient;
-import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -27,7 +22,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
-import javax.net.ssl.SSLException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import tools.jackson.core.JacksonException;
@@ -327,21 +321,13 @@ public class RerankClient {
   }
 
   private static URI rerankUri(String baseUrl) {
-    URI uri;
-    try {
-      uri = ModelEndpointUri.append(baseUrl, "/rerank");
-    } catch (IllegalArgumentException e) {
-      // Syntactically valid, but carrying credentials - a different fault from an unparsable
-      // address, and the message must say so without repeating the address (#1147).
-      throw new RerankUnavailableException("base URL carries credentials", e);
-    } catch (URISyntaxException e) {
-      throw new RerankUnavailableException("base URL is not a valid URI", e);
-    }
-    String scheme = uri.getScheme();
-    if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-      throw new RerankUnavailableException("base URL must start with http:// or https://");
-    }
-    return uri;
+    return ModelRoleHttp.endpointUri(
+        baseUrl,
+        "/rerank",
+        (message, cause) ->
+            cause == null
+                ? new RerankUnavailableException(message)
+                : new RerankUnavailableException(message, cause));
   }
 
   private String requestBody(String model, String query, List<String> documents, Dialect dialect) {
@@ -424,51 +410,27 @@ public class RerankClient {
     }
   }
 
+  /** 400 and 422 are the schema rejections the dialect negotiation falls back on. */
+  private static final Map<Integer, String> ROLE_STATUS_TEXTS =
+      Map.of(
+          400, "HTTP 400: the endpoint rejected the request",
+          422, "HTTP 422: the endpoint rejected the request");
+
   private static String describeStatus(int status) {
-    return switch (status) {
-      case 401 -> "HTTP 401: authentication failed, check the access key";
-      case 403 -> "HTTP 403: the endpoint refused access";
-      case 404 -> "HTTP 404: unknown path or model identifier";
-      case 400, 422 -> "HTTP " + status + ": the endpoint rejected the request";
-      default -> "HTTP " + status + " from the rerank endpoint";
-    };
+    return ModelRoleHttp.describeStatus(status, "rerank", ROLE_STATUS_TEXTS);
   }
 
   private static String describeConnectionError(IOException e) {
-    if (e instanceof UnknownHostException) {
-      return "host not found (DNS resolution failed)";
-    }
-    if (e instanceof ConnectException) {
-      return "connection refused";
-    }
-    if (e instanceof HttpConnectTimeoutException) {
-      return "connection attempt timed out (endpoint did not accept the connection)";
-    }
-    if (isRequestTimeout(e)) {
-      return "request timed out";
-    }
-    if (e instanceof SSLException) {
-      return "TLS handshake failed";
-    }
-    if (e instanceof InterruptedIOException) {
-      // Checked after isRequestTimeout: SocketTimeoutException is itself an
-      // InterruptedIOException subclass and must keep its own, more specific message above.
-      return "request interrupted";
-    }
-    return "endpoint not reachable";
+    return ModelRoleHttp.describeConnectionError(
+        e, "connection attempt timed out (endpoint did not accept the connection)");
   }
 
   /**
-   * Whether {@code e} is the request running past {@link RerankProperties#timeout()} - as opposed
-   * to {@link HttpConnectTimeoutException}, a JDK subclass of {@link HttpTimeoutException} that
-   * fires when nothing ever accepted the TCP connection within {@link #CONNECT_TIMEOUT}. The two
-   * need to stay apart: a connect timeout means the endpoint could not be reached at all (a dead
-   * host, a firewall drop), the same as a refused connection, while a request timeout means it was
-   * reached and simply did not finish scoring in time (#1154's CPU case). Classifying the former as
-   * the latter would send an administrator to raise a timeout that was never the problem.
+   * Whether {@code e} is the request running past {@link RerankProperties#timeout()}, see {@link
+   * ModelRoleHttp#isRequestTimeout}: a CPU reranker that did not finish in time, not an unreachable
+   * endpoint.
    */
   static boolean isRequestTimeout(IOException e) {
-    return (e instanceof HttpTimeoutException && !(e instanceof HttpConnectTimeoutException))
-        || e instanceof SocketTimeoutException;
+    return ModelRoleHttp.isRequestTimeout(e);
   }
 }
