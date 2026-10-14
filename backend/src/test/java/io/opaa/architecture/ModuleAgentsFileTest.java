@@ -19,6 +19,7 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +27,7 @@ import org.junit.jupiter.api.Test;
  * Every logical module carries a short {@code AGENTS.md} in its main package, next to a {@code
  * CLAUDE.md} that imports it; every further top-level package of the module has a {@code CLAUDE.md}
  * that imports the module's file, so the instructions load wherever a file of the module is read.
+ * Every ADR the file names, and every link it holds into {@code docs/decisions}, exists there.
  */
 class ModuleAgentsFileTest {
 
@@ -33,9 +35,24 @@ class ModuleAgentsFileTest {
 
   private static final int MAX_LINES = 60;
 
+  /** Lines holding a Markdown link and table rows are exempt; a link cannot be wrapped. */
+  private static final int MAX_LINE_LENGTH = 120;
+
+  private static final Path FIXTURE =
+      Path.of("src/test/java/io/opaa/architecture/fixture/adrreference/dead-adr-references.md");
+
   /** "Pakete (`io.opaa.*`): a, b." - group 1 the prefix below io.opaa, group 2 the list. */
   private static final Pattern PACKAGE_LINE =
       Pattern.compile("Pakete \\(`io\\.opaa\\.([a-z.]*)\\*`\\): ([a-z0-9, ]+)");
+
+  private static final Path DECISIONS = Path.of("../docs/decisions");
+
+  /** "ADR-0044" - group 1 the number, which a file name under docs/decisions starts with. */
+  private static final Pattern ADR_NUMBER = Pattern.compile("ADR-(\\d{4})");
+
+  /** "](../docs/decisions/0044-x.md)" - group 1 the link, relative to the linking file. */
+  private static final Pattern DECISION_LINK =
+      Pattern.compile("\\]\\(([^)\\s]*decisions/[^)\\s]*)\\)");
 
   /** The package, relative to {@code io.opaa}, whose directory holds the module's AGENTS.md. */
   private static final Map<Module, String> MAIN_PACKAGES =
@@ -78,6 +95,7 @@ class ModuleAgentsFileTest {
           .as("%s has at most %d lines - move detail into ADRs or the Handbuch", agents, MAX_LINES)
           .hasSizeLessThanOrEqualTo(MAX_LINES)
           .anyMatch(line -> !line.isBlank());
+      assertThat(overlongLines(agents)).as("lines over %d characters", MAX_LINE_LENGTH).isEmpty();
       Path claude = directory.resolve("CLAUDE.md");
       assertThat(claude)
           .as("%s is missing; create it with the single line @AGENTS.md", claude)
@@ -128,6 +146,68 @@ class ModuleAgentsFileTest {
           .as("module %s keeps one AGENTS.md, in package %s", entry.getValue(), main)
           .doesNotExist();
     }
+  }
+
+  @Test
+  void everyAdrReferenceInAnAgentsFileNamesAnExistingDecision() throws IOException {
+    for (String main : MAIN_PACKAGES.values()) {
+      Path agents = directoryOf(main).resolve("AGENTS.md");
+      assertThat(deadAdrReferences(agents)).as("ADR references in %s", agents).isEmpty();
+    }
+  }
+
+  @Test
+  void aReferenceToAMissingDecisionIsReported() throws IOException {
+    assertThat(deadAdrReferences(FIXTURE))
+        .containsExactly("ADR-0999", "../../../../../../../../../docs/decisions/0044-renamed.md");
+  }
+
+  @Test
+  void anOverlongProseLineIsReported() throws IOException {
+    assertThat(overlongLines(FIXTURE))
+        .singleElement()
+        .asString()
+        .startsWith(FIXTURE + ":10: ")
+        .endsWith("characters");
+  }
+
+  /** "file:line: n characters" for every line over the limit outside links and tables. */
+  private static List<String> overlongLines(Path file) throws IOException {
+    List<String> lines = Files.readAllLines(file, StandardCharsets.UTF_8);
+    return IntStream.range(0, lines.size())
+        .filter(index -> lines.get(index).length() > MAX_LINE_LENGTH)
+        .filter(index -> !lines.get(index).contains("](") && !lines.get(index).startsWith("|"))
+        .mapToObj(
+            index -> file + ":" + (index + 1) + ": " + lines.get(index).length() + " characters")
+        .toList();
+  }
+
+  /** Every ADR number in {@code file} without a decision, then every decision link to no file. */
+  private static List<String> deadAdrReferences(Path file) throws IOException {
+    Set<String> numbers;
+    try (Stream<Path> decisions = Files.list(DECISIONS)) {
+      numbers =
+          decisions
+              .map(decision -> decision.getFileName().toString())
+              .filter(name -> name.matches("\\d{4}-.*\\.md"))
+              .map(name -> name.substring(0, 4))
+              .collect(Collectors.toSet());
+    }
+    String text = Files.readString(file, StandardCharsets.UTF_8);
+    Stream<String> unknownNumbers =
+        ADR_NUMBER
+            .matcher(text)
+            .results()
+            .map(reference -> reference.group(1))
+            .filter(number -> !numbers.contains(number))
+            .map(number -> "ADR-" + number);
+    Stream<String> brokenLinks =
+        DECISION_LINK
+            .matcher(text)
+            .results()
+            .map(link -> link.group(1).split("#", 2)[0])
+            .filter(link -> !Files.isRegularFile(file.resolveSibling(link)));
+    return Stream.concat(unknownNumbers, brokenLinks).distinct().toList();
   }
 
   private static Set<String> packagesOf(Module module) {
