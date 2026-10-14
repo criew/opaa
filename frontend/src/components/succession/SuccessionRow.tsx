@@ -13,7 +13,7 @@ import type { SuccessionEntryResponse, SuccessionKind } from '@/shared/api/types
 import { radius } from '@/shared/theme/tokens'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import PermissionTransferDialog from '../permissions/PermissionTransferDialog'
-import { assetTypeDefinition, assetTypeLabel } from '../assets/assetTypeRegistry'
+import { assetTypeDefinition, assetTypeLabel } from '../../shared/assetTypes'
 import { addresseeOf, nextStepOf, problemOf, sinceLabel } from './successionPresentation'
 
 function objectHref(entry: SuccessionEntryResponse): string | null {

@@ -1,18 +1,18 @@
 package io.opaa.retrieval.ranking;
 
+import io.opaa.api.types.CandidateOutcome;
+import io.opaa.api.types.RetrievalStageName;
+import io.opaa.api.types.VerdictReason;
 import io.opaa.retrieval.CandidateList;
-import io.opaa.retrieval.CandidateOutcome;
 import io.opaa.retrieval.CandidateVerdict;
 import io.opaa.retrieval.QueryProperties;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalStage;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageOutcome;
 import io.opaa.retrieval.StageStatus;
-import io.opaa.retrieval.VerdictReason;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;

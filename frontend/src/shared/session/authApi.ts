@@ -28,7 +28,7 @@ export class UnknownIssuerError extends Error {
 // would otherwise keep every other tab of this browser waiting for its own renewal.
 const AUTH_REQUEST_TIMEOUT_MS = 15_000
 /**
- * Exported for the self-service calls in {@link ../../services/selfServiceApi}: same base URL,
+ * Exported for the self-service calls in {@link ../../features/auth/api/selfServiceApi}: same base URL,
  * same timeout and the same deliberate absence of the renew interceptor - a second client would be
  * a second set of those decisions to keep in step.
  */

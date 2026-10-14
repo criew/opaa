@@ -1,10 +1,10 @@
 package io.opaa.retrieval.scope;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.retrieval.RetrievalContext;
 import io.opaa.retrieval.RetrievalNote;
 import io.opaa.retrieval.RetrievalStage;
-import io.opaa.retrieval.RetrievalStageName;
 import io.opaa.retrieval.RetrievalState;
 import io.opaa.retrieval.StageExplanation;
 import io.opaa.retrieval.StageOutcome;

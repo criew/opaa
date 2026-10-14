@@ -15,10 +15,10 @@ import AddIcon from '@mui/icons-material/Add'
 import WorkspacesOutlinedIcon from '@mui/icons-material/WorkspacesOutlined'
 import type { AssetType, SpaceListResponse } from '@/shared/api/types'
 import { associateSpaceAsset, getAssetSpaceAssociations } from '../../services/assetApi'
-import { getSpaces } from '../../services/spaceApi'
 import { notify } from '@/shared/stores/notificationStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import type { SpaceCreateLocationState } from './assetPick'
+import { useSpaceListLoader } from './spaceListContext'
 
 interface UseInSpaceTarget {
   assetType: AssetType
@@ -57,6 +57,7 @@ export function UseInSpaceDialog({
   onAssociated,
 }: UseInSpaceDialogProps) {
   const navigate = useNavigate()
+  const loadSpaces = useSpaceListLoader()
   const [spaces, setSpaces] = useState<SpaceListResponse[] | null>(null)
   const [associated, setAssociated] = useState<Set<string>>(new Set())
   const [error, setError] = useState<string | null>(null)
@@ -66,7 +67,7 @@ export function UseInSpaceDialog({
     if (!open) return
     let cancelled = false
     void Promise.all([
-      getSpaces(),
+      loadSpaces(),
       getAssetSpaceAssociations(assetType, assetId).catch(() => ({ items: [] })),
     ])
       .then(([list, links]) => {
@@ -82,7 +83,7 @@ export function UseInSpaceDialog({
     return () => {
       cancelled = true
     }
-  }, [open, assetType, assetId])
+  }, [open, assetType, assetId, loadSpaces])
 
   /** Closes and forgets the loaded choice, so the next opening starts from "wird geladen". */
   function close() {

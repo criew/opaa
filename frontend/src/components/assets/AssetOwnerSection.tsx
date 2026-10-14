@@ -18,7 +18,7 @@ import { confirmAction } from '@/shared/stores/confirmStore'
 import { successionAwareMessage } from '../succession/successionConflict'
 import { transferAssetOwnership } from '../../services/assetApi'
 import type { AssetOwnerType, AssetType } from '@/shared/api/types'
-import { assetTypeLabel } from './assetTypeRegistry'
+import { assetTypeLabel } from '../../shared/assetTypes'
 
 export interface AssetOwnerSectionProps {
   assetType: AssetType

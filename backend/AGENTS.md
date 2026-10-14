@@ -91,6 +91,10 @@ Der Test prüft außerdem:
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
   außerhalb der Schichtung.
+- **Namen in den Listen:** `everyNamedCodeUnitExists` löst jeden Eintrag der Form `paket.Klasse`,
+  `paket.Äußere$Innere` oder `paket.Klasse#methode` aus allen Konstanten von `ModularArchitecture`
+  auf; ein Eintrag, der nach einer Umbenennung ins Leere zeigt, lässt den Test fehlschlagen, statt
+  dass seine Regel still nichts mehr prüft.
 - **Blinder Fleck:** Der Test sieht nur den Bytecode. Liest ein Paket von einem anderen nur eine
   `static final`-Konstante, die der Compiler einfaltet, ist das für ihn keine Kante. Dasselbe gilt
   für Verweise, die nur im Javadoc stehen.
@@ -172,6 +176,14 @@ Daneben liegt eine `CLAUDE.md` mit `@AGENTS.md`; jedes weitere Top-Level-Paket d
 die Datei des Moduls vor der Arbeit im Modul selbst. `ModuleAgentsFileTest` hält Ablage, Import und
 Länge fest; ein neues Top-Level-Paket bekommt eine solche `CLAUDE.md`. Modulspezifisches gehört in
 diese Dateien, hier bleibt nur, was modulübergreifend gilt.
+
+## Scheduler
+
+Der Default-`TaskScheduler` hinter `@EnableScheduling` hat einen Thread für alle `@Scheduled`-Methoden.
+Eine `@Scheduled`-Methode entscheidet deshalb nur und reicht Arbeit, die an Netz, Objektspeicher,
+Dateisystem oder LLM hängt, an einen eigenen Executor (`DirectorySyncScheduler` → `directorySyncExecutor`)
+oder per `scheduler = "…"` an einen eigenen Scheduler weiter (`PrivateLibraryDeletionSchedule`, Probes
+der Modellrollen). Kurze DB-Läufe (einzelne `DELETE`s, Partition-Drops, Batches) bleiben auf dem Tick.
 
 ## Spring-Testkontexte
 

@@ -9,6 +9,8 @@ import { useUiStore } from '@/shared/stores/uiStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import { KEEP_FOCUS_STATE } from '@/shared/ui/a11y/routeFocus'
 import GlobalAreaLayout from './GlobalAreaLayout'
+import { useSpaceListLoader } from '../components/assets/spaceListContext'
+import { loadSpaceList } from '../app/themeSeams'
 
 const ADMIN_SECTIONS = [{ label: 'Benutzer & Gruppen', to: '/admin/groups' }]
 
@@ -282,5 +284,22 @@ describe('AppShell', () => {
     )
 
     expect(screen.getByRole('main')).toHaveFocus()
+  })
+
+  it('provides the space list to every page it renders', () => {
+    function SpaceListProbe() {
+      const loader = useSpaceListLoader()
+      return <div>{loader === loadSpaceList ? 'Space-Liste bereitgestellt' : 'andere Liste'}</div>
+    }
+    renderWithProviders(
+      <Routes>
+        <Route element={<AppShell />}>
+          <Route path="/catalog" element={<SpaceListProbe />} />
+        </Route>
+      </Routes>,
+      { withRouter: true, initialRoute: '/catalog' },
+    )
+
+    expect(screen.getByText('Space-Liste bereitgestellt')).toBeInTheDocument()
   })
 })

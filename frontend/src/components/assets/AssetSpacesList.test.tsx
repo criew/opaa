@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { answerConfirm, renderWithProviders } from '../../test/test-utils'
 import AssetSpacesList from './AssetSpacesList'
@@ -21,11 +22,10 @@ vi.mock('../../services/assetApi', async () => {
   }
 })
 
-vi.mock('../../services/spaceApi', async () => {
-  const actual =
-    await vi.importActual<typeof import('../../services/spaceApi')>('../../services/spaceApi')
-  return { ...actual, getSpaces: mockGetSpaces }
-})
+/** Renders with the space list this test controls, as the application frame provides it. */
+function renderList(ui: ReactElement) {
+  return renderWithProviders(ui, { spaceList: mockGetSpaces })
+}
 
 function spaceWithRole(id: string, userRole: SpaceListResponse['userRole']): SpaceListResponse {
   return {
@@ -53,9 +53,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
       hiddenCount: 2,
     })
 
-    renderWithProviders(
-      <AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage={false} />,
-    )
+    renderList(<AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage={false} />)
 
     expect(await screen.findByText('Fachbereich Soziales')).toBeInTheDocument()
     expect(screen.getByText('+ 2 weitere Spaces, die Sie nicht sehen dürfen')).toBeInTheDocument()
@@ -67,9 +65,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
   it('names the single hidden space in the singular', async () => {
     mockGetAssetSpaceAssociations.mockResolvedValue({ items: [], hiddenCount: 1 })
 
-    renderWithProviders(
-      <AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage={false} />,
-    )
+    renderList(<AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage={false} />)
 
     expect(
       await screen.findByText('+ 1 weiterer Space, den Sie nicht sehen dürfen'),
@@ -94,7 +90,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
       hiddenCount: 0,
     })
 
-    renderWithProviders(<AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage />)
+    renderList(<AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage />)
 
     expect(await screen.findByText('Disziplinarverfahren 2026')).toBeInTheDocument()
     expect(screen.getByText(/zugeordnet von Thomas Klein · 02\.10\.2026/)).toBeInTheDocument()
@@ -118,7 +114,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
       hiddenCount: 0,
     })
     const onChanged = vi.fn()
-    renderWithProviders(
+    renderList(
       <AssetSpacesList
         assetType="PROMPT_LIBRARY"
         assetId="prompt-1"
@@ -131,6 +127,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
     const rowMenu = await screen.findByRole('button', {
       name: 'Aktionen für Space „Infotheke Bürgerbüro“',
     })
+    expect(mockGetSpaces).toHaveBeenCalledTimes(1)
     expect(
       screen.queryByRole('button', { name: 'Aktionen für Space „Dienstbesprechung Bürgerbüro“' }),
     ).not.toBeInTheDocument()
@@ -150,9 +147,7 @@ describe('AssetSpacesList (#1939, #2208)', () => {
   it('shows the empty state only when nothing is associated at all', async () => {
     mockGetAssetSpaceAssociations.mockResolvedValue({ items: [], hiddenCount: 0 })
 
-    renderWithProviders(
-      <AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage={false} />,
-    )
+    renderList(<AssetSpacesList assetType="KNOWLEDGE_LIBRARY" assetId="lib-1" canManage={false} />)
 
     expect(await screen.findByText(/keinem Space zugeordnet/i)).toBeInTheDocument()
   })

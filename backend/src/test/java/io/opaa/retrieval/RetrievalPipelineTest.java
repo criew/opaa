@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.opaa.api.types.RetrievalStageName;
 import io.opaa.llm.RerankModelRole;
 import io.opaa.metadata.MetadataFilter;
 import io.opaa.retrieval.ranking.ChunkEmbeddingLookup;

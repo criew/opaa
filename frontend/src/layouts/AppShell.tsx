@@ -15,6 +15,8 @@ import IndexingSnackbar from '../components/admin/IndexingSnackbar'
 import ConfirmHost from '@/shared/ui/feedback/ConfirmHost'
 import NotificationHost from '@/shared/ui/feedback/NotificationHost'
 import { useUiStore } from '@/shared/stores/uiStore'
+import { SpaceListContext } from '../components/assets/spaceListContext'
+import { loadSpaceList } from '../app/themeSeams'
 
 export default function AppShell() {
   const theme = useTheme()
@@ -99,7 +101,9 @@ export default function AppShell() {
             '&:focus': { outline: 'none' },
           }}
         >
-          <Outlet />
+          <SpaceListContext value={loadSpaceList}>
+            <Outlet />
+          </SpaceListContext>
         </Box>
       </Box>
 
