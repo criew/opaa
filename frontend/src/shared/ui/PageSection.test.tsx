@@ -172,8 +172,6 @@ const VERWALTUNGSDATEIEN = Object.keys(QUELLEN).filter((pfad) => {
  *   Raster wie `AssetTile`, auf einer Anmeldeseite außerhalb der Verwaltung, kein Inhaltsblock.
  * - `ExternalAccessTokenValueDialog`: der einmalig angezeigte Tokenwert und die Einrichtungsschnipsel
  *   als Monospace-Block — derselbe Fall wie `GeneratedPasswordDialog`.
- * - `CreateExternalAccessTokenDialog`: der Offenlegungshinweis vor dem Erzeugen eines Tokens in
- *   einem Dialog; der Rahmen hebt den Pflichthinweis von den Feldern ab, statt Inhalt zu bündeln.
  */
 const AUSNAHMEN = [
   'BrandingPreview.tsx',
@@ -195,7 +193,6 @@ const AUSNAHMEN = [
   'assetMarks.tsx',
   'HandoverScopeSummary.tsx',
   'ExternalAccessTokenValueDialog.tsx',
-  'CreateExternalAccessTokenDialog.tsx',
 ]
 
 /**
