@@ -14,9 +14,9 @@ import CopyQuestionButton, { QUESTION_COPY_CLASS } from './CopyQuestionButton'
 import EvidenceFooter from './EvidenceFooter'
 import MarkdownRenderer from '@/shared/ui/markdown/MarkdownRenderer'
 import SourceEvidenceDrawer from './SourceEvidenceDrawer'
-import DocumentTextPreviewDialog from '../DocumentTextPreviewDialog'
+import { DocumentTextPreviewDialog } from '@/features/library'
 import { NO_KNOWLEDGE_ASSIGNED, NO_KNOWLEDGE_READABLE } from '@/features/space'
-import { useDocumentPreview } from '../../hooks/useDocumentPreview'
+import { useDocumentPreview } from '@/features/library'
 
 const ANSWER_TRUNCATED =
   'Die Antwort ist unvollständig: Das Modell hat seine maximale Antwortlänge erreicht. Die ' +

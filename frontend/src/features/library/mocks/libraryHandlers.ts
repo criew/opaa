@@ -1,0 +1,722 @@
+import { http, HttpResponse } from 'msw'
+import {
+  mockLibraries,
+  mockLibraryDetails,
+  mockConfluenceSpaces,
+  mockSourceTypes,
+} from './libraryFixtures'
+import { mockMyGroups } from '../../group/mocks/groupFixtures'
+import { isMockIndexingActive } from './indexingHandlers'
+import {
+  mockConnectionProfiles,
+  mockProfileRef,
+} from '../../connection/mocks/connectionProfileFixtures'
+import { browseSharePoint, testSharePoint } from './sharePointSourceMock'
+import type {
+  SourceTypeKey,
+  AssetOwnerType,
+  LibraryConnectionProfileRequest,
+  LibraryScheduleRequest,
+  SourceBrowseResponse,
+} from '@/shared/api/types'
+import type { ConfluenceEdition, ConfluenceSettings } from '../utils/confluenceSource'
+import type { S3Settings } from '../utils/s3Source'
+
+/**
+ * Mirrors LibraryDocumentService#requireEditable: uploading and deleting require at least EDITOR
+ * on the library. The mock has no separate system-admin bypass - each fixture's own myRole is the
+ * single source of truth here, same as it already is for the frontend's canManageDocuments checks.
+ */
+export function canManageMockLibrary(libraryId: string): boolean {
+  const role = mockLibraryDetails[libraryId]?.myRole
+  return role === 'EDITOR' || role === 'MANAGER' || role === 'OWNER'
+}
+
+export const libraryHandlers = [
+  http.get('/api/v1/source-types', () => HttpResponse.json(mockSourceTypes)),
+
+  http.get('/api/v1/libraries', () => {
+    return HttpResponse.json(mockLibraries)
+  }),
+
+  http.post('/api/v1/libraries', async ({ request }) => {
+    const body = (await request.json()) as {
+      name: string
+      description?: string
+      ownerType?: AssetOwnerType
+      ownerId?: string
+      sourceType: SourceTypeKey
+      sourcePath?: string | null
+      sourceUrl?: string | null
+      sourceCredentials?: string | null
+      sourceSettings?: Record<string, unknown> | null
+      connectionProfileId?: string | null
+      privateLibrary?: boolean | null
+      pendingConnectionId?: string | null
+    }
+    const profile = body.connectionProfileId
+      ? mockConnectionProfiles.find((p) => p.id === body.connectionProfileId)
+      : undefined
+    if (body.connectionProfileId && !profile) {
+      return HttpResponse.json({ error: 'Zugang nicht gefunden' }, { status: 404 })
+    }
+    // Mirrors PrivateLibraryCreation: a profile admitting persons, no own secret, no group owner.
+    if (body.privateLibrary) {
+      const refusal = !profile
+        ? 'Eine private Bibliothek braucht einen Zugang.'
+        : profile.ownership === 'LIBRARY'
+          ? 'Dieser Zugang lässt keine verbundenen Konten von Personen zu.'
+          : body.sourceCredentials
+            ? 'Eine private Bibliothek meldet sich mit Ihrem verbundenen Konto an; eigene Zugangsdaten sind nicht zulässig.'
+            : body.ownerType === 'GROUP'
+              ? 'Eine private Bibliothek gehört immer einer Person.'
+              : null
+      if (refusal) return HttpResponse.json({ error: refusal, status: 400 }, { status: 400 })
+    }
+    const confluenceSettings = (body.sourceSettings ?? {}) as ConfluenceSettings
+    const s3Settings = body.sourceSettings as S3Settings | null | undefined
+    if (!body.name || body.name.trim() === '') {
+      return HttpResponse.json(
+        { error: 'Der Name der Bibliothek ist erforderlich' },
+        { status: 400 },
+      )
+    }
+    // Mirrors KnowledgeLibraryService#createLibrary: only members of a group can own a library
+    // in its name.
+    if (body.ownerType === 'GROUP' && !mockMyGroups.some((group) => group.id === body.ownerId)) {
+      return HttpResponse.json(
+        { error: 'Nur Mitglieder der Gruppe können eine Bibliothek in ihrem Namen anlegen' },
+        { status: 403 },
+      )
+    }
+    // Mirrors KnowledgeLibraryService#validateConfigurationForType (ADR-0018): only the fields
+    // matching sourceType may be set, and the run-based types require their address field.
+    if (body.sourceType === 'UPLOAD') {
+      if (body.sourcePath || body.sourceUrl || body.sourceCredentials) {
+        return HttpResponse.json(
+          { error: 'sourceType UPLOAD erlaubt keine Quellkonfiguration' },
+          { status: 400 },
+        )
+      }
+    }
+    if (body.sourceType === 'FILESYSTEM') {
+      if (!body.sourcePath) {
+        return HttpResponse.json(
+          { error: 'sourcePath ist erforderlich, wenn sourceType FILESYSTEM ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.sourcePath.startsWith('/')) {
+        return HttpResponse.json(
+          { error: 'sourcePath muss ein absoluter Pfad sein' },
+          { status: 400 },
+        )
+      }
+      if (body.sourceUrl || body.sourceCredentials) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceUrl und sourceCredentials sind für sourceType FILESYSTEM nicht' + ' zulässig',
+          },
+          { status: 400 },
+        )
+      }
+    }
+    if (body.sourceType === 'CONFLUENCE') {
+      // Mirrors KnowledgeLibraryService#validateConfluenceConfiguration just enough for the
+      // wizard tests; the full flow arrives with .
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: 'sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!confluenceSettings.edition) {
+        return HttpResponse.json(
+          { error: 'sourceSettings.edition ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      if (!confluenceSettings.spaces || confluenceSettings.spaces.length === 0) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceSettings.spaces: mindestens ein Space ist erforderlich, wenn sourceType CONFLUENCE ist',
+          },
+          { status: 400 },
+        )
+      }
+    }
+    if (body.sourceType === 'HTTP_DIRECTORY' || body.sourceType === 'RSS_FEED') {
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: `sourceUrl ist erforderlich, wenn sourceType ${body.sourceType} ist` },
+          { status: 400 },
+        )
+      }
+      if (body.sourcePath) {
+        return HttpResponse.json(
+          { error: `sourcePath ist für sourceType ${body.sourceType} nicht zulässig` },
+          { status: 400 },
+        )
+      }
+      if (!/^https?:\/\//i.test(body.sourceUrl)) {
+        return HttpResponse.json(
+          { error: 'sourceUrl muss mit http:// oder https:// beginnen' },
+          { status: 400 },
+        )
+      }
+    }
+    if (body.sourceType === 'S3') {
+      // Mirrors KnowledgeLibraryService#validateS3Configuration just enough for the wizard.
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist',
+          },
+          { status: 400 },
+        )
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind erforderlich, wenn sourceType S3 ist' },
+          { status: 400 },
+        )
+      }
+      if (!s3Settings?.scopes?.length) {
+        return HttpResponse.json(
+          { error: 'sourceSettings sind erforderlich, wenn sourceType S3 ist' },
+          { status: 400 },
+        )
+      }
+    }
+    const id = `library-${crypto.randomUUID().slice(0, 8)}`
+    const now = new Date().toISOString()
+    const ownerType = body.ownerType ?? 'USER'
+    const listEntry: (typeof mockLibraries)[number] = {
+      id,
+      name: body.name.trim(),
+      description: body.description?.trim() ?? null,
+      ownerType,
+      reach: { allAccounts: false, groupCount: 0, userCount: 1 },
+      myRole: 'OWNER',
+      sourceType: body.sourceType,
+      documentCount: 0,
+      ...(body.privateLibrary ? { privateLibrary: true } : {}),
+      createdAt: now,
+      updatedAt: now,
+    }
+    mockLibraries.push(listEntry)
+    const detail: (typeof mockLibraryDetails)[string] = {
+      ...listEntry,
+      ownerId: ownerType === 'GROUP' ? (body.ownerId ?? 'mock-group-id') : 'mock-user-id',
+      documentCount: 0,
+      // sourceType ist seit ADR-0018 Pflichtfeld und beim Anlegen unveraenderlich.
+      sourceType: body.sourceType,
+      sourcePath: body.sourceType === 'FILESYSTEM' ? (body.sourcePath ?? null) : null,
+      sourceUrl:
+        body.sourceType === 'HTTP_DIRECTORY' ||
+        body.sourceType === 'RSS_FEED' ||
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'SHAREPOINT' ||
+        body.sourceType === 'NEXTCLOUD' ||
+        body.sourceType === 'SMB'
+          ? (body.sourceUrl ?? profile?.serverUrl ?? null)
+          : null,
+      connectionProfile: profile ? mockProfileRef(profile) : null,
+      sourceSettings:
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'S3' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'SHAREPOINT' ||
+        body.sourceType === 'NEXTCLOUD' ||
+        body.sourceType === 'SMB'
+          ? (body.sourceSettings ?? null)
+          : null,
+      sourceCredentialsSet:
+        body.sourceType === 'S3' ||
+        body.sourceType === 'CONFLUENCE' ||
+        body.sourceType === 'GOOGLE_DRIVE' ||
+        body.sourceType === 'SHAREPOINT' ||
+        body.sourceType === 'NEXTCLOUD' ||
+        body.sourceType === 'SMB'
+          ? Boolean(body.sourceCredentials)
+          : undefined,
+      // sourceCredentials ist Nur-Schreiben (ADR-0018) - bewusst nicht in der Detailantwort.
+      // the pending consent becomes the library's own, its creator answering for it
+      sourceConnection: body.pendingConnectionId
+        ? {
+            accountLabel: 'dienstkonto@example.org',
+            connectedAt: new Date().toISOString(),
+            responsible: { type: 'USER' as const, id: 'mock-user-id', name: 'Mock User' },
+            endedCause: null,
+            endedAt: null,
+            expiresAt: null,
+          }
+        : null,
+    }
+    mockLibraryDetails[id] = detail
+    return HttpResponse.json(detail, { status: 201 })
+  }),
+
+  // what a source offers before it is saved (ADR-0038): the Confluence spaces the mock token may
+  // read - a fixed, searchable set - and the buckets the mock S3 key may see (ADR-0027)
+  http.post('/api/v1/source-types/:sourceType/browse', async ({ params, request }) => {
+    const sourceType = params.sourceType as string
+    const body = (await request.json()) as {
+      sourceUrl?: string
+      sourceCredentials?: string | null
+      libraryId?: string | null
+      connectionProfileId?: string | null
+      query?: Record<string, unknown> | null
+    }
+    if (sourceType === 'SHAREPOINT') return browseSharePoint(body)
+    if (sourceType === 'CONFLUENCE') {
+      if (!body.sourceUrl || !body.query?.edition) {
+        return HttpResponse.json(
+          { error: 'sourceUrl und sourceSettings.edition sind erforderlich' },
+          { status: 400 },
+        )
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Space-Auflistung erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: mockConfluenceSpaces.map((space) => ({ key: space.key, name: space.name })),
+      } satisfies SourceBrowseResponse)
+    }
+    if (sourceType === 'GOOGLE_DRIVE') {
+      // what the mock service account sees: one shared drive and one shared folder (ADR-0040)
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          {
+            error: 'sourceCredentials (Dienstkonto-Schlüssel) sind für die Auflistung erforderlich',
+          },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: 'drive:0AMockDrive', name: 'Projektablage' },
+          { key: 'folder:1MockFolder', name: 'Freigegebene Akten' },
+        ],
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
+    if (sourceType === 'S3') {
+      if (!body.sourceUrl) {
+        return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Bucket-Auflistung erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: ['protokolle', 'satzungen', 'archiv'].map((key) => ({ key, name: null })),
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
+    if (sourceType === 'NEXTCLOUD') {
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Ordnerauswahl erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: '/Projekte', name: 'Projekte' },
+          { key: '/Bauamt', name: 'Bauamt (Gruppenordner)' },
+          { key: '/Satzungen', name: 'Satzungen (Freigabe)' },
+        ],
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
+    if (sourceType === 'SMB') {
+      // the folders in the root of the mock share (ADR-0046)
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für die Ordnerauswahl erforderlich' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        complete: true,
+        entries: [
+          { key: '/Bauamt', name: 'Bauamt' },
+          { key: '/Hauptamt', name: 'Hauptamt' },
+          { key: '/Vorlagen', name: 'Vorlagen' },
+        ],
+        message: null,
+      } satisfies SourceBrowseResponse)
+    }
+    return HttpResponse.json(
+      { error: `Für sourceType ${sourceType} gibt es keine Auflistung` },
+      { status: 400 },
+    )
+  }),
+
+  // mirrors SourceConnectionTestService's per-type validation just enough that the mock
+  // dialog's "Verbindung testen" button gets a plausible response in mock mode instead of an
+  // unhandled request (onUnhandledFrame: 'bypass' would otherwise leave it hanging forever).
+  http.post('/api/v1/libraries/source-test', async ({ request }) => {
+    const body = (await request.json()) as {
+      sourceType: SourceTypeKey
+      sourcePath?: string | null
+      sourceUrl?: string | null
+      sourceCredentials?: string | null
+      sourceSettings?: Record<string, unknown> | null
+      libraryId?: string | null
+      connectionProfileId?: string | null
+    }
+    if (body.sourceType === 'SHAREPOINT') return testSharePoint(body)
+    if (body.sourceType === 'GOOGLE_DRIVE') {
+      // every requested area is reachable for the mock service account (ADR-0040)
+      const settings = body.sourceSettings as { scopes?: Record<string, unknown>[] } | null
+      const scopes = (settings?.scopes ?? []).map((scope) => ({
+        scope: scope.drive
+          ? `drive:${scope.drive}`
+          : scope.folder
+            ? `folder:${scope.folder}`
+            : 'myDrive',
+        reachable: true,
+      }))
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        message:
+          scopes.length === 1
+            ? 'Anmeldung erfolgreich; der Bereich ist erreichbar.'
+            : `Anmeldung erfolgreich; alle ${scopes.length} Bereiche sind erreichbar.`,
+        details: { scopes },
+      })
+    }
+    if (body.sourceType === 'S3') {
+      // Mirrors S3ConnectionService#probe just enough for the mock: every scope passes with a
+      // small count; without settings the request is the caller's mistake.
+      const settings = body.sourceSettings as S3Settings | null | undefined
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          {
+            error:
+              'sourceUrl (Endpoint des Objektspeichers) ist erforderlich, wenn sourceType S3 ist',
+          },
+          { status: 400 },
+        )
+      }
+      if (!settings?.scopes?.length) {
+        return HttpResponse.json(
+          { error: 'sourceSettings sind für den Verbindungstest erforderlich' },
+          { status: 400 },
+        )
+      }
+      const scopes = settings.scopes.map((scope) => ({
+        bucket: scope.bucket,
+        prefix: scope.prefix ? scope.prefix.replace(/^\/+/, '').replace(/\/?$/, '/') : '',
+        bucketReachable: true,
+        listAllowed: true,
+        readAllowed: true,
+        objectCount: 12,
+        objectCountIsLowerBound: false,
+        message: null,
+      }))
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 12 * scopes.length,
+        message: `${scopes.length === 1 ? 'Der Bereich ist' : `Alle ${scopes.length} Bereiche sind`} erreichbar, Auflistung und Lesen sind erlaubt. ${12 * scopes.length} Objekte gefunden.`,
+        details: { scopes },
+      })
+    }
+    if (body.sourceType === 'NEXTCLOUD') {
+      // Mirrors NextcloudSourceConnector#testConnection: sign-in, then every folder read.
+      if (!body.sourceUrl) {
+        return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json({
+          reachable: false,
+          credentialsVerified: false,
+          message: 'Nextcloud hat Benutzername oder App-Passwort abgelehnt (HTTP 401).',
+        })
+      }
+      const folders = (body.sourceSettings as { folders?: string[] } | null | undefined)
+        ?.folders ?? ['/']
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 12 * folders.length,
+        message: `Verbindung hergestellt; ${folders.length} Ordner lesbar.`,
+      })
+    }
+    if (body.sourceType === 'SMB') {
+      // Mirrors SmbSourceConnector#testConnection: sign-in, share, then every folder read.
+      if (!body.sourceUrl) {
+        return HttpResponse.json({ error: 'sourceUrl ist erforderlich' }, { status: 400 })
+      }
+      if (!body.sourceCredentials && !body.libraryId) {
+        return HttpResponse.json(
+          { error: 'sourceCredentials sind für den Verbindungstest erforderlich' },
+          { status: 400 },
+        )
+      }
+      const folders = (body.sourceSettings as { folders?: string[] } | null | undefined)
+        ?.folders ?? ['/']
+      return HttpResponse.json({
+        reachable: true,
+        credentialsVerified: true,
+        documentCount: 8 * folders.length,
+        message: `Verbindung hergestellt; Freigabe und ${folders.length} Ordner lesbar.`,
+      })
+    }
+    if (body.sourceType === 'CONFLUENCE') {
+      // Mirrors ConfluenceConnectionService#probe: the mock treats *.atlassian.net as Cloud and
+      // everything else as Data Center (the real detector reads the instance's signature, never
+      // the host name); credentials are verified only when given.
+      if (!body.sourceUrl) {
+        return HttpResponse.json(
+          { error: 'sourceUrl ist erforderlich, wenn sourceType CONFLUENCE ist' },
+          { status: 400 },
+        )
+      }
+      const detected: ConfluenceEdition = /atlassian\.net/i.test(body.sourceUrl)
+        ? 'CLOUD'
+        : 'DATA_CENTER'
+      const label = (edition: ConfluenceEdition) => (edition === 'CLOUD' ? 'Cloud' : 'Data Center')
+      const requestedEdition = (body.sourceSettings as ConfluenceSettings | null | undefined)
+        ?.edition
+      if (requestedEdition && requestedEdition !== detected) {
+        return HttpResponse.json({
+          reachable: false,
+          details: { edition: detected },
+          credentialsVerified: false,
+          message: `Unter dieser Adresse antwortet Confluence ${label(detected)}, nicht ${label(requestedEdition)}.`,
+        })
+      }
+      if (!body.sourceCredentials) {
+        return HttpResponse.json({
+          reachable: true,
+          details: { edition: detected },
+          credentialsVerified: false,
+          message:
+            detected === 'CLOUD'
+              ? 'Confluence Cloud erkannt. Geben Sie E-Mail-Adresse und API-Token des Dienstkontos ein.'
+              : 'Confluence Data Center erkannt. Geben Sie das Personal Access Token des Dienstkontos ein.',
+        })
+      }
+      if (detected === 'CLOUD' && !body.sourceCredentials.includes(':')) {
+        return HttpResponse.json({
+          reachable: false,
+          details: { edition: detected },
+          credentialsVerified: false,
+          message:
+            'Confluence Cloud erwartet E-Mail-Adresse und API-Token, getrennt durch einen Doppelpunkt (E-Mail:Token).',
+        })
+      }
+      return HttpResponse.json({
+        reachable: true,
+        details: { edition: detected },
+        credentialsVerified: true,
+        documentCount: mockConfluenceSpaces.length,
+        message: `Confluence ${label(detected)} erreichbar, Zugangsdaten gültig, ${mockConfluenceSpaces.length} lesbare Spaces.`,
+      })
+    }
+    if (body.sourceType === 'UPLOAD') {
+      return HttpResponse.json(
+        { error: 'sourceType UPLOAD unterstützt keinen Verbindungstest' },
+        { status: 400 },
+      )
+    }
+    if (body.sourceType === 'FILESYSTEM') {
+      if (!body.sourcePath || !body.sourcePath.startsWith('/')) {
+        return HttpResponse.json(
+          { error: 'sourcePath muss ein absoluter Pfad sein' },
+          { status: 400 },
+        )
+      }
+      return HttpResponse.json({
+        reachable: true,
+        documentCount: null,
+        message: 'Verzeichnis erreichbar.',
+      })
+    }
+    if (body.sourceType === 'HTTP_DIRECTORY') {
+      return HttpResponse.json({
+        reachable: true,
+        documentCount: 5,
+        message: 'Webverzeichnis erreichbar, 5 unterstützte Dokumente auf oberster Ebene gefunden.',
+      })
+    }
+    return HttpResponse.json({
+      reachable: true,
+      documentCount: 12,
+      message: 'RSS-Feed erreichbar, 12 Einträge gefunden.',
+    })
+  }),
+
+  http.get('/api/v1/libraries/:libraryId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    return HttpResponse.json(library)
+  }),
+
+  http.put('/api/v1/libraries/:libraryId', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    const listEntry = mockLibraries.find((item) => item.id === libraryId)
+    if (!library || !listEntry) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const body = (await request.json()) as {
+      name: string
+      description?: string
+      schedule?: LibraryScheduleRequest
+      sourceUrl?: string | null
+      sourceSettings?: Record<string, unknown> | null
+    }
+    library.name = body.name
+    if (library.sourceType === 'S3') {
+      // the S3 edit dialog resends the typed configuration as a whole (ADR-0027)
+      if (body.sourceUrl !== undefined) library.sourceUrl = body.sourceUrl
+      if (body.sourceSettings) library.sourceSettings = body.sourceSettings
+    }
+    library.description = body.description ?? null
+    if (body.schedule) {
+      library.schedule = {
+        frequency: body.schedule.frequency,
+        hour: body.schedule.hour ?? null,
+        minute: body.schedule.minute ?? null,
+        weekday: body.schedule.weekday ?? undefined,
+        // a mock-plausible next run - not a real cron evaluation, just "soon" so the UI has
+        // something non-null to render when a schedule is enabled.
+        nextRunAt:
+          body.schedule.frequency === 'DISABLED'
+            ? null
+            : new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+      }
+    }
+    listEntry.name = library.name
+    listEntry.description = library.description
+    return HttpResponse.json(library)
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    // a private library is only marked while a run is in progress; it completes afterwards
+    if (library.privateLibrary && isMockIndexingActive()) {
+      library.erasureRequestedAt ??= new Date().toISOString()
+      const listed = mockLibraries.find((item) => item.id === libraryId)
+      if (listed) listed.erasureRequestedAt = library.erasureRequestedAt
+      return new HttpResponse(null, { status: 202 })
+    }
+    delete mockLibraryDetails[libraryId]
+    const idx = mockLibraries.findIndex((item) => item.id === libraryId)
+    if (idx >= 0) {
+      mockLibraries.splice(idx, 1)
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  // Connecting lifts "Zugang entfernt" and a lock for the own address, as in the backend.
+  http.put('/api/v1/libraries/:libraryId/connection-profile', async ({ params, request }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const { profileId, sourceUrl } = (await request.json()) as LibraryConnectionProfileRequest
+    const profile = mockConnectionProfiles.find((p) => p.id === profileId)
+    if (!profile) return HttpResponse.json({ error: 'Zugang nicht gefunden' }, { status: 404 })
+    if (profile.sourceType !== library.sourceType) {
+      return HttpResponse.json(
+        { error: 'Der Zugang gehört zu einer anderen Quellart' },
+        { status: 400 },
+      )
+    }
+    const root = profile.serverUrl.replace(/\/+$/, '')
+    if (sourceUrl && sourceUrl !== root && !sourceUrl.startsWith(`${root}/`)) {
+      return HttpResponse.json(
+        { error: `Die Adresse muss unter der Server-Adresse des Zugangs liegen: ${root}` },
+        { status: 400 },
+      )
+    }
+    const lifted =
+      library.sourceBlock?.reason === 'PROFILE_REQUIRED' ||
+      library.sourceBlock?.reason === 'ACCESS_REMOVED'
+    const connected = {
+      ...library,
+      sourceUrl: sourceUrl ?? library.sourceUrl,
+      connectionProfile: mockProfileRef(profile),
+      connectionProfileRemoved: false,
+      sourceBlock: lifted ? null : library.sourceBlock,
+    }
+    mockLibraryDetails[libraryId] = connected
+    return HttpResponse.json(connected)
+  }),
+
+  // „Trennen“ of a library's own source connection: the library rests until connected anew.
+  http.delete('/api/v1/libraries/:libraryId/source-connection', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    if (!library.sourceConnection || library.privateLibrary) {
+      return HttpResponse.json(
+        { error: 'Diese Bibliothek hat keine eigene Quellverbindung.', status: 400 },
+        { status: 400 },
+      )
+    }
+    mockLibraryDetails[libraryId] = {
+      ...library,
+      sourceConnection: {
+        ...library.sourceConnection,
+        endedCause: 'SELF',
+        endedAt: new Date().toISOString(),
+      },
+      sourceBlock: {
+        reason: 'NOT_CONNECTED',
+        responsible: 'Verwaltende der Bibliothek',
+        notice: `Nicht verbunden: Die Quelle ist über den Zugang „${library.connectionProfile?.name ?? ''}“ nicht verbunden. Der Inhalt bleibt durchsuchbar, wird aber nicht aktualisiert.`,
+        action: 'CONNECT_SOURCE',
+      },
+    }
+    return new HttpResponse(null, { status: 204 })
+  }),
+
+  http.delete('/api/v1/libraries/:libraryId/connection-profile', ({ params }) => {
+    const libraryId = String(params.libraryId)
+    const library = mockLibraryDetails[libraryId]
+    if (!library) {
+      return HttpResponse.json({ error: 'Bibliothek nicht gefunden' }, { status: 404 })
+    }
+    const released = { ...library, connectionProfile: null }
+    mockLibraryDetails[libraryId] = released
+    return HttpResponse.json(released)
+  }),
+]

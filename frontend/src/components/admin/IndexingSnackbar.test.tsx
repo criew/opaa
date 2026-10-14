@@ -2,7 +2,7 @@ import { screen } from '@testing-library/react'
 import { describe, expect, it, beforeEach } from 'vitest'
 import { renderWithProviders } from '../../test/test-utils'
 import IndexingSnackbar from './IndexingSnackbar'
-import { useIndexingStore } from '../../stores/indexingStore'
+import { useIndexingStore } from '@/features/library'
 
 describe('IndexingSnackbar', () => {
   beforeEach(() => {

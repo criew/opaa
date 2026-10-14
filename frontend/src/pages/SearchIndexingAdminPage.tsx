@@ -64,7 +64,7 @@ import { useSearchAdminStore } from '../stores/searchAdminStore'
 import { contentWidth } from '@/shared/theme/tokens'
 import { catalogRoute } from '../shared/assetTypes'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import { visibleChunkMetadata } from '../utils/metadataChunkKeys'
+import { visibleChunkMetadata } from '@/features/library'
 
 function formatMetadataValue(value: unknown): string {
   if (value == null) return '—'

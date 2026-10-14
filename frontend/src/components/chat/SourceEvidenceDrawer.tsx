@@ -29,7 +29,7 @@ import type {
   SourceTypeKey,
 } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import type { OpenableDocument } from '../../hooks/useDocumentPreview'
+import type { OpenableDocument } from '@/features/library'
 import { fontFamily } from '@/shared/theme/tokens'
 
 interface SourceEvidenceDrawerProps {

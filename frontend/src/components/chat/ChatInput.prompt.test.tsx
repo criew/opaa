@@ -7,7 +7,7 @@ import ChatInput from './ChatInput'
 import { germanDate, todayIso } from '@/features/prompt'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useChatStore } from '../../stores/chatStore'
-import { useLibraryStore } from '../../stores/libraryStore'
+import { useLibraryStore } from '@/features/library'
 import { useSpaceStore } from '@/features/space'
 
 /** The chat input's '/' command, against the MSW prompt fixtures. */

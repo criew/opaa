@@ -9,7 +9,7 @@ import LibraryStatusTable from './LibraryStatusTable'
 const { mockGetDocumentTypeVocabulary } = vi.hoisted(() => ({
   mockGetDocumentTypeVocabulary: vi.fn(async () => ({ items: [] })),
 }))
-vi.mock('../../services/libraryMetadataApi', () => ({
+vi.mock('../../features/library/api/libraryMetadataApi', () => ({
   getDocumentTypeVocabulary: mockGetDocumentTypeVocabulary,
 }))
 

@@ -12,7 +12,7 @@ import {
   getSearchStatus,
   runSearchDiagnosis,
 } from '../services/searchAdminApi'
-import { runContextPrefixRerunBatch, runMetadataBackfillBatch } from '../services/indexingApi'
+import { runContextPrefixRerunBatch, runMetadataBackfillBatch } from '@/features/library'
 import { currentSessionEpoch, isStaleSessionEpoch } from '@/shared/session/sessionEpoch'
 import { registerSessionStore } from '@/shared/session/resettableStores'
 

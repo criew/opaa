@@ -1,6 +1,6 @@
 import Alert from '@mui/material/Alert'
 import Snackbar from '@mui/material/Snackbar'
-import { useIndexingStore } from '../../stores/indexingStore'
+import { useIndexingStore } from '@/features/library'
 
 export default function IndexingSnackbar() {
   const snackbar = useIndexingStore((s) => s.snackbar)

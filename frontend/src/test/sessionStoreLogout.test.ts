@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '@/features/space'
 import { useGroupStore } from '@/features/group'
-import { useLibraryStore } from '../stores/libraryStore'
+import { useLibraryStore } from '@/features/library'
 import { useChatStore } from '../stores/chatStore'
 import { useChatListStore } from '../stores/chatListStore'
-import { useDocumentStore } from '../stores/documentStore'
+import { useDocumentStore } from '@/features/library'
 import { useGrantStore } from '@/features/asset'
-import { useIndexingStore } from '../stores/indexingStore'
+import { useIndexingStore } from '@/features/library'
 
 /**
  * Regression guard for #440: data of the signed-in session is gone from the real stores after

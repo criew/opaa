@@ -57,8 +57,8 @@ import { CatalogPage } from '@/features/asset/routes'
 import { CatalogNewPage } from '@/features/asset/routes'
 import { catalogRoute } from './shared/assetTypes'
 // library
-import LibraryCreatePage from './pages/LibraryCreatePage'
-import LibraryDetailPage from './pages/LibraryDetailPage'
+import { LibraryCreatePage } from '@/features/library/routes'
+import { LibraryDetailPage } from '@/features/library/routes'
 // prompt
 import { PromptLibraryCreatePage } from '@/features/prompt/routes'
 import { PromptLibraryDetailPage } from '@/features/prompt/routes'
@@ -84,7 +84,7 @@ import { MailSettingsPage } from '@/features/mail/routes'
 import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { BrandingSettingsPage } from '@/features/branding/routes'
 // connection
-import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
+import { ConnectionCallbackPage } from '@/features/library/routes'
 import ConnectionsAdminPage from './app/areas/ConnectionsAdminPage'
 import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin

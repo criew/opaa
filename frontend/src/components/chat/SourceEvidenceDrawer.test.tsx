@@ -5,7 +5,7 @@ import { renderWithProviders, waitForDialogClosed } from '../../test/test-utils'
 import MessageBubble from './MessageBubble'
 import type { ChatMessage } from '../../types/chat'
 import type { SourceReference } from '@/shared/api/types'
-import type { OpenDocumentContentResult } from '../../utils/documentContent'
+import type { OpenDocumentContentResult } from '@/features/library'
 
 // #739/#780: the "Im Dokument öffnen" action delegates to this shared module (see its own tests for
 // the Blob-fetch/preview-vs-download behaviour, and LibraryDetailPage.test.tsx for #738's original
@@ -15,7 +15,7 @@ const { mockOpenDocumentContent } = vi.hoisted(() => ({
     kind: 'blob-preview',
   })),
 }))
-vi.mock('../../utils/documentContent', () => ({
+vi.mock('../../features/library/utils/documentContent', () => ({
   openDocumentContent: mockOpenDocumentContent,
 }))
 

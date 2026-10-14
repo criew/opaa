@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { mockLibraryDetails } from '../../../mocks/libraryFixtures'
+import { mockLibraryDetails } from '../../library/mocks/libraryFixtures'
 
 export const externalAccessLibraryHandlers = [
   // spiegelt LibraryExternalAccessService#setExternalAccess: Setzen verlangt ein Ablaufdatum

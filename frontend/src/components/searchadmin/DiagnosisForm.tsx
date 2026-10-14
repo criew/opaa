@@ -14,7 +14,7 @@ import type {
   SearchPermissionProfileResponse,
 } from '@/shared/api/types'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import { getDocumentTypeVocabulary } from '../../services/libraryMetadataApi'
+import { getDocumentTypeVocabulary } from '@/features/library'
 import { plural, UUID_PATTERN } from '@/shared/utils/format'
 
 const OWN_CONTEXT_VALUE = 'SELF'
