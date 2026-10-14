@@ -20,10 +20,10 @@ vi.mock('../../services/libraryApi', async () => {
   }
 })
 
-vi.mock('../../services/externalAccessApi', async () => {
-  const actual = await vi.importActual<typeof import('../../services/externalAccessApi')>(
-    '../../services/externalAccessApi',
-  )
+vi.mock('../../features/external-access/api/externalAccessApi', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../features/external-access/api/externalAccessApi')
+  >('../../features/external-access/api/externalAccessApi')
   return {
     ...actual,
     updateLibraryExternalAccess: mockUpdateLibraryExternalAccess,

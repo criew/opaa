@@ -19,7 +19,7 @@ import type {
 import {
   createExternalAccessToken,
   listEligibleExternalAccessLibraries,
-} from '../../services/externalAccessApi'
+} from '../api/externalAccessApi'
 import { radius } from '@/shared/theme/tokens'
 import { markAssetFavorite, unmarkAssetFavorite } from '@/features/asset'
 import { AssetTile } from '@/features/asset'

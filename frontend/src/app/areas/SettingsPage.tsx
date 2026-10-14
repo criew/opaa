@@ -23,7 +23,7 @@ import { userInitial } from '@/shared/utils/userInitial'
 import SectionHead from '@/shared/ui/SectionHead'
 import { contentWidth } from '@/shared/theme/tokens'
 import AreaTabs from '@/shared/ui/AreaTabs'
-import OwnExternalAccessTokensSection from '../../components/externalaccess/OwnExternalAccessTokensSection'
+import { OwnExternalAccessTokensSection } from '@/features/external-access'
 import { MyGroupsSection } from '@/features/group'
 import { ConnectedAccountsSection } from '@/features/connection'
 

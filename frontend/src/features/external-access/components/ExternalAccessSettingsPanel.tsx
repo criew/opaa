@@ -14,12 +14,12 @@ import type {
   ExternalAccessSettingsResponse,
   ExternalAccessSettingsUpdateRequest,
 } from '@/shared/api/types'
-import { updateExternalAccessSettings } from '../../../services/externalAccessApi'
+import { updateExternalAccessSettings } from '../api/externalAccessApi'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
-import { formatDate } from '../../externalaccess/tokenLabels'
+import { formatDate } from './tokenLabels'
 
 export const SWITCH_CONSEQUENCE =
   'Beschäftigte können Zugangstokens für externe KI-Werkzeuge erzeugen. Das Ausschalten wirkt ' +

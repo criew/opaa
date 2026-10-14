@@ -3,12 +3,12 @@ import userEvent from '@testing-library/user-event'
 import type { UserEvent } from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { server } from '../../mocks/server'
+import { server } from '../../../mocks/server'
 import {
   mockExternalAccessSettings,
   setMockExternalAccessSettings,
-} from '../../mocks/externalAccessHandlers'
-import { answerConfirm, renderWithProviders } from '../../test/test-utils'
+} from '../mocks/externalAccessHandlers'
+import { answerConfirm, renderWithProviders } from '../../../test/test-utils'
 import OwnExternalAccessTokensSection from './OwnExternalAccessTokensSection'
 
 function render() {

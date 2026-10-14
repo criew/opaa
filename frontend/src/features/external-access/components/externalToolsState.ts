@@ -1,6 +1,6 @@
 import type { ExternalAccessSettingsResponse } from '@/shared/api/types'
 import type { StatusTone } from '@/shared/ui/StatusLine'
-import { formatDate } from '../../externalaccess/tokenLabels'
+import { formatDate } from './tokenLabels'
 
 /** From how many days before its end a release is marked as running out. */
 export const RELEASE_ENDING_DAYS = 30

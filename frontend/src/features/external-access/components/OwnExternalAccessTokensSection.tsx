@@ -21,7 +21,7 @@ import {
   getExternalAccessChannelInfo,
   listOwnExternalAccessTokens,
   revokeOwnExternalAccessToken,
-} from '../../services/externalAccessApi'
+} from '../api/externalAccessApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { fontFamily } from '@/shared/theme/tokens'

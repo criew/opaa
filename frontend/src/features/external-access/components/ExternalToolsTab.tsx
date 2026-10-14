@@ -15,7 +15,7 @@ import {
   getExternalAccessSettings,
   listAllExternalAccessTokens,
   updateExternalAccessSettings,
-} from '../../../services/externalAccessApi'
+} from '../api/externalAccessApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'

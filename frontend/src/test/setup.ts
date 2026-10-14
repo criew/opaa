@@ -39,8 +39,8 @@ import { resetConnectionProfileMockState } from '../features/connection/mocks/co
 import { resetConnectedAccountMockState } from '../features/connection/mocks/connectedAccountHandlers'
 import { resetConnectionLogMockState } from '@/features/audit/mocks/connectionLogHandlers'
 // external-access
-import { resetMockExternalAccessSettings } from '../mocks/externalAccessHandlers'
-import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
+import { resetMockExternalAccessSettings } from '../features/external-access/mocks/externalAccessHandlers'
+import { resetMockExternalAccessTokens } from '../features/external-access/mocks/externalAccessTokenHandlers'
 // auth
 import { resetMockAuthConfig } from '../mocks/authFixtures'
 import { resetMockSelfServiceTokens } from '@/features/auth/mocks/localAuthFixtures'

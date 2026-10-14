@@ -9,8 +9,8 @@ import {
   mockExternalAccessSettings,
   resetMockExternalAccessSettings,
   setMockExternalAccessSettings,
-} from '../../../mocks/externalAccessHandlers'
-import { resetMockExternalAccessTokens } from '../../../mocks/externalAccessTokenHandlers'
+} from '../mocks/externalAccessHandlers'
+import { resetMockExternalAccessTokens } from '../mocks/externalAccessTokenHandlers'
 import { server } from '../../../mocks/server'
 import { answerConfirm, renderWithProviders, waitForDialogClosed } from '../../../test/test-utils'
 import ExternalToolsTab from './ExternalToolsTab'

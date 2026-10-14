@@ -28,7 +28,7 @@ import {
   blockExternalAccessToken,
   blockExternalAccessTokensOfOwner,
   listAllExternalAccessTokens,
-} from '../../../services/externalAccessApi'
+} from '../api/externalAccessApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import PageSection from '@/shared/ui/PageSection'
@@ -42,7 +42,7 @@ import {
   BLOCK_CONSEQUENCE,
   TOKEN_STATUS_LABEL,
   formatDate,
-} from '../../externalaccess/tokenLabels'
+} from './tokenLabels'
 
 const STATUS_TONE: Record<ExternalAccessTokenStatus, StatusTone> = {
   ACTIVE: 'success',

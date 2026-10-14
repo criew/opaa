@@ -42,9 +42,9 @@ import { connectedAccountHandlers } from '../features/connection/mocks/connected
 import { connectionLogHandlers } from '@/features/audit/mocks/connectionLogHandlers'
 import { outboundProxyHandlers } from '../features/connection/mocks/outboundProxyHandlers'
 // external-access
-import { externalAccessHandlers } from './externalAccessHandlers'
-import { externalAccessTokenHandlers } from './externalAccessTokenHandlers'
-import { externalAccessLibraryHandlers } from './externalAccessLibraryHandlers'
+import { externalAccessHandlers } from '../features/external-access/mocks/externalAccessHandlers'
+import { externalAccessTokenHandlers } from '../features/external-access/mocks/externalAccessTokenHandlers'
+import { externalAccessLibraryHandlers } from '../features/external-access/mocks/externalAccessLibraryHandlers'
 // search-admin
 import { searchHandlers } from './searchHandlers'
 import { searchAdminHandlers } from './searchAdminHandlers'

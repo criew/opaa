@@ -11,7 +11,7 @@ import { successionAwareMessage } from '@/features/succession'
 import SectionHead from '@/shared/ui/SectionHead'
 import type { LibraryExternalAccessResponse } from '@/shared/api/types'
 import { getLibrary } from '../../services/libraryApi'
-import { updateLibraryExternalAccess } from '../../services/externalAccessApi'
+import { updateLibraryExternalAccess } from '@/features/external-access'
 
 interface LibraryExternalAccessSectionProps {
   libraryId: string

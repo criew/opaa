@@ -9,7 +9,7 @@ import AreaTabs from '@/shared/ui/AreaTabs'
 import { ConnectionProfilesTab } from '@/features/connection'
 import { ConnectorTypesTab } from '@/features/connection'
 import ConnectionSettingsTab from './ConnectionSettingsTab'
-import ExternalToolsTab from '../../components/admin/externalaccess/ExternalToolsTab'
+import { ExternalToolsTab } from '@/features/external-access'
 import {
   CONNECTIONS_ADMIN_TABS,
   connectionsAdminRoute,
