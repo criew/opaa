@@ -1233,7 +1233,7 @@ class DocumentIngestServiceTest {
               TestPipelineRegistries.fallbackOnly(documentService, chunkingService),
               new LibraryStorageQuotaService(
                   documentRepository,
-                  new LibraryProperties(1000),
+                  new LibraryProperties(1000, 0),
                   Mockito.mock(PersonalStorageQuota.class)));
       Path file = fileNamed("replace-under-quota.txt", "x".repeat(950));
       when(checksumService.computeSha256(file)).thenReturn("new-checksum");

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared seed mechanism for the OPAA demo/E2E data profiles (Issue #712).
+"""Shared seed mechanism for the OPAA demo/E2E data profiles.
 
 Sets up a ready-to-use OPAA installation through the public API only (no direct database access,
 per the issue's "Technische Hinweise"): users (provisioned by their first authenticated request),
@@ -118,7 +118,7 @@ REJECTION_HINTS = {
 def _readiness_failure_message(
     last_error: Exception | None, timeout_seconds: float, auth_mode: str
 ) -> str:
-    """Names the failure the readiness wait actually ran into (#1515). "Nicht erreichbar" is
+    """Names the failure the readiness wait actually ran into. "Nicht erreichbar" is
     reserved for the case where nothing answered; an answered request that rejects the caller is
     reported as such, together with the WWW-Authenticate challenge that carries the reason. Every
     case stays retried: a token can legitimately be rejected while the backend is still building
@@ -845,7 +845,7 @@ def upload_documents(admin_client: Client, library_id: str, upload_dir: Path) ->
 def wait_for_uploads_indexed(
     admin_client: Client, library_id: str, name: str, timeout_seconds: int
 ) -> None:
-    """Upload returns 201 while the document row is still PENDING (#434, ADR-0018) - Tika parsing
+    """Upload returns 201 while the document row is still PENDING (ADR-0018) - Tika parsing
     and embedding run afterwards, asynchronously, through the same executor infrastructure the
     connector indexing paths use. Without waiting here, the seed would report success before a
     single upload document is actually searchable, and a FAILED one would go unnoticed."""

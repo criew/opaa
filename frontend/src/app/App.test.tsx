@@ -4,6 +4,9 @@ import App from './App'
 import { useAuthStore } from '@/shared/session/authStore'
 import { setMockFeatures } from '@/shared/mocks/authFixtures'
 
+/** Pages load on demand; the first load of a theme transforms its whole chunk. */
+const PAGE_LOAD = { timeout: 8000 }
+
 describe('App', () => {
   beforeEach(() => {
     useAuthStore.setState({
@@ -27,16 +30,16 @@ describe('App', () => {
 
   it('redirects to an empty chat in the default space by default', async () => {
     render(<App />)
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('Nachricht eingeben …')).toBeInTheDocument()
-    })
+    expect(
+      await screen.findByPlaceholderText('Nachricht eingeben …', {}, PAGE_LOAD),
+    ).toBeInTheDocument()
     // Not merely "a chat page rendered": the route must be the not-yet-persisted draft, and the
     // draft's empty state must be what the user sees - no messages of an earlier conversation.
     expect(window.location.pathname).toMatch(/^\/spaces\/[^/]+\/chats\/new$/)
     expect(
       screen.getByRole('heading', { name: 'Womit kann ich Ihnen heute helfen?' }),
     ).toBeInTheDocument()
-  })
+  }, 15_000)
 
   it('shows the administration column to a SYSTEM_ADMIN (#805)', async () => {
     // Positive half of llm-model-management.spec.ts Szenario 3's landmark absence: the same
@@ -51,9 +54,7 @@ describe('App', () => {
     })
     window.history.pushState({}, '', '/admin/groups')
     render(<App />)
-    await waitFor(() => {
-      expect(screen.getByRole('navigation', { name: 'Administration' })).toBeInTheDocument()
-    })
+    expect(await screen.findByRole('navigation', { name: 'Administration' })).toBeInTheDocument()
     // One entry for the connections area instead of three.
     const navigation = screen.getByRole('navigation', { name: 'Administration' })
     expect(within(navigation).getByRole('link', { name: 'Anbindungen' })).toHaveAttribute(

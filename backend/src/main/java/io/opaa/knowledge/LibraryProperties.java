@@ -22,9 +22,11 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     FILESYSTEM/HTTP_DIRECTORY/RSS_FEED connector paths via {@code DocumentIngestService}), not
  *     merely the upload endpoint - a connector run can grow a library's bestand just as much as a
  *     human upload can.
+ * @param privateStorageQuotaBytes the default of {@link PersonalStorageQuota} until the system
+ *     administration sets its own value; {@code 0} or negative means unlimited.
  */
 @ConfigurationProperties(prefix = "opaa.library")
-public record LibraryProperties(long quotaBytes) {
+public record LibraryProperties(long quotaBytes, long privateStorageQuotaBytes) {
 
   public LibraryProperties {
     // quotaBytes is deliberately NOT defaulted here - see its own Javadoc above. A value <= 0 is a

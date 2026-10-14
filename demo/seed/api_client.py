@@ -1,4 +1,4 @@
-"""Thin HTTP client for the seed script (Issue #712).
+"""Thin HTTP client for the seed script.
 
 Speaks only the public OPAA API (opaa-api/src/main/openapi/) - no direct
 database access, per the issue's own "Technische Hinweise": direct writes would bypass Liquibase
@@ -15,7 +15,7 @@ import requests
 
 class ApiError(RuntimeError):
     """Carries the WWW-Authenticate challenge when the server sent one: a rejected token is
-    answered with an empty body, so the challenge is the only description of the cause (#1515)."""
+    answered with an empty body, so the challenge is the only description of the cause."""
 
     def __init__(self, response: requests.Response) -> None:
         challenge = response.headers.get("WWW-Authenticate")

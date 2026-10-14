@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One-off producer of the committed Word 97 file of the "Formattest auf S3" library (#1519).
+"""One-off producer of the committed Word 97 file of the "Formattest auf S3" library.
 
 `.doc` is the one admitted extension no pinned library of this generator can write, so this script
 renders the text declared in formate.py to a temporary `.docx` and lets LibreOffice convert it to
