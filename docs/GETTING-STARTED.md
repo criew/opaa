@@ -76,7 +76,7 @@ Danach in den Lesepfad wechseln, der zu Ihnen passt.
 - Quelloffen und damit prüfbar, statt zugesichert
 
 **Für Beitragende mit Betriebshintergrund:** Build- und Testbefehle stehen in
-[AGENTS.md](../AGENTS.md), der Technologiestapel in
+[AGENTS.md](../AGENTS.md) und [`entwicklung/build-und-ci.md`](./entwicklung/build-und-ci.md), der Technologiestapel in
 [ADR-0002](./decisions/0002-mvp-technology-stack.md), die Anmeldung in
 [ADR-0005](./decisions/0005-authentication-strategy.md).
 

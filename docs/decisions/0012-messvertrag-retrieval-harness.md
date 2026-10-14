@@ -262,8 +262,8 @@ ein Netz gegen einen leeren Vektor-Store, kein Qualitätsziel, mit dem Fenster @
 
 #### 22. Der lexikalische Pfad ist Teil der Pipeline-Messung (mit 23)
 
-Seit #1049 geht die Volltextsuche als Eingangsliste in die Fusion ein und bewegt die Endauswahl.
-`fullTextSearchEnabled` und `fullTextIndexUpToDate` sind seither Festpunkte; erst beide zusammen
+Die Volltextsuche geht als Eingangsliste in die Fusion ein und bewegt die Endauswahl.
+`fullTextSearchEnabled` und `fullTextIndexUpToDate` sind deshalb Festpunkte; erst beide zusammen
 beantworten, ob der lexikalische Pfad in einem Lauf beigetragen hat. Ein Variantenlauf, der ihn über
 einem unvollständigen Index anfordert, wird als „nicht ausgeführt“ gemeldet (`VariantPrerequisites`),
 nicht stillschweigend degradiert. Der Rohvektor-Pfad kennt den lexikalischen Pfad und die Fusion
@@ -272,7 +272,7 @@ konstruktionsbedingt nicht; seine Version bleibt von jeder Änderung daran unber
 #### 63. Das Fenster folgt der Produktion: @20
 
 `top-k` ist das Fenster, weil der Pipeline-Pfad die Nutzererfahrung misst und die die ganze
-Endauswahl bestimmt. Seit #2373 ist es 20; alle fenstertragenden Namen heißen entsprechend, im
+Endauswahl bestimmt. Es ist 20; alle fenstertragenden Namen heißen entsprechend, im
 Pipeline-, Mehrrunden- und Variantenbericht. Das Fenster ist nominell breiter als die zehn Dokumente
 des Rohvektor-Pfads, zählt aber Chunk-Plätze.
 

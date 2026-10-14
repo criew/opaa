@@ -55,7 +55,7 @@ Suite nicht; das ist Sache der Suchqualitäts-Evaluierung (ADR-0011).
 
 ### 5. Kein PR-Gate: Lauf nach dem Merge
 
-Seit #1226 läuft `.github/workflows/e2e.yml` bei jedem Push auf `main`, nächtlich und per
+`.github/workflows/e2e.yml` läuft bei jedem Push auf `main`, nächtlich und per
 `workflow_dispatch`, nicht bei Pull Requests. Ein Fehlschlag auf `main` legt ein Alarm-Issue (Label
 `e2e`, Marker `<!-- e2e-alert -->`) an oder kommentiert das offene; ein grüner Lauf schließt es. Die
 Suite war nie Required Check, belegte aber je PR-Push 8 bis 12 Minuten Runner; das Netz nach dem Merge

@@ -71,7 +71,7 @@ Auth-Profil, `pnpm run dev`, lokales PostgreSQL.
 
 Backend-Integrationstests laufen gegen ein pgvector-Image per Testcontainers; die CI
 (`.github/workflows/ci.yml`) prüft Backend und Frontend bei jedem Push und PR, teure Suiten laufen
-nächtlich oder per Label (siehe `AGENTS.md`, „Build & Test“).
+nächtlich oder per Label (siehe [docs/entwicklung/build-und-ci.md](../entwicklung/build-und-ci.md)).
 
 ## Konsequenzen
 

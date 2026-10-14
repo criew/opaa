@@ -213,6 +213,9 @@ Anbindung an die elektronische Akte und an Dokumentenmanagement.
 - **[`../AGENTS.md`](../AGENTS.md)** — Anweisungen für KI-Agenten
 - **[`../backend/AGENTS.md`](../backend/AGENTS.md)** — Backend-Regeln für KI-Agenten
   (Abhängigkeitsverwaltung, API-/Mapper-Konvention, Spring-Testkontexte, Liquibase)
+- **[`entwicklung/build-und-ci.md`](./entwicklung/build-und-ci.md)** — Befehle außerhalb des täglichen
+  Builds: Integrationstest-Suiten, Helm-Chart-Prüfungen, Kubernetes-Erprobungsaufbau, E2E-Suite,
+  Image-Rauchtest
 
 ### Überholt
 
