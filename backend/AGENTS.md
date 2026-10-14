@@ -96,8 +96,6 @@ Der Test prüft außerdem:
   kennt ihn. Kern, Verwaltung und API erreichen Konnektoren nur über die `SourceConnectorRegistry`.
   Ein Konnektor und der Datei-Abgleich nutzen aus `indexing` nur `CONNECTOR_IMPORTS`, also nie
   `credentials` (Resolver, Dienstkonto-Schlüssel; ADR-0040, Entscheidung 2), `registry` oder `trigger`.
-  Der Laufrahmen `IndexingRunTemplate` löst Ziel und Geheimnis einer Bibliothek nur für die
-  Executor-Klasse auf, die die Registry für ihren Quellentyp führt.
 - Die Pakete des Gradle-Moduls `opaa-api` (`io.opaa.api.dto`, `io.opaa.api.types`) liegen
   außerhalb der Schichtung.
 - **Namen in den Listen:** `everyNamedCodeUnitExists` löst jeden Eintrag der Form `paket.Klasse`,
@@ -110,6 +108,9 @@ Der Test prüft außerdem:
   auf `io.opaa.…`. Ein Javadoc-Verweis nach oben steht deshalb als `{@code …}`. Ungeprüft bleiben
   eine einfaltbare Konstante, die der Code vollqualifiziert ohne Import liest, und Parametertypen
   in `{@link X#m(io.opaa.…)}`.
+
+Zur Laufzeit, nicht im Test: `IndexingRunTemplate` löst Ziel und Geheimnis nur für einen Lauf-Körper
+aus der Executor-Klasse auf, die die Registry für den Quellentyp der Bibliothek führt.
 
 **Neues Top-Level-Paket:** in `LAYERS` oberhalb aller Pakete eintragen, die es nutzt, und in
 `MODULES` einem Modul zuordnen. Fehlt der Eintrag, nennt der Test das Paket und beide Stellen.

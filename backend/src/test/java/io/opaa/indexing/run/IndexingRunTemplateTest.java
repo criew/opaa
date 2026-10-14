@@ -138,24 +138,6 @@ class IndexingRunTemplateTest {
 
   // --- the executor -----------------------------------------------------------------------
 
-  /** An executor of a class of its own, the way every connector's is. */
-  private record FilesystemRun() implements SourceIndexingExecutor {
-    @Override
-    public Map<IndexingRunMode, VanishedDocumentPolicy> runModes() {
-      return Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.KEEP_ON_ABSENCE);
-    }
-
-    @Override
-    public SourceType sourceType() {
-      return SourceTypes.FILESYSTEM;
-    }
-
-    @Override
-    public void execute(UUID jobId, KnowledgeLibrary targetLibrary, IndexingRunMode runMode) {
-      throw new UnsupportedOperationException();
-    }
-  }
-
   /** A frame whose registry hands the library's source type to {@code registered}. */
   private IndexingRunTemplate templateRegistering(
       SourceConnectionResolver resolver, SourceIndexingExecutor registered) {
@@ -176,23 +158,20 @@ class IndexingRunTemplateTest {
   }
 
   @Test
-  void anExecutorOfAnotherClassIsRefusedBeforeTheLibrarysSourceIsResolved() {
+  void aBodyFromOutsideTheRegisteredExecutorIsRefusedBeforeTheLibrarysSourceIsResolved() {
     SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
     AtomicReference<IndexingRun> seen = new AtomicReference<>();
-    // claims the library's type, but is not the class the core hands that type to
-    SourceIndexingExecutor foreign =
-        executor(
-            SourceTypes.FILESYSTEM,
-            Map.of(IndexingRunMode.FULL, VanishedDocumentPolicy.KEEP_ON_ABSENCE));
+    FilesystemRun registered = new FilesystemRun();
 
+    // the registered executor itself, but a body another class defines
     assertThatThrownBy(
             () ->
-                templateRegistering(resolver, new FilesystemRun())
+                templateRegistering(resolver, registered)
                     .run(
                         jobId,
                         library,
                         IndexingRunMode.FULL,
-                        foreign,
+                        registered,
                         run -> {
                           seen.set(run);
                           return ListingOutcome.complete();
@@ -201,11 +180,39 @@ class IndexingRunTemplateTest {
         .hasMessageContaining("may not run library " + library.getId());
 
     assertThat(seen.get()).isNull();
-    verifyNoInteractions(resolver, jobService, eventRepository);
+    verifyNoInteractions(resolver, eventRepository);
+    verify(jobService).failJob(eq(jobId), any());
+    verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
   @Test
-  void theRegisteredExecutorRunsItsFrameBehindItsProxy() {
+  void aBodyOfTheRegisteredClassIsRefusedForALibraryOfAnotherSourceType() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    AtomicReference<IndexingRun> seen = new AtomicReference<>();
+    FilesystemRun own = new FilesystemRun();
+    KnowledgeLibrary feed =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Feed",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            "https://feed.example",
+            null);
+
+    assertThatThrownBy(
+            () ->
+                templateRegistering(resolver, own)
+                    .run(jobId, feed, IndexingRunMode.FULL, own, own.body(seen)))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    assertThat(seen.get()).isNull();
+    verifyNoInteractions(resolver);
+  }
+
+  @Test
+  void theRegisteredExecutorRunsItsOwnBodyBehindItsProxy() {
     FilesystemRun target = new FilesystemRun();
     ProxyFactory proxy = new ProxyFactory(target);
     proxy.setProxyTargetClass(false);
@@ -213,15 +220,7 @@ class IndexingRunTemplateTest {
 
     templateRegistering(
             new LibrarySourceConnectionResolver(), (SourceIndexingExecutor) proxy.getProxy())
-        .run(
-            jobId,
-            library,
-            IndexingRunMode.FULL,
-            target,
-            run -> {
-              seen.set(run);
-              return ListingOutcome.complete();
-            });
+        .run(jobId, library, IndexingRunMode.FULL, target, target.body(seen));
 
     assertThat(seen.get()).isNotNull();
     verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());

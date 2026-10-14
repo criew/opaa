@@ -40,7 +40,7 @@ import org.springframework.aop.support.AopUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
- * The frame every connector run shares: it refuses an executor of another class than the one
+ * The frame every connector run shares: it refuses a body not defined by the executor class
  * registered for the library's source type, starts the job's progress and protocol, rejects a run
  * mode the executor does not declare, resolves the library's source through the {@link
  * SourceConnectionResolver}, runs the connector's body, reconciles by absence when the body listed
@@ -164,9 +164,10 @@ public class IndexingRunTemplate {
   /**
    * {@code settingsBasis} fingerprints the settings a run begins with; a sync state written under
    * another fingerprint is not continued, and a run whose settings change meanwhile removes nothing
-   * for being absent. {@code executors}, when given, admits a frame only for an executor of the
-   * class registered for the library's source type; anything else is refused before the library's
-   * source is resolved, so no connector reaches the secret of a library of another type.
+   * for being absent. {@code executors}, when given, admits only a body whose nest host is the
+   * executor class registered for the library's source type - a lambda or method reference belongs
+   * to the class that defines it. Anything else fails the job before the library's source is
+   * resolved; a library of the connector's own type stays reachable to it.
    */
   public IndexingRunTemplate(
       IndexingJobService indexingJobService,
@@ -200,7 +201,7 @@ public class IndexingRunTemplate {
       IndexingRunMode runMode,
       SourceIndexingExecutor executor,
       RunBody body) {
-    requireRegistered(executor, library);
+    requireRegistered(jobId, library, body);
     var progress = new IndexingRunProgress(indexingJobService, jobId);
     var events = new IndexingRunEventRecorder(eventRepository, indexingJobService, jobId);
     VanishedDocumentPolicy policy = executor.runModes().get(runMode);
@@ -387,19 +388,24 @@ public class IndexingRunTemplate {
   }
 
   /**
-   * A frame belongs to the executor the core hands a library of this source type to; a proxy counts
-   * as the class it wraps, since a body runs on the target. Neither the job nor the library is
-   * touched on a refusal: both may belong to another connector's run.
+   * The body must come from the class the core hands a library of this source type to; a proxy of
+   * the registered executor counts as the class it wraps. A refused job is failed at once, so it
+   * does not hold the library until the recovery.
    */
-  private void requireRegistered(SourceIndexingExecutor executor, KnowledgeLibrary library) {
+  private void requireRegistered(UUID jobId, KnowledgeLibrary library, RunBody body) {
     if (executors == null) {
       return;
     }
-    Optional<Class<?>> registered =
-        executors.get().find(library.getSourceType()).map(AopUtils::getTargetClass);
-    if (registered.isEmpty() || registered.get() != AopUtils.getTargetClass(executor)) {
+    Class<?> host = body.getClass().getNestHost();
+    if (executors
+        .get()
+        .find(library.getSourceType())
+        .filter(registered -> AopUtils.getTargetClass(registered).getNestHost() == host)
+        .isEmpty()) {
+      indexingJobService.failJob(
+          jobId, "Lauf abgelehnt: Er stammt nicht vom Konnektor dieses Quellentyps");
       throw new IllegalArgumentException(
-          AopUtils.getTargetClass(executor).getName()
+          host.getName()
               + " may not run library "
               + library.getId()
               + " of source type "

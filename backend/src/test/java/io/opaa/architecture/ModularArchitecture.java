@@ -519,9 +519,10 @@ public final class ModularArchitecture {
   /**
    * The packages of indexing a connector and the file sync may use, relative to the root: neither
    * sees the resolvers, the service account key, the registry or the triggers (ADR-0040,
-   * Entscheidung 2). The frame in {@code indexing.run} resolves a library's source only for an
-   * executor of the class registered for its source type, and a connector knows no other
-   * connector's class, so no connector reaches the secret of a library of another source type.
+   * Entscheidung 2). Not checked here but at run time: the frame in {@code indexing.run} resolves a
+   * library's source only for a body defined by the executor class registered for its source type,
+   * so a connector's body never sees the secret of a library of another type; one of its own type
+   * stays reachable (#2772).
    */
   static final Set<String> CONNECTOR_IMPORTS =
       Set.of(
