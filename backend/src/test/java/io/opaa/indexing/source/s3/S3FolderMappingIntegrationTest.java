@@ -17,7 +17,7 @@ import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.run.IndexingRunTemplate;
-import io.opaa.indexing.source.ScanJournal;
+import io.opaa.indexing.spi.ScanJournal;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

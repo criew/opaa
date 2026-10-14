@@ -9,7 +9,7 @@ final class SourceBlockResponseMapper {
 
   private SourceBlockResponseMapper() {}
 
-  static SourceBlock toResponse(io.opaa.indexing.source.SourceBlock block) {
+  static SourceBlock toResponse(io.opaa.indexing.spi.SourceBlock block) {
     if (block == null) {
       return null;
     }

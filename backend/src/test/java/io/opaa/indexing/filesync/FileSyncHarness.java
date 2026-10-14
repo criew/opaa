@@ -23,12 +23,12 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.run.IndexingRunTemplate;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.ScanJournal;
-import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.SourceSyncState;
-import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.VanishedDocumentPolicy;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
+import io.opaa.indexing.spi.SourceSyncState;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
+import io.opaa.indexing.spi.VanishedDocumentPolicy;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.FilePathLimit;
@@ -549,7 +549,7 @@ public final class FileSyncHarness {
 
   @FunctionalInterface
   private interface Body {
-    io.opaa.indexing.source.ListingOutcome run(FileSync sync) throws InterruptedException;
+    io.opaa.indexing.spi.ListingOutcome run(FileSync sync) throws InterruptedException;
   }
 
   private Run run(IndexingRunMode mode, FileStore store, Body body) {

@@ -364,7 +364,7 @@ class FileSyncChangeRunTest {
     harness
         .state()
         .rememberSubtrees(
-            new io.opaa.indexing.source.SourceSyncState.SubtreeMemory(
+            new io.opaa.indexing.spi.SourceSyncState.SubtreeMemory(
                 "basis",
                 FileSyncHarness.NOW,
                 Map.of("A", Map.of("q", "m1"), "B", Map.of("r", "m2"))));

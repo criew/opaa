@@ -42,10 +42,10 @@ import io.opaa.indexing.document.DocumentIngest;
 import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.document.DocumentIngests;
 import io.opaa.indexing.registry.TestSourceConnectors;
-import io.opaa.indexing.source.RemoteContentProperties;
-import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.s3.S3Download;
 import io.opaa.indexing.source.s3.S3OriginalAccess;
+import io.opaa.indexing.spi.RemoteContentProperties;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.DocumentRepository;
@@ -1988,7 +1988,7 @@ class LibraryDocumentServiceTest {
     when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
     when(s3OriginalAccess.download(any(), any(), any()))
         .thenThrow(
-            new io.opaa.indexing.source.SourceCredentialsException(
+            new io.opaa.indexing.spi.SourceCredentialsException(
                 "Die domänenweite Delegation fehlt: Das Dienstkonto leser@p.iam.gserviceaccount.com"
                     + " darf das Konto chef@example.org nicht imitieren."));
 

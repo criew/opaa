@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.nextcloud;
 
-import io.opaa.indexing.source.RenewableCredential;
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RenewableCredential;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;

@@ -13,7 +13,7 @@ import io.opaa.indexing.filesync.FileContainer;
 import io.opaa.indexing.filesync.FileEntry;
 import io.opaa.indexing.filesync.FilePage;
 import io.opaa.indexing.filesync.FileSyncHarness;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -255,10 +255,9 @@ class DropboxFileStoreTest {
                 io.opaa.security.TargetAddressValidator.disabled(),
                 wait -> {})
             .open(
-                new io.opaa.indexing.source.SourceSettings(
-                    null, server.base().toString(), null, null),
+                new io.opaa.indexing.spi.SourceSettings(null, server.base().toString(), null, null),
                 () -> FakeDropboxServer.TOKEN,
-                new io.opaa.indexing.source.RequestBudget(
+                new io.opaa.indexing.spi.RequestBudget(
                     new io.opaa.sourceaccess.SourceRequestMeter(), requests, null));
     return new DropboxFileStore(
         api, DropboxSettings.read(ConnectorData.of(Map.of("folders", List.of(folders)))), 2);

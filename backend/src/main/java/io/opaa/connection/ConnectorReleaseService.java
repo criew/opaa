@@ -13,7 +13,7 @@ import io.opaa.connection.profile.ProfileRequirementService;
 import io.opaa.connection.profile.ProfileRequirements;
 import io.opaa.connection.token.PersonAccounts;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.spi.SourceConnectorDescriptor;
 import io.opaa.knowledge.SourceType;
 import io.opaa.permission.CapabilityService;
 import io.opaa.permission.HeldScopes;

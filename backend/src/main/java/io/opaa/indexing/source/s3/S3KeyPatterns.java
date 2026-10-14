@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.indexing.source.SourceGlob;
+import io.opaa.indexing.spi.SourceGlob;
 import java.util.List;
 
 /**

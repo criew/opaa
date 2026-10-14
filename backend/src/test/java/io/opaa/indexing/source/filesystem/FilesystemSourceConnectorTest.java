@@ -6,9 +6,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceConnectionTestResult;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceConnectionTestResult;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.sourceaccess.FilesystemPathAllowlist;
 import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;

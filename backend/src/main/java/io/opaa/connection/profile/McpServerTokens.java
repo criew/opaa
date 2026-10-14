@@ -3,8 +3,8 @@ package io.opaa.connection.profile;
 import io.opaa.connection.token.ConnectionSecrets;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretRefusedException;
-import io.opaa.indexing.source.Secret;
-import io.opaa.indexing.source.SourceBlock.Reason;
+import io.opaa.indexing.spi.Secret;
+import io.opaa.indexing.spi.SourceBlock.Reason;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 

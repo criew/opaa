@@ -1,6 +1,6 @@
 package io.opaa.indexing.filesync;
 
-import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.indexing.spi.SourceFolderPath;
 import io.opaa.knowledge.SourceDocumentContext;
 import java.util.Objects;
 

@@ -1,6 +1,6 @@
 package io.opaa.connection.oauth;
 
-import io.opaa.indexing.source.OAuthAuth;
+import io.opaa.indexing.spi.OAuthAuth;
 
 /**
  * The issuer an authorization response must come from (RFC 9207, 2.4): {@code iss} equals {@code

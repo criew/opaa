@@ -1,7 +1,7 @@
 package io.opaa.indexing.filesync;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
-import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.indexing.spi.SourceFolderPath;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.io.IOException;

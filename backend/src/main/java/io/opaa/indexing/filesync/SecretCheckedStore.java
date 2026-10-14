@@ -1,6 +1,6 @@
 package io.opaa.indexing.filesync;
 
-import io.opaa.indexing.source.RunCredentials;
+import io.opaa.indexing.spi.RunCredentials;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.util.List;
 import java.util.Map;

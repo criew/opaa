@@ -4,8 +4,8 @@ import io.opaa.api.types.ConnectionOwnership;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.SourceDraft.DraftOwner;
-import io.opaa.indexing.source.SignIn;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.spi.SignIn;
+import io.opaa.indexing.spi.SourceConnectorDescriptor;
 import io.opaa.knowledge.SourceType;
 import java.util.Optional;
 

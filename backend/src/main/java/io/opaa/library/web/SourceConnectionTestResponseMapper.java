@@ -10,15 +10,15 @@ import io.opaa.api.dto.SourceConnectionTestResponse;
 import io.opaa.api.dto.SourceTypeDescriptor;
 import io.opaa.api.dto.SourceTypeSignIn;
 import io.opaa.connection.ConnectorReleaseService.TypeCreation;
-import io.opaa.indexing.source.ClientCredentialsAuth;
-import io.opaa.indexing.source.DefaultKey;
-import io.opaa.indexing.source.Endpoint;
-import io.opaa.indexing.source.OAuthAuth;
-import io.opaa.indexing.source.ProfileDeclaration;
-import io.opaa.indexing.source.SignIn;
-import io.opaa.indexing.source.SourceConnectionTestResult;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
-import io.opaa.indexing.source.SourceListing;
+import io.opaa.indexing.spi.ClientCredentialsAuth;
+import io.opaa.indexing.spi.DefaultKey;
+import io.opaa.indexing.spi.Endpoint;
+import io.opaa.indexing.spi.OAuthAuth;
+import io.opaa.indexing.spi.ProfileDeclaration;
+import io.opaa.indexing.spi.SignIn;
+import io.opaa.indexing.spi.SourceConnectionTestResult;
+import io.opaa.indexing.spi.SourceConnectorDescriptor;
+import io.opaa.indexing.spi.SourceListing;
 import io.opaa.library.SourceConnectionTest;
 
 /**

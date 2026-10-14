@@ -21,8 +21,8 @@ import io.opaa.indexing.job.IndexingRunEventRecorder;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.registry.StoredDocumentSourceAccess;
 import io.opaa.indexing.run.IndexingRun;
-import io.opaa.indexing.source.IndexingRunProgress;
-import io.opaa.indexing.source.Secret;
+import io.opaa.indexing.spi.IndexingRunProgress;
+import io.opaa.indexing.spi.Secret;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -1202,7 +1202,7 @@ class PipelineReindexServiceIntegrationTest {
         new IndexingRunProgress(jobService, jobId),
         new IndexingRunEventRecorder(
             org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
-        org.mockito.Mockito.mock(io.opaa.indexing.source.VanishedDocumentReconciler.class),
+        org.mockito.Mockito.mock(io.opaa.indexing.spi.VanishedDocumentReconciler.class),
         documentRepository,
         org.mockito.Mockito.mock(io.opaa.knowledge.LibraryStorageQuotaService.class),
         rejected -> Secret.personal(library.getSourceCredentials()),

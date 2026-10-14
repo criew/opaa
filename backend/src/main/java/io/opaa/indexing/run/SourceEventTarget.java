@@ -1,7 +1,7 @@
 package io.opaa.indexing.run;
 
 import io.opaa.api.types.IndexingRunMode;
-import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.Set;

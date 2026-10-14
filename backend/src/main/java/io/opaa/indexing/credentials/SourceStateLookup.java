@@ -1,6 +1,6 @@
 package io.opaa.indexing.credentials;
 
-import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.spi.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.Collection;
 import java.util.Map;

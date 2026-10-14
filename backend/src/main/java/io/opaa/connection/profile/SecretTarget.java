@@ -1,7 +1,7 @@
 package io.opaa.connection.profile;
 
-import io.opaa.indexing.source.SourceConnector;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.SourceConnector;
+import io.opaa.indexing.spi.SourceSettings;
 import java.util.Objects;
 
 /**

@@ -2,8 +2,8 @@ package io.opaa.indexing.run;
 
 import io.opaa.api.types.IndexingRunMode;
 import io.opaa.indexing.credentials.SourceConnectionResolver;
-import io.opaa.indexing.source.SourceIndexingExecutor;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.util.Objects;
 import org.slf4j.Logger;

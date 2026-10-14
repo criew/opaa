@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.googledrive;
 
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;

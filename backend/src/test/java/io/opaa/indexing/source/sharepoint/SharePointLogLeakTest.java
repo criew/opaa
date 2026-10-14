@@ -9,7 +9,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingRunEvent;
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.msgraph.FakeGraphServer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -31,8 +31,7 @@ class SharePointLogLeakTest {
 
   private static final List<String> WATCHED =
       List.of(
-          "io.opaa.indexing.source",
-          "io.opaa.indexing.filesync",
+          "io.opaa.indexing",
           "io.opaa.msgraph",
           "io.opaa.sourceaccess",
           "io.opaa.security.TargetAddressValidator");

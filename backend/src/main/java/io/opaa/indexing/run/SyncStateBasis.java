@@ -2,9 +2,9 @@ package io.opaa.indexing.run;
 
 import io.opaa.indexing.credentials.SourceConnectionResolver;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceSettings;
-import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.KnowledgeLibrary;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

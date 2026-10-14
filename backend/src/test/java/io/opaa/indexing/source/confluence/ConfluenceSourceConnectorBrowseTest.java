@@ -9,10 +9,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.SourceBrowser;
-import io.opaa.indexing.source.SourceListing;
-import io.opaa.indexing.source.SourceSettings;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.spi.SourceBrowser;
+import io.opaa.indexing.spi.SourceListing;
+import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 

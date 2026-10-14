@@ -11,10 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.jayway.jsonpath.JsonPath;
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.indexing.source.SourceSettings;
 import io.opaa.indexing.source.profileprobe.ProfileProbeIndexingExecutor;
 import io.opaa.indexing.source.profileprobe.ProfileProbeIndexingExecutor.Seen;
 import io.opaa.indexing.source.profileprobe.ProfileProbeSourceConnector;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.test.ConnectorReleases;
 import io.opaa.test.OpaaIntegrationTest;
 import io.opaa.test.OwnLibraryFixtures;

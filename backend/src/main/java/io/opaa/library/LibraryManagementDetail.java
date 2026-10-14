@@ -1,7 +1,7 @@
 package io.opaa.library;
 
 import io.opaa.api.types.AssetRole;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 
 /**
  * The management-only half of a {@link LibraryDetail} - source configuration, schedule and storage

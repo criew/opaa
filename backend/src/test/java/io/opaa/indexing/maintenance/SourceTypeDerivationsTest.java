@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.indexing.registry.SourceConnectorRegistry;
 import io.opaa.indexing.registry.StoredDocumentSourceAccess;
-import io.opaa.indexing.source.SourceConnectorStubs;
+import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.SourceType;
 import io.opaa.knowledge.VectorTable;

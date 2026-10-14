@@ -2,9 +2,9 @@ package io.opaa.indexing.registry;
 
 import io.opaa.common.ValidationException;
 import io.opaa.indexing.credentials.SourceConnectionResolver;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceConnector;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceConnector;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.util.HashMap;

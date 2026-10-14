@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.s3;
 
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.s3.S3Connection;
 import io.opaa.s3.S3Credentials;
 import java.net.URI;

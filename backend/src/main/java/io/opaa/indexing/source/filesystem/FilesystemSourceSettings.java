@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.filesystem;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceGlob;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceGlob;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

@@ -34,10 +34,10 @@ import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.registry.TestSourceConnectors;
-import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -146,7 +146,7 @@ class KnowledgeLibraryServiceShareCapTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssFeedStateRepository(rssFeedStateRepository)
                 .sourceSyncStateRepository(
-                    mock(io.opaa.indexing.source.SourceSyncStateRepository.class))
+                    mock(io.opaa.indexing.spi.SourceSyncStateRepository.class))
                 .confluenceConnectionService(mock(ConfluenceConnectionService.class))
                 .confluenceProperties(confluenceProperties)
                 .registry(),

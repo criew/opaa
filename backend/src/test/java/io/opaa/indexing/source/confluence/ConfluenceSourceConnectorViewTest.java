@@ -3,9 +3,9 @@ package io.opaa.indexing.source.confluence;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.webhook.ConfluenceWebhookService;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.util.List;

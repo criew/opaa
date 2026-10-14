@@ -15,7 +15,7 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.registry.IndexingSourceExecutorRegistry;
-import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;

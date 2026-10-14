@@ -7,7 +7,7 @@ import static org.mockito.Mockito.withSettings;
 
 import io.opaa.asset.Asset;
 import io.opaa.common.ConflictException;
-import io.opaa.indexing.source.SourceConnectorStubs;
+import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.test.SourceTypes;
 import java.util.UUID;

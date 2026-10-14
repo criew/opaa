@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.confluence;
 
-import io.opaa.indexing.source.RenewableCredential;
+import io.opaa.indexing.spi.RenewableCredential;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 

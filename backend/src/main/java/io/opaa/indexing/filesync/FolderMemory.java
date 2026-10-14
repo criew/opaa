@@ -1,7 +1,7 @@
 package io.opaa.indexing.filesync;
 
 import io.opaa.format.SupportedDocumentFormats;
-import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.spi.SourceSyncState;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.SourceDocumentContext;
 import java.time.Duration;

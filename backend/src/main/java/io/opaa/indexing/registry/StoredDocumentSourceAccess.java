@@ -3,7 +3,7 @@ package io.opaa.indexing.registry;
 import io.opaa.indexing.document.AttachmentExtractor;
 import io.opaa.indexing.document.AttachmentFilePath;
 import io.opaa.indexing.document.ChecksumService;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.spi.SourceConnectorDescriptor;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

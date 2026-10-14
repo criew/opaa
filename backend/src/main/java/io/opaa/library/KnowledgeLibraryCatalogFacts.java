@@ -2,7 +2,7 @@ package io.opaa.library;
 
 import io.opaa.api.types.CatalogEntryStatus;
 import io.opaa.asset.AssetCatalogFacts;
-import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.spi.SourceBlock;
 import java.time.Instant;
 
 /**

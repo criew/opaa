@@ -3,10 +3,10 @@ package io.opaa.indexing.filesync;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.source.RunCredentials;
-import io.opaa.indexing.source.Secret;
-import io.opaa.indexing.source.SourceBlock;
-import io.opaa.indexing.source.SourceConnectionBlockedException;
+import io.opaa.indexing.spi.RunCredentials;
+import io.opaa.indexing.spi.Secret;
+import io.opaa.indexing.spi.SourceBlock;
+import io.opaa.indexing.spi.SourceConnectionBlockedException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicInteger;

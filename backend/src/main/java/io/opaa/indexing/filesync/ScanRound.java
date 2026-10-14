@@ -1,10 +1,10 @@
 package io.opaa.indexing.filesync;
 
 import io.opaa.indexing.run.IndexingRun;
-import io.opaa.indexing.source.ScanJournal;
-import io.opaa.indexing.source.SourceSyncState;
-import io.opaa.indexing.source.SourceSyncState.ContainerProgress;
-import io.opaa.indexing.source.SourceSyncState.ScanProgress;
+import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceSyncState;
+import io.opaa.indexing.spi.SourceSyncState.ContainerProgress;
+import io.opaa.indexing.spi.SourceSyncState.ScanProgress;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayDeque;

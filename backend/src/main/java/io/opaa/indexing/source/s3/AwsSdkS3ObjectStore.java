@@ -2,7 +2,7 @@ package io.opaa.indexing.source.s3;
 
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
-import io.opaa.indexing.source.RenewableCredential;
+import io.opaa.indexing.spi.RenewableCredential;
 import io.opaa.outbound.OutboundProxySelector;
 import io.opaa.outbound.ProxyAddress;
 import io.opaa.s3.S3AccessException;

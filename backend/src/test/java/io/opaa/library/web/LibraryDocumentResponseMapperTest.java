@@ -7,7 +7,7 @@ import io.opaa.api.dto.BulkDocumentDeleteFailure;
 import io.opaa.api.dto.BulkDocumentDeleteResponse;
 import io.opaa.api.dto.LibraryDocumentPageResponse;
 import io.opaa.api.dto.LibraryDocumentResponse;
-import io.opaa.indexing.source.SourceConnectorStubs;
+import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.SourceDocumentContext;

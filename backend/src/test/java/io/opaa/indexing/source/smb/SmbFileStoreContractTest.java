@@ -8,7 +8,7 @@ import io.opaa.indexing.filesync.FileStoreResumptionContract;
 import io.opaa.indexing.filesync.FileSyncHarness;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RequestBudget;
 import io.opaa.knowledge.FilePathLimit;
 import io.opaa.sourceaccess.SourceRequestMeter;
 import java.nio.charset.StandardCharsets;

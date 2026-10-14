@@ -6,7 +6,7 @@ import io.opaa.api.dto.CatalogEntryResponse;
 import io.opaa.api.dto.SourceBlockAction;
 import io.opaa.api.dto.SourceBlockReason;
 import io.opaa.api.types.CatalogEntryStatus;
-import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.spi.SourceBlock;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.library.KnowledgeLibraryCatalogFacts;
 import java.time.Instant;

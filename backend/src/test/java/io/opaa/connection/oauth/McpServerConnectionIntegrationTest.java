@@ -34,7 +34,7 @@ import io.opaa.connection.token.GrantRevocations;
 import io.opaa.connection.token.SecretOwner.PersonOwned;
 import io.opaa.connection.token.SecretRefusedException;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.source.SourceBlock.Reason;
+import io.opaa.indexing.spi.SourceBlock.Reason;
 import io.opaa.organization.Organization;
 import io.opaa.security.CredentialsEncryptor;
 import io.opaa.security.TargetAddressValidator;

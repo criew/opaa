@@ -1,9 +1,9 @@
 package io.opaa.indexing.credentials;
 
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.Secret;
-import io.opaa.indexing.source.SourceConnectionBlockedException;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.Secret;
+import io.opaa.indexing.spi.SourceConnectionBlockedException;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.knowledge.KnowledgeLibrary;
 
 /**

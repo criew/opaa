@@ -2,10 +2,6 @@ package io.opaa.indexing.registry;
 
 import static org.mockito.Mockito.mock;
 
-import io.opaa.indexing.source.RemoteContentProperties;
-import io.opaa.indexing.source.RemoteOriginalAccess;
-import io.opaa.indexing.source.SourceConnector;
-import io.opaa.indexing.source.SourceSyncStateRepository;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.confluence.ConfluenceSourceConnector;
@@ -24,6 +20,10 @@ import io.opaa.indexing.source.s3.events.S3EventService;
 import io.opaa.indexing.source.upload.UploadSourceConnector;
 import io.opaa.indexing.source.web.AutoindexCrawlerService;
 import io.opaa.indexing.source.web.HttpDirectorySourceConnector;
+import io.opaa.indexing.spi.RemoteContentProperties;
+import io.opaa.indexing.spi.RemoteOriginalAccess;
+import io.opaa.indexing.spi.SourceConnector;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.UploadedOriginalStore;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedDownloader;

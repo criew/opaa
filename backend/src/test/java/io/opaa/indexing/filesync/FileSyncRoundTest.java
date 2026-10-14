@@ -6,7 +6,7 @@ import io.opaa.indexing.document.DocumentIngestResult;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
-import io.opaa.indexing.source.SourceSyncState;
+import io.opaa.indexing.spi.SourceSyncState;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;

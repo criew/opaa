@@ -1,6 +1,6 @@
 package io.opaa.indexing.source.nextcloud;
 
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.sourceaccess.BasicCredentials;
 import io.opaa.sourceaccess.SourceHttpClientFactory;
 import java.net.URI;

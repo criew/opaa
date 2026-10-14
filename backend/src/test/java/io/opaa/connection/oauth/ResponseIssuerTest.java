@@ -3,10 +3,10 @@ package io.opaa.connection.oauth;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import io.opaa.indexing.source.ClientAuthentication;
-import io.opaa.indexing.source.Endpoint;
-import io.opaa.indexing.source.OAuthAuth;
-import io.opaa.indexing.source.Revocation;
+import io.opaa.indexing.spi.ClientAuthentication;
+import io.opaa.indexing.spi.Endpoint;
+import io.opaa.indexing.spi.OAuthAuth;
+import io.opaa.indexing.spi.Revocation;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 

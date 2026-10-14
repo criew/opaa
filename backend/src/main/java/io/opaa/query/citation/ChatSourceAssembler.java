@@ -11,7 +11,7 @@ import io.opaa.format.chunk.ChunkMetadataKeys;
 import io.opaa.indexing.credentials.SourceStateLookup;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.source.SourceBlock;
+import io.opaa.indexing.spi.SourceBlock;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;

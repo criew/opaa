@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.smb;
 
-import io.opaa.indexing.source.RequestBudget;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.RequestBudget;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.security.TargetAddressValidator;
 import java.time.Duration;
 

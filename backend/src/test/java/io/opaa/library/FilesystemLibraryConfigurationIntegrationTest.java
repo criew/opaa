@@ -7,8 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import io.opaa.auth.DevAuthFilter;
-import io.opaa.indexing.source.ConnectorData;
 import io.opaa.indexing.source.filesystem.FilesystemSourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.test.OpaaIntegrationTest;
 import java.nio.charset.StandardCharsets;

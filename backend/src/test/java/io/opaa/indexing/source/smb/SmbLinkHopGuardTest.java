@@ -14,7 +14,7 @@ import com.hierynomus.protocol.transport.TransportException;
 import com.hierynomus.protocol.transport.TransportLayer;
 import com.hierynomus.smb.SMBPacket;
 import com.hierynomus.smbj.common.SmbPath;
-import io.opaa.indexing.source.RequestBudget;
+import io.opaa.indexing.spi.RequestBudget;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.EnumSet;

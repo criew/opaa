@@ -1,8 +1,8 @@
 package io.opaa.indexing.source.sharepoint;
 
-import io.opaa.indexing.source.RequestBudget;
-import io.opaa.indexing.source.RunCredentials;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.RequestBudget;
+import io.opaa.indexing.spi.RunCredentials;
+import io.opaa.indexing.spi.SourceSettings;
 import io.opaa.msgraph.GraphClient;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.RateLimitHandling;

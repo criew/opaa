@@ -1,9 +1,9 @@
 package io.opaa.indexing.source.web;
 
 import io.opaa.format.SupportedDocumentFormats;
-import io.opaa.indexing.source.RenewableCredential;
-import io.opaa.indexing.source.SourceCredentialsRejectedException;
-import io.opaa.indexing.source.SourceFolderPath;
+import io.opaa.indexing.spi.RenewableCredential;
+import io.opaa.indexing.spi.SourceCredentialsRejectedException;
+import io.opaa.indexing.spi.SourceFolderPath;
 import io.opaa.outbound.ProxyRefusal;
 import io.opaa.security.TargetAddressValidator;
 import io.opaa.sourceaccess.BoundedStreams;

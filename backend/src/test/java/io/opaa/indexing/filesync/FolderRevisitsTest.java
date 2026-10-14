@@ -5,9 +5,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import io.opaa.indexing.source.ScanJournal;
-import io.opaa.indexing.source.SourceSyncStateRepository;
-import io.opaa.indexing.source.SourceSyncStateRepository.Revisit;
+import io.opaa.indexing.spi.ScanJournal;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
+import io.opaa.indexing.spi.SourceSyncStateRepository.Revisit;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;

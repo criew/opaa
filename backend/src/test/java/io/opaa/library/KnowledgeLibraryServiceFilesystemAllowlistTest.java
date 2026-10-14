@@ -29,10 +29,10 @@ import io.opaa.indexing.credentials.LibrarySourceConnectionResolver;
 import io.opaa.indexing.job.IndexingJobRepository;
 import io.opaa.indexing.job.IndexingJobService;
 import io.opaa.indexing.registry.TestSourceConnectors;
-import io.opaa.indexing.source.SourceConnectorStubs;
 import io.opaa.indexing.source.confluence.ConfluenceConnectionService;
 import io.opaa.indexing.source.confluence.ConfluenceProperties;
 import io.opaa.indexing.source.rss.RssFeedStateRepository;
+import io.opaa.indexing.spi.SourceConnectorStubs;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -140,8 +140,7 @@ class KnowledgeLibraryServiceFilesystemAllowlistTest {
                 .filesystemAllowlist(filesystemAllowlist)
                 .rssFeedStateRepository(rssFeedStateRepository)
                 .sourceSyncStateRepository(
-                    org.mockito.Mockito.mock(
-                        io.opaa.indexing.source.SourceSyncStateRepository.class))
+                    org.mockito.Mockito.mock(io.opaa.indexing.spi.SourceSyncStateRepository.class))
                 .confluenceConnectionService(
                     org.mockito.Mockito.mock(ConfluenceConnectionService.class))
                 .confluenceProperties(confluenceProperties)

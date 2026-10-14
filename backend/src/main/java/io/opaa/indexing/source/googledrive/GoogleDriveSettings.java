@@ -1,7 +1,7 @@
 package io.opaa.indexing.source.googledrive;
 
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;

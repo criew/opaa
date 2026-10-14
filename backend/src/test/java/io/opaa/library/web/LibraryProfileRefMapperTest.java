@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.opaa.api.dto.ConnectionProfileRef;
 import io.opaa.api.types.ConnectionAuthMethod;
-import io.opaa.indexing.source.ConnectorData;
+import io.opaa.indexing.spi.ConnectorData;
 import io.opaa.library.LibraryProfileState;
 import java.util.Map;
 import java.util.UUID;

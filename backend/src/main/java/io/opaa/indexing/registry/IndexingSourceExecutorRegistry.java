@@ -1,7 +1,7 @@
 package io.opaa.indexing.registry;
 
-import io.opaa.indexing.source.SourceConnectorDescriptor;
-import io.opaa.indexing.source.SourceIndexingExecutor;
+import io.opaa.indexing.spi.SourceConnectorDescriptor;
+import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.SourceType;
 import java.util.HashSet;
 import java.util.List;

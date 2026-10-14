@@ -13,7 +13,7 @@ import io.opaa.common.ConflictException;
 import io.opaa.common.ValidationException;
 import io.opaa.connection.profile.ConnectorLockService.TypeState;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.source.SourceConnectorDescriptor;
+import io.opaa.indexing.spi.SourceConnectorDescriptor;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.SourceType;
 import java.nio.charset.StandardCharsets;

@@ -2,9 +2,9 @@ package io.opaa.connection.profile;
 
 import io.opaa.api.types.ConnectionAuthMethod;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.ProfileDefaults;
-import io.opaa.indexing.source.SourceSettings;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.ProfileDefaults;
+import io.opaa.indexing.spi.SourceSettings;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;

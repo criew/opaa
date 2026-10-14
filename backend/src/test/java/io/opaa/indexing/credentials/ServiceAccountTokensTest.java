@@ -11,10 +11,10 @@ import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.crypto.RSASSAVerifier;
 import com.nimbusds.jwt.SignedJWT;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.Secret;
-import io.opaa.indexing.source.SecretKind;
-import io.opaa.indexing.source.ServiceAccountKeyAuth;
-import io.opaa.indexing.source.SourceCredentialsException;
+import io.opaa.indexing.spi.Secret;
+import io.opaa.indexing.spi.SecretKind;
+import io.opaa.indexing.spi.ServiceAccountKeyAuth;
+import io.opaa.indexing.spi.SourceCredentialsException;
 import io.opaa.security.TargetAddressValidator;
 import java.net.URI;
 import java.time.Clock;
@@ -53,7 +53,7 @@ class ServiceAccountTokensTest {
     tokens = new ServiceAccountTokens(TargetAddressValidator.disabled(), clock);
     appender.list = new CopyOnWriteArrayList<>();
     appender.start();
-    for (String name : List.of("io.opaa.indexing.source", "io.opaa.sourceaccess")) {
+    for (String name : List.of("io.opaa.indexing.credentials", "io.opaa.sourceaccess")) {
       Logger logger = (Logger) LoggerFactory.getLogger(name);
       logger.setLevel(Level.TRACE);
       logger.addAppender(appender);
@@ -62,7 +62,7 @@ class ServiceAccountTokensTest {
 
   @AfterEach
   void tearDown() {
-    for (String name : List.of("io.opaa.indexing.source", "io.opaa.sourceaccess")) {
+    for (String name : List.of("io.opaa.indexing.credentials", "io.opaa.sourceaccess")) {
       Logger logger = (Logger) LoggerFactory.getLogger(name);
       logger.detachAppender(appender);
       logger.setLevel(null);

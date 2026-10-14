@@ -9,12 +9,12 @@ import com.hierynomus.mserref.NtStatus;
 import com.hierynomus.mssmb2.SMB2MessageCommandCode;
 import com.hierynomus.mssmb2.SMBApiException;
 import io.opaa.common.ValidationException;
-import io.opaa.indexing.source.ConnectorData;
-import io.opaa.indexing.source.SourceBrowser;
-import io.opaa.indexing.source.SourceConnectionTestResult;
-import io.opaa.indexing.source.SourceListing;
-import io.opaa.indexing.source.SourceSettings;
-import io.opaa.indexing.source.SourceSyncStateRepository;
+import io.opaa.indexing.spi.ConnectorData;
+import io.opaa.indexing.spi.SourceBrowser;
+import io.opaa.indexing.spi.SourceConnectionTestResult;
+import io.opaa.indexing.spi.SourceListing;
+import io.opaa.indexing.spi.SourceSettings;
+import io.opaa.indexing.spi.SourceSyncStateRepository;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentContent;
 import io.opaa.knowledge.KnowledgeLibrary;
@@ -305,7 +305,7 @@ class SmbSourceConnectorTest {
             SmbAddress.parse("smb://fileserver/Daten"),
             SmbCredentials.parse("RATHAUS\\svc-opaa:geheim"),
             TargetAddressValidator.disabled(),
-            io.opaa.indexing.source.RequestBudget.unbounded(),
+            io.opaa.indexing.spi.RequestBudget.unbounded(),
             java.time.Duration.ofSeconds(1));
 
     @Test
