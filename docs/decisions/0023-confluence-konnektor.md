@@ -98,65 +98,23 @@ gewöhnliche Konfigurationsänderung.
 
 ### 4. Löschsemantik je Lauf, nicht je Quellentyp
 
-Confluence hat zwei Betriebsarten: Der **Vollabgleich** (`FULL`) listet alle Seiten und Anhänge
-der ausgewählten Spaces und ist „vollständig auflistend"; der **inkrementelle Abgleich**
-(`INCREMENTAL`) fragt per CQL (`lastModified >= Anker − incremental-overlap`) nur nach
-Kennungen des Geänderten und ist „ergänzend" — eine gelöschte Seite ist dort von einer
-unveränderten nicht zu unterscheiden. Deshalb deklariert jeder Executor seine Betriebsarten samt
-Löschkategorie (`SourceIndexingExecutor#runModes()`: `IndexingRunMode` →
-`VanishedDocumentPolicy`), ohne impliziten Standard; der Lauf trägt seine Betriebsart in
-`indexing_jobs.run_mode`, sichtbar im Laufprotokoll und in der API (`IndexingRunResponse`), und
-`StaleDocumentCleanupService` weist einen Aufruf aus einem ergänzenden Lauf zurück. Der manuelle
-Anstoß bietet beide Betriebsarten an. `FILESYSTEM` und `HTTP_DIRECTORY` kennen nur `FULL`, `RSS_FEED` nur
-`INCREMENTAL`; die dritte Betriebsart `EVENT` (genau die gemeldeten Objekte, keine Auflistung)
-führt ADR-0027, Entscheidung 3 für S3 ein.
+Jeder Executor deklariert seine Betriebsarten samt Löschkategorie (`SourceIndexingExecutor#runModes()`:
+`IndexingRunMode` → `VanishedDocumentPolicy`), ohne impliziten Standard; der Lauf trägt sie in
+`indexing_jobs.run_mode` und `IndexingRunResponse`. Confluence kennt den auflistenden Vollabgleich
+(`FULL`) und den ergänzenden inkrementellen Abgleich (`INCREMENTAL`, CQL seit Anker −
+`incremental-overlap`). Der manuelle Anstoß bietet beide an; sonst wählt
+`ConfluenceIndexingExecutor#defaultRunMode` den Vollabgleich beim ersten Lauf, nach Unterbrechung,
+nach einer Einstellungsänderung (`SyncStateBasis`) und nach Ablauf von `fullSyncIntervalDays` (seit #1200).
 
-**Löschung braucht einen positiven Befund der Instanz.** Der Vollabgleich liefert ihn durch die
-vollständige Auflistung und ruft die Abwesenheitsbereinigung erst nach vollständiger Auflistung
-aller Spaces (`ListingOutcome`); ein nicht auflistbarer Space (`403`, fehlt in der Auflistung)
-oder eine nicht lesbare Anhangsliste macht sie unvollständig, der Lauf bereinigt nichts und meldet
-es im Protokoll. Der Geltungsbereich bleibt „je Bibliothek und Quellentyp": Ein abgewählter Space
-fehlt in der Menge und fällt weg, eine zweite Bibliothek gegen dieselbe Instanz bleibt unberührt.
-Ein `404`/`403` beim Einzelabruf ist kein Befund — Rechteentzug und Token-Fehler leeren den Index
-nie; ein Space ohne Leserecht bleibt indiziert, bis das Token ihn wieder liest oder eine Person ihn
-abwählt, sichtbar im Laufprotokoll und an der Bibliothek. Archivierte Seiten sind nicht Teil der
-Auflistung und werden wie gelöschte behandelt. Nur `status = trashed` beim Einzelabruf ist ein Befund und
-entfernt die Seite samt Anhängen in jeder Betriebsart
-(`StaleDocumentCleanupService#removeWithAttachments`, Auflage aus ADR-0022, Entscheidung 3). Ein
-Vollabgleich, der null Dokumente antrifft, löscht nichts.
-
-**Webhook als Anlass, nie als Befund** (#1140): Data Center signiert den Rohkörper mit dem je
-Bibliothek erzeugten Geheimnis (`X-Hub-Signature`, HMAC-SHA256), eine Cloud-Automation-Regel
-sendet es als `X-OPAA-Webhook-Secret` (`ConfluenceWebhookSignature`, zeitkonstante Vergleiche);
-jede nicht authentifizierte Anfrage erhält dieselbe `401`. Ausgewertet werden nur Seitenkennungen,
-nicht die Ereignisart. Gemeldete Seiten werden je Bibliothek gesammelt (`opaa.indexing.events.*`,
-geteilt mit S3) und in einem kurzen Lauf mit Auslöser `WEBHOOK` und Betriebsart `INCREMENTAL`
-einzeln geholt, der den Anker nicht bewegt; ein zu großer Stapel läuft als gewöhnlicher Lauf, ein
-Stapel gegen einen laufenden Lauf wartet begrenzt und wird dann verworfen. Kein Replay-Schutz: Eine
-wiedereingespielte Nachricht ändert nichts, was der Abruf nicht bestätigt.
-
-**Betriebsarten im Zeitplan** (`ConfluenceIndexingExecutor#defaultRunMode`): Ohne ausdrückliche
-Betriebsart ist ein Lauf ein Vollabgleich, wenn noch keiner abgeschlossen ist, der letzte
-unterbrochen wurde, die Einstellungen sich geändert haben (`SyncStateBasis`, `DefaultRunModes`)
-oder der Rhythmus abgelaufen ist — je Bibliothek `fullSyncIntervalDays` (1–365, seit #1200),
-sonst `opaa.indexing.confluence.full-sync-interval` (sieben Tage); sonst inkrementell. Der
-Vollabgleich ist verlängerbar, nicht abschaltbar; ein fälliger Vollabgleich, der auf einen laufenden
-Lauf trifft, wird beim nächsten Tick genommen, nicht verworfen.
-
-**Anker und Wiederaufnahme:** Der Laufzustand lebt in `SourceSyncState` je Bibliothek (Anker, Runde,
-erledigte Spaces). Der Anker rückt nur nach einem Lauf vor, der keine Seite fehlschlagen ließ und
-dessen Anfragebudget (`request-budget-per-run`) nichts ablehnte; ein Vollabgleich setzt nach
-Budgeterschöpfung mit den offenen Spaces fort, und nach einem Vollabgleich mit Ablehnungen ist der
-nächste Lauf wieder ein Vollabgleich.
-
-**Identität:** `documents.file_path` ist die titelfreie URL aus Basisadresse und Seitenkennung
-(Cloud `<Basis>/wiki/spaces/<Space>/pages/<id>`, Data Center
-`<Basis>/pages/viewpage.action?pageId=<id>`), für einen Anhang die Download-Adresse mit
-Anhangskennung (ADR-0022, Entscheidung 2) — zugleich der Beleg-Link (`SourceConnectorDescriptor`,
-`deepLink`). Der `webui`-Link taugt nicht, weil er den Titel enthält. `file_name` trägt den
-Seitentitel, `last_modified_remote` die Versionsnummer, geprüft vor dem Abruf des Inhalts. Eine bei
-Cloud zwischen zwei gewählten Spaces verschobene Seite erscheint als neu, die alte wird als
-positiver Befund entfernt.
+**Löschung braucht einen positiven Befund der Instanz:** eine vollständige Auflistung aller Spaces
+und Anhangslisten (`ListingOutcome`) oder `status = trashed` beim Einzelabruf
+(`StaleDocumentCleanupService#removeWithAttachments`, ADR-0022, Entscheidung 3); einen Aufruf aus
+einem ergänzenden Lauf weist `StaleDocumentCleanupService` zurück. `404`/`403` ist kein Befund: Ein
+unlesbarer Space bleibt indiziert, sichtbar im Laufprotokoll und an der Bibliothek. Archivierte
+Seiten fallen wie gelöschte weg; ein Vollabgleich ohne Dokumente löscht nichts. Ein Webhook (`ConfluenceWebhookSignature`, #1140) ist nur Anlass
+für einen Einzelabruf (`WEBHOOK`/`INCREMENTAL`), der den Anker nicht bewegt. Identität ist die
+titelfreie Seiten-URL (ADR-0022, Entscheidung 2); Rhythmus, Anker und Budget:
+[Handbuch](../handbuch/konnektoren/confluence.md), „Betriebsarten und Änderungserkennung“ bis „Löscherkennung“.
 
 ### 5. Folgen des Mehrfach-Bibliotheken-Modells
 
@@ -214,3 +172,4 @@ Zieladressprüfung ist eine Betriebseinstellung je Adresse, keine Eigenschaft de
 | 2026-10-12 | #2496 | Proxy je Bibliothek entfernt, hausweiter Ausgangsproxy (ADR-0041) | Kontext |
 | 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5 |
 | 2026-10-14 | #2702 | Verweise auf ADR-0045/0048/0050 | — |
+| 2026-10-14 | #2762 | Zweitprüfung: Entscheidung 4 ohne inhaltliche Änderung gestrafft, Einzelheiten im Handbuch | 4 |
