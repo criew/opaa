@@ -41,7 +41,8 @@ public class DropboxConnectorConfiguration {
       StaleDocumentCleanupService staleDocumentCleanupService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new DropboxIndexingExecutor(
         dropboxApiFactory,
         documentIngestService,
@@ -49,7 +50,7 @@ public class DropboxConnectorConfiguration {
         libraryFolderService,
         staleDocumentCleanupService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

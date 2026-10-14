@@ -3,6 +3,7 @@ package io.opaa.audit;
 import io.opaa.api.types.AuditIncidentScopePurpose;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -19,11 +20,13 @@ public class AuditIncidentScopeService {
 
   private final AuditIncidentScopeGrantRepository repository;
   private final AuditPersonDirectory people;
+  private final Clock clock;
 
   public AuditIncidentScopeService(
-      AuditIncidentScopeGrantRepository repository, AuditPersonDirectory people) {
+      AuditIncidentScopeGrantRepository repository, AuditPersonDirectory people, Clock clock) {
     this.repository = repository;
     this.people = people;
+    this.clock = clock;
   }
 
   /**
@@ -75,7 +78,7 @@ public class AuditIncidentScopeService {
    */
   public AuditIncidentScopeGrant findApproved(UUID organizationId, UUID scopeId) {
     AuditIncidentScopeGrant grant = findOrThrow(organizationId, scopeId);
-    if (!grant.isUsable(Instant.now())) {
+    if (!grant.isUsable(Instant.now(clock))) {
       String message =
           grant.isApproved()
               ? "Die Freigabe ist abgelaufen"

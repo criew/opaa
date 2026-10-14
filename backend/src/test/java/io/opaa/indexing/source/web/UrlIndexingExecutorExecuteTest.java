@@ -45,6 +45,7 @@ import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -175,7 +176,8 @@ class UrlIndexingExecutorExecuteTest {
             staleDocumentCleanupService,
             documentRepository,
             mock(LibraryStorageQuotaService.class),
-            new LibrarySourceConnectionResolver()),
+            new LibrarySourceConnectionResolver(),
+            Clock.systemUTC()),
         ProductionDocumentFormats.supportedFormats());
   }
 

@@ -47,7 +47,8 @@ public class SharePointConnectorConfiguration {
       StaleDocumentCleanupService staleDocumentCleanupService,
       ScanJournal scanJournal,
       IndexingRunTemplate indexingRunTemplate,
-      SupportedDocumentFormats supportedDocumentFormats) {
+      SupportedDocumentFormats supportedDocumentFormats,
+      Clock clock) {
     return new SharePointIndexingExecutor(
         sharePointGraphConnections,
         documentIngestService,
@@ -55,7 +56,7 @@ public class SharePointConnectorConfiguration {
         libraryFolderService,
         staleDocumentCleanupService,
         scanJournal,
-        Clock.systemUTC(),
+        clock,
         indexingRunTemplate,
         supportedDocumentFormats);
   }

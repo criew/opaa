@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.opaa.api.types.AccessBasis;
 import io.opaa.api.types.AssetGrantSubjectType;
 import io.opaa.api.types.AssetRole;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -50,15 +51,18 @@ public class AssetAccessService {
   private final AssetGrantRepository grantRepository;
   private final GroupMembershipResolver membershipResolver;
   private final GroupSubjectDirectory groupDirectory;
+  private final Clock clock;
   private final Cache<AssetKey, List<AssetGrant>> grantsByAsset;
 
   public AssetAccessService(
       AssetGrantRepository grantRepository,
       GroupMembershipResolver membershipResolver,
-      GroupSubjectDirectory groupDirectory) {
+      GroupSubjectDirectory groupDirectory,
+      Clock clock) {
     this.grantRepository = grantRepository;
     this.membershipResolver = membershipResolver;
     this.groupDirectory = groupDirectory;
+    this.clock = clock;
     // Same reasoning as GroupMembershipResolver#groupIdsByUser: a stale entry only ever grants
     // access a moment too long between a completed transaction's invalidation and the next read,
     // never too little - invalidateAsset below, called post-commit, is the primary correctness
@@ -73,7 +77,7 @@ public class AssetAccessService {
   /** The highest {@link AssetRole} {@code userId} holds on the asset, or {@code null} if none. */
   public AssetRole effectiveRole(AssetType assetType, UUID assetId, UUID userId) {
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
-    return bestRole(cachedGrants(assetType, assetId), userId, groupIds, Instant.now());
+    return bestRole(cachedGrants(assetType, assetId), userId, groupIds, Instant.now(clock));
   }
 
   /**
@@ -93,7 +97,7 @@ public class AssetAccessService {
    * @return one entry per requested id; {@code null} value where nothing reaches the user.
    */
   public Map<UUID, AssetRole> effectiveRoles(AssetType assetType, Set<UUID> assetIds, UUID userId) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
     Map<UUID, List<AssetGrant>> grantsByAssetId =
         grantRepository.findByAssetTypeAndAssetIdIn(assetType, assetIds).stream()
@@ -122,7 +126,7 @@ public class AssetAccessService {
    * one asset may stand in several parts. Uncached like {@link #readableAssetIds}.
    */
   public ReadableAssets readableAssets(AssetType assetType, UUID userId, UUID organizationId) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
     Set<UUID> byDirectGrant =
         grantRepository.findReadableAssetIdsByDirectGrant(assetType, userId, organizationId, now);
@@ -144,7 +148,7 @@ public class AssetAccessService {
    */
   public Set<UUID> readableAssetIdsForGroup(
       AssetType assetType, UUID groupId, UUID organizationId) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     Set<UUID> readable = new HashSet<>(allAccountsAssetIds(assetType, organizationId, now));
     if (membershipResolver.deactivatedAmong(Set.of(groupId)).isEmpty()) {
       readable.addAll(
@@ -162,7 +166,7 @@ public class AssetAccessService {
    */
   public Map<UUID, Integer> readableAssetCountsForGroups(
       AssetType assetType, Collection<UUID> groupIds, UUID organizationId) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     Set<UUID> allAccounts = allAccountsAssetIds(assetType, organizationId, now);
     Set<UUID> deactivated = membershipResolver.deactivatedAmong(groupIds);
     Map<UUID, Set<UUID>> grantedByGroup = new HashMap<>();
@@ -202,7 +206,7 @@ public class AssetAccessService {
    */
   public boolean holdsIndependentOwnerRole(
       AssetType assetType, UUID assetId, UUID userId, Set<UUID> groupIds, boolean namedOwner) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     return cachedGrants(assetType, assetId).stream()
         .filter(grant -> !grant.isExpired(now))
         .filter(grant -> grant.getRole() == AssetRole.OWNER)
@@ -218,7 +222,7 @@ public class AssetAccessService {
    * it.
    */
   public List<AccessPath> accessPaths(AssetType assetType, UUID assetId, UUID userId) {
-    Instant now = Instant.now();
+    Instant now = Instant.now(clock);
     Set<UUID> groupIds = membershipResolver.groupIdsForUser(userId);
     List<AssetGrant> reaching =
         cachedGrants(assetType, assetId).stream()
@@ -273,7 +277,7 @@ public class AssetAccessService {
       return reach;
     }
     for (Object[] row :
-        grantRepository.countActiveGrantsBySubjectType(assetType, assetIds, Instant.now())) {
+        grantRepository.countActiveGrantsBySubjectType(assetType, assetIds, Instant.now(clock))) {
       UUID assetId = (UUID) row[0];
       AssetGrantSubjectType subjectType = (AssetGrantSubjectType) row[1];
       int count = ((Number) row[2]).intValue();

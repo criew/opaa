@@ -51,6 +51,7 @@ import io.opaa.test.UnreadableDirectory;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -129,7 +130,8 @@ class AsyncIndexingExecutorTest {
         staleDocumentCleanupService,
         repository,
         quotaService,
-        new LibrarySourceConnectionResolver());
+        new LibrarySourceConnectionResolver(),
+        Clock.systemUTC());
   }
 
   @Test

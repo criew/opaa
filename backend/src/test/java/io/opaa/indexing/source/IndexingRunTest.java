@@ -24,6 +24,7 @@ import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.LibraryStorageQuotaService;
 import io.opaa.knowledge.SourceDocumentContext;
 import io.opaa.test.SourceTypes;
+import java.time.Clock;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -57,7 +58,9 @@ class IndexingRunTest {
           new IndexingRunProgress(jobService, jobId),
           new IndexingRunEventRecorder(eventRepository, jobService, jobId),
           documentRepository,
-          quotaService);
+          quotaService,
+          rejected -> Secret.personal(library.getSourceCredentials()),
+          Clock.systemUTC());
 
   // --- the change check --------------------------------------------------------------------
 
