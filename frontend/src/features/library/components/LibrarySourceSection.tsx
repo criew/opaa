@@ -68,8 +68,8 @@ export interface LibrarySourceSectionProps {
 }
 
 /**
- * The Reiter „Quelle" of a connector library (#1940), in four sections: **Umfang** for every
- * reader, then - behind the MANAGER bar (#507/#604) - **Anbindung** (source configuration,
+ * The Reiter „Quelle" of a connector library, in four sections: **Umfang** for every
+ * reader, then - behind the MANAGER bar - **Anbindung** (source configuration,
  * connection test, webhook or events), **Zeitplan** and **Läufe**. Triggering and the live progress
  * live in the page head, visible from every area.
  */
@@ -178,8 +178,8 @@ export default function LibrarySourceSection({
           Bibliothek ordnen sie einem anderen Zugang zu oder löschen sie.
         </Alert>
       )}
-      {/* #1138 (ADR-0023) / ADR-0027: Umfang und seine Freigabefolge gelten für alle
-          Leseberechtigten - seit #1939 stehen sie hier statt im Kopf, mit Erklärung. */}
+      {/* ADR-0023 / ADR-0027: Umfang und seine Freigabefolge gelten für alle
+          Leseberechtigten - sie stehen hier statt im Kopf, mit Erklärung. */}
       {Scope && (
         <PageSection
           title="Umfang"
@@ -216,7 +216,8 @@ export default function LibrarySourceSection({
               ) : undefined
             }
           >
-            {/* #507: sourcePath/sourceUrl expose internal server paths and source URLs - the backend only serves them to a caller with at least MANAGER, and
+            {/* sourcePath/sourceUrl expose internal server paths and source URLs - the backend only
+              * serves them to a caller with at least MANAGER, and
                 this whole area only renders behind the same bar. */}
             <Stack spacing={0.75}>
               <LibraryConnectionPanel
@@ -260,7 +261,7 @@ export default function LibrarySourceSection({
             )}
           </PageSection>
 
-          {/* #485: Zeitplan - dieselbe Schwelle wie die Anbindung (canEditSource). */}
+          {/* Zeitplan - dieselbe Schwelle wie die Anbindung (canEditSource). */}
           <PageSection
             title="Zeitplan"
             description="Wann diese Bibliothek automatisch indiziert wird."
@@ -361,7 +362,7 @@ function runStatusChipColor(
   return 'default'
 }
 
-// #1138 (ADR-0023): a run that could not read a space or a page must not look like any other
+// ADR-0023: a run that could not read a space or a page must not look like any other
 // completed run - the header names how many of its events are about unreadable content.
 function countUnreadable(events: IndexingRunResponse['events']): number {
   return events.filter((e) => e.category === 'REJECTED' || e.category === 'UNREACHABLE').length
@@ -438,7 +439,7 @@ function runStatusLabel(status: IndexingRunResponse['status']): string {
 // every render as a change and re-renders in an infinite loop.
 const EMPTY_RUN_HISTORY: IndexingRunResponse[] = []
 
-// #513: einklappbares Protokoll der letzten Läufe einer Bibliothek - Kopfdaten immer sichtbar, die
+// Einklappbares Protokoll der letzten Läufe einer Bibliothek - Kopfdaten immer sichtbar, die
 // Ereignisliste nur nach dem Aufklappen. Getrennt von der Fortschrittsanzeige im Seitenkopf, deren
 // runsByLibrary nur den aktuellen/letzten Lauf trägt.
 function LibraryIndexingHistorySection({
@@ -558,7 +559,7 @@ function LibraryIndexingHistorySection({
                 ) : (
                   <Stack spacing={1}>
                     {run.events.map((event, index) => (
-                      // #513: message/reference are already German and scrubbed of raw
+                      // message/reference are already German and scrubbed of raw
                       // challenge-/redirect-URLs by the backend. Events carry no id of their own,
                       // so the key combines the run and the position within its event list.
                       <Box key={`${run.id}-${index}`}>

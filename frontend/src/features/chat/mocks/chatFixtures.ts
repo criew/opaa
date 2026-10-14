@@ -81,7 +81,7 @@ const INITIAL_CHAT_DETAILS: Record<string, ChatDetail> = {
     updatedAt: '2026-03-07T08:00:00Z',
   },
   // Three completed rounds and two note points - the one fixture that actually shows the
-  // Gesprächsnotiz (#1488), whose button needs both.
+  // Gesprächsnotiz, whose button needs both.
   'chat-engineering-2': {
     id: 'chat-engineering-2',
     spaceId: 'space-engineering',

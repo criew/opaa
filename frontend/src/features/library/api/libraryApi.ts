@@ -103,7 +103,7 @@ export async function updateLibrary(
 }
 
 /**
- * Setzt die Freigabe-Obergrenze einer Konnektorbibliothek (#797) - Systemverwaltung, gesamt
+ * Setzt die Freigabe-Obergrenze einer Konnektorbibliothek - Systemverwaltung, gesamt
  * ersetzt (kein Teil-Update). Senkt sie eine bestehende, weitere Freigabe, klemmt das Backend sie
  * im selben Aufruf sofort auf die neue Obergrenze zurück.
  */
@@ -305,7 +305,7 @@ export async function deleteLibraryFolder(libraryId: string, folderId: string): 
 // Exported so api.test.ts can exercise the parsing directly against header strings (including the
 // RFC 5987/Umlaut case) instead of through getDocumentContent() end-to-end: a Blob response body
 // hangs against msw/node in this project's jsdom test environment, the same limitation documented
-// on normalizeError in api.ts for a Blob *request* body ( review).
+// on normalizeError in api.ts for a Blob *request* body.
 export function parseContentDispositionFileName(headerValue: string | undefined): string | null {
   if (!headerValue) return null
   const extended = /filename\*=UTF-8''([^;]+)/i.exec(headerValue)
@@ -318,8 +318,7 @@ export function parseContentDispositionFileName(headerValue: string | undefined)
   }
   // (?!\*) keeps this from matching the filename* parameter's own "filename" prefix when there is
   // no ASCII filename to fall back to (e.g. decodeURIComponent above threw) - without it, a header
-  // with only `filename*=UTF-8''...` would match here with `*=UTF-8''...` as the "file name" (
-  // review).
+  // with only `filename*=UTF-8''...` would match here with `*=UTF-8''...` as the "file name".
   const plain = /filename(?!\*)="?([^";]+)"?/i.exec(headerValue)
   return plain ? plain[1].trim() : null
 }
@@ -329,7 +328,7 @@ export interface DocumentContent {
   fileName: string | null
 }
 
-//  (review): a Blob response body (success or error) hangs against msw/node in this project's
+// A Blob response body (success or error) hangs against msw/node in this project's
 // jsdom test environment (same undici/XHR-interceptor limitation documented on normalizeError in
 // api.ts for a Blob *request* body) - so this cannot be exercised end-to-end through getDocumentContent()
 // in tests. Exported and kept independent of any HTTP call so api.test.ts can construct an
@@ -417,7 +416,7 @@ export async function deleteLibraryDocument(libraryId: string, documentId: strin
 }
 
 /**
- * #1943: the chosen documents of an upload library in one call - the answer names every id that
+ * The chosen documents of an upload library in one call - the answer names every id that
  * stayed and why, so a partial success can be reported instead of a bare failure.
  */
 export async function bulkDeleteLibraryDocuments(

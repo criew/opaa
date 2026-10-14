@@ -71,7 +71,7 @@ export const MAIL_DELIVERY_PATH_TEXT: Record<MailDeliveryPath, string> = {
  * `ACCOUNT_OWNS_CONTENT` is deliberately absent: what exactly still references the account -
  * content, audit rows or permission history - only the backend knows, and its message names it.
  * A curated text here would have to guess and would send the administrator looking for content
- * that is not the reason (Review #1588).
+ * that is not the reason.
  */
 export const LOCAL_USER_CONFLICT_MESSAGES: Readonly<Record<string, string>> = {
   EMAIL_TAKEN: 'Unter dieser Adresse gibt es bereits ein lokales Konto.',

@@ -12,7 +12,7 @@ import type {
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * Der Verzeichnisabgleich je Anbieter (#1816, #1817, ADR-0036 Entscheidung 3). Eigene Datei statt
+ * Der Verzeichnisabgleich je Anbieter (ADR-0036 Entscheidung 3). Eigene Datei statt
  * `api.ts`: Abgleich, Konnektor und Plan gehören zusammen und werden nur von der Verwaltung
  * gebraucht.
  */

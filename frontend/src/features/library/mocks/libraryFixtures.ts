@@ -8,7 +8,7 @@ import type {
 } from '@/shared/api/types'
 import type { ConfluenceSpaceRef } from '../utils/confluenceSource'
 
-// #822: a plain mock shape rather than LibraryFolderResponse itself - documentCount there is
+// A plain mock shape rather than LibraryFolderResponse itself - documentCount there is
 // derived (recursive, computed on read), not a stored field, so keeping it out of the stored
 // fixture avoids it silently going stale as documents/folders are added or removed in tests.
 export interface MockLibraryFolder {
@@ -43,7 +43,7 @@ export const mockLibraries: LibraryListResponse[] = [
     ownerType: 'GROUP',
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
     myRole: 'MANAGER',
-    // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
+    // Unlike the other fixtures, this one is deliberately not UPLOAD - it
     // is the fixture the indexing-trigger tests use to exercise a successful run.
     sourceType: 'FILESYSTEM',
     lastIndexedAt: '2026-08-18T06:00:00Z',
@@ -63,7 +63,7 @@ export const mockLibraries: LibraryListResponse[] = [
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   },
-  // #423 code review, nit 4: a library where the caller holds OWNER (not just MANAGER), used to
+  // A library where the caller holds OWNER (not just MANAGER), used to
   // exercise AssetGrantService's last-active-OWNER guard (409).
   {
     id: 'library-solo-owner',
@@ -144,10 +144,10 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     documentCount: 12,
     sourceType: 'UPLOAD',
     diagnosticsLocked: true,
-    // #1278 review: the mock user is the library's named (ownerId) OWNER here, not merely an
+    // The mock user is the library's named (ownerId) OWNER here, not merely an
     // admin bypass - the one case holdsIndependentOwnerRole (and this mock field) says true for.
     diagnosticsLockToggleable: true,
-    // #1731: das ausgelieferte "nie freigegeben" - die Fremdzugangsfreigabe liefert das Backend
+    // Das ausgelieferte "nie freigegeben" - die Fremdzugangsfreigabe liefert das Backend
     // erst ab MANAGER, deshalb tragen die Fixtures unterhalb dieser Rolle das Feld gar nicht.
     externalAccess: {
       libraryId: 'library-mine',
@@ -170,10 +170,10 @@ export const mockLibraryDetails: Record<string, LibraryResponse> = {
     reach: { allAccounts: false, groupCount: 0, userCount: 1 },
     myRole: 'MANAGER',
     documentCount: 431,
-    // #500 review, finding 5: unlike the other fixtures, this one is deliberately not UPLOAD - it
+    // Unlike the other fixtures, this one is deliberately not UPLOAD - it
     // is the fixture the indexing-trigger tests use to exercise a successful run, since UPLOAD
     // libraries have no run type at all (DocumentIndexingService#executorFor, 409). Also
-    // the fixture #479's connector-upload/-delete tests use.
+    // the fixture of the connector-upload/-delete tests.
     sourceType: 'FILESYSTEM',
     diagnosticsLocked: true,
     diagnosticsLockToggleable: false,
@@ -272,7 +272,7 @@ const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
       indexedAt: null,
       uploadedByUserId: 'mock-user-id',
     },
-    // #1184 (ADR-0022, Entscheidung 5): an indexed mail whose two attachments are their own
+    // ADR-0022, Entscheidung 5: an indexed mail whose two attachments are their own
     // document rows carrying parentDocumentId - exercises the grouped, collapsible rendering and
     // the attachment-aware search of the documents list in mock/dev mode.
     {
@@ -334,10 +334,9 @@ const INITIAL_LIBRARY_DOCUMENTS: Record<string, LibraryDocumentResponse[]> = {
       indexedAt: '2026-03-01T12:00:00Z',
       uploadedByUserId: null,
     },
-    // #743 (review, nit 5): exercises the remote-source branch of the "Original öffnen" action,
-    // which since #747 opens through the content endpoint (openDocumentContent) for every
-    // sourceType - there was previously no HTTP_DIRECTORY/RSS_FEED document anywhere in the
-    // fixtures, so that branch was untestable/unclickable in mock/dev mode.
+    // Exercises the remote-source branch of the "Original öffnen" action, which opens through the
+    // content endpoint (openDocumentContent) for every sourceType - the one HTTP_DIRECTORY/RSS_FEED
+    // document in the fixtures, so that branch is clickable in mock/dev mode.
     {
       id: 'document-intranet-richtlinie',
       fileName: 'richtlinie-datenschutz.pdf',
@@ -364,7 +363,7 @@ export function resetMockLibraryDocuments() {
   mockLibraryDocuments = structuredClone(INITIAL_LIBRARY_DOCUMENTS)
 }
 
-// #822: one pre-existing root-level folder on 'library-mine' (the OWNER/UPLOAD fixture already
+// One pre-existing root-level folder on 'library-mine' (the OWNER/UPLOAD fixture already
 // used above for canManage-gated document actions) so folder navigation itself has something to
 // exercise without every test having to create a folder first.
 const INITIAL_LIBRARY_FOLDERS: Record<string, MockLibraryFolder[]> = {
@@ -610,7 +609,7 @@ export const mockSourceTypes: SourceTypeDescriptor[] = [
   },
 ]
 
-/** #1134: spaces the mock Confluence token may read (source of the wizard's space selection). */
+/** Spaces the mock Confluence token may read (source of the wizard's space selection). */
 export const mockConfluenceSpaces: ConfluenceSpaceRef[] = [
   { key: 'BAU', name: 'Bauamt' },
   { key: 'HR', name: 'Personal und Organisation' },

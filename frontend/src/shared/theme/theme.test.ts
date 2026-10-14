@@ -38,7 +38,7 @@ describe('tokens', () => {
     expect(darkRoles.accentSurface).toBe(blue[700])
   })
 
-  // #634: white on blue[500] only reached 3.3:1 - every filled action surface and every
+  // White on blue[500] only reached 3.3:1 - every filled action surface and every
   // accent-as-text combination is proven here, so the guidelines' 2.4 claim and the tokens
   // cannot drift apart again.
   test('accentFg reaches 4.5:1 on the accent surface of every role set (#634)', () => {
@@ -75,12 +75,10 @@ describe('tokens', () => {
     expect(radius.md).toBe(10)
   })
 
-  // #725: the Wissensbibliotheken table's column head ("Stand") and secondary description text
-  // both render in fg-3, which axe-core flagged at 3.68:1 against white once the E2E suite
-  // started seeding a real row (test(e2e) #233 - before that the table was always empty and the
-  // violation never rendered). fg-3 is gray[400] with 3.69/3.47/3.28:1 against bg1/bg2/bg3
-  // respectively - all below the 4.5:1 WCAG AA floor; reassigning it to gray[500] fixes every
-  // surface that uses the role, not just this one table.
+  // The Wissensbibliotheken table's column head ("Stand") and secondary description text
+  // both render in fg-3; axe-core flags 3.68:1 against white as soon as the table has a row.
+  // gray[400] reaches only 3.69/3.47/3.28:1 against bg1/bg2/bg3 - all below the 4.5:1 WCAG AA
+  // floor; fg-3 as gray[500] holds for every surface that uses the role, not just this one table.
   test('fg-3 meets the 4.5:1 text contrast floor against every light-scheme surface (#725)', () => {
     const backgrounds: Array<[string, string]> = [
       ['bg1', lightRoles.bg1],
@@ -95,7 +93,7 @@ describe('tokens', () => {
     }
   })
 
-  // #853: fg-3 ('#7A8BA0') only clears 4.5:1 against bg1 in both sets (verified: Sidebar.tsx/
+  // fg-3 ('#7A8BA0') only clears 4.5:1 against bg1 in both sets (verified: Sidebar.tsx/
   // GlobalRail.tsx never render fg-3 text on bg2/bg3, see guidelines.md 2.2). The bg2/bg3
   // ratios are pinned too, not asserted against the floor - a token edit that silently pushes
   // one of them past 4.5:1 must re-open the verification, not slip through as a green diff.
@@ -275,9 +273,9 @@ describe('createAppTheme', () => {
     expect(theme.palette.primary.dark).toBe(blue[900])
   })
 
-  // #634: a light branding colour cannot carry white button text; the filled surface derives
+  // A light branding colour cannot carry white button text; the filled surface derives
   // as its bounded darkening while the accent itself stays the configured colour.
-  // #634 regression (found by the axe E2E run): the app always passes branding.primaryColor,
+  // Regression guard for #634: the app always passes branding.primaryColor,
   // and an unconfigured deployment gets the OPAA standard '#1292EE' from the backend's
   // field-wise fallback - that must behave exactly like no branding, or the per-scheme accent
   // split never takes effect anywhere.
@@ -296,8 +294,8 @@ describe('createAppTheme', () => {
   test('a light branding colour gets a darkened action surface (#634)', () => {
     const theme = createAppTheme('light', { primaryColor: '#61B5F6' })
 
-    // #1600: Als *Text* auf hellem Grund erreicht dieses Blau 4,5:1 nicht - die Rolle rückt
-    // deshalb vom Grund weg. Die Fläche darunter ist davon unberührt und folgt weiter #634.
+    // Als *Text* auf hellem Grund erreicht dieses Blau 4,5:1 nicht - die Rolle rückt
+    // deshalb vom Grund weg. Die Fläche darunter ist davon unberührt und behält ihre Ableitung.
     expect(theme.palette.primary.main).not.toBe('#61B5F6')
     const button = theme.components?.MuiButton?.styleOverrides?.root as {
       variants: Array<{ style: { backgroundColor: string } }>
@@ -315,13 +313,13 @@ describe('createAppTheme', () => {
     expect(button.variants[0].style.backgroundColor).toBe('#7A1FA2')
   })
 
-  // #1922: Die Seitenleiste des Space hat kein eigenes Thema mehr - sie folgt wie der Adminbereich
+  // Die Seitenleiste des Space hat kein eigenes Thema mehr - sie folgt wie der Adminbereich
   // dem Schema der Anwendung. Die Ableitung einer Hausfarbe auf dunklem Grund prüft deshalb das
   // Dunkelschema der Anwendung selbst.
   test('the dark scheme derives its accent from a branding color', () => {
     const theme = createAppTheme('dark', { primaryColor: '#7A1FA2' })
 
-    // #1600: Ein dunkles Violett wäre auf dem dunklen Grund als Verweis nicht lesbar, also rückt
+    // Ein dunkles Violett wäre auf dem dunklen Grund als Verweis nicht lesbar, also rückt
     // es vom Grund weg - und ist deshalb *nicht* mehr die konfigurierte Farbe selbst.
     expect(theme.palette.primary.main).not.toBe('#7A1FA2')
     const vorher = contrastRatio('#7A1FA2', darkRoles.bg1) as number
@@ -329,13 +327,12 @@ describe('createAppTheme', () => {
     expect(nachher).toBeGreaterThan(vorher)
   })
 
-  // #1600: Dass die Ableitung nach den zugelassenen Schritten bewusst abbricht, statt eine
+  // Dass die Ableitung nach den zugelassenen Schritten bewusst abbricht, statt eine
   // Extremfarbe bis zur Unkenntlichkeit aufzuhellen, prüft utils/contrast.test.ts an
-  // `deriveAccentText` selbst - seit #1922 gibt es kein Thema mehr, in dem dieser Grenzfall
-  // über `buildTheme` erreichbar wäre.
+  // `deriveAccentText` selbst - über `buildTheme` ist dieser Grenzfall in keinem Thema erreichbar.
 
   /**
-   * #1600: Der gemessene Fall aus der Demo-Installation. `#1153EE` erreicht auf Weiß 6,0:1, im
+   * Der gemessene Fall aus der Demo-Installation. `#1153EE` erreicht auf Weiß 6,0:1, im
    * Dunkelschema aber nur 3,3:1 - jeder Verweis, jedes „Passwort vergessen?" und jeder aktive
    * Reiter lag darunter, in der ganzen Anwendung.
    */
@@ -353,7 +350,7 @@ describe('createAppTheme', () => {
     },
   )
 
-  /** #1600: Die Fläche folgt weiter #634 - die Anhebung des Textes fasst sie nicht an. */
+  /** Die Fläche behält ihre eigene Ableitung - die Anhebung des Textes fasst sie nicht an. */
   test('the filled surface keeps its own derivation when the text colour moves (#1600)', () => {
     const theme = createAppTheme('dark', { primaryColor: '#1153EE' })
     const button = theme.components?.MuiButton?.styleOverrides?.root as {

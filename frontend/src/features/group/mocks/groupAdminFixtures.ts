@@ -7,7 +7,7 @@ import type {
 } from '@/shared/api/types'
 
 /**
- * Die Mocks der Verwaltung von Gruppen, Anlegerechten und Verzeichnisabgleich (#1821) — eigene
+ * Die Mocks der Verwaltung von Gruppen, Anlegerechten und Verzeichnisabgleich — eigene
  * Datei, damit `fixtures.ts` nicht weiter wächst und parallele Arbeit sich nicht ins Gehege kommt.
  */
 export const mockCapabilityOverview: CapabilityOverviewResponse[] = [

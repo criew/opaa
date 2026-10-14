@@ -34,7 +34,7 @@ export interface AssetOwnerSectionProps {
 
 /**
  * Wer für ein Asset geradesteht — und, für den Eigentümer selbst, die Übergabe an eine andere
- * Stelle (#1941). Eine Gruppe als Eigentümerin übersteht einen Personalwechsel; deshalb steht sie
+ * Stelle. Eine Gruppe als Eigentümerin übersteht einen Personalwechsel; deshalb steht sie
  * hier gleichberechtigt neben einer Person.
  */
 export default function AssetOwnerSection({

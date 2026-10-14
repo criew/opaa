@@ -9,7 +9,7 @@ import { apiClient, normalizeError } from '@/shared/api/api'
 import { LOCAL_USER_PAGE_SIZE } from './localUserApi'
 
 /**
- * The sort fields of the account list (#1601): the four of the local list plus the three columns
+ * The sort fields of the account list: the four of the local list plus the three columns
  * it gained with the provider accounts. The activity class is not among them and never will be
  * (ADR-0033, Entscheidung 11) - a list sortable by „last used" is the evaluation path that
  * decision rules out. Origin, role and state say where an account comes from and whether it can
@@ -19,7 +19,7 @@ export type AccountSortField =
   'displayName' | 'email' | 'origin' | 'role' | 'status' | 'expiresAt' | 'createdAt'
 
 /**
- * The filter of the account list (#1601). `status`, `withoutExpiry` and `inactive` describe local
+ * The filter of the account list. `status`, `withoutExpiry` and `inactive` describe local
  * accounts only and narrow the list to them on the server.
  */
 export interface AccountQuery {
@@ -54,7 +54,7 @@ function queryString(query: AccountQuery): string {
 
 /**
  * Every account of the organization - local accounts with their state and activity class,
- * identity-provider accounts with their provider (#1601). No activity timestamp, no export, a
+ * identity-provider accounts with their provider. No activity timestamp, no export, a
  * page of at most 50 rows: the guardrails of ADR-0033, Entscheidung 11, hold for this list too.
  */
 export async function listAccounts(query: AccountQuery): Promise<AccountPageResponse> {

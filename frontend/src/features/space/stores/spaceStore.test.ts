@@ -6,7 +6,7 @@ import type { SpaceMemberResponse } from '@/shared/api/types'
 
 const mockCreateSpace = vi.fn()
 
-// #543/#613 review, nit d: getSpaces and archiveSpace share this mutable list, mirroring the
+// getSpaces and archiveSpace share this mutable list, mirroring the
 // real backend where archiving is a stateful write and listSpaces re-reads it - a static
 // getSpaces() mock (returning the same fixed archived: false payload no matter what
 // archiveSelectedSpace does) would make the archive test pass even if archiveSelectedSpace never
@@ -62,7 +62,7 @@ const mockArchiveSpace = vi.fn(async (spaceId: string) => {
 
 /** Resolves once resolve() is called - lets a test hold loadSpaces()'s request open until it
  * explicitly wants the response to arrive, so it can trigger resetAllStores() while the request
- * is still in flight (#575). */
+ * is still in flight. */
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((r) => {
@@ -87,7 +87,7 @@ vi.mock('../api/spaceApi', () => ({
     createdAt: '2026-03-01T10:00:00Z',
     updatedAt: '2026-03-01T10:00:00Z',
   })),
-  // #144: the full member list moved to its own endpoint - loadMembers (called by
+  // The full member list moved to its own endpoint - loadMembers (called by
   // archiveSelectedSpace among others) needs this mocked or it throws on the now-undefined import.
   listSpaceMembers: vi.fn(async () => [
     { userId: 'u1', role: 'ADMIN', createdAt: '2026-03-01T10:00:00Z' },
@@ -206,7 +206,7 @@ describe('spaceStore', () => {
     expect(mockCreateSpace).toHaveBeenCalledWith('New Space', 'desc', assets, undefined, undefined)
   })
 
-  // #203: library associations - loaded on demand, not part of selectSpace, since only pages that
+  // Library associations - loaded on demand, not part of selectSpace, since only pages that
   // actually show them (SpacePage, SpaceSettingsPage) need the extra request.
   it('loads library associations for a space', async () => {
     await useSpaceStore.getState().loadAssetAssociations('space-project')
@@ -224,14 +224,14 @@ describe('spaceStore', () => {
     expect(useSpaceStore.getState().hasAssetAssociations).toBe(true)
     expect(useSpaceStore.getState().hasKnowledge).toBe(true)
     expect(useSpaceStore.getState().hasReadableKnowledge).toBe(true)
-    // #783 review finding 1: callers must be able to tell which space this data actually
+    // Callers must be able to tell which space this data actually
     // describes before trusting it.
     expect(useSpaceStore.getState().assetAssociationsSpaceId).toBe('space-project')
   })
 
-  // #783 review finding 1 (🔴): a response for a space call already superseded by a newer one
-  // must not win the race and overwrite the newer call's state - reproduces the bug report's "two
-  // quick switches, the stale response arrives last" scenario at the store level.
+  // A response for a space call already superseded by a newer one must not win the race and
+  // overwrite the newer call's state - "two quick switches, the stale response arrives last" at
+  // the store level.
   it('ignores a stale response for a space no longer being loaded', async () => {
     const first = deferred<{
       hasAssociations: boolean
@@ -288,9 +288,9 @@ describe('spaceStore', () => {
     ])
   })
 
-  // #783 review nit 1: a failed load must leave assetAssociationsSpaceId null, not silently
+  // A failed load must leave assetAssociationsSpaceId null, not silently
   // read as "this space has no associations" (which callers would otherwise render as "every
-  // readable library" - the exact false claim #782 fixed).
+  // readable library" - a false claim).
   it('leaves assetAssociationsSpaceId null when the load fails', async () => {
     mockGetSpaceAssetAssociations.mockRejectedValueOnce(new Error('Netzwerkfehler'))
 
@@ -375,7 +375,7 @@ describe('spaceStore', () => {
     expect(mockGetSpaceAssetAssociations).toHaveBeenCalledWith('space-project')
   })
 
-  // #543: archiveSelectedSpace is the way out of a space fk_chats_space makes permanently
+  // archiveSelectedSpace is the way out of a space fk_chats_space makes permanently
   // undeletable - it must call the archive endpoint and refresh both the list and the selection,
   // never navigate away (the space stays reachable, only stops accepting new content).
   it('archives the selected space and refreshes the list and selection', async () => {
@@ -405,7 +405,7 @@ describe('spaceStore', () => {
     expect(afterRemove?.memberships).toEqual({ groupCount: 0, userCount: 1 })
   })
 
-  // #2205: a member change refreshes in place - neither a loading state nor an emptied list in
+  // A member change refreshes in place - neither a loading state nor an emptied list in
   // between, so the open tab neither flickers nor rebuilds its rows.
   it('refreshes members and space after a membership change without a loading state', async () => {
     await useSpaceStore.getState().selectSpace('space-personal')
@@ -508,7 +508,7 @@ describe('spaceStore', () => {
     })
   })
 
-  // #575: loadSpaces is one of the explicitly named unguarded write paths (Issue #575) - a
+  // loadSpaces is one of the explicitly named unguarded write paths - a
   // response arriving after resetAllStores() must not resurrect the previous user's spaces into
   // the now-emptied store.
   it('a loadSpaces response arriving after a session reset does not resurrect spaces', async () => {

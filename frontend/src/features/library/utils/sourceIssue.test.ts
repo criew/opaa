@@ -9,7 +9,7 @@ import { EMPTY_SMB_VALUES, smbIssue } from './smbSource'
 
 const fieldOf = (issue: { field?: string } | null) => issue?.field
 
-// The field of an issue is the form value the source form shows it at (#2193).
+// The field of an issue is the form value the source form shows it at.
 describe('the field a source issue names', () => {
   it('names the path and the patterns of a FILESYSTEM source', () => {
     expect(fieldOf(filesystemIssue(EMPTY_FILESYSTEM_VALUES))).toBe('sourcePath')

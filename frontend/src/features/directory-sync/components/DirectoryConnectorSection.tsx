@@ -18,7 +18,7 @@ import KeyValueList from '@/shared/ui/KeyValueList'
 import { DIRECTORY_SYNC_CONFLICT_MESSAGES } from './directorySyncLabels'
 
 /**
- * Der Zugang, mit dem der Verzeichnislauf dieses Anbieters liest (#1817). Der Realm wird nie
+ * Der Zugang, mit dem der Verzeichnislauf dieses Anbieters liest. Der Realm wird nie
  * eingetragen — er stammt aus der Issuer-Adresse des Anbieters. Das Geheimnis verlässt den Server
  * nie wieder; für einen erneuten Test genügt es, das Feld leer zu lassen.
  */

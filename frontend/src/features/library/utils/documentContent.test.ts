@@ -30,7 +30,7 @@ describe('documentContent', () => {
   describe('openDocumentContent', () => {
     it('previews a PDF in a new tab and revokes the object URL after the delay', async () => {
       // window.open with 'noopener' in its features always returns null per spec, real tab opened
-      // or not (#743 review) - the mock reflects that instead of a value no real browser produces.
+      // or not - the mock reflects that instead of a value no real browser produces.
       windowOpenSpy.mockReturnValue(null)
       mockGetDocumentContent.mockResolvedValueOnce({
         blob: new Blob(['x'], { type: 'application/pdf' }),
@@ -108,7 +108,7 @@ describe('documentContent', () => {
       expect(result).toEqual({ kind: 'download', fileName: 'original.docx' })
     })
 
-    // #780: DOCX (and every other format without its own preview) stays a download - the caller
+    // DOCX (and every other format without its own preview) stays a download - the caller
     // uses the 'download' result kind to show visible feedback ("<Dateiname> wird heruntergeladen"),
     // since the acceptance criteria require a click to never appear to do nothing.
     it('reports a DOCX download by its result kind so the caller can show feedback (#780)', async () => {
@@ -125,7 +125,7 @@ describe('documentContent', () => {
       expect(clickSpy).toHaveBeenCalledTimes(1)
     })
 
-    // #780: Markdown/plain text never navigate to a blob: URL (the browser would show it raw or
+    // Markdown/plain text never navigate to a blob: URL (the browser would show it raw or
     // download it, depending on browser) - the caller renders `content` in its own preview dialog.
     it('returns Markdown content for a text preview instead of opening a tab or downloading (#780)', async () => {
       mockGetDocumentContent.mockResolvedValueOnce({
@@ -164,7 +164,7 @@ describe('documentContent', () => {
       })
     })
 
-    // #781 review, Nit 3: reading an unbounded Markdown/plain text original into a string via
+    // Reading an unbounded Markdown/plain text original into a string via
     // `blob.text()` could freeze the tab - above TEXT_PREVIEW_MAX_BYTES it falls back to a
     // download instead, tagged with `reason` so the caller can explain why.
     it('falls back to a download for a Markdown original larger than TEXT_PREVIEW_MAX_BYTES (#781 review, Nit 3)', async () => {

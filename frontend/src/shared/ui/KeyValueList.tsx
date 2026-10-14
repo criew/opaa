@@ -17,7 +17,7 @@ interface KeyValueListProps {
 }
 
 /**
- * Schlüssel und Wert nebeneinander (#1608) — als `dl`, nicht als Tabelle und nicht als Karte.
+ * Schlüssel und Wert nebeneinander — als `dl`, nicht als Tabelle und nicht als Karte.
  *
  * Das ist der Ersatz für die vielen kleinen Kästen, die bisher zwei bis vier Angaben trugen
  * („Endpunkt", „Modell-Kennung", „letzter Fehler"). Ohne Rahmen bleibt die Zuordnung trotzdem

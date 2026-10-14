@@ -5,7 +5,7 @@ import type {
 } from '@/shared/api/types'
 
 /**
- * Fixtures der Kontenliste (#1601): die Anbieterkonten, die neben den lokalen Konten aus
+ * Fixtures der Kontenliste: die Anbieterkonten, die neben den lokalen Konten aus
  * `localUserFixtures.ts` erscheinen - zwei Anbieter, einer davon führt die Rollen über einen
  * Claim, und ein Konto, dessen Anbieterzeile inzwischen gelöscht ist (ADR-0025: das Konto bleibt).
  */

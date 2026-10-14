@@ -39,7 +39,7 @@ function formatDate(value: string | null | undefined): string {
   return new Date(value).toLocaleDateString('de-DE')
 }
 
-/** Nie gesetzt · gültig bis · zurückgenommen · erloschen · ausgesetzt (letzteres kommt mit #797). */
+/** Nie gesetzt · gültig bis · zurückgenommen · erloschen · ausgesetzt. */
 function stateLine(access: LibraryExternalAccessResponse): string {
   switch (access.state) {
     case 'ACTIVE':
@@ -68,7 +68,7 @@ function latestAdmissibleDate(maxReleaseDays: number): string {
 }
 
 /**
- * Die Freigabe einer Bibliothek für Fremdzugänge (#1731) im Zugriffsbereich der Bibliothek:
+ * Die Freigabe einer Bibliothek für Fremdzugänge im Zugriffsbereich der Bibliothek:
  * Schalter, Pflicht-Ablaufdatum und die Anzahl der Zugangstokens, die die Bibliothek enthalten -
  * eine Zahl, keine Namen. Sichtbar für alle, die an der Bibliothek Rechte vergeben dürfen; unterhalb
  * dieser Rolle liefert das Backend das Feld gar nicht erst.

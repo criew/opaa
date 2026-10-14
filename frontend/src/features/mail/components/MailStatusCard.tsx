@@ -16,7 +16,7 @@ const TONE: Record<string, StatusTone> = {
  * 10) - beide Zeilen bleiben stehen, auch wenn die Verdikt-Zeile nur eine von beiden nennt: nach
  * einem geglückten Test ist der vorherige Fehler die Information, die erklärt, was repariert wurde.
  *
- * Seit #1608 eine Zeile mit Punkt statt einer Karte: Der Zustand ist eine Aussage, kein Objekt,
+ * Eine Zeile mit Punkt statt einer Karte: Der Zustand ist eine Aussage, kein Objekt,
  * das einen Rahmen bräuchte.
  */
 export default function MailStatusCard({ settings }: { settings: MailSettingsResponse }) {

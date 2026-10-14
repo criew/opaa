@@ -30,10 +30,10 @@ function sortModels(list: LlmModelResponse[]): LlmModelResponse[] {
 }
 
 /**
- * Managed chat models (#759, admin API from #757) - list, create, edit, delete, activate.
+ * Managed chat models (admin API) - list, create, edit, delete, activate.
  *
  * **Mutations patch `models` locally from the server's own response, they never call {@link
- * loadModels} again (#759 review).** `loadModels` sets `isLoading: true` while it runs, and
+ * loadModels} again.** `loadModels` sets `isLoading: true` while it runs, and
  * `LlmModelManagementPage` swaps the whole list for a "wird geladen" message whenever that flag is
  * set - a full reload after every save, activate or delete would therefore blank the list for a
  * moment, right after the action that caused it. Each mutation below already gets back everything
@@ -82,7 +82,7 @@ export const useLlmModelStore = create<LlmModelState>((set, get) => ({
   },
 
   updateExistingModel: async (modelId, request) => {
-    // Returned directly to the caller, which re-seeds its draft from it (#759 review) - the panel
+    // Returned directly to the caller, which re-seeds its draft from it - the panel
     // stays open and any visible test result or save confirmation survives the round trip.
     const updated = await updateLlmModel(modelId, request)
     set({

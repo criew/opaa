@@ -11,7 +11,7 @@ import { favoriteKey, mockFavoriteAssets } from '../../asset/mocks/assetFixtures
 import { mockExternalAccessSettings } from './externalAccessHandlers'
 
 /**
- * Die Zugangstokens (#1718/#1719) als MSW-Handler - mit den Invarianten, auf die sich die
+ * Die Zugangstokens als MSW-Handler - mit den Invarianten, auf die sich die
  * Oberfläche verlässt und die das Backend ebenso durchsetzt: der Klartextwert steht genau in der
  * Antwort des Anlegens, die Selbstsicht trägt „zuletzt benutzt" und die Verwaltungsliste nicht,
  * gefiltert wird allein über Zustand und Ablauf, ein Widerruf löscht „zuletzt benutzt" mit, und

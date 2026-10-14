@@ -220,7 +220,7 @@ function AccountCard(props: RowProps) {
     <Box
       component="article"
       aria-label={account.displayName ?? account.email ?? account.id}
-      // Auch schmal ein Listeneintrag, keine Karte (#1608) - dieselbe Sprache wie die Tabelle
+      // Auch schmal ein Listeneintrag, keine Karte - dieselbe Sprache wie die Tabelle
       // daneben, nur einspaltig.
       sx={listCardSx}
     >
@@ -313,7 +313,7 @@ interface AccountListProps extends RowHandlers {
 }
 
 /**
- * Die Liste aller Konten (#1541, #1601, ADR-0033 Entscheidung 11): lokale Konten mit Zustand und
+ * Die Liste aller Konten (ADR-0033 Entscheidung 11): lokale Konten mit Zustand und
  * Ablauf, Anbieterkonten mit ihrem Anbieter - am Desktop eine Tabelle, unter Tablet-Breite eine
  * Kartenliste (guidelines 5.3). Name und Adresse teilen sich eine Zelle. Der Anlagegrund steht im
  * Bearbeiten-Dialog, nicht in der Liste. Die Aktivität eines Kontos zeigt die

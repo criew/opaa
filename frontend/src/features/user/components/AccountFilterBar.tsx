@@ -17,7 +17,7 @@ import {
   SYSTEM_ROLE_LABEL,
 } from './localUserLabels'
 
-/** How long a keystroke waits before it becomes a request (#1541: 300 ms entprellt). */
+/** How long a keystroke waits before it becomes a request (300 ms entprellt). */
 export const SEARCH_DEBOUNCE_MS = 300
 
 const REVIEW_OPTIONS: Array<{ value: LocalUserReviewFilter; label: string }> = [
@@ -45,7 +45,7 @@ function originPatch(value: string): Partial<AccountFilters> {
 }
 
 /**
- * Suche und Filter der Kontenliste (#1541, #1601); die primäre Handlung steht im Kopf des
+ * Suche und Filter der Kontenliste; die primäre Handlung steht im Kopf des
  * Bereichs darüber, damit diese Zeile nur Filter trägt. Die Herkunft wählt
  * zwischen allen, lokalen und Anbieterkonten oder einem einzelnen Anbieter; die drei Prüffilter
  * der Auflage aus ADR-0033 - „Zustand: Eingeladen", „ohne Ablaufdatum", „länger als 90 Tage nicht

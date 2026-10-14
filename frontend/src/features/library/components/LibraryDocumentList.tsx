@@ -55,7 +55,7 @@ export interface LibraryDocumentListProps {
   confluenceSpaces?: ConfluenceSpaceRef[] | null
   /** What to say when neither a document nor a folder is left to show. */
   emptyMessage: string
-  /** Rendered directly above the search field (#1943) - the Ordnerpfad of the open folder. */
+  /** Rendered directly above the search field - the Ordnerpfad of the open folder. */
   breadcrumb?: ReactNode
   searchInput: string
   onSearchChange: (value: string) => void
@@ -70,7 +70,7 @@ export interface LibraryDocumentListProps {
   onClearSelection: () => void
   /**
    * The actions offered for the current selection - every single-row action that is permitted for
-   * all selected documents (#1943). Rendered in the selection toolbar.
+   * all selected documents. Rendered in the selection toolbar.
    */
   bulkActions?: ReactNode
   onOpenFolder: (folderId: string | null) => void
@@ -79,20 +79,20 @@ export interface LibraryDocumentListProps {
   /** Upload only: the per-row delete button. */
   renderRowActions?: (document: LibraryDocumentResponse) => ReactNode
   /**
-   * Which rows show their metadata panel (#1068) and what that panel is; without
+   * Which rows show their metadata panel and what that panel is; without
    * `renderMetadataPanel` - metadata switched off (ADR-0044) - no row offers one.
    */
   metadataOpenById?: Record<string, boolean>
   onToggleMetadata?: (documentId: string) => void
   renderMetadataPanel?: (document: LibraryDocumentResponse) => ReactNode
   onOpenOriginal: (document: LibraryDocumentResponse) => void
-  /** Per-parent expansion of the attachment group (#1184). */
+  /** Per-parent expansion of the attachment group. */
   isGroupExpanded: (parentId: string) => boolean
   onToggleAttachmentGroup: (parentId: string) => void
 }
 
 /**
- * The one document list of a Wissensbibliothek (#1943) - search, page size, selection, folder rows,
+ * The one document list of a Wissensbibliothek - search, page size, selection, folder rows,
  * document rows with their attachment groups, and paging. Every source type uses it; what differs
  * per type comes in as props: the extra caption lines follow from the row's own fields
  * (Space/Bucket, Herkunft, Ordner), the actions are passed in ({@link
@@ -134,7 +134,7 @@ export default function LibraryDocumentList({
   const pageCount = pageState ? Math.max(1, Math.ceil(pageState.totalElements / pageState.size)) : 1
 
   const documentsById = new Map(documents.map((doc) => [doc.id, doc]))
-  // #1184: the backend guarantees each attachment row follows its (transitive) top-level parent
+  // The backend guarantees each attachment row follows its (transitive) top-level parent
   // within the same page, so grouping is a single sequential pass. A row whose parent is missing
   // from the page is rendered as its own top-level row rather than dropped.
   const documentGroups: {
@@ -212,7 +212,7 @@ export default function LibraryDocumentList({
               {document.chunkCount === 1 ? 'Abschnitt' : 'Abschnitte'} ·{' '}
               {formatIndexedAt(document.indexedAt)}
             </Typography>
-            {/* ADR-0023 (#1136)/ADR-0027: a row names its container under the noun its source
+            {/* ADR-0023/ADR-0027: a row names its container under the noun its source
                 registered (a Confluence space, an S3 bucket) and its position below it - as text,
                 since an s3:// path is no link a browser could open. */}
             {document.sourceContainerKey && (
@@ -226,7 +226,7 @@ export default function LibraryDocumentList({
                 Anhang von: {options.viaFileName}
               </Typography>
             )}
-            {/* #822: most useful on a search hit (bibliotheksweit, ADR-0020), whose result list has
+            {/* Most useful on a search hit (bibliotheksweit, ADR-0020), whose result list has
                 no breadcrumb of its own to place it in the structure. */}
             {document.folderPath && (
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>
@@ -240,7 +240,7 @@ export default function LibraryDocumentList({
                 </Link>
               </Typography>
             )}
-            {/* #493: sourceEntryUrl trägt nur eine Anlage aus einem RSS-Feed-Eintrag - der Link
+            {/* sourceEntryUrl trägt nur eine Anlage aus einem RSS-Feed-Eintrag - der Link
                 macht sichtbar, aus welchem Eintrag sie stammt. */}
             {document.sourceEntryUrl && (
               <Typography
@@ -253,7 +253,7 @@ export default function LibraryDocumentList({
                 </Link>
               </Typography>
             )}
-            {/* #747: only shown when sourceEntryUrl above is absent, so the same remote address
+            {/* Only shown when sourceEntryUrl above is absent, so the same remote address
                 never appears twice for an RSS attachment. */}
             {!document.sourceEntryUrl && document.sourceUrl && (
               <Typography
@@ -281,7 +281,7 @@ export default function LibraryDocumentList({
             )}
           </Stack>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center', flexShrink: 0 }}>
-            {/* #434: a FAILED document's asynchronous processing failure is only visible to the
+            {/* A FAILED document's asynchronous processing failure is only visible to the
                 user via this German errorMessage - the status chip alone only says something went
                 wrong, not what. */}
             <Tooltip
@@ -373,7 +373,7 @@ export default function LibraryDocumentList({
         </Select>
       </Stack>
 
-      {/* #1943: the selection toolbar also stands on the root level, where a library may show only
+      {/* The selection toolbar also stands on the root level, where a library may show only
           folders - hiding it there made "Alle auf dieser Seite auswählen" look unavailable rather
           than simply empty. */}
       {selectable && (documents.length > 0 || folders.length > 0) && (
@@ -427,7 +427,7 @@ export default function LibraryDocumentList({
         </Typography>
       ) : (
         <Stack spacing={1}>
-          {/* #822: folders are rows ahead of the documents, mirroring a plain file browser - a
+          {/* Folders are rows ahead of the documents, mirroring a plain file browser - a
               folder's documentCount already counts its own subtree recursively. */}
           {folders.map((folder) => (
             <Box
@@ -443,7 +443,7 @@ export default function LibraryDocumentList({
                 '&:last-of-type': { borderBottom: 0 },
               }}
             >
-              {/* #1943: a folder is not a document and cannot be selected - said with a disabled
+              {/* A folder is not a document and cannot be selected - said with a disabled
                   checkbox and its reason, rather than by leaving the column blank and making the
                   rows below look misaligned. */}
               {selectable && (
@@ -494,7 +494,7 @@ export default function LibraryDocumentList({
               {renderFolderActions?.(folder)}
             </Box>
           ))}
-          {/* #1184: a top-level document with its attachments is one group - the attachments hang
+          {/* A top-level document with its attachments is one group - the attachments hang
               indented on a guide line below it, a divider closes the group against the next. */}
           {documentGroups.map(({ parent, attachments }) => (
             <Box

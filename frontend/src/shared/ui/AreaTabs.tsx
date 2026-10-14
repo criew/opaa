@@ -28,7 +28,7 @@ interface AreaTabsProps<T extends string> {
 }
 
 /**
- * Die Reiter einer Bereichsseite (#1616) — Leiste **und** Panels.
+ * Die Reiter einer Bereichsseite — Leiste **und** Panels.
  *
  * Die Bereiche sind eigene Routen, keine Zustände: Ein Verweis soll im richtigen Bereich landen,
  * und ein Neuladen ihn behalten. Deshalb ist jeder Reiter ein Link und kein Klick-Handler.

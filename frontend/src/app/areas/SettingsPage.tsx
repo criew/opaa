@@ -57,8 +57,8 @@ function signInMethodLabel(mode: AuthMode | null): string | null {
 }
 
 /**
- * Die persönlichen Einstellungen (#788) mit den eigenen Zugangstokens (#1719) und den Gruppen, für
- * die das Konto verantwortlich ist (#1814), als weiteren Bereichen.
+ * Die persönlichen Einstellungen mit den eigenen Zugangstokens und den Gruppen, für
+ * die das Konto verantwortlich ist, als weiteren Bereichen.
  *
  * Die Bereiche sind Routen, damit ein Verweis auf die Tokenverwaltung dort landet und ein
  * Neuladen ihn behält. `/settings` ohne Bereich bleibt der Einstieg und zeigt „Allgemein“; ein
@@ -81,13 +81,13 @@ export default function SettingsPage() {
   const createdReason = user?.createdReason?.trim() || null
 
   // The toggle shows what actually applies, which for someone who has never chosen is the
-  // operator's default - not an empty selection they would have to interpret (#583).
+  // operator's default - not an empty selection they would have to interpret.
   const hasOwnChoice = themeMode !== null
   const effectiveMode = resolveThemeMode(themeMode, operatorDefault)
 
   const signInMethod = signInMethodLabel(authMode)
   // A missing or blank displayName makes the e-mail the name line - repeating it in the
-  // meta line would show it twice (#800, review #795 finding 1).
+  // meta line would show it twice.
   const displayName = user?.displayName?.trim() || null
   const accountName = displayName ?? user?.email ?? 'Benutzer'
   const accountMeta = [displayName ? user?.email : null, signInMethod].filter(Boolean).join(' · ')
@@ -124,7 +124,7 @@ export default function SettingsPage() {
             ) : (
               <>
                 {/* Mockup 2c: the profile block - display only; editing name, language or picture
-            needs backend support that does not exist yet (#788, Abgrenzung). */}
+            needs backend support that does not exist yet (Abgrenzung). */}
                 {user && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
                     {/* Decorative: the name stands right next to it (WCAG 1.1.1). */}

@@ -75,7 +75,7 @@ describe('SearchIndexingAdminPage', () => {
   })
 
   /**
-   * Die Bereiche sind Routen, keine Zustände (#1616): Ein Verweis soll im richtigen Bereich
+   * Die Bereiche sind Routen, keine Zustände: Ein Verweis soll im richtigen Bereich
    * landen, und ein Neuladen ihn behalten. Der bloße Pfad landet deshalb auf dem ersten Reiter,
    * und ein Tippfehler wird nicht stillschweigend umgedeutet - die Adresszeile sagt, was zu
    * sehen ist.
@@ -153,14 +153,14 @@ describe('SearchIndexingAdminPage', () => {
 
     renderOverview()
 
-    // Rolle und Zustand stehen seit #1608 im Text der Zeile, nicht mehr als `aria-label` an einem
-    // Chip: Die Aussage ist damit für alle sichtbar dieselbe, nicht nur für Screenreader.
+    // Rolle und Zustand stehen im Text der Zeile, nicht als `aria-label` an einem Chip: Die Aussage
+    // ist damit für alle sichtbar dieselbe, nicht nur für Screenreader.
     await waitFor(() => {
       expect(screen.getByText('Chat — Aktiv und erreichbar')).toBeInTheDocument()
     })
     expect(screen.getByText('Einbettung — Aktiv und erreichbar')).toBeInTheDocument()
     expect(screen.getByText('Reranking — Ausdrücklich abgeschaltet')).toBeInTheDocument()
-    // Endpunkt und Kennung stehen als Schlüssel-Wert-Paar, nicht mehr in einem Fließtext
+    // Endpunkt und Kennung stehen als Schlüssel-Wert-Paar, nicht in einem Fließtext
     expect(screen.getByText('http://localhost:11434/v1')).toBeInTheDocument()
     expect(document.body.textContent).not.toMatch(/Schlüssel|apiKey|Bearer/)
   })
@@ -268,7 +268,7 @@ describe('SearchIndexingAdminPage', () => {
         'Füllgrad je Kernfeld: Satzungen & Gebuehrenordnungen',
       ),
     ).toHaveTextContent('Titel 11 (100 %) · Dokumentart 4 (36 %) · Datum/Stand 7 (64 %)')
-    // #1069: the same Pflege-Anker the library's own settings show - a field marked "kein Wert
+    // The same Pflege-Anker the library's own settings show - a field marked "kein Wert
     // ermittelbar" is neither filled nor missing (Datum/Stand: 7 filled, 1 marked, 3 open).
     expect(
       within(row as HTMLElement).getByLabelText(
@@ -277,7 +277,7 @@ describe('SearchIndexingAdminPage', () => {
     ).toHaveTextContent(
       'Titel 0 ohne Wert (0 %) · Dokumentart 7 ohne Wert (64 %) · Datum/Stand 3 ohne Wert (27 %)',
     )
-    // #1073: the Zählwerk of the model-backed extraction stands in the same row - the only feedback
+    // The Zählwerk of the model-backed extraction stands in the same row - the only feedback
     // about what that capability costs besides the model provider's invoice.
     expect(
       within(row as HTMLElement).getByLabelText(
@@ -419,7 +419,7 @@ describe('SearchIndexingAdminPage', () => {
   })
 
   /**
-   * Die zweite Mischzustandsart einer Bibliothek (#1361): Diese Seite zeigt sie, getrieben wird
+   * Die zweite Mischzustandsart einer Bibliothek: Diese Seite zeigt sie, getrieben wird
    * der Lauf aber aus den Bibliothekseinstellungen - deshalb steht hier kein Knopf.
    */
   it('shows a running Umschlüsselung in the same table as the rest of the index state', async () => {
@@ -692,7 +692,7 @@ describe('SearchIndexingAdminPage', () => {
     ).toBeInTheDocument()
   })
 
-  // #1070: the diagnosis runs with the same core-field filter a chat query would, so "Sicht als"
+  // The diagnosis runs with the same core-field filter a chat query would, so "Sicht als"
   // can check what a person's filtered question sees; the new stage appears in the protocol.
   it('sends the metadata filter with the diagnosis and shows the filter stage', async () => {
     signInAs('SYSTEM_ADMIN')

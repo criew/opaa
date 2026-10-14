@@ -56,7 +56,7 @@ const fromDirectory: SelectableGroupResponse = {
   unmaintained: false,
 }
 
-/** #1443: derselbe Name, ein anderer Anbieter - allein am Namen nicht zu unterscheiden. */
+/** Derselbe Name, ein anderer Anbieter - allein am Namen nicht zu unterscheiden. */
 const fromPartner: SelectableGroupResponse = {
   ...fromDirectory,
   id: 'group-referat-50-partner',
@@ -382,7 +382,7 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
   })
 
   /**
-   * #778: Nach der Auswahl setzt MUI den Eingabetext auf das Label der Option - als neue Eingabe
+   * Nach der Auswahl setzt MUI den Eingabetext auf das Label der Option - als neue Eingabe
    * weitergegeben loeste das eine zweite Suche nach nie getipptem Text aus.
    */
   it('runs no second search after a person was selected', async () => {
@@ -417,7 +417,7 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
     expect(mockGetUserSummaries).toHaveBeenCalledTimes(1)
   })
 
-  /** Review #2137: "Alle Konten" must not stand in for an empty result in the grants. */
+  /** "Alle Konten" must not stand in for an empty result in the grants. */
   it('shows the empty-result hint in the grants too, without "Alle Konten" in its way', async () => {
     mockGetUserSummaries.mockResolvedValue([])
     mockSearchSelectableGroups.mockResolvedValue([])

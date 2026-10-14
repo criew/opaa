@@ -7,7 +7,7 @@ import type { AccountResponse } from '@/shared/api/types'
 import { accountOriginLabel, isLocalAccount } from './accountLabels'
 
 /**
- * Die Herkunft eines Kontos (#1601): Schlüssel und „Lokal" für ein Konto dieser Installation,
+ * Die Herkunft eines Kontos: Schlüssel und „Lokal" für ein Konto dieser Installation,
  * Gebäude und Anbietername für ein Konto eines Identitätsanbieters. Das Symbol trägt keine eigene
  * Bedeutung - das Wort daneben tut es (guidelines 1.2); ein entfernter Anbieter nennt im Tooltip
  * den Issuer, unter dem das Konto entstand.

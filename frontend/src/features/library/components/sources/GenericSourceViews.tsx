@@ -86,7 +86,7 @@ export function StoredConnection({
           <RemoteConnectionLines />
         </>
       )}
-      {/* #1940: the stored configuration can be probed without opening the editor first. */}
+      {/* The stored configuration can be probed without opening the editor first. */}
       <Box sx={{ pt: 1 }}>
         <SourceConnectionTest
           sourceType={library.sourceType}

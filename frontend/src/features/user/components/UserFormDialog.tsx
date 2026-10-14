@@ -104,7 +104,7 @@ function draftOf(user: LocalUserResponse | undefined, defaultExpiryDays: number)
   }
 }
 
-/** Neutral on purpose: no number, no hint whether the person connected anything (#2260). */
+/** Neutral on purpose: no number, no hint whether the person connected anything. */
 export const EXPIRY_CONSEQUENCE =
   'Mit dem Ablaufdatum enden etwaige verbundene Konten der Person, und für etwaige private ' +
   'Bibliotheken beginnt die Löschfrist.'
@@ -127,7 +127,7 @@ interface UserFormDialogProps {
 }
 
 /**
- * Anlegen und Bearbeiten eines lokalen Kontos (#1541, ADR-0033 Entscheidung 11). Der Anlagegrund
+ * Anlegen und Bearbeiten eines lokalen Kontos (ADR-0033 Entscheidung 11). Der Anlagegrund
  * ist Pflicht und zweckgebunden – sein Hilfetext nennt, was nicht hineingehört; das Ablaufdatum ist
  * vorbelegt und nur ausdrücklich abwählbar, damit ein unbefristetes Konto eine Entscheidung bleibt
  * und kein Versehen.
@@ -177,8 +177,8 @@ export default function UserFormDialog({
     try {
       if (isEdit) {
         /*
-         * Das Ablaufdatum reist nur mit, wenn der **Tag** sich geändert hat (Review-Runde 1,
-         * HIGH 2): Ein unverändertes Feld würde sonst auf 23:59:59 Ortszeit zurückgerechnet und
+         * Das Ablaufdatum reist nur mit, wenn der **Tag** sich geändert hat: Ein
+         * unverändertes Feld würde sonst auf 23:59:59 Ortszeit zurückgerechnet und
          * damit das gespeicherte Datum verschieben - und weil `LOCAL_USER_CHANGED` Vorher/Nachher
          * ausschließlich für `expires_at` führt, stünde eine reine Namensänderung als
          * Fristverschiebung im Protokoll.

@@ -73,7 +73,7 @@ describe('SettingsPage', () => {
 
     expect(useUiStore.getState().themeMode).toBe('dark')
 
-    // #800 (review #795, finding 2): actually walk the way back - a broken onClick wiring
+    // Actually walk the way back - a broken onClick wiring
     // stayed green while only the button's presence was asserted.
     await user.click(screen.getByRole('button', { name: 'Vorgabe des Hauses übernehmen' }))
 
@@ -84,8 +84,8 @@ describe('SettingsPage', () => {
   })
 
   it('survives an empty display name from the IdP instead of crashing (#800)', () => {
-    // review #795 finding 5: `('')[0].toUpperCase()` threw before userInitial guarded it -
-    // `??` only skips null/undefined, an empty string walked straight into the indexing.
+    // `('')[0].toUpperCase()` throws unless userInitial guards it - `??` only skips
+    // null/undefined, an empty string walks straight into the indexing.
     useAuthStore.setState({
       user: { id: 'user-4', email: 'x@y.example', displayName: '', systemRole: 'USER' },
       mode: 'oidc',
@@ -96,7 +96,7 @@ describe('SettingsPage', () => {
   })
 
   it('does not repeat the e-mail when it already serves as the name line', () => {
-    // #800 (review #795, finding 1): without a displayName the name line falls back to the
+    // Without a displayName the name line falls back to the
     // address - the meta line must then carry only the sign-in method.
     useAuthStore.setState({
       user: { id: 'user-3', email: 'x@y.example', displayName: null, systemRole: 'USER' },
@@ -151,7 +151,7 @@ describe('SettingsPage', () => {
   })
 
   /**
-   * The password section belongs to local accounts only (#1540). Walked rather than asserted on the
+   * The password section belongs to local accounts only. Walked rather than asserted on the
    * `href`: what matters is that the button reaches the page **and** hands it the way back, so a
    * voluntary change ends here instead of on the chat page - an `href` assertion would pass even if
    * the return target were missing.

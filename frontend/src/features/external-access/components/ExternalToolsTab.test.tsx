@@ -79,8 +79,8 @@ async function openSettings(user: ReturnType<typeof userEvent.setup>) {
 }
 
 /**
- * Der Reiter „Externe KI-Werkzeuge“ (#2504): Zustand mit Notaus, die drei Schlüssel, die beiden
- * Listen und das Einstellungs-Panel mit den Kanaleinstellungen aus #1717.
+ * Der Reiter „Externe KI-Werkzeuge“: Zustand mit Notaus, die drei Schlüssel, die beiden
+ * Listen und das Einstellungs-Panel mit den Kanaleinstellungen.
  */
 describe('ExternalToolsTab', () => {
   const originalMatchMedia = window.matchMedia
@@ -261,7 +261,7 @@ describe('ExternalToolsTab', () => {
     expect(puts).toEqual([{ ...CUSTOM_REQUEST, enabled: false }])
   })
 
-  // Review #2508, finding 1: the switch-off replaces the settings wholesale, so it must send the
+  // The switch-off replaces the settings wholesale, so it must send the
   // stored state of the moment, not the one loaded with the page.
   it('überschreibt beim Ausschalten keine zwischenzeitliche Änderung anderer', async () => {
     setMockExternalAccessSettings({ ...mockExternalAccessSettings, ...CUSTOM_SETTINGS })
@@ -284,7 +284,7 @@ describe('ExternalToolsTab', () => {
     expect(mockExternalAccessSettings.tokenMaxLifetimeDays).toBe(7)
   })
 
-  // Review #2508, finding 2: opening the panel adds no history entry, so „Zurück" leaves the tab
+  // Opening the panel adds no history entry, so „Zurück" leaves the tab
   // instead of silently closing the panel with its unsaved changes.
   it('legt beim Öffnen der Einstellungen keinen eigenen Verlaufseintrag an', async () => {
     const user = userEvent.setup()

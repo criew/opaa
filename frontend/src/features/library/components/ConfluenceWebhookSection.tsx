@@ -14,12 +14,12 @@ import { useLibraryStore } from '../stores/libraryStore'
 
 interface ConfluenceWebhookSectionProps {
   libraryId: string
-  /** From LibraryResponse.pushSecretSet - a yes/no, never the secret (#1140). */
+  /** From LibraryResponse.pushSecretSet - a yes/no, never the secret. */
   secretSet: boolean | null | undefined
 }
 
 /**
- * #1140: the webhook row of a Confluence library's Quellkonfiguration, for managers. The secret is
+ * The webhook row of a Confluence library's Quellkonfiguration, for managers. The secret is
  * shown exactly once, in the dialog that follows its generation; afterwards the row only knows that
  * one exists. Rotating replaces it immediately, removing closes the endpoint.
  */

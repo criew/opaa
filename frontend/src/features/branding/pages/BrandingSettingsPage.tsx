@@ -36,17 +36,17 @@ const colorSchemeOptions: Array<{ value: ColorScheme; label: string; icon: React
 ]
 
 /**
- * The branding form (#583) - where an operator makes the interface their house's own without a
+ * The branding form - where an operator makes the interface their house's own without a
  * rebuild: product name, claim, logo, accent colour and the deployment's default colour scheme.
  *
  * Two things about it are deliberate and worth naming:
  *
  * **The contrast check warns, it does not block.** A Behörde's corporate colour is not something
- * this application gets to veto (#583: "blockiert aber nicht"). What the form owes the operator is
+ * this application gets to veto ("blockiert aber nicht"). What the form owes the operator is
  * that the consequence is visible before they save, in both schemes - not a refusal.
  *
  * **Every field left empty means "back to the OPAA standard"**, matching the API's own PUT
- * semantics (#582). That is why the fields start out empty-able rather than pre-filled with the
+ * semantics. That is why the fields start out empty-able rather than pre-filled with the
  * defaults as if someone had typed them.
  */
 export default function BrandingSettingsPage() {

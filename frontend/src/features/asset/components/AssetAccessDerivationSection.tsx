@@ -10,7 +10,7 @@ import { assetTypeLabel } from '../../../shared/assetTypes'
 
 /**
  * ADR-0036, Entscheidung 9: flat and shown as flat - every person sees their own way to this asset,
- * whatever their role (#1939). Asked for on demand: the derivation costs a request of its own.
+ * whatever their role. Asked for on demand: the derivation costs a request of its own.
  * Closing hands the focus back to the button that opened it.
  */
 export default function AssetAccessDerivationSection({

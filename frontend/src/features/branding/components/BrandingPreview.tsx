@@ -18,7 +18,7 @@ interface BrandingPreviewProps {
 }
 
 /**
- * One scheme's worth of live preview for the branding form (#583: "Live-Vorschau der Wirkung vor
+ * One scheme's worth of live preview for the branding form ("Live-Vorschau der Wirkung vor
  * dem Speichern"). Renders inside its own {@link ThemeProvider} built from the draft values, so
  * what is shown is produced by the same `createAppTheme` the application itself runs on - not by a
  * hand-painted mock-up that could agree with the form while disagreeing with the product.
@@ -39,7 +39,7 @@ export default function BrandingPreview({
 
   return (
     <ThemeProvider theme={theme}>
-      {/* Der eine Rahmen, der im Bereich bleibt (#1608): Er zeigt nicht einen Inhaltsblock der
+      {/* Der eine Rahmen, der im Bereich bleibt: Er zeigt nicht einen Inhaltsblock der
           Seite, sondern ein Abbild der Anwendung - wie ein Bilderrahmen sagt er „das hier ist eine
           Vorschau", nicht „das hier gehört zusammen". */}
       <Box
@@ -47,7 +47,7 @@ export default function BrandingPreview({
         // aria-hidden + inert: everything in here is a rendering of values the form already
         // exposes as labelled fields - announcing them a second time would add noise, not
         // information. inert also removes the preview's buttons from the tab order; without it,
-        // keyboard users land on focus stops that screen readers cannot see (#956).
+        // keyboard users land on focus stops that screen readers cannot see.
         aria-hidden
         inert
         sx={{

@@ -38,7 +38,7 @@ function initialValueOf(field: DocumentMetadataFieldResponse): MetadataValueRequ
   }
 }
 
-// #1068: sets or changes one core field of one document by hand. The saved value carries the
+// Sets or changes one core field of one document by hand. The saved value carries the
 // origin "manuell" and the calling person; no automatic extraction overwrites it afterwards.
 export default function EditMetadataValueDialog({
   open,

@@ -32,7 +32,7 @@ export function changeRejected(err: unknown): boolean {
   return apiErrorCode(err) === CHANGE_REJECTED
 }
 
-// Connection profiles ("Zugänge", #2160) - SYSTEM_ADMIN only. The client secret is write-only:
+// Connection profiles ("Zugänge") - SYSTEM_ADMIN only. The client secret is write-only:
 // a response carries clientSecretSet, never the value.
 export async function listConnectionProfiles(): Promise<ConnectionProfileResponse[]> {
   try {

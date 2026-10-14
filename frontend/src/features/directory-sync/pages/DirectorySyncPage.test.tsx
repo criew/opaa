@@ -123,8 +123,8 @@ describe('DirectorySyncPage', () => {
     server.events.removeAllListeners()
   })
 
-  // #237/#1816: Der Differenzbericht nennt die Mitgliederzahl je Gruppe, bevor etwas angewendet
-  // wird - und die Konten, die der Lauf sperren würde (#1818).
+  // Der Differenzbericht nennt die Mitgliederzahl je Gruppe, bevor etwas angewendet
+  // wird - und die Konten, die der Lauf sperren würde.
   it('shows the diff report of a dry run with the member count per group', async () => {
     renderWithProviders(<DirectorySyncPage />, { withRouter: true })
     const user = userEvent.setup()

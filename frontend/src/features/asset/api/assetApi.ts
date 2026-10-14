@@ -55,7 +55,7 @@ export async function detachSpaceAsset(spaceId: string, assetId: string): Promis
 
 // the "Zuordnungen" of an asset (requires VIEWER or above). From MANAGER on it is never filtered
 // by the caller's own space membership; below it a PRIVATE space the caller does not belong to is
-// only counted in hiddenCount (#1939).
+// only counted in hiddenCount.
 export async function getAssetSpaceAssociations(
   assetType: AssetType,
   assetId: string,
@@ -71,7 +71,7 @@ export async function getAssetSpaceAssociations(
 }
 
 /**
- * Die Mitglieder einer Gruppe, der man an dieser Bibliothek ein Recht eingeräumt hat (#1880). Was
+ * Die Mitglieder einer Gruppe, der man an dieser Bibliothek ein Recht eingeräumt hat. Was
  * die Antwort zurückhält und warum, steht am Schema `GroupMemberDisclosureResponse`; was die Regel
  * verweigert, antwortet „nicht gefunden".
  */
@@ -94,7 +94,7 @@ export async function getGrantedGroupMembers(
 }
 
 /**
- * Die eigene Herleitung an einem Asset (#1822): jeder eigene Weg zur wirksamen Rolle, ohne
+ * Die eigene Herleitung an einem Asset: jeder eigene Weg zur wirksamen Rolle, ohne
  * Vollmacht, ohne Protokoll, ohne ein Mitglied einer Gruppe zu nennen.
  */
 export async function getAssetAccessDerivation(
@@ -154,7 +154,7 @@ export async function revokeAssetGrant(
 }
 
 /**
- * Übergibt genau dieses eine Objekt an eine andere zuständige Stelle (#1941) — anders als die
+ * Übergibt genau dieses eine Objekt an eine andere zuständige Stelle — anders als die
  * Übertragung aller Wirkungen einer Person oder Gruppe, die `permissionTransferApi` fährt.
  */
 export async function transferAssetOwnership(

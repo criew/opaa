@@ -45,7 +45,7 @@ describe('MessageBubble', () => {
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
   })
 
-  // #2588: the stored mark stays, but a switched-off installation does not name prompts.
+  // The stored mark stays, but a switched-off installation does not name prompts.
   it('names no prompt while prompt libraries are switched off', () => {
     useAuthStore.setState({ features: { promptLibraries: false } })
     try {
@@ -389,7 +389,7 @@ describe('MessageBubble', () => {
     expect(screen.queryByText(/kein Wissen zugeordnet/)).not.toBeInTheDocument()
   })
 
-  // #2486: a cut-off or empty answer is never presented as if it were complete.
+  // A cut-off or empty answer is never presented as if it were complete.
   it('warns about a truncated and about an empty answer', () => {
     const base: ChatMessage = {
       id: '8c',

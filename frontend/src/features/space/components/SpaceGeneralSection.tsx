@@ -27,7 +27,7 @@ interface SpaceGeneralSectionProps {
  * Der Reiter „Stammdaten" der Space-Einstellungen: Name, Beschreibung, der Schalter der
  * automatischen Chat-Bereinigung und die Anweisung an das Modell, die jedes Mitglied sieht, und am
  * Ende der abgesetzte
- * Gefahrenbereich mit Archivieren und Löschen (#1917).
+ * Gefahrenbereich mit Archivieren und Löschen.
  */
 export default function SpaceGeneralSection({
   spaceId,
@@ -49,7 +49,7 @@ export default function SpaceGeneralSection({
   }>({ spaceId: null, name: '', description: '', chatAutoCleanup: false, modelInstruction: '' })
   const [localError, setLocalError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  // #543: deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
+  // deleteSpace's 409 - "Der Space enthält noch Chats ... Archivieren Sie den Space
   // stattdessen." - is the one failure this page offers a direct way out of, instead of just
   // showing the message.
   const [deleteBlockedByChats, setDeleteBlockedByChats] = useState(false)
@@ -174,7 +174,7 @@ export default function SpaceGeneralSection({
         </Stack>
       </Box>
 
-      {/* Gefahrenbereich nach dem Muster von GitLab (#1917): die beiden folgenreichen Handlungen
+      {/* Gefahrenbereich nach dem Muster von GitLab: die beiden folgenreichen Handlungen
           stehen abgesetzt am Ende der Stammdaten, nicht zwischen den Feldern. Wer sie nicht
           ausführen darf, sieht den Bereich gar nicht. */}
       {isOwner && !space.isDefault && (
@@ -247,7 +247,7 @@ export default function SpaceGeneralSection({
                   } catch (err) {
                     const message = err instanceof Error ? err.message : 'Löschen fehlgeschlagen'
                     setLocalError(message)
-                    // #543: deleteSpace's own 409 message names archiving as the way out - offer
+                    // deleteSpace's own 409 message names archiving as the way out - offer
                     // it directly instead of leaving the user to figure out the next step.
                     setDeleteBlockedByChats(message.includes('Archivieren'))
                   }

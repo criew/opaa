@@ -18,7 +18,7 @@ import { LOGIN_ROUTE } from '@/shared/routes'
 import { redirectTargetOf } from '@/shared/session/safeRedirectPath'
 
 /**
- * The sign-in of the local system administrators (#1368, ADR-0033, Entscheidung 4 and 5). It is
+ * The sign-in of the local system administrators (ADR-0033, Entscheidung 4 and 5). It is
  * reachable at all times - it is the way back into an installation whose last identity provider is
  * misconfigured. Once the local account management is switched on there is nothing this page could
  * do that the regular sign-in does not, so it sends the visitor there.
@@ -46,7 +46,7 @@ export default function SystemLoginPage() {
     )
   }
   if (localAccounts.enabled) {
-    // #1631: this is the documented second door, and it has to stay one. With a running provider
+    // This is the documented second door, and it has to stay one. With a running provider
     // session the regular page would otherwise be carried away automatically before its mask
     // renders, and whoever wants an account of this installation would have no way left that does
     // not end the provider session too. Spending the attempt here settles that before the page it

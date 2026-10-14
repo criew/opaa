@@ -47,7 +47,7 @@ describe('grantStore', () => {
     expect(useGrantStore.getState().grantsByAsset[LIBRARY]).toHaveLength(1)
   })
 
-  // #575: found while systematically checking the resettableStores registry for further
+  // Found while systematically checking the resettableStores registry for further
   // unguarded async set() paths beyond the ones the issue named explicitly.
   it('a loadGrants response arriving after a session reset does not resurrect grants', async () => {
     vi.mocked(getAssetGrants).mockImplementationOnce(async () => {

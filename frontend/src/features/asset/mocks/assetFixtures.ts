@@ -97,7 +97,7 @@ const INITIAL_LIBRARY_GRANTS: Record<string, AssetGrantResponse[]> = {
       createdAt: '2025-01-01T10:00:00Z',
       updatedAt: '2025-01-01T10:00:00Z',
     },
-    // #423 code review, nit 4: an OWNER grant on a library the fixture caller only holds MANAGER
+    // An OWNER grant on a library the fixture caller only holds MANAGER
     // on - exercises the 403 "cannot touch a grant that already carries a role higher than the
     // caller's own" guard (POST update path and DELETE), distinct from the "requested role" cap
     // the pre-existing grants above already cover.
@@ -116,7 +116,7 @@ const INITIAL_LIBRARY_GRANTS: Record<string, AssetGrantResponse[]> = {
   ],
   'library-mine': [],
   'library-dienstanweisungen': [],
-  // #423 code review, nit 4: the library's only active OWNER grant, matching its myRole: 'OWNER'
+  // The library's only active OWNER grant, matching its myRole: 'OWNER'
   // fixture - exercises the 409 "last active OWNER" guard on both downgrade (POST) and revoke
   // (DELETE).
   'library-solo-owner': [

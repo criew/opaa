@@ -16,8 +16,8 @@ export default function MetaBadge({ children, accent = false }: MetaBadgeProps) 
       component="span"
       sx={{
         fontSize: 10.5,
-        // #957: accent via primary.main, not hardcoded blue[700] - the token splits per scheme
-        // (#634: light blue-700, dark blue-500); blue[700] only reached 3.8:1 on the dark
+        // Accent via primary.main, not hardcoded blue[700] - the token splits per scheme
+        // (light blue-700, dark blue-500); blue[700] only reached 3.8:1 on the dark
         // surfaces. Border derives from the same colour (GlobalBadge pattern, 40%).
         color: accent ? 'primary.main' : 'text.secondary',
         border: 1,

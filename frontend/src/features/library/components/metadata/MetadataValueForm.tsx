@@ -23,9 +23,9 @@ interface MetadataValueFormProps {
   disabled?: boolean
 }
 
-// #1068: the input for one core field - free text for the title, a choice from the controlled
+// The input for one core field - free text for the title, a choice from the controlled
 // vocabulary for the Dokumentart (never free text: a value outside the list is not storable),
-// a date plus its precision for Datum/Stand. Since #1069 the third state "kein Wert ermittelbar"
+// a date plus its precision for Datum/Stand. The third state "kein Wert ermittelbar"
 // is offered here as the same operation without a value, not as a separate action. Shared by the
 // single-document and the bulk dialog.
 export default function MetadataValueForm({

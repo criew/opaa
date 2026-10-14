@@ -155,7 +155,7 @@ describe('groupStore', () => {
     expect(useGroupStore.getState().groupDetails['group-a']).toBeUndefined()
   })
 
-  // #1989: for the administration a member list retrieval is an audit event - it happens only on
+  // For the administration a member list retrieval is an audit event - it happens only on
   // request, through the recorded endpoint, and no other act repeats it.
   it('fetches a member list only on request, through the recorded endpoint', async () => {
     mockListGroupMembers.mockResolvedValueOnce([alice])
@@ -213,8 +213,8 @@ describe('groupStore', () => {
 
   /**
    * Wer sich selbst entlässt, darf die Gruppe nicht mehr lesen: Das Nachladen der Details
-   * antwortet 404, und vor #1859 landete diese Meldung nach einer gelungenen Handlung im
-   * Fehlerband. Deshalb lehnt getGroup hier ab - ein Mock, der immer auflöst, deckt den Fall zu.
+   * antwortet 404, und diese Meldung darf nach einer gelungenen Handlung nicht im Fehlerband
+   * landen. Deshalb lehnt getGroup hier ab - ein Mock, der immer auflöst, deckt den Fall zu.
    */
   it('reports no error when the dismissed steward may no longer read the group', async () => {
     useGroupStore.setState({
@@ -246,7 +246,7 @@ describe('groupStore', () => {
     expect(useGroupStore.getState().groupDetails['group-a']).toBeUndefined()
   })
 
-  // #575: found while systematically checking the resettableStores registry for further
+  // Found while systematically checking the resettableStores registry for further
   // unguarded async set() paths beyond the ones the issue named explicitly.
   it('a loadGroups response arriving after a session reset does not resurrect groups', async () => {
     vi.mocked(getGroups).mockImplementationOnce(async () => {

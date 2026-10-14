@@ -80,7 +80,7 @@ function groupOrder(sort: string, descending: boolean) {
 }
 
 /**
- * Die Endpunkte der Verwaltung von Anlegerechten, Verzeichnisabgleich und Übertragung (#1821).
+ * Die Endpunkte der Verwaltung von Anlegerechten, Verzeichnisabgleich und Übertragung.
  * Eigene Datei wie bei `mailHandlers`: `handlers.ts` ist längst über der vereinbarten Länge.
  */
 export const groupAdminHandlers = [

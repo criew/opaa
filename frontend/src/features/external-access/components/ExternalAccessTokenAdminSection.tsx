@@ -111,7 +111,7 @@ function RowMenu({
 }
 
 /**
- * Die Bestandsliste aller Zugangstokens der Installation (#1719).
+ * Die Bestandsliste aller Zugangstokens der Installation.
  *
  * Sie trägt **kein** Nutzungsdatum und bietet **keinen** Filter nach Person: Eine nach Person
  * filterbare Tabelle mit einem Nutzungsdatum wäre der personenbezogene Auswertungspfad, dessen

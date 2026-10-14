@@ -75,7 +75,7 @@ function LibraryList({ libraries }: { libraries: ExternalAccessTokenLibraryRespo
 }
 
 /**
- * Die eigenen Zugangstokens in den persönlichen Einstellungen (#1719): anlegen, einmal ansehen,
+ * Die eigenen Zugangstokens in den persönlichen Einstellungen: anlegen, einmal ansehen,
  * widerrufen.
  *
  * „Zuletzt benutzt" steht nur hier und nur als Datum; eine Zählung gibt es nirgends. Bei

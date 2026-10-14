@@ -53,7 +53,7 @@ function Snippet({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * Die einmalige Anzeige des Tokenwerts (#1719, ADR-0035 Entscheidung 2).
+ * Die einmalige Anzeige des Tokenwerts (ADR-0035 Entscheidung 2).
  *
  * Weder Escape noch ein Klick daneben schließen: Der Wert existiert genau hier und nirgends
  * sonst - danach kennt der Server nur noch seinen Hash und sein Präfix.

@@ -25,7 +25,7 @@ interface GroupMembersDisclosureProps {
 }
 
 /**
- * „Mitglieder anzeigen" an der Zeile einer Gruppe (#1880, ADR-0036 Entscheidung 9): Wer der Gruppe
+ * „Mitglieder anzeigen" an der Zeile einer Gruppe (ADR-0036 Entscheidung 9): Wer der Gruppe
  * an diesem Objekt ein Recht eingeräumt hat, sieht, an wen. Geladen wird **erst auf ausdrücklichen
  * Wunsch** — eine Mitgliederliste ist eine Aussage über Personen und entsteht nicht als Beiwerk
  * einer Übersicht.

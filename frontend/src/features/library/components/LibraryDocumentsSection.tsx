@@ -56,7 +56,7 @@ import LibraryDocumentList from './LibraryDocumentList'
 export const ACCEPTED_FILE_EXTENSIONS =
   '.csv,.doc,.docx,.eml,.html,.md,.msg,.odp,.ods,.odt,.pdf,.pptx,.txt,.xlsx'
 
-/** #823: the directory portion within a dropped/selected folder tree, e.g. "Protokolle/2026". */
+/** The directory portion within a dropped/selected folder tree, e.g. "Protokolle/2026". */
 interface UploadEntry {
   file: File
   relativePath?: string
@@ -79,7 +79,7 @@ export interface LibraryDocumentsSectionProps {
 /**
  * The Reiter „Dokumente" of a Wissensbibliothek: the store wiring, the upload affordances of an
  * UPLOAD library, the folder dialogs and the metadata actions around {@link LibraryDocumentList},
- * which renders the list itself for every source type alike (#1943).
+ * which renders the list itself for every source type alike.
  */
 export default function LibraryDocumentsSection({
   libraryId,
@@ -115,18 +115,18 @@ export default function LibraryDocumentsSection({
   const stopPolling = useDocumentStore((s) => s.stopPolling)
   const reset = useDocumentStore((s) => s.reset)
 
-  // #822: the currently open folder is URL state (?folder=<id>) - a reload or a bookmarked link
+  // The currently open folder is URL state (?folder=<id>) - a reload or a bookmarked link
   // lands back in the same folder instead of always resetting to the library's root.
   const [searchParams, setSearchParams] = useSearchParams()
   const folderIdParam = searchParams.get('folder')
-  // #1069: the Pflege-Anker's filter is URL state (?missingField=<core field key>).
+  // The Pflege-Anker's filter is URL state (?missingField=<core field key>).
   // Without metadata (ADR-0044) a Pflege-Anker link in the URL lists the plain documents.
   const metadataEnabled = useFeatureEnabled('metadata')
   const missingFieldParam = metadataEnabled ? searchParams.get('missingField') : null
 
   const [isDragActive, setIsDragActive] = useState(false)
   const [searchInput, setSearchInput] = useState('')
-  // #1184 (ADR-0022, Entscheidung 5): per-parent expansion of the attachment group. An absent key
+  // ADR-0022, Entscheidung 5: per-parent expansion of the attachment group. An absent key
   // falls back to the search default - during a search every group starts expanded so an
   // attachment hit is immediately visible.
   const [attachmentGroupExpansion, setAttachmentGroupExpansion] = useState<Record<string, boolean>>(
@@ -144,7 +144,7 @@ export default function LibraryDocumentsSection({
     text: string
   } | null>(null)
   const [metadataRefreshToken, setMetadataRefreshToken] = useState(0)
-  // #1069: bumped after every metadata change so the anchor recounts; separate from
+  // Bumped after every metadata change so the anchor recounts; separate from
   // metadataRefreshToken, which reloads the open per-document panels.
   const [anchorRefreshToken, setAnchorRefreshToken] = useState(0)
   const [folderMenu, setFolderMenu] = useState<{
@@ -152,11 +152,11 @@ export default function LibraryDocumentsSection({
     folder: LibraryFolderListItem
   } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  // #823: a whole-folder counterpart to fileInputRef - `webkitdirectory` is not part of React's
+  // A whole-folder counterpart to fileInputRef - `webkitdirectory` is not part of React's
   // JSX typings for <input>, so it is set imperatively via the effect below instead of as a prop.
   const folderInputRef = useRef<HTMLInputElement>(null)
   const searchDebounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-  // #738/#780: opening the original is a read-only, per-click action that never touches the store -
+  // Opening the original is a read-only, per-click action that never touches the store -
   // its failure and download feedback surface as global popup notifications (guidelines 5.9).
   const { previewDocument, closePreview, openDocument } = useDocumentPreview()
 
@@ -165,26 +165,26 @@ export default function LibraryDocumentsSection({
   // deleting the row here does not touch that source, so the next run adds it right back. Rather
   // than offer a delete that silently undoes itself, the action is hidden for connector libraries.
   const canDelete = isUploadLibrary && canManage
-  // #822: folder management is UPLOAD-only, same EDITOR-or-above threshold as document upload.
+  // Folder management is UPLOAD-only, same EDITOR-or-above threshold as document upload.
   const canManageFolders = isUploadLibrary && canManage
-  // #1068: whoever may edit the library's documents may correct their metadata - for every
+  // Whoever may edit the library's documents may correct their metadata - for every
   // sourceType, since a metadata value hangs at the document row, not at the file.
   const canEditMetadata = canManage
   const tooManySelectedToDelete = selectedDocumentIds.length > MAX_BULK_DELETE
 
   useEffect(() => {
-    // #506 review, finding 2: uploadErrors/deleteError/error are not keyed by library - without
+    // uploadErrors/deleteError/error are not keyed by library - without
     // this reset, a failure left over from a previously viewed library would keep showing.
     reset()
     return () => {
       stopPolling(libraryId)
-      // #517 code review, nit 1: a pending debounce would otherwise fire for the previous library.
+      // A pending debounce would otherwise fire for the previous library.
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
     }
   }, [libraryId, stopPolling, reset])
 
   useEffect(() => {
-    // #822: reacts to the URL's folder param too - a breadcrumb click or a folder row navigates by
+    // Reacts to the URL's folder param too - a breadcrumb click or a folder row navigates by
     // changing the URL, and this is what turns that into a fresh load for the requested folder.
     void loadDocuments(libraryId, {
       page: 0,
@@ -205,7 +205,7 @@ export default function LibraryDocumentsSection({
   }, [refreshToken, libraryId, loadDocuments])
 
   useEffect(() => {
-    // #822: an invalid/foreign folderId is caught by loadDocuments, which falls back to the root -
+    // An invalid/foreign folderId is caught by loadDocuments, which falls back to the root -
     // this just corrects the URL to match, dropping the dead ?folder= param.
     if (folderNotFoundMessage && folderIdParam) {
       const next = new URLSearchParams(searchParams)
@@ -215,7 +215,7 @@ export default function LibraryDocumentsSection({
   }, [folderNotFoundMessage, folderIdParam, searchParams, setSearchParams])
 
   useEffect(() => {
-    // #823: `webkitdirectory` (plus its older aliases) is not part of React's <input> typings, so
+    // `webkitdirectory` (plus its older aliases) is not part of React's <input> typings, so
     // it has to be set on the DOM node directly rather than passed as a JSX prop.
     const node = folderInputRef.current
     if (!node) return
@@ -226,7 +226,7 @@ export default function LibraryDocumentsSection({
 
   const documents = documentsByLibrary[libraryId] ?? []
   const pageState = pageStateByLibrary[libraryId]
-  // #822 review, finding 6a: folders are not paged - the backend returns the folder's entire set of
+  // Folders are not paged - the backend returns the folder's entire set of
   // direct subfolders on every page, so they belong on the first page only.
   const isFirstPage = (pageState?.page ?? 0) === 0
   const folders = isFirstPage ? (foldersByLibrary[libraryId] ?? []) : []
@@ -286,7 +286,7 @@ export default function LibraryDocumentsSection({
   }
 
   /**
-   * #1943: the Sammellöschen of an upload library. The confirmation names the number, and the
+   * The Sammellöschen of an upload library. The confirmation names the number, and the
    * answer is reported as it comes back - a partial success says how many stayed and why, instead
    * of leaving the person to compare the list against their own selection. Identical reasons are
    * counted rather than repeated, so fifty stale ids read as one sentence.
@@ -335,7 +335,7 @@ export default function LibraryDocumentsSection({
     }
   }
 
-  // #1069: a corrected document leaves the anchor - and, while its worklist is open, the list too.
+  // A corrected document leaves the anchor - and, while its worklist is open, the list too.
   function handleMetadataValueChanged() {
     setAnchorRefreshToken((previous) => previous + 1)
     if (missingFieldParam) {
@@ -343,7 +343,7 @@ export default function LibraryDocumentsSection({
     }
   }
 
-  // #1069: opens (or leaves) the anchor's worklist - the list is bibliotheksweit, so an open
+  // Opens (or leaves) the anchor's worklist - the list is bibliotheksweit, so an open
   // folder and a running search are dropped with it, and the selection starts empty.
   function setMissingFieldFilter(fieldKey: string | null) {
     setSearchInput('')
@@ -359,13 +359,13 @@ export default function LibraryDocumentsSection({
     setSearchParams(next)
   }
 
-  // #822: navigates into a folder (or back to the root with null) by changing the URL's folder
+  // Navigates into a folder (or back to the root with null) by changing the URL's folder
   // param - the load effect above reacts to that change. Also clears any in-flight search.
   function navigateToFolder(folderId: string | null) {
     setSearchInput('')
     setSelectedDocumentIds([])
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current)
-    // #822 review, finding 1: a search hit's folderPath link can name the very folder already
+    // A search hit's folderPath link can name the very folder already
     // loaded - the URL then does not change, so the load effect never fires and the stale,
     // still-bibliotheksweit results would keep showing. Reloading explicitly is the only way.
     if (folderId === folderIdParam && !missingFieldParam) {
@@ -378,13 +378,13 @@ export default function LibraryDocumentsSection({
     } else {
       next.delete('folder')
     }
-    // #1069: browsing a folder leaves the anchor's (bibliotheksweite) worklist.
+    // Browsing a folder leaves the anchor's (bibliotheksweite) worklist.
     next.delete('missingField')
     setSearchParams(next)
   }
 
   async function handleCreateFolder(name: string) {
-    // #822 review, finding 6c: derives the parent explicitly from the URL's own folder param, so a
+    // Derives the parent explicitly from the URL's own folder param, so a
     // click before the deep-linked folder's first load has resolved cannot create it at the root.
     await createFolder(libraryId, name, folderIdParam)
   }
@@ -394,7 +394,7 @@ export default function LibraryDocumentsSection({
   }
 
   async function handleDeleteFolder(folder: LibraryFolderListItem) {
-    // #822 review, finding 4: re-fetches the folder right before confirming, so the confirmation
+    // re-fetches the folder right before confirming, so the confirmation
     // names the current recursive document count rather than a possibly stale one from the list.
     let documentCount = folder.documentCount
     try {
@@ -426,7 +426,7 @@ export default function LibraryDocumentsSection({
 
   async function handleFiles(entries: UploadEntry[], options?: { skipClear?: boolean }) {
     if (!canManage) return
-    // #823 review, Befund 2: the folder-upload entry points below already clear uploadErrors
+    // The folder-upload entry points below already clear uploadErrors
     // themselves, right before adding their own skipped-files summary.
     if (!options?.skipClear) {
       clearUploadErrors()
@@ -442,7 +442,7 @@ export default function LibraryDocumentsSection({
     }
   }
 
-  // #823 review, Befund 2: one collective German message for every file skipped client-side before
+  // One collective German message for every file skipped client-side before
   // ever reaching the backend - naming three hundred rejected files would be worse than none.
   function reportSkippedFiles(skippedCount: number, failedCount: number) {
     const parts: string[] = []
@@ -465,7 +465,7 @@ export default function LibraryDocumentsSection({
     event.preventDefault()
     setIsDragActive(false)
     clearUploadErrors()
-    // #823: DataTransferItemList.webkitGetAsEntry() must be read synchronously, before any await -
+    // DataTransferItemList.webkitGetAsEntry() must be read synchronously, before any await -
     // the items list has to be captured here, inside this synchronous handler.
     const items = event.dataTransfer.items
     if (items && items.length > 0) {
@@ -511,7 +511,7 @@ export default function LibraryDocumentsSection({
     }
   }
 
-  // #738/#747: every sourceType opens through GET .../content (fetched as a Blob, since the
+  // Every sourceType opens through GET .../content (fetched as a Blob, since the
   // endpoint is Bearer-authenticated and a plain <a href> cannot carry that token).
   async function handleOpenOriginal(document: LibraryDocumentResponse) {
     await openDocument({
@@ -523,7 +523,7 @@ export default function LibraryDocumentsSection({
     })
   }
 
-  // #1068: the selection is bound to the list the person is looking at - a folder, search or page
+  // The selection is bound to the list the person is looking at - a folder, search or page
   // change drops it, so a Sammelaktion never acts on documents nobody sees.
   function handleSearchChange(value: string) {
     setSearchInput(value)
@@ -536,7 +536,7 @@ export default function LibraryDocumentsSection({
 
   return (
     <Box sx={{ mb: 5 }}>
-      {/* #1943: one sentence on why a connector bestand has no per-document delete, once - the
+      {/* One sentence on why a connector bestand has no per-document delete, once - the
           list below repeats neither the sentence nor the action. */}
       {!isUploadLibrary && (
         <Alert severity="info" sx={{ mb: 2 }}>
@@ -592,13 +592,13 @@ export default function LibraryDocumentsSection({
               e.target.value = ''
             }}
           />
-          {/* #823: webkitdirectory is set imperatively on this node (see the useEffect above). */}
+          {/* webkitdirectory is set imperatively on this node (see the useEffect above). */}
           <input
             ref={folderInputRef}
             type="file"
             multiple
             hidden
-            // #823 review, Befund 2: browsers do not reliably enforce `accept` for a
+            // Browsers do not reliably enforce `accept` for a
             // `webkitdirectory` selection - filterAcceptedFiles below is the check that holds.
             accept={ACCEPTED_FILE_EXTENSIONS}
             aria-label="Ordner auswählen"
@@ -668,7 +668,7 @@ export default function LibraryDocumentsSection({
           {deleteError}
         </Alert>
       )}
-      {/* #822: hidden while either folder dialog is open - both already show the same
+      {/* Hidden while either folder dialog is open - both already show the same
           documentStore.folderError locally. */}
       {folderError && !newFolderDialogOpen && !renameFolderTarget && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={clearFolderError}>
@@ -736,7 +736,7 @@ export default function LibraryDocumentsSection({
             : 'Es sind noch keine Dokumente vorhanden. Der erste Indizierungslauf startet über „Jetzt indizieren“ oben auf der Seite.'
         }
         breadcrumb={
-          // #1943: the Ordnerpfad stands directly above the search field, where the list it
+          // The Ordnerpfad stands directly above the search field, where the list it
           // describes begins - not above the Pflege-Anker, which is bibliotheksweit.
           // breadcrumb.length is 0 at the root and while a search is active (ADR-0020).
           breadcrumb.length > 0 ? (
@@ -781,7 +781,7 @@ export default function LibraryDocumentsSection({
         onToggleAllVisible={toggleAllVisible}
         onClearSelection={() => setSelectedDocumentIds([])}
         bulkActions={
-          // #1943: every single-row action that is permitted for all selected documents - "Feld
+          // Every single-row action that is permitted for all selected documents - "Feld
           // setzen" everywhere, "Löschen" wherever a single row offers it too.
           <>
             {metadataEnabled && (
@@ -913,7 +913,7 @@ export default function LibraryDocumentsSection({
           open={newFolderDialogOpen}
           onClose={() => {
             setNewFolderDialogOpen(false)
-            // #822 review, finding 3: without this, cancelling out of a dialog that just showed a
+            // Without this, cancelling out of a dialog that just showed a
             // 409 conflict left documentStore.folderError set, flashing it on the page behind.
             clearFolderError()
           }}
@@ -945,7 +945,7 @@ interface NewFolderDialogProps {
   onCreate: (name: string) => Promise<void>
 }
 
-// #822: creates a folder directly under the folder currently being browsed - kept local to this
+// Creates a folder directly under the folder currently being browsed - kept local to this
 // file since it is only ever used from the section above.
 function NewFolderDialog({ open, onClose, onCreate }: NewFolderDialogProps) {
   const [name, setName] = useState('')
@@ -960,7 +960,7 @@ function NewFolderDialog({ open, onClose, onCreate }: NewFolderDialogProps) {
       await onCreate(name.trim())
       onClose()
     } catch (err) {
-      // #822: surfaces a 409 name conflict directly in the dialog, where the name is still there
+      // Surfaces a 409 name conflict directly in the dialog, where the name is still there
       // to correct, rather than as a page-level alert.
       setError(err instanceof Error ? err.message : 'Ordner konnte nicht angelegt werden')
     } finally {

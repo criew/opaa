@@ -39,7 +39,7 @@ interface RailDestination {
 }
 
 /**
- * The global rail (#786, mockup 2a): the always-visible first navigation level left of the
+ * The global rail (mockup 2a): the always-visible first navigation level left of the
  * space column, one shade darker so global and space scope read apart at a glance. It carries
  * the brand emblem, the global destinations - Spaces, the catalog, administration -
  * and the user's avatar with the account menu; the navy column next to it stays purely
@@ -91,7 +91,7 @@ export default function GlobalRail() {
         ]
       : []),
     // Die Revision hat einen eigenen Einstieg: Die Stichtagsauskunft haengt an der AUDITOR-Rolle,
-    // nicht an der Systemverwaltung, und beide Rollen schliessen einander aus (#1822).
+    // nicht an der Systemverwaltung, und beide Rollen schliessen einander aus.
     ...(user?.systemRole === 'AUDITOR'
       ? [
           {
@@ -217,7 +217,7 @@ export default function GlobalRail() {
                   </ListItemIcon>
                   Einstellungen
                 </MenuItem>
-                {/* #1921: Produktname, Version und der Demo-Hinweis stehen hier statt dauerhaft
+                {/* Produktname, Version und der Demo-Hinweis stehen hier statt dauerhaft
                     unter jeder Seite. */}
                 <MenuItem
                   onClick={() => {

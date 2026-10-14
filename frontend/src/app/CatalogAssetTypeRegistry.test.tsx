@@ -46,7 +46,7 @@ const skillEntry = {
   succession: null,
 } as unknown as CatalogEntryResponse
 
-// The acceptance criterion of #2094: a new asset type needs nothing but a registry entry to appear
+// A new asset type needs nothing but a registry entry to appear
 // in the catalog, in its type filter and under "Neu".
 describe('a new asset type through the registry alone', () => {
   beforeEach(() => {

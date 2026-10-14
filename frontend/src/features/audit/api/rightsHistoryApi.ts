@@ -1,7 +1,7 @@
 import type { AccessAsOfObjectType, AccessAsOfPage } from '@/shared/api/types'
 import { apiClient, normalizeError } from '@/shared/api/api'
 
-/** Die Parameter der Stichtagsauskunft (#1822) — genau ein benanntes Objekt je Abfrage. */
+/** Die Parameter der Stichtagsauskunft — genau ein benanntes Objekt je Abfrage. */
 export interface AccessAsOfQuery {
   objectType: AccessAsOfObjectType
   objectId: string

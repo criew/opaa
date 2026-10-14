@@ -1,5 +1,5 @@
 /**
- * The automatic sign-in of a person whose provider session is still running (#1631): the sign-in
+ * The automatic sign-in of a person whose provider session is still running: the sign-in
  * page starts one authorization redirect with `prompt=none`, which the provider answers either with
  * a session or with a refusal - and never with a screen of its own.
  *

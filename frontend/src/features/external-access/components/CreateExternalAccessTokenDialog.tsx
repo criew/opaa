@@ -104,7 +104,7 @@ function libraryTiles(
 }
 
 /**
- * Der Anlegedialog eines Zugangstokens (#1719).
+ * Der Anlegedialog eines Zugangstokens.
  *
  * Die Aufklärung steht als Fließtext im Formular und nicht in einer Fußnote: Sie ist der Grund,
  * aus dem dieser Dialog eine bewusste Handlung ist und kein Knopf - was hier erteilt wird, läuft

@@ -26,7 +26,7 @@ interface ModelRowMenuProps {
 }
 
 /**
- * Das Zeilenmenü eines Chat-Modells (#1621). Bearbeiten öffnet den Dialog; Verbindungstest,
+ * Das Zeilenmenü eines Chat-Modells. Bearbeiten öffnet den Dialog; Verbindungstest,
  * Aktivieren und Löschen wirken sofort und melden ihr Ergebnis als Benachrichtigung.
  *
  * Das Menü schließt sich, bevor eine Rückfrage aufgeht: Zwei übereinanderliegende Ebenen mit

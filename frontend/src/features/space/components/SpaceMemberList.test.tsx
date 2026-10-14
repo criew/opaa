@@ -147,7 +147,7 @@ describe('SpaceMemberList', () => {
     ])
   })
 
-  /** #2207: dieselbe Auswahl wie bei den anderen Rollen, aber schreibgeschützt. */
+  /** Dieselbe Auswahl wie bei den anderen Rollen, aber schreibgeschützt. */
   it('zeigt beim Eigentümer „Eigentümer“ als schreibgeschützte Auswahl, ohne Menü', async () => {
     renderList()
     const user = userEvent.setup()

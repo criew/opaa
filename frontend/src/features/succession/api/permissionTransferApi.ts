@@ -8,7 +8,7 @@ import type {
 import { apiClient, normalizeError } from '@/shared/api/api'
 
 /**
- * Die Übertragung von Wirkungen (#1834, ADR-0036 Entscheidung 10). Die Vorschau ist Pflicht: Die
+ * Die Übertragung von Wirkungen (ADR-0036 Entscheidung 10). Die Vorschau ist Pflicht: Die
  * Ausführung verlangt deren `previewId` und eine ausdrückliche Bestätigung.
  */
 export async function previewPermissionTransfer(
@@ -40,7 +40,7 @@ export async function executePermissionTransfer(
 }
 
 /**
- * „Wo wirkt diese Gruppe" (#1821): mit `providerId` die Arbeitsliste eines Anbieters, mit
+ * „Wo wirkt diese Gruppe": mit `providerId` die Arbeitsliste eines Anbieters, mit
  * `groupIds` genau die Zeilen, die eine Liste anzeigt — ohne beides jede Gruppe der Organisation.
  */
 export async function getGroupEffects(options?: {

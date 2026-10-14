@@ -31,7 +31,7 @@ const tabs: Array<{ value: LlmModelTab; label: string }> = [
 ]
 
 /**
- * Die Chat-Modelle als Liste (#1621): eine Tabellenzeile je Modell, die Handlungen im Zeilenmenü,
+ * Die Chat-Modelle als Liste: eine Tabellenzeile je Modell, die Handlungen im Zeilenmenü,
  * Anlegen und Bearbeiten im selben Dialog — dasselbe Muster wie die Kontenliste unter „Benutzer".
  *
  * Zählung und „Neues Modell" stehen hier und nicht im Seitenkopf: Sie gelten nur für diesen
@@ -139,7 +139,7 @@ function EmbeddingInfoSection() {
 }
 
 /**
- * Die Modellverwaltung der Systemverwaltung in zwei Bereichen (#1619): „Chat-Modelle" führt die
+ * Die Modellverwaltung der Systemverwaltung in zwei Bereichen: „Chat-Modelle" führt die
  * Modelle, die Fragen beantworten; „Einbettung" nennt das Modell, das den Index trägt - und das
  * sich bewusst nicht ändern lässt.
  *

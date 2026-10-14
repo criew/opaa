@@ -19,7 +19,7 @@ const twoOfThree: GroupMemberDisclosureResponse = {
 
 describe('GroupMembersDisclosure', () => {
   /**
-   * #1880, ADR-0036 Entscheidung 9: Eine Mitgliederliste ist eine Aussage über Personen. Sie
+   * ADR-0036 Entscheidung 9: Eine Mitgliederliste ist eine Aussage über Personen. Sie
    * entsteht auf ausdrücklichen Wunsch — nicht als Beiwerk einer Übersicht, die jemand aus einem
    * anderen Grund geöffnet hat.
    */
@@ -108,7 +108,7 @@ describe('GroupMembersDisclosure', () => {
     await waitFor(() => expect(screen.getByText('Gruppe nicht gefunden')).toBeVisible())
   })
 
-  /** #2134: auch eine kleine Gruppe nennt ihre Mitglieder und ihre Zahl. */
+  /** Auch eine kleine Gruppe nennt ihre Mitglieder und ihre Zahl. */
   it('nennt bei einer kleinen Gruppe Namen und Zahl', async () => {
     const load = vi.fn(async () => ({
       groupId: 'group-kleine-runde',

@@ -17,7 +17,7 @@ describe('resolveThemeMode', () => {
   })
 
   /**
-   * The guarantee the whole `ThemeMode | null` distinction exists for (#583): an operator changing
+   * The guarantee the whole `ThemeMode | null` distinction exists for: an operator changing
    * the deployment default must not flip the interface out from under someone who deliberately
    * picked light or dark - including the person who deliberately picked "system".
    */
