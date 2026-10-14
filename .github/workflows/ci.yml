@@ -169,7 +169,7 @@ jobs:
         run: .github/scripts/check_action_pins.sh
 
       # Every ADR follows docs/decisions/README.md (current state instead of appended notes, status line
-      # with date). Warning-only until the rewrites #2697-#2702 are merged; then add --strict.
+      # with date).
       - name: ADR-Stil in docs/decisions prüfen
         if: github.event_name != 'pull_request' || steps.filter.outputs.adrs == 'true'
         run: .github/scripts/check_adr_style.sh
