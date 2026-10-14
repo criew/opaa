@@ -17,6 +17,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
 import io.opaa.common.AccessDeniedException;
+import io.opaa.common.FeatureFlags;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -69,7 +70,7 @@ class LibraryExternalAccessServiceIntegrationTest {
   @Autowired private UserRepository userRepository;
   @Autowired private OrganizationRepository organizationRepository;
   @Autowired private JdbcTemplate jdbcTemplate;
-  @Autowired private io.opaa.common.FeatureFlags featureFlags;
+  @Autowired private FeatureFlags featureFlags;
 
   private UUID organizationId;
   private final List<UUID> createdUserIds = new ArrayList<>();

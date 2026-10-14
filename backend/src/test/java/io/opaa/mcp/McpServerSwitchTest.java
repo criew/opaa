@@ -8,9 +8,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.ai.mcp.server.common.autoconfigure.McpServerJsonMapperAutoConfiguration;
 import org.springframework.ai.mcp.server.common.autoconfigure.McpServerStatelessAutoConfiguration;
 import org.springframework.ai.mcp.server.webmvc.autoconfigure.McpServerStatelessWebMvcAutoConfiguration;
+import org.springframework.boot.EnvironmentPostProcessor;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.core.io.support.SpringFactoriesLoader;
 import org.springframework.mock.env.MockEnvironment;
 
 /**
@@ -79,5 +81,18 @@ class McpServerSwitchTest {
     new McpServerSwitch().postProcessEnvironment(environment, new SpringApplication());
 
     assertThat(environment.getProperty(McpServerSwitch.SERVER_ENABLED)).isEqualTo("false");
+  }
+
+  /** Without its entry in {@code META-INF/spring.factories} Boot would never run the switch. */
+  @Test
+  void bootFindsTheSwitchAmongTheEnvironmentPostProcessors() {
+    assertThat(
+            SpringFactoriesLoader.forDefaultResourceLocation(getClass().getClassLoader())
+                .load(
+                    EnvironmentPostProcessor.class,
+                    null,
+                    // Boot's own processors need constructor arguments only Boot supplies.
+                    SpringFactoriesLoader.FailureHandler.handleMessage((message, failure) -> {})))
+        .hasAtLeastOneElementOfType(McpServerSwitch.class);
   }
 }

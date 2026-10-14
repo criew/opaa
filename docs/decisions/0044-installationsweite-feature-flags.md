@@ -59,7 +59,7 @@ einer im Werteschema hinzu (Entscheidung 8).
 
 - `@ConditionalOnFeature(Feature.X)` registriert eine Klasse oder `@Bean`-Methode nur bei
   eingeschaltetem Flag — für **Blatt-Beans**, die niemand injiziert (Controller, Scheduler, Runner,
-  Listener). Eine abgeschaltete Route existiert dann nicht und antwortet wie jede unbekannte Adresse.
+  Listener), oder einen Teilgraphen, dessen Abnehmer sämtlich bedingt sind. Eine abgeschaltete Route existiert dann nicht und antwortet wie jede unbekannte Adresse.
 - `FeatureFlags#isEnabled(Feature)` ist die Laufzeitprüfung für Beans, von denen andere abhängen, für
   gemeinsame Definitionen und für Prüfungen in Diensten.
 
