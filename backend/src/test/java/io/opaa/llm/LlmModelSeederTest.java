@@ -11,10 +11,12 @@ import static org.mockito.Mockito.when;
 
 import io.opaa.security.SettingsEncryptionProperties;
 import io.opaa.security.SettingsEncryptor;
+import java.time.Clock;
 import java.util.Base64;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.core.env.Environment;
 import org.springframework.core.env.StandardEnvironment;
 import org.springframework.core.env.SystemEnvironmentPropertySource;
 import org.springframework.mock.env.MockEnvironment;
@@ -33,8 +35,13 @@ class LlmModelSeederTest {
       mock(LlmModelSeedMarkerRepository.class);
   private final SettingsEncryptor settingsEncryptor = mock(SettingsEncryptor.class);
 
-  private LlmModelSeeder seederWith(MockEnvironment environment) {
-    return new LlmModelSeeder(repository, markerRepository, settingsEncryptor, environment);
+  private LlmModelSeeder seederWith(Environment environment) {
+    return seederWith(settingsEncryptor, environment);
+  }
+
+  private LlmModelSeeder seederWith(SettingsEncryptor encryptor, Environment environment) {
+    return new LlmModelSeeder(
+        repository, markerRepository, encryptor, environment, Clock.systemUTC());
   }
 
   @Test
@@ -178,7 +185,7 @@ class LlmModelSeederTest {
             new SystemEnvironmentPropertySource(
                 StandardEnvironment.SYSTEM_ENVIRONMENT_PROPERTY_SOURCE_NAME, systemEnvironment));
 
-    new LlmModelSeeder(repository, markerRepository, settingsEncryptor, environment).seedIfNeeded();
+    seederWith(environment).seedIfNeeded();
 
     ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
     verify(repository, times(1)).save(captor.capture());
@@ -329,8 +336,7 @@ class LlmModelSeederTest {
                 "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
             .withProperty("spring.ai.openai.chat.model", "gpt-4o")
             .withProperty("spring.ai.openai.chat.api-key", "sk-configured-key");
-    LlmModelSeeder seeder =
-        new LlmModelSeeder(repository, markerRepository, realEncryptorWithoutAKey, environment);
+    LlmModelSeeder seeder = seederWith(realEncryptorWithoutAKey, environment);
 
     assertThatCode(seeder::seedIfNeeded).doesNotThrowAnyException();
 
@@ -353,8 +359,7 @@ class LlmModelSeederTest {
                 "spring.ai.openai.chat.base-url", "https://modellserver.example.internal/v1")
             .withProperty("spring.ai.openai.chat.model", "gpt-4o")
             .withProperty("spring.ai.openai.chat.api-key", "sk-configured-key");
-    LlmModelSeeder seeder =
-        new LlmModelSeeder(repository, markerRepository, encryptorWithAnInvalidKey, environment);
+    LlmModelSeeder seeder = seederWith(encryptorWithAnInvalidKey, environment);
 
     assertThatCode(seeder::seedIfNeeded).doesNotThrowAnyException();
 
@@ -378,15 +383,14 @@ class LlmModelSeederTest {
 
     SettingsEncryptor encryptorWithoutAKey =
         new SettingsEncryptor(new SettingsEncryptionProperties(null));
-    new LlmModelSeeder(repository, markerRepository, encryptorWithoutAKey, environment)
-        .seedIfNeeded();
+    seederWith(encryptorWithoutAKey, environment).seedIfNeeded();
     verify(repository, never()).save(any());
     verify(markerRepository, never()).save(any());
 
     String base64Key = Base64.getEncoder().encodeToString(new byte[32]);
     SettingsEncryptor encryptorWithAKey =
         new SettingsEncryptor(new SettingsEncryptionProperties(base64Key));
-    new LlmModelSeeder(repository, markerRepository, encryptorWithAKey, environment).seedIfNeeded();
+    seederWith(encryptorWithAKey, environment).seedIfNeeded();
 
     ArgumentCaptor<LlmModel> captor = ArgumentCaptor.forClass(LlmModel.class);
     verify(repository, times(1)).save(captor.capture());
