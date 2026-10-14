@@ -6,11 +6,11 @@ import CircularProgress from '@mui/material/CircularProgress'
 import Link from '@mui/material/Link'
 import Typography from '@mui/material/Typography'
 import { Link as RouterLink, useNavigate } from 'react-router'
-import AuthLayout from '../components/auth/AuthLayout'
-import AuthNotice from '../components/auth/AuthNotice'
+import AuthLayout from '../components/AuthLayout'
+import AuthNotice from '../components/AuthNotice'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
-import SectionEyebrow from '../components/auth/SectionEyebrow'
-import HandoverScopeSummary from '../components/auth/HandoverScopeSummary'
+import SectionEyebrow from '../components/SectionEyebrow'
+import HandoverScopeSummary from '../components/HandoverScopeSummary'
 import { useLinkToken } from '../hooks/useLinkToken'
 import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import {
@@ -20,8 +20,8 @@ import {
   ProviderMismatchError,
   ProviderSignInInvalidError,
   redeemHandover,
-} from '../services/handoverApi'
-import { LinkInvalidError, RateLimitedError } from '../services/selfServiceApi'
+} from '../api/handoverApi'
+import { LinkInvalidError, RateLimitedError } from '../api/selfServiceApi'
 import {
   clearHandoverInFlight,
   clearPendingHandover,

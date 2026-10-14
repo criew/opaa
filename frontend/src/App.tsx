@@ -32,14 +32,16 @@ import {
 } from '@/shared/routes'
 // auth
 import { useAuthStore } from '@/shared/session/authStore'
-import LoginPage from './pages/LoginPage'
-import SystemLoginPage from './pages/SystemLoginPage'
-import ChangePasswordPage from './pages/ChangePasswordPage'
-import SetPasswordPage from './pages/SetPasswordPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import RegisterPage from './pages/RegisterPage'
-import VerifyEmailPage from './pages/VerifyEmailPage'
-import AuthCallbackPage from './pages/AuthCallbackPage'
+import {
+  AuthCallbackPage,
+  ChangePasswordPage,
+  ForgotPasswordPage,
+  LoginPage,
+  RegisterPage,
+  SetPasswordPage,
+  SystemLoginPage,
+  VerifyEmailPage,
+} from '@/features/auth/routes'
 // chat
 import ChatPage from './pages/ChatPage'
 import ChatsPage from './pages/ChatsPage'
@@ -63,7 +65,7 @@ import PromptLibraryDetailPage from './pages/PromptLibraryDetailPage'
 import GroupManagementPage from './pages/GroupManagementPage'
 // succession
 import SuccessionPage from './pages/SuccessionPage'
-import HandoverPage from './pages/HandoverPage'
+import { HandoverPage } from '@/features/auth/routes'
 // capability
 import CapabilityManagementPage from './pages/CapabilityManagementPage'
 // user

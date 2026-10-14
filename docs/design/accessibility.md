@@ -72,7 +72,7 @@ Formularregeln in einem PR ohne Formular) entfallen ersatzlos — alles andere w
       Anmeldeseite, #1910), ist der Nachweis über den **schlechtesten Fall** zu führen: die feste
       Deckschicht über einem rein weißen und einem rein schwarzen Bild. Ein Nachweis gegen das
       gerade hochgeladene Motiv sagt über das nächste nichts. Beispiel:
-      `frontend/src/components/auth/AuthLayout.contrast.test.ts`.
+      `frontend/src/features/auth/components/AuthLayout.contrast.test.ts`.
 
 ### 2.5 Zoom und Reflow
 
