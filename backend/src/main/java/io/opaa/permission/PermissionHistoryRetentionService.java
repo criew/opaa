@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ValidationException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -28,6 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class PermissionHistoryRetentionService {
+
+  private static final String ADMIN_ONLY =
+      "Nur die Administration darf die Aufbewahrungshöchstdauer der Rechtehistorie einsehen und"
+          + " ändern";
 
   /**
    * Fixed, well-known object id of the settings singleton in the audit trail - it is a system
@@ -61,7 +64,7 @@ public class PermissionHistoryRetentionService {
 
   @Transactional(readOnly = true)
   public PermissionHistoryRetentionSettings read(CurrentUser actor) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     return settingsRow();
   }
 
@@ -77,7 +80,7 @@ public class PermissionHistoryRetentionService {
    */
   @Transactional
   public PermissionHistoryRetentionSettings updateRetentionMonths(CurrentUser actor, int months) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     if (months < PermissionHistoryRetentionSettings.MIN_RETENTION_MONTHS
         || months > PermissionHistoryRetentionSettings.MAX_RETENTION_MONTHS) {
       throw new ValidationException(
@@ -124,13 +127,5 @@ public class PermissionHistoryRetentionService {
                     "permission_history_retention_settings has no row with id="
                         + PermissionHistoryRetentionSettings.SINGLETON_ID
                         + " - the baseline should have seeded it"));
-  }
-
-  private void requireSystemAdmin(CurrentUser actor) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Administration darf die Aufbewahrungshöchstdauer der Rechtehistorie einsehen und"
-              + " ändern");
-    }
   }
 }

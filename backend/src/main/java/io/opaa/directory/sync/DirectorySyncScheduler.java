@@ -7,8 +7,10 @@ import io.opaa.organization.Organization;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.concurrent.Executor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,7 +22,9 @@ import org.springframework.stereotype.Component;
  *
  * <p>A periodic tick over the enabled providers, not a trigger registered per provider, so nothing
  * has to be kept in sync when an interval changes or the application restarts - the same shape
- * {@code LibraryIndexingScheduler} uses. No leader election: {@link DirectorySyncRunLock} already
+ * {@code LibraryIndexingScheduler} uses. The tick only decides which providers are due; each run
+ * itself goes to {@code directorySyncExecutor}, so the scheduler thread the other ticks share is
+ * free again before the directory answers. No leader election: {@link DirectorySyncRunLock} already
  * makes a concurrent trigger safe, and ADR-0021 assumes one backend process.
  *
  * <p>Due means "the last run is at least one interval ago". A provider that has never run is due at
@@ -42,14 +46,17 @@ public class DirectorySyncScheduler {
   private final OidcProviderRepository providerRepository;
   private final DirectorySyncStatusRepository statusRepository;
   private final DirectorySyncService directorySyncService;
+  private final Executor executor;
 
   public DirectorySyncScheduler(
       OidcProviderRepository providerRepository,
       DirectorySyncStatusRepository statusRepository,
-      DirectorySyncService directorySyncService) {
+      DirectorySyncService directorySyncService,
+      @Qualifier("directorySyncExecutor") Executor executor) {
     this.providerRepository = providerRepository;
     this.statusRepository = statusRepository;
     this.directorySyncService = directorySyncService;
+    this.executor = executor;
   }
 
   /**
@@ -67,15 +74,23 @@ public class DirectorySyncScheduler {
         if (!isDue(provider, now)) {
           continue;
         }
-        directorySyncService.runScheduled(
-            DirectorySyncService.toTarget(Organization.DEFAULT_ID, provider));
-      } catch (ConflictException alreadyRunning) {
-        log.debug(
-            "Directory sync: scheduled tick skipped provider {} - a run is already in flight",
-            provider.getId());
+        executor.execute(() -> run(provider));
       } catch (Exception e) {
         log.error("Directory sync: scheduled run for provider {} failed", provider.getId(), e);
       }
+    }
+  }
+
+  private void run(OidcProvider provider) {
+    try {
+      directorySyncService.runScheduled(
+          DirectorySyncService.toTarget(Organization.DEFAULT_ID, provider));
+    } catch (ConflictException alreadyRunning) {
+      log.debug(
+          "Directory sync: scheduled tick skipped provider {} - a run is already in flight",
+          provider.getId());
+    } catch (Exception e) {
+      log.error("Directory sync: scheduled run for provider {} failed", provider.getId(), e);
     }
   }
 

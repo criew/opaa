@@ -68,4 +68,4 @@ Den gleichen Bericht immer in der Sprache an den Orchestrator zurückgeben, in d
 - Gut gelöste Aspekte kurz erwähnen — eine Zeile, kein Abschnitt.
 - Bei unsicheren Urteilen dies explizit angeben.
 - Falls ADRs ein Thema nicht abdecken, gegen etablierte Best Practices reviewen und angeben, welche.
-- Echte Architekturentscheidungen als ADR-Kandidaten markieren (`docs/decisions/`, Status `proposed`) für den Maintainer.
+- Echte Architekturentscheidungen als ADR-Kandidaten markieren (`docs/decisions/`, nach Vorlage und Regeln in `docs/decisions/README.md`, Status „Vorgeschlagen“ bis zum Merge) für den Maintainer.

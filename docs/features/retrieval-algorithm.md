@@ -1,5 +1,9 @@
 # Retrieval-Algorithmus (Ist-Stand)
 
+> **Status: Ist-Stand.** Dieses Dokument beschreibt nur Gebautes und wird mit jeder Änderung am
+> Retrieval nachgezogen; Zielbild und Begründung stehen in
+> [Wissensschicht und Retrieval](./data-indexing-rag.md) und [Hybride Suche](./hybrid-retrieval.md).
+
 Dieses Dokument beschreibt, **wie das Retrieval heute tatsächlich arbeitet** — Klasse für Klasse, Parameter
 für Parameter, Stand `main` nach dem Epic
 [#1045](https://github.com/criew/opaa/issues/1045). Es ist damit die

@@ -608,7 +608,7 @@ Fehlerkriterium in [ADR-0013](../decisions/0013-fehlerkriterium-retrieval-regres
 Auch für die messbaren Typen gehört eine Einschränkung dazu, weil sie sonst überrascht: Der heutige
 Evaluierungskorpus taugt nur teilweise. Die Domäne `comic-characters` unterliegt der
 Ein-Chunk-Invariante aus ADR-0010 — wo jedes Dokument genau einen Chunk ergibt, kann eine Chunk-Größe
-nichts bewirken. Die mehrchunkige Domäne aus dem ADR-0010-Nachtrag ist der Anfang, ein Verwaltungskorpus
+nichts bewirken. Die mehrchunkige Domäne aus ADR-0010 Entscheidung 3 ist der Anfang, ein Verwaltungskorpus
 mit echter §-Gliederung, echten Tabellen und echten Folien die Voraussetzung. **Ohne diesen Korpus ist
 keine typspezifische Chunk-Größe messbar** — der Aufbau gehört deshalb vor die erste Messung, nicht nach
 sie.
