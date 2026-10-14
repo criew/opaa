@@ -20,7 +20,6 @@ import {
   createExternalAccessToken,
   listEligibleExternalAccessLibraries,
 } from '../api/externalAccessApi'
-import { radius } from '@/shared/theme/tokens'
 import { markAssetFavorite, unmarkAssetFavorite } from '@/features/asset'
 import { AssetTile } from '@/features/asset'
 import type { AssetTileData } from '@/features/asset'
@@ -361,16 +360,9 @@ export default function CreateExternalAccessTokenDialog({
             </Typography>
           </Box>
 
-          <Box
-            sx={{
-              p: 1.5,
-              border: 1,
-              borderColor: 'divider',
-              borderRadius: `${radius.sm}px`,
-            }}
-          >
+          <Alert severity="info">
             <Typography sx={{ fontSize: 13 }}>{DISCLOSURE_HINT}</Typography>
-          </Box>
+          </Alert>
         </Stack>
       </DialogContent>
       <DialogActions>
