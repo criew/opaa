@@ -728,7 +728,7 @@ künftige Änderung an einer dieser Festlegungen muss die Version erhöhen, dami
 nicht stillschweigend unvergleichbar werden.
 
 Der Pipeline-Pfad (#1039) hat seinen **eigenen**, getrennt gezählten Messvertrag
-(`pipelineMeasurementContractVersion`, ADR-0012 Nachtrag „Pipeline-Messpfad", Entscheidungen
+(`pipelineMeasurementContractVersion`, ADR-0012, Entscheidungen
 11–16). Getrennt gezählt, weil der Rohvektor-Vertrag sich durch die Erweiterung an keiner Stelle
 ändert und eine Erhöhung seiner Nummer jede committete Rohvektor-Baseline ungültig machen würde —
 für eine Messung, deren Zahlen sich nicht bewegt haben.

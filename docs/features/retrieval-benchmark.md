@@ -627,7 +627,7 @@ Drei Milderungen, keine Lösungen:
 > Feld entfallen). Ob diese Definition mit einem
 > produktiven zweiten Suchpfad noch die richtige ist — der Rohvektor-Pfad misst seither bewusst eine
 > nicht-produktive Konfiguration —, ist eine offene Frage an diesen Abschnitt; #1049 hat sie
-> ausdrücklich nicht entschieden (ADR-0012, Nachtrag Volltextpfad, Entscheidung 23). Der Messvertrag
+> ausdrücklich nicht entschieden (ADR-0012, Entscheidung 23). Der Messvertrag
 > des Pipeline-Pfads steht seither auf Version 3, mit den Fixpunkten `fullTextSearchEnabled` und
 > `fullTextBackfillComplete`.
 >

@@ -83,7 +83,7 @@ Chunking-Varianten (Entscheidung 11). Report `retrieval-metrics[-<domäne>].json
 | MRR | Kehrwert des Rangs des ersten relevanten Treffers im Fenster, sonst 0 (faktisch MRR@10) |
 | Recall@k | `Treffer in top-k / |erwartete Dokumente|`, nicht auf `min(k, |erwartet|)` normiert; die erreichbare Obergrenze steht je Gruppe als `recallAt10Ceiling` im Report |
 | Fenster | Hit Rate@5 (was ein Nutzer bei kleinem `top-k` sieht), MRR@10, nDCG@10, Recall@10 (`RetrievalMetrics.HIT_RATE_K`, `NDCG_K`, `RECALL_K`); bewusst ungleich, eine Tabelle mit vier Spalten suggeriert sonst Vergleichbarkeit |
-| Mittelung | Mikro-Mittel über Anfragen, je Gruppe `overall`, `category:*`, `difficulty:*`, `language:*` (`MetricsAggregate`); `language:de` wird im Vergleich übersprungen, weil sie dieselbe Fallmenge wie `category:crosslingual` ist (ADR-0013) |
+| Mittelung | Mikro-Mittel über Anfragen, je Gruppe `overall`, `category:*`, `difficulty:*`, `language:*` (`MetricsAggregate`); `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt (`comic-characters` seit #304 nicht mehr, weil sie dort dieselbe Fallmenge wie `category:crosslingual` ist, ADR-0013); `city-landmarks` führt und vergleicht sie |
 | Fallzähler | `hitCountAt5`, `hitCountAt10`, `distinctExpectedDocumentSets` (= `n_eff` von ADR-0013), `allExpectedDocumentsHitAt10` je Gruppe |
 | Einzelfälle | `allQueryResults` führt jede Anfrage mit ihren Metriken, damit Kreuzauswertungen ohne neuen Lauf möglich sind |
 
@@ -115,7 +115,9 @@ geänderten Chunking-Parametern stabil bleibt. Ein Fall trägt höchstens einen 
 bei genau einem erwarteten Dokument (Entscheidung 21, geprüft von `GoldenCaseCuration`). Jeder
 anwendbare Span muss in mindestens einem Chunk eines seiner erwarteten Dokumente auflösbar sein
 (`answerSpanResolution`), sonst bricht der Lauf ab: Eine Chunk-Grenze, die einen Span zerschneidet,
-ist numerisch nicht von einem Retrieval-Fehlschlag unterscheidbar. Eine Domäne ohne Spans liefert
+ist numerisch nicht von einem Retrieval-Fehlschlag unterscheidbar; `SpanMatcher` kollabiert nur
+Whitespace und löst das Grenzproblem bewusst nicht — für `boundary_span`-Fälle ist die Grenze der
+Messgegenstand, kein Messfehler. Eine Domäne ohne Spans liefert
 `NOT_APPLICABLE` (`comic-characters`).
 
 #### Festpunkte des Rohvektor-Pfads (Entscheidungen 3, 10, 28, 32, 45, 55, 57)
@@ -197,8 +199,12 @@ Rohvektor-Pfads (`RetrievalMetrics`), angewandt an diesem Fenster.
 `PipelineBaseline.FixedPoints`, verglichen in `PipelineBaselineComparator`, Feld für Feld, auch
 innerhalb der Blöcke `fusion` und `relevanceCutoff`. Alle Werte werden aus der laufenden
 Anwendungskonfiguration gelesen, nicht im Harness gesetzt; `relevanceCutoff` aus
-`RelevanceCutoffProperties`. Ein Feld, das eine ältere Datei nicht kennt, lädt als `null` und ist
-damit unvergleichbar, nie stillschweigend „ohne“.
+`RelevanceCutoffProperties`. Einzige Ausnahme ist `query-decomposition-enabled`: Das Produkt liefert
+mit Zerlegung aus, der Harness setzt sie für den Einzelfragen-Pfad selbst ab
+(`EvalQueryDecomposition`, Entscheidung 15). Ein geboxtes Feld (`metadataFilterEnabled`, die
+Blöcke `fusion`/`relevanceCutoff`), das eine ältere Datei nicht kennt, lädt als `null` und ist damit
+unvergleichbar, nie stillschweigend „ohne“. Kein Festpunkt ist das Nachbar-Budget aus #2625: Der
+Harness misst die Endauswahl ohne Nachbar-Chunks (Entscheidung 67).
 
 | Festpunkt | Wert heute | seit Version | Warum |
 |---|---|---|---|
@@ -224,7 +230,9 @@ misst, als seine Feldnamen behaupten: Zerlegung ohne Chat-Modell (sie fiele je A
 Einzelanfragen zurück), `top-k` ungleich `RANKING_K`, abgeschaltete Pipeline-Stufen (kein
 Report-Feld hält fest, welche liefen), lexikalischer Pfad aus (die Baseline beschreibt die
 ausgelieferte hybride Konfiguration; vector-only ist ein benannter Variantenvergleich unter
-`eval/variants/`, und ein Variantenbericht ist keine Baseline). Welches Chat-Modell der
+`eval/variants/`, und ein Variantenbericht ist keine Baseline), aktives Reranking (nutzbare
+Rerank-Rolle mit `rerank-candidate-count > 0`; die Baseline beschreibt die Auslieferung ohne
+Reranking, Reranking ist der Variantenvergleich `eval/variants/verwaltung-reranking.json`). Welches Chat-Modell der
 Pipeline-Pfad mit aktiver Zerlegung messen soll, ist offen (siehe „Offen“).
 
 #### 17. Eine Baseline-Datei je Pfad und Domäne
@@ -246,7 +254,9 @@ Fehlerkriterium aus ADR-0013: Beide Vergleicher erzeugen ihre Prüfungen über d
 und Pipeline-Vergleich sind zwei Testklassen im selben Gradle-Task und liefern je ein eigenes Urteil
 und eine eigene Delta-Tabelle; ein Fehler des Pipeline-Messlaufs lässt den Messlauf grün
 (`PipelineHarnessSupport.runAndWriteGuarded`) und den Pipeline-Baseline-Test rot — genau einmal rot,
-unter dem Urteil des Pipeline-Pfads. Das Alarm-Issue trägt beide Delta-Tabellen getrennt.
+unter dem Urteil des Pipeline-Pfads. Das Alarm-Issue trägt beide Delta-Tabellen getrennt. Eine Domäne ohne gezogene Pipeline-Baseline
+wird nicht gegated, sondern sichtbar ausgelassen (`pipelineBaselineTestClass = null` in
+`backend/build.gradle.kts`), nie über einen stillen Sonderfall „keine Baseline → bestanden“.
 
 Die festen Anker der harten Untergrenze sind pfadspezifisch, die Formel nicht
 (`max(0,8 · Baselinewert, Anker)`, nur auf `overall`): Pipeline- und Mehrrunden-Pfad Hit Rate@5 ≥
@@ -320,11 +330,12 @@ auch eine Runde ohne Suchbedarf (Entscheidung 61). Kein gemittelter Fallwert.
 
 #### 40. Festpunkte des Mehrrunden-Pfads
 
-`ConversationBaseline.FixedPoints`: der vollständige Pipeline-Block (Entscheidung 13, wörtlich
-geteilt und über `PipelineBaselineComparator.addPipelineFixedPointMismatches` verglichen) plus:
+`ConversationBaseline.FixedPoints`: der vollständige Pipeline-Block (Entscheidung 13, dasselbe
+Schema, über `PipelineBaselineComparator.addPipelineFixedPointMismatches` verglichen) plus:
 
 | Festpunkt | Wert heute | seit Version | Warum |
 |---|---|---|---|
+| `pipeline.metadataFilterEnabled` | `false` | 1 | Mehrrunden-Fälle tragen keinen Kernfeld-Filter; ein Filter entschiede vor der Bezugsauflösung (`ConversationHarnessSupport`) |
 | `pipeline.queryDecompositionEnabled`, `pipeline.chatModel` | `true`, `qwen2.5:1.5b-instruct` | 1 | hier **geprüft**, nicht nur gemeldet: ohne Zerlegung wird kein Bezug aufgelöst; `ConversationBaseline.load` weist eine Datei ohne Modell zurück |
 | `conversationWindowMessages` | 20 | 1 | Breite des Gesprächsfensters, **gemessen** an der produktiven `ChatMemory`-Bean (`ConversationMemoryProfile#measuredFrom`), nicht aus einer Konstante kopiert |
 | `searchWindowTurns` | 2 | 1 | wie viele Runden die Zerlegung sieht (`opaa.query.search-window-turns`), aus den produktiven `QueryProperties` |
@@ -344,7 +355,8 @@ vertritt die Messung, der Bericht führt Streubereich und die Zahl der Runden mi
 Zerlegung (Entscheidung 51) sowie je Runde die erhaltenen Notizpunkte und Teilfragen. Fehlt
 Zerlegung, Chat-Modell oder Datensatz, meldet sich der Lauf als „nicht ausgeführt“. Er läuft im
 eigenen CI-Job `conversations` (`.github/workflows/retrieval-regression.yml`, Zeitbudget 300
-Minuten) nächtlich, per `workflow_dispatch` und beim Label `evaluation` (Entscheidung 49).
+Minuten; wer es verengt, zieht vorher zwei bis drei weitere nächtliche Läufe heran) nächtlich, per
+`workflow_dispatch` und beim Label `evaluation` (Entscheidung 49).
 
 #### 43. Die Einpfadigkeit steht am Datensatz, nicht am Fall (Einpfad-Regel)
 
@@ -478,13 +490,13 @@ Festpunkt wird dagegen nicht abgewiesen, sondern als `null` unvergleichbar gemel
 `PipelinePathIsolationTest` (sechs Einzelfragen-Baselines) und `ConversationPathIsolationTest`
 (Mehrrunden-Baseline) halten die committeten Dateien gegen `EvalOllamaEndpoint.PINNED_IMAGE`,
 `EvalOllamaCpuBackend.PINNED`, `ContextPrefixFingerprint.current()`, die reale
-`DocumentPipelineRegistry`, `QueryProperties.Fusion.DEFAULT` und `RelevanceCutoffProperties.DEFAULT`.
+`DocumentFormatRegistry`, `QueryProperties.Fusion.DEFAULT` und `RelevanceCutoffProperties.DEFAULT`.
 Ein Pin- oder Vorgabewechsel ohne Baseline-Nachzug fällt damit im `check` des verursachenden PRs auf,
 nicht erst im nächtlichen Docker-Lauf.
 
 #### 28. `ingestionPipelineFingerprint` (mit 24, 25)
 
-Sortierter Sammelabdruck `id:version` über alle von `DocumentPipelineRegistry` gemeldeten
+Sortierter Sammelabdruck `id:version` über alle von `DocumentFormatRegistry` gemeldeten
 Pipelines (`IngestionPipelineFingerprint`), ein lesbarer String statt eines Hashes, damit ein Diff
 benennt, welche Pipeline sich bewegt hat. Alle registrierten, nicht nur die vom Korpus genutzten,
 damit ein Routing-Fehler sichtbar wird. Kein Harness-Guard: Der Wert wird aus der verdrahteten
@@ -503,7 +515,7 @@ Ein Abdruck statt einer Präfix-Version, weil eine Version an der Sorgfalt häng
 Nicht abgedeckt: eigene Bibliotheksfelder und Schlagworte, der Rückweg gespeicherter Kernfeld-Werte,
 modellgestützte Extraktion und Vokabular, Fundort und Schnittgrenzen (`ChunkLocationResolver`,
 `HeadingSectionSplitter`), Bestandsläufe, Zweige ohne Beispiel — eine Änderung dort verlangt eine
-bewusste Neumessung. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht.
+bewusste Neumessung; wer einen neuen Zweig einführt, ergänzt ein Beispiel. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel in den Wert eingeht.
 
 ### Nummernverzeichnis der Entscheidungen 1–73
 
@@ -517,7 +529,8 @@ bewusste Neumessung. `ContextPrefixFingerprintTest` prüft, dass jedes Beispiel 
 | 10 | Versionen des Rohvektor-Vertrags, Version 2 |
 | 11, 14, 37 | Pipeline-Pfad, Entscheidung 11 |
 | 12 | Pipeline-Pfad, Entscheidung 12 |
-| 13, 18, 22, 32, 71 | Pipeline-Pfad, Festpunkte (Entscheidung 13) und Entscheidung 22 |
+| 13, 18, 22, 71 | Pipeline-Pfad, Festpunkte (Entscheidung 13) und Entscheidung 22 |
+| 32 | Festpunkte des Rohvektor- und des Pipeline-Pfads (`metadataFilterEnabled`) |
 | 15, 20 | Pipeline-Pfad, Entscheidung 15 |
 | 16, 41 | Regeln, Entscheidung 16 |
 | 17 | Pipeline-Pfad, Entscheidung 17 |

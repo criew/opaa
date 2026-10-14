@@ -566,7 +566,7 @@ Gleiche Gliederung wie oben, mit drei Unterschieden:
   unter Pipeline-Vertragsversion 1 (#1039) nur ausgewiesen; seit der ersten committeten Baseline
   werden sie geprüft, weil eine unbemerkte Änderung — etwa an `mmrLambda` — sonst still verändern
   würde, was die committeten Zahlen beschreiben. Genau das erhöht die Vertragsversion auf **2**
-  (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads", Entscheidung 18). Die Rohvektor-Version bleibt
+  (ADR-0012, Entscheidung 13). Die Rohvektor-Version bleibt
   bei 2 und die bestehenden Rohvektor-Baselines damit gültig.
 - **Seit Issue #2386 zusätzlich die Blöcke `fusion` und `relevanceCutoff`** (`opaa.query.fusion.*`:
   `method`, `subQueryQuota`, `vectorWeight`, `guaranteedPerList`; `opaa.query.relevance-cutoff.*`:

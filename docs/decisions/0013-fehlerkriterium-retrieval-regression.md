@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-08-31 · ergänzt ADR-0012 · ergänzt durch ADR-0012 Entscheidung 19
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0012 · ergänzt durch ADR-0012 Entscheidung 19
 (Anker des Pipeline- und Mehrrunden-Pfads)
 
 ## Kontext
@@ -35,9 +35,10 @@ Rauschen, drei ein Befund — die Marge von zwei fängt Fließkomma-Grenzfälle 
 `n_eff = distinctExpectedDocumentSets` der Gruppe aus der **Baseline**, nicht die Fallzahl. Keine
 absolute Obergrenze. Geprüft wird je Gruppe (`overall`, `category:*`, `difficulty:*`,
 `language:*`) für Hit Rate@5, MRR, nDCG@10, Recall@10 und `allExpectedDocumentsHitAt10`:
-`delta ≥ −toleranz − ε` mit `ε = 1e-9`. `language:de` wird übersprungen (`REDUNDANT_LANGUAGE_GROUP`):
-Sie ist dieselbe Fallmenge wie `category:crosslingual` (deutsche Fragen gegen den englischen Korpus)
-und lieferte denselben Wert doppelt; seit #304 führt die Baseline die Gruppe nicht mehr.
+`delta ≥ −toleranz − ε` mit `ε = 1e-9`. `language:de` wird übersprungen, solange die Baseline die Gruppe nicht führt
+(`REDUNDANT_LANGUAGE_GROUP`): In `comic-characters` ist sie dieselbe Fallmenge wie
+`category:crosslingual` (deutsche Fragen gegen den englischen Korpus) und lieferte denselben Wert
+doppelt, seit #304 führt diese Baseline die Gruppe nicht mehr; `city-landmarks` führt und vergleicht sie.
 
 ### 3. Relative Deckelung bei niedrigem Baselinewert
 
