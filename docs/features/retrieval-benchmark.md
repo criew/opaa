@@ -124,7 +124,7 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > `io.opaa.eval.PipelineHarnessSupport` fährt darüber beide Domänen im selben Harness-Lauf und
 > schreibt `build/eval-reports/pipeline-metrics-<domäne>.json` mit fenstertragenden Feldnamen
 > (`hitRateAt5`, `mrrAt8`, `ndcgAt8`, `recallAt8`). Fortgeschrieben ist der Messvertrag in
-> [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Nachtrag „Pipeline-Messpfad",
+> [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md),
 > Entscheidungen 11–16 — mit **eigener** Vertragsversion für den Pipeline-Pfad statt einer Erhöhung
 > der bestehenden (Begründung dort unter 16.: der Rohvektor-Vertrag ändert sich nicht, und seine
 > Version ist ein Gültigkeitsfeld jeder committeten Baseline).
@@ -133,7 +133,7 @@ Vom Maintainer entschieden; die Abschnitte darunter führen sie aus.
 > sind gebaut — `eval/baseline/pipeline-<domäne>.json`, eigener Typ (`PipelineBaseline`), eigener
 > Vergleicher (`PipelineBaselineComparator`), eigenes Urteil im nächtlichen Job neben dem des
 > Rohvektor-Pfads. Die Fixpunkte des Pipeline-Pfads werden jetzt geprüft statt nur ausgewiesen; die
-> Pipeline-Vertragsversion steht dadurch bei 2 (ADR-0012, Nachtrag „Baselines des Pipeline-Pfads",
+> Pipeline-Vertragsversion steht dadurch bei 2 (ADR-0012,
 > Entscheidungen 17–20). Gezogen sind inzwischen die Baselines von `comic-characters`,
 > `verwaltung` (Issue #1043) und `city-landmarks` (Issue #1081, aus dem CPU-Artefakt des
 > erfolgreichen, label-ausgelösten Regressionslaufs 33437536393 auf dem Branch von PR #1084). Der
@@ -232,7 +232,7 @@ Vier Konsequenzen, die vor der ersten Zeile Code feststehen müssen:
    Trefferzahl der Produktion. Die Metriken heißen dort folglich Hit Rate@5, MRR@8, nDCG@8 und
    Recall@8. Ein Nebeneinanderstellen von nDCG@8 und nDCG@10 in einer Tabelle ohne Kennzeichnung ist
    ein Auswertungsfehler; der Bericht führt das Fenster deshalb an jeder Zahl mit. Seit #2373 ist der
-   Produktions-Default `top-k=20`, das Fenster heißt entsprechend @20 (ADR-0012, Nachtrag top-k 20).
+   Produktions-Default `top-k=20`, das Fenster heißt entsprechend @20 (ADR-0012, Entscheidung 63).
 
 ### Regressionsschutz
 
@@ -373,7 +373,7 @@ Variantenvergleich formulieren lässt. Genau das ist der Zweck des Aufbaus.
 > Mehrrunden-Messungen stets identisch. Zwischen CI-Läufen gab es trotzdem zwei Zustände, je nachdem,
 > ob der Runner AVX-512 beherrscht: Ollama lädt die beste ggml-CPU-Variante des Hosts. Die
 > Mehrfachlauf-Regel kann das nicht sehen. Die Harnesse erzwingen deshalb eine feste Variante
-> (ADR-0012, Nachtrag CPU-Backend).
+> (ADR-0012, Entscheidung 54).
 
 ### Entscheidung
 
@@ -396,7 +396,7 @@ Stichproben aus einer größeren Grundgesamtheit. Der Retrieval-Harness von OPAA
   Befehlssatzstufen rechnen nicht bitgleich, und bei Temperatur 0 kippt das die Zerlegung
   (`eval/README.md`, „Feste CPU-Variante").
 - Die Belege liegen vor: vier Läufe auf drei Maschinen, alle bit-identisch, Delta ±0,000 über alle
-  vierzig Metrik/Gruppen-Zeilen (ADR-0013, Nachtrag „zweite Review-Runde"), bestätigt auf
+  vierzig Metrik/Gruppen-Zeilen (ADR-0013, Änderungsverlauf zu PR #301), bestätigt auf
   GitHub-Actions-Hardware.
 
 Ein Konfidenzintervall über eine deterministische Größe ist keine Vorsicht, sondern ein Kategorienfehler:
@@ -602,7 +602,7 @@ Drei Milderungen, keine Lösungen:
 >
 > **Nachtrag (Issue #2343, 2026-10-13):** Die sechs Einträge von `city-landmarks` sind gelöst, seit
 > der Harness `ollama/ollama:0.40.3` statt 0.6.5 nutzt. Fast jeder Chunk dieses Korpus liegt über 512
-> Token und bekam unter 0.6.5 einen falschen Vektor (ADR-0012, Nachtrag Ollama-Fassung). Die fehlende
+> Token und bekam unter 0.6.5 einen falschen Vektor (ADR-0012, Entscheidung 68). Die fehlende
 > Ortsbindung war für diese Fälle nicht die Ursache; als Baustein bleibt sie ungebaut, hat aber in
 > diesem Korpus keinen messbaren Fall mehr.
 >
@@ -627,7 +627,7 @@ Drei Milderungen, keine Lösungen:
 > Feld entfallen). Ob diese Definition mit einem
 > produktiven zweiten Suchpfad noch die richtige ist — der Rohvektor-Pfad misst seither bewusst eine
 > nicht-produktive Konfiguration —, ist eine offene Frage an diesen Abschnitt; #1049 hat sie
-> ausdrücklich nicht entschieden (ADR-0012, Nachtrag Volltextpfad, Entscheidung 23). Der Messvertrag
+> ausdrücklich nicht entschieden (ADR-0012, Entscheidung 23). Der Messvertrag
 > des Pipeline-Pfads steht seither auf Version 3, mit den Fixpunkten `fullTextSearchEnabled` und
 > `fullTextBackfillComplete`.
 >
@@ -684,7 +684,7 @@ Drei Milderungen, keine Lösungen:
 > damit erstmals Zustände, übernommen aus dem nächtlichen Lauf vom 14.09.2026 (Jobs dieser beiden
 > Domänen grün); den fehlenden Baustein je `known_gap`-Eintrag hat #1657 nachgetragen (Tabelle oben). Die Golden-Hash-Fixpunkte aller sechs Einzelfragen-Baselines
 > sind ohne neuen Messlauf nachgezogen; keine Messvertragsversion steigt, weil sich weder eine
-> Metrikdefinition noch ein Fixpunkt ändert (ADR-0012, Nachtrag „Erwarteter Zustand je Messpfad").
+> Metrikdefinition noch ein Fixpunkt ändert (ADR-0012, Entscheidung 52).
 > Einzelbegründungen: `eval/corpus/verwaltung/MAINTENANCE.md`.
 >
 > **Fortschreibung (Issue #1657, 09/2026): `comic-characters` und `city-landmarks` nach #1341 neu
@@ -803,8 +803,7 @@ verschiedene Korrekturen.
 
 **Neuer Fixpunkt, neue Messvertragsversionen.** `metadataFilterEnabled` ist Gültigkeitsfeld beider
 Baselines; `CURRENT_MEASUREMENT_CONTRACT_VERSION` steigt 5 → 6,
-`PIPELINE_MEASUREMENT_CONTRACT_VERSION` 7 → 8 (ADR-0012, Nachtrag „Metadatenfilter im
-Messvertrag"). Anders als die letzten Fixpunkt-Nachträge ist das kein reiner Vertragsschritt: Beide
+`PIPELINE_MEASUREMENT_CONTRACT_VERSION` 7 → 8 (ADR-0012, Entscheidung 32). Anders als die letzten Fixpunkt-Nachträge ist das kein reiner Vertragsschritt: Beide
 Baselines der Domäne `verwaltung` sind neu gezogen.
 
 **Ergebnis des Abnahmelaufs (2026-09-05, CPU/Testcontainer).** Beide Fehlerrichtungen ohne Befund,
@@ -1098,7 +1097,7 @@ reine Zählung eingeführt wurden, bevor sie Teil der Fallzahlprüfung wurden.
 die Rangreserve wird **kein** Fehlerkriterium. Tragend ist der erste von drei Gründen: `marginAtK`
 betrachtet nur den **ersten** relevanten Treffer und würde damit Stabilität zusichern, die sie nicht
 prüft. Die vollständige Begründung und die Bedingung für eine Wiederaufnahme stehen in
-[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md#nachtrag-rangreserve-grenzstabilität-issue-1151).
+[ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md#berichtsgrößen-ohne-vertragscharakter-rangreserve-audits).
 
 ---
 
@@ -1109,7 +1108,7 @@ Schritt die Grundlage des nächsten legt.
 
 | Schritt | Inhalt | Ergebnis |
 |---|---|---|
-| A | Pipeline-Messpfad, eigene Baseline-Dateien, ADR-0012-Nachtrag mit neuer Messvertrag-Version | Der Harness misst, was Nutzer erleben |
+| A | Pipeline-Messpfad, eigene Baseline-Dateien, ADR-0012 (Entscheidungen 11–16) mit eigener Messvertrag-Version | Der Harness misst, was Nutzer erleben |
 | B | Variantenmechanik (deklarative Varianten, Variantenbericht, Referenzvarianten-Selbstprüfung) | Konfigurationsvergleiche ohne Handarbeit |
 | C | Verwaltungs-Evaldomäne: Generator, Korpus, Manifest, Chunk-Zahl-Erwartung, `MAINTENANCE.md` | Deutschsprachige Amtssprache im Messmaterial, mit benannter Pflegezuständigkeit |
 | D | Golden-Fälle der fünf neuen Klassen samt Zustandsfeldern, Kuratierung, erste Baseline der Domäne | **Geliefert (Issue #1043).** Die bekannten Lücken sind beziffert und als `known_gap` benannt |
@@ -1334,7 +1333,7 @@ Bewusst **nicht** Gegenstand dieses Vorhabens:
    Messgegenstand braucht sie, weil die Chunkebene für Chunking-Vergleiche existiert und
    Einzeldokument-Fälle das bereits bedienen. Die Regel entspricht dem, was `city-landmarks`
    bereits praktiziert, ist aber jetzt geprüft (`GoldenCaseCuration`) statt Gewohnheit;
-   festgeschrieben im Nachtrag zu [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md).
+   festgeschrieben in [ADR-0012](../decisions/0012-messvertrag-retrieval-harness.md), Entscheidung 21.
    Da sich an keiner gemessenen Größe etwas ändert, bleiben beide Vertragsversionen unverändert.
 5. **Aufnahme der neuen Fallklassen in bestehende Domänen.** Fachlich naheliegend für Kennungen und
    Komposita in `city-landmarks`; kostet aber eine Baseline-Neuziehung dort. Offen, ob dieser Preis
