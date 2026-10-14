@@ -209,6 +209,42 @@ Auswahlmenge ist dann ohnehin leer. Die Oberfläche sperrt das Anlegen mit diese
 die Verwaltung aber weiter — mit dem Hinweis, dass der Kanal geschlossen ist und die vorhandenen
 Tokens derzeit nicht wirken; widerrufen lässt sich jedes von ihnen (#1718, #1719).
 
+### Über dem Schalter: die Funktion für die Installation abschalten
+
+> **Gebaut (#2749).** Über dem Schalter steht das installationsweite Feature-Flag `EXTERNAL_ACCESS`
+> ([ADR-0044](../decisions/0044-installationsweite-feature-flags.md)), gesetzt vom Betrieb über
+> `OPAA_FEATURES_EXTERNAL_ACCESS_ENABLED` bzw. `features.externalAccess.enabled` im Helm-Chart,
+> wirksam beim Start, Vorgabe **an**.
+
+Der Schalter ist die Entscheidung der Systemverwaltung, ob der Kanal offen ist; das Flag ist die
+Entscheidung des Betriebs, ob es die Funktion in dieser Installation überhaupt gibt — etwa für eine
+Demo oder eine Behörde, die den Kanal erst nach der Klärung mit der Personalvertretung anbieten
+will. Offen ist der Kanal nur, wenn **beide** an sind; ohne Konfiguration ändert sich nichts, der
+Schalter bleibt ausgeliefert aus.
+
+**Ist das Flag aus, gibt es den Kanal nicht:**
+
+- `/mcp` und alle Routen der Fremdzugänge (Einstellungen, eigene und verwaltete Zugangstokens,
+  Bibliotheksfreigabe und Bestandsliste der Freigaben) antworten wie jede unbekannte Adresse. Die
+  Filterkette des Kanals entfällt, und der MCP-Starter registriert keinen Endpunkt; ein Aufruf mit
+  einem Tokenwert trifft auf die Filterkette des Anmeldemodus wie jeder andere unlesbare Wert.
+- Kein Token authentifiziert, auch nicht auf dem Prüfweg, der den Schalter zuletzt prüft; nach
+  vorhandenen Werten wird gar nicht erst gesucht.
+- Die Oberfläche zeigt nichts davon, auch der Systemverwaltung nicht: keinen Reiter „Externe
+  KI-Werkzeuge", keinen Bereich „Zugangstokens" in den eigenen Einstellungen, keinen Abschnitt
+  „Externer Zugang" an der Bibliothek. Die Detailantwort einer Bibliothek nennt keine Freigabe.
+- **Alles ruht:** Kein Ablauf-, Erinnerungs- oder Aufbewahrungslauf fasst ein Token an, und der
+  nächtliche Lauf der Bibliotheksfreigaben (Wiedervorlage und Ablauf) entfällt.
+
+**Was weiterläuft und warum.** Tokens, Freigaben und Kanaleinstellungen bleiben unverändert
+gespeichert; wird das Flag wieder eingeschaltet, ist der frühere Stand zurück. Was in der Ruhezeit
+abgelaufen ist, wirkt trotzdem nicht mehr — Ablaufdatum und Befristung werden je Aufruf geprüft —,
+und die ruhenden Läufe tragen es beim nächsten Durchgang nach. Weiter wirkt das Ende der Tokens einer Person, deren
+Zugang endet (Sperre, Übergabe, gelöschter Identitätsanbieter): Ohne diesen Schritt kämen ihre
+Tokens mit dem Wiedereinschalten zurück. Ebenso weiter läuft die feste Aufbewahrungsgrenze der
+Abflussalarm-Meldungen, die den Alarm mit „kein Verlauf" vereinbar macht; neue Meldungen entstehen
+ohne Kanal nicht.
+
 ---
 
 ## Die Freigabe der Bibliothek
