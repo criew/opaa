@@ -22,9 +22,9 @@ import {
   getPrivateStorageSummary,
   updatePrivateStorageQuota,
 } from '../../../services/privateStorageApi'
-import { confirmAction } from '../../../stores/confirmStore'
-import { notify } from '../../../stores/notificationStore'
-import { formatFileSize } from '../../../utils/labels'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
+import { formatFileSize } from '@/shared/utils/labels'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import PageSection from '@/shared/ui/PageSection'
 

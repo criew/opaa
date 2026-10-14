@@ -5,8 +5,8 @@ import Typography from '@mui/material/Typography'
 import { ThemeProvider } from '@mui/material/styles'
 import { useMemo } from 'react'
 import type { PaletteMode } from '@mui/material'
-import { radius } from '../../theme/tokens'
-import { createAppTheme } from '../../theme/theme'
+import { radius } from '@/shared/theme/tokens'
+import { createAppTheme } from '@/shared/theme/theme'
 
 interface BrandingPreviewProps {
   mode: PaletteMode

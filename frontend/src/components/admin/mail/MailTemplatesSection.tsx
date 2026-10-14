@@ -11,7 +11,7 @@ import Typography from '@mui/material/Typography'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import { useMailStore } from '../../../stores/mailStore'
 import SectionHead from '@/shared/ui/SectionHead'
-import { radius } from '../../../theme/tokens'
+import { radius } from '@/shared/theme/tokens'
 import MailTemplateEditor from './MailTemplateEditor'
 
 /** Wofür eine Vorlage verwendet wird — der Zweck in einem Satz, in der Sprache der Verwaltung. */

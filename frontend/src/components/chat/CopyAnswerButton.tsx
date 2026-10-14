@@ -14,7 +14,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import type { CitationIndex } from '@/shared/ui/markdown/citations'
 import { answerAsMarkdown, answerAsPlainText, answerWithSources } from './copyFormats'
 import { useClipboardCopy } from './useClipboardCopy'
-import { focusRingAlpha, motion, radius } from '../../theme/tokens'
+import { focusRingAlpha, motion, radius } from '@/shared/theme/tokens'
 
 interface CopyAnswerButtonProps {
   content: string

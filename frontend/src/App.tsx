@@ -4,12 +4,12 @@ import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router'
 // app
 import ErrorBoundary from './components/ErrorBoundary'
 import ProtectedRoute from './components/ProtectedRoute'
-import { createAppTheme } from './theme/theme'
-import { resolveThemeMode } from './theme/colorScheme'
+import { createAppTheme } from '@/shared/theme/theme'
+import { resolveThemeMode } from '@/shared/theme/colorScheme'
 import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
-import { useUiStore } from './stores/uiStore'
+import { useUiStore } from '@/shared/stores/uiStore'
 import SettingsPage from './pages/SettingsPage'
 // shared
 import {
@@ -78,7 +78,7 @@ import LlmModelManagementPage from './pages/LlmModelManagementPage'
 // mail
 import MailSettingsPage from './pages/MailSettingsPage'
 // branding
-import { useBrandingStore } from './stores/brandingStore'
+import { useBrandingStore } from '@/shared/branding/brandingStore'
 import BrandingSettingsPage from './pages/BrandingSettingsPage'
 // connection
 import ConnectionCallbackPage from './pages/ConnectionCallbackPage'

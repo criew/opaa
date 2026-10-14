@@ -1,10 +1,11 @@
 import type {
   AssetGrantSubjectType,
+  GroupOrigin,
+  GroupProviderResponse,
   SelectableGroupResponse,
   UserSummary,
 } from '@/shared/api/types'
-import { confirmAction } from '../../stores/confirmStore'
-import { groupNotSelectableReason, groupOriginLabel, groupSizeLabel } from '../../utils/labels'
+import { confirmAction } from '@/shared/stores/confirmStore'
 
 /**
  * Warum die Suche nach einer geschützten Gruppe wie ein leeres Ergebnis aussieht (ADR-0036,
@@ -113,4 +114,57 @@ export async function confirmResolvedGroupById(group: SelectableGroupResponse): 
   })
   if (!confirmed) return false
   return confirmGroupSubject(group)
+}
+
+/**
+ * Die Größe einer Gruppe, wie sie gezeigt werden darf: unterhalb der Mindestgruppengröße hält der
+ * Dienst beide Zahlen zurück und die Oberfläche sagt „kleine Gruppe“ statt einer Zahl. Eine leere
+ * Gruppe bleibt benannt — sie hat niemanden, den die Unterdrückung schützen müsste; für eine
+ * geschützte Gruppe entfällt jede Angabe (ADR-0036, Entscheidung 9).
+ */
+export function groupSizeLabel(group: {
+  activeMemberCount?: number | null
+  smallGroup?: boolean | null
+  emptyGroup?: boolean | null
+  protectedGroup?: boolean | null
+}): string | null {
+  if (group.protectedGroup) return null
+  if (group.emptyGroup) return 'erreicht derzeit niemanden'
+  if (group.smallGroup) return 'kleine Gruppe'
+  if (group.activeMemberCount == null) return null
+  return `${group.activeMemberCount} Mitglieder`
+}
+
+/**
+ * Die Herkunft als Zusatz zum Namen („Verzeichnis Haus A · /Haus/Abteilung 5“), nie als Präfix im
+ * Namen selbst (ADR-0036, Entscheidung 2).
+ */
+export function groupOriginLabel(group: {
+  origin?: GroupOrigin
+  provider?: GroupProviderResponse | null
+  sourcePath?: string | null
+}): string {
+  const parts: string[] = [group.provider ? group.provider.displayName : 'intern']
+  if (group.provider?.external) parts.push('extern')
+  if (group.sourcePath) parts.push(group.sourcePath)
+  return parts.join(' · ')
+}
+
+/**
+ * Warum eine Gruppe nicht mehr als Empfänger gewählt werden kann. Dass bestehende Rechte bleiben,
+ * steht im Satz — sonst wird „nicht wählbar“ als Rechteverlust gelesen.
+ */
+export function groupNotSelectableReason(group: {
+  selectable: boolean
+  dissolved: boolean
+  providerDisabled: boolean
+  unmaintained: boolean
+  deactivated: boolean
+}): string | null {
+  if (group.selectable) return null
+  if (group.dissolved) return 'aufgelöst — bestehende Rechte bleiben'
+  if (group.providerDisabled) return 'Anbieter deaktiviert — bestehende Rechte bleiben'
+  if (group.unmaintained) return 'Mitgliedschaft eingefroren — bestehende Rechte bleiben'
+  if (group.deactivated) return 'Gruppe deaktiviert — bestehende Rechte ruhen'
+  return 'derzeit nicht wählbar'
 }

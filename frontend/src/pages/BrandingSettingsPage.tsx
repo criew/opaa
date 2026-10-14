@@ -15,13 +15,13 @@ import SettingsBrightnessIcon from '@mui/icons-material/SettingsBrightness'
 import PaletteOutlinedIcon from '@mui/icons-material/PaletteOutlined'
 import type { ColorScheme } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import type { BrandingImageKind } from '../stores/brandingStore'
-import { BRANDING_IMAGES, useBrandingStore, OPAA_BRANDING } from '../stores/brandingStore'
+import type { BrandingImageKind } from '@/shared/branding/brandingStore'
+import { BRANDING_IMAGES, useBrandingStore, OPAA_BRANDING } from '@/shared/branding/brandingStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import BrandingPreview from '../components/admin/BrandingPreview'
-import { checkAccentContrast, formatContrastRatio, parseHexColor } from '../utils/contrast'
-import { contentWidth } from '../theme/tokens'
+import { checkAccentContrast, formatContrastRatio, parseHexColor } from '@/shared/utils/contrast'
+import { contentWidth } from '@/shared/theme/tokens'
 
 /** Mirrors `BrandingImageValidator` in the backend - rejected there too, just less pleasantly. */
 const ACCEPTED_IMAGE_TYPES = ['image/png', 'image/jpeg']

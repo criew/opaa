@@ -24,7 +24,7 @@ import {
   setDirectorySync,
 } from '../../../services/directorySyncApi'
 import { apiErrorCode, apiErrorMessage } from '@/shared/api/apiErrorDetails'
-import { notify } from '../../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import MetaBadge from '@/shared/ui/MetaBadge'
 import SectionHead from '@/shared/ui/SectionHead'
 import StatusLine from '@/shared/ui/StatusLine'

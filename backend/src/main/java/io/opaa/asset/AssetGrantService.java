@@ -474,8 +474,8 @@ public class AssetGrantService {
 
   /**
    * The German role label of user-facing messages, analogous to {@code assetRoleLabel} in {@code
-   * frontend/src/utils/labels.ts}. Every {@link AssetRole} value must be mapped here, or the raw
-   * English enum name would leak into a German message.
+   * frontend/src/shared/utils/labels.ts}. Every {@link AssetRole} value must be mapped here, or the
+   * raw English enum name would leak into a German message.
    */
   private static String roleLabel(AssetRole role) {
     return switch (role) {

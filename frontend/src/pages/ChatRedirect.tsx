@@ -7,7 +7,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import { useNavigate } from 'react-router'
 import { useSpaceStore } from '../stores/spaceStore'
-import { usePageTitle } from '../hooks/usePageTitle'
+import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import { lastUsedSpace } from '../utils/recentSpaces'
 
 /**

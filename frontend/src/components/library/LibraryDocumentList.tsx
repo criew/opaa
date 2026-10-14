@@ -28,7 +28,8 @@ import type { LibraryDocumentResponse, LibraryFolderListItem } from '@/shared/ap
 import type { ConfluenceSpaceRef } from '../../utils/confluenceSource'
 import type { DocumentPageState } from '../../stores/documentStore'
 import { DEFAULT_PAGE_SIZE } from '../../stores/documentStore'
-import { documentStatusLabel, formatFileSize } from '../../utils/labels'
+import { documentStatusLabel } from './indexingLabels'
+import { formatFileSize } from '@/shared/utils/labels'
 import { sourceRegistration } from './sources/registry'
 
 function formatIndexedAt(indexedAt: string | null | undefined): string {

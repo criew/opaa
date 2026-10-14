@@ -16,7 +16,7 @@ import type {
 } from '@/shared/api/types'
 import { updateExternalAccessSettings } from '../../../services/externalAccessApi'
 import { apiFieldErrors } from '@/shared/api/apiErrorDetails'
-import { confirmAction } from '../../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import SectionHead from '@/shared/ui/SectionHead'
 import { formatDate } from '../../externalaccess/tokenLabels'

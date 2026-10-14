@@ -12,7 +12,7 @@ import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { LocalUserResponse } from '@/shared/api/types'
 import { useAuthStore } from '@/shared/session/authStore'
-import { notify } from '../../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { useUserAdminStore } from '../../../stores/userAdminStore'
 import { localUserErrorMessage } from './localUserLabels'
 

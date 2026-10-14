@@ -5,7 +5,7 @@ import ListSubheader from '@mui/material/ListSubheader'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { DiscoveredLlmModel } from '@/shared/api/types'
-import { fontFamily } from '../../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 import { describeModel } from './modelDiscovery'
 
 const SUITABLE_GROUP = 'Für den Chat geeignet'

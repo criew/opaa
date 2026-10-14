@@ -6,8 +6,8 @@ import { renderWithProviders } from '../test/test-utils'
 import ChangePasswordPage from './ChangePasswordPage'
 import SettingsPage from './SettingsPage'
 import { useAuthStore } from '@/shared/session/authStore'
-import { useUiStore } from '../stores/uiStore'
-import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { useUiStore } from '@/shared/stores/uiStore'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 import { mockLocalAccount } from '../mocks/authFixtures'
 
 function renderPage() {

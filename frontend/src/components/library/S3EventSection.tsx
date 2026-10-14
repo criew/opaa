@@ -10,7 +10,7 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import type { S3ScopeRef } from '../../utils/s3Source'
 import { generatePushSecret, removePushSecret } from '../../services/indexingApi'
-import { confirmAction } from '../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 import { useLibraryStore } from '../../stores/libraryStore'
 
 interface S3EventSectionProps {

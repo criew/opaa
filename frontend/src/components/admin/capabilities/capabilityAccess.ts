@@ -1,5 +1,5 @@
 import type { CapabilityOverviewResponse, SelectableGroupResponse } from '@/shared/api/types'
-import { allAccountsLabel } from '../../../utils/labels'
+import { allAccountsLabel } from '@/shared/utils/labels'
 import { isCapabilityOffered } from '@/shared/session/installationFeatures'
 
 /** Who may use an Anlegerecht, in the three answers the page offers. */

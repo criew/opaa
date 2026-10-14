@@ -11,7 +11,7 @@ import type { OidcProviderImpactResponse, OidcProviderResponse } from '@/shared/
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import { apiErrorCode, apiErrorMessage } from '@/shared/api/apiErrorDetails'
 import { getOidcProviderImpact } from '../../../services/identityProviderApi'
-import { notify } from '../../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { useOidcProviderStore } from '../../../stores/oidcProviderStore'
 import { PROVIDER_CONFLICT_MESSAGES } from '../oidcProviderConflicts'
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { notify } from '../../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { announceCopy } from './copyAnnouncer'
 
 /** How long a copy button shows its confirmation. */

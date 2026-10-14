@@ -12,7 +12,7 @@ import { ASSET_TYPES, type AssetTypeDefinition } from '../components/assets/asse
 import CatalogPage from './CatalogPage'
 import CatalogNewPage from './CatalogNewPage'
 import GlobalRail from '../layouts/GlobalRail'
-import { isGlobalAreaPath } from '../layouts/globalArea'
+import { isGlobalAreaPath } from '@/shared/layouts/globalArea'
 
 /** A type the application does not know - it exists only as this registry entry. */
 const SKILL = 'SKILL' as AssetType

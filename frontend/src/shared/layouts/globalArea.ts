@@ -1,4 +1,4 @@
-import { catalogScopePrefixes } from '../components/assets/assetTypeRegistry'
+import { catalogScopePrefixes } from '../../components/assets/assetTypeRegistry'
 
 /**
  * Route prefixes that render inside the global frame (#787, mockup 2b) - the navy space

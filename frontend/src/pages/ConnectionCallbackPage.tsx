@@ -15,7 +15,7 @@ import {
   ConnectAccountError,
 } from '../services/connectedAccountApi'
 import { useAuthStore } from '@/shared/session/authStore'
-import { notify } from '../stores/notificationStore'
+import { notify } from '@/shared/stores/notificationStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import ReconnectSourceDialog from '../components/library/ReconnectSourceDialog'
 import {

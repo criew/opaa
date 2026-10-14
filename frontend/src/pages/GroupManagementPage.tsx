@@ -15,7 +15,7 @@ import GroupFilterBar from '../components/admin/groups/GroupFilterBar'
 import GroupList from '../components/admin/groups/GroupList'
 import GroupMembersDialog from '../components/admin/groups/GroupMembersDialog'
 import PermissionTransferDialog from '../components/permissions/PermissionTransferDialog'
-import { contentWidth } from '../theme/tokens'
+import { contentWidth } from '@/shared/theme/tokens'
 
 /**
  * Die Gruppenverwaltung (#1821), gebaut wie die Kontenliste: Kopf, primäre Handlung,

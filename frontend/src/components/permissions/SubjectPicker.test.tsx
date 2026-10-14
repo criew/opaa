@@ -457,7 +457,7 @@ describe('SubjectPicker (#1820, #2131, ADR-0036 Entscheidung 9)', () => {
 describe('confirmExternalSubject', () => {
   it('asks back before a right is granted to a group of an external provider', async () => {
     const confirmSpy = vi.fn()
-    vi.spyOn(await import('../../stores/confirmStore'), 'confirmAction').mockImplementation(
+    vi.spyOn(await import('@/shared/stores/confirmStore'), 'confirmAction').mockImplementation(
       async (request) => {
         confirmSpy(request)
         return false
@@ -480,7 +480,7 @@ describe('confirmExternalSubject', () => {
   })
 
   it('does not ask back for an internal group or a person', async () => {
-    const confirmAction = vi.spyOn(await import('../../stores/confirmStore'), 'confirmAction')
+    const confirmAction = vi.spyOn(await import('@/shared/stores/confirmStore'), 'confirmAction')
 
     await expect(
       confirmExternalSubject({ type: 'GROUP', user: null, group: smallInternal }),

@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { ThemeProvider } from '@mui/material/styles'
 import type { PaletteMode } from '@mui/material'
-import { createAppTheme } from '../theme/theme'
+import { createAppTheme } from '@/shared/theme/theme'
 import GlobalAreaLayout from './GlobalAreaLayout'
-import { isGlobalAreaPath } from './globalArea'
+import { isGlobalAreaPath } from '@/shared/layouts/globalArea'
 
 const SECTIONS = [
   { label: 'Allgemein & Branding', to: '/admin/branding' },

@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryRouter } from 'react-router'
 import { ThemeProvider } from '@mui/material/styles'
 import CssBaseline from '@mui/material/CssBaseline'
-import { createAppTheme } from '../theme/theme'
+import { createAppTheme } from '@/shared/theme/theme'
 import GlobalRail from './GlobalRail'
 import { useAuthStore } from '@/shared/session/authStore'
-import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 
 const mockNavigate = vi.fn()
 

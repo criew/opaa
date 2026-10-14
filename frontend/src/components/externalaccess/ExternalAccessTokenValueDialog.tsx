@@ -10,8 +10,8 @@ import Stack from '@mui/material/Stack'
 import Typography from '@mui/material/Typography'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
 import type { CreatedExternalAccessTokenResponse } from '@/shared/api/types'
-import { copyOnce } from '../../utils/copyOnce'
-import { fontFamily, radius } from '../../theme/tokens'
+import { copyOnce } from '@/shared/utils/copyOnce'
+import { fontFamily, radius } from '@/shared/theme/tokens'
 import { SHOWN_ONCE_HINT, clientSetupSnippets } from './tokenLabels'
 
 function Snippet({ label, value }: { label: string; value: string }) {

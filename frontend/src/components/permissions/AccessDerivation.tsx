@@ -5,7 +5,8 @@ import Typography from '@mui/material/Typography'
 import type { AccessPathResponse, AssetRole, AssetType, SpaceRole } from '@/shared/api/types'
 import { getAssetAccessDerivation } from '../../services/assetApi'
 import { getSpaceAccessDerivation } from '../../services/spaceApi'
-import { accessBasisLabel, assetRoleLabel, spaceRoleLabel } from '../../utils/labels'
+import { accessBasisLabel } from '../assets/assetLabels'
+import { assetRoleLabel, spaceRoleLabel } from '@/shared/utils/labels'
 import { assetTypeLabel } from '../assets/assetTypeRegistry'
 
 type DerivationTarget =

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { renderWithProviders } from '../test/test-utils'
 import { useAuthStore } from '@/shared/session/authStore'
-import { OPAA_BRANDING, useBrandingStore } from '../stores/brandingStore'
+import { OPAA_BRANDING, useBrandingStore } from '@/shared/branding/brandingStore'
 import BrandingSettingsPage from './BrandingSettingsPage'
 
 function signInAs(systemRole: 'SYSTEM_ADMIN' | 'USER') {

@@ -12,7 +12,7 @@ import PageHeading from '@/shared/ui/a11y/PageHeading'
 import SectionEyebrow from '../components/auth/SectionEyebrow'
 import HandoverScopeSummary from '../components/auth/HandoverScopeSummary'
 import { useLinkToken } from '../hooks/useLinkToken'
-import { usePageTitle } from '../hooks/usePageTitle'
+import { usePageTitle } from '@/shared/hooks/usePageTitle'
 import {
   HandoverRefusedError,
   previewHandover,

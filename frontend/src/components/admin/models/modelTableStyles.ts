@@ -1,5 +1,5 @@
 import type { SxProps, Theme } from '@mui/material/styles'
-import { fontFamily } from '../../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 
 /**
  * Die Tabellensprache des Modellbereichs (#1623): Spaltenköpfe als gesperrte Versalien in der

@@ -6,7 +6,7 @@ import { answerConfirm, renderWithProviders } from '../test/test-utils'
 import SpaceSettingsPage from './SpaceSettingsPage'
 import { useAuthStore } from '@/shared/session/authStore'
 import { useSpaceStore } from '../stores/spaceStore'
-import { useNotificationStore } from '../stores/notificationStore'
+import { useNotificationStore } from '@/shared/stores/notificationStore'
 import { getSpace } from '../services/spaceApi'
 import type { SpaceAssetAssociationListResponse, SpaceResponse } from '@/shared/api/types'
 

@@ -12,7 +12,7 @@ import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { LlmModelResponse } from '@/shared/api/types'
-import { fontFamily } from '../../../theme/tokens'
+import { fontFamily } from '@/shared/theme/tokens'
 import { MODEL_TABLE_SX } from './modelTableStyles'
 import ModelRowMenu from './ModelRowMenu'
 

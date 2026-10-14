@@ -1,4 +1,4 @@
-import { confirmAction } from '../../../stores/confirmStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
 
 /**
  * Die Rückfrage vor dem Sperren oder Entsperren einer Quellart oder eines Zugangs; `target` ist

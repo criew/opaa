@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { useBrandingStore } from '../stores/brandingStore'
+import { useBrandingStore } from '../branding/brandingStore'
 
 /**
  * The product name a page title is suffixed with. Only a fallback for callers outside React

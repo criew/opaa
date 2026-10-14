@@ -13,8 +13,8 @@ import MoreVertIcon from '@mui/icons-material/MoreVert'
 import WifiTetheringOutlinedIcon from '@mui/icons-material/WifiTetheringOutlined'
 import type { LlmModelResponse } from '@/shared/api/types'
 import { testLlmModel } from '../../../services/modelApi'
-import { confirmAction } from '../../../stores/confirmStore'
-import { notify } from '../../../stores/notificationStore'
+import { confirmAction } from '@/shared/stores/confirmStore'
+import { notify } from '@/shared/stores/notificationStore'
 import { useLlmModelStore } from '../../../stores/llmModelStore'
 
 export const ACTIVE_DELETE_HINT =
