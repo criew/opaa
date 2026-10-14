@@ -26,10 +26,10 @@ Upload-Ablage) ist unter dieser Annahme korrekt und braucht keine verteilte Koor
 keine Entscheidung, Multi-Instanz-Betrieb zu bauen; die fällt eigenständig, sobald ein Bedarf
 (Hochverfügbarkeit, horizontale Skalierung) entsteht.
 
-### 2. Register in `backend/AGENTS.md`, Verweis in der Javadoc
+### 2. Register in `backend/docs/`, Verweis in der Javadoc
 
-Jede Stelle, die diese Annahme trägt, steht im Register „Prozesslokaler Zustand“ in
-[backend/AGENTS.md](../../backend/AGENTS.md#prozesslokaler-zustand-adr-0021). Wer eine neue
+Jede Stelle, die diese Annahme trägt, steht im Register
+[backend/docs/prozesslokaler-zustand.md](../../backend/docs/prozesslokaler-zustand.md). Wer eine neue
 einführt, trägt sie dort ein und nennt „(ADR-0021)“ in der Javadoc. Das ist keine Hürde für die Umsetzung:
 Prozesslokal bleibt die richtige, einfachste Lösung; die Eintragung macht nur sichtbar, was ein
 späterer Umbau prüfen muss, statt dass die Liste erneut durch Code-Archäologie entsteht.
