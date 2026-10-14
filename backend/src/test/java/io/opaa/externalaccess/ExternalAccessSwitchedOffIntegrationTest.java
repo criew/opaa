@@ -39,7 +39,6 @@ import io.opaa.security.LocalAuthKeyService;
 import io.opaa.security.LocalAuthKeyService.Purpose;
 import io.opaa.test.LocalMailbox;
 import io.opaa.test.OpaaPropertyVariantIntegrationTest;
-import io.opaa.test.OwnLibraryFixtures;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -100,7 +99,6 @@ class ExternalAccessSwitchedOffIntegrationTest {
   @Autowired private ExternalAccessTokenAuthenticator authenticator;
   @Autowired private ExternalAccessSettingsService settings;
   @Autowired private LocalTokenCleanupService maintenance;
-  @Autowired private OwnLibraryFixtures ownLibraryFixtures;
   @Autowired private MailSettingsService mailSettings;
   @Autowired private AuditRetentionSettingsService retention;
   @Autowired private Clock clock;
@@ -132,7 +130,14 @@ class ExternalAccessSwitchedOffIntegrationTest {
         ownerId);
     jdbc.update("DELETE FROM external_access_tokens WHERE user_id = ?", ownerId);
     jdbc.update("DELETE FROM audit_log WHERE object_id = ?", libraryId.toString());
-    ownLibraryFixtures.removeLibraries(libraryId);
+    // Not OwnLibraryFixtures: it also clears vector_store, which this signature never creates
+    // (initialize-schema=false); the library here has no documents and no chunks.
+    jdbc.update("DELETE FROM asset_visibility_history WHERE asset_id = ?", libraryId);
+    jdbc.update(
+        "DELETE FROM asset_ownership_history WHERE asset_type = 'KNOWLEDGE_LIBRARY'"
+            + " AND asset_id = ?",
+        libraryId);
+    jdbc.update("DELETE FROM assets WHERE id = ?", libraryId);
   }
 
   @Test
