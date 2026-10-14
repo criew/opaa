@@ -1,1 +1,1 @@
-@../query/AGENTS.md
+@../knowledge/AGENTS.md
