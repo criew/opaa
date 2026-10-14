@@ -251,7 +251,9 @@ describe('ConnectionProfilesTab', () => {
     renderWithProviders(<ConnectionProfilesTab />, { withRouter: true })
 
     const summary = await screen.findByRole('region', { name: 'Handlungsbedarf der Zugänge' })
-    expect(await within(summary).findByRole('heading', { name: /Stand unvollständig/ })).toBeVisible()
+    expect(
+      await within(summary).findByRole('heading', { name: /Stand unvollständig/ }),
+    ).toBeVisible()
     expect(summary).toHaveTextContent('Nicht geladen: Sperren der Quellarten.')
     expect(screen.queryByRole('heading', { name: 'Kein Handlungsbedarf' })).not.toBeInTheDocument()
   })

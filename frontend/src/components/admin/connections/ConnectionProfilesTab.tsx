@@ -75,11 +75,11 @@ export default function ConnectionProfilesTab() {
     open: false,
     profile: null,
   })
-  const [typeStates, setTypeStates] = useState<ConnectorTypeStateResponse[]>([])
+  const [typeStates, setTypeStates] = useState<ConnectorTypeStateResponse[] | null>(null)
   const [typeError, setTypeError] = useState<string | null>(null)
   const [overview, setOverview] = useState<CapabilityOverviewResponse[] | null>(null)
   const [overviewError, setOverviewError] = useState<string | null>(null)
-  const [dormant, setDormant] = useState(0)
+  const [dormant, setDormant] = useState<number | null>(null)
   const [dormantFailed, setDormantFailed] = useState(false)
   const [reloadKey, setReloadKey] = useState(0)
   const reload = () => setReloadKey((key) => key + 1)
@@ -140,7 +140,7 @@ export default function ConnectionProfilesTab() {
     sourceTypes.find((descriptor) => descriptor.type === type)?.displayName ?? type
 
   const typeLocked = (sourceType: string) =>
-    typeStates.some((state) => state.sourceType === sourceType && state.locked)
+    (typeStates ?? []).some((state) => state.sourceType === sourceType && state.locked)
 
   function openPanel(profileId: string | null) {
     const next = new URLSearchParams(searchParams)
@@ -237,9 +237,15 @@ export default function ConnectionProfilesTab() {
   ].filter((part): part is string => Boolean(part))
   const summary = summaryOf(
     entries.map((entry) => entry.attention),
-    dormant,
+    dormant ?? 0,
     unknown,
   )
+  // The line speaks only once every part has answered: a part still loading is neither good nor
+  // failed, so summaryOf could only call it good too early.
+  const settled =
+    (overview !== null || overviewError !== null) &&
+    (typeStates !== null || typeError !== null) &&
+    (dormant !== null || dormantFailed)
   const opened = entries.find((entry) => entry.profile.id === openId) ?? null
 
   return (
@@ -255,7 +261,7 @@ export default function ConnectionProfilesTab() {
         }}
       >
         <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
-          {loading || error ? null : (
+          {loading || error || !settled ? null : (
             <StatusLine
               component="h2"
               label="Handlungsbedarf der Zugänge"
