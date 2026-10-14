@@ -600,7 +600,8 @@ verbrauchte Einladungs- und Rücksetzlinks sind wieder einlösbar, ein nach eine
 Passworthash ist auf dem alten Stand. Nach **jeder** Rücksicherung gehören deshalb zwei Schritte dazu:
 
 1. **`OPAA_AUTH_JWT_SECRET` ersetzen**, bevor das Backend startet. Ein neuer Wert beendet alle lokalen
-   Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks in einem Schritt.
+   Sitzungen und entwertet alle offenen Einladungs-, Rücksetz- und Übergabelinks und alle
+   Zugangstokens der Fremdzugänge in einem Schritt.
 2. **Sperren und Rücksetzungen seit dem Sicherungszeitpunkt erneut vornehmen.** Das Nachweisprotokoll
    der Zwischenzeit ist die Liste, sofern es nicht selbst mit zurückgesichert wurde.
 

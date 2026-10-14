@@ -72,7 +72,7 @@ Vorher/Nachher der geänderten Schlüssel.
 Schalter der lokalen Verwaltung (Standard `false`, Audit `LOCAL_ACCOUNTS_ENABLED/_DISABLED`);
 `GET /api/v1/auth/config` führt sie als `localAccounts { enabled, selfRegistrationEnabled,
 passwordResetEnabled, passwordMinLength }`. Gegenüber ADR-0025, Entscheidung 3: `is_default` steuert
-nur noch Anmeldevorschlag und Löschschutz (der Verzeichnisabgleich hängt seit #1816 an der
+nur noch Anmeldevorschlag und Löschschutz (der Verzeichnisabgleich hängt an der
 Anbieterzeile, ADR-0036); ein Zustand ohne OIDC-Anbieter ist zulässig; der letzte aktivierte
 OIDC-Anbieter darf deaktiviert oder gelöscht werden, wenn ein gesicherter lokaler Systemverwalter
 existiert (409 `LAST_LOGIN_CAPABLE_ADMIN` sonst) und der Aufruf `acknowledgeLastProvider` trägt;
@@ -92,7 +92,7 @@ Anbieter- und Rollenänderung für 15 Minuten blockieren.
 Der lokale Decoder (Entscheidung 8) ist unabhängig von `enabled` registriert; bei `enabled = false`
 werden Login und Token regulärer lokaler Konten abgewiesen, lokale `SYSTEM_ADMIN`-Konten passieren.
 Der Marker `local_accounts_disabled` steht nur auf dem Token-Pfad und wird im Validator **vor** den
-Widerrufsprüfungen gelesen (seit #1595, sonst wäre er für ein bestehendes Token unerreichbar); davor
+Widerrufsprüfungen gelesen (sonst wäre er für ein bestehendes Token unerreichbar); davor
 steht nur `malformed_token`, denn ohne `sub` ist nicht feststellbar, ob ein `SYSTEM_ADMIN`-Konto
 passieren darf. Der Login antwortet mit derselben Einheitsantwort wie bei falschem Passwort. Das Abschalten widerruft
 die Sitzungen regulärer Konten zusätzlich eifrig (`ADMIN`, je Konto ein Audit-Ereignis).
@@ -165,7 +165,7 @@ keine `client_id`. Abgewiesene Tokens tragen in `WWW-Authenticate` den Grund (`L
 `malformed_token`, `unknown_account`, `local_accounts_disabled`, `account_not_active`, `account_locked` (`admin | failed_logins | inactivity`),
 `account_expired`, `session_revoked` (`admin_lock | password_changed | admin_reset | admin_action |
 reuse_detected | handed_over`); die SPA startet keine Erneuerung und zeigt den Grund.
-`admin_reset` bezeichnet seit #1595 nur ein tatsächlich zurückgesetztes Passwort, `admin_action` den
+`admin_reset` bezeichnet nur ein tatsächlich zurückgesetztes Passwort, `admin_action` den
 Verwaltungsakt ohne Passwort (Abschalten). `UserService#provisionFromToken` behandelt den lokalen
 Issuer als Finder, nie als Anleger: Ein Token mit unbekanntem `sub` führt zu 401, nicht zu einem
 neuen Konto; `email` und `display_name` werden nicht aus dem Token zurückgeschrieben;
@@ -181,15 +181,15 @@ Konten").
   Vergleich nur über `matches`, bei unbekannter Kennung gegen einen Dummy-Hash; `PasswordPolicy`:
   Mindestlänge `password_min_length`, höchstens 64 Zeichen und 72 Byte, nicht die E-Mail, nicht in
   der Sperrliste; keine Komplexitätsregeln, kein periodischer Wechsel (BSI ORP.4.A8).
-- **Ratenbegrenzung** je Adresse, je Konto und global für Login, Refresh, Passwortwechsel,
-  Registrierung, „Passwort vergessen“ und Bestätigung (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`); die globale
-  Grenze meldet `WARN` und Metrik.
+- **Ratenbegrenzung** (`OPAA_RATE_LIMIT_LOCAL_AUTH_*`) je Client-Adresse; Passwortwechsel je Konto;
+  Registrierung und „Passwort vergessen“ zusätzlich je E-Mail-Adresse; Login, Registrierung und
+  „Passwort vergessen“ global, mit `WARN` und Metrik beim Überschreiten.
 - **Kontosperre** nach 5 Fehlversuchen für 15 Minuten, auditiert
   (`LOCAL_ACCOUNT_LOCKED_AFTER_FAILED_LOGINS`); der einzelne Fehlversuch steht nur im Anwendungslog
   (Konto-Kennung, nie die Adresse), dessen Aufbewahrung Betriebskonfiguration ist. Ein eingelöster
   Rücksetzlink hebt die Sperre auf (der Besitz des Postfachs ist der Nachweis); der Login antwortet
   in jedem Fall gleich. Die **Sperre nach Inaktivität** (`inactive_days`, Mail, Notanker
-  ausgenommen) ist seit #2260 für Verbindungen ein Ruhen (ADR-0041).
+  ausgenommen) ist für Verbindungen ein Ruhen (ADR-0041).
 - **Client-IP:** `TrustedProxyClientIpResolver` wertet `X-Forwarded-For` nur aus Netzen in
   `OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS` aus (leer = ignoriert), liest unterhalb der Wrapper von
   Springs `ForwardedHeaderFilter` und nimmt den ersten nicht vertrauten Eintrag von rechts; ein Netz
@@ -224,20 +224,21 @@ Platzhalter, gebrandeter HTML-Rahmen; API mit Vorschau, Zurücksetzen und Testve
   Wert im Protokoll) und Ablaufdatum (vorbelegt mit `default_expiry_days`), per Einladung oder mit
   erzeugtem Passwort; ohne Mailversand enthält die Antwort den Link genau einmal, der Zustellweg
   steht im Protokoll. **Zurücksetzen** (Link oder erzeugtes Passwort, `pcr` `ADMIN_RESET`) widerruft
-  alle Sitzungen und bestätigt die Adresse nicht (Ausweg ohne Selbstregistrierung: löschen und einladen).
+  alle Sitzungen und bestätigt die Adresse nicht (Ausweg ohne Selbstregistrierung: löschen und
+  einladen).
 - **Sperren ist der Regelweg**, Löschen die Ausnahme: Sperren widerruft alle Sitzungen und hebt eine
   Fehlversuch-Sperre auf, Entsperren setzt den Zähler zurück; Selbstsperre und jede Aktion am
   letzten gesicherten Systemverwalter sind 409 (`SELF_LOCKOUT`, `LAST_LOGIN_CAPABLE_ADMIN`), am
   Notanker immer (`BOOTSTRAP_ACCOUNT`). Rollen laufen über den bestehenden Rollenendpunkt; ein
   Anbieterkonto bietet nur diese Handlung. Ein abgelaufenes Konto ist `EXPIRED`, nicht gelöscht;
-  `DELETE` löscht nur ein Konto ohne Assets und ohne Space außer dem persönlichen (sonst 409), bis der DSGVO-Pfad
-  aus `security-and-compliance.md` ein gemeinsamer Dienst ist.
+  `DELETE` löscht nur ein Konto ohne Assets und ohne Space außer dem persönlichen (sonst 409), bis
+  der DSGVO-Pfad aus `security-and-compliance.md` ein gemeinsamer Dienst ist.
 - **Kein stiller Eingriff:** Jeder Verwaltungsakt geht per Mail an die Person (`ACCOUNT_LOCKED`,
   `ACCOUNT_UNLOCKED`, `ADMIN_PASSWORD_RESET`, `ACCOUNT_EXPIRING`, `ACCOUNT_HANDOVER_*`) und steht als
   Grund im Sitzungsmarker oder `pcr`-Anlass; nur die Fehlversuch-Sperre schickt keine Mail.
-- **Kein Auswertungspfad:** `GET /api/v1/admin/accounts` führt seit #1601 alle Konten mit Herkunft;
+- **Kein Auswertungspfad:** `GET /api/v1/admin/accounts` führt alle Konten mit Herkunft;
   Aktivität erscheint nur als Klasse an lokalen Zeilen, ohne Zeitstempel, Sortierung oder Export,
-  Seitengröße höchstens 50 (`LocalUserQuery.MAX_PAGE_SIZE`). Prüffilter, Ablaufmail und
+  Seitengröße höchstens 50 (`LocalUserQuery.MAX_PAGE_SIZE`). Prüffilter, Zähler (Hinweis-Link) und
   Quartals-Wiedervorlage (`ADMIN_REVIEW_REMINDER`, nur Zahlen) meinen dieselbe Menge ohne Notanker
   (`LocalUserOverview#countsAsInactive()`).
 - **Selbstbedienung:** Selbstregistrierung nur mit Schalter und Domänenliste (Rolle `USER`, Ablauf
@@ -320,7 +321,7 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 | Letzter OIDC-Anbieter nur mit geprüfter Vorbedingung deaktivierbar | gilt | #1534 |
 | Fehlversuche nicht im Nachweisprotokoll, nur die Sperre | gilt | — |
 | Kein Personenbezug im Klartext im Protokoll; Vorher/Nachher nur für `expires_at` | gilt | — |
-| Kontenliste: Aktivität nur als Klasse, keine Sortierung danach, kein Export, kein Massenabruf | gilt; Liste führt seit #1601 alle Konten, Aktivitätsklasse nur an lokalen Zeilen | #1601 |
+| Kontenliste: Aktivität nur als Klasse, keine Sortierung danach, kein Export, kein Massenabruf | gilt; Liste führt alle Konten, Aktivitätsklasse nur an lokalen Zeilen | #1601 |
 | `LOCAL_SESSION_REVOKED` nur fremdveranlasst; Zähler nie ausgegeben | gilt | — |
 | Offener Rücksetzweg bei Fehlversuch-Sperre; Anlass bei erzwungenem Wechsel und im Sitzungsmarker | gilt | #1595 (`admin_action`) |
 | Anlagegrund zweckgebunden und für die Person sichtbar | gilt | — |
@@ -379,22 +380,3 @@ Bedingungen des Personalrats für eine Zustimmung); Stand der Zusagen:
 - MFA (TOTP) für lokale Systemverwalter als nächste Härtung.
 - Übersicht der eigenen Sitzungen für die Person selbst (`access-control.md`).
 - Löschen eines Kontos als gemeinsamer DSGVO-Dienst für alle Konten.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-11 | #1552 | ADR-Revision: Trusted-Proxy-Auflösung (dort noch als `RemoteIpValve`, nie so gebaut), Bestandserkennung des Seeds, Unverletzlichkeit des Notankers, Anti-Aufzählung | 3, 4, 5, 9 |
-| 2026-09-11 | #1535 | Trusted-Proxy-Auflösung als `TrustedProxyClientIpResolver` (`OPAA_RATE_LIMIT_TRUSTED_PROXY_CIDRS`), nicht als `RemoteIpValve` | 9 |
-| 2026-09-12 | #1601 | Kontenliste führt alle Konten, Aktivitätsklasse nur an lokalen Zeilen | 11 |
-| 2026-09-13 | #1563 | Übergabe eines lokalen Kontos an eine Anbieteridentität gebaut | 12 |
-| 2026-09-13 | #1595 | Schalter vor Widerrufsprüfungen; `admin_action` getrennt von `admin_reset` | 4, 8 |
-| 2026-09-13 | #1603 | Notanker-Konto nicht im Zähler „ohne Ablaufdatum" | 11 |
-| 2026-09-17 | #1592, #1641 | Abgeschalteter Fluss wie unbekannte Route; Inaktivitätsfilter ohne Notanker | 11 |
-| 2026-09-19 | #1349, #1537 | Guard auch am generischen Rollenendpunkt | 4 |
-| 2026-09-20 | #1816 | `is_default` nur noch Anmeldevorschlag und Löschschutz; `TrustedProvider` entfällt (ADR-0036) | 4 |
-| 2026-09-26 | #1640 | Kein Ablaufdatum am Notanker-Konto (409) | 3, 11 |
-| 2026-10-05 | #2260 | Inaktivitätssperre ist für den Konto-Lebenszyklus ein Ruhen (ADR-0041) | 9 |
-| 2026-10-11 | #1988 | Kein Rücksetzlink und kein erzeugtes Passwort für das Notanker-Konto | 3, 5 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3–5, 8, 9, 11–14 |
-| 2026-10-14 | #2762 | Zweitprüfung: Entscheidungen 9 und 11 ohne inhaltliche Änderung gestrafft, Werte und Abläufe im Handbuch | 9, 11 |

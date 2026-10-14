@@ -31,8 +31,10 @@ baubarer Decoder wird übersprungen und nach `RETRY_INTERVAL` erneut versucht. `
 Ein vorhandenes `azp` muss der `client_id` entsprechen, oder `aud` nennt sie; `aud` allein bleibt
 ungeprüft, weil Keycloak es nicht auf den anfragenden Client setzt.
 
-Für die Anmeldung speichert und prägt OPAA keine Tokens; Quellverbindungen speichern ihre Tokens
-verschlüsselt im Token-Speicher (ADR-0041), der Dienstkonto-Schlüssel (ADR-0040) keines. Im
+Für die OIDC-Anmeldung speichert und prägt OPAA keine Tokens. Quellverbindungen und verbundene
+Konten speichern Refresh-, Zugriffstoken und persönliche Geheimnisse verschlüsselt im
+Token-Speicher (ADR-0041), nie das Anmeldetoken eines OIDC-Anbieters; der Dienstkonto-Schlüssel
+(ADR-0040) speichert keines. Im
 OAuth-Ablauf für Quellen sind `state` und PKCE-Verifier an die angemeldete Person gebunden
 (`ConnectionAuthorization.user_id`; ein fremder `state` wird abgewiesen). Preis: Ein neuer
 Anbieter-Origin wirkt in der CSP (`OPAA_CSP_CONNECT_SRC_EXTRA`) erst nach Frontend-Neustart, den
@@ -69,11 +71,11 @@ ohne Neustart und sind Audit-Ereignisse `OIDC_PROVIDER_*` (`AuditObjectType.SYST
 eine abweichende `OPAA_OIDC_AUTHORITY` wird protokolliert verworfen, die Variablen bleiben erlaubte
 Adressen der Adressprüfung. `OPAA_OIDC_BOOTSTRAP=force` (bis 31.03.2027, abgelöst durch
 `OPAA_LOCAL_ADMIN_RESET=force`) überschreibt oder legt die Zeile einmalig an, aktiviert sie und macht
-sie zum Standard (`OidcProviderSeeder#forceBootstrap`; unvollständige Umgebung: `ERROR`). Genau ein OIDC-Anbieter ist Standard
-(`ux_oidc_providers_single_default`), der erste automatisch; `is_default` steuert Anmeldevorschlag
-und Löschschutz: Der Standard ist nicht deaktivier- oder löschbar, solange ein anderer aktivierter
+sie zum Standard (`OidcProviderSeeder#forceBootstrap`; unvollständige Umgebung: `ERROR`).
+Genau ein OIDC-Anbieter ist Standard (`ux_oidc_providers_single_default`), der erste automatisch;
+`is_default` steuert Anmeldevorschlag und Löschschutz: Der Standard ist nicht deaktivier- oder löschbar, solange ein anderer aktivierter
 Anbieter an seine Stelle treten kann (`409`). Der letzte aktivierte OIDC-Anbieter darf gehen, wenn
-`LocalAdminAvailabilityGuard` einen lokalen Systemverwalter findet (sonst `409
+`LocalAdminAvailabilityGuard` einen anmeldefähigen lokalen Systemverwalter findet (sonst `409
 LAST_LOGIN_CAPABLE_ADMIN`) und `acknowledgeLastProvider` gesetzt ist (ADR-0033); `InitialAdminPolicy`
 vergibt `SYSTEM_ADMIN` nur dem Dev-Issuer.
 
@@ -102,7 +104,7 @@ Leeren von `roles_claim` — eine Anbieteränderung, keine Rollenvergabe. Gruppe
 (`TokenGroupSynchronizer`), getrennt je Anbieter über `groups.provider_id` (ADR-0036,
 Entscheidung 2; `external_id` trägt den Gruppennamen, ein Name über 255 Zeichen wird übersprungen
 und protokolliert) — hebt die Festlegung von ADR-0005 auf, dass Gruppen nur über `DirectoryClient`
-kommen. Der Verzeichnisabgleich hängt seit #1816 an der Anbieterzeile (`directory_sync_enabled`,
+kommen. Der Verzeichnisabgleich hängt an der Anbieterzeile (`directory_sync_enabled`,
 ADR-0036, Entscheidungen 2 und 3), löst Mitglieder issuergebunden auf
 (`UserRepository#findByOrganizationIdAndIssuerAndSubjectIn`) und verwaltet nur `ORG_UNIT`-Gruppen.
 Alle Anbieter provisionieren in `Organization.DEFAULT_ID`.
@@ -158,16 +160,3 @@ braucht einen Frontend-Neustart; eine Organisation; der `dev`-Modus bleibt unver
 ## Offen
 
 - Anbieter-zu-Organisation-Bindung für Mehrmandantenbetrieb.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-12 | #1529, #1534 | Erstadministrator ist das lokale Notanker-Konto; letzter OIDC-Anbieter mit Guard deaktivierbar (ADR-0033) | 3 |
-| 2026-09-13 | #1631 | Automatischer Versuch mit `prompt=none`; seine OAuth-Absage endet still | 5 |
-| 2026-09-13 | #1629, #1630 | „Mit anderem Konto anmelden" entfällt | 5 |
-| 2026-09-20 | #1816 | Verzeichnisabgleich je Anbieter, `TrustedProvider` entfällt (ADR-0036) | 4 |
-| 2026-10-03 | #2159 | Token für Quellen und verbundene Konten im Token-Speicher (ADR-0041) | 1 |
-| 2026-10-09 | #2396 | Startmeldung ohne Anbieter nur `ERROR`, wenn kein lokaler Systemverwalter | 3 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 1–5 |
-| 2026-10-14 | #2762 | Zweitprüfung: Entscheidungen 1 und 3 ohne inhaltliche Änderung gestrafft, Betrieb im Handbuch | 1, 3 |

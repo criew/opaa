@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
 
 ## Kontext
 
@@ -29,7 +29,7 @@ einen Bereich sichert allein der Record. Was typübergreifend Regeln hat, bleibt
 `source_url` (Zieladressprüfung, Ursprungsbindung), Zugangsdaten verschlüsselt in
 `source_credentials`, Zeitplan. **Geheimnisse stehen nie in `source_settings`** — die Spalte ist
 unverschlüsselt und erscheint in `LibraryResponse`. Seit #2496 gibt es keinen Proxy je Bibliothek
-(hausweiter Ausgangsproxy, ADR-0050), seit #2537 keinen Schalter zum Aussetzen der
+(hausweiter Ausgangsproxy, ADR-0050) und keinen Schalter zum Aussetzen der
 Zertifikatsprüfung; `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht.
 
 ### 2. Geltungsbereiche: eine Liste von (Bucket, Präfix), mindestens einer, ohne Überlappung
@@ -78,7 +78,7 @@ leeren.
 ### 4. Änderungserkennung: der ETag ist das Änderungsmerkmal, die SHA-256 die Prüfsumme
 
 `documents.last_modified_remote` trägt `e:<ETag>|<Größe>` (`S3ChangeMarker`), unabhängig von der
-ETag-Länge (seit #2482, Spalte `text`); nur ein Speicher ohne ETag bekommt die Rückfallform
+ETag-Länge (Spalte `text`); nur ein Speicher ohne ETag bekommt die Rückfallform
 `t:<LastModified als Epochenmillisekunden>|<Größe>`. `LastModified` ist nie Teil des Merkmals:
 Kopie, Metadatenänderung und Replikation setzen den Zeitstempel neu, ohne dass sich etwas ändert,
 und es gibt keinen Fall, in dem sich der Inhalt ändert und ETag und Größe gleich bleiben. Stimmt das
@@ -92,11 +92,11 @@ und Zerlegung bleiben. `LastModified` wird nicht als Kernfeld „Datum/Stand" ge
 `file_path = s3://<bucket>/<key>`, Schlüssel unverändert (Umbenennen ist ein neues Dokument);
 `source_container_key` ist der Bucket, `source_hierarchy_path` das Präfix relativ zum Bereich. Bucket
 und Schlüssel sind die Identität, der Endpoint nur der Weg: Ein Umzug des Speichers baut den Bestand
-nicht neu. Kein Beleg-Link (`SourceConnectorDescriptor#withoutDeepLink`); seit #1524 lädt
+nicht neu. Kein Beleg-Link (`SourceConnectorDescriptor#withoutDeepLink`); stattdessen lädt
 `S3OriginalAccess` das Objekt beim Klick durch OPAA, ohne eigene Rechtelogik (die `VIEWER`-Prüfung
 steht in `loadContent` vor jeder Verzweigung), nur innerhalb der Bereiche und mit den zwei
 Fehlerbildern der Originalablage (ADR-0030, Entscheidung 9): „gibt es nicht“ `404`, Speicher nicht
-erreichbar `503`, beide in der Spezifikation von `getDocumentContent` deklariert. Präfixsegmente
+erreichbar `503` ohne Einzelheit der Quellkonfiguration, beide in der Spezifikation von `getDocumentContent` deklariert. Präfixsegmente
 werden schreibgeschützte Ordner (`SourceFolderMirror`, `S3FolderPath`); gelesen wird nur die aktuelle
 Version (Löschmarker gilt als Löschung, `versionId` wird nie gespeichert); Ordnermarker, Archivklassen
 (`S3ArchiveState`, `GLACIER_IR` wird gelesen) und per Endung oder Größe vorab ausgefilterte Schlüssel
@@ -210,7 +210,8 @@ Rahmen des Maintainers (Epic #1291) und Stand:
   Die Anlage ist netzabhängig. Umbenennen und Verschieben bauen Dokumente neu.
 - **Restrisiko:** `source_settings` wird von der Datenbank nur als JSON-Objekt geprüft; die
   Validierung liegt im Record, und ein Record, der einen Fall vergisst, wird von keiner Constraint
-  gefangen.
+  gefangen. Ein Leserecht auf die Bibliothek genügt, jedes Objekt über den Beleg-Abruf wiederholt zu
+  laden.
 
 ## Verworfene Alternativen
 
@@ -233,20 +234,3 @@ Rahmen des Maintainers (Epic #1291) und Stand:
 - SNS-Handshake und -Signaturprüfung, SQS-Abfrage; Instanzrolle als Zugangsdaten-Art.
 - Rechteübernahme aus Bucket-Policies oder IAM; schreibender Zugriff; vorsignierte Beleg-Links.
 - Schonzeitraum je Bibliothek (quellentypübergreifend); ein Vertragstest für Konnektoren (Epic #1293).
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-07 | #1291 | Erstumsetzung (#1374–#1383) | 1–11 |
-| 2026-09-07 | #1381 | Ereignissammlung unter `opaa.indexing.events.*`, geteilt mit Confluence | 6, 11 |
-| 2026-09-11 | #1524 | Beleg-Abruf durch OPAA (`S3OriginalAccess`) statt nur Pfad als Text | 5 |
-| 2026-09-24 | #1949 | Testdoppel RustFS statt MinIO; Ereignisweg gegen simulierte Zustellung | 9 |
-| 2026-09-26 | #1977 | `source_settings` für jeden Konnektor, `CHECK`-Zweige entfallen (ADR-0038) | 1 |
-| 2026-09-27 | #1986 | Push-Eingang typneutral `/push`, `/push-secret` (ADR-0038) | 6 |
-| 2026-10-03 | #2149 | Vollabgleich über `indexing.filesync` (ADR-0040, Entscheidung 1) | 3 |
-| 2026-10-11 | #2482 | Keine Längengrenze für den ETag im Änderungsmerkmal | 4 |
-| 2026-10-12 | #2496, #2537 | Kein Proxy je Bibliothek, Zertifikatsprüfung nicht aussetzbar (ADR-0041) | 1, 8 |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5, 6, 11 |
-| 2026-10-14 | #2702 | Verweise auf ADR-0045/0048/0050 | — |
-| 2026-10-14 | #2762 | Zweitprüfung: Entscheidung 5 ohne inhaltliche Änderung gestrafft, Einzelheiten im Handbuch | 5 |

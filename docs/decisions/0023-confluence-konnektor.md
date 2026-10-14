@@ -45,8 +45,8 @@ Chunk-Kontext, ohne die Instanz zu fragen; eine Abbildung der Seitenhierarchie a
 
 ### 2. Die Edition wird erkannt, steht an der Bibliothek und ist danach unveränderlich
 
-Die Edition (`ConfluenceEdition`: `CLOUD`, `DATA_CENTER`) steht seit #1977 in
-`source_settings`; ein Zugang (ADR-0041) darf sie seit #2218 als Vorgabe tragen (`DefaultKey` der
+Die Edition (`ConfluenceEdition`: `CLOUD`, `DATA_CENTER`) steht in
+`source_settings`; ein Zugang (ADR-0041) darf sie als Vorgabe tragen (`DefaultKey` der
 `ProfileDeclaration`, ADR-0038, Entscheidung 7), dann steht sie an der Bibliothek nur lesbar. Die gespeicherte Basisadresse
 ist die Confluence-Wurzel — Cloud ohne `/wiki` (der Adapter hängt es an), Data Center samt
 Kontextpfad —, normalisiert (Schema und Host klein, kein abschließender Schrägstrich, kein
@@ -79,7 +79,7 @@ Center (`confluenceIntegrationTest`, #1171) ist eine zusätzliche Ebene.
 Confluence-Zugangsdaten gehören der Bibliothek und liegen ruhend verschlüsselt (AES-256-GCM,
 `OPAA_CREDENTIALS_ENCRYPTION_KEY`): bei eigener Adresse in `knowledge_libraries.source_credentials`
 (`SourceCredentialsConverter`/`CredentialsEncryptor`, `SecretOwner.LibraryOwned`), an einem Zugang
-seit #2273 als Zeile der Bibliothek im Token-Speicher `connection_tokens`
+als Zeile der Bibliothek im Token-Speicher `connection_tokens`
 (`SecretOwner.LibraryOnProfile`, `kind = 'PERSONAL_SECRET'`; ADR-0048, Entscheidung 9). Angenommen werden sie
 über das nur-schreibende Feld `sourceCredentials`.
 Das Format hängt von der Edition ab (`ConfluenceCredentials#parse`): Cloud `<E-Mail>:<API-Token>`
@@ -92,7 +92,7 @@ Zugangsdaten erscheinen in keiner API-Antwort, keinem Log, keiner Exception-Mess
 Fehlermeldung, auch nicht in verschachtelten Ursachen: `ConfluenceCredentials` gibt das Geheimnis
 nur über `authorizationHeader()` heraus, `toString()` nie; ein Test der Zugriffsschicht prüft, dass
 keine ihrer Exceptions das Token enthält. Die Ursprungsbindung der Zugangsdaten (ADR-0018,
-Entscheidung 4; seit #2218 über `SourceConnector#credentialBinding`, ADR-0038, Entscheidung 7)
+Entscheidung 4; über `SourceConnector#credentialBinding`, ADR-0038, Entscheidung 7)
 gilt; das Rotieren eines Tokens ist eine
 gewöhnliche Konfigurationsänderung.
 
@@ -104,17 +104,21 @@ Jeder Executor deklariert seine Betriebsarten samt Löschkategorie (`SourceIndex
 (`FULL`) und den ergänzenden inkrementellen Abgleich (`INCREMENTAL`, CQL seit Anker −
 `incremental-overlap`). Der manuelle Anstoß bietet beide an; sonst wählt
 `ConfluenceIndexingExecutor#defaultRunMode` den Vollabgleich beim ersten Lauf, nach Unterbrechung,
-nach einer Einstellungsänderung (`SyncStateBasis`) und nach Ablauf von `fullSyncIntervalDays` (seit #1200).
+nach einer Einstellungsänderung (`SyncStateBasis`) und nach Ablauf von `fullSyncIntervalDays`.
 
 **Löschung braucht einen positiven Befund der Instanz:** eine vollständige Auflistung aller Spaces
 und Anhangslisten (`ListingOutcome`) oder `status = trashed` beim Einzelabruf
 (`StaleDocumentCleanupService#removeWithAttachments`, ADR-0022, Entscheidung 3); einen Aufruf aus
-einem ergänzenden Lauf weist `StaleDocumentCleanupService` zurück. `404`/`403` ist kein Befund: Ein
-unlesbarer Space bleibt indiziert, sichtbar im Laufprotokoll und an der Bibliothek. Archivierte
-Seiten fallen wie gelöschte weg; ein Vollabgleich ohne Dokumente löscht nichts. Ein Webhook (`ConfluenceWebhookSignature`, #1140) ist nur Anlass
-für einen Einzelabruf (`WEBHOOK`/`INCREMENTAL`), der den Anker nicht bewegt. Identität ist die
-titelfreie Seiten-URL (ADR-0022, Entscheidung 2); Rhythmus, Anker und Budget:
-[Handbuch](../handbuch/konnektoren/confluence.md), „Betriebsarten und Änderungserkennung“ bis „Löscherkennung“.
+einem ergänzenden Lauf weist `StaleDocumentCleanupService` zurück. Der Geltungsbereich ist je
+Bibliothek und Quellentyp; eine zweite Bibliothek gegen dieselbe Instanz bleibt unberührt.
+`404`/`403` ist kein Befund: Ein unlesbarer Space bleibt indiziert, sichtbar im Laufprotokoll und an
+der Bibliothek. Archivierte Seiten fallen wie gelöschte weg; ein Vollabgleich ohne Dokumente löscht
+nichts. Ein Webhook (`ConfluenceWebhookSignature`: Signatur bzw. geteiltes Geheimnis, zeitkonstant
+verglichen, sonst einheitlich `401`) ist nur Anlass für einen Einzelabruf (`WEBHOOK`/`INCREMENTAL`),
+der den Anker nicht bewegt. Identität ist die titelfreie Seiten-URL (ADR-0022, Entscheidung 2); der
+`webui`-Link taugt nicht als Identität, weil er den Titel enthält. Rhythmus, Anker und Budget:
+[Handbuch](../handbuch/konnektoren/confluence.md), „Betriebsarten und Änderungserkennung“ bis
+„Löscherkennung“.
 
 ### 5. Folgen des Mehrfach-Bibliotheken-Modells
 
@@ -158,18 +162,3 @@ Zieladressprüfung ist eine Betriebseinstellung je Adresse, keine Eigenschaft de
 - Rechteabbildung Confluence → OPAA wäre ein eigenes Epic mit eigener Rechtequelle.
 - Weitere Inhaltsarten (Blogbeiträge, Kommentare, Whiteboards, Datenbanken) und archivierte Seiten als gekennzeichneter Bestand.
 - Seitenhierarchie als Bibliotheksordner — konkurrierte mit der Ordnerverwaltung aus ADR-0020.
-
-## Änderungsverlauf
-
-| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
-|---|---|---|---|
-| 2026-09-03 | #1139 | Vollabgleich-Rhythmus zunächst instanzweit (`full-sync-interval`) | 4 |
-| 2026-09-03 | #1140 | Webhook als Anlass zum Einzelabruf, zwei Authentisierungswege | 4 |
-| 2026-09-05 | #1200 | Rhythmus je Bibliothek (`fullSyncIntervalDays`, 1–365) | 4 |
-| 2026-09-26 | #1977 | Space-Auswahl, Edition und Rhythmus in `source_settings` (ADR-0038) | 1, 2, 4 |
-| 2026-10-04 | #2218 | Zugang darf die Edition vorgeben; Ursprungsbindung über `credentialBinding` (ADR-0038, Entscheidung 7) | 2, 3, 5 |
-| 2026-10-11 | #2273 | Geheimnis einer Bibliothek an einem Zugang liegt im Token-Speicher (ADR-0041) | 3, 5 |
-| 2026-10-12 | #2496 | Proxy je Bibliothek entfernt, hausweiter Ausgangsproxy (ADR-0041) | Kontext |
-| 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5 |
-| 2026-10-14 | #2702 | Verweise auf ADR-0045/0048/0050 | — |
-| 2026-10-14 | #2762 | Zweitprüfung: Entscheidung 4 ohne inhaltliche Änderung gestrafft, Einzelheiten im Handbuch | 4 |
