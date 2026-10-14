@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Every ADR under docs/decisions/ follows docs/decisions/README.md: the status line (first non-empty
 # line under "## Status") starts with "Akzeptiert", "Vorgeschlagen" or "Ersetzt durch" and names
-# "zuletzt geändert JJJJ-MM-TT"; no appended "Nachtrag"/"Überholt" blocks; no sub-issue cut
+# "zuletzt geändert JJJJ-MM-TT"; no appended "Nachtrag"/"Nachträge"/"Überholt" blocks (headings or bold
+# lead-ins, also inside indented block quotes); no sub-issue cut
 # ("Zuschnitt der ... Sub-Issues"); a "## Änderungsverlauf" section exists.
 #
 # Until the rewrites of the existing ADRs are merged (#2697-#2702), findings are reported as
@@ -60,7 +61,7 @@ for adr in ${ADRS[@]+"${ADRS[@]}"}; do
   while IFS=: read -r line content; do
     [ -n "$line" ] || continue
     report "$adr" "$line" "appended block \"${content:0:40}\": work the change into the decision text and add a row to \"## Änderungsverlauf\""
-  done < <(grep -nE '^(## Nachtrag|### Nachtrag|> \*\*Nachtrag|\*\*Nachtrag|\*\*Überholt|> \*\*Überholt)' "$adr" || true)
+  done < <(grep -nE '^[[:space:]]*(>[[:space:]]*)*(#+[[:space:]]+|\*\*)(Nachtr(ag|äge)|Überholt)' "$adr" || true)
 
   # (c) sub-issue cut
   while IFS=: read -r line content; do

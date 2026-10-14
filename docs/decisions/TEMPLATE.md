@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert JJJJ-MM-TT · ergänzt durch ADR-XXXX · ersetzt Entscheidung N von ADR-YYYY
+Vorgeschlagen · zuletzt geändert JJJJ-MM-TT
 
 ## Kontext
 

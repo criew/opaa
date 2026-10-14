@@ -2,8 +2,8 @@
 
 Ein ADR hält den **heute gültigen Endstand** einer Architekturentscheidung fest, nicht ihre
 Geschichte. Die Historie liefert `git log`; wer wissen will, was vorher galt, liest den Diff.
-Vorlage: [TEMPLATE.md](TEMPLATE.md) — die Abschnittsfolge ist verbindlich, der Stil wird in der CI
-durch `.github/scripts/check_adr_style.sh` geprüft.
+Vorlage: [TEMPLATE.md](TEMPLATE.md). Statuszeile, Nachträge, Sub-Issue-Zuschnitte und der Abschnitt
+Änderungsverlauf werden in der CI geprüft (`.github/scripts/check_adr_style.sh`).
 
 ## Fortschreiben statt anhängen
 
@@ -26,8 +26,7 @@ besteht aus einer Zeile: „Entfallen mit #NNNN, siehe ADR-XXXX Entscheidung M.�
 prüfen, worauf verwiesen wird:
 
 ```bash
-grep -rn "ADR-00NN" backend/src docs frontend/src deploy opaa-api \
-  --include=*.java --include=*.md --include=*.yaml --include=*.ts --include=*.tsx --include=*.kts
+git grep -n "ADR-00NN"
 ```
 
 ## Was nicht in einen ADR gehört
@@ -44,10 +43,10 @@ grep -rn "ADR-00NN" backend/src docs frontend/src deploy opaa-api \
 
 ## Status
 
-- **Vorgeschlagen** gilt nur, bis der PR gemergt ist, der den ADR einführt. Mit dem Merge wird der
-  Status „Akzeptiert · zuletzt geändert JJJJ-MM-TT“; das Datum ist das der letzten inhaltlichen
-  Änderung und wird mit jeder Fortschreibung nachgezogen. Der Maintainer entscheidet über den
-  Merge und damit über die Annahme; eine spätere Umsetzung ändert den Status nicht mehr.
+- **Vorgeschlagen** gilt nur, bis der PR gemergt ist, der den ADR einführt. Der Autor setzt den
+  Status im letzten Commit vor dem Merge auf „Akzeptiert · zuletzt geändert JJJJ-MM-TT“, sobald der
+  Maintainer zustimmt; das Datum ist das der letzten inhaltlichen Änderung und wird mit jeder
+  Fortschreibung nachgezogen. Eine spätere Umsetzung ändert den Status nicht mehr.
 - Sind **alle Entscheidungen** eines ADR abgelöst, wird er ein Stub von höchstens 20 Zeilen mit
   dem Status „Ersetzt durch ADR-XXXX · zuletzt geändert JJJJ-MM-TT“. Die Datei bleibt, damit
   Verweise weiter auflösen.
