@@ -12,7 +12,7 @@ import java.util.UUID;
 /**
  * Takes over a whole turn instead of the ordinary retrieval/answer path of {@link QueryService},
  * with the chat, space guards, readable libraries and search scope the caller has already resolved.
- * A bean exists only while {@code opaa.spike.tool-loop.enabled} is set.
+ * Optional: without a bean, {@link QueryService} always runs its ordinary path.
  */
 public interface ToolLoopQueryHandler {
 
