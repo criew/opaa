@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import java.util.Map;
@@ -22,6 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class DiagnosticContextRetentionService {
+
+  private static final String ADMIN_ONLY =
+      "Nur die Administration darf die Aufbewahrungsdauer einsehen und ändern";
 
   /**
    * Fixed, well-known object id of the settings singleton in the audit trail - it is a system
@@ -42,7 +44,7 @@ public class DiagnosticContextRetentionService {
 
   @Transactional(readOnly = true)
   public DiagnosticContextRetentionSettings read(CurrentUser actor) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     return repository
         .findSingleton()
         .orElseThrow(() -> new NotFoundException("Aufbewahrungseinstellung nicht gefunden"));
@@ -50,7 +52,7 @@ public class DiagnosticContextRetentionService {
 
   @Transactional
   public DiagnosticContextRetentionSettings updateRetentionMonths(CurrentUser actor, int months) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     if (months < DiagnosticContextRetentionSettings.MIN_RETENTION_MONTHS
         || months > DiagnosticContextRetentionSettings.MAX_RETENTION_MONTHS) {
       throw new ValidationException(
@@ -75,12 +77,5 @@ public class DiagnosticContextRetentionService {
     return repository
         .findSingleton()
         .orElseThrow(() -> new NotFoundException("Aufbewahrungseinstellung nicht gefunden"));
-  }
-
-  private void requireSystemAdmin(CurrentUser actor) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Administration darf die Aufbewahrungsdauer einsehen und ändern");
-    }
   }
 }

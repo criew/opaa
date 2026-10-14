@@ -6,7 +6,6 @@ import io.opaa.api.types.AuditOutcome;
 import io.opaa.audit.AuditEvent;
 import io.opaa.audit.AuditEventRecorder;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.AccessDeniedException;
 import io.opaa.common.FieldValidationException;
 import io.opaa.common.FieldValidationException.FieldError;
 import io.opaa.outbound.OutboundProxy;
@@ -30,6 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OutboundProxyAdministration {
 
+  private static final String ADMIN_ONLY =
+      "Nur die Systemverwaltung darf den Ausgangsproxy einsehen und ändern";
+
   static final int MAX_PROXY_URL_LENGTH = 300;
   static final int MAX_NO_PROXY_ENTRIES = 100;
   static final int MAX_NO_PROXY_ENTRY_LENGTH = 253;
@@ -51,7 +53,7 @@ public class OutboundProxyAdministration {
 
   @Transactional(readOnly = true)
   public OutboundProxy.Settings read(CurrentUser actor) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     return outboundProxy.read();
   }
 
@@ -64,7 +66,7 @@ public class OutboundProxyAdministration {
    */
   @Transactional
   public OutboundProxy.Settings change(CurrentUser actor, String proxyUrl, List<String> noProxy) {
-    requireSystemAdmin(actor);
+    actor.requireSystemAdmin(ADMIN_ONLY);
     List<FieldError> errors = new ArrayList<>();
     ProxyAddress proxy = parseProxy(proxyUrl, errors);
     List<String> entries = ProxyExclusions.normalize(noProxy);
@@ -154,12 +156,5 @@ public class OutboundProxyAdministration {
     payload.put("proxyUrl", settings.proxy() == null ? "" : settings.proxy().toUrl());
     payload.put("noProxy", settings.noProxy());
     return payload;
-  }
-
-  private static void requireSystemAdmin(CurrentUser actor) {
-    if (!actor.isSystemAdmin()) {
-      throw new AccessDeniedException(
-          "Nur die Systemverwaltung darf den Ausgangsproxy einsehen und ändern");
-    }
   }
 }
