@@ -27,8 +27,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * #582: {@link BrandingSettingsService} against a real Postgres with the real, versioned Liquibase
- * schema applied. Covers what a test against a mocked repository could not - that an unconfigured
+ * {@link BrandingSettingsService} against a real Postgres with the real, versioned Liquibase schema
+ * applied. Covers what a test against a mocked repository could not - that an unconfigured
  * deployment really does resolve to the OPAA standard field by field, that a change writes exactly
  * one {@link AuditEventType#BRANDING_SETTINGS_CHANGED} entry carrying the effective before/after
  * state, that a logo survives a round trip through the {@code bytea} column, and that the
@@ -212,7 +212,7 @@ class BrandingSettingsServiceIntegrationTest {
   }
 
   /**
-   * #1910: the audit record names each image slot separately. Without that, "a branding image was
+   * The audit record names each image slot separately. Without that, "a branding image was
    * replaced" would be all an auditor could reconstruct from a row that holds three of them.
    */
   @Test

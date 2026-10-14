@@ -29,9 +29,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The channel settings of the external access at the HTTP boundary (#1717, ADR-0035), against the
- * real {@code dev} security chain and a real Postgres - a {@code @WebMvcTest} slice would have to
- * stub the very authorization decision one of the acceptance criteria is about.
+ * The channel settings of the external access at the HTTP boundary (ADR-0035), against the real
+ * {@code dev} security chain and a real Postgres - a {@code @WebMvcTest} slice would have to stub
+ * the very authorization decision one of the acceptance criteria is about.
  *
  * <p>Carries the canonical {@link OpaaIntegrationTest} signature (AGENTS.md,
  * "Spring-Testkontexte"). The settings row itself is put back by {@code SeededRowRestorer}; this
@@ -232,8 +232,8 @@ class ExternalAccessSettingsIntegrationTest {
 
   /**
    * The emergency stop, and the only key that changed: the entry names it alone - an implementation
-   * that always wrote all five keys would be indistinguishable in a test that changes all five
-   * (#1717, "in beide Richtungen").
+   * that always wrote all five keys would be indistinguishable in a test that changes all five ("in
+   * beide Richtungen").
    */
   @Test
   void switchingTheChannelOffIsAuditedWithThatOneKeyOnly() throws Exception {

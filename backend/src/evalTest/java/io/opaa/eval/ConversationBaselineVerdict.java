@@ -4,16 +4,15 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * The verdict of one multi-turn baseline comparison (issue #1553): the single place that decides
- * whether a {@link ConversationBaselineComparator.ComparisonResult} fails the run, and with which
- * wording.
+ * The verdict of one multi-turn baseline comparison: the single place that decides whether a {@link
+ * ConversationBaselineComparator.ComparisonResult} fails the run, and with which wording.
  *
  * <p><b>Three outcomes, exactly the pipeline path's.</b> An incomparable baseline is never a
  * statement about retrieval quality and always fails the run — the measurement basis moved, which
  * is a finding of its own kind. The fourth outcome this path carried between #1553 and #1490
  * ("nicht beurteilt", a named tolerance for {@code searchWindowTurns}/{@code conversationNoteCap})
- * existed only because the committed baseline predated the search window (#1486) and the
- * Gesprächsnotiz (#1487); it was removed with the re-measurement that ended that state.
+ * existed only because the committed baseline predated the search window and the Gesprächsnotiz; it
+ * was removed with the re-measurement that ended that state.
  */
 public record ConversationBaselineVerdict(Kind kind, String headline, String detail) {
 

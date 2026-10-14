@@ -424,7 +424,7 @@ unverändert; jede API-Änderung beginnt in der Spezifikation (ADR-0006).
 
 ### 14. Deaktivieren einer internen Gruppe
 
-Seit #1987 lässt sich eine interne Gruppe vorübergehend deaktivieren — der umkehrbare Zwischenzustand
+Eine interne Gruppe lässt sich vorübergehend deaktivieren — der umkehrbare Zwischenzustand
 zwischen „Freigabe zurücknehmen" (Rechte bleiben wirksam) und „übertragen und löschen" (endgültig).
 
 1. **Eigener Schalter** `groups.deactivated` (`deactivated_at`), nur für `kind = AD_HOC`, unabhängig von

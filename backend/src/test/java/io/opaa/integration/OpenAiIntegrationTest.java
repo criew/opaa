@@ -9,7 +9,7 @@ import io.opaa.auth.CurrentUser;
 import io.opaa.indexing.chunk.VectorChunkStore;
 import io.opaa.indexing.job.IndexingJob;
 import io.opaa.indexing.job.JobStatus;
-import io.opaa.indexing.run.DocumentIndexingService;
+import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.organization.Organization;
@@ -56,7 +56,7 @@ class OpenAiIntegrationTest {
 
   @DynamicPropertySource
   static void configureProperties(DynamicPropertyRegistry registry) {
-    // #484: overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
+    // Overrides the dev profile's /data,/tmp default so this suite's own @TempDir stays
     // inside the allowlist.
     registry.add("opaa.indexing.filesystem.allowlist", () -> tempDir.toAbsolutePath().toString());
     registry.add("opaa.indexing.chunk-size", () -> 200);
@@ -68,9 +68,8 @@ class OpenAiIntegrationTest {
   // via a plain PreparedStatement, which does not auto-cast a text/varchar parameter to uuid the
   // way an inline SQL literal would. A local String constant here surfaced as a
   // BadSqlGrammarException ("operator does not exist: uuid = text") the moment this test actually
-  // executed (#309 code review round 4: it never had, because this whole class is gated behind
-  // OPAA_OPENAI_API_KEY and was never run after being adapted to the asset-grants model in
-  // #305/#309).
+  // executed; this class is gated behind OPAA_OPENAI_API_KEY and does not run in the regular
+  // suite.
   private static final UUID SEEDED_ORGANIZATION_ID = Organization.DEFAULT_ID;
 
   @Autowired private DocumentIndexingService documentIndexingService;
@@ -85,8 +84,8 @@ class OpenAiIntegrationTest {
   @BeforeEach
   void setUp() throws IOException {
     removeOwnFixtures();
-    // #478: the trigger endpoint/service reads type and configuration off the library itself, and
-    // the seeded system library is SourceType.UPLOAD, which triggerIndexing now rejects
+    // The trigger endpoint/service reads type and configuration off the library itself, and the
+    // seeded system library is SourceType.UPLOAD, which triggerIndexing now rejects
     // with 409 (no run type). This test needs a document to actually be found and indexed, so it
     // creates its own FILESYSTEM library pointed at tempDir instead of reusing the system library.
     userId = UUID.randomUUID();
@@ -109,9 +108,9 @@ class OpenAiIntegrationTest {
                 null,
                 null));
     targetLibraryId = library.getId();
-    // #419: an indexing run needs a caller who holds at least EDITOR on the target library.
-    // Reading it back via query still needs a grant too, exactly like every other reader (#202:
-    // search never bypasses grants, not even for a system admin).
+    // An indexing run needs a caller who holds at least EDITOR on the target library. Reading
+    // it back via query still needs a grant too, exactly like every other reader (#202: search
+    // never bypasses grants, not even for a system admin).
     jdbcTemplate.update(
         "INSERT INTO asset_grants (id, asset_type, asset_id, organization_id, subject_type,"
             + " subject_user_id, role, created_at, updated_at) VALUES (?, 'KNOWLEDGE_LIBRARY', ?, ?, 'USER', ?,"

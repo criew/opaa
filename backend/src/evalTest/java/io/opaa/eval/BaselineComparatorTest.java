@@ -47,10 +47,10 @@ class BaselineComparatorTest {
 
   @Test
   void oneCaseFlipNoLongerFalselyFailsTheEntityDescriptionBoundaryCase() {
-    // PR #301 review: with the old formula, 12/20 - 0.65 == -0.05000000000000004 against a
-    // tolerance of exactly 0.05 failed on floating-point rounding alone. The new tolerance
-    // (2/20=0.1) comfortably covers a single case flip (1/20=0.05) with margin to spare, and the
-    // epsilon in addMetricCheck absorbs any remaining boundary rounding.
+    // With the old formula, 12/20 - 0.65 == -0.05000000000000004 against a tolerance of exactly
+    // 0.05 failed on floating-point rounding alone. The new tolerance (2/20=0.1) comfortably
+    // covers a single case flip (1/20=0.05) with margin to spare, and the epsilon in
+    // addMetricCheck absorbs any remaining boundary rounding.
     double tolerance = BaselineComparator.toleranceFor(0.650, 20);
     assertThat(tolerance).isEqualTo(0.1, within(1e-9));
     assertThat(tolerance).isGreaterThan(1.0 / 20);
@@ -61,12 +61,11 @@ class BaselineComparatorTest {
   @Test
   void usesCaseBasedCheckIdentifiesExactlyTheFourKnownAffectedPairsInTheCommittedBaseline()
       throws IOException {
-    // Issue #306 review, Befund 2: the previous version of this test hardcoded the baseline's
-    // numeric literals (0.063, 15, 16, ...) instead of loading the committed baseline file, so it
-    // could not actually detect a future baseline edit that shifted which pairs are protected — it
-    // would just keep comparing a frozen snapshot against itself. Loading the real file here means
-    // this test fails loudly exactly when the set of case-based pairs changes, matching what its
-    // comment always claimed.
+    // The previous version of this test hardcoded the baseline's numeric literals (0.063, 15, 16,
+    // ...) instead of loading the committed baseline file, so it could not actually detect a
+    // future baseline edit that shifted which pairs are protected — it would just keep comparing a
+    // frozen snapshot against itself. Loading the real file here means this test fails loudly
+    // exactly when the set of case-based pairs changes, matching what its comment always claimed.
     Path baselineFile = RepoPaths.evalDir().resolve("baseline").resolve("comic-characters.json");
     Baseline baseline = Baseline.load(baselineFile);
 
@@ -120,7 +119,7 @@ class BaselineComparatorTest {
     // (ndcg=1/log2(4)=0.5) — no lost hit, the case still scores > 0 — to swing the group mean by
     // 0.5/16=0.03125, more than twice the old mean tolerance (0.01575 = 0.25 * 0.063). This test
     // proves two things at once: (1) the *old* mean-only tolerance would indeed have failed here
-    // (asserted directly below via toleranceFor, the exact pre-#306 formula, unchanged by this
+    // (asserted directly below via toleranceFor, the exact mean-only formula, unchanged by this
     // fix), and (2) BaselineComparator.compare(...) — using the new case-count check — passes,
     // because the case-count check correctly reads "no hit was actually lost" from
     // hitCountAt10 staying at 4.
@@ -164,7 +163,7 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
-            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            // Expected-state audit — null for a dataset without expected_state fields.
             null,
             null,
             List.of(),
@@ -193,12 +192,12 @@ class BaselineComparatorTest {
 
   @Test
   void severeRankDegradationWithNoLostHitsIsCaughtByTheWidenedMeanCheck() {
-    // Issue #306 review, Befund 1: the case-count check alone protects against *lost* hits, not
-    // against a same-hit-count regression that is nevertheless severe. Reproduces the reviewer's
-    // exact numeric_range/mrr example against the real committed baseline data: numeric_range's
-    // four hitting cases sit at ranks 1, 4, 5 and 6 today (mrr contributions summing to 0.101 * 16
-    // = 1.616). If all four slide to rank 10 (mrr contribution 0.1 each, sum 0.4, mean 0.025) — no
-    // hit lost, hitCountAt10 stays at 4 — the case-count check alone would have passed this
+    // The case-count check alone protects against *lost* hits, not against a same-hit-count
+    // regression that is nevertheless severe. Reproduces the reviewer's exact numeric_range/mrr
+    // example against the real committed baseline data: numeric_range's four hitting cases sit at
+    // ranks 1, 4, 5 and 6 today (mrr contributions summing to 0.101 * 16 = 1.616). If all four
+    // slide to rank 10 (mrr contribution 0.1 each, sum 0.4, mean 0.025) — no hit lost,
+    // hitCountAt10 stays at 4 — the case-count check alone would have passed this
     // (issue #306's first, since-corrected version indeed did). The widened mean check
     // (max(meanTolerance, 1/n) = max(0.0253, 1/16=0.0625) = 0.0625) catches it: the actual drop is
     // 0.076, above 0.0625.
@@ -232,7 +231,7 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
-            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            // Expected-state audit — null for a dataset without expected_state fields.
             null,
             null,
             List.of(),
@@ -297,7 +296,7 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
-            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            // Expected-state audit — null for a dataset without expected_state fields.
             null,
             null,
             List.of(),
@@ -359,7 +358,7 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
-            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            // Expected-state audit — null for a dataset without expected_state fields.
             null,
             null,
             List.of(),
@@ -404,7 +403,7 @@ class BaselineComparatorTest {
   }
 
   /**
-   * Issue #1522: the same model digest served from a different Ollama is not guaranteed to embed
+   * The same model digest served from a different Ollama is not guaranteed to embed
    * bit-identically, so the baseline is incomparable rather than regressed.
    */
   @Test
@@ -427,9 +426,9 @@ class BaselineComparatorTest {
   }
 
   /**
-   * Issue #1522: a baseline file predating the field loads as {@code null} and is reported here as
-   * incomparable, rather than being refused at load time - the regression job then still writes a
-   * delta table naming the field (the {@code metadataFilterEnabled} precedent).
+   * A baseline file predating the field loads as {@code null} and is reported here as incomparable,
+   * rather than being refused at load time - the regression job then still writes a delta table
+   * naming the field (the {@code metadataFilterEnabled} precedent).
    */
   @Test
   void aBaselineWithoutAnOllamaImageIsReportedAsIncomparable() {
@@ -505,7 +504,7 @@ class BaselineComparatorTest {
 
   @Test
   void detectsSearchTopKDrift() {
-    // ADR-0012 decision 3 / PR #301 review, Befund 4: searchTopK is part of the measurement
+    // ADR-0012 decision 3: searchTopK is part of the measurement
     // contract, not just run metadata — a topK change must invalidate the baseline, not be silently
     // compared as if it were a regression.
     Baseline baseline = baselineWith(fixedPoints("m1", "d1", "corpus-a", "golden-a"));
@@ -549,10 +548,10 @@ class BaselineComparatorTest {
   }
 
   /**
-   * Issue #1144: a pipeline change (routing, or a version bump on a pipeline the corpus uses) moves
-   * the produced chunks without moving corpusManifestSha256, which describes the input files rather
-   * than what processed them. Without this fixed point, the run below would be compared as if it
-   * measured the same chunks the baseline was drawn from.
+   * A pipeline change (routing, or a version bump on a pipeline the corpus uses) moves the produced
+   * chunks without moving corpusManifestSha256, which describes the input files rather than what
+   * processed them. Without this fixed point, the run below would be compared as if it measured the
+   * same chunks the baseline was drawn from.
    */
   @Test
   void detectsIngestionPipelineFingerprintDrift() {
@@ -597,8 +596,8 @@ class BaselineComparatorTest {
   }
 
   /**
-   * Issue #1650: a changed Kontextpräfix form moves every multi-chunk embedding without moving a
-   * pipeline version or the corpus hash - a run under another form measured something else.
+   * A changed Kontextpräfix form moves every multi-chunk embedding without moving a pipeline
+   * version or the corpus hash - a run under another form measured something else.
    */
   @Test
   void detectsContextPrefixFingerprintDrift() {
@@ -643,8 +642,8 @@ class BaselineComparatorTest {
   }
 
   /**
-   * Issue #1070: a run that did not apply the golden filters measures the metadata_filter class
-   * without the mechanism it exists for - a different measurement, never a regression of one.
+   * A run that did not apply the golden filters measures the metadata_filter class without the
+   * mechanism it exists for - a different measurement, never a regression of one.
    */
   @Test
   void detectsMetadataFilterEnabledDrift() {
@@ -798,16 +797,16 @@ class BaselineComparatorTest {
 
   @Test
   void ignoresTheRedundantLanguageDeGroupEvenThoughTheReportStillProducesIt() {
-    // Issue #304: category:crosslingual and language:de are, by construction, exactly the same
-    // case set in the golden dataset. The baseline no longer carries a language:de entry, but the
-    // harness still computes a language:de aggregate from the (unchanged) golden dataset. Without
-    // the skip in BaselineComparator.compare, this would throw "Baseline has no entry for group
+    // Category:crosslingual and language:de are, by construction, exactly the same case set in
+    // the golden dataset. The baseline no longer carries a language:de entry, but the harness
+    // still computes a language:de aggregate from the (unchanged) golden dataset. Without the
+    // skip in BaselineComparator.compare, this would throw "Baseline has no entry for group
     // 'language:de'" via checkGroup — proving the fix requires the report to still contain the
     // group despite the baseline dropping it.
     //
-    // PR #673 review: the fixture also carries a second language group (language:en) with its own
-    // baseline entry, to prove the skip is specific to language:de and does not accidentally
-    // swallow every language group.
+    // The fixture also carries a second language group (language:en) with its own baseline entry,
+    // to prove the skip is specific to language:de and does not accidentally swallow every
+    // language group.
     Baseline baseline =
         new Baseline(
             1,
@@ -836,7 +835,7 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
-            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            // Expected-state audit — null for a dataset without expected_state fields.
             null,
             null,
             List.of(),
@@ -858,11 +857,11 @@ class BaselineComparatorTest {
 
   @Test
   void comparesLanguageDeNormallyOnceTheBaselineCarriesItAgain() {
-    // PR #673 review: the skip in BaselineComparator.compare must be self-healing — it only fires
-    // while the baseline genuinely lacks a language:de entry. Should a future baseline
-    // re-measurement legitimately reintroduce the group (e.g. the golden dataset gains German
-    // cases that are not simply crosslingual's twins), it must be compared like any other group,
-    // not silently discarded.
+    // The skip in BaselineComparator.compare must be self-healing — it only fires while the
+    // baseline genuinely lacks a language:de entry. Should a future baseline re-measurement
+    // legitimately reintroduce the group (e.g. the golden dataset gains German cases that are not
+    // simply crosslingual's twins), it must be compared like any other group, not silently
+    // discarded.
     Baseline baseline =
         new Baseline(
             1,
@@ -885,7 +884,7 @@ class BaselineComparatorTest {
             ChunkAnswerSpanMetrics.Aggregate.NOT_APPLICABLE,
             fullDocumentWindowCoverage(),
             noApplicableAnswerSpans(),
-            // Issue #1043: expected-state audit — null for a dataset without expected_state fields.
+            // Expected-state audit — null for a dataset without expected_state fields.
             null,
             null,
             List.of(),
@@ -906,8 +905,8 @@ class BaselineComparatorTest {
 
   @Test
   void failsWhenReportIsMissingAGroupThatIsPresentInTheBaseline() {
-    // PR #301 review: a report whose byCategory/byDifficulty/byLanguage came back empty or partial
-    // must not silently pass with only the four overall checks run.
+    // A report whose byCategory/byDifficulty/byLanguage came back empty or partial must not
+    // silently pass with only the four overall checks run.
     Baseline baseline =
         new Baseline(
             1,
@@ -1051,7 +1050,7 @@ class BaselineComparatorTest {
         Map.of());
   }
 
-  // --- issue #721 code review, Nit 6: fixed-point drift for the new #721 fixed points -----------
+  // --- fixed-point drift for the document-window fixed points ------------------------------------
 
   /** Issue #1652: another ggml CPU variant moves embedding rankings - a different measurement. */
   @Test

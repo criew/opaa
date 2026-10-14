@@ -37,10 +37,9 @@ import org.springframework.ai.chat.prompt.Prompt;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * Unit tests for {@link QueryDecompositionService#decompose}'s parsing and fallback behaviour
- * (#923) - the LLM call itself is stubbed via a mocked {@link ChatModel} wrapped in a real {@link
- * ChatClient}, exactly like {@code ChatTitleGenerationServiceTest} stubs the equivalent single-call
- * LLM pattern.
+ * Unit tests for {@link QueryDecompositionService#decompose}'s parsing and fallback behaviour - the
+ * LLM call itself is stubbed via a mocked {@link ChatModel} wrapped in a real {@link ChatClient},
+ * exactly like {@code ChatTitleGenerationServiceTest} stubs the equivalent single-call LLM pattern.
  */
 class QueryDecompositionServiceTest {
 
@@ -195,7 +194,7 @@ class QueryDecompositionServiceTest {
   /**
    * Regression guard for #923/#1254: the rule that resolves a conversation-relative question
    * survived the removal of its example, and the conversation history still reaches the model -
-   * since #1684 inside the one user message, before the question.
+   * inside the one user message, before the question.
    */
   @Test
   void theSystemPromptKeepsTheFollowUpRuleAndTheHistoryReachesTheModel() {
@@ -216,8 +215,8 @@ class QueryDecompositionServiceTest {
   }
 
   /**
-   * #1684: a message without anything to search for is its own result, not a failure - an empty
-   * list rather than the fallback, counted apart from every fallback reason.
+   * A message without anything to search for is its own result, not a failure - an empty list
+   * rather than the fallback, counted apart from every fallback reason.
    */
   @Test
   void theNoSearchSentinelYieldsNoSubQueriesAndNoFallback() {
@@ -463,10 +462,10 @@ class QueryDecompositionServiceTest {
   }
 
   /**
-   * The case the anchor space exists for (#1486): "Wie lange dauert das?" resolved into
-   * "Bearbeitungsdauer für den Anwohnerparkausweis" shares no anchor with the question - "dauert"
-   * is not a substring of "Bearbeitungsdauer" and the belt is deliberately no stemmer - but it
-   * shares one with the previous turn in the search window.
+   * The case the anchor space exists for: "Wie lange dauert das?" resolved into "Bearbeitungsdauer
+   * für den Anwohnerparkausweis" shares no anchor with the question - "dauert" is not a substring
+   * of "Bearbeitungsdauer" and the belt is deliberately no stemmer - but it shares one with the
+   * previous turn in the search window.
    */
   @Test
   void aNominalPhraseResolvedFromThePreviousTurnIsKept() {
@@ -607,8 +606,8 @@ class QueryDecompositionServiceTest {
    * <p>Measured by running two entirely different contexts: once each prompt has its own {@link
    * DecompositionContext#contextTexts()} taken out, what remains must be identical. Anything the
    * prompt derives from the run outside the anchor space differs here. A block's own heading is
-   * deliberately not anchored (#1487) and survives the removal - it is the same fixed text in both
-   * runs and therefore cancels out, exactly as the instruction does.
+   * deliberately not anchored and survives the removal - it is the same fixed text in both runs and
+   * therefore cancels out, exactly as the instruction does.
    *
    * <p><b>Whoever adds an argument to {@code decompose} fills it differently in the two runs.</b>
    * The two runs are the whole mechanism: a new argument given the same value twice cancels out of

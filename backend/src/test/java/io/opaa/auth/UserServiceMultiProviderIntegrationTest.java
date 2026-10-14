@@ -11,12 +11,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The account identity under several providers, against a real Postgres (#1330, ADR-0025
- * Entscheidung 2 and 3): the same person at two providers is two accounts - the e-mail never merges
- * them - and the initial administrator's address grants {@code SYSTEM_ADMIN} only through the dev
- * issuer of this context's {@code dev} mode; in the {@code oidc} branch - exercised against a real
- * {@code oidc_providers} row with the same repository - not even the default provider mints one
- * (ADR-0033, Entscheidung 5).
+ * The account identity under several providers, against a real Postgres (ADR-0025 Entscheidung 2
+ * and 3): the same person at two providers is two accounts - the e-mail never merges them - and the
+ * initial administrator's address grants {@code SYSTEM_ADMIN} only through the dev issuer of this
+ * context's {@code dev} mode; in the {@code oidc} branch - exercised against a real {@code
+ * oidc_providers} row with the same repository - not even the default provider mints one (ADR-0033,
+ * Entscheidung 5).
  */
 @OpaaIntegrationTest
 class UserServiceMultiProviderIntegrationTest {
@@ -35,7 +35,7 @@ class UserServiceMultiProviderIntegrationTest {
   void tearDown() {
     jdbcTemplate.update(
         "DELETE FROM spaces WHERE owner_id IN (SELECT id FROM users WHERE subject = ?)", subject);
-    // #1815: the rights history of a space outlives the space (ADR-0016) and holds its person
+    // The rights history of a space outlives the space (ADR-0016) and holds its person
     // columns with RESTRICT.
     jdbcTemplate.update(
         "DELETE FROM space_membership_history WHERE subject_user_id IN"

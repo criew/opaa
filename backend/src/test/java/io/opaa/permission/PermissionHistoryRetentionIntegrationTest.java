@@ -33,9 +33,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The governance setting itself against the real, Liquibase-built schema (#1833, ADR-0036
- * Entscheidung 8): the delivered value, the bounds the database refuses to leave, who may change
- * the period, and that a change is a governance event.
+ * The governance setting itself against the real, Liquibase-built schema (ADR-0036 Entscheidung 8):
+ * the delivered value, the bounds the database refuses to leave, who may change the period, and
+ * that a change is a governance event.
  *
  * <p>{@code SeededRowRestorer} puts the settings row back after every method, so a method may
  * change the period without arranging that itself.

@@ -25,12 +25,12 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 /**
  * Without {@code OPAA_PUBLIC_BASE_URL} (ADR-0033, Entscheidungen 10 and 11) the two link flows do
  * not exist, whatever the settings say - and a caller without a session cannot tell them from a
- * route nobody serves (#1592): {@code forgot-password} and {@code register} answer with the same
- * status, the same body and the same headers as {@code POST /api/v1/auth/local/<unknown>}, for a
- * valid body, a syntactically broken body and another method alike. The two link endpoints stay
- * reachable meanwhile: an invitation handed over as a displayed link must still be redeemable. The
- * state of the flows stays readable through {@code GET /api/v1/auth/config} alone. Runs in the
- * shared local-auth context, which deliberately has no base URL.
+ * route nobody serves: {@code forgot-password} and {@code register} answer with the same status,
+ * the same body and the same headers as {@code POST /api/v1/auth/local/<unknown>}, for a valid
+ * body, a syntactically broken body and another method alike. The two link endpoints stay reachable
+ * meanwhile: an invitation handed over as a displayed link must still be redeemable. The state of
+ * the flows stays readable through {@code GET /api/v1/auth/config} alone. Runs in the shared
+ * local-auth context, which deliberately has no base URL.
  */
 @OpaaLocalAuthMockMvcTest
 class LocalSelfServiceUnavailableIntegrationTest {

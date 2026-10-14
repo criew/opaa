@@ -21,7 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * #1707: a wrong HTTP method and a wrong {@code Content-Type} are caller errors, but {@link
+ * A wrong HTTP method and a wrong {@code Content-Type} are caller errors, but {@link
  * GlobalExceptionHandler}'s catch-all claimed both before Spring's {@code
  * DefaultHandlerExceptionResolver} could render them, so they arrived as {@code 500}. Deliberately
  * driven through {@link MockMvc} against a path this slice really maps: the method mismatch is

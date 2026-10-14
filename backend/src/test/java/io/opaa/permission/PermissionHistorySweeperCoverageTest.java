@@ -29,9 +29,9 @@ class PermissionHistorySweeperCoverageTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   /**
-   * The one swept table whose name does not end in {@code _history} (#1834): {@code
-   * permission_transfers} records the operation the intervals belong to and carries the name
-   * snapshot of the source group, so it expires with them.
+   * The one swept table whose name does not end in {@code _history}: {@code permission_transfers}
+   * records the operation the intervals belong to and carries the name snapshot of the source
+   * group, so it expires with them.
    */
   private static final Set<String> SWEPT_BESIDES_THE_HISTORY_TABLES =
       Set.of("permission_transfers");

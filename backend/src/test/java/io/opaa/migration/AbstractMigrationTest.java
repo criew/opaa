@@ -25,11 +25,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Base class for the {@code io.opaa.migration} test family (issue #497): every subclass applies one
- * or more real, versioned Liquibase changelogs in isolation, against a freshly built schema - never
- * against Hibernate-generated DDL, never against an empty-but-shared context.
+ * Base class for the {@code io.opaa.migration} test family: every subclass applies one or more
+ * real, versioned Liquibase changelogs in isolation, against a freshly built schema - never against
+ * Hibernate-generated DDL, never against an empty-but-shared context.
  *
- * <p><b>What this base class provides (issue #497, measures 1+2):</b>
+ * <p><b>What this base class provides (measures 1+2):</b>
  *
  * <ul>
  *   <li>A single, manually started {@link PostgreSQLContainer} shared by every subclass in the same

@@ -13,19 +13,19 @@ import java.util.UUID;
 import org.slf4j.Logger;
 
 /**
- * The opt-in Variantenvergleich step of a harness run (issue #1041,
- * docs/features/retrieval-benchmark.md §2), in one place instead of copied into each domain harness
- * — the same split {@link PipelineHarnessSupport} makes for the pipeline measurement path.
+ * The opt-in Variantenvergleich step of a harness run (docs/features/retrieval-benchmark.md §2), in
+ * one place instead of copied into each domain harness — the same split {@link
+ * PipelineHarnessSupport} makes for the pipeline measurement path.
  *
  * <p>Runs at the very end of a harness run, on the corpus that run has already indexed and
  * manifest-verified: a variant costs a second pass of queries, never a second indexing run. Every
- * domain has its own default comparison file (issue #1049, which needed the step in all three
- * domains for the lexical path's Wirkungsnachweis); {@code -Dopaa.eval.variantComparisonFile}
- * points at any other one without a code change.
+ * domain has its own default comparison file (which needed the step in all three domains for the
+ * lexical path's Wirkungsnachweis); {@code -Dopaa.eval.variantComparisonFile} points at any other
+ * one without a code change.
  */
 public final class VariantComparisonStep {
 
-  // System properties for the opt-in variant-comparison step (#1041) — see eval/variants/README.md.
+  // System properties for the opt-in variant-comparison step — see eval/variants/README.md.
   private static final String RUN_PROPERTY = "opaa.eval.runVariantComparison";
   private static final String FILE_PROPERTY = "opaa.eval.variantComparisonFile";
 
@@ -37,10 +37,10 @@ public final class VariantComparisonStep {
   }
 
   /**
-   * Resolves, loads and validates the opt-in comparison file (issue #1041 review, Befund 3) — to be
-   * called once, early, before any indexing happens, and again from {@link #run} right before
-   * actually running it. Re-loading is cheap (a small JSON file) and keeps the calling harness free
-   * of state to thread through 400+ lines of its test method.
+   * Resolves, loads and validates the opt-in comparison file — to be called once, early, before any
+   * indexing happens, and again from {@link #run} right before actually running it. Re-loading is
+   * cheap (a small JSON file) and keeps the calling harness free of state to thread through 400+
+   * lines of its test method.
    */
   public static VariantComparison loadAndValidate(
       QueryProperties queryProperties, String defaultComparisonFile, String chatModel)
@@ -58,14 +58,14 @@ public final class VariantComparisonStep {
    * the report.
    *
    * <p>Loading, running and writing are guarded exactly like the pipeline path ({@link
-   * PipelineHarnessSupport#runAndWriteGuarded}, issue #1041 review, Befund 4): a {@link
-   * RuntimeException} or {@link IOException} here must not fail the calling harness test, or the
-   * baseline check that {@code dependsOn} it would lose the raw-vector path's already-completed
-   * verdict to an observation the harness never promised. The Referenzvarianten-Selbstprüfung
-   * assertions below stay hard on purpose: {@code assertThat(...).isEqualTo(...)} throws {@link
-   * AssertionError}, not {@link RuntimeException}, so it is not caught by the guard and fails the
-   * calling test as any other assertion would — the one failure mode this method must never
-   * swallow, since it signals a bug in the variant mechanism itself, not a broken input.
+   * PipelineHarnessSupport#runAndWriteGuarded}): a {@link RuntimeException} or {@link IOException}
+   * here must not fail the calling harness test, or the baseline check that {@code dependsOn} it
+   * would lose the raw-vector path's already-completed verdict to an observation the harness never
+   * promised. The Referenzvarianten-Selbstprüfung assertions below stay hard on purpose: {@code
+   * assertThat(...).isEqualTo(...)} throws {@link AssertionError}, not {@link RuntimeException}, so
+   * it is not caught by the guard and fails the calling test as any other assertion would — the one
+   * failure mode this method must never swallow, since it signals a bug in the variant mechanism
+   * itself, not a broken input.
    *
    * @param pipeline the harness's own production-wired pipeline bean, the one the pipeline path
    *     measured with — every variant runs through it.

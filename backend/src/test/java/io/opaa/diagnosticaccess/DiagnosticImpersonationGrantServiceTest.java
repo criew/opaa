@@ -85,7 +85,7 @@ class DiagnosticImpersonationGrantServiceTest {
         .thenReturn(Optional.of(new User("s", "i", null, "Holder")));
     when(groupRepository.findById(scopeGroupId)).thenReturn(Optional.of(group(GroupKind.ORG_UNIT)));
     // The scope as the write and the read path see it: a provider group above the
-    // Mindestgruppengröße (#1879). Each test that is about the scope replaces one of the two.
+    // Mindestgruppengröße. Each test that is about the scope replaces one of the two.
     when(groupDirectory.find(scopeGroupId)).thenReturn(Optional.of(providerScope()));
     when(membershipResolver.activeMemberCount(scopeGroupId, ORGANIZATION_ID)).thenReturn(7);
   }

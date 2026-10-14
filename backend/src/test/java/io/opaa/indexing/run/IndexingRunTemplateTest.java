@@ -1,6 +1,7 @@
 package io.opaa.indexing.run;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import io.opaa.api.types.IndexingRunMode;
@@ -26,6 +28,7 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
+import io.opaa.indexing.registry.IndexingSourceExecutorRegistry;
 import io.opaa.indexing.spi.IndexingRunFailedException;
 import io.opaa.indexing.spi.ListingOutcome;
 import io.opaa.indexing.spi.RunCredentials;
@@ -50,12 +53,14 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatcher;
 import org.mockito.InOrder;
+import org.springframework.aop.framework.ProxyFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 
 /**
@@ -129,6 +134,96 @@ class IndexingRunTemplateTest {
         .failJob(jobId, "Betriebsart INCREMENTAL wird für diesen Quellentyp nicht unterstützt");
     verify(jobService, never()).recordRunMetrics(any(), any());
     verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  // --- the executor -----------------------------------------------------------------------
+
+  /** A frame whose registry hands the library's source type to {@code registered}. */
+  private IndexingRunTemplate templateRegistering(
+      SourceConnectionResolver resolver, SourceIndexingExecutor registered) {
+    IndexingSourceExecutorRegistry executors = mock(IndexingSourceExecutorRegistry.class);
+    when(executors.find(SourceTypes.FILESYSTEM)).thenReturn(Optional.of(registered));
+    return new IndexingRunTemplate(
+        jobService,
+        eventRepository,
+        cleanupService,
+        documentRepository,
+        quotaService,
+        resolver,
+        Clock.systemUTC(),
+        null,
+        null,
+        SyncStateBasis.WHOLE_SETTINGS,
+        () -> executors);
+  }
+
+  @Test
+  void aBodyFromOutsideTheRegisteredExecutorIsRefusedBeforeTheLibrarysSourceIsResolved() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    AtomicReference<IndexingRun> seen = new AtomicReference<>();
+    FilesystemRun registered = new FilesystemRun();
+
+    // the registered executor itself, but a body another class defines
+    assertThatThrownBy(
+            () ->
+                templateRegistering(resolver, registered)
+                    .run(
+                        jobId,
+                        library,
+                        IndexingRunMode.FULL,
+                        registered,
+                        run -> {
+                          seen.set(run);
+                          return ListingOutcome.complete();
+                        }))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("may not run library " + library.getId());
+
+    assertThat(seen.get()).isNull();
+    verifyNoInteractions(resolver, eventRepository);
+    verify(jobService).failJob(eq(jobId), any());
+    verify(jobService, never()).completeJob(any(), anyInt(), anyInt(), anyInt(), anyInt());
+  }
+
+  @Test
+  void aBodyOfTheRegisteredClassIsRefusedForALibraryOfAnotherSourceType() {
+    SourceConnectionResolver resolver = mock(SourceConnectionResolver.class);
+    AtomicReference<IndexingRun> seen = new AtomicReference<>();
+    FilesystemRun own = new FilesystemRun();
+    KnowledgeLibrary feed =
+        KnowledgeLibrary.ownedByUser(
+            UUID.randomUUID(),
+            "Feed",
+            null,
+            UUID.randomUUID(),
+            SourceTypes.RSS_FEED,
+            null,
+            "https://feed.example",
+            null);
+
+    assertThatThrownBy(
+            () ->
+                templateRegistering(resolver, own)
+                    .run(jobId, feed, IndexingRunMode.FULL, own, own.body(seen)))
+        .isInstanceOf(IllegalArgumentException.class);
+
+    assertThat(seen.get()).isNull();
+    verifyNoInteractions(resolver);
+  }
+
+  @Test
+  void theRegisteredExecutorRunsItsOwnBodyBehindItsProxy() {
+    FilesystemRun target = new FilesystemRun();
+    ProxyFactory proxy = new ProxyFactory(target);
+    proxy.setProxyTargetClass(false);
+    AtomicReference<IndexingRun> seen = new AtomicReference<>();
+
+    templateRegistering(
+            new LibrarySourceConnectionResolver(), (SourceIndexingExecutor) proxy.getProxy())
+        .run(jobId, library, IndexingRunMode.FULL, target, target.body(seen));
+
+    assertThat(seen.get()).isNotNull();
+    verify(jobService).completeJob(eq(jobId), anyInt(), anyInt(), anyInt(), anyInt());
   }
 
   // --- the resolved source -----------------------------------------------------------------

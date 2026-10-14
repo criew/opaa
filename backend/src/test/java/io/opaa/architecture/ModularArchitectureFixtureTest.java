@@ -504,6 +504,18 @@ class ModularArchitectureFixtureTest {
                 assertThat(violation).contains("connection.ConnectorRelease", "support()"));
   }
 
+  /** One properties class in two {@code @EnableConfigurationProperties}, its neighbour in one. */
+  @Test
+  void aPropertiesClassBoundTwiceIsReported() {
+    Scenario scenario = new Scenario("doublebinding");
+
+    assertThat(
+            scenario.violations(
+                ModularArchitecture::everyConfigurationPropertiesClassIsRegisteredOnce))
+        .singleElement(STRING)
+        .contains("common.BoundTwice", "bound 2x");
+  }
+
   /** library reads the secret, also by method reference; knowledge and the store may. */
   @Test
   void theLibrarySecretReadOutsideTheStoreIsReported() {
@@ -626,8 +638,8 @@ class ModularArchitectureFixtureTest {
 
   /**
    * A call, a method reference, the static read of the stored settings, a held resolver, a created
-   * one, a held registry and a read from the file sync are reported; the push secret, the
-   * filesystem path and the core's own resolver pass.
+   * one, a held registry, a held trigger and a read from the file sync are reported; the push
+   * secret, the filesystem path and the core's own resolver pass.
    */
   @Test
   void aConnectorReadingItsSourceConfigurationFromTheLibraryIsReported() {
@@ -636,7 +648,7 @@ class ModularArchitectureFixtureTest {
     assertThat(
             scenario.violations(
                 ModularArchitecture::connectorsTakeTheirSourceConfigurationFromTheCore))
-        .hasSize(7)
+        .hasSize(8)
         .anySatisfy(
             violation ->
                 assertThat(violation)
@@ -644,6 +656,9 @@ class ModularArchitectureFixtureTest {
         .anySatisfy(
             violation ->
                 assertThat(violation).contains("s3.S3Run", "registry.SourceConnectorRegistry"))
+        .anySatisfy(
+            violation ->
+                assertThat(violation).contains("smb.SmbRun", "trigger.DocumentIndexingService"))
         .anySatisfy(
             violation -> assertThat(violation).contains("web.WebRun", "SourceConnectionResolver"))
         .anySatisfy(

@@ -22,7 +22,7 @@ public final class BaselineMarkdownWriter {
    * precision, so an identical run already shows a tiny positive delta on essentially every metric
    * (e.g. {@code crosslingual}'s {@code hitRateAt5}: {@code 13/34 ≈ 0.38235} against a baseline of
    * {@code 0.382}) — without this threshold, the hint would fire on every single run, baseline
-   * drift or not (PR #301 review).
+   * drift or not.
    */
   private static final double IMPROVEMENT_HINT_THRESHOLD = 0.005;
 
@@ -46,8 +46,8 @@ public final class BaselineMarkdownWriter {
    * @param expectedStateAudit the run's declared-vs-measured case-state audit, appended below the
    *     delta table, against {@code expected_state.raw_vector}; {@code null} if no case declares a
    *     state, in which case no audit block is appended.
-   * @param metadataFilterAudit the run's filter audit in its two error directions (issue #1070),
-   *     appended after the state audit; {@code null} for a domain without a filtered case.
+   * @param metadataFilterAudit the run's filter audit in its two error directions, appended after
+   *     the state audit; {@code null} for a domain without a filtered case.
    */
   public static String render(
       BaselineComparator.ComparisonResult result,
@@ -55,9 +55,9 @@ public final class BaselineMarkdownWriter {
       ExpectedStateAudit.Result expectedStateAudit,
       MetadataFilterAudit.Result metadataFilterAudit) {
     StringBuilder sb = new StringBuilder();
-    // Issue #234: parameterized, not hardcoded to "comic-characters.json" — this class is shared
-    // between both domains' *BaselineRegressionTest callers, and a hardcoded title here would
-    // mislabel every city-landmarks delta table (PR comment, CI job summary) as belonging to the
+    // Parameterized, not hardcoded to "comic-characters.json" — this class is shared between
+    // both domains' *BaselineRegressionTest callers, and a hardcoded title here would mislabel
+    // every city-landmarks delta table (PR comment, CI job summary) as belonging to the
     // comic-characters baseline while actually showing city-landmarks data.
     sb.append("## Retrieval-Regression gegen Baseline (`eval/baseline/")
         .append(baselineFileName)
@@ -90,9 +90,9 @@ public final class BaselineMarkdownWriter {
     // In normal operation, RetrievalEvaluationHarnessTest itself asserts the Ein-Chunk-Invariante
     // and aborts *before* writing a report at all when it is violated (see its step 3) — so this
     // branch is unreachable via the harness's own report-writing path today. It is kept as a
-    // second, defensive check (PR #301 review): it still fires correctly against a hand-edited or
-    // otherwise externally produced report, and protects this class against silently becoming
-    // wrong if the harness is ever changed to write partial reports on invariant failure.
+    // second, defensive check: it still fires correctly against a hand-edited or otherwise
+    // externally produced report, and protects this class against silently becoming wrong if the
+    // harness is ever changed to write partial reports on invariant failure.
     if (!result.chunkCountInvariantHolds()) {
       sb.append(
           "**Chunk-Zahl-Invariante verletzt (ADR-0010).** Das ist ein harter Fehlschlag, kein "
@@ -113,7 +113,7 @@ public final class BaselineMarkdownWriter {
             + "|---|---|---|---|---|---|---|---|\n");
     boolean anyCaseBased = false;
     for (var check : result.checks()) {
-      // Issue #306 (review Befund 1 — conjunction, not replacement): for a case-based pair,
+      // Conjunction, not replacement: for a case-based pair,
       // tolerance() is already the *effective* mean tolerance (max(meanTolerance, 1/n)) actually
       // applied — the "*" plus the footnote below only flags that this pair *additionally*
       // required the case-count check to pass, not that the unit of tolerance() changed.

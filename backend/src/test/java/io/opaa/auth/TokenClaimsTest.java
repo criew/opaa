@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.security.oauth2.jwt.Jwt;
 
 /**
- * {@link TokenClaims} (#1331, ADR-0025 Entscheidung 4): the same token read through two providers'
+ * {@link TokenClaims} (ADR-0025 Entscheidung 4): the same token read through two providers'
  * mappings yields two different identities - address, display name, roles and groups each come from
  * the claim the provider's mapping names, nested paths included; a mapping without a roles or
  * groups claim knows nothing about them, which is not "none".

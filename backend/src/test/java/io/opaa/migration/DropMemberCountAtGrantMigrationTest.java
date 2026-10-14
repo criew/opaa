@@ -8,7 +8,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The removal of the growth signal's stored figure (#2134): {@code member_count_at_grant} on {@code
+ * The removal of the growth signal's stored figure: {@code member_count_at_grant} on {@code
  * asset_grants}, {@code space_memberships} and {@code space_membership_history}, with the checks
  * that went with it. Applied to an existing installation, i.e. the master without these two files;
  * the rows already there survive.

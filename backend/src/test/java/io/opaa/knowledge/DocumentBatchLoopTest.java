@@ -9,9 +9,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /**
- * The chargen loop the three resumable runs share (#1305). Pins the three behaviours their previous
- * copies had: a batch is bounded by its size, an unadvanceable candidate is scanned past rather
- * than reselected forever, and a call gives up after {@link DocumentBatchLoop#MAX_SKIP_SCAN_FACTOR}
+ * The chargen loop the three resumable runs share. Pins the three behaviours their previous copies
+ * had: a batch is bounded by its size, an unadvanceable candidate is scanned past rather than
+ * reselected forever, and a call gives up after {@link DocumentBatchLoop#MAX_SKIP_SCAN_FACTOR}
  * times the batch size instead of scanning a whole corpus of unreachable documents.
  */
 class DocumentBatchLoopTest {

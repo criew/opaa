@@ -116,8 +116,8 @@ class AssetShellTypeIndependenceIntegrationTest {
   }
 
   /**
-   * #1931: organization-wide reach of a type no enum names is a grant to "Alle Konten" - written
-   * through the one grant service, resolved by the one formula, derived as ORGANIZATION_WIDE.
+   * Organization-wide reach of a type no enum names is a grant to "Alle Konten" - written through
+   * the one grant service, resolved by the one formula, derived as ORGANIZATION_WIDE.
    */
   @Test
   void aGrantToAllAccountsOfATestDefinedTypeReachesEverybodyAndIsHistorised() {

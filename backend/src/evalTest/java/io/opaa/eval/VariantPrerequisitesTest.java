@@ -38,8 +38,8 @@ class VariantPrerequisitesTest {
   }
 
   /**
-   * Issue #1085: with the pinned chat model installed, the same variant is measurable — the
-   * prerequisite constrains the missing model, not the decomposition itself.
+   * With the pinned chat model installed, the same variant is measurable — the prerequisite
+   * constrains the missing model, not the decomposition itself.
    */
   @Test
   void aVariantThatEnablesDecompositionRunsOnceAChatModelIsAvailable() {
@@ -63,10 +63,10 @@ class VariantPrerequisitesTest {
   }
 
   /**
-   * Issue #1049: a chunk without a full-text row is invisible to the lexical path, and a row of an
-   * older content_tsv_version lacks the current lexemes - the variant would measure a diminished
-   * lexical contribution under the name of the full hybrid configuration, and a Δ near zero against
-   * a vector-only reference would read as "the lexical path changes nothing".
+   * A chunk without a full-text row is invisible to the lexical path, and a row of an older
+   * content_tsv_version lacks the current lexemes - the variant would measure a diminished lexical
+   * contribution under the name of the full hybrid configuration, and a Δ near zero against a
+   * vector-only reference would read as "the lexical path changes nothing".
    */
   @Test
   void aHybridVariantIsSkippedWhileTheFullTextIndexIsIncomplete() {
@@ -91,9 +91,9 @@ class VariantPrerequisitesTest {
   }
 
   /**
-   * Issue #1050: only a variant that states a rerank window claims to rerank. The shipped
-   * configuration carries a window of 50 with the role switched off - reading the effective value
-   * instead of the declared override would skip every variant of every comparison.
+   * Only a variant that states a rerank window claims to rerank. The shipped configuration carries
+   * a window of 50 with the role switched off - reading the effective value instead of the declared
+   * override would skip every variant of every comparison.
    */
   @Test
   void theRerankPrerequisiteOnlyConstrainsAVariantThatDeclaresAWindow() {

@@ -67,7 +67,7 @@ class FullTextIndexFillStateServiceIntegrationTest {
 
   /**
    * The backlog of a raised {@code CURRENT_TSV_VERSION} is cleared by re-writing the chunk through
-   * the same write path the pipeline re-index uses - and by nothing else (#1270).
+   * the same write path the pipeline re-index uses - and by nothing else.
    */
   @Test
   void reindexingTheChunkClearsTheBacklog() {

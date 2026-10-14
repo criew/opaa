@@ -8,7 +8,7 @@ import java.util.Map;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The committed retrieval-quality baseline (issue #228), checked into {@code
+ * The committed retrieval-quality baseline, checked into {@code
  * eval/baseline/comic-characters.json}. Deliberately a separate, narrower schema from {@link
  * EvaluationReport} rather than reusing that record directly: a baseline is a curated, reviewed
  * artifact (fixed points + group metrics + a human-readable rationale), not a raw run dump — it
@@ -29,9 +29,8 @@ public record Baseline(
 
   /**
    * Where this baseline's numbers came from — purely documentary, never read by {@link
-   * BaselineComparator} (PR #301 review: "Erwäge Provenienzfelder in der Baseline-Datei"). Lets a
-   * reader trace a committed baseline back to the exact {@code evaluateRetrieval} run and PR that
-   * produced it, without having to dig through git blame.
+   * BaselineComparator}. Lets a reader trace a committed baseline back to the exact {@code
+   * evaluateRetrieval} run and PR that produced it, without having to dig through git blame.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record Provenance(String sourceReportRunStartedAt, String sourcePullRequest) {}
@@ -43,15 +42,15 @@ public record Baseline(
    * (ADR-0011/ADR-0012: corpus, golden dataset, embedding model and measurement contract are all
    * baseline-defining and require a deliberate re-measurement on change).
    *
-   * <p>Since issue #1144, {@code ingestionPipelineFingerprint} is one of these fields too — see
-   * {@link IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
+   * <p>{@code ingestionPipelineFingerprint} is one of these fields too — see {@link
+   * IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
    * corpusManifestSha256} alone does not already cover it.
    *
-   * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
-   *     #1522). A checked fixed point; a value naming an external endpoint is refused at load time
-   *     — see {@link BaselineOllamaOrigin}.
-   * @param ollamaCpuBackend the ggml CPU variant the run's model runners computed with (issue
-   *     #1652, see {@link EvalOllamaCpuBackend}); a checked fixed point.
+   * @param ollamaImage the pinned Ollama container image the vectors were produced with. A checked
+   *     fixed point; a value naming an external endpoint is refused at load time — see {@link
+   *     BaselineOllamaOrigin}.
+   * @param ollamaCpuBackend the ggml CPU variant the run's model runners computed with (see {@link
+   *     EvalOllamaCpuBackend}); a checked fixed point.
    */
   @JsonIgnoreProperties(ignoreUnknown = true)
   public record FixedPoints(
@@ -75,7 +74,7 @@ public record Baseline(
       int chunkTopK,
       // ADR-0012, decision 3: searchTopK and the (deliberately unset) production similarity
       // threshold are part of the measurement contract, not just run metadata — see
-      // BaselineComparator's Javadoc and PR #301 review, Befund 4.
+      // BaselineComparator's Javadoc.
       int searchTopK,
       double productionSimilarityThreshold,
       // ADR-0011, Konsequenzen: a future switch to exact search for the evaluation is a
@@ -86,9 +85,9 @@ public record Baseline(
       String goldenDatasetFile,
       String goldenDatasetSha256,
       int goldenCaseCount,
-      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
-      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
-      // Javadoc for why corpusManifestSha256 alone does not answer that question.
+      // Under which ingestion pipeline versions (all registered, not just the ones this corpus
+      // routes through) this was measured — see IngestionPipelineFingerprint's Javadoc for why
+      // corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
       // The form of the Kontextpräfix the corpus was embedded with, see
       // ContextPrefixFingerprint.
@@ -122,14 +121,14 @@ public record Baseline(
   }
 
   /**
-   * Guards against a silently over-wide tolerance gate (PR #301 review, second round): {@code
-   * distinctExpectedDocumentSets} is required in {@code toleranceFor}'s denominator ({@code
-   * BaselineComparator}). A hand-edited baseline that drops or misspells the field would otherwise
-   * deserialize it as {@code 0} (Jackson's default for a missing {@code int}), which {@code
-   * Math.max(nEff, 1)} then turns into {@code 1} — silently *widening* every metric's tolerance in
-   * that group to the full {@code RELATIVE_CAP_FRACTION * baselineValue}, the loosest the formula
-   * can produce, instead of failing loudly. Failing fast here at load time is cheaper than
-   * debugging why a group's tolerance mysteriously loosened.
+   * Guards against a silently over-wide tolerance gate: {@code distinctExpectedDocumentSets} is
+   * required in {@code toleranceFor}'s denominator ({@code BaselineComparator}). A hand-edited
+   * baseline that drops or misspells the field would otherwise deserialize it as {@code 0}
+   * (Jackson's default for a missing {@code int}), which {@code Math.max(nEff, 1)} then turns into
+   * {@code 1} — silently *widening* every metric's tolerance in that group to the full {@code
+   * RELATIVE_CAP_FRACTION * baselineValue}, the loosest the formula can produce, instead of failing
+   * loudly. Failing fast here at load time is cheaper than debugging why a group's tolerance
+   * mysteriously loosened.
    *
    * <p>Issue #1522 adds the {@code ollamaImage} guard of {@link BaselineOllamaOrigin} for a
    * different failure mode: a file drawn from a run against an external Ollama endpoint, which may
@@ -161,17 +160,17 @@ public record Baseline(
   }
 
   /**
-   * Issue #306 review, Befund 3: the original guard only fired when the mean said "at least one
-   * case scored above zero" but the recorded count was zero or missing — it caught a completely
-   * absent field, but not a *wrong, still-positive* count (e.g. {@code 3} typed instead of {@code
-   * 30}). Three stronger, exact-or-provably-sound checks replace it:
+   * The original guard only fired when the mean said "at least one case scored above zero" but the
+   * recorded count was zero or missing — it caught a completely absent field, but not a *wrong,
+   * still-positive* count (e.g. {@code 3} typed instead of {@code 30}). Three stronger,
+   * exact-or-provably-sound checks replace it:
    *
    * <ol>
    *   <li>{@code hitCountAt5 == round(hitRateAt5 * n)} — an exact equality, not a heuristic: {@code
    *       hitRateAt5} is binary per case (see {@code RetrievalMetrics}), so its mean times {@code
    *       n} is exactly the hit count, up to the baseline file's 3-decimal rounding (which {@code
    *       Math.round} absorbs cleanly for every {@code n} in this baseline — verified against all
-   *       ten committed groups in the issue #306 review).
+   *       ten committed groups).
    *   <li>{@code 0 <= hitCountAt5 <= hitCountAt10 <= n} — every top-5 hit is also a top-10 hit (the
    *       ranked list this harness scores is a single ordered list, top 5 is a prefix of top 10),
    *       and neither count can exceed the case count itself.
@@ -182,9 +181,9 @@ public record Baseline(
    *       rounding as above.
    * </ol>
    *
-   * <p>Issue #913 review: two more invariants guard {@code allExpectedDocumentsHitAt10} — a
-   * dropped/stale field silently becomes {@code null} → {@code 0.0} (see {@link MetricsAggregate}'s
-   * compact constructor) and would otherwise pass every check above unnoticed: {@code
+   * <p>Two more invariants guard {@code allExpectedDocumentsHitAt10} — a dropped/stale field
+   * silently becomes {@code null} → {@code 0.0} (see {@link MetricsAggregate}'s compact
+   * constructor) and would otherwise pass every check above unnoticed: {@code
    * allExpectedDocumentsHitAt10 <= recallAt10 + ε} (a case counting toward the former also fully
    * counts toward the latter) and {@code allExpectedDocumentsHitAt10 * n <= hitCountAt10 + ε} (same
    * reasoning as the {@code hitCountAt10} bound above).
@@ -243,10 +242,10 @@ public record Baseline(
               + " (each case contributes at most 1.0 to every one of those three metrics, so their "
               + "sum can never exceed hitCountAt10) — fix the field(s) in the baseline file.");
     }
-    // Issue #913 review: guards against a silently vanished allExpectedDocumentsHitAt10 (missing
-    // field deserializes as null, normalized to 0.0 by MetricsAggregate — see this method's
-    // Javadoc). A true 0.0 (e.g. a group with no multi-document cases) always satisfies both
-    // inequalities below, so neither check ever fires on a legitimately absent metric.
+    // Guards against a silently vanished allExpectedDocumentsHitAt10 (missing field deserializes
+    // as null, normalized to 0.0 by MetricsAggregate — see this method's Javadoc). A true 0.0
+    // (e.g. a group with no multi-document cases) always satisfies both inequalities below, so
+    // neither check ever fires on a legitimately absent metric.
     double allTopicsHit = aggregate.allExpectedDocumentsHitAt10();
     double roundingEpsilon = 0.0005 * aggregate.n() + 1e-9;
     if (allTopicsHit > aggregate.recallAt10() + roundingEpsilon) {

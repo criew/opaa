@@ -10,9 +10,9 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockHttpServletRequest;
 
 /**
- * #1780: the header cases behind the decision all but one branch of {@link GlobalExceptionHandler}
- * routes through. The expectations are not guessed - each one was measured end to end against the
- * Jackson converter before it was written down here (see the PR of #1780).
+ * The header cases behind the decision all but one branch of {@link GlobalExceptionHandler} routes
+ * through. The expectations are not guessed - each one was measured end to end against the Jackson
+ * converter before it was written down here (see the PR of #1780).
  */
 class ErrorBodyNegotiatorTest {
 

@@ -9,8 +9,8 @@ import org.springframework.context.annotation.Import;
 
 /**
  * {@link OpaaLocalAuthMockMvcTest} plus an OIDC provider whose tokens are actually verifiable
- * (#1563, ADR-0033 Entscheidung 12): {@link OidcProviderTokenTestConfiguration} supplies the
- * decoder factory the provider registry builds its decoders with.
+ * (ADR-0033 Entscheidung 12): {@link OidcProviderTokenTestConfiguration} supplies the decoder
+ * factory the provider registry builds its decoders with.
  *
  * <p><b>Why this cannot be the base signature:</b> a handover is redeemed with a token of a real
  * provider, and the production factory would have to fetch that provider's JWK set over the

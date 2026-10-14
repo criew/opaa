@@ -3,12 +3,12 @@ package io.opaa.eval;
 import java.util.List;
 
 /**
- * The variant-comparison artifact (issue #1041, docs/features/retrieval-benchmark.md §2): every
- * variant's outcome — executed with its own {@link PipelineEvaluationReport}, or skipped with a
- * reason ({@link VariantOutcome}) — plus, for every executed non-reference variant, its delta
- * against the comparison's reference variant, both aggregated and per golden case ("gepaarte
- * Messung", same specification section). Never committed (see eval/README.md, "Der Bericht ist ein
- * Artefakt, keine Baseline"): a fresh file under {@code build/eval-reports/} on every run.
+ * The variant-comparison artifact (docs/features/retrieval-benchmark.md §2): every variant's
+ * outcome — executed with its own {@link PipelineEvaluationReport}, or skipped with a reason
+ * ({@link VariantOutcome}) — plus, for every executed non-reference variant, its delta against the
+ * comparison's reference variant, both aggregated and per golden case ("gepaarte Messung", same
+ * specification section). Never committed (see eval/README.md, "Der Bericht ist ein Artefakt, keine
+ * Baseline"): a fresh file under {@code build/eval-reports/} on every run.
  */
 public record VariantReport(
     String comparisonName,

@@ -54,8 +54,8 @@ class AdminControllerTest {
   private final UUID actingAdminOrganizationId = UUID.randomUUID();
 
   /**
-   * #392 code review, finding 3: {@code AdminController#changeRole} now resolves the acting person
-   * via {@code @AuthenticationPrincipal Jwt}, the same as {@code LibraryControllerDocumentTest}'s
+   * {@code AdminController#changeRole} now resolves the acting person via
+   * {@code @AuthenticationPrincipal Jwt}, the same as {@code LibraryControllerDocumentTest}'s
    * {@code asTestUser()} - {@code @WithMockUser} (used here before that change) supplies a plain
    * {@code UsernamePasswordAuthenticationToken}, which leaves {@code @AuthenticationPrincipal Jwt}
    * {@code null} and would NPE inside {@code currentUser(jwt)}. {@code jwt()}'s authorities are set
@@ -172,8 +172,8 @@ class AdminControllerTest {
   }
 
   /**
-   * The lockout guard's refusal (#1349) reaches the client as 409 with its stable code and the
-   * German sentence - the code is what the frontend acts on, the message what it shows.
+   * The lockout guard's refusal reaches the client as 409 with its stable code and the German
+   * sentence - the code is what the frontend acts on, the message what it shows.
    */
   @Test
   void changeRoleRefusedByTheLockoutGuardReturns409WithItsCode() throws Exception {

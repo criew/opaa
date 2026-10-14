@@ -56,8 +56,8 @@ import org.springframework.ai.vectorstore.VectorStore;
 
 /**
  * A chunk the embedding endpoint proves too long is split at text boundaries and stored whole in
- * parts instead of cut (#2611). Every part keeps the Fundort, and a chunk opening with its heading
- * path repeats it.
+ * parts instead of cut. Every part keeps the Fundort, and a chunk opening with its heading path
+ * repeats it.
  */
 @ExtendWith(MockitoExtension.class)
 class DocumentIngestServiceEmbeddingInputLimitTest {

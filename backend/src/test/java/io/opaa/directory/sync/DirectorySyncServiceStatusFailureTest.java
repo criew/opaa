@@ -31,10 +31,10 @@ import org.springframework.beans.factory.annotation.Autowired;
  * class of the context, and Spring resets it after each test method, so the simulated failure never
  * outlives this class.
  *
- * <p>Covers review of PR #297's nit: a failure while recording the outcome (here simulated; in
- * production e.g. the status table's own insert/update failing) must not turn an already
- * successful, already-committed apply into an error response with no report at all - that would
- * additionally invite an operator to retry a run that already took effect.
+ * <p>A failure while recording the outcome (here simulated; in production e.g. the status table's
+ * own insert/update failing) must not turn an already successful, already-committed apply into an
+ * error response with no report at all - that would additionally invite an operator to retry a run
+ * that already took effect.
  */
 @OpaaIntegrationTest
 class DirectorySyncServiceStatusFailureTest {

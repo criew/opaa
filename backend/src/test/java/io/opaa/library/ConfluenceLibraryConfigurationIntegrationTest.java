@@ -94,8 +94,8 @@ class ConfluenceLibraryConfigurationIntegrationTest {
         "DELETE FROM asset_grant_history WHERE subject_user_id IN (SELECT id FROM users WHERE"
             + " organization_id = ?)",
         organizationId);
-    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
-    // they have to go before the accounts that hold them.
+    // A library carries ownership intervals; their owner column is RESTRICT, so they have
+    // to go before the accounts that hold them.
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     for (UUID userId : userIds) {
@@ -596,7 +596,7 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
   @Test
   void aManagerGeneratesRotatesAndRemovesTheWebhookSecretWhichIsNeverReadable() {
-    // #1140: the secret is returned exactly once, stored encrypted, visible afterwards only as a
+    // The secret is returned exactly once, stored encrypted, visible afterwards only as a
     // yes/no, and every change leaves an audit entry naming the field, never the value.
     UUID owner = user();
     UUID libraryId =
@@ -656,9 +656,9 @@ class ConfluenceLibraryConfigurationIntegrationTest {
 
   @Test
   void removingTheWebhookSecretErasesTheStoredValueEvenWhenItCannotBeDecrypted() {
-    // #1806 review: with the encryption key missing the secret reads as null, so the revocation
-    // used to be a silent no-op - and the supposedly revoked token authenticated again as soon as
-    // the key came back. What is stored decides, not what the entity attribute presents.
+    // With the encryption key missing the secret reads as null, so the revocation used to be a
+    // silent no-op - and the supposedly revoked token authenticated again as soon as the key came
+    // back. What is stored decides, not what the entity attribute presents.
     UUID owner = user();
     UUID libraryId =
         create(currentUser(owner), "Wiki", dataCenter.baseUrl(), "pat", List.of("ENG"));

@@ -14,11 +14,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Guards that the multi-turn measurement path (issue #1484) writes where it belongs and is judged
- * against its own baseline - the counterpart of {@link PipelinePathIsolationTest} for the third
- * path. Docker-free by construction: without these assertions a report or baseline file name
- * colliding with the single-question path's would only be noticed by the next expensive run, and
- * only after it had overwritten the other path's numbers.
+ * Guards that the multi-turn measurement path writes where it belongs and is judged against its own
+ * baseline - the counterpart of {@link PipelinePathIsolationTest} for the third path. Docker-free
+ * by construction: without these assertions a report or baseline file name colliding with the
+ * single-question path's would only be noticed by the next expensive run, and only after it had
+ * overwritten the other path's numbers.
  */
 class ConversationPathIsolationTest {
 
@@ -74,8 +74,8 @@ class ConversationPathIsolationTest {
    * modelled on {@code PipelinePathIsolationTest#committedPipelineBaselinesStayLoadableAndValid}.
    *
    * <p>Docker-free on purpose even though {@link ConversationBaselineRegressionCheck} reads the
-   * same file since issue #1553: that check needs a measurement run of well over an hour, this one
-   * catches a hand-edited group on every build.
+   * same file: that check needs a measurement run of well over an hour, this one catches a
+   * hand-edited group on every build.
    */
   @Test
   void theCommittedConversationBaselineStaysLoadableAndValid() throws IOException {
@@ -96,14 +96,14 @@ class ConversationPathIsolationTest {
         .isEqualTo(
             ConversationDataset.turnCount(
                 ConversationDataset.load(ConversationDataset.file(domain))));
-    // Issue #1522: the same pin watchdog PipelinePathIsolationTest runs over the other six
-    // baselines - a baseline may only name the Ollama it was actually measured with.
+    // The same pin watchdog PipelinePathIsolationTest runs over the other six baselines -
+    // a baseline may only name the Ollama it was actually measured with.
     assertThat(baseline.fixedPoints().pipeline().ollamaImage())
         .isEqualTo(EvalOllamaEndpoint.PINNED_IMAGE);
-    // Issue #1652: the same watchdog for the CPU backend the harness pins inside that image.
+    // The same watchdog for the CPU backend the harness pins inside that image.
     assertThat(baseline.fixedPoints().pipeline().ollamaCpuBackend())
         .isEqualTo(EvalOllamaCpuBackend.PINNED);
-    // Issue #1650: the prefix form this build embeds with.
+    // The prefix form this build embeds with.
     assertThat(baseline.fixedPoints().pipeline().contextPrefixFingerprint())
         .isEqualTo(ContextPrefixFingerprint.current());
     // The shipped fusion and relevance cutoff.
@@ -115,11 +115,10 @@ class ConversationPathIsolationTest {
   }
 
   /**
-   * The committed baseline measures the two Gesprächsgedächtnis dimensions productively (#1490).
-   * Pinned rather than merely observed: while it still carried the pre-#1486/#1487 values, the
-   * verdict granted them a named "nicht beurteilt" tolerance — a baseline falling back to those
-   * values would silently switch this path's comparison off again, now without that tolerance to
-   * catch it.
+   * The committed baseline measures the two Gesprächsgedächtnis dimensions productively. Pinned
+   * rather than merely observed: while it still carried the unmeasured values, the verdict granted
+   * them a named "nicht beurteilt" tolerance — a baseline falling back to those values would
+   * silently switch this path's comparison off again, now without that tolerance to catch it.
    */
   @Test
   void theCommittedBaselineMeasuresTheProductionConversationMemory() throws IOException {
@@ -151,9 +150,9 @@ class ConversationPathIsolationTest {
   }
 
   /**
-   * Issue #1522: the multi-turn path shares the pipeline fixed points and with them the origin
-   * guard - a file drawn against an external, possibly GPU-backed endpoint may never become a
-   * comparison point on this path either.
+   * The multi-turn path shares the pipeline fixed points and with them the origin guard - a file
+   * drawn against an external, possibly GPU-backed endpoint may never become a comparison point on
+   * this path either.
    */
   @Test
   void aBaselineFromAnExternalOllamaEndpointIsRefusedAtLoadTime(@TempDir Path tempDir)
@@ -247,8 +246,8 @@ class ConversationPathIsolationTest {
   }
 
   /**
-   * Issue #1652: the same model digest in the same image computes different greedy decompositions
-   * with another ggml CPU variant - a run under another backend measured something else.
+   * The same model digest in the same image computes different greedy decompositions with another
+   * ggml CPU variant - a run under another backend measured something else.
    */
   @Test
   void aChangedOllamaCpuBackendInvalidatesTheBaseline() {

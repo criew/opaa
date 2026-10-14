@@ -58,7 +58,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Pure JUnit tests (no Spring context) against directly constructed entities/records - the mapper
- * counterpart of {@code SpaceResponseMapperTest} (#860): pins {@link LibraryResponseMapper}'s
+ * counterpart of {@code SpaceResponseMapperTest}: pins {@link LibraryResponseMapper}'s
  * field-by-field behaviour, in particular that {@link LibraryDetail#managementDetail()} being
  * {@link LibraryManagementDetail#EMPTY} (a caller below {@code MANAGER} - never {@code null}, which
  * would NPE every field access) leaves every management-only field absent instead of throwing or
@@ -104,7 +104,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getDescription()).isEqualTo("Beschreibung");
     assertThat(response.getOwnerType()).isEqualTo(AssetOwnerType.USER);
     assertThat(response.getOwnerId()).isEqualTo(owner);
-    // #1941: the owner's name reaches every reader - the section "Eigentümer" of the Reiter
+    // The owner's name reaches every reader - the section "Eigentümer" of the Reiter
     // „Freigaben" is not gated at MANAGER like the configuration fields below.
     assertThat(response.getOwnerName()).isEqualTo("Referat 50");
     assertThat(response.getReach().getAllAccounts()).isTrue();
@@ -119,7 +119,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getDiagnosticsLocked()).isTrue();
     library.setDiagnosticsLocked(false);
     assertThat(LibraryResponseMapper.toResponse(detail).getDiagnosticsLocked()).isFalse();
-    // #507: a caller below MANAGER never sees sourcePath/sourceUrl/schedule/storage quota - every
+    // A caller below MANAGER never sees sourcePath/sourceUrl/schedule/storage quota - every
     // LibraryManagementDetail field stays null even though the record itself is always present.
     assertThat(response.getSourcePath()).isNull();
     assertThat(response.getSourceUrl()).isNull();
@@ -132,10 +132,10 @@ class LibraryResponseMapperTest {
     assertThat(response.getStorageUsedBytes()).isNull();
   }
 
-  // #1278 review: myRole alone (bypassed to OWNER for a system admin) must not be mistaken for
-  // this field - a mapper reading myRole instead of LibraryDetail#diagnosticsLockToggleable would
-  // still pass every other assertion in this file, since every existing detail's myRole already
-  // matches the intended toggleable value.
+  // myRole alone (bypassed to OWNER for a system admin) must not be mistaken for this field - a
+  // mapper reading myRole instead of LibraryDetail#diagnosticsLockToggleable would still pass
+  // every other assertion in this file, since every existing detail's myRole already matches the
+  // intended toggleable value.
   @Test
   void toResponseCopiesDiagnosticsLockToggleableIndependentlyOfMyRole() {
     KnowledgeLibrary library =
@@ -214,7 +214,7 @@ class LibraryResponseMapperTest {
 
     assertThat(response.getSourcePath()).isEqualTo("/data/documents");
     assertThat(response.getPushSecretSet()).isTrue();
-    // #1200: distinct values prove both rhythm fields are carried, not aliased; a manager gets the
+    // Distinct values prove both rhythm fields are carried, not aliased; a manager gets the
     // connector's whole settings
     assertThat(response.getSourceSettings()).containsEntry("fullSyncIntervalDays", 14);
     assertThat(response.getFullSyncIntervalDefaultDays()).isEqualTo(7);
@@ -228,7 +228,7 @@ class LibraryResponseMapperTest {
     assertThat(response.getLastScheduledRunsFailed()).isFalse();
     assertThat(response.getStorageQuotaBytes()).isEqualTo(1_000_000L);
     assertThat(response.getStorageUsedBytes()).isEqualTo(250_000L);
-    // #1731: every field of the release travels, and the token count stays a number
+    // Every field of the release travels, and the token count stays a number
     assertThat(response.getExternalAccess().getLibraryId()).isEqualTo(library.getId());
     assertThat(response.getExternalAccess().getState()).isEqualTo(ExternalAccessState.ACTIVE);
     assertThat(response.getExternalAccess().getExpiresAt()).isEqualTo(releaseExpiresAt);
@@ -242,8 +242,8 @@ class LibraryResponseMapperTest {
 
   @Test
   void toResponseLeavesScheduleNullWhenTheLibraryCarriesNoneEvenForAManager() {
-    // #485: an UPLOAD library never carries a schedule at all - the management detail's own
-    // schedule field distinguishes that case from "not visible to this caller" (previous test).
+    // An UPLOAD library never carries a schedule at all - the management detail's own schedule
+    // field distinguishes that case from "not visible to this caller" (previous test).
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Uploads", null, UUID.randomUUID());
     LibraryManagementDetail managementDetail =
@@ -257,7 +257,7 @@ class LibraryResponseMapperTest {
 
     assertThat(response.getSchedule()).isNull();
     assertThat(response.getLastScheduledRunsFailed()).isNull();
-    // #797: UPLOAD never carries a cap
+    // UPLOAD never carries a cap
     assertThat(response.getAllAccountsGrantAllowed()).isNull();
   }
 
@@ -350,8 +350,8 @@ class LibraryResponseMapperTest {
   void toListResponseNamesAFailedLastRunEvenWhenAnEarlierOneSucceeded() {
     KnowledgeLibrary library =
         KnowledgeLibrary.ownedByUser(UUID.randomUUID(), "Konnektor", null, UUID.randomUUID());
-    // #1940: exactly the picture the overview could not show before - lastIndexedAt still stands
-    // at the last success while the newest run failed.
+    // Exactly the picture the overview could not show before - lastIndexedAt still stands at the
+    // last success while the newest run failed.
     LibrarySummary summary =
         new LibrarySummary(
             library,
@@ -384,8 +384,8 @@ class LibraryResponseMapperTest {
   @Test
   void toCreationCopiesEveryRequestField() {
     UUID ownerId = UUID.randomUUID();
-    // #860 review, finding 2: every field below is deliberately a distinct value pairwise (in
-    // particular sourcePath/sourceCredentials, two plain strings) - a mapper that
+    // Every field below is deliberately a distinct value pairwise (in particular
+    // sourcePath/sourceCredentials, two plain strings) - a mapper that
     // swapped two of them would otherwise still pass with equal placeholder values.
     LibraryRequest request =
         new LibraryRequest("Rechtsquellen", "HTTP_DIRECTORY")
@@ -410,8 +410,8 @@ class LibraryResponseMapperTest {
 
   @Test
   void toUpdateCopiesEveryRequestFieldIncludingTheSchedule() {
-    // #860 review, finding 2: sourcePath/sourceCredentials are two distinct plain
-    // strings on purpose - see the identical reasoning on toCreationCopiesEveryRequestField above.
+    // sourcePath/sourceCredentials are two distinct plain strings on purpose - see the identical
+    // reasoning on toCreationCopiesEveryRequestField above.
     LibraryUpdateRequest request =
         new LibraryUpdateRequest("Umbenannt")
             .description("Neue Beschreibung")

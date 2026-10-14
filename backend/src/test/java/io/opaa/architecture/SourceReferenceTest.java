@@ -21,7 +21,10 @@ import org.junit.jupiter.api.Test;
  * Holds the names the bytecode does not show - imports, static ones included, and fully qualified
  * Javadoc references - to the layering and the modules of {@link ModularArchitecture}. A name
  * counts as an edge from its file's package to the package it names, checked by the same methods as
- * a compiled dependency. A name in a package without a class of its own is not checked.
+ * a compiled dependency, so an upward Javadoc reference is written as a {@code code} tag. Not
+ * checked are a name in a package without a class of its own, an inlinable constant the code reads
+ * fully qualified without an import, and the parameter types in a link of the form {@code
+ * X#m(io.opaa.Type)}.
  */
 class SourceReferenceTest {
 

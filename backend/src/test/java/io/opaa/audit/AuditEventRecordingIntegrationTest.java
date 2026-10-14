@@ -69,11 +69,11 @@ import org.springframework.transaction.support.TransactionCallbackWithoutResult;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * #392: proves that {@link AssetGrantService}, {@link KnowledgeLibraryService}, {@link
- * GroupService}, {@link SpaceService} and {@code DirectorySyncPlanExecutor} (exercised here through
- * {@link DirectorySyncService}, its public entry point) each write the audit entries the
- * specification's first stage requires - alongside, never instead of, the #238 rights-history calls
- * those same services already make (see each service's own Javadoc for that coexistence).
+ * Proves that {@link AssetGrantService}, {@link KnowledgeLibraryService}, {@link GroupService},
+ * {@link SpaceService} and {@code DirectorySyncPlanExecutor} (exercised here through {@link
+ * DirectorySyncService}, its public entry point) each write the audit entries the specification's
+ * first stage requires - alongside, never instead of, the #238 rights-history calls those same
+ * services already make (see each service's own Javadoc for that coexistence).
  *
  * <p>Runs against a real Postgres database with the real, versioned Liquibase schema applied
  * ({@code spring.liquibase.enabled=true}, {@code ddl-auto=none}), mirroring {@code
@@ -114,7 +114,7 @@ class AuditEventRecordingIntegrationTest {
 
   private UUID organizationId;
 
-  /** The provider every directory run of this class is bound to (#1816). */
+  /** The provider every directory run of this class is bound to. */
   private io.opaa.auth.OidcProvider syncProvider;
 
   private final List<UUID> createdUserIds = new ArrayList<>();
@@ -176,8 +176,8 @@ class AuditEventRecordingIntegrationTest {
             .toList());
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
     // space_membership_history.subject_user_id and asset_ownership_history.owner_user_id are
-    // ON DELETE RESTRICT (#1815) - and carry no foreign key to the space, so deleting the spaces
-    // above left them behind.
+    // ON DELETE RESTRICT - and carry no foreign key to the space, so deleting the spaces above
+    // left them behind.
     spaceMembershipHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     ownershipHistoryRepository.deleteByOwnerUserIdIn(createdUserIds);
     // Covers both groups created through GroupService (tracked in createdGroupIds) and ORG_UNIT
@@ -202,7 +202,7 @@ class AuditEventRecordingIntegrationTest {
     organizationRepository.deleteById(organizationId);
   }
 
-  /** A space membership is addressed by its own id since #1815 - never by the subject's. */
+  /** A space membership is addressed by its own id - never by the subject's. */
   private UUID spaceMembershipIdOf(UUID spaceId, UUID userId) {
     return spaceMembershipRepository.findBySpaceId(spaceId).stream()
         .filter(membership -> userId.equals(membership.getUserId()))
@@ -241,7 +241,7 @@ class AuditEventRecordingIntegrationTest {
   /**
    * {@link CurrentUser} snapshot for a user id this test already created, with {@code systemAdmin}
    * overriding the snapshot's role regardless of the row's actual, always-USER {@code system_role}
-   * (see {@link #createUser}) - mirrors the {@code systemAdmin} boolean the pre-#884 signatures let
+   * (see {@link #createUser}) - mirrors the {@code systemAdmin} boolean the old signatures let
    * every caller here set independently of the seeded row.
    */
   private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
@@ -366,8 +366,8 @@ class AuditEventRecordingIntegrationTest {
 
   @Test
   void grantingToAnUnknownSubjectFailsCleanlyWithoutAnFkViolationOrAnAuditEntry() {
-    // #392 code review, finding 2: an unresolvable subjectId must never reach the pseudonym
-    // insert - it would violate fk_audit_actor_pseudonyms_user and surface as an
+    // An unresolvable subjectId must never reach the pseudonym insert - it would violate
+    // fk_audit_actor_pseudonyms_user and surface as an
     // unhandled 500, losing the whole transaction (including the DENIED entry the escalation guard
     // would otherwise have written) instead of the clean 404 every other unresolvable reference in
     // this class already produces.
@@ -461,7 +461,7 @@ class AuditEventRecordingIntegrationTest {
   }
 
   /**
-   * #892 review: the GROUP-owned branch of {@code createLibrary} runs {@link
+   * The GROUP-owned branch of {@code createLibrary} runs {@link
    * io.opaa.library.AssetGrantChanged}'s subject resolution through the group id, never a pseudonym
    * - {@link #grantingAndRevokingAGrantEachProduceExactlyOneAuditEntry} only ever exercises a USER
    * subject, so this path was otherwise untested against the real schema.
@@ -470,7 +470,7 @@ class AuditEventRecordingIntegrationTest {
   void creatingAGroupOwnedLibraryGrantsTheOwningGroupItself() {
     UUID admin = createUser();
     // Creating an internal group needs CREATE_INTERNAL_GROUP, which is delivered to nobody and
-    // held implicitly by SYSTEM_ADMIN - the only role the endpoint lets through anyway (#1813).
+    // held implicitly by SYSTEM_ADMIN - the only role the endpoint lets through anyway.
     var group =
         groupService.createGroup(
             new GroupCreation("Referat 50", "Grundsatz"), currentUserOf(admin, true));
@@ -519,9 +519,9 @@ class AuditEventRecordingIntegrationTest {
                 .toList())
         .hasSize(1);
 
-    // #392 code review, nit 5: updateGroup's own audit write had no coverage against the real
-    // Liquibase schema - this remains the only place that exercises this specific event, even
-    // though GroupServiceIntegrationTest (#308) no longer mocks AuditEventRecorder either.
+    // updateGroup's own audit write had no coverage against the real Liquibase schema - this
+    // remains the only place that exercises this specific event, even though
+    // GroupServiceIntegrationTest no longer mocks AuditEventRecorder either.
     groupService.updateGroup(groupId, new GroupUpdate("Referat 5 neu", null), currentUserOf(admin));
     List<AuditLogEntry> changed =
         entriesFor(AuditObjectType.GROUP, groupId).stream()
@@ -594,11 +594,11 @@ class AuditEventRecordingIntegrationTest {
     assertThat(roleChanged.get(0).getBefore()).contains("MEMBER");
     assertThat(roleChanged.get(0).getAfter()).contains("CURATOR");
 
-    // #392 code review, finding 5: ownership transfer is ASSET_OWNER_CHANGED, not the generic
-    // SPACE_CHANGED - it is in the closed list without a library-only restriction, and a prover
-    // filtering event_type = ASSET_OWNER_CHANGED must find it. Transferred to member and
-    // immediately back to owner so the rest of this test's flow (owner-only removeMember/
-    // deleteSpace calls below) is unaffected.
+    // Ownership transfer is ASSET_OWNER_CHANGED, not the generic SPACE_CHANGED - it is in the
+    // closed list without a library-only restriction, and a prover filtering event_type =
+    // ASSET_OWNER_CHANGED must find it. Transferred to member and immediately back to owner so
+    // the rest of this test's flow (owner-only removeMember/ deleteSpace calls below) is
+    // unaffected.
     spaceService.transferOwnership(spaceId, member, currentUserOf(owner, false));
     spaceService.transferOwnership(spaceId, owner, currentUserOf(member, false));
     List<AuditLogEntry> ownerChanged =
@@ -658,10 +658,10 @@ class AuditEventRecordingIntegrationTest {
         allForOrg.stream()
             .filter(e -> e.getEventType() == AuditEventType.DIRECTORY_SYNC_CHANGE_APPLIED)
             .toList();
-    // #392 code review, nit 3: fixed to the exact count - two newly created groups, no members,
-    // means exactly one change entry per group (its creation), never one entry shared across both.
-    // isNotEmpty() alone would also have passed with a single entry covering both groups, which is
-    // exactly the "je bewirkter Aenderung ein Eintrag" acceptance criterion this test exists for.
+    // Fixed to the exact count - two newly created groups, no members, means exactly one change
+    // entry per group (its creation), never one entry shared across both. isNotEmpty() alone would
+    // also have passed with a single entry covering both groups, which is exactly the "je
+    // bewirkter Aenderung ein Eintrag" acceptance criterion this test exists for.
     assertThat(changes).hasSize(2);
     assertThat(changes.stream().map(AuditLogEntry::getCorrelationRef).distinct().toList())
         .containsExactly(correlationRef);
@@ -672,9 +672,9 @@ class AuditEventRecordingIntegrationTest {
 
   @Test
   void aDryRunAlsoWritesTheHeaderEntryWithoutAnyChangeEntries() {
-    // #392 code review, finding 1: planOnly (dryRun's transactional backend) was readOnly, so this
-    // header insert either silently vanished or made the endpoint 500 - covered here by actually
-    // calling dryRun, not run().
+    // planOnly (dryRun's transactional backend) was readOnly, so this header insert either
+    // silently vanished or made the endpoint 500 - covered here by actually calling dryRun, not
+    // run().
     directoryClient.respondWith(new DirectoryGroup("ext-1", "Team A", null, null, Set.of()));
 
     directorySyncService.dryRun(organizationId, syncProvider.getId());
@@ -699,10 +699,10 @@ class AuditEventRecordingIntegrationTest {
 
   @Test
   void anAbortedRunWritesAHeaderEntryWithAFailureOutcome() {
-    // #392 code review, nit 1: the header's own outcome column must distinguish an aborted run
-    // from one that actually applied or dry-ran successfully. An empty directory result while an
-    // ORG_UNIT group already exists is DirectorySyncPlanExecutor#handle's ABORTED_EMPTY_RESULT
-    // branch - the classic "misconfigured connection" symptom, nothing is written.
+    // The header's own outcome column must distinguish an aborted run from one that actually
+    // applied or dry-ran successfully. An empty directory result while an ORG_UNIT group already
+    // exists is DirectorySyncPlanExecutor#handle's ABORTED_EMPTY_RESULT branch - the classic
+    // "misconfigured connection" symptom, nothing is written.
     Group group =
         new Group(
             organizationId,
@@ -735,9 +735,8 @@ class AuditEventRecordingIntegrationTest {
 
   @Test
   void anUnreachableDirectoryStillWritesAHeaderEntry() {
-    // #392 code review, nit 2: DirectorySyncService#execute returns before
-    // DirectorySyncPlanExecutor is ever called for this outcome, so its header entry needs its own
-    // write, on this class.
+    // DirectorySyncService#execute returns before DirectorySyncPlanExecutor is ever called for
+    // this outcome, so its header entry needs its own write, on this class.
     directoryClient.failWith("simulated directory outage");
 
     directorySyncService.run(organizationId, syncProvider.getId());
@@ -779,9 +778,8 @@ class AuditEventRecordingIntegrationTest {
 
   @Test
   void grantingAndRevokingTheSystemAdminRoleEachProduceAnAuditEntry() {
-    // #392 code review, finding 3: "Erteilung und Entzug der System-Admin-Rolle" - the one
-    // "Systemrollen und Konten" event the underlying functionality (UserService#updateRole) already
-    // supported before this PR.
+    // "Erteilung und Entzug der System-Admin-Rolle" - the one "Systemrollen und Konten" event the
+    // underlying functionality (UserService#updateRole) already supported before this PR.
     UUID actingAdmin = createUser();
     User actingAdminUser = userRepository.findById(actingAdmin).orElseThrow();
     // a second login-capable administrator (dev issuer, ADR-0033 Entscheidung 4): the withdrawal
@@ -792,7 +790,7 @@ class AuditEventRecordingIntegrationTest {
     String targetEmail = userRepository.findById(targetUser).orElseThrow().getEmail();
 
     userService.updateRole(targetUser, SystemRole.SYSTEM_ADMIN, currentUserOf(actingAdminUser));
-    // #392/#444 re-review: object_id is now the account's pseudonym, not its real id - the entry
+    // object_id is the account's pseudonym, not its real id - the entry
     // can no longer be found by filtering on the real userId as objectId (that would defeat the
     // fix), so this queries by event type across the organization's entries instead.
     List<AuditLogEntry> granted =
@@ -811,7 +809,7 @@ class AuditEventRecordingIntegrationTest {
             .toList();
     assertThat(revoked).hasSize(1);
 
-    // #392/#444 re-review, the finding itself: neither entry may carry the account's real id or
+    // Neither entry may carry the account's real id or
     // email anywhere - object_id, object_label, subject_ref must all be the pseudonym, never a
     // clear reference that would let a reader reverse this person's pseudonymisation or that would
     // survive the account's own deletion (object_label, unlike the pseudonym row, is not removed

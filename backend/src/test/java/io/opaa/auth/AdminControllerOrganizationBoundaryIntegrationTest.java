@@ -19,14 +19,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * PR #679 review, finding 1: {@code UserServiceOrganizationBoundaryIntegrationTest} proves the
- * organization boundary at the {@link UserService} layer, and {@code AdminControllerTest} (a
- * {@code @WebMvcTest} slice) proves that a {@link UserNotFoundException} maps to an HTTP 404 - but
- * with {@code UserService} mocked out, no test ever ran a foreign-organization id through the real
- * {@code POST /api/v1/admin/users/{id}/role} endpoint start to finish. This class closes that gap
- * the same way {@code AuditControllerAuthorizationIntegrationTest} closes the equivalent one for
- * {@code AuditQueryService#requireAuditor}: full Spring context, the real {@code dev} security
- * chain ({@link io.opaa.auth.DevAuthFilter}, {@code UserProvisioningFilter}) and the real {@link
+ * {@code UserServiceOrganizationBoundaryIntegrationTest} proves the organization boundary at the
+ * {@link UserService} layer, and {@code AdminControllerTest} (a {@code @WebMvcTest} slice) proves
+ * that a {@link UserNotFoundException} maps to an HTTP 404 - but with {@code UserService} mocked
+ * out, no test ever ran a foreign-organization id through the real {@code POST
+ * /api/v1/admin/users/{id}/role} endpoint start to finish. This class closes that gap the same way
+ * {@code AuditControllerAuthorizationIntegrationTest} closes the equivalent one for {@code
+ * AuditQueryService#requireAuditor}: full Spring context, the real {@code dev} security chain
+ * ({@link io.opaa.auth.DevAuthFilter}, {@code UserProvisioningFilter}) and the real {@link
  * UserService}/{@link UserRepository} against a real Postgres, so both the 404 for a
  * foreign-organization target and the 200 for a same-organization target come from production code,
  * not a stub.

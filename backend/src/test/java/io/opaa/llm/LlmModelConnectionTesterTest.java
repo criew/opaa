@@ -35,9 +35,9 @@ import tools.jackson.databind.ObjectMapper;
  * connection-refused ("unreachable") are exercised via addresses this test does not control, since
  * standing up a genuinely unreachable server is otherwise not reproducible in CI.
  *
- * <p>{@link #theStoredKeyIsNeverSentToAnOriginOtherThanTheModelsOwn()} proves the fix for the
- * key-exfiltration finding from the #757 review: {@code modelId}'s stored key must never be sent to
- * a {@code baseUrl} other than that model's own stored one.
+ * <p>{@link #theStoredKeyIsNeverSentToAnOriginOtherThanTheModelsOwn()} proves the fix for the key
+ * exfiltration: {@code modelId}'s stored key must never be sent to a {@code baseUrl} other than
+ * that model's own stored one.
  */
 class LlmModelConnectionTesterTest {
 
@@ -67,8 +67,8 @@ class LlmModelConnectionTesterTest {
   }
 
   /**
-   * #1147: the probe URI is logged on every connection failure, so a base address carrying userinfo
-   * would put the credentials into a log line. The request is rejected before any probe happens.
+   * The probe URI is logged on every connection failure, so a base address carrying userinfo would
+   * put the credentials into a log line. The request is rejected before any probe happens.
    */
   @Test
   void aBaseUrlWithCredentialsIsRejectedBeforeAnyProbe() {
@@ -247,8 +247,8 @@ class LlmModelConnectionTesterTest {
   }
 
   /**
-   * #2486: a provider rejecting a parameter answers 400 with its own reason; the administrator sees
-   * that reason and, when it concerns the temperature, how to resolve it.
+   * A provider rejecting a parameter answers 400 with its own reason; the administrator sees that
+   * reason and, when it concerns the temperature, how to resolve it.
    */
   @Test
   void aRejectedRequestNamesTheProvidersReason() {
@@ -322,8 +322,8 @@ class LlmModelConnectionTesterTest {
 
   @Test
   void anEmptyApiKeyAlsoFallsBackToTheStoredKey() {
-    // #757 review, finding 2: only a null apiKey used to trigger the stored-key fallback, so an
-    // explicit "" bypassed it and probed without a key even though one was stored.
+    // Only a null apiKey used to trigger the stored-key fallback, so an explicit "" bypassed it
+    // and probed without a key even though one was stored.
     UUID modelId = UUID.randomUUID();
     LlmModel model =
         new LlmModel(
@@ -359,8 +359,8 @@ class LlmModelConnectionTesterTest {
 
   @Test
   void theStoredKeyIsNeverSentToAnOriginOtherThanTheModelsOwn() throws IOException {
-    // The key-exfiltration finding from the #757 review: modelId only decrypted the stored key,
-    // the request's own (attacker-controlled) baseUrl was probed regardless - a SYSTEM_ADMIN could
+    // Key exfiltration: if modelId only decrypted the stored key and the request's own
+    // (attacker-controlled) baseUrl was probed regardless - a SYSTEM_ADMIN could
     // submit a genuine modelId together with a baseUrl of their choosing and have the stored
     // plaintext key sent there in the Authorization header.
     UUID modelId = UUID.randomUUID();

@@ -90,15 +90,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  *
  * <p>{@link
  * #aGroupGrantOnAPersonallyOwnedLibraryReachesItsMembersAndRevocationTakesEffectImmediately()} and
- * {@link #revokingAGrantTakesEffectOnTheNextCall()} are the mechanism-interaction tests (#202):
- * they exercise a group grant together with {@link GroupMembershipResolver}'s cache invalidation,
- * and a direct grant together with {@code LibraryAccessService}'s own per-library grant cache, not
- * either mechanism in isolation - a regression that reads membership or a grant correctly but
- * forgets to invalidate the relevant cache would still pass a test that only checks access once.
- * {@link #creatingAGroupOwnedLibraryGrantsManagerToTheGroupAndOwnerToTheCreatorButNoOutsider()} is
- * the regression guard for the #201 behaviour #202 replaced - see its own Javadoc for why the group
- * gets MANAGER (not OWNER, which round 1 of the #202 review tried and round 2 reverted) and the
- * creator personally gets OWNER.
+ * {@link #revokingAGrantTakesEffectOnTheNextCall()} are the mechanism-interaction tests: they
+ * exercise a group grant together with {@link GroupMembershipResolver}'s cache invalidation, and a
+ * direct grant together with {@code LibraryAccessService}'s own per-library grant cache, not either
+ * mechanism in isolation - a regression that reads membership or a grant correctly but forgets to
+ * invalidate the relevant cache would still pass a test that only checks access once. {@link
+ * #creatingAGroupOwnedLibraryGrantsManagerToTheGroupAndOwnerToTheCreatorButNoOutsider()} is the
+ * regression guard for the #201 behaviour #202 replaced - see its own Javadoc for why the group
+ * gets MANAGER (not OWNER) and the creator personally gets OWNER.
  */
 @OpaaIntegrationTest
 class KnowledgeLibraryServiceIntegrationTest {
@@ -148,8 +147,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @AfterEach
   void tearDown() {
-    // #684: indexing_jobs rows saved by listLibrariesReportsLastCompletedRunPerLibrary reference
-    // this class's throwaway organizations (fk_indexing_jobs_organization, RESTRICT) - purge them
+    // indexing_jobs rows saved by listLibrariesReportsLastCompletedRunPerLibrary reference this
+    // class's throwaway organizations (fk_indexing_jobs_organization, RESTRICT) - purge them
     // first, scoped to those organizations so rows of other classes sharing the context stay
     // untouched (same precision rule as the rest of this teardown).
     jdbcTemplate.update(
@@ -172,17 +171,16 @@ class KnowledgeLibraryServiceIntegrationTest {
     for (UUID spaceId : createdSpaceIds) {
       spaceRepository.deleteById(spaceId);
     }
-    // #238 code review, finding 3+4: asset_grant_history.subject_user_id and
-    // group_membership_history.user_id are ON DELETE RESTRICT (the history must survive a library
-    // or group deletion, but an account deletion is deliberately blocked until a pseudonymisation
-    // mechanism exists - see ADR-0016). Every
+    // asset_grant_history.subject_user_id and group_membership_history.user_id are ON DELETE
+    // RESTRICT (the history must survive a library or group deletion, but an account deletion is
+    // deliberately blocked until a pseudonymisation mechanism exists - see ADR-0016). Every
     // library/grant/membership operation this class exercises now writes such a row, so it must be
     // purged before this teardown's own user deletion below, which is not a real account deletion
     // but this test's own cleanup.
     grantHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     membershipHistoryRepository.deleteByUserIdIn(createdUserIds);
-    // #1815: the same for the two rights-history tables of the space axis - they carry no foreign
-    // key to their space (ADR-0016), so the space deletions above left their intervals behind.
+    // The same for the two rights-history tables of the space axis - they carry no foreign key to
+    // their space (ADR-0016), so the space deletions above left their intervals behind.
     spaceMembershipHistoryRepository.deleteBySubjectUserIdIn(createdUserIds);
     assetOwnershipHistoryRepository.deleteByOwnerUserIdIn(createdUserIds);
     for (UUID groupId : createdGroupIds) {
@@ -191,7 +189,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     for (UUID userId : createdUserIds) {
       userRepository.deleteById(userId);
     }
-    // #392: every library/grant operation this class exercises now also writes an audit_log row
+    // Every library/grant operation this class exercises now also writes an audit_log row
     // (fk_audit_log_organization is ON DELETE RESTRICT) - purged the same way
     // AuditLogServiceIntegrationTest does, via JdbcTemplate against the Testcontainers superuser
     // account, since AuditLogEntry#isNew() being unconditionally true makes the repository's own
@@ -225,8 +223,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   /**
    * {@link CurrentUser} snapshot for a user id this test already created - {@code systemAdmin}
    * overrides the snapshot's role regardless of the row's actual, always-USER {@code system_role}
-   * (see {@link #createUser}), mirroring the {@code systemAdmin} boolean the pre-#884 signatures
-   * let every caller here set independently of the seeded row.
+   * (see {@link #createUser}), mirroring the {@code systemAdmin} boolean the old signatures let
+   * every caller here set independently of the seeded row.
    */
   private CurrentUser currentUserOf(UUID userId, boolean systemAdmin) {
     User user = userRepository.findById(userId).orElseThrow();
@@ -239,7 +237,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   // sourceUrl is a URI on the generated response, a String on LibraryManagementDetail (and thus
   // absent whenever the caller was below MANAGER, i.e. managementDetail() is null) - this helper
-  // keeps the assertions below reading like the pre-#860 DTO-typed ones.
+  // keeps the assertions below reading like DTO-typed ones.
   private static URI sourceUrl(LibraryDetail detail) {
     if (detail.managementDetail() == null || detail.managementDetail().sourceUrl() == null) {
       return null;
@@ -248,8 +246,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   /**
-   * An internal group as it exists once its stewards released it for use (#1814) - otherwise it is
-   * no grant subject for a caller who is neither member nor steward of it.
+   * An internal group as it exists once its stewards released it for use - otherwise it is no grant
+   * subject for a caller who is neither member nor steward of it.
    */
   private Group createGroup(UUID organizationId, UUID... memberIds) {
     Group group =
@@ -273,7 +271,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
     assertThat(response.library().getOwnerType()).isEqualTo(AssetOwnerType.USER);
     assertThat(response.library().getOwnerId()).isEqualTo(owner);
-    // #1931: the reach is derived - a fresh library carries exactly its creator's OWNER grant.
+    // The reach is derived - a fresh library carries exactly its creator's OWNER grant.
     assertThat(response.reach()).isEqualTo(new AssetReach(false, 0, 1));
   }
 
@@ -345,10 +343,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void createLibraryRejectsFilesystemSourceTypeCombinedWithCredentials() {
-    // PR #489 review, Befund 6b: a FILESYSTEM request that only ever carries sourceCredentials
-    // (no sourceUrl at all) must still be rejected - the earlier
-    // createLibraryRejectsFilesystemSourceTypeCombinedWithAUrl only exercised the sourceUrl branch
-    // of the same check.
+    // A FILESYSTEM request that only ever carries sourceCredentials (no sourceUrl at all) must
+    // still be rejected - the earlier createLibraryRejectsFilesystemSourceTypeCombinedWithAUrl
+    // only exercised the sourceUrl branch of the same check.
     UUID owner = createUser(organizationA);
     LibraryCreation request =
         libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
@@ -362,7 +359,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void createLibraryRejectsFilesystemSourceTypeWithARelativePath() {
-    // PR #489 review, Befund 5: sourcePath must be absolute.
+    // sourcePath must be absolute.
     UUID owner = createUser(organizationA);
     LibraryCreation request =
         libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
@@ -375,7 +372,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void createLibraryRejectsHttpDirectorySourceTypeWithANonHttpUrl() {
-    // PR #489 review, Befund 5: sourceUrl is restricted to http/https.
+    // sourceUrl is restricted to http/https.
     UUID owner = createUser(organizationA);
     LibraryCreation request =
         libraryCreation("Web-Verzeichnis", SourceTypes.HTTP_DIRECTORY)
@@ -388,8 +385,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void createLibraryAcceptsARssFeedSourceTypeWithAUrl() {
-    // PR #489 review, Befund 1: RSS_FEED (#474) is validated exactly like HTTP_DIRECTORY - a
-    // required sourceUrl, no sourcePath.
+    // RSS_FEED is validated exactly like HTTP_DIRECTORY - a required sourceUrl, no
+    // sourcePath.
     UUID owner = createUser(organizationA);
     LibraryCreation request =
         libraryCreation("Feed-Bibliothek", SourceTypes.RSS_FEED)
@@ -427,7 +424,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void updateLibraryChangingSourceUrlDeletesTheLibrarysOwnStaleRssFeedState() {
-    // #646, PR #665 review "should" finding 3: fk_rss_feed_state_library's ON DELETE CASCADE
+    // fk_rss_feed_state_library's ON DELETE CASCADE
     // only fires on a library *deletion* - a sourceUrl change on an
     // otherwise-surviving library needs its own cleanup, or a later reconfiguration back to a
     // previously-used address would find this library's own stale ETag/Last-Modified again and end
@@ -523,9 +520,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void createLibraryRejectsAFilesystemSourceTypeWithATraversalPathThatEscapesTheAllowlist() {
-    // #484: sourcePath is normalised (Path.normalize()) before the allowlist check, so a "../"
-    // segment cannot lexically escape an allowed base directory - /data/../etc/shadow normalises
-    // to /etc/shadow, outside both configured base directories (/data, /tmp).
+    // sourcePath is normalised (Path.normalize()) before the allowlist check, so a "../" segment
+    // cannot lexically escape an allowed base directory - /data/../etc/shadow normalises to
+    // /etc/shadow, outside both configured base directories (/data, /tmp).
     UUID owner = createUser(organizationA);
     LibraryCreation request =
         libraryCreation("Verzeichnis", SourceTypes.FILESYSTEM)
@@ -538,7 +535,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void updateLibraryRejectsAFilesystemSourcePathOutsideTheAllowlist() {
-    // #484: the allowlist is enforced again on update, not only at creation - moving an existing
+    // The allowlist is enforced again on update, not only at creation - moving an existing
     // FILESYSTEM library's crawl target to a path outside the allowlist must fail exactly like
     // choosing that path at creation would have.
     UUID owner = createUser(organizationA);
@@ -588,7 +585,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void sourceCredentialsAreStoredEncryptedNotAsCleartextInTheDatabase() {
-    // #483: knowledge_libraries.source_credentials must never hold the plaintext value - checked
+    // knowledge_libraries.source_credentials must never hold the plaintext value - checked
     // against the raw column via JdbcTemplate, bypassing SourceCredentialsConverter entirely, so
     // this actually exercises what is on disk rather than what the entity mapping presents.
     UUID owner = createUser(organizationA);
@@ -610,10 +607,8 @@ class KnowledgeLibraryServiceIntegrationTest {
     assertThat(rawColumnValue).startsWith("enc:v1:");
 
     // The entity mapping (via SourceCredentialsConverter) still transparently decrypts on load -
-    // both the indexing executors and libraryRepository.findById see the plaintext, unchanged from
-    // before #483 (see
-    // createLibraryAcceptsAnHttpDirectorySourceTypeWithAUrlAndNeverReturnsCredentials
-    // above).
+    // both the indexing executors and libraryRepository.findById see the plaintext (see
+    // createLibraryAcceptsAnHttpDirectorySourceTypeWithAUrlAndNeverReturnsCredentials above).
     KnowledgeLibrary reloaded =
         libraryRepository.findById(response.library().getId()).orElseThrow();
     assertThat(reloaded.getSourceCredentials()).isEqualTo("admin:super-secret-password");
@@ -642,11 +637,11 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void
       aCredentialThatCanNoLongerBeDecryptedIsReadAsNullInsteadOfFailingTheWholeLibraryLoadAndCanBeRepairedByRotatingIt() {
-    // PR #504 review, finding 1: a lost/rotated key (or a corrupted stored value) must not turn
-    // GET /api/v1/libraries into a 503 for every library that shares this key - only the affected
-    // library's sourceCredentials reads as null. The documented repair path
-    // (docs/handbuch/betrieb.md, "Zugangsdaten-Verschluesselung") - setting new credentials via
-    // the update API - depends on that same load succeeding first.
+    // A lost/rotated key (or a corrupted stored value) must not turn GET /api/v1/libraries into a
+    // 503 for every library that shares this key - only the affected library's sourceCredentials
+    // reads as null. The documented repair path (docs/handbuch/betrieb.md,
+    // "Zugangsdaten-Verschluesselung") - setting new credentials via the update API - depends on
+    // that same load succeeding first.
     UUID owner = createUser(organizationA);
     LibraryCreation request =
         libraryCreation("Zugangsdaten mit verlorenem Schluessel", SourceTypes.HTTP_DIRECTORY)
@@ -717,7 +712,7 @@ class KnowledgeLibraryServiceIntegrationTest {
     libraryService.updateLibrary(
         libraryId, libraryUpdate("Umbenannt ohne Schluessel").build(), currentUserOf(owner, false));
     // The second change assigns the field explicitly: it carries a source configuration, and the
-    // same-origin fallback (#516) hands the unreadable null straight back into
+    // same-origin fallback hands the unreadable null straight back into
     // updateSourceConfiguration.
     libraryService.updateLibrary(
         libraryId,
@@ -748,8 +743,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void aHostChangeErasesTheStoredCredentialEvenWhenItCannotBeDecrypted() {
-    // #1806 review: the discard on a host change (#516) is a security invariant - without it the
-    // returning key would hand the old credential to the new host, which
+    // The discard on a host change is a security invariant - without it the returning key would
+    // hand the old credential to the new host, which
     // AutoindexCrawlerService sends preemptively. With the key missing the attribute already reads
     // null, so the dirty check of the @DynamicUpdate entity has nothing to write; the erasure has
     // to reach the column itself.
@@ -834,8 +829,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void updateLibraryReplacesTheSourceConfigurationWithoutChangingTheSourceType() {
-    // PR #489 review, Befund 4: rotating credentials or moving a crawl target must not require
-    // deleting and recreating the library.
+    // Rotating credentials or moving a crawl target must not require deleting and recreating
+    // the library.
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
@@ -1029,8 +1024,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void aDefectiveStoredCronExpressionDoesNotFailTheLibraryLoadOrHideTheSchedule() {
-    // PR #705 review, blocker 3: an undecodable schedule_cron value (a hand-edited row, a
-    // corrupted value) must not turn GET/PUT /api/v1/libraries/{id} into an unhandled 500 for
+    // An undecodable schedule_cron value (a hand-edited row, a corrupted value) must not turn
+    // GET/PUT /api/v1/libraries/{id} into an unhandled 500 for
     // this one library - mirrors
     // aCredentialThatCanNoLongerBeDecryptedIsReadAsNullInsteadOfFailingTheWholeLibraryLoadAndCanBeRepairedByRotatingIt's
     // pattern of writing directly via JdbcTemplate to simulate data this class never itself wrote.
@@ -1064,12 +1059,12 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void
       updateLibraryPreservesStoredCredentialsWhenTheUpdateRequestOmitsThemAndTheOriginIsUnchanged() {
-    // Issue #516: sourceCredentials is write-only (never returned by any API response,
-    // ADR-0018), so a client editing e.g. only the path portion of sourceUrl through a UI dialog
-    // has no value it could resend even if it wanted to. Omitting the field must not be
-    // indistinguishable from "clear the credential" the way it would be for a plain full-object
-    // replace - as long as the request still names the same origin (PR #542 review finding 1;
-    // see the sibling test below for a host change, which must drop the credential instead).
+    // sourceCredentials is write-only (never returned by any API response, ADR-0018), so a
+    // client editing e.g. only the path portion of sourceUrl through a UI dialog has no value it
+    // could resend even if it wanted to. Omitting the field must not be indistinguishable from
+    // "clear the credential" the way it would be for a plain full-object replace - as long as
+    // the request still names the same origin (see the sibling test below for a host change,
+    // which must drop the credential instead).
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
@@ -1096,11 +1091,11 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void updateLibraryDropsStoredCredentialsWhenSourceUrlMovesToADifferentHost() {
-    // PR #542 review finding 1: without this, a MANAGER who does not know a configured
-    // credential could redirect it to a host they control by pointing sourceUrl at their own
-    // server and leaving the credentials field blank - AutoindexCrawlerService sends the stored
-    // Authorization header preemptively on the very first request, so the attacker's server would
-    // receive the credential in plaintext without ever needing to know it.
+    // Without this, a MANAGER who does not know a configured credential could redirect it to a
+    // host they control by pointing sourceUrl at their own server and leaving the credentials
+    // field blank - AutoindexCrawlerService sends the stored Authorization header preemptively on
+    // the very first request, so the attacker's server would receive the credential in plaintext
+    // without ever needing to know it.
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
@@ -1152,8 +1147,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void updateLibraryRecordsALibrarySourceUpdatedAuditEntryForAPureSourceConfigurationChange() {
-    // #545: a pure source-configuration change (credential rotation here) previously left no
-    // audit trace at all - LIBRARY_CHANGED (name/description) does not fire for it, since this
+    // A pure source-configuration change (credential rotation here) previously left no audit
+    // trace at all - LIBRARY_CHANGED (name/description) does not fire for it, since this
     // request resends name/description unchanged and only touches sourceCredentials.
     UUID owner = createUser(organizationA);
     LibraryDetail library =
@@ -1191,7 +1186,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void updateLibraryWritesNoLibrarySourceUpdatedEntryWhenOnlyTheNameChanges() {
     // The counterpart of the test above: a rename-only request must not fire
-    // LIBRARY_SOURCE_UPDATED - only LIBRARY_CHANGED, exactly as before #545.
+    // LIBRARY_SOURCE_UPDATED - only LIBRARY_CHANGED.
     UUID owner = createUser(organizationA);
     LibraryDetail library =
         libraryService.createLibrary(
@@ -1219,9 +1214,9 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void
       updateLibraryWritesNoLibrarySourceUpdatedEntryWhenTheDialogResendsTheSourceFieldsUnchanged() {
-    // Code review finding 2 (PR #578): the real EditLibrarySourceDialog case - it resends
-    // sourceUrl unchanged and leaves sourceCredentials blank (relying on the same-origin
-    // fallback in requestedSettingsChange). This walks the new #545 block all the
+    // The real EditLibrarySourceDialog case - it resends sourceUrl
+    // unchanged and leaves sourceCredentials blank (relying on the same-origin fallback in
+    // requestedSettingsChange). This walks the new #545 block all the
     // way to the empty-changedSourceFields guard, unlike the rename-only test above, which never
     // enters replacesSourceConfiguration at all.
     UUID owner = createUser(organizationA);
@@ -1253,8 +1248,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void updateLibraryRecordsBothLibraryChangedAndLibrarySourceUpdatedWhenNameAndSourceBothChange() {
-    // Code review finding 3 (PR #578): a rename combined with a source configuration change
-    // must write both events, not just one - LIBRARY_CHANGED and LIBRARY_SOURCE_UPDATED are
+    // A rename combined with a source configuration change must
+    // write both events, not just one - LIBRARY_CHANGED and LIBRARY_SOURCE_UPDATED are
     // independent events.
     UUID owner = createUser(organizationA);
     LibraryDetail library =
@@ -1353,7 +1348,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void createGroupOwnedLibraryRejectsADissolvedGroupAsOwner() {
-    // #441: createLibrary used to write the group's MANAGER grant directly, bypassing
+    // createLibrary used to write the group's MANAGER grant directly, bypassing
     // AssetGrantService#requireGrantableGroup's dissolved-group check that upsertGrant already
     // enforces for every other grant - see that method's Javadoc.
     UUID member = createUser(organizationA);
@@ -1414,10 +1409,10 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void getLibraryHidesSourceConfigurationFromAViewerButNotFromAManagerOrAbove() {
-    // #507: sourcePath/sourceUrl/sourceCredentialsSet expose
-    // internal server infrastructure (a filesystem path here) - fine for whoever may change it
-    // (MANAGER+, the same bar updateLibrary enforces), a leak for a mere VIEWER of an
-    // organization-wide connector library.
+    // sourcePath/sourceUrl/sourceCredentialsSet expose internal server infrastructure (a
+    // filesystem path here) - fine for whoever may change it (MANAGER+, the same bar
+    // updateLibrary enforces), a leak for a mere VIEWER of an organization-wide connector
+    // library.
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
     UUID editorGrantee = createUser(organizationA);
@@ -1429,10 +1424,10 @@ class KnowledgeLibraryServiceIntegrationTest {
                 .build(),
             currentUserOf(owner));
     grantToAllAccounts(created, owner);
-    // #507 code review, finding 2: an explicit EDITOR grant (one rank below the MANAGER bar) and
-    // an explicit MANAGER grant, so an accidental weakening to atLeast(EDITOR) - a plausible typo
-    // given AssetRole's general Javadoc calls EDITOR the "changes configuration" rank - fails this
-    // test, not just the coarser OWNER/VIEWER pairing above.
+    // An explicit EDITOR grant (one rank below the MANAGER bar) and an explicit MANAGER grant, so
+    // an accidental weakening to atLeast(EDITOR) - a plausible typo given AssetRole's general
+    // Javadoc calls EDITOR the "changes configuration" rank - fails this test, not just the
+    // coarser OWNER/VIEWER pairing above.
     grantService.upsertGrant(
         KnowledgeLibrary.ASSET_TYPE,
         created.library().getId(),
@@ -1481,8 +1476,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void getLibraryShowsStorageQuotaUsageOnlyToAManagerOrAbove() {
-    // #119: storage quota/usage is administration detail (like sourcePath above), gated the same
-    // way at MANAGER - a mere VIEWER does not need it to read the library.
+    // Storage quota/usage is administration detail (like sourcePath above), gated the same way
+    // at MANAGER - a mere VIEWER does not need it to read the library.
     UUID owner = createUser(organizationA);
     UUID otherMember = createUser(organizationA);
     LibraryDetail created =
@@ -1506,8 +1501,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void noAccessAtAllAnswers404ButInsufficientAccessAnswers403AcrossEveryLibraryEndpoint() {
-    // #436: the same "no access at all" (404) vs. "some access, but not enough" (403) distinction
-    // #420 introduced for the two upload endpoints, unified across the rest of the library API -
+    // The same "no access at all" (404) vs. "some access, but not enough" (403) distinction #420
+    // introduced for the two upload endpoints, unified across the rest of the library API -
     // getLibrary, listDocuments, updateLibrary, deleteLibrary and AssetGrantService#listGrants must
     // all agree, so a caller cannot infer a library's existence from whichever endpoint still
     // answered 403 before this fix.
@@ -1603,7 +1598,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void cannotDeleteALibraryThatStillContainsDocuments() {
-    // #201/#305 code review: fk_documents_library_organization is RESTRICT, so deleting a library
+    // fk_documents_library_organization is RESTRICT, so deleting a library
     // that still contains documents must be blocked with a clean 409, not surface an unhandled
     // DataIntegrityViolationException (500).
     UUID owner = createUser(organizationA);
@@ -1633,7 +1628,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void cannotDeleteALibraryWhileAnIndexingRunIsRunningButCanOnceItFinishes() {
-    // #433: deleting the library a RUNNING indexing run targets used to let that run's
+    // Deleting the library a RUNNING indexing run targets used to let that run's
     // documentRepository.save fail against fk_documents_library_organization once the library was
     // gone, surfacing per document as a failed DataIntegrityViolationException instead of a clean
     // outcome. The maintainer decided to block the delete itself with a 409 instead.
@@ -1670,18 +1665,13 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void creatingAGroupOwnedLibraryGrantsManagerToTheGroupAndOwnerToTheCreatorButNoOutsider() {
-    // #202 code review, two rounds. Round 1 corrected the original bug: granting OWNER to the
-    // *creator personally* on a GROUP-owned library left the library owned by an individual in
-    // every way that matters, so round 1 moved OWNER onto the group instead. Measurement in round
-    // 2 (Befund 2) showed that went a step too far: every current *and future* member of the
-    // owning group automatically became OWNER - able to delete the library and transfer ownership
-    // - growing without a human decision point as a directory-synchronised group's membership
-    // grows (#237), structurally the same defect #201 had, one level up. It was also not
-    // demotable: being the library's only OWNER grant, both the escalation guard
-    // (AssetGrantService#requireCallerCanTouchExistingGrant, once it existed) and the
-    // last-active-OWNER guard permanently protected it - measured as a 409 on both the downgrade
-    // and the revoke path, contradicting the round-1 Javadoc's claim that "a MANAGER can downgrade
-    // or revoke it at any time".
+    // OWNER for the *creator personally* alone would leave a GROUP-owned library owned by an
+    // individual in every way that matters. OWNER for the group instead would make every current
+    // *and future* member of the owning group OWNER - able to delete the library and transfer
+    // ownership - growing without a human decision point as a directory-synchronised group's
+    // membership grows. Such a grant would also not be demotable: being the library's only OWNER
+    // grant, both the escalation guard (AssetGrantService#requireCallerCanTouchExistingGrant) and
+    // the last-active-OWNER guard protect it - a 409 on both the downgrade and the revoke path.
     //
     // The settled rule: the group gets MANAGER (sharing, granting roles to others - the actual
     // day-to-day need behind "Rechtsquellen Soziales", owner "Referat 50 * Grundsatz", surviving
@@ -1724,8 +1714,8 @@ class KnowledgeLibraryServiceIntegrationTest {
         libraryUpdate("Umbenannt von otherMember").build(),
         currentUserOf(otherMember, false));
 
-    // An outsider - not a member of this group - has no access at all, so getLibrary answers 404
-    // (#436), the same "does not exist" a caller with no relationship to the library at all sees.
+    // An outsider - not a member of this group - has no access at all, so getLibrary answers 404,
+    // the same "does not exist" a caller with no relationship to the library at all sees.
     assertThatThrownBy(
             () ->
                 libraryService.getLibrary(
@@ -1733,8 +1723,8 @@ class KnowledgeLibraryServiceIntegrationTest {
         .isInstanceOf(NotFoundException.class);
 
     // otherMember, holding only MANAGER, cannot revoke the creator's personal OWNER grant - the
-    // escalation guard this exact scenario motivated (Befund 1): a MANAGER may never touch a grant
-    // that already carries a role higher than its own, regardless of the last-active-OWNER count.
+    // escalation guard this exact scenario motivated: a MANAGER may never touch a grant that
+    // already carries a role higher than its own, regardless of the last-active-OWNER count.
     AssetGrant creatorsOwnerGrant =
         grantRepository
             .findByAssetTypeAndAssetId(KnowledgeLibrary.ASSET_TYPE, library.library().getId())
@@ -1755,12 +1745,12 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void aGroupMemberHoldingOnlyManagerCannotDeleteTheLibraryEvenThoughItCanManageIt() {
-    // #202 code review round 3 (Blocker 1): AssetRole reserves "delete the asset and transfer
-    // ownership" for OWNER alone - deleteLibrary must gate on that, not on canManage (MANAGER).
-    // Before this fix, otherMember - holding only the group's MANAGER grant, never able to touch
-    // the creator's OWNER grant directly (see the escalation guard exercised above) - could still
-    // delete the whole library outright, taking every grant on it down with it via
-    // fk_asset_grants_library_organization's ON DELETE CASCADE: a detour all the
+    // AssetRole reserves "delete the asset and transfer ownership" for OWNER alone - deleteLibrary
+    // must gate on that, not on canManage (MANAGER). Before this fix, otherMember - holding only
+    // the group's MANAGER grant, never able to touch the creator's OWNER grant directly (see the
+    // escalation guard exercised above) - could still delete the whole library outright, taking
+    // every grant on it down with it via fk_asset_grants_library_organization's ON DELETE CASCADE:
+    // a detour all the
     // way around the round-1/round-2 escalation guards instead of being stopped by them. This is
     // strictly worse for a migrated, backfilled group-owned library, which deliberately carries no
     // OWNER grant at all (the backfill of #238) - there, every member could
@@ -1828,13 +1818,13 @@ class KnowledgeLibraryServiceIntegrationTest {
     // reaches it - a raw repository update bypassing GroupService would leave the resolver's
     // cache stale and make this assertion pass for the wrong reason (a cache that was never
     // populated) or fail where it should not.
-    // Through the group's own steward (#1814): maintaining an internal group is a right decided
-    // per group, and the library owner is not automatically one of its stewards.
+    // Through the group's own steward: maintaining an internal group is a right decided per
+    // group, and the library owner is not automatically one of its stewards.
     stewardRepository.save(new GroupSteward(group.getId(), owner, organizationA, owner));
     groupService.removeMember(group.getId(), member, currentUserOf(owner));
 
     // No grant left at all reaches the (private, ORGANIZATION-less-by-default) library, so this
-    // answers 404 (#436), not 403.
+    // answers 404, not 403.
     assertThatThrownBy(
             () ->
                 libraryService.getLibrary(library.library().getId(), currentUserOf(member, false)))
@@ -1873,7 +1863,7 @@ class KnowledgeLibraryServiceIntegrationTest {
         currentUserOf(owner, false));
 
     // The revoked grant was the viewer's only access to this (default-PRIVATE) library, so this
-    // answers 404 (#436), not 403.
+    // answers 404, not 403.
     assertThatThrownBy(
             () ->
                 libraryService.getLibrary(library.library().getId(), currentUserOf(viewer, false)))
@@ -1882,11 +1872,11 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listGrantsResolvesDisplayNamesForACallerWithoutSystemAdmin() {
-    // #423 code review, finding 1: GET /v1/admin/users and /v1/admin/groups both require
-    // SYSTEM_ADMIN, so the frontend cannot resolve subject/granter names itself for a MANAGER
-    // without that role - the exact caller this endpoint's own MANAGER threshold is meant to
-    // admit. This proves the backend resolves both names through the real repositories/schema
-    // with systemAdmin = false, not just in the AssetGrantServiceTest unit test's mocks.
+    // GET /v1/admin/users and /v1/admin/groups both require SYSTEM_ADMIN, so the frontend
+    // cannot resolve subject/granter names itself for a MANAGER without that role - the exact
+    // caller this endpoint's own MANAGER threshold is meant to admit. This proves the backend
+    // resolves both names through the real repositories/schema with systemAdmin = false, not
+    // just in the AssetGrantServiceTest unit test's mocks.
     UUID owner = createUser(organizationA, "Eigentümerin");
     UUID subjectUser = createUser(organizationA, "Empfänger Person");
     Group subjectGroup = createGroup(organizationA);
@@ -1927,19 +1917,19 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void concurrentRevocationOfTwoOwnerGrantsNeverLeavesTheLibraryWithoutAnActiveOwner()
       throws Exception {
-    // #202 code review round 2, nit 2: isLastActiveOwnerGrant is a read-then-decide check with no
-    // locking of its own. Two OWNER grants, two threads each revoking one at (as close to)
-    // literally the same instant as CyclicBarrier can arrange, against the real Postgres schema
-    // (not a mock - a mocked PlatformTransactionManager would not exercise
+    // isLastActiveOwnerGrant is a read-then-decide check with no locking of its own. Two OWNER
+    // grants, two threads each revoking one at (as close to) literally the same instant as
+    // CyclicBarrier can arrange, against the real Postgres schema (not a mock - a mocked
+    // PlatformTransactionManager would not exercise
     // AssetGrantRepository#lockLibraryGrantsForMutation's real advisory lock, per this project's
     // rule for concurrency-sensitive invariants). Without that lock, both threads could read the
     // other's grant as still active and both would proceed, leaving zero active OWNER grants -
     // exactly the state the guard exists to prevent. With it, exactly one thread must see a 409
     // and the library must retain exactly one active OWNER grant afterwards, never zero.
     //
-    // This test alone cannot catch a guard that serializes correctly but decides on stale data
-    // (#202 code review round 3, blocker 2): a deleted row simply disappears from any subsequent
-    // read, so a revoke-vs-revoke race can never observe staleness. See
+    // This test alone cannot catch a guard that serializes correctly but decides on stale data: a
+    // deleted row simply disappears from any subsequent read, so a revoke-vs-revoke race can
+    // never observe staleness. See
     // #concurrentDowngradeAndRevocationOfTwoOwnerGrantsNeverLeavesTheLibraryWithoutAnActiveOwner
     // below, which pairs a downgrade with a revoke - an *updated*, not deleted, row - and is the
     // scenario that actually exposed the round-2 fix's remaining staleness bug.
@@ -2029,10 +2019,10 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void concurrentDowngradeAndRevocationOfTwoOwnerGrantsNeverLeavesTheLibraryWithoutAnActiveOwner()
       throws Exception {
-    // #202 code review round 3, blocker 2: two earlier versions of this guard both failed this
-    // exact scenario, for two different reasons, both only visible with a real downgrade racing a
-    // real revoke - a revoke-vs-revoke race (the test above) cannot expose either, because a
-    // deleted row simply disappears from any subsequent read, stale or not:
+    // Two earlier versions of this guard both failed this exact scenario, for two different
+    // reasons, both only visible with a real downgrade racing a real revoke - a revoke-vs-revoke
+    // race (the test above) cannot expose either, because a deleted row simply disappears from any
+    // subsequent read, stale or not:
     //  1. Locking the grant rows with SELECT ... FOR UPDATE and mapping the result back to
     //     AssetGrant entities decided on a stale, already-loaded managed instance for the count,
     //     because requireManageable -> effectiveRole had already loaded the same rows into this
@@ -2155,7 +2145,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void spaceMembershipAloneGrantsNoAccessToAnyLibraryNotEvenAsSpaceAdmin() {
-    // #202 acceptance criteria, explicit negative test (code review nit 4): "Space membership
+    // #202 acceptance criteria, explicit negative test: "Space membership
     // alone grants no access to any library." docs/features/spaces-and-assets.md is explicit that
     // space associations do not appear in the readableLibraries formula at all - this proves it
     // end to end against the real SpaceService, not just by the absence of wiring between the two
@@ -2173,7 +2163,7 @@ class KnowledgeLibraryServiceIntegrationTest {
             currentUserOf(spaceAdmin, false));
     createdSpaceIds.add(space.getId());
 
-    // Space authority is not library authority at all here, so this answers 404 (#436), not 403.
+    // Space authority is not library authority at all here, so this answers 404, not 403.
     assertThatThrownBy(
             () ->
                 libraryService.getLibrary(
@@ -2184,7 +2174,7 @@ class KnowledgeLibraryServiceIntegrationTest {
   @Test
   void listLibrariesFindsALibraryReachedOnlyThroughADirectViewerGrant() {
     // #418 acceptance criterion: a user without ownership who holds a direct VIEWER grant must find
-    // the library in listLibraries - the divergence between listLibraries (formerly ownership-only)
+    // the library in listLibraries - the divergence between an ownership-only listLibraries
     // and LibraryAccessService#readableLibraryIds (the formula) that this issue closes.
     UUID owner = createUser(organizationA);
     UUID viewer = createUser(organizationA);
@@ -2328,10 +2318,10 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesNeverIncludesAnOrganizationWideLibraryFromAnotherOrganization() {
-    // #425 review, nit 6: findAllById does not itself filter by organization - the boundary holds
-    // only because readableLibraryIds draws it in every one of its three branches. Explicit
-    // regression guard: an organization-wide library in organizationB must not leak into a
-    // organizationA user's list.
+    // findAllById does not itself filter by organization - the boundary holds only because
+    // readableLibraryIds draws it in every one of its three branches. Explicit regression guard:
+    // an organization-wide library in organizationB must not leak into a organizationA user's
+    // list.
     UUID ownerInB = createUser(organizationB);
     UUID userInA = createUser(organizationA);
     LibraryDetail orgWideInB =
@@ -2349,8 +2339,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesReturnsAStableOrderSortedByNameThenId() {
-    // #425 review, nit 5: readableLibraryIds returns a HashSet with no guaranteed iteration order.
-    // Two consecutive calls must return the same order, and that order must be by name.
+    // readableLibraryIds returns a HashSet with no guaranteed iteration order. Two consecutive
+    // calls must return the same order, and that order must be by name.
     UUID owner = createUser(organizationA);
     LibraryDetail zebra =
         libraryService.createLibrary(
@@ -2380,9 +2370,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesReportsLastCompletedRunPerLibrary() {
-    // #684: the "Stand" column's lastIndexedAt is the newest COMPLETED run's completion time -
-    // a newer FAILED run and a still-running one must not move it, and a library without any
-    // run at all stays null instead of missing or throwing.
+    // The "Stand" column's lastIndexedAt is the newest COMPLETED run's completion time - a
+    // newer FAILED run and a still-running one must not move it, and a library without any run
+    // at all stays null instead of missing or throwing.
     UUID owner = createUser(organizationA);
     LibraryDetail indexed =
         libraryService.createLibrary(
@@ -2413,10 +2403,10 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesReportsTheNewestRunsOwnStatus() {
-    // #1940: lastIndexedAt above only ever moves on a success, so a failed last run is invisible
-    // there - this field is what makes it readable in the overview. Exercises the native
-    // DISTINCT ON query against real PostgreSQL; a unit test could not tell a wrong alias apart
-    // from a right one.
+    // lastIndexedAt above only ever moves on a success, so a failed last run is invisible there
+    // - this field is what makes it readable in the overview. Exercises the native DISTINCT ON
+    // query against real PostgreSQL; a unit test could not tell a wrong alias apart from a right
+    // one.
     UUID owner = createUser(organizationA);
     LibraryDetail failing =
         libraryService.createLibrary(
@@ -2451,7 +2441,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesReportsDocumentCountPerLibraryWithoutNPlusOne() {
-    // #477: the list response carries documentCount per row, computed by DocumentRepository
+    // The list response carries documentCount per row, computed by DocumentRepository
     // #countByLibraryIdIn - one grouped query for the whole page, not countByLibraryId once per
     // library. A library with no documents at all (mango) must default to zero, not be missing
     // from the response or throw on a lookup miss.
@@ -2483,14 +2473,13 @@ class KnowledgeLibraryServiceIntegrationTest {
         .extracting(LibrarySummary::documentCount)
         .containsExactly(0L);
 
-    // Review finding (PR #488): the assertions above would still pass on a rollback to
-    // countByLibraryId once per row - they only check the resulting numbers, not the query
-    // shape. Prove the query count stays flat instead: Hibernate's own prepared-statement
-    // counter for the same call must not grow when a third library (apple, with its own
-    // document) is added to the page. PR #601 review, finding 2: apple is owned by a *different*
-    // user than zebra/mango - the same user for all three would let the first-level persistence
-    // context cache a single owner lookup and mask a regression to one owner-name query per row
-    // (#438's own batching, AssetOwnerNames).
+    // The assertions above would still pass on a rollback to countByLibraryId
+    // once per row - they only check the resulting numbers, not the query shape. Prove the query
+    // count stays flat instead: Hibernate's own prepared-statement counter for the same call
+    // must not grow when a third library (apple, with its own document) is added to the page.
+    // Apple is owned by a *different* user than zebra/mango - the same user for all three would
+    // let the first-level persistence context cache a single owner lookup and mask a regression
+    // to one owner-name query per row (#438's own batching, AssetOwnerNames).
     UUID appleOwner = createUser(organizationA);
     Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
     boolean statisticsWerePreviouslyEnabled = statistics.isStatisticsEnabled();
@@ -2522,9 +2511,9 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesReportsSourceTypePerLibrary() {
-    // #481 review comment on #476: LibrarySummary did not carry sourceType (unlike
-    // LibraryDetail), so the overview could not show the type chip without a per-library
-    // detail round trip. Mirrors the documentCount coverage above for the same reason.
+    // LibrarySummary did not carry sourceType (unlike LibraryDetail), so the overview
+    // could not show the type chip without a per-library detail round trip. Mirrors the
+    // documentCount coverage above for the same reason.
     UUID owner = createUser(organizationA);
     LibraryDetail upload =
         libraryService.createLibrary(
@@ -2548,8 +2537,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesReportsOwnerNamePerLibraryForUserAndGroupOwners() {
-    // #438: the overview shows a resolved owner name instead of a generic "Gruppen-Bibliothek"
-    // label - a group-owned library resolves to the group's name, a user-owned library to the
+    // The overview shows a resolved owner name instead of a generic "Gruppen-Bibliothek" label
+    // - a group-owned library resolves to the group's name, a user-owned library to the
     // owner's display name, batched (not one lookup per row, mirroring the documentCount
     // coverage above).
     UUID owner = createUser(organizationA, "Erika Musterfrau");
@@ -2578,8 +2567,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   /**
-   * ADR-0036, Entscheidung 9 (#1820): Die Bibliotheksliste ist eine fremde Liste - gehoert eine
-   * Bibliothek einer geschuetzten Gruppe, steht dort nicht deren Name.
+   * ADR-0036, Entscheidung 9: Die Bibliotheksliste ist eine fremde Liste - gehoert eine Bibliothek
+   * einer geschuetzten Gruppe, steht dort nicht deren Name.
    */
   @Test
   void listLibrariesNamesNoProtectedOwnerGroup() {
@@ -2606,10 +2595,10 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesNeverFallsBackToTheOwnersEmailAddress() {
-    // PR #601 review, finding 1: unlike AssetGrantService#toResponses (audience limited to a
-    // library's MANAGERs), this list reaches every reader of an organization-wide or shared
-    // library - potentially the whole organization - so a USER owner with no displayName must
-    // resolve to null here, not fall back to their email address the way #446 does elsewhere.
+    // Unlike AssetGrantService#toResponses (audience limited to a library's MANAGERs), this
+    // list reaches every reader of an organization-wide or shared library - potentially the
+    // whole organization - so a USER owner with no displayName must resolve to null here, not
+    // fall back to their email address the way #446 does elsewhere.
     User ownerWithoutDisplayName =
         new User(UUID.randomUUID().toString(), "test-issuer", "owner@example.com", null);
     ownerWithoutDisplayName.setOrganizationId(organizationA);
@@ -2629,7 +2618,7 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void listLibrariesNeverBypassesToOwnerForASystemAdminUnlikeGetLibrary() {
-    // #425 review, nit 2 and 3 (orchestrator decision): unlike getLibrary/updateLibrary/
+    // Unlike getLibrary/updateLibrary/
     // deleteLibrary, myRole in listLibraries never bypasses to OWNER for a system admin, and
     // membership never bypasses either - a library reachable only through administering
     // everything must not look like one the admin actually owns or manages.
@@ -2668,8 +2657,8 @@ class KnowledgeLibraryServiceIntegrationTest {
 
   @Test
   void createLibrarySetsMyRoleToOwnerForTheCreator() {
-    // #425 review, nit 2: myRole was untested on LibraryDetail (create/get/update); #418's own
-    // acceptance criterion requires it on both LibrarySummary and LibraryDetail.
+    // myRole was untested on LibraryDetail (create/get/update); #418's own acceptance
+    // criterion requires it on both LibrarySummary and LibraryDetail.
     UUID owner = createUser(organizationA);
 
     LibraryDetail library =
@@ -2709,10 +2698,10 @@ class KnowledgeLibraryServiceIntegrationTest {
         .isEqualTo(AssetRole.OWNER);
   }
 
-  // #1278 review: myRole bypasses to OWNER for a system admin (LibraryAccessService#effectiveRole)
-  // even without any grant on the library - diagnosticsLockToggleable must not follow that bypass,
-  // since PUT .../diagnostics-lock (LibraryDiagnosticsLockService#setLocked,
-  // holdsIndependentOwnerRole) rejects that same admin with 403.
+  // myRole bypasses to OWNER for a system admin (LibraryAccessService#effectiveRole) even without
+  // any grant on the library - diagnosticsLockToggleable must not follow that bypass, since PUT
+  // .../diagnostics-lock (LibraryDiagnosticsLockService#setLocked, holdsIndependentOwnerRole)
+  // rejects that same admin with 403.
   @Test
   void getLibrarySetsDiagnosticsLockToggleableFromHoldsIndependentOwnerRoleNotFromMyRole() {
     UUID owner = createUser(organizationA);
@@ -2756,8 +2745,8 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   /**
-   * The successor of the former release level {@code ORGANIZATION} (#1931): a grant to "Alle
-   * Beschäftigten" reaches every account of the organization, and nothing beyond it.
+   * The successor of the former release level {@code ORGANIZATION}: a grant to "Alle Beschäftigten"
+   * reaches every account of the organization, and nothing beyond it.
    */
   private void grantToAllAccounts(LibraryDetail library, UUID owner) {
     grantService.upsertGrant(

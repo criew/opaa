@@ -14,7 +14,7 @@ import io.opaa.common.NotFoundException;
 import io.opaa.format.ChunkFormatMetadata;
 import io.opaa.format.DocumentService;
 import io.opaa.format.chunk.ChunkMetadataKeys;
-import io.opaa.indexing.run.DocumentIndexingService;
+import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.Document;
 import io.opaa.knowledge.DocumentRepository;
 import io.opaa.knowledge.KnowledgeLibrary;

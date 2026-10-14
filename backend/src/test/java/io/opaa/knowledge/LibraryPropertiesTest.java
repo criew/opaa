@@ -9,9 +9,9 @@ import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 
 /**
- * Unit tests for {@link LibraryProperties}'s Spring Boot binding (#1273): the quota now binds under
- * {@code opaa.library.quota-bytes}, not the old {@code opaa.upload.library-quota-bytes} - verifies
- * the new key binds and the old key, with no alias configured, is silently ignored.
+ * Unit tests for {@link LibraryProperties}'s Spring Boot binding: the quota now binds under {@code
+ * opaa.library.quota-bytes}, not the old {@code opaa.upload.library-quota-bytes} - verifies the new
+ * key binds and the old key, with no alias configured, is silently ignored.
  */
 class LibraryPropertiesTest {
 

@@ -46,7 +46,7 @@ class LocalCredentialsTest {
   /**
    * The one rule behind the review obligation "ohne Ablaufdatum" (ADR-0033, Entscheidung 11): the
    * standing notice's count, both list filters and the quarterly reminder read it here, so they
-   * cannot drift apart again (#1603).
+   * cannot drift apart again.
    */
   @Test
   void anAccountCountsAsWithoutExpiryUnlessItHasOneOrIsTheBootstrapAccount() {

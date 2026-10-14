@@ -62,7 +62,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 /**
  * {@link IndexingAdminController} in isolation, {@link LowChunkDocumentAuditService} mocked -
  * proves the {@code SYSTEM_ADMIN} access bar and that the caller's own organizationId, not a
- * request parameter, drives the query (#1090).
+ * request parameter, drives the query.
  */
 @WebMvcTest({IndexingAdminController.class, MetadataMaintenanceAdminController.class})
 @ActiveProfiles("dev")
@@ -195,8 +195,8 @@ class IndexingAdminControllerTest {
 
   @Test
   void listLowChunkDocumentsRejectsANegativePageWith400() throws Exception {
-    // #1090 review: PageRequest.of's own English "Page index must not be less than zero" must
-    // never reach the response body verbatim (AGENTS.md, Projektsprache) - validated before it.
+    // PageRequest.of's own English "Page index must not be less than zero" must never reach the
+    // response body verbatim (AGENTS.md, Projektsprache) - validated before it.
     mockMvc
         .perform(
             get("/api/v1/admin/indexing/low-chunk-documents").param("page", "-1").with(asAdmin()))
@@ -396,8 +396,8 @@ class IndexingAdminControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.error").value("Bibliothek nicht gefunden"));
 
-    // The rejected call is the one a Prüferin wants to see (#1345): exactly one event, FAILURE,
-    // with the rejection as its reason.
+    // The rejected call is the one a Prüferin wants to see: exactly one event, FAILURE, with
+    // the rejection as its reason.
     AuditEvent event = singleRecordedEvent();
     assertThat(event.eventType()).isEqualTo(AuditEventType.INDEXING_METADATA_BACKFILL_TRIGGERED);
     assertThat(event.organizationId()).isEqualTo(actingAdminOrganizationId);

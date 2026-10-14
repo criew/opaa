@@ -10,7 +10,7 @@ durch [ADR-0040](0040-google-drive-konnektor.md), [ADR-0041](0041-verbindungen-a
 
 ## Kontext
 
-Seit #1976 erreichte die Verwaltung jeden Konnektor über die Konnektor-SPI (`SourceConnector`,
+Die Verwaltung erreichte jeden Konnektor über die Konnektor-SPI (`SourceConnector`,
 `SourceConnectorRegistry`). Ein neuer Konnektor brauchte trotzdem Änderungen an drei Stellen außerhalb
 seines Pakets: am geschlossenen Enum `DocumentSourceType` in `opaa-api`, an flachen Quellfeldern der API
 (`confluenceEdition`, `confluenceSpaces`, `s3Settings`) und am Schema (eigene Confluence-Spalten und

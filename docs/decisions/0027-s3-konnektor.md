@@ -28,8 +28,8 @@ Konnektor; die Datenbank prüft, dass `source_settings` ein JSON-Objekt ist, min
 einen Bereich sichert allein der Record. Was typübergreifend Regeln hat, bleibt Spalte: Endpoint in
 `source_url` (Zieladressprüfung, Ursprungsbindung), Zugangsdaten verschlüsselt in
 `source_credentials`, Zeitplan. **Geheimnisse stehen nie in `source_settings`** — die Spalte ist
-unverschlüsselt und erscheint in `LibraryResponse`. Seit #2496 gibt es keinen Proxy je Bibliothek
-(hausweiter Ausgangsproxy, ADR-0050) keinen Schalter zum Aussetzen der
+unverschlüsselt und erscheint in `LibraryResponse`. Es gibt keinen Proxy je Bibliothek
+(hausweiter Ausgangsproxy, ADR-0050) und keinen Schalter zum Aussetzen der
 Zertifikatsprüfung; `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht.
 
 ### 2. Geltungsbereiche: eine Liste von (Bucket, Präfix), mindestens einer, ohne Überlappung
@@ -48,8 +48,8 @@ vor der Eingabe. Bereiche sind änderbar; Entfernen wirkt mit dem nächsten Voll
 
 `S3IndexingExecutor` deklariert `FULL → REMOVE_ON_ABSENCE` und `EVENT → KEEP_ON_ABSENCE`;
 `defaultRunMode` ist konstant `FULL`. Es gibt keine inkrementelle Betriebsart: Die vollständige
-Auflistung kostet tausend Aufrufe je Million Objekte und ist damit die Regelbetriebsart. Seit #2149
-läuft der Vollabgleich über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0045,
+Auflistung kostet tausend Aufrufe je Million Objekte und ist damit die Regelbetriebsart. Der
+Vollabgleich läuft über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0045,
 Entscheidung 1): `S3FileStore` ist der `FileStore` (ein Bereich ein Container, der Schlüssel die
 Kennung, `S3ChangeMarker` das Änderungsmerkmal), `S3FullSync` liefert Wortlaut und Grenzen aus
 `S3Properties`. Was dort für S3 gilt: Jeder gelistete Schlüssel ist vorhanden, auch ein
@@ -89,39 +89,21 @@ und Zerlegung bleiben. `LastModified` wird nicht als Kernfeld „Datum/Stand" ge
 
 ### 5. Identität, Ordner, Versionen, Archivklassen
 
-- `file_path = s3://<bucket>/<key>`, Schlüssel unverändert; Umbenennen ist ein neues Dokument.
-  `source_container_key` ist der Bucket, `source_hierarchy_path` das Präfix relativ zum Bereich.
-  Bucket und Schlüssel sind die Identität, der Endpoint nur der Weg: Ein Umzug des Speichers baut
-  den Bestand nicht neu — der einzige Punkt, an dem S3 von den URL-basierten Typen abweicht.
-- **Kein Beleg-Link** (`SourceConnectorDescriptor#withoutDeepLink`), weil kein Browser `s3://`
-  öffnet; Beleg und Dokumentliste zeigen den Pfad als Text. Seit #1524 gibt es einen
-  **Beleg-Abruf**: `S3OriginalAccess` lädt das Objekt beim Klick durch OPAA aus dem Speicher
-  (Verbindung wie ein Lauf, `createForProbe`-Geduld, Zieladressprüfung je Aufruf, Obergrenze
-  `max-object-size-bytes`, temporäre Datei, beim Schließen gelöscht), ohne eigene Rechtelogik (die
-  `VIEWER`-Prüfung steht in `loadContent` vor jeder Verzweigung) und nur für Schlüssel innerhalb
-  der konfigurierten Bereiche — nicht der Muster. Zwei Fehlerbilder wie bei der Originalablage
-  (ADR-0030, Entscheidung 9): Objekt weg, archiviert, zu groß oder `403` → dasselbe `404` wie jeder
-  „gibt es nicht"-Fall; Speicher nicht erreichbar → `503` ohne Einzelheit der Quellkonfiguration.
-  `getDocumentContent` deklariert die `503` in der Spezifikation und sagt, für welche Quellentypen
-  „jede Störung ist dasselbe `404`" noch gilt. Ein Leserecht auf die Bibliothek genügt damit,
-  jedes Objekt wiederholt zu laden.
-- **Ordner:** Präfixsegmente relativ zum Bereichspräfix als schreibgeschützte Ordner
-  (`SourceFolderMirror`); bei einem Bereich ist sein Präfix die Wurzel, bei mehreren beginnt jede
-  Kette mit Bucket und Präfixsegmenten (`S3FolderPath`), nie ein Einzelname `bucket/prefix`. Ein
-  zu tiefer Schlüssel liegt im tiefsten zulässigen Ordner. Ordnermarker werden übersprungen und
-  erzeugen keinen Ordner.
-- **Versionierte Buckets:** nur die aktuelle Version; ein Schlüssel mit Löschmarker fehlt und gilt
-  als gelöscht; `versionId` wird nie gespeichert.
-- **Archivklassen** (`GLACIER`, `DEEP_ARCHIVE`, nicht abgeschlossener `RestoreStatus`,
-  `S3ArchiveState`) werden übersprungen und gelten als gesehen; `GLACIER_IR` wird normal gelesen.
-- **Vorfilter vor dem Download** über Endung und Größe aus der Auflistung; ein endungsloser
-  Schlüssel kostet einen `HeadObject` für den `Content-Type`. Verbindlich bleibt die
-  Formaterkennung aus dem Inhalt.
-- **Anhänge** von Mail-Objekten laufen über `AttachmentIndexer` mit `AttachmentSource.LocalFile`
-  und hängen per `parent_document_id` an ihrem Objekt (ADR-0022, Entscheidung 3). Ein Objekt, dessen
-  Bytes geladen und dessen Anhangsmenge neu aufgezählt wurden, gilt als neu verarbeitet, jedes andere
-  gesehene nur als vorhanden — nur so bleiben die Anhänge eines nicht neu verarbeiteten Elternobjekts
-  stehen und fallen die eines neu verarbeiteten weg, die es nicht mehr gibt.
+`file_path = s3://<bucket>/<key>`, Schlüssel unverändert (Umbenennen ist ein neues Dokument);
+`source_container_key` ist der Bucket, `source_hierarchy_path` das Präfix relativ zum Bereich. Bucket
+und Schlüssel sind die Identität, der Endpoint nur der Weg: Ein Umzug des Speichers baut den Bestand
+nicht neu. Kein Beleg-Link (`SourceConnectorDescriptor#withoutDeepLink`); stattdessen lädt
+`S3OriginalAccess` das Objekt beim Klick durch OPAA, ohne eigene Rechtelogik (die `VIEWER`-Prüfung
+steht in `loadContent` vor jeder Verzweigung), nur innerhalb der Bereiche und mit den zwei
+Fehlerbildern der Originalablage (ADR-0030, Entscheidung 9): „gibt es nicht“ `404`, Speicher nicht
+erreichbar `503` ohne Einzelheit der Quellkonfiguration, beide in der Spezifikation von `getDocumentContent` deklariert. Präfixsegmente
+werden schreibgeschützte Ordner (`SourceFolderMirror`, `S3FolderPath`); gelesen wird nur die aktuelle
+Version (Löschmarker gilt als Löschung, `versionId` wird nie gespeichert); Ordnermarker, Archivklassen
+(`S3ArchiveState`, `GLACIER_IR` wird gelesen) und per Endung oder Größe vorab ausgefilterte Schlüssel
+gelten als gesehen. Anhänge von Mail-Objekten hängen per `parent_document_id` am Objekt (ADR-0022,
+Entscheidung 3) und fallen nur mit einem neu verarbeiteten Elternobjekt weg (`markReprocessed` statt
+`markPresent` in `FileSync`). Einzelheiten: [Handbuch](../handbuch/konnektoren/s3.md), „Ordner“ bis
+„Grenzen und Schutzmechanismen“.
 
 ### 6. Der Push-Weg: ein Endpunkt je Bibliothek, drei Absicherungsformen, jedes Ereignis ein Hinweis
 
@@ -178,8 +160,8 @@ Entscheidung 8).
 
 `software.amazon.awssdk:s3` mit `apache5-client` statt des MinIO-SDK (kein Session-Token, kein Weg
 zur Instanzrolle, zweiter HTTP-Stack). Port `S3ObjectStore` mit einem Adapter `AwsSdkS3ObjectStore`;
-Testdoppel sind `FakeS3ObjectStore` und ein Container im regulären `./gradlew test`. Seit #1949 ist
-das **RustFS** (`S3TestFixture.IMAGE`), nicht MinIO, dessen Image nicht mehr frei beziehbar ist:
+Testdoppel sind `FakeS3ObjectStore` und ein Container im regulären `./gradlew test`, und zwar
+**RustFS** (`S3TestFixture.IMAGE`), nicht MinIO, dessen Image nicht mehr frei beziehbar ist:
 RustFS führt als einziger Kandidat eingeschränkte Schlüssel mit denselben IAM-Policy-Dokumenten und
 Fehlerformen. Der Ereignisweg wird gegen eine vom Test selbst zugestellte `Records`-Nutzlast
 geprüft; die Zustellung durch den Speicher selbst ist Dokumentation, kein Testnachweis.
@@ -228,7 +210,8 @@ Rahmen des Maintainers (Epic #1291) und Stand:
   Die Anlage ist netzabhängig. Umbenennen und Verschieben bauen Dokumente neu.
 - **Restrisiko:** `source_settings` wird von der Datenbank nur als JSON-Objekt geprüft; die
   Validierung liegt im Record, und ein Record, der einen Fall vergisst, wird von keiner Constraint
-  gefangen.
+  gefangen. Ein Leserecht auf die Bibliothek genügt, jedes Objekt über den Beleg-Abruf wiederholt zu
+  laden.
 
 ## Verworfene Alternativen
 

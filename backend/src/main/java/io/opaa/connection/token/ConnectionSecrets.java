@@ -71,7 +71,6 @@ public class ConnectionSecrets {
   static final Duration RENEWAL_MARGIN = Duration.ofMinutes(5);
 
   private static final Logger log = LoggerFactory.getLogger(ConnectionSecrets.class);
-  private static final String ENCRYPTED_MARKER = "enc:";
 
   private final LibrariesOnProfile librariesOnProfile;
   private final KnowledgeLibraryRepository libraries;
@@ -471,7 +470,7 @@ public class ConnectionSecrets {
           return;
         }
         String ciphertext =
-            stored.startsWith(ENCRYPTED_MARKER) ? stored : encryptor.encrypt(stored);
+            CredentialsEncryptor.isEncrypted(stored) ? stored : encryptor.encrypt(stored);
         discardOtherRow(libraryId);
         tokens.save(
             ConnectionToken.ofLibrarySecret(own.profileId(), libraryId, ciphertext, target, now));
@@ -803,7 +802,7 @@ public class ConnectionSecrets {
   /** The access token of {@code token}, {@code null} for none or an unreadable one. */
   private String decryptAccess(ConnectionToken token) {
     String ciphertext = token.getAccessTokenCiphertext();
-    if (ciphertext == null || !ciphertext.startsWith(ENCRYPTED_MARKER)) {
+    if (!CredentialsEncryptor.isEncrypted(ciphertext)) {
       return null;
     }
     try {
@@ -979,7 +978,7 @@ public class ConnectionSecrets {
    */
   private String decrypt(ConnectionToken token) {
     String ciphertext = token.getSecretCiphertext();
-    if (!ciphertext.startsWith(ENCRYPTED_MARKER)) {
+    if (!CredentialsEncryptor.isEncrypted(ciphertext)) {
       log.warn(
           "A stored token of profile {} is not encrypted; it is not used", token.getProfileId());
       throw new SecretRefusedException(Reason.NOT_CONNECTED);

@@ -1,4 +1,4 @@
-package io.opaa.indexing.run;
+package io.opaa.indexing.trigger;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.api.types.IndexingRunMode;
@@ -15,6 +15,7 @@ import io.opaa.indexing.job.IndexingRunEventRepository;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobTriggerSource;
 import io.opaa.indexing.registry.IndexingSourceExecutorRegistry;
+import io.opaa.indexing.run.DefaultRunModes;
 import io.opaa.indexing.spi.SourceIndexingExecutor;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;

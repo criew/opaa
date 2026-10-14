@@ -1,8 +1,8 @@
 name: E2E
 
-# Deliberately not on pull_request (#1226): the suite is a post-merge safety net, not a PR gate.
-# It runs on every push to main, nightly, and on demand; a failure opens or updates an alarm
-# issue (see the last steps) that is then fixed like any other bug.
+# Deliberately not on pull_request: the suite is a post-merge safety net, not a PR gate. It runs
+# on every push to main, nightly, and on demand; a failure opens or updates an alarm issue (see
+# the last steps) that is then fixed like any other bug.
 on:
   push:
     branches: [main]
@@ -47,9 +47,8 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
-          # Repo-root context (issue #896): backend's Gradle build depends on the sibling
-          # opaa-api/ module via settings.gradle.kts, so a context scoped to backend/ alone would
-          # not see it.
+          # Repo-root context: backend's Gradle build depends on the sibling opaa-api/ module via
+          # settings.gradle.kts, so a context scoped to backend/ alone would not see it.
           context: .
           file: backend/Dockerfile
           tags: opaa-e2e-backend:latest
@@ -96,8 +95,8 @@ jobs:
 
       # The browser download and especially the apt-get run behind
       # --with-deps have repeatedly hung on slow runner mirrors and eaten
-      # the whole job budget (#508). The cache makes the install a no-op on
-      # most runs; the step timeout makes a hanging mirror fail fast with a
+      # the whole job budget. The cache makes the install a no-op on most
+      # runs; the step timeout makes a hanging mirror fail fast with a
       # clear cause instead of surfacing as a cancelled job.
       - name: Resolve Playwright version
         id: playwright-version
@@ -123,9 +122,9 @@ jobs:
 
       # Establishes exactly the state docs/handbuch/docker-compose.md documents for an installation:
       # the bind-mounted upload directory belongs to uid 65532, the account the backend container
-      # runs under (#1471). Without this the suite would run against a world-writable directory
-      # instead and never exercise the ownership an installation actually has. Linux-only and
-      # therefore here, not in the cross-platform runner script, whose own chmod then declines.
+      # runs under. Without this the suite would run against a world-writable directory instead and
+      # never exercise the ownership an installation actually has. Linux-only and therefore here,
+      # not in the cross-platform runner script, whose own chmod then declines.
       - name: Eigentümer der Bind-Mounts wie in einer Installation setzen
         run: |
           mkdir -p documents uploads

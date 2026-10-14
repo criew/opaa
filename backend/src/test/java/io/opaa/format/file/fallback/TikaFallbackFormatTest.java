@@ -145,7 +145,7 @@ class TikaFallbackFormatTest {
     assertThat(result.chunks()).isEmpty();
   }
 
-  // --- the metadata sources of a plain text file (#1360) ---------------------------------------
+  // --- the metadata sources of a plain text file ---------------------------------------
 
   @Test
   void aLeadingSetextHeadingIsTheFirstHeadingOfATextFile() throws IOException {

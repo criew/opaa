@@ -13,10 +13,10 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Docker-free guard for the committed multi-turn dataset and for the rules themselves (issue #1484)
- * - part of {@code evalUnitTest} and therefore of {@code check}, so a hand-edited dataset that
- * drops an answer, a state field or a whole class fails on an ordinary build instead of an hour
- * into a Testcontainers run.
+ * Docker-free guard for the committed multi-turn dataset and for the rules themselves - part of
+ * {@code evalUnitTest} and therefore of {@code check}, so a hand-edited dataset that drops an
+ * answer, a state field or a whole class fails on an ordinary build instead of an hour into a
+ * Testcontainers run.
  */
 class ConversationCaseCurationTest {
 
@@ -37,9 +37,9 @@ class ConversationCaseCurationTest {
 
   /**
    * The committed dataset satisfies every rule as soon as it holds a case. It is empty until the
-   * curation issue (#1485) fills it, and an empty file cannot satisfy the class-size rules - so an
-   * empty dataset is asserted to be exactly that, empty and parseable, rather than run through
-   * checks it is guaranteed to fail.
+   * curation issue fills it, and an empty file cannot satisfy the class-size rules - so an empty
+   * dataset is asserted to be exactly that, empty and parseable, rather than run through checks it
+   * is guaranteed to fail.
    */
   @Test
   void committedVerwaltungConversationDatasetSatisfiesEveryCurationRule() throws IOException {

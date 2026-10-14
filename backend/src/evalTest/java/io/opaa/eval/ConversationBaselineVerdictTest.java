@@ -6,17 +6,17 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * The verdict rules of the multi-turn baseline comparison (issue #1553), Docker-free: which
- * comparison result fails a run and which is merely reported. Without these assertions the only
- * place the distinction would show up is a measurement run of well over an hour.
+ * The verdict rules of the multi-turn baseline comparison, Docker-free: which comparison result
+ * fails a run and which is merely reported. Without these assertions the only place the distinction
+ * would show up is a measurement run of well over an hour.
  */
 class ConversationBaselineVerdictTest {
 
   /**
-   * Since #1490 the two Gesprächsgedächtnis fixed points are judged like any other: the named
-   * tolerance that let them deviate without failing was removed together with the baseline it
-   * described. A run against a baseline drawn before the search window and the Gesprächsnotiz is
-   * incomparable, not merely unjudged.
+   * The two Gesprächsgedächtnis fixed points are judged like any other: the named tolerance that
+   * let them deviate without failing was removed together with the baseline it described. A run
+   * against a baseline drawn before the search window and the Gesprächsnotiz is incomparable, not
+   * merely unjudged.
    */
   @Test
   void aBaselineFromBeforeTheSearchWindowAndTheNoteIsIncomparableAndFails() {

@@ -6,7 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-/** The syntax check and the normalisation the stored CIDR list of the channel relies on (#1717). */
+/** The syntax check and the normalisation the stored CIDR list of the channel relies on. */
 class CidrListTest {
 
   @Test

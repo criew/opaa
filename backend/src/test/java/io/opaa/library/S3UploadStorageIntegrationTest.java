@@ -121,8 +121,8 @@ class S3UploadStorageIntegrationTest {
     libraryRepository.deleteById(libraryId);
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId()));
-    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
-    // they have to go before the accounts that hold them.
+    // A library carries ownership intervals; their owner column is RESTRICT, so they have
+    // to go before the accounts that hold them.
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     userRepository.deleteById(editor.getId());

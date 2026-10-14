@@ -5,6 +5,7 @@ import io.opaa.auth.LocalCredentials;
 import io.opaa.auth.LocalCredentialsRepository;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -52,8 +53,11 @@ public class ExpiryReminderStep implements LocalAccountMaintenanceStep {
 
   @Autowired
   public ExpiryReminderStep(
-      LocalCredentialsRepository credentials, UserRepository users, LocalAccountMailer mailer) {
-    this(credentials, users, mailer, ZoneId.systemDefault(), TIME_BUDGET);
+      LocalCredentialsRepository credentials,
+      UserRepository users,
+      LocalAccountMailer mailer,
+      Clock clock) {
+    this(credentials, users, mailer, clock.getZone(), TIME_BUDGET);
   }
 
   ExpiryReminderStep(

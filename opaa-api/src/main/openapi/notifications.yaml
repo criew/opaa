@@ -28,6 +28,8 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/NotificationResponse"
+        "400":
+          $ref: "#/components/responses/ValidationError"
 
   /api/v1/notifications/{notificationId}/read:
     parameters:

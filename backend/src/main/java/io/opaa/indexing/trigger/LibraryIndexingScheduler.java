@@ -1,4 +1,4 @@
-package io.opaa.indexing.run;
+package io.opaa.indexing.trigger;
 
 import io.opaa.common.ConflictException;
 import io.opaa.indexing.job.IndexingEventCategory;

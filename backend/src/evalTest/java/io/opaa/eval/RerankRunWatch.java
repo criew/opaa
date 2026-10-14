@@ -11,7 +11,7 @@ import io.opaa.llm.RerankModelRole;
  * variant that promises reranking from running against an unusable role, but an endpoint that dies
  * <i>during</i> the variant leaves every remaining question falling back to the fused order while
  * the variant's report still carries the reranking name — exactly the silent degradation the
- * prerequisite exists to prevent (issue #1050, docs/features/retrieval-benchmark.md §2).
+ * prerequisite exists to prevent (docs/features/retrieval-benchmark.md §2).
  *
  * <p>{@link #degradedCallCount()} is the reading that survives a recovery: a role that fails and
  * comes back reports {@link #usable()} {@code true} afterwards, so the state alone would clear a

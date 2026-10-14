@@ -21,7 +21,7 @@ import io.opaa.common.AccessDeniedException;
 import io.opaa.common.ConflictException;
 import io.opaa.common.NotFoundException;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.run.DocumentIndexingService;
+import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.LibraryFolder;
 import io.opaa.knowledge.LibraryFolderDetail;
 import io.opaa.knowledge.LibraryFolderService;
@@ -44,12 +44,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * Controller-level wiring test for the four folder endpoints #820 adds (review finding on PR #827:
- * the issue's acceptance criteria call for service <em>and</em> web tests, mirroring {@code
- * LibraryControllerDocumentTest}). Verifies that {@link LibraryController}'s folder methods
- * translate an HTTP request into the correct {@link LibraryFolderService} call and its result - or
- * a thrown {@code io.opaa.common} domain exception - into the expected status code, that the
- * generated DTOs' {@code @Valid} constraints ({@code LibraryFolderRequest.name}'s {@code
+ * Controller-level wiring test for the four folder endpoints (service <em>and</em> web tests,
+ * mirroring {@code LibraryControllerDocumentTest}). Verifies that {@link LibraryController}'s
+ * folder methods translate an HTTP request into the correct {@link LibraryFolderService} call and
+ * its result - or a thrown {@code io.opaa.common} domain exception - into the expected status code,
+ * that the generated DTOs' {@code @Valid} constraints ({@code LibraryFolderRequest.name}'s {@code
  * minLength}/{@code maxLength}) are actually enforced at this layer, and that the {@code
  * systemAdmin} flag reaches the service unchanged. Business logic (permissions, name/depth/conflict
  * validation, recursive deletion) is covered at the service level in {@code
@@ -156,8 +155,8 @@ class LibraryControllerFolderTest {
 
   @Test
   void creatingAFolderWithAParentFolderIdForwardsItToTheService() throws Exception {
-    // #872 review: request.getParentFolderId() unpacking at the LibraryController call site had no
-    // test forcing a non-null value through - a null literal there would have stayed green.
+    // request.getParentFolderId() unpacking at the LibraryController call site had no test forcing
+    // a non-null value through - a null literal there would have stayed green.
     UUID libraryId = UUID.randomUUID();
     UUID folderId = UUID.randomUUID();
     UUID parentFolderId = UUID.randomUUID();

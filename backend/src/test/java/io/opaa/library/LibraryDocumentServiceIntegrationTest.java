@@ -90,23 +90,23 @@ import org.springframework.web.multipart.MultipartFile;
  * duplicate checksum in the same library is refused, the same content in a different library is
  * not; deleting removes the row, the chunks and the file.
  *
- * <p>{@code uploadDocument} itself only ever returns {@code PENDING} now (#434) - parsing and
- * embedding run asynchronously on {@code uploadTaskExecutor}, the real thread pool this test's
- * Spring context wires up (unlike the unit tests in {@code LibraryDocumentServiceTest}, which mock
- * {@code DocumentIngestService} outright). {@link #awaitDocumentStatus} polls the row via
- * Awaitility the same way {@code DocumentIndexingIntegrationTest#awaitJobCompletion} already does
- * for a directory/URL indexing run, wherever a test needs the eventual {@code INDEXED}/{@code
- * FAILED} outcome rather than the immediate {@code PENDING} response.
+ * <p>{@code uploadDocument} itself only ever returns {@code PENDING} now - parsing and embedding
+ * run asynchronously on {@code uploadTaskExecutor}, the real thread pool this test's Spring context
+ * wires up (unlike the unit tests in {@code LibraryDocumentServiceTest}, which mock {@code
+ * DocumentIngestService} outright). {@link #awaitDocumentStatus} polls the row via Awaitility the
+ * same way {@code DocumentIndexingIntegrationTest#awaitJobCompletion} already does for a
+ * directory/URL indexing run, wherever a test needs the eventual {@code INDEXED}/{@code FAILED}
+ * outcome rather than the immediate {@code PENDING} response.
  */
 @OpaaIntegrationTest
 class LibraryDocumentServiceIntegrationTest {
 
   private static final Path uploadStorageDir = OpaaTestDirectory.UPLOAD_STORAGE_DIR;
 
-  // #742 review, finding 3: a base directory the FILESYSTEM loadContent tests below use as a
-  // library's sourcePath. Underneath the suite-wide allowlisted base, so it needs no allowlist
-  // entry of its own; the "/data,/tmp" entries the other FILESYSTEM-flavoured tests here rely on
-  // (e.g. uploadingIntoAConnectorLibraryIsRejectedWithConflict) stay in place alongside it.
+  // A base directory the FILESYSTEM loadContent tests below use as a library's sourcePath.
+  // Underneath the suite-wide allowlisted base, so it needs no allowlist entry of its own; the
+  // "/data,/tmp" entries the other FILESYSTEM-flavoured tests here rely on (e.g.
+  // uploadingIntoAConnectorLibraryIsRejectedWithConflict) stay in place alongside it.
   private static final Path filesystemAllowlistDir =
       OpaaTestDirectory.subdirectory("library-document-service");
 
@@ -188,28 +188,28 @@ class LibraryDocumentServiceIntegrationTest {
             organizationId);
     jdbcTemplate.update("DELETE FROM indexing_jobs WHERE organization_id = ?", organizationId);
     ownLibraryFixtures.removeLibraries(ownLibraryIds.toArray(new UUID[0]));
-    // #238 code review, finding 2+4: asset_grant_history.subject_user_id is ON DELETE RESTRICT
-    // (see ADR-0016) - every library/grant
+    // asset_grant_history.subject_user_id is ON DELETE RESTRICT (see ADR-0016) - every
+    // library/grant
     // operation setUp performs now historises a row referencing editor/viewer, which must be
     // purged before this teardown's own user deletion below (not a real account deletion).
     grantHistoryRepository.deleteBySubjectUserIdIn(List.of(editor.getId(), viewer.getId()));
     membershipHistoryRepository.deleteByUserIdIn(List.of(editor.getId(), viewer.getId()));
-    // Since #1819 a library carries ownership intervals; their owner column is RESTRICT, so
-    // they have to go before the accounts that hold them.
+    // A library carries ownership intervals; their owner column is RESTRICT, so they have
+    // to go before the accounts that hold them.
     jdbcTemplate.update(
         "DELETE FROM asset_ownership_history WHERE organization_id = ?", organizationId);
     userRepository.deleteById(editor.getId());
     userRepository.deleteById(viewer.getId());
-    // #392: setUp's library/grant creation now also writes audit_log rows
+    // setUp's library/grant creation now also writes audit_log rows
     // (fk_audit_log_organization is ON DELETE RESTRICT).
     jdbcTemplate.update("DELETE FROM audit_log WHERE organization_id = ?", organizationId);
     organizationRepository.deleteById(organizationId);
   }
 
   /**
-   * The catalog's "last change" of a knowledge library (#2093): an upload, a deletion and a
-   * completed run that indexed a document move it; a technical write and a run without a change
-   * leave it standing.
+   * The catalog's "last change" of a knowledge library: an upload, a deletion and a completed run
+   * that indexed a document move it; a technical write and a run without a change leave it
+   * standing.
    */
   @Test
   void contentChangesMoveTheLibrarysUpdatedAtAndTechnicalWritesDoNot() {
@@ -282,7 +282,7 @@ class LibraryDocumentServiceIntegrationTest {
             null,
             currentUserOf(editor, false));
 
-    // #434: uploadDocument itself only ever returns PENDING - parsing/embedding still run on
+    // uploadDocument itself only ever returns PENDING - parsing/embedding still run on
     // uploadTaskExecutor after this call has already returned.
     assertThat(response.document().getStatus()).isEqualTo(DocumentStatus.PENDING);
     assertThat(response.document().getSourceType()).isEqualTo(SourceType.UPLOAD);
@@ -409,10 +409,10 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             uploaded.document().getId().toString());
     assertThat(chunksAfter).isZero();
-    // #1047 review, finding 4: deleteDocument runs the chunk delete from a
-    // TransactionSynchronization#afterCommit callback (see LibraryDocumentService#deleteDocument) -
-    // this proves the full-text delete actually reaches the database from that deferred callback
-    // against a real connection/transaction manager, not just against a mock.
+    // deleteDocument runs the chunk delete from a TransactionSynchronization#afterCommit callback
+    // (see LibraryDocumentService#deleteDocument) - this proves the full-text delete actually
+    // reaches the database from that deferred callback against a real connection/transaction
+    // manager, not just against a mock.
     Long fullTextChunksAfter =
         jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM chunk_full_text WHERE document_id = ?",
@@ -459,7 +459,7 @@ class LibraryDocumentServiceIntegrationTest {
   @Test
   void deletingAFilesystemSourcedDocumentRemovesTheRowButNeverItsSourceFile(@TempDir Path crawlDir)
       throws IOException {
-    // #420 code review, finding 1 (blocking): an EDITOR on this library must be able to remove a
+    // An EDITOR on this library must be able to remove a
     // FILESYSTEM-sourced document's row and chunks like any other, but the file itself lives in
     // the operator-managed indexing directory - deleteDocument must never touch it, even though
     // nothing today reserves the library's grants to upload-only content.
@@ -537,16 +537,16 @@ class LibraryDocumentServiceIntegrationTest {
   @Test
   void concurrentUploadsOfTheSameFileIntoTheSameLibraryProduceExactlyOneDocument()
       throws Exception {
-    // #420 code review, nit 5: the sequential findByLibraryIdAndChecksum check alone cannot close
-    // this race - only uk_documents_library_checksum can, and only a genuine
+    // The sequential findByLibraryIdAndChecksum check alone cannot close this race - only
+    // uk_documents_library_checksum can, and only a genuine
     // concurrent attempt (real threads, real Postgres) actually exercises it rather than the
     // sequential fast-path check.
     String identicalContent = "identical concurrent content";
     CyclicBarrier barrier = new CyclicBarrier(2);
     ExecutorService executor = Executors.newFixedThreadPool(2);
     try {
-      // Returns the winner's document id, or null for the loser - #420 second code review round,
-      // nit 1: a plain boolean cannot check the vector store afterwards, and that omission is
+      // Returns the winner's document id, or null for the loser - a plain boolean cannot check the
+      // vector store afterwards, and that omission is
       // exactly what let the loser's orphaned chunks slip through the first version of this test.
       Callable<UUID> upload =
           () -> {
@@ -575,11 +575,11 @@ class LibraryDocumentServiceIntegrationTest {
           .isTrue();
       UUID winnerId = firstResult != null ? firstResult : secondResult;
       assertThat(documentRepository.findByLibraryId(libraryId)).hasSize(1);
-      // #434: the winner's chunks are written asynchronously - wait for that to finish before
+      // The winner's chunks are written asynchronously - wait for that to finish before
       // checking the vector store below, or this could observe it mid-write.
       awaitDocumentStatus(winnerId, DocumentStatus.INDEXED);
 
-      // The actual regression this test exists for (#420 second code review round, finding 1): the
+      // The regression this test exists for: the
       // loser must not have written chunks to the vector store before losing the race - the
       // checksum has to be set before chunking/embedding, not after, for that to hold.
       Long chunksNotBelongingToTheWinner =
@@ -687,9 +687,9 @@ class LibraryDocumentServiceIntegrationTest {
             Long.class,
             connectorLibrary.library().getId().toString());
     assertThat(chunksAfter).isZero();
-    // #1047 review (second round), finding 2: the second half of the delete-path proof - a
-    // library delete (KnowledgeLibraryService#deleteLibrary -> VectorChunkStore#deleteByLibraryId)
-    // must clear chunk_full_text exactly as it clears vector_store.
+    // The second half of the delete-path proof - a library delete
+    // (KnowledgeLibraryService#deleteLibrary -> VectorChunkStore#deleteByLibraryId) must clear
+    // chunk_full_text exactly as it clears vector_store.
     Long fullTextChunksAfter =
         jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM chunk_full_text WHERE library_id = ?",
@@ -697,7 +697,7 @@ class LibraryDocumentServiceIntegrationTest {
             connectorLibrary.library().getId());
     assertThat(fullTextChunksAfter).isZero();
 
-    // #479 review nit: documentsRemoved in the LIBRARY_DELETED audit entry must come from
+    // documentsRemoved in the LIBRARY_DELETED audit entry must come from
     // DocumentRepository#deleteByLibraryId's own bulk-delete row count, not from a count taken
     // before the delete - see KnowledgeLibraryService#deleteLibrary.
     String deletionPayload =
@@ -729,7 +729,7 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(saved.getFileName()).isEqualTo("evil.txt");
   }
 
-  // #736: GET /api/v1/documents/{documentId}/content, backed by LibraryDocumentService#loadContent.
+  // GET /api/v1/documents/{documentId}/content, backed by LibraryDocumentService#loadContent.
 
   @Test
   void loadContentReturnsTheStoredFileForAnUploadedDocumentToAnyoneWithAtLeastViewer() {
@@ -821,8 +821,8 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void loadContentAnswers404WithAGermanMessageWhenARemoteSourcedDocumentHasNoStoredSourceUrl() {
-    // #747: HTTP_DIRECTORY/RSS_FEED content is now proxied from the document's own stored source
-    // URL (see the proxy tests further down) - a document somehow persisted without one (file_path
+    // HTTP_DIRECTORY/RSS_FEED content is now proxied from the document's own stored source URL
+    // (see the proxy tests further down) - a document somehow persisted without one (file_path
     // blank rather than a real URL) has nothing to fetch, the one case loadRemoteContent itself
     // still answers 404 for directly, before ever attempting a network call.
     Document remoteDoc =
@@ -837,8 +837,8 @@ class LibraryDocumentServiceIntegrationTest {
         .hasMessage("Für dieses Dokument steht kein Originaldokument zur Verfügung");
   }
 
-  // #747: GET /api/v1/documents/{documentId}/content for HTTP_DIRECTORY/RSS_FEED - proxied from
-  // the document's stored source URL through the real, Spring-wired TargetAddressValidator/
+  // GET /api/v1/documents/{documentId}/content for HTTP_DIRECTORY/RSS_FEED - proxied from the
+  // document's stored source URL through the real, Spring-wired TargetAddressValidator/
   // BoundedDownloader beans rather than mocks, so the SSRF re-check and credential handling are
   // exercised end to end. 127.0.0.1 is allowlisted via configureProperties (target validation is
   // enabled by default, see application.yml) so this suite's own local HttpServer instances are
@@ -957,8 +957,8 @@ class LibraryDocumentServiceIntegrationTest {
                 + Base64.getEncoder()
                     .encodeToString("libuser:libpass".getBytes(StandardCharsets.UTF_8));
         assertThat(receivedAuthorization.get()).isEqualTo(expected);
-        // #748 review, nit 1: reads the actual bytes the caller would receive rather than
-        // asserting a tautology against a record with no credentials field to begin with.
+        // Reads the actual bytes the caller would receive rather than asserting a
+        // tautology against a record with no credentials field to begin with.
         assertThat(new String(content.stream().readAllBytes(), StandardCharsets.UTF_8))
             .isEqualTo("content")
             .doesNotContain("libpass");
@@ -1002,13 +1002,13 @@ class LibraryDocumentServiceIntegrationTest {
   @Test
   void loadContentAnswers404WhenTheStoredSourceUrlIsBlockedByTheTargetAllowlist()
       throws IOException {
-    // #748 review, finding 4: a real, listening HttpServer, reachable through the 127/8 alias
-    // "127.0.0.2" - loopback (always blocked once target validation is enabled) and a different
-    // literal host string than the "localhost"/"127.0.0.1" the signature allowlists for the other
-    // local test servers (the allowlist matches by host string, never by resolved address). Bound
-    // on the wildcard address rather than on 127.0.0.2 itself, because macOS binds only 127.0.0.1
-    // by default (#966). requestsReceived proves the request never left this process while the
-    // re-check is in place; with it removed, the request would succeed and both assertions fail.
+    // A real, listening HttpServer, reachable through the 127/8 alias "127.0.0.2" - loopback
+    // (always blocked once target validation is enabled) and a different literal host string than
+    // the "localhost"/"127.0.0.1" the signature allowlists for the other local test servers (the
+    // allowlist matches by host string, never by resolved address). Bound on the wildcard address
+    // rather than on 127.0.0.2 itself, because macOS binds only 127.0.0.1 by default.
+    // requestsReceived proves the request never left this process while the re-check is in place;
+    // with it removed, the request would succeed and both assertions fail.
     HttpServer blockedServer = HttpServer.create(new InetSocketAddress(0), 0);
     blockedServer.start();
     AtomicInteger requestsReceived = new AtomicInteger();
@@ -1134,11 +1134,11 @@ class LibraryDocumentServiceIntegrationTest {
 
   /**
    * Saves a FILESYSTEM library directly through the repository rather than through {@link
-   * KnowledgeLibraryService#createLibrary} (#742 review, finding 3): that service additionally
-   * requires an operator-style absolute Unix path ({@code sourcePath.startsWith("/")}), which a
-   * JUnit {@code @TempDir} does not produce on every OS this suite runs on (Windows locally, Linux
-   * in CI) - the schema checks no configuration per type (ADR-0038), so bypassing the service here
-   * still leaves a row the database accepts.
+   * KnowledgeLibraryService#createLibrary}: that service additionally requires an operator-style
+   * absolute Unix path ({@code sourcePath.startsWith("/")}), which a JUnit {@code @TempDir} does
+   * not produce on every OS this suite runs on (Windows locally, Linux in CI) - the schema checks
+   * no configuration per type (ADR-0038), so bypassing the service here still leaves a row the
+   * database accepts.
    */
   private KnowledgeLibrary saveFilesystemLibrary(String sourcePath) {
     KnowledgeLibrary library =
@@ -1262,15 +1262,15 @@ class LibraryDocumentServiceIntegrationTest {
         .isInstanceOf(NotFoundException.class);
   }
 
-  // #517: page/size/q on GET /libraries/{id}/documents, backed by
-  // KnowledgeLibraryService#listDocuments / DocumentRepository's paged finder methods. Seeded
-  // directly via documentRepository rather than through uploadDocument/the indexing pipeline - the
-  // paging and search behaviour under test does not depend on how a row got there.
+  // page/size/q on GET /libraries/{id}/documents, backed by KnowledgeLibraryService#listDocuments
+  // / DocumentRepository's paged finder methods. Seeded directly via documentRepository rather
+  // than through uploadDocument/the indexing pipeline - the paging and search behaviour under test
+  // does not depend on how a row got there.
   private Document seedDocument(String fileName) {
     return seedDocument(fileName, null);
   }
 
-  // #821: the folder-scoped counterpart to seedDocument above - same reasoning, seeded directly
+  // The folder-scoped counterpart to seedDocument above - same reasoning, seeded directly
   // rather than through an actual upload.
   private Document seedDocument(String fileName, UUID folderId) {
     Document document =
@@ -1287,10 +1287,10 @@ class LibraryDocumentServiceIntegrationTest {
         new LibraryFolder(libraryId, parentFolderId, name, organizationId));
   }
 
-  // #517 code review, finding 1: mirrors LibraryController#listDocuments' stable ORDER BY - a
-  // plain PageRequest.of(page, size) has no guaranteed row order across two separate SELECT ...
-  // LIMIT/OFFSET statements in PostgreSQL, which is exactly what made the disjointedness
-  // assertion below unreliable before that sort existed.
+  // Mirrors LibraryController#listDocuments' stable ORDER BY - a plain PageRequest.of(page,
+  // size) has no guaranteed row order across two separate SELECT ... LIMIT/OFFSET statements in
+  // PostgreSQL, which is exactly what made the disjointedness assertion below unreliable before
+  // that sort existed.
   private Pageable stableOrder(int page, int size) {
     return PageRequest.of(page, size, Sort.by(Sort.Order.asc("fileName"), Sort.Order.asc("id")));
   }
@@ -1356,11 +1356,11 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void listDocumentsTreatsPercentAndUnderscoreInQAsLiteralCharactersNotSqlWildcards() {
-    // #517 code review, nit 3: Spring Data JPA's *Containing* finder escapes LIKE metacharacters
-    // in the parameter by default (EscapeCharacter.DEFAULT) - this pins that behaviour down so a
-    // future switch to a hand-written @Query cannot silently regress it. Without escaping, "%"
-    // alone would match every row (LIKE '%%%' = "any content"), and "_" would match any single
-    // character instead of a literal underscore.
+    // Spring Data JPA's *Containing* finder escapes LIKE metacharacters in the parameter by
+    // default (EscapeCharacter.DEFAULT) - this pins that behaviour down so a future switch to a
+    // hand-written @Query cannot silently regress it. Without escaping, "%" alone would match
+    // every row (LIKE '%%%' = "any content"), and "_" would match any single character instead
+    // of a literal underscore.
     seedDocument("100%-Regel.pdf");
     seedDocument("normale-akte.pdf");
     seedDocument("akte_alt.pdf");
@@ -1436,12 +1436,12 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void listDocumentsSubfolderCountsAreRecursiveNotJustDirectChildren() {
-    // #821 review round 1, finding 4: LibraryFolderListItem.documentCount must match
-    // LibraryFolderResponse.documentCount's recursive semantics (ADR-0020, Entscheidung 5) - a
-    // subfolder row here is exactly what a subsequent delete confirmation for it would show. Three
-    // nesting levels below Protokolle, with a document at every level but the queried one (root),
-    // so a shallow "direct children only" count (1, only Archiv's own direct document) would
-    // visibly disagree with the correct recursive one (3, everything Archiv contains).
+    // LibraryFolderListItem.documentCount must match LibraryFolderResponse.documentCount's
+    // recursive semantics (ADR-0020, Entscheidung 5) - a subfolder row here is exactly what a
+    // subsequent delete confirmation for it would show. Three nesting levels below Protokolle,
+    // with a document at every level but the queried one (root), so a shallow "direct children
+    // only" count (1, only Archiv's own direct document) would visibly disagree with the correct
+    // recursive one (3, everything Archiv contains).
     LibraryFolder protokolle = seedFolder("Protokolle", null);
     LibraryFolder archiv = seedFolder("Archiv", protokolle.getId());
     LibraryFolder jahr2026 = seedFolder("2026", archiv.getId());
@@ -1547,9 +1547,9 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void listDocumentsWithAnUnknownFolderIdAndAQAlsoAnswers404() {
-    // #821 review round 1, finding 3: folderId is validated whether or not q is also set - a
-    // caller must not be able to bypass the 404 simply by adding a search term, which the first
-    // implementation round accidentally allowed (q short-circuited the validation entirely).
+    // folderId is validated whether or not q is also set - a caller must not be able to bypass
+    // the 404 simply by adding a search term, which the first implementation round accidentally
+    // allowed (q short-circuited the validation entirely).
     seedDocument("dienstanweisung.pdf");
 
     assertThatThrownBy(
@@ -1631,7 +1631,7 @@ class LibraryDocumentServiceIntegrationTest {
         .extracting(entry -> entry.document().getFileName())
         .containsExactly("c-mail.eml", "bericht.pdf");
 
-    // #1184 (review): the detail header's and the overview card's documentCount both count on the
+    // The detail header's and the overview card's documentCount both count on the
     // same parent level as the list's totalElements - 3, never 6 - so the card can never promise
     // more rows than the list shows; the attachments are visible inside their groups instead.
     assertThat(libraryService.getLibrary(libraryId, currentUserOf(editor, false)).documentCount())
@@ -1714,7 +1714,7 @@ class LibraryDocumentServiceIntegrationTest {
         .containsExactly("posteingang.eml", "weiterleitung.eml", "haushaltsplan.pdf");
   }
 
-  // #821: POST .../documents' own folderId - upload target validation and the resulting
+  // POST .../documents' own folderId - upload target validation and the resulting
   // folderId/folderPath on the response.
 
   @Test
@@ -1842,7 +1842,7 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void uploadDocumentWithAFolderPathRelativeToAnExplicitFolderIdNestsUnderIt() {
-    // #823: folderId + folderPath together - folderPath is relative to folderId, not the root.
+    // folderId + folderPath together - folderPath is relative to folderId, not the root.
     LibraryFolder bestand = seedFolder("Bestand", null);
 
     LibraryDocumentEntry response =
@@ -1879,12 +1879,12 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void uploadDocumentWithAnUnsupportedFormatAndAFolderPathCreatesNoFolders() {
-    // #823 review, Befund 1: resolveOrCreateFolderPath used to run before the format check
-    // (empty/size/quota/format), so a rejected upload into a brand-new folderPath still left that
-    // folder chain behind - three hundred wrong-format files dropped into "Protokolle/2026" would
-    // have created that same folder chain three hundred times over before the first ever actually
-    // failed. Moving the resolve call past the format check (see uploadDocument's own comment)
-    // means a rejected format never reaches it at all.
+    // resolveOrCreateFolderPath used to run before the format check (empty/size/quota/format), so
+    // a rejected upload into a brand-new folderPath still left that folder chain behind - three
+    // hundred wrong-format files dropped into "Protokolle/2026" would have created that same
+    // folder chain three hundred times over before the first ever actually failed. Moving the
+    // resolve call past the format check (see uploadDocument's own comment) means a rejected
+    // format never reaches it at all.
     MultipartFile unsupported =
         new MockMultipartFile("file", "malware.exe", "application/octet-stream", "x".getBytes());
 
@@ -1951,17 +1951,17 @@ class LibraryDocumentServiceIntegrationTest {
   }
 
   /**
-   * Polls the document row until asynchronous processing (#434) has moved it past {@code PENDING}
-   * to some terminal status, then asserts it is the expected one - mirrors {@code
+   * Polls the document row until asynchronous processing has moved it past {@code PENDING} to some
+   * terminal status, then asserts it is the expected one - mirrors {@code
    * DocumentIndexingIntegrationTest#awaitJobCompletion}'s use of Awaitility for the same reason:
    * {@code uploadTaskExecutor} runs on its own thread pool, so a test asserting on the eventual
    * outcome cannot simply read the row synchronously right after {@code uploadDocument} returns.
    *
-   * <p>Waits for "no longer PENDING", not for the expected status directly (PR #589 review, item
-   * 6): waiting for the expected status directly would time out after the full 30 seconds with an
-   * unhelpful "still PENDING" message if processing actually finished quickly but landed on the
-   * *other* terminal status - this instead fails fast with a clear expected/actual mismatch the
-   * moment processing is done, whichever status it reached.
+   * <p>Waits for "no longer PENDING", not for the expected status directly: waiting for the
+   * expected status directly would time out after the full 30 seconds with an unhelpful "still
+   * PENDING" message if processing actually finished quickly but landed on the *other* terminal
+   * status - this instead fails fast with a clear expected/actual mismatch the moment processing is
+   * done, whichever status it reached.
    */
   // --- #1218: attachments of uploaded mails go through the generalized attachment path ---
 
@@ -1984,7 +1984,7 @@ class LibraryDocumentServiceIntegrationTest {
     assertThat(attachment.getSourceType()).isEqualTo(SourceType.UPLOAD);
     // ADR-0022, Entscheidung 2: the attachment's synthetic file_path embeds the parent's own.
     assertThat(attachment.getFilePath()).startsWith(mail.getFilePath() + "/");
-    // #1130 Befund 2, structurally fixed: the attachment's chunks carry its own pipeline's id
+    // The attachment's chunks carry its own pipeline's id
     // (the Tika fallback for plain text), never the outer mail pipeline's.
     assertThat(chunkPipelineIds(attachment.getId())).containsExactly("tika-fallback");
     assertThat(chunkPipelineIds(mail.getId())).containsExactly("email");
@@ -2064,9 +2064,9 @@ class LibraryDocumentServiceIntegrationTest {
 
   @Test
   void twoUploadedMailsWithAnIdenticalAttachmentAreBothIndexed() throws Exception {
-    // uk_documents_library_checksum is scoped to parentless rows (#1218):
-    // upload dedup is about what users upload, not about content derived from it - two different
-    // mails legitimately carry the same attachment.
+    // uk_documents_library_checksum is scoped to parentless rows: upload dedup is about what
+    // users upload, not about content derived from it - two different mails legitimately carry
+    // the same attachment.
     LibraryDocumentEntry first =
         documentService.uploadDocument(
             libraryId,

@@ -27,8 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * The switch of the automatic chat cleanup on a space (#1923): off by default, set at creation or
- * by whoever may change the space's details, its start recorded once, and every change of it in the
+ * The switch of the automatic chat cleanup on a space: off by default, set at creation or by
+ * whoever may change the space's details, its start recorded once, and every change of it in the
  * audit log with the old and the new value.
  */
 @OpaaIntegrationTest

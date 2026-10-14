@@ -85,14 +85,14 @@ class DiagnosticAccessIntegrationTest {
     holderId = persistUser("holder").getId();
     UUID adminId = persistUser("admin").getId();
     admin = CurrentUser.of(adminId, organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
-    // Every ORG_UNIT group carries its provider since #1816 (chk_groups_provider_kind).
+    // Every ORG_UNIT group carries its provider (chk_groups_provider_kind).
     scopeProviderId = ProviderFixtures.tokenProvider(providerRepository).getId();
     scopeGroupId = providerGroup(GroupKind.ORG_UNIT, "Amt für Personal", 7).getId();
   }
 
   /**
    * A provider group with {@code activeMembers} usable accounts - a scope of the befugnis has to
-   * carry at least the Mindestgruppengröße (#1879, ADR-0036 Entscheidung 3).
+   * carry at least the Mindestgruppengröße (ADR-0036 Entscheidung 3).
    */
   private Group providerGroup(GroupKind kind, String name, int activeMembers) {
     Group group = new Group(organizationId, kind, name, null, scopeProviderId, null, null, null);
@@ -364,7 +364,7 @@ class DiagnosticAccessIntegrationTest {
     assertThat(grantService.holdsImpersonationPermission(holder)).isTrue();
   }
 
-  /** The three states the diagnosis interface has to tell apart (#1879). */
+  /** The three states the diagnosis interface has to tell apart. */
   @Test
   void aHolderOfAnUnusableBefugnisIsNotAHolderOfNone() {
     Group scope = providerGroup(GroupKind.ORG_UNIT, "Referat 50", 7);
@@ -611,8 +611,8 @@ class DiagnosticAccessIntegrationTest {
     Group profile =
         new Group(
             organizationId, GroupKind.AD_HOC, "Sachbearbeitung", null, null, null, null, null);
-    // Released for use (#1814): an internal group its stewards have not released is no grant
-    // subject for an owner who is neither member nor steward of it.
+    // Released for use: an internal group its stewards have not released is no grant subject
+    // for an owner who is neither member nor steward of it.
     profile.release(true);
     groupRepository.save(profile);
     assetGrantService.upsertGrant(

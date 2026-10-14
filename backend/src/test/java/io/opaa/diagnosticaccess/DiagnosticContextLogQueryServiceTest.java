@@ -186,7 +186,7 @@ class DiagnosticContextLogQueryServiceTest {
   }
 
   /**
-   * Regression guard for the review of #1121: the DENIED entry must be written through {@link
+   * Regression guard for #1121: the DENIED entry must be written through {@link
    * AuditEventRecorder#recordAuditLogAccess}, whose suspended transaction survives the rejection -
    * {@code recordUserAction} joins the caller's transaction, which the thrown exception rolls back.
    * {@code DiagnosticAccessIntegrationTest} proves the surviving row against a real transaction;

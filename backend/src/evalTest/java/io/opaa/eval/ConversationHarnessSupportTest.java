@@ -36,9 +36,9 @@ import org.springframework.ai.chat.messages.Message;
 
 /**
  * Docker-free guard for the two things this whole path stands or falls on: that the turn's
- * conversation window (issue #1484) and its Gesprächsnotiz (#1487) actually reach the production
- * {@link RetrievalContext}. An {@code List.of()} in either place would leave every other assertion
- * of this suite green while the run reported multi-turn numbers measured without them.
+ * conversation window and its Gesprächsnotiz actually reach the production {@link
+ * RetrievalContext}. An {@code List.of()} in either place would leave every other assertion of this
+ * suite green while the run reported multi-turn numbers measured without them.
  */
 class ConversationHarnessSupportTest {
 
@@ -82,15 +82,15 @@ class ConversationHarnessSupportTest {
         .extracting(Message::getText)
         .containsExactly("Was kostet ein Anwohnerparkausweis?", "30,70 Euro pro Jahr.");
     assertThat(contexts.get(1).question()).isEqualTo("Und bei Bedürftigkeit?");
-    // Issue #1652: the CPU backend the harness verified is a fixed point of the run it measured.
+    // The CPU backend the harness verified is a fixed point of the run it measured.
     assertThat(report.runConfiguration().pipeline().ollamaCpuBackend())
         .isEqualTo(EvalOllamaCpuBackend.PINNED);
   }
 
   /**
-   * The note's counterpart of the assertion above (#1487): the points the production condensation
-   * produced from a finished turn reach the next turn's {@link RetrievalContext} - and only the
-   * {@code RAHMEN} ones, since the decomposition never sees an ANTWORTFORM point.
+   * The note's counterpart of the assertion above: the points the production condensation produced
+   * from a finished turn reach the next turn's {@link RetrievalContext} - and only the {@code
+   * RAHMEN} ones, since the decomposition never sees an ANTWORTFORM point.
    */
   @Test
   void everyTurnAfterTheFirstReachesThePipelineWithTheRahmenPointsOfItsNote() throws IOException {
@@ -134,7 +134,7 @@ class ConversationHarnessSupportTest {
         .containsExactly("Bezugsjahr 2024");
   }
 
-  /** Without a cap there is no note - the shape of a run measured before #1487. */
+  /** Without a cap there is no note - the shape of a run measured without the note list. */
   @Test
   void aRunWithoutANoteCapReachesThePipelineWithNoNoteAtAll() throws IOException {
     List<RetrievalContext> contexts = new ArrayList<>();

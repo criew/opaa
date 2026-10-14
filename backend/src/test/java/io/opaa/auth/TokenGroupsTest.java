@@ -10,9 +10,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * The three cases a groups claim can be in (#1807): present with names, present and empty - the
- * provider revoking everything - and no usable claim at all, which must stay distinguishable from
- * the empty one because only the empty one is a revocation.
+ * The three cases a groups claim can be in: present with names, present and empty - the provider
+ * revoking everything - and no usable claim at all, which must stay distinguishable from the empty
+ * one because only the empty one is a revocation.
  */
 class TokenGroupsTest {
 

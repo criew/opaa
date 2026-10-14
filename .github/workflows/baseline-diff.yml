@@ -1,7 +1,7 @@
 name: Baseline-Diff
 
 # Läuft für JEDEN Pull Request, der eval/baseline/** ändert — unabhängig vom Label 'evaluation'
-# (ADR-0013, Entscheidung 6; PR #301 review, zweite Runde). Der eigentliche Retrieval-Regressionsjob
+# (ADR-0013, Entscheidung 6). Der eigentliche Retrieval-Regressionsjob
 # (.github/workflows/retrieval-regression.yml) läuft nur bei diesem Label, weil er Docker braucht und
 # ~17 Minuten dauert; ohne diesen separaten, Docker-freien Workflow würde ein PR, der die Baseline
 # unbemerkt absenkt, aber nie das Label bekommt, überhaupt keinen Hinweis erzeugen. Dieser Workflow
@@ -68,7 +68,7 @@ jobs:
       - name: Diff-Tabelle der Job-Zusammenfassung hinzufügen
         run: cat build/baseline-diff-vs-main.md >> "$GITHUB_STEP_SUMMARY"
 
-      # continue-on-error (wie in retrieval-regression.yml, PR #301 review): ein Fork-PR hat nur ein
+      # continue-on-error (wie in retrieval-regression.yml): ein Fork-PR hat nur ein
       # schreibgeschütztes Standard-GITHUB_TOKEN, der Kommentar-Versuch scheitert dann mit 403 — das
       # darf den Job nicht als fehlgeschlagen markieren, die Diff-Prüfung selbst ist rein informativ.
       - name: Diff-Tabelle als PR-Kommentar posten

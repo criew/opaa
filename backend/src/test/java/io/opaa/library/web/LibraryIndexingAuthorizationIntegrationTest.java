@@ -190,10 +190,10 @@ class LibraryIndexingAuthorizationIntegrationTest {
 
   @Test
   void aNonAdminUserWithAnExplicitEditorGrantSucceeds() throws Exception {
-    // #500 review, finding 4: aRegularUserWithAnExplicitEditorGrantSucceedsWithoutBeingSystemAdmin
-    // above actually runs as devAdmin (devUser(null) defaults to the configured default user, which
-    // is SYSTEM_ADMIN) - it only proves the missing grant on that one library, not that a genuinely
-    // non-privileged caller can trigger a run at all. "dev-user" (application.yml) does not match
+    // aRegularUserWithAnExplicitEditorGrantSucceedsWithoutBeingSystemAdmin above actually runs as
+    // devAdmin (devUser(null) defaults to the configured default user, which is SYSTEM_ADMIN) - it
+    // only proves the missing grant on that one library, not that a genuinely non-privileged caller
+    // can trigger a run at all. "dev-user" (application.yml) does not match
     // opaa.auth.initial-admin-email, so UserProvisioningFilter provisions it as a plain USER.
     User regularUser = provisionDevUser();
 

@@ -70,8 +70,8 @@ class MailServiceTest {
   }
 
   /**
-   * Regression guard for #1559 review, MEDIUM 5: a missing recipient is not a fault of the mail
-   * server, so it must not appear as one in {@code last_failure_*}.
+   * Regression guard for #1559: a missing recipient is not a fault of the mail server, so it must
+   * not appear as one in {@code last_failure_*}.
    */
   @Test
   void refusesASendWithoutARecipientWithoutTouchingTheMailServerStatus() {
@@ -96,7 +96,7 @@ class MailServiceTest {
   }
 
   /**
-   * Regression guard for #1559 review, HIGH 2: {@code snapshot()} raises whenever {@code
+   * Regression guard for #1559: {@code snapshot()} raises whenever {@code
    * OPAA_SETTINGS_ENCRYPTION_KEY} is missing or was rotated. Before the fix that reached the caller
    * - a 500 on the settings test, and from #1537 on a failed account creation.
    */
@@ -140,10 +140,10 @@ class MailServiceTest {
   }
 
   /**
-   * Regression guard for #1559 review, HIGH 1: {@code JavaMailSenderImpl} throws {@link
-   * MailSendException} built from the failed-messages map <em>without</em> a cause, and its own
-   * message is the list of rejected recipients. Walking {@code getCause()} therefore used to put
-   * the address into the log, into {@code last_failure_reason} and into the API response.
+   * Regression guard for #1559: {@code JavaMailSenderImpl} throws {@link MailSendException} built
+   * from the failed-messages map <em>without</em> a cause, and its own message is the list of
+   * rejected recipients. Walking {@code getCause()} therefore used to put the address into the log,
+   * into {@code last_failure_reason} and into the API response.
    */
   @Test
   void unwrapsARejectedRecipientThroughTheFailedMessagesAndNeverNamesTheAddress() {

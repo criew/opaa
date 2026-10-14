@@ -47,7 +47,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * The catalog of #1904 over both asset types: exactly what the caller may read (direct grant, group
  * grant, organization-wide), from one query on the shell - by the rights formula alone, with the
  * organization boundary, the search and the paging in SQL. An asset the caller may not read never
- * appears, not even by name (#2092).
+ * appears, not even by name.
  */
 @OpaaIntegrationTest
 class AssetCatalogServiceIntegrationTest {

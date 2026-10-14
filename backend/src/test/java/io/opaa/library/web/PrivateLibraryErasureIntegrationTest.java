@@ -53,10 +53,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * The erasure of a private library against the Liquibase schema (#2165): afterwards no table of the
- * schema holds a row naming the library, a document, a folder, a run, a chunk or a name or path of
- * it - the tables come from the catalog, so a new table without an erasure step fails here. Only
- * the protocols keep the library's id, never a name. The erasure is its owner's alone, waits for a
+ * The erasure of a private library against the Liquibase schema: afterwards no table of the schema
+ * holds a row naming the library, a document, a folder, a run, a chunk or a name or path of it -
+ * the tables come from the catalog, so a new table without an erasure step fails here. Only the
+ * protocols keep the library's id, never a name. The erasure is its owner's alone, waits for a
  * running run and continues after a failure.
  */
 @OpaaIntegrationTest

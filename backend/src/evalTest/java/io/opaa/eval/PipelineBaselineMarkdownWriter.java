@@ -40,8 +40,8 @@ public final class PipelineBaselineMarkdownWriter {
   /**
    * @param expectedStateAudit the run's declared-vs-measured case-state audit at this path's window
    *     against {@code expected_state.pipeline}; {@code null} if no case declares a state.
-   * @param metadataFilterAudit the run's filter audit at this path's window (issue #1070); {@code
-   *     null} for a domain without a filtered case.
+   * @param metadataFilterAudit the run's filter audit at this path's window; {@code null} for a
+   *     domain without a filtered case.
    */
   public static String render(
       PipelineBaselineComparator.ComparisonResult result,

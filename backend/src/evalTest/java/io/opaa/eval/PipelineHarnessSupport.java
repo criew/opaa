@@ -21,11 +21,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 
 /**
- * The pipeline measurement path's harness half (issue #1039): everything the domain harnesses need
- * to run their golden dataset through {@link RetrievalPipeline#run} - over a {@link
- * RetrievalContext} from the same {@link RetrievalContextFactory} a chat query uses - and write the
- * resulting {@link PipelineEvaluationReport}, in one place instead of copied into the
- * near-duplicate harness classes.
+ * The pipeline measurement path's harness half: everything the domain harnesses need to run their
+ * golden dataset through {@link RetrievalPipeline#run} - over a {@link RetrievalContext} from the
+ * same {@link RetrievalContextFactory} a chat query uses - and write the resulting {@link
+ * PipelineEvaluationReport}, in one place instead of copied into the near-duplicate harness
+ * classes.
  *
  * <p>Runs on the corpus the calling harness has already indexed and manifest-verified — the
  * pipeline path costs a second pass of queries, never a second indexing run, and therefore measures
@@ -85,17 +85,16 @@ public final class PipelineHarnessSupport {
       // indexing — a full-text row below the current version lacks the current lexemes, and a run
       // in which the lexical path silently contributed less must not look like a full hybrid one.
       boolean fullTextIndexUpToDate,
-      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
-      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
-      // Javadoc.
+      // Under which ingestion pipeline versions (all registered, not just the ones this corpus
+      // routes through) this was measured — see IngestionPipelineFingerprint's Javadoc.
       String ingestionPipelineFingerprint,
       // The form of the Kontextpräfix the corpus was embedded with, see
       // ContextPrefixFingerprint.
       String contextPrefixFingerprint,
-      // Issue #1085: the systemwide active chat model of this run (EvalChatModel.MODEL), or null
-      // if there is none. Reported as a fixed point only for a configuration that actually
-      // decomposes — see buildRunConfiguration — but carried here for every run, because the
-      // prerequisite checks need to know whether decomposition could work at all.
+      // The systemwide active chat model of this run (EvalChatModel.MODEL), or null if there is
+      // none. Reported as a fixed point only for a configuration that actually decomposes — see
+      // buildRunConfiguration — but carried here for every run, because the prerequisite checks
+      // need to know whether decomposition could work at all.
       String chatModel,
       // The context's opaa.query.relevance-cutoff.*. Not part of QueryProperties;
       // every variant shares it, because the stage bean is the production one.
@@ -106,11 +105,11 @@ public final class PipelineHarnessSupport {
    * run it is invoked from</b>.
    *
    * <p>This split is the point of the method, and it survived the pipeline path becoming a watchdog
-   * of its own (issue #1040). It runs at the end of the same {@code @Test} method as the raw-vector
-   * path, so a {@link RuntimeException} escaping it would fail {@code evaluateRetrieval}, which
-   * means <b>neither</b> baseline test runs, which means the nightly job produces no verdict at all
-   * on the raw-vector path and files an alert issue whose stock wording blames a regression that
-   * was never measured. A failing pipeline path must never silence the raw-vector path's judgment.
+   * of its own. It runs at the end of the same {@code @Test} method as the raw-vector path, so a
+   * {@link RuntimeException} escaping it would fail {@code evaluateRetrieval}, which means
+   * <b>neither</b> baseline test runs, which means the nightly job produces no verdict at all on
+   * the raw-vector path and files an alert issue whose stock wording blames a regression that was
+   * never measured. A failing pipeline path must never silence the raw-vector path's judgment.
    *
    * <p><b>The guard hides the failure from this run, not from the verdict.</b> {@code
    * PipelineBaselineRegressionTest} runs afterwards against the committed pipeline baseline and
@@ -217,16 +216,16 @@ public final class PipelineHarnessSupport {
       ExplanationDump explanationDump) {
     QueryProperties queryProperties = contextFactory.queryProperties();
     Set<UUID> searchScope = Set.of(evalLibraryId);
-    // Issue #1070: counted, not assumed - the fixed point metadataFilterEnabled below is "every
-    // filtered case reached the pipeline with its filter", derived from this counter and the
-    // dataset's own count of filtered cases.
+    // Counted, not assumed - the fixed point metadataFilterEnabled below is "every filtered
+    // case reached the pipeline with its filter", derived from this counter and the dataset's
+    // own count of filtered cases.
     AtomicInteger appliedFilters = new AtomicInteger();
     List<PipelineRetrievalEvaluator.CaseOutcome> outcomes =
         PipelineRetrievalEvaluator.evaluateAllCases(
             goldenCases,
             // No conversation history: a golden case is a standalone question, and the harness has
-            // no chat to resolve a follow-up against. The case's filter (#1070) is carried in as
-            // given, where the METADATA_FILTER stage applies it in both search paths.
+            // no chat to resolve a follow-up against. The case's filter is carried in as given,
+            // where the METADATA_FILTER stage applies it in both search paths.
             goldenCase -> {
               MetadataFilter metadataFilter = goldenCase.metadataFilter();
               if (!metadataFilter.isEmpty()) {
@@ -287,13 +286,13 @@ public final class PipelineHarnessSupport {
    *       report's metric names state that window literally. A changed production default is a
    *       deliberate measurement-contract change (new window, new names, new pipeline contract
    *       version), not something to absorb silently.
-   *   <li><b>Query decomposition may only run with an active chat model</b> (issue #1085). Left on
-   *       without one, {@code QueryDecompositionService#decompose} fails per query and falls back
-   *       to single-query retrieval — a run that reports "with decomposition" while measuring
-   *       without it, exactly the silent degradation the specification forbids. Which of the two
-   *       settings a run measures is not prescribed here: it is a fixed point of every report and
-   *       of every committed baseline, so a mismatch is caught as an incomparable baseline rather
-   *       than as a regression.
+   *   <li><b>Query decomposition may only run with an active chat model</b>. Left on without one,
+   *       {@code QueryDecompositionService#decompose} fails per query and falls back to
+   *       single-query retrieval — a run that reports "with decomposition" while measuring without
+   *       it, exactly the silent degradation the specification forbids. Which of the two settings a
+   *       run measures is not prescribed here: it is a fixed point of every report and of every
+   *       committed baseline, so a mismatch is caught as an incomparable baseline rather than as a
+   *       regression.
    *   <li><b>No pipeline stage may be switched off.</b> This path measures the complete pipeline,
    *       and which stages it consists of is not part of a report's fixed points: a run with a
    *       stage switched off would carry a {@code runConfiguration} fingerprint identical to a full
@@ -306,7 +305,7 @@ public final class PipelineHarnessSupport {
    *       direction: the committed baseline is the shipped configuration, and that one does not
    *       rerank. A rerank run belongs in the Variantenvergleich, whose candidate-window overrides
    *       are exactly what issue #1050 has to measure.
-   *   <li><b>The lexical search path must be switched on</b> (issue #1049, the Auflage recorded in
+   *   <li><b>The lexical search path must be switched on</b> (the Auflage recorded in
    *       docs/features/hybrid-retrieval.md, Arbeitspaket 2). Since it feeds the fusion, {@code
    *       opaa.query.full-text-search-enabled} moves the selection; the committed pipeline baseline
    *       describes the shipped hybrid configuration, and a run that quietly measured the
@@ -378,10 +377,10 @@ public final class PipelineHarnessSupport {
   }
 
   /**
-   * Assembles a run's fixed-point configuration record. Public (issue #1041): {@link VariantRunner}
-   * reuses this exact builder for every variant's report so a variant's {@code runConfiguration} is
-   * built the identical way the single-configuration pipeline path builds its own, just with a
-   * variant's {@link QueryProperties} instead of the production instance.
+   * Assembles a run's fixed-point configuration record. Public: {@link VariantRunner} reuses this
+   * exact builder for every variant's report so a variant's {@code runConfiguration} is built the
+   * identical way the single-configuration pipeline path builds its own, just with a variant's
+   * {@link QueryProperties} instead of the production instance.
    */
   public static PipelineEvaluationReport.PipelineRunConfiguration buildRunConfiguration(
       EvalDomainConfig domain,

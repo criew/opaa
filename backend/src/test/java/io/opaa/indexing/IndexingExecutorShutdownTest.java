@@ -18,10 +18,10 @@ import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * The shutdown window is for the HTTP requests in flight, not for background runs (#1710): a
- * running indexing task must be interrupted at once - {@code IndexingJobRecoveryScheduler} recovers
- * its row on the next start - instead of holding the stop up until the window expires. A pool whose
- * task has no recovery at all gets a short window of its own instead.
+ * The shutdown window is for the HTTP requests in flight, not for background runs: a running
+ * indexing task must be interrupted at once - {@code IndexingJobRecoveryScheduler} recovers its row
+ * on the next start - instead of holding the stop up until the window expires. A pool whose task
+ * has no recovery at all gets a short window of its own instead.
  *
  * <p>The request window used here is six seconds; in production it is a minute, which is how long
  * the wait in the control case below would be.

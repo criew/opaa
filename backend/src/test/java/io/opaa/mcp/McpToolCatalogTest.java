@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 /**
  * The generation of the tool descriptions: what it must name, what it must never name, and that a
  * library description - free text from the administration surface - enters it as a phrase and never
- * as structure (#1721).
+ * as structure.
  */
 class McpToolCatalogTest {
 
@@ -30,7 +30,7 @@ class McpToolCatalogTest {
 
   /**
    * A hit names both ids, so fetch takes either and the schema demands neither - the choice is the
-   * handler's, with a German message when both are missing (#1766).
+   * handler's, with a German message when both are missing.
    */
   @Test
   void fetchTakesTheHitIdOrTheDocumentIdAndDemandsNeitherInTheSchema() {

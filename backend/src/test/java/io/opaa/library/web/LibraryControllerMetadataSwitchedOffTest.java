@@ -16,7 +16,7 @@ import io.opaa.auth.User;
 import io.opaa.auth.UserService;
 import io.opaa.common.FeatureFlags;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.run.DocumentIndexingService;
+import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentPage;

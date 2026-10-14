@@ -255,9 +255,9 @@ class MailTemplateServiceIntegrationTest {
   }
 
   /**
-   * Regression guard for #1559 review, HIGH 3: {@code {{{displayName}}}} passed the placeholder
-   * check (the name is declared) and would have put an unescaped value into the HTML part; the
-   * other forms passed it too and then failed at render time, i.e. at somebody's invitation.
+   * Regression guard for #1559: {@code {{{displayName}}}} passed the placeholder check (the name is
+   * declared) and would have put an unescaped value into the HTML part; the other forms passed it
+   * too and then failed at render time, i.e. at somebody's invitation.
    */
   @Test
   void refusesAnOverrideWithAnUnescapedOrStructuralTag() {

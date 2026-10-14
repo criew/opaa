@@ -193,7 +193,7 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
 
   /**
    * Upload dedup is a promise about what users upload, not about content derived from it: the
-   * unique index is partial on parentless rows (#1218).
+   * unique index is partial on parentless rows.
    */
   @Test
   void uploadChecksumDedupAppliesToParentlessRowsOnly() throws SQLException {
@@ -362,7 +362,7 @@ class KnowledgeBaselineTest extends AbstractBaselineTest {
     assertThat(countRows("document_metadata_values")).isZero();
   }
 
-  /** The Aufnahmeregel of the specification, written into the database (#1071). */
+  /** The Aufnahmeregel of the specification, written into the database. */
   @Test
   void aLibraryMetadataFieldMustServeTheFilterOrTheContextPrefix() throws SQLException {
     UUID library = insertLibrary();

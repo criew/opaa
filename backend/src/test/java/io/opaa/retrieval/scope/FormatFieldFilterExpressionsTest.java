@@ -18,10 +18,10 @@ import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.pgvector.PgVectorFilterExpressionConverter;
 
 /**
- * A format-field condition (#1242) says the same thing in both search paths - {@code (Wert passt)
- * OR (kein Wert)} - and stays subordinate to the permission filter. Unlike a library field it
- * carries no library guard: a format field means the same everywhere, and a document that is not of
- * the format simply has no value.
+ * A format-field condition says the same thing in both search paths - {@code (Wert passt) OR (kein
+ * Wert)} - and stays subordinate to the permission filter. Unlike a library field it carries no
+ * library guard: a format field means the same everywhere, and a document that is not of the format
+ * simply has no value.
  */
 class FormatFieldFilterExpressionsTest {
 

@@ -11,8 +11,8 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /**
- * The core fields become self-describing list entries in schema order (#1066): an absent field is
- * absent, never a null-padded entry, and a date is displayed at its own precision.
+ * The core fields become self-describing list entries in schema order: an absent field is absent,
+ * never a null-padded entry, and a date is displayed at its own precision.
  */
 class ChatSourceMetadataEntryTest {
 
@@ -77,8 +77,8 @@ class ChatSourceMetadataEntryTest {
   }
 
   /**
-   * #1242: a mail's format fields follow the core fields as further entries, and the Betreff -
-   * which is also the Titel of the document - is not repeated in the same Belegzeile.
+   * A mail's format fields follow the core fields as further entries, and the Betreff - which is
+   * also the Titel of the document - is not repeated in the same Belegzeile.
    */
   @Test
   void appendsFormatFieldsAndDropsAValueTheTitleAlreadyShows() {

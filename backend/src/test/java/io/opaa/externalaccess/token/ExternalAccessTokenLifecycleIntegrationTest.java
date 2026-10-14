@@ -41,8 +41,8 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The three daily steps of the access tokens (#1718): the reminder before an expiry, the
- * Ausserkrafttreten with its one audit entry, and the Loeschfrist coupled to the audit retention.
+ * The three daily steps of the access tokens: the reminder before an expiry, the Ausserkrafttreten
+ * with its one audit entry, and the Loeschfrist coupled to the audit retention.
  *
  * <p>The retention assertion runs in both directions on purpose - a row inside the frist stays, one
  * outside it goes. A test that only checked the deletion would pass just as happily against the
@@ -299,7 +299,7 @@ class ExternalAccessTokenLifecycleIntegrationTest {
     private final List<String> reminded = new java.util.ArrayList<>();
 
     private RecordingMailer() {
-      super(null, ZoneId.systemDefault());
+      super(null, Clock.systemDefaultZone());
     }
 
     @Override

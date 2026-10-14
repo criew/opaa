@@ -29,7 +29,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Favorites in the catalog (#2095, ADR-0039 Entscheidung 7): the order is fixed, the caller's own
+ * Favorites in the catalog (ADR-0039 Entscheidung 7): the order is fixed, the caller's own
  * favorites first, then by name, and the favorites can be selected alone; the flag and the order
  * only ever reflect the caller's own marks, and a favorite the caller can no longer read is gone
  * from the catalog.

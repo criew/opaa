@@ -19,7 +19,7 @@
  * <p><b>Every new changeset gets its own delta test here</b>, except purely additive DDL that
  * touches no existing row (new table, nullable column without default, non-unique index); that
  * relies on the layout, boundary and order tests, which run on an empty schema. The exact list is
- * in backend/AGENTS.md. A delta test's {@code baseFixtureChangelogs()} is {@link
+ * in backend/docs/liquibase.md. A delta test's {@code baseFixtureChangelogs()} is {@link
  * io.opaa.migration.MasterChangelog#filesExcept(String...)} of its file - the state of an existing
  * installation that receives it - then it seeds representative rows through JDBC, applies only the
  * new file and asserts on the resulting schema and data. {@link
@@ -32,13 +32,12 @@
  * database that each test method clones. Cluster-wide roles such as {@code opaa_audit_owner} are
  * not part of the template - see that class's Javadoc.
  *
- * <p><b>Mandatory teardown pattern (#288):</b> {@code Liquibase.update(...)} leaves the JDBC
- * connection's auto-commit disabled. Every test class MUST call {@code
- * connection.setAutoCommit(true)} immediately after each {@code update()} call - unconditionally.
- * Every later raw JDBC statement then commits on its own, exactly as the application does, instead
- * of accumulating in an open transaction that is rolled back when the connection closes. {@code
- * connection.rollback()} in a teardown is no substitute: it leaves the auto-commit problem in
- * place.
+ * <p><b>Mandatory teardown pattern:</b> {@code Liquibase.update(...)} leaves the JDBC connection's
+ * auto-commit disabled. Every test class MUST call {@code connection.setAutoCommit(true)}
+ * immediately after each {@code update()} call - unconditionally. Every later raw JDBC statement
+ * then commits on its own, exactly as the application does, instead of accumulating in an open
+ * transaction that is rolled back when the connection closes. {@code connection.rollback()} in a
+ * teardown is no substitute: it leaves the auto-commit problem in place.
  *
  * <p><b>One deliberate exception to the delta pattern:</b> {@link
  * io.opaa.migration.DocumentTypeVocabularySeedReconciliationTest} applies the whole {@code

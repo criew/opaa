@@ -28,8 +28,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Google Drive through a profile (#2220): the profile holds the key and names the client id from
- * it, a library on it carries neither key nor imitated account, and the profile requirement can be
+ * Google Drive through a profile: the profile holds the key and names the client id from it, a
+ * library on it carries neither key nor imitated account, and the profile requirement can be
  * switched on for the type. Saving contacts Google nowhere.
  */
 @OpaaIntegrationTest

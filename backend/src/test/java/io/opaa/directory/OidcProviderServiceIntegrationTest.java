@@ -51,12 +51,11 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 /**
  * {@link OidcProviderService} and {@link OidcProviderRegistry} against a real Postgres with the
- * versioned schema (#1329, ADR-0025): the two schema invariants ({@code
- * uq_oidc_providers_issuer_uri}, {@code ux_oidc_providers_single_default}) hold under the service,
- * every change writes an audit row, and - the acceptance criterion of #1329 - a provider created
- * through the service is able to authenticate a token signed with its own key <em>without a
- * restart</em>: the registry rebuilt itself after the commit, and a provider disabled afterwards is
- * refused on the next token.
+ * versioned schema (ADR-0025): the two schema invariants ({@code uq_oidc_providers_issuer_uri},
+ * {@code ux_oidc_providers_single_default}) hold under the service, every change writes an audit
+ * row, and - the acceptance criterion of #1329 - a provider created through the service is able to
+ * authenticate a token signed with its own key <em>without a restart</em>: the registry rebuilt
+ * itself after the commit, and a provider disabled afterwards is refused on the next token.
  */
 @OpaaIntegrationTest
 class OidcProviderServiceIntegrationTest {
@@ -146,7 +145,7 @@ class OidcProviderServiceIntegrationTest {
    * https://idp.example/realms/...} as well, and this table is shared like every other.
    */
   private void removeOwnProviders() {
-    // fk_groups_provider is RESTRICT and a group's grants are RESTRICT in turn (#1812): the three
+    // fk_groups_provider is RESTRICT and a group's grants are RESTRICT in turn: the three
     // deletions have to run from the inside out, or the provider row cannot go at all.
     String ownProviders =
         "SELECT id FROM oidc_providers WHERE issuer_uri LIKE ? OR issuer_uri LIKE ?";
@@ -190,7 +189,7 @@ class OidcProviderServiceIntegrationTest {
 
   /**
    * A grant of {@code group} on an arbitrary asset - {@code asset_grants.asset_id} carries no
-   * foreign key since #1811, so no library row is needed to make the group "wirksam".
+   * foreign key, so no library row is needed to make the group "wirksam".
    */
   private void grantOnSomeAsset(Group group) {
     UUID assetId = UUID.randomUUID();
@@ -210,7 +209,7 @@ class OidcProviderServiceIntegrationTest {
         group.getId());
   }
 
-  /** An Anlegerecht held by {@code group} - the only right it has (#1813). */
+  /** An Anlegerecht held by {@code group} - the only right it has. */
   private void capabilityFor(Group group) {
     jdbcTemplate.update(
         "INSERT INTO capability_grants (id, organization_id, capability, subject_type,"
@@ -309,10 +308,10 @@ class OidcProviderServiceIntegrationTest {
   }
 
   /**
-   * {@code fk_capability_grants_subject_group_organization} is RESTRICT (#1813): a group that holds
-   * only an Anlegerecht and nothing else is still effective, and deleting its provider would
-   * otherwise run into the constraint from inside {@code deleteGroupsOfProvider} - past the very
-   * counting that exists to ask the caller first.
+   * {@code fk_capability_grants_subject_group_organization} is RESTRICT: a group that holds only an
+   * Anlegerecht and nothing else is still effective, and deleting its provider would otherwise run
+   * into the constraint from inside {@code deleteGroupsOfProvider} - past the very counting that
+   * exists to ask the caller first.
    */
   @Test
   void aProviderWhoseGroupHoldsOnlyACapabilityIsRefused() {

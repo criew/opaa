@@ -17,8 +17,8 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  * three makes this test fail until {@code
  * frontend/src/features/search-admin/utils/retrieval-note-templates.json} is regenerated (see
  * {@link #regenerateCommittedFrontendExport}) - the same JSON {@code retrievalProtocolText.test.ts}
- * reads to check its translation inventory for coverage (#1207), replacing what used to be three
- * hand-maintained copies of this set (#1160).
+ * reads to check its translation inventory for coverage, replacing what used to be three
+ * hand-maintained copies of this set.
  */
 class RetrievalNoteTest {
 

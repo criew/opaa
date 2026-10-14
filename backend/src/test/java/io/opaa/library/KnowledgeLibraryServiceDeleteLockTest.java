@@ -111,7 +111,7 @@ class KnowledgeLibraryServiceDeleteLockTest {
     LibraryFolderRepository folderRepository = mock(LibraryFolderRepository.class);
     ApplicationEventPublisher eventPublisher = mock(ApplicationEventPublisher.class);
 
-    // #1200: every null/zero component falls back to the record's own defaults (7-day rhythm).
+    // Every null/zero component falls back to the record's own defaults (7-day rhythm).
     ConfluenceProperties confluenceProperties =
         new ConfluenceProperties(0, null, null, 0, null, 0, 0, 0, null, null, 0);
     libraryService =

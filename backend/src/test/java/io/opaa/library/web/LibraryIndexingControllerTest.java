@@ -29,7 +29,7 @@ import io.opaa.indexing.job.IndexingRunEvent;
 import io.opaa.indexing.job.IndexingStatusView;
 import io.opaa.indexing.job.JobStatus;
 import io.opaa.indexing.registry.SourceConnectorRegistry;
-import io.opaa.indexing.run.DocumentIndexingService;
+import io.opaa.indexing.trigger.DocumentIndexingService;
 import io.opaa.knowledge.LibraryFolderService;
 import io.opaa.library.KnowledgeLibraryService;
 import io.opaa.library.LibraryDocumentService;
@@ -53,12 +53,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * #478: {@code POST}/{@code GET /api/v1/libraries/{libraryId}/indexing[/status]} replace the old
- * {@code /api/v1/indexing/trigger}/{@code /status} - both now read the run's target and
- * quellkonfiguration from the library itself, so the only thing left on the wire is the path
- * variable. {@link DocumentIndexingService} owns every authorization/validation decision (see
- * {@code DocumentIndexingServiceTest}); this pins that its {@code io.opaa.common} domain exceptions
- * reach the client as the matching HTTP status/body.
+ * {@code POST}/{@code GET /api/v1/libraries/{libraryId}/indexing[/status]} replace the old {@code
+ * /api/v1/indexing/trigger}/{@code /status} - both now read the run's target and quellkonfiguration
+ * from the library itself, so the only thing left on the wire is the path variable. {@link
+ * DocumentIndexingService} owns every authorization/validation decision (see {@code
+ * DocumentIndexingServiceTest}); this pins that its {@code io.opaa.common} domain exceptions reach
+ * the client as the matching HTTP status/body.
  */
 @WebMvcTest(LibraryController.class)
 @ActiveProfiles("test")
@@ -152,7 +152,7 @@ class LibraryIndexingControllerTest {
 
   @Test
   void aRunListsItsIncompleteStateAndCostFiguresAndSaysSoInTheMessage() throws Exception {
-    // #1141: the flag, the figures (wait time rounded to seconds) and the sentence a reader sees.
+    // The flag, the figures (wait time rounded to seconds) and the sentence a reader sees.
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setDocumentsProcessed(400);
@@ -216,8 +216,8 @@ class LibraryIndexingControllerTest {
 
   @Test
   void triggerIndexingHandsARequestedRunModeThroughAndReportsItOnTheRun() throws Exception {
-    // ADR-0023, Entscheidung 4 (#1136): the Betriebsart is a query parameter on the trigger and a
-    // field of every run in the list.
+    // ADR-0023, Entscheidung 4: the Betriebsart is a query parameter on the trigger and a field
+    // of every run in the list.
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setRunMode(IndexingRunMode.FULL);
@@ -342,7 +342,7 @@ class LibraryIndexingControllerTest {
 
   @Test
   void getStatusCarriesTheUnreadableSpacesOfTheLatestListingAssessment() throws Exception {
-    // #1191: the warning hangs on the most recent assessing run - here the latest job is a
+    // The warning hangs on the most recent assessing run - here the latest job is a
     // webhook-triggered one that never assessed, yet the status still names the spaces.
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
@@ -430,8 +430,8 @@ class LibraryIndexingControllerTest {
     job.setDocumentsFailed(1);
     job.setDocumentsSkipped(5);
     job.setDocumentsTotal(16);
-    // #518: an RSS_FEED run's documentsIndexedTotal (here: entries plus their attachments) can
-    // exceed documentsProcessed (feed entries alone) - distinct values below prove the response
+    // An RSS_FEED run's documentsIndexedTotal (here: entries plus their attachments) can exceed
+    // documentsProcessed (feed entries alone) - distinct values below prove the response
     // actually carries the new field rather than aliasing documentCount.
     job.setDocumentsIndexedTotal(23);
     job.setCompletedAt(Instant.now());
@@ -453,10 +453,10 @@ class LibraryIndexingControllerTest {
   @Test
   void getStatusOfAFailedRunHidesTheRawErrorDetailBelowManagerButShowsItForAManager()
       throws Exception {
-    // #507/#659: job.getErrorMessage() is the raw exception message from the executor that ran
-    // this job - e.g. "/data/dokumente/geheim: No such file or directory" for a FILESYSTEM run
-    // whose configured directory vanished, the exact internal server path #507 already hides from
-    // a VIEWER on the source configuration display itself.
+    // job.getErrorMessage() is the raw exception message from the executor that ran this job -
+    // e.g. "/data/dokumente/geheim: No such file or directory" for a FILESYSTEM run whose
+    // configured directory vanished, the exact internal server path #507 already hides from a
+    // VIEWER on the source configuration display itself.
     UUID libraryId = UUID.randomUUID();
     var job = new IndexingJob(JobStatus.RUNNING);
     job.setStatus(JobStatus.FAILED);

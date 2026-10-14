@@ -21,9 +21,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * The wiring of the rules, which {@code RateLimitFilterTest} cannot see: that each switchable
- * self-service rule (#1592) asks its <em>own</em> flow and a served flow is still counted, and that
- * the chat search has a budget of its own. No Spring context; the production {@code @Bean} method
- * is called directly, with the shipped self-service defaults (five requests per client and hour).
+ * self-service rule asks its <em>own</em> flow and a served flow is still counted, and that the
+ * chat search has a budget of its own. No Spring context; the production {@code @Bean} method is
+ * called directly, with the shipped self-service defaults (five requests per client and hour).
  */
 class RateLimitConfigurationTest {
 

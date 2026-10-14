@@ -84,11 +84,11 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * The OAuth core (#2168) against the shared fake authorization server, through the API and the
- * store: a person's consent with state and PKCE, used once, only by them and only in time; renewal
- * before the end with a rotated refresh token, once for two asking at the same time; a refused
- * grant ending the connection; revocation after a committed discard only, with the registration it
- * was issued to; and no token, code, verifier or state in an answer, a log line or a protocol.
+ * The OAuth core against the shared fake authorization server, through the API and the store: a
+ * person's consent with state and PKCE, used once, only by them and only in time; renewal before
+ * the end with a rotated refresh token, once for two asking at the same time; a refused grant
+ * ending the connection; revocation after a committed discard only, with the registration it was
+ * issued to; and no token, code, verifier or state in an answer, a log line or a protocol.
  */
 @OpaaIntegrationTest
 class ConnectionAuthorizationIntegrationTest {

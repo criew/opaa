@@ -49,10 +49,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * A prompt inserted in the chat (#1903), end to end against the Liquibase schema: the question
- * keeps the prompt as a snapshot on its message, a prompt the person may no longer read refuses the
- * next question, and the chat's selection offers exactly the prompt libraries associated with the
- * space that the person may read - the space is a hard boundary for offer and use alike.
+ * A prompt inserted in the chat, end to end against the Liquibase schema: the question keeps the
+ * prompt as a snapshot on its message, a prompt the person may no longer read refuses the next
+ * question, and the chat's selection offers exactly the prompt libraries associated with the space
+ * that the person may read - the space is a hard boundary for offer and use alike.
  */
 @OpaaMockedChatModelIntegrationTest
 class PromptInChatIntegrationTest {

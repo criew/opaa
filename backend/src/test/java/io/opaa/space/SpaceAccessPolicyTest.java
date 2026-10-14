@@ -23,10 +23,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 /**
  * Pure JUnit tests (no Spring context) for {@link SpaceAccessPolicy#effectiveRole}, {@link
  * SpaceAccessPolicy#hasAtLeast} and {@link SpaceAccessPolicy#hasCapableAdminAfter} - the rank
- * matrix every {@code require*} guard builds on, plus the group half #1815 adds. #891 review:
- * exercises every combination of (no membership/MEMBER/CURATOR/ADMIN) × (owner yes/no) against
- * every {@link SpaceRole} bar, rather than relying on the guard-level integration tests to cover
- * the matrix indirectly.
+ * matrix every {@code require*} guard builds on, plus the group half #1815 adds. Exercises every
+ * combination of (no membership/MEMBER/CURATOR/ADMIN) × (owner yes/no) against every {@link
+ * SpaceRole} bar, rather than relying on the guard-level integration tests to cover the matrix
+ * indirectly.
  */
 class SpaceAccessPolicyTest {
 

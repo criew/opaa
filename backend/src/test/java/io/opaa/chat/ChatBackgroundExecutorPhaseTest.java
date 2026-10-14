@@ -9,10 +9,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * Both chat background pools declare the shutdown phase of work that has no recovery (#1710): a
- * title or a condensation interrupted by a stop is never generated again, so the stop gives a
- * running call a short window instead of interrupting it at once like an indexing run, which does
- * recover.
+ * Both chat background pools declare the shutdown phase of work that has no recovery: a title or a
+ * condensation interrupted by a stop is never generated again, so the stop gives a running call a
+ * short window instead of interrupting it at once like an indexing run, which does recover.
  */
 class ChatBackgroundExecutorPhaseTest {
 

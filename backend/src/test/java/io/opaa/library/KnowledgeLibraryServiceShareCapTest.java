@@ -165,7 +165,7 @@ class KnowledgeLibraryServiceShareCapTest {
     ownerCaller = CurrentUser.of(ownerId, organizationId, SystemRole.USER, "Owner");
     systemAdminCaller =
         CurrentUser.of(UUID.randomUUID(), organizationId, SystemRole.SYSTEM_ADMIN, "Admin");
-    // #797: updateLibrary's own MANAGER bar is not this class's subject - every library here is
+    // updateLibrary's own MANAGER bar is not this class's subject - every library here is
     // reached through the owner's own OWNER role, which effectiveRole/requireRole both grant.
     when(accessService.requireRole(any(), any(), org.mockito.ArgumentMatchers.anyBoolean(), any()))
         .thenAnswer(invocation -> io.opaa.api.types.AssetRole.OWNER);
@@ -219,8 +219,8 @@ class KnowledgeLibraryServiceShareCapTest {
   // --- updateShareCap: what lowering it takes back at once ------------------------------
 
   /**
-   * #1931: organization-wide reach is a grant, so the clamp is a revocation through the ordinary
-   * grant path - not a field the shell lowers.
+   * Organization-wide reach is a grant, so the clamp is a revocation through the ordinary grant
+   * path - not a field the shell lowers.
    */
   @Test
   void forbiddingAllAccountsRevokesAnExistingGrantToAllAccounts() {

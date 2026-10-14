@@ -41,6 +41,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Stream;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Controller;
 
 /**
@@ -211,7 +213,8 @@ public final class ModularArchitecture {
           "indexing.registry",
           "indexing.run",
           "indexing.maintenance",
-          "indexing.filesync");
+          "indexing.filesync",
+          "indexing.trigger");
 
   /** The root package of the module connections: it wires and implements the core's port. */
   static final String CONNECTION = "connection";
@@ -335,7 +338,7 @@ public final class ModularArchitecture {
   static final Set<String> LIBRARY_ENUMERATORS =
       Set.of(
           "indexing.maintenance.PipelineReindexService",
-          "indexing.run.LibraryIndexingScheduler",
+          "indexing.trigger.LibraryIndexingScheduler",
           "library.OrphanedOriginalCleanupService",
           "library.LibraryExternalAccessService",
           "library.LibraryExternalAccessExpiryService",
@@ -517,7 +520,11 @@ public final class ModularArchitecture {
 
   /**
    * The packages of indexing a connector and the file sync may use, relative to the root: neither
-   * sees the resolvers, the service account key or the registry (ADR-0040, Entscheidung 2).
+   * sees the resolvers, the service account key, the registry or the triggers (ADR-0040,
+   * Entscheidung 2). Not checked here but at run time: the frame in {@code indexing.run} resolves a
+   * library's source only for a body defined by the executor class registered for its source type,
+   * so a connector's body never sees the secret of a library of another type; one of its own type
+   * stays reachable until #2772.
    */
   static final Set<String> CONNECTOR_IMPORTS =
       Set.of(
@@ -1093,6 +1100,36 @@ public final class ModularArchitecture {
             "only the core, the library administration and connections reach targets and secrets"
                 + " (ADR-0041, Entscheidung 3)")
         .allowEmptyShould(true);
+  }
+
+  /**
+   * Entries of each {@code @ConfigurationProperties} class in
+   * {@code @EnableConfigurationProperties}. The backend binds them only there, without a scan or a
+   * stereotype, so each needs exactly one.
+   */
+  ArchRule everyConfigurationPropertiesClassIsRegisteredOnce() {
+    Map<String, Integer> bindings = new TreeMap<>();
+    return classes()
+        .should(
+            new ArchCondition<JavaClass>("bind each @ConfigurationProperties class exactly once") {
+              @Override
+              public void check(JavaClass javaClass, ConditionEvents events) {
+                if (javaClass.isAnnotatedWith(ConfigurationProperties.class)) {
+                  bindings.merge(javaClass.getName(), 0, Integer::sum);
+                }
+                javaClass.tryGetAnnotationOfType(EnableConfigurationProperties.class).stream()
+                    .flatMap(annotation -> Arrays.stream(annotation.value()))
+                    .forEach(type -> bindings.merge(type.getName(), 1, Integer::sum));
+              }
+
+              @Override
+              public void finish(ConditionEvents events) {
+                bindings.forEach(
+                    (type, n) ->
+                        events.add(
+                            new SimpleConditionEvent(type, n == 1, type + " bound " + n + "x")));
+              }
+            });
   }
 
   /**
@@ -1705,6 +1742,7 @@ public final class ModularArchitecture {
         refreshTokensStayInTheTokenStore(),
         grantsAreRevokedOnlyAfterTheCommit(),
         theForeignContextNeverUsesTheOwnFormula(),
+        everyConfigurationPropertiesClassIsRegisteredOnce(),
         privateLibrariesAreNotEnumeratedOutsideListedClasses(),
         personalUsageIsReadOnlyByItsOwner(),
         privateAssetsAreAuditedNeutrally(),

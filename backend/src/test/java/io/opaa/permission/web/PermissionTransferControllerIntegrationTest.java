@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
- * The two transfer endpoints over HTTP (#1834, ADR-0036 Entscheidung 10): the status codes the
+ * The two transfer endpoints over HTTP (ADR-0036 Entscheidung 10): the status codes the
  * specification declares, measured at the transport rather than only described - 200 for the
  * preview, 201 for the execution, 400 without a confirmation, 403 for a caller who is no system
  * administrator, 404 across the organization boundary and 409 without a valid preview.

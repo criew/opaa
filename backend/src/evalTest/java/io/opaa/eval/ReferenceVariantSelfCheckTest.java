@@ -11,8 +11,8 @@ import java.util.function.Supplier;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for the Referenzvarianten-Selbstprüfung (issue #1085): with the production
- * configuration decomposing, the reference variant is a median of {@link
+ * Docker-free unit tests for the Referenzvarianten-Selbstprüfung: with the production configuration
+ * decomposing, the reference variant is a median of {@link
  * MultiRunAggregator#DECOMPOSITION_RUN_COUNT} runs, and only a direct measurement that follows the
  * same rule can be bit-identical to it.
  */
@@ -109,7 +109,7 @@ class ReferenceVariantSelfCheckTest {
         .hasMessageContaining("Referenzvarianten-Selbstprüfung");
   }
 
-  /** Without decomposition both sides measure exactly once, unchanged from before issue #1085. */
+  /** Without decomposition both sides measure exactly once. */
   @Test
   void aNonDecomposingReferenceVariantIsStillComparedAgainstASingleDirectRun() {
     AtomicInteger directCalls = new AtomicInteger();

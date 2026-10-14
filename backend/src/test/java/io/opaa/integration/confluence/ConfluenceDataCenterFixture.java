@@ -134,7 +134,7 @@ public final class ConfluenceDataCenterFixture {
     return trashedPageId;
   }
 
-  /** Writes a new version of a seeded page - for the incremental-run scenarios (#1139). */
+  /** Writes a new version of a seeded page - for the incremental-run scenarios. */
   public void updatePage(String title, int nextVersion, String storageBody)
       throws IOException, InterruptedException {
     new ConfluenceAdminApi(new ConfluenceHttpSession(baseUrl()), ADMIN_USER, ADMIN_PASSWORD)

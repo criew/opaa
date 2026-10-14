@@ -8,8 +8,8 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 /**
- * Docker-free unit tests for {@link MarginAggregate} (issue #1151, "Benchmark bildet
- * Grenzstabilität nicht ab"). Run via the {@code evalUnitTest} Gradle task, part of {@code check}.
+ * Docker-free unit tests for {@link MarginAggregate} ("Benchmark bildet Grenzstabilität nicht ab").
+ * Run via the {@code evalUnitTest} Gradle task, part of {@code check}.
  */
 class MarginAggregateTest {
 
@@ -83,12 +83,11 @@ class MarginAggregateTest {
   }
 
   /**
-   * Code-review finding on #1206: a group of cases whose expected document is nowhere near the
-   * window (rank 20 against a 5-window, margin -15) must report {@code hitRateHits=0} and {@code
-   * marginalHitRateCount=0} — not count as "knapp gelöst" the way an unbounded {@code m <=
-   * MARGINAL_THRESHOLD} filter would. {@code hitCountAt5} for this group is 0 in {@link
-   * MetricsAggregate}; {@code MarginAggregate} must agree, not silently report five "barely solved"
-   * cases that were never solved at all.
+   * A group of cases whose expected document is nowhere near the window (rank 20 against a
+   * 5-window, margin -15) must report {@code hitRateHits=0} and {@code marginalHitRateCount=0} —
+   * not count as "knapp gelöst" the way an unbounded {@code m <= MARGINAL_THRESHOLD} filter would.
+   * {@code hitCountAt5} for this group is 0 in {@link MetricsAggregate}; {@code MarginAggregate}
+   * must agree, not silently report five "barely solved" cases that were never solved at all.
    */
   @Test
   void deepMissesCountAsNeitherHitsNorMarginalHitsNorNarrowMisses() {

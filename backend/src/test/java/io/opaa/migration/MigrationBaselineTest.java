@@ -19,8 +19,8 @@ import org.junit.jupiter.api.Test;
  * Applies the baseline file of every module to an empty database and asserts what spans the whole
  * baseline: one changeSet per logical module in dependency order, the complete table inventory,
  * pgvector, the delivered seed rows, the partitioned {@code audit_log} owned by the restricted
- * role, and the organization-boundary composite-foreign-key rule (#390), which judges the delivered
- * schema rather than the baseline alone - see {@code applyEveryChangesetAfterTheBaseline()}.
+ * role, and the organization-boundary composite-foreign-key rule, which judges the delivered schema
+ * rather than the baseline alone - see {@code applyEveryChangesetAfterTheBaseline()}.
  *
  * <p>The invariants of the individual modules live in one class per module ({@link
  * IdentityBaselineTest}, {@link RightsBaselineTest}, {@link KnowledgeBaselineTest}, {@link
@@ -239,7 +239,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
 
   // ---------------------------------------------------------------------------------------------
   // Organization boundary rule, ported in full from the deleted OrganizationBoundarySchemaTest
-  // (#390) - a structural, schema-wide proof that closes the *class* of defect #289 was one
+  // - a structural, schema-wide proof that closes the *class* of defect #289 was one
   // instance of: a table carrying organization_id whose foreign key to another organization_id-
   // carrying table is a plain, single-column key instead of the composite (fk_column,
   // organization_id) -> (referenced_pk, organization_id) shape the rest of the schema relies on.
@@ -424,7 +424,7 @@ class MigrationBaselineTest extends AbstractBaselineTest {
    * identities with this class's fixture chain, so only the changesets written after the baseline
    * actually run. The organization-boundary rule is a property of the schema an installation ends
    * up with, not of the baseline alone - without this step a changeset added after the baseline
-   * could introduce a single-column key and never be judged by the rule (#1500).
+   * could introduce a single-column key and never be judged by the rule.
    *
    * <p>Runs once per test method, in that method's own cloned database. A future changeset that
    * creates a cluster-wide object ({@code CREATE ROLE}, as the baseline does for {@code

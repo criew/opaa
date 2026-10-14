@@ -2,7 +2,7 @@ databaseChangeLog:
   - changeSet:
       id: connections-2026-10-04-log-owner
       author: opaa
-      comment: "Whose connection a connection-log entry is about (#2163): a person, a library (source connection with its service account) or a profile. Existing entries are a person's. A person's entry still names neither a library nor an account - the CHECK keeps that promise in the database. Two end causes for a library's connection join the cause list."
+      comment: "Whose connection a connection-log entry is about: a person, a library (source connection with its service account) or a profile. Existing entries are a person's. A person's entry still names neither a library nor an account - the CHECK keeps that promise in the database. Two end causes for a library's connection join the cause list."
       changes:
         - sql:
             splitStatements: false

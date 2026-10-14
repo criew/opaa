@@ -13,9 +13,9 @@ import java.util.Map;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Writes the {@link ConversationEvaluationReport} as JSON and as Markdown (issue #1484). Separate
- * from {@link PipelineReportWriter} so the single-question path's output stays byte-for-byte what
- * it was, and so every metric label rendered here can state both its window and its turn.
+ * Writes the {@link ConversationEvaluationReport} as JSON and as Markdown. Separate from {@link
+ * PipelineReportWriter} so the single-question path's output stays byte-for-byte what it was, and
+ * so every metric label rendered here can state both its window and its turn.
  */
 public final class ConversationReportWriter {
 
@@ -117,7 +117,7 @@ public final class ConversationReportWriter {
   }
 
   /**
-   * How the Gesprächsnotiz of this run came about (#1487). The line is not decoration: a failed
+   * How the Gesprächsnotiz of this run came about. The line is not decoration: a failed
    * condensation costs its turn the points and never the run, so a run whose model was unreachable
    * throughout still produces a complete report - one that measures standalone turns while
    * declaring a note cap as a fixed point. Whoever reads a multi-turn result reads this first.

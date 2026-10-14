@@ -8,10 +8,9 @@ import java.util.Map;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * The committed pipeline-path baseline (issue #1040), checked into {@code
- * eval/baseline/pipeline-<domain>.json}. The counterpart of {@link Baseline} for the measurement
- * path that runs through the production query pipeline instead of {@code
- * VectorStore.similaritySearch} directly.
+ * The committed pipeline-path baseline, checked into {@code eval/baseline/pipeline-<domain>.json}.
+ * The counterpart of {@link Baseline} for the measurement path that runs through the production
+ * query pipeline instead of {@code VectorStore.similaritySearch} directly.
  *
  * <p><b>A separate type and a separate file per path and domain, never a shared one.</b> The two
  * paths measure at different windows (@10 without a similarity threshold vs. @20 with it applied),
@@ -47,23 +46,23 @@ public record PipelineBaseline(
    * an unnoticed {@code mmr-lambda} change would silently redefine what the committed numbers mean,
    * so all of them are validity fields here.
    *
-   * <p>Since issue #1049 that set includes the two full-text fields: {@code fullTextSearchEnabled}
-   * and {@code fullTextIndexUpToDate}. The lexical path moves the selection, so a run in which it
-   * was switched off — or in which the measured library's full-text index sat below the current
-   * version — is measuring a different configuration, not scoring worse.
+   * <p>That set includes the two full-text fields: {@code fullTextSearchEnabled} and {@code
+   * fullTextIndexUpToDate}. The lexical path moves the selection, so a run in which it was switched
+   * off — or in which the measured library's full-text index sat below the current version — is
+   * measuring a different configuration, not scoring worse.
    *
-   * <p>Since issue #1144 it also includes {@code ingestionPipelineFingerprint} — see {@link
+   * <p>It also includes {@code ingestionPipelineFingerprint} — see {@link
    * IngestionPipelineFingerprint}'s Javadoc for what it records and why {@code
    * corpusManifestSha256} alone does not already cover it.
    *
-   * <p>Since issue #2386 it also includes {@code fusion} and {@code relevanceCutoff}, the two
-   * parameter blocks that decide how the candidate lists become the selection.
+   * <p>It also includes {@code fusion} and {@code relevanceCutoff}, the two parameter blocks that
+   * decide how the candidate lists become the selection.
    *
-   * @param ollamaImage the pinned Ollama container image the vectors were produced with (issue
-   *     #1522). A checked fixed point; a value naming an external endpoint is refused at load time
-   *     — see {@link BaselineOllamaOrigin}.
-   * @param ollamaCpuBackend the ggml CPU variant the run's model runners computed with (issue
-   *     #1652, see {@link EvalOllamaCpuBackend}); a checked fixed point.
+   * @param ollamaImage the pinned Ollama container image the vectors were produced with. A checked
+   *     fixed point; a value naming an external endpoint is refused at load time — see {@link
+   *     BaselineOllamaOrigin}.
+   * @param ollamaCpuBackend the ggml CPU variant the run's model runners computed with (see {@link
+   *     EvalOllamaCpuBackend}); a checked fixed point.
    * @param chatModel {@code null} while the harness measures the {@code decomposition-off} variant
    *     — a value here would claim a model took part in the run that did not.
    * @param hitRateK the two metric windows the report's field names state literally; a change makes
@@ -101,9 +100,9 @@ public record PipelineBaseline(
       String goldenDatasetFile,
       String goldenDatasetSha256,
       int goldenCaseCount,
-      // Issue #1144: under which ingestion pipeline versions (all registered, not just the ones
-      // this corpus routes through) this was measured — see IngestionPipelineFingerprint's
-      // Javadoc for why corpusManifestSha256 alone does not answer that question.
+      // Under which ingestion pipeline versions (all registered, not just the ones this corpus
+      // routes through) this was measured — see IngestionPipelineFingerprint's Javadoc for why
+      // corpusManifestSha256 alone does not answer that question.
       String ingestionPipelineFingerprint,
       // The form of the Kontextpräfix the corpus was embedded with, see
       // ContextPrefixFingerprint.
@@ -124,7 +123,7 @@ public record PipelineBaseline(
   /**
    * The shared load-time guards of {@link PipelineGroupInvariants} - see there for the derivation
    * of each inequality and for why they live in one place rather than once per baseline type - plus
-   * the external-origin guard of {@link BaselineOllamaOrigin} (issue #1522).
+   * the external-origin guard of {@link BaselineOllamaOrigin}.
    */
   private static void validate(PipelineBaseline baseline, Path file) {
     BaselineOllamaOrigin.refuseExternalOrigin(

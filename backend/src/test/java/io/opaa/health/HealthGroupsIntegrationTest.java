@@ -15,11 +15,11 @@ import org.springframework.boot.health.contributor.Status;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * What a load balancer and a container health check see (#1710): {@code readiness} answers from the
- * process and its database alone, and the three contributors that call a model endpoint or the
- * vector store are reachable through groups of their own instead of deciding the overall status -
- * so an unreachable Ollama leaves both {@code readiness} and {@code /actuator/health} {@code UP},
- * and a health probe costs no model call.
+ * What a load balancer and a container health check see: {@code readiness} answers from the process
+ * and its database alone, and the three contributors that call a model endpoint or the vector store
+ * are reachable through groups of their own instead of deciding the overall status - so an
+ * unreachable Ollama leaves both {@code readiness} and {@code /actuator/health} {@code UP}, and a
+ * health probe costs no model call.
  */
 @OpaaIntegrationTest
 class HealthGroupsIntegrationTest {
