@@ -1,44 +1,4 @@
 {
-  "src/components/admin/connections/ConnectionProfilesTab.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/ConnectorTypeOverview.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/DormantSourceConnectionsSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/PrivateStorageSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/ServiceAccountKeyField.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/SourceTypeSelect.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
-  "src/components/library/sourceConnectionLabels.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/settings/ConnectedAccountsSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
   "src/pages/SearchIndexingAdminPage.tsx": {
     "boundaries/dependencies": {
       "count": 1

@@ -103,17 +103,17 @@ function check(newOverrides = {}, changes = CHANGES, oldTree = OLD_TREE) {
 const edit = (file, from, to) => ({ [file]: NEW_TREE[file].replace(from, to) })
 
 describe('move-diff-check', () => {
-  it('accepts a move that only changes module paths, also through the new index.ts', () => {
-    expect(check()).toEqual([])
+  it('accepts a move that only changes module paths, also through the new index.ts', async () => {
+    expect(await check()).toEqual([])
   })
 
-  it('pairs a deletion and an addition git did not detect as a rename', () => {
+  it('pairs a deletion and an addition git did not detect as a rename', async () => {
     const changes = CHANGES.filter((c) => c.from !== API_OLD).concat([
       { status: 'D', from: API_OLD, to: API_OLD },
       { status: 'A', from: API_NEW, to: API_NEW },
     ])
 
-    expect(check({}, changes)).toEqual([])
+    expect(await check({}, changes)).toEqual([])
   })
 
   it.each([
@@ -148,14 +148,14 @@ describe('move-diff-check', () => {
         "vi.mock('@/services/api'",
       ),
     ],
-  ])('reports %s', (_, overrides) => {
-    const findings = check(overrides)
+  ])('reports %s', async (_, overrides) => {
+    const findings = await check(overrides)
 
     expect(findings).toHaveLength(1)
     expect(findings[0]).toContain(Object.keys(overrides)[0])
   })
 
-  it('reports changes outside frontend/src/ and to non-source files', () => {
+  it('reports changes outside frontend/src/ and to non-source files', async () => {
     const changes = [
       ...CHANGES,
       { status: 'M', from: '../.github/workflows/ci.yml', to: '../.github/workflows/ci.yml' },
@@ -163,20 +163,20 @@ describe('move-diff-check', () => {
       { status: 'M', from: 'eslint/themes.js', to: 'eslint/themes.js' },
     ]
 
-    expect(check({}, changes)).toEqual([
+    expect(await check({}, changes)).toEqual([
       '../.github/workflows/ci.yml: changed outside frontend/src/',
       'package.json: changed outside frontend/src/',
       'eslint/themes.js: changed outside frontend/src/',
     ])
   })
 
-  it('reports an index.ts that exports a page or holds more than re-exports', () => {
+  it('reports an index.ts that exports a page or holds more than re-exports', async () => {
     expect(
-      check({
+      await check({
         [INDEX]: `${NEW_TREE[INDEX]}export { default as ChatPage } from '../../pages/ChatPage'\n`,
       }),
     ).toEqual([`${INDEX}: exports the page src/pages/ChatPage.tsx`])
-    expect(check({ [INDEX]: `${NEW_TREE[INDEX]}export const leaked = 1\n` })).toEqual([
+    expect(await check({ [INDEX]: `${NEW_TREE[INDEX]}export const leaked = 1\n` })).toEqual([
       `${INDEX}: an index.ts holds re-exports of local modules only`,
       expect.stringContaining(RAIL),
       `${INDEX}: added`,
@@ -187,15 +187,15 @@ describe('move-diff-check', () => {
     '/* public api */ export const leaked = 1',
     '/** public api */ export const leaked = 1',
     '* export const leaked = 1',
-  ])('reports code behind comment markers in an index.ts: %s', (line) => {
-    expect(check({ [INDEX]: `// public api\n${NEW_TREE[INDEX]}${line}\n` })).toEqual([
+  ])('reports code behind comment markers in an index.ts: %s', async (line) => {
+    expect(await check({ [INDEX]: `// public api\n${NEW_TREE[INDEX]}${line}\n` })).toEqual([
       `${INDEX}: an index.ts holds re-exports of local modules only`,
       expect.stringContaining(RAIL),
       `${INDEX}: added`,
     ])
   })
 
-  it('reports other additions, deletions and changed transition-list counts', () => {
+  it('reports other additions, deletions and changed transition-list counts', async () => {
     const changes = [
       ...CHANGES,
       { status: 'A', from: 'src/extra.ts', to: 'src/extra.ts' },
@@ -203,18 +203,250 @@ describe('move-diff-check', () => {
     ]
 
     expect(
-      check(
+      await check(
         {
           'src/extra.ts': 'export const extra = 1\n',
-          'eslint-suppressions.json': '{}',
+          'eslint-suppressions.json':
+            '{"src/features/notification/api/notificationApi.ts":{"boundaries/dependencies":{"count":2}}}',
         },
         changes,
       ),
     ).toEqual([
-      'eslint-suppressions.json: entries changed beyond the renamed files',
+      'eslint-suppressions.json: src/features/notification/api/notificationApi.ts boundaries/dependencies grows from 1 to 2',
       'src/extra.ts: added',
       'src/services/api.ts: deleted',
     ])
+  })
+})
+
+describe('move-diff-check with a shrinking transition list', () => {
+  const SUPPRESSIONS = 'eslint-suppressions.json'
+  const oldTree = {
+    ...OLD_TREE,
+    [SUPPRESSIONS]: JSON.stringify({
+      'src/services/notificationApi.ts': { 'boundaries/dependencies': { count: 2 } },
+      'src/layouts/GlobalRail.tsx': { 'boundaries/dependencies': { count: 1 } },
+    }),
+  }
+  const checkList = (list) =>
+    check({ [SUPPRESSIONS]: JSON.stringify(list, null, 2) }, CHANGES, oldTree)
+
+  it('accepts removed entries and lower counts next to the renames', async () => {
+    expect(
+      await checkList({
+        'src/features/notification/api/notificationApi.ts': {
+          'boundaries/dependencies': { count: 1 },
+        },
+      }),
+    ).toEqual([])
+    expect(await checkList({})).toEqual([])
+  })
+
+  it.each([
+    [
+      'a higher count',
+      {
+        'src/features/notification/api/notificationApi.ts': {
+          'boundaries/dependencies': { count: 3 },
+        },
+      },
+      `${SUPPRESSIONS}: src/features/notification/api/notificationApi.ts boundaries/dependencies grows from 2 to 3`,
+    ],
+    [
+      'a new file',
+      { 'src/pages/ChatPage.tsx': { 'boundaries/dependencies': { count: 1 } } },
+      `${SUPPRESSIONS}: src/pages/ChatPage.tsx boundaries/dependencies grows from 0 to 1`,
+    ],
+    [
+      'a new rule',
+      { 'src/layouts/GlobalRail.tsx': { 'no-console': { count: 1 } } },
+      `${SUPPRESSIONS}: src/layouts/GlobalRail.tsx no-console grows from 0 to 1`,
+    ],
+    [
+      'an entry under its old name',
+      { 'src/services/notificationApi.ts': { 'boundaries/dependencies': { count: 1 } } },
+      `${SUPPRESSIONS}: src/services/notificationApi.ts boundaries/dependencies grows from 0 to 1`,
+    ],
+  ])('reports %s', async (_, list, finding) => {
+    expect(await checkList(list)).toEqual([finding])
+  })
+})
+
+describe('move-diff-check with Prettier re-wrapping changed module paths', () => {
+  const rail = (...lines) => ({
+    [RAIL]: [
+      "import { NotificationBell } from '@/features/notification'",
+      ...lines,
+      "const Lazy = lazy(() => import('@/pages/ChatPage'))",
+      '',
+    ].join('\n'),
+  })
+  const PATH = "'@/features/notification/api/notificationApi'"
+  const BODY = ['  return actual', '})']
+
+  it.each([
+    [
+      'after the assignment',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual =',
+        `    await vi.importActual<typeof import(${PATH})>(${PATH})`,
+        ...BODY,
+      ],
+    ],
+    [
+      'inside the type argument',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual = await vi.importActual<',
+        `    typeof import(${PATH})`,
+        `  >(${PATH})`,
+        ...BODY,
+      ],
+    ],
+    [
+      'inside the arguments with a trailing comma',
+      [
+        'vi.mock(',
+        `  ${PATH},`,
+        '  async () => {',
+        `    const actual = await vi.importActual<typeof import(${PATH})>(${PATH})`,
+        '    return actual',
+        '  },',
+        ')',
+      ],
+    ],
+  ])('accepts a call wrapped %s', async (_, lines) => {
+    expect(await check(rail(...lines))).toEqual([])
+  })
+
+  it.each([
+    [
+      'code appended in a wrapped line',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual =',
+        `    await vi.importActual<typeof import(${PATH})>(${PATH}) && evil()`,
+        ...BODY,
+      ],
+    ],
+    [
+      'another module in a wrapped line',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        '  const actual =',
+        "    await vi.importActual<typeof import('@/services/api')>('@/services/api')",
+        ...BODY,
+      ],
+    ],
+    [
+      'a line break that changes the meaning',
+      [
+        `vi.mock(${PATH}, async () => {`,
+        `  const actual = await vi.importActual<typeof import(${PATH})>(${PATH})`,
+        '  return',
+        '  actual',
+        '})',
+      ],
+    ],
+  ])('reports %s', async (_, lines) => {
+    const findings = await check(rail(...lines))
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toContain(RAIL)
+  })
+})
+
+describe('move-diff-check with an index.ts that existed before the move', () => {
+  const LABELS = 'src/features/notification/utils/labels.ts'
+  const OTHER = 'src/layouts/Other.tsx'
+  const OLD_INDEX = "export { label, type Label } from './utils/labels'\n"
+  const oldTree = {
+    ...OLD_TREE,
+    [LABELS]: 'export const label = 1\nexport type Label = string\n',
+    [INDEX]: OLD_INDEX,
+    [OTHER]: "import { label } from '@/features/notification'\n",
+  }
+  const newIndex = (...lines) => ({ [INDEX]: [...lines, ''].join('\n') })
+  const GROWN = [
+    'export {',
+    '  label,',
+    '  type Label,',
+    "} from './utils/labels'",
+    "export { default as NotificationBell } from './components/NotificationBell'",
+  ]
+  const changes = CHANGES.map((c) => (c.to === INDEX ? { ...c, status: 'M' } : c))
+  const checkIndex = (overrides) =>
+    check(
+      {
+        [LABELS]: oldTree[LABELS],
+        [OTHER]: oldTree[OTHER],
+        ...newIndex(...GROWN),
+        ...overrides,
+      },
+      changes,
+      oldTree,
+    )
+
+  it('accepts added re-exports and resolves imports through it on both sides', async () => {
+    expect(await checkIndex({})).toEqual([])
+  })
+
+  it('accepts a caller switching from the module to the index for an existing re-export', async () => {
+    const oldWithDeepImport = {
+      ...oldTree,
+      [OTHER]: "import { label } from '../features/notification/utils/labels'\n",
+    }
+
+    expect(
+      await check(
+        { [LABELS]: oldTree[LABELS], [OTHER]: oldTree[OTHER], ...newIndex(...GROWN) },
+        [...changes, { status: 'M', from: OTHER, to: OTHER }],
+        oldWithDeepImport,
+      ),
+    ).toEqual([])
+  })
+
+  it('reports code smuggled into it', async () => {
+    expect(await checkIndex(newIndex(...GROWN, 'export const leaked = 1'))).toContain(
+      `${INDEX}: an index.ts holds re-exports of local modules only`,
+    )
+  })
+
+  it('reports a page it newly exports', async () => {
+    expect(
+      await checkIndex(
+        newIndex(...GROWN, "export { default as ChatPage } from '../../pages/ChatPage'"),
+      ),
+    ).toEqual([`${INDEX}: exports the page src/pages/ChatPage.tsx`])
+  })
+
+  it.each([
+    [
+      'removed',
+      newIndex("export { default as NotificationBell } from './components/NotificationBell'"),
+      [`${INDEX}: removes the re-export label`, `${INDEX}: removes the re-export Label`],
+    ],
+    [
+      'pointed at another module',
+      newIndex(
+        "export { type Label } from './utils/labels'",
+        "export { default as NotificationBell, default as label } from './components/NotificationBell'",
+      ),
+      [`${INDEX}: changes the re-export label`],
+    ],
+    [
+      'pointed at another export',
+      newIndex(
+        "export { type Label, type Label as label } from './utils/labels'",
+        "export { default as NotificationBell } from './components/NotificationBell'",
+      ),
+      [`${INDEX}: changes the re-export label`],
+    ],
+  ])('reports a re-export %s', async (_, overrides, expected) => {
+    const findings = await checkIndex(overrides)
+
+    for (const finding of expected) expect(findings).toContain(finding)
   })
 })
 
@@ -263,21 +495,21 @@ describe('move-diff-check with a theme routes.ts', () => {
   ]
   const checkRoutes = (overrides = {}) => check({ ...newTree, ...overrides }, changes, oldTree)
 
-  it('accepts a routes.ts re-exporting pages of its theme and App.tsx importing them there', () => {
-    expect(checkRoutes()).toEqual([])
+  it('accepts a routes.ts re-exporting pages of its theme and App.tsx importing them there', async () => {
+    expect(await checkRoutes()).toEqual([])
   })
 
-  it('reports a routes.ts that re-exports a page of another theme', () => {
+  it('reports a routes.ts that re-exports a page of another theme', async () => {
     expect(
-      checkRoutes(
+      await checkRoutes(
         routes(...PAGE_EXPORTS, "export { default as ChatPage } from '../../pages/ChatPage'"),
       ),
     ).toContain(`${ROUTES}: re-exports src/pages/ChatPage.tsx, no page of its theme`)
   })
 
-  it('reports a routes.ts that re-exports something other than a page', () => {
+  it('reports a routes.ts that re-exports something other than a page', async () => {
     expect(
-      checkRoutes(
+      await checkRoutes(
         routes(
           ...PAGE_EXPORTS,
           "export { default as NotificationBell } from './components/NotificationBell'",
@@ -287,7 +519,9 @@ describe('move-diff-check with a theme routes.ts', () => {
       `${ROUTES}: re-exports src/features/notification/components/NotificationBell.tsx, no page of its theme`,
     )
     expect(
-      checkRoutes(routes(...PAGE_EXPORTS, "export { helper } from './pages/NotificationsPage'")),
+      await checkRoutes(
+        routes(...PAGE_EXPORTS, "export { helper } from './pages/NotificationsPage'"),
+      ),
     ).toContain(`${ROUTES}: re-exports helper of ${PAGE_NEW}, not the page itself`)
   })
 
@@ -295,8 +529,8 @@ describe('move-diff-check with a theme routes.ts', () => {
     ['plain code', 'export const leaked = 1'],
     ['code after a block comment', '/* routes */ export const leaked = 1'],
     ['code after a comment continuation', '* export const leaked = 1'],
-  ])('reports a routes.ts that holds %s next to the re-exports', (_, line) => {
-    const findings = checkRoutes(
+  ])('reports a routes.ts that holds %s next to the re-exports', async (_, line) => {
+    const findings = await checkRoutes(
       routes('/**', ' * Pages of the theme.', ' */', ...PAGE_EXPORTS, line),
     )
 
@@ -304,14 +538,16 @@ describe('move-diff-check with a theme routes.ts', () => {
     expect(findings).toContain(`${ROUTES}: added`)
   })
 
-  it('accepts comment-only lines in a routes.ts', () => {
+  it('accepts comment-only lines in a routes.ts', async () => {
     expect(
-      checkRoutes(routes('/**', ' * Pages of the theme.', ' */', '// app only', ...PAGE_EXPORTS)),
+      await checkRoutes(
+        routes('/**', ' * Pages of the theme.', ' */', '// app only', ...PAGE_EXPORTS),
+      ),
     ).toEqual([])
   })
 
-  it('reports an App.tsx import through routes.ts that now names another page', () => {
-    const findings = checkRoutes({
+  it('reports an App.tsx import through routes.ts that now names another page', async () => {
+    const findings = await checkRoutes({
       [APP]: [
         "import ChatPage from './pages/ChatPage'",
         "import { NotificationArchivePage as NotificationsPage, NotificationArchivePage } from '@/features/notification/routes'",
@@ -321,5 +557,93 @@ describe('move-diff-check with a theme routes.ts', () => {
 
     expect(findings).toHaveLength(1)
     expect(findings[0]).toContain(APP)
+  })
+})
+
+describe('move-diff-check with layout-sensitive code in a moved file', () => {
+  const FROM = 'src/components/probe/Probe.tsx'
+  const TO = 'src/features/notification/components/Probe.tsx'
+  const probe = (before, after) =>
+    check({ [TO]: `${after}\n` }, [...CHANGES, { status: 'R', from: FROM, to: TO }], {
+      ...OLD_TREE,
+      [FROM]: `${before}\n`,
+    })
+  const jsx = (text) => `export const P = () => <p>${text}</p>`
+
+  it('accepts an unchanged file', async () => {
+    expect(await probe(jsx('a, b'), jsx('a, b'))).toEqual([])
+  })
+
+  it.each([
+    ['a decrement next to a minus', 'export const r = a - --b', 'export const r = a---b'],
+    ['an increment next to a plus', 'export const r = a + ++b', 'export const r = a+++b'],
+    ['spaces in a regex', 'export const re = / x /', 'export const re = /x/'],
+    ['a space in a regex class', 'export const re = /[ ]/', 'export const re = /[]/'],
+    ['JSX text before a comma', jsx('a, b'), jsx('a , b')],
+    ['JSX text with umlauts', jsx('Größe'), jsx('Grö ße')],
+    ['JSX text after an expression', jsx('{a} b'), jsx('{a}b')],
+    ['JSX text with a hyphen', jsx('E-Mail'), jsx('E - Mail')],
+    ['JSX text with an entity', jsx('a &gt; b'), jsx('a&gt;b')],
+    ['an array hole', 'export const holes = [,]', 'export const holes = []'],
+    ['a minus turned into a decrement', 'export const r = a - -b', 'export const r = a--b'],
+    ['a split number', 'export const n = 1.5', 'export const n = 1 . 5'],
+  ])('reports %s', async (_, before, after) => {
+    const findings = await probe(before, after)
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toContain(TO)
+  })
+})
+
+describe('move-diff-check with export * in an existing index.ts', () => {
+  const LABELS = 'src/features/notification/utils/labels.ts'
+  const MORE = 'src/features/notification/utils/more.ts'
+  const OTHER = 'src/layouts/Other.tsx'
+  const unchanged = {
+    [LABELS]: 'export const label = 1\n',
+    [MORE]: 'export const more = 1\n',
+    [OTHER]: "import { label } from '@/features/notification'\n",
+  }
+  const oldTree = {
+    ...OLD_TREE,
+    ...unchanged,
+    [INDEX]: "export * from './utils/labels'\nexport * from './utils/more'\n",
+  }
+  const changes = CHANGES.map((c) => (c.to === INDEX ? { ...c, status: 'M' } : c))
+  const checkStars = (...lines) =>
+    check(
+      {
+        ...unchanged,
+        [INDEX]: [...lines, ''].join('\n'),
+        // the bell stays out of the index, so that only the stars are under test
+        [RAIL]: NEW_TREE[RAIL].replace(
+          "import { NotificationBell } from '@/features/notification'",
+          "import NotificationBell from '@/features/notification/components/NotificationBell'",
+        ),
+      },
+      changes,
+      oldTree,
+    )
+
+  it('accepts reordered stars with callers through the index', async () => {
+    expect(
+      await checkStars("export * from './utils/more'", "export * from './utils/labels'"),
+    ).toEqual([])
+  })
+
+  it('reports a dropped export *', async () => {
+    expect(await checkStars("export * from './utils/labels'")).toContain(
+      `${INDEX}: removes the re-export * from ${MORE}`,
+    )
+  })
+
+  it('reports a named re-export that may hide an export of an existing export *', async () => {
+    expect(
+      await checkStars(
+        "export * from './utils/labels'",
+        "export * from './utils/more'",
+        "export { default as label } from './components/NotificationBell'",
+      ),
+    ).toContain(`${INDEX}: label may change what an existing export * provides`)
   })
 })

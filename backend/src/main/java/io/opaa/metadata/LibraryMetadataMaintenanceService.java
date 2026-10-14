@@ -2,7 +2,6 @@ package io.opaa.metadata;
 
 import io.opaa.api.types.AssetRole;
 import io.opaa.auth.CurrentUser;
-import io.opaa.common.NotFoundException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
 import io.opaa.knowledge.LibraryAccessService;
@@ -52,10 +51,7 @@ public class LibraryMetadataMaintenanceService {
   @Transactional(readOnly = true)
   public LibraryMetadataMaintenance maintenanceOf(UUID libraryId, CurrentUser caller) {
     KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(candidate -> candidate.getOrganizationId().equals(caller.organizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+        libraryRepository.requireInOrganization(libraryId, caller.organizationId());
     accessService.requireRole(library, caller.id(), caller.isSystemAdmin(), AssetRole.VIEWER);
 
     Map<String, String> labelsByKey = new LinkedHashMap<>();

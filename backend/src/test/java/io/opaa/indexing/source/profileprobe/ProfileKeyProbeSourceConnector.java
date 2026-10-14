@@ -82,13 +82,6 @@ public class ProfileKeyProbeSourceConnector implements SourceConnector {
   }
 
   @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
-  @Override
   public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
     String subject = assertionSubject(stored);
     return subject == null ? Map.of() : Map.of(SUBJECT, subject);

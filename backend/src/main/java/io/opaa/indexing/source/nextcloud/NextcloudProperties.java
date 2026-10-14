@@ -1,5 +1,8 @@
 package io.opaa.indexing.source.nextcloud;
 
+import static io.opaa.common.PropertyDefaults.notNegativeOr;
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -35,34 +38,22 @@ public record NextcloudProperties(
   public static final Duration DEFAULT_FULL_DESCENT_INTERVAL = Duration.ofDays(7);
 
   public NextcloudProperties {
-    requireNotNegative("maxFileSizeBytes", maxFileSizeBytes);
-    requireNotNegative("requestBudgetPerRun", requestBudgetPerRun);
-    requireNotNegative("maxEntriesPerRun", maxEntriesPerRun);
-    requireNotNegative("downloadConcurrency", downloadConcurrency);
-    requireNotNegative("maxResponseBytes", maxResponseBytes);
-    maxFileSizeBytes = maxFileSizeBytes == 0 ? DEFAULT_MAX_FILE_SIZE_BYTES : maxFileSizeBytes;
+    maxFileSizeBytes =
+        notNegativeOr("maxFileSizeBytes", maxFileSizeBytes, DEFAULT_MAX_FILE_SIZE_BYTES);
     requestTimeout = positiveOr(requestTimeout, Duration.ofSeconds(30));
     requestBudgetPerRun =
-        requestBudgetPerRun == 0 ? DEFAULT_REQUEST_BUDGET_PER_RUN : requestBudgetPerRun;
-    maxEntriesPerRun = maxEntriesPerRun == 0 ? DEFAULT_MAX_ENTRIES_PER_RUN : maxEntriesPerRun;
+        notNegativeOr("requestBudgetPerRun", requestBudgetPerRun, DEFAULT_REQUEST_BUDGET_PER_RUN);
+    maxEntriesPerRun =
+        notNegativeOr("maxEntriesPerRun", maxEntriesPerRun, DEFAULT_MAX_ENTRIES_PER_RUN);
     downloadConcurrency =
-        downloadConcurrency == 0 ? DEFAULT_DOWNLOAD_CONCURRENCY : downloadConcurrency;
-    maxResponseBytes = maxResponseBytes == 0 ? DEFAULT_MAX_RESPONSE_BYTES : maxResponseBytes;
+        notNegativeOr("downloadConcurrency", downloadConcurrency, DEFAULT_DOWNLOAD_CONCURRENCY);
+    maxResponseBytes =
+        notNegativeOr("maxResponseBytes", maxResponseBytes, DEFAULT_MAX_RESPONSE_BYTES);
     fullDescentInterval = positiveOr(fullDescentInterval, DEFAULT_FULL_DESCENT_INTERVAL);
   }
 
   /** All defaults. */
   public static NextcloudProperties defaults() {
     return new NextcloudProperties(0, null, 0, 0, 0, 0, null);
-  }
-
-  private static void requireNotNegative(String name, long value) {
-    if (value < 0) {
-      throw new IllegalArgumentException(name + " must not be negative, got " + value);
-    }
-  }
-
-  private static Duration positiveOr(Duration value, Duration fallback) {
-    return value == null || value.isZero() || value.isNegative() ? fallback : value;
   }
 }

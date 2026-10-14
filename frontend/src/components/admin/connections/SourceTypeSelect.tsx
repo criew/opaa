@@ -3,12 +3,12 @@ import MenuItem from '@mui/material/MenuItem'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import type { SourceTypeDescriptor, SourceTypeKey } from '@/shared/api/types'
-import SourceTypeIcon from '../../library/sourceTypeIcon'
-import { sourceRegistration } from '../../library/sources/registry'
+import SourceTypeIcon from './sourceTypeIcon'
 import { admitsProfiles, NO_PROFILES_REASON } from './connectionProfileLabels'
+import { sourceTypeEntry } from './sourceTypeDirectory'
 
 function descriptionOf(type: SourceTypeDescriptor): string | undefined {
-  return sourceRegistration(type.type as SourceTypeKey)?.description
+  return sourceTypeEntry(type.type as SourceTypeKey)?.description
 }
 
 interface SourceTypeSelectProps {

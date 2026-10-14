@@ -4,6 +4,7 @@ import static io.opaa.library.SourceConnectionTestBuilder.sourceConnectionTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -82,7 +83,14 @@ class SourceConnectionTestServiceTest {
     baseUrl = "http://127.0.0.1:" + server.getAddress().getPort();
 
     filesystemAllowlist = mock(FilesystemPathAllowlist.class);
-    libraryRepository = mock(KnowledgeLibraryRepository.class);
+    libraryRepository = mock(KnowledgeLibraryRepository.class, CALLS_REAL_METHODS);
+    // The draft settings read the library by id, the service by id and organization: one row.
+    when(libraryRepository.findByIdAndOrganizationId(any(), any()))
+        .thenAnswer(
+            call ->
+                libraryRepository
+                    .findById(call.getArgument(0))
+                    .filter(found -> found.getOrganizationId().equals(call.getArgument(1))));
     libraryAccessService = mock(LibraryAccessService.class);
     connectorRelease = mock(ConnectorReleaseService.class);
     currentUserId = UUID.randomUUID();

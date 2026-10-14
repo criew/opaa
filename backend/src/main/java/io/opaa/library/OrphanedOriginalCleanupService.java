@@ -402,11 +402,10 @@ public class OrphanedOriginalCleanupService {
     return new OrphanedOriginalDeletion.Skipped(locator, reason);
   }
 
+  /** A private library is its owner's alone and as absent here as one of another organization. */
   private void requireLibrary(UUID organizationId, UUID libraryId) {
-    libraryRepository
-        .findById(libraryId)
-        .filter(candidate -> organizationId.equals(candidate.getOrganizationId()))
-        .filter(candidate -> !candidate.isOwnerOnly())
-        .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+    if (libraryRepository.requireInOrganization(libraryId, organizationId).isOwnerOnly()) {
+      throw new NotFoundException("Bibliothek nicht gefunden");
+    }
   }
 }

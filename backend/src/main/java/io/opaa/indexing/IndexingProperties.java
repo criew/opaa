@@ -1,5 +1,7 @@
 package io.opaa.indexing;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import io.opaa.format.chunk.ChunkSizing;
 import io.opaa.indexing.document.EmbeddingBatching;
 import io.opaa.indexing.job.JobStatus;
@@ -65,9 +67,7 @@ public record IndexingProperties(
     implements ChunkSizing, EmbeddingBatching, RunRecoverySettings {
 
   public IndexingProperties {
-    if (chunkSize <= 0) {
-      chunkSize = 1000;
-    }
+    chunkSize = positiveOr(chunkSize, 1000);
     if (chunkSize > 10000) {
       throw new IllegalArgumentException("chunkSize must be at most 10000, got " + chunkSize);
     }
@@ -84,9 +84,7 @@ public record IndexingProperties(
               + chunkOverlap
               + "; an overlap of at least the chunk size would never advance through the text");
     }
-    if (batchSize <= 0) {
-      batchSize = 50;
-    }
+    batchSize = positiveOr(batchSize, 50);
     if (batchSize > 1000) {
       throw new IllegalArgumentException("batchSize must be at most 1000, got " + batchSize);
     }
@@ -103,9 +101,7 @@ public record IndexingProperties(
     if (targetValidation == null) {
       targetValidation = new TargetValidation(true, List.of());
     }
-    if (embeddingConcurrency <= 0) {
-      embeddingConcurrency = 3;
-    }
+    embeddingConcurrency = positiveOr(embeddingConcurrency, 3);
     if (embeddingConcurrency > 32) {
       throw new IllegalArgumentException(
           "embeddingConcurrency must be at most 32, got " + embeddingConcurrency);
@@ -115,12 +111,8 @@ public record IndexingProperties(
   public record ThreadPool(int coreSize, int maxSize, int queueCapacity) {
 
     public ThreadPool {
-      if (coreSize <= 0) {
-        coreSize = 2;
-      }
-      if (maxSize <= 0) {
-        maxSize = 4;
-      }
+      coreSize = positiveOr(coreSize, 2);
+      maxSize = positiveOr(maxSize, 4);
       if (queueCapacity < 0) {
         queueCapacity = 20;
       }

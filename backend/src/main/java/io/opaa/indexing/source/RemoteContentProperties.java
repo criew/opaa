@@ -1,5 +1,7 @@
 package io.opaa.indexing.source;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -33,15 +35,9 @@ public record RemoteContentProperties(
     long maxBytes, int timeoutSeconds, int transferTimeoutSeconds) {
 
   public RemoteContentProperties {
-    if (maxBytes <= 0) {
-      maxBytes = 20L * 1024 * 1024;
-    }
-    if (timeoutSeconds <= 0) {
-      timeoutSeconds = 20;
-    }
-    if (transferTimeoutSeconds <= 0) {
-      transferTimeoutSeconds = Math.max(120, timeoutSeconds);
-    }
+    maxBytes = positiveOr(maxBytes, 20L * 1024 * 1024);
+    timeoutSeconds = positiveOr(timeoutSeconds, 20);
+    transferTimeoutSeconds = positiveOr(transferTimeoutSeconds, Math.max(120, timeoutSeconds));
     if (transferTimeoutSeconds < timeoutSeconds) {
       throw new IllegalArgumentException(
           "opaa.documents.remote-content.transfer-timeout-seconds ("

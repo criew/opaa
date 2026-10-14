@@ -1,4 +1,3 @@
-import CloudQueueIcon from '@mui/icons-material/CloudQueue'
 import { sameLibrarySourceOrigin } from '../../../utils/librarySourceConfig'
 import {
   EMPTY_NEXTCLOUD_VALUES,
@@ -11,14 +10,11 @@ import {
 import NextcloudSourceForm from '../NextcloudSourceForm'
 import { NextcloudScope, NextcloudStoredView } from './NextcloudSourceViews'
 import { connectionFields } from './sourceConnection'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceRegistration } from './types'
 
 export const nextcloudSource: SourceRegistration = {
-  label: 'Nextcloud',
-  shortLabel: 'Nextcloud',
-  description:
-    'Ordner einer Nextcloud (auch openDesk) werden über einen technischen Nutzer eingelesen.',
-  Icon: CloudQueueIcon,
+  ...SOURCE_TYPE_DIRECTORY.NEXTCLOUD,
   containerLabel: 'Ordner',
   configuration: {
     empty: EMPTY_NEXTCLOUD_VALUES,

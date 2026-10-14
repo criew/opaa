@@ -1036,7 +1036,7 @@ class DocumentIndexingIntegrationTest {
   /**
    * The status query answers only with the caller's own organization's runs. Proven at two
    * independent layers against a real, two-organization database - not just the pre-existing
-   * library-ownership check ({@code DocumentIndexingService#loadLibraryInOrganization}, which
+   * library-ownership check ({@code KnowledgeLibraryRepository#requireInOrganization}, which
    * already 404s a foreign library) but the {@code indexing_jobs} row's own {@code
    * organization_id}: {@link IndexingJobService#getLatestJob} for organization B asking about
    * organization A's library must come back empty, exactly as if that library had never run at all

@@ -1,6 +1,7 @@
 package io.opaa.knowledge;
 
 import io.opaa.api.types.ExternalAccessState;
+import io.opaa.common.NotFoundException;
 import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
@@ -15,6 +16,19 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface KnowledgeLibraryRepository extends JpaRepository<KnowledgeLibrary, UUID> {
+
+  /** The library with {@code id} inside one organization; one of another organization is absent. */
+  Optional<KnowledgeLibrary> findByIdAndOrganizationId(UUID id, UUID organizationId);
+
+  /**
+   * {@link #findByIdAndOrganizationId} or {@link NotFoundException}: a library of another
+   * organization is as absent as one that does not exist, to a system admin as well - the boundary
+   * is not overstepped even to reveal existence.
+   */
+  default KnowledgeLibrary requireInOrganization(UUID id, UUID organizationId) {
+    return findByIdAndOrganizationId(id, organizationId)
+        .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+  }
 
   /**
    * Whether any library is still owned by the given group - group ids are unique across the whole

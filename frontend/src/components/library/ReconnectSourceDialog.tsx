@@ -10,7 +10,8 @@ import { startSourceAuthorization } from '../../services/connectedAccountApi'
 import { leaveFor } from '@/shared/api/leaveApp'
 import BusyButton from '@/shared/ui/a11y/BusyButton'
 import ServiceAccountConfirmation from './ServiceAccountConfirmation'
-import { forgetConsentIntent, rememberConsentIntent } from './sourceConsent'
+import { rememberConsentIntent } from './sourceConsent'
+import { forgetConsentIntent } from '../admin/connections/consentIntentStorage'
 
 interface ReconnectSourceDialogProps {
   open: boolean

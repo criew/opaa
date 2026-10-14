@@ -6,7 +6,6 @@ import io.opaa.asset.OwnerOnlyRule;
 import io.opaa.auth.CurrentUser;
 import io.opaa.auth.User;
 import io.opaa.auth.UserRepository;
-import io.opaa.common.NotFoundException;
 import io.opaa.common.ValidationException;
 import io.opaa.knowledge.KnowledgeLibrary;
 import io.opaa.knowledge.KnowledgeLibraryRepository;
@@ -83,10 +82,7 @@ public class LibraryExternalAccessService {
   public LibraryExternalAccess setExternalAccess(
       CurrentUser actor, UUID libraryId, boolean enabled, Instant expiresAt) {
     KnowledgeLibrary library =
-        libraryRepository
-            .findById(libraryId)
-            .filter(candidate -> actor.organizationId().equals(candidate.getOrganizationId()))
-            .orElseThrow(() -> new NotFoundException("Bibliothek nicht gefunden"));
+        libraryRepository.requireInOrganization(libraryId, actor.organizationId());
     accessService.requireRole(library, actor.id(), actor.isSystemAdmin(), AssetRole.MANAGER);
     ownerOnlyRule.requireShareable(library);
 

@@ -3,7 +3,6 @@ package io.opaa.auth;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -19,13 +18,12 @@ import org.springframework.web.cors.CorsConfigurationSource;
  * Security configuration for local development and automated tests. Deliberately performs no
  * credential check at all — see {@link DevAuthFilter}.
  *
- * <p>Apart from how the principal is obtained, this chain is identical to {@link
+ * <p>Apart from how the principal is obtained, this chain is identical to {@code
  * io.opaa.account.OidcSecurityConfig}, which is the point: development and production exercise the
  * same authorization rules, the same user provisioning and the same method security.
  */
 @Configuration
 @Profile("dev")
-@EnableConfigurationProperties(AuthProperties.class)
 @EnableMethodSecurity
 public class DevSecurityConfig {
 

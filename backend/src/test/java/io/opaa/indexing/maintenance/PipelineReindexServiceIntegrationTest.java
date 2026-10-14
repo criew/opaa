@@ -1202,6 +1202,7 @@ class PipelineReindexServiceIntegrationTest {
         new IndexingRunProgress(jobService, jobId),
         new IndexingRunEventRecorder(
             org.mockito.Mockito.mock(IndexingRunEventRepository.class), jobService, jobId),
+        org.mockito.Mockito.mock(io.opaa.indexing.source.VanishedDocumentReconciler.class),
         documentRepository,
         org.mockito.Mockito.mock(io.opaa.knowledge.LibraryStorageQuotaService.class),
         rejected -> Secret.personal(library.getSourceCredentials()),

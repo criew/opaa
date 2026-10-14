@@ -1,4 +1,3 @@
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks'
 import {
   EMPTY_SHAREPOINT_VALUES,
   sharePointLibrariesOf,
@@ -12,6 +11,7 @@ import SharePointSourceForm from '../SharePointSourceForm'
 import { SharePointScopeView, SharePointStoredView } from './SharePointSourceViews'
 import { formIssue, formIssueOf } from '../../../utils/sourceIssue'
 import { connectionFields } from './sourceConnection'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceRegistration, StoredLibrarySource } from './types'
 
 /** The name a run's container key (`drive:<id>`) has in the stored settings, the key otherwise. */
@@ -24,11 +24,7 @@ function containerName(key: string, library: StoredLibrarySource) {
 }
 
 export const sharePointSource: SourceRegistration = {
-  label: 'SharePoint',
-  shortLabel: 'SharePoint',
-  description:
-    'Dokumentbibliotheken von SharePoint Online werden über einen Zugang mit App-Registrierung eingelesen.',
-  Icon: LibraryBooksIcon,
+  ...SOURCE_TYPE_DIRECTORY.SHAREPOINT,
   containerLabel: 'Dokumentbibliothek',
   configuration: {
     empty: EMPTY_SHAREPOINT_VALUES,

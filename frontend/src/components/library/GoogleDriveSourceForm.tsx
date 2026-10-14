@@ -23,12 +23,12 @@ import {
   googleDriveScopeLabel,
   googleDriveSettingsOf,
   MAX_GOOGLE_DRIVE_SCOPES,
-  readGoogleDriveKey,
   storedKeyServes,
   type GoogleDriveScope,
   type GoogleDriveScopeCheck,
   type GoogleDriveSourceValues,
 } from '../../utils/googleDriveSource'
+import { readGoogleDriveKey } from '../admin/connections/serviceAccountKey'
 import FieldLabel from '@/shared/ui/wizard/FieldLabel'
 import ScopeConsequence from './sources/ScopeConsequence'
 import { connectionFields, type ConnectionFields } from './sources/sourceConnection'

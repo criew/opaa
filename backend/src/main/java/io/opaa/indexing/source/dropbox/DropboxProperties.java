@@ -1,5 +1,8 @@
 package io.opaa.indexing.source.dropbox;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+import static java.util.Objects.requireNonNullElse;
+
 import java.net.URI;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -61,45 +64,20 @@ public record DropboxProperties(
     apiBase = apiBase == null ? URI.create(API_BASE) : withoutTrailingSlash(apiBase);
     contentBase =
         contentBase == null ? URI.create(CONTENT_BASE) : withoutTrailingSlash(contentBase);
-    if (authorizationEndpoint == null) {
-      authorizationEndpoint = URI.create(AUTHORIZATION_ENDPOINT);
-    }
-    if (tokenEndpoint == null) {
-      tokenEndpoint = URI.create(TOKEN_ENDPOINT);
-    }
-    if (revocationEndpoint == null) {
-      revocationEndpoint = URI.create(REVOCATION_ENDPOINT);
-    }
-    if (pageSize <= 0 || pageSize > MAX_PAGE_SIZE) {
-      pageSize = MAX_PAGE_SIZE;
-    }
-    if (maxFileSizeBytes <= 0) {
-      maxFileSizeBytes = 50L * 1024 * 1024;
-    }
-    if (requestTimeout == null || requestTimeout.isZero() || requestTimeout.isNegative()) {
-      requestTimeout = Duration.ofSeconds(30);
-    }
-    if (downloadTimeout == null || downloadTimeout.isZero() || downloadTimeout.isNegative()) {
-      downloadTimeout = Duration.ofMinutes(10);
-    }
-    if (maxRetries == null) {
-      maxRetries = 5;
-    }
-    if (maxRetryWait == null || maxRetryWait.isZero() || maxRetryWait.isNegative()) {
-      maxRetryWait = Duration.ofMinutes(5);
-    }
-    if (requestBudgetPerRun <= 0) {
-      requestBudgetPerRun = 20_000;
-    }
-    if (maxFilesPerRun <= 0) {
-      maxFilesPerRun = 1_000_000;
-    }
-    if (downloadConcurrency <= 0) {
-      downloadConcurrency = 2;
-    }
-    if (fullSyncInterval == null || fullSyncInterval.isZero() || fullSyncInterval.isNegative()) {
-      fullSyncInterval = Duration.ofDays(7);
-    }
+    authorizationEndpoint =
+        requireNonNullElse(authorizationEndpoint, URI.create(AUTHORIZATION_ENDPOINT));
+    tokenEndpoint = requireNonNullElse(tokenEndpoint, URI.create(TOKEN_ENDPOINT));
+    revocationEndpoint = requireNonNullElse(revocationEndpoint, URI.create(REVOCATION_ENDPOINT));
+    pageSize = Math.min(positiveOr(pageSize, MAX_PAGE_SIZE), MAX_PAGE_SIZE);
+    maxFileSizeBytes = positiveOr(maxFileSizeBytes, 50L * 1024 * 1024);
+    requestTimeout = positiveOr(requestTimeout, Duration.ofSeconds(30));
+    downloadTimeout = positiveOr(downloadTimeout, Duration.ofMinutes(10));
+    maxRetries = requireNonNullElse(maxRetries, 5);
+    maxRetryWait = positiveOr(maxRetryWait, Duration.ofMinutes(5));
+    requestBudgetPerRun = positiveOr(requestBudgetPerRun, 20_000);
+    maxFilesPerRun = positiveOr(maxFilesPerRun, 1_000_000);
+    downloadConcurrency = positiveOr(downloadConcurrency, 2);
+    fullSyncInterval = positiveOr(fullSyncInterval, Duration.ofDays(7));
   }
 
   public static DropboxProperties defaults() {

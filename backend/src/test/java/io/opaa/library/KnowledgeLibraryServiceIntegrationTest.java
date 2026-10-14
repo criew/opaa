@@ -278,6 +278,19 @@ class KnowledgeLibraryServiceIntegrationTest {
   }
 
   @Test
+  void findByIdAndOrganizationIdSeesALibraryOnlyInsideItsOwnOrganization() {
+    UUID owner = createUser(organizationA);
+    LibraryCreation request = libraryCreation("Nur in A sichtbar", SourceType.UPLOAD).build();
+    UUID libraryId = libraryService.createLibrary(request, currentUserOf(owner)).library().getId();
+
+    assertThat(libraryRepository.findByIdAndOrganizationId(libraryId, organizationA)).isPresent();
+    assertThat(libraryRepository.findByIdAndOrganizationId(libraryId, organizationB)).isEmpty();
+    assertThatThrownBy(() -> libraryRepository.requireInOrganization(libraryId, organizationB))
+        .isInstanceOf(NotFoundException.class)
+        .hasMessage("Bibliothek nicht gefunden");
+  }
+
+  @Test
   void createLibraryRequiresASourceType() {
     // ADR-0018: sourceType is mandatory at creation, not defaulted - a caller-supplied null is
     // rejected with 400, unlike ownerType/visibility, which do default.

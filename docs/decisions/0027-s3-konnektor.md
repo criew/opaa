@@ -2,7 +2,7 @@
 
 ## Status
 
-Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über den gemeinsamen Datei-Abgleich (ADR-0040, Entscheidung 1)
+Akzeptiert · zuletzt geändert 2026-10-14 · ergänzt ADR-0017 (Entscheidung 5), ADR-0018 und ADR-0023 · Entscheidung 1 verallgemeinert durch ADR-0038 · Abgleich seit #2149 über den gemeinsamen Datei-Abgleich (ADR-0045, Entscheidung 1)
 
 ## Kontext
 
@@ -29,7 +29,7 @@ einen Bereich sichert allein der Record. Was typübergreifend Regeln hat, bleibt
 `source_url` (Zieladressprüfung, Ursprungsbindung), Zugangsdaten verschlüsselt in
 `source_credentials`, Zeitplan. **Geheimnisse stehen nie in `source_settings`** — die Spalte ist
 unverschlüsselt und erscheint in `LibraryResponse`. Seit #2496 gibt es keinen Proxy je Bibliothek
-(hausweiter Ausgangsproxy, ADR-0041), seit #2537 keinen Schalter zum Aussetzen der
+(hausweiter Ausgangsproxy, ADR-0050), seit #2537 keinen Schalter zum Aussetzen der
 Zertifikatsprüfung; `S3SdkClient` setzt `TRUST_ALL_CERTIFICATES` nicht.
 
 ### 2. Geltungsbereiche: eine Liste von (Bucket, Präfix), mindestens einer, ohne Überlappung
@@ -49,7 +49,7 @@ vor der Eingabe. Bereiche sind änderbar; Entfernen wirkt mit dem nächsten Voll
 `S3IndexingExecutor` deklariert `FULL → REMOVE_ON_ABSENCE` und `EVENT → KEEP_ON_ABSENCE`;
 `defaultRunMode` ist konstant `FULL`. Es gibt keine inkrementelle Betriebsart: Die vollständige
 Auflistung kostet tausend Aufrufe je Million Objekte und ist damit die Regelbetriebsart. Seit #2149
-läuft der Vollabgleich über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0040,
+läuft der Vollabgleich über den gemeinsamen Datei-Abgleich `indexing.filesync` (ADR-0045,
 Entscheidung 1): `S3FileStore` ist der `FileStore` (ein Bereich ein Container, der Schlüssel die
 Kennung, `S3ChangeMarker` das Änderungsmerkmal), `S3FullSync` liefert Wortlaut und Grenzen aus
 `S3Properties`. Was dort für S3 gilt: Jeder gelistete Schlüssel ist vorhanden, auch ein
@@ -266,3 +266,4 @@ Rahmen des Maintainers (Epic #1291) und Stand:
 | 2026-10-11 | #2482 | Keine Längengrenze für den ETag im Änderungsmerkmal | 4 |
 | 2026-10-12 | #2496, #2537 | Kein Proxy je Bibliothek, Zertifikatsprüfung nicht aussetzbar (ADR-0041) | 1, 8 |
 | 2026-10-14 | #2700 | Neufassung auf den gültigen Endstand | 3, 5, 6, 11 |
+| 2026-10-14 | #2702 | Verweise auf ADR-0045/0048/0050 | — |

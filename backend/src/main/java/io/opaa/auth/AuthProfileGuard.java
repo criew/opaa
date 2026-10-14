@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Profile;
 /**
  * Refuses to start when no authentication profile is active.
  *
- * <p>Every authentication mode contributes its own {@code SecurityFilterChain} ({@link
+ * <p>Every authentication mode contributes its own {@code SecurityFilterChain} ({@code
  * io.opaa.account.OidcSecurityConfig}, {@link DevSecurityConfig}). Without one of them no chain
  * guards {@code /api/**} at all: the unconditional chains of the push intake ({@link
  * PushIntakeSecurityConfig}) and of the external-access channel ({@code

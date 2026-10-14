@@ -1,189 +1,106 @@
-# ADR-0016: Löschschicksal der Rechtehistorie — Historie überlebt Fachobjekt- und Kontolöschung
+# ADR-0016: Löschschicksal der Rechtehistorie
 
 ## Status
 
-Akzeptiert
-
-**Hinweis (02.10.2026, [ADR-0039](0039-ein-katalog-und-ausdrueckliche-space-zuordnung.md)):** Die
-Space-Zuordnung eines Assets ist seither eine harte Grenze dessen, was ein Chat nutzt, wird aber
-weiterhin **nicht** historisiert: Sie gewährt keinen Zugriff, und die Stichtagsfrage „wer konnte
-lesen?" beantwortet die Rechtehistorie. Die `listed`-Intervalle der Sichtbarkeitshistorie entfallen
-mit ADR-0039 ersatzlos.
+Akzeptiert · zuletzt geändert 2026-10-02 · ergänzt durch ADR-0036 (Entscheidung 8) und ADR-0039 (Entscheidung 3)
 
 ## Kontext
 
-#238 historisiert AssetGrants, Gruppenmitgliedschaften und Bibliotheks-Sichtbarkeit als
-Zeitintervalle, damit die vollständige Rechtemenge einer Person zu einem beliebigen Stichtag
-rekonstruierbar ist — insbesondere die Negativfrage „hatte Person X am Tag Y KEINEN Zugriff auf
-Bibliothek Z" (siehe `docs/features/spaces-and-assets.md#nachweisbarkeit-historisierung-von-rechten`
-und `docs/features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten`).
-
-Die erste Fassung der Migration (`018-permission-history.yaml`) hat die Historientabellen mit
-Fremdschlüsseln auf die Fachobjekte versehen, die sie historisieren — `library_id`/`subject_group_id`
-mit `ON DELETE CASCADE` auf `knowledge_libraries`/`groups`, und `group_membership_history.user_id`
-mit `ON DELETE CASCADE` auf `users`. Das Code-Review zu PR #427 hat zwei Fehlerszenarien konkret
-belegt:
-
-1. **Bibliotheks-/Gruppenlöschung löscht die Historie mit.** Eine Gruppe „Projekt Z" erhält im
-   Januar einen Grant auf `Personalvorgänge`; im April wird der Grant widerrufen; im Mai wird die
-   Gruppe gelöscht (zulässig, weil sie keinen aktiven Grant mehr hält). Mit `ON DELETE CASCADE`
-   verschwinden dabei auch die bereits geschlossenen Historienintervalle. Eine Stichtag-Anfrage für
-   den 3. März — als der Grant noch aktiv war — antwortet danach fälschlich „nicht enthalten". Das
-   ist keine fehlende Auskunft, sondern eine falsche, und trifft exakt den Vorgang, den ein Prüfer
-   untersucht. Dieselbe Lücke besteht bei `deleteLibrary`, einer regulären OWNER-Operation.
-2. **Kontolöschung löscht die Mitgliedschaftshistorie.** `docs/features/security-and-compliance.md`
-   verlangt ausdrücklich: „Beim Löschen eines Kontos entfällt die Zuordnung; die Historie selbst
-   bleibt unverändert bestehen … sonst wäre für ausgeschiedene Personen nichts mehr belegbar, obwohl
-   Prüfungen gerade sie häufig betreffen." Ein `ON DELETE CASCADE` auf der Subjektspalte tut exakt
-   das Gegenteil und war zudem inkonsistent zu `asset_grant_history.subject_user_id`, das von Anfang
-   an `RESTRICT` war.
-
-Eine Historie, die dieselbe Löschung überlebt haben muss, die sie belegen soll, ist an der
-entscheidenden Stelle keine Historie.
+Die Rechtehistorie hält Grants, Gruppenmitgliedschaften und Reichweite als Zeitintervalle, damit die
+Rechtemenge einer Person zu einem Stichtag rekonstruierbar ist, auch die Negativfrage „hatte Person X
+am Tag Y keinen Zugriff auf Z?“
+([security-and-compliance.md](../features/security-and-compliance.md#nachweisbarkeit-historisierung-von-rechten)).
+Fremdschlüssel mit `ON DELETE CASCADE` auf die historisierten Fachobjekte und auf die betroffene
+Person hätten genau das zerstört: Eine Gruppenlöschung nach dem Widerruf ihres Grants hätte die
+geschlossenen Intervalle mitgelöscht und eine Stichtagsanfrage für den März fälschlich mit „nicht
+enthalten“ beantwortet; eine Kontolöschung hätte die Mitgliedschaftshistorie der ausgeschiedenen
+Person entfernt, obwohl Prüfungen gerade sie betreffen. Eine Historie, die dieselbe Löschung
+überleben muss, die sie belegen soll, ist sonst keine Historie.
 
 ## Entscheidung
 
-**Die Rechtehistorie überlebt jede Löschung eines Fachobjekts (Bibliothek, Gruppe, Grant) und jede
-künftige Kontolöschung — mit zwei unterschiedlichen Mechanismen, je nachdem, was gelöscht wird:**
+### 1. Fachobjekte: kein Fremdschlüssel
 
-1. **Fachobjekte (Bibliothek, Gruppe): kein Fremdschlüssel.** `asset_grant_history.library_id`,
-   `asset_grant_history.subject_group_id` und `group_membership_history.group_id` sind reine
-   UUID-Wertespalten ohne Fremdschlüssel-Constraint. Eine Bibliotheks- oder Gruppenlöschung wird
-   dadurch weder blockiert noch räumt sie die Historie mit ab. Die Zeile bleibt über ihre eigene
-   `library_id`/`group_id` als Identifikator lesbar, auch wenn das Fachobjekt nicht mehr existiert —
-   nur der Rücksprung auf einen aktuellen Namen/Zustand entfällt.
-2. **Konten (Subjektspalten): `RESTRICT`, nicht `CASCADE`.** `asset_grant_history.subject_user_id`
-   und `group_membership_history.user_id` bleiben echte Fremdschlüssel auf `users`, mit `ON DELETE
-   RESTRICT`. Das blockiert eine Kontolöschung, solange die Person noch in der Rechtehistorie referenziert
-   wird — bewusst, bis #391/#395 einen Pseudonymisierungsmechanismus liefern, der die
-   Personenbezug-Auflösung regelt, ohne die Historie selbst zu löschen. `RESTRICT` ist damit die
-   Übergangslösung, nicht der Zielzustand: Sie verhindert den stillen Verlust der Historie, bis die
-   eigentliche Lösung (Pseudonymisierung statt Löschung des Personenbezugs) existiert.
-3. **`actor_user_id` bleibt unverändert `ON DELETE SET NULL`.** Der auslösende Vorgang (`cause`,
-   `NOT NULL`) bleibt erhalten, nur der handelnde Akteur entfällt — das erfüllt das
-   Abnahmekriterium „jede Rechteänderung trägt ihren auslösenden Vorgang" bereits ohne die
-   Subjektspalten zu berühren, und wurde im Review ausdrücklich bestätigt.
+Die Spalten der Historientabellen, die auf das historisierte Objekt zeigen (`asset_id` in
+`asset_grant_history`, `asset_visibility_history` und `asset_ownership_history`, `group_id` in
+`group_membership_history`) und die Gruppen-Subjektspalten (`subject_group_id`, `owner_group_id`),
+sind reine UUID-Werte ohne Fremdschlüssel. Eine Asset- oder
+Gruppenlöschung wird weder blockiert noch räumt sie die Historie ab; nur der Rücksprung auf einen
+aktuellen Namen entfällt. Vor der Löschung schließt die Anwendung die offenen Intervalle des Objekts
+mit eigener Ursache (`ASSET_DELETED` über `AssetShellService#registerDeleted`, `GROUP_DELETED` in
+`GroupService#deleteGroup`), sonst meldete eine Rekonstruktion für „jetzt“ Zugriff auf ein gelöschtes
+Objekt.
 
-Diese Asymmetrie ist beabsichtigt: Die Subjektspalte sagt „wen betrifft diese Zeile" — das ist der
-Kern dessen, was die Historie nachweisen soll, und darf nicht durch eine Kontolöschung verschwinden.
-Die Fachobjekt-Spalten sagen „worauf bezieht sich diese Zeile" — das Fachobjekt kann vergehen, ohne
-dass die historisierte Tatsache ihre Aussagekraft verliert.
+### 2. Konten: `RESTRICT` auf jeder Subjektspalte
+
+Die Subjektspalten bleiben echte Fremdschlüssel auf `users` mit `ON DELETE RESTRICT`:
+`asset_grant_history.subject_user_id`, `group_membership_history.user_id`,
+`asset_ownership_history.owner_user_id`, `capability_grant_history.subject_user_id`,
+`space_membership_history.subject_user_id` und `account_state_history.user_id`. Die Kontolöschung
+(`LocalUserService#delete`) prüft dieselben Tabellen vorab und lehnt mit `409` ab, solange das Konto
+in Rechte- oder Nachweisbeständen referenziert ist; die Anleitung lautet „sperren statt löschen“.
+`RESTRICT` ist die Übergangslösung bis zu einer Pseudonymisierung des Personenbezugs, die die Historie
+selbst unangetastet lässt; eine Kaskade ist für diese Tabellen ausgeschlossen.
+
+### 3. Akteur: `ON DELETE SET NULL`
+
+Wo eine Historientabelle den handelnden Akteur führt (`actor_user_id`, alle außer
+`account_state_history`), steht die Spalte mit `ON DELETE SET NULL`. Die Ursache (`cause`, `NOT
+NULL`) bleibt, nur der Akteur entfällt; „jede Rechteänderung trägt ihren auslösenden Vorgang“ ist
+damit ohne Berührung der Subjektspalten erfüllt.
+
+### 4. Bestandssätze aktiver Rechte kaskadieren
+
+Eine personenbezogene Tabelle ist entweder Historienartefakt (Entscheidungen 1–3) oder Bestandssatz
+eines Rechts der Gegenwart; wer eine neue anlegt, ordnet sie ausdrücklich zu. Die Diagnose-Vollmacht
+(`diagnostic_impersonation_grants`) ist ein Bestandssatz: Alle Personen- und Gruppenspalten
+(`holder_user_id`, `granted_by_user_id`, `revoked_by_user_id`, `scope_group_id`) stehen auf `ON DELETE
+CASCADE`, weil mit dem Konto der Inhaberin der Gegenstand entfällt und `SET NULL` am zusammengesetzten
+Schlüssel mit `organization_id` scheitert. Die Kaskade trifft bewusst auch noch gültige Vollmachten
+Dritter; deshalb widerruft die Kontolöschung vorher ausdrücklich jede noch gültige Vollmacht, die das
+Konto erteilt hat, je Vollmacht ein `DIAGNOSTIC_IMPERSONATION_REVOKED` in derselben Transaktion (seit
+#1697); die Kaskade ist nur das Netz dahinter. Erteilung und Widerruf stehen im `audit_log` und
+überleben die Löschung; der Bestandssatz nicht. Dass „hatte Person X die Befugnis?“ nach der Löschung
+über keinen Weg mehr beantwortbar ist, ist die in Kauf genommene Folge.
+
+### 5. Die Space-Zuordnung wird nicht historisiert
+
+Die Zuordnung eines Assets zu einem Space ist eine harte Nutzungsgrenze (ADR-0039 Entscheidung 4),
+gewährt aber keinen Zugriff; „wer konnte lesen?“ beantwortet allein die Rechtehistorie. Die früheren
+`listed`-Intervalle sind entfallen (ADR-0039 Entscheidung 3).
 
 ## Konsequenzen
 
-**Einfacher:**
+**Einfacher:** Die Negativfrage bleibt über die Lebensdauer eines Objekts hinaus korrekt beantwortbar;
+`deleteLibrary`/`deleteGroup` bleiben sofort wirksam.
 
-- Die Negativfrage aus #238 bleibt über die gesamte Lebensdauer eines Fachobjekts hinweg korrekt
-  beantwortbar, auch nach dessen Löschung.
-- `deleteLibrary`/`deleteGroup` bleiben unveränderte, sofort wirksame Operationen — keine neue
-  Blockade, kein neuer Ausnahmefall in den bestehenden Lösch-Guards.
-- `deleteLibrary`/`deleteGroup` schließen zusätzlich die zu diesem Zeitpunkt noch offenen
-  Historienintervalle des gelöschten Objekts, mit eigener Ursache (`LIBRARY_DELETED`/
-  `GROUP_DELETED`) statt sie unbegrenzt offen zu lassen — ohne diesen Schritt würde eine
-  Stichtag-Rekonstruktion für „jetzt" fälschlich weiterhin Zugriff auf ein bereits gelöschtes
-  Objekt melden (Überberichtung, die harmlose Richtung, aber unnötig; Nachtrag aus dem
-  Code-Review zu PR #427).
-- Der Migrationstest kann Lösch-Überleben statt Lösch-Kaskadierung als Vertrag prüfen
-  (`Migration018PermissionHistoryTest`).
+**Schwieriger:** Eine Historienzeile lässt sich nach der Objektlöschung nicht mehr per Join auf einen
+Namen zurückführen. Eine Kontolöschung scheitert praktisch bei jedem Konto, das je ein Recht hatte.
+Tests, die Konten löschen, entfernen die eigene Historie vorher über die als Test-Hilfsmittel
+markierten `deleteBy…In`-Methoden der Historien-Repositories.
 
-**Schwieriger:**
+## Verworfene Alternativen
 
-- Eine Historienzeile lässt sich nach Löschung des Fachobjekts nicht mehr per SQL-Join auf einen
-  aktuellen Bibliotheks-/Gruppennamen zurückführen — nur über die in der Zeile selbst geführten
-  Werte (Rolle, Sichtbarkeit, Zeitraum). Ein lesbarer Namens-Schnappschuss wäre eine mögliche
-  Erweiterung, ist aber nicht Teil dieser Entscheidung.
-- `RESTRICT` auf den Subjektspalten bedeutet: **eine Kontolöschung ist heute nicht möglich, solange
-  Rechtehistorie zu diesem Konto existiert** — praktisch bei jedem Konto, das je ein Recht hatte oder
-  Mitglied einer Gruppe war. Das ist kein Rückschritt (eine Kontolöschungsfunktion existiert noch
-  nicht), aber es legt fest, dass #391/#395 eine Pseudonymisierungslösung liefern müssen, keine
-  Kaskadierung — eine Vorgabe, die dort zu beachten ist.
-- Integrationstests, die Konten direkt löschen (z. B. `userRepository.deleteById`/`deleteAll` in
-  Testaufräumroutinen), müssen ihre eigene Rechtehistorie vor der Kontolöschung explizit entfernen
-  (`AssetGrantHistoryRepository#deleteBySubjectUserIdIn`,
-  `GroupMembershipHistoryRepository#deleteByUserIdIn` — beide ausdrücklich als Test-Hilfsmittel
-  markiert, nicht für Produktionscode).
+- `ON DELETE CASCADE` auf Fachobjekt- und Subjektspalten — löscht genau den Beleg, den ein Prüfer
+  braucht.
+- `RESTRICT` für Diagnose-Vollmachten — blockierte die Kontolöschung, um die es geht, wegen eines
+  Rechts, das ohne Inhaberin niemand ausüben kann.
 
-## Nachtrag (11.09.2026): personenbezogene Berechtigungs-Bestandssätze
+## Offen
 
-Die Entscheidung oben nennt nur die drei Historientabellen aus #238. Mit den **Diagnose-Vollmachten**
-(`diagnostic_impersonation_grants`, #1052) ist seither eine weitere personenbezogene Tabelle
-entstanden, die auf den ersten Blick dieselbe Frage stellt: `holder_user_id` sagt, wen die Zeile
-betrifft — nach der Systematik oben also eine Subjektspalte, für die die Entscheidung `RESTRICT`
-verlangt. Tatsächlich stand sie von Anfang an auf `ON DELETE CASCADE`, ohne dass das Changeset diese
-Abweichung begründet hätte (Befund in #1509, entdeckt im Review zu #1506).
-
-**Maintainer-Entscheidung vom 11.09.2026:** `CASCADE` bleibt und wird auf alle Personenspalten der
-Tabelle ausgeweitet. Begründung im Wortlaut: „Wenn ein Nutzer nicht mehr da ist, brauchen wir die
-Information der Vollmacht nicht mehr."
-
-**Warum das die Entscheidung oben nicht aufhebt, sondern abgrenzt.** Die Rechtehistorie und die
-Diagnose-Vollmacht beantworten nicht dieselbe Art von Frage:
-
-- Eine **Historienzeile** ist ein Artefakt: Sie existiert, um über einen Zustand der Vergangenheit
-  Auskunft zu geben, und zwar gerade über ausgeschiedene Personen — deshalb muss sie die Löschung
-  überleben, die sie belegen soll (Szenario 2 oben).
-- Eine **Vollmacht** ist ein Betriebsrecht der Gegenwart: eine befristete, bereichsgebundene Erlaubnis,
-  „Sicht als" auszuführen. Mit dem Konto **ihres Inhabers** entfällt ihr Gegenstand — es gibt
-  niemanden mehr, der sie ausüben könnte. Für die übrigen Spalten trägt dieses Argument nicht; deren
-  Kaskade ist eine bewusste Inkaufnahme, siehe die Tabelle unten.
-
-Beide Regeln nebeneinander zu führen ist also kein Widerspruch, sondern der Unterschied zwischen
-Historienartefakt und Bestandssatz eines aktiven Rechts. Wer künftig eine personenbezogene Tabelle
-anlegt, ordnet sie **ausdrücklich** einer der beiden Arten zu; „nichts Architektonisches wird implizit
-festgelegt" gilt hier wie sonst.
-
-**Konkret für `diagnostic_impersonation_grants` (Changeset `003`, #1509):**
-
-| Spalte | Ziel | Löschregel | Begründung |
-|---|---|---|---|
-| `holder_user_id` | `users` | `CASCADE` (unverändert) | Die Person, um die die Vollmacht geht — mit ihrem Konto entfällt ihr Gegenstand. |
-| `granted_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Ein `RESTRICT` würde die Kontolöschung weiterhin blockieren und die Entscheidung leerlaufen lassen. `SET NULL` scheidet aus: Der Schlüssel ist zusammengesetzt und führt `organization_id` mit, die `NOT NULL` ist (die Spalte selbst ist es ebenfalls). |
-| `revoked_by_user_id` | `users` | `RESTRICT` → `CASCADE` | Sonst blockiert eine einmal widerrufene — also längst wirkungslose — Vollmacht die Löschung des widerrufenden Kontos dauerhaft. `SET NULL` scheidet aus demselben Grund aus wie oben (`organization_id` im zusammengesetzten Schlüssel), zusätzlich koppelt `chk_…_revocation` die Spalte an `revoked_at`. |
-| `scope_group_id` | `groups` | `RESTRICT` → `CASCADE` | Der Geltungsbereich ist der Gegenstand der Vollmacht; `SET NULL` scheidet aus (Spalte und `organization_id` sind `NOT NULL`), und eine Vollmacht ohne existierenden Geltungsbereich erlaubt nichts. **Wirkt heute nicht:** Der Geltungsbereich muss eine Organisationseinheit sein, und `GroupService#deleteGroup` weist Organisationseinheiten vor jedem Fremdschlüsselkontakt ab — die Regel greift erst, wenn es einen Löschpfad für Organisationseinheiten gibt. |
-| `organization_id` | `organizations` | `RESTRICT` (unverändert) | Der Mandantenwurzel wird nicht gelöscht; jede andere Tabelle behandelt sie ebenso. |
-
-**Die Kaskade trifft auch Dritte — bewusst.** Über Aussteller-, Widerrufer- und Geltungsbereichsspalte
-entfernt sie nicht nur Vollmachten der gelöschten Person, sondern auch **noch gültige Vollmachten
-weiterhin existierender Inhaber**: Wird das Konto einer Administratorin gelöscht, die über zwei Jahre
-40 Befugnisse ausgestellt hat, verschwinden diese 40 mit — ohne Widerrufsereignis und ohne Anzeige.
-Die Richtung ist ungefährlich (Rechte entfallen, sie entstehen nicht), und `RESTRICT` wäre die
-Alternative, die genau die Kontolöschung blockiert, um die es hier geht. Die Auflage daraus: **Eine
-künftige Kontolöschungsfunktion widerruft betroffene Vollmachten ausdrücklich**, statt sich auf diese
-Kaskade zu verlassen — dann entsteht je Vollmacht ein Widerrufsereignis, und die Kaskade greift nur
-noch als Netz.
-
-**Auflage eingelöst (19.09.2026, #1697).** Die Kontolöschung (`LocalUserService#delete`) widerruft
-vor dem Löschen ausdrücklich die Vollmachten, die das Konto erteilt hat und die noch gelten — je
-Vollmacht ein `DIAGNOSTIC_IMPERSONATION_REVOKED` in derselben Form wie ein regulärer Widerruf, in
-derselben Transaktion wie die Löschung. Die Kaskade ist damit nur noch das Netz dahinter. Drei
-Gruppen bleiben bewusst ohne eigenes Ereignis: eine bereits widerrufene Vollmacht trägt ihres schon,
-eine abgelaufene bewirkt nichts mehr, und für die Vollmachten, deren **Inhaber das gelöschte Konto
-selbst ist**, ist der ereignislose Wegfall genau die Entscheidung der Tabelle oben zu
-`holder_user_id` — mit dem Konto entfällt ihr Gegenstand.
-
-Zugleich ist die Sperre entfallen, die die Anwendungsschicht bis dahin über `granted_by_user_id` und
-`revoked_by_user_id` gelegt hatte: Die Kontolöschung zählte beide Spalten als Löschhindernis und
-hätte die Entscheidung dieses Nachtrags damit weiterhin leerlaufen lassen (Befund im Review zu
-#1693).
-
-**Was nach einer Kontolöschung belegbar bleibt.** Erteilung und Widerruf schreiben je einen Eintrag ins
-`audit_log` (`DIAGNOSTIC_IMPERSONATION_GRANTED`/`_REVOKED`); dessen `actor_ref`/`subject_ref` sind
-`varchar` ohne Fremdschlüssel und überleben die Löschung. Der **Bestandssatz** überlebt sie bewusst
-nicht. Die Person wird im Ereignis über ihr Pseudonym geführt, und `audit_actor_pseudonyms` hängt nach
-ADR-0015/#395 selbst mit `CASCADE` an `users` — nach der Kontolöschung ist die Frage „hatte Person X im
-Zeitraum Y die Befugnis?" also über keinen der beiden Wege mehr beantwortbar. Das ist die bewusst in
-Kauf genommene Folge dieser Entscheidung, nicht ein übersehener Nebeneffekt.
-
-**Für die Rechtehistorie ändert sich nichts:** Ihre Subjektspalten bleiben `RESTRICT`, und die Vorgabe
-an #391/#395 — Pseudonymisierung statt Kaskadierung — bleibt für sie unverändert bestehen.
-
-## Offene Folgefragen (nicht Gegenstand dieser Entscheidung)
-
-- Ein lesbarer Namens-Schnappschuss an den Historienzeilen (Bibliotheks-/Gruppenname zum
-  Schreibzeitpunkt), damit ein Prüfbericht ohne Join auf ein möglicherweise gelöschtes Fachobjekt
+- Namens-Schnappschuss an Historienzeilen, damit ein Prüfbericht ohne Join auf ein gelöschtes Objekt
   lesbar bleibt.
-- Aufbewahrungshöchstdauer und Pseudonymisierung des Personenbezugs ab Schreibzeitpunkt für die
-  Rechtehistorie selbst (`docs/features/security-and-compliance.md` fordert beides; #238 setzt es
-  noch nicht um — Follow-up-Issue nötig).
-- Korrelation historisierter Verzeichnislauf-Änderungen mit dem konkreten Lauf (`DirectorySyncStatus`
-  hält nur den jeweils letzten Lauf je Organisation) — Follow-up-Issue.
+- Pseudonymisierung des Personenbezugs der Rechtehistorie, damit eine Kontolöschung ohne
+  Historienverlust möglich wird.
+- Korrelation historisierter Verzeichnislauf-Änderungen mit dem konkreten Lauf; `directory_sync_status`
+  hält nur den jeweils letzten Lauf.
+
+## Änderungsverlauf
+
+| Datum | Issue/PR | Änderung (eine Zeile) | Entscheidungen |
+|---|---|---|---|
+| 2026-08-17 | #427 | Kein FK auf Fachobjekte, `RESTRICT` auf Subjekte, Intervallschluss bei Löschung | 1–3 |
+| 2026-09-11 | #1509 | Diagnose-Vollmachten: `CASCADE` auf allen Personenspalten | 4 |
+| 2026-09-19 | #1697 | Kontolöschung widerruft erteilte Vollmachten mit Ereignis | 4 |
+| 2026-09-24 | #1899 | Historien am Asset (`asset_id`), weitere Subjektspalten mit `RESTRICT` | 1, 2 |
+| 2026-10-02 | ADR-0039 | Space-Zuordnung nicht historisiert, `listed` entfällt | 5 |

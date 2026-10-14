@@ -3,6 +3,7 @@ package io.opaa.mail;
 import io.opaa.observability.SeparateHealthGroup;
 import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroupsPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.Configuration;
  * upload store. Conditional on the same switch as the indicator itself.
  */
 @Configuration
+@EnableConfigurationProperties(SmtpProperties.class)
 class MailHealthConfiguration {
 
   static final String CONTRIBUTOR = "mailDelivery";

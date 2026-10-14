@@ -1,5 +1,7 @@
 package io.opaa.format.file.tabular;
 
+import static io.opaa.common.PropertyDefaults.positiveOr;
+
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -36,17 +38,9 @@ public record TabularProperties(
     int maxRowColumns, int maxOdsCellRepeat, long maxOdsContentXmlBytes, int maxOdsRows) {
 
   public TabularProperties {
-    if (maxRowColumns <= 0) {
-      maxRowColumns = 200;
-    }
-    if (maxOdsCellRepeat <= 0) {
-      maxOdsCellRepeat = 50;
-    }
-    if (maxOdsContentXmlBytes <= 0) {
-      maxOdsContentXmlBytes = 10_485_760L; // 10 MiB
-    }
-    if (maxOdsRows <= 0) {
-      maxOdsRows = 100_000;
-    }
+    maxRowColumns = positiveOr(maxRowColumns, 200);
+    maxOdsCellRepeat = positiveOr(maxOdsCellRepeat, 50);
+    maxOdsContentXmlBytes = positiveOr(maxOdsContentXmlBytes, 10_485_760L); // 10 MiB
+    maxOdsRows = positiveOr(maxOdsRows, 100_000);
   }
 }

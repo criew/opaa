@@ -9,7 +9,6 @@ import io.opaa.indexing.document.DocumentIngestService;
 import io.opaa.indexing.job.IndexingEventCategory;
 import io.opaa.indexing.job.RequestBudgetExhaustedException;
 import io.opaa.indexing.job.RunEndingFailures;
-import io.opaa.indexing.maintenance.StaleDocumentCleanupService;
 import io.opaa.indexing.source.IndexingRun;
 import io.opaa.indexing.source.IndexingRunFailedException;
 import io.opaa.indexing.source.ListingOutcome;
@@ -99,7 +98,6 @@ public final class FileSync implements AutoCloseable {
   private final FileSyncWording wording;
   private final DocumentIngestService documentIngestService;
   private final DocumentRepository documentRepository;
-  private final StaleDocumentCleanupService cleanupService;
   private final SourceFolderMirror folderMirror;
   private SourceSyncState state;
   private final ScanJournal journal;
@@ -191,7 +189,6 @@ public final class FileSync implements AutoCloseable {
       DocumentIngestService documentIngestService,
       DocumentRepository documentRepository,
       LibraryFolderService folderService,
-      StaleDocumentCleanupService cleanupService,
       SourceSyncState state,
       ScanJournal journal,
       Clock clock,
@@ -202,7 +199,6 @@ public final class FileSync implements AutoCloseable {
     this.wording = wording;
     this.documentIngestService = documentIngestService;
     this.documentRepository = documentRepository;
-    this.cleanupService = cleanupService;
     this.folderMirror = new SourceFolderMirror(folderService, frame.library());
     frame.adopt(state);
     this.state = state;
@@ -588,7 +584,7 @@ public final class FileSync implements AutoCloseable {
       frame.progress().recordSkipped();
       return;
     }
-    cleanupService.removeWithAttachments(document.get(), frame.events(), wording.goneConfirmed());
+    frame.removeWithAttachments(document.get(), wording.goneConfirmed());
     frame.markAbsent(filePath);
     frame.progress().recordSkipped();
   }

@@ -224,6 +224,7 @@ public class IndexingRunTemplate {
             executor.sourceType(),
             progress,
             events,
+            staleDocumentCleanupService,
             documentRepository,
             storageQuotaService,
             rejected -> {

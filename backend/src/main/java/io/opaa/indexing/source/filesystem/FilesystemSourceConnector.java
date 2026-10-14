@@ -121,21 +121,6 @@ public class FilesystemSourceConnector implements SourceConnector, OriginalAcces
   }
 
   @Override
-  public void configureNew(KnowledgeLibrary library, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
-  @Override
-  public void applyChange(
-      KnowledgeLibrary library, ConnectorData stored, SourceSettings validated) {
-    if (validated.connectorSettings() != null) {
-      library.updateSourceSettings(validated.connectorSettings().toJson());
-    }
-  }
-
-  @Override
   public Map<String, Object> settingsState(KnowledgeLibrary library, ConnectorData stored) {
     return Map.of(
         FilesystemSourceSettings.EXCLUDE_PATTERNS,

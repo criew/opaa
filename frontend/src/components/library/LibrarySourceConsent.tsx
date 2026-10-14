@@ -13,7 +13,7 @@ import {
   formatConsentTime,
   responsibleLabel,
   sourceConnectionEndLabel,
-} from './sourceConnectionLabels'
+} from '../admin/connections/sourceConnectionLabels'
 
 interface LibrarySourceConsentProps {
   libraryId: string
