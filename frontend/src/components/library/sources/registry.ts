@@ -1,5 +1,5 @@
-import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { SourceTypeKey } from '@/shared/api/types'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import { confluenceSource } from './confluenceSource'
 import { dropboxSource } from './dropboxSource'
 import { filesystemSource, httpDirectorySource, rssFeedSource } from './genericSources'
@@ -11,19 +11,16 @@ import { smbSource } from './smbSource'
 import type { SourceRegistration } from './types'
 
 const uploadSource: SourceRegistration = {
-  label: 'Upload',
-  shortLabel: 'Upload',
-  description: 'Dateien auswählen oder hineinziehen; einzelne Dokumente pflegen.',
-  Icon: UploadFileIcon,
+  ...SOURCE_TYPE_DIRECTORY.UPLOAD,
   configuration: null,
 }
 
 /**
- * The one place a source type's frontend is registered (ADR-0038): its names, its symbol, and -
- * for a type with a source - its form with starting values, validation and request fields plus the
- * read views of the Reiter „Quelle". The order is the wizard's. A type the backend lists
- * (GET /source-types) without an entry here is shown under its own display name and cannot be
- * configured in this client.
+ * The one place a source type's frontend is registered (ADR-0038): its names and symbol from the
+ * connection directory and - for a type with a source - its form with starting values, validation
+ * and request fields plus the read views of the Reiter „Quelle". The order is the wizard's. A type
+ * the backend lists (GET /source-types) without an entry here is shown under its own display name
+ * and cannot be configured in this client.
  */
 const registrations: Record<SourceTypeKey, SourceRegistration> = {
   UPLOAD: uploadSource,

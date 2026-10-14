@@ -15,7 +15,6 @@ import type {
   SourceConnectionTestResponse,
   SourceBrowseRequest,
   SourceBrowseResponse,
-  SourceTypeDescriptor,
   SourceTypeKey,
   BulkDocumentDeleteResponse,
 } from '@/shared/api/types'
@@ -66,16 +65,6 @@ export async function testLibrarySource(
       '/v1/libraries/source-test',
       request,
     )
-    return data
-  } catch (err) {
-    normalizeError(err)
-  }
-}
-
-/** every source type the backend has a connector for (ADR-0038), ordered by key. */
-export async function listSourceTypes(): Promise<SourceTypeDescriptor[]> {
-  try {
-    const { data } = await client.get<SourceTypeDescriptor[]>('/v1/source-types')
     return data
   } catch (err) {
     normalizeError(err)

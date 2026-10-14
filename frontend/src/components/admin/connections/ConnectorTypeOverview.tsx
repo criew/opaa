@@ -12,7 +12,7 @@ import { useTheme } from '@mui/material/styles'
 import visuallyHidden from '@mui/utils/visuallyHidden'
 import type { ConnectorTypeStateResponse, SourceTypeKey } from '@/shared/api/types'
 import StateDot from '@/shared/ui/StateDot'
-import SourceTypeIcon from '../../library/sourceTypeIcon'
+import SourceTypeIcon from './sourceTypeIcon'
 import { adminTableSx, definitionListSx, listCardSx } from '@/shared/ui/list/adminListStyles'
 import { profileRuleLabel } from './connectorTypeState'
 

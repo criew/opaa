@@ -21,7 +21,7 @@ import {
   getPrivateStorageQuota,
   getPrivateStorageSummary,
   updatePrivateStorageQuota,
-} from '../../../services/privateStorageApi'
+} from '../../services/privateStorageApi'
 import { confirmAction } from '@/shared/stores/confirmStore'
 import { notify } from '@/shared/stores/notificationStore'
 import { formatFileSize } from '@/shared/utils/labels'

@@ -7,13 +7,12 @@ import type {
 } from '@/shared/api/types'
 import type { LibraryScheduleValues } from '../../utils/librarySchedule'
 import type { PendingGrant } from '../assets/pendingGrants'
+import { CONSENT_INTENT_STORAGE_KEY } from '../admin/connections/consentIntentStorage'
 
 /** The confirmation every consent for a library's source requires before it starts. */
 export const SERVICE_ACCOUNT_CONFIRMATION = 'Ich verbinde ein Dienstkonto, kein persönliches Konto'
 
 export const SERVICE_ACCOUNT_MISSING = 'Bitte bestätigen Sie, dass Sie ein Dienstkonto verbinden.'
-
-export const CONSENT_INTENT_STORAGE_KEY = 'opaa.sourceConsent'
 
 /**
  * Whether a shared library on `option` connects its source by a consent of its own ("Quelle
@@ -84,14 +83,6 @@ export function readConsentIntent(): SourceConsentIntent | null {
       : null
   } catch {
     return null
-  }
-}
-
-export function forgetConsentIntent(): void {
-  try {
-    sessionStorage.removeItem(CONSENT_INTENT_STORAGE_KEY)
-  } catch {
-    // nothing stored then
   }
 }
 

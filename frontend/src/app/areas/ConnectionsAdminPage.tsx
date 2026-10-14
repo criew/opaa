@@ -6,10 +6,10 @@ import { useAuthStore } from '@/shared/session/authStore'
 import PageHeading from '@/shared/ui/a11y/PageHeading'
 import AreaPageHeader from '@/shared/ui/AreaPageHeader'
 import AreaTabs from '@/shared/ui/AreaTabs'
-import ConnectionProfilesTab from '../components/admin/connections/ConnectionProfilesTab'
-import ConnectorTypesTab from '../components/admin/connections/ConnectorTypesTab'
-import ConnectionSettingsTab from '../components/admin/connections/ConnectionSettingsTab'
-import ExternalToolsTab from '../components/admin/externalaccess/ExternalToolsTab'
+import ConnectionProfilesTab from '../../components/admin/connections/ConnectionProfilesTab'
+import ConnectorTypesTab from '../../components/admin/connections/ConnectorTypesTab'
+import ConnectionSettingsTab from './ConnectionSettingsTab'
+import ExternalToolsTab from '../../components/admin/externalaccess/ExternalToolsTab'
 import {
   CONNECTIONS_ADMIN_TABS,
   connectionsAdminRoute,

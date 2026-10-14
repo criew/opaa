@@ -1,6 +1,3 @@
-import FolderIcon from '@mui/icons-material/Folder'
-import LanguageIcon from '@mui/icons-material/Language'
-import RssFeedIcon from '@mui/icons-material/RssFeed'
 import {
   EMPTY_GENERIC_SOURCE_VALUES,
   genericSourcePayload,
@@ -16,6 +13,7 @@ import {
   type FilesystemSourceValues,
 } from '../../../utils/filesystemSource'
 import { PathForm, StoredConnection, UrlForm } from './GenericSourceViews'
+import { SOURCE_TYPE_DIRECTORY } from '../../admin/connections/sourceTypeDirectory'
 import type { SourceConfiguration, SourceRegistration } from './types'
 
 const FIRST_RUN_HINT =
@@ -67,26 +65,17 @@ function filesystemConfiguration(): SourceConfiguration<FilesystemSourceValues> 
 }
 
 export const filesystemSource: SourceRegistration = {
-  label: 'Dateisystem',
-  shortLabel: 'Dateisystem',
-  description: 'Ein Pfad im Hausnetz wird regelmäßig eingelesen.',
-  Icon: FolderIcon,
+  ...SOURCE_TYPE_DIRECTORY.FILESYSTEM,
   configuration: filesystemConfiguration(),
 }
 
 export const httpDirectorySource: SourceRegistration = {
-  label: 'Webverzeichnis',
-  shortLabel: 'Web',
-  description: 'Eine interne Webadresse wird durchlaufen und indiziert.',
-  Icon: LanguageIcon,
+  ...SOURCE_TYPE_DIRECTORY.HTTP_DIRECTORY,
   configuration: urlConfiguration(),
 }
 
 export const rssFeedSource: SourceRegistration = {
-  label: 'RSS-Feed',
-  shortLabel: 'Feed',
-  description: 'Neue Beiträge werden laufend übernommen, Anhänge wahlweise.',
-  Icon: RssFeedIcon,
+  ...SOURCE_TYPE_DIRECTORY.RSS_FEED,
   runCountsEntries: true,
   configuration: urlConfiguration(),
 }

@@ -10,7 +10,7 @@ import GlobalAreaLayout from './layouts/GlobalAreaLayout'
 import AppShell from './layouts/AppShell'
 import { useFeatureEnabled } from '@/shared/session/useFeatureEnabled'
 import { useUiStore } from '@/shared/stores/uiStore'
-import SettingsPage from './pages/SettingsPage'
+import SettingsPage from './app/areas/SettingsPage'
 import { renderSpaceChats } from './app/themeSeams'
 // shared
 import {
@@ -85,7 +85,7 @@ import { useBrandingStore } from '@/shared/branding/brandingStore'
 import { BrandingSettingsPage } from '@/features/branding/routes'
 // connection
 import ConnectionCallbackPage from './pages/ConnectionCallbackPage'
-import ConnectionsAdminPage from './pages/ConnectionsAdminPage'
+import ConnectionsAdminPage from './app/areas/ConnectionsAdminPage'
 import { ConnectionLogPage, RightsHistoryPage } from '@/features/audit/routes'
 // search-admin
 import SearchIndexingAdminPage from './pages/SearchIndexingAdminPage'
