@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/auth'
 
 /**
- * #707: Vite bündelt Assets unter 4 KB als data:-URIs; die nginx-CSP erlaubt aber nur
+ * Vite bündelt Assets unter 4 KB als data:-URIs; die nginx-CSP erlaubt aber nur
  * `font-src 'self'`. Die kleinen Quicksand-Subsets landeten dadurch als geblockte data:-Fonts
  * im CSS - sechs Konsolenverstöße auf jeder Seite, betroffene Unicode-Bereiche fielen auf die
  * Ersatzschrift zurück. Der Test lädt die App durch die echte nginx-Auslieferung des Stacks

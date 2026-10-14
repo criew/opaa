@@ -66,7 +66,7 @@ DOMAIN = "comic-characters"
 # The default field size limit (131072 bytes) is close to the largest
 # `history_text` value observed in this snapshot (129594 chars, 1.1% margin)
 # even though that column is never read here. Raised defensively so a future
-# domain (#234) with denser free text doesn't hit a hard `csv.Error` here.
+# domain with denser free text doesn't hit a hard `csv.Error` here.
 # `sys.maxsize` alone overflows the C `long` `_csv` uses on 32-bit builds
 # (notably still the case for CPython's `_csv` module on Windows even in a
 # 64-bit interpreter); halving down avoids that platform pitfall instead of
@@ -125,7 +125,7 @@ FRONTMATTER_FIELDS = [
 # would cross 1000 tokens at ~3178 bytes) and is deliberately re-verified
 # whenever the corpus is regenerated — this check catches "prose got denser",
 # it does not prove "no chunking regression", which is why the real proof
-# lives in the Java retrieval-harness integration test (#227): it runs the
+# lives in the Java retrieval-harness integration test: it runs the
 # actual TokenTextSplitter and can assert chunk-count-per-document == 1
 # directly.
 #
@@ -244,7 +244,7 @@ def parse_score(value: str) -> int | str | None:
     that exist on partially-rated characters (e.g. a purely physical
     character genuinely rated 0 for intelligence while other attributes are
     non-zero). Downstream consumers building numeric-range golden queries
-    (#226) should be aware of this correlation and may want to additionally
+    should be aware of this correlation and may want to additionally
     filter on `overall_score is not null` where an "unrated" semantic is
     needed.
     """

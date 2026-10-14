@@ -155,7 +155,7 @@ if (isLocalAuth && (!bootstrapAdmin.email || !bootstrapAdmin.password)) {
 const composeArgs = [
   'compose',
   ...(isDemo ? ['--profile', 'demo'] : []),
-  // The mail catcher is profile-gated in docker-compose.yml (#1536) so a plain `docker compose up`
+  // The mail catcher is profile-gated in docker-compose.yml so a plain `docker compose up`
   // never starts it; naming the service in the `up` call below would not start it without this.
   ...(isLocalAuth ? ['--profile', 'mail'] : []),
   '-f',
@@ -264,7 +264,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
 const pythonCmd = isWindows ? 'python' : 'python3'
 const venvDir = join(e2eDir, '.venv')
 // A bare "pip install -r ..." would target whatever interpreter/site-packages "python"/"python3"
-// resolves to system-wide (PR #726 review, finding 1) - on PEP-668-managed systems (Debian/Ubuntu
+// resolves to system-wide - on PEP-668-managed systems (Debian/Ubuntu
 // >=23.04, Homebrew's own Python) that fails outright with "externally-managed-environment", and
 // even where it does not fail it writes into a shared environment no other part of this repo
 // touches. A dedicated venv under e2e/.venv (gitignored, reused across runs so a repeated `pnpm
@@ -313,7 +313,7 @@ function runSeed() {
       '--indexing-timeout-seconds',
       '600',
     )
-    // ADR-0033 (#1534): the Keycloak "demo-admin" no longer becomes SYSTEM_ADMIN by itself; the
+    // ADR-0033: the Keycloak "demo-admin" no longer becomes SYSTEM_ADMIN by itself; the
     // seed grants the role through the local bootstrap administrator the backend seeded on its
     // first start. Its address and fixed password live in e2e/demo-smoke.env, which only the
     // Compose stack reads - hand the two values to the seed explicitly.

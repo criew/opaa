@@ -41,7 +41,7 @@ export async function startAnotherChatViaSidebar(page: Page): Promise<void> {
 }
 
 /**
- * Empties the chat's search-scope chip bar, which is what "ohne Wissensbasis" means since #560:
+ * Empties the chat's search-scope chip bar, which is what "ohne Wissensbasis" means:
  * @Space-Wissen is a chip like any other and is removed the same way a reference chip is (the
  * accessible name sits on the chip root, not on its aria-hidden delete icon). Call before the
  * first question of a chat - the scope is the chat's own sticky setting from then on.
@@ -67,7 +67,7 @@ export async function askQuestion(page: Page, question: string): Promise<void> {
  * resolved count, so callers can use Playwright's own auto-retrying `expect(...).toHaveCount(...)`
  * instead of racing the sidebar's React re-render with a one-shot `.count()`.
  *
- * Needed since #557: the backend replaces a chat's question-derived title with an LLM-generated
+ * Needed because the backend replaces a chat's question-derived title with an LLM-generated
  * one asynchronously, and the deterministic KI stub used in this suite (ai-stub/server.mjs) answers
  * every title-generation prompt with the exact same fixed text - its title-generation prompt
  * carries no citation markers for the stub's citation-echoing logic to key off, so it always falls
@@ -136,7 +136,7 @@ export async function expectCitedSource(page: Page, fileName: string): Promise<v
 /**
  * Waits for the answer to cite *some* source, without pinning down which file. For scenarios whose
  * point is the chat mechanism itself (an answer with sources exists, and survives a reload) rather
- * than which library the default @Space-Wissen search actually reached (#560): that search runs
+ * than which library the default @Space-Wissen search actually reached: that search runs
  * topK over everything assigned to the space, which by the time a given scenario runs also holds
  * whatever earlier scenarios assigned (same fixed ai-stub embedding for every chunk, see
  * ai-stub/server.mjs) - a specific document can legitimately fall out of the top results as that
@@ -153,7 +153,7 @@ export async function expectAnyCitedSource(page: Page): Promise<void> {
 
 // Not "no source at all": a plain absence check would pass just as happily before the answer has
 // even come back as after it confirmed exclusion. Asserting a real found-vs-excluded split closes
-// that gap - see e.g. test(e2e) #424 review, nit 1.
+// that gap.
 export async function expectCitedExclusively(
   page: Page,
   citedFileName: string,
@@ -262,7 +262,7 @@ export async function createLibraryWithDocument(
  * documents in a single {@link https://playwright.dev/docs/api/class-locator#locator-set-input-files
  * setInputFiles} call (the upload zone's file input carries the `multiple` attribute, see
  * LibraryDetailPage.tsx), waiting for every one of them to reach "indiziert" - the multi-format
- * upload scenario (#1109) needs several distinct formats accepted and indexed side by side, not
+ * upload scenario needs several distinct formats accepted and indexed side by side, not
  * one file at a time the way {@link createLibraryWithDocument} exercises everywhere else.
  */
 export async function createLibraryWithDocuments(
@@ -275,12 +275,12 @@ export async function createLibraryWithDocuments(
   expectedIndexedCount: number = documents.length,
 ): Promise<void> {
   await openNewLibraryWizard(page)
-  // #1942: Schrittfolge „Quellart · Name & Beschreibung · Freigaben" - Upload ist
+  // Schrittfolge „Quellart · Name & Beschreibung · Freigaben" - Upload ist
   // vorausgewählt und hat keinen Schritt „Quelle einrichten".
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
   await page.getByLabel('Name').fill(libraryName)
   await page.getByRole('button', { name: 'Weiter', exact: true }).click()
-  // #481/#596: the create wizard navigates straight to the new library's detail page on success -
+  // The create wizard navigates straight to the new library's detail page on success -
   // there is no separate documents page or picker to visit afterwards. The wizard itself lives at
   // /libraries/new, hence the lookahead.
   await Promise.all([
@@ -300,7 +300,7 @@ export async function createLibraryWithDocuments(
   // A fresh library (created moments ago, above) holds nothing but these uploads (plus, since
   // #1218, the indexed attachment rows of any uploaded mail), so an exact chip count is the whole
   // expectation - not just "at least one", which a single stuck upload amid several finished ones
-  // would still satisfy. exact: the Pflege-Anker (#1069) above the list says "... indizierte
+  // would still satisfy. exact: the Pflege-Anker above the list says "... indizierte
   // Dokumente dieser Bibliothek" and loads a moment later, so a substring match counts a chip that
   // is none - and only sometimes.
   await expect(page.getByText('indiziert', { exact: true })).toHaveCount(expectedIndexedCount, {
@@ -321,7 +321,7 @@ export async function shareLibraryWithPerson(
 ): Promise<void> {
   await gotoLibraries(adminPage)
   await gotoLibraryDetail(adminPage, libraryName)
-  // Seit #1941 steht der Abschnitt „Berechtigungen" als Liste im Reiter „Freigaben".
+  // Der Abschnitt „Berechtigungen" steht als Liste im Reiter „Freigaben".
   await adminPage.getByRole('tab', { name: 'Freigaben' }).click()
   await adminPage.getByRole('button', { name: 'Freigeben' }).click()
   // Not getByLabel: once the Autocomplete's listbox is open, its aria-labelledby also points back

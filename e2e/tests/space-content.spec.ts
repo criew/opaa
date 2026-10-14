@@ -16,7 +16,7 @@ async function createSpaceViaApi(name: string): Promise<string> {
 }
 
 /**
- * The tab "Inhalte" of the space settings (#2130): one tile list for every asset type, a check
+ * The tab "Inhalte" of the space settings: one tile list for every asset type, a check
  * mark that takes effect at once, operated by keyboard, its confirmation announced, axe clean.
  */
 test.describe('Space-Einstellungen: Reiter „Inhalte“', () => {
@@ -32,7 +32,7 @@ test.describe('Space-Einstellungen: Reiter „Inhalte“', () => {
     await page.goto(`/spaces/${spaceId}/settings/prompts`)
     await expect(page).toHaveURL(new RegExp(`/spaces/${spaceId}/settings/content$`))
     await expect(page.getByRole('tab', { name: 'Inhalte', selected: true })).toBeVisible()
-    // #2207: no heading repeats the tab's name, and no lead sentence.
+    // No heading repeats the tab's name, and no lead sentence.
     await expect(page.getByRole('heading', { name: 'Inhalte' })).toHaveCount(0)
     await expect(page.getByText(/nutzt nur, was hier ausgewählt ist/)).toHaveCount(0)
     const onlyAssociated = page.getByRole('button', { name: 'Nur zugeordnete' })

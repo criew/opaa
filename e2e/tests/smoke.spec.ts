@@ -12,7 +12,7 @@ test.describe('Rauchtest', () => {
   })
 
   /**
-   * Covers test(e2e) #233 (PR #726 review, finding 2): every other scenario in this suite only
+   * Every other scenario in this suite only
    * ever *reads* demo/seed/profiles.py's own imports and comments, never the seed's actual output
    * - a broken grant, upload or indexing step in the "e2e" data profile would go entirely
    * unnoticed. `regularUserPage` is `dev-user`, the seed's own VIEWER on "E2E Wissensbibliothek" -
@@ -28,7 +28,7 @@ test.describe('Rauchtest', () => {
     await gotoLibraryDetail(page, 'E2E Wissensbibliothek')
     await expect(page.getByText('e2e-basisdokument.txt', { exact: true })).toBeVisible()
     // exact: only the document's status chip, not the Pflege-Anker's sentence above the list,
-    // which names the number of indizierte Dokumente (#1069).
+    // which names the number of indizierte Dokumente.
     await expect(page.getByText('indiziert', { exact: true })).toBeVisible()
   })
 })

@@ -9,7 +9,7 @@ const SPACE_NAME = `E2E-Mitglieder-${runId}`;
 let spacePath = "";
 
 /**
- * #2131: Der Space-Assistent nimmt Personen und Gruppen über dasselbe Suchfeld auf wie die
+ * Der Space-Assistent nimmt Personen und Gruppen über dasselbe Suchfeld auf wie die
  * Space-Einstellungen, ohne Sichtbarkeit und mit den Bereinigungsfristen der Installation. Die
  * Gruppe ist Vorbedingung, nicht Gegenstand, und entsteht deshalb über die API.
  */
@@ -104,7 +104,7 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
   });
 
   /**
-   * #2205: Ein Rollenwechsel meldet sich als Popup in einer Live-Region, ohne dass die Liste neu
+   * Ein Rollenwechsel meldet sich als Popup in einer Live-Region, ohne dass die Liste neu
    * lädt; die Herleitung nennt Rolle und Herkunft in einem Satz und schließt mit „Schließen".
    */
   test("Einstellungen: Rollenwechsel als Popup, Herleitung in einem Satz", async ({
@@ -175,7 +175,7 @@ test.describe.serial("Space-Anlage und Mitglieder (#2131)", () => {
 });
 
 /**
- * #2207: Ein einfaches Mitglied öffnet die Einstellungen über das Zahnrad und sieht alles
+ * Ein einfaches Mitglied öffnet die Einstellungen über das Zahnrad und sieht alles
  * schreibgeschützt; im Reiter „Mitglieder" nur die Zählung je Rolle, keinen Namen.
  */
 test("Einstellungen lesend für ein Mitglied, Mitglieder nur als Zählung", async ({

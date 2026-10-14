@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/auth'
 
-// #812: index.html kam ohne Cache-Control - Browser cachten sie heuristisch und zeigten nach
+// index.html kam ohne Cache-Control - Browser cachten sie heuristisch und zeigten nach
 // Deployments den alten Stand, bis hart neu geladen wurde. Läuft gegen den echten nginx des
 // Compose-Stacks, wie die Header-Zusicherungen aus docs/handbuch/betrieb.md.
 test.describe('Auslieferungs-Caching (#812)', () => {

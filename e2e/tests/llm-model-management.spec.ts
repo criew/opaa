@@ -3,7 +3,7 @@ import { askQuestion, startFreshChat } from '../fixtures/chat'
 import type { Locator, Page } from '@playwright/test'
 
 /**
- * Modellverwaltung über den vollen Stack (#760, Epic #755): Anlegen, Verbindungstest, Aktivieren
+ * Modellverwaltung über den vollen Stack: Anlegen, Verbindungstest, Aktivieren
  * und der Löschschutz für das aktive Modell - die eine Kette, die über die Ticketgrenzen von
  * #756-#758 verteilt war und bislang nur schichtweise getestet ist. Besonders die Zusicherung "der
  * API-Schlüssel kommt nie zurück" (Szenario 6) und "eine Aktivierung wirkt ohne Neustart"
@@ -15,7 +15,7 @@ import type { Locator, Page } from '@playwright/test'
  * für die Dauer dieser Datei bewusst um, deshalb `test.describe.serial` mit erzwungener Reihenfolge
  * und geteiltem Zustand (`connectionTestModelId` u. a.). Szenarien 3 und 5 hängen an keinem
  * Zustand aus Szenario 1 - ein eigenes, nicht-serielles zweites `describe` verhindert, dass sie ihr
- * Signal verlieren, sobald Szenario 1 fehlschlägt (PR #770 review, Befund 7).
+ * Signal verlieren, sobald Szenario 1 fehlschlägt.
  *
  * `test.afterAll` aktiviert danach exakt das ursprünglich aktive Modell wieder (nicht bloß
  * irgendein funktionierendes) - genau die im Issue geforderte Rückaktivierung, ohne die jeder
@@ -33,8 +33,8 @@ import type { Locator, Page } from '@playwright/test'
 
 const DEV_USER_HEADER = 'X-OPAA-Dev-User'
 
-// docker-compose.e2e.yml veröffentlicht ai-stubs Port zusätzlich auf dem Host (#760, PR-Review
-// Befund 2) - nötig, weil Szenario 2 GET /last-chat-model direkt vom Playwright/Node-Prozess aus
+// docker-compose.e2e.yml veröffentlicht ai-stubs Port zusätzlich auf dem Host - nötig, weil
+// Szenario 2 GET /last-chat-model direkt vom Playwright/Node-Prozess aus
 // abfragt, nicht über den Browser. run-e2e.mjs reicht die tatsächlich verwendete Portnummer über
 // E2E_AI_STUB_BASE_URL durch; der Fallback hier greift bei `pnpm run test:playwright` gegen einen
 // bereits laufenden Stack mit dem Compose-Default (18089).
@@ -157,7 +157,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
   })
 
   test.afterAll(async ({ request }) => {
-    // Guard (PR #770 review, Befund 3): beforeAll wirft, wenn die Seed-Voraussetzung verletzt ist
+    // Guard: beforeAll wirft, wenn die Seed-Voraussetzung verletzt ist
     // (originalActiveModelId bleibt dann undefined) - ohne diesen Guard würde afterAll trotzdem
     // ein POST .../undefined/activate absetzen, statt den eigentlichen Fehler sichtbar zu lassen.
     if (originalActiveModelId) {
@@ -175,8 +175,8 @@ test.describe.serial('Modellverwaltung (#760)', () => {
         expect(deleteResponse.ok()).toBe(true)
       }
     }
-    // Verifiziert das Ergebnis, nicht nur dass die Aufrufe selbst erfolgreich waren (PR #770
-    // review, Befund 3): genau originalActiveModelId ist danach wieder das einzige aktive Modell.
+    // Verifiziert das Ergebnis, nicht nur dass die Aufrufe selbst erfolgreich waren: genau
+    // originalActiveModelId ist danach wieder das einzige aktive Modell.
     if (originalActiveModelId) {
       const verifyResponse = await request.get('/api/v1/admin/models', {
         headers: { [DEV_USER_HEADER]: 'dev-admin' },
@@ -248,7 +248,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
   }) => {
     await startFreshChat(page)
     // Ohne Wissensbasis (kein @-Bezug) ist die Antwort selbst deterministisch - der Punkt dieses
-    // Szenarios ist der Modellwechsel ohne Neustart (#758), nicht die inhaltliche Qualität der
+    // Szenarios ist der Modellwechsel ohne Neustart, nicht die inhaltliche Qualität der
     // Antwort (siehe Issue, "Technische Hinweise").
     await page.getByRole('button', { name: 'Referenz Space-Wissen entfernen' }).press('Backspace')
     await expect(page.getByText('Antwortet ohne Dokumente.')).toBeVisible()
@@ -257,7 +257,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
 
     await expect(page.getByText('Diese Antwort wurde ohne Wissensbasis erstellt.')).toBeVisible()
 
-    // PR #770 review, Befund 2: Seed-Modell und das in Szenario 1 aktivierte Modell zeigen beide
+    // Seed-Modell und das in Szenario 1 aktivierte Modell zeigen beide
     // auf denselben ai-stub, der jede Anfrage identisch beantwortet - "eine Antwort kam an" allein
     // würde also auch dann grün bleiben, wenn #758s Cache-Invalidierung ausbliebe und die Anfrage
     // tatsächlich noch beim alten, zwischengespeicherten Client landete. ai-stub merkt sich das
@@ -315,7 +315,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
     keyModelId = created.id
     expect(created.apiKeySet).toBe(true)
 
-    // PR #770 review, Befund 1: `apiKeyInput` im Frontend ist ein reines `useState('')`, das nie
+    // `apiKeyInput` im Frontend ist ein reines `useState('')`, das nie
     // aus dem Modell befüllt wird - eine reine UI-Prüfung auf ein leeres Feld wäre auch dann grün,
     // wenn das Backend den Klartext-Schlüssel im JSON mitschickte und das Frontend ihn nur nicht
     // anzeigte. Die eigentliche Zusicherung ("kommt nie zurück") lässt sich nur gegen die
@@ -342,7 +342,7 @@ test.describe.serial('Modellverwaltung (#760)', () => {
   })
 })
 
-// PR #770 review, Befund 7: 3 und 5 hängen an keinem Zustand aus dem `describe.serial`-Block oben
+// 3 und 5 hängen an keinem Zustand aus dem `describe.serial`-Block oben
 // (kein erstelltes/aktiviertes Modell nötig) - ein eigener, nicht-serieller Block verhindert, dass
 // beide ihr eigenes Signal verlieren, sobald Szenario 1 dort fehlschlägt und die restlichen
 // Szenarien des seriellen Blocks übersprungen werden.
@@ -350,22 +350,21 @@ test.describe('Modellverwaltung (#760) - unabhängige Szenarien', () => {
   test('3. Ein Nutzer ohne SYSTEM_ADMIN sieht die Modellverwaltung nicht', async ({
     regularUserPage: page,
   }) => {
-    // Positiver Anker zuerst (PR #770 review, Befund 4a): ohne ihn wäre `toHaveCount(0)` auf den
+    // Positiver Anker zuerst: ohne ihn wäre `toHaveCount(0)` auf den
     // "Admin"-Link auch dann grün, wenn die globale Leiste selbst noch gar nicht gerendert hätte.
-    // Seit #786 führen die Admin-Seiten über den "Admin"-Eintrag der globalen Leiste; die
-    // einzelnen Links (Modelle, Gruppen, Branding) stehen nicht mehr in der Seitenleiste.
+    // Die Admin-Seiten führen über den "Admin"-Eintrag der globalen Leiste; die
+    // einzelnen Links (Modelle, Gruppen, Branding) stehen nicht in der Seitenleiste.
     await expect(page.getByRole('link', { name: 'Katalog' })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Admin' })).toHaveCount(0)
 
     await page.goto('/admin/models')
     await expect(page.getByText(/nicht freigegeben/i)).toBeVisible()
-    // #805 (Review zu #803): "Nicht-Admins sehen die Spalte nicht" (#800) war unzugesichert -
-    // die Seite ist hier gerendert (positiver Anker eine Zeile darüber), die Admin-Landmarke
-    // darf trotzdem nicht existieren.
+    // "Nicht-Admins sehen die Spalte nicht": die Seite ist hier gerendert (positiver Anker eine
+    // Zeile darüber), die Admin-Landmarke darf trotzdem nicht existieren.
     await expect(page.getByRole('navigation', { name: 'Administration' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Neues Modell' })).toHaveCount(0)
 
-    // Nicht nur die UI-Sperre - auch die serverseitige Schranke (PR #770 review, Befund 4b).
+    // Nicht nur die UI-Sperre - auch die serverseitige Schranke.
     const response = await page.request.get('/api/v1/admin/models', {
       headers: { [DEV_USER_HEADER]: 'dev-user' },
     })

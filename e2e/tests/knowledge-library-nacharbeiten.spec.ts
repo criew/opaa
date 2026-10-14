@@ -10,9 +10,9 @@ import {
 import type { Page } from '@playwright/test'
 import { openNewLibraryWizard } from '../fixtures/chat'
 
-// Nacharbeiten-Serie aus Epic #458 (#514, #516, #517, #519, siehe Issue #547): vier
+// Nacharbeiten-Serie aus Epic #458 (siehe Issue #547): vier
 // nutzersichtbare Verhaltensweisen, die die Suite bislang nicht abdeckte. Eigene Datei statt
-// Erweiterung von knowledge-libraries.spec.ts (#424) - dort geht es um die volle
+// Erweiterung von knowledge-libraries.spec.ts - dort geht es um die volle
 // Upload/Freigabe/Suche-Kette einer einzelnen Bibliothek, hier um vier voneinander unabhängige
 // UI-Verhaltensweisen rund um Quellkonfiguration und Dokumentliste. Jedes Szenario legt sich seine
 // eigene, wegwerfbare Bibliothek an - dasselbe Muster wie die Negativfälle in
@@ -131,7 +131,7 @@ async function uploadFillerDocuments(page: Page, libraryId: string, count: numbe
   }
 }
 
-// #519: an ~2 MB PDF upload through the real, containerized nginx (frontend/nginx.conf) rather
+// An ~2 MB PDF upload through the real, containerized nginx (frontend/nginx.conf) rather
 // than a mocked or dev-server request - client_max_body_size is the one setting no unit test can
 // exercise, only a request that actually passes through that proxy.
 test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
@@ -178,15 +178,15 @@ test.describe('Upload > 1 MB durch den echten nginx (#519)', () => {
   })
 })
 
-// #514: the connection test in the creation wizard's step "Quelle einrichten", both directions.
+// The connection test in the creation wizard's step "Quelle einrichten", both directions.
 //
 // Happy path: HTTP_DIRECTORY against the suite's own "rss-feed" httpd service
 // (docker-compose.e2e.yml, also used by #471), reachable from the backend container under the
 // stack-internal hostname "rss-feed" - no dedicated fixture service needed just for this test.
 // Not .../anlagen/ itself (used elsewhere in this file and in the #516 scenario below, where only
-// creation/editing matters, never a parsed count): since #550, AutoindexCrawlerService#parseDirectory
+// creation/editing matters, never a parsed count): AutoindexCrawlerService#parseDirectory
 // also understands the plain <pre> listing httpd:2.4-alpine's stock mod_autoindex config actually
-// renders (no "IndexOptions HTMLTable" needed any more), so .../anlagen/ would work here too - but
+// renders (no "IndexOptions HTMLTable" needed), so .../anlagen/ would work here too - but
 // its exact rendering depends on the base image's autoindex defaults, which this suite does not
 // control. .../webverzeichnis/ instead serves a hand-crafted static index.html mimicking the
 // HTMLTable layout deliberately (see demo/seed/e2e-data/rss-feed/htdocs/webverzeichnis/index.html for
@@ -249,7 +249,7 @@ test.describe('Verbindungstest im Anlage-Assistenten (#514)', () => {
   })
 })
 
-// #517: paging and keyword search over a library's document list, plus the list showing up at all
+// Paging and keyword search over a library's document list, plus the list showing up at all
 // for a non-UPLOAD (connector) library - LibraryDetailPage renders LibraryDocumentsSection
 // whenever library details are loaded, regardless of sourceType; only the upload widget itself is
 // gated to UPLOAD.
@@ -307,7 +307,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     // ambiguous.
     const pagination = page.getByRole('navigation', { name: 'Dokumentenliste blättern' })
     await expect(pagination).toBeVisible()
-    // #784: the deDE MUI locale drops the "Gehe zu " prefix for the currently selected page
+    // The deDE MUI locale drops the "Gehe zu " prefix for the currently selected page
     // (MuiPagination.getItemAriaLabel), so the still-active page 1 is just "Seite 1" while the
     // not-yet-selected page 2 is "Gehe zu Seite 2".
     const page1Item = pagination.getByRole('button', { name: 'Seite 1' })
@@ -315,8 +315,8 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await expect(page1Item).toBeVisible()
     await expect(page2Item).toBeVisible()
 
-    // Blaettern: page 1 shows PAGE_SIZE rows. Sorted by fileName (LibraryController#listDocuments,
-    // #517 code review finding 1) - uppercase "E2E-Fuelldokument-..." sorts before lowercase
+    // Blaettern: page 1 shows PAGE_SIZE rows. Sorted by fileName
+    // (LibraryController#listDocuments) - uppercase "E2E-Fuelldokument-..." sorts before lowercase
     // "suchtreffer-...", so the search target lands on page 2 alongside the one filler document
     // that does not fit on page 1.
     const documentRows = page.getByText(/^E2E-Fuelldokument-/)
@@ -343,7 +343,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
     await page.getByRole('radio', { name: /Webverzeichnis/ }).click()
     await page.getByRole('button', { name: 'Weiter', exact: true }).click()
     await page.getByLabel('Adresse (URL)').fill('http://rss-feed/anlagen/')
-    // #1942: Der Sofortstart gilt seit dem neuen Assistenten für jeden Konnektortyp und ist
+    // Der Sofortstart gilt seit dem neuen Assistenten für jeden Konnektortyp und ist
     // vorbelegt. Dieses Szenario braucht eine Bibliothek ohne einen einzigen Lauf - sonst prüft es
     // statt des Leerzustands den Bestand des ersten Laufs.
     await page
@@ -367,7 +367,7 @@ test.describe('Dokumentliste mit Paging und Suche (#517)', () => {
   })
 })
 
-// #1943: Sammellöschen einer Upload-Bibliothek - die Auswahl, die Bestätigung und die Meldung
+// Sammellöschen einer Upload-Bibliothek - die Auswahl, die Bestätigung und die Meldung
 // danach. Der Endpunkt POST .../documents/bulk-delete wird dabei durch den echten Stack gefahren,
 // nicht gemockt.
 test.describe('Sammelloeschen von Dokumenten (#1943)', () => {
@@ -407,7 +407,7 @@ test.describe('Sammelloeschen von Dokumenten (#1943)', () => {
   })
 })
 
-// #516: editing a connector library's source configuration - the "wirkt erst mit dem naechsten
+// Editing a connector library's source configuration - the "wirkt erst mit dem naechsten
 // Indizierungslauf" hint, and the credentials-blank-means-unchanged semantics
 // (KnowledgeLibraryService#updateLibrary, ADR-0018; frontend behaviour added by #516, refined by
 // #542's origin check).
@@ -426,7 +426,7 @@ test.describe('Quellkonfiguration bearbeiten (#516)', () => {
     // Credentials are set on creation so this test can prove they survive an edit that leaves the
     // field blank - a library created without any has nothing to preserve in the first place.
     await page.getByLabel('Anmeldedaten').fill('testuser:testpass')
-    // #1942: Der vorbelegte Sofortstart würde hier das Anlagen-Fixture in den gemeinsamen Bestand
+    // Der vorbelegte Sofortstart würde hier das Anlagen-Fixture in den gemeinsamen Bestand
     // der Suite indizieren, obwohl dieses Szenario nie einen Lauf braucht.
     await page
       .getByRole('switch', { name: 'Erste Indizierung sofort nach dem Anlegen starten' })

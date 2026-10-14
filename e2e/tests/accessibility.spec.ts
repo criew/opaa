@@ -26,7 +26,7 @@ async function ensureOwnCatalogEntry(): Promise<string> {
 }
 
 /**
- * Automated accessibility checks with axe-core (#586): every page listed in the issue is opened
+ * Automated accessibility checks with axe-core: every page listed in the issue is opened
  * in its default state and analysed; serious/critical WCAG 2.1 AA violations fail the suite (see
  * fixtures/a11y.ts for the threshold and docs/design/accessibility.md §3.1 for the policy).
  *
@@ -187,7 +187,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Seite Chats, Reiter Archiv (helles Farbschema)");
   });
 
-  // #957: Die Rollen-Chips („Administrator", „Eigentümer") fielen im Abschluss-Audit (#598) nur
+  // Die Rollen-Chips („Administrator", „Eigentümer") fielen im Abschluss-Audit nur
   // im Dunkelschema durch color-contrast — beide Seiten deshalb in beiden Schemata, nach dem
   // Muster des Chat-Szenarios oben.
   test("Spaces-Übersicht in beiden Farbschemata", async ({
@@ -206,7 +206,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Spaces-Übersicht (dunkles Farbschema)");
   });
 
-  // #2134: die Mitgliederliste der Space-Einstellungen mit Personen-/Gruppensymbol, Rollenauswahl
+  // Die Mitgliederliste der Space-Einstellungen mit Personen-/Gruppensymbol, Rollenauswahl
   // und „⋯“-Menü - einmal geschlossen, einmal per Tastatur geöffnet. Der Space entsteht dafür
   // über die API und wird am Ende wieder gelöscht.
   test("Space-Einstellungen: Mitgliederliste mit Zeilenmenü in beiden Farbschemata", async ({
@@ -284,7 +284,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Quellart (dunkles Farbschema)");
   });
 
-  // #2493: der Schritt „Quelle einrichten" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
+  // Der Schritt „Quelle einrichten" mit Zugangswahl und Hinweisen, als Systemverwaltung mit einem
   // frisch angelegten, wählbaren Zugang.
   test("Wissens-Assistent: Schritt Quelle einrichten mit Zugangswahl in beiden Farbschemata", async ({
     authenticatedPage: page,
@@ -313,8 +313,8 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     }
   });
 
-  // #2493: eine gesperrte Quellart mit ihrem Grund in der Warnfarbe - im Dialog „Zugang anlegen"
-  // seit #2504 als Eintrag der Auswahlliste. Der Eintrag ist nur als nicht wählbar markiert, nicht
+  // Eine gesperrte Quellart mit ihrem Grund in der Warnfarbe - im Dialog „Zugang anlegen"
+  // als Eintrag der Auswahlliste. Der Eintrag ist nur als nicht wählbar markiert, nicht
   // abgeblendet, also misst axe den Kontrast seines Grundes.
   test("Gesperrte Quellart mit Grund in Warnfarbe in beiden Farbschemata", async ({
     authenticatedPage: page,
@@ -336,7 +336,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   });
 
   // Der Katalog: Typfilter als Umschaltgruppe, Kacheln mit Typ-Etikett, ein gesetzter
-  // Favoriten-Stern und der aktive Filter „Favoriten" (#2095). #957: Etiketten fielen einmal nur im
+  // Favoriten-Stern und der aktive Filter „Favoriten". #957: Etiketten fielen einmal nur im
   // Dunkelschema durch, deshalb beide Schemata.
   test("Katalog in beiden Farbschemata", async ({ authenticatedPage: page }) => {
     const name = `A11y Favorit ${Date.now()}`;
@@ -391,7 +391,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     }
   });
 
-  // Die Detailseite einer Prompt-Bibliothek (#2208): Kopf mit Stern und „⋯", dann jeder der drei
+  // Die Detailseite einer Prompt-Bibliothek: Kopf mit Stern und „⋯", dann jeder der drei
   // Reiter. Der Kopf ist derselbe Baustein wie auf der Seite einer Wissensbibliothek.
   test("Detailseite einer Prompt-Bibliothek mit allen Reitern", async ({
     authenticatedPage: page,
@@ -450,7 +450,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Space-Inhalte (dunkles Farbschema)");
   });
 
-  // #1541/#1601: die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine
+  // Die Benutzerverwaltung führt die dichteste Kombination des Bereichs — eine
   // Tab-Leiste, Zustandspunkt plus Text und Herkunft mit Symbol plus Wort in der Tabelle, ein
   // Zeilenmenü aus Nur-Icon-Schaltern und die Schalterkarte mit Konsequenz. Beide Bereiche und
   // beide Farbschemata, weil Zustand und Herkunft je über Farbe *und* Text geführt werden.
@@ -476,7 +476,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expect(list.first()).toBeVisible();
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Konten, dunkles Farbschema)");
 
-    // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite (#1600, adb95b5d): Ein
+    // Das Schema vor dem Laden setzen, nicht auf der gerenderten Seite (adb95b5d): Ein
     // Wechsel danach hat auf den Anmeldeseiten CI-eigene Kontrastbefunde erzeugt.
     const localSignInSwitch = page.getByRole("switch", {
       name: "Lokale Anmeldung aktiv",
@@ -501,9 +501,9 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Gruppen)");
   });
 
-  // #956: die Branding-Seite lag außerhalb der Suite, obwohl sie mit der aria-hidden-Vorschau
+  // Die Branding-Seite lag außerhalb der Suite, obwohl sie mit der aria-hidden-Vorschau
   // als einzige Seite bewusst unsichtbare Interaktionsmuster rendert — genau dort saß der
-  // aria-hidden-focus-Befund des Abschluss-Audits (#598). Der Wartepunkt auf den Vorschau-Text
+  // aria-hidden-focus-Befund des Abschluss-Audits. Der Wartepunkt auf den Vorschau-Text
   // stellt sicher, dass axe die Vorschau-Panels wirklich analysiert.
   test("Verwaltungsbereich: Branding", async ({ authenticatedPage: page }) => {
     await page.goto("/admin/branding");
@@ -519,8 +519,8 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Branding)");
   });
 
-  // #1053: die dichteste Seite des Verwaltungsbereichs — die zehnspaltige Bibliothekstabelle und
-  // die Akkordeons je Suchstufe. Seit #1616 liegen die Bereiche in eigenen Reitern, und axe prüft
+  // Die dichteste Seite des Verwaltungsbereichs — die zehnspaltige Bibliothekstabelle und
+  // die Bereiche je Suchstufe. Sie liegen in eigenen Reitern, und axe prüft
   // nur, was gerade sichtbar ist: Jeder Reiter wird deshalb einzeln besucht.
   test("Verwaltungsbereich: Suche & Indexierung in allen Reitern", async ({
     authenticatedPage: page,
@@ -555,12 +555,12 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Verwaltungsbereich (Suche & Indexierung, Diagnose)");
   });
 
-  // #1542: die E-Mail-Seite bringt zwei eigene Muster mit, die sonst nirgends vorkommen — die
+  // Die E-Mail-Seite bringt zwei eigene Muster mit, die sonst nirgends vorkommen — die
   // Reiter als Routen (role="tab" auf einem Link) und die Vorschau in einem abgeschotteten
   // iframe. Beide Reiter und beide Farbschemata, weil die Statuskachel ihren Zustand über einen
   // Farbpunkt *und* Text führt und genau das im dunklen Schema nachweisbar bleiben muss.
   /**
-   * Die Vorschau der HTML-Fassung läuft in einem `iframe` mit leerem `sandbox` (#1542) - darin
+   * Die Vorschau der HTML-Fassung läuft in einem `iframe` mit leerem `sandbox` - darin
    * führt kein Skript aus, also auch nicht das, das axe in jeden Rahmen injiziert. axe wartet
    * darauf bis zu seiner frameWaitTime und lässt den Test in den Timeout laufen. Der Rahmeninhalt
    * ist eine gerenderte Mail, keine Oberfläche dieser Anwendung; geprüft wird die Seite um ihn
@@ -608,7 +608,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     );
   });
 
-  // #2504: die Anbindungen mit allen Reitern; die externen KI-Werkzeuge zusätzlich mit offenem
+  // Die Anbindungen mit allen Reitern; die externen KI-Werkzeuge zusätzlich mit offenem
   // Einstellungs-Panel, das eigene Abschnitte und eine Fußleiste mitbringt.
   test("Verwaltungsbereich: Anbindungen in allen Reitern und beiden Farbschemata", async ({
     authenticatedPage: page,
@@ -663,8 +663,8 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     }
   });
 
-  // #800: die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
-  // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt (#788).
+  // Die Einstellungsseite lag als einzige globale Seite außerhalb der Suite, obwohl sie
+  // mit Badge neben der H1 und Akzent-Avatar eigene Farbkombinationen einführt.
   test("Benutzer-Einstellungen", async ({ authenticatedPage: page }) => {
     await page.goto("/settings");
     await expect(
@@ -674,13 +674,13 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
     await expectNoSeriousA11yViolations(page, "Benutzer-Einstellungen");
   });
   /**
-   * #1540: Die vier Selbstbedienungsseiten rendern ohne Sitzung wie die Anmeldeseite, auf
+   * Die vier Selbstbedienungsseiten rendern ohne Sitzung wie die Anmeldeseite, auf
    * Navy-Grund mit eigener Karte, und führen als einzige Seiten Passwortfeld mit Sichtbarkeits-
    * Umschalter, Stärkeanzeige und Ergebnisansicht ein. Die Konfiguration wird wie bei der
    * Anmeldeseite abgefangen: Der Stack läuft im dev-Modus, in dem die lokale Kontoverwaltung aus
    * ist und /register sowie /forgot-password deshalb umleiten würden.
    *
-   * Vertrag für weitere E2E-Tests (#1543): `/set-password` und `/verify-email` **entfernen den
+   * Vertrag für weitere E2E-Tests: `/set-password` und `/verify-email` **entfernen den
    * Token sofort aus der URL** (ADR-0033, Entscheidung 9 — er stünde sonst als Referrer im
    * nginx-Zugriffslog). Nach dem Laden enthält `page.url()` kein `token=` mehr, und ein Neuladen
    * der Seite zeigt „Dieser Link ist nicht mehr gültig." — ein Test muss den Link also jedes Mal
@@ -745,7 +745,7 @@ test.describe("Barrierefreiheit (axe-core, #586)", () => {
   /**
    * Wächter für die Wartelogik aus `fixtures/a11y.ts`: Die Einblendung wird auf 3 s gedehnt, sodass
    * axe ohne das Warten garantiert eine Zwischenfarbe der 240-ms-Animation misst und
-   * `color-contrast` fehlschlägt (#1643). Ohne diesen Test fiele ein Wegfall der Wartezeile auf
+   * `color-contrast` fehlschlägt. Ohne diesen Test fiele ein Wegfall der Wartezeile auf
    * den sporadischen Fehlschlag zurück, den `retries: 1` zusätzlich verdeckt.
    */
   test("Selbstbedienung: gedehnte Einblendung bleibt messbar", async ({ page }) => {

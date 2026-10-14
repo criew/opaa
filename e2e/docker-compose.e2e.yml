@@ -4,13 +4,13 @@
 
 # Single source of truth for the fake embedding vector's length, shared by pgvector's column width
 # (OPAA_PGVECTOR_DIMENSIONS, backend) and the stub's own default (EMBEDDING_DIMENSIONS, ai-stub) -
-# see PR #453 review, gathered nit: two independently hardcoded "1536"s could drift apart silently
+# two independently hardcoded "1536"s could drift apart silently
 # whenever one gets edited without the other; one anchor referenced from both cannot.
 x-embedding-dimensions: &embedding-dimensions "1536"
 
 services:
   backend:
-    # #1184: backs document-attachment-grouping.spec.ts - a FILESYSTEM library over this mount
+    # Backs document-attachment-grouping.spec.ts - a FILESYSTEM library over this mount
     # creates attachment rows (parent_document_id) for the mounted mail. Chosen when the UPLOAD
     # path still discarded discovered attachments; #1227 has since closed that gap, but the
     # connector variant stays as the deterministic fixture-driven path. /data is already on the
@@ -20,8 +20,8 @@ services:
     depends_on:
       ai-stub:
         # Not service_started: Spring AI's PgVectorStore can probe the embedding provider's
-        # dimension via a real POST /v1/embeddings call while the backend is still starting up
-        # (see PR #453 review). Waiting for the stub's own /health first, not just its container
+        # dimension via a real POST /v1/embeddings call while the backend is still starting
+        # up. Waiting for the stub's own /health first, not just its container
         # existing, is what actually guarantees it can already answer that call.
         condition: service_healthy
       rss-feed:
@@ -49,7 +49,7 @@ services:
       # exercised by whatever a future scenario adds for it, this only widens the window enough for
       # a same-run rerun.
       OPAA_RATE_LIMIT_INDEXING_MAX_REQUESTS: "20"
-      # PR #510 review, finding 1: RateLimitFilter checks this GLOBAL sliding-window counter
+      # RateLimitFilter checks this GLOBAL sliding-window counter
       # (default 5 requests/60s, application.yml) *before* the per-library one above, across every
       # library and every caller. CI's own retry (playwright.config.ts: retries: 1 on CI) re-runs a
       # whole failed test.describe.serial group from its first test, so a transient failure alone
@@ -68,7 +68,7 @@ services:
       # gets no budget of its own. Raised, not disabled: the limiter stays in the request path, and
       # the global counter (100/60s) is untouched, so a runaway loop still hits a wall.
       OPAA_RATE_LIMIT_QUERY_MAX_REQUESTS: "40"
-      # #267: the SSRF target-address check defaults to active (opaa.indexing.target-validation),
+      # The SSRF target-address check defaults to active (opaa.indexing.target-validation),
       # which would otherwise reject every HTTP_DIRECTORY/RSS_FEED fetch this suite makes - both
       # "rss-feed" and "ai-stub" resolve to a container-internal address on the Compose network's
       # own bridge, itself a private range (172.16.0.0/12 or similar, assigned by Docker). These are
@@ -101,10 +101,10 @@ services:
       OPAA_AUTH_DEV_USERS_2_SUBJECT: dev-outsider
       OPAA_AUTH_DEV_USERS_2_EMAIL: outsider@opaa.local
       OPAA_AUTH_DEV_USERS_2_DISPLAY_NAME: Dev Outsider
-      # A fourth dev user, "dev-format-pipelines" (#1109): format-pipelines-upload.spec.ts uploads
+      # A fourth dev user, "dev-format-pipelines": format-pipelines-upload.spec.ts uploads
       # several documents purely to prove indexing succeeds and never asks a question, so it runs
       # under this dedicated account instead of any of the three above - a second, retrieval-
-      # window-independent line of defense (#1152) that keeps a pure-upload scenario's documents
+      # window-independent line of defense that keeps a pure-upload scenario's documents
       # out of a citation-checking scenario's readable corpus entirely, on top of e2e.env's
       # OPAA_QUERY_TOP_K/OPAA_QUERY_FETCH_K already being sized to hold every account's own,
       # never-cleaned-up corpus with headroom (see e2e/ai-stub/server.mjs's own comment on the
@@ -120,7 +120,7 @@ services:
   ai-stub:
     # Deliberately the same floating `node:22-alpine` tag already used for frontend/Dockerfile
     # (and the equally floating `eclipse-temurin:21-jdk`/`nginxinc/nginx-unprivileged:alpine`/`pgvector/pgvector:pg18`
-    # elsewhere in the repo) - PR #453 review flagged this as a nightly-schedule risk (a new base
+    # elsewhere in the repo). That is a nightly-schedule risk (a new base
     # image landing between runs), which is real but not specific to this service: pinning only
     # ai-stub, and to what would then be the only digest-pinned image in the whole stack, would
     # be an inconsistency of its own without actually closing that gap anywhere else.
@@ -132,7 +132,7 @@ services:
     environment:
       PORT: "8089"
       EMBEDDING_DIMENSIONS: *embedding-dimensions
-    # test(e2e) #760, PR review finding 2: GET /last-chat-model (ai-stub/server.mjs) has to be
+    # GET /last-chat-model (ai-stub/server.mjs) has to be
     # reachable from the Playwright/Node test process directly, not just from the backend
     # container over the Compose network - that is the only way a scenario can assert *which*
     # managed chat model actually answered. Every other service in this stack that Playwright
@@ -154,12 +154,12 @@ services:
   # RssFeedIndexingExecutor fetches the feed URL and each entry's own link directly - it never
   # parses a directory listing - so a plain httpd with no FancyIndexing config is enough; no
   # Dockerfile, no build, matching the read-only, already-official-image style ai-stub uses above.
-  # Since #547, this same docroot also backs the HTTP_DIRECTORY connection-test happy path (#514,
-  # test(e2e) knowledge-library-nacharbeiten.spec.ts) via .../webverzeichnis/, a hand-crafted
+  # This same docroot also backs the HTTP_DIRECTORY connection-test happy path
+  # (knowledge-library-nacharbeiten.spec.ts) via .../webverzeichnis/, a hand-crafted
   # directory-listing page - see that file's own docroot for why a real autoindex response from
-  # this image's stock config would not do. Since #233, the docroot lives under
+  # this image's stock config would not do. The docroot lives under
   # demo/seed/e2e-data/rss-feed/htdocs/, not e2e/fixtures/ - this content is what specs point
-  # library-creation UI flows at (#471, #514), the same "one place owns this suite's frozen data"
+  # library-creation UI flows at, the same "one place owns this suite's frozen data"
   # move that also relocated e2e/fixtures/test-documents/ (see demo/seed/profiles.py).
   rss-feed:
     image: httpd:2.4-alpine

@@ -1,6 +1,6 @@
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
-# Repo-root build context (issue #896): backend/settings.gradle.kts includes the sibling
+# Repo-root build context: backend/settings.gradle.kts includes the sibling
 # opaa-api/ module by relative path, so both directory trees must exist under /app in the same
 # layout as the repo, not just backend/'s own contents.
 COPY backend/build.gradle.kts backend/settings.gradle.kts backend/gradle.properties backend/
@@ -19,7 +19,7 @@ WORKDIR /app/backend
 ARG OPAA_VERSION=
 RUN ./gradlew bootJar --no-daemon -x test "-PopaaVersion=${OPAA_VERSION}"
 
-# Custom Java runtime (ADR-0029, issue #1459). java.se is the whole Java SE API including
+# Custom Java runtime (ADR-0029). java.se is the whole Java SE API including
 # java.desktop, which PDFBox and POI require; the jdk.* modules below are service providers the
 # JDK loads reflectively, so no dependency analysis derives them: TLS ciphers (crypto.ec,
 # crypto.cryptoki), non-UTF-8 charsets of imported documents (charsets), German formatting
@@ -44,7 +44,7 @@ RUN "$JAVA_HOME/bin/jlink" \
 FROM eclipse-temurin:21-jdk AS appdirs
 RUN mkdir -p /skel/app/documents /skel/app/uploads && chown -R 65532:65532 /skel/app
 
-# Distroless ships glibc without any of the packages the triage in #1459 named: no fontconfig (and
+# Distroless ships glibc and none of the OS packages a JDK base image carries: no fontconfig (and
 # with it no libexpat), no coreutils, no p11-kit, no tar, wget, gnupg or perl, no pebble. The
 # runtime above is self-contained - cacerts, time-zone database and locale data come from the JDK,
 # not from OS packages - so the base has to provide no more than the C library. The -nossl variant
