@@ -65,10 +65,7 @@ class RunSecretContractCoverageTest {
         new ClassFileImporter()
             .withImportOption(ImportOption.Predefined.DO_NOT_INCLUDE_TESTS)
             .importPackages(
-                "io.opaa.indexing.source",
-                "io.opaa.indexing.spi",
-                "io.opaa.indexing.run",
-                "io.opaa.indexing.filesync");
+                "io.opaa.indexing.source", "io.opaa.indexing.spi", "io.opaa.indexing.filesync");
     Set<String> reporting = new HashSet<>();
     for (Class<?> rejection :
         List.of(
@@ -90,7 +87,6 @@ class RunSecretContractCoverageTest {
     }
     for (Set<String> found : List.of(reporting, asking)) {
       found.remove(RunCredentials.class.getPackageName());
-      found.remove("io.opaa.indexing.run");
       found.remove("io.opaa.indexing.filesync");
     }
     Set<String> refusing = new HashSet<>();

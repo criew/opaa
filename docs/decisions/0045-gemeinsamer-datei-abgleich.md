@@ -26,8 +26,7 @@ Der Abgleich liegt in `io.opaa.indexing.filesync` (Modul knowledge), letzter Ein
 kennt keinen Konnektor und keinen Anbieter (`theFileSyncKnowsNoProvider`); eine neue Modulkante
 entsteht nicht. Nicht unter `indexing.source`, weil jedes direkte Unterpaket dort als Konnektor gilt
 (`connectorsDoNotKnowEachOther`). Entfernt wird nur über den Laufrahmen:
-`IndexingRun#removeWithAttachments` (Port `VanishedDocumentReconciler#removeWithAttachments`, seit
-#2740); `indexing.filesync` importiert `indexing.maintenance` nicht. Spring kennt das Paket nicht; was
+`IndexingRun#removeWithAttachments` (Port `VanishedDocumentReconciler#removeWithAttachments`); `indexing.filesync` importiert `indexing.maintenance` nicht. Spring kennt das Paket nicht; was
 Transaktionen braucht (`ScanJournal`), liegt im Konnektor-Vertrag `indexing.spi` (seit #2720).
 
 `FileSync` besitzt Vorfilter nach Endung und Größe, Merkmalsvergleich, Download-Pool und

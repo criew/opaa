@@ -516,12 +516,11 @@ public final class ModularArchitecture {
           "indexing.spi.ConnectorData#storedIn");
 
   /**
-   * The packages of indexing a connector and the file sync may use, relative to the root; not
-   * {@code indexing.credentials}, so none resolves a secret or reads a key (ADR-0040, Entscheidung
-   * 2).
+   * The packages of indexing a connector and the file sync may use, relative to the root: neither
+   * sees the resolvers, the service account key or the registry (ADR-0040, Entscheidung 2).
    */
-  static final List<String> CONNECTOR_IMPORTS =
-      List.of(
+  static final Set<String> CONNECTOR_IMPORTS =
+      Set.of(
           "indexing.job",
           "indexing.attachment",
           "indexing.document",
@@ -1019,7 +1018,7 @@ public final class ModularArchitecture {
                 target -> {
                   String relative = relative(target.getBaseComponentType().getPackageName());
                   return relative != null
-                      && (relative.equals("indexing") || relative.startsWith("indexing."))
+                      && "indexing".equals(topLevel(relative))
                       && !relative.startsWith(CONNECTOR_PARENT + ".")
                       && !CONNECTOR_IMPORTS.contains(relative);
                 }))

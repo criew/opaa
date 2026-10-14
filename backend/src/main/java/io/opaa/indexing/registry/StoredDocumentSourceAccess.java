@@ -32,7 +32,7 @@ import org.slf4j.LoggerFactory;
  * over the bestand: its own file ({@link #withLocalSourceFile}), re-extracted from its root
  * ancestor's file along the attachment chain ({@link #withReextractedAttachment}, ADR-0022), or
  * only by its next connector run ({@link #markRemoteChainForNextRun}). Shared by the pipeline
- * re-index ({@link io.opaa.indexing.maintenance.PipelineReindexService}) and the core-metadata
+ * re-index ({@code io.opaa.indexing.maintenance.PipelineReindexService}) and the core-metadata
  * backfill ({@code io.opaa.indexing.maintenance.MetadataBackfillService}), so both apply the same
  * runtime containment discipline (ADR-0018, Entscheidung 6) and the same chain rules. Every
  * unreachable case is a skip, never an error.
