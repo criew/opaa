@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { mockSourceTypes } from '../../../mocks/libraryFixtures'
 import { EMPTY_CONFLUENCE_VALUES } from '../../../utils/confluenceSource'
 import { EMPTY_S3_VALUES } from '../../../utils/s3Source'
+import { sourceTypeEntry } from '../../admin/connections/sourceTypeDirectory'
 import { registeredSourceTypes, sourceRegistration } from './registry'
 import type { SourceConfiguration, SourceFormContext } from './types'
 
@@ -39,6 +40,20 @@ describe('the source registry (ADR-0038)', () => {
     expect(sourceRegistration('UPLOAD')?.configuration).toBeNull()
     expect(sourceRegistration('PROBE')).toBeUndefined()
   })
+
+  it.each(registeredSourceTypes)(
+    'names and marks %s exactly as the connection directory does',
+    (type) => {
+      const entry = sourceTypeEntry(type)
+      expect(entry).toBeDefined()
+      expect(sourceRegistration(type)).toMatchObject({
+        label: entry!.label,
+        shortLabel: entry!.shortLabel,
+        description: entry!.description,
+        Icon: entry!.Icon,
+      })
+    },
+  )
 
   it('has the mock backend list every registered type exactly once, ordered by key', () => {
     const keys = mockSourceTypes.map((descriptor) => descriptor.type)

@@ -1,34 +1,4 @@
 {
-  "src/components/admin/connections/ConnectionProfilesTab.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/ConnectorTypeOverview.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/DormantSourceConnectionsSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/library/PrivateStorageSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/ServiceAccountKeyField.tsx": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/components/admin/connections/SourceTypeSelect.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
   "src/components/admin/directorysync/PendingPlanHint.tsx": {
     "boundaries/dependencies": {
       "count": 1
@@ -64,11 +34,6 @@
       "count": 1
     }
   },
-  "src/components/admin/connections/sourceConnectionLabels.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
   "src/components/permissions/AccessDerivation.test.tsx": {
     "boundaries/dependencies": {
       "count": 2
@@ -94,11 +59,6 @@
       "count": 2
     }
   },
-  "src/components/settings/ConnectedAccountsSection.tsx": {
-    "boundaries/dependencies": {
-      "count": 2
-    }
-  },
   "src/components/succession/SuccessionRow.tsx": {
     "boundaries/dependencies": {
       "count": 1
@@ -115,11 +75,6 @@
     }
   },
   "src/hooks/useMyGroups.ts": {
-    "boundaries/dependencies": {
-      "count": 1
-    }
-  },
-  "src/shared/layouts/globalArea.ts": {
     "boundaries/dependencies": {
       "count": 1
     }
@@ -157,6 +112,11 @@
   "src/shared/api/api.test.ts": {
     "boundaries/dependencies": {
       "count": 3
+    }
+  },
+  "src/shared/layouts/globalArea.ts": {
+    "boundaries/dependencies": {
+      "count": 1
     }
   },
   "src/shared/session/authStore.local.test.ts": {

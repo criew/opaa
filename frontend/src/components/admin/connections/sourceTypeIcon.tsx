@@ -1,7 +1,7 @@
 import ExtensionIcon from '@mui/icons-material/Extension'
 import UploadFileIcon from '@mui/icons-material/UploadFile'
 import type { SourceTypeKey } from '@/shared/api/types'
-import { sourceRegistration } from '../../library/sources/registry'
+import { sourceTypeEntry } from './sourceTypeDirectory'
 
 /**
  * Das eine Bildzeichen je Quellentyp (#1942): Kopf der Detailseite und Kachel des Assistenten
@@ -18,6 +18,6 @@ export default function SourceTypeIcon({
 }) {
   const sx = { fontSize }
   if (sourceType === undefined) return <UploadFileIcon sx={sx} />
-  const Icon = sourceRegistration(sourceType)?.Icon ?? ExtensionIcon
+  const Icon = sourceTypeEntry(sourceType)?.Icon ?? ExtensionIcon
   return <Icon sx={sx} />
 }
